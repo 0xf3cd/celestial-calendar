@@ -34,7 +34,12 @@ def cmake() -> None:
 
   yellow_print('# Running cmake...')
   cmd_print(cmd)
-  subprocess.run(cmd, shell=True).check_returncode()
+  
+  proc = subprocess.run(cmd, shell=True, capture_output=True)
+  print(proc.stdout.decode('utf-8'))
+  print(proc.stderr.decode('utf-8'))
+  proc.check_returncode()
+  
   green_print('# cmake done!')
   print('#' * 60)
 
@@ -47,7 +52,11 @@ def make(cpu_cores: int=8) -> None:
 
   yellow_print('# Building the C++ projects...')
   cmd_print(cmd)
-  subprocess.run(cmd, shell=True).check_returncode()
+
+  proc = subprocess.run(cmd, shell=True, capture_output=True)
+  print(proc.stdout.decode('utf-8'))
+  print(proc.stderr.decode('utf-8'))
+  proc.check_returncode()
 
   green_print('# make done!')
   print('#' * 60)
@@ -132,7 +141,12 @@ def run_tests(
     print('#' * 60)
     yellow_print(f'# Running test {test} - {inverse_available_tests[test]}')
     cmd_print(cmd)
-    subprocess.run(cmd, shell=True).check_returncode()
+
+    proc = subprocess.run(cmd, shell=True, capture_output=True)
+    print(proc.stdout.decode('utf-8'))
+    print(proc.stderr.decode('utf-8'))
+    proc.check_returncode()
+
     green_print(f'# Test {test} done!')
     print('#' * 60)
 
