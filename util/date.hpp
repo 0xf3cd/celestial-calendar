@@ -11,7 +11,7 @@ concept YearCastable = std::convertible_to<T, int32_t>;
 
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
-constexpr std::chrono::year_month_day to_date(
+constexpr std::chrono::year_month_day to_ymd(
   const YearCastable auto year, 
   const uint32_t month, 
   const uint32_t day
@@ -54,6 +54,6 @@ constexpr std::chrono::year_month_day operator-(
   return std::chrono::year_month_day { time_point };
 }
 
-}
+} // namespace util
 
 #endif // __UTIL_DATE_HPP__

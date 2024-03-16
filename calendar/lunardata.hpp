@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <unordered_map>
 #include <chrono>
 
 #include "formatter.hpp"
@@ -81,13 +82,14 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
 
   const auto get_first_day = [&] {
     using namespace util;
-    return to_date(year, 1, 1) + days_offset;
+    return to_ymd(year, 1, 1) + days_offset;
   };
 
   const auto get_month_lengths = [&] {
     std::vector<uint8_t> lengths;
     const uint8_t month_count = 12 + (leap_month != 0);
     for (uint8_t i = 0; i < month_count; ++i) {
+      // There can be either 30 or 29 days in a lunar month.
       if (month_len_info >> i & 0x1) {
         lengths.push_back(30);
       } else {
@@ -104,6 +106,39 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   };  
 }
 
-}
+
+/*!
+ @class LunarYearInfoCache 
+ @brief Cache the lunar year information. 
+        缓存阴历年信息。
+ */
+struct LunarYearInfoCache {
+private:
+  std::unordered_map<uint32_t, LunarYearInfo> cache;
+
+public:
+  /*! 
+   @fn Return the cached lunar year info. 
+       返回缓存的阴历年信息。
+   @attention The input year should be in the range of [START_YEAR, END_YEAR].
+              输入的年份需要在所支持的范围内。
+   @param year The year. 年份。
+   @return The lunar year info. 阴历年信息。
+   */
+  LunarYearInfo get(uint32_t year) {
+    assert(year >= START_YEAR && year <= END_YEAR);
+
+    if (cache.find(year) == cache.end()) {
+      cache[year] = get_lunar_year_info(year);
+    }
+    return cache[year];
+  }
+};
+
+
+/*! @brief The global lunar year information cache. 全局阴历年信息缓存。 */
+const inline LunarYearInfoCache g_lunar_year_info_cache {};
+
+} // namespace calendar::lunardata
 
 #endif // __CALENDAR_LUNARDATA_HPP__

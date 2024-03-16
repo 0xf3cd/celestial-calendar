@@ -3,5 +3,6 @@
 
 #include "formatter.hpp"
 #include "date.hpp"
+#include "random.hpp"
 
 #endif // __UTIL_HPP__

@@ -30,6 +30,6 @@ std::string format(const std::string& format, Args... args) {
   return std::string { final_log };
 }
 
-}
+} // namespace util
 
 #endif // __UTIL_FORMATTER_HPP__
