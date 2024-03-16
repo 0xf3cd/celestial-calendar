@@ -1,15 +1,14 @@
-#ifndef __CALENDAR_CONVERTER_HPP__
-#define __CALENDAR_CONVERTER_HPP__
+#ifndef __CALENDAR_LUNARDATA_HPP__
+#define __CALENDAR_LUNARDATA_HPP__
 
 #include <array>
 #include <vector>
 #include <chrono>
 
 #include "formatter.hpp"
+#include "date.hpp"
 
-namespace calendar::converter {
-
-using util::format;
+namespace calendar::lunardata {
 
 /*! @brief The first supported lunar year. */
 constexpr uint32_t START_YEAR = 1901;
@@ -72,19 +71,39 @@ struct LunarYearInfo {
 LunarYearInfo get_lunar_year_info(uint32_t year) {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
-    throw std::out_of_range { format("year must be between %u and %u.", START_YEAR, END_YEAR) };
+    throw std::out_of_range { util::format("year must be between %u and %u.", START_YEAR, END_YEAR) };
   }
-  const uint32_t bin_data = LUNAR_DATA[year - START_YEAR];
 
-  const uint32_t days_offset = bin_data >> 17;
+  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR];
+  const uint32_t days_offset    = bin_data >> 17;
+  const uint8_t  leap_month     = (bin_data >> 13) & 0xf;
+  const uint16_t month_len_info = bin_data & 0x1fff;
 
-  const std::chrono::year_month_day first_solar_day { std::chrono::year(year) / 1 / 1 };
+  const auto get_first_day = [&] {
+    using namespace util;
+    return to_date(year, 1, 1) + days_offset;
+  };
+
+  const auto get_month_lengths = [&] {
+    std::vector<uint8_t> lengths;
+    const uint8_t month_count = 12 + (leap_month != 0);
+    for (uint8_t i = 0; i < month_count; ++i) {
+      if (month_len_info >> i & 0x1) {
+        lengths.push_back(30);
+      } else {
+        lengths.push_back(29);
+      }
+    }
+    return lengths;
+  };
 
   return {
-    // .date_of_first_day = first_solar_day + std::chrono::days { days_offset }
+    .date_of_first_day = get_first_day(),
+    .leap_month        = leap_month,
+    .month_lengths     = get_month_lengths(),
   };  
 }
 
 }
 
-#endif // __CALENDAR_CONVERTER_HPP__
+#endif // __CALENDAR_LUNARDATA_HPP__

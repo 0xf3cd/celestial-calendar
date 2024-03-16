@@ -11,14 +11,14 @@ concept YearCastable = std::convertible_to<T, int32_t>;
 
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
-const auto to_date = [](
-  YearCastable auto year, 
-  uint32_t month, 
-  uint32_t day
-) -> std::chrono::year_month_day {
-  const auto __year = std::chrono::year { static_cast<int32_t>(year) };
+constexpr std::chrono::year_month_day to_date(
+  const YearCastable auto year, 
+  const uint32_t month, 
+  const uint32_t day
+) {
+  const std::chrono::year __year { static_cast<int32_t>(year) };
   return std::chrono::year_month_day { __year / month / day };
-};
+}
 
 
 /*! @brief A type that can be converted to `std::chrono::days`. */
@@ -28,25 +28,28 @@ concept DayCastable = requires (T t) {
 };
 
 
-template <typename T>
-  requires DayCastable<T>
-constexpr std::chrono::year_month_day operator+(const std::chrono::year_month_day& ymd, const T& days) {
+constexpr std::chrono::year_month_day operator+(
+  const std::chrono::year_month_day& ymd, 
+  const DayCastable auto& days
+) {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }
 
 
-template <typename T>
-  requires DayCastable<T>
-constexpr std::chrono::year_month_day operator+(const T& days, const std::chrono::year_month_day& ymd) {
+constexpr std::chrono::year_month_day operator+(
+  const DayCastable auto& days,
+  const std::chrono::year_month_day& ymd
+) {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }
 
 
-template <typename T>
-  requires DayCastable<T>
-constexpr std::chrono::year_month_day operator-(const std::chrono::year_month_day& ymd, const T& days) {
+constexpr std::chrono::year_month_day operator-(
+  const std::chrono::year_month_day& ymd, 
+  const DayCastable auto& days
+) {
   const auto time_point = std::chrono::sys_days { ymd } - std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }

@@ -35,9 +35,9 @@ TEST(DateTest, test_operator_add) {
 
   ASSERT_EQ(date + (-365), 1900y / 1 / 1);
   ASSERT_EQ(date + (-1), 1900y / 12 / 31);
-  ASSERT_EQ(date + (0), 1901y / 1 / 1);
-  ASSERT_EQ(date + (1), 1901y / 1 / 2);
-  ASSERT_EQ(date + (365), 1902y / 1 / 1);
+  ASSERT_EQ(date + 0, 1901y / 1 / 1);
+  ASSERT_EQ(date + 1, 1901y / 1 / 2);
+  ASSERT_EQ(date + 365, 1902y / 1 / 1);
 
   ASSERT_EQ(-365 + date, 1900y / 1 / 1);
   ASSERT_EQ(-1 + date, 1900y / 12 / 31);
