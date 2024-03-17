@@ -1,7 +1,10 @@
 # cpp-calendar
 
 ## TODO List
-* C++ 20 Modules are not fully supported by the compilers...
+* C++20/23 features are not fully supported by the compilers on MacOS, Windows, and Linux...
+  * Modules
+  * `std::format` and `std::print`
+  * `std::ranges` (cartesian_product)
 
 ## References
 * https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html

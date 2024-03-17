@@ -114,7 +114,13 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
  */
 struct LunarYearInfoCache {
 private:
-  std::unordered_map<uint32_t, LunarYearInfo> cache;
+  const std::unordered_map<uint32_t, LunarYearInfo> cache = std::invoke([] {
+    std::unordered_map<uint32_t, LunarYearInfo> um {};
+    for (uint32_t year = START_YEAR; year <= END_YEAR; ++year) {
+      um.insert(std::make_pair(year, get_lunar_year_info(year)));
+    }
+    return um;
+  });
 
 public:
   /*! 
@@ -125,13 +131,11 @@ public:
    @param year The year. 年份。
    @return The lunar year info. 阴历年信息。
    */
-  LunarYearInfo get(uint32_t year) {
+  LunarYearInfo get(const uint32_t year) const {
     assert(year >= START_YEAR && year <= END_YEAR);
-
-    if (cache.find(year) == cache.end()) {
-      cache[year] = get_lunar_year_info(year);
-    }
-    return cache[year];
+    const auto found = cache.find(year);
+    assert(found != cache.end());
+    return found->second;
   }
 };
 

@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <vector>
 #include "lunardata.hpp"
 #include "random.hpp"
 
@@ -66,6 +67,63 @@ TEST(LunarData, test_copy) {
 
     info.month_lengths.emplace_back(29);
     EXPECT_NE(info.month_lengths, info2.month_lengths);
+  }
+}
+
+TEST(LunarData, test_global_cache_speed) {
+  const uint64_t elapsed_time_normal = std::invoke([] {
+    const auto start_time = std::chrono::steady_clock::now();
+    for (auto _ = 0; _ < 5000; ++_) {
+      for (auto year = START_YEAR; year <= END_YEAR; ++year) {
+        get_lunar_year_info(year);
+      }
+    }
+    const auto end_time = std::chrono::steady_clock::now();
+    return static_cast<uint64_t>((end_time - start_time).count());
+  });
+
+  const uint64_t elapsed_time_cached = std::invoke([] {
+    const auto start_time = std::chrono::steady_clock::now();
+    for (auto _ = 0; _ < 5000; ++_) {
+      for (auto year = START_YEAR; year <= END_YEAR; ++year) {
+        g_lunar_year_info_cache.get(year);
+      }
+    }
+    const auto end_time = std::chrono::steady_clock::now();
+    return static_cast<uint64_t>((end_time - start_time).count());
+  });
+  
+  std::cout << "Elapsed time for normal: " << elapsed_time_normal << "ns" << std::endl;
+  std::cout << "Elapsed time for cached: " << elapsed_time_cached << "ns" << std::endl;
+  std::cout << "Cached is " << static_cast<double>(elapsed_time_normal) / elapsed_time_cached << "x faster" << std::endl;
+  EXPECT_LT(elapsed_time_cached, elapsed_time_normal);
+}
+
+TEST(LunarData, test_global_cache_correctness) {
+  using namespace util;
+
+  for (auto _ = 0; _ < 100; ++_) {
+    const auto year = gen_random_value(START_YEAR, END_YEAR);
+    const auto info = get_lunar_year_info(year);
+    const auto info2 = g_lunar_year_info_cache.get(year);
+    EXPECT_EQ(info.date_of_first_day, info2.date_of_first_day);
+    EXPECT_EQ(info.leap_month, info2.leap_month);
+    EXPECT_EQ(info.month_lengths, info2.month_lengths);
+  }
+
+  for (auto year = START_YEAR; year <= END_YEAR; ++year) {
+    std::vector<LunarYearInfo> results;
+    for (auto _ = 0; _ < 32; ++_) {
+      results.emplace_back(g_lunar_year_info_cache.get(year));
+    }
+
+    for (const auto& info1 : results) { // TODO: Use `std::views::cartesian_product` when supported.
+      for (const auto& info2 : results) {
+        EXPECT_EQ(info1.date_of_first_day, info2.date_of_first_day);
+        EXPECT_EQ(info1.leap_month, info2.leap_month);
+        EXPECT_EQ(info1.month_lengths, info2.month_lengths);
+      }
+    }
   }
 }
 
