@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-std=c++20)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${PROJECT_SOURCE_DIR}/calendar)
+include_directories(${PROJECT_SOURCE_DIR}/util)
 
 add_subdirectory(test)
