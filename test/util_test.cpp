@@ -23,6 +23,31 @@ TEST(Util, test_to_ymd) {
   ASSERT_EQ(to_ymd(static_cast<int16_t>(2024), 3, 15), 2024y / 3 / 15);
 }
 
+TEST(Util, test_from_ymd) {
+  using namespace std::literals;
+
+  {
+    const auto [ y, m, d ] = from_ymd(1901y / 1 / 1);
+    ASSERT_EQ(y, 1901);
+    ASSERT_EQ(m, 1);
+    ASSERT_EQ(d, 1); 
+  }
+
+  {
+    const auto [ y, m, d ] = from_ymd(2024y / 3 / 15);
+    ASSERT_EQ(y, 2024);
+    ASSERT_EQ(m, 3);
+    ASSERT_EQ(d, 15); 
+  }
+
+  {
+    const auto [ y, m, d ] = from_ymd(0y / 3 / 15);
+    ASSERT_EQ(y, 0);
+    ASSERT_EQ(m, 3);
+    ASSERT_EQ(d, 15); 
+  }
+}
+
 TEST(Util, test_operator_add) {
   using namespace std::literals;
   constexpr auto ymd = to_ymd(1901, 1, 1);
@@ -63,7 +88,7 @@ TEST(Util, test_operator_sub) {
   ASSERT_EQ(ymd - (-365), 1902y / 1 / 1);
 }
 
-TEST(Util, gen_random_value_test1) {
+TEST(Util, test_gen_random_value1) {
   for (size_t i = 0; i < 5000; i++) {
     const auto randomValue = gen_random_value<double>();
     ASSERT_GE(randomValue, std::numeric_limits<double>::min());
@@ -84,7 +109,7 @@ TEST(Util, gen_random_value_test1) {
 }
 
 
-TEST(Util, gen_random_value_test2) {
+TEST(Util, test_gen_random_value2) {
   for (size_t i = 0; i < 5000; i++) {
     const auto randomValue1 = gen_random_value<float>();
     const auto randomValue2 = gen_random_value<float>();

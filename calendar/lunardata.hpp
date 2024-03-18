@@ -59,7 +59,7 @@ struct LunarYearInfo {
              There are 12 elements if there is no leap year, otherwise there are 13 elements.
              本阴历年每个月的天数。
              如果没有闰月，那么有 12 个元素；如果有闰月，那么有 13 个元素。 */
-  std::vector<uint8_t> month_lengths;
+  std::vector<uint32_t> month_lengths;
 };
 
 
@@ -86,7 +86,7 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   };
 
   const auto get_month_lengths = [&] {
-    std::vector<uint8_t> lengths;
+    std::vector<uint32_t> lengths;
     const uint8_t month_count = 12 + (leap_month != 0);
     for (uint8_t i = 0; i < month_count; ++i) {
       // There can be either 30 or 29 days in a lunar month.
@@ -140,8 +140,8 @@ public:
 };
 
 
-/*! @brief The global lunar year information cache. 全局阴历年信息缓存。 */
-const inline LunarYearInfoCache g_lunar_year_info_cache {};
+/*! @brief The global lunar year information cache. 阴历年信息缓存。 */
+const inline LunarYearInfoCache lunardata_cache {};
 
 } // namespace calendar::lunardata
 

@@ -21,6 +21,15 @@ constexpr std::chrono::year_month_day to_ymd(
 }
 
 
+/*! @brief Converts the input `std::chrono::year_month_day` to a year, month, and date. */
+constexpr std::tuple<uint32_t, uint32_t, uint32_t> from_ymd(const std::chrono::year_month_day& ymd) {
+  const uint32_t y = static_cast<int>(ymd.year()); // We should be safe here (int -> uint32_t).
+  const uint32_t m = static_cast<uint32_t>(ymd.month());
+  const uint32_t d = static_cast<uint32_t>(ymd.day());
+  return { y, m, d, };
+}
+
+
 /*! @brief A type that can be converted to `std::chrono::days`. */
 template <typename T>
 concept DayCastable = requires (T t) {
