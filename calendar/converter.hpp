@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <numeric>
+#include <optional>
 
 #include "date.hpp"
 #include "lunardata.hpp"
@@ -10,6 +11,7 @@
 namespace calendar::converter {
 
 using std::chrono::year_month_day;
+using std::chrono::sys_days;
 using namespace calendar::lunardata;
 
 /*! @brief The first supported lunar date. */
@@ -32,7 +34,7 @@ const inline year_month_day LAST_SOLAR_DATE = std::invoke([] {
   using namespace util;
   const LunarYearInfo info = lunardata_cache.get(END_YEAR);
   const auto [ b, e ] = std::pair { info.month_lengths.begin(), info.month_lengths.end() };
-  const uint32_t days_count = std::accumulate(b, e, 0);
+  const uint32_t days_count = std::reduce(b, e, 0);
   return (days_count - 1) + info.date_of_first_day;
 });
 
@@ -72,15 +74,91 @@ bool is_valid_lunar(const year_month_day& lunar_date) {
 }
 
 
-/*! @fn Converts solar date to lunar date. 将公历日期转换为阴历日期。 */
-year_month_day solar_to_lunar(const year_month_day& solar_date) {
-  return solar_date;
+/*! 
+ @fn solar_to_lunar 
+ @brief Converts solar date to lunar date. 将公历日期转换为阴历日期。 
+ @param solar_date The solar date. 公历日期。
+ @return The optional lunar date. 阴历日期（optional）。
+ @attention The input date should be in the range of [FIRST_SOLAR_DATE, LAST_SOLAR_DATE].
+            输入的日期需要在所支持的范围内。
+ @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
+            输入的日期无效时返回 `std::nullopt`。不会抛出异常。
+ */
+std::optional<year_month_day> solar_to_lunar(const year_month_day& solar_date) {
+  if (!is_valid_solar(solar_date)) {
+    return std::nullopt;
+  }
+
+  const auto [ solar_y, solar_m, solar_d ] = util::from_ymd(solar_date);
+
+  const auto find_out_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
+    const auto& info = lunardata_cache.get(lunar_y);
+    const auto& ml = info.month_lengths;
+
+    // Calculate how many days have past in the lunar year.
+    const uint32_t past_days_count = (sys_days { solar_date } - sys_days { info.date_of_first_day }).count();
+
+    uint32_t lunar_m_idx = 0;
+    uint32_t rest_days_count = past_days_count;
+    while (rest_days_count >= ml[lunar_m_idx]) {
+      rest_days_count -= ml[lunar_m_idx];
+      ++lunar_m_idx;
+    }
+
+    const uint32_t lunar_m = lunar_m_idx + 1;
+    assert(1 <= lunar_m && lunar_m <= 13);
+
+    const uint32_t lunar_d = rest_days_count + 1;
+    assert(1 <= lunar_d && lunar_d <= 30);
+
+    return util::to_ymd(lunar_y, lunar_m, lunar_d);
+  }; // find_out_lunar_date
+  
+  // The lunar year can either be the same as the solar year, or the previous year.
+  // Example: a solar date in solar year 2024 can be in lunar year 2023 or 2024.
+
+  // First, check if lunar date and solar date are in the same year.
+  if (solar_y <= END_YEAR) {
+    using namespace util;
+    const auto& info = lunardata_cache.get(solar_y);
+    const auto& ml = info.month_lengths;
+    const uint32_t lunar_year_days_count = std::reduce(ml.begin(), ml.end(), 0);
+
+    // Calculate the solar date of the last day in the lunar year.
+    const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
+    if (solar_date >= info.date_of_first_day && solar_date <= last_lunar_day) { // Yeah! We found the lunar year.
+      return find_out_lunar_date(solar_y);
+    }
+  }
+
+  // Otherwise, the lunar date falls into the previous year.
+  return find_out_lunar_date(solar_y - 1);
 }
 
 
-/*! @fn Converts lunar date to solar date. 将阴历日期转换为公历日期。 */
-year_month_day lunar_to_solar(const year_month_day& lunar_date) {
-  return lunar_date;
+/*! 
+ @fn lunar_to_solar 
+ @brief Converts lunar date to solar date. 将阴历日期转换为公历日期。 
+ @param lunar_date The lunar date. 阴历日期。
+ @return The optional solar date. 公历日期（optional）。
+ @attention The input date should be in the range of [FIRST_LUNAR_DATE, LAST_LUNAR_DATE].
+            输入的日期需要在所支持的范围内。
+ @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
+            输入的日期无效时返回 `std::nullopt`。不会抛出异常。
+ */
+std::optional<year_month_day> lunar_to_solar(const year_month_day& lunar_date) {
+  if (!is_valid_lunar(lunar_date)) {
+    return std::nullopt;
+  }
+
+  const auto [ y, m, d ] = util::from_ymd(lunar_date);
+  const auto& info = lunardata_cache.get(y);
+  const auto& ml = info.month_lengths;
+
+  const uint32_t past_days_count = d + std::reduce(ml.begin(), ml.begin() + m - 1, 0);
+
+  using namespace util;
+  return info.date_of_first_day + past_days_count - 1;
 }
 
 } // namespace calendar::converter
