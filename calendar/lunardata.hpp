@@ -1,12 +1,15 @@
 #ifndef __CALENDAR_LUNARDATA_HPP__
 #define __CALENDAR_LUNARDATA_HPP__
 
+#include <chrono>
+#include <format>
+#include <ranges>
+#include <cassert>
+
 #include <array>
 #include <vector>
 #include <unordered_map>
-#include <chrono>
 
-#include "formatter.hpp"
 #include "date.hpp"
 
 namespace calendar::lunardata {
@@ -72,7 +75,8 @@ struct LunarYearInfo {
 LunarYearInfo get_lunar_year_info(uint32_t year) {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
-    throw std::out_of_range { util::format("year must be between %u and %u.", START_YEAR, END_YEAR) };
+    throw std::out_of_range { 
+      std::vformat("year must be between {:d} and {:d}.", std::make_format_args(START_YEAR, END_YEAR)) };
   }
 
   const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR];
@@ -80,29 +84,24 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   const uint8_t  leap_month     = (bin_data >> 13) & 0xf;
   const uint16_t month_len_info = bin_data & 0x1fff;
 
-  const auto get_first_day = [&] {
+  const std::chrono::year_month_day first_day = std::invoke([&] {
     using namespace util;
     return to_ymd(year, 1, 1) + days_offset;
-  };
+  });
 
-  const auto get_month_lengths = [&] {
-    std::vector<uint32_t> lengths;
-    const uint8_t month_count = 12 + (leap_month != 0);
-    for (uint8_t i = 0; i < month_count; ++i) {
-      // There can be either 30 or 29 days in a lunar month.
-      if (month_len_info >> i & 0x1) {
-        lengths.push_back(30);
-      } else {
-        lengths.push_back(29);
-      }
-    }
-    return lengths;
-  };
+  const std::vector<uint32_t> month_lengths = std::invoke([&] {
+    using namespace std::views;
+    const auto months = iota(0, (leap_month != 0) ? 13 : 12);
+    const auto days_in_months = months | transform([&](uint32_t m) -> uint32_t { 
+      return 29 + ((month_len_info >> m) & 0x1); 
+    });
+    return days_in_months | std::ranges::to<std::vector>();
+  });
 
   return {
-    .date_of_first_day = get_first_day(),
+    .date_of_first_day = first_day,
     .leap_month        = leap_month,
-    .month_lengths     = get_month_lengths(),
+    .month_lengths     = month_lengths,
   };  
 }
 
@@ -115,11 +114,10 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
 struct LunarYearInfoCache {
 private:
   const std::unordered_map<uint32_t, LunarYearInfo> cache = std::invoke([] {
-    std::unordered_map<uint32_t, LunarYearInfo> um {};
-    for (uint32_t year = START_YEAR; year <= END_YEAR; ++year) {
-      um.insert(std::make_pair(year, get_lunar_year_info(year)));
-    }
-    return um;
+    using namespace std::views;
+    const auto years = iota(START_YEAR, END_YEAR + 1);
+    const auto infos = years | transform(get_lunar_year_info);
+    return zip(years, infos) | std::ranges::to<std::unordered_map>();
   });
 
 public:
@@ -141,7 +139,7 @@ public:
 
 
 /*! @brief The global lunar year information cache. 阴历年信息缓存。 */
-const inline LunarYearInfoCache lunardata_cache {};
+const inline LunarYearInfoCache LUNARDATA_CACHE {};
 
 } // namespace calendar::lunardata
 

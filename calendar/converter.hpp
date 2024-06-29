@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <numeric>
+#include <cassert>
 #include <optional>
 
 #include "date.hpp"
@@ -19,20 +20,20 @@ const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);
 
 /*! @brief The last supported lunar date. */
 const inline year_month_day LAST_LUNAR_DATE = std::invoke([] {
-  const LunarYearInfo info = lunardata_cache.get(END_YEAR);
+  const LunarYearInfo info = LUNARDATA_CACHE.get(END_YEAR);
   return util::to_ymd(END_YEAR, info.month_lengths.size(), info.month_lengths.back());
 });
 
 /*! @brief The first supported solar date. */
 const inline year_month_day FIRST_SOLAR_DATE = std::invoke([] {
-  const LunarYearInfo info = lunardata_cache.get(START_YEAR);
+  const LunarYearInfo info = LUNARDATA_CACHE.get(START_YEAR);
   return info.date_of_first_day;
 });
 
 /*! @brief The last supported solar date. */
 const inline year_month_day LAST_SOLAR_DATE = std::invoke([] {
   using namespace util;
-  const LunarYearInfo info = lunardata_cache.get(END_YEAR);
+  const LunarYearInfo info = LUNARDATA_CACHE.get(END_YEAR);
   const auto [ b, e ] = std::pair { info.month_lengths.begin(), info.month_lengths.end() };
   const uint32_t days_count = std::reduce(b, e, 0);
   return (days_count - 1) + info.date_of_first_day;
@@ -60,7 +61,7 @@ bool is_valid_lunar(const year_month_day& lunar_date) {
   }
 
   const auto [ y, m, d ] = util::from_ymd(lunar_date);
-  const auto info = lunardata_cache.get(y);
+  const auto info = LUNARDATA_CACHE.get(y);
   const auto& ml = info.month_lengths;
   
   if (m < 1 || m > ml.size()) {
@@ -92,7 +93,7 @@ std::optional<year_month_day> solar_to_lunar(const year_month_day& solar_date) {
   const auto [ solar_y, solar_m, solar_d ] = util::from_ymd(solar_date);
 
   const auto find_out_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
-    const auto& info = lunardata_cache.get(lunar_y);
+    const auto& info = LUNARDATA_CACHE.get(lunar_y);
     const auto& ml = info.month_lengths;
 
     // Calculate how many days have past in the lunar year.
@@ -120,7 +121,7 @@ std::optional<year_month_day> solar_to_lunar(const year_month_day& solar_date) {
   // First, check if lunar date and solar date are in the same year.
   if (solar_y <= END_YEAR) {
     using namespace util;
-    const auto& info = lunardata_cache.get(solar_y);
+    const auto& info = LUNARDATA_CACHE.get(solar_y);
     const auto& ml = info.month_lengths;
     const uint32_t lunar_year_days_count = std::reduce(ml.begin(), ml.end(), 0);
 
@@ -152,13 +153,13 @@ std::optional<year_month_day> lunar_to_solar(const year_month_day& lunar_date) {
   }
 
   const auto [ y, m, d ] = util::from_ymd(lunar_date);
-  const auto& info = lunardata_cache.get(y);
+  const auto& info = LUNARDATA_CACHE.get(y);
   const auto& ml = info.month_lengths;
 
   const uint32_t past_days_count = d + std::reduce(ml.begin(), ml.begin() + m - 1, 0);
 
   using namespace util;
-  return info.date_of_first_day + past_days_count - 1;
+  return info.date_of_first_day + (past_days_count - 1);
 }
 
 } // namespace calendar::converter
