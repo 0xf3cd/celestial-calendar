@@ -3,7 +3,6 @@
 ## TODO List
 * C++20/23 features are not fully supported by the compilers on MacOS, Windows, and Linux...
   * Modules
-  * `std::format` and `std::print`
   * `std::ranges` (cartesian_product)
 
 ## References

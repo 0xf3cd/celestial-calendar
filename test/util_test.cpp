@@ -3,13 +3,6 @@
 
 namespace util {
 
-TEST(Util, test_format) {
-  ASSERT_EQ(format(""), "");
-  ASSERT_EQ(format("%d", 42), "42");
-  ASSERT_EQ(format("%d", 42), std::string { "42" });
-  ASSERT_EQ(format("This is my msg: %d\n", 42), "This is my msg: 42\n");
-}
-
 TEST(Util, test_to_ymd) {
   using namespace std::literals;
 
