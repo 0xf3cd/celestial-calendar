@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <ranges>
 #include "util.hpp"
 #include "julian_day.hpp"
 
@@ -26,9 +25,7 @@ TEST(JulianDay, test_from_jd_algo1) {
   ASSERT_EQ(ymd, util::to_ymd(1582, 10, 15));
 }
 
-TEST(JulianDay, test_consistency_algo1) {
-  const std::chrono::year_month_day ymd = util::to_ymd(util::gen_random_value(500, 2100), 1, 1);
-  
+TEST(JulianDay, test_consistency_algo1) {  
   const auto random_ymd = [] -> std::chrono::year_month_day {
     using namespace util;
     const std::chrono::year_month_day _ymd = util::to_ymd(util::gen_random_value(500, 2100), 1, 1);
@@ -36,7 +33,7 @@ TEST(JulianDay, test_consistency_algo1) {
     return _ymd + _random_days;
   };
 
-  for (auto _ : std::views::iota(0, 2000)) {
+  for (auto i = 0; i < 2000; ++i) {
     const auto ymd = random_ymd();
     const double jd = to_jd_algo1(ymd);
     const auto recovered_ymd = from_jd_algo1(jd);
@@ -48,7 +45,7 @@ TEST(JulianDay, test_consistency_algo1) {
     return util::gen_random_value(1903682.686921, 2488069.686921); // gregorian year 500 ~ 2100
   };
 
-  for (auto _ : std::views::iota(0, 2000)) {
+  for (auto i = 0; i < 2000; ++i) {
     const double jd = random_jd();
     const auto ymd = from_jd_algo1(jd);
     const double recovered_jd = to_jd_algo1(ymd);

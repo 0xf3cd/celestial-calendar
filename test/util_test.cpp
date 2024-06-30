@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <print>
+#include <ranges>
 #include "util.hpp"
 
 namespace util {
@@ -151,6 +153,111 @@ TEST(Util, test_gen_random_value2) {
       const auto randomValue3 = gen_random_value<uint16_t>(randomValue1, randomValue2);
       ASSERT_GE(randomValue3, randomValue1);
       ASSERT_LE(randomValue3, randomValue2);
+    }
+  }
+}
+
+TEST(Util, test_datetime_from_time_point) {
+  const auto now = std::chrono::system_clock::now();
+
+  { // Test now.
+    const DateTime dt { now };
+    const auto ymd = dt.ymd();
+    const auto time_of_day = dt.time_of_day();
+    const auto fraction = dt.fraction_of_day();
+
+    std::println("Now is {}.\nymd {}, hh_mm_ss {}, fraction of day is {}", 
+                  now, ymd, time_of_day, fraction);
+
+    ASSERT_LT(time_of_day.hours().count(), 24);
+    ASSERT_GE(fraction, 0.0);
+    ASSERT_LT(fraction, 1.0);
+  }
+
+  { // Test fraction with random nanoseconds.
+    for (auto i = 0; i < 1000; i++) {
+      const auto tp = now + std::chrono::nanoseconds { gen_random_value<int64_t>() };
+      const DateTime dt { tp };
+
+      const auto ymd = dt.ymd();
+      const auto time_of_day = dt.time_of_day();
+      const auto fraction = dt.fraction_of_day();
+
+      ASSERT_LT(time_of_day.hours().count(), 24);
+      ASSERT_GE(fraction, 0.0);
+      ASSERT_LT(fraction, 1.0);
+    }
+
+    const auto random_ns_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
+      return std::chrono::nanoseconds { 
+        gen_random_value<uint64_t>(0, 86400 * 1e9 - 1)
+      }; 
+    });
+
+    for (std::chrono::nanoseconds ns : random_ns_views) {
+      const auto tp = floor<days>(now) + ns;
+      const DateTime dt { tp };
+
+      const double expected_fraction = ns.count() / (86400.0 * 1e9);
+      ASSERT_EQ(dt.fraction_of_day(), expected_fraction);
+    }
+  }
+
+  { // Test fraction with random microseconds.
+    for (auto i = 0; i < 1000; i++) {
+      const auto tp = now + std::chrono::microseconds { gen_random_value<int32_t>() };
+      const DateTime dt { tp };
+
+      const auto ymd = dt.ymd();
+      const auto time_of_day = dt.time_of_day();
+      const auto fraction = dt.fraction_of_day();
+
+      ASSERT_LT(time_of_day.hours().count(), 24);
+      ASSERT_GE(fraction, 0.0);
+      ASSERT_LT(fraction, 1.0);
+    }
+
+    const auto random_us_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
+      return std::chrono::microseconds { 
+        gen_random_value<uint32_t>(0, 86400 * 1e6 - 1)
+      }; 
+    });
+
+    for (std::chrono::microseconds us : random_us_views) {
+      const auto tp = floor<days>(now) + us;
+      const DateTime dt { tp };
+
+      const double expected_fraction = us.count() / (86400.0 * 1e6);
+      ASSERT_EQ(dt.fraction_of_day(), expected_fraction);
+    }
+  }
+
+  { // Test fraction with random seconds.
+    for (auto i = 0; i < 1000; i++) {
+      const auto tp = now + std::chrono::seconds { gen_random_value<int32_t>() };
+      const DateTime dt { tp };
+
+      const auto ymd = dt.ymd();
+      const auto time_of_day = dt.time_of_day();
+      const auto fraction = dt.fraction_of_day();
+
+      ASSERT_LT(time_of_day.hours().count(), 24);
+      ASSERT_GE(fraction, 0.0);
+      ASSERT_LT(fraction, 1.0);
+    }
+
+    const auto random_s_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
+      return std::chrono::seconds { 
+        gen_random_value<uint32_t>(0, 86400 - 1)
+      }; 
+    });
+
+    for (std::chrono::seconds s : random_s_views) {
+      const auto tp = floor<days>(now) + s;
+      const DateTime dt { tp };
+
+      const double expected_fraction = s.count() / 86400.0;
+      ASSERT_EQ(dt.fraction_of_day(), expected_fraction);
     }
   }
 }
