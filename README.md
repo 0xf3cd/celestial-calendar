@@ -2,7 +2,7 @@
 > A C++20/23-style calendar
 
 ## Features
-* Solar and lunar dates conversions
+* Conversions between gregorian and lunar dates
 * Accurate Jieqi (节气) moments queries
 
 ## TODO List

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-std=c++2b)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
+include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 

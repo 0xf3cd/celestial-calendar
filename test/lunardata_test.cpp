@@ -3,7 +3,7 @@
 #include "lunardata.hpp"
 #include "random.hpp"
 
-namespace calendar::lunardata {
+namespace common::lunardata {
 
 TEST(LunarData, test_array_size) {
   EXPECT_EQ(199, LUNAR_DATA.size());
@@ -70,7 +70,7 @@ TEST(LunarData, test_copy) {
   }
 }
 
-TEST(LunarData, test_LUNARDATA_CACHE_performance) {
+TEST(LunarData, test_cache_performance) {
   const uint64_t elapsed_time_uncached = std::invoke([] {
     const auto start_time = std::chrono::steady_clock::now();
     for (auto _ = 0; _ < 800; ++_) {

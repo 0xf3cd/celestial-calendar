@@ -1,5 +1,5 @@
-#ifndef __CALENDAR_LUNARDATA_HPP__
-#define __CALENDAR_LUNARDATA_HPP__
+#ifndef __COMMON_LUNARDATA_HPP__
+#define __COMMON_LUNARDATA_HPP__
 
 #include <chrono>
 #include <format>
@@ -8,19 +8,18 @@
 
 #include <array>
 #include <vector>
-#include <unordered_map>
 
 #include "date.hpp"
 
-namespace calendar::lunardata {
+namespace common::lunardata {
 
 /*! @brief The first supported lunar year. */
-constexpr uint32_t START_YEAR = 1901;
+constexpr int32_t START_YEAR = 1901;
 
 /*! @brief The last supported lunar year. */
-constexpr uint32_t END_YEAR = 2099;
+constexpr int32_t END_YEAR = 2099;
 
-/*! @brief The encoded binary data for each lunar year. */
+/*! @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t. */
 constexpr std::array<uint32_t, 199> LUNAR_DATA = {
   0x620752, 0x4c0ea5, 0x38b64a, 0x5c064b, 0x440a9b, 0x309556, 0x56056a, 0x400b59, 0x2a5752, 0x500752, 
   0x3adb25, 0x600b25, 0x480a4b, 0x32b4ab, 0x5802ad, 0x42056b, 0x2c4b69, 0x520da9, 0x3efd92, 0x640e92, 
@@ -76,7 +75,8 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
     throw std::out_of_range { 
-      std::vformat("year must be between {:d} and {:d}.", std::make_format_args(START_YEAR, END_YEAR)) };
+      std::vformat("year must be between {:d} and {:d}.", std::make_format_args(START_YEAR, END_YEAR)) 
+    };
   }
 
   const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR];
@@ -90,12 +90,17 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   });
 
   const std::vector<uint32_t> month_lengths = std::invoke([&] {
-    using namespace std::views;
-    const auto months = iota(0, (leap_month != 0) ? 13 : 12);
-    const auto days_in_months = months | transform([&](uint32_t m) -> uint32_t { 
-      return 29 + ((month_len_info >> m) & 0x1); 
+    using namespace std::ranges;
+
+    const bool leap = (leap_month != 0);
+    const auto months = views::iota(0, leap ? 13 : 12);
+
+    const auto lengths = months | views::transform([&](auto m) -> uint32_t {
+      const bool big = (month_len_info >> m) & 0x1;
+      return big ? 30 : 29;
     });
-    return days_in_months | std::ranges::to<std::vector>();
+
+    return lengths | to<std::vector>();
   });
 
   return {
@@ -113,11 +118,11 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
  */
 struct LunarYearInfoCache {
 private:
-  const std::unordered_map<uint32_t, LunarYearInfo> cache = std::invoke([] {
-    using namespace std::views;
-    const auto years = iota(START_YEAR, END_YEAR + 1);
-    const auto infos = years | transform(get_lunar_year_info);
-    return zip(years, infos) | std::ranges::to<std::unordered_map>();
+  const std::vector<LunarYearInfo> _cached = std::invoke([] {
+    using namespace std::ranges;
+    const auto years = views::iota(START_YEAR, END_YEAR + 1);
+    const auto transformed = years | views::transform(get_lunar_year_info);
+    return transformed | to<std::vector>();
   });
 
 public:
@@ -129,11 +134,9 @@ public:
    @param year The year. 年份。
    @return The lunar year info. 阴历年信息。
    */
-  LunarYearInfo get(const uint32_t year) const {
+  const LunarYearInfo& get(const int32_t year) const {
     assert(year >= START_YEAR && year <= END_YEAR);
-    const auto found = cache.find(year);
-    assert(found != cache.end());
-    return found->second;
+    return _cached[year - START_YEAR];
   }
 };
 
@@ -141,6 +144,6 @@ public:
 /*! @brief The global lunar year information cache. 阴历年信息缓存。 */
 const inline LunarYearInfoCache LUNARDATA_CACHE {};
 
-} // namespace calendar::lunardata
+} // namespace common::lunardata
 
-#endif // __CALENDAR_LUNARDATA_HPP__
+#endif // __COMMON_LUNARDATA_HPP__

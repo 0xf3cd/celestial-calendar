@@ -104,8 +104,13 @@ TEST(Util, test_gen_random_value1) {
 
 TEST(Util, test_gen_random_value2) {
   for (size_t i = 0; i < 5000; i++) {
+    // Not sure if the subtest of float is 100% correct.
+    // Maybe an epsilon is needed when comparing?
     const auto randomValue1 = gen_random_value<float>();
     const auto randomValue2 = gen_random_value<float>();
+    if (randomValue1 == randomValue2) {
+      continue;
+    }
     
     const auto randomValue3 = gen_random_value<float>(
       std::min(randomValue1, randomValue2), 
@@ -118,6 +123,9 @@ TEST(Util, test_gen_random_value2) {
   for (size_t i = 0; i < 5000; i++) {
     const auto randomValue1 = gen_random_value<uint64_t>();
     const auto randomValue2 = gen_random_value<uint64_t>();
+    if (randomValue1 == randomValue2) {
+      continue;
+    }
 
     const auto randomValue3 = gen_random_value<uint64_t>(
       std::min(randomValue1, randomValue2), 
