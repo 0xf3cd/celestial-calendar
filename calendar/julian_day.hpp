@@ -5,22 +5,16 @@
 #include <cassert>
 
 #include "date.hpp"
+#include "datetime.hpp"
 
 namespace calendar::julian_day {
 
-enum class Algo {
-  Algo1, // Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
-};
-
-
-#pragma region Algo1
-
 /**
- * @brief Converts a gregorian date to julian day. Using algorithm 1.
- * @param gregorian_ymd The gregorian date.
+ * @brief Converts a gregorian date to julian day.
+ * @param dt The gregorian date and time.
  * @returns The julian day number.
  */
-double to_jd_algo1(const std::chrono::year_month_day& gregorian_ymd) {
+double to_jd(const util::datetime::DateTime& dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -38,9 +32,9 @@ double to_jd_algo1(const std::chrono::year_month_day& gregorian_ymd) {
     All above variables except JD are integers (dropping the fractional part).
    */
 
-  assert(gregorian_ymd.ok());
+  assert(dt.ok());
   
-  const auto& [g_y, g_m, g_d] = util::from_ymd(gregorian_ymd);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(dt.ymd());
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -52,7 +46,8 @@ double to_jd_algo1(const std::chrono::year_month_day& gregorian_ymd) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double JD = C + D + E + F - 1524.5;
+  const double  JD = C + D + E + F - 1524.5 
+                   + dt.fraction_of_day(); // the fractional part.
 
   assert(JD > 0);
   return JD;
@@ -60,11 +55,11 @@ double to_jd_algo1(const std::chrono::year_month_day& gregorian_ymd) {
 
 
 /**
- * @brief Converts a julian day number to gregorian date. Using algorithm 1.
+ * @brief Converts a julian day number to gregorian date.
  * @param jd The julian day number.
  * @returns The gregorian date.
  */
-std::chrono::year_month_day from_jd_algo1(const double jd) {
+util::datetime::DateTime from_jd(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -108,10 +103,12 @@ std::chrono::year_month_day from_jd_algo1(const double jd) {
   const uint32_t F = 30.6001 * E;
 
   const uint32_t day = B - D - F + (Q - Z);
-  assert(1 <= day && day <= 31);
+  const double fraction = B - D - F + (Q - Z) - day;
+  assert(1 <= day and day <= 31);
+  assert(0.0 <= fraction and fraction < 1.0);
 
   const uint32_t month = (E > 13) ? (E - 13) : (E - 1);
-  assert(1 <= month && month <= 12);
+  assert(1 <= month and month <= 12);
 
   const uint32_t year = (month <= 2) ? C - 4715 : C - 4716;
   assert(year > 0);
@@ -119,7 +116,7 @@ std::chrono::year_month_day from_jd_algo1(const double jd) {
   const auto&& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return ymd;
+  return util::datetime::DateTime { ymd, fraction };
 }
 
 } // namespace calendar::julian_day

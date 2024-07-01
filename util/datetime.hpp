@@ -52,11 +52,8 @@ concept Fractionable = requires (T t) {
  *          Thus, the returned result may be < 0.0 or >= 1.0.
  */
 constexpr double to_fraction(const Fractionable auto& elapsed) {
-  const double ns_elapsed = std::invoke([&] constexpr {
-    const auto&& __ns = duration_cast<nanoseconds>(elapsed);
-    return __ns.count();
-  });
-
+  const auto&& ns_duration = duration_cast<nanoseconds>(elapsed);
+  const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
 }
 
@@ -103,7 +100,9 @@ public:
       _time_of_day { tp - floor<days>(tp) } 
   {
     if (not ok()) {
-      throw std::runtime_error("Unexpected invalid check result after constructing from time_point");
+      throw std::runtime_error {
+        "Failed validity check after constructing from time_point"
+      };
     }
   }
 
@@ -118,7 +117,9 @@ public:
       _time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
   {
     if (not ok()) {
-      throw std::runtime_error("Unexpected invalid check result after constructing from year_month_day and hh_mm_ss");
+      throw std::runtime_error {
+        "Failed validity check after constructing from year_month_day and hh_mm_ss"
+      };
     }
   }
 
@@ -132,15 +133,21 @@ public:
       _time_of_day { from_fraction(fraction_of_day) }
   {
       if (not ymd.ok()) {
-        throw std::invalid_argument("Argument gregorian date `ymd` is invalid");
+        throw std::invalid_argument {
+          "Argument gregorian date `ymd` is invalid"
+        };
       }
 
       if (fraction_of_day < 0.0 or fraction_of_day >= 1.0) {
-        throw std::invalid_argument("Argument `fraction_of_day` out of range");
+        throw std::invalid_argument {
+          "Argument `fraction_of_day` out of range"
+        };
       }
 
       if (not ok()) {
-        throw std::runtime_error("Unexpected invalid check result after constructing from year_month_day and fraction");
+        throw std::runtime_error {
+          "Failed validity check after constructing from year_month_day and fraction"
+        };
       }
   }
 

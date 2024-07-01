@@ -412,7 +412,7 @@ TEST(Util, datetime_consistency) {
   const auto now = system_clock::now();
   constexpr auto ns_per_year = 365 * in_a_day<nanoseconds>();
 
-  const auto random_tp_views = std::views::iota(0, 1000) | std::views::transform([&](auto) {
+  const auto random_tp_views = std::views::iota(0, 10000) | std::views::transform([&](auto) {
     return now + microseconds { 
       gen_random_value<int64_t>(-20 * ns_per_year, 20 * ns_per_year) 
     };
