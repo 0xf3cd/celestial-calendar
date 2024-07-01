@@ -5,7 +5,7 @@
 
 namespace calendar::lunar {
 
-TEST(Converter, test_is_valid_gregorian) {
+TEST(LunarCalendar, test_is_valid_gregorian) {
   using namespace std::literals;
 
   ASSERT_FALSE(is_valid_gregorian(1901y / 2 / 18));
@@ -19,7 +19,7 @@ TEST(Converter, test_is_valid_gregorian) {
   ASSERT_FALSE(is_valid_gregorian(2100y / 2 / 9));
 }
 
-TEST(Converter, test_is_valid_lunar) {
+TEST(LunarCalendar, test_is_valid_lunar) {
   using namespace std::literals;
 
   ASSERT_FALSE(is_valid_lunar(1900y / 12 / 29));
@@ -44,7 +44,7 @@ TEST(Converter, test_is_valid_lunar) {
   ASSERT_FALSE(is_valid_lunar(2100y / 1 / 1));
 }
 
-TEST(Converter, test_gregorian_to_lunar_negative) {
+TEST(LunarCalendar, test_gregorian_to_lunar_negative) {
   using namespace std::literals;
 
   ASSERT_EQ(std::nullopt, gregorian_to_lunar(2024y / 0 / 29));
@@ -60,7 +60,7 @@ TEST(Converter, test_gregorian_to_lunar_negative) {
   ASSERT_NE(std::nullopt, gregorian_to_lunar(2024y / 3 / 18));
 }
 
-TEST(Converter, test_lunar_to_gregorian_negative) {
+TEST(LunarCalendar, test_lunar_to_gregorian_negative) {
   using namespace std::literals;
 
   ASSERT_EQ(std::nullopt, lunar_to_gregorian(2024y / 0 / 29));
@@ -73,7 +73,7 @@ TEST(Converter, test_lunar_to_gregorian_negative) {
   ASSERT_NE(std::nullopt, lunar_to_gregorian(2099y / 13 / 30));
 }
 
-TEST(Converter, test_gregorian_to_lunar) {
+TEST(LunarCalendar, test_gregorian_to_lunar) {
   using namespace util;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
@@ -92,7 +92,7 @@ TEST(Converter, test_gregorian_to_lunar) {
   }
 }
 
-TEST(Converter, test_lunar_to_gregorian) {
+TEST(LunarCalendar, test_lunar_to_gregorian) {
   using namespace util;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
@@ -111,7 +111,7 @@ TEST(Converter, test_lunar_to_gregorian) {
   }
 }
 
-TEST(Coverter, test_integration) {
+TEST(LunarCalendar, test_integration) {
   using namespace util;
   using std::chrono::sys_days;
   using std::chrono::year_month_day;

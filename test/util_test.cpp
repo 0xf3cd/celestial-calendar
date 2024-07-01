@@ -268,7 +268,7 @@ TEST(Util, datetime_from_timepoint) {
 
     const auto random_us_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
       return microseconds { 
-        gen_random_value<uint32_t>(0, in_a_day<nanoseconds>() / 1e3 - 1)
+        gen_random_value<uint64_t>(0, in_a_day<microseconds>() - 1)
       }; 
     });
 

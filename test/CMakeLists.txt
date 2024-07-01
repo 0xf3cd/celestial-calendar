@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(test)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   cmake_policy(SET CMP0135 NEW)
@@ -12,7 +12,7 @@ add_compile_definitions(TESTING=1)
 include(FetchContent)
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
 )
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
