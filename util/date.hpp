@@ -1,5 +1,5 @@
-#ifndef __UTIL_DATE_HPP__
-#define __UTIL_DATE_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 #include <chrono>
 
@@ -64,5 +64,3 @@ constexpr std::chrono::year_month_day operator-(
 }
 
 } // namespace util
-
-#endif // __UTIL_DATE_HPP__

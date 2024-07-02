@@ -1,5 +1,5 @@
-#ifndef __CALENDAR_JULIAN_DAY_HPP__
-#define __CALENDAR_JULIAN_DAY_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 #include <chrono>
 #include <cassert>
@@ -14,7 +14,7 @@ namespace calendar::julian_day {
  * @param dt The gregorian date and time.
  * @returns The julian day number.
  */
-double to_jd(const util::datetime::DateTime& dt) {
+double to_jd(const util::datetime::Datetime& dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -34,7 +34,7 @@ double to_jd(const util::datetime::DateTime& dt) {
 
   assert(dt.ok());
   
-  const auto& [g_y, g_m, g_d] = util::from_ymd(dt.ymd());
+  const auto& [ g_y, g_m, g_d ] = util::from_ymd(dt.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -46,8 +46,7 @@ double to_jd(const util::datetime::DateTime& dt) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double  JD = C + D + E + F - 1524.5 
-                   + dt.fraction_of_day(); // the fractional part.
+  const double  JD = C + D + E + F - 1524.5 + dt.fraction(); // add the fractional part as well.
 
   assert(JD > 0);
   return JD;
@@ -59,7 +58,7 @@ double to_jd(const util::datetime::DateTime& dt) {
  * @param jd The julian day number.
  * @returns The gregorian date.
  */
-util::datetime::DateTime from_jd(const double jd) {
+util::datetime::Datetime from_jd(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -116,9 +115,7 @@ util::datetime::DateTime from_jd(const double jd) {
   const auto&& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return util::datetime::DateTime { ymd, fraction };
+  return util::datetime::Datetime { ymd, fraction };
 }
 
 } // namespace calendar::julian_day
-
-#endif // __CALENDAR_JULIAN_DAY_HPP__

@@ -118,7 +118,7 @@ TEST(LunarCalendar, test_integration) {
 
   const uint32_t diffrence = (sys_days(LAST_GREGORIAN_DATE) - sys_days(FIRST_GREGORIAN_DATE)).count();
   for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = FIRST_GREGORIAN_DATE + gen_random_value<uint32_t>(0, diffrence);
+    const year_month_day solar_date = FIRST_GREGORIAN_DATE + random<uint32_t>(0, diffrence);
     ASSERT_TRUE(is_valid_gregorian(solar_date));
 
     const std::optional<year_month_day> optional_lunar_date = gregorian_to_lunar(solar_date);

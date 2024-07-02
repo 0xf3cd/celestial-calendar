@@ -1,5 +1,5 @@
-#ifndef __COMMON_LUNARDATA_HPP__
-#define __COMMON_LUNARDATA_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 #include <chrono>
 #include <format>
@@ -145,5 +145,3 @@ public:
 const inline LunarYearInfoCache LUNARDATA_CACHE {};
 
 } // namespace common::lunardata
-
-#endif // __COMMON_LUNARDATA_HPP__

@@ -55,7 +55,7 @@ TEST(LunarData, test_copy) {
   using namespace util;
 
   for (auto _ = 0; _ < 100; ++_) {
-    auto info = get_lunar_year_info(gen_random_value(START_YEAR, END_YEAR));
+    auto info = get_lunar_year_info(random(START_YEAR, END_YEAR));
     auto info2 = info;
 
     EXPECT_NE(&info, &info2);
@@ -84,7 +84,7 @@ TEST(LunarData, test_cache_performance) {
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
-      const uint32_t random_year = util::gen_random_value(START_YEAR, END_YEAR);
+      const uint32_t random_year = util::random(START_YEAR, END_YEAR);
       get_lunar_year_info(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
@@ -104,7 +104,7 @@ TEST(LunarData, test_cache_performance) {
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
-      const uint32_t random_year = util::gen_random_value(START_YEAR, END_YEAR);
+      const uint32_t random_year = util::random(START_YEAR, END_YEAR);
       LUNARDATA_CACHE.get(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
@@ -121,7 +121,7 @@ TEST(LunarData, test_LUNARDATA_CACHE_correctness) {
   using namespace util;
 
   for (auto _ = 0; _ < 100; ++_) {
-    const auto year = gen_random_value(START_YEAR, END_YEAR);
+    const auto year = random(START_YEAR, END_YEAR);
     const auto info = get_lunar_year_info(year);
     const auto info2 = LUNARDATA_CACHE.get(year);
     EXPECT_EQ(info.date_of_first_day, info2.date_of_first_day);

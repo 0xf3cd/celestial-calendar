@@ -1,5 +1,5 @@
-#ifndef __CALENDAR_LUNAR_HPP__
-#define __CALENDAR_LUNAR_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 #include <chrono>
 #include <numeric>
@@ -93,7 +93,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
 
   const auto& [ g_y, g_m, g_d ] = util::from_ymd(gregorian_date);
 
-  const auto find_out_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
+  const auto find_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
     const auto& info = LUNARDATA_CACHE.get(lunar_y);
     const auto& ml = info.month_lengths;
 
@@ -114,7 +114,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
     assert(1 <= lunar_d && lunar_d <= 30);
 
     return util::to_ymd(lunar_y, lunar_m, lunar_d);
-  }; // find_out_lunar_date
+  }; // find_lunar_date
   
   // The lunar year can either be the same as the gregorian_date year, or the previous year.
   // Example: a gregorian_date date in gregorian_date year 2024 can be in lunar year 2023 or 2024.
@@ -129,12 +129,12 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
     // Calculate the gregorian date of the last day in the lunar year.
     const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
     if (gregorian_date >= info.date_of_first_day && gregorian_date <= last_lunar_day) { // Yeah! We found the lunar year.
-      return find_out_lunar_date(g_y);
+      return find_lunar_date(g_y);
     }
   }
 
   // Otherwise, the lunar date falls into the previous year.
-  return find_out_lunar_date(g_y - 1);
+  return find_lunar_date(g_y - 1);
 }
 
 
@@ -164,5 +164,3 @@ std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_dat
 }
 
 } // namespace calendar::lunar
-
-#endif // __CALENDAR_LUNAR_HPP__

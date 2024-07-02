@@ -1,8 +1,11 @@
-#ifndef __UTIL_DATETIME_HPP__
-#define __UTIL_DATETIME_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 #include <chrono>
+#include <format>
 #include <cassert>
+
+#include "date.hpp"
 
 namespace util::datetime {
 
@@ -24,7 +27,7 @@ concept IsDuration = requires {
  * @tparam Duration The duration type.
  * @return The number of the given duration in a day.
  * @example `in_a_day<days>() == 1`
- * @example `in_a_day<seconds>() == 86400`
+ * @example `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
  */
 template <IsDuration Duration>
 consteval uint64_t in_a_day() {
@@ -82,73 +85,89 @@ constexpr hh_mm_ss<nanoseconds> from_fraction(const double fraction) {
 /**
  * @brief Represents a gregorian date and time in the form of `year_month_day` and `hh_mm_ss`.
  */
-struct DateTime {
-private:
-  const year_month_day _ymd;
-  const hh_mm_ss<nanoseconds> _time_of_day;
+struct Datetime {
+  const year_month_day ymd;
+  const hh_mm_ss<nanoseconds> time_of_day;
 
-public:
-  DateTime() = delete;
+  Datetime() = delete;
 
   /**
-   * @brief Constructs a `DateTime` from a `time_point`.
+   * @brief Constructs a `Datetime` from a `time_point`.
    * @param tp The time point. The expected clock is `system_clock`.
    */
   template <IsDuration Duration>
-  constexpr explicit DateTime(const time_point<system_clock, Duration>& tp) 
-    : _ymd { floor<days>(tp) }, 
-      _time_of_day { tp - floor<days>(tp) } 
+  constexpr explicit Datetime(const time_point<system_clock, Duration>& tp) 
+    : ymd         { floor<days>(tp) }, 
+      time_of_day { tp - floor<days>(tp) }
   {
     if (not ok()) {
+      const double ns = time_of_day.to_duration().count();
       throw std::runtime_error {
-        "Failed validity check after constructing from time_point"
+        std::vformat(
+          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          std::make_format_args(ymd, ns)
+        )
       };
     }
   }
 
   /**
-   * @brief Constructs a `DateTime` from a `year_month_day` and `hh_mm_ss`.
+   * @brief Constructs a `Datetime` from a `year_month_day` and `hh_mm_ss`.
    * @param ymd The year, month, and day.
-   * @param time_of_day The time of day.
+   * @param fraction The time of day.
    */
   template <IsDuration Duration>
-  constexpr explicit DateTime(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)
-    : _ymd { ymd },
-      _time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
+  constexpr explicit Datetime(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)
+    : ymd         { ymd },
+      time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
   {
     if (not ok()) {
+      const double ns = this->time_of_day.to_duration().count();
       throw std::runtime_error {
-        "Failed validity check after constructing from year_month_day and hh_mm_ss"
+        std::vformat(
+          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          std::make_format_args(this->ymd, ns)
+        )
       };
     }
   }
 
   /**
-   * @brief Constructs a `DateTime` from a `year_month_day` and a fraction of a day.
+   * @brief Constructs a `Datetime` from a `year_month_day` and a fraction of a day.
    * @param ymd The year, month, and day.
-   * @param fraction_of_day The fraction of a day, in the range [0.0, 1.0).
+   * @param fraction The fraction of a day, in the range [0.0, 1.0).
    */
-  constexpr explicit DateTime(const year_month_day& ymd, double fraction_of_day)
-    : _ymd { ymd },
-      _time_of_day { from_fraction(fraction_of_day) }
+  constexpr explicit Datetime(const year_month_day& ymd, double fraction)
+    : ymd         { ymd },
+      time_of_day { from_fraction(fraction) }
   {
-      if (not ymd.ok()) {
-        throw std::invalid_argument {
-          "Argument gregorian date `ymd` is invalid"
-        };
-      }
+    if (not ymd.ok()) {
+      throw std::invalid_argument { 
+        std::vformat(
+          "Argument gregorian date `ymd` is invalid, whose value is `{}`", 
+          std::make_format_args(this->ymd)
+        ) 
+      };
+    }
 
-      if (fraction_of_day < 0.0 or fraction_of_day >= 1.0) {
-        throw std::invalid_argument {
-          "Argument `fraction_of_day` out of range"
-        };
-      }
+    if (fraction < 0.0 or fraction >= 1.0) {
+      throw std::invalid_argument {
+        std::vformat(
+          "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
+          std::make_format_args(fraction)
+        )
+      };
+    }
 
-      if (not ok()) {
-        throw std::runtime_error {
-          "Failed validity check after constructing from year_month_day and fraction"
-        };
-      }
+    if (not ok()) {
+      const double ns = time_of_day.to_duration().count();
+      throw std::runtime_error {
+        std::vformat(
+          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          std::make_format_args(ymd, ns)
+        )
+      };
+    }
   }
 
   /** 
@@ -156,47 +175,31 @@ public:
    * @return `true` if all good, `false` otherwise.
    */
   constexpr bool ok() const noexcept {
-    if (not _ymd.ok()) {
+    // Check if the gregorian date is valid.
+    if (not ymd.ok()) {
       return false;
     }
-    /*
-     * Expect that `_time_of_day` is positive and is less than 24:00:00.0000000000 (i.e. 1 day).
-     */
-    if (_time_of_day.is_negative()) {
+    
+    // Check if the time of day (i.e. hh_mm_ss) is valid.
+    // Expect that `time_of_day` is positive and is less than 24:00:00.0 (i.e. 1 day).
+    if (time_of_day.is_negative()) {
       return false;
     }
-    if (_time_of_day.to_duration() >= days { 1 }) {
+    if (time_of_day.to_duration() >= days { 1 }) {
       return false;
     }
+    
     return true;
-  }
-
-  /** 
-   * @brief Returns the year, month, and day.
-   * @return The year, month, and day, in the form of `std::chrono::year_month_day`.
-   */
-  constexpr year_month_day ymd() const noexcept {
-    return _ymd;
-  }
-
-  /** 
-   * @brief Returns the time of day. 
-   * @return The time of day, in the form of `std::chrono::hh_mm_ss<nanoseconds>`.
-   */
-  constexpr hh_mm_ss<nanoseconds> time_of_day() const noexcept {
-    return _time_of_day;
   }
 
   /** 
    * @brief Returns the fraction of a day, in the range [0.0, 1.0).
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).
    */
-  constexpr double fraction_of_day() const noexcept {
-    const nanoseconds&& elapsed = _time_of_day.to_duration();
+  constexpr double fraction() const noexcept {
+    const nanoseconds&& elapsed = time_of_day.to_duration();
     return to_fraction(elapsed);
   }
 };
 
 } // namespace util::datetime
-
-#endif // __UTIL_DATETIME_HPP__

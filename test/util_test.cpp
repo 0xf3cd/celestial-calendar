@@ -85,19 +85,19 @@ TEST(Util, test_operator_sub) {
 
 TEST(Util, test_gen_random_value1) {
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = gen_random_value<double>();
+    const auto randomValue = random<double>();
     ASSERT_GE(randomValue, std::numeric_limits<double>::min());
     ASSERT_LE(randomValue, std::numeric_limits<double>::max());
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = gen_random_value<uint8_t>();
+    const auto randomValue = random<uint8_t>();
     ASSERT_GE(randomValue, std::numeric_limits<uint8_t>::min());
     ASSERT_LE(randomValue, std::numeric_limits<uint8_t>::max());
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = gen_random_value<int16_t>();
+    const auto randomValue = random<int16_t>();
     ASSERT_GE(randomValue, std::numeric_limits<int16_t>::min());
     ASSERT_LE(randomValue, std::numeric_limits<int16_t>::max());
   }
@@ -108,13 +108,13 @@ TEST(Util, test_gen_random_value2) {
   for (size_t i = 0; i < 5000; i++) {
     // Not sure if the subtest of float is 100% correct.
     // Maybe an epsilon is needed when comparing?
-    const auto randomValue1 = gen_random_value<float>();
-    const auto randomValue2 = gen_random_value<float>();
+    const auto randomValue1 = random<float>();
+    const auto randomValue2 = random<float>();
     if (randomValue1 == randomValue2) {
       continue;
     }
     
-    const auto randomValue3 = gen_random_value<float>(
+    const auto randomValue3 = random<float>(
       std::min(randomValue1, randomValue2), 
       std::max(randomValue1, randomValue2)
     );
@@ -123,13 +123,13 @@ TEST(Util, test_gen_random_value2) {
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue1 = gen_random_value<uint64_t>();
-    const auto randomValue2 = gen_random_value<uint64_t>();
+    const auto randomValue1 = random<uint64_t>();
+    const auto randomValue2 = random<uint64_t>();
     if (randomValue1 == randomValue2) {
       continue;
     }
 
-    const auto randomValue3 = gen_random_value<uint64_t>(
+    const auto randomValue3 = random<uint64_t>(
       std::min(randomValue1, randomValue2), 
       std::max(randomValue1, randomValue2)
     );
@@ -138,10 +138,10 @@ TEST(Util, test_gen_random_value2) {
   }
 
   for (size_t i = 0; i < 100; i++) {
-    const uint16_t gap = gen_random_value<uint16_t>(1, 20);
+    const uint16_t gap = random<uint16_t>(1, 20);
     const auto randomValue1 = std::invoke([&] {
       while (true) {
-        const auto randomValue = gen_random_value<uint16_t>();
+        const auto randomValue = random<uint16_t>();
         if (randomValue < std::numeric_limits<uint16_t>::max() - gap) {
           return randomValue;
         }
@@ -150,7 +150,7 @@ TEST(Util, test_gen_random_value2) {
     const auto randomValue2 = randomValue1 + gap;
 
     for (size_t j = 0; j < 100; j++) {
-      const auto randomValue3 = gen_random_value<uint16_t>(randomValue1, randomValue2);
+      const auto randomValue3 = random<uint16_t>(randomValue1, randomValue2);
       ASSERT_GE(randomValue3, randomValue1);
       ASSERT_LE(randomValue3, randomValue2);
     }
@@ -162,10 +162,10 @@ TEST(Util, datetime_from_timepoint) {
   const auto now = system_clock::now();
 
   { // Test now.
-    const DateTime dt { now };
-    const auto ymd = dt.ymd();
-    const auto time_of_day = dt.time_of_day();
-    const auto fraction = dt.fraction_of_day();
+    const Datetime dt { now };
+    const auto ymd = dt.ymd;
+    const auto time_of_day = dt.time_of_day;
+    const auto fraction = dt.fraction();
 
     std::println("Now is {}.\nymd {}, hh_mm_ss {}, fraction of day is {}", 
                   now, ymd, time_of_day, fraction);
@@ -175,64 +175,31 @@ TEST(Util, datetime_from_timepoint) {
     ASSERT_LT(fraction, 1.0);
   }
 
-  { // Test edge case.
-    for (auto i = 0; i < 1000; i++) {
-      const sys_days random_day = floor<days>(system_clock::now()) + days { 
-        gen_random_value<int64_t>(-365 * 30, 365 * 30) 
-      };
-      const year_month_day ymd { random_day };
-
-      {
-        const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
-        const DateTime dt { random_day + hms.to_duration() };
-        ASSERT_EQ(dt.ymd(), ymd);
-      }
-
-      {
-        const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
-        const DateTime dt { random_day + hms.to_duration() };
-        ASSERT_EQ(dt.ymd(), ymd - days { 1 });
-      }
-
-      {
-        const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
-        const DateTime dt { random_day + hms.to_duration() };
-        ASSERT_EQ(dt.ymd(), ymd);
-      }
-
-      {
-        const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
-        const DateTime dt { random_day + hms.to_duration() };
-        ASSERT_EQ(dt.ymd(), ymd + days { 1 });
-      }
-    }
-  }
-
   { // Test template.
     {
-      [[maybe_unused]] const DateTime dt { now };
+      [[maybe_unused]] const Datetime dt { now };
     }
     {
       const sys_time<days> dur { floor<days>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<nanoseconds> dur { floor<nanoseconds>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<microseconds> dur { floor<microseconds>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
   }
 
   { // Test with random nanoseconds.
     for (auto i = 0; i < 1000; i++) {
-      const auto tp = now + nanoseconds { gen_random_value<int64_t>() };
-      const DateTime dt { tp };
+      const auto tp = now + nanoseconds { random<int64_t>() };
+      const Datetime dt { tp };
 
-      const auto time_of_day = dt.time_of_day();
-      const auto fraction = dt.fraction_of_day();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -241,25 +208,25 @@ TEST(Util, datetime_from_timepoint) {
 
     const auto random_ns_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
       return nanoseconds { 
-        gen_random_value<uint64_t>(0, in_a_day<nanoseconds>() - 1)
+        random<uint64_t>(0, in_a_day<nanoseconds>() - 1)
       }; 
     });
 
     for (nanoseconds ns : random_ns_views) {
       const auto tp = floor<days>(now) + ns;
-      const DateTime dt { tp };
+      const Datetime dt { tp };
 
-      ASSERT_EQ(dt.fraction_of_day(), to_fraction(ns));
+      ASSERT_EQ(dt.fraction(), to_fraction(ns));
     }
   }
 
   { // Test with random microseconds.
     for (auto i = 0; i < 1000; i++) {
-      const auto tp = now + std::chrono::microseconds { gen_random_value<int32_t>() };
-      const DateTime dt { tp };
+      const auto tp = now + std::chrono::microseconds { random<int32_t>() };
+      const Datetime dt { tp };
 
-      const auto time_of_day = dt.time_of_day();
-      const auto fraction = dt.fraction_of_day();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -268,24 +235,24 @@ TEST(Util, datetime_from_timepoint) {
 
     const auto random_us_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
       return microseconds { 
-        gen_random_value<uint64_t>(0, in_a_day<microseconds>() - 1)
+        random<uint64_t>(0, in_a_day<microseconds>() - 1)
       }; 
     });
 
     for (microseconds us : random_us_views) {
       const auto tp = floor<days>(now) + us;
-      const DateTime dt { tp };
-      ASSERT_EQ(dt.fraction_of_day(), to_fraction(us));
+      const Datetime dt { tp };
+      ASSERT_EQ(dt.fraction(), to_fraction(us));
     }
   }
 
   { // Test with random seconds.
     for (auto i = 0; i < 1000; i++) {
-      const auto tp = now + seconds { gen_random_value<int32_t>() };
-      const DateTime dt { tp };
+      const auto tp = now + seconds { random<int32_t>() };
+      const Datetime dt { tp };
 
-      const auto time_of_day = dt.time_of_day();
-      const auto fraction = dt.fraction_of_day();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -294,15 +261,15 @@ TEST(Util, datetime_from_timepoint) {
 
     const auto random_s_views = std::views::iota(0, 1000) | std::views::transform([](auto) { 
       return seconds { 
-        gen_random_value<uint32_t>(0, in_a_day<seconds>() - 1)
+        random<uint32_t>(0, in_a_day<seconds>() - 1)
       }; 
     });
 
     for (seconds s : random_s_views) {
       const auto tp = floor<days>(now) + s;
-      const DateTime dt { tp };
+      const Datetime dt { tp };
 
-      ASSERT_EQ(dt.fraction_of_day(), to_fraction(s));
+      ASSERT_EQ(dt.fraction(), to_fraction(s));
     }
   }
 }
@@ -315,48 +282,48 @@ TEST(Util, datetime_from_ymd_hms) {
     const year_month_day ymd { floor<days>(now) };
     const hh_mm_ss<nanoseconds> hms { now - floor<days>(now) };
 
-    const DateTime dt { ymd, hms };
-    ASSERT_EQ(dt.ymd(), ymd);
-    ASSERT_EQ(dt.time_of_day().to_duration(), hms.to_duration());
+    const Datetime dt { ymd, hms };
+    ASSERT_EQ(dt.ymd, ymd);
+    ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
   }
 
   { // Test template.
     {
-      [[maybe_unused]] const DateTime dt { now };
+      [[maybe_unused]] const Datetime dt { now };
     }
     {
       const sys_time<days> dur { floor<days>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<nanoseconds> dur { floor<nanoseconds>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<microseconds> dur { floor<microseconds>(now) };
-      [[maybe_unused]] const DateTime dt { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
   }
 
   { // Test with random nanoseconds.
     for (auto i = 0; i < 100; i++) {
       const sys_days random_day = floor<days>(system_clock::now()) + days { 
-        gen_random_value<int64_t>(-365 * 30, 365 * 30) 
+        random<int64_t>(-365 * 30, 365 * 30) 
       };
       const year_month_day ymd { random_day };
 
       const auto random_hms_views = std::views::iota(0, 1000) | std::views::transform([](auto) {
         return hh_mm_ss<nanoseconds> { 
           nanoseconds { 
-            gen_random_value<uint64_t>(0, in_a_day<nanoseconds>() - 1)
+            random<uint64_t>(0, in_a_day<nanoseconds>() - 1)
           } 
         };
       });
 
       for (hh_mm_ss<nanoseconds> hms : random_hms_views) {
-        const DateTime dt { ymd, hms };
-        ASSERT_EQ(dt.ymd(), ymd);
-        ASSERT_EQ(dt.time_of_day().to_duration(), hms.to_duration());
+        const Datetime dt { ymd, hms };
+        ASSERT_EQ(dt.ymd, ymd);
+        ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
     }
   }
@@ -364,22 +331,22 @@ TEST(Util, datetime_from_ymd_hms) {
   { // Test with random microseconds.
     for (auto i = 0; i < 100; i++) {
       const sys_days random_day = floor<days>(system_clock::now()) + days { 
-        gen_random_value<int64_t>(-365 * 30, 365 * 30) 
+        random<int64_t>(-365 * 30, 365 * 30) 
       };
       const year_month_day ymd { random_day };
 
       const auto random_hms_views = std::views::iota(0, 1000) | std::views::transform([](auto) {
         return hh_mm_ss<microseconds> { 
           microseconds { 
-            gen_random_value<uint64_t>(0, in_a_day<microseconds>() - 1)
+            random<uint64_t>(0, in_a_day<microseconds>() - 1)
           } 
         };
       });
 
       for (hh_mm_ss<microseconds> hms : random_hms_views) {
-        const DateTime dt { ymd, hms };
-        ASSERT_EQ(dt.ymd(), ymd);
-        ASSERT_EQ(dt.time_of_day().to_duration(), hms.to_duration());
+        const Datetime dt { ymd, hms };
+        ASSERT_EQ(dt.ymd, ymd);
+        ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
     }
   }
@@ -390,18 +357,18 @@ TEST(Util, datetime_from_fraction) {
 
   for (auto i = 0; i < 100; i++) {
     const sys_days random_day = floor<days>(system_clock::now()) + days { 
-      gen_random_value<int64_t>(-365 * 30, 365 * 30) 
+      random<int64_t>(-365 * 30, 365 * 30) 
     };
     const year_month_day ymd { random_day };
 
     const auto random_fraction_views = std::views::iota(0, 1000) | std::views::transform([](auto) {
-      return gen_random_value<double>(0.0, 1.0 - 1e-8);
+      return random<double>(0.0, 1.0 - 1e-8);
     });
 
     for (double fraction : random_fraction_views) {
-      const DateTime dt { ymd, fraction };
-      ASSERT_EQ(dt.ymd(), ymd);
-      ASSERT_NEAR(dt.fraction_of_day(), fraction, 1e-10);
+      const Datetime dt { ymd, fraction };
+      ASSERT_EQ(dt.ymd, ymd);
+      ASSERT_NEAR(dt.fraction(), fraction, 1e-10);
     }
   }
 }
@@ -414,41 +381,131 @@ TEST(Util, datetime_consistency) {
 
   const auto random_tp_views = std::views::iota(0, 10000) | std::views::transform([&](auto) {
     return now + microseconds { 
-      gen_random_value<int64_t>(-20 * ns_per_year, 20 * ns_per_year) 
+      random<int64_t>(-20 * ns_per_year, 20 * ns_per_year) 
     };
   });
 
   for (auto tp : random_tp_views) {
-    const DateTime dt { tp };
+    const Datetime dt { tp };
 
     const year_month_day ymd { floor<days>(tp) };
     const hh_mm_ss<nanoseconds> hms { tp - floor<days>(tp) };
     const double fraction = to_fraction(hms.to_duration());
 
     ASSERT_TRUE(dt.ok());
-    ASSERT_EQ(dt.ymd(), ymd);
-    ASSERT_EQ(dt.time_of_day().to_duration(), hms.to_duration());
-    ASSERT_NEAR(dt.fraction_of_day(), fraction, 1e-10);
+    ASSERT_EQ(dt.ymd, ymd);
+    ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
+    ASSERT_NEAR(dt.fraction(), fraction, 1e-10);
 
     { // Test from ymd and hms.
-      const DateTime dt2 { ymd, hms };
+      const Datetime dt2 { ymd, hms };
 
       ASSERT_TRUE(dt2.ok());
-      ASSERT_EQ(dt2.ymd(), ymd);
-      ASSERT_EQ(dt2.time_of_day().to_duration(), hms.to_duration());
-      ASSERT_NEAR(dt2.fraction_of_day(), fraction, 1e-10);
+      ASSERT_EQ(dt2.ymd, ymd);
+      ASSERT_EQ(dt2.time_of_day.to_duration(), hms.to_duration());
+      ASSERT_NEAR(dt2.fraction(), fraction, 1e-10);
     }
 
     { // Test from ymd and fraction of day.
-      const DateTime dt2 { ymd, fraction };
+      const Datetime dt2 { ymd, fraction };
 
       ASSERT_TRUE(dt2.ok());
-      ASSERT_EQ(dt2.ymd(), ymd);
+      ASSERT_EQ(dt2.ymd, ymd);
 
-      const nanoseconds dt2_elapsed_ns = dt2.time_of_day().to_duration();
+      const nanoseconds dt2_elapsed_ns = dt2.time_of_day.to_duration();
       ASSERT_NEAR(dt2_elapsed_ns.count(), hms.to_duration().count(), 10);
 
-      ASSERT_NEAR(dt2.fraction_of_day(), fraction, 1e-10);
+      ASSERT_NEAR(dt2.fraction(), fraction, 1e-10);
+    }
+  }
+}
+
+TEST(Util, datetime_edge_cases) {
+  using namespace util::datetime;
+
+  { // Test time_point constructor.
+    const auto today_tp = floor<days>(system_clock::now());
+    const year_month_day ymd { today_tp };
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd);
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd - days { 1 });
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd);
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd + days { 1 });
+    }
+  }
+
+  { // Test ymd and fraction constructor.
+    const auto today_tp = floor<days>(system_clock::now());
+    
+    {
+      const Datetime dt { today_tp, 0.0 };
+      ASSERT_EQ(dt.ymd, today_tp);
+      ASSERT_EQ(dt.fraction(), 0.0); // Enforce strict equality here.
+    }
+
+    {
+      const Datetime dt { today_tp, 1.0 - 1e-11 };
+      ASSERT_EQ(dt.ymd, today_tp);
+      ASSERT_NEAR(dt.fraction(), 1.0, 1e-10); // Enforce strict equality here.
+    }
+
+    {
+      // Ensure the exceptions are thrown.
+      ASSERT_THROW((Datetime { today_tp, 1.0 + 1e-11 }), 
+                   std::invalid_argument);
+
+      ASSERT_THROW((Datetime { today_tp, 1.0 }), 
+                   std::invalid_argument);
+
+      ASSERT_THROW((Datetime { today_tp, -1e-11 }), 
+                   std::invalid_argument);
+    }
+  }
+
+  { // Test ymd and hms constructor.
+    const auto today_tp = floor<days>(system_clock::now());
+    const year_month_day ymd { today_tp };
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
+      const Datetime dt { today_tp, hms };
+      ASSERT_EQ(dt.ymd, ymd);
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
+      ASSERT_THROW((Datetime { today_tp, hms }),
+                   std::runtime_error);
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
+      const Datetime dt { today_tp, hms };
+      ASSERT_EQ(dt.ymd, ymd);
+    }
+
+    {
+      const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
+      ASSERT_THROW((Datetime { today_tp, hms }),
+                   std::runtime_error);
     }
   }
 }

@@ -1,8 +1,5 @@
-#ifndef __UTIL_HPP__
-#define __UTIL_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
 
 #include "date.hpp"
 #include "random.hpp"
 #include "datetime.hpp"
-
-#endif // __UTIL_HPP__

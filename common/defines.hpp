@@ -1,5 +1,5 @@
-#ifndef __COMMON_DEFINES_HPP__
-#define __COMMON_DEFINES_HPP__
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
 namespace common::defines {
 
@@ -15,5 +15,3 @@ enum class Jieqi {
 };
 
 } // namespace common::defines
-
-#endif // __COMMON_DEFINES_HPP__

@@ -1,7 +1,8 @@
-// Codes stolen from my other repos...
+// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+#pragma once
 
-#ifndef __UTIL_RANDOM_HPP__
-#define __UTIL_RANDOM_HPP__
+// Codes stolen from my other repos...
+// Mostly used for tests.
 
 #include <random>
 #include <limits>
@@ -9,13 +10,13 @@
 namespace util {
 
 /*!
- * @fn gen_random_value
+ * @fn random
  * @brief Generate a random value of type T.
  * @return a random value of type T.
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-T gen_random_value() {
+T random() {
   std::random_device rd;
   std::mt19937 gen(rd());
 
@@ -34,18 +35,21 @@ T gen_random_value() {
 
 
 /*!
- * @fn gen_random_value - bool
+ * @fn random - bool
  * @brief Generate a random bool value.
  * @return a random bool value.
  */
 template <>
-bool gen_random_value() {
-  return gen_random_value<int>() % 2 == 0;
+bool random() {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  std::bernoulli_distribution dist(0.5);
+  return dist(gen);
 }
 
 
 /*!
- * @fn gen_random_value
+ * @fn random
  * @brief Generate a random value of type T within the specified range [min, max].
  * @param min the lower bound of the range, inclusive.
  * @param max the upper bound of the range, inclusive.
@@ -53,7 +57,7 @@ bool gen_random_value() {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-T gen_random_value(const T& min, const T& max) {
+T random(const T& min, const T& max) {
   assert(min < max);
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -69,5 +73,3 @@ T gen_random_value(const T& min, const T& max) {
 }
 
 } // namespace util
-
-#endif // __UTIL_RANDOM_HPP__
