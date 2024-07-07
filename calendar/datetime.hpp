@@ -7,7 +7,7 @@
 
 #include "date.hpp"
 
-namespace util::datetime {
+namespace calendar::datetime {
 
 using namespace std::chrono;
 
@@ -205,4 +205,4 @@ struct UTC {
   }
 };
 
-} // namespace util::datetime
+} // namespace calendar::datetime

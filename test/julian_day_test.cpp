@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 #include "util.hpp"
+#include "datetime.hpp"
 #include "julian_day.hpp"
 
 namespace calendar::julian_day {
 
 using namespace util;
-using namespace util::datetime;
+using namespace calendar::datetime;
 using namespace std::chrono_literals;
 
 const std::unordered_map<double, UTC> jd_test_data {

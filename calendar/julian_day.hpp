@@ -14,7 +14,7 @@ namespace calendar::julian_day {
  * @param utc The gregorian date and time (UTC).
  * @returns The julian day number.
  */
-double utc_to_jd(const util::datetime::UTC& utc) {
+double utc_to_jd(const calendar::datetime::UTC& utc) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -58,7 +58,7 @@ double utc_to_jd(const util::datetime::UTC& utc) {
  * @param jd The julian day number.
  * @returns The gregorian date and time.
  */
-util::datetime::UTC jd_to_utc(const double jd) {
+calendar::datetime::UTC jd_to_utc(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -115,7 +115,7 @@ util::datetime::UTC jd_to_utc(const double jd) {
   const auto&& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return util::datetime::UTC { ymd, fraction };
+  return calendar::datetime::UTC { ymd, fraction };
 }
 
 } // namespace calendar::julian_day
