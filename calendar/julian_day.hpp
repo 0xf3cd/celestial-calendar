@@ -10,11 +10,11 @@
 namespace calendar::julian_day {
 
 /**
- * @brief Converts a gregorian date to julian day.
- * @param dt The gregorian date and time.
+ * @brief Converts a UTC datetime to julian day.
+ * @param utc The gregorian date and time (UTC).
  * @returns The julian day number.
  */
-double to_jd(const util::datetime::Datetime& dt) {
+double utc_to_jd(const util::datetime::UTC& utc) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -32,9 +32,9 @@ double to_jd(const util::datetime::Datetime& dt) {
     All above variables except JD are integers (dropping the fractional part).
    */
 
-  assert(dt.ok());
+  assert(utc.ok());
   
-  const auto& [ g_y, g_m, g_d ] = util::from_ymd(dt.ymd);
+  const auto& [ g_y, g_m, g_d ] = util::from_ymd(utc.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -46,7 +46,7 @@ double to_jd(const util::datetime::Datetime& dt) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double  JD = C + D + E + F - 1524.5 + dt.fraction(); // add the fractional part as well.
+  const double  JD = C + D + E + F - 1524.5 + utc.fraction(); // add the fractional part as well.
 
   assert(JD > 0);
   return JD;
@@ -54,11 +54,11 @@ double to_jd(const util::datetime::Datetime& dt) {
 
 
 /**
- * @brief Converts a julian day number to gregorian date.
+ * @brief Converts a julian day number to UTC datetime.
  * @param jd The julian day number.
- * @returns The gregorian date.
+ * @returns The gregorian date and time.
  */
-util::datetime::Datetime from_jd(const double jd) {
+util::datetime::UTC jd_to_utc(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -115,7 +115,7 @@ util::datetime::Datetime from_jd(const double jd) {
   const auto&& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return util::datetime::Datetime { ymd, fraction };
+  return util::datetime::UTC { ymd, fraction };
 }
 
 } // namespace calendar::julian_day

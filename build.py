@@ -14,7 +14,7 @@ from enum import Enum, unique
 from datetime import datetime
 from dataclasses import dataclass
 
-from typing import Final, Sequence
+from typing import Final, Sequence, Callable
 
 
 @unique
@@ -54,8 +54,15 @@ class ProcReturn:
   stdout: str
   stderr: str
 
-def run_cmd(cmd: Sequence[str], print_stdout: bool = True, print_stderr: bool = True, **kwargs) -> ProcReturn:
-  blue_print(f'# Command: {shlex.join(cmd)}')
+def run_cmd(
+  cmd: Sequence[str],
+  print_cmd: bool = True,
+  print_stdout: bool = True,
+  print_stderr: bool = True,
+  **kwargs
+) -> ProcReturn:
+  if print_cmd:
+    blue_print(f'# Command: {shlex.join(cmd)}')
   
   # Run a subprocess and capture its stdout and stderr.
   proc = subprocess.run(cmd, capture_output=True, env=os.environ, **kwargs)
@@ -69,17 +76,19 @@ def run_cmd(cmd: Sequence[str], print_stdout: bool = True, print_stderr: bool = 
     print(stderr)
 
   retcode: int = proc.returncode
-  if retcode != 0:
-    red_print(f'# Command failed:\n'
-              f'# {shlex.join(cmd)}')
-  else:
-    green_print(f'# Command succeeded:\n'
+
+  if print_cmd:
+    if retcode != 0:
+      red_print(f'# Command failed:\n'
                 f'# {shlex.join(cmd)}')
+    else:
+      green_print(f'# Command succeeded:\n'
+                  f'# {shlex.join(cmd)}')
 
   return ProcReturn(retcode, stdout, stderr)
 
 
-def cmake() -> ProcReturn:
+def cmake() -> int:
   print('#' * 60)
 
   if not BUILD_DIR.exists():
@@ -91,20 +100,20 @@ def cmake() -> ProcReturn:
   ret: ProcReturn = run_cmd(['cmake', '..'], cwd=BUILD_DIR)
 
   print('#' * 60)
-  return ret
+  return ret.retcode
 
 
-def make(cpu_cores: int=8) -> ProcReturn:
+def make(cpu_cores: int=8) -> int:
   print('#' * 60)
 
   assert BUILD_DIR.exists(), "Build directory not found"
   assert BUILD_DIR.is_dir(), "Build directory is not a directory"
 
   yellow_print('# Building the C++ projects...')
-  retcode: ProcReturn = run_cmd(['make', '-j', str(cpu_cores)], cwd=BUILD_DIR)
+  ret: ProcReturn = run_cmd(['make', '-j', str(cpu_cores)], cwd=BUILD_DIR)
 
   print('#' * 60)
-  return retcode
+  return ret.retcode
 
 
 def list_tests() -> dict[str, str]:
@@ -279,7 +288,7 @@ def parse_args() -> argparse.Namespace:
 
 def print_sysinfo() -> None:
   '''Print system time and other info.'''
-  cmake_version: ProcReturn = run_cmd(['cmake', '--version'], print_stdout=False)
+  cmake_version: ProcReturn = run_cmd(['cmake', '--version'], print_cmd=False, print_stdout=False)
   assert cmake_version.retcode == 0
 
   this_moment: datetime = datetime.now()
@@ -314,23 +323,21 @@ def print_sysinfo() -> None:
 
 
 def main() -> int:
-  retcode: int = 0
   args = parse_args()
   print(args)
   print_sysinfo()
 
+  retcode: int = 0
   cmake_start_moment = datetime.now()
-  if args.cmake:
-    cmake_ret = cmake()
-    retcode |= cmake_ret.retcode
+  if args.cmake and not retcode:
+    retcode |= cmake()
 
   build_start_moment = datetime.now()
-  if args.build:
-    make_ret = make(args.cpu_cores)
-    retcode |= make_ret.retcode
+  if args.build and not retcode:
+    retcode |= make(args.cpu_cores)
 
   test_start_moment = datetime.now()
-  if args.test:
+  if args.test and not retcode:
     retcode |= run_tests(keywords=args.test_keyword if args.test_keyword else [], 
                          verbose_level=args.verbose,
                          debug=args.debug,
@@ -344,7 +351,12 @@ def main() -> int:
     blue_print(f'# Build time: {test_start_moment - build_start_moment}')
   if args.test:
     blue_print(f'# Test time:  {test_end_moment - test_start_moment}')
-  green_print(f'# Total time: {test_end_moment - cmake_start_moment}')
+  blue_print(f'# Total time: {test_end_moment - cmake_start_moment}')
+
+  if retcode != 0:
+    red_print(f'# Return code: {retcode}')
+  else:
+    green_print(f'# Return code: {retcode}')
 
   return retcode
 
