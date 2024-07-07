@@ -3,7 +3,7 @@ project(cpp-calendar)
 
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-std=c++2b)
-add_compile_options(-Wall -Wextra -Wpedantic)
+add_compile_options(-Wall -Werror -Wextra -Wpedantic)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
