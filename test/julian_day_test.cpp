@@ -7,25 +7,25 @@
 namespace calendar::julian_day {
 
 using namespace util;
-using namespace calendar::datetime;
+using namespace calendar::utc;
 using namespace std::chrono_literals;
 
-const std::unordered_map<double, UTC> jd_test_data {
-  { 2299160.5,         UTC { to_ymd(1582, 10, 15), 0.0, } },
-  { 2451544.5,         UTC { to_ymd(2000, 1, 1),   0.0, } },
-  { 2443259.9,         UTC { to_ymd(1977, 4, 26),  0.4, } },
-  { 2450084.0,         UTC { to_ymd(1996, 1, 1),   0.5, } },
-  { 2456293.520833,    UTC { to_ymd(2013, 1, 1),   hh_mm_ss { 30min } } },
-  { 2460491.1846759,   UTC { to_ymd(2024, 6, 29),  hh_mm_ss { 16h + 25min + 56s } } },
-  { 2451545.041666667, UTC { to_ymd(2000, 1, 1),   hh_mm_ss { 13h } } },
-  { 2500000.0,         UTC { to_ymd(2132, 8, 31),  0.5, } },
-  { 2305993.3852315,   UTC { to_ymd(1601, 6, 29),  hh_mm_ss { 21h + 14min + 44s } } },
+const std::unordered_map<double, Datetime> jd_test_data {
+  { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
+  { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
+  { 2443259.9,         Datetime { to_ymd(1977, 4, 26),  0.4, } },
+  { 2450084.0,         Datetime { to_ymd(1996, 1, 1),   0.5, } },
+  { 2456293.520833,    Datetime { to_ymd(2013, 1, 1),   hh_mm_ss { 30min } } },
+  { 2460491.1846759,   Datetime { to_ymd(2024, 6, 29),  hh_mm_ss { 16h + 25min + 56s } } },
+  { 2451545.041666667, Datetime { to_ymd(2000, 1, 1),   hh_mm_ss { 13h } } },
+  { 2500000.0,         Datetime { to_ymd(2132, 8, 31),  0.5, } },
+  { 2305993.3852315,   Datetime { to_ymd(1601, 6, 29),  hh_mm_ss { 21h + 14min + 44s } } },
 
   // From http://www.stevegs.com/utils/jd_calc/
-  { 2458908.7084259,   UTC { to_ymd(2020, 2, 29),  hh_mm_ss { 5h + 8s } } },
-  { 2461436.1508698,   UTC { to_ymd(2027, 1, 30),  hh_mm_ss { 15h + 37min + 15s + 150ms } } },
-  { 2473063.7966088,   UTC { to_ymd(2058, 12, 1),  hh_mm_ss { 7h + 7min + 7s } } },
-  { 2459048.7966177,   UTC { to_ymd(2020, 7, 18),  hh_mm_ss { 7h + 7min + 7s + 770ms } } }
+  { 2458908.7084259,   Datetime { to_ymd(2020, 2, 29),  hh_mm_ss { 5h + 8s } } },
+  { 2461436.1508698,   Datetime { to_ymd(2027, 1, 30),  hh_mm_ss { 15h + 37min + 15s + 150ms } } },
+  { 2473063.7966088,   Datetime { to_ymd(2058, 12, 1),  hh_mm_ss { 7h + 7min + 7s } } },
+  { 2459048.7966177,   Datetime { to_ymd(2020, 7, 18),  hh_mm_ss { 7h + 7min + 7s + 770ms } } }
 };
 
 constexpr double EPSILON = 1e-6;
@@ -64,7 +64,7 @@ TEST(JulianDay, test_consistency) {
   for (auto i = 0; i < 5000; ++i) {
     const auto ymd = random_ymd();
     const auto hms = random_hms();
-    const UTC utc { ymd, hms };
+    const Datetime utc { ymd, hms };
 
     const double jd = utc_to_jd(utc);
     const auto recovered_utc = jd_to_utc(jd);

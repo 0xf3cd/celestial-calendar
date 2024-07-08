@@ -4,17 +4,17 @@
 #include "util.hpp"
 #include "datetime.hpp"
 
-namespace calendar::datetime {
+namespace calendar::utc {
 
 
-TEST(Datetime, utc_from_timepoint) {
+TEST(Datetime, datetime_from_timepoint) {
   const auto now = system_clock::now();
 
   { // Test now.
-    const UTC utc { now };
-    const auto ymd = utc.ymd;
-    const auto time_of_day = utc.time_of_day;
-    const auto fraction = utc.fraction();
+    const Datetime dt { now };
+    const auto ymd = dt.ymd;
+    const auto time_of_day = dt.time_of_day;
+    const auto fraction = dt.fraction();
 
     std::println("Now is {}.\nymd {}, hh_mm_ss {}, fraction of day is {}", 
                   now, ymd, time_of_day, fraction);
@@ -26,29 +26,29 @@ TEST(Datetime, utc_from_timepoint) {
 
   { // Test template.
     {
-      [[maybe_unused]] const UTC utc { now };
+      [[maybe_unused]] const Datetime dt { now };
     }
     {
       const sys_time<days> dur { floor<days>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<nanoseconds> dur { floor<nanoseconds>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<microseconds> dur { floor<microseconds>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
   }
 
   { // Test with random nanoseconds.
     for (auto i = 0; i < 1000; i++) {
       const auto tp = now + nanoseconds { util::random<int64_t>() };
-      const UTC utc { tp };
+      const Datetime dt { tp };
 
-      const auto time_of_day = utc.time_of_day;
-      const auto fraction = utc.fraction();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -63,19 +63,19 @@ TEST(Datetime, utc_from_timepoint) {
 
     for (nanoseconds ns : random_ns_views) {
       const auto tp = floor<days>(now) + ns;
-      const UTC utc { tp };
+      const Datetime dt { tp };
 
-      ASSERT_EQ(utc.fraction(), to_fraction(ns));
+      ASSERT_EQ(dt.fraction(), to_fraction(ns));
     }
   }
 
   { // Test with random microseconds.
     for (auto i = 0; i < 1000; i++) {
       const auto tp = now + std::chrono::microseconds { util::random<int32_t>() };
-      const UTC utc { tp };
+      const Datetime dt { tp };
 
-      const auto time_of_day = utc.time_of_day;
-      const auto fraction = utc.fraction();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -90,18 +90,18 @@ TEST(Datetime, utc_from_timepoint) {
 
     for (microseconds us : random_us_views) {
       const auto tp = floor<days>(now) + us;
-      const UTC utc { tp };
-      ASSERT_EQ(utc.fraction(), to_fraction(us));
+      const Datetime dt { tp };
+      ASSERT_EQ(dt.fraction(), to_fraction(us));
     }
   }
 
   { // Test with random seconds.
     for (auto i = 0; i < 1000; i++) {
       const auto tp = now + seconds { util::random<int32_t>() };
-      const UTC utc { tp };
+      const Datetime dt { tp };
 
-      const auto time_of_day = utc.time_of_day;
-      const auto fraction = utc.fraction();
+      const auto time_of_day = dt.time_of_day;
+      const auto fraction = dt.fraction();
 
       ASSERT_LT(time_of_day.hours().count(), 24);
       ASSERT_GE(fraction, 0.0);
@@ -116,40 +116,40 @@ TEST(Datetime, utc_from_timepoint) {
 
     for (seconds s : random_s_views) {
       const auto tp = floor<days>(now) + s;
-      const UTC utc { tp };
+      const Datetime dt { tp };
 
-      ASSERT_EQ(utc.fraction(), to_fraction(s));
+      ASSERT_EQ(dt.fraction(), to_fraction(s));
     }
   }
 }
 
-TEST(Datetime, utc_from_ymd_hms) {
+TEST(Datetime, datetime_from_ymd_hms) {
   const auto now = system_clock::now();
 
   { // Test now.
     const year_month_day ymd { floor<days>(now) };
     const hh_mm_ss<nanoseconds> hms { now - floor<days>(now) };
 
-    const UTC utc { ymd, hms };
-    ASSERT_EQ(utc.ymd, ymd);
-    ASSERT_EQ(utc.time_of_day.to_duration(), hms.to_duration());
+    const Datetime dt { ymd, hms };
+    ASSERT_EQ(dt.ymd, ymd);
+    ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
   }
 
   { // Test template.
     {
-      [[maybe_unused]] const UTC utc { now };
+      [[maybe_unused]] const Datetime dt { now };
     }
     {
       const sys_time<days> dur { floor<days>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<nanoseconds> dur { floor<nanoseconds>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
     {
       const sys_time<microseconds> dur { floor<microseconds>(now) };
-      [[maybe_unused]] const UTC utc { dur };
+      [[maybe_unused]] const Datetime dt { dur };
     }
   }
 
@@ -169,9 +169,9 @@ TEST(Datetime, utc_from_ymd_hms) {
       });
 
       for (hh_mm_ss<nanoseconds> hms : random_hms_views) {
-        const UTC utc { ymd, hms };
-        ASSERT_EQ(utc.ymd, ymd);
-        ASSERT_EQ(utc.time_of_day.to_duration(), hms.to_duration());
+        const Datetime dt { ymd, hms };
+        ASSERT_EQ(dt.ymd, ymd);
+        ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
     }
   }
@@ -192,15 +192,15 @@ TEST(Datetime, utc_from_ymd_hms) {
       });
 
       for (hh_mm_ss<microseconds> hms : random_hms_views) {
-        const UTC utc { ymd, hms };
-        ASSERT_EQ(utc.ymd, ymd);
-        ASSERT_EQ(utc.time_of_day.to_duration(), hms.to_duration());
+        const Datetime dt { ymd, hms };
+        ASSERT_EQ(dt.ymd, ymd);
+        ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
     }
   }
 }
 
-TEST(Datetime, utc_from_fraction) {
+TEST(Datetime, datetime_from_fraction) {
   for (auto i = 0; i < 100; i++) {
     const sys_days random_day = floor<days>(system_clock::now()) + days { 
       util::random<int64_t>(-365 * 30, 365 * 30) 
@@ -212,14 +212,14 @@ TEST(Datetime, utc_from_fraction) {
     });
 
     for (double fraction : random_fraction_views) {
-      const UTC utc { ymd, fraction };
-      ASSERT_EQ(utc.ymd, ymd);
-      ASSERT_NEAR(utc.fraction(), fraction, 1e-10);
+      const Datetime dt { ymd, fraction };
+      ASSERT_EQ(dt.ymd, ymd);
+      ASSERT_NEAR(dt.fraction(), fraction, 1e-10);
     }
   }
 }
 
-TEST(Datetime, utc_consistency) {
+TEST(Datetime, datetime_consistency) {
   const auto now = system_clock::now();
   constexpr auto ns_per_year = 365 * in_a_day<nanoseconds>();
 
@@ -230,19 +230,19 @@ TEST(Datetime, utc_consistency) {
   });
 
   for (auto tp : random_tp_views) {
-    const UTC utc { tp };
+    const Datetime dt { tp };
 
     const year_month_day ymd { floor<days>(tp) };
     const hh_mm_ss<nanoseconds> hms { tp - floor<days>(tp) };
     const double fraction = to_fraction(hms.to_duration());
 
-    ASSERT_TRUE(utc.ok());
-    ASSERT_EQ(utc.ymd, ymd);
-    ASSERT_EQ(utc.time_of_day.to_duration(), hms.to_duration());
-    ASSERT_NEAR(utc.fraction(), fraction, 1e-10);
+    ASSERT_TRUE(dt.ok());
+    ASSERT_EQ(dt.ymd, ymd);
+    ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
+    ASSERT_NEAR(dt.fraction(), fraction, 1e-10);
 
     { // Test from ymd and hms.
-      const UTC dt2 { ymd, hms };
+      const Datetime dt2 { ymd, hms };
 
       ASSERT_TRUE(dt2.ok());
       ASSERT_EQ(dt2.ymd, ymd);
@@ -251,7 +251,7 @@ TEST(Datetime, utc_consistency) {
     }
 
     { // Test from ymd and fraction of day.
-      const UTC dt2 { ymd, fraction };
+      const Datetime dt2 { ymd, fraction };
 
       ASSERT_TRUE(dt2.ok());
       ASSERT_EQ(dt2.ymd, ymd);
@@ -264,7 +264,7 @@ TEST(Datetime, utc_consistency) {
   }
 }
 
-TEST(Datetime, utc_edge_cases) {
+TEST(Datetime, datetime_edge_cases) {
   { // Test time_point constructor.
     using namespace util;
 
@@ -273,26 +273,26 @@ TEST(Datetime, utc_edge_cases) {
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
-      const UTC utc { today_tp + hms.to_duration() };
-      ASSERT_EQ(utc.ymd, ymd);
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
-      const UTC utc { today_tp + hms.to_duration() };
-      ASSERT_EQ(utc.ymd, ymd - days { 1 });
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd - days { 1 });
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
-      const UTC utc { today_tp + hms.to_duration() };
-      ASSERT_EQ(utc.ymd, ymd);
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
-      const UTC utc { today_tp + hms.to_duration() };
-      ASSERT_EQ(utc.ymd, ymd + days { 1 });
+      const Datetime dt { today_tp + hms.to_duration() };
+      ASSERT_EQ(dt.ymd, ymd + days { 1 });
     }
   }
 
@@ -300,26 +300,26 @@ TEST(Datetime, utc_edge_cases) {
     const auto today_tp = floor<days>(system_clock::now());
     
     {
-      const UTC utc { today_tp, 0.0 };
-      ASSERT_EQ(utc.ymd, today_tp);
-      ASSERT_EQ(utc.fraction(), 0.0); // Enforce strict equality here.
+      const Datetime dt { today_tp, 0.0 };
+      ASSERT_EQ(dt.ymd, today_tp);
+      ASSERT_EQ(dt.fraction(), 0.0); // Enforce strict equality here.
     }
 
     {
-      const UTC utc { today_tp, 1.0 - 1e-11 };
-      ASSERT_EQ(utc.ymd, today_tp);
-      ASSERT_NEAR(utc.fraction(), 1.0, 1e-10); // Enforce strict equality here.
+      const Datetime dt { today_tp, 1.0 - 1e-11 };
+      ASSERT_EQ(dt.ymd, today_tp);
+      ASSERT_NEAR(dt.fraction(), 1.0, 1e-10); // Enforce strict equality here.
     }
 
     {
       // Ensure the exceptions are thrown.
-      ASSERT_THROW((UTC { today_tp, 1.0 + 1e-11 }), 
+      ASSERT_THROW((Datetime { today_tp, 1.0 + 1e-11 }), 
                    std::invalid_argument);
 
-      ASSERT_THROW((UTC { today_tp, 1.0 }), 
+      ASSERT_THROW((Datetime { today_tp, 1.0 }), 
                    std::invalid_argument);
 
-      ASSERT_THROW((UTC { today_tp, -1e-11 }), 
+      ASSERT_THROW((Datetime { today_tp, -1e-11 }), 
                    std::invalid_argument);
     }
   }
@@ -330,25 +330,25 @@ TEST(Datetime, utc_edge_cases) {
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
-      const UTC utc { today_tp, hms };
-      ASSERT_EQ(utc.ymd, ymd);
+      const Datetime dt { today_tp, hms };
+      ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
-      ASSERT_THROW((UTC { today_tp, hms }),
+      ASSERT_THROW((Datetime { today_tp, hms }),
                    std::runtime_error);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
-      const UTC utc { today_tp, hms };
-      ASSERT_EQ(utc.ymd, ymd);
+      const Datetime dt { today_tp, hms };
+      ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
-      ASSERT_THROW((UTC { today_tp, hms }),
+      ASSERT_THROW((Datetime { today_tp, hms }),
                    std::runtime_error);
     }
   }
