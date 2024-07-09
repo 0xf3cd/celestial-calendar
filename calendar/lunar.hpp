@@ -61,7 +61,7 @@ bool is_valid_lunar(const year_month_day& lunar_date) {
     return false;
   }
 
-  const auto [ y, m, d ] = util::from_ymd(lunar_date);
+  const auto [y, m, d] = util::from_ymd(lunar_date);
   const auto info = LUNARDATA_CACHE.get(y);
   const auto& ml = info.month_lengths;
   
@@ -91,7 +91,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
     return std::nullopt;
   }
 
-  const auto& [ g_y, g_m, g_d ] = util::from_ymd(gregorian_date);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(gregorian_date);
 
   const auto find_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
     const auto& info = LUNARDATA_CACHE.get(lunar_y);
@@ -153,7 +153,7 @@ std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_dat
     return std::nullopt;
   }
 
-  const auto [ y, m, d ] = util::from_ymd(lunar_date);
+  const auto [y, m, d] = util::from_ymd(lunar_date);
   const auto& info = LUNARDATA_CACHE.get(y);
   const auto& ml = info.month_lengths;
 

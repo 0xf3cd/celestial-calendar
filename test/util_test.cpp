@@ -22,21 +22,21 @@ TEST(Util, test_from_ymd) {
   using namespace std::literals;
 
   {
-    const auto [ y, m, d ] = from_ymd(1901y / 1 / 1);
+    const auto [y, m, d] = from_ymd(1901y / 1 / 1);
     ASSERT_EQ(y, 1901);
     ASSERT_EQ(m, 1);
     ASSERT_EQ(d, 1); 
   }
 
   {
-    const auto [ y, m, d ] = from_ymd(2024y / 3 / 15);
+    const auto [y, m, d] = from_ymd(2024y / 3 / 15);
     ASSERT_EQ(y, 2024);
     ASSERT_EQ(m, 3);
     ASSERT_EQ(d, 15); 
   }
 
   {
-    const auto [ y, m, d ] = from_ymd(0y / 3 / 15);
+    const auto [y, m, d] = from_ymd(0y / 3 / 15);
     ASSERT_EQ(y, 0);
     ASSERT_EQ(m, 3);
     ASSERT_EQ(d, 15); 

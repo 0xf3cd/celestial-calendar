@@ -8,7 +8,6 @@
 #include <cassert>
 #include <optional>
 
-namespace calendar::dynamical_time {
 
 /**
  * This file contains the functions to compute the dynamical time.
@@ -23,7 +22,7 @@ namespace calendar::dynamical_time {
  *     accounting for relativistic effects and other factors. It is based on TAI as well.
  *     Terrestrial Dynamical Time (TDT) and Terrestrial Time (TT) are equivalent to TD.
  *     In this project, TD is used.
- *  4. Delta T (△T) is the difference between Dynamical Time and Universal Time, i.e., △T = TD - UT.
+ *  4. Delta T (△T) is the difference between Dynamical Time and Universal Time, i.e., △T = TD - UT1.
  * 
  * References for above concepts:
  * - https://eclipse.gsfc.nasa.gov/LEcat5/time.html
@@ -31,13 +30,12 @@ namespace calendar::dynamical_time {
  */
 
 
-#pragma region Delta T
+namespace calendar::delta_t {
 
-namespace delta_t {
+#pragma region Algorithm 1
 
 namespace algo1 {
 // Algo1 ref: https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html
-//            https://blog.sciencenet.cn/blog-255662-604045.html
 
 /** @brief The coefficients of algorithm 1. */
 struct Algo1Coefficients {
@@ -65,7 +63,7 @@ constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
   {  1960,     33.2,      0.51,   0.231, -0.0109 },
   {  1980,     51.0,      1.29,  -0.026,  0.0032 },
   {  2000,     63.87,     0.1,    0,      0      },
-  {  2005,     64.0,      0,      0,      0      }, // This data point will not be used. So we don't care the values of a, b, c, d here.
+  {  2005,     0.0,       0,      0,      0      }, // This data point will not be used. So we don't care the values of a, b, c, d here.
 }};
 
 
@@ -107,7 +105,7 @@ constexpr double compute(int32_t year) {
 
   const auto&& coefficients = find_coefficients(year);
   if (coefficients) {
-    const auto& [ start, end ] = *coefficients;
+    const auto& [start, end] = *coefficients;
     assert(year >= start.year and year < end.year);
 
     const double t1 = static_cast<double>(year - start.year) / (end.year - start.year) * 10.0;
@@ -139,13 +137,128 @@ constexpr double compute(int32_t year) {
 
 } // namespace algo1
 
+
+#pragma region Algorithm 2
+
+namespace algo2 {
+// Algo2 ref: https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+
 /**
- * @enum Algorithms to 
+ * @fn The function to compute △T of a given gregorian year and month, using algorithm 2.
+ * @param year The gregorian year.
+ * @param month The month.
+ * @returns The delta T.
+ * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+ */
+constexpr double compute(int32_t year, int32_t month) {
+  if (month < 1 or month > 12) {
+    throw std::out_of_range {
+      std::vformat("Month {} is out of range.", std::make_format_args(month))
+    };
+  }
+
+  const double y = year + (month - 0.5) / 12.0;
+
+  if (year < -500) {
+    const double u = (y - 1820) / 100.0;
+    return -20.0 + 32.0 * std::pow(u, 2);
+  }
+
+  if (year >= -500 and year < 500) {
+    const double u = y / 100.0;
+    return 10583.6 - 1014.41 * u + 33.78311 * std::pow(u, 2)
+         - 5.952053 * std::pow(u, 3) - 0.1798452 * std::pow(u, 4)
+         + 0.022174192 * std::pow(u, 5) + 0.0090316521 * std::pow(u, 6);
+  }
+
+  if (year >= 500 and year < 1600) {
+    const double u = (y - 1000) / 100.0;
+    return 1574.2 - 556.01 * u + 71.23472 * std::pow(u, 2)
+         + 0.319781 * std::pow(u, 3) - 0.8503463 * std::pow(u, 4)
+         - 0.005050998 * std::pow(u, 5) + 0.0083572073 * std::pow(u, 6);
+  }
+
+  if (year >= 1600 and year < 1700) {
+    const double t = y - 1600;
+    return 120.0 - 0.9808 * t - 0.01532 * std::pow(t, 2)
+         + std::pow(t, 3) / 7129.0;
+  }
+
+  if (year >= 1700 and year < 1800) {
+    const double t = y - 1700;
+    return 8.83 + 0.1603 * t - 0.0059285 * std::pow(t, 2)
+         + 0.00013336 * std::pow(t, 3) - std::pow(t, 4) / 1174000.0;
+  }
+
+  if (year >= 1800 and year < 1860) {
+    const double t = y - 1800;
+    return 13.72 - 0.332447 * t + 0.0068612 * std::pow(t, 2)
+         + 0.0041116 * std::pow(t, 3) - 0.00037436 * std::pow(t, 4)
+         + 0.0000121272 * std::pow(t, 5) - 0.0000001699 * std::pow(t, 6)
+         + 0.000000000875 * std::pow(t, 7);
+  }
+
+  if (year >= 1860 and year < 1900) {
+    const double t = y - 1860;
+    return 7.62 + 0.5737 * t - 0.251754 * std::pow(t, 2)
+         + 0.01680668 * std::pow(t, 3) - 0.0004473624 * std::pow(t, 4)
+         + std::pow(t, 5) / 233174.0;
+  }
+
+  if (year >= 1900 and year < 1920) {
+    const double t = y - 1900;
+    return -2.79 + 1.494119 * t - 0.0598939 * std::pow(t, 2)
+         + 0.0061966 * std::pow(t, 3) - 0.000197 * std::pow(t, 4);
+  }
+
+  if (year >= 1920 and year < 1941) {
+    const double t = y - 1920;
+    return 21.20 + 0.84493 * t - 0.076100 * std::pow(t, 2)
+         + 0.0020936 * std::pow(t, 3);
+  }
+
+  if (year >= 1941 and year < 1961) {
+    const double t = y - 1950;
+    return 29.07 + 0.407 * t - std::pow(t, 2) / 233.0
+         + std::pow(t, 3) / 2547.0;
+  }
+
+  if (year >= 1961 and year < 1986) {
+    const double t = y - 1975;
+    return 45.45 + 1.067 * t - std::pow(t, 2) / 260.0
+         - std::pow(t, 3) / 718.0;
+  }
+
+  if (year >= 1986 and year < 2005) {
+    const double t = y - 2000;
+    return 63.86 + 0.3345 * t - 0.060374 * std::pow(t, 2)
+         + 0.0017275 * std::pow(t, 3) + 0.000651814 * std::pow(t, 4)
+         + 0.00002373599 * std::pow(t, 5);
+  }
+
+  if (year >= 2005 and year < 2050) {
+    const double t = y - 2000;
+    return 62.92 + 0.32217 * t + 0.005589 * std::pow(t, 2);
+  }
+
+  if (year >= 2050 and year < 2150) {
+    return -20.0 + 32.0 * std::pow((y - 1820) / 100.0, 2)
+         - 0.5628 * (2150 - y);
+  }
+
+  // Otherwise, year is >= 2150.
+  return -20.0 + 32 * std::pow((y - 1820) / 100.0, 2);
+}
+
+} // namespace algo2
+
+
+/**
+ * @enum Algorithms for delta T calculations. 
  */
 enum class Algorithm {
   Algo1,
+  Algo2,
 };
 
-} // namespace delta_t
-
-} // namespace calendar::dynamical_time
+} // namespace calendar::delta_t

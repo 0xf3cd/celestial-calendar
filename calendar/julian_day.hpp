@@ -39,7 +39,7 @@ double utc_to_jd(const calendar::utc::Datetime& dt) {
 
   assert(dt.ok());
   
-  const auto& [ g_y, g_m, g_d ] = util::from_ymd(dt.ymd);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(dt.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
