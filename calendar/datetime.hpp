@@ -7,7 +7,7 @@
 
 #include "date.hpp"
 
-namespace util::datetime {
+namespace calendar::utc {
 
 using namespace std::chrono;
 
@@ -88,18 +88,18 @@ constexpr hh_mm_ss<nanoseconds> from_fraction(const double fraction) {
  * @note The `time_of_day` field (i.e. `hh_mm_ss`) is positive and less than 24:00:00.0 (i.e. 1 day).
  * @note No time zone is assumed. 
  */
-struct UTC {
+struct Datetime {
   const year_month_day ymd;
   const hh_mm_ss<nanoseconds> time_of_day;
 
-  UTC() = delete;
+  Datetime() = delete;
 
   /**
-   * @brief Constructs a `UTC` from a `time_point`.
+   * @brief Constructs a `Datetime` from a `time_point`.
    * @param tp The time point. The expected clock is `system_clock`.
    */
   template <IsDuration Duration>
-  constexpr explicit UTC(const time_point<system_clock, Duration>& tp) 
+  constexpr explicit Datetime(const time_point<system_clock, Duration>& tp) 
     : ymd         { floor<days>(tp) }, 
       time_of_day { tp - floor<days>(tp) }
   {
@@ -115,12 +115,12 @@ struct UTC {
   }
 
   /**
-   * @brief Constructs a `UTC` from a `year_month_day` and `hh_mm_ss`.
+   * @brief Constructs a `Datetime` from a `year_month_day` and `hh_mm_ss`.
    * @param ymd The year, month, and day.
    * @param fraction The time of day.
    */
   template <IsDuration Duration>
-  constexpr explicit UTC(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)
+  constexpr explicit Datetime(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)
     : ymd         { ymd },
       time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
   {
@@ -136,11 +136,11 @@ struct UTC {
   }
 
   /**
-   * @brief Constructs a `UTC` from a `year_month_day` and a fraction of a day.
+   * @brief Constructs a `Datetime` from a `year_month_day` and a fraction of a day.
    * @param ymd The year, month, and day.
    * @param fraction The fraction of a day, in the range [0.0, 1.0).
    */
-  constexpr explicit UTC(const year_month_day& ymd, double fraction)
+  constexpr explicit Datetime(const year_month_day& ymd, double fraction)
     : ymd         { ymd },
       time_of_day { from_fraction(fraction) }
   {
@@ -205,4 +205,4 @@ struct UTC {
   }
 };
 
-} // namespace util::datetime
+} // namespace calendar::utc

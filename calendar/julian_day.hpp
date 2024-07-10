@@ -10,11 +10,16 @@
 namespace calendar::julian_day {
 
 /**
+ * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
+ */
+constexpr double J2000 = 2451545.0;
+
+/**
  * @brief Converts a UTC datetime to julian day.
- * @param utc The gregorian date and time (UTC).
+ * @param dt The gregorian date and time (UTC).
  * @returns The julian day number.
  */
-double utc_to_jd(const util::datetime::UTC& utc) {
+double utc_to_jd(const calendar::utc::Datetime& dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -32,9 +37,9 @@ double utc_to_jd(const util::datetime::UTC& utc) {
     All above variables except JD are integers (dropping the fractional part).
    */
 
-  assert(utc.ok());
+  assert(dt.ok());
   
-  const auto& [ g_y, g_m, g_d ] = util::from_ymd(utc.ymd);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(dt.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -46,7 +51,7 @@ double utc_to_jd(const util::datetime::UTC& utc) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double  JD = C + D + E + F - 1524.5 + utc.fraction(); // add the fractional part as well.
+  const double  JD = C + D + E + F - 1524.5 + dt.fraction(); // add the fractional part as well.
 
   assert(JD > 0);
   return JD;
@@ -58,7 +63,7 @@ double utc_to_jd(const util::datetime::UTC& utc) {
  * @param jd The julian day number.
  * @returns The gregorian date and time.
  */
-util::datetime::UTC jd_to_utc(const double jd) {
+calendar::utc::Datetime jd_to_utc(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -115,7 +120,7 @@ util::datetime::UTC jd_to_utc(const double jd) {
   const auto&& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return util::datetime::UTC { ymd, fraction };
+  return calendar::utc::Datetime { ymd, fraction };
 }
 
 } // namespace calendar::julian_day
