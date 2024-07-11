@@ -250,18 +250,136 @@ constexpr double compute(double year) {
 } // namespace algo2
 
 
+#pragma region Algorithm 3
+
+namespace algo3 {
+// Algo3 ref: https://eclipsewise.com/help/deltatpoly2014.html
+
+/**
+ * @fn The function to compute △T of a given gregorian year and month, using algorithm 3.
+ * @param year The gregorian year. The year is actually an integer.
+ * @returns The delta T.
+ * @ref https://eclipsewise.com/help/deltatpoly2014.html
+ * @note The original algorithm takes year and month (both are integers) as input.
+ *       But only a double is taking in the modified algorithm. 
+ *       The original algorithm will also convert the year and month into a double, so nothing is lost here.
+ * @note For year < 2005, algo3 has the same result as algo2.
+ */
+constexpr double compute(double year) {
+  if (year >= 3000) {
+    throw std::out_of_range {
+      std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
+    };
+  }
+
+  if (year < -500) {
+    const double u = (year - 1820) / 100.0;
+    return -20.0 + 32.0 * std::pow(u, 2);
+  }
+
+  if (year >= -500 and year < 500) {
+    const double u = year / 100.0;
+    return 10583.6 - 1014.41 * u + 33.78311 * std::pow(u, 2)
+         - 5.952053 * std::pow(u, 3) - 0.1798452 * std::pow(u, 4)
+         + 0.022174192 * std::pow(u, 5) + 0.0090316521 * std::pow(u, 6);
+  }
+
+  if (year >= 500 and year < 1600) {
+    const double u = (year - 1000) / 100.0;
+    return 1574.2 - 556.01 * u + 71.23472 * std::pow(u, 2)
+         + 0.319781 * std::pow(u, 3) - 0.8503463 * std::pow(u, 4)
+         - 0.005050998 * std::pow(u, 5) + 0.0083572073 * std::pow(u, 6);
+  }
+
+  if (year >= 1600 and year < 1700) {
+    const double t = year - 1600;
+    return 120.0 - 0.9808 * t - 0.01532 * std::pow(t, 2)
+         + std::pow(t, 3) / 7129.0;
+  }
+
+  if (year >= 1700 and year < 1800) {
+    const double t = year - 1700;
+    return 8.83 + 0.1603 * t - 0.0059285 * std::pow(t, 2)
+         + 0.00013336 * std::pow(t, 3) - std::pow(t, 4) / 1174000.0;
+  }
+
+  if (year >= 1800 and year < 1860) {
+    const double t = year - 1800;
+    return 13.72 - 0.332447 * t + 0.0068612 * std::pow(t, 2)
+         + 0.0041116 * std::pow(t, 3) - 0.00037436 * std::pow(t, 4)
+         + 0.0000121272 * std::pow(t, 5) - 0.0000001699 * std::pow(t, 6)
+         + 0.000000000875 * std::pow(t, 7);
+  }
+
+  if (year >= 1860 and year < 1900) {
+    const double t = year - 1860;
+    return 7.62 + 0.5737 * t - 0.251754 * std::pow(t, 2)
+         + 0.01680668 * std::pow(t, 3) - 0.0004473624 * std::pow(t, 4)
+         + std::pow(t, 5) / 233174.0;
+  }
+
+  if (year >= 1900 and year < 1920) {
+    const double t = year - 1900;
+    return -2.79 + 1.494119 * t - 0.0598939 * std::pow(t, 2)
+         + 0.0061966 * std::pow(t, 3) - 0.000197 * std::pow(t, 4);
+  }
+
+  if (year >= 1920 and year < 1941) {
+    const double t = year - 1920;
+    return 21.20 + 0.84493 * t - 0.076100 * std::pow(t, 2)
+         + 0.0020936 * std::pow(t, 3);
+  }
+
+  if (year >= 1941 and year < 1961) {
+    const double t = year - 1950;
+    return 29.07 + 0.407 * t - std::pow(t, 2) / 233.0
+         + std::pow(t, 3) / 2547.0;
+  }
+
+  if (year >= 1961 and year < 1986) {
+    const double t = year - 1975;
+    return 45.45 + 1.067 * t - std::pow(t, 2) / 260.0
+         - std::pow(t, 3) / 718.0;
+  }
+
+  if (year >= 1986 and year < 2005) {
+    const double t = year - 2000;
+    return 63.86 + 0.3345 * t - 0.060374 * std::pow(t, 2)
+         + 0.0017275 * std::pow(t, 3) + 0.000651814 * std::pow(t, 4)
+         + 0.00002373599 * std::pow(t, 5);
+  }
+
+  if (year >= 2005 and year < 2015) {
+    const double t = year - 2005;
+    return 64.69 + 0.2930 * t;
+  }
+
+  // All other cases:
+  {
+    const double t = year - 2015;
+    return 67.62 + 0.3645 * t + 0.0039755 * std::pow(t, 2);
+  }
+}
+
+} // namespace algo3
+
+
 enum class Algorithm {
   Algo1,
   Algo2,
+  Algo3,
 };
 
-// As per the statistical analysis, algorithm 2 has better accuracy.
-constexpr double compute(double year, Algorithm algorithm = Algorithm::Algo2) {
+// As per the statistical analysis, algorithm 3 has the best accuracy.
+constexpr double compute(double year, Algorithm algorithm = Algorithm::Algo3) {
   // TODO: Make this a if-constexpr?
   if (algorithm == Algorithm::Algo1) {
     return algo1::compute(year);
   }
-  return algo2::compute(year);
+  if (algorithm == Algorithm::Algo2) {
+    return algo2::compute(year);
+  }
+  return algo3::compute(year);
 }
 
 } // namespace calendar::delta_t

@@ -8,15 +8,26 @@ namespace calendar::delta_t {
 TEST(DynamicalTime, delta_t_algo1) {
   ASSERT_THROW(algo1::compute(-4001), std::out_of_range);
 
+  // Following data points are not very accurate.
   ASSERT_NEAR(algo1::compute(500.0), 5710.0, 5.0);
   ASSERT_NEAR(algo1::compute(1950.0),  29.0, 0.1);
   ASSERT_NEAR(algo1::compute(2008.0),  66.0, 0.1);
 }
 
 TEST(DynamicalTime, delta_t_algo2) {
+  // Following data points are not very accurate.
   ASSERT_NEAR(algo2::compute(500.0), 5710.0, 1.0);
   ASSERT_NEAR(algo2::compute(1950.0),  29.0, 0.1);
   ASSERT_NEAR(algo2::compute(2008.0),  66.0, 0.15);
+}
+
+TEST(DynamicalTime, delta_t_algo3) {
+  ASSERT_THROW(algo3::compute(3000.1), std::out_of_range);
+
+  // Following data points are not very accurate.
+  ASSERT_NEAR(algo3::compute(500.0), 5710.0, 1.0);
+  ASSERT_NEAR(algo3::compute(1950.0),  29.0, 0.1);
+  ASSERT_NEAR(algo3::compute(2008.0),  66.0, 0.5);
 }
 
 #pragma region Delta T Algorithms Statistics
