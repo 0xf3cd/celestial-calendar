@@ -7,7 +7,7 @@
 #include "date.hpp"
 #include "datetime.hpp"
 
-namespace calendar::julian_day {
+namespace astro::julian_day {
 
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
@@ -149,4 +149,4 @@ constexpr double mjd_to_jd(const double mjd) {
 }
 
 
-} // namespace calendar::julian_day
+} // namespace astro::julian_day

@@ -11,7 +11,7 @@
 #include "delta_t.hpp"
 
 
-namespace calendar::delta_t {
+namespace astro::delta_t {
 
 #pragma region Datasets
 
@@ -130,4 +130,4 @@ std::string make_line(
        + join_with(range2 | transform(pad), separator);
 }
 
-} // namespace calendar::delta_t
+} // namespace astro::delta_t

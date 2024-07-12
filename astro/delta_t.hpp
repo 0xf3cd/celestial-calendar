@@ -30,7 +30,7 @@
  */
 
 
-namespace calendar::delta_t {
+namespace astro::delta_t {
 
 #pragma region Algorithm 1
 
@@ -355,4 +355,4 @@ constexpr double compute(double year, Algorithm algorithm = Algorithm::Algo4) {
   return algo4::compute(year);
 }
 
-} // namespace calendar::delta_t
+} // namespace astro::delta_t

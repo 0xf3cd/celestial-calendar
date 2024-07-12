@@ -4,7 +4,7 @@
 #include "datetime.hpp"
 #include "julian_day.hpp"
 
-namespace calendar::julian_day {
+namespace astro::julian_day {
 
 using namespace util;
 using namespace calendar::utc;
