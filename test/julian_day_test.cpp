@@ -91,4 +91,12 @@ TEST(JulianDay, test_consistency) {
   }
 }
 
+TEST(JulianDay, test_mjd) {
+  ASSERT_EQ(jd_to_mjd(J2000), 51544.5);
+  ASSERT_EQ(mjd_to_jd(51544.5), J2000);
+
+  ASSERT_EQ(jd_to_mjd(MJD0), 0.0);
+  ASSERT_EQ(mjd_to_jd(0.0), MJD0);
+}
+
 }

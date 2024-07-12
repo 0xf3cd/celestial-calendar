@@ -15,6 +15,11 @@ namespace calendar::julian_day {
 constexpr double J2000 = 2451545.0;
 
 /**
+ * @brief The julian day number of 1858-11-17, 00:00:00.0, which is the zero point of modified julian day.
+ */
+constexpr double MJD0 = 2400000.5;
+
+/**
  * @brief Converts a UTC datetime to julian day.
  * @param dt The gregorian date and time (UTC).
  * @returns The julian day number.
@@ -122,5 +127,26 @@ calendar::utc::Datetime jd_to_utc(const double jd) {
 
   return calendar::utc::Datetime { ymd, fraction };
 }
+
+
+/**
+ * @brief Converts a julian day number to modified julian day.
+ * @param jd The julian day number.
+ * @returns The modified julian day.
+ */
+constexpr double jd_to_mjd(const double jd) {
+  return jd - MJD0;
+}
+
+
+/**
+ * @brief Converts a modified julian day to julian day number.
+ * @param mjd The modified julian day.
+ * @returns The julian day number.
+ */
+constexpr double mjd_to_jd(const double mjd) {
+  return mjd + MJD0;
+}
+
 
 } // namespace calendar::julian_day
