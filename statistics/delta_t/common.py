@@ -37,6 +37,9 @@ DELTA_T_LIB.delta_t_algo2.restype = ctypes.c_double
 DELTA_T_LIB.delta_t_algo3.argtypes = [ctypes.c_double]
 DELTA_T_LIB.delta_t_algo3.restype = ctypes.c_double
 
+DELTA_T_LIB.delta_t_algo4.argtypes = [ctypes.c_double]
+DELTA_T_LIB.delta_t_algo4.restype = ctypes.c_double
+
 
 # Wrap C functions with Python functions, so that they can be called from Python.
 def delta_t_algo1(year: float) -> float:
@@ -51,3 +54,8 @@ def delta_t_algo3(year: float) -> float:
   if year >= 3000:
     raise ValueError(f"Year {year} is not supported by algorithm 3.")
   return DELTA_T_LIB.delta_t_algo3(year)
+
+def delta_t_algo4(year: float) -> float:
+  if year >= 2035:
+    raise ValueError(f"Year {year} is not supported by algorithm 4.")
+  return DELTA_T_LIB.delta_t_algo4(year)

@@ -47,14 +47,15 @@ namespace algo_info {
 
 using delta_t_func = std::function<double(int32_t)>;
 
-const std::array<std::string, 3> DELTA_T_ALGO_NAMES {
-  "algo1", "algo2", "algo3"
+const std::array<std::string, 4> DELTA_T_ALGO_NAMES {
+  "algo1", "algo2", "algo3", "algo4"
 };
 
-const std::array<delta_t_func, 3> DELTA_T_ALGO_FUNCS {
+const std::array<delta_t_func, 4> DELTA_T_ALGO_FUNCS {
   algo1::compute,
   algo2::compute,
-  algo3::compute
+  algo3::compute,
+  algo4::compute
 };  
 
 } // namespace algo_list
