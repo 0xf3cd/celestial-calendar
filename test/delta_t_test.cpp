@@ -3,7 +3,7 @@
 #include "delta_t.hpp"
 #include "delta_t_test_helper.hpp"
 
-namespace calendar::delta_t {
+namespace astro::delta_t {
 
 TEST(DynamicalTime, delta_t_algo1) {
   ASSERT_THROW(algo1::compute(-4001), std::out_of_range);

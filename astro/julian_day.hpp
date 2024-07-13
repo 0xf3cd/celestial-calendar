@@ -1,4 +1,21 @@
-// Copyright (c) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/**
+ * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #pragma once
 
 #include <chrono>
@@ -7,7 +24,7 @@
 #include "date.hpp"
 #include "datetime.hpp"
 
-namespace calendar::julian_day {
+namespace astro::julian_day {
 
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
@@ -149,4 +166,43 @@ constexpr double mjd_to_jd(const double mjd) {
 }
 
 
-} // namespace calendar::julian_day
+/**
+ * @brief Converts a julian day number to julian millennium.
+ * @param jd The julian day number.
+ * @returns The julian millennium.
+ */
+constexpr double jd_to_jm(const double jd) {
+  return (jd - J2000) / 365250.0;
+}
+
+/**
+ * @brief Converts a julian millennium to julian day number.
+ * @param jm The julian millennium.
+ * @returns The julian day number.
+ */
+constexpr double jm_to_jd(const double jm) {
+  return jm * 365250.0 + J2000;
+}
+
+
+/**
+ * @brief Converts a julian day number to julian century.
+ * @param jd The julian day number.
+ * @returns The julian century.
+ */
+constexpr double jd_to_jc(const double jd) {
+  return (jd - J2000) / 36525.0;
+}
+
+
+/**
+ * @brief Converts a julian century to julian day number.
+ * @param jc The julian century.
+ * @returns The julian day number.
+ */
+constexpr double jc_to_jd(const double jc) {
+  return jc * 36525.0 + J2000;
+}
+
+
+} // namespace astro::julian_day

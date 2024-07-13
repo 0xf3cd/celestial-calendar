@@ -8,6 +8,7 @@ add_compile_options(-Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
+include_directories(${PROJECT_SOURCE_DIR}/astro)
 include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 

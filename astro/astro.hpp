@@ -16,5 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "date.hpp"
-#include "random.hpp"
+#include "julian_day.hpp"
+#include "delta_t.hpp"
+#include "sun.hpp"
