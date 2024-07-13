@@ -95,7 +95,7 @@ std::string join_with(
 ) {
   // Low performance implementation...
   std::string str { "" };
-  for (auto&& substr : view) {
+  for (const auto& substr : view) {
     str += substr + separator;
   }
   if (view.empty()) {

@@ -4,7 +4,7 @@
 #include "util.hpp"
 #include "datetime.hpp"
 
-namespace calendar::utc {
+namespace calendar {
 
 
 TEST(Datetime, datetime_from_timepoint) {

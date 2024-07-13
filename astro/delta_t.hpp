@@ -1,19 +1,24 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -88,9 +93,9 @@ constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
 constexpr std::optional<
   std::pair<Algo1Coefficients, Algo1Coefficients>
 > 
-find_coefficients(int32_t year) {
+find_coefficients(const int32_t year) {
   // TODO: Use `std::views::pairwise` when supported.
-  const auto pairwise = [](auto&& range) {
+  const auto pairwise = [](const auto& range) {
     using namespace std::ranges;
     return views::iota(0, distance(range) - 1) | views::transform([&range](auto i) {
       return std::pair { *(begin(range) + i), *(begin(range) + i + 1) };
@@ -108,15 +113,19 @@ find_coefficients(int32_t year) {
 
 
 /**
- * @fn The function to compute △T of a given gregorian year, using algorithm 1.
- * @param year The gregorian time. The year is actually a double.
- * @returns The delta T.
+ * @brief The function to compute △T of a given gregorian year, using algorithm 1.
+ * @param year The year, of double type.
+ * @return The delta T.
+ *
+ * @throw std::out_of_range if the year is < -4000.
+ * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * 
  * @ref https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
- *       E.g., to get △T the last day of 2005, 2005.99 can be used as input.
  */
-constexpr double compute(double year) {
+constexpr double compute(const double year) {
   if (year < -4000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
@@ -164,12 +173,16 @@ namespace algo2 {
 // Algo2 ref: https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
 
 /**
- * @fn The function to compute △T of a given gregorian year and month, using algorithm 2.
- * @param year The gregorian year. The year is actually an integer.
- * @returns The delta T.
+ * @brief The function to compute △T of a given gregorian year, using algorithm 2.
+ * @param year The year, of double type.
+ * @return The delta T.
+ * 
+ * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
  */
-constexpr double compute(double year) {
+constexpr double compute(const double year) noexcept {
   if (year < -500) {
     const double u = (year - 1820) / 100.0;
     return -20.0 + 32.0 * std::pow(u, 2);
@@ -270,12 +283,17 @@ namespace algo3 {
 // Algo3 ref: https://eclipsewise.com/help/deltatpoly2014.html
 
 /**
- * @fn The function to compute △T of a given gregorian year and month, using algorithm 3.
- * @param year The gregorian year. The year is actually an integer.
- * @returns The delta T.
+ * @brief The function to compute △T of a given gregorian year, using algorithm 3.
+ * @param year The year, of double type.
+ * @return The delta T.
+ * 
+ * @throw std::out_of_range if the year is >= 3000.
+ * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * 
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
-constexpr double compute(double year) {
+constexpr double compute(const double year) {
   if (year >= 3000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
@@ -312,17 +330,23 @@ namespace algo4 {
 //   Year 2024.5 - 2035.0: USNO's "Long-term" data (https://maia.usno.navy.mil/products/deltaT).
 
 /**
- * @fn The function to compute △T of a given gregorian year and month, using algorithm 4.
- * @param year The gregorian year. The year is actually an integer.
- * @returns The delta T.
+ * @brief The function to compute △T of a given gregorian year, using algorithm 4.
+ * @param year The year, of double type.
+ * @return The delta T.
+ *
+ * @throw std::out_of_range if the year is >= 2035.
+ * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * 
  * @ref Bulletin A data - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
  * @ref USNO Long-term data - https://maia.usno.navy.mil/products/deltaT
  * @ref Models - https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/models.ipynb
+ * 
  * @note For year < 2005.0, algo2 is used instead.
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO long-term data is used.
  */
-constexpr double compute(double year) {
+constexpr double compute(const double year) {
   if (year >= 2035) {
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
@@ -350,25 +374,13 @@ constexpr double compute(double year) {
 } // namespace algo4
 
 
-enum class Algorithm {
-  Algo1,
-  Algo2,
-  Algo3,
-  Algo4,
-};
-
-// As per the statistical analysis, algorithm 4 has the best accuracy.
-constexpr double compute(double year, Algorithm algorithm = Algorithm::Algo4) {
-  // TODO: Make this a if-constexpr?
-  if (algorithm == Algorithm::Algo1) {
-    return algo1::compute(year);
-  }
-  if (algorithm == Algorithm::Algo2) {
-    return algo2::compute(year);
-  }
-  if (algorithm == Algorithm::Algo3) {
-    return algo3::compute(year);
-  }
+/**
+ * @brief The function to compute △T of a given gregorian year.
+ * @param year The year, of double type.
+ * @return The delta T.
+ * @details Algo 4 is used, because it is the most accurate one.
+ */
+constexpr double compute(const double year) {
   return algo4::compute(year);
 }
 

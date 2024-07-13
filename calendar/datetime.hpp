@@ -1,19 +1,24 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -24,7 +29,7 @@
 
 #include "date.hpp"
 
-namespace calendar::utc {
+namespace calendar {
 
 using namespace std::chrono;
 
@@ -72,7 +77,7 @@ concept Fractionable = requires (T t) {
  *          Thus, the returned result may be < 0.0 or >= 1.0.
  */
 constexpr double to_fraction(const Fractionable auto& elapsed) {
-  const auto&& ns_duration = duration_cast<nanoseconds>(elapsed);
+  const auto& ns_duration = duration_cast<nanoseconds>(elapsed);
   const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
 }
@@ -100,10 +105,11 @@ constexpr hh_mm_ss<nanoseconds> from_fraction(const double fraction) {
 
 
 /**
- * @struct Represents a UTC time (gregorian date and time) in the form of `year_month_day` and `hh_mm_ss`.
+ * @struct Represents a date and a time in the form of `year_month_day` and `hh_mm_ss`.
  * @note The precision of the `time_of_day` field is `std::chrono::nanoseconds`.
  * @note The `time_of_day` field (i.e. `hh_mm_ss`) is positive and less than 24:00:00.0 (i.e. 1 day).
- * @note No time zone is assumed. 
+ * @note No time zone is assumed.
+ * @details This struct is used to represent UT1 and UTC time in this project.
  */
 struct Datetime {
   const year_month_day ymd;
@@ -218,8 +224,8 @@ struct Datetime {
    */
   constexpr double fraction() const noexcept {
     const nanoseconds&& elapsed = time_of_day.to_duration();
-    return to_fraction(elapsed);
+    return to_fraction(std::move(elapsed));
   }
 };
 
-} // namespace calendar::utc
+} // namespace calendar

@@ -7,7 +7,7 @@
 namespace astro::julian_day {
 
 using namespace util;
-using namespace calendar::utc;
+using namespace calendar;
 using namespace std::chrono_literals;
 
 const std::unordered_map<double, Datetime> jd_test_data {
@@ -31,17 +31,17 @@ const std::unordered_map<double, Datetime> jd_test_data {
 constexpr double EPSILON = 1e-6;
 
 
-TEST(JulianDay, test_utc_to_jd) {
-  for (const auto& [jd, utc] : jd_test_data) {
-    ASSERT_NEAR(utc_to_jd(utc), jd, EPSILON);
+TEST(JulianDay, test_ut1_to_jd) {
+  for (const auto& [jd, ut1] : jd_test_data) {
+    ASSERT_NEAR(ut1_to_jd(ut1), jd, EPSILON);
   }
 }
 
-TEST(JulianDay, test_jd_to_utc) {
+TEST(JulianDay, test_jd_to_ut1) {
   for (const auto& [jd, expected_dt] : jd_test_data) {
-    const auto utc = jd_to_utc(jd);
-    ASSERT_EQ(utc.ymd, expected_dt.ymd);
-    ASSERT_NEAR(utc.fraction(), expected_dt.fraction(), EPSILON);
+    const auto ut1 = jd_to_ut1(jd);
+    ASSERT_EQ(ut1.ymd, expected_dt.ymd);
+    ASSERT_NEAR(ut1.fraction(), expected_dt.fraction(), EPSILON);
   }
 }
 
@@ -64,13 +64,13 @@ TEST(JulianDay, test_consistency) {
   for (auto i = 0; i < 5000; ++i) {
     const auto ymd = random_ymd();
     const auto hms = random_hms();
-    const Datetime utc { ymd, hms };
+    const Datetime ut1 { ymd, hms };
 
-    const double jd = utc_to_jd(utc);
-    const auto recovered_utc = jd_to_utc(jd);
+    const double jd = ut1_to_jd(ut1);
+    const auto recovered_ut1 = jd_to_ut1(jd);
 
-    ASSERT_EQ(utc.ymd, recovered_utc.ymd);
-    ASSERT_NEAR(utc.fraction(), recovered_utc.fraction(), EPSILON);
+    ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
+    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), EPSILON);
   }
 
   const auto random_jd = [] -> double {
@@ -80,14 +80,14 @@ TEST(JulianDay, test_consistency) {
 
   for (auto i = 0; i < 5000; ++i) {
     const double jd = random_jd();
-    const auto utc = jd_to_utc(jd);
+    const auto ut1 = jd_to_ut1(jd);
 
-    const double recovered_jd = utc_to_jd(utc);
+    const double recovered_jd = ut1_to_jd(ut1);
     ASSERT_NEAR(recovered_jd, jd, EPSILON);
 
-    const auto recovered_utc = jd_to_utc(recovered_jd);
-    ASSERT_EQ(utc.ymd, recovered_utc.ymd);
-    ASSERT_NEAR(utc.fraction(), recovered_utc.fraction(), EPSILON);
+    const auto recovered_ut1 = jd_to_ut1(recovered_jd);
+    ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
+    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), EPSILON);
   }
 }
 

@@ -1,51 +1,34 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <cmath>
 #include <format>
-#include <numbers>
 
+#include "math.hpp"
 #include "julian_day.hpp"
 #include "earth_vsop87d.hpp"
-
-
-namespace astro::helper {
-
-/** @brief Normalize degree to [0, 360). */
-constexpr double normalize_deg(const double deg) {
-  const double __deg = std::remainder(deg, 360.0);
-  return __deg < 0.0 ? __deg + 360.0 : __deg; 
-}
-
-/** @brief Convert degree to radian. */
-constexpr double deg_to_rad(const double deg) {
-  return deg * std::numbers::pi / 180.0;
-}
-
-/** @brief Convert radian to degree. */
-constexpr double rad_to_deg(const double rad) {
-  return rad * 180.0 / std::numbers::pi;
-}
-
-} // namespace astro::helper
-
 
 namespace astro::ecliptic::sun {
 
@@ -71,7 +54,7 @@ double vsop87d_longitude(const double jd) {
                                               + L4 * std::pow(τ, 4) + L5 * std::pow(τ, 5)) / 10e8;
 
   // Convert the radians to degrees.
-  using namespace astro::helper;
+  using namespace util::math;
   const double λ_earth_heliocentric_deg = normalize_deg(rad_to_deg(λ_earth_heliocentric_rad));
 
   // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
@@ -101,7 +84,7 @@ double vsop87d_latitude(const double jd) {
                                               + B4 * std::pow(τ, 4)) / 10e8;
 
   // Convert the radians to degrees.
-  using namespace astro::helper;
+  using namespace util::math;
   const double β_earth_heliocentric_deg = rad_to_deg(β_earth_heliocentric_rad);
   
   // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
@@ -117,5 +100,10 @@ double vsop87d_latitude(const double jd) {
 
   return β_sun_geocentric_deg;
 }
+
+
+// The returned ecliptic coordinates returned by VSOP87D are based on mean equinox and equater of J2000.
+// TODO: Project the coordinates to other coordinate systems.
+
 
 } // namespace astro::ecliptic::sun

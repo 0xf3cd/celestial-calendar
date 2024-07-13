@@ -1,4 +1,4 @@
-# Chinese Calendar
+# Celestial Calendar
 > A C++20/23-style calendar
 
 ## Features

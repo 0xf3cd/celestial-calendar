@@ -1,19 +1,24 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -26,6 +31,11 @@
 
 namespace astro::julian_day {
 
+// According to https://aa.usno.navy.mil/data/JulianDate
+// > Note that the time scale that is the basis for Julian dates is Universal Time (UT1), 
+//   and that 0h UT1 corresponds to a Julian date fraction of 0.5.
+
+
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
  */
@@ -37,11 +47,11 @@ constexpr double J2000 = 2451545.0;
 constexpr double MJD0 = 2400000.5;
 
 /**
- * @brief Converts a UTC datetime to julian day.
- * @param dt The gregorian date and time (UTC).
- * @returns The julian day number.
+ * @brief Converts a UT1 datetime to julian day.
+ * @param dt The date and time (UT1).
+ * @return The julian day number.
  */
-double utc_to_jd(const calendar::utc::Datetime& dt) {
+double ut1_to_jd(const calendar::Datetime& dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -81,11 +91,11 @@ double utc_to_jd(const calendar::utc::Datetime& dt) {
 
 
 /**
- * @brief Converts a julian day number to UTC datetime.
+ * @brief Converts a julian day number to UT1 datetime.
  * @param jd The julian day number.
- * @returns The gregorian date and time.
+ * @return The date and time.
  */
-calendar::utc::Datetime jd_to_utc(const double jd) {
+calendar::Datetime jd_to_ut1(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -139,17 +149,17 @@ calendar::utc::Datetime jd_to_utc(const double jd) {
   const uint32_t year = (month <= 2) ? C - 4715 : C - 4716;
   assert(year > 0);
   
-  const auto&& ymd = util::to_ymd(year, month, day);
+  const auto& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
-  return calendar::utc::Datetime { ymd, fraction };
+  return calendar::Datetime { ymd, fraction };
 }
 
 
 /**
  * @brief Converts a julian day number to modified julian day.
  * @param jd The julian day number.
- * @returns The modified julian day.
+ * @return The modified julian day.
  */
 constexpr double jd_to_mjd(const double jd) {
   return jd - MJD0;
@@ -159,7 +169,7 @@ constexpr double jd_to_mjd(const double jd) {
 /**
  * @brief Converts a modified julian day to julian day number.
  * @param mjd The modified julian day.
- * @returns The julian day number.
+ * @return The julian day number.
  */
 constexpr double mjd_to_jd(const double mjd) {
   return mjd + MJD0;
@@ -169,7 +179,7 @@ constexpr double mjd_to_jd(const double mjd) {
 /**
  * @brief Converts a julian day number to julian millennium.
  * @param jd The julian day number.
- * @returns The julian millennium.
+ * @return The julian millennium since J2000.
  */
 constexpr double jd_to_jm(const double jd) {
   return (jd - J2000) / 365250.0;
@@ -177,8 +187,8 @@ constexpr double jd_to_jm(const double jd) {
 
 /**
  * @brief Converts a julian millennium to julian day number.
- * @param jm The julian millennium.
- * @returns The julian day number.
+ * @param jm The julian millennium since J2000.
+ * @return The julian day number.
  */
 constexpr double jm_to_jd(const double jm) {
   return jm * 365250.0 + J2000;
@@ -188,7 +198,7 @@ constexpr double jm_to_jd(const double jm) {
 /**
  * @brief Converts a julian day number to julian century.
  * @param jd The julian day number.
- * @returns The julian century.
+ * @return The julian century since J2000.
  */
 constexpr double jd_to_jc(const double jd) {
   return (jd - J2000) / 36525.0;
@@ -197,8 +207,8 @@ constexpr double jd_to_jc(const double jd) {
 
 /**
  * @brief Converts a julian century to julian day number.
- * @param jc The julian century.
- * @returns The julian day number.
+ * @param jc The julian century since J2000.
+ * @return The julian day number.
  */
 constexpr double jc_to_jd(const double jc) {
   return jc * 36525.0 + J2000;

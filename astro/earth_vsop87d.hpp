@@ -1,19 +1,24 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -22,6 +27,7 @@
 #include <array>
 #include <ranges>
 #include <numeric>
+#include <type_traits>
 
 namespace astro::vsop87d::earth {
 
@@ -2512,18 +2518,41 @@ constexpr std::array<Coefficients, 3> R5 {{
 }};
 
 
+
+/** @brief Type trait to get the type of the first element of a tuple-like type. */
+template <typename T>
+struct first_element {
+  using type = std::tuple_element_t<0, std::remove_cvref_t<T>>;
+};
+
+template <typename T>
+using first_element_t = typename first_element<T>::type;
+
+
+/** @brief Concept that evaluates to true if T is the type of a VSOP87D table (e.g. L0, B0, R0...). */
+template <typename T>
+concept VsopCoeffTable = requires {
+  typename first_element_t<T>;                        // Able to get the type of the first element of `T`
+  std::tuple_size<T>::value;                          // Able to get the size of `T`
+} and std::same_as<Coefficients, first_element_t<T>>; // Ensure the first element of `T` is a `Coefficients`
+
+static_assert(VsopCoeffTable<decltype(L0)>);
+static_assert(VsopCoeffTable<decltype(B1)>);
+static_assert(VsopCoeffTable<decltype(R2)>);
+
+
 /** 
- * @brief Calculates the sum of the terms in the given VSOP87D table, for the given julian day. 
+ * @brief Calculates the sum of the terms in the given VSOP87D table, for the given julian millennium. 
  * @param vsop_table The VSOP87D table.
  * @param jm The julian millennium.
  * @return The sum of the terms in the table.
  */
-constexpr double evaluate(const auto& vsop_table, const double jm) {
-  using namespace std::ranges;
-
-  const auto evaluated = vsop_table | views::transform([&](const auto& term) { 
+constexpr double evaluate(const VsopCoeffTable auto& vsop_table, const double jm) {
+  const auto calc_term = [jm](const auto& term) constexpr {
     return term.A * std::cos(term.B + term.C * jm);
-  });
+  };
+
+  const auto evaluated = vsop_table | std::views::transform(calc_term);
 
   return std::reduce(begin(evaluated), end(evaluated));
 }

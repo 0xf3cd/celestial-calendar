@@ -117,7 +117,7 @@ TEST(LunarData, test_cache_performance) {
   EXPECT_LT(elapsed_time_cached, elapsed_time_uncached);
 }
 
-TEST(LunarData, test_LUNARDATA_CACHE_correctness) {
+TEST(LunarData, test_lunardata_cache_correctness) {
   using namespace util;
 
   for (auto _ = 0; _ < 100; ++_) {

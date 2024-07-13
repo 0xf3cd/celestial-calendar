@@ -1,19 +1,24 @@
-/**
- * ChineseCalendar: A C++ library that deals with conversions between calendar systems.
- * Copyright (C) 2024 Ningqi Wang (0xf3cd) <https://github.com/0xf3cd>
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
- * This program is free software: you can redistribute it and/or modify
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -125,10 +130,10 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
     }
 
     const uint32_t lunar_m = lunar_m_idx + 1;
-    assert(1 <= lunar_m && lunar_m <= 13);
+    assert(1 <= lunar_m and lunar_m <= 13);
 
     const uint32_t lunar_d = rest_days_count + 1;
-    assert(1 <= lunar_d && lunar_d <= 30);
+    assert(1 <= lunar_d and lunar_d <= 30);
 
     return util::to_ymd(lunar_y, lunar_m, lunar_d);
   }; // find_lunar_date
@@ -145,7 +150,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
 
     // Calculate the gregorian date of the last day in the lunar year.
     const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
-    if (gregorian_date >= info.date_of_first_day && gregorian_date <= last_lunar_day) { // Yeah! We found the lunar year.
+    if (gregorian_date >= info.date_of_first_day and gregorian_date <= last_lunar_day) { // Yeah! We found the lunar year.
       return find_lunar_date(g_y);
     }
   }

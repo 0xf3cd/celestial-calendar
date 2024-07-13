@@ -157,4 +157,35 @@ TEST(Util, test_gen_random_value2) {
   }
 }
 
+
+TEST(Util, math) {
+  using namespace util::math;
+  {
+    const auto x = normalize_deg(361);
+    ASSERT_TRUE(0 <= x and x < 360) << x;
+  }
+  {
+    const auto x = normalize_deg(-1);
+    ASSERT_TRUE(0 <= x and x < 360) << x;
+  }
+  {
+    const auto x = normalize_deg(355);
+    ASSERT_TRUE(0 <= x and x < 360) << x;
+  }
+  {
+    for (auto i = 0; i < 1000; ++i) {
+      const double random_deg = util::random(-720.0, 720.0);
+      const double random_rad = deg_to_rad(random_deg);
+
+      const auto rad = deg_to_rad(random_deg);
+      const auto deg = rad_to_deg(random_rad);
+
+      ASSERT_FLOAT_EQ(deg, random_deg);
+      ASSERT_FLOAT_EQ(rad, random_rad);
+    }
+  }
+}
+
+
+
 }
