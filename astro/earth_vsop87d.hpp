@@ -18,8 +18,10 @@
 
 #pragma once
 
+#include <cmath>
 #include <array>
-
+#include <ranges>
+#include <numeric>
 
 namespace astro::vsop87d::earth {
 
@@ -2508,5 +2510,22 @@ constexpr std::array<Coefficients, 3> R5 {{
   {            0.012,  0.65617264033,   12566.1516999828, },
   {            0.001,  0.38068797142,   18849.2275499742, },
 }};
+
+
+/** 
+ * @brief Calculates the sum of the terms in the given VSOP87D table, for the given julian day. 
+ * @param vsop_table The VSOP87D table.
+ * @param jm The julian millennium.
+ * @return The sum of the terms in the table.
+ */
+constexpr double evaluate(const auto& vsop_table, const double jm) {
+  using namespace std::ranges;
+
+  const auto evaluated = vsop_table | views::transform([&](const auto& term) { 
+    return term.A * std::cos(term.B + term.C * jm);
+  });
+
+  return std::reduce(begin(evaluated), end(evaluated));
+}
 
 } // namespace astro::vsop87d::earth

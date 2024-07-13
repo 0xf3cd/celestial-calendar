@@ -99,4 +99,40 @@ TEST(JulianDay, test_mjd) {
   ASSERT_EQ(mjd_to_jd(0.0), MJD0);
 }
 
+TEST(JulianDay, test_jm) {
+  ASSERT_EQ(jd_to_jm(J2000), 0.0);
+  ASSERT_EQ(jm_to_jd(0.0), J2000);
+
+  ASSERT_NEAR(jd_to_jm(J2000 + 365250.0), 1.0, EPSILON);
+  ASSERT_NEAR(jm_to_jd(1.0), J2000 + 365250.0, EPSILON);
+
+  for (auto i = 0; i < 100; ++i) {
+    const double random_jd = util::random(1903682.686921, 2488069.686921);
+
+    const double jm = jd_to_jm(random_jd);
+    ASSERT_NEAR(jm_to_jd(jm), random_jd, EPSILON);
+
+    const double jd = jm_to_jd(jm);
+    ASSERT_NEAR(jd_to_jm(jd), jm, EPSILON);
+  }
+}
+
+TEST(JulianDay, test_jc) {
+  ASSERT_EQ(jd_to_jc(J2000), 0.0);
+  ASSERT_EQ(jc_to_jd(0.0), J2000);
+
+  ASSERT_NEAR(jd_to_jc(J2000 + 36525.0), 1.0, EPSILON);
+  ASSERT_NEAR(jc_to_jd(1.0), J2000 + 36525.0, EPSILON);
+
+  for (auto i = 0; i < 100; ++i) {
+    const double random_jd = util::random(1903682.686921, 2488069.686921);
+
+    const double jc = jd_to_jc(random_jd);
+    ASSERT_NEAR(jc_to_jd(jc), random_jd, EPSILON);
+
+    const double jd = jc_to_jd(jc);
+    ASSERT_NEAR(jd_to_jc(jd), jc, EPSILON);
+  }
+}
+
 }

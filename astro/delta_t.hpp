@@ -38,8 +38,8 @@
  *  3. Dynamical Time (TD) is a time scale used in astronomy, representing the time experienced by an observer on Earth's surface,
  *     accounting for relativistic effects and other factors. It is based on TAI as well.
  *     Terrestrial Dynamical Time (TDT) and Terrestrial Time (TT) are equivalent to TD.
- *     In this project, TD is used.
- *  4. Delta T (△T) is the difference between Dynamical Time and Universal Time, i.e., △T = TD - UT1.
+ *     In this project, TT is used.
+ *  4. Delta T (△T) is the difference between Dynamical Time and Universal Time, i.e., △T = TT - UT1.
  * 
  * References for above concepts:
  * - https://eclipse.gsfc.nasa.gov/LEcat5/time.html

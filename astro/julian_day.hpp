@@ -166,4 +166,43 @@ constexpr double mjd_to_jd(const double mjd) {
 }
 
 
+/**
+ * @brief Converts a julian day number to julian millennium.
+ * @param jd The julian day number.
+ * @returns The julian millennium.
+ */
+constexpr double jd_to_jm(const double jd) {
+  return (jd - J2000) / 365250.0;
+}
+
+/**
+ * @brief Converts a julian millennium to julian day number.
+ * @param jm The julian millennium.
+ * @returns The julian day number.
+ */
+constexpr double jm_to_jd(const double jm) {
+  return jm * 365250.0 + J2000;
+}
+
+
+/**
+ * @brief Converts a julian day number to julian century.
+ * @param jd The julian day number.
+ * @returns The julian century.
+ */
+constexpr double jd_to_jc(const double jd) {
+  return (jd - J2000) / 36525.0;
+}
+
+
+/**
+ * @brief Converts a julian century to julian day number.
+ * @param jc The julian century.
+ * @returns The julian day number.
+ */
+constexpr double jc_to_jd(const double jc) {
+  return jc * 36525.0 + J2000;
+}
+
+
 } // namespace astro::julian_day
