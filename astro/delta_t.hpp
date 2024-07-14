@@ -165,6 +165,7 @@ constexpr double compute(const double year) {
 }
 
 } // namespace algo1
+#pragma endregion
 
 
 #pragma region Algorithm 2
@@ -275,6 +276,7 @@ constexpr double compute(const double year) noexcept {
 }
 
 } // namespace algo2
+#pragma endregion
 
 
 #pragma region Algorithm 3
@@ -317,6 +319,7 @@ constexpr double compute(const double year) {
 }
 
 } // namespace algo3
+#pragma endregion
 
 
 #pragma region Algorithm 4
@@ -372,6 +375,7 @@ constexpr double compute(const double year) {
 }
 
 } // namespace algo4
+#pragma endregion
 
 
 /**

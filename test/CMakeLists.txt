@@ -21,9 +21,9 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
-macro(ADD_TEST test_name)
-  message("Adding test for ${test_name}")
-  add_executable(${test_name} ${test_name}.cpp)
+macro(ADD_TEST test_path test_name)
+  message("Adding test for ${test_path}")
+  add_executable(${test_name} ${test_path})
   target_link_libraries(
     ${test_name}
     GTest::gtest_main
@@ -31,9 +31,10 @@ macro(ADD_TEST test_name)
   gtest_discover_tests(${test_name})
 endmacro()
 
-file(GLOB SRC_PATHS "*.cpp")
+file(GLOB_RECURSE SRC_PATHS "*.cpp")
 
 foreach(src_path IN LISTS SRC_PATHS)
   get_filename_component(test_name ${src_path} NAME_WE)
-  ADD_TEST(${test_name})
+  message("Found test: ${test_name} at ${src_path}")
+  ADD_TEST(${src_path} ${test_name})
 endforeach()

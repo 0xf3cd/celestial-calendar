@@ -21,28 +21,5 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
-#include <cmath>
-#include <numbers>
-
-
-namespace util::math {
-
-/** @brief Normalize degree to [0, 360). */
-constexpr double normalize_deg(const double deg) {
-  const double __deg = std::remainder(deg, 360.0);
-  return __deg < 0.0 ? __deg + 360.0 : __deg; 
-}
-
-/** @brief Convert degree to radian. */
-constexpr double deg_to_rad(const double deg) {
-  return deg * std::numbers::pi / 180.0;
-}
-
-/** @brief Convert radian to degree. */
-constexpr double rad_to_deg(const double rad) {
-  return rad * 180.0 / std::numbers::pi;
-}
-
-} // namespace util::math
+#include "defines.hpp"
+#include "earth_coeff.hpp"
