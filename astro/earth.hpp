@@ -23,16 +23,15 @@
 
 #pragma once
 
-#include "math.hpp"
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "vsop87d/vsop87d.hpp"
 
 namespace astro::earth {
 
-using astro::math::Angle;
-using astro::math::AngleUnit::DEG;
-using astro::math::AngleUnit::RAD;
+using astro::toolbox::Angle;
+using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::AngleUnit::RAD;
 using astro::toolbox::SphericalPosition;
 
 using astro::vsop87d::Planet;

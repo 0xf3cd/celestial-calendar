@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "math.hpp"
+#include "toolbox.hpp"
 #include "util.hpp"
 
-namespace astro::math {
+namespace astro::toolbox {
 
 TEST(AstroMath, normalize_deg) {
   {
@@ -101,12 +101,12 @@ TEST(AstroMath, literals) {
 
   {
     const auto angle = 1.0_min;
-    ASSERT_FLOAT_EQ(angle.as<DEG>(), 1.0 / MIN_PER_DEG);
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), min_to_deg(1.0));
   }
 
   {
     const auto angle = 1.0_sec;
-    ASSERT_FLOAT_EQ(angle.as<DEG>(), 1.0 / SEC_PER_DEG);
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), sec_to_deg(1.0));
   }
 }
 

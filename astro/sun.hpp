@@ -25,7 +25,6 @@
 
 #include <format>
 
-#include "math.hpp"
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 
@@ -34,8 +33,8 @@
 
 namespace astro::sun {
 
-using astro::math::Angle;
-using astro::math::AngleUnit::DEG;
+using astro::toolbox::Angle;
+using astro::toolbox::AngleUnit::DEG;
 using astro::toolbox::SphericalPosition;
 
 
@@ -49,7 +48,7 @@ using astro::toolbox::SphericalPosition;
  * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  */
 SphericalPosition vsop87d_geocentric_position(const double jd) {
-  using namespace astro::math::literals;
+  using namespace astro::toolbox::literals;
   const auto& [λ_helio, β_helio, r_helio] = astro::earth::vsop87d_heliocentric_position(jd);
 
   return {
