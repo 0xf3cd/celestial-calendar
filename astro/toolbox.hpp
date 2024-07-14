@@ -24,35 +24,37 @@
 #pragma once
 
 #include "math.hpp"
-#include "toolbox.hpp"
-#include "julian_day.hpp"
-#include "vsop87d/vsop87d.hpp"
+#include "vsop87d/defines.hpp"
 
-namespace astro::earth {
+namespace astro::toolbox {
 
 using astro::math::Angle;
 using astro::math::AngleUnit::DEG;
 using astro::math::AngleUnit::RAD;
-using astro::toolbox::SphericalPosition;
-
-using astro::vsop87d::Planet;
 
 /**
- * @brief Calculate the heliocentric position of the Earth, using VSOP87D.
- * @param jd The Julian Day.
- * @return The heliocentric position of the Earth.
- * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Earth.py
+ * @brief Represents a position in a spherical coordinate system.
  */
-SphericalPosition vsop87d_heliocentric_position(const double jd) {
-  const double jm = astro::julian_day::jd_to_jm(jd);
-  const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
+struct SphericalPosition {
+  const Angle<DEG> lon; // Longitude
+  const Angle<DEG> lat; // Latitude
+  const double r;       // Radious, In AU
+};
 
-  return {
-    // As per the algorithm, the longitude is normalized to [0, 360).
-    .lon = Angle<RAD>(evaluated.lon).normalize(),
-    .lat = Angle<RAD>(evaluated.lat),
-    .r   = evaluated.r
-  };
+
+/**
+ * @brief Apply a small correction on VSOP87D's result.
+ *        The correction will convert the position to FK5 system.
+ * @param vspo The position calculated by VSOP87D.
+ * @return The position in the FK5 system.
+ * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Coordinates.py
+ * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
+ */
+SphericalPosition vspo87d_to_fk5(const astro::vsop87d::Evaluation& vspo) {
+  // TODO: Implement this.
+  (void)vspo;
+  return { 0,0,0 };
 }
 
-} // namespace astro::earth
+
+} // namespace astro::toolbox

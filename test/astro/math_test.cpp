@@ -83,4 +83,59 @@ TEST(AstroMath, angle) {
   }
 }
 
+TEST(AstroMath, literals) {
+  using namespace literals;
+  using AngleUnit::DEG;
+  using AngleUnit::RAD;
+
+  {
+    const auto angle = 360.0_deg;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), 360.0);
+    ASSERT_FLOAT_EQ(angle.as<RAD>(), 2.0 * std::numbers::pi);
+  }
+
+  {
+    const auto angle = 0.3141592653589793_rad;
+    ASSERT_FLOAT_EQ(angle.as<RAD>(), 0.3141592653589793);
+  }
+
+  {
+    const auto angle = 1.0_min;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), 1.0 / MIN_PER_DEG);
+  }
+
+  {
+    const auto angle = 1.0_sec;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), 1.0 / SEC_PER_DEG);
+  }
+}
+
+TEST(AstroMath, angle_operator) {
+  using namespace literals;
+  using AngleUnit::DEG;
+  using AngleUnit::RAD;
+
+  {
+    const auto angle = 360.0_deg;
+
+    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0_deg).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0_deg).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>() * 2.0, (angle * 2.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>() / 2.0, (angle / 2.0).as<DEG>());
+  }
+
+  {
+    const auto angle = 1.0_rad;
+
+    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0_rad).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0_rad).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>() * 2.0, (angle * 2.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>() / 2.0, (angle / 2.0).as<RAD>());
+  }
+}
+
 } // namespace astro::math

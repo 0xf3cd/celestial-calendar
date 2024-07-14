@@ -50,10 +50,17 @@ constexpr double rad_to_deg(const double rad) {
   return rad * 180.0 / std::numbers::pi;
 }
 
+/** @brief The number of minutes in a degree. */
+constexpr uint32_t MIN_PER_DEG = 60;
+
+/** @brief The number of seconds in a minute. */
+constexpr uint32_t SEC_PER_MIN = 60;
+
+/** @brief The number of seconds in a degree. */
+constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
 
 /** @enum AngleUnit the angle's unit, either degree or radian. */
-enum class AngleUnit { DEG, RAD, };
-
+enum class AngleUnit { RAD, DEG };
 
 /** 
  * @struct Represents an angle. 
@@ -64,6 +71,14 @@ struct Angle {
   const double _value;
 
   constexpr Angle(const double value) : _value { value } {}
+
+  constexpr static Angle<AngleUnit::DEG> from_min(const double value) {
+    return Angle<AngleUnit::DEG> { value / MIN_PER_DEG };
+  }
+
+  constexpr static Angle<AngleUnit::DEG> from_sec(const double value) {
+    return Angle<AngleUnit::DEG> { value / SEC_PER_DEG };
+  }
 
   /** @brief Allow implicit conversion to the other unit. */
   template <AngleUnit As>
@@ -89,6 +104,17 @@ struct Angle {
 
   constexpr Angle<Unit> operator-() const {
     return Angle<Unit> { -_value };
+  }
+
+  constexpr Angle<Unit> operator*(const double other) const {
+    return Angle<Unit> { _value * other };
+  }
+
+  constexpr Angle<Unit> operator/(const double other) const {
+    if (other == 0.0) {
+      throw std::runtime_error("Division by zero.");
+    }
+    return Angle<Unit> { _value / other };
   }
 
   /**
@@ -123,14 +149,24 @@ struct Angle {
 };
 
 
-/**
- * @brief Represents a position in a spherical coordinate system.
- */
-struct SphericalPosition {
-  const Angle<AngleUnit::DEG> lon; // Longitude
-  const Angle<AngleUnit::DEG> lat; // Latitude
-  const double r;                  // Radious, In AU
-};
+namespace literals {
 
+Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
+  return Angle<AngleUnit::DEG> { static_cast<double>(value) };
+}
+
+Angle<AngleUnit::DEG> operator"" _min(const long double value) {
+  return Angle<AngleUnit::DEG>::from_min(static_cast<double>(value));
+}
+
+Angle<AngleUnit::DEG> operator"" _sec(const long double value) {
+  return Angle<AngleUnit::DEG>::from_sec(static_cast<double>(value));
+}
+
+Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
+  return Angle<AngleUnit::RAD> { static_cast<double>(value) };
+}
+
+} // namespace astro::math::literals
 
 } // namespace astro::math
