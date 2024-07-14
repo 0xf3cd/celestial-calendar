@@ -21,5 +21,5 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "date.hpp"
-#include "random.hpp"
+#include "defines.hpp"
+#include "earth_coeff.hpp"

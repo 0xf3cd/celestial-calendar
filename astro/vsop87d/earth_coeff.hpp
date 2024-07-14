@@ -23,21 +23,19 @@
 
 #pragma once
 
-#include <cmath>
-#include <array>
-#include <ranges>
-#include <numeric>
-#include <type_traits>
+#include <vector>
+#include "defines.hpp"
 
-namespace astro::vsop87d::earth {
+namespace astro::vsop87d::earth_coeff {
 
-struct Coefficients {
-  double A, B, C;
-};
+using Coefficients  = astro::vsop87d::Coefficients;
+using Vsop87dTable  = astro::vsop87d::Vsop87dTable;
+using Vsop87dTables = astro::vsop87d::Vsop87dTables;
+
 
 #pragma region L0-L5
 
-constexpr std::array<Coefficients, 559> L0 {{
+const inline Vsop87dTable L0 {
   {    175347045.673,            0.0,                0.0, },
   {      3341656.456,  4.66925680417,    6283.0758499914, },
   {        34894.275,  4.62610241759,   12566.1516999828, },
@@ -597,9 +595,9 @@ constexpr std::array<Coefficients, 559> L0 {{
   {            0.039,  1.20838190039,  18842.11400297339, },
   {            0.045,  3.18590558749,   45585.1728121874, },
   {            0.049,  2.44790934886,    13613.804277336, },
-}};
+};
 
-constexpr std::array<Coefficients, 341> L1 {{
+const inline Vsop87dTable L1 {
   { 628331966747.491,            0.0,                0.0, },
   {       206058.863,  2.67823455584,    6283.0758499914, },
   {          4303.43,  2.63512650414,   12566.1516999828, },
@@ -941,9 +939,9 @@ constexpr std::array<Coefficients, 341> L1 {{
   {            0.024,  5.72605158675,    29864.334027309, },
   {            0.024,  1.40237993205,    14712.317116458, },
   {            0.025,  5.71466092822,   25934.1243310894, },
-}};
+};
 
-constexpr std::array<Coefficients, 142> L2 {{
+const inline Vsop87dTable L2 {
   {         52918.87,            0.0,                0.0, },
   {         8719.837,  1.07209665242,    6283.0758499914, },
   {          309.125,  0.86728818832,   12566.1516999828, },
@@ -1086,9 +1084,9 @@ constexpr std::array<Coefficients, 142> L2 {{
   {             0.01,  1.40815507226,    10988.808157535, },
   {            0.011,  3.05005267431,   17260.1546546904, },
   {             0.01,  4.93364992366,   12352.8526045448, },
-}};
+};
 
-constexpr std::array<Coefficients, 22> L3 {{
+const inline Vsop87dTable L3 {
   {          289.226,  5.84384198723,    6283.0758499914, },
   {           34.955,            0.0,                0.0, },
   {           16.819,  5.48766912348,   12566.1516999828, },
@@ -1111,9 +1109,9 @@ constexpr std::array<Coefficients, 22> L3 {{
   {            0.005,  2.71488713339,    10977.078804699, },
   {            0.005,  3.76879847273,   12036.4607348882, },
   {            0.005,  4.28412873331,    6275.9623029906, },
-}};
+};
 
-constexpr std::array<Coefficients, 11> L4 {{
+const inline Vsop87dTable L4 {
   {          114.084,  3.14159265359,                0.0, },
   {            7.717,  4.13446589358,    6283.0758499914, },
   {            0.765,  3.83803776214,   12566.1516999828, },
@@ -1125,19 +1123,23 @@ constexpr std::array<Coefficients, 11> L4 {{
   {             0.01,   5.6480176635,    6127.6554505572, },
   {            0.008,  2.84160570605,  161000.6857376741, },
   {            0.002,  0.54912904658,    6438.4962494256, },
-}};
+};
 
-constexpr std::array<Coefficients, 5> L5 {{
+const inline Vsop87dTable L5 {
   {            0.878,  3.14159265359,                0.0, },
   {            0.172,   2.7657906951,    6283.0758499914, },
   {             0.05,  2.01353298182,     155.4203994342, },
   {            0.028,  2.21496423926,   12566.1516999828, },
   {            0.005,  1.75600058765,   18849.2275499742, },
-}};
+};
+
+/** @brief Simply put all L tables together. */
+const inline Vsop87dTables L { L0, L1, L2, L3, L4, L5 };
+
 
 #pragma region B0-B4
 
-constexpr std::array<Coefficients, 184> B0 {{
+const inline Vsop87dTable B0 {
   {           279.62,  3.19870156017,  84334.66158130829, },
   {          101.643,  5.42248619256,    5507.5532386674, },
   {           80.445,  3.88013204458,    5223.6939198022, },
@@ -1322,9 +1324,9 @@ constexpr std::array<Coefficients, 184> B0 {{
   {            0.054,  3.38482031504, 323049.11878710287, },
   {            0.039,  3.28500401343,  71768.50988132549, },
   {            0.039,   3.1123991069,  96900.81328129109, },
-}};
+};
 
-constexpr std::array<Coefficients, 99> B1 {{
+const inline Vsop87dTable B1 {
   {             9.03,   3.8972906189,    5507.5532386674, },
   {            6.177,  1.73038850355,    5223.6939198022, },
   {              3.8,  5.24404145734,    2352.8661537718, },
@@ -1424,9 +1426,9 @@ constexpr std::array<Coefficients, 99> B1 {{
   {            0.021,  4.00149269576,    3154.6870848956, },
   {            0.018,  1.58348238359,    2118.7638603784, },
   {            0.019,  0.85407021371,    14712.317116458, },
-}};
+};
 
-constexpr std::array<Coefficients, 49> B2 {{
+const inline Vsop87dTable B2 {
   {            1.662,  1.62703209173,  84334.66158130829, },
   {            0.492,  2.41382223971,    1047.7473117547, },
   {            0.344,  2.24353004539,    5507.5532386674, },
@@ -1476,9 +1478,9 @@ constexpr std::array<Coefficients, 49> B2 {{
   {             0.01,  5.15032130575,   11371.7046897582, },
   {            0.013,  0.98720797401,     5729.506447149, },
   {            0.009,  5.94191743597,    7632.9432596502, },
-}};
+};
 
-constexpr std::array<Coefficients, 11> B3 {{
+const inline Vsop87dTable B3 {
   {            0.011,  0.23877262399,    7860.4193924392, },
   {            0.009,  1.16069982609,    5507.5532386674, },
   {            0.008,  1.65357552925,    5884.9268465832, },
@@ -1490,19 +1492,23 @@ constexpr std::array<Coefficients, 11> B3 {{
   {            0.006,  0.84181087594,    6275.9623029906, },
   {            0.006,  5.40160929468,    1577.3435424478, },
   {            0.007,  2.73399865247,    6309.3741697912, },
-}};
+};
 
-constexpr std::array<Coefficients, 5> B4 {{
+const inline Vsop87dTable B4 {
   {            0.004,  0.79662198849,    6438.4962494256, },
   {            0.005,  0.84308705203,    1047.7473117547, },
   {            0.005,  0.05711572303,  84334.66158130829, },
   {            0.003,  3.46779895686,    6279.5527316424, },
   {            0.003,  2.89822201212,    6127.6554505572, },
-}};
+};
+
+/** @brief Simply put all B tables together. */
+const inline Vsop87dTables B { B0, B1, B2, B3, B4 };
+
 
 #pragma region R0-R5
 
-constexpr std::array<Coefficients, 526> R0 {{
+const inline Vsop87dTable R0 {
   {    100013988.799,            0.0,                0.0, },
   {      1670699.626,  3.09846350771,    6283.0758499914, },
   {        13956.023,   3.0552460962,   12566.1516999828, },
@@ -2029,9 +2035,9 @@ constexpr std::array<Coefficients, 526> R0 {{
   {             0.04,   5.3969491832,    9498.2122306346, },
   {             0.04,  3.30603243754,  23536.11695768099, },
   {             0.05,  6.15760345261,  78051.34191383338, },
-}};
+};
 
-constexpr std::array<Coefficients, 292> R1 {{
+const inline Vsop87dTable R1 {
   {       103018.608,  1.10748969588,    6283.0758499914, },
   {         1721.238,  1.06442301418,   12566.1516999828, },
   {          702.215,  3.14159265359,                0.0, },
@@ -2324,9 +2330,9 @@ constexpr std::array<Coefficients, 292> R1 {{
   {            0.019,  4.71432851499,  77690.75950573849, },
   {            0.019,  2.54227398241,  77736.78343050249, },
   {             0.02,  5.91915117116,    48739.859897083, },
-}};
+};
 
-constexpr std::array<Coefficients, 139> R2 {{
+const inline Vsop87dTable R2 {
   {         4359.385,  5.78455133738,    6283.0758499914, },
   {          123.633,  5.57934722157,   12566.1516999828, },
   {           12.341,  3.14159265359,                0.0, },
@@ -2466,9 +2472,9 @@ constexpr std::array<Coefficients, 139> R2 {{
   {            0.009,  3.02238989305,  23543.23050468179, },
   {            0.009,  2.04999402381,   22003.9146348698, },
   {            0.009,  4.91488110218,      213.299095438, },
-}};
+};
 
-constexpr std::array<Coefficients, 27> R3 {{
+const inline Vsop87dTable R3 {
   {          144.595,  4.27319435148,    6283.0758499914, },
   {            6.729,  3.91697608662,   12566.1516999828, },
   {            0.774,            0.0,                0.0, },
@@ -2496,9 +2502,9 @@ constexpr std::array<Coefficients, 27> R3 {{
   {            0.007,  2.98052059053,    6681.2248533996, },
   {            0.005,  2.30961231391,   12036.4607348882, },
   {            0.005,  3.71102966917,    6290.1893969922, },
-}};
+};
 
-constexpr std::array<Coefficients, 10> R4 {{
+const inline Vsop87dTable R4 {
   {            3.858,  2.56384387339,    6283.0758499914, },
   {            0.306,   2.2676950123,   12566.1516999828, },
   {            0.053,  3.44031471924,    5573.1428014331, },
@@ -2509,52 +2515,15 @@ constexpr std::array<Coefficients, 10> R4 {{
   {            0.005,  4.07695126049,    6127.6554505572, },
   {            0.006,  3.81514213664,  149854.4001348079, },
   {            0.003,  1.28175749811,    6286.5989683404, },
-}};
+};
 
-constexpr std::array<Coefficients, 3> R5 {{
+const inline Vsop87dTable R5 {
   {            0.086,  1.21579741687,    6283.0758499914, },
   {            0.012,  0.65617264033,   12566.1516999828, },
   {            0.001,  0.38068797142,   18849.2275499742, },
-}};
-
-
-
-/** @brief Type trait to get the type of the first element of a tuple-like type. */
-template <typename T>
-struct first_element {
-  using type = std::tuple_element_t<0, std::remove_cvref_t<T>>;
 };
 
-template <typename T>
-using first_element_t = typename first_element<T>::type;
+/** @brief Simply put all R tables together. */
+const inline Vsop87dTables R { R0, R1, R2, R3, R4, R5 };
 
-
-/** @brief Concept that evaluates to true if T is the type of a VSOP87D table (e.g. L0, B0, R0...). */
-template <typename T>
-concept VsopCoeffTable = requires {
-  typename first_element_t<T>;                        // Able to get the type of the first element of `T`
-  std::tuple_size<T>::value;                          // Able to get the size of `T`
-} and std::same_as<Coefficients, first_element_t<T>>; // Ensure the first element of `T` is a `Coefficients`
-
-static_assert(VsopCoeffTable<decltype(L0)>);
-static_assert(VsopCoeffTable<decltype(B1)>);
-static_assert(VsopCoeffTable<decltype(R2)>);
-
-
-/** 
- * @brief Calculates the sum of the terms in the given VSOP87D table, for the given julian millennium. 
- * @param vsop_table The VSOP87D table.
- * @param jm The julian millennium.
- * @return The sum of the terms in the table.
- */
-constexpr double evaluate(const VsopCoeffTable auto& vsop_table, const double jm) {
-  const auto calc_term = [jm](const auto& term) constexpr {
-    return term.A * std::cos(term.B + term.C * jm);
-  };
-
-  const auto evaluated = vsop_table | std::views::transform(calc_term);
-
-  return std::reduce(begin(evaluated), end(evaluated));
-}
-
-} // namespace astro::vsop87d::earth
+} // namespace astro::vsop87d::earth_coeff

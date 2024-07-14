@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include <cmath>
 #include <format>
 
 #include "math.hpp"
 #include "julian_day.hpp"
-#include "earth_vsop87d.hpp"
+#include "vsop87d/vsop87d.hpp"
 
-namespace astro::ecliptic::sun {
+namespace astro::sun {
 
 /**
  * @brief Calculate the geocentric ecliptic longitude of the Sun, using VSOP87D.
@@ -39,28 +38,23 @@ namespace astro::ecliptic::sun {
  * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  */
 double vsop87d_longitude(const double jd) {
-  // Use VSOP87D model to calculate the heliocentric ecliptic longitude of Earth.
-  const double τ = astro::julian_day::jd_to_jm(jd);
+  using namespace astro::vsop87d;
+  using namespace astro::math;
+  using astro::julian_day::jd_to_jm;
 
-  const double L0 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L0, τ);
-  const double L1 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L1, τ);
-  const double L2 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L2, τ);
-  const double L3 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L3, τ);
-  const double L4 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L4, τ);
-  const double L5 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::L5, τ);
+  // Use VSOP87D model to calculate the heliocentric ecliptic longitude of Earth.
+  const double τ = jd_to_jm(jd);
 
   // Get the heliocentric ecliptic longitude of Earth (in radians).
-  const double λ_earth_heliocentric_rad = (L0 + L1 * τ + L2 * std::pow(τ, 2) + L3 * std::pow(τ, 3) 
-                                              + L4 * std::pow(τ, 4) + L5 * std::pow(τ, 5)) / 10e8;
+  const double λ_earth_heliocentric_rad = evaluate(earth_coeff::L, τ);
 
   // Convert the radians to degrees.
-  using namespace util::math;
-  const double λ_earth_heliocentric_deg = normalize_deg(rad_to_deg(λ_earth_heliocentric_rad));
+  const double λ_earth_heliocentric_deg = ensure_positive_deg(rad_to_deg(λ_earth_heliocentric_rad));
 
   // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
   // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
   const double λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180.0;
-  return normalize_deg(λ_sun_geocentric_deg);
+  return ensure_positive_deg(λ_sun_geocentric_deg);
 }
 
 /**
@@ -70,21 +64,17 @@ double vsop87d_longitude(const double jd) {
  * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  */
 double vsop87d_latitude(const double jd) {
+  using namespace astro::vsop87d;
+  using namespace astro::math;
+  using astro::julian_day::jd_to_jm;
+
   // Use VSOP87D model to calculate the heliocentric ecliptic latitude of Earth.
-  const double τ = astro::julian_day::jd_to_jm(jd);
+  const double τ = jd_to_jm(jd);
 
-  const double B0 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::B0, τ);
-  const double B1 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::B1, τ);
-  const double B2 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::B2, τ);
-  const double B3 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::B3, τ);
-  const double B4 = astro::vsop87d::earth::evaluate(astro::vsop87d::earth::B4, τ);
-
-  // Get the heliocentric ecliptic latitude of Earth (in radians).
-  const double β_earth_heliocentric_rad = (B0 + B1 * τ + B2 * std::pow(τ, 2) + B3 * std::pow(τ, 3) 
-                                              + B4 * std::pow(τ, 4)) / 10e8;
+  // Get the heliocentric ecliptic latitude of Earth (in radians).  
+  const auto β_earth_heliocentric_rad = evaluate(earth_coeff::B, τ);
 
   // Convert the radians to degrees.
-  using namespace util::math;
   const double β_earth_heliocentric_deg = rad_to_deg(β_earth_heliocentric_rad);
   
   // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
@@ -106,4 +96,4 @@ double vsop87d_latitude(const double jd) {
 // TODO: Project the coordinates to other coordinate systems.
 
 
-} // namespace astro::ecliptic::sun
+} // namespace astro::sun

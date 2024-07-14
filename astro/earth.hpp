@@ -21,5 +21,10 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "date.hpp"
-#include "random.hpp"
+#pragma once
+
+#include "vsop87d/vsop87d.hpp"
+
+namespace astro::earth {
+
+} // namespace astro::earth

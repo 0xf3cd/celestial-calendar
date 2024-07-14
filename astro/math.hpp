@@ -26,11 +26,10 @@
 #include <cmath>
 #include <numbers>
 
-
-namespace util::math {
+namespace astro::math {
 
 /** @brief Normalize degree to [0, 360). */
-constexpr double normalize_deg(const double deg) {
+constexpr double ensure_positive_deg(const double deg) {
   const double __deg = std::remainder(deg, 360.0);
   return __deg < 0.0 ? __deg + 360.0 : __deg; 
 }
@@ -45,4 +44,4 @@ constexpr double rad_to_deg(const double rad) {
   return rad * 180.0 / std::numbers::pi;
 }
 
-} // namespace util::math
+} // namespace astro::math
