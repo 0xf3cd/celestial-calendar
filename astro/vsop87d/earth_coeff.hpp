@@ -1136,6 +1136,8 @@ const inline Vsop87dTable L5 {
 /** @brief Simply put all L tables together. */
 const inline Vsop87dTables L { L0, L1, L2, L3, L4, L5 };
 
+#pragma endregion
+
 
 #pragma region B0-B4
 
@@ -1504,6 +1506,8 @@ const inline Vsop87dTable B4 {
 
 /** @brief Simply put all B tables together. */
 const inline Vsop87dTables B { B0, B1, B2, B3, B4 };
+
+#pragma endregion
 
 
 #pragma region R0-R5
@@ -2526,4 +2530,19 @@ const inline Vsop87dTable R5 {
 /** @brief Simply put all R tables together. */
 const inline Vsop87dTables R { R0, R1, R2, R3, R4, R5 };
 
+#pragma endregion
+
 } // namespace astro::vsop87d::earth_coeff
+
+
+namespace astro::vsop87d {
+
+/** @brief Specialize `PlannetTables` for `Planet::EAR`. */
+template <>
+struct PlannetTables<Planet::EAR> {
+  static const inline Vsop87dTables& L = vsop87d::earth_coeff::L;
+  static const inline Vsop87dTables& B = vsop87d::earth_coeff::B;
+  static const inline Vsop87dTables& R = vsop87d::earth_coeff::R;
+};
+
+} // namespace astro::vsop87d

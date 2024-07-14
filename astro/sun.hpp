@@ -27,73 +27,48 @@
 
 #include "math.hpp"
 #include "julian_day.hpp"
+
 #include "vsop87d/vsop87d.hpp"
+#include "earth.hpp"
 
 namespace astro::sun {
 
-/**
- * @brief Calculate the geocentric ecliptic longitude of the Sun, using VSOP87D.
- * @param jd The Julian Day.
- * @return The geocentric ecliptic longitude of the Sun (in degree).
- * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
- */
-double vsop87d_longitude(const double jd) {
-  using namespace astro::vsop87d;
-  using namespace astro::math;
-  using astro::julian_day::jd_to_jm;
+using astro::math::normalize_deg;
+using astro::math::Angle;
+using astro::math::AngleUnit::DEG;
+using astro::math::SphericalPosition;
 
-  // Use VSOP87D model to calculate the heliocentric ecliptic longitude of Earth.
-  const double τ = jd_to_jm(jd);
-
-  // Get the heliocentric ecliptic longitude of Earth (in radians).
-  const double λ_earth_heliocentric_rad = evaluate(earth_coeff::L, τ);
-
-  // Convert the radians to degrees.
-  const double λ_earth_heliocentric_deg = ensure_positive_deg(rad_to_deg(λ_earth_heliocentric_rad));
-
-  // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
-  // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
-  const double λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180.0;
-  return ensure_positive_deg(λ_sun_geocentric_deg);
-}
 
 /**
- * @brief Calculate the geocentric ecliptic latitude of the Sun, using VSOP87D.
+ * @brief Calculate the geocentric position of the Sun, using VSOP87D.
  * @param jd The Julian Day.
- * @return The geocentric ecliptic latitude of the Sun (in degree).
+ * @return The geocentric position of the Sun.
+ * @details The function invokes `astro::earth::vsop87d_heliocentric_position`, and
+ *          transforms the heliocentric coordinates to geocentric coordinates.
+ * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Sun.py
  * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  */
-double vsop87d_latitude(const double jd) {
-  using namespace astro::vsop87d;
-  using namespace astro::math;
-  using astro::julian_day::jd_to_jm;
+SphericalPosition vsop87d_geocentric_position(const double jd) {
+  const auto& [λ_helio, β_helio, r_helio] = astro::earth::vsop87d_heliocentric_position(jd);
 
-  // Use VSOP87D model to calculate the heliocentric ecliptic latitude of Earth.
-  const double τ = jd_to_jm(jd);
+  return {
+    // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
+    // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
+    .lon = std::invoke([&] {
+      const auto sum = λ_helio + 180.0;
+      return sum.normalize();
+    }),
 
-  // Get the heliocentric ecliptic latitude of Earth (in radians).  
-  const auto β_earth_heliocentric_rad = evaluate(earth_coeff::B, τ);
+    // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
+    // The formula is: β_sun_geocentric_deg = -β_earth_heliocentric_deg
+    .lat = -β_helio,
 
-  // Convert the radians to degrees.
-  const double β_earth_heliocentric_deg = rad_to_deg(β_earth_heliocentric_rad);
-  
-  // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
-  // The formula is: β_sun_geocentric_deg = -β_earth_heliocentric_deg
-  const double β_sun_geocentric_deg = -β_earth_heliocentric_deg;
-
-  // Extra sanity check. The expected range is [-90, 90] degrees.
-  if (β_sun_geocentric_deg < -90 or β_sun_geocentric_deg > 90) {
-    throw std::runtime_error {
-      std::format("β_sun_geocentric_deg = {} is unexpectedly out of range", β_sun_geocentric_deg)
-    };
-  }
-
-  return β_sun_geocentric_deg;
+    // The distance (radius) is the same for both Sun and Earth.
+    .r = r_helio 
+  };
 }
-
 
 // The returned ecliptic coordinates returned by VSOP87D are based on mean equinox and equater of J2000.
 // TODO: Project the coordinates to other coordinate systems.
-
 
 } // namespace astro::sun

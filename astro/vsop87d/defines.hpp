@@ -26,8 +26,6 @@
 #include <vector>
 #include <ranges>
 #include <numeric>
-
-#include <functional>
 #include <type_traits>
 
 namespace astro::vsop87d {
@@ -45,6 +43,7 @@ using Vsop87dTable = std::vector<Coefficients>;
 /** @brief The VSOP87D tables. */
 using Vsop87dTables = std::vector<Vsop87dTable>;
 
+#pragma endregion
 
 
 #pragma region VSOP87D Evaluation
@@ -62,9 +61,9 @@ constexpr double SCALING_FACTOR = 1e8;
  * @param vsop_table The VSOP87D table.
  * @param jm The julian millennium.
  * @return The sum of the terms in the table.
- * @example `evaluate_single(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
+ * @example `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
  */
-double evaluate_single(const Vsop87dTable& vsop_table, const double jm) {
+double evaluate_table(const Vsop87dTable& vsop_table, const double jm) {
   const auto calc_term = [jm](const auto& term) constexpr -> double {
     return term.A * std::cos(term.B + term.C * jm);
   };
@@ -81,12 +80,12 @@ double evaluate_single(const Vsop87dTable& vsop_table, const double jm) {
  * @param vsop_tables The VSOP87D tables.
  * @param jm The julian millennium.
  * @return The evaluated result. As per the VSOP87D model, the result is in radians.
- * @example `evaluate(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
+ * @example `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
  */
-double evaluate(const Vsop87dTables& vsop_tables, const double jm) {
+double evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) {
   // Evaluate the result for each table in `vsop_tables`.
   const auto values = vsop_tables | std::views::transform([jm](const Vsop87dTable& vsop_table) {
-    return evaluate_single(vsop_table, jm);
+    return evaluate_table(vsop_table, jm);
   });
 
   // Create the reversed view of `table_results`.
@@ -100,5 +99,39 @@ double evaluate(const Vsop87dTables& vsop_tables, const double jm) {
 
   return accumulated;
 }
+
+/** @enum The planets supported by VSOP87D. */
+enum class Planet { EAR, /* SAT, MAR, ... */ };
+
+/** @struct The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
+template <Planet planet>
+struct PlannetTables;
+
+/**
+ * @struct The result of the VSOP87D evaluation.
+ * @note This struct is expected to only hold the untouched results from the VSOP87D model.
+ */
+struct Evaluation {
+  double lon; // In radians
+  double lat; // In radians
+  double r;   // In AU
+};
+
+/**
+ * @brief Evaluate the VSOP87D tables on the given julian millennium.
+ * @tparam planet The planet to evaluate.
+ * @param jm The julian millennium.
+ * @return The evaluation result.
+ * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
+ */
+template <Planet planet>
+Evaluation evaluate(const double jm) {
+  const auto& L = PlannetTables<planet>::L;
+  const auto& B = PlannetTables<planet>::B;
+  const auto& R = PlannetTables<planet>::R;
+  return { evaluate_tables(L, jm), evaluate_tables(B, jm), evaluate_tables(R, jm) };
+}
+
+#pragma endregion
 
 } // namespace astro::vsop87d

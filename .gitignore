@@ -1,3 +1,5 @@
+test_pymeeus.py
+
 # CMake
 build/
 CMakeLists.txt.user

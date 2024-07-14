@@ -40,6 +40,8 @@ const DatasetType ACCURATE_DELTA_T_TABLE {
 
 } // namespace dataset
 
+#pragma endregion
+
 
 #pragma region Algorithm Info
 
@@ -59,6 +61,8 @@ const std::array<delta_t_func, 4> DELTA_T_ALGO_FUNCS {
 };  
 
 } // namespace algo_list
+
+#pragma endregion
 
 
 #pragma region Operation
@@ -84,6 +88,8 @@ auto calc_diff(const double year, const double expected_delta_t) {
 }
 
 } // namespace operation
+
+#pragma endregion
 
 
 #pragma region Other Helper Functions
@@ -129,5 +135,7 @@ std::string make_line(
        + separator
        + join_with(range2 | transform(pad), separator);
 }
+
+#pragma endregion
 
 } // namespace astro::delta_t

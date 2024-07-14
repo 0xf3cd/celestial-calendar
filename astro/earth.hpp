@@ -23,8 +23,35 @@
 
 #pragma once
 
+#include "math.hpp"
+#include "julian_day.hpp"
 #include "vsop87d/vsop87d.hpp"
 
 namespace astro::earth {
+
+using astro::math::Angle;
+using astro::math::AngleUnit::DEG;
+using astro::math::AngleUnit::RAD;
+using astro::math::SphericalPosition;
+
+using astro::vsop87d::Planet;
+
+/**
+ * @brief Calculate the heliocentric position of the Earth, using VSOP87D.
+ * @param jd The Julian Day.
+ * @return The heliocentric position of the Earth.
+ * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Earth.py
+ */
+SphericalPosition vsop87d_heliocentric_position(const double jd) {
+  const double jm = astro::julian_day::jd_to_jm(jd);
+  const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
+
+  return {
+    // As per the algorithm, the longitude is normalized to [0, 360).
+    .lon = Angle<RAD>(evaluated.lon).normalize(),
+    .lat = Angle<RAD>(evaluated.lat),
+    .r   = evaluated.r
+  };
+}
 
 } // namespace astro::earth

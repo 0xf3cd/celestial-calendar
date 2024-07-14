@@ -5,9 +5,10 @@
 
 namespace astro::vsop87d {
 
-TEST(VSOP87D, earth_heliocentric_position) {
+TEST(Vsop87d, evaluate) {
   // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
   // PyMeeus is a well-implemented Python library for astronomical calculations.
+  //
   // The values are directly returned by VSOP87D models, no any adjustment or correction.
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
     //    JD           L-tables expected   B-tables expected        R-tables expected
@@ -24,9 +25,9 @@ TEST(VSOP87D, earth_heliocentric_position) {
     const auto& [lon, lat, r] = expected;
     const auto jm = julian_day::jd_to_jm(jd);
 
-    ASSERT_NEAR(evaluate(earth_coeff::L, jm), lon, 1e-10);
-    ASSERT_NEAR(evaluate(earth_coeff::B, jm), lat, 1e-10);
-    ASSERT_NEAR(evaluate(earth_coeff::R, jm), r,   1e-10);
+    ASSERT_NEAR(evaluate_tables(earth_coeff::L, jm), lon, 1e-10);
+    ASSERT_NEAR(evaluate_tables(earth_coeff::B, jm), lat, 1e-10);
+    ASSERT_NEAR(evaluate_tables(earth_coeff::R, jm), r,   1e-10);
   }
 }
 
