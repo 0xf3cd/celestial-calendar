@@ -26,7 +26,11 @@
 #include <cmath>
 #include <numbers>
 
-namespace astro::math {
+#include "vsop87d/defines.hpp"
+
+namespace astro::toolbox {
+
+#pragma region Angle Stuff
 
 /** @brief Normalize degree to [0, 360). */
 constexpr double normalize_deg(const double deg) {
@@ -40,20 +44,41 @@ constexpr double normalize_rad(const double rad) {
   return __rad < 0.0 ? __rad + 2.0 * std::numbers::pi : __rad;
 }
 
+/** @brief The number of degrees in a radian. */
+constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
+
 /** @brief Convert degree to radian. */
 constexpr double deg_to_rad(const double deg) {
-  return deg * std::numbers::pi / 180.0;
+  return deg / DEG_PER_RAD;
 }
 
 /** @brief Convert radian to degree. */
 constexpr double rad_to_deg(const double rad) {
-  return rad * 180.0 / std::numbers::pi;
+  return rad * DEG_PER_RAD;
+}
+
+/** @brief The number of minutes in a degree. */
+constexpr uint32_t MIN_PER_DEG = 60;
+
+/** @brief The number of seconds in a minute. */
+constexpr uint32_t SEC_PER_MIN = 60;
+
+/** @brief The number of seconds in a degree. */
+constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
+
+/** @brief Convert minutes to degrees. */
+constexpr double min_to_deg(const double min) {
+  return min / MIN_PER_DEG;
+}
+
+/** @brief Convert seconds to degrees. */
+constexpr double sec_to_deg(const double sec) {
+  return sec / SEC_PER_DEG;
 }
 
 
 /** @enum AngleUnit the angle's unit, either degree or radian. */
-enum class AngleUnit { DEG, RAD, };
-
+enum class AngleUnit { RAD, DEG };
 
 /** 
  * @struct Represents an angle. 
@@ -65,30 +90,49 @@ struct Angle {
 
   constexpr Angle(const double value) : _value { value } {}
 
+  constexpr static Angle<AngleUnit::DEG> from_arcmin(const double value) {
+    return { min_to_deg(value) };
+  }
+
+  constexpr static Angle<AngleUnit::DEG> from_arcsec(const double value) {
+    return { sec_to_deg(value) };
+  }
+
   /** @brief Allow implicit conversion to the other unit. */
   template <AngleUnit As>
   constexpr operator Angle<As>() const {
-    return Angle<As> { as<As>() };
+    return { as<As>() };
   }
 
   constexpr Angle<Unit> operator+(const Angle<Unit>& other) const {
-    return Angle<Unit> { _value + other._value };
+    return { _value + other._value };
   }
 
   constexpr Angle<Unit> operator+(const double other) const {
-    return Angle<Unit> { _value + other };
+    return { _value + other };
   }
 
   constexpr Angle<Unit> operator-(const Angle<Unit>& other) const {
-    return Angle<Unit> { _value - other._value };
+    return { _value - other._value };
   }
 
   constexpr Angle<Unit> operator-(const double other) const {
-    return Angle<Unit> { _value - other };
+    return { _value - other };
   }
 
   constexpr Angle<Unit> operator-() const {
-    return Angle<Unit> { -_value };
+    return { -_value };
+  }
+
+  constexpr Angle<Unit> operator*(const double other) const {
+    return { _value * other };
+  }
+
+  constexpr Angle<Unit> operator/(const double other) const {
+    if (other == 0.0) {
+      throw std::runtime_error { "Division by zero." };
+    }
+    return { _value / other };
   }
 
   /**
@@ -122,15 +166,45 @@ struct Angle {
   }
 };
 
+#pragma endregion
+
+
+#pragma region Literals
+
+namespace literals {
+
+Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
+  return Angle<AngleUnit::DEG> { static_cast<double>(value) };
+}
+
+Angle<AngleUnit::DEG> operator"" _min(const long double value) {
+  return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
+}
+
+Angle<AngleUnit::DEG> operator"" _sec(const long double value) {
+  return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
+}
+
+Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
+  return Angle<AngleUnit::RAD> { static_cast<double>(value) };
+}
+
+} // namespace astro::toolbox::literals
+
+#pragma endregion
+
+
+#pragma region Common Definitions
 
 /**
  * @brief Represents a position in a spherical coordinate system.
  */
-struct SphericalPosition {
+struct SphericalCoordinate {
   const Angle<AngleUnit::DEG> lon; // Longitude
   const Angle<AngleUnit::DEG> lat; // Latitude
   const double r;                  // Radious, In AU
 };
 
+#pragma endregion
 
-} // namespace astro::math
+} // namespace astro::toolbox

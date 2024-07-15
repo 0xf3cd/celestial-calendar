@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "math.hpp"
+#include "toolbox.hpp"
 #include "util.hpp"
 
-namespace astro::math {
+namespace astro::toolbox {
 
 TEST(AstroMath, normalize_deg) {
   {
@@ -80,6 +80,61 @@ TEST(AstroMath, angle) {
 
     ASSERT_FLOAT_EQ(angle_deg.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle_deg.as<RAD>(), rad);
+  }
+}
+
+TEST(AstroMath, literals) {
+  using namespace literals;
+  using AngleUnit::DEG;
+  using AngleUnit::RAD;
+
+  {
+    const auto angle = 360.0_deg;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), 360.0);
+    ASSERT_FLOAT_EQ(angle.as<RAD>(), 2.0 * std::numbers::pi);
+  }
+
+  {
+    const auto angle = 0.3141592653589793_rad;
+    ASSERT_FLOAT_EQ(angle.as<RAD>(), 0.3141592653589793);
+  }
+
+  {
+    const auto angle = 1.0_min;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), min_to_deg(1.0));
+  }
+
+  {
+    const auto angle = 1.0_sec;
+    ASSERT_FLOAT_EQ(angle.as<DEG>(), sec_to_deg(1.0));
+  }
+}
+
+TEST(AstroMath, angle_operator) {
+  using namespace literals;
+  using AngleUnit::DEG;
+  using AngleUnit::RAD;
+
+  {
+    const auto angle = 360.0_deg;
+
+    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0_deg).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0_deg).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>() * 2.0, (angle * 2.0).as<DEG>());
+    ASSERT_EQ(angle.as<DEG>() / 2.0, (angle / 2.0).as<DEG>());
+  }
+
+  {
+    const auto angle = 1.0_rad;
+
+    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0_rad).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0_rad).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>() * 2.0, (angle * 2.0).as<RAD>());
+    ASSERT_EQ(angle.as<RAD>() / 2.0, (angle / 2.0).as<RAD>());
   }
 }
 

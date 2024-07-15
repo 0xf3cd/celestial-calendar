@@ -25,7 +25,7 @@
 
 #include <format>
 
-#include "math.hpp"
+#include "toolbox.hpp"
 #include "julian_day.hpp"
 
 #include "vsop87d/vsop87d.hpp"
@@ -33,10 +33,9 @@
 
 namespace astro::sun {
 
-using astro::math::normalize_deg;
-using astro::math::Angle;
-using astro::math::AngleUnit::DEG;
-using astro::math::SphericalPosition;
+using astro::toolbox::Angle;
+using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::SphericalCoordinate;
 
 
 /**
@@ -45,17 +44,15 @@ using astro::math::SphericalPosition;
  * @return The geocentric position of the Sun.
  * @details The function invokes `astro::earth::vsop87d_heliocentric_position`, and
  *          transforms the heliocentric coordinates to geocentric coordinates.
- * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Sun.py
- * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  */
-SphericalPosition vsop87d_geocentric_position(const double jd) {
-  const auto& [λ_helio, β_helio, r_helio] = astro::earth::vsop87d_heliocentric_position(jd);
-
+SphericalCoordinate vsop87d_geocentric_position(const double jd) {
+  const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jd);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
     .lon = std::invoke([&] {
-      const auto sum = λ_helio + 180.0;
+      using namespace astro::toolbox::literals;
+      const auto&& sum = λ_helio + 180.0_deg;
       return sum.normalize();
     }),
 
@@ -67,8 +64,5 @@ SphericalPosition vsop87d_geocentric_position(const double jd) {
     .r = r_helio 
   };
 }
-
-// The returned ecliptic coordinates returned by VSOP87D are based on mean equinox and equater of J2000.
-// TODO: Project the coordinates to other coordinate systems.
 
 } // namespace astro::sun

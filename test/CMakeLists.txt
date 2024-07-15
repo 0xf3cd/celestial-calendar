@@ -8,6 +8,7 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 endif()
 
 add_compile_definitions(TESTING=1)
+add_compile_definitions(DEBUG=1)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -22,7 +23,7 @@ enable_testing()
 include(GoogleTest)
 
 macro(ADD_TEST test_path test_name)
-  message("Adding test for ${test_path}")
+  message("Adding ${test_name}")
   add_executable(${test_name} ${test_path})
   target_link_libraries(
     ${test_name}
@@ -35,6 +36,6 @@ file(GLOB_RECURSE SRC_PATHS "*.cpp")
 
 foreach(src_path IN LISTS SRC_PATHS)
   get_filename_component(test_name ${src_path} NAME_WE)
-  message("Found test: ${test_name} at ${src_path}")
+  message("Found test: ${src_path}")
   ADD_TEST(${src_path} ${test_name})
 endforeach()
