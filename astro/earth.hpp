@@ -57,28 +57,4 @@ SphericalCoordinate vsop87d(const double jd) {
   };
 }
 
-/**
- * @brief Apply the correction to VSOP87D position, to convert it to the FK5 system.
- * @param jd The Julian Day.
- * @return The adjusted VSOP87D-calculated position in the FK5 system.
- * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
- */
-SphericalCoordinate to_fk5(const double jd, const SphericalCoordinate& vsop87d_result) {
-  const double jc = astro::julian_day::jd_to_jc(jd);
-  const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_result;
-
-  // Calculate the deltas for longitude and latitude, in arcsec.
-  const Angle λ_dash = vsop_λ - ((1.397 + 0.00031 * jc) * jc);
-  const double λ_dash_rad = λ_dash.as<RAD>();
-
-  const double delta_λ_arcsec = -0.09033 + 0.03916 * (cos(λ_dash_rad) + sin(λ_dash_rad)) * tan(vsop_β.as<RAD>());
-  const double delta_β_arcsec = 0.03916 * (cos(λ_dash_rad) - sin(λ_dash_rad));
-
-  return {
-    .lon = vsop_λ + Angle<DEG>::from_arcsec(delta_λ_arcsec),
-    .lat = vsop_β + Angle<DEG>::from_arcsec(delta_β_arcsec),
-    .r   = vsop_r,
-  };
-}
-
 } // namespace astro::earth::heliocentric_coord
