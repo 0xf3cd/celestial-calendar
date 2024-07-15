@@ -90,49 +90,49 @@ struct Angle {
 
   constexpr Angle(const double value) : _value { value } {}
 
-  constexpr static Angle<AngleUnit::DEG> from_min(const double value) {
-    return Angle<AngleUnit::DEG> { min_to_deg(value) };
+  constexpr static Angle<AngleUnit::DEG> from_arcmin(const double value) {
+    return { min_to_deg(value) };
   }
 
-  constexpr static Angle<AngleUnit::DEG> from_sec(const double value) {
-    return Angle<AngleUnit::DEG> { sec_to_deg(value) };
+  constexpr static Angle<AngleUnit::DEG> from_arcsec(const double value) {
+    return { sec_to_deg(value) };
   }
 
   /** @brief Allow implicit conversion to the other unit. */
   template <AngleUnit As>
   constexpr operator Angle<As>() const {
-    return Angle<As> { as<As>() };
+    return { as<As>() };
   }
 
   constexpr Angle<Unit> operator+(const Angle<Unit>& other) const {
-    return Angle<Unit> { _value + other._value };
+    return { _value + other._value };
   }
 
   constexpr Angle<Unit> operator+(const double other) const {
-    return Angle<Unit> { _value + other };
+    return { _value + other };
   }
 
   constexpr Angle<Unit> operator-(const Angle<Unit>& other) const {
-    return Angle<Unit> { _value - other._value };
+    return { _value - other._value };
   }
 
   constexpr Angle<Unit> operator-(const double other) const {
-    return Angle<Unit> { _value - other };
+    return { _value - other };
   }
 
   constexpr Angle<Unit> operator-() const {
-    return Angle<Unit> { -_value };
+    return { -_value };
   }
 
   constexpr Angle<Unit> operator*(const double other) const {
-    return Angle<Unit> { _value * other };
+    return { _value * other };
   }
 
   constexpr Angle<Unit> operator/(const double other) const {
     if (other == 0.0) {
-      throw std::runtime_error("Division by zero.");
+      throw std::runtime_error { "Division by zero." };
     }
-    return Angle<Unit> { _value / other };
+    return { _value / other };
   }
 
   /**
@@ -178,18 +178,18 @@ Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
 }
 
 Angle<AngleUnit::DEG> operator"" _min(const long double value) {
-  return Angle<AngleUnit::DEG>::from_min(static_cast<double>(value));
+  return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
 }
 
 Angle<AngleUnit::DEG> operator"" _sec(const long double value) {
-  return Angle<AngleUnit::DEG>::from_sec(static_cast<double>(value));
+  return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
 }
 
 Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
   return Angle<AngleUnit::RAD> { static_cast<double>(value) };
 }
 
-} // namespace astro::math::literals
+} // namespace astro::toolbox::literals
 
 #pragma endregion
 
@@ -199,30 +199,11 @@ Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
 /**
  * @brief Represents a position in a spherical coordinate system.
  */
-struct SphericalPosition {
+struct SphericalCoordinate {
   const Angle<AngleUnit::DEG> lon; // Longitude
   const Angle<AngleUnit::DEG> lat; // Latitude
   const double r;                  // Radious, In AU
 };
-
-#pragma endregion
-
-
-#pragma region FK5 System Functions
-
-/**
- * @brief Apply a small correction on VSOP87D's result.
- *        The correction will convert the position to FK5 system.
- * @param vspo The position calculated by VSOP87D.
- * @return The position in the FK5 system.
- * @ref https://github.com/architest/pymeeus/blob/master/pymeeus/Coordinates.py
- * @ref https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
- */
-SphericalPosition vspo87d_to_fk5(const astro::vsop87d::Evaluation& vspo) {
-  // TODO: Implement this.
-  (void)vspo;
-  return { 0,0,0 };
-}
 
 #pragma endregion
 

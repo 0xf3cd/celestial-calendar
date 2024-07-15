@@ -121,7 +121,7 @@ struct Evaluation {
  * @brief Evaluate the VSOP87D tables on the given julian millennium.
  * @tparam planet The planet to evaluate.
  * @param jm The julian millennium.
- * @return The evaluation result.
+ * @return The evaluation result. VSOP87D provides the heliocentric ecliptic spherical coordinates for the equinox of the day.
  * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */
 template <Planet planet>
@@ -129,7 +129,12 @@ Evaluation evaluate(const double jm) {
   const auto& L = PlannetTables<planet>::L;
   const auto& B = PlannetTables<planet>::B;
   const auto& R = PlannetTables<planet>::R;
-  return { evaluate_tables(L, jm), evaluate_tables(B, jm), evaluate_tables(R, jm) };
+
+  return {
+    .lon = evaluate_tables(L, jm), 
+    .lat = evaluate_tables(B, jm), 
+    .r   = evaluate_tables(R, jm),
+  };
 }
 
 #pragma endregion

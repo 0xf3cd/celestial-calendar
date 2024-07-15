@@ -23,4 +23,5 @@
 
 #include "julian_day.hpp"
 #include "delta_t.hpp"
+#include "earth.hpp"
 #include "sun.hpp"
