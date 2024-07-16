@@ -33,7 +33,7 @@
 
 #include "date.hpp"
 
-namespace common::lunardata {
+namespace calendar::lunardata {
 
 /*! @brief The first supported lunar year. */
 constexpr int32_t START_YEAR = 1901;
@@ -166,4 +166,4 @@ public:
 /*! @brief The global lunar year information cache. 阴历年信息缓存。 */
 const inline LunarYearInfoCache LUNARDATA_CACHE {};
 
-} // namespace common::lunardata
+} // namespace calendar::lunardata

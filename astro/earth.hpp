@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include <vector>
+#include <span>
+#include <array>
 #include <ranges>
 #include <functional>
 
@@ -32,7 +33,7 @@
 #include "vsop87d/vsop87d.hpp"
 
 
-namespace astro::earth::heliocentric_coord {
+namespace astro::earth {
 
 using astro::toolbox::Angle;
 using astro::toolbox::AngleUnit::DEG;
@@ -40,6 +41,11 @@ using astro::toolbox::AngleUnit::RAD;
 using astro::toolbox::SphericalCoordinate;
 
 using astro::vsop87d::Planet;
+
+}
+
+
+namespace astro::earth::heliocentric_coord {
 
 /**
  * @brief Calculate the heliocentric position of the Earth, using VSOP87D.
@@ -52,8 +58,8 @@ SphericalCoordinate vsop87d(const double jd) {
 
   return {
     // As per the algorithm, the longitude is normalized to [0, 2π).
-    .lon = Angle<RAD>(evaluated.lon).normalize(),
-    .lat = Angle<RAD>(evaluated.lat),
+    .λ = Angle<RAD>(evaluated.λ).normalize(),
+    .β = Angle<RAD>(evaluated.β),
     .r   = evaluated.r
   };
 }
@@ -67,11 +73,7 @@ namespace astro::earth::nutation {
 // For Earth, this means that while its axis precesses (moves in a slow, conical motion) due to gravitational forces exerted by the Moon and the Sun, 
 // there are also smaller, shorter-term variations in the tilt of the axis known as nutation.
 
-using toolbox::Angle;
-using toolbox::AngleUnit::DEG;
-using toolbox::AngleUnit::RAD;
-
-struct θParams {
+struct θCoeffs {
   int32_t D;
   int32_t M;
   int32_t Mp;
@@ -79,25 +81,25 @@ struct θParams {
   int32_t Ω;
 };
 
-struct SineCoeffs {
+struct ψCoeffs {
   double coeff1;
   double coeff2;
 };
 
-struct CosineCoeffs {
+struct εCoeffs {
   double coeff1;
   double coeff2;
 };
 
-struct NutationCoefficient {
-  θParams      θ_params;
-  SineCoeffs   sin;
-  CosineCoeffs cos;
+struct NutationCoeffs {
+  θCoeffs θ;  // Including D, M, Mp, F, Ω (Meeus's expressions); or, l,l',F,D,Om (IAU 1980's expressions).
+  ψCoeffs Δψ; // Coefficients for the Earth's nutation in longitude.
+  εCoeffs Δε; // Coefficients for the Earth's nutation in obliquity.
 };
 
 // The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
 // This table is based on IAU 1980 nutation model, and some terms are omitted.
-const inline std::vector<NutationCoefficient> MEEUS_NUTATION_COEFF {
+constexpr inline std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
   { {  0,  0,  0,  2,  2 }, {   -2274.0,   -0.2 }, {   977.0, -0.5 } },
@@ -161,11 +163,12 @@ const inline std::vector<NutationCoefficient> MEEUS_NUTATION_COEFF {
   { {  2, -1, -1,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
   { {  0,  0,  3,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
   { {  2, -1,  0,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } }
-};
+}};
+
 
 // The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
 // Compared to Meeus's omitted version, this table contains all terms.
-const inline std::vector<NutationCoefficient> IAU1980_NUTATION_COEFF {
+constexpr inline std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
   { {  0,  0, -2,  2,  1 }, {      46.0,    0.0 }, {   -24.0,  0.0 } },
@@ -272,13 +275,23 @@ const inline std::vector<NutationCoefficient> IAU1980_NUTATION_COEFF {
   { {  2,  0,  2,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
   { {  4,  0,  0,  2,  2 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
   { {  1,  1,  0,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
-};
+}};
+
 
 // TODO: There are other models, like the IAU 2000/2006 model. Implement them if needed.
 
 
 /** @enum Specify which model to use when calculating Earth's nutation. */
 enum class Model { MEEUS, IAU_1980 };
+
+/** @brief Find the nutation coefficients for the given model. */
+std::span<const NutationCoeffs> find_model(const Model model) {
+  switch (model) {
+    case Model::MEEUS:    return std::span<const NutationCoeffs>(MEEUS_NUTATION_COEFFS);
+    case Model::IAU_1980: return std::span<const NutationCoeffs>(IAU1980_NUTATION_COEFFS);
+    default:              throw std::runtime_error { "Unknown nutation model" };
+  }
+}
 
 
 /**
@@ -287,7 +300,7 @@ enum class Model { MEEUS, IAU_1980 };
  * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-std::function<Angle<DEG>(θParams)> gen_θ_func(const double jc) {
+std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -302,8 +315,8 @@ std::function<Angle<DEG>(θParams)> gen_θ_func(const double jc) {
   // Ω is the longitude of the ascending node of the Moon's mean orbit on the ecliptic in degrees.
   const double Ω  = 125.04452 - 1934.136261   * jc + 0.0020708 * jc2 + jc3 / 450000.0;
 
-  return [=](const θParams& params) {
-    const double degrees = D * params.D + M * params.M + Mp * params.Mp + F * params.F + Ω * params.Ω;
+  return [=](const θCoeffs& coeffs) -> Angle<DEG> {
+    const double degrees = D * coeffs.D + M * coeffs.M + Mp * coeffs.Mp + F * coeffs.F + Ω * coeffs.Ω;
     return Angle<DEG> { degrees };
   };
 };
@@ -312,7 +325,7 @@ std::function<Angle<DEG>(θParams)> gen_θ_func(const double jc) {
 /**
  * @brief Calculates the nutation in longitude (Δψ) for the given julian day.
  * @param jd The julian day number.
- * @param model The model to use when calculating the nutation.
+ * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in longitude (Δψ) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
@@ -322,16 +335,16 @@ Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
   const double jc = astro::julian_day::jd_to_jc(jd);
 
   // Create the function to calculate the θ values.
-  const auto θ_func = gen_θ_func(jc);
+  const auto eval_θ = gen_eval_θ(jc);
 
   // Select the coefficient terms to use.
-  const auto& nutation_coeff = (model == Model::IAU_1980) ? IAU1980_NUTATION_COEFF : MEEUS_NUTATION_COEFF;
+  const auto& coeff_terms = find_model(model);
 
   // Evaluate each term.
-  const auto results = nutation_coeff | std::views::transform([&](const NutationCoefficient& nut_coeff) {
-    Angle<DEG> θ = θ_func(nut_coeff.θ_params);
-    const auto& [coeff1, coeff2] = nut_coeff.sin;
-    return (coeff1 + coeff2 * jc) * std::sin(θ.as<RAD>());
+  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
+    const Angle<DEG> θ = eval_θ(coeffs.θ);
+    const auto& [a, b] = coeffs.Δψ;
+    return (a + b * jc) * std::sin(θ.rad());
   });
 
   // Accumulate the results of all the terms.
@@ -347,7 +360,7 @@ Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
 /**
  * @brief Calculates the nutation in obliquity (Δε) for the given julian day.
  * @param jd The julian day number.
- * @param model The model to use when calculating the nutation.
+ * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in obliquity (Δε) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
@@ -357,16 +370,16 @@ Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
   const double jc = astro::julian_day::jd_to_jc(jd);
 
   // Create the function to calculate the θ values.
-  const auto θ_func = gen_θ_func(jc);
+  const auto eval_θ = gen_eval_θ(jc);
 
   // Select the coefficient terms to use.
-  const auto& nutation_coeff = (model == Model::IAU_1980) ? IAU1980_NUTATION_COEFF : MEEUS_NUTATION_COEFF;
+  const auto& coeff_terms = find_model(model);
 
   // Evaluate each term.
-  const auto results = nutation_coeff | std::views::transform([&](const NutationCoefficient& nut_coeff) {
-    Angle<DEG> θ = θ_func(nut_coeff.θ_params);
-    const auto& [coeff1, coeff2] = nut_coeff.cos;
-    return (coeff1 + coeff2 * jc) * std::cos(θ.as<RAD>());
+  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
+    const Angle<DEG> θ = eval_θ(coeffs.θ);
+    const auto& [a, b] = coeffs.Δε;
+    return (a + b * jc) * std::cos(θ.rad());
   });
 
   // Accumulate the results of all the terms.
@@ -379,3 +392,30 @@ Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
 }
 
 } // namespace astro::earth::nutation
+
+
+namespace astro::earth::aberration {
+
+/**
+ * @ref https://en.wikipedia.org/wiki/Aberration_(astronomy)
+ * According to wikipedia:
+ * "Annual aberration is caused by the motion of an observer on Earth as the planet revolves around the Sun. Due to"... 
+ * "Its accepted value is 20.49552 arcseconds (sec) or 0.000099365 radians (rad) (at J2000)."
+ */
+
+/** @brief The constant for the annual aberration, at J2000.0. */
+constexpr double ANNUAL_CONSTANT = 20.49552;
+
+
+/**
+ * @brief Compute the aberration for the given radius (in AU).
+ * @param r The radius (in AU).
+ * @return The aberration (in degrees).
+ */
+Angle<DEG> compute(const double r) {
+  const double aberration_arcsec = ANNUAL_CONSTANT / r;
+  return Angle<DEG>::from_arcsec(aberration_arcsec);
+}
+
+} // namespace astro::earth::aberration
+

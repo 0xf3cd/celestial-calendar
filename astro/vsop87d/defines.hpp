@@ -112,9 +112,9 @@ struct PlannetTables;
  * @note This struct is expected to only hold the untouched results from the VSOP87D model.
  */
 struct Evaluation {
-  double lon; // In radians
-  double lat; // In radians
-  double r;   // In AU
+  double λ; // In radians
+  double β; // In radians
+  double r; // In AU
 };
 
 /**
@@ -131,9 +131,9 @@ Evaluation evaluate(const double jm) {
   const auto& R = PlannetTables<planet>::R;
 
   return {
-    .lon = evaluate_tables(L, jm), 
-    .lat = evaluate_tables(B, jm), 
-    .r   = evaluate_tables(R, jm),
+    .λ = evaluate_tables(L, jm), 
+    .β = evaluate_tables(B, jm), 
+    .r = evaluate_tables(R, jm),
   };
 }
 
