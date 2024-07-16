@@ -67,13 +67,13 @@ constexpr uint32_t SEC_PER_MIN = 60;
 constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
 
 /** @brief Convert minutes to degrees. */
-constexpr double min_to_deg(const double min) {
-  return min / MIN_PER_DEG;
+constexpr double arcmin_to_deg(const double arcmin) {
+  return arcmin / MIN_PER_DEG;
 }
 
 /** @brief Convert seconds to degrees. */
-constexpr double sec_to_deg(const double sec) {
-  return sec / SEC_PER_DEG;
+constexpr double arcsec_to_deg(const double arcsec) {
+  return arcsec / SEC_PER_DEG;
 }
 
 
@@ -91,11 +91,11 @@ struct Angle {
   constexpr Angle(const double value) : _value { value } {}
 
   constexpr static Angle<AngleUnit::DEG> from_arcmin(const double value) {
-    return { min_to_deg(value) };
+    return { arcmin_to_deg(value) };
   }
 
   constexpr static Angle<AngleUnit::DEG> from_arcsec(const double value) {
-    return { sec_to_deg(value) };
+    return { arcsec_to_deg(value) };
   }
 
   /** @brief Allow implicit conversion to the other unit. */
@@ -174,19 +174,19 @@ struct Angle {
 namespace literals {
 
 Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
-  return Angle<AngleUnit::DEG> { static_cast<double>(value) };
+  return { static_cast<double>(value) };
 }
 
-Angle<AngleUnit::DEG> operator"" _min(const long double value) {
+Angle<AngleUnit::DEG> operator"" _arcmin(const long double value) {
   return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
 }
 
-Angle<AngleUnit::DEG> operator"" _sec(const long double value) {
+Angle<AngleUnit::DEG> operator"" _arcsec(const long double value) {
   return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
 }
 
 Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
-  return Angle<AngleUnit::RAD> { static_cast<double>(value) };
+  return { static_cast<double>(value) };
 }
 
 } // namespace astro::toolbox::literals

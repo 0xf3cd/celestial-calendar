@@ -5,10 +5,6 @@
 namespace astro::sun::geocentric_coord {
 
 TEST(Sun, vsop87d_geocentric_position) {
-  // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
-  // PyMeeus is a well-implemented Python library for astronomical calculations.
-  //
-  // The values are directly obtained thru `Sun.geometric_geocentric_position(Epoch(jd), tofk5=False)`.
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
     // JD                   Longitude            Latitude                Radius
     { 2422498.7094451743, {  91.40761280128208, -0.00010445464204317034,  1.016482372497581 } },
