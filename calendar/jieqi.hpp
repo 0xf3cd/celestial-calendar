@@ -23,7 +23,8 @@
 
 #pragma once
 
-namespace common::defines {
+
+namespace calendar::jieqi {
 
 enum class Jieqi {
   立春, 雨水, 惊蛰, 春分, 清明, 谷雨, 立夏, 小满, 芒种, 夏至, 小暑, 大暑,
@@ -36,4 +37,4 @@ enum class Jieqi {
   LIDONG = 立冬, XIAOXUE = 小雪, DAXUE = 大雪, DONGZHI = 冬至, XIAOHAN = 小寒, DAHAN = 大寒,
 };
 
-} // namespace common::defines
+} // namespace calendar::jieqi

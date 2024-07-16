@@ -35,7 +35,7 @@ namespace calendar::lunar {
 
 using std::chrono::year_month_day;
 using std::chrono::sys_days;
-using namespace common::lunardata;
+using namespace calendar::lunardata;
 
 /*! @brief The first supported lunar date. */
 const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);

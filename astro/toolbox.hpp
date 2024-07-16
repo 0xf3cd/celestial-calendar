@@ -164,6 +164,16 @@ struct Angle {
       return { normalize_rad(_value) };
     }
   }
+
+  /** @brief Return the angle in degrees. */
+  constexpr double deg() const {
+    return as<AngleUnit::DEG>();
+  }
+
+  /** @brief Return the angle in radians. */
+  constexpr double rad() const {
+    return as<AngleUnit::RAD>();
+  }
 };
 
 #pragma endregion

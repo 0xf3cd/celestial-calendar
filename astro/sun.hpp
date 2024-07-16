@@ -82,9 +82,9 @@ Fk5Correction fk5_correction(const double jd, const SphericalCoordinate& vsop87d
 
   // Calculate the deltas for longitude and latitude, in arcsec.
   const Angle λ_dash = vsop_λ - Angle<DEG> { (1.397 + 0.00031 * jc) * jc };
-  const double λ_dash_rad = λ_dash.as<RAD>();
+  const double λ_dash_rad = λ_dash.rad();
 
-  const double delta_λ_arcsec = -0.09033 + 0.03916 * (cos(λ_dash_rad) + sin(λ_dash_rad)) * tan(vsop_β.as<RAD>());
+  const double delta_λ_arcsec = -0.09033 + 0.03916 * (cos(λ_dash_rad) + sin(λ_dash_rad)) * tan(vsop_β.rad());
   const double delta_β_arcsec = 0.03916 * (cos(λ_dash_rad) - sin(λ_dash_rad));
 
   return {

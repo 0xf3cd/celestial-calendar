@@ -3,7 +3,7 @@
 #include "lunardata.hpp"
 #include "random.hpp"
 
-namespace common::lunardata {
+namespace calendar::lunardata {
 
 TEST(LunarData, test_array_size) {
   EXPECT_EQ(199, LUNAR_DATA.size());

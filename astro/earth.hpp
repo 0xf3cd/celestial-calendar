@@ -343,11 +343,8 @@ Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
   // Evaluate each term.
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
     const Angle<DEG> θ = eval_θ(coeffs.θ);
-    const double θ_rad = θ.as<RAD>();
-
     const auto& [a, b] = coeffs.Δψ;
-
-    return (a + b * jc) * std::sin(θ_rad);
+    return (a + b * jc) * std::sin(θ.rad());
   });
 
   // Accumulate the results of all the terms.
@@ -381,11 +378,8 @@ Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
   // Evaluate each term.
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
     const Angle<DEG> θ = eval_θ(coeffs.θ);
-    const double θ_rad = θ.as<RAD>();
-
     const auto& [a, b] = coeffs.Δε;
-
-    return (a + b * jc) * std::cos(θ_rad);
+    return (a + b * jc) * std::cos(θ.rad());
   });
 
   // Accumulate the results of all the terms.
