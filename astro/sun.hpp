@@ -23,12 +23,8 @@
 
 #pragma once
 
-#include <format>
-
 #include "toolbox.hpp"
 #include "julian_day.hpp"
-
-#include "vsop87d/vsop87d.hpp"
 #include "earth.hpp"
 
 namespace astro::sun::geocentric_coord {
@@ -53,7 +49,7 @@ SphericalCoordinate vsop87d(const double jd) {
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
     .lon = std::invoke([&] {
       using namespace astro::toolbox::literals;
-      const auto&& sum = λ_helio + 180.0_deg;
+      const auto sum = λ_helio + 180.0_deg;
       return sum.normalize();
     }),
 
@@ -85,7 +81,7 @@ Fk5Correction fk5_correction(const double jd, const SphericalCoordinate& vsop87d
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
   // Calculate the deltas for longitude and latitude, in arcsec.
-  const Angle λ_dash = vsop_λ - ((1.397 + 0.00031 * jc) * jc);
+  const Angle λ_dash = vsop_λ - Angle<DEG> { (1.397 + 0.00031 * jc) * jc };
   const double λ_dash_rad = λ_dash.as<RAD>();
 
   const double delta_λ_arcsec = -0.09033 + 0.03916 * (cos(λ_dash_rad) + sin(λ_dash_rad)) * tan(vsop_β.as<RAD>());

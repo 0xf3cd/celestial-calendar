@@ -23,15 +23,16 @@
 
 #pragma once
 
+#include <vector>
+#include <ranges>
+#include <functional>
+
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "vsop87d/vsop87d.hpp"
 
-namespace astro::earth::heliocentric_coord {
 
-using std::cos;
-using std::sin;
-using std::tan;
+namespace astro::earth::heliocentric_coord {
 
 using astro::toolbox::Angle;
 using astro::toolbox::AngleUnit::DEG;
@@ -50,7 +51,7 @@ SphericalCoordinate vsop87d(const double jd) {
   const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
 
   return {
-    // As per the algorithm, the longitude is normalized to [0, 360).
+    // As per the algorithm, the longitude is normalized to [0, 2π).
     .lon = Angle<RAD>(evaluated.lon).normalize(),
     .lat = Angle<RAD>(evaluated.lat),
     .r   = evaluated.r
@@ -58,3 +59,323 @@ SphericalCoordinate vsop87d(const double jd) {
 }
 
 } // namespace astro::earth::heliocentric_coord
+
+
+namespace astro::earth::nutation {
+
+// Nutation is a periodic oscillation of the axis of rotation of a rotating body, such as Earth, that superimposes on its precessional motion.
+// For Earth, this means that while its axis precesses (moves in a slow, conical motion) due to gravitational forces exerted by the Moon and the Sun, 
+// there are also smaller, shorter-term variations in the tilt of the axis known as nutation.
+
+using toolbox::Angle;
+using toolbox::AngleUnit::DEG;
+using toolbox::AngleUnit::RAD;
+
+struct θParams {
+  int32_t D;
+  int32_t M;
+  int32_t Mp;
+  int32_t F;
+  int32_t Ω;
+};
+
+struct SineCoeffs {
+  double coeff1;
+  double coeff2;
+};
+
+struct CosineCoeffs {
+  double coeff1;
+  double coeff2;
+};
+
+struct NutationCoefficient {
+  θParams      θ_params;
+  SineCoeffs   sin;
+  CosineCoeffs cos;
+};
+
+// The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
+// This table is based on IAU 1980 nutation model, and some terms are omitted.
+const inline std::vector<NutationCoefficient> MEEUS_NUTATION_COEFF {
+  { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
+  { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
+  { {  0,  0,  0,  2,  2 }, {   -2274.0,   -0.2 }, {   977.0, -0.5 } },
+  { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
+  { {  0,  1,  0,  0,  0 }, {    1426.0,   -3.4 }, {    54.0, -0.1 } },
+  { {  0,  0,  1,  0,  0 }, {     712.0,    0.1 }, {    -7.0,  0.0 } },
+  { { -2,  1,  0,  2,  2 }, {    -517.0,    1.2 }, {   224.0, -0.6 } },
+  { {  0,  0,  0,  2,  1 }, {    -386.0,   -0.4 }, {   200.0,  0.0 } },
+  { {  0,  0,  1,  2,  2 }, {    -301.0,    0.0 }, {   129.0, -0.1 } },
+  { { -2, -1,  0,  2,  2 }, {     217.0,   -0.5 }, {   -95.0,  0.3 } },
+  { { -2,  0,  1,  0,  0 }, {    -158.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  0,  2,  1 }, {     129.0,    0.1 }, {   -70.0,  0.0 } },
+  { {  0,  0, -1,  2,  2 }, {     123.0,    0.0 }, {   -53.0,  0.0 } },
+  { {  2,  0,  0,  0,  0 }, {      63.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  1,  0,  1 }, {      63.0,    0.1 }, {   -33.0,  0.0 } },
+  { {  2,  0, -1,  2,  2 }, {     -59.0,    0.0 }, {    26.0,  0.0 } },
+  { {  0,  0, -1,  0,  1 }, {     -58.0,   -0.1 }, {    32.0,  0.0 } },
+  { {  0,  0,  1,  2,  1 }, {     -51.0,    0.0 }, {    27.0,  0.0 } },
+  { { -2,  0,  2,  0,  0 }, {      48.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0, -2,  2,  1 }, {      46.0,    0.0 }, {   -24.0,  0.0 } },
+  { {  2,  0,  0,  2,  2 }, {     -38.0,    0.0 }, {    16.0,  0.0 } },
+  { {  0,  0,  2,  2,  2 }, {     -31.0,    0.0 }, {    13.0,  0.0 } },
+  { {  0,  0,  2,  0,  0 }, {      29.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  1,  2,  2 }, {      29.0,    0.0 }, {   -12.0,  0.0 } },
+  { {  0,  0,  0,  2,  0 }, {      26.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  0,  2,  0 }, {     -22.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0, -1,  2,  1 }, {      21.0,    0.0 }, {   -10.0,  0.0 } },
+  { {  0,  2,  0,  0,  0 }, {      17.0,   -0.1 }, {     0.0,  0.0 } },
+  { {  2,  0, -1,  0,  1 }, {      16.0,    0.0 }, {    -8.0,  0.0 } },
+  { { -2,  2,  0,  2,  2 }, {     -16.0,    0.1 }, {     7.0,  0.0 } },
+  { {  0,  1,  0,  0,  1 }, {     -15.0,    0.0 }, {     9.0,  0.0 } },
+  { { -2,  0,  1,  0,  1 }, {     -13.0,    0.0 }, {     7.0,  0.0 } },
+  { {  0, -1,  0,  0,  1 }, {     -12.0,    0.0 }, {     6.0,  0.0 } },
+  { {  0,  0,  2, -2,  0 }, {      11.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0, -1,  2,  1 }, {     -10.0,    0.0 }, {     5.0,  0.0 } },
+  { {  2,  0,  1,  2,  2 }, {      -8.0,    0.0 }, {     3.0,  0.0 } },
+  { {  0,  1,  0,  2,  2 }, {       7.0,    0.0 }, {    -3.0,  0.0 } },
+  { { -2,  1,  1,  0,  0 }, {      -7.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0, -1,  0,  2,  2 }, {      -7.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  0,  2,  1 }, {      -7.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  1,  0,  0 }, {       6.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  2,  2,  2 }, {       6.0,    0.0 }, {    -3.0,  0.0 } },
+  { { -2,  0,  1,  2,  1 }, {       6.0,    0.0 }, {    -3.0,  0.0 } },
+  { {  2,  0, -2,  0,  1 }, {      -6.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  0,  0,  1 }, {      -6.0,    0.0 }, {     3.0,  0.0 } },
+  { {  0, -1,  1,  0,  0 }, {       5.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2, -1,  0,  2,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2,  0,  0,  0,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { {  0,  0,  2,  2,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2,  0,  2,  0,  1 }, {       4.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  0,  2,  1 }, {       4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  1, -2,  0 }, {       4.0,    0.0 }, {     0.0,  0.0 } },
+  { { -1,  0,  1,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  0,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  1,  0,  0,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  1,  2,  0 }, {       3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0, -2,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { { -1, -1,  1,  0,  0 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  1,  1,  0,  0 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0, -1,  1,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2, -1, -1,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  3,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2, -1,  0,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } }
+};
+
+// The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
+// Compared to Meeus's omitted version, this table contains all terms.
+const inline std::vector<NutationCoefficient> IAU1980_NUTATION_COEFF {
+  { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
+  { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
+  { {  0,  0, -2,  2,  1 }, {      46.0,    0.0 }, {   -24.0,  0.0 } },
+  { {  0,  0,  2, -2,  0 }, {      11.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0, -2,  2,  2 }, {      -3.0,    0.0 }, {     1.0,  0.0 } },
+  { { -1, -1,  1,  0,  0 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2, -2,  0,  2,  1 }, {      -2.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0,  2, -2,  1 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
+  { {  0,  1,  0,  0,  0 }, {    1426.0,   -3.4 }, {    54.0, -0.1 } },
+  { { -2,  1,  0,  2,  2 }, {    -517.0,    1.2 }, {   224.0, -0.6 } },
+  { { -2, -1,  0,  2,  2 }, {     217.0,   -0.5 }, {   -95.0,  0.3 } },
+  { { -2,  0,  0,  2,  1 }, {     129.0,    0.1 }, {   -70.0,  0.0 } },
+  { { -2,  0,  2,  0,  0 }, {      48.0,    0.0 }, {     1.0,  0.0 } },
+  { { -2,  0,  0,  2,  0 }, {     -22.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  2,  0,  0,  0 }, {      17.0,   -0.1 }, {     0.0,  0.0 } },
+  { {  0,  1,  0,  0,  1 }, {     -15.0,    0.0 }, {     9.0,  0.0 } },
+  { { -2,  2,  0,  2,  2 }, {     -16.0,    0.1 }, {     7.0,  0.0 } },
+  { {  0, -1,  0,  0,  1 }, {     -12.0,    0.0 }, {     6.0,  0.0 } },
+  { {  2,  0, -2,  0,  1 }, {      -6.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2, -1,  0,  2,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2,  0,  2,  0,  1 }, {       4.0,    0.0 }, {    -2.0,  0.0 } },
+  { { -2,  1,  0,  2,  1 }, {       4.0,    0.0 }, {    -2.0,  0.0 } },
+  { { -1,  0,  1,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  2,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0,  0, -2,  1 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  1,  0, -2,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  1,  0,  0,  2 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  1,  0, -1,  0,  1 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  0,  2,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  0,  2,  2 }, {   -2274.0,   -0.2 }, {   977.0, -0.5 } },
+  { {  0,  0,  1,  0,  0 }, {     712.0,    0.1 }, {    -7.0,  0.0 } },
+  { {  0,  0,  0,  2,  1 }, {    -386.0,   -0.4 }, {   200.0,  0.0 } },
+  { {  0,  0,  1,  2,  2 }, {    -301.0,    0.0 }, {   129.0, -0.1 } },
+  { { -2,  0,  1,  0,  0 }, {    -158.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  0,  0, -1,  2,  2 }, {     123.0,    0.0 }, {   -53.0,  0.0 } },
+  { {  2,  0,  0,  0,  0 }, {      63.0,    0.0 }, {    -2.0,  0.0 } },
+  { {  0,  0,  1,  0,  1 }, {      63.0,    0.1 }, {   -33.0,  0.0 } },
+  { {  0,  0, -1,  0,  1 }, {     -58.0,   -0.1 }, {    32.0,  0.0 } },
+  { {  2,  0, -1,  2,  2 }, {     -59.0,    0.0 }, {    26.0,  0.0 } },
+  { {  0,  0,  1,  2,  1 }, {     -51.0,    0.0 }, {    27.0,  0.0 } },
+  { {  2,  0,  0,  2,  2 }, {     -38.0,    0.0 }, {    16.0,  0.0 } },
+  { {  0,  0,  2,  0,  0 }, {      29.0,    0.0 }, {    -1.0,  0.0 } },
+  { { -2,  0,  1,  2,  2 }, {      29.0,    0.0 }, {   -12.0,  0.0 } },
+  { {  0,  0,  2,  2,  2 }, {     -31.0,    0.0 }, {    13.0,  0.0 } },
+  { {  0,  0,  0,  2,  0 }, {      26.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  0,  0, -1,  2,  1 }, {      21.0,    0.0 }, {   -10.0,  0.0 } },
+  { {  2,  0, -1,  0,  1 }, {      16.0,    0.0 }, {    -8.0,  0.0 } },
+  { { -2,  0,  1,  0,  1 }, {     -13.0,    0.0 }, {     7.0,  0.0 } },
+  { {  2,  0, -1,  2,  1 }, {     -10.0,    0.0 }, {     5.0,  0.0 } },
+  { { -2,  1,  1,  0,  0 }, {      -7.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  1,  0,  2,  2 }, {       7.0,    0.0 }, {    -3.0,  0.0 } },
+  { {  0, -1,  0,  2,  2 }, {      -7.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  1,  2,  2 }, {      -8.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  1,  0,  0 }, {       6.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  2,  2,  2 }, {       6.0,    0.0 }, {    -3.0,  0.0 } },
+  { {  2,  0,  0,  0,  1 }, {      -6.0,    0.0 }, {     3.0,  0.0 } },
+  { {  2,  0,  0,  2,  1 }, {      -7.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2,  0,  1,  2,  1 }, {       6.0,    0.0 }, {    -3.0,  0.0 } },
+  { { -2,  0,  0,  0,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { {  0, -1,  1,  0,  0 }, {       5.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  2,  2,  1 }, {      -5.0,    0.0 }, {     3.0,  0.0 } },
+  { { -2,  1,  0,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  1, -2,  0 }, {       4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  1,  0,  0,  0,  0 }, {      -4.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  1,  1,  0,  0 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  1,  2,  0 }, {       3.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0, -1,  1,  2,  2 }, {      -3.0,    0.0 }, {     1.0,  0.0 } },
+  { {  2, -1, -1,  2,  2 }, {      -3.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0, -2,  0,  1 }, {      -2.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0,  3,  2,  2 }, {      -3.0,    0.0 }, {     1.0,  0.0 } },
+  { {  2, -1,  0,  2,  2 }, {      -3.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  1,  1,  2,  2 }, {       2.0,    0.0 }, {    -1.0,  0.0 } },
+  { { -2,  0, -1,  2,  1 }, {      -2.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0,  2,  0,  1 }, {       2.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  0,  0,  1,  0,  2 }, {      -2.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0,  3,  0,  0 }, {       2.0,    0.0 }, {     0.0,  0.0 } },
+  { {  1,  0,  0,  2,  2 }, {       2.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  0,  0, -1,  0,  2 }, {       1.0,    0.0 }, {    -1.0,  0.0 } },
+  { { -4,  0,  1,  0,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0, -2,  2,  2 }, {       1.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  4,  0, -1,  2,  2 }, {      -2.0,    0.0 }, {     1.0,  0.0 } },
+  { { -4,  0,  2,  0,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  1,  2,  2 }, {       1.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  2,  0,  1,  2,  1 }, {      -1.0,    0.0 }, {     1.0,  0.0 } },
+  { {  4,  0, -2,  2,  2 }, {      -1.0,    0.0 }, {     1.0,  0.0 } },
+  { {  0,  0, -1,  4,  2 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2, -1,  1,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  2,  2,  1 }, {       1.0,    0.0 }, {    -1.0,  0.0 } },
+  { {  2,  0,  2,  2,  2 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0,  1,  0,  1 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  0,  4,  2 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  3,  2,  2 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  1,  2,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  1,  0,  2,  1 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2, -1, -1,  0,  1 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0,  0,  0, -2,  1 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -1,  0,  0,  2,  2 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  1,  0,  0,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  0,  1, -2,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  0, -1,  0,  2,  1 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { { -2,  1,  1,  0,  1 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0,  1, -2,  0 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  2,  0,  2,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  4,  0,  0,  2,  2 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
+  { {  1,  1,  0,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
+};
+
+// TODO: There are other models, like the IAU 2000/2006 model. Implement them if needed.
+
+
+/** @enum Specify which model to use when calculating Earth's nutation. */
+enum class Model { MEEUS, IAU_1980 };
+
+
+/**
+ * @brief Return the function to calculate the θ values, for the given julian century.
+ * @param jc The julian century since J2000.
+ * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ */
+std::function<Angle<DEG>(θParams)> gen_θ_func(const double jc) {
+  const double jc2 = jc * jc;
+  const double jc3 = jc * jc2;
+
+  // D is the mean elongation of the Moon from the Sun in degrees.
+  const double D  = 297.85036 + 445267.111480 * jc - 0.0019142 * jc2 + jc3 / 189474.0;
+  // M is the mean anomaly of the Sun (Earth) in degrees.
+  const double M  = 357.52772 + 35999.050340  * jc - 0.0001603 * jc2 - jc3 / 300000.0;
+  // Mp is the mean anomaly of the Moon in degrees.
+  const double Mp = 134.96298 + 477198.867398 * jc + 0.0086972 * jc2 + jc3 / 56250.0;
+  // F is the Moon's argument of latitude in degrees.
+  const double F  = 93.27191  + 483202.017538 * jc - 0.0036825 * jc2 + jc3 / 327270.0;
+  // Ω is the longitude of the ascending node of the Moon's mean orbit on the ecliptic in degrees.
+  const double Ω  = 125.04452 - 1934.136261   * jc + 0.0020708 * jc2 + jc3 / 450000.0;
+
+  return [=](const θParams& params) {
+    const double degrees = D * params.D + M * params.M + Mp * params.Mp + F * params.F + Ω * params.Ω;
+    return Angle<DEG> { degrees };
+  };
+};
+
+
+/**
+ * @brief Calculates the nutation in longitude (Δψ) for the given julian day.
+ * @param jd The julian day number.
+ * @param model The model to use when calculating the nutation.
+ * @return The nutation in longitude (Δψ) in degrees.
+ * @note By default, the IAU 1980 model is used, since it is more accurate.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ */
+Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
+  // Get the Julian century since J2000.
+  const double jc = astro::julian_day::jd_to_jc(jd);
+
+  // Create the function to calculate the θ values.
+  const auto θ_func = gen_θ_func(jc);
+
+  // Select the coefficient terms to use.
+  const auto& nutation_coeff = (model == Model::IAU_1980) ? IAU1980_NUTATION_COEFF : MEEUS_NUTATION_COEFF;
+
+  // Evaluate each term.
+  const auto results = nutation_coeff | std::views::transform([&](const NutationCoefficient& nut_coeff) {
+    Angle<DEG> θ = θ_func(nut_coeff.θ_params);
+    const auto& [coeff1, coeff2] = nut_coeff.sin;
+    return (coeff1 + coeff2 * jc) * std::sin(θ.as<RAD>());
+  });
+
+  // Accumulate the results of all the terms.
+  // The unit is 0".0001.
+  const auto sum_results = std::reduce(begin(results), end(results));
+  const auto Δψ_arcsec = sum_results * 0.0001;
+
+  // Convert the results to degrees.
+  return Angle<DEG>::from_arcsec(Δψ_arcsec);
+}
+
+
+/**
+ * @brief Calculates the nutation in obliquity (Δε) for the given julian day.
+ * @param jd The julian day number.
+ * @param model The model to use when calculating the nutation.
+ * @return The nutation in obliquity (Δε) in degrees.
+ * @note By default, the IAU 1980 model is used, since it is more accurate.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ */
+Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
+  // Get the Julian century since J2000.
+  const double jc = astro::julian_day::jd_to_jc(jd);
+
+  // Create the function to calculate the θ values.
+  const auto θ_func = gen_θ_func(jc);
+
+  // Select the coefficient terms to use.
+  const auto& nutation_coeff = (model == Model::IAU_1980) ? IAU1980_NUTATION_COEFF : MEEUS_NUTATION_COEFF;
+
+  // Evaluate each term.
+  const auto results = nutation_coeff | std::views::transform([&](const NutationCoefficient& nut_coeff) {
+    Angle<DEG> θ = θ_func(nut_coeff.θ_params);
+    const auto& [coeff1, coeff2] = nut_coeff.cos;
+    return (coeff1 + coeff2 * jc) * std::cos(θ.as<RAD>());
+  });
+
+  // Accumulate the results of all the terms.
+  // The unit is 0".0001.
+  const auto sum_results = std::reduce(begin(results), end(results));
+  const auto Δε_arcsec = sum_results * 0.0001;
+
+  // Convert the results to degrees.
+  return Angle<DEG>::from_arcsec(Δε_arcsec);
+}
+
+} // namespace astro::earth::nutation
