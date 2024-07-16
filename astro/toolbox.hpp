@@ -200,9 +200,9 @@ Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  const Angle<AngleUnit::DEG> lon; // Longitude
-  const Angle<AngleUnit::DEG> lat; // Latitude
-  const double r;                  // Radious, In AU
+  const Angle<AngleUnit::DEG> λ; // Longitude
+  const Angle<AngleUnit::DEG> β; // Latitude
+  const double r;                // Radious, In AU
 };
 
 #pragma endregion

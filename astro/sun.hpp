@@ -47,7 +47,7 @@ SphericalCoordinate vsop87d(const double jd) {
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
-    .lon = std::invoke([&] {
+    .λ = std::invoke([&] {
       using namespace astro::toolbox::literals;
       const auto sum = λ_helio + 180.0_deg;
       return sum.normalize();
@@ -55,7 +55,7 @@ SphericalCoordinate vsop87d(const double jd) {
 
     // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
     // The formula is: β_sun_geocentric_deg = -β_earth_heliocentric_deg
-    .lat = -β_helio,
+    .β = -β_helio,
 
     // The distance (radius) is the same for both Sun and Earth.
     .r = r_helio 
@@ -65,8 +65,8 @@ SphericalCoordinate vsop87d(const double jd) {
 
 /** @brief The FK5 correction for the coordinate calculated using VSOP87D. */
 struct Fk5Correction {
-  const Angle<DEG> delta_lon;
-  const Angle<DEG> delta_lat;
+  const Angle<DEG> Δλ;
+  const Angle<DEG> Δβ;
 };
 
 
@@ -88,8 +88,41 @@ Fk5Correction fk5_correction(const double jd, const SphericalCoordinate& vsop87d
   const double delta_β_arcsec = 0.03916 * (cos(λ_dash_rad) - sin(λ_dash_rad));
 
   return {
-    .delta_lon = Angle<DEG>::from_arcsec(delta_λ_arcsec),
-    .delta_lat = Angle<DEG>::from_arcsec(delta_β_arcsec),
+    .Δλ = Angle<DEG>::from_arcsec(delta_λ_arcsec),
+    .Δβ = Angle<DEG>::from_arcsec(delta_β_arcsec),
+  };
+}
+
+
+/**
+ * @brief Calculate the geocentric position of the Sun, using VSOP87D. 
+ *        The position is corrected to FK5 system, considering nutation and aberration. 
+ * @param jd The Julian Day.
+ * @return The geocentric ecliptic position of the Sun, after correction.
+ */
+SphericalCoordinate corrected_position(const double jd) {
+  // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
+  const auto vsop_coord = vsop87d(jd);
+
+  // Calculate the correction for the VSIO87D result, in order to convert it to FK5 system.
+  const auto correction = fk5_correction(jd, vsop_coord);
+
+  // Calculate the Earth's nutation in longtitude.
+  const auto nutation = astro::earth::nutation::longitude(jd);
+
+  // Calculate the Solar aberration.
+  const auto aberration = astro::earth::aberration::compute(vsop_coord.r);
+
+  // Calculate the adjusted longitude.
+  const auto λ = vsop_coord.λ + correction.Δλ + nutation - aberration;
+
+  // Calculate the adjusted latitude.
+  const auto β = vsop_coord.β + correction.Δβ;
+
+  return {
+    .λ = λ,
+    .β = β,
+    .r = vsop_coord.r
   };
 }
 
