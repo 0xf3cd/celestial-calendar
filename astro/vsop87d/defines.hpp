@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <vector>
+#include <span>
 #include <ranges>
 #include <numeric>
 #include <type_traits>
@@ -38,10 +38,10 @@ struct Coefficients {
 };
 
 /** @brief The VSOP87D table of coefficients. */
-using Vsop87dTable = std::vector<Coefficients>;
+using Vsop87dTable = std::span<const Coefficients>;
 
 /** @brief The VSOP87D tables. */
-using Vsop87dTables = std::vector<Vsop87dTable>;
+using Vsop87dTables = std::span<const Vsop87dTable>;
 
 #pragma endregion
 
@@ -120,7 +120,7 @@ struct Evaluation {
 /**
  * @brief Evaluate the VSOP87D tables on the given julian millennium.
  * @tparam planet The planet to evaluate.
- * @param jm The julian millennium, calculated based on JDE (julian ephemeris date).
+ * @param jm The julian millennium since J2000, calculated based on JDE (julian ephemeris date).
  * @return The evaluation result. VSOP87D provides the heliocentric ecliptic spherical coordinates for the equinox of the day.
  * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */
