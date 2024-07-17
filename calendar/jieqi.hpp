@@ -23,8 +23,32 @@
 
 #pragma once
 
+#include "astro.hpp"
+#include "datetime.hpp"
+
 
 namespace calendar::jieqi {
+
+
+/**
+ * @brief Calculate the apparent geocentric longitude of the Sun.
+ * @param ut1_dt The date and time (UT1).
+ * @return The apparent geocentric longitude of the Sun in degrees.
+ */
+double solar_apparent_geocentric_longitude(const calendar::Datetime& ut1_dt) {
+  // Convert UT1 to TT.
+  const calendar::Datetime tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
+
+  // Calculate the julian ephemeris day number (JDE).
+  const double jde = astro::julian_day::tt_to_jde(tt_dt);
+
+  // Calculate the apparent geocentric longitude of the Sun.
+  const auto coord = astro::sun::geocentric_coord::apparent(jde);
+
+  // Return in degrees.
+  return coord.λ.deg();
+}
+
 
 enum class Jieqi {
   立春, 雨水, 惊蛰, 春分, 清明, 谷雨, 立夏, 小满, 芒种, 夏至, 小暑, 大暑,

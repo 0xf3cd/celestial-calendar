@@ -10,7 +10,7 @@ using namespace util;
 using namespace calendar;
 using namespace std::chrono_literals;
 
-const std::unordered_map<double, Datetime> jd_test_data {
+const std::unordered_map<double, Datetime> jde_test_data {
   { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
   { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
   { 2443259.9,         Datetime { to_ymd(1977, 4, 26),  0.4, } },
@@ -31,17 +31,17 @@ const std::unordered_map<double, Datetime> jd_test_data {
 constexpr double EPSILON = 1e-6;
 
 
-TEST(JulianDay, test_ut1_to_jd) {
-  for (const auto& [jd, ut1] : jd_test_data) {
-    ASSERT_NEAR(ut1_to_jd(ut1), jd, EPSILON);
+TEST(JulianDay, test_tt_to_jde) {
+  for (const auto& [jde, tt] : jde_test_data) {
+    ASSERT_NEAR(tt_to_jde(tt), jde, EPSILON);
   }
 }
 
-TEST(JulianDay, test_jd_to_ut1) {
-  for (const auto& [jd, expected_dt] : jd_test_data) {
-    const auto ut1 = jd_to_ut1(jd);
-    ASSERT_EQ(ut1.ymd, expected_dt.ymd);
-    ASSERT_NEAR(ut1.fraction(), expected_dt.fraction(), EPSILON);
+TEST(JulianDay, test_jde_to_tt) {
+  for (const auto& [jde, expected_dt] : jde_test_data) {
+    const auto tt = jde_to_tt(jde);
+    ASSERT_EQ(tt.ymd, expected_dt.ymd);
+    ASSERT_NEAR(tt.fraction(), expected_dt.fraction(), EPSILON);
   }
 }
 
@@ -64,30 +64,30 @@ TEST(JulianDay, test_consistency) {
   for (auto i = 0; i < 5000; ++i) {
     const auto ymd = random_ymd();
     const auto hms = random_hms();
-    const Datetime ut1 { ymd, hms };
+    const Datetime tt { ymd, hms };
 
-    const double jd = ut1_to_jd(ut1);
-    const auto recovered_ut1 = jd_to_ut1(jd);
+    const double jde = tt_to_jde(tt);
+    const auto recovered_tt = jde_to_tt(jde);
 
-    ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
-    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), EPSILON);
+    ASSERT_EQ(tt.ymd, recovered_tt.ymd);
+    ASSERT_NEAR(tt.fraction(), recovered_tt.fraction(), EPSILON);
   }
 
-  const auto random_jd = [] -> double {
-    // Return a jd number falls in gregorian year 500-ish ~ 2100-ish.
+  const auto random_jde = [] -> double {
+    // Return a jde number falls in gregorian year 500-ish ~ 2100-ish.
     return util::random(1903682.686921, 2488069.686921);
   };
 
   for (auto i = 0; i < 5000; ++i) {
-    const double jd = random_jd();
-    const auto ut1 = jd_to_ut1(jd);
+    const double jde = random_jde();
+    const auto tt = jde_to_tt(jde);
 
-    const double recovered_jd = ut1_to_jd(ut1);
-    ASSERT_NEAR(recovered_jd, jd, EPSILON);
+    const double recovered_jde = tt_to_jde(tt);
+    ASSERT_NEAR(recovered_jde, jde, EPSILON);
 
-    const auto recovered_ut1 = jd_to_ut1(recovered_jd);
-    ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
-    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), EPSILON);
+    const auto recovered_tt = jde_to_tt(recovered_jde);
+    ASSERT_EQ(tt.ymd, recovered_tt.ymd);
+    ASSERT_NEAR(tt.fraction(), recovered_tt.fraction(), EPSILON);
   }
 }
 
