@@ -212,7 +212,7 @@ Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
 struct SphericalCoordinate {
   const Angle<AngleUnit::DEG> λ; // Longitude
   const Angle<AngleUnit::DEG> β; // Latitude
-  const double r;                // Radious, In AU
+  const double r;                // Radius, In AU
 };
 
 #pragma endregion

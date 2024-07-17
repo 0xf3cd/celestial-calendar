@@ -72,12 +72,12 @@ struct Fk5Correction {
 
 /**
  * @brief Calculate the correction for the VSOP87D coordinate, in order to convert it to FK5 system.
- * @param jd The Julian Day.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The correction (i.e. Δlongitude and Δlatitude).
  * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
  */
-Fk5Correction fk5_correction(const double jd, const SphericalCoordinate& vsop87d_coord) {
-  const double jc = astro::julian_day::jd_to_jc(jd);
+Fk5Correction fk5_correction(const double jde, const SphericalCoordinate& vsop87d_coord) {
+  const double jc = astro::julian_day::jde_to_jc(jde);
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
   // Calculate the deltas for longitude and latitude, in arcsec.
@@ -95,20 +95,20 @@ Fk5Correction fk5_correction(const double jd, const SphericalCoordinate& vsop87d
 
 
 /**
- * @brief Calculate the geocentric position of the Sun, using VSOP87D. 
+ * @brief Calculate the apparent geocentric position of the Sun, using VSOP87D. 
  *        The position is corrected to FK5 system, considering nutation and aberration. 
- * @param jd The Julian Day.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Sun, after correction.
  */
-SphericalCoordinate corrected_position(const double jd) {
+SphericalCoordinate apparent(const double jde) {
   // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
-  const auto vsop_coord = vsop87d(jd);
+  const auto vsop_coord = vsop87d(jde);
 
   // Calculate the correction for the VSIO87D result, in order to convert it to FK5 system.
-  const auto correction = fk5_correction(jd, vsop_coord);
+  const auto correction = fk5_correction(jde, vsop_coord);
 
   // Calculate the Earth's nutation in longtitude.
-  const auto nutation = astro::earth::nutation::longitude(jd);
+  const auto nutation = astro::earth::nutation::longitude(jde);
 
   // Calculate the Solar aberration.
   const auto aberration = astro::earth::aberration::compute(vsop_coord.r);

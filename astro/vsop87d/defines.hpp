@@ -120,7 +120,7 @@ struct Evaluation {
 /**
  * @brief Evaluate the VSOP87D tables on the given julian millennium.
  * @tparam planet The planet to evaluate.
- * @param jm The julian millennium.
+ * @param jm The julian millennium, calculated based on JDE (julian ephemeris date).
  * @return The evaluation result. VSOP87D provides the heliocentric ecliptic spherical coordinates for the equinox of the day.
  * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */

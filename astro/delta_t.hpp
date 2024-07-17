@@ -30,6 +30,8 @@
 #include <cassert>
 #include <optional>
 
+#include "date.hpp"
+#include "datetime.hpp"
 
 /**
  * This file contains the functions to compute the dynamical time.
@@ -118,8 +120,8 @@ find_coefficients(const int32_t year) {
  * @return The delta T.
  *
  * @throw std::out_of_range if the year is < -4000.
- * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html
  * @note The original algorithm takes integers as input. But I am using doubles here,
@@ -178,8 +180,8 @@ namespace algo2 {
  * @param year The year, of double type.
  * @return The delta T.
  * 
- * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
  */
@@ -290,8 +292,8 @@ namespace algo3 {
  * @return The delta T.
  * 
  * @throw std::out_of_range if the year is >= 3000.
- * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
@@ -338,8 +340,8 @@ namespace algo4 {
  * @return The delta T.
  *
  * @throw std::out_of_range if the year is >= 2035.
- * @example `compute(2005.99999999....)` returnes the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returnes the delta T for the first moment of year 1984.
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref Bulletin A data - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
  * @ref USNO Long-term data - https://maia.usno.navy.mil/products/deltaT
@@ -380,12 +382,119 @@ constexpr double compute(const double year) {
 
 /**
  * @brief The function to compute △T of a given gregorian year.
- * @param year The year, of double type.
- * @return The delta T.
+ * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
+ * @return The delta T, in seconds.
  * @details Algo 4 is used, because it is the most accurate one.
+ * @note Since Algo 4 is used, it throws std::out_of_range if the year is >= 2035.
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
 constexpr double compute(const double year) {
   return algo4::compute(year);
+}
+
+
+/**
+ * @brief Calculate the number of days between two `std::chrono::year_month_day`.
+ * @param ymd1 The first `std::chrono::year_month_day`.
+ * @param ymd2 The second `std::chrono::year_month_day`.
+ * @return The number of days of `ymd1 - ymd2`.
+ */
+constexpr int32_t days_diff(const std::chrono::year_month_day& ymd1, const std::chrono::year_month_day& ymd2) {
+  // Convert to sys_days which is a time_point representing days since epoch.
+  using namespace std::chrono;
+  const auto diff = sys_days { ymd1 } - sys_days { ymd2 };
+  return duration_cast<days>(diff).count();
+}
+
+
+/**
+ * @brief The function to compute △T of a given calendar datetime (UT1).
+ * @param ut1_dt The calendar datetime (UT1).
+ * @return The delta T, in seconds.
+ * @overload This is a overload function of `compute(const double year)`.
+ * @note Some caller are passing `calendar::Datetime` in UT1, and some are passing `calendar::Datetime` in TT.
+ *       Considering the longness of a year, the difference between `UT1` and `TT` is ignored.
+ */
+constexpr double compute(const calendar::Datetime& ut1_dt) {
+  using namespace std::chrono;
+
+  // Get the gregorian year.
+  const auto& ut1_ymd = ut1_dt.ymd;
+  const auto [ut1_year, _, __] = util::from_ymd(ut1_ymd);
+  
+  // Calculate how many days have already passed since in this year.
+  const int32_t past_days = days_diff(ut1_ymd, util::to_ymd(ut1_year, 1, 1));
+
+  // Calculate how many days are in this year.
+  const int32_t total_days = days_diff(util::to_ymd(ut1_year + 1, 1, 1), util::to_ymd(ut1_year, 1, 1));
+
+  // Convert to a double, representing the fraction/percentage of the past time in the year.
+  const double day_fraction = ut1_dt.fraction();
+  const double year_fraction = (day_fraction + past_days) / total_days;
+
+  return compute(ut1_year + year_fraction);
+}
+
+
+/**
+ * @brief Convert a `calendar::Datetime` in UT1 to a new `calendar::Datetime` in TT.
+ * @param ut1_dt The datetime in UT1.
+ * @return The datetime in TT.
+ */
+constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
+  using namespace util;
+  using namespace std::chrono;
+
+  // Calculate the delta T.
+  const double delta_t = compute(ut1_dt);
+
+  // As per the formula, TT = UT1 + ΔT.
+  // Calculate the day fraction in TT, using the above ΔT.
+  const double tt_day_fraction = ut1_dt.fraction()                          // UT1 day fraction
+                               + (delta_t / calendar::in_a_day<seconds>()); // Fraction of ΔT in a day.
+
+  // After adjustment, `tt_day_fraction` can be out of the range of [0.0, 1.0).
+
+  // Find out how many days to add or substract. `days` can be either positive or negative.
+  const int32_t days = static_cast<int32_t>(std::floor(tt_day_fraction));
+  
+  // Correct the fraction to be in the range of [0.0, 1.0).
+  const double real_fraction = tt_day_fraction - days;
+
+  // Finally return the result.
+  return calendar::Datetime { ut1_dt.ymd + days, real_fraction };
+}
+
+
+/**
+ * @brief Convert a `calendar::Datetime` in TT to a new `calendar::Datetime` in UT1.
+ * @param tt_dt The datetime in TT.
+ * @return The datetime in UT1.
+ */
+constexpr calendar::Datetime tt_to_ut1(const calendar::Datetime& tt_dt) {
+  using namespace util;
+  using namespace std::chrono;
+
+  // Calculate the delta T.
+  const double delta_t = compute(tt_dt);
+
+  // As per the formula, UT1 = TT - ΔT.
+  // Calculate the day fraction in UT1, using the above ΔT.
+  const double ut1_day_fraction = tt_dt.fraction()                           // TT day fraction
+                                - (delta_t / calendar::in_a_day<seconds>()); // Fraction of ΔT in a day.
+
+  // After adjustment, `ut1_day_fraction` can be out of the range of [0.0, 1.0).
+
+  // Find out how many days to add or substract. `days` can be either positive or negative.
+  const int32_t days = static_cast<int32_t>(std::floor(ut1_day_fraction));
+  
+  // Correct the fraction to be in the range of [0.0, 1.0).
+  const double real_fraction = ut1_day_fraction - days;
+
+  // Finally return the result.
+  return calendar::Datetime { tt_dt.ymd + days, real_fraction };
 }
 
 } // namespace astro::delta_t

@@ -34,24 +34,22 @@ namespace astro::julian_day {
 // According to https://aa.usno.navy.mil/data/JulianDate
 // > Note that the time scale that is the basis for Julian dates is Universal Time (UT1), 
 //   and that 0h UT1 corresponds to a Julian date fraction of 0.5.
-
+//
+// The Julian day number used in Jean Meeus algo is actually JDE, Julian Ephemeris Date,
+// which is based on TT (Terrestrial Time, i.e. Dynamical Time).
 
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
  */
 constexpr double J2000 = 2451545.0;
 
-/**
- * @brief The julian day number of 1858-11-17, 00:00:00.0, which is the zero point of modified julian day.
- */
-constexpr double MJD0 = 2400000.5;
 
 /**
  * @brief Converts a UT1 datetime to julian day.
- * @param dt The date and time (UT1).
- * @return The julian day number.
+ * @param ut1_dt The date and time (UT1).
+ * @return The julian day number, which is based on UT1 (not TT).
  */
-double ut1_to_jd(const calendar::Datetime& dt) {
+double ut1_to_jd(const calendar::Datetime& ut1_dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -69,9 +67,9 @@ double ut1_to_jd(const calendar::Datetime& dt) {
     All above variables except JD are integers (dropping the fractional part).
    */
 
-  assert(dt.ok());
+  assert(ut1_dt.ok());
   
-  const auto& [g_y, g_m, g_d] = util::from_ymd(dt.ymd);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(ut1_dt.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -83,7 +81,7 @@ double ut1_to_jd(const calendar::Datetime& dt) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double  JD = C + D + E + F - 1524.5 + dt.fraction(); // add the fractional part as well.
+  const double  JD = C + D + E + F - 1524.5 + ut1_dt.fraction(); // add the fractional part as well.
 
   assert(JD > 0);
   return JD;
@@ -92,8 +90,8 @@ double ut1_to_jd(const calendar::Datetime& dt) {
 
 /**
  * @brief Converts a julian day number to UT1 datetime.
- * @param jd The julian day number.
- * @return The date and time.
+ * @param jd The julian day number, which is based on UT1 (not TT).
+ * @return The date and time, in UT1.
  */
 calendar::Datetime jd_to_ut1(const double jd) {
   /*
@@ -157,60 +155,40 @@ calendar::Datetime jd_to_ut1(const double jd) {
 
 
 /**
- * @brief Converts a julian day number to modified julian day.
- * @param jd The julian day number.
- * @return The modified julian day.
- */
-constexpr double jd_to_mjd(const double jd) {
-  return jd - MJD0;
-}
-
-
-/**
- * @brief Converts a modified julian day to julian day number.
- * @param mjd The modified julian day.
- * @return The julian day number.
- */
-constexpr double mjd_to_jd(const double mjd) {
-  return mjd + MJD0;
-}
-
-
-/**
  * @brief Converts a julian day number to julian millennium.
- * @param jd The julian day number.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
  */
-constexpr double jd_to_jm(const double jd) {
-  return (jd - J2000) / 365250.0;
+constexpr double jde_to_jm(const double jde) {
+  return (jde - J2000) / 365250.0;
 }
 
 /**
  * @brief Converts a julian millennium to julian day number.
  * @param jm The julian millennium since J2000.
- * @return The julian day number.
+ * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr double jm_to_jd(const double jm) {
+constexpr double jm_to_jde(const double jm) {
   return jm * 365250.0 + J2000;
 }
 
 
 /**
  * @brief Converts a julian day number to julian century.
- * @param jd The julian day number.
+ * @param jde The julian day number.
  * @return The julian century since J2000.
  */
-constexpr double jd_to_jc(const double jd) {
-  return (jd - J2000) / 36525.0;
+constexpr double jde_to_jc(const double jde) {
+  return (jde - J2000) / 36525.0;
 }
 
 
 /**
  * @brief Converts a julian century to julian day number.
  * @param jc The julian century since J2000.
- * @return The julian day number.
+ * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr double jc_to_jd(const double jc) {
+constexpr double jc_to_jde(const double jc) {
   return jc * 36525.0 + J2000;
 }
 

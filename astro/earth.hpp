@@ -49,11 +49,11 @@ namespace astro::earth::heliocentric_coord {
 
 /**
  * @brief Calculate the heliocentric position of the Earth, using VSOP87D.
- * @param jd The Julian Day.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The heliocentric ecliptic position of the Earth, calculated using VSOP87D.
  */
-SphericalCoordinate vsop87d(const double jd) {
-  const double jm = astro::julian_day::jd_to_jm(jd);
+SphericalCoordinate vsop87d(const double jde) {
+  const double jm = astro::julian_day::jde_to_jm(jde);
   const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
 
   return {
@@ -324,15 +324,15 @@ std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
 
 /**
  * @brief Calculates the nutation in longitude (Δψ) for the given julian day.
- * @param jd The julian day number.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in longitude (Δψ) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
+Angle<DEG> longitude(const double jde, const Model model = Model::IAU_1980) {
   // Get the Julian century since J2000.
-  const double jc = astro::julian_day::jd_to_jc(jd);
+  const double jc = astro::julian_day::jde_to_jc(jde);
 
   // Create the function to calculate the θ values.
   const auto eval_θ = gen_eval_θ(jc);
@@ -352,22 +352,22 @@ Angle<DEG> longitude(const double jd, const Model model = Model::IAU_1980) {
   const auto sum_results = std::reduce(begin(results), end(results));
   const auto Δψ_arcsec = sum_results * 0.0001;
 
-  // Convert the results to degrees.
+  // Convert the result to degrees.
   return Angle<DEG>::from_arcsec(Δψ_arcsec);
 }
 
 
 /**
  * @brief Calculates the nutation in obliquity (Δε) for the given julian day.
- * @param jd The julian day number.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in obliquity (Δε) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
+Angle<DEG> obliquity(const double jde, const Model model = Model::IAU_1980) {
   // Get the Julian century since J2000.
-  const double jc = astro::julian_day::jd_to_jc(jd);
+  const double jc = astro::julian_day::jde_to_jc(jde);
 
   // Create the function to calculate the θ values.
   const auto eval_θ = gen_eval_θ(jc);
@@ -387,7 +387,7 @@ Angle<DEG> obliquity(const double jd, const Model model = Model::IAU_1980) {
   const auto sum_results = std::reduce(begin(results), end(results));
   const auto Δε_arcsec = sum_results * 0.0001;
 
-  // Convert the results to degrees.
+  // Convert the result to degrees.
   return Angle<DEG>::from_arcsec(Δε_arcsec);
 }
 

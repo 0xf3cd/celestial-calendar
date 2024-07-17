@@ -9,7 +9,7 @@ TEST(Earth, vsop87d_evaluate) {
   using namespace heliocentric_coord;
 
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
-    // JD                   Longitude            Latitude                 Radius
+    // JDE                   Longitude            Latitude                 Radius
     { 2422823.3699241388, { 232.52621477445064,  0.00023073808290912477,   1.01083930897031 } },
     { 2426430.7587429113, {  188.5945567533272, -0.00020924437518870056, 0.9987765067009008 } },
     { 2426583.6557117873, { 335.81920177266875,    9.75766719235571e-05, 1.0096122786464379 } },
@@ -69,8 +69,8 @@ TEST(Earth, vsop87d_evaluate) {
     { 2481044.4651485193, {  14.61788166664337, -0.00015708944594153683, 0.9996489874066633 } },
   };
 
-  for (const auto& [jd, expected] : EXPECTED) {
-    const auto& [λ, β, r] = vsop87d(jd);
+  for (const auto& [jde, expected] : EXPECTED) {
+    const auto& [λ, β, r] = vsop87d(jde);
     ASSERT_NEAR(λ.as<DEG>(), std::get<0>(expected), 1e-11);
     ASSERT_NEAR(β.as<DEG>(), std::get<1>(expected), 1e-16);
     ASSERT_NEAR(r,           std::get<2>(expected), 1e-14);
@@ -81,7 +81,7 @@ TEST(Earth, nutation_meeus) {
   using namespace nutation;
 
   const std::unordered_map<double, std::tuple<double, double>> EXPECTED {
-    // JD                    Longtitude nutation       Obliquity nutation
+    // JDE                   Longtitude nutation       Obliquity nutation
     {  2422340.375810433, {   0.0040657677880880485,  -0.0017067131109079594 } },
     { 2422398.7534509795, {   0.0037793130689208494,  -0.0015459936176003297 } },
     { 2422889.0369291026, {   0.0021646509176421543,  -0.0025007270491914885 } },
@@ -244,11 +244,11 @@ TEST(Earth, nutation_meeus) {
     {  2480451.250390129, {    -0.00237376690796081,   0.0022060963840429253 } },
   };
 
-  for (const auto& [jd, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : EXPECTED) {
     const auto& [lon_nut, obl_nut] = expected;
 
-    ASSERT_NEAR(longitude(jd, Model::MEEUS).as<DEG>(), lon_nut, 1e-14);
-    ASSERT_NEAR(obliquity(jd, Model::MEEUS).as<DEG>(), obl_nut, 1e-15);
+    ASSERT_NEAR(longitude(jde, Model::MEEUS).as<DEG>(), lon_nut, 1e-14);
+    ASSERT_NEAR(obliquity(jde, Model::MEEUS).as<DEG>(), obl_nut, 1e-15);
   }
 }
 
@@ -257,7 +257,7 @@ TEST(Earth, nutation_iau1980) {
 
   // The following data was collected from running https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
   const std::unordered_map<double, std::pair<double, double>> EXPECTED = {
-    // JD                    Δlongitude [rad]         Δobliquity [rad]
+    // JDE                   Δlongitude [rad]         Δobliquity [rad]
     { 2421984.2444770792, {   8.446894530911212e-05,  -1.580994865478172e-05 } },
     {  2422690.599729854, {    4.85201381018781e-05,  -3.993750969621093e-05 } },
     { 2422705.8259552885, {   4.965114798514485e-05,   -3.94185641930276e-05 } },
@@ -448,11 +448,11 @@ TEST(Earth, nutation_iau1980) {
     { 2476970.6446726783, {   5.885786359199076e-05,  -3.488627895536652e-05 } },
   };
 
-  for (const auto& [jd, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : EXPECTED) {
     const auto& [lon_nut, obl_nut] = expected;
 
-    ASSERT_NEAR(longitude(jd, Model::IAU_1980).as<RAD>(), lon_nut, 4e-12);
-    ASSERT_NEAR(obliquity(jd, Model::IAU_1980).as<RAD>(), obl_nut, 2e-12);
+    ASSERT_NEAR(longitude(jde, Model::IAU_1980).as<RAD>(), lon_nut, 4e-12);
+    ASSERT_NEAR(obliquity(jde, Model::IAU_1980).as<RAD>(), obl_nut, 2e-12);
   }
 }
 
