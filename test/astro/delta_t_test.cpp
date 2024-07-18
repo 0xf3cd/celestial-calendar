@@ -141,6 +141,8 @@ TEST(DeltaT, ut1_tt_conversions) {
 
   // Test range [0, 1900].
   for (uint32_t i = 0; i < 10000; i++) {
+    using namespace util;
+
     const int32_t year = util::random(0, 1900);
     const int32_t month = util::random(1, 12);
     const int32_t day = util::random(1, 28);
@@ -154,10 +156,10 @@ TEST(DeltaT, ut1_tt_conversions) {
       const calendar::Datetime ut1_dt2 = tt_to_ut1(tt_dt);
 
       // Estimate the delta T.
-      const double year_fraction = days_diff(ut1_dt.ymd, util::to_ymd(year, 1, 1)) / 365.0;
+      const double year_fraction = (ut1_dt.ymd - util::to_ymd(year, 1, 1)) / 365.0;
       const double est_delta_t = compute(year + year_fraction);
 
-      const double actual_days_diff = days_diff(tt_dt.ymd, ut1_dt.ymd)        // Integral part
+      const double actual_days_diff = (tt_dt.ymd - ut1_dt.ymd)                // Integral part
                                     + (tt_dt.fraction() - ut1_dt.fraction()); // Fractional part
       
       using namespace std::chrono;
@@ -176,10 +178,10 @@ TEST(DeltaT, ut1_tt_conversions) {
       const calendar::Datetime tt_dt2 = ut1_to_tt(ut1_dt);
 
       // Estimate the delta T.
-      const double year_fraction = days_diff(tt_dt.ymd, util::to_ymd(year, 1, 1)) / 365.0;
+      const double year_fraction = (tt_dt.ymd - util::to_ymd(year, 1, 1)) / 365.0;
       const double est_delta_t = compute(year + year_fraction);
 
-      const double actual_days_diff = days_diff(tt_dt.ymd, ut1_dt.ymd)        // Integral part
+      const double actual_days_diff = (tt_dt.ymd - ut1_dt.ymd)                // Integral part
                                     + (tt_dt.fraction() - ut1_dt.fraction()); // Fractional part
 
       using namespace std::chrono;

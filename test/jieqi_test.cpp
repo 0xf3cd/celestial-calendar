@@ -47,7 +47,8 @@ TEST(JieQi, solar_apparent_geocentric_longitude) {
     // Ignore the difference between UTC and UT1.
     const auto lon = solar_apparent_geocentric_longitude(utc_dt);
     ASSERT_NEAR(lon, 90.0, 0.001);
-  }{ // 立春 of year 2034 (ref: https://jieqi.bmcx.com/)
+  }
+  { // 立春 of year 2034 (ref: https://jieqi.bmcx.com/)
     // Expected time: 2034-02-03 18:40:41 UTC
     const auto ymd = util::to_ymd(2034, 2, 3);
     const auto hms = hh_mm_ss<nanoseconds> { 18h + 40min + 41s };

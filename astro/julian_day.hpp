@@ -26,7 +26,7 @@
 #include <chrono>
 #include <cassert>
 
-#include "date.hpp"
+#include "ymd.hpp"
 #include "datetime.hpp"
 
 namespace astro::julian_day {
@@ -45,12 +45,11 @@ constexpr double J2000 = 2451545.0;
 
 
 /**
- * @brief Converts a TT datetime to julian ephemeris day number.
- * @param tt_dt The date and time (TT).
- * @return The julian ephemeris day number, which is based on TT (not UT1).
- * @note In my understanding, the process of converting UT1->JD and TT->JDE is the same.
+ * @brief Convert UT1 datetime to julian day number.
+ * @param ut1_dt The datetime in UT1.
+ * @return The julian day number.
  */
-double tt_to_jde(const calendar::Datetime& tt_dt) {
+double ut1_to_jd(const calendar::Datetime& ut1_dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -68,9 +67,9 @@ double tt_to_jde(const calendar::Datetime& tt_dt) {
     All above variables except JD are integers (dropping the fractional part).
    */
 
-  assert(tt_dt.ok());
+  assert(ut1_dt.ok());
   
-  const auto& [g_y, g_m, g_d] = util::from_ymd(tt_dt.ymd);
+  const auto& [g_y, g_m, g_d] = util::from_ymd(ut1_dt.ymd);
   assert(g_y > 0);
 
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
@@ -82,7 +81,7 @@ double tt_to_jde(const calendar::Datetime& tt_dt) {
   const uint32_t C = 2 - A + B;
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
-  const double  JD = C + D + E + F - 1524.5 + tt_dt.fraction(); // add the fractional part as well.
+  const double  JD = C + D + E + F - 1524.5 + ut1_dt.fraction(); // add the fractional part as well.
 
   assert(JD > 0);
   return JD;
@@ -90,12 +89,11 @@ double tt_to_jde(const calendar::Datetime& tt_dt) {
 
 
 /**
- * @brief Converts a julian ephemeris day number to TT datetime.
- * @param jde The julian ephemeris day number, which is based on TT (not UT1).
- * @return The date and time, in TT.
- * @note In my understanding, the process of converting UT1->JD and TT->JDE is the same.
+ * @brief Convert julian day number to UT1 datetime.
+ * @param jd The julian day number.
+ * @return The datetime in UT1.
  */
-calendar::Datetime jde_to_tt(const double jde) {
+calendar::Datetime jd_to_ut1(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -119,15 +117,15 @@ calendar::Datetime jde_to_tt(const double jde) {
      It is also mentioned that "the method fails if Y<400".
    */
 
-  assert(jde > 0);
+  assert(jd > 0);
 
   // The algorithm fails if Y < 400, so we need to check it.
-  if (jde < 1885420.686921) {
+  if (jd < 1885420.686921) {
     // Julian day number of 450-01-01 (gregorian) is roughly 1885420.686921
     throw std::runtime_error("The estimated gregorian year is < 450.");
   }
 
-  const double   Q = jde + 0.5;
+  const double   Q = jd + 0.5;
   const uint32_t Z = Q;
   const uint32_t W = (Z - 1867216.25) / 36524.25;
   const uint32_t X = W / 4;
@@ -153,6 +151,28 @@ calendar::Datetime jde_to_tt(const double jde) {
   assert(ymd.ok());
 
   return calendar::Datetime { ymd, fraction };
+}
+
+
+/**
+ * @brief Converts a TT datetime to julian ephemeris day number.
+ * @param tt_dt The date and time (TT).
+ * @return The julian ephemeris day number, which is based on TT (not UT1).
+ */
+double tt_to_jde(const calendar::Datetime& tt_dt) {
+  // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
+  return ut1_to_jd(tt_dt);
+}
+
+
+/**
+ * @brief Converts a julian ephemeris day number to TT datetime.
+ * @param jde The julian ephemeris day number, which is based on TT (not UT1).
+ * @return The date and time, in TT.
+ */
+calendar::Datetime jde_to_tt(const double jde) {
+  // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
+  return jd_to_ut1(jde);
 }
 
 

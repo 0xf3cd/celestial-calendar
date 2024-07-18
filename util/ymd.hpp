@@ -85,4 +85,13 @@ constexpr std::chrono::year_month_day operator-(
   return std::chrono::year_month_day { time_point };
 }
 
+
+constexpr int32_t operator-(
+  const std::chrono::year_month_day& ymd1, 
+  const std::chrono::year_month_day& ymd2
+) {
+  const auto diff_days = std::chrono::sys_days { ymd1 } - std::chrono::sys_days { ymd2 };
+  return static_cast<int32_t>(diff_days.count());
+}
+
 } // namespace util

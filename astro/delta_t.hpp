@@ -30,7 +30,7 @@
 #include <cassert>
 #include <optional>
 
-#include "date.hpp"
+#include "ymd.hpp"
 #include "datetime.hpp"
 
 /**
@@ -396,20 +396,6 @@ constexpr double compute(const double year) {
 
 
 /**
- * @brief Calculate the number of days between two `std::chrono::year_month_day`.
- * @param ymd1 The first `std::chrono::year_month_day`.
- * @param ymd2 The second `std::chrono::year_month_day`.
- * @return The number of days of `ymd1 - ymd2`.
- */
-constexpr int32_t days_diff(const std::chrono::year_month_day& ymd1, const std::chrono::year_month_day& ymd2) {
-  // Convert to sys_days which is a time_point representing days since epoch.
-  using namespace std::chrono;
-  const auto diff = sys_days { ymd1 } - sys_days { ymd2 };
-  return duration_cast<days>(diff).count();
-}
-
-
-/**
  * @brief The function to compute △T of a given calendar datetime (UT1).
  * @param ut1_dt The calendar datetime (UT1).
  * @return The delta T, in seconds.
@@ -419,16 +405,17 @@ constexpr int32_t days_diff(const std::chrono::year_month_day& ymd1, const std::
  */
 constexpr double compute(const calendar::Datetime& ut1_dt) {
   using namespace std::chrono;
+  using namespace util;
 
   // Get the gregorian year.
   const auto& ut1_ymd = ut1_dt.ymd;
   const auto [ut1_year, _, __] = util::from_ymd(ut1_ymd);
   
   // Calculate how many days have already passed since in this year.
-  const int32_t past_days = days_diff(ut1_ymd, util::to_ymd(ut1_year, 1, 1));
+  const int32_t past_days = ut1_ymd - util::to_ymd(ut1_year, 1, 1);
 
   // Calculate how many days are in this year.
-  const int32_t total_days = days_diff(util::to_ymd(ut1_year + 1, 1, 1), util::to_ymd(ut1_year, 1, 1));
+  const int32_t total_days = util::to_ymd(ut1_year + 1, 1, 1) - util::to_ymd(ut1_year, 1, 1);
 
   // Convert to a double, representing the fraction/percentage of the past time in the year.
   const double day_fraction = ut1_dt.fraction();

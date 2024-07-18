@@ -21,5 +21,5 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "date.hpp"
+#include "ymd.hpp"
 #include "random.hpp"

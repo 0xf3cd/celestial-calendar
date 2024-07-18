@@ -28,7 +28,7 @@
 #include <cassert>
 #include <optional>
 
-#include "date.hpp"
+#include "ymd.hpp"
 #include "lunardata.hpp"
 
 namespace calendar::lunar {

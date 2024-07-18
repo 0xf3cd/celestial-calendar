@@ -60,7 +60,7 @@ SphericalCoordinate vsop87d(const double jde) {
     // As per the algorithm, the longitude is normalized to [0, 2π).
     .λ = Angle<RAD>(evaluated.λ).normalize(),
     .β = Angle<RAD>(evaluated.β),
-    .r   = evaluated.r
+    .r = evaluated.r
   };
 }
 
