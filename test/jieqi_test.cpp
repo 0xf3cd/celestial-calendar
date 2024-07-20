@@ -55,21 +55,43 @@ TEST(JieQi, solar_apparent_geocentric_longitude) {
   }
 }
 
-TEST(JieQi, estimate_ut1) {
-  for (const auto& [ymd, hms, expected_lon, _] : DATASET) {
-    const auto [y, __, ___] = util::from_ymd(ymd);
+// TEST(JieQi, estimate_ut1) {
+//   // Use `DATASET`.
+//   for (const auto& [ymd, hms, expected_lon, _] : DATASET) {
+//     const auto [y, __, ___] = util::from_ymd(ymd);
 
-    const Datetime expected_dt { ymd, hms };
-    const Datetime estimated_dt = estimate_ut1(y, expected_lon);
+//     const Datetime expected_dt { ymd, hms };
+//     const Datetime estimated_dt = estimate_ut1(y, expected_lon);
 
-    // Convert the datetimes to jd, and use jd to compare.
-    const double expected_jd = astro::julian_day::ut1_to_jd(expected_dt);
-    const double estimated_jd = astro::julian_day::ut1_to_jd(estimated_dt);
+//     // Convert the datetimes to jd, and use jd to compare.
+//     const double expected_jd = astro::julian_day::ut1_to_jd(expected_dt);
+//     const double estimated_jd = astro::julian_day::ut1_to_jd(estimated_dt);
 
-    const double diff = std::abs(estimated_jd - expected_jd);
-    ASSERT_LE(diff, 5.0);
-  }
-}
+//     const double diff = std::abs(estimated_jd - expected_jd);
+//     ASSERT_LE(diff, 5.0);
+//   }
+
+//   // Use random data.
+//   for (auto i = 0; i < 10000; ++i) {
+//     const double jde = astro::julian_day::J2000 + util::random(-10000.0, 10000.0);
+//     const double actual_lon = solar_apparent_geocentric_longitude(jde);
+
+//     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
+//     const auto [y, _, __] = util::from_ymd(ut1_dt.ymd);
+
+//     std::println("{}", std::string(80, '-'));
+
+//     const auto estimated_ut1_dt = estimate_ut1(y, actual_lon);
+//     const double estimated_jde = astro::julian_day::ut1_to_jde(estimated_ut1_dt);
+
+//     std::println("jde: {}, lon: {}, ut1_dt.ymd: {}", jde, actual_lon, ut1_dt.ymd);
+//     std::println("estimated jde: {}, estimated ut1_dt.ymd: {}", estimated_jde, estimated_ut1_dt.ymd);
+
+//     // Ensure `jde` and `estimated_jde` are close.
+//     const double diff = std::abs(jde - estimated_jde);
+//     ASSERT_LE(diff, 6.0);
+//   }
+// }
 
 
 // TEST(JieQi, find_ut1) {

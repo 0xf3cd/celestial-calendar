@@ -13,4 +13,4 @@ include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 
 add_subdirectory(test)
-add_subdirectory(python_bindings)
+add_subdirectory(shared_lib)
