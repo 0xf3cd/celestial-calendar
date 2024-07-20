@@ -31,15 +31,21 @@ namespace util {
 template <typename T>
 concept YearConvertible = std::convertible_to<T, int32_t>;
 
+/*! @brief A type that can be converted to `std::chrono::days`. */
+template <typename T>
+concept DayConvertible = requires (T t) {
+  { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
+};
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
 constexpr std::chrono::year_month_day to_ymd(
   const YearConvertible auto year, 
   const uint32_t month, 
-  const uint32_t day
+  const DayConvertible auto day
 ) {
   const std::chrono::year __year { static_cast<int32_t>(year) };
-  return std::chrono::year_month_day { __year / month / day };
+  const std::chrono::day __day { static_cast<uint32_t>(day) };
+  return std::chrono::year_month_day { __year / month / __day };
 }
 
 
@@ -51,13 +57,11 @@ constexpr std::tuple<int32_t, uint32_t, uint32_t> from_ymd(const std::chrono::ye
   return { y, m, d, };
 }
 
+} // namespace util
 
-/*! @brief A type that can be converted to `std::chrono::days`. */
-template <typename T>
-concept DayConvertible = requires (T t) {
-  { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
-};
+namespace util::ymd_operator {
 
+using util::DayConvertible;
 
 constexpr std::chrono::year_month_day operator+(
   const std::chrono::year_month_day& ymd, 
@@ -94,4 +98,4 @@ constexpr int32_t operator-(
   return static_cast<int32_t>(diff_days.count());
 }
 
-} // namespace util
+} // namespace util::ymd_operator

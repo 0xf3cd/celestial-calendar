@@ -3,7 +3,9 @@
 #include "lunardata.hpp"
 #include "random.hpp"
 
-namespace calendar::lunardata {
+namespace calendar::lunardata::test {
+
+using namespace calendar::lunardata; 
 
 TEST(LunarData, test_array_size) {
   EXPECT_EQ(199, LUNAR_DATA.size());
@@ -52,10 +54,10 @@ TEST(LunarData, test_get_lunar_year_info) {
 }
 
 TEST(LunarData, test_copy) {
-  using namespace util;
+  using namespace util::ymd_operator;
 
   for (auto _ = 0; _ < 100; ++_) {
-    auto info = get_lunar_year_info(random(START_YEAR, END_YEAR));
+    auto info = get_lunar_year_info(util::random(START_YEAR, END_YEAR));
     auto info2 = info;
 
     EXPECT_NE(&info, &info2);
@@ -118,10 +120,10 @@ TEST(LunarData, test_cache_performance) {
 }
 
 TEST(LunarData, test_lunardata_cache_correctness) {
-  using namespace util;
+  using namespace util::ymd_operator;
 
   for (auto _ = 0; _ < 100; ++_) {
-    const auto year = random(START_YEAR, END_YEAR);
+    const auto year = util::random(START_YEAR, END_YEAR);
     const auto info = get_lunar_year_info(year);
     const auto info2 = LUNARDATA_CACHE.get(year);
     EXPECT_EQ(info.date_of_first_day, info2.date_of_first_day);

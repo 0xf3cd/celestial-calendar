@@ -2,7 +2,9 @@
 #include "toolbox.hpp"
 #include "util.hpp"
 
-namespace astro::toolbox {
+namespace astro::toolbox::test {
+
+using namespace astro::toolbox;
 
 TEST(AstroMath, normalize_deg) {
   {

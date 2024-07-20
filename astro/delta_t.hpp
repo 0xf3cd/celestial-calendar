@@ -405,7 +405,7 @@ constexpr double compute(const double year) {
  */
 constexpr double compute(const calendar::Datetime& ut1_dt) {
   using namespace std::chrono;
-  using namespace util;
+  using namespace util::ymd_operator;
 
   // Get the gregorian year.
   const auto& ut1_ymd = ut1_dt.ymd;
@@ -431,7 +431,7 @@ constexpr double compute(const calendar::Datetime& ut1_dt) {
  * @return The datetime in TT.
  */
 constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
-  using namespace util;
+  using namespace util::ymd_operator;
   using namespace std::chrono;
 
   // Calculate the delta T.
@@ -461,7 +461,7 @@ constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
  * @return The datetime in UT1.
  */
 constexpr calendar::Datetime tt_to_ut1(const calendar::Datetime& tt_dt) {
-  using namespace util;
+  using namespace util::ymd_operator;
   using namespace std::chrono;
 
   // Calculate the delta T.

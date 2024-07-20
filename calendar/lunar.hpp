@@ -58,7 +58,7 @@ const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
   const auto& ml = LUNARDATA_CACHE.get(END_YEAR).month_lengths;
   const uint32_t days_count = std::reduce(ml.begin(), ml.end());
 
-  using namespace util;
+  using namespace util::ymd_operator;
   return (days_count - 1) + info.date_of_first_day;
 });
 
@@ -143,7 +143,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
 
   // First, check if lunar date and gregorian_date date are in the same year.
   if (g_y <= END_YEAR) {
-    using namespace util;
+    using namespace util::ymd_operator;
     const auto& info = LUNARDATA_CACHE.get(g_y);
     const auto& ml = info.month_lengths;
     const uint32_t lunar_year_days_count = std::reduce(ml.begin(), ml.end());
@@ -181,7 +181,7 @@ std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_dat
 
   const uint32_t past_days_count = d + std::reduce(ml.begin(), ml.begin() + m - 1);
 
-  using namespace util;
+  using namespace util::ymd_operator;
   return info.date_of_first_day + (past_days_count - 1);
 }
 

@@ -107,8 +107,8 @@ LunarYearInfo get_lunar_year_info(uint32_t year) {
   const uint16_t month_len_info = bin_data & 0x1fff;
 
   const std::chrono::year_month_day first_day = std::invoke([&] {
-    using namespace util;
-    return to_ymd(year, 1, 1) + days_offset;
+    using namespace util::ymd_operator;
+    return util::to_ymd(year, 1, 1) + days_offset;
   });
 
   const std::vector<uint32_t> month_lengths = std::invoke([&] {

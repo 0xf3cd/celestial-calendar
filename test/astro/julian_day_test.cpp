@@ -4,9 +4,12 @@
 #include "datetime.hpp"
 #include "julian_day.hpp"
 
-namespace astro::julian_day {
+namespace astro::julian_day::test {
+
+using namespace astro::julian_day;
 
 using namespace util;
+using namespace util::ymd_operator;
 using namespace calendar;
 using namespace std::chrono_literals;
 
@@ -47,16 +50,16 @@ TEST(JulianDay, test_jde_to_tt) {
 
 TEST(JulianDay, test_consistency) {  
   const auto random_ymd = [] -> year_month_day {
-    using namespace util;
-    const std::chrono::year_month_day _ymd = to_ymd(random(500, 2100), 1, 1);
-    const auto _random_days = random(0, 365 * 10);
+    using namespace util::ymd_operator;
+    const std::chrono::year_month_day _ymd = to_ymd(util::random(500, 2100), 1, 1);
+    const auto _random_days = util::random(0, 365 * 10);
     return _ymd + _random_days;
   };
 
   const auto random_hms = [] -> hh_mm_ss<nanoseconds> {
-    using namespace util;
+    using namespace util::ymd_operator;
     const auto ns = nanoseconds { 
-      random<uint64_t>(0, in_a_day<nanoseconds>() - 1)
+      util::random<uint64_t>(0, in_a_day<nanoseconds>() - 1)
     };
     return hh_mm_ss { ns };
   };
