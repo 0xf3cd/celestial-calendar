@@ -116,6 +116,19 @@ def make(cpu_cores: int=8) -> int:
   return ret.retcode
 
 
+def clean() -> int:
+  print('#' * 60)
+
+  if BUILD_DIR.exists():
+    yellow_print(f'# Build dir exists.')
+    red_print(f'# Removing {BUILD_DIR}')
+    shutil.rmtree(BUILD_DIR)
+
+  green_print(f'# Build cleaned...')
+  print('#' * 60)
+  return 0
+
+
 def list_tests() -> dict[str, str]:
   assert TEST_DIR.exists(), "Test directory not found"
   assert TEST_DIR.is_dir(), "Test directory is not a directory"
@@ -248,6 +261,7 @@ def parse_args() -> argparse.Namespace:
     ./build.py -t -k Util           # Run all Util tests
     ./build.py -t -k 26 5 7         # Run tests 26, 5, 7
     ./build.py -t -k 41 datetime    # Run test 41, and tests whose name contains "datetime"
+    ./build.py --clean              # Clean previous build
   '''
   
   parser = argparse.ArgumentParser(description='Build and test the C++ projects', 
@@ -277,6 +291,9 @@ def parse_args() -> argparse.Namespace:
                            '2 for detailed output')
   parser.add_argument('-d', '--debug', action='store_true', default=False,
                       help='whether to run test in debug mode')
+  
+  parser.add_argument('--clean', action='store_true', default=False,
+                      help='whether to clean previous build')
   
   args = parser.parse_args()
   assert args.cpu_cores > 0, 'Invalid number of CPU cores, should be > 1'
@@ -329,6 +346,10 @@ def main() -> int:
   print_sysinfo()
 
   retcode: int = 0
+
+  if args.clean:
+    retcode |= clean()
+
   cmake_start_moment = datetime.now()
   if args.cmake and not retcode:
     retcode |= cmake()
