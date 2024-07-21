@@ -36,7 +36,7 @@ namespace util {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-T random() {
+inline T random() {
   std::random_device rd;
   std::mt19937 gen(rd());
 
@@ -62,7 +62,7 @@ T random() {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-T random(const T& min, const T& max) {
+inline T random(const T& min, const T& max) {
   assert(min < max);
   std::random_device rd;
   std::mt19937 gen(rd());

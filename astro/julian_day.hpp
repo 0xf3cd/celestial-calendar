@@ -51,7 +51,7 @@ constexpr double J2000 = 2451545.0;
  * @param ut1_dt The datetime in UT1.
  * @return The julian day number.
  */
-double ut1_to_jd(const calendar::Datetime& ut1_dt) {
+inline double ut1_to_jd(const calendar::Datetime& ut1_dt) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -95,7 +95,7 @@ double ut1_to_jd(const calendar::Datetime& ut1_dt) {
  * @param jd The julian day number.
  * @return The datetime in UT1.
  */
-calendar::Datetime jd_to_ut1(const double jd) {
+inline calendar::Datetime jd_to_ut1(const double jd) {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -161,7 +161,7 @@ calendar::Datetime jd_to_ut1(const double jd) {
  * @param tt_dt The date and time (TT).
  * @return The julian ephemeris day number, which is based on TT (not UT1).
  */
-double tt_to_jde(const calendar::Datetime& tt_dt) {
+inline double tt_to_jde(const calendar::Datetime& tt_dt) {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return ut1_to_jd(tt_dt);
 }
@@ -172,7 +172,7 @@ double tt_to_jde(const calendar::Datetime& tt_dt) {
  * @param jde The julian ephemeris day number, which is based on TT (not UT1).
  * @return The date and time, in TT.
  */
-calendar::Datetime jde_to_tt(const double jde) {
+inline calendar::Datetime jde_to_tt(const double jde) {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return jd_to_ut1(jde);
 }
@@ -183,7 +183,7 @@ calendar::Datetime jde_to_tt(const double jde) {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The date and time, in UT1.
  */
-calendar::Datetime jde_to_ut1(const double jde) {
+inline calendar::Datetime jde_to_ut1(const double jde) {
   const auto tt_dt = jde_to_tt(jde);
   return astro::delta_t::tt_to_ut1(tt_dt);
 }
@@ -194,7 +194,7 @@ calendar::Datetime jde_to_ut1(const double jde) {
  * @param ut1_dt The date and time, in UT1.
  * @return The julian ephemeris day number, which is based on TT.
  */
-double ut1_to_jde(const calendar::Datetime& ut1_dt) {
+inline double ut1_to_jde(const calendar::Datetime& ut1_dt) {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
   return tt_to_jde(tt_dt);
 }

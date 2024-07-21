@@ -31,6 +31,7 @@
 #include "ymd.hpp"
 #include "lunardata.hpp"
 
+
 namespace calendar::lunar {
 
 using std::chrono::year_month_day;
@@ -65,7 +66,7 @@ const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
 
 /*! @fn Checks if the input gregorian date is valid and within the supported range. 
         检查输入的公历日期是否有效，且在支持的范围内。 */
-bool is_valid_gregorian(const year_month_day& date) {
+inline bool is_valid_gregorian(const year_month_day& date) {
   if (!date.ok()) {
     return false;
   }
@@ -78,7 +79,7 @@ bool is_valid_gregorian(const year_month_day& date) {
 
 /*! @fn Checks if the input lunar date is valid and within the supported range. 
         检查输入的阴历日期是否有效，且在支持的范围内。 */
-bool is_valid_lunar(const year_month_day& lunar_date) {
+inline bool is_valid_lunar(const year_month_day& lunar_date) {
   if (lunar_date < FIRST_LUNAR_DATE || lunar_date > LAST_LUNAR_DATE) {
     return false;
   }
@@ -108,7 +109,7 @@ bool is_valid_lunar(const year_month_day& lunar_date) {
  @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
             输入的日期无效时返回 `std::nullopt`。不会抛出异常。
  */
-std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian_date) {
+inline std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian_date) {
   if (!is_valid_gregorian(gregorian_date)) {
     return std::nullopt;
   }
@@ -170,7 +171,7 @@ std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian
  @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
             输入的日期无效时返回 `std::nullopt`。不会抛出异常。
  */
-std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_date) {
+inline std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_date) {
   if (!is_valid_lunar(lunar_date)) {
     return std::nullopt;
   }

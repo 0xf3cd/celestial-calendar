@@ -21,14 +21,19 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <print>
+#include <cstring>
+#include <optional>
 
+#include "lib.hpp"
 #include "jieqi.hpp"
-
 
 extern "C" {
 
-using namespace calendar::jieqi;
+
+struct Discriminant {
+  bool     valid; // Indicates if the result is valid.
+  uint32_t count; // The count of the roots, which is 0, 1, or 2.
+};
 
 /**
  * @brief Calculate the JDE discriminant, which is the count of the roots for the given `year` and `lon`.
@@ -39,8 +44,18 @@ using namespace calendar::jieqi;
  *          1 indicates that Sun will reach the given geocentric longitude once in the given year.
  *          2 indicates that Sun will reach the given geocentric longitude twice in the given year.
  */
-uint32_t jde_discriminant(const int32_t year, const double longitude) {
-  return math::discriminant(year, longitude);
+Discriminant jde_discriminant(const int32_t year, const double longitude) {
+  try {
+    return {
+      .valid = true,
+      .count = calendar::jieqi::math::discriminant(year, longitude),
+    };
+  } catch (const std::exception& e) {
+    lib::info("Exception raised during execution of jde_discriminant");
+    lib::debug("jde_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
+    return {};
+  }
+  
 }
 
 
@@ -51,25 +66,48 @@ uint32_t jde_discriminant(const int32_t year, const double longitude) {
  * @param longitude The geocentric longitude.
  * @param slots The slots. It's caller's responsibility to allocate and free the slots.
  * @param slot_count The count of slots.
+ * @return `true` if the slots are filled with the found JDE(s), `false` otherwise.
  */
-void find_jdes(
+bool find_jdes(
   const int32_t year, 
   const double longitude, 
   double * const slots, 
   const uint32_t slot_count
 ) {
-  const uint32_t root_count = math::discriminant(year, longitude);
-  const auto roots = math::find_roots(year, longitude);
+  using namespace calendar::jieqi::math;
 
-  if (roots.size() != root_count) [[unlikely]] {
-    std::println("Error in find_jdes: roots.size() is {}, but expected size is {}", roots.size(), root_count);
-    std::println("No root will be written to the slots.");
-    return;
-  }
-  
-  for (uint32_t i = 0; i < std::min(slot_count, root_count); i++) {
-    slots[i] = roots[i];
-  }
+  const auto roots_opt = std::invoke([=] -> std::optional<std::vector<double>> {
+    try {
+      const auto roots = find_roots(year, longitude);
+
+      // Some sanity check...
+      const auto root_count = discriminant(year, longitude);
+      if (roots.size() != root_count) [[unlikely]] {
+        lib::info("Error in find_jdes: roots.size() is {}, but expected size is {}", roots.size(), root_count);
+        lib::info("No root will be written to the slots.");
+
+        return std::nullopt;
+      }
+
+      return roots;
+    } catch (const std::exception& e) {
+      lib::info("Exception raised during execution of find_roots");
+      lib::debug("find_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
+
+      return std::nullopt;
+    }
+  });
+
+  return roots_opt
+    .and_then([&] (const auto& roots) -> std::optional<bool> {
+      // Copy the roots to the slots.
+      const auto bytes_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
+      for (uint32_t i = 0; i < bytes_written; i++) {
+        slots[i] = roots[i];
+      }
+      return true;
+    })
+    .value_or(false);
 }
 
 
@@ -94,15 +132,10 @@ struct JieqiMomentQuery {
 JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) {
   // Validate the input.
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
-    return {
-      .valid  = false,
-      .jq_idx = 0,
-      .y      = 0,
-      .m      = 0,
-      .d      = 0,
-      .frac   = 0.0,
-    };
+    return {};
   }
+
+  using namespace calendar::jieqi;
 
   try {
     const Jieqi jq = static_cast<Jieqi>(jq_idx);
@@ -122,16 +155,9 @@ JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) {
     };
     
   } catch (const std::exception& e) {
-    std::println("Error in query_jieqi: {}", e.what());
+    lib::info("Error in query_jieqi: {}", e.what());
 
-    return {
-      .valid  = false,
-      .jq_idx = 0,
-      .y      = 0,
-      .m      = 0,
-      .d      = 0,
-      .frac   = 0.0,
-    };
+    return {};
   }
 }
 
@@ -139,25 +165,30 @@ JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) {
 /**
  * @brief Get the Chinese name of the Jieqi.
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
- * @param name_mem The name memory. It's caller's responsibility to allocate and free the memory.
- * @param mem_size Maximum bytes that can be written to `name_mem`.
+ * @param buf The name memory. It's caller's responsibility to allocate and free the memory.
+ * @param buf_size Maximum bytes that can be written to `buf`.
+ * @returns `true` if the name is successfully written to `buf`.
  */
-void get_jieqi_chinese(const int32_t jq_idx, char * const mem, const uint32_t mem_size) {
+bool get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t buf_size) {
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
-    std::println("Error in get_jieqi_chinese: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
-    return;
+    lib::info("Error in get_jieqi_chinese: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
+    return false;
   }
 
+  using namespace calendar::jieqi;
   const std::string_view name = JIEQI_NAME.at(static_cast<Jieqi>(jq_idx));
 
   // Check if the buffer is large enough to hold the name and the null terminator
-  if (mem_size < name.size() + 1) {
-    std::println("Error in get_jieqi_chinese: provided buffer is too small.");
-    return;
+  if (buf_size < name.size() + 1) {
+    lib::info("Error in get_jieqi_chinese: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
+    return false;
   }
 
-  std::memcpy(mem, name.data(), name.size());
-  mem[name.size()] = '\0';
+  // Copy the name to the buffer
+  std::memcpy(buf, name.data(), name.size());
+  buf[name.size()] = '\0';
+
+  return true;
 }
 
 }

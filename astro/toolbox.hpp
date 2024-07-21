@@ -183,19 +183,19 @@ struct Angle {
 
 namespace literals {
 
-Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
+inline Angle<AngleUnit::DEG> operator"" _deg(const long double value) {
   return { static_cast<double>(value) };
 }
 
-Angle<AngleUnit::DEG> operator"" _arcmin(const long double value) {
+inline Angle<AngleUnit::DEG> operator"" _arcmin(const long double value) {
   return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
 }
 
-Angle<AngleUnit::DEG> operator"" _arcsec(const long double value) {
+inline Angle<AngleUnit::DEG> operator"" _arcsec(const long double value) {
   return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
 }
 
-Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
+inline Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
   return { static_cast<double>(value) };
 }
 
@@ -204,7 +204,7 @@ Angle<AngleUnit::RAD> operator"" _rad(const long double value) {
 #pragma endregion
 
 
-#pragma region Common Definitions
+#pragma region Coordinate Definitions
 
 /**
  * @brief Represents a position in a spherical coordinate system.

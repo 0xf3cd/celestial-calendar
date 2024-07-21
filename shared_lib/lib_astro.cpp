@@ -21,7 +21,7 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <print>
+#include "lib.hpp"
 
 #include "astro.hpp"
 #include "util.hpp"
@@ -33,7 +33,7 @@ extern "C" {
 #pragma region Julian Days
 
 struct JulianDay {
-  bool valid;   // Indicates if the result is valid.
+  bool   valid; // Indicates if the result is valid.
   double value; // The value. Either JD or JDE.
 };
 
@@ -56,14 +56,11 @@ JulianDay ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const d
       .valid = true,
       .value = jd,
     };
-
   } catch (const std::exception& e) {
-    std::println("Error in ut1_jd: {}", e.what());
+    lib::info("Error in ut1_jd: {}", e.what());
+    lib::debug("ut1_to_jd: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
-    return {
-      .valid = false,
-      .value = 0.0,
-    };
+    return {};
   }
 }
 
@@ -87,24 +84,21 @@ JulianDay ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const 
       .valid = true,
       .value = jde,
     };
-
   } catch (const std::exception& e) {
-    std::println("Error in ut1_jde: {}", e.what());
+    lib::info("Error in ut1_jde: {}", e.what());
+    lib::debug("ut1_to_jde: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
-    return {
-      .valid = false,
-      .value = 0.0,
-    };
+    return {};
   }
 }
 
 
 struct UT1Time {
-  bool valid;      // Indicates if the result is valid.
-  int32_t year;    // The year.
-  uint32_t month;  // The month.
-  uint32_t day;    // The day.
-  double fraction; // The fraction of the day. Must be in the range [0.0, 1.0).
+  bool     valid;    // Indicates if the result is valid.
+  int32_t  year;     // The year.
+  uint32_t month;    // The month.
+  uint32_t day;      // The day.
+  double   fraction; // The fraction of the day. Must be in the range [0.0, 1.0).
 };
 
 
@@ -127,17 +121,11 @@ UT1Time jde_to_ut1(const double jde) {
       .day        = d,
       .fraction   = fraction,
     };
-
   } catch (const std::exception& e) {
-    std::println("Error in jde_to_ut1: {}", e.what());
+    lib::info("Error in jde_to_ut1: {}", e.what());
+    lib::debug("jde_to_ut1: jde = {}", jde);
 
-    return {
-      .valid      = false,
-      .year       = 0,
-      .month      = 0,
-      .day        = 0,
-      .fraction   = 0.0,
-    };
+    return {};
   }
 }
 
@@ -151,7 +139,7 @@ struct SunCoordinate {
   bool valid; // Indicates if the result is valid.
   double lon; // The longitude. In degrees.
   double lat; // The latitude. In degrees.
-  double r;   // The radius. In AU.
+  double   r; // The radius. In AU.
 };
 
 /**
@@ -169,16 +157,11 @@ SunCoordinate sun_apparent_geocentric_coord(const double jde) {
       .lat   = coord.β.deg(),
       .r     = coord.r,
     };
-
   } catch (const std::exception& e) {
-    std::println("Error in sun_apparent_geocentric_position: {}", e.what());
+    lib::info("Error in sun_apparent_geocentric_position: {}", e.what());
+    lib::debug("sun_apparent_geocentric_position: jde = {}", jde);
 
-    return {
-      .valid = false,
-      .lon   = 0.0,
-      .lat   = 0.0,
-      .r     = 0.0,
-    };
+    return {};
   }
 }
 

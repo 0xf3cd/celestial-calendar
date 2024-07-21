@@ -35,37 +35,50 @@ LIB = ctypes.CDLL(LIB_PATH)
 
 #region Delta T functions
 
+class DeltaT(Structure):
+  _fields_ = [
+    ('valid', c_bool),
+    ('value', c_double),
+  ]
+
 LIB.delta_t_algo1.argtypes = [c_double]
-LIB.delta_t_algo1.restype = c_double
+LIB.delta_t_algo1.restype = DeltaT
 
 LIB.delta_t_algo2.argtypes = [c_double]
-LIB.delta_t_algo2.restype = c_double
+LIB.delta_t_algo2.restype = DeltaT
 
 LIB.delta_t_algo3.argtypes = [c_double]
-LIB.delta_t_algo3.restype = c_double
+LIB.delta_t_algo3.restype = DeltaT
 
 LIB.delta_t_algo4.argtypes = [c_double]
-LIB.delta_t_algo4.restype = c_double
+LIB.delta_t_algo4.restype = DeltaT
 
 
 # Wrap C functions with Python functions, so that they can be called from Python.
 def delta_t_algo1(year: float) -> float:
-  if year < -4000:
-    raise ValueError(f"Year {year} is not supported by algorithm 1.")
-  return LIB.delta_t_algo1(year)
+  result = LIB.delta_t_algo1(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t_algo1.")
+  return result.value
 
 def delta_t_algo2(year: float) -> float:
-  return LIB.delta_t_algo2(year)
+  result = LIB.delta_t_algo2(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t_algo2.")
+  return result.value
 
 def delta_t_algo3(year: float) -> float:
-  if year >= 3000:
-    raise ValueError(f"Year {year} is not supported by algorithm 3.")
-  return LIB.delta_t_algo3(year)
+  result = LIB.delta_t_algo3(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t_algo3.")
+  return result.value
 
 def delta_t_algo4(year: float) -> float:
-  if year >= 2035:
-    raise ValueError(f"Year {year} is not supported by algorithm 4.")
-  return LIB.delta_t_algo4(year)
+  result = LIB.delta_t_algo4(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t_algo4.")
+  return result.value
+  
 
 #endregion
 

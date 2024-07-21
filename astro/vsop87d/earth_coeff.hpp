@@ -35,7 +35,7 @@ using Vsop87dTables = astro::vsop87d::Vsop87dTables;
 
 #pragma region L0-L5
 
-constexpr inline std::array<Coefficients, 559> L0 {{
+constexpr std::array<Coefficients, 559> L0 {{
   {    175347045.673,            0.0,                0.0, },
   {      3341656.456,  4.66925680417,    6283.0758499914, },
   {        34894.275,  4.62610241759,   12566.1516999828, },
@@ -597,7 +597,7 @@ constexpr inline std::array<Coefficients, 559> L0 {{
   {            0.049,  2.44790934886,    13613.804277336, },
 }};
 
-constexpr inline std::array<Coefficients, 341> L1 {{
+constexpr std::array<Coefficients, 341> L1 {{
   { 628331966747.491,            0.0,                0.0, },
   {       206058.863,  2.67823455584,    6283.0758499914, },
   {          4303.43,  2.63512650414,   12566.1516999828, },
@@ -941,7 +941,7 @@ constexpr inline std::array<Coefficients, 341> L1 {{
   {            0.025,  5.71466092822,   25934.1243310894, },
 }};
 
-constexpr inline std::array<Coefficients, 142> L2 {{
+constexpr std::array<Coefficients, 142> L2 {{
   {         52918.87,            0.0,                0.0, },
   {         8719.837,  1.07209665242,    6283.0758499914, },
   {          309.125,  0.86728818832,   12566.1516999828, },
@@ -1086,7 +1086,7 @@ constexpr inline std::array<Coefficients, 142> L2 {{
   {             0.01,  4.93364992366,   12352.8526045448, },
 }};
 
-constexpr inline std::array<Coefficients, 22> L3 {{
+constexpr std::array<Coefficients, 22> L3 {{
   {          289.226,  5.84384198723,    6283.0758499914, },
   {           34.955,            0.0,                0.0, },
   {           16.819,  5.48766912348,   12566.1516999828, },
@@ -1111,7 +1111,7 @@ constexpr inline std::array<Coefficients, 22> L3 {{
   {            0.005,  4.28412873331,    6275.9623029906, },
 }};
 
-constexpr inline std::array<Coefficients, 11> L4 {{
+constexpr std::array<Coefficients, 11> L4 {{
   {          114.084,  3.14159265359,                0.0, },
   {            7.717,  4.13446589358,    6283.0758499914, },
   {            0.765,  3.83803776214,   12566.1516999828, },
@@ -1125,7 +1125,7 @@ constexpr inline std::array<Coefficients, 11> L4 {{
   {            0.002,  0.54912904658,    6438.4962494256, },
 }};
 
-constexpr inline std::array<Coefficients, 5> L5 {{
+constexpr std::array<Coefficients, 5> L5 {{
   {            0.878,  3.14159265359,                0.0, },
   {            0.172,   2.7657906951,    6283.0758499914, },
   {             0.05,  2.01353298182,     155.4203994342, },
@@ -1134,16 +1134,16 @@ constexpr inline std::array<Coefficients, 5> L5 {{
 }};
 
 /** @brief Simply put all L tables together. */
-constexpr inline std::array<Vsop87dTable, 6> L_array { L0, L1, L2, L3, L4, L5, };
+constexpr std::array<Vsop87dTable, 6> L_array { L0, L1, L2, L3, L4, L5, };
 
-constexpr inline Vsop87dTables L { L_array };
+constexpr Vsop87dTables L { L_array };
 
 #pragma endregion
 
 
 #pragma region B0-B4
 
-constexpr inline std::array<Coefficients, 184> B0 {{
+constexpr std::array<Coefficients, 184> B0 {{
   {           279.62,  3.19870156017,  84334.66158130829, },
   {          101.643,  5.42248619256,    5507.5532386674, },
   {           80.445,  3.88013204458,    5223.6939198022, },
@@ -1330,7 +1330,7 @@ constexpr inline std::array<Coefficients, 184> B0 {{
   {            0.039,   3.1123991069,  96900.81328129109, },
 }};
 
-constexpr inline std::array<Coefficients, 99> B1 {{
+constexpr std::array<Coefficients, 99> B1 {{
   {             9.03,   3.8972906189,    5507.5532386674, },
   {            6.177,  1.73038850355,    5223.6939198022, },
   {              3.8,  5.24404145734,    2352.8661537718, },
@@ -1432,7 +1432,7 @@ constexpr inline std::array<Coefficients, 99> B1 {{
   {            0.019,  0.85407021371,    14712.317116458, },
 }};
 
-constexpr inline std::array<Coefficients, 49> B2 {{
+constexpr std::array<Coefficients, 49> B2 {{
   {            1.662,  1.62703209173,  84334.66158130829, },
   {            0.492,  2.41382223971,    1047.7473117547, },
   {            0.344,  2.24353004539,    5507.5532386674, },
@@ -1484,7 +1484,7 @@ constexpr inline std::array<Coefficients, 49> B2 {{
   {            0.009,  5.94191743597,    7632.9432596502, },
 }};
 
-constexpr inline std::array<Coefficients, 11> B3 {{
+constexpr std::array<Coefficients, 11> B3 {{
   {            0.011,  0.23877262399,    7860.4193924392, },
   {            0.009,  1.16069982609,    5507.5532386674, },
   {            0.008,  1.65357552925,    5884.9268465832, },
@@ -1498,7 +1498,7 @@ constexpr inline std::array<Coefficients, 11> B3 {{
   {            0.007,  2.73399865247,    6309.3741697912, },
 }};
 
-constexpr inline std::array<Coefficients, 5> B4 {{
+constexpr std::array<Coefficients, 5> B4 {{
   {            0.004,  0.79662198849,    6438.4962494256, },
   {            0.005,  0.84308705203,    1047.7473117547, },
   {            0.005,  0.05711572303,  84334.66158130829, },
@@ -1507,9 +1507,9 @@ constexpr inline std::array<Coefficients, 5> B4 {{
 }};
 
 /** @brief Simply put all B tables together. */
-constexpr inline std::array<Vsop87dTable, 5> B_array { B0, B1, B2, B3, B4, };
+constexpr std::array<Vsop87dTable, 5> B_array { B0, B1, B2, B3, B4, };
 
-constexpr inline Vsop87dTables B { B_array };
+constexpr Vsop87dTables B { B_array };
 
 
 #pragma endregion
@@ -1517,7 +1517,7 @@ constexpr inline Vsop87dTables B { B_array };
 
 #pragma region R0-R5
 
-constexpr inline std::array<Coefficients, 526> R0 {{
+constexpr std::array<Coefficients, 526> R0 {{
   {    100013988.799,            0.0,                0.0, },
   {      1670699.626,  3.09846350771,    6283.0758499914, },
   {        13956.023,   3.0552460962,   12566.1516999828, },
@@ -2046,7 +2046,7 @@ constexpr inline std::array<Coefficients, 526> R0 {{
   {             0.05,  6.15760345261,  78051.34191383338, },
 }};
 
-constexpr inline std::array<Coefficients, 292> R1 {{
+constexpr std::array<Coefficients, 292> R1 {{
   {       103018.608,  1.10748969588,    6283.0758499914, },
   {         1721.238,  1.06442301418,   12566.1516999828, },
   {          702.215,  3.14159265359,                0.0, },
@@ -2341,7 +2341,7 @@ constexpr inline std::array<Coefficients, 292> R1 {{
   {             0.02,  5.91915117116,    48739.859897083, },
 }};
 
-constexpr inline std::array<Coefficients, 139> R2 {{
+constexpr std::array<Coefficients, 139> R2 {{
   {         4359.385,  5.78455133738,    6283.0758499914, },
   {          123.633,  5.57934722157,   12566.1516999828, },
   {           12.341,  3.14159265359,                0.0, },
@@ -2483,7 +2483,7 @@ constexpr inline std::array<Coefficients, 139> R2 {{
   {            0.009,  4.91488110218,      213.299095438, },
 }};
 
-constexpr inline std::array<Coefficients, 27> R3 {{
+constexpr std::array<Coefficients, 27> R3 {{
   {          144.595,  4.27319435148,    6283.0758499914, },
   {            6.729,  3.91697608662,   12566.1516999828, },
   {            0.774,            0.0,                0.0, },
@@ -2513,7 +2513,7 @@ constexpr inline std::array<Coefficients, 27> R3 {{
   {            0.005,  3.71102966917,    6290.1893969922, },
 }};
 
-constexpr inline std::array<Coefficients, 10> R4 {{
+constexpr std::array<Coefficients, 10> R4 {{
   {            3.858,  2.56384387339,    6283.0758499914, },
   {            0.306,   2.2676950123,   12566.1516999828, },
   {            0.053,  3.44031471924,    5573.1428014331, },
@@ -2526,16 +2526,16 @@ constexpr inline std::array<Coefficients, 10> R4 {{
   {            0.003,  1.28175749811,    6286.5989683404, },
 }};
 
-constexpr inline std::array<Coefficients, 3> R5 {{
+constexpr std::array<Coefficients, 3> R5 {{
   {            0.086,  1.21579741687,    6283.0758499914, },
   {            0.012,  0.65617264033,   12566.1516999828, },
   {            0.001,  0.38068797142,   18849.2275499742, },
 }};
 
 /** @brief Simply put all R tables together. */
-constexpr inline std::array<Vsop87dTable, 6> R_array { R0, R1, R2, R3, R4, R5, };
+constexpr std::array<Vsop87dTable, 6> R_array { R0, R1, R2, R3, R4, R5, };
 
-constexpr inline Vsop87dTables R { R_array };
+constexpr Vsop87dTables R { R_array };
 
 
 #pragma endregion

@@ -52,7 +52,7 @@ namespace astro::earth::heliocentric_coord {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The heliocentric ecliptic position of the Earth, calculated using VSOP87D.
  */
-SphericalCoordinate vsop87d(const double jde) {
+inline SphericalCoordinate vsop87d(const double jde) {
   const double jm = astro::julian_day::jde_to_jm(jde);
   const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
 
@@ -99,7 +99,7 @@ struct NutationCoeffs {
 
 // The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
 // This table is based on IAU 1980 nutation model, and some terms are omitted.
-constexpr inline std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
+constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
   { {  0,  0,  0,  2,  2 }, {   -2274.0,   -0.2 }, {   977.0, -0.5 } },
@@ -168,7 +168,7 @@ constexpr inline std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
 
 // The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
 // Compared to Meeus's omitted version, this table contains all terms.
-constexpr inline std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
+constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
   { {  0,  0, -2,  2,  1 }, {      46.0,    0.0 }, {   -24.0,  0.0 } },
@@ -285,7 +285,7 @@ constexpr inline std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 enum class Model { MEEUS, IAU_1980 };
 
 /** @brief Find the nutation coefficients for the given model. */
-std::span<const NutationCoeffs> find_model(const Model model) {
+inline std::span<const NutationCoeffs> find_model(const Model model) {
   switch (model) {
     case Model::MEEUS:    return std::span<const NutationCoeffs>(MEEUS_NUTATION_COEFFS);
     case Model::IAU_1980: return std::span<const NutationCoeffs>(IAU1980_NUTATION_COEFFS);
@@ -300,7 +300,7 @@ std::span<const NutationCoeffs> find_model(const Model model) {
  * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
+inline std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -330,7 +330,7 @@ std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-Angle<DEG> longitude(const double jde, const Model model = Model::IAU_1980) {
+inline Angle<DEG> longitude(const double jde, const Model model = Model::IAU_1980) {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -365,7 +365,7 @@ Angle<DEG> longitude(const double jde, const Model model = Model::IAU_1980) {
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-Angle<DEG> obliquity(const double jde, const Model model = Model::IAU_1980) {
+inline Angle<DEG> obliquity(const double jde, const Model model = Model::IAU_1980) {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -412,7 +412,7 @@ constexpr double ANNUAL_CONSTANT = 20.49552;
  * @param r The radius (in AU).
  * @return The aberration (in degrees).
  */
-Angle<DEG> compute(const double r) {
+inline Angle<DEG> compute(const double r) {
   const double aberration_arcsec = ANNUAL_CONSTANT / r;
   return Angle<DEG>::from_arcsec(aberration_arcsec);
 }

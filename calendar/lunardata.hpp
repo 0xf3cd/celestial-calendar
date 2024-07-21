@@ -93,7 +93,7 @@ struct LunarYearInfo {
  @param year The year. 年份。
  @return The lunar year information. 阴历年信息。
  */
-LunarYearInfo get_lunar_year_info(uint32_t year) {
+inline LunarYearInfo get_lunar_year_info(uint32_t year) {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
     throw std::out_of_range { 

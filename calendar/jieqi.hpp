@@ -62,7 +62,7 @@ namespace calendar::jieqi::math {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The apparent geocentric longitude of the Sun in degrees.
  */
-double solar_longitude(const double jde) {
+inline double solar_longitude(const double jde) {
   // Calculate the apparent geocentric longitude of the Sun.
   const auto coord = astro::sun::geocentric_coord::apparent(jde);
 
@@ -71,39 +71,39 @@ double solar_longitude(const double jde) {
 }
 
 /** @brief Return the JDE of the start of the year. */
-double get_start_jde(const int32_t year) {
+inline double get_start_jde(const int32_t year) {
   return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 }
 
 /** @brief Return the JDE of the end of the year. */
-double get_end_jde(const int32_t year) {
+inline double get_end_jde(const int32_t year) {
   return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */
-double get_start_lon(const int32_t year) {
+inline double get_start_lon(const int32_t year) {
   return solar_longitude(get_start_jde(year));
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the end of the year. */
-double get_end_lon(const int32_t year) {
+inline double get_end_lon(const int32_t year) {
   return solar_longitude(get_end_jde(year));
 }
 
 /** @brief Return true if the given year has a root for the given `lon` before the spring equinox. */
-bool has_root_before_spring_equinox(const int32_t year, const double lon) {
+inline bool has_root_before_spring_equinox(const int32_t year, const double lon) {
   const double start_lon = get_start_lon(year);
   return start_lon <= lon and lon < 360.0;
 }
 
 /** @brief Return true if the given year has a root for the given `lon` after the spring equinox. */
-bool has_root_after_spring_equinox(const int32_t year, const double lon) {
+inline bool has_root_after_spring_equinox(const int32_t year, const double lon) {
   const double end_lon = get_end_lon(year);
   return 0.0 <= lon and lon < end_lon;
 }
 
 /** @brief Return the count of the roots for the given `year` and `lon`. */
-uint32_t discriminant(const int32_t year, const double lon) {
+inline uint32_t discriminant(const int32_t year, const double lon) {
   uint32_t count = 0;
 
   if (has_root_before_spring_equinox(year, lon)) {
@@ -138,7 +138,7 @@ uint32_t discriminant(const int32_t year, const double lon) {
 using FuncType = std::function<double(const double)>;
 
 /**@brief Return a `f` that we can apply Newton's method to. */
-FuncType make_f(const int32_t year, const double expected_lon) {
+inline FuncType make_f(const int32_t year, const double expected_lon) {
   const double apr_1st_jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 4, 1), 0.0 });
 
   const auto modified_solar_longitude = [=](const double jde) -> double {
@@ -172,7 +172,7 @@ FuncType make_f(const int32_t year, const double expected_lon) {
  * @param episilon The tolerance. Default is 1e-10.
  * @param max_iter The maximum number of iterations. Default is 20.
  * @returns The approximated root (i.e. JDE). */
-double newton_method(
+inline double newton_method(
   const FuncType& f,              // The f function to find root(s) for.
   const double start_jde,         // The left bound of JDE's range, inclusive.
   const double end_jde,           // The right bound of JDE's range, exclusive.
@@ -232,7 +232,7 @@ double newton_method(
  * @param expected_lon The expected solar longitude, in degrees.
  * @return The roots (i.e. JDEs). There can be 0, 1 or 2 roots.
  */
-std::vector<double> find_roots(const int32_t year, const double expected_lon) {
+inline std::vector<double> find_roots(const int32_t year, const double expected_lon) {
   if (discriminant(year, expected_lon) == 0) { // No root.
     return {};
   }
@@ -291,12 +291,12 @@ static_assert(24 == std::underlying_type_t<Jieqi>(Jieqi::COUNT));
 
 
 /** @brief A view of all enum values of `Jieqi`. */
-const auto JIEQI_LIST = std::views::iota(0, std::underlying_type_t<Jieqi>(Jieqi::COUNT)) 
-                      | std::views::transform([](const auto i) { return static_cast<Jieqi>(i); });
+constexpr auto JIEQI_LIST = std::views::iota(0, std::underlying_type_t<Jieqi>(Jieqi::COUNT)) 
+                          | std::views::transform([](const auto i) { return static_cast<Jieqi>(i); });
 
 
 /** @brief Mapping table to get the name of the given `jieqi`. */
-const std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
+const inline std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
   { Jieqi::立春, "立春" }, { Jieqi::雨水, "雨水" }, { Jieqi::惊蛰, "惊蛰" },
   { Jieqi::春分, "春分" }, { Jieqi::清明, "清明" }, { Jieqi::谷雨, "谷雨" },
   { Jieqi::立夏, "立夏" }, { Jieqi::小满, "小满" }, { Jieqi::芒种, "芒种" },
@@ -309,7 +309,7 @@ const std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
 
 
 /** @brief Mapping table to get the solar longitude of the given `jieqi`. */
-const std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invoke([] {
+const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invoke([] {
   const auto pairs = JIEQI_LIST | std::views::transform([&](const auto jq) {
     const auto  jq_idx = std::underlying_type_t<Jieqi>(jq);
 
@@ -329,7 +329,7 @@ const std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invoke([] {
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-double jde_for_jieqi(const int32_t year, const Jieqi jq) {
+inline double jde_for_jieqi(const int32_t year, const Jieqi jq) {
   const auto lon = JIEQI_SOLAR_LONGITUDE.at(jq);
   const auto roots = calendar::jieqi::math::find_roots(year, lon);
 
@@ -351,7 +351,7 @@ double jde_for_jieqi(const int32_t year, const Jieqi jq) {
  * @return The UT1 (Universal Time 1).
  * @details This is just a thin wrapper around `jde_for_jieqi()`.
  */
-calendar::Datetime ut1_for_jieqi(const int32_t year, const Jieqi jq) {
+inline calendar::Datetime ut1_for_jieqi(const int32_t year, const Jieqi jq) {
   return astro::julian_day::jde_to_ut1(jde_for_jieqi(year, jq));
 }
 

@@ -42,7 +42,7 @@ using astro::toolbox::SphericalCoordinate;
  * @details The function invokes `astro::earth::heliocentric_coord::vsop87d`, and
  *          transforms the heliocentric coordinates to geocentric coordinates.
  */
-SphericalCoordinate vsop87d(const double jd) {
+inline SphericalCoordinate vsop87d(const double jd) {
   const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jd);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
@@ -76,7 +76,7 @@ struct Fk5Correction {
  * @return The correction (i.e. Δlongitude and Δlatitude).
  * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
  */
-Fk5Correction fk5_correction(const double jde, const SphericalCoordinate& vsop87d_coord) {
+inline Fk5Correction fk5_correction(const double jde, const SphericalCoordinate& vsop87d_coord) {
   const double jc = astro::julian_day::jde_to_jc(jde);
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
@@ -100,7 +100,7 @@ Fk5Correction fk5_correction(const double jde, const SphericalCoordinate& vsop87
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Sun, after correction.
  */
-SphericalCoordinate apparent(const double jde) {
+inline SphericalCoordinate apparent(const double jde) {
   // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
   const auto vsop_coord = vsop87d(jde);
 
