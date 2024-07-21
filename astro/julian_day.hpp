@@ -26,6 +26,8 @@
 #include <chrono>
 #include <cassert>
 
+#include "delta_t.hpp"
+
 #include "ymd.hpp"
 #include "datetime.hpp"
 
@@ -173,6 +175,28 @@ double tt_to_jde(const calendar::Datetime& tt_dt) {
 calendar::Datetime jde_to_tt(const double jde) {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return jd_to_ut1(jde);
+}
+
+
+/**
+ * @brief Converts a julian ephemeris day number to UT1 datetime.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The date and time, in UT1.
+ */
+calendar::Datetime jde_to_ut1(const double jde) {
+  const auto tt_dt = jde_to_tt(jde);
+  return astro::delta_t::tt_to_ut1(tt_dt);
+}
+
+
+/**
+ * @brief Converts a UT1 datetime to julian ephemeris day number.
+ * @param ut1_dt The date and time, in UT1.
+ * @return The julian ephemeris day number, which is based on TT.
+ */
+double ut1_to_jde(const calendar::Datetime& ut1_dt) {
+  const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
+  return tt_to_jde(tt_dt);
 }
 
 

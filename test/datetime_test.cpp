@@ -4,8 +4,9 @@
 #include "util.hpp"
 #include "datetime.hpp"
 
-namespace calendar {
+namespace calendar::test {
 
+using namespace calendar;
 
 TEST(Datetime, datetime_from_timepoint) {
   const auto now = system_clock::now();
@@ -266,7 +267,7 @@ TEST(Datetime, datetime_consistency) {
 
 TEST(Datetime, datetime_edge_cases) {
   { // Test time_point constructor.
-    using namespace util;
+    using namespace util::ymd_operator;
 
     const auto today_tp = floor<days>(system_clock::now());
     const year_month_day ymd { today_tp };

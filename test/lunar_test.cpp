@@ -3,7 +3,9 @@
 #include "random.hpp"
 #include "lunar.hpp"
 
-namespace calendar::lunar {
+namespace calendar::lunar::test {
+
+using namespace calendar::lunar;
 
 TEST(LunarCalendar, test_is_valid_gregorian) {
   using namespace std::literals;
@@ -74,7 +76,7 @@ TEST(LunarCalendar, test_lunar_to_gregorian_negative) {
 }
 
 TEST(LunarCalendar, test_gregorian_to_lunar) {
-  using namespace util;
+  using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
     const auto& info = LUNARDATA_CACHE.get(year);
@@ -93,7 +95,7 @@ TEST(LunarCalendar, test_gregorian_to_lunar) {
 }
 
 TEST(LunarCalendar, test_lunar_to_gregorian) {
-  using namespace util;
+  using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
     const auto& info = LUNARDATA_CACHE.get(year);
@@ -112,13 +114,13 @@ TEST(LunarCalendar, test_lunar_to_gregorian) {
 }
 
 TEST(LunarCalendar, test_integration) {
-  using namespace util;
+  using namespace util::ymd_operator;
   using std::chrono::sys_days;
   using std::chrono::year_month_day;
 
   const uint32_t diffrence = (sys_days(LAST_GREGORIAN_DATE) - sys_days(FIRST_GREGORIAN_DATE)).count();
   for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = FIRST_GREGORIAN_DATE + random<uint32_t>(0, diffrence);
+    const year_month_day solar_date = FIRST_GREGORIAN_DATE + util::random<uint32_t>(0, diffrence);
     ASSERT_TRUE(is_valid_gregorian(solar_date));
 
     const std::optional<year_month_day> optional_lunar_date = gregorian_to_lunar(solar_date);

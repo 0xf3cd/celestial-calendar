@@ -3,7 +3,9 @@
 #include <ranges>
 #include "util.hpp"
 
-namespace util {
+namespace util::test {
+
+using namespace util;
 
 TEST(Util, test_to_ymd) {
   using namespace std::literals;
@@ -45,6 +47,7 @@ TEST(Util, test_from_ymd) {
 
 TEST(Util, test_operator_add) {
   using namespace std::literals;
+  using namespace util::ymd_operator;
   constexpr auto ymd = to_ymd(1901, 1, 1);
 
   ASSERT_EQ(ymd + std::chrono::days { -365 }, 1900y / 1 / 1);
@@ -68,6 +71,8 @@ TEST(Util, test_operator_add) {
 
 TEST(Util, test_operator_sub) {
   using namespace std::literals;
+  using namespace util::ymd_operator;
+  
   constexpr auto ymd = to_ymd(1901, 1, 1);
 
   ASSERT_EQ(ymd - std::chrono::days { 365 }, 1900y / 1 / 1);

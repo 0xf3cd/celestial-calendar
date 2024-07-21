@@ -15,7 +15,9 @@ namespace astro::delta_t {
 
 #pragma region Datasets
 
-namespace dataset {
+namespace dataset::test {
+
+using namespace dataset;
 
 using DatasetType = std::map<double, double>; // { year, ΔT }
 

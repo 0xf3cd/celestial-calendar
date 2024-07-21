@@ -2,7 +2,9 @@
 #include "util.hpp"
 #include "astro.hpp"
 
-namespace astro::sun::geocentric_coord {
+namespace astro::sun::test {
+
+using namespace astro::sun::geocentric_coord;
 
 TEST(Sun, vsop87d_geocentric_position) {
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {

@@ -3,7 +3,9 @@
 #include "random.hpp"
 #include "vsop87d/vsop87d.hpp"
 
-namespace astro::vsop87d {
+namespace astro::vsop87d::test {
+
+using namespace astro::vsop87d;
 
 TEST(Vsop87d, evaluate) {
   // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).

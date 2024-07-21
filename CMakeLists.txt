@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(cpp-calendar)
+project(celestial-calendar)
 
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-std=c++2b)
@@ -13,4 +13,4 @@ include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 
 add_subdirectory(test)
-add_subdirectory(python_bindings)
+add_subdirectory(shared_lib)

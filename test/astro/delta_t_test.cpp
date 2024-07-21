@@ -5,7 +5,9 @@
 #include "delta_t.hpp"
 #include "delta_t_test_helper.hpp"
 
-namespace astro::delta_t {
+namespace astro::delta_t_test {
+
+using namespace astro::delta_t;
 
 TEST(DeltaT, delta_t_algo1) {
   ASSERT_THROW(algo1::compute(-4001), std::out_of_range);
@@ -60,7 +62,7 @@ TEST(DeltaT, delta_t_statistics) {
     std::println("{}", head_line);
     std::println("{}", devider);
 
-    for (const auto& [year, expected_delta_t] : dataset::ACCURATE_DELTA_T_TABLE) {
+    for (const auto& [year, expected_delta_t] : dataset::test::ACCURATE_DELTA_T_TABLE) {
       const auto datapoint_line = make_line(
         std::vector { pad(year), pad(expected_delta_t) }, 
         operation::evaluate(year)
@@ -83,7 +85,7 @@ TEST(DeltaT, delta_t_statistics) {
     std::println("{}", head_line);
     std::println("{}", devider);
 
-    for (const auto& [year, expected_delta_t] : dataset::ACCURATE_DELTA_T_TABLE) {
+    for (const auto& [year, expected_delta_t] : dataset::test::ACCURATE_DELTA_T_TABLE) {
       std::println("{}", make_line(
         std::vector { year },
         operation::calc_diff(year, expected_delta_t)
@@ -141,7 +143,7 @@ TEST(DeltaT, ut1_tt_conversions) {
 
   // Test range [0, 1900].
   for (uint32_t i = 0; i < 10000; i++) {
-    using namespace util;
+    using namespace util::ymd_operator;
 
     const int32_t year = util::random(0, 1900);
     const int32_t month = util::random(1, 12);

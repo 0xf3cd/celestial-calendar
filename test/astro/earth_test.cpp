@@ -3,7 +3,9 @@
 #include "julian_day.hpp"
 #include "earth.hpp"
 
-namespace astro::earth {
+namespace astro::earth::test {
+
+using namespace astro::earth;
 
 TEST(Earth, vsop87d_evaluate) {
   using namespace heliocentric_coord;
