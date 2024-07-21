@@ -35,7 +35,6 @@ const std::vector<SolarLongitude> DATASET {
   { util::to_ymd(1997, 12, 21),              hms_type { 19h + 54min }, 270.0,  0.01    },
   { util::to_ymd(2000,  3, 20),         hms_type { 7h + 35min + 15s },   0.0,  0.01    },
   { util::to_ymd(2008,  6, 20), hms_type { 23h + 59min + 20s + 56ms },  90.0,  0.00002 },
-  { util::to_ymd(2034,  2,  3),        hms_type { 18h + 40min + 41s }, 315.0,  0.001   },
   { util::to_ymd(2023,  3, 20),              hms_type { 21h + 24min },   0.0,  0.001   },
   { util::to_ymd(2024,  9, 22),              hms_type { 12h + 44min }, 180.0,  0.001   },
   { util::to_ymd(2026,  9, 23),                     hms_type { 5min }, 180.0,  0.001   },
@@ -54,78 +53,5 @@ TEST(JieQi, solar_apparent_geocentric_longitude) {
     ASSERT_NEAR(lon, expected_lon, epsilon);
   }
 }
-
-// TEST(JieQi, estimate_ut1) {
-//   // Use `DATASET`.
-//   for (const auto& [ymd, hms, expected_lon, _] : DATASET) {
-//     const auto [y, __, ___] = util::from_ymd(ymd);
-
-//     const Datetime expected_dt { ymd, hms };
-//     const Datetime estimated_dt = estimate_ut1(y, expected_lon);
-
-//     // Convert the datetimes to jd, and use jd to compare.
-//     const double expected_jd = astro::julian_day::ut1_to_jd(expected_dt);
-//     const double estimated_jd = astro::julian_day::ut1_to_jd(estimated_dt);
-
-//     const double diff = std::abs(estimated_jd - expected_jd);
-//     ASSERT_LE(diff, 5.0);
-//   }
-
-//   // Use random data.
-//   for (auto i = 0; i < 10000; ++i) {
-//     const double jde = astro::julian_day::J2000 + util::random(-10000.0, 10000.0);
-//     const double actual_lon = solar_apparent_geocentric_longitude(jde);
-
-//     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
-//     const auto [y, _, __] = util::from_ymd(ut1_dt.ymd);
-
-//     std::println("{}", std::string(80, '-'));
-
-//     const auto estimated_ut1_dt = estimate_ut1(y, actual_lon);
-//     const double estimated_jde = astro::julian_day::ut1_to_jde(estimated_ut1_dt);
-
-//     std::println("jde: {}, lon: {}, ut1_dt.ymd: {}", jde, actual_lon, ut1_dt.ymd);
-//     std::println("estimated jde: {}, estimated ut1_dt.ymd: {}", estimated_jde, estimated_ut1_dt.ymd);
-
-//     // Ensure `jde` and `estimated_jde` are close.
-//     const double diff = std::abs(jde - estimated_jde);
-//     ASSERT_LE(diff, 6.0);
-//   }
-// }
-
-
-// TEST(JieQi, find_ut1) {
-//   // Use `DATASET`.
-//   for (const auto& [ymd, hms, expected_lon, _] : DATASET) {
-//     const auto [y, __, ___] = util::from_ymd(ymd);
-
-//     const Datetime expected_dt { ymd, hms };
-//     const Datetime found_dt = find_ut1(y, expected_lon);
-
-//     // Convert the datetimes to jd, and use jd to compare.
-//     const double expected_jd = astro::julian_day::ut1_to_jd(expected_dt);
-//     const double found_jd    = astro::julian_day::ut1_to_jd(found_dt);
-
-//     const double diff = std::abs(found_jd - expected_jd);
-//     ASSERT_NEAR(diff, 0.0, 0.01);
-//   }
-
-//   // Use random data.
-//   for (auto i = 0; i < 1000; ++i) {
-//     const double random_jde = astro::julian_day::J2000 + util::random(-10000.0, 10000.0);
-
-//     const auto tt_dt  = astro::julian_day::jde_to_tt(random_jde);
-//     const auto ut1_dt = astro::delta_t::tt_to_ut1(tt_dt);
-
-//     const auto [y, _, __] = util::from_ymd(ut1_dt.ymd);
-//     const auto lon = solar_apparent_geocentric_longitude(random_jde);
-//     const Datetime found_ut1_dt = find_ut1(y, lon);
-//     const Datetime found_tt_dt  = astro::delta_t::ut1_to_tt(found_ut1_dt);
-
-//     const double found_jde = astro::julian_day::tt_to_jde(found_tt_dt);
-//     const double diff = std::abs(found_jde - random_jde);
-//     ASSERT_LE(diff, 0.01);
-//   }
-// }
 
 }

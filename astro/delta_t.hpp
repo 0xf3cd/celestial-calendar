@@ -384,8 +384,8 @@ constexpr double compute(const double year) {
  * @brief The function to compute △T of a given gregorian year.
  * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
  * @return The delta T, in seconds.
- * @details Algo 4 is used, because it is the most accurate one.
- * @note Since Algo 4 is used, it throws std::out_of_range if the year is >= 2035.
+ * @details Algo 4 is used when input year <= 2035, because it is the most accurate one.
+ * 
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).

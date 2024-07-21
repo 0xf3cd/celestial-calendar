@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(deltat VERSION 0.0.1)
-add_library(deltat SHARED lib_delta_t.cpp)
+project(shared_lib VERSION 0.1.0)
 
-project(astro VERSION 0.0.1)
-add_library(astro SHARED lib_astro.cpp)
+set(SOURCES 
+    lib_delta_t.cpp 
+    lib_astro.cpp)
 
-project(jieqi VERSION 0.0.1)
-add_library(jieqi SHARED lib_jieqi.cpp)
+add_library(celestial_calendar SHARED ${SOURCES})
