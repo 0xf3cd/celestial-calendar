@@ -91,6 +91,7 @@ JulianDay ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const 
 
     return {
       .valid = false,
+      .value = 0.0,
     };
   }
 }
@@ -118,15 +119,18 @@ SunCoordinate sun_apparent_geocentric_coord(const double jde) {
 
     return {
       .valid = true,
-      .lon = coord.λ.deg(),
-      .lat = coord.β.deg(),
-      .r = coord.r,
+      .lon   = coord.λ.deg(),
+      .lat   = coord.β.deg(),
+      .r     = coord.r,
     };
   } catch (const std::exception& e) {
     std::println("Error in sun_apparent_geocentric_position: {}", e.what());
 
     return {
       .valid = false,
+      .lon   = 0.0,
+      .lat   = 0.0,
+      .r     = 0.0,
     };
   }
 }
