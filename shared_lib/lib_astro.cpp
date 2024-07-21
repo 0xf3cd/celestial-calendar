@@ -56,6 +56,7 @@ JulianDay ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const d
       .valid = true,
       .value = jd,
     };
+
   } catch (const std::exception& e) {
     std::println("Error in ut1_jd: {}", e.what());
 
@@ -86,6 +87,7 @@ JulianDay ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const 
       .valid = true,
       .value = jde,
     };
+
   } catch (const std::exception& e) {
     std::println("Error in ut1_jde: {}", e.what());
 
@@ -95,6 +97,50 @@ JulianDay ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const 
     };
   }
 }
+
+
+struct UT1Time {
+  bool valid;      // Indicates if the result is valid.
+  int32_t year;    // The year.
+  uint32_t month;  // The month.
+  uint32_t day;    // The day.
+  double fraction; // The fraction of the day. Must be in the range [0.0, 1.0).
+};
+
+
+/**
+ * @brief Convert Julian Ephemeris Day Number (JDE) to UT1 datetime.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @returns A `UT1Time` struct.
+ */
+UT1Time jde_to_ut1(const double jde) {
+  try {
+    const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
+
+    const auto [y, m, d] = util::from_ymd(ut1_dt.ymd);
+    const double fraction = ut1_dt.fraction();
+
+    return {
+      .valid      = true,
+      .year       = y,
+      .month      = m,
+      .day        = d,
+      .fraction   = fraction,
+    };
+
+  } catch (const std::exception& e) {
+    std::println("Error in jde_to_ut1: {}", e.what());
+
+    return {
+      .valid      = false,
+      .year       = 0,
+      .month      = 0,
+      .day        = 0,
+      .fraction   = 0.0,
+    };
+  }
+}
+
 
 #pragma endregion
 
@@ -123,6 +169,7 @@ SunCoordinate sun_apparent_geocentric_coord(const double jde) {
       .lat   = coord.β.deg(),
       .r     = coord.r,
     };
+
   } catch (const std::exception& e) {
     std::println("Error in sun_apparent_geocentric_position: {}", e.what());
 
