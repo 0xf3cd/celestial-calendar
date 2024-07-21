@@ -53,21 +53,6 @@ T random() {
   }
 }
 
-
-/*!
- * @fn random - bool
- * @brief Generate a random bool value.
- * @return a random bool value.
- */
-template <>
-bool random() {
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  std::bernoulli_distribution dist(0.5);
-  return dist(gen);
-}
-
-
 /*!
  * @fn random
  * @brief Generate a random value of type T within the specified range [min, max].

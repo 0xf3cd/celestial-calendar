@@ -124,7 +124,7 @@ TEST(Util, test_gen_random_value2) {
       std::max(randomValue1, randomValue2)
     );
     ASSERT_GE(randomValue3, std::min(randomValue1, randomValue2));
-    ASSERT_LT(randomValue3, std::max(randomValue1, randomValue2));
+    ASSERT_LE(randomValue3, std::max(randomValue1, randomValue2));
   }
 
   for (size_t i = 0; i < 5000; i++) {
