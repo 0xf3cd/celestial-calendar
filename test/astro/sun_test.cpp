@@ -712,8 +712,18 @@ TEST(Sun, corrected_position) {
   for (const auto& [jde, expected] : EXPECTED) {
     const auto result = apparent(jde);
     ASSERT_NEAR(result.λ.as<DEG>(), std::get<0>(expected), 7e-7);
-    ASSERT_NEAR(result.β.as<DEG>(), std::get<1>(expected), 1e-15);
-    ASSERT_NEAR(result.r,           std::get<2>(expected), 1e-15);
+
+    const double epsilon = std::invoke([] consteval {
+      // On i386 platform, the epsilon is 2e-14, otherwise it is 1e-15.
+      #if defined(__i386__) || defined(_M_IX86)
+        return 2e-14;
+      #else
+        return 1e-15;
+      #endif
+    });
+    
+    ASSERT_NEAR(result.β.as<DEG>(), std::get<1>(expected), epsilon);
+    ASSERT_NEAR(result.r,           std::get<2>(expected), epsilon);
   }
 }
 
