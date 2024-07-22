@@ -21,17 +21,23 @@ RUN apt-get update && \
 ENV CXX=g++-14
 ENV CC=gcc-14
 
-# Install other required packages
-RUN apt-get update && \
-    apt-get install -y cmake python3 python3-pip tree && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Define an argument to choose the package manager
+ARG PACKAGE_MANAGER=apt-get
+
+
+# Install required packages using the chosen package manager
+RUN if [ "$PACKAGE_MANAGER" = "aptitude" ]; then \
+        apt-get update && \
+        apt-get install -y aptitude && \
+        aptitude install -y cmake python3 python3-pip tree; \
+    else \
+        apt-get update && \
+        apt-get install -y cmake python3 python3-pip tree; \
+    fi
 
 # Create a working directory
+COPY . /app
 WORKDIR /app
-
-# Copy the project files
-COPY . .
 
 # Install Python dependencies if Requirements.txt exists
 RUN if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi

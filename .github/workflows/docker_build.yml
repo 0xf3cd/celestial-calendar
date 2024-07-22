@@ -1,4 +1,4 @@
-name: Shared Library Builders
+name: Build and Test with Docker Images (Debian latest / g++14)
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
@@ -16,6 +16,7 @@ jobs:
           - "linux/arm64"
           - "linux/arm/v5"
           - "linux/arm/v7"
+          - "linux/mips64le"
           - "linux/ppc64le"
           - "linux/s390x"
           - "linux/riscv64"
@@ -32,19 +33,48 @@ jobs:
       - name: Determine BASE_IMAGE
         id: determine-base-image
         run: |
+          echo "PACKAGE_MANAGER=apt-get" >> $GITHUB_OUTPUT
           case "${{ matrix.platform }}" in
-            "linux/amd64") echo "BASE_IMAGE=debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/i386") echo "BASE_IMAGE=i386/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=i386/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/arm64") echo "BASE_IMAGE=arm64v8/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=arm64v8/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/arm/v5") echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/arm/v7") echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/ppc64le") echo "BASE_IMAGE=ppc64le/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=ppc64le/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/s390x") echo "BASE_IMAGE=s390x/debian:latest" >> $GITHUB_ENV; echo "BASE_IMAGE=s390x/debian:latest" >> $GITHUB_OUTPUT ;;
-            "linux/riscv64") echo "BASE_IMAGE=riscv64/debian:sid" >> $GITHUB_ENV; echo "BASE_IMAGE=riscv64/debian:sid" >> $GITHUB_OUTPUT ;;
+            "linux/amd64") 
+              echo "BASE_IMAGE=debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/i386")
+              echo "BASE_IMAGE=i386/debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/arm64")
+              echo "BASE_IMAGE=arm64v8/debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/arm/v5")
+              echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_OUTPUT
+              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
+              ;;
+            "linux/arm/v7")
+              echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_OUTPUT
+              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
+              ;;
+            "linux/mips64le")
+              echo "BASE_IMAGE=mips64le/debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/ppc64le")
+              echo "BASE_IMAGE=ppc64le/debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/s390x")
+              echo "BASE_IMAGE=s390x/debian:latest" >> $GITHUB_OUTPUT
+              ;;
+            "linux/riscv64")
+              echo "BASE_IMAGE=riscv64/debian:sid" >> $GITHUB_OUTPUT
+              ;;
           esac
 
       - name: Set up environment variables
         run: |
+          # Print the BASE_IMAGE and PACKAGE_MANAGER
+          echo "BASE_IMAGE set to ${{ steps.determine-base-image.outputs.BASE_IMAGE }}"
+          echo "PACKAGE_MANAGER set to ${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}"
+          
+          echo "BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }}" >> $GITHUB_ENV
+          echo "PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}" >> $GITHUB_ENV
+
           platform="${{ matrix.platform }}"
           os=$(echo "${platform}" | cut -d '/' -f 1)
           arch=$(echo "${platform}" | cut -d '/' -f 2- | tr '/' '_')
@@ -75,11 +105,10 @@ jobs:
           # Create and use a new Buildx builder instance
           docker buildx create --use
           # Build the Docker image for the specified platform
-          docker buildx build --platform $OS/$ARCH -t $IMAGE_TAG --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} --load .
+          docker buildx build --platform $OS/$ARCH -t $IMAGE_TAG --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} --build-arg PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }} --load .
           # Run the Docker image and copy build artifacts to the output directory
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build'
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'cp -r /app/build/shared_lib /output/'
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/'
+
 
       - name: Rename shared library
         id: rename_lib
