@@ -250,7 +250,17 @@ TEST(Earth, nutation_meeus) {
     const auto& [lon_nut, obl_nut] = expected;
 
     ASSERT_NEAR(longitude(jde, Model::MEEUS).as<DEG>(), lon_nut, 1e-14);
-    ASSERT_NEAR(obliquity(jde, Model::MEEUS).as<DEG>(), obl_nut, 1e-15);
+
+    const double obl_epsilon = std::invoke([] consteval {
+      // On i386 platform, the epsilon is 4e-15, otherwise it is 1e-15.
+      #if defined(__i386__) || defined(_M_IX86)
+        return 4e-15;
+      #else
+        return 1e-15;
+      #endif
+    });
+
+    ASSERT_NEAR(obliquity(jde, Model::MEEUS).as<DEG>(), obl_nut, obl_epsilon);
   }
 }
 
