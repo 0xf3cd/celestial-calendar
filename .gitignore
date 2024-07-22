@@ -1,5 +1,10 @@
 test_pymeeus.py
 
+# Docker output
+output/
+docker_output/
+output_*/
+
 # CMake
 build/
 CMakeLists.txt.user
