@@ -2,8 +2,8 @@ name: Build and Test with Docker Images (Debian latest / g++14)
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
-  pull_request:
-    branches: [ main ]  # Also triggers on pull requests to the main branch
+  # pull_request:
+  #   branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
   build:
@@ -102,10 +102,17 @@ jobs:
         run: |
           # Set up QEMU for cross-compilation
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
           # Create and use a new Buildx builder instance
           docker buildx create --use
+
           # Build the Docker image for the specified platform
-          docker buildx build --platform $OS/$ARCH -t $IMAGE_TAG --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} --build-arg PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }} --load .
+          docker buildx build \
+            --platform $OS/$ARCH -t $IMAGE_TAG \
+            --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} \
+            --build-arg PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }} \
+            --load .
+
           # Run the Docker image and copy build artifacts to the output directory
           docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/'
 
@@ -132,19 +139,17 @@ jobs:
 
             echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_ENV
             echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_OUTPUT
+
+            # Print to stdout
+            echo "lib_name=${lib_name}"
+            echo "lib_path=${lib_path}"
           
           else
             # Handle cases where no or multiple shared libraries are found
             [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
             exit 1
           
-          fi
-
-      - name: Debug environment variables
-        run: |
-          # Print the archive_name variable for debugging
-          echo "lib_name=${{ steps.rename_lib.outputs.lib_name }}"
-          echo "lib_path=${{ steps.rename_lib.outputs.lib_path }}"
+          fi 
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

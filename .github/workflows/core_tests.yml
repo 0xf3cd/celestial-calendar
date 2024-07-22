@@ -10,24 +10,29 @@ jobs:
     strategy:  
       matrix:  
         python-version: ["3.12"]  
-  
+
     steps:  
       - uses: actions/checkout@v4
+
       - name: Set up python ${{ matrix.python-version }}  
         uses: actions/setup-python@v5 
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install Python dependencies
         run: |  
-          python -m pip install --upgrade pip  
-          if [ -f Requirements.txt ]; then pip install -r Requirements.txt; fi  
+          python3 -m pip install --upgrade pip  
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
+
       - name: Install g++14
         run: |
           sudo add-apt-repository universe
           sudo apt update
           sudo apt install -y g++-14 gcc-14
+
       - name: Install CMake
         run: sudo apt install cmake
+
       - name: Build and Test
         env:
           CXX: g++-14
@@ -42,24 +47,29 @@ jobs:
     strategy:  
       matrix:  
         python-version: ["3.12"]  
-  
+
     steps:  
       - uses: actions/checkout@v4
+
       - name: Set up python ${{ matrix.python-version }}  
         uses: actions/setup-python@v5 
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install Python dependencies
         run: |  
-          python -m pip install --upgrade pip  
-          if [ -f Requirements.txt ]; then pip install -r Requirements.txt; fi  
+          python3 -m pip install --upgrade pip  
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
+
       - name: Install LLVM and clang++
         run: |
           sudo add-apt-repository universe
           sudo apt update
           sudo apt install -y llvm-18 clang-18
+
       - name: Install CMake
         run: sudo apt install cmake
+
       - name: Build and Test
         env:
           CXX: clang++-18
