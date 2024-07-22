@@ -1,16 +1,12 @@
-# Dockerfile
 FROM ubuntu:24.04
 
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
-    add-apt-repository universe
-
-RUN apt-get install -y python3.12 python3-pip
-
-RUN apt-get install -y g++-14 gcc-14 cmake
-
-RUN apt-get install -y tree
+    apt-get install -y python3 python3-pip && \
+    apt-get install -y g++-14 gcc-14 cmake && \
+    apt-get install -y tree && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV CXX=g++-14
@@ -28,5 +24,5 @@ RUN if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt;
 # Make the build script executable
 RUN chmod +x build.py
 
-# Entry point for the Docker container
-CMD ["./build.py", "--clean", "-cmk", "-b", "-t"]
+# Build and test the project
+RUN ./build.py --clean -cmk -b -t

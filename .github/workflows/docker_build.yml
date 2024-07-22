@@ -1,17 +1,18 @@
-name: Build and Test Celestial Calendar
+name: Shared Library Builders
 
 on:
-  push:
-    branches: [ '**' ]
+  workflow_dispatch: {}  # Allows manual triggering of the workflow
   pull_request:
-    branches: [ main ]
+    branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform: [ "linux/amd64", "linux/arm64" ]
+        platform: 
+          - "linux/amd64"
+          - "linux/arm64"
 
     steps:
       - uses: actions/checkout@v4
@@ -22,47 +23,85 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Set up environment variables
         run: |
-          export image_tag=$(echo celestial-calendar-${{ matrix.platform }} | tr '/' '-')
-          sudo docker buildx create --use
-          sudo docker buildx build --platform ${{ matrix.platform }} -t $image_tag --load .
+          platform="${{ matrix.platform }}"
+          os=$(echo "${platform}" | cut -d '/' -f 1)
+          arch=$(echo "${platform}" | cut -d '/' -f 2- | tr '/' '_')
 
-      - name: Run Docker container
+          image_tag="celestial-calendar-${os}-${arch}"
+          proj_dir=$(pwd)
+          output_dir="${proj_dir}/output_${os}_${arch}"
+
+          # Set environment variables
+          echo "OS=${os}" >> $GITHUB_ENV
+          echo "ARCH=${arch}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${image_tag}" >> $GITHUB_ENV
+          echo "PROJ_DIR=${proj_dir}" >> $GITHUB_ENV
+          echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_ENV
+
+      - name: Clean up output directory
         run: |
-          export image_tag=$(echo celestial-calendar-${{ matrix.platform }} | tr '/' '-')
-          export output_dir=$(echo $(pwd)/output-${{ matrix.platform }} | tr '/' '-')
-          mkdir -p $output_dir # Ensure the output directory exists
-          sudo docker run --rm -v $output_dir:/output $image_tag
-          sudo docker run --rm -v $output_dir:/output $image_tag /bin/bash -c "tree /app"
-          sudo docker run --rm -v $output_dir:/output $image_tag /bin/bash -c "tree /app/build"
-          sudo docker run --rm -v $output_dir:/output $image_tag /bin/bash -c "cp -r /app/build/shared_lib /output"
-      
-      - name: Check shared lib existence
-        run: |
-          export platform_arch=$(echo ${{ matrix.platform }} | tr '/' '-')
-          export output_dir=$(echo $(pwd)/output-${{ matrix.platform }} | tr '/' '-')
-          shared_libs=($(find $output_dir/shared_lib -type f -name "*.so" -o -name "*.dylib" -o -name "*.dll"))
-          if [ ${#shared_libs[@]} -eq 0 ]; then
-            echo "No shared libraries found."
-            exit 1
+          # Remove the output directory if it exists and recreate it
+          if [ -d "$OUTPUT_DIR" ]; then
+            rm -rf "$OUTPUT_DIR"
           fi
-          count=1
-          for lib in "${shared_libs[@]}"; do
-            extension="${lib##*.}"
-            if [ $count -eq 1 ]; then
-              new_name="$output_dir/shared_lib/libcelestial_calendar_${platform_arch}.${extension}"
-            else
-              new_name="$output_dir/shared_lib/libcelestial_calendar${count}_${platform_arch}.${extension}"
-            fi
-            echo "Renaming $lib to $new_name"
-            mv "$lib" "$new_name"
-            ((count++))
-          done
+          mkdir -p "$OUTPUT_DIR"
 
-      - name: Upload shared libraries
-        uses: actions/upload-artifact@v3
+      - name: Build and run Docker image
+        run: |
+          # Set up QEMU for cross-compilation
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          # Create and use a new Buildx builder instance
+          docker buildx create --use
+          # Build the Docker image for the specified platform
+          docker buildx build --platform $OS/$ARCH -t $IMAGE_TAG --build-arg BASE_IMAGE=ubuntu:24.04 --load .
+          # Run the Docker image and copy build artifacts to the output directory
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build'
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'cp -r /app/build/shared_lib /output/'
+
+      - name: Rename shared library
+        id: rename_lib
+        run: |
+          cd "$OUTPUT_DIR/shared_lib"
+          libs=(*.[sod]*)
+
+          # Check if exactly one shared library is found
+          if [ ${#libs[@]} -eq 1 ]; then
+            lib="${libs[0]}"
+            extension="${lib##*.}"
+            new_name="lib_celecalendar_${OS}_${ARCH}.${extension}"
+
+            # Rename the shared library
+            sudo mv "$lib" "$new_name" # Fail without sudo permission
+            echo "Renamed $lib to $new_name"
+
+            # Set the lib environment variables
+            echo "lib_name=${new_name}" >> $GITHUB_ENV
+            echo "lib_name=${new_name}" >> $GITHUB_OUTPUT
+
+            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_ENV
+            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_OUTPUT
+          
+          else
+            # Handle cases where no or multiple shared libraries are found
+            [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
+            exit 1
+          
+          fi
+
+      - name: Debug environment variables
+        run: |
+          # Print the archive_name variable for debugging
+          echo "lib_name=${{ steps.rename_lib.outputs.lib_name }}"
+          echo "lib_path=${{ steps.rename_lib.outputs.lib_path }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: celestial-calendar-$(echo ${{ matrix.platform }} | tr '/' '-')
-          path: $(echo ./output-${{ matrix.platform }} | tr '/' '-')/shared_lib/*
+          # Upload the renamed shared library as an artifact
+          name: ${{ steps.rename_lib.outputs.lib_name }}
+          path: ${{ steps.rename_lib.outputs.lib_path }}
+          retention-days: 30
           if-no-files-found: error
