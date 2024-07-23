@@ -1,3 +1,14 @@
+# CelestialCalendar Automation:
+#   Python automation scripts for building and testing the CelestialCalendar C++ project.
+# 
+# Author: Ningqi Wang (0xf3cd)
+# Email : nq.maigre@gmail.com
+# Repo  : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 import os
 import sys
 import shutil
@@ -5,9 +16,8 @@ import platform
 from datetime import datetime
 from .utils import run_cmd, ProcReturn
 
-
 def print_system_info() -> None:
-  '''Print system time and other info.'''
+  """Print system time and other system information."""
   cmake_version: ProcReturn = run_cmd(['cmake', '--version'], print_cmd=False, print_stdout=False)
   assert cmake_version.retcode == 0
 
@@ -40,3 +50,5 @@ def print_system_info() -> None:
   print(f'-- processor: {platform.processor()}')
   print(f'-- architecture: {platform.architecture()}')
   print(f'-- cpu cores: {os.cpu_count()}')
+
+  print(60 * '#')

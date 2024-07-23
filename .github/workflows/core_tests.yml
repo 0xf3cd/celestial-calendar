@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
-        python-version: ["3.12"]  
+        python-version: ["3.8"]  
 
     steps:  
       - uses: actions/checkout@v4
@@ -38,8 +38,8 @@ jobs:
           CXX: g++-14
           CC:  gcc-14
         run: |
-          chmod +x build.py
-          ./build.py -cmk -b -t -v 1
+          chmod +x automation.py
+          ./automation.py --setup --clean --cmake --build --test -v 1
 
 
   test-llvm18:  
@@ -75,5 +75,5 @@ jobs:
           CXX: clang++-18
           CC:  clang-18
         run: |
-          chmod +x build.py
-          ./build.py -cmk -b -t -v 1
+          chmod +x automation.py
+          ./automation.py --setup --clean --cmake --build --test -v 1

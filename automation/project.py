@@ -1,11 +1,22 @@
+# CelestialCalendar Automation:
+#   Python automation scripts for building and testing the CelestialCalendar C++ project.
+# 
+# Author: Ningqi Wang (0xf3cd)
+# Email : nq.maigre@gmail.com
+# Repo  : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 from pathlib import Path
 import shutil
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 BUILD_DIR = Path(__file__).parent.parent / 'build'
 
-
 def run_cmake() -> int:
+  """Run CMake to generate build files."""
   print('#' * 60)
 
   if not BUILD_DIR.exists():
@@ -19,8 +30,8 @@ def run_cmake() -> int:
   print('#' * 60)
   return ret.retcode
 
-
 def build_project(cpu_cores: int = 8) -> int:
+  """Build the C++ project using the specified number of CPU cores."""
   print('#' * 60)
 
   assert BUILD_DIR.exists(), 'Build directory not found'
@@ -32,8 +43,8 @@ def build_project(cpu_cores: int = 8) -> int:
   print('#' * 60)
   return ret.retcode
 
-
 def clean_build() -> int:
+  """Clean the build directory."""
   print('#' * 60)
 
   if BUILD_DIR.exists():

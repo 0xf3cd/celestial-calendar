@@ -1,3 +1,14 @@
+# CelestialCalendar Automation:
+#   Python automation scripts for building and testing the CelestialCalendar C++ project.
+# 
+# Author: Ningqi Wang (0xf3cd)
+# Email : nq.maigre@gmail.com
+# Repo  : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 from pathlib import Path
 from typing import List, Dict
 from .utils import run_cmd, yellow_print, blue_print, red_print, green_print, ProcReturn
@@ -5,12 +16,12 @@ from .utils import run_cmd, yellow_print, blue_print, red_print, green_print, Pr
 BUILD_DIR = Path(__file__).parent.parent / 'build'
 TEST_DIR = BUILD_DIR / 'test'
 
-
 def list_tests() -> Dict[str, str]:
+  """List all available tests in the build directory."""
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
-  proc_ret = run_cmd(['ctest', '-N'], cwd=TEST_DIR)
+  proc_ret = run_cmd(['ctest', '-N'], print_stdout=False, cwd=TEST_DIR)
   assert proc_ret.retcode == 0, 'Failed to run "ctest -N"'
   
   d: Dict[str, str] = {}
@@ -22,8 +33,8 @@ def list_tests() -> Dict[str, str]:
 
   return d
 
-
 def find_tests(keywords: List[str]) -> List[str]:
+  """Find tests that match the given keywords."""
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
@@ -61,14 +72,13 @@ def find_tests(keywords: List[str]) -> List[str]:
   test_list = list(set(test_list))
   return sorted(test_list, key=lambda test_name: name_to_no[test_name])
 
-
 def run_test(
   test: str,
   verbose_level: int = 0,
   debug: bool = False,
   output_on_failure: bool = True,
 ) -> ProcReturn:
-  '''Run a single test.'''
+  """Run a single test."""
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
@@ -84,14 +94,13 @@ def run_test(
 
   return run_cmd(cmd, cwd=TEST_DIR)
 
-
 def run_tests(
   keywords: List[str] = [], # When empty, run all tests.
   verbose_level: int = 0,
   debug: bool = False,
   output_on_failure: bool = True,
 ) -> int:
-  '''Find tests based on keywords and run them.'''
+  """Find tests based on keywords and run them."""
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 

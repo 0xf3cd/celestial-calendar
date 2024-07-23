@@ -1,3 +1,14 @@
+# CelestialCalendar Automation:
+#   Python automation scripts for building and testing the CelestialCalendar C++ project.
+# 
+# Author: Ningqi Wang (0xf3cd)
+# Email : nq.maigre@gmail.com
+# Repo  : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 import os
 import shutil
 import tempfile
@@ -8,8 +19,8 @@ from .utils import yellow_print, red_print, green_print, run_cmd, blue_print
 
 REQUIREMENTS_FILE = Path(__file__).parent.parent / 'Requirements.txt'
 
-
 def install_dependencies() -> int:
+  """Install the required Python dependencies listed in 'Requirements.txt'."""
   if REQUIREMENTS_FILE.exists():
     yellow_print('# Installing Python dependencies...')
     pip_executable = shutil.which('pip')
@@ -25,8 +36,8 @@ def install_dependencies() -> int:
       return 1
   return 0
 
-
 def check_tool_exists(tool_name: str, args: List[str] = ['--version']) -> bool:
+  """Check if a tool exists and can be executed with the given arguments."""
   tool_path = shutil.which(tool_name)
   if tool_path is None:
     red_print(f'# {tool_name} not found!')
@@ -39,8 +50,8 @@ def check_tool_exists(tool_name: str, args: List[str] = ['--version']) -> bool:
 
   return True
 
-
 def check_cpp_support(compiler: str, cpp_version: str) -> bool:
+  """Check if the given compiler supports the specified C++ version."""
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
     tmp_cpp_file.write_text('#include <print>\n#include <ranges>\nint main() { std::println("Hello, World!"); return 0; }')
@@ -50,8 +61,8 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
 
     return proc_ret.retcode == 0
 
-
 def setup_environment() -> int:
+  """Set up the environment by installing dependencies and checking tool availability and C++ support."""
   retcode = install_dependencies()
   if retcode != 0:
     return retcode
