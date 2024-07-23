@@ -43,7 +43,7 @@ WORKDIR /app
 RUN if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
 # Make the build script executable
-RUN chmod +x chmod +x automation.py
+RUN chmod +x automation.py
 
 # Build and test the project
 RUN ./automation.py --setup --clean --cmake --cores $(nproc) --build --test -v 1
