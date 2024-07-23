@@ -6,7 +6,7 @@ on:
   #   branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
-  build:
+  build-shared-lib-linux:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -151,7 +151,7 @@ jobs:
           
           fi 
 
-      - name: Upload artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           # Upload the renamed shared library as an artifact
