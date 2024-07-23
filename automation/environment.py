@@ -63,7 +63,7 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
     
     except Exception as e:
       red_print(f'# Failed to check C++ support: {str(e)}')
-      return False
+      return False 
 
 def setup_environment() -> int:
   """Set up the environment by installing dependencies and checking tool availability and C++ support."""
@@ -81,7 +81,7 @@ def setup_environment() -> int:
       return 1
 
   # Check for C++ support
-  cxx_compilers = ['clang++', 'g++', 'g++-14', 'clang++-18']
+  cxx_compilers = ['cl', 'clang++', 'g++', 'g++-14', 'clang++-18']
   cxx_env = os.environ.get('CXX')
   if cxx_env:
     cxx_compilers.append(cxx_env)
