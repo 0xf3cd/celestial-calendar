@@ -79,12 +79,12 @@ jobs:
           ./automation.py --setup --clean --cmake --build --test -v 1
 
 
-  test-macos:  
+  test-macos-apple-clang:  
     runs-on: macos-latest
     strategy:  
       matrix:  
         python-version: ["3.12"]  
-        
+
     steps:
     - uses: actions/checkout@v4
 
