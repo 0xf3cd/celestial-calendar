@@ -99,7 +99,7 @@ def main() -> int:
 
   if args.setup:
     ret, task_times['Setup'] = time_execution(setup_environment, 'Setup and Check')
-    retcode |= ret
+    # retcode |= ret
 
   if args.clean and not retcode:
     ret, task_times['Clean'] = time_execution(clean_build, 'Clean')

@@ -1,11 +1,11 @@
-name: Core Tests on Ubuntu 24.04
+name: Core Tests
   
 on:
   push:
     branches: [ '**' ]
 
 jobs:  
-  test-gcc14:  
+  test-ubuntu-gcc14:  
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
@@ -42,7 +42,7 @@ jobs:
           ./automation.py --setup --clean --cmake --build --test -v 1
 
 
-  test-llvm18:  
+  test-ubuntu-llvm18:  
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
@@ -74,6 +74,29 @@ jobs:
         env:
           CXX: clang++-18
           CC:  clang-18
+        run: |
+          chmod +x automation.py
+          ./automation.py --setup --clean --cmake --build --test -v 1
+
+
+  test-macos-gcc14:  
+    runs-on: macos-14
+    strategy:  
+      matrix:  
+        python-version: ["3.12"]  
+  
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Build and test
+        env:
+          CC:  gcc-14
+          CXX: g++-14
         run: |
           chmod +x automation.py
           ./automation.py --setup --clean --cmake --build --test -v 1

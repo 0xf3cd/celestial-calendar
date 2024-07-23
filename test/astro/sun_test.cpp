@@ -713,7 +713,7 @@ TEST(Sun, corrected_position) {
     const auto result = apparent(jde);
     ASSERT_NEAR(result.λ.as<DEG>(), std::get<0>(expected), 7e-7);
 
-    const double epsilon = std::invoke([] consteval {
+    const double epsilon = std::invoke([] {
       // On i386 platform, the epsilon is 2e-14, otherwise it is 1e-15.
       #if defined(__i386__) || defined(_M_IX86)
         return 2e-14;

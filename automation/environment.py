@@ -56,10 +56,14 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
     tmp_cpp_file.write_text('#include <print>\n#include <ranges>\nint main() { std::println("Hello, World!"); return 0; }')
 
-    cxx_test_command = [compiler, f'--std={cpp_version}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
-    proc_ret = run_cmd(cxx_test_command, print_cmd=False, print_stdout=False, print_stderr=False)
-
-    return proc_ret.retcode == 0
+    try:
+      cxx_test_command = [compiler, f'--std={cpp_version}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
+      proc_ret = run_cmd(cxx_test_command)
+      return proc_ret.retcode == 0
+    
+    except Exception as e:
+      red_print(f'# Failed to check C++ support: {str(e)}')
+      return False
 
 def setup_environment() -> int:
   """Set up the environment by installing dependencies and checking tool availability and C++ support."""
@@ -86,6 +90,10 @@ def setup_environment() -> int:
   supporting_compilers = []
 
   for compiler, cpp_version in product(cxx_compilers, cpp_versions):
+    if shutil.which(compiler) is None:
+      red_print(f'# {compiler} not found!')
+      continue
+
     if check_cpp_support(compiler, cpp_version):
       compiler_path = shutil.which(compiler)
       supporting_compilers.append((compiler_path, cpp_version))
