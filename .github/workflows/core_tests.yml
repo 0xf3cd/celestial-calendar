@@ -109,3 +109,61 @@ jobs:
       run: |
         chmod +x automation.py
         ./automation.py --setup --clean --cmake --build --test -v 1
+
+
+  test-windows-clang:  
+    runs-on: windows-latest
+    strategy:  
+      matrix:  
+        python-version: ["3.12"]  
+  
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+  
+      - name: Install dependencies
+        run: |  
+          python -m pip install --upgrade pip  
+          if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
+
+      - name: Build and 
+        env:
+          CXX: clang++
+          CC:  clang
+        run: |
+          chcp.com 65001
+          $env:PYTHONIOENCODING = "utf-8"
+          python3 ./automation.py --setup --clean --cmake --build --test -v 1
+
+
+  test-windows-msvc:  
+    runs-on: windows-latest
+    strategy:  
+      matrix:  
+        python-version: ["3.12"]  
+  
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+  
+      - name: Install dependencies
+        run: |  
+          python -m pip install --upgrade pip  
+          if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
+
+      - name: Build and 
+        env:
+          CXX: cl
+          CC:  cl
+        run: |
+          chcp.com 65001
+          $env:PYTHONIOENCODING = "utf-8"
+          python3 ./automation.py --setup --clean --cmake --build --test -v 1

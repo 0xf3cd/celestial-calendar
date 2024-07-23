@@ -25,7 +25,7 @@ def run_cmake() -> int:
     BUILD_DIR.mkdir()
 
   yellow_print('# Running cmake...')
-  ret: ProcReturn = run_cmd(['cmake', '..'], cwd=BUILD_DIR)
+  ret: ProcReturn = run_cmd(['cmake', '..', '-G', 'Unix Makefiles'], cwd=BUILD_DIR)
 
   print('#' * 60)
   return ret.retcode

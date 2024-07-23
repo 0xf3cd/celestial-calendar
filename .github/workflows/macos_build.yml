@@ -2,7 +2,6 @@ name: Build and Test on macOS (macOS latest / apple-clang)
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
-  push: { branches: [ '**' ] }
   # pull_request:
   #   branches: [ main ]  # Also triggers on pull requests to the main branch
 
