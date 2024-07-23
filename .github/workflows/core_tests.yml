@@ -77,26 +77,3 @@ jobs:
         run: |
           chmod +x automation.py
           ./automation.py --setup --clean --cmake --build --test -v 1
-
-
-  test-macos-gcc14:  
-    runs-on: macos-14
-    strategy:  
-      matrix:  
-        python-version: ["3.12"]  
-  
-    steps:  
-      - uses: actions/checkout@v4
-
-      - name: Set up python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
-        with:
-          python-version: ${{ matrix.python-version }}
-      
-      - name: Build and test
-        env:
-          CC:  gcc-14
-          CXX: g++-14
-        run: |
-          chmod +x automation.py
-          ./automation.py --setup --clean --cmake --build --test -v 1
