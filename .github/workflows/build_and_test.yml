@@ -153,16 +153,11 @@ jobs:
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        id: artifact-upload-step
         with:
           name: ${{ steps.shared_lib.outputs.lib_name }}
           path: ${{ steps.shared_lib.outputs.lib_path }}
           retention-days: 30
           if-no-files-found: error
-
-      - name: Output artifact ID
-        run:  echo "Artifact ID is ${{ steps.artifact-upload-step.outputs.artifact-id }}"
-     
 
 
   macos:
@@ -194,7 +189,7 @@ jobs:
         CC:  clang
       run: |
         chmod +x automation.py
-        ./automation.py --setup --clean --cmake --build --test -v 1
+        ./automation.py --setup --clean --cmake --cores all --build --test -v 1
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
@@ -220,16 +215,12 @@ jobs:
 
     - name: GitHub Artifact
       uses: actions/upload-artifact@v4
-      id: artifact-upload-step
       with:
         name: ${{ steps.shared_lib.outputs.lib_name }}
         path: ${{ steps.shared_lib.outputs.lib_path }}
         retention-days: 30
         if-no-files-found: error
 
-    - name: Output artifact ID
-      run:  echo "Artifact ID is ${{ steps.artifact-upload-step.outputs.artifact-id }}"
-        
 
   windows:
     runs-on: windows-latest
@@ -264,7 +255,7 @@ jobs:
         run: |
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
-          python3 ./automation.py --setup --clean --cmake --build --test -v 1
+          python3 ./automation.py --setup --clean --cmake --cores all --build --test -v 1
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
@@ -298,7 +289,6 @@ jobs:
 
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4
-        id: artifact-upload-step
         with:
           name: ${{ steps.shared_lib.outputs.dll_name }}
           path: |
@@ -307,6 +297,3 @@ jobs:
             ${{ steps.shared_lib.outputs.pdb_path }}
           retention-days: 30
           if-no-files-found: error
-
-      - name: Output artifact ID
-        run:  Write-Output "Artifact ID is ${{ steps.artifact-upload-step.outputs.artifact-id }}"

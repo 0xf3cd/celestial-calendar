@@ -59,10 +59,22 @@ def parse_args() -> argparse.Namespace:
       '  To set up and build the project using 8 CPU cores:\n'
       '    ./automation.py --setup --build --cores 8\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./automation.py --clean --setup --cmake --build --cores $(nproc) --test\n'
+      '    ./automation.py --clean --setup --cmake --build --cores all --test\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
+
+  def parse_cores(value):
+    """Custom type function for parsing the --cores argument."""
+    if value == 'all':
+      return os.cpu_count()
+    try:
+      cores = int(value)
+      if cores < 1 or cores > os.cpu_count():
+        raise argparse.ArgumentTypeError(f'Invalid number of CPU cores specified: {value}. Must be between 1 and {os.cpu_count()}.')
+      return cores
+    except ValueError:
+      raise argparse.ArgumentTypeError(f'Invalid value for --cores: {value}. Must be an integer or "all".')
 
   parser.add_argument('--setup', action='store_true', help='Set up and install dependencies')
   parser.add_argument('--clean', action='store_true', help='Clean build')
@@ -71,16 +83,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument('-t', '--test', action='store_true', help='Run tests')
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
-  parser.add_argument('--cores', type=int, default=max(1, os.cpu_count() // 2), help='Number of CPU cores to use for building the project')
+  parser.add_argument('--cores', type=parse_cores, default=max(1, os.cpu_count() // 2), help='Number of CPU cores to use for building the project (integer or "all")')
 
-  args = parser.parse_args()
-
-  # Validate CPU cores
-  if args.cores < 1 or args.cores > os.cpu_count():
-    red_print(f'Invalid number of CPU cores specified: {args.cores}. Must be between 1 and {os.cpu_count()}.')
-    return 1
-  
-  return args
+  return parser.parse_args()
 
 
 def print_steps(args: argparse.Namespace) -> None:

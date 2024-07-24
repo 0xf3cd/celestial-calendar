@@ -1,5 +1,11 @@
 test_pymeeus.py
 
+# clangd VSCode extension cache
+.cache/
+
+# CLion and other IDEs
+.idea/
+
 # Docker output
 output/
 docker_output/
