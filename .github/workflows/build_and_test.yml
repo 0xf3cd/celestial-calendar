@@ -118,7 +118,7 @@ jobs:
 
 
       - name: Rename Shared Library
-        id: rename_lib
+        id: shared_lib
         run: |
           cd "$OUTPUT_DIR/shared_lib"
           libs=(*.[sod]*)
@@ -154,8 +154,8 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux_artifacts
-          path: ${{ steps.rename_lib.outputs.lib_path }}
+          name: ${{ steps.shared_lib.outputs.lib_name }}
+          path: ${{ steps.shared_lib.outputs.lib_path }}
           retention-days: 30
           if-no-files-found: error
 
@@ -216,7 +216,7 @@ jobs:
     - name: GitHub Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: macos_artifacts
+        name: ${{ steps.shared_lib.outputs.lib_name }}
         path: ${{ steps.shared_lib.outputs.lib_path }}
         retention-days: 30
         if-no-files-found: error
@@ -262,14 +262,18 @@ jobs:
         run: |
           # Should be in ./build/shared_lib. Looking for .dll, .lib, and .pdb
 
-          $dllPath = "./build/shared_lib/*.dll"
-          $libPath = "./build/shared_lib/*.lib"
-          $pdbPath = "./build/shared_lib/*.pdb"
+          $dllPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.dll | Select-Object -First 1
+          $libPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.lib | Select-Object -First 1
+          $pdbPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.pdb | Select-Object -First 1
 
-          if (Test-Path $dllPath -and Test-Path $libPath -and Test-Path $pdbPath) {
-            Rename-Item $dllPath "./build/shared_lib/lib_celecalendar_windows_x86_64.dll"
-            Rename-Item $libPath "./build/shared_lib/lib_celecalendar_windows_x86_64.lib"
-            Rename-Item $pdbPath "./build/shared_lib/lib_celecalendar_windows_x86_64.pdb"
+          Write-Output "DLL Path: $dllPath"
+          Write-Output "LIB Path: $libPath"
+          Write-Output "PDB Path: $pdbPath"
+
+          if ((Test-Path $dllPath) -and (Test-Path $libPath) -and (Test-Path $pdbPath)) {
+            Rename-Item -Path $dllPath -NewName "lib_celecalendar_windows_x86_64.dll"
+            Rename-Item -Path $libPath -NewName "lib_celecalendar_windows_x86_64.lib"
+            Rename-Item -Path $pdbPath -NewName "lib_celecalendar_windows_x86_64.pdb"
 
             Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
             Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
@@ -286,7 +290,7 @@ jobs:
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows_artifacts
+          name: ${{ steps.shared_lib.outputs.dll_path }}
           path: |
             ${{ steps.shared_lib.outputs.dll_path }}
             ${{ steps.shared_lib.outputs.lib_path }}
