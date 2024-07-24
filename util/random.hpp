@@ -77,4 +77,24 @@ inline T random(const T& min, const T& max) {
   }
 }
 
+// Specializations for `uint8_t` since clang on Windows doesn't support it
+// because this is not part of the C++ standard (for std::uniform_int_distribution).
+
+template <>
+inline uint8_t random() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint32_t> dist { 0, 255 };
+  return static_cast<uint8_t>(dist(gen));
+}
+
+template <>
+inline uint8_t random(const uint8_t& min, const uint8_t& max) {
+  assert(min < max);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint32_t> dist { min, max };
+  return static_cast<uint8_t>(dist(gen));
+}
+
 } // namespace util

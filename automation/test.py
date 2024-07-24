@@ -16,6 +16,7 @@ from .utils import run_cmd, yellow_print, blue_print, red_print, green_print, Pr
 BUILD_DIR = Path(__file__).parent.parent / 'build'
 TEST_DIR = BUILD_DIR / 'test'
 
+
 def list_tests() -> Dict[str, str]:
   """List all available tests in the build directory."""
   assert TEST_DIR.exists(), 'Test directory not found'
@@ -32,6 +33,7 @@ def list_tests() -> Dict[str, str]:
       d[test_no] = test_name
 
   return d
+
 
 def find_tests(keywords: List[str]) -> List[str]:
   """Find tests that match the given keywords."""
@@ -72,6 +74,7 @@ def find_tests(keywords: List[str]) -> List[str]:
   test_list = list(set(test_list))
   return sorted(test_list, key=lambda test_name: name_to_no[test_name])
 
+
 def run_test(
   test: str,
   verbose_level: int = 0,
@@ -93,6 +96,7 @@ def run_test(
     cmd.append('--output-on-failure')
 
   return run_cmd(cmd, cwd=TEST_DIR)
+
 
 def run_tests(
   keywords: List[str] = [], # When empty, run all tests.

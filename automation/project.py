@@ -9,11 +9,13 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
+import os
 from pathlib import Path
 import shutil
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 BUILD_DIR = Path(__file__).parent.parent / 'build'
+
 
 def run_cmake() -> int:
   """Run CMake to generate build files."""
@@ -25,10 +27,12 @@ def run_cmake() -> int:
     BUILD_DIR.mkdir()
 
   yellow_print('# Running cmake...')
-  ret: ProcReturn = run_cmd(['cmake', '..', '-G', 'Unix Makefiles'], cwd=BUILD_DIR)
+  ret: ProcReturn = run_cmd(['cmake', '..', '-G', 'Unix Makefiles'], 
+                            cwd=BUILD_DIR, env=os.environ.copy())
 
   print('#' * 60)
   return ret.retcode
+
 
 def build_project(cpu_cores: int = 8) -> int:
   """Build the C++ project using the specified number of CPU cores."""
@@ -38,10 +42,12 @@ def build_project(cpu_cores: int = 8) -> int:
   assert BUILD_DIR.is_dir(), 'Build directory is not a directory'
 
   yellow_print('# Building the C++ projects...')
-  ret: ProcReturn = run_cmd(['make', '-j', str(cpu_cores)], cwd=BUILD_DIR)
+  ret: ProcReturn = run_cmd(['cmake', '--build', '.', '--parallel', str(cpu_cores)], 
+                            cwd=BUILD_DIR, env=os.environ.copy())
 
   print('#' * 60)
   return ret.retcode
+
 
 def clean_build() -> int:
   """Clean the build directory."""

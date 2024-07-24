@@ -5,10 +5,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add compile options for different compilers
-if (MSVC)
-  add_compile_options(/W4 /WX /permissive-)
-else()
-  add_compile_options(-Wall -Werror -Wextra -Wpedantic)
+add_compile_options(-Wall -Wextra -Wpedantic)
+
+if(NOT WIN32) # Clang++ on Windows compalins about GTest codes.
+  add_compile_options(-Werror)
 endif()
 
 # Optimization flag

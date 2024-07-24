@@ -12,9 +12,14 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import sys
 import argparse
-from sys import exit
-from typing import Dict
+
+from operator import or_
+from functools import reduce
+from dataclasses import dataclass
+
+from typing import List, Callable, Sequence
 
 from automation import (
   run_cmake,
@@ -26,8 +31,9 @@ from automation import (
 from automation.environment import setup_environment
 from automation.utils import time_execution, red_print, green_print, blue_print
 
-def main() -> int:
-  """Main function to parse arguments and run the appropriate automation tasks."""
+
+def parse_args() -> argparse.Namespace:
+  """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
     description='Build and Test Automation',
     epilog=(
@@ -74,9 +80,13 @@ def main() -> int:
     red_print(f'Invalid number of CPU cores specified: {args.cores}. Must be between 1 and {os.cpu_count()}.')
     return 1
   
-  print_system_info()
+  return args
 
+
+def print_steps(args: argparse.Namespace) -> None:
+  """Print the steps to be taken based on the parsed arguments."""
   # Print the steps to be taken based on the parsed arguments
+  print(60 * '#')
   blue_print('# Steps to be taken:')
   if args.setup:
     green_print('# - Set up and install dependencies')
@@ -91,43 +101,88 @@ def main() -> int:
     if args.keyword:
       green_print(f'# - Filter tests with keywords: {", ".join(args.keyword)}')
     green_print(f'# - Verbosity level: {args.verbosity}')
-
   print(60 * '#')
 
-  retcode = 0
-  task_times: Dict[str, float] = {}
 
+@dataclass
+class Task:
+  name: str
+  func: Callable[[], int]
+
+
+@dataclass
+class TaskResult:
+  task:    Task
+  time:    float
+  retcode: int
+
+
+def run_task(task: Task) -> TaskResult:
+  """Run a task and return the result."""
+  retcode, time = time_execution(task.func, task.name)
+  return TaskResult(task, time, retcode)
+
+
+def run_tasks(tasks: Sequence[Task]) -> List[TaskResult]:
+  """Run a list of tasks and return the results. Early stop at the first failure."""
+  results = []
+  for task in tasks:
+    results.append(run_task(task))
+    if results[-1].retcode != 0:
+      break
+  return results
+
+
+def build_tasks(args: argparse.Namespace) -> List[Task]:
+  """Build a list of tasks based on the parsed arguments."""
+  tasks = []
   if args.setup:
-    ret, task_times['Setup'] = time_execution(setup_environment, 'Setup and Check')
-    retcode |= ret
+    tasks.append(Task('Set up and ensure dependencies', setup_environment))
+  if args.clean:
+    tasks.append(Task('Clean build', clean_build))
+  if args.cmake:
+    tasks.append(Task('Run CMake', run_cmake))
+  if args.build:
+    tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
+  if args.test:
+    tasks.append(Task('Run tests', lambda: run_tests(args.keyword, args.verbosity)))
+  return tasks
 
-  if args.clean and not retcode:
-    ret, task_times['Clean'] = time_execution(clean_build, 'Clean')
-    retcode |= ret
 
-  if args.cmake and not retcode:
-    ret, task_times['CMake'] = time_execution(run_cmake, 'CMake')
-    retcode |= ret
+def main() -> int:
+  """Main function to parse arguments and run the appropriate automation tasks."""
 
-  if args.build and not retcode:
-    ret, task_times['Build'] = time_execution(lambda: build_project(args.cores), 'Build')
-    retcode |= ret
+  # Parse the command line arguments
+  args = parse_args()
+  
+  # Print system information
+  print_system_info()
 
-  if args.test and not retcode:
-    test_args = {
-      'keywords': args.keyword,
-      'verbose_level': args.verbosity,
-      'debug': False,
-      'output_on_failure': True
-    }
-    ret, task_times['Test'] = time_execution(lambda: run_tests(**test_args), 'Test')
-    retcode |= ret
+  # Print the steps to be taken
+  print_steps(args)
+
+  # Build a list of tasks based on the parsed arguments
+  tasks = build_tasks(args)
+  if not tasks:
+    red_print('# No tasks to run')
+    return 0
+
+  # Run the tasks
+  task_results = run_tasks(tasks)
+
+  # Print the task times
+  task_names = [t.task.name for t in task_results]
+  task_times = [t.time for t in task_results]
+  max_len = max(map(len, task_names))
 
   print(60 * '#')
   green_print(f'# Task Times:')
-  for task, duration in task_times.items():
-    blue_print(f'# {task:<5} time: {duration:.5f} seconds')
+  for task_name, duration in zip(task_names, task_times):
+    blue_print(f'# {task_name:<{max_len}} time: {duration:.5f} seconds')
   print(60 * '#')
+
+  # Resolve the return code
+  retcode = reduce(or_, [t.retcode for t in task_results])
 
   if retcode != 0:
     red_print(f'# Return code: {retcode}')
@@ -136,5 +191,6 @@ def main() -> int:
 
   return retcode
 
+
 if __name__ == '__main__':
-  exit(main())
+  sys.exit(main())
