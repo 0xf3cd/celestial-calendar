@@ -56,7 +56,7 @@ TEST(JieQiMath, solar_longitude) {
   }
 }
 
-TEST(JieQiMath, get_find_roots) {
+TEST(JieQiMath, find_roots) {
   for (const auto& [ymd, hms, expected_lon, _, __] : DATASET) {
     const Datetime dt { ymd, hms };
     const double jde = astro::julian_day::ut1_to_jde(dt);

@@ -9,10 +9,12 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
-import asyncio
-import shlex
 import time
+import shlex
+import asyncio
+
 from typing import Sequence, NamedTuple, Callable, Tuple
+
 
 def green_print(cmd: str, end: str = '\n') -> None:
   """Print text in green color."""
@@ -30,11 +32,13 @@ def blue_print(cmd: str, end: str = '\n') -> None:
   """Print text in blue color."""
   print(f'\033[94m{cmd}\033[0m', end=end)
 
+
 class ProcReturn(NamedTuple):
   """A named tuple to store the return code and output of a process."""
   retcode: int
   stdout: str
   stderr: str
+
 
 async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr: bool, **kwargs) -> ProcReturn:
   """Run a subprocess asynchronously and capture its output."""
@@ -46,13 +50,13 @@ async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr
   )
   stdout_lines, stderr_lines = [], []
 
-  async def read_stream(stream, buffer, print_func, should_print):
+  async def read_stream(stream, buffer, print_func, do_print):
     """Read output from a stream and store it in a buffer."""
     while True:
       line = await stream.readline()
       if line:
         line_decoded = line.decode('utf-8')
-        if should_print:
+        if do_print:
           print_func(line_decoded, end='')
         buffer.append(line_decoded)
       else:
@@ -65,6 +69,7 @@ async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr
 
   retcode = await process.wait()
   return ProcReturn(retcode, ''.join(stdout_lines), ''.join(stderr_lines))
+
 
 def run_cmd(
   cmd: Sequence[str],
@@ -88,11 +93,13 @@ def run_cmd(
 
   return result
 
+
 def time_execution(func: Callable[[], int], task_name: str) -> Tuple[int, float]:
   """Measure and print the execution time of a function."""
   start_time = time.time()
   retcode = func()
   end_time = time.time()
   duration = end_time - start_time
+  
   blue_print(f'# {task_name} time: {duration:.2f} seconds')
   return retcode, duration
