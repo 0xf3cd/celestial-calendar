@@ -1,4 +1,4 @@
-name: Build and Test with Docker Images (Debian latest / g++14)
+name: Build and Test on Multiple Platforms
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
@@ -6,7 +6,7 @@ on:
   #   branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
-  build-shared-lib-linux:
+  linux-docker:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,7 +66,7 @@ jobs:
               ;;
           esac
 
-      - name: Set up environment variables
+      - name: Set up Environment Variables
         run: |
           # Print the BASE_IMAGE and PACKAGE_MANAGER
           echo "BASE_IMAGE set to ${{ steps.determine-base-image.outputs.BASE_IMAGE }}"
@@ -90,7 +90,7 @@ jobs:
           echo "PROJ_DIR=${proj_dir}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_ENV
 
-      - name: Clean up output directory
+      - name: Clean up Output Directory
         run: |
           # Remove the output directory if it exists and recreate it
           if [ -d "$OUTPUT_DIR" ]; then
@@ -98,7 +98,7 @@ jobs:
           fi
           mkdir -p "$OUTPUT_DIR"
 
-      - name: Build and run Docker image
+      - name: Build and Run Docker Image
         run: |
           # Set up QEMU for cross-compilation
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -117,7 +117,7 @@ jobs:
           docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/'
 
 
-      - name: Rename shared library
+      - name: Rename Shared Library
         id: rename_lib
         run: |
           cd "$OUTPUT_DIR/shared_lib"
@@ -154,8 +154,142 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          # Upload the renamed shared library as an artifact
-          name: ${{ steps.rename_lib.outputs.lib_name }}
+          name: linux_artifacts
           path: ${{ steps.rename_lib.outputs.lib_path }}
+          retention-days: 30
+          if-no-files-found: error
+
+
+  macos:
+    runs-on: macos-latest
+    strategy:  
+      matrix:  
+        python-version: ["3.12"]  
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Set up Python ${{ matrix.python-version }}  
+      uses: actions/setup-python@v5 
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install Python Dependencies
+      run: |  
+        python3 -m pip install --upgrade pip  
+        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+
+    - name: Build and Test
+      env:
+        CXX: clang++
+        CC:  clang
+      run: |
+        chmod +x automation.py
+        ./automation.py --setup --clean --cmake --build --test -v 1
+
+    - name: Ensure Shared Lib Exists
+      id: shared_lib
+      run: |
+        # Should be in ./build/shared_lib/*.dylib
+        ls ./build/shared_lib
+
+        if [ ! -f ./build/shared_lib/*.dylib ]; then
+          echo "No shared lib found"
+          exit 1
+        fi
+
+        # Rename the lib to lib_celecalendar_macos_arm64.dylib
+        mv ./build/shared_lib/*.dylib ./build/shared_lib/lib_celecalendar_macos_arm64.dylib
+
+        # If exists, save the path to GITHUB_OUTPUT
+        echo "lib_name=lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
+        echo "lib_path=$(pwd)/build/shared_lib/lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
+
+        # Print to stdout
+        echo "lib_name=${lib_name}"
+        echo "lib_path=${lib_path}"
+
+    - name: GitHub Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos_artifacts
+        path: ${{ steps.shared_lib.outputs.lib_path }}
+        retention-days: 30
+        if-no-files-found: error
+
+
+  windows:
+    runs-on: windows-latest
+    strategy:  
+      matrix:  
+        python-version: ["3.12"]  
+  
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up Visual Studio
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: latest
+
+      - name: Set up Python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+  
+      - name: Install Dependencies
+        run: |  
+          python3 -m pip install --upgrade pip  
+          if (Test-Path "Requirements.txt") { python3 -m pip install -r "Requirements.txt" }
+
+          choco install -y make llvm
+
+      - name: Build and Test
+        env:
+          CXX: clang++
+          CC:  clang
+        run: |
+          chcp.com 65001
+          $env:PYTHONIOENCODING = "utf-8"
+          python3 ./automation.py --setup --clean --cmake --build --test -v 1
+
+      - name: Ensure Shared Lib Exists
+        id: shared_lib
+        run: |
+          # Should be in ./build/shared_lib. Looking for .dll, .lib, and .pdb
+
+          $dllPath = "./build/shared_lib/*.dll"
+          $libPath = "./build/shared_lib/*.lib"
+          $pdbPath = "./build/shared_lib/*.pdb"
+
+          if (Test-Path $dllPath -and Test-Path $libPath -and Test-Path $pdbPath) {
+            Rename-Item $dllPath "./build/shared_lib/lib_celecalendar_windows_x86_64.dll"
+            Rename-Item $libPath "./build/shared_lib/lib_celecalendar_windows_x86_64.lib"
+            Rename-Item $pdbPath "./build/shared_lib/lib_celecalendar_windows_x86_64.pdb"
+
+            Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
+            Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
+            Write-Output "pdb_name=lib_celecalendar_windows_x86_64.pdb" >> $env:GITHUB_OUTPUT
+
+            Write-Output "dll_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.dll)" >> $env:GITHUB_OUTPUT
+            Write-Output "lib_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.lib)" >> $env:GITHUB_OUTPUT
+            Write-Output "pdb_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.pdb)" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Error "Shared library (.dll), import library (.lib), or debug file (.pdb) not found."
+            exit 1
+          }
+
+      - name: GitHub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows_artifacts
+          path: |
+            ${{ steps.shared_lib.outputs.dll_path }}
+            ${{ steps.shared_lib.outputs.lib_path }}
+            ${{ steps.shared_lib.outputs.pdb_path }}
           retention-days: 30
           if-no-files-found: error

@@ -42,7 +42,7 @@ jobs:
           ./automation.py --setup --clean --cmake --build --test -v 1
 
 
-  test-ubuntu-llvm18:  
+  test-ubuntu-clang:  
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
