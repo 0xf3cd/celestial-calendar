@@ -10,8 +10,8 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 BUILD_DIR = Path(__file__).parent.parent / 'build'

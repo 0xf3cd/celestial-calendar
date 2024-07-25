@@ -14,6 +14,7 @@ from .project import run_cmake, build_project, clean_build
 from .test import run_tests, find_tests, list_tests
 from .sysinfo import print_system_info
 from .utils import green_print, red_print, yellow_print, blue_print, run_cmd, ProcReturn, time_execution
+from .download import download_artifacts
 
 __all__ = [
   'setup_environment',
@@ -31,4 +32,5 @@ __all__ = [
   'run_cmd',
   'ProcReturn',
   'time_execution',
+  'download_artifacts'
 ]

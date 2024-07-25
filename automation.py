@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
 
   available_cpu_cores: int = os.cpu_count() or 1
 
-  def parse_cores(value):
+  def cores(value):
     """Custom type function for parsing the --cores argument."""
     if value == 'all':
       return available_cpu_cores
@@ -91,7 +91,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument('-t', '--test', action='store_true', help='Run tests')
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
-  parser.add_argument('--cores', type=parse_cores, default=max(1, available_cpu_cores // 2), help='Number of CPU cores to use for building the project (integer or "all")')
+  parser.add_argument('--cores', type=cores, default=max(1, available_cpu_cores // 2), help='Number of CPU cores to use for building the project (integer or "all")')
 
   return parser.parse_args()
 
