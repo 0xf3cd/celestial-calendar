@@ -22,14 +22,10 @@ from dataclasses import dataclass
 from typing import List, Callable, Sequence
 
 from automation import (
-  run_cmake,
-  build_project,
-  clean_build,
-  run_tests,
-  print_system_info,
+  run_cmake, build_project, clean_build,
+  run_tests, print_system_info, setup_environment,
+  time_execution, red_print, green_print, blue_print,
 )
-from automation.environment import setup_environment
-from automation.utils import time_execution, red_print, green_print, blue_print
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,28 +55,45 @@ def parse_args() -> argparse.Namespace:
       '  To set up and build the project using 8 CPU cores:\n'
       '    ./automation.py --setup --build --cores 8\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./automation.py --clean --setup --cmake --build --cores $(nproc) --test\n'
+      '    ./automation.py --clean --setup --cmake --build --cores all --test\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
 
+  available_cpu_cores: int = os.cpu_count() or 1
+
+  def parse_cores(value):
+    """Custom type function for parsing the --cores argument."""
+    if value == 'all':
+      return available_cpu_cores
+    try:
+      cores = int(value)
+      if cores < 1 or cores > available_cpu_cores:
+        raise argparse.ArgumentTypeError(f'Invalid number of CPU cores specified: {value}. Must be between 1 and {os.cpu_count()}.')
+      return cores
+    except ValueError:
+      raise argparse.ArgumentTypeError(f'Invalid value for --cores: {value}. Must be an integer or "all".')
+
+  def build_type(value):
+    value_lower = value.lower()
+    if value_lower == 'release':
+      return 'Release'
+    elif value_lower == 'debug':
+      return 'Debug'
+    else:
+      raise argparse.ArgumentTypeError(f"Invalid build type: {value}")
+
   parser.add_argument('--setup', action='store_true', help='Set up and install dependencies')
-  parser.add_argument('--clean', action='store_true', help='Clean build')
+  parser.add_argument('-c', '--clean', action='store_true', help='Clean build')
   parser.add_argument('-cmk', '--cmake', action='store_true', help='Run CMake')
   parser.add_argument('-b', '--build', action='store_true', help='Build the project')
+  parser.add_argument('-bt', '--build-type', type=build_type, default='Release', help='Build type, either "Release" or "Debug"')
   parser.add_argument('-t', '--test', action='store_true', help='Run tests')
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
-  parser.add_argument('--cores', type=int, default=max(1, os.cpu_count() // 2), help='Number of CPU cores to use for building the project')
+  parser.add_argument('--cores', type=parse_cores, default=max(1, available_cpu_cores // 2), help='Number of CPU cores to use for building the project (integer or "all")')
 
-  args = parser.parse_args()
-
-  # Validate CPU cores
-  if args.cores < 1 or args.cores > os.cpu_count():
-    red_print(f'Invalid number of CPU cores specified: {args.cores}. Must be between 1 and {os.cpu_count()}.')
-    return 1
-  
-  return args
+  return parser.parse_args()
 
 
 def print_steps(args: argparse.Namespace) -> None:
@@ -93,14 +106,13 @@ def print_steps(args: argparse.Namespace) -> None:
   if args.clean:
     green_print('# - Clean build directory')
   if args.cmake:
-    green_print('# - Run CMake')
+    green_print(f'# - Run CMake | Build Type: {args.build_type}')
   if args.build:
     green_print(f'# - Build the project using {args.cores} CPU cores')
   if args.test:
-    green_print('# - Run tests')
+    green_print(f'# - Run tests with verbosity level {args.verbosity}')
     if args.keyword:
       green_print(f'# - Filter tests with keywords: {", ".join(args.keyword)}')
-    green_print(f'# - Verbosity level: {args.verbosity}')
   print(60 * '#')
 
 
@@ -141,7 +153,7 @@ def build_tasks(args: argparse.Namespace) -> List[Task]:
   if args.clean:
     tasks.append(Task('Clean build', clean_build))
   if args.cmake:
-    tasks.append(Task('Run CMake', run_cmake))
+    tasks.append(Task('Run CMake', lambda: run_cmake(args.build_type)))
   if args.build:
     tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
   if args.test:
