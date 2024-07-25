@@ -1,4 +1,6 @@
+# Some local testing scripts...
 test_pymeeus.py
+check_platform_arch.py
 
 # clangd VSCode extension cache
 .cache/
