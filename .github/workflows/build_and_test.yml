@@ -260,30 +260,25 @@ jobs:
       - name: Ensure Shared Lib Exists
         id: shared_lib
         run: |
-          # Should be in ./build/shared_lib. Looking for .dll, .lib, and .pdb
+          # Should be in ./build/shared_lib. Looking for .dll and .lib
 
           $dllPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.dll | Select-Object -First 1
           $libPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.lib | Select-Object -First 1
-          $pdbPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.pdb | Select-Object -First 1
 
           Write-Output "DLL Path: $dllPath"
           Write-Output "LIB Path: $libPath"
-          Write-Output "PDB Path: $pdbPath"
 
-          if ((Test-Path $dllPath) -and (Test-Path $libPath) -and (Test-Path $pdbPath)) {
+          if ((Test-Path $dllPath) -and (Test-Path $libPath)) {
             Rename-Item -Path $dllPath -NewName "lib_celecalendar_windows_x86_64.dll"
             Rename-Item -Path $libPath -NewName "lib_celecalendar_windows_x86_64.lib"
-            Rename-Item -Path $pdbPath -NewName "lib_celecalendar_windows_x86_64.pdb"
 
             Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
             Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
-            Write-Output "pdb_name=lib_celecalendar_windows_x86_64.pdb" >> $env:GITHUB_OUTPUT
 
             Write-Output "dll_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.dll)" >> $env:GITHUB_OUTPUT
             Write-Output "lib_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.lib)" >> $env:GITHUB_OUTPUT
-            Write-Output "pdb_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.pdb)" >> $env:GITHUB_OUTPUT
           } else {
-            Write-Error "Shared library (.dll), import library (.lib), or debug file (.pdb) not found."
+            Write-Error "Shared library (.dll), or import library (.lib) not found."
             exit 1
           }
 
@@ -294,6 +289,5 @@ jobs:
           path: |
             ${{ steps.shared_lib.outputs.dll_path }}
             ${{ steps.shared_lib.outputs.lib_path }}
-            ${{ steps.shared_lib.outputs.pdb_path }}
           retention-days: 30
           if-no-files-found: error
