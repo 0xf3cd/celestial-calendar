@@ -69,20 +69,20 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
       #include <vector>
       #include <ranges>
       #include <numeric>
-                            
+
       template <typename T>
       concept Numeric = std::integral<T> || std::floating_point<T>;
-                            
+
       auto stringify(const Numeric auto& x) -> std::string_view {
         return std::format("{}", x);                
       }
 
       int main() {
         std::println("Hello, C++23!");
-        
+
         const std::vector<int> v { 1, 2, 3, 4, 5 };
         const auto sum = std::reduce(std::cbegin(v), std::cend(v));
-                            
+
         const auto square = [](int x) { return x * x; };
         const auto squared = v | std::views::transform(square);
         const auto squared_sum = std::reduce(std::cbegin(squared), std::cend(squared));
@@ -95,9 +95,18 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
     ''')
 
     try:
-      cxx_test_command = [compiler, f'--std={cpp_version}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
-      proc_ret = run_cmd(cxx_test_command)
-      return proc_ret.retcode == 0
+      comiler_command = [compiler, f'--std={cpp_version}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
+      comiler_ret = run_cmd(comiler_command)
+      if comiler_ret.retcode != 0:
+        return False
+
+      # Execute the compiled program
+      program_command = [str(Path(tmpdir) / 'test_cpp')]
+      program_ret = run_cmd(program_command)
+      if program_ret.retcode != 0:
+        return False
+      
+      return True
     
     except Exception as e:
       red_print(f'# Failed to check C++ support: {str(e)}')
@@ -122,7 +131,7 @@ def setup_environment() -> int:
   tool_availability = dict(zip(tools, tool_check_results))
 
   if not all(tool_availability.values()):
-    red_print(f'Some tools are not available: {", ".join(tool_availability.keys())}.')
+    red_print(f'Some tools are not available: {", ".join(tool[0] for tool in tool_availability.keys())}.')
     return 1
 
   green_print('All tools are available.')
