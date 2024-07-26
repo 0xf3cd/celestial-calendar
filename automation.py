@@ -29,7 +29,7 @@ from automation import (
 
 
 def parse_args() -> argparse.Namespace:
-  """Parse the command line arguments."""
+  '''Parse the command line arguments.'''
   parser = argparse.ArgumentParser(
     description='Build and Test Automation',
     epilog=(
@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
   available_cpu_cores: int = os.cpu_count() or 1
 
   def cores(value):
-    """Custom type function for parsing the --cores argument."""
+    '''Custom type function for parsing the --cores argument.'''
     if value == 'all':
       return available_cpu_cores
     try:
@@ -84,20 +84,22 @@ def parse_args() -> argparse.Namespace:
       raise argparse.ArgumentTypeError(f"Invalid build type: {value}")
 
   parser.add_argument('--setup', action='store_true', help='Set up and install dependencies')
-  parser.add_argument('-c', '--clean', action='store_true', help='Clean build')
+
+  parser.add_argument('--clean', action='store_true', help='Clean build')
   parser.add_argument('-cmk', '--cmake', action='store_true', help='Run CMake')
   parser.add_argument('-b', '--build', action='store_true', help='Build the project')
   parser.add_argument('-bt', '--build-type', type=build_type, default='Release', help='Build type, either "Release" or "Debug"')
+  parser.add_argument('-c', '--cores', type=cores, default=max(1, available_cpu_cores // 2), help='Number of CPU cores to use for building the project (integer or "all")')
+  
   parser.add_argument('-t', '--test', action='store_true', help='Run tests')
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
-  parser.add_argument('--cores', type=cores, default=max(1, available_cpu_cores // 2), help='Number of CPU cores to use for building the project (integer or "all")')
 
   return parser.parse_args()
 
 
 def print_steps(args: argparse.Namespace) -> None:
-  """Print the steps to be taken based on the parsed arguments."""
+  '''Print the steps to be taken based on the parsed arguments.'''
   # Print the steps to be taken based on the parsed arguments
   print(60 * '#')
   blue_print('# Steps to be taken:')
@@ -130,13 +132,13 @@ class TaskResult:
 
 
 def run_task(task: Task) -> TaskResult:
-  """Run a task and return the result."""
+  '''Run a task and return the result.'''
   retcode, time = time_execution(task.func, task.name)
   return TaskResult(task, time, retcode)
 
 
 def run_tasks(tasks: Sequence[Task]) -> List[TaskResult]:
-  """Run a list of tasks and return the results. Early stop at the first failure."""
+  '''Run a list of tasks and return the results. Early stop at the first failure.'''
   results = []
   for task in tasks:
     results.append(run_task(task))
@@ -146,7 +148,7 @@ def run_tasks(tasks: Sequence[Task]) -> List[TaskResult]:
 
 
 def build_tasks(args: argparse.Namespace) -> List[Task]:
-  """Build a list of tasks based on the parsed arguments."""
+  '''Build a list of tasks based on the parsed arguments.'''
   tasks = []
   if args.setup:
     tasks.append(Task('Set up and ensure dependencies', setup_environment))
@@ -162,7 +164,7 @@ def build_tasks(args: argparse.Namespace) -> List[Task]:
 
 
 def main() -> int:
-  """Main function to parse arguments and run the appropriate automation tasks."""
+  '''Main function to parse arguments and run the appropriate automation tasks.'''
 
   # Parse the command line arguments
   args = parse_args()

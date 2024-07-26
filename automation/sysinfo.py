@@ -17,7 +17,7 @@ from datetime import datetime
 from .utils import run_cmd, ProcReturn
 
 def print_system_info() -> None:
-  """Print system time and other system information."""
+  '''Print system time and other system information.'''
   cmake_version: ProcReturn = run_cmd(['cmake', '--version'], print_cmd=False, print_stdout=False)
   assert cmake_version.retcode == 0
 

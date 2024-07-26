@@ -1,9 +1,11 @@
 # Celestial Calendar
-> A C++20/23-style calendar
+> A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
+
 
 ## 1. Features
-* Conversions between Gregorian, lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
+* Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
+
 
 ## 2. Requirements
 * C++ Compiler that supports C++23
@@ -11,6 +13,7 @@
 * CMake >=3.22
 * make
 * Python 3, mostly for build automation
+
 
 ## 3. How to Build
 
@@ -36,10 +39,13 @@ chmod +x automation.py
 
 # Or all together in a row
 ./automation.py --clean --setup --cmake --build --test
+
+# More usages
+./automation.py --help
 ```
 
 ### 3.2. On Windows
-```sh
+```powershell
 # [Optional] Specify the compiler that supports C++23 on your platform
 $env:CXX = clang++
 # [Optional] CMake on Windows doesn't allow mixed use of compilers, so specify the LLVM C compiler as well, otherwise it may cause problems
@@ -59,15 +65,30 @@ python3 ./automation.py --clean
 
 # Or all together in a row
 python3 ./automation.py --clean --setup --cmake --build --test
+
+# More usages
+python3 ./automation.py --help
 ```
 
-## 4. TODO List
+
+## 4. Download Artifacts
+* From GitHub website
+  * Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
+  * Download from the latest completed run
+* Use `artifact_downloader.py`
+  * Set environment variable `GITHUB_TOKEN` to your GitHub access token, because it is needed to download artifacts
+  * Run `python3 ./artifact_downloader.py -s <directory>` to downlowd to the specified directory
+  * Or, `python3 ./artifact_downloader.py -s <directory> --unzip`, which unzips (decompresses) the artifacts after downloading
+
+
+## 5. TODO List
 * C++20/23 features are not fully supported by the compilers...
   * Modules
   * `std::ranges` (cartesian_product)
 * Version / Tags
 
-## 5. References
+
+## 6. References
 * [Julian Day Numbers](https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
 * [USNO Delta T Values](https://maia.usno.navy.mil/ser7/deltat.data)

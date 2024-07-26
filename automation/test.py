@@ -18,7 +18,7 @@ TEST_DIR = BUILD_DIR / 'test'
 
 
 def list_tests() -> Dict[str, str]:
-  """List all available tests in the build directory."""
+  '''List all available tests in the build directory.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
@@ -36,7 +36,7 @@ def list_tests() -> Dict[str, str]:
 
 
 def find_tests(keywords: List[str]) -> List[str]:
-  """Find tests that match the given keywords."""
+  '''Find tests that match the given keywords.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
@@ -81,7 +81,7 @@ def run_test(
   debug: bool = False,
   output_on_failure: bool = True,
 ) -> ProcReturn:
-  """Run a single test."""
+  '''Run a single test.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
@@ -104,7 +104,7 @@ def run_tests(
   debug: bool = False,
   output_on_failure: bool = True,
 ) -> int:
-  """Find tests based on keywords and run them."""
+  '''Find tests based on keywords and run them.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 

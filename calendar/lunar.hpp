@@ -1,6 +1,6 @@
 /*
  * CelestialCalendar: 
- *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
  *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
  * Copyright (C) 2024 Ningqi Wang (0xf3cd)

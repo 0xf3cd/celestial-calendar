@@ -18,7 +18,7 @@ BUILD_DIR = Path(__file__).parent.parent / 'build'
 
 
 def run_cmake(build_type: str = 'Release') -> int:
-  """Run CMake to generate build files."""
+  '''Run CMake to generate build files.'''
   print('#' * 60)
 
   if not BUILD_DIR.exists():
@@ -35,7 +35,7 @@ def run_cmake(build_type: str = 'Release') -> int:
 
 
 def build_project(cpu_cores: int = 8) -> int:
-  """Build the C++ project using the specified number of CPU cores."""
+  '''Build the C++ project using the specified number of CPU cores.'''
   print('#' * 60)
 
   assert BUILD_DIR.exists(), 'Build directory not found'
@@ -50,7 +50,7 @@ def build_project(cpu_cores: int = 8) -> int:
 
 
 def clean_build() -> int:
-  """Clean the build directory."""
+  '''Clean the build directory.'''
   print('#' * 60)
 
   if BUILD_DIR.exists():

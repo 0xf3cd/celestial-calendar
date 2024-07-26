@@ -17,31 +17,31 @@ from typing import Sequence, NamedTuple, Callable, Tuple
 
 
 def green_print(cmd: str, end: str = '\n') -> None:
-  """Print text in green color."""
+  '''Print text in green color.'''
   print(f'\033[92m{cmd}\033[0m', end=end)
 
 def red_print(cmd: str, end: str = '\n') -> None:
-  """Print text in red color."""
+  '''Print text in red color.'''
   print(f'\033[91m{cmd}\033[0m', end=end)
 
 def yellow_print(cmd: str, end: str = '\n') -> None:
-  """Print text in yellow color."""
+  '''Print text in yellow color.'''
   print(f'\033[93m{cmd}\033[0m', end=end)
 
 def blue_print(cmd: str, end: str = '\n') -> None:
-  """Print text in blue color."""
+  '''Print text in blue color.'''
   print(f'\033[94m{cmd}\033[0m', end=end)
 
 
 class ProcReturn(NamedTuple):
-  """A named tuple to store the return code and output of a process."""
+  '''A named tuple to store the return code and output of a process.'''
   retcode: int
   stdout: str
   stderr: str
 
 
 async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr: bool, **kwargs) -> ProcReturn:
-  """Run a subprocess asynchronously and capture its output."""
+  '''Run a subprocess asynchronously and capture its output.'''
   process = await asyncio.create_subprocess_exec(
     *cmd,
     stdout=asyncio.subprocess.PIPE,
@@ -51,7 +51,7 @@ async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr
   stdout_lines, stderr_lines = [], []
 
   async def read_stream(stream, buffer, print_func, do_print):
-    """Read output from a stream and store it in a buffer."""
+    '''Read output from a stream and store it in a buffer.'''
     while True:
       line = await stream.readline()
       if line:
@@ -78,12 +78,11 @@ def run_cmd(
   print_stderr: bool = True,
   **kwargs
 ) -> ProcReturn:
-  """Run a command synchronously and capture its output."""
+  '''Run a command synchronously and capture its output.'''
   if print_cmd:
     blue_print(f'# Command: {shlex.join(cmd)}')
-  
-  loop = asyncio.get_event_loop()
-  result = loop.run_until_complete(stream_subprocess(cmd, print_stdout, print_stderr, **kwargs))
+
+  result = asyncio.run(stream_subprocess(cmd, print_stdout, print_stderr, **kwargs))
 
   if print_cmd:
     if result.retcode != 0:
@@ -95,7 +94,7 @@ def run_cmd(
 
 
 def time_execution(func: Callable[[], int], task_name: str) -> Tuple[int, float]:
-  """Measure and print the execution time of a function."""
+  '''Measure and print the execution time of a function.'''
   start_time = time.time()
   retcode = func()
   end_time = time.time()
