@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 #
+# Helper script to Download artifacts from GitHub.
+#
+#########################################################################################
+#
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
@@ -11,13 +15,18 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
+import sys
 import shutil
 import pprint
 import argparse
 
 from pathlib import Path
-from automation import GitHub, red_print, yellow_print
 
+# Apply a workaround to import from the parent directory...
+sys.path.append(str(Path(__file__).parent.parent))
+from automation import (
+  GitHub, red_print, yellow_print, blue_print,
+)
 
 def artifact_workflow(workflow_name: str = 'Build and Test on Multiple Platforms') -> GitHub.Workflow:
   '''Find the workflow to download artifacts from.'''
@@ -59,13 +68,14 @@ def latest_artifact_run() -> GitHub.Run:
   return latest_run
 
 
-if __name__ == '__main__':
+def parse_args() -> argparse.Namespace:
+  '''Parse the command line arguments.'''
   parser = argparse.ArgumentParser(
     description='CelestialCalendar automation script for downloading artifacts.'
   )
   parser.add_argument(
     '-s', '--save-to', 
-    type=str, 
+    type=lambda arg: Path(arg).resolve(),
     required=True, 
     help='Directory path to save the downloaded artifacts.'
   )
@@ -81,29 +91,39 @@ if __name__ == '__main__':
     help='Unzip the downloaded artifacts.'
   )
 
-  args = parser.parse_args()
+  return parser.parse_args()
 
+
+def validate_args(args: argparse.Namespace) -> None: # Exception raised on failure.
+  '''Validate the command line arguments.'''
   # Validate the number of parallel downloads.
-  if args.parallel < 1 or args.parallel > 16:
+  if args.parallel < 1:
     red_print(f'Invalid number of parallel downloads: {args.parallel}')
     raise RuntimeError(f'Invalid number of parallel downloads: {args.parallel}')
 
   # Validate the directory path.
-  save_dir = Path(args.save_to).absolute()
-  if save_dir.exists() and save_dir.is_file():
+  if args.save_to.exists() and args.save_to.is_file():
     red_print(f'Directory path is not a directory: {args.save_to}')
     raise RuntimeError(f'Directory path is not a directory: {args.save_to}')
   
-  save_dir.mkdir(parents=True, exist_ok=True)
+
+if __name__ == '__main__':
+  # Parse the command line arguments.
+  args = parse_args()
+  validate_args(args)
+  
+  # Create the directory if it does not exist.
+  args.save_to.mkdir(parents=True, exist_ok=True)
 
   # Download artifacts.
-  downloaded_artifacts = GitHub.download_artifacts(latest_artifact_run().id, save_dir, args.parallel)
+  run = latest_artifact_run()
+  downloaded_artifacts = GitHub.download_artifacts(run.id, args.save_to, args.parallel)
 
   # Unzip the downloaded artifacts.
   if args.unzip:
     for artifact in downloaded_artifacts:
-      shutil.unpack_archive(artifact, extract_dir=save_dir)
-      yellow_print(f'# Unzipped {artifact}')
+      shutil.unpack_archive(artifact, extract_dir=args.save_to)
+      blue_print(f'# Unzipped {artifact}')
 
       artifact.unlink()
       yellow_print(f'# Deleted {artifact}')

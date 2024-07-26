@@ -8,8 +8,7 @@ RUN apt-get update && \
 
 # Add the Debian Sid repository for GCC 14
 RUN echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list && \
-    echo "deb-src http://deb.debian.org/debian sid main" >> /etc/apt/sources.list && \
-    apt-get update
+    echo "deb-src http://deb.debian.org/debian sid main" >> /etc/apt/sources.list
 
 # Install GCC 14
 RUN apt-get update && \
@@ -21,11 +20,8 @@ RUN apt-get update && \
 ENV CXX=g++-14
 ENV CC=gcc-14
 
-# Define an argument to choose the package manager
-ARG PACKAGE_MANAGER=apt-get
-
-
 # Install required packages using the chosen package manager
+ARG PACKAGE_MANAGER=apt-get
 RUN if [ "$PACKAGE_MANAGER" = "aptitude" ]; then \
         apt-get update && \
         apt-get install -y aptitude && \
@@ -43,9 +39,9 @@ WORKDIR /app
 RUN if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
 # Make the build script executable
-RUN chmod +x automation.py
+RUN chmod +x project.py
 
 # Build and test the project
-RUN ./automation.py --setup --clean --cmake --cores $(nproc) --build --test -v 1
+RUN ./project.py --setup --clean --cmake --cores all --build --test -v 1
 
 CMD ["bash"]

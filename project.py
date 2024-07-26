@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 #
+# Automation script for building and testing the CelestialCalendar C++ project.
+#
+#########################################################################################
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
@@ -35,27 +38,27 @@ def parse_args() -> argparse.Namespace:
     epilog=(
       'Examples of usage:\n'
       '  To set up and install dependencies:\n'
-      '    ./automation.py --setup\n\n'
+      '    ./project.py --setup\n\n'
       '  To clean the build directory:\n'
-      '    ./automation.py --clean\n\n'
+      '    ./project.py --clean\n\n'
       '  To run CMake:\n'
-      '    ./automation.py --cmake\n\n'
+      '    ./project.py --cmake\n\n'
       '  To build the project using the default number of CPU cores:\n'
-      '    ./automation.py --build\n\n'
+      '    ./project.py --build\n\n'
       '  To run tests with verbosity level 1:\n'
-      '    ./automation.py --test --verbosity 1\n\n'
+      '    ./project.py --test --verbosity 1\n\n'
       '  To run specific tests filtered by keywords:\n'
-      '    ./automation.py --test --keyword keyword1 keyword2\n\n'
+      '    ./project.py --test --keyword keyword1 keyword2\n\n'
       '  To build the project using 4 CPU cores:\n'
-      '    ./automation.py --build --cores 4\n\n'
+      '    ./project.py --build --cores 4\n\n'
       '  To clean, set up, run CMake, build, and test the project in one command:\n'
-      '    ./automation.py --clean --setup --cmake --build --test\n\n'
+      '    ./project.py --clean --setup --cmake --build --test\n\n'
       '  To clean, run CMake, and build the project in one command:\n'
-      '    ./automation.py --clean --cmake --build\n\n'
+      '    ./project.py --clean --cmake --build\n\n'
       '  To set up and build the project using 8 CPU cores:\n'
-      '    ./automation.py --setup --build --cores 8\n\n'
+      '    ./project.py --setup --build --cores 8\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./automation.py --clean --setup --cmake --build --cores all --test\n'
+      '    ./project.py --clean --setup --cmake --build --cores all --test\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )

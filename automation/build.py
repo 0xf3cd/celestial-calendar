@@ -15,6 +15,7 @@ from pathlib import Path
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 BUILD_DIR = Path(__file__).parent.parent / 'build'
+SRC_DIR = Path(__file__).parent.parent / 'src' / 'cpp'
 
 
 def run_cmake(build_type: str = 'Release') -> int:
@@ -27,7 +28,7 @@ def run_cmake(build_type: str = 'Release') -> int:
     BUILD_DIR.mkdir()
 
   yellow_print('# Running cmake...')
-  ret: ProcReturn = run_cmd(['cmake', '..', '-G', 'Unix Makefiles', f'-DCMAKE_BUILD_TYPE={build_type}'], 
+  ret: ProcReturn = run_cmd(['cmake', str(SRC_DIR), '-G', 'Unix Makefiles', f'-DCMAKE_BUILD_TYPE={build_type}'], 
                             cwd=BUILD_DIR, env=os.environ.copy())
 
   print('#' * 60)

@@ -10,9 +10,9 @@
 ## 2. Requirements
 * C++ Compiler that supports C++23
   * Currently, clang++ (LLVM 18) is supposed to work on macOS, Windows, and Linux. g++ 14 also works.
-* CMake >=3.22
-* make
+* CMake >=3.22, and make
 * Python 3, mostly for build automation
+  * Required Python packages listed in `Requirements.txt`
 
 
 ## 3. How to Build
@@ -23,25 +23,25 @@
 export CXX=clang++18 
 
 # Make the automation script executable
-chmod +x automation.py
+chmod +x project.py
 
 # Install dependencies and ensure the C++ compiler works
-./automation.py --setup
+./project.py --setup
 
 # Build the project
-./automation.py --cmake --build
+./project.py --cmake --build
 
 # Run tests
-./automation.py --test
+./project.py --test
 
 # Clean builds
-./automation.py --clean
+./project.py --clean
 
 # Or all together in a row
-./automation.py --clean --setup --cmake --build --test
+./project.py --clean --setup --cmake --build --test
 
 # More usages
-./automation.py --help
+./project.py --help
 ```
 
 ### 3.2. On Windows
@@ -52,33 +52,54 @@ $env:CXX = clang++
 $env:CC  = clang   
 
 # Install dependencies and ensure the C++ compiler works
-python3 ./automation.py --setup
+python3 ./project.py --setup
 
 # Build the project
-python3 ./automation.py --cmake --build
+python3 ./project.py --cmake --build
 
 # Run tests
-python3 ./automation.py --test
+python3 ./project.py --test
 
 # Clean builds
-python3 ./automation.py --clean
+python3 ./project.py --clean
 
 # Or all together in a row
-python3 ./automation.py --clean --setup --cmake --build --test
+python3 ./project.py --clean --setup --cmake --build --test
 
 # More usages
-python3 ./automation.py --help
+python3 ./project.py --help
 ```
 
 
-## 4. Download Artifacts
-* From GitHub website
+## 4. Download Artifacts (Shared Libs)
+There are basically two ways to download: 
+
+### 4.1. From GitHub Web UI
   * Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
   * Download from the latest completed run
-* Use `artifact_downloader.py`
-  * Set environment variable `GITHUB_TOKEN` to your GitHub access token, because it is needed to download artifacts
-  * Run `python3 ./artifact_downloader.py -s <directory>` to downlowd to the specified directory
-  * Or, `python3 ./artifact_downloader.py -s <directory> --unzip`, which unzips (decompresses) the artifacts after downloading
+  
+### 4.2. Use `toolbox/artifact_downloader.py`
+  * Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
+  * Run `toolbox/artifact_downloader.py`
+    ```sh
+    # Ensure env var `GITHUB_TOKEN` is correctly set
+    echo $GITHUB_TOKEN     # Unix-like platforms
+    echo $env:GITHUB_TOKEN # Windows powershell
+
+    # Enter "toolbox" from project root
+    cd ./toolbox
+
+    # Download artifacts to specified dir
+    python3 artifact_downloader.py -s <directory>
+    
+    # Download artifacts to specified dir and unzips them
+    python3 artifact_downloader.py -s <directory> --unzip
+
+    # More usages
+    python3 artifact_downloader.py --help
+    ```
+  * Or, `python3 ./toolbox/artifact_downloader.py -s <directory> --unzip`, which unzips (decompresses) the artifacts after downloading
+  * More usages: `python3 ./toolbox/artifact_downloader.py --help`
 
 
 ## 5. TODO List

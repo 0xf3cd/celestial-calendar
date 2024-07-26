@@ -278,9 +278,6 @@ constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 }};
 
 
-// TODO: There are other models, like the IAU 2000/2006 model. Implement them if needed.
-
-
 /** @enum Specify which model to use when calculating Earth's nutation. */
 enum class Model { MEEUS, IAU_1980 };
 
