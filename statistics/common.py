@@ -125,7 +125,7 @@ def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
   jd = LIB.ut1_to_jd(y, m, d, fraction)
 
   if not jd.valid:
-    raise ValueError(f"Error occurred in ut1_to_jd.")
+    raise ValueError("Error occurred in ut1_to_jd.")
 
   return jd.value
 
@@ -146,7 +146,7 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
   jde = LIB.ut1_to_jde(y, m, d, fraction)
 
   if not jde.valid:
-    raise ValueError(f"Error occurred in ut1_to_jde.")
+    raise ValueError("Error occurred in ut1_to_jde.")
 
   return jde.value
 
@@ -166,7 +166,7 @@ def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
   coord = LIB.sun_apparent_geocentric_coord(jde)
 
   if not coord.valid:
-    raise ValueError(f"Error occurred in sun_apparent_geocentric_coord.")
+    raise ValueError("Error occurred in sun_apparent_geocentric_coord.")
 
   return SunCoordinate(
     lon = coord.lon,

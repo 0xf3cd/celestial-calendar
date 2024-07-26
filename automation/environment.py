@@ -1,9 +1,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -20,11 +20,12 @@ from itertools import product, starmap
 
 from typing import Tuple
 
+from . import paths
 from .utils import (
   yellow_print, red_print, green_print, run_cmd,
 )
 
-REQUIREMENTS_FILE = Path(__file__).parent.parent / 'Requirements.txt'
+REQUIREMENTS_FILE = paths.python_requirements()
 
 
 def install_dependencies() -> int:

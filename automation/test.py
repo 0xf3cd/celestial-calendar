@@ -1,20 +1,24 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
-from pathlib import Path
 from typing import List, Dict
-from .utils import run_cmd, yellow_print, blue_print, red_print, green_print, ProcReturn
 
-BUILD_DIR = Path(__file__).parent.parent / 'build'
-TEST_DIR = BUILD_DIR / 'test'
+from . import paths
+from .utils import (
+  yellow_print, blue_print, red_print, green_print,
+  ProcReturn, run_cmd, 
+)
+
+BUILD_DIR = paths.build_dir()
+TEST_DIR = paths.cpp_test_dir()
 
 
 def list_tests() -> Dict[str, str]:

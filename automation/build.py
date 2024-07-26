@@ -1,9 +1,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -11,11 +11,15 @@
 
 import os
 import shutil
-from pathlib import Path
-from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
-BUILD_DIR = Path(__file__).parent.parent / 'build'
-SRC_DIR = Path(__file__).parent.parent / 'src' / 'cpp'
+from . import paths
+from .utils import (
+  run_cmd, yellow_print, red_print, green_print, ProcReturn
+)
+
+
+BUILD_DIR = paths.build_dir()
+SRC_DIR = paths.cpp_src_dir()
 
 
 def run_cmake(build_type: str = 'Release') -> int:
@@ -55,10 +59,10 @@ def clean_build() -> int:
   print('#' * 60)
 
   if BUILD_DIR.exists():
-    yellow_print(f'# Build dir exists.')
+    yellow_print('# Build dir exists.')
     red_print(f'# Removing {BUILD_DIR}')
     shutil.rmtree(BUILD_DIR)
 
-  green_print(f'# Build cleaned...')
+  green_print('# Build cleaned...')
   print('#' * 60)
   return 0

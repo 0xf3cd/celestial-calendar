@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 #
-# Helper script to Download artifacts from GitHub.
+# Helper to download artifacts from GitHub.
 #
 #########################################################################################
 #
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -20,10 +20,10 @@ import shutil
 import pprint
 import argparse
 
-from pathlib import Path
-
 # Apply a workaround to import from the parent directory...
+from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
+
 from automation import (
   GitHub, red_print, yellow_print, blue_print,
 )
@@ -47,7 +47,7 @@ def artifact_workflow(workflow_name: str = 'Build and Test on Multiple Platforms
 def latest_artifact_run() -> GitHub.Run:
   '''Find the latest artifact run.'''
   workflow = artifact_workflow()
-  
+
   artifact_runs = list(filter(
     lambda run: run.workflow_id == workflow.id, 
     GitHub.list_runs()
@@ -107,14 +107,12 @@ def validate_args(args: argparse.Namespace) -> None: # Exception raised on failu
     raise RuntimeError(f'Directory path is not a directory: {args.save_to}')
   
 
-if __name__ == '__main__':
+def main() -> None:
+  '''Main function to download artifacts.'''
   # Parse the command line arguments.
   args = parse_args()
   validate_args(args)
   
-  # Create the directory if it does not exist.
-  args.save_to.mkdir(parents=True, exist_ok=True)
-
   # Download artifacts.
   run = latest_artifact_run()
   downloaded_artifacts = GitHub.download_artifacts(run.id, args.save_to, args.parallel)
@@ -127,3 +125,7 @@ if __name__ == '__main__':
 
       artifact.unlink()
       yellow_print(f'# Deleted {artifact}')
+
+
+if __name__ == '__main__':
+  main()

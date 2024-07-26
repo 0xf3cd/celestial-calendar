@@ -86,20 +86,18 @@ There are basically two ways to download:
     echo $GITHUB_TOKEN     # Unix-like platforms
     echo $env:GITHUB_TOKEN # Windows powershell
 
-    # Enter "toolbox" from project root
-    cd ./toolbox
-
     # Download artifacts to specified dir
-    python3 artifact_downloader.py -s <directory>
+    python3 ./toolbox/artifact_downloader.py -s <directory>
     
     # Download artifacts to specified dir and unzips them
-    python3 artifact_downloader.py -s <directory> --unzip
+    python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
 
     # More usages
-    python3 artifact_downloader.py --help
+    python3 ./toolbox/artifact_downloader.py --help
+
+    # Or run it as a Python module from root dir
+    python3 -m toolbox.artifact_downloader --help
     ```
-  * Or, `python3 ./toolbox/artifact_downloader.py -s <directory> --unzip`, which unzips (decompresses) the artifacts after downloading
-  * More usages: `python3 ./toolbox/artifact_downloader.py --help`
 
 
 ## 5. TODO List

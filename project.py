@@ -6,9 +6,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -193,7 +193,7 @@ def main() -> int:
   max_len = max(map(len, task_names))
 
   print(60 * '#')
-  green_print(f'# Task Times:')
+  green_print('# Task Times:')
   for task_name, duration in zip(task_names, task_times):
     blue_print(f'# {task_name:<{max_len}} time: {duration:.5f} seconds')
   print(60 * '#')

@@ -1,9 +1,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -50,21 +50,21 @@ async def stream_subprocess(cmd: Sequence[str], print_stdout: bool, print_stderr
   )
   stdout_lines, stderr_lines = [], []
 
-  async def read_stream(stream, buffer, print_func, do_print):
+  async def read_stream(stream, buffer, do_print):
     '''Read output from a stream and store it in a buffer.'''
     while True:
       line = await stream.readline()
       if line:
-        line_decoded = line.decode('utf-8')
+        line_decoded = line.decode('utf-8', errors='replace')
         if do_print:
-          print_func(line_decoded, end='')
+          print(line_decoded, end='')
         buffer.append(line_decoded)
       else:
         break
 
   await asyncio.wait([
-    asyncio.create_task(read_stream(process.stdout, stdout_lines, print, print_stdout)),
-    asyncio.create_task(read_stream(process.stderr, stderr_lines, print, print_stderr))
+    asyncio.create_task(read_stream(process.stdout, stdout_lines, print_stdout)),
+    asyncio.create_task(read_stream(process.stderr, stderr_lines, print_stderr))
   ])
 
   retcode = await process.wait()
