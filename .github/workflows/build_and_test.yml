@@ -2,8 +2,8 @@ name: Build and Test on Multiple Platforms
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
-  pull_request:
-    branches: [ main ]  # Also triggers on pull requests to the main branch
+  # pull_request:
+  #   branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
   linux-docker:

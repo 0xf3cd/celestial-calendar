@@ -1,6 +1,6 @@
 /*
  * CelestialCalendar: 
- *   A C++23-style library for date conversions and astronomical calculations for various calendars,
+ *   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
  *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
  * Copyright (C) 2024 Ningqi Wang (0xf3cd)
@@ -29,10 +29,16 @@ extern "C" {
 
 /** 
  * @brief Set the verbosity level of log printing. 
- * @param new_verbosity The new verbosity level.
+ * @param new_value The new verbosity level (in `uint8_t`).
  * @returns `true` if the verbosity level is changed to the specified value, `false` otherwise.
  */
-bool set_log_verbosity(const lib::Verbosity new_verbosity) {
+bool set_log_verbosity(const uint8_t new_value) {
+  if (new_value >= std::underlying_type_t<lib::Verbosity>(lib::Verbosity::COUNT)) {
+    lib::info("Invalid verbosity level: {}", new_value);
+    return false;
+  }
+
+  const auto new_verbosity = static_cast<lib::Verbosity>(new_value);
   const auto current_verbosity = lib::set_verbosity(new_verbosity);
   return current_verbosity == new_verbosity;
 }

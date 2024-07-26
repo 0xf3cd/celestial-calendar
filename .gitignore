@@ -2,6 +2,8 @@
 test_pymeeus.py
 check_platform_arch.py
 
+artifacts/
+
 # clangd VSCode extension cache
 .cache/
 

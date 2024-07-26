@@ -10,6 +10,7 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import sys
 import shutil
 import tempfile
 
@@ -17,7 +18,7 @@ from pprint import pformat
 from pathlib import Path
 from itertools import product, starmap
 
-from typing import Tuple, Dict, List
+from typing import Tuple
 
 from .utils import (
   yellow_print, red_print, green_print, run_cmd,
@@ -27,25 +28,18 @@ REQUIREMENTS_FILE = Path(__file__).parent.parent / 'Requirements.txt'
 
 
 def install_dependencies() -> int:
-  """Install the required Python dependencies listed in 'Requirements.txt'."""
+  '''Install the required Python dependencies listed in 'Requirements.txt'.'''
   if not REQUIREMENTS_FILE.exists():
     return 0
 
   yellow_print('# Installing Python dependencies...')
-  pip_executable = shutil.which('pip')
-  if pip_executable is None:
-    pip_executable = shutil.which('pip3')
-
-  if not pip_executable:
-    red_print('# pip not found!')
-    return 1
-
-  ret = run_cmd([pip_executable, 'install', '-r', str(REQUIREMENTS_FILE)])
+  this_python = sys.executable
+  ret = run_cmd([this_python, '-m', 'pip', 'install', '-r', str(REQUIREMENTS_FILE)])
   return ret.retcode
 
 
 def check_tool_exists(name: str, args: Tuple[str, ...]) -> bool:
-  """Check if a tool exists and can be executed with the given arguments."""
+  '''Check if a tool exists and can be executed with the given arguments.'''
   tool_path = shutil.which(name)
   if tool_path is None:
     red_print(f'# {name} not found!')
@@ -60,7 +54,7 @@ def check_tool_exists(name: str, args: Tuple[str, ...]) -> bool:
 
 
 def check_cpp_support(compiler: str, cpp_version: str) -> bool:
-  """Check if the given compiler supports the specified C++ version."""
+  '''Check if the given compiler supports the specified C++ version.'''
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
     tmp_cpp_file.write_text('''
@@ -73,11 +67,11 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
       template <typename T>
       concept Numeric = std::integral<T> || std::floating_point<T>;
 
-      auto stringify(const Numeric auto& x) -> std::string_view {
+      auto stringify(const Numeric auto x) -> std::string {
         return std::format("{}", x);                
       }
 
-      int main() {
+      auto main() -> int {
         std::println("Hello, C++23!");
 
         const std::vector<int> v { 1, 2, 3, 4, 5 };
@@ -114,7 +108,7 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
 
 
 def setup_environment() -> int:
-  """Set up the environment by installing dependencies and checking tool availability and C++ support."""
+  '''Set up the environment by installing dependencies and checking tool availability and C++ support.'''
   
   # Install dependencies
   retcode = install_dependencies()
