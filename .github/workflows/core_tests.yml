@@ -43,9 +43,9 @@ jobs:
 
 
   test-ubuntu-clang:  
-    runs-on: ubuntu-24.04 
-    strategy:  
-      matrix:  
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
         python-version: ["3.12"]  
 
     steps:  
@@ -81,8 +81,8 @@ jobs:
 
   test-macos-apple-clang:  
     runs-on: macos-latest
-    strategy:  
-      matrix:  
+    strategy:
+      matrix:
         python-version: ["3.12"]  
 
     steps:
@@ -113,8 +113,8 @@ jobs:
 
   test-windows-clang:  
     runs-on: windows-latest
-    strategy:  
-      matrix:  
+    strategy:
+      matrix:
         python-version: ["3.12"]  
   
     steps:  
