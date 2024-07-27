@@ -19,6 +19,10 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# Suppress warnings from GTest
+target_compile_options(gtest PRIVATE -w)
+target_compile_options(gtest_main PRIVATE -w)
+
 enable_testing()
 include(GoogleTest)
 

@@ -21,6 +21,7 @@ from .paths import (
   proj_root, build_dir, cpp_src_dir, python_requirements, cpp_test_dir
 )
 from .github import GitHub
+from .linter import run_ruff, run_clang_tidy
 
 __all__ = [
   'check_compilers',
@@ -45,4 +46,6 @@ __all__ = [
   'python_requirements',
   'cpp_test_dir',
   'GitHub',
+  'run_ruff',
+  'run_clang_tidy',
 ]

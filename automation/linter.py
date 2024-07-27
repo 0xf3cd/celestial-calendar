@@ -86,9 +86,3 @@ def run_clang_tidy() -> int:
     red_print('clang-tidy failed')
 
   return ret.retcode
-
-
-if __name__ == '__main__':
-  ret = run_ruff()
-  ret |= run_clang_tidy()
-  exit(ret)
