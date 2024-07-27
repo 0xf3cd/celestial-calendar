@@ -10,6 +10,7 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import json
 import shutil
 
 from . import paths
@@ -38,8 +39,17 @@ def run_cmake(build_type: str = 'Release', export_compile_commands: bool = True)
     cmds.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
 
   ret: ProcReturn = run_cmd(cmds, cwd=BUILD_DIR, env=os.environ.copy())
-  if ret.retcode != 0:
+  if ret.retcode == 0:
+    green_print('# CMake ran successfully')    
+  else:
     red_print('# Failed to run CMake')
+
+  # Remove googletest files in `compile_commands.json`
+  if export_compile_commands and ret.retcode == 0:
+    db = BUILD_DIR / 'compile_commands.json'
+    raw_contents = json.loads(db.read_text())
+    filtered = list(filter(lambda x: 'googletest' not in x['file'], raw_contents))
+    db.write_text(json.dumps(filtered, indent=2))
 
   print('#' * 60)
   return ret.retcode

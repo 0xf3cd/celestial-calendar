@@ -13,7 +13,7 @@ add_compile_definitions(DEBUG=1)
 include(FetchContent)
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+  URL https://github.com/google/googletest/archive/refs/tags/v1.15.0.tar.gz
 )
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -21,6 +21,8 @@ FetchContent_MakeAvailable(googletest)
 
 # Suppress warnings from GTest
 target_compile_options(gtest PRIVATE -w)
+target_compile_options(gtest_main PRIVATE -w)
+target_compile_options(gmock PRIVATE -w)
 target_compile_options(gtest_main PRIVATE -w)
 
 enable_testing()

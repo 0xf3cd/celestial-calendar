@@ -78,7 +78,7 @@ bool find_jdes(
 
   const auto roots_opt = std::invoke([=] -> std::optional<std::vector<double>> {
     try {
-      const auto roots = find_roots(year, longitude);
+      auto roots = find_roots(year, longitude);
 
       // Some sanity check...
       const auto root_count = discriminant(year, longitude);
@@ -129,7 +129,7 @@ struct JieqiMomentQuery {
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
  * @returns A `JieqiMomentQuery` struct.
  */
-JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) {
+JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
     return {};

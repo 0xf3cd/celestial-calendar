@@ -4,7 +4,47 @@ on:
   push:
     branches: [ '**' ]
 
-jobs:  
+jobs:
+  linter-and-other-checks:  
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]  
+
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python Dependencies
+        run: |  
+          python3 -m pip install --upgrade pip  
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
+
+      - name: Install LLVM and clang++
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y llvm-18 clang-18
+
+      - name: Install CMake
+        run: sudo apt install cmake
+
+      - name: Style Check
+        env:
+          CXX: clang++-18
+          CC:  clang-18
+        run: |
+          chmod +x project.py
+          ./project.py --setup --clean --cmake --build
+
+          chmod +x checker.py
+          ./checker.py --ruff --clang-tidy
+
+
   test-ubuntu-gcc14:  
     runs-on: ubuntu-24.04 
     strategy:  
@@ -32,9 +72,6 @@ jobs:
 
       - name: Install CMake
         run: sudo apt install cmake
-
-      - name: Style Check
-        run: ruff check .
 
       - name: Build and Test
         env:
@@ -72,9 +109,6 @@ jobs:
 
       - name: Install CMake
         run: sudo apt install cmake
-      
-      - name: Style Check
-        run: ruff check .
 
       - name: Build and Test
         env:
@@ -107,9 +141,6 @@ jobs:
       run: |  
         python3 -m pip install --upgrade pip  
         if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
-
-    - name: Style Check
-      run: ruff check .
 
     - name: Build and Test
       env:
@@ -145,9 +176,6 @@ jobs:
           if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
 
           choco install -y make llvm
-
-      - name: Style Check
-        run: ruff check .
 
       - name: Build and Test
         env:

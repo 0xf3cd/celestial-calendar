@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <vector>
+#include <print>
 #include "lunardata.hpp"
 #include "random.hpp"
 
@@ -106,16 +107,17 @@ TEST(LunarData, test_cache_performance) {
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
-      const uint32_t random_year = util::random(START_YEAR, END_YEAR);
+      const int32_t random_year = util::random(START_YEAR, END_YEAR);
       LUNARDATA_CACHE.get(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
     return static_cast<uint64_t>((end_time - start_time).count());
   });
   
-  std::cout << "Elapsed time for uncached: " << elapsed_time_uncached << "ns" << std::endl;
-  std::cout << "Elapsed time for cached:   " << elapsed_time_cached << "ns" << std::endl;
-  std::cout << "Cached is " << static_cast<double>(elapsed_time_uncached) / elapsed_time_cached << "x faster" << std::endl;
+  std::println("Elapsed time for uncached: {}ns", elapsed_time_uncached);
+  std::println("Elapsed time for cached:   {}ns", elapsed_time_cached);
+  std::println("Cached is {}x faster", static_cast<double>(elapsed_time_uncached) / static_cast<double>(elapsed_time_cached));
+
   EXPECT_LT(elapsed_time_cached, elapsed_time_uncached);
 }
 
@@ -125,7 +127,7 @@ TEST(LunarData, test_lunardata_cache_correctness) {
   for (auto _ = 0; _ < 100; ++_) {
     const auto year = util::random(START_YEAR, END_YEAR);
     const auto info = get_lunar_year_info(year);
-    const auto info2 = LUNARDATA_CACHE.get(year);
+    const auto& info2 = LUNARDATA_CACHE.get(year);
     EXPECT_EQ(info.date_of_first_day, info2.date_of_first_day);
     EXPECT_EQ(info.leap_month, info2.leap_month);
     EXPECT_EQ(info.month_lengths, info2.month_lengths);
@@ -134,7 +136,7 @@ TEST(LunarData, test_lunardata_cache_correctness) {
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
     std::vector<LunarYearInfo> results;
     for (auto _ = 0; _ < 32; ++_) {
-      results.emplace_back(LUNARDATA_CACHE.get(year));
+      results.emplace_back(LUNARDATA_CACHE.get(year)); // NOLINT(performance-inefficient-vector-operation)
     }
 
     for (const auto& info1 : results) { // TODO: Use `std::views::cartesian_product` when supported.

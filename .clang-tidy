@@ -1,14 +1,16 @@
 Checks: >
   clang-analyzer-*,
-  -clang-analyzer-security.insecureAPI.rand
+  -clang-analyzer-security.insecureAPI.rand,
+
+  performance-*,
+  portability-*,
+  bugprone-*,
 # -cppcoreguidelines-avoid-magic-numbers
-# bugprone-*,
+
 # cppcoreguidelines-*,
 #   google-*,
 #   misc-*,
 #   modernize-*,
-#   performance-*,
-#   portability-*,
 #   readability-*,
 #   -google-readability-namespace-comments,
 #   -google-runtime-int,
@@ -19,3 +21,5 @@ Checks: >
 #   -readability-magic-numbers
 WarningsAsErrors: '*'
 # HeaderFilterRegex: '^(?!.*gtest/).*'
+
+UseColor:       true

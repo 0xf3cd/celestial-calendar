@@ -126,7 +126,7 @@ TEST(LunarCalendar, test_integration) {
     const std::optional<year_month_day> optional_lunar_date = gregorian_to_lunar(solar_date);
     ASSERT_TRUE(optional_lunar_date.has_value());
     
-    const year_month_day lunar_date = optional_lunar_date.value();
+    const year_month_day lunar_date = optional_lunar_date.value(); // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_TRUE(is_valid_lunar(lunar_date));
 
     ASSERT_EQ(solar_date, lunar_to_gregorian(lunar_date));

@@ -157,7 +157,7 @@ TEST(Datetime, datetime_from_ymd_hms) {
   { // Test with random nanoseconds.
     for (auto i = 0; i < 100; i++) {
       const sys_days random_day = floor<days>(system_clock::now()) + days { 
-        util::random<int64_t>(-365 * 30, 365 * 30) 
+        util::random<int32_t>(-365 * 30, 365 * 30) 
       };
       const year_month_day ymd { random_day };
 
@@ -180,7 +180,7 @@ TEST(Datetime, datetime_from_ymd_hms) {
   { // Test with random microseconds.
     for (auto i = 0; i < 100; i++) {
       const sys_days random_day = floor<days>(system_clock::now()) + days { 
-        util::random<int64_t>(-365 * 30, 365 * 30) 
+        util::random<int32_t>(-365 * 30, 365 * 30) 
       };
       const year_month_day ymd { random_day };
 
@@ -204,7 +204,7 @@ TEST(Datetime, datetime_from_ymd_hms) {
 TEST(Datetime, datetime_from_fraction) {
   for (auto i = 0; i < 100; i++) {
     const sys_days random_day = floor<days>(system_clock::now()) + days { 
-      util::random<int64_t>(-365 * 30, 365 * 30) 
+      util::random<int32_t>(-365 * 30, 365 * 30) 
     };
     const year_month_day ymd { random_day };
 
@@ -225,8 +225,9 @@ TEST(Datetime, datetime_consistency) {
   constexpr auto ns_per_year = 365 * in_a_day<nanoseconds>();
 
   const auto random_tp_views = std::views::iota(0, 10000) | std::views::transform([&](auto) {
+    const auto signed_ns = static_cast<int64_t>(ns_per_year);
     return now + microseconds { 
-      util::random<int64_t>(-20 * ns_per_year, 20 * ns_per_year) 
+      util::random<int64_t>(-20 * signed_ns, 20 * signed_ns) 
     };
   });
 

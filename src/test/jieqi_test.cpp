@@ -57,11 +57,11 @@ TEST(JieQiMath, solar_longitude) {
 }
 
 TEST(JieQiMath, find_roots) {
-  for (const auto& [ymd, hms, expected_lon, _, __] : DATASET) {
+  for (const auto& [ymd, hms, expected_lon, _ignored1, _ignored2] : DATASET) {
     const Datetime dt { ymd, hms };
     const double jde = astro::julian_day::ut1_to_jde(dt);
 
-    const auto [y, ___, ____] = util::from_ymd(ymd);
+    const auto [y, _ignored3, _ignored4] = util::from_ymd(ymd);
     const auto roots = find_roots(y, expected_lon);
 
     // For the above dataset, we should only find 1 root for every data point.
@@ -75,7 +75,7 @@ TEST(JieQiMath, find_roots) {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
     const auto expected_lon = solar_longitude(jde);
-    const auto [y, _, __] = util::from_ymd(ut1_dt.ymd);
+    const auto [y, _ignored1, _ignored2] = util::from_ymd(ut1_dt.ymd);
 
     const auto roots = find_roots(y, expected_lon);
     ASSERT_TRUE(roots.size() <= 2);
@@ -134,9 +134,9 @@ TEST(JieQi, jieqi_jde) {
 }
 
 TEST(JieQi, jieqi_ut1_moment) {
-  for (const auto& [ymd, hms, _, __, jq] : DATASET) {
+  for (const auto& [ymd, hms, _ignored1, _ignored2, jq] : DATASET) {
     const Datetime real_dt { ymd, hms };
-    const auto [y, ___, ____] = util::from_ymd(ymd);
+    const auto [y, _ignored3, _ignored4] = util::from_ymd(ymd);
     
     const auto est_dt = jieqi_ut1_moment(y, jq);
 
