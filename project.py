@@ -26,8 +26,10 @@ from typing import List, Callable, Sequence
 
 from automation import (
   run_cmake, build_project, clean_build,
-  run_tests, print_system_info, setup_environment,
+  run_tests, print_system_info,
   time_execution, red_print, green_print, blue_print,
+  run_ruff, run_clang_tidy,
+  setup_environment
 )
 
 
@@ -58,7 +60,11 @@ def parse_args() -> argparse.Namespace:
       '  To set up and build the project using 8 CPU cores:\n'
       '    ./project.py --setup --build --cores 8\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./project.py --clean --setup --cmake --build --cores all --test\n'
+      '    ./project.py --clean --setup --cmake --build --cores all --test\n\n'
+      '  To run ruff to check Python codes:\n'
+      '    ./project.py --ruff\n\n'
+      '  To run clang-tidy to check C++ codes:\n'
+      '    ./project.py --clang-tidy\n\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
@@ -98,6 +104,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
 
+  parser.add_argument('--ruff', action='store_true', help='Run ruff')
+  parser.add_argument('--clang-tidy', action='store_true', help='Run clang-tidy')
+
   return parser.parse_args()
 
 
@@ -118,6 +127,10 @@ def print_steps(args: argparse.Namespace) -> None:
     green_print(f'# - Run tests with verbosity level {args.verbosity}')
     if args.keyword:
       green_print(f'# - Filter tests with keywords: {", ".join(args.keyword)}')
+  if args.ruff:
+    green_print('# - Run ruff')
+  if args.clang_tidy:
+    green_print('# - Run clang-tidy')
   print(60 * '#')
 
 
@@ -163,6 +176,10 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
     tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
   if args.test:
     tasks.append(Task('Run tests', lambda: run_tests(args.keyword, args.verbosity)))
+  if args.ruff:
+    tasks.append(Task('Run ruff', run_ruff))
+  if args.clang_tidy:
+    tasks.append(Task('Run clang-tidy', run_clang_tidy))
   return tasks
 
 

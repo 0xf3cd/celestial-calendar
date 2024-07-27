@@ -39,12 +39,9 @@ jobs:
           CC:  clang-18
         run: |
           chmod +x project.py
-          ./project.py --setup --clean --cmake --build
+          ./project.py --setup --clean --cmake --build --ruff --clang-tidy
 
-          chmod +x checker.py
-          ./checker.py --ruff --clang-tidy
-
-
+          
   test-ubuntu-gcc14:  
     runs-on: ubuntu-24.04 
     strategy:  
