@@ -111,7 +111,7 @@ TEST(JieQi, JIEQI_SOLAR_LONGITUDE) {
 }
 
 
-TEST(JieQi, jde_for_jieqi) {
+TEST(JieQi, jieqi_jde) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
     const bool b1 = util::random(0.0, 1.0) > 0.5;
@@ -123,7 +123,7 @@ TEST(JieQi, jde_for_jieqi) {
     for (int32_t jq_idx = 0; jq_idx < std::underlying_type_t<Jieqi>(Jieqi::COUNT); jq_idx++) {
       const auto jq = static_cast<Jieqi>(jq_idx);
 
-      const auto jde = jde_for_jieqi(year, jq); // Use Newton's method to find the root.
+      const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
 
       const auto jde_lon = solar_longitude(jde);
       const auto expected_lon = JIEQI_SOLAR_LONGITUDE.at(jq);
@@ -133,12 +133,12 @@ TEST(JieQi, jde_for_jieqi) {
   }
 }
 
-TEST(JieQi, ut1_for_jieqi) {
+TEST(JieQi, jieqi_ut1_moment) {
   for (const auto& [ymd, hms, _, __, jq] : DATASET) {
     const Datetime real_dt { ymd, hms };
     const auto [y, ___, ____] = util::from_ymd(ymd);
     
-    const auto est_dt = ut1_for_jieqi(y, jq);
+    const auto est_dt = jieqi_ut1_moment(y, jq);
 
     ASSERT_EQ(est_dt.ymd, real_dt.ymd);
     ASSERT_NEAR(est_dt.fraction(), real_dt.fraction(), 0.01);

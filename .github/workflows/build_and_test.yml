@@ -2,8 +2,8 @@ name: Build and Test on Multiple Platforms
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
-  # pull_request:
-  #   branches: [ main ]  # Also triggers on pull requests to the main branch
+  pull_request:
+    branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
   linux-docker:
@@ -136,26 +136,20 @@ jobs:
             # Set the lib environment variables
             echo "lib_name=${new_name}" >> $GITHUB_ENV
             echo "lib_name=${new_name}" >> $GITHUB_OUTPUT
-
-            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_ENV
-            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_OUTPUT
-
-            # Print to stdout
             echo "lib_name=${lib_name}"
-            echo "lib_path=${lib_path}"
-          
+
           else
             # Handle cases where no or multiple shared libraries are found
             [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
             exit 1
-          
+
           fi 
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.shared_lib.outputs.lib_name }}
-          path: ${{ steps.shared_lib.outputs.lib_path }}
+          path: ./latest_build/${{ steps.shared_lib.outputs.lib_name }}
           retention-days: 30
           if-no-files-found: error
 
@@ -207,17 +201,13 @@ jobs:
 
         # If exists, save the path to GITHUB_OUTPUT
         echo "lib_name=lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
-        echo "lib_path=$(pwd)/build/shared_lib/lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
-
-        # Print to stdout
         echo "lib_name=${lib_name}"
-        echo "lib_path=${lib_path}"
 
     - name: GitHub Artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.shared_lib.outputs.lib_name }}
-        path: ${{ steps.shared_lib.outputs.lib_path }}
+        path: ./latest_build/${{ steps.shared_lib.outputs.lib_name }}
         retention-days: 30
         if-no-files-found: error
 
@@ -274,9 +264,6 @@ jobs:
 
             Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
             Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
-
-            Write-Output "dll_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.dll)" >> $env:GITHUB_OUTPUT
-            Write-Output "lib_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.lib)" >> $env:GITHUB_OUTPUT
           } else {
             Write-Error "Shared library (.dll), or import library (.lib) not found."
             exit 1
@@ -287,7 +274,7 @@ jobs:
         with:
           name: ${{ steps.shared_lib.outputs.dll_name }}
           path: |
-            ${{ steps.shared_lib.outputs.dll_path }}
-            ${{ steps.shared_lib.outputs.lib_path }}
+            latest_build/${{ steps.shared_lib.outputs.dll_name }}
+            latest_build/${{ steps.shared_lib.outputs.lib_name }}
           retention-days: 30
           if-no-files-found: error

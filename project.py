@@ -150,8 +150,8 @@ def run_tasks(tasks: Sequence[Task]) -> List[TaskResult]:
   return results
 
 
-def build_tasks(args: argparse.Namespace) -> List[Task]:
-  '''Build a list of tasks based on the parsed arguments.'''
+def create_tasks(args: argparse.Namespace) -> List[Task]:
+  '''Create a list of tasks based on the parsed arguments.'''
   tasks = []
   if args.setup:
     tasks.append(Task('Set up and ensure dependencies', setup_environment))
@@ -178,8 +178,8 @@ def main() -> int:
   # Print the steps to be taken
   print_steps(args)
 
-  # Build a list of tasks based on the parsed arguments
-  tasks = build_tasks(args)
+  # Create a list of tasks based on the parsed arguments
+  tasks = create_tasks(args)
   if not tasks:
     red_print('# No tasks to run')
     return 0

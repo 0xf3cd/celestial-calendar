@@ -12,15 +12,19 @@
   * Currently, clang++ (LLVM 18) is supposed to work on macOS, Windows, and Linux. g++ 14 also works.
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
-  * Required Python packages listed in `Requirements.txt`
+  * Install dependencies: `python3 -m pip install -r Requirements.txt`
 
 
 ## 3. How to Build
 
 ### 3.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
+
+Follow these steps to set up, build, and test the project on Unix-like systems. Ensure you have a C++23 compatible compiler installed.
+
+Before building the project, you can specify the compiler to use. For example, to use `clang++`, run:
 ```sh
 # [Optional] Specify the compiler that supports C++23 on your platform
-export CXX=clang++18 
+export CXX=clang++ # Change this to fit your platform
 
 # Make the automation script executable
 chmod +x project.py
@@ -34,10 +38,10 @@ chmod +x project.py
 # Run tests
 ./project.py --test
 
-# Clean builds
+# Clean up builds
 ./project.py --clean
 
-# Or all together in a row
+# Or, chain the commands together for convenience
 ./project.py --clean --setup --cmake --build --test
 
 # More usages
@@ -45,6 +49,9 @@ chmod +x project.py
 ```
 
 ### 3.2. On Windows
+Follow these steps to set up, build, and test the project on Windows. Ensure you have a C++23 compatible compiler installed.
+
+Before building the project, you can specify the compiler to use. For example, to use `clang++`, run:
 ```powershell
 # [Optional] Specify the compiler that supports C++23 on your platform
 $env:CXX = clang++
@@ -60,10 +67,10 @@ python3 ./project.py --cmake --build
 # Run tests
 python3 ./project.py --test
 
-# Clean builds
+# Clean up builds
 python3 ./project.py --clean
 
-# Or all together in a row
+# Or, chain the commands together for convenience
 python3 ./project.py --clean --setup --cmake --build --test
 
 # More usages
@@ -79,6 +86,7 @@ There are basically two ways to download:
   * Download from the latest completed run
   
 ### 4.2. Use `toolbox/artifact_downloader.py`
+  * Install dependencies: `python3 -m pip install -r Requirements.txt`
   * Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
   * Run `toolbox/artifact_downloader.py`
     ```sh
@@ -86,10 +94,10 @@ There are basically two ways to download:
     echo $GITHUB_TOKEN     # Unix-like platforms
     echo $env:GITHUB_TOKEN # Windows powershell
 
-    # Download artifacts to specified dir
+    # Download artifacts to the specified dir
     python3 ./toolbox/artifact_downloader.py -s <directory>
-    
-    # Download artifacts to specified dir and unzips them
+
+    # Download artifacts to the specified dir and unzips them
     python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
 
     # More usages

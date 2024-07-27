@@ -33,7 +33,7 @@ def build_dir() -> Path:
 
 def cpp_src_dir() -> Path:
   '''Locate the C++ source directory.'''
-  return proj_root() / 'src' / 'cpp'
+  return proj_root() / 'src'
 
 
 def cpp_test_dir() -> Path:

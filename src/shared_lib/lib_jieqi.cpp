@@ -140,7 +140,7 @@ JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) {
   try {
     const Jieqi jq = static_cast<Jieqi>(jq_idx);
 
-    const calendar::Datetime ut1_dt = ut1_for_jieqi(year, jq);
+    const calendar::Datetime ut1_dt = jieqi_ut1_moment(year, jq);
 
     const auto [y, m, d] = util::from_ymd(ut1_dt.ymd);
     const double fraction = ut1_dt.fraction();

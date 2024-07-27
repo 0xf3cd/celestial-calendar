@@ -329,7 +329,7 @@ const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invo
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-inline double jde_for_jieqi(const int32_t year, const Jieqi jq) {
+inline double jieqi_jde(const int32_t year, const Jieqi jq) {
   const auto lon = JIEQI_SOLAR_LONGITUDE.at(jq);
   const auto roots = calendar::jieqi::math::find_roots(year, lon);
 
@@ -345,14 +345,14 @@ inline double jde_for_jieqi(const int32_t year, const Jieqi jq) {
 
 
 /**
- * @brief Get the UT1 for the given `year` and `jieqi`.
+ * @brief Get the UT1 moment of the given `year` and `jieqi`.
  * @param year The year, in gregorian calendar.
  * @param jq The jieqi.
  * @return The UT1 (Universal Time 1).
  * @details This is just a thin wrapper around `jde_for_jieqi()`.
  */
-inline calendar::Datetime ut1_for_jieqi(const int32_t year, const Jieqi jq) {
-  return astro::julian_day::jde_to_ut1(jde_for_jieqi(year, jq));
+inline calendar::Datetime jieqi_ut1_moment(const int32_t year, const Jieqi jq) {
+  return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
 
 

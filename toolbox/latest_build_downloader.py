@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Helper to download artifacts from GitHub.
+# Helper to download artifacts (latest builds) from GitHub.
 #
 #########################################################################################
 #
