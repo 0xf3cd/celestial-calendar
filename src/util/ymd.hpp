@@ -29,29 +29,36 @@ namespace util {
 
 /*! @brief A type that can be converted to `std::chrono::year`. */
 template <typename T>
-concept YearConvertible = std::convertible_to<T, int32_t>;
+concept YearConvertible = requires (T t) {
+  { std::chrono::year { static_cast<int32_t>(t) } } -> std::same_as<std::chrono::year>;
+};
+
+/*! @brief A type that can be converted to `std::chrono::month`. */
+template <typename T>
+concept MonthConvertible = std::same_as<T, std::chrono::month> or requires (T t) {
+  { std::chrono::month { static_cast<uint32_t>(t) } } -> std::same_as<std::chrono::month>;
+};
 
 /*! @brief A type that can be converted to `std::chrono::days`. */
 template <typename T>
-concept DayConvertible = requires (T t) {
-  { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
+concept DayConvertible = std::same_as<T, std::chrono::days> or requires (T t) {
+  { std::chrono::days { static_cast<uint32_t>(t) } } -> std::same_as<std::chrono::days>;
 };
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
 constexpr std::chrono::year_month_day to_ymd(
   const YearConvertible auto year, 
-  const uint32_t month, 
+  const MonthConvertible auto month, 
   const DayConvertible auto day
 ) {
   const std::chrono::year __year { static_cast<int32_t>(year) };
-  const std::chrono::day __day { static_cast<uint32_t>(day) };
-  return std::chrono::year_month_day { __year / month / __day };
+  return std::chrono::year_month_day { __year / month / day };
 }
 
 
 /*! @brief Converts the input `std::chrono::year_month_day` to a year, month, and date. */
 constexpr std::tuple<int32_t, uint32_t, uint32_t> from_ymd(const std::chrono::year_month_day& ymd) {
-  const uint32_t y = static_cast<int32_t>(ymd.year());
+  const int32_t y = static_cast<int32_t>(ymd.year());
   const uint32_t m = static_cast<uint32_t>(ymd.month());
   const uint32_t d = static_cast<uint32_t>(ymd.day());
   return { y, m, d, };
