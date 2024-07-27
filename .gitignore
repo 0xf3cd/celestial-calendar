@@ -3,6 +3,7 @@ test_pymeeus.py
 check_platform_arch.py
 
 artifacts/
+run-clang-tidy.py
 
 # clangd VSCode extension cache
 .cache/

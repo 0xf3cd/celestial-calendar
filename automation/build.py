@@ -22,7 +22,7 @@ BUILD_DIR = paths.build_dir()
 SRC_DIR = paths.cpp_src_dir()
 
 
-def run_cmake(build_type: str = 'Release') -> int:
+def run_cmake(build_type: str = 'Release', export_compile_commands: bool = True) -> int:
   '''Run CMake to generate build files.'''
   print('#' * 60)
 
@@ -32,8 +32,14 @@ def run_cmake(build_type: str = 'Release') -> int:
     BUILD_DIR.mkdir()
 
   yellow_print('# Running cmake...')
-  ret: ProcReturn = run_cmd(['cmake', str(SRC_DIR), '-G', 'Unix Makefiles', f'-DCMAKE_BUILD_TYPE={build_type}'], 
-                            cwd=BUILD_DIR, env=os.environ.copy())
+
+  cmds = ['cmake', str(SRC_DIR), '-G', 'Unix Makefiles', f'-DCMAKE_BUILD_TYPE={build_type}']
+  if export_compile_commands:
+    cmds.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
+
+  ret: ProcReturn = run_cmd(cmds, cwd=BUILD_DIR, env=os.environ.copy())
+  if ret.retcode != 0:
+    red_print('# Failed to run CMake')
 
   print('#' * 60)
   return ret.retcode

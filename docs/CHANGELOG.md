@@ -13,10 +13,10 @@
 - Added other math utilities, e.g., `Angle`.
 
 #### Statistics
-- Added `statistics`, for statistical analysis to evaluate different astronomical algorithms
+- Added folder `statistics`, for statistical analysis to evaluate different astronomical algorithms
 
 #### Calendar
-- Added `Datetime`, a constexpr struct to hold a date and an accurate time, representing a UT1 or UTC moment.
+- Added `Datetime`, a struct to hold a date and an accurate time, representing a UT1 or UTC moment.
 - Supported conversions between Lunar dates and Gregorian dates.
   - Currently, only Gregorian years between 1901 and 2099 are supported.
 - Applied Newton's method to approximate the moment when the Sun reaches a certain longitude.

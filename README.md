@@ -85,26 +85,26 @@ There are basically two ways to download:
   * Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
   * Download from the latest completed run
   
-### 4.2. Use `toolbox/artifact_downloader.py`
+### 4.2. Use `toolbox/latest_build_downloader.py`
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
   * Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
-  * Run `toolbox/artifact_downloader.py`
+  * Run `toolbox/latest_build_downloader.py`
     ```sh
     # Ensure env var `GITHUB_TOKEN` is correctly set
     echo $GITHUB_TOKEN     # Unix-like platforms
     echo $env:GITHUB_TOKEN # Windows powershell
 
     # Download artifacts to the specified dir
-    python3 ./toolbox/artifact_downloader.py -s <directory>
+    python3 ./toolbox/latest_build_downloader.py -s <directory>
 
     # Download artifacts to the specified dir and unzips them
-    python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
+    python3 ./toolbox/latest_build_downloader.py -s <directory> --unzip
 
     # More usages
-    python3 ./toolbox/artifact_downloader.py --help
+    python3 ./toolbox/latest_build_downloader.py --help
 
     # Or run it as a Python module from root dir
-    python3 -m toolbox.artifact_downloader --help
+    python3 -m toolbox.latest_build_downloader --help
     ```
 
 

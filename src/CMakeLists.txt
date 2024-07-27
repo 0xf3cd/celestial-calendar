@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add compile options for different compilers
-add_compile_options(-Wall -Wextra -Wpedantic)
+add_compile_options(-Wall -Wextra -Wpedantic -Wnull-dereference -Wunreachable-code)
 
 if(NOT WIN32) # Clang++ on Windows compalins about GTest codes.
   add_compile_options(-Werror)

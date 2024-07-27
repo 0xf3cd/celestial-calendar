@@ -14,11 +14,12 @@ import sys
 import shutil
 import tempfile
 
-from pprint import pformat
 from pathlib import Path
+from pprint import pformat
+from dataclasses import dataclass
 from itertools import product, starmap
 
-from typing import Tuple
+from typing import Tuple, Sequence, Dict
 
 from . import paths
 from .utils import (
@@ -39,7 +40,7 @@ def install_dependencies() -> int:
   return ret.retcode
 
 
-def check_tool_exists(name: str, args: Tuple[str, ...]) -> bool:
+def check_tool_exists(name: str, args: Tuple[str, ...] = ('--version',)) -> bool:
   '''Check if a tool exists and can be executed with the given arguments.'''
   tool_path = shutil.which(name)
   if tool_path is None:
@@ -54,7 +55,15 @@ def check_tool_exists(name: str, args: Tuple[str, ...]) -> bool:
   return True
 
 
-def check_cpp_support(compiler: str, cpp_version: str) -> bool:
+@dataclass
+class CppCompilerArgs:
+  compiler: str
+  cpp_standard: str
+  def __hash__(self) -> int:
+    return hash((self.compiler, self.cpp_standard))
+
+
+def check_cpp_support(cpp_args: CppCompilerArgs) -> bool:
   '''Check if the given compiler supports the specified C++ version.'''
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
@@ -90,7 +99,7 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
     ''')
 
     try:
-      comiler_command = [compiler, f'--std={cpp_version}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
+      comiler_command = [cpp_args.compiler, f'--std={cpp_args.cpp_standard}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
       comiler_ret = run_cmd(comiler_command)
       if comiler_ret.retcode != 0:
         return False
@@ -108,9 +117,30 @@ def check_cpp_support(compiler: str, cpp_version: str) -> bool:
       return False
 
 
+def check_compilers(compilers: Sequence[str], cpp_standards: Sequence[str]) -> Dict[CppCompilerArgs, bool]:
+  '''Check if the given compilers support the specified C++ versions.'''
+  compiler_args_tuple = tuple(product(set(compilers), set(cpp_standards)))
+  compiler_args = list(starmap(CppCompilerArgs, compiler_args_tuple))
+  check_returns = map(check_cpp_support, compiler_args)
+  compiler_support = dict(zip(compiler_args, check_returns))
+  
+  yellow_print(60 * '-')
+  yellow_print('C++ support check:')
+  for args, support in compiler_support.items():
+    compiler_path = shutil.which(args.compiler)
+    if support:
+      green_print(f'# {compiler_path} supports {args.cpp_standard}')
+    else:
+      if compiler_path:
+        red_print(f'# {compiler_path} does not support {args.cpp_standard}')
+      else:
+        red_print(f'# {args.compiler} not found!')
+  
+  return compiler_support
+
+
 def setup_environment() -> int:
   '''Set up the environment by installing dependencies and checking tool availability and C++ support.'''
-  
   # Install dependencies
   retcode = install_dependencies()
   if retcode != 0:
@@ -133,7 +163,7 @@ def setup_environment() -> int:
 
   # Check for C++ support
   cxx_standards = ['c++2b'] # Currently CMakeLists.txt is using c++2b
-  cxx_compilers = ['clang-cl', 'clang++-18', 'clang++', 'g++-14', 'g++']
+  cxx_compilers = ['clang++-18', 'clang++', 'g++-14', 'g++']
   cxx_env = os.environ.get('CXX')
   if cxx_env:
     yellow_print(f'# CXX environment variable set to: {cxx_env}')
@@ -141,29 +171,18 @@ def setup_environment() -> int:
   else:
     yellow_print('# CXX environment variable not set.')
 
-  compiler_args = tuple(product(set(cxx_compilers), cxx_standards))
-  check_returns = starmap(check_cpp_support, compiler_args)
-
-  compiler_support = dict(zip(compiler_args, check_returns))
+  compiler_support = check_compilers(cxx_compilers, cxx_standards)
 
   if not any(compiler_support.values()):
     red_print('None of the compilers support the specified C++ features.')
     red_print(f'Checked: {pformat(compiler_support)}')
     return 1
-  
-  yellow_print(60 * '-')
-  yellow_print('C++ support check:')
-  for args, support in compiler_support.items():
-    compiler_path = shutil.which(args[0])
-    if support:
-      green_print(f'# {compiler_path} supports {args[1]}')
-    else:
-      if compiler_path:
-        red_print(f'# {compiler_path} does not support {args[1]}')
-      else:
-        red_print(f'# {args[0]} not found!')
 
-  ok_compilers = set(map(lambda args: args[0], compiler_support.keys()))
+  ok_compilers = []
+  for args, support in compiler_support.items():
+    if support:
+      ok_compilers.append(args.compiler)
+
   if cxx_env and (cxx_env not in ok_compilers):
     red_print(60 * '-')
     red_print('CXX environment variable set to an unsupported compiler. \n'
