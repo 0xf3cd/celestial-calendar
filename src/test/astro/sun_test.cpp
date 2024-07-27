@@ -6,7 +6,7 @@ namespace astro::sun::test {
 
 using namespace astro::sun::geocentric_coord;
 
-TEST(Sun, vsop87d_geocentric_position) {
+TEST(Sun, GeocentricPosition) {
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
     // JDE                  Longitude            Latitude                Radius
     { 2422498.7094451743, {  91.40761280128208, -0.00010445464204317034,  1.016482372497581 } },
@@ -77,7 +77,7 @@ TEST(Sun, vsop87d_geocentric_position) {
 }
 
 
-TEST(Sun, fk5_correction) {
+TEST(Sun, FK5Correction) {
   const std::unordered_map<double, std::tuple<double, double>> EXPECTED {
     // JDE                  Longitude Delta           Latitude Delta
     { 2421614.0856030583, { -2.5091672396119975e-05,  1.4918431407582651e-05 } },
@@ -228,7 +228,7 @@ TEST(Sun, fk5_correction) {
 }
 
 
-TEST(Sun, corrected_position) {
+TEST(Sun, CorrectedPosition) {
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, {  291.5156934059833,  -9.920119287353568e-07, 0.9834987939042306 } },
@@ -727,4 +727,4 @@ TEST(Sun, corrected_position) {
   }
 }
 
-}
+} // namespace astro::sun::test

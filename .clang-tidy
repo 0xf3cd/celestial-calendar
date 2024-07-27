@@ -5,21 +5,21 @@ Checks: >
   performance-*,
   portability-*,
   bugprone-*,
-# -cppcoreguidelines-avoid-magic-numbers
 
-# cppcoreguidelines-*,
-#   google-*,
-#   misc-*,
-#   modernize-*,
-#   readability-*,
-#   -google-readability-namespace-comments,
-#   -google-runtime-int,
-#   -google-runtime-references,
-#   -misc-non-private-member-variables-in-classes,
-#   -readability-named-parameter,
-#   -readability-braces-around-statements,
-#   -readability-magic-numbers
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -readability-function-cognitive-complexity,
+
+  google-*,
+  -google-build-using-namespace,
+  -google-readability-todo,
+
+  modernize-*,
+
 WarningsAsErrors: '*'
-# HeaderFilterRegex: '^(?!.*gtest/).*'
-
 UseColor:       true

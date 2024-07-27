@@ -34,13 +34,13 @@ const std::unordered_map<double, Datetime> jde_test_data {
 constexpr double EPSILON = 1e-6;
 
 
-TEST(JulianDay, test_tt_to_jde) {
+TEST(JulianDay, TTtoJDE) {
   for (const auto& [jde, tt] : jde_test_data) {
     ASSERT_NEAR(tt_to_jde(tt), jde, EPSILON);
   }
 }
 
-TEST(JulianDay, test_jde_to_tt) {
+TEST(JulianDay, JDEtoTT) {
   for (const auto& [jde, expected_dt] : jde_test_data) {
     const auto tt = jde_to_tt(jde);
     ASSERT_EQ(tt.ymd, expected_dt.ymd);
@@ -48,7 +48,7 @@ TEST(JulianDay, test_jde_to_tt) {
   }
 }
 
-TEST(JulianDay, test_consistency) {  
+TEST(JulianDay, Consistency) {  
   const auto random_ymd = [] -> year_month_day {
     using namespace util::ymd_operator;
     const std::chrono::year_month_day _ymd = to_ymd(util::random(500, 2100), 1, 1);
@@ -94,7 +94,7 @@ TEST(JulianDay, test_consistency) {
   }
 }
 
-TEST(JulianDay, test_jm) {
+TEST(JulianDay, JulianMillennium) {
   ASSERT_EQ(jde_to_jm(J2000), 0.0);
   ASSERT_EQ(jm_to_jde(0.0), J2000);
 
@@ -112,7 +112,7 @@ TEST(JulianDay, test_jm) {
   }
 }
 
-TEST(JulianDay, test_jc) {
+TEST(JulianDay, JulianCentury) {
   ASSERT_EQ(jde_to_jc(J2000), 0.0);
   ASSERT_EQ(jc_to_jde(0.0), J2000);
 
@@ -130,4 +130,4 @@ TEST(JulianDay, test_jc) {
   }
 }
 
-}
+} // namespace astro::julian_day::test

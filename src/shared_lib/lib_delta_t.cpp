@@ -32,7 +32,7 @@ struct DeltaT {
 };
 
 /** @brief Compute delta T of a given moment using algorithm 1. */
-DeltaT delta_t_algo1(double year) {
+auto delta_t_algo1(double year) -> DeltaT {
   try {
     return {
       .valid = true,
@@ -47,7 +47,7 @@ DeltaT delta_t_algo1(double year) {
 }
 
 /** @brief Compute delta T of a given moment using algorithm 2. */
-DeltaT delta_t_algo2(double year) {
+auto delta_t_algo2(double year) -> DeltaT {
   try {
     return {
       .valid = true,
@@ -62,7 +62,7 @@ DeltaT delta_t_algo2(double year) {
 }
 
 /** @brief Compute delta T of a given moment using algorithm 3. */
-DeltaT delta_t_algo3(double year) {
+auto delta_t_algo3(double year) -> DeltaT {
   try {
     return {
       .valid = true,
@@ -77,7 +77,7 @@ DeltaT delta_t_algo3(double year) {
 }
 
 /** @brief Compute delta T of a given moment using algorithm 4. */
-DeltaT delta_t_algo4(double year) {
+auto delta_t_algo4(double year) -> DeltaT {
   try {
     return {
       .valid = true,

@@ -6,9 +6,7 @@
 
 namespace calendar::test {
 
-using namespace calendar;
-
-TEST(Datetime, datetime_from_timepoint) {
+TEST(Datetime, FromTimepoint) {
   const auto now = system_clock::now();
 
   { // Test now.
@@ -124,7 +122,7 @@ TEST(Datetime, datetime_from_timepoint) {
   }
 }
 
-TEST(Datetime, datetime_from_ymd_hms) {
+TEST(Datetime, FromYmdHms) {
   const auto now = system_clock::now();
 
   { // Test now.
@@ -201,7 +199,7 @@ TEST(Datetime, datetime_from_ymd_hms) {
   }
 }
 
-TEST(Datetime, datetime_from_fraction) {
+TEST(Datetime, FromFraction) {
   for (auto i = 0; i < 100; i++) {
     const sys_days random_day = floor<days>(system_clock::now()) + days { 
       util::random<int32_t>(-365 * 30, 365 * 30) 
@@ -220,7 +218,7 @@ TEST(Datetime, datetime_from_fraction) {
   }
 }
 
-TEST(Datetime, datetime_consistency) {
+TEST(Datetime, Consistency) {
   const auto now = system_clock::now();
   constexpr auto ns_per_year = 365 * in_a_day<nanoseconds>();
 
@@ -266,7 +264,7 @@ TEST(Datetime, datetime_consistency) {
   }
 }
 
-TEST(Datetime, datetime_edge_cases) {
+TEST(Datetime, EdgeCases) {
   { // Test time_point constructor.
     using namespace util::ymd_operator;
 
@@ -356,4 +354,4 @@ TEST(Datetime, datetime_edge_cases) {
   }
 }
 
-}
+} // namespace calendar::test

@@ -32,7 +32,7 @@ extern "C" {
  * @param new_value The new verbosity level (in `uint8_t`).
  * @returns `true` if the verbosity level is changed to the specified value, `false` otherwise.
  */
-bool set_log_verbosity(const uint8_t new_value) {
+auto set_log_verbosity(const uint8_t new_value) -> bool {
   if (new_value >= std::underlying_type_t<lib::Verbosity>(lib::Verbosity::COUNT)) {
     lib::info("Invalid verbosity level: {}", new_value);
     return false;

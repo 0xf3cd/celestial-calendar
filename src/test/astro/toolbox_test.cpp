@@ -6,7 +6,7 @@ namespace astro::toolbox::test {
 
 using namespace astro::toolbox;
 
-TEST(AstroMath, normalize_deg) {
+TEST(AstroMath, NormalizedDeg) {
   {
     const auto x = normalize_deg(361);
     ASSERT_EQ(x, 1);
@@ -33,7 +33,7 @@ TEST(AstroMath, normalize_deg) {
   }
 }
 
-TEST(AstroMath, rad_deg_conversion) {
+TEST(AstroMath, RadDegConversion) {
   for (auto i = 0; i < 1000; ++i) {
     const double random_deg = util::random(-720.0, 720.0);
     const double random_rad = deg_to_rad(random_deg);
@@ -46,7 +46,7 @@ TEST(AstroMath, rad_deg_conversion) {
   }
 }
 
-TEST(AstroMath, angle) {
+TEST(AstroMath, Angle) {
   using AngleUnit::DEG;
   using AngleUnit::RAD;
 
@@ -112,7 +112,7 @@ TEST(AstroMath, literals) {
   }
 }
 
-TEST(AstroMath, angle_operator) {
+TEST(AstroMath, AngleOperators) {
   using namespace literals;
   using AngleUnit::DEG;
   using AngleUnit::RAD;
@@ -140,4 +140,4 @@ TEST(AstroMath, angle_operator) {
   }
 }
 
-} // namespace astro::math
+} // namespace astro::toolbox::test

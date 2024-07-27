@@ -7,7 +7,7 @@ namespace calendar::lunar::test {
 
 using namespace calendar::lunar;
 
-TEST(LunarCalendar, test_is_valid_gregorian) {
+TEST(LunarCalendar, IsValidGregorian) {
   using namespace std::literals;
 
   ASSERT_FALSE(is_valid_gregorian(1901y / 2 / 18));
@@ -21,7 +21,7 @@ TEST(LunarCalendar, test_is_valid_gregorian) {
   ASSERT_FALSE(is_valid_gregorian(2100y / 2 / 9));
 }
 
-TEST(LunarCalendar, test_is_valid_lunar) {
+TEST(LunarCalendar, IsValidLunar) {
   using namespace std::literals;
 
   ASSERT_FALSE(is_valid_lunar(1900y / 12 / 29));
@@ -46,7 +46,7 @@ TEST(LunarCalendar, test_is_valid_lunar) {
   ASSERT_FALSE(is_valid_lunar(2100y / 1 / 1));
 }
 
-TEST(LunarCalendar, test_gregorian_to_lunar_negative) {
+TEST(LunarCalendar, GregorianToLunarNegative) {
   using namespace std::literals;
 
   ASSERT_EQ(std::nullopt, gregorian_to_lunar(2024y / 0 / 29));
@@ -62,7 +62,7 @@ TEST(LunarCalendar, test_gregorian_to_lunar_negative) {
   ASSERT_NE(std::nullopt, gregorian_to_lunar(2024y / 3 / 18));
 }
 
-TEST(LunarCalendar, test_lunar_to_gregorian_negative) {
+TEST(LunarCalendar, LunarToGregorianNegative) {
   using namespace std::literals;
 
   ASSERT_EQ(std::nullopt, lunar_to_gregorian(2024y / 0 / 29));
@@ -75,7 +75,7 @@ TEST(LunarCalendar, test_lunar_to_gregorian_negative) {
   ASSERT_NE(std::nullopt, lunar_to_gregorian(2099y / 13 / 30));
 }
 
-TEST(LunarCalendar, test_gregorian_to_lunar) {
+TEST(LunarCalendar, GregorianToLunar) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
@@ -94,7 +94,7 @@ TEST(LunarCalendar, test_gregorian_to_lunar) {
   }
 }
 
-TEST(LunarCalendar, test_lunar_to_gregorian) {
+TEST(LunarCalendar, LunarToGregorian) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
@@ -113,7 +113,7 @@ TEST(LunarCalendar, test_lunar_to_gregorian) {
   }
 }
 
-TEST(LunarCalendar, test_integration) {
+TEST(LunarCalendar, Integration) {
   using namespace util::ymd_operator;
   using std::chrono::sys_days;
   using std::chrono::year_month_day;
@@ -134,4 +134,4 @@ TEST(LunarCalendar, test_integration) {
   }
 }
 
-}
+} // namespace calendar::lunar::test

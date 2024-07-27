@@ -7,7 +7,7 @@ namespace astro::earth::test {
 
 using namespace astro::earth;
 
-TEST(Earth, vsop87d_evaluate) {
+TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;
 
   const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
@@ -79,7 +79,7 @@ TEST(Earth, vsop87d_evaluate) {
   }
 }
 
-TEST(Earth, nutation_meeus) {
+TEST(Earth, NutationMeeus) {
   using namespace nutation;
 
   const std::unordered_map<double, std::tuple<double, double>> EXPECTED {
@@ -264,7 +264,7 @@ TEST(Earth, nutation_meeus) {
   }
 }
 
-TEST(Earth, nutation_iau1980) {
+TEST(Earth, NutationIau1980) {
   using namespace nutation;
 
   // The following data was collected from running https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
@@ -468,4 +468,4 @@ TEST(Earth, nutation_iau1980) {
   }
 }
 
-}
+} // namespace astro::earth::test

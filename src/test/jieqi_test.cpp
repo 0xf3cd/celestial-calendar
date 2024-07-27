@@ -44,7 +44,7 @@ const std::vector<JieqiData> DATASET {
 };
 
 
-TEST(JieQiMath, solar_longitude) {
+TEST(JieQiMath, SolarLongitude) {
   for (const auto& [ymd, hms, expected_lon, epsilon, _] : DATASET) {
     const Datetime dt { ymd, hms };
     const auto tt_dt = astro::delta_t::ut1_to_tt(dt);
@@ -56,7 +56,7 @@ TEST(JieQiMath, solar_longitude) {
   }
 }
 
-TEST(JieQiMath, find_roots) {
+TEST(JieQiMath, FindRoots) {
   for (const auto& [ymd, hms, expected_lon, _ignored1, _ignored2] : DATASET) {
     const Datetime dt { ymd, hms };
     const double jde = astro::julian_day::ut1_to_jde(dt);
@@ -93,8 +93,7 @@ TEST(JieQiMath, find_roots) {
   }
 }
 
-
-TEST(JieQi, JIEQI_SOLAR_LONGITUDE) {
+TEST(JieQi, NameQuery) {
   ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::立春), 315.0);
   ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::雨水), 330.0);
   ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::惊蛰), 345.0);
@@ -111,7 +110,7 @@ TEST(JieQi, JIEQI_SOLAR_LONGITUDE) {
 }
 
 
-TEST(JieQi, jieqi_jde) {
+TEST(JieQi, JDE) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
     const bool b1 = util::random(0.0, 1.0) > 0.5;
@@ -120,7 +119,8 @@ TEST(JieQi, jieqi_jde) {
   });
 
   for (const auto year : years) {
-    for (int32_t jq_idx = 0; jq_idx < std::underlying_type_t<Jieqi>(Jieqi::COUNT); jq_idx++) {
+    using UnderType = std::underlying_type_t<Jieqi>;
+    for (int32_t jq_idx = 0; jq_idx < static_cast<UnderType>(Jieqi::COUNT); jq_idx++) {
       const auto jq = static_cast<Jieqi>(jq_idx);
 
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
@@ -133,7 +133,7 @@ TEST(JieQi, jieqi_jde) {
   }
 }
 
-TEST(JieQi, jieqi_ut1_moment) {
+TEST(JieQi, UT1Moment) {
   for (const auto& [ymd, hms, _ignored1, _ignored2, jq] : DATASET) {
     const Datetime real_dt { ymd, hms };
     const auto [y, _ignored3, _ignored4] = util::from_ymd(ymd);
@@ -145,4 +145,4 @@ TEST(JieQi, jieqi_ut1_moment) {
   }
 }
 
-}
+} // namespace calendar::jieqi::test

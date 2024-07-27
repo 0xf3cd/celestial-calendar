@@ -7,7 +7,7 @@ namespace astro::vsop87d::test {
 
 using namespace astro::vsop87d;
 
-TEST(Vsop87d, evaluate) {
+TEST(Vsop87d, Evaluate) {
   // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
   // PyMeeus is a well-implemented Python library for astronomical calculations.
   //
@@ -33,4 +33,4 @@ TEST(Vsop87d, evaluate) {
   }
 }
 
-}
+}  // namespace astro::vsop87d::test

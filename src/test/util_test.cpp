@@ -7,20 +7,20 @@ namespace util::test {
 
 using namespace util;
 
-TEST(Util, test_to_ymd) {
+TEST(Util, ToYmd) {
   using namespace std::literals;
 
   ASSERT_EQ(to_ymd(1901, 1, 1), 1901y / 1 / 1);
   ASSERT_EQ(to_ymd(2024, 3, 15), 2024y / 3 / 15);
-  ASSERT_EQ(to_ymd(2024.0f, 3, 15), 2024y / 3 / 15);
-  ASSERT_EQ(to_ymd(2024u, 3, 15), 2024y / 3 / 15);
-  ASSERT_EQ(to_ymd(2024ll, 3, 15), 2024y / 3 / 15);
-  ASSERT_EQ(to_ymd(2024llu, 3, 15), 2024y / 3 / 15);
+  ASSERT_EQ(to_ymd(2024.0F, 3, 15), 2024y / 3 / 15);
+  ASSERT_EQ(to_ymd(2024U, 3, 15), 2024y / 3 / 15);
+  ASSERT_EQ(to_ymd(2024LL, 3, 15), 2024y / 3 / 15);
+  ASSERT_EQ(to_ymd(2024LLU, 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int32_t>(2024), 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int16_t>(2024), 3, 15), 2024y / 3 / 15);
 }
 
-TEST(Util, test_from_ymd) {
+TEST(Util, FromYmd) {
   using namespace std::literals;
 
   {
@@ -45,7 +45,7 @@ TEST(Util, test_from_ymd) {
   }
 }
 
-TEST(Util, test_operator_add) {
+TEST(Util, OperatorAdd) {
   using namespace std::literals;
   using namespace util::ymd_operator;
   constexpr auto ymd = to_ymd(1901, 1, 1);
@@ -69,7 +69,7 @@ TEST(Util, test_operator_add) {
   ASSERT_EQ(365 + ymd, 1902y / 1 / 1);
 }
 
-TEST(Util, test_operator_sub) {
+TEST(Util, OperatorSub) {
   using namespace std::literals;
   using namespace util::ymd_operator;
   
@@ -88,7 +88,7 @@ TEST(Util, test_operator_sub) {
   ASSERT_EQ(ymd - (-365), 1902y / 1 / 1);
 }
 
-TEST(Util, test_gen_random_value1) {
+TEST(Util, GenRandomValue1) {
   for (size_t i = 0; i < 5000; i++) {
     const auto randomValue = random<double>();
     ASSERT_GE(randomValue, std::numeric_limits<double>::min());
@@ -109,7 +109,7 @@ TEST(Util, test_gen_random_value1) {
 }
 
 
-TEST(Util, test_gen_random_value2) {
+TEST(Util, GenRandomValue2) {
   for (size_t i = 0; i < 5000; i++) {
     // Not sure if the subtest of float is 100% correct.
     // Maybe an epsilon is needed when comparing?
@@ -143,7 +143,7 @@ TEST(Util, test_gen_random_value2) {
   }
 
   for (size_t i = 0; i < 100; i++) {
-    const uint16_t gap = random<uint16_t>(1, 20);
+    const auto gap = random<uint16_t>(1, 20);
     const auto randomValue1 = std::invoke([&] {
       while (true) {
         const auto randomValue = random<uint16_t>();
@@ -162,4 +162,4 @@ TEST(Util, test_gen_random_value2) {
   }
 }
 
-}
+} // namespace util::test

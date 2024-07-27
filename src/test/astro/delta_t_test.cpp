@@ -9,7 +9,7 @@ namespace astro::delta_t_test {
 
 using namespace astro::delta_t;
 
-TEST(DeltaT, delta_t_algo1) {
+TEST(DeltaT, Algo1) {
   ASSERT_THROW(algo1::compute(-4001), std::out_of_range);
 
   // Following data points are not very accurate.
@@ -19,7 +19,7 @@ TEST(DeltaT, delta_t_algo1) {
   ASSERT_NEAR(algo1::compute(2008.0),  66.0, 0.1);
 }
 
-TEST(DeltaT, delta_t_algo2) {
+TEST(DeltaT, Algo2) {
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
   ASSERT_NEAR(algo2::compute(500.0), 5710.0, 1.0);
@@ -27,7 +27,7 @@ TEST(DeltaT, delta_t_algo2) {
   ASSERT_NEAR(algo2::compute(2008.0),  66.0, 0.15);
 }
 
-TEST(DeltaT, delta_t_algo3) {
+TEST(DeltaT, Algo3) {
   ASSERT_THROW(algo3::compute(3000.1), std::out_of_range);
 
   // Following data points are not very accurate.
@@ -37,7 +37,7 @@ TEST(DeltaT, delta_t_algo3) {
   ASSERT_NEAR(algo3::compute(2008.0),  66.0, 0.5);
 }
 
-TEST(DeltaT, delta_t_algo4) {
+TEST(DeltaT, Algo4) {
   ASSERT_THROW(algo4::compute(2035.1), std::out_of_range);
 
   // Following data points are not very accurate.
@@ -49,7 +49,7 @@ TEST(DeltaT, delta_t_algo4) {
 
 #pragma region Delta T Algorithms Statistics
 
-TEST(DeltaT, delta_t_statistics) {
+TEST(DeltaT, Statistics) {
   using namespace std::ranges;
 
   {
@@ -97,7 +97,7 @@ TEST(DeltaT, delta_t_statistics) {
   }
 }
 
-TEST(DeltaT, ut1_tt_conversions) {
+TEST(DeltaT, Ut1TtConversion) {
   // Test the range between year 1900 and 2034.
   // Mainly focus on the correctness and consistency of bidirectional conversions.
   for (uint32_t i = 0; i < 10000; i++) {
@@ -199,4 +199,4 @@ TEST(DeltaT, ut1_tt_conversions) {
 
 }
 
-}
+} // namespace astro::delta_t_test

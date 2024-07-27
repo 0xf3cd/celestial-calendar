@@ -46,7 +46,7 @@ struct JulianDay {
  * @returns A `JulianDay` struct.
  * @details JD is based on UT1.
  */
-JulianDay ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) {
+auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
   try {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
@@ -74,7 +74,7 @@ JulianDay ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const d
  * @returns A `JulianDay` struct.
  * @details JDE is based on TT.
  */
-JulianDay ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) {
+auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
   try {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
@@ -107,7 +107,7 @@ struct UT1Time {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `UT1Time` struct.
  */
-UT1Time jde_to_ut1(const double jde) {
+auto jde_to_ut1(const double jde) -> UT1Time {
   try {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
@@ -147,7 +147,7 @@ struct SunCoordinate {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `SunCoordinate` struct.
  */
-SunCoordinate sun_apparent_geocentric_coord(const double jde) {
+auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
   try {
     const auto coord = astro::sun::geocentric_coord::apparent(jde);
 

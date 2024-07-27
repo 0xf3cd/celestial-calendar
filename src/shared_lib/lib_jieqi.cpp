@@ -44,7 +44,7 @@ struct Discriminant {
  *          1 indicates that Sun will reach the given geocentric longitude once in the given year.
  *          2 indicates that Sun will reach the given geocentric longitude twice in the given year.
  */
-Discriminant jde_discriminant(const int32_t year, const double longitude) {
+auto jde_discriminant(const int32_t year, const double longitude) -> Discriminant {
   try {
     return {
       .valid = true,
@@ -68,12 +68,12 @@ Discriminant jde_discriminant(const int32_t year, const double longitude) {
  * @param slot_count The count of slots.
  * @return `true` if the slots are filled with the found JDE(s), `false` otherwise.
  */
-bool find_jdes(
+auto find_jdes(
   const int32_t year, 
   const double longitude, 
   double * const slots, 
   const uint32_t slot_count
-) {
+) -> bool {
   using namespace calendar::jieqi::math;
 
   const auto roots_opt = std::invoke([=] -> std::optional<std::vector<double>> {
@@ -98,16 +98,15 @@ bool find_jdes(
     }
   });
 
-  return roots_opt
-    .and_then([&] (const auto& roots) -> std::optional<bool> {
-      // Copy the roots to the slots.
-      const auto bytes_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
-      for (uint32_t i = 0; i < bytes_written; i++) {
-        slots[i] = roots[i];
-      }
-      return true;
-    })
-    .value_or(false);
+  if (!roots_opt.has_value()) [[unlikely]] {
+    return false;
+  }
+
+  // Copy the roots to the slots.
+  const auto num_written = std::min(static_cast<uint32_t>(roots_opt->size()), slot_count);
+  std::copy(roots_opt->begin(), roots_opt->begin() + num_written, slots);
+
+  return true;
 }
 
 
@@ -129,7 +128,7 @@ struct JieqiMomentQuery {
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
  * @returns A `JieqiMomentQuery` struct.
  */
-JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) { // NOLINT(bugprone-easily-swappable-parameters)
+auto query_jieqi(const int32_t year, const int32_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
     return {};
@@ -138,7 +137,7 @@ JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) { // NOLI
   using namespace calendar::jieqi;
 
   try {
-    const Jieqi jq = static_cast<Jieqi>(jq_idx);
+    const auto jq = static_cast<Jieqi>(jq_idx);
 
     const calendar::Datetime ut1_dt = jieqi_ut1_moment(year, jq);
 
@@ -169,7 +168,7 @@ JieqiMomentQuery query_jieqi(const int32_t year, const int32_t jq_idx) { // NOLI
  * @param buf_size Maximum bytes that can be written to `buf`.
  * @returns `true` if the name is successfully written to `buf`.
  */
-bool get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t buf_size) {
+auto get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
     lib::info("Error in get_jieqi_chinese: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
     return false;
@@ -186,7 +185,7 @@ bool get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t bu
 
   // Copy the name to the buffer
   std::memcpy(buf, name.data(), name.size());
-  buf[name.size()] = '\0';
+  buf[name.size()] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
   return true;
 }

@@ -8,12 +8,12 @@ namespace calendar::lunardata::test {
 
 using namespace calendar::lunardata; 
 
-TEST(LunarData, test_array_size) {
+TEST(LunarData, ArraySize) {
   EXPECT_EQ(199, LUNAR_DATA.size());
   EXPECT_EQ(END_YEAR - START_YEAR + 1, LUNAR_DATA.size());
 }
 
-TEST(LunarData, test_get_lunar_year_info) {
+TEST(LunarData, LunarYearInfo) {
   ASSERT_THROW(get_lunar_year_info(START_YEAR - 1), std::out_of_range);
   ASSERT_THROW(get_lunar_year_info(END_YEAR + 1), std::out_of_range);
 
@@ -54,7 +54,7 @@ TEST(LunarData, test_get_lunar_year_info) {
   ));
 }
 
-TEST(LunarData, test_copy) {
+TEST(LunarData, Copy) {
   using namespace util::ymd_operator;
 
   for (auto _ = 0; _ < 100; ++_) {
@@ -73,7 +73,7 @@ TEST(LunarData, test_copy) {
   }
 }
 
-TEST(LunarData, test_cache_performance) {
+TEST(LunarData, CachePerf) {
   const uint64_t elapsed_time_uncached = std::invoke([] {
     const auto start_time = std::chrono::steady_clock::now();
     for (auto _ = 0; _ < 800; ++_) {
@@ -121,7 +121,7 @@ TEST(LunarData, test_cache_performance) {
   EXPECT_LT(elapsed_time_cached, elapsed_time_uncached);
 }
 
-TEST(LunarData, test_lunardata_cache_correctness) {
+TEST(LunarData, CacheCorrectness) {
   using namespace util::ymd_operator;
 
   for (auto _ = 0; _ < 100; ++_) {
@@ -149,4 +149,4 @@ TEST(LunarData, test_lunardata_cache_correctness) {
   }
 }
 
-}
+} // namespace calendar::lunardata::test
