@@ -13,7 +13,7 @@ using namespace util::ymd_operator;
 using namespace calendar;
 using namespace std::chrono_literals;
 
-const std::unordered_map<double, Datetime> jde_test_data {
+const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
   { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
   { 2443259.9,         Datetime { to_ymd(1977, 4, 26),  0.4, } },
@@ -35,13 +35,13 @@ constexpr double EPSILON = 1e-6;
 
 
 TEST(JulianDay, TTtoJDE) {
-  for (const auto& [jde, tt] : jde_test_data) {
+  for (const auto& [jde, tt] : JDE_TEST_DATASET) {
     ASSERT_NEAR(tt_to_jde(tt), jde, EPSILON);
   }
 }
 
 TEST(JulianDay, JDEtoTT) {
-  for (const auto& [jde, expected_dt] : jde_test_data) {
+  for (const auto& [jde, expected_dt] : JDE_TEST_DATASET) {
     const auto tt = jde_to_tt(jde);
     ASSERT_EQ(tt.ymd, expected_dt.ymd);
     ASSERT_NEAR(tt.fraction(), expected_dt.fraction(), EPSILON);
@@ -51,9 +51,9 @@ TEST(JulianDay, JDEtoTT) {
 TEST(JulianDay, Consistency) {  
   const auto random_ymd = [] -> year_month_day {
     using namespace util::ymd_operator;
-    const std::chrono::year_month_day _ymd = to_ymd(util::random(500, 2100), 1, 1);
-    const auto _random_days = util::random(0, 365 * 10);
-    return _ymd + _random_days;
+    const std::chrono::year_month_day ymd = to_ymd(util::random(500, 2100), 1, 1);
+    const auto random_days = util::random(0, 365 * 10);
+    return ymd + random_days;
   };
 
   const auto random_hms = [] -> hh_mm_ss<nanoseconds> {

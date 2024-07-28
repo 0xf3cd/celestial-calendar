@@ -10,7 +10,7 @@ using namespace astro::earth;
 TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;
 
-  const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     // JDE                   Longitude            Latitude                 Radius
     { 2422823.3699241388, { 232.52621477445064,  0.00023073808290912477,   1.01083930897031 } },
     { 2426430.7587429113, {  188.5945567533272, -0.00020924437518870056, 0.9987765067009008 } },
@@ -71,7 +71,7 @@ TEST(Earth, Vsop87dEvaluate) {
     { 2481044.4651485193, {  14.61788166664337, -0.00015708944594153683, 0.9996489874066633 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto& [λ, β, r] = vsop87d(jde);
     ASSERT_NEAR(λ.as<DEG>(), std::get<0>(expected), 1e-11);
     ASSERT_NEAR(β.as<DEG>(), std::get<1>(expected), 1e-16);
@@ -82,7 +82,7 @@ TEST(Earth, Vsop87dEvaluate) {
 TEST(Earth, NutationMeeus) {
   using namespace nutation;
 
-  const std::unordered_map<double, std::tuple<double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double>> dataset {
     // JDE                   Longtitude nutation       Obliquity nutation
     {  2422340.375810433, {   0.0040657677880880485,  -0.0017067131109079594 } },
     { 2422398.7534509795, {   0.0037793130689208494,  -0.0015459936176003297 } },
@@ -246,7 +246,7 @@ TEST(Earth, NutationMeeus) {
     {  2480451.250390129, {    -0.00237376690796081,   0.0022060963840429253 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto& [lon_nut, obl_nut] = expected;
 
     ASSERT_NEAR(longitude(jde, Model::MEEUS).as<DEG>(), lon_nut, 1e-14);
@@ -268,7 +268,7 @@ TEST(Earth, NutationIau1980) {
   using namespace nutation;
 
   // The following data was collected from running https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
-  const std::unordered_map<double, std::pair<double, double>> EXPECTED = {
+  const std::unordered_map<double, std::pair<double, double>> dataset = {
     // JDE                   Δlongitude [rad]         Δobliquity [rad]
     { 2421984.2444770792, {   8.446894530911212e-05,  -1.580994865478172e-05 } },
     {  2422690.599729854, {    4.85201381018781e-05,  -3.993750969621093e-05 } },
@@ -460,7 +460,7 @@ TEST(Earth, NutationIau1980) {
     { 2476970.6446726783, {   5.885786359199076e-05,  -3.488627895536652e-05 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto& [lon_nut, obl_nut] = expected;
 
     ASSERT_NEAR(longitude(jde, Model::IAU_1980).as<RAD>(), lon_nut, 4e-12);

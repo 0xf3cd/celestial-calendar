@@ -29,7 +29,7 @@ from automation import (
   run_tests, print_system_info,
   time_execution, red_print, green_print, blue_print,
   run_ruff, run_clang_tidy,
-  setup_environment
+  setup_environment, Tool, SetupPlan
 )
 
 
@@ -167,7 +167,15 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
   '''Create a list of tasks based on the parsed arguments.'''
   tasks = []
   if args.setup:
-    tasks.append(Task('Set up and ensure dependencies', setup_environment))
+    plan = SetupPlan(
+      install_dependencies=True,
+      required_tools=[Tool('cmake'), Tool('make')],
+      cpp_compilers=['clang++', 'g++', 'clang++18', 'g++14'],
+      cpp_standards=['c++2b'],
+      check_env_cxx=True
+    )
+
+    tasks.append(Task('Set up and ensure dependencies', lambda: setup_environment(plan)))
   if args.clean:
     tasks.append(Task('Clean build', clean_build))
   if args.cmake:
@@ -206,8 +214,9 @@ def main() -> int:
 
   # Print the task times
   task_names = [t.task.name for t in task_results]
-  task_times = [t.time for t in task_results]
   max_len = max(map(len, task_names))
+
+  task_times = [t.time for t in task_results]
 
   print(60 * '#')
   green_print('# Task Times:')

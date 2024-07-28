@@ -12,7 +12,7 @@ TEST(Vsop87d, Evaluate) {
   // PyMeeus is a well-implemented Python library for astronomical calculations.
   //
   // The values are directly returned by VSOP87D models, no any adjustment or correction.
-  const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     //    JDE          L-tables expected   B-tables expected        R-tables expected
     {     2445701.1, { -98.77924318611353, -2.4184395622860954e-07, 0.9832889892830442 } },
     {     2451545.0, {  1.751923868114564, -3.9655715721671785e-06, 0.9833276819105508 } },
@@ -23,7 +23,7 @@ TEST(Vsop87d, Evaluate) {
     {     2464080.5, { 217.42964975313058,  2.1118905113795144e-06, 1.0065840587631982 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto& [lon, lat, r] = expected;
     const auto jm = julian_day::jde_to_jm(jde);
 

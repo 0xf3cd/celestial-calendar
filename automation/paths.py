@@ -26,19 +26,19 @@ def proj_root() -> Path:
   return root
 
 
-def build_dir() -> Path:
-  '''Locate the build directory.'''
-  return proj_root() / 'build'
-
-
 def cpp_src_dir() -> Path:
   '''Locate the C++ source directory.'''
   return proj_root() / 'src'
 
 
+def build_dir() -> Path:
+  '''Locate the build directory.'''
+  return proj_root() / 'build'
+
+
 def cpp_test_dir() -> Path:
   '''Locate the C++ test directory.'''
-  return proj_root() / 'build' / 'test'
+  return build_dir() / 'test'
 
 
 def python_requirements() -> Path:

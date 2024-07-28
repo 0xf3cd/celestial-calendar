@@ -90,21 +90,21 @@ TEST(Util, OperatorSub) {
 
 TEST(Util, GenRandomValue1) {
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = random<double>();
-    ASSERT_GE(randomValue, std::numeric_limits<double>::min());
-    ASSERT_LE(randomValue, std::numeric_limits<double>::max());
+    const auto random_value = random<double>();
+    ASSERT_GE(random_value, std::numeric_limits<double>::min());
+    ASSERT_LE(random_value, std::numeric_limits<double>::max());
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = random<uint8_t>();
-    ASSERT_GE(randomValue, std::numeric_limits<uint8_t>::min());
-    ASSERT_LE(randomValue, std::numeric_limits<uint8_t>::max());
+    const auto random_value = random<uint8_t>();
+    ASSERT_GE(random_value, std::numeric_limits<uint8_t>::min());
+    ASSERT_LE(random_value, std::numeric_limits<uint8_t>::max());
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue = random<int16_t>();
-    ASSERT_GE(randomValue, std::numeric_limits<int16_t>::min());
-    ASSERT_LE(randomValue, std::numeric_limits<int16_t>::max());
+    const auto random_value = random<int16_t>();
+    ASSERT_GE(random_value, std::numeric_limits<int16_t>::min());
+    ASSERT_LE(random_value, std::numeric_limits<int16_t>::max());
   }
 }
 
@@ -113,51 +113,51 @@ TEST(Util, GenRandomValue2) {
   for (size_t i = 0; i < 5000; i++) {
     // Not sure if the subtest of float is 100% correct.
     // Maybe an epsilon is needed when comparing?
-    const auto randomValue1 = random<float>();
-    const auto randomValue2 = random<float>();
-    if (randomValue1 == randomValue2) {
+    const auto random_value1 = random<float>();
+    const auto random_value2 = random<float>();
+    if (random_value1 == random_value2) {
       continue;
     }
     
-    const auto randomValue3 = random<float>(
-      std::min(randomValue1, randomValue2), 
-      std::max(randomValue1, randomValue2)
+    const auto random_value3 = random<float>(
+      std::min(random_value1, random_value2), 
+      std::max(random_value1, random_value2)
     );
-    ASSERT_GE(randomValue3, std::min(randomValue1, randomValue2));
-    ASSERT_LE(randomValue3, std::max(randomValue1, randomValue2));
+    ASSERT_GE(random_value3, std::min(random_value1, random_value2));
+    ASSERT_LE(random_value3, std::max(random_value1, random_value2));
   }
 
   for (size_t i = 0; i < 5000; i++) {
-    const auto randomValue1 = random<uint64_t>();
-    const auto randomValue2 = random<uint64_t>();
-    if (randomValue1 == randomValue2) {
+    const auto random_value1 = random<uint64_t>();
+    const auto random_value2 = random<uint64_t>();
+    if (random_value1 == random_value2) {
       continue;
     }
 
-    const auto randomValue3 = random<uint64_t>(
-      std::min(randomValue1, randomValue2), 
-      std::max(randomValue1, randomValue2)
+    const auto random_value3 = random<uint64_t>(
+      std::min(random_value1, random_value2), 
+      std::max(random_value1, random_value2)
     );
-    ASSERT_GE(randomValue3, std::min(randomValue1, randomValue2));
-    ASSERT_LT(randomValue3, std::max(randomValue1, randomValue2));
+    ASSERT_GE(random_value3, std::min(random_value1, random_value2));
+    ASSERT_LT(random_value3, std::max(random_value1, random_value2));
   }
 
   for (size_t i = 0; i < 100; i++) {
     const auto gap = random<uint16_t>(1, 20);
-    const auto randomValue1 = std::invoke([&] {
+    const auto random_value1 = std::invoke([&] {
       while (true) {
-        const auto randomValue = random<uint16_t>();
-        if (randomValue < std::numeric_limits<uint16_t>::max() - gap) {
-          return randomValue;
+        const auto random_value = random<uint16_t>();
+        if (random_value < std::numeric_limits<uint16_t>::max() - gap) {
+          return random_value;
         }
       }
     });
-    const auto randomValue2 = randomValue1 + gap;
+    const auto random_value2 = random_value1 + gap;
 
     for (size_t j = 0; j < 100; j++) {
-      const auto randomValue3 = random<uint16_t>(randomValue1, randomValue2);
-      ASSERT_GE(randomValue3, randomValue1);
-      ASSERT_LE(randomValue3, randomValue2);
+      const auto random_value3 = random<uint16_t>(random_value1, random_value2);
+      ASSERT_GE(random_value3, random_value1);
+      ASSERT_LE(random_value3, random_value2);
     }
   }
 }

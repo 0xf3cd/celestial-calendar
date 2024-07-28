@@ -7,7 +7,7 @@ namespace astro::sun::test {
 using namespace astro::sun::geocentric_coord;
 
 TEST(Sun, GeocentricPosition) {
-  const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     // JDE                  Longitude            Latitude                Radius
     { 2422498.7094451743, {  91.40761280128208, -0.00010445464204317034,  1.016482372497581 } },
     { 2424086.2753223246, {  214.0784992176159,   9.025877737323859e-05, 0.9933810056281362 } },
@@ -68,7 +68,7 @@ TEST(Sun, GeocentricPosition) {
     {    2481023.2545819, { 173.82757046144616,  3.1232970114378357e-06, 1.0056313745024836 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto& [λ, β, r] = vsop87d(jde);
     ASSERT_NEAR(λ.as<DEG>(), std::get<0>(expected), 1e-11);
     ASSERT_NEAR(β.as<DEG>(), std::get<1>(expected), 1e-15);
@@ -78,7 +78,7 @@ TEST(Sun, GeocentricPosition) {
 
 
 TEST(Sun, FK5Correction) {
-  const std::unordered_map<double, std::tuple<double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double>> dataset {
     // JDE                  Longitude Delta           Latitude Delta
     { 2421614.0856030583, { -2.5091672396119975e-05,  1.4918431407582651e-05 } },
     {  2421684.594562597, {  -2.509169056399565e-05,    8.44835580279257e-06 } },
@@ -219,7 +219,7 @@ TEST(Sun, FK5Correction) {
     {  2481289.841332455, { -2.5091638785758214e-05,  -8.395244169099233e-06 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto vsop_result = vsop87d(jde); // Sun's geocentric position.
     const auto& [Δλ, Δβ] = fk5_correction(jde, vsop_result);
     ASSERT_NEAR(Δλ.as<DEG>(), std::get<0>(expected), 1e-20);
@@ -229,7 +229,7 @@ TEST(Sun, FK5Correction) {
 
 
 TEST(Sun, CorrectedPosition) {
-  const std::unordered_map<double, std::tuple<double, double, double>> EXPECTED {
+  const std::unordered_map<double, std::tuple<double, double, double>> dataset {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, {  291.5156934059833,  -9.920119287353568e-07, 0.9834987939042306 } },
     { 2422031.3812847207, {  352.2440407752789,  -0.0001538594865492157, 0.9941963341581542 } },
@@ -709,7 +709,7 @@ TEST(Sun, CorrectedPosition) {
     { 2481445.3153692447, { 230.08916716084454,  0.00011085974368413685, 0.9900892777927517 } },
   };
 
-  for (const auto& [jde, expected] : EXPECTED) {
+  for (const auto& [jde, expected] : dataset) {
     const auto result = apparent(jde);
     ASSERT_NEAR(result.λ.as<DEG>(), std::get<0>(expected), 7e-7);
 

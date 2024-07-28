@@ -11,23 +11,23 @@
 
 
 from . import paths
-from .environment import check_tool_exists
+from .env import Tool, check_tool
 from .utils import run_cmd, yellow_print, red_print, green_print
 
 
 def ensure_run_clang_tidy() -> int:
   '''Ensure that clang-tidy and the runner 'run-clang-tidy.py' is installed.'''
-  if not check_tool_exists('clang-tidy'):
+  if not check_tool(Tool('clang-tidy')):
     red_print('clang-tidy not found!')
     return 1
-  
+
   proj_root = paths.proj_root()
   run_clang_tidy = proj_root / 'run-clang-tidy.py'
   if run_clang_tidy.exists():
     return 0
-  
+
   # Otherwise, download it.
-  if not check_tool_exists('curl', ('--version',)):
+  if not check_tool(Tool('curl')):
     red_print('curl not found!')
     return 1
 
@@ -44,11 +44,11 @@ def ensure_run_clang_tidy() -> int:
 def run_ruff() -> int:
   '''Run ruff on the project source code.'''  
   print('#' * 60)
-  
-  if not check_tool_exists('ruff'):
+
+  if not check_tool(Tool('ruff')):
     red_print('ruff not found!')
     return 1
-  
+
   yellow_print('Running ruff...')
   proj_root = paths.proj_root()
   ret = run_cmd(['ruff', 'check', str(proj_root)])
