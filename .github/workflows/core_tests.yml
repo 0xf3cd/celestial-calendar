@@ -39,7 +39,7 @@ jobs:
           CC:  clang-18
         run: |
           chmod +x project.py
-          ./project.py --setup --clean --cmake --build --ruff --clang-tidy
+          ./project.py --clean --cmake --ruff --clang-tidy
 
           
   test-ubuntu-gcc14:  

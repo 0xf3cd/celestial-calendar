@@ -9,7 +9,10 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
-from .env import Tool, CppCompilerArgs, check_cpp_support, make_cpp_compiler_args, SetupPlan, setup_environment
+from .env import (
+  Tool, CompilerArgs, check_c_support, check_cpp_support, 
+  make_compiler_args, SetupPlan, setup_environment
+)
 from .build import run_cmake, build_project, clean_build
 from .test import run_tests, find_tests, list_tests
 from .sysinfo import print_system_info
@@ -24,7 +27,7 @@ from .github import GitHub
 from .linter import run_ruff, run_clang_tidy
 
 __all__ = [
-  'Tool', 'CppCompilerArgs', 'check_cpp_support', 'make_cpp_compiler_args',
+  'Tool', 'CompilerArgs', 'check_c_support', 'check_cpp_support', 'make_compiler_args',
   'SetupPlan', 'setup_environment', 'run_cmake', 'build_project', 'clean_build',
   'run_tests', 'find_tests', 'list_tests', 'print_system_info',
   'green_print', 'red_print', 'yellow_print', 'blue_print',

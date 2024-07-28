@@ -71,11 +71,44 @@ def check_tool(tool: Tool) -> bool:
 #region C++ Compiler Checks
 
 @dataclass(frozen=True)
-class CppCompilerArgs:
+class CompilerArgs:
   compiler: str
-  cpp_standard: str
+  standard: str
 
-def check_cpp_support(cpp_args: CppCompilerArgs) -> bool:
+
+def check_c_support(c_args: CompilerArgs) -> bool:
+  '''Check if the given compiler supports the specified C version.'''
+  with tempfile.TemporaryDirectory() as tmpdir:
+    tmp_c_file = Path(tmpdir) / 'test_c.c'
+    tmp_c_file.write_text('''
+      #include <stdio.h>
+
+      int main() {
+        printf("Hello, World!");
+        return 0;
+      }
+    ''')
+
+    try:
+      compiler_command = [c_args.compiler, f'-std={c_args.standard}', str(tmp_c_file), '-o', str(Path(tmpdir) / 'test_c')]
+      compiler_ret = run_cmd(compiler_command)
+
+      if compiler_ret.retcode != 0:
+        return False
+
+      # Execute the compiled program
+      program_command = [str(Path(tmpdir) / 'test_c')]
+      program_ret = run_cmd(program_command)
+      if program_ret.retcode != 0:
+        return False
+      
+      return True
+    
+    except Exception as e:
+      red_print(f'# Failed to check C support: {str(e)}')
+      return False
+
+def check_cpp_support(cpp_args: CompilerArgs) -> bool:
   '''Check if the given compiler supports the specified C++ version.'''
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
@@ -111,9 +144,9 @@ def check_cpp_support(cpp_args: CppCompilerArgs) -> bool:
     ''')
 
     try:
-      comiler_command = [cpp_args.compiler, f'-std={cpp_args.cpp_standard}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
-      comiler_ret = run_cmd(comiler_command)
-      if comiler_ret.retcode != 0:
+      compiler_command = [cpp_args.compiler, f'-std={cpp_args.standard}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
+      compiler_ret = run_cmd(compiler_command)
+      if compiler_ret.retcode != 0:
         return False
 
       # Execute the compiled program
@@ -129,10 +162,10 @@ def check_cpp_support(cpp_args: CppCompilerArgs) -> bool:
       return False
 
 
-def make_cpp_compiler_args(compilers: Sequence[str], cpp_standards: Sequence[str]) -> List[CppCompilerArgs]:
+def make_compiler_args(compilers: Sequence[str], standards: Sequence[str]) -> List[CompilerArgs]:
   '''Create a list of C++ compiler arguments.'''
-  compiler_args = product(compilers, cpp_standards)
-  return list(starmap(CppCompilerArgs, compiler_args))
+  compiler_args = product(compilers, standards)
+  return list(starmap(CompilerArgs, compiler_args))
 
 #endregion
 
@@ -183,7 +216,7 @@ def setup_environment(plan: SetupPlan) -> int:
   assert len(plan.cpp_standards) > 0
   cpp_compilers = plan.cpp_compilers.copy()
 
-  compiler_args = make_cpp_compiler_args(cpp_compilers, plan.cpp_standards)
+  compiler_args = make_compiler_args(cpp_compilers, plan.cpp_standards)
   check_returns = map(check_cpp_support, compiler_args)
   compiler_support = dict(zip(compiler_args, check_returns))
   
@@ -192,10 +225,10 @@ def setup_environment(plan: SetupPlan) -> int:
   for args, support in compiler_support.items():
     compiler_path = shutil.which(args.compiler)
     if support:
-      green_print(f'# {compiler_path} supports {args.cpp_standard}')
+      green_print(f'# {compiler_path} supports {args.standard}')
     else:
       if compiler_path:
-        red_print(f'# {compiler_path} does not support {args.cpp_standard}')
+        red_print(f'# {compiler_path} does not support {args.standard}')
       else:
         red_print(f'# {args.compiler} not found!')
   
@@ -221,7 +254,7 @@ def setup_environment(plan: SetupPlan) -> int:
     yellow_print(60 * '-')
     return 0
 
-  cxx_env_args = make_cpp_compiler_args([cxx_env], plan.cpp_standards)
+  cxx_env_args = make_compiler_args([cxx_env], plan.cpp_standards)
   check_returns = map(check_cpp_support, cxx_env_args)
   if not any(check_returns):
     red_print(60 * '-')

@@ -5,6 +5,8 @@ check_platform_arch.py
 artifacts/
 run-clang-tidy.py
 
+build_info.json
+
 # clangd VSCode extension cache
 .cache/
 

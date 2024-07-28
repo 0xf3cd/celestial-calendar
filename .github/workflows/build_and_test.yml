@@ -33,7 +33,6 @@ jobs:
       - name: Determine BASE_IMAGE and PACKAGE_MANAGER
         id: determine-base-image
         run: |
-          echo "PACKAGE_MANAGER=apt-get" >> $GITHUB_OUTPUT
           case "${{ matrix.platform }}" in
             "linux/amd64") 
               echo "BASE_IMAGE=debian:latest" >> $GITHUB_OUTPUT
@@ -46,11 +45,9 @@ jobs:
               ;;
             "linux/arm/v5")
               echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_OUTPUT
-              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
               ;;
             "linux/arm/v7")
               echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_OUTPUT
-              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
               ;;
             "linux/mips64le")
               echo "BASE_IMAGE=mips64le/debian:latest" >> $GITHUB_OUTPUT
@@ -67,13 +64,11 @@ jobs:
           esac
 
       - name: Set up Environment Variables
+        id: set-env-vars
         run: |
-          # Print the BASE_IMAGE and PACKAGE_MANAGER
+          # Print the BASE_IMAGE
           echo "BASE_IMAGE set to ${{ steps.determine-base-image.outputs.BASE_IMAGE }}"
-          echo "PACKAGE_MANAGER set to ${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}"
-          
           echo "BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }}" >> $GITHUB_ENV
-          echo "PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}" >> $GITHUB_ENV
 
           platform="${{ matrix.platform }}"
           os=$(echo "${platform}" | cut -d '/' -f 1)
@@ -89,6 +84,8 @@ jobs:
           echo "IMAGE_TAG=${image_tag}" >> $GITHUB_ENV
           echo "PROJ_DIR=${proj_dir}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_ENV
+
+          echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_OUTPUT
 
       - name: Clean up Output Directory
         run: |
@@ -110,46 +107,60 @@ jobs:
           docker buildx build \
             --platform $OS/$ARCH -t $IMAGE_TAG \
             --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} \
-            --build-arg PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }} \
+            --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
             --load .
 
           # Run the Docker image and copy build artifacts to the output directory
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/'
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/ && cp /app/build_info.json /output/'
 
 
       - name: Rename Shared Library
         id: shared_lib
         run: |
+          ROOT_DIR=$(pwd)
+
           cd "$OUTPUT_DIR/shared_lib"
           libs=(*.[sod]*)
 
           # Check if exactly one shared library is found
-          if [ ${#libs[@]} -eq 1 ]; then
-            lib="${libs[0]}"
-            extension="${lib##*.}"
-            new_name="lib_celecalendar_${OS}_${ARCH}.${extension}"
-
-            # Rename the shared library
-            sudo mv "$lib" "$new_name" # Fail without sudo permission
-            echo "Renamed $lib to $new_name"
-
-            # Set the lib environment variables
-            echo "lib_name=${new_name}" >> $GITHUB_ENV
-            echo "lib_name=${new_name}" >> $GITHUB_OUTPUT
-            echo "lib_name=${lib_name}"
-
-          else
-            # Handle cases where no or multiple shared libraries are found
+          # If not, exit with an error message
+          if [ ${#libs[@]} -ne 1 ]; then
             [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
             exit 1
+          fi
+          
+          lib="${libs[0]}"
+          extension="${lib##*.}"
+          new_name="lib_celecalendar_${OS}_${ARCH}.${extension}"
 
-          fi 
+          # Rename the shared library
+          sudo mv "$lib" "$new_name" # Fail without sudo permission
+          echo "Renamed $lib to $new_name"
+
+          # Create a folder "${OS}_${ARCH}" at root dir
+          # and copy the new shared library to it
+          mkdir -p "$ROOT_DIR/${OS}_${ARCH}"
+          cp "$new_name" "$ROOT_DIR/${OS}_${ARCH}/"
+
+          # Copy "build_info.json" to the "${OS}_${ARCH}" folder
+          cp "$OUTPUT_DIR/build_info.json" "$ROOT_DIR/${OS}_${ARCH}/"
+
+          # Set the lib environment variables
+          echo "artifact_name=${OS}_${ARCH}" >> $GITHUB_ENV
+          echo "artifact_name=${OS}_${ARCH}" >> $GITHUB_OUTPUT
+
+          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}" >> $GITHUB_ENV
+          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}" >> $GITHUB_OUTPUT
+
+          # Print to stdout
+          echo "artifact_name=${OS}_${ARCH}"
+          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.shared_lib.outputs.lib_name }}
-          path: ./latest_build/${{ steps.shared_lib.outputs.lib_name }}
+          name: ${{ steps.shared_lib.outputs.artifact_name }}
+          path: ${{ steps.shared_lib.outputs.artifact_path }}
           retention-days: 30
           if-no-files-found: error
 
@@ -187,6 +198,9 @@ jobs:
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
+      env:
+        CXX: clang++
+        CC:  clang
       run: |
         # Should be in ./build/shared_lib/*.dylib
         ls ./build/shared_lib
@@ -199,15 +213,24 @@ jobs:
         # Rename the lib to lib_celecalendar_macos_arm64.dylib
         mv ./build/shared_lib/*.dylib ./build/shared_lib/lib_celecalendar_macos_arm64.dylib
 
+        # Create a folder "macos_arm64" at root dir
+        # and copy the new shared library to it
+        mkdir -p ./macos_arm64
+        cp ./build/shared_lib/lib_celecalendar_macos_arm64.dylib ./macos_arm64
+
+        # Pack the "build_info.json" to the "macos_arm64" folder
+        chmod +x ./toolbox/build_info.py
+        ./toolbox/build_info.py --save-dir ./macos_arm64 --filename build_info.json
+
         # If exists, save the path to GITHUB_OUTPUT
-        echo "lib_name=lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
-        echo "lib_name=${lib_name}"
+        echo "artifact_name=macos_arm64" >> $GITHUB_OUTPUT
+        echo "artifact_path=./macos_arm64" >> $GITHUB_OUTPUT
 
     - name: GitHub Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.shared_lib.outputs.lib_name }}
-        path: ./latest_build/${{ steps.shared_lib.outputs.lib_name }}
+        name: ${{ steps.shared_lib.outputs.artifact_name }}
+        path: ${{ steps.shared_lib.outputs.artifact_path }}
         retention-days: 30
         if-no-files-found: error
 
@@ -249,6 +272,9 @@ jobs:
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
+        env:
+          CXX: clang++
+          CC:  clang
         run: |
           # Should be in ./build/shared_lib. Looking for .dll and .lib
 
@@ -262,8 +288,18 @@ jobs:
             Rename-Item -Path $dllPath -NewName "lib_celecalendar_windows_x86_64.dll"
             Rename-Item -Path $libPath -NewName "lib_celecalendar_windows_x86_64.lib"
 
-            Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
-            Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
+            # Create a folder "windows_x86_64" at root dir
+            # and copy the new shared library to it
+            New-Item -ItemType Directory -Path "./windows_x86_64"
+
+            cp ./build/shared_lib/lib_celecalendar_windows_x86_64.dll ./windows_x86_64
+            cp ./build/shared_lib/lib_celecalendar_windows_x86_64.lib ./windows_x86_64
+
+            # Pack the "build_info.json" to the "windows_x86_64" folder
+            python3 ./toolbox/build_info.py --save-dir ./windows_x86_64 --filename build_info.json
+
+            Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
+            Write-Output "artifact_path=./windows_x86_64" >> $env:GITHUB_OUTPUT
           } else {
             Write-Error "Shared library (.dll), or import library (.lib) not found."
             exit 1
@@ -272,9 +308,7 @@ jobs:
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.shared_lib.outputs.dll_name }}
-          path: |
-            latest_build/${{ steps.shared_lib.outputs.dll_name }}
-            latest_build/${{ steps.shared_lib.outputs.lib_name }}
+          name: ${{ steps.shared_lib.outputs.artifact_name }}
+          path: ${{ steps.shared_lib.outputs.artifact_path }}
           retention-days: 30
           if-no-files-found: error

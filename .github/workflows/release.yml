@@ -29,20 +29,24 @@ jobs:
           body: ${{ steps.read_release_notes.outputs.release_notes }}
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: latest_build
-          path: latest_build/
+        run: |
+          export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+          chmod +x toolbox/artifact_downloader.py
+          ./toolbox/artifact_downloader.py --save-to ./downloaded_artifacts
 
       - name: Upload Release Artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           UPLOAD_URL="${{ steps.create_release.outputs.upload_url }}"
-          for file in latest_build/*; do
+          
+          cd downloaded_artifacts
+          
+          for file in ./*; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
                   -H "Content-Type: $(file -b --mime-type "$file")" \
                   --data-binary @"$file" \
                   "$UPLOAD_URL?name=$filename"

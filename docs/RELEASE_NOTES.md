@@ -28,4 +28,4 @@
 #### Automation
 - Implemented the `automation` Python package to manage the project in an automated manner.
 - Added `project.py` as the entry point for building and testing the project.
-- Created the `toolbox` folder, including `latest_build_downloader.py` to download the latest shared libraries.
+- Created the `toolbox` folder, including `artifact_downloader.py` to download the latest shared libraries.
