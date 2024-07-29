@@ -255,11 +255,10 @@ inline std::vector<double> find_roots(const int32_t year, const double expected_
     f_vec.emplace_back(make_f(year, expected_lon));
   }
 
-  const double start_jde = get_start_jde(year);
-  const double end_jde   = get_end_jde(year);
-
   // "nm" here denotes "newton_method".
   auto apply_nm = [&](const FuncType& f) {
+    const double start_jde = get_start_jde(year);
+    const double end_jde   = get_end_jde(year);
     return newton_method(f, start_jde, end_jde);
   };
 

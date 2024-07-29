@@ -30,7 +30,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Determine BASE_IMAGE and PACKAGE_MANAGER
+      - name: Determine BASE_IMAGE
         id: determine-base-image
         run: |
           case "${{ matrix.platform }}" in

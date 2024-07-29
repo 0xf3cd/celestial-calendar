@@ -121,7 +121,12 @@ def main() -> None:
   # Unzip the downloaded artifacts.
   if args.unzip:
     for artifact in downloaded_artifacts:
-      shutil.unpack_archive(artifact, extract_dir=args.save_to)
+      # Get filename without extension (.zip)
+      stem = artifact.stem
+      extract_dir = args.save_to / stem
+      extract_dir.mkdir(parents=True, exist_ok=True)
+
+      shutil.unpack_archive(artifact, extract_dir=extract_dir)
       blue_print(f'# Unzipped {artifact}')
 
       artifact.unlink()

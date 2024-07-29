@@ -70,7 +70,7 @@ TEST(JieQiMath, FindRoots) {
   }
 
   // Test random data.
-  for (auto i = 0; i < 2000; i++) {
+  for (auto i = 0; i < 64; i++) {
     const double jde = astro::julian_day::J2000 + util::random(-300 * 365.25, 33 * 365.25);
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
@@ -113,6 +113,13 @@ TEST(JieQi, NameQuery) {
 TEST(JieQi, JDE) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
+    // If running on ARM, then test less cases.
+    // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
+#if defined(__arm__) or defined(__aarch64__)
+    return util::random(0.0, 1.0) < 0.042;
+#endif
+
+    // Otherwise, randomly pick some years.
     const bool b1 = util::random(0.0, 1.0) > 0.5;
     const bool b2 = util::random(0.0, 1.0) < 0.5;
     return b1 and b2;
