@@ -36,13 +36,15 @@ from automation import (
 )
 
 
-def silent_run(cmd: Sequence[str]) -> ProcReturn:
+def silent_run(cmd: Sequence[str], **kwargs) -> ProcReturn:
   '''Run a command without printing anything.'''
-  return run_cmd(cmd, print_cmd=False, print_stdout=False, print_stderr=False)
+  return run_cmd(cmd, print_cmd=False, print_stdout=False, print_stderr=False, **kwargs)
 
 
 @dataclass(frozen=True)
 class BuildInfo:
+  build_version: str
+
   os: str
   kernel: str
   docker: str
@@ -72,15 +74,24 @@ def compiler_version(compiler: str) -> str:
 
 
 def pack_build_info(docker: Optional[str]) -> BuildInfo:
+  proj_dir = Path(__file__).parent.parent
+
+  proj_py = proj_dir / 'project.py'
+  if not proj_py.exists():
+    raise ValueError('project.py not found!')
+  
+  build_version = silent_run([sys.executable, str(proj_py), '--version']).stdout.strip()
+
   cxx = os.environ.get('CXX', '')
   cxx_version = compiler_version(cxx) if cxx else ''
 
   cc = os.environ.get('CC', '')
   cc_version = compiler_version(cc) if cc else ''
 
-  commit_hash = silent_run(['git', 'rev-parse', 'HEAD']).stdout.strip()
+  commit_hash = silent_run(['git', 'rev-parse', 'HEAD'], cwd=proj_dir).stdout.strip()
 
   return BuildInfo(
+    build_version=build_version,
     os=platform.system(),
     kernel=platform.release(),
     docker=docker or '',

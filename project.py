@@ -22,7 +22,7 @@ from operator import or_
 from functools import reduce
 from dataclasses import dataclass
 
-from typing import List, Callable, Sequence
+from typing import List, Callable, Sequence, Final
 
 from automation import (
   run_cmake, build_project, clean_build,
@@ -33,12 +33,16 @@ from automation import (
 )
 
 
+BUILD_VERSION: Final[str] = '0.0.0'
+
 def parse_args() -> argparse.Namespace:
   '''Parse the command line arguments.'''
   parser = argparse.ArgumentParser(
     description='Build and Test Automation',
     epilog=(
       'Examples of usage:\n'
+      '  To print build version:\n'
+      '    ./project.py --version\n\n'
       '  To set up and install dependencies:\n'
       '    ./project.py --setup\n\n'
       '  To clean the build directory:\n'
@@ -91,7 +95,8 @@ def parse_args() -> argparse.Namespace:
       return 'Debug'
     else:
       raise argparse.ArgumentTypeError(f"Invalid build type: {value}")
-
+    
+  parser.add_argument('--version', action='store_true', help='Print build version')
   parser.add_argument('--setup', action='store_true', help='Set up and install dependencies')
 
   parser.add_argument('--clean', action='store_true', help='Clean build')
@@ -179,7 +184,7 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
   if args.clean:
     tasks.append(Task('Clean build', clean_build))
   if args.cmake:
-    tasks.append(Task('Run CMake', lambda: run_cmake(args.build_type)))
+    tasks.append(Task('Run CMake', lambda: run_cmake(BUILD_VERSION, build_type=args.build_type, export_compile_commands=True)))
   if args.build:
     tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
   if args.test:
@@ -196,6 +201,11 @@ def main() -> int:
 
   # Parse the command line arguments
   args = parse_args()
+
+  # If `--version` is passed, print the version and exit
+  if args.version:
+    print(BUILD_VERSION)
+    return 0
   
   # Print system information
   print_system_info()

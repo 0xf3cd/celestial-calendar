@@ -3,7 +3,7 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
 
 jobs:
   create_release:
@@ -12,6 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Sanity Check on Version
+        run: |
+          github_ref=${{ github.ref }}
+          version_nums=${github_ref##refs/tags/v}
+
+          chmod +x project.py
+          expected_version_nums=$(./project.py --version)
+          expected_version_nums=$(echo "$expected_version_nums" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          if [ "$version_nums" != "$expected_version_nums" ]; then
+            echo "Expected version number: $expected_version_nums"
+            echo "Actual version number: $version_nums"
+            exit 1
+          fi
       - name: Read Release Notes
         id: read_release_notes
         run: |

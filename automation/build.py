@@ -23,9 +23,10 @@ BUILD_DIR = paths.build_dir()
 SRC_DIR = paths.cpp_src_dir()
 
 
-def run_cmake(build_type: str = 'Release', export_compile_commands: bool = True) -> int:
+def run_cmake(build_version: str, build_type: str = 'Release', export_compile_commands: bool = True) -> int:
   '''Run CMake to generate build files.'''
   print('#' * 60)
+  yellow_print(f'# Building version {build_version} in {build_type} mode')
 
   if not BUILD_DIR.exists():
     red_print('# Build directory not found')
@@ -38,7 +39,10 @@ def run_cmake(build_type: str = 'Release', export_compile_commands: bool = True)
   if export_compile_commands:
     cmds.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
 
-  ret: ProcReturn = run_cmd(cmds, cwd=BUILD_DIR, env=os.environ.copy())
+  env = os.environ.copy()
+  env['BUILD_VERSION'] = build_version
+
+  ret: ProcReturn = run_cmd(cmds, cwd=BUILD_DIR, env=env)
   if ret.retcode == 0:
     green_print('# CMake ran successfully')    
   else:

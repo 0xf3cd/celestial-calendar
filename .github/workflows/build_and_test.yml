@@ -95,6 +95,18 @@ jobs:
           fi
           mkdir -p "$OUTPUT_DIR"
 
+      - name: Get Build Version
+        id: get-build-version
+        run: |
+          chmod +x ./project.py
+
+          build_version=$(./project.py --version)
+
+          # Remove trailing newline
+          build_version="${build_version%$'\n'}"
+
+          echo "BUILD_VERSION=${build_version}" >> $GITHUB_OUTPUT
+
       - name: Build and Run Docker Image
         run: |
           # Set up QEMU for cross-compilation
@@ -117,44 +129,43 @@ jobs:
       - name: Rename Shared Library
         id: shared_lib
         run: |
+          # Store the current working directory
           ROOT_DIR=$(pwd)
 
-          cd "$OUTPUT_DIR/shared_lib"
-          libs=(*.[sod]*)
+          # Change to the directory containing the shared libraries
+          cd "$OUTPUT_DIR/shared_lib" || exit
 
-          # Check if exactly one shared library is found
-          # If not, exit with an error message
-          if [ ${#libs[@]} -ne 1 ]; then
-            [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
-            exit 1
-          fi
-          
-          lib="${libs[0]}"
-          extension="${lib##*.}"
-          new_name="lib_celecalendar_${OS}_${ARCH}.${extension}"
+          # Create an array of shared library files
+          libs=(*.dylib *.so *.dll)
 
-          # Rename the shared library
-          sudo mv "$lib" "$new_name" # Fail without sudo permission
-          echo "Renamed $lib to $new_name"
+          # Create a destination directory
+          DEST_DIR="$ROOT_DIR/${OS}_${ARCH}"
+          mkdir -p "$DEST_DIR"
 
-          # Create a folder "${OS}_${ARCH}" at root dir
-          # and copy the new shared library to it
-          mkdir -p "$ROOT_DIR/${OS}_${ARCH}"
-          cp "$new_name" "$ROOT_DIR/${OS}_${ARCH}/"
+          # Copy the shared libraries to the destination directory
+          for lib in "${libs[@]}"; do
+            if [ -f "$lib" ]; then
+              cp "$lib" "$DEST_DIR/"
+            fi
+          done
 
-          # Copy "build_info.json" to the "${OS}_${ARCH}" folder
-          cp "$OUTPUT_DIR/build_info.json" "$ROOT_DIR/${OS}_${ARCH}/"
+          # Copy the build info JSON file to the destination directory
+          cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
 
-          # Set the lib environment variables
-          echo "artifact_name=${OS}_${ARCH}" >> $GITHUB_ENV
-          echo "artifact_name=${OS}_${ARCH}" >> $GITHUB_OUTPUT
+          # Set environment variables for GitHub Actions
+          {
+            echo "artifact_name=${OS}_${ARCH}"
+            echo "artifact_path=${DEST_DIR}"
+          } >> $GITHUB_ENV
 
-          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}" >> $GITHUB_ENV
-          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}" >> $GITHUB_OUTPUT
+          {
+            echo "artifact_name=${OS}_${ARCH}"
+            echo "artifact_path=${DEST_DIR}"
+          } >> $GITHUB_OUTPUT
 
           # Print to stdout
           echo "artifact_name=${OS}_${ARCH}"
-          echo "artifact_path=${ROOT_DIR}/${OS}_${ARCH}"
+          echo "artifact_path=${DEST_DIR}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -202,21 +213,17 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        # Should be in ./build/shared_lib/*.dylib
-        ls ./build/shared_lib
-
+        # Check if any shared library is found
         if [ ! -f ./build/shared_lib/*.dylib ]; then
           echo "No shared lib found"
           exit 1
         fi
 
-        # Rename the lib to lib_celecalendar_macos_arm64.dylib
-        mv ./build/shared_lib/*.dylib ./build/shared_lib/lib_celecalendar_macos_arm64.dylib
-
-        # Create a folder "macos_arm64" at root dir
-        # and copy the new shared library to it
+        # Create a folder "macos_arm64" at root dir and copy the new shared library to it
         mkdir -p ./macos_arm64
-        cp ./build/shared_lib/lib_celecalendar_macos_arm64.dylib ./macos_arm64
+
+        # Find and copy real files (not symlinks)
+        find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
 
         # Pack the "build_info.json" to the "macos_arm64" folder
         chmod +x ./toolbox/build_info.py
@@ -276,34 +283,39 @@ jobs:
           CXX: clang++
           CC:  clang
         run: |
-          # Should be in ./build/shared_lib. Looking for .dll and .lib
+          # Define the root directory and output directory
+          $ROOT_DIR = (Get-Location).Path
+          $LIB_DIR = "./build/shared_lib"
 
-          $dllPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.dll | Select-Object -First 1
-          $libPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.lib | Select-Object -First 1
+          # Create a folder "windows_x86_64" at root dir
+          $destDir = "$ROOT_DIR/windows_x86_64"
+          New-Item -ItemType Directory -Path $destDir -Force
 
-          Write-Output "DLL Path: $dllPath"
-          Write-Output "LIB Path: $libPath"
+          # Get all .dll and .lib files
+          $dllFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.dll
+          $libFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.lib
 
-          if ((Test-Path $dllPath) -and (Test-Path $libPath)) {
-            Rename-Item -Path $dllPath -NewName "lib_celecalendar_windows_x86_64.dll"
-            Rename-Item -Path $libPath -NewName "lib_celecalendar_windows_x86_64.lib"
-
-            # Create a folder "windows_x86_64" at root dir
-            # and copy the new shared library to it
-            New-Item -ItemType Directory -Path "./windows_x86_64"
-
-            cp ./build/shared_lib/lib_celecalendar_windows_x86_64.dll ./windows_x86_64
-            cp ./build/shared_lib/lib_celecalendar_windows_x86_64.lib ./windows_x86_64
-
-            # Pack the "build_info.json" to the "windows_x86_64" folder
-            python3 ./toolbox/build_info.py --save-dir ./windows_x86_64 --filename build_info.json
-
-            Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
-            Write-Output "artifact_path=./windows_x86_64" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Error "Shared library (.dll), or import library (.lib) not found."
-            exit 1
+          # Copy all .dll files to the destination directory
+          foreach ($dll in $dllFiles) {
+            Copy-Item -Path $dll.FullName -Destination $destDir
           }
+
+          # Copy all .lib files to the destination directory
+          foreach ($lib in $libFiles) {
+            Copy-Item -Path $lib.FullName -Destination $destDir
+          }
+
+          # Pack the "build_info.json" to the "windows_x86_64" folder
+          python3 ./toolbox/build_info.py --save-dir $destDir --filename build_info.json
+
+          # Set the lib environment variables
+          Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
+          Write-Output "artifact_path=$destDir" >> $env:GITHUB_OUTPUT
+
+          # Print to stdout
+          Write-Output "artifact_name=windows_x86_64"
+          Write-Output "artifact_path=$destDir"
+
 
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4

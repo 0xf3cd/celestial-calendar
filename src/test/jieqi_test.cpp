@@ -117,12 +117,12 @@ TEST(JieQi, JDE) {
     // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
 #if defined(__arm__) or defined(__aarch64__)
     return util::random(0.0, 1.0) < 0.042;
-#endif
-
+#else
     // Otherwise, randomly pick some years.
     const bool b1 = util::random(0.0, 1.0) > 0.5;
     const bool b2 = util::random(0.0, 1.0) < 0.5;
     return b1 and b2;
+#endif
   });
 
   for (const auto year : years) {

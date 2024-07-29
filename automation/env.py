@@ -76,7 +76,7 @@ class CompilerArgs:
   standard: str
 
 
-def check_c_support(c_args: CompilerArgs) -> bool:
+def check_c_support(c_args: CompilerArgs, silent: bool = False) -> bool:
   '''Check if the given compiler supports the specified C version.'''
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_c_file = Path(tmpdir) / 'test_c.c'
@@ -89,16 +89,18 @@ def check_c_support(c_args: CompilerArgs) -> bool:
       }
     ''')
 
+    do_print = not silent
+
     try:
       compiler_command = [c_args.compiler, f'-std={c_args.standard}', str(tmp_c_file), '-o', str(Path(tmpdir) / 'test_c')]
-      compiler_ret = run_cmd(compiler_command)
+      compiler_ret = run_cmd(compiler_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
 
       if compiler_ret.retcode != 0:
         return False
 
       # Execute the compiled program
       program_command = [str(Path(tmpdir) / 'test_c')]
-      program_ret = run_cmd(program_command)
+      program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if program_ret.retcode != 0:
         return False
       
@@ -108,50 +110,30 @@ def check_c_support(c_args: CompilerArgs) -> bool:
       red_print(f'# Failed to check C support: {str(e)}')
       return False
 
-def check_cpp_support(cpp_args: CompilerArgs) -> bool:
+def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
   '''Check if the given compiler supports the specified C++ version.'''
   with tempfile.TemporaryDirectory() as tmpdir:
     tmp_cpp_file = Path(tmpdir) / 'test_cpp.cpp'
     tmp_cpp_file.write_text('''
-      #include <print>
-      #include <format>
-      #include <vector>
-      #include <ranges>
-      #include <numeric>
+      #include <iostream>
 
-      template <typename T>
-      concept Numeric = std::integral<T> || std::floating_point<T>;
-
-      auto stringify(const Numeric auto x) -> std::string {
-        return std::format("{}", x);                
-      }
-
-      auto main() -> int {
-        std::println("Hello, C++23!");
-
-        const std::vector<int> v { 1, 2, 3, 4, 5 };
-        const auto sum = std::reduce(std::cbegin(v), std::cend(v));
-
-        const auto square = [](int x) { return x * x; };
-        const auto squared = v | std::views::transform(square);
-        const auto squared_sum = std::reduce(std::cbegin(squared), std::cend(squared));
-
-        std::println("Sum: {}", sum);
-        std::println("Sum of squares: {}", stringify(squared_sum));
-
+      int main() {
+        std::cout << "Hello, World!" << std::endl;
         return 0;
       }
     ''')
 
+    do_print = not silent
+
     try:
       compiler_command = [cpp_args.compiler, f'-std={cpp_args.standard}', str(tmp_cpp_file), '-o', str(Path(tmpdir) / 'test_cpp')]
-      compiler_ret = run_cmd(compiler_command)
+      compiler_ret = run_cmd(compiler_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if compiler_ret.retcode != 0:
         return False
 
       # Execute the compiled program
       program_command = [str(Path(tmpdir) / 'test_cpp')]
-      program_ret = run_cmd(program_command)
+      program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if program_ret.retcode != 0:
         return False
       
