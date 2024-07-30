@@ -150,7 +150,8 @@ jobs:
           done
 
           # Copy the build info JSON files to the destination directory
-          cp "$OUTPUT_DIR/*.json" "$DEST_DIR/"
+          cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
+          cp "$OUTPUT_DIR/cpu_info.json" "$DEST_DIR/"
 
           # Set environment variables for GitHub Actions
           {

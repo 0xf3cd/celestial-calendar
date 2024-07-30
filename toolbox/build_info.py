@@ -91,16 +91,20 @@ def get_cpu_info() -> Dict:
     elif sys.platform == 'linux':
       return ['lscpu', '--json']
     elif sys.platform == 'win32':
-      return ['Get-WmiObject -Class Win32_Processor | ConvertTo-Json']
+      return ['powershell', 'Get-WmiObject -Class Win32_Processor | ConvertTo-Json']
     else:
       raise OSError(f'Unsupported platform: {sys.platform}')
 
-  cmd = command()
-  proc_ret = silent_run(cmd)
+  try:
+    cmd = command()
+    proc_ret = silent_run(cmd)
 
-  info = json.loads(proc_ret.stdout)
-  info['cmd'] = ' '.join(cmd)
-  return info
+    info = json.loads(proc_ret.stdout)
+    info['cmd'] = ' '.join(cmd)
+    return info
+  
+  except Exception as e:
+    return {'error': str(e)}
 
 
 def find_built_shared_libs() -> List[Path]:
@@ -154,13 +158,16 @@ def get_additional_info(lib: Path) -> str:
     else:
       raise OSError(f'Unsupported platform: {sys.platform}')
     
-  cmd = command()
-  proc_ret = silent_run(cmd)
-  if proc_ret.retcode != 0:
-    return 'Failed to get additional information'
-  
-  cmd_str = 'Command: ' + ' '.join(cmd) + '\n\n'
-  return cmd_str + (60 * '#') + proc_ret.stdout
+  try:
+    cmd = command()
+    proc_ret = silent_run(cmd)
+    if proc_ret.retcode != 0:
+      return 'Failed to get additional information'
+    
+    cmd_str = 'Command: ' + ' '.join(cmd) + '\n\n'
+    return cmd_str + (60 * '#') + proc_ret.stdout
+  except Exception as e:
+    return f'Failed to get additional information: {e}'
 
 
 def shared_lib_additional_info() -> Dict[str, str]:
@@ -192,6 +199,12 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
 
   commit_hash = silent_run(['git', 'rev-parse', 'HEAD'], cwd=proj_dir).stdout.strip()
 
+  libc_version = []
+  try:
+    libc_version = list(platform.libc_ver())
+  except OSError:
+    pass
+
   return BuildInfo(
     build_version=build_version,
     os=platform.system(),
@@ -202,7 +215,7 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
     architecture=list(platform.architecture()),
     endianness=sys.byteorder,
     cpu_type=platform.processor(),
-    libc_version=list(platform.libc_ver()),
+    libc_version=libc_version,
     cxx=cxx,
     cc=cc,
     cxx_version=cxx_version,
