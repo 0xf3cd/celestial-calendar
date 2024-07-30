@@ -1,0 +1,69 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity Check on Version
+        run: |
+          github_ref=${{ github.ref }}
+          version_nums=${github_ref##refs/tags/v}
+
+          chmod +x project.py
+          expected_version_nums=$(./project.py --version)
+          expected_version_nums=$(echo "$expected_version_nums" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          if [ "$version_nums" != "$expected_version_nums" ]; then
+            echo "Expected version number: $expected_version_nums"
+            echo "Actual version number: $version_nums"
+            exit 1
+          fi
+
+      - name: Read Release Notes
+        id: read_release_notes
+        run: |
+          RELEASE_NOTES=$(cat docs/RELEASE_NOTES.md)
+          echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.read_release_notes.outputs.release_notes }}
+
+      - name: Download Artifacts
+        run: |
+          export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+          chmod +x toolbox/artifact_downloader.py
+          ./toolbox/artifact_downloader.py --save-to ./downloaded_artifacts
+
+      - name: Upload Release Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPLOAD_URL="${{ steps.create_release.outputs.upload_url }}"
+          
+          cd downloaded_artifacts
+          
+          for file in ./*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
+                  -H "Content-Type: $(file -b --mime-type "$file")" \
+                  --data-binary @"$file" \
+                  "$UPLOAD_URL?name=$filename"
+            fi
+          done

@@ -1,9 +1,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -13,8 +13,10 @@ import os
 import sys
 import shutil
 import platform
+
 from datetime import datetime
 from .utils import run_cmd, ProcReturn
+
 
 def print_system_info() -> None:
   '''Print system time and other system information.'''

@@ -1,9 +1,9 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
 # 
-# Author: Ningqi Wang (0xf3cd)
-# Email : nq.maigre@gmail.com
-# Repo  : https://github.com/0xf3cd/celestial-calendar
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
 # 
 # This software is distributed without any warranty.
@@ -174,14 +174,14 @@ class GitHub:
 
 
   @staticmethod
-  async def async_download_artifacts(run_id: int, download_dir: Path, parallel: int = 4) -> List[Path]:
+  async def async_download_artifacts(run_id: int, download_dir: Path, parallel: int) -> List[Path]:
     '''
     Asynchronously fetch all artifacts for a given run.
 
     Args:
       run_id (str): The ID of the GitHub Actions run.
       download_dir (Path): The directory where artifacts should be saved.
-      parallel (int, optional): The number of parallel download tasks. Default is 4.
+      parallel (int): The number of parallel download tasks.
 
     Returns:
       List[Path]: The path to the downloaded artifacts.
@@ -215,7 +215,7 @@ class GitHub:
     # This may be redundant though, since we `asyncio.gather` later.
     await queue.join() 
     # Ensure all tasks are awaited.
-    await asyncio.gather(*tasks, return_exceptions=True)
+    await asyncio.gather(*tasks)
 
     return paths
 

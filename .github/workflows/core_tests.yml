@@ -4,7 +4,44 @@ on:
   push:
     branches: [ '**' ]
 
-jobs:  
+jobs:
+  linters-and-static-analysis:  
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]  
+
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python Dependencies
+        run: |  
+          python3 -m pip install --upgrade pip  
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
+
+      - name: Install LLVM and clang++
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y llvm-18 clang-18
+
+      - name: Install CMake
+        run: sudo apt install cmake
+
+      - name: Style Check
+        env:
+          CXX: clang++-18
+          CC:  clang-18
+        run: |
+          chmod +x project.py
+          ./project.py --clean --cmake --ruff --clang-tidy
+
+          
   test-ubuntu-gcc14:  
     runs-on: ubuntu-24.04 
     strategy:  
@@ -38,8 +75,8 @@ jobs:
           CXX: g++-14
           CC:  gcc-14
         run: |
-          chmod +x automation.py
-          ./automation.py --setup --clean --cmake --build --test -v 1
+          chmod +x project.py
+          ./project.py --setup --clean --cmake --build --test -v 1
 
 
   test-ubuntu-clang:  
@@ -75,8 +112,8 @@ jobs:
           CXX: clang++-18
           CC:  clang-18
         run: |
-          chmod +x automation.py
-          ./automation.py --setup --clean --cmake --build --test -v 1
+          chmod +x project.py
+          ./project.py --setup --clean --cmake --build --test -v 1
 
 
   test-macos-apple-clang:  
@@ -107,8 +144,8 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        chmod +x automation.py
-        ./automation.py --setup --clean --cmake --build --test -v 1
+        chmod +x project.py
+        ./project.py --setup --clean --cmake --build --test -v 1
 
 
   test-windows-clang:  
@@ -144,4 +181,4 @@ jobs:
         run: |
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
-          python3 ./automation.py --setup --clean --cmake --build --test -v 1
+          python3 ./project.py --setup --clean --cmake --build --test -v 1

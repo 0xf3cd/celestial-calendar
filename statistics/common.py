@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import ctypes
 from ctypes import c_int32, c_uint32, c_double, c_bool, Structure
 
+from typing import Optional
+
 
 def dynamic_lib_ext() -> str:
   '''Return the library extension for the current platform.'''
@@ -17,20 +19,36 @@ def dynamic_lib_ext() -> str:
   raise OSError(f'Unsupported platform: {sys.platform}')
 
 
+def search_lib_path(folder: Path) -> Optional[Path]:
+  '''Search for the shared library in the given folder.'''
+  expected_ext = dynamic_lib_ext()
+
+  for path in folder.iterdir():
+    if not path.is_file():
+      continue
+    if expected_ext not in path.name:
+      continue
+    if 'celestial_calendar' not in path.name:
+      continue
+    return path
+
+
 # Define constants for paths.
 PROJ_PATH        = Path(__file__).parent.parent
 USNO_DATA_PATH   = Path(__file__).parent / 'usno_data.txt'
 BINDINGS_PATH    = PROJ_PATH / 'build' / 'shared_lib'
-LIB_PATH         = BINDINGS_PATH / ('libcelestial_calendar' + dynamic_lib_ext())
+LIB_PATH         = search_lib_path(BINDINGS_PATH)
 
 assert PROJ_PATH.exists(),        f"Project path not found: {PROJ_PATH}"
 assert USNO_DATA_PATH.exists(),   f"USNO data not found: {USNO_DATA_PATH}"
 assert BINDINGS_PATH.exists(),    f"Bindings path not found: {BINDINGS_PATH}"
+
+assert LIB_PATH is not None,      f"Shared library not found in {BINDINGS_PATH}"
 assert LIB_PATH.exists(),         f"Shared library not found: {LIB_PATH}"
 
 
 # Define the argument and return types of the C functions.
-LIB = ctypes.CDLL(LIB_PATH)
+LIB = ctypes.CDLL(str(LIB_PATH))
 
 
 #region Delta T functions
@@ -125,7 +143,7 @@ def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
   jd = LIB.ut1_to_jd(y, m, d, fraction)
 
   if not jd.valid:
-    raise ValueError(f"Error occurred in ut1_to_jd.")
+    raise ValueError("Error occurred in ut1_to_jd.")
 
   return jd.value
 
@@ -146,7 +164,7 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
   jde = LIB.ut1_to_jde(y, m, d, fraction)
 
   if not jde.valid:
-    raise ValueError(f"Error occurred in ut1_to_jde.")
+    raise ValueError("Error occurred in ut1_to_jde.")
 
   return jde.value
 
@@ -166,7 +184,7 @@ def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
   coord = LIB.sun_apparent_geocentric_coord(jde)
 
   if not coord.valid:
-    raise ValueError(f"Error occurred in sun_apparent_geocentric_coord.")
+    raise ValueError("Error occurred in sun_apparent_geocentric_coord.")
 
   return SunCoordinate(
     lon = coord.lon,

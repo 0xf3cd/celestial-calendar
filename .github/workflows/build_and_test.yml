@@ -2,8 +2,8 @@ name: Build and Test on Multiple Platforms
 
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
-  # pull_request:
-  #   branches: [ main ]  # Also triggers on pull requests to the main branch
+  pull_request:
+    branches: [ main ]  # Also triggers on pull requests to the main branch
 
 jobs:
   linux-docker:
@@ -30,10 +30,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Determine BASE_IMAGE and PACKAGE_MANAGER
+      - name: Determine BASE_IMAGE
         id: determine-base-image
         run: |
-          echo "PACKAGE_MANAGER=apt-get" >> $GITHUB_OUTPUT
           case "${{ matrix.platform }}" in
             "linux/amd64") 
               echo "BASE_IMAGE=debian:latest" >> $GITHUB_OUTPUT
@@ -46,11 +45,9 @@ jobs:
               ;;
             "linux/arm/v5")
               echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_OUTPUT
-              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
               ;;
             "linux/arm/v7")
               echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_OUTPUT
-              echo "PACKAGE_MANAGER=aptitude" >> $GITHUB_OUTPUT
               ;;
             "linux/mips64le")
               echo "BASE_IMAGE=mips64le/debian:latest" >> $GITHUB_OUTPUT
@@ -67,13 +64,11 @@ jobs:
           esac
 
       - name: Set up Environment Variables
+        id: set-env-vars
         run: |
-          # Print the BASE_IMAGE and PACKAGE_MANAGER
+          # Print the BASE_IMAGE
           echo "BASE_IMAGE set to ${{ steps.determine-base-image.outputs.BASE_IMAGE }}"
-          echo "PACKAGE_MANAGER set to ${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}"
-          
           echo "BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }}" >> $GITHUB_ENV
-          echo "PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }}" >> $GITHUB_ENV
 
           platform="${{ matrix.platform }}"
           os=$(echo "${platform}" | cut -d '/' -f 1)
@@ -90,6 +85,8 @@ jobs:
           echo "PROJ_DIR=${proj_dir}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_ENV
 
+          echo "OUTPUT_DIR=${output_dir}" >> $GITHUB_OUTPUT
+
       - name: Clean up Output Directory
         run: |
           # Remove the output directory if it exists and recreate it
@@ -97,6 +94,18 @@ jobs:
             rm -rf "$OUTPUT_DIR"
           fi
           mkdir -p "$OUTPUT_DIR"
+
+      - name: Get Build Version
+        id: get-build-version
+        run: |
+          chmod +x ./project.py
+
+          build_version=$(./project.py --version)
+
+          # Remove trailing newline
+          build_version="${build_version%$'\n'}"
+
+          echo "BUILD_VERSION=${build_version}" >> $GITHUB_OUTPUT
 
       - name: Build and Run Docker Image
         run: |
@@ -110,52 +119,60 @@ jobs:
           docker buildx build \
             --platform $OS/$ARCH -t $IMAGE_TAG \
             --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} \
-            --build-arg PACKAGE_MANAGER=${{ steps.determine-base-image.outputs.PACKAGE_MANAGER }} \
+            --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
             --load .
 
           # Run the Docker image and copy build artifacts to the output directory
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/'
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/ && cp /app/*.json /output/'
 
 
       - name: Rename Shared Library
         id: shared_lib
         run: |
-          cd "$OUTPUT_DIR/shared_lib"
-          libs=(*.[sod]*)
+          # Store the current working directory
+          ROOT_DIR=$(pwd)
 
-          # Check if exactly one shared library is found
-          if [ ${#libs[@]} -eq 1 ]; then
-            lib="${libs[0]}"
-            extension="${lib##*.}"
-            new_name="lib_celecalendar_${OS}_${ARCH}.${extension}"
+          # Change to the directory containing the shared libraries
+          cd "$OUTPUT_DIR/shared_lib" || exit
 
-            # Rename the shared library
-            sudo mv "$lib" "$new_name" # Fail without sudo permission
-            echo "Renamed $lib to $new_name"
+          # Create an array of shared library files
+          libs=(*.dylib *.so *.dll)
 
-            # Set the lib environment variables
-            echo "lib_name=${new_name}" >> $GITHUB_ENV
-            echo "lib_name=${new_name}" >> $GITHUB_OUTPUT
+          # Create a destination directory
+          DEST_DIR="$ROOT_DIR/${OS}_${ARCH}"
+          mkdir -p "$DEST_DIR"
 
-            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_ENV
-            echo "lib_path=${OUTPUT_DIR}/shared_lib/${new_name}" >> $GITHUB_OUTPUT
+          # Copy the shared libraries to the destination directory
+          for lib in "${libs[@]}"; do
+            if [ -f "$lib" ]; then
+              cp "$lib" "$DEST_DIR/"
+            fi
+          done
 
-            # Print to stdout
-            echo "lib_name=${lib_name}"
-            echo "lib_path=${lib_path}"
-          
-          else
-            # Handle cases where no or multiple shared libraries are found
-            [ ${#libs[@]} -gt 1 ] && echo "More than one shared library found. Stopping execution." || echo "No shared library found."
-            exit 1
-          
-          fi 
+          # Copy the build info JSON files to the destination directory
+          cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
+          cp "$OUTPUT_DIR/cpu_info.json" "$DEST_DIR/"
+
+          # Set environment variables for GitHub Actions
+          {
+            echo "artifact_name=${OS}_${ARCH}"
+            echo "artifact_path=${DEST_DIR}"
+          } >> $GITHUB_ENV
+
+          {
+            echo "artifact_name=${OS}_${ARCH}"
+            echo "artifact_path=${DEST_DIR}"
+          } >> $GITHUB_OUTPUT
+
+          # Print to stdout
+          echo "artifact_name=${OS}_${ARCH}"
+          echo "artifact_path=${DEST_DIR}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.shared_lib.outputs.lib_name }}
-          path: ${{ steps.shared_lib.outputs.lib_path }}
+          name: ${{ steps.shared_lib.outputs.artifact_name }}
+          path: ${{ steps.shared_lib.outputs.artifact_path }}
           retention-days: 30
           if-no-files-found: error
 
@@ -188,36 +205,40 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        chmod +x automation.py
-        ./automation.py --setup --clean --cmake --cores all --build --test -v 1
+        chmod +x project.py
+        ./project.py --setup --clean --cmake --cores all --build --test -v 1
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
+      env:
+        CXX: clang++
+        CC:  clang
       run: |
-        # Should be in ./build/shared_lib/*.dylib
-        ls ./build/shared_lib
-
+        # Check if any shared library is found
         if [ ! -f ./build/shared_lib/*.dylib ]; then
           echo "No shared lib found"
           exit 1
         fi
 
-        # Rename the lib to lib_celecalendar_macos_arm64.dylib
-        mv ./build/shared_lib/*.dylib ./build/shared_lib/lib_celecalendar_macos_arm64.dylib
+        # Create a folder "macos_arm64" at root dir and copy the new shared library to it
+        mkdir -p ./macos_arm64
+
+        # Find and copy real files (not symlinks)
+        find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
+
+        # Pack the "build_info.json" to the "macos_arm64" folder
+        chmod +x ./toolbox/build_info.py
+        ./toolbox/build_info.py --save-to ./macos_arm64
 
         # If exists, save the path to GITHUB_OUTPUT
-        echo "lib_name=lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
-        echo "lib_path=$(pwd)/build/shared_lib/lib_celecalendar_macos_arm64.dylib" >> $GITHUB_OUTPUT
-
-        # Print to stdout
-        echo "lib_name=${lib_name}"
-        echo "lib_path=${lib_path}"
+        echo "artifact_name=macos_arm64" >> $GITHUB_OUTPUT
+        echo "artifact_path=./macos_arm64" >> $GITHUB_OUTPUT
 
     - name: GitHub Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.shared_lib.outputs.lib_name }}
-        path: ${{ steps.shared_lib.outputs.lib_path }}
+        name: ${{ steps.shared_lib.outputs.artifact_name }}
+        path: ${{ steps.shared_lib.outputs.artifact_path }}
         retention-days: 30
         if-no-files-found: error
 
@@ -255,39 +276,51 @@ jobs:
         run: |
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
-          python3 ./automation.py --setup --clean --cmake --cores all --build --test -v 1
+          python3 ./project.py --setup --clean --cmake --cores all --build --test -v 1
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
+        env:
+          CXX: clang++
+          CC:  clang
         run: |
-          # Should be in ./build/shared_lib. Looking for .dll and .lib
+          # Define the root directory and output directory
+          $ROOT_DIR = (Get-Location).Path
+          $LIB_DIR = "./build/shared_lib"
 
-          $dllPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.dll | Select-Object -First 1
-          $libPath = Get-ChildItem -Path "./build/shared_lib" -Filter *.lib | Select-Object -First 1
+          # Create a folder "windows_x86_64" at root dir
+          $destDir = "$ROOT_DIR/windows_x86_64"
+          New-Item -ItemType Directory -Path $destDir -Force
 
-          Write-Output "DLL Path: $dllPath"
-          Write-Output "LIB Path: $libPath"
+          # Get all .dll and .lib files
+          $dllFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.dll
+          $libFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.lib
 
-          if ((Test-Path $dllPath) -and (Test-Path $libPath)) {
-            Rename-Item -Path $dllPath -NewName "lib_celecalendar_windows_x86_64.dll"
-            Rename-Item -Path $libPath -NewName "lib_celecalendar_windows_x86_64.lib"
-
-            Write-Output "dll_name=lib_celecalendar_windows_x86_64.dll" >> $env:GITHUB_OUTPUT
-            Write-Output "lib_name=lib_celecalendar_windows_x86_64.lib" >> $env:GITHUB_OUTPUT
-
-            Write-Output "dll_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.dll)" >> $env:GITHUB_OUTPUT
-            Write-Output "lib_path=$(Resolve-Path ./build/shared_lib/lib_celecalendar_windows_x86_64.lib)" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Error "Shared library (.dll), or import library (.lib) not found."
-            exit 1
+          # Copy all .dll files to the destination directory
+          foreach ($dll in $dllFiles) {
+            Copy-Item -Path $dll.FullName -Destination $destDir
           }
+
+          # Copy all .lib files to the destination directory
+          foreach ($lib in $libFiles) {
+            Copy-Item -Path $lib.FullName -Destination $destDir
+          }
+
+          # Pack the "build_info.json" to the "windows_x86_64" folder
+          python3 ./toolbox/build_info.py --save-to $destDir
+
+          # Set the lib environment variables
+          Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
+          Write-Output "artifact_path=$destDir" >> $env:GITHUB_OUTPUT
+
+          # Print to stdout
+          Write-Output "artifact_name=windows_x86_64"
+          Write-Output "artifact_path=$destDir"
 
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.shared_lib.outputs.dll_name }}
-          path: |
-            ${{ steps.shared_lib.outputs.dll_path }}
-            ${{ steps.shared_lib.outputs.lib_path }}
+          name: ${{ steps.shared_lib.outputs.artifact_name }}
+          path: ${{ steps.shared_lib.outputs.artifact_path }}
           retention-days: 30
           if-no-files-found: error
