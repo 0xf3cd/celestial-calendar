@@ -9,7 +9,7 @@
 
 ## 2. Requirements
 * C++ Compiler that supports C++23
-  * Currently, clang++ (LLVM 18) is supposed to work on macOS, Windows, and Linux. g++ 14 also works.
+  * Currently, clang++ (LLVM 18) is able to compile the project on macOS, Windows, and Linux. g++ 14 also works.
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
@@ -121,10 +121,13 @@ There are basically two ways to download:
     echo $GITHUB_TOKEN     # Unix-like platforms
     echo $env:GITHUB_TOKEN # Windows powershell
 
-    # Download artifacts to the specified dir
+    # Download artifacts from a given run to the specified dir
+    python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
+
+    # Download artifacts from latest run to the specified dir
     python3 ./toolbox/artifact_downloader.py -s <directory>
 
-    # Download artifacts to the specified dir and unzips them
+    # Download artifacts from latest run to the specified dir and unzips them
     python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
 
     # More usages

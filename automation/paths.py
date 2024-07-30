@@ -48,6 +48,11 @@ def cpp_test_dir() -> Path:
   return build_dir() / 'test'
 
 
+def shared_lib_dir() -> Path:
+  '''Locate the built shared library directory.'''
+  return build_dir() / 'shared_lib'
+
+
 def python_requirements() -> Path:
   '''Locate the Python requirements file.'''
   return proj_root() / 'Requirements.txt'

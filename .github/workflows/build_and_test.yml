@@ -123,7 +123,7 @@ jobs:
             --load .
 
           # Run the Docker image and copy build artifacts to the output directory
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/ && cp /app/build_info.json /output/'
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/ && cp /app/*.json /output/'
 
 
       - name: Rename Shared Library
@@ -149,8 +149,8 @@ jobs:
             fi
           done
 
-          # Copy the build info JSON file to the destination directory
-          cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
+          # Copy the build info JSON files to the destination directory
+          cp "$OUTPUT_DIR/*.json" "$DEST_DIR/"
 
           # Set environment variables for GitHub Actions
           {
@@ -227,7 +227,7 @@ jobs:
 
         # Pack the "build_info.json" to the "macos_arm64" folder
         chmod +x ./toolbox/build_info.py
-        ./toolbox/build_info.py --save-dir ./macos_arm64 --filename build_info.json
+        ./toolbox/build_info.py --save-to ./macos_arm64
 
         # If exists, save the path to GITHUB_OUTPUT
         echo "artifact_name=macos_arm64" >> $GITHUB_OUTPUT
@@ -306,7 +306,7 @@ jobs:
           }
 
           # Pack the "build_info.json" to the "windows_x86_64" folder
-          python3 ./toolbox/build_info.py --save-dir $destDir --filename build_info.json
+          python3 ./toolbox/build_info.py --save-to $destDir
 
           # Set the lib environment variables
           Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
@@ -315,7 +315,6 @@ jobs:
           # Print to stdout
           Write-Output "artifact_name=windows_x86_64"
           Write-Output "artifact_path=$destDir"
-
 
       - name: GitHub Artifact
         uses: actions/upload-artifact@v4

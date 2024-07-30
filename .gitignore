@@ -6,6 +6,7 @@ artifacts/
 run-clang-tidy.py
 
 build_info.json
+cpu_info.json
 
 # clangd VSCode extension cache
 .cache/

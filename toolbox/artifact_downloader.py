@@ -75,6 +75,13 @@ def parse_args() -> argparse.Namespace:
     description='CelestialCalendar automation script for downloading artifacts.'
   )
   parser.add_argument(
+    '-id', '--run-id',
+    type=int, 
+    required=False,
+    default=0,
+    help='The ID of the artifact run. If not specified, the latest artifact run will be used.'
+  )
+  parser.add_argument(
     '-s', '--save-to', 
     type=lambda arg: Path(arg).resolve(),
     required=True, 
@@ -115,8 +122,12 @@ def main() -> None:
   validate_args(args)
   
   # Download artifacts.
-  run = latest_artifact_run()
-  downloaded_artifacts = GitHub.download_artifacts(run.id, args.save_to, args.parallel)
+  run_id = args.run_id
+  if run_id == 0:
+    run = latest_artifact_run()
+    run_id = run.id
+  
+  downloaded_artifacts = GitHub.download_artifacts(run_id, args.save_to, args.parallel)
 
   # Unzip the downloaded artifacts.
   if args.unzip:
