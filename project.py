@@ -204,7 +204,7 @@ def main() -> int:
   if args.version:
     print(BUILD_VERSION)
     return 0
-  
+
   # Print system information
   print_system_info()
 

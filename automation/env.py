@@ -76,7 +76,7 @@ def check_tool(tool: Tool) -> bool:
 
 def find_c_compilers() -> List[str]:
   '''Find the C compilers in `PATH`.'''
-  c_compilers_pattern = re.compile(r'^(gcc|clang|icc)(-\d+|\d*)$')
+  c_compilers_pattern = re.compile(r'^(gcc|clang|icc)(-\d+|\d*)')
 
   if 'PATH' not in os.environ:
     return []
@@ -99,7 +99,7 @@ def find_c_compilers() -> List[str]:
 
 def find_cpp_compilers() -> List[str]:
   '''Find the C++ compilers in `PATH`.'''
-  cpp_compilers_pattern = re.compile(r'^(g\+\+|clang\+\+|icpc)(-\d+|\d*)$')
+  cpp_compilers_pattern = re.compile(r'^(g\+\+|clang\+\+|icpc)(-\d+|\d*)')
 
   if 'PATH' not in os.environ:
     return []
@@ -165,6 +165,7 @@ def check_c_support(c_args: CompilerArgs, silent: bool = False) -> bool:
     except Exception as e:
       red_print(f'# Failed to check C support: {str(e)}')
       return False
+
 
 def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
   '''Check if the given compiler supports the specified C++ version.'''
