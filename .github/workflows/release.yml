@@ -26,6 +26,7 @@ jobs:
             echo "Actual version number: $version_nums"
             exit 1
           fi
+
       - name: Read Release Notes
         id: read_release_notes
         run: |

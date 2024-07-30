@@ -78,7 +78,7 @@ def run_cmd(
   print_stderr: bool = True,
   **kwargs
 ) -> ProcReturn:
-  '''Run a command synchronously and capture its output.'''
+  '''Run a command with coroutines and capture its output.'''
   if print_cmd:
     blue_print(f'# Command: {shlex.join(cmd)}')
 

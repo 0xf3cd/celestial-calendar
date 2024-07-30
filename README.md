@@ -138,7 +138,7 @@ There are basically two ways to download:
 ## 6. TODO List
 * C++20/23 features are not fully supported by the compilers...
   * Modules
-  * `std::ranges` (cartesian_product)
+  * Ranges and views (e.g. cartesian_product...)
 * Version / Tags
 
 

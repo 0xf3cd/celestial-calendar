@@ -10,20 +10,24 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import re
 import sys
+import time
 import shutil
 import tempfile
 
 from pathlib import Path
 from pprint import pformat
 from dataclasses import dataclass
-from itertools import product, starmap
+
+from operator import not_
+from itertools import product, starmap, compress
 
 from typing import Tuple, Sequence, List
 
 from . import paths
 from .utils import (
-  yellow_print, red_print, green_print, run_cmd,
+  yellow_print, red_print, green_print, blue_print, run_cmd,
 )
 
 
@@ -68,12 +72,64 @@ def check_tool(tool: Tool) -> bool:
 #endregion
 
 
-#region C++ Compiler Checks
+#region C/C++ Compiler Checks
+
+def find_c_compilers() -> List[str]:
+  '''Find the C compilers in `PATH`.'''
+  c_compilers_pattern = re.compile(r'^(gcc|clang|icc)(-\d+|\d*)$')
+
+  if 'PATH' not in os.environ:
+    return []
+
+  c_compilers = []
+  for path in os.environ['PATH'].split(os.pathsep):
+    dir_path = Path(path)
+    if not dir_path.is_dir():
+      continue
+
+    for entry in dir_path.iterdir():
+      try:
+        if entry.is_file() and os.access(entry, os.X_OK) and c_compilers_pattern.match(entry.name):
+          c_compilers.append(entry.name)
+      except PermissionError:
+        pass
+
+  return c_compilers
+
+
+def find_cpp_compilers() -> List[str]:
+  '''Find the C++ compilers in `PATH`.'''
+  cpp_compilers_pattern = re.compile(r'^(g\+\+|clang\+\+|icpc)(-\d+|\d*)$')
+
+  if 'PATH' not in os.environ:
+    return []
+
+  cpp_compilers = []
+  for path in os.environ['PATH'].split(os.pathsep):
+    dir_path = Path(path)
+    if not dir_path.is_dir():
+      continue
+
+    for entry in dir_path.iterdir():
+      try:
+        if entry.is_file() and os.access(entry, os.X_OK) and cpp_compilers_pattern.match(entry.name):
+          cpp_compilers.append(entry.name)
+      except PermissionError:
+        pass
+
+  return cpp_compilers
+
 
 @dataclass(frozen=True)
 class CompilerArgs:
   compiler: str
   standard: str
+
+
+def make_compiler_args(compilers: Sequence[str], standards: Sequence[str]) -> List[CompilerArgs]:
+  '''Create a list of C++ compiler arguments.'''
+  compiler_args = product(compilers, standards)
+  return list(starmap(CompilerArgs, compiler_args))
 
 
 def check_c_support(c_args: CompilerArgs, silent: bool = False) -> bool:
@@ -143,12 +199,6 @@ def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
       red_print(f'# Failed to check C++ support: {str(e)}')
       return False
 
-
-def make_compiler_args(compilers: Sequence[str], standards: Sequence[str]) -> List[CompilerArgs]:
-  '''Create a list of C++ compiler arguments.'''
-  compiler_args = product(compilers, standards)
-  return list(starmap(CompilerArgs, compiler_args))
-
 #endregion
 
 
@@ -160,51 +210,52 @@ class SetupPlan:
   install_dependencies: bool
   # The tools to check
   required_tools: List[Tool]
-  # The C++ compilers and C++ standards to check
-  cpp_compilers: List[str]
+  # The C++ standards to check
   cpp_standards: List[str]
-  # Whether to check environment variable "CXX"
-  check_env_cxx: bool
 
 def setup_environment(plan: SetupPlan) -> int:
   '''Set up the environment by installing dependencies and checking tool availability and C++ support.'''
   
   # Install dependencies
-  print(60 * '#')
-  yellow_print('# - Set up and install dependencies')
-  
   if plan.install_dependencies:
+    print(60 * '#')
+    yellow_print('# - Install dependencies')
+
     retcode = install_dependencies()
     if retcode != 0:
       return retcode
 
   # Check for tools
-  print(60 * '#')
-  yellow_print('# - Check tool availability')
+  if len(plan.required_tools) > 0:
+    print(60 * '#')
+    yellow_print('# - Check tool availability')
 
-  tool_check_results = map(check_tool, plan.required_tools)
-  tool_availability = dict(zip(plan.required_tools, tool_check_results))
-  if not all(tool_availability.values()):
-    red_print(f'Some tools are not available: {", ".join(tool.name for tool in tool_availability.keys())}.')
-    return 1
+    tool_check_results = [check_tool(t) for t in plan.required_tools]
+    if not all(tool_check_results):
+      unavailable = compress(plan.required_tools, map(not_, tool_check_results))
+      red_print(f'Some tools are not available: {", ".join([t.name for t in unavailable])}.')
+      return 1
 
-  green_print('All tools are available.')
+    green_print('All tools are available.')
 
   # Check for C++ support
   print(60 * '#')
   yellow_print('# - C++ support check')
+  assert len(plan.cpp_standards) > 0, 'No C++ standards specified.'
 
-  assert len(plan.cpp_compilers) > 0
-  assert len(plan.cpp_standards) > 0
-  cpp_compilers = plan.cpp_compilers.copy()
-
+  cpp_compilers = find_cpp_compilers()
+  if len(cpp_compilers) == 0:
+    red_print('No C++ compilers found.')
+    return 1
+  
+  blue_print(f'Found C++ compilers from PATH: {pformat(cpp_compilers)}')
+  
   compiler_args = make_compiler_args(cpp_compilers, plan.cpp_standards)
-  check_returns = map(check_cpp_support, compiler_args)
-  compiler_support = dict(zip(compiler_args, check_returns))
+  compiler_supports = [check_cpp_support(args) for args in compiler_args]
   
   yellow_print(60 * '-')
   yellow_print('# - C++ support check:')
-  for args, support in compiler_support.items():
+  for args, support in zip(compiler_args, compiler_supports):
     compiler_path = shutil.which(args.compiler)
     if support:
       green_print(f'# {compiler_path} supports {args.standard}')
@@ -214,35 +265,37 @@ def setup_environment(plan: SetupPlan) -> int:
       else:
         red_print(f'# {args.compiler} not found!')
   
-  if not any(compiler_support.values()):
+  if not any(compiler_supports):
     red_print('None of the compilers support the specified C++ features.')
-    red_print(f'Checked: {pformat(compiler_support)}')
+    red_print(f'Checked: {pformat(compiler_args)}')
     return 1
   
-  if not plan.check_env_cxx:
+  # If "CXX" is set in the environment, also check it
+  cxx_env = os.environ.get('CXX')
+  
+  if cxx_env is None:
+    yellow_print(60 * '-')
+    yellow_print('CXX environment variable not set. \n'
+                 'CXX is strongly recommended to be set.')
+    yellow_print(60 * '-')
+
+    time.sleep(3) # Give the user time to read the warning
     return 0
   
   # Otherwise, check environment variable "CXX"
   yellow_print(60 * '-')
   yellow_print('# - CXX environment variable check:')
-
-  cxx_env = os.environ.get('CXX')
-  if cxx_env:
-    yellow_print(f'# CXX environment variable set to: {cxx_env}')
-  else:
-    yellow_print(60 * '-')
-    yellow_print('CXX environment variable not set. \n'
-                 'CXX is strongly recommended to be set to a compiler with C++23 support.')
-    yellow_print(60 * '-')
-    return 0
+  yellow_print(f'# CXX environment variable set to: {cxx_env}')
 
   cxx_env_args = make_compiler_args([cxx_env], plan.cpp_standards)
-  check_returns = map(check_cpp_support, cxx_env_args)
-  if not any(check_returns):
+  cxx_env_supports = [check_cpp_support(args) for args in cxx_env_args]
+  if not any(cxx_env_supports):
     red_print(60 * '-')
     red_print('CXX environment variable set to an unsupported compiler. \n'
-              'Building is likely to fail.')
+              'Building is likely to fail. Early exiting...')
     red_print(60 * '-')
+
+    time.sleep(10) # Give the user time to read the warning
     return 1
   
   green_print('# Environment setup complete.')

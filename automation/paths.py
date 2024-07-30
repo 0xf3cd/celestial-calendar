@@ -28,7 +28,14 @@ def proj_root() -> Path:
 
 def cpp_src_dir() -> Path:
   '''Locate the C++ source directory.'''
-  return proj_root() / 'src'
+  src = proj_root() / 'src'
+
+  # Ensure "CMakeLists.txt" exists.
+  if not (src / 'CMakeLists.txt').exists():
+    red_print('The C++ source directory does not exist.')
+    raise RuntimeError('The C++ source directory does not exist.')
+
+  return src
 
 
 def build_dir() -> Path:

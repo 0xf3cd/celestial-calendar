@@ -175,9 +175,7 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
     plan = SetupPlan(
       install_dependencies=True,
       required_tools=[Tool('cmake'), Tool('make')],
-      cpp_compilers=['clang++', 'g++', 'clang++18', 'g++14'],
       cpp_standards=['c++2b'],
-      check_env_cxx=True
     )
 
     tasks.append(Task('Set up and ensure dependencies', lambda: setup_environment(plan)))
