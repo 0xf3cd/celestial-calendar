@@ -4,7 +4,9 @@ Checks: |
 
   performance-*,
   portability-*,
+
   bugprone-*,
+  -bugprone-reserved-identifier,
 
   cppcoreguidelines-*,
   -cppcoreguidelines-avoid-magic-numbers,
@@ -14,12 +16,14 @@ Checks: |
   -readability-magic-numbers,
   -readability-identifier-length,
   -readability-function-cognitive-complexity,
+  -readability-identifier-naming,
 
   google-*,
   -google-build-using-namespace,
   -google-readability-todo,
 
   modernize-*,
+  -modernize-use-std-numbers,
 
 WarningsAsErrors: '*'
 

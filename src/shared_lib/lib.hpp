@@ -39,11 +39,11 @@ enum class Verbosity : uint8_t {
 };
 
 
-inline Verbosity GLOBAL_VERBOSITY = Verbosity::DEBUG;
+inline Verbosity GLOBAL_VERBOSITY = Verbosity::DEBUG; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 
 /** @brief Set the verbosity level of log printing. */
-inline Verbosity set_verbosity(const Verbosity new_verbosity) {
+inline auto set_verbosity(const Verbosity new_verbosity) -> Verbosity {
   if (new_verbosity < Verbosity::COUNT) {
     GLOBAL_VERBOSITY = new_verbosity;
   }
@@ -55,7 +55,10 @@ inline Verbosity set_verbosity(const Verbosity new_verbosity) {
 template <typename... Args>
 inline void info(const std::string& format_str, Args&&... args) {
   if (GLOBAL_VERBOSITY >= Verbosity::INFO) {
-    const std::string formatted_message = std::vformat(format_str, std::make_format_args(args...));
+    const std::string formatted_message = std::vformat(
+      format_str, 
+      std::make_format_args(std::forward<Args>(args)...)
+    );
     std::println("{}", formatted_message);
   }
 }
@@ -64,7 +67,10 @@ inline void info(const std::string& format_str, Args&&... args) {
 template <typename... Args>
 inline void debug(const std::string& format_str, Args&&... args) {
   if (GLOBAL_VERBOSITY >= Verbosity::DEBUG) {
-    const std::string formatted_message = std::vformat(format_str, std::make_format_args(args...));
+    const std::string formatted_message = std::vformat(
+      format_str, 
+      std::make_format_args(std::forward<Args>(args)...)
+    );
     std::println("{}", formatted_message);
   }
 }

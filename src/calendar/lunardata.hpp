@@ -93,7 +93,7 @@ struct LunarYearInfo {
  @param year The year. 年份。
  @return The lunar year information. 阴历年信息。
  */
-inline LunarYearInfo get_lunar_year_info(uint32_t year) {
+inline auto get_lunar_year_info(uint32_t year) -> LunarYearInfo {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
     throw std::out_of_range { 
@@ -101,7 +101,7 @@ inline LunarYearInfo get_lunar_year_info(uint32_t year) {
     };
   }
 
-  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR];
+  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
   const uint32_t days_offset    = bin_data >> 17;
   const uint8_t  leap_month     = (bin_data >> 13) & 0xf;
   const uint16_t month_len_info = bin_data & 0x1fff;
@@ -156,7 +156,7 @@ public:
    @param year The year. 年份。
    @return The lunar year info. 阴历年信息。
    */
-  const LunarYearInfo& get(const int32_t year) const {
+  [[nodiscard]] auto get(const int32_t year) const -> const LunarYearInfo& {
     assert(year >= START_YEAR and year <= END_YEAR);
     return _cached[year - START_YEAR];
   }

@@ -36,7 +36,7 @@ namespace util {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline T random() {
+inline auto random() -> T {
   std::random_device rd;
   std::mt19937 gen(rd());
 
@@ -62,7 +62,7 @@ inline T random() {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline T random(const T& min, const T& max) {
+inline auto random(const T& min, const T& max) -> T {
   assert(min < max);
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -81,7 +81,7 @@ inline T random(const T& min, const T& max) {
 // because this is not part of the C++ standard (for std::uniform_int_distribution).
 
 template <>
-inline uint8_t random() {
+inline auto random() -> uint8_t {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<uint32_t> dist { 0, 255 };
@@ -89,7 +89,7 @@ inline uint8_t random() {
 }
 
 template <>
-inline uint8_t random(const uint8_t& min, const uint8_t& max) {
+inline auto random(const uint8_t& min, const uint8_t& max) -> uint8_t {
   assert(min < max);
   std::random_device rd;
   std::mt19937 gen(rd());

@@ -98,17 +98,17 @@ TEST(LunarData, CachePerf) {
     const auto start_time = std::chrono::steady_clock::now();
     for (auto _ = 0; _ < 800; ++_) {
       for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-        LUNARDATA_CACHE.get(year);
+        [[maybe_unused]] const auto& result = LUNARDATA_CACHE.get(year);
       }
     }
     for (auto year = START_YEAR; year <= END_YEAR; ++year) {
       for (auto _ = 0; _ < 800; ++_) {
-        LUNARDATA_CACHE.get(year);
+        [[maybe_unused]] const auto& result = LUNARDATA_CACHE.get(year);
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
       const int32_t random_year = util::random(START_YEAR, END_YEAR);
-      LUNARDATA_CACHE.get(random_year);
+      [[maybe_unused]] const auto& result = LUNARDATA_CACHE.get(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
     return static_cast<uint64_t>((end_time - start_time).count());

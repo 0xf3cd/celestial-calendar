@@ -10,6 +10,8 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 
+import re
+
 from . import paths
 from .env import Tool, check_tool
 from .utils import run_cmd, yellow_print, red_print, green_print
@@ -77,12 +79,25 @@ def run_clang_tidy() -> int:
 
   yellow_print('Running clang-tidy...')
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(['python3', 'run-clang-tidy.py', '-p', str(build_dir)], 
+  ret = run_cmd(['python3', 'run-clang-tidy.py', '-p', str(build_dir), '-header-filter=src/'], 
                 cwd=str(paths.proj_root()))
 
   if ret.retcode == 0:
     green_print('clang-tidy passed')
   else:
     red_print('clang-tidy failed')
+
+  def clean_text(text: str) -> str:
+    control_chars = re.compile(r'[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]')
+    return control_chars.sub('', text)
+
+  stdout_log = build_dir / 'clang-tidy-stdout.log'
+  stderr_log = build_dir / 'clang-tidy-stderr.log'
+
+  with stdout_log.open('w') as f:
+    f.write(clean_text(ret.stdout))
+
+  with stderr_log.open('w') as f:
+    f.write(clean_text(ret.stderr))
 
   return ret.retcode

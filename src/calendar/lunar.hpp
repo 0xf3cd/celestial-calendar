@@ -43,7 +43,7 @@ const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);
 
 /*! @brief The last supported lunar date. */
 const inline year_month_day LAST_LUNAR_DATE = std::invoke([] {
-  const LunarYearInfo info = LUNARDATA_CACHE.get(END_YEAR);
+  const LunarYearInfo& info = LUNARDATA_CACHE.get(END_YEAR);
   return util::to_ymd(END_YEAR, info.month_lengths.size(), info.month_lengths.back());
 });
 
@@ -66,7 +66,7 @@ const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
 
 /*! @fn Checks if the input gregorian date is valid and within the supported range. 
         检查输入的公历日期是否有效，且在支持的范围内。 */
-inline bool is_valid_gregorian(const year_month_day& date) {
+inline auto is_valid_gregorian(const year_month_day& date) -> bool {
   if (!date.ok()) {
     return false;
   }
@@ -79,13 +79,13 @@ inline bool is_valid_gregorian(const year_month_day& date) {
 
 /*! @fn Checks if the input lunar date is valid and within the supported range. 
         检查输入的阴历日期是否有效，且在支持的范围内。 */
-inline bool is_valid_lunar(const year_month_day& lunar_date) {
+inline auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
   if (lunar_date < FIRST_LUNAR_DATE || lunar_date > LAST_LUNAR_DATE) {
     return false;
   }
 
   const auto [y, m, d] = util::from_ymd(lunar_date);
-  const auto info = LUNARDATA_CACHE.get(y);
+  const auto& info = LUNARDATA_CACHE.get(y);
   const auto& ml = info.month_lengths;
   
   if (m < 1 || m > ml.size()) {
@@ -109,14 +109,14 @@ inline bool is_valid_lunar(const year_month_day& lunar_date) {
  @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
             输入的日期无效时返回 `std::nullopt`。不会抛出异常。
  */
-inline std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gregorian_date) {
+inline auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::optional<year_month_day> {
   if (!is_valid_gregorian(gregorian_date)) {
     return std::nullopt;
   }
 
   const auto& [g_y, g_m, g_d] = util::from_ymd(gregorian_date);
 
-  const auto find_lunar_date = [&](const uint32_t lunar_y) -> year_month_day {
+  const auto find_lunar_date = [&](const int32_t lunar_y) -> year_month_day {
     const auto& info = LUNARDATA_CACHE.get(lunar_y);
     const auto& ml = info.month_lengths;
 
@@ -171,7 +171,7 @@ inline std::optional<year_month_day> gregorian_to_lunar(const year_month_day& gr
  @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
             输入的日期无效时返回 `std::nullopt`。不会抛出异常。
  */
-inline std::optional<year_month_day> lunar_to_gregorian(const year_month_day& lunar_date) {
+inline auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optional<year_month_day> {
   if (!is_valid_lunar(lunar_date)) {
     return std::nullopt;
   }

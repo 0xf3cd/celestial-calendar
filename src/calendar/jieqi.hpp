@@ -62,7 +62,7 @@ namespace calendar::jieqi::math {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The apparent geocentric longitude of the Sun in degrees.
  */
-inline double solar_longitude(const double jde) {
+inline auto solar_longitude(const double jde) -> double {
   // Calculate the apparent geocentric longitude of the Sun.
   const auto coord = astro::sun::geocentric_coord::apparent(jde);
 
@@ -71,39 +71,41 @@ inline double solar_longitude(const double jde) {
 }
 
 /** @brief Return the JDE of the start of the year. */
-inline double get_start_jde(const int32_t year) {
+inline auto get_start_jde(const int32_t year) -> double{
   return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 }
 
 /** @brief Return the JDE of the end of the year. */
-inline double get_end_jde(const int32_t year) {
+inline auto get_end_jde(const int32_t year) -> double {
   return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */
-inline double get_start_lon(const int32_t year) {
+inline auto get_start_lon(const int32_t year) -> double {
   return solar_longitude(get_start_jde(year));
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the end of the year. */
-inline double get_end_lon(const int32_t year) {
+inline auto get_end_lon(const int32_t year) -> double {
   return solar_longitude(get_end_jde(year));
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+
 /** @brief Return true if the given year has a root for the given `lon` before the spring equinox. */
-inline bool has_root_before_spring_equinox(const int32_t year, const double lon) {
+inline auto has_root_before_spring_equinox(const int32_t year, const double lon) -> bool {
   const double start_lon = get_start_lon(year);
   return start_lon <= lon and lon < 360.0;
 }
 
 /** @brief Return true if the given year has a root for the given `lon` after the spring equinox. */
-inline bool has_root_after_spring_equinox(const int32_t year, const double lon) {
+inline auto has_root_after_spring_equinox(const int32_t year, const double lon) -> bool {
   const double end_lon = get_end_lon(year);
   return 0.0 <= lon and lon < end_lon;
 }
 
 /** @brief Return the count of the roots for the given `year` and `lon`. */
-inline uint32_t discriminant(const int32_t year, const double lon) {
+inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
   uint32_t count = 0;
 
   if (has_root_before_spring_equinox(year, lon)) {
@@ -138,7 +140,7 @@ inline uint32_t discriminant(const int32_t year, const double lon) {
 using FuncType = std::function<double(const double)>;
 
 /**@brief Return a `f` that we can apply Newton's method to. */
-inline FuncType make_f(const int32_t year, const double expected_lon) {
+inline auto make_f(const int32_t year, const double expected_lon) -> FuncType {
   const double apr_1st_jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 4, 1), 0.0 });
 
   const auto modified_solar_longitude = [=](const double jde) -> double {
@@ -172,13 +174,13 @@ inline FuncType make_f(const int32_t year, const double expected_lon) {
  * @param episilon The tolerance. Default is 1e-10.
  * @param max_iter The maximum number of iterations. Default is 20.
  * @returns The approximated root (i.e. JDE). */
-inline double newton_method(
+inline auto newton_method(
   const FuncType& f,              // The f function to find root(s) for.
   const double start_jde,         // The left bound of JDE's range, inclusive.
   const double end_jde,           // The right bound of JDE's range, exclusive.
   const double episilon = 1e-10,  // The tolerance.
   const std::size_t max_iter = 20 // The maximum number of iterations.
-) {
+) -> double {
   // `pull_back` ensures the returned JDE is in valid range.
   const auto pull_back = [&](const double jde) -> double {
     if (jde < start_jde) {
@@ -232,7 +234,7 @@ inline double newton_method(
  * @param expected_lon The expected solar longitude, in degrees.
  * @return The roots (i.e. JDEs). There can be 0, 1 or 2 roots.
  */
-inline std::vector<double> find_roots(const int32_t year, const double expected_lon) {
+inline auto find_roots(const int32_t year, const double expected_lon) -> std::vector<double> {
   if (discriminant(year, expected_lon) == 0) { // No root.
     return {};
   }
@@ -266,6 +268,8 @@ inline std::vector<double> find_roots(const int32_t year, const double expected_
   return f_vec | views::transform(apply_nm) | to<std::vector>();
 }
 
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
 } // namespace calendar::jieqi::math
 
 
@@ -273,7 +277,7 @@ inline std::vector<double> find_roots(const int32_t year, const double expected_
 namespace calendar::jieqi {
 
 /** @enum The Chinese Jieqi (节气) */
-enum class Jieqi : int32_t {
+enum class Jieqi : uint8_t {
   立春, 雨水, 惊蛰, 春分, 清明, 谷雨, 立夏, 小满, 芒种, 夏至, 小暑, 大暑,
   立秋, 处暑, 白露, 秋分, 寒露, 霜降, 立冬, 小雪, 大雪, 冬至, 小寒, 大寒,
 
@@ -286,11 +290,11 @@ enum class Jieqi : int32_t {
   LIDONG = 立冬, XIAOXUE = 小雪, DAXUE = 大雪, DONGZHI = 冬至, XIAOHAN = 小寒, DAHAN = 大寒,
 };
 
-static_assert(24 == std::underlying_type_t<Jieqi>(Jieqi::COUNT));
+static_assert(24U == static_cast<uint8_t>(Jieqi::COUNT));
 
 
 /** @brief A view of all enum values of `Jieqi`. */
-constexpr auto JIEQI_LIST = std::views::iota(0, std::underlying_type_t<Jieqi>(Jieqi::COUNT)) 
+constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(Jieqi::COUNT)) 
                           | std::views::transform([](const auto i) { return static_cast<Jieqi>(i); });
 
 
@@ -328,7 +332,7 @@ const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invo
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-inline double jieqi_jde(const int32_t year, const Jieqi jq) {
+inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
   const auto lon = JIEQI_SOLAR_LONGITUDE.at(jq);
   const auto roots = calendar::jieqi::math::find_roots(year, lon);
 
@@ -350,7 +354,7 @@ inline double jieqi_jde(const int32_t year, const Jieqi jq) {
  * @return The UT1 (Universal Time 1).
  * @details This is just a thin wrapper around `jde_for_jieqi()`.
  */
-inline calendar::Datetime jieqi_ut1_moment(const int32_t year, const Jieqi jq) {
+inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
 

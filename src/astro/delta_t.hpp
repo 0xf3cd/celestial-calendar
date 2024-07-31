@@ -92,15 +92,15 @@ constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
 
 
 /** @brief Get the coefficients of algorithm 1. Returns `std::nullopt` if not found. */
-constexpr std::optional<
+constexpr auto 
+find_coefficients(const int32_t year) -> std::optional<
   std::pair<Algo1Coefficients, Algo1Coefficients>
-> 
-find_coefficients(const int32_t year) {
+> {
   // TODO: Use `std::views::pairwise` when supported.
   const auto pairwise = [](const auto& range) {
     using namespace std::ranges;
     return views::iota(0, distance(range) - 1) | views::transform([&range](auto i) {
-      return std::pair { *(begin(range) + i), *(begin(range) + i + 1) };
+      return std::pair { *(begin(range) + i), *(begin(range) + i + 1) }; // NOLINT
     });
   };
 
@@ -127,7 +127,7 @@ find_coefficients(const int32_t year) {
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
  */
-constexpr double compute(const double year) {
+constexpr auto compute(const double year) -> double {
   if (year < -4000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
@@ -185,7 +185,7 @@ namespace algo2 {
  * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
  */
-constexpr double compute(const double year) noexcept {
+constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {
     const double u = (year - 1820) / 100.0;
     return -20.0 + 32.0 * std::pow(u, 2);
@@ -297,7 +297,7 @@ namespace algo3 {
  * 
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
-constexpr double compute(const double year) {
+constexpr auto compute(const double year) -> double {
   if (year >= 3000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
@@ -351,7 +351,7 @@ namespace algo4 {
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO long-term data is used.
  */
-constexpr double compute(const double year) {
+constexpr auto compute(const double year) -> double {
   if (year >= 2035) {
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
@@ -390,7 +390,7 @@ constexpr double compute(const double year) {
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
-constexpr double compute(const double year) {
+constexpr auto compute(const double year) -> double {
   return algo4::compute(year);
 }
 
@@ -403,7 +403,7 @@ constexpr double compute(const double year) {
  * @note Some caller are passing `calendar::Datetime` in UT1, and some are passing `calendar::Datetime` in TT.
  *       Considering the longness of a year, the difference between `UT1` and `TT` is ignored.
  */
-constexpr double compute(const calendar::Datetime& ut1_dt) {
+constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
   using namespace std::chrono;
   using namespace util::ymd_operator;
 
@@ -430,7 +430,7 @@ constexpr double compute(const calendar::Datetime& ut1_dt) {
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
  */
-constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
+constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
   using namespace util::ymd_operator;
   using namespace std::chrono;
 
@@ -445,7 +445,7 @@ constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
   // After adjustment, `tt_day_fraction` can be out of the range of [0.0, 1.0).
 
   // Find out how many days to add or substract. `days` can be either positive or negative.
-  const int32_t days = static_cast<int32_t>(std::floor(tt_day_fraction));
+  const auto days = static_cast<int32_t>(std::floor(tt_day_fraction));
   
   // Correct the fraction to be in the range of [0.0, 1.0).
   const double real_fraction = tt_day_fraction - days;
@@ -460,7 +460,7 @@ constexpr calendar::Datetime ut1_to_tt(const calendar::Datetime& ut1_dt) {
  * @param tt_dt The datetime in TT.
  * @return The datetime in UT1.
  */
-constexpr calendar::Datetime tt_to_ut1(const calendar::Datetime& tt_dt) {
+constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
   using namespace util::ymd_operator;
   using namespace std::chrono;
 
@@ -475,7 +475,7 @@ constexpr calendar::Datetime tt_to_ut1(const calendar::Datetime& tt_dt) {
   // After adjustment, `ut1_day_fraction` can be out of the range of [0.0, 1.0).
 
   // Find out how many days to add or substract. `days` can be either positive or negative.
-  const int32_t days = static_cast<int32_t>(std::floor(ut1_day_fraction));
+  const auto days = static_cast<int32_t>(std::floor(ut1_day_fraction));
   
   // Correct the fraction to be in the range of [0.0, 1.0).
   const double real_fraction = ut1_day_fraction - days;

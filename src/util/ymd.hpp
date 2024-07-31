@@ -46,18 +46,18 @@ concept DayConvertible = std::same_as<T, std::chrono::days> or requires (T t) {
 };
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
-constexpr std::chrono::year_month_day to_ymd(
+constexpr auto to_ymd(
   const YearConvertible auto year, 
   const MonthConvertible auto month, 
   const DayConvertible auto day
-) {
-  const std::chrono::year __year { static_cast<int32_t>(year) };
-  return std::chrono::year_month_day { __year / month / day };
+) -> std::chrono::year_month_day {
+  const std::chrono::year _year { static_cast<int32_t>(year) };
+  return std::chrono::year_month_day { _year / month / day };
 }
 
 
 /*! @brief Converts the input `std::chrono::year_month_day` to a year, month, and date. */
-constexpr std::tuple<int32_t, uint32_t, uint32_t> from_ymd(const std::chrono::year_month_day& ymd) {
+constexpr auto from_ymd(const std::chrono::year_month_day& ymd) -> std::tuple<int32_t, uint32_t, uint32_t> {
   const int32_t y = static_cast<int32_t>(ymd.year());
   const uint32_t m = static_cast<uint32_t>(ymd.month());
   const uint32_t d = static_cast<uint32_t>(ymd.day());
@@ -70,37 +70,37 @@ namespace util::ymd_operator {
 
 using util::DayConvertible;
 
-constexpr std::chrono::year_month_day operator+(
+constexpr auto operator+(
   const std::chrono::year_month_day& ymd, 
   const DayConvertible auto& days
-) {
+) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }
 
 
-constexpr std::chrono::year_month_day operator+(
+constexpr auto operator+(
   const DayConvertible auto& days,
   const std::chrono::year_month_day& ymd
-) {
+) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }
 
 
-constexpr std::chrono::year_month_day operator-(
+constexpr auto operator-(
   const std::chrono::year_month_day& ymd, 
   const DayConvertible auto& days
-) {
+) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } - std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
 }
 
 
-constexpr int32_t operator-(
+constexpr auto operator-(
   const std::chrono::year_month_day& ymd1, 
   const std::chrono::year_month_day& ymd2
-) {
+) -> int32_t {
   const auto diff_days = std::chrono::sys_days { ymd1 } - std::chrono::sys_days { ymd2 };
   return static_cast<int32_t>(diff_days.count());
 }
