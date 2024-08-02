@@ -63,11 +63,15 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == '__main__':
   args = parse_args()
-  ret_code = 0
 
   if args.ruff or args.all:
-    ret_code |= run_ruff()
-  if args.clang_tidy or args.all:
-    ret_code |= run_clang_tidy()
+    ret_code = run_ruff()
+    if ret_code != 0:
+      sys.exit(ret_code)
 
-  sys.exit(ret_code)
+  if args.clang_tidy or args.all:
+    ret_code = run_clang_tidy()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  sys.exit(0)
