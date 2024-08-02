@@ -28,18 +28,12 @@ WORKDIR /app
 
 # Install Python3
 RUN aptitude install -y python3 python3-pip python3-venv python3-full
-
-# Install Python dependencies if Requirements.txt exists
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Not installing from Requirements.txt as clang-tidy installation fails on arm/v5 and arm/v7
-# Since we are not running linters here, only install `requests`
-RUN /opt/venv/bin/pip install requests
-
 # Build and test the project
 # Build without setting up
-RUN /opt/venv/bin/python ./project.py --clean --cmake --cores all --build --test -v 1
+RUN /opt/venv/bin/python ./project.py --setup --clean --cmake --cores all --build --test -v 1
 
 # Save the build information
 ARG DOCKER_PLATFORM=""

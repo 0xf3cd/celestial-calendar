@@ -18,11 +18,7 @@ from .utils import run_cmd, yellow_print, red_print, green_print
 
 
 def ensure_run_clang_tidy() -> int:
-  '''Ensure that clang-tidy and the runner 'run-clang-tidy.py' is installed.'''
-  if not check_tool(Tool('clang-tidy')):
-    red_print('clang-tidy not found!')
-    return 1
-
+  '''Ensure that the runner 'run-clang-tidy.py' is installed.'''
   proj_root = paths.proj_root()
   run_clang_tidy = proj_root / 'run-clang-tidy.py'
   if run_clang_tidy.exists():
@@ -67,6 +63,11 @@ def run_clang_tidy() -> int:
   '''Run clang-tidy on the project CPP source code.'''
   print('#' * 60)
 
+  if not check_tool(Tool('clang-tidy')):
+    red_print('clang-tidy not found!')
+    yellow_print('Install clang-tidy by `pip install clang-tidy`')
+    return 1
+
   if ensure_run_clang_tidy() != 0:
     return 1
 
@@ -87,6 +88,7 @@ def run_clang_tidy() -> int:
   else:
     red_print('clang-tidy failed')
 
+  # Save stderr and stdout to files.
   def clean_text(text: str) -> str:
     control_chars = re.compile(r'[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]')
     return control_chars.sub('', text)

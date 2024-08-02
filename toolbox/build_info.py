@@ -70,7 +70,6 @@ class BuildInfo:
   python_version: str
 
   sha256: Dict[str, str]
-  additional_info: Dict[str, str]
 
   pack_time: str
   git_commit: str
@@ -146,42 +145,6 @@ def shared_lib_hashs() -> Dict[str, str]:
   }
 
 
-def get_additional_info(lib: Path) -> str:
-  '''Get the additional information about a shared library.'''
-  def command() -> List[str]:
-    if sys.platform == 'darwin':
-      return ['otool', '-hLv', str(lib)]
-    elif sys.platform == 'linux':
-      return ['readelf', '-h', str(lib)]
-    elif sys.platform == 'win32':
-      return ['dumpbin', '/headers', str(lib)]
-    else:
-      raise OSError(f'Unsupported platform: {sys.platform}')
-    
-  try:
-    cmd = command()
-    proc_ret = silent_run(cmd)
-    if proc_ret.retcode != 0:
-      return 'Failed to get additional information'
-    
-    cmd_str = 'Command: ' + ' '.join(cmd) + '\n\n'
-    return cmd_str + (60 * '#') + proc_ret.stdout
-  except Exception as e:
-    return f'Failed to get additional information: {e}'
-
-
-def shared_lib_additional_info() -> Dict[str, str]:
-  '''Get the additional information about the build.'''
-  shared_libs = find_built_shared_libs()
-  if not shared_libs:
-    return {}
-  
-  return {
-    p.name: get_additional_info(p)
-    for p in shared_libs
-  }
-
-
 def pack_build_info(docker: Optional[str]) -> BuildInfo:
   proj_dir = Path(__file__).parent.parent
 
@@ -222,7 +185,6 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
     cc_version=cc_version,
     python_version=platform.python_version(),
     sha256=shared_lib_hashs(),
-    additional_info=shared_lib_additional_info(),
     pack_time=datetime.now(UTC).isoformat(),
     git_commit=commit_hash
   )

@@ -312,18 +312,16 @@ const inline std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
 
 
 /** @brief Mapping table to get the solar longitude of the given `jieqi`. */
-const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = std::invoke([] {
-  const auto pairs = JIEQI_LIST | std::views::transform([&](const auto jq) {
-    const auto  jq_idx = std::underlying_type_t<Jieqi>(jq);
-
-    const auto raw_lon = ((jq_idx - 3) * 15.0) + 360.0;
-    const double   lon = std::fmod(raw_lon, 360.0);
-
-    return std::pair { jq, lon };
-  });
-
-  return pairs | std::ranges::to<std::unordered_map>();
-});
+const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
+  { Jieqi::立春, 315.0 }, { Jieqi::雨水, 330.0 }, { Jieqi::惊蛰, 345.0 },
+  { Jieqi::春分,   0.0 }, { Jieqi::清明,  15.0 }, { Jieqi::谷雨,  30.0 },
+  { Jieqi::立夏,  45.0 }, { Jieqi::小满,  60.0 }, { Jieqi::芒种,  75.0 },
+  { Jieqi::夏至,  90.0 }, { Jieqi::小暑, 105.0 }, { Jieqi::大暑, 120.0 },
+  { Jieqi::立秋, 135.0 }, { Jieqi::处暑, 150.0 }, { Jieqi::白露, 165.0 },
+  { Jieqi::秋分, 180.0 }, { Jieqi::寒露, 195.0 }, { Jieqi::霜降, 210.0 },
+  { Jieqi::立冬, 225.0 }, { Jieqi::小雪, 240.0 }, { Jieqi::大雪, 255.0 },
+  { Jieqi::冬至, 270.0 }, { Jieqi::小寒, 285.0 }, { Jieqi::大寒, 300.0 },
+};
 
 
 /**

@@ -39,7 +39,10 @@ jobs:
           CC:  clang-18
         run: |
           chmod +x project.py
-          ./project.py --clean --cmake --ruff --clang-tidy
+          ./project.py --clean --cmake
+          
+          chmod +x linter.py
+          ./linter.py --ruff --clang-tidy
 
           
   test-ubuntu-gcc14:  

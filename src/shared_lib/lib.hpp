@@ -53,24 +53,20 @@ inline auto set_verbosity(const Verbosity new_verbosity) -> Verbosity {
 
 /** @brief Log a message, at the `INFO` verbosity level. */
 template <typename... Args>
-inline void info(const std::string& format_str, Args&&... args) {
+inline void info(const std::string& format_str, Args&&... args) { // NOLINT(cppcoreguidelines-missing-std-forward)
   if (GLOBAL_VERBOSITY >= Verbosity::INFO) {
-    const std::string formatted_message = std::vformat(
-      format_str, 
-      std::make_format_args(std::forward<Args>(args)...)
-    );
+    // TODO: Currently std::forward<Args>(args)... is not supported on some platforms. Forward args when available.
+    const std::string formatted_message = std::vformat(format_str, std::make_format_args(args...));
     std::println("{}", formatted_message);
   }
 }
 
 /** @brief Log a message, at the `DEBUG` verbosity level. */
 template <typename... Args>
-inline void debug(const std::string& format_str, Args&&... args) {
+inline void debug(const std::string& format_str, Args&&... args) { // NOLINT(cppcoreguidelines-missing-std-forward)
   if (GLOBAL_VERBOSITY >= Verbosity::DEBUG) {
-    const std::string formatted_message = std::vformat(
-      format_str, 
-      std::make_format_args(std::forward<Args>(args)...)
-    );
+    // TODO: Currently std::forward<Args>(args)... is not supported on some platforms. Forward args when available.
+    const std::string formatted_message = std::vformat(format_str, std::make_format_args(args...));
     std::println("{}", formatted_message);
   }
 }

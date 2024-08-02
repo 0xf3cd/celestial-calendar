@@ -89,19 +89,19 @@ The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 ### 4.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
 ```sh
 # Run ruff
-./project.py --ruff
+./linter.py --ruff
 
 # Run clang-tidy
-./project.py --clang-tidy
+./linter.py --clang-tidy
 ```
 
 ### 4.2. On Windows
 ```powershell
 # Run ruff
-python3 ./project.py --ruff
+python3 ./linter.py --ruff
 
 # Run clang-tidy
-python3 ./project.py --clang-tidy
+python3 ./linter.py --clang-tidy
 ```
 
 

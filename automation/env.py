@@ -244,48 +244,24 @@ def setup_environment(plan: SetupPlan) -> int:
   yellow_print('# - C++ support check')
   assert len(plan.cpp_standards) > 0, 'No C++ standards specified.'
 
-  cpp_compilers = find_cpp_compilers()
-  if len(cpp_compilers) == 0:
-    red_print('No C++ compilers found.')
-    return 1
-  
-  blue_print(f'Found C++ compilers from PATH: {pformat(cpp_compilers)}')
-  
-  compiler_args = make_compiler_args(cpp_compilers, plan.cpp_standards)
-  compiler_supports = [check_cpp_support(args) for args in compiler_args]
-  
-  yellow_print(60 * '-')
-  yellow_print('# - C++ support check:')
-  for args, support in zip(compiler_args, compiler_supports):
-    compiler_path = shutil.which(args.compiler)
-    if support:
-      green_print(f'# {compiler_path} supports {args.standard}')
-    else:
-      if compiler_path:
-        red_print(f'# {compiler_path} does not support {args.standard}')
-      else:
-        red_print(f'# {args.compiler} not found!')
-  
-  if not any(compiler_supports):
-    red_print('None of the compilers support the specified C++ features.')
-    red_print(f'Checked: {pformat(compiler_args)}')
-    return 1
-  
-  # If "CXX" is set in the environment, also check it
   cxx_env = os.environ.get('CXX')
-  
-  if cxx_env is None:
-    yellow_print(60 * '-')
-    yellow_print('CXX environment variable not set. \n'
-                 'CXX is strongly recommended to be set.')
-    yellow_print(60 * '-')
 
-    time.sleep(3) # Give the user time to read the warning
-    return 0
+  # If CXX not set, return error.
+  if cxx_env is None:
+    red_print(60 * '-')
+    red_print('CXX environment variable not set. \n'
+              'Please set CXX environment variable and try again.')
+    red_print(60 * '-')
+
+    time.sleep(5) # Give the user time to read the warning
+
+    cpp_compilers = find_cpp_compilers()
+    if len(cpp_compilers) != 0:
+      blue_print(f'Found C++ compilers from PATH: {pformat(cpp_compilers)}')
+
+    return 1
   
-  # Otherwise, check environment variable "CXX"
   yellow_print(60 * '-')
-  yellow_print('# - CXX environment variable check:')
   yellow_print(f'# CXX environment variable set to: {cxx_env}')
 
   cxx_env_args = make_compiler_args([cxx_env], plan.cpp_standards)
@@ -296,7 +272,7 @@ def setup_environment(plan: SetupPlan) -> int:
               'Building is likely to fail. Early exiting...')
     red_print(60 * '-')
 
-    time.sleep(10) # Give the user time to read the warning
+    time.sleep(5) # Give the user time to read the warning
     return 1
   
   green_print('# Environment setup complete.')
