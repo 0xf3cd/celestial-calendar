@@ -120,7 +120,7 @@ struct JieqiMomentQuery {
  */
 auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
-  if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
+  if (jq_idx >= 24) [[unlikely]] {
     return {};
   }
 
@@ -159,7 +159,7 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
  * @returns `true` if the name is successfully written to `buf`.
  */
 auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
-  if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
+  if (jq_idx >= 24) [[unlikely]] {
     lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
     return false;
   }
