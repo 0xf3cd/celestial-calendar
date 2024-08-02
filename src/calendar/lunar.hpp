@@ -43,20 +43,20 @@ const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);
 
 /*! @brief The last supported lunar date. */
 const inline year_month_day LAST_LUNAR_DATE = std::invoke([] {
-  const LunarYearInfo& info = LUNARDATA_CACHE.get(END_YEAR);
+  const LunarYearInfo& info = get_lunar_year_info(END_YEAR);
   return util::to_ymd(END_YEAR, info.month_lengths.size(), info.month_lengths.back());
 });
 
 /*! @brief The first supported gregorian date. */
 const inline year_month_day FIRST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYearInfo& info = LUNARDATA_CACHE.get(START_YEAR);
+  const LunarYearInfo& info = get_lunar_year_info(START_YEAR);
   return info.date_of_first_day;
 });
 
 /*! @brief The last supported gregorian date. */
 const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYearInfo& info = LUNARDATA_CACHE.get(END_YEAR);
-  const auto& ml = LUNARDATA_CACHE.get(END_YEAR).month_lengths;
+  const LunarYearInfo& info = get_lunar_year_info(END_YEAR);
+  const auto& ml = get_lunar_year_info(END_YEAR).month_lengths;
   const uint32_t days_count = std::reduce(ml.begin(), ml.end());
 
   using namespace util::ymd_operator;
@@ -85,7 +85,7 @@ inline auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
   }
 
   const auto [y, m, d] = util::from_ymd(lunar_date);
-  const auto& info = LUNARDATA_CACHE.get(y);
+  const auto& info = get_lunar_year_info(y);
   const auto& ml = info.month_lengths;
   
   if (m < 1 || m > ml.size()) {
@@ -117,7 +117,7 @@ inline auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::opt
   const auto& [g_y, g_m, g_d] = util::from_ymd(gregorian_date);
 
   const auto find_lunar_date = [&](const int32_t lunar_y) -> year_month_day {
-    const auto& info = LUNARDATA_CACHE.get(lunar_y);
+    const auto& info = get_lunar_year_info(lunar_y);
     const auto& ml = info.month_lengths;
 
     // Calculate how many days have past in the lunar year.
@@ -145,7 +145,7 @@ inline auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::opt
   // First, check if lunar date and gregorian_date date are in the same year.
   if (g_y <= END_YEAR) {
     using namespace util::ymd_operator;
-    const auto& info = LUNARDATA_CACHE.get(g_y);
+    const auto& info = get_lunar_year_info(g_y);
     const auto& ml = info.month_lengths;
     const uint32_t lunar_year_days_count = std::reduce(ml.begin(), ml.end());
 
@@ -177,7 +177,7 @@ inline auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optiona
   }
 
   const auto [y, m, d] = util::from_ymd(lunar_date);
-  const auto& info = LUNARDATA_CACHE.get(y);
+  const auto& info = get_lunar_year_info(y);
   const auto& ml = info.month_lengths;
 
   const uint32_t past_days_count = d + std::reduce(ml.begin(), ml.begin() + m - 1);

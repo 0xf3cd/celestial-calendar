@@ -45,6 +45,7 @@ def run_ruff() -> int:
 
   if not check_tool(Tool('ruff')):
     red_print('ruff not found!')
+    yellow_print('Install ruff by `pip install ruff`')
     return 1
 
   yellow_print('Running ruff...')

@@ -44,18 +44,17 @@ struct Discriminant {
  *          1 indicates that Sun will reach the given geocentric longitude once in the given year.
  *          2 indicates that Sun will reach the given geocentric longitude twice in the given year.
  */
-auto jde_discriminant(const int32_t year, const double longitude) -> Discriminant {
+auto root_discriminant(const int32_t year, const double longitude) -> Discriminant {
   try {
     return {
       .valid = true,
       .count = calendar::jieqi::math::discriminant(year, longitude),
     };
   } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of jde_discriminant");
-    lib::debug("jde_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
+    lib::info("Exception raised during execution of root_discriminant");
+    lib::debug("root_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
     return {};
   }
-  
 }
 
 
@@ -66,54 +65,45 @@ auto jde_discriminant(const int32_t year, const double longitude) -> Discriminan
  * @param longitude The geocentric longitude.
  * @param slots The slots. It's caller's responsibility to allocate and free the slots.
  * @param slot_count The count of slots.
- * @return `true` if the slots are filled with the found JDE(s), `false` otherwise.
+ * @return How many slots are written.
  */
-auto find_jdes(
+auto copy_roots(
   const int32_t year, 
   const double longitude, 
   double * const slots, 
   const uint32_t slot_count
-) -> bool {
+) -> uint32_t {
   using namespace calendar::jieqi::math;
 
-  const auto roots_opt = std::invoke([=] -> std::optional<std::vector<double>> {
-    try {
-      auto roots = find_roots(year, longitude);
+  try {
+    auto roots = find_roots(year, longitude);
 
-      // Some sanity check...
-      const auto root_count = discriminant(year, longitude);
-      if (roots.size() != root_count) [[unlikely]] {
-        lib::info("Error in find_jdes: roots.size() is {}, but expected size is {}", roots.size(), root_count);
-        lib::info("No root will be written to the slots.");
+    // Some sanity check...
+    const auto root_count = discriminant(year, longitude);
+    if (roots.size() != root_count) [[unlikely]] {
+      lib::info("Error in copy_roots: roots.size() is {}, but expected size is {}", roots.size(), root_count);
+      lib::info("No root will be written to the slots.");
 
-        return std::nullopt;
-      }
-
-      return roots;
-    } catch (const std::exception& e) {
-      lib::info("Exception raised during execution of find_roots");
-      lib::debug("find_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
-
-      return std::nullopt;
+      return 0;
     }
-  });
 
-  if (!roots_opt.has_value()) [[unlikely]] {
-    return false;
+    const auto num_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
+    std::copy(roots.begin(), roots.begin() + num_written, slots);
+
+    return num_written;
+  } catch (const std::exception& e) {
+    lib::info("Exception raised during execution of copy_roots");
+    lib::debug("copy_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
+
+    return 0;
   }
-
-  // Copy the roots to the slots.
-  const auto num_written = std::min(static_cast<uint32_t>(roots_opt->size()), slot_count);
-  std::copy(roots_opt->begin(), roots_opt->begin() + num_written, slots);
-
-  return true;
 }
 
 
 struct JieqiMomentQuery {
   bool     valid;  // Indicates if the result is valid.
 
-  int32_t  jq_idx; // The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
+  uint8_t  jq_idx; // The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
 
   int32_t  y;      // The year.
   uint32_t m;      // The month.
@@ -128,7 +118,7 @@ struct JieqiMomentQuery {
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
  * @returns A `JieqiMomentQuery` struct.
  */
-auto query_jieqi(const int32_t year, const int32_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
+auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
     return {};
@@ -154,7 +144,7 @@ auto query_jieqi(const int32_t year, const int32_t jq_idx) -> JieqiMomentQuery {
     };
     
   } catch (const std::exception& e) {
-    lib::info("Error in query_jieqi: {}", e.what());
+    lib::info("Error in query_jieqi_moment: {}", e.what());
 
     return {};
   }
@@ -168,9 +158,9 @@ auto query_jieqi(const int32_t year, const int32_t jq_idx) -> JieqiMomentQuery {
  * @param buf_size Maximum bytes that can be written to `buf`.
  * @returns `true` if the name is successfully written to `buf`.
  */
-auto get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
+auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
   if (jq_idx < 0 || jq_idx >= 24) [[unlikely]] {
-    lib::info("Error in get_jieqi_chinese: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
+    lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
     return false;
   }
 
@@ -179,7 +169,7 @@ auto get_jieqi_chinese(const int32_t jq_idx, char * const buf, const uint32_t bu
 
   // Check if the buffer is large enough to hold the name and the null terminator
   if (buf_size < name.size() + 1) {
-    lib::info("Error in get_jieqi_chinese: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
+    lib::info("Error in get_jieqi_name: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
     return false;
   }
 

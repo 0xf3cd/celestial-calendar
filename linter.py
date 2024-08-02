@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Automation script for running Python and C++ linters.
+# Automation script for running Python and C++ linters (ruff and clang-tidy, respectively).
 #
 #########################################################################################
 # CelestialCalendar Automation:
@@ -48,10 +48,13 @@ def parse_args() -> argparse.Namespace:
       '    ./linter.py --ruff\n\n'
       '  To run clang-tidy to check C++ codes:\n'
       '    ./linter.py --clang-tidy\n\n'
+      '  To run both linters:\n'
+      '    ./linter.py -a/--all\n\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
 
+  parser.add_argument('-a', '--all', action='store_true', help='Clean the project')
   parser.add_argument('--ruff', action='store_true', help='Run ruff')
   parser.add_argument('--clang-tidy', action='store_true', help='Run clang-tidy')
 
@@ -62,9 +65,9 @@ if __name__ == '__main__':
   args = parse_args()
   ret_code = 0
 
-  if args.ruff:
+  if args.ruff or args.all:
     ret_code |= run_ruff()
-  if args.clang_tidy:
+  if args.clang_tidy or args.all:
     ret_code |= run_clang_tidy()
 
   sys.exit(ret_code)

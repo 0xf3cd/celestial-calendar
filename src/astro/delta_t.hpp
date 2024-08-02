@@ -385,13 +385,17 @@ constexpr auto compute(const double year) -> double {
  * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
  * @return The delta T, in seconds.
  * @details Algo 4 is used when input year <= 2035, because it is the most accurate one.
+ *          For years beyond 2035, algo 2 is used. Note that the results may be inaccurate for years >= 2035.
  * 
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
 constexpr auto compute(const double year) -> double {
-  return algo4::compute(year);
+  if (year < 2035.0) {
+    return algo4::compute(year);
+  }
+  return algo2::compute(year);
 }
 
 
