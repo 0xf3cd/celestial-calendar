@@ -32,7 +32,7 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Build and test the project
-# Build without setting up
+RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
 RUN /opt/venv/bin/python ./project.py --setup --clean --cmake --cores all --build --test -v 1
 
 # Save the build information
