@@ -212,7 +212,7 @@ class GitHub:
     tasks = [asyncio.create_task(coro()) for _ in range(parallel)]
 
     # Block until all items in the queue have been processed. 
-    # This may be redundant though, since we `asyncio.gather` later.
+    # This may be redundant though, since we will `asyncio.gather` later.
     await queue.join() 
     # Ensure all tasks are awaited.
     await asyncio.gather(*tasks)
@@ -234,3 +234,179 @@ class GitHub:
       List[Path]: The path to the downloaded artifacts.
     '''
     return asyncio.run(GitHub.async_download_artifacts(run_id, download_dir, parallel))
+
+
+  @dataclass
+  class Asset:
+    '''
+    A class representing a GitHub asset.
+    '''
+    id: int
+    name: str
+    content_type: str
+    size: int
+    download_count: int
+    url: str
+    browser_download_url: str
+
+  @dataclass
+  class Release:
+    '''
+    A class representing a GitHub release.
+    '''
+    id: int
+    tag_name: str
+    draft: bool
+    prerelease: bool
+    created_at: str
+    published_at: str
+    name: str
+    url: str
+    html_url: str
+    tarball_url: str
+    zipball_url: str
+    assets_url: str
+    assets: List['GitHub.Asset']
+
+  @staticmethod
+  def list_releases() -> List['GitHub.Release']:
+    '''
+    List all releases in the repository.
+
+    Returns:
+      List['GitHub.Release']: A list of GitHub releases.
+    '''
+    url = f'https://api.github.com/repos/{OWNER}/{REPO}/releases'
+    response = requests.get(url, headers=gen_headers())
+    response.raise_for_status()
+
+    json_resp = response.json()
+    return [
+      GitHub.Release(
+        release['id'],
+        release['tag_name'],
+        release['draft'],
+        release['prerelease'],
+        release['created_at'],
+        release['published_at'],
+        release['name'],
+        release['url'],
+        release['html_url'],
+        release['tarball_url'],
+        release['zipball_url'],
+        release['assets_url'],
+        [
+          GitHub.Asset(
+            asset['id'],
+            asset['name'],
+            asset['content_type'],
+            asset['size'],
+            asset['download_count'],
+            asset['url'],
+            asset['browser_download_url']
+          )
+          for asset in release['assets']
+        ]
+      )
+      for release in json_resp
+    ]
+  
+  @staticmethod
+  def download_one_release_asset(name: str, download_url: str, download_dir: Path) -> Path:
+    '''
+    Download a single release asset.
+
+    Args:
+      name (str): The name of the asset.
+      download_url (str): The URL of the asset.
+      download_dir (Path): The directory where the asset should be saved.
+
+    Returns:
+      Path: The path to the downloaded asset.
+    '''
+    with requests.get(download_url, headers=gen_headers(), stream=True) as response:
+      response.raise_for_status()
+
+      download_dir.mkdir(parents=True, exist_ok=True)
+      asset = download_dir / name
+
+      with open(asset, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+          f.write(chunk)
+
+      green_print(f'# Downloaded {name}')
+      return asset
+
+  @staticmethod
+  async def async_download_release(release_id: int, download_dir: Path, parallel: int) -> List[Path]:
+    '''
+    Asynchronously fetch all assets and source code for a given release.
+
+    Args:
+      release_id (int): The ID of the GitHub release.
+      download_dir (Path): The directory where assets should be saved.
+      parallel (int): The number of parallel download tasks.
+
+    Returns:
+      List[Path]: The path to the downloaded assets.
+    '''
+    if parallel < 1 or parallel > 20:
+      raise ValueError('Invalid parallel value')
+    
+    releases = GitHub.list_releases()
+    selected_release = None
+    for release in releases:
+      if release.id == release_id:
+        selected_release = release
+        break
+
+    if selected_release is None:
+      raise ValueError(f'Invalid release id: {release_id}')
+
+    assets = selected_release.assets
+
+    queue = asyncio.Queue()
+    for asset in assets:
+      queue.put_nowait((asset.name, asset.browser_download_url))
+
+    tag_name = selected_release.tag_name
+    queue.put_nowait(('src.zip', f'https://github.com/0xf3cd/celestial-calendar/archive/refs/tags/{tag_name}.tar.gz'))
+    queue.put_nowait(('src.tar.gz', f'https://github.com/0xf3cd/celestial-calendar/archive/refs/tags/{tag_name}.tar.gz'))
+
+    paths: List[Path] = []
+
+    async def coro():
+      while not queue.empty():
+        name, url = await queue.get()
+        try:
+          path = await asyncio.to_thread(GitHub.download_one_release_asset, name, url, download_dir)
+          paths.append(path)
+        except Exception as e:
+          red_print(f'# Failed to download {name}: {e}')
+        finally:
+          queue.task_done() # Signal that the current task is done.
+
+    tasks = [asyncio.create_task(coro()) for _ in range(parallel)]
+
+    # Block until all items in the queue have been processed. 
+    # This may be redundant though, since we will `asyncio.gather` later.
+    await queue.join() 
+    # Ensure all tasks are awaited.
+    await asyncio.gather(*tasks)
+
+    return paths
+
+  @staticmethod
+  def download_release(release_id: int, download_dir: Path, parallel: int = 4) -> List[Path]:
+    '''
+    Download all assets and source code for a given release.
+
+    Args:
+      release_id (int): The ID of the GitHub release.
+      download_dir (Path): The directory where assets should be saved.
+      parallel (int): The number of parallel download tasks.
+
+    Returns:
+      List[Path]: The path to the downloaded assets.
+    '''
+    return asyncio.run(GitHub.async_download_release(release_id, download_dir, parallel))
