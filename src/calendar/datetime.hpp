@@ -52,7 +52,7 @@ concept IsDuration = requires {
  * @example `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
  */
 template <IsDuration Duration>
-consteval uint64_t in_a_day() {
+consteval auto in_a_day() -> uint64_t {
   return duration_cast<Duration>(days { 1 }).count();
 }
 
@@ -76,7 +76,7 @@ concept Fractionable = requires (T t) {
  * @warning No check on the input `elapsed`, so it can be negative or greater than `in_a_day<nanoseconds>()`.
  *          Thus, the returned result may be < 0.0 or >= 1.0.
  */
-constexpr double to_fraction(const Fractionable auto& elapsed) {
+constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
   const auto& ns_duration = duration_cast<nanoseconds>(elapsed);
   const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
@@ -93,7 +93,7 @@ constexpr double to_fraction(const Fractionable auto& elapsed) {
  * @example `from_fraction(2.0) == 48:00:00.000000000`
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
  */
-constexpr hh_mm_ss<nanoseconds> from_fraction(const double fraction) {
+constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
   return hh_mm_ss {
     nanoseconds {
       static_cast<int64_t>(
@@ -127,7 +127,9 @@ struct Datetime {
       time_of_day { tp - floor<days>(tp) }
   {
     if (not ok()) {
-      const double ns = time_of_day.to_duration().count();
+      const double ns = static_cast<double>(
+        time_of_day.to_duration().count()
+      );
       throw std::runtime_error {
         std::vformat(
           "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
@@ -148,7 +150,9 @@ struct Datetime {
       time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
   {
     if (not ok()) {
-      const double ns = this->time_of_day.to_duration().count();
+      const double ns = static_cast<double>(
+        this->time_of_day.to_duration().count()
+      );
       throw std::runtime_error {
         std::vformat(
           "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
@@ -186,7 +190,9 @@ struct Datetime {
     }
 
     if (not ok()) {
-      const double ns = time_of_day.to_duration().count();
+      const double ns = static_cast<double>(
+        time_of_day.to_duration().count()
+      );
       throw std::runtime_error {
         std::vformat(
           "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
@@ -200,7 +206,7 @@ struct Datetime {
    * @brief Checks if the underlying gregorian date and time are valid and within the supported range. 
    * @return `true` if all good, `false` otherwise.
    */
-  constexpr bool ok() const noexcept {
+  [[nodiscard]] constexpr auto ok() const noexcept -> bool {
     // Check if the gregorian date is valid.
     if (not ymd.ok()) {
       return false;
@@ -222,9 +228,9 @@ struct Datetime {
    * @brief Returns the fraction of a day, in the range [0.0, 1.0).
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).
    */
-  constexpr double fraction() const noexcept {
+  [[nodiscard]] constexpr auto fraction() const noexcept -> double {
     const nanoseconds&& elapsed = time_of_day.to_duration();
-    return to_fraction(std::move(elapsed));
+    return to_fraction(elapsed);
   }
 };
 

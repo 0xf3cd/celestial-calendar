@@ -79,7 +79,7 @@ TEST(LunarCalendar, GregorianToLunar) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-    const auto& info = LUNARDATA_CACHE.get(year);
+    const auto& info = get_lunar_year_info(year);
     ASSERT_EQ(util::to_ymd(year, 1, 1), gregorian_to_lunar(info.date_of_first_day));
 
     uint32_t days_count = 0;
@@ -98,7 +98,7 @@ TEST(LunarCalendar, LunarToGregorian) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-    const auto& info = LUNARDATA_CACHE.get(year);
+    const auto& info = get_lunar_year_info(year);
     ASSERT_EQ(info.date_of_first_day, lunar_to_gregorian(util::to_ymd(year, 1, 1)));
 
     uint32_t days_count = 0;

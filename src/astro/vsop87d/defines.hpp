@@ -63,7 +63,7 @@ constexpr double SCALING_FACTOR = 1e8;
  * @return The sum of the terms in the table.
  * @example `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
  */
-inline double evaluate_table(const Vsop87dTable& vsop_table, const double jm) {
+inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
   const auto calc_term = [jm](const auto& term) constexpr -> double {
     return term.A * std::cos(term.B + term.C * jm);
   };
@@ -82,7 +82,7 @@ inline double evaluate_table(const Vsop87dTable& vsop_table, const double jm) {
  * @return The evaluated result. As per the VSOP87D model, the result is in radians.
  * @example `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
  */
-inline double evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) {
+inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -> double {
   // Evaluate the result for each table in `vsop_tables`.
   const auto values = vsop_tables | std::views::transform([jm](const Vsop87dTable& vsop_table) {
     return evaluate_table(vsop_table, jm);
@@ -101,7 +101,7 @@ inline double evaluate_tables(const Vsop87dTables& vsop_tables, const double jm)
 }
 
 /** @enum The planets supported by VSOP87D. */
-enum class Planet { EAR, /* SAT, MAR, ... */ };
+enum class Planet : uint8_t { EAR, /* SAT, MAR, ... */ };
 
 /** @struct The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
 template <Planet planet>
@@ -125,7 +125,7 @@ struct Evaluation {
  * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */
 template <Planet planet>
-inline Evaluation evaluate(const double jm) {
+inline auto evaluate(const double jm) -> Evaluation {
   const auto& L = PlannetTables<planet>::L;
   const auto& B = PlannetTables<planet>::B;
   const auto& R = PlannetTables<planet>::R;

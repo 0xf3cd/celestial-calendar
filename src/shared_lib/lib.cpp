@@ -33,7 +33,7 @@ extern "C" {
  * @returns `true` if the verbosity level is changed to the specified value, `false` otherwise.
  */
 auto set_log_verbosity(const uint8_t new_value) -> bool {
-  if (new_value >= std::underlying_type_t<lib::Verbosity>(lib::Verbosity::COUNT)) {
+  if (new_value >= static_cast<uint8_t>(lib::Verbosity::COUNT)) {
     lib::info("Invalid verbosity level: {}", new_value);
     return false;
   }

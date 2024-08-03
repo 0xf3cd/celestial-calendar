@@ -22,7 +22,9 @@ jobs:
       - name: Install Python Dependencies
         run: |  
           python3 -m pip install --upgrade pip  
-          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+
+          python3 -m pip install ruff clang-tidy
 
       - name: Install LLVM and clang++
         run: |
@@ -39,7 +41,10 @@ jobs:
           CC:  clang-18
         run: |
           chmod +x project.py
-          ./project.py --clean --cmake --ruff --clang-tidy
+          ./project.py --clean --cmake
+          
+          chmod +x linter.py
+          ./linter.py --ruff --clang-tidy
 
           
   test-ubuntu-gcc14:  

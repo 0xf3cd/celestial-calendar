@@ -40,7 +40,7 @@ const DatasetType ACCURATE_DELTA_T_TABLE {
   { 2014.0, 67.3 },
 };
 
-} // namespace dataset
+}  // namespace dataset::test
 
 #pragma endregion
 
@@ -62,7 +62,7 @@ const std::array<delta_t_func, 4> DELTA_T_ALGO_FUNCS {
   algo4::compute
 };  
 
-} // namespace algo_list
+}  // namespace algo_info
 
 #pragma endregion
 
@@ -97,12 +97,12 @@ auto calc_diff(const double year, const double expected_delta_t) {
 #pragma region Other Helper Functions
 
 // TODO: Use `std::views::join_with` when it gets supported.
-std::string join_with(
+auto join_with(
   const std::ranges::range auto& view, 
   const std::string& separator
-) {
+) -> std::string {
   // Low performance implementation...
-  std::string str { "" };
+  std::string str;
   for (const auto& substr : view) {
     str += substr + separator;
   }
@@ -125,10 +125,10 @@ const auto pad = []<typename T>(T result) -> std::string {
   return std::vformat("{:^{}}", std::make_format_args(result, PAD_WIDTH));
 };
 
-std::string make_line(
+auto make_line(
   const std::ranges::range auto& range1, 
   const std::ranges::range auto& range2
-) {
+) -> std::string {
   const std::string separator { " | " };
 
   // TODO: Use `std::views::concat` when it gets supported.

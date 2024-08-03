@@ -10,17 +10,15 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 
+import re
+
 from . import paths
 from .env import Tool, check_tool
 from .utils import run_cmd, yellow_print, red_print, green_print
 
 
 def ensure_run_clang_tidy() -> int:
-  '''Ensure that clang-tidy and the runner 'run-clang-tidy.py' is installed.'''
-  if not check_tool(Tool('clang-tidy')):
-    red_print('clang-tidy not found!')
-    return 1
-
+  '''Ensure that the runner 'run-clang-tidy.py' is installed.'''
   proj_root = paths.proj_root()
   run_clang_tidy = proj_root / 'run-clang-tidy.py'
   if run_clang_tidy.exists():
@@ -47,6 +45,7 @@ def run_ruff() -> int:
 
   if not check_tool(Tool('ruff')):
     red_print('ruff not found!')
+    yellow_print('Install ruff by `pip install ruff`')
     return 1
 
   yellow_print('Running ruff...')
@@ -65,6 +64,11 @@ def run_clang_tidy() -> int:
   '''Run clang-tidy on the project CPP source code.'''
   print('#' * 60)
 
+  if not check_tool(Tool('clang-tidy')):
+    red_print('clang-tidy not found!')
+    yellow_print('Install clang-tidy by `pip install clang-tidy`')
+    return 1
+
   if ensure_run_clang_tidy() != 0:
     return 1
 
@@ -77,12 +81,26 @@ def run_clang_tidy() -> int:
 
   yellow_print('Running clang-tidy...')
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(['python3', 'run-clang-tidy.py', '-p', str(build_dir)], 
+  ret = run_cmd(['python3', 'run-clang-tidy.py', '-p', str(build_dir), '-header-filter=src/'], 
                 cwd=str(paths.proj_root()))
 
   if ret.retcode == 0:
     green_print('clang-tidy passed')
   else:
     red_print('clang-tidy failed')
+
+  # Save stderr and stdout to files.
+  def clean_text(text: str) -> str:
+    control_chars = re.compile(r'[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]')
+    return control_chars.sub('', text)
+
+  stdout_log = build_dir / 'clang-tidy-stdout.log'
+  stderr_log = build_dir / 'clang-tidy-stderr.log'
+
+  with stdout_log.open('w') as f:
+    f.write(clean_text(ret.stdout))
+
+  with stderr_log.open('w') as f:
+    f.write(clean_text(ret.stderr))
 
   return ret.retcode

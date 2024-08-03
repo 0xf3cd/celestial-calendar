@@ -52,7 +52,7 @@ namespace astro::earth::heliocentric_coord {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The heliocentric ecliptic position of the Earth, calculated using VSOP87D.
  */
-inline SphericalCoordinate vsop87d(const double jde) {
+inline auto vsop87d(const double jde) -> SphericalCoordinate {
   const double jm = astro::julian_day::jde_to_jm(jde);
   const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
 
@@ -279,13 +279,13 @@ constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 
 
 /** @enum Specify which model to use when calculating Earth's nutation. */
-enum class Model { MEEUS, IAU_1980 };
+enum class Model : uint8_t { MEEUS, IAU_1980 };
 
 /** @brief Find the nutation coefficients for the given model. */
-inline std::span<const NutationCoeffs> find_model(const Model model) {
+inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
   switch (model) {
-    case Model::MEEUS:    return std::span<const NutationCoeffs>(MEEUS_NUTATION_COEFFS);
-    case Model::IAU_1980: return std::span<const NutationCoeffs>(IAU1980_NUTATION_COEFFS);
+    case Model::MEEUS:    return { MEEUS_NUTATION_COEFFS };
+    case Model::IAU_1980: return { IAU1980_NUTATION_COEFFS };
     default:              throw std::runtime_error { "Unknown nutation model" };
   }
 }
@@ -297,7 +297,7 @@ inline std::span<const NutationCoeffs> find_model(const Model model) {
  * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
+inline auto gen_eval_θ(const double jc) -> std::function<Angle<DEG>(θCoeffs)> {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -327,7 +327,7 @@ inline std::function<Angle<DEG>(θCoeffs)> gen_eval_θ(const double jc) {
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline Angle<DEG> longitude(const double jde, const Model model = Model::IAU_1980) {
+inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -362,7 +362,7 @@ inline Angle<DEG> longitude(const double jde, const Model model = Model::IAU_198
  * @note By default, the IAU 1980 model is used, since it is more accurate.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline Angle<DEG> obliquity(const double jde, const Model model = Model::IAU_1980) {
+inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -409,7 +409,7 @@ constexpr double ANNUAL_CONSTANT = 20.49552;
  * @param r The radius (in AU).
  * @return The aberration (in degrees).
  */
-inline Angle<DEG> compute(const double r) {
+inline auto compute(const double r) -> Angle<DEG> {
   const double aberration_arcsec = ANNUAL_CONSTANT / r;
   return Angle<DEG>::from_arcsec(aberration_arcsec);
 }

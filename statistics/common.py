@@ -156,11 +156,6 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
   @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
   @returns The Julian Ephemeris Day Number (JDE).
   '''
-  if y >= 2035:
-    raise ValueError(f"Year {y} is not supported by algorithm 4."
-                      "Algorithm 4 is the underlying algorithm to compute Delta T when converting ut1 to jde."
-                      "Considering use `ut1_to_jd` instead, though some accuracy may be lost due to Delta T.")
-  
   jde = LIB.ut1_to_jde(y, m, d, fraction)
 
   if not jde.valid:

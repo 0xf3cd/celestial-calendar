@@ -87,13 +87,13 @@ struct LunarYearInfo {
 };
 
 
-/*! 
- @fn Get the lunar year information for the given year. 
-     返回给定年份的阴历年信息。
- @param year The year. 年份。
- @return The lunar year information. 阴历年信息。
+/**
+ * @brief Calculate the lunar year information for the given year. 
+          返回给定年份的阴历年信息。
+ * @param year The year. 年份。
+ * @return The lunar year information. 阴历年信息。
  */
-inline LunarYearInfo get_lunar_year_info(uint32_t year) {
+inline auto calc_lunar_year_info(uint32_t year) -> LunarYearInfo {
   // Validate the input year.
   if (year < START_YEAR || year > END_YEAR) {
     throw std::out_of_range { 
@@ -101,7 +101,7 @@ inline LunarYearInfo get_lunar_year_info(uint32_t year) {
     };
   }
 
-  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR];
+  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
   const uint32_t days_offset    = bin_data >> 17;
   const uint8_t  leap_month     = (bin_data >> 13) & 0xf;
   const uint16_t month_len_info = bin_data & 0x1fff;
@@ -143,7 +143,7 @@ private:
   const std::vector<LunarYearInfo> _cached = std::invoke([] {
     using namespace std::ranges;
     const auto years = views::iota(START_YEAR, END_YEAR + 1);
-    const auto transformed = years | views::transform(get_lunar_year_info);
+    const auto transformed = years | views::transform(calc_lunar_year_info);
     return transformed | to<std::vector>();
   });
 
@@ -156,14 +156,23 @@ public:
    @param year The year. 年份。
    @return The lunar year info. 阴历年信息。
    */
-  const LunarYearInfo& get(const int32_t year) const {
+  [[nodiscard]] auto get(const int32_t year) const -> const LunarYearInfo& {
     assert(year >= START_YEAR and year <= END_YEAR);
     return _cached[year - START_YEAR];
   }
 };
 
 
-/*! @brief The global lunar year information cache. 阴历年信息缓存。 */
-const inline LunarYearInfoCache LUNARDATA_CACHE {};
+/**
+ * @brief Same function as `calc_lunar_year_info`, but cached. 
+          与 `calc_lunar_year_info` 功能相同，但使用缓存。
+ * @attention The input year should be in the range of [START_YEAR, END_YEAR].
+ * @param year The year. 年份。
+ * @return The lunar year information. 阴历年信息。
+ */
+inline auto get_lunar_year_info(const int32_t year) -> const LunarYearInfo& {
+  static LunarYearInfoCache cache;
+  return cache.get(year);
+}
 
 } // namespace calendar::lunardata

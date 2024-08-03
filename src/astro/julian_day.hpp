@@ -51,7 +51,7 @@ constexpr double J2000 = 2451545.0;
  * @param ut1_dt The datetime in UT1.
  * @return The julian day number.
  */
-inline double ut1_to_jd(const calendar::Datetime& ut1_dt) {
+inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -74,6 +74,9 @@ inline double ut1_to_jd(const calendar::Datetime& ut1_dt) {
   const auto& [g_y, g_m, g_d] = util::from_ymd(ut1_dt.ymd);
   assert(g_y > 0);
 
+  // NOLINTBEGIN
+  // The following code is doing narrowing-conversions. 
+  // But keep it as-is for matching the original algorithm expressions.
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
   const uint32_t M = (g_m <= 2) ? g_m + 12 : g_m;
   const uint32_t D = g_d;
@@ -84,6 +87,7 @@ inline double ut1_to_jd(const calendar::Datetime& ut1_dt) {
   const uint32_t E = 365.25 * (Y + 4716);
   const uint32_t F = 30.6001 * (M + 1);
   const double  JD = C + D + E + F - 1524.5 + ut1_dt.fraction(); // add the fractional part as well.
+  // NOLINTEND
 
   assert(JD > 0);
   return JD;
@@ -95,7 +99,7 @@ inline double ut1_to_jd(const calendar::Datetime& ut1_dt) {
  * @param jd The julian day number.
  * @return The datetime in UT1.
  */
-inline calendar::Datetime jd_to_ut1(const double jd) {
+inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -127,6 +131,9 @@ inline calendar::Datetime jd_to_ut1(const double jd) {
     throw std::runtime_error("The estimated gregorian year is < 450.");
   }
 
+  // NOLINTBEGIN
+  // The following code is doing narrowing-conversions. 
+  // But keep it as-is for matching the original algorithm expressions.
   const double   Q = jd + 0.5;
   const uint32_t Z = Q;
   const uint32_t W = (Z - 1867216.25) / 36524.25;
@@ -140,6 +147,8 @@ inline calendar::Datetime jd_to_ut1(const double jd) {
 
   const uint32_t day = B - D - F + (Q - Z);
   const double fraction = B - D - F + (Q - Z) - day;
+  // NOLINTEND
+
   assert(1 <= day and day <= 31);
   assert(0.0 <= fraction and fraction < 1.0);
 
@@ -148,7 +157,7 @@ inline calendar::Datetime jd_to_ut1(const double jd) {
 
   const uint32_t year = (month <= 2) ? C - 4715 : C - 4716;
   assert(year > 0);
-  
+
   const auto& ymd = util::to_ymd(year, month, day);
   assert(ymd.ok());
 
@@ -161,7 +170,7 @@ inline calendar::Datetime jd_to_ut1(const double jd) {
  * @param tt_dt The date and time (TT).
  * @return The julian ephemeris day number, which is based on TT (not UT1).
  */
-inline double tt_to_jde(const calendar::Datetime& tt_dt) {
+inline auto tt_to_jde(const calendar::Datetime& tt_dt) -> double {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return ut1_to_jd(tt_dt);
 }
@@ -172,7 +181,7 @@ inline double tt_to_jde(const calendar::Datetime& tt_dt) {
  * @param jde The julian ephemeris day number, which is based on TT (not UT1).
  * @return The date and time, in TT.
  */
-inline calendar::Datetime jde_to_tt(const double jde) {
+inline auto jde_to_tt(const double jde) -> calendar::Datetime {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return jd_to_ut1(jde);
 }
@@ -183,7 +192,7 @@ inline calendar::Datetime jde_to_tt(const double jde) {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The date and time, in UT1.
  */
-inline calendar::Datetime jde_to_ut1(const double jde) {
+inline auto jde_to_ut1(const double jde) -> calendar::Datetime {
   const auto tt_dt = jde_to_tt(jde);
   return astro::delta_t::tt_to_ut1(tt_dt);
 }
@@ -194,7 +203,7 @@ inline calendar::Datetime jde_to_ut1(const double jde) {
  * @param ut1_dt The date and time, in UT1.
  * @return The julian ephemeris day number, which is based on TT.
  */
-inline double ut1_to_jde(const calendar::Datetime& ut1_dt) {
+inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
   return tt_to_jde(tt_dt);
 }
@@ -205,7 +214,7 @@ inline double ut1_to_jde(const calendar::Datetime& ut1_dt) {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
  */
-constexpr double jde_to_jm(const double jde) {
+constexpr auto jde_to_jm(const double jde) -> double {
   return (jde - J2000) / 365250.0;
 }
 
@@ -214,7 +223,7 @@ constexpr double jde_to_jm(const double jde) {
  * @param jm The julian millennium since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr double jm_to_jde(const double jm) {
+constexpr auto jm_to_jde(const double jm) -> double {
   return jm * 365250.0 + J2000;
 }
 
@@ -224,7 +233,7 @@ constexpr double jm_to_jde(const double jm) {
  * @param jde The julian day number.
  * @return The julian century since J2000.
  */
-constexpr double jde_to_jc(const double jde) {
+constexpr auto jde_to_jc(const double jde) -> double {
   return (jde - J2000) / 36525.0;
 }
 
@@ -234,7 +243,7 @@ constexpr double jde_to_jc(const double jde) {
  * @param jc The julian century since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr double jc_to_jde(const double jc) {
+constexpr auto jc_to_jde(const double jc) -> double {
   return jc * 36525.0 + J2000;
 }
 
