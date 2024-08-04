@@ -206,17 +206,21 @@ inline auto operator"" _rad(const long double value) -> Angle<AngleUnit::RAD> {
 #pragma region Coordinate Definitions
 
 /** @enum The unit of distance, either AU or KM. */
-enum class DistanceUnit { AU, KM };
+enum class DistanceUnit : uint8_t { AU, KM };
 
+/** @brief The scaling factor from AU to KM. */
 constexpr double au_km_scale = 149597870.691; 
 
+/** @brief Convert from AU to KM. */
 constexpr auto au_to_km(const double au) -> double { 
   return au * au_km_scale; 
 }
 
+/** @brief Convert from KM to AU. */
 constexpr auto km_to_au(const double km) -> double { 
   return km / au_km_scale; 
 }
+
 
 /** @brief Represents a distance. */
 template <DistanceUnit Unit>

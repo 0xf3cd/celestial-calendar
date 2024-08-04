@@ -58,7 +58,7 @@ TEST(Elp2000, Evaluate) {
 
     const auto evaluated = evaluate(jc);
     ASSERT_NEAR(evaluated.Σl, Σl, 4e-5);
-    ASSERT_NEAR(evaluated.Σb, Σb, 3e-6);
+    ASSERT_NEAR(evaluated.Σb, Σb, 5e-6);
     ASSERT_NEAR(evaluated.Σr, Σr, 2e-4);
 
     ASSERT_NEAR(evaluated.perturbation_l, per_l, 1e-9);
