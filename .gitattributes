@@ -1,2 +1,2 @@
-# Ignore the sun_longitude.ipynb in GitHub's language statistics
 statistics/sun_longitude.ipynb linguist-vendored
+statistics/syzygy.ipynb linguist-vendored

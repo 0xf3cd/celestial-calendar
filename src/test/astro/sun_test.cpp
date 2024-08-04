@@ -727,4 +727,19 @@ TEST(Sun, CorrectedPosition) {
   }
 }
 
+TEST(Sun, RandomApparentPosition) {
+  // In this test, random apparent positions are generated.
+  // Ensure the longitude and latitude are within the expected range.
+  for (int i = 0; i < 100; ++i) {
+    const auto jde = astro::julian_day::J2000 + util::random(-365250.0 * 5, 365250.0 * 5);
+    const auto coord = apparent(jde);
+
+    const auto lon = coord.λ.deg();
+    const auto lat = coord.β.deg();
+
+    ASSERT_TRUE(lon >= 0.0 and lon <= 360.0);
+    ASSERT_TRUE(lat >= -90.0 and lat <= 90.0);
+  }
+}
+
 } // namespace astro::sun::test

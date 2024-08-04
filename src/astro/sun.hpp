@@ -120,7 +120,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   const auto β = vsop_coord.β + correction.Δβ;
 
   return {
-    .λ = λ,
+    .λ = λ.normalize(),
     .β = β,
     .r = vsop_coord.r
   };

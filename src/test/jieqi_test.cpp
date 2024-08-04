@@ -52,7 +52,8 @@ TEST(JieQiMath, SolarLongitude) {
     const auto jde = astro::julian_day::tt_to_jde(tt_dt);
     const auto lon = solar_longitude(jde);
 
-    ASSERT_NEAR(lon, expected_lon, epsilon);
+    const auto lon_diff = std::fabs(std::fmod(lon - expected_lon, 360.0));
+    ASSERT_TRUE((lon_diff < epsilon) or (lon_diff > 360.0 - epsilon));
   }
 }
 
@@ -135,7 +136,8 @@ TEST(JieQi, JDE) {
       const auto jde_lon = solar_longitude(jde);
       const auto expected_lon = JIEQI_SOLAR_LONGITUDE.at(jq);
 
-      ASSERT_NEAR(jde_lon, expected_lon, 1e-9);
+      const auto lon_diff = std::fabs(std::fmod(jde_lon - expected_lon, 360.0));
+      ASSERT_TRUE((lon_diff < 1e-9) or (lon_diff > 360.0 - 1e-9));
     }
   }
 }
