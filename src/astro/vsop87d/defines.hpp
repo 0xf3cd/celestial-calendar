@@ -24,9 +24,9 @@
 #pragma once
 
 #include <span>
+#include <cmath>
 #include <ranges>
 #include <numeric>
-#include <type_traits>
 
 namespace astro::vsop87d {
 
@@ -50,7 +50,7 @@ using Vsop87dTables = std::span<const Vsop87dTable>;
 
 /**
  * @brief The scaling factor used for the VSOP87D tables in this project.
- * @note In this project, the coefficient As in the tables are multiplied by 1e8.
+ * @note In this project, the coefficient "A"s in the tables are multiplied by 1e8.
  *       So before getting the correct radians, we need to divide them by 1e8. 
  */
 constexpr double SCALING_FACTOR = 1e8;

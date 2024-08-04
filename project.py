@@ -26,7 +26,7 @@ from typing import List, Callable, Sequence, Final
 
 from automation import (
   run_cmake, build_project, clean_build,
-  run_tests, print_system_info,
+  run_gtests, print_system_info,
   time_execution, red_print, green_print, blue_print,
   setup_environment, Tool, SetupPlan
 )
@@ -174,7 +174,7 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
   if args.build:
     tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
   if args.test:
-    tasks.append(Task('Run tests', lambda: run_tests(args.keyword, args.verbosity)))
+    tasks.append(Task('Run tests', lambda: run_gtests(args.keyword, args.verbosity)))
   return tasks
 
 

@@ -25,8 +25,7 @@
 
 #include <cmath>
 #include <numbers>
-
-#include "vsop87d/defines.hpp"
+#include <stdexcept>
 
 namespace astro::toolbox {
 

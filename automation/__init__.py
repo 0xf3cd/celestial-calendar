@@ -15,7 +15,7 @@ from .env import (
   make_compiler_args, SetupPlan, setup_environment
 )
 from .build import run_cmake, build_project, clean_build
-from .gtest import run_tests, find_tests, list_tests
+from .gtest import run_gtests, find_gtests, list_gtests
 from .sysinfo import print_system_info
 from .utils import (
   green_print, red_print, yellow_print, blue_print, 
@@ -31,7 +31,7 @@ __all__ = [
   'Tool', 'CompilerArgs', 'check_c_support', 'check_cpp_support', 'make_compiler_args',
   'find_c_compilers', 'find_cpp_compilers',
   'SetupPlan', 'setup_environment', 'run_cmake', 'build_project', 'clean_build',
-  'run_tests', 'find_tests', 'list_tests', 'print_system_info',
+  'run_gtests', 'find_gtests', 'list_gtests', 'print_system_info',
   'green_print', 'red_print', 'yellow_print', 'blue_print',
   'run_cmd', 'ProcReturn', 'time_execution',
   'proj_root', 'build_dir', 'cpp_src_dir', 'python_requirements', 'cpp_test_dir',

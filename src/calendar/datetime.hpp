@@ -27,8 +27,6 @@
 #include <format>
 #include <cassert>
 
-#include "ymd.hpp"
-
 namespace calendar {
 
 using namespace std::chrono;

@@ -22,7 +22,6 @@
  */
 
 #include <cstring>
-#include <optional>
 
 #include "lib.hpp"
 #include "jieqi.hpp"
