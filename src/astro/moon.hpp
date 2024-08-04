@@ -29,6 +29,45 @@
 #include "elp2000_82b.hpp"
 
 
+namespace astro::moon::perturbation {
+
+using astro::elp2000_82b::Context;
+
+/**
+ * @brief Calculate perturbation of the Moon's geocentric longitude.
+ * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
+ *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ * @param ctx The context.
+ * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+inline auto longitude(const Context& ctx) -> double {
+  return 3958.0 * std::sin(ctx.A1.rad()) 
+       + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
+       + 318.0 * std::sin(ctx.A2.rad());
+}
+
+
+/**
+ * @brief Calculate perturbation of the Moon's geocentric latitude.
+ * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
+ *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ * @param ctx The context.
+ * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+inline auto latitude(const Context& ctx) -> double {
+  return -2235.0 * std::sin(ctx.Lp.rad())
+       + 382.0 * std::sin(ctx.A3.rad())
+       + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
+       + 175.0 * std::sin(ctx.A1.rad() + ctx.F.rad())
+       + 127.0 * std::sin(ctx.Lp.rad() - ctx.Mp.rad())
+       - 115.0 * std::sin(ctx.Lp.rad() + ctx.Mp.rad());
+}
+
+} // namespace astro::moon::perturbation
+
+
 namespace astro::moon::geocentric_coord {
 
 using astro::toolbox::Angle;
@@ -53,20 +92,20 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
 
   const auto evaluated = evaluate(jc);
 
-  // Longitude
-  const auto Σl = evaluated.Σl + evaluated.perturbation_l;
+  // Longitude, considering the perturbation and nutation.
+  const auto Σl = evaluated.Σl + perturbation::longitude(evaluated.ctx);
   const auto lon_nutation = astro::earth::nutation::longitude(jde);
-  const Angle<DEG> lon = evaluated.Lp + (Σl / LON_LAT_SCALING_FACTOR) + lon_nutation; 
+  const Angle<DEG> lon = evaluated.ctx.Lp + (Σl / LON_LAT_SCALING_FACTOR) + lon_nutation; 
 
-  // Latitude
-  const auto Σb = evaluated.Σb + evaluated.perturbation_b;
+  // Latitude, considering the perturbation.
+  const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
   const Angle<DEG> lat { Σb / LON_LAT_SCALING_FACTOR };
 
-  // Distance
+  // Distance, in KM.
   const Distance<KM> r { 385000.56 + evaluated.Σr / RADIUS_SCALING_FACTOR };
 
   return {
-    .λ = lon,
+    .λ = lon.normalize(),
     .β = lat,
     .r = r
   };
@@ -78,9 +117,8 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
  * @param coord The geocentric ecliptic position of the Moon.
  * @return The equatorial horizontal parallax of the Moon.
  */
-inline auto equatorial_horizontal_parallax(const SphericalCoordinate& coord) -> Angle<RAD> {
-  const auto& r = coord.r;
-  const auto ppi_rad = std::asin(6378.14 / r.km());
+inline auto equatorial_horizontal_parallax(const Distance<KM>& distance) -> Angle<RAD> {
+  const auto ppi_rad = std::asin(6378.14 / distance.km());
   return { ppi_rad };
 }
 

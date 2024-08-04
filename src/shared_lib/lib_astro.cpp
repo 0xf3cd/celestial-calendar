@@ -167,4 +167,40 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
 
 #pragma endregion
 
+
+#pragma region Moon Apparent Geocentric Position
+
+struct MoonCoordinate {
+  bool valid; // Indicates if the result is valid.
+  double lon; // The longitude. In degrees.
+  double lat; // The latitude. In degrees.
+  double   r; // The radius. In KM.
+};
+
+
+/**
+ * @brief Calculate the apparent geocentric position of the Moon.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @returns A `MoonCoordinate` struct.
+ */
+auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
+  try {
+    const auto coord = astro::moon::geocentric_coord::apparent(jde);
+
+    return {
+      .valid = true,
+      .lon   = coord.λ.deg(),
+      .lat   = coord.β.deg(),
+      .r     = coord.r.km(),
+    };
+  } catch (const std::exception& e) {
+    lib::info("Error in moon_apparent_geocentric_position: {}", e.what());
+    lib::debug("moon_apparent_geocentric_position: jde = {}", jde);
+
+    return {};
+  }
+}
+
+#pragma endregion
+
 }

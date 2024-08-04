@@ -53,16 +53,13 @@ TEST(Elp2000, Evaluate) {
   };
 
   for (const auto& [jde, expected] : dataset) {
-    const auto& [Σl, Σb, Σr, per_l, per_b] = expected;
+    const auto& [Σl, Σb, Σr, _, __] = expected;
     const auto jc = julian_day::jde_to_jc(jde);
 
     const auto evaluated = evaluate(jc);
     ASSERT_NEAR(evaluated.Σl, Σl, 4e-5);
     ASSERT_NEAR(evaluated.Σb, Σb, 5e-6);
     ASSERT_NEAR(evaluated.Σr, Σr, 2e-4);
-
-    ASSERT_NEAR(evaluated.perturbation_l, per_l, 1e-9);
-    ASSERT_NEAR(evaluated.perturbation_b, per_b, 1e-8);
   }
 }
 

@@ -119,6 +119,15 @@ class _SunCoordinate(Structure):
     ('r',     c_double),
   ]
 
+# Define the MoonCoordinate struct
+class _MoonCoordinate(Structure):
+  _fields_ = [
+    ('valid', c_bool  ),
+    ('lon',   c_double),
+    ('lat',   c_double),
+    ('r',     c_double),
+  ]
+
 # Define the function signatures
 LIB.ut1_to_jd.argtypes = [c_int32, c_uint32, c_uint32, c_double]
 LIB.ut1_to_jd.restype = _JulianDay
@@ -128,6 +137,9 @@ LIB.ut1_to_jde.restype = _JulianDay
 
 LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
 LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
+
+LIB.moon_apparent_geocentric_coord.argtypes = [c_double]
+LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
 
 
 # Wrap C functions with Python functions, so that they can be called from Python.
@@ -182,6 +194,30 @@ def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
     raise ValueError("Error occurred in sun_apparent_geocentric_coord.")
 
   return SunCoordinate(
+    lon = coord.lon,
+    lat = coord.lat,
+    r   = coord.r,
+  )
+
+
+@dataclass
+class MoonCoordinate:
+  lon: float # In degrees
+  lat: float # In degrees
+  r:   float # In KM
+
+def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
+  '''
+  @brief Compute the apparent geocentric coordinates of the Moon.
+  @param jde The julian ephemeris day number, which is based on TT.
+  @returns A `MoonCoordinate` representing the apparent geocentric coordinates of the Moon.
+  '''
+  coord = LIB.moon_apparent_geocentric_coord(jde)
+
+  if not coord.valid:
+    raise ValueError("Error occurred in moon_apparent_geocentric_coord.")
+
+  return MoonCoordinate(
     lon = coord.lon,
     lat = coord.lat,
     r   = coord.r,

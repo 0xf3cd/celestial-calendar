@@ -276,44 +276,9 @@ struct Evaluation {
   double Σb; // Unit is 0.000001 degrees
   double Σr; // Unit is 0.001 kilometers
 
-  double perturbation_l; // Unit is 0.000001 degrees
-  double perturbation_b; // Unit is 0.000001 degrees
-
-  Angle<DEG> Lp;
+  Context ctx; // The context for the Jean Meeus's algorithm
 };
 
-
-/**
- * @brief Calculate perturbation of the Moon's geocentric longitude.
- * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
- *          the Moon is perturbated by Venus, Jupiter, and Earth.
- * @param ctx The context.
- * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
- * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- */
-inline auto moon_longitude_perturbation(const Context& ctx) -> double {
-  return 3958.0 * std::sin(ctx.A1.rad()) 
-       + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
-       + 318.0 * std::sin(ctx.A2.rad());
-}
-
-
-/**
- * @brief Calculate perturbation of the Moon's geocentric latitude.
- * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
- *          the Moon is perturbated by Venus, Jupiter, and Earth.
- * @param ctx The context.
- * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
- * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- */
-inline auto moon_latitude_perturbation(const Context& ctx) -> double {
-  return -2235.0 * std::sin(ctx.Lp.rad())
-       + 382.0 * std::sin(ctx.A3.rad())
-       + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
-       + 175.0 * std::sin(ctx.A1.rad() + ctx.F.rad())
-       + 127.0 * std::sin(ctx.Lp.rad() - ctx.Mp.rad())
-       - 115.0 * std::sin(ctx.Lp.rad() + ctx.Mp.rad());
-}
 
 /**
  * @brief Evaluate ELP2000-82B on the given parameters.
@@ -366,14 +331,10 @@ inline auto evaluate(const double jc) -> Evaluation {
   });
 
   return {
-    .Σl = std::reduce(cbegin(lon_terms), cend(lon_terms)),
-    .Σb = std::reduce(cbegin(lat_terms), cend(lat_terms)),
-    .Σr = std::reduce(cbegin(rad_terms), cend(rad_terms)),
-
-    .perturbation_l = moon_longitude_perturbation(ctx),
-    .perturbation_b = moon_latitude_perturbation(ctx),
-
-    .Lp = ctx.Lp,
+    .Σl  = std::reduce(cbegin(lon_terms), cend(lon_terms)),
+    .Σb  = std::reduce(cbegin(lat_terms), cend(lat_terms)),
+    .Σr  = std::reduce(cbegin(rad_terms), cend(rad_terms)),
+    .ctx = ctx
   };
 };
 

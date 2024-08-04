@@ -14,4 +14,6 @@ message(STATUS "Building version ${VERSION_NUMBER}")
 
 add_library(celestial_calendar SHARED ${SOURCES})
 
+set_target_properties(celestial_calendar PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+
 set_target_properties(celestial_calendar PROPERTIES VERSION ${VERSION_NUMBER})
