@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 import ctypes
@@ -110,6 +111,16 @@ class _JulianDay(Structure):
     ('value', c_double),
   ]
 
+# Define the UT1Time struct
+class _UT1Time(Structure):
+  _fields_ = [
+    ('valid', c_bool),
+    ('year',  c_int32),
+    ('month', c_uint32),
+    ('day',   c_uint32),
+    ('fraction', c_double),
+  ]
+
 # Define the SunCoordinate struct
 class _SunCoordinate(Structure):
   _fields_ = [
@@ -134,6 +145,9 @@ LIB.ut1_to_jd.restype = _JulianDay
 
 LIB.ut1_to_jde.argtypes = [c_int32, c_uint32, c_uint32, c_double]
 LIB.ut1_to_jde.restype = _JulianDay
+
+LIB.jde_to_ut1.argtypes = [c_double]
+LIB.jde_to_ut1.restype = _UT1Time
 
 LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
 LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
@@ -174,6 +188,22 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
     raise ValueError("Error occurred in ut1_to_jde.")
 
   return jde.value
+
+
+def jde_to_ut1(jde: float) -> datetime:
+  '''
+  @brief Convert Julian Ephemeris Day Number (JDE) to UT1 datetime.
+  @param jde The julian ephemeris day number, which is based on TT.
+  @returns A `datetime` object representing the UT1 datetime.
+  '''
+  ut1 = LIB.jde_to_ut1(jde)
+
+  if not ut1.valid:
+    raise ValueError("Error occurred in jde_to_ut1.")
+
+  date = datetime(ut1.year, ut1.month, ut1.day)
+  elapsed_microseconds = int(ut1.fraction * 86400 * 1000000)
+  return date + timedelta(microseconds=elapsed_microseconds)
 
 
 @dataclass
