@@ -37,13 +37,13 @@ using astro::toolbox::SphericalCoordinate;
 
 /**
  * @brief Calculate the geocentric position of the Sun, using VSOP87D.
- * @param jd The Julian Day.
+ * @param jde The Julian Ephemeris Day.
  * @return The geocentric ecliptic position of the Sun, calculated using VSOP87D.
  * @details The function invokes `astro::earth::heliocentric_coord::vsop87d`, and
  *          transforms the heliocentric coordinates to geocentric coordinates.
  */
-inline auto vsop87d(const double jd) -> SphericalCoordinate {
-  const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jd);
+inline auto vsop87d(const double jde) -> SphericalCoordinate {
+  const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jde);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
@@ -111,7 +111,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   const auto nutation = astro::earth::nutation::longitude(jde);
 
   // Calculate the Solar aberration.
-  const auto aberration = astro::earth::aberration::compute(vsop_coord.r);
+  const auto aberration = astro::earth::aberration::compute(vsop_coord.r.au());
 
   // Calculate the adjusted longitude.
   const auto λ = vsop_coord.λ + correction.Δλ + nutation - aberration;

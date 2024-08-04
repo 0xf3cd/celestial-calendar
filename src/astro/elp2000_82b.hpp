@@ -216,6 +216,8 @@ constexpr double RADIUS_SCALING_FACTOR = 1e3;
  * @note This struct is expected to only hold the arguments from the ELP2000-82B model.
  */
 struct Context {
+  double     jc; // The julian century
+
   Angle<DEG> Lp; // The argument for the mean longitude of the Moon from the Sun
   Angle<DEG> D;  // The argument for the mean elongation of the Moon from the Sun
   Angle<DEG> M;  // The argument for the mean anomaly of the Sun
@@ -252,6 +254,7 @@ inline auto create_context(const double jc) -> Context {
   const double E = 1 - 0.002516 * jc - 0.0000074 * jc2;
 
   return {
+    .jc = jc,
     .Lp = Lp.normalize(),
     .D  = D.normalize(),
     .M  = M.normalize(),
@@ -269,10 +272,48 @@ inline auto create_context(const double jc) -> Context {
  * @struct The result of the ELP2000-82B evaluation.
  */
 struct Evaluation {
-  double Σl; // In degrees
-  double Σb; // In degrees
-  double Σr; // In kilometers
+  double Σl; // Unit is 0.000001 degrees
+  double Σb; // Unit is 0.000001 degrees
+  double Σr; // Unit is 0.001 kilometers
+
+  double perturbation_l; // Unit is 0.000001 degrees
+  double perturbation_b; // Unit is 0.000001 degrees
+
+  Angle<DEG> Lp;
 };
+
+
+/**
+ * @brief Calculate perturbation of the Moon's geocentric longitude.
+ * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
+ *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ * @param ctx The context.
+ * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+inline auto moon_longitude_perturbation(const Context& ctx) -> double {
+  return 3958.0 * std::sin(ctx.A1.rad()) 
+       + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
+       + 318.0 * std::sin(ctx.A2.rad());
+}
+
+
+/**
+ * @brief Calculate perturbation of the Moon's geocentric latitude.
+ * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
+ *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ * @param ctx The context.
+ * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+inline auto moon_latitude_perturbation(const Context& ctx) -> double {
+  return -2235.0 * std::sin(ctx.Lp.rad())
+       + 382.0 * std::sin(ctx.A3.rad())
+       + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
+       + 175.0 * std::sin(ctx.A1.rad() + ctx.F.rad())
+       + 127.0 * std::sin(ctx.Lp.rad() - ctx.Mp.rad())
+       - 115.0 * std::sin(ctx.Lp.rad() + ctx.Mp.rad());
+}
 
 /**
  * @brief Evaluate ELP2000-82B on the given parameters.
@@ -280,7 +321,7 @@ struct Evaluation {
  * @return The evaluated result.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-auto evaluate(const double jc) -> Evaluation {
+inline auto evaluate(const double jc) -> Evaluation {
   using namespace std::ranges;
 
   const auto ctx = create_context(jc);
@@ -325,9 +366,14 @@ auto evaluate(const double jc) -> Evaluation {
   });
 
   return {
-    .Σl = std::reduce(cbegin(lon_terms), cend(lon_terms)) / LON_LAT_SCALING_FACTOR,
-    .Σb = std::reduce(cbegin(lat_terms), cend(lat_terms)) / LON_LAT_SCALING_FACTOR,
-    .Σr = std::reduce(cbegin(rad_terms), cend(rad_terms)) / RADIUS_SCALING_FACTOR
+    .Σl = std::reduce(cbegin(lon_terms), cend(lon_terms)),
+    .Σb = std::reduce(cbegin(lat_terms), cend(lat_terms)),
+    .Σr = std::reduce(cbegin(rad_terms), cend(rad_terms)),
+
+    .perturbation_l = moon_longitude_perturbation(ctx),
+    .perturbation_b = moon_latitude_perturbation(ctx),
+
+    .Lp = ctx.Lp,
   };
 };
 

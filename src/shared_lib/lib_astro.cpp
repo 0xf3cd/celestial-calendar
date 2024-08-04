@@ -155,7 +155,7 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
       .valid = true,
       .lon   = coord.λ.deg(),
       .lat   = coord.β.deg(),
-      .r     = coord.r,
+      .r     = coord.r.au(),
     };
   } catch (const std::exception& e) {
     lib::info("Error in sun_apparent_geocentric_position: {}", e.what());

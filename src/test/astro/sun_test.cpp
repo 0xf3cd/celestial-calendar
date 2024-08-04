@@ -70,9 +70,9 @@ TEST(Sun, GeocentricPosition) {
 
   for (const auto& [jde, expected] : dataset) {
     const auto& [λ, β, r] = vsop87d(jde);
-    ASSERT_NEAR(λ.as<DEG>(), std::get<0>(expected), 1e-11);
-    ASSERT_NEAR(β.as<DEG>(), std::get<1>(expected), 1e-15);
-    ASSERT_NEAR(r,           std::get<2>(expected), 1e-15);
+    ASSERT_NEAR(λ.deg(), std::get<0>(expected), 1e-11);
+    ASSERT_NEAR(β.deg(), std::get<1>(expected), 1e-15);
+    ASSERT_NEAR(r.au(),  std::get<2>(expected), 1e-15);
   }
 }
 
@@ -722,8 +722,8 @@ TEST(Sun, CorrectedPosition) {
       #endif
     });
     
-    ASSERT_NEAR(result.β.as<DEG>(), std::get<1>(expected), epsilon);
-    ASSERT_NEAR(result.r,           std::get<2>(expected), epsilon);
+    ASSERT_NEAR(result.β.deg(), std::get<1>(expected), epsilon);
+    ASSERT_NEAR(result.r.au(),  std::get<2>(expected), epsilon);
   }
 }
 
