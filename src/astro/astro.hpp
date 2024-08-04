@@ -26,3 +26,4 @@
 #include "earth.hpp"
 #include "sun.hpp"
 #include "moon.hpp"
+#include "syzygy.hpp"
