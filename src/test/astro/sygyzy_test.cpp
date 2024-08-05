@@ -12,7 +12,15 @@ TEST(SyzygyConjunction, RootGenerator) {
   using namespace std::ranges;
 
   const auto jde = astro::julian_day::J2000 + util::random(-200000.0, 200000.0);
-  const auto roots = roots_after(jde) | views::take(500) | to<std::vector>();
+  
+  const auto roots = std::invoke([&] {
+    RootGenerator gen(jde);
+    std::vector<double> roots;
+    for (int i = 0; i < 500; ++i) {
+      roots.push_back(gen.next()); // NOLINT(performance-inefficient-vector-operation)
+    }
+    return roots;
+  });
 
   for (const auto root : roots) {
     ASSERT_GT(root, jde);

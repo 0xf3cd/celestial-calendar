@@ -25,8 +25,6 @@
 
 #include <vector>
 #include <format>
-#include <ranges>
-#include <experimental/generator>
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -166,23 +164,24 @@ inline auto next_root(const double jde) -> double {
 
 
 /**
- * @brief Find the roots after the given jde.
- * @param jde The jde. If the input `jde` is a root, it won't be included in the result.
- * @return A generator of the roots after the given `jde`.
+ * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).
  */
-inline auto roots_after(const double jde) -> std::experimental::generator<double> {
-  // TODO: Use `std::generator` when supported.
+// TODO: Use `std::generator` when supported.
+struct RootGenerator {
+private:
+  double _root;
 
-  // Find the first root after the given `jde`.
-  const auto [left, right] = first_root_range_after(jde);
-  const double first_root = newton_method(left, right);
-  co_yield first_root;
+public:
+  explicit RootGenerator(const double start_jde) {
+    const auto [left, right] = first_root_range_after(start_jde);
+    const double first_root = newton_method(left, right);
+    _root = first_root;
+  }
 
-  double prev_root = first_root;
-  while (true) {
-    const double root = next_root(prev_root);
-    prev_root = root;
-    co_yield root;
+  auto next() -> double {
+    const double root = _root;
+    _root = next_root(_root);
+    return root;
   }
 };
 
@@ -214,10 +213,19 @@ inline auto moments(const int32_t year) -> std::vector<double> {
   const auto start_jde = astro::julian_day::ut1_to_jde(start_moment);
   const auto end_jde = astro::julian_day::ut1_to_jde(end_moment);
 
-  auto roots = roots_after(start_jde) | std::views::take_while([&](const auto root) { 
-    return root < end_jde;
-  });
-  return roots | std::ranges::to<std::vector>();
+  RootGenerator gen(start_jde);
+  std::vector<double> roots;
+
+  while (true) {
+    const auto root = gen.next();
+    if (root >= end_jde) {
+      break;
+    }
+
+    roots.push_back(root);
+  }
+
+  return roots;
 };
 
 } // namespace astro::syzygy::conjunction::sun_moon
