@@ -27,6 +27,9 @@
 #include <format>
 #include <cassert>
 
+#include "ymd.hpp"
+
+
 namespace calendar {
 
 using namespace std::chrono;
@@ -230,6 +233,27 @@ struct Datetime {
     const nanoseconds&& elapsed = time_of_day.to_duration();
     return to_fraction(elapsed);
   }
+
+  // Define some operators as well in order to use `Datetime` in some STL containers.
+
+  auto operator==(const Datetime& other) const noexcept -> bool {
+    return ymd == other.ymd and time_of_day.to_duration() == other.time_of_day.to_duration();
+  }
 };
 
 } // namespace calendar
+
+
+namespace std {
+
+// Define hash function for Datetime
+template <>
+struct hash<calendar::Datetime> {
+  auto operator()(const calendar::Datetime& dt) const -> std::size_t {
+    const auto [y, m, d] = util::from_ymd(dt.ymd);
+    const double fraction = dt.fraction();
+    return (y * 13 + m * 67 + d * 197) ^ std::hash<double>{}(fraction);
+  }
+};
+
+} // namespace std

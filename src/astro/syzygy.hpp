@@ -35,6 +35,11 @@
 
 namespace astro::syzygy::conjunction::sun_moon {
 
+
+// In our context, the conjunction is the moment of the Sun and Moon at the same apparent longitude,
+// which is also the New Moon moment. In Chinese, this is called "朔", "合朔", or "新月".
+
+
 /**
  * @brief Calculate the difference between the apparent longitudes of the Moon and the Sun.
  * @param jde The Julian Ephemeris Day.
