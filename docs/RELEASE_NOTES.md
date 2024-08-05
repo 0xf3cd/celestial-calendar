@@ -5,6 +5,7 @@
 ### Added
 
 #### Astronomical Calculation
+
 - Supported conversions between JD (Julian Day) and UT1, and conversions between JDE (Julian Ephemeris Day) and TT.
 - Supported calculations of Delta T.
 - Supported conversions between UT1 and TT time scales.
@@ -13,9 +14,11 @@
 - Added other math utilities, e.g., `Angle`.
 
 #### Statistics
+
 - Added folder `statistics`, for statistical analysis to evaluate different astronomical algorithms
 
 #### Calendar
+
 - Added `Datetime`, a struct to hold a date and an accurate time, representing a UT1 or UTC moment.
 - Supported conversions between Lunar dates and Gregorian dates.
   - Currently, only Gregorian years between 1901 and 2099 are supported.
@@ -23,9 +26,11 @@
 - Supported queries of the Jieqi (节气) moments in given Gregorian years.
 
 #### Test
+
 - Implemented unit tests with GTest, covering core functionalities.
 
 #### Automation
+
 - Implemented the `automation` Python package to manage the project in an automated manner.
 - Added `project.py` as the entry point for building and testing the project.
 - Created the `toolbox` folder, including:

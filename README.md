@@ -1,19 +1,19 @@
 # Celestial Calendar
+
 > A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
 
-
 ## 1. Features
+
 * Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
 
-
 ## 2. Requirements
+
 * C++ Compiler that supports C++23
   * Currently, clang++ (LLVM 18) is able to compile the project on macOS, Windows, and Linux. g++ 14 also works.
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
-
 
 ## 3. How to Build
 
@@ -22,6 +22,7 @@
 Follow these steps to set up, build, and test the project on Unix-like systems. Ensure you have a C++23 compatible compiler installed.
 
 Before building the project, you should specify the compiler to use. For example, to use `clang++`, run:
+
 ```sh
 # Specify the compiler that supports C++23 on your platform
 export CXX=clang++ # Change this to fit your platform
@@ -38,20 +39,22 @@ chmod +x project.py
 # Run tests
 ./project.py --test
 
+# Or, run all above together to build and test
+./project.py --all
+
 # Clean up builds
 ./project.py --clean
-
-# Or, chain the commands together to build and test
-./project.py --clean --setup --cmake --build --test
 
 # More usages
 ./project.py --help
 ```
 
 ### 3.2. On Windows
+
 Follow these steps to set up, build, and test the project on Windows. Ensure you have a C++23 compatible compiler installed.
 
 Before building the project, you should specify the compiler to use. For example, to use `clang++`, run:
+
 ```powershell
 # Specify the compiler that supports C++23 on your platform
 $env:CXX = clang++
@@ -67,17 +70,18 @@ python3 ./project.py --cmake --build
 # Run tests
 python3 ./project.py --test
 
+# Or, run all above together to build and test
+python3 ./project.py --all
+
 # Clean up builds
 python3 ./project.py --clean
-
-# Or, chain the commands together to build and test
-python3 ./project.py --clean --setup --cmake --build --test
 
 # More usages
 python3 ./project.py --help
 ```
 
 ## 4. Linters and Static Analysis
+
 The project is written in C++, and automated with Python scripts.
 
 For C++ codes, `clang-tidy` is used; For Python codes, `ruff` is used.
@@ -87,6 +91,7 @@ Ensure `clang-tidy` and `ruff` are installed by `python3 -m pip install -r Requi
 The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 
 ### 4.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
+
 ```sh
 # Run ruff
 ./linter.py --ruff
@@ -96,6 +101,7 @@ The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 ```
 
 ### 4.2. On Windows
+
 ```powershell
 # Run ruff
 python3 ./linter.py --ruff
@@ -104,18 +110,21 @@ python3 ./linter.py --ruff
 python3 ./linter.py --clang-tidy
 ```
 
-
 ## 5. Download Artifacts (Shared Libs)
-There are basically two ways to download: 
+
+There are basically two ways to download:
 
 ### 5.1. From GitHub Web UI
+
 * Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
 * Download from the latest completed run
   
 ### 5.2. Use `toolbox/artifact_downloader.py`
+
 * Install dependencies: `python3 -m pip install -r Requirements.txt`
 * Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
 * Run `toolbox/artifact_downloader.py`
+
   ```sh
   # Ensure env var `GITHUB_TOKEN` is correctly set
   echo $GITHUB_TOKEN     # Unix-like platforms
@@ -137,18 +146,21 @@ There are basically two ways to download:
   python3 -m toolbox.artifact_downloader --help
   ```
 
-
 ## 6. Download Release
-There are basically two ways to download: 
+
+There are basically two ways to download:
 
 ### 6.1. From GitHub Web UI
+
 * Go to [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
 * Download the assets and source codes
 
 ### 6.2. Use `toolbox/release_downloader.py`
+
 * Install dependencies: `python3 -m pip install -r Requirements.txt`
 * Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download assets
 * Run `toolbox/release_downloader.py`
+
   ```sh
   # Ensure env var `GITHUB_TOKEN` is correctly set
   echo $GITHUB_TOKEN     # Unix-like platforms
@@ -168,6 +180,7 @@ There are basically two ways to download:
   ```
 
 ## 7. TODO List
+
 * C++20/23 features are not fully supported by the compilers...
   * Modules
   * Ranges and views (e.g. cartesian_product...)
@@ -175,8 +188,8 @@ There are basically two ways to download:
 * Support conversions between UTC and UT1
   * Their differences are subtle and are ignored at this moment...
 
-
 ## 8. References
+
 * [Julian Day Numbers](https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
 * [USNO Delta T Values](https://maia.usno.navy.mil/ser7/deltat.data)

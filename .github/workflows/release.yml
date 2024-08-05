@@ -35,12 +35,15 @@ jobs:
           export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
           chmod +x toolbox/artifact_downloader.py
-          ./toolbox/artifact_downloader.py --save-to ./downloaded_artifacts
+          ./toolbox/artifact_downloader.py --save-to ./release_assets
+
+      - name: Copy CHANGELOG.md
+        run: cp docs/CHANGELOG.md ./release_assets
 
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "downloaded_artifacts/*"
+          artifacts: "release_assets/*"
           bodyFile: "docs/RELEASE_NOTES.md"
 

@@ -37,7 +37,7 @@ namespace astro::syzygy::conjunction::sun_moon {
 
 
 // In our context, the conjunction is the moment of the Sun and Moon at the same apparent longitude,
-// which is also the New Moon moment. In Chinese, this is called "朔", "合朔", or "新月".
+// which is also called "New Moon". In Chinese, this is called "朔", "合朔", or "新月".
 
 
 /**

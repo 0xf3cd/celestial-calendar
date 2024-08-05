@@ -57,7 +57,7 @@ def parse_args() -> argparse.Namespace:
       '  To build the project using 4 CPU cores:\n'
       '    ./project.py --build --cores 4\n\n'
       '  To clean, set up, run CMake, build, and test the project in one command:\n'
-      '    ./project.py --clean --setup --cmake --build --test\n\n'
+      '    ./project.py -a/--all\n\n'
       '  To clean, run CMake, and build the project in one command:\n'
       '    ./project.py --clean --cmake --build\n\n'
       '  To set up and build the project using 8 CPU cores:\n'
@@ -104,7 +104,16 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
 
-  return parser.parse_args()
+  parser.add_argument('-a', '--all', action='store_true', help='Set up, run CMake, build, and test the project')
+
+  args = parser.parse_args()
+  if args.all:
+    args.setup = True
+    args.cmake = True
+    args.build = True
+    args.test = True
+
+  return args
 
 
 def print_steps(args: argparse.Namespace) -> None:
