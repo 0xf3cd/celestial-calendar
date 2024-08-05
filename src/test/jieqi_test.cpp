@@ -120,9 +120,7 @@ TEST(JieQi, JDE) {
     return util::random(0.0, 1.0) < 0.042;
 #else
     // Otherwise, randomly pick some years.
-    const bool b1 = util::random(0.0, 1.0) > 0.5;
-    const bool b2 = util::random(0.0, 1.0) < 0.5;
-    return b1 and b2;
+    return util::random(0.0, 1.0) < 0.25;
 #endif
   });
 
