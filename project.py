@@ -26,13 +26,13 @@ from typing import List, Callable, Sequence, Final
 
 from automation import (
   run_cmake, build_project, clean_build,
-  run_tests, print_system_info,
+  run_gtests, print_system_info,
   time_execution, red_print, green_print, blue_print,
   setup_environment, Tool, SetupPlan
 )
 
 
-BUILD_VERSION: Final[str] = '0.0.0'
+BUILD_VERSION: Final[str] = '0.1.0'
 
 def parse_args() -> argparse.Namespace:
   '''Parse the command line arguments.'''
@@ -56,14 +56,10 @@ def parse_args() -> argparse.Namespace:
       '    ./project.py --test --keyword keyword1 keyword2\n\n'
       '  To build the project using 4 CPU cores:\n'
       '    ./project.py --build --cores 4\n\n'
-      '  To clean, set up, run CMake, build, and test the project in one command:\n'
-      '    ./project.py --clean --setup --cmake --build --test\n\n'
-      '  To clean, run CMake, and build the project in one command:\n'
-      '    ./project.py --clean --cmake --build\n\n'
-      '  To set up and build the project using 8 CPU cores:\n'
-      '    ./project.py --setup --build --cores 8\n\n'
+      '  To set up, run CMake, build, and test the project in one command:\n'
+      '    ./project.py -a/--all\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./project.py --clean --setup --cmake --build --cores all --test\n\n'
+      '    ./project.py --clean --all --cores all\n\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
@@ -104,7 +100,16 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument('-k', '--keyword', nargs='*', help='Keywords to filter tests', default=[])
   parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=0, help='Verbosity level of tests')
 
-  return parser.parse_args()
+  parser.add_argument('-a', '--all', action='store_true', help='Set up, run CMake, build, and test the project')
+
+  args = parser.parse_args()
+  if args.all:
+    args.setup = True
+    args.cmake = True
+    args.build = True
+    args.test = True
+
+  return args
 
 
 def print_steps(args: argparse.Namespace) -> None:
@@ -174,7 +179,7 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
   if args.build:
     tasks.append(Task(f'Build the project using {args.cores} CPU cores', lambda: build_project(args.cores)))
   if args.test:
-    tasks.append(Task('Run tests', lambda: run_tests(args.keyword, args.verbosity)))
+    tasks.append(Task('Run tests', lambda: run_gtests(args.keyword, args.verbosity)))
   return tasks
 
 

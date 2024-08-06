@@ -25,8 +25,7 @@
 
 #include <cmath>
 #include <numbers>
-
-#include "vsop87d/defines.hpp"
+#include <stdexcept>
 
 namespace astro::toolbox {
 
@@ -206,13 +205,66 @@ inline auto operator"" _rad(const long double value) -> Angle<AngleUnit::RAD> {
 
 #pragma region Coordinate Definitions
 
+/** @enum The unit of distance, either AU or KM. */
+enum class DistanceUnit : uint8_t { AU, KM };
+
+/** @brief The scaling factor from AU to KM. */
+constexpr double au_km_scale = 149597870.691; 
+
+/** @brief Convert from AU to KM. */
+constexpr auto au_to_km(const double au) -> double { 
+  return au * au_km_scale; 
+}
+
+/** @brief Convert from KM to AU. */
+constexpr auto km_to_au(const double km) -> double { 
+  return km / au_km_scale; 
+}
+
+
+/** @brief Represents a distance. */
+template <DistanceUnit Unit>
+struct Distance {
+  const double _value;
+
+  constexpr Distance(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
+
+  /** @brief Allow implicit conversion to the other unit. */
+  template <DistanceUnit As>
+  constexpr operator Distance<As>() const { // NOLINT(google-explicit-constructor)
+    return { as<As>() };
+  }
+
+  template <DistanceUnit As>
+  [[nodiscard]] constexpr auto as() const -> double {
+    if constexpr (Unit == As) { // No conversion needed.
+      return _value;
+    } else {
+      if constexpr (As == DistanceUnit::AU) {
+        return km_to_au(_value);
+      } else {
+        return au_to_km(_value);
+      }
+    }
+  }
+
+  [[nodiscard]] constexpr auto au() const -> double {
+    return as<DistanceUnit::AU>();
+  }
+
+  [[nodiscard]] constexpr auto km() const -> double {
+    return as<DistanceUnit::KM>();
+  }
+};
+
+
 /**
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  const Angle<AngleUnit::DEG> λ; // Longitude
-  const Angle<AngleUnit::DEG> β; // Latitude
-  const double r;                // Radius, In AU
+  const Angle<AngleUnit::DEG>      λ; // Longitude
+  const Angle<AngleUnit::DEG>      β; // Latitude
+  const Distance<DistanceUnit::AU> r; // Radius/Distance
 };
 
 #pragma endregion

@@ -187,7 +187,7 @@ def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
       compiler_ret = run_cmd(compiler_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if compiler_ret.retcode != 0:
         return False
-
+      
       # Execute the compiled program
       program_command = [str(Path(tmpdir) / 'test_cpp')]
       program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)

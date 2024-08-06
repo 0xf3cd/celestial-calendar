@@ -1,2 +1,3 @@
-# Ignore the sun_longitude.ipynb in GitHub's language statistics
 statistics/sun_longitude.ipynb linguist-vendored
+statistics/moon_longitude.ipynb linguist-vendored
+statistics/new_moon.ipynb linguist-vendored

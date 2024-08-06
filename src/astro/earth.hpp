@@ -38,11 +38,13 @@ namespace astro::earth {
 using astro::toolbox::Angle;
 using astro::toolbox::AngleUnit::DEG;
 using astro::toolbox::AngleUnit::RAD;
+using astro::toolbox::DistanceUnit::AU;
+using astro::toolbox::Distance;
 using astro::toolbox::SphericalCoordinate;
 
 using astro::vsop87d::Planet;
 
-}
+} // namespace astro::earth
 
 
 namespace astro::earth::heliocentric_coord {
@@ -60,7 +62,7 @@ inline auto vsop87d(const double jde) -> SphericalCoordinate {
     // As per the algorithm, the longitude is normalized to [0, 2π).
     .λ = Angle<RAD>(evaluated.λ).normalize(),
     .β = Angle<RAD>(evaluated.β),
-    .r = evaluated.r
+    .r = Distance<AU>(evaluated.r)
   };
 }
 

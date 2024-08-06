@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include "julian_day.hpp"
-#include "random.hpp"
 #include "vsop87d/vsop87d.hpp"
 
 namespace astro::vsop87d::test {

@@ -1,10 +1,38 @@
 # Changelog
 
+## [v0.1.0] - 2024-08-05
+
+### Added
+
+#### Astronomical Calculation
+
+- Added theory ELP2000-82B (truncated version, from Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 47).
+- Supported calculations of the Geocentric Coordinate of the Moon, with corrections (perturbation, nutation, ...).
+- Applied Newton's method to approximate the moments of Sun-Moon conjunctions (i.e. New Moons).
+- Added other math utilities, e.g., `Distance`.
+
+#### Statistics
+
+- Added more notebooks in folder `statistics`:
+  - `moon_longitude.ipynb` for exploring Newton's Method on finding New Moon moments.
+  - `new_moon.ipynb` to compare calculated New Moon moments with other data sources.
+
+#### Test
+
+- Implemented unit tests with GTest, covering ELP2000-82B, Moon position calculation, and Sun-Moon conjunction moment prediction.
+
+#### Automation
+
+- Added `linter.py` to run `ruff` and `clang-tidy`.
+- Created the `toolbox` folder, including:
+  - `release_downloader.py` to download the assets from latest release.
+
 ## [v0.0.0] - 2024-08-01
 
 ### Added
 
 #### Astronomical Calculation
+
 - Supported conversions between JD (Julian Day) and UT1, and conversions between JDE (Julian Ephemeris Day) and TT.
 - Supported calculations of Delta T.
 - Supported conversions between UT1 and TT time scales.
@@ -13,9 +41,11 @@
 - Added other math utilities, e.g., `Angle`.
 
 #### Statistics
+
 - Added folder `statistics`, for statistical analysis to evaluate different astronomical algorithms
 
 #### Calendar
+
 - Added `Datetime`, a struct to hold a date and an accurate time, representing a UT1 or UTC moment.
 - Supported conversions between Lunar dates and Gregorian dates.
   - Currently, only Gregorian years between 1901 and 2099 are supported.
@@ -23,9 +53,11 @@
 - Supported queries of the Jieqi (节气) moments in given Gregorian years.
 
 #### Test
+
 - Implemented unit tests with GTest, covering core functionalities.
 
 #### Automation
+
 - Implemented the `automation` Python package to manage the project in an automated manner.
 - Added `project.py` as the entry point for building and testing the project.
 - Created the `toolbox` folder, including:

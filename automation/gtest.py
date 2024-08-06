@@ -21,7 +21,7 @@ BUILD_DIR = paths.build_dir()
 TEST_DIR = paths.cpp_test_dir()
 
 
-def list_tests() -> Dict[str, str]:
+def list_gtests() -> Dict[str, str]:
   '''List all available tests in the build directory.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
@@ -39,12 +39,12 @@ def list_tests() -> Dict[str, str]:
   return d
 
 
-def find_tests(keywords: List[str]) -> List[str]:
+def find_gtests(keywords: List[str]) -> List[str]:
   '''Find tests that match the given keywords.'''
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
-  no_to_name = list_tests() # {test_no: test_name}
+  no_to_name = list_gtests() # {test_no: test_name}
   name_to_no = { v: k for k, v in no_to_name.items() } # {test_name: test_no}
 
   def __find_test_no(keyword: str) -> List[str]:
@@ -79,7 +79,7 @@ def find_tests(keywords: List[str]) -> List[str]:
   return sorted(test_list, key=lambda test_name: name_to_no[test_name])
 
 
-def run_test(
+def run_gtest(
   test: str,
   verbose_level: int = 0,
   debug: bool = False,
@@ -102,7 +102,7 @@ def run_test(
   return run_cmd(cmd, cwd=TEST_DIR)
 
 
-def run_tests(
+def run_gtests(
   keywords: List[str] = [], # When empty, run all tests.
   verbose_level: int = 0,
   debug: bool = False,
@@ -112,8 +112,8 @@ def run_tests(
   assert TEST_DIR.exists(), 'Test directory not found'
   assert TEST_DIR.is_dir(), 'Test directory is not a directory'
 
-  name_to_no = { v: k for k, v in list_tests().items() } # {test_name: test_no}
-  test_list = find_tests(keywords)
+  name_to_no = { v: k for k, v in list_gtests().items() } # {test_name: test_no}
+  test_list = find_gtests(keywords)
   
   print('#' * 60)
   blue_print(f'# *** {len(test_list)} tests to run ***:')
@@ -126,7 +126,7 @@ def run_tests(
     print('#' * 60)
     yellow_print(f'# Running test {test} - {name_to_no[test]}')
     
-    test_proc_ret = run_test(test, verbose_level, debug, output_on_failure)
+    test_proc_ret = run_gtest(test, verbose_level, debug, output_on_failure)
     if test_proc_ret.retcode != 0:
       red_print(f'# Test {test} failed!')
       return test_proc_ret.retcode

@@ -1,34 +1,28 @@
 # Release Notes
 
-## [v0.0.0] - 2024-08-01
+## [v0.1.0] - 2024-08-05
 
 ### Added
 
 #### Astronomical Calculation
-- Supported conversions between JD (Julian Day) and UT1, and conversions between JDE (Julian Ephemeris Day) and TT.
-- Supported calculations of Delta T.
-- Supported conversions between UT1 and TT time scales.
-- Supported calculations of the Heliocentric Coordinate of Earth.
-- Supported calculations of the Geocentric Coordinate of the Sun, with corrections (FK5 system correction, nutation correction, etc.).
-- Added other math utilities, e.g., `Angle`.
+
+- Added theory ELP2000-82B (truncated version, from Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 47).
+- Supported calculations of the Geocentric Coordinate of the Moon, with corrections (perturbation, nutation, ...).
+- Applied Newton's method to approximate the moments of Sun-Moon conjunctions (i.e. New Moons).
+- Added other math utilities, e.g., `Distance`.
 
 #### Statistics
-- Added folder `statistics`, for statistical analysis to evaluate different astronomical algorithms
 
-#### Calendar
-- Added `Datetime`, a struct to hold a date and an accurate time, representing a UT1 or UTC moment.
-- Supported conversions between Lunar dates and Gregorian dates.
-  - Currently, only Gregorian years between 1901 and 2099 are supported.
-- Applied Newton's method to approximate the moment when the Sun reaches a certain longitude.
-- Supported queries of the Jieqi (节气) moments in given Gregorian years.
+- Added more notebooks in folder `statistics`:
+  - `moon_longitude.ipynb` for exploring Newton's Method on finding New Moon moments.
+  - `new_moon.ipynb` to compare calculated New Moon moments with other data sources.
 
 #### Test
-- Implemented unit tests with GTest, covering core functionalities.
+
+- Implemented unit tests with GTest, covering ELP2000-82B, Moon position calculation, and Sun-Moon conjunction moment prediction.
 
 #### Automation
-- Implemented the `automation` Python package to manage the project in an automated manner.
-- Added `project.py` as the entry point for building and testing the project.
+
+- Added `linter.py` to run `ruff` and `clang-tidy`.
 - Created the `toolbox` folder, including:
-  - `artifact_downloader.py` to download the latest shared libraries.
-  - `build_info.py` to pack the platform, architecture, and shared lib info with a build.
-  - `compiler_finder.py` to find the C and C++ compilers that satisfy a certain standard.
+  - `release_downloader.py` to download the assets from latest release.

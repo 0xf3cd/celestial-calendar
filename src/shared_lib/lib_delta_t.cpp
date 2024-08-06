@@ -91,4 +91,19 @@ auto delta_t_algo4(double year) -> DeltaT {
   }
 }
 
+/** @brief Compute delta T of a given moment, using the best algorithm. */
+auto delta_t(double year) -> DeltaT {
+  try {
+    return {
+      .valid = true,
+      .value = astro::delta_t::compute(year),
+    };
+  } catch (const std::exception& e) {
+    lib::info("Exception raised during execution of delta_t");
+    lib::debug("delta_t: year = {}, error = {}", year, e.what());
+
+    return {};
+  }
+}   
+
 }

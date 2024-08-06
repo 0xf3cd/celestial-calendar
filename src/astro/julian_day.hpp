@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <chrono>
 #include <cassert>
 
 #include "delta_t.hpp"
