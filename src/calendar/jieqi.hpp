@@ -105,7 +105,7 @@ inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
  * @param year The year, in gregorian calendar.
  * @param jq The jieqi.
  * @return The UT1 (Universal Time 1).
- * @details This is just a thin wrapper around `jde_for_jieqi()`.
+ * @details This is just a thin wrapper around `jieqi_jde`.
  */
 inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
