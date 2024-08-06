@@ -184,7 +184,7 @@ There are basically two ways to download:
 * C++20/23 features are not fully supported by the compilers...
   * Modules
   * Ranges and views (e.g. cartesian_product...)
-  * Use `std::generator` in Newton's method (syzygy and jiqei).
+  * Use `std::generator` in Newton's method (moon_phase and jiqei).
 * Support conversions between UTC and UT1
   * Their differences are subtle and are ignored at this moment...
 

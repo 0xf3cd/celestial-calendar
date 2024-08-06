@@ -291,7 +291,7 @@ auto solar_lon_roots(
  * @param slot_count The count of slots.
  * @return How many slots are written.
  */
-auto sun_moon_conjunctions_after_jde(
+auto new_moons_after_jde(
   const double jde, 
   double * const slots, 
   const uint32_t slot_count
@@ -300,7 +300,7 @@ auto sun_moon_conjunctions_after_jde(
     std::vector<double> roots;
     roots.reserve(slot_count);
 
-    astro::syzygy::conjunction::sun_moon::RootGenerator gen(jde);
+    astro::moon_phase::new_moon::RootGenerator gen(jde);
     std::generate_n(std::back_inserter(roots), slot_count, [&] { return gen.next(); });
 
     std::copy(roots.begin(), roots.end(), slots);
@@ -324,14 +324,14 @@ auto sun_moon_conjunctions_after_jde(
  * @param slot_count The count of slots.
  * @return How many slots are written.
  */
-auto sun_moon_conjunctions_in_year(
+auto new_moons_in_year(
   const int32_t year, 
   uint32_t * const root_count,
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
   try {
-    const auto roots = astro::syzygy::conjunction::sun_moon::moments(year);
+    const auto roots = astro::moon_phase::new_moon::moments(year);
 
     *root_count = static_cast<uint32_t>(roots.size());
 

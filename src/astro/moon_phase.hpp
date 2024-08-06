@@ -33,10 +33,10 @@
 #include "sun.hpp"
 #include "moon.hpp"
 
-namespace astro::syzygy::conjunction::sun_moon {
 
+namespace astro::moon_phase::new_moon {
 
-// In our context, the conjunction is the moment of the Sun and Moon at the same apparent longitude,
+// In our context, the conjunction is the moment when the Sun and the Moon are at the same apparent longitude,
 // which is also called "New Moon". In Chinese, this is called "朔", "合朔", or "新月".
 
 
@@ -51,7 +51,7 @@ inline auto longitude_diff(const double jde) -> double {
   const auto moon_apparent_lon = astro::moon::geocentric_coord::apparent(jde).λ;
   const auto diff = moon_apparent_lon - sun_apparent_lon;
   return diff.normalize().deg();
-};
+}
 
 
 /**
@@ -114,7 +114,7 @@ inline auto newton_method(
   }
 
   return guess;
-};
+}
 
 
 /**
@@ -146,7 +146,7 @@ inline auto first_root_range_after(const double jde) -> std::pair<double, double
   }
 
   throw std::invalid_argument { "Cannot find the first root after the given jde." };
-};
+}
 
 
 /**
@@ -165,7 +165,7 @@ inline auto next_root(const double jde) -> double {
   const auto next_root_range = first_root_range_after(jde + 1.0); // Add 1.0 in case `jde_lon_diff` falls into [359.0, 360.0).
   const auto [left, right] = next_root_range;
   return newton_method(left, right);
-};
+}
 
 
 /**
@@ -231,6 +231,6 @@ inline auto moments(const int32_t year) -> std::vector<double> {
   }
 
   return roots;
-};
+}
 
-} // namespace astro::syzygy::conjunction::sun_moon
+} // namespace astro::moon_phase::new_moon

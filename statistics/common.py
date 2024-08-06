@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 import ctypes
-from ctypes import c_int32, c_uint32, c_double, c_bool, Structure
+from ctypes import c_int32, c_uint32, c_double, c_bool, POINTER, Structure
 
-from typing import Optional
+from typing import Optional, List
 
 
 def dynamic_lib_ext() -> str:
@@ -102,7 +102,7 @@ def delta_t_algo4(year: float) -> float:
 #endregion
 
 
-#region Astro functions
+#region Delta T and Julian Day
 
 # Define the JulianDay struct
 class _JulianDay(Structure):
@@ -121,24 +121,6 @@ class _UT1Time(Structure):
     ('fraction', c_double),
   ]
 
-# Define the SunCoordinate struct
-class _SunCoordinate(Structure):
-  _fields_ = [
-    ('valid', c_bool  ),
-    ('lon',   c_double),
-    ('lat',   c_double),
-    ('r',     c_double),
-  ]
-
-# Define the MoonCoordinate struct
-class _MoonCoordinate(Structure):
-  _fields_ = [
-    ('valid', c_bool  ),
-    ('lon',   c_double),
-    ('lat',   c_double),
-    ('r',     c_double),
-  ]
-
 # Define the function signatures
 LIB.ut1_to_jd.argtypes = [c_int32, c_uint32, c_uint32, c_double]
 LIB.ut1_to_jd.restype = _JulianDay
@@ -148,12 +130,6 @@ LIB.ut1_to_jde.restype = _JulianDay
 
 LIB.jde_to_ut1.argtypes = [c_double]
 LIB.jde_to_ut1.restype = _UT1Time
-
-LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
-LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
-
-LIB.moon_apparent_geocentric_coord.argtypes = [c_double]
-LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
 
 
 # Wrap C functions with Python functions, so that they can be called from Python.
@@ -205,6 +181,36 @@ def jde_to_ut1(jde: float) -> datetime:
   elapsed_microseconds = int(ut1.fraction * 86400 * 1000000)
   return date + timedelta(microseconds=elapsed_microseconds)
 
+#endregion
+
+
+#region Sun and Moon Coordinates
+
+# Define the SunCoordinate struct
+class _SunCoordinate(Structure):
+  _fields_ = [
+    ('valid', c_bool  ),
+    ('lon',   c_double),
+    ('lat',   c_double),
+    ('r',     c_double),
+  ]
+
+# Define the MoonCoordinate struct
+class _MoonCoordinate(Structure):
+  _fields_ = [
+    ('valid', c_bool  ),
+    ('lon',   c_double),
+    ('lat',   c_double),
+    ('r',     c_double),
+  ]
+
+
+LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
+LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
+
+LIB.moon_apparent_geocentric_coord.argtypes = [c_double]
+LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
+
 
 @dataclass
 class SunCoordinate:
@@ -251,6 +257,59 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
     lon = coord.lon,
     lat = coord.lat,
     r   = coord.r,
+  )
+
+#endregion
+
+
+#region New Moon
+
+LIB.new_moons_in_year.argtypes = [c_int32, POINTER(c_uint32), POINTER(c_double), c_uint32]
+LIB.new_moons_in_year.restype = c_uint32
+
+@dataclass
+class NewMoons:
+  """
+  A data class to hold the year and the list of Julian Ephemeris Days (JDEs)
+  when new moons occur.
+  """
+  year: int
+  new_moon_jdes: List[float]
+  new_moon_moments: List[datetime]
+
+
+def new_moons_in_year(year: int) -> NewMoons:
+  """
+  Find the Julian Ephemeris Days (JDEs) at which the Sun and Moon are at the
+  same longitude in a given year.
+
+  The function uses the shared library function new_moons_in_year to find
+  the conjunction moments (new moons) for the specified year.
+
+  @param year The year to search for new moons.
+  @returns A NewMoons data class instance containing the year and the list
+           of JDEs representing the conjunction moments (new moons).
+  """
+  # There should be either 12 or 13 new moons in a year, so 15 slots should be enough.
+  slot_count = 15 
+
+  # Allocate memory for the number of roots (new moons) and the slots to hold the JDEs.
+  root_count = c_uint32(0)
+  slots = (c_double * slot_count)()
+
+  # Call the shared library function to get the new moons in the given year.
+  num_written = LIB.new_moons_in_year(year, ctypes.byref(root_count), slots, slot_count)
+
+  # Ensure the number of written slots does not exceed the allocated slot count.
+  assert num_written <= slot_count
+
+  # Return the result as an instance of the NewMoons data class.
+  jdes = [slots[i] for i in range(num_written)]
+  moments = [jde_to_ut1(jde) for jde in jdes]
+  return NewMoons(
+    year=year,
+    new_moon_jdes=jdes,
+    new_moon_moments=moments,
   )
 
 #endregion

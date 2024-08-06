@@ -56,14 +56,10 @@ def parse_args() -> argparse.Namespace:
       '    ./project.py --test --keyword keyword1 keyword2\n\n'
       '  To build the project using 4 CPU cores:\n'
       '    ./project.py --build --cores 4\n\n'
-      '  To clean, set up, run CMake, build, and test the project in one command:\n'
+      '  To set up, run CMake, build, and test the project in one command:\n'
       '    ./project.py -a/--all\n\n'
-      '  To clean, run CMake, and build the project in one command:\n'
-      '    ./project.py --clean --cmake --build\n\n'
-      '  To set up and build the project using 8 CPU cores:\n'
-      '    ./project.py --setup --build --cores 8\n\n'
       '  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n'
-      '    ./project.py --clean --setup --cmake --build --cores all --test\n\n'
+      '    ./project.py --clean --all --cores all\n\n'
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )

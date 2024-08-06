@@ -8,11 +8,11 @@
 #include "astro.hpp"
 #include "ymd.hpp"
 
-namespace astro::syzygy::test {
+namespace astro::moon_phase::test {
 
-using namespace astro::syzygy::conjunction::sun_moon;
+using namespace astro::moon_phase::new_moon;
 
-TEST(SyzygyConjunction, RootGenerator) {
+TEST(NewMoon, RootGenerator) {
   using namespace std::ranges;
   const auto jde = astro::julian_day::J2000 + util::random(-200000.0, 200000.0);
   
@@ -49,7 +49,7 @@ TEST(SyzygyConjunction, RootGenerator) {
 }
 
 
-TEST(SyzygyConjunction, Moments) {
+TEST(NewMoon, Moments) {
   // Find roots in consecutive 10 years, and ensure the roots are consecutive as expected.
   const int32_t year = util::random(1700, 2050);
 
@@ -82,7 +82,7 @@ TEST(SyzygyConjunction, Moments) {
 }
 
 
-TEST(SyzygyConjunction, DiffTest1) {
+TEST(NewMoon, DiffTest1) {
   using namespace std::ranges;
   using namespace std::chrono_literals;
   using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
@@ -120,7 +120,7 @@ TEST(SyzygyConjunction, DiffTest1) {
 }
 
 
-TEST(SyzygyConjunction, DiffTest2) {
+TEST(NewMoon, DiffTest2) {
   using namespace std::ranges;
   using namespace std::chrono_literals;
   using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
@@ -157,4 +157,4 @@ TEST(SyzygyConjunction, DiffTest2) {
   }
 }
 
-} // namespace astro::syzygy::test
+} // namespace astro::moon_phase::test
