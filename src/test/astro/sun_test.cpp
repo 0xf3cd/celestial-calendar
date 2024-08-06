@@ -777,7 +777,7 @@ const std::vector<JieqiData> DATASET {
 };
 
 
-TEST(JieQiMath, SolarLongitude) {
+TEST(Sun, SolarLongitude) {
   for (const auto& [ymd, hms, expected_lon, epsilon] : DATASET) {
     const calendar::Datetime dt { ymd, hms };
     const auto tt_dt = astro::delta_t::ut1_to_tt(dt);
@@ -790,7 +790,7 @@ TEST(JieQiMath, SolarLongitude) {
   }
 }
 
-TEST(JieQiMath, FindRoots) {
+TEST(Sun, FindRoots) {
   for (const auto& [ymd, hms, expected_lon, _] : DATASET) {
     const calendar::Datetime dt { ymd, hms };
     const double jde = astro::julian_day::ut1_to_jde(dt);

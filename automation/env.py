@@ -158,7 +158,9 @@ def check_c_support(c_args: CompilerArgs, silent: bool = False) -> bool:
       program_command = [str(Path(tmpdir) / 'test_c')]
       program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if program_ret.retcode != 0:
-        return False
+        # Since the C compiler can be a cross-compiler, the program may fail
+        # So don't return False if the program fails
+        red_print(f'# Cannot execute the compiled program: {pformat(program_ret)}')
       
       return True
     
@@ -192,7 +194,9 @@ def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
       program_command = [str(Path(tmpdir) / 'test_cpp')]
       program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if program_ret.retcode != 0:
-        return False
+        # Since the C++ compiler can be a cross-compiler, the program may fail
+        # So don't return False if the program fails
+        red_print(f'# Cannot execute the compiled program: {pformat(program_ret)}')
       
       return True
     

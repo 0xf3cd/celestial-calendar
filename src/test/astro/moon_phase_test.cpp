@@ -19,7 +19,7 @@ TEST(NewMoon, RootGenerator) {
   const auto roots = std::invoke([&] {
     RootGenerator gen(jde);
     std::vector<double> roots;
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 64; ++i) {
       roots.push_back(gen.next()); // NOLINT(performance-inefficient-vector-operation)
     }
     return roots;

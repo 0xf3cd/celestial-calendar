@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <format>
+#include <numbers>
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -92,10 +93,10 @@ inline auto newton_method(
   };
 
   // Start approximating the root.
+  double h = 5e-4;
   double guess = (left_jde + right_jde) / 2.0;
   
   for (std::size_t i = 0; i < iterations; ++i) {
-    constexpr double h = 1e-8;
     const double f_prime = (f(guess + h) - f(guess - h)) / (2.0 * h);
     double next_guess = guess - f(guess) / f_prime;
 
@@ -106,11 +107,12 @@ inline auto newton_method(
       next_guess = right_jde - 1e-20;
     }
 
-    if (std::fabs(f(next_guess)) < epsilon) { // We found the root!!
+    if (std::fabs(next_guess - guess) < epsilon) {
       return next_guess;
     }
 
     guess = next_guess;
+    h = (h > 1e-10) ? h / std::numbers::phi : h; // Make the step size adaptive, for faster convergence.
   }
 
   return guess;
