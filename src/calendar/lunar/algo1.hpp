@@ -32,7 +32,7 @@
 #include "lunardata.hpp"
 
 
-namespace calendar::lunar {
+namespace calendar::lunar::algo1 {
 
 using std::chrono::year_month_day;
 using std::chrono::sys_days;
@@ -186,4 +186,4 @@ inline auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optiona
   return info.date_of_first_day + (past_days_count - 1);
 }
 
-} // namespace calendar::lunar
+} // namespace calendar::lunar::algo1

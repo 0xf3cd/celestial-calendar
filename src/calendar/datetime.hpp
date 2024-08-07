@@ -239,6 +239,17 @@ struct Datetime {
   auto operator==(const Datetime& other) const noexcept -> bool {
     return ymd == other.ymd and time_of_day.to_duration() == other.time_of_day.to_duration();
   }
+
+  auto operator!=(const Datetime& other) const noexcept -> bool {
+    return not (*this == other);
+  }
+
+  auto operator<=>(const Datetime& other) const noexcept {
+    if (auto cmp = ymd <=> other.ymd; cmp != 0) {
+      return cmp;
+    }
+    return time_of_day.to_duration() <=> other.time_of_day.to_duration();
+  };
 };
 
 } // namespace calendar

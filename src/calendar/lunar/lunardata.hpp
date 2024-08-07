@@ -35,6 +35,10 @@
 
 namespace calendar::lunardata {
 
+// This file contains encoded binary data for each lunar year between 1901 and 2099.
+// This is intended to be used in algo1.
+
+
 /*! @brief The first supported lunar year. */
 constexpr int32_t START_YEAR = 1901;
 

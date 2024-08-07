@@ -3,6 +3,7 @@
 #include <ranges>
 #include "util.hpp"
 #include "datetime.hpp"
+#include "ymd.hpp"
 
 namespace calendar::test {
 
@@ -352,6 +353,53 @@ TEST(Datetime, EdgeCases) {
                    std::runtime_error);
     }
   }
+}
+
+TEST(Datetime, OperatorsEqualNonequal) {
+  const Datetime dt1 { util::to_ymd(2024, 1, 1), 0.0 };
+  const Datetime dt2 { util::to_ymd(2024, 1, 1), 0.0 };
+  const Datetime dt3 { util::to_ymd(2024, 1, 1), 0.5 };
+
+  ASSERT_EQ(dt1, dt2);
+  ASSERT_NE(dt1, dt3);
+}
+
+TEST(Datetime, OperatorsSpaceship) {
+  const Datetime dt1 { util::to_ymd(2024, 1, 1), 0.0 };
+  const Datetime dt2 { util::to_ymd(2024, 1, 1), 0.0 };
+  const Datetime dt3 { util::to_ymd(2024, 1, 1), 0.5 };
+  const Datetime dt4 { util::to_ymd(2024, 1, 2), 0.0 };
+
+  // Equal
+  ASSERT_EQ(dt1 <=> dt2, std::strong_ordering::equal);
+
+  // Less than
+  ASSERT_EQ(dt1 <=> dt3, std::strong_ordering::less);
+  ASSERT_EQ(dt3 <=> dt4, std::strong_ordering::less);
+  ASSERT_TRUE(dt1 < dt3);
+  ASSERT_TRUE(dt3 < dt4);
+
+  // Less than or equal
+  ASSERT_EQ(dt1 <=> dt2, std::strong_ordering::equal);
+  ASSERT_EQ(dt1 <=> dt3, std::strong_ordering::less);
+  ASSERT_EQ(dt3 <=> dt4, std::strong_ordering::less);
+  ASSERT_TRUE(dt1 <= dt2);
+  ASSERT_TRUE(dt1 <= dt3);
+  ASSERT_TRUE(dt3 <= dt4);
+
+  // Greater than
+  ASSERT_EQ(dt4 <=> dt3, std::strong_ordering::greater);
+  ASSERT_EQ(dt3 <=> dt1, std::strong_ordering::greater);
+  ASSERT_TRUE(dt4 > dt3);
+  ASSERT_TRUE(dt3 > dt1);
+
+  // Greater than or equal
+  ASSERT_EQ(dt4 <=> dt3, std::strong_ordering::greater);
+  ASSERT_EQ(dt3 <=> dt1, std::strong_ordering::greater);
+  ASSERT_EQ(dt2 <=> dt1, std::strong_ordering::equal);
+  ASSERT_TRUE(dt4 >= dt3);
+  ASSERT_TRUE(dt3 >= dt1);
+  ASSERT_TRUE(dt2 >= dt1);
 }
 
 } // namespace calendar::test

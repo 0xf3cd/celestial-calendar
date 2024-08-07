@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 #include "ymd.hpp"
 #include "random.hpp"
-#include "lunar.hpp"
+#include "lunar/algo1.hpp"
 
-namespace calendar::lunar::test {
+namespace calendar::lunar::algo1::test {
 
-using namespace calendar::lunar;
+using namespace calendar::lunar::algo1;
 
 TEST(LunarCalendar, IsValidGregorian) {
   using namespace std::literals;
@@ -134,4 +134,4 @@ TEST(LunarCalendar, Integration) {
   }
 }
 
-} // namespace calendar::lunar::test
+} // namespace calendar::lunar::algo1::test
