@@ -23,8 +23,23 @@
 
 #pragma once
 
+#include "common.hpp"
+#include "jieqi.hpp"
 #include "moon_phase.hpp"
 
 namespace calendar::lunar::algo2 {
+
+using calendar::lunar::common::LunarYearInfo;
+
+
+/**
+ * @brief Calculate the lunar year information for the given year. 
+          计算给定年份的阴历年信息。
+ * @param year The Lunar year. 阴历年份。
+ * @return The lunar year information. 阴历年信息。
+ */
+inline auto calc_lunar_year_info(uint32_t year) -> LunarYearInfo {
+  return {};
+}
 
 } // namespace calendar::lunar::algo2
