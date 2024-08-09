@@ -25,6 +25,7 @@
 
 #include <unordered_map>
 
+#include "util.hpp"
 #include "astro.hpp"
 #include "datetime.hpp"
 
@@ -80,12 +81,47 @@ const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
 
 
 /**
+ * @brief Check if the given `jq` is a Jie (节)。
+ * @param jq The jieqi.
+ * @return `true` if the given `jq` is a Jie (节), `false` otherwise.
+ */
+constexpr auto is_jie(const Jieqi jq) -> bool {
+  const auto index = static_cast<uint8_t>(jq);
+  return index % 2 == 0;
+}
+
+
+/**
+ * @brief Check if the given `jq` is a Qi (气)。
+ * @param jq The jieqi.
+ * @return `true` if the given `jq` is a Qi (气), `false` otherwise.
+ */
+constexpr auto is_qi(const Jieqi jq) -> bool {
+  const auto index = static_cast<uint8_t>(jq);
+  return index % 2 == 1;
+}
+
+
+/**
+ * @brief Get the index of the given `jq`.
+ * @param jq The jieqi.
+ * @return The index of the given `jq`.
+ */
+constexpr auto from_index(const uint8_t index) -> Jieqi {
+  if (index >= static_cast<uint8_t>(Jieqi::COUNT)) {
+    throw std::out_of_range { "index must be less than 24" };
+  }
+  return static_cast<Jieqi>(index);
+}
+
+
+/**
  * @brief Get the JDE for the given `year` and `jieqi`.
  * @param year The year, in gregorian calendar.
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
+inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
   const auto lon = JIEQI_SOLAR_LONGITUDE.at(jq);
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
@@ -100,6 +136,10 @@ inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
 }
 
 
+/** @brief Simply a cached version of `calc_jieqi_jde`. */
+const inline auto jieqi_jde = util::cache::make_cached(std::function(calc_jieqi_jde));
+
+
 /**
  * @brief Get the UT1 moment of the given `year` and `jieqi`.
  * @param year The year, in gregorian calendar.
@@ -110,6 +150,5 @@ inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
 inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
-
 
 } // namespace calendar::jieqi

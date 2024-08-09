@@ -23,13 +23,37 @@
 
 #pragma once
 
+#include <queue>
 #include "common.hpp"
 #include "jieqi.hpp"
 #include "moon_phase.hpp"
+#include "julian_day.hpp"
 
 namespace calendar::lunar::algo2 {
 
+using namespace calendar::jieqi;
 using calendar::lunar::common::LunarYearInfo;
+
+
+/**
+ * @brief A generator that generates some metadata of lunar months, including Jieqi and length of the month.
+ */
+// TODO: Use `std::generator` instead, when supported.
+struct LunarMonthGenerator {
+private:
+  astro::moon_phase::new_moon::RootGenerator _root_gen;
+
+  std::queue<double> _jdes;
+  std::queue<Jieqi> _jieqi;
+
+public:
+ /** @note Generated lunar and jieqi information starts after the given JDE. */
+  LunarMonthGenerator(const double start_jde) 
+    : _root_gen(start_jde) 
+  {
+    
+  }
+};
 
 
 /**
@@ -39,6 +63,11 @@ using calendar::lunar::common::LunarYearInfo;
  * @return The lunar year information. 阴历年信息。
  */
 inline auto calc_lunar_year_info(uint32_t year) -> LunarYearInfo {
+  const auto winter_solstice_last_year = jieqi_ut1_moment(year - 1, Jieqi::冬至);
+  const auto winter_solstice_this_year = jieqi_ut1_moment(year, Jieqi::冬至);
+
+
+
   return {};
 }
 

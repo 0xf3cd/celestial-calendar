@@ -26,6 +26,7 @@
 
 #include <random>
 #include <limits>
+#include <cassert>
 
 namespace util {
 

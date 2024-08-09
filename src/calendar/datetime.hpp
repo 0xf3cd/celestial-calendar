@@ -225,6 +225,21 @@ struct Datetime {
     return true;
   }
 
+  /** @brief Returns the year. */
+  [[nodiscard]] constexpr auto year() const noexcept -> int32_t {
+    return static_cast<int32_t>(ymd.year());
+  }
+
+  /** @brief Returns the month. */
+  [[nodiscard]] constexpr auto month() const noexcept -> uint32_t {
+    return static_cast<uint32_t>(ymd.month());
+  }
+
+  /** @brief Returns the day. */
+  [[nodiscard]] constexpr auto day() const noexcept -> uint32_t {
+    return static_cast<uint32_t>(ymd.day());
+  }
+
   /** 
    * @brief Returns the fraction of a day, in the range [0.0, 1.0).
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).

@@ -34,7 +34,7 @@
 #include <array>
 #include <vector>
 
-#include "ymd.hpp"
+#include "util.hpp"
 #include "common.hpp"
 
 
@@ -120,37 +120,6 @@ inline auto parse_lunar_year_info(uint32_t year) -> LunarYearInfo {
   };  
 }
 
-
-/**
- * @class LunarYearInfoCache 
- * @brief Cache the lunar year information. 
-        缓存阴历年信息。
- */
-class LunarYearInfoCache {
-private:
-  const std::vector<LunarYearInfo> _cached = std::invoke([] {
-    using namespace std::ranges;
-    const auto years = views::iota(START_YEAR, END_YEAR + 1);
-    const auto transformed = years | views::transform(parse_lunar_year_info);
-    return transformed | to<std::vector>();
-  });
-
-public:
-  /** 
-   * @fn Return the cached lunar year info. 
-       返回缓存的阴历年信息。
-   * @attention The input year should be in the range of [START_YEAR, END_YEAR].
-              输入的年份需要在所支持的范围内。
-   * @param year The Lunar year. 阴历年份。
-   * @return The lunar year info. 阴历年信息。
-   */
-  [[nodiscard]] auto get(const int32_t year) const -> const LunarYearInfo& {
-    assert(year >= START_YEAR and year <= END_YEAR);
-    return _cached[year - START_YEAR];
-  }
-};
-
-
 /**
  * @brief Same function as `calc_lunar_year_info`, but cached. 
           与 `calc_lunar_year_info` 功能相同，但使用缓存。
@@ -158,10 +127,7 @@ public:
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto get_lunar_year_info(const int32_t year) -> const LunarYearInfo& {
-  static LunarYearInfoCache cache;
-  return cache.get(year);
-}
+const inline auto get_lunar_year_info = util::cache::make_cached(std::function(parse_lunar_year_info));
 
 } // namespace calendar::lunar::algo1::data
 

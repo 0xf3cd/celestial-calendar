@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include <print>
 #include <ranges>
+#include <thread>
+#include <unordered_set>
 #include "util.hpp"
 
 namespace util::test {
@@ -160,6 +162,122 @@ TEST(Util, GenRandomValue2) {
       ASSERT_LE(random_value3, random_value2);
     }
   }
+}
+
+
+TEST(Util, TupleHash) {
+  { // Test double, int32_t
+    std::unordered_set<std::size_t> s;
+    s.insert(cache::hash(0.0, 0));
+    s.insert(cache::hash(0.1, 0));
+    s.insert(cache::hash(0.1, 1));
+    s.insert(cache::hash(0.1, 1));
+    ASSERT_EQ(s.size(), 3);
+  }
+
+  { // Test int64_t, float, std::string
+    std::unordered_set<std::size_t> s;
+    s.insert(cache::hash(0LL, 0.0F, ""));
+    s.insert(cache::hash(0LL, 0.1F, ""));
+    s.insert(cache::hash(0LL, 0.1F, "a"));
+    s.insert(cache::hash(0LL, 0.1F, "b"));
+    s.insert(cache::hash(0LL, 0.1F, "b"));
+    ASSERT_EQ(s.size(), 4);
+  }
+
+  { // Test tuple
+    std::unordered_set<std::size_t> s;
+    s.insert(cache::hash(std::make_tuple(0, 0.0F, "")));
+    s.insert(cache::hash(std::make_tuple(0, 0.1F, "")));
+    s.insert(cache::hash(std::make_tuple(0, 0.1F, "a")));
+    s.insert(cache::hash(std::make_tuple(0, 0.1F, "b")));
+    s.insert(cache::hash(std::make_tuple(5, 0.1F, "b")));
+    ASSERT_EQ(s.size(), 5);
+  }
+}
+
+
+TEST(Util, MakeCached1) {
+  const auto f = [](int a, int b) {
+    std::this_thread::sleep_for(std::chrono::microseconds(50));
+    return a + b;
+  };
+  const auto cached_f = util::cache::make_cached(std::function(f));
+
+  // Time the original function.
+  const auto original_start_time = std::chrono::steady_clock::now();
+  std::vector<int> original_results;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      original_results.emplace_back(f(i, j));
+      original_results.emplace_back(f(i, j));
+      original_results.emplace_back(f(i, j));
+    }
+  }
+  const auto original_end_time = std::chrono::steady_clock::now();
+  const auto original_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(original_end_time - original_start_time).count();
+
+  // Time the cached function.
+  const auto cached_start_time = std::chrono::steady_clock::now();
+  std::vector<int> cached_results;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      cached_results.emplace_back(cached_f(i, j));
+      cached_results.emplace_back(cached_f(i, j));
+      cached_results.emplace_back(cached_f(i, j));
+    }
+  }
+  const auto cached_end_time = std::chrono::steady_clock::now();
+  const auto cached_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(cached_end_time - cached_start_time).count();
+
+  ASSERT_EQ(original_results, cached_results);
+
+  ASSERT_GT(original_elapsed_time, cached_elapsed_time);
+  std::println("original_elapsed_time = {}ms, cached_elapsed_time = {}ms, {}x faster",
+               original_elapsed_time, cached_elapsed_time, 
+               static_cast<double>(original_elapsed_time) / static_cast<double>(cached_elapsed_time));
+}
+
+
+TEST(Util, MakeCached2) {
+  const auto f = [](int a, double b) {
+    std::this_thread::sleep_for(std::chrono::microseconds(50));
+    return a * b;
+  };
+  const auto cached_f = util::cache::make_cached(std::function(f));
+
+  // Time the original function.
+  const auto original_start_time = std::chrono::steady_clock::now();
+  std::vector<double> original_results;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      original_results.emplace_back(f(i, j));
+      original_results.emplace_back(f(i, j));
+      original_results.emplace_back(f(i, j));
+    }
+  }
+  const auto original_end_time = std::chrono::steady_clock::now();
+  const auto original_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(original_end_time - original_start_time).count();
+
+  // Time the cached function.
+  const auto cached_start_time = std::chrono::steady_clock::now();
+  std::vector<double> cached_results;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      cached_results.emplace_back(cached_f(i, j));
+      cached_results.emplace_back(cached_f(i, j));
+      cached_results.emplace_back(cached_f(i, j));
+    }
+  }
+  const auto cached_end_time = std::chrono::steady_clock::now();
+  const auto cached_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(cached_end_time - cached_start_time).count();
+
+  ASSERT_EQ(original_results, cached_results);
+
+  ASSERT_GT(original_elapsed_time, cached_elapsed_time);
+  std::println("original_elapsed_time = {}ms, cached_elapsed_time = {}ms, {}x faster",
+               original_elapsed_time, cached_elapsed_time, 
+               static_cast<double>(original_elapsed_time) / static_cast<double>(cached_elapsed_time));
 }
 
 } // namespace util::test

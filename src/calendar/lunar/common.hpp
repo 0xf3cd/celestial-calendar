@@ -37,11 +37,11 @@ using std::chrono::year_month_day;
 struct LunarYearInfo {
   /*! @brief The date of the first day of the lunar year in gregorian calendar. 
              本阴历年第一天对应的公历日期。 */
-  year_month_day date_of_first_day;
+  year_month_day date_of_first_day {};
 
   /*! @brief The month of the leap month (1 <= leap_month <= 12). If 0, there is no leap month.
              闰月的月份 (1-12)，如果为 0 则没有闰月。 */
-  uint8_t leap_month;
+  uint8_t leap_month {};
 
   /*! @brief The number of days in all months in the lunar year.
              There are 12 elements if there is no leap year, otherwise there are 13 elements.

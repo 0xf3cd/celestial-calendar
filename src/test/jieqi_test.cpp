@@ -58,6 +58,21 @@ TEST(JieQi, NameQuery) {
 }
 
 
+TEST(JieQi, IsJieOrQi) {
+  ASSERT_TRUE(is_jie(Jieqi::立春));
+  ASSERT_FALSE(is_qi(Jieqi::立春));
+
+  ASSERT_TRUE(is_jie(Jieqi::小寒));
+  ASSERT_FALSE(is_qi(Jieqi::小寒));
+
+  ASSERT_TRUE(is_qi(Jieqi::雨水));
+  ASSERT_FALSE(is_jie(Jieqi::雨水));
+
+  ASSERT_TRUE(is_qi(Jieqi::大寒));
+  ASSERT_FALSE(is_jie(Jieqi::大寒));
+}
+
+
 TEST(JieQi, JDE) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
@@ -90,8 +105,8 @@ TEST(JieQi, JDE) {
 TEST(JieQi, UT1Moment) {
   for (const auto& [ymd, hms, jq] : DATASET) {
     const Datetime real_dt { ymd, hms };
-    const auto [y, _ignored3, _ignored4] = util::from_ymd(ymd);
-    
+    const auto [y, _, __] = util::from_ymd(ymd);
+
     const auto est_dt = jieqi_ut1_moment(y, jq);
 
     ASSERT_EQ(est_dt.ymd, real_dt.ymd);

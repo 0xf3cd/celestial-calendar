@@ -22,4 +22,5 @@
  */
 
 #include "ymd.hpp"
+#include "cache.hpp"
 #include "random.hpp"
