@@ -46,12 +46,65 @@ enum class Jieqi : uint8_t {
   LIDONG = 立冬, XIAOXUE = 小雪, DAXUE = 大雪, DONGZHI = 冬至, XIAOHAN = 小寒, DAHAN = 大寒,
 };
 
-static_assert(24U == static_cast<uint8_t>(Jieqi::COUNT));
+constexpr uint8_t JIEQI_COUNT = static_cast<uint8_t>(Jieqi::COUNT);
+static_assert(24U == JIEQI_COUNT);
+
+
+/**
+ * @brief Check if the given `jq` is a Jie (节).
+ * @param jq The jieqi.
+ * @return `true` if the given `jq` is a Jie (节), `false` otherwise.
+ */
+constexpr auto is_jie(const Jieqi jq) -> bool {
+  const auto index = static_cast<uint8_t>(jq);
+  return index % 2 == 0;
+}
+
+
+/**
+ * @brief Check if the given `jq` is a Qi (气).
+ * @param jq The jieqi.
+ * @return `true` if the given `jq` is a Qi (气), `false` otherwise.
+ */
+constexpr auto is_qi(const Jieqi jq) -> bool {
+  const auto index = static_cast<uint8_t>(jq);
+  return index % 2 == 1;
+}
+
+
+/**
+ * @brief Get the index of the given `jq`.
+ * @param jq The jieqi.
+ * @return The index of the given `jq`.
+ */
+constexpr auto to_index(const Jieqi jq) -> uint8_t {
+  return static_cast<uint8_t>(jq);
+}
+
+
+/**
+ * @brief Get the index of the given `jq`.
+ * @param jq The jieqi.
+ * @return The index of the given `jq`.
+ */
+constexpr auto from_index(const uint8_t index) -> Jieqi {
+  if (index >= JIEQI_COUNT) {
+    throw std::out_of_range { "index must be less than 24" };
+  }
+  return static_cast<Jieqi>(index);
+}
 
 
 /** @brief A view of all enum values of `Jieqi`. */
-constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(Jieqi::COUNT)) 
-                          | std::views::transform([](const auto i) { return static_cast<Jieqi>(i); });
+constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+                          | std::views::transform([](const auto i) { return from_index(i); });
+
+/** @brief A view of all enum values of `Jieqi`, but ordered by their occurrence in a gregorian year.
+ *         That means the first value is "小寒", since it is the first Jieqi in any gregorian year.
+ */
+constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+                                         | std::views::transform([](const auto i) { return (i + to_index(Jieqi::小寒)) % JIEQI_COUNT; })
+                                         | std::views::transform([](const auto i) { return from_index(i); });
 
 
 /** @brief Mapping table to get the name of the given `jieqi`. */
@@ -67,7 +120,7 @@ const inline std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
 };
 
 
-/** @brief Mapping table to get the solar longitude of the given `jieqi`. */
+/** @brief Mapping table to get the solar longitude of the given `Jieqi`. */
 const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
   { Jieqi::立春, 315.0 }, { Jieqi::雨水, 330.0 }, { Jieqi::惊蛰, 345.0 },
   { Jieqi::春分,   0.0 }, { Jieqi::清明,  15.0 }, { Jieqi::谷雨,  30.0 },
@@ -78,42 +131,6 @@ const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
   { Jieqi::立冬, 225.0 }, { Jieqi::小雪, 240.0 }, { Jieqi::大雪, 255.0 },
   { Jieqi::冬至, 270.0 }, { Jieqi::小寒, 285.0 }, { Jieqi::大寒, 300.0 },
 };
-
-
-/**
- * @brief Check if the given `jq` is a Jie (节)。
- * @param jq The jieqi.
- * @return `true` if the given `jq` is a Jie (节), `false` otherwise.
- */
-constexpr auto is_jie(const Jieqi jq) -> bool {
-  const auto index = static_cast<uint8_t>(jq);
-  return index % 2 == 0;
-}
-
-
-/**
- * @brief Check if the given `jq` is a Qi (气)。
- * @param jq The jieqi.
- * @return `true` if the given `jq` is a Qi (气), `false` otherwise.
- */
-constexpr auto is_qi(const Jieqi jq) -> bool {
-  const auto index = static_cast<uint8_t>(jq);
-  return index % 2 == 1;
-}
-
-
-/**
- * @brief Get the index of the given `jq`.
- * @param jq The jieqi.
- * @return The index of the given `jq`.
- */
-constexpr auto from_index(const uint8_t index) -> Jieqi {
-  if (index >= static_cast<uint8_t>(Jieqi::COUNT)) {
-    throw std::out_of_range { "index must be less than 24" };
-  }
-  return static_cast<Jieqi>(index);
-}
-
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`.
@@ -150,5 +167,51 @@ const inline auto jieqi_jde = util::cache::make_cached(std::function(calc_jieqi_
 inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
+
+
+/** @brief A generator that generates consecutive Jieqis and their moments (in JDE), 
+ *         starting from a given JDE. */
+// TODO: Use `std::generator` when supported.
+struct JieqiGenerator {
+private:
+  int32_t _year;
+  uint8_t _jq_index;
+
+public:
+  explicit JieqiGenerator(const double start_jde) {
+    const auto start_ut1 = astro::julian_day::jde_to_ut1(start_jde);
+    const auto start_year = start_ut1.year();
+
+    // Find the first Jieqi after the given JDE.
+    _year = start_year;
+    for (const auto jq : GREGORIAN_YEAR_JIEQI_LIST) {
+      const auto jde = jieqi_jde(_year, jq);
+      if (jde >= start_jde) {
+        _jq_index = to_index(jq);
+        return;
+      }
+    }
+
+    // Otherwise, the next Jieqi falls into next year.
+    // The first Jieqi in a Gregorian year is `Jieqi::小寒`.
+    ++_year;
+    _jq_index = to_index(Jieqi::小寒); // NOLINT(cppcoreguidelines-prefer-member-initializer)
+  }
+
+  auto next() -> std::pair<Jieqi, double> {
+    const auto jq = from_index(_jq_index);
+    const auto jde = jieqi_jde(_year, jq);
+
+    // Update the Jieqi index.
+    _jq_index = (_jq_index + 1) % JIEQI_COUNT;
+
+    // If next Jieqi is `Jieqi::小寒`, then we know the next Gregorian year comes.
+    if (_jq_index == to_index(Jieqi::小寒)) {
+      ++_year;
+    }
+
+    return { jq, jde };
+  }
+};
 
 } // namespace calendar::jieqi

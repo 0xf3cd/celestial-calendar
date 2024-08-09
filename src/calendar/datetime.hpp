@@ -28,7 +28,7 @@
 #include <cassert>
 
 #include "ymd.hpp"
-
+#include "cache.hpp"
 
 namespace calendar {
 
@@ -279,27 +279,7 @@ struct hash<calendar::Datetime> {
   auto operator()(const calendar::Datetime& dt) const -> std::size_t {
     const auto [y, m, d] = util::from_ymd(dt.ymd);
     const double fraction = dt.fraction();
-
-    std::size_t hash = 0xc2b2ae35;
-
-    // Combine year, month, day, and fraction using prime numbers and bitwise operations
-    hash ^= 0xa54ff53a5f1d36f1 * (std::hash<int32_t>{}(y)  <<  7);
-    hash ^= 0x9e3779b97f4a7c55 * (std::hash<uint32_t>{}(m) <<  3);
-    hash ^= 0xb492b66fbe98f273 * (std::hash<uint32_t>{}(d) <<  5);
-
-    // Hash the fraction part and combine using XOR and a prime number
-    std::size_t fraction_hash = std::hash<double>{}(fraction);
-    hash ^= fraction_hash * 0x9e3779b9;
-
-    // Final mixing step to ensure good distribution
-    hash ^= (hash >> 17);
-    hash *= 0xff51afd7ed558ccd;
-    hash ^= (hash >> 13);
-    hash *= 0xc4ceb9fe1a85ec53;
-    hash ^= (hash >> 11);
-    hash *= 0xc3a5c85c97cb3127;
-
-    return hash;
+    return util::cache::hash(y, m, d, fraction);
   }
 };
 

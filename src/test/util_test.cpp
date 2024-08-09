@@ -197,6 +197,35 @@ TEST(Util, TupleHash) {
 }
 
 
+TEST(Util, HashCollision) {
+#if defined(__arm__) or defined(__aarch64__)
+  // If running on ARM, then test less cases.
+  // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
+  constexpr auto try_count = 1000;
+#else
+  // Otherwise, randomly pick some years.
+  constexpr auto try_count = 80000;
+#endif
+
+  std::unordered_set<std::tuple<int, double, float>, cache::TupleHash<int, double, float>> tuples;
+  std::unordered_set<std::size_t> hash_values;
+
+  for (auto _ = 0; _ < try_count; _++) {
+    const auto v1 = util::random<int>();
+    const auto v2 = util::random<double>();
+    const auto v3 = util::random<float>();
+    tuples.emplace(v1, v2, v3);
+    hash_values.insert(cache::hash(v1, v2, v3));
+  }
+
+  std::println("{} unique tuples", tuples.size());
+  std::println("{} unique hash values", hash_values.size());
+  std::println("{} collisions", tuples.size() - hash_values.size());
+
+  ASSERT_NEAR(tuples.size(), hash_values.size(), try_count * 0.00005);
+}
+
+
 TEST(Util, MakeCached1) {
   const auto f = [](int a, int b) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));

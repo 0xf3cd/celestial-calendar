@@ -348,7 +348,7 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
 
   // Accumulate the results of all the terms.
   // The unit is 0".0001.
-  const auto sum_results = std::reduce(begin(results), end(results));
+  const auto sum_results = std::reduce(cbegin(results), cend(results));
   const auto Δψ_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
@@ -383,7 +383,7 @@ inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> 
 
   // Accumulate the results of all the terms.
   // The unit is 0".0001.
-  const auto sum_results = std::reduce(begin(results), end(results));
+  const auto sum_results = std::reduce(cbegin(results), cend(results));
   const auto Δε_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.

@@ -37,8 +37,16 @@ template <typename T>
 inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
   // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   // Don't lint this code, because clang-tidy compalins about calculating hash for `std::string`.
-  return seed ^ (std::hash<std::decay_t<T>>{}(std::forward<T>(v)) * 0x9e3779b9);
+  auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
   // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+
+  v_hash ^= seed * 0x9e3779b9;
+  v_hash ^= v_hash >> 13;
+  v_hash *= 0xff51afd7ed558ccd;
+  v_hash ^= v_hash >> 11;
+  v_hash *= 0xc4ceb9fe1a85ec53;
+
+  return v_hash;
 }
 
 template <typename T>

@@ -69,7 +69,7 @@ inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> d
   };
 
   const auto evaluated = vsop_table | std::views::transform(calc_term);
-  const auto terms_sum = std::reduce(begin(evaluated), end(evaluated));
+  const auto terms_sum = std::reduce(cbegin(evaluated), cend(evaluated));
 
   return terms_sum / SCALING_FACTOR;
 }
@@ -93,7 +93,7 @@ inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -
   const auto reversed = std::views::reverse(values);
 
   // Evaluate the final result.
-  const auto accumulated = std::accumulate(begin(reversed), end(reversed), 0.0, [jm](double a, double b) {
+  const auto accumulated = std::accumulate(cbegin(reversed), cend(reversed), 0.0, [jm](double a, double b) {
     return a * jm + b;
   });
 

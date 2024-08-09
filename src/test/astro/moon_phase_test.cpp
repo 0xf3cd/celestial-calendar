@@ -34,9 +34,9 @@ TEST(NewMoon, RootGenerator) {
   }
 
   // TODO: Use `std::views::pairwise` when it gets supported.
-  for (auto it = begin(roots); it != end(roots); ++it) {
+  for (auto it = cbegin(roots); it != cend(roots); ++it) {
     const auto next = std::next(it);
-    if (next == end(roots)) {
+    if (next == cend(roots)) {
       break;
     }
 
@@ -64,13 +64,13 @@ TEST(NewMoon, Moments) {
       ASSERT_EQ(y, year + i);
     }
 
-    roots.insert(roots.end(), roots_in_year.begin(), roots_in_year.end());
+    roots.insert(end(roots), cbegin(roots_in_year), cend(roots_in_year));
   }
 
   // Ensure `roots` are in order and consecutive.
-  for (auto it = begin(roots); it != end(roots); ++it) {
+  for (auto it = cbegin(roots); it != cend(roots); ++it) {
     const auto next = std::next(it);
-    if (next == end(roots)) {
+    if (next == cend(roots)) {
       break;
     }
     // Ensure next root is greater than current

@@ -158,7 +158,7 @@ const inline year_month_day FIRST_GREGORIAN_DATE = std::invoke([] {
 const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
   const LunarYearInfo& info = get_lunar_year_info(END_YEAR);
   const auto& ml = get_lunar_year_info(END_YEAR).month_lengths;
-  const uint32_t days_count = std::reduce(ml.begin(), ml.end());
+  const uint32_t days_count = std::reduce(cbegin(ml), cend(ml));
 
   using namespace util::ymd_operator;
   return (days_count - 1) + info.date_of_first_day;
@@ -256,7 +256,7 @@ struct Converter {
       using namespace util::ymd_operator;
       const auto& info = get_lunar_year_info(g_y);
       const auto& ml = info.month_lengths;
-      const uint32_t lunar_year_days_count = std::reduce(ml.begin(), ml.end());
+      const uint32_t lunar_year_days_count = std::reduce(cbegin(ml), cend(ml));
 
       // Calculate the gregorian date of the last day in the lunar year.
       const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
@@ -288,7 +288,7 @@ struct Converter {
     const auto& info = get_lunar_year_info(y);
     const auto& ml = info.month_lengths;
 
-    const uint32_t past_days_count = d + std::reduce(ml.begin(), ml.begin() + m - 1);
+    const uint32_t past_days_count = d + std::reduce(cbegin(ml), cbegin(ml) + m - 1);
 
     using namespace util::ymd_operator;
     return info.date_of_first_day + (past_days_count - 1);

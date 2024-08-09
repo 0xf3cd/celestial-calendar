@@ -266,7 +266,7 @@ auto solar_lon_roots(
     }
 
     const auto num_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
-    std::copy(roots.begin(), roots.begin() + num_written, slots);
+    std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
 
     return num_written;
   } catch (const std::exception& e) {
@@ -303,7 +303,7 @@ auto new_moons_after_jde(
     astro::moon_phase::new_moon::RootGenerator gen(jde);
     std::generate_n(std::back_inserter(roots), slot_count, [&] { return gen.next(); });
 
-    std::copy(roots.begin(), roots.end(), slots);
+    std::copy(cbegin(roots), cend(roots), slots);
     return static_cast<uint32_t>(slot_count);
   } catch (const std::exception& e) {
     lib::info("Exception thrown during execution of sun_moon_conjunctions_after_jde");
@@ -336,7 +336,7 @@ auto new_moons_in_year(
     *root_count = static_cast<uint32_t>(roots.size());
 
     const auto num_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
-    std::copy(roots.begin(), roots.begin() + num_written, slots);
+    std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
 
     return num_written;
   } catch (const std::exception& e) {
