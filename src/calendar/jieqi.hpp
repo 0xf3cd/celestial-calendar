@@ -170,7 +170,7 @@ inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Da
 
 
 /** @brief A generator that generates consecutive Jieqis and their moments (in JDE), 
- *         starting from a given JDE. */
+ *         starting from a given JDE (exclusive). */
 // TODO: Use `std::generator` when supported.
 struct JieqiGenerator {
 private:
@@ -186,7 +186,7 @@ public:
     _year = start_year;
     for (const auto jq : GREGORIAN_YEAR_JIEQI_LIST) {
       const auto jde = jieqi_jde(_year, jq);
-      if (jde >= start_jde) {
+      if (jde > start_jde) {
         _jq_index = to_index(jq);
         return;
       }
@@ -198,7 +198,9 @@ public:
     _jq_index = to_index(Jieqi::小寒); // NOLINT(cppcoreguidelines-prefer-member-initializer)
   }
 
-  auto next() -> std::pair<Jieqi, double> {
+  struct JieqiPair { Jieqi jieqi; double jde; };
+
+  auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);
     const auto jde = jieqi_jde(_year, jq);
 

@@ -174,7 +174,7 @@ struct Converter {
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
    */
   static auto is_valid_gregorian(const year_month_day& date) -> bool {
-    if (!date.ok()) {
+    if (not date.ok()) {
       return false;
     }
     if (date < FIRST_GREGORIAN_DATE or date > LAST_GREGORIAN_DATE) {
@@ -219,11 +219,9 @@ struct Converter {
               输入的日期无效时返回 `std::nullopt`。不会抛出异常。
   */
   static auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::optional<year_month_day> {
-    if (!is_valid_gregorian(gregorian_date)) {
+    if (not is_valid_gregorian(gregorian_date)) {
       return std::nullopt;
     }
-
-    const auto& [g_y, g_m, g_d] = util::from_ymd(gregorian_date);
 
     const auto find_lunar_date = [&](const int32_t lunar_y) -> year_month_day {
       const auto& info = get_lunar_year_info(lunar_y);
@@ -252,21 +250,22 @@ struct Converter {
     // Example: a gregorian_date date in gregorian_date year 2024 can be in lunar year 2023 or 2024.
 
     // First, check if lunar date and gregorian_date date are in the same year.
-    if (g_y <= END_YEAR) {
+    const auto& [g_year, _, __] = util::from_ymd(gregorian_date);
+    if (g_year <= END_YEAR) {
       using namespace util::ymd_operator;
-      const auto& info = get_lunar_year_info(g_y);
+      const auto& info = get_lunar_year_info(g_year);
       const auto& ml = info.month_lengths;
       const uint32_t lunar_year_days_count = std::reduce(cbegin(ml), cend(ml));
 
       // Calculate the gregorian date of the last day in the lunar year.
       const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
       if (gregorian_date >= info.date_of_first_day and gregorian_date <= last_lunar_day) { // Yeah! We found the lunar year.
-        return find_lunar_date(g_y);
+        return find_lunar_date(g_year);
       }
     }
 
     // Otherwise, the lunar date falls into the previous year.
-    return find_lunar_date(g_y - 1);
+    return find_lunar_date(g_year - 1);
   }
 
   /** 
@@ -280,7 +279,7 @@ struct Converter {
               输入的日期无效时返回 `std::nullopt`。不会抛出异常。
   */
   static auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optional<year_month_day> {
-    if (!is_valid_lunar(lunar_date)) {
+    if (not is_valid_lunar(lunar_date)) {
       return std::nullopt;
     }
 

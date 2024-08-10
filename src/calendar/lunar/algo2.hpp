@@ -23,11 +23,13 @@
 
 #pragma once
 
-#include <queue>
+#include <optional>
+
 #include "common.hpp"
 #include "jieqi.hpp"
 #include "moon_phase.hpp"
 #include "julian_day.hpp"
+
 
 namespace calendar::lunar::algo2 {
 
@@ -37,38 +39,112 @@ using calendar::lunar::common::LunarYearInfo;
 
 /**
  * @brief A generator that generates some metadata of lunar months, including Jieqi and length of the month.
+ * @note Generated lunar and jieqi information starts after the given JDE.
  */
 // TODO: Use `std::generator` instead, when supported.
-struct LunarMonthGenerator {
+struct LunarMonthIterator {
 private:
-  astro::moon_phase::new_moon::RootGenerator _root_gen;
+  astro::moon_phase::new_moon::RootGenerator _new_moon_gen;
+  calendar::jieqi::JieqiGenerator _jieqi_gen;
 
-  std::queue<double> _jdes;
-  std::queue<Jieqi> _jieqi;
+  std::optional<double> _next_new_moon;
+  std::optional<JieqiGenerator::JieqiPair> _next_jieqi;
+
+  auto next_new_moon() -> double {
+    if (_next_new_moon.has_value()) {
+      const double jde = *_next_new_moon;
+      _next_new_moon = std::nullopt;
+      return jde;
+    }
+
+    return _new_moon_gen.next();
+  }
+
+  auto put_back_new_moon(const double jde) -> void {
+    assert(!_next_new_moon.has_value());
+    _next_new_moon = jde;
+  }
+
+  auto next_jieqi() -> JieqiGenerator::JieqiPair {
+    if (_next_jieqi.has_value()) {
+      const auto jieqi = *_next_jieqi;
+      _next_jieqi = std::nullopt;
+      return jieqi;
+    }
+
+    return _jieqi_gen.next();
+  }
+
+  auto put_back_jieqi(const JieqiGenerator::JieqiPair jieqi) -> void {
+    assert(!_next_jieqi.has_value());
+    _next_jieqi = jieqi;
+  }
 
 public:
- /** @note Generated lunar and jieqi information starts after the given JDE. */
-  LunarMonthGenerator(const double start_jde) 
-    : _root_gen(start_jde) 
-  {
-    
-  }
+  explicit LunarMonthIterator(const double start_jde) 
+    : _new_moon_gen(start_jde),
+      _jieqi_gen(start_jde),
+      _next_new_moon(_new_moon_gen.next()),
+      _next_jieqi(_jieqi_gen.next())
+  {}
+
+  struct LunarMonth {
+    // Start of the month, inclusive.
+    double start_jde;
+    calendar::Datetime start_moment;
+
+    // End of the month, exclusive.
+    double end_jde;
+    calendar::Datetime end_moment;
+
+    // Jieqis that fall in this lunar month.
+    std::vector<JieqiGenerator::JieqiPair> contained_jieqis;
+  };
+
+  auto next() -> LunarMonth {
+    // Get the bounds of the next lunar month.
+    const auto start_jde = next_new_moon();
+    const auto end_jde = next_new_moon();
+    put_back_new_moon(end_jde);
+
+    // Get the Jieqis that fall in this lunar month.
+    std::vector<JieqiGenerator::JieqiPair> jieqis;
+    while (true) {
+      const auto jieqi = next_jieqi();
+
+      if (jieqi.jde >= end_jde) {
+        put_back_jieqi(jieqi);
+        break;
+      }
+
+      if (jieqi.jde < start_jde) {
+        continue;
+      }
+
+      jieqis.push_back(jieqi);
+    }
+
+    return {
+      .start_jde = start_jde,
+      .start_moment = astro::julian_day::jde_to_ut1(start_jde),
+      .end_jde = end_jde,
+      .end_moment = astro::julian_day::jde_to_ut1(end_jde),
+      .contained_jieqis = jieqis
+    };
+  };
 };
 
 
-/**
- * @brief Calculate the lunar year information for the given year. 
-          计算给定年份的阴历年信息。
- * @param year The Lunar year. 阴历年份。
- * @return The lunar year information. 阴历年信息。
- */
-inline auto calc_lunar_year_info(uint32_t year) -> LunarYearInfo {
-  const auto winter_solstice_last_year = jieqi_ut1_moment(year - 1, Jieqi::冬至);
-  const auto winter_solstice_this_year = jieqi_ut1_moment(year, Jieqi::冬至);
-
-
-
-  return {};
-}
+// /**
+//  * @brief Calculate the lunar year information for the given year. 
+//           计算给定年份的阴历年信息。
+//  * @param year The Lunar year. 阴历年份。
+//  * @return The lunar year information. 阴历年信息。
+//  */
+// inline auto calc_lunar_year_info(uint32_t year) -> LunarYearInfo {
+//   const auto winter_solstice_last_year = jieqi_ut1_moment(year - 1, Jieqi::冬至);
+//   const auto winter_solstice_this_year = jieqi_ut1_moment(year, Jieqi::冬至);
+//   return {};
+// }
 
 } // namespace calendar::lunar::algo2
