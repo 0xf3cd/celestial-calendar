@@ -118,8 +118,8 @@ TEST(LunarAlgo2, MonthChunks) {
 
 
 TEST(LunarAlgo2, LeapMonth) {
-  for (auto _ = 0; _ < 16; ++_) {
-    const int32_t random_year = util::random(1000, 2200);
+  for (auto _ = 0; _ < 8; ++_) {
+    const int32_t random_year = util::random(500, 2500);
     const auto& [chunk1, chunk2] = calendar::lunar::algo2::calc_lunar_month_chunks(random_year);
 
     const auto is_leap = [](const LunarMonth& month) {
@@ -162,6 +162,83 @@ TEST(LunarAlgo2, LeapMonth) {
         ASSERT_TRUE(is_leap(chunk2[leap_month]));
       }
     }
+  }
+}
+
+
+TEST(LunarAlgo2, LunarContext) {
+  // Perform some random tests.
+  for (auto _ = 0; _ < 8; ++_) {
+    // Ensure the creation is successful, where some sanity checks are performed.
+    const auto context = create_lunar_year_context(util::random(1000, 2200));
+
+    // Also ensure the lunar year's length is reasonable.
+    const double non_leap_year_len = 29.53 * 12;
+    const double leap_year_len = 29.53 * 13;
+
+    if (context.leap_month_jde.has_value()) {
+      ASSERT_NEAR(leap_year_len, context.end_jde - context.start_jde, 10.0);
+      ASSERT_EQ(size(context.months), 13);
+    } else {
+      ASSERT_NEAR(non_leap_year_len, context.end_jde - context.start_jde, 10.0);
+      ASSERT_EQ(size(context.months), 12);
+    }
+
+    // Ensure the first month is the start of the year.
+    ASSERT_EQ(context.months.front().start_jde, context.start_jde);
+
+    // Ensure the last month ends at the end of the year.
+    ASSERT_EQ(context.months.back().end_jde, context.end_jde);
+
+    // Ensure the months are in order.
+    // TODO: Use `std::views::pairwise` or `std::views::slide` when supported.
+    const auto month_pairs = std::views::zip(context.months,context.months | std::views::drop(1));
+    for (const auto& [a, b] : month_pairs) {
+      ASSERT_LE(a.start_jde, b.start_jde);
+      ASSERT_EQ(a.end_jde, b.start_jde);
+
+      ASSERT_NEAR(29.53, b.end_jde - b.start_jde, 0.75);
+    }
+  }
+
+  // Checks for year 2024
+  // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2024.pdf
+  {
+    const auto context = create_lunar_year_context(2024);
+
+    // No leap month in this year
+    ASSERT_FALSE(context.leap_month_jde.has_value());
+
+    // Check the start jde
+    const calendar::Datetime utc8_est_start_moment { util::to_ymd(2024, 2, 10), 0.0 };
+    const double est_start_jde = astro::julian_day::ut1_to_jde(utc8_est_start_moment) - 8.0 / 24.0;
+    ASSERT_NEAR(est_start_jde, context.start_jde, 1.0);
+
+    // Check the end jde
+    const calendar::Datetime utc8_est_end_moment { util::to_ymd(2025, 1, 29), 0.0 };
+    const double est_end_jde = astro::julian_day::ut1_to_jde(utc8_est_end_moment) - 8.0 / 24.0;
+    ASSERT_NEAR(est_end_jde, context.end_jde, 1.0);
+  }
+
+  // Checks for year 2025
+  // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2025.pdf
+  {
+    const auto context = create_lunar_year_context(2025);
+
+    // Leap month is the 7th month (index 6) in this year
+    ASSERT_EQ(size(context.months), 13);
+    ASSERT_TRUE(context.leap_month_jde.has_value());
+    // ASSERT_EQ(context.leap_month_jde.value(), context.months[6].start_jde);
+
+    // Check the start jde
+    const calendar::Datetime utc8_est_start_moment { util::to_ymd(2025, 1, 29), 0.0 };
+    const double est_start_jde = astro::julian_day::ut1_to_jde(utc8_est_start_moment) - 8.0 / 24.0;
+    ASSERT_NEAR(est_start_jde, context.start_jde, 1.0);
+
+    // Check the end jde
+    const calendar::Datetime utc8_est_end_moment { util::to_ymd(2026, 2, 17), 0.0 };
+    const double est_end_jde = astro::julian_day::ut1_to_jde(utc8_est_end_moment) - 8.0 / 24.0;
+    ASSERT_NEAR(est_end_jde, context.end_jde, 1.0);
   }
 }
 

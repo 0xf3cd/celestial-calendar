@@ -247,6 +247,110 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
 
 
 /**
+ * @brief Get the start jde of the lunar year.
+ * @param chunk The chunk of lunar months.
+ * @param leap_month The index of the leap month in the given chunk. `std::nullopt` if there is no leap month.
+ * @return The start jde of the lunar year.
+ */
+inline auto calc_lunar_year_start_jde(const LunarMonthChunk& chunk, std::optional<int32_t> leap_month) -> double {
+  if (leap_month.has_value() and (*leap_month <= 2)) {
+    // The lunar year starts from the third month after the 11th month in previous year,
+    // because of the leap month.
+    return chunk[3].start_jde;
+  }
+  // Otherwise, the lunar year starts from the second month after the 11th month in previous year.
+  return chunk[2].start_jde;
+}
+
+
+/** @brief The raw lunar year information, can be processed to `LunarYear`. */
+struct LunarYearContext {
+  double start_jde;
+  double end_jde;
+
+  std::optional<double> leap_month_jde;
+
+  std::vector<LunarMonth> months;
+};
+
+
+/**
+ * @brief Create a `LunarYearContext` for the given year, which basically contains
+ *        the month info, including leap month.
+ * @param year The year to create the context for.
+ * @return The `LunarYearContext` for the given year.
+ */
+inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
+  const auto& [chunk1, chunk2] = calc_lunar_month_chunks(year);
+
+  const auto chunk1_leap_month = leap_month_in_chunk(chunk1);
+  const auto chunk2_leap_month = leap_month_in_chunk(chunk2);
+
+  // Figure out the start jde of the lunar year.
+  const auto lunar_year_start_jde = calc_lunar_year_start_jde(chunk1, chunk1_leap_month);
+
+  // Figure out the end jde of the lunar year.
+  // The end jde is just the start jde of the next year.
+  const auto lunar_year_end_jde = calc_lunar_year_start_jde(chunk2, chunk2_leap_month);
+
+  // Figure out if there is a leap month in the lunar year.
+  // Check if the leap month is in chunk1.
+  std::optional<double> chunk1_leap_jde = std::nullopt;
+  if (chunk1_leap_month.has_value()) {
+    const auto& m = chunk1[*chunk1_leap_month];
+    if (m.start_jde >= lunar_year_start_jde) {
+      chunk1_leap_jde = m.start_jde;
+    }
+  }
+
+  // Check if the leap month is in chunk2.
+  std::optional<double> chunk2_leap_jde = std::nullopt;
+  if (chunk2_leap_month.has_value()) {
+    const auto& m = chunk2[*chunk2_leap_month];
+    if (m.start_jde < lunar_year_end_jde) {
+      chunk2_leap_jde = m.start_jde;
+    }
+  }
+
+  // Check if there are two leap months in the lunar year. If so, throw an error.
+  if (chunk1_leap_jde.has_value() and chunk2_leap_jde.has_value()) {
+    throw std::runtime_error {
+      std::format("Two leap months in lunar year: {} ({} and {})", 
+                  year, chunk1_leap_jde.value(), chunk2_leap_jde.value())
+    };
+  }
+
+  // Finally, get the start jde of the leap month.
+  std::optional<double> leap_month_jde = std::nullopt;
+  if (chunk1_leap_jde.has_value()) {
+    leap_month_jde = chunk1_leap_jde;
+  } else if (chunk2_leap_jde.has_value()) {
+    leap_month_jde = chunk2_leap_jde;
+  }
+
+  // Figure out the months in the lunar year.
+  // TODO: Use `std::concat` when it gets supported.
+  std::vector<LunarMonth> months;
+
+  for (const auto& m : chunk1) {
+    if (m.start_jde < lunar_year_start_jde) {
+      continue;
+    }
+    months.push_back(m);
+  }
+
+  for (const auto& m : chunk2) {
+    if (m.start_jde >= lunar_year_end_jde) {
+      break;
+    }
+    months.push_back(m);
+  }
+
+  return { lunar_year_start_jde, lunar_year_end_jde, leap_month_jde, months };
+}
+
+
+/**
  * @brief Calculate the lunar year information for the given year. 
           计算给定年份的阴历年信息。
  * @param year The Lunar year. 阴历年份。
@@ -254,8 +358,6 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
 // inline auto calc_lunar_year(int32_t year) -> LunarYear {
-//   const auto [chunk1, chunk2] = calc_lunar_month_chunks(year);
-
 //   return {};
 // }
 

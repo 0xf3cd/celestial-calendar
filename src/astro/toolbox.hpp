@@ -262,9 +262,9 @@ struct Distance {
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  const Angle<AngleUnit::DEG>      λ; // Longitude
-  const Angle<AngleUnit::DEG>      β; // Latitude
-  const Distance<DistanceUnit::AU> r; // Radius/Distance
+  Angle<AngleUnit::DEG>      λ; // Longitude
+  Angle<AngleUnit::DEG>      β; // Latitude
+  Distance<DistanceUnit::AU> r; // Radius/Distance
 };
 
 #pragma endregion

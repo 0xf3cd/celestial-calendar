@@ -34,6 +34,10 @@ namespace util::cache {
 
 using util::hash::TupleHash;
 
+// TODO:
+// 1. Add a way to clear the cache (LRU, or something).
+// 2. Maybe support multi-threading? Currently, `std::unordered_map` is not thread-safe.
+
 /**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache.
@@ -48,8 +52,9 @@ inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::fun
     auto key = std::make_tuple(std::forward<Args>(args)...);
 
     // Check if the result is already in the cache
-    if (cache.contains(key)) {
-      return cache.at(key);
+    const auto found = cache.find(key);
+    if (found != cache.end()) {
+      return found->second;
     }
     
     // Compute the result and cache it
