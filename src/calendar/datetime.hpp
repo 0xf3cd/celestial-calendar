@@ -28,7 +28,7 @@
 #include <cassert>
 
 #include "ymd.hpp"
-#include "cache.hpp"
+#include "hash.hpp"
 
 namespace calendar {
 
@@ -113,8 +113,8 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
  * @details This struct is used to represent UT1 and UTC time in this project.
  */
 struct Datetime {
-  const year_month_day ymd;
-  const hh_mm_ss<nanoseconds> time_of_day;
+  year_month_day ymd;
+  hh_mm_ss<nanoseconds> time_of_day;
 
   Datetime() = delete;
 
@@ -279,7 +279,7 @@ struct hash<calendar::Datetime> {
   auto operator()(const calendar::Datetime& dt) const -> std::size_t {
     const auto [y, m, d] = util::from_ymd(dt.ymd);
     const double fraction = dt.fraction();
-    return util::cache::hash(y, m, d, fraction);
+    return util::hash::hash(y, m, d, fraction);
   }
 };
 

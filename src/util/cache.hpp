@@ -24,63 +24,15 @@
 #pragma once
 
 #include <utility>
-#include <concepts>
 #include <functional>
 #include <type_traits>
 #include <unordered_map>
 
+#include "hash.hpp"
+
 namespace util::cache {
 
-#pragma region Hash
-
-template <typename T>
-inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
-  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  // Don't lint this code, because clang-tidy compalins about calculating hash for `std::string`.
-  auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
-  // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-
-  v_hash ^= seed * 0x9e3779b9;
-  v_hash ^= v_hash >> 13;
-  v_hash *= 0xff51afd7ed558ccd;
-  v_hash ^= v_hash >> 11;
-  v_hash *= 0xc4ceb9fe1a85ec53;
-
-  return v_hash;
-}
-
-template <typename T>
-inline auto hash(T&& v) -> std::size_t {
-  return std::hash<std::decay_t<T>>{}(std::forward<T>(v));
-}
-
-template <typename T, typename... Rest>
-inline auto hash(T&& v, Rest&&... rest) -> std::size_t {
-  std::size_t seed = hash(std::forward<T>(v));
-  (..., (seed = hash_combine(seed, std::forward<Rest>(rest))));
-  return seed;
-}
-
-/** @brief A concept which ensures the type is tuple-like. */
-template <typename T>
-concept IsTuple = requires {
-  typename std::tuple_size<T>::type;
-};
-
-template <IsTuple T>
-inline auto hash(T&& t) -> std::size_t {
-  return std::apply([](auto&&... args) { return hash(std::forward<decltype(args)>(args)...); }, std::forward<T>(t));
-}
-
-
-template <typename... Args>
-struct TupleHash {
-  auto operator()(const std::tuple<Args...>& t) const -> std::size_t {
-    return std::apply([](const auto&... elems) {
-      return hash(elems...);
-    }, t);
-  }
-};
+using util::hash::TupleHash;
 
 /**
  * @brief A wrapper that caches the result of a function.
@@ -105,6 +57,23 @@ inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::fun
     cache[key] = result;
     return result;
   };
+}
+
+
+/** @brief Checks if a type can be converted to `std::function`. */
+template <typename T>
+concept FunctionConvertible = requires(T t) {
+  { std::function { t } };
+};
+
+
+/**
+ * @brief A wrapper that caches the result of a function.
+ * @param func The function to cache.
+ * @return The cached function.
+ */
+inline auto cache_func(const FunctionConvertible auto& func) {
+  return make_cached(std::function(func));
 }
 
 } // namespace util::cache

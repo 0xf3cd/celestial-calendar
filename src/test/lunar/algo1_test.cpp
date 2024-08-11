@@ -15,9 +15,9 @@ TEST(LunarData, ArraySize) {
   EXPECT_EQ(END_YEAR - START_YEAR + 1, LUNAR_DATA.size());
 }
 
-TEST(LunarData, LunarYearInfo) {
-  ASSERT_THROW(parse_lunar_year_info(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(parse_lunar_year_info(END_YEAR + 1), std::out_of_range);
+TEST(LunarData, LunarYear) {
+  ASSERT_THROW(parse_lunar_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(parse_lunar_year(END_YEAR + 1), std::out_of_range);
 
   const auto check_month_lengths = [](const auto& l1, const auto& l2) -> bool {
     if (l1.size() != l2.size()) {
@@ -31,7 +31,7 @@ TEST(LunarData, LunarYearInfo) {
     return true;
   };
 
-  auto info = parse_lunar_year_info(1901);
+  auto info = parse_lunar_year(1901);
   EXPECT_EQ(info.date_of_first_day, std::chrono::year { 1901 } / 2 / 19);
   EXPECT_EQ(info.leap_month, 0);
   EXPECT_TRUE(check_month_lengths(
@@ -39,7 +39,7 @@ TEST(LunarData, LunarYearInfo) {
     std::vector<uint32_t> { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29 }
   ));
 
-  info = parse_lunar_year_info(1903);
+  info = parse_lunar_year(1903);
   EXPECT_EQ(info.date_of_first_day, std::chrono::year { 1903 } / 1 / 29);
   EXPECT_EQ(info.leap_month, 5);
   EXPECT_TRUE(check_month_lengths(
@@ -47,7 +47,7 @@ TEST(LunarData, LunarYearInfo) {
     std::vector<uint32_t> { 29, 30, 29, 30, 29, 29, 30, 29, 29, 30, 30, 29, 30 }
   ));
 
-  info = parse_lunar_year_info(2099);
+  info = parse_lunar_year(2099);
   EXPECT_EQ(info.date_of_first_day, std::chrono::year { 2099 } / 1 / 21);
   EXPECT_EQ(info.leap_month, 2);
   EXPECT_TRUE(check_month_lengths(
@@ -60,7 +60,7 @@ TEST(LunarData, Copy) {
   using namespace util::ymd_operator;
 
   for (auto _ = 0; _ < 100; ++_) {
-    auto info = parse_lunar_year_info(util::random(START_YEAR, END_YEAR));
+    auto info = parse_lunar_year(util::random(START_YEAR, END_YEAR));
     auto info2 = info;
 
     EXPECT_NE(&info, &info2);
@@ -80,17 +80,17 @@ TEST(LunarData, CachePerf) {
     const auto start_time = std::chrono::steady_clock::now();
     for (auto _ = 0; _ < 800; ++_) {
       for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-        parse_lunar_year_info(year);
+        parse_lunar_year(year);
       }
     }
     for (auto year = START_YEAR; year <= END_YEAR; ++year) {
       for (auto _ = 0; _ < 800; ++_) {
-        parse_lunar_year_info(year);
+        parse_lunar_year(year);
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
-      const uint32_t random_year = util::random(START_YEAR, END_YEAR);
-      parse_lunar_year_info(random_year);
+      const int32_t random_year = util::random(START_YEAR, END_YEAR);
+      parse_lunar_year(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
     return static_cast<uint64_t>((end_time - start_time).count());
@@ -100,17 +100,17 @@ TEST(LunarData, CachePerf) {
     const auto start_time = std::chrono::steady_clock::now();
     for (auto _ = 0; _ < 800; ++_) {
       for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-        [[maybe_unused]] const auto& result = get_lunar_year_info(year);
+        [[maybe_unused]] const auto& result = get_lunar_year(year);
       }
     }
     for (auto year = START_YEAR; year <= END_YEAR; ++year) {
       for (auto _ = 0; _ < 800; ++_) {
-        [[maybe_unused]] const auto& result = get_lunar_year_info(year);
+        [[maybe_unused]] const auto& result = get_lunar_year(year);
       }
     }
     for (auto _ = 0; _ < 2000; ++_) {
       const int32_t random_year = util::random(START_YEAR, END_YEAR);
-      [[maybe_unused]] const auto& result = get_lunar_year_info(random_year);
+      [[maybe_unused]] const auto& result = get_lunar_year(random_year);
     }
     const auto end_time = std::chrono::steady_clock::now();
     return static_cast<uint64_t>((end_time - start_time).count());
@@ -128,17 +128,17 @@ TEST(LunarData, CacheCorrectness) {
 
   for (auto _ = 0; _ < 100; ++_) {
     const auto year = util::random(START_YEAR, END_YEAR);
-    const auto info = parse_lunar_year_info(year);
-    const auto& info2 = get_lunar_year_info(year);
+    const auto info = parse_lunar_year(year);
+    const auto& info2 = get_lunar_year(year);
     EXPECT_EQ(info.date_of_first_day, info2.date_of_first_day);
     EXPECT_EQ(info.leap_month, info2.leap_month);
     EXPECT_EQ(info.month_lengths, info2.month_lengths);
   }
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-    std::vector<LunarYearInfo> results;
+    std::vector<LunarYear> results;
     for (auto _ = 0; _ < 32; ++_) {
-      results.emplace_back(get_lunar_year_info(year)); // NOLINT(performance-inefficient-vector-operation)
+      results.emplace_back(get_lunar_year(year)); // NOLINT(performance-inefficient-vector-operation)
     }
 
     for (const auto& info1 : results) { // TODO: Use `std::views::cartesian_product` when supported.
@@ -223,7 +223,7 @@ TEST(LunarAlgo1, GregorianToLunar) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-    const auto& info = get_lunar_year_info(year);
+    const auto& info = get_lunar_year(year);
     ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
 
     uint32_t days_count = 0;
@@ -242,7 +242,7 @@ TEST(LunarAlgo1, LunarToGregorian) {
   using namespace util::ymd_operator;
 
   for (auto year = START_YEAR; year <= END_YEAR; ++year) {
-    const auto& info = get_lunar_year_info(year);
+    const auto& info = get_lunar_year(year);
     ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
 
     uint32_t days_count = 0;

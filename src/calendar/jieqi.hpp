@@ -154,7 +154,7 @@ inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
 
 
 /** @brief Simply a cached version of `calc_jieqi_jde`. */
-const inline auto jieqi_jde = util::cache::make_cached(std::function(calc_jieqi_jde));
+const inline auto jieqi_jde = util::cache::cache_func(calc_jieqi_jde);
 
 
 /**
@@ -198,7 +198,13 @@ public:
     _jq_index = to_index(Jieqi::小寒); // NOLINT(cppcoreguidelines-prefer-member-initializer)
   }
 
-  struct JieqiPair { Jieqi jieqi; double jde; };
+  struct JieqiPair { 
+    Jieqi jieqi;
+    double jde; 
+    auto operator==(const JieqiPair& rhs) const -> bool { 
+      return jieqi == rhs.jieqi and jde == rhs.jde; 
+    }
+  };
 
   auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);

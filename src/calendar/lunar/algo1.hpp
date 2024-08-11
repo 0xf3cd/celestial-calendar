@@ -43,7 +43,7 @@ namespace calendar::lunar::algo1::data {
 // This file contains encoded binary data for each lunar year between 1901 and 2099.
 // This is intended to be used in algo1.
 
-using calendar::lunar::common::LunarYearInfo;
+using calendar::lunar::common::LunarYear;
 
 /** @brief The first supported lunar year. */
 constexpr int32_t START_YEAR = 1901;
@@ -81,7 +81,7 @@ constexpr std::array<uint32_t, 199> LUNAR_DATA = {
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto parse_lunar_year_info(uint32_t year) -> LunarYearInfo {
+inline auto parse_lunar_year(int32_t year) -> LunarYear {
   // Validate the input year.
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range { 
@@ -127,7 +127,7 @@ inline auto parse_lunar_year_info(uint32_t year) -> LunarYearInfo {
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-const inline auto get_lunar_year_info = util::cache::make_cached(std::function(parse_lunar_year_info));
+const inline auto get_lunar_year = util::cache::cache_func(parse_lunar_year);
 
 } // namespace calendar::lunar::algo1::data
 
@@ -144,20 +144,20 @@ const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);
 
 /** @brief The last supported lunar date. */
 const inline year_month_day LAST_LUNAR_DATE = std::invoke([] {
-  const LunarYearInfo& info = get_lunar_year_info(END_YEAR);
+  const LunarYear& info = get_lunar_year(END_YEAR);
   return util::to_ymd(END_YEAR, info.month_lengths.size(), info.month_lengths.back());
 });
 
 /** @brief The first supported gregorian date. */
 const inline year_month_day FIRST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYearInfo& info = get_lunar_year_info(START_YEAR);
+  const LunarYear& info = get_lunar_year(START_YEAR);
   return info.date_of_first_day;
 });
 
 /** @brief The last supported gregorian date. */
 const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYearInfo& info = get_lunar_year_info(END_YEAR);
-  const auto& ml = get_lunar_year_info(END_YEAR).month_lengths;
+  const LunarYear& info = get_lunar_year(END_YEAR);
+  const auto& ml = get_lunar_year(END_YEAR).month_lengths;
   const uint32_t days_count = std::reduce(cbegin(ml), cend(ml));
 
   using namespace util::ymd_operator;
@@ -195,7 +195,7 @@ struct Converter {
     }
 
     const auto [y, m, d] = util::from_ymd(lunar_date);
-    const auto& info = get_lunar_year_info(y);
+    const auto& info = get_lunar_year(y);
     const auto& ml = info.month_lengths;
     
     if (m < 1 or m > ml.size()) {
@@ -224,7 +224,7 @@ struct Converter {
     }
 
     const auto find_lunar_date = [&](const int32_t lunar_y) -> year_month_day {
-      const auto& info = get_lunar_year_info(lunar_y);
+      const auto& info = get_lunar_year(lunar_y);
       const auto& ml = info.month_lengths;
 
       // Calculate how many days have past in the lunar year.
@@ -253,7 +253,7 @@ struct Converter {
     const auto& [g_year, _, __] = util::from_ymd(gregorian_date);
     if (g_year <= END_YEAR) {
       using namespace util::ymd_operator;
-      const auto& info = get_lunar_year_info(g_year);
+      const auto& info = get_lunar_year(g_year);
       const auto& ml = info.month_lengths;
       const uint32_t lunar_year_days_count = std::reduce(cbegin(ml), cend(ml));
 
@@ -284,7 +284,7 @@ struct Converter {
     }
 
     const auto [y, m, d] = util::from_ymd(lunar_date);
-    const auto& info = get_lunar_year_info(y);
+    const auto& info = get_lunar_year(y);
     const auto& ml = info.month_lengths;
 
     const uint32_t past_days_count = d + std::reduce(cbegin(ml), cbegin(ml) + m - 1);

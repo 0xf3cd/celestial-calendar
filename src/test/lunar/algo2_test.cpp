@@ -8,13 +8,13 @@ using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
 
 
-TEST(LunarAlgo2, LunarMonthIterator) {
+TEST(LunarAlgo2, LunarMonthGenerator) {
   const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
 
-  LunarMonthIterator lunar_iter { random_jde };
+  LunarMonthGenerator lunar_gen { random_jde };
 
-  std::vector<LunarMonthIterator::LunarMonth> lunar_months;
-  std::generate_n(std::back_inserter(lunar_months), 200, [&]() { return lunar_iter.next(); });
+  std::vector<LunarMonth> lunar_months;
+  std::generate_n(std::back_inserter(lunar_months), 200, [&]() { return lunar_gen.next(); });
 
   // TODO: Use `std::views::pairwise` when supported.
   const auto lunar_month_pairs = std::views::zip(lunar_months, lunar_months | std::views::drop(1));
@@ -22,7 +22,6 @@ TEST(LunarAlgo2, LunarMonthIterator) {
   std::vector<JieqiGenerator::JieqiPair> jieqi_pairs;
   for (const auto &[a, b] : lunar_month_pairs) {
     ASSERT_EQ(a.end_jde, b.start_jde);
-    ASSERT_EQ(a.end_moment, b.start_moment);
 
     for (const auto jq_pair : a.contained_jieqis) {
       ASSERT_GE(jq_pair.jde, a.start_jde);
@@ -58,10 +57,111 @@ TEST(LunarAlgo2, LunarMonthIterator) {
     }
   }
 
-  ASSERT_EQ(size(expected_jieqi_pairs), size(jieqi_pairs));
-  for (const auto& [a, b] : std::views::zip(jieqi_pairs, expected_jieqi_pairs)) {
-    ASSERT_EQ(a.jde, b.jde);
-    ASSERT_EQ(a.jieqi, b.jieqi);
+  ASSERT_EQ(jieqi_pairs, expected_jieqi_pairs);
+}
+
+
+TEST(LunarAlgo2, LunarMonthGeneratorPeek) {
+  // Test that `peek` operations work correctly and does not modify the state of the generator.
+  const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
+
+  LunarMonthGenerator lunar_gen1 { random_jde };
+  LunarMonthGenerator lunar_gen2 { random_jde };
+
+  for (auto _ = 0; _ < 64; ++_) {
+    std::vector<LunarMonth> month1_peek;
+    std::vector<LunarMonth> month2_peek;
+
+    for (auto _ = 0; _ < 3; ++_) {
+      if (util::random(0.0, 1.0) < 0.42) {
+        month1_peek.push_back(lunar_gen1.peek());
+      }
+      if (util::random(0.0, 1.0) < 0.42) {
+        month2_peek.push_back(lunar_gen2.peek());
+      }
+    }
+
+    const auto month1 = lunar_gen1.next();
+    const auto month2 = lunar_gen2.next();
+    ASSERT_EQ(month1, month2);
+
+    for (const auto& m : month1_peek) {
+      ASSERT_EQ(m, month1);
+    }
+    for (const auto& m : month2_peek) {
+      ASSERT_EQ(m, month2);
+    }
+  }
+}
+
+
+TEST(LunarAlgo2, MonthChunks) {
+  const int32_t random_year = util::random(1000, 2200);
+  const auto& [chunk1, chunk2] = calendar::lunar::algo2::calc_lunar_month_chunks(random_year);
+
+  { // Examine the first chunk.
+    // It's length is either 12 or 13.
+    ASSERT_TRUE(size(chunk1) == 12 or size(chunk1) == 13);
+    // The first month's start jde should fall into previous year.
+    const auto start_year = astro::julian_day::jde_to_ut1(chunk1[0].start_jde).year();
+    ASSERT_EQ(start_year, random_year - 1);
+  }
+
+  { // Examine the second chunk.
+    // It's length is either 12 or 13.
+    ASSERT_TRUE(size(chunk2) == 12 or size(chunk2) == 13);
+    // The first month's start jde should fall into current year.
+    const auto start_year = astro::julian_day::jde_to_ut1(chunk2[0].start_jde).year();
+    ASSERT_EQ(start_year, random_year);
+  }
+}
+
+
+TEST(LunarAlgo2, LeapMonth) {
+  for (auto _ = 0; _ < 16; ++_) {
+    const int32_t random_year = util::random(1000, 2200);
+    const auto& [chunk1, chunk2] = calendar::lunar::algo2::calc_lunar_month_chunks(random_year);
+
+    const auto is_leap = [](const LunarMonth& month) {
+      const auto& jq_pairs = month.contained_jieqis;
+      return not std::any_of(cbegin(jq_pairs), cend(jq_pairs), [](const auto& jq_pair) {
+        return is_qi(jq_pair.jieqi);
+      });
+    };
+
+    { // Examine the first chunk.
+      const auto leap_month_opt = leap_month_in_chunk(chunk1);
+      
+      if (size(chunk1) == 12) {
+        ASSERT_FALSE(leap_month_opt.has_value());
+      } else {
+        ASSERT_TRUE(leap_month_opt.has_value());
+        // Ensure all previous months are not leap months.
+        const auto leap_month = *leap_month_opt; // NOLINT(bugprone-unchecked-optional-access)
+        ASSERT_TRUE(std::all_of(cbegin(chunk1), cbegin(chunk1) + leap_month, [&](const auto& month) {
+          return not is_leap(month);
+        }));
+        // Ensure the leap month is really leap.
+        ASSERT_TRUE(is_leap(chunk1[leap_month]));
+      }
+    }
+
+    { // Examine the second chunk.
+      const auto leap_month_opt = leap_month_in_chunk(chunk2);
+
+      if (size(chunk2) == 12) {
+        ASSERT_FALSE(leap_month_opt.has_value());
+      } else {
+        ASSERT_TRUE(leap_month_opt.has_value());
+        // Ensure all previous months are not leap months.
+        const auto leap_month = *leap_month_opt; // NOLINT(bugprone-unchecked-optional-access)
+        ASSERT_TRUE(std::all_of(cbegin(chunk2), cbegin(chunk2) + leap_month, [&](const auto& month) {
+          return not is_leap(month);
+        }));
+        // Ensure the leap month is really leap.
+        ASSERT_TRUE(is_leap(chunk2[leap_month]));
+      }
+    }
   }
 }
 

@@ -31,10 +31,10 @@ namespace calendar::lunar::common {
 using std::chrono::year_month_day;
 
 /** 
- * @struct LunarYearInfo 
+ * @struct LunarYear 
  * @brief  Information of the lunar year. 阴历年信息。
  */
-struct LunarYearInfo {
+struct LunarYear {
   /*! @brief The date of the first day of the lunar year in gregorian calendar. 
              本阴历年第一天对应的公历日期。 */
   year_month_day date_of_first_day {};

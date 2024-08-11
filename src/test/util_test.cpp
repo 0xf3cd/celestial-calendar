@@ -168,30 +168,30 @@ TEST(Util, GenRandomValue2) {
 TEST(Util, TupleHash) {
   { // Test double, int32_t
     std::unordered_set<std::size_t> s;
-    s.insert(cache::hash(0.0, 0));
-    s.insert(cache::hash(0.1, 0));
-    s.insert(cache::hash(0.1, 1));
-    s.insert(cache::hash(0.1, 1));
+    s.insert(hash::hash(0.0, 0));
+    s.insert(hash::hash(0.1, 0));
+    s.insert(hash::hash(0.1, 1));
+    s.insert(hash::hash(0.1, 1));
     ASSERT_EQ(s.size(), 3);
   }
 
   { // Test int64_t, float, std::string
     std::unordered_set<std::size_t> s;
-    s.insert(cache::hash(0LL, 0.0F, ""));
-    s.insert(cache::hash(0LL, 0.1F, ""));
-    s.insert(cache::hash(0LL, 0.1F, "a"));
-    s.insert(cache::hash(0LL, 0.1F, "b"));
-    s.insert(cache::hash(0LL, 0.1F, "b"));
+    s.insert(hash::hash(0LL, 0.0F, ""));
+    s.insert(hash::hash(0LL, 0.1F, ""));
+    s.insert(hash::hash(0LL, 0.1F, "a"));
+    s.insert(hash::hash(0LL, 0.1F, "b"));
+    s.insert(hash::hash(0LL, 0.1F, "b"));
     ASSERT_EQ(s.size(), 4);
   }
 
   { // Test tuple
     std::unordered_set<std::size_t> s;
-    s.insert(cache::hash(std::make_tuple(0, 0.0F, "")));
-    s.insert(cache::hash(std::make_tuple(0, 0.1F, "")));
-    s.insert(cache::hash(std::make_tuple(0, 0.1F, "a")));
-    s.insert(cache::hash(std::make_tuple(0, 0.1F, "b")));
-    s.insert(cache::hash(std::make_tuple(5, 0.1F, "b")));
+    s.insert(hash::hash(std::make_tuple(0, 0.0F, "")));
+    s.insert(hash::hash(std::make_tuple(0, 0.1F, "")));
+    s.insert(hash::hash(std::make_tuple(0, 0.1F, "a")));
+    s.insert(hash::hash(std::make_tuple(0, 0.1F, "b")));
+    s.insert(hash::hash(std::make_tuple(5, 0.1F, "b")));
     ASSERT_EQ(s.size(), 5);
   }
 }
@@ -207,7 +207,7 @@ TEST(Util, HashCollision) {
   constexpr auto try_count = 80000;
 #endif
 
-  std::unordered_set<std::tuple<int, double, float>, cache::TupleHash<int, double, float>> tuples;
+  std::unordered_set<std::tuple<int, double, float>, hash::TupleHash<int, double, float>> tuples;
   std::unordered_set<std::size_t> hash_values;
 
   for (auto _ = 0; _ < try_count; _++) {
@@ -215,7 +215,7 @@ TEST(Util, HashCollision) {
     const auto v2 = util::random<double>();
     const auto v3 = util::random<float>();
     tuples.emplace(v1, v2, v3);
-    hash_values.insert(cache::hash(v1, v2, v3));
+    hash_values.insert(hash::hash(v1, v2, v3));
   }
 
   std::println("{} unique tuples", tuples.size());
@@ -231,7 +231,7 @@ TEST(Util, MakeCached1) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));
     return a + b;
   };
-  const auto cached_f = util::cache::make_cached(std::function(f));
+  const auto cached_f = util::cache::cache_func(f);
 
   // Time the original function.
   const auto original_start_time = std::chrono::steady_clock::now();
@@ -273,7 +273,7 @@ TEST(Util, MakeCached2) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));
     return a * b;
   };
-  const auto cached_f = util::cache::make_cached(std::function(f));
+  const auto cached_f = util::cache::cache_func(f);
 
   // Time the original function.
   const auto original_start_time = std::chrono::steady_clock::now();
