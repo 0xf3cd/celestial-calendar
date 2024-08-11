@@ -2,11 +2,13 @@
 #include <algorithm>
 #include "lunar/algo2.hpp"
 
+
 namespace calendar::lunar::algo2::test {
 
 using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
-
+using astro::julian_day::ut1_to_jde;
+using astro::julian_day::jde_to_ut1;
 
 TEST(LunarAlgo2, LunarMonthGenerator) {
   const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
@@ -21,11 +23,15 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
 
   std::vector<JieqiGenerator::JieqiPair> jieqi_pairs;
   for (const auto &[a, b] : lunar_month_pairs) {
-    ASSERT_EQ(a.end_jde, b.start_jde);
+    ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);
 
     for (const auto jq_pair : a.contained_jieqis) {
-      ASSERT_GE(jq_pair.jde, a.start_jde);
-      ASSERT_LT(jq_pair.jde, a.end_jde);
+      // Raw `.jde` is in UT1, add 8 hours to make it in UTC+8.
+      const auto jq_moment_utc8 = jde_to_ut1(jq_pair.jde + 8.0 / 24.0);
+      const auto jq_date = jq_moment_utc8.ymd;
+
+      ASSERT_GE(jq_date, a.start_moment_utc8.ymd);
+      ASSERT_LT(jq_date, a.end_moment_utc8.ymd);
 
       jieqi_pairs.push_back(jq_pair);
     }
@@ -102,16 +108,16 @@ TEST(LunarAlgo2, MonthChunks) {
   { // Examine the first chunk.
     // It's length is either 12 or 13.
     ASSERT_TRUE(size(chunk1) == 12 or size(chunk1) == 13);
-    // The first month's start jde should fall into previous year.
-    const auto start_year = astro::julian_day::jde_to_ut1(chunk1[0].start_jde).year();
+    // The first month's start moment should fall into previous year.
+    const auto start_year = chunk1[0].start_moment_utc8.year();
     ASSERT_EQ(start_year, random_year - 1);
   }
 
   { // Examine the second chunk.
     // It's length is either 12 or 13.
     ASSERT_TRUE(size(chunk2) == 12 or size(chunk2) == 13);
-    // The first month's start jde should fall into current year.
-    const auto start_year = astro::julian_day::jde_to_ut1(chunk2[0].start_jde).year();
+    // The first month's start moment should fall into current year.
+    const auto start_year = chunk2[0].start_moment_utc8.year();
     ASSERT_EQ(start_year, random_year);
   }
 }
@@ -176,28 +182,34 @@ TEST(LunarAlgo2, LunarContext) {
     const double non_leap_year_len = 29.53 * 12;
     const double leap_year_len = 29.53 * 13;
 
-    if (context.leap_month_jde.has_value()) {
-      ASSERT_NEAR(leap_year_len, context.end_jde - context.start_jde, 10.0);
+    if (context.leap_month_moment_utc8.has_value()) {
+      const double actual_len = ut1_to_jde(context.end_moment_utc8) 
+                              - ut1_to_jde(context.start_moment_utc8);
+      ASSERT_NEAR(leap_year_len, actual_len, 10.0);
       ASSERT_EQ(size(context.months), 13);
     } else {
-      ASSERT_NEAR(non_leap_year_len, context.end_jde - context.start_jde, 10.0);
+      const double actual_len = ut1_to_jde(context.end_moment_utc8) 
+                              - ut1_to_jde(context.start_moment_utc8);
+      ASSERT_NEAR(non_leap_year_len, actual_len, 10.0);
       ASSERT_EQ(size(context.months), 12);
     }
 
     // Ensure the first month is the start of the year.
-    ASSERT_EQ(context.months.front().start_jde, context.start_jde);
+    ASSERT_EQ(context.months.front().start_moment_utc8, context.start_moment_utc8);
 
     // Ensure the last month ends at the end of the year.
-    ASSERT_EQ(context.months.back().end_jde, context.end_jde);
+    ASSERT_EQ(context.months.back().end_moment_utc8, context.end_moment_utc8);
 
     // Ensure the months are in order.
     // TODO: Use `std::views::pairwise` or `std::views::slide` when supported.
     const auto month_pairs = std::views::zip(context.months,context.months | std::views::drop(1));
     for (const auto& [a, b] : month_pairs) {
-      ASSERT_LE(a.start_jde, b.start_jde);
-      ASSERT_EQ(a.end_jde, b.start_jde);
+      ASSERT_LE(a.start_moment_utc8, b.start_moment_utc8);
+      ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);
 
-      ASSERT_NEAR(29.53, b.end_jde - b.start_jde, 0.75);
+      const double month_len = ut1_to_jde(a.end_moment_utc8) 
+                             - ut1_to_jde(a.start_moment_utc8);
+      ASSERT_NEAR(29.53, month_len, 0.75);
     }
   }
 
@@ -207,17 +219,17 @@ TEST(LunarAlgo2, LunarContext) {
     const auto context = create_lunar_year_context(2024);
 
     // No leap month in this year
-    ASSERT_FALSE(context.leap_month_jde.has_value());
+    ASSERT_FALSE(context.leap_month_moment_utc8.has_value());
 
-    // Check the start jde
-    const calendar::Datetime utc8_est_start_moment { util::to_ymd(2024, 2, 10), 0.0 };
-    const double est_start_jde = astro::julian_day::ut1_to_jde(utc8_est_start_moment) - 8.0 / 24.0;
-    ASSERT_NEAR(est_start_jde, context.start_jde, 1.0);
+    // Check the start moment
+    const double est_start_moment_utc8 = ut1_to_jde(calendar::Datetime { util::to_ymd(2024, 2, 10), 0.0 });
+    const double actual_start_moment_utc8 = ut1_to_jde(context.start_moment_utc8);
+    ASSERT_NEAR(est_start_moment_utc8, actual_start_moment_utc8, 1.0);
 
-    // Check the end jde
-    const calendar::Datetime utc8_est_end_moment { util::to_ymd(2025, 1, 29), 0.0 };
-    const double est_end_jde = astro::julian_day::ut1_to_jde(utc8_est_end_moment) - 8.0 / 24.0;
-    ASSERT_NEAR(est_end_jde, context.end_jde, 1.0);
+    // Check the end moment
+    const double est_end_moment_utc8 = ut1_to_jde(calendar::Datetime { util::to_ymd(2025, 1, 29), 0.0 });
+    const double actual_end_moment_utc8 = ut1_to_jde(context.end_moment_utc8);
+    ASSERT_NEAR(est_end_moment_utc8, actual_end_moment_utc8, 1.0);
   }
 
   // Checks for year 2025
@@ -227,18 +239,18 @@ TEST(LunarAlgo2, LunarContext) {
 
     // Leap month is the 7th month (index 6) in this year
     ASSERT_EQ(size(context.months), 13);
-    ASSERT_TRUE(context.leap_month_jde.has_value());
-    // ASSERT_EQ(context.leap_month_jde.value(), context.months[6].start_jde);
+    ASSERT_TRUE(context.leap_month_moment_utc8.has_value());
+    ASSERT_EQ(context.leap_month_moment_utc8.value(), context.months[6].start_moment_utc8); // NOLINT(bugprone-unchecked-optional-access)
 
-    // Check the start jde
-    const calendar::Datetime utc8_est_start_moment { util::to_ymd(2025, 1, 29), 0.0 };
-    const double est_start_jde = astro::julian_day::ut1_to_jde(utc8_est_start_moment) - 8.0 / 24.0;
-    ASSERT_NEAR(est_start_jde, context.start_jde, 1.0);
+    // Check the start moment
+    const double est_start_moment_utc8 = ut1_to_jde(calendar::Datetime { util::to_ymd(2025, 1, 29), 0.0 });
+    const double actual_start_moment_utc8 = ut1_to_jde(context.start_moment_utc8);
+    ASSERT_NEAR(est_start_moment_utc8, actual_start_moment_utc8, 1.0);
 
-    // Check the end jde
-    const calendar::Datetime utc8_est_end_moment { util::to_ymd(2026, 2, 17), 0.0 };
-    const double est_end_jde = astro::julian_day::ut1_to_jde(utc8_est_end_moment) - 8.0 / 24.0;
-    ASSERT_NEAR(est_end_jde, context.end_jde, 1.0);
+    // Check the end moment
+    const double est_end_moment_utc8 = ut1_to_jde(calendar::Datetime { util::to_ymd(2026, 2, 17), 0.0 });
+    const double actual_end_moment_utc8 = ut1_to_jde(context.end_moment_utc8);
+    ASSERT_NEAR(est_end_moment_utc8, actual_end_moment_utc8, 1.0);
   }
 }
 
