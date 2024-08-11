@@ -33,6 +33,7 @@ using std::chrono::year_month_day;
 /** 
  * @struct LunarYear 
  * @brief  Information of the lunar year. 阴历年信息。
+ * @note   Lunar months are defined in UTC+8 time zone. 阴历月的划分是基于 UTC+8 时区的（如北京时间、香港时间、台北时间）。
  */
 struct LunarYear {
   /*! @brief The date of the first day of the lunar year in gregorian calendar. 

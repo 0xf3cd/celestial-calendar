@@ -76,9 +76,9 @@ TEST(JieQi, IsJieOrQi) {
 TEST(JieQi, JDE) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
+#if defined(__arm__) or defined(__aarch64__)
     // If running on ARM, then test less cases.
     // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
-#if defined(__arm__) or defined(__aarch64__)
     return util::random(0.0, 1.0) < 0.042;
 #else
     // Otherwise, randomly pick some years.

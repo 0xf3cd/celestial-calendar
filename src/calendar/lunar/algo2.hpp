@@ -26,6 +26,8 @@
 #include <optional>
 #include <algorithm>
 
+#include "cache.hpp"
+
 #include "common.hpp"
 #include "jieqi.hpp"
 #include "moon_phase.hpp"
@@ -365,9 +367,59 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-// inline auto calc_lunar_year(int32_t year) -> LunarYear {
-//   return {};
-// }
+inline auto calc_lunar_year(int32_t year) -> LunarYear {
+  const auto context = create_lunar_year_context(year);
 
+  // `context` contains raw info. We just need to convert it to `LunarYear`.
+  const auto first_day_in_lunar_year = context.start_moment_utc8.ymd;
+
+  // Find the leap month.
+  const auto is_leap = [&](const auto& m) {
+    return m.start_moment_utc8 == context.leap_month_moment_utc8;
+  };
+  const auto leap_month_vec = context.months 
+                            | std::views::filter(is_leap)
+                            | std::ranges::to<std::vector>();
+
+  // Check if there is only one or zero leap month in the lunar year.
+  if (size(leap_month_vec) > 1) {
+    throw std::runtime_error {
+      std::format("Too many leap months in lunar year: {}", year)
+    };
+  }
+
+  // Get the leap month's index.
+  const uint8_t leap_month = std::invoke([&] {
+    const auto found = std::ranges::find_if(context.months, is_leap);
+    return found == std::end(context.months) ? 0 : std::distance(std::begin(context.months), found);
+  });
+  
+  // Then, figure out if the months are big (30 days) or small (29 days).
+  const auto calc_month_len = [&](const auto& m) -> uint32_t {
+    using namespace util::ymd_operator;
+    const auto gap = m.end_moment_utc8.ymd - m.start_moment_utc8.ymd;
+    return gap;
+  };
+
+  const auto month_lengths = context.months
+                           | std::views::transform(calc_month_len)
+                           | std::ranges::to<std::vector>();
+
+  return {
+    .date_of_first_day = first_day_in_lunar_year,
+    .leap_month        = leap_month,
+    .month_lengths     = month_lengths
+  };
+}
+
+
+/**
+ * @brief Get the lunar year information for the given year, using cache.
+          返回给定年份的阴历年信息。使用缓存。
+ * @param year The Lunar year. 阴历年份。
+ * @return The lunar year information. 阴历年信息。
+ * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
+ */
+const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
 
 } // namespace calendar::lunar::algo2

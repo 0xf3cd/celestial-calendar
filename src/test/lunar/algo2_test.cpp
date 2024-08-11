@@ -254,4 +254,36 @@ TEST(LunarAlgo2, LunarContext) {
   }
 }
 
+
+TEST(LunarAlgo2, GetLunarInfo) {
+  // This test simply tests the function can compile.
+  // Sophisticated tests are in `diff_test.cpp`.
+
+  { // Test for year 2020
+    // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2020.pdf
+    const auto info = get_info_for_year(2020);
+
+    ASSERT_EQ(size(info.month_lengths), 13);
+    ASSERT_EQ(info.leap_month, 4);
+  }
+
+  { // Test for year 2027
+    // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2027.pdf
+    const auto info = get_info_for_year(2027);
+
+    ASSERT_EQ(size(info.month_lengths), 12);
+    ASSERT_EQ(info.leap_month, 0);
+  }
+
+  // Test that the cached values are correct
+  for (auto _ = 0; _ < 8; ++_) {
+    const int32_t year = util::random(1000, 2500);
+    const auto info = get_info_for_year(year);
+    const auto info2 = get_info_for_year(year);
+    ASSERT_EQ(info.date_of_first_day, info2.date_of_first_day);
+    ASSERT_EQ(info.month_lengths, info2.month_lengths);
+    ASSERT_EQ(info.leap_month, info2.leap_month);
+  }
+}
+
 } // namespace calendar::lunar::algo2::test
