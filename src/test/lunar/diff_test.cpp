@@ -15,7 +15,6 @@ auto pick_random_years() -> std::vector<int32_t> {
     // The two algoritms produce different results on some years.
     // Algo1 is using the hard-coded values, collected from Hong Kong Observatory.
     // Algo2 is based on VSOP87 and ELP2000 theories.
-    // TODO: Check the correctness of these years.
     return year != 1914 and year != 1915 and year != 1916 and year != 1920; 
   };
 
@@ -60,7 +59,7 @@ TEST(LunarAlgoDiff, Perf) {
   std::println("algo1 is {}x faster", algo2_sum / algo1_sum);
 }
 
-TEST(LunarAlgoDiff, Correctness) {
+TEST(LunarAlgoDiff, Consistency) {
   // This test ensures that algo1 and algo2 have the same result on leap months.
   // Use algo1's result as the benchmark.
 

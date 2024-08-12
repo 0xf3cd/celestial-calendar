@@ -23,27 +23,16 @@
 
 #pragma once
 
-#include <chrono>
-#include <format>
-#include <ranges>
-
-#include <numeric>
-#include <cassert>
-#include <optional>
-
 #include <array>
-#include <vector>
+#include <format>
 
 #include "util.hpp"
 #include "common.hpp"
 
 
-namespace calendar::lunar::algo1::data {
+namespace calendar::lunar::algo1 {
 
-// This file contains encoded binary data for each lunar year between 1901 and 2099.
-// This is intended to be used in algo1.
-
-using calendar::lunar::common::LunarYear;
+using namespace calendar::lunar::common;
 
 /** @brief The first supported lunar year. */
 constexpr int32_t START_YEAR = 1901;
@@ -56,7 +45,7 @@ constexpr int32_t END_YEAR = 2099;
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details Data collected from Hong Kong Observatory.
  */
-constexpr std::array<uint32_t, 199> LUNAR_DATA = {
+constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x620752, 0x4c0ea5, 0x38b64a, 0x5c064b, 0x440a9b, 0x309556, 0x56056a, 0x400b59, 0x2a5752, 0x500752, 
   0x3adb25, 0x600b25, 0x480a4b, 0x32b4ab, 0x5802ad, 0x42056b, 0x2c4b69, 0x520da9, 0x3efd92, 0x640e92, 
   0x4c0d25, 0x36ba4d, 0x5c0a56, 0x4602b6, 0x2e95b5, 0x5606d4, 0x400ea9, 0x2c5e92, 0x500e92, 0x3acd26, 
@@ -79,226 +68,45 @@ constexpr std::array<uint32_t, 199> LUNAR_DATA = {
   0x6004ab, 0x4a055b, 0x34cad6, 0x5a0b6a, 0x460752, 0x309725, 0x540b45, 0x3e0a8b, 0x28549b,
 };
 
+
 /**
- * @brief Parse the encoded lunar year information for the given year. 
-          返回给定年份的阴历年信息。
+ * @brief Calculate the lunar year information for the given year.
+ * @attention The input year should be in the range of [START_YEAR, END_YEAR].
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto parse_lunar_year(int32_t year) -> LunarYear {
-  // Validate the input year.
+inline auto calc_lunar_year_info(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
-    throw std::out_of_range { 
-      std::vformat("year must be between {:d} and {:d}. Actual year is {:d}.", std::make_format_args(START_YEAR, END_YEAR, year)) 
+    throw std::out_of_range {
+      std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
     };
   }
 
-  const uint32_t bin_data       = LUNAR_DATA[year - START_YEAR]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
-  const uint32_t days_offset    = bin_data >> 17;
-  const uint8_t  leap_month     = (bin_data >> 13) & 0xf;
-  const uint16_t month_len_info = bin_data & 0x1fff;
-
-  const std::chrono::year_month_day first_day = std::invoke([&] {
-    using namespace util::ymd_operator;
-    return util::to_ymd(year, 1, 1) + days_offset;
-  });
-
-  const std::vector<uint32_t> month_lengths = std::invoke([&] {
-    using namespace std::ranges;
-
-    const bool leap = (leap_month != 0);
-    const auto months = views::iota(0, leap ? 13 : 12);
-
-    const auto lengths = months | views::transform([&](auto m) -> uint32_t {
-      const bool big = (month_len_info >> m) & 0x1;
-      return big ? 30 : 29;
-    });
-
-    return lengths | to<std::vector>();
-  });
-
-  return {
-    .date_of_first_day = first_day,
-    .leap_month        = leap_month,
-    .month_lengths     = month_lengths,
-  };  
+  return parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
 }
 
-} // namespace calendar::lunar::algo1::data
-
-
-
-namespace calendar::lunar::algo1 {
-
-using std::chrono::year_month_day;
-using std::chrono::sys_days;
-using namespace calendar::lunar::algo1::data;
-
 /**
- * @brief Same function as `data::calc_lunar_year_info`, but cached. 
+ * @brief Same function as `calc_lunar_year_info`, but cached. 
           与 `calc_lunar_year_info` 功能相同，但使用缓存。
  * @attention The input year should be in the range of [START_YEAR, END_YEAR].
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-const inline auto get_info_for_year = util::cache::cache_func(parse_lunar_year);
+const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year_info);
 
-/** @brief The first supported lunar date. */
-const inline year_month_day FIRST_LUNAR_DATE = util::to_ymd(START_YEAR, 1, 1);
-
-/** @brief The last supported lunar date. */
-const inline year_month_day LAST_LUNAR_DATE = std::invoke([] {
-  const LunarYear& info = get_info_for_year(END_YEAR);
-  return util::to_ymd(END_YEAR, info.month_lengths.size(), info.month_lengths.back());
-});
-
-/** @brief The first supported gregorian date. */
-const inline year_month_day FIRST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYear& info = get_info_for_year(START_YEAR);
-  return info.date_of_first_day;
-});
-
-/** @brief The last supported gregorian date. */
-const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
-  const LunarYear& info = get_info_for_year(END_YEAR);
-  const auto& ml = info.month_lengths;
-  const uint32_t days_count = std::reduce(cbegin(ml), cend(ml));
-
-  using namespace util::ymd_operator;
-  return (days_count - 1) + info.date_of_first_day;
-});
-
-
-struct Converter {
-
-  /** 
-   * @fn Checks if the input gregorian date is valid and within the supported range. 
-         检查输入的公历日期是否有效，且在支持的范围内。 
-   * @param date The date. 公历日期。
-   * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
-   */
-  static auto is_valid_gregorian(const year_month_day& date) -> bool {
-    if (not date.ok()) {
-      return false;
-    }
-    if (date < FIRST_GREGORIAN_DATE or date > LAST_GREGORIAN_DATE) {
-      return false;
-    }
-    return true;
-  }
-
-  /** 
-   * @fn Checks if the input lunar date is valid and within the supported range. 
-         检查输入的阴历日期是否有效，且在支持的范围内。 
-   * @param lunar_date The lunar date. 阴历日期。
-   * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
-   */
-  static auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
-    if (lunar_date < FIRST_LUNAR_DATE or lunar_date > LAST_LUNAR_DATE) {
-      return false;
-    }
-
-    const auto [y, m, d] = util::from_ymd(lunar_date);
-    const auto& info = get_info_for_year(y);
-    const auto& ml = info.month_lengths;
-    
-    if (m < 1 or m > ml.size()) {
-      return false;
-    }
-    if (d < 1 or d > ml[m - 1]) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /** 
-   * @fn gregorian_to_lunar 
-   * @brief Converts gregorian date to lunar date. 将公历日期转换为阴历日期。 
-   * @param gregorian_date The gregorian date. 公历日期。
-   * @return The optional lunar date. 阴历日期（optional）。
-   * @attention The input date should be in the range of [FIRST_GREGORIAN_DATE, LAST_GREGORIAN_DATE].
-              输入的日期需要在所支持的范围内。
-  * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
-              输入的日期无效时返回 `std::nullopt`。不会抛出异常。
-  */
-  static auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::optional<year_month_day> {
-    if (not is_valid_gregorian(gregorian_date)) {
-      return std::nullopt;
-    }
-
-    const auto find_lunar_date = [&](const int32_t lunar_y) -> year_month_day {
-      const auto& info = get_info_for_year(lunar_y);
-      const auto& ml = info.month_lengths;
-
-      // Calculate how many days have past in the lunar year.
-      const uint32_t past_days_count = (sys_days { gregorian_date } - sys_days { info.date_of_first_day }).count();
-
-      uint32_t lunar_m_idx = 0;
-      uint32_t rest_days_count = past_days_count;
-      while (rest_days_count >= ml[lunar_m_idx]) {
-        rest_days_count -= ml[lunar_m_idx];
-        ++lunar_m_idx;
-      }
-
-      const uint32_t lunar_m = lunar_m_idx + 1;
-      assert(1 <= lunar_m and lunar_m <= 13);
-
-      const uint32_t lunar_d = rest_days_count + 1;
-      assert(1 <= lunar_d and lunar_d <= 30);
-
-      return util::to_ymd(lunar_y, lunar_m, lunar_d);
-    }; // find_lunar_date
-    
-    // The lunar year can either be the same as the gregorian_date year, or the previous year.
-    // Example: a gregorian_date date in gregorian_date year 2024 can be in lunar year 2023 or 2024.
-
-    // First, check if lunar date and gregorian_date date are in the same year.
-    const auto& [g_year, _, __] = util::from_ymd(gregorian_date);
-    if (g_year <= END_YEAR) {
-      using namespace util::ymd_operator;
-      const auto& info = get_info_for_year(g_year);
-      const auto& ml = info.month_lengths;
-      const uint32_t lunar_year_days_count = std::reduce(cbegin(ml), cend(ml));
-
-      // Calculate the gregorian date of the last day in the lunar year.
-      const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
-      if (gregorian_date >= info.date_of_first_day and gregorian_date <= last_lunar_day) { // Yeah! We found the lunar year.
-        return find_lunar_date(g_year);
-      }
-    }
-
-    // Otherwise, the lunar date falls into the previous year.
-    return find_lunar_date(g_year - 1);
-  }
-
-  /** 
-   * @fn lunar_to_gregorian
-   * @brief Converts lunar date to gregorian date. 将阴历日期转换为公历日期。 
-   * @param lunar_date The lunar date. 阴历日期。
-   * @return The optional gregorian date. 公历日期（optional）。
-   * @attention The input date should be in the range of [FIRST_LUNAR_DATE, LAST_LUNAR_DATE].
-              输入的日期需要在所支持的范围内。
-  * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
-              输入的日期无效时返回 `std::nullopt`。不会抛出异常。
-  */
-  static auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optional<year_month_day> {
-    if (not is_valid_lunar(lunar_date)) {
-      return std::nullopt;
-    }
-
-    const auto [y, m, d] = util::from_ymd(lunar_date);
-    const auto& info = get_info_for_year(y);
-    const auto& ml = info.month_lengths;
-
-    const uint32_t past_days_count = d + std::reduce(cbegin(ml), cbegin(ml) + m - 1);
-
-    using namespace util::ymd_operator;
-    return info.date_of_first_day + (past_days_count - 1);
-  }
-
-}; // struct Converter
-
-static_assert(calendar::lunar::common::IsConverter<Converter>);
+/** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
+const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
 
 } // namespace calendar::lunar::algo1
+
+
+namespace calendar::lunar::common {
+
+/** @brief Specialize `AlgoMetadata` for `Algo::ALGO_1`. */
+template <>
+struct AlgoMetadata<Algo::ALGO_1> {
+  static const inline auto get_info_for_year = algo1::get_info_for_year;
+  static const inline auto bounds = algo1::bounds;
+};
+
+} // namespace calendar::lunar::common

@@ -420,6 +420,28 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-const inline auto get_info_for_year = calc_lunar_year; // util::cache::cache_func(calc_lunar_year);
+const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
+
+
+/** @brief The first supported lunar year. */
+constexpr int32_t START_YEAR = 500; // Algo2 actually has no limit on year. Simply use 500 here.
+
+/** @brief The last supported lunar year. */
+constexpr int32_t END_YEAR = 3000; // Algo2 actually has no limit on year. Simply use 3000 here.
+
+/** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
+const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
 
 } // namespace calendar::lunar::algo2
+
+
+namespace calendar::lunar::common {
+
+/** @brief Specialize `AlgoMetadata` for `Algo::ALGO_2`. */
+template <>
+struct AlgoMetadata<Algo::ALGO_2> {
+  static const inline auto get_info_for_year = algo2::get_info_for_year;
+  static const inline auto bounds = algo2::bounds;
+};
+
+} // namespace calendar::lunar::common
