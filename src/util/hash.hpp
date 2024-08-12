@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <unordered_map>
-
 namespace util::hash {
 
 template <typename T>

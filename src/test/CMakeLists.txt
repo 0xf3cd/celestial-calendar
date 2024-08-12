@@ -23,7 +23,7 @@ FetchContent_MakeAvailable(googletest)
 target_compile_options(gtest PRIVATE -w)
 target_compile_options(gtest_main PRIVATE -w)
 target_compile_options(gmock PRIVATE -w)
-target_compile_options(gtest_main PRIVATE -w)
+target_compile_options(gmock_main PRIVATE -w)
 
 enable_testing()
 include(GoogleTest)

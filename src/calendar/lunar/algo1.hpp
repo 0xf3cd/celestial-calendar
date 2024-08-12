@@ -161,7 +161,7 @@ const inline year_month_day FIRST_GREGORIAN_DATE = std::invoke([] {
 /** @brief The last supported gregorian date. */
 const inline year_month_day LAST_GREGORIAN_DATE = std::invoke([] {
   const LunarYear& info = get_info_for_year(END_YEAR);
-  const auto& ml = get_info_for_year(END_YEAR).month_lengths;
+  const auto& ml = info.month_lengths;
   const uint32_t days_count = std::reduce(cbegin(ml), cend(ml));
 
   using namespace util::ymd_operator;

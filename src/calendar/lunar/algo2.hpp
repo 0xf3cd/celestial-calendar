@@ -420,6 +420,6 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
+const inline auto get_info_for_year = calc_lunar_year; // util::cache::cache_func(calc_lunar_year);
 
 } // namespace calendar::lunar::algo2

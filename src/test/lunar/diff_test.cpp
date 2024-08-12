@@ -11,34 +11,24 @@ namespace calendar::lunar::test {
 auto pick_random_years() -> std::vector<int32_t> {
   using namespace std::ranges;
 
-  // The two algoritms produce different results on some years.
-  // Algo1 is using the hard-coded values, collected from Hong Kong Observatory.
-  // Algo2 is based on VSOP87 and ELP2000 theories.
-  // TODO: Check the correctness of these years.
-  const auto drop_list = std::vector<int32_t> {
-    1914, 1915, 1916, 1920,
+  const auto filter_year = [](int32_t year) {
+    // The two algoritms produce different results on some years.
+    // Algo1 is using the hard-coded values, collected from Hong Kong Observatory.
+    // Algo2 is based on VSOP87 and ELP2000 theories.
+    // TODO: Check the correctness of these years.
+    return year != 1914 and year != 1915 and year != 1916 and year != 1920; 
   };
-
-  const auto should_keep = [&](int32_t year) {
-    return not std::any_of(cbegin(drop_list), cend(drop_list), [&](auto drop_year) {
-      return year == drop_year;
-    });
-  };
-
-#if defined(__arm__) or defined(__aarch64__)
-  // If running on ARM, then test less cases.
-  // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
-  constexpr double threshold = 0.042;
-#else
-  // Otherwise, randomly pick some years.
-  constexpr double threshold = 0.25;
-#endif
 
   // Algo2 doesn't really have year limits. So use algo1's.
-  return views::iota(algo1::START_YEAR, algo1::END_YEAR + 1)
-        | views::filter(should_keep)
-        | views::filter([](auto) { return util::random(0.0, 1.0) < threshold; })
-        | to<std::vector>();
+  auto years = views::iota(algo1::START_YEAR, algo1::END_YEAR + 1)
+             | views::filter(filter_year)
+             | to<std::vector>();
+
+  // Randomly pick some years.
+  std::shuffle(begin(years), end(years), std::mt19937{ std::random_device{}() });
+  return years 
+       | views::take(10) 
+       | to<std::vector>();
 }
 
 
