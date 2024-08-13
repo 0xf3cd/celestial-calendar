@@ -140,7 +140,7 @@ struct Angle {
    * @return The converted angle.
    */
   template <AngleUnit As>
-  [[nodiscard]] [[nodiscard]] [[nodiscard]] constexpr auto as() const -> double {
+  [[nodiscard]] constexpr auto as() const -> double {
     if constexpr (Unit == As) { // No conversion needed.
       return _value;
     }

@@ -25,13 +25,13 @@ TEST(Converter, IsValidGregorian) {
   {
     using Converter = converter::Converter<common::Algo::ALGO_2>;
 
-    ASSERT_FALSE(Converter::is_valid_gregorian(499y / 2 / 18));
-    ASSERT_TRUE(Converter::is_valid_gregorian(501y / 2 / 19));
+    ASSERT_FALSE(Converter::is_valid_gregorian(400y / 2 / 18));
+    ASSERT_TRUE(Converter::is_valid_gregorian(411y / 2 / 19));
 
     ASSERT_TRUE(Converter::is_valid_gregorian(2024y / 3 / 17));
 
-    ASSERT_TRUE(Converter::is_valid_gregorian(3000y / 2 / 8));
-    ASSERT_FALSE(Converter::is_valid_gregorian(3002y / 2 / 9));
+    ASSERT_TRUE(Converter::is_valid_gregorian(5000y / 2 / 8));
+    ASSERT_FALSE(Converter::is_valid_gregorian(5002y / 2 / 9));
   }
 }
 
@@ -66,8 +66,8 @@ TEST(Converter, IsValidLunar) {
   {
     using Converter = converter::Converter<common::Algo::ALGO_2>;
     
-    ASSERT_FALSE(Converter::is_valid_lunar(499y / 12 / 29));
-    ASSERT_TRUE(Converter::is_valid_lunar(500y / 1 / 1));
+    ASSERT_FALSE(Converter::is_valid_lunar(409y / 12 / 29));
+    ASSERT_TRUE(Converter::is_valid_lunar(410y / 1 / 1));
   }
 }
 
@@ -93,11 +93,11 @@ TEST(Converter, GregorianToLunarNegative) {
   {
     using Converter = converter::Converter<common::Algo::ALGO_2>;
 
-    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(499y / 12 / 29));
-    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(501y / 1 / 1));
+    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(400y / 12 / 29));
+    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(411y / 1 / 1));
 
-    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(3000y / 1 / 1));
-    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(3002y / 1 / 1));
+    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(5000y / 1 / 1));
+    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(5002y / 1 / 1));
   }
 }
 
@@ -120,8 +120,8 @@ TEST(Converter, LunarToGregorianNegative) {
   {
     using Converter = converter::Converter<common::Algo::ALGO_2>;
 
-    ASSERT_EQ(std::nullopt, Converter::lunar_to_gregorian(499y / 12 / 29));
-    ASSERT_NE(std::nullopt, Converter::lunar_to_gregorian(500y / 1 / 1));
+    ASSERT_EQ(std::nullopt, Converter::lunar_to_gregorian(409y / 12 / 29));
+    ASSERT_NE(std::nullopt, Converter::lunar_to_gregorian(410y / 1 / 1));
   }
 }
 

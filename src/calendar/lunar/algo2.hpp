@@ -424,10 +424,10 @@ const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
 
 
 /** @brief The first supported lunar year. */
-constexpr int32_t START_YEAR = 500; // Algo2 actually has no limit on year. Simply use 500 here.
+constexpr int32_t START_YEAR = 410; // Algo2 actually has no limit on year. Simply use 410 here.
 
 /** @brief The last supported lunar year. */
-constexpr int32_t END_YEAR = 3000; // Algo2 actually has no limit on year. Simply use 3000 here.
+constexpr int32_t END_YEAR = 5000; // Algo2 actually has no limit on year. Simply use 5000 here.
 
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
 const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);

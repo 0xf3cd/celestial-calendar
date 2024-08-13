@@ -1,10 +1,13 @@
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from dataclasses import dataclass
 
 import ctypes
-from ctypes import c_int32, c_uint32, c_double, c_bool, POINTER, Structure
+from ctypes import (
+  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, 
+  POINTER, Structure
+)
 
 from typing import Optional, List
 
@@ -310,6 +313,94 @@ def new_moons_in_year(year: int) -> NewMoons:
     year=year,
     new_moon_jdes=jdes,
     new_moon_moments=moments,
+  )
+
+#endregion
+
+
+#region Lunar Year
+
+class _SupportedLunarYearRange(Structure):
+  _fields_ = [
+    ('valid', c_bool),
+    ('start', c_int32),
+    ('end', c_int32),
+  ]
+
+LIB.get_supported_lunar_year_range.argtypes = [c_uint8]
+LIB.get_supported_lunar_year_range.restype = _SupportedLunarYearRange
+
+@dataclass
+class SupportedLunarYearRange:
+  start: int
+  end: int
+
+def get_supported_lunar_year_range(algo: int) -> SupportedLunarYearRange:
+  '''
+  Return the supported lunar year range for the specified algorithm.
+
+  @param algo The algorithm to use. The supported values are 1 and 2.
+  @returns A `SupportedLunarYearRange` instance representing the supported lunar year range.
+  '''
+  if algo not in [1, 2]:
+    raise ValueError("algo must be 1 or 2.")
+
+  result = LIB.get_supported_lunar_year_range(algo)
+
+  if not result.valid:
+    raise ValueError("Error occurred in get_supported_lunar_year_range.")
+
+  return SupportedLunarYearRange(
+    start = result.start,
+    end   = result.end,
+  )
+
+
+class _LunarYearInfo(Structure):
+  _fields_ = [
+    ('valid', c_bool),
+    ('year', c_int32),
+    ('month', c_uint8),
+    ('day', c_uint8),
+    ('leap_month', c_uint8),
+    ('month_len', c_uint16),
+  ]
+
+LIB.get_lunar_year_info.argtypes = [c_uint8, c_int32]
+LIB.get_lunar_year_info.restype = _LunarYearInfo
+
+@dataclass
+class LunarYearInfo:
+  first_day: date # The first day of the lunar year in the Gregorian calendar.
+  leap_month: int # The month of the leap month (1 <= leap_month <= 12). 0 if there is no leap month.
+  month_lengths: List[int] # The number of days in each month of the lunar year.
+
+def get_lunar_year_info(algo: int, year: int) -> LunarYearInfo:
+  '''
+  Return the lunar year information for the specified year.
+
+  @param algo The algorithm to use. The supported values are 1 and 2.
+  @param year The year to get the lunar year information for.
+  @returns A `LunarYearInfo` instance representing the lunar year information.
+  '''
+  if algo not in [1, 2]:
+    raise ValueError("algo must be 1 or 2.")
+
+  result = LIB.get_lunar_year_info(algo, year)
+
+  if not result.valid:
+    raise ValueError("Error occurred in get_lunar_year_info.")
+  
+  month_count = 12 if result.leap_month == 0 else 13
+  month_lengths = []
+  for i in range(month_count):
+    big = (result.month_len >> i) & 1
+    month_lengths.append(30 if big else 29)
+
+  return LunarYearInfo(
+    first_day = date(result.year, result.month, result.day),
+    leap_month = result.leap_month,
+    month_lengths = month_lengths,
   )
 
 #endregion
