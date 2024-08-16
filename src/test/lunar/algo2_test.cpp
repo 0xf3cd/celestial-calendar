@@ -26,7 +26,7 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
     ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);
 
     for (const auto jq_pair : a.contained_jieqis) {
-      // Raw `.jde` is in UT1, add 8 hours to make it in UTC+8.
+      // Raw `.jde` is in UT1, add 8 hours to make it in UT1+8.
       const auto jq_moment_utc8 = jde_to_ut1(jq_pair.jde + 8.0 / 24.0);
       const auto jq_date = jq_moment_utc8.ymd;
 

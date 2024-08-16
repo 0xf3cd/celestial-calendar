@@ -1,4 +1,5 @@
 import sys
+from enum import Enum
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from dataclasses import dataclass
@@ -100,7 +101,6 @@ def delta_t_algo4(year: float) -> float:
   if not result.valid:
     raise ValueError("Error occurred in delta_t_algo4.")
   return result.value
-  
 
 #endregion
 
@@ -265,6 +265,77 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
 #endregion
 
 
+#region Jieqi
+
+class Jieqi(Enum):
+  立春 = 0
+  雨水 = 1
+  惊蛰 = 2
+  春分 = 3
+  清明 = 4
+  谷雨 = 5
+  立夏 = 6
+  小满 = 7
+  芒种 = 8
+  夏至 = 9
+  小暑 = 10
+  大暑 = 11
+  立秋 = 12
+  处暑 = 13
+  白露 = 14
+  秋分 = 15
+  寒露 = 16
+  霜降 = 17
+  立冬 = 18
+  小雪 = 19
+  大雪 = 20
+  冬至 = 21
+  小寒 = 22
+  大寒 = 23
+
+class _JieqiMomentQuery(Structure):
+  _fields_ = [
+    ('valid', c_bool),
+    ('jq_idx', c_uint8),
+    ('y', c_int32),
+    ('m', c_uint32),
+    ('d', c_uint32),
+    ('frac', c_double),
+  ]
+
+LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
+LIB.query_jieqi_moment.restype = _JieqiMomentQuery
+
+
+@dataclass
+class JieqiMoment:
+  jq: Jieqi
+  moment: datetime
+
+def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
+  '''
+  Query the moment for a given year and Jieqi.
+  @param year The year to query.
+  @param jq The Jieqi to query.
+  @returns A `JieqiMoment` representing the moment of the Jieqi.
+  '''
+  query = LIB.query_jieqi_moment(year, jq.value)
+
+  if not query.valid:
+    raise ValueError("Error occurred in query_jieqi_moment.")
+
+  if query.jq_idx != jq.value:
+    raise ValueError("Unexpected jq_idx.")
+  
+  # Combine y, m, d, and frac into a datetime
+  elapsed_microseconds = int(query.frac * 86400 * 1000000)
+  dt = datetime(query.y, query.m, query.d) + timedelta(microseconds=elapsed_microseconds)
+
+  return JieqiMoment(jq, dt)
+
+
+#endregion
+
 #region New Moon
 
 LIB.new_moons_in_year.argtypes = [c_int32, POINTER(c_uint32), POINTER(c_double), c_uint32]
@@ -320,6 +391,10 @@ def new_moons_in_year(year: int) -> NewMoons:
 
 #region Lunar Year
 
+class LunarAlgo(Enum):
+  ALGO_1 = 1
+  ALGO_2 = 2
+
 class _SupportedLunarYearRange(Structure):
   _fields_ = [
     ('valid', c_bool),
@@ -335,17 +410,14 @@ class SupportedLunarYearRange:
   start: int
   end: int
 
-def get_supported_lunar_year_range(algo: int) -> SupportedLunarYearRange:
+def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
   '''
   Return the supported lunar year range for the specified algorithm.
 
-  @param algo The algorithm to use. The supported values are 1 and 2.
+  @param algo The algorithm to use.
   @returns A `SupportedLunarYearRange` instance representing the supported lunar year range.
   '''
-  if algo not in [1, 2]:
-    raise ValueError("algo must be 1 or 2.")
-
-  result = LIB.get_supported_lunar_year_range(algo)
+  result = LIB.get_supported_lunar_year_range(algo.value)
 
   if not result.valid:
     raise ValueError("Error occurred in get_supported_lunar_year_range.")
@@ -375,18 +447,15 @@ class LunarYearInfo:
   leap_month: int # The month of the leap month (1 <= leap_month <= 12). 0 if there is no leap month.
   month_lengths: List[int] # The number of days in each month of the lunar year.
 
-def get_lunar_year_info(algo: int, year: int) -> LunarYearInfo:
+def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
   '''
   Return the lunar year information for the specified year.
 
-  @param algo The algorithm to use. The supported values are 1 and 2.
+  @param algo The algorithm to use.
   @param year The year to get the lunar year information for.
   @returns A `LunarYearInfo` instance representing the lunar year information.
   '''
-  if algo not in [1, 2]:
-    raise ValueError("algo must be 1 or 2.")
-
-  result = LIB.get_lunar_year_info(algo, year)
+  result = LIB.get_lunar_year_info(algo.value, year)
 
   if not result.valid:
     raise ValueError("Error occurred in get_lunar_year_info.")
