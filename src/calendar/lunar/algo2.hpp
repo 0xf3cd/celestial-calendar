@@ -125,18 +125,18 @@ private:
     std::vector<JieqiGenerator::JieqiPair> jieqis;
     while (true) {
       const auto jieqi = next_jieqi();
-      const auto jieqi_moment_utc8 = astro::julian_day::jde_to_ut1(jieqi.jde + 8.0 / 24.0);
+      const auto jieqi_moment_ut1_8 = astro::julian_day::jde_to_ut1(jieqi.jde + 8.0 / 24.0);
 
       // If the Jieqi is in next month, stop.
       // Note that the comparison is at date time level, as per the rules.
-      if (jieqi_moment_utc8.ymd >= end_moment.ymd) {
+      if (jieqi_moment_ut1_8.ymd >= end_moment.ymd) {
         put_back_jieqi(jieqi);
         break;
       }
 
       // If the Jieqi is not in this month, continue going.
       // Note that the comparison is at date time level, as per the rules.
-      if (jieqi_moment_utc8.ymd < start_moment.ymd) {
+      if (jieqi_moment_ut1_8.ymd < start_moment.ymd) {
         continue;
       }
 
@@ -145,8 +145,8 @@ private:
 
     return {
       .start_moment_utc8 = start_moment,
-      .end_moment_utc8 = end_moment,
-      .contained_jieqis = jieqis
+      .end_moment_utc8   = end_moment,
+      .contained_jieqis  = jieqis
     };
   }
 

@@ -75,7 +75,7 @@ constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto calc_lunar_year_info(int32_t year) -> LunarYear {
+inline auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
@@ -86,13 +86,13 @@ inline auto calc_lunar_year_info(int32_t year) -> LunarYear {
 }
 
 /**
- * @brief Same function as `calc_lunar_year_info`, but cached. 
-          与 `calc_lunar_year_info` 功能相同，但使用缓存。
+ * @brief Same function as `calc_lunar_year`, but cached. 
+          与 `calc_lunar_year` 功能相同，但使用缓存。
  * @attention The input year should be in the range of [START_YEAR, END_YEAR].
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year_info);
+const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
 
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
 const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);

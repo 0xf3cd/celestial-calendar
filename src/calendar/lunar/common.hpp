@@ -145,7 +145,7 @@ inline auto calc_bounds(
 
 
 /** @brief Algorithm version. */
-enum class Algo : uint8_t { ALGO_1, ALGO_2 };
+enum class Algo : uint8_t { ALGO_1, ALGO_2, ALGO_3 };
 
 /** 
  * @struct The type trait for the lunar algorithm, 
