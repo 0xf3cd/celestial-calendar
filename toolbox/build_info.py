@@ -40,11 +40,11 @@ from automation import (
 
 
 def silent_run(cmd: Sequence[str], **kwargs) -> ProcReturn:
-  '''Run a command without printing anything. Also check the return code. '''
+  """Run a command without printing anything. Also check the return code. """
   proc_ret = run_cmd(cmd, print_cmd=False, print_stdout=False, print_stderr=False, **kwargs)
   if proc_ret.retcode != 0:
-    yellow_print('Command failed:', ' '.join(cmd))
-    raise RuntimeError('Command failed')
+    yellow_print("Command failed:", " ".join(cmd))
+    raise RuntimeError("Command failed")
   return proc_ret
 
 
@@ -76,46 +76,46 @@ class BuildInfo:
 
 
 def compiler_version(compiler: str) -> str:
-  result = silent_run([compiler, '--version'])
+  result = silent_run([compiler, "--version"])
   if result.retcode != 0:
-    return ''
+    return ""
   return result.stdout
 
 
 def get_cpu_info() -> Dict:
-  '''Return the CPU information as a string. The returned str is ready to write to a file.'''
+  """Return the CPU information as a string. The returned str is ready to write to a file."""
   def command() -> List[str]:
-    if sys.platform == 'darwin':
-      return ['system_profiler', 'SPHardwareDataType', '-json']
-    elif sys.platform == 'linux':
-      return ['lscpu', '--json']
-    elif sys.platform == 'win32':
-      return ['powershell', 'Get-WmiObject -Class Win32_Processor | ConvertTo-Json']
+    if sys.platform == "darwin":
+      return ["system_profiler", "SPHardwareDataType", "-json"]
+    elif sys.platform == "linux":
+      return ["lscpu", "--json"]
+    elif sys.platform == "win32":
+      return ["powershell", "Get-WmiObject -Class Win32_Processor | ConvertTo-Json"]
     else:
-      raise OSError(f'Unsupported platform: {sys.platform}')
+      raise OSError(f"Unsupported platform: {sys.platform}")
 
   try:
     cmd = command()
     proc_ret = silent_run(cmd)
 
     info = json.loads(proc_ret.stdout)
-    info['cmd'] = ' '.join(cmd)
+    info["cmd"] = " ".join(cmd)
     return info
   
   except Exception as e:
-    return {'error': str(e)}
+    return {"error": str(e)}
 
 
 def find_built_shared_libs() -> List[Path]:
-  '''Find all the built shared libraries in the 'shared_lib' directory.'''
+  """Find all the built shared libraries in the 'shared_lib' directory."""
   lib_dir = paths.shared_lib_dir()
   if not lib_dir.exists():
-    red_print(f'> No shared libraries found in {lib_dir}')
+    red_print(f"> No shared libraries found in {lib_dir}")
     return []
 
   # Return the files with dylib, dll, or so in the filenames.
   shared_libs = []
-  lib_pattern = re.compile(r'\.so(\.\d+)*$|\.dylib$|\.dll$')
+  lib_pattern = re.compile(r"\.so(\.\d+)*$|\.dylib$|\.dll$")
 
   for file in lib_dir.iterdir():
     if file.is_file() and lib_pattern.search(file.name):
@@ -124,23 +124,23 @@ def find_built_shared_libs() -> List[Path]:
   return shared_libs
 
 
-def calc_file_hash(file: Path, algo: str = 'sha256') -> str:
-  '''Calculate the hash of a file.'''
+def calc_file_hash(file: Path, algo: str = "sha256") -> str:
+  """Calculate the hash of a file."""
   h = hashlib.new(algo)
-  with open(file, 'rb') as f:
-    for chunk in iter(lambda: f.read(4096), b''):
+  with open(file, "rb") as f:
+    for chunk in iter(lambda: f.read(4096), b""):
       h.update(chunk)
   return h.hexdigest()
 
 
 def shared_lib_hashs() -> Dict[str, str]:
-  '''Get the hash of each shared library in the 'shared_lib' directory.'''
+  """Get the hash of each shared library in the 'shared_lib' directory."""
   shared_libs = find_built_shared_libs()
   if not shared_libs:
     return {}
 
   return {
-    p.name: calc_file_hash(p, 'sha256')
+    p.name: calc_file_hash(p, "sha256")
     for p in shared_libs
   }
 
@@ -148,19 +148,19 @@ def shared_lib_hashs() -> Dict[str, str]:
 def pack_build_info(docker: Optional[str]) -> BuildInfo:
   proj_dir = Path(__file__).parent.parent
 
-  proj_py = proj_dir / 'project.py'
+  proj_py = proj_dir / "project.py"
   if not proj_py.exists():
-    raise ValueError('project.py not found!')
+    raise ValueError("project.py not found!")
 
-  build_version = silent_run([sys.executable, str(proj_py), '--version']).stdout.strip()
+  build_version = silent_run([sys.executable, str(proj_py), "--version"]).stdout.strip()
 
-  cxx = os.environ.get('CXX', '')
-  cxx_version = compiler_version(cxx) if cxx else ''
+  cxx = os.environ.get("CXX", "")
+  cxx_version = compiler_version(cxx) if cxx else ""
 
-  cc = os.environ.get('CC', '')
-  cc_version = compiler_version(cc) if cc else ''
+  cc = os.environ.get("CC", "")
+  cc_version = compiler_version(cc) if cc else ""
 
-  commit_hash = silent_run(['git', 'rev-parse', 'HEAD'], cwd=proj_dir).stdout.strip()
+  commit_hash = silent_run(["git", "rev-parse", "HEAD"], cwd=proj_dir).stdout.strip()
 
   libc_version = []
   try:
@@ -172,7 +172,7 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
     build_version=build_version,
     os=platform.system(),
     kernel=platform.release(),
-    docker=docker or '',
+    docker=docker or "",
     platform=platform.platform(),
     machine=platform.machine(),
     architecture=list(platform.architecture()),
@@ -190,10 +190,10 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
   )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('--save-to', type=Path, required=True, default=None)
-  parser.add_argument('--docker', type=str, default='')
+  parser.add_argument("--save-to", type=Path, required=True, default=None)
+  parser.add_argument("--docker", type=str, default="")
 
   args = parser.parse_args()
 
@@ -201,13 +201,13 @@ if __name__ == '__main__':
   cpu_info = get_cpu_info()
 
   if not args.save_to.exists():
-    yellow_print(f'> Creating directory: {args.save_to}')
+    yellow_print(f"> Creating directory: {args.save_to}")
     args.save_to.mkdir(parents=True, exist_ok=True)
 
-  with open(args.save_to / 'build_info.json', 'w') as f:
+  with open(args.save_to / "build_info.json", "w") as f:
     json.dump(asdict(build_info), f, indent=2)
 
-  with open(args.save_to / 'cpu_info.json', 'w') as f:
+  with open(args.save_to / "cpu_info.json", "w") as f:
     json.dump(cpu_info, f, indent=2)
 
-  green_print(f'> Build information saved to: {args.save_to}')
+  green_print(f"> Build information saved to: {args.save_to}")

@@ -39,29 +39,29 @@ from automation import (
 
 
 def parse_args() -> argparse.Namespace:
-  '''Parse the command line arguments.'''
+  """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
-    description='Build and Test Automation',
+    description="Build and Test Automation",
     epilog=(
-      'Examples of usage:\n'
-      '  To run ruff to check Python codes:\n'
-      '    ./linter.py --ruff\n\n'
-      '  To run clang-tidy to check C++ codes:\n'
-      '    ./linter.py --clang-tidy\n\n'
-      '  To run both linters:\n'
-      '    ./linter.py -a/--all\n\n'
+      "Examples of usage:\n"
+      "  To run ruff to check Python codes:\n"
+      "    ./linter.py --ruff\n\n"
+      "  To run clang-tidy to check C++ codes:\n"
+      "    ./linter.py --clang-tidy\n\n"
+      "  To run both linters:\n"
+      "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
 
-  parser.add_argument('-a', '--all', action='store_true', help='Clean the project')
-  parser.add_argument('--ruff', action='store_true', help='Run ruff')
-  parser.add_argument('--clang-tidy', action='store_true', help='Run clang-tidy')
+  parser.add_argument("-a", "--all", action="store_true", help="Clean the project")
+  parser.add_argument("--ruff", action="store_true", help="Run ruff")
+  parser.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
 
   return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   args = parse_args()
 
   if args.ruff or args.all:

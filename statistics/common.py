@@ -14,18 +14,18 @@ from typing import Optional, List
 
 
 def dynamic_lib_ext() -> str:
-  '''Return the library extension for the current platform.'''
-  if sys.platform == 'win32':
-    return '.dll'
-  elif sys.platform == 'darwin':
-    return '.dylib'
-  elif sys.platform == 'linux':
-    return '.so'
-  raise OSError(f'Unsupported platform: {sys.platform}')
+  """Return the library extension for the current platform."""
+  if sys.platform == "win32":
+    return ".dll"
+  elif sys.platform == "darwin":
+    return ".dylib"
+  elif sys.platform == "linux":
+    return ".so"
+  raise OSError(f"Unsupported platform: {sys.platform}")
 
 
 def search_lib_path(folder: Path) -> Optional[Path]:
-  '''Search for the shared library in the given folder.'''
+  """Search for the shared library in the given folder."""
   expected_ext = dynamic_lib_ext()
 
   for path in folder.iterdir():
@@ -33,15 +33,15 @@ def search_lib_path(folder: Path) -> Optional[Path]:
       continue
     if expected_ext not in path.name:
       continue
-    if 'celestial_calendar' not in path.name:
+    if "celestial_calendar" not in path.name:
       continue
     return path
 
 
 # Define constants for paths.
 PROJ_PATH        = Path(__file__).parent.parent
-USNO_DATA_PATH   = Path(__file__).parent / 'usno_data.txt'
-BINDINGS_PATH    = PROJ_PATH / 'build' / 'shared_lib'
+USNO_DATA_PATH   = Path(__file__).parent / "usno_data.txt"
+BINDINGS_PATH    = PROJ_PATH / "build" / "shared_lib"
 LIB_PATH         = search_lib_path(BINDINGS_PATH)
 
 assert PROJ_PATH.exists(),        f"Project path not found: {PROJ_PATH}"
@@ -60,8 +60,8 @@ LIB = ctypes.CDLL(str(LIB_PATH))
 
 class DeltaT(Structure):
   _fields_ = [
-    ('valid', c_bool),
-    ('value', c_double),
+    ("valid", c_bool),
+    ("value", c_double),
   ]
 
 LIB.delta_t_algo1.argtypes = [c_double]
@@ -110,18 +110,18 @@ def delta_t_algo4(year: float) -> float:
 # Define the JulianDay struct
 class _JulianDay(Structure):
   _fields_ = [
-    ('valid', c_bool  ),
-    ('value', c_double),
+    ("valid", c_bool  ),
+    ("value", c_double),
   ]
 
 # Define the UT1Time struct
 class _UT1Time(Structure):
   _fields_ = [
-    ('valid', c_bool),
-    ('year',  c_int32),
-    ('month', c_uint32),
-    ('day',   c_uint32),
-    ('fraction', c_double),
+    ("valid", c_bool),
+    ("year",  c_int32),
+    ("month", c_uint32),
+    ("day",   c_uint32),
+    ("fraction", c_double),
   ]
 
 # Define the function signatures
@@ -137,14 +137,14 @@ LIB.jde_to_ut1.restype = _UT1Time
 
 # Wrap C functions with Python functions, so that they can be called from Python.
 def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
-  '''
+  """
   @brief Convert UT1 datetime to Julian Day Number (JD).
   @param y The year.
   @param m The month.
   @param d The day.
   @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
   @returns The Julian Day Number (JD).
-  '''
+  """
   jd = LIB.ut1_to_jd(y, m, d, fraction)
 
   if not jd.valid:
@@ -153,14 +153,14 @@ def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
   return jd.value
 
 def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
-  '''
+  """
   @brief Convert UT1 datetime to Julian Ephemeris Day Number (JDE).
   @param y The year.
   @param m The month.
   @param d The day.
   @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
   @returns The Julian Ephemeris Day Number (JDE).
-  '''
+  """
   jde = LIB.ut1_to_jde(y, m, d, fraction)
 
   if not jde.valid:
@@ -170,11 +170,11 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
 
 
 def jde_to_ut1(jde: float) -> datetime:
-  '''
+  """
   @brief Convert Julian Ephemeris Day Number (JDE) to UT1 datetime.
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `datetime` object representing the UT1 datetime.
-  '''
+  """
   ut1 = LIB.jde_to_ut1(jde)
 
   if not ut1.valid:
@@ -192,19 +192,19 @@ def jde_to_ut1(jde: float) -> datetime:
 # Define the SunCoordinate struct
 class _SunCoordinate(Structure):
   _fields_ = [
-    ('valid', c_bool  ),
-    ('lon',   c_double),
-    ('lat',   c_double),
-    ('r',     c_double),
+    ("valid", c_bool  ),
+    ("lon",   c_double),
+    ("lat",   c_double),
+    ("r",     c_double),
   ]
 
 # Define the MoonCoordinate struct
 class _MoonCoordinate(Structure):
   _fields_ = [
-    ('valid', c_bool  ),
-    ('lon',   c_double),
-    ('lat',   c_double),
-    ('r',     c_double),
+    ("valid", c_bool  ),
+    ("lon",   c_double),
+    ("lat",   c_double),
+    ("r",     c_double),
   ]
 
 
@@ -222,11 +222,11 @@ class SunCoordinate:
   r:   float # In AU
 
 def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
-  '''
+  """
   @brief Compute the apparent geocentric coordinates of the Sun.
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `SunCoordinate` representing the apparent geocentric coordinates of the Sun.
-  '''
+  """
   coord = LIB.sun_apparent_geocentric_coord(jde)
 
   if not coord.valid:
@@ -246,11 +246,11 @@ class MoonCoordinate:
   r:   float # In KM
 
 def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
-  '''
+  """
   @brief Compute the apparent geocentric coordinates of the Moon.
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `MoonCoordinate` representing the apparent geocentric coordinates of the Moon.
-  '''
+  """
   coord = LIB.moon_apparent_geocentric_coord(jde)
 
   if not coord.valid:
@@ -295,12 +295,12 @@ class Jieqi(Enum):
 
 class _JieqiMomentQuery(Structure):
   _fields_ = [
-    ('valid', c_bool),
-    ('jq_idx', c_uint8),
-    ('y', c_int32),
-    ('m', c_uint32),
-    ('d', c_uint32),
-    ('frac', c_double),
+    ("valid", c_bool),
+    ("jq_idx", c_uint8),
+    ("y", c_int32),
+    ("m", c_uint32),
+    ("d", c_uint32),
+    ("frac", c_double),
   ]
 
 LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
@@ -313,12 +313,12 @@ class JieqiMoment:
   moment: datetime
 
 def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
-  '''
+  """
   Query the moment for a given year and Jieqi.
   @param year The year to query.
   @param jq The Jieqi to query.
   @returns A `JieqiMoment` representing the moment of the Jieqi.
-  '''
+  """
   query = LIB.query_jieqi_moment(year, jq.value)
 
   if not query.valid:
@@ -397,9 +397,9 @@ class LunarAlgo(Enum):
 
 class _SupportedLunarYearRange(Structure):
   _fields_ = [
-    ('valid', c_bool),
-    ('start', c_int32),
-    ('end', c_int32),
+    ("valid", c_bool),
+    ("start", c_int32),
+    ("end", c_int32),
   ]
 
 LIB.get_supported_lunar_year_range.argtypes = [c_uint8]
@@ -411,12 +411,12 @@ class SupportedLunarYearRange:
   end: int
 
 def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
-  '''
+  """
   Return the supported lunar year range for the specified algorithm.
 
   @param algo The algorithm to use.
   @returns A `SupportedLunarYearRange` instance representing the supported lunar year range.
-  '''
+  """
   result = LIB.get_supported_lunar_year_range(algo.value)
 
   if not result.valid:
@@ -430,12 +430,12 @@ def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
 
 class _LunarYearInfo(Structure):
   _fields_ = [
-    ('valid', c_bool),
-    ('year', c_int32),
-    ('month', c_uint8),
-    ('day', c_uint8),
-    ('leap_month', c_uint8),
-    ('month_len', c_uint16),
+    ("valid", c_bool),
+    ("year", c_int32),
+    ("month", c_uint8),
+    ("day", c_uint8),
+    ("leap_month", c_uint8),
+    ("month_len", c_uint16),
   ]
 
 LIB.get_lunar_year_info.argtypes = [c_uint8, c_int32]
@@ -448,13 +448,13 @@ class LunarYearInfo:
   month_lengths: List[int] # The number of days in each month of the lunar year.
 
 def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
-  '''
+  """
   Return the lunar year information for the specified year.
 
   @param algo The algorithm to use.
   @param year The year to get the lunar year information for.
   @returns A `LunarYearInfo` instance representing the lunar year information.
-  '''
+  """
   result = LIB.get_lunar_year_info(algo.value, year)
 
   if not result.valid:

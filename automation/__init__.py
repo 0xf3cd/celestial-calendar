@@ -28,12 +28,12 @@ from .github import GitHub
 from .linter import run_ruff, run_clang_tidy
 
 __all__ = [
-  'Tool', 'CompilerArgs', 'check_c_support', 'check_cpp_support', 'make_compiler_args',
-  'find_c_compilers', 'find_cpp_compilers',
-  'SetupPlan', 'setup_environment', 'run_cmake', 'build_project', 'clean_build',
-  'run_gtests', 'find_gtests', 'list_gtests', 'print_system_info',
-  'green_print', 'red_print', 'yellow_print', 'blue_print',
-  'run_cmd', 'ProcReturn', 'time_execution',
-  'proj_root', 'build_dir', 'cpp_src_dir', 'python_requirements', 'cpp_test_dir',
-  'GitHub', 'run_ruff', 'run_clang_tidy'
+  "Tool", "CompilerArgs", "check_c_support", "check_cpp_support", "make_compiler_args",
+  "find_c_compilers", "find_cpp_compilers",
+  "SetupPlan", "setup_environment", "run_cmake", "build_project", "clean_build",
+  "run_gtests", "find_gtests", "list_gtests", "print_system_info",
+  "green_print", "red_print", "yellow_print", "blue_print",
+  "run_cmd", "ProcReturn", "time_execution",
+  "proj_root", "build_dir", "cpp_src_dir", "python_requirements", "cpp_test_dir",
+  "GitHub", "run_ruff", "run_clang_tidy"
 ]
