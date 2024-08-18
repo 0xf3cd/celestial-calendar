@@ -35,7 +35,7 @@ macro(ADD_TEST test_path test_name)
     ${test_name}
     GTest::gtest_main
   )
-  gtest_discover_tests(${test_name})
+  gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180) # Increase discovery timeout for docker builds
 endmacro()
 
 file(GLOB_RECURSE SRC_PATHS "*.cpp")
