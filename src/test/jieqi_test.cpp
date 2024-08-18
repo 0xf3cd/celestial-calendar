@@ -58,23 +58,30 @@ TEST(JieQi, NameQuery) {
 }
 
 
+TEST(JieQi, IsJieOrQi) {
+  ASSERT_TRUE(is_jie(Jieqi::立春));
+  ASSERT_FALSE(is_qi(Jieqi::立春));
+
+  ASSERT_TRUE(is_jie(Jieqi::小寒));
+  ASSERT_FALSE(is_qi(Jieqi::小寒));
+
+  ASSERT_TRUE(is_qi(Jieqi::雨水));
+  ASSERT_FALSE(is_jie(Jieqi::雨水));
+
+  ASSERT_TRUE(is_qi(Jieqi::大寒));
+  ASSERT_FALSE(is_jie(Jieqi::大寒));
+}
+
+
 TEST(JieQi, JDE) {
   // Random pick some years, to avoid test time being too long.
   auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
-    // If running on ARM, then test less cases.
-    // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
-#if defined(__arm__) or defined(__aarch64__)
     return util::random(0.0, 1.0) < 0.042;
-#else
-    // Otherwise, randomly pick some years.
-    return util::random(0.0, 1.0) < 0.25;
-#endif
   });
 
   for (const auto year : years) {
-    using UnderType = std::underlying_type_t<Jieqi>;
-    for (int32_t jq_idx = 0; jq_idx < static_cast<UnderType>(Jieqi::COUNT); jq_idx++) {
-      const auto jq = static_cast<Jieqi>(jq_idx);
+    for (int32_t jq_idx = 0; jq_idx < to_index(Jieqi::COUNT); jq_idx++) {
+      const auto jq = from_index(jq_idx);
 
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
 
@@ -87,16 +94,72 @@ TEST(JieQi, JDE) {
   }
 }
 
+TEST(JieQi, JDEOrder) {
+  const auto year = util::random(1900, 2050);
+  
+  const auto jdes = GREGORIAN_YEAR_JIEQI_LIST
+                  | std::views::transform([&](const auto& jq) { return jieqi_jde(year, jq); })
+                  | std::ranges::to<std::vector>();
+
+  ASSERT_TRUE(std::is_sorted(cbegin(jdes), cend(jdes)));
+
+  // Ensure the JDEs are in the given year.
+  for (const auto jde : jdes) {
+    const auto ut1 = astro::julian_day::jde_to_ut1(jde);
+    ASSERT_EQ(ut1.year(), year);
+  }
+}
+
 TEST(JieQi, UT1Moment) {
   for (const auto& [ymd, hms, jq] : DATASET) {
     const Datetime real_dt { ymd, hms };
-    const auto [y, _ignored3, _ignored4] = util::from_ymd(ymd);
-    
+    const auto [y, _, __] = util::from_ymd(ymd);
+
     const auto est_dt = jieqi_ut1_moment(y, jq);
 
     ASSERT_EQ(est_dt.ymd, real_dt.ymd);
     ASSERT_NEAR(est_dt.fraction(), real_dt.fraction(), 0.01);
   }
+}
+
+TEST(JieQi, Generator) {
+  const auto random_year = util::random(1500, 2200);
+  const auto random_jq_index = util::random(0, JIEQI_COUNT - 1);
+  const auto random_jq = from_index(random_jq_index);
+
+  const auto jde = jieqi_jde(random_year, random_jq);
+  const auto start_jde = util::random(-10.0, 0.0) + jde;
+
+  auto year = random_year;
+  auto jq_index = random_jq_index;
+
+  std::vector<double> jdes;
+  JieqiGenerator jieqi_gen { start_jde };
+
+  for (auto _ = 0; _ < 360; ++_) {
+    const auto [jq, jde] = jieqi_gen.next();
+    ASSERT_EQ(jq, from_index(jq_index));
+    ASSERT_EQ(jde, jieqi_jde(year, jq));
+
+    // Update the Jieqi index.
+    ++jq_index;
+    if (jq_index >= JIEQI_COUNT) {
+      jq_index = 0;
+    }
+
+    // Update the year.
+    // If current Jieqi is `Jieqi::冬至`, then we know this is the last Jieqi in a Gregorian year,
+    // and it's time to move to the next year.
+    if (jq == Jieqi::冬至) {
+      ++year;
+    }
+
+    // Finally, store the JDE.
+    jdes.push_back(jde);
+  }
+
+  // Check if the JDEs are in order.
+  ASSERT_TRUE(std::is_sorted(cbegin(jdes), cend(jdes)));
 }
 
 } // namespace calendar::jieqi::test

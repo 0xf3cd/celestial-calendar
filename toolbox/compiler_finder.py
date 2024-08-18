@@ -32,7 +32,7 @@ from automation import (
 
 
 def c_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
-  '''Find the C compilers in `PATH`, and find out if they support the given standards.'''
+  """Find the C compilers in `PATH`, and find out if they support the given standards."""
   compilers = find_c_compilers()
   args = make_compiler_args(compilers, standards)
   results = map(lambda a: check_c_support(a, silent=True), args)
@@ -40,7 +40,7 @@ def c_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
 
 
 def cpp_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
-  '''Find the C++ compilers in `PATH`, and find out if they support the given standards.'''
+  """Find the C++ compilers in `PATH`, and find out if they support the given standards."""
   compilers = find_cpp_compilers()
   args = make_compiler_args(compilers, standards)
   results = map(lambda a: check_cpp_support(a, silent=True), args)
@@ -48,13 +48,13 @@ def cpp_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
 
 
 def parse_args() -> argparse.Namespace:
-  '''Parse the command line arguments.'''
+  """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
-    description='Find the C and C++ compilers in `PATH`'
+    description="Find the C and C++ compilers in `PATH`"
   )
-  parser.add_argument('-cpp', '--cpp', type=str, help='The C++ standards to check')
-  parser.add_argument('-c', '--c', type=str, help='The C standards to check')
-  parser.add_argument('--full-path', action='store_true', help='Print the full path of the compilers')
+  parser.add_argument("-cpp", "--cpp", type=str, help="The C++ standards to check")
+  parser.add_argument("-c", "--c", type=str, help="The C standards to check")
+  parser.add_argument("--full-path", action="store_true", help="Print the full path of the compilers")
 
   args = parser.parse_args()
 
@@ -63,14 +63,14 @@ def parse_args() -> argparse.Namespace:
   find_cpp: bool = args.cpp is not None
 
   if not find_c and not find_cpp:
-    parser.error('Either `-c` or `-cpp` must be specified')
+    parser.error("Either `-c` or `-cpp` must be specified")
   if find_c and find_cpp:
-    parser.error('Only one of `-c` or `-cpp` can be specified at a time')
+    parser.error("Only one of `-c` or `-cpp` can be specified at a time")
 
   return args
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   args = parse_args()
 
   find_c: bool = args.c is not None
@@ -85,4 +85,4 @@ if __name__ == '__main__':
 
   compilers = [c for c in compilers if c]
 
-  print('\n'.join(compilers))
+  print("\n".join(compilers))

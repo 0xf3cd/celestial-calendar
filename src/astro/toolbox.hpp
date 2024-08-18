@@ -140,7 +140,7 @@ struct Angle {
    * @return The converted angle.
    */
   template <AngleUnit As>
-  [[nodiscard]] [[nodiscard]] [[nodiscard]] constexpr auto as() const -> double {
+  [[nodiscard]] constexpr auto as() const -> double {
     if constexpr (Unit == As) { // No conversion needed.
       return _value;
     }
@@ -262,9 +262,9 @@ struct Distance {
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  const Angle<AngleUnit::DEG>      λ; // Longitude
-  const Angle<AngleUnit::DEG>      β; // Latitude
-  const Distance<DistanceUnit::AU> r; // Radius/Distance
+  Angle<AngleUnit::DEG>      λ; // Longitude
+  Angle<AngleUnit::DEG>      β; // Latitude
+  Distance<DistanceUnit::AU> r; // Radius/Distance
 };
 
 #pragma endregion

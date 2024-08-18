@@ -1,0 +1,15 @@
+exclude = [
+  "*.ipynb",
+]
+
+line-length = 120
+indent-width = 2
+
+[lint]
+select = ["E", "F", "B", "Q"]
+ignore = []
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

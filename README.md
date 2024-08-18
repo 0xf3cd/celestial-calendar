@@ -166,9 +166,6 @@ There are basically two ways to download:
   echo $GITHUB_TOKEN     # Unix-like platforms
   echo $env:GITHUB_TOKEN # Windows powershell
 
-  # Download assets from a given release to the specified dir
-  python3 ./toolbox/release_downloader.py -id <release-id> -s <directory>
-
   # Download assets from the latest release to the specified dir
   python3 ./toolbox/release_downloader.py -s <directory>
 

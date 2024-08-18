@@ -12,29 +12,29 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 
-url = 'https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm'
+url = "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm"
 response = requests.get(url)
-soup = BeautifulSoup(response.content, 'html.parser')
+soup = BeautifulSoup(response.content, "html.parser")
 
 # Find all tables
-tables = soup.find_all('table')
+tables = soup.find_all("table")
 
 all_data = []
 for table in tables:
-  rows = table.find_all('tr')
+  rows = table.find_all("tr")
   data = []
   for row in rows:
-    cols = row.find_all('td')
+    cols = row.find_all("td")
     cols = [ele.text.strip() for ele in cols]
     if cols:
       data.append(cols)
   if data:
-    df = pd.DataFrame(data, columns=['日期', '時間', '狀態'])
+    df = pd.DataFrame(data, columns=["日期", "時間", "狀態"])
     all_data.append(df)
 
 # Concatenate all dataframes
 if all_data:
   combined_df = pd.concat(all_data, ignore_index=True)
-  combined_df.to_csv('moon_phases.csv', index=False, encoding='utf-8')
+  combined_df.to_csv("moon_phases.csv", index=False, encoding="utf-8")
 
-print('All tables saved to moon_phases.csv.')
+print("All tables saved to moon_phases.csv.")

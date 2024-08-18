@@ -30,7 +30,7 @@ from automation import (
 
 
 def find_release(keyword: Union[str, int]) -> GitHub.Release:
-  '''Find a release by its ID or tag name.'''
+  """Find a release by its ID or tag name."""
   releases = GitHub.list_releases()
   for release in releases:
     if release.id == keyword or release.tag_name == keyword:
@@ -40,51 +40,51 @@ def find_release(keyword: Union[str, int]) -> GitHub.Release:
 
 
 def get_latest_release() -> GitHub.Release:
-  '''Find the latest release.'''
+  """Find the latest release."""
   releases = GitHub.list_releases()
   if len(releases) == 0:
-    red_print('Cannot find any releases')
-    raise RuntimeError('Cannot find any releases')
+    red_print("Cannot find any releases")
+    raise RuntimeError("Cannot find any releases")
   
   sorted_releases = sorted(releases, key=lambda release: release.published_at, reverse=True)
   return sorted_releases[0]
 
 
 def parse_args() -> argparse.Namespace:
-  '''Parse the command line arguments.'''
+  """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
-    description='Download release assets (latest release) from GitHub.',
+    description="Download release assets (latest release) from GitHub.",
     epilog=(
-      'Examples of usage:\n'
-      '  To download the latest release assets:\n'
-      '    ./release_downloader.py -s/--save-to /some/path\n\n'
+      "Examples of usage:\n"
+      "  To download the latest release assets:\n"
+      "    ./release_downloader.py -s/--save-to /some/path\n\n"
     )
   )
-  parser.add_argument('-s', '--save-to', type=Path, required=True, help='The directory to save the release assets to.')
-  parser.add_argument('-id', '--id', type=int, required=False, help='The ID of the release.')
-  parser.add_argument('-p', '--parallel', type=int, default=4, help='Number of parallel downloads (default: 4).')
-  parser.add_argument('-t', '--tag', type=str, required=False, help='The tag of the release.')
+  parser.add_argument("-s", "--save-to", type=Path, required=True, help="The directory to save the release assets to.")
+  parser.add_argument("-id", "--id", type=int, required=False, help="The ID of the release.")
+  parser.add_argument("-p", "--parallel", type=int, default=4, help="Number of parallel downloads (default: 4).")
+  parser.add_argument("-t", "--tag", type=str, required=False, help="The tag of the release.")
   return parser.parse_args()
 
 
 def validate_args(args: argparse.Namespace) -> None: # Exception raised on failure.
-  '''Validate the command line arguments.'''
+  """Validate the command line arguments."""
   # Validate the number of parallel downloads.
   if args.parallel < 1:
-    red_print(f'Invalid number of parallel downloads: {args.parallel}')
-    raise RuntimeError(f'Invalid number of parallel downloads: {args.parallel}')
+    red_print(f"Invalid number of parallel downloads: {args.parallel}")
+    raise RuntimeError(f"Invalid number of parallel downloads: {args.parallel}")
 
   # Validate the directory path.
   if args.save_to.exists() and args.save_to.is_file():
-    red_print(f'Directory path is not a directory: {args.save_to}')
-    raise RuntimeError(f'Directory path is not a directory: {args.save_to}')
+    red_print(f"Directory path is not a directory: {args.save_to}")
+    raise RuntimeError(f"Directory path is not a directory: {args.save_to}")
   
   if args.id is None and args.tag is None:
-    yellow_print('Neither --id nor --tag is specified. Download from latest release.')
+    yellow_print("Neither --id nor --tag is specified. Download from latest release.")
 
   if args.id is not None and args.tag is not None:
-    red_print('Both --id and --tag are specified. Only one is allowed.')
-    raise RuntimeError('Both --id and --tag are specified. Only one is allowed.')
+    red_print("Both --id and --tag are specified. Only one is allowed.")
+    raise RuntimeError("Both --id and --tag are specified. Only one is allowed.")
   
 
 def main() -> None:
@@ -100,8 +100,8 @@ def main() -> None:
 
   release = get_release()
   downloaded_assets = GitHub.download_release(release.id, args.save_to, args.parallel)
-  green_print(f'Downloaded {len(downloaded_assets)} assets to {args.save_to}')
+  green_print(f"Downloaded {len(downloaded_assets)} assets to {args.save_to}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   main()

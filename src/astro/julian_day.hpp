@@ -125,9 +125,9 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   assert(jd > 0);
 
   // The algorithm fails if Y < 400, so we need to check it.
-  if (jd < 1885420.686921) {
-    // Julian day number of 450-01-01 (gregorian) is roughly 1885420.686921
-    throw std::runtime_error("The estimated gregorian year is < 450.");
+  if (jd < 1867524.457118) {
+    // Julian day number of 401-01-01 (gregorian) is roughly 1867524.457118
+    throw std::runtime_error("The estimated gregorian year is < 401.");
   }
 
   // NOLINTBEGIN

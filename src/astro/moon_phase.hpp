@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <format>
+#include <numbers>
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -92,10 +93,10 @@ inline auto newton_method(
   };
 
   // Start approximating the root.
+  double h = 5e-4;
   double guess = (left_jde + right_jde) / 2.0;
   
   for (std::size_t i = 0; i < iterations; ++i) {
-    constexpr double h = 1e-8;
     const double f_prime = (f(guess + h) - f(guess - h)) / (2.0 * h);
     double next_guess = guess - f(guess) / f_prime;
 
@@ -106,11 +107,12 @@ inline auto newton_method(
       next_guess = right_jde - 1e-20;
     }
 
-    if (std::fabs(f(next_guess)) < epsilon) { // We found the root!!
+    if (std::fabs(next_guess - guess) < epsilon) {
       return next_guess;
     }
 
     guess = next_guess;
+    h = (h > 1e-10) ? h / std::numbers::phi : h; // Make the step size adaptive, for faster convergence.
   }
 
   return guess;
@@ -165,8 +167,7 @@ inline auto next_root(const double jde) -> double {
   const auto next_root_range = first_root_range_after(jde + 1.0); // Add 1.0 in case `jde_lon_diff` falls into [359.0, 360.0).
   const auto [left, right] = next_root_range;
   return newton_method(left, right);
-}
-
+};
 
 /**
  * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).

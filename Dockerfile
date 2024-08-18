@@ -32,8 +32,9 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Build and test the project
+# Only run the integration tests, since arm docker env are slow on GitHub CI
 RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
-RUN /opt/venv/bin/python ./project.py --setup --clean --cmake --cores all --build --test -v 1
+RUN /opt/venv/bin/python ./project.py --clean --cores all --all -k integration -v 1
 
 # Save the build information
 ARG DOCKER_PLATFORM=""

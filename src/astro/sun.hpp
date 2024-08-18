@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <numbers>
+
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
@@ -272,8 +274,8 @@ inline auto newton_method(
   const FuncType& f,              // The f function to find root(s) for.
   const double start_jde,         // The left bound of JDE's range, inclusive.
   const double end_jde,           // The right bound of JDE's range, exclusive.
-  const double episilon = 1e-10,  // The tolerance.
-  const std::size_t max_iter = 20 // The maximum number of iterations.
+  const double episilon = 1e-15,  // The tolerance.
+  const std::size_t max_iter = 30 // The maximum number of iterations.
 ) -> double {
   // `pull_back` ensures the returned JDE is in valid range.
   const auto pull_back = [&](const double jde) -> double {
@@ -286,18 +288,20 @@ inline auto newton_method(
     return jde;
   };
 
+  // The step size. It is adaptive and gets smaller and smaller as it approaches the root.
+  double h = 5e-4;
+
   // `next` returns (has_next, next_jde)
   const auto next = [&](const double jde) -> std::pair<bool, double> {
     const double f_jde = f(jde);
 
-    if (std::abs(f_jde) < episilon) { // We find the root!!
-      return { false, jde }; // Converged. No more iterations needed.
-    }
-
     // Do the Newton's method.
-    constexpr double h = 1e-8;
     const double f_prime_jde = (f(jde + h) - f(jde - h)) / (2.0 * h); // Approximate the derivative.
     const double next_jde = jde - f_jde / f_prime_jde;                // Approximate our next guess.
+
+    if (std::fabs(next_jde - jde) < episilon) {
+      return { false, pull_back(next_jde) };
+    }
 
     return { true, pull_back(next_jde) }; // Don't forget to pull the jde back to valid range.
   };
@@ -313,6 +317,12 @@ inline auto newton_method(
 
     if (!has_next) {
       break;
+    }
+
+    // Update the step size.
+    // Make the step size adaptive, for faster convergence.
+    if (h > 1e-10) {
+      h /= std::numbers::phi;
     }
   }
 

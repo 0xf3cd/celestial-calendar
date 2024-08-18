@@ -28,7 +28,7 @@
 #include <cassert>
 
 #include "ymd.hpp"
-
+#include "hash.hpp"
 
 namespace calendar {
 
@@ -113,8 +113,8 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
  * @details This struct is used to represent UT1 and UTC time in this project.
  */
 struct Datetime {
-  const year_month_day ymd;
-  const hh_mm_ss<nanoseconds> time_of_day;
+  year_month_day ymd;
+  hh_mm_ss<nanoseconds> time_of_day;
 
   Datetime() = delete;
 
@@ -225,6 +225,21 @@ struct Datetime {
     return true;
   }
 
+  /** @brief Returns the year. */
+  [[nodiscard]] constexpr auto year() const noexcept -> int32_t {
+    return static_cast<int32_t>(ymd.year());
+  }
+
+  /** @brief Returns the month. */
+  [[nodiscard]] constexpr auto month() const noexcept -> uint32_t {
+    return static_cast<uint32_t>(ymd.month());
+  }
+
+  /** @brief Returns the day. */
+  [[nodiscard]] constexpr auto day() const noexcept -> uint32_t {
+    return static_cast<uint32_t>(ymd.day());
+  }
+
   /** 
    * @brief Returns the fraction of a day, in the range [0.0, 1.0).
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).
@@ -239,6 +254,17 @@ struct Datetime {
   auto operator==(const Datetime& other) const noexcept -> bool {
     return ymd == other.ymd and time_of_day.to_duration() == other.time_of_day.to_duration();
   }
+
+  auto operator!=(const Datetime& other) const noexcept -> bool {
+    return not (*this == other);
+  }
+
+  auto operator<=>(const Datetime& other) const noexcept {
+    if (auto cmp = ymd <=> other.ymd; cmp != 0) {
+      return cmp;
+    }
+    return time_of_day.to_duration() <=> other.time_of_day.to_duration();
+  };
 };
 
 } // namespace calendar
@@ -253,27 +279,7 @@ struct hash<calendar::Datetime> {
   auto operator()(const calendar::Datetime& dt) const -> std::size_t {
     const auto [y, m, d] = util::from_ymd(dt.ymd);
     const double fraction = dt.fraction();
-
-    std::size_t hash = 0xc2b2ae35;
-
-    // Combine year, month, day, and fraction using prime numbers and bitwise operations
-    hash ^= 0xa54ff53a5f1d36f1 * (std::hash<int32_t>{}(y)  <<  7);
-    hash ^= 0x9e3779b97f4a7c55 * (std::hash<uint32_t>{}(m) <<  3);
-    hash ^= 0xb492b66fbe98f273 * (std::hash<uint32_t>{}(d) <<  5);
-
-    // Hash the fraction part and combine using XOR and a prime number
-    std::size_t fraction_hash = std::hash<double>{}(fraction);
-    hash ^= fraction_hash * 0x9e3779b9;
-
-    // Final mixing step to ensure good distribution
-    hash ^= (hash >> 17);
-    hash *= 0xff51afd7ed558ccd;
-    hash ^= (hash >> 13);
-    hash *= 0xc4ceb9fe1a85ec53;
-    hash ^= (hash >> 11);
-    hash *= 0xc3a5c85c97cb3127;
-
-    return hash;
+    return util::hash::hash(y, m, d, fraction);
   }
 };
 

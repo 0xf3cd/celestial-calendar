@@ -23,7 +23,7 @@ FetchContent_MakeAvailable(googletest)
 target_compile_options(gtest PRIVATE -w)
 target_compile_options(gtest_main PRIVATE -w)
 target_compile_options(gmock PRIVATE -w)
-target_compile_options(gtest_main PRIVATE -w)
+target_compile_options(gmock_main PRIVATE -w)
 
 enable_testing()
 include(GoogleTest)
@@ -35,7 +35,7 @@ macro(ADD_TEST test_path test_name)
     ${test_name}
     GTest::gtest_main
   )
-  gtest_discover_tests(${test_name})
+  gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180) # Increase discovery timeout for docker builds
 endmacro()
 
 file(GLOB_RECURSE SRC_PATHS "*.cpp")

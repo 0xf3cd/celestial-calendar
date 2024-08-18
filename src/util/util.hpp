@@ -22,4 +22,6 @@
  */
 
 #include "ymd.hpp"
+#include "hash.hpp"
+#include "cache.hpp"
 #include "random.hpp"
