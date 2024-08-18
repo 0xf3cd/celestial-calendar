@@ -33,7 +33,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Build and test the project
 RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
-RUN /opt/venv/bin/python ./project.py --setup --clean --cmake --cores all --build --test -v 1
+RUN /opt/venv/bin/python ./project.py --setup --clean --cmake --cores all --build -v 1
 
 # Save the build information
 ARG DOCKER_PLATFORM=""

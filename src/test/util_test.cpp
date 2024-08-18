@@ -198,14 +198,7 @@ TEST(Util, TupleHash) {
 
 
 TEST(Util, HashCollision) {
-#if defined(__arm__) or defined(__aarch64__)
-  // If running on ARM, then test less cases.
-  // Mainly because the test run is too slow in ARM dockers on the GitHub CI.
-  constexpr auto try_count = 1000;
-#else
-  // Otherwise, randomly pick some years.
   constexpr auto try_count = 80000;
-#endif
 
   std::unordered_set<std::tuple<int, double, float>, hash::TupleHash<int, double, float>> tuples;
   std::unordered_set<std::size_t> hash_values;
