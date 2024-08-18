@@ -39,17 +39,21 @@ def search_lib_path(folder: Path) -> Optional[Path]:
 
 
 # Define constants for paths.
-PROJ_PATH        = Path(__file__).parent.parent
-USNO_DATA_PATH   = Path(__file__).parent / "usno_data.txt"
-BINDINGS_PATH    = PROJ_PATH / "build" / "shared_lib"
-LIB_PATH         = search_lib_path(BINDINGS_PATH)
+PROJ_PATH         = Path(__file__).parent.parent
+USNO_DATA_PATH    = Path(__file__).parent / "deltaT_data" / "usno_data.txt"
+NEW_MOON_CSV_PATH = Path(__file__).parent / "new_moon_data" / "moon_phases.csv"
+HKO_DATA_PATH     = Path(__file__).parent / "hko_data"
+BINDINGS_PATH     = PROJ_PATH / "build" / "shared_lib"
+LIB_PATH          = search_lib_path(BINDINGS_PATH)
 
-assert PROJ_PATH.exists(),        f"Project path not found: {PROJ_PATH}"
-assert USNO_DATA_PATH.exists(),   f"USNO data not found: {USNO_DATA_PATH}"
-assert BINDINGS_PATH.exists(),    f"Bindings path not found: {BINDINGS_PATH}"
+assert PROJ_PATH.exists(),         f"Project path not found: {PROJ_PATH}"
+assert USNO_DATA_PATH.exists(),    f"USNO data not found: {USNO_DATA_PATH}"
+assert NEW_MOON_CSV_PATH.exists(), f"New moon data not found: {NEW_MOON_CSV_PATH}"
+assert HKO_DATA_PATH.exists(),     f"HKO data not found: {HKO_DATA_PATH}"
+assert BINDINGS_PATH.exists(),     f"Bindings path not found: {BINDINGS_PATH}"
 
-assert LIB_PATH is not None,      f"Shared library not found in {BINDINGS_PATH}"
-assert LIB_PATH.exists(),         f"Shared library not found: {LIB_PATH}"
+assert LIB_PATH is not None,       f"Shared library not found in {BINDINGS_PATH}"
+assert LIB_PATH.exists(),          f"Shared library not found: {LIB_PATH}"
 
 
 # Define the argument and return types of the C functions.

@@ -97,14 +97,14 @@ constexpr auto from_index(const uint8_t index) -> Jieqi {
 
 /** @brief A view of all enum values of `Jieqi`. */
 constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
-                          | std::views::transform([](const auto i) { return from_index(i); });
+                          | std::views::transform(from_index);
 
 /** @brief A view of all enum values of `Jieqi`, but ordered by their occurrence in a gregorian year.
  *         That means the first value is "小寒", since it is the first Jieqi in any gregorian year.
  */
 constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
                                          | std::views::transform([](const auto i) { return (i + to_index(Jieqi::小寒)) % JIEQI_COUNT; })
-                                         | std::views::transform([](const auto i) { return from_index(i); });
+                                         | std::views::transform(from_index);
 
 
 /** @brief Mapping table to get the name of the given `jieqi`. */

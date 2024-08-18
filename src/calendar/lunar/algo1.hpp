@@ -75,7 +75,7 @@ constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto calc_lunar_year(int32_t year) -> LunarYear {
+constexpr auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)

@@ -27,6 +27,7 @@
 
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
+#include "lunar/algo3.hpp"
 
 
 extern "C" {
@@ -39,7 +40,7 @@ struct SupportedLunarYearRange {
 
 /**
  * @brief Get the supported lunar year range for the algorithm.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @return The supported lunar year range.
  */
 auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
@@ -56,6 +57,14 @@ auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRan
       .valid = true,
       .start = calendar::lunar::algo2::START_YEAR,
       .end   = calendar::lunar::algo2::END_YEAR,
+    };
+  }
+
+  if (algo == 3) {
+    return {
+      .valid = true,
+      .start = calendar::lunar::algo3::START_YEAR,
+      .end   = calendar::lunar::algo3::END_YEAR,
     };
   }
 
@@ -83,7 +92,7 @@ struct LunarYearInfo { // Avoid name conflict with `calendar::lunar::common::Lun
 
 /**
  * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @param year The lunar year.
  * @return The lunar year information.
  */
@@ -91,7 +100,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
   using namespace std::views;
   
   try {
-    if (algo != 1 and algo != 2) {
+    if (algo != 1 and algo != 2 and algo != 3) {
       throw std::runtime_error {
         std::format("Unsupported algorithm: {}", algo)
       };
@@ -101,7 +110,10 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
       if (algo == 1) {
         return calendar::lunar::algo1::get_info_for_year(year);
       }
-      return calendar::lunar::algo2::get_info_for_year(year);
+      if (algo == 2) {
+        return calendar::lunar::algo2::get_info_for_year(year);
+      }
+      return calendar::lunar::algo3::get_info_for_year(year);
     });
 
     const auto [y, m, d] = util::from_ymd(raw.date_of_first_day);
