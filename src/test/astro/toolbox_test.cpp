@@ -33,6 +33,48 @@ TEST(AstroMath, NormalizedDeg) {
   }
 }
 
+TEST(AstroMath, NormalizedPm180) {
+  {
+    const auto x = normalize_pm180(0);
+    ASSERT_EQ(x, 0);
+  }
+  {
+    // Half-open range [-180, 180): 180 wraps to -180.
+    const auto x = normalize_pm180(180);
+    ASSERT_EQ(x, -180);
+  }
+  {
+    const auto x = normalize_pm180(-180);
+    ASSERT_EQ(x, -180);
+  }
+  {
+    const auto x = normalize_pm180(270);
+    ASSERT_EQ(x, -90);
+  }
+  {
+    const auto x = normalize_pm180(-90);
+    ASSERT_EQ(x, -90);
+  }
+  {
+    const auto x = normalize_pm180(450);
+    ASSERT_EQ(x, 90);
+  }
+  {
+    const auto x = normalize_pm180(-360.05);
+    ASSERT_FLOAT_EQ(x, -0.05);
+  }
+
+  for (auto i = 0; i < 1000; ++i) {
+    const double random_deg = util::random(-720.0, 720.0);
+    const double x = normalize_pm180(random_deg);
+
+    ASSERT_GE(x, -180.0);
+    ASSERT_LT(x, 180.0);
+    // Result is congruent to the input modulo 360.
+    ASSERT_FLOAT_EQ(normalize_deg(x), normalize_deg(random_deg));
+  }
+}
+
 TEST(AstroMath, RadDegConversion) {
   for (auto i = 0; i < 1000; ++i) {
     const double random_deg = util::random(-720.0, 720.0);
