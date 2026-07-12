@@ -7,25 +7,22 @@ on:
 
 jobs:
   linux-docker:
-    runs-on: ubuntu-latest
+    # 2026-07: matrix trimmed from 8 QEMU-emulated platforms to the two real
+    # deployment targets (x86_64 servers, arm64 Pi/Apple Silicon), both on
+    # native runners — no QEMU, wall-clock minutes instead of ~40. The wide
+    # matrix was exploration; its findings live in the repo history (#46).
+    runs-on: ${{ matrix.runner }}
     strategy:
-      fail-fast: false  # One stale arch must not cancel the others.
+      fail-fast: false
       matrix:
-        platform:
-          - "linux/amd64"
-          - "linux/i386"
-          - "linux/arm64"
-          - "linux/arm/v5"
-          - "linux/arm/v7"
-          - "linux/ppc64le"
-          - "linux/s390x"
-          - "linux/riscv64"
+        include:
+          - platform: "linux/amd64"
+            runner: ubuntu-latest
+          - platform: "linux/arm64"
+            runner: ubuntu-24.04-arm
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -33,10 +30,6 @@ jobs:
       - name: Set up Environment Variables
         id: set-env-vars
         run: |
-          # The official debian:latest manifest is multi-arch and covers every
-          # platform in the matrix; buildx --platform picks the right one.
-          # (The per-arch mirror repos like arm32v7/debian went stale with trixie.)
-          # NB: mips64le is NOT in debian:latest — pin debian:bookworm if it returns (#35).
           platform="${{ matrix.platform }}"
           os=$(echo "${platform}" | cut -d '/' -f 1)
           arch=$(echo "${platform}" | cut -d '/' -f 2- | tr '/' '_')
