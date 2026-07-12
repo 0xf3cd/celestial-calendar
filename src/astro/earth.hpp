@@ -393,6 +393,46 @@ inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> 
 } // namespace astro::earth::nutation
 
 
+namespace astro::earth::obliquity {
+
+// The obliquity of the ecliptic is the angle between the ecliptic and the celestial equator.
+// It is needed whenever converting between ecliptic and equatorial coordinates.
+
+/**
+ * @brief Calculates the mean obliquity of the ecliptic (ε₀) for the given julian day.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The mean obliquity (ε₀) in degrees.
+ * @details Accuracy ~1" over ±2000 years from J2000; the polynomial degrades farther out.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
+ */
+inline auto mean(const double jde) -> Angle<DEG> {
+  // Get the Julian century since J2000.
+  const double jc = astro::julian_day::jde_to_jc(jde);
+
+  // IAU 1980: ε₀ = 23°26'21".448 - 46".8150T - 0".00059T² + 0".001813T³
+  // The polynomial is evaluated in arcseconds.
+  const double ε0_arcsec = 84381.448 + jc * (-46.8150 + jc * (-0.00059 + jc * 0.001813));
+
+  return Angle<DEG>::from_arcsec(ε0_arcsec);
+}
+
+/**
+ * @brief Calculates the true obliquity of the ecliptic (ε) for the given julian day.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @param model The nutation model to use. Defaults to `nutation::Model::IAU_1980`.
+ * @return The true obliquity (ε = ε₀ + Δε) in degrees.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ */
+inline auto true_obliquity(
+  const double jde,
+  const nutation::Model model = nutation::Model::IAU_1980
+) -> Angle<DEG> {
+  return mean(jde) + nutation::obliquity(jde, model);
+}
+
+} // namespace astro::earth::obliquity
+
+
 namespace astro::earth::aberration {
 
 /**
