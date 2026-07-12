@@ -24,7 +24,9 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-          python3 -m pip install ruff clang-tidy
+          # clang-tidy is pinned to match the clang-18 toolchain this job installs;
+          # newer clang-tidy ships new checks that flag pre-existing code.
+          python3 -m pip install ruff clang-tidy==18.1.8
 
       - name: Install LLVM and clang++
         run: |

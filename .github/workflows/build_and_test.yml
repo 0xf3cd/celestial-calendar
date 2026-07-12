@@ -80,8 +80,10 @@ jobs:
           docker buildx create --use
 
           # Build the Docker image for the specified platform
+          # NB: $ARCH has '/' replaced by '_' for use in file/image names,
+          # so it must NOT be used for --platform (linux/arm_v7 matches nothing).
           docker buildx build \
-            --platform $OS/$ARCH -t $IMAGE_TAG \
+            --platform ${{ matrix.platform }} -t $IMAGE_TAG \
             --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
             --load .
 
