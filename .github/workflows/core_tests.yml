@@ -12,10 +12,10 @@ jobs:
         python-version: ["3.12"]  
 
     steps:  
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
+        uses: actions/setup-python@v6 
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -24,7 +24,9 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-          python3 -m pip install ruff clang-tidy
+          # clang-tidy is pinned to match the clang-18 toolchain this job installs;
+          # newer clang-tidy ships new checks that flag pre-existing code.
+          python3 -m pip install ruff clang-tidy==18.1.8
 
       - name: Install LLVM and clang++
         run: |
@@ -51,13 +53,13 @@ jobs:
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
-        python-version: ["3.8"]  
+        python-version: ["3.12"]  
 
     steps:  
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
+        uses: actions/setup-python@v6 
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -91,10 +93,10 @@ jobs:
         python-version: ["3.12"]  
 
     steps:  
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
+        uses: actions/setup-python@v6 
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -128,14 +130,14 @@ jobs:
         python-version: ["3.12"]  
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: latest-stable
     
     - name: Set up Python ${{ matrix.python-version }}  
-      uses: actions/setup-python@v5 
+      uses: actions/setup-python@v6 
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -160,7 +162,7 @@ jobs:
         python-version: ["3.12"]  
   
     steps:  
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Visual Studio
         uses: microsoft/setup-msbuild@v2
@@ -168,7 +170,7 @@ jobs:
           vs-version: latest
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
+        uses: actions/setup-python@v6 
         with:
           python-version: ${{ matrix.python-version }}
   
