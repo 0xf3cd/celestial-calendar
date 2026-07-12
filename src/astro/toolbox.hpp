@@ -43,6 +43,12 @@ constexpr auto normalize_rad(const double rad) -> double {
   return _rad < 0.0 ? _rad + 2.0 * std::numbers::pi : _rad;
 }
 
+/** @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning. */
+constexpr auto normalize_pm180(const double deg) -> double {
+  const double _deg = normalize_deg(deg);
+  return _deg >= 180.0 ? _deg - 360.0 : _deg;
+}
+
 /** @brief The number of degrees in a radian. */
 constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 
@@ -55,6 +61,13 @@ constexpr auto deg_to_rad(const double deg) -> double {
 constexpr auto rad_to_deg(const double rad) -> double {
   return rad * DEG_PER_RAD;
 }
+
+/**
+ * @brief The mean angular rate of Earth's rotation relative to the stars, in degrees per day.
+ *        Used to convert between time offsets and hour angle offsets.
+ * @ref Jean Meeus, "Astronomical Algorithms", Ch.12.
+ */
+constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
 
 /** @brief The number of minutes in a degree. */
 constexpr uint32_t MIN_PER_DEG = 60;
