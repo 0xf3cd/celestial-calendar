@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <chrono>
 #include <ranges>
 #include "util.hpp"

@@ -182,19 +182,19 @@ struct Angle {
 
 namespace literals {
 
-inline auto operator"" _deg(const long double value) -> Angle<AngleUnit::DEG> {
+inline auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
   return { static_cast<double>(value) };
 }
 
-inline auto operator"" _arcmin(const long double value) -> Angle<AngleUnit::DEG> {
+inline auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
   return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
 }
 
-inline auto operator"" _arcsec(const long double value) -> Angle<AngleUnit::DEG> {
+inline auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> {
   return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
 }
 
-inline auto operator"" _rad(const long double value) -> Angle<AngleUnit::RAD> {
+inline auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
   return { static_cast<double>(value) };
 }
 

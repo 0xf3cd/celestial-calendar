@@ -9,8 +9,9 @@ jobs:
   linux-docker:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # One stale arch must not cancel the others.
       matrix:
-        platform: 
+        platform:
           - "linux/amd64"
           - "linux/i386"
           - "linux/arm64"
@@ -21,54 +22,21 @@ jobs:
           - "linux/riscv64"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Determine BASE_IMAGE
-        id: determine-base-image
-        run: |
-          case "${{ matrix.platform }}" in
-            "linux/amd64") 
-              echo "BASE_IMAGE=debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/i386")
-              echo "BASE_IMAGE=i386/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/arm64")
-              echo "BASE_IMAGE=arm64v8/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/arm/v5")
-              echo "BASE_IMAGE=arm32v5/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/arm/v7")
-              echo "BASE_IMAGE=arm32v7/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/mips64le")
-              echo "BASE_IMAGE=mips64le/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/ppc64le")
-              echo "BASE_IMAGE=ppc64le/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/s390x")
-              echo "BASE_IMAGE=s390x/debian:latest" >> $GITHUB_OUTPUT
-              ;;
-            "linux/riscv64")
-              echo "BASE_IMAGE=riscv64/debian:sid" >> $GITHUB_OUTPUT
-              ;;
-          esac
+        uses: docker/setup-buildx-action@v4
 
       - name: Set up Environment Variables
         id: set-env-vars
         run: |
-          # Print the BASE_IMAGE
-          echo "BASE_IMAGE set to ${{ steps.determine-base-image.outputs.BASE_IMAGE }}"
-          echo "BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }}" >> $GITHUB_ENV
-
+          # The official debian:latest manifest is multi-arch and covers every
+          # platform in the matrix; buildx --platform picks the right one.
+          # (The per-arch mirror repos like arm32v7/debian went stale with trixie.)
+          # NB: mips64le is NOT in debian:latest — pin debian:bookworm if it returns (#35).
           platform="${{ matrix.platform }}"
           os=$(echo "${platform}" | cut -d '/' -f 1)
           arch=$(echo "${platform}" | cut -d '/' -f 2- | tr '/' '_')
@@ -114,7 +82,6 @@ jobs:
           # Build the Docker image for the specified platform
           docker buildx build \
             --platform $OS/$ARCH -t $IMAGE_TAG \
-            --build-arg BASE_IMAGE=${{ steps.determine-base-image.outputs.BASE_IMAGE }} \
             --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
             --load .
 
@@ -165,7 +132,7 @@ jobs:
           echo "artifact_path=${DEST_DIR}"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.shared_lib.outputs.artifact_name }}
           path: ${{ steps.shared_lib.outputs.artifact_path }}
@@ -180,14 +147,14 @@ jobs:
         python-version: ["3.12"]  
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: latest-stable
     
     - name: Set up Python ${{ matrix.python-version }}  
-      uses: actions/setup-python@v5 
+      uses: actions/setup-python@v6 
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -231,7 +198,7 @@ jobs:
         echo "artifact_path=./macos_arm64" >> $GITHUB_OUTPUT
 
     - name: GitHub Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ steps.shared_lib.outputs.artifact_name }}
         path: ${{ steps.shared_lib.outputs.artifact_path }}
@@ -246,7 +213,7 @@ jobs:
         python-version: ["3.12"]  
   
     steps:  
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Visual Studio
         uses: microsoft/setup-msbuild@v2
@@ -254,7 +221,7 @@ jobs:
           vs-version: latest
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v5 
+        uses: actions/setup-python@v6 
         with:
           python-version: ${{ matrix.python-version }}
   
@@ -314,7 +281,7 @@ jobs:
           Write-Output "artifact_path=$destDir"
 
       - name: GitHub Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.shared_lib.outputs.artifact_name }}
           path: ${{ steps.shared_lib.outputs.artifact_path }}

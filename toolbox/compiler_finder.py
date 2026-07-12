@@ -36,7 +36,7 @@ def c_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
   compilers = find_c_compilers()
   args = make_compiler_args(compilers, standards)
   results = map(lambda a: check_c_support(a, silent=True), args)
-  return dict(zip(args, results))
+  return dict(zip(args, results, strict=True))
 
 
 def cpp_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
@@ -44,7 +44,7 @@ def cpp_compilers(standards: List[str]) -> Dict[CompilerArgs, bool]:
   compilers = find_cpp_compilers()
   args = make_compiler_args(compilers, standards)
   results = map(lambda a: check_cpp_support(a, silent=True), args)
-  return dict(zip(args, results))
+  return dict(zip(args, results, strict=True))
 
 
 def parse_args() -> argparse.Namespace:

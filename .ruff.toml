@@ -2,6 +2,9 @@ exclude = [
   "*.ipynb",
 ]
 
+# Matches the Python version used across CI jobs.
+target-version = "py312"
+
 line-length = 120
 indent-width = 2
 

@@ -221,7 +221,7 @@ def main() -> int:
 
   print(60 * "#")
   green_print("# Task Times:")
-  for task_name, duration in zip(task_names, task_times):
+  for task_name, duration in zip(task_names, task_times, strict=True):
     blue_print(f"# {task_name:<{max_len}} time: {duration:.5f} seconds")
   print(60 * "#")
 
