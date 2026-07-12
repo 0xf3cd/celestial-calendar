@@ -260,7 +260,7 @@ TEST(Earth, NutationMeeus) {
       #endif
     });
 
-    ASSERT_NEAR(obliquity(jde, Model::MEEUS).as<DEG>(), obl_nut, obl_epsilon);
+    ASSERT_NEAR(nutation::obliquity(jde, Model::MEEUS).as<DEG>(), obl_nut, obl_epsilon);
   }
 }
 
@@ -464,7 +464,42 @@ TEST(Earth, NutationIau1980) {
     const auto& [lon_nut, obl_nut] = expected;
 
     ASSERT_NEAR(longitude(jde, Model::IAU_1980).as<RAD>(), lon_nut, 4e-12);
-    ASSERT_NEAR(obliquity(jde, Model::IAU_1980).as<RAD>(), obl_nut, 2e-12);
+    ASSERT_NEAR(nutation::obliquity(jde, Model::IAU_1980).as<RAD>(), obl_nut, 2e-12);
+  }
+}
+
+TEST(Earth, ObliquityMeeus22a) {
+  using namespace obliquity;
+
+  // Meeus Example 22.a: 1987-04-10, 0h TD, JDE = 2446895.5.
+  const double jde = 2446895.5;
+
+  // Expected mean obliquity: ε₀ = 23°26'27".407
+  const double expected_mean = 23.0 + 26.0 / 60.0 + 27.407 / 3600.0;
+  ASSERT_NEAR(mean(jde).as<DEG>(), expected_mean, 1e-5);
+
+  // Expected true obliquity: ε = ε₀ + Δε = 23°26'36".850
+  const double expected_true = 23.0 + 26.0 / 60.0 + 36.850 / 3600.0;
+  ASSERT_NEAR(true_obliquity(jde).as<DEG>(), expected_true, 1e-4);
+}
+
+TEST(Earth, ObliquityJ2000) {
+  using namespace obliquity;
+
+  // At J2000.0 the polynomial reduces to its constant term: 84381.448" = 23.4392911...°
+  const double j2000 = astro::julian_day::J2000;
+  ASSERT_NEAR(mean(j2000).as<DEG>(), 84381.448 / 3600.0, 1e-9);
+
+  // Sanity: within ±1 century of J2000, mean obliquity stays in a narrow band around 23.4°.
+  for (auto i = 0; i < 100; ++i) {
+    const double jde = j2000 + util::random(-36525.0, 36525.0);
+    const double ε0 = mean(jde).as<DEG>();
+    ASSERT_GT(ε0, 23.4);
+    ASSERT_LT(ε0, 23.5);
+
+    // True obliquity differs from mean only by nutation (|Δε| < ~10").
+    const double Δ = std::fabs(true_obliquity(jde).as<DEG>() - ε0);
+    ASSERT_LT(Δ, 10.0 / 3600.0);
   }
 }
 
