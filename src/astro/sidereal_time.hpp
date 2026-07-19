@@ -77,6 +77,7 @@ inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::Angle<astro::
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12 (and Chapter 22 for Δψ, ε).
  */
 inline auto greenwich_apparent(
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): the jd_ut1/jde_tt naming is the UT1/TT guard (issue #41).
   const double jd_ut1,
   const double jde_tt,
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
