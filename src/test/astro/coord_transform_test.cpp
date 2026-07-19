@@ -66,6 +66,29 @@ TEST(CoordTransform, EclipticToEquatorialPoles) {
   ASSERT_NEAR(south.α.deg(), 90.0, 1e-9);
 }
 
+TEST(CoordTransform, EclipticToEquatorialAsinDomain) {
+  // Regression for the asin-domain edge in (13.4): at λ = ±90° and β = ±(90° − ε) the true δ is ±90°,
+  // where the asin argument is exactly ±1 and roundoff can push it just outside the domain (NaN before
+  // clamping; a few per mille of a dense sweep, at platform-dependent points). δ must stay finite, at
+  // the pole, and within [-90°, 90°]; α is arbitrary at the pole, so it is only required to be finite.
+  // The 1e-5 tolerance reflects asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's precision.
+  for (auto i = 0; i < 10000; ++i) {
+    const double ε = 22.0 + 3.0 * i / 9999.0;
+
+    const auto north = ecliptic_to_equatorial(90.0_deg, Angle<DEG> { 90.0 - ε }, Angle<DEG> { ε });
+    ASSERT_TRUE(std::isfinite(north.α.deg()));
+    ASSERT_TRUE(std::isfinite(north.δ.deg()));
+    ASSERT_NEAR(north.δ.deg(), 90.0, 1e-5);
+    ASSERT_LE(north.δ.deg(), 90.0);
+
+    const auto south = ecliptic_to_equatorial(270.0_deg, Angle<DEG> { ε - 90.0 }, Angle<DEG> { ε });
+    ASSERT_TRUE(std::isfinite(south.α.deg()));
+    ASSERT_TRUE(std::isfinite(south.δ.deg()));
+    ASSERT_NEAR(south.δ.deg(), -90.0, 1e-5);
+    ASSERT_GE(south.δ.deg(), -90.0);
+  }
+}
+
 TEST(CoordTransform, EclipticEquatorialRoundTrip) {
   for (auto i = 0; i < 100; ++i) {
     const double λ = util::random(0.0, 360.0);
@@ -132,6 +155,30 @@ TEST(CoordTransform, EquatorialToHorizontalHorizon) {
   const auto set = equatorial_to_horizontal(Angle<DEG> { H0 }, Angle<DEG> { δ }, Angle<DEG> { φ });
   ASSERT_NEAR(set.h.deg(), 0.0, 1e-9);
   ASSERT_TRUE(std::isfinite(set.A.deg()));
+}
+
+TEST(CoordTransform, EquatorialToHorizontalAsinDomain) {
+  // Regression for the asin-domain edge in (13.6): at H = 0 and δ = φ the object culminates at the
+  // zenith (h = 90°), and at H = 180° and δ = −φ it lies at the nadir (h = −90°); the asin argument
+  // is then exactly ±1 and roundoff can push it just outside the domain — a few percent of a dense
+  // sweep on common libms (NaN before clamping). h must stay finite and within [-90°, 90°]; A is
+  // arbitrary at the zenith/nadir, so it is only required to be finite. The 1e-5 tolerance reflects
+  // asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's actual precision.
+  for (auto i = 0; i < 10000; ++i) {
+    const double φ = -90.0 + 180.0 * i / 9999.0;
+
+    const auto zenith = equatorial_to_horizontal(0.0_deg, Angle<DEG> { φ }, Angle<DEG> { φ });
+    ASSERT_TRUE(std::isfinite(zenith.A.deg()));
+    ASSERT_TRUE(std::isfinite(zenith.h.deg()));
+    ASSERT_NEAR(zenith.h.deg(), 90.0, 1e-5);
+    ASSERT_LE(zenith.h.deg(), 90.0);
+
+    const auto nadir = equatorial_to_horizontal(180.0_deg, Angle<DEG> { -φ }, Angle<DEG> { φ });
+    ASSERT_TRUE(std::isfinite(nadir.A.deg()));
+    ASSERT_TRUE(std::isfinite(nadir.h.deg()));
+    ASSERT_NEAR(nadir.h.deg(), -90.0, 1e-5);
+    ASSERT_GE(nadir.h.deg(), -90.0);
+  }
 }
 
 TEST(CoordTransform, HorizontalRoundTrip) {

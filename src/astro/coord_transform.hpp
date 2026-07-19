@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 #include "toolbox.hpp"
@@ -58,6 +59,8 @@ struct HorizontalCoord {
  * @return The equatorial coordinates (α, δ); α is normalized to [0°, 360°).
  * @note Meeus gives tan α in terms of tan β, which diverges at the ecliptic poles (β = ±90°).
  *       Here the numerator and denominator are multiplied through by cos β, so the result stays finite.
+ * @note Assumes β ∈ [-90°, 90°], as ecliptic latitude is by definition; outside that range cos β < 0
+ *       and the cos β-multiplied form silently shifts α by 180°.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
  */
 inline auto ecliptic_to_equatorial(
@@ -86,8 +89,10 @@ inline auto ecliptic_to_equatorial(
   const double x = cos_λ * cos_β;
   const double α_rad = std::atan2(y, x);
 
-  // Meeus (13.4): sin δ = sin β cos ε + cos β sin ε sin λ. No division, safe everywhere.
-  const double δ_rad = std::asin(sin_β * cos_ε + cos_β * sin_ε * sin_λ);
+  // Meeus (13.4): sin δ = sin β cos ε + cos β sin ε sin λ. The argument is exactly ±1 at the
+  // celestial poles, where roundoff can push it just outside asin's domain (yielding NaN) —
+  // clamp it into [-1, 1], and then this really is safe everywhere.
+  const double δ_rad = std::asin(std::clamp(sin_β * cos_ε + cos_β * sin_ε * sin_λ, -1.0, 1.0));
 
   return {
     .α = Angle<DEG> { rad_to_deg(α_rad) }.normalize(),
@@ -104,6 +109,8 @@ inline auto ecliptic_to_equatorial(
  *         and normalized to [0°, 360°).
  * @note Meeus gives tan A in terms of tan δ, which diverges at the celestial poles (δ = ±90°).
  *       Here the numerator and denominator are multiplied through by cos δ, so the result stays finite.
+ * @note Assumes δ ∈ [-90°, 90°] and φ ∈ [-90°, 90°], as declination and geographic latitude are by
+ *       definition; outside the former range the cos δ-multiplied form silently shifts A by 180°.
  * @note The resulting altitude is purely geometric: no atmospheric refraction, parallax, or horizon dip
  *       is taken into account (for refraction see Meeus Chapter 16; for parallax, Chapter 40).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
@@ -134,8 +141,10 @@ inline auto equatorial_to_horizontal(
   const double x = cos_H * sin_φ * cos_δ - sin_δ * cos_φ;
   const double A_rad = std::atan2(y, x);
 
-  // Meeus (13.6): sin h = sin φ sin δ + cos φ cos δ cos H. No division, safe everywhere.
-  const double h_rad = std::asin(sin_φ * sin_δ + cos_φ * cos_δ * cos_H);
+  // Meeus (13.6): sin h = sin φ sin δ + cos φ cos δ cos H. The argument is exactly ±1 at the zenith
+  // and nadir, where roundoff can push it just outside asin's domain (a few percent of near-zenith
+  // evaluations on common libms, yielding NaN) — clamp it into [-1, 1], then this is safe everywhere.
+  const double h_rad = std::asin(std::clamp(sin_φ * sin_δ + cos_φ * cos_δ * cos_H, -1.0, 1.0));
 
   return {
     .A = Angle<DEG> { rad_to_deg(A_rad) }.normalize(),
