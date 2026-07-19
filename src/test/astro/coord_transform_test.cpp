@@ -1,0 +1,382 @@
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+ * 
+ * Copyright (C) 2026 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include <cmath>
+#include <tuple>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#include "random.hpp"
+#include "toolbox.hpp"
+#include "coord_transform.hpp"
+
+
+namespace astro::coords::test {
+
+using namespace astro::coords;
+using namespace astro::toolbox;
+using namespace astro::toolbox::literals;
+using astro::toolbox::AngleUnit::DEG;
+
+TEST(CoordTransform, EclipticToEquatorialMeeus13a) {
+  // Meeus Example 13.a: λ = 113.21563°, β = 6.68417°, ε = 23.4392911°.
+  const auto [α, δ] = ecliptic_to_equatorial(113.21563_deg, 6.68417_deg, 23.4392911_deg);
+
+  // Evaluated from Meeus (13.3)-(13.4); consistent with Meeus's rounded values α = 116.328942°, δ = 28.026183°.
+  ASSERT_NEAR(α.deg(), 116.3289425074285, 1e-10);
+  ASSERT_NEAR(δ.deg(),  28.02618312616128, 1e-10);
+}
+
+TEST(CoordTransform, EclipticToEquatorialPoles) {
+  // At the ecliptic poles (β = ±90°) tan β diverges; the cos β-multiplied form must stay finite.
+  // The ecliptic north pole maps to δ = 90° − ε, α = 270°; the south pole to δ = −(90° − ε), α = 90°.
+  const double ε = 23.4392911;
+
+  const auto north = ecliptic_to_equatorial(0.0_deg, 90.0_deg, Angle<DEG> { ε });
+  ASSERT_TRUE(std::isfinite(north.α.deg()));
+  ASSERT_TRUE(std::isfinite(north.δ.deg()));
+  ASSERT_NEAR(north.δ.deg(), 90.0 - ε, 1e-9);
+  ASSERT_NEAR(north.α.deg(), 270.0, 1e-9);
+
+  const auto south = ecliptic_to_equatorial(0.0_deg, -90.0_deg, Angle<DEG> { ε });
+  ASSERT_TRUE(std::isfinite(south.α.deg()));
+  ASSERT_TRUE(std::isfinite(south.δ.deg()));
+  ASSERT_NEAR(south.δ.deg(), -(90.0 - ε), 1e-9);
+  ASSERT_NEAR(south.α.deg(), 90.0, 1e-9);
+}
+
+TEST(CoordTransform, EclipticToEquatorialAsinDomain) {
+  // Regression for the asin-domain edge in (13.4): at λ = ±90° and β = ±(90° − ε) the true δ is ±90°,
+  // where the asin argument is exactly ±1 and roundoff can push it just outside the domain (NaN before
+  // clamping; a few per mille of a dense sweep, at platform-dependent points). δ must stay finite, at
+  // the pole, and within [-90°, 90°]; α is arbitrary at the pole, so it is only required to be finite.
+  // The 1e-5 tolerance reflects asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's precision.
+  for (auto i = 0; i < 10000; ++i) {
+    const double ε = 22.0 + 3.0 * i / 9999.0;
+
+    const auto north = ecliptic_to_equatorial(90.0_deg, Angle<DEG> { 90.0 - ε }, Angle<DEG> { ε });
+    ASSERT_TRUE(std::isfinite(north.α.deg()));
+    ASSERT_TRUE(std::isfinite(north.δ.deg()));
+    ASSERT_NEAR(north.δ.deg(), 90.0, 1e-5);
+    ASSERT_LE(north.δ.deg(), 90.0);
+
+    const auto south = ecliptic_to_equatorial(270.0_deg, Angle<DEG> { ε - 90.0 }, Angle<DEG> { ε });
+    ASSERT_TRUE(std::isfinite(south.α.deg()));
+    ASSERT_TRUE(std::isfinite(south.δ.deg()));
+    ASSERT_NEAR(south.δ.deg(), -90.0, 1e-5);
+    ASSERT_GE(south.δ.deg(), -90.0);
+  }
+}
+
+TEST(CoordTransform, EclipticEquatorialRoundTrip) {
+  for (auto i = 0; i < 100; ++i) {
+    const double λ = util::random(0.0, 360.0);
+    const double β = util::random(-89.0, 89.0);
+    const double ε = util::random(22.0, 25.0);
+
+    const auto [α, δ] = ecliptic_to_equatorial(Angle<DEG> { λ }, Angle<DEG> { β }, Angle<DEG> { ε });
+
+    // Invert with Meeus (13.1)-(13.2), multiplied through by cos δ so nothing diverges at the poles.
+    const double α_rad = α.rad();
+    const double δ_rad = δ.rad();
+    const double ε_rad = Angle<DEG> { ε }.rad();
+
+    const double sin_α = std::sin(α_rad);
+    const double cos_α = std::cos(α_rad);
+    const double sin_δ = std::sin(δ_rad);
+    const double cos_δ = std::cos(δ_rad);
+    const double sin_ε = std::sin(ε_rad);
+    const double cos_ε = std::cos(ε_rad);
+
+    const double β_rt = rad_to_deg(std::asin(sin_δ * cos_ε - cos_δ * sin_ε * sin_α));
+    const double λ_rt = rad_to_deg(std::atan2(sin_α * cos_ε * cos_δ + sin_δ * sin_ε, cos_α * cos_δ));
+
+    ASSERT_NEAR(β_rt, β, 1e-9);
+
+    // Compare longitudes as an angular difference, so the 0°/360° wrap does not matter.
+    const double Δλ = std::fmod(λ_rt - λ + 540.0, 360.0) - 180.0;
+    ASSERT_NEAR(Δλ, 0.0, 1e-9);
+  }
+}
+
+TEST(CoordTransform, EquatorialToHorizontalMeridian) {
+  // At H = 0 the object is on the meridian: azimuth is 0° (south) when it culminates south of the zenith,
+  // 180° (north) otherwise; altitude is 90° − |φ − δ|.
+  {
+    const auto [A, h] = equatorial_to_horizontal(0.0_deg, 20.0_deg, 40.0_deg); // δ < φ: culminates south.
+    ASSERT_NEAR(A.deg(), 0.0, 1e-9);
+    ASSERT_NEAR(h.deg(), 70.0, 1e-9);
+  }
+  {
+    const auto [A, h] = equatorial_to_horizontal(0.0_deg, 50.0_deg, 40.0_deg); // δ > φ: culminates north.
+    ASSERT_NEAR(A.deg(), 180.0, 1e-9);
+    ASSERT_NEAR(h.deg(), 80.0, 1e-9);
+  }
+  {
+    // Southern hemisphere: φ = −40°, δ = −20° culminates north of the zenith.
+    const auto [A, h] = equatorial_to_horizontal(0.0_deg, -20.0_deg, -40.0_deg);
+    ASSERT_NEAR(A.deg(), 180.0, 1e-9);
+    ASSERT_NEAR(h.deg(), 70.0, 1e-9);
+  }
+}
+
+TEST(CoordTransform, EquatorialToHorizontalHorizon) {
+  // At rising/setting h = 0, Meeus (13.6) reduces to cos H = −tan φ tan δ — the hour angle of sunrise/sunset.
+  const double φ = 51.5;  // London.
+  const double δ = 23.44; // The Sun at the June solstice.
+  const double H0 = rad_to_deg(std::acos(-std::tan(deg_to_rad(φ)) * std::tan(deg_to_rad(δ))));
+
+  // Rising: H = −H0 in the morning; setting: H = +H0 in the evening. Both must yield h ≈ 0.
+  const auto rise = equatorial_to_horizontal(Angle<DEG> { -H0 }, Angle<DEG> { δ }, Angle<DEG> { φ });
+  ASSERT_NEAR(rise.h.deg(), 0.0, 1e-9);
+  ASSERT_TRUE(std::isfinite(rise.A.deg()));
+
+  const auto set = equatorial_to_horizontal(Angle<DEG> { H0 }, Angle<DEG> { δ }, Angle<DEG> { φ });
+  ASSERT_NEAR(set.h.deg(), 0.0, 1e-9);
+  ASSERT_TRUE(std::isfinite(set.A.deg()));
+}
+
+TEST(CoordTransform, EquatorialToHorizontalAsinDomain) {
+  // Regression for the asin-domain edge in (13.6): at H = 0 and δ = φ the object culminates at the
+  // zenith (h = 90°), and at H = 180° and δ = −φ it lies at the nadir (h = −90°); the asin argument
+  // is then exactly ±1 and roundoff can push it just outside the domain — a few percent of a dense
+  // sweep on common libms (NaN before clamping). h must stay finite and within [-90°, 90°]; A is
+  // arbitrary at the zenith/nadir, so it is only required to be finite. The 1e-5 tolerance reflects
+  // asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's actual precision.
+  for (auto i = 0; i < 10000; ++i) {
+    const double φ = -90.0 + 180.0 * i / 9999.0;
+
+    const auto zenith = equatorial_to_horizontal(0.0_deg, Angle<DEG> { φ }, Angle<DEG> { φ });
+    ASSERT_TRUE(std::isfinite(zenith.A.deg()));
+    ASSERT_TRUE(std::isfinite(zenith.h.deg()));
+    ASSERT_NEAR(zenith.h.deg(), 90.0, 1e-5);
+    ASSERT_LE(zenith.h.deg(), 90.0);
+
+    const auto nadir = equatorial_to_horizontal(180.0_deg, Angle<DEG> { -φ }, Angle<DEG> { φ });
+    ASSERT_TRUE(std::isfinite(nadir.A.deg()));
+    ASSERT_TRUE(std::isfinite(nadir.h.deg()));
+    ASSERT_NEAR(nadir.h.deg(), -90.0, 1e-5);
+    ASSERT_GE(nadir.h.deg(), -90.0);
+  }
+}
+
+TEST(CoordTransform, HorizontalRoundTrip) {
+  for (auto i = 0; i < 100; ++i) {
+    const double H = util::random(-170.0, 170.0);
+    const double δ = util::random(-80.0, 80.0);
+    const double φ = util::random(-80.0, 80.0);
+
+    const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+
+    // Invert (azimuth from the south): sin δ = sin φ sin h − cos φ cos h cos A;
+    // then recover H from its sine and cosine, dropping the common positive factor cos δ in atan2.
+    const double A_rad = A.rad();
+    const double h_rad = h.rad();
+    const double φ_rad = Angle<DEG> { φ }.rad();
+
+    const double sin_A = std::sin(A_rad);
+    const double cos_A = std::cos(A_rad);
+    const double sin_h = std::sin(h_rad);
+    const double cos_h = std::cos(h_rad);
+    const double sin_φ = std::sin(φ_rad);
+    const double cos_φ = std::cos(φ_rad);
+
+    const double δ_rt = rad_to_deg(std::asin(sin_φ * sin_h - cos_φ * cos_h * cos_A));
+    const double δ_rt_rad = deg_to_rad(δ_rt);
+    const double H_rt = rad_to_deg(std::atan2(
+      sin_A * cos_h,
+      (sin_h - sin_φ * std::sin(δ_rt_rad)) / cos_φ
+    ));
+
+    ASSERT_NEAR(δ_rt, δ, 1e-9);
+
+    // Compare hour angles as an angular difference, so the 0°/360° wrap does not matter.
+    const double ΔH = std::fmod(H_rt - H + 540.0, 360.0) - 180.0;
+    ASSERT_NEAR(ΔH, 0.0, 1e-9);
+  }
+}
+
+TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
+  // Meeus Example 13.b: Venus on 1987 April 10 at 19h21m UT, observed from Washington (USNO).
+  // The example's hour angle H = +64°.352133, declination δ = −6°43'11".61, latitude φ = +38°55'17".
+  const double H = 64.352133;
+  const double δ = -(6.0 + 43.0 / 60.0 + 11.61 / 3600.0);
+  const double φ = 38.0 + 55.0 / 60.0 + 17.0 / 3600.0;
+
+  const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+
+  // Meeus prints A = +68°.0337, h = +15°.1249; his intermediate values are rounded, hence the looser tolerance.
+  ASSERT_NEAR(A.deg(), 68.0337, 1e-4);
+  ASSERT_NEAR(h.deg(), 15.1249, 1e-4);
+}
+
+TEST(CoordTransform, EclipticToEquatorialPymeeus) {
+  // The following data was collected from running PyMeeus's `ecliptical2equatorial` (see README §8. References),
+  // over random λ ∈ [0°, 360°), β ∈ [−89°, 89°], ε ∈ [22°, 25°] (seed 42).
+  const std::vector<std::tuple<double, double, double, double, double>> dataset {
+    // λ                     β                       ε                       α (PyMeeus)           δ (PyMeeus)
+    { 230.19364744483815, -84.54808557036529, 22.825087955107357, 100.79883559927244, -71.05618945563006 },
+    { 80.3558657335762, 42.09187612119422, 24.030098462268732, 72.53853686648777, 65.52451177640431 },
+    { 321.18464437374433, -73.52488779196392, 23.26576545905581, 44.277938613564146, -72.02293630286078 },
+    { 10.726998997705323, -50.0824404849586, 23.516065864310086, 33.388788969910294, -40.96626232834292 },
+    { 9.552949086190905, -53.60689817777657, 23.94965331333857, 35.46157673090143, -44.08211711267023 },
+    { 196.17893301715802, -49.761569276755985, 23.767797051627728, 167.0258426605978, -50.458311194804935 },
+    { 291.39496440401757, -87.84322077730513, 24.417457755498425, 87.93732304790832, -67.57772830636131 },
+    { 251.33018219576167, -28.435408059797446, 22.466438499435345, 244.41396394671563, -49.32194707459427 },
+    { 344.5967059944412, -29.086170969952434, 22.278237530140444, 357.9269285737929, -32.53624784821336 },
+    { 34.81789566004704, 61.85399720984785, 23.811178094100672, 344.2020914231085, 66.26728533429495 },
+    { 290.5661783787769, 40.89225803149958, 23.6086842743641, 286.2563350656088, 18.445109999234724 },
+    { 350.3216750325734, -21.620880856913075, 23.65612189381968, 0.2931819524796212, -23.591402619368896 },
+    { 298.58567913107817, 21.0965159208358, 24.585120700932332, 296.5157546419692, -0.7754874963889102 },
+    { 207.84677229243434, 36.41378684625637, 22.137473150966986, 218.7890799782721, 24.091816806631897 },
+    { 82.04337923455687, -37.488942478824924, 22.239375930770883, 83.4576836695039, -15.421326832436506 },
+    { 83.80471908997086, -71.02174556506822, 22.833920809330277, 86.97871434926488, -48.2512049631549 },
+    { 228.84639993518405, -24.05987214332501, 23.110542901350648, 218.16873930155617, -40.15324539723143 },
+    { 75.42253107773557, -41.47794767525782, 24.809963763137482, 78.61064722122687, -17.274240106196025 },
+    { 233.29273868877368, 19.425319008723903, 22.513415944594293, 235.68167005761507, 1.0162219488763684 },
+    { 262.4856472621257, -59.914356110376744, 23.138366325272944, 240.7369936960006, -82.29273080235238 },
+    { 356.2284062291743, 24.91995725402853, 23.67084923132394, 346.10878324518694, 21.220107686152517 },
+    { 246.46113035635486, 61.0276417937861, 24.327999734638734, 255.8096830622335, 37.895605108915404 },
+    { 82.45730590707757, -83.28615658508127, 22.946359144177247, 88.22038488500978, -60.38549282516552 },
+    { 96.38671535125299, -51.44505384163389, 24.828729143005162, 94.45177837227608, -26.720466802824884 },
+    { 315.4923455301608, -32.98733721787093, 23.96631599588464, 332.1434079768274, -47.422010801346815 },
+    { 142.42748438183912, 73.78947097381675, 23.376555557762195, 225.44710093396148, 71.61599449359738 },
+    { 95.35685993929889, -45.10030363047095, 23.684104402489453, 94.06129020891191, -21.492434489729213 },
+    { 94.5869790682567, 15.056306259790219, 24.693468650807432, 95.75677023658042, 39.653550071389404 },
+    { 143.784181850543, -49.96090487000357, 24.99261281948533, 127.8478504645636, -32.23067580242641 },
+    { 183.42946572352722, -72.81812463306468, 22.141349126274203, 130.6274907789248, -63.07244800024122 },
+    { 39.47368692623729, 22.685395423150027, 24.376238093088894, 27.773447352997827, 36.39664319637853 },
+    { 151.97758804788626, -77.69206830495163, 23.14485785951961, 111.56556664502283, -59.20625550117552 },
+    { 358.6036968864348, 5.18235342764639, 24.913235132840853, 356.547894885755, 4.111516399354241 },
+    { 309.8806928044193, -86.9563780941781, 24.162165458080583, 84.76490137512124, -68.0915723563139 },
+    { 245.41573284956692, 6.580718812765539, 22.80047556985763, 244.7722178909979, -14.147845813552781 },
+    { 230.74624748873092, -69.14371309993399, 23.304295752007313, 152.6555992983508, -75.3084258368355 },
+    { 163.34053427851433, 80.77923509875225, 24.62755882113458, 247.44308221191648, 66.40999292099323 },
+    { 94.82005827039268, 0.10432812295310612, 22.535955641590395, 95.22037233032958, 22.556166340584383 },
+    { 328.54602216413537, 65.9523054309445, 22.8953343743459, 302.23948057686965, 49.33522756070107 },
+    { 230.02181815176186, 19.39669763599467, 22.458517805648903, 232.67635660583375, 1.7649937153755086 },
+    { 274.5038880270545, 7.009467361293375, 24.335879435891673, 274.68117008842205, -17.250623111883407 },
+    { 190.9273219902639, -88.89820248922605, 22.972468171014018, 92.79401911218163, -67.212091281059 },
+    { 7.011627258899629, 76.37955369510183, 24.636165633469552, 301.6618506062572, 63.55897653164115 },
+    { 299.3995905700246, -34.262485678326264, 22.173775499482563, 311.76623462519876, -52.476262174128536 },
+    { 316.0834557134546, 79.55700126304293, 22.256960356203635, 284.95449721911865, 59.603641073460636 },
+    { 174.95656679398095, -76.68017171262773, 24.281806495771693, 118.73204173727827, -61.484041319827014 },
+    { 275.70039455051557, -66.14631931904222, 23.425847134296195, 352.01843499964156, -87.67539780761689 },
+    { 197.9292936581798, -41.81992004866948, 24.617299123255773, 174.42675194265686, -44.56778332398045 },
+    { 152.3296584723193, -51.29991943130939, 23.617888266338376, 133.73721810741824, -36.77923415104393 },
+    { 262.77518487239143, -53.195110716634126, 22.935148873902683, 252.2472860087155, -75.69394543676624 },
+    { 358.2537683979221, 26.67829425982272, 23.31430025174351, 347.2129843578202, 23.674722778685503 },
+    { 186.32730277281263, -67.4612531354487, 22.67409201109467, 140.23092474260753, -60.28718051241462 },
+    { 121.71080237308392, 15.718951885387526, 22.69034419778973, 127.85487544556139, 34.460688983210574 },
+    { 79.2782584025614, -76.36323069039221, 23.893308871810298, 85.85621207820367, -52.62699993239248 },
+    { 82.41904217201558, 72.16476231509077, 24.57890620076124, 288.6294611736055, 82.73320951738842 },
+    { 25.50864595991524, -46.63517508231885, 24.006933334888842, 42.40133791626898, -32.94294522479401 },
+    { 77.1252506533579, -65.44849092694555, 24.806542721742012, 82.95628222916703, -40.973711160689284 },
+    { 205.5755135971024, -4.864557316500637, 24.35385827287226, 201.65798296370306, -14.751904013346767 },
+    { 290.6989191959916, -55.10703524358577, 22.29079244268647, 317.69494625433987, -74.13375005389341 },
+    { 155.1784256662959, -13.603005102454105, 23.401074004110026, 152.06001512353637, -3.08384425478205 },
+  };
+
+  for (const auto& [λ, β, ε, expected_α, expected_δ] : dataset) {
+    const auto [α, δ] = ecliptic_to_equatorial(Angle<DEG> { λ }, Angle<DEG> { β }, Angle<DEG> { ε });
+    ASSERT_NEAR(α.deg(), expected_α, 1e-9);
+    ASSERT_NEAR(δ.deg(), expected_δ, 1e-9);
+  }
+}
+
+TEST(CoordTransform, EquatorialToHorizontalPymeeus) {
+  // The following data was collected from running PyMeeus's `equatorial2horizontal` (see README §8. References),
+  // over random H ∈ [−170°, 170°], δ ∈ [−80°, 80°], φ ∈ [−80°, 80°] (seed 42). Azimuth from the south, as in Meeus.
+  const std::vector<std::tuple<double, double, double, double, double>> dataset {
+    // H                     δ                       φ                       A (PyMeeus)           h (PyMeeus)
+    { 77.88578881634919, 27.73832756692825, 77.46643381855458, 84.69769590666547, 29.6467489564507 },
+    { -136.53792380833397, -15.580594863637003, -25.7115831368059, 309.45468816258233, -30.891042089579997 },
+    { 122.96866235994895, -40.2149865727543, -49.566574649470155, 41.074903457144934, 12.82284802181569 },
+    { -17.471393736735166, -12.498937626495334, -35.432776853289525, 218.87719952816315, 62.16025772770282 },
+    { -85.06580772008583, 67.72249588416204, -9.09908079144688, 202.34437765133063, -6.5541530572296445 },
+    { 122.8586956190224, 8.052049991975693, -71.905867276019, 60.67881194015706, -17.45730272285764 },
+    { 169.75603926032704, 53.76441361279231, 75.03940116556021, 172.22782341666525, 38.982882040605375 },
+    { 144.96477422276337, 55.79131750628886, -53.39022230337376, 110.96538792283478, -69.77944278139346 },
+    { -4.882017346755731, -45.800432128130936, -15.833553192087578, 353.23532507669125, 59.75517494737016 },
+    { -150.06396400945917, -19.364300963693424, 77.64941500475615, 212.90113053390093, -29.91866335935003 },
+    { -79.83096022146833, 45.4512963117711, -7.1986612257370695, 223.70019238784047, 1.9240979388021782 },
+    { -26.1774547633446, 73.1708225375477, 79.26763031883422, 301.0953083405175, 81.42207997872198 },
+    { 18.961229957910206, 34.94532404741216, -55.23250795614974, 164.54678816403083, -1.631270925041389 },
+    { -69.11933933184817, 74.99349839506542, 12.668846530601002, 194.70025863552803, 17.570404171248803 },
+    { 14.346368467253228, 39.67608966065026, -70.8535563348027, 168.2117774010153, -21.012040718649097 },
+    { 28.620382116050223, 0.4560612671221662, 56.435182727725646, 33.37833278792981, 29.468314042858204 },
+    { -116.47287250057569, 73.72462452391207, -67.1821655615061, 224.2962061945004, -68.94764970549656 },
+    { -106.81951326655411, 15.205617032004426, 28.03400857665443, 248.55980863521543, -7.0764326203121035 },
+    { -90.0306756996834, -60.81814176846013, 62.44597026071, 309.6192952951863, -50.72971299503841 },
+    { -86.28678175186755, 15.123064565350589, 19.10104165313649, 256.7931844141953, 8.30548286768262 },
+    { -27.463528785803362, 13.387566286595955, 3.64523448511342, 248.5598035205805, 61.18344726352061 },
+    { 147.80012763038525, -47.318528092234175, 34.59068812630636, 52.26916381034748, -62.82189868397277 },
+    { -88.84677611061235, -16.67426451339928, 27.470435673595404, 285.38119769230826, -6.618173015415435 },
+    { -68.00099286842084, -29.411648596503355, 40.298318786304336, 305.9427788098699, -3.9417236372106026 },
+    { -145.33534107232651, -6.674316381026216, 79.75271053671077, 215.8022060081322, -15.05222552559902 },
+    { 168.6727922707321, -68.27828462405873, -45.89531003727353, 4.581526902732233, 24.489084014519797 },
+    { -79.83185898486354, 69.32150047899344, 60.93826778983032, 220.99114746697, 58.00194887366421 },
+    { 128.95188244474457, -20.875665801778567, -54.760506822842885, 46.67379449619006, -2.7447103247256583 },
+    { 113.4732845775344, 32.56638801397935, 17.868442516152015, 128.51910038147315, -8.878483506208921 },
+    { 165.65924163471146, 24.636210833717215, -78.74830285565473, 16.05387286613641, -35.49802319383037 },
+    { 107.81540593925695, -32.09939964800354, 26.14219439457237, 65.77767730946512, -27.826586070393866 },
+    { 149.23620133521536, -58.51342169706116, -61.53141273294365, 18.44444681173512, 32.39217332807857 },
+    { -133.60776757879802, 8.515782541570545, -36.424286029629386, 291.7614422678723, -39.55231460547019 },
+    { 35.642141190276135, 34.81794994220766, -47.42443002760753, 151.40432321462617, 1.7726674519083856 },
+    { 45.640906020927105, -37.76257573913449, -1.8349036560997547, 43.55980513403116, 34.89289731864638 },
+    { 137.8144069669699, 55.37659412717687, -65.23224516596265, 84.3822512967475, -67.45594351936394 },
+    { -25.98423732833305, -35.73116416443973, -79.43268974595483, 210.2342429547057, 45.0643215492464 },
+    { 92.18053582667324, 21.938140368220743, -38.08715801050429, 106.37027909078897, -14.965674059829574 },
+    { 82.01850883829647, 8.268867380222602, -11.570092963091298, 99.75329727229101, 6.071666800708462 },
+    { -166.7123021331644, -67.96098238819727, 61.29702292802287, 325.365297815082, -81.27174213123351 },
+    { 137.33571433036366, 7.294446272883576, 53.53520318176268, 134.56340604570246, -19.352811116317774 },
+    { 28.053252606529952, -56.304994309202776, -59.608716914857794, 90.30865459813965, 74.87601937315536 },
+    { -65.19216102375455, 63.83703819881441, 47.379568782086665, 220.3189891422838, 51.78866046411285 },
+    { 122.63887788030695, 63.82794184423594, -46.387753865639354, 140.2649567593837, -54.47686576381632 },
+    { -85.1598886642057, -63.553020532514296, 44.81859869943082, 326.1472721206207, -37.188728835013514 },
+    { 130.60579849334306, -14.979617626861312, 19.305841624114052, 87.18401980684102, -42.75251793824251 },
+    { -117.45186496705043, 68.7809625109879, 58.33691139519425, 206.96323808027765, 44.899030235378106 },
+    { 161.91005119652738, 49.72347519046349, 61.02659274613191, 167.52283474601742, 21.701518138060738 },
+    { -161.57263695461583, 37.85031548081314, -26.850325128571413, 230.0462858498642, -70.99756360424608 },
+    { 146.4774012564307, 48.35762222994222, 58.25024454004472, 156.99460192890564, 20.11947425866511 },
+    { 105.65476763529227, -37.311086464884475, 45.97992146167539, 70.78768068655465, -35.80410811025417 },
+    { -133.2474870229946, 59.54668526497437, 57.37492021404506, 205.99112870271438, 32.60233598407769 },
+    { -94.3725360344741, 50.653856895508625, -6.3514824513692645, 219.633635055423, -7.677204776413345 },
+    { -66.2351051048758, 47.25527986445789, -43.58472201475674, 220.76528922734389, -17.94954760057681 },
+    { -161.95409220150648, -49.09923386756661, -27.478087808366958, 348.04370554197504, -11.745116134552243 },
+    { 123.88000029029735, 74.70225664773778, -35.34000116450058, 162.66543717868265, -42.68033797070952 },
+    { 48.10379112659342, -16.05145850239026, 76.98394995172163, 46.1352959319463, -7.172624206386351 },
+    { 12.313349042765452, 70.27794245195452, -61.54531970377158, 174.4333011470144, -42.10827868474742 },
+    { 159.9362077475575, -51.42914941240582, 74.00549052184888, 148.38957265269192, -65.91522481363353 },
+    { -79.74143674219067, -62.65559244564622, -10.469798629656907, 332.23641587207953, 13.996005546173603 },
+  };
+
+  for (const auto& [H, δ, φ, expected_A, expected_h] : dataset) {
+    const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+    ASSERT_NEAR(A.deg(), expected_A, 1e-9);
+    ASSERT_NEAR(h.deg(), expected_h, 1e-9);
+  }
+}
+
+} // namespace astro::coords::test
