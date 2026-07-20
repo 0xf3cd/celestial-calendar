@@ -48,7 +48,7 @@ inline auto ang_diff(const double a, const double b) -> double {
 
 TEST(SiderealTime, GreenwichMeanMeeus12a) {
   // Meeus Example 12.a: 1987 April 10, 0h UT, JD = 2446895.5 → GMST = 197.693195°.
-  // This is a 0h UT case, where the completed form coincides with the bare (12.4) polynomial.
+  // This is a 0h UT case, where the completed (12.4) form coincides with the bare (12.3) polynomial.
   ASSERT_NEAR(greenwich_mean(2446895.5).deg(), 197.693195, 5e-7);
 }
 
@@ -60,8 +60,8 @@ TEST(SiderealTime, GreenwichMeanJ2000) {
 
 TEST(SiderealTime, GreenwichMeanArbitraryInstant) {
   // PyMeeus doctest value: 1987 April 10, 19h21m UT → mean sidereal time 0.357605204 d = 128.73787344°.
-  // An arbitrary (non-0h) instant: the bare (12.4) polynomial would be off by ~360°×0.80625 ≈ 290°.
-  const double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
+  // An arbitrary (non-0h) instant: the bare (12.3) polynomial would be off by ~360°×0.80625 ≈ 290°.
+  constexpr double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
   ASSERT_NEAR(greenwich_mean(jd_ut1).deg(), 0.357605204 * 360.0, 5e-7);
 }
 
@@ -76,15 +76,15 @@ TEST(SiderealTime, GreenwichMeanDailyRate) {
 }
 
 TEST(SiderealTime, GreenwichApparentMeeus12a) {
-  // Same instant as Example 12.a (1987 April 10, 0h). Meeus's worked apparent-sidereal-time
-  // example uses Δψ = −3".868 (full IAU series), ε = 23°26'36".87:
-  //   GAST = 197.693195° + (−3.868/3600)°·cos(23.443575°) ≈ 197.6922092°.
-  const double jd_ut1 = 2446895.5;
-  const double jde_tt = 2446895.5; // The example evaluates nutation at 0h TD of the same date.
+  // Same instant as Example 12.a (1987 April 10, 0h). The book takes Δψ = −3".788 and
+  // ε = 23°26'36".85 from Example 22.a (evaluated at 0h TD):
+  //   GAST = 197.693195° + (−3.788/3600)°·cos(23.443569°) ≈ 197.6922296°.
+  constexpr double jd_ut1 = 2446895.5;
+  constexpr double jde_tt = 2446895.5; // The example evaluates nutation at 0h TD of the same date.
 
-  const double ε = 23.0 + 26.0 / 60.0 + 36.87 / 3600.0;
-  const double expected = normalize_deg(197.693195 + (-3.868 / 3600.0) * std::cos(deg_to_rad(ε)));
-  ASSERT_NEAR(greenwich_apparent(jd_ut1, jde_tt).deg(), expected, 1e-4);
+  constexpr double ε = 23.0 + 26.0 / 60.0 + 36.85 / 3600.0;
+  const double expected = normalize_deg(197.693195 + (-3.788 / 3600.0) * std::cos(deg_to_rad(ε)));
+  ASSERT_NEAR(greenwich_apparent(jd_ut1, jde_tt).deg(), expected, 2e-6);
 
   // Cross-check with PyMeeus's doctest value (its nutation table = Meeus 22.A, Δψ = −3".788 there):
   // apparent_sidereal_time = 0.54914508 d = 197.6922288° (input rounding dominates the tolerance).
@@ -94,7 +94,7 @@ TEST(SiderealTime, GreenwichApparentMeeus12a) {
 
 TEST(SiderealTime, GreenwichApparentComposition) {
   // GAST must equal GMST + Δψ·cos ε with the nutation terms taken at jde_tt (TT scale),
-  // and the correction (equation of the equinoxes) must stay small: |Δψ| ≲ 17".3.
+  // and the correction (equation of the equinoxes) must stay small: |Δψ·cos ε| < ~17".4.
   for (auto i = 0; i < 100; ++i) {
     const double jd_ut1 = util::random(2378495.5, 2488069.5); // ~1800–2100
     const double jde_tt = jd_ut1 + util::random(30.0, 100.0) / 86400.0; // realistic ΔT
@@ -113,12 +113,12 @@ TEST(SiderealTime, LocalApparentMeeus13b) {
   // Meeus Example 13.b (Washington USNO, 1987 April 10, 19h21m UT): with α = 23h09m16.641s
   // (apparent RA of Venus) and H = +64°.352133, the local apparent sidereal time is
   // θ = H + α (mod 360°). Meeus's longitude is west-positive: lon = +77°03'56".
-  const double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
-  const double jde_tt = jd_ut1; // ΔT ≈ 55 s in 1987; immaterial at the example's precision.
-  const double lon = 77.0 + 3.0 / 60.0 + 56.0 / 3600.0;
+  constexpr double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
+  constexpr double jde_tt = jd_ut1; // ΔT ≈ 55 s in 1987; immaterial at the example's precision.
+  constexpr double lon = 77.0 + 3.0 / 60.0 + 56.0 / 3600.0;
 
-  const double α_hours = 23.0 + 9.0 / 60.0 + 16.641 / 3600.0;
-  const double expected = normalize_deg(64.352133 + α_hours * 15.0);
+  constexpr double α_hours = 23.0 + 9.0 / 60.0 + 16.641 / 3600.0;
+  const double expected = normalize_deg(64.352133 + α_hours * 15.0); // std::remainder is not constexpr until C++26.
 
   ASSERT_NEAR(local_apparent(jd_ut1, jde_tt, Angle<DEG> { lon }).deg(), expected, 2e-4);
 }
@@ -140,8 +140,8 @@ TEST(SiderealTime, LocalApparentLongitude) {
 TEST(SiderealTime, GreenwichMeanPymeeus) {
   // The following data was collected from running PyMeeus's `mean_sidereal_time` (see README
   // §8. References), over random jd_ut1 ∈ ~[1800, 2100] including fractional-day instants
-  // (seed 42). PyMeeus uses the (12.1)+ratio form; agreement with our completed (12.4) is
-  // ≲ 3e-7° on this dataset.
+  // (seed 42). PyMeeus uses the (12.2) 0h polynomial + the 1.00273790935 ratio; agreement with
+  // our (12.4) form is ≲ 3e-7° on this dataset.
   const std::vector<std::tuple<double, double>> dataset {
     { 2448560.052014224, 237.07962100837617 },
     { 2381236.0284927683, 110.86686023100371 },
@@ -347,30 +347,33 @@ TEST(SiderealTime, GreenwichUsno) {
 TEST(SiderealTime, LocalApparentUsno) {
   // Same source and date as above: 20 random instants at random longitudes. USNO's longitude
   // is east-positive (LAST = GAST + lon_east); the dataset stores west-positive values
-  // (lon_west = −lon_east), matching `local_apparent`'s convention.
+  // (lon_west = −lon_east), matching `local_apparent`'s convention. USNO evaluated LAST at
+  // longitudes quantized to 4 decimal places, so this column stores those quantized values —
+  // with full-precision longitudes the residuals reach 0.22" (89% of tolerance); quantized,
+  // they stay ≤ 0.07", leaving ~4× margin against the IAU-model gap.
   constexpr double TOL_LAST = 6.94e-5; // 0.25" in degrees
 
   const std::vector<std::tuple<double, double, double, double>> dataset {
-    { 2461123.9418287035, 2461123.9426294444, -74.04028083359665, 55.0196375 },
-    { 2461409.5752314813, 2461409.5760322222, -137.91830158805146, 268.45758875 },
-    { 2460921.334583333, 2460921.335384074, -29.70344393632584, 312.3745458333333 },
-    { 2460861.5418171296, 2460861.5426178705, 48.725454482187814, 249.61490833333335 },
-    { 2460834.1820486113, 2460834.1828493522, -60.096027828795485, 201.9522795833333 },
-    { 2461311.9063657406, 2461311.9071664815, -43.438143654256606, 196.91804375 },
-    { 2460793.662488426, 2460793.663289167, -107.95933076648276, 22.835579583333335 },
-    { 2460857.679351852, 2460857.6801525927, -152.81542628695644, 136.86132375 },
-    { 2461373.2350462964, 2461373.2358470373, 90.65979319773574, 241.59378666666672 },
-    { 2461013.8825347223, 2461013.8833354632, 166.05914124031688, 45.09409958333334 },
-    { 2461138.316574074, 2461138.317374815, 14.290835515580852, 115.76520708333334 },
-    { 2461138.5236574076, 2461138.5244581485, 110.47327620202488, 94.33682166666667 },
-    { 2461188.569409722, 2461188.570210463, -98.39758947852994, 9.0061175 },
-    { 2461361.8996643517, 2461361.9004650926, -173.21388739137365, 13.557140833333335 },
-    { 2461557.615335648, 2461557.616136389, -169.34421996800205, 100.23639166666668 },
-    { 2460957.538252315, 2460957.539053056, -34.76565179558807, 66.44140166666668 },
-    { 2461400.8136689817, 2461400.8144697226, -38.235187190211576, 245.9761595833333 },
-    { 2461450.3994907406, 2461450.4002914815, 111.57164117917343, 355.93961375 },
-    { 2461023.501689815, 2461023.502490556, -153.20705957966976, 236.73741625 },
-    { 2461734.4402430556, 2461734.4410437965, -85.33356965650813, 127.47985083333333 },
+    { 2461123.9418287035, 2461123.9426294444, -74.0403, 55.0196375 },
+    { 2461409.5752314813, 2461409.5760322222, -137.9183, 268.45758875 },
+    { 2460921.334583333, 2460921.335384074, -29.7034, 312.3745458333333 },
+    { 2460861.5418171296, 2460861.5426178705, 48.7255, 249.61490833333335 },
+    { 2460834.1820486113, 2460834.1828493522, -60.0960, 201.9522795833333 },
+    { 2461311.9063657406, 2461311.9071664815, -43.4381, 196.91804375 },
+    { 2460793.662488426, 2460793.663289167, -107.9593, 22.835579583333335 },
+    { 2460857.679351852, 2460857.6801525927, -152.8154, 136.86132375 },
+    { 2461373.2350462964, 2461373.2358470373, 90.6598, 241.59378666666672 },
+    { 2461013.8825347223, 2461013.8833354632, 166.0591, 45.09409958333334 },
+    { 2461138.316574074, 2461138.317374815, 14.2908, 115.76520708333334 },
+    { 2461138.5236574076, 2461138.5244581485, 110.4733, 94.33682166666667 },
+    { 2461188.569409722, 2461188.570210463, -98.3976, 9.0061175 },
+    { 2461361.8996643517, 2461361.9004650926, -173.2139, 13.557140833333335 },
+    { 2461557.615335648, 2461557.616136389, -169.3442, 100.23639166666668 },
+    { 2460957.538252315, 2460957.539053056, -34.7657, 66.44140166666668 },
+    { 2461400.8136689817, 2461400.8144697226, -38.2352, 245.9761595833333 },
+    { 2461450.3994907406, 2461450.4002914815, 111.5716, 355.93961375 },
+    { 2461023.501689815, 2461023.502490556, -153.2071, 236.73741625 },
+    { 2461734.4402430556, 2461734.4410437965, -85.3336, 127.47985083333333 },
   };
 
   for (const auto& [jd_ut1, jde_tt, lon_west, expected_last] : dataset) {

@@ -16,11 +16,13 @@ intent you can't verify from existing code. Prefer asking over guessing.
 ## Correctness is numerical, measured against references
 This is precision astronomy, not vibes. Every algorithm traces to a named reference
 (Meeus, VSOP87D, ELP2000-82B, SOFA, USNO ΔT — see README §References).
-- **Name meaningful constants** as `constexpr` (UPPER_CASE), like the existing code.
-  Raw numeric literals belong ONLY inside cited reference coefficient tables
-  (e.g. `MEEUS_NUTATION_COEFFS`) — that dense data can't be named element-by-element,
-  which is the only reason `.clang-tidy` disables the magic-number checks. It is NOT a
-  licence for bare literals in formulas. Every table carries a source comment.
+- **Name cross-formula physical constants** as `constexpr` (UPPER_CASE) — e.g.
+  `SIDEREAL_RATE_DEG_PER_DAY`, shared between implementation and tests. Single-use
+  coefficients of a cited reference polynomial stay **inline in the formula** with the
+  `@ref` alongside (like `obliquity::mean`, `gen_eval_θ`, the ΔT segments): naming each
+  coefficient of a quoted equation adds indirection without audit value. Dense coefficient
+  tables (e.g. `MEEUS_NUTATION_COEFFS`) keep raw literals with a source comment.
+  `.clang-tidy` disables the magic-number checks for exactly these two cases.
 - Never "simplify" a formula or drop a term for cleaner code — the constants ARE the algorithm.
 - Correctness is proven by **golden datasets**: tests hold high-precision reference values
   and `ASSERT_NEAR` to a per-column tolerance. New numerics ⇒ add a reference dataset + tolerance.
@@ -72,6 +74,9 @@ change an existing file's year. GPL-3.0 project — keep the header.
   (`astro/earth.hpp` → `test/astro/earth_test.cpp`), namespace `…::test`.
 - Data-driven: inline a column-aligned dataset of reference values; `ASSERT_NEAR` with a
   per-column tolerance; header-comment the columns.
+- Dataset **input columns must reproduce the reference source's actual inputs** — including
+  any quantization the source applied (e.g. USNO evaluating LAST at 4-decimal longitudes).
+  Otherwise tolerances silently absorb the mismatch and the dataset loses discriminating power.
 
 ## AI do / don't
 - DON'T round / drop astronomical constants or loosen tolerances to pass CI (see above).

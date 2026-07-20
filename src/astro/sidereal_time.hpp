@@ -38,13 +38,13 @@ namespace astro::sidereal {
  *        algorithms in this library. Feeding a TT value here silently shifts the result by
  *        ΔT ≈ 69 s of time (≈ 0.29° of rotation, at epoch ~2026).
  * @return The GMST (Greenwich hour angle of the mean vernal equinox), normalized to [0°, 360°).
- * @note Meeus (12.4) gives GMST as a polynomial in julian centuries of *universal* time; its daily
- *       advance is only the ~0.9856° 0h-to-0h drift — the 360°/day rotation drops out mod 360°
- *       **only on the 0h UT grid** (Meeus's Example 12.a is such a 0h case). The completed form
- *       used here folds the full sidereal rate back in and stays valid at any UT1 instant:
+ * @note Meeus (12.3) gives GMST at 0h UT as a polynomial in julian centuries of *universal* time;
+ *       its daily advance is only the ~0.9856° 0h-to-0h drift — the 360°/day rotation drops out
+ *       mod 360° **only on the 0h UT grid** (Meeus's Example 12.a is such a 0h case). Formula
+ *       (12.4), used here, folds the full sidereal rate back in and stays valid at any UT1 instant:
  *       θ₀ = 280.46061837° + 360.98564736629°·d + 0.000387933°·T² − T³/38710000 (mod 360°),
  *       where the constant picks up 180° because J2000.0 falls at noon UT. On the 0h grid this
- *       coincides with (12.4) exactly; `julian_day::jde_to_jc` is not reused since its contract
+ *       coincides with (12.3) exactly; `julian_day::jde_to_jc` is not reused since its contract
  *       is TT-based.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12, Formulas (12.2)-(12.4).
  */
@@ -73,7 +73,8 @@ inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::Angle<astro::
  * @return The GAST (Greenwich hour angle of the true vernal equinox), normalized to [0°, 360°).
  * @note Meeus: apparent sidereal time = mean sidereal time + Δψ·cos ε, where Δψ is the nutation
  *       in longitude and ε the TRUE obliquity (ε₀ + Δε), both evaluated at `jde_tt`.
- *       The correction (the equation of the equinoxes) is small: |Δψ| ≲ 17".3.
+ *       The correction (the equation of the equinoxes) is small: |Δψ·cos ε| < ~17".4
+ *       (|Δψ| itself can reach ~19").
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12 (and Chapter 22 for Δψ, ε).
  */
 inline auto greenwich_apparent(
@@ -88,9 +89,9 @@ inline auto greenwich_apparent(
   // The nutation correction in right ascension: Δψ·cos ε. Nutation is computed on the TT scale.
   const auto Δψ = astro::earth::nutation::longitude(jde_tt, model);
   const auto ε  = astro::earth::obliquity::true_obliquity(jde_tt, model);
-  const double correction_deg = Δψ.deg() * std::cos(ε.rad());
+  const Angle<DEG> correction = Δψ * std::cos(ε.rad());
 
-  return (greenwich_mean(jd_ut1) + correction_deg).normalize();
+  return (greenwich_mean(jd_ut1) + correction).normalize();
 }
 
 /**
@@ -112,7 +113,7 @@ inline auto local_apparent(
   const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& longitude,
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
 ) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
-  return (greenwich_apparent(jd_ut1, jde_tt, model) - longitude.deg()).normalize();
+  return (greenwich_apparent(jd_ut1, jde_tt, model) - longitude).normalize();
 }
 
 } // namespace astro::sidereal
