@@ -748,6 +748,81 @@ TEST(Sun, RandomApparentPosition) {
 }
 
 
+TEST(Sun, EquatorialApparentComposition) {
+  // equatorial_coord::apparent must be exactly the ecliptic apparent place transformed with the
+  // true obliquity — no extra terms, no different time argument.
+  for (int i = 0; i < 64; ++i) {
+    const double jde = astro::julian_day::J2000 + util::random(-365250.0 * 5, 365250.0 * 5);
+    const auto ecl = geocentric_coord::apparent(jde);
+    const auto ε = astro::earth::obliquity::true_obliquity(jde);
+    const auto expected = astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+    const auto got = equatorial_coord::apparent(jde);
+
+    ASSERT_NEAR(got.α.deg(), expected.α.deg(), 1e-12);
+    ASSERT_NEAR(got.δ.deg(), expected.δ.deg(), 1e-12);
+  }
+}
+
+
+TEST(Sun, EquatorialSolsticeEquinoxDeclination) {
+  // Property tests for the four cardinal solar longitudes (issue #42):
+  //   春分 λ=0°   → δ ≈ 0°
+  //   夏至 λ=90°  → δ ≈ +ε  (≈ +23.44°)
+  //   秋分 λ=180° → δ ≈ 0°
+  //   冬至 λ=270° → δ ≈ −ε  (≈ −23.44°)
+  // Roots are found with the existing geocentric-longitude Newton solver; δ is checked against
+  // the instantaneous true obliquity (for solstices) rather than a fixed 23.44°, so the test
+  // does not silently drift with the mean-obliquity model.
+
+  // |δ| at equinox: solar ecliptic latitude is a few arcseconds, so δ stays well under 1'.
+  constexpr double EQUINOX_δ_TOL_DEG = 1.0 / 60.0; // 1 arcmin
+  // Solstice: with β≈0, δ should match ±ε to within a few arcseconds (β residual + roundoff).
+  constexpr double SOLSTICE_δ_TOL_DEG = 5.0 / 3600.0; // 5 arcsec
+
+  for (const int32_t year : {1984, 1997, 2000, 2008, 2023, 2024, 2026, 2027}) {
+    // One strong-typed sample per cardinal root, so the expectation callback takes a single
+    // argument rather than a run of swappable doubles (bugprone-easily-swappable-parameters).
+    struct Sample { double δ_deg; double ε_deg; double jde; };
+
+    const auto check_cardinal = [&](const double lon_deg, const auto& expect_δ) {
+      const auto roots = find_roots(year, lon_deg);
+      ASSERT_EQ(roots.size(), 1) << "year=" << year << " lon=" << lon_deg;
+      const double jde = roots[0];
+      const auto eq = equatorial_coord::apparent(jde);
+      const auto ε = astro::earth::obliquity::true_obliquity(jde);
+      expect_δ(Sample { .δ_deg = eq.δ.deg(), .ε_deg = ε.deg(), .jde = jde });
+    };
+
+    check_cardinal(0.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, 0.0, EQUINOX_δ_TOL_DEG) << "春分 jde=" << s.jde;
+    });
+    check_cardinal(90.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, s.ε_deg, SOLSTICE_δ_TOL_DEG) << "夏至 jde=" << s.jde;
+      ASSERT_NEAR(s.δ_deg, 23.44, 0.05) << "夏至 rough ε check jde=" << s.jde; // ~23.44° epoch scale
+    });
+    check_cardinal(180.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, 0.0, EQUINOX_δ_TOL_DEG) << "秋分 jde=" << s.jde;
+    });
+    check_cardinal(270.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, -s.ε_deg, SOLSTICE_δ_TOL_DEG) << "冬至 jde=" << s.jde;
+      ASSERT_NEAR(s.δ_deg, -23.44, 0.05) << "冬至 rough ε check jde=" << s.jde;
+    });
+  }
+}
+
+
+TEST(Sun, EquatorialApparentRange) {
+  for (int i = 0; i < 100; ++i) {
+    const double jde = astro::julian_day::J2000 + util::random(-365250.0 * 5, 365250.0 * 5);
+    const auto coord = equatorial_coord::apparent(jde);
+    ASSERT_GE(coord.α.deg(), 0.0);
+    ASSERT_LT(coord.α.deg(), 360.0);
+    ASSERT_GE(coord.δ.deg(), -90.0);
+    ASSERT_LE(coord.δ.deg(), 90.0);
+  }
+}
+
+
 using hms_type = hh_mm_ss<nanoseconds>;
 
 struct JieqiData {
