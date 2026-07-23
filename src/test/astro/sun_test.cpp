@@ -748,6 +748,152 @@ TEST(Sun, RandomApparentPosition) {
 }
 
 
+TEST(Sun, EquatorialApparentComposition) {
+  // equatorial_coord::apparent must be exactly the ecliptic apparent place transformed with the
+  // true obliquity — no extra terms, no different time argument.
+  for (int i = 0; i < 64; ++i) {
+    const double jde = astro::julian_day::J2000 + util::random(-365250.0 * 5, 365250.0 * 5);
+    const auto ecl = geocentric_coord::apparent(jde);
+    const auto ε = astro::earth::obliquity::true_obliquity(jde);
+    const auto expected = astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+    const auto got = equatorial_coord::apparent(jde);
+
+    ASSERT_NEAR(got.α.deg(), expected.α.deg(), 1e-12);
+    ASSERT_NEAR(got.δ.deg(), expected.δ.deg(), 1e-12);
+  }
+}
+
+
+TEST(Sun, EquatorialSolsticeEquinoxDeclination) {
+  // Property tests for the four cardinal solar longitudes (issue #42):
+  //   春分 λ=0°   → δ ≈ 0°
+  //   夏至 λ=90°  → δ ≈ +ε  (≈ +23.44°)
+  //   秋分 λ=180° → δ ≈ 0°
+  //   冬至 λ=270° → δ ≈ −ε  (≈ −23.44°)
+  // Roots are found with the existing geocentric-longitude Newton solver; δ is checked against
+  // the instantaneous true obliquity (for solstices) rather than a fixed 23.44°, so the test
+  // does not silently drift with the mean-obliquity model.
+
+  // |δ| at equinox: solar ecliptic latitude is a few arcseconds, so δ stays well under 1'.
+  constexpr double EQUINOX_δ_TOL_DEG = 1.0 / 60.0; // 1 arcmin
+  // Solstice: with β≈0, δ should match ±ε to within a few arcseconds (β residual + roundoff).
+  constexpr double SOLSTICE_δ_TOL_DEG = 5.0 / 3600.0; // 5 arcsec
+
+  for (const int32_t year : {1984, 1997, 2000, 2008, 2023, 2024, 2026, 2027}) {
+    // One strong-typed sample per cardinal root, so the expectation callback takes a single
+    // argument rather than a run of swappable doubles (bugprone-easily-swappable-parameters).
+    struct Sample { double δ_deg; double ε_deg; double jde; };
+
+    const auto check_cardinal = [&](const double lon_deg, const auto& expect_δ) {
+      const auto roots = find_roots(year, lon_deg);
+      ASSERT_EQ(roots.size(), 1) << "year=" << year << " lon=" << lon_deg;
+      const double jde = roots[0];
+      const auto eq = equatorial_coord::apparent(jde);
+      const auto ε = astro::earth::obliquity::true_obliquity(jde);
+      expect_δ(Sample { .δ_deg = eq.δ.deg(), .ε_deg = ε.deg(), .jde = jde });
+    };
+
+    check_cardinal(0.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, 0.0, EQUINOX_δ_TOL_DEG) << "春分 jde=" << s.jde;
+    });
+    check_cardinal(90.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, s.ε_deg, SOLSTICE_δ_TOL_DEG) << "夏至 jde=" << s.jde;
+      ASSERT_NEAR(s.δ_deg, 23.44, 0.05) << "夏至 rough ε check jde=" << s.jde; // ~23.44° epoch scale
+    });
+    check_cardinal(180.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, 0.0, EQUINOX_δ_TOL_DEG) << "秋分 jde=" << s.jde;
+    });
+    check_cardinal(270.0, [](const Sample& s) {
+      ASSERT_NEAR(s.δ_deg, -s.ε_deg, SOLSTICE_δ_TOL_DEG) << "冬至 jde=" << s.jde;
+      ASSERT_NEAR(s.δ_deg, -23.44, 0.05) << "冬至 rough ε check jde=" << s.jde;
+    });
+  }
+}
+
+
+TEST(Sun, EquatorialApparentRange) {
+  for (int i = 0; i < 100; ++i) {
+    const double jde = astro::julian_day::J2000 + util::random(-365250.0 * 5, 365250.0 * 5);
+    const auto coord = equatorial_coord::apparent(jde);
+    ASSERT_GE(coord.α.deg(), 0.0);
+    ASSERT_LT(coord.α.deg(), 360.0);
+    ASSERT_GE(coord.δ.deg(), -90.0);
+    ASSERT_LE(coord.δ.deg(), 90.0);
+  }
+}
+
+
+TEST(Sun, EquatorialApparentVsJplHorizons) {
+  // Golden dataset from NASA/JPL Horizons (official ephemeris authority), retrieved 2026-07-23:
+  //   GET https://ssd.jpl.nasa.gov/api/horizons.api
+  //     COMMAND='10' (Sun), CENTER='500@399' (geocenter), EPHEM_TYPE='OBSERVER',
+  //     QUANTITIES='2' — apparent RA/Dec w.r.t. the of-date true equator & equinox,
+  //     corrected for light-time and aberration; TIME_TYPE='TT', TLIST_TYPE='JD',
+  //     ANG_FORMAT='DEG', EXTRA_PREC='YES', CSV_FORMAT='YES'.
+  // 42 random JDEs, uniform on JD 2432000..2471000 (~1949..2050), seed 42.
+  //
+  // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.058", with a secular
+  // drift (negative in 1949 → positive in 2050). The gap is dominated by the nutation series
+  // (IAU 1980 here vs JPL's modern model), the aberration constant (#66), and VSOP87D-vs-DE440
+  // series truncation. Tolerances apply ~3× margin.
+  constexpr double α_TOL_DEG = 0.4 / 3600.0;
+  constexpr double δ_TOL_DEG = 0.2 / 3600.0;
+
+  const std::unordered_map<double, std::pair<double, double>> dataset {
+    // JDE                { α (JPL),          δ (JPL) }
+    { 2432253.451627, { 348.530377588,  -4.929047136 } },
+    { 2432975.419454, { 340.599209042,  -8.198661733 } },
+    { 2433034.902818, {  35.403637502,  14.105350479 } },
+    { 2433162.091558, { 161.310901647,   7.912350884 } },
+    { 2433787.150963, {  56.582641724,  19.901615987 } },
+    { 2435390.614473, { 194.761056330,  -6.305414319 } },
+    { 2435617.087892, {  60.322304056,  20.644665072 } },
+    { 2435771.938697, { 209.816436927, -12.167845928 } },
+    { 2438063.700493, { 316.101283780, -16.734595069 } },
+    { 2439754.668377, { 177.696664730,   0.998640525 } },
+    { 2440526.881017, { 216.388238488, -14.428220565 } },
+    { 2440597.184260, { 291.670405579, -21.950949711 } },
+    { 2440705.218788, {  35.624823126,  14.176707661 } },
+    { 2442726.143416, { 224.139920403, -16.801609063 } },
+    { 2445127.187259, {  74.401209852,  22.666148202 } },
+    { 2445269.770144, { 211.278193358, -12.687025819 } },
+    { 2446762.840711, { 243.893556433, -21.275652419 } },
+    { 2448454.950968, { 116.285860616,  21.243856554 } },
+    { 2451708.856236, {  81.977965603,  23.233132975 } },
+    { 2452912.895567, { 186.255336920,  -2.704862981 } },
+    { 2453252.717744, { 163.409023698,   7.057619772 } },
+    { 2453529.584620, {  76.299343907,  22.843274095 } },
+    { 2454516.733665, { 333.002009460, -11.134994427 } },
+    { 2454981.361671, {  66.871193391,  21.737433189 } },
+    { 2455545.315223, { 262.055775069, -23.236632101 } },
+    { 2456122.270342, { 113.496023006,  21.680261820 } },
+    { 2456937.645140, { 192.695329369,  -5.441630295 } },
+    { 2457345.493073, { 234.003818505, -19.325109971 } },
+    { 2458391.280009, { 186.028510259,  -2.606736001 } },
+    { 2459227.436405, { 294.769165512, -21.485859883 } },
+    { 2459478.301612, { 178.201082301,   0.779489439 } },
+    { 2460459.539681, {  66.405044713,  21.667320404 } },
+    { 2460722.377352, { 329.628529602, -12.363723629 } },
+    { 2463426.950821, { 113.342885110,  21.699787881 } },
+    { 2463478.002658, { 162.068179213,   7.600766200 } },
+    { 2463567.787810, { 247.967752029, -21.888505540 } },
+    { 2464346.781906, { 301.141437817, -20.352277361 } },
+    { 2465052.280288, { 273.861586154, -23.385289049 } },
+    { 2465606.569112, { 101.218797667,  23.032990198 } },
+    { 2466795.003140, { 188.889998866,  -3.832570396 } },
+    { 2469331.309816, { 170.565864049,   4.063536979 } },
+    { 2469951.514795, {  62.035999382,  20.945745250 } },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    const auto& [expected_α, expected_δ] = expected;
+    const auto got = equatorial_coord::apparent(jde);
+    ASSERT_NEAR(got.α.deg(), expected_α, α_TOL_DEG) << "jde=" << jde;
+    ASSERT_NEAR(got.δ.deg(), expected_δ, δ_TOL_DEG) << "jde=" << jde;
+  }
+}
+
+
 using hms_type = hh_mm_ss<nanoseconds>;
 
 struct JieqiData {
