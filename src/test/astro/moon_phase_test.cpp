@@ -157,4 +157,34 @@ TEST(NewMoon, DiffTest2) {
   }
 }
 
+
+TEST(NewMoon, MomentsAcrossTheUlpStep) {
+  // Regression for issues #76 / #63. The conjunction solver shares its parameters with the solar
+  // one, so it shared the failure: past JD 2^22 (6771-07-07) the difference step fell below half
+  // an ulp, f' collapsed, and the candidate was clamped to the edge of its bracket. A conjunction
+  // spoiled that way then failed `next_root`'s "is this a root" guard, `moments` threw, and every
+  // remaining conjunction of that year was silently lost -- 6700-6850 used to yield 1807 roots
+  // where it now yields 1868.
+  const std::vector<int32_t> years { 6770, 6771, 6772, 6773, 8000, 9040, 9050 };
+
+  for (const auto year : years) {
+    const auto roots = moments(year); // must not throw
+    ASSERT_GE(roots.size(), 12U); // a Gregorian year holds 12 or 13 conjunctions
+    ASSERT_LE(roots.size(), 13U);
+
+    for (const auto root : roots) {
+      // One ulp of JDE moves the Moon 5.7e-9 deg away from the Sun, and past the step twice that,
+      // so the residual cannot be driven below roughly 1.1e-8 deg. The existing conjunction tests
+      // assert 1e-5, which this stays well inside.
+      const auto diff = longitude_diff(root);
+      ASSERT_TRUE((diff < 1e-7) or (diff > 360.0 - 1e-7));
+    }
+
+    // Consecutive conjunctions stay one synodic month apart -- a clamped root would break this.
+    for (auto it = cbegin(roots); std::next(it) != cend(roots); ++it) {
+      ASSERT_NEAR(*std::next(it) - *it, 29.5, 0.75);
+    }
+  }
+}
+
 } // namespace astro::moon_phase::test
