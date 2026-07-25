@@ -28,6 +28,7 @@
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
+#include "coord_transform.hpp"
 
 namespace astro::sun::geocentric_coord {
 
@@ -129,6 +130,27 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
 }
 
 } // namespace astro::sun::geocentric_coord
+
+
+namespace astro::sun::equatorial_coord {
+
+/**
+ * @brief Calculate the apparent geocentric equatorial coordinates of the Sun.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The apparent right ascension α (normalized to [0°, 360°)) and declination δ.
+ * @details Composes `geocentric_coord::apparent` (ecliptic λ, β, with FK5 + nutation + aberration)
+ *          with the true obliquity ε and Meeus (13.3)–(13.4) via `coords::ecliptic_to_equatorial`.
+ *          The result is of-date apparent equatorial place of the Sun, suitable as input to
+ *          sunrise/sunset hour-angle calculations (Phase 5).
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 13 and 25.
+ */
+inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
+  const auto ecl = astro::sun::geocentric_coord::apparent(jde);
+  const auto ε = astro::earth::obliquity::true_obliquity(jde);
+  return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+}
+
+} // namespace astro::sun::equatorial_coord
 
 
 namespace astro::sun::geocentric_coord::math {
