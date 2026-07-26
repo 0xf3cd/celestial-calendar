@@ -503,4 +503,50 @@ TEST(Earth, ObliquityJ2000) {
   }
 }
 
+TEST(Earth, AberrationDailyVariationGolden) {
+  // Reference: Meeus p. 168 series evaluated with mpmath (50 digits), 2026-07-26.
+  // Tolerance 1e-6 arcsec/day: ~2e3x the double-rounding floor (~5e-10, measured).
+  const std::unordered_map<double, double> dataset {
+    // JDE       Δλ (arcsec/day)
+    { 2448908.5, 3563.366449914 },
+    { 2415020.5, 3671.269023918 },
+    { 2433282.5, 3668.522677820 },
+    { 2451545.0, 3670.013436758 },
+    { 2460000.5, 3622.788737333 },
+    { 2469807.5, 3668.846785081 },
+    { 2488069.5, 3668.031660997 },
+    { 1721057.5, 3659.290483578 },
+    { 2629742.5, 3622.075639208 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    ASSERT_NEAR(aberration::daily_λ_variation(jde), expected, 1e-6);
+  }
+}
+
+TEST(Earth, AberrationGolden) {
+  // Regression for #66 (was κ/R with the bare aberration constant; Meeus (25.10) requires κ(1−e²)
+  // and (25.11) is the variable form adopted here). Reference: (25.11) with the p. 168 series,
+  // mpmath 50 digits, 2026-07-26, r = 1 AU. Tolerance 1e-4": ~2e7x the double-rounding floor
+  // (~5e-12, measured), while the pre-fix code deviates 0.08-0.71" on these samples.
+  const std::unordered_map<double, double> dataset {
+    // JDE       aberration (arcsec), r = 1 AU
+    { 2448908.5, 20.58028814109 },
+    { 2415020.5, 21.20348143186 },
+    { 2433282.5, 21.18761985971 },
+    { 2451545.0, 21.19622976524 },
+    { 2460000.5, 20.92348264950 },
+    { 2469807.5, 21.18949174713 },
+    { 2488069.5, 21.18478398307 },
+    { 1721057.5, 21.13429915292 },
+    { 2629742.5, 20.91936413823 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    const auto ab = aberration::compute(Distance<AU> { 1.0 }, jde);
+    ASSERT_NEAR(ab.as<DEG>(), expected / 3600.0, 1e-4 / 3600.0);
+  }
+}
+
+
 } // namespace astro::earth::test

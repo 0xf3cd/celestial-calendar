@@ -436,23 +436,80 @@ inline auto true_obliquity(
 namespace astro::earth::aberration {
 
 /**
- * @ref https://en.wikipedia.org/wiki/Aberration_(astronomy)
- * According to wikipedia:
- * "Annual aberration is caused by the motion of an observer on Earth as the planet revolves around the Sun. Due to"... 
- * "Its accepted value is 20.49552 arcseconds (sec) or 0.000099365 radians (rad) (at J2000)."
+ * @brief A term of the Δλ series: `amplitude × τ^tau_power × sin(phase + rate × τ)`,
+ *        with τ the Julian millennia since J2000.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
  */
-
-/** @brief The constant for the annual aberration, at J2000.0. */
-constexpr double ANNUAL_CONSTANT = 20.49552;
-
+struct DailyVariationTerm {
+  double amplitude;   // In arcseconds per day
+  double phase;       // In degrees
+  double rate;        // In degrees per Julian millennium
+  uint8_t tau_power;
+};
 
 /**
- * @brief Compute the aberration for the given radius (in AU).
- * @param r The radius (in AU).
- * @return The aberration (in degrees).
+ * @brief The Δλ series (daily variation of the Sun's geocentric longitude), p. 168.
+ * @note Terms with rate 359993/719987/1079981 are due to the eccentricity, 4452671/9224659/4092677
+ *       to the Moon, 450368/225184/315559/675553 to Venus, 329644/659289/299295 to Jupiter, 337181 to Mars.
  */
-inline auto compute(const double r) -> Angle<DEG> {
-  const double aberration_arcsec = ANNUAL_CONSTANT / r;
+constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
+  { 118.568,  87.5287,  359993.7286, 0 },
+  {   2.476,  85.0561,  719987.4571, 0 },
+  {   1.376,  27.8502, 4452671.1152, 0 },
+  {   0.119,  73.1375,  450368.8564, 0 },
+  {   0.114, 337.2264,  329644.6718, 0 },
+  {   0.086, 222.5400,  659289.3436, 0 },
+  {   0.078, 162.8136, 9224659.7915, 0 },
+  {   0.054,  82.5823, 1079981.1857, 0 },
+  {   0.052, 171.5189,  225184.4282, 0 },
+  {   0.034,  30.3214, 4092677.3866, 0 },
+  {   0.033, 119.8105,  337181.4711, 0 },
+  {   0.023, 247.5418,  299295.6151, 0 },
+  {   0.023, 325.1526,  315559.5560, 0 },
+  {   0.021, 155.1241,  675553.2846, 0 },
+  {   7.311, 333.4515,  359993.7286, 1 },
+  {   0.305, 330.9814,  719987.4571, 1 },
+  {   0.010, 328.5170, 1079981.1857, 1 },
+  {   0.309, 241.4518,  359993.7286, 2 },
+  {   0.021, 205.0482,  719987.4571, 2 },
+  {   0.004, 297.8610, 4452671.1152, 2 },
+  {   0.010, 154.7066,  359993.7286, 3 },
+}};
+
+/**
+ * @brief The daily variation Δλ of the Sun's geocentric longitude, mean equinox of the date.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return Δλ in arcseconds per day.
+ * @note The constant term is 3548.330 for the mean equinox of the date;
+ *       3548.193 is for the fixed J2000 frame (p. 168 note).
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
+ */
+inline auto daily_λ_variation(const double jde) -> double {
+  using namespace std::ranges;
+  const double τ = astro::julian_day::jde_to_jm(jde);
+  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
+    const Angle<DEG> θ { t.phase + t.rate * τ };
+    return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
+  });
+  return 3548.330 + std::reduce(cbegin(terms), cend(terms));
+}
+
+/** @brief The light-time for unit distance, in days per AU (= 499.005 s ≈ 8.3 min). @ref Meeus (25.11). */
+constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
+
+/**
+ * @brief Compute the aberration correction to the Sun's geometric longitude, Meeus (25.11).
+ * @param r The Earth's radius vector.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The aberration (in degrees); subtract it from the geometric longitude.
+ * @note The variable form −(light-time) × R × Δλ accounts for the perturbations of the Earth's
+ *       orbit (mainly lunar) that the fixed form (25.10) −20.4898″/R ignores:
+ *       error < 0.001″ vs up to 0.01″ for (25.10). The (25.10) numerator is
+ *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
+ */
+inline auto compute(const Distance<AU> r, const double jde) -> Angle<DEG> {
+  const double aberration_arcsec = LIGHT_TIME_DAYS_PER_AU * r.au() * daily_λ_variation(jde);
   return Angle<DEG>::from_arcsec(aberration_arcsec);
 }
 
