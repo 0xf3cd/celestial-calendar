@@ -1,4 +1,7 @@
 #include <gtest/gtest.h>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 #include "random.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
@@ -502,5 +505,64 @@ TEST(Earth, ObliquityJ2000) {
     ASSERT_LT(Δ, 10.0 / 3600.0);
   }
 }
+
+TEST(Earth, AberrationDailyVariationGolden) {
+  // Reference: Meeus p. 168 series evaluated with mpmath (50 digits), 2026-07-26.
+  // Tolerance 1e-6 arcsec/day: ~2e3x the double-rounding floor (~5e-10, measured).
+  const std::unordered_map<double, double> dataset {
+    // JDE       Δλ (arcsec/day)
+    { 2448908.5, 3563.366449914 },
+    { 2415020.5, 3671.269023918 },
+    { 2433282.5, 3668.522677820 },
+    { 2451545.0, 3670.013436758 },
+    { 2460000.5, 3622.788737333 },
+    { 2469807.5, 3668.846785081 },
+    { 2488069.5, 3668.031660997 },
+    { 1721057.5, 3659.290483578 },
+    { 2629742.5, 3622.075639208 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    ASSERT_NEAR(aberration::daily_λ_variation(jde), expected, 1e-6);
+  }
+}
+
+TEST(Earth, AberrationGolden) {
+  // Regression for #66 (was κ/R with the bare aberration constant; Meeus (25.10) requires κ(1−e²)
+  // and (25.11) is the variable form adopted here). Reference: (25.11) with the p. 168 series,
+  // mpmath 50 digits, 2026-07-26. R != 1 rows discriminate R- vs 1/R-handling (the old bug's shape);
+  // the first row is the epoch of Meeus Example 25.b. Tolerance 1e-6": ~2e5x the double-rounding
+  // floor (~5e-12, measured), while the pre-fix code deviates >= 0.0013" on every row below.
+  const std::vector<std::tuple<double, double, double>> dataset {
+    // JDE            R (AU)      aberration (arcsec)
+    { 2448908.5,        1.0, 20.58028814109 }, // same JDE as Meeus Example 25.b
+    { 2415020.5,        1.0, 21.20348143186 },
+    { 2433282.5,        1.0, 21.18761985971 },
+    { 2451545.0,        1.0, 21.19622976524 },
+    { 2460000.5,        1.0, 20.92348264950 },
+    { 2469807.5,        1.0, 21.18949174713 },
+    { 2488069.5,        1.0, 21.18478398307 },
+    { 1721057.5,        1.0, 21.13429915292 },
+    { 2629742.5,        1.0, 20.91936413823 },
+    { 2448908.5, 0.99760853, 20.53107099941 },
+    { 2451545.0,     0.9833, 20.84225272816 },
+    { 2460000.5,     1.0167, 21.27290480974 },
+    { 2415020.5,     0.9901, 20.99356696569 },
+  };
+
+  for (const auto& [jde, r, aberration] : dataset) {
+    const auto ab = aberration::compute(jde, Distance<AU> { r });
+    ASSERT_NEAR(ab.as<DEG>(), aberration / 3600.0, 1e-6 / 3600.0);
+  }
+}
+
+TEST(Earth, AberrationMeeus25b) {
+  // Meeus Example 25.b (p. 169): JDE 2448908.5, R = 0.99760775, aberration correction -20.539"
+  // by (25.10) — signed; compute returns the magnitude to subtract. Our (25.11) differs from
+  // (25.10) by up to 0.01" per Meeus; the measured gap here is 0.008".
+  const auto ab = aberration::compute(2448908.5, Distance<AU> { 0.99760775 });
+  ASSERT_NEAR(ab.as<DEG>(), 20.539 / 3600.0, 0.01 / 3600.0);
+}
+
 
 } // namespace astro::earth::test

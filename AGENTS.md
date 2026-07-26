@@ -105,6 +105,15 @@ ctest --test-dir build
 
 ## Code Style
 
+### Why this style exists
+
+规则背后的三条脑内声音，规则冲突时按此裁决：
+1. **"C++ 就该这么用"** — const、编译期、concept 是默认态，不是洁癖。
+2. **"代码读起来像公式"** — 实现忠于文献原文；audit 价值永远高于代码整洁。
+3. **"这里要一点浪漫"** — λ/β、UDL、phi 这类笔触是项目的签名，禁止 bland 化。
+
+分工：转录/脚手架/CI 可放手；API 形状、类型设计、数值核心、容差判断留给作者。
+
 ### Naming (SSOT: `.clang-tidy` CheckOptions)
 
 `lower_case` — variables / functions / params / members / methods / namespaces.
