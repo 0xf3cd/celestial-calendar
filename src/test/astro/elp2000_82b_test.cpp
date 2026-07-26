@@ -1,4 +1,7 @@
 #include <gtest/gtest.h>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
 #include "julian_day.hpp"
 #include "elp2000_82b.hpp"
 
