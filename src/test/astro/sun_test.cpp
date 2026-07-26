@@ -235,8 +235,8 @@ TEST(Sun, FK5Correction) {
 
 TEST(Sun, CorrectedPosition) {
   // Self-generated characterization data (λ tolerance 7e-7 deg, β/r at machine epsilon). The λ
-  // column was shifted 2026-07-26 by the measured #66 deltas (<= 4.1e-6 deg; (25.10)->(25.11)
-  // aberration), preserving per-platform jitter margins; dβ = dr = 0 by construction.
+  // column was shifted 2026-07-26 by the measured #66 deltas (<= 4.1e-6 deg; bare-κ/R -> Meeus
+  // (25.11) aberration), preserving per-platform jitter margins; dβ = dr = 0 by construction.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, { 291.51569666171963,  -9.920119287353568e-07, 0.9834987939042306 } },
