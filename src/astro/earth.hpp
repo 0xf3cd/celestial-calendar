@@ -503,7 +503,9 @@ constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
  * @param jde The julian ephemeris day number, which is based on TT.
  * @param r The Sun's radius vector.
  * @return The aberration (in degrees); subtract it from the geometric longitude.
- * @note The variable form −(light-time) × R × Δλ accounts for the perturbations of the Earth's
+ * @note Meeus (25.11) applies the correction −(light-time) × R × Δλ to the geometric longitude;
+ *       this function returns the positive magnitude, which the caller subtracts (`sun.hpp`).
+ *       The variable form accounts for the perturbations of the Earth's
  *       orbit (mainly lunar) that the fixed form (25.10) −20.4898″/R ignores:
  *       error < 0.001″ vs up to 0.01″ for (25.10). The (25.10) numerator is
  *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).

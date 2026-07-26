@@ -557,8 +557,9 @@ TEST(Earth, AberrationGolden) {
 }
 
 TEST(Earth, AberrationMeeus25b) {
-  // Meeus Example 25.b (p. 169): JDE 2448908.5, R = 0.99760775, aberration = -20.539" by (25.10).
-  // Our (25.11) differs from (25.10) by up to 0.01" per Meeus; the measured gap here is 0.008".
+  // Meeus Example 25.b (p. 169): JDE 2448908.5, R = 0.99760775, aberration correction -20.539"
+  // by (25.10) — signed; compute returns the magnitude to subtract. Our (25.11) differs from
+  // (25.10) by up to 0.01" per Meeus; the measured gap here is 0.008".
   const auto ab = aberration::compute(2448908.5, Distance<AU> { 0.99760775 });
   ASSERT_NEAR(ab.as<DEG>(), 20.539 / 3600.0, 0.01 / 3600.0);
 }
