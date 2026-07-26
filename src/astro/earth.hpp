@@ -487,20 +487,22 @@ constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
 inline auto daily_λ_variation(const double jde) -> double {
   using namespace std::ranges;
   const double τ = astro::julian_day::jde_to_jm(jde);
-  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
+  const std::array τ_powers { 1.0, τ, τ * τ, τ * τ * τ };
+  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([&](const DailyVariationTerm& t) {
     const Angle<DEG> θ { t.phase + t.rate * τ };
-    return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
+    return t.amplitude * τ_powers[t.tau_power] * std::sin(θ.rad());
   });
   return 3548.330 + std::reduce(cbegin(terms), cend(terms));
 }
 
-/** @brief The light-time for unit distance, in days per AU (= 499.005 s ≈ 8.3 min). @ref Meeus (25.11). */
+/** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).
+ *  @note (25.11) prints 0.005775518; the 8th significant digit here is from τ_A = 499.004784 s / 86400. */
 constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
 
 /**
  * @brief Compute the aberration correction to the Sun's geometric longitude, Meeus (25.11).
- * @param r The Earth's radius vector.
  * @param jde The julian ephemeris day number, which is based on TT.
+ * @param r The Sun's radius vector.
  * @return The aberration (in degrees); subtract it from the geometric longitude.
  * @note The variable form −(light-time) × R × Δλ accounts for the perturbations of the Earth's
  *       orbit (mainly lunar) that the fixed form (25.10) −20.4898″/R ignores:
@@ -508,7 +510,7 @@ constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
  *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
  */
-inline auto compute(const Distance<AU> r, const double jde) -> Angle<DEG> {
+inline auto compute(const double jde, const Distance<AU> r) -> Angle<DEG> {
   const double aberration_arcsec = LIGHT_TIME_DAYS_PER_AU * r.au() * daily_λ_variation(jde);
   return Angle<DEG>::from_arcsec(aberration_arcsec);
 }

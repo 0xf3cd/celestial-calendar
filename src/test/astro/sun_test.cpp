@@ -838,7 +838,8 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
   // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.058", with a secular
   // drift (negative in 1949 → positive in 2050). The gap is dominated by the nutation series
   // (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-DE440 series truncation; the #66
-  // aberration-constant bias (~0.006") was fixed via Meeus (25.11). Tolerances apply ~3× margin.
+  // aberration bias (bare-κ vs κ(1−e²), ~0.006") was fixed by adopting Meeus (25.11).
+  // Tolerances apply ~3× margin.
   constexpr double α_TOL_DEG = 0.4 / 3600.0;
   constexpr double δ_TOL_DEG = 0.2 / 3600.0;
 

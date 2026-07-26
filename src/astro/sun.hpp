@@ -112,7 +112,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   const auto nutation = astro::earth::nutation::longitude(jde);
 
   // Calculate the Solar aberration, Meeus (25.11).
-  const auto aberration = astro::earth::aberration::compute(vsop_coord.r, jde);
+  const auto aberration = astro::earth::aberration::compute(jde, vsop_coord.r);
 
   // Calculate the adjusted longitude.
   const auto λ = vsop_coord.λ + correction.Δλ + nutation - aberration;
