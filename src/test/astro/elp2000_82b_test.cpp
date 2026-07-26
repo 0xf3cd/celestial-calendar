@@ -83,7 +83,7 @@ TEST(Elp2000, CreateContextExample47a) {
 }
 
 TEST(Elp2000, MeanArgumentsGolden) {
-  // Regression for #65 (M's T^3 sign, M''s T^4 denominator). Reference: Meeus (47.3)/(47.4)
+  // Regression for #65 (M's T^3 sign, Mp's T^4 denominator). Reference: Meeus (47.3)/(47.4)
   // evaluated with Python Decimal (40 digits), 2026-07-26. Tolerance 1e-8 deg: ~20x the double-rounding
   // floor (~5e-10 at jc=30), while the pre-fix code deviates >= 2.2e-6 on every sample below.
   const std::unordered_map<double, std::pair<double, double>> dataset {
