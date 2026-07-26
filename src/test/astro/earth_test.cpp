@@ -535,7 +535,7 @@ TEST(Earth, AberrationGolden) {
   // floor (~5e-12, measured), while the pre-fix code deviates >= 0.0013" on every row below.
   const std::vector<std::tuple<double, double, double>> dataset {
     // JDE            R (AU)      aberration (arcsec)
-    { 2448908.5,        1.0, 20.58028814109 }, // epoch of Meeus Example 25.b
+    { 2448908.5,        1.0, 20.58028814109 }, // same JDE as Meeus Example 25.b
     { 2415020.5,        1.0, 21.20348143186 },
     { 2433282.5,        1.0, 21.18761985971 },
     { 2451545.0,        1.0, 21.19622976524 },
