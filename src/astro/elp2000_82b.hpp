@@ -243,8 +243,8 @@ inline auto create_context(const double jc) -> Context {
 
   const Angle<DEG> Lp { 218.3164477 + 481267.88123421 * jc - 0.0015786 * jc2 + jc3 / 538841 - jc4 / 65194000 };
   const Angle<DEG> D  { 297.8501921 + 445267.1114034 * jc - 0.0018819 * jc2 + jc3 / 545868 - jc4 / 113065000 };
-  const Angle<DEG> M  { 357.5291092 + 35999.0502909 * jc - 0.0001536 * jc2 - jc3 / 24490000 };
-  const Angle<DEG> Mp { 134.9633964 + 477198.8675055 * jc + 0.0087414 * jc2 + jc3 / 69699 - jc4 / 147120000 };
+  const Angle<DEG> M  { 357.5291092 + 35999.0502909 * jc - 0.0001536 * jc2 + jc3 / 24490000 };
+  const Angle<DEG> Mp { 134.9633964 + 477198.8675055 * jc + 0.0087414 * jc2 + jc3 / 69699 - jc4 / 14712000 };
   const Angle<DEG> F  { 93.2720950 + 483202.0175233 * jc - 0.0036539 * jc2 - jc3 / 3526000 + jc4 / 863310000 };
 
   const Angle<DEG> A1 { 119.75 + 131.849 * jc };
