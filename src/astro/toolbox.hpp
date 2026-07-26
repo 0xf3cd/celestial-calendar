@@ -24,8 +24,13 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
+#include <cstddef>
 #include <numbers>
+#include <concepts>
+#include <algorithm>
 #include <stdexcept>
+#include <type_traits>
 
 namespace astro::toolbox {
 
@@ -68,6 +73,21 @@ constexpr auto rad_to_deg(const double rad) -> double {
  * @ref Jean Meeus, "Astronomical Algorithms", Ch.12.
  */
 constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
+
+/**
+ * @brief The Sun's mean apparent motion along the ecliptic, in degrees per day.
+ *        A tropical year of 365.2422 days carries it through a full 360°.
+ * @note This is a mean rate — the true rate varies by about ±1.7% over a year, since Earth's
+ *       orbit is an ellipse and perihelion passage is faster than aphelion passage.
+ */
+constexpr double SOLAR_MEAN_MOTION_DEG_PER_DAY = 360.0 / 365.2422;
+
+/**
+ * @brief The mean rate at which the Moon's apparent longitude pulls away from the Sun's,
+ *        in degrees per day. A synodic month of 29.530588853 days closes a full 360°.
+ * @note This is a mean rate — near perigee the Moon runs at roughly 1.2× this value.
+ */
+constexpr double MOON_ELONGATION_RATE_DEG_PER_DAY = 360.0 / 29.530588853;
 
 /** @brief The number of minutes in a degree. */
 constexpr uint32_t MIN_PER_DEG = 60;
@@ -279,6 +299,123 @@ struct SphericalCoordinate {
   Angle<AngleUnit::DEG>      β; // Latitude
   Distance<DistanceUnit::AU> r; // Radius/Distance
 };
+
+#pragma endregion
+
+
+#pragma region Root Finding
+
+/**
+ * @brief The gap between `x` and the next representable double — one unit in the last place.
+ * @param x The value to measure at.
+ * @return The ulp at `x`, always positive.
+ * @note Doubles carry 52 fraction bits, so the ulp doubles every time the exponent does.
+ *       At JDE 2451545 (J2000.0) it is 4.7e-10 day (~40 μs); once `jde` crosses
+ *       2^22 = 4194304 — that is 6771-07-07 — it steps up to 9.3e-10 day.
+ */
+inline auto ulp(const double x) -> double {
+  const double magnitude = std::fabs(x);
+  return std::nextafter(magnitude, std::numeric_limits<double>::infinity()) - magnitude;
+}
+
+/** @brief The initial half-width of the central difference approximating f', in days. */
+inline constexpr double NEWTON_INITIAL_STEP_DAYS = 5e-4;
+
+/** @brief The floor on that half-width, as a multiple of `ulp(jde)`. */
+inline constexpr double NEWTON_MIN_STEP_ULP = 8.0;
+
+/**
+ * @brief The residual tolerance, as a multiple of the angle swept during one `ulp(jde)`.
+ * @note About as tight as it goes — `f` bottoms out near half an ulp's worth.
+ */
+inline constexpr double NEWTON_RESIDUAL_TOL_ULP = 1.0;
+
+/** @brief The iteration budget. Convergence is measured at 5 iterations or fewer. */
+inline constexpr std::size_t NEWTON_MAX_ITERATIONS = 30;
+
+/**
+ * @brief Apply Newton's method to find the JDE at which `f` crosses zero.
+ * @param f The function to find the root of. Must be smooth over [start_jde, end_jde) — callers
+ *          that work with a wrapping angle are responsible for unwrapping it first.
+ * @param start_jde The left bound of the search, inclusive.
+ * @param end_jde The right bound of the search, exclusive.
+ * @param mean_rate_deg_per_day The mean rate at which `f` sweeps. This sets the scale of the
+ *        residual tolerance; it is not used as the derivative.
+ * @param max_iterations The iteration budget.
+ * @return The JDE of the root, always within [start_jde, end_jde).
+ * @note It is the caller's responsibility to ensure a root exists in the range.
+ */
+// The `_jde` / `_deg_per_day` suffixes carry the contract at the call site.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+template <typename Func>
+requires std::invocable<Func, double>
+     and std::convertible_to<std::invoke_result_t<Func, double>, double>
+inline auto newton_method(
+  const Func& f,
+  const double start_jde,
+  const double end_jde,
+  const double mean_rate_deg_per_day,
+  const std::size_t max_iterations = NEWTON_MAX_ITERATIONS
+) -> double {
+  // Keep a candidate inside [start_jde, end_jde). Backing off `end_jde` by a small constant
+  // would be a no-op — at JDE 2.4e6 anything under 4.7e-10 vanishes in the rounding.
+  const auto pull_back = [&](const double jde) -> double {
+    if (jde < start_jde) {
+      return start_jde;
+    }
+    if (jde >= end_jde) {
+      return std::nextafter(end_jde, start_jde);
+    }
+    return jde;
+  };
+
+  double step = NEWTON_INITIAL_STEP_DAYS;
+  double jde  = (start_jde + end_jde) / 2.0;
+
+  // Newton can walk away from a root it has already reached, so keep the best iterate rather
+  // than the last one — otherwise one bad late round overwrites a correct answer.
+  double best_jde      = jde;
+  double best_residual = std::numeric_limits<double>::infinity();
+
+  for (std::size_t i = 0; i < max_iterations; ++i) {
+    const double residual = f(jde);
+
+    if (std::fabs(residual) < best_residual) {
+      best_residual = std::fabs(residual);
+      best_jde      = jde;
+    }
+
+    // Stop on the residual, not on the step size: `f` cannot be driven closer to zero than the
+    // angle swept during one ulp of `jde` — 4.6e-10° for the Sun, 5.7e-9° for the Moon's
+    // elongation — so a step threshold below that is unreachable by construction.
+    if (std::fabs(residual) <= NEWTON_RESIDUAL_TOL_ULP * mean_rate_deg_per_day * ulp(jde)) {
+      break;
+    }
+
+    // Shrinking the step by the golden ratio is what keeps the run short: at most 5 iterations
+    // over years 401-9050, against 7 for a fixed step. The floor is what keeps it honest — below
+    // ½ulp(jde) both samples round back to `jde` and f' collapses to exactly zero.
+    const double h = std::max(step, NEWTON_MIN_STEP_ULP * ulp(jde));
+    const double f_prime = (f(jde + h) - f(jde - h)) / (2.0 * h);
+
+    // A shared solver has to tolerate an `f` that is not defined everywhere -- #43's rise/set `f`
+    // goes NaN where a body is circumpolar -- and a collapsed f' has no direction left to offer.
+    if (not std::isfinite(f_prime) or f_prime == 0.0) {
+      break;
+    }
+
+    jde   = pull_back(jde - residual / f_prime);
+    step /= std::numbers::phi;
+  }
+
+  // The final iterate never had its residual measured — let it compete too.
+  if (std::fabs(f(jde)) < best_residual) {
+    return jde;
+  }
+
+  return best_jde;
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 #pragma endregion
 

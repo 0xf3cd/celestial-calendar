@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <numbers>
-
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
@@ -284,77 +282,7 @@ inline auto make_f(const int32_t year, const double expected_lon) -> FuncType {
   };
 }
 
-/** 
- * @brief Apply Newton's method to find the root.
- * @param f The function to find the root.
- * @param start_jde The left bound of JDE's range, inclusive.
- * @param end_jde The right bound of JDE's range, exclusive.
- * @param episilon The tolerance. Default is 1e-10.
- * @param max_iter The maximum number of iterations. Default is 20.
- * @returns The approximated root (i.e. JDE). */
-inline auto newton_method(
-  const FuncType& f,              // The f function to find root(s) for.
-  const double start_jde,         // The left bound of JDE's range, inclusive.
-  const double end_jde,           // The right bound of JDE's range, exclusive.
-  const double episilon = 1e-15,  // The tolerance.
-  const std::size_t max_iter = 30 // The maximum number of iterations.
-) -> double {
-  // `pull_back` ensures the returned JDE is in valid range.
-  const auto pull_back = [&](const double jde) -> double {
-    if (jde < start_jde) {
-      return start_jde;
-    }
-    if (jde >= end_jde) {
-      return end_jde - 1e-20;
-    }
-    return jde;
-  };
-
-  // The step size. It is adaptive and gets smaller and smaller as it approaches the root.
-  double h = 5e-4;
-
-  // `next` returns (has_next, next_jde)
-  const auto next = [&](const double jde) -> std::pair<bool, double> {
-    const double f_jde = f(jde);
-
-    // Do the Newton's method.
-    const double f_prime_jde = (f(jde + h) - f(jde - h)) / (2.0 * h); // Approximate the derivative.
-    const double next_jde = jde - f_jde / f_prime_jde;                // Approximate our next guess.
-
-    if (std::fabs(next_jde - jde) < episilon) {
-      return { false, pull_back(next_jde) };
-    }
-
-    return { true, pull_back(next_jde) }; // Don't forget to pull the jde back to valid range.
-  };
-
-  // Start approximating the root.
-
-  double jde = (start_jde + end_jde) / 2.0; // Initial guess.
-
-  for (std::size_t iter_count = 0; iter_count < max_iter; iter_count++) {
-    // Do the Newton's method.
-    const auto& [has_next, next_jde] = next(jde);
-    jde = next_jde;
-
-    if (!has_next) {
-      break;
-    }
-
-    // Update the step size.
-    // Make the step size adaptive, for faster convergence.
-    if (h > 1e-10) {
-      h /= std::numbers::phi;
-    }
-  }
-
-  // We cannot find the accurate root in the above iterations.
-  // Return our best estimation.
-  return jde;
-}
-
-
-/** 
+/**
  * @brief Find the roots (i.e. JDEs) for the given `year` and `expected_lon`. 
  * @param year The year, in gregorian calendar.
  * @param expected_lon The expected solar longitude, in degrees.
@@ -387,7 +315,9 @@ inline auto find_roots(const int32_t year, const double expected_lon) -> std::ve
   auto apply_nm = [&](const FuncType& f) {
     const double start_jde = get_start_jde(year);
     const double end_jde   = get_end_jde(year);
-    return newton_method(f, start_jde, end_jde);
+    return astro::toolbox::newton_method(
+      f, start_jde, end_jde, astro::toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY
+    );
   };
 
   using namespace std::ranges;

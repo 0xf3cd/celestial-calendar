@@ -974,4 +974,35 @@ TEST(Sun, FindRoots) {
 }
 
 
+TEST(Sun, FindRootsAcrossTheUlpStep) {
+  // Regression for issue #76. Julian Day 4194304 = 2^22 falls on 6771-07-07, and the ulp of a JDE
+  // doubles there, from 4.7e-10 to 9.3e-10 day. The old solver shrank its difference step below
+  // half an ulp, so both samples rounded onto the same double, f' came out exactly zero, and the
+  // candidate went to infinity and got clamped to the year boundary. Year 9420 at 105 deg was
+  // measured 185 days off; 6772-9999 held 2357 such roots out of 77223.
+  //
+  // The years below straddle that step. This is a self-consistency check rather than an external
+  // dataset: what is asserted is that the JDE handed back really is a root of the very function
+  // the solver was asked to solve, which is exactly what the old code stopped guaranteeing.
+  const std::vector<int32_t> years { 6770, 6771, 6772, 6773, 8000, 9420, 9999 };
+
+  for (const auto year : years) {
+    for (int32_t idx = 0; idx < 24; idx++) {
+      const double expected_lon = 15.0 * idx;
+
+      for (const auto root : find_roots(year, expected_lon)) {
+        ASSERT_GE(root, get_start_jde(year));
+        ASSERT_LT(root, get_end_jde(year));
+
+        // Past the step one ulp of JDE carries the Sun 9.1e-10 deg, so the residual floor doubles
+        // along with it. The measured worst case over the whole of 6772-9999 is 1.6e-9 deg
+        // (0.14 ms of solar motion); 1e-8 leaves that a factor of six of headroom.
+        const auto lon_diff = std::fabs(std::fmod(solar_longitude(root) - expected_lon, 360.0));
+        ASSERT_TRUE((lon_diff < 1e-8) or (lon_diff > 360.0 - 1e-8));
+      }
+    }
+  }
+}
+
+
 } // namespace astro::sun::test
