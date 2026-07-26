@@ -110,9 +110,29 @@ inline auto newton_method(
 
 
 /**
+ * @brief How far the mean-rate extrapolation may miss conjunction and still be worth refining,
+ *        in degrees of Moon-Sun elongation.
+ * @note Refining divides the miss by the mean rate, so a miss of this size leaves the estimate
+ *       about `30 / 12.19 * 0.19` = 0.47 day short of the root — which is what makes
+ *       `BRACKET_HALF_WIDTH_DAYS` the binding constraint on how large this may be.
+ */
+constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
+
+/**
+ * @brief Half the width of the bracket handed to Newton's method, in days.
+ * @note Chosen between two bounds. Too narrow and the bracket stops containing the root, since
+ *       refining leaves an error of up to 0.47 day at the tolerance above. Too wide and the
+ *       endpoints drift past `BRACKET_TOLERANCE_DEG`: at the Moon's fastest, 14.5 deg/day, an
+ *       endpoint 0.67 day out already sits 9.7 deg from conjunction.
+ */
+constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
+
+/**
  * @brief Approximate the range of the first root after the given jde, when the Sun and Moon are at the same apparent longitude.
  * @param jde The jde.
  * @return The range of the first root after the given `jde`.
+ * @throw std::invalid_argument If the extrapolation lands further than `ESTIMATE_TOLERANCE_DEG`
+ *        from conjunction, i.e. too far off to be worth refining.
  */
 inline auto first_root_range_after(const double jde) -> std::pair<double, double> {
   const double cur_diff = longitude_diff(jde);
@@ -122,30 +142,28 @@ inline auto first_root_range_after(const double jde) -> std::pair<double, double
   const double est_jde = jde + gap / deg_per_day; // Estimate the next root jde.
 
   // Extrapolating at the mean rate lands near the root but not on it: the Moon's true rate runs
-  // between about 10.5 and 14.5 deg/day, so a month of extrapolation can be off by a few degrees
-  // either way. The branches below accept anything within 30 deg of conjunction.
+  // between about 10.5 and 14.5 deg/day, so a month of it can miss by several degrees either way.
+  // Signed, so that overshooting the conjunction reads positive and falling short reads negative.
   const double est_jde_diff = longitude_diff(est_jde);
+  const double signed_miss_deg = (est_jde_diff > 180.0) ? est_jde_diff - 360.0 : est_jde_diff;
 
-  if (est_jde_diff == 0.0) [[unlikely]] {
-    return { est_jde - 0.1, est_jde + 0.1 };
-  } 
-  
-  if (est_jde_diff < 30.0) {
-    const double left_bound = est_jde - (est_jde_diff * 2 / deg_per_day);
-    return { left_bound, est_jde };
+  if (std::fabs(signed_miss_deg) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format(
+        "Cannot find the first root after jde {}: the estimate at jde {} sits {} deg from conjunction.",
+        jde, est_jde, est_jde_diff
+      )
+    };
   }
 
-  if (est_jde_diff > 330.0) {
-    const double right_bound = est_jde + ((360.0 - est_jde_diff) * 2 / deg_per_day);
-    return { est_jde, right_bound };
-  }
-
-  throw std::invalid_argument {
-    std::format(
-      "Cannot find the first root after jde {}: the estimate at jde {} sits {} deg from conjunction.",
-      jde, est_jde, est_jde_diff
-    )
-  };
+  // Step the estimate onto the root before bracketing it. Bracketing the estimate directly would
+  // leave the endpoints however far out the extrapolation happened to miss, plus whatever the
+  // rate varied over the bracket -- measured, that put an endpoint within 0.67 deg of the
+  // tolerance Newton's method demands. Refining first makes the endpoints' distance from
+  // conjunction a property of `BRACKET_HALF_WIDTH_DAYS` instead, so the bracket the solver
+  // accepts is one this function builds by construction rather than by luck.
+  const double root_est = est_jde - (signed_miss_deg / deg_per_day);
+  return { root_est - BRACKET_HALF_WIDTH_DAYS, root_est + BRACKET_HALF_WIDTH_DAYS };
 }
 
 

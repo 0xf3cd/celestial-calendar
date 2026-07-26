@@ -187,4 +187,46 @@ TEST(NewMoon, MomentsAcrossTheUlpStep) {
   }
 }
 
+
+TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
+  // Issue #63. The bracket used to be laid out around the mean-rate estimate, so its endpoints sat
+  // however far that estimate had missed, plus whatever the Moon's rate varied over the bracket
+  // itself. Measured across 401-9999 that left one endpoint within 0.67 deg of the tolerance
+  // `newton_method` demands -- a margin nobody chose, and one that would have let `f` go
+  // discontinuous inside its own bracket had it ever been crossed.
+  //
+  // `first_root_range_after` now steps the estimate onto the root before bracketing it, so the
+  // endpoints' distance from conjunction follows from BRACKET_HALF_WIDTH_DAYS. The tightest
+  // endpoint measured over the same span is 6.11 deg inside the limit; asserting half of that
+  // pins the design without pinning the measurement.
+  constexpr double REQUIRED_MARGIN_DEG = 3.0;
+
+  // Fixed years spanning the supported range, plus a random one to reach where they do not.
+  std::vector<int32_t> years { 401, 1900, 2026, 6771, 6772, 9420, 9980 };
+  years.push_back(util::random(401, 9980));
+
+  for (const auto year : years) {
+    double jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
+
+    for (int i = 0; i < 15; ++i) {
+      const auto [left, right] = first_root_range_after(jde);
+
+      // Laying the bracket out around the refined estimate is what decouples it from the miss:
+      // its width is now BRACKET_HALF_WIDTH_DAYS either side, where it used to be twice however
+      // far the mean-rate extrapolation had landed from conjunction.
+      ASSERT_NEAR(right - left, 2.0 * BRACKET_HALF_WIDTH_DAYS, 1e-9);
+
+      ASSERT_GT(longitude_diff(left),  360.0 - BRACKET_TOLERANCE_DEG + REQUIRED_MARGIN_DEG);
+      ASSERT_LT(longitude_diff(right), BRACKET_TOLERANCE_DEG - REQUIRED_MARGIN_DEG);
+
+      // The bracket must still contain the root it was built for.
+      const double root = newton_method(left, right);
+      ASSERT_GT(root, left);
+      ASSERT_LT(root, right);
+
+      jde = root + 1.0;
+    }
+  }
+}
+
 } // namespace astro::moon_phase::test
