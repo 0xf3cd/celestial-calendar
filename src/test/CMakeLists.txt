@@ -35,8 +35,9 @@ target_compile_options(gmock_main PRIVATE -w)
 enable_testing()
 include(GoogleTest)
 
-# Named `CELESTIAL_ADD_TEST`, not `ADD_TEST`: CMake command names are case-insensitive, so a macro
-# called `ADD_TEST` would shadow the built-in `add_test` for the rest of this directory scope. (#89)
+# Named `CELESTIAL_ADD_TEST`, not `ADD_TEST`: CMake command names are case-insensitive, and command
+# definitions are global once executed — a macro called `ADD_TEST` would shadow the built-in
+# `add_test` for everything processed afterwards (including sibling directories). (#89)
 macro(CELESTIAL_ADD_TEST test_path test_name)
   message("Adding ${test_name}")
   add_executable(${test_name} ${test_path})

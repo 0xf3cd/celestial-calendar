@@ -248,8 +248,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
    and test filtering consistently across platforms.
 8. **Assertions:** the default build is `Release` (`automation/build.py`), so `assert` is dead
    code in production. Test targets strip `NDEBUG` (`src/test/CMakeLists.txt`, #89), so asserts
-   ARE live inside test binaries — `build_integrity_test.cpp` guards this. The error contract:
-   public input validation must `throw` (fail-fast, independent of build type); `assert` is only
+   ARE live inside test binaries — `build_integrity_test.cpp` guards this. The error contract
+   (target state; legacy violations are being migrated in #77, #67, #64, #70): public input
+   validation must `throw` (fail-fast, independent of build type); `assert` is only
    for internal invariants, never as an input guard.
 
 ## AI do / don't
