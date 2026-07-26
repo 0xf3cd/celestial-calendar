@@ -487,10 +487,9 @@ constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
 inline auto daily_λ_variation(const double jde) -> double {
   using namespace std::ranges;
   const double τ = astro::julian_day::jde_to_jm(jde);
-  const std::array τ_powers { 1.0, τ, τ * τ, τ * τ * τ };
-  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([&](const DailyVariationTerm& t) {
+  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
     const Angle<DEG> θ { t.phase + t.rate * τ };
-    return t.amplitude * τ_powers[t.tau_power] * std::sin(θ.rad());
+    return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
   });
   return 3548.330 + std::reduce(cbegin(terms), cend(terms));
 }
