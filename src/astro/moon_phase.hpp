@@ -150,8 +150,9 @@ inline auto first_root_range_after(const double jde) -> std::pair<double, double
   if (std::fabs(signed_miss_deg) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
     throw std::invalid_argument {
       std::format(
-        "Cannot find the first root after jde {}: the estimate at jde {} sits {} deg from conjunction.",
-        jde, est_jde, est_jde_diff
+        "Cannot find the first root after jde {}: the estimate at jde {} misses conjunction "
+        "by {} deg (elongation {} deg).",
+        jde, est_jde, signed_miss_deg, est_jde_diff
       )
     };
   }

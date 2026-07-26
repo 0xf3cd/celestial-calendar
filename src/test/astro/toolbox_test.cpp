@@ -186,9 +186,11 @@ TEST(AstroMath, AngleOperators) {
 
 TEST(AstroMath, Ulp) {
   // A double carries 52 fraction bits, so the ulp is 2^(exponent-52) and doubles with the exponent.
-  ASSERT_EQ(ulp(2451545.0), std::pow(2.0, -31)); // J2000.0 sits in [2^21, 2^22): 4.66e-10 day.
-  ASSERT_EQ(ulp(4194303.0), std::pow(2.0, -31)); // Just below 2^22.
-  ASSERT_EQ(ulp(4194305.0), std::pow(2.0, -30)); // Just above: 9.31e-10 day, i.e. 6771-07-07.
+  // Hex float literals rather than `std::pow`: exact by construction, so `ASSERT_EQ` does not rest
+  // on libm rounding the integer exponent bit-exactly.
+  ASSERT_EQ(ulp(2451545.0), 0x1p-31); // J2000.0 sits in [2^21, 2^22): 4.66e-10 day.
+  ASSERT_EQ(ulp(4194303.0), 0x1p-31); // Just below 2^22.
+  ASSERT_EQ(ulp(4194305.0), 0x1p-30); // Just above: 9.31e-10 day, i.e. 6771-07-07.
 
   // Always positive, and symmetric about zero.
   ASSERT_GT(ulp(-2451545.0), 0.0);
@@ -210,19 +212,45 @@ TEST(AstroMath, NewtonMethodConverges) {
 
 
 TEST(AstroMath, NewtonMethodKeepsBestIterate) {
-  // Reproduces the failure mode measured on issue #76: once the iterate lands on a stretch where
-  // `f` reads flat, both difference samples come out equal, f' collapses to exactly zero, and the
-  // next candidate is +/-inf — which `pull_back` then clamps to an interval edge. The solver must
-  // hand back the closest approach it already made, not whatever the last round produced.
+  // The contract is that the closest approach survives, so the divergence has to be one the solver
+  // cannot walk back from. `f` reads a small non-zero residual on a narrow plateau at the root --
+  // enough that the solver keeps iterating -- and everywhere else it pushes right hard enough to
+  // overshoot `end_jde`, which from the clamped edge only ever overshoots again. Iteration 0 lands
+  // on the root, iteration 1 leaves for the edge and stays: only a retained iterate can come back.
+  constexpr double start_jde = 2451545.0;
+  constexpr double end_jde   = 2451546.0;
+  constexpr double root      = (start_jde + end_jde) / 2.0; // the solver's own first iterate
+
+  const auto visits_root_then_diverges = [](const double jde) -> double {
+    if (std::fabs(jde - root) < 1e-6) {
+      return 1e-6;                 // above the residual tolerance, so this is not a stopping point
+    }
+    return -1.0 - (end_jde - jde); // f' == 1, and the step overshoots `end_jde` from anywhere
+  };
+
+  const double found = newton_method(visits_root_then_diverges, start_jde, end_jde, 1.0);
+
+  ASSERT_NEAR(found, root, 1e-5); // the iterate that was kept, not the edge the run ended on
+  ASSERT_GT(found, start_jde);
+  ASSERT_LT(found, end_jde);
+}
+
+
+TEST(AstroMath, NewtonMethodSurvivesCollapsedDerivative) {
+  // The mechanism behind #76: on a stretch where `f` reads flat both difference samples come out
+  // equal, f' is exactly zero, and the Newton step is undefined.
+  // This covers the collapse path only, not the retention contract above: from a clamped edge
+  // Newton steps straight back onto the root, so which iterate the run ends on comes down to where
+  // the budget runs out in that cycle -- the parity that made #76 surface in only 3% of years.
   const double root = 2451545.5;
-  const auto f = [&](const double jde) -> double {
+  const auto flat_at_root = [&](const double jde) -> double {
     const double d = jde - root;
-    return (std::fabs(d) < 1e-6) ? 1e-6 : d; // flat plateau, far wider than the difference step
+    return (std::fabs(d) < 1e-6) ? 1e-6 : d; // plateau far wider than the floored difference step
   };
 
   constexpr double start_jde = 2451545.0;
   constexpr double end_jde   = 2451546.0;
-  const double found = newton_method(f, start_jde, end_jde, 1.0);
+  const double found = newton_method(flat_at_root, start_jde, end_jde, 1.0);
 
   ASSERT_NEAR(found, root, 1e-5);
   ASSERT_GT(found, start_jde); // not clamped to an edge
