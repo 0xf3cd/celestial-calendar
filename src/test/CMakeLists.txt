@@ -7,8 +7,15 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-add_compile_definitions(TESTING=1)
-add_compile_definitions(DEBUG=1)
+# #89: The default build type is Release (`automation/build.py`), which defines NDEBUG and would
+# turn every `assert` in the library headers into dead code — even inside test binaries. Strip
+# NDEBUG for test targets so internal-invariant asserts stay verifiable; production targets
+# (`shared_lib`) keep NDEBUG untouched.
+if (MSVC)
+  add_compile_options(/UNDEBUG)
+else()
+  add_compile_options(-UNDEBUG)
+endif()
 
 include(FetchContent)
 FetchContent_Declare(
@@ -28,7 +35,9 @@ target_compile_options(gmock_main PRIVATE -w)
 enable_testing()
 include(GoogleTest)
 
-macro(ADD_TEST test_path test_name)
+# Named `CELESTIAL_ADD_TEST`, not `ADD_TEST`: CMake command names are case-insensitive, so a macro
+# called `ADD_TEST` would shadow the built-in `add_test` for the rest of this directory scope. (#89)
+macro(CELESTIAL_ADD_TEST test_path test_name)
   message("Adding ${test_name}")
   add_executable(${test_name} ${test_path})
   target_link_libraries(
@@ -43,5 +52,5 @@ file(GLOB_RECURSE SRC_PATHS "*.cpp")
 foreach(src_path IN LISTS SRC_PATHS)
   get_filename_component(test_name ${src_path} NAME_WE)
   message("Found test: ${src_path}")
-  ADD_TEST(${src_path} ${test_name})
+  CELESTIAL_ADD_TEST(${src_path} ${test_name})
 endforeach()
