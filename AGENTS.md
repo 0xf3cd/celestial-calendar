@@ -187,7 +187,10 @@ change an existing file's year. GPL-3.0 project — keep the header.
   into a separate executable. Discovery timeout is 180s to accommodate slow Docker/ARM CI runners.
 - Data-driven: inline a column-aligned dataset of reference values (whitespace-padded,
   right-aligned columns like `earth_test.cpp`); `ASSERT_NEAR` with a per-column tolerance;
-  header-comment the columns.
+  header-comment the columns. Alignment is computed **per column over the whole block**:
+  every row pads each column (including the input/JDE column) to that column's widest
+  cell, so the same field sits at the same character column on every row. Never pad
+  per-row — regenerating or editing rows must re-align the entire block.
 - **Provenance is mandatory**: every golden dataset states where its values came from —
   book example number (tests mirror worked examples value-by-value, e.g. Meeus Example 12.a),
   or the external source + collection date + generation seed (e.g. "USNO API, 2026-07-19,
