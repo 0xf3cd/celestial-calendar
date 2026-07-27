@@ -23,6 +23,8 @@
 
 #include <chrono>
 #include <limits>
+#include <optional>
+#include <stdexcept>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -59,6 +61,19 @@ auto local_mean_noon_jde(const std::chrono::year_month_day& ymd, const GeoLocati
   return astro::julian_day::ut1_to_jde(noon_ut1) - location.longitude.deg() / 360.0;
 }
 
+/**
+ * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
+ *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper
+ *        rather than NOLINT-ing every access.
+ */
+template <typename T>
+auto req(const std::optional<T>& opt) -> const T& {
+  if (not opt.has_value()) {
+    throw std::logic_error { "expected optional to hold a value" };
+  }
+  return *opt;
+}
+
 } // anonymous namespace
 
 
@@ -79,7 +94,7 @@ TEST(SunriseSunset, HourAngleAtAltitudeMatchesHorizontalAltitude) {
 
         for (const double sign : { 1.0, -1.0 }) {
           const auto horizontal = astro::coords::equatorial_to_horizontal(
-            H0.value() * sign, Angle<DEG> { δ }, Angle<DEG> { φ }
+            req(H0) * sign, Angle<DEG> { δ }, Angle<DEG> { φ }
           );
           ASSERT_NEAR(horizontal.h.deg(), h0, 1e-9)
             << "δ=" << δ << " φ=" << φ << " h0=" << h0 << " sign=" << sign;
@@ -104,7 +119,7 @@ TEST(SunriseSunset, HourAngleAtAltitudePolarAndDegenerateCases) {
   // Equator, equinoctial Sun, geometric horizon: the diurnal arc is exactly a half turn.
   const auto H0 = hour_angle_at_altitude(Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 });
   ASSERT_TRUE(H0.has_value());
-  ASSERT_NEAR(H0.value().deg(), 90.0, 1e-9);
+  ASSERT_NEAR(req(H0).deg(), 90.0, 1e-9);
 }
 
 TEST(SunriseSunset, AltitudeConstantsProvenance) {
@@ -197,8 +212,8 @@ TEST(SunriseSunset, RiseSetAltitudeIsH0) {
     ASSERT_TRUE(result.sunset_jde.has_value());
 
     // 0.001° ≈ 0.36". At typical crossing rates (~200°/day) that is ~0.4 s of time.
-    ASSERT_NEAR(detail::sun_altitude(result.sunrise_jde.value(), location).deg(), h0.deg(), 0.001);
-    ASSERT_NEAR(detail::sun_altitude(result.sunset_jde.value(), location).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::sun_altitude(req(result.sunrise_jde), location).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::sun_altitude(req(result.sunset_jde), location).deg(), h0.deg(), 0.001);
   }
 }
 
@@ -214,8 +229,8 @@ TEST(SunriseSunset, OrderIsCorrect) {
     const auto result = calculate(ymd, location);
     ASSERT_TRUE(result.sunrise_jde.has_value());
     ASSERT_TRUE(result.sunset_jde.has_value());
-    ASSERT_LT(result.sunrise_jde.value(), result.transit_jde);
-    ASSERT_LT(result.transit_jde, result.sunset_jde.value());
+    ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
+    ASSERT_LT(result.transit_jde, req(result.sunset_jde));
     ASSERT_FALSE(result.is_polar_day);
     ASSERT_FALSE(result.is_polar_night);
   }
@@ -236,14 +251,14 @@ TEST(SunriseSunset, TwilightOrder) {
   }
 
   // Morning: astronomical dawn < nautical dawn < civil dawn < sunrise.
-  ASSERT_LT(r_astro.sunrise_jde.value(), r_nautical.sunrise_jde.value());
-  ASSERT_LT(r_nautical.sunrise_jde.value(), r_civil.sunrise_jde.value());
-  ASSERT_LT(r_civil.sunrise_jde.value(), r_standard.sunrise_jde.value());
+  ASSERT_LT(req(r_astro.sunrise_jde), req(r_nautical.sunrise_jde));
+  ASSERT_LT(req(r_nautical.sunrise_jde), req(r_civil.sunrise_jde));
+  ASSERT_LT(req(r_civil.sunrise_jde), req(r_standard.sunrise_jde));
 
   // Evening: sunset < civil dusk < nautical dusk < astronomical dusk.
-  ASSERT_LT(r_standard.sunset_jde.value(), r_civil.sunset_jde.value());
-  ASSERT_LT(r_civil.sunset_jde.value(), r_nautical.sunset_jde.value());
-  ASSERT_LT(r_nautical.sunset_jde.value(), r_astro.sunset_jde.value());
+  ASSERT_LT(req(r_standard.sunset_jde), req(r_civil.sunset_jde));
+  ASSERT_LT(req(r_civil.sunset_jde), req(r_nautical.sunset_jde));
+  ASSERT_LT(req(r_nautical.sunset_jde), req(r_astro.sunset_jde));
 }
 
 TEST(SunriseSunset, EquatorDayLength) {
@@ -255,7 +270,7 @@ TEST(SunriseSunset, EquatorDayLength) {
     ASSERT_TRUE(result.sunrise_jde.has_value());
     ASSERT_TRUE(result.sunset_jde.has_value());
 
-    const double day_length = result.sunset_jde.value() - result.sunrise_jde.value();
+    const double day_length = req(result.sunset_jde) - req(result.sunrise_jde);
     ASSERT_NEAR(day_length, 0.5, 30.0 / (24.0 * 60.0)) << "month=" << month; // 12h ± 30 min.
   }
 }
@@ -267,8 +282,8 @@ TEST(SunriseSunset, RiseSetSymmetryAroundTransit) {
   ASSERT_TRUE(result.sunrise_jde.has_value());
   ASSERT_TRUE(result.sunset_jde.has_value());
 
-  const double morning = result.transit_jde - result.sunrise_jde.value();
-  const double evening = result.sunset_jde.value() - result.transit_jde;
+  const double morning = result.transit_jde - req(result.sunrise_jde);
+  const double evening = req(result.sunset_jde) - result.transit_jde;
   ASSERT_NEAR(morning, evening, 0.01);
 }
 
@@ -317,8 +332,8 @@ TEST(SunriseSunset, PolarNightOnsetWeekIsCoherent) {
       ASSERT_FALSE(result.is_polar_night) << "day=" << day;
       ASSERT_FALSE(seen_polar_night) << "day=" << day; // No coming back out of the night in this window.
       if (events == 2) {
-        ASSERT_LT(result.sunrise_jde.value(), result.transit_jde);
-        ASSERT_LT(result.transit_jde, result.sunset_jde.value());
+        ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
+        ASSERT_LT(result.transit_jde, req(result.sunset_jde));
       }
     }
   }
@@ -346,8 +361,8 @@ TEST(SunriseSunset, MidnightSunOnsetWeekIsCoherent) {
       ASSERT_FALSE(result.is_polar_day) << "day=" << day;
       ASSERT_FALSE(result.is_polar_night) << "day=" << day;
       if (events == 2) {
-        ASSERT_LT(result.sunrise_jde.value(), result.transit_jde);
-        ASSERT_LT(result.transit_jde, result.sunset_jde.value());
+        ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
+        ASSERT_LT(result.transit_jde, req(result.sunset_jde));
       }
     }
   }
