@@ -134,7 +134,8 @@ constexpr auto compute(const double year) -> double {
     };
   }
 
-  const auto coefficients = find_coefficients(static_cast<int32_t>(year));
+  // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
+  const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));
   if (coefficients) {
     const auto& [start, end] = *coefficients;
     assert(year >= start.year and year < end.year);
@@ -160,7 +161,9 @@ constexpr auto compute(const double year) -> double {
     return F(year);
   }
   if (year >= 2015 and year < 2115) {
-    return f(year) + (year - 2114) * (f(2014) - F(2014)) / 100.0;
+    // #64: the original 2014/2114 anchors left ~1.09 s and ~0.28 s jumps at the segment edges;
+    // anchoring at 2015/2115 makes the blend meet `F` and `f` exactly there.
+    return f(year) + (year - 2115) * (f(2015) - F(2015)) / 100.0;
   }
   // For years >= 2115, simply use `f`.
   return f(year);
@@ -383,22 +386,77 @@ constexpr auto compute(const double year) -> double {
 #pragma endregion
 
 
+#pragma region Algorithm 5
+
+namespace algo5 {
+
+// Algo5 is algo4's successor, retrained on the 2026-07 data refresh.
+// Model training: https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/algo5.py
+// The model is based on:
+//   Year 2005.0 - 2026.41: IERS's Bulletin A observations, fitted as a single segment,
+//                          pinned to observed medians at both edges.
+//   Year > 2026.41:        Stephenson-Morrison-Hohenkerk integrated-lod curve
+//                          (https://astro.ukho.gov.uk/nao/lvm/), anchored at the last
+//                          observation — continuous there, valid for all future years.
+
+/** @brief The decimal year of the last Bulletin A observation in the training data;
+ *         also the boundary between the fitted and the extrapolated segments. */
+constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
+
+/**
+ * @brief The function to compute △T of a given gregorian year, using algorithm 5.
+ * @param year The year, of double type.
+ * @return The delta T.
+ *
+ * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ *
+ * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
+ * @ref UKHO long-term variation model - https://astro.ukho.gov.uk/nao/lvm/
+ * @ref Model - https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/algo5.py
+ *
+ * @note For year < 2005.0, algo2 is used instead (same delegation as algo4).
+ * @note There is no upper bound: beyond the last observation, the anchored integrated-lod
+ *       curve extrapolates smoothly for all future years.
+ */
+constexpr auto compute(const double year) noexcept -> double {
+  if (year < 2005) {
+    return algo2::compute(year);
+  }
+
+  if (year <= LAST_OBSERVATION_YEAR) {
+    const double u = year - 1990;
+    return -9963.526300002133 + 33695.46874239917 / u + 1251.8488008787037 * u
+         - 84.95374332215921 * std::pow(u, 2) + 3.383624734734596 * std::pow(u, 3)
+         - 0.079054553776811 * std::pow(u, 4) + 0.0010034123781420099 * std::pow(u, 5)
+         - 5.341580725291782e-06 * std::pow(u, 6);
+  }
+
+  { // year > LAST_OBSERVATION_YEAR: integrated lod, t in centuries since 1825;
+    // the leading constant anchors the curve at the last observation.
+    const double t = (year - 1825.0) / 100.0;
+    return -150.64706473230285 + 31.4115 * std::pow(t, 2)
+         + 284.8435805251424 * std::cos(0.4487989505128276 * (t + 0.75));
+  }
+}
+
+} // namespace algo5
+#pragma endregion
+
+
 /**
  * @brief The function to compute △T of a given gregorian year.
  * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
  * @return The delta T, in seconds.
- * @details Algo 4 is used when input year <= 2035, because it is the most accurate one.
- *          For years beyond 2035, algo 2 is used. Note that the results may be inaccurate for years >= 2035.
- * 
+ * @details Algo 5 is used for all years — continuous everywhere, with no upper bound
+ *          (#64: the previous algo4/algo2 dispatch jumped by ~9.5 s at 2035.0).
+ *
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
-constexpr auto compute(const double year) -> double {
-  if (year < 2035.0) {
-    return algo4::compute(year);
-  }
-  return algo2::compute(year);
+constexpr auto compute(const double year) noexcept -> double {
+  return algo5::compute(year);
 }
 
 

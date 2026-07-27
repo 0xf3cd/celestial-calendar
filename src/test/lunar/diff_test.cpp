@@ -15,7 +15,10 @@ auto pick_random_years() -> std::vector<int32_t> {
     // The two algoritms produce different results on some years.
     // Algo1 is using the hard-coded values, collected from Hong Kong Observatory.
     // Algo2 is based on VSOP87 and ELP2000 theories.
-    return year != 1914 and year != 1915 and year != 1916 and year != 1920; 
+    // #64: 2057/2097 — under algo5's observation-anchored ΔT, one lunation shifts across a
+    // day boundary vs HKO's baked prediction. HKO stays authoritative in-product (algo1/algo3).
+    return year != 1914 and year != 1915 and year != 1916 and year != 1920
+       and year != 2057 and year != 2097;
   };
 
   // Algo2 doesn't really have year limits. So use algo1's.
