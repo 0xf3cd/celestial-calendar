@@ -280,7 +280,8 @@ struct SunLocal {
  * @param h0 The target altitude.
  * @return The (positive) hour angle H₀ ∈ [0°, 180°]; the body is at h₀ at hour angles ±H₀.
  *         Returns `nullopt` when the altitude is never reached (polar day/night) or when the
- *         equation degenerates (observer at a pole).
+ *         equation degenerates — |cos φ · cos δ| < `POLAR_DENOMINATOR_EPSILON`, i.e. the
+ *         observer at a geographic pole or the body at/near a celestial pole.
  * @throw std::invalid_argument If any argument is not finite or lies outside [-90°, 90°]
  *        (outside that domain sin/cos alias and (15.1) returns a physically meaningless H₀).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, Formula (15.1).
@@ -427,14 +428,16 @@ struct SunLocal {
     return is_sunrise ? (f_lo < 0.0 and f_hi > 0.0) : (f_lo > 0.0 and f_hi < 0.0);
   };
 
-  // The residual guard turns a degenerate solve into "no event" instead of a wrong instant;
-  // see `RISE_SET_RESIDUAL_GUARD_DEG` (robustness only, per review).
-  const auto solve = [&f](const double lo, const double hi) -> std::optional<double> {
+  // The residual guard keeps a degenerate solve from shipping a wrong instant; see
+  // `RISE_SET_RESIDUAL_GUARD_DEG` (robustness only, per review). The residual is returned
+  // alongside the root so a guard rejection can be reported with context.
+  struct Solved {
+    double root;
+    double residual_deg;
+  };
+  const auto solve = [&f](const double lo, const double hi) -> Solved {
     const double root = astro::toolbox::newton_method(f, lo, hi, astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
-    if (std::fabs(f(root)) > RISE_SET_RESIDUAL_GUARD_DEG) [[unlikely]] {
-      return std::nullopt;
-    }
-    return root;
+    return { .root = root, .residual_deg = std::fabs(f(root)) };
   };
 
   // First try: a tight bracket around the mean-rate extrapolation of H₀ from transit's δ.
@@ -452,8 +455,9 @@ struct SunLocal {
     if (straddles(lo, hi)) {
       // On a guard rejection fall THROUGH to the fallback rather than reporting "no event":
       // the straddle proved a root exists, so the tight bracket must never be the last word.
-      if (const auto root = solve(lo, hi); root.has_value()) {
-        return root;
+      const auto solved = solve(lo, hi);
+      if (solved.residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
+        return solved.root;
       }
     }
   }
@@ -464,13 +468,21 @@ struct SunLocal {
   const double lo = is_sunrise ? culmination : transit;
   const double hi = is_sunrise ? transit : culmination;
   if (straddles(lo, hi)) {
-    if (const auto root = solve(lo, hi); root.has_value()) {
-      return root;
+    const auto solved = solve(lo, hi);
+    if (solved.residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
+      return solved.root;
     }
     // The straddle just proved a crossing exists, so a guard rejection here is a numerical
     // failure, not a polar verdict — surface it loudly instead of returning nullopt, which
     // `calculate` would compound into a wrong polar-day/night flag (per review).
-    throw std::runtime_error { "rise_set_jde: bracketed root failed to converge" };
+    throw std::runtime_error {
+      std::format(
+        "rise_set_jde: bracketed {} root failed to converge: |altitude - h0| = {} deg at jde {} "
+        "(bracket [{}, {}], guard {} deg)",
+        is_sunrise ? "sunrise" : "sunset",
+        solved.residual_deg, solved.root, lo, hi, RISE_SET_RESIDUAL_GUARD_DEG
+      )
+    };
   }
 
   return std::nullopt;
