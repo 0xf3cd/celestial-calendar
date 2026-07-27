@@ -12,7 +12,7 @@ auto pick_random_years() -> std::vector<int32_t> {
   using namespace std::ranges;
 
   const auto filter_year = [](int32_t year) {
-    // The two algoritms produce different results on some years.
+    // The two algorithms produce different results on some years.
     // Algo1 is using the hard-coded values, collected from Hong Kong Observatory.
     // Algo2 is based on VSOP87 and ELP2000 theories.
     // #64: 2057/2097 — under algo5's observation-anchored ΔT, one lunation shifts across a
