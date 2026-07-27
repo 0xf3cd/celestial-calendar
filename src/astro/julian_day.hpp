@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <cassert>
 #include <format>
 #include <stdexcept>
@@ -109,7 +110,7 @@ inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
  * @brief Convert julian day number to UT1 datetime.
  * @param jd The julian day number.
  * @return The datetime in UT1.
- * @throw std::runtime_error if the estimated gregorian year is < 401.
+ * @throw std::runtime_error if `jd` is not finite, or the estimated gregorian year is < 401.
  */
 inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   /*
@@ -135,11 +136,20 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
      It is also mentioned that "the method fails if Y<400".
    */
 
+  // #77: NaN/Inf would slip past the range check below (NaN comparisons are false) and reach
+  // undefined float→int conversions. Reject them first.
+  if (not std::isfinite(jd)) {
+    throw std::runtime_error {
+      std::format("The julian day number {} is not finite.", jd)
+    };
+  }
+
   assert(jd > 0);
 
-  // The algorithm fails if Y < 400, so reject everything before 401-01-01 (gregorian), whose
-  // julian day number is exactly 1867522.5 (#77: the old cutoff 1867524.457118 sat ~2 days
-  // high and wrongly rejected the first two days of year 401).
+  // The reference says the method fails if Y < 400, so reject everything below year 401 — the
+  // smallest full year safely inside the method's domain. 401-01-01 (gregorian) is exactly
+  // JD 1867522.5 (#77: the old cutoff 1867524.457118 sat ~2 days high and wrongly rejected
+  // the first two days of year 401).
   if (jd < 1867522.5) {
     throw std::runtime_error("The estimated gregorian year is < 401.");
   }

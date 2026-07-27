@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <limits>
 #include <unordered_map>
 #include "util.hpp"
 #include "datetime.hpp"
@@ -110,6 +111,11 @@ TEST(JulianDay, InvalidInput) {
   // close from 401-01-01 onwards.
   ASSERT_THROW(jd_to_ut1(1.0), std::runtime_error);
   ASSERT_THROW(jd_to_ut1(1867522.4999), std::runtime_error); // 400-12-31, just below the bound.
+
+  // Non-finite JDs bypass ordinary range checks (NaN comparisons are false) — rejected first.
+  ASSERT_THROW(jd_to_ut1(std::numeric_limits<double>::quiet_NaN()), std::runtime_error);
+  ASSERT_THROW(jd_to_ut1(std::numeric_limits<double>::infinity()), std::runtime_error);
+  ASSERT_THROW(jd_to_ut1(-std::numeric_limits<double>::infinity()), std::runtime_error);
 
   // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);
