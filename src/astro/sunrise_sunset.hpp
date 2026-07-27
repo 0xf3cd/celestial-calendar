@@ -25,9 +25,11 @@
 
 #include <chrono>
 #include <cmath>
+#include <concepts>
 #include <format>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 
 #include "toolbox.hpp"
 #include "datetime.hpp"
@@ -269,6 +271,73 @@ struct SunLocal {
   );
 }
 
+/**
+ * @brief Validate `rise_set_jde`'s inputs.
+ * @throw std::invalid_argument If `transit` is not finite, `location` is out of range, or `h0`
+ *        is not finite or outside [-90°, 90°].
+ */
+inline void validate_rise_set_inputs(
+  const double transit,
+  const GeoLocation& location,
+  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0
+) {
+  validate(location);
+
+  if (not std::isfinite(transit)) {
+    throw std::invalid_argument {
+      std::format("Argument `transit` is not finite, whose value is {}", transit)
+    };
+  }
+  if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
+    throw std::invalid_argument {
+      std::format("Argument `h0` out of range [-90, 90], whose value is {}", h0.deg())
+    };
+  }
+}
+
+/** @brief A refined crossing and the |altitude − h₀| residual it left, in degrees. */
+struct Solved {
+  double root_jde;
+  double residual_deg;
+};
+
+/**
+ * @brief Try to solve one altitude crossing inside a bracket.
+ * @param f The residual function (altitude − h₀), in degrees, over JDE (TT).
+ * @param lo_jde The left bracket end, inclusive.
+ * @param hi_jde The right bracket end, exclusive.
+ * @param rising True for an upward crossing (sunrise side), false for a downward one.
+ * @return `nullopt` when the bracket ends do not straddle a crossing in the required direction
+ *         (a plain sign change is not enough — direction is what rejects event-free brackets);
+ *         otherwise the refined root plus its residual. The residual verdict is the caller's:
+ *         a straddle proves a root exists, so what a rejection *means* depends on the bracket.
+ */
+// The `_jde` suffixes carry the contract at the call site.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+template <typename Func>
+requires std::invocable<Func, double>
+     and std::convertible_to<std::invoke_result_t<Func, double>, double>
+[[nodiscard]] inline auto crossing_in_bracket(
+  const Func& f,
+  const double lo_jde,
+  const double hi_jde,
+  const bool rising
+) -> std::optional<Solved> {
+  const double f_lo = f(lo_jde);
+  const double f_hi = f(hi_jde);
+
+  const bool straddles = rising ? (f_lo < 0.0 and f_hi > 0.0) : (f_lo > 0.0 and f_hi < 0.0);
+  if (not straddles) {
+    return std::nullopt;
+  }
+
+  const double root = astro::toolbox::newton_method(
+    f, lo_jde, hi_jde, astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY
+  );
+  return Solved { .root_jde = root, .residual_deg = std::fabs(f(root)) };
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
 } // namespace detail
 
 
@@ -383,19 +452,13 @@ struct SunLocal {
  *         between the transit and the adjacent lower culmination (polar day/night).
  * @throw std::invalid_argument If `transit` is not finite, `location` is out of range, or `h0`
  *        is not finite or outside [-90°, 90°].
- * @throw std::runtime_error If a sign change proved a crossing exists but the solve failed the
- *        residual guard — a numerical failure that must not masquerade as a polar verdict
- *        (unreachable for the Sun as far as testing and review can tell).
- * @note The root of (altitude - h₀) = 0 is found with `toolbox::newton_method`. Working on the
- *       altitude directly sidesteps two of the classic pitfalls: there is no hand-written
- *       dh/dH derivative to get wrong (the solver differentiates numerically), and no hour-angle
- *       sign convention to enforce (the bracket side selects the event).
- * @note Whether a crossing exists is decided by a directed sign check at the bracket ends — the
- *       H₀-based estimate only accelerates the search, it never decides (#63's lesson: measure
- *       the quantity that actually drives the behavior). When the tight bracket misses (polar
- *       boundary, where extrapolating transit's δ degrades), the fallback bracket runs from the
- *       transit to the *solved* adjacent lower culmination — not to transit ± 0.5, whose ~±15 s
- *       error could swallow a short polar-boundary night whole (per review).
+ * @throw std::runtime_error If a directed sign change proved a crossing exists but the solve
+ *        failed the residual guard — a numerical failure must not read as a polar verdict.
+ * @note Solves (altitude − h₀) = 0 directly: no hand-written dh/dH derivative, no hour-angle
+ *       sign convention — the bracket side selects the event. Existence is decided by the
+ *       directed sign check inside `detail::crossing_in_bracket`; the H₀-based bracket only
+ *       accelerates, the bracket ending at the *solved* lower culmination (the altitude
+ *       minimum) is the authority.
  */
 [[nodiscard]] inline auto rise_set_jde(
   const double transit,
@@ -403,89 +466,57 @@ struct SunLocal {
   const GeoLocation& location,
   const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0 = STANDARD_ALTITUDE
 ) -> std::optional<double> {
-  detail::validate(location);
-
-  if (not std::isfinite(transit)) {
-    throw std::invalid_argument {
-      std::format("Argument `transit` is not finite, whose value is {}", transit)
-    };
-  }
-  if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
-    throw std::invalid_argument {
-      std::format("Argument `h0` out of range [-90, 90], whose value is {}", h0.deg())
-    };
-  }
+  detail::validate_rise_set_inputs(transit, location, h0);
 
   const auto f = [&location, &h0](const double jde) -> double {
     return detail::sun_altitude(jde, location).deg() - h0.deg();
   };
 
-  // Sunrise is an upward crossing (f goes - to +), sunset a downward one; requiring the right
-  // direction — not just a sign change — is what rejects brackets that contain no event.
-  const auto straddles = [&f, is_sunrise](const double lo, const double hi) -> bool {
-    const double f_lo = f(lo);
-    const double f_hi = f(hi);
-    return is_sunrise ? (f_lo < 0.0 and f_hi > 0.0) : (f_lo > 0.0 and f_hi < 0.0);
-  };
-
-  // The residual guard keeps a degenerate solve from shipping a wrong instant; see
-  // `RISE_SET_RESIDUAL_GUARD_DEG` (robustness only, per review). The residual is returned
-  // alongside the root so a guard rejection can be reported with context.
-  struct Solved {
-    double root;
-    double residual_deg;
-  };
-  const auto solve = [&f](const double lo, const double hi) -> Solved {
-    const double root = astro::toolbox::newton_method(f, lo, hi, astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
-    return { .root = root, .residual_deg = std::fabs(f(root)) };
-  };
-
   // First try: a tight bracket around the mean-rate extrapolation of H₀ from transit's δ.
+  // (Reusing the sidereal rate overstates the Sun's ~360.0°/day sweep by 0.27% — ~1 min at
+  // H₀ ≈ 90°; the ±72 min bracket absorbs it, the sign check decides.)
   const auto eq_transit = astro::sun::equatorial_coord::apparent(transit);
   const auto H0 = hour_angle_at_altitude(eq_transit.δ, location.latitude, h0);
-  const double sign = is_sunrise ? -1.0 : 1.0;
 
   if (H0.has_value()) {
-    // The Sun's hour angle sweeps ~360.0°/day (mean solar rate), not the sidereal rate — the
-    // deliberate reuse of SIDEREAL_RATE overstates it by 0.27% (~1 min at H₀ ≈ 90°), which the
-    // ±72 min bracket absorbs; the estimate only centers the bracket, `straddles` decides.
+    const double sign = is_sunrise ? -1.0 : 1.0;
     const double estimate = transit + sign * (H0->deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
-    const double lo = estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS;
-    const double hi = estimate + RISE_SET_BRACKET_HALF_WIDTH_DAYS;
-    if (straddles(lo, hi)) {
-      // On a guard rejection fall THROUGH to the fallback rather than reporting "no event":
-      // the straddle proved a root exists, so the tight bracket must never be the last word.
-      const auto solved = solve(lo, hi);
-      if (solved.residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
-        return solved.root;
-      }
+    const auto solved = detail::crossing_in_bracket(
+      f,
+      estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS,
+      estimate + RISE_SET_BRACKET_HALF_WIDTH_DAYS,
+      is_sunrise
+    );
+    if (solved.has_value() and solved->residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
+      return solved->root_jde;
     }
+    // A guard rejection falls through — the tight bracket must never be the last word.
   }
 
-  // Fallback: from the transit to the solved adjacent lower culmination, whose endpoint IS the
-  // Sun's altitude minimum — so the directed sign check there is the exact existence criterion.
+  // The authority: from the transit to the solved adjacent lower culmination, whose endpoint
+  // IS the altitude minimum — the directed sign check there is the exact existence criterion.
   const double culmination = detail::lower_culmination_jde(transit, is_sunrise, location);
   const double lo = is_sunrise ? culmination : transit;
   const double hi = is_sunrise ? transit : culmination;
-  if (straddles(lo, hi)) {
-    const auto solved = solve(lo, hi);
-    if (solved.residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
-      return solved.root;
-    }
-    // The straddle just proved a crossing exists, so a guard rejection here is a numerical
-    // failure, not a polar verdict — surface it loudly instead of returning nullopt, which
-    // `calculate` would compound into a wrong polar-day/night flag (per review).
-    throw std::runtime_error {
-      std::format(
-        "rise_set_jde: bracketed {} root failed to converge: |altitude - h0| = {} deg at jde {} "
-        "(bracket [{}, {}], guard {} deg)",
-        is_sunrise ? "sunrise" : "sunset",
-        solved.residual_deg, solved.root, lo, hi, RISE_SET_RESIDUAL_GUARD_DEG
-      )
-    };
+
+  const auto solved = detail::crossing_in_bracket(f, lo, hi, is_sunrise);
+  if (not solved.has_value()) {
+    return std::nullopt; // No directed crossing in the half arc: polar day/night.
+  }
+  if (solved->residual_deg <= RISE_SET_RESIDUAL_GUARD_DEG) [[likely]] {
+    return solved->root_jde;
   }
 
-  return std::nullopt;
+  // This straddle proved a crossing exists, so a guard rejection here is a numerical failure —
+  // surface it loudly instead of letting `calculate` turn it into a wrong polar-day/night flag.
+  throw std::runtime_error {
+    std::format(
+      "rise_set_jde: bracketed {} root failed to converge: |altitude - h0| = {} deg at jde {} "
+      "(bracket [{}, {}], guard {} deg)",
+      is_sunrise ? "sunrise" : "sunset",
+      solved->residual_deg, solved->root_jde, lo, hi, RISE_SET_RESIDUAL_GUARD_DEG
+    )
+  };
 }
 
 
