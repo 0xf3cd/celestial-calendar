@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <mutex>
+#include <tuple>
+#include <memory>
 #include <utility>
 #include <functional>
 #include <type_traits>
@@ -36,31 +39,40 @@ using util::hash::TupleHash;
 
 // TODO:
 // 1. Add a way to clear the cache (LRU, or something).
-// 2. Maybe support multi-threading? Currently, `std::unordered_map` is not thread-safe.
 
 /**
  * @brief A wrapper that caches the result of a function.
- * @param func The function to cache.
- * @return The cached function.
+ * @param func The function to cache. Must be pure — same arguments ⇒ same result.
+ * @return The cached function. Thread-safe; copies share one cache (#78).
  */
 template <typename RetType, typename... Args>
 inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
-  std::unordered_map<std::tuple<std::decay_t<Args>...>, RetType, TupleHash<std::decay_t<Args>...>> cache;
+  // Cache and mutex live behind a `shared_ptr`, so copying the returned
+  // `std::function` shares one cache instead of forking divergent replicas (#78).
+  struct State {
+    std::mutex mtx;
+    std::unordered_map<std::tuple<std::decay_t<Args>...>, RetType, TupleHash<std::decay_t<Args>...>> cache;
+  };
 
-  return [cache = std::move(cache), func = func](Args... args) mutable {
-    // Create a tuple from the arguments
-    auto key = std::make_tuple(std::forward<Args>(args)...);
+  return [state = std::make_shared<State>(), func = func](Args... args) -> RetType {
+    auto key = std::make_tuple(args...);
 
-    // Check if the result is already in the cache
-    const auto found = cache.find(key);
-    if (found != cache.end()) {
-      return found->second;
+    {
+      const std::lock_guard lock { state->mtx };
+      const auto found = state->cache.find(key);
+      if (found != state->cache.end()) {
+        return found->second;
+      }
     }
-    
-    // Compute the result and cache it
+
+    // Compute outside the lock: misses on different keys don't serialize, and `func`
+    // may itself call another cached function without holding two locks at once.
+    // Concurrent misses on the same key both compute; `try_emplace` keeps the first.
+    // Forward only here — the key above was built from copies, so nothing is moved twice.
     auto result = func(std::forward<Args>(args)...);
-    cache[key] = result;
-    return result;
+
+    const std::lock_guard lock { state->mtx };
+    return state->cache.try_emplace(std::move(key), std::move(result)).first->second;
   };
 }
 

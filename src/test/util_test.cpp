@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <print>
+#include <atomic>
 #include <ranges>
 #include <thread>
 #include <unordered_set>
@@ -298,8 +299,81 @@ TEST(Util, MakeCached2) {
 
   ASSERT_GT(original_elapsed_time, cached_elapsed_time);
   std::println("original_elapsed_time = {}ms, cached_elapsed_time = {}ms, {}x faster",
-               original_elapsed_time, cached_elapsed_time, 
+               original_elapsed_time, cached_elapsed_time,
                static_cast<double>(original_elapsed_time) / static_cast<double>(cached_elapsed_time));
+}
+
+
+TEST(Util, MakeCachedCopyShares) {
+  // #78: copies of a cached function must share one cache, not fork divergent replicas.
+  std::atomic<int32_t> call_count { 0 };
+  const auto f = [&call_count](int32_t a) {
+    ++call_count;
+    return a * 2;
+  };
+  const auto cached_f = util::cache::cache_func(f);
+
+  ASSERT_EQ(cached_f(21), 42);
+  ASSERT_EQ(call_count, 1);
+
+  const auto copied_f = cached_f; // NOLINT(performance-unnecessary-copy-initialization): the copy is the point.
+  ASSERT_EQ(copied_f(21), 42);
+  ASSERT_EQ(call_count, 1); // Hit through the copy — no recomputation.
+
+  ASSERT_EQ(copied_f(4), 8);
+  ASSERT_EQ(call_count, 2);
+  ASSERT_EQ(cached_f(4), 8);
+  ASSERT_EQ(call_count, 2); // The original sees the copy's insertion.
+}
+
+
+TEST(Util, MakeCachedThreadSafe) {
+  // #78: concurrent callers used to race on the captured `unordered_map` (UB, TSAN-verified).
+  std::atomic<int32_t> call_count { 0 };
+  const auto f = [&call_count](int32_t a) {
+    ++call_count;
+    return a * a;
+  };
+  const auto cached_f = util::cache::cache_func(f);
+
+  constexpr int32_t THREAD_COUNT = 8;
+  constexpr int32_t KEY_COUNT = 64;
+  constexpr int32_t ROUND_COUNT = 4;
+
+  // gtest assertions are not thread-safe everywhere — threads only record, main thread asserts.
+  std::vector<std::vector<int32_t>> results(THREAD_COUNT);
+
+  {
+    std::vector<std::thread> threads;
+    threads.reserve(THREAD_COUNT);
+    for (int32_t t = 0; t < THREAD_COUNT; ++t) {
+      threads.emplace_back([&cached_f, &results, t] {
+        auto& thread_results = results[t];
+        thread_results.reserve(static_cast<size_t>(ROUND_COUNT) * KEY_COUNT);
+        for (int32_t round = 0; round < ROUND_COUNT; ++round) {
+          for (int32_t k = 0; k < KEY_COUNT; ++k) {
+            thread_results.emplace_back(cached_f(k));
+          }
+        }
+      });
+    }
+    for (auto& thread : threads) {
+      thread.join();
+    }
+  }
+
+  for (const auto& thread_results : results) {
+    ASSERT_EQ(thread_results.size(), ROUND_COUNT * KEY_COUNT);
+    for (int32_t round = 0; round < ROUND_COUNT; ++round) {
+      for (int32_t k = 0; k < KEY_COUNT; ++k) {
+        ASSERT_EQ(thread_results[(round * KEY_COUNT) + k], k * k);
+      }
+    }
+  }
+
+  // Every key computed at least once; concurrent misses on a key may compute a few extras.
+  ASSERT_GE(call_count, KEY_COUNT);
+  ASSERT_LE(call_count, THREAD_COUNT * KEY_COUNT);
 }
 
 } // namespace util::test

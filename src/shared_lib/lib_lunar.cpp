@@ -99,7 +99,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
 
     const auto raw = std::invoke([=] {
       if (algo == 1) {
-        return calendar::lunar::algo1::get_info_for_year(year);
+        return calendar::lunar::algo1::calc_lunar_year(year);
       }
       return calendar::lunar::algo2::get_info_for_year(year);
     });
