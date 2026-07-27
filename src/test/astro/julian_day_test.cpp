@@ -109,6 +109,7 @@ TEST(JulianDay, InvalidInput) {
   // Both directions throw the same exception type on out-of-domain input. Their domains differ:
   // `ut1_to_jd` accepts years 1-400 that sit below `jd_to_ut1`'s bound, so round-trips only
   // close from 401-01-01 onwards.
+  ASSERT_THROW(jd_to_ut1(-5.0), std::runtime_error); // Negative finite values throw, not abort.
   ASSERT_THROW(jd_to_ut1(1.0), std::runtime_error);
   ASSERT_THROW(jd_to_ut1(1867522.4999), std::runtime_error); // 400-12-31, just below the bound.
 

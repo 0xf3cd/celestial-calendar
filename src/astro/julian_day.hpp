@@ -144,8 +144,6 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
     };
   }
 
-  assert(jd > 0);
-
   // The reference says the method fails if Y < 400, so reject everything below year 401 — the
   // smallest full year safely inside the method's domain. 401-01-01 (gregorian) is exactly
   // JD 1867522.5 (#77: the old cutoff 1867524.457118 sat ~2 days high and wrongly rejected
