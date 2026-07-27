@@ -45,16 +45,21 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   author, debug it carefully, and confirm case-by-case that it's an algorithm/reference issue,
   not a code bug. The default is to surface the discrepancy, not to make the test green.
 - Cite the source of any new algorithm / coefficients in a comment.
-- **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo4 (the default) is **two** polynomials
-  curve-fitted in [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis)
-  (`DeltaT/models.ipynb`): the 2005.0–2024.0 branch fits Bulletin A *observations* (2004.85–2024.42
-  in the notebook's 2024-08 snapshot), the 2024.0–2035.0 branch fits USNO `deltat.preds`
-  *predictions* — the dispatch splits at 2024.0 (`algo4::compute`, the `year >= 2005 and year < 2024`
-  / `year >= 2024` branches; below 2005.0 algo4 delegates to algo2). In-repo `statistics/` holds
-  evaluation notebooks only. That repo also carries the raw IERS/USNO EOP data and the full
-  VSOP87 coefficient files — the substrate for a #64 refit (post-2024 observed ΔT now exists to
-  measure how far the prediction-fitted segment drifted from truth) and for coefficient-level
-  audits under #94.
+- **Comments: sparse but load-bearing.** Every key spot gets one — segment boundaries, magic
+  constants, bug fixes (with the issue number) — and stays at 1-2 lines of *why*. No restating
+  the code, no quoting the old expression, no measurement reports (those live in the PR/issue).
+  Re-read and slim your added comments before wrapping up; that pass is part of the change.
+- **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo5 (the default) is trained in
+  [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis) (`DeltaT/algo5.py`): one
+  polynomial fitted on Bulletin A *observations* 2004.85–2026.41, then the
+  Stephenson–Morrison–Hohenkerk integrated-lod curve anchored at the last observation (no upper
+  bound; below 2005.0 it delegates to algo2). Refresh ritual: run the AstroTime-Analysis
+  downloaders, re-run `algo5.py`, update the coefficients + anchor here — coefficient updates
+  stay inside algo5; a new algoN is only for a methodology change. algo1–algo4 are frozen
+  exhibits and comparison baselines (algo4: `DeltaT/models.ipynb`, two segments, the 2024.0+
+  one fitted on USNO *predictions*; its drift vs truth is measured in #104). In-repo
+  `statistics/` holds evaluation notebooks only. That repo also carries the raw IERS/USNO EOP
+  data and the full VSOP87 coefficient files (coefficient-level audits under #94).
 
 ## Tech Stack
 

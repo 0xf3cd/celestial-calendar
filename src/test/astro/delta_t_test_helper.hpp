@@ -23,7 +23,9 @@ using DatasetType = std::map<double, double>; // { year, ΔT }
 
 // Ref: https://eclipse.gsfc.nasa.gov/LEcat5/deltat.html
 // Ref: https://www.eclipsewise.com/help/deltat.html
-// Recent values of ΔT from direct observations
+// Recent values of ΔT from direct observations.
+// 2015+ entries: IERS Bulletin A final values (AstroTime-Analysis @ ddf3be1),
+// median of ±15 days around each year boundary.
 const DatasetType ACCURATE_DELTA_T_TABLE {
   { 1955.0, 31.1 },
   { 1960.0, 33.2 },
@@ -38,6 +40,18 @@ const DatasetType ACCURATE_DELTA_T_TABLE {
   { 2005.0, 64.7 },
   { 2010.0, 66.1 },
   { 2014.0, 67.3 },
+  { 2015.0, 67.64 },
+  { 2016.0, 68.10 },
+  { 2017.0, 68.59 },
+  { 2018.0, 68.97 },
+  { 2019.0, 69.22 },
+  { 2020.0, 69.36 },
+  { 2021.0, 69.36 },
+  { 2022.0, 69.29 },
+  { 2023.0, 69.20 },
+  { 2024.0, 69.18 },
+  { 2025.0, 69.14 },
+  { 2026.0, 69.11 },
 };
 
 }  // namespace dataset::test
@@ -49,18 +63,20 @@ const DatasetType ACCURATE_DELTA_T_TABLE {
 
 namespace algo_info {
 
-using delta_t_func = std::function<double(int32_t)>;
+// #64: was `double(int32_t)`, which truncated fractional years.
+using delta_t_func = std::function<double(double)>;
 
-const std::array<std::string, 4> DELTA_T_ALGO_NAMES {
-  "algo1", "algo2", "algo3", "algo4"
+const std::array<std::string, 5> DELTA_T_ALGO_NAMES {
+  "algo1", "algo2", "algo3", "algo4", "algo5"
 };
 
-const std::array<delta_t_func, 4> DELTA_T_ALGO_FUNCS {
+const std::array<delta_t_func, 5> DELTA_T_ALGO_FUNCS {
   algo1::compute,
   algo2::compute,
   algo3::compute,
-  algo4::compute
-};  
+  algo4::compute,
+  algo5::compute
+};
 
 }  // namespace algo_info
 

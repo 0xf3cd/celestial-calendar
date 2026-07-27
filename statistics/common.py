@@ -76,6 +76,9 @@ LIB.delta_t_algo3.restype = DeltaT
 LIB.delta_t_algo4.argtypes = [c_double]
 LIB.delta_t_algo4.restype = DeltaT
 
+LIB.delta_t_algo5.argtypes = [c_double]
+LIB.delta_t_algo5.restype = DeltaT
+
 
 # Wrap C functions with Python functions, so that they can be called from Python.
 def delta_t_algo1(year: float) -> float:
@@ -100,6 +103,12 @@ def delta_t_algo4(year: float) -> float:
   result = LIB.delta_t_algo4(year)
   if not result.valid:
     raise ValueError("Error occurred in delta_t_algo4.")
+  return result.value
+
+def delta_t_algo5(year: float) -> float:
+  result = LIB.delta_t_algo5(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t_algo5.")
   return result.value
 
 #endregion

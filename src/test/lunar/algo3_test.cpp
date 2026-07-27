@@ -35,6 +35,17 @@ TEST(LunarAlgo3, Correctness) {
     ASSERT_EQ(expected.leap_month, actual.leap_month);
     ASSERT_EQ(expected.month_lengths, actual.month_lengths);
   }
+
+  // #64: entries re-baked under algo5's ΔT — checked deterministically, since the random
+  // sample above only covers them ~15% of the time.
+  for (const int32_t year : { 2133, 2165, 2172 }) {
+    const auto expected = expected_info(year);
+    const auto actual = algo3::calc_lunar_year(year);
+
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day);
+    ASSERT_EQ(expected.leap_month, actual.leap_month);
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths);
+  }
 }
 
 } // namespace calendar::lunar::algo3::test
