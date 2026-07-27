@@ -27,6 +27,7 @@
 #include <vector>
 #include <ranges>
 #include <numeric>
+#include <functional>
 
 #include "ymd.hpp"
 
@@ -108,9 +109,9 @@ struct AlgoBounds {
 
 /** @brief Calculate the bounds of the luanr algorithm. */
 inline auto calc_bounds(
-  const int32_t start_lunar_year, 
-  const int32_t end_lunar_year, 
-  std::function<LunarYear(int32_t)> algo_f
+  const int32_t start_lunar_year,
+  const int32_t end_lunar_year,
+  const std::function<LunarYear(int32_t)>& algo_f
 ) -> AlgoBounds {
   const auto first_lunar_date = util::to_ymd(start_lunar_year, 1, 1);
 
@@ -147,11 +148,13 @@ inline auto calc_bounds(
 /** @brief Algorithm version. */
 enum class Algo : uint8_t { ALGO_1, ALGO_2, ALGO_3 };
 
-/** 
- * @struct The type trait for the lunar algorithm, 
- *         expected specializations in every algorithm implementation. 
+/**
+ * @struct The type trait for the lunar algorithm,
+ *         expected specializations in every algorithm implementation.
  * @param get_info_for_year The function to get the lunar year information for the given year.
  *                          用于使用该算法获取给定年份的阴历年信息的函数。
+ *                          Either a plain forwarding function (algo1/3) or a reference binding
+ *                          to the algorithm's cached callable (algo2, #78) — same call syntax.
  * @param bounds The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.
  *               算法支持的阴历和公历日期的范围。
  */

@@ -440,8 +440,10 @@ namespace calendar::lunar::common {
 /** @brief Specialize `AlgoMetadata` for `Algo::ALGO_2`. */
 template <>
 struct AlgoMetadata<Algo::ALGO_2> {
-  static const inline auto get_info_for_year = algo2::get_info_for_year;
-  static const inline auto bounds = algo2::bounds;
+  // Bind, don't copy: a copied `std::function` would fork its own cache replica,
+  // recomputing every year already cached on the namespace-level path (#78).
+  static const inline auto& get_info_for_year = algo2::get_info_for_year;
+  static const inline auto& bounds = algo2::bounds;
 };
 
 } // namespace calendar::lunar::common

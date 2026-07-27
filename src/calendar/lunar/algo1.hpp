@@ -85,17 +85,8 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
   return parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
 }
 
-/**
- * @brief Same function as `calc_lunar_year`, but cached. 
-          与 `calc_lunar_year` 功能相同，但使用缓存。
- * @attention The input year should be in the range of [START_YEAR, END_YEAR].
- * @param year The Lunar year. 阴历年份。
- * @return The lunar year information. 阴历年信息。
- */
-const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
-
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
-const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
+const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, calc_lunar_year);
 
 } // namespace calendar::lunar::algo1
 
@@ -105,8 +96,9 @@ namespace calendar::lunar::common {
 /** @brief Specialize `AlgoMetadata` for `Algo::ALGO_1`. */
 template <>
 struct AlgoMetadata<Algo::ALGO_1> {
-  static const inline auto get_info_for_year = algo1::get_info_for_year;
-  static const inline auto bounds = algo1::bounds;
+  // Not memoized: a `LUNAR_DATA[]` lookup is cheaper than the cache wrapper (#75).
+  static auto get_info_for_year(const int32_t year) -> LunarYear { return algo1::calc_lunar_year(year); }
+  static const inline auto& bounds = algo1::bounds;
 };
 
 } // namespace calendar::lunar::common

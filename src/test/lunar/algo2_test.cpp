@@ -286,4 +286,12 @@ TEST(LunarAlgo2, GetLunarInfo) {
   }
 }
 
+
+TEST(LunarAlgo2, MetadataSharesCache) {
+  // #78: `AlgoMetadata` must bind the namespace-level cached function, not copy it —
+  // a copied `std::function` forks its own cache replica and recomputes from scratch.
+  ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::get_info_for_year, &algo2::get_info_for_year);
+  ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds, &algo2::bounds);
+}
+
 } // namespace calendar::lunar::algo2::test

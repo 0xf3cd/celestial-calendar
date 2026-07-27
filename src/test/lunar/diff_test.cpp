@@ -50,7 +50,7 @@ TEST(LunarAlgoDiff, Perf) {
   std::vector<double> algo2_results;
 
   for (const auto year : years) {
-    algo1_results.push_back(tracked_run([&] { algo1::get_info_for_year(year); }));
+    algo1_results.push_back(tracked_run([&] { algo1::calc_lunar_year(year); }));
     algo2_results.push_back(tracked_run([&] { algo2::get_info_for_year(year); }));
   }
 
@@ -72,7 +72,7 @@ TEST(LunarAlgoDiff, Consistency) {
   for (const auto year : years) {
     std::println("year: {}", year);
 
-    const auto info1 = algo1::get_info_for_year(year);
+    const auto info1 = algo1::calc_lunar_year(year);
     const auto info2 = algo2::get_info_for_year(year);
 
     ASSERT_EQ(info1.date_of_first_day, info2.date_of_first_day);
