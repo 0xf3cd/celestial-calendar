@@ -331,8 +331,11 @@ namespace algo4 {
 // Algo4 is a polynomial model fitting the ΔT values.
 // Model training: https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/models.ipynb
 // The model is based on:
-//   Year 2005.0 - 2024.5: IERS's bulletin A data (https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html). 
-//   Year 2024.5 - 2035.0: USNO's "Long-term" data (https://maia.usno.navy.mil/products/deltaT).
+//   Year 2005.0 - 2024.0: IERS's Bulletin A observations
+//                         (https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html),
+//                         fitted over 2004.85-2024.42 in the 2024-08 snapshot.
+//   Year 2024.0 - 2035.0: USNO's ΔT predictions
+//                         (deltat.preds, https://maia.usno.navy.mil/ser7/deltat.preds).
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 4.
@@ -343,13 +346,13 @@ namespace algo4 {
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref Bulletin A data - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
- * @ref USNO Long-term data - https://maia.usno.navy.mil/products/deltaT
+ * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
+ * @ref USNO ΔT predictions (deltat.preds) - https://maia.usno.navy.mil/ser7/deltat.preds
  * @ref Models - https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/models.ipynb
  * 
  * @note For year < 2005.0, algo2 is used instead.
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
- * @note For 2024.0 <= year < 2035.0, poly model trained on USNO long-term data is used.
+ * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
  */
 constexpr auto compute(const double year) -> double {
   if (year >= 2035) {

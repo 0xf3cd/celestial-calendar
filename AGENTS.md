@@ -45,6 +45,16 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   author, debug it carefully, and confirm case-by-case that it's an algorithm/reference issue,
   not a code bug. The default is to surface the discrepancy, not to make the test green.
 - Cite the source of any new algorithm / coefficients in a comment.
+- **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo4 (the default) is **two** polynomials
+  curve-fitted in [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis)
+  (`DeltaT/models.ipynb`): the 2005.0–2024.0 branch fits Bulletin A *observations* (2004.85–2024.42
+  in the notebook's 2024-08 snapshot), the 2024.0–2035.0 branch fits USNO `deltat.preds`
+  *predictions* — the dispatch splits at 2024.0 (`algo4::compute`, the `year >= 2005 and year < 2024`
+  / `year >= 2024` branches; below 2005.0 algo4 delegates to algo2). In-repo `statistics/` holds
+  evaluation notebooks only. That repo also carries the raw IERS/USNO EOP data and the full
+  VSOP87 coefficient files — the substrate for a #64 refit (post-2024 observed ΔT now exists to
+  measure how far the prediction-fitted segment drifted from truth) and for coefficient-level
+  audits under #94.
 
 ## Tech Stack
 
