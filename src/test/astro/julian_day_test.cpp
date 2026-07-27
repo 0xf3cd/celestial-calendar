@@ -94,6 +94,32 @@ TEST(JulianDay, Consistency) {
   }
 }
 
+TEST(JulianDay, InvalidInput) {
+  // #77: `ut1_to_jd` rejects year < 1 explicitly — its unsigned arithmetic would otherwise
+  // wrap around and silently produce a garbage JD (release builds included).
+  ASSERT_THROW(ut1_to_jd(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
+  ASSERT_THROW(ut1_to_jd(Datetime { to_ymd(0, 2, 29), 0.5 }), std::runtime_error);
+  ASSERT_THROW(ut1_to_jd(Datetime { to_ymd(-1, 12, 31), 0.99 }), std::runtime_error);
+  ASSERT_THROW(ut1_to_jd(Datetime { to_ymd(-4712, 1, 1), 0.0 }), std::runtime_error);
+
+  // The wrappers propagate the throw (this is what turns the C-ABI garbage into an error).
+  ASSERT_THROW(tt_to_jde(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
+
+  // Both directions throw the same exception type on out-of-domain input. Their domains differ:
+  // `ut1_to_jd` accepts years 1-400 that sit below `jd_to_ut1`'s bound, so round-trips only
+  // close from 401-01-01 onwards.
+  ASSERT_THROW(jd_to_ut1(1.0), std::runtime_error);
+  ASSERT_THROW(jd_to_ut1(1867522.4999), std::runtime_error); // 400-12-31, just below the bound.
+
+  // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
+  ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);
+
+  // The inverse's lower bound is exactly 401-01-01 00:00, and both directions agree on it.
+  const auto y401 = jd_to_ut1(1867522.5);
+  ASSERT_EQ(y401.ymd, to_ymd(401, 1, 1));
+  ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(401, 1, 1), 0.0 }), 1867522.5, EPSILON);
+}
+
 TEST(JulianDay, JulianMillennium) {
   ASSERT_EQ(jde_to_jm(J2000), 0.0);
   ASSERT_EQ(jm_to_jde(0.0), J2000);
