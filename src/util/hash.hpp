@@ -23,6 +23,12 @@
 
 #pragma once
 
+#include <tuple>
+#include <cstddef>
+#include <utility>
+#include <functional>
+#include <type_traits>
+
 namespace util::hash {
 
 template <typename T>

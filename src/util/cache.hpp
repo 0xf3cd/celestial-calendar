@@ -24,6 +24,7 @@
 #pragma once
 
 #include <mutex>
+#include <tuple>
 #include <memory>
 #include <utility>
 #include <functional>
