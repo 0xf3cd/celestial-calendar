@@ -45,6 +45,12 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   author, debug it carefully, and confirm case-by-case that it's an algorithm/reference issue,
   not a code bug. The default is to surface the discrepancy, not to make the test green.
 - Cite the source of any new algorithm / coefficients in a comment.
+- **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo4 (the default) was curve-fitted in
+  [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis) (`DeltaT/models.ipynb`,
+  Bulletin A 2005.0–2024.5); in-repo `statistics/` holds evaluation notebooks only. That repo
+  also carries the raw IERS/USNO EOP data and the full VSOP87 coefficient files — the data
+  substrate for a #64 refit (two years of post-2024.5 truth now exist to measure algo4's
+  extrapolation error) and for coefficient-level audits under #94.
 
 ## Tech Stack
 
