@@ -67,7 +67,8 @@ inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::fun
     // Compute outside the lock: misses on different keys don't serialize, and `func`
     // may itself call another cached function without holding two locks at once.
     // Concurrent misses on the same key both compute; `try_emplace` keeps the first.
-    auto result = func(args...);
+    // Forward only here — the key above was built from copies, so nothing is moved twice.
+    auto result = func(std::forward<Args>(args)...);
 
     const std::lock_guard lock { state->mtx };
     return state->cache.try_emplace(std::move(key), std::move(result)).first->second;

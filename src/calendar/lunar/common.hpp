@@ -107,7 +107,7 @@ struct AlgoBounds {
 };
 
 
-/** @brief Calculate the bounds of the luanr algorithm. */
+/** @brief Calculate the bounds of the lunar algorithm. */
 inline auto calc_bounds(
   const int32_t start_lunar_year,
   const int32_t end_lunar_year,
