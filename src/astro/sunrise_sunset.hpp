@@ -112,9 +112,10 @@ inline constexpr double LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS = 0.1;
  * @brief The residual guard on a rise/set root, in degrees of altitude.
  * @note Robustness only: after a directed sign check the bracketed Newton solve converges to
  *       residuals ~1e-7° for the Sun; this guard (4 orders looser) exists so that a degenerate
- *       solve — `newton_method` may return a best-effort iterate when f′ collapses — surfaces
- *       as "no event" instead of a wrong instant, and to keep the contract honest if this
- *       solver is ever reused for the Moon.
+ *       solve — `newton_method` may return a best-effort iterate when f′ collapses — never
+ *       ships a wrong instant: the tight bracket falls through to the fallback, and the
+ *       fallback (whose straddle has proved a root) throws instead of mislabeling the day
+ *       as polar. Also keeps the contract honest if this solver is ever reused for the Moon.
  */
 inline constexpr double RISE_SET_RESIDUAL_GUARD_DEG = 1e-3;
 
@@ -381,6 +382,9 @@ struct SunLocal {
  *         between the transit and the adjacent lower culmination (polar day/night).
  * @throw std::invalid_argument If `transit` is not finite, `location` is out of range, or `h0`
  *        is not finite or outside [-90°, 90°].
+ * @throw std::runtime_error If a sign change proved a crossing exists but the solve failed the
+ *        residual guard — a numerical failure that must not masquerade as a polar verdict
+ *        (unreachable for the Sun as far as testing and review can tell).
  * @note The root of (altitude - h₀) = 0 is found with `toolbox::newton_method`. Working on the
  *       altitude directly sidesteps two of the classic pitfalls: there is no hand-written
  *       dh/dH derivative to get wrong (the solver differentiates numerically), and no hour-angle
@@ -439,6 +443,9 @@ struct SunLocal {
   const double sign = is_sunrise ? -1.0 : 1.0;
 
   if (H0.has_value()) {
+    // The Sun's hour angle sweeps ~360.0°/day (mean solar rate), not the sidereal rate — the
+    // deliberate reuse of SIDEREAL_RATE overstates it by 0.27% (~1 min at H₀ ≈ 90°), which the
+    // ±72 min bracket absorbs; the estimate only centers the bracket, `straddles` decides.
     const double estimate = transit + sign * (H0->deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
     const double lo = estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS;
     const double hi = estimate + RISE_SET_BRACKET_HALF_WIDTH_DAYS;
@@ -457,7 +464,13 @@ struct SunLocal {
   const double lo = is_sunrise ? culmination : transit;
   const double hi = is_sunrise ? transit : culmination;
   if (straddles(lo, hi)) {
-    return solve(lo, hi);
+    if (const auto root = solve(lo, hi); root.has_value()) {
+      return root;
+    }
+    // The straddle just proved a crossing exists, so a guard rejection here is a numerical
+    // failure, not a polar verdict — surface it loudly instead of returning nullopt, which
+    // `calculate` would compound into a wrong polar-day/night flag (per review).
+    throw std::runtime_error { "rise_set_jde: bracketed root failed to converge" };
   }
 
   return std::nullopt;

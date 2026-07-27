@@ -23,6 +23,8 @@
 
 #include <chrono>
 #include <limits>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
