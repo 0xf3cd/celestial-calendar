@@ -380,8 +380,11 @@ TEST(JieqiGolden, De441Crossings) {
     EXPECT_LE(diff_s, tol_s(row.year))
         << "year " << row.year << " lon " << row.lon_deg << ": ours " << ours
         << " vs golden " << row.jde_tt;
-    auto& worst = (1900 <= row.year and row.year <= 2100) ? worst_core
-                : (row.year >= 6000) ? worst_far : worst_ext;
+    auto& worst = [&]() -> double& {
+      if (1900 <= row.year and row.year <= 2100) { return worst_core; }
+      if (row.year >= 6000) { return worst_far; }
+      return worst_ext;
+    }();
     worst = std::max(worst, diff_s);
   }
   // Intentional pass-or-fail print (drift visibility; see moon_horizons_golden_test.cpp).
