@@ -398,8 +398,8 @@ inline auto newton_method(
     const double h = std::max(step, NEWTON_MIN_STEP_ULP * ulp(jde));
     const double f_prime = (f(jde + h) - f(jde - h)) / (2.0 * h);
 
-    // A shared solver has to tolerate an `f` that is not defined everywhere -- #43's rise/set `f`
-    // goes NaN where a body is circumpolar -- and a collapsed f' has no direction left to offer.
+    // A shared solver has to tolerate an `f` that may go non-finite somewhere in its bracket
+    // (#43 originally planned such an f), and a collapsed f' has no direction left to offer.
     if (not std::isfinite(f_prime) or f_prime == 0.0) {
       break;
     }

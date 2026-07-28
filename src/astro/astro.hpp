@@ -21,9 +21,14 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "julian_day.hpp"
 #include "delta_t.hpp"
 #include "earth.hpp"
+#include "coord_transform.hpp"
+#include "sidereal_time.hpp"
 #include "sun.hpp"
 #include "moon.hpp"
 #include "moon_phase.hpp"
+#include "sunrise_sunset.hpp"
