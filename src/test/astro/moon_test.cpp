@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
-#include <chrono>
 #include <tuple>
 #include <unordered_map>
 #include "util.hpp"
-#include "astro.hpp"
-#include "ymd.hpp"
+#include "julian_day.hpp"
+#include "moon.hpp"
 
 
 namespace astro::moon::test {
@@ -15,7 +14,9 @@ using namespace astro::moon::geocentric_coord;
 TEST(Moon, CoordAndPpi) {
   // Characterization-tight columns (β/r/ppi are self-generated, see #65's comment); values shifted
   // 2026-07-26 by the measured #65 deltas (<= 2.6e-11 deg λ, 9.5e-8 km r), preserving per-platform
-  // jitter margins. Independent rebuild of the distance/radius columns is tracked in #94.
+  // jitter margins. Regression baseline only, not an accuracy benchmark (#94): the independent
+  // anchor for λ/β/r is moon_horizons_golden_test.cpp (JPL DE441), whose measurements resolved
+  // the historical distance doubt — the truncated series has an inherent ~30-46 km range envelope.
   const std::unordered_map<double, std::tuple<double, double, double, double>> dataset {
     // JDE                  Longitude in deg     Latitude in deg      Radius in km          PPI in rad
     { 2455820.8787544146, { 36.726233329781266,   3.3231721517193722, 405517.13842505851, 0.015729059017928697 } },
@@ -138,75 +139,12 @@ TEST(Moon, Perturbation) {
   }
 }
 
-TEST(Moon, DiffTest1) {
-  // Compare our results with other data sources.
-  // The distance/radius seems problematic, so we only test longitude and latitude here.
-  // https://doncarona.tamu.edu/cgi-bin/moon?current=0&jd=
-  const std::unordered_map<double, std::tuple<double, double>> dataset {{
-    {  2454988.902283522, { 240.636, -4.429 } },
-    { 2456389.9819942624, { 342.630,  4.682 } },
-    {  2457770.720007621, { 176.765,  2.035 } },
-    { 2455501.7090088516, { 150.642, -4.330 } },
-    {  2456585.023210534, {  32.738,  0.370 } },
-    {   2452288.38119678, { 297.123, -2.699 } },
-    {        2460526.159, { 122.450,  4.597 } },
-  }};
-
-  for (const auto& [jde, expected] : dataset) {
-    const auto& [lon, lat] = expected;
-    const auto coord = apparent(jde);
-    ASSERT_NEAR(coord.λ.deg(), lon, 0.1);
-    ASSERT_NEAR(coord.β.deg(), lat, 0.1);
-  }
-}
-
-TEST(Moon, DiffTest2) {
-  using namespace std::chrono_literals;
-  using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
-
-  // Compare our results with other data sources.
-  // https://www.timeanddate.com/astronomy/moon/distance.html
-  // San Jose, CA time is used, because I live in San Jose :)
-  // Timezone is PDT.
-  const std::unordered_map<calendar::Datetime, double> dataset {{
-    { calendar::Datetime { util::to_ymd(2024,  1, 13), hms {  2h + 34min } }, 362267.0 },
-    { calendar::Datetime { util::to_ymd(2024,  2, 10), hms { 10h + 52min } }, 358088.0 },
-    { calendar::Datetime { util::to_ymd(2024,  3,  9), hms { 23h +  4min } }, 356895.0 },
-    { calendar::Datetime { util::to_ymd(2024,  4,  7), hms { 10h + 50min } }, 358850.0 },
-    { calendar::Datetime { util::to_ymd(2024,  5,  5), hms { 15h +  4min } }, 363163.0 },
-    { calendar::Datetime { util::to_ymd(2024,  6,  2), hms {  0h + 16min } }, 368102.0 },
-    { calendar::Datetime { util::to_ymd(2024,  6, 27), hms {  4h + 30min } }, 369286.0 },
-    { calendar::Datetime { util::to_ymd(2024,  7, 23), hms { 22h + 41min } }, 364917.0 },
-    { calendar::Datetime { util::to_ymd(2024,  8, 20), hms { 22h +  2min } }, 360196.0 },
-    { calendar::Datetime { util::to_ymd(2024,  9, 18), hms {  6h + 23min } }, 357286.0 },
-    { calendar::Datetime { util::to_ymd(2024, 10, 16), hms { 17h + 51min } }, 357175.0 },
-    { calendar::Datetime { util::to_ymd(2024, 11, 14), hms {  3h + 14min } }, 360109.0 },
-    { calendar::Datetime { util::to_ymd(2024, 12, 12), hms {  5h + 20min } }, 365361.0 },
-
-    { calendar::Datetime { util::to_ymd(2025,  1, 20), hms { 20h + 54min } }, 404298.0 },
-    { calendar::Datetime { util::to_ymd(2025,  2, 17), hms { 17h + 10min } }, 404882.0 },
-    { calendar::Datetime { util::to_ymd(2025,  3, 17), hms {  9h + 36min } }, 405754.0 },
-    { calendar::Datetime { util::to_ymd(2025,  4, 13), hms { 15h + 48min } }, 406295.0 },
-    { calendar::Datetime { util::to_ymd(2025,  5, 10), hms { 17h + 47min } }, 406244.0 },
-    { calendar::Datetime { util::to_ymd(2025,  6,  7), hms {  3h + 43min } }, 405554.0 },
-    { calendar::Datetime { util::to_ymd(2025,  7,  4), hms { 19h + 29min } }, 404627.0 },
-    { calendar::Datetime { util::to_ymd(2025,  8,  1), hms { 13h + 36min } }, 404161.0 },
-    { calendar::Datetime { util::to_ymd(2025,  8, 29), hms {  8h + 33min } }, 404548.0 },
-    { calendar::Datetime { util::to_ymd(2025,  9, 26), hms {  2h + 46min } }, 405548.0 },
-    { calendar::Datetime { util::to_ymd(2025, 10, 23), hms { 16h + 30min } }, 406444.0 },
-    { calendar::Datetime { util::to_ymd(2025, 11, 19), hms { 18h + 48min } }, 406691.0 },
-    { calendar::Datetime { util::to_ymd(2025, 12, 16), hms { 22h +  9min } }, 406322.0 },
-  }};
-
-  for (const auto& [dt, expected] : dataset) {
-    // Convert to UTC from PDT. 
-    // Difference between UTC and UT1 is ignored.
-    const double jde = astro::julian_day::ut1_to_jde(dt) + 7.0 / 24.0; 
-    const auto coord = apparent(jde);
-    const auto distance = coord.r.km();
-    ASSERT_NEAR(distance, expected, 5.0);
-  }
-}
+// DiffTest1 (doncarona.tamu.edu, 0.1° tolerance) and DiffTest2 (timeanddate.com perigee/apogee
+// distances, which carried a fixed PDT offset for PST rows and only extremum epochs, #68) were
+// retired 2026-07-27: moon_horizons_golden_test.cpp supersedes both with JPL DE441 values at
+// full provenance and non-extremum sampling — angle tolerances ~30× tighter, and the range
+// tolerance reset from DiffTest2's nominal 5 km (asserted on wrong-offset inputs at extremum
+// epochs only) to the series' own measured ~46 km truncation envelope.
 
 TEST(Moon, RandomApparentPosition) {
   // In this test, random apparent positions are generated.
