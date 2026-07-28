@@ -6,6 +6,7 @@
 
 * Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
+* Sunrise, sunset, transit, twilight, and polar day/night queries, within ±2 min of external references (USNO / NOAA / JPL DE) (日出日落、中天、曙暮光、极昼极夜)
 
 ## 2. Requirements
 
