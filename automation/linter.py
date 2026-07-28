@@ -97,10 +97,11 @@ def run_clang_tidy() -> int:
   stdout_log = build_dir / "clang-tidy-stdout.log"
   stderr_log = build_dir / "clang-tidy-stderr.log"
 
-  with stdout_log.open("w") as f:
+  # Explicit UTF-8: Windows' locale default (cp1252) chokes on non-ASCII in analyzed sources.
+  with stdout_log.open("w", encoding="utf-8") as f:
     f.write(clean_text(ret.stdout))
 
-  with stderr_log.open("w") as f:
+  with stderr_log.open("w", encoding="utf-8") as f:
     f.write(clean_text(ret.stderr))
 
   return ret.retcode
