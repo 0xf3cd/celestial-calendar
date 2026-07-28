@@ -1,46 +1,18 @@
 #include <gtest/gtest.h>
 #include <algorithm>
-#include <chrono>
 #include <ranges>
 #include "util.hpp"
 #include "jieqi.hpp"
-#include "datetime.hpp"
 
 namespace calendar::jieqi::test {
-
-using namespace std::chrono;
-using namespace std::literals;
 
 using namespace calendar::jieqi;
 using namespace astro::sun::geocentric_coord::math;
 
-
-using hms_type = hh_mm_ss<nanoseconds>;
-
-struct JieqiData {
-  const year_month_day ymd;
-  const hms_type hms;
-  const Jieqi jieqi;
-};
-
-
-// Data collected from:
-// - https://scienceworld.wolfram.com/astronomy/WinterSolstice.html
-// - https://jieqi.bmcx.com/
-// - https://www.weather.gov/media/ind/seasons.pdf
-//
-// Actually some data points are in UT1, and some are in UTC...
-// Assume they are in UT1...
-const std::vector<JieqiData> DATASET {
-  { util::to_ymd(1984, 12, 21),              hms_type { 16h + 10min }, Jieqi::冬至 },
-  { util::to_ymd(1997, 12, 21),              hms_type { 19h + 54min }, Jieqi::冬至 },
-  { util::to_ymd(2000,  3, 20),         hms_type { 7h + 35min + 15s }, Jieqi::春分 },
-  { util::to_ymd(2008,  6, 20), hms_type { 23h + 59min + 20s + 56ms }, Jieqi::夏至 },
-  { util::to_ymd(2023,  3, 20),              hms_type { 21h + 24min }, Jieqi::春分 },
-  { util::to_ymd(2024,  9, 22),              hms_type { 12h + 44min }, Jieqi::秋分 },
-  { util::to_ymd(2026,  9, 23),                     hms_type { 5min }, Jieqi::秋分 },
-  { util::to_ymd(2027,  6, 21),              hms_type { 14h + 11min }, Jieqi::夏至 },
-};
+// The UT1Moment test and its DATASET (wolfram/bmcx/weather.gov values of mixed, undocumented
+// time scales — "Assume they are in UT1"; split ymd+fraction assertion, #68) were retired
+// 2026-07-27: jieqi_golden_test.cpp supersedes them with the official HKO almanac (168
+// minute-precision values, single continuous JD assertion) and DE441-derived crossings.
 
 TEST(JieQi, NameQuery) {
   ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::立春), 315.0);
@@ -108,18 +80,6 @@ TEST(JieQi, JDEOrder) {
   for (const auto jde : jdes) {
     const auto ut1 = astro::julian_day::jde_to_ut1(jde);
     ASSERT_EQ(ut1.year(), year);
-  }
-}
-
-TEST(JieQi, UT1Moment) {
-  for (const auto& [ymd, hms, jq] : DATASET) {
-    const Datetime real_dt { ymd, hms };
-    const auto [y, _, __] = util::from_ymd(ymd);
-
-    const auto est_dt = jieqi_ut1_moment(y, jq);
-
-    ASSERT_EQ(est_dt.ymd, real_dt.ymd);
-    ASSERT_NEAR(est_dt.fraction(), real_dt.fraction(), 0.01);
   }
 }
 
