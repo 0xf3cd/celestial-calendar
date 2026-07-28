@@ -109,9 +109,12 @@ void expect_event(
 ) {
   const auto golden = cell_minutes(cell);
   ASSERT_EQ(event_jde.has_value(), golden.has_value()) << what;
-  if (golden.has_value()) {
-    ASSERT_LE(clock_diff(jde_to_local_minutes(*event_jde, tz), *golden), TOL_MIN) << what;
+  // Explicit guard (not just the ASSERT above): clang-tidy's unchecked-optional-access
+  // cannot see through gtest macros (#110's lesson).
+  if (not event_jde.has_value() or not golden.has_value()) {
+    return;
   }
+  ASSERT_LE(clock_diff(jde_to_local_minutes(*event_jde, tz), *golden), TOL_MIN) << what;
 }
 
 struct GoldenRow {
