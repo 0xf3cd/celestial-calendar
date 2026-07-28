@@ -39,7 +39,7 @@ HORIZONS = "https://ssd.jpl.nasa.gov/api/horizons.api"
 MEAN_MOTION = 360.0 / 365.2422
 
 # --- Axis 1 epochs (same banding philosophy as moon_horizons_crawler.py) ---
-# Core band 1900-2100: 32 epochs stepped 2283.25 days + the Meeus 25.b anchor.
+# Core band 1901-2094 (32 epochs stepped 2283.25 days) + the Meeus 25.b anchor.
 SUN_CORE_EPOCHS = [2415385.5 + k * 2283.25 for k in range(32)] + [2448908.5]
 # ~501/999/1599/2500/3000 CE, plus the lunar-algo2 boundary years ~410 and ~5001 (#94).
 SUN_EXTENDED_EPOCHS = [1870800.5, 1904000.5, 2086000.5, 2305000.5, 2634000.5, 2817000.5, 3547660.5]
@@ -75,6 +75,12 @@ def horizons_get(params: dict) -> str:
     try:
       resp = requests.get(HORIZONS, params=params, timeout=120)
       resp.raise_for_status()
+    except requests.HTTPError as exc:
+      if exc.response is not None and 400 <= exc.response.status_code < 500:
+        raise  # client error — retrying identical parameters cannot succeed
+      last_error = exc
+      print(f"horizons_get retry {attempt + 1}: {exc}", file=sys.stderr)
+      continue
     except requests.RequestException as exc:  # noqa: PERF203 — retry loop
       last_error = exc
       print(f"horizons_get retry {attempt + 1}: {exc}", file=sys.stderr)
@@ -214,6 +220,11 @@ def solve_crossings(targets: list[tuple[int, float]]) -> dict[tuple[int, float],
     raise RuntimeError("crossing solver did not converge in 6 iterations")
   final = fetch_observer("10", sorted(set(est.values())))
   for (year, lon), jd in est.items():
+    # Re-verify the CONVERGED instants against the final fetch (the loop's 0.05 s check
+    # measured the residual before the last linear correction).
+    resid_s = abs(wrapped_deg(lon - final[jd]["lon"])) * 86400.0 / MEAN_MOTION
+    if resid_s > 0.05:
+      raise RuntimeError(f"crossing ({year}, {lon}) final residual {resid_s:.3f} s > 0.05 s")
     # Containment gate: every crossing must land inside its calendar year, else the seed
     # picked the wrong solar cycle (this exact bug produced 1-year offsets on lon >= 285
     # in the first run — caught by the HKO cross-validation).
@@ -290,9 +301,10 @@ def main() -> None:
   print(f"HKO(2022-2028, 168 values) vs DE441 crossings: worst {worst_min:.2f} min "
         f"(expect <= ~0.5 min rounding + chain difference)")
   # Hard acceptance gate (#94): nothing is emitted unless the two independent pipelines
-  # agree. Threshold matches the C++ HKO tolerance (1.0 min). The first run's one-year
-  # seed bug was only visible in this report — a report nobody re-reads on re-runs.
-  if worst_min > 1.0:
+  # agree. Threshold 0.6 min = HKO's ±0.5 min rounding bound plus a small chain allowance
+  # (measured worst 0.51); anything larger means real drift, not rounding. The first run's
+  # one-year seed bug was only visible in this report — a report nobody re-reads on re-runs.
+  if worst_min > 0.6:
     raise RuntimeError(f"HKO vs DE441 cross-validation gate failed: worst {worst_min:.2f} min")
 
   # ---- Emit C++ rows ----

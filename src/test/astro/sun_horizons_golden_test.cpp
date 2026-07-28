@@ -107,7 +107,7 @@ void check_band(const std::span<const HorizonsSunRow> rows, const Tolerance& tol
             << worst_lat * 3600.0 << "\", dr " << worst_r << " AU\n";
 }
 
-// 1900–2100 + the Meeus Example 25.b anchor (row 2448908.50). 32 epochs stepped 2283.25 days.
+// 1901–2094 (32 epochs stepped 2283.25 days) + the Meeus Example 25.b anchor (2448908.50).
 const std::vector<HorizonsSunRow> SUN_CORE_ROWS {
   {  2415385.50,  279.9091090,   0.0000094,  0.9832022703 },  // 1901-Jan-01 00:00:00.000 TT, rdot -0.0201 km/s
   {  2417668.75,   12.3366840,   0.0001985,  0.9999906874 },  // 1907-Apr-03 06:00:00.000 TT, rdot +0.5089 km/s
