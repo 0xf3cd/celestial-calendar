@@ -119,6 +119,9 @@ void check_band(const std::span<const HorizonsRow> rows, const Tolerance& tol,
     worst_lat = std::max(worst_lat, d_lat);
     worst_r = std::max(worst_r, d_r);
   }
+  // Intentional pass-or-fail print: keeps the measured residuals visible in test logs, so
+  // drift against the 2026-07-27 values recorded above each TEST is spottable without a
+  // local re-measurement run.
   std::cout << band << " measured worst residuals: dlon " << worst_lon * 3600.0 << "\", dlat "
             << worst_lat * 3600.0 << "\", dr " << worst_r << " km\n";
 }
