@@ -323,6 +323,14 @@ TEST(Datetime, EdgeCases) {
 
       ASSERT_THROW((Datetime { today_tp, -1e-11 }), 
                    std::invalid_argument);
+
+      // #67: NaN and huge fractions slip past `<`-style checks — and used to reach the
+      // undefined double→int64 cast in `from_fraction` before the (too-late) body check.
+      ASSERT_THROW((Datetime { today_tp, std::numeric_limits<double>::quiet_NaN() }),
+                   std::invalid_argument);
+
+      ASSERT_THROW((Datetime { today_tp, 1e300 }),
+                   std::invalid_argument);
     }
   }
 

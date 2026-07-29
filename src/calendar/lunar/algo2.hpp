@@ -445,8 +445,18 @@ constexpr int32_t START_YEAR = 410; // Algo2 actually has no limit on year. Simp
 /** @brief The last supported lunar year. */
 constexpr int32_t END_YEAR = 5000; // Algo2 actually has no limit on year. Simply use 5000 here.
 
-/** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
-const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
+/**
+ * @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.
+ * @return The lazily computed bounds.
+ * @note #67: function-local `static`, not a namespace-scope variable — the latter computes at
+ *       static-init time, i.e. runs the whole astro pipeline (VSOP87D + ELP2000 + nutation)
+ *       while the shared library is still being loaded, where an escaping exception would
+ *       terminate the host before `main`. Function-local `static` init is also thread-safe.
+ */
+inline auto bounds() -> const common::AlgoBounds& {
+  static const common::AlgoBounds value = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
+  return value;
+}
 
 } // namespace calendar::lunar::algo2
 
@@ -459,7 +469,7 @@ struct AlgoMetadata<Algo::ALGO_2> {
   // Bind, don't copy: a copied `std::function` would fork its own cache replica,
   // recomputing every year already cached on the namespace-level path (#78).
   static const inline auto& get_info_for_year = algo2::get_info_for_year;
-  static const inline auto& bounds = algo2::bounds;
+  static const inline auto& bounds = algo2::bounds(); // #67: `bounds` is a function now (lazy init).
 };
 
 } // namespace calendar::lunar::common

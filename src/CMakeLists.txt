@@ -17,5 +17,7 @@ include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 
 # Add subdirectories
-add_subdirectory(test)
+# `shared_lib` first: the C-ABI smoke test links the `celestial_calendar` target (#67),
+# and `target_link_libraries` only binds a real target if it is already defined.
 add_subdirectory(shared_lib)
+add_subdirectory(test)

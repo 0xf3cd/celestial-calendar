@@ -24,6 +24,7 @@
 #include <algorithm>
 
 #include "lib.hpp"
+#include "celestial.h"
 
 #include "astro.hpp"
 #include "util.hpp"
@@ -33,11 +34,6 @@
 extern "C" {
 
 #pragma region Julian Days
-
-struct JulianDay {
-  bool   valid; // Indicates if the result is valid.
-  double value; // The value. Either JD or JDE.
-};
 
 /**
  * @brief Convert UT1 datetime to Julian Day Number (JD).
@@ -49,6 +45,8 @@ struct JulianDay {
  * @details JD is based on UT1.
  */
 auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
+  lib::clear_last_error();
+
   try {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
@@ -59,9 +57,14 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
       .value = jd,
     };
   } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
     lib::info("Error in ut1_jd: {}", e.what());
     lib::debug("ut1_to_jd: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    lib::set_last_error("Unknown error in ut1_to_jd.");
     return {};
   }
 }
@@ -77,6 +80,8 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
  * @details JDE is based on TT.
  */
 auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
+  lib::clear_last_error();
+
   try {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
@@ -87,21 +92,17 @@ auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const doubl
       .value = jde,
     };
   } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
     lib::info("Error in ut1_jde: {}", e.what());
     lib::debug("ut1_to_jde: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    lib::set_last_error("Unknown error in ut1_to_jde.");
+    return {};
   }
 }
-
-
-struct UT1Time {
-  bool     valid;    // Indicates if the result is valid.
-  int32_t  year;     // The year.
-  uint32_t month;    // The month.
-  uint32_t day;      // The day.
-  double   fraction; // The fraction of the day. Must be in the range [0.0, 1.0).
-};
 
 
 /**
@@ -110,6 +111,8 @@ struct UT1Time {
  * @returns A `UT1Time` struct.
  */
 auto jde_to_ut1(const double jde) -> UT1Time {
+  lib::clear_last_error();
+
   try {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
@@ -124,9 +127,14 @@ auto jde_to_ut1(const double jde) -> UT1Time {
       .fraction   = fraction,
     };
   } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
     lib::info("Error in jde_to_ut1: {}", e.what());
     lib::debug("jde_to_ut1: jde = {}", jde);
 
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    lib::set_last_error("Unknown error in jde_to_ut1.");
     return {};
   }
 }
@@ -136,13 +144,6 @@ auto jde_to_ut1(const double jde) -> UT1Time {
 
 
 #pragma region Solar Apparent Geocentric Position
-
-struct SunCoordinate {
-  bool valid; // Indicates if the result is valid.
-  double lon; // The longitude. In degrees.
-  double lat; // The latitude. In degrees.
-  double   r; // The radius. In AU.
-};
 
 /**
  * @brief Calculate the apparent geocentric position of the Sun.
@@ -164,6 +165,9 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
     lib::debug("sun_apparent_geocentric_position: jde = {}", jde);
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
   }
 }
 
@@ -171,14 +175,6 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
 
 
 #pragma region Moon Apparent Geocentric Position
-
-struct MoonCoordinate {
-  bool valid; // Indicates if the result is valid.
-  double lon; // The longitude. In degrees.
-  double lat; // The latitude. In degrees.
-  double   r; // The radius. In KM.
-};
-
 
 /**
  * @brief Calculate the apparent geocentric position of the Moon.
@@ -200,6 +196,9 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
     lib::debug("moon_apparent_geocentric_position: jde = {}", jde);
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
   }
 }
 
@@ -207,11 +206,6 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 
 
 #pragma region Sun Position
-
-struct Discriminant {
-  bool     valid; // Indicates if the result is valid.
-  uint32_t count; // The count of the roots, which is 0, 1, or 2.
-};
 
 /**
  * @brief Calculate the JDE discriminant, which is the count of the roots for the given `year` and `lon`.
@@ -231,6 +225,9 @@ auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> 
   } catch (const std::exception& e) {
     lib::info("Exception raised during execution of root_discriminant");
     lib::debug("root_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }
@@ -253,6 +250,12 @@ auto solar_lon_roots(
 ) -> uint32_t {
   using namespace astro::sun::geocentric_coord::math;
 
+  // #67: the out-pointer is written to unconditionally below — reject null up front.
+  if (slots == nullptr and slot_count > 0) {
+    lib::info("Error in solar_lon_roots: `slots` is null, but `slot_count` is {}.", slot_count);
+    return 0;
+  }
+
   try {
     auto roots = find_roots(year, longitude);
 
@@ -273,6 +276,9 @@ auto solar_lon_roots(
     lib::info("Exception raised during execution of copy_roots");
     lib::debug("copy_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
 
+    return 0;
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return 0;
   }
 }
@@ -296,6 +302,12 @@ auto new_moons_after_jde(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
+  // #67: the out-pointer is written to unconditionally below — reject null up front.
+  if (slots == nullptr and slot_count > 0) {
+    lib::info("Error in new_moons_after_jde: `slots` is null, but `slot_count` is {}.", slot_count);
+    return 0;
+  }
+
   try {
     std::vector<double> roots;
     roots.reserve(slot_count);
@@ -309,6 +321,9 @@ auto new_moons_after_jde(
     lib::info("Exception thrown during execution of sun_moon_conjunctions_after_jde");
     lib::debug("sun_moon_conjunctions_after_jde: jde = {}, error = {}", jde, e.what());
 
+    return 0;
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return 0;
   }
 }
@@ -330,6 +345,16 @@ auto new_moons_in_year(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
+  // #67: the out-pointers are written to unconditionally below — reject null up front.
+  if (root_count == nullptr) {
+    lib::info("Error in new_moons_in_year: `root_count` is null.");
+    return 0;
+  }
+  if (slots == nullptr and slot_count > 0) {
+    lib::info("Error in new_moons_in_year: `slots` is null, but `slot_count` is {}.", slot_count);
+    return 0;
+  }
+
   try {
     const auto roots = astro::moon_phase::new_moon::moments(year);
 
@@ -343,6 +368,9 @@ auto new_moons_in_year(
     lib::info("Exception thrown during execution of sun_moon_conjunctions_in_year");
     lib::debug("sun_moon_conjunctions_in_year: year = {}, error = {}", year, e.what());
 
+    return 0;
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return 0;
   }
 }

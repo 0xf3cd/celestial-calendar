@@ -22,14 +22,10 @@
  */
 
 #include "lib.hpp"
+#include "celestial.h"
 #include "delta_t.hpp"
 
 extern "C" {
-
-struct DeltaT {
-  bool   valid; // Indicates if the result is valid.
-  double value; // The value of delta T.
-};
 
 /** @brief Compute delta T of a given moment using algorithm 1. */
 auto delta_t_algo1(double year) -> DeltaT {
@@ -42,6 +38,9 @@ auto delta_t_algo1(double year) -> DeltaT {
     lib::info("Exception raised during execution of delta_t_algo1");
     lib::debug("delta_t_algo1: year = {}, error = {}", year, e.what());
 
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }
@@ -58,6 +57,9 @@ auto delta_t_algo2(double year) -> DeltaT {
     lib::debug("delta_t_algo2: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
   }
 }
 
@@ -72,6 +74,9 @@ auto delta_t_algo3(double year) -> DeltaT {
     lib::info("Exception raised during execution of delta_t_algo3");
     lib::debug("delta_t_algo3: year = {}, error = {}", year, e.what());
 
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }
@@ -88,6 +93,9 @@ auto delta_t_algo4(double year) -> DeltaT {
     lib::debug("delta_t_algo4: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
   }
 }
 
@@ -103,6 +111,9 @@ auto delta_t_algo5(double year) -> DeltaT {
     lib::debug("delta_t_algo5: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
   }
 }
 
@@ -117,6 +128,9 @@ auto delta_t(double year) -> DeltaT {
     lib::info("Exception raised during execution of delta_t");
     lib::debug("delta_t: year = {}, error = {}", year, e.what());
 
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }   
