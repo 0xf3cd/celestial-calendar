@@ -114,11 +114,10 @@ constexpr auto tai_minus_utc(const std::chrono::year_month_day& utc_ymd) -> doub
     };
   }
 
-  // Find the last entry whose start is on or before the date.
-  const auto after = std::ranges::upper_bound(
-    LEAP_SECOND_TABLE, utc_ymd, {}, &LeapSecondEntry::start_utc
-  );
-  return std::prev(after)->tai_minus_utc;
+  // The last entry whose start is on or before the date.
+  return std::prev(
+    std::ranges::upper_bound(LEAP_SECOND_TABLE, utc_ymd, {}, &LeapSecondEntry::start_utc)
+  )->tai_minus_utc;
 }
 
 

@@ -47,14 +47,14 @@ TEST(LeapSecond, TableMatchesIERS) {
 
   ASSERT_EQ(LEAP_SECOND_TABLE.size(), expected.size());
   for (std::size_t i = 0; i < expected.size(); ++i) {
-    ASSERT_EQ(LEAP_SECOND_TABLE[i].start_utc, to_ymd(expected[i].y, expected[i].m, 1));
-    ASSERT_EQ(LEAP_SECOND_TABLE[i].tai_minus_utc, expected[i].dat);
+    ASSERT_EQ(LEAP_SECOND_TABLE.at(i).start_utc, to_ymd(expected[i].y, expected[i].m, 1));
+    ASSERT_EQ(LEAP_SECOND_TABLE.at(i).tai_minus_utc, expected[i].dat);
   }
 
   // Structure: dates strictly increase, and every step inserts exactly one second.
   for (std::size_t i = 1; i < LEAP_SECOND_TABLE.size(); ++i) {
-    ASSERT_LT(LEAP_SECOND_TABLE[i - 1].start_utc, LEAP_SECOND_TABLE[i].start_utc);
-    ASSERT_EQ(LEAP_SECOND_TABLE[i].tai_minus_utc - LEAP_SECOND_TABLE[i - 1].tai_minus_utc, 1.0);
+    ASSERT_LT(LEAP_SECOND_TABLE.at(i - 1).start_utc, LEAP_SECOND_TABLE.at(i).start_utc);
+    ASSERT_EQ(LEAP_SECOND_TABLE.at(i).tai_minus_utc - LEAP_SECOND_TABLE.at(i - 1).tai_minus_utc, 1.0);
   }
 }
 
