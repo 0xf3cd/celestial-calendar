@@ -77,19 +77,12 @@ constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::Angle<
  *         |E| stays under 5° (20 min of time).
  * @details The wrap matters near the equinoxes, where the apparent right ascension α and
  *          the mean longitude L0 can sit on opposite sides of the 0°/360° seam.
- * @throw std::invalid_argument if `jde_tt` is not finite.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
  */
 inline auto equation_of_time(const double jde_tt) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
   using astro::toolbox::Angle;
   using astro::toolbox::AngleUnit::DEG;
   using astro::toolbox::normalize_pm180;
-
-  if (not std::isfinite(jde_tt)) {
-    throw std::invalid_argument {
-      std::format("Argument `jde_tt` is not finite, whose value is {}", jde_tt)
-    };
-  }
 
   const auto L0 = detail::sun_mean_longitude(jde_tt);
   const auto α  = astro::sun::equatorial_coord::apparent(jde_tt).α;
