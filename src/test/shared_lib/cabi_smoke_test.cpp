@@ -34,6 +34,7 @@
 #include <gtest/gtest.h>
 
 #include "celestial.h"
+#include "lib.hpp" // the logging-swallow test drives `lib::info` directly
 
 #ifdef _WIN32
   #include <io.h>
@@ -44,12 +45,14 @@
 
 namespace {
 
+// [[maybe_unused]] on the Windows wrappers: `LoggingSurvivesClosedStdout` is skipped on
+// Windows (UCRT fail-fasts on closed-fd writes), so nothing odr-uses them there.
 #ifdef _WIN32
-auto dup_fd(const int fd) -> int { return ::_dup(fd); }
+[[maybe_unused]] auto dup_fd(const int fd) -> int { return ::_dup(fd); }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) — mirrors `_dup2`'s own signature.
-auto dup2_fd(const int from, const int to) -> int { return ::_dup2(from, to); }
-auto close_fd(const int fd) -> int { return ::_close(fd); }
-auto stdout_fileno() -> int { return ::_fileno(stdout); }
+[[maybe_unused]] auto dup2_fd(const int from, const int to) -> int { return ::_dup2(from, to); }
+[[maybe_unused]] auto close_fd(const int fd) -> int { return ::_close(fd); }
+[[maybe_unused]] auto stdout_fileno() -> int { return ::_fileno(stdout); }
 #else
 auto dup_fd(const int fd) -> int { return ::dup(fd); }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) — mirrors `dup2`'s own signature.
@@ -72,6 +75,11 @@ struct StdoutGuard {
       close_fd(stdout_fileno());
     }
   }
+
+  StdoutGuard(const StdoutGuard&) = delete;
+  auto operator=(const StdoutGuard&) -> StdoutGuard& = delete;
+  StdoutGuard(StdoutGuard&&) = delete;
+  auto operator=(StdoutGuard&&) -> StdoutGuard& = delete;
 
   ~StdoutGuard() {
     if (saved >= 0) {
@@ -286,6 +294,12 @@ TEST(CAbiSmoke, Lunar) {
 // #67: `std::println` throws `std::system_error` on a failed stream — with stdout closed,
 // the log call inside a catch handler must not escape and terminate the host.
 TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
+#ifdef _WIN32
+  // UCRT routes writes to a closed fd through the invalid-parameter handler, which is a
+  // process-level `__fastfail` (0xc0000409) in release — not a C++ exception the library
+  // could swallow. The portable counterpart below covers the same swallow path.
+  GTEST_SKIP() << "UCRT fail-fasts on writes to closed fds — not an exception path";
+#else
   ASSERT_TRUE(set_log_verbosity(1)); // INFO, so the failing call below really logs.
 
   // stdout is fully buffered when piped (ctest/CI), and a buffered `println` never touches
@@ -299,4 +313,12 @@ TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
 
   ASSERT_TRUE(set_log_verbosity(2)); // restore the default
   EXPECT_FALSE(jd.valid);
+#endif
+}
+
+
+// Portable counterpart of the test above: `std::vformat` throws `std::format_error` on a
+// runtime bad format string, and `log_noexcept` must swallow it on every platform.
+TEST(CAbiSmoke, LoggingSwallowsBadFormatString) {
+  ASSERT_NO_THROW(lib::info("{"));
 }

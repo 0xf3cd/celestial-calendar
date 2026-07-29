@@ -39,6 +39,12 @@
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
  * On failure the Julian Day functions also record a thread-local message readable
  * through `last_error` (#97 pilot).
+ *
+ * Platform note: the library logs to stdout and swallows any logging failure. On
+ * Windows (UCRT), however, writing to a closed stdout fail-fasts the process
+ * (0xc0000409) through the invalid-parameter handler — not an exception path, so
+ * the library cannot catch it. Hosts must not close the logging stream out from
+ * under the library; an opt-out log sink is tracked on the backlog.
  */
 
 #include <stdbool.h>

@@ -332,6 +332,12 @@ auto new_moons_in_year(
 
 auto equation_of_time(const double jde) -> EquationOfTime {
   try {
+    if (not std::isfinite(jde)) {
+      throw std::invalid_argument {
+        std::format("Argument `jde` is not finite, whose value is {}", jde)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::solar_time::equation_of_time(jde).deg(),
