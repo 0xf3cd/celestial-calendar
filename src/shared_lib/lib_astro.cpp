@@ -377,4 +377,86 @@ auto new_moons_in_year(
 
 #pragma endregion
 
+
+#pragma region Solar Time
+
+/**
+ * @brief Compute the equation of time E = apparent solar time − mean solar time.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @returns A `EquationOfTime` struct; `value` is E in degrees of hour angle (×240 = seconds of time).
+ */
+auto equation_of_time(const double jde) -> EquationOfTime {
+  try {
+    // The core pipeline has no finite guard — a NaN JDE would come back as
+    // `valid = true, value = NaN`.
+    if (not std::isfinite(jde)) {
+      throw std::invalid_argument {
+        std::format("Argument `jde` is not finite, whose value is {}", jde)
+      };
+    }
+
+    return {
+      .valid = true,
+      .value = astro::solar_time::equation_of_time(jde).deg(),
+    };
+  } catch (const std::exception& e) {
+    lib::info("Error in equation_of_time: {}", e.what());
+    lib::debug("equation_of_time: jde = {}", jde);
+
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
+  }
+}
+
+
+/**
+ * @brief Convert a civil UTC moment to local apparent (true) solar time.
+ * @param y The year (UTC).
+ * @param m The month (UTC).
+ * @param d The day (UTC).
+ * @param fraction The fraction of the day (UTC). Must be in the range [0.0, 1.0).
+ * @param longitude The observer's geographic longitude in degrees, positive east, in [−180, 180].
+ * @returns A `SolarTime` struct.
+ */
+auto apparent_solar_time(
+  const int32_t y,
+  const uint32_t m,
+  const uint32_t d,
+  const double fraction,
+  const double longitude
+) -> SolarTime {
+  try {
+    const auto ymd = util::to_ymd(y, m, d);
+    const auto utc_dt = calendar::Datetime(ymd, fraction);
+    const auto lon = astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> { longitude };
+    const auto apparent_dt = astro::solar_time::apparent(utc_dt, lon);
+
+    // Named differently from the `y/m/d` params — structured bindings declare new names.
+    const auto [ay, am, ad] = util::from_ymd(apparent_dt.ymd);
+
+    return {
+      .valid    = true,
+      .year     = ay,
+      .month    = am,
+      .day      = ad,
+      .fraction = apparent_dt.fraction(),
+    };
+  } catch (const std::exception& e) {
+    lib::info("Error in apparent_solar_time: {}", e.what());
+    lib::debug(
+      "apparent_solar_time: y = {}, m = {}, d = {}, fraction = {}, longitude = {}",
+      y, m, d, fraction, longitude
+    );
+
+    return {};
+  } catch (...) {
+    // #67: nothing may escape the `extern "C"` boundary.
+    return {};
+  }
+}
+
+#pragma endregion
+
 }

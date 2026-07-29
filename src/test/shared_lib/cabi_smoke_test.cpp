@@ -26,6 +26,7 @@
 // `valid = false` paths: bad arguments, NaN, null out-pointers, and a closed stdout.
 
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <limits>
@@ -171,6 +172,31 @@ TEST(CAbiSmoke, NewMoons) {
   EXPECT_TRUE(root_count == 12U or root_count == 13U);
   EXPECT_EQ(new_moons_in_year(2024, nullptr, slots.data(), slots.size()), 0U); // null root_count
   EXPECT_EQ(new_moons_in_year(2024, &root_count, nullptr, 15), 0U);            // null slots
+}
+
+
+TEST(CAbiSmoke, EquationOfTime) {
+  const EquationOfTime e = equation_of_time(2460463.0);
+  ASSERT_TRUE(e.valid);
+  EXPECT_LT(std::fabs(e.value), 5.0); // |E| stays under 5° (Meeus ch. 28).
+
+  EXPECT_FALSE(equation_of_time(NAN_VALUE).valid); // non-finite JDE
+}
+
+
+TEST(CAbiSmoke, ApparentSolarTime) {
+  // UTC noon at 116.4°E: apparent time ≈ noon + longitude-in-time ± |E| (< 5°).
+  const SolarTime t = apparent_solar_time(2024, 6, 1, 0.5, 116.4);
+  ASSERT_TRUE(t.valid);
+  EXPECT_EQ(t.year, 2024);
+  EXPECT_EQ(t.month, 6U);
+  EXPECT_EQ(t.day, 1U);
+  EXPECT_GT(t.fraction, 0.5 + 111.4 / 360.0);
+  EXPECT_LT(t.fraction, 0.5 + 121.4 / 360.0);
+
+  EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, 200.0).valid);     // longitude out of range
+  EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, NAN_VALUE).valid); // NaN longitude
+  EXPECT_FALSE(apparent_solar_time(2024, 6, 1, NAN_VALUE, 116.4).valid); // NaN fraction
 }
 
 

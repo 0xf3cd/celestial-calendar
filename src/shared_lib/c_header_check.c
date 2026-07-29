@@ -61,6 +61,13 @@ _Static_assert(offsetof(LunarYearInfo, year) == 4 && offsetof(LunarYearInfo, mon
 
 _Static_assert(offsetof(DeltaT, value) == 8 && sizeof(DeltaT) == 16, "DeltaT layout drifted");
 
+_Static_assert(offsetof(EquationOfTime, value) == 8 && sizeof(EquationOfTime) == 16,
+               "EquationOfTime layout drifted");
+
+_Static_assert(offsetof(SolarTime, year) == 4 && offsetof(SolarTime, month) == 8 &&
+               offsetof(SolarTime, day) == 12 && offsetof(SolarTime, fraction) == 16 &&
+               sizeof(SolarTime) == 24, "SolarTime layout drifted");
+
 
 /* Reference every exported symbol, so a declaration/definition name drift fails here too.
  * External linkage, or `-Werror -Wunused-variable` would fire on an unreferenced static. */
@@ -76,6 +83,8 @@ void *const celestial_exported_symbols[] = {
   (void *)&solar_lon_roots,
   (void *)&new_moons_after_jde,
   (void *)&new_moons_in_year,
+  (void *)&equation_of_time,
+  (void *)&apparent_solar_time,
   (void *)&query_jieqi_moment,
   (void *)&get_jieqi_name,
   (void *)&get_supported_lunar_year_range,

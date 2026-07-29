@@ -185,6 +185,31 @@ typedef struct LunarYearInfo {
 LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year);
 
 
+/* ---------- Solar Time ---------- */
+
+typedef struct EquationOfTime {
+  bool   valid; /* Indicates if the result is valid. */
+  double value; /* E in degrees of hour angle; x240 for seconds of time. */
+} EquationOfTime;
+
+/** @brief Compute the equation of time E = apparent solar time - mean solar time (Meeus ch. 28). */
+EquationOfTime equation_of_time(double jde);
+
+typedef struct SolarTime {
+  bool     valid;    /* Indicates if the result is valid. */
+  int32_t  year;     /* The year. */
+  uint32_t month;    /* The month. */
+  uint32_t day;      /* The day. */
+  double   fraction; /* The fraction of the day, in the range [0.0, 1.0). */
+} SolarTime;
+
+/**
+ * @brief Convert a civil UTC moment to local apparent (true) solar time.
+ *        `longitude` is positive east, in [-180, 180].
+ */
+SolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
+
+
 /* ---------- Delta T ---------- */
 
 typedef struct DeltaT {
