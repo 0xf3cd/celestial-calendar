@@ -147,7 +147,10 @@ constexpr auto utc_to_tt(const calendar::Datetime& utc_dt) -> calendar::Datetime
   if (utc_dt.ymd < MODERN_UTC_START) {
     return delta_t::ut1_to_tt(utc_dt);
   }
-  return calendar::add_seconds(utc_dt, tt_minus_utc(utc_dt.ymd));
+  return calendar::add_seconds(
+    utc_dt,
+    tt_minus_utc(utc_dt.ymd)
+  );
 }
 
 
@@ -171,14 +174,20 @@ constexpr auto tt_to_utc(const calendar::Datetime& tt_dt) -> calendar::Datetime 
     return delta_t::tt_to_ut1(tt_dt);
   }
 
-  const auto guessed_utc = calendar::add_seconds(tt_dt, -tt_minus_utc(tt_dt.ymd));
+  const auto guessed_utc = calendar::add_seconds(
+    tt_dt,
+    -tt_minus_utc(tt_dt.ymd)
+  );
 
   // The first ~42.184 s of 1972-01-01 (TT) still map below the table start.
   if (guessed_utc.ymd < MODERN_UTC_START) {
     return delta_t::tt_to_ut1(tt_dt);
   }
 
-  return calendar::add_seconds(tt_dt, -tt_minus_utc(guessed_utc.ymd));
+  return calendar::add_seconds(
+    tt_dt,
+    -tt_minus_utc(guessed_utc.ymd)
+  );
 }
 
 } // namespace astro::leap_second

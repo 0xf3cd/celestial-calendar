@@ -155,6 +155,16 @@ is intentional. Keep it. That buys a discipline:
 - `const`-correct; modern C++ (`<ranges>`, `<span>`, `std::array`).
 - 2-space indentation. Compiler flags: `-Wall -Wextra -Werror -Wpedantic -Wnull-dereference
   -Wunreachable-code -O2`.
+- **Multi-line call layout**: when an argument is itself a call, or the call grows long, put
+  each argument on its own line and the closing `);` on its own line at the call's
+  indentation — matching the existing `upper_bound` / `Datetime`-construction sites:
+  ```cpp
+  calendar::add_seconds(
+    tt_dt,
+    -tt_minus_utc(tt_dt.ymd)
+  );
+  ```
+  Trivial short calls stay on one line.
 - Doxygen `/** @brief / @param / @return / @note / @ref */` on public functions; inline `//`
   comments explain the physics, not the syntax — with order-of-magnitude arguments
   ("ΔT ≈ 69 s ≈ 0.29° of rotation"), not bare claims ("this is accurate"). `@ref` cites the

@@ -50,7 +50,10 @@ using calendar::lunar::common::LunarYear;
  *       `leap_second::tt_to_utc` never lands on a civil-day boundary here.
  */
 inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
-  return calendar::add_seconds(astro::julian_day::jde_to_utc(jde), 8.0 * 3600.0);
+  return calendar::add_seconds(
+    astro::julian_day::jde_to_utc(jde),
+    8.0 * 3600.0
+  );
 }
 
 
