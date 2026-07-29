@@ -22,25 +22,25 @@
  */
 
 #include "lib.hpp"
+#include "celestial.h"
 
 // This cpp file is holding the functions to control the global configuration, such as log verbosity level.
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 extern "C" {
 
-/** 
- * @brief Set the verbosity level of log printing. 
- * @param new_value The new verbosity level (in `uint8_t`).
- * @returns `true` if the verbosity level is changed to the specified value, `false` otherwise.
- */
 auto set_log_verbosity(const uint8_t new_value) -> bool {
-  if (new_value >= static_cast<uint8_t>(lib::Verbosity::COUNT)) {
-    lib::info("Invalid verbosity level: {}", new_value);
+  try {
+    return lib::set_verbosity(static_cast<lib::Verbosity>(new_value));
+  } catch (...) {
     return false;
   }
+}
 
-  const auto new_verbosity = static_cast<lib::Verbosity>(new_value);
-  const auto current_verbosity = lib::set_verbosity(new_verbosity);
-  return current_verbosity == new_verbosity;
+
+// Contract: see celestial.h.
+auto last_error() -> const char* {
+  return lib::last_error_message();
 }
 
 }

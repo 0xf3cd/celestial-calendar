@@ -111,6 +111,9 @@ jobs:
           cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
           cp "$OUTPUT_DIR/cpu_info.json" "$DEST_DIR/"
 
+          # Ship the published C-ABI header alongside the library
+          cp "$ROOT_DIR/src/shared_lib/celestial.h" "$DEST_DIR/"
+
           # Set environment variables for GitHub Actions
           {
             echo "artifact_name=${OS}_${ARCH}"
@@ -183,6 +186,9 @@ jobs:
 
         # Find and copy real files (not symlinks)
         find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
+
+        # Ship the published C-ABI header alongside the library
+        cp ./src/shared_lib/celestial.h ./macos_arm64/
 
         # Pack the "build_info.json" to the "macos_arm64" folder
         chmod +x ./toolbox/build_info.py
@@ -263,6 +269,9 @@ jobs:
           foreach ($lib in $libFiles) {
             Copy-Item -Path $lib.FullName -Destination $destDir
           }
+
+          # Ship the published C-ABI header alongside the library
+          Copy-Item -Path ./src/shared_lib/celestial.h -Destination $destDir
 
           # Pack the "build_info.json" to the "windows_x86_64" folder
           python3 ./toolbox/build_info.py --save-to $destDir

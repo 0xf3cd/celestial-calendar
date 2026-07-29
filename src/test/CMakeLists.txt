@@ -45,6 +45,19 @@ macro(CELESTIAL_ADD_TEST test_path test_name)
     ${test_name}
     GTest::gtest_main
   )
+  # #67: tests under `test/shared_lib/` drive the real shared library across the `extern "C"` boundary.
+  if("${test_path}" MATCHES "/shared_lib/")
+    target_link_libraries(${test_name} celestial_calendar)
+    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/shared_lib)
+    # Windows has no rpath — the test executable must find the DLL next to itself.
+    if(WIN32)
+      add_custom_command(
+        TARGET ${test_name} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          $<TARGET_FILE:celestial_calendar> $<TARGET_FILE_DIR:${test_name}>
+      )
+    endif()
+  endif()
   gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180) # Increase discovery timeout for docker builds
 endmacro()
 

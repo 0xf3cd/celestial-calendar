@@ -22,18 +22,22 @@
  */
 
 #include "lib.hpp"
+#include "celestial.h"
+
 #include "delta_t.hpp"
 
 extern "C" {
 
-struct DeltaT {
-  bool   valid; // Indicates if the result is valid.
-  double value; // The value of delta T.
-};
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
-/** @brief Compute delta T of a given moment using algorithm 1. */
 auto delta_t_algo1(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::algo1::compute(year),
@@ -43,12 +47,19 @@ auto delta_t_algo1(double year) -> DeltaT {
     lib::debug("delta_t_algo1: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
-/** @brief Compute delta T of a given moment using algorithm 2. */
 auto delta_t_algo2(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::algo2::compute(year),
@@ -58,12 +69,19 @@ auto delta_t_algo2(double year) -> DeltaT {
     lib::debug("delta_t_algo2: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
-/** @brief Compute delta T of a given moment using algorithm 3. */
 auto delta_t_algo3(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::algo3::compute(year),
@@ -73,12 +91,19 @@ auto delta_t_algo3(double year) -> DeltaT {
     lib::debug("delta_t_algo3: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
-/** @brief Compute delta T of a given moment using algorithm 4. */
 auto delta_t_algo4(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::algo4::compute(year),
@@ -88,12 +113,19 @@ auto delta_t_algo4(double year) -> DeltaT {
     lib::debug("delta_t_algo4: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
-/** @brief Compute delta T of a given moment using algorithm 5. */
 auto delta_t_algo5(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::algo5::compute(year),
@@ -103,12 +135,19 @@ auto delta_t_algo5(double year) -> DeltaT {
     lib::debug("delta_t_algo5: year = {}, error = {}", year, e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
-/** @brief Compute delta T of a given moment, using the best algorithm. */
 auto delta_t(double year) -> DeltaT {
   try {
+    if (not std::isfinite(year)) {
+      throw std::invalid_argument {
+        std::format("Argument `year` is not finite, whose value is {}", year)
+      };
+    }
+
     return {
       .valid = true,
       .value = astro::delta_t::compute(year),
@@ -117,6 +156,8 @@ auto delta_t(double year) -> DeltaT {
     lib::info("Exception raised during execution of delta_t");
     lib::debug("delta_t: year = {}, error = {}", year, e.what());
 
+    return {};
+  } catch (...) {
     return {};
   }
 }   

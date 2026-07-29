@@ -173,7 +173,7 @@ TEST(Converter, GregorianToLunarAlgo1) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
   using Converter = converter::Converter<common::Algo::ALGO_1>;
 
-  for (auto year = AlgoMetadata::bounds.start_lunar_year; year <= AlgoMetadata::bounds.end_lunar_year; ++year) {
+  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
     const auto& info = AlgoMetadata::get_info_for_year(year);
     ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
 
@@ -199,8 +199,8 @@ TEST(Converter, GregorianToLunarAlgo2) {
   std::set<int32_t> years;
   for (auto _ = 0; _ < 8; ++_) {
     years.insert(
-      util::random(AlgoMetadata::bounds.start_lunar_year, 
-                   AlgoMetadata::bounds.end_lunar_year
+      util::random(AlgoMetadata::bounds().start_lunar_year, 
+                   AlgoMetadata::bounds().end_lunar_year
       )
     );
   }
@@ -227,7 +227,7 @@ TEST(Converter, GregorianToLunarAlgo3) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
   using Converter = converter::Converter<common::Algo::ALGO_3>;
 
-  for (auto year = AlgoMetadata::bounds.start_lunar_year; year <= AlgoMetadata::bounds.end_lunar_year; ++year) {
+  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
     const auto& info = AlgoMetadata::get_info_for_year(year);
     ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
 
@@ -249,7 +249,7 @@ TEST(Converter, LunarToGregorianAlgo1) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
   using Converter = converter::Converter<common::Algo::ALGO_1>;
 
-  for (auto year = AlgoMetadata::bounds.start_lunar_year; year <= AlgoMetadata::bounds.end_lunar_year; ++year) {
+  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
     const auto& info = AlgoMetadata::get_info_for_year(year);
     ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
 
@@ -275,8 +275,8 @@ TEST(Converter, LunarToGregorianAlgo2) {
   std::set<int32_t> years;
   for (auto _ = 0; _ < 8; ++_) {
     years.insert(
-      util::random(AlgoMetadata::bounds.start_lunar_year, 
-                   AlgoMetadata::bounds.end_lunar_year
+      util::random(AlgoMetadata::bounds().start_lunar_year, 
+                   AlgoMetadata::bounds().end_lunar_year
       )
     );
   }
@@ -303,7 +303,7 @@ TEST(Converter, LunarToGregorianAlgo3) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
   using Converter = converter::Converter<common::Algo::ALGO_3>;
 
-  for (auto year = AlgoMetadata::bounds.start_lunar_year; year <= AlgoMetadata::bounds.end_lunar_year; ++year) {
+  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
     const auto& info = AlgoMetadata::get_info_for_year(year);
     ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
 
@@ -327,9 +327,9 @@ TEST(Converter, IntegrationAlgo1) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
   using Converter = converter::Converter<common::Algo::ALGO_1>;
 
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds.last_gregorian_date) - sys_days(AlgoMetadata::bounds.first_gregorian_date)).count();
+  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
   for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds.first_gregorian_date + util::random<uint32_t>(0, difference);
+    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
     ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
 
     const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
@@ -351,9 +351,9 @@ TEST(Converter, IntegrationAlgo2) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_2>;
   using Converter = converter::Converter<common::Algo::ALGO_2>;
 
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds.last_gregorian_date) - sys_days(AlgoMetadata::bounds.first_gregorian_date)).count();
+  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
   for (auto _ = 0; _ < 16; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds.first_gregorian_date + util::random<uint32_t>(0, difference);
+    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
     ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
 
     const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
@@ -375,9 +375,9 @@ TEST(Converter, IntegrationAlgo3) {
   using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
   using Converter = converter::Converter<common::Algo::ALGO_3>;
 
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds.last_gregorian_date) - sys_days(AlgoMetadata::bounds.first_gregorian_date)).count();
+  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
   for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds.first_gregorian_date + util::random<uint32_t>(0, difference);
+    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
     ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
 
     const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);

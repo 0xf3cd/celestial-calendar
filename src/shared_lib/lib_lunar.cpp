@@ -24,6 +24,7 @@
 #include <cassert>
 
 #include "lib.hpp"
+#include "celestial.h"
 
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
@@ -31,17 +32,8 @@
 
 extern "C" {
 
-struct SupportedLunarYearRange {
-  bool valid;
-  int32_t start;
-  int32_t end;
-};
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
-/**
- * @brief Get the supported lunar year range for the algorithm.
- * @param algo The algorithm. Expected to be 1 or 2.
- * @return The supported lunar year range.
- */
 auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
   if (algo == 1) {
     return {
@@ -62,31 +54,6 @@ auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRan
   return {};
 }
 
-struct LunarYearInfo { // Avoid name conflict with `calendar::lunar::common::LunarYear`.
-  bool valid;
-
-  // The following 3 fields indicate the date of the first day of the lunar year in gregorian calendar.
-  int32_t year;
-  uint8_t month;
-  uint8_t day;
-
-  // `leap_month` indicates the month of the leap month (1 <= leap_month <= 12).
-  // If 0, there is no leap month.
-  uint8_t leap_month;
-  
-  // Use least 12 or 13 bits to indicate the length of each month in the lunar year.
-  // '1' means 30 days, '0' means 29 days.
-  // If `leap_month` is 0, there are 12 months; otherwise there are 13 months.
-  uint16_t month_len;
-};
-
-
-/**
- * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1 or 2.
- * @param year The lunar year.
- * @return The lunar year information.
- */
 auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters)
   using namespace std::views;
   
@@ -123,8 +90,11 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
     };
 
   } catch (const std::exception& e) {
+    // #67: `e.what()` is a message, not a format string — pass it as an argument.
     lib::info("Exception raised during execution of get_lunar_year_info_algo1, year = {}", year);
-    lib::info(e.what());
+    lib::info("{}", e.what());
+    return {};
+  } catch (...) {
     return {};
   }
 }

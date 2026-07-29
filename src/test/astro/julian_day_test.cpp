@@ -121,6 +121,12 @@ TEST(JulianDay, InvalidInput) {
   ASSERT_THROW(jd_to_ut1(std::numeric_limits<double>::infinity()), std::runtime_error);
   ASSERT_THROW(jd_to_ut1(-std::numeric_limits<double>::infinity()), std::runtime_error);
 
+  // #67: above JD 13689325.5 (conceptually 32768-01-01) `std::chrono::year` overflows, and the
+  // uint32 arithmetic wraps into valid-looking but wrong dates.
+  ASSERT_NO_THROW(jd_to_ut1(13689325.499999));
+  ASSERT_THROW(jd_to_ut1(13689325.5), std::runtime_error);
+  ASSERT_THROW(jd_to_ut1(4.0e9), std::runtime_error); // wrapped to 2403-12-05 before #67.
+
   // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);
 

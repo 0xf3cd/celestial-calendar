@@ -24,28 +24,14 @@
 #include <cstring>
 
 #include "lib.hpp"
+#include "celestial.h"
+
 #include "jieqi.hpp"
 
 extern "C" {
 
-struct JieqiMomentQuery {
-  bool     valid;  // Indicates if the result is valid.
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
-  uint8_t  jq_idx; // The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
-
-  int32_t  y;      // The year.
-  uint32_t m;      // The month.
-  uint32_t d;      // The day.
-  double   frac;   // The fraction of the day. Expected to be in the range [0.0, 1.0).
-};
-
-
-/**
- * @brief Query the accurate moment of the Jieqi in the given `year`.
- * @param year The year, in gregorian calendar.
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
- * @returns A `JieqiMomentQuery` struct.
- */
 auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
   if (jq_idx >= 24) [[unlikely]] {
@@ -75,37 +61,41 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
     lib::info("Error in query_jieqi_moment: {}", e.what());
 
     return {};
+  } catch (...) {
+    return {};
   }
 }
 
 
-/**
- * @brief Get the Chinese name of the Jieqi.
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
- * @param buf The name memory. It's caller's responsibility to allocate and free the memory.
- * @param buf_size Maximum bytes that can be written to `buf`.
- * @returns `true` if the name is successfully written to `buf`.
- */
 auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
+  // Validate the input.
   if (jq_idx >= 24) [[unlikely]] {
     lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
     return false;
   }
-
-  using namespace calendar::jieqi;
-  const std::string_view name = JIEQI_NAME.at(static_cast<Jieqi>(jq_idx));
-
-  // Check if the buffer is large enough to hold the name and the null terminator
-  if (buf_size < name.size() + 1) {
-    lib::info("Error in get_jieqi_name: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
+  if (buf == nullptr) {
+    lib::info("Error in get_jieqi_name: `buf` is null.");
     return false;
   }
 
-  // Copy the name to the buffer
-  std::memcpy(buf, name.data(), name.size());
-  buf[name.size()] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+  try {
+    using namespace calendar::jieqi;
+    const std::string_view name = JIEQI_NAME.at(static_cast<Jieqi>(jq_idx));
 
-  return true;
+    // Check if the buffer is large enough to hold the name and the null terminator
+    if (buf_size < name.size() + 1) {
+      lib::info("Error in get_jieqi_name: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
+      return false;
+    }
+
+    // Copy the name to the buffer
+    std::memcpy(buf, name.data(), name.size());
+    buf[name.size()] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+    return true;
+  } catch (...) {
+    return false;
+  }
 }
 
 }

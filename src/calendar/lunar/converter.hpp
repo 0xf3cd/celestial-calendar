@@ -56,8 +56,8 @@ struct Converter {
     if (not date.ok()) {
       return false;
     }
-    if (date < AlgoMetadata::bounds.first_gregorian_date or 
-        date > AlgoMetadata::bounds.last_gregorian_date) {
+    if (date < AlgoMetadata::bounds().first_gregorian_date or 
+        date > AlgoMetadata::bounds().last_gregorian_date) {
       return false;
     }
     return true;
@@ -70,8 +70,8 @@ struct Converter {
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
    */
   static auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
-    if (lunar_date < AlgoMetadata::bounds.first_lunar_date or 
-        lunar_date > AlgoMetadata::bounds.last_lunar_date) {
+    if (lunar_date < AlgoMetadata::bounds().first_lunar_date or 
+        lunar_date > AlgoMetadata::bounds().last_lunar_date) {
       return false;
     }
 
@@ -132,7 +132,7 @@ struct Converter {
 
     // First, check if lunar date and gregorian_date date are in the same year.
     const auto& [g_year, _, __] = util::from_ymd(gregorian_date);
-    if (g_year <= AlgoMetadata::bounds.end_lunar_year) {
+    if (g_year <= AlgoMetadata::bounds().end_lunar_year) {
       using namespace util::ymd_operator;
       const auto& info = AlgoMetadata::get_info_for_year(g_year);
       const auto& ml = info.month_lengths;

@@ -107,6 +107,28 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
 
 
 /**
+ * @brief Validate the fraction of a day, *before* any narrowing conversion happens.
+ * @param fraction The fraction of a day, expected in [0.0, 1.0).
+ * @return `fraction`, unchanged.
+ * @throw std::invalid_argument if `fraction` is outside [0.0, 1.0).
+ * @note #67: written as `not (x >= lo and x < hi)` so NaN fails the check too — a plain
+ *       `fraction < 0.0 or fraction >= 1.0` test is always false for NaN and lets it through
+ *       to the undefined double→int64 cast in `from_fraction`.
+ */
+constexpr auto validate_fraction(const double fraction) -> double {
+  if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#67).
+    throw std::invalid_argument {
+      std::vformat(
+        "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
+        std::make_format_args(fraction)
+      )
+    };
+  }
+  return fraction;
+}
+
+
+/**
  * @struct Represents a date and a time in the form of `year_month_day` and `hh_mm_ss`.
  * @note The precision of the `time_of_day` field is `std::chrono::nanoseconds`.
  * @note The `time_of_day` field (i.e. `hh_mm_ss`) is positive and less than 24:00:00.0 (i.e. 1 day).
@@ -171,7 +193,9 @@ struct Datetime {
    */
   constexpr explicit Datetime(const year_month_day& ymd, double fraction)
     : ymd         { ymd },
-      time_of_day { from_fraction(fraction) }
+      // #67: validate before the narrowing cast inside `from_fraction` — after the cast,
+      // NaN/huge inputs are already UB.
+      time_of_day { from_fraction(validate_fraction(fraction)) }
   {
     if (not ymd.ok()) {
       throw std::invalid_argument { 
@@ -179,15 +203,6 @@ struct Datetime {
           "Argument gregorian date `ymd` is invalid, whose value is `{}`", 
           std::make_format_args(this->ymd)
         ) 
-      };
-    }
-
-    if (fraction < 0.0 or fraction >= 1.0) {
-      throw std::invalid_argument {
-        std::vformat(
-          "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
-          std::make_format_args(fraction)
-        )
       };
     }
 

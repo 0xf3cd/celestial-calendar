@@ -16,6 +16,7 @@ include_directories(${PROJECT_SOURCE_DIR}/astro)
 include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 
-# Add subdirectories
-add_subdirectory(test)
+# Add subdirectories. The order is for readability only — CMake binds targets at generate
+# time, so `test` may reference `celestial_calendar` before its directory is processed (#67).
 add_subdirectory(shared_lib)
+add_subdirectory(test)
