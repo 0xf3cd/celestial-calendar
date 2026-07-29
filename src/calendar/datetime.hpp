@@ -274,12 +274,10 @@ struct Datetime {
  * @param dt The datetime to shift.
  * @param offset_sec The offset in seconds. Can be negative, and is not limited to one day.
  * @return The shifted datetime.
- * @throw std::invalid_argument if `offset_sec` is not finite or beyond the day-carry range,
- *        or if the shifted date is not a valid gregorian date.
+ * @throw std::invalid_argument if `offset_sec` is not finite, or if the shifted date leaves
+ *        `std::chrono::year_month_day`'s representable years.
  */
 constexpr auto add_seconds(const Datetime& dt, const double offset_sec) -> Datetime {
-  using namespace util::ymd_operator;
-
   // Beyond ±2e9 days the day carry below overflows `int32_t`; NaN fails the comparison too.
   if (not (std::fabs(offset_sec) < 2.0e9 * in_a_day<seconds>())) {
     throw std::invalid_argument {
@@ -289,17 +287,25 @@ constexpr auto add_seconds(const Datetime& dt, const double offset_sec) -> Datet
 
   const double fraction = dt.fraction() + (offset_sec / in_a_day<seconds>());
 
-  // The shift can leave [0.0, 1.0); carry the whole days into the date part.
-  const auto day_carry = static_cast<int32_t>(std::floor(fraction));
-  const double remainder = fraction - day_carry;
+  // The shift can leave [0.0, 1.0); carry the whole days into the date part. A shift landing
+  // exactly on midnight can round the remainder up to 1.0 (the sum comes out a half-ulp below
+  // a whole day) — carry that too, or the constructor rejects the fraction.
+  const auto floor_carry = static_cast<int32_t>(std::floor(fraction));
+  const bool midnight_carry = (fraction - floor_carry) >= 1.0;
+  const auto day_carry = floor_carry + (midnight_carry ? 1 : 0);
+  const double remainder = midnight_carry ? 0.0 : fraction - floor_carry;
 
-  // A shift landing exactly on midnight can round `remainder` up to 1.0 (the sum comes out a
-  // half-ulp below a whole day); carry it, or the constructor rejects the fraction.
-  if (remainder >= 1.0) {
-    return Datetime { dt.ymd + day_carry + 1, 0.0 };
+  // `std::chrono::year` stores an unspecified value beyond ±32767 (`ok()` cannot be trusted
+  // on a wrapped date) — bound the shifted date while it is still a day count.
+  const auto shifted = std::chrono::sys_days { dt.ymd } + std::chrono::days { day_carry };
+  if (shifted < std::chrono::sys_days { util::to_ymd(-32767, 1, 1) }
+      or shifted > std::chrono::sys_days { util::to_ymd(32767, 12, 31) }) {
+    throw std::invalid_argument {
+      std::format("The offset {} seconds shifts the date beyond the representable years.", offset_sec)
+    };
   }
 
-  return Datetime { dt.ymd + day_carry, remainder };
+  return Datetime { std::chrono::year_month_day { shifted }, remainder };
 }
 
 } // namespace calendar
