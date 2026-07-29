@@ -157,6 +157,8 @@ enum class Algo : uint8_t { ALGO_1, ALGO_2, ALGO_3 };
  *                          to the algorithm's cached callable (algo2, #78) — same call syntax.
  * @param bounds The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.
  *               算法支持的阴历和公历日期的范围。
+ *               Returned through an accessor function — an eagerly-bound member would
+ *               initialize at image load (defeating algo2's lazy init, #67).
  */
 template <Algo algo>
 struct AlgoMetadata;

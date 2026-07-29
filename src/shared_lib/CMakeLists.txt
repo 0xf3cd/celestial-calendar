@@ -21,4 +21,4 @@ set_target_properties(celestial_calendar PROPERTIES VERSION ${VERSION_NUMBER})
 # #67: compile-check the published C header as pure C (layouts pinned by `_Static_assert`
 # inside). Built as part of the default target, so CI exercises it on every platform.
 add_library(c_header_check OBJECT c_header_check.c)
-set_target_properties(c_header_check PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
+set_target_properties(c_header_check PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)

@@ -113,6 +113,8 @@ inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
  * @return The datetime in UT1.
  * @throw std::runtime_error if `jd` is not finite, beyond the `year_month_day`-representable
  *        years, or the estimated gregorian year is < 401.
+ * @note `ut1_to_jd(32767-12-31, fraction ≈ 1)` rounds up to exactly the upper bound
+ *       13689325.5, which this function rejects — a 1-ulp round-trip break callers must expect.
  */
 inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   /*
@@ -157,7 +159,7 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   // #67: bound the domain at the last `year_month_day`-representable day — JD 13689325.5 is
   // (conceptually) 32768-01-01 00:00, and `std::chrono::year` stops at 32767. Above it the
   // uint32 arithmetic below wraps into *valid-looking but wrong* dates that `ymd.ok()` cannot
-  // catch (measured: jd 2e7 → year -15490, jd 4e9 → 2403-12-05, both `ok()`).
+  // catch.
   if (jd >= 13689325.5) {
     throw std::runtime_error {
       std::format("The julian day number {} is beyond the representable years.", jd)

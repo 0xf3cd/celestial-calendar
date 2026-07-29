@@ -25,16 +25,13 @@
 
 #include "lib.hpp"
 #include "celestial.h"
+
 #include "jieqi.hpp"
 
 extern "C" {
 
-/**
- * @brief Query the accurate moment of the Jieqi in the given `year`.
- * @param year The year, in gregorian calendar.
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
- * @returns A `JieqiMomentQuery` struct.
- */
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
+
 auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
   // Validate the input.
   if (jq_idx >= 24) [[unlikely]] {
@@ -65,32 +62,23 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
 
     return {};
   } catch (...) {
-    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }
 
 
-/**
- * @brief Get the Chinese name of the Jieqi.
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24). This is the enum value of `Jieqi`.
- * @param buf The name memory. It's caller's responsibility to allocate and free the memory.
- * @param buf_size Maximum bytes that can be written to `buf`.
- * @returns `true` if the name is successfully written to `buf`.
- */
 auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
+  // Validate the input.
+  if (jq_idx >= 24) [[unlikely]] {
+    lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
+    return false;
+  }
+  if (buf == nullptr) {
+    lib::info("Error in get_jieqi_name: `buf` is null.");
+    return false;
+  }
+
   try {
-    if (jq_idx >= 24) [[unlikely]] {
-      lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
-      return false;
-    }
-
-    // #67: the out-pointer is written to unconditionally below — reject null up front.
-    if (buf == nullptr) {
-      lib::info("Error in get_jieqi_name: `buf` is null.");
-      return false;
-    }
-
     using namespace calendar::jieqi;
     const std::string_view name = JIEQI_NAME.at(static_cast<Jieqi>(jq_idx));
 
@@ -106,7 +94,6 @@ auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_s
 
     return true;
   } catch (...) {
-    // #67: nothing may escape the `extern "C"` boundary.
     return false;
   }
 }

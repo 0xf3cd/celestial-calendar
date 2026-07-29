@@ -115,10 +115,8 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
  *       `fraction < 0.0 or fraction >= 1.0` test is always false for NaN and lets it through
  *       to the undefined double→int64 cast in `from_fraction`.
  */
-constexpr auto validate_day_fraction(const double fraction) -> double {
-  // DeMorgan-ing this into two `<` comparisons is exactly what lets NaN through (#67);
-  // keep the negated form.
-  if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr)
+constexpr auto validate_fraction(const double fraction) -> double {
+  if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#67).
     throw std::invalid_argument {
       std::vformat(
         "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
@@ -197,7 +195,7 @@ struct Datetime {
     : ymd         { ymd },
       // #67: validate before the narrowing cast inside `from_fraction` — after the cast,
       // NaN/huge inputs are already UB.
-      time_of_day { from_fraction(validate_day_fraction(fraction)) }
+      time_of_day { from_fraction(validate_fraction(fraction)) }
   {
     if (not ymd.ok()) {
       throw std::invalid_argument { 

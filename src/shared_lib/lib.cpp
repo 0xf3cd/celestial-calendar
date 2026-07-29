@@ -25,38 +25,20 @@
 #include "celestial.h"
 
 // This cpp file is holding the functions to control the global configuration, such as log verbosity level.
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 extern "C" {
 
-/** 
- * @brief Set the verbosity level of log printing. 
- * @param new_value The new verbosity level (in `uint8_t`).
- * @returns `true` if the verbosity level is changed to the specified value, `false` otherwise.
- */
 auto set_log_verbosity(const uint8_t new_value) -> bool {
   try {
-    if (new_value >= static_cast<uint8_t>(lib::Verbosity::COUNT)) {
-      lib::info("Invalid verbosity level: {}", new_value);
-      return false;
-    }
-
-    const auto new_verbosity = static_cast<lib::Verbosity>(new_value);
-    const auto current_verbosity = lib::set_verbosity(new_verbosity);
-    return current_verbosity == new_verbosity;
+    return lib::set_verbosity(static_cast<lib::Verbosity>(new_value));
   } catch (...) {
-    // #67: nothing may escape the `extern "C"` boundary.
     return false;
   }
 }
 
 
-/**
- * @brief Get the last-error message of the calling thread.
- * @returns A pointer to a thread-local C string, empty if there is no recorded error.
- *          The pointer stays valid until the next C-ABI call on the same thread.
- * @note #97 pilot: only the Julian Day exports (`ut1_to_jd`, `ut1_to_jde`, `jde_to_ut1`)
- *       record messages for now.
- */
+// Contract: see celestial.h.
 auto last_error() -> const char* {
   return lib::last_error_message();
 }

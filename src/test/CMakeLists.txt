@@ -45,8 +45,8 @@ macro(CELESTIAL_ADD_TEST test_path test_name)
     ${test_name}
     GTest::gtest_main
   )
-  # #67: the C-ABI smoke test drives the real shared library across the `extern "C"` boundary.
-  if(test_name STREQUAL "cabi_smoke_test")
+  # #67: tests under `test/shared_lib/` drive the real shared library across the `extern "C"` boundary.
+  if("${test_path}" MATCHES "/shared_lib/")
     target_link_libraries(${test_name} celestial_calendar)
     target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/shared_lib)
     # Windows has no rpath — the test executable must find the DLL next to itself.

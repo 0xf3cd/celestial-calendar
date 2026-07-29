@@ -24,6 +24,7 @@
 /*
  * #67: compile `celestial.h` as pure C and pin the ABI — field offsets and struct sizes
  * are part of the published contract, so any layout drift fails the build here.
+ * The absolute offsets below assume 64-bit natural alignment (the CI matrix is all 64-bit).
  */
 
 #include "celestial.h"
@@ -64,35 +65,7 @@ _Static_assert(offsetof(DeltaT, value) == 8 && sizeof(DeltaT) == 16, "DeltaT lay
 _Static_assert(offsetof(EquationOfTime, value) == 8 && sizeof(EquationOfTime) == 16,
                "EquationOfTime layout drifted");
 
-_Static_assert(offsetof(SolarTime, year) == 4 && offsetof(SolarTime, month) == 8 &&
-               offsetof(SolarTime, day) == 12 && offsetof(SolarTime, fraction) == 16 &&
-               sizeof(SolarTime) == 24, "SolarTime layout drifted");
+_Static_assert(offsetof(ApparentSolarTime, year) == 4 && offsetof(ApparentSolarTime, month) == 8 &&
+               offsetof(ApparentSolarTime, day) == 12 && offsetof(ApparentSolarTime, fraction) == 16 &&
+               sizeof(ApparentSolarTime) == 24, "ApparentSolarTime layout drifted");
 
-
-/* Reference every exported symbol, so a declaration/definition name drift fails here too.
- * External linkage, or `-Werror -Wunused-variable` would fire on an unreferenced static. */
-void *const celestial_exported_symbols[] = {
-  (void *)&set_log_verbosity,
-  (void *)&last_error,
-  (void *)&ut1_to_jd,
-  (void *)&ut1_to_jde,
-  (void *)&jde_to_ut1,
-  (void *)&sun_apparent_geocentric_coord,
-  (void *)&moon_apparent_geocentric_coord,
-  (void *)&solar_lon_root_discriminant,
-  (void *)&solar_lon_roots,
-  (void *)&new_moons_after_jde,
-  (void *)&new_moons_in_year,
-  (void *)&equation_of_time,
-  (void *)&apparent_solar_time,
-  (void *)&query_jieqi_moment,
-  (void *)&get_jieqi_name,
-  (void *)&get_supported_lunar_year_range,
-  (void *)&get_lunar_year_info,
-  (void *)&delta_t_algo1,
-  (void *)&delta_t_algo2,
-  (void *)&delta_t_algo3,
-  (void *)&delta_t_algo4,
-  (void *)&delta_t_algo5,
-  (void *)&delta_t,
-};

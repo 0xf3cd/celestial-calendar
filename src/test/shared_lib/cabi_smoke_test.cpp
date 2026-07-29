@@ -60,6 +60,28 @@ auto stdout_fileno() -> int { return ::fileno(stdout); }
 
 constexpr double NAN_VALUE = std::numeric_limits<double>::quiet_NaN();
 
+// Restores stdout on destruction, so an early ASSERT return cannot leak the saved fd
+// or leave stdout closed.
+struct StdoutGuard {
+  int saved;
+
+  StdoutGuard()
+    : saved { dup_fd(stdout_fileno()) }
+  {
+    if (saved >= 0) {
+      close_fd(stdout_fileno());
+    }
+  }
+
+  ~StdoutGuard() {
+    if (saved >= 0) {
+      dup2_fd(saved, stdout_fileno());
+      close_fd(saved);
+      std::clearerr(stdout); // the failed writes set the stream's error indicator
+    }
+  }
+};
+
 } // namespace
 
 
@@ -78,6 +100,21 @@ TEST(CAbiSmoke, DeltaT) {
   EXPECT_TRUE(delta_t_algo3(2024.5).valid);
   EXPECT_TRUE(delta_t_algo4(2024.5).valid);
   EXPECT_TRUE(delta_t_algo5(2024.5).valid);
+}
+
+TEST(CAbiSmoke, DeltaTRejectsNonFiniteYear) {
+  EXPECT_FALSE(delta_t(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t(HUGE_VAL).valid);
+  EXPECT_FALSE(delta_t_algo1(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t_algo1(HUGE_VAL).valid);
+  EXPECT_FALSE(delta_t_algo2(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t_algo2(HUGE_VAL).valid);
+  EXPECT_FALSE(delta_t_algo3(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t_algo3(HUGE_VAL).valid);
+  EXPECT_FALSE(delta_t_algo4(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t_algo4(HUGE_VAL).valid);
+  EXPECT_FALSE(delta_t_algo5(NAN_VALUE).valid);
+  EXPECT_FALSE(delta_t_algo5(HUGE_VAL).valid);
 }
 
 
@@ -144,6 +181,11 @@ TEST(CAbiSmoke, SunMoonCoords) {
   ASSERT_TRUE(moon.valid);
   EXPECT_GE(moon.lon, 0.0);
   EXPECT_LT(moon.lon, 360.0);
+
+  EXPECT_FALSE(sun_apparent_geocentric_coord(NAN_VALUE).valid);  // non-finite JDE
+  EXPECT_FALSE(sun_apparent_geocentric_coord(HUGE_VAL).valid);
+  EXPECT_FALSE(moon_apparent_geocentric_coord(NAN_VALUE).valid);
+  EXPECT_FALSE(moon_apparent_geocentric_coord(HUGE_VAL).valid);
 }
 
 
@@ -155,6 +197,11 @@ TEST(CAbiSmoke, SolarLonRoots) {
   std::array<double, 2> slots {};
   EXPECT_EQ(solar_lon_roots(2024, 0.0, slots.data(), slots.size()), 1U);
   EXPECT_EQ(solar_lon_roots(2024, 0.0, nullptr, 2), 0U); // null out-pointer
+
+  EXPECT_FALSE(solar_lon_root_discriminant(2024, NAN_VALUE).valid); // non-finite longitude
+  EXPECT_FALSE(solar_lon_root_discriminant(2024, HUGE_VAL).valid);
+  EXPECT_EQ(solar_lon_roots(2024, NAN_VALUE, slots.data(), slots.size()), 0U);
+  EXPECT_EQ(solar_lon_roots(2024, HUGE_VAL, slots.data(), slots.size()), 0U);
 }
 
 
@@ -164,6 +211,8 @@ TEST(CAbiSmoke, NewMoons) {
   EXPECT_LT(after.at(0), after.at(1));
   EXPECT_LT(after.at(1), after.at(2));
   EXPECT_EQ(new_moons_after_jde(2460463.0, nullptr, 3), 0U); // null out-pointer
+  EXPECT_EQ(new_moons_after_jde(NAN_VALUE, after.data(), after.size()), 0U); // non-finite JDE
+  EXPECT_EQ(new_moons_after_jde(HUGE_VAL, after.data(), after.size()), 0U);
 
   uint32_t root_count = 0;
   std::array<double, 15> slots {};
@@ -186,7 +235,7 @@ TEST(CAbiSmoke, EquationOfTime) {
 
 TEST(CAbiSmoke, ApparentSolarTime) {
   // UTC noon at 116.4°E: apparent time ≈ noon + longitude-in-time ± |E| (< 5°).
-  const SolarTime t = apparent_solar_time(2024, 6, 1, 0.5, 116.4);
+  const ApparentSolarTime t = apparent_solar_time(2024, 6, 1, 0.5, 116.4);
   ASSERT_TRUE(t.valid);
   EXPECT_EQ(t.year, 2024);
   EXPECT_EQ(t.month, 6U);
@@ -243,16 +292,11 @@ TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
   // the fd — go unbuffered, or the write failure never surfaces during the closed window.
   ASSERT_EQ(std::setvbuf(stdout, nullptr, _IONBF, 0), 0);
 
-  const int saved = dup_fd(stdout_fileno());
-  ASSERT_GE(saved, 0);
-  ASSERT_EQ(close_fd(stdout_fileno()), 0);
+  const StdoutGuard guard {}; // dups stdout, then closes it until scope exit
+  ASSERT_GE(guard.saved, 0);
 
   const JulianDay jd = ut1_to_jd(2024, 6, 1, NAN_VALUE); // logs via `lib::info` on failure
 
-  ASSERT_EQ(dup2_fd(saved, stdout_fileno()), stdout_fileno());
-  ASSERT_EQ(close_fd(saved), 0);
-  std::clearerr(stdout); // the failed writes above set the stream's error indicator
   ASSERT_TRUE(set_log_verbosity(2)); // restore the default
-
   EXPECT_FALSE(jd.valid);
 }

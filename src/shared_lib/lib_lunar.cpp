@@ -32,11 +32,8 @@
 
 extern "C" {
 
-/**
- * @brief Get the supported lunar year range for the algorithm.
- * @param algo The algorithm. Expected to be 1 or 2.
- * @return The supported lunar year range.
- */
+// #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
+
 auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
   if (algo == 1) {
     return {
@@ -57,12 +54,6 @@ auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRan
   return {};
 }
 
-/**
- * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1 or 2.
- * @param year The lunar year.
- * @return The lunar year information.
- */
 auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters)
   using namespace std::views;
   
@@ -104,7 +95,6 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
     lib::info("{}", e.what());
     return {};
   } catch (...) {
-    // #67: nothing may escape the `extern "C"` boundary.
     return {};
   }
 }

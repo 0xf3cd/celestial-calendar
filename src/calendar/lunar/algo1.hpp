@@ -98,7 +98,7 @@ template <>
 struct AlgoMetadata<Algo::ALGO_1> {
   // Not memoized: a `LUNAR_DATA[]` lookup is cheaper than the cache wrapper (#75).
   static auto get_info_for_year(const int32_t year) -> LunarYear { return algo1::calc_lunar_year(year); }
-  static const inline auto& bounds = algo1::bounds;
+  static auto bounds() -> const common::AlgoBounds& { return algo1::bounds; }
 };
 
 } // namespace calendar::lunar::common
