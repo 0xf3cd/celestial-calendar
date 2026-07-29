@@ -214,27 +214,28 @@ public:
           计算某一个公历年中日月合朔的时刻。
  * @param year The Gregorian year.
  * @return The vector of the conjunction moments, in JDE (Julian Ephemeris Day).
- * @details The Sun's position is calculated using VSOP87D, 
+ * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
+ * @details The Sun's position is calculated using VSOP87D,
  * @details The Moon's position is calculated using truncated ELP2000-82B.
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
 inline auto moments(const int32_t year) -> std::vector<double> {
   // The first moment of the year, inclusive.
-  const calendar::Datetime start_moment {
+  const calendar::Datetime start_moment_utc {
     util::to_ymd(year, 1, 1),
     0.0,
   };
 
   // The last moment of the year, exclusive.
-  const calendar::Datetime end_moment {
+  const calendar::Datetime end_moment_utc {
     util::to_ymd(year + 1, 1, 1),
     0.0,
   };
 
-  // Convert to JDEs.
-  // TODO: Use `utc_to_jde` when supported.
-  const auto start_jde = astro::julian_day::ut1_to_jde(start_moment);
-  const auto end_jde = astro::julian_day::ut1_to_jde(end_moment);
+  // #84: the bounds are UTC, not UT1 — a conjunction between the two midnights used to be
+  // attributed to the neighbouring year.
+  const auto start_jde = astro::julian_day::utc_to_jde(start_moment_utc);
+  const auto end_jde = astro::julian_day::utc_to_jde(end_moment_utc);
 
   RootGenerator gen(start_jde);
   std::vector<double> roots;

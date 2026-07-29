@@ -8,7 +8,6 @@ namespace calendar::lunar::algo2::test {
 using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
 using astro::julian_day::ut1_to_jde;
-using astro::julian_day::jde_to_ut1;
 
 TEST(LunarAlgo2, LunarMonthGenerator) {
   const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
@@ -26,8 +25,8 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
     ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);
 
     for (const auto jq_pair : a.contained_jieqis) {
-      // Raw `.jde` is in UT1, add 8 hours to make it in UT1+8.
-      const auto jq_moment_utc8 = jde_to_ut1(jq_pair.jde + 8.0 / 24.0);
+      // Raw `.jde` is in TT; render it in civil UTC+8 the same way the generator does (#84).
+      const auto jq_moment_utc8 = jde_to_utc8(jq_pair.jde);
       const auto jq_date = jq_moment_utc8.ymd;
 
       ASSERT_GE(jq_date, a.start_moment_utc8.ymd);
@@ -292,6 +291,47 @@ TEST(LunarAlgo2, MetadataSharesCache) {
   // a copied `std::function` forks its own cache replica and recomputes from scratch.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::get_info_for_year, &algo2::get_info_for_year);
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds, &algo2::bounds);
+}
+
+
+TEST(LunarAlgo2, MonthBoundaryIsLeapSecondAwareUtc8) {
+  // #84: a month bound is its conjunction rendered in civil UTC+8, i.e. the TT moment shifted
+  // by exactly 8 h − (ΔAT + 32.184) s. Reconstruct that from raw julian-day arithmetic with the
+  // post-2017 constants — independent of `leap_second.hpp`'s lookup — and demand sub-millisecond
+  // agreement. The old UT1 path was off by model ΔT − 69.184 s on every bound.
+  const double start_jde = astro::julian_day::utc_to_jde(
+    calendar::Datetime { util::to_ymd(2025, 1, 1), 0.0 }
+  );
+
+  LunarMonthGenerator month_gen { start_jde };
+  astro::moon_phase::new_moon::RootGenerator root_gen { start_jde };
+
+  for (int i = 0; i < 12; ++i) {
+    const auto month = month_gen.next();
+    const double root = root_gen.next();
+
+    // 69.184 s = ΔAT (37 s since 2017) + (TT − TAI, 32.184 s).
+    const auto expected = astro::julian_day::jde_to_tt(root - (69.184 / 86400.0) + (8.0 / 24.0));
+
+    ASSERT_EQ(month.start_moment_utc8.ymd, expected.ymd);
+    ASSERT_NEAR(month.start_moment_utc8.fraction(), expected.fraction(), 1e-3 / 86400.0);
+  }
+}
+
+
+TEST(LunarAlgo2, Utc8DateFlipNearMidnight) {
+  // #84 directed: an instant 50 ms after UTC+8 midnight, in an era where the old UT1 rendering
+  // sits ~28 s behind UTC (ΔT(2120) ≈ 97 s vs ΔAT + 32.184 = 69.184 s) — through UT1 the same
+  // TT instant rendered on the previous civil day. The JDE is built from raw calendar
+  // arithmetic, independent of the conversion under test.
+  const double jd_civil = astro::julian_day::ut1_to_jd( // pure calendar arithmetic
+    calendar::Datetime { util::to_ymd(2120, 6, 14), 16.0 / 24.0 } // UTC+8 midnight of Jun 15
+  );
+  const double jde = jd_civil + (0.050 / 86400.0) + (69.184 / 86400.0);
+
+  const auto utc8 = jde_to_utc8(jde);
+  ASSERT_EQ(utc8.ymd, util::to_ymd(2120, 6, 15));
+  ASSERT_NEAR(utc8.fraction() * 86400.0, 0.050, 1e-3);
 }
 
 } // namespace calendar::lunar::algo2::test

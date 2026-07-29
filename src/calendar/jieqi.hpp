@@ -163,6 +163,8 @@ const inline auto jieqi_jde = util::cache::cache_func(calc_jieqi_jde);
  * @param jq The jieqi.
  * @return The UT1 (Universal Time 1).
  * @details This is just a thin wrapper around `jieqi_jde`.
+ * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
+ *       leap-second-aware path instead (#84).
  */
 inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));

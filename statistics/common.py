@@ -388,6 +388,8 @@ def new_moons_in_year(year: int) -> NewMoons:
 
   # Return the result as an instance of the NewMoons data class.
   jdes = [slots[i] for i in range(num_written)]
+  # Rendered in UT1 while the C++ side now attributes years by UTC (#84) — the scales differ
+  # by model ΔT − (ΔAT + 32.184 s), harmless for these notebooks' years.
   moments = [jde_to_ut1(jde) for jde in jdes]
   return NewMoons(
     year=year,

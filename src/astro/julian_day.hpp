@@ -29,6 +29,7 @@
 #include <stdexcept>
 
 #include "delta_t.hpp"
+#include "leap_second.hpp"
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -227,6 +228,28 @@ inline auto jde_to_ut1(const double jde) -> calendar::Datetime {
 inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
   return tt_to_jde(tt_dt);
+}
+
+
+/**
+ * @brief Converts a julian ephemeris day number to UTC datetime.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The date and time, in UTC.
+ * @note Before modern UTC (1972-01-01) this degrades to UT1; see `astro::leap_second::tt_to_utc`.
+ */
+inline auto jde_to_utc(const double jde) -> calendar::Datetime {
+  return astro::leap_second::tt_to_utc(jde_to_tt(jde));
+}
+
+
+/**
+ * @brief Converts a UTC datetime to julian ephemeris day number.
+ * @param utc_dt The date and time, in UTC.
+ * @return The julian ephemeris day number, which is based on TT.
+ * @note Before modern UTC (1972-01-01) this degrades to UT1; see `astro::leap_second::utc_to_tt`.
+ */
+inline auto utc_to_jde(const calendar::Datetime& utc_dt) -> double {
+  return tt_to_jde(astro::leap_second::utc_to_tt(utc_dt));
 }
 
 

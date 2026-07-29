@@ -40,6 +40,23 @@ using namespace calendar::jieqi;
 using calendar::lunar::common::LunarYear;
 
 
+/**
+ * @brief Convert a JDE moment to UTC+8, the civil scale the lunar-calendar rules are defined in.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The datetime in UTC+8.
+ * @note Leap-second aware (#84): rendering through UT1 sat model ΔT − (ΔAT + 32.184 s) off
+ *       UTC — enough to flip the civil date near midnight.
+ * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 — the non-invertible second of
+ *       `leap_second::tt_to_utc` never lands on a civil-day boundary here.
+ */
+inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
+  return calendar::add_seconds(
+    astro::julian_day::jde_to_utc(jde),
+    8.0 * 3600.0
+  );
+}
+
+
 /** @brief The metadata of a lunar month. */
 struct LunarMonth {
   // Start of the month, inclusive.
@@ -117,26 +134,25 @@ private:
     put_back_new_moon(end_jde);
 
     // As per the rules, we convert the JDEs to UTC+8.
-    // TODO: Currently we regard UT1 as UTC, which is a bit inaccurate. Use `jde_to_utc` when available.
-    const auto start_moment = astro::julian_day::jde_to_ut1(start_jde + 8.0 / 24.0);
-    const auto end_moment = astro::julian_day::jde_to_ut1(end_jde + 8.0 / 24.0);
+    const auto start_moment_utc8 = jde_to_utc8(start_jde);
+    const auto end_moment_utc8 = jde_to_utc8(end_jde);
 
     // Get the Jieqis that fall in this lunar month.
     std::vector<JieqiGenerator::JieqiPair> jieqis;
     while (true) {
       const auto jieqi = next_jieqi();
-      const auto jieqi_moment_ut1_8 = astro::julian_day::jde_to_ut1(jieqi.jde + 8.0 / 24.0);
+      const auto jieqi_moment_utc8 = jde_to_utc8(jieqi.jde);
 
       // If the Jieqi is in next month, stop.
       // Note that the comparison is at date time level, as per the rules.
-      if (jieqi_moment_ut1_8.ymd >= end_moment.ymd) {
+      if (jieqi_moment_utc8.ymd >= end_moment_utc8.ymd) {
         put_back_jieqi(jieqi);
         break;
       }
 
       // If the Jieqi is not in this month, continue going.
       // Note that the comparison is at date time level, as per the rules.
-      if (jieqi_moment_ut1_8.ymd < start_moment.ymd) {
+      if (jieqi_moment_utc8.ymd < start_moment_utc8.ymd) {
         continue;
       }
 
@@ -144,8 +160,8 @@ private:
     }
 
     return {
-      .start_moment_utc8 = start_moment,
-      .end_moment_utc8   = end_moment,
+      .start_moment_utc8 = start_moment_utc8,
+      .end_moment_utc8   = end_moment_utc8,
       .contained_jieqis  = jieqis
     };
   }

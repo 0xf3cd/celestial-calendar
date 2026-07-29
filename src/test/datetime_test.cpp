@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <print>
+#include <limits>
 #include <ranges>
 #include "util.hpp"
 #include "datetime.hpp"
@@ -400,6 +401,33 @@ TEST(Datetime, OperatorsSpaceship) {
   ASSERT_TRUE(dt4 >= dt3);
   ASSERT_TRUE(dt3 >= dt1);
   ASSERT_TRUE(dt2 >= dt1);
+}
+
+TEST(Datetime, AddSeconds) {
+  using namespace std::chrono_literals;
+
+  const Datetime noon { util::to_ymd(2024, 6, 15), 0.5 };
+  ASSERT_EQ(add_seconds(noon, 3600.0),   (Datetime { util::to_ymd(2024, 6, 15), std::chrono::hh_mm_ss { 13h } }));
+  ASSERT_EQ(add_seconds(noon, 43200.0),  (Datetime { util::to_ymd(2024, 6, 16), 0.0 }));
+  ASSERT_EQ(add_seconds(noon, -43200.0), (Datetime { util::to_ymd(2024, 6, 15), 0.0 }));
+  ASSERT_EQ(add_seconds(noon, -86400.0 * 2.5), (Datetime { util::to_ymd(2024, 6, 13), 0.0 }));
+
+  // #84 review: a shift landing exactly on midnight can leave the fractional sum a half-ulp
+  // below zero, which floor/carry used to round into fraction == 1.0 — a constructor throw on
+  // a perfectly valid shift. Shift one nanosecond back to midnight, the smallest such case.
+  const Datetime just_past_midnight { util::to_ymd(2024, 6, 15), std::chrono::hh_mm_ss { 1ns } };
+  const auto back = add_seconds(just_past_midnight, -1e-9);
+  ASSERT_EQ(back, (Datetime { util::to_ymd(2024, 6, 15), 0.0 }));
+
+  // Non-finite or day-carry-overflowing offsets must throw, not reach the float→int cast.
+  ASSERT_THROW({ add_seconds(noon, std::numeric_limits<double>::quiet_NaN()); }, std::invalid_argument);
+  ASSERT_THROW({ add_seconds(noon, 4e14); }, std::invalid_argument);
+  ASSERT_THROW({ add_seconds(noon, -4e14); }, std::invalid_argument);
+
+  // Offsets under the day-carry bound can still leave `chrono::year`'s ±32767 — beyond it the
+  // stored year is unspecified and `ok()` cannot be trusted, so this must throw, not wrap.
+  ASSERT_THROW({ add_seconds(noon, 86400.0 * 2.0e7); }, std::invalid_argument);
+  ASSERT_THROW({ add_seconds(noon, -86400.0 * 2.0e7); }, std::invalid_argument);
 }
 
 } // namespace calendar::test
