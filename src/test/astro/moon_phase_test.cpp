@@ -57,9 +57,9 @@ TEST(NewMoon, Moments) {
   for (int i = 0; i < 10; ++i) {
     const auto roots_in_year = moments(year + i);
 
-    // Ensure all roots in this year are really in this year.
+    // Ensure all roots in this year are really in this year. The year is bounded in UTC (#84).
     for (const auto root : roots_in_year) {
-      const auto dt = astro::julian_day::jde_to_ut1(root);
+      const auto dt = astro::julian_day::jde_to_utc(root);
       const auto [y, _, __] = util::from_ymd(dt.ymd);
       ASSERT_EQ(y, year + i);
     }
@@ -82,42 +82,8 @@ TEST(NewMoon, Moments) {
 }
 
 
-TEST(NewMoon, DiffTest1) {
-  using namespace std::ranges;
-  using namespace std::chrono_literals;
-  using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
-
-  // Datetimes in UTC+8 (Beijing time).
-  // Data source: https://github.com/leetcola/nong/wiki/算法系列之十九：用天文方法计算日月合朔（新月）
-  const std::vector<calendar::Datetime> datetimes {
-    calendar::Datetime { util::to_ymd(2011, 11, 25), hms { 14h +  9min + 41s + 250ms } },
-    calendar::Datetime { util::to_ymd(2011, 12, 25), hms {  2h +  6min + 27s + 250ms } },
-    calendar::Datetime { util::to_ymd(2012,  1, 23), hms { 15h + 39min + 24s + 160ms } },
-    calendar::Datetime { util::to_ymd(2012,  2, 22), hms {  6h + 34min + 40s + 840ms } },
-    calendar::Datetime { util::to_ymd(2012,  3, 22), hms { 22h + 37min +  8s + 910ms } },
-    calendar::Datetime { util::to_ymd(2012,  4, 21), hms { 15h + 18min + 22s + 120ms } },
-    calendar::Datetime { util::to_ymd(2012,  5, 21), hms {  7h + 46min + 59s + 970ms } },
-    calendar::Datetime { util::to_ymd(2012,  6, 19), hms { 23h +  2min +  6s + 390ms } },
-    calendar::Datetime { util::to_ymd(2012,  7, 19), hms { 12h + 24min +  2s + 830ms } },
-    calendar::Datetime { util::to_ymd(2012,  8, 17), hms { 23h + 54min + 28s +  30ms } },
-    calendar::Datetime { util::to_ymd(2012,  9, 16), hms { 10h + 10min + 36s + 990ms } },
-    calendar::Datetime { util::to_ymd(2012, 10, 15), hms { 20h +  2min + 30s + 980ms } },
-    calendar::Datetime { util::to_ymd(2012, 11, 14), hms {  6h +  8min +  5s + 900ms } },
-    calendar::Datetime { util::to_ymd(2012, 12, 13), hms { 16h + 41min + 37s + 600ms } },
-    calendar::Datetime { util::to_ymd(2013,  1, 12), hms {  3h + 43min + 31s + 340ms } },
-  };
-
-  const auto jdes = datetimes 
-                  | views::transform(astro::julian_day::ut1_to_jde) // Actually the data is in UTC, but ignore that here.
-                  | views::transform([&](const double jde) { return jde - 8.0 / 24.0; }) // Back to UTC+0.
-                  | to<std::vector>();
-
-  RootGenerator gen(jdes[0] - 0.5); // Start from a little before the first root.
-  for (const auto expected_root : jdes) {
-    const auto actual_root = gen.next();
-    ASSERT_NEAR(expected_root, actual_root, 0.00002);
-  }
-}
+// DiffTest1 (nong-wiki conjunctions) retired under #68/#84 — the source states no time scale;
+// superseded by DiffTest2 (HKO) and the boundary tests below.
 
 
 TEST(NewMoon, DiffTest2) {
@@ -143,9 +109,10 @@ TEST(NewMoon, DiffTest2) {
     calendar::Datetime { util::to_ymd(2024, 12, 31), hms {  6h + 27min } },
   };
 
-  const auto jdes = datetimes 
-                  | views::transform(astro::julian_day::ut1_to_jde) // Actually the data is in UTC, but ignore that here.
-                  | views::transform([&](const double jde) { return jde - 8.0 / 24.0; }) // Back to UTC+0.
+  const auto jdes = datetimes
+                  | views::transform([](const calendar::Datetime& utc8) { // UTC+8 civil time → UTC → JDE (#84)
+                      return astro::julian_day::utc_to_jde(calendar::add_seconds(utc8, -8.0 * 3600.0));
+                    })
                   | to<std::vector>();
 
   const auto actual_roots = moments(2024);
@@ -154,6 +121,33 @@ TEST(NewMoon, DiffTest2) {
 
   for (const auto [root, expected_root] : views::zip(actual_roots, jdes)) {
     ASSERT_NEAR(root, expected_root, 0.0005);
+  }
+}
+
+
+TEST(NewMoon, MomentsYearBoundaryIsUtc) {
+  // #84: the year bounds are UTC; under the old UT1 bounds a conjunction between the two
+  // midnights was attributed to the neighbouring year. The gap is ΔT − (ΔAT + 32.184) s:
+  // sub-second today, hours by the fifth millennium.
+  // Provenance: flip cases from a 1972-5000 scan of this library's own (Horizons-validated)
+  // chain, 2026-07-28; the assertion under test is the year attribution, whose boundary
+  // formula is pinned against pyerfa in `LeapSecond.UtcBoundaryFormula`.
+  struct Case { int32_t year; std::size_t n; std::size_t n_prev; double first; };
+  const std::vector<Case> cases {
+    { 3312, 13, 12, 2930742.50177006 }, // conjunction 83.7 s after UTC new-year midnight
+    { 3999, 13, 12, 3181664.62194254 },
+    { 4933, 13, 12, 3522801.58333821 },
+  };
+
+  for (const auto& c : cases) {
+    const auto roots = moments(c.year);
+    ASSERT_EQ(roots.size(), c.n);
+    ASSERT_NEAR(roots.front(), c.first, 1e-5);
+
+    // The boundary-adjacent conjunction must not leak into the previous year.
+    const auto prev_roots = moments(c.year - 1);
+    ASSERT_EQ(prev_roots.size(), c.n_prev);
+    ASSERT_LT(prev_roots.back(), c.first - 25.0); // a synodic month before, not the same root
   }
 }
 

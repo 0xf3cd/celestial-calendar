@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <chrono>
 #include <format>
 #include <cassert>
@@ -110,7 +111,7 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
  * @note The precision of the `time_of_day` field is `std::chrono::nanoseconds`.
  * @note The `time_of_day` field (i.e. `hh_mm_ss`) is positive and less than 24:00:00.0 (i.e. 1 day).
  * @note No time zone is assumed.
- * @details This struct is used to represent UT1 and UTC time in this project.
+ * @details This struct is used to represent UT1, UTC, and TT time in this project.
  */
 struct Datetime {
   year_month_day ymd;
@@ -266,6 +267,40 @@ struct Datetime {
     return time_of_day.to_duration() <=> other.time_of_day.to_duration();
   };
 };
+
+
+/**
+ * @brief Returns `dt` shifted by `offset_sec` seconds, carrying whole days into the date part.
+ * @param dt The datetime to shift.
+ * @param offset_sec The offset in seconds. Can be negative, and is not limited to one day.
+ * @return The shifted datetime.
+ * @throw std::invalid_argument if `offset_sec` is not finite or beyond the day-carry range,
+ *        or if the shifted date is not a valid gregorian date.
+ */
+constexpr auto add_seconds(const Datetime& dt, const double offset_sec) -> Datetime {
+  using namespace util::ymd_operator;
+
+  // Beyond ±2e9 days the day carry below overflows `int32_t`; NaN fails the comparison too.
+  if (not (std::fabs(offset_sec) < 2.0e9 * in_a_day<seconds>())) {
+    throw std::invalid_argument {
+      std::format("The offset {} seconds is not finite or beyond the day-carry range.", offset_sec)
+    };
+  }
+
+  const double fraction = dt.fraction() + (offset_sec / in_a_day<seconds>());
+
+  // The shift can leave [0.0, 1.0); carry the whole days into the date part.
+  const auto day_carry = static_cast<int32_t>(std::floor(fraction));
+  const double remainder = fraction - day_carry;
+
+  // A shift landing exactly on midnight can round `remainder` up to 1.0 (the sum comes out a
+  // half-ulp below a whole day); carry it, or the constructor rejects the fraction.
+  if (remainder >= 1.0) {
+    return Datetime { dt.ymd + day_carry + 1, 0.0 };
+  }
+
+  return Datetime { dt.ymd + day_carry, remainder };
+}
 
 } // namespace calendar
 

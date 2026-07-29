@@ -496,27 +496,8 @@ constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
  * @return The datetime in TT.
  */
 constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
-  using namespace util::ymd_operator;
-  using namespace std::chrono;
-
-  // Calculate the delta T.
-  const double delta_t = compute(ut1_dt);
-
   // As per the formula, TT = UT1 + ΔT.
-  // Calculate the day fraction in TT, using the above ΔT.
-  const double tt_day_fraction = ut1_dt.fraction()                          // UT1 day fraction
-                               + (delta_t / calendar::in_a_day<seconds>()); // Fraction of ΔT in a day.
-
-  // After adjustment, `tt_day_fraction` can be out of the range of [0.0, 1.0).
-
-  // Find out how many days to add or substract. `days` can be either positive or negative.
-  const auto days = static_cast<int32_t>(std::floor(tt_day_fraction));
-  
-  // Correct the fraction to be in the range of [0.0, 1.0).
-  const double real_fraction = tt_day_fraction - days;
-
-  // Finally return the result.
-  return calendar::Datetime { ut1_dt.ymd + days, real_fraction };
+  return calendar::add_seconds(ut1_dt, compute(ut1_dt));
 }
 
 
@@ -526,27 +507,8 @@ constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime
  * @return The datetime in UT1.
  */
 constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
-  using namespace util::ymd_operator;
-  using namespace std::chrono;
-
-  // Calculate the delta T.
-  const double delta_t = compute(tt_dt);
-
   // As per the formula, UT1 = TT - ΔT.
-  // Calculate the day fraction in UT1, using the above ΔT.
-  const double ut1_day_fraction = tt_dt.fraction()                           // TT day fraction
-                                - (delta_t / calendar::in_a_day<seconds>()); // Fraction of ΔT in a day.
-
-  // After adjustment, `ut1_day_fraction` can be out of the range of [0.0, 1.0).
-
-  // Find out how many days to add or substract. `days` can be either positive or negative.
-  const auto days = static_cast<int32_t>(std::floor(ut1_day_fraction));
-  
-  // Correct the fraction to be in the range of [0.0, 1.0).
-  const double real_fraction = ut1_day_fraction - days;
-
-  // Finally return the result.
-  return calendar::Datetime { tt_dt.ymd + days, real_fraction };
+  return calendar::add_seconds(tt_dt, -compute(tt_dt));
 }
 
 } // namespace astro::delta_t

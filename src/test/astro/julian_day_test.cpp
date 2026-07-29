@@ -7,6 +7,9 @@
 
 namespace astro::julian_day::test {
 
+// The UTC family (`utc_to_jde` / `jde_to_utc`) is exercised in `leap_second_test.cpp`,
+// alongside the ΔAT machinery it composes.
+
 using namespace astro::julian_day;
 
 using namespace util;
