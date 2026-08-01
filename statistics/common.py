@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import ctypes
 from ctypes import (
-  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, c_char_p,
+  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, c_char, c_char_p,
   POINTER, Structure
 )
 
@@ -365,7 +365,9 @@ class _JieqiMomentQuery(Structure):
 LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
 LIB.query_jieqi_moment.restype = _JieqiMomentQuery
 
-LIB.get_jieqi_name.argtypes = [c_uint8, c_char_p, c_uint32]
+# `buf` is an output buffer, so it is typed as a pointer rather than `c_char_p` - the latter
+# reads as "takes a string" and invites passing a `bytes`, which the C side would write into.
+LIB.get_jieqi_name.argtypes = [c_uint8, POINTER(c_char), c_uint32]
 LIB.get_jieqi_name.restype = c_bool
 
 class _Discriminant(Structure):
