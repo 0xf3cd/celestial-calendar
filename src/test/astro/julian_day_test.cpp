@@ -17,6 +17,11 @@ using namespace util::ymd_operator;
 using namespace calendar;
 using namespace std::chrono_literals;
 
+// Provenance (#68): the first row is a textbook anchor (2299160.5 = 1582-10-15, the Gregorian
+// adoption, Meeus Ch.7); the other rows below are legacy spot checks introduced by "Julian day
+// numbers" #5 (2024-06) with no recorded source, except the last 4 rows (stevegs.com's JD
+// calculator, cited inline). The real correctness gate for these conversions is the Consistency
+// round-trip suite (5000 random points each direction) plus the InvalidInput boundary tests.
 const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
   { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },

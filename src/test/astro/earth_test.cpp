@@ -13,6 +13,11 @@ using namespace astro::earth;
 TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;
 
+  // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Enhanced
+  // testing", b5f6c35) with no recorded source. Tolerances are characterization-tight (1e-11 deg
+  // λ, 1e-16 deg β, 1e-14 AU r) — a determinism/regression baseline, not an accuracy benchmark.
+  // Independent accuracy anchor: the geocentric-Sun pipeline built on this evaluation is
+  // validated against JPL DE441 in sun_horizons_golden_test.cpp.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     // JDE                   Longitude            Latitude                 Radius
     { 2422823.3699241388, { 232.52621477445064,  0.00023073808290912477,   1.01083930897031 } },
@@ -85,6 +90,11 @@ TEST(Earth, Vsop87dEvaluate) {
 TEST(Earth, NutationMeeus) {
   using namespace nutation;
 
+  // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Earth
+  // nutation" #10) with no recorded source. Tolerances are characterization-tight (1e-14 deg
+  // Δψ, 1e-15 deg Δε) — a determinism/regression baseline, not an accuracy benchmark.
+  // Independent anchors: Meeus Example 22.a (Earth.ObliquityMeeus22a below) and the PyMeeus
+  // Table 22.A cross-dataset in sidereal_time_test.cpp.
   const std::unordered_map<double, std::tuple<double, double>> dataset {
     // JDE                   Longtitude nutation       Obliquity nutation
     {  2422340.375810433, {   0.0040657677880880485,  -0.0017067131109079594 } },
