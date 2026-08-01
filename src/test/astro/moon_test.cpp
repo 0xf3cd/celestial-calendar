@@ -82,6 +82,10 @@ TEST(Moon, CoordAndPpi) {
 
 
 TEST(Moon, Perturbation) {
+  // Provenance (#68): same self-generated ELP2000-82B characterization family as
+  // elp2000_82b_test.cpp (see its header comment and #65's root-cause discussion), introduced
+  // 2024-08 (Release/v0.1.0 #34). Determinism/regression baseline; the independent accuracy
+  // anchor is moon_horizons_golden_test.cpp (JPL DE441).
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {
     //JDE                   L expected            B expected          R expected           L perturbation       B perturbation
     { 2455157.8937397725, { -166691.76694696903,   961656.2178595652,  19612316.117669746,   832.4541805169106,  2363.0903304329554 } },
