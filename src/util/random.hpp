@@ -25,6 +25,7 @@
 
 
 #include <cassert>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -43,15 +44,17 @@ namespace util::detail {
 inline constexpr uint64_t DEFAULT_SEED = 42;
 
 inline auto random_seed() -> uint64_t {
-  // Only a fully-consumed, non-negative decimal numeral counts; anything else (unset,
-  // non-numeric, zero, trailing junk, negative) falls back to the default.
+  // Only a fully-consumed, non-negative decimal numeral is honored (yes, 0 is a valid
+  // seed); anything else — unset, leading whitespace/sign, trailing junk, overflow —
+  // falls back to the default.
   const char* const env = std::getenv("CELESTIAL_TEST_SEED");
-  if (env == nullptr or *env == '-') {
+  if (env == nullptr or *env < '0' or *env > '9') {
     return DEFAULT_SEED;
   }
+  errno = 0;
   char* end = nullptr;
   const auto parsed = std::strtoull(env, &end, 10);
-  if (end == env or *end != '\0' or parsed == 0) {
+  if (*end != '\0' or errno == ERANGE) {
     return DEFAULT_SEED;
   }
   return parsed;

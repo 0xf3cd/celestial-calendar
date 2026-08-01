@@ -84,6 +84,7 @@ jobs:
           docker buildx build \
             --platform ${{ matrix.platform }} -t $IMAGE_TAG \
             --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
+            --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \
             --load .
 
           # Run the Docker image and copy build artifacts to the output directory

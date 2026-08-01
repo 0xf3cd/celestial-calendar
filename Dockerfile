@@ -33,6 +33,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Build and test the project
 # Only run the integration tests, since arm docker env are slow on GitHub CI
+# Gate track of the #69 dual-track policy: pin the seed inside the image too — a docker
+# build layer does not inherit the GitHub Actions env context (default matches
+# DEFAULT_SEED in src/util/random.hpp).
+ARG CELESTIAL_TEST_SEED=42
+ENV CELESTIAL_TEST_SEED=${CELESTIAL_TEST_SEED}
 RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
 RUN /opt/venv/bin/python ./project.py --clean --cores all --all -k integration -v 1
 
