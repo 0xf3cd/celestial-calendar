@@ -4,7 +4,7 @@
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
 
-// In this file, we test that algo1 and glao2 generates the same lunar month data.
+// In this file, we test that algo1 and algo2 generate the same lunar month data.
 
 namespace calendar::lunar::test {
 

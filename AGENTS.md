@@ -58,8 +58,9 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   stay inside algo5; a new algoN is only for a methodology change. algo1–algo4 are frozen
   exhibits and comparison baselines (algo4: `DeltaT/models.ipynb`, two segments, the 2024.0+
   one fitted on USNO *predictions*; its drift vs truth is measured in #104). In-repo
-  `statistics/` holds evaluation notebooks only. That repo also carries the raw IERS/USNO EOP
-  data and the full VSOP87 coefficient files (coefficient-level audits under #94).
+  `statistics/` holds the evaluation notebooks and the golden-dataset crawlers — no model
+  training. That repo also carries the raw IERS/USNO EOP data and the full VSOP87 coefficient
+  files (coefficient-level audits under #94).
 
 ## Tech Stack
 

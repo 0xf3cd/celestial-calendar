@@ -310,7 +310,7 @@ TEST(Datetime, EdgeCases) {
     {
       const Datetime dt { today_tp, 1.0 - 1e-11 };
       ASSERT_EQ(dt.ymd, today_tp);
-      ASSERT_NEAR(dt.fraction(), 1.0, 1e-10); // Enforce strict equality here.
+      ASSERT_NEAR(dt.fraction(), 1.0, 1e-10); // The input is 1e-11 day (864 ns) short of 1.0, so it round-trips just below.
     }
 
     {

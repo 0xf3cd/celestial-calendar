@@ -7,6 +7,12 @@
 * Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
 * Sunrise, sunset, transit, twilight, and polar day/night queries, within ±2 min of external references (USNO / NOAA / JPL DE) (日出日落、中天、曙暮光、极昼极夜)
+* Geocentric apparent positions: ecliptic coordinates for the Sun and Moon, equatorial for the Sun, plus New Moon moments (日月视位置与合朔)
+* Equation of time and local apparent solar time (均时差与真太阳时)
+* Time scales and time-related quantities: UT1 / UTC / TT with leap seconds and ΔT, Julian Day, sidereal time, obliquity, nutation (时标转换、儒略日、恒星时、黄赤交角、章动)
+* A C ABI shared library (`src/shared_lib/celestial.h`), so the library is consumable from other languages (C 接口动态库)
+
+The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–5000 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention, algo2 itself has no hard limit). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI exports algo1 and algo2, and `get_supported_lunar_year_range` reports their bounds.
 
 ## 2. Requirements
 
@@ -15,6 +21,7 @@
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
+  * `Requirements.txt` covers the build/test automation only. The linters come separately (see §4), and the notebooks and crawlers under `statistics/` need `python3 -m pip install -r Requirements-statistics.txt`
 
 ## 3. How to Build
 
@@ -54,6 +61,12 @@ chmod +x project.py
 
 Follow these steps to set up, build, and test the project on Windows. Ensure you have a C++23 compatible compiler installed.
 
+Windows carries neither LLVM nor `make` out of the box, and the build drives CMake through the `Unix Makefiles` generator, so both are needed. Install them first — this is what CI does:
+
+```powershell
+choco install -y make llvm
+```
+
 Before building the project, you should specify the compiler to use. For example, to use `clang++`, run:
 
 ```powershell
@@ -87,7 +100,13 @@ The project is written in C++, and automated with Python scripts.
 
 For C++ codes, `clang-tidy` is used; For Python codes, `ruff` is used.
 
-Ensure `clang-tidy` and `ruff` are installed by `python3 -m pip install -r Requirements.txt`.
+Neither is part of `Requirements.txt` — install them directly, the way CI does:
+
+```sh
+python3 -m pip install ruff clang-tidy==18.1.8
+```
+
+`clang-tidy` is pinned to match the clang 18 toolchain: it runs with `WarningsAsErrors: '*'`, and a newer version ships new checks that flag pre-existing code.
 
 The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 
@@ -183,8 +202,8 @@ There are basically two ways to download:
   * Modules
   * Ranges and views (e.g. cartesian_product...)
   * Use `std::generator` in Newton's method (moon_phase and jiqei).
-* Support conversions between UTC and UT1
-  * Their differences are subtle and are ignored at this moment...
+* DUT1 (i.e. UT1 - UTC) is not modelled
+  * UTC became a first-class time scale in v0.4.0 (leap-second aware, `utc_to_tt` / `tt_to_utc`), but UT1 and UTC are still treated as interchangeable — the gap stays below 0.9 s while leap seconds are in force.
 
 ## 8. References
 

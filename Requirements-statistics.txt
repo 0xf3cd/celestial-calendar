@@ -1,0 +1,13 @@
+# Dependencies of the analysis layer under `statistics/` (crawlers and notebooks).
+# Not needed to build, test, or lint the project - see `Requirements.txt` for that.
+# The crawlers fetch over HTTP, hence `requests` from the file below.
+-r Requirements.txt
+
+pandas
+beautifulsoup4
+numpy
+matplotlib
+scikit-learn
+skyfield
+pyerfa  # imported as `erfa`
+jupyter

@@ -34,7 +34,7 @@ namespace util::hash {
 template <typename T>
 inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
   // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  // Don't lint this code, because clang-tidy compalins about calculating hash for `std::string`.
+  // Don't lint this code, because clang-tidy complains about calculating hash for `std::string`.
   auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
   // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
