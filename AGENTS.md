@@ -100,6 +100,15 @@ $env:CC  = "clang"
 python3 ./project.py --all
 ```
 
+### Test randomness (#69)
+
+Randomized tests draw from a shared, seeded engine (`util/random.hpp`): default seed 42,
+override with the `CELESTIAL_TEST_SEED` env var, effective seed printed once per test
+process (`[ util::random ] seed = ...`). The PR/push gate pins the default;
+`random_soak.yml` (weekly / dispatch) draws a fresh seed per run. A soak failure is never
+a flake: replay the failing ctest entry with the same seed, then bake the find into a
+directed regression test.
+
 ### Direct CMake (optional)
 
 ```sh
@@ -212,7 +221,9 @@ is intentional. Keep it. That buys a discipline:
 
 Every file opens with the full GPL-3.0 block comment (copy from any src file), verbatim except
 the year: `Copyright (C) <year> Ningqi Wang (0xf3cd)`. New files use the current year; never
-change an existing file's year. GPL-3.0 project — keep the header.
+change an existing file's year — except a wholesale rewrite, which may set a
+`<original>-<current>` range (user-directed, e.g. `util/random.hpp` 2024-2026). GPL-3.0
+project — keep the header.
 
 ## Tests
 

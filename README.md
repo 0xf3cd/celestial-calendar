@@ -47,6 +47,9 @@ chmod +x project.py
 # Run tests
 ./project.py --test
 
+# Randomized tests use a seeded engine (default 42); override to replay or explore
+CELESTIAL_TEST_SEED=123 ./project.py --test
+
 # Or, run all above together to build and test
 ./project.py --all
 

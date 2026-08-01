@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <print>
 #include <atomic>
+#include <cmath>
 #include <ranges>
 #include <thread>
 #include <unordered_set>
@@ -92,11 +93,35 @@ TEST(Util, OperatorSub) {
 }
 
 TEST(Util, GenRandomValue1) {
+  // #69: full-domain draws must actually show both signs — this doubles as the mutation
+  // guard for the sign branch (drop it and every draw is non-negative).
+  std::size_t neg_count = 0;
+  std::size_t pos_count = 0;
   for (size_t i = 0; i < 5000; i++) {
     const auto random_value = random<double>();
-    ASSERT_GE(random_value, std::numeric_limits<double>::min());
-    ASSERT_LE(random_value, std::numeric_limits<double>::max());
+    ASSERT_TRUE(std::isfinite(random_value));
+    if (random_value < 0.0) {
+      ++neg_count;
+    } else {
+      ++pos_count;
+    }
   }
+  ASSERT_GT(neg_count, 0);
+  ASSERT_GT(pos_count, 0);
+
+  std::size_t f_neg_count = 0;
+  std::size_t f_pos_count = 0;
+  for (size_t i = 0; i < 1000; i++) {
+    const auto random_value = random<float>();
+    ASSERT_TRUE(std::isfinite(random_value));
+    if (random_value < 0.0F) {
+      ++f_neg_count;
+    } else {
+      ++f_pos_count;
+    }
+  }
+  ASSERT_GT(f_neg_count, 0);
+  ASSERT_GT(f_pos_count, 0);
 
   for (size_t i = 0; i < 5000; i++) {
     const auto random_value = random<uint8_t>();
@@ -114,10 +139,10 @@ TEST(Util, GenRandomValue1) {
 
 TEST(Util, GenRandomValue2) {
   for (size_t i = 0; i < 5000; i++) {
-    // Not sure if the subtest of float is 100% correct.
-    // Maybe an epsilon is needed when comparing?
-    const auto random_value1 = random<float>();
-    const auto random_value2 = random<float>();
+    // Modest bounds on purpose: full-domain values would overflow the range version's
+    // (max - min) to inf (#69).
+    const auto random_value1 = random<float>(-1e6F, 1e6F);
+    const auto random_value2 = random<float>(-1e6F, 1e6F);
     if (random_value1 == random_value2) {
       continue;
     }
@@ -221,14 +246,13 @@ TEST(Util, HashCollision) {
 
 
 TEST(Util, MakeCached1) {
-  const auto f = [](int a, int b) {
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
+  std::atomic<int32_t> call_count { 0 };
+  const auto f = [&call_count](int a, int b) {
+    ++call_count;
     return a + b;
   };
   const auto cached_f = util::cache::cache_func(f);
 
-  // Time the original function.
-  const auto original_start_time = std::chrono::steady_clock::now();
   std::vector<int> original_results;
   for (int i = 0; i < 10; i++) {
     for (int j = 0; j < 10; j++) {
@@ -237,11 +261,8 @@ TEST(Util, MakeCached1) {
       original_results.emplace_back(f(i, j));
     }
   }
-  const auto original_end_time = std::chrono::steady_clock::now();
-  const auto original_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(original_end_time - original_start_time).count();
+  ASSERT_EQ(call_count, 300);
 
-  // Time the cached function.
-  const auto cached_start_time = std::chrono::steady_clock::now();
   std::vector<int> cached_results;
   for (int i = 0; i < 10; i++) {
     for (int j = 0; j < 10; j++) {
@@ -250,27 +271,23 @@ TEST(Util, MakeCached1) {
       cached_results.emplace_back(cached_f(i, j));
     }
   }
-  const auto cached_end_time = std::chrono::steady_clock::now();
-  const auto cached_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(cached_end_time - cached_start_time).count();
 
   ASSERT_EQ(original_results, cached_results);
 
-  ASSERT_GT(original_elapsed_time, cached_elapsed_time);
-  std::println("original_elapsed_time = {}ms, cached_elapsed_time = {}ms, {}x faster",
-               original_elapsed_time, cached_elapsed_time, 
-               static_cast<double>(original_elapsed_time) / static_cast<double>(cached_elapsed_time));
+  // #69/#117: determinism over wall-clock — each unique (i, j) is computed exactly once,
+  // so the 300 cached invocations must add exactly 100 underlying calls.
+  ASSERT_EQ(call_count, 400);
 }
 
 
 TEST(Util, MakeCached2) {
-  const auto f = [](int a, double b) {
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
+  std::atomic<int32_t> call_count { 0 };
+  const auto f = [&call_count](int a, double b) {
+    ++call_count;
     return a * b;
   };
   const auto cached_f = util::cache::cache_func(f);
 
-  // Time the original function.
-  const auto original_start_time = std::chrono::steady_clock::now();
   std::vector<double> original_results;
   for (int i = 0; i < 10; i++) {
     for (int j = 0; j < 10; j++) {
@@ -279,11 +296,8 @@ TEST(Util, MakeCached2) {
       original_results.emplace_back(f(i, j));
     }
   }
-  const auto original_end_time = std::chrono::steady_clock::now();
-  const auto original_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(original_end_time - original_start_time).count();
+  ASSERT_EQ(call_count, 300);
 
-  // Time the cached function.
-  const auto cached_start_time = std::chrono::steady_clock::now();
   std::vector<double> cached_results;
   for (int i = 0; i < 10; i++) {
     for (int j = 0; j < 10; j++) {
@@ -292,15 +306,11 @@ TEST(Util, MakeCached2) {
       cached_results.emplace_back(cached_f(i, j));
     }
   }
-  const auto cached_end_time = std::chrono::steady_clock::now();
-  const auto cached_elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(cached_end_time - cached_start_time).count();
 
   ASSERT_EQ(original_results, cached_results);
 
-  ASSERT_GT(original_elapsed_time, cached_elapsed_time);
-  std::println("original_elapsed_time = {}ms, cached_elapsed_time = {}ms, {}x faster",
-               original_elapsed_time, cached_elapsed_time,
-               static_cast<double>(original_elapsed_time) / static_cast<double>(cached_elapsed_time));
+  // #69/#117: see MakeCached1 — 300 cached invocations, exactly 100 fresh computations.
+  ASSERT_EQ(call_count, 400);
 }
 
 
