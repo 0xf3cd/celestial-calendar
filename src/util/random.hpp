@@ -47,7 +47,15 @@ inline auto random_seed() -> uint64_t {
   // Only a fully-consumed, non-negative decimal numeral is honored (yes, 0 is a valid
   // seed); anything else — unset, leading whitespace/sign, trailing junk, overflow —
   // falls back to the default.
+#ifdef _WIN32
+  // MSVC/clang-cl deprecate plain getenv as "unsafe"; getenv_s is the blessed form.
+  char env_buf[64] = {};
+  size_t env_len = 0;
+  getenv_s(&env_len, env_buf, sizeof(env_buf), "CELESTIAL_TEST_SEED");
+  const char* const env = env_len > 0 ? env_buf : nullptr;
+#else
   const char* const env = std::getenv("CELESTIAL_TEST_SEED");
+#endif
   if (env == nullptr or *env < '0' or *env > '9') {
     return DEFAULT_SEED;
   }
