@@ -28,6 +28,15 @@ def search_lib_path(folder: Path) -> Optional[Path]:
   """Search for the shared library in the given folder."""
   expected_ext = dynamic_lib_ext()
 
+  if not folder.is_dir():
+    return None
+
+  # Prefer the unversioned name (the latest build's link): versioned outputs accumulate
+  # in the build dir and directory order is arbitrary.
+  for path in folder.iterdir():
+    if path.is_file() and path.name == f"libcelestial_calendar{expected_ext}":
+      return path
+
   for path in folder.iterdir():
     if not path.is_file():
       continue
