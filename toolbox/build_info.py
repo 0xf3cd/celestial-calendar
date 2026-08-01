@@ -43,7 +43,7 @@ def silent_run(cmd: Sequence[str], **kwargs) -> ProcReturn:
   """Run a command without printing anything. Also check the return code. """
   proc_ret = run_cmd(cmd, print_cmd=False, print_stdout=False, print_stderr=False, **kwargs)
   if proc_ret.retcode != 0:
-    yellow_print("Command failed:", " ".join(cmd))
+    yellow_print(f"Command failed: {' '.join(cmd)}")
     raise RuntimeError("Command failed")
   return proc_ret
 
@@ -192,7 +192,7 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--save-to", type=Path, required=True, default=None)
+  parser.add_argument("--save-to", type=Path, required=True)
   parser.add_argument("--docker", type=str, default="")
 
   args = parser.parse_args()

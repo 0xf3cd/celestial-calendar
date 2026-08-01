@@ -9,6 +9,8 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
+import re
+
 from typing import List, Dict, Optional
 
 from . import paths
@@ -48,8 +50,10 @@ def find_gtests(keywords: List[str]) -> List[str]:
   name_to_no = { v: k for k, v in no_to_name.items() } # {test_name: test_no}
 
   def __find_test_no(keyword: str) -> List[str]:
+    # Match the number exactly. A substring test happens to work while the ids run without gaps,
+    # but the moment one is missing it silently picks a longer id - `-k 7` lands on `#70`.
     for test_no, test_name in no_to_name.items():
-      if f"#{keyword}" in test_no:
+      if test_no.rpartition("#")[2] == keyword.strip():
         return [test_name]
     raise ValueError(f"No tests found for keyword: {keyword}")
 
@@ -75,8 +79,10 @@ def find_gtests(keywords: List[str]) -> List[str]:
       test_list.extend(found)
 
   # Remove duplicates and sort the list by test id.
+  # Compared as a number, so the order does not ride on ctest right-aligning the ids - text order
+  # only agrees with numeric order because the padding spaces sort below '#'.
   test_list = list(set(test_list))
-  return sorted(test_list, key=lambda test_name: name_to_no[test_name])
+  return sorted(test_list, key=lambda test_name: int(name_to_no[test_name].rpartition("#")[2]))
 
 
 def run_gtest(
@@ -89,7 +95,8 @@ def run_gtest(
   assert TEST_DIR.exists(), "Test directory not found"
   assert TEST_DIR.is_dir(), "Test directory is not a directory"
 
-  cmd: List[str] = ["ctest", "-R", f"^{test}$"]
+  # `-R` takes a regex, and every test name carries dots - escape them, or `.` matches anything.
+  cmd: List[str] = ["ctest", "-R", f"^{re.escape(test)}$"]
   if verbose_level == 1:
     cmd.append("-V")
   elif verbose_level == 2:

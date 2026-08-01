@@ -77,7 +77,9 @@ def check_tool(tool: Tool) -> bool:
 
 def find_c_compilers() -> List[str]:
   """Find the C compilers in `PATH`."""
-  c_compilers_pattern = re.compile(r"^(gcc|clang|icc)(-\d+|\d*)")
+  # Anchored at both ends, or the toolchain's companions (`gcc-ar`, `gcc-nm`, `clang-cl`, ...)
+  # get listed as compilers. The version and `.exe` tails keep Windows and `gcc-14.2` in.
+  c_compilers_pattern = re.compile(r"^(gcc|clang|icc)(-?\d+(\.\d+)*)?(\.exe)?$")
 
   if "PATH" not in os.environ:
     return []
@@ -100,7 +102,7 @@ def find_c_compilers() -> List[str]:
 
 def find_cpp_compilers() -> List[str]:
   """Find the C++ compilers in `PATH`."""
-  cpp_compilers_pattern = re.compile(r"^(g\+\+|clang\+\+|icpc)(-\d+|\d*)")
+  cpp_compilers_pattern = re.compile(r"^(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?$")
 
   if "PATH" not in os.environ:
     return []
@@ -270,7 +272,8 @@ def setup_environment(plan: SetupPlan) -> int:
               "Please set CXX environment variable and try again.")
     red_print(60 * "-")
 
-    time.sleep(5) # Give the user time to read the warning
+    if sys.stdout.isatty(): # The warning above goes to stdout; no point pausing when nobody is watching.
+      time.sleep(5)
 
     cpp_compilers = find_cpp_compilers()
     if len(cpp_compilers) != 0:
@@ -289,7 +292,8 @@ def setup_environment(plan: SetupPlan) -> int:
               "Building is likely to fail. Early exiting...")
     red_print(60 * "-")
 
-    time.sleep(5) # Give the user time to read the warning
+    if sys.stdout.isatty(): # The warning above goes to stdout; no point pausing when nobody is watching.
+      time.sleep(5)
     return 1
   
   green_print("# Environment setup complete.")

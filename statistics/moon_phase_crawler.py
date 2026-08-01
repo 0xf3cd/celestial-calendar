@@ -7,34 +7,46 @@
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 
 
+from pathlib import Path
+
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
 
-url = "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm"
-response = requests.get(url)
-soup = BeautifulSoup(response.content, "html.parser")
+URL = "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm"
+CSV_PATH = Path(__file__).parent / "moon_phases.csv"
 
-# Find all tables
-tables = soup.find_all("table")
 
-all_data = []
-for table in tables:
-  rows = table.find_all("tr")
-  data = []
-  for row in rows:
-    cols = row.find_all("td")
-    cols = [ele.text.strip() for ele in cols]
-    if cols:
-      data.append(cols)
-  if data:
-    df = pd.DataFrame(data, columns=["日期", "時間", "狀態"])
-    all_data.append(df)
+def main() -> None:
+  response = requests.get(URL, timeout=30)
+  response.raise_for_status() # An error page parses into plausible-looking garbage otherwise.
+  soup = BeautifulSoup(response.content, "html.parser")
 
-# Concatenate all dataframes
-if all_data:
+  # Find all tables
+  tables = soup.find_all("table")
+
+  all_data = []
+  for table in tables:
+    rows = table.find_all("tr")
+    data = []
+    for row in rows:
+      cols = row.find_all("td")
+      cols = [ele.text.strip() for ele in cols]
+      if cols:
+        data.append(cols)
+    if data:
+      df = pd.DataFrame(data, columns=["日期", "時間", "狀態"])
+      all_data.append(df)
+
+  if not all_data:
+    raise RuntimeError(f"No moon phase table found at {URL}")
+
+  # Concatenate all dataframes
   combined_df = pd.concat(all_data, ignore_index=True)
-  combined_df.to_csv("moon_phases.csv", index=False, encoding="utf-8")
+  combined_df.to_csv(CSV_PATH, index=False, encoding="utf-8")
+  print(f"All tables saved to {CSV_PATH}.")
 
-print("All tables saved to moon_phases.csv.")
+
+if __name__ == "__main__":
+  main()

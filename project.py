@@ -18,8 +18,6 @@ import os
 import sys
 import argparse
 
-from operator import or_
-from functools import reduce
 from dataclasses import dataclass
 
 from typing import List, Callable, Sequence, Final
@@ -74,7 +72,7 @@ def parse_args() -> argparse.Namespace:
       cores = int(value)
       if cores < 1 or cores > available_cpu_cores:
         raise argparse.ArgumentTypeError(
-          f"Invalid number of CPU cores specified: {value}. Must be between 1 and {os.cpu_count()}."
+          f"Invalid number of CPU cores specified: {value}. Must be between 1 and {available_cpu_cores}."
         )
       return cores
     except ValueError as e:
@@ -225,8 +223,9 @@ def main() -> int:
     blue_print(f"# {task_name:<{max_len}} time: {duration:.5f} seconds")
   print(60 * "#")
 
-  # Resolve the return code
-  retcode = reduce(or_, [t.retcode for t in task_results])
+  # Resolve the return code - the first failure rather than a bitwise fold, which would report a
+  # code nobody returned (1 | 2 == 3) if `run_tasks` ever stopped stopping at the first failure.
+  retcode = next((t.retcode for t in task_results if t.retcode != 0), 0)
 
   if retcode != 0:
     red_print(f"# Return code: {retcode}")
