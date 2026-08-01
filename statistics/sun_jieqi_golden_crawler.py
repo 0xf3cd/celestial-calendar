@@ -188,8 +188,8 @@ def wrapped_deg(d: float) -> float:
 def approx_jieqi_jd(year: int, lon: float) -> float:
   """Seed the crossing of apparent longitude `lon` that falls inside calendar year `year`.
   Year boundaries here are proleptic-Gregorian civil midnights taken as TT JDs; the C++
-  window (`get_start_jde`) is UT1-based — a delta-T-scale difference (minutes at most),
-  irrelevant for jieqi that sit days from any year boundary. The lon >= 285 block
+  window (`get_start_jde`) resolves them through the UTC→TT path (#115) — a minute-scale
+  difference, irrelevant for jieqi that sit days from any year boundary. The lon >= 285 block
   (XiaoHan..JingZhe) belongs to the solar cycle begun the PREVIOUS March, landing in
   Jan-Mar of `year`."""
   equinox = 2451623.8 + (year - 2000) * 365.2422

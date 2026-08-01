@@ -187,13 +187,17 @@ inline auto solar_longitude(const double jde) -> double {
 }
 
 /** @brief Return the JDE of the start of the year. */
+// #115: year boundaries are civil moments — resolve them via the UTC (leap-second-aware)
+// path, matching `moments()` (#84). The UT1/UTC model gap (DUT1 ≤ 0.9 s in the leap era;
+// ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
+// between any jieqi and New Year — no year's attribution can move.
 inline auto get_start_jde(const int32_t year) -> double{
-  return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
+  return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 }
 
 /** @brief Return the JDE of the end of the year. */
 inline auto get_end_jde(const int32_t year) -> double {
-  return astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
+  return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */

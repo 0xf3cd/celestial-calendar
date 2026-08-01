@@ -164,7 +164,10 @@ const inline auto jieqi_jde = util::cache::cache_func(calc_jieqi_jde);
  * @return The UT1 (Universal Time 1).
  * @details This is just a thin wrapper around `jieqi_jde`.
  * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
- *       leap-second-aware path instead (#84).
+ *       leap-second-aware path instead (#84). Remaining consumers: the C-ABI
+ *       `query_jieqi_moment` (contract: `celestial.h`) and the HKO golden axis; UT1 stays
+ *       for contract stability. The UT1/UTC gap is DUT1 (≤ 0.9 s while leap seconds are
+ *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
  */
 inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
@@ -181,8 +184,9 @@ private:
 
 public:
   explicit JieqiGenerator(const double start_jde) {
-    const auto start_ut1 = astro::julian_day::jde_to_ut1(start_jde);
-    const auto start_year = start_ut1.year();
+    // #115: the start year is a civil concept — resolve it in UTC, matching `moments()` (#84).
+    const auto start_utc = astro::julian_day::jde_to_utc(start_jde);
+    const auto start_year = start_utc.year();
 
     // Find the first Jieqi after the given JDE.
     _year = start_year;
