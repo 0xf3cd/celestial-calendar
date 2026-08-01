@@ -261,6 +261,9 @@ typedef struct JieqiMomentQuery {
  * @param year The year, in gregorian calendar.
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24).
  * @returns A `JieqiMomentQuery` struct.
+ * @note The returned civil moment is UT1; while leap seconds are applied it matches UTC
+ *       to within DUT1 (±0.9 s), so modern-era civil consumers may treat it as UTC.
+ *       Past the ΔAT table freeze the modelled gap follows ΔT−(ΔAT+32.184) (#115).
  */
 JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
 
