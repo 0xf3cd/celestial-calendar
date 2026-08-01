@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <ranges>
+#include <vector>
 #include "util.hpp"
 #include "jieqi.hpp"
 
@@ -47,10 +48,11 @@ TEST(JieQi, IsJieOrQi) {
 
 
 TEST(JieQi, JDE) {
-  // Random pick some years, to avoid test time being too long.
-  auto years = std::views::iota(1800, 2034) | std::views::filter([](int32_t) {
-    return util::random(0.0, 1.0) < 0.042;
-  });
+  // ~10 of 234 candidate years — matches the old 4.2% filter's expectation, but the
+  // empty-sample case is structurally impossible (#69).
+  auto candidates = std::views::iota(1800, 2034) | std::ranges::to<std::vector>();
+  std::shuffle(candidates.begin(), candidates.end(), util::detail::engine());
+  const auto years = candidates | std::views::take(10) | std::ranges::to<std::vector>();
 
   for (const auto year : years) {
     for (int32_t jq_idx = 0; jq_idx < to_index(Jieqi::COUNT); jq_idx++) {

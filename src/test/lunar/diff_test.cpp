@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <ranges>
+#include <vector>
 #include <print>
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
+#include "random.hpp"
 
 // In this file, we test that algo1 and algo2 generate the same lunar month data.
 
@@ -26,41 +29,14 @@ auto pick_random_years() -> std::vector<int32_t> {
              | views::filter(filter_year)
              | to<std::vector>();
 
-  // Randomly pick some years.
-  std::shuffle(begin(years), end(years), std::mt19937{ std::random_device{}() });
-  return years 
-       | views::take(10) 
+  // Randomly pick some years. Seeded via util::random's shared engine, so the draw is
+  // reproducible under CELESTIAL_TEST_SEED (#69).
+  std::shuffle(begin(years), end(years), util::detail::engine());
+  return years
+       | views::take(10)
        | to<std::vector>();
 }
 
-
-TEST(LunarAlgoDiff, Perf) {
-  using namespace std::ranges;
-  const auto years = pick_random_years();
-
-  const auto tracked_run = [](const std::function<void()>& f) -> double {
-    const auto start = std::chrono::steady_clock::now();
-    f();
-    const auto end = std::chrono::steady_clock::now();
-    const auto ns_gap = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-    return static_cast<double>(ns_gap);
-  };
-
-  std::vector<double> algo1_results;
-  std::vector<double> algo2_results;
-
-  for (const auto year : years) {
-    algo1_results.push_back(tracked_run([&] { algo1::calc_lunar_year(year); }));
-    algo2_results.push_back(tracked_run([&] { algo2::get_info_for_year(year); }));
-  }
-
-  const double algo1_sum = std::reduce(cbegin(algo1_results), cend(algo1_results));
-  const double algo2_sum = std::reduce(cbegin(algo2_results), cend(algo2_results));
-
-  std::println("algo1: {} ns", algo1_sum / static_cast<double>(years.size()));
-  std::println("algo2: {} ns", algo2_sum / static_cast<double>(years.size()));
-  std::println("algo1 is {}x faster", algo2_sum / algo1_sum);
-}
 
 TEST(LunarAlgoDiff, Consistency) {
   // This test ensures that algo1 and algo2 have the same result on leap months.

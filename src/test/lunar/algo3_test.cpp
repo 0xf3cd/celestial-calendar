@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
-#include <random>
+#include <algorithm>
 #include <vector>
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
 #include "lunar/algo3.hpp"
+#include "random.hpp"
 
 namespace calendar::lunar::algo3::test {
 
@@ -24,7 +25,7 @@ TEST(LunarAlgo3, Correctness) {
   std::vector<int32_t> years = std::views::iota(algo3::START_YEAR, algo3::END_YEAR + 1)
                              | std::ranges::to<std::vector>();
 
-  std::shuffle(years.begin(), years.end(), std::mt19937 { std::random_device()() });
+  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded, reproducible (#69).
   years.resize(32);
 
   for (const auto year : years) {

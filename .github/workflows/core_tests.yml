@@ -4,6 +4,12 @@ on:
   push:
     branches: [ '**' ]
 
+# Gate track of the #69 dual-track policy: the pinned default seed (the soak workflow
+# random_soak.yml draws a fresh one per run). Must match DEFAULT_SEED in
+# src/util/random.hpp.
+env:
+  CELESTIAL_TEST_SEED: "42"
+
 jobs:
   linters-and-static-analysis:  
     runs-on: ubuntu-24.04

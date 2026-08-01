@@ -1,0 +1,121 @@
+name: Random Seed Soak
+
+# Exploration track of the #69 dual-track testing policy: the PR/push gate pins the
+# default seed (42), while this weekly (or manually dispatched) soak draws a fresh seed
+# per run. CELESTIAL_TEST_SEED = github.run_id — unique per run, visible in the run URL,
+# and directly replayable. A soak failure is never dismissed as a flake: replay the
+# failing ctest entry with the same seed (each ctest case starts a fresh process from
+# draw 0), then bake the find into a directed regression test.
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'  # weekly, Sunday 03:17 UTC
+  workflow_dispatch:
+
+env:
+  CELESTIAL_TEST_SEED: ${{ github.run_id }}
+
+jobs:
+  soak-ubuntu-clang:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+
+      - name: Install LLVM and clang++
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y llvm-18 clang-18
+
+      - name: Install CMake
+        run: sudo apt install cmake
+
+      - name: Build and Test
+        env:
+          CXX: clang++-18
+          CC:  clang-18
+        run: |
+          chmod +x project.py
+          ./project.py --setup --clean --cmake --build --test -v 1
+
+
+  soak-macos-apple-clang:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Python Dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+
+    - name: Build and Test
+      env:
+        CXX: clang++
+        CC:  clang
+      run: |
+        chmod +x project.py
+        ./project.py --setup --clean --cmake --build --test -v 1
+
+
+  soak-windows-clang:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Visual Studio
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: latest
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
+
+          choco install -y make llvm
+
+      - name: Build and Test
+        env:
+          CXX: clang++
+          CC:  clang
+        run: |
+          chcp.com 65001
+          $env:PYTHONIOENCODING = "utf-8"
+          python3 ./project.py --setup --clean --cmake --build --test -v 1

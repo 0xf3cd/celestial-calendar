@@ -5,6 +5,12 @@ on:
   pull_request:
     branches: [ main ]  # Also triggers on pull requests to the main branch
 
+# Gate track of the #69 dual-track policy: the pinned default seed (the soak workflow
+# random_soak.yml draws a fresh one per run). Must match DEFAULT_SEED in
+# src/util/random.hpp.
+env:
+  CELESTIAL_TEST_SEED: "42"
+
 jobs:
   linux-docker:
     # 2026-07: matrix trimmed from 8 QEMU-emulated platforms to the two real
@@ -78,6 +84,7 @@ jobs:
           docker buildx build \
             --platform ${{ matrix.platform }} -t $IMAGE_TAG \
             --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
+            --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \
             --load .
 
           # Run the Docker image and copy build artifacts to the output directory
