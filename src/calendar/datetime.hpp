@@ -166,7 +166,7 @@ struct Datetime {
   /**
    * @brief Constructs a `Datetime` from a `year_month_day` and `hh_mm_ss`.
    * @param ymd The year, month, and day.
-   * @param fraction The time of day.
+   * @param time_of_day The time of day.
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)

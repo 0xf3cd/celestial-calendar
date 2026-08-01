@@ -105,10 +105,10 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
   const auto vsop_coord = vsop87d(jde);
 
-  // Calculate the correction for the VSIO87D result, in order to convert it to FK5 system.
+  // Calculate the correction for the VSOP87D result, in order to convert it to FK5 system.
   const auto correction = fk5_correction(jde, vsop_coord);
 
-  // Calculate the Earth's nutation in longtitude.
+  // Calculate the Earth's nutation in longitude.
   const auto nutation = astro::earth::nutation::longitude(jde);
 
   // Calculate the Solar aberration, Meeus (25.11).
@@ -242,7 +242,7 @@ inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
 // In Newton's method, we will approximate the root with the previous root, iteratively.
 // The formula is: Xn+1 = Xn - f(Xn) / f'(Xn).
 // Where we can use the following formula to approximate f'(x):
-// f'(x) = (f(x+h) - f(x-h)) / (2*h), where h is a small number, usally [1e-8, 1e-5].
+// f'(x) = (f(x+h) - f(x-h)) / (2*h), where h is the central-difference half-width picked by `toolbox::newton_method`.
 //
 // As mentioned before, our goal is to find the root (JDE) at which the Sun reaches the expected longitude in a given year.
 // In our context, f is defined as:
@@ -251,8 +251,8 @@ inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
 //
 // Newton's method requires f to be differentiable (smooth).
 // So we need to modify the function of `solar_longitude`.
-// Bacause the beginning position of Sun in a year is roughly 280.0 degrees, and we need to make it negative.
-// Actually, for any JDE befire Spring Equinox this year, we need to substract 360 from `solar_longitude`'s result to make f smooth.
+// Because the beginning position of Sun in a year is roughly 280.0 degrees, and we need to make it negative.
+// Actually, for any JDE before Spring Equinox this year, we need to subtract 360 from `solar_longitude`'s result to make f smooth.
 // 
 // So the actual f is defined as:
 // f(jde) = modified_solar_longitude(jde) - expected_lon
@@ -266,7 +266,7 @@ inline auto make_f(const int32_t year, const double expected_lon) -> FuncType {
   const auto modified_solar_longitude = [=](const double jde) -> double {
     const double raw_value = solar_longitude(jde);
 
-    // We mostly want to substract 360.0 from those JDEs before Spring Equinox.
+    // We mostly want to subtract 360.0 from those JDEs before Spring Equinox.
     //
     // We are here using the fact that the beginning of the year is roughly 280.0 degrees,
     // and it continues growing to 360 degrees (which is also 0 degrees) until Spring Equinox.

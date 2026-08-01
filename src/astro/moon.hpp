@@ -36,7 +36,7 @@ using astro::elp2000_82b::Context;
 /**
  * @brief Calculate perturbation of the Moon's geocentric longitude.
  * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
- *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ *          the Moon is perturbed by Venus, Jupiter, and Earth.
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
@@ -51,7 +51,7 @@ inline auto longitude(const Context& ctx) -> double {
 /**
  * @brief Calculate perturbation of the Moon's geocentric latitude.
  * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
- *          the Moon is perturbated by Venus, Jupiter, and Earth.
+ *          the Moon is perturbed by Venus, Jupiter, and Earth.
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
@@ -114,7 +114,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
 
 /**
  * @brief Calculate the equatorial horizontal parallax of the Moon.
- * @param coord The geocentric ecliptic position of the Moon.
+ * @param distance The geocentric distance of the Moon.
  * @return The equatorial horizontal parallax of the Moon.
  */
 inline auto equatorial_horizontal_parallax(const Distance<KM>& distance) -> Angle<RAD> {

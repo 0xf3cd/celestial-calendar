@@ -105,7 +105,7 @@ enum class Planet : uint8_t { EAR, /* SAT, MAR, ... */ };
 
 /** @struct The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
 template <Planet planet>
-struct PlannetTables;
+struct PlanetTables;
 
 /**
  * @struct The result of the VSOP87D evaluation.
@@ -126,9 +126,9 @@ struct Evaluation {
  */
 template <Planet planet>
 inline auto evaluate(const double jm) -> Evaluation {
-  const auto& L = PlannetTables<planet>::L;
-  const auto& B = PlannetTables<planet>::B;
-  const auto& R = PlannetTables<planet>::R;
+  const auto& L = PlanetTables<planet>::L;
+  const auto& B = PlanetTables<planet>::B;
+  const auto& R = PlanetTables<planet>::R;
 
   return {
     .λ = evaluate_tables(L, jm), 

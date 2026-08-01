@@ -2545,9 +2545,9 @@ constexpr Vsop87dTables R { R_array };
 
 namespace astro::vsop87d {
 
-/** @brief Specialize `PlannetTables` for `Planet::EAR`. */
+/** @brief Specialize `PlanetTables` for `Planet::EAR`. */
 template <>
-struct PlannetTables<Planet::EAR> {
+struct PlanetTables<Planet::EAR> {
   static const inline Vsop87dTables& L = vsop87d::earth_coeff::L;
   static const inline Vsop87dTables& B = vsop87d::earth_coeff::B;
   static const inline Vsop87dTables& R = vsop87d::earth_coeff::R;
