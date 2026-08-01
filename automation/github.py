@@ -49,7 +49,7 @@ class GitHub:
     """
     A class for representing a workflow in the repository.
     """
-    id:         str
+    id:         int
     name:       str
     state:      str
     created_at: str
@@ -130,7 +130,7 @@ class GitHub:
     Fetch the download URLs for all artifacts of a specific run.
 
     Args:
-      run_id (str): The ID of the GitHub Actions run.
+      run_id (int): The ID of the GitHub Actions run.
 
     Returns:
       Dict[str, str]: A dictionary mapping artifact names to their download URLs.
@@ -179,7 +179,7 @@ class GitHub:
     Asynchronously fetch all artifacts for a given run.
 
     Args:
-      run_id (str): The ID of the GitHub Actions run.
+      run_id (int): The ID of the GitHub Actions run.
       download_dir (Path): The directory where artifacts should be saved.
       parallel (int): The number of parallel download tasks.
 
@@ -226,7 +226,7 @@ class GitHub:
     Fetching artifacts in parallel.
 
     Args:
-      run_id (str): The ID of the GitHub Actions run.
+      run_id (int): The ID of the GitHub Actions run.
       download_dir (Path): The directory where artifacts should be saved.
       parallel (int, optional): The number of parallel download tasks. Default is 4.
 

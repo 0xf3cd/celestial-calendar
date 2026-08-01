@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import ctypes
 from ctypes import (
-  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, 
+  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, c_char, c_char_p,
   POINTER, Structure
 )
 
@@ -53,7 +53,21 @@ assert LIB_PATH.exists(),         f"Shared library not found: {LIB_PATH}"
 
 
 # Define the argument and return types of the C functions.
+#
+# Every export in `src/shared_lib/celestial.h` needs its `argtypes`/`restype` here: without them
+# ctypes assumes `restype = c_int`, which reads a struct return as garbage (#85).
 LIB = ctypes.CDLL(str(LIB_PATH))
+
+
+#region Library-level
+
+LIB.set_log_verbosity.argtypes = [c_uint8]
+LIB.set_log_verbosity.restype = c_bool
+
+LIB.last_error.argtypes = []
+LIB.last_error.restype = c_char_p
+
+#endregion
 
 
 #region Delta T functions
@@ -109,6 +123,16 @@ def delta_t_algo5(year: float) -> float:
   result = LIB.delta_t_algo5(year)
   if not result.valid:
     raise ValueError("Error occurred in delta_t_algo5.")
+  return result.value
+
+LIB.delta_t.argtypes = [c_double]
+LIB.delta_t.restype = DeltaT
+
+def delta_t(year: float) -> float:
+  """The library's default ΔT, currently algo5."""
+  result = LIB.delta_t(year)
+  if not result.valid:
+    raise ValueError("Error occurred in delta_t.")
   return result.value
 
 #endregion
@@ -274,6 +298,32 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
 #endregion
 
 
+#region Solar Time
+
+class _EquationOfTime(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("value", c_double),
+  ]
+
+LIB.equation_of_time.argtypes = [c_double]
+LIB.equation_of_time.restype = _EquationOfTime
+
+class _ApparentSolarTime(Structure):
+  _fields_ = [
+    ("valid",    c_bool),
+    ("year",     c_int32),
+    ("month",    c_uint32),
+    ("day",      c_uint32),
+    ("fraction", c_double),
+  ]
+
+LIB.apparent_solar_time.argtypes = [c_int32, c_uint32, c_uint32, c_double, c_double]
+LIB.apparent_solar_time.restype = _ApparentSolarTime
+
+#endregion
+
+
 #region Jieqi
 
 class Jieqi(Enum):
@@ -315,6 +365,23 @@ class _JieqiMomentQuery(Structure):
 LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
 LIB.query_jieqi_moment.restype = _JieqiMomentQuery
 
+# `buf` is an output buffer, so it is typed as a pointer rather than `c_char_p` - the latter
+# reads as "takes a string" and invites passing a `bytes`, which the C side would write into.
+LIB.get_jieqi_name.argtypes = [c_uint8, POINTER(c_char), c_uint32]
+LIB.get_jieqi_name.restype = c_bool
+
+class _Discriminant(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("count", c_uint32),
+  ]
+
+LIB.solar_lon_root_discriminant.argtypes = [c_int32, c_double]
+LIB.solar_lon_root_discriminant.restype = _Discriminant
+
+LIB.solar_lon_roots.argtypes = [c_int32, c_double, POINTER(c_double), c_uint32]
+LIB.solar_lon_roots.restype = c_uint32
+
 
 @dataclass
 class JieqiMoment:
@@ -350,6 +417,9 @@ def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
 LIB.new_moons_in_year.argtypes = [c_int32, POINTER(c_uint32), POINTER(c_double), c_uint32]
 LIB.new_moons_in_year.restype = c_uint32
 
+LIB.new_moons_after_jde.argtypes = [c_double, POINTER(c_double), c_uint32]
+LIB.new_moons_after_jde.restype = c_uint32
+
 @dataclass
 class NewMoons:
   """
@@ -383,8 +453,17 @@ def new_moons_in_year(year: int) -> NewMoons:
   # Call the shared library function to get the new moons in the given year.
   num_written = LIB.new_moons_in_year(year, ctypes.byref(root_count), slots, slot_count)
 
-  # Ensure the number of written slots does not exceed the allocated slot count.
-  assert num_written <= slot_count
+  # The C++ side reports every failure as 0 written, and no year goes without a new moon.
+  if num_written == 0:
+    raise ValueError(f"Error occurred in new_moons_in_year for year {year}.")
+
+  # `root_count` is what it found, `num_written` is what fit - a gap means roots were dropped.
+  # Raised rather than asserted: `python -O` strips asserts.
+  if num_written != root_count.value:
+    raise ValueError(
+      f"new_moons_in_year wrote {num_written} of {root_count.value} roots for year {year}; "
+      f"slot_count is {slot_count}."
+    )
 
   # Return the result as an instance of the NewMoons data class.
   jdes = [slots[i] for i in range(num_written)]

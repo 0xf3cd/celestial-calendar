@@ -37,10 +37,10 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
   ))
 
   if len(multi_platform_workflow) != 1:
-    red_print('Cannot find the workflow "Build and Test on Multiple Platforms"')
+    red_print(f'Cannot find the workflow "{workflow_name}"')
     red_print(f"Found {len(multi_platform_workflow)} workflows:")
     red_print(pprint.pformat(multi_platform_workflow))
-    raise RuntimeError('Cannot find the workflow "Build and Test on Multiple Platforms"')
+    raise RuntimeError(f'Cannot find the workflow "{workflow_name}"')
   
   return multi_platform_workflow[0]
 
