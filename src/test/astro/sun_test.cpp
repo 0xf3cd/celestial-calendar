@@ -14,7 +14,7 @@ using namespace astro::sun::geocentric_coord::math;
 TEST(Sun, GeocentricPosition) {
   // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Enhanced
   // testing", b5f6c35) with no recorded source. Tolerances are characterization-tight (1e-11 deg
-  // λ, 1e-15 deg/AU β/r) — a determinism/regression baseline, not an accuracy benchmark. The
+  // λ, 1e-15 deg β, 1e-15 AU r) — a determinism/regression baseline, not an accuracy benchmark. The
   // geocentric and heliocentric evaluations are geometric mirrors (λ+180°, −β, same r): the 7
   // JDEs this table shares with earth_test.cpp's Vsop87dEvaluate dataset match exactly under
   // that relation; all other rows are independent samples. Independent accuracy anchor:
