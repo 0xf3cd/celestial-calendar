@@ -224,7 +224,7 @@ TEST(LunarAlgo2, LunarContext) {
 
     // Ensure the months are in order.
     // TODO: Use `std::views::pairwise` or `std::views::slide` once every CI leg has one (./linter.py --features).
-    const auto month_pairs = std::views::zip(context.months,context.months | std::views::drop(1));
+    const auto month_pairs = std::views::zip(context.months, context.months | std::views::drop(1));
     for (const auto& [a, b] : month_pairs) {
       ASSERT_LE(a.start_moment_utc8, b.start_moment_utc8);
       ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);

@@ -188,6 +188,10 @@ def todo_sites(token: str) -> List[str]:
   Derived, not listed: a hand-maintained site list would go stale between the day a feature
   unlocks and the day someone reads this file -- which is the whole interval this gate exists
   to cover.
+
+  Both words have to land on one line, so a TODO that wraps its feature name onto the next one
+  goes unseen here. That blind spot is covered where it would matter: the feature reaches
+  `monuments()` instead, which refuses to let it sit in the table with nothing to point at.
   """
   src_dir = paths.cpp_src_dir()
   root = paths.proj_root()
