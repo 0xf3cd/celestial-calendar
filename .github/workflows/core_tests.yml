@@ -195,3 +195,60 @@ jobs:
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
           python3 ./project.py --setup --clean --cmake --build --test -v 1
+
+
+  # Header self-containment (#71). Deliberately a matrix, not a single job: whether a
+  # header is self-contained depends on the standard library, because each one includes
+  # a different set of things transitively. `converter.hpp` used `assert` with no
+  # <cassert> and was green on MSVC STL for months while broken on libc++. One leg
+  # would have kept missing it, so run all three.
+  self-contained-headers:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04     # libstdc++
+            stdlib: libstdc++
+            cxx: clang++-18
+          - runner: macos-latest     # libc++
+            stdlib: libc++
+            cxx: clang++
+          - runner: windows-latest   # MSVC STL
+            stdlib: MSVC STL
+            cxx: clang++
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # `linter.py` imports the `automation` package, whose __init__ pulls in
+      # `automation.github` and therefore `requests` -- needed even though this
+      # check never touches the network.
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r Requirements.txt
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y clang-18
+
+      - name: Install clang (Windows)
+        if: runner.os == 'Windows'
+        run: choco install -y llvm
+
+      # The compiler comes from the matrix, not from $GITHUB_ENV: a step-level `env:`
+      # outranks anything written to $GITHUB_ENV, so setting CXX in the install step
+      # above and again here would silently pin nothing.
+      - name: Check every header compiles alone (${{ matrix.stdlib }})
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: python ./linter.py --self-contained

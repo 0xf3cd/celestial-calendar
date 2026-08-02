@@ -27,6 +27,7 @@
 #include <limits>
 #include <cstddef>
 #include <numbers>
+#include <cstdint>
 #include <concepts>
 #include <algorithm>
 #include <stdexcept>
@@ -55,7 +56,7 @@ constexpr auto normalize_pm180(const double deg) -> double {
 }
 
 /** @brief The number of degrees in a radian. */
-constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
+inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 
 /** @brief Convert degree to radian. */
 constexpr auto deg_to_rad(const double deg) -> double {
@@ -72,7 +73,7 @@ constexpr auto rad_to_deg(const double rad) -> double {
  *        Used to convert between time offsets and hour angle offsets.
  * @ref Jean Meeus, "Astronomical Algorithms", Ch.12.
  */
-constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
+inline constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
 
 /**
  * @brief The Sun's mean apparent motion along the ecliptic, in degrees per day.
@@ -80,23 +81,23 @@ constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
  * @note This is a mean rate — the true rate varies by about ±1.7% over a year, since Earth's
  *       orbit is an ellipse and perihelion passage is faster than aphelion passage.
  */
-constexpr double SOLAR_MEAN_MOTION_DEG_PER_DAY = 360.0 / 365.2422;
+inline constexpr double SOLAR_MEAN_MOTION_DEG_PER_DAY = 360.0 / 365.2422;
 
 /**
  * @brief The mean rate at which the Moon's apparent longitude pulls away from the Sun's,
  *        in degrees per day. A synodic month of 29.530588853 days closes a full 360°.
  * @note This is a mean rate — near perigee the Moon runs at roughly 1.2× this value.
  */
-constexpr double MOON_ELONGATION_RATE_DEG_PER_DAY = 360.0 / 29.530588853;
+inline constexpr double MOON_ELONGATION_RATE_DEG_PER_DAY = 360.0 / 29.530588853;
 
 /** @brief The number of minutes in a degree. */
-constexpr uint32_t MIN_PER_DEG = 60;
+inline constexpr uint32_t MIN_PER_DEG = 60;
 
 /** @brief The number of seconds in a minute. */
-constexpr uint32_t SEC_PER_MIN = 60;
+inline constexpr uint32_t SEC_PER_MIN = 60;
 
 /** @brief The number of seconds in a degree. */
-constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
+inline constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
 
 /** @brief Convert minutes to degrees. */
 constexpr auto arcmin_to_deg(const double arcmin) -> double {
@@ -242,7 +243,7 @@ inline auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
 enum class DistanceUnit : uint8_t { AU, KM };
 
 /** @brief The scaling factor from AU to KM. */
-constexpr double au_km_scale = 149597870.691; 
+inline constexpr double au_km_scale = 149597870.691; 
 
 /** @brief Convert from AU to KM. */
 constexpr auto au_to_km(const double au) -> double { 

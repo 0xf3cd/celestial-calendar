@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include <format>
+#include <ranges>
+#include <cstdint>
+#include <string_view>
 #include <unordered_map>
 
+#include "sun.hpp"
 #include "util.hpp"
 #include "astro.hpp"
+#include "cache.hpp"
 #include "datetime.hpp"
+#include "julian_day.hpp"
 
 
 namespace calendar::jieqi {
@@ -46,7 +53,7 @@ enum class Jieqi : uint8_t {
   LIDONG = 立冬, XIAOXUE = 小雪, DAXUE = 大雪, DONGZHI = 冬至, XIAOHAN = 小寒, DAHAN = 大寒,
 };
 
-constexpr uint8_t JIEQI_COUNT = static_cast<uint8_t>(Jieqi::COUNT);
+inline constexpr uint8_t JIEQI_COUNT = static_cast<uint8_t>(Jieqi::COUNT);
 static_assert(24U == JIEQI_COUNT);
 
 
@@ -96,13 +103,13 @@ constexpr auto from_index(const uint8_t index) -> Jieqi {
 
 
 /** @brief A view of all enum values of `Jieqi`. */
-constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+inline constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
                           | std::views::transform([](const auto i) { return from_index(i); });
 
 /** @brief A view of all enum values of `Jieqi`, but ordered by their occurrence in a gregorian year.
  *         That means the first value is "小寒", since it is the first Jieqi in any gregorian year.
  */
-constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
                                          | std::views::transform([](const auto i) { return (i + to_index(Jieqi::小寒)) % JIEQI_COUNT; })
                                          | std::views::transform([](const auto i) { return from_index(i); });
 

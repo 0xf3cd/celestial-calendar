@@ -27,6 +27,7 @@
 #include <cmath>
 #include <ranges>
 #include <numeric>
+#include <cstdint>
 
 #include "toolbox.hpp"
 
@@ -59,7 +60,7 @@ struct BCoefficients {
 };
 
 /** @brief Represents coefficients of the LR table. */
-constexpr std::array<LRCoefficients, 60> LR {{
+inline constexpr std::array<LRCoefficients, 60> LR {{
   { 0,  0,  1,  0, 6288774, -20905355 },
   { 2,  0, -1,  0, 1274027,  -3699111 },
   { 2,  0,  0,  0,  658314,  -2955968 },
@@ -123,7 +124,7 @@ constexpr std::array<LRCoefficients, 60> LR {{
 }};
 
 /** @brief Represents coefficients of the B table. */
-constexpr std::array<BCoefficients, 60> B {{
+inline constexpr std::array<BCoefficients, 60> B {{
   { 0,  0,  0,  1, 5128122 },
   { 0,  0,  1,  1,  280602 },
   { 0,  0,  1, -1,  277693 },
@@ -203,13 +204,13 @@ using toolbox::AngleUnit::RAD;
  * @brief The scaling factor used in the Jean Meeus's Astronomical Algorithms, for the longitude and latitude.
  *        The unit of the raw evaluation result of longitude and latitude is 0.000001 degree.
  */
-constexpr double LON_LAT_SCALING_FACTOR = 1e6;
+inline constexpr double LON_LAT_SCALING_FACTOR = 1e6;
 
 /**
  * @brief The scaling factor used in the Jean Meeus's Astronomical Algorithms, for the radius/distance.
  *        The unit of the raw evaluation result of radius/distance is 0.001 kilometer.
  */
-constexpr double RADIUS_SCALING_FACTOR = 1e3;
+inline constexpr double RADIUS_SCALING_FACTOR = 1e3;
 
 /**
  * @struct The context (arguments) for a given julian century.

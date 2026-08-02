@@ -27,6 +27,7 @@
 #include <cmath>
 #include <ranges>
 #include <numeric>
+#include <cstdint>
 
 namespace astro::vsop87d {
 
@@ -53,7 +54,7 @@ using Vsop87dTables = std::span<const Vsop87dTable>;
  * @note In this project, the coefficient "A"s in the tables are multiplied by 1e8.
  *       So before getting the correct radians, we need to divide them by 1e8. 
  */
-constexpr double SCALING_FACTOR = 1e8;
+inline constexpr double SCALING_FACTOR = 1e8;
 
 
 /** 

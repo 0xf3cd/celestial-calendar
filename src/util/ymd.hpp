@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include <tuple>
 #include <chrono>
+#include <cstdint>
+#include <concepts>
 
 namespace util {
 

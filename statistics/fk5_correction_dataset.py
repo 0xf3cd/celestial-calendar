@@ -1,3 +1,15 @@
+# CelestialCalendar Statistics:
+#   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
+#   No model training happens here (see AGENTS.md).
+# 
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 # This file regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68):
 # it evaluates Meeus (25.9) with mpmath at 50-digit precision,
 #   λ' = λ − (1.397 + 0.00031·T)·T                          [deg; T = Julian century from J2000.0]

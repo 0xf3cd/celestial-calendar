@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include "earth.hpp"
 #include "julian_day.hpp"
 #include "toolbox.hpp"

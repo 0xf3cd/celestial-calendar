@@ -1,3 +1,32 @@
+/*
+ * CelestialCalendar: 
+ *   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
+ *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+ * 
+ * Copyright (C) 2024 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *  
+ * This project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include <array>
+#include <concepts>
+#include <cstdint>
+#include <string>
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -26,7 +55,7 @@ using DatasetType = std::map<double, double>; // { year, ΔT }
 // Recent values of ΔT from direct observations.
 // 2015+ entries: IERS Bulletin A final values (AstroTime-Analysis @ ddf3be1),
 // median of ±15 days around each year boundary.
-const DatasetType ACCURATE_DELTA_T_TABLE {
+const inline DatasetType ACCURATE_DELTA_T_TABLE {
   { 1955.0, 31.1 },
   { 1960.0, 33.2 },
   { 1965.0, 35.7 },
@@ -66,11 +95,11 @@ namespace algo_info {
 // #64: was `double(int32_t)`, which truncated fractional years.
 using delta_t_func = std::function<double(double)>;
 
-const std::array<std::string, 5> DELTA_T_ALGO_NAMES {
+const inline std::array<std::string, 5> DELTA_T_ALGO_NAMES {
   "algo1", "algo2", "algo3", "algo4", "algo5"
 };
 
-const std::array<delta_t_func, 5> DELTA_T_ALGO_FUNCS {
+const inline std::array<delta_t_func, 5> DELTA_T_ALGO_FUNCS {
   algo1::compute,
   algo2::compute,
   algo3::compute,
@@ -90,7 +119,7 @@ namespace operation {
 using namespace std::ranges;
 
 /** @brief Evaluate the ΔT values for the given year on all algorithms. */
-auto evaluate(const double year) {
+inline auto evaluate(const double year) {
   return algo_info::DELTA_T_ALGO_FUNCS | views::transform([year](auto func) {
     return func(year);
   });
@@ -99,7 +128,7 @@ auto evaluate(const double year) {
 /** @brief Calculate the differences between:
  *         - the expected ΔT value of the given year 
  *         - and the calculated ΔT values of all algorithms of the given year */
-auto calc_diff(const double year, const double expected_delta_t) {
+inline auto calc_diff(const double year, const double expected_delta_t) {
   return evaluate(year) | views::transform([expected_delta_t](auto delta_t) {
     return delta_t - expected_delta_t;
   });
@@ -113,7 +142,7 @@ auto calc_diff(const double year, const double expected_delta_t) {
 #pragma region Other Helper Functions
 
 // TODO: Use `std::views::join_with` when it gets supported.
-auto join_with(
+inline auto join_with(
   const std::ranges::range auto& view, 
   const std::string& separator
 ) -> std::string {
@@ -128,20 +157,20 @@ auto join_with(
   return str.substr(0, str.size() - separator.size());
 }
 
-constexpr int32_t PAD_WIDTH = 10;
+inline constexpr int32_t PAD_WIDTH = 10;
 
 /** @brief Pad the string with spaces. Use generic lambda here
  *         since template function cannot be implicitly instantiated
  *         when using with views/ranges.
  */
-const auto pad = []<typename T>(T result) -> std::string {
+const inline auto pad = []<typename T>(T result) -> std::string {
   if constexpr (std::floating_point<T>) {
     return std::format("{:^{}.3f}", result, PAD_WIDTH);
   }
   return std::vformat("{:^{}}", std::make_format_args(result, PAD_WIDTH));
 };
 
-auto make_line(
+inline auto make_line(
   const std::ranges::range auto& range1, 
   const std::ranges::range auto& range2
 ) -> std::string {

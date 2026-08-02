@@ -21,5 +21,7 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "defines.hpp"
 #include "earth_coeff.hpp"

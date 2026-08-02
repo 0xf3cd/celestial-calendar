@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <concepts>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

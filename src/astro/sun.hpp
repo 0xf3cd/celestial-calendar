@@ -23,10 +23,17 @@
 
 #pragma once
 
+#include <cmath>
+#include <ranges>
+#include <vector>
+#include <cstdint>
+#include <functional>
+
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
 #include "coord_transform.hpp"
+#include "ymd.hpp"
 
 namespace astro::sun::geocentric_coord {
 
@@ -85,8 +92,8 @@ inline auto fk5_correction(const double jde, const SphericalCoordinate& vsop87d_
   const Angle λ_dash = vsop_λ - Angle<DEG> { (1.397 + 0.00031 * jc) * jc };
   const double λ_dash_rad = λ_dash.rad();
 
-  const double delta_λ_arcsec = -0.09033 + 0.03916 * (cos(λ_dash_rad) + sin(λ_dash_rad)) * tan(vsop_β.rad());
-  const double delta_β_arcsec = 0.03916 * (cos(λ_dash_rad) - sin(λ_dash_rad));
+  const double delta_λ_arcsec = -0.09033 + 0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad());
+  const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
 
   return {
     .Δλ = Angle<DEG>::from_arcsec(delta_λ_arcsec),

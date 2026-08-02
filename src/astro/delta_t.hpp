@@ -28,7 +28,10 @@
 #include <format>
 #include <ranges>
 #include <cassert>
+#include <cstdint>
+#include <utility>
 #include <optional>
+#include <iterator>
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -67,7 +70,7 @@ struct Algo1Coefficients {
   double a, b, c, d; 
 };
 
-constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
+inline constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
   { -4000, 108371.7, -13036.80, 392.000,  0.0000 },
   {  -500,  17201.0,   -627.82,  16.170, -0.3413 },
   {  -150,  12200.6,   -346.41,   5.403, -0.1593 },
@@ -401,7 +404,7 @@ namespace algo5 {
 
 /** @brief The decimal year of the last Bulletin A observation in the training data;
  *         also the boundary between the fitted and the extrapolated segments. */
-constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
+inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 5.

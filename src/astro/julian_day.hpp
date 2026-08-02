@@ -46,7 +46,7 @@ namespace astro::julian_day {
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
  */
-constexpr double J2000 = 2451545.0;
+inline constexpr double J2000 = 2451545.0;
 
 
 /**

@@ -23,12 +23,21 @@
 
 #pragma once
 
+#include <format>
+#include <ranges>
+#include <vector>
+#include <cassert>
+#include <cstdint>
+#include <utility>
 #include <optional>
+#include <iterator>
 #include <algorithm>
+#include <functional>
 
 #include "cache.hpp"
 
 #include "common.hpp"
+#include "datetime.hpp"
 #include "jieqi.hpp"
 #include "moon_phase.hpp"
 #include "julian_day.hpp"
@@ -440,10 +449,10 @@ const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
 
 
 /** @brief The first supported lunar year. */
-constexpr int32_t START_YEAR = 410; // Algo2 actually has no limit on year. Simply use 410 here.
+inline constexpr int32_t START_YEAR = 410; // Algo2 actually has no limit on year. Simply use 410 here.
 
 /** @brief The last supported lunar year. */
-constexpr int32_t END_YEAR = 5000; // Algo2 actually has no limit on year. Simply use 5000 here.
+inline constexpr int32_t END_YEAR = 5000; // Algo2 actually has no limit on year. Simply use 5000 here.
 
 /**
  * @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.
