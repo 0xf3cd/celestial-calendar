@@ -23,9 +23,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <map>
@@ -141,21 +143,15 @@ inline auto calc_diff(const double year, const double expected_delta_t) {
 
 #pragma region Other Helper Functions
 
-// TODO: Use `std::views::join_with` once every CI leg has it (./linter.py --features).
-//       libc++ already does -- this one is waiting on the other two legs, not on all three.
+// Graduated off the wishlist 2026-08-02: `std::views::join_with` compiles on all three standard
+// libraries, which `./linter.py --features` is what told us.
 inline auto join_with(
-  const std::ranges::range auto& view, 
+  const std::ranges::range auto& view,
   const std::string& separator
 ) -> std::string {
-  // Low performance implementation...
   std::string str;
-  for (const auto& substr : view) {
-    str += substr + separator;
-  }
-  if (view.empty()) {
-    return str;
-  }
-  return str.substr(0, str.size() - separator.size());
+  std::ranges::copy(view | std::views::join_with(separator), std::back_inserter(str));
+  return str;
 }
 
 inline constexpr int32_t PAD_WIDTH = 10;

@@ -445,8 +445,13 @@ struct Sample {
   std::string at;
 };
 
-/** @brief The sample that came closest to escaping the bracket. */
+/** @brief The sample that came closest to escaping the bracket. Throws rather than dereferencing
+ *         `end()` if a sweep ever silently produces nothing — an empty sweep would otherwise read
+ *         as a passing gate. */
 auto worst_of(const std::vector<Sample>& samples) -> const Sample& {
+  if (samples.empty()) {
+    throw std::logic_error { "sweep produced no samples" };
+  }
   return *std::ranges::max_element(samples, {}, &Sample::deviation_days);
 }
 
@@ -530,13 +535,21 @@ const GeoLocation SUBPOLAR_S = loc(-65.0, 0.0);
 } // anonymous namespace
 
 
+// The three gates below fail through `FAIL() <<` rather than `ASSERT_LE(...) <<`. Streaming a
+// std::string into gtest's comparison helpers makes gcc 14 emit a false `-Wnull-dereference`
+// inside `CmpHelperLE` once it inlines at -O2, and the build takes warnings as errors. Do not
+// "simplify" these back: the reports already carry both sides of the comparison.
+
+
 TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
   constexpr BracketClaim CLAIM {
     .constant     = "TRANSIT_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = TRANSIT_BRACKET_HALF_WIDTH_DAYS,
     .bound_days   = 0.0145, // 20.9 min. Measured worst over the sweep: 0.014157 day (20.39 min).
   };
-  ASSERT_GE(CLAIM.bracket_days, CLAIM.bound_days * MIN_BRACKET_MARGIN) << narrowed_report(CLAIM);
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
 
   // Longitude is left out of the sweep on purpose: it shifts only the instant at which the
   // equation of time is evaluated, worth ≤ 0.3% here, and `TransitNearLocalMeanNoon` already
@@ -553,7 +566,9 @@ TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
   }
 
   const auto& measured = worst_of(samples);
-  ASSERT_LE(measured.deviation_days, CLAIM.bound_days) << margin_report(CLAIM, measured);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
 }
 
 TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
@@ -562,7 +577,9 @@ TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
     .bracket_days = LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS,
     .bound_days   = 1.85e-4, // 16.0 s. Measured worst over the sweep: 1.7631e-4 day (15.23 s).
   };
-  ASSERT_GE(CLAIM.bracket_days, CLAIM.bound_days * MIN_BRACKET_MARGIN) << narrowed_report(CLAIM);
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
 
   std::vector<Sample> samples;
   for (const int year : sampled_years(500)) {
@@ -580,7 +597,9 @@ TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
   }
 
   const auto& measured = worst_of(samples);
-  ASSERT_LE(measured.deviation_days, CLAIM.bound_days) << margin_report(CLAIM, measured);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
 }
 
 TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
@@ -589,7 +608,9 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
     .bracket_days = RISE_SET_BRACKET_HALF_WIDTH_DAYS,
     .bound_days   = 2.6e-3, // 3.74 min. Measured worst over the sweep: 2.4058e-3 day (3.46 min).
   };
-  ASSERT_GE(CLAIM.bracket_days, CLAIM.bound_days * MIN_BRACKET_MARGIN) << narrowed_report(CLAIM);
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
 
   // The deviation grows with |φ| (1.1 min at the equator against 3.5 min here), so the domain
   // edge is the binding case; sweeping it densely beats sweeping every latitude thinly.
@@ -623,7 +644,9 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
   }
 
   const auto& measured = worst_of(samples);
-  ASSERT_LE(measured.deviation_days, CLAIM.bound_days) << margin_report(CLAIM, measured);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
 }
 
 } // namespace astro::sunrise_sunset::test

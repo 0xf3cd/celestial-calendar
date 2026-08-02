@@ -304,10 +304,7 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install -y llvm
 
-      # Report only for now: this run is what supplies the numbers for `EXPECTED` in
-      # automation/feature_probe.py, and a baseline asserted before it was measured would be
-      # exactly the kind of claim this batch exists to delete.
       - name: Probe awaited C++ features (${{ matrix.leg }})
         env:
           CXX: ${{ matrix.cxx }}
-        run: python ./linter.py --features
+        run: python ./linter.py --features ${{ matrix.leg }}

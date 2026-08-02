@@ -29,10 +29,11 @@ CXX_STANDARD: Final[str] = "c++23"
 class Feature:
   """A library feature the codebase is waiting on, and a program that really uses it."""
 
-  name: str      # As written in the code, e.g. "std::views::enumerate".
-  token: str     # Substring that identifies this feature in a TODO comment.
-  issue: str     # Where the adoption work is tracked.
-  program: str   # Must *use* the feature -- a feature-test macro is not evidence (see below).
+  name: str        # As written in the code, e.g. "std::views::enumerate".
+  token: str       # Substring that identifies this feature in a TODO comment.
+  issue: str       # Where the adoption work is tracked.
+  program: str     # Must *use* the feature -- a feature-test macro is not evidence (see below).
+  deferred: str = ""  # Why it stays hand-rolled even where it compiles. Empty means adopt on sight.
 
 
 # Every probe compiles a real use of the feature. Reading `__cpp_lib_*` is not enough: libc++
@@ -56,6 +57,8 @@ FEATURES: Final[List[Feature]] = [
     name="std::ranges::fold_left",
     token="fold_left",
     issue="#131",
+    deferred=("compiles everywhere, but MS STL's result drifts 1-3 ulp from the hand-rolled sum "
+              "from n~63 up, which would fork the golden data per platform (#131)"),
     program="""
       #include <algorithm>
       #include <functional>
@@ -150,12 +153,17 @@ FEATURES: Final[List[Feature]] = [
 ]
 
 
-# What each CI leg is known to support today. A mismatch is the point of this gate: it fires
-# the day a runner's toolchain gains one of these, which is the day the waiting TODOs become
-# actionable -- and nothing else in the repo would ever notice.
+# What each CI leg supports, measured by this probe on 2026-08-02 -- not inferred from release
+# notes, and not guessed. A mismatch is the point of the gate: it fires the day a runner's
+# toolchain gains one of these, which is the day the waiting TODOs become actionable, and
+# nothing else in the repo would ever notice.
+#
+#   libstdc++  clang 18.1.3 on ubuntu-24.04
+#   libc++     Apple clang 21.0.0 on macos-latest
+#   msvc-stl   clang 20.1.8 on windows-latest
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
-    "std::generator": True,
+    "std::generator": False,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,
     "std::views::pairwise": True,
@@ -170,7 +178,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::enumerate": False,
     "std::views::pairwise": False,
     "std::views::slide": False,
-    "std::views::join_with": False,
+    "std::views::join_with": True,
     "std::views::concat": False,
     "std::function_ref": False,
   },
@@ -208,6 +216,19 @@ def todo_sites(token: str) -> List[str]:
   return sites
 
 
+def adoptable(feature: Feature) -> List[str]:
+  """The sites that could stop hand-rolling `feature` today, if any.
+
+  Detecting *changes* is not enough on its own. Once a feature is recorded as usable everywhere
+  the comparison above goes quiet forever, and the TODOs it unblocked would sit there unread --
+  the exact failure mode this gate replaces. So the recorded state is also read forwards: usable
+  on every leg, nothing recorded holding it back, and sites still working around it.
+  """
+  if feature.deferred or not all(EXPECTED[leg][feature.name] for leg in EXPECTED):
+    return []
+  return todo_sites(feature.token)
+
+
 def probe(cxx: str, feature: Feature) -> bool:
   """Compile a program that uses `feature`, and report whether it built."""
   with tempfile.TemporaryDirectory() as tmp:
@@ -236,9 +257,17 @@ def probe_features(leg: Optional[str] = None) -> int:
   blue_print(f"# Compiler: {cxx} -std={CXX_STANDARD}")
   blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
 
-  if leg is not None and leg not in EXPECTED:
-    red_print(f"Unknown CI leg '{leg}'. Known legs: {', '.join(sorted(EXPECTED))}")
-    return 1
+  if leg is not None:
+    if leg not in EXPECTED:
+      red_print(f"Unknown CI leg '{leg}'. Known legs: {', '.join(sorted(EXPECTED))}")
+      return 1
+    # A feature added to FEATURES but not to EXPECTED would otherwise read as "just unlocked"
+    # on every leg forever, which is a gate that cries wolf rather than one that has a baseline.
+    unrecorded = [f.name for f in FEATURES if f.name not in EXPECTED[leg]]
+    if unrecorded:
+      red_print(f"No recorded state on '{leg}' for: {', '.join(unrecorded)}")
+      yellow_print(f"Run `./linter.py --features` on that toolchain and add the result to EXPECTED['{leg}'].")
+      return 1
 
   actual: Dict[str, bool] = {}
   for feature in FEATURES:
@@ -252,16 +281,26 @@ def probe_features(leg: Optional[str] = None) -> int:
     green_print(f"{sum(actual.values())} of {len(FEATURES)} probed feature(s) usable here (report only)")
     return 0
 
-  changed = [f for f in FEATURES if actual[f.name] != EXPECTED[leg].get(f.name)]
+  changed = [f for f in FEATURES if actual[f.name] != EXPECTED[leg][f.name]]
   if not changed:
     green_print(f"All {len(FEATURES)} feature(s) match the recorded state of '{leg}'")
-    return 0
+
+    ready = {f: sites for f in FEATURES if (sites := adoptable(f))}
+    if not ready:
+      return 0
+
+    red_print("These compile on every leg, and the code is still working around them:")
+    for feature, sites in ready.items():
+      red_print(f"  {feature.name} ({feature.issue}) -- {len(sites)} site(s):")
+      for site in sites:
+        red_print(f"    {site}")
+    yellow_print("Adopt them and drop the TODO, or record why not in that Feature's `deferred` field.")
+    return 1
 
   red_print(f"The toolchain on '{leg}' no longer matches what this repo recorded:")
   for feature in changed:
-    was = EXPECTED[leg].get(feature.name)
     if actual[feature.name]:
-      green_print(f"  + {feature.name} is now USABLE (was recorded as {'usable' if was else 'gated'})")
+      green_print(f"  + {feature.name} is now USABLE (recorded as gated)")
       sites = todo_sites(feature.token)
       if sites:
         yellow_print(f"    Adopt it at {len(sites)} waiting site(s), then delete the TODO:")
