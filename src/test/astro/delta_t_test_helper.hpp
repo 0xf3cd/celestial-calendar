@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -90,7 +92,7 @@ namespace operation {
 using namespace std::ranges;
 
 /** @brief Evaluate the ΔT values for the given year on all algorithms. */
-auto evaluate(const double year) {
+inline auto evaluate(const double year) {
   return algo_info::DELTA_T_ALGO_FUNCS | views::transform([year](auto func) {
     return func(year);
   });
@@ -99,7 +101,7 @@ auto evaluate(const double year) {
 /** @brief Calculate the differences between:
  *         - the expected ΔT value of the given year 
  *         - and the calculated ΔT values of all algorithms of the given year */
-auto calc_diff(const double year, const double expected_delta_t) {
+inline auto calc_diff(const double year, const double expected_delta_t) {
   return evaluate(year) | views::transform([expected_delta_t](auto delta_t) {
     return delta_t - expected_delta_t;
   });
@@ -113,7 +115,7 @@ auto calc_diff(const double year, const double expected_delta_t) {
 #pragma region Other Helper Functions
 
 // TODO: Use `std::views::join_with` when it gets supported.
-auto join_with(
+inline auto join_with(
   const std::ranges::range auto& view, 
   const std::string& separator
 ) -> std::string {
@@ -141,7 +143,7 @@ const auto pad = []<typename T>(T result) -> std::string {
   return std::vformat("{:^{}}", std::make_format_args(result, PAD_WIDTH));
 };
 
-auto make_line(
+inline auto make_line(
   const std::ranges::range auto& range1, 
   const std::ranges::range auto& range2
 ) -> std::string {

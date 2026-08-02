@@ -21,6 +21,8 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "ymd.hpp"
 #include "hash.hpp"
 #include "cache.hpp"
