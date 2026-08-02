@@ -410,10 +410,6 @@ TEST(SunriseSunset, InvalidInputsThrow) {
 // shrink a bracket, widen the supported span, or swap a model, and the number beside it does not
 // object. The three tests below sweep the span, measure the deviation each bracket actually has
 // to cover, and hold it to what its note claims (#126).
-//
-// Measuring also settled one of them: 16.5 min is today's |EoT|, but the orbital elements drift,
-// and over years 402-9050 it reaches 20.4 min. The bracket was always wide enough; the note was
-// quoting the wrong era.
 
 namespace {
 
@@ -460,8 +456,13 @@ auto date_str(const std::chrono::year_month_day& ymd) -> std::string {
                      static_cast<unsigned>(ymd.month()), static_cast<unsigned>(ymd.day()));
 }
 
-/** @brief Years to sweep: every `stride`th, plus the far end — the elements drift monotonically
- *         away from today's, so the end of the span is always a candidate for the extreme. */
+/** @brief Years to sweep: every `stride`th, plus the far end — appended because that is where
+ *         |EoT| peaks, and dropping it costs the transit sweep 0.6% of its worst case. The drift
+ *         is not monotone: |EoT| dips near year 5000 before climbing again, while the lower
+ *         culmination peaks near year 600, so neither end predicts the other's extreme.
+ *         What the stride buys is blind-spot width, not accuracy — across years these curves are
+ *         flat enough that halving it moves the measured worst by ~0.01%. It is sized so that a
+ *         peak displaced by a model change still lands on the grid. */
 auto sampled_years(const int stride) -> std::vector<int> {
   std::vector<int> years;
   years.reserve(static_cast<std::size_t>((LAST_YEAR - FIRST_YEAR) / stride) + 2);
@@ -545,7 +546,7 @@ TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
   constexpr BracketClaim CLAIM {
     .constant     = "TRANSIT_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = TRANSIT_BRACKET_HALF_WIDTH_DAYS,
-    .bound_days   = 0.0145, // 20.9 min. Measured worst over the sweep: 0.014157 day (20.39 min).
+    .bound_days   = 0.0145, // 20.9 min; this sweep peaks at 0.014157 day (20.39 min).
   };
   if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
     FAIL() << narrowed_report(CLAIM);
@@ -575,14 +576,14 @@ TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
   constexpr BracketClaim CLAIM {
     .constant     = "LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS,
-    .bound_days   = 1.85e-4, // 16.0 s. Measured worst over the sweep: 1.7631e-4 day (15.23 s).
+    .bound_days   = 1.85e-4, // 16.0 s; this sweep peaks at 1.7632e-4 day (15.23 s).
   };
   if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
     FAIL() << narrowed_report(CLAIM);
   }
 
   std::vector<Sample> samples;
-  for (const int year : sampled_years(500)) {
+  for (const int year : sampled_years(250)) {
     for (const auto& ymd : sampled_days(year)) {
       const double transit = transit_jde(ymd, EQUATOR);
       for (const bool before : { true, false }) {
@@ -606,7 +607,7 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
   constexpr BracketClaim CLAIM {
     .constant     = "RISE_SET_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = RISE_SET_BRACKET_HALF_WIDTH_DAYS,
-    .bound_days   = 2.6e-3, // 3.74 min. Measured worst over the sweep: 2.4058e-3 day (3.46 min).
+    .bound_days   = 2.6e-3, // 3.74 min; this sweep peaks at 2.4058e-3 day (3.46 min).
   };
   if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
     FAIL() << narrowed_report(CLAIM);

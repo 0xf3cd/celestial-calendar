@@ -109,20 +109,6 @@ FEATURES: Final[List[Feature]] = [
     """,
   ),
   Feature(
-    name="std::views::join_with",
-    token="join_with",
-    issue="#131",
-    program="""
-      #include <ranges>
-      #include <string>
-      #include <vector>
-      auto main() -> int {
-        const std::vector<std::string> parts { "a", "b" };
-        for (const char c : parts | std::views::join_with(std::string { ", " })) { (void) c; }
-      }
-    """,
-  ),
-  Feature(
     # C++26, so it stays unavailable until the project's own -std moves too. Kept in the table
     # because two sites already hand-roll around it and this is where they will find out.
     name="std::views::concat",
@@ -158,9 +144,13 @@ FEATURES: Final[List[Feature]] = [
 # toolchain gains one of these, which is the day the waiting TODOs become actionable, and
 # nothing else in the repo would ever notice.
 #
-#   libstdc++  clang 18.1.3 on ubuntu-24.04
-#   libc++     Apple clang 21.0.0 on macos-latest
-#   msvc-stl   clang 20.1.8 on windows-latest
+# The compiler is only half of what decides a row -- the standard library is the other half,
+# and on Linux the two ship separately. Record both, or a runner image bumping its default GCC
+# leaves a flipped row with nothing to explain it.
+#
+#   libstdc++  clang 18.1.3 + ubuntu-24.04's default libstdc++ (GCC 13)
+#   libc++     Apple clang 21.0.0 + its bundled libc++
+#   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::generator": False,
@@ -168,7 +158,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::enumerate": True,
     "std::views::pairwise": True,
     "std::views::slide": True,
-    "std::views::join_with": True,
     "std::views::concat": False,
     "std::function_ref": False,
   },
@@ -178,7 +167,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::enumerate": False,
     "std::views::pairwise": False,
     "std::views::slide": False,
-    "std::views::join_with": True,
     "std::views::concat": False,
     "std::function_ref": False,
   },
@@ -188,7 +176,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::enumerate": True,
     "std::views::pairwise": True,
     "std::views::slide": True,
-    "std::views::join_with": True,
     "std::views::concat": False,
     "std::function_ref": False,
   },
@@ -223,17 +210,44 @@ def adoptable(feature: Feature) -> List[str]:
   the comparison above goes quiet forever, and the TODOs it unblocked would sit there unread --
   the exact failure mode this gate replaces. So the recorded state is also read forwards: usable
   on every leg, nothing recorded holding it back, and sites still working around it.
+
+  Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. Workarounds
+  with no such marker -- `fold_left`'s eleven `std::reduce`/`std::accumulate` sums, for one --
+  cannot be named, which is why `monuments()` below refuses to let a feature sit in the table
+  with nothing to point at.
   """
   if feature.deferred or not all(EXPECTED[leg][feature.name] for leg in EXPECTED):
     return []
   return todo_sites(feature.token)
 
 
-def probe(cxx: str, feature: Feature) -> bool:
-  """Compile a program that uses `feature`, and report whether it built."""
+def monuments() -> List[Feature]:
+  """Features that are usable everywhere with nothing left waiting on them.
+
+  Such a row can never speak again: `adoptable` finds no sites, and the per-leg comparison only
+  fires on a regression the build would catch first. Either it was adopted -- then it belongs in
+  the git history, not in this table -- or its workarounds carry no TODO and the gate is blind
+  to them. Both need a person, so say so rather than keeping a decoration.
+  """
+  return [f for f in FEATURES
+          if not f.deferred
+          and all(EXPECTED[leg][f.name] for leg in EXPECTED)
+          and not todo_sites(f.token)]
+
+
+# Nothing exotic -- if this will not compile, the toolchain is broken and every `False` below
+# means "the compiler did not run", not "the feature is missing".
+CANARY: Final[str] = """
+  #include <vector>
+  auto main() -> int { const std::vector<int> v { 1 }; return v.empty() ? 1 : 0; }
+"""
+
+
+def compiles(cxx: str, program: str) -> bool:
+  """Compile `program` on its own, and report whether the front end accepted it."""
   with tempfile.TemporaryDirectory() as tmp:
     source = Path(tmp) / "probe.cpp"
-    source.write_text(feature.program, encoding="utf-8")
+    source.write_text(program, encoding="utf-8")
     ret = run_cmd(
       [cxx, f"-std={CXX_STANDARD}", "-fsyntax-only", str(source)],
       print_cmd=False,
@@ -241,6 +255,11 @@ def probe(cxx: str, feature: Feature) -> bool:
       print_stderr=False,
     )
     return ret.retcode == 0
+
+
+def probe(cxx: str, feature: Feature) -> bool:
+  """Compile a program that uses `feature`, and report whether it built."""
+  return compiles(cxx, feature.program)
 
 
 def probe_features(leg: Optional[str] = None) -> int:
@@ -263,11 +282,23 @@ def probe_features(leg: Optional[str] = None) -> int:
       return 1
     # A feature added to FEATURES but not to EXPECTED would otherwise read as "just unlocked"
     # on every leg forever, which is a gate that cries wolf rather than one that has a baseline.
+    probed = {f.name for f in FEATURES}
     unrecorded = [f.name for f in FEATURES if f.name not in EXPECTED[leg]]
     if unrecorded:
       red_print(f"No recorded state on '{leg}' for: {', '.join(unrecorded)}")
       yellow_print(f"Run `./linter.py --features` on that toolchain and add the result to EXPECTED['{leg}'].")
       return 1
+    stale = [name for name in EXPECTED[leg] if name not in probed]
+    if stale:
+      red_print(f"EXPECTED['{leg}'] still records features nobody probes: {', '.join(stale)}")
+      yellow_print("Drop them -- a baseline for a feature that is no longer measured records nothing.")
+      return 1
+
+  if not compiles(cxx, CANARY):
+    red_print(f"{cxx} cannot compile a trivial -std={CXX_STANDARD} program.")
+    yellow_print("Fix the toolchain first. Every probe below would report GATED for the same")
+    yellow_print("reason, and on a leg whose baseline is mostly False that reads as a pass.")
+    return 1
 
   actual: Dict[str, bool] = {}
   for feature in FEATURES:
@@ -286,16 +317,25 @@ def probe_features(leg: Optional[str] = None) -> int:
     green_print(f"All {len(FEATURES)} feature(s) match the recorded state of '{leg}'")
 
     ready = {f: sites for f in FEATURES if (sites := adoptable(f))}
-    if not ready:
-      return 0
+    if ready:
+      red_print("These compile on every leg, and the code is still working around them:")
+      for feature, sites in ready.items():
+        red_print(f"  {feature.name} ({feature.issue}) -- {len(sites)} site(s):")
+        for site in sites:
+          red_print(f"    {site}")
+      yellow_print("Adopt them and drop the TODO, or record why not in that Feature's `deferred` field.")
+      return 1
 
-    red_print("These compile on every leg, and the code is still working around them:")
-    for feature, sites in ready.items():
-      red_print(f"  {feature.name} ({feature.issue}) -- {len(sites)} site(s):")
-      for site in sites:
-        red_print(f"    {site}")
-    yellow_print("Adopt them and drop the TODO, or record why not in that Feature's `deferred` field.")
-    return 1
+    idle = monuments()
+    if idle:
+      red_print("These are usable everywhere with nothing left waiting on them:")
+      for feature in idle:
+        red_print(f"  {feature.name} ({feature.issue})")
+      yellow_print("Drop the row if it was adopted; tag the remaining hand-rolled sites with a")
+      yellow_print("TODO naming the feature if it was not. A row that can never speak is decoration.")
+      return 1
+
+    return 0
 
   red_print(f"The toolchain on '{leg}' no longer matches what this repo recorded:")
   for feature in changed:
@@ -303,7 +343,9 @@ def probe_features(leg: Optional[str] = None) -> int:
       green_print(f"  + {feature.name} is now USABLE (recorded as gated)")
       sites = todo_sites(feature.token)
       if sites:
-        yellow_print(f"    Adopt it at {len(sites)} waiting site(s), then delete the TODO:")
+        # Not "go adopt it": this leg says nothing about the other two, and adopting on one
+        # leg's word breaks the others' build. Record the state; `adoptable` calls the moment.
+        yellow_print(f"    {len(sites)} site(s) are waiting on it, unlocked once every leg agrees:")
         for site in sites:
           yellow_print(f"      {site}")
       else:
@@ -311,5 +353,5 @@ def probe_features(leg: Optional[str] = None) -> int:
     else:
       red_print(f"  - {feature.name} is GATED but was recorded as usable -- the toolchain regressed.")
 
-  yellow_print("Then set the new state in EXPECTED['%s'] in automation/feature_probe.py." % leg)
+  yellow_print(f"Record the new state in EXPECTED['{leg}'] in automation/feature_probe.py.")
   return 1

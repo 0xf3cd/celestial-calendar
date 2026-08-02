@@ -259,11 +259,13 @@ jobs:
   # gate fails when someone breaks a header, this one fails when the world moves and a waiting
   # TODO becomes actionable. Sharing a job would let either verdict hide the other.
   #
-  # clang++ on the Linux leg rather than g++-14, even though the project builds with both: the
-  # two share libstdc++'s headers, and clang is the stricter consumer of them, so it gives the
-  # conservative answer. The Docker arm64/x86_64 legs are not probed -- they track the same
-  # libstdc++ family as this one, and a per-image toolchain difference would surface there as a
-  # build failure rather than as a missed unlock here.
+  # clang++-18 on the Linux leg, which pairs it with the runner's default libstdc++ -- exactly
+  # what `test-ubuntu-clang` builds against. That is deliberately NOT the same standard library
+  # as `test-ubuntu-gcc14`, which installs g++-14 and gets libstdc++-14: `<generator>` landed in
+  # libstdc++ 14, and this leg measures it as gated, which is the difference showing through.
+  # Probing the weaker of the two is the useful answer, since adoption has to wait for it either
+  # way. The Docker arm64/x86_64 legs are not probed -- a toolchain difference in those images
+  # surfaces there as a build failure rather than as a missed unlock here.
   cxx-feature-probe:
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -282,6 +284,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+
+      # Same Xcode the macOS build leg pins. Without it this job reads the image default, and
+      # the baseline would record a toolchain the project never actually compiles with.
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: runner.os == 'macOS'
+        with:
+          xcode-version: latest-stable
 
       - name: Set up Python
         uses: actions/setup-python@v6

@@ -203,7 +203,7 @@ There are basically two ways to download:
 
 * C++20/23 features are not fully supported by the compilers...
   * Modules
-  * Ranges and views (e.g. `std::views::enumerate`, `pairwise`, `join_with`...)
+  * Ranges and views (e.g. `std::views::enumerate`, `pairwise`...)
   * Use `std::generator` in Newton's method (moon_phase and jieqi).
   * Which of these a toolchain can actually compile: `./linter.py --features`. CI runs the same
     probe on libstdc++ / libc++ / MSVC STL and fails when a leg gains a feature the code is

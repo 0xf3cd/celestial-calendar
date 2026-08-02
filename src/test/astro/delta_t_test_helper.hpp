@@ -143,8 +143,6 @@ inline auto calc_diff(const double year, const double expected_delta_t) {
 
 #pragma region Other Helper Functions
 
-// Graduated off the wishlist 2026-08-02: `std::views::join_with` compiles on all three standard
-// libraries, which `./linter.py --features` is what told us.
 inline auto join_with(
   const std::ranges::range auto& view,
   const std::string& separator
