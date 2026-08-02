@@ -114,8 +114,13 @@ directed regression test.
 ```sh
 cmake -S src -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
-ctest --test-dir build
+ctest --test-dir build/test
 ```
+
+`build/test`, not `build`: the tests register in the subdirectory, so
+`ctest --test-dir build` runs **zero** tests and still exits 0 — a green light
+that checked nothing. (The root cause, a missing top-level `enable_testing()`,
+is tracked in #72.)
 
 ### Lint
 
@@ -151,6 +156,15 @@ is intentional. Keep it. That buys a discipline:
 
 - All logic in `src/**/*.hpp` with `#pragma once`; every function `inline`, shared constants
   `inline constexpr`. `.cpp` exists only in `shared_lib/` for the C-ABI exports. New logic → a header.
+  `inline` on namespace-scope constants is not cosmetic: plain `constexpr` has internal linkage,
+  so an external-linkage inline entity that odr-uses it (binds a reference, takes a span,
+  subscripts an array, range-for's over it) is IFNDR (#71).
+- **Every header compiles alone**, and CI enforces it per-header with `-fsyntax-only`.
+  Self-containment is a property of the *standard library*, not of the code: a header that
+  leans on a transitive include passes on the implementation that happens to provide it and
+  fails on one that doesn't. `converter.hpp` used `assert` with no `<cassert>` and compiled
+  fine on MSVC STL for months while failing outright on libc++ (#71). **The gate therefore
+  has to run on more than one leg — a single green platform proves nothing.**
 - **No `using namespace` and no namespace-scope `using` declarations in headers** — they leak
   into every including TU and cause conflicts / ambiguity. Put `using` inside function bodies
   (as `sun.hpp` already does with `using namespace astro::toolbox::literals;`) or fully-qualify.
@@ -275,8 +289,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
    from `lib*.cpp`. Version is injected via the `BUILD_VERSION` environment variable
    (defaults to `0.0.0`).
 4. **CI produces cross-platform artifacts:** GitHub Actions builds on macOS, Windows, and
-   many Linux architectures via Docker+QEMU. Do not change compiler or Docker base images
-   without checking matrix impact.
+   two Linux architectures (x86_64 and arm64), each in Docker on a *native* runner — the
+   8-platform QEMU matrix was retired in 2026-07 (#46). Do not change compiler or Docker
+   base images without checking matrix impact.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -286,7 +301,7 @@ toolbox/        Helper scripts for artifacts, releases, build info
 8. **Assertions:** the default build is `Release` (`automation/build.py`), so `assert` is dead
    code in production. Test targets strip `NDEBUG` (`src/test/CMakeLists.txt`, #89), so asserts
    ARE live inside test binaries — `build_integrity_test.cpp` guards this. The error contract
-   (target state; legacy violations are being migrated in #77, #67, #64, #70): public input
+   (target state; #77, #67 and #64 are closed, #70 is the last one open): public input
    validation must `throw` (fail-fast, independent of build type); `assert` is only
    for internal invariants, never as an input guard.
 
