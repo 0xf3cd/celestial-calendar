@@ -45,7 +45,7 @@ constexpr int32_t END_YEAR = 2099;
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details Data collected from Hong Kong Observatory.
  */
-constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
+inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x620752, 0x4c0ea5, 0x38b64a, 0x5c064b, 0x440a9b, 0x309556, 0x56056a, 0x400b59, 0x2a5752, 0x500752, 
   0x3adb25, 0x600b25, 0x480a4b, 0x32b4ab, 0x5802ad, 0x42056b, 0x2c4b69, 0x520da9, 0x3efd92, 0x640e92, 
   0x4c0d25, 0x36ba4d, 0x5c0a56, 0x4602b6, 0x2e95b5, 0x5606d4, 0x400ea9, 0x2c5e92, 0x500e92, 0x3acd26, 

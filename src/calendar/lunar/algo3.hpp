@@ -49,7 +49,7 @@ constexpr int32_t END_YEAR = 2199;
  * @details #64: entries for 2133/2165/2172 re-baked with algo5's ΔT — regenerate the
  *          non-HKO entries (statistics/lunar_calendar.ipynb) whenever the default ΔT model changes.
  */
-constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
+inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x5a0ba4, 0x420b49, 0x2c7a93, 0x520a95, 0x3cf52d, 0x600556, 0x4a0ab5, 0x36d5aa, 0x5c05d2, 0x440da5,
   0x309d4a, 0x560d4a, 0x400a96, 0x28552e, 0x4e0556, 0x38cab5, 0x5e0ad5, 0x4806d2, 0x328ea5, 0x580f25,
   0x44064a, 0x2a6c97, 0x500a9b, 0x3d155a, 0x62056a, 0x4a0b69, 0x36b752, 0x5c0b52, 0x460b25, 0x2e964b,

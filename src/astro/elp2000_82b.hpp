@@ -59,7 +59,7 @@ struct BCoefficients {
 };
 
 /** @brief Represents coefficients of the LR table. */
-constexpr std::array<LRCoefficients, 60> LR {{
+inline constexpr std::array<LRCoefficients, 60> LR {{
   { 0,  0,  1,  0, 6288774, -20905355 },
   { 2,  0, -1,  0, 1274027,  -3699111 },
   { 2,  0,  0,  0,  658314,  -2955968 },
@@ -123,7 +123,7 @@ constexpr std::array<LRCoefficients, 60> LR {{
 }};
 
 /** @brief Represents coefficients of the B table. */
-constexpr std::array<BCoefficients, 60> B {{
+inline constexpr std::array<BCoefficients, 60> B {{
   { 0,  0,  0,  1, 5128122 },
   { 0,  0,  1,  1,  280602 },
   { 0,  0,  1, -1,  277693 },

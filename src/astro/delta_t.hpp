@@ -67,7 +67,7 @@ struct Algo1Coefficients {
   double a, b, c, d; 
 };
 
-constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
+inline constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
   { -4000, 108371.7, -13036.80, 392.000,  0.0000 },
   {  -500,  17201.0,   -627.82,  16.170, -0.3413 },
   {  -150,  12200.6,   -346.41,   5.403, -0.1593 },

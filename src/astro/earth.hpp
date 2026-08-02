@@ -101,7 +101,7 @@ struct NutationCoeffs {
 
 // The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
 // This table is based on IAU 1980 nutation model, and some terms are omitted.
-constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
+inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
   { {  0,  0,  0,  2,  2 }, {   -2274.0,   -0.2 }, {   977.0, -0.5 } },
@@ -170,7 +170,7 @@ constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
 
 // The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
 // Compared to Meeus's omitted version, this table contains all terms.
-constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
+inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
   { {  0,  0, -2,  2,  1 }, {      46.0,    0.0 }, {   -24.0,  0.0 } },
@@ -452,7 +452,7 @@ struct DailyVariationTerm {
  * @note Terms with rate 359993/719987/1079981 are due to the eccentricity, 4452671/9224659/4092677
  *       to the Moon, 450368/225184/315559/675553 to Venus, 329644/659289/299295 to Jupiter, 337181 to Mars.
  */
-constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
+inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
   { 118.568,  87.5287,  359993.7286, 0 },
   {   2.476,  85.0561,  719987.4571, 0 },
   {   1.376,  27.8502, 4452671.1152, 0 },
