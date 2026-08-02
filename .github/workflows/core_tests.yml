@@ -210,10 +210,13 @@ jobs:
         include:
           - runner: ubuntu-24.04     # libstdc++
             stdlib: libstdc++
+            cxx: clang++-18
           - runner: macos-latest     # libc++
             stdlib: libc++
+            cxx: clang++
           - runner: windows-latest   # MSVC STL
             stdlib: MSVC STL
+            cxx: clang++
 
     steps:
       - uses: actions/checkout@v7
@@ -237,13 +240,15 @@ jobs:
           sudo add-apt-repository universe
           sudo apt update
           sudo apt install -y clang-18
-          echo "CXX=clang++-18" >> $GITHUB_ENV
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
         run: choco install -y llvm
 
+      # The compiler comes from the matrix, not from $GITHUB_ENV: a step-level `env:`
+      # outranks anything written to $GITHUB_ENV, so setting CXX in the install step
+      # above and again here would silently pin nothing.
       - name: Check every header compiles alone (${{ matrix.stdlib }})
         env:
-          CXX: clang++
+          CXX: ${{ matrix.cxx }}
         run: python ./linter.py --self-contained

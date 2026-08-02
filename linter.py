@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
       "    ./linter.py --clang-tidy\n\n"
       "  To check that every header is self-contained:\n"
       "    ./linter.py --self-contained\n\n"
-      "  To run both linters:\n"
+      "  To run every check (ruff, clang-tidy, self-containment):\n"
       "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter

@@ -10,23 +10,35 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import re
 
+from pathlib import Path
 from typing import List, Final
 
 from . import paths
 from .utils import run_cmd, green_print, red_print, yellow_print, blue_print
 
 
-# Mirrors the include_directories() calls in src/CMakeLists.txt. Kept in sync by hand:
-# if a new include root shows up there, add it here or headers under it stop being checkable.
-INCLUDE_SUBDIRS: Final[List[str]] = [
-  "astro",
-  "calendar",
-  "util",
-  "astro/vsop87d",
-  "calendar/lunar",
-  "shared_lib",
-]
+INCLUDE_DIR_RE: Final[re.Pattern] = re.compile(
+  r"^\s*include_directories\(\$\{PROJECT_SOURCE_DIR\}/([^)]+)\)", re.MULTILINE
+)
+
+
+def include_roots(src_dir: Path) -> List[Path]:
+  """Read the include roots straight out of src/CMakeLists.txt.
+
+  Deliberately derived rather than copied. The gate is only meaningful if it compiles
+  headers under the *same* search path the real build gives them: a wider path lets a
+  header get away with an include that only resolves for the gate (e.g. "defines.hpp",
+  reachable only via -Iastro/vsop87d), and the gate would wave through something the
+  build rejects. A narrower one flags includes that are actually fine. Either way a
+  hand-copied list drifts silently, so there is no second list to drift.
+  """
+  cmakelists = src_dir / "CMakeLists.txt"
+  roots = [src_dir / name.strip() for name in INCLUDE_DIR_RE.findall(cmakelists.read_text())]
+  # src/CMakeLists.txt still names `common`, which no longer exists (tracked in #72).
+  # Passing -I for a missing directory is harmless but pointless, so drop it.
+  return [r for r in roots if r.is_dir()]
 
 
 def check_self_contained() -> int:
@@ -53,8 +65,14 @@ def check_self_contained() -> int:
     red_print(f"No headers found under {src_dir}")
     return 1
 
-  includes = [f"-I{src_dir / sub}" for sub in INCLUDE_SUBDIRS]
+  roots = include_roots(src_dir)
+  if not roots:
+    red_print(f"No include_directories() found in {src_dir / 'CMakeLists.txt'}")
+    return 1
+
+  includes = [f"-I{r}" for r in roots]
   blue_print(f"# Compiler: {cxx} | {len(headers)} header(s) under {src_dir}")
+  blue_print(f"# Include roots (from CMakeLists.txt): {', '.join(r.name for r in roots)}")
 
   failed: List[str] = []
   for header in headers:
