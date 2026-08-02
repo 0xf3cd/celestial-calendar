@@ -458,8 +458,8 @@ auto date_str(const std::chrono::year_month_day& ymd) -> std::string {
 
 /** @brief Years to sweep: every `stride`th, plus the far end — appended because that is where
  *         |EoT| peaks, and dropping it costs the transit sweep 0.6% of its worst case. The drift
- *         is not monotone: |EoT| dips near year 5000 before climbing again, while the lower
- *         culmination peaks near year 600, so neither end predicts the other's extreme.
+ *         is not monotone: |EoT| sags through the middle of the span before climbing again,
+ *         while the lower culmination peaks early in it — neither end predicts the other's.
  *         What the stride buys is blind-spot width, not accuracy — across years these curves are
  *         flat enough that halving it moves the measured worst by ~0.01%. It is sized so that a
  *         peak displaced by a model change still lands on the grid. */
