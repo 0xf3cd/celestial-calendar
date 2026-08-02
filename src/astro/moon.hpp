@@ -99,7 +99,7 @@ inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
   return {
     .λ = lon.normalize(),
     .β = lat,
-    .r = astro::toolbox::DistanceAu { r }
+    .r = toolbox::DistanceAu { r }
   };
 }
 

@@ -44,7 +44,6 @@ namespace astro::sunrise_sunset::test {
 
 using namespace astro::sunrise_sunset;
 using astro::toolbox::AngleDeg;
-using astro::toolbox::AngleUnit::DEG;
 
 namespace {
 

@@ -37,13 +37,6 @@
 #include "vsop87d/defines.hpp"
 
 
-namespace astro::earth {
-
-
-
-} // namespace astro::earth
-
-
 namespace astro::earth::heliocentric_coord {
 
 /**

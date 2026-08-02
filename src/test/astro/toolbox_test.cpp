@@ -130,7 +130,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(deg));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(deg_to_rad(deg)));
 
-    const AngleRad angle_rad { angle }; // Unit conversion — explicit since #48, direct-init spells it.
+    const AngleRad angle_rad { angle };
 
     ASSERT_FLOAT_EQ(angle_rad.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle_rad.as<RAD>(), deg_to_rad(deg));
@@ -147,7 +147,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(rad_to_deg(rad)));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(rad));
 
-    const AngleDeg angle_deg { angle }; // Unit conversion — explicit since #48, direct-init spells it.
+    const AngleDeg angle_deg { angle };
 
     ASSERT_FLOAT_EQ(angle_deg.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle_deg.as<RAD>(), rad);
@@ -155,12 +155,8 @@ TEST(AstroMath, Angle) {
 }
 
 TEST(AstroMath, AngleFromArcSubdivisions) {
-  using AngleUnit::DEG;
-  using AngleUnit::RAD;
-
   // Arcminutes and arcseconds subdivide the degree, but the angle they name is carried in
-  // whichever unit it is asked of. The factory used to hand back DEG regardless of `Unit`,
-  // which no call site noticed because all nine of them asked an `AngleDeg` (#48).
+  // whichever unit it is asked of.
   static_assert(std::is_same_v<decltype(AngleDeg::from_arcmin(1.0)), AngleDeg>);
   static_assert(std::is_same_v<decltype(AngleRad::from_arcmin(1.0)), AngleRad>);
   static_assert(std::is_same_v<decltype(AngleDeg::from_arcsec(1.0)), AngleDeg>);
@@ -229,8 +225,7 @@ TEST(AstroMath, AngleOperators) {
 TEST(AstroMath, AngleDivisionByZeroThrows) {
   using namespace literals;
 
-  // The error contract of #48: a zero divisor is a caller mistake, not a state to hand on as ±inf.
-  // The branch had no coverage at all until now, so nothing held the contract in place.
+  // The contract (#48): a zero divisor is a caller mistake, not a state to hand on as ±inf.
   const auto angle = 30.0_deg;
   ASSERT_THROW((void) (angle / 0.0), std::runtime_error);
   ASSERT_THROW((void) (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.

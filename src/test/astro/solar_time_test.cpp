@@ -40,7 +40,6 @@
 namespace astro::solar_time::test {
 
 using astro::toolbox::AngleDeg;
-using astro::toolbox::AngleUnit::DEG;
 
 namespace {
 

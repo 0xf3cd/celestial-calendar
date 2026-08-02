@@ -134,10 +134,7 @@ struct Angle {
     return Angle<Unit> { Angle<AngleUnit::DEG> { arcsec_to_deg(value) } };
   }
 
-  /**
-   * @brief Convert to the other unit. Explicit: a unit change is a step the reader should see,
-   *        and the round trip through radians is not bit-exact.
-   */
+  /** @brief Convert to the other unit — explicit, so a unit change never happens silently. */
   template <AngleUnit As>
   constexpr explicit operator Angle<As>() const {
     return Angle<As> { as<As>() };
@@ -160,7 +157,7 @@ struct Angle {
   }
 
   /**
-   * @brief Scale the angle down by a bare factor.
+   * @brief Divide the angle by a bare (dimensionless) factor.
    * @throws std::runtime_error if the divisor is zero — an infinite angle is never the intent (#48).
    */
   constexpr auto operator/(const double other) const -> Angle<Unit> {
@@ -279,7 +276,7 @@ template <DistanceUnit Unit>
 struct Distance {
   constexpr explicit Distance(const double value) : _value { value } {}
 
-  /** @brief Convert to the other unit. Explicit for the same reason as `Angle`'s — see there. */
+  /** @brief Convert to the other unit. */
   template <DistanceUnit As>
   constexpr explicit operator Distance<As>() const {
     return Distance<As> { as<As>() };
@@ -307,7 +304,7 @@ struct Distance {
   }
 
  private:
-  double _value; // Private for the same reason as `Angle::_value` — see the note there.
+  double _value;
 };
 
 /** @brief The spelling used outside this header, for the same reason as `AngleDeg` (#53). */
@@ -319,8 +316,8 @@ using DistanceKm = Distance<DistanceUnit::KM>;
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  AngleDeg      λ; // Longitude
-  AngleDeg      β; // Latitude
+  AngleDeg   λ; // Longitude
+  AngleDeg   β; // Latitude
   DistanceAu r; // Radius/Distance
 };
 

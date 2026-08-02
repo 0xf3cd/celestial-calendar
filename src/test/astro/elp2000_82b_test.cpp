@@ -32,7 +32,6 @@ namespace astro::elp2000_82b::test {
 
 using namespace astro::elp2000_82b::coeff;
 using namespace astro::elp2000_82b;
-using astro::toolbox::AngleDeg;
 using astro::toolbox::AngleUnit::DEG;
 
 TEST(Elp2000, Evaluate) {

@@ -32,8 +32,6 @@
 namespace astro::earth::test {
 
 using namespace astro::earth;
-using astro::toolbox::AngleDeg;
-using astro::toolbox::AngleRad;
 using astro::toolbox::DistanceAu;
 using astro::toolbox::AngleUnit::DEG;
 using astro::toolbox::AngleUnit::RAD;
