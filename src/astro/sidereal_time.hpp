@@ -98,22 +98,22 @@ inline auto greenwich_apparent(
  * @brief Compute the Local Apparent Sidereal Time (LAST) for an observer.
  * @param jd_ut1 The julian day number, on the **UT1** scale (see `greenwich_mean`'s warning).
  * @param jde_tt The julian ephemeris day, on the **TT** scale, of the same instant (nutation).
- * @param longitude The observer's geographic longitude, measured **positive west** from Greenwich
- *        (Meeus's convention; e.g. Washington USNO ≈ +77°.0656). East-positive longitudes must
- *        be negated before calling.
+ * @param longitude_west The observer's geographic longitude, measured **positive west** from
+ *        Greenwich (Meeus's convention; e.g. Washington USNO ≈ +77°.0656). East-positive
+ *        longitudes must be negated before calling — the `_west` suffix is the guard (#127/D2).
  * @param model The nutation model to use. Defaults to `earth::nutation::Model::IAU_1980`.
  * @return The LAST, normalized to [0°, 360°).
- * @note With the west-positive convention the relation reads θ = θ₀(GAST) − longitude, consistent
- *       with Meeus's hour-angle formula H = θ₀ − L − α used from Chapter 13 onward.
+ * @note With the west-positive convention the relation reads θ = θ₀(GAST) − longitude_west,
+ *       consistent with Meeus's hour-angle formula H = θ₀ − L − α used from Chapter 13 onward.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12.
  */
 inline auto local_apparent(
   const double jd_ut1,
   const double jde_tt,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& longitude,
+  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& longitude_west,
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
 ) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
-  return (greenwich_apparent(jd_ut1, jde_tt, model) - longitude).normalize();
+  return (greenwich_apparent(jd_ut1, jde_tt, model) - longitude_west).normalize();
 }
 
 } // namespace astro::sidereal

@@ -331,6 +331,9 @@ inline auto gen_eval_θ(const double jc) -> std::function<Angle<DEG>(θCoeffs)> 
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in longitude (Δψ) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
+ * @note Twin of `nutation::obliquity`, which sums the same table and differs in exactly two
+ *       places: it reads `coeffs.Δε` and it takes the cosine. The duplication is deliberate —
+ *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
@@ -366,6 +369,9 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in obliquity (Δε) in degrees.
  * @note By default, the IAU 1980 model is used, since it is more accurate.
+ * @note Twin of `nutation::longitude`, which sums the same table and differs in exactly two
+ *       places: it reads `coeffs.Δψ` and it takes the sine. The duplication is deliberate —
+ *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
