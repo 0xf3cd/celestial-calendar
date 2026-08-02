@@ -1,3 +1,15 @@
+# CelestialCalendar Statistics:
+#   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
+#   No model training happens here (see AGENTS.md).
+# 
+# Author : Ningqi Wang (0xf3cd)
+# Email  : nq.maigre@gmail.com
+# Repo   : https://github.com/0xf3cd/celestial-calendar
+# License: GNU General Public License v3.0
+# 
+# This software is distributed without any warranty.
+# See <https://www.gnu.org/licenses/> for more details.
+
 # This file downloads the golden dataset for the Moon geocentric-position tests (#94 / #65):
 # - Primary source: JPL Horizons API (ssd.jpl.nasa.gov/api/horizons.api), Moon (301) seen from
 #   the geocenter (500@399), ephemeris DE441. Times are given and returned in TT (TIME_TYPE=TT),
