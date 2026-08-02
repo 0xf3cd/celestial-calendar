@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     formatter_class=argparse.RawTextHelpFormatter
   )
 
-  parser.add_argument("-a", "--all", action="store_true", help="Clean the project")
+  parser.add_argument("-a", "--all", action="store_true", help="Run every check")
   parser.add_argument("--ruff", action="store_true", help="Run ruff")
   parser.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
   parser.add_argument("--self-contained", action="store_true",
