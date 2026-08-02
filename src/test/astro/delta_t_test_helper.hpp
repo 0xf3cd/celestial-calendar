@@ -128,7 +128,7 @@ auto join_with(
   return str.substr(0, str.size() - separator.size());
 }
 
-constexpr int32_t PAD_WIDTH = 10;
+inline constexpr int32_t PAD_WIDTH = 10;
 
 /** @brief Pad the string with spaces. Use generic lambda here
  *         since template function cannot be implicitly instantiated

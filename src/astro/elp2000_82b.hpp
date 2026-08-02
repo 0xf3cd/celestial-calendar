@@ -203,13 +203,13 @@ using toolbox::AngleUnit::RAD;
  * @brief The scaling factor used in the Jean Meeus's Astronomical Algorithms, for the longitude and latitude.
  *        The unit of the raw evaluation result of longitude and latitude is 0.000001 degree.
  */
-constexpr double LON_LAT_SCALING_FACTOR = 1e6;
+inline constexpr double LON_LAT_SCALING_FACTOR = 1e6;
 
 /**
  * @brief The scaling factor used in the Jean Meeus's Astronomical Algorithms, for the radius/distance.
  *        The unit of the raw evaluation result of radius/distance is 0.001 kilometer.
  */
-constexpr double RADIUS_SCALING_FACTOR = 1e3;
+inline constexpr double RADIUS_SCALING_FACTOR = 1e3;
 
 /**
  * @struct The context (arguments) for a given julian century.

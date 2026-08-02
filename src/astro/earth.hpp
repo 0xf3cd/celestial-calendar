@@ -496,7 +496,7 @@ inline auto daily_λ_variation(const double jde) -> double {
 
 /** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).
  *  @note (25.11) prints 0.005775518; the 8th significant digit here is from τ_A = 499.004784 s / 86400. */
-constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
+inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
 
 /**
  * @brief Compute the aberration correction to the Sun's geometric longitude, Meeus (25.11).

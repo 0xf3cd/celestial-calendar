@@ -61,7 +61,7 @@ inline auto longitude_diff(const double jde) -> double {
  * @note The same figure sets where `f` is unwrapped below, so the bracket that Newton's method
  *       accepts and the interval on which `f` is smooth are one and the same by construction.
  */
-constexpr double BRACKET_TOLERANCE_DEG = 15.0;
+inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
 
 /**
  * @brief Apply Newton's method to find the jde, when the Sun and Moon are at the same apparent longitude.
@@ -116,7 +116,7 @@ inline auto newton_method(
  *       about `30 / 12.19 * 0.19` = 0.47 day short of the root — which is what makes
  *       `BRACKET_HALF_WIDTH_DAYS` the binding constraint on how large this may be.
  */
-constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
+inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
 
 /**
  * @brief Half the width of the bracket handed to Newton's method, in days.
@@ -125,7 +125,7 @@ constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
  *       endpoints drift past `BRACKET_TOLERANCE_DEG`: at the Moon's fastest, 14.5 deg/day, an
  *       endpoint 0.67 day out already sits 9.7 deg from conjunction.
  */
-constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
+inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 
 /**
  * @brief Approximate the range of the first root after the given jde, when the Sun and Moon are at the same apparent longitude.

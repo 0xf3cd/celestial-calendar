@@ -401,7 +401,7 @@ namespace algo5 {
 
 /** @brief The decimal year of the last Bulletin A observation in the training data;
  *         also the boundary between the fitted and the extrapolated segments. */
-constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
+inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 5.

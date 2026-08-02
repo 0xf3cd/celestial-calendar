@@ -35,10 +35,10 @@ namespace calendar::lunar::algo3 {
 using namespace calendar::lunar::common;
 
 /** @brief The first supported lunar year. */
-constexpr int32_t START_YEAR = 1600;
+inline constexpr int32_t START_YEAR = 1600;
 
 /** @brief The last supported lunar year. */
-constexpr int32_t END_YEAR = 2199;
+inline constexpr int32_t END_YEAR = 2199;
 
 /** 
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t.
