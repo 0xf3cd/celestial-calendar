@@ -74,7 +74,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
     const auto [y, m, d] = util::from_ymd(raw.date_of_first_day);
 
     uint16_t month_len = 0;
-    for (const auto& [i, days] : zip(iota(0), raw.month_lengths)) { // TODO: Use `views::enumerate` when supported.
+    for (const auto& [i, days] : zip(iota(0), raw.month_lengths)) { // TODO: Use `std::views::enumerate` once every CI leg has it (./linter.py --features).
       assert(days == 29 or days == 30);
       const uint16_t bit = (days == 29) ? 0 : 1;
       month_len |= (bit << i);

@@ -183,7 +183,7 @@ inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Da
 
 /** @brief A generator that generates consecutive Jieqis and their moments (in JDE), 
  *         starting from a given JDE (exclusive). */
-// TODO: Use `std::generator` when supported.
+// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
 struct JieqiGenerator {
 private:
   int32_t _year;

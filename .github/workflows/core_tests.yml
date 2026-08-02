@@ -252,3 +252,62 @@ jobs:
         env:
           CXX: ${{ matrix.cxx }}
         run: python ./linter.py --self-contained
+
+
+  # Which of the C++ features the codebase is waiting on each standard library can actually
+  # compile (#131, #99). Deliberately a separate job from the self-containment one above: that
+  # gate fails when someone breaks a header, this one fails when the world moves and a waiting
+  # TODO becomes actionable. Sharing a job would let either verdict hide the other.
+  #
+  # clang++ on the Linux leg rather than g++-14, even though the project builds with both: the
+  # two share libstdc++'s headers, and clang is the stricter consumer of them, so it gives the
+  # conservative answer. The Docker arm64/x86_64 legs are not probed -- they track the same
+  # libstdc++ family as this one, and a per-image toolchain difference would surface there as a
+  # build failure rather than as a missed unlock here.
+  cxx-feature-probe:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04     # libstdc++
+            leg: libstdc++
+            cxx: clang++-18
+          - runner: macos-latest     # libc++
+            leg: libc++
+            cxx: clang++
+          - runner: windows-latest   # MSVC STL
+            leg: msvc-stl
+            cxx: clang++
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r Requirements.txt
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y clang-18
+
+      - name: Install clang (Windows)
+        if: runner.os == 'Windows'
+        run: choco install -y llvm
+
+      # Report only for now: this run is what supplies the numbers for `EXPECTED` in
+      # automation/feature_probe.py, and a baseline asserted before it was measured would be
+      # exactly the kind of claim this batch exists to delete.
+      - name: Probe awaited C++ features (${{ matrix.leg }})
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: python ./linter.py --features

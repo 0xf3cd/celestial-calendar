@@ -280,11 +280,14 @@ toolbox/        Helper scripts for artifacts, releases, build info
    extend this one.
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active use
    (`std::views::transform` etc.). Features the weakest CI toolchain doesn't support yet —
-   currently **modules**, `std::generator`, and C++23 ranges additions like
-   `std::views::cartesian_product` / `pairwise` — wait for compiler support, then get adopted
-   (README §7 tracks the wishlist). Before using one, check support across the whole CI matrix
-   (Apple Clang / clang 18 / gcc 14 / MSVC STL / Docker ARM) and drop a note when graduating
-   a feature off this list.
+   **modules**, `std::generator`, and C++23 ranges additions like `std::views::enumerate` /
+   `pairwise` — wait for compiler support, then get adopted (README §7 tracks the wishlist).
+   **Availability is settled by compiling a real use of the feature, never by reading a
+   feature-test macro:** libc++ implements `std::ranges::fold_left` and does not define
+   `__cpp_lib_ranges_fold`, so a macro scan reported a usable feature as missing (#131). That
+   is what `./linter.py --features` does, once per standard library; CI holds each leg to the
+   state recorded in `automation/feature_probe.py`, so the day a leg gains one of these the
+   gate says so and names the sites still hand-rolling around it.
 3. **Shared library target:** `src/shared_lib/CMakeLists.txt` builds `libcelestial_calendar`
    from `lib*.cpp`. Version is injected via the `BUILD_VERSION` environment variable
    (defaults to `0.0.0`).

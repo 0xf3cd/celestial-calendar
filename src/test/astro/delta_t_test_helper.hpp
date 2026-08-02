@@ -141,7 +141,8 @@ inline auto calc_diff(const double year, const double expected_delta_t) {
 
 #pragma region Other Helper Functions
 
-// TODO: Use `std::views::join_with` when it gets supported.
+// TODO: Use `std::views::join_with` once every CI leg has it (./linter.py --features).
+//       libc++ already does -- this one is waiting on the other two legs, not on all three.
 inline auto join_with(
   const std::ranges::range auto& view, 
   const std::string& separator
@@ -176,7 +177,7 @@ inline auto make_line(
 ) -> std::string {
   const std::string separator { " | " };
 
-  // TODO: Use `std::views::concat` when it gets supported.
+  // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
   using namespace std::views;
   return join_with(range1 | transform(pad), separator)
        + separator

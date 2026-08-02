@@ -203,8 +203,11 @@ There are basically two ways to download:
 
 * C++20/23 features are not fully supported by the compilers...
   * Modules
-  * Ranges and views (e.g. cartesian_product...)
-  * Use `std::generator` in Newton's method (moon_phase and jiqei).
+  * Ranges and views (e.g. `std::views::enumerate`, `pairwise`, `join_with`...)
+  * Use `std::generator` in Newton's method (moon_phase and jieqi).
+  * Which of these a toolchain can actually compile: `./linter.py --features`. CI runs the same
+    probe on libstdc++ / libc++ / MSVC STL and fails when a leg gains a feature the code is
+    still hand-rolling around, so the list above cannot go quietly stale.
 * DUT1 (i.e. UT1 - UTC) is not modelled
   * UTC became a first-class time scale in v0.4.0 (leap-second aware, `utc_to_tt` / `tt_to_utc`), but UT1 and UTC are still treated as interchangeable — the gap stays below 0.9 s while leap seconds are in force.
 
