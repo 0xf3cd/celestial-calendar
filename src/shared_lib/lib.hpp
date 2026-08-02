@@ -24,6 +24,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <format>
 #include <print>
 #include <string>

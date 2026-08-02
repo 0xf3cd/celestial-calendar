@@ -23,6 +23,10 @@
 
 #pragma once
 
+#include <array>
+#include <concepts>
+#include <cstdint>
+#include <string>
 #include <vector>
 #include <map>
 #include <unordered_map>

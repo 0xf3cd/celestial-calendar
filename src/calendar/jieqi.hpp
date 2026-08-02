@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include <format>
+#include <ranges>
+#include <cstdint>
+#include <string_view>
 #include <unordered_map>
 
+#include "sun.hpp"
 #include "util.hpp"
 #include "astro.hpp"
+#include "cache.hpp"
 #include "datetime.hpp"
+#include "julian_day.hpp"
 
 
 namespace calendar::jieqi {

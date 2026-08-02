@@ -25,12 +25,16 @@
 
 #include <span>
 #include <array>
+#include <cmath>
 #include <ranges>
+#include <cstdint>
+#include <numeric>
 #include <functional>
 
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "vsop87d/vsop87d.hpp"
+#include "vsop87d/defines.hpp"
 
 
 namespace astro::earth {

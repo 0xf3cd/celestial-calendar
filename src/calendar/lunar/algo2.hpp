@@ -23,12 +23,21 @@
 
 #pragma once
 
+#include <format>
+#include <ranges>
+#include <vector>
+#include <cassert>
+#include <cstdint>
+#include <utility>
 #include <optional>
+#include <iterator>
 #include <algorithm>
+#include <functional>
 
 #include "cache.hpp"
 
 #include "common.hpp"
+#include "datetime.hpp"
 #include "jieqi.hpp"
 #include "moon_phase.hpp"
 #include "julian_day.hpp"

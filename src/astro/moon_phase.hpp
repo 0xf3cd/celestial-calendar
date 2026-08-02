@@ -23,8 +23,12 @@
 
 #pragma once
 
+#include <cmath>
 #include <vector>
 #include <format>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
 #include "toolbox.hpp"
 #include "ymd.hpp"

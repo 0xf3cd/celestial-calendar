@@ -27,6 +27,7 @@
 #include <limits>
 #include <cstddef>
 #include <numbers>
+#include <cstdint>
 #include <concepts>
 #include <algorithm>
 #include <stdexcept>

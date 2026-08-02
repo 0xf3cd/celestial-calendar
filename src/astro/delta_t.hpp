@@ -28,7 +28,10 @@
 #include <format>
 #include <ranges>
 #include <cassert>
+#include <cstdint>
+#include <utility>
 #include <optional>
+#include <iterator>
 
 #include "ymd.hpp"
 #include "datetime.hpp"

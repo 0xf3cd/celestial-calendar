@@ -27,6 +27,7 @@
 #include <cmath>
 #include <ranges>
 #include <numeric>
+#include <cstdint>
 
 namespace astro::vsop87d {
 
