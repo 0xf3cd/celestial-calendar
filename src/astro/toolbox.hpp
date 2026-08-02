@@ -119,8 +119,6 @@ enum class AngleUnit : uint8_t { RAD, DEG };
  */
 template <AngleUnit Unit>
 struct Angle {
-  const double _value;
-
   constexpr Angle(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
 
   constexpr static auto from_arcmin(const double value) -> Angle<AngleUnit::DEG> {
@@ -207,6 +205,12 @@ struct Angle {
   [[nodiscard]] constexpr auto rad() const -> double {
     return as<AngleUnit::RAD>();
   }
+
+ private:
+  // Private, not const: `const` would also make the type unassignable, which breaks
+  // `std::optional<Angle>` and every sort/erase over aggregates holding one.
+  // Immutability is carried by the interface instead — every operator returns a new value.
+  double _value;
 };
 
 #pragma endregion
@@ -259,8 +263,6 @@ constexpr auto km_to_au(const double km) -> double {
 /** @brief Represents a distance. */
 template <DistanceUnit Unit>
 struct Distance {
-  const double _value;
-
   constexpr Distance(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
 
   /** @brief Allow implicit conversion to the other unit. */
@@ -289,6 +291,9 @@ struct Distance {
   [[nodiscard]] constexpr auto km() const -> double {
     return as<DistanceUnit::KM>();
   }
+
+ private:
+  double _value; // Private for the same reason as `Angle::_value` — see the note there.
 };
 
 

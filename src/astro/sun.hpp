@@ -73,8 +73,8 @@ inline auto vsop87d(const double jde) -> SphericalCoordinate {
 
 /** @brief The FK5 correction for the coordinate calculated using VSOP87D. */
 struct Fk5Correction {
-  const Angle<DEG> Δλ;
-  const Angle<DEG> Δβ;
+  Angle<DEG> Δλ;
+  Angle<DEG> Δβ;
 };
 
 
