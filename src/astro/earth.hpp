@@ -64,9 +64,9 @@ inline auto vsop87d(const double jde) -> SphericalCoordinate {
 
   return {
     // As per the algorithm, the longitude is normalized to [0, 2π).
-    .λ = Angle<RAD>(evaluated.λ).normalize(),
-    .β = Angle<RAD>(evaluated.β),
-    .r = Distance<AU>(evaluated.r)
+    .λ = Angle<DEG> { Angle<RAD> { evaluated.λ }.normalize() },
+    .β = Angle<DEG> { Angle<RAD> { evaluated.β } },
+    .r = Distance<AU> { evaluated.r }
   };
 }
 

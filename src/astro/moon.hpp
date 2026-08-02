@@ -97,7 +97,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   // Longitude, considering the perturbation and nutation.
   const auto Σl = evaluated.Σl + perturbation::longitude(evaluated.ctx);
   const auto lon_nutation = astro::earth::nutation::longitude(jde);
-  const Angle<DEG> lon = evaluated.ctx.Lp + (Σl / LON_LAT_SCALING_FACTOR) + lon_nutation; 
+  const Angle<DEG> lon = evaluated.ctx.Lp + Angle<DEG> { Σl / LON_LAT_SCALING_FACTOR } + lon_nutation;
 
   // Latitude, considering the perturbation.
   const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
@@ -109,7 +109,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
   return {
     .λ = lon.normalize(),
     .β = lat,
-    .r = r
+    .r = Distance<astro::toolbox::DistanceUnit::AU> { r }
   };
 }
 
@@ -121,7 +121,7 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
  */
 inline auto equatorial_horizontal_parallax(const Distance<KM>& distance) -> Angle<RAD> {
   const auto ppi_rad = std::asin(6378.14 / distance.km());
-  return { ppi_rad };
+  return Angle<RAD> { ppi_rad };
 }
 
 } // namespace astro::moon::geocentric_coord

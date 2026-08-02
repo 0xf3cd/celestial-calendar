@@ -127,7 +127,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(deg));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(deg_to_rad(deg)));
 
-    const Angle<RAD> angle_rad { angle }; // Test implicit conversion.
+    const Angle<RAD> angle_rad { angle }; // Unit conversion — explicit since #48, direct-init spells it.
 
     ASSERT_FLOAT_EQ(angle_rad.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle_rad.as<RAD>(), deg_to_rad(deg));
@@ -144,7 +144,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(rad_to_deg(rad)));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(rad));
 
-    const Angle<DEG> angle_deg { angle }; // Test implicit conversion.
+    const Angle<DEG> angle_deg { angle }; // Unit conversion — explicit since #48, direct-init spells it.
 
     ASSERT_FLOAT_EQ(angle_deg.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle_deg.as<RAD>(), rad);
@@ -186,8 +186,6 @@ TEST(AstroMath, AngleOperators) {
   {
     const auto angle = 360.0_deg;
 
-    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0).as<DEG>());
-    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0).as<DEG>());
     ASSERT_EQ(angle.as<DEG>(), (angle + 0.0_deg).as<DEG>());
     ASSERT_EQ(angle.as<DEG>(), (angle - 0.0_deg).as<DEG>());
     ASSERT_EQ(angle.as<DEG>() * 2.0, (angle * 2.0).as<DEG>());
@@ -197,8 +195,6 @@ TEST(AstroMath, AngleOperators) {
   {
     const auto angle = 1.0_rad;
 
-    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0).as<RAD>());
-    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0).as<RAD>());
     ASSERT_EQ(angle.as<RAD>(), (angle + 0.0_rad).as<RAD>());
     ASSERT_EQ(angle.as<RAD>(), (angle - 0.0_rad).as<RAD>());
     ASSERT_EQ(angle.as<RAD>() * 2.0, (angle * 2.0).as<RAD>());

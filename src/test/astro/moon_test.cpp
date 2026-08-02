@@ -98,7 +98,7 @@ TEST(Moon, CoordAndPpi) {
     ASSERT_NEAR(β.deg(),    std::get<1>(expected), 1e-11);
     ASSERT_NEAR(r.km(),     std::get<2>(expected), 1e-7);
 
-    const auto ppi = equatorial_horizontal_parallax(r);
+    const auto ppi = equatorial_horizontal_parallax(Distance<KM> { r });
     ASSERT_NEAR(ppi.rad(),  std::get<3>(expected), 1e-14);
   }
 }

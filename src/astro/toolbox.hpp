@@ -119,51 +119,50 @@ enum class AngleUnit : uint8_t { RAD, DEG };
  */
 template <AngleUnit Unit>
 struct Angle {
-  constexpr Angle(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
+  constexpr explicit Angle(const double value) : _value { value } {}
 
   constexpr static auto from_arcmin(const double value) -> Angle<AngleUnit::DEG> {
-    return { arcmin_to_deg(value) };
+    return Angle<AngleUnit::DEG> { arcmin_to_deg(value) };
   }
 
   constexpr static auto from_arcsec(const double value) -> Angle<AngleUnit::DEG> {
-    return { arcsec_to_deg(value) };
+    return Angle<AngleUnit::DEG> { arcsec_to_deg(value) };
   }
 
-  /** @brief Allow implicit conversion to the other unit. */
+  /**
+   * @brief Convert to the other unit. Explicit: a unit change is a step the reader should see,
+   *        and the round trip through radians is not bit-exact.
+   */
   template <AngleUnit As>
-  constexpr operator Angle<As>() const { // NOLINT(google-explicit-constructor)
-    return { as<As>() };
+  constexpr explicit operator Angle<As>() const {
+    return Angle<As> { as<As>() };
   }
 
   constexpr auto operator+(const Angle<Unit>& other) const -> Angle<Unit> {
-    return { _value + other._value };
-  }
-
-  constexpr auto operator+(const double other) const -> Angle<Unit> {
-    return { _value + other };
+    return Angle<Unit> { _value + other._value };
   }
 
   constexpr auto operator-(const Angle<Unit>& other) const -> Angle<Unit> {
-    return { _value - other._value };
-  }
-
-  constexpr auto operator-(const double other) const -> Angle<Unit> {
-    return { _value - other };
+    return Angle<Unit> { _value - other._value };
   }
 
   constexpr auto operator-() const -> Angle<Unit> {
-    return { -_value };
+    return Angle<Unit> { -_value };
   }
 
   constexpr auto operator*(const double other) const -> Angle<Unit> {
-    return { _value * other };
+    return Angle<Unit> { _value * other };
   }
 
+  /**
+   * @brief Scale the angle down by a bare factor.
+   * @throws std::runtime_error if the divisor is zero — an infinite angle is never the intent (#48).
+   */
   constexpr auto operator/(const double other) const -> Angle<Unit> {
     if (other == 0.0) {
       throw std::runtime_error { "Division by zero." };
     }
-    return { _value / other };
+    return Angle<Unit> { _value / other };
   }
 
   /**
@@ -190,9 +189,9 @@ struct Angle {
    */
   [[nodiscard]] constexpr auto normalize() const -> Angle<Unit> {
     if constexpr (Unit == AngleUnit::DEG) {
-      return { normalize_deg(_value) };
+      return Angle<Unit> { normalize_deg(_value) };
     } else {
-      return { normalize_rad(_value) };
+      return Angle<Unit> { normalize_rad(_value) };
     }
   }
 
@@ -221,7 +220,7 @@ struct Angle {
 namespace literals {
 
 inline auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
-  return { static_cast<double>(value) };
+  return Angle<AngleUnit::DEG> { static_cast<double>(value) };
 }
 
 inline auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
@@ -233,7 +232,7 @@ inline auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> 
 }
 
 inline auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
-  return { static_cast<double>(value) };
+  return Angle<AngleUnit::RAD> { static_cast<double>(value) };
 }
 
 }  // namespace literals
@@ -263,12 +262,12 @@ constexpr auto km_to_au(const double km) -> double {
 /** @brief Represents a distance. */
 template <DistanceUnit Unit>
 struct Distance {
-  constexpr Distance(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
+  constexpr explicit Distance(const double value) : _value { value } {}
 
-  /** @brief Allow implicit conversion to the other unit. */
+  /** @brief Convert to the other unit. Explicit for the same reason as `Angle`'s — see there. */
   template <DistanceUnit As>
-  constexpr operator Distance<As>() const { // NOLINT(google-explicit-constructor)
-    return { as<As>() };
+  constexpr explicit operator Distance<As>() const {
+    return Distance<As> { as<As>() };
   }
 
   template <DistanceUnit As>
