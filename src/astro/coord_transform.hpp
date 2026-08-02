@@ -36,8 +36,8 @@ namespace astro::coords {
  * @note α is the right ascension, normalized to [0°, 360°). δ is the declination, in [-90°, 90°].
  */
 struct EquatorialCoord {
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> α; // Right ascension
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> δ; // Declination
+  astro::toolbox::AngleDeg α; // Right ascension
+  astro::toolbox::AngleDeg δ; // Declination
 };
 
 /**
@@ -46,8 +46,8 @@ struct EquatorialCoord {
  *       normalized to [0°, 360°). h is the altitude, in [-90°, 90°].
  */
 struct HorizontalCoord {
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> A; // Azimuth, from the south, positive westward
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> h; // Altitude
+  astro::toolbox::AngleDeg A; // Azimuth, from the south, positive westward
+  astro::toolbox::AngleDeg h; // Altitude
 };
 
 
@@ -64,12 +64,11 @@ struct HorizontalCoord {
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
  */
 inline auto ecliptic_to_equatorial(
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& λ,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& β,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& ε
+  const astro::toolbox::AngleDeg& λ,
+  const astro::toolbox::AngleDeg& β,
+  const astro::toolbox::AngleDeg& ε
 ) -> EquatorialCoord {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+  using astro::toolbox::AngleDeg;
   using astro::toolbox::rad_to_deg;
 
   const double λ_rad = λ.rad();
@@ -95,8 +94,8 @@ inline auto ecliptic_to_equatorial(
   const double δ_rad = std::asin(std::clamp(sin_β * cos_ε + cos_β * sin_ε * sin_λ, -1.0, 1.0));
 
   return {
-    .α = Angle<DEG> { rad_to_deg(α_rad) }.normalize(),
-    .δ = Angle<DEG> { rad_to_deg(δ_rad) },
+    .α = AngleDeg { rad_to_deg(α_rad) }.normalize(),
+    .δ = AngleDeg { rad_to_deg(δ_rad) },
   };
 }
 
@@ -116,12 +115,11 @@ inline auto ecliptic_to_equatorial(
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
  */
 inline auto equatorial_to_horizontal(
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& H,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& δ,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& φ
+  const astro::toolbox::AngleDeg& H,
+  const astro::toolbox::AngleDeg& δ,
+  const astro::toolbox::AngleDeg& φ
 ) -> HorizontalCoord {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+  using astro::toolbox::AngleDeg;
   using astro::toolbox::rad_to_deg;
 
   const double H_rad = H.rad();
@@ -147,8 +145,8 @@ inline auto equatorial_to_horizontal(
   const double h_rad = std::asin(std::clamp(sin_φ * sin_δ + cos_φ * cos_δ * cos_H, -1.0, 1.0));
 
   return {
-    .A = Angle<DEG> { rad_to_deg(A_rad) }.normalize(),
-    .h = Angle<DEG> { rad_to_deg(h_rad) },
+    .A = AngleDeg { rad_to_deg(A_rad) }.normalize(),
+    .h = AngleDeg { rad_to_deg(h_rad) },
   };
 }
 

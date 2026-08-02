@@ -363,7 +363,7 @@ auto apparent_solar_time(
   try {
     const auto ymd = util::to_ymd(y, m, d);
     const auto utc_dt = calendar::Datetime(ymd, fraction);
-    const auto lon = astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> { longitude };
+    const auto lon = astro::toolbox::AngleDeg { longitude };
     const auto apparent_dt = astro::solar_time::apparent(utc_dt, lon);
 
     const auto [ay, am, ad] = util::from_ymd(apparent_dt.ymd);

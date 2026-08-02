@@ -37,10 +37,6 @@
 
 namespace astro::sun::geocentric_coord {
 
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
-using astro::toolbox::AngleUnit::RAD;
-using astro::toolbox::SphericalCoordinate;
 
 
 /**
@@ -50,7 +46,7 @@ using astro::toolbox::SphericalCoordinate;
  * @details The function invokes `astro::earth::heliocentric_coord::vsop87d`, and
  *          transforms the heliocentric coordinates to geocentric coordinates.
  */
-inline auto vsop87d(const double jde) -> SphericalCoordinate {
+inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
   const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jde);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
@@ -73,8 +69,8 @@ inline auto vsop87d(const double jde) -> SphericalCoordinate {
 
 /** @brief The FK5 correction for the coordinate calculated using VSOP87D. */
 struct Fk5Correction {
-  Angle<DEG> Δλ;
-  Angle<DEG> Δβ;
+  toolbox::AngleDeg Δλ;
+  toolbox::AngleDeg Δβ;
 };
 
 
@@ -84,20 +80,20 @@ struct Fk5Correction {
  * @return The correction (i.e. Δlongitude and Δlatitude).
  * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
  */
-inline auto fk5_correction(const double jde, const SphericalCoordinate& vsop87d_coord) -> Fk5Correction {
+inline auto fk5_correction(const double jde, const toolbox::SphericalCoordinate& vsop87d_coord) -> Fk5Correction {
   const double jc = astro::julian_day::jde_to_jc(jde);
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
   // Calculate the deltas for longitude and latitude, in arcsec.
-  const Angle λ_dash = vsop_λ - Angle<DEG> { (1.397 + 0.00031 * jc) * jc };
+  const toolbox::AngleDeg λ_dash = vsop_λ - toolbox::AngleDeg { (1.397 + 0.00031 * jc) * jc };
   const double λ_dash_rad = λ_dash.rad();
 
   const double delta_λ_arcsec = -0.09033 + 0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad());
   const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
 
   return {
-    .Δλ = Angle<DEG>::from_arcsec(delta_λ_arcsec),
-    .Δβ = Angle<DEG>::from_arcsec(delta_β_arcsec),
+    .Δλ = toolbox::AngleDeg::from_arcsec(delta_λ_arcsec),
+    .Δβ = toolbox::AngleDeg::from_arcsec(delta_β_arcsec),
   };
 }
 
@@ -108,7 +104,7 @@ inline auto fk5_correction(const double jde, const SphericalCoordinate& vsop87d_
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Sun, after correction.
  */
-inline auto apparent(const double jde) -> SphericalCoordinate {
+inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
   // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
   const auto vsop_coord = vsop87d(jde);
 

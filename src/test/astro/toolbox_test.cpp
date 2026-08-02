@@ -122,7 +122,7 @@ TEST(AstroMath, Angle) {
   for (auto i = 0; i < 1000; ++i) {
     const double deg = util::random(-720.0, 720.0);
 
-    const Angle<DEG> angle { deg };
+    const AngleDeg angle { deg };
 
     ASSERT_FLOAT_EQ(angle.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle.as<RAD>(), deg_to_rad(deg));
@@ -130,7 +130,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(deg));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(deg_to_rad(deg)));
 
-    const Angle<RAD> angle_rad { angle }; // Unit conversion — explicit since #48, direct-init spells it.
+    const AngleRad angle_rad { angle }; // Unit conversion — explicit since #48, direct-init spells it.
 
     ASSERT_FLOAT_EQ(angle_rad.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle_rad.as<RAD>(), deg_to_rad(deg));
@@ -139,7 +139,7 @@ TEST(AstroMath, Angle) {
   for (auto i = 0; i < 1000; ++i) {
     const double rad = util::random(-2 * std::numbers::pi, 2 * std::numbers::pi);
 
-    const Angle<RAD> angle { rad };
+    const AngleRad angle { rad };
 
     ASSERT_FLOAT_EQ(angle.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle.as<RAD>(), rad);
@@ -147,7 +147,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(rad_to_deg(rad)));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(rad));
 
-    const Angle<DEG> angle_deg { angle }; // Unit conversion — explicit since #48, direct-init spells it.
+    const AngleDeg angle_deg { angle }; // Unit conversion — explicit since #48, direct-init spells it.
 
     ASSERT_FLOAT_EQ(angle_deg.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle_deg.as<RAD>(), rad);
@@ -160,19 +160,19 @@ TEST(AstroMath, AngleFromArcSubdivisions) {
 
   // Arcminutes and arcseconds subdivide the degree, but the angle they name is carried in
   // whichever unit it is asked of. The factory used to hand back DEG regardless of `Unit`,
-  // which no call site noticed because all nine of them asked a `Angle<DEG>` (#48).
-  static_assert(std::is_same_v<decltype(Angle<DEG>::from_arcmin(1.0)), Angle<DEG>>);
-  static_assert(std::is_same_v<decltype(Angle<RAD>::from_arcmin(1.0)), Angle<RAD>>);
-  static_assert(std::is_same_v<decltype(Angle<DEG>::from_arcsec(1.0)), Angle<DEG>>);
-  static_assert(std::is_same_v<decltype(Angle<RAD>::from_arcsec(1.0)), Angle<RAD>>);
+  // which no call site noticed because all nine of them asked an `AngleDeg` (#48).
+  static_assert(std::is_same_v<decltype(AngleDeg::from_arcmin(1.0)), AngleDeg>);
+  static_assert(std::is_same_v<decltype(AngleRad::from_arcmin(1.0)), AngleRad>);
+  static_assert(std::is_same_v<decltype(AngleDeg::from_arcsec(1.0)), AngleDeg>);
+  static_assert(std::is_same_v<decltype(AngleRad::from_arcsec(1.0)), AngleRad>);
 
-  ASSERT_DOUBLE_EQ(Angle<DEG>::from_arcmin(60.0).deg(), 1.0);
-  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcmin(60.0).deg(), 1.0);
-  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcmin(60.0).rad(), deg_to_rad(1.0));
+  ASSERT_DOUBLE_EQ(AngleDeg::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcmin(60.0).rad(), deg_to_rad(1.0));
 
-  ASSERT_DOUBLE_EQ(Angle<DEG>::from_arcsec(3600.0).deg(), 1.0);
-  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcsec(3600.0).deg(), 1.0);
-  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcsec(3600.0).rad(), deg_to_rad(1.0));
+  ASSERT_DOUBLE_EQ(AngleDeg::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcsec(3600.0).rad(), deg_to_rad(1.0));
 }
 
 TEST(AstroMath, literals) {

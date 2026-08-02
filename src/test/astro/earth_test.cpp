@@ -32,6 +32,11 @@
 namespace astro::earth::test {
 
 using namespace astro::earth;
+using astro::toolbox::AngleDeg;
+using astro::toolbox::AngleRad;
+using astro::toolbox::DistanceAu;
+using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::AngleUnit::RAD;
 
 TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;
@@ -584,7 +589,7 @@ TEST(Earth, AberrationGolden) {
   };
 
   for (const auto& [jde, r, aberration] : dataset) {
-    const auto ab = aberration::compute(jde, Distance<AU> { r });
+    const auto ab = aberration::compute(jde, DistanceAu { r });
     ASSERT_NEAR(ab.as<DEG>(), aberration / 3600.0, 1e-6 / 3600.0);
   }
 }
@@ -593,7 +598,7 @@ TEST(Earth, AberrationMeeus25b) {
   // Meeus Example 25.b (p. 169): JDE 2448908.5, R = 0.99760775, aberration correction -20.539"
   // by (25.10) — signed; compute returns the magnitude to subtract. Our (25.11) differs from
   // (25.10) by up to 0.01" per Meeus; the measured gap here is 0.008".
-  const auto ab = aberration::compute(2448908.5, Distance<AU> { 0.99760775 });
+  const auto ab = aberration::compute(2448908.5, DistanceAu { 0.99760775 });
   ASSERT_NEAR(ab.as<DEG>(), 20.539 / 3600.0, 0.01 / 3600.0);
 }
 

@@ -33,6 +33,8 @@ using namespace std::literals;
 
 using namespace astro::sun::geocentric_coord;
 using namespace astro::sun::geocentric_coord::math;
+using astro::toolbox::AngleDeg;
+using astro::toolbox::AngleUnit::DEG;
 
 TEST(Sun, GeocentricPosition) {
   // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Enhanced

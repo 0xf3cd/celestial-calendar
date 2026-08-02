@@ -192,12 +192,7 @@ inline constexpr std::array<BCoefficients, 60> B {{
 
 namespace astro::elp2000_82b {
 
-using coeff::LR;
-using coeff::B;
 
-using toolbox::Angle;
-using toolbox::AngleUnit::DEG;
-using toolbox::AngleUnit::RAD;
 
 
 /**
@@ -219,14 +214,14 @@ inline constexpr double RADIUS_SCALING_FACTOR = 1e3;
 struct Context {
   double     jc; // The julian century
 
-  Angle<DEG> Lp; // The argument for the mean longitude of the Moon from the Sun
-  Angle<DEG> D;  // The argument for the mean elongation of the Moon from the Sun
-  Angle<DEG> M;  // The argument for the mean anomaly of the Sun
-  Angle<DEG> Mp; // The argument for the mean anomaly of the Moon
-  Angle<DEG> F;  // The argument for the distance of the Moon from its Ascending Node
-  Angle<DEG> A1; // Further argument 1, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
-  Angle<DEG> A2; // Further argument 2, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
-  Angle<DEG> A3; // Further argument 3, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
+  toolbox::AngleDeg Lp; // The argument for the mean longitude of the Moon from the Sun
+  toolbox::AngleDeg D;  // The argument for the mean elongation of the Moon from the Sun
+  toolbox::AngleDeg M;  // The argument for the mean anomaly of the Sun
+  toolbox::AngleDeg Mp; // The argument for the mean anomaly of the Moon
+  toolbox::AngleDeg F;  // The argument for the distance of the Moon from its Ascending Node
+  toolbox::AngleDeg A1; // Further argument 1, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
+  toolbox::AngleDeg A2; // Further argument 2, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
+  toolbox::AngleDeg A3; // Further argument 3, as indicated in Astronomical Algorithms, Jean Meeus, 1998, Chapter 47
   double E;      // The argument for the eccentricity of the Earth's orbit around the Sun
 };
 
@@ -242,15 +237,15 @@ inline auto create_context(const double jc) -> Context {
   const double jc3 = jc2 * jc;
   const double jc4 = jc3 * jc;
 
-  const Angle<DEG> Lp { 218.3164477 + 481267.88123421 * jc - 0.0015786 * jc2 + jc3 / 538841 - jc4 / 65194000 };
-  const Angle<DEG> D  { 297.8501921 + 445267.1114034 * jc - 0.0018819 * jc2 + jc3 / 545868 - jc4 / 113065000 };
-  const Angle<DEG> M  { 357.5291092 + 35999.0502909 * jc - 0.0001536 * jc2 + jc3 / 24490000 };
-  const Angle<DEG> Mp { 134.9633964 + 477198.8675055 * jc + 0.0087414 * jc2 + jc3 / 69699 - jc4 / 14712000 };
-  const Angle<DEG> F  { 93.2720950 + 483202.0175233 * jc - 0.0036539 * jc2 - jc3 / 3526000 + jc4 / 863310000 };
+  const toolbox::AngleDeg Lp { 218.3164477 + 481267.88123421 * jc - 0.0015786 * jc2 + jc3 / 538841 - jc4 / 65194000 };
+  const toolbox::AngleDeg D  { 297.8501921 + 445267.1114034 * jc - 0.0018819 * jc2 + jc3 / 545868 - jc4 / 113065000 };
+  const toolbox::AngleDeg M  { 357.5291092 + 35999.0502909 * jc - 0.0001536 * jc2 + jc3 / 24490000 };
+  const toolbox::AngleDeg Mp { 134.9633964 + 477198.8675055 * jc + 0.0087414 * jc2 + jc3 / 69699 - jc4 / 14712000 };
+  const toolbox::AngleDeg F  { 93.2720950 + 483202.0175233 * jc - 0.0036539 * jc2 - jc3 / 3526000 + jc4 / 863310000 };
 
-  const Angle<DEG> A1 { 119.75 + 131.849 * jc };
-  const Angle<DEG> A2 { 53.09 + 479264.290 * jc };
-  const Angle<DEG> A3 { 313.45 + 481266.484 * jc };
+  const toolbox::AngleDeg A1 { 119.75 + 131.849 * jc };
+  const toolbox::AngleDeg A2 { 53.09 + 479264.290 * jc };
+  const toolbox::AngleDeg A3 { 313.45 + 481266.484 * jc };
 
   const double E = 1 - 0.002516 * jc - 0.0000074 * jc2;
 
@@ -293,8 +288,8 @@ inline auto evaluate(const double jc) -> Evaluation {
   const auto ctx = create_context(jc);
 
   // Calculate the longitude periodic terms.
-  const auto lon_terms = LR | views::transform([&](const coeff::LRCoefficients& coeff) {
-    const Angle<DEG> θ {
+  const auto lon_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) {
+    const toolbox::AngleDeg θ {
       coeff.D  * ctx.D.deg()  +
       coeff.M  * ctx.M.deg()  +
       coeff.Mp * ctx.Mp.deg() +
@@ -306,8 +301,8 @@ inline auto evaluate(const double jc) -> Evaluation {
   });
 
   // Calculate the distance/radius periodic terms.
-  const auto rad_terms = LR | views::transform([&](const coeff::LRCoefficients& coeff) {
-    const Angle<DEG> θ {
+  const auto rad_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) {
+    const toolbox::AngleDeg θ {
       coeff.D  * ctx.D.deg()  +
       coeff.M  * ctx.M.deg()  +
       coeff.Mp * ctx.Mp.deg() +
@@ -319,8 +314,8 @@ inline auto evaluate(const double jc) -> Evaluation {
   });
 
   // Calculate the latitude periodic terms.
-  const auto lat_terms = B | views::transform([&](const coeff::BCoefficients& coeff) {
-    const Angle<DEG> θ {
+  const auto lat_terms = coeff::B | views::transform([&](const coeff::BCoefficients& coeff) {
+    const toolbox::AngleDeg θ {
       coeff.D  * ctx.D.deg()  +
       coeff.M  * ctx.M.deg()  +
       coeff.Mp * ctx.Mp.deg() +

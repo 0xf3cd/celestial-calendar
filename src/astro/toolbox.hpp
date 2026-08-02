@@ -217,6 +217,16 @@ struct Angle {
   double _value;
 };
 
+/**
+ * @brief The spelling used everywhere outside this header (#53).
+ * @note `Angle<DEG>` needs both names in scope, which outside `astro::toolbox` only a
+ *       namespace-scope `using` can arrange — and headers may not have one (#51). These
+ *       aliases keep the unit in the type name without asking the reader's namespace for
+ *       anything: `toolbox::AngleDeg`.
+ */
+using AngleDeg = Angle<AngleUnit::DEG>;
+using AngleRad = Angle<AngleUnit::RAD>;
+
 #pragma endregion
 
 
@@ -224,20 +234,20 @@ struct Angle {
 
 namespace literals {
 
-constexpr auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
-  return Angle<AngleUnit::DEG> { static_cast<double>(value) };
+constexpr auto operator""_deg(const long double value) -> AngleDeg {
+  return AngleDeg { static_cast<double>(value) };
 }
 
-constexpr auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
-  return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
+constexpr auto operator""_arcmin(const long double value) -> AngleDeg {
+  return AngleDeg::from_arcmin(static_cast<double>(value));
 }
 
-constexpr auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> {
-  return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
+constexpr auto operator""_arcsec(const long double value) -> AngleDeg {
+  return AngleDeg::from_arcsec(static_cast<double>(value));
 }
 
-constexpr auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
-  return Angle<AngleUnit::RAD> { static_cast<double>(value) };
+constexpr auto operator""_rad(const long double value) -> AngleRad {
+  return AngleRad { static_cast<double>(value) };
 }
 
 }  // namespace literals
@@ -300,14 +310,18 @@ struct Distance {
   double _value; // Private for the same reason as `Angle::_value` — see the note there.
 };
 
+/** @brief The spelling used outside this header, for the same reason as `AngleDeg` (#53). */
+using DistanceAu = Distance<DistanceUnit::AU>;
+using DistanceKm = Distance<DistanceUnit::KM>;
+
 
 /**
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  Angle<AngleUnit::DEG>      λ; // Longitude
-  Angle<AngleUnit::DEG>      β; // Latitude
-  Distance<DistanceUnit::AU> r; // Radius/Distance
+  AngleDeg      λ; // Longitude
+  AngleDeg      β; // Latitude
+  DistanceAu r; // Radius/Distance
 };
 
 #pragma endregion

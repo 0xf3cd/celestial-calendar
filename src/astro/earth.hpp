@@ -39,14 +39,7 @@
 
 namespace astro::earth {
 
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
-using astro::toolbox::AngleUnit::RAD;
-using astro::toolbox::DistanceUnit::AU;
-using astro::toolbox::Distance;
-using astro::toolbox::SphericalCoordinate;
 
-using astro::vsop87d::Planet;
 
 } // namespace astro::earth
 
@@ -58,15 +51,15 @@ namespace astro::earth::heliocentric_coord {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The heliocentric ecliptic position of the Earth, calculated using VSOP87D.
  */
-inline auto vsop87d(const double jde) -> SphericalCoordinate {
+inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
   const double jm = astro::julian_day::jde_to_jm(jde);
-  const auto evaluated = astro::vsop87d::evaluate<Planet::EAR>(jm);
+  const auto evaluated = astro::vsop87d::evaluate<vsop87d::Planet::EAR>(jm);
 
   return {
     // As per the algorithm, the longitude is normalized to [0, 2π).
-    .λ = Angle<DEG> { Angle<RAD> { evaluated.λ }.normalize() },
-    .β = Angle<DEG> { Angle<RAD> { evaluated.β } },
-    .r = Distance<AU> { evaluated.r }
+    .λ = toolbox::AngleDeg { toolbox::AngleRad { evaluated.λ }.normalize() },
+    .β = toolbox::AngleDeg { toolbox::AngleRad { evaluated.β } },
+    .r = toolbox::DistanceAu { evaluated.r }
   };
 }
 
@@ -303,7 +296,7 @@ inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
  * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto gen_eval_θ(const double jc) -> std::function<Angle<DEG>(θCoeffs)> {
+inline auto gen_eval_θ(const double jc) -> std::function<toolbox::AngleDeg(θCoeffs)> {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -318,9 +311,9 @@ inline auto gen_eval_θ(const double jc) -> std::function<Angle<DEG>(θCoeffs)> 
   // Ω is the longitude of the ascending node of the Moon's mean orbit on the ecliptic in degrees.
   const double Ω  = 125.04452 - 1934.136261   * jc + 0.0020708 * jc2 + jc3 / 450000.0;
 
-  return [=](const θCoeffs& coeffs) -> Angle<DEG> {
+  return [=](const θCoeffs& coeffs) -> toolbox::AngleDeg {
     const double degrees = D * coeffs.D + M * coeffs.M + Mp * coeffs.Mp + F * coeffs.F + Ω * coeffs.Ω;
-    return Angle<DEG> { degrees };
+    return toolbox::AngleDeg { degrees };
   };
 };
 
@@ -336,7 +329,7 @@ inline auto gen_eval_θ(const double jc) -> std::function<Angle<DEG>(θCoeffs)> 
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
+inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -348,7 +341,7 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
 
   // Evaluate each term.
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
-    const Angle<DEG> θ = eval_θ(coeffs.θ);
+    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
     const auto& [a, b] = coeffs.Δψ;
     return (a + b * jc) * std::sin(θ.rad());
   });
@@ -359,7 +352,7 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
   const auto Δψ_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
-  return Angle<DEG>::from_arcsec(Δψ_arcsec);
+  return toolbox::AngleDeg::from_arcsec(Δψ_arcsec);
 }
 
 
@@ -374,7 +367,7 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> Angle<DEG> {
+inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -386,7 +379,7 @@ inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> 
 
   // Evaluate each term.
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
-    const Angle<DEG> θ = eval_θ(coeffs.θ);
+    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
     const auto& [a, b] = coeffs.Δε;
     return (a + b * jc) * std::cos(θ.rad());
   });
@@ -397,7 +390,7 @@ inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> 
   const auto Δε_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
-  return Angle<DEG>::from_arcsec(Δε_arcsec);
+  return toolbox::AngleDeg::from_arcsec(Δε_arcsec);
 }
 
 } // namespace astro::earth::nutation
@@ -415,7 +408,7 @@ namespace astro::earth::obliquity {
  * @details Accuracy ~1" over ±2000 years from J2000; the polynomial degrades farther out.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
  */
-inline auto mean(const double jde) -> Angle<DEG> {
+inline auto mean(const double jde) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -423,7 +416,7 @@ inline auto mean(const double jde) -> Angle<DEG> {
   // The polynomial is evaluated in arcseconds.
   const double ε0_arcsec = 84381.448 + jc * (-46.8150 + jc * (-0.00059 + jc * 0.001813));
 
-  return Angle<DEG>::from_arcsec(ε0_arcsec);
+  return toolbox::AngleDeg::from_arcsec(ε0_arcsec);
 }
 
 /**
@@ -436,7 +429,7 @@ inline auto mean(const double jde) -> Angle<DEG> {
 inline auto true_obliquity(
   const double jde,
   const nutation::Model model = nutation::Model::IAU_1980
-) -> Angle<DEG> {
+) -> toolbox::AngleDeg {
   return mean(jde) + nutation::obliquity(jde, model);
 }
 
@@ -498,7 +491,7 @@ inline auto daily_λ_variation(const double jde) -> double {
   using namespace std::ranges;
   const double τ = astro::julian_day::jde_to_jm(jde);
   const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
-    const Angle<DEG> θ { t.phase + t.rate * τ };
+    const toolbox::AngleDeg θ { t.phase + t.rate * τ };
     return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
   });
   return 3548.330 + std::reduce(cbegin(terms), cend(terms));
@@ -521,9 +514,9 @@ inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
  *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
  */
-inline auto compute(const double jde, const Distance<AU> r) -> Angle<DEG> {
+inline auto compute(const double jde, const toolbox::DistanceAu r) -> toolbox::AngleDeg {
   const double aberration_arcsec = LIGHT_TIME_DAYS_PER_AU * r.au() * daily_λ_variation(jde);
-  return Angle<DEG>::from_arcsec(aberration_arcsec);
+  return toolbox::AngleDeg::from_arcsec(aberration_arcsec);
 }
 
 } // namespace astro::earth::aberration

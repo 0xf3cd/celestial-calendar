@@ -52,9 +52,8 @@ namespace detail {
  * @return L0, unnormalized.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.2).
  */
-constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleDeg {
+  using astro::toolbox::AngleDeg;
 
   const double τ = astro::julian_day::jde_to_jm(jde_tt);
   const double L0 = 280.4664567
@@ -63,7 +62,7 @@ constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::Angle<
                   + τ * (1.0 / 49931.0
                   + τ * (-1.0 / 15300.0
                   + τ * (-1.0 / 2000000.0)))));
-  return Angle<DEG> { L0 };
+  return AngleDeg { L0 };
 }
 
 } // namespace detail
@@ -79,9 +78,8 @@ constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::Angle<
  *          the mean longitude L0 can sit on opposite sides of the 0°/360° seam.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
  */
-inline auto equation_of_time(const double jde_tt) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
+  using astro::toolbox::AngleDeg;
   using astro::toolbox::normalize_pm180;
 
   const auto L0 = detail::sun_mean_longitude(jde_tt);
@@ -91,7 +89,7 @@ inline auto equation_of_time(const double jde_tt) -> astro::toolbox::Angle<astro
 
   // (28.1); the constant 0°.0057183 folds aberration and the FK5 correction into L0.
   const double e = L0.deg() - 0.0057183 - α.deg() + Δψ.deg() * std::cos(ε.rad());
-  return Angle<DEG> { normalize_pm180(e) };
+  return AngleDeg { normalize_pm180(e) };
 }
 
 
@@ -112,7 +110,7 @@ inline auto equation_of_time(const double jde_tt) -> astro::toolbox::Angle<astro
  */
 inline auto apparent(
   const calendar::Datetime& utc_dt,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& longitude
+  const astro::toolbox::AngleDeg& longitude
 ) -> calendar::Datetime {
   const double lon = longitude.deg();
   if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
