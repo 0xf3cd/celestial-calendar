@@ -2,6 +2,11 @@
 test_pymeeus.py
 check_platform_arch.py
 
+# Review/audit scratch space. Untracked by design, but it must also be invisible to the
+# linters: `linter.py` runs `ruff check <repo root>` and clang-tidy over the tree, so a
+# stray .py/.cpp probe left here would turn the gate red (#102).
+.review/
+
 artifacts/
 release/
 run-clang-tidy.py
