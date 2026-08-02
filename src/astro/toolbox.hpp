@@ -121,12 +121,17 @@ template <AngleUnit Unit>
 struct Angle {
   constexpr explicit Angle(const double value) : _value { value } {}
 
-  constexpr static auto from_arcmin(const double value) -> Angle<AngleUnit::DEG> {
-    return Angle<AngleUnit::DEG> { arcmin_to_deg(value) };
+  /**
+   * @brief Build an angle from a count of arcminutes, carried in this angle's own unit.
+   * @note Arcminutes subdivide the degree, so the count lands in DEG and converts from there.
+   */
+  constexpr static auto from_arcmin(const double value) -> Angle<Unit> {
+    return Angle<Unit> { Angle<AngleUnit::DEG> { arcmin_to_deg(value) } };
   }
 
-  constexpr static auto from_arcsec(const double value) -> Angle<AngleUnit::DEG> {
-    return Angle<AngleUnit::DEG> { arcsec_to_deg(value) };
+  /** @brief Build an angle from a count of arcseconds, carried in this angle's own unit. */
+  constexpr static auto from_arcsec(const double value) -> Angle<Unit> {
+    return Angle<Unit> { Angle<AngleUnit::DEG> { arcsec_to_deg(value) } };
   }
 
   /**
@@ -219,19 +224,19 @@ struct Angle {
 
 namespace literals {
 
-inline auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
+constexpr auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
   return Angle<AngleUnit::DEG> { static_cast<double>(value) };
 }
 
-inline auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
+constexpr auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
   return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
 }
 
-inline auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> {
+constexpr auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> {
   return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
 }
 
-inline auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
+constexpr auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
   return Angle<AngleUnit::RAD> { static_cast<double>(value) };
 }
 

@@ -23,6 +23,9 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <type_traits>
 #include "toolbox.hpp"
 #include "util.hpp"
 
@@ -151,6 +154,27 @@ TEST(AstroMath, Angle) {
   }
 }
 
+TEST(AstroMath, AngleFromArcSubdivisions) {
+  using AngleUnit::DEG;
+  using AngleUnit::RAD;
+
+  // Arcminutes and arcseconds subdivide the degree, but the angle they name is carried in
+  // whichever unit it is asked of. The factory used to hand back DEG regardless of `Unit`,
+  // which no call site noticed because all nine of them asked a `Angle<DEG>` (#48).
+  static_assert(std::is_same_v<decltype(Angle<DEG>::from_arcmin(1.0)), Angle<DEG>>);
+  static_assert(std::is_same_v<decltype(Angle<RAD>::from_arcmin(1.0)), Angle<RAD>>);
+  static_assert(std::is_same_v<decltype(Angle<DEG>::from_arcsec(1.0)), Angle<DEG>>);
+  static_assert(std::is_same_v<decltype(Angle<RAD>::from_arcsec(1.0)), Angle<RAD>>);
+
+  ASSERT_DOUBLE_EQ(Angle<DEG>::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcmin(60.0).rad(), deg_to_rad(1.0));
+
+  ASSERT_DOUBLE_EQ(Angle<DEG>::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(Angle<RAD>::from_arcsec(3600.0).rad(), deg_to_rad(1.0));
+}
+
 TEST(AstroMath, literals) {
   using namespace literals;
   using AngleUnit::DEG;
@@ -200,6 +224,19 @@ TEST(AstroMath, AngleOperators) {
     ASSERT_EQ(angle.as<RAD>() * 2.0, (angle * 2.0).as<RAD>());
     ASSERT_EQ(angle.as<RAD>() / 2.0, (angle / 2.0).as<RAD>());
   }
+}
+
+TEST(AstroMath, AngleDivisionByZeroThrows) {
+  using namespace literals;
+
+  // The error contract of #48: a zero divisor is a caller mistake, not a state to hand on as ±inf.
+  // The branch had no coverage at all until now, so nothing held the contract in place.
+  const auto angle = 30.0_deg;
+  ASSERT_THROW((void) (angle / 0.0), std::runtime_error);
+  ASSERT_THROW((void) (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.
+
+  // The guard tests for zero, not for smallness — a denormal divisor still divides.
+  ASSERT_NO_THROW((void) (angle / std::numeric_limits<double>::denorm_min()));
 }
 
 
