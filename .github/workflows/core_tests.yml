@@ -195,3 +195,47 @@ jobs:
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
           python3 ./project.py --setup --clean --cmake --build --test -v 1
+
+
+  # Header self-containment (#71). Deliberately a matrix, not a single job: whether a
+  # header is self-contained depends on the standard library, because each one includes
+  # a different set of things transitively. `converter.hpp` used `assert` with no
+  # <cassert> and was green on MSVC STL for months while broken on libc++. One leg
+  # would have kept missing it, so run all three.
+  self-contained-headers:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04     # libstdc++
+            stdlib: libstdc++
+          - runner: macos-latest     # libc++
+            stdlib: libc++
+          - runner: windows-latest   # MSVC STL
+            stdlib: MSVC STL
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y clang-18
+          echo "CXX=clang++-18" >> $GITHUB_ENV
+
+      - name: Install clang (Windows)
+        if: runner.os == 'Windows'
+        run: choco install -y llvm
+
+      - name: Check every header compiles alone (${{ matrix.stdlib }})
+        env:
+          CXX: clang++
+        run: python3 ./linter.py --self-contained

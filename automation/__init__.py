@@ -26,6 +26,7 @@ from .paths import (
 )
 from .github import GitHub
 from .linter import run_ruff, run_clang_tidy
+from .self_contained import check_self_contained
 
 __all__ = [
   "Tool", "CompilerArgs", "check_c_support", "check_cpp_support", "make_compiler_args",
@@ -35,5 +36,5 @@ __all__ = [
   "green_print", "red_print", "yellow_print", "blue_print",
   "run_cmd", "ProcReturn", "time_execution",
   "proj_root", "build_dir", "cpp_src_dir", "python_requirements", "cpp_test_dir",
-  "GitHub", "run_ruff", "run_clang_tidy"
+  "GitHub", "run_ruff", "run_clang_tidy", "check_self_contained"
 ]
