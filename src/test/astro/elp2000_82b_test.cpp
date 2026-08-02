@@ -32,6 +32,7 @@ namespace astro::elp2000_82b::test {
 
 using namespace astro::elp2000_82b::coeff;
 using namespace astro::elp2000_82b;
+using astro::toolbox::AngleUnit::DEG;
 
 TEST(Elp2000, Evaluate) {
   // Characterization data self-generated from this code (determinism check only, see #65's root-cause

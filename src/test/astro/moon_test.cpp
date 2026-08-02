@@ -32,6 +32,8 @@
 namespace astro::moon::test {
 
 using namespace astro::moon::geocentric_coord;
+using astro::elp2000_82b::evaluate;
+using astro::toolbox::DistanceKm;
 
 
 TEST(Moon, CoordAndPpi) {
@@ -98,7 +100,7 @@ TEST(Moon, CoordAndPpi) {
     ASSERT_NEAR(β.deg(),    std::get<1>(expected), 1e-11);
     ASSERT_NEAR(r.km(),     std::get<2>(expected), 1e-7);
 
-    const auto ppi = equatorial_horizontal_parallax(r);
+    const auto ppi = equatorial_horizontal_parallax(DistanceKm { r });
     ASSERT_NEAR(ppi.rad(),  std::get<3>(expected), 1e-14);
   }
 }

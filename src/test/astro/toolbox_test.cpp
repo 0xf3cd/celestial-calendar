@@ -23,6 +23,9 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <type_traits>
 #include "toolbox.hpp"
 #include "util.hpp"
 
@@ -119,7 +122,7 @@ TEST(AstroMath, Angle) {
   for (auto i = 0; i < 1000; ++i) {
     const double deg = util::random(-720.0, 720.0);
 
-    const Angle<DEG> angle { deg };
+    const AngleDeg angle { deg };
 
     ASSERT_FLOAT_EQ(angle.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle.as<RAD>(), deg_to_rad(deg));
@@ -127,7 +130,7 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(deg));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(deg_to_rad(deg)));
 
-    const Angle<RAD> angle_rad { angle }; // Test implicit conversion.
+    const AngleRad angle_rad { angle };
 
     ASSERT_FLOAT_EQ(angle_rad.as<DEG>(), deg);
     ASSERT_FLOAT_EQ(angle_rad.as<RAD>(), deg_to_rad(deg));
@@ -136,7 +139,7 @@ TEST(AstroMath, Angle) {
   for (auto i = 0; i < 1000; ++i) {
     const double rad = util::random(-2 * std::numbers::pi, 2 * std::numbers::pi);
 
-    const Angle<RAD> angle { rad };
+    const AngleRad angle { rad };
 
     ASSERT_FLOAT_EQ(angle.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle.as<RAD>(), rad);
@@ -144,11 +147,28 @@ TEST(AstroMath, Angle) {
     ASSERT_FLOAT_EQ(angle.normalize().as<DEG>(), normalize_deg(rad_to_deg(rad)));
     ASSERT_FLOAT_EQ(angle.normalize().as<RAD>(), normalize_rad(rad));
 
-    const Angle<DEG> angle_deg { angle }; // Test implicit conversion.
+    const AngleDeg angle_deg { angle };
 
     ASSERT_FLOAT_EQ(angle_deg.as<DEG>(), rad_to_deg(rad));
     ASSERT_FLOAT_EQ(angle_deg.as<RAD>(), rad);
   }
+}
+
+TEST(AstroMath, AngleFromArcSubdivisions) {
+  // Arcminutes and arcseconds subdivide the degree, but the angle they name is carried in
+  // whichever unit it is asked of.
+  static_assert(std::is_same_v<decltype(AngleDeg::from_arcmin(1.0)), AngleDeg>);
+  static_assert(std::is_same_v<decltype(AngleRad::from_arcmin(1.0)), AngleRad>);
+  static_assert(std::is_same_v<decltype(AngleDeg::from_arcsec(1.0)), AngleDeg>);
+  static_assert(std::is_same_v<decltype(AngleRad::from_arcsec(1.0)), AngleRad>);
+
+  ASSERT_DOUBLE_EQ(AngleDeg::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcmin(60.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcmin(60.0).rad(), deg_to_rad(1.0));
+
+  ASSERT_DOUBLE_EQ(AngleDeg::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcsec(3600.0).deg(), 1.0);
+  ASSERT_DOUBLE_EQ(AngleRad::from_arcsec(3600.0).rad(), deg_to_rad(1.0));
 }
 
 TEST(AstroMath, literals) {
@@ -186,8 +206,6 @@ TEST(AstroMath, AngleOperators) {
   {
     const auto angle = 360.0_deg;
 
-    ASSERT_EQ(angle.as<DEG>(), (angle + 0.0).as<DEG>());
-    ASSERT_EQ(angle.as<DEG>(), (angle - 0.0).as<DEG>());
     ASSERT_EQ(angle.as<DEG>(), (angle + 0.0_deg).as<DEG>());
     ASSERT_EQ(angle.as<DEG>(), (angle - 0.0_deg).as<DEG>());
     ASSERT_EQ(angle.as<DEG>() * 2.0, (angle * 2.0).as<DEG>());
@@ -197,13 +215,23 @@ TEST(AstroMath, AngleOperators) {
   {
     const auto angle = 1.0_rad;
 
-    ASSERT_EQ(angle.as<RAD>(), (angle + 0.0).as<RAD>());
-    ASSERT_EQ(angle.as<RAD>(), (angle - 0.0).as<RAD>());
     ASSERT_EQ(angle.as<RAD>(), (angle + 0.0_rad).as<RAD>());
     ASSERT_EQ(angle.as<RAD>(), (angle - 0.0_rad).as<RAD>());
     ASSERT_EQ(angle.as<RAD>() * 2.0, (angle * 2.0).as<RAD>());
     ASSERT_EQ(angle.as<RAD>() / 2.0, (angle / 2.0).as<RAD>());
   }
+}
+
+TEST(AstroMath, AngleDivisionByZeroThrows) {
+  using namespace literals;
+
+  // The contract (#48): a zero divisor is a caller mistake, not a state to hand on as ±inf.
+  const auto angle = 30.0_deg;
+  ASSERT_THROW((void) (angle / 0.0), std::runtime_error);
+  ASSERT_THROW((void) (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.
+
+  // The guard tests for zero, not for smallness — a denormal divisor still divides.
+  ASSERT_NO_THROW((void) (angle / std::numeric_limits<double>::denorm_min()));
 }
 
 

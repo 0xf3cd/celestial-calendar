@@ -48,16 +48,16 @@ namespace astro::sunrise_sunset {
  * @note Meeus Chapter 15: -34' of standard atmospheric refraction at the horizon,
  *       plus -16' so that the event refers to the Sun's upper limb, not its center.
  */
-inline constexpr auto STANDARD_ALTITUDE = astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>::from_arcmin(-50.0);
+inline constexpr auto STANDARD_ALTITUDE = astro::toolbox::AngleDeg::from_arcmin(-50.0);
 
 /** @brief The Sun's altitude at civil twilight: -6°. */
-inline constexpr astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> CIVIL_TWILIGHT { -6.0 };
+inline constexpr astro::toolbox::AngleDeg CIVIL_TWILIGHT { -6.0 };
 
 /** @brief The Sun's altitude at nautical twilight: -12°. */
-inline constexpr astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> NAUTICAL_TWILIGHT { -12.0 };
+inline constexpr astro::toolbox::AngleDeg NAUTICAL_TWILIGHT { -12.0 };
 
 /** @brief The Sun's altitude at astronomical twilight: -18°. */
-inline constexpr astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> ASTRONOMICAL_TWILIGHT { -18.0 };
+inline constexpr astro::toolbox::AngleDeg ASTRONOMICAL_TWILIGHT { -18.0 };
 
 /**
  * @brief How far past ±1 cos(H₀) may land and still count as a grazing event rather than
@@ -141,8 +141,8 @@ inline constexpr double RISE_SET_RESIDUAL_GUARD_DEG = 1e-3;
  *       matching the intended UT window — deliberate, same behavior as other UT-date APIs.
  */
 struct GeoLocation {
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> latitude;  // North-positive, [-90°, 90°].
-  astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> longitude; // East-positive, [-180°, 180°].
+  astro::toolbox::AngleDeg latitude;  // North-positive, [-90°, 90°].
+  astro::toolbox::AngleDeg longitude; // East-positive, [-180°, 180°].
 };
 
 /**
@@ -235,13 +235,12 @@ struct SunLocal {
 [[nodiscard]] inline auto sun_altitude(
   const double jde_tt,
   const GeoLocation& location
-) -> astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG> {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+) -> astro::toolbox::AngleDeg {
+  using astro::toolbox::AngleDeg;
 
   const auto local = sun_local(jde_tt, location);
   const auto horizontal = astro::coords::equatorial_to_horizontal(
-    Angle<DEG> { local.hour_angle_deg }, local.eq.δ, location.latitude
+    AngleDeg { local.hour_angle_deg }, local.eq.δ, location.latitude
   );
   return horizontal.h;
 }
@@ -282,7 +281,7 @@ struct SunLocal {
 inline void validate_rise_set_inputs(
   const double transit,
   const GeoLocation& location,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0
+  const astro::toolbox::AngleDeg& h0
 ) {
   validate(location);
 
@@ -359,12 +358,11 @@ requires std::invocable<Func, double>
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, Formula (15.1).
  */
 [[nodiscard]] inline auto hour_angle_at_altitude(
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& δ,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& φ,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0
-) -> std::optional<astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>> {
-  using astro::toolbox::Angle;
-  using astro::toolbox::AngleUnit::DEG;
+  const astro::toolbox::AngleDeg& δ,
+  const astro::toolbox::AngleDeg& φ,
+  const astro::toolbox::AngleDeg& h0
+) -> std::optional<astro::toolbox::AngleDeg> {
+  using astro::toolbox::AngleDeg;
   using astro::toolbox::rad_to_deg;
 
   const auto reject_outside_pm90 = [](const char* name, const double deg) {
@@ -401,7 +399,7 @@ requires std::invocable<Func, double>
     cos_H0 = 1.0;
   }
 
-  return Angle<DEG> { rad_to_deg(std::acos(cos_H0)) };
+  return AngleDeg { rad_to_deg(std::acos(cos_H0)) };
 }
 
 
@@ -467,7 +465,7 @@ requires std::invocable<Func, double>
   const double transit,
   const bool is_sunrise,
   const GeoLocation& location,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0 = STANDARD_ALTITUDE
+  const astro::toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
 ) -> std::optional<double> {
   detail::validate_rise_set_inputs(transit, location, h0);
 
@@ -541,7 +539,7 @@ requires std::invocable<Func, double>
 [[nodiscard]] inline auto calculate(
   const std::chrono::year_month_day& ymd,
   const GeoLocation& location,
-  const astro::toolbox::Angle<astro::toolbox::AngleUnit::DEG>& h0 = STANDARD_ALTITUDE
+  const astro::toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
 ) -> Result {
   const double transit = transit_jde(ymd, location);
 

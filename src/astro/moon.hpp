@@ -33,8 +33,6 @@
 
 namespace astro::moon::perturbation {
 
-using astro::elp2000_82b::Context;
-
 /**
  * @brief Calculate perturbation of the Moon's geocentric longitude.
  * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
@@ -43,7 +41,7 @@ using astro::elp2000_82b::Context;
  * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto longitude(const Context& ctx) -> double {
+inline auto longitude(const elp2000_82b::Context& ctx) -> double {
   return 3958.0 * std::sin(ctx.A1.rad()) 
        + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
        + 318.0 * std::sin(ctx.A2.rad());
@@ -58,7 +56,7 @@ inline auto longitude(const Context& ctx) -> double {
  * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto latitude(const Context& ctx) -> double {
+inline auto latitude(const elp2000_82b::Context& ctx) -> double {
   return -2235.0 * std::sin(ctx.Lp.rad())
        + 382.0 * std::sin(ctx.A3.rad())
        + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
@@ -72,44 +70,32 @@ inline auto latitude(const Context& ctx) -> double {
 
 namespace astro::moon::geocentric_coord {
 
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
-using astro::toolbox::AngleUnit::RAD;
-using astro::toolbox::DistanceUnit::KM;
-using astro::toolbox::Distance;
-using astro::toolbox::SphericalCoordinate;
-
-using astro::elp2000_82b::evaluate;
-using astro::elp2000_82b::LON_LAT_SCALING_FACTOR;
-using astro::elp2000_82b::RADIUS_SCALING_FACTOR;
-
-
 /**
  * @brief Calculate the apparent geocentric position of the Moon, using truncated ELP2000-82B.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Moon, calculated using truncated ELP2000-82B.
  */
-inline auto apparent(const double jde) -> SphericalCoordinate {
+inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
   const double jc = astro::julian_day::jde_to_jc(jde);
 
-  const auto evaluated = evaluate(jc);
+  const auto evaluated = elp2000_82b::evaluate(jc);
 
   // Longitude, considering the perturbation and nutation.
   const auto Σl = evaluated.Σl + perturbation::longitude(evaluated.ctx);
   const auto lon_nutation = astro::earth::nutation::longitude(jde);
-  const Angle<DEG> lon = evaluated.ctx.Lp + (Σl / LON_LAT_SCALING_FACTOR) + lon_nutation; 
+  const toolbox::AngleDeg lon = evaluated.ctx.Lp + toolbox::AngleDeg { Σl / elp2000_82b::LON_LAT_SCALING_FACTOR } + lon_nutation;
 
   // Latitude, considering the perturbation.
   const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
-  const Angle<DEG> lat { Σb / LON_LAT_SCALING_FACTOR };
+  const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
 
   // Distance, in KM.
-  const Distance<KM> r { 385000.56 + evaluated.Σr / RADIUS_SCALING_FACTOR };
+  const toolbox::DistanceKm r { 385000.56 + evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR };
 
   return {
     .λ = lon.normalize(),
     .β = lat,
-    .r = r
+    .r = toolbox::DistanceAu { r }
   };
 }
 
@@ -119,9 +105,9 @@ inline auto apparent(const double jde) -> SphericalCoordinate {
  * @param distance The geocentric distance of the Moon.
  * @return The equatorial horizontal parallax of the Moon.
  */
-inline auto equatorial_horizontal_parallax(const Distance<KM>& distance) -> Angle<RAD> {
+inline auto equatorial_horizontal_parallax(const toolbox::DistanceKm& distance) -> toolbox::AngleRad {
   const auto ppi_rad = std::asin(6378.14 / distance.km());
-  return { ppi_rad };
+  return toolbox::AngleRad { ppi_rad };
 }
 
 } // namespace astro::moon::geocentric_coord

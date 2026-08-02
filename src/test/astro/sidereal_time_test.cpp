@@ -121,7 +121,7 @@ TEST(SiderealTime, LocalApparentMeeus13b) {
   constexpr double α_hours = 23.0 + 9.0 / 60.0 + 16.641 / 3600.0;
   const double expected = normalize_deg(64.352133 + α_hours * 15.0); // std::remainder is not constexpr until C++26.
 
-  ASSERT_NEAR(local_apparent(jd_ut1, jde_tt, Angle<DEG> { lon }).deg(), expected, 2e-4);
+  ASSERT_NEAR(local_apparent(jd_ut1, jde_tt, AngleDeg { lon }).deg(), expected, 2e-4);
 }
 
 TEST(SiderealTime, LocalApparentLongitude) {
@@ -132,7 +132,7 @@ TEST(SiderealTime, LocalApparentLongitude) {
     const double lon = util::random(-180.0, 180.0); // east-positive sites are negative here
 
     const double gast = greenwich_apparent(jd_ut1, jde_tt).deg();
-    const double last = local_apparent(jd_ut1, jde_tt, Angle<DEG> { lon }).deg();
+    const double last = local_apparent(jd_ut1, jde_tt, AngleDeg { lon }).deg();
 
     ASSERT_NEAR(ang_diff(last, gast - lon), 0.0, 1e-12);
   }
@@ -378,7 +378,7 @@ TEST(SiderealTime, LocalApparentUsno) {
   };
 
   for (const auto& [jd_ut1, jde_tt, lon_west, expected_last] : dataset) {
-    ASSERT_NEAR(ang_diff(local_apparent(jd_ut1, jde_tt, Angle<DEG> { lon_west }).deg(), expected_last), 0.0, TOL_LAST);
+    ASSERT_NEAR(ang_diff(local_apparent(jd_ut1, jde_tt, AngleDeg { lon_west }).deg(), expected_last), 0.0, TOL_LAST);
   }
 }
 

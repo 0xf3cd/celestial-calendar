@@ -55,15 +55,14 @@
 namespace astro::sunrise_sunset::test {
 
 using namespace astro::sunrise_sunset;
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::AngleDeg;
 
 namespace {
 
 constexpr double TOL_MIN = 2.0;
 
 constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = Angle<DEG> { lat_deg }, .longitude = Angle<DEG> { lon_deg } };
+  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
 }
 
 /** @brief Parse "HH:MM" / "HH:MM:SS" into minutes-of-day; blank cell → `nullopt`. */

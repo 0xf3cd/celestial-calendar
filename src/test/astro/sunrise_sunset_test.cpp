@@ -43,13 +43,12 @@
 namespace astro::sunrise_sunset::test {
 
 using namespace astro::sunrise_sunset;
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::AngleDeg;
 
 namespace {
 
 constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = Angle<DEG> { lat_deg }, .longitude = Angle<DEG> { lon_deg } };
+  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
 }
 
 // East-positive longitudes, per `GeoLocation`'s convention.
@@ -93,14 +92,14 @@ TEST(SunriseSunset, HourAngleAtAltitudeMatchesHorizontalAltitude) {
   for (const double δ : declinations) {
     for (const double φ : latitudes) {
       for (const double h0 : altitudes) {
-        const auto H0 = hour_angle_at_altitude(Angle<DEG> { δ }, Angle<DEG> { φ }, Angle<DEG> { h0 });
+        const auto H0 = hour_angle_at_altitude(AngleDeg { δ }, AngleDeg { φ }, AngleDeg { h0 });
         if (not H0.has_value()) {
           continue; // Polar cases are covered by their own test.
         }
 
         for (const double sign : { 1.0, -1.0 }) {
           const auto horizontal = astro::coords::equatorial_to_horizontal(
-            req(H0) * sign, Angle<DEG> { δ }, Angle<DEG> { φ }
+            req(H0) * sign, AngleDeg { δ }, AngleDeg { φ }
           );
           ASSERT_NEAR(horizontal.h.deg(), h0, 1e-9)
             << "δ=" << δ << " φ=" << φ << " h0=" << h0 << " sign=" << sign;
@@ -111,19 +110,19 @@ TEST(SunriseSunset, HourAngleAtAltitudeMatchesHorizontalAltitude) {
 }
 
 TEST(SunriseSunset, HourAngleAtAltitudePolarAndDegenerateCases) {
-  const Angle<DEG> h0_standard { -0.8333 };
+  const AngleDeg h0_standard { -0.8333 };
 
   // Midnight sun at 80°N in northern summer: the Sun's minimum altitude is ~+13.4°, far above h₀.
-  ASSERT_FALSE(hour_angle_at_altitude(Angle<DEG> { 23.44 }, Angle<DEG> { 80.0 }, h0_standard).has_value());
+  ASSERT_FALSE(hour_angle_at_altitude(AngleDeg { 23.44 }, AngleDeg { 80.0 }, h0_standard).has_value());
 
   // Polar night at 80°N in northern winter: the maximum altitude is ~-13.4°, below h₀.
-  ASSERT_FALSE(hour_angle_at_altitude(Angle<DEG> { -23.44 }, Angle<DEG> { 80.0 }, h0_standard).has_value());
+  ASSERT_FALSE(hour_angle_at_altitude(AngleDeg { -23.44 }, AngleDeg { 80.0 }, h0_standard).has_value());
 
   // The equation degenerates at the geographic pole (cos φ = 0).
-  ASSERT_FALSE(hour_angle_at_altitude(Angle<DEG> { 10.0 }, Angle<DEG> { 90.0 }, h0_standard).has_value());
+  ASSERT_FALSE(hour_angle_at_altitude(AngleDeg { 10.0 }, AngleDeg { 90.0 }, h0_standard).has_value());
 
   // Equator, equinoctial Sun, geometric horizon: the diurnal arc is exactly a half turn.
-  const auto H0 = hour_angle_at_altitude(Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 });
+  const auto H0 = hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 0.0 }, AngleDeg { 0.0 });
   ASSERT_TRUE(H0.has_value());
   ASSERT_NEAR(req(H0).deg(), 90.0, 1e-9);
 }
@@ -204,7 +203,7 @@ TEST(SunriseSunset, TransitIsUpperCulmination) {
 }
 
 TEST(SunriseSunset, RiseSetAltitudeIsH0) {
-  const std::vector<std::tuple<std::chrono::year_month_day, GeoLocation, Angle<DEG>>> cases {
+  const std::vector<std::tuple<std::chrono::year_month_day, GeoLocation, AngleDeg>> cases {
     { util::to_ymd(2024, 3, 20), LONDON,  STANDARD_ALTITUDE },
     { util::to_ymd(2024, 6, 21), BEIJING, STANDARD_ALTITUDE },
     { util::to_ymd(2024, 12, 21), SYDNEY, STANDARD_ALTITUDE },
@@ -390,17 +389,17 @@ TEST(SunriseSunset, InvalidInputsThrow) {
 
   const double transit = transit_jde(ymd, EQUATOR);
   ASSERT_THROW((void) rise_set_jde(NAN_D, true, EQUATOR), std::invalid_argument);
-  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, Angle<DEG> { NAN_D }), std::invalid_argument);
-  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, Angle<DEG> { 100.0 }), std::invalid_argument);
+  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, AngleDeg { NAN_D }), std::invalid_argument);
+  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, AngleDeg { 100.0 }), std::invalid_argument);
   ASSERT_THROW((void) rise_set_jde(transit, true, loc(-91.0, 0.0)), std::invalid_argument);
 
   // hour_angle_at_altitude is public API too: out-of-domain angles alias through sin/cos into
   // physically meaningless H₀ values, so they are rejected rather than returned (per review).
-  ASSERT_THROW((void) hour_angle_at_altitude(Angle<DEG> { NAN_D }, Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 }),
+  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { NAN_D }, AngleDeg { 0.0 }, AngleDeg { 0.0 }),
                std::invalid_argument);
-  ASSERT_THROW((void) hour_angle_at_altitude(Angle<DEG> { 0.0 }, Angle<DEG> { 95.0 }, Angle<DEG> { 0.0 }),
+  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 95.0 }, AngleDeg { 0.0 }),
                std::invalid_argument);
-  ASSERT_THROW((void) hour_angle_at_altitude(Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 }, Angle<DEG> { 100.0 }),
+  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 0.0 }, AngleDeg { 100.0 }),
                std::invalid_argument);
 }
 

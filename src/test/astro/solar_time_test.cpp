@@ -39,8 +39,7 @@
 
 namespace astro::solar_time::test {
 
-using astro::toolbox::Angle;
-using astro::toolbox::AngleUnit::DEG;
+using astro::toolbox::AngleDeg;
 
 namespace {
 
@@ -246,10 +245,10 @@ struct TransitCase {
 };
 
 const std::array<TransitCase, 4> TRANSIT_CASES {{
-  { 2024,  2, 11, { .latitude = Angle<DEG> { 39.9042 }, .longitude = Angle<DEG> { 116.4074 } } },
-  { 2024, 11,  3, { .latitude = Angle<DEG> { 40.7128 }, .longitude = Angle<DEG> { -74.0060 } } },
-  { 1992, 10, 13, { .latitude = Angle<DEG> { 51.4769 }, .longitude = Angle<DEG> {   0.0    } } },
-  { 2024,  6, 21, { .latitude = Angle<DEG> { 69.65   }, .longitude = Angle<DEG> {  18.96   } } },
+  { 2024,  2, 11, { .latitude = AngleDeg { 39.9042 }, .longitude = AngleDeg { 116.4074 } } },
+  { 2024, 11,  3, { .latitude = AngleDeg { 40.7128 }, .longitude = AngleDeg { -74.0060 } } },
+  { 1992, 10, 13, { .latitude = AngleDeg { 51.4769 }, .longitude = AngleDeg {   0.0    } } },
+  { 2024,  6, 21, { .latitude = AngleDeg { 69.65   }, .longitude = AngleDeg {  18.96   } } },
 }};
 
 } // namespace
@@ -336,7 +335,7 @@ TEST(SolarTime, ApparentSolarTimeGolden) {
     const auto ymd = util::to_ymd(row.year, row.month, row.day);
     const auto apparent_dt = apparent(
       calendar::Datetime { ymd, row.utc_frac },
-      Angle<DEG> { row.lon_deg }
+      AngleDeg { row.lon_deg }
     );
 
     const auto day_diff = (std::chrono::sys_days { apparent_dt.ymd } - std::chrono::sys_days { ymd }).count();
@@ -347,11 +346,11 @@ TEST(SolarTime, ApparentSolarTimeGolden) {
 
 TEST(SolarTime, ApparentRejectsBadLongitude) {
   const auto utc = calendar::Datetime { util::to_ymd(2024, 6, 1), 0.5 };
-  ASSERT_THROW({ apparent(utc, Angle<DEG> { 180.5 }); },  std::invalid_argument);
-  ASSERT_THROW({ apparent(utc, Angle<DEG> { -181.0 }); }, std::invalid_argument);
-  ASSERT_THROW({ apparent(utc, Angle<DEG> { std::numeric_limits<double>::quiet_NaN() }); }, std::invalid_argument);
-  ASSERT_NO_THROW({ apparent(utc, Angle<DEG> { 180.0 }); });
-  ASSERT_NO_THROW({ apparent(utc, Angle<DEG> { -180.0 }); });
+  ASSERT_THROW({ apparent(utc, AngleDeg { 180.5 }); },  std::invalid_argument);
+  ASSERT_THROW({ apparent(utc, AngleDeg { -181.0 }); }, std::invalid_argument);
+  ASSERT_THROW({ apparent(utc, AngleDeg { std::numeric_limits<double>::quiet_NaN() }); }, std::invalid_argument);
+  ASSERT_NO_THROW({ apparent(utc, AngleDeg { 180.0 }); });
+  ASSERT_NO_THROW({ apparent(utc, AngleDeg { -180.0 }); });
 }
 
 } // namespace astro::solar_time::test

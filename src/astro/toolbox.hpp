@@ -119,53 +119,52 @@ enum class AngleUnit : uint8_t { RAD, DEG };
  */
 template <AngleUnit Unit>
 struct Angle {
-  const double _value;
+  constexpr explicit Angle(const double value) : _value { value } {}
 
-  constexpr Angle(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
-
-  constexpr static auto from_arcmin(const double value) -> Angle<AngleUnit::DEG> {
-    return { arcmin_to_deg(value) };
+  /**
+   * @brief Build an angle from a count of arcminutes, carried in this angle's own unit.
+   * @note Arcminutes subdivide the degree, so the count lands in DEG and converts from there.
+   */
+  constexpr static auto from_arcmin(const double value) -> Angle<Unit> {
+    return Angle<Unit> { Angle<AngleUnit::DEG> { arcmin_to_deg(value) } };
   }
 
-  constexpr static auto from_arcsec(const double value) -> Angle<AngleUnit::DEG> {
-    return { arcsec_to_deg(value) };
+  /** @brief Build an angle from a count of arcseconds, carried in this angle's own unit. */
+  constexpr static auto from_arcsec(const double value) -> Angle<Unit> {
+    return Angle<Unit> { Angle<AngleUnit::DEG> { arcsec_to_deg(value) } };
   }
 
-  /** @brief Allow implicit conversion to the other unit. */
+  /** @brief Convert to the other unit — explicit, so a unit change never happens silently. */
   template <AngleUnit As>
-  constexpr operator Angle<As>() const { // NOLINT(google-explicit-constructor)
-    return { as<As>() };
+  constexpr explicit operator Angle<As>() const {
+    return Angle<As> { as<As>() };
   }
 
   constexpr auto operator+(const Angle<Unit>& other) const -> Angle<Unit> {
-    return { _value + other._value };
-  }
-
-  constexpr auto operator+(const double other) const -> Angle<Unit> {
-    return { _value + other };
+    return Angle<Unit> { _value + other._value };
   }
 
   constexpr auto operator-(const Angle<Unit>& other) const -> Angle<Unit> {
-    return { _value - other._value };
-  }
-
-  constexpr auto operator-(const double other) const -> Angle<Unit> {
-    return { _value - other };
+    return Angle<Unit> { _value - other._value };
   }
 
   constexpr auto operator-() const -> Angle<Unit> {
-    return { -_value };
+    return Angle<Unit> { -_value };
   }
 
   constexpr auto operator*(const double other) const -> Angle<Unit> {
-    return { _value * other };
+    return Angle<Unit> { _value * other };
   }
 
+  /**
+   * @brief Divide the angle by a bare (dimensionless) factor.
+   * @throws std::runtime_error if the divisor is zero — an infinite angle is never the intent (#48).
+   */
   constexpr auto operator/(const double other) const -> Angle<Unit> {
     if (other == 0.0) {
       throw std::runtime_error { "Division by zero." };
     }
-    return { _value / other };
+    return Angle<Unit> { _value / other };
   }
 
   /**
@@ -192,9 +191,9 @@ struct Angle {
    */
   [[nodiscard]] constexpr auto normalize() const -> Angle<Unit> {
     if constexpr (Unit == AngleUnit::DEG) {
-      return { normalize_deg(_value) };
+      return Angle<Unit> { normalize_deg(_value) };
     } else {
-      return { normalize_rad(_value) };
+      return Angle<Unit> { normalize_rad(_value) };
     }
   }
 
@@ -207,7 +206,23 @@ struct Angle {
   [[nodiscard]] constexpr auto rad() const -> double {
     return as<AngleUnit::RAD>();
   }
+
+ private:
+  // Private, not const: `const` would also make the type unassignable, which breaks
+  // `std::optional<Angle>` and every sort/erase over aggregates holding one.
+  // Immutability is carried by the interface instead — every operator returns a new value.
+  double _value;
 };
+
+/**
+ * @brief The spelling used everywhere outside this header (#53).
+ * @note `Angle<DEG>` needs both names in scope, which outside `astro::toolbox` only a
+ *       namespace-scope `using` can arrange — and headers may not have one (#51). These
+ *       aliases keep the unit in the type name without asking the reader's namespace for
+ *       anything: `toolbox::AngleDeg`.
+ */
+using AngleDeg = Angle<AngleUnit::DEG>;
+using AngleRad = Angle<AngleUnit::RAD>;
 
 #pragma endregion
 
@@ -216,20 +231,20 @@ struct Angle {
 
 namespace literals {
 
-inline auto operator""_deg(const long double value) -> Angle<AngleUnit::DEG> {
-  return { static_cast<double>(value) };
+constexpr auto operator""_deg(const long double value) -> AngleDeg {
+  return AngleDeg { static_cast<double>(value) };
 }
 
-inline auto operator""_arcmin(const long double value) -> Angle<AngleUnit::DEG> {
-  return Angle<AngleUnit::DEG>::from_arcmin(static_cast<double>(value));
+constexpr auto operator""_arcmin(const long double value) -> AngleDeg {
+  return AngleDeg::from_arcmin(static_cast<double>(value));
 }
 
-inline auto operator""_arcsec(const long double value) -> Angle<AngleUnit::DEG> {
-  return Angle<AngleUnit::DEG>::from_arcsec(static_cast<double>(value));
+constexpr auto operator""_arcsec(const long double value) -> AngleDeg {
+  return AngleDeg::from_arcsec(static_cast<double>(value));
 }
 
-inline auto operator""_rad(const long double value) -> Angle<AngleUnit::RAD> {
-  return { static_cast<double>(value) };
+constexpr auto operator""_rad(const long double value) -> AngleRad {
+  return AngleRad { static_cast<double>(value) };
 }
 
 }  // namespace literals
@@ -259,14 +274,12 @@ constexpr auto km_to_au(const double km) -> double {
 /** @brief Represents a distance. */
 template <DistanceUnit Unit>
 struct Distance {
-  const double _value;
+  constexpr explicit Distance(const double value) : _value { value } {}
 
-  constexpr Distance(const double value) : _value { value } {} // NOLINT(google-explicit-constructor)
-
-  /** @brief Allow implicit conversion to the other unit. */
+  /** @brief Convert to the other unit. */
   template <DistanceUnit As>
-  constexpr operator Distance<As>() const { // NOLINT(google-explicit-constructor)
-    return { as<As>() };
+  constexpr explicit operator Distance<As>() const {
+    return Distance<As> { as<As>() };
   }
 
   template <DistanceUnit As>
@@ -289,16 +302,23 @@ struct Distance {
   [[nodiscard]] constexpr auto km() const -> double {
     return as<DistanceUnit::KM>();
   }
+
+ private:
+  double _value;
 };
+
+/** @brief The spelling used outside this header, for the same reason as `AngleDeg` (#53). */
+using DistanceAu = Distance<DistanceUnit::AU>;
+using DistanceKm = Distance<DistanceUnit::KM>;
 
 
 /**
  * @brief Represents a position in a spherical coordinate system.
  */
 struct SphericalCoordinate {
-  Angle<AngleUnit::DEG>      λ; // Longitude
-  Angle<AngleUnit::DEG>      β; // Latitude
-  Distance<DistanceUnit::AU> r; // Radius/Distance
+  AngleDeg   λ; // Longitude
+  AngleDeg   β; // Latitude
+  DistanceAu r; // Radius/Distance
 };
 
 #pragma endregion

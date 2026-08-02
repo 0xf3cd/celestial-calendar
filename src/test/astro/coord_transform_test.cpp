@@ -53,13 +53,13 @@ TEST(CoordTransform, EclipticToEquatorialPoles) {
   // The ecliptic north pole maps to δ = 90° − ε, α = 270°; the south pole to δ = −(90° − ε), α = 90°.
   const double ε = 23.4392911;
 
-  const auto north = ecliptic_to_equatorial(0.0_deg, 90.0_deg, Angle<DEG> { ε });
+  const auto north = ecliptic_to_equatorial(0.0_deg, 90.0_deg, AngleDeg { ε });
   ASSERT_TRUE(std::isfinite(north.α.deg()));
   ASSERT_TRUE(std::isfinite(north.δ.deg()));
   ASSERT_NEAR(north.δ.deg(), 90.0 - ε, 1e-9);
   ASSERT_NEAR(north.α.deg(), 270.0, 1e-9);
 
-  const auto south = ecliptic_to_equatorial(0.0_deg, -90.0_deg, Angle<DEG> { ε });
+  const auto south = ecliptic_to_equatorial(0.0_deg, -90.0_deg, AngleDeg { ε });
   ASSERT_TRUE(std::isfinite(south.α.deg()));
   ASSERT_TRUE(std::isfinite(south.δ.deg()));
   ASSERT_NEAR(south.δ.deg(), -(90.0 - ε), 1e-9);
@@ -75,13 +75,13 @@ TEST(CoordTransform, EclipticToEquatorialAsinDomain) {
   for (auto i = 0; i < 10000; ++i) {
     const double ε = 22.0 + 3.0 * i / 9999.0;
 
-    const auto north = ecliptic_to_equatorial(90.0_deg, Angle<DEG> { 90.0 - ε }, Angle<DEG> { ε });
+    const auto north = ecliptic_to_equatorial(90.0_deg, AngleDeg { 90.0 - ε }, AngleDeg { ε });
     ASSERT_TRUE(std::isfinite(north.α.deg()));
     ASSERT_TRUE(std::isfinite(north.δ.deg()));
     ASSERT_NEAR(north.δ.deg(), 90.0, 1e-5);
     ASSERT_LE(north.δ.deg(), 90.0);
 
-    const auto south = ecliptic_to_equatorial(270.0_deg, Angle<DEG> { ε - 90.0 }, Angle<DEG> { ε });
+    const auto south = ecliptic_to_equatorial(270.0_deg, AngleDeg { ε - 90.0 }, AngleDeg { ε });
     ASSERT_TRUE(std::isfinite(south.α.deg()));
     ASSERT_TRUE(std::isfinite(south.δ.deg()));
     ASSERT_NEAR(south.δ.deg(), -90.0, 1e-5);
@@ -95,12 +95,12 @@ TEST(CoordTransform, EclipticEquatorialRoundTrip) {
     const double β = util::random(-89.0, 89.0);
     const double ε = util::random(22.0, 25.0);
 
-    const auto [α, δ] = ecliptic_to_equatorial(Angle<DEG> { λ }, Angle<DEG> { β }, Angle<DEG> { ε });
+    const auto [α, δ] = ecliptic_to_equatorial(AngleDeg { λ }, AngleDeg { β }, AngleDeg { ε });
 
     // Invert with Meeus (13.1)-(13.2), multiplied through by cos δ so nothing diverges at the poles.
     const double α_rad = α.rad();
     const double δ_rad = δ.rad();
-    const double ε_rad = Angle<DEG> { ε }.rad();
+    const double ε_rad = AngleDeg { ε }.rad();
 
     const double sin_α = std::sin(α_rad);
     const double cos_α = std::cos(α_rad);
@@ -148,11 +148,11 @@ TEST(CoordTransform, EquatorialToHorizontalHorizon) {
   const double H0 = rad_to_deg(std::acos(-std::tan(deg_to_rad(φ)) * std::tan(deg_to_rad(δ))));
 
   // Rising: H = −H0 in the morning; setting: H = +H0 in the evening. Both must yield h ≈ 0.
-  const auto rise = equatorial_to_horizontal(Angle<DEG> { -H0 }, Angle<DEG> { δ }, Angle<DEG> { φ });
+  const auto rise = equatorial_to_horizontal(AngleDeg { -H0 }, AngleDeg { δ }, AngleDeg { φ });
   ASSERT_NEAR(rise.h.deg(), 0.0, 1e-9);
   ASSERT_TRUE(std::isfinite(rise.A.deg()));
 
-  const auto set = equatorial_to_horizontal(Angle<DEG> { H0 }, Angle<DEG> { δ }, Angle<DEG> { φ });
+  const auto set = equatorial_to_horizontal(AngleDeg { H0 }, AngleDeg { δ }, AngleDeg { φ });
   ASSERT_NEAR(set.h.deg(), 0.0, 1e-9);
   ASSERT_TRUE(std::isfinite(set.A.deg()));
 }
@@ -167,13 +167,13 @@ TEST(CoordTransform, EquatorialToHorizontalAsinDomain) {
   for (auto i = 0; i < 10000; ++i) {
     const double φ = -90.0 + 180.0 * i / 9999.0;
 
-    const auto zenith = equatorial_to_horizontal(0.0_deg, Angle<DEG> { φ }, Angle<DEG> { φ });
+    const auto zenith = equatorial_to_horizontal(0.0_deg, AngleDeg { φ }, AngleDeg { φ });
     ASSERT_TRUE(std::isfinite(zenith.A.deg()));
     ASSERT_TRUE(std::isfinite(zenith.h.deg()));
     ASSERT_NEAR(zenith.h.deg(), 90.0, 1e-5);
     ASSERT_LE(zenith.h.deg(), 90.0);
 
-    const auto nadir = equatorial_to_horizontal(180.0_deg, Angle<DEG> { -φ }, Angle<DEG> { φ });
+    const auto nadir = equatorial_to_horizontal(180.0_deg, AngleDeg { -φ }, AngleDeg { φ });
     ASSERT_TRUE(std::isfinite(nadir.A.deg()));
     ASSERT_TRUE(std::isfinite(nadir.h.deg()));
     ASSERT_NEAR(nadir.h.deg(), -90.0, 1e-5);
@@ -187,13 +187,13 @@ TEST(CoordTransform, HorizontalRoundTrip) {
     const double δ = util::random(-80.0, 80.0);
     const double φ = util::random(-80.0, 80.0);
 
-    const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+    const auto [A, h] = equatorial_to_horizontal(AngleDeg { H }, AngleDeg { δ }, AngleDeg { φ });
 
     // Invert (azimuth from the south): sin δ = sin φ sin h − cos φ cos h cos A;
     // then recover H from its sine and cosine, dropping the common positive factor cos δ in atan2.
     const double A_rad = A.rad();
     const double h_rad = h.rad();
-    const double φ_rad = Angle<DEG> { φ }.rad();
+    const double φ_rad = AngleDeg { φ }.rad();
 
     const double sin_A = std::sin(A_rad);
     const double cos_A = std::cos(A_rad);
@@ -224,7 +224,7 @@ TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
   const double δ = -(6.0 + 43.0 / 60.0 + 11.61 / 3600.0);
   const double φ = 38.0 + 55.0 / 60.0 + 17.0 / 3600.0;
 
-  const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+  const auto [A, h] = equatorial_to_horizontal(AngleDeg { H }, AngleDeg { δ }, AngleDeg { φ });
 
   // Meeus prints A = +68°.0337, h = +15°.1249; his intermediate values are rounded, hence the looser tolerance.
   ASSERT_NEAR(A.deg(), 68.0337, 1e-4);
@@ -299,7 +299,7 @@ TEST(CoordTransform, EclipticToEquatorialPymeeus) {
   };
 
   for (const auto& [λ, β, ε, expected_α, expected_δ] : dataset) {
-    const auto [α, δ] = ecliptic_to_equatorial(Angle<DEG> { λ }, Angle<DEG> { β }, Angle<DEG> { ε });
+    const auto [α, δ] = ecliptic_to_equatorial(AngleDeg { λ }, AngleDeg { β }, AngleDeg { ε });
     ASSERT_NEAR(α.deg(), expected_α, 1e-9);
     ASSERT_NEAR(δ.deg(), expected_δ, 1e-9);
   }
@@ -373,7 +373,7 @@ TEST(CoordTransform, EquatorialToHorizontalPymeeus) {
   };
 
   for (const auto& [H, δ, φ, expected_A, expected_h] : dataset) {
-    const auto [A, h] = equatorial_to_horizontal(Angle<DEG> { H }, Angle<DEG> { δ }, Angle<DEG> { φ });
+    const auto [A, h] = equatorial_to_horizontal(AngleDeg { H }, AngleDeg { δ }, AngleDeg { φ });
     ASSERT_NEAR(A.deg(), expected_A, 1e-9);
     ASSERT_NEAR(h.deg(), expected_h, 1e-9);
   }
