@@ -192,9 +192,6 @@ inline constexpr std::array<BCoefficients, 60> B {{
 
 namespace astro::elp2000_82b {
 
-
-
-
 /**
  * @brief The scaling factor used in the Jean Meeus's Astronomical Algorithms, for the longitude and latitude.
  *        The unit of the raw evaluation result of longitude and latitude is 0.000001 degree.

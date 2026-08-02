@@ -33,7 +33,6 @@
 
 namespace astro::moon::perturbation {
 
-
 /**
  * @brief Calculate perturbation of the Moon's geocentric longitude.
  * @details As per Astronomical Algorithms, Jean Meeus, 1998, Chapter 47, 
@@ -70,9 +69,6 @@ inline auto latitude(const elp2000_82b::Context& ctx) -> double {
 
 
 namespace astro::moon::geocentric_coord {
-
-
-
 
 /**
  * @brief Calculate the apparent geocentric position of the Moon, using truncated ELP2000-82B.

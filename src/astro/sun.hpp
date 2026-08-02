@@ -37,8 +37,6 @@
 
 namespace astro::sun::geocentric_coord {
 
-
-
 /**
  * @brief Calculate the geocentric position of the Sun, using VSOP87D.
  * @param jde The Julian Ephemeris Day.
