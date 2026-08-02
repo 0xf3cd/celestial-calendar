@@ -193,7 +193,7 @@ inline auto next_root(const double jde) -> double {
 /**
  * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).
  */
-// TODO: Use `std::generator` when supported.
+// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
 struct RootGenerator {
 private:
   double _root;

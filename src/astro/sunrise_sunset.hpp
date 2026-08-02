@@ -76,19 +76,21 @@ inline constexpr double POLAR_DENOMINATOR_EPSILON = 1e-10;
 /**
  * @brief The half-width of the root bracket around the transit estimate, in days.
  * @note The estimate is local mean noon; the true transit deviates from it by the equation of
- *       time only, |EoT| ≤ 16.5 min ≈ 0.0115 day — a 8.7x margin. The hour angle sweeps
- *       ±36° across this bracket, well clear of the ±180° wrap.
+ *       time only. |EoT| ≤ 16.5 min today, but the orbital elements drift: across the supported
+ *       span (years 402-9050) it reaches 20.4 min ≈ 0.0142 day — still a 7.1x margin. The hour
+ *       angle sweeps ±36° across this bracket, well clear of the ±180° wrap.
+ *       Held by `SunriseSunset.TransitBracketCoversTheEquationOfTime` (#126).
  */
 inline constexpr double TRANSIT_BRACKET_HALF_WIDTH_DAYS = 0.1;
 
 /**
  * @brief The half-width of the first-try root bracket around the rise/set estimate, in days.
- * @note The estimate extrapolates H₀ computed from the declination at transit; away from the
- *       polar boundary the δ drift between transit and the event (≤ ~0.2°) moves the true root
- *       by a few minutes at most, so ±72 min is a comfortable margin. Near the polar boundary
- *       the extrapolation degrades without bound — which is why this bracket is only an
- *       accelerator: the decider is the sign check at the bracket ends, with the
- *       transit-to-lower-culmination bracket as fallback (see `rise_set_jde`).
+ * @note The estimate extrapolates H₀ computed from the declination at transit; out to |φ| = 65°
+ *       the δ drift between transit and the event moves the true root by ≤ 3.5 min, so ±72 min
+ *       is a comfortable margin. Near the polar boundary the extrapolation degrades without
+ *       bound — which is why this bracket is only an accelerator: the decider is the sign check
+ *       at the bracket ends, with the transit-to-lower-culmination bracket as fallback (see
+ *       `rise_set_jde`). Held out to |φ| = 65° by `SunriseSunset.RiseSetBracketRetainsMargin` (#126).
  */
 inline constexpr double RISE_SET_BRACKET_HALF_WIDTH_DAYS = 0.05;
 
@@ -107,6 +109,7 @@ inline constexpr double HALF_SOLAR_DAY_DAYS = 0.5;
  * @note The estimate is transit ± `HALF_SOLAR_DAY_DAYS`; the true lower culmination deviates
  *       by ≤ ~15 s ≈ 1.8e-4 day — a 500x margin. The unwrapped H−180° sweeps ±36° across
  *       this bracket, well clear of its wrap (which sits at the upper culminations).
+ *       Held by `SunriseSunset.LowerCulminationBracketRetainsMargin` (#126).
  */
 inline constexpr double LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS = 0.1;
 

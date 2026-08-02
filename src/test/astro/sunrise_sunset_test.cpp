@@ -21,10 +21,16 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <format>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -396,6 +402,252 @@ TEST(SunriseSunset, InvalidInputsThrow) {
                std::invalid_argument);
   ASSERT_THROW((void) hour_angle_at_altitude(Angle<DEG> { 0.0 }, Angle<DEG> { 0.0 }, Angle<DEG> { 100.0 }),
                std::invalid_argument);
+}
+
+
+// Each bracket constant in `sunrise_sunset.hpp` carries a note arguing why it is wide enough:
+// "|EoT| ≤ 16.5 min — a 8.7x margin", and so on. Those arguments were maintained by attention —
+// shrink a bracket, widen the supported span, or swap a model, and the number beside it does not
+// object. The three tests below sweep the span, measure the deviation each bracket actually has
+// to cover, and hold it to what its note claims (#126).
+
+namespace {
+
+// The span the solver chain supports. `jd_to_ut1` rejects below year 401, and 401-01-01's
+// adjacent lower culmination reaches back past that floor, so 402 is the first fully usable
+// year. The ceiling is the one the rest of the suite already works to (`moon_phase_test.cpp`,
+// and `newton_method`'s iteration-count note).
+constexpr int FIRST_YEAR = 402;
+constexpr int LAST_YEAR  = 9050;
+
+/** @brief What a bracket constant's note claims: the deviation it covers. The margin is the
+ *         quotient, so there is no third number to drift out of step with the other two. */
+struct BracketClaim {
+  std::string_view constant;
+  double bracket_days;
+  double bound_days;
+};
+
+// A bracket may not be merely wide enough. Newton needs the root strictly inside, and the
+// deviations below are measurements on a grid, not proofs of the true extreme. This floor is
+// also the only half of the check a narrowed bracket cannot fool: shrink the constant and the
+// solver's root gets pinned near the bracket edge, so the swept deviation shrinks with it and
+// would otherwise stay obediently under its bound.
+constexpr double MIN_BRACKET_MARGIN = 2.0;
+
+/** @brief One measured deviation, and the case that produced it. */
+struct Sample {
+  double deviation_days;
+  std::string at;
+};
+
+/** @brief The sample that came closest to escaping the bracket. Throws rather than dereferencing
+ *         `end()` if a sweep ever silently produces nothing — an empty sweep would otherwise read
+ *         as a passing gate. */
+auto worst_of(const std::vector<Sample>& samples) -> const Sample& {
+  if (samples.empty()) {
+    throw std::logic_error { "sweep produced no samples" };
+  }
+  return *std::ranges::max_element(samples, {}, &Sample::deviation_days);
+}
+
+auto date_str(const std::chrono::year_month_day& ymd) -> std::string {
+  return std::format("{:04}-{:02}-{:02}", static_cast<int>(ymd.year()),
+                     static_cast<unsigned>(ymd.month()), static_cast<unsigned>(ymd.day()));
+}
+
+/** @brief Years to sweep: every `stride`th, plus the far end — appended because that is where
+ *         |EoT| peaks, and dropping it costs the transit sweep 0.6% of its worst case. The drift
+ *         is not monotone: |EoT| sags through the middle of the span before climbing again,
+ *         while the lower culmination peaks early in it — neither end predicts the other's.
+ *         What the stride buys is blind-spot width, not accuracy — across years these curves are
+ *         flat enough that halving it moves the measured worst by ~0.01%. It is sized so that a
+ *         peak displaced by a model change still lands on the grid. */
+auto sampled_years(const int stride) -> std::vector<int> {
+  std::vector<int> years;
+  years.reserve(static_cast<std::size_t>((LAST_YEAR - FIRST_YEAR) / stride) + 2);
+  for (int year = FIRST_YEAR; year <= LAST_YEAR; year += stride) {
+    years.push_back(year);
+  }
+  if (years.back() != LAST_YEAR) {
+    years.push_back(LAST_YEAR);
+  }
+  return years;
+}
+
+// All three deviations are smooth annual curves, so a fortnightly-ish net loses well under a
+// percent of the peak — cheaper than a two-pass coarse-then-refine sweep, and the bounds below
+// carry more headroom than that. Measured against a daily sweep: within 0.6% on all three.
+constexpr std::chrono::days SWEEP_STRIDE { 5 };
+
+/** @brief The days of `year` the sweeps visit. */
+auto sampled_days(const int year) -> std::vector<std::chrono::year_month_day> {
+  const auto first = std::chrono::sys_days { util::to_ymd(year, 1, 1) };
+  const auto past_last = std::chrono::sys_days { util::to_ymd(year + 1, 1, 1) };
+
+  std::vector<std::chrono::year_month_day> days;
+  days.reserve(static_cast<std::size_t>((past_last - first) / SWEEP_STRIDE) + 1);
+  for (auto day = first; day < past_last; day += SWEEP_STRIDE) {
+    days.emplace_back(day);
+  }
+  return days;
+}
+
+/** @brief A day count in whichever of minutes or seconds reads naturally — these three
+ *         deviations span three orders of magnitude. */
+auto human(const double days) -> std::string {
+  const double minutes = days * 24 * 60;
+  return minutes >= 1.0 ? std::format("{:.2f} min", minutes) : std::format("{:.2f} s", minutes * 60);
+}
+
+/** @brief What to say when a bracket has been narrowed past what its note says it covers. */
+auto narrowed_report(const BracketClaim& claim) -> std::string {
+  return std::format(
+    "\n  {} = {:g} day no longer clears the {:g} day ({}) it must cover by {:g}x."
+    "\n  Fix: widen the constant back. If the deviation genuinely shrank instead, re-measure and"
+    "\n       lower the bound in this test together with the @note on the constant.",
+    claim.constant, claim.bracket_days, claim.bound_days, human(claim.bound_days), MIN_BRACKET_MARGIN
+  );
+}
+
+/** @brief What to say when the deviation a bracket must cover has outgrown its note. */
+auto margin_report(const BracketClaim& claim, const Sample& measured) -> std::string {
+  return std::format(
+    "\n  {} = {:g} day"
+    "\n    claimed to cover : deviation ≤ {:g} day ({}) — a {:.1f}x margin"
+    "\n    measured worst   : {:.6e} day ({}) at {}"
+    "\n    margin left      : {:.1f}x"
+    "\n  Fix: if the model or the swept span changed, re-measure and update BOTH the bound in"
+    "\n       this test and the @note on {} in src/astro/sunrise_sunset.hpp.",
+    claim.constant, claim.bracket_days,
+    claim.bound_days, human(claim.bound_days), claim.bracket_days / claim.bound_days,
+    measured.deviation_days, human(measured.deviation_days), measured.at,
+    claim.bracket_days / measured.deviation_days,
+    claim.constant
+  );
+}
+
+// The edge of the domain where the rise/set first-try bracket is meant to be sufficient. Past
+// the polar circle the H₀ extrapolation degrades without bound and the fallback takes over, so
+// 65° is where a margin claim still means something.
+const GeoLocation SUBPOLAR_N = loc( 65.0, 0.0);
+const GeoLocation SUBPOLAR_S = loc(-65.0, 0.0);
+
+} // anonymous namespace
+
+
+// The three gates below fail through `FAIL() <<` rather than `ASSERT_LE(...) <<`. Streaming a
+// std::string into gtest's comparison helpers makes gcc 14 emit a false `-Wnull-dereference`
+// inside `CmpHelperLE` once it inlines at -O2, and the build takes warnings as errors. Do not
+// "simplify" these back: the reports already carry both sides of the comparison.
+
+
+TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
+  constexpr BracketClaim CLAIM {
+    .constant     = "TRANSIT_BRACKET_HALF_WIDTH_DAYS",
+    .bracket_days = TRANSIT_BRACKET_HALF_WIDTH_DAYS,
+    .bound_days   = 0.0145, // 20.9 min; this sweep peaks at 0.014157 day (20.39 min).
+  };
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
+
+  // Longitude is left out of the sweep on purpose: it shifts only the instant at which the
+  // equation of time is evaluated, worth ≤ 0.3% here, and `TransitNearLocalMeanNoon` already
+  // pins the sign of the longitude term. Latitude does not move a transit at all.
+  std::vector<Sample> samples;
+  for (const int year : sampled_years(250)) {
+    for (const auto& ymd : sampled_days(year)) {
+      const double transit = transit_jde(ymd, EQUATOR);
+      samples.push_back({
+        .deviation_days = std::fabs(transit - local_mean_noon_jde(ymd, EQUATOR)),
+        .at = date_str(ymd),
+      });
+    }
+  }
+
+  const auto& measured = worst_of(samples);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
+}
+
+TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
+  constexpr BracketClaim CLAIM {
+    .constant     = "LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS",
+    .bracket_days = LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS,
+    .bound_days   = 1.85e-4, // 16.0 s; this sweep peaks at 1.7632e-4 day (15.23 s).
+  };
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
+
+  std::vector<Sample> samples;
+  for (const int year : sampled_years(250)) {
+    for (const auto& ymd : sampled_days(year)) {
+      const double transit = transit_jde(ymd, EQUATOR);
+      for (const bool before : { true, false }) {
+        const double culmination = detail::lower_culmination_jde(transit, before, EQUATOR);
+        const double estimate = before ? transit - HALF_SOLAR_DAY_DAYS : transit + HALF_SOLAR_DAY_DAYS;
+        samples.push_back({
+          .deviation_days = std::fabs(culmination - estimate),
+          .at = std::format("{} ({})", date_str(ymd), before ? "before transit" : "after transit"),
+        });
+      }
+    }
+  }
+
+  const auto& measured = worst_of(samples);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
+}
+
+TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
+  constexpr BracketClaim CLAIM {
+    .constant     = "RISE_SET_BRACKET_HALF_WIDTH_DAYS",
+    .bracket_days = RISE_SET_BRACKET_HALF_WIDTH_DAYS,
+    .bound_days   = 2.6e-3, // 3.74 min; this sweep peaks at 2.4058e-3 day (3.46 min).
+  };
+  if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
+    FAIL() << narrowed_report(CLAIM);
+  }
+
+  // The deviation grows with |φ| (1.1 min at the equator against 3.5 min here), so the domain
+  // edge is the binding case; sweeping it densely beats sweeping every latitude thinly.
+  std::vector<Sample> samples;
+  for (const int year : { FIRST_YEAR, 2026, 5000, LAST_YEAR }) {
+    for (const auto& ymd : sampled_days(year)) {
+      for (const auto& location : { SUBPOLAR_N, SUBPOLAR_S }) {
+        const double transit = transit_jde(ymd, location);
+        const auto eq = astro::sun::equatorial_coord::apparent(transit);
+        const auto H0 = hour_angle_at_altitude(eq.δ, location.latitude, STANDARD_ALTITUDE);
+        if (not H0.has_value()) {
+          continue; // Polar day or night: no crossing to bracket.
+        }
+
+        for (const bool is_sunrise : { true, false }) {
+          const auto root = rise_set_jde(transit, is_sunrise, location, STANDARD_ALTITUDE);
+          if (not root.has_value()) {
+            continue;
+          }
+          const double sign = is_sunrise ? -1.0 : 1.0;
+          const double estimate =
+            transit + sign * (req(H0).deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
+          samples.push_back({
+            .deviation_days = std::fabs(req(root) - estimate),
+            .at = std::format("{} at latitude {:+.0f}° ({})", date_str(ymd),
+                              location.latitude.deg(), is_sunrise ? "sunrise" : "sunset"),
+          });
+        }
+      }
+    }
+  }
+
+  const auto& measured = worst_of(samples);
+  if (measured.deviation_days > CLAIM.bound_days) {
+    FAIL() << margin_report(CLAIM, measured);
+  }
 }
 
 } // namespace astro::sunrise_sunset::test

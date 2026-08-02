@@ -265,7 +265,7 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
   }
 
   // As per the rules, the leap month is the first month where Qi (气/中气) does not appear.
-  // TODO: Use `std::enumerate` instead when supported.
+  // TODO: Use `std::views::enumerate` once every CI leg has it (./linter.py --features).
   for (const auto& [index, month] : std::views::zip(std::views::iota(0), chunk)) {
     const auto& jq_pairs = month.contained_jieqis;
     const bool has_qi = std::any_of(cbegin(jq_pairs), cend(jq_pairs), [](const auto& pair) {
@@ -364,7 +364,7 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
   }
 
   // Figure out the months in the lunar year.
-  // TODO: Use `std::concat` when it gets supported.
+  // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
   std::vector<LunarMonth> months;
 
   for (const auto& m : chunk1) {

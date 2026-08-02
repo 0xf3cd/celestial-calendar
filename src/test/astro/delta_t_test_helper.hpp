@@ -141,22 +141,6 @@ inline auto calc_diff(const double year, const double expected_delta_t) {
 
 #pragma region Other Helper Functions
 
-// TODO: Use `std::views::join_with` when it gets supported.
-inline auto join_with(
-  const std::ranges::range auto& view, 
-  const std::string& separator
-) -> std::string {
-  // Low performance implementation...
-  std::string str;
-  for (const auto& substr : view) {
-    str += substr + separator;
-  }
-  if (view.empty()) {
-    return str;
-  }
-  return str.substr(0, str.size() - separator.size());
-}
-
 inline constexpr int32_t PAD_WIDTH = 10;
 
 /** @brief Pad the string with spaces. Use generic lambda here
@@ -176,11 +160,11 @@ inline auto make_line(
 ) -> std::string {
   const std::string separator { " | " };
 
-  // TODO: Use `std::views::concat` when it gets supported.
+  // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
   using namespace std::views;
-  return join_with(range1 | transform(pad), separator)
+  return (range1 | transform(pad) | join_with(separator) | std::ranges::to<std::string>())
        + separator
-       + join_with(range2 | transform(pad), separator);
+       + (range2 | transform(pad) | join_with(separator) | std::ranges::to<std::string>());
 }
 
 #pragma endregion

@@ -56,7 +56,7 @@ TEST(NewMoon, RootGenerator) {
     ASSERT_TRUE(diff < epsilon or diff > 360.0 - epsilon);
   }
 
-  // TODO: Use `std::views::pairwise` when it gets supported.
+  // TODO: Use `std::views::pairwise` once every CI leg has it (./linter.py --features).
   for (auto it = cbegin(roots); it != cend(roots); ++it) {
     const auto next = std::next(it);
     if (next == cend(roots)) {
