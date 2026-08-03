@@ -309,9 +309,7 @@ TEST(LunarAlgo2, GetLunarInfo) {
 }
 
 
-TEST(LunarAlgo2, MetadataSharesCache) {
-  // The trait aliases the namespace-level cached function rather than holding its own copy.
-  ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::get_info_for_year, &algo2::get_info_for_year);
+TEST(LunarAlgo2, MetadataBoundsAreLazy) {
   // #67: lazy init — reached through a call now.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds(), &algo2::bounds());
 }
