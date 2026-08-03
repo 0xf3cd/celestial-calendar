@@ -309,6 +309,20 @@ TEST(LunarAlgo2, GetLunarInfo) {
 }
 
 
+TEST(LunarAlgo2, YearOutOfRange) {
+  ASSERT_THROW(calc_lunar_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(calc_lunar_year(END_YEAR + 1), std::out_of_range);
+
+  // The C ABI reaches algo2 only through the cached wrapper, so the guard has to survive it.
+  ASSERT_THROW(get_info_for_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(get_info_for_year(END_YEAR + 1), std::out_of_range);
+
+  // Both ends are inclusive — an off-by-one in the guard shows up here and nowhere else.
+  ASSERT_NO_THROW(get_info_for_year(START_YEAR));
+  ASSERT_NO_THROW(get_info_for_year(END_YEAR));
+}
+
+
 TEST(LunarAlgo2, MetadataBoundsAreLazy) {
   // #67: lazy init — reached through a call now.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds(), &algo2::bounds());
