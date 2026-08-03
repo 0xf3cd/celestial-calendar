@@ -28,7 +28,9 @@
 #include <ranges>
 #include <numeric>
 #include <cstdint>
+#include <concepts>
 #include <functional>
+#include <type_traits>
 
 #include "ymd.hpp"
 
@@ -108,11 +110,18 @@ struct AlgoBounds {
 };
 
 
-/** @brief Calculate the bounds of the lunar algorithm. */
+/**
+ * @brief Calculate the bounds of the lunar algorithm.
+ * @note Takes the callable by `const&` and never copies it — a caller may hand over a
+ *       cache-carrying closure, and a copy would fork the cache and recompute (#78).
+ */
+template <typename Func>
+requires std::invocable<Func, int32_t>
+     and std::convertible_to<std::invoke_result_t<Func, int32_t>, LunarYear>
 inline auto calc_bounds(
   const int32_t start_lunar_year,
   const int32_t end_lunar_year,
-  const std::function<LunarYear(int32_t)>& algo_f
+  const Func& algo_f
 ) -> AlgoBounds {
   const auto first_lunar_date = util::to_ymd(start_lunar_year, 1, 1);
 
