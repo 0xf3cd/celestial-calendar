@@ -49,9 +49,10 @@ namespace calendar::lunar::algo2 {
 using namespace calendar::jieqi;
 using calendar::lunar::common::LunarYear;
 
-// A convention, not a physical ceiling — the method computes rather than looks up. By year 5000
-// ΔT is off by ~0.36 day, enough to carry a new moon past the UTC+8 midnight that starts a month
-// and reassign a leap month; the decay is smooth, so narrowing needs an error budget (#139).
+// A convention, not a physical ceiling — the method computes rather than looks up. Past ~2100 ΔT
+// is extrapolated with no observational anchor; by year 5000 it reaches ~0.36 day and is uncertain
+// to its own order, enough to move a new moon across the UTC+8 midnight that starts a month.
+// Narrowing the window needs an error budget, not a cliff to cut at (#139).
 
 /** @brief The first supported lunar year. */
 inline constexpr int32_t START_YEAR = 410;
