@@ -313,6 +313,57 @@ TEST(AstroMath, AngleDivisionByZeroThrows) {
 }
 
 
+TEST(AstroMath, Distance) {
+  using DistanceUnit::AU;
+  using DistanceUnit::KM;
+
+  static_assert(std::is_same_v<DistanceAu, Distance<AU>>);
+  static_assert(std::is_same_v<DistanceKm, Distance<KM>>);
+  // A bare double must not become a distance, and AU must not quietly become KM — the same rule
+  // `Angle` follows (#48), asserted here because `Distance` had no test of its own at all.
+  static_assert(not std::is_convertible_v<double, DistanceAu>);
+  static_assert(not std::is_convertible_v<DistanceAu, DistanceKm>);
+
+  // Pinned against the constant rather than against 149597870.691: #86 moves this to the IAU 2012
+  // value and renames it, and a test holding the literal would have to be re-derived, not repointed.
+  ASSERT_EQ(au_to_km(1.0), au_km_scale);
+  ASSERT_EQ(km_to_au(au_km_scale), 1.0);
+  ASSERT_EQ(au_to_km(0.0), 0.0);
+  ASSERT_EQ(km_to_au(0.0), 0.0);
+
+  for (auto i = 0; i < 1000; ++i) {
+    const double au = util::random(-50.0, 50.0);
+
+    const DistanceAu distance { au };
+
+    ASSERT_FLOAT_EQ(distance.as<AU>(), au);
+    ASSERT_FLOAT_EQ(distance.as<KM>(), au_to_km(au));
+    ASSERT_FLOAT_EQ(distance.au(), au);
+    ASSERT_FLOAT_EQ(distance.km(), au_to_km(au));
+
+    const DistanceKm in_km { distance };
+
+    ASSERT_FLOAT_EQ(in_km.km(), au_to_km(au));
+    ASSERT_FLOAT_EQ(in_km.au(), au);
+  }
+
+  for (auto i = 0; i < 1000; ++i) {
+    const double km = util::random(-1e9, 1e9);
+
+    const DistanceKm distance { km };
+
+    ASSERT_FLOAT_EQ(distance.as<KM>(), km);
+    ASSERT_FLOAT_EQ(distance.as<AU>(), km_to_au(km));
+    ASSERT_FLOAT_EQ(distance.km(), km);
+    ASSERT_FLOAT_EQ(distance.au(), km_to_au(km));
+
+    const DistanceAu in_au { distance };
+
+    ASSERT_FLOAT_EQ(in_au.km(), km);
+    ASSERT_FLOAT_EQ(in_au.au(), km_to_au(km));
+  }
+}
+
 TEST(AstroMath, Ulp) {
   // A double carries 52 fraction bits, so the ulp is 2^(exponent-52) and doubles with the exponent.
   // Hex float literals rather than `std::pow`: exact by construction, so `ASSERT_EQ` does not rest
