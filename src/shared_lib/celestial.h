@@ -304,7 +304,8 @@ typedef struct LunarYearInfo {
 /**
  * @brief Get the lunar year information for the given year.
  * @param algo The algorithm. Expected to be 1 or 2.
- * @param year The lunar year.
+ * @param year The lunar year. Outside the range `get_supported_lunar_year_range` reports for
+ *             `algo`, the result is `valid = false`.
  * @returns A `LunarYearInfo` struct.
  */
 LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year);

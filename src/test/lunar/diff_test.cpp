@@ -47,7 +47,7 @@ auto pick_random_years() -> std::vector<int32_t> {
        and year != 2057 and year != 2097;
   };
 
-  // Algo2 doesn't really have year limits. So use algo1's.
+  // algo1's window is the narrower of the two, so it bounds the comparison.
   auto years = views::iota(algo1::START_YEAR, algo1::END_YEAR + 1)
              | views::filter(filter_year)
              | to<std::vector>();
