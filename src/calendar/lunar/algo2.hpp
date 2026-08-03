@@ -32,6 +32,7 @@
 #include <optional>
 #include <iterator>
 #include <algorithm>
+#include <stdexcept>
 #include <functional>
 
 #include "cache.hpp"
@@ -47,6 +48,17 @@ namespace calendar::lunar::algo2 {
 
 using namespace calendar::jieqi;
 using calendar::lunar::common::LunarYear;
+
+// A convention, not a physical ceiling — the method computes rather than looks up. Past ~2100 ΔT
+// is extrapolated with no observational anchor; by year 5000 it reaches ~0.36 day and is uncertain
+// to its own order, enough to move a new moon across the UTC+8 midnight that starts a month.
+// Narrowing the window needs an error budget, not a cliff to cut at (#139).
+
+/** @brief The first supported lunar year. */
+inline constexpr int32_t START_YEAR = 410;
+
+/** @brief The last supported lunar year. */
+inline constexpr int32_t END_YEAR = 5000;
 
 
 /**
@@ -386,13 +398,20 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
 
 
 /**
- * @brief Calculate the lunar year information for the given year. 
+ * @brief Calculate the lunar year information for the given year.
           计算给定年份的阴历年信息。
+ * @attention The input year should be in the range of [START_YEAR, END_YEAR].
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
 inline auto calc_lunar_year(int32_t year) -> LunarYear {
+  if (year < START_YEAR or year > END_YEAR) {
+    throw std::out_of_range {
+      std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
+    };
+  }
+
   const auto context = create_lunar_year_context(year);
 
   // `context` contains raw info. We just need to convert it to `LunarYear`.
@@ -447,12 +466,6 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
  */
 const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
 
-
-/** @brief The first supported lunar year. */
-inline constexpr int32_t START_YEAR = 410; // Algo2 actually has no limit on year. Simply use 410 here.
-
-/** @brief The last supported lunar year. */
-inline constexpr int32_t END_YEAR = 5000; // Algo2 actually has no limit on year. Simply use 5000 here.
 
 /**
  * @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.

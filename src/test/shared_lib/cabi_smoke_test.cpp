@@ -288,6 +288,18 @@ TEST(CAbiSmoke, Lunar) {
 
   EXPECT_TRUE(get_lunar_year_info(2, 2024).valid);
   EXPECT_FALSE(get_lunar_year_info(9, 2024).valid); // unsupported algorithm
+
+  // #70: the advertised window binds. Read the endpoints back from the ABI rather than spelling
+  // them again — the point is that the window reported and the window honoured are one thing.
+  EXPECT_TRUE(get_lunar_year_info(1, range1.start).valid);
+  EXPECT_TRUE(get_lunar_year_info(1, range1.end).valid);
+  EXPECT_FALSE(get_lunar_year_info(1, range1.start - 1).valid);
+  EXPECT_FALSE(get_lunar_year_info(1, range1.end + 1).valid);
+
+  EXPECT_TRUE(get_lunar_year_info(2, range2.start).valid);
+  EXPECT_TRUE(get_lunar_year_info(2, range2.end).valid);
+  EXPECT_FALSE(get_lunar_year_info(2, range2.start - 1).valid);
+  EXPECT_FALSE(get_lunar_year_info(2, range2.end + 1).valid);
 }
 
 
