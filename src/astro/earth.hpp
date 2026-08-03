@@ -29,7 +29,6 @@
 #include <ranges>
 #include <cstdint>
 #include <numeric>
-#include <functional>
 
 #include "toolbox.hpp"
 #include "julian_day.hpp"
@@ -286,10 +285,13 @@ inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
 /**
  * @brief Return the function to calculate the θ values, for the given julian century.
  * @param jc The julian century since J2000.
- * @return The function to calculate the θ values, which takes `θParams` as input and returns the θ value in degrees.
+ * @return The function to calculate the θ values, which takes `θCoeffs` as input and returns the θ value in degrees.
+ * @note Handed back as `auto`, not `std::function`: this evaluator runs once per coefficient row
+ *       of the nutation table, so type erasure here buys an indirect call on every single term
+ *       of every nutation evaluation (#98).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto gen_eval_θ(const double jc) -> std::function<toolbox::AngleDeg(θCoeffs)> {
+inline auto gen_eval_θ(const double jc) {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -308,7 +310,7 @@ inline auto gen_eval_θ(const double jc) -> std::function<toolbox::AngleDeg(θCo
     const double degrees = D * coeffs.D + M * coeffs.M + Mp * coeffs.Mp + F * coeffs.F + Ω * coeffs.Ω;
     return toolbox::AngleDeg { degrees };
   };
-};
+}
 
 
 /**

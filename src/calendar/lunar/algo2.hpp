@@ -475,8 +475,6 @@ namespace calendar::lunar::common {
 /** @brief Specialize `AlgoMetadata` for `Algo::ALGO_2`. */
 template <>
 struct AlgoMetadata<Algo::ALGO_2> {
-  // Bind, don't copy: a copied `std::function` would fork its own cache replica,
-  // recomputing every year already cached on the namespace-level path (#78).
   static const inline auto& get_info_for_year = algo2::get_info_for_year;
   // #67: an accessor, not an eager binding — an `inline` static member would initialize at
   // image load, running the whole astro pipeline before `main` and defeating `algo2::bounds()`.

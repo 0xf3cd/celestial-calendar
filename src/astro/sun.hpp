@@ -24,7 +24,6 @@
 #pragma once
 
 #include <cmath>
-#include <ranges>
 #include <vector>
 #include <cstdint>
 #include <functional>
@@ -174,17 +173,18 @@ namespace astro::sun::geocentric_coord::math {
  */
 
 
+namespace detail {
+
 /**
  * @brief Calculate the apparent geocentric longitude of the Sun.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The apparent geocentric longitude of the Sun in degrees.
+ * @note The solver's own view of the Sun: `newton_method` works on bare doubles, and this is
+ *       where the typed astronomy layer is handed over to it. Callers after a solar longitude
+ *       want `geocentric_coord::apparent(jde).λ`, which keeps the unit in the type (#125).
  */
 inline auto solar_longitude(const double jde) -> double {
-  // Calculate the apparent geocentric longitude of the Sun.
-  const auto coord = astro::sun::geocentric_coord::apparent(jde);
-
-  // Return in degrees.
-  return coord.λ.deg();
+  return astro::sun::geocentric_coord::apparent(jde).λ.deg();
 }
 
 /** @brief Return the JDE of the start of the year. */
@@ -192,7 +192,7 @@ inline auto solar_longitude(const double jde) -> double {
 // path, matching `moments()` (#84). The UT1/UTC model gap (DUT1 ≤ 0.9 s in the leap era;
 // ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
 // between any jieqi and New Year — no year's attribution can move.
-inline auto get_start_jde(const int32_t year) -> double{
+inline auto get_start_jde(const int32_t year) -> double {
   return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 }
 
@@ -211,6 +211,7 @@ inline auto get_end_lon(const int32_t year) -> double {
   return solar_longitude(get_end_jde(year));
 }
 
+// The `year` / `lon` names carry the contract at the call site.
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 
 /** @brief Return true if the given year has a root for the given `lon` before the spring equinox. */
@@ -223,20 +224,6 @@ inline auto has_root_before_spring_equinox(const int32_t year, const double lon)
 inline auto has_root_after_spring_equinox(const int32_t year, const double lon) -> bool {
   const double end_lon = get_end_lon(year);
   return 0.0 <= lon and lon < end_lon;
-}
-
-/** @brief Return the count of the roots for the given `year` and `lon`. */
-inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
-  uint32_t count = 0;
-
-  if (has_root_before_spring_equinox(year, lon)) {
-    count++;
-  }
-  if (has_root_after_spring_equinox(year, lon)) {
-    count++;
-  }
-
-  return count;
 }
 
 
@@ -258,10 +245,8 @@ inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
 // So the actual f is defined as:
 // f(jde) = modified_solar_longitude(jde) - expected_lon
 
-using FuncType = std::function<double(const double)>;
-
-/**@brief Return a `f` that we can apply Newton's method to. */
-inline auto make_f(const int32_t year, const double expected_lon) -> FuncType {
+/** @brief Return a `f` that we can apply Newton's method to. */
+inline auto make_f(const int32_t year, const double expected_lon) {
   const double apr_1st_jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 4, 1), 0.0 });
 
   const auto modified_solar_longitude = [=](const double jde) -> double {
@@ -287,46 +272,68 @@ inline auto make_f(const int32_t year, const double expected_lon) -> FuncType {
   };
 }
 
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+} // namespace detail
+
+
+// The `year` / `lon` names carry the contract at the call site.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+
+/** @brief Return the count of the roots for the given `year` and `lon`. */
+inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
+  uint32_t count = 0;
+
+  if (detail::has_root_before_spring_equinox(year, lon)) {
+    count++;
+  }
+  if (detail::has_root_after_spring_equinox(year, lon)) {
+    count++;
+  }
+
+  return count;
+}
+
 /**
- * @brief Find the roots (i.e. JDEs) for the given `year` and `expected_lon`. 
+ * @brief Find the roots (i.e. JDEs) for the given `year` and `expected_lon`.
  * @param year The year, in gregorian calendar.
  * @param expected_lon The expected solar longitude, in degrees.
  * @return The roots (i.e. JDEs). There can be 0, 1 or 2 roots.
  */
 inline auto find_roots(const int32_t year, const double expected_lon) -> std::vector<double> {
-  if (discriminant(year, expected_lon) == 0) { // No root.
-    return {};
-  }
+  // Each predicate costs a full apparent-position evaluation at a year boundary. Going through
+  // `discriminant` first would put the very same two questions a second time (#81).
+  const bool root_before_equinox = detail::has_root_before_spring_equinox(year, expected_lon);
+  const bool root_after_equinox  = detail::has_root_after_spring_equinox(year, expected_lon);
 
-  std::vector<FuncType> f_vec;
+  // "nm" here denotes "newton_method".
+  const auto apply_nm = [&](const auto& f) {
+    const double start_jde = detail::get_start_jde(year);
+    const double end_jde   = detail::get_end_jde(year);
+    return astro::toolbox::newton_method(
+      f, start_jde, end_jde, astro::toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY
+    );
+  };
+
+  std::vector<double> roots;
 
   // If there is a root before Spring Equinox, it means that
   // after modification (for the sake of differentiability of f),
   // the solar longitudes before spring equinox will be negative.
   // And accordingly, we need to subtract 360.0 from the expected_lon.
-  if (has_root_before_spring_equinox(year, expected_lon)) {
-    f_vec.emplace_back(make_f(year, expected_lon - 360.0));
+  if (root_before_equinox) {
+    roots.push_back(apply_nm(detail::make_f(year, expected_lon - 360.0)));
   }
 
   // If there is a root after Spring Equinox, it means that
   // after modification (for the sake of differentiability of f),
   // the solar longitudes after spring equinox will be positive.
   // And accordingly, we have no need to modify the expected_lon.
-  if (has_root_after_spring_equinox(year, expected_lon)) {
-    f_vec.emplace_back(make_f(year, expected_lon));
+  if (root_after_equinox) {
+    roots.push_back(apply_nm(detail::make_f(year, expected_lon)));
   }
 
-  // "nm" here denotes "newton_method".
-  auto apply_nm = [&](const FuncType& f) {
-    const double start_jde = get_start_jde(year);
-    const double end_jde   = get_end_jde(year);
-    return astro::toolbox::newton_method(
-      f, start_jde, end_jde, astro::toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY
-    );
-  };
-
-  using namespace std::ranges;
-  return f_vec | views::transform(apply_nm) | to<std::vector>();
+  return roots;
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)

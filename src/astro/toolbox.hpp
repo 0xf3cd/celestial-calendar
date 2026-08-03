@@ -369,8 +369,8 @@ inline constexpr std::size_t NEWTON_MAX_ITERATIONS = 30;
 // The `_jde` / `_deg_per_day` suffixes carry the contract at the call site.
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename Func>
-requires std::invocable<Func, double>
-     and std::convertible_to<std::invoke_result_t<Func, double>, double>
+requires std::invocable<const Func&, double>
+     and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
 inline auto newton_method(
   const Func& f,
   const double start_jde,
