@@ -105,9 +105,9 @@ TEST(AstroMath, NormalizedPm180) {
 
 TEST(AstroMath, NormalizedDegHalfOpenNearZero) {
   // The wrap `rem + 360.0` rounds up to exactly 360.0 for any `rem` within ulp(360)/2 = 2^-45 of
-  // zero, so the whole of [-2^-45, 0) used to leave the range the doc promises is open (#88).
-  // The last two inputs sit past that threshold and normalize the ordinary way — they are here so
-  // that an over-correction pushing them out of range fails too.
+  // zero, so all of [-2^-45, 0) used to land on the end the range excludes (#88). The last two
+  // inputs sit past that threshold and normalize the ordinary way — they are here so that an
+  // over-correction pushing them out of range fails too.
   for (const double deg : { -1e-16, -1e-15, -1e-14, -2.0e-14, -2.8e-14, -2.9e-14, -1e-13 }) {
     const double x = normalize_deg(deg);
     ASSERT_GE(x, 0.0) << "deg = " << deg;
@@ -320,12 +320,12 @@ TEST(AstroMath, Distance) {
   static_assert(std::is_same_v<DistanceAu, Distance<AU>>);
   static_assert(std::is_same_v<DistanceKm, Distance<KM>>);
   // A bare double must not become a distance, and AU must not quietly become KM — the same rule
-  // `Angle` follows (#48), asserted here because `Distance` had no test of its own at all.
+  // `Angle` follows (#48).
   static_assert(not std::is_convertible_v<double, DistanceAu>);
   static_assert(not std::is_convertible_v<DistanceAu, DistanceKm>);
 
-  // Pinned against the constant rather than against 149597870.691: #86 moves this to the IAU 2012
-  // value and renames it, and a test holding the literal would have to be re-derived, not repointed.
+  // Pinned against the constant, not the literal 149597870.691: a re-value or rename (#86) then
+  // repoints this test instead of forcing its expected values to be re-derived.
   ASSERT_EQ(au_to_km(1.0), au_km_scale);
   ASSERT_EQ(km_to_au(au_km_scale), 1.0);
   ASSERT_EQ(au_to_km(0.0), 0.0);

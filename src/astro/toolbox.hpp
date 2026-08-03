@@ -40,8 +40,8 @@ namespace astro::toolbox {
 
 /**
  * @brief Normalize degree to [0, 360).
- * @throw std::invalid_argument If `deg` is not finite. A non-finite angle has no normal form,
- *        and returning it would let one bad value reach every consumer downstream unremarked (#88).
+ * @throw std::invalid_argument If `deg` is not finite — a non-finite angle has no normal form,
+ *        and returning one would pass it off as already normalized (#88).
  */
 constexpr auto normalize_deg(const double deg) -> double {
   if (not std::isfinite(deg)) [[unlikely]] {
