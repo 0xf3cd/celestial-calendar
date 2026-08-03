@@ -112,8 +112,8 @@ struct AlgoBounds {
 
 /** @brief Calculate the bounds of the lunar algorithm. */
 template <typename Func>
-requires std::invocable<Func, int32_t>
-     and std::convertible_to<std::invoke_result_t<Func, int32_t>, LunarYear>
+requires std::invocable<const Func&, int32_t>
+     and std::convertible_to<std::invoke_result_t<const Func&, int32_t>, LunarYear>
 inline auto calc_bounds(
   const int32_t start_lunar_year,
   const int32_t end_lunar_year,
