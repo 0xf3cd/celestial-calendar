@@ -310,8 +310,7 @@ TEST(LunarAlgo2, GetLunarInfo) {
 
 
 TEST(LunarAlgo2, MetadataSharesCache) {
-  // #78: `AlgoMetadata` must bind the namespace-level cached function, not copy it —
-  // a copied `std::function` forks its own cache replica and recomputes from scratch.
+  // The trait aliases the namespace-level cached function rather than holding its own copy.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::get_info_for_year, &algo2::get_info_for_year);
   // #67: lazy init — reached through a call now.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds(), &algo2::bounds());

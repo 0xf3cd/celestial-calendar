@@ -184,11 +184,7 @@ namespace detail {
  *       want `geocentric_coord::apparent(jde).λ`, which keeps the unit in the type (#125).
  */
 inline auto solar_longitude(const double jde) -> double {
-  // Calculate the apparent geocentric longitude of the Sun.
-  const auto coord = astro::sun::geocentric_coord::apparent(jde);
-
-  // Return in degrees.
-  return coord.λ.deg();
+  return astro::sun::geocentric_coord::apparent(jde).λ.deg();
 }
 
 /** @brief Return the JDE of the start of the year. */

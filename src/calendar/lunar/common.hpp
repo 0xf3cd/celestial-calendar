@@ -110,11 +110,7 @@ struct AlgoBounds {
 };
 
 
-/**
- * @brief Calculate the bounds of the lunar algorithm.
- * @note Takes the callable by `const&` and never copies it — a caller may hand over a
- *       cache-carrying closure, and a copy would fork the cache and recompute (#78).
- */
+/** @brief Calculate the bounds of the lunar algorithm. */
 template <typename Func>
 requires std::invocable<Func, int32_t>
      and std::convertible_to<std::invoke_result_t<Func, int32_t>, LunarYear>
