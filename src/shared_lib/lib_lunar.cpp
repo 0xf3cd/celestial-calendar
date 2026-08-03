@@ -92,7 +92,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
 
   } catch (const std::exception& e) {
     // #67: `e.what()` is a message, not a format string — pass it as an argument.
-    lib::info("Exception raised during execution of get_lunar_year_info_algo1, year = {}", year);
+    lib::info("Exception raised during execution of get_lunar_year_info, algo = {}, year = {}", algo, year);
     lib::info("{}", e.what());
     return {};
   } catch (...) {
