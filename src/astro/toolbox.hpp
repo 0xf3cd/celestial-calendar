@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cmath>
+#include <format>
 #include <limits>
 #include <cstddef>
 #include <numbers>
@@ -37,19 +38,50 @@ namespace astro::toolbox {
 
 #pragma region Angle Stuff
 
-/** @brief Normalize degree to [0, 360). */
+/**
+ * @brief Normalize degree to [0, 360).
+ * @throw std::invalid_argument If `deg` is not finite. A non-finite angle has no normal form,
+ *        and returning it would let one bad value reach every consumer downstream unremarked (#88).
+ */
 constexpr auto normalize_deg(const double deg) -> double {
-  const double _deg = std::remainder(deg, 360.0);
-  return _deg < 0.0 ? _deg + 360.0 : _deg; 
+  if (not std::isfinite(deg)) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Argument `deg` is not finite, whose value is {}", deg)
+    };
+  }
+
+  const double rem     = std::remainder(deg, 360.0);
+  const double wrapped = rem < 0.0 ? rem + 360.0 : rem;
+
+  // Two values escape [0, 360) without this line: `rem + 360.0` rounds up to exactly 360.0 once
+  // `rem` is within ulp(360)/2 of zero, and -0.0 skips the wrap altogether (`-0.0 < 0.0` is false).
+  return (wrapped >= 360.0 or wrapped == 0.0) ? 0.0 : wrapped;
 }
 
-/** @brief Normalize radian to [0, 2π). */
+/**
+ * @brief Normalize radian to [0, 2π).
+ * @throw std::invalid_argument If `rad` is not finite.
+ * @note Twin of `normalize_deg` — same three edges, same order; the reasoning is written out there.
+ */
 constexpr auto normalize_rad(const double rad) -> double {
-  const double _rad = std::remainder(rad, 2.0 * std::numbers::pi);
-  return _rad < 0.0 ? _rad + 2.0 * std::numbers::pi : _rad;
+  if (not std::isfinite(rad)) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Argument `rad` is not finite, whose value is {}", rad)
+    };
+  }
+
+  constexpr double two_pi = 2.0 * std::numbers::pi;
+
+  const double rem     = std::remainder(rad, two_pi);
+  const double wrapped = rem < 0.0 ? rem + two_pi : rem;
+
+  return (wrapped >= two_pi or wrapped == 0.0) ? 0.0 : wrapped;
 }
 
-/** @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning. */
+/**
+ * @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning.
+ * @throw std::invalid_argument If `deg` is not finite — inherited from `normalize_deg`.
+ */
 constexpr auto normalize_pm180(const double deg) -> double {
   const double _deg = normalize_deg(deg);
   return _deg >= 180.0 ? _deg - 360.0 : _deg;
@@ -188,6 +220,7 @@ struct Angle {
   /**
    * @brief Normalize the angle to [0, 360) / [0, 2π), depending on the angle's unit.
    * @return The normalized angle. The returned angle is of the same unit as the original angle.
+   * @throw std::invalid_argument If the angle is not finite — inherited from `normalize_deg` / `normalize_rad`.
    */
   [[nodiscard]] constexpr auto normalize() const -> Angle<Unit> {
     if constexpr (Unit == AngleUnit::DEG) {

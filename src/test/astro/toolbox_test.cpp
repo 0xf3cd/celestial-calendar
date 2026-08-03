@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <limits>
+#include <numbers>
 #include <stdexcept>
 #include <type_traits>
 #include "toolbox.hpp"
@@ -99,6 +100,83 @@ TEST(AstroMath, NormalizedPm180) {
     ASSERT_LT(x, 180.0);
     // Result is congruent to the input modulo 360.
     ASSERT_FLOAT_EQ(normalize_deg(x), normalize_deg(random_deg));
+  }
+}
+
+TEST(AstroMath, NormalizedDegHalfOpenNearZero) {
+  // The wrap `rem + 360.0` rounds up to exactly 360.0 for any `rem` within ulp(360)/2 = 2^-45 of
+  // zero, so the whole of [-2^-45, 0) used to leave the range the doc promises is open (#88).
+  // The last two inputs sit past that threshold and normalize the ordinary way — they are here so
+  // that an over-correction pushing them out of range fails too.
+  for (const double deg : { -1e-16, -1e-15, -1e-14, -2.0e-14, -2.8e-14, -2.9e-14, -1e-13 }) {
+    const double x = normalize_deg(deg);
+    ASSERT_GE(x, 0.0) << "deg = " << deg;
+    ASSERT_LT(x, 360.0) << "deg = " << deg;
+  }
+}
+
+TEST(AstroMath, NormalizedRad) {
+  constexpr double TWO_PI = 2.0 * std::numbers::pi;
+
+  {
+    const auto x = normalize_rad(0.0);
+    ASSERT_EQ(x, 0.0);
+  }
+  {
+    const auto x = normalize_rad(std::numbers::pi);
+    ASSERT_FLOAT_EQ(x, std::numbers::pi);
+  }
+  {
+    const auto x = normalize_rad(TWO_PI + 1.0);
+    ASSERT_FLOAT_EQ(x, 1.0);
+  }
+  {
+    const auto x = normalize_rad(-1.0);
+    ASSERT_FLOAT_EQ(x, TWO_PI - 1.0);
+  }
+
+  // Same edge as `NormalizedDegHalfOpenNearZero`, one unit down: ulp(2π)/2 = 2^-51.
+  for (const double rad : { -1e-18, -1e-17, -1e-16, -4.0e-16, -5.0e-16, -1e-15 }) {
+    const double x = normalize_rad(rad);
+    ASSERT_GE(x, 0.0) << "rad = " << rad;
+    ASSERT_LT(x, TWO_PI) << "rad = " << rad;
+  }
+
+  for (auto i = 0; i < 1000; ++i) {
+    const double x = normalize_rad(util::random(-2.0 * TWO_PI, 2.0 * TWO_PI));
+    ASSERT_GE(x, 0.0);
+    ASSERT_LT(x, TWO_PI);
+  }
+}
+
+TEST(AstroMath, NormalizedWholeTurnsGivePositiveZero) {
+  // `rem < 0.0` is false for -0.0, so whole turns used to skip the wrap and keep their sign bit.
+  // `ASSERT_EQ(x, 0.0)` alone cannot see this — -0.0 compares equal to 0.0 (#88).
+  for (const double deg : { -0.0, -360.0, -720.0, -1080.0 }) {
+    const double x = normalize_deg(deg);
+    ASSERT_EQ(x, 0.0) << "deg = " << deg;
+    ASSERT_FALSE(std::signbit(x)) << "deg = " << deg;
+  }
+
+  constexpr double TWO_PI = 2.0 * std::numbers::pi;
+
+  for (const double rad : { -0.0, -TWO_PI, -2.0 * TWO_PI }) {
+    const double x = normalize_rad(rad);
+    ASSERT_EQ(x, 0.0) << "rad = " << rad;
+    ASSERT_FALSE(std::signbit(x)) << "rad = " << rad;
+  }
+}
+
+TEST(AstroMath, NormalizeRejectsNonFinite) {
+  constexpr double INF_D = std::numeric_limits<double>::infinity();
+  constexpr double NAN_D = std::numeric_limits<double>::quiet_NaN();
+
+  for (const double bad : { INF_D, -INF_D, NAN_D }) {
+    ASSERT_THROW((void) normalize_deg(bad), std::invalid_argument);
+    ASSERT_THROW((void) normalize_rad(bad), std::invalid_argument);
+    ASSERT_THROW((void) normalize_pm180(bad), std::invalid_argument);
+    ASSERT_THROW((void) Angle<AngleUnit::DEG> { bad }.normalize(), std::invalid_argument);
+    ASSERT_THROW((void) Angle<AngleUnit::RAD> { bad }.normalize(), std::invalid_argument);
   }
 }
 
