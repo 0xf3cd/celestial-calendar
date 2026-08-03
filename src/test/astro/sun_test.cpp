@@ -970,7 +970,7 @@ TEST(Sun, SolarLongitude) {
     const auto tt_dt = astro::delta_t::ut1_to_tt(dt);
 
     const auto jde = astro::julian_day::tt_to_jde(tt_dt);
-    const auto lon = solar_longitude(jde);
+    const auto lon = geocentric_coord::apparent(jde).λ.deg();
 
     const auto lon_diff = std::fabs(std::fmod(lon - expected_lon, 360.0));
     ASSERT_TRUE((lon_diff < epsilon) or (lon_diff > 360.0 - epsilon));
@@ -995,7 +995,7 @@ TEST(Sun, FindRoots) {
     const double jde = astro::julian_day::J2000 + util::random(-300 * 365.25, 33 * 365.25);
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
-    const auto expected_lon = solar_longitude(jde);
+    const auto expected_lon = math::detail::solar_longitude(jde);
     const auto [y, _ignored1, _ignored2] = util::from_ymd(ut1_dt.ymd);
 
     const auto roots = find_roots(y, expected_lon);
@@ -1008,7 +1008,7 @@ TEST(Sun, FindRoots) {
     }
 
     for (const auto root : roots) {
-      const auto calculated_lon = solar_longitude(root);
+      const auto calculated_lon = math::detail::solar_longitude(root);
       ASSERT_NEAR(calculated_lon, expected_lon, 1e-8);
     }
   }
@@ -1032,13 +1032,13 @@ TEST(Sun, FindRootsAcrossTheUlpStep) {
       const double expected_lon = 15.0 * idx;
 
       for (const auto root : find_roots(year, expected_lon)) {
-        ASSERT_GE(root, get_start_jde(year));
-        ASSERT_LT(root, get_end_jde(year));
+        ASSERT_GE(root, math::detail::get_start_jde(year));
+        ASSERT_LT(root, math::detail::get_end_jde(year));
 
         // Past the step one ulp of JDE carries the Sun 9.1e-10 deg, so the residual floor doubles
         // along with it. The measured worst case over the whole of 6772-9999 is 1.6e-9 deg
         // (0.14 ms of solar motion); 1e-8 leaves that a factor of six of headroom.
-        const auto lon_diff = std::fabs(std::fmod(solar_longitude(root) - expected_lon, 360.0));
+        const auto lon_diff = std::fabs(std::fmod(math::detail::solar_longitude(root) - expected_lon, 360.0));
         ASSERT_TRUE((lon_diff < 1e-8) or (lon_diff > 360.0 - 1e-8));
       }
     }

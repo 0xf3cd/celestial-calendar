@@ -83,7 +83,7 @@ TEST(JieQi, JDE) {
 
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
 
-      const auto jde_lon = solar_longitude(jde);
+      const auto jde_lon = detail::solar_longitude(jde);
       const auto expected_lon = JIEQI_SOLAR_LONGITUDE.at(jq);
 
       const auto lon_diff = std::fabs(std::fmod(jde_lon - expected_lon, 360.0));
