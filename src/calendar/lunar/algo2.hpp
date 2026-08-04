@@ -95,11 +95,12 @@ struct LunarMonth {
 /**
  * @brief A generator that generates some metadata of lunar months, including Jieqi and length of the month.
  * @note Generated lunar and jieqi information starts after the given JDE.
- * @details New moons and jieqi are read one ahead and pushed back when they turn out to belong to the
- *          next month. That push-back is an artifact of hand-rolling the generator: a coroutine would
- *          keep the read-ahead value in a local across the suspension instead (#99). What a coroutine
- *          would not give us is `peek` -- `std::generator` yields a single-pass input range, so the
- *          one-slot buffer below outlives that migration.
+ * @details New moons and jieqi are read one ahead: this month's end is next month's start, and jieqi
+ *          are read until one falls past it. Both are pushed back because the upstream generators only
+ *          hand out values by advancing -- there is no way to look without taking. #99 pilots
+ *          `std::generator` for those two; an input iterator reads `*it` without advancing, so that
+ *          migration would retire both put-backs here. `_next_month` is a separate thing: it backs
+ *          `peek`, and only `next` empties it.
  */
 struct LunarMonthGenerator {
 private:
@@ -195,7 +196,7 @@ public:
   {}
 
   /** @brief Get the metadata of the next lunar month. */
-  auto next() -> LunarMonth {
+  [[nodiscard]] auto next() -> LunarMonth {
     return next_month();
   }
 

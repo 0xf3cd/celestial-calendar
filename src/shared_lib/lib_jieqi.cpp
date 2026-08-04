@@ -41,7 +41,7 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
   using namespace calendar::jieqi;
 
   try {
-    const auto jq = static_cast<Jieqi>(jq_idx);
+    const auto jq = from_index(jq_idx);
 
     const calendar::Datetime ut1_dt = jieqi_ut1_moment(year, jq);
 

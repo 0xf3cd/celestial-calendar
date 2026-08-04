@@ -413,7 +413,7 @@ TEST(Util, MakeCachedThreadSafe) {
 
 
 // Seed-override contract: only a fully-consumed non-negative decimal numeral is honored.
-// A leading sign or space, trailing junk, and overflow all fall back to the default.
+// These pass on the pre-#81 `strtoull` implementation too -- a no-regression pin, not a fix.
 TEST(Random, ParseSeedAcceptsPlainNumerals) {
   using util::detail::parse_seed;
   ASSERT_EQ(parse_seed("0"), 0U);

@@ -94,7 +94,8 @@ inline constexpr double J2000 = 2451545.0;
   // `C` below is the part that looks wrong and is not: for any year past ~200 the true value of
   // `2 - A + B` is negative, so the `uint32_t` holds its mod-2^32 image. That image is only ever
   // consumed by `C + D + E + F`, which is evaluated in the same modular arithmetic and lands back
-  // on the exact value. The final sum peaks around 5.4e6, nowhere near 2^32.
+  // on the exact value -- checked exhaustively over years 1..9999 x 12 months. The final sum
+  // peaks around 5.4e6, nowhere near 2^32.
   //
   // Do not "fix" `C` into a signed type on its own: that breaks the cancellation.
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;

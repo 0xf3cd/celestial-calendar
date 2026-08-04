@@ -25,6 +25,7 @@
 #include <cmath>
 #include <limits>
 #include <numbers>
+#include <numeric>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>

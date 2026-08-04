@@ -119,7 +119,7 @@ inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(uint8_t { 0 }
 
 /**
  * @brief Name of each Jieqi, positioned by `to_index`.
- * @note Read it through `name_of`, not directly -- a bare index is the wrong key here. See `name_of`.
+ * @note Read it through `name_of` -- a bare index cannot say which space it came from. See `name_of`.
  */
 inline constexpr std::array<std::string_view, JIEQI_COUNT> JIEQI_NAME {{
   "立春", "雨水", "惊蛰",
@@ -170,11 +170,11 @@ static_assert("夏至" == JIEQI_NAME.at(to_index(Jieqi::夏至)));
 static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 
-// Both tables are read through these two, never by bare subscript. Two different index spaces
-// live in this codebase -- `to_index` counts from 立春, while the HKO almanac and
-// `GREGORIAN_YEAR_JIEQI_LIST` count from 小寒 -- and a subscript cannot tell them apart, so
-// indexing the wrong one yields a plausible wrong answer in silence. Taking a `Jieqi` makes
-// that a compile error again.
+// Consumers read both tables through these two; the order-pinning asserts above are the one
+// exception, and they have to read by position. Two different index spaces live in this codebase
+// -- `to_index` counts from 立春, while the HKO almanac and `GREGORIAN_YEAR_JIEQI_LIST` count from
+// 小寒 -- and a subscript cannot tell them apart, so indexing the wrong one yields a plausible
+// wrong answer in silence. Taking a `Jieqi` makes that a compile error again.
 //
 // `.at()` stays on the read path: it throws `std::out_of_range` for a `Jieqi` outside `[0, 24)`,
 // which the enum's fixed underlying type makes reachable from outside the library
@@ -281,7 +281,7 @@ public:
     [[nodiscard]] auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
-  auto next() -> JieqiPair {
+  [[nodiscard]] auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);
     const auto jde = jieqi_jde(_year, jq);
 
