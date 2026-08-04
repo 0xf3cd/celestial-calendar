@@ -265,26 +265,24 @@ struct Datetime {
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).
    */
   [[nodiscard]] constexpr auto fraction() const noexcept -> double {
-    const nanoseconds&& elapsed = time_of_day.to_duration();
+    const auto elapsed = time_of_day.to_duration();
     return to_fraction(elapsed);
   }
 
   // Define some operators as well in order to use `Datetime` in some STL containers.
 
-  auto operator==(const Datetime& other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator==(const Datetime& other) const noexcept -> bool {
     return ymd == other.ymd and time_of_day.to_duration() == other.time_of_day.to_duration();
   }
 
-  auto operator!=(const Datetime& other) const noexcept -> bool {
-    return not (*this == other);
-  }
+  // `operator!=` is not spelled out: C++20 rewrites `a != b` as `!(a == b)`.
 
-  auto operator<=>(const Datetime& other) const noexcept {
+  [[nodiscard]] constexpr auto operator<=>(const Datetime& other) const noexcept {
     if (auto cmp = ymd <=> other.ymd; cmp != 0) {
       return cmp;
     }
     return time_of_day.to_duration() <=> other.time_of_day.to_duration();
-  };
+  }
 };
 
 
