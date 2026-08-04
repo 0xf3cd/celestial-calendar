@@ -23,8 +23,7 @@
 
 // The lunar calendar finds twelve or thirteen new moons per year by Newton iteration, and every step
 // of that evaluates the Moon's apparent position -- which is most of what this binary times.
-// `evaluate` is
-// reported next to the full chain so a change to one can be read against the other.
+// `evaluate` is reported next to the full chain so a change to one can be read against the other.
 
 #include <vector>
 #include <cstddef>

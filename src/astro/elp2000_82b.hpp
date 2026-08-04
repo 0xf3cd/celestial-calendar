@@ -275,6 +275,8 @@ struct Evaluation {
 };
 
 
+namespace detail {
+
 /**
  * @struct One row's contribution to Σl and Σr.
  * @details Both sums walk `coeff::LR` and share every step but the last, so one pass yields both.
@@ -288,6 +290,8 @@ struct Term {
     return { lon + other.lon, rad + other.rad };
   }
 };
+
+} // namespace detail
 
 
 /**
@@ -325,11 +329,11 @@ struct Term {
   // Deliberately not a hand-written loop. Writing the fold out by hand would pin the summation
   // order, and pinning it is a numerical change in its own right -- one that belongs with #131,
   // where such changes get cross-platform evidence. Leaving it to `std::reduce` changes nothing
-  // that was not already the library's choice; `Term::operator+` adds componentwise, so each sum
-  // sees whatever grouping the implementation would have given it on its own.
-  // None of which makes Σl and Σr identical across standard libraries -- they are not; #131 tracks
-  // pinning the order.
-  const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> Term {
+  // that was not already the library's choice; `detail::Term::operator+` adds componentwise, so each
+  // sum sees whatever grouping the implementation would have given it on its own.
+  // None of which guarantees Σl and Σr are identical across standard libraries -- nothing here does,
+  // and Σl measurably is not on libc++. #131 tracks pinning the order.
+  const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> detail::Term {
     const auto θ_rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);
     return {
@@ -342,7 +346,7 @@ struct Term {
     return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });
 
-  const auto [Σl, Σr] = std::reduce(cbegin(lr_terms), cend(lr_terms), Term {});
+  const auto [Σl, Σr] = std::reduce(cbegin(lr_terms), cend(lr_terms), detail::Term {});
 
   return {
     .Σl  = Σl,
