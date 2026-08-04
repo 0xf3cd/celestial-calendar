@@ -213,7 +213,6 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
   if (roots.size() != 1) {
-    // `make_format_args` binds lvalue references, so the name needs a home of its own.
     const auto name = name_of(jq);
     throw std::runtime_error {
       std::vformat("Unexpected roots size for year {}, jieqi {}",
