@@ -66,7 +66,8 @@ struct Case {
   std::string_view name;
 
   // Taking the iteration count means the callable is invoked once per round rather than once per
-  // iteration, so the indirection costs nothing that the measurement can see.
+  // iteration, so one indirect call is amortized over `Plan::iterations`. That is what makes it
+  // invisible -- not the indirection being free.
   std::function<void(std::size_t)> body;
 };
 
@@ -83,7 +84,8 @@ struct Plan {
 
 namespace detail {
 
-/** @brief The `q`-quantile of already-sorted `samples`, nearest-rank. */
+/** @brief The `q`-quantile of already-sorted `samples`: nearest index, never interpolated, so
+ *         every figure in the report is a sample that was actually observed. */
 [[nodiscard]] inline auto quantile(const std::span<const double> samples, const double q) -> double {
   if (samples.empty()) {
     return 0.0;

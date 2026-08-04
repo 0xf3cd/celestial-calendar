@@ -27,6 +27,7 @@
 #include <cmath>
 #include <ranges>
 #include <cstddef>
+#include <cstdlib> // The integral `std::abs` overloads live here, not in <cmath>.
 #include <numeric>
 #include <cstdint>
 #include <algorithm>
