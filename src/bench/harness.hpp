@@ -27,7 +27,6 @@
 #include <cmath>
 #include <chrono>
 #include <format>
-#include <string>
 #include <vector>
 #include <cstddef>
 #include <ostream>
@@ -37,8 +36,7 @@
 
 /*
  * A benchmark is only as good as its ability to be re-run and land on the same number. Two ways of
- * getting that wrong were measured on this project before this file existed (#81), and both are
- * designed out here rather than left to whoever writes the next benchmark:
+ * losing that are designed out here rather than left to whoever writes the next benchmark:
  *
  *   - Measuring case A's rounds to completion and only then starting case B. On a machine ramping
  *     its clocks, A pays for the ramp and B does not, and the ratio between them is off by tens of
@@ -73,7 +71,8 @@ struct Case {
 };
 
 
-/** @brief How to run a benchmark. Bundled into one struct so no two same-typed arguments sit adjacent. */
+/** @brief How to run a benchmark: one struct rather than six parameters, so every knob is named
+ *         at the call site. */
 struct Plan {
   std::string_view title;
   std::size_t iterations = 1;    // Iterations per round, per case.
@@ -84,19 +83,19 @@ struct Plan {
 
 namespace detail {
 
-/** @brief The `q`-quantile of `samples`, nearest-rank. `samples` is sorted in place. */
-[[nodiscard]] inline auto quantile(std::vector<double>& samples, const double q) -> double {
+/** @brief The `q`-quantile of already-sorted `samples`, nearest-rank. */
+[[nodiscard]] inline auto quantile(const std::span<const double> samples, const double q) -> double {
   if (samples.empty()) {
     return 0.0;
   }
-  std::ranges::sort(samples);
   const auto last = static_cast<double>(samples.size() - 1);
   const auto index = static_cast<std::size_t>(std::lround(q * last));
-  return samples.at(index);
+  return samples[index]; // `std::span::at` is C++26; `index <= size() - 1` by construction above.
 }
 
 
 [[nodiscard]] inline auto summarize(std::vector<double> samples) -> Stats {
+  std::ranges::sort(samples);
   return {
     .median = quantile(samples, 0.5),
     .min    = quantile(samples, 0.0),
@@ -122,8 +121,7 @@ namespace detail {
  * @param plan How long to warm up and how much to measure.
  * @param cases What to measure. The first case is the baseline the ratios are taken against.
  * @param out Where the report goes.
- * @details Rounds interleave the cases and rotate which one starts, so drift lands on all of them
- *          alike; see the note at the top of this header for why that matters.
+ * @details See the note at the top of this header for what the rounds do about measurement bias.
  */
 inline void run(const Plan& plan, const std::span<const Case> cases, std::ostream& out) {
   if (cases.empty()) {

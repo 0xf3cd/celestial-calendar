@@ -310,8 +310,10 @@ struct Term {
     };
   };
 
-  // 180 `pow` calls across the three sums, three distinct values. (Bounded as a range rather than
-  // through `std::abs`, which is not constexpr on every toolchain.)
+  // |M| is 0, 1 or 2 and `E` is fixed per evaluation, so three entries serve both tables. Built
+  // with `std::pow` and not `{ 1.0, E, E * E }`: a real `pow(E, 2)` is not always `E * E`, so
+  // hand-expanding this would be a numerical change wearing the clothes of a cleanup.
+  // (Bounded as a range rather than through `std::abs`, which is not constexpr on every toolchain.)
   static_assert(std::ranges::all_of(coeff::LR, [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
   static_assert(std::ranges::all_of(coeff::B,  [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
   const std::array<double, 3> E_pow { std::pow(ctx.E, 0), std::pow(ctx.E, 1), std::pow(ctx.E, 2) };
@@ -325,21 +327,17 @@ struct Term {
   // where such changes get cross-platform evidence. Leaving it to `std::reduce` changes nothing
   // that was not already the library's choice; `Term::operator+` adds componentwise, so each sum
   // sees whatever grouping the implementation would have given it on its own.
-  //
-  // That is not the same as "the numbers cannot move". They did: on Apple clang / libc++ this
-  // rewrite shifts 12 of 4096 sampled Σl values by up to 2 ULP, measured on CI (#81). Three other
-  // legs saw nothing. It reaches `apparent` once in 20000 and stops there -- the almanac goldens
-  // compare integer dates and pass everywhere.
+  // None of which makes Σl and Σr identical across standard libraries -- they are not; #131 tracks
+  // pinning the order.
   const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> Term {
-    const auto rad = θ_of(coeff).rad();
+    const auto θ_rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);
     return {
-      .lon = coeff.argL * std::sin(rad) * M_correction,
-      .rad = coeff.argR * std::cos(rad) * M_correction,
+      .lon = coeff.argL * std::sin(θ_rad) * M_correction,
+      .rad = coeff.argR * std::cos(θ_rad) * M_correction,
     };
   });
 
-  // Calculate the latitude periodic terms.
   const auto lat_terms = coeff::B | views::transform([&](const coeff::BCoefficients& coeff) {
     return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });

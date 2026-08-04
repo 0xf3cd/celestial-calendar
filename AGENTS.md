@@ -168,7 +168,8 @@ Header-only is a **deliberate design choice** — the no-link, orthogonal, self-
 is intentional. Keep it. That buys a discipline:
 
 - All logic in `src/**/*.hpp` with `#pragma once`; every function `inline`, shared constants
-  `inline constexpr`. `.cpp` exists only in `shared_lib/` for the C-ABI exports. New logic → a header.
+  `inline constexpr`. `.cpp` exists only in `shared_lib/` (C-ABI exports), `test/` and `bench/` (entry points).
+  New logic → a header.
   `inline` on namespace-scope constants is not cosmetic: plain `constexpr` has internal linkage,
   so an external-linkage inline entity that odr-uses it (binds a reference, takes a span,
   subscripts an array, range-for's over it) is IFNDR (#71).
@@ -278,7 +279,7 @@ project — keep the header.
 ```
 src/
   astro/        Astronomical algorithms (VSOP87D, ELP2000-82B, Sun, Moon, ΔT, Julian Day, ...)
-  bench/        Benchmarks, built only by `--bench` (see below)
+  bench/        Benchmarks, built only by `--bench` (see “Build, Test, and Lint”)
   calendar/     Calendar logic: datetime, lunar conversion algorithms, Jieqi
   shared_lib/   C++ shared-library wrapper over core algorithms
   test/         GoogleTest-based tests (auto-discovered by CMake)

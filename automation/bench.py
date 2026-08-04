@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# type: ignore
-#
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar project.
 #
@@ -22,8 +19,7 @@ from .utils import run_cmd, ProcReturn, green_print, red_print, blue_print, yell
 
 BUILD_DIR = paths.build_dir()
 
-# Benchmarks are `EXCLUDE_FROM_ALL`, so `--build` never compiles them and the CI legs never pay for
-# them. That also means they have to be asked for by name before they can be run.
+# Benchmarks are `EXCLUDE_FROM_ALL`, so they have to be asked for by name before they can be run.
 BENCH_TARGET = "benchmarks"
 BENCH_OUTPUT_DIR = BUILD_DIR / "bench"
 
@@ -67,10 +63,8 @@ def find_benchmarks() -> List[Path]:
 def run_benchmarks() -> int:
   """Run every benchmark binary and pass their reports through.
 
-  Only the paired ratios inside one run are comparable. The absolute nanoseconds are not -- not
-  across runs, and not across machines: the same binary on this machine has reported 4830 ns and
-  4110 ns for the same work depending on how warm it started (#81). Each report says how it was
-  measured.
+  Only the paired ratios inside one run are comparable; the absolute nanoseconds are not, not
+  across runs and not across machines. Each report says how it was measured.
   """
   print("#" * 60)
 

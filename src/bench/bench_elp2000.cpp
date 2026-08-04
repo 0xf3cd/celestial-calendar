@@ -21,8 +21,9 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// The lunar calendar finds thirteen new moons per year by Newton iteration, and every step of that
-// evaluates the Moon's apparent position -- which is most of what this binary times. `evaluate` is
+// The lunar calendar finds twelve or thirteen new moons per year by Newton iteration, and every step
+// of that evaluates the Moon's apparent position -- which is most of what this binary times.
+// `evaluate` is
 // reported next to the full chain so a change to one can be read against the other.
 
 #include <vector>
@@ -31,6 +32,7 @@
 
 #include "moon.hpp"
 #include "harness.hpp"
+#include "julian_day.hpp"
 #include "elp2000_82b.hpp"
 
 namespace {
@@ -45,12 +47,6 @@ namespace {
   }
   return jcs;
 }
-
-/** @brief J2000.0, in Julian Ephemeris Days. */
-constexpr double J2000_JDE = 2451545.0;
-
-/** @brief Days per Julian century. */
-constexpr double DAYS_PER_CENTURY = 36525.0;
 
 } // namespace
 
@@ -75,7 +71,7 @@ auto main() -> int {
       .name = "moon::geocentric_coord::apparent",
       .body = [&](const std::size_t iterations) {
         for (std::size_t i = 0; i < iterations; ++i) {
-          const auto jde = J2000_JDE + (jcs.at(i % jcs.size()) * DAYS_PER_CENTURY);
+          const auto jde = astro::julian_day::jc_to_jde(jcs.at(i % jcs.size()));
           sink = sink + astro::moon::geocentric_coord::apparent(jde).λ.deg();
         }
       },

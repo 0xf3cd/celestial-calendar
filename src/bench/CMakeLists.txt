@@ -25,7 +25,7 @@ add_custom_target(benchmarks)
 
 # `CONFIGURE_DEPENDS` so that dropping in a new `bench_*.cpp` is genuinely all it takes. Without it
 # the glob is only evaluated at configure time, and `--bench` -- which builds and runs but does not
-# configure -- would report "All N benchmark(s) completed" while silently leaving the new file out.
+# configure -- would silently leave the new file out while the runner still reported success.
 file(GLOB_RECURSE BENCH_PATHS CONFIGURE_DEPENDS "bench_*.cpp")
 
 foreach(bench_path IN LISTS BENCH_PATHS)
