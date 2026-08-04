@@ -26,8 +26,10 @@
 #include <array>
 #include <cmath>
 #include <ranges>
+#include <cstddef>
 #include <numeric>
 #include <cstdint>
+#include <algorithm>
 
 #include "toolbox.hpp"
 
@@ -274,6 +276,21 @@ struct Evaluation {
 
 
 /**
+ * @struct One row's contribution to Σl and Σr.
+ * @details Both sums walk `coeff::LR` and share every step but the last, so one pass yields both.
+ *          Adding componentwise is what lets a single `std::reduce` carry the pair.
+ */
+struct Term {
+  double lon = 0.0; // Unit is 0.000001 degrees
+  double rad = 0.0; // Unit is 0.001 kilometers
+
+  [[nodiscard]] constexpr auto operator+(const Term& other) const -> Term {
+    return { lon + other.lon, rad + other.rad };
+  }
+};
+
+
+/**
  * @brief Evaluate ELP2000-82B on the given parameters.
  * @param jc The julian century.
  * @return The evaluated result.
@@ -284,49 +301,52 @@ struct Evaluation {
 
   const auto ctx = create_context(jc);
 
-  // Calculate the longitude periodic terms.
-  const auto lon_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) {
-    const toolbox::AngleDeg θ {
+  // Every row scales by `E` raised to `|M|`, and both tables only ever use |M| = 0, 1 or 2 -- so the
+  // 180 `pow` calls across the three sums take three distinct values. Build them with `std::pow` and
+  // not `E * E`: the table entry is then literally what the per-row call used to compute.
+  // (`std::abs` is not usable in a constant expression on every toolchain -- compare the range.)
+  static_assert(std::ranges::all_of(coeff::LR, [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
+  static_assert(std::ranges::all_of(coeff::B,  [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
+  const std::array<double, 3> E_pow { std::pow(ctx.E, 0), std::pow(ctx.E, 1), std::pow(ctx.E, 2) };
+
+  const auto θ_of = [&ctx](const auto& coeff) -> toolbox::AngleDeg {
+    return toolbox::AngleDeg {
       coeff.D  * ctx.D.deg()  +
       coeff.M  * ctx.M.deg()  +
       coeff.Mp * ctx.Mp.deg() +
       coeff.F  * ctx.F.deg()
     };
+  };
 
-    const auto M_correction = std::pow(ctx.E, std::abs(coeff.M));
-    return coeff.argL * std::sin(θ.rad()) * M_correction;
-  });
+  const auto correction_of = [&E_pow](const auto& coeff) -> double {
+    return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
+  };
 
-  // Calculate the distance/radius periodic terms.
-  const auto rad_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) {
-    const toolbox::AngleDeg θ {
-      coeff.D  * ctx.D.deg()  +
-      coeff.M  * ctx.M.deg()  +
-      coeff.Mp * ctx.Mp.deg() +
-      coeff.F  * ctx.F.deg()
+  // Longitude and distance share the LR table, and shared θ is the whole point of fusing them: the
+  // two `views::transform` this replaced were lazy, so each `reduce` re-evaluated θ and the `pow`
+  // from scratch. Summing a `Term` keeps `std::reduce` in charge of the order, which is how Σl and
+  // Σr stay bit-identical to the two separate sums on every standard library, whatever grouping it
+  // picks -- `Term::operator+` follows it componentwise.
+  const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> Term {
+    const auto rad = θ_of(coeff).rad();
+    const auto M_correction = correction_of(coeff);
+    return {
+      .lon = coeff.argL * std::sin(rad) * M_correction,
+      .rad = coeff.argR * std::cos(rad) * M_correction,
     };
-
-    const auto M_correction = std::pow(ctx.E, std::abs(coeff.M));
-    return coeff.argR * std::cos(θ.rad()) * M_correction;
   });
 
   // Calculate the latitude periodic terms.
   const auto lat_terms = coeff::B | views::transform([&](const coeff::BCoefficients& coeff) {
-    const toolbox::AngleDeg θ {
-      coeff.D  * ctx.D.deg()  +
-      coeff.M  * ctx.M.deg()  +
-      coeff.Mp * ctx.Mp.deg() +
-      coeff.F  * ctx.F.deg()
-    };
-
-    const auto M_correction = std::pow(ctx.E, std::abs(coeff.M));
-    return coeff.argB * std::sin(θ.rad()) * M_correction;
+    return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });
 
+  const auto [Σl, Σr] = std::reduce(cbegin(lr_terms), cend(lr_terms), Term {});
+
   return {
-    .Σl  = std::reduce(cbegin(lon_terms), cend(lon_terms)),
+    .Σl  = Σl,
     .Σb  = std::reduce(cbegin(lat_terms), cend(lat_terms)),
-    .Σr  = std::reduce(cbegin(rad_terms), cend(rad_terms)),
+    .Σr  = Σr,
     .ctx = ctx
   };
 }
