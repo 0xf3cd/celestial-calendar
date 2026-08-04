@@ -118,21 +118,26 @@ TEST(AstroMath, NormalizedDegHalfOpenNearZero) {
 TEST(AstroMath, NormalizedRad) {
   constexpr double TWO_PI = 2.0 * std::numbers::pi;
 
+  // `ASSERT_DOUBLE_EQ` here and in `Distance`, where the older tests in this file use
+  // `ASSERT_FLOAT_EQ`: these results land within ~1 ulp of double, and a float-scale tolerance
+  // would wave through an error nine orders of magnitude larger. The neighbours keep the looser
+  // one for a reason — the deg↔rad round trips they assert drift past 4 ulp and fail under this.
+
   {
     const auto x = normalize_rad(0.0);
     ASSERT_EQ(x, 0.0);
   }
   {
     const auto x = normalize_rad(std::numbers::pi);
-    ASSERT_FLOAT_EQ(x, std::numbers::pi);
+    ASSERT_DOUBLE_EQ(x, std::numbers::pi);
   }
   {
     const auto x = normalize_rad(TWO_PI + 1.0);
-    ASSERT_FLOAT_EQ(x, 1.0);
+    ASSERT_DOUBLE_EQ(x, 1.0);
   }
   {
     const auto x = normalize_rad(-1.0);
-    ASSERT_FLOAT_EQ(x, TWO_PI - 1.0);
+    ASSERT_DOUBLE_EQ(x, TWO_PI - 1.0);
   }
 
   // Same edge as `NormalizedDegHalfOpenNearZero`, one unit down: ulp(2π)/2 = 2^-51.
@@ -336,15 +341,15 @@ TEST(AstroMath, Distance) {
 
     const DistanceAu distance { au };
 
-    ASSERT_FLOAT_EQ(distance.as<AU>(), au);
-    ASSERT_FLOAT_EQ(distance.as<KM>(), au_to_km(au));
-    ASSERT_FLOAT_EQ(distance.au(), au);
-    ASSERT_FLOAT_EQ(distance.km(), au_to_km(au));
+    ASSERT_DOUBLE_EQ(distance.as<AU>(), au);
+    ASSERT_DOUBLE_EQ(distance.as<KM>(), au_to_km(au));
+    ASSERT_DOUBLE_EQ(distance.au(), au);
+    ASSERT_DOUBLE_EQ(distance.km(), au_to_km(au));
 
     const DistanceKm in_km { distance };
 
-    ASSERT_FLOAT_EQ(in_km.km(), au_to_km(au));
-    ASSERT_FLOAT_EQ(in_km.au(), au);
+    ASSERT_DOUBLE_EQ(in_km.km(), au_to_km(au));
+    ASSERT_DOUBLE_EQ(in_km.au(), au);
   }
 
   for (auto i = 0; i < 1000; ++i) {
@@ -352,15 +357,15 @@ TEST(AstroMath, Distance) {
 
     const DistanceKm distance { km };
 
-    ASSERT_FLOAT_EQ(distance.as<KM>(), km);
-    ASSERT_FLOAT_EQ(distance.as<AU>(), km_to_au(km));
-    ASSERT_FLOAT_EQ(distance.km(), km);
-    ASSERT_FLOAT_EQ(distance.au(), km_to_au(km));
+    ASSERT_DOUBLE_EQ(distance.as<KM>(), km);
+    ASSERT_DOUBLE_EQ(distance.as<AU>(), km_to_au(km));
+    ASSERT_DOUBLE_EQ(distance.km(), km);
+    ASSERT_DOUBLE_EQ(distance.au(), km_to_au(km));
 
     const DistanceAu in_au { distance };
 
-    ASSERT_FLOAT_EQ(in_au.km(), km);
-    ASSERT_FLOAT_EQ(in_au.au(), km_to_au(km));
+    ASSERT_DOUBLE_EQ(in_au.km(), km);
+    ASSERT_DOUBLE_EQ(in_au.au(), km_to_au(km));
   }
 }
 
