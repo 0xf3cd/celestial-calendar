@@ -37,6 +37,12 @@ def build_benchmarks(cpu_cores: int = 8) -> int:
     print("#" * 60)
     return 1
 
+  # Clear the output directory first. Benchmarks are discovered by scanning it, so a binary left
+  # behind by a benchmark that has since been renamed or deleted would keep being run forever --
+  # reported as a pass, by a source file that no longer exists.
+  for stale in find_benchmarks():
+    stale.unlink()
+
   yellow_print(f"# Building the benchmarks (target: {BENCH_TARGET})...")
   ret: ProcReturn = run_cmd(["cmake", "--build", ".", "--target", BENCH_TARGET,
                              "--parallel", str(cpu_cores)],
@@ -61,8 +67,10 @@ def find_benchmarks() -> List[Path]:
 def run_benchmarks() -> int:
   """Run every benchmark binary and pass their reports through.
 
-  Numbers from different runs of the same binary are comparable; numbers from different machines,
-  or from a machine under load, are not. Each report says how it was measured.
+  Only the paired ratios inside one run are comparable. The absolute nanoseconds are not -- not
+  across runs, and not across machines: the same binary on this machine has reported 4830 ns and
+  4110 ns for the same work depending on how warm it started (#81). Each report says how it was
+  measured.
   """
   print("#" * 60)
 

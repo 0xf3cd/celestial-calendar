@@ -6,8 +6,8 @@
 # `compile_commands.json` -- clang-tidy still sees them, and its zero-warning gate still applies.
 #
 # They also live outside `test/` on purpose. That directory globs every `.cpp` into a GoogleTest
-# target registered with `gtest_discover_tests`, which runs the binary at build time; and the
-# release checklist runs every binary under `build/test/` and reconciles the count against the
+# target registered with `gtest_discover_tests`, which runs the binary at build time; and anything
+# under `build/test/` is taken to be a GoogleTest binary whose test count reconciles with the
 # `TEST(` macros, which a benchmark would quietly throw off.
 
 macro(CELESTIAL_ADD_BENCH bench_path bench_name)
@@ -23,7 +23,10 @@ endmacro()
 # One target to build them all: `cmake --build <dir> --target benchmarks`.
 add_custom_target(benchmarks)
 
-file(GLOB_RECURSE BENCH_PATHS "bench_*.cpp")
+# `CONFIGURE_DEPENDS` so that dropping in a new `bench_*.cpp` is genuinely all it takes. Without it
+# the glob is only evaluated at configure time, and `--bench` -- which builds and runs but does not
+# configure -- would report "All N benchmark(s) completed" while silently leaving the new file out.
+file(GLOB_RECURSE BENCH_PATHS CONFIGURE_DEPENDS "bench_*.cpp")
 
 foreach(bench_path IN LISTS BENCH_PATHS)
   get_filename_component(bench_name ${bench_path} NAME_WE)

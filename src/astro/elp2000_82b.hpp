@@ -320,9 +320,16 @@ struct Term {
     return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
   };
 
-  // Deliberately not a hand-written loop: leaving the order to `std::reduce` is what keeps Σl and Σr
-  // bit-identical to the two separate sums this replaces, on whatever standard library --
-  // `Term::operator+` follows its grouping componentwise.
+  // Deliberately not a hand-written loop. Writing the fold out by hand would pin the summation
+  // order, and pinning it is a numerical change in its own right -- one that belongs with #131,
+  // where such changes get cross-platform evidence. Leaving it to `std::reduce` changes nothing
+  // that was not already the library's choice; `Term::operator+` adds componentwise, so each sum
+  // sees whatever grouping the implementation would have given it on its own.
+  //
+  // That is not the same as "the numbers cannot move". They did: on Apple clang / libc++ this
+  // rewrite shifts 12 of 4096 sampled Σl values by up to 2 ULP, measured on CI (#81). Three other
+  // legs saw nothing. It reaches `apparent` once in 20000 and stops there -- the almanac goldens
+  // compare integer dates and pass everywhere.
   const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> Term {
     const auto rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);

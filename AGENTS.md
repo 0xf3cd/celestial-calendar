@@ -95,9 +95,11 @@ export CXX=clang++
 
 Benchmarks are opt-in and `--all` leaves them out: their targets are `EXCLUDE_FROM_ALL`, so no
 CI leg pays to compile them. They live in `src/bench/`, not `src/test/` — that directory turns
-every `.cpp` into a GoogleTest target that runs at build time, and the release check runs every
-binary under `build/test/` and reconciles the count against the `TEST(` macros. Adding a
-`src/bench/bench_*.cpp` is the whole job of adding a benchmark; the runner finds it by directory.
+every `.cpp` into a GoogleTest target that runs at build time, and anything under `build/test/` is
+taken to be a GoogleTest binary whose test count reconciles with the `TEST(` macros. Adding a
+`src/bench/bench_*.cpp` is the whole job of adding a benchmark: the glob is `CONFIGURE_DEPENDS`
+so a new file is picked up without a separate `--cmake`, and the runner finds the binary by
+directory. `--bench` clears stale binaries first, so a renamed or deleted benchmark stops running.
 
 A benchmark's absolute nanoseconds are not comparable across runs or machines — only the paired
 ratios inside one run are. `src/bench/harness.hpp` explains what it does about measurement bias

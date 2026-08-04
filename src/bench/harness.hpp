@@ -77,7 +77,7 @@ struct Case {
 struct Plan {
   std::string_view title;
   std::size_t iterations = 1;    // Iterations per round, per case.
-  std::size_t rounds     = 31;   // Odd, so the median is a measured value rather than an average.
+  std::size_t rounds     = 31;   // Enough for the quantiles to settle without a slow benchmark.
   std::chrono::milliseconds warm_up { 2000 };
 };
 
