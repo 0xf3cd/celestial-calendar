@@ -26,8 +26,10 @@
 #include <array>
 #include <cmath>
 #include <ranges>
+#include <cstddef>
 #include <numeric>
 #include <cstdint>
+#include <algorithm>
 
 #include "toolbox.hpp"
 
@@ -308,13 +310,15 @@ struct Term {
     };
   };
 
-  // Collapsing these three-valued `pow` calls into a lookup table looks free and is not: on Apple
-  // clang / libc++ the table entry and the per-row call part company, and 12 of 4096 sampled
-  // Σl values moved by up to 2 ULP (#81). The other three legs saw nothing. Left alone here so that
-  // this commit changes no number anywhere; the table is a numerical change and belongs with #131,
-  // which is where deliberate summation changes get their cross-platform evidence.
-  const auto correction_of = [&ctx](const auto& coeff) -> double {
-    return std::pow(ctx.E, std::abs(coeff.M));
+  // Every row scales by `E` raised to `|M|`, and both tables only ever use |M| = 0, 1 or 2 -- so the
+  // 180 `pow` calls across the three sums take three distinct values.
+  // (`std::abs` is not usable in a constant expression on every toolchain -- compare the range.)
+  static_assert(std::ranges::all_of(coeff::LR, [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
+  static_assert(std::ranges::all_of(coeff::B,  [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
+  const std::array<double, 3> E_pow { std::pow(ctx.E, 0), std::pow(ctx.E, 1), std::pow(ctx.E, 2) };
+
+  const auto correction_of = [&E_pow](const auto& coeff) -> double {
+    return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
   };
 
   // Longitude and distance share the LR table, and shared θ is the whole point of fusing them: the
