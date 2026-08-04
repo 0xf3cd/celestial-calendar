@@ -70,7 +70,7 @@ inline constexpr int32_t END_YEAR = 5000;
  * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 — the non-invertible second of
  *       `leap_second::tt_to_utc` never lands on a civil-day boundary here.
  */
-inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
+[[nodiscard]] inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
   return calendar::add_seconds(
     astro::julian_day::jde_to_utc(jde),
     8.0 * 3600.0
@@ -89,7 +89,7 @@ struct LunarMonth {
   // Jieqis that fall in this lunar month.
   std::vector<JieqiGenerator::JieqiPair> contained_jieqis;
 
-  auto operator==(const LunarMonth& other) const -> bool = default;
+  [[nodiscard]] auto operator==(const LunarMonth& other) const -> bool = default;
 };
 
 /**
@@ -108,7 +108,7 @@ private:
 
   std::optional<LunarMonth> _next_month;
 
-  auto next_new_moon() -> double {
+  [[nodiscard]] auto next_new_moon() -> double {
     if (_next_new_moon.has_value()) {
       const double jde = *_next_new_moon;
       _next_new_moon = std::nullopt;
@@ -123,7 +123,7 @@ private:
     _next_new_moon = jde;
   }
 
-  auto next_jieqi() -> JieqiGenerator::JieqiPair {
+  [[nodiscard]] auto next_jieqi() -> JieqiGenerator::JieqiPair {
     if (_next_jieqi.has_value()) {
       auto jieqi = *_next_jieqi;
       _next_jieqi = std::nullopt;
@@ -138,7 +138,7 @@ private:
     _next_jieqi = jieqi;
   }
 
-  auto next_month() -> LunarMonth {
+  [[nodiscard]] auto next_month() -> LunarMonth {
     if (_next_month.has_value()) {
       auto month = *_next_month;
       _next_month = std::nullopt;
@@ -197,12 +197,12 @@ public:
   {}
 
   /** @brief Get the metadata of the next lunar month. */
-  auto next() -> LunarMonth {
+  [[nodiscard]] auto next() -> LunarMonth {
     return next_month();
   }
 
   /** @brief Peek the metadata of the next lunar month, without advancing. */
-  auto peek() -> LunarMonth {
+  [[nodiscard]] auto peek() -> LunarMonth {
     auto month = next_month();
     put_back_month(month);
     return month;
@@ -224,7 +224,7 @@ using LunarMonthChunk = std::vector<LunarMonth>;
  *         The first chunk is from 11th month in the previous year to 11th month in the current year.
  *         The second chunk is from 11th month in the current year to 11th month in the next year.
  */
-inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, LunarMonthChunk> {
+[[nodiscard]] inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, LunarMonthChunk> {
   // The lunar month where Winter Solstice (i.e. Jieqi::冬至) occurs is defined as the 11th month.
   const auto winter_solstice_last_year = jieqi_jde(year - 1, Jieqi::冬至);
 
@@ -264,7 +264,7 @@ inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, 
  * @param chunk The chunk of lunar months.
  * @return The index of the leap month in the given chunk. `std::nullopt` if there is no leap month.
  */
-inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<int32_t> {
+[[nodiscard]] inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<int32_t> {
   assert(size(chunk) == 12 or size(chunk) == 13);
 
   // As per the rules, for 12-month chunks, there is no leap month.
@@ -295,7 +295,7 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
  * @param leap_month The index of the leap month in the given chunk. `std::nullopt` if there is no leap month.
  * @return The start moment of the lunar year.
  */
-inline auto calc_lunar_year_start_moment(const LunarMonthChunk& chunk, std::optional<int32_t> leap_month) -> calendar::Datetime {
+[[nodiscard]] inline auto calc_lunar_year_start_moment(const LunarMonthChunk& chunk, std::optional<int32_t> leap_month) -> calendar::Datetime {
   if (leap_month.has_value() and (*leap_month <= 2)) {
     // The lunar year starts from the third month after the 11th month in previous year,
     // because of the leap month.
@@ -323,7 +323,7 @@ struct LunarYearContext {
  * @param year The year to create the context for.
  * @return The `LunarYearContext` for the given year.
  */
-inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
+[[nodiscard]] inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
   const auto& [chunk1, chunk2] = calc_lunar_month_chunks(year);
 
   const auto chunk1_leap_month = leap_month_in_chunk(chunk1);
@@ -396,7 +396,7 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-inline auto calc_lunar_year(int32_t year) -> LunarYear {
+[[nodiscard]] inline auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
@@ -466,7 +466,7 @@ const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
  *       while the shared library is still being loaded, where an escaping exception would
  *       terminate the host before `main`.
  */
-inline auto bounds() -> const common::AlgoBounds& {
+[[nodiscard]] inline auto bounds() -> const common::AlgoBounds& {
   static const common::AlgoBounds value = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
   return value;
 }
@@ -482,7 +482,7 @@ struct AlgoMetadata<Algo::ALGO_2> {
   static const inline auto& get_info_for_year = algo2::get_info_for_year;
   // #67: an accessor, not an eager binding — an `inline` static member would initialize at
   // image load, running the whole astro pipeline before `main` and defeating `algo2::bounds()`.
-  static auto bounds() -> const common::AlgoBounds& { return algo2::bounds(); }
+  [[nodiscard]] static auto bounds() -> const common::AlgoBounds& { return algo2::bounds(); }
 };
 
 } // namespace calendar::lunar::common

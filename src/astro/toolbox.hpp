@@ -44,7 +44,7 @@ namespace astro::toolbox {
  * @throw std::invalid_argument If `deg` is not finite — a non-finite angle has no normal form,
  *        and returning one would pass it off as already normalized (#88).
  */
-constexpr auto normalize_deg(const double deg) -> double {
+[[nodiscard]] constexpr auto normalize_deg(const double deg) -> double {
   if (not std::isfinite(deg)) [[unlikely]] {
     throw std::invalid_argument {
       std::format("Argument `deg` is not finite, whose value is {}", deg)
@@ -64,7 +64,7 @@ constexpr auto normalize_deg(const double deg) -> double {
  * @throw std::invalid_argument If `rad` is not finite.
  * @note Twin of `normalize_deg` — same three edges, same order; the reasoning is written out there.
  */
-constexpr auto normalize_rad(const double rad) -> double {
+[[nodiscard]] constexpr auto normalize_rad(const double rad) -> double {
   if (not std::isfinite(rad)) [[unlikely]] {
     throw std::invalid_argument {
       std::format("Argument `rad` is not finite, whose value is {}", rad)
@@ -83,7 +83,7 @@ constexpr auto normalize_rad(const double rad) -> double {
  * @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning.
  * @throw std::invalid_argument If `deg` is not finite — inherited from `normalize_deg`.
  */
-constexpr auto normalize_pm180(const double deg) -> double {
+[[nodiscard]] constexpr auto normalize_pm180(const double deg) -> double {
   const double _deg = normalize_deg(deg);
   return _deg >= 180.0 ? _deg - 360.0 : _deg;
 }
@@ -92,12 +92,12 @@ constexpr auto normalize_pm180(const double deg) -> double {
 inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 
 /** @brief Convert degree to radian. */
-constexpr auto deg_to_rad(const double deg) -> double {
+[[nodiscard]] constexpr auto deg_to_rad(const double deg) -> double {
   return deg / DEG_PER_RAD;
 }
 
 /** @brief Convert radian to degree. */
-constexpr auto rad_to_deg(const double rad) -> double {
+[[nodiscard]] constexpr auto rad_to_deg(const double rad) -> double {
   return rad * DEG_PER_RAD;
 }
 
@@ -133,12 +133,12 @@ inline constexpr uint32_t SEC_PER_MIN = 60;
 inline constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
 
 /** @brief Convert minutes to degrees. */
-constexpr auto arcmin_to_deg(const double arcmin) -> double {
+[[nodiscard]] constexpr auto arcmin_to_deg(const double arcmin) -> double {
   return arcmin / MIN_PER_DEG;
 }
 
 /** @brief Convert seconds to degrees. */
-constexpr auto arcsec_to_deg(const double arcsec) -> double {
+[[nodiscard]] constexpr auto arcsec_to_deg(const double arcsec) -> double {
   return arcsec / SEC_PER_DEG;
 }
 
@@ -158,12 +158,12 @@ struct Angle {
    * @brief Build an angle from a count of arcminutes, carried in this angle's own unit.
    * @note Arcminutes subdivide the degree, so the count lands in DEG and converts from there.
    */
-  constexpr static auto from_arcmin(const double value) -> Angle<Unit> {
+  [[nodiscard]] constexpr static auto from_arcmin(const double value) -> Angle<Unit> {
     return Angle<Unit> { Angle<AngleUnit::DEG> { arcmin_to_deg(value) } };
   }
 
   /** @brief Build an angle from a count of arcseconds, carried in this angle's own unit. */
-  constexpr static auto from_arcsec(const double value) -> Angle<Unit> {
+  [[nodiscard]] constexpr static auto from_arcsec(const double value) -> Angle<Unit> {
     return Angle<Unit> { Angle<AngleUnit::DEG> { arcsec_to_deg(value) } };
   }
 
@@ -173,19 +173,19 @@ struct Angle {
     return Angle<As> { as<As>() };
   }
 
-  constexpr auto operator+(const Angle<Unit>& other) const -> Angle<Unit> {
+  [[nodiscard]] constexpr auto operator+(const Angle<Unit>& other) const -> Angle<Unit> {
     return Angle<Unit> { _value + other._value };
   }
 
-  constexpr auto operator-(const Angle<Unit>& other) const -> Angle<Unit> {
+  [[nodiscard]] constexpr auto operator-(const Angle<Unit>& other) const -> Angle<Unit> {
     return Angle<Unit> { _value - other._value };
   }
 
-  constexpr auto operator-() const -> Angle<Unit> {
+  [[nodiscard]] constexpr auto operator-() const -> Angle<Unit> {
     return Angle<Unit> { -_value };
   }
 
-  constexpr auto operator*(const double other) const -> Angle<Unit> {
+  [[nodiscard]] constexpr auto operator*(const double other) const -> Angle<Unit> {
     return Angle<Unit> { _value * other };
   }
 
@@ -193,7 +193,7 @@ struct Angle {
    * @brief Divide the angle by a bare (dimensionless) factor.
    * @throws std::runtime_error if the divisor is zero — an infinite angle is never the intent (#48).
    */
-  constexpr auto operator/(const double other) const -> Angle<Unit> {
+  [[nodiscard]] constexpr auto operator/(const double other) const -> Angle<Unit> {
     if (other == 0.0) {
       throw std::runtime_error { "Division by zero." };
     }
@@ -265,19 +265,19 @@ using AngleRad = Angle<AngleUnit::RAD>;
 
 namespace literals {
 
-constexpr auto operator""_deg(const long double value) -> AngleDeg {
+[[nodiscard]] constexpr auto operator""_deg(const long double value) -> AngleDeg {
   return AngleDeg { static_cast<double>(value) };
 }
 
-constexpr auto operator""_arcmin(const long double value) -> AngleDeg {
+[[nodiscard]] constexpr auto operator""_arcmin(const long double value) -> AngleDeg {
   return AngleDeg::from_arcmin(static_cast<double>(value));
 }
 
-constexpr auto operator""_arcsec(const long double value) -> AngleDeg {
+[[nodiscard]] constexpr auto operator""_arcsec(const long double value) -> AngleDeg {
   return AngleDeg::from_arcsec(static_cast<double>(value));
 }
 
-constexpr auto operator""_rad(const long double value) -> AngleRad {
+[[nodiscard]] constexpr auto operator""_rad(const long double value) -> AngleRad {
   return AngleRad { static_cast<double>(value) };
 }
 
@@ -295,12 +295,12 @@ enum class DistanceUnit : uint8_t { AU, KM };
 inline constexpr double au_km_scale = 149597870.691; 
 
 /** @brief Convert from AU to KM. */
-constexpr auto au_to_km(const double au) -> double { 
+[[nodiscard]] constexpr auto au_to_km(const double au) -> double { 
   return au * au_km_scale; 
 }
 
 /** @brief Convert from KM to AU. */
-constexpr auto km_to_au(const double km) -> double { 
+[[nodiscard]] constexpr auto km_to_au(const double km) -> double { 
   return km / au_km_scale; 
 }
 
@@ -368,7 +368,7 @@ struct SphericalCoordinate {
  *       At JDE 2451545 (J2000.0) it is 4.7e-10 day (~40 μs); once `jde` crosses
  *       2^22 = 4194304 — that is 6771-07-07 — it steps up to 9.3e-10 day.
  */
-inline auto ulp(const double x) -> double {
+[[nodiscard]] inline auto ulp(const double x) -> double {
   const double magnitude = std::fabs(x);
   return std::nextafter(magnitude, std::numeric_limits<double>::infinity()) - magnitude;
 }
@@ -405,7 +405,7 @@ inline constexpr std::size_t NEWTON_MAX_ITERATIONS = 30;
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
-inline auto newton_method(
+[[nodiscard]] inline auto newton_method(
   const Func& f,
   const double start_jde,
   const double end_jde,

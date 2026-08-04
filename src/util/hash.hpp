@@ -32,7 +32,7 @@
 namespace util::hash {
 
 template <typename T>
-inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
+[[nodiscard]] inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
   // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   // Don't lint this code, because clang-tidy complains about calculating hash for `std::string`.
   auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
@@ -46,12 +46,12 @@ inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
 }
 
 template <typename T>
-inline auto hash(T&& v) -> std::size_t {
+[[nodiscard]] inline auto hash(T&& v) -> std::size_t {
   return std::hash<std::decay_t<T>>{}(std::forward<T>(v));
 }
 
 template <typename T, typename... Rest>
-inline auto hash(T&& v, Rest&&... rest) -> std::size_t {
+[[nodiscard]] inline auto hash(T&& v, Rest&&... rest) -> std::size_t {
   std::size_t seed = hash(std::forward<T>(v));
   (..., (seed = hash_combine(seed, std::forward<Rest>(rest))));
   return seed;
@@ -64,14 +64,14 @@ concept IsTuple = requires {
 };
 
 template <IsTuple T>
-inline auto hash(T&& t) -> std::size_t {
+[[nodiscard]] inline auto hash(T&& t) -> std::size_t {
   return std::apply([](auto&&... args) { return hash(std::forward<decltype(args)>(args)...); }, std::forward<T>(t));
 }
 
 
 template <typename... Args>
 struct TupleHash {
-  auto operator()(const std::tuple<Args...>& t) const -> std::size_t {
+  [[nodiscard]] auto operator()(const std::tuple<Args...>& t) const -> std::size_t {
     return std::apply([](const auto&... elems) {
       return hash(elems...);
     }, t);

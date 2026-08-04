@@ -229,7 +229,7 @@ struct Context {
  * @return The created context.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto create_context(const double jc) -> Context {
+[[nodiscard]] inline auto create_context(const double jc) -> Context {
   const double jc2 = jc * jc;
   const double jc3 = jc2 * jc;
   const double jc4 = jc3 * jc;
@@ -279,7 +279,7 @@ struct Evaluation {
  * @return The evaluated result.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto evaluate(const double jc) -> Evaluation {
+[[nodiscard]] inline auto evaluate(const double jc) -> Evaluation {
   using namespace std::ranges;
 
   const auto ctx = create_context(jc);

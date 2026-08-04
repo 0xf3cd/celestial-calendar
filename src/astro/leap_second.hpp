@@ -106,7 +106,7 @@ inline constexpr std::chrono::year_month_day MODERN_UTC_START = LEAP_SECOND_TABL
  * @return ΔAT, in seconds.
  * @throw std::invalid_argument if the date predates modern UTC (1972-01-01).
  */
-constexpr auto tai_minus_utc(const std::chrono::year_month_day& utc_ymd) -> double {
+[[nodiscard]] constexpr auto tai_minus_utc(const std::chrono::year_month_day& utc_ymd) -> double {
   if (utc_ymd < MODERN_UTC_START) {
     throw std::invalid_argument {
       std::vformat("ΔAT is undefined before modern UTC (1972-01-01), got {}",
@@ -127,7 +127,7 @@ constexpr auto tai_minus_utc(const std::chrono::year_month_day& utc_ymd) -> doub
  * @return TT − UTC, in seconds.
  * @throw std::invalid_argument if the date predates modern UTC (1972-01-01).
  */
-constexpr auto tt_minus_utc(const std::chrono::year_month_day& utc_ymd) -> double {
+[[nodiscard]] constexpr auto tt_minus_utc(const std::chrono::year_month_day& utc_ymd) -> double {
   return TT_MINUS_TAI_SEC + tai_minus_utc(utc_ymd);
 }
 
@@ -143,7 +143,7 @@ constexpr auto tt_minus_utc(const std::chrono::year_month_day& utc_ymd) -> doubl
  * @note A `Datetime` cannot carry an inserted second 23:59:60 itself; the conversion is
  *       defined on the representable instants around it.
  */
-constexpr auto utc_to_tt(const calendar::Datetime& utc_dt) -> calendar::Datetime {
+[[nodiscard]] constexpr auto utc_to_tt(const calendar::Datetime& utc_dt) -> calendar::Datetime {
   if (utc_dt.ymd < MODERN_UTC_START) {
     return delta_t::ut1_to_tt(utc_dt);
   }
@@ -169,7 +169,7 @@ constexpr auto utc_to_tt(const calendar::Datetime& utc_dt) -> calendar::Datetime
  *       conversion is not invertible, and `utc_to_tt(tt_to_utc(tt))` returns `tt` plus one
  *       second.
  */
-constexpr auto tt_to_utc(const calendar::Datetime& tt_dt) -> calendar::Datetime {
+[[nodiscard]] constexpr auto tt_to_utc(const calendar::Datetime& tt_dt) -> calendar::Datetime {
   if (tt_dt.ymd < MODERN_UTC_START) {
     return delta_t::tt_to_ut1(tt_dt);
   }

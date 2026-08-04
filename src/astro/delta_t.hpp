@@ -130,7 +130,7 @@ find_coefficients(const int32_t year) -> std::optional<
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
  */
-constexpr auto compute(const double year) -> double {
+[[nodiscard]] constexpr auto compute(const double year) -> double {
   if (year < -4000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
@@ -191,7 +191,7 @@ namespace algo2 {
  * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
  */
-constexpr auto compute(const double year) noexcept -> double {
+[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {
     const double u = (year - 1820) / 100.0;
     return -20.0 + 32.0 * std::pow(u, 2);
@@ -303,7 +303,7 @@ namespace algo3 {
  * 
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
-constexpr auto compute(const double year) -> double {
+[[nodiscard]] constexpr auto compute(const double year) -> double {
   if (year >= 3000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
@@ -360,7 +360,7 @@ namespace algo4 {
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
  */
-constexpr auto compute(const double year) -> double {
+[[nodiscard]] constexpr auto compute(const double year) -> double {
   if (year >= 2035) {
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
@@ -422,7 +422,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @note There is no upper bound: beyond the last observation, the anchored integrated-lod
  *       curve extrapolates smoothly for all future years.
  */
-constexpr auto compute(const double year) noexcept -> double {
+[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < 2005) {
     return algo2::compute(year);
   }
@@ -458,7 +458,7 @@ constexpr auto compute(const double year) noexcept -> double {
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
-constexpr auto compute(const double year) noexcept -> double {
+[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   return algo5::compute(year);
 }
 
@@ -471,7 +471,7 @@ constexpr auto compute(const double year) noexcept -> double {
  * @note Some caller are passing `calendar::Datetime` in UT1, and some are passing `calendar::Datetime` in TT.
  *       Considering the longness of a year, the difference between `UT1` and `TT` is ignored.
  */
-constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
+[[nodiscard]] constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
   using namespace std::chrono;
   using namespace util::ymd_operator;
 
@@ -498,7 +498,7 @@ constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
  */
-constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
+[[nodiscard]] constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
   // As per the formula, TT = UT1 + ΔT.
   return calendar::add_seconds(ut1_dt, compute(ut1_dt));
 }
@@ -509,7 +509,7 @@ constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime
  * @param tt_dt The datetime in TT.
  * @return The datetime in UT1.
  */
-constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
+[[nodiscard]] constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
   // As per the formula, UT1 = TT - ΔT.
   return calendar::add_seconds(tt_dt, -compute(tt_dt));
 }

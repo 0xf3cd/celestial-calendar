@@ -63,7 +63,7 @@ struct HorizontalCoord {
  *       and the cos β-multiplied form silently shifts α by 180°.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
  */
-inline auto ecliptic_to_equatorial(
+[[nodiscard]] inline auto ecliptic_to_equatorial(
   const astro::toolbox::AngleDeg& λ,
   const astro::toolbox::AngleDeg& β,
   const astro::toolbox::AngleDeg& ε
@@ -114,7 +114,7 @@ inline auto ecliptic_to_equatorial(
  *       is taken into account (for refraction see Meeus Chapter 16; for parallax, Chapter 40).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
  */
-inline auto equatorial_to_horizontal(
+[[nodiscard]] inline auto equatorial_to_horizontal(
   const astro::toolbox::AngleDeg& H,
   const astro::toolbox::AngleDeg& δ,
   const astro::toolbox::AngleDeg& φ

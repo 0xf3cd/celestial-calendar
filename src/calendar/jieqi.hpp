@@ -64,7 +64,7 @@ static_assert(24U == JIEQI_COUNT);
  * @param jq The jieqi.
  * @return `true` if the given `jq` is a Jie (节), `false` otherwise.
  */
-constexpr auto is_jie(const Jieqi jq) -> bool {
+[[nodiscard]] constexpr auto is_jie(const Jieqi jq) -> bool {
   const auto index = std::to_underlying(jq);
   return index % 2 == 0;
 }
@@ -75,7 +75,7 @@ constexpr auto is_jie(const Jieqi jq) -> bool {
  * @param jq The jieqi.
  * @return `true` if the given `jq` is a Qi (气), `false` otherwise.
  */
-constexpr auto is_qi(const Jieqi jq) -> bool {
+[[nodiscard]] constexpr auto is_qi(const Jieqi jq) -> bool {
   const auto index = std::to_underlying(jq);
   return index % 2 == 1;
 }
@@ -86,7 +86,7 @@ constexpr auto is_qi(const Jieqi jq) -> bool {
  * @param jq The jieqi.
  * @return The index of the given `jq`.
  */
-constexpr auto to_index(const Jieqi jq) -> uint8_t {
+[[nodiscard]] constexpr auto to_index(const Jieqi jq) -> uint8_t {
   return std::to_underlying(jq);
 }
 
@@ -96,7 +96,7 @@ constexpr auto to_index(const Jieqi jq) -> uint8_t {
  * @param jq The jieqi.
  * @return The index of the given `jq`.
  */
-constexpr auto from_index(const uint8_t index) -> Jieqi {
+[[nodiscard]] constexpr auto from_index(const uint8_t index) -> Jieqi {
   if (index >= JIEQI_COUNT) {
     throw std::out_of_range { "index must be less than 24" };
   }
@@ -177,7 +177,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
+[[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
   const auto lon = JIEQI_SOLAR_LONGITUDE.at(to_index(jq));
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
@@ -208,7 +208,7 @@ const inline auto jieqi_jde = util::cache::cache_func(calc_jieqi_jde);
  *       for contract stability. The UT1/UTC gap is DUT1 (≤ 0.9 s while leap seconds are
  *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
  */
-inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
+[[nodiscard]] inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
 
@@ -246,10 +246,10 @@ public:
   struct JieqiPair { 
     Jieqi jieqi;
     double jde; 
-    auto operator==(const JieqiPair& rhs) const -> bool = default;
+    [[nodiscard]] auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
-  auto next() -> JieqiPair {
+  [[nodiscard]] auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);
     const auto jde = jieqi_jde(_year, jq);
 

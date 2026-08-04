@@ -120,7 +120,7 @@ inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = 
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-inline auto calc_lunar_year(int32_t year) -> LunarYear {
+[[nodiscard]] inline auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
@@ -142,8 +142,8 @@ namespace calendar::lunar::common {
 template <>
 struct AlgoMetadata<Algo::ALGO_3> {
   // Not memoized: a `LUNAR_DATA[]` lookup is cheaper than the cache wrapper (#75).
-  static auto get_info_for_year(const int32_t year) -> LunarYear { return algo3::calc_lunar_year(year); }
-  static auto bounds() -> const common::AlgoBounds& { return algo3::bounds; }
+  [[nodiscard]] static auto get_info_for_year(const int32_t year) -> LunarYear { return algo3::calc_lunar_year(year); }
+  [[nodiscard]] static auto bounds() -> const common::AlgoBounds& { return algo3::bounds; }
 };
 
 } // namespace calendar::lunar::common

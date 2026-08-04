@@ -55,7 +55,7 @@ inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::DEBUG; // NOLINT(cpp
 /** @brief Set the verbosity level of log printing.
  *  @return `true` if the level was stored, `false` if `new_verbosity` is out of range.
  */
-inline auto set_verbosity(const Verbosity new_verbosity) -> bool {
+[[nodiscard]] inline auto set_verbosity(const Verbosity new_verbosity) -> bool {
   if (new_verbosity >= Verbosity::COUNT) {
     return false;
   }
@@ -123,7 +123,7 @@ inline auto set_last_error(const std::string& message) noexcept -> void {
 }
 
 /** @brief Read the calling thread's last-error message (empty if none). */
-inline auto last_error_message() -> const char* {
+[[nodiscard]] inline auto last_error_message() -> const char* {
   return LAST_ERROR.c_str();
 }
 

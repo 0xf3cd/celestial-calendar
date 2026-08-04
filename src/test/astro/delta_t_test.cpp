@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <tuple>
 #include <numeric>
 #include "util.hpp"
 #include "datetime.hpp"
@@ -33,7 +35,7 @@ namespace astro::delta_t_test {
 using namespace astro::delta_t;
 
 TEST(DeltaT, Algo1) {
-  ASSERT_THROW(algo1::compute(-4001), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(-4001), std::out_of_range);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
@@ -58,7 +60,7 @@ TEST(DeltaT, Algo2) {
 }
 
 TEST(DeltaT, Algo3) {
-  ASSERT_THROW(algo3::compute(3000.1), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(3000.1), std::out_of_range);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
@@ -68,7 +70,7 @@ TEST(DeltaT, Algo3) {
 }
 
 TEST(DeltaT, Algo4) {
-  ASSERT_THROW(algo4::compute(2035.1), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(2035.1), std::out_of_range);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.

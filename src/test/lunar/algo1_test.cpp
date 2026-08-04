@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <tuple>
 #include <vector>
 #include "random.hpp"
 #include "lunar/algo1.hpp"
@@ -37,8 +39,8 @@ TEST(LunarAlgo1, ArraySize) {
 }
 
 TEST(LunarAlgo1, LunarYear) {
-  ASSERT_THROW(calc_lunar_year(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(calc_lunar_year(END_YEAR + 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_lunar_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::out_of_range);
 
   const auto check_month_lengths = [](const auto& l1, const auto& l2) -> bool {
     if (l1.size() != l2.size()) {

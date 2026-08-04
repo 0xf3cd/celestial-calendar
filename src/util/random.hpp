@@ -44,7 +44,7 @@ namespace util::detail {
 
 inline constexpr uint64_t DEFAULT_SEED = 42;
 
-inline auto random_seed() -> uint64_t {
+[[nodiscard]] inline auto random_seed() -> uint64_t {
   // Only a fully-consumed, non-negative decimal numeral is honored (yes, 0 is a valid
   // seed); anything else — unset, leading whitespace/sign, trailing junk, overflow —
   // falls back to the default.
@@ -78,7 +78,7 @@ inline void print_random_seed_once() {
 
 // One engine per thread, all sharing the same seed — per-thread sequences are deterministic
 // and identical, which keeps multi-threaded tests reproducible without locking.
-inline auto engine() -> std::mt19937_64& {
+[[nodiscard]] inline auto engine() -> std::mt19937_64& {
   static thread_local auto eng = [] {
     print_random_seed_once();
     // Two-step (not brace-init): clang-tidy's narrowing check misresolves the ctor's
@@ -104,7 +104,7 @@ namespace util {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline auto random() -> T {
+[[nodiscard]] inline auto random() -> T {
   auto& gen = detail::engine();
 
   if constexpr (std::integral<T>) {
@@ -127,7 +127,7 @@ inline auto random() -> T {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline auto random(const T& min, const T& max) -> T {
+[[nodiscard]] inline auto random(const T& min, const T& max) -> T {
   assert(min < max);
   auto& gen = detail::engine();
 
@@ -145,14 +145,14 @@ inline auto random(const T& min, const T& max) -> T {
 // because this is not part of the C++ standard (for std::uniform_int_distribution).
 
 template <>
-inline auto random() -> uint8_t {
+[[nodiscard]] inline auto random() -> uint8_t {
   auto& gen = detail::engine();
   std::uniform_int_distribution<uint32_t> dist { 0, 255 };
   return static_cast<uint8_t>(dist(gen));
 }
 
 template <>
-inline auto random(const uint8_t& min, const uint8_t& max) -> uint8_t {
+[[nodiscard]] inline auto random(const uint8_t& min, const uint8_t& max) -> uint8_t {
   assert(min < max);
   auto& gen = detail::engine();
   std::uniform_int_distribution<uint32_t> dist { min, max };

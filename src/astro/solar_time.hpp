@@ -52,7 +52,7 @@ namespace detail {
  * @return L0, unnormalized.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.2).
  */
-constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleDeg {
+[[nodiscard]] constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
 
   const double τ = astro::julian_day::jde_to_jm(jde_tt);
@@ -78,7 +78,7 @@ constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleD
  *          the mean longitude L0 can sit on opposite sides of the 0°/360° seam.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
  */
-inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
   using astro::toolbox::normalize_pm180;
 
@@ -108,7 +108,7 @@ inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
  *       longitude offset is a label shift, not a time shift), so no fixed-point
  *       evaluation is needed.
  */
-inline auto apparent(
+[[nodiscard]] inline auto apparent(
   const calendar::Datetime& utc_dt,
   const astro::toolbox::AngleDeg& longitude
 ) -> calendar::Datetime {

@@ -43,7 +43,7 @@ namespace astro::earth::heliocentric_coord {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The heliocentric ecliptic position of the Earth, calculated using VSOP87D.
  */
-inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
   const double jm = astro::julian_day::jde_to_jm(jde);
   const auto evaluated = astro::vsop87d::evaluate<vsop87d::Planet::EAR>(jm);
 
@@ -273,7 +273,7 @@ inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 enum class Model : uint8_t { MEEUS, IAU_1980 };
 
 /** @brief Find the nutation coefficients for the given model. */
-inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
+[[nodiscard]] inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
   switch (model) {
     case Model::MEEUS:    return { MEEUS_NUTATION_COEFFS };
     case Model::IAU_1980: return { IAU1980_NUTATION_COEFFS };
@@ -291,7 +291,7 @@ inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {
  *       of every nutation evaluation (#98).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto gen_eval_θ(const double jc) {
+[[nodiscard]] inline auto gen_eval_θ(const double jc) {
   const double jc2 = jc * jc;
   const double jc3 = jc * jc2;
 
@@ -324,7 +324,7 @@ inline auto gen_eval_θ(const double jc) {
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
+[[nodiscard]] inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -362,7 +362,7 @@ inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> 
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
+[[nodiscard]] inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -403,7 +403,7 @@ namespace astro::earth::obliquity {
  * @details Accuracy ~1" over ±2000 years from J2000; the polynomial degrades farther out.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
  */
-inline auto mean(const double jde) -> toolbox::AngleDeg {
+[[nodiscard]] inline auto mean(const double jde) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
 
@@ -421,7 +421,7 @@ inline auto mean(const double jde) -> toolbox::AngleDeg {
  * @return The true obliquity (ε = ε₀ + Δε) in degrees.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
-inline auto true_obliquity(
+[[nodiscard]] inline auto true_obliquity(
   const double jde,
   const nutation::Model model = nutation::Model::IAU_1980
 ) -> toolbox::AngleDeg {
@@ -482,7 +482,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
  *       3548.193 is for the fixed J2000 frame (p. 168 note).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
  */
-inline auto daily_λ_variation(const double jde) -> double {
+[[nodiscard]] inline auto daily_λ_variation(const double jde) -> double {
   using namespace std::ranges;
   const double τ = astro::julian_day::jde_to_jm(jde);
   const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
@@ -509,7 +509,7 @@ inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
  *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
  */
-inline auto compute(const double jde, const toolbox::DistanceAu r) -> toolbox::AngleDeg {
+[[nodiscard]] inline auto compute(const double jde, const toolbox::DistanceAu r) -> toolbox::AngleDeg {
   const double aberration_arcsec = LIGHT_TIME_DAYS_PER_AU * r.au() * daily_λ_variation(jde);
   return toolbox::AngleDeg::from_arcsec(aberration_arcsec);
 }

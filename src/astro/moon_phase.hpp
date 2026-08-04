@@ -51,7 +51,7 @@ namespace astro::moon_phase::new_moon {
  * @return The normalized difference between the apparent longitudes of the Moon and the Sun, in degrees.
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
-inline auto longitude_diff(const double jde) -> double {
+[[nodiscard]] inline auto longitude_diff(const double jde) -> double {
   const auto sun_apparent_lon = astro::sun::geocentric_coord::apparent(jde).λ;
   const auto moon_apparent_lon = astro::moon::geocentric_coord::apparent(jde).λ;
   const auto diff = moon_apparent_lon - sun_apparent_lon;
@@ -76,7 +76,7 @@ inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
  * @note It is the caller's responsibility to ensure the root exists in the range of [left_jde, right_jde).
  * @throw std::invalid_argument If no root exists in the range of [left_jde, right_jde).
  */
-inline auto newton_method(
+[[nodiscard]] inline auto newton_method(
   const double left_jde,
   const double right_jde,            // NOLINT(bugprone-easily-swappable-parameters)
   const std::size_t iterations = astro::toolbox::NEWTON_MAX_ITERATIONS
@@ -138,7 +138,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
  * @throw std::invalid_argument If the extrapolation lands further than `ESTIMATE_TOLERANCE_DEG`
  *        from conjunction, i.e. too far off to be worth refining.
  */
-inline auto first_root_range_after(const double jde) -> std::pair<double, double> {
+[[nodiscard]] inline auto first_root_range_after(const double jde) -> std::pair<double, double> {
   const double cur_diff = longitude_diff(jde);
   const double gap = 360.0 - cur_diff;
 
@@ -177,7 +177,7 @@ inline auto first_root_range_after(const double jde) -> std::pair<double, double
  * @param jde The jde. This is expected to be a root.
  * @return The next root jde.
  */
-inline auto next_root(const double jde) -> double {
+[[nodiscard]] inline auto next_root(const double jde) -> double {
   const double jde_lon_diff = longitude_diff(jde);
   if (1.0 < jde_lon_diff and jde_lon_diff < 359.0) [[unlikely]] {
     throw std::invalid_argument {
@@ -205,7 +205,7 @@ public:
     _root = first_root;
   }
 
-  auto next() -> double {
+  [[nodiscard]] auto next() -> double {
     const double root = _root;
     _root = next_root(_root);
     return root;
@@ -223,7 +223,7 @@ public:
  * @details The Moon's position is calculated using truncated ELP2000-82B.
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
-inline auto moments(const int32_t year) -> std::vector<double> {
+[[nodiscard]] inline auto moments(const int32_t year) -> std::vector<double> {
   // The first moment of the year, inclusive.
   const calendar::Datetime start_moment_utc {
     util::to_ymd(year, 1, 1),
