@@ -26,6 +26,7 @@
 #include <limits>
 #include <numbers>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include "toolbox.hpp"
 #include "util.hpp"
@@ -177,11 +178,11 @@ TEST(AstroMath, NormalizeRejectsNonFinite) {
   constexpr double NAN_D = std::numeric_limits<double>::quiet_NaN();
 
   for (const double bad : { INF_D, -INF_D, NAN_D }) {
-    ASSERT_THROW((void) normalize_deg(bad), std::invalid_argument);
-    ASSERT_THROW((void) normalize_rad(bad), std::invalid_argument);
-    ASSERT_THROW((void) normalize_pm180(bad), std::invalid_argument);
-    ASSERT_THROW((void) Angle<AngleUnit::DEG> { bad }.normalize(), std::invalid_argument);
-    ASSERT_THROW((void) Angle<AngleUnit::RAD> { bad }.normalize(), std::invalid_argument);
+    ASSERT_THROW(std::ignore = normalize_deg(bad), std::invalid_argument);
+    ASSERT_THROW(std::ignore = normalize_rad(bad), std::invalid_argument);
+    ASSERT_THROW(std::ignore = normalize_pm180(bad), std::invalid_argument);
+    ASSERT_THROW(std::ignore = Angle<AngleUnit::DEG> { bad }.normalize(), std::invalid_argument);
+    ASSERT_THROW(std::ignore = Angle<AngleUnit::RAD> { bad }.normalize(), std::invalid_argument);
   }
 }
 
@@ -310,11 +311,11 @@ TEST(AstroMath, AngleDivisionByZeroThrows) {
 
   // The contract (#48): a zero divisor is a caller mistake, not a state to hand on as ±inf.
   const auto angle = 30.0_deg;
-  ASSERT_THROW((void) (angle / 0.0), std::runtime_error);
-  ASSERT_THROW((void) (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.
+  ASSERT_THROW(std::ignore = (angle / 0.0), std::runtime_error);
+  ASSERT_THROW(std::ignore = (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.
 
   // The guard tests for zero, not for smallness — a denormal divisor still divides.
-  ASSERT_NO_THROW((void) (angle / std::numeric_limits<double>::denorm_min()));
+  ASSERT_NO_THROW(std::ignore = (angle / std::numeric_limits<double>::denorm_min()));
 }
 
 

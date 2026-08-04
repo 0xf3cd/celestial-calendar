@@ -412,12 +412,11 @@ TEST(Util, MakeCachedThreadSafe) {
 }
 
 
-// #81 第 18 项:种子解析从 `strtoull` + `errno` 换到 `std::from_chars`。
+// #81 item 18 moved seed parsing from `strtoull` + `errno` to `std::from_chars`.
 //
-// 这批断言钉的是**契约**,不是缺陷 —— 它们在旧实现上同样全绿,而那正是验收要的:
-// 证明换实现没有改变任何一种输入的归宿。唯一有意的差别是不再触碰 `errno`,
-// 那是个进程全局副作用,没有调用方依赖它。
-// 对拍见 `.review/style-arch/probe_pdelta_c5_seed_equiv.cpp`。
+// These assertions pin the contract, not a defect: they pass on the old implementation too,
+// and that is exactly the acceptance criterion -- every input keeps the fate it already had.
+// The one intended difference is that `errno`, a process-global, is no longer touched.
 TEST(Random, ParseSeedAcceptsPlainNumerals) {
   using util::detail::parse_seed;
   ASSERT_EQ(parse_seed("0"), 0U);
@@ -428,16 +427,16 @@ TEST(Random, ParseSeedAcceptsPlainNumerals) {
 
 TEST(Random, ParseSeedRejectsEverythingElse) {
   using util::detail::parse_seed;
-  ASSERT_FALSE(parse_seed(nullptr).has_value());          // 未设置
-  ASSERT_FALSE(parse_seed("").has_value());               // 空串
-  ASSERT_FALSE(parse_seed(" 42").has_value());            // 前导空白
-  ASSERT_FALSE(parse_seed("+42").has_value());            // 显式正号
-  ASSERT_FALSE(parse_seed("-1").has_value());             // 负号 —— strtoull 会把它回绕成 ULLONG_MAX
-  ASSERT_FALSE(parse_seed("42abc").has_value());          // 尾随垃圾
-  ASSERT_FALSE(parse_seed("0x10").has_value());           // 十六进制前缀:`0` 之后 `x` 没被消费
-  ASSERT_FALSE(parse_seed("1e3").has_value());            // 科学计数法
-  ASSERT_FALSE(parse_seed("abc").has_value());            // 完全不是数
-  ASSERT_FALSE(parse_seed("18446744073709551616").has_value());  // 溢出 uint64
+  ASSERT_FALSE(parse_seed(nullptr).has_value());          // Unset
+  ASSERT_FALSE(parse_seed("").has_value());               // Empty
+  ASSERT_FALSE(parse_seed(" 42").has_value());            // Leading space
+  ASSERT_FALSE(parse_seed("+42").has_value());            // Explicit plus
+  ASSERT_FALSE(parse_seed("-1").has_value());             // Minus -- `strtoull` wrapped this to ULLONG_MAX
+  ASSERT_FALSE(parse_seed("42abc").has_value());          // Trailing garbage
+  ASSERT_FALSE(parse_seed("0x10").has_value());           // Hex prefix: the `x` after `0` is left unconsumed
+  ASSERT_FALSE(parse_seed("1e3").has_value());            // Scientific notation
+  ASSERT_FALSE(parse_seed("abc").has_value());            // Not a number at all
+  ASSERT_FALSE(parse_seed("18446744073709551616").has_value());  // Overflows uint64
 }
 
 } // namespace util::test
