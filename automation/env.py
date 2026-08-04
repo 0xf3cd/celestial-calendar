@@ -74,7 +74,9 @@ def install_dependencies() -> int:
     green_print(f"# Python dependencies already satisfied by {sys.executable}")
     return 0
 
-  yellow_print(f'# Installing Python dependencies: {", ".join(missing)}')
+  # Named individually, but pip is pointed at the whole file: the lines this probe punts on
+  # (specifiers, extras, `-r other.txt`) still have to go through it.
+  yellow_print(f'# Installing {req_txt.name}, missing: {", ".join(missing)}')
   this_python = sys.executable
   ret = run_cmd([this_python, "-m", "pip", "install", "-r", str(req_txt)])
 
