@@ -426,8 +426,9 @@ requires std::invocable<const Func&, double>
 
   double step = NEWTON_INITIAL_STEP_DAYS;
 
-  // `std::midpoint` is the correctly-rounded half-sum -- the same double the `(a + b) / 2` it
-  // replaced produced.
+  // `std::midpoint` is the correctly-rounded half-sum. Where `a + b` cannot overflow -- JDE sits
+  // near 2.4e6, three hundred orders clear of it -- that is bit-for-bit what the `(a + b) / 2` it
+  // replaced produced. The two part company only at the extremes midpoint exists to survive.
   double jde = std::midpoint(start_jde, end_jde);
 
   // Newton can walk away from a root it has already reached, so keep the best iterate rather
