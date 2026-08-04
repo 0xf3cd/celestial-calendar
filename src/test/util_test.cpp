@@ -412,11 +412,8 @@ TEST(Util, MakeCachedThreadSafe) {
 }
 
 
-// #81 item 18 moved seed parsing from `strtoull` + `errno` to `std::from_chars`.
-//
-// These assertions pin the contract, not a defect: they pass on the old implementation too,
-// and that is exactly the acceptance criterion -- every input keeps the fate it already had.
-// The one intended difference is that `errno`, a process-global, is no longer touched.
+// Seed-override contract: only a fully-consumed non-negative decimal numeral is honored.
+// A leading sign or space, trailing junk, and overflow all fall back to the default.
 TEST(Random, ParseSeedAcceptsPlainNumerals) {
   using util::detail::parse_seed;
   ASSERT_EQ(parse_seed("0"), 0U);
@@ -431,7 +428,7 @@ TEST(Random, ParseSeedRejectsEverythingElse) {
   ASSERT_FALSE(parse_seed("").has_value());               // Empty
   ASSERT_FALSE(parse_seed(" 42").has_value());            // Leading space
   ASSERT_FALSE(parse_seed("+42").has_value());            // Explicit plus
-  ASSERT_FALSE(parse_seed("-1").has_value());             // Minus -- `strtoull` wrapped this to ULLONG_MAX
+  ASSERT_FALSE(parse_seed("-1").has_value());             // Leading minus
   ASSERT_FALSE(parse_seed("42abc").has_value());          // Trailing garbage
   ASSERT_FALSE(parse_seed("0x10").has_value());           // Hex prefix: the `x` after `0` is left unconsumed
   ASSERT_FALSE(parse_seed("1e3").has_value());            // Scientific notation

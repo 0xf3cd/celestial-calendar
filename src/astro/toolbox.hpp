@@ -425,7 +425,10 @@ requires std::invocable<const Func&, double>
   };
 
   double step = NEWTON_INITIAL_STEP_DAYS;
-  double jde  = std::midpoint(start_jde, end_jde);
+
+  // `std::midpoint` is the correctly-rounded half-sum -- the same value the `(a + b) / 2` it
+  // replaced produced at JDE magnitudes. The swap buys overflow safety, not different numbers.
+  double jde = std::midpoint(start_jde, end_jde);
 
   // Newton can walk away from a root it has already reached, so keep the best iterate rather
   // than the last one — otherwise one bad late round overwrites a correct answer.

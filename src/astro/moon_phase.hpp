@@ -205,7 +205,7 @@ public:
     _root = first_root;
   }
 
-  [[nodiscard]] auto next() -> double {
+  auto next() -> double {
     const double root = _root;
     _root = next_root(_root);
     return root;

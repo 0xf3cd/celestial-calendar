@@ -58,7 +58,7 @@ concept IsDuration = requires {
  * @example `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
  */
 template <IsDuration Duration>
-consteval auto in_a_day() -> uint64_t {
+[[nodiscard]] consteval auto in_a_day() -> uint64_t {
   return duration_cast<Duration>(days { 1 }).count();
 }
 

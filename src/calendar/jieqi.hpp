@@ -92,9 +92,10 @@ static_assert(24U == JIEQI_COUNT);
 
 
 /**
- * @brief Get the index of the given `jq`.
- * @param jq The jieqi.
- * @return The index of the given `jq`.
+ * @brief Get the Jieqi at a 0-based index counted from 立春.
+ * @param index The index, in `[0, JIEQI_COUNT)`.
+ * @return The jieqi.
+ * @throw std::out_of_range if `index` is not a valid index.
  */
 [[nodiscard]] constexpr auto from_index(const uint8_t index) -> Jieqi {
   if (index >= JIEQI_COUNT) {
@@ -117,10 +118,8 @@ inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(uint8_t { 0 }
 
 
 /**
- * @brief Name of each Jieqi, indexed by `to_index`.
- * @note Read it with `.at()`, not `operator[]` -- `.at()` throws `std::out_of_range` for a `Jieqi`
- *       outside `[0, 24)`, which the enum's fixed underlying type makes reachable from outside the
- *       library (`static_cast<Jieqi>(25)`, or `Jieqi::COUNT` itself).
+ * @brief Name of each Jieqi, positioned by `to_index`.
+ * @note Read it through `name_of`, not directly -- a bare index is the wrong key here. See `name_of`.
  */
 inline constexpr std::array<std::string_view, JIEQI_COUNT> JIEQI_NAME {{
   "立春", "雨水", "惊蛰",
@@ -135,8 +134,8 @@ inline constexpr std::array<std::string_view, JIEQI_COUNT> JIEQI_NAME {{
 
 
 /**
- * @brief Solar longitude (in degrees) at which each Jieqi begins, indexed by `to_index`.
- * @note Read it with `.at()` -- see `JIEQI_NAME`.
+ * @brief Solar longitude (in degrees) at which each Jieqi begins, positioned by `to_index`.
+ * @note Read it through `longitude_of` -- see `name_of`.
  */
 inline constexpr std::array<double, JIEQI_COUNT> JIEQI_SOLAR_LONGITUDE {{
   315.0, 330.0, 345.0,
@@ -150,8 +149,7 @@ inline constexpr std::array<double, JIEQI_COUNT> JIEQI_SOLAR_LONGITUDE {{
 }};
 
 
-// Both tables key off position now, where they used to carry `Jieqi::清明` next to each value.
-// A mis-ordered edit is therefore silent, so pin the order at compile time.
+// The tables are position-keyed, so a mis-ordered edit is silent. Pin the order at compile time.
 //
 // The longitudes are pinned exactly: they advance 15 degrees per Jieqi starting from 315 at 立春,
 // so the whole table has a closed form and any reorder breaks it.
@@ -171,6 +169,39 @@ static_assert("立春" == JIEQI_NAME.at(to_index(Jieqi::立春)));
 static_assert("夏至" == JIEQI_NAME.at(to_index(Jieqi::夏至)));
 static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
+
+// Both tables are read through these two, never by bare subscript. Two different index spaces
+// live in this codebase -- `to_index` counts from 立春, while the HKO almanac and
+// `GREGORIAN_YEAR_JIEQI_LIST` count from 小寒 -- and a subscript cannot tell them apart, so
+// indexing the wrong one yields a plausible wrong answer in silence. Taking a `Jieqi` makes
+// that a compile error again.
+//
+// `.at()` stays on the read path: it throws `std::out_of_range` for a `Jieqi` outside `[0, 24)`,
+// which the enum's fixed underlying type makes reachable from outside the library
+// (`static_cast<Jieqi>(25)`, or `Jieqi::COUNT` itself).
+
+/**
+ * @brief Get the name of the given `jq`.
+ * @param jq The jieqi.
+ * @return The name.
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ */
+[[nodiscard]] constexpr auto name_of(const Jieqi jq) -> std::string_view {
+  return JIEQI_NAME.at(to_index(jq));
+}
+
+
+/**
+ * @brief Get the solar longitude (in degrees) at which the given `jq` begins.
+ * @param jq The jieqi.
+ * @return The solar longitude.
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ */
+[[nodiscard]] constexpr auto longitude_of(const Jieqi jq) -> double {
+  return JIEQI_SOLAR_LONGITUDE.at(to_index(jq));
+}
+
+
 /**
  * @brief Get the JDE for the given `year` and `jieqi`.
  * @param year The year, in gregorian calendar.
@@ -178,13 +209,15 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @return The JDE (Julian Ephemeris Day).
  */
 [[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
-  const auto lon = JIEQI_SOLAR_LONGITUDE.at(to_index(jq));
+  const auto lon = longitude_of(jq);
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
   if (roots.size() != 1) {
+    // `make_format_args` binds lvalue references, so the name needs a home of its own.
+    const auto name = name_of(jq);
     throw std::runtime_error {
-      std::vformat("Unexpected roots size for year {}, jieqi {}", 
-                   std::make_format_args(year, JIEQI_NAME.at(to_index(jq))))
+      std::vformat("Unexpected roots size for year {}, jieqi {}",
+                   std::make_format_args(year, name))
     };
   }
 
@@ -249,7 +282,7 @@ public:
     [[nodiscard]] auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
-  [[nodiscard]] auto next() -> JieqiPair {
+  auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);
     const auto jde = jieqi_jde(_year, jq);
 

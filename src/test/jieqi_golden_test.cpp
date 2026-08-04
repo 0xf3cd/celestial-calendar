@@ -91,9 +91,9 @@ struct HkoRow {
 
 /** @brief Inverse of `JIEQI_SOLAR_LONGITUDE` (24 entries, exact doubles). */
 auto jieqi_from_lon(const double lon_deg) -> Jieqi {
-  for (uint8_t idx = 0; idx < JIEQI_COUNT; ++idx) {
-    if (JIEQI_SOLAR_LONGITUDE.at(idx) == lon_deg) {
-      return from_index(idx);
+  for (const auto jq : JIEQI_LIST) {
+    if (longitude_of(jq) == lon_deg) {
+      return jq;
     }
   }
   throw std::invalid_argument { "no jieqi has solar longitude " + std::to_string(lon_deg) };

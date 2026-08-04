@@ -63,9 +63,8 @@ inline constexpr uint64_t DEFAULT_SEED = 42;
   uint64_t parsed = 0;
   const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), parsed);
 
-  // Not consumed in full, or overflowed -- both fall back, exactly as the `strtoull` version did.
-  // The difference is that `from_chars` reports them through its own result instead of `errno`,
-  // so parsing an env var no longer writes a process-global as a side effect.
+  // Partial consume or overflow -- both fall back. `from_chars` reports them through its own
+  // result, so parsing an env var no longer writes `errno`, a process-global, as a side effect.
   if (ec != std::errc {} or ptr != sv.data() + sv.size()) {
     return std::nullopt;
   }

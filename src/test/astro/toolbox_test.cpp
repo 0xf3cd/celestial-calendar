@@ -405,7 +405,7 @@ TEST(AstroMath, NewtonMethodKeepsBestIterate) {
   // on the root, iteration 1 leaves for the edge and stays: only a retained iterate can come back.
   constexpr double start_jde = 2451545.0;
   constexpr double end_jde   = 2451546.0;
-  constexpr double root      = (start_jde + end_jde) / 2.0; // the solver's own first iterate
+  constexpr double root      = std::midpoint(start_jde, end_jde); // the solver's own first iterate
 
   const auto visits_root_then_diverges = [](const double jde) -> double {
     if (std::fabs(jde - root) < 1e-6) {
