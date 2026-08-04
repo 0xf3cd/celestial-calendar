@@ -246,9 +246,7 @@ public:
   struct JieqiPair { 
     Jieqi jieqi;
     double jde; 
-    auto operator==(const JieqiPair& rhs) const -> bool { 
-      return jieqi == rhs.jieqi and jde == rhs.jde; 
-    }
+    auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
   auto next() -> JieqiPair {

@@ -89,11 +89,7 @@ struct LunarMonth {
   // Jieqis that fall in this lunar month.
   std::vector<JieqiGenerator::JieqiPair> contained_jieqis;
 
-  auto operator==(const LunarMonth& other) const -> bool {
-    return start_moment_utc8 == other.start_moment_utc8
-       and end_moment_utc8 == other.end_moment_utc8
-       and contained_jieqis == other.contained_jieqis;
-  }
+  auto operator==(const LunarMonth& other) const -> bool = default;
 };
 
 /**
@@ -239,7 +235,7 @@ inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, 
   const auto is_11th = [](const auto& month) {
     const auto& jieqis = month.contained_jieqis;
     const auto is_winter_solstice = [](const auto& jq) { return jq.jieqi == Jieqi::冬至; };
-    return std::any_of(cbegin(jieqis), cend(jieqis), is_winter_solstice); 
+    return std::ranges::any_of(jieqis, is_winter_solstice);
   };
 
   // Define a helper function to get the next chunk.
@@ -280,7 +276,7 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
   // TODO: Use `std::views::enumerate` once every CI leg has it (./linter.py --features).
   for (const auto& [index, month] : std::views::zip(std::views::iota(0), chunk)) {
     const auto& jq_pairs = month.contained_jieqis;
-    const bool has_qi = std::any_of(cbegin(jq_pairs), cend(jq_pairs), [](const auto& pair) {
+    const bool has_qi = std::ranges::any_of(jq_pairs, [](const auto& pair) {
       return is_qi(pair.jieqi);
     });
     if (not has_qi) {
@@ -368,12 +364,7 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
   }
 
   // Finally, get the start moment of the leap month.
-  std::optional<calendar::Datetime> leap_month_moment = std::nullopt;
-  if (chunk1_leap_moment.has_value()) {
-    leap_month_moment = chunk1_leap_moment;
-  } else if (chunk2_leap_moment.has_value()) {
-    leap_month_moment = chunk2_leap_moment;
-  }
+  const auto leap_month_moment = chunk1_leap_moment.or_else([&] { return chunk2_leap_moment; });
 
   // Figure out the months in the lunar year.
   // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
@@ -421,21 +412,21 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
   const auto is_leap = [&](const auto& m) {
     return m.start_moment_utc8 == context.leap_month_moment_utc8;
   };
-  const auto leap_month_vec = context.months 
-                            | std::views::filter(is_leap)
-                            | std::ranges::to<std::vector>();
-
   // Check if there is only one or zero leap month in the lunar year.
-  if (size(leap_month_vec) > 1) {
+  if (std::ranges::count_if(context.months, is_leap) > 1) {
     throw std::runtime_error {
       std::format("Too many leap months in lunar year: {}", year)
     };
   }
 
   // Get the leap month's index.
-  const uint8_t leap_month = std::invoke([&] {
+  const uint8_t leap_month = std::invoke([&] -> uint8_t {
     const auto found = std::ranges::find_if(context.months, is_leap);
-    return found == std::end(context.months) ? 0 : std::distance(std::begin(context.months), found);
+    if (found == std::end(context.months)) {
+      return 0;
+    }
+    // A lunar year holds at most 13 months, so the index fits — say so instead of narrowing silently.
+    return static_cast<uint8_t>(std::ranges::distance(std::begin(context.months), found));
   });
   
   // Then, figure out if the months are big (30 days) or small (29 days).

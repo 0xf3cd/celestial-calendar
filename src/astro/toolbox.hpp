@@ -28,6 +28,7 @@
 #include <limits>
 #include <cstddef>
 #include <numbers>
+#include <numeric>
 #include <cstdint>
 #include <concepts>
 #include <algorithm>
@@ -424,7 +425,7 @@ inline auto newton_method(
   };
 
   double step = NEWTON_INITIAL_STEP_DAYS;
-  double jde  = (start_jde + end_jde) / 2.0;
+  double jde  = std::midpoint(start_jde, end_jde);
 
   // Newton can walk away from a root it has already reached, so keep the best iterate rather
   // than the last one — otherwise one bad late round overwrites a correct answer.
