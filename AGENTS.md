@@ -89,8 +89,19 @@ export CXX=clang++
 ./project.py --build      # Build shared library and tests
 ./project.py --test       # Run all tests
 ./project.py --test -k integration -v 1  # Filtered, verbose tests
+./project.py --bench      # Build and run the benchmarks
 ./project.py --clean      # Remove build/ directory
 ```
+
+Benchmarks are opt-in and `--all` leaves them out: their targets are `EXCLUDE_FROM_ALL`, so no
+CI leg pays to compile them. They live in `src/bench/`, not `src/test/` — that directory turns
+every `.cpp` into a GoogleTest target that runs at build time, and the release check runs every
+binary under `build/test/` and reconciles the count against the `TEST(` macros. Adding a
+`src/bench/bench_*.cpp` is the whole job of adding a benchmark; the runner finds it by directory.
+
+A benchmark's absolute nanoseconds are not comparable across runs or machines — only the paired
+ratios inside one run are. `src/bench/harness.hpp` explains what it does about measurement bias
+and why (#81).
 
 Windows PowerShell:
 
@@ -265,6 +276,7 @@ project — keep the header.
 ```
 src/
   astro/        Astronomical algorithms (VSOP87D, ELP2000-82B, Sun, Moon, ΔT, Julian Day, ...)
+  bench/        Benchmarks, built only by `--bench` (see below)
   calendar/     Calendar logic: datetime, lunar conversion algorithms, Jieqi
   shared_lib/   C++ shared-library wrapper over core algorithms
   test/         GoogleTest-based tests (auto-discovered by CMake)
@@ -323,6 +335,7 @@ toolbox/        Helper scripts for artifacts, releases, build info
 | Configure only | `./project.py --cmake` |
 | Build only | `./project.py --build` |
 | Run tests, verbose | `./project.py --test -v 1` |
+| Run benchmarks | `./project.py --bench` |
 | Filtered tests | `./project.py --test -k <keyword>` |
 | Clean | `./project.py --clean` |
 | Python lint/format | `./linter.py --ruff` |

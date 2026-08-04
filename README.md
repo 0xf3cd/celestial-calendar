@@ -54,6 +54,9 @@ CELESTIAL_TEST_SEED=123 ./project.py --test
 # Or, run all above together to build and test
 ./project.py --all
 
+# Run the benchmarks (opt-in; --all leaves them out so no CI leg pays to compile them)
+./project.py --bench
+
 # Clean up builds
 ./project.py --clean
 
@@ -90,6 +93,9 @@ python3 ./project.py --test
 
 # Or, run all above together to build and test
 python3 ./project.py --all
+
+# Run the benchmarks (opt-in; --all leaves them out so no CI leg pays to compile them)
+python3 ./project.py --bench
 
 # Clean up builds
 python3 ./project.py --clean
