@@ -310,9 +310,8 @@ struct Term {
     };
   };
 
-  // Every row scales by `E` raised to `|M|`, and both tables only ever use |M| = 0, 1 or 2 -- so the
-  // 180 `pow` calls across the three sums take three distinct values.
-  // (`std::abs` is not usable in a constant expression on every toolchain -- compare the range.)
+  // 180 `pow` calls across the three sums, three distinct values. (Bounded as a range rather than
+  // through `std::abs`, which is not constexpr on every toolchain.)
   static_assert(std::ranges::all_of(coeff::LR, [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
   static_assert(std::ranges::all_of(coeff::B,  [](const auto& c) { return c.M >= -2 and c.M <= 2; }));
   const std::array<double, 3> E_pow { std::pow(ctx.E, 0), std::pow(ctx.E, 1), std::pow(ctx.E, 2) };
@@ -321,11 +320,9 @@ struct Term {
     return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
   };
 
-  // Longitude and distance share the LR table, and shared θ is the whole point of fusing them: the
-  // two `views::transform` this replaced were lazy, so each `reduce` re-evaluated θ and the `pow`
-  // from scratch. Summing a `Term` keeps `std::reduce` in charge of the order, which is how Σl and
-  // Σr stay bit-identical to the two separate sums on every standard library, whatever grouping it
-  // picks -- `Term::operator+` follows it componentwise.
+  // Deliberately not a hand-written loop: leaving the order to `std::reduce` is what keeps Σl and Σr
+  // bit-identical to the two separate sums this replaces, on whatever standard library --
+  // `Term::operator+` follows its grouping componentwise.
   const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> Term {
     const auto rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);
