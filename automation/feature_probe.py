@@ -42,6 +42,20 @@ class Feature:
 # as "blocked on Apple Clang" when it was not.
 FEATURES: Final[List[Feature]] = [
   Feature(
+    name="std::tuple_like",
+    token="tuple_like",
+    issue="#81",
+    program="""
+      #include <tuple>
+      #include <utility>
+      template <std::tuple_like T> struct Probe {};
+      auto main() -> int {
+        Probe<std::pair<int, int>> probe;
+        (void) probe;
+      }
+    """,
+  ),
+  Feature(
     name="std::generator",
     token="generator",
     issue="#99",

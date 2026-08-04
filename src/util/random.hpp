@@ -25,15 +25,18 @@
 
 
 #include <cassert>
-#include <cerrno>
+#include <charconv>
 #include <concepts>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <print>
 #include <random>
+#include <string_view>
+#include <system_error>
 
 // #69: test draws come from one shared thread_local engine, so every run is reproducible.
 // The seed defaults to 42 and can be overridden via the CELESTIAL_TEST_SEED env var; the
@@ -44,10 +47,34 @@ namespace util::detail {
 
 inline constexpr uint64_t DEFAULT_SEED = 42;
 
+/**
+ * @brief Parse a `CELESTIAL_TEST_SEED` override.
+ * @param text The raw env-var text, or `nullptr` when it is unset.
+ * @return The seed, or `std::nullopt` when `text` is not a decimal numeral that is consumed in
+ *         full and fits in `uint64_t`. A leading sign, leading space, `0x` prefix and trailing
+ *         junk are all rejected -- only a plain non-negative numeral is honored (0 included).
+ */
+[[nodiscard]] inline auto parse_seed(const char* const text) -> std::optional<uint64_t> {
+  if (text == nullptr or *text < '0' or *text > '9') {
+    return std::nullopt;
+  }
+
+  const std::string_view sv { text };
+  uint64_t parsed = 0;
+  const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), parsed);
+
+  // Not consumed in full, or overflowed -- both fall back, exactly as the `strtoull` version did.
+  // The difference is that `from_chars` reports them through its own result instead of `errno`,
+  // so parsing an env var no longer writes a process-global as a side effect.
+  if (ec != std::errc {} or ptr != sv.data() + sv.size()) {
+    return std::nullopt;
+  }
+  return parsed;
+}
+
+
 [[nodiscard]] inline auto random_seed() -> uint64_t {
-  // Only a fully-consumed, non-negative decimal numeral is honored (yes, 0 is a valid
-  // seed); anything else — unset, leading whitespace/sign, trailing junk, overflow —
-  // falls back to the default.
+  // What counts as a valid override lives in `parse_seed`, not here.
 #ifdef _WIN32
   // MSVC/clang-cl deprecate plain getenv as "unsafe"; getenv_s is the blessed form.
   char env_buf[64] = {};
@@ -57,16 +84,7 @@ inline constexpr uint64_t DEFAULT_SEED = 42;
 #else
   const char* const env = std::getenv("CELESTIAL_TEST_SEED");
 #endif
-  if (env == nullptr or *env < '0' or *env > '9') {
-    return DEFAULT_SEED;
-  }
-  errno = 0;
-  char* end = nullptr;
-  const auto parsed = std::strtoull(env, &end, 10);
-  if (*end != '\0' or errno == ERANGE) {
-    return DEFAULT_SEED;
-  }
-  return parsed;
+  return parse_seed(env).value_or(DEFAULT_SEED);
 }
 
 inline void print_random_seed_once() {
