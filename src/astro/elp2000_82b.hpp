@@ -258,7 +258,7 @@ struct Context {
     .A3 = A3.normalize(),
     .E  = E
   };
-};
+}
 
 
 /**
@@ -329,6 +329,6 @@ struct Evaluation {
     .Σr  = std::reduce(cbegin(rad_terms), cend(rad_terms)),
     .ctx = ctx
   };
-};
+}
 
 } // namespace astro::elp2000_82b

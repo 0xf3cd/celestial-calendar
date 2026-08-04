@@ -188,7 +188,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
   const auto next_root_range = first_root_range_after(jde + 1.0); // Add 1.0 in case `jde_lon_diff` falls into [359.0, 360.0).
   const auto [left, right] = next_root_range;
   return newton_method(left, right);
-};
+}
 
 /**
  * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).

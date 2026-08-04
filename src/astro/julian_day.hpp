@@ -280,7 +280,7 @@ inline constexpr double J2000 = 2451545.0;
 
 
 /**
- * @brief Converts a julian day number to julian millennium.
+ * @brief Converts a julian ephemeris day number to julian millennium.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
  */
@@ -289,7 +289,7 @@ inline constexpr double J2000 = 2451545.0;
 }
 
 /**
- * @brief Converts a julian millennium to julian day number.
+ * @brief Converts a julian millennium to julian ephemeris day number.
  * @param jm The julian millennium since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
@@ -299,8 +299,8 @@ inline constexpr double J2000 = 2451545.0;
 
 
 /**
- * @brief Converts a julian day number to julian century.
- * @param jde The julian day number.
+ * @brief Converts a julian ephemeris day number to julian century.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian century since J2000.
  */
 [[nodiscard]] constexpr auto jde_to_jc(const double jde) -> double {
@@ -309,7 +309,7 @@ inline constexpr double J2000 = 2451545.0;
 
 
 /**
- * @brief Converts a julian century to julian day number.
+ * @brief Converts a julian century to julian ephemeris day number.
  * @param jc The julian century since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
