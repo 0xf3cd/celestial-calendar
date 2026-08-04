@@ -18,6 +18,7 @@ import tempfile
 
 from pathlib import Path
 from pprint import pformat
+from importlib import metadata
 from dataclasses import dataclass
 
 from operator import not_
@@ -33,15 +34,56 @@ from .utils import (
 
 #region Python Dependencies
 
+def unsatisfied_requirements(req_txt: Path) -> List[str]:
+  """The requirements of `req_txt` that the running interpreter does not already provide.
+
+  Only a bare distribution name gets a verdict here. A line carrying a version specifier, an
+  extra, or a pip flag (`-r other.txt`) is reported as unsatisfied, which leaves pip - not this
+  parser - the authority on what those mean.
+  """
+  unsatisfied = []
+
+  for raw_line in req_txt.read_text().splitlines():
+    line = raw_line.split("#", 1)[0].strip()
+    if not line:
+      continue
+
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", line):
+      unsatisfied.append(line)
+      continue
+
+    try:
+      metadata.version(line)
+    except metadata.PackageNotFoundError:
+      unsatisfied.append(line)
+
+  return unsatisfied
+
+
 def install_dependencies() -> int:
-  """Install the required Python dependencies listed in 'Requirements.txt'."""
+  """Install the Python dependencies listed in 'Requirements.txt' that are missing."""
   req_txt = paths.python_requirements()
   if not req_txt.exists():
     return 0
 
-  yellow_print("# Installing Python dependencies...")
+  # Installing unconditionally would fail on an interpreter that cannot be installed into, even
+  # when it already provides everything - and `--all` stops at the first failing task, so the
+  # build would never start.
+  missing = unsatisfied_requirements(req_txt)
+  if not missing:
+    green_print(f"# Python dependencies already satisfied by {sys.executable}")
+    return 0
+
+  yellow_print(f'# Installing Python dependencies: {", ".join(missing)}')
   this_python = sys.executable
   ret = run_cmd([this_python, "-m", "pip", "install", "-r", str(req_txt)])
+
+  # A distro-packaged interpreter (Debian, Ubuntu, ...) refuses to install into its site-packages.
+  if ret.retcode != 0 and "externally-managed-environment" in ret.stdout + ret.stderr:
+    red_print("# This interpreter is managed by the OS package manager (PEP 668).")
+    yellow_print("# Install into a virtual environment and drive the build from it:")
+    yellow_print(f"#   {this_python} -m venv .venv && .venv/bin/python project.py --all")
+
   return ret.retcode
 
 #endregion

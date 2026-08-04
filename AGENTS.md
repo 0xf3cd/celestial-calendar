@@ -84,7 +84,7 @@ export CXX=clang++
 ./project.py --all
 
 # Individual steps
-./project.py --setup      # Install Python deps and verify toolchain
+./project.py --setup      # Install missing Python deps and verify toolchain
 ./project.py --cmake      # Run CMake configuration
 ./project.py --build      # Build shared library and tests
 ./project.py --test       # Run all tests

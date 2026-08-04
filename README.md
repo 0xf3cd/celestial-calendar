@@ -21,6 +21,7 @@ The supported year range of lunar conversions depends on the algorithm: 1901–2
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
+  * A distro-packaged Python (Debian, Ubuntu, ...) refuses that install under PEP 668. Work in a virtual environment there: `python3 -m venv .venv && .venv/bin/python project.py --all`. `--setup` installs nothing when the dependencies are already present, so an interpreter that already has them is fine as well.
   * `Requirements.txt` covers the build/test automation only. The linters come separately (see §4), and the notebooks and crawlers under `statistics/` need `python3 -m pip install -r Requirements-statistics.txt`
 
 ## 3. How to Build
