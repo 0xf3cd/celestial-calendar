@@ -165,8 +165,14 @@ FEATURES: Final[List[Feature]] = [
 #   libstdc++  clang 18.1.3 + ubuntu-24.04's default libstdc++ (GCC 13)
 #   libc++     Apple clang 21.0.0 + its bundled libc++
 #   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
+# `std::tuple_like` (#81): measured False on libstdc++ (clang 21.1.8 and g++ 15.2, both -std=c++23
+# and -std=c++26 -- libstdc++ 15 has only the internal `__glibcxx_want_tuple_like` machinery).
+# The libc++ and msvc-stl entries are the author's expectation, not a measurement: neither
+# toolchain is reachable from the machine this was written on. CI is the authority -- if a leg
+# disagrees, this table is what is wrong, and the mismatch message says so.
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
+    "std::tuple_like": False,
     "std::generator": False,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,
@@ -176,6 +182,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::function_ref": False,
   },
   "libc++": {
+    "std::tuple_like": False,
     "std::generator": False,
     "std::ranges::fold_left": True,
     "std::views::enumerate": False,
@@ -185,6 +192,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::function_ref": False,
   },
   "msvc-stl": {
+    "std::tuple_like": False,
     "std::generator": True,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,
