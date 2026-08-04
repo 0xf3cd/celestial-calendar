@@ -24,6 +24,7 @@
 #pragma once
 
 #include <span>
+#include <cmath>
 #include <chrono>
 #include <format>
 #include <string>
@@ -90,7 +91,7 @@ namespace detail {
   }
   std::ranges::sort(samples);
   const auto last = static_cast<double>(samples.size() - 1);
-  const auto index = static_cast<std::size_t>((q * last) + 0.5);
+  const auto index = static_cast<std::size_t>(std::lround(q * last));
   return samples.at(index);
 }
 
