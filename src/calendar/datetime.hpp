@@ -58,7 +58,7 @@ concept IsDuration = requires {
  * @example `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
  */
 template <IsDuration Duration>
-consteval auto in_a_day() -> uint64_t {
+[[nodiscard]] consteval auto in_a_day() -> uint64_t {
   return duration_cast<Duration>(days { 1 }).count();
 }
 
@@ -82,7 +82,7 @@ concept Fractionable = requires (T t) {
  * @warning No check on the input `elapsed`, so it can be negative or greater than `in_a_day<nanoseconds>()`.
  *          Thus, the returned result may be < 0.0 or >= 1.0.
  */
-constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
+[[nodiscard]] constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
   const auto& ns_duration = duration_cast<nanoseconds>(elapsed);
   const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
@@ -99,7 +99,7 @@ constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
  * @example `from_fraction(2.0) == 48:00:00.000000000`
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
  */
-constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
+[[nodiscard]] constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
   return hh_mm_ss {
     nanoseconds {
       static_cast<int64_t>(
@@ -119,7 +119,7 @@ constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
  *       `fraction < 0.0 or fraction >= 1.0` test is always false for NaN and lets it through
  *       to the undefined double→int64 cast in `from_fraction`.
  */
-constexpr auto validate_fraction(const double fraction) -> double {
+[[nodiscard]] constexpr auto validate_fraction(const double fraction) -> double {
   if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#67).
     throw std::invalid_argument {
       std::vformat(
@@ -265,26 +265,24 @@ struct Datetime {
    * @return The fraction of a day, expected to be in the range [0.0, 1.0).
    */
   [[nodiscard]] constexpr auto fraction() const noexcept -> double {
-    const nanoseconds&& elapsed = time_of_day.to_duration();
+    const auto elapsed = time_of_day.to_duration();
     return to_fraction(elapsed);
   }
 
   // Define some operators as well in order to use `Datetime` in some STL containers.
 
-  auto operator==(const Datetime& other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator==(const Datetime& other) const noexcept -> bool {
     return ymd == other.ymd and time_of_day.to_duration() == other.time_of_day.to_duration();
   }
 
-  auto operator!=(const Datetime& other) const noexcept -> bool {
-    return not (*this == other);
-  }
+  // `operator!=` is not spelled out: C++20 rewrites `a != b` as `!(a == b)`.
 
-  auto operator<=>(const Datetime& other) const noexcept {
+  [[nodiscard]] constexpr auto operator<=>(const Datetime& other) const noexcept {
     if (auto cmp = ymd <=> other.ymd; cmp != 0) {
       return cmp;
     }
     return time_of_day.to_duration() <=> other.time_of_day.to_duration();
-  };
+  }
 };
 
 
@@ -296,7 +294,7 @@ struct Datetime {
  * @throw std::invalid_argument if `offset_sec` is not finite, or if the shifted date leaves
  *        `std::chrono::year_month_day`'s representable years.
  */
-constexpr auto add_seconds(const Datetime& dt, const double offset_sec) -> Datetime {
+[[nodiscard]] constexpr auto add_seconds(const Datetime& dt, const double offset_sec) -> Datetime {
   // Beyond ±2e9 days the day carry below overflows `int32_t`; NaN fails the comparison too.
   if (not (std::fabs(offset_sec) < 2.0e9 * in_a_day<seconds>())) {
     throw std::invalid_argument {
@@ -336,7 +334,7 @@ namespace std {
 // This function may be an overkill though.
 template <>
 struct hash<calendar::Datetime> {
-  auto operator()(const calendar::Datetime& dt) const -> std::size_t {
+  [[nodiscard]] auto operator()(const calendar::Datetime& dt) const -> std::size_t {
     const auto [y, m, d] = util::from_ymd(dt.ymd);
     const double fraction = dt.fraction();
     return util::hash::hash(y, m, d, fraction);

@@ -70,7 +70,7 @@ inline constexpr int32_t END_YEAR = 5000;
  * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 — the non-invertible second of
  *       `leap_second::tt_to_utc` never lands on a civil-day boundary here.
  */
-inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
+[[nodiscard]] inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
   return calendar::add_seconds(
     astro::julian_day::jde_to_utc(jde),
     8.0 * 3600.0
@@ -89,18 +89,18 @@ struct LunarMonth {
   // Jieqis that fall in this lunar month.
   std::vector<JieqiGenerator::JieqiPair> contained_jieqis;
 
-  auto operator==(const LunarMonth& other) const -> bool {
-    return start_moment_utc8 == other.start_moment_utc8
-       and end_moment_utc8 == other.end_moment_utc8
-       and contained_jieqis == other.contained_jieqis;
-  }
+  [[nodiscard]] auto operator==(const LunarMonth& other) const -> bool = default;
 };
 
 /**
  * @brief A generator that generates some metadata of lunar months, including Jieqi and length of the month.
  * @note Generated lunar and jieqi information starts after the given JDE.
- * @details The new moon moments and jieqi can be put back to the generator for future use. So I don't think
- *          `std::generator` can be used here... Since `std::generator` doesn't support put back?
+ * @details New moons and jieqi are read one ahead: this month's end is next month's start, and jieqi
+ *          are read until one falls past it. Both are pushed back because the upstream generators only
+ *          hand out values by advancing -- there is no way to look without taking. #99 pilots
+ *          `std::generator` for those two; an input iterator reads `*it` without advancing, so that
+ *          migration would retire both put-backs here. `_next_month` is a separate thing: it backs
+ *          `peek`, and only `next` empties it.
  */
 struct LunarMonthGenerator {
 private:
@@ -112,7 +112,7 @@ private:
 
   std::optional<LunarMonth> _next_month;
 
-  auto next_new_moon() -> double {
+  [[nodiscard]] auto next_new_moon() -> double {
     if (_next_new_moon.has_value()) {
       const double jde = *_next_new_moon;
       _next_new_moon = std::nullopt;
@@ -127,7 +127,7 @@ private:
     _next_new_moon = jde;
   }
 
-  auto next_jieqi() -> JieqiGenerator::JieqiPair {
+  [[nodiscard]] auto next_jieqi() -> JieqiGenerator::JieqiPair {
     if (_next_jieqi.has_value()) {
       auto jieqi = *_next_jieqi;
       _next_jieqi = std::nullopt;
@@ -142,7 +142,7 @@ private:
     _next_jieqi = jieqi;
   }
 
-  auto next_month() -> LunarMonth {
+  [[nodiscard]] auto next_month() -> LunarMonth {
     if (_next_month.has_value()) {
       auto month = *_next_month;
       _next_month = std::nullopt;
@@ -187,11 +187,6 @@ private:
     };
   }
 
-  auto put_back_month(const LunarMonth& month) -> void {
-    assert(!_next_month.has_value());
-    _next_month = month;
-  }
-
 public:
   explicit LunarMonthGenerator(const double start_jde) 
     : _new_moon_gen(start_jde),
@@ -201,15 +196,16 @@ public:
   {}
 
   /** @brief Get the metadata of the next lunar month. */
-  auto next() -> LunarMonth {
+  [[nodiscard]] auto next() -> LunarMonth {
     return next_month();
   }
 
   /** @brief Peek the metadata of the next lunar month, without advancing. */
-  auto peek() -> LunarMonth {
-    auto month = next_month();
-    put_back_month(month);
-    return month;
+  [[nodiscard]] auto peek() -> LunarMonth {
+    if (not _next_month.has_value()) {
+      _next_month = next_month();
+    }
+    return *_next_month;
   }
 };
 
@@ -228,7 +224,7 @@ using LunarMonthChunk = std::vector<LunarMonth>;
  *         The first chunk is from 11th month in the previous year to 11th month in the current year.
  *         The second chunk is from 11th month in the current year to 11th month in the next year.
  */
-inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, LunarMonthChunk> {
+[[nodiscard]] inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, LunarMonthChunk> {
   // The lunar month where Winter Solstice (i.e. Jieqi::冬至) occurs is defined as the 11th month.
   const auto winter_solstice_last_year = jieqi_jde(year - 1, Jieqi::冬至);
 
@@ -239,7 +235,7 @@ inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, 
   const auto is_11th = [](const auto& month) {
     const auto& jieqis = month.contained_jieqis;
     const auto is_winter_solstice = [](const auto& jq) { return jq.jieqi == Jieqi::冬至; };
-    return std::any_of(cbegin(jieqis), cend(jieqis), is_winter_solstice); 
+    return std::ranges::any_of(jieqis, is_winter_solstice);
   };
 
   // Define a helper function to get the next chunk.
@@ -268,7 +264,7 @@ inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, 
  * @param chunk The chunk of lunar months.
  * @return The index of the leap month in the given chunk. `std::nullopt` if there is no leap month.
  */
-inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<int32_t> {
+[[nodiscard]] inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<int32_t> {
   assert(size(chunk) == 12 or size(chunk) == 13);
 
   // As per the rules, for 12-month chunks, there is no leap month.
@@ -280,7 +276,7 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
   // TODO: Use `std::views::enumerate` once every CI leg has it (./linter.py --features).
   for (const auto& [index, month] : std::views::zip(std::views::iota(0), chunk)) {
     const auto& jq_pairs = month.contained_jieqis;
-    const bool has_qi = std::any_of(cbegin(jq_pairs), cend(jq_pairs), [](const auto& pair) {
+    const bool has_qi = std::ranges::any_of(jq_pairs, [](const auto& pair) {
       return is_qi(pair.jieqi);
     });
     if (not has_qi) {
@@ -299,7 +295,7 @@ inline auto leap_month_in_chunk(const LunarMonthChunk& chunk) -> std::optional<i
  * @param leap_month The index of the leap month in the given chunk. `std::nullopt` if there is no leap month.
  * @return The start moment of the lunar year.
  */
-inline auto calc_lunar_year_start_moment(const LunarMonthChunk& chunk, std::optional<int32_t> leap_month) -> calendar::Datetime {
+[[nodiscard]] inline auto calc_lunar_year_start_moment(const LunarMonthChunk& chunk, std::optional<int32_t> leap_month) -> calendar::Datetime {
   if (leap_month.has_value() and (*leap_month <= 2)) {
     // The lunar year starts from the third month after the 11th month in previous year,
     // because of the leap month.
@@ -327,7 +323,7 @@ struct LunarYearContext {
  * @param year The year to create the context for.
  * @return The `LunarYearContext` for the given year.
  */
-inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
+[[nodiscard]] inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
   const auto& [chunk1, chunk2] = calc_lunar_month_chunks(year);
 
   const auto chunk1_leap_month = leap_month_in_chunk(chunk1);
@@ -368,12 +364,7 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
   }
 
   // Finally, get the start moment of the leap month.
-  std::optional<calendar::Datetime> leap_month_moment = std::nullopt;
-  if (chunk1_leap_moment.has_value()) {
-    leap_month_moment = chunk1_leap_moment;
-  } else if (chunk2_leap_moment.has_value()) {
-    leap_month_moment = chunk2_leap_moment;
-  }
+  const auto leap_month_moment = chunk1_leap_moment.or_else([&] { return chunk2_leap_moment; });
 
   // Figure out the months in the lunar year.
   // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
@@ -405,7 +396,7 @@ inline auto create_lunar_year_context(int32_t year) -> LunarYearContext {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-inline auto calc_lunar_year(int32_t year) -> LunarYear {
+[[nodiscard]] inline auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
@@ -421,21 +412,21 @@ inline auto calc_lunar_year(int32_t year) -> LunarYear {
   const auto is_leap = [&](const auto& m) {
     return m.start_moment_utc8 == context.leap_month_moment_utc8;
   };
-  const auto leap_month_vec = context.months 
-                            | std::views::filter(is_leap)
-                            | std::ranges::to<std::vector>();
-
   // Check if there is only one or zero leap month in the lunar year.
-  if (size(leap_month_vec) > 1) {
+  if (std::ranges::count_if(context.months, is_leap) > 1) {
     throw std::runtime_error {
       std::format("Too many leap months in lunar year: {}", year)
     };
   }
 
   // Get the leap month's index.
-  const uint8_t leap_month = std::invoke([&] {
+  const uint8_t leap_month = std::invoke([&] -> uint8_t {
     const auto found = std::ranges::find_if(context.months, is_leap);
-    return found == std::end(context.months) ? 0 : std::distance(std::begin(context.months), found);
+    if (found == std::end(context.months)) {
+      return 0;
+    }
+    // A lunar year holds at most 13 months, so the index fits — say so instead of narrowing silently.
+    return static_cast<uint8_t>(std::ranges::distance(std::begin(context.months), found));
   });
   
   // Then, figure out if the months are big (30 days) or small (29 days).
@@ -475,7 +466,7 @@ const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
  *       while the shared library is still being loaded, where an escaping exception would
  *       terminate the host before `main`.
  */
-inline auto bounds() -> const common::AlgoBounds& {
+[[nodiscard]] inline auto bounds() -> const common::AlgoBounds& {
   static const common::AlgoBounds value = calc_bounds(START_YEAR, END_YEAR, get_info_for_year);
   return value;
 }
@@ -491,7 +482,7 @@ struct AlgoMetadata<Algo::ALGO_2> {
   static const inline auto& get_info_for_year = algo2::get_info_for_year;
   // #67: an accessor, not an eager binding — an `inline` static member would initialize at
   // image load, running the whole astro pipeline before `main` and defeating `algo2::bounds()`.
-  static auto bounds() -> const common::AlgoBounds& { return algo2::bounds(); }
+  [[nodiscard]] static auto bounds() -> const common::AlgoBounds& { return algo2::bounds(); }
 };
 
 } // namespace calendar::lunar::common

@@ -23,11 +23,13 @@
 
 #pragma once
 
+#include <array>
 #include <format>
 #include <ranges>
 #include <cstdint>
+#include <utility>
+#include <stdexcept>
 #include <string_view>
-#include <unordered_map>
 
 #include "sun.hpp"
 #include "util.hpp"
@@ -53,7 +55,7 @@ enum class Jieqi : uint8_t {
   LIDONG = 立冬, XIAOXUE = 小雪, DAXUE = 大雪, DONGZHI = 冬至, XIAOHAN = 小寒, DAHAN = 大寒,
 };
 
-inline constexpr uint8_t JIEQI_COUNT = static_cast<uint8_t>(Jieqi::COUNT);
+inline constexpr uint8_t JIEQI_COUNT = std::to_underlying(Jieqi::COUNT);
 static_assert(24U == JIEQI_COUNT);
 
 
@@ -62,8 +64,8 @@ static_assert(24U == JIEQI_COUNT);
  * @param jq The jieqi.
  * @return `true` if the given `jq` is a Jie (节), `false` otherwise.
  */
-constexpr auto is_jie(const Jieqi jq) -> bool {
-  const auto index = static_cast<uint8_t>(jq);
+[[nodiscard]] constexpr auto is_jie(const Jieqi jq) -> bool {
+  const auto index = std::to_underlying(jq);
   return index % 2 == 0;
 }
 
@@ -73,8 +75,8 @@ constexpr auto is_jie(const Jieqi jq) -> bool {
  * @param jq The jieqi.
  * @return `true` if the given `jq` is a Qi (气), `false` otherwise.
  */
-constexpr auto is_qi(const Jieqi jq) -> bool {
-  const auto index = static_cast<uint8_t>(jq);
+[[nodiscard]] constexpr auto is_qi(const Jieqi jq) -> bool {
+  const auto index = std::to_underlying(jq);
   return index % 2 == 1;
 }
 
@@ -84,17 +86,18 @@ constexpr auto is_qi(const Jieqi jq) -> bool {
  * @param jq The jieqi.
  * @return The index of the given `jq`.
  */
-constexpr auto to_index(const Jieqi jq) -> uint8_t {
-  return static_cast<uint8_t>(jq);
+[[nodiscard]] constexpr auto to_index(const Jieqi jq) -> uint8_t {
+  return std::to_underlying(jq);
 }
 
 
 /**
- * @brief Get the index of the given `jq`.
- * @param jq The jieqi.
- * @return The index of the given `jq`.
+ * @brief Get the Jieqi at a 0-based index counted from 立春.
+ * @param index The index, in `[0, JIEQI_COUNT)`.
+ * @return The jieqi.
+ * @throw std::out_of_range if `index` is not a valid index.
  */
-constexpr auto from_index(const uint8_t index) -> Jieqi {
+[[nodiscard]] constexpr auto from_index(const uint8_t index) -> Jieqi {
   if (index >= JIEQI_COUNT) {
     throw std::out_of_range { "index must be less than 24" };
   }
@@ -103,41 +106,101 @@ constexpr auto from_index(const uint8_t index) -> Jieqi {
 
 
 /** @brief A view of all enum values of `Jieqi`. */
-inline constexpr auto JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+inline constexpr auto JIEQI_LIST = std::views::iota(uint8_t { 0 }, JIEQI_COUNT)
                           | std::views::transform([](const auto i) { return from_index(i); });
 
 /** @brief A view of all enum values of `Jieqi`, but ordered by their occurrence in a gregorian year.
  *         That means the first value is "小寒", since it is the first Jieqi in any gregorian year.
  */
-inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(0, static_cast<int8_t>(JIEQI_COUNT)) 
+inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(uint8_t { 0 }, JIEQI_COUNT)
                                          | std::views::transform([](const auto i) { return (i + to_index(Jieqi::小寒)) % JIEQI_COUNT; })
                                          | std::views::transform([](const auto i) { return from_index(i); });
 
 
-/** @brief Mapping table to get the name of the given `jieqi`. */
-const inline std::unordered_map<Jieqi, std::string_view> JIEQI_NAME = {
-  { Jieqi::立春, "立春" }, { Jieqi::雨水, "雨水" }, { Jieqi::惊蛰, "惊蛰" },
-  { Jieqi::春分, "春分" }, { Jieqi::清明, "清明" }, { Jieqi::谷雨, "谷雨" },
-  { Jieqi::立夏, "立夏" }, { Jieqi::小满, "小满" }, { Jieqi::芒种, "芒种" },
-  { Jieqi::夏至, "夏至" }, { Jieqi::小暑, "小暑" }, { Jieqi::大暑, "大暑" },
-  { Jieqi::立秋, "立秋" }, { Jieqi::处暑, "处暑" }, { Jieqi::白露, "白露" },
-  { Jieqi::秋分, "秋分" }, { Jieqi::寒露, "寒露" }, { Jieqi::霜降, "霜降" },
-  { Jieqi::立冬, "立冬" }, { Jieqi::小雪, "小雪" }, { Jieqi::大雪, "大雪" },
-  { Jieqi::冬至, "冬至" }, { Jieqi::小寒, "小寒" }, { Jieqi::大寒, "大寒" },
-};
+/**
+ * @brief Name of each Jieqi, positioned by `to_index`.
+ * @note Read it through `name_of` -- a bare index cannot say which space it came from. See `name_of`.
+ */
+inline constexpr std::array<std::string_view, JIEQI_COUNT> JIEQI_NAME {{
+  "立春", "雨水", "惊蛰",
+  "春分", "清明", "谷雨",
+  "立夏", "小满", "芒种",
+  "夏至", "小暑", "大暑",
+  "立秋", "处暑", "白露",
+  "秋分", "寒露", "霜降",
+  "立冬", "小雪", "大雪",
+  "冬至", "小寒", "大寒",
+}};
 
 
-/** @brief Mapping table to get the solar longitude of the given `Jieqi`. */
-const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
-  { Jieqi::立春, 315.0 }, { Jieqi::雨水, 330.0 }, { Jieqi::惊蛰, 345.0 },
-  { Jieqi::春分,   0.0 }, { Jieqi::清明,  15.0 }, { Jieqi::谷雨,  30.0 },
-  { Jieqi::立夏,  45.0 }, { Jieqi::小满,  60.0 }, { Jieqi::芒种,  75.0 },
-  { Jieqi::夏至,  90.0 }, { Jieqi::小暑, 105.0 }, { Jieqi::大暑, 120.0 },
-  { Jieqi::立秋, 135.0 }, { Jieqi::处暑, 150.0 }, { Jieqi::白露, 165.0 },
-  { Jieqi::秋分, 180.0 }, { Jieqi::寒露, 195.0 }, { Jieqi::霜降, 210.0 },
-  { Jieqi::立冬, 225.0 }, { Jieqi::小雪, 240.0 }, { Jieqi::大雪, 255.0 },
-  { Jieqi::冬至, 270.0 }, { Jieqi::小寒, 285.0 }, { Jieqi::大寒, 300.0 },
-};
+/**
+ * @brief Solar longitude (in degrees) at which each Jieqi begins, positioned by `to_index`.
+ * @note Read it through `longitude_of` -- see `name_of`.
+ */
+inline constexpr std::array<double, JIEQI_COUNT> JIEQI_SOLAR_LONGITUDE {{
+  315.0, 330.0, 345.0,
+    0.0,  15.0,  30.0,
+   45.0,  60.0,  75.0,
+   90.0, 105.0, 120.0,
+  135.0, 150.0, 165.0,
+  180.0, 195.0, 210.0,
+  225.0, 240.0, 255.0,
+  270.0, 285.0, 300.0,
+}};
+
+
+// The tables are position-keyed, so a mis-ordered edit is silent. Pin the order at compile time.
+//
+// The longitudes are pinned exactly: they advance 15 degrees per Jieqi starting from 315 at 立春,
+// so the whole table has a closed form and any reorder breaks it.
+static_assert([] {
+  for (uint8_t i = 0; i < JIEQI_COUNT; ++i) {
+    if (JIEQI_SOLAR_LONGITUDE.at(i) != static_cast<double>((i * 15 + 315) % 360)) {
+      return false;
+    }
+  }
+  return true;
+}());
+
+// The names have no closed form, so these pin the ends and one interior point. That catches a
+// shift (an entry added or dropped), which is the likely edit accident; it does not catch two
+// interior names swapped with each other.
+static_assert("立春" == JIEQI_NAME.at(to_index(Jieqi::立春)));
+static_assert("夏至" == JIEQI_NAME.at(to_index(Jieqi::夏至)));
+static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
+
+
+// Consumers read both tables through these two; the order-pinning asserts above are the one
+// exception, and they have to read by position. Two different index spaces live in this codebase
+// -- `to_index` counts from 立春, while the HKO almanac and `GREGORIAN_YEAR_JIEQI_LIST` count from
+// 小寒 -- and a subscript cannot tell them apart, so indexing the wrong one yields a plausible
+// wrong answer in silence. Taking a `Jieqi` makes that a compile error again.
+//
+// `.at()` stays on the read path: it throws `std::out_of_range` for a `Jieqi` outside `[0, 24)`,
+// which the enum's fixed underlying type makes reachable from outside the library
+// (`static_cast<Jieqi>(25)`, or `Jieqi::COUNT` itself).
+
+/**
+ * @brief Get the name of the given `jq`.
+ * @param jq The jieqi.
+ * @return The name.
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ */
+[[nodiscard]] constexpr auto name_of(const Jieqi jq) -> std::string_view {
+  return JIEQI_NAME.at(to_index(jq));
+}
+
+
+/**
+ * @brief Get the solar longitude (in degrees) at which the given `jq` begins.
+ * @param jq The jieqi.
+ * @return The solar longitude.
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ */
+[[nodiscard]] constexpr auto longitude_of(const Jieqi jq) -> double {
+  return JIEQI_SOLAR_LONGITUDE.at(to_index(jq));
+}
+
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`.
@@ -145,14 +208,15 @@ const inline std::unordered_map<Jieqi, double> JIEQI_SOLAR_LONGITUDE = {
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
  */
-inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
-  const auto lon = JIEQI_SOLAR_LONGITUDE.at(jq);
+[[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
+  const auto lon = longitude_of(jq);
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
   if (roots.size() != 1) {
+    const auto name = name_of(jq);
     throw std::runtime_error {
-      std::vformat("Unexpected roots size for year {}, jieqi {}", 
-                   std::make_format_args(year, JIEQI_NAME.at(jq)))
+      std::vformat("Unexpected roots size for year {}, jieqi {}",
+                   std::make_format_args(year, name))
     };
   }
 
@@ -176,7 +240,7 @@ const inline auto jieqi_jde = util::cache::cache_func(calc_jieqi_jde);
  *       for contract stability. The UT1/UTC gap is DUT1 (≤ 0.9 s while leap seconds are
  *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
  */
-inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
+[[nodiscard]] inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
 
@@ -214,12 +278,10 @@ public:
   struct JieqiPair { 
     Jieqi jieqi;
     double jde; 
-    auto operator==(const JieqiPair& rhs) const -> bool { 
-      return jieqi == rhs.jieqi and jde == rhs.jde; 
-    }
+    [[nodiscard]] auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
-  auto next() -> JieqiPair {
+  [[nodiscard]] auto next() -> JieqiPair {
     const auto jq = from_index(_jq_index);
     const auto jde = jieqi_jde(_year, jq);
 

@@ -46,7 +46,7 @@ using util::hash::TupleHash;
  * @return The cached function. Thread-safe; copies share one cache (#78).
  */
 template <typename RetType, typename... Args>
-inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
+[[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
   // Cache and mutex live behind a `shared_ptr`, so copying the returned
   // `std::function` shares one cache instead of forking divergent replicas (#78).
   struct State {
@@ -89,7 +89,7 @@ concept FunctionConvertible = requires(T t) {
  * @param func The function to cache.
  * @return The cached function.
  */
-inline auto cache_func(const FunctionConvertible auto& func) {
+[[nodiscard]] inline auto cache_func(const FunctionConvertible auto& func) {
   return make_cached(std::function(func));
 }
 

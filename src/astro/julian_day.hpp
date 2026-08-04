@@ -57,7 +57,7 @@ inline constexpr double J2000 = 2451545.0;
  * @note Years 1-400 convert forward, but sit below `jd_to_ut1`'s year-401 bound — round-trips
  *       only close from 401-01-01 onwards.
  */
-inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
+[[nodiscard]] inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -88,8 +88,16 @@ inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
   }
 
   // NOLINTBEGIN
-  // The following code is doing narrowing-conversions. 
+  // The following code is doing narrowing-conversions.
   // But keep it as-is for matching the original algorithm expressions.
+  //
+  // `C` below is the part that looks wrong and is not: for any year past ~200 the true value of
+  // `2 - A + B` is negative, so the `uint32_t` holds its mod-2^32 image. That image is only ever
+  // consumed by `C + D + E + F`, which is evaluated in the same modular arithmetic and lands back
+  // on the exact value -- checked exhaustively over years 1..9999 x 12 months. The final sum
+  // peaks around 5.4e6, nowhere near 2^32.
+  //
+  // Do not "fix" `C` into a signed type on its own: that breaks the cancellation.
   const uint32_t Y = (g_m <= 2) ? g_y - 1 : g_y;
   const uint32_t M = (g_m <= 2) ? g_m + 12 : g_m;
   const uint32_t D = g_d;
@@ -116,7 +124,7 @@ inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
  * @note `ut1_to_jd(32767-12-31, fraction ≈ 1)` rounds up to exactly the upper bound
  *       13689325.5, which this function rejects — a 1-ulp round-trip break callers must expect.
  */
-inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
+[[nodiscard]] inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   /*
     Ref: https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
     The algorithm is as follows:
@@ -167,8 +175,12 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   }
 
   // NOLINTBEGIN
-  // The following code is doing narrowing-conversions. 
+  // The following code is doing narrowing-conversions.
   // But keep it as-is for matching the original algorithm expressions.
+  //
+  // Each `uint32_t` assignment is the book's integer-floor step. They are safe here because both
+  // ends of `jd` are already guarded above: below 1867522.5 and at or past 13689325.5 the function
+  // has thrown, so no intermediate goes negative or wraps.
   const double   Q = jd + 0.5;
   const uint32_t Z = Q;
   const uint32_t W = (Z - 1867216.25) / 36524.25;
@@ -205,7 +217,7 @@ inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
  * @param tt_dt The date and time (TT).
  * @return The julian ephemeris day number, which is based on TT (not UT1).
  */
-inline auto tt_to_jde(const calendar::Datetime& tt_dt) -> double {
+[[nodiscard]] inline auto tt_to_jde(const calendar::Datetime& tt_dt) -> double {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return ut1_to_jd(tt_dt);
 }
@@ -216,7 +228,7 @@ inline auto tt_to_jde(const calendar::Datetime& tt_dt) -> double {
  * @param jde The julian ephemeris day number, which is based on TT (not UT1).
  * @return The date and time, in TT.
  */
-inline auto jde_to_tt(const double jde) -> calendar::Datetime {
+[[nodiscard]] inline auto jde_to_tt(const double jde) -> calendar::Datetime {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return jd_to_ut1(jde);
 }
@@ -227,7 +239,7 @@ inline auto jde_to_tt(const double jde) -> calendar::Datetime {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The date and time, in UT1.
  */
-inline auto jde_to_ut1(const double jde) -> calendar::Datetime {
+[[nodiscard]] inline auto jde_to_ut1(const double jde) -> calendar::Datetime {
   const auto tt_dt = jde_to_tt(jde);
   return astro::delta_t::tt_to_ut1(tt_dt);
 }
@@ -238,7 +250,7 @@ inline auto jde_to_ut1(const double jde) -> calendar::Datetime {
  * @param ut1_dt The date and time, in UT1.
  * @return The julian ephemeris day number, which is based on TT.
  */
-inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
+[[nodiscard]] inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
   return tt_to_jde(tt_dt);
 }
@@ -250,7 +262,7 @@ inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
  * @return The date and time, in UTC.
  * @note Before modern UTC (1972-01-01) this degrades to UT1; see `astro::leap_second::tt_to_utc`.
  */
-inline auto jde_to_utc(const double jde) -> calendar::Datetime {
+[[nodiscard]] inline auto jde_to_utc(const double jde) -> calendar::Datetime {
   return astro::leap_second::tt_to_utc(jde_to_tt(jde));
 }
 
@@ -261,46 +273,46 @@ inline auto jde_to_utc(const double jde) -> calendar::Datetime {
  * @return The julian ephemeris day number, which is based on TT.
  * @note Before modern UTC (1972-01-01) this degrades to UT1; see `astro::leap_second::utc_to_tt`.
  */
-inline auto utc_to_jde(const calendar::Datetime& utc_dt) -> double {
+[[nodiscard]] inline auto utc_to_jde(const calendar::Datetime& utc_dt) -> double {
   return tt_to_jde(astro::leap_second::utc_to_tt(utc_dt));
 }
 
 
 /**
- * @brief Converts a julian day number to julian millennium.
+ * @brief Converts a julian ephemeris day number to julian millennium.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
  */
-constexpr auto jde_to_jm(const double jde) -> double {
+[[nodiscard]] constexpr auto jde_to_jm(const double jde) -> double {
   return (jde - J2000) / 365250.0;
 }
 
 /**
- * @brief Converts a julian millennium to julian day number.
+ * @brief Converts a julian millennium to julian ephemeris day number.
  * @param jm The julian millennium since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr auto jm_to_jde(const double jm) -> double {
+[[nodiscard]] constexpr auto jm_to_jde(const double jm) -> double {
   return jm * 365250.0 + J2000;
 }
 
 
 /**
- * @brief Converts a julian day number to julian century.
- * @param jde The julian day number.
+ * @brief Converts a julian ephemeris day number to julian century.
+ * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian century since J2000.
  */
-constexpr auto jde_to_jc(const double jde) -> double {
+[[nodiscard]] constexpr auto jde_to_jc(const double jde) -> double {
   return (jde - J2000) / 36525.0;
 }
 
 
 /**
- * @brief Converts a julian century to julian day number.
+ * @brief Converts a julian century to julian ephemeris day number.
  * @param jc The julian century since J2000.
  * @return The julian ephemeris day number, which is based on TT.
  */
-constexpr auto jc_to_jde(const double jc) -> double {
+[[nodiscard]] constexpr auto jc_to_jde(const double jc) -> double {
   return jc * 36525.0 + J2000;
 }
 

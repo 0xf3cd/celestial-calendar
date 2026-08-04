@@ -49,7 +49,7 @@ concept DayConvertible = std::same_as<T, std::chrono::days> or requires (T t) {
 };
 
 /*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
-constexpr auto to_ymd(
+[[nodiscard]] constexpr auto to_ymd(
   const YearConvertible auto year, 
   const MonthConvertible auto month, 
   const DayConvertible auto day
@@ -60,7 +60,7 @@ constexpr auto to_ymd(
 
 
 /*! @brief Converts the input `std::chrono::year_month_day` to a year, month, and date. */
-constexpr auto from_ymd(const std::chrono::year_month_day& ymd) -> std::tuple<int32_t, uint32_t, uint32_t> {
+[[nodiscard]] constexpr auto from_ymd(const std::chrono::year_month_day& ymd) -> std::tuple<int32_t, uint32_t, uint32_t> {
   const int32_t y = static_cast<int32_t>(ymd.year());
   const uint32_t m = static_cast<uint32_t>(ymd.month());
   const uint32_t d = static_cast<uint32_t>(ymd.day());
@@ -73,7 +73,7 @@ namespace util::ymd_operator {
 
 using util::DayConvertible;
 
-constexpr auto operator+(
+[[nodiscard]] constexpr auto operator+(
   const std::chrono::year_month_day& ymd, 
   const DayConvertible auto& days
 ) -> std::chrono::year_month_day {
@@ -82,7 +82,7 @@ constexpr auto operator+(
 }
 
 
-constexpr auto operator+(
+[[nodiscard]] constexpr auto operator+(
   const DayConvertible auto& days,
   const std::chrono::year_month_day& ymd
 ) -> std::chrono::year_month_day {
@@ -91,7 +91,7 @@ constexpr auto operator+(
 }
 
 
-constexpr auto operator-(
+[[nodiscard]] constexpr auto operator-(
   const std::chrono::year_month_day& ymd, 
   const DayConvertible auto& days
 ) -> std::chrono::year_month_day {
@@ -100,7 +100,7 @@ constexpr auto operator-(
 }
 
 
-constexpr auto operator-(
+[[nodiscard]] constexpr auto operator-(
   const std::chrono::year_month_day& ymd1, 
   const std::chrono::year_month_day& ymd2
 ) -> int32_t {

@@ -64,7 +64,7 @@ inline constexpr double SCALING_FACTOR = 1e8;
  * @return The sum of the terms in the table.
  * @example `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
  */
-inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
+[[nodiscard]] inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
   const auto calc_term = [jm](const auto& term) constexpr -> double {
     return term.A * std::cos(term.B + term.C * jm);
   };
@@ -83,7 +83,7 @@ inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> d
  * @return The evaluated result. As per the VSOP87D model, the result is in radians.
  * @example `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
  */
-inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -> double {
+[[nodiscard]] inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -> double {
   // Evaluate the result for each table in `vsop_tables`.
   const auto values = vsop_tables | std::views::transform([jm](const Vsop87dTable& vsop_table) {
     return evaluate_table(vsop_table, jm);
@@ -126,7 +126,7 @@ struct Evaluation {
  * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */
 template <Planet planet>
-inline auto evaluate(const double jm) -> Evaluation {
+[[nodiscard]] inline auto evaluate(const double jm) -> Evaluation {
   const auto& L = PlanetTables<planet>::L;
   const auto& B = PlanetTables<planet>::B;
   const auto& R = PlanetTables<planet>::R;

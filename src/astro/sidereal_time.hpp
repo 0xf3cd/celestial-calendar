@@ -48,7 +48,7 @@ namespace astro::sidereal {
  *       is TT-based.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12, Formulas (12.2)-(12.4).
  */
-inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
 
   // Days and julian centuries of *universal* time since J2000.0 UT.
@@ -76,7 +76,7 @@ inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::AngleDeg {
  *       (|Δψ| itself can reach ~19").
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12 (and Chapter 22 for Δψ, ε).
  */
-inline auto greenwich_apparent(
+[[nodiscard]] inline auto greenwich_apparent(
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): the jd_ut1/jde_tt naming is the UT1/TT guard (issue #41).
   const double jd_ut1,
   const double jde_tt,
@@ -105,7 +105,7 @@ inline auto greenwich_apparent(
  *       consistent with Meeus's hour-angle formula H = θ₀ − L − α used from Chapter 13 onward.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12.
  */
-inline auto local_apparent(
+[[nodiscard]] inline auto local_apparent(
   const double jd_ut1,
   const double jde_tt,
   const astro::toolbox::AngleDeg& longitude_west,

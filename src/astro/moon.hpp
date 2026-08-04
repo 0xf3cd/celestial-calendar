@@ -41,7 +41,7 @@ namespace astro::moon::perturbation {
  * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto longitude(const elp2000_82b::Context& ctx) -> double {
+[[nodiscard]] inline auto longitude(const elp2000_82b::Context& ctx) -> double {
   return 3958.0 * std::sin(ctx.A1.rad()) 
        + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
        + 318.0 * std::sin(ctx.A2.rad());
@@ -56,7 +56,7 @@ inline auto longitude(const elp2000_82b::Context& ctx) -> double {
  * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
-inline auto latitude(const elp2000_82b::Context& ctx) -> double {
+[[nodiscard]] inline auto latitude(const elp2000_82b::Context& ctx) -> double {
   return -2235.0 * std::sin(ctx.Lp.rad())
        + 382.0 * std::sin(ctx.A3.rad())
        + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
@@ -71,11 +71,18 @@ inline auto latitude(const elp2000_82b::Context& ctx) -> double {
 namespace astro::moon::geocentric_coord {
 
 /**
+ * @brief Earth's equatorial radius, in kilometers.
+ * @ref Astronomical Algorithms, Jean Meeus, 1998, Chapter 47 -- the equatorial horizontal parallax
+ *      is `asin(6378.14 / r)`, with `r` the Earth-Moon distance in the same unit.
+ */
+inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
+
+/**
  * @brief Calculate the apparent geocentric position of the Moon, using truncated ELP2000-82B.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Moon, calculated using truncated ELP2000-82B.
  */
-inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
   const double jc = astro::julian_day::jde_to_jc(jde);
 
   const auto evaluated = elp2000_82b::evaluate(jc);
@@ -105,8 +112,8 @@ inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
  * @param distance The geocentric distance of the Moon.
  * @return The equatorial horizontal parallax of the Moon.
  */
-inline auto equatorial_horizontal_parallax(const toolbox::DistanceKm& distance) -> toolbox::AngleRad {
-  const auto ppi_rad = std::asin(6378.14 / distance.km());
+[[nodiscard]] inline auto equatorial_horizontal_parallax(const toolbox::DistanceKm& distance) -> toolbox::AngleRad {
+  const auto ppi_rad = std::asin(EARTH_EQUATORIAL_RADIUS_KM / distance.km());
   return toolbox::AngleRad { ppi_rad };
 }
 

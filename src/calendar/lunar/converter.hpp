@@ -56,7 +56,7 @@ struct Converter {
    * @param date The date. 公历日期。
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
    */
-  static auto is_valid_gregorian(const year_month_day& date) -> bool {
+  [[nodiscard]] static auto is_valid_gregorian(const year_month_day& date) -> bool {
     if (not date.ok()) {
       return false;
     }
@@ -73,7 +73,7 @@ struct Converter {
    * @param lunar_date The lunar date. 阴历日期。
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
    */
-  static auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
+  [[nodiscard]] static auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
     if (lunar_date < AlgoMetadata::bounds().first_lunar_date or 
         lunar_date > AlgoMetadata::bounds().last_lunar_date) {
       return false;
@@ -103,7 +103,7 @@ struct Converter {
   * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
                输入的日期无效时返回 `std::nullopt`。不会抛出异常。
   */
-  static auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::optional<year_month_day> {
+  [[nodiscard]] static auto gregorian_to_lunar(const year_month_day& gregorian_date) -> std::optional<year_month_day> {
     if (not is_valid_gregorian(gregorian_date)) {
       return std::nullopt;
     }
@@ -163,7 +163,7 @@ struct Converter {
   * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
                输入的日期无效时返回 `std::nullopt`。不会抛出异常。
   */
-  static auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optional<year_month_day> {
+  [[nodiscard]] static auto lunar_to_gregorian(const year_month_day& lunar_date) -> std::optional<year_month_day> {
     if (not is_valid_lunar(lunar_date)) {
       return std::nullopt;
     }

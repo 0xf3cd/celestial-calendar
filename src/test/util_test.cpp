@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <limits>
 #include <print>
 #include <atomic>
 #include <cmath>
@@ -407,6 +409,31 @@ TEST(Util, MakeCachedThreadSafe) {
   // Every key computed at least once; concurrent misses on a key may compute a few extras.
   ASSERT_GE(call_count, KEY_COUNT);
   ASSERT_LE(call_count, THREAD_COUNT * KEY_COUNT);
+}
+
+
+// Seed-override contract: only a fully-consumed non-negative decimal numeral is honored.
+// These pass on the pre-#81 `strtoull` implementation too -- a no-regression pin, not a fix.
+TEST(Random, ParseSeedAcceptsPlainNumerals) {
+  using util::detail::parse_seed;
+  ASSERT_EQ(parse_seed("0"), 0U);
+  ASSERT_EQ(parse_seed("42"), 42U);
+  ASSERT_EQ(parse_seed("0042"), 42U);
+  ASSERT_EQ(parse_seed("18446744073709551615"), std::numeric_limits<uint64_t>::max());
+}
+
+TEST(Random, ParseSeedRejectsEverythingElse) {
+  using util::detail::parse_seed;
+  ASSERT_FALSE(parse_seed(nullptr).has_value());          // Unset
+  ASSERT_FALSE(parse_seed("").has_value());               // Empty
+  ASSERT_FALSE(parse_seed(" 42").has_value());            // Leading space
+  ASSERT_FALSE(parse_seed("+42").has_value());            // Explicit plus
+  ASSERT_FALSE(parse_seed("-1").has_value());             // Leading minus
+  ASSERT_FALSE(parse_seed("42abc").has_value());          // Trailing garbage
+  ASSERT_FALSE(parse_seed("0x10").has_value());           // Hex prefix: the `x` after `0` is left unconsumed
+  ASSERT_FALSE(parse_seed("1e3").has_value());            // Scientific notation
+  ASSERT_FALSE(parse_seed("abc").has_value());            // Not a number at all
+  ASSERT_FALSE(parse_seed("18446744073709551616").has_value());  // Overflows uint64
 }
 
 } // namespace util::test

@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <tuple>
 #include <algorithm>
 #include "lunar/algo2.hpp"
 
@@ -152,7 +154,7 @@ TEST(LunarAlgo2, LeapMonth) {
 
     const auto is_leap = [](const LunarMonth& month) {
       const auto& jq_pairs = month.contained_jieqis;
-      return not std::any_of(cbegin(jq_pairs), cend(jq_pairs), [](const auto& jq_pair) {
+      return not std::ranges::any_of(jq_pairs, [](const auto& jq_pair) {
         return is_qi(jq_pair.jieqi);
       });
     };
@@ -310,8 +312,8 @@ TEST(LunarAlgo2, GetLunarInfo) {
 
 
 TEST(LunarAlgo2, YearOutOfRange) {
-  ASSERT_THROW(calc_lunar_year(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(calc_lunar_year(END_YEAR + 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_lunar_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::out_of_range);
 
   // The C ABI reaches algo2 only through the cached wrapper, so the guard has to survive it.
   ASSERT_THROW(get_info_for_year(START_YEAR - 1), std::out_of_range);

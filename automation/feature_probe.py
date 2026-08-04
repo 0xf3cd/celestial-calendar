@@ -42,6 +42,20 @@ class Feature:
 # as "blocked on Apple Clang" when it was not.
 FEATURES: Final[List[Feature]] = [
   Feature(
+    name="std::tuple_like",
+    token="tuple_like",
+    issue="#81",
+    program="""
+      #include <tuple>
+      #include <utility>
+      template <std::tuple_like T> struct Probe {};
+      auto main() -> int {
+        Probe<std::pair<int, int>> probe;
+        (void) probe;
+      }
+    """,
+  ),
+  Feature(
     name="std::generator",
     token="generator",
     issue="#99",
@@ -151,8 +165,11 @@ FEATURES: Final[List[Feature]] = [
 #   libstdc++  clang 18.1.3 + ubuntu-24.04's default libstdc++ (GCC 13)
 #   libc++     Apple clang 21.0.0 + its bundled libc++
 #   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
+# `std::tuple_like` (#81): False on all three legs. libstdc++ exposes only the internal
+# `__glibcxx_want_tuple_like` machinery, with nothing under `std::`.
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
+    "std::tuple_like": False,
     "std::generator": False,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,
@@ -162,6 +179,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::function_ref": False,
   },
   "libc++": {
+    "std::tuple_like": False,
     "std::generator": False,
     "std::ranges::fold_left": True,
     "std::views::enumerate": False,
@@ -171,6 +189,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::function_ref": False,
   },
   "msvc-stl": {
+    "std::tuple_like": False,
     "std::generator": True,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,

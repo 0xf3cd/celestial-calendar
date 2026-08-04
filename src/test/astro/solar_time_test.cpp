@@ -23,6 +23,8 @@
 
 #include <gtest/gtest.h>
 
+#include <tuple>
+
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -346,11 +348,11 @@ TEST(SolarTime, ApparentSolarTimeGolden) {
 
 TEST(SolarTime, ApparentRejectsBadLongitude) {
   const auto utc = calendar::Datetime { util::to_ymd(2024, 6, 1), 0.5 };
-  ASSERT_THROW({ apparent(utc, AngleDeg { 180.5 }); },  std::invalid_argument);
-  ASSERT_THROW({ apparent(utc, AngleDeg { -181.0 }); }, std::invalid_argument);
-  ASSERT_THROW({ apparent(utc, AngleDeg { std::numeric_limits<double>::quiet_NaN() }); }, std::invalid_argument);
-  ASSERT_NO_THROW({ apparent(utc, AngleDeg { 180.0 }); });
-  ASSERT_NO_THROW({ apparent(utc, AngleDeg { -180.0 }); });
+  ASSERT_THROW({ std::ignore = apparent(utc, AngleDeg { 180.5 }); },  std::invalid_argument);
+  ASSERT_THROW({ std::ignore = apparent(utc, AngleDeg { -181.0 }); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = apparent(utc, AngleDeg { std::numeric_limits<double>::quiet_NaN() }); }, std::invalid_argument);
+  ASSERT_NO_THROW({ std::ignore = apparent(utc, AngleDeg { 180.0 }); });
+  ASSERT_NO_THROW({ std::ignore = apparent(utc, AngleDeg { -180.0 }); });
 }
 
 } // namespace astro::solar_time::test

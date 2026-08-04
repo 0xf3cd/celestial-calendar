@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <tuple>
 #include <chrono>
 #include <cstdlib>
 #include <random>
@@ -93,7 +95,7 @@ TEST(LeapSecond, TaiMinusUtcLookup) {
   // Past the last entry ΔAT is held (CGPM 2022 Res. 4: no more leap seconds by 2035).
   ASSERT_EQ(tai_minus_utc(to_ymd(5000,  1,  1)), 37.0);
 
-  ASSERT_THROW({ tai_minus_utc(to_ymd(1971, 12, 31)); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = tai_minus_utc(to_ymd(1971, 12, 31)); }, std::invalid_argument);
 }
 
 

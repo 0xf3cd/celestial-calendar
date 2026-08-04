@@ -25,15 +25,18 @@
 
 
 #include <cassert>
-#include <cerrno>
+#include <charconv>
 #include <concepts>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <print>
 #include <random>
+#include <string_view>
+#include <system_error>
 
 // #69: test draws come from one shared thread_local engine, so every run is reproducible.
 // The seed defaults to 42 and can be overridden via the CELESTIAL_TEST_SEED env var; the
@@ -44,10 +47,33 @@ namespace util::detail {
 
 inline constexpr uint64_t DEFAULT_SEED = 42;
 
-inline auto random_seed() -> uint64_t {
-  // Only a fully-consumed, non-negative decimal numeral is honored (yes, 0 is a valid
-  // seed); anything else — unset, leading whitespace/sign, trailing junk, overflow —
-  // falls back to the default.
+/**
+ * @brief Parse a `CELESTIAL_TEST_SEED` override.
+ * @param text The raw env-var text, or `nullptr` when it is unset.
+ * @return The seed, or `std::nullopt` when `text` is not a decimal numeral that is consumed in
+ *         full and fits in `uint64_t`. A leading sign, leading space, `0x` prefix and trailing
+ *         junk are all rejected -- only a plain non-negative numeral is honored (0 included).
+ */
+[[nodiscard]] inline auto parse_seed(const char* const text) -> std::optional<uint64_t> {
+  if (text == nullptr or *text < '0' or *text > '9') {
+    return std::nullopt;
+  }
+
+  const std::string_view sv { text };
+  uint64_t parsed = 0;
+  const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), parsed);
+
+  // Partial consume or overflow -- both fall back. `from_chars` reports them through its own
+  // result, so parsing an env var no longer writes `errno`, a process-global, as a side effect.
+  if (ec != std::errc {} or ptr != sv.data() + sv.size()) {
+    return std::nullopt;
+  }
+  return parsed;
+}
+
+
+[[nodiscard]] inline auto random_seed() -> uint64_t {
+  // What counts as a valid override lives in `parse_seed`, not here.
 #ifdef _WIN32
   // MSVC/clang-cl deprecate plain getenv as "unsafe"; getenv_s is the blessed form.
   char env_buf[64] = {};
@@ -57,16 +83,7 @@ inline auto random_seed() -> uint64_t {
 #else
   const char* const env = std::getenv("CELESTIAL_TEST_SEED");
 #endif
-  if (env == nullptr or *env < '0' or *env > '9') {
-    return DEFAULT_SEED;
-  }
-  errno = 0;
-  char* end = nullptr;
-  const auto parsed = std::strtoull(env, &end, 10);
-  if (*end != '\0' or errno == ERANGE) {
-    return DEFAULT_SEED;
-  }
-  return parsed;
+  return parse_seed(env).value_or(DEFAULT_SEED);
 }
 
 inline void print_random_seed_once() {
@@ -78,7 +95,7 @@ inline void print_random_seed_once() {
 
 // One engine per thread, all sharing the same seed — per-thread sequences are deterministic
 // and identical, which keeps multi-threaded tests reproducible without locking.
-inline auto engine() -> std::mt19937_64& {
+[[nodiscard]] inline auto engine() -> std::mt19937_64& {
   static thread_local auto eng = [] {
     print_random_seed_once();
     // Two-step (not brace-init): clang-tidy's narrowing check misresolves the ctor's
@@ -104,7 +121,7 @@ namespace util {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline auto random() -> T {
+[[nodiscard]] inline auto random() -> T {
   auto& gen = detail::engine();
 
   if constexpr (std::integral<T>) {
@@ -127,7 +144,7 @@ inline auto random() -> T {
  */
 template <typename T>
   requires std::integral<T> || std::floating_point<T>
-inline auto random(const T& min, const T& max) -> T {
+[[nodiscard]] inline auto random(const T& min, const T& max) -> T {
   assert(min < max);
   auto& gen = detail::engine();
 
@@ -145,14 +162,14 @@ inline auto random(const T& min, const T& max) -> T {
 // because this is not part of the C++ standard (for std::uniform_int_distribution).
 
 template <>
-inline auto random() -> uint8_t {
+[[nodiscard]] inline auto random() -> uint8_t {
   auto& gen = detail::engine();
   std::uniform_int_distribution<uint32_t> dist { 0, 255 };
   return static_cast<uint8_t>(dist(gen));
 }
 
 template <>
-inline auto random(const uint8_t& min, const uint8_t& max) -> uint8_t {
+[[nodiscard]] inline auto random(const uint8_t& min, const uint8_t& max) -> uint8_t {
   assert(min < max);
   auto& gen = detail::engine();
   std::uniform_int_distribution<uint32_t> dist { min, max };

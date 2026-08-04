@@ -39,19 +39,19 @@ using namespace astro::sun::geocentric_coord::math;
 // minute-precision values, single continuous JD assertion) and DE441-derived crossings.
 
 TEST(JieQi, NameQuery) {
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::立春), 315.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::雨水), 330.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::惊蛰), 345.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::春分), 0.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::清明), 15.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::秋分), 180.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::小雪), 240.0);
+  ASSERT_EQ(longitude_of(Jieqi::立春), 315.0);
+  ASSERT_EQ(longitude_of(Jieqi::雨水), 330.0);
+  ASSERT_EQ(longitude_of(Jieqi::惊蛰), 345.0);
+  ASSERT_EQ(longitude_of(Jieqi::春分), 0.0);
+  ASSERT_EQ(longitude_of(Jieqi::清明), 15.0);
+  ASSERT_EQ(longitude_of(Jieqi::秋分), 180.0);
+  ASSERT_EQ(longitude_of(Jieqi::小雪), 240.0);
 
   // Test couple English aliases as well.
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::LICHUN),  315.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::CHUNFEN), 0.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::XIAOHAN), 285.0);
-  ASSERT_EQ(JIEQI_SOLAR_LONGITUDE.at(Jieqi::DAHAN),   300.0);
+  ASSERT_EQ(longitude_of(Jieqi::LICHUN),  315.0);
+  ASSERT_EQ(longitude_of(Jieqi::CHUNFEN), 0.0);
+  ASSERT_EQ(longitude_of(Jieqi::XIAOHAN), 285.0);
+  ASSERT_EQ(longitude_of(Jieqi::DAHAN),   300.0);
 }
 
 
@@ -84,7 +84,7 @@ TEST(JieQi, JDE) {
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
 
       const auto jde_lon = detail::solar_longitude(jde);
-      const auto expected_lon = JIEQI_SOLAR_LONGITUDE.at(jq);
+      const auto expected_lon = longitude_of(jq);
 
       const auto lon_diff = std::fabs(std::fmod(jde_lon - expected_lon, 360.0));
       ASSERT_TRUE((lon_diff < 1e-9) or (lon_diff > 360.0 - 1e-9));

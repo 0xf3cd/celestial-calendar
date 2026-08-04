@@ -43,7 +43,7 @@ namespace astro::sun::geocentric_coord {
  * @details The function invokes `astro::earth::heliocentric_coord::vsop87d`, and
  *          transforms the heliocentric coordinates to geocentric coordinates.
  */
-inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
   const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jde);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
@@ -77,7 +77,7 @@ struct Fk5Correction {
  * @return The correction (i.e. Δlongitude and Δlatitude).
  * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
  */
-inline auto fk5_correction(const double jde, const toolbox::SphericalCoordinate& vsop87d_coord) -> Fk5Correction {
+[[nodiscard]] inline auto fk5_correction(const double jde, const toolbox::SphericalCoordinate& vsop87d_coord) -> Fk5Correction {
   const double jc = astro::julian_day::jde_to_jc(jde);
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
@@ -101,7 +101,7 @@ inline auto fk5_correction(const double jde, const toolbox::SphericalCoordinate&
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Sun, after correction.
  */
-inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
   // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
   const auto vsop_coord = vsop87d(jde);
 
@@ -142,7 +142,7 @@ namespace astro::sun::equatorial_coord {
  *          sunrise/sunset hour-angle calculations (Phase 5).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 13 and 25.
  */
-inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
+[[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
   const auto ecl = astro::sun::geocentric_coord::apparent(jde);
   const auto ε = astro::earth::obliquity::true_obliquity(jde);
   return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
@@ -183,7 +183,7 @@ namespace detail {
  *       where the typed astronomy layer is handed over to it. Callers after a solar longitude
  *       want `geocentric_coord::apparent(jde).λ`, which keeps the unit in the type (#125).
  */
-inline auto solar_longitude(const double jde) -> double {
+[[nodiscard]] inline auto solar_longitude(const double jde) -> double {
   return astro::sun::geocentric_coord::apparent(jde).λ.deg();
 }
 
@@ -192,22 +192,22 @@ inline auto solar_longitude(const double jde) -> double {
 // path, matching `moments()` (#84). The UT1/UTC model gap (DUT1 ≤ 0.9 s in the leap era;
 // ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
 // between any jieqi and New Year — no year's attribution can move.
-inline auto get_start_jde(const int32_t year) -> double {
+[[nodiscard]] inline auto get_start_jde(const int32_t year) -> double {
   return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 }
 
 /** @brief Return the JDE of the end of the year. */
-inline auto get_end_jde(const int32_t year) -> double {
+[[nodiscard]] inline auto get_end_jde(const int32_t year) -> double {
   return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */
-inline auto get_start_lon(const int32_t year) -> double {
+[[nodiscard]] inline auto get_start_lon(const int32_t year) -> double {
   return solar_longitude(get_start_jde(year));
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the end of the year. */
-inline auto get_end_lon(const int32_t year) -> double {
+[[nodiscard]] inline auto get_end_lon(const int32_t year) -> double {
   return solar_longitude(get_end_jde(year));
 }
 
@@ -215,13 +215,13 @@ inline auto get_end_lon(const int32_t year) -> double {
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 
 /** @brief Return true if the given year has a root for the given `lon` before the spring equinox. */
-inline auto has_root_before_spring_equinox(const int32_t year, const double lon) -> bool {
+[[nodiscard]] inline auto has_root_before_spring_equinox(const int32_t year, const double lon) -> bool {
   const double start_lon = get_start_lon(year);
   return start_lon <= lon and lon < 360.0;
 }
 
 /** @brief Return true if the given year has a root for the given `lon` after the spring equinox. */
-inline auto has_root_after_spring_equinox(const int32_t year, const double lon) -> bool {
+[[nodiscard]] inline auto has_root_after_spring_equinox(const int32_t year, const double lon) -> bool {
   const double end_lon = get_end_lon(year);
   return 0.0 <= lon and lon < end_lon;
 }
@@ -246,7 +246,7 @@ inline auto has_root_after_spring_equinox(const int32_t year, const double lon) 
 // f(jde) = modified_solar_longitude(jde) - expected_lon
 
 /** @brief Return a `f` that we can apply Newton's method to. */
-inline auto make_f(const int32_t year, const double expected_lon) {
+[[nodiscard]] inline auto make_f(const int32_t year, const double expected_lon) {
   const double apr_1st_jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 4, 1), 0.0 });
 
   const auto modified_solar_longitude = [=](const double jde) -> double {
@@ -281,7 +281,7 @@ inline auto make_f(const int32_t year, const double expected_lon) {
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 
 /** @brief Return the count of the roots for the given `year` and `lon`. */
-inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
+[[nodiscard]] inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
   uint32_t count = 0;
 
   if (detail::has_root_before_spring_equinox(year, lon)) {
@@ -300,7 +300,7 @@ inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
  * @param expected_lon The expected solar longitude, in degrees.
  * @return The roots (i.e. JDEs). There can be 0, 1 or 2 roots.
  */
-inline auto find_roots(const int32_t year, const double expected_lon) -> std::vector<double> {
+[[nodiscard]] inline auto find_roots(const int32_t year, const double expected_lon) -> std::vector<double> {
   // Each predicate costs a full apparent-position evaluation at a year boundary. Going through
   // `discriminant` first would put the very same two questions a second time (#81).
   const bool root_before_equinox = detail::has_root_before_spring_equinox(year, expected_lon);

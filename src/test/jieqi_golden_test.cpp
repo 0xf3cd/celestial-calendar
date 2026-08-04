@@ -91,8 +91,8 @@ struct HkoRow {
 
 /** @brief Inverse of `JIEQI_SOLAR_LONGITUDE` (24 entries, exact doubles). */
 auto jieqi_from_lon(const double lon_deg) -> Jieqi {
-  for (const auto& [jq, lon] : JIEQI_SOLAR_LONGITUDE) {
-    if (lon == lon_deg) {
+  for (const auto jq : JIEQI_LIST) {
+    if (longitude_of(jq) == lon_deg) {
       return jq;
     }
   }

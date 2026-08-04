@@ -379,27 +379,27 @@ TEST(SunriseSunset, InvalidInputsThrow) {
   const auto ymd = util::to_ymd(2024, 6, 21);
   constexpr double NAN_D = std::numeric_limits<double>::quiet_NaN();
 
-  ASSERT_THROW((void) transit_jde(ymd, loc(90.5, 0.0)), std::invalid_argument);
-  ASSERT_THROW((void) transit_jde(ymd, loc(0.0, 180.5)), std::invalid_argument);
-  ASSERT_THROW((void) transit_jde(ymd, loc(NAN_D, 0.0)), std::invalid_argument);
-  ASSERT_THROW((void) transit_jde(ymd, loc(0.0, NAN_D)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(90.5, 0.0)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(0.0, 180.5)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(NAN_D, 0.0)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(0.0, NAN_D)), std::invalid_argument);
 
   // An invalid gregorian date is rejected by `Datetime`'s constructor.
-  ASSERT_THROW((void) transit_jde(util::to_ymd(2024, 2, 30), EQUATOR), std::invalid_argument);
+  ASSERT_THROW(std::ignore = transit_jde(util::to_ymd(2024, 2, 30), EQUATOR), std::invalid_argument);
 
   const double transit = transit_jde(ymd, EQUATOR);
-  ASSERT_THROW((void) rise_set_jde(NAN_D, true, EQUATOR), std::invalid_argument);
-  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, AngleDeg { NAN_D }), std::invalid_argument);
-  ASSERT_THROW((void) rise_set_jde(transit, true, EQUATOR, AngleDeg { 100.0 }), std::invalid_argument);
-  ASSERT_THROW((void) rise_set_jde(transit, true, loc(-91.0, 0.0)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = rise_set_jde(NAN_D, true, EQUATOR), std::invalid_argument);
+  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, EQUATOR, AngleDeg { NAN_D }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, EQUATOR, AngleDeg { 100.0 }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, loc(-91.0, 0.0)), std::invalid_argument);
 
   // hour_angle_at_altitude is public API too: out-of-domain angles alias through sin/cos into
   // physically meaningless H₀ values, so they are rejected rather than returned (per review).
-  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { NAN_D }, AngleDeg { 0.0 }, AngleDeg { 0.0 }),
+  ASSERT_THROW(std::ignore = hour_angle_at_altitude(AngleDeg { NAN_D }, AngleDeg { 0.0 }, AngleDeg { 0.0 }),
                std::invalid_argument);
-  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 95.0 }, AngleDeg { 0.0 }),
+  ASSERT_THROW(std::ignore = hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 95.0 }, AngleDeg { 0.0 }),
                std::invalid_argument);
-  ASSERT_THROW((void) hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 0.0 }, AngleDeg { 100.0 }),
+  ASSERT_THROW(std::ignore = hour_angle_at_altitude(AngleDeg { 0.0 }, AngleDeg { 0.0 }, AngleDeg { 100.0 }),
                std::invalid_argument);
 }
 

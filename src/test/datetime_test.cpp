@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <tuple>
 #include <print>
 #include <limits>
 #include <ranges>
@@ -451,14 +453,14 @@ TEST(Datetime, AddSeconds) {
   ASSERT_EQ(back, (Datetime { util::to_ymd(2024, 6, 15), 0.0 }));
 
   // Non-finite or day-carry-overflowing offsets must throw, not reach the float→int cast.
-  ASSERT_THROW({ add_seconds(noon, std::numeric_limits<double>::quiet_NaN()); }, std::invalid_argument);
-  ASSERT_THROW({ add_seconds(noon, 4e14); }, std::invalid_argument);
-  ASSERT_THROW({ add_seconds(noon, -4e14); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = add_seconds(noon, std::numeric_limits<double>::quiet_NaN()); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = add_seconds(noon, 4e14); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = add_seconds(noon, -4e14); }, std::invalid_argument);
 
   // Offsets under the day-carry bound can still leave `chrono::year`'s ±32767 — beyond it the
   // stored year is unspecified and `ok()` cannot be trusted, so this must throw, not wrap.
-  ASSERT_THROW({ add_seconds(noon, 86400.0 * 2.0e7); }, std::invalid_argument);
-  ASSERT_THROW({ add_seconds(noon, -86400.0 * 2.0e7); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = add_seconds(noon, 86400.0 * 2.0e7); }, std::invalid_argument);
+  ASSERT_THROW({ std::ignore = add_seconds(noon, -86400.0 * 2.0e7); }, std::invalid_argument);
 }
 
 } // namespace calendar::test
