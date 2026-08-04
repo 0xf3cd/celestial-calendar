@@ -80,7 +80,7 @@ auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_s
 
   try {
     using namespace calendar::jieqi;
-    const std::string_view name = JIEQI_NAME.at(static_cast<Jieqi>(jq_idx));
+    const std::string_view name = JIEQI_NAME.at(jq_idx);
 
     // Check if the buffer is large enough to hold the name and the null terminator
     if (buf_size < name.size() + 1) {
