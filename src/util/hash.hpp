@@ -25,6 +25,7 @@
 
 #include <tuple>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <functional>
 #include <type_traits>
@@ -41,8 +42,13 @@ template <typename T>
   v_hash ^= seed * 0xc4ceb9fe1a85ec53;
   v_hash ^= (v_hash >> 13) * 0xff51afd7ed558ccd;
 
-  // Splitmix64-style finalizer: a multiply never moves high bits down (and `0x9e3779b9` is
-  // only 32 bits wide), so xorshifts bracket the 64-bit golden-ratio multiply.
+  // The finalizer assumes a 64-bit `size_t`: on a 32-bit one the shifts would be UB rather
+  // than merely weaker, so fail the compile instead.
+  static_assert(sizeof(std::size_t) == sizeof(std::uint64_t));
+
+  // A multiply only carries bits upward, so on its own the high half of the input never
+  // reaches the low bits -- the xorshifts either side of the golden-ratio multiply bring
+  // it down.
   v_hash ^= v_hash >> 32;
   v_hash *= 0x9e3779b97f4a7c15;
   v_hash ^= v_hash >> 32;
