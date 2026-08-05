@@ -62,8 +62,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    # A major, not `latest-stable`: an Xcode major carries an Apple Clang major, and `-Werror`
-    # makes any new diagnostic in it a red build on a day nobody touched the code (#72, #73).
+    # Pinned; see AGENTS.md gotcha 9 (#72, #73).
     - uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '26'
@@ -111,9 +110,7 @@ jobs:
           python -m pip install --upgrade pip
           if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
 
-          # LLVM pinned (`make` is not): a new LLVM major starts flagging code that has not changed,
-          # under `-Werror`. 20.1.8 is what CI already resolved to -- note that is not the 18 the
-          # Linux legs and clang-tidy use, a pre-existing split this pin records rather than creates.
+          # Pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
           choco install -y llvm --version=20.1.8
 

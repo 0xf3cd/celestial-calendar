@@ -35,10 +35,7 @@ def include_roots(src_dir: Path) -> List[Path]:
   hand-copied list drifts silently, so there is no second list to drift.
   """
   cmakelists = src_dir / "CMakeLists.txt"
-  roots = [src_dir / name.strip() for name in INCLUDE_DIR_RE.findall(cmakelists.read_text())]
-  # src/CMakeLists.txt still names `common`, which no longer exists (tracked in #72).
-  # Passing -I for a missing directory is harmless but pointless, so drop it.
-  return [r for r in roots if r.is_dir()]
+  return [src_dir / name.strip() for name in INCLUDE_DIR_RE.findall(cmakelists.read_text())]
 
 
 def check_self_contained() -> int:

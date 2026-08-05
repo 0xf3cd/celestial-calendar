@@ -20,15 +20,14 @@ from .utils import run_cmd, ProcReturn
 
 def print_system_info() -> None:
   """Print system time and other system information."""
-  # This function reports; `--setup` is what decides whether a missing tool should stop the run,
-  # and it says something worth reading. Reaching for cmake unguarded here took that away twice
-  # over: `run_cmd` raises `FileNotFoundError` when the binary is absent, and the `assert` that
-  # used to follow covered only the other case -- cmake present but `--version` failing (#72).
+  # This function only reports -- whether a missing tool stops the run is `--setup`'s call, and it
+  # says something readable. `run_cmd` raises `FileNotFoundError` when the binary is absent (#72).
   try:
     cmake_version: ProcReturn = run_cmd(["cmake", "--version"], print_cmd=False, print_stdout=False)
-    cmake_version_str: str = " | ".join(
-      filter(lambda s: len(s.strip()) > 0, cmake_version.stdout.splitlines())
-    ) if cmake_version.retcode == 0 else "present, but `cmake --version` failed"
+    if cmake_version.retcode == 0:
+      cmake_version_str = " | ".join(filter(lambda s: len(s.strip()) > 0, cmake_version.stdout.splitlines()))
+    else:
+      cmake_version_str = "present, but `cmake --version` failed"
   except FileNotFoundError:
     cmake_version_str = "not found"
 

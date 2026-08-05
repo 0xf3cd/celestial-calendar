@@ -25,13 +25,8 @@ Checks: |
   modernize-*,
   -modernize-use-std-numbers,
 
-# `readability-identifier-naming` stays off, and there are no CheckOptions to go with it any more.
-# The fourteen that used to sit below described a codebase this is not: enabled and measured, they
-# reported 182 sites, of which one was a real inconsistency. The rest were the maths -- `cos_λ`,
-# `argL`, `A1`, `θCoeffs` -- plus two options pointing the wrong way (`EnumCase: UPPER_CASE` wanted
-# `Algo` spelled `ALGO`; nothing described `const inline auto`). A check that fires 181 times to
-# find one thing does not get calibrated, it gets turned off, and the conventions get written for
-# people to read (AGENTS.md, "Naming"). #72
+# `readability-identifier-naming` is off on purpose: it cannot express domain notation (`cos_λ`,
+# `argL`, `θCoeffs`) or `const inline auto` callables. Conventions: AGENTS.md, "Naming". #72
 
 WarningsAsErrors: '*'
 

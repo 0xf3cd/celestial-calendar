@@ -36,6 +36,9 @@ target_compile_options(gtest_main PRIVATE -w)
 target_compile_options(gmock PRIVATE -w)
 target_compile_options(gmock_main PRIVATE -w)
 
+# Kept alongside the top-level call (#72): this directory declares its own `project()`, and
+# configuring it on its own still succeeds -- only configuring, since the `celestial_calendar`
+# target it links against lives one level up.
 enable_testing()
 include(GoogleTest)
 

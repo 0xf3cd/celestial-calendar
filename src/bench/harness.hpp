@@ -108,8 +108,9 @@ namespace detail {
 }
 
 
-/** @brief One paired ratio: a percentage within a factor of two, a factor past that -- `-99.994%`
- *         rounds to `-100.0%`, which reads as free. */
+/** @brief One paired ratio: a percentage while the two are within a factor of two, a factor past
+ *         that -- on the fast side because percentages bottom out (`-99.994%` rounds to `-100.0%`,
+ *         which reads as free), on the slow side so a pair reads alike whichever way it went. */
 [[nodiscard]] inline auto format_ratio(const double ratio) -> std::string {
   if (ratio >= 2.0) {
     return std::format("{:.1f}x slower", ratio);
@@ -175,8 +176,12 @@ inline void run(const Plan& plan, const std::span<const Case> cases, std::ostrea
                        cases[index].name, stats.median, stats.min, stats.p10, stats.p90);
   }
 
-  // Ratios are paired inside a round, so machine drift cancels; the absolute figures above do not
-  // have that property and should not be compared across runs, let alone across machines.
+  // Ratios are paired inside a round, so machine drift cancels. The absolute figures above hold
+  // across runs only when a round is long enough for its fixed cost to amortize away, and never
+  // across machines.
+  // `p10..p90` reads high-to-low in the factor form, because a factor is the reciprocal of the
+  // ratio the quantiles were taken on. The labels say which is which; reordering them would make
+  // the labels lie.
   if (cases.size() > 1) {
     out << std::format("\n  vs {} (per-round paired ratio):\n", cases[0].name);
     for (std::size_t index = 1; index < cases.size(); ++index) {

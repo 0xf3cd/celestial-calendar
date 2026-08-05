@@ -101,9 +101,10 @@ taken to be a GoogleTest binary whose test count reconciles with the `TEST(` mac
 so a new file is picked up without a separate `--cmake`, and the runner finds the binary by
 directory. `--bench` clears stale binaries first, so a renamed or deleted benchmark stops running.
 
-A benchmark's absolute nanoseconds are not comparable across runs or machines — only the paired
-ratios inside one run are. `src/bench/harness.hpp` explains what it does about measurement bias
-and why (#81).
+A benchmark's absolute nanoseconds are never comparable across machines, and across runs only
+when a round is long enough for its fixed cost to amortize away — `bench_jieqi.cpp` runs the cache
+hit a second time at 24000 iterations for exactly that reason. Otherwise read the paired ratios
+inside one run. `src/bench/harness.hpp` explains what it does about measurement bias and why (#81).
 
 Windows PowerShell:
 
@@ -130,10 +131,9 @@ cmake --build build --parallel
 ctest --test-dir build/test
 ```
 
-`build/test`, not `build`: the tests register in the subdirectory, so
-`ctest --test-dir build` runs **zero** tests and still exits 0 — a green light
-that checked nothing. (The root cause, a missing top-level `enable_testing()`,
-is tracked in #72.)
+Either path works since #72 added the top-level `enable_testing()`. Without it only the
+subdirectory registered, so `ctest --test-dir build` ran **zero** tests and still exited 0 —
+a green light that checked nothing, which is why that call is load-bearing.
 
 ### Lint
 
@@ -159,11 +159,11 @@ is tracked in #72.)
 
 ### Naming
 
-Nothing checks this — `readability-identifier-naming` is off, and the CheckOptions that used to
-claim to be its SSOT described a codebase this is not (#72). Read it here instead:
+Nothing enforces this — `readability-identifier-naming` is deliberately off (#72). The convention
+lives here:
 
 `lower_case` — variables, functions, parameters, members, methods, namespaces, and any
-`const inline auto` that is called rather than read: it is invoked, so it reads as a function.
+`const inline auto` that is called rather than read.
 `CamelCase` — classes, structs, **and enum types** (`Algo`, `AngleUnit`, `Jieqi`).
 `UPPER_CASE` — `inline constexpr` constants and enumerators.
 
@@ -201,7 +201,7 @@ is intentional. Keep it. That buys a discipline:
   with designated initializers (`.λ = …`). Keep units in the type system.
 - `const`-correct; modern C++ (`<ranges>`, `<span>`, `std::array`).
 - 2-space indentation. Compiler flags: `-Wall -Wextra -Werror -Wpedantic -Wnull-dereference
-  -Wunreachable-code -O2`.
+  -Wunreachable-code`; the optimization level is `CMAKE_BUILD_TYPE`'s (Release = `-O3 -DNDEBUG`).
 - **Multi-line call layout**: when an argument is itself a call, or the call grows long, put
   each argument on its own line and the closing `);` on its own line at the call's
   indentation — matching the existing `upper_bound` / `Datetime`-construction sites:
@@ -330,6 +330,14 @@ toolbox/        Helper scripts for artifacts, releases, build info
    (target state; #77, #67 and #64 are closed, #70 is the last one open): public input
    validation must `throw` (fail-fast, independent of build type); `assert` is only
    for internal invariants, never as an input guard.
+
+9. **CI toolchains are pinned, all of them.** A tool that updates itself turns "the code changed"
+   and "the tool changed" into the same red X, on a day nobody touched the repository; a pin that
+   goes stale instead fails loudly with "no such version", which says what to do. Current pins:
+   clang-tidy and clang **18.1.8** (Linux, `core_tests.yml`), choco **LLVM 20.1.8** (Windows — not
+   the 18 the Linux legs use, a pre-existing split these pins record rather than create), Xcode
+   major **`'26'`** (a major carries an Apple Clang major, and `-Werror` makes any new diagnostic
+   in it a red build), ruff **0.16.1**. Bump deliberately, never incidentally (#72, #73).
 
 ## AI do / don't
 

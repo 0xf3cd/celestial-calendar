@@ -375,8 +375,6 @@ class GitHub:
       queue.put_nowait((asset.name, asset.browser_download_url))
 
     tag_name = selected_release.tag_name
-    # Named for what they contain: both entries used to point at the tarball, so the release
-    # shipped a gzipped tar called `src.zip` (#72).
     archive_url = f"https://github.com/{OWNER}/{REPO}/archive/refs/tags/{tag_name}"
     queue.put_nowait(("src.zip", f"{archive_url}.zip"))
     queue.put_nowait(("src.tar.gz", f"{archive_url}.tar.gz"))

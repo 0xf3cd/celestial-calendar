@@ -7,8 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add compile options for different compilers
 add_compile_options(-Wall -Wextra -Werror -Wpedantic -Wnull-dereference -Wunreachable-code)
 
-# Optimization is `CMAKE_BUILD_TYPE`'s job: `CMAKE_CXX_FLAGS` lands before the build type's own
-# flags and silently loses to them. This file used to set `-O2`; Release compiled at `-O3` (#72).
+# Optimization is `CMAKE_BUILD_TYPE`'s job: a flag set in `CMAKE_CXX_FLAGS` lands before the build
+# type's own and silently loses to it. Debug is therefore really `-O0`, so golden values computed
+# there can differ from a Release run by a ulp (#72).
 
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/astro)

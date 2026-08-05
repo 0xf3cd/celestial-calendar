@@ -30,9 +30,7 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-          # Both pinned, for the same reason: a linter that updates itself turns "the code changed"
-          # and "the tool changed" into the same red X. clang-tidy matches the clang-18 toolchain
-          # installed below; ruff is pinned at what CI was already resolving to (#72, #73).
+          # Both pinned; see AGENTS.md gotcha 9 (#72, #73).
           python3 -m pip install ruff==0.16.1 clang-tidy==18.1.8
 
       - name: Install LLVM and clang++
@@ -130,12 +128,10 @@ jobs:
           ./project.py --setup --clean --cmake --build --test -v 1
 
 
-  # macOS and Windows build+test are not here. They live in `build_and_test.yml`, which runs on
-  # pull requests and packages the artifacts, and running them in both places meant the same
-  # compile-and-test twice on every push to a branch with a PR open -- measured at ~305 runner
-  # seconds, and two places to read one failure. What a push still gets on those two platforms is
-  # the part that catches platform-specific rot early: `self-contained-headers` and
-  # `cxx-feature-probe` below are three-way matrices and both include them (#72).
+  # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
+  # pull requests to main and packages the artifacts. A push still gets both platforms from
+  # `self-contained-headers` and `cxx-feature-probe` below -- three-way matrices that catch
+  # platform-specific rot early (#72).
 
   # ASan + UBSan on one Linux leg. It sits here rather than in `build_and_test.yml` because this
   # workflow's critical path is `linters-and-static-analysis`, which has room a parallel job can
@@ -193,10 +189,19 @@ jobs:
           for exe in build/test/*; do
             [ -f "$exe" ] && [ -x "$exe" ] || continue
             out=$("$exe" 2>&1) || { echo "$out"; echo "FAILED: $exe"; exit 1; }
-            n=$(echo "$out" | grep -oE "^\[==========\] [0-9]+ test" | grep -oE "[0-9]+" | head -1)
-            total=$((total + ${n:-0}))
+            # `sed`, not a `grep | grep` pipeline: this step runs under `-eo pipefail`, where a
+            # grep that matches nothing kills the job with no output at all. Say what happened.
+            n=$(printf '%s' "$out" | sed -nE 's/^\[==========\] ([0-9]+) test.*/\1/p' | head -1)
+            if [ -z "$n" ]; then
+              echo "$out"
+              echo "NO GTEST SUMMARY: $exe -- not a test binary, or it died before reporting"
+              exit 1
+            fi
+            total=$((total + n))
           done
-          declared=$(grep -rhoE '^[[:space:]]*TEST\(' src/test --include=*.cpp | wc -l)
+          # `TEST_F`/`TEST_P` too: the repo has none today, and a gate that starts miscounting the
+          # day someone adds a fixture would be worse than no gate at all.
+          declared=$(grep -rhoE '^[[:space:]]*TEST(_F|_P)?\(' src/test --include=*.cpp | wc -l)
           echo "ran $total, declared $declared"
           [ "$total" -eq "$declared" ] || { echo "count mismatch"; exit 1; }
 
@@ -247,9 +252,7 @@ jobs:
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
-        # LLVM pinned (`make` is not): a new LLVM major starts flagging code that has not changed,
-        # under `-Werror`. 20.1.8 is what CI already resolved to -- note that is not the 18 the
-        # Linux legs and clang-tidy use, a pre-existing split this pin records rather than creates.
+        # Pinned; see AGENTS.md gotcha 9 (#72, #73).
         run: choco install -y llvm --version=20.1.8
 
       # The compiler comes from the matrix, not from $GITHUB_ENV: a step-level `env:`
@@ -294,8 +297,7 @@ jobs:
 
       # Same Xcode the macOS build leg pins. Without it this job reads the image default, and
       # the baseline would record a toolchain the project never actually compiles with.
-      # A major, not `latest-stable`: an Xcode major carries an Apple Clang major, and `-Werror`
-      # makes any new diagnostic in it a red build on a day nobody touched the code (#72, #73).
+      # Pinned; see AGENTS.md gotcha 9 (#72, #73).
       - uses: maxim-lobanov/setup-xcode@v1
         if: runner.os == 'macOS'
         with:
@@ -320,9 +322,7 @@ jobs:
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
-        # LLVM pinned (`make` is not): a new LLVM major starts flagging code that has not changed,
-        # under `-Werror`. 20.1.8 is what CI already resolved to -- note that is not the 18 the
-        # Linux legs and clang-tidy use, a pre-existing split this pin records rather than creates.
+        # Pinned; see AGENTS.md gotcha 9 (#72, #73).
         run: choco install -y llvm --version=20.1.8
 
       - name: Probe awaited C++ features (${{ matrix.leg }})

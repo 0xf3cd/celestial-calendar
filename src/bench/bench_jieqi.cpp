@@ -25,6 +25,7 @@
 // is already in `jieqi_jde`'s cache. Both are timed here because the gap between them is what the
 // cache is for, and it is the number any proposal to change the caching has to move.
 
+#include <array>
 #include <vector>
 #include <cstdint>
 #include <cstddef>
@@ -39,7 +40,7 @@ namespace {
 
 using Key = std::pair<int32_t, calendar::jieqi::Jieqi>;
 
-/** @brief Every solar term of ten consecutive years -- 240 distinct keys, none repeated. */
+/** @brief Every solar term of ten consecutive years, each key distinct. */
 [[nodiscard]] auto sample_keys() -> std::vector<Key> {
   constexpr int32_t FIRST_YEAR = 2000;
   constexpr int32_t YEAR_COUNT = 10;
@@ -64,51 +65,45 @@ auto main() -> int {
   // Volatile so neither the sums nor the calls they come from can be optimized away.
   volatile double sink = 0.0;
 
-  const std::vector<bench::Case> cases {
-    {
-      // A cache that cannot be emptied -- `util/cache.hpp` still carries the TODO -- can only be
-      // made cold by being new, so this builds one per round rather than reusing the global.
-      // Per round, not per call: one wrapper construction amortized over `iterations` is
-      // invisible next to a Newton search, one per call would not be. Indexing `keys` directly
-      // rather than modulo is what keeps every call a miss: no key is asked for twice in a round.
-      .name = "jieqi_jde -- cold (every call a miss)",
-      .body = [&](const std::size_t iterations) {
-        const auto cold = util::cache::cache_func(calendar::jieqi::calc_jieqi_jde);
-        for (std::size_t i = 0; i < iterations; ++i) {
-          const auto [year, jq] = keys.at(i);
-          sink = sink + cold(year, jq);
-        }
-      },
-    },
-    {
-      // The global cache, whose keys the warm-up has already filled in. Modulo here where the cold
-      // case above indexes directly: a hit does not care how often a key repeats, and wrapping is
-      // what lets this same case be reused below with far more iterations than there are keys.
-      .name = "jieqi_jde -- warm (every call a hit)",
-      .body = [&](const std::size_t iterations) {
-        for (std::size_t i = 0; i < iterations; ++i) {
-          const auto [year, jq] = keys.at(i % keys.size());
-          sink = sink + calendar::jieqi::jieqi_jde(year, jq);
-        }
-      },
+  const bench::Case cold {
+    // A cache with no way to empty it -- `util/cache.hpp` still carries the TODO -- can only be
+    // made cold by being new, so this builds one per round. Per round, not per call: one wrapper
+    // construction amortized over `iterations` is invisible next to a Newton search. And `keys` is
+    // indexed directly rather than modulo, which is what keeps every call a miss.
+    .name = "jieqi_jde -- cold (every call a miss)",
+    .body = [&](const std::size_t iterations) {
+      const auto uncached = util::cache::cache_func(calendar::jieqi::calc_jieqi_jde);
+      for (std::size_t i = 0; i < iterations; ++i) {
+        const auto [year, jq] = keys.at(i);
+        sink = sink + uncached(year, jq);
+      }
     },
   };
 
-  // The pair answers what the cache buys, and 240 iterations is as many as it can answer it with:
-  // the cold case pays a Newton search each time, so a round already costs some 64 ms.
-  bench::run({ .title = "Solar terms", // `keys.at(i)` above reads `iterations` of them, so they agree.
-               .iterations = keys.size() },
-             cases, std::cout);
+  const bench::Case warm {
+    // The global cache, whose keys the warm-up has already filled in. Wrapping lets this case run
+    // for more iterations than there are keys, which the second round below needs.
+    .name = "jieqi_jde -- warm (every call a hit)",
+    .body = [&](const std::size_t iterations) {
+      for (std::size_t i = 0; i < iterations; ++i) {
+        const auto [year, jq] = keys.at(i % keys.size());
+        sink = sink + calendar::jieqi::jieqi_jde(year, jq);
+      }
+    },
+  };
 
-  // And then the hit on its own, with rounds long enough to measure it. At 240 iterations a round's
-  // fixed cost is around 600 ns, which lands as +30% on an 8 ns operation and a p10..p90 spanning
-  // nearly a factor of two -- fine for "four orders of magnitude", useless for tracking a 10%
-  // change to the hash or the lock. At 24000 the same figure repeats to within 1% across runs.
-  // Measured, on one machine: 10.6/10.1/10.6 ns and 8.3..15.8 at 240, against 8.1/8.1/8.0 ns and
-  // 8.0..9.0 at 24000. The two agree on `min`, which is what says the difference is per-round
-  // overhead amortized away rather than the machine wandering between runs.
-  const std::vector<bench::Case> hit_only { cases[1] };
-  bench::run({ .title = "Solar terms -- cache hit alone", .iterations = 24000 }, hit_only, std::cout);
+  // What the cache buys. `iterations` is bounded by `keys.size()` -- the cold case indexes `keys`
+  // directly -- and by the Newton search it pays each time, which already makes a round some 64 ms.
+  const std::array paired { cold, warm };
+  const bench::Plan paired_plan { .title = "Solar terms", .iterations = keys.size() };
+  bench::run(paired_plan, paired, std::cout);
+
+  // What a hit costs, with rounds long enough to say. At 240 iterations a round's fixed cost lands
+  // as some +30% on an 8 ns operation, with a p10..p90 spanning nearly a factor of two -- fine for
+  // "four orders of magnitude", useless for tracking a 10% change to the hash or the lock.
+  const std::array hit_only { warm };
+  const bench::Plan hit_plan { .title = "Solar terms -- cache hit alone", .iterations = 24000 };
+  bench::run(hit_plan, hit_only, std::cout);
 
   return 0;
 }

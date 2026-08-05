@@ -32,17 +32,15 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Build and test the project
-# The whole suite, not only the integration tests. It used to be `-k integration` "since arm docker
-# env are slow on GitHub CI" — true of the eight-platform QEMU matrix, which was retired in 2026-07
-# for two native runners (#46). The reason outlived its premise by a year. Measured on the native
-# runners: all 211 tests cost arm64 275s against 248s for three of them, and arm64 running the whole
-# suite is still quicker than amd64 running three (#72).
 # Gate track of the #69 dual-track policy: pin the seed inside the image too — a docker
 # build layer does not inherit the GitHub Actions env context (default matches
 # DEFAULT_SEED in src/util/random.hpp).
 ARG CELESTIAL_TEST_SEED=42
 ENV CELESTIAL_TEST_SEED=${CELESTIAL_TEST_SEED}
 RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
+
+# The whole suite: `-k integration` was justified by the eight-platform QEMU matrix, retired in
+# 2026-07 for two native runners (#46), and these two legs are CI's only arm64 coverage (#72).
 RUN /opt/venv/bin/python ./project.py --clean --cores all --all -v 1
 
 # Save the build information
