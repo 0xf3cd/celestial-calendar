@@ -20,3 +20,4 @@ include_directories(${PROJECT_SOURCE_DIR}/util)
 # time, so `test` may reference `celestial_calendar` before its directory is processed (#67).
 add_subdirectory(shared_lib)
 add_subdirectory(test)
+add_subdirectory(bench)

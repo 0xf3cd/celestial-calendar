@@ -25,6 +25,7 @@ from typing import List, Callable, Sequence, Final
 from automation import (
   run_cmake, build_project, clean_build,
   run_gtests, print_system_info,
+  build_benchmarks, run_benchmarks,
   time_execution, red_print, green_print, blue_print,
   setup_environment, Tool, SetupPlan
 )
@@ -102,6 +103,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("-k", "--keyword", nargs="*", help="Keywords to filter tests", default=[])
   parser.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=0, help="Verbosity level of tests")
 
+  parser.add_argument("--bench", action="store_true",
+                      help="Build and run the benchmarks (opt-in: --all does not include them)")
+
   parser.add_argument("-a", "--all", action="store_true", help="Set up, run CMake, build, and test the project")
 
   args = parser.parse_args()
@@ -131,6 +135,8 @@ def print_steps(args: argparse.Namespace) -> None:
     green_print(f"# - Run tests with verbosity level {args.verbosity}")
     if args.keyword:
       green_print(f'# - Filter tests with keywords: {", ".join(args.keyword)}')
+  if args.bench:
+    green_print(f"# - Build and run the benchmarks using {args.cores} CPU cores")
   print(60 * "#")
 
 
@@ -182,6 +188,11 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
     tasks.append(Task(f"Build the project using {args.cores} CPU cores", lambda: build_project(args.cores)))
   if args.test:
     tasks.append(Task("Run tests", lambda: run_gtests(args.keyword, args.verbosity)))
+  if args.bench:
+    # Two tasks, not one: the benchmarks are excluded from the default target, so they have to be
+    # built on request, and a build failure should stop before anything claims to have measured.
+    tasks.append(Task("Build the benchmarks", lambda: build_benchmarks(args.cores)))
+    tasks.append(Task("Run the benchmarks", run_benchmarks))
   return tasks
 
 
