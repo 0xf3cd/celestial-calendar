@@ -26,10 +26,12 @@
 #include <limits>
 #include <print>
 #include <atomic>
+#include <bit>
 #include <cmath>
 #include <memory>
 #include <ranges>
 #include <thread>
+#include <functional>
 #include <unordered_set>
 #include "util.hpp"
 
@@ -322,6 +324,63 @@ TEST(Util, HashCollision) {
   std::println("{} collisions", tuples.size() - hash_values.size());
 
   ASSERT_NEAR(tuples.size(), hash_values.size(), try_count * 0.00005);
+}
+
+
+/*! @brief A hashable wrapper around an exact bit pattern, so the avalanche test controls the
+           mixer's input on every STL -- MSVC's integer `std::hash` is FNV-1a (verified:
+           `hash(1)` != 1), which would mask a weak mixer. */
+struct Bits {
+  std::size_t value;
+};
+
+} // namespace util::test
+
+namespace std {
+
+template <>
+struct hash<util::test::Bits> {
+  [[nodiscard]] auto operator()(const util::test::Bits b) const noexcept -> std::size_t { return b.value; }
+};
+
+} // namespace std
+
+namespace util::test {
+
+TEST(Util, HashCombineAvalanche) {
+  static_assert(sizeof(std::size_t) == 8, "the 64 input bits below assume a 64-bit size_t");
+
+  constexpr std::size_t SAMPLES = 512;
+  // Mean flipped output bits per flipped input bit; ideal is 32 of 64. Calibration (probes at
+  // 512 samples/bit, outputs archived in the PR): the previous finalizer -- a 32-bit-constant
+  // multiply -- scored as low as 7.7 on high input bits; the current one draws 27.4..33.4
+  // across 100 seeds. The floor sits at input bit 7 and is structural, not noise: the
+  // retained prefix's `>> 13` leaves the low 13 bits to the single golden-ratio multiply, and
+  // bit 7 is the worst-placed of those against the constant's bit pattern. The window absorbs
+  // that floor rather than the ideal.
+  constexpr double MIN_FLIPS = 26.0;
+  constexpr double MAX_FLIPS = 38.0;
+
+  for (std::size_t bit = 0; bit < 64; ++bit) {
+    const auto mask = std::size_t { 1 } << bit;
+    int value_flips = 0;
+    int seed_flips = 0;
+
+    for (std::size_t k = 0; k < SAMPLES; ++k) {
+      const auto seed = random<std::size_t>();
+      const Bits bits { random<std::size_t>() };
+      const auto base = hash::hash_combine(seed, bits);
+      value_flips += std::popcount(base ^ hash::hash_combine(seed, Bits { bits.value ^ mask }));
+      seed_flips += std::popcount(base ^ hash::hash_combine(seed ^ mask, bits));
+    }
+
+    const auto value_mean = static_cast<double>(value_flips) / static_cast<double>(SAMPLES);
+    const auto seed_mean = static_cast<double>(seed_flips) / static_cast<double>(SAMPLES);
+    EXPECT_GE(value_mean, MIN_FLIPS) << "input bit " << bit;
+    EXPECT_LE(value_mean, MAX_FLIPS) << "input bit " << bit;
+    EXPECT_GE(seed_mean, MIN_FLIPS) << "seed bit " << bit;
+    EXPECT_LE(seed_mean, MAX_FLIPS) << "seed bit " << bit;
+  }
 }
 
 
