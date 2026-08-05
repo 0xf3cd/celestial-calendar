@@ -27,6 +27,7 @@
 #include <print>
 #include <atomic>
 #include <cmath>
+#include <memory>
 #include <ranges>
 #include <thread>
 #include <unordered_set>
@@ -316,6 +317,26 @@ TEST(Util, HashCollision) {
   ASSERT_NEAR(tuples.size(), hash_values.size(), try_count * 0.00005);
 }
 
+
+/*! @brief Whether `make_cached` accepts a signature. `cache_func` funnels through it. */
+template <typename Sig>
+concept MakeCachedViable = requires (std::function<Sig> func) { util::cache::make_cached(func); };
+
+TEST(Util, MakeCachedConstraints) {
+  enum class Key : uint8_t { A };                      // stands in for `Jieqi` (jieqi.hpp)
+  struct Value { int32_t v; };                         // stands in for `LunarYear` (algo2.hpp)
+  struct Unhashable { auto operator==(const Unhashable&) const -> bool = default; };
+
+  static_assert(MakeCachedViable<double(int32_t, Key)>);
+  static_assert(MakeCachedViable<Value(int32_t)>);
+  static_assert(MakeCachedViable<int(int, double)>);
+
+  // Saying what the `unordered_map` already requires is the whole point: misuse is rejected at
+  // the call instead of inside its instantiation.
+  static_assert(not MakeCachedViable<void(int)>);
+  static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
+  static_assert(not MakeCachedViable<int(Unhashable)>);
+}
 
 TEST(Util, MakeCached1) {
   std::atomic<int32_t> call_count { 0 };

@@ -26,7 +26,9 @@
 #include <mutex>
 #include <tuple>
 #include <memory>
+#include <cstddef>
 #include <utility>
+#include <concepts>
 #include <functional>
 #include <type_traits>
 #include <unordered_map>
@@ -41,11 +43,26 @@ using util::hash::TupleHash;
 // 1. Add a way to clear the cache (LRU, or something).
 
 /**
+ * @brief What one component of a cache key must support. Element-wise, because `TupleHash` hashes
+ *        the key that way — `std::hash<std::tuple<...>>` does not exist.
+ */
+template <typename T>
+concept CacheKey = std::equality_comparable<T> and requires (const T& value) {
+  { std::hash<T> {}(value) } -> std::convertible_to<std::size_t>;
+};
+
+/**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache. Must be pure — same arguments ⇒ same result.
  * @return The cached function. Thread-safe; copies share one cache (#78).
+ * @note The constraints state what the `unordered_map` below already enforces, so misuse is
+ *       rejected here instead of inside its instantiation. `copy_constructible` also rules out
+ *       `void`, which has nothing to cache. Purity and a bounded key space are not expressible
+ *       here — they stay the caller's contract.
  */
 template <typename RetType, typename... Args>
+requires std::copy_constructible<RetType>
+     and (... and CacheKey<std::decay_t<Args>>)
 [[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
   // Cache and mutex live behind a `shared_ptr`, so copying the returned
   // `std::function` shares one cache instead of forking divergent replicas (#78).
