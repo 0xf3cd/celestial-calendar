@@ -52,103 +52,111 @@ concept CacheKeyElement = std::equality_comparable<T>
                       and std::invocable<std::hash<T>&, const T&>;
 
 
-/** @brief The single call signature of `F` as `R(Args...)`; primary template has no `type`.
- *         The `void_t` route keeps every failure in the immediate (substitution) context —
- *         a generic lambda has no unique `&F::operator()` and dies here cleanly, which is
- *         what the deleted `std::function` CTAD used to do for the same reason. */
-template <typename F, typename = void>
-struct signature_of {};
-
-template <typename R, typename... Args>
-struct signature_of<R(Args...), void> { using type = R(Args...); };
-
-template <typename R, typename... Args>
-struct signature_of<R (*)(Args...), void> { using type = R(Args...); };
-
-template <typename R, typename C, typename... Args>
-struct signature_of<R (C::*)(Args...) const, void> { using type = R(Args...); };
-
-template <typename F>
-struct signature_of<F, std::void_t<decltype(&F::operator())>>
-  : signature_of<decltype(&F::operator())> {};
-
-template <typename F>
-using signature_of_t = typename signature_of<F>::type;
-
-
-/** @brief Whether `F` has a single, non-generic call signature. */
-template <typename F>
-concept SingleSignatureCallable = requires { typename signature_of_t<F>; };
-
-
-/** @brief Whether a signature `R(Args...)` is cacheable — the key elements and the return
- *         type state what the `unordered_map` below would enforce anyway. */
-template <typename Sig>
-inline constexpr bool cacheable_signature_v = false;
-
-template <typename R, typename... Args>
-inline constexpr bool cacheable_signature_v<R(Args...)> =
-    std::copy_constructible<R> and (... and CacheKeyElement<std::decay_t<Args>>);
-
-
-/** @brief Whether `F` can be invoked as the signature `R(Args...)`, with a convertible result. */
-template <typename Sig, typename F>
-inline constexpr bool callable_for_signature_v = false;
-
-template <typename R, typename... Args, typename F>
-inline constexpr bool callable_for_signature_v<R(Args...), F> =
-    std::invocable<const F&, Args...>
-    and std::convertible_to<std::invoke_result_t<const F&, Args...>, R>;
-
-
 namespace detail {
 
-template <typename RetType, typename... Args, typename F>
-[[nodiscard]] inline auto make_cached_impl(const F& func) {
-  // Cache and mutex live behind a `shared_ptr`, so copying the returned
-  // closure shares one cache instead of forking divergent replicas (#78).
-  struct State {
-    std::mutex mtx;
-    std::unordered_map<std::tuple<std::decay_t<Args>...>, RetType, TupleHash<std::decay_t<Args>...>> cache;
-  };
+/** @brief The single call signature of `F` as `R(Args...)`; the primary template has no `type`.
+ *         The `void_t` route keeps every failure in the immediate (substitution) context —
+ *         a generic lambda has no unique `&F::operator()` and dies here cleanly, at the call site. */
+template <typename F, typename = void>
+struct SignatureOf {};
 
-  return [state = std::make_shared<State>(), func = func](Args... args) -> RetType {
-    auto key = std::make_tuple(args...);
+template <typename R, typename... Args>
+struct SignatureOf<R(Args...), void> { using type = R(Args...); };
 
-    const RetType* hit = nullptr;
-    {
-      const std::lock_guard lock { state->mtx };
-      if (const auto found = state->cache.find(key); found != state->cache.end()) {
-        hit = &found->second;
-      }
-    }
-    // The copy happens outside the lock. Sound because the cache never erases: references
-    // into an `unordered_map` survive rehash, only erase invalidates them — and nothing here
-    // can erase. Contended hits pay the (heap-backed, for `LunarYear`) copy without holding
-    // the mutex: ~2x faster with 4 workers (bench_cache's copy pair).
-    if (hit != nullptr) {
-      return *hit;
-    }
+template <typename R, typename... Args>
+struct SignatureOf<R(Args...) noexcept, void> { using type = R(Args...); };
 
-    // Compute outside the lock: misses on different keys don't serialize, and `func`
-    // may itself call another cached function without holding two locks at once.
-    // Concurrent misses on the same key both compute; `try_emplace` keeps the first.
-    // Forward only here — the key above was built from copies, so nothing is moved twice.
-    auto result = func(std::forward<Args>(args)...);
+template <typename R, typename... Args>
+struct SignatureOf<R (*)(Args...), void> { using type = R(Args...); };
 
-    const std::lock_guard lock { state->mtx };
-    return state->cache.try_emplace(std::move(key), std::move(result)).first->second;
-  };
-}
+template <typename R, typename... Args>
+struct SignatureOf<R (*)(Args...) noexcept, void> { using type = R(Args...); };
 
+template <typename R, typename C, typename... Args>
+struct SignatureOf<R (C::*)(Args...) const, void> { using type = R(Args...); };
+
+template <typename R, typename C, typename... Args>
+struct SignatureOf<R (C::*)(Args...) const noexcept, void> { using type = R(Args...); };
+
+template <typename F>
+struct SignatureOf<F, std::void_t<decltype(&F::operator())>>
+  : SignatureOf<decltype(&F::operator())> {};
+
+template <typename F>
+using SignatureOfT = typename SignatureOf<F>::type;
+
+
+/** @brief Whether a signature `R(Args...)` is cacheable — states what the `unordered_map`
+ *         below enforces anyway, so misuse is rejected at the call site instead of inside
+ *         its instantiation (`copy_constructible` also rules out `void`). */
 template <typename Sig>
-struct expand_signature;
+struct CacheableSignature : std::false_type {};
+
+template <typename R, typename... Args>
+struct CacheableSignature<R(Args...)>
+  : std::bool_constant<std::copy_constructible<R> and (... and CacheKeyElement<std::decay_t<Args>>)> {};
+
+
+/** @brief Whether `F` invokes as `R(Args...)` with a convertible result — this is what
+ *         rejects a pointer-to-member-function (`&Foo::bar`): it has a signature,
+ *         but no object to call it on. */
+template <typename Sig, typename F>
+struct CallableForSignature : std::false_type {};
+
+// Constrained on `invocable`: only then is `invoke_result_t` formed at all.
+template <typename R, typename... Args, typename F>
+  requires std::invocable<const F&, Args...>
+struct CallableForSignature<R(Args...), F>
+  : std::bool_constant<std::convertible_to<std::invoke_result_t<const F&, Args...>, R>> {};
+
+
+/** @brief The whole entry contract of `make_cached`, spelled so every rejection happens
+ *         in the immediate context — a constraint failure, never a hard error deeper in. */
+template <typename F>
+concept CacheableCallable = std::copy_constructible<std::decay_t<F>>
+    and CacheableSignature<SignatureOfT<F>>::value
+    and CallableForSignature<SignatureOfT<F>, F>::value;
+
+
+/** @brief Expands a signature `R(Args...)` back into a parameter pack and builds the closure. */
+template <typename Sig>
+struct ExpandSignature;
 
 template <typename RetType, typename... Args>
-struct expand_signature<RetType(Args...)> {
+struct ExpandSignature<RetType(Args...)> {
   template <typename F>
   [[nodiscard]] static auto from(const F& func) {
-    return make_cached_impl<RetType, Args...>(func);
+    // Cache and mutex live behind a `shared_ptr`, so copying the returned
+    // closure shares one cache instead of forking divergent replicas (#78).
+    struct State {
+      std::mutex mtx;
+      std::unordered_map<std::tuple<std::decay_t<Args>...>, RetType, TupleHash<std::decay_t<Args>...>> cache;
+    };
+
+    return [state = std::make_shared<State>(), func = func](Args... args) -> RetType {
+      auto key = std::make_tuple(args...);
+
+      const RetType* hit = nullptr;
+      {
+        const std::lock_guard lock { state->mtx };
+        if (const auto found = state->cache.find(key); found != state->cache.end()) {
+          hit = &found->second;
+        }
+      }
+      // Copy outside the lock — sound only under the never-erase invariant (see `make_cached`).
+      if (hit != nullptr) {
+        return *hit;
+      }
+
+      // Compute outside the lock: misses on different keys don't serialize, and `func`
+      // may itself call another cached function without holding two locks at once.
+      // Concurrent misses on the same key both compute; `try_emplace` keeps the first.
+      // Forward only here — the key above was built from copies, so nothing is moved twice.
+      auto result = func(std::forward<Args>(args)...);
+
+      const std::lock_guard lock { state->mtx };
+      return state->cache.try_emplace(std::move(key), std::move(result)).first->second;
+    };
   }
 };
 
@@ -158,25 +166,19 @@ struct expand_signature<RetType(Args...)> {
 /**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache. Must be pure — same arguments ⇒ same result — and have
- *        a single non-generic call signature; a generic lambda is rejected at the call site.
- * @return The cached closure. Thread-safe; copies share one cache (#78).
- * @note The constraints state what the `unordered_map` below already enforces, so misuse is
- *       rejected here instead of inside its instantiation. `copy_constructible` also rules out
- *       `void`, which has nothing to cache.
+ *        a single, non-generic, const call signature: a generic lambda is rejected at the
+ *        call site, and so is a `mutable` or ref-qualified `operator()` — a non-const call
+ *        is exactly where impurity would live.
+ * @return The cached closure (copies share one cache, #78; not assignable). Thread-safe.
  * @note The cache **never erases and never evicts** — an entry lives as long as its shared
- *       state. Two things depend on that, and would break silently if an erase ever appeared:
- *       the hit path copies the mapped value after releasing the mutex (see the body), and the
- *       key space stays bounded only by the caller's contract (both call sites guard their
- *       domain upstream: `calc_jieqi_jde` via `find_roots`, `calc_lunar_year` via START/END_YEAR).
- *       No LRU, no `clear`: LRU has no consumer and contradicts the out-of-lock copy; `clear`'s
- *       one consumer (the cold bench) just builds a fresh wrapper per round instead.
+ *       state. The hit path's out-of-lock copy depends on that: references into an
+ *       `unordered_map` survive rehash, only erase would invalidate them. No LRU and no
+ *       `clear`, by the same invariant. The key space is bounded only by the caller's contract.
  */
 template <typename F>
-  requires SingleSignatureCallable<F>
-       and cacheable_signature_v<signature_of_t<F>>
-       and callable_for_signature_v<signature_of_t<F>, F>
+  requires detail::CacheableCallable<F>
 [[nodiscard]] inline auto make_cached(const F& func) {
-  return detail::expand_signature<signature_of_t<F>>::from(func);
+  return detail::ExpandSignature<detail::SignatureOfT<F>>::from(func);
 }
 
 } // namespace util::cache
