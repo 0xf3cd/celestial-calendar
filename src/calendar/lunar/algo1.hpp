@@ -4,7 +4,7 @@
  *   including Gregorian, Lunar, and Chinese Ganzhi calendars.
  * 
  * Copyright (C) 2024 Ningqi Wang (0xf3cd)
- * Email: nq.maigre* @gmail.com
+ * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
  * This project is free software: you can redistribute it and/or modify
