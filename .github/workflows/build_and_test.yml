@@ -182,17 +182,24 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        # Check if any shared library is found
-        if [ ! -f ./build/shared_lib/*.dylib ]; then
-          echo "No shared lib found"
-          exit 1
-        fi
-
         # Create a folder "macos_arm64" at root dir and copy the new shared library to it
         mkdir -p ./macos_arm64
 
         # Find and copy real files (not symlinks)
         find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
+
+        # Guard on what was copied, not on what a glob matched. The old check was
+        # `[ ! -f ./build/shared_lib/*.dylib ]`, and CMake leaves two entries here -- the versioned
+        # file and an unversioned symlink -- so `[` got three operands, wrote `binary operator
+        # expected` to stderr and returned non-zero, which took the `if` to its false branch on
+        # every normal run. Worse, it asked the wrong question: with only symlinks and no real file
+        # the glob still matches, `-type f` still copies nothing, and the artifact still ships,
+        # because `celestial.h` and `build_info.json` keep the directory non-empty and
+        # `if-no-files-found: error` never fires (#72).
+        if [ "$(find ./macos_arm64 -name '*.dylib' -type f | wc -l)" -eq 0 ]; then
+          echo "No shared lib found in ./build/shared_lib"
+          exit 1
+        fi
 
         # Ship the published C-ABI header alongside the library
         cp ./src/shared_lib/celestial.h ./macos_arm64/

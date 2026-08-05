@@ -15,6 +15,10 @@ include_directories(${PROJECT_SOURCE_DIR}/astro)
 include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
 
+# Here, not only in `test/`: without a top-level call CMake writes no `CTestTestfile.cmake` next to
+# this build tree's root, so `ctest --test-dir build` finds zero tests -- and reports success (#72).
+enable_testing()
+
 # Add subdirectories. The order is for readability only — CMake binds targets at generate
 # time, so `test` may reference `celestial_calendar` before its directory is processed (#67).
 add_subdirectory(shared_lib)
