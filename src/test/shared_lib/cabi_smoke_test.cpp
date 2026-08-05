@@ -347,10 +347,14 @@ TEST(CAbiSmoke, LunarConverter) {
   EXPECT_EQ(back2.day, 20U);
 
   EXPECT_FALSE(gregorian_to_lunar(9, 2023, 3, 22).valid);
-  // The accepted Gregorian window is offset from the lunar-year range at both ends: it opens on
+  // The accepted Gregorian window does not line up with Gregorian years 1901-2099: it opens on
   // lunar 1901's first day (1901-02-19) and closes on lunar 2099's last day (2100-02-08).
   EXPECT_FALSE(gregorian_to_lunar(1, 1901, 1, 1).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 2, 18).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 1901, 2, 19).valid);
   EXPECT_TRUE(gregorian_to_lunar(1, 2100, 1, 25).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 2, 8).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 2100, 2, 9).valid);
   EXPECT_FALSE(gregorian_to_lunar(1, 2101, 1, 1).valid);
   EXPECT_FALSE(gregorian_to_lunar(1, 2023, 13, 1).valid);
   EXPECT_FALSE(lunar_to_gregorian(9, 2023, 2, true, 1).valid);

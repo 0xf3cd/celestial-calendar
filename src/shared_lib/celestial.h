@@ -41,8 +41,8 @@
  * existing function's signature means a new major version, or a `_v2`-named function
  * returning a new, separately named struct. Adding a struct or a function never breaks
  * the ABI; widening what an existing function accepts (as `algo` was widened to 3)
- * keeps both; narrowing it keeps the ABI but breaks the contract, and needs a new
- * major version just the same.
+ * breaks neither the ABI nor the contract; narrowing it keeps the ABI but breaks
+ * the contract, and needs a new major version just the same.
  *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
