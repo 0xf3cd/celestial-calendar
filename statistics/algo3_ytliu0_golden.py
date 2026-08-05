@@ -222,16 +222,63 @@ def cmd_emit_cpp(args: argparse.Namespace) -> int:
   return 0
 
 
-def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
-  """Decode one year from ytliu0 calendarData.js at the pinned commit.
 
-  The JS file is a large IIFE; rather than executing it we re-implement the
-  documented `ChineseToGregorian` decode used by the pre-work package (see
-  vault 裁决预研/08 §3). Requires a local checkout at YTLIU0_COMMIT.
-  """
+def _parse_calendar_data_js(data_path: Path) -> dict[int, list[int]]:
+  """Parse ChineseToGregorian() table: [year, 12 month-starts, leap_start, leap_mon, total]."""
+  raw = data_path.read_text(encoding="utf-8")
+  # Each row is a JS array literal of integers.
+  rows: dict[int, list[int]] = {}
+  for m in re.finditer(r"\[(-?\d+(?:,-?\d+){15})\]", raw):
+    nums = [int(x) for x in m.group(1).split(",")]
+    year = nums[0]
+    rows[year] = nums
+    # stash byte offset on a side channel via a parallel dict attribute
+  return rows
+
+
+def _row_byte_offset(data_path: Path, year: int) -> int:
+  raw = data_path.read_text(encoding="utf-8")
+  m = re.search(rf"\[{year},", raw)
+  return m.start() if m else 0
+
+
+def decode_ytliu0_row(nums: list[int], js_offset: int = 0) -> GoldenRow:
+  """nums = [year, 12×doy starts, leap_start, leap_month, total_days]. doy is 1-based."""
+  if len(nums) != 16:
+    raise ValueError(f"expected 16 fields, got {len(nums)}: {nums[:4]}…")
+  year = nums[0]
+  starts12 = nums[1:13]
+  leap_start = nums[13]
+  leap = nums[14]
+  total = nums[15]
+  starts: list[int] = []
+  for i, s in enumerate(starts12, start=1):
+    starts.append(s)
+    if leap != 0 and i == leap:
+      starts.append(leap_start)
+  starts.append(starts[0] + total)
+  ml = tuple(starts[i + 1] - starts[i] for i in range(len(starts) - 1))
+  if any(x not in (29, 30) for x in ml):
+    raise ValueError(f"year {year}: bad month lengths {ml}")
+  if sum(ml) != total:
+    raise ValueError(f"year {year}: sum(ml)={sum(ml)} != total={total}")
+  first = date(year, 1, 1) + timedelta(days=starts12[0] - 1)
+  # date() rejects year < 1; ytliu0 has negative years we never sample.
+  return GoldenRow(
+    year=year,
+    first_day=first,
+    leap_month=leap,
+    month_lengths=ml,
+    total_days=total,
+    js_offset=js_offset,
+  )
+
+
+def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
+  """Decode one year from ytliu0 calendarData.js at the pinned commit."""
   if ytliu0_root is None:
     raise SystemExit(
-      f"--include-2099 / extract year {year} needs --ytliu0 PATH "
+      f"extract year {year} needs --ytliu0 PATH "
       f"(checkout of {YTLIU0_REPO} at {YTLIU0_COMMIT})"
     )
   data_path = ytliu0_root / YTLIU0_DATA_REL
@@ -239,162 +286,12 @@ def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
     raise FileNotFoundError(data_path)
   raw = data_path.read_bytes()
   digest = hashlib.md5(raw).hexdigest()
-  print(f"# calendarData.js md5={digest} bytes={len(raw)}", file=sys.stderr)
-
-  # The pre-work package already decoded every sample year via the JS itself.
-  # For the single W-A2 year 2099 we shell out to node if available, else fail
-  # with a clear message — do not invent a second decoder.
-  try:
-    return _decode_via_node(ytliu0_root, year)
-  except FileNotFoundError as exc:
-    raise SystemExit(
-      f"node is required to decode ytliu0 year {year} (no second decoder in-tree): {exc}"
-    ) from exc
-
-
-def _decode_via_node(ytliu0_root: Path, year: int) -> GoldenRow:
-  import json
-  import shutil
-  import subprocess
-  import tempfile
-
-  if shutil.which("node") is None:
-    raise FileNotFoundError("node binary not on PATH")
-
-  # Minimal harness: load calendarData.js in the way the upstream page does and
-  # dump first-day / leap / month lengths for one year. calendarData.js attaches
-  # ChineseToGregorian onto the global object when evaluated under node with a
-  # thin DOM-less shim.
-  harness = f"""
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
-const root = {json.dumps(str(ytliu0_root))};
-const src = fs.readFileSync(path.join(root, {json.dumps(YTLIU0_DATA_REL)}), 'utf8');
-// calendarData.js is browser-oriented; give it a window/self and the helpers it
-// expects. Upstream uses a single global ChineseToGregorian after load.
-const sandbox = {{
-  console,
-  Date,
-  Math,
-  Array,
-  Object,
-  String,
-  Number,
-  parseInt,
-  isNaN,
-  window: {{}},
-  self: {{}},
-}};
-sandbox.window = sandbox;
-sandbox.self = sandbox;
-vm.createContext(sandbox);
-vm.runInContext(src, sandbox);
-const fn = sandbox.ChineseToGregorian || sandbox.window.ChineseToGregorian;
-if (typeof fn !== 'function') {{
-  // Some builds expose a table + decoder under different names; surface keys.
-  const keys = Object.keys(sandbox).filter(k => /chinese|lunar|gregorian|calendar/i.test(k));
-  console.error('no ChineseToGregorian; candidate keys:', keys.join(','));
-  process.exit(2);
-}}
-const y = {year};
-// ChineseToGregorian(y, m, d) → Gregorian date of lunar y/m/d. Walk the year.
-const first = fn(y, 1, 1);
-const months = [];
-let leap = 0;
-// Upstream encoding: try m=1..13; a missing 13th month means no leap.
-for (let m = 1; m <= 13; m++) {{
-  try {{
-    const d1 = fn(y, m, 1);
-    const d2 = fn(y, m, 30);
-    // length: if day 30 is valid in that month, 30 else 29. Detect validity by
-    // seeing whether day 30 lands in the same lunar month when converted back,
-    // or simply whether the Gregorian span from day 1 to next month day 1 is 30.
-    let next;
-    if (m < 13) {{
-      try {{ next = fn(y, m + 1, 1); }}
-      catch (e) {{ next = null; }}
-    }} else {{
-      next = fn(y + 1, 1, 1);
-    }}
-    if (next === null && m === 13) {{ break; }}
-    if (next === null) {{
-      // no month m+1 — this was the last month; length via next lunar new year
-      next = fn(y + 1, 1, 1);
-    }}
-    const t1 = Date.parse(d1);
-    const t2 = Date.parse(next);
-    const len = Math.round((t2 - t1) / 86400000);
-    if (len !== 29 && len !== 30) {{
-      console.error('bad length', m, len, d1, next);
-      process.exit(3);
-    }}
-    months.push(len);
-  }} catch (e) {{
-    if (m === 13) break;
-    throw e;
-  }}
-}}
-// Leap month index: if 13 months, find which traditional month is the leap by
-// checking the upstream leap-month helper if any; else leave 0 and let the
-// caller cross-check against algo1 (HKO years) / frozen sample.
-if (months.length === 13) {{
-  const leapFn = sandbox.leapMonthOf || sandbox.window.leapMonthOf
-              || sandbox.getLeapMonth || sandbox.window.getLeapMonth;
-  if (typeof leapFn === 'function') {{
-    leap = leapFn(y);
-  }} else {{
-    // Fallback: many ytliu0 builds stash leap info on a parallel array.
-    leap = sandbox.leapMonth && sandbox.leapMonth[y] || 0;
-  }}
-}}
-const out = {{
-  year: y,
-  first: first,
-  leap: leap,
-  months: months,
-  total: months.reduce((a, b) => a + b, 0),
-}};
-process.stdout.write(JSON.stringify(out));
-"""
-  with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
-    fh.write(harness)
-    harness_path = fh.name
-  try:
-    proc = subprocess.run(
-      ["node", harness_path],
-      check=False,
-      capture_output=True,
-      text=True,
-    )
-  finally:
-    Path(harness_path).unlink(missing_ok=True)
-  if proc.returncode != 0:
-    sys.stderr.write(proc.stderr)
-    raise SystemExit(f"node harness failed for year {year}: exit {proc.returncode}")
-  data = json.loads(proc.stdout)
-  # first may be "YYYY-MM-DD" or a Date string
-  first_raw = data["first"]
-  if isinstance(first_raw, str) and re.match(r"\d{4}-\d{2}-\d{2}", first_raw):
-    y, m, d = map(int, first_raw[:10].split("-"))
-    first = date(y, m, d)
-  else:
-    # Date.toString / ISO from JS
-    first = date.fromisoformat(str(first_raw)[:10])
-  ml = tuple(int(x) for x in data["months"])
-  # Byte offset of the year token in calendarData.js for provenance (best-effort).
-  raw = (ytliu0_root / YTLIU0_DATA_REL).read_text(encoding="utf-8", errors="replace")
-  # Prefer a `2099:` / year-keyed offset if present; else 0 (caller still has commit).
-  off_m = re.search(rf"(?:^|[^\d]){year}\s*:", raw)
-  off = off_m.start() if off_m else 0
-  return GoldenRow(
-    year=year,
-    first_day=first,
-    leap_month=int(data.get("leap") or 0),
-    month_lengths=ml,
-    total_days=int(data["total"]),
-    js_offset=off,
-  )
+  print(f"# calendarData.js md5={digest} bytes={len(raw)} commit-expect={YTLIU0_COMMIT}",
+        file=sys.stderr)
+  table = _parse_calendar_data_js(data_path)
+  if year not in table:
+    raise KeyError(f"year {year} not in {data_path}")
+  return decode_ytliu0_row(table[year], _row_byte_offset(data_path, year))
 
 
 def cmd_compare_all(args: argparse.Namespace) -> int:
