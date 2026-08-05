@@ -36,7 +36,8 @@ using namespace calendar::lunar::common;
 using astro::julian_day::ut1_to_jde;
 
 TEST(LunarAlgo2, CachedWrapperIsLazilyInitialized) {
-  // #67: the shape is the guarantee — a revert to a namespace-scope callable must fail to compile.
+  // #67: the shape is the guarantee — a revert to a namespace-scope callable or a reference
+  // binding must fail to compile.
   static_assert(std::is_function_v<decltype(get_info_for_year)>);
   static_assert(std::is_function_v<decltype(AlgoMetadata<Algo::ALGO_2>::get_info_for_year)>);
 }
