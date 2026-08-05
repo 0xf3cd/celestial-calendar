@@ -152,7 +152,7 @@ TEST(Util, DaysConvertibleContract) {
 
   static_assert(DaysConvertible<days>);
   static_assert(DaysConvertible<int>);
-  static_assert(DaysConvertible<weeks>);   // exact in days; `hours` below is where the line is
+  static_assert(DaysConvertible<weeks>);
   static_assert(YmdShiftable<days>);
   static_assert(YmdShiftable<int>);
 
@@ -161,7 +161,7 @@ TEST(Util, DaysConvertibleContract) {
   static_assert(not DaysConvertible<day>);
   static_assert(not DaysConvertible<month>);
   static_assert(not DaysConvertible<double>);
-  static_assert(not DaysConvertible<hours>);
+  static_assert(not DaysConvertible<hours>);   // pairs with `weeks` above: exact conversions only
   static_assert(not DaysConvertible<Season>);
   static_assert(not YmdShiftable<day>);
 }
