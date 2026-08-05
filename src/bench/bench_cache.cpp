@@ -12,7 +12,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
@@ -21,28 +21,29 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Every cache lookup pays one `hash_combine`, so the mixer's cost belongs to the cache's budget.
-// Its quality is a test (`Util.HashCombineAvalanche`); its cost is the pair below. Both mixers
-// live in the same binary and are timed interleaved, because the per-round paired ratio is the
-// figure that survives machine drift -- absolute nanoseconds do not (see harness.hpp).
+// The cache pays one `hash_combine` per lookup. The mixer's quality is a test
+// (`Util.HashCombineAvalanche`); its cost is the old/new pair below (see harness.hpp for why
+// the paired ratio is the figure to read).
 
 #include <array>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iostream>
-#include <type_traits>
-#include <utility>
 #include <vector>
+#include <cstdint>
+#include <cstddef>
+#include <utility>
+#include <iostream>
+#include <functional>
+#include <type_traits>
 
 #include "hash.hpp"
 #include "harness.hpp"
 
 namespace {
 
-using Key = std::pair<int32_t, uint8_t>; // stands in for (year, Jieqi), the jieqi cache key
+using Key = std::pair<int32_t, uint8_t>; // stands in for (year, Jieqi) -- Jieqi is an enum class
+                                         // over uint8_t, so its std::hash sees identical bits
 
-/** @brief The mixer as it was before the xorshift finalizer, frozen for the paired measurement. */
+/** @brief The mixer as it was before the xorshift finalizer, frozen for the paired measurement.
+ *         Never sync this with `hash_combine` -- the pair is meaningful only while they differ. */
 template <typename T>
 [[nodiscard]] auto old_hash_combine(std::size_t seed, T&& v) -> std::size_t {
   auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
@@ -74,35 +75,49 @@ template <typename T>
 auto main() -> int {
   const auto keys = sample_keys();
 
-  // Volatile so neither the sums nor the hashing they come from can be optimized away.
+  // Volatile so the accumulated sums -- and the hashing they come from -- survive the optimizer.
+  // One read-modify-write per round, not per iteration: a volatile chain inside the loop would
+  // set a floor comparable to the hashing itself at ~3 ns a key.
   volatile std::size_t sink = 0;
 
+  // The two bodies differ by exactly one identifier (`old_`), so the pair audits at a glance.
   const bench::Case old_mixer {
-    // The old chain, spelled out: hash the first field, then combine the second with the
-    // frozen old mixer. Same work as the new case, which calls the public `hash` directly.
     .name = "cache key hash -- old mixer",
     .body = [&](const std::size_t iterations) {
+      std::size_t acc = 0;
+      std::size_t index = 0;
       for (std::size_t i = 0; i < iterations; ++i) {
-        const auto& [year, term] = keys.at(i % keys.size());
-        sink = sink + old_hash_combine(util::hash::hash(year), term);
+        const auto& [year, term] = keys[index];
+        acc += old_hash_combine(util::hash::hash(year), term);
+        if (++index == keys.size()) {
+          index = 0;
+        }
       }
+      sink = sink + acc;
     },
   };
 
   const bench::Case new_mixer {
     .name = "cache key hash -- new mixer",
     .body = [&](const std::size_t iterations) {
+      std::size_t acc = 0;
+      std::size_t index = 0;
       for (std::size_t i = 0; i < iterations; ++i) {
-        const auto& [year, term] = keys.at(i % keys.size());
-        sink = sink + util::hash::hash(year, term);
+        const auto& [year, term] = keys[index];
+        acc += util::hash::hash_combine(util::hash::hash(year), term);
+        if (++index == keys.size()) {
+          index = 0;
+        }
       }
+      sink = sink + acc;
     },
   };
 
-  // 24000 iterations per round, per bench_jieqi's calibration: long enough for a round's fixed
-  // cost to amortize away, which is what makes the ratio repeatable across runs.
+  // 240000 iterations: at ~3 ns a key a round is ~0.7 ms, long enough for a round's fixed cost
+  // to divide out. bench_jieqi's 24000 was calibrated on a ~20 ns cache hit; borrowed here it
+  // left the paired ratio under machine noise (p10..p90 crossing zero).
   const std::array mixer_pair { old_mixer, new_mixer };
-  const bench::Plan plan { .title = "Cache key hashing", .iterations = 24000 };
+  const bench::Plan plan { .title = "Cache key hashing", .iterations = 240000 };
   bench::run(plan, mixer_pair, std::cout);
 
   return 0;
