@@ -23,8 +23,9 @@
 
 #include <gtest/gtest.h>
 
-#include <tuple>
 #include <algorithm>
+#include <tuple>
+#include <type_traits>
 #include "lunar/algo2.hpp"
 
 
@@ -33,6 +34,13 @@ namespace calendar::lunar::algo2::test {
 using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
 using astro::julian_day::ut1_to_jde;
+
+TEST(LunarAlgo2, CachedWrapperIsLazilyInitialized) {
+  // #67: the shape is the guarantee — a revert to a namespace-scope callable or a reference
+  // binding must fail to compile.
+  static_assert(std::is_function_v<decltype(get_info_for_year)>);
+  static_assert(std::is_function_v<decltype(AlgoMetadata<Algo::ALGO_2>::get_info_for_year)>);
+}
 
 TEST(LunarAlgo2, LunarMonthGenerator) {
   const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
@@ -316,12 +324,12 @@ TEST(LunarAlgo2, YearOutOfRange) {
   ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::out_of_range);
 
   // The C ABI reaches algo2 only through the cached wrapper, so the guard has to survive it.
-  ASSERT_THROW(get_info_for_year(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(get_info_for_year(END_YEAR + 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = get_info_for_year(START_YEAR - 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = get_info_for_year(END_YEAR + 1), std::out_of_range);
 
   // Both ends are inclusive — an off-by-one in the guard shows up here and nowhere else.
-  ASSERT_NO_THROW(get_info_for_year(START_YEAR));
-  ASSERT_NO_THROW(get_info_for_year(END_YEAR));
+  ASSERT_NO_THROW(std::ignore = get_info_for_year(START_YEAR));
+  ASSERT_NO_THROW(std::ignore = get_info_for_year(END_YEAR));
 }
 
 
