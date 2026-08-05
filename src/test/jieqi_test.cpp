@@ -24,10 +24,19 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <ranges>
-#include <vector>
 #include <type_traits>
+#include <vector>
 #include "util.hpp"
 #include "jieqi.hpp"
+
+// gcc 14.2 (the pinned CI leg) mis-fires -Wfree-nonheap-object on the pre-existing ranges
+// pipelines below — the false-positive family of gcc bug 108187: `jieqi_jde` becoming an
+// inlinable function perturbs this TU's inlining graph and the warning surfaces on an
+// impossible path. 14.4 (local) and the sanitizer legs are clean. Scoped to this TU and
+// to gcc; clang does not know the warning.
+#if defined(__GNUC__) and not defined(__clang__)
+#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+#endif
 
 namespace calendar::jieqi::test {
 

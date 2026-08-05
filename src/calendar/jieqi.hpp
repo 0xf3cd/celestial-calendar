@@ -229,7 +229,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @param year The year, in gregorian calendar.
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `jq` is not a valid Jieqi, or a `year` outside the ΔT model's range.
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root, or a `year`
  *        before 1 — inherited from `ut1_to_jd` (#77).
  */

@@ -23,8 +23,8 @@
 
 #include <gtest/gtest.h>
 
-#include <tuple>
 #include <algorithm>
+#include <tuple>
 #include <type_traits>
 #include "lunar/algo2.hpp"
 
