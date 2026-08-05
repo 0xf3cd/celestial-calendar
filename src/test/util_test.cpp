@@ -351,7 +351,8 @@ TEST(Util, HashCombineAvalanche) {
   // 512 samples/bit, outputs archived in the PR): the previous finalizer -- a 32-bit-constant
   // multiply -- scored as low as 7.7 on high input bits; the current one draws 27.4..33.4
   // across 100 seeds. The floor sits at input bit 7 and is structural, not noise: the
-  // retained prefix's `>> 13` drops the low 13 bits before mixing, and the window absorbs
+  // retained prefix's `>> 13` leaves the low 13 bits to the single golden-ratio multiply, and
+  // bit 7 is the worst-placed of those against the constant's bit pattern. The window absorbs
   // that floor rather than the ideal.
   constexpr double MIN_FLIPS = 26.0;
   constexpr double MAX_FLIPS = 38.0;

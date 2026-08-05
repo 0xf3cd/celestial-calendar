@@ -113,7 +113,7 @@ auto main() -> int {
     },
   };
 
-  // 240000 iterations: at ~3 ns a key a round is ~0.7 ms, long enough for a round's fixed cost
+  // 240000 iterations: at ~2 ns a key a round is ~0.5 ms, long enough for a round's fixed cost
   // to divide out. bench_jieqi's 24000 was calibrated on a ~20 ns cache hit; borrowed here it
   // left the paired ratio under machine noise (p10..p90 crossing zero).
   const std::array mixer_pair { old_mixer, new_mixer };
