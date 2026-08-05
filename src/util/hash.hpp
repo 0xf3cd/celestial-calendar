@@ -40,7 +40,12 @@ template <typename T>
 
   v_hash ^= seed * 0xc4ceb9fe1a85ec53;
   v_hash ^= (v_hash >> 13) * 0xff51afd7ed558ccd;
-  v_hash *= 0x9e3779b9;
+
+  // Splitmix64-style finalizer: a multiply never moves high bits down (and `0x9e3779b9` is
+  // only 32 bits wide), so xorshifts bracket the 64-bit golden-ratio multiply.
+  v_hash ^= v_hash >> 32;
+  v_hash *= 0x9e3779b97f4a7c15;
+  v_hash ^= v_hash >> 32;
 
   return v_hash;
 }
