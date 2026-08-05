@@ -80,8 +80,12 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
       if not (isinstance(stmt, ast.Assign) and
               any(isinstance(t, ast.Name) and t.id == "_fields_" for t in stmt.targets)):
         continue
+      if not isinstance(stmt.value, (ast.List, ast.Tuple)):
+        raise RuntimeError(f"Unreadable _fields_ on Structure subclass {node.name}: not a literal list/tuple")
       fields = []
       for elt in stmt.value.elts:
+        if not isinstance(elt, ast.Tuple) or len(elt.elts) != 2:
+          raise RuntimeError(f"Unreadable _fields_ entry in {node.name}: not a (name, type) 2-tuple")
         fname_node, type_node = elt.elts
         if not isinstance(fname_node, ast.Constant) or not isinstance(fname_node.value, str):
           raise RuntimeError(f"Unreadable field name in {node.name}._fields_")
