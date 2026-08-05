@@ -47,10 +47,12 @@ using util::hash::TupleHash;
  *        `operator()` takes any tuple and fails inside its body, so constraining *it* would
  *        constrain nothing.
  */
+// Spelled as three library concepts rather than one `requires { std::hash<T> {}(v) }`: the latter
+// makes g++-14 ICE in `finish_compound_literal` when reached through a nested requires-expression.
 template <typename T>
-concept CacheKeyElement = std::equality_comparable<T> and requires (const T& value) {
-  { std::hash<T> {}(value) } -> std::convertible_to<std::size_t>;
-};
+concept CacheKeyElement = std::equality_comparable<T>
+                      and std::default_initializable<std::hash<T>>
+                      and std::invocable<std::hash<T>&, const T&>;
 
 /**
  * @brief A wrapper that caches the result of a function.
