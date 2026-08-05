@@ -22,7 +22,6 @@ jobs:
       contents: read
       pull-requests: read
       issues: read
-      id-token: write
     steps:
       - uses: anthropics/claude-code-action@v1
         with:
