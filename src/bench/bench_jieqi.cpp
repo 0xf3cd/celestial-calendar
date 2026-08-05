@@ -81,22 +81,34 @@ auto main() -> int {
       },
     },
     {
-      // The global cache, whose keys the warm-up has already filled in.
+      // The global cache, whose keys the warm-up has already filled in. Modulo here where the cold
+      // case above indexes directly: a hit does not care how often a key repeats, and wrapping is
+      // what lets this same case be reused below with far more iterations than there are keys.
       .name = "jieqi_jde -- warm (every call a hit)",
       .body = [&](const std::size_t iterations) {
         for (std::size_t i = 0; i < iterations; ++i) {
-          const auto [year, jq] = keys.at(i);
+          const auto [year, jq] = keys.at(i % keys.size());
           sink = sink + calendar::jieqi::jieqi_jde(year, jq);
         }
       },
     },
   };
 
-  const bench::Plan plan {
-    .title = "Solar terms",
-    .iterations = keys.size(), // `keys.at(i)` above reads this many, so the two must agree.
-  };
+  // The pair answers what the cache buys, and 240 iterations is as many as it can answer it with:
+  // the cold case pays a Newton search each time, so a round already costs some 64 ms.
+  bench::run({ .title = "Solar terms", // `keys.at(i)` above reads `iterations` of them, so they agree.
+               .iterations = keys.size() },
+             cases, std::cout);
 
-  bench::run(plan, cases, std::cout);
+  // And then the hit on its own, with rounds long enough to measure it. At 240 iterations a round's
+  // fixed cost is around 600 ns, which lands as +30% on an 8 ns operation and a p10..p90 spanning
+  // nearly a factor of two -- fine for "four orders of magnitude", useless for tracking a 10%
+  // change to the hash or the lock. At 24000 the same figure repeats to within 1% across runs.
+  // Measured, on one machine: 10.6/10.1/10.6 ns and 8.3..15.8 at 240, against 8.1/8.1/8.0 ns and
+  // 8.0..9.0 at 24000. The two agree on `min`, which is what says the difference is per-round
+  // overhead amortized away rather than the machine wandering between runs.
+  const std::vector<bench::Case> hit_only { cases[1] };
+  bench::run({ .title = "Solar terms -- cache hit alone", .iterations = 24000 }, hit_only, std::cout);
+
   return 0;
 }
