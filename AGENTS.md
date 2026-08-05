@@ -173,14 +173,16 @@ Same discipline as the `@ref` rule above — the code should read next to the bo
 
 ### Comment language
 
-Narrative in English; domain terms keep their own spelling, glossed once in parentheses — `the
-Chinese Jieqi (节气)`, `a Jie (节)`, `Jieqi::冬至`. Translating an entity loses it, and the gloss is
-what lets a reader who has only the English follow. Full-Chinese runs are for named or quoted
-material, never for explanation.
+Narrative in English; domain terms keep their own spelling (`Jieqi::冬至`), glossed once in
+parentheses where a reader who has only the English needs a handle — `the Chinese Jieqi (节气)`,
+`a Jie (节)`. Translating an entity loses it. Outside the lunar subtree, keep new full-Chinese runs
+to named or quoted material rather than explanation; the stray restatement that predates this
+paragraph can stay where it is.
 
-The lunar subtree is the exception, and stays one: its Doxygen `@param` / `@return` lines carry a
-Chinese restatement after the English (`@param year The Lunar year. 阴历年份。`). Match the
-neighbours when editing there — do not spread it, do not strip it.
+The lunar subtree is where Chinese restatement is concentrated, and stays that way: its Doxygen
+carries a Chinese line after or under the English, on `@brief` / `@param` / `@return` / `@note`
+and member docs alike (`@param year The Lunar year. 阴历年份。`). Match the neighbours when
+editing there — do not spread the habit outward, do not strip it inside.
 
 Punctuation follows the language of the run it sits in: full-width inside a Chinese phrase,
 half-width everywhere else.
@@ -345,13 +347,16 @@ toolbox/        Helper scripts for artifacts, releases, build info
    validation must `throw` (fail-fast, independent of build type); `assert` is only
    for internal invariants, never as an input guard.
 
-9. **CI toolchains are pinned, all of them.** A tool that updates itself turns "the code changed"
-   and "the tool changed" into the same red X, on a day nobody touched the repository; a pin that
-   goes stale instead fails loudly with "no such version", which says what to do. Current pins:
-   clang-tidy and clang **18.1.8** (Linux, `core_tests.yml`), choco **LLVM 20.1.8** (Windows — not
-   the 18 the Linux legs use, a pre-existing split these pins record rather than create), Xcode
-   major **`'26'`** (a major carries an Apple Clang major, and `-Werror` makes any new diagnostic
-   in it a red build), ruff **0.16.1**. Bump deliberately, never incidentally (#72, #73).
+9. **CI toolchains are pinned — every one that can emit a diagnostic.** A tool that updates
+   itself turns "the code changed" and "the tool changed" into the same red X, on a day nobody
+   touched the repository; a pin that goes stale instead fails loudly with "no such version",
+   which says what to do. Pinned: clang-tidy and clang at **18** on the Linux legs, choco LLVM at
+   **20** on Windows (not the 18 the Linux legs use — a pre-existing split these pins record
+   rather than create), the Xcode **major** (a major carries an Apple Clang major, and `-Werror`
+   makes any new diagnostic in it a red build), and ruff. Exact versions live in the workflows,
+   not here — there is no gate reconciling two copies. Chocolatey's `make` is deliberately outside
+   this: it drives the build rather than diagnosing it, so a new version cannot turn `-Werror` red.
+   Bump deliberately, never incidentally (#72, #73).
 
 ## AI do / don't
 

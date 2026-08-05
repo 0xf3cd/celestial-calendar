@@ -129,7 +129,8 @@ jobs:
 
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
-  # pull requests to main and packages the artifacts. A push still gets both platforms from
+  # pull requests to main and packages the artifacts -- running them here too repeated the same
+  # compile-and-test on every push to a branch with a PR open. A push still gets both platforms from
   # `self-contained-headers` and `cxx-feature-probe` below -- three-way matrices that catch
   # platform-specific rot early (#72).
 
@@ -199,9 +200,16 @@ jobs:
             fi
             total=$((total + n))
           done
-          # `TEST_F`/`TEST_P` too: the repo has none today, and a gate that starts miscounting the
-          # day someone adds a fixture would be worse than no gate at all.
-          declared=$(grep -rhoE '^[[:space:]]*TEST(_F|_P)?\(' src/test --include=*.cpp | wc -l)
+          # `TEST` and `TEST_F` only, because only those are one macro per test. `TEST_P` and
+          # `TYPED_TEST` expand to one per parameter or per type, so counting them would undercount
+          # and fail here for the wrong reason. Detect them instead: the day one appears, this
+          # reconciliation stops being valid and should be rewritten, not quietly widened.
+          if grep -rqE '^[[:space:]]*(TEST_P|TYPED_TEST)\(' src/test --include=*.cpp; then
+            echo "TEST_P/TYPED_TEST present: one macro no longer means one test, so the count below"
+            echo "cannot reconcile. Rewrite this check (count from --gtest_list_tests) before use."
+            exit 1
+          fi
+          declared=$(grep -rhoE '^[[:space:]]*TEST(_F)?\(' src/test --include=*.cpp | wc -l)
           echo "ran $total, declared $declared"
           [ "$total" -eq "$declared" ] || { echo "count mismatch"; exit 1; }
 

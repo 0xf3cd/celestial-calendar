@@ -31,7 +31,6 @@ RUN aptitude install -y python3 python3-pip python3-venv python3-full
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Build and test the project
 # Gate track of the #69 dual-track policy: pin the seed inside the image too — a docker
 # build layer does not inherit the GitHub Actions env context (default matches
 # DEFAULT_SEED in src/util/random.hpp).

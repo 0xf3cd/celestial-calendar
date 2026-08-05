@@ -69,9 +69,10 @@ TEST(Datetime, FromTimepoint) {
   }
 
   { // Test with random nanoseconds.
-    // Bounded by construction, because no assertion below can catch it going wrong: `Datetime`
-    // normalizes whatever wrapped value it is handed. `now` sits some 1.8e18 ns past the epoch, so
-    // an offset from the whole `int64_t` range overflows this addition for roughly its top 40%.
+    // The offset is bounded by construction: signed overflow here is undefined, and no assertion
+    // below can see it -- `Datetime` normalizes whatever the wrap produced, so the test passes
+    // either way. `now` sits some 1.8e18 ns past the epoch, so an offset drawn from the whole
+    // `int64_t` range overflows this addition for roughly its top 40%.
     // `system_clock::duration` is not nanoseconds everywhere (libc++ counts microseconds, MSVC
     // 100ns ticks), so the headroom is computed after converting, not from `count()` (#72).
     const auto now_ns = duration_cast<nanoseconds>(now.time_since_epoch()).count();

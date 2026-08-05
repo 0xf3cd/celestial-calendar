@@ -92,8 +92,8 @@ auto main() -> int {
     },
   };
 
-  // What the cache buys. `iterations` is bounded by `keys.size()` -- the cold case indexes `keys`
-  // directly -- and by the Newton search it pays each time, which already makes a round some 64 ms.
+  // What the cache buys. `iterations` is bounded by `keys.size()`, because the cold case indexes
+  // `keys` directly.
   const std::array paired { cold, warm };
   const bench::Plan paired_plan { .title = "Solar terms", .iterations = keys.size() };
   bench::run(paired_plan, paired, std::cout);
@@ -101,6 +101,7 @@ auto main() -> int {
   // What a hit costs, with rounds long enough to say. At 240 iterations a round's fixed cost lands
   // as some +30% on an 8 ns operation, with a p10..p90 spanning nearly a factor of two -- fine for
   // "four orders of magnitude", useless for tracking a 10% change to the hash or the lock.
+  // 24000 is where that stops mattering: the figure repeats across runs to within a percent.
   const std::array hit_only { warm };
   const bench::Plan hit_plan { .title = "Solar terms -- cache hit alone", .iterations = 24000 };
   bench::run(hit_plan, hit_only, std::cout);
