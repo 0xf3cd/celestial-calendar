@@ -157,10 +157,20 @@ is tracked in #72.)
 
 分工：转录/脚手架/CI 可放手；API 形状、类型设计、数值核心、容差判断留给作者。
 
-### Naming (SSOT: `.clang-tidy` CheckOptions)
+### Naming
 
-`lower_case` — variables / functions / params / members / methods / namespaces.
-`CamelCase` — class / struct.  `UPPER_CASE` — global constants / enums / enum constants.
+Nothing checks this — `readability-identifier-naming` is off, and the CheckOptions that used to
+claim to be its SSOT described a codebase this is not (#72). Read it here instead:
+
+`lower_case` — variables, functions, parameters, members, methods, namespaces, and the
+`const inline auto` callables that `cache_func` returns (`jieqi_jde`, `get_info_for_year`): they
+are called, so they read as functions.
+`CamelCase` — classes, structs, **and enum types** (`Algo`, `AngleUnit`, `Jieqi`).
+`UPPER_CASE` — `inline constexpr` constants and enumerators.
+
+**Domain notation overrides all of it.** An identifier that stands for a symbol in the source keeps
+the source's spelling: `cos_λ`, `argL`, `A1`, `θCoeffs`, `gen_eval_θ`, and `Jieqi`'s 立春/冬至.
+Same discipline as the `@ref` rule above — the code should read next to the book.
 
 ### Header-only, and the code reads like the maths
 
