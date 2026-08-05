@@ -38,8 +38,9 @@ concept YearConvertible = requires (T t) {
 
 /*! @brief A type `std::chrono::days` can be built from — what the operators below shift by. */
 template <typename T>
-concept DaysConvertible = requires (T t) {
-  // The check is the operators' own expression, not a paraphrase of it (#83).
+concept DaysConvertible = requires (const T& t) {
+  // The check is the operators' own expression, on the same const object they bind (#83): with a
+  // non-const `t` a conversion that is not const-qualified passes here and fails in the body.
   { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
 };
 

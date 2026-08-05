@@ -163,6 +163,12 @@ TEST(Util, DaysConvertibleContract) {
   static_assert(not DaysConvertible<hours>);   // pairs with `weeks` above: exact conversions only
   enum class Season : uint8_t { Spring = 1 };
   static_assert(not DaysConvertible<Season>);
+
+  // The operators bind `const T&`, so the concept must check a const object too -- a conversion
+  // that is not const-qualified would otherwise pass here and fail in the body.
+  struct NonConstOnly { operator days() { return days { 3 }; } };   // NOLINT(google-explicit-constructor)
+  static_assert(not DaysConvertible<NonConstOnly>);
+  static_assert(not YmdShiftable<NonConstOnly>);
   static_assert(not YmdShiftable<day>);
 }
 
