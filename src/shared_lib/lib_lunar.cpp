@@ -28,6 +28,7 @@
 
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
+#include "lunar/algo3.hpp"
 
 
 extern "C" {
@@ -51,6 +52,14 @@ auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRan
     };
   }
 
+  if (algo == 3) {
+    return {
+      .valid = true,
+      .start = calendar::lunar::algo3::START_YEAR,
+      .end   = calendar::lunar::algo3::END_YEAR,
+    };
+  }
+
   return {};
 }
 
@@ -58,7 +67,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
   using namespace std::views;
   
   try {
-    if (algo != 1 and algo != 2) {
+    if (algo != 1 and algo != 2 and algo != 3) {
       throw std::runtime_error {
         std::format("Unsupported algorithm: {}", algo)
       };
@@ -68,7 +77,10 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
       if (algo == 1) {
         return calendar::lunar::algo1::calc_lunar_year(year);
       }
-      return calendar::lunar::algo2::get_info_for_year(year);
+      if (algo == 2) {
+        return calendar::lunar::algo2::get_info_for_year(year);
+      }
+      return calendar::lunar::algo3::calc_lunar_year(year);
     });
 
     const auto [y, m, d] = util::from_ymd(raw.date_of_first_day);

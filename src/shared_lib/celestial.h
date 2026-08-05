@@ -287,7 +287,7 @@ typedef struct SupportedLunarYearRange {
 
 /**
  * @brief Get the supported lunar year range of the algorithm.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @returns A `SupportedLunarYearRange` struct.
  */
 SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo);
@@ -303,7 +303,7 @@ typedef struct LunarYearInfo {
 
 /**
  * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @param year The lunar year. Outside the range `get_supported_lunar_year_range` reports for
  *             `algo`, the result is `valid = false`.
  * @returns A `LunarYearInfo` struct.

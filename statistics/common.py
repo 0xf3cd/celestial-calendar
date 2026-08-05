@@ -505,6 +505,7 @@ def new_moons_in_year(year: int) -> NewMoons:
 class LunarAlgo(Enum):
   ALGO_1 = 1
   ALGO_2 = 2
+  ALGO_3 = 3
 
 class _SupportedLunarYearRange(Structure):
   _fields_ = [

@@ -283,8 +283,14 @@ TEST(CAbiSmoke, Lunar) {
   ASSERT_TRUE(range2.valid);
   EXPECT_LT(range2.start, range2.end);
 
+  // #128: algo=3 is now exported (1600-2199); the pin that held it "unsupported" flips here.
+  const SupportedLunarYearRange range3 = get_supported_lunar_year_range(3);
+  ASSERT_TRUE(range3.valid);
+  EXPECT_EQ(range3.start, 1600);
+  EXPECT_EQ(range3.end, 2199);
+
   EXPECT_FALSE(get_supported_lunar_year_range(0).valid);
-  EXPECT_FALSE(get_supported_lunar_year_range(3).valid);
+  EXPECT_FALSE(get_supported_lunar_year_range(4).valid);
 
   EXPECT_TRUE(get_lunar_year_info(2, 2024).valid);
   EXPECT_FALSE(get_lunar_year_info(9, 2024).valid); // unsupported algorithm
@@ -300,6 +306,11 @@ TEST(CAbiSmoke, Lunar) {
   EXPECT_TRUE(get_lunar_year_info(2, range2.end).valid);
   EXPECT_FALSE(get_lunar_year_info(2, range2.start - 1).valid);
   EXPECT_FALSE(get_lunar_year_info(2, range2.end + 1).valid);
+
+  EXPECT_TRUE(get_lunar_year_info(3, range3.start).valid);
+  EXPECT_TRUE(get_lunar_year_info(3, range3.end).valid);
+  EXPECT_FALSE(get_lunar_year_info(3, range3.start - 1).valid);
+  EXPECT_FALSE(get_lunar_year_info(3, range3.end + 1).valid);
 }
 
 
