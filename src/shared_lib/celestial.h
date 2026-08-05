@@ -35,6 +35,12 @@
  * version. And no dllexport/dllimport macros: `WINDOWS_EXPORT_ALL_SYMBOLS` exports
  * everything, and imports resolve implicitly against the import library.
  *
+ * ABI evolution policy (#129): struct layouts are frozen once shipped — sizes and
+ * offsets are pinned by `c_header_check.c` at compile time. Changing a field (type,
+ * order, or count) means a new major version, or a new function with a `_v2`-style
+ * name returning the new shape; existing layouts never move. New structs are born
+ * under this same freeze, and adding new functions never breaks the ABI.
+ *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
  * On failure the Julian Day functions also record a thread-local message readable
@@ -297,8 +303,11 @@ typedef struct LunarYearInfo {
   int32_t  year;       /* Gregorian year of the first day of the lunar year. */
   uint8_t  month;      /* Gregorian month of the first day of the lunar year. */
   uint8_t  day;        /* Gregorian day of the first day of the lunar year. */
-  uint8_t  leap_month; /* The leap month (1-12), or 0 if there is none. */
-  uint16_t month_len;  /* Least 12/13 bits: 1 = 30-day month, 0 = 29-day month. */
+  uint8_t  leap_month; /* The leap month (1-12) in TRADITIONAL numbering, or 0 if none. */
+  uint16_t month_len;  /* Least 12/13 bits: 1 = 30-day month, 0 = 29-day month. Bits are
+                          indexed by the month's POSITION in the year — a leap month takes
+                          its own position — not by traditional numbering; the converter
+                          entries below speak traditional numbering + `is_leap`. */
 } LunarYearInfo;
 
 /**
