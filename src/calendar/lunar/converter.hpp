@@ -44,6 +44,17 @@ using namespace calendar::lunar::common;
  * @brief  Converts between gregorian date and lunar date. 
  *         将公历日期和阴历日期进行转换。
  * @tparam algo The algorithm to use. 使用的算法。
+ * @note   Lunar months are **positional** in this interface: the month of a lunar
+ *         `year_month_day` is the 1-based index into the year's month sequence (12 or 13
+ *         entries), where a leap month takes its own position — not the traditional month
+ *         number, which this interface cannot express (there is no leap flag). E.g. lunar
+ *         2023 (leap 2nd month): month 3 is the leap 2nd month, and the traditional 3rd
+ *         month is month 4. Translate with `common::month_position` /
+ *         `common::month_at_position` (#130).
+ *         本接口的阴历月是位置序号：阴历 `year_month_day` 的「月」是该年 12/13 个月里
+ *         从 1 起的位置，闰月独占一位——不是传统编号（本接口没有闰月标记，表达不了）。
+ *         例：2023 年闰二月，月 3 = 闰二月，传统三月 = 月 4。与传统编号的互转见
+ *         `common::month_position` / `common::month_at_position`（#130）。
  */
 template <common::Algo algo>
 struct Converter {
@@ -72,6 +83,8 @@ struct Converter {
          检查输入的阴历日期是否有效，且在支持的范围内。 
    * @param lunar_date The lunar date. 阴历日期。
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
+   * @attention The month is the positional index (see `Converter`'s note): a leap month
+                takes its own position. 月份是位置序号（见 `Converter` 的注）：闰月独占一位。
    */
   [[nodiscard]] static auto is_valid_lunar(const year_month_day& lunar_date) -> bool {
     if (lunar_date < AlgoMetadata::bounds().first_lunar_date or 
@@ -97,7 +110,8 @@ struct Converter {
    * @fn gregorian_to_lunar 
    * @brief Converts gregorian date to lunar date. 将公历日期转换为阴历日期。 
    * @param gregorian_date The gregorian date. 公历日期。
-   * @return The optional lunar date. 阴历日期（optional）。
+   * @return The optional lunar date; its month is the positional index (see `Converter`'s note).
+              阴历日期（optional）；其「月」是位置序号（见 `Converter` 的注）。
    * @attention The input date should be in the supported range.
                 输入的日期需要在所支持的范围内。
   * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
@@ -156,7 +170,8 @@ struct Converter {
   /** 
    * @fn lunar_to_gregorian
    * @brief Converts lunar date to gregorian date. 将阴历日期转换为公历日期。 
-   * @param lunar_date The lunar date. 阴历日期。
+   * @param lunar_date The lunar date; its month is the positional index (see `Converter`'s note).
+              阴历日期；其「月」是位置序号（见 `Converter` 的注）。
    * @return The optional gregorian date. 公历日期（optional）。
    * @attention The input date should be in the supported range.
                 输入的日期需要在所支持的范围内。
