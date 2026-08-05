@@ -69,8 +69,18 @@ TEST(Datetime, FromTimepoint) {
   }
 
   { // Test with random nanoseconds.
+    // The offset is bounded, and not by taste. `now` sits some 1.8e18 ns past the epoch, so an
+    // offset drawn from the whole `int64_t` range overflows this addition for roughly its top 40%
+    // -- signed overflow, on hundreds of the thousand iterations below. None of the assertions can
+    // see it: `Datetime` normalizes whatever wrapped value it is handed, so they held and the test
+    // passed while the addition was undefined. UBSan reported it on its first run (#72).
+    // `system_clock::duration` is not nanoseconds everywhere (libc++ counts microseconds, MSVC
+    // 100ns ticks), so the headroom is computed after converting, not from `count()` directly.
+    const auto now_ns = duration_cast<nanoseconds>(now.time_since_epoch()).count();
+    const auto headroom = std::numeric_limits<int64_t>::max() - now_ns;
+
     for (auto i = 0; i < 1000; i++) {
-      const auto tp = now + nanoseconds { util::random<int64_t>() };
+      const auto tp = now + nanoseconds { util::random<int64_t>(-headroom, headroom) };
       const Datetime dt { tp };
 
       const auto time_of_day = dt.time_of_day;
@@ -251,9 +261,11 @@ TEST(Datetime, Consistency) {
 
   const auto random_tp_views = std::views::iota(0, 10000) | std::views::transform([&](auto) {
     const auto signed_ns = static_cast<int64_t>(ns_per_year);
-    return now + microseconds { 
-      util::random<int64_t>(-20 * signed_ns, 20 * signed_ns) 
-    };
+    // `nanoseconds`, matching what `ns_per_year` counts. It used to be `microseconds`, which asked
+    // for twenty *thousand* years rather than twenty, and converting that to the nanoseconds this
+    // addition promotes to overflowed `int64_t` -- undefined, and invisible to every assertion
+    // below, which only ever saw the wrapped result. UBSan reported it (#72).
+    return now + nanoseconds { util::random<int64_t>(-20 * signed_ns, 20 * signed_ns) };
   });
 
   for (auto tp : random_tp_views) {
