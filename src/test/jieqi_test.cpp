@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <ranges>
 #include <vector>
+#include <type_traits>
 #include "util.hpp"
 #include "jieqi.hpp"
 
@@ -32,6 +33,10 @@ namespace calendar::jieqi::test {
 
 using namespace calendar::jieqi;
 using namespace astro::sun::geocentric_coord::math;
+
+// The cached wrapper is a function, not a namespace-scope callable — the latter initializes
+// at image load, where an escaping exception terminates the host before `main` (#67).
+static_assert(std::is_function_v<decltype(jieqi_jde)>);
 
 // The UT1Moment test and its DATASET (wolfram/bmcx/weather.gov values of mixed, undocumented
 // time scales — "Assume they are in UT1"; split ymd+fraction assertion, #68) were retired

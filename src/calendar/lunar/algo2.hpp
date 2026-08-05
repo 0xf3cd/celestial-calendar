@@ -455,7 +455,11 @@ struct LunarYearContext {
  * @return The lunar year information. 阴历年信息。
  * @see https://ytliu0.github.io/ChineseCalendar/rules_simp.html
  */
-const inline auto get_info_for_year = util::cache::cache_func(calc_lunar_year);
+// Function-local static: a namespace-scope wrapper would initialize at image load (#67).
+[[nodiscard]] inline auto get_info_for_year(const int32_t year) -> LunarYear {
+  static const auto cached = util::cache::cache_func(calc_lunar_year);
+  return cached(year);
+}
 
 
 /**
@@ -479,7 +483,8 @@ namespace calendar::lunar::common {
 /** @brief Specialize `AlgoMetadata` for `Algo::ALGO_2`. */
 template <>
 struct AlgoMetadata<Algo::ALGO_2> {
-  static const inline auto& get_info_for_year = algo2::get_info_for_year;
+  // Memoized: forwards to algo2's cached wrapper (#78), not straight to `calc_lunar_year`.
+  [[nodiscard]] static auto get_info_for_year(const int32_t year) -> LunarYear { return algo2::get_info_for_year(year); }
   // #67: an accessor, not an eager binding — an `inline` static member would initialize at
   // image load, running the whole astro pipeline before `main` and defeating `algo2::bounds()`.
   [[nodiscard]] static auto bounds() -> const common::AlgoBounds& { return algo2::bounds(); }
