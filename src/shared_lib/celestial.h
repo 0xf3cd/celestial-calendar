@@ -35,11 +35,13 @@
  * version. And no dllexport/dllimport macros: `WINDOWS_EXPORT_ALL_SYMBOLS` exports
  * everything, and imports resolve implicitly against the import library.
  *
- * ABI evolution policy (#129): struct layouts are frozen once shipped — sizes and
- * offsets are pinned by `c_header_check.c` at compile time. Changing a field (type,
- * order, or count) means a new major version, or a new function with a `_v2`-style
- * name returning the new shape; existing layouts never move. New structs are born
- * under this same freeze, and adding new functions never breaks the ABI.
+ * ABI evolution policy (#129): within a major version, struct layouts never move —
+ * sizes and offsets are pinned by `c_header_check.c` at compile time, and a struct is
+ * frozen the moment it lands here. Changing a field (type, order, or count) or an
+ * existing function's signature means a new major version, or a `_v2`-named function
+ * returning a new, separately named struct. Adding a struct or a function never breaks
+ * the ABI; widening what an existing function accepts (as `algo` was widened to 3)
+ * does not either, narrowing does.
  *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
@@ -303,11 +305,13 @@ typedef struct LunarYearInfo {
   int32_t  year;       /* Gregorian year of the first day of the lunar year. */
   uint8_t  month;      /* Gregorian month of the first day of the lunar year. */
   uint8_t  day;        /* Gregorian day of the first day of the lunar year. */
-  uint8_t  leap_month; /* The leap month (1-12) in TRADITIONAL numbering, or 0 if none. */
-  uint16_t month_len;  /* Least 12/13 bits: 1 = 30-day month, 0 = 29-day month. Bits are
-                          indexed by the month's POSITION in the year — a leap month takes
-                          its own position — not by traditional numbering; the converter
-                          entries below speak traditional numbering + `is_leap`. */
+  uint8_t  leap_month; /* The leap month (1-12) in **traditional** numbering, or 0 if none. */
+  uint16_t month_len;  /* Least 12/13 bits, one per month in calendar order (bit 0 = the first
+                          month): 1 = 30-day month, 0 = 29-day month. A leap month occupies a
+                          bit of its own, so with `leap_month = 2` the bits run 1, 2, leap 2,
+                          3, … `gregorian_to_lunar` / `lunar_to_gregorian` below instead speak
+                          traditional numbering + `is_leap`, where that leap month is
+                          `month = 2, is_leap = true`. */
 } LunarYearInfo;
 
 /**
@@ -340,8 +344,11 @@ typedef struct GregorianDate {
  * @param year The Gregorian year.
  * @param month The Gregorian month.
  * @param day The Gregorian day of the month.
- * @returns A `LunarDate` struct; `valid = false` when the date is invalid or outside the
- *          range `get_supported_lunar_year_range` reports for `algo`.
+ * @returns A `LunarDate` struct; `valid = false` when `algo` is unknown, the input is not a
+ *          real Gregorian date, or it falls outside the Gregorian span the algorithm covers —
+ *          that span runs from the first day of lunar year `start` to the last day of lunar
+ *          year `end` (`start`/`end` as `get_supported_lunar_year_range` reports them), so it
+ *          begins and ends mid-Gregorian-year at both ends.
  * @note The lunar month is in **traditional numbering** (1-12) plus the `is_leap` flag —
  *       a leap month carries its predecessor's number with `is_leap = true`: in lunar 2023
  *       (leap 2nd month), the leap 2nd month is `month = 2, is_leap = true`, and the
@@ -355,9 +362,9 @@ LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t 
  * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @param year The lunar year.
  * @param month The lunar month, in traditional numbering (1-12) — see `gregorian_to_lunar`.
- * @param is_leap Whether the month is the leap month; only the year's actual leap month may
- *                pass `true` (e.g. in lunar 2023 that is `month = 2`), and every `true` in a
- *                leap-less year fails.
+ * @param is_leap Whether the month is the leap month. `true` is accepted only on the year's
+ *                actual leap month — `month = 2` in lunar 2023, and no month at all in a year
+ *                that has none.
  * @param day The day of the lunar month.
  * @returns A `GregorianDate` struct; `valid = false` when the input does not name a real
  *          lunar date (bad `algo`, year out of range, no such leap month, day out of range).

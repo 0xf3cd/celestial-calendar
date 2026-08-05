@@ -133,7 +133,7 @@ struct TraditionalMonth {
     return std::nullopt;
   }
   if (is_leap) {
-    if (info.leap_month == 0 or month != info.leap_month) {
+    if (month != info.leap_month) {
       return std::nullopt;
     }
     return static_cast<uint8_t>(month + 1);

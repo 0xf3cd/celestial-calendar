@@ -59,8 +59,8 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   """Parse every ctypes `Structure` subclass in `common.py`, statically (no import, no .so).
 
   Class names are normalized by stripping one leading underscore (`_JulianDay` mirrors
-  `JulianDay`; `DeltaT` carries no underscore). Anything the parser cannot read exactly —
-  a missing `_fields_`, a non-tuple entry, a non-simple type name — raises, because a
+  `JulianDay`; `DeltaT` carries no underscore). Anything the parser cannot read exactly --
+  a missing `_fields_`, a non-tuple entry, a non-simple type name -- raises, because a
   gate that guesses is no gate.
   """
   structs: Dict[str, Fields] = {}
@@ -102,7 +102,7 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   return structs
 
 
-def c_layout_probe(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optional[Dict[str, int]]:
+def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optional[Dict[str, int]]:
   """Compile and run a tiny C program printing sizeof/offsetof for every struct and field.
 
   This is the ground-truth side of the comparison: the values the C ABI actually has.
@@ -154,11 +154,11 @@ def py_layout(fields: Fields) -> Tuple[int, Dict[str, int]]:
 def check_abi_layout() -> int:
   """Hold the `statistics/common.py` ctypes mirror to the real layout in `celestial.h`.
 
-  common.py declares that every C-ABI export has a mirror here; a struct return read
-  through a drifted layout is garbage that no test prints (#85). Three layers, because
+  Every struct in `celestial.h` has a ctypes mirror in `common.py`, and a struct read back
+  through a drifted mirror is garbage no test prints (#85). Three layers, because
   each sees what the others cannot: set equality catches a missing or extra mirror,
   sizeof/offsetof catches layout drift, and the type-name map catches what raw layout
-  cannot — signedness and same-width swaps (c_int32 vs c_uint32, c_bool vs c_uint8).
+  cannot -- signedness and same-width swaps (c_int32 vs c_uint32, c_bool vs c_uint8).
   """
   print("#" * 60)
   yellow_print("Checking that the ctypes mirror matches the real ABI layout...")
@@ -183,7 +183,7 @@ def check_abi_layout() -> int:
 
   # Layer 2: compile and run the ground-truth probe once for every struct.
   with tempfile.TemporaryDirectory(prefix="abi_layout_") as tmp:
-    ground_truth = c_layout_probe(c_structs, header, Path(tmp))
+    ground_truth = c_layout(c_structs, header, Path(tmp))
   if ground_truth is None:
     return 1
 
@@ -206,7 +206,7 @@ def check_abi_layout() -> int:
     py_type_of = dict(py_fields)
     for fname, ctype in c_fields:
       if ctype not in C_TO_CTYPES:
-        failures.append(f"{name}.{fname}: C type {ctype} is outside the gate's closed set — extend C_TO_CTYPES")
+        failures.append(f"{name}.{fname}: C type {ctype} is outside the gate's closed set -- extend C_TO_CTYPES")
         continue
       if fname not in py_type_of:
         continue  # already reported above

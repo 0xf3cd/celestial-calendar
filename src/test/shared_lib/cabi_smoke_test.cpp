@@ -314,9 +314,9 @@ TEST(CAbiSmoke, Lunar) {
 }
 
 
-// #128: bidirectional conversion, traditional numbering + leap flag. Golden: lunar 2023 has a
-// leap 2nd month (闰二月), and 闰二月初一 = 2023-03-22 / 三月初一 = 2023-04-20 — HKO data,
-// algo1's and algo3's baked tables agree (pinned in `LunarCommon.Leap2023DataAgreement`).
+// Golden: lunar 2023 has a leap 2nd month (闰二月), and 闰二月初一 (its 1st day) = 2023-03-22 /
+// 三月初一 = 2023-04-20 — HKO data, algo1's and algo3's baked tables agree
+// (pinned in `LunarCommon.Leap2023DataAgreement`).
 TEST(CAbiSmoke, LunarConverter) {
   const LunarDate leap2 = gregorian_to_lunar(1, 2023, 3, 22);
   ASSERT_TRUE(leap2.valid);
@@ -330,7 +330,11 @@ TEST(CAbiSmoke, LunarConverter) {
   EXPECT_EQ(trad3.month, 3U);
   EXPECT_FALSE(trad3.is_leap);
 
-  // algo3's table agrees with algo1's for 2023, so the same date converts the same way.
+  // The accepted Gregorian window spills past the lunar-year range at both ends: it starts at
+  // lunar 1901's first day (1901-02-19) and ends at lunar 2099's last day (in 2100).
+  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 1, 1).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 1, 25).valid);
+
   const LunarDate via_algo3 = gregorian_to_lunar(3, 2023, 3, 22);
   ASSERT_TRUE(via_algo3.valid);
   EXPECT_EQ(via_algo3.month, 2U);
@@ -347,8 +351,6 @@ TEST(CAbiSmoke, LunarConverter) {
   EXPECT_EQ(back2.month, 4U);
   EXPECT_EQ(back2.day, 20U);
 
-  // Invalid matrix: bad algo / out-of-window year / leap forced on a leap-less year /
-  // leap flag on the wrong month / day past the month's length / bad Gregorian month.
   EXPECT_FALSE(gregorian_to_lunar(9, 2023, 3, 22).valid);
   EXPECT_FALSE(gregorian_to_lunar(1, 2101, 1, 1).valid);
   EXPECT_FALSE(gregorian_to_lunar(1, 2023, 13, 1).valid);

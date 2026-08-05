@@ -594,24 +594,13 @@ class _LunarDate(Structure):
     ("day", c_uint8),
   ]
 
-class _GregorianDate(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint8),
-    ("day", c_uint8),
-  ]
-
 LIB.gregorian_to_lunar.argtypes = [c_uint8, c_int32, c_uint8, c_uint8]
 LIB.gregorian_to_lunar.restype = _LunarDate
-
-LIB.lunar_to_gregorian.argtypes = [c_uint8, c_int32, c_uint8, c_bool, c_uint8]
-LIB.lunar_to_gregorian.restype = _GregorianDate
 
 @dataclass
 class LunarDate:
   year: int
-  month: int    # Traditional numbering (1-12). 传统编号。
+  month: int    # Traditional numbering (1-12).
   is_leap: bool # Whether the month is the leap month.
   day: int
 
@@ -639,6 +628,18 @@ def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> Luna
     day = result.day,
   )
 
+
+class _GregorianDate(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("year", c_int32),
+    ("month", c_uint8),
+    ("day", c_uint8),
+  ]
+
+LIB.lunar_to_gregorian.argtypes = [c_uint8, c_int32, c_uint8, c_bool, c_uint8]
+LIB.lunar_to_gregorian.restype = _GregorianDate
+
 def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, day: int) -> date:
   """
   Convert a lunar date to a Gregorian date.
@@ -646,7 +647,8 @@ def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, da
   @param algo The algorithm to use.
   @param year The lunar year.
   @param month The lunar month, in traditional numbering (1-12).
-  @param is_leap Whether the month is the leap month.
+  @param is_leap Whether the month is the leap month; only the year's actual leap month
+                 may be flagged, and a leap-less year has none.
   @param day The day of the lunar month.
   @returns A `date` instance representing the Gregorian date.
   """

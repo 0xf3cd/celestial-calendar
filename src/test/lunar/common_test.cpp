@@ -29,8 +29,8 @@
 namespace calendar::lunar::common::test {
 
 // Provenance of the 2023 pins: lunar 2023 carries a leap 2nd month (闰二月) — HKO data
-// (https://www.hko.gov.hk/sc/gts/time/conversion.htm) baked into algo1's table, which covers
-// 1901-2100; algo3's baked entry for 2023 must agree.
+// (https://www.hko.gov.hk/sc/gts/time/conversion.htm, published for 1901-2100) baked into
+// algo1's table (1901-2099); algo3's baked entry for 2023 must agree.
 TEST(LunarCommon, Leap2023DataAgreement) {
   EXPECT_EQ(algo1::calc_lunar_year(2023).leap_month, 2);
   EXPECT_EQ(algo3::calc_lunar_year(2023).leap_month, 2);
@@ -43,8 +43,8 @@ TEST(LunarCommon, MonthPositionLeapYear) {
 
   EXPECT_EQ(month_position(info2023, 1, false), 1);
   EXPECT_EQ(month_position(info2023, 2, false), 2);
-  EXPECT_EQ(month_position(info2023, 2, true), 3);  // 闰二月 = 位置 3
-  EXPECT_EQ(month_position(info2023, 3, false), 4); // 传统三月 = 位置 4
+  EXPECT_EQ(month_position(info2023, 2, true), 3);  // leap 2nd month (闰二月) = position 3
+  EXPECT_EQ(month_position(info2023, 3, false), 4); // traditional 3rd month = position 4
   EXPECT_EQ(month_position(info2023, 12, false), 13);
 }
 
