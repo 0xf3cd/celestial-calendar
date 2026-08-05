@@ -26,6 +26,10 @@
 // the paired ratio is the figure to read).
 
 #include <array>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <thread>
 #include <vector>
 #include <cstdint>
 #include <cstddef>
@@ -33,6 +37,7 @@
 #include <iostream>
 #include <functional>
 #include <type_traits>
+#include <unordered_map>
 
 #include "hash.hpp"
 #include "harness.hpp"
@@ -67,6 +72,68 @@ template <typename T>
     }
   }
   return keys;
+}
+
+/** @brief A cached value that is expensive to copy: stands in for `LunarYear`, whose
+ *         `month_lengths` makes every cache hit a heap allocation. */
+struct HeavyValue {
+  std::vector<int32_t> month_lengths;
+  int32_t leap_month = 0;
+};
+
+/** @brief The two hit-path copy placements, frozen for the paired measurement. `OUT_OF_LOCK`
+ *         copies the mapped value after releasing the mutex -- sound only while the cache never
+ *         erases (unordered_map references survive rehash; erase is what would invalidate them). */
+template <bool OUT_OF_LOCK>
+struct FrozenHitCache {
+  std::mutex mtx;
+  std::unordered_map<int32_t, HeavyValue> cache;
+
+  explicit FrozenHitCache(const std::size_t key_count) {
+    for (int32_t key = 0; key < static_cast<int32_t>(key_count); ++key) {
+      cache.emplace(key, HeavyValue { .month_lengths = std::vector<int32_t>(13, key), .leap_month = key });
+    }
+  }
+
+  [[nodiscard]] auto get(const int32_t key) -> HeavyValue {
+    if constexpr (OUT_OF_LOCK) {
+      const HeavyValue* found = nullptr;
+      {
+        const std::lock_guard lock { mtx };
+        found = &cache.at(key);
+      }
+      return *found;
+    } else {
+      const std::lock_guard lock { mtx };
+      return cache.at(key);
+    }
+  }
+};
+
+/** @brief One round of contended hits: `THREADS` workers split the iterations over one shared
+ *         cache. The copied bytes must survive the optimizer, so the sink folds in the
+ *         allocation address itself. */
+template <bool OUT_OF_LOCK>
+[[nodiscard]] auto contended_hits_body(FrozenHitCache<OUT_OF_LOCK>& cache, const std::vector<int32_t>& keys) {
+  return [&cache, &keys](const std::size_t iterations) {
+    constexpr std::size_t THREADS = 4;
+    volatile std::uintptr_t sink = 0;
+    const auto worker = [&](const std::size_t n) {
+      std::uintptr_t acc = 0;
+      for (std::size_t i = 0; i < n; ++i) {
+        const auto value = cache.get(keys[i % keys.size()]);
+        acc ^= reinterpret_cast<std::uintptr_t>(value.month_lengths.data()) & 0xff;
+      }
+      sink = sink ^ acc;
+    };
+    {
+      std::vector<std::jthread> workers;
+      workers.reserve(THREADS);
+      for (std::size_t t = 0; t < THREADS; ++t) {
+        workers.emplace_back(worker, iterations / THREADS);
+      }
+    }
+  };
 }
 
 } // namespace
@@ -119,6 +186,72 @@ auto main() -> int {
   const std::array mixer_pair { old_mixer, new_mixer };
   const bench::Plan plan { .title = "Cache key hashing", .iterations = 240000 };
   bench::run(plan, mixer_pair, std::cout);
+
+  // Where a hit's copy happens. Single-threaded the two placements do the same work; the pair
+  // only separates under contention, so the measurement has to be contended (4 workers on one
+  // cache). The value mimics `LunarYear`: every hit is a heap allocation.
+  const std::vector<int32_t> heavy_keys = [] {
+    std::vector<int32_t> v;
+    for (int32_t key = 0; key < 240; ++key) {
+      v.push_back(key);
+    }
+    return v;
+  }();
+  FrozenHitCache<false> in_lock_cache { heavy_keys.size() };
+  FrozenHitCache<true>  out_lock_cache { heavy_keys.size() };
+  const bench::Case in_lock {
+    .name = "hit copy -- inside the lock",
+    .body = contended_hits_body(in_lock_cache, heavy_keys),
+  };
+  const bench::Case out_lock {
+    .name = "hit copy -- outside the lock",
+    .body = contended_hits_body(out_lock_cache, heavy_keys),
+  };
+  const std::array copy_pair { in_lock, out_lock };
+  const bench::Plan copy_plan { .title = "Cache hit copy (4 contended workers)", .iterations = 24000 };
+  bench::run(copy_plan, copy_pair, std::cout);
+
+  // What the exit-side type erasure costs per call: the same prefilled hit path called through
+  // `std::function` vs through the concrete closure type. `jieqi_jde`'s hit is ~8-20 ns, so one
+  // indirect call is a visible share of it -- which is exactly why this must be measured, not
+  // assumed (#98 evicted erasure from the hot path; this cache was the deliberate exception).
+  struct DoubleState {
+    std::mutex mtx;
+    std::unordered_map<int32_t, double> cache;
+  };
+  const auto double_state = std::make_shared<DoubleState>();
+  for (const auto& [year, term] : keys) {
+    double_state->cache.emplace(static_cast<int32_t>(term), static_cast<double>(year));
+  }
+  const auto hit_lambda = [double_state](const int32_t key) -> double {
+    const std::lock_guard lock { double_state->mtx };
+    return double_state->cache.at(key);
+  };
+  const std::function<double(int32_t)> erased_hit = hit_lambda;
+  volatile double double_sink = 0.0;
+  const bench::Case erased {
+    .name = "cached call -- via std::function",
+    .body = [&](const std::size_t iterations) {
+      double acc = 0.0;
+      for (std::size_t i = 0; i < iterations; ++i) {
+        acc += erased_hit(static_cast<int32_t>(i % 24));
+      }
+      double_sink = double_sink + acc;
+    },
+  };
+  const bench::Case direct {
+    .name = "cached call -- via closure type",
+    .body = [&](const std::size_t iterations) {
+      double acc = 0.0;
+      for (std::size_t i = 0; i < iterations; ++i) {
+        acc += hit_lambda(static_cast<int32_t>(i % 24));
+      }
+      double_sink = double_sink + acc;
+    },
+  };
+  const std::array erasure_pair { erased, direct };
+  const bench::Plan erasure_plan { .title = "Exit-side type erasure", .iterations = 240000 };
+  bench::run(erasure_plan, erasure_pair, std::cout);
 
   return 0;
 }
