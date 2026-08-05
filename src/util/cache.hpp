@@ -43,11 +43,12 @@ using util::hash::TupleHash;
 // 1. Add a way to clear the cache (LRU, or something).
 
 /**
- * @brief What one component of a cache key must support. Element-wise, because `TupleHash` hashes
- *        the key that way — `std::hash<std::tuple<...>>` does not exist.
+ * @brief What one element of a cache key must support. Element-wise on purpose: `TupleHash`'s
+ *        `operator()` takes any tuple and fails inside its body, so constraining *it* would
+ *        constrain nothing.
  */
 template <typename T>
-concept CacheKey = std::equality_comparable<T> and requires (const T& value) {
+concept CacheKeyElement = std::equality_comparable<T> and requires (const T& value) {
   { std::hash<T> {}(value) } -> std::convertible_to<std::size_t>;
 };
 
@@ -57,12 +58,12 @@ concept CacheKey = std::equality_comparable<T> and requires (const T& value) {
  * @return The cached function. Thread-safe; copies share one cache (#78).
  * @note The constraints state what the `unordered_map` below already enforces, so misuse is
  *       rejected here instead of inside its instantiation. `copy_constructible` also rules out
- *       `void`, which has nothing to cache. Purity and a bounded key space are not expressible
- *       here — they stay the caller's contract.
+ *       `void`, which has nothing to cache. A bounded key space is not expressible here — the
+ *       cache never evicts, so that stays the caller's contract.
  */
 template <typename RetType, typename... Args>
 requires std::copy_constructible<RetType>
-     and (... and CacheKey<std::decay_t<Args>>)
+     and (... and CacheKeyElement<std::decay_t<Args>>)
 [[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
   // Cache and mutex live behind a `shared_ptr`, so copying the returned
   // `std::function` shares one cache instead of forking divergent replicas (#78).

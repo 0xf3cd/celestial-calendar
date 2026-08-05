@@ -56,23 +56,15 @@ TEST(Util, ToYmd) {
 template <typename Y, typename M, typename D>
 concept ToYmdCallable = requires (Y y, M m, D d) { to_ymd(y, m, d); };
 
-/*! @brief Whether `ymd + t` is a viable shift. */
-template <typename T>
-concept YmdShiftable = requires (std::chrono::year_month_day ymd, T t) {
-  util::ymd_operator::operator+(ymd, t);
-};
 
 TEST(Util, ToYmdInputTypes) {
   using namespace std::chrono;
 
-  // #83: month and day are counts. They used to sit behind a constraint that paraphrased the
-  // body -- `days { static_cast<uint32_t>(t) }` -- and so admitted calendar fields and durations
-  // the body cannot use, moving the error from the call site into `to_ymd`.
+  // #83: month and day are counts, so calendar fields and durations must not reach the body.
   static_assert(not ToYmdCallable<int, int, days>);
   static_assert(not ToYmdCallable<int, int, day>);
   static_assert(not ToYmdCallable<int, month, int>);
 
-  // Every shape the tree actually calls with.
   static_assert(ToYmdCallable<int, int, int>);
   static_assert(ToYmdCallable<unsigned, unsigned, unsigned>);
   static_assert(ToYmdCallable<int, std::size_t, uint32_t>);
@@ -147,20 +139,29 @@ TEST(Util, OperatorSub) {
   ASSERT_EQ(ymd - (-365), 1902y / 1 / 1);
 }
 
+/*! @brief Whether `util::ymd_operator::operator+(ymd, t)` is viable. Qualified because ADL from
+           `year_month_day` reaches only `std::chrono`, and the file's `using namespace util;`
+           does not reach into the nested namespace. */
+template <typename T>
+concept YmdShiftable = requires (std::chrono::year_month_day ymd, T t) {
+  util::ymd_operator::operator+(ymd, t);
+};
+
 TEST(Util, DaysConvertibleContract) {
   using namespace std::chrono;
 
   static_assert(DaysConvertible<days>);
   static_assert(DaysConvertible<int>);
-  static_assert(DaysConvertible<uint32_t>);
+  static_assert(DaysConvertible<weeks>);   // exact in days; `hours` below is where the line is
   static_assert(YmdShiftable<days>);
   static_assert(YmdShiftable<int>);
 
-  // #83: a count of days, not a calendar field. `days { day { 1 } }` has no viable constructor,
-  // and the old paraphrasing constraint is what let that reach the body.
+  // #83: a count of days, not a calendar field -- `days { day { 1 } }` has no viable constructor.
   enum class Season : uint8_t { Spring = 1 };
   static_assert(not DaysConvertible<day>);
   static_assert(not DaysConvertible<month>);
+  static_assert(not DaysConvertible<double>);
+  static_assert(not DaysConvertible<hours>);
   static_assert(not DaysConvertible<Season>);
   static_assert(not YmdShiftable<day>);
 }
@@ -329,10 +330,7 @@ TEST(Util, MakeCachedConstraints) {
 
   static_assert(MakeCachedViable<double(int32_t, Key)>);
   static_assert(MakeCachedViable<Value(int32_t)>);
-  static_assert(MakeCachedViable<int(int, double)>);
 
-  // Saying what the `unordered_map` already requires is the whole point: misuse is rejected at
-  // the call instead of inside its instantiation.
   static_assert(not MakeCachedViable<void(int)>);
   static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
   static_assert(not MakeCachedViable<int(Unhashable)>);

@@ -39,15 +39,15 @@ concept YearConvertible = requires (T t) {
 /*! @brief A type `std::chrono::days` can be built from — what the operators below shift by. */
 template <typename T>
 concept DaysConvertible = requires (T t) {
-  // The check is the operators' own expression, not a paraphrase of it. The paraphrase
-  // `days { static_cast<uint32_t>(t) }` admitted `std::chrono::day`, which the body cannot use (#83).
+  // The check is the operators' own expression, not a paraphrase of it (#83).
   { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
 };
 
 /*!
  * @brief Converts the input year, month, and date to a `std::chrono::year_month_day`.
- * @note Month and day are plain `uint32_t`: every caller passes an integer, and the concrete type
- *       already rejects the rest at the call site — a constraint there could only paraphrase it (#83).
+ * @note Month and day are plain `uint32_t` while `year` keeps a concept — a deliberate asymmetry,
+ *       not an oversight. `_year / month / day` feeds `operator/`, which takes an integer; the
+ *       parameter type is already that contract, so a constraint there could only restate it (#83).
  */
 [[nodiscard]] constexpr auto to_ymd(
   const YearConvertible auto year,
