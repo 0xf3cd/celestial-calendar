@@ -41,10 +41,29 @@ inline constexpr int32_t START_YEAR = 1600;
 /** @brief The last supported lunar year. */
 inline constexpr int32_t END_YEAR = 2199;
 
-/** 
+/**
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t.
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+ *
+ * ## Provenance (baked table — #70 §2)
+ * - Generator: `statistics/lunar_calendar.ipynb` (encode cells: HKO years via algo1,
+ *   all other years via live algo2 at generation time).
+ * - Generation parameters: algo2 + the then-default ΔT model. #64 re-baked
+ *   2133/2165/2172 under algo5's ΔT after the default switched.
+ * - Gate 1 (issue70 范围注记): the 600 baked values were rechecked against today's
+ *   default ΔT (algo5) and found **zero differences** — re-bake is a data no-op under
+ *   the current default. This block is therefore a provenance note, not a data fix:
+ *   **do not edit any of the 600 values here without a deliberate re-bake and review.**
+ * - Refresh ritual (read-only re-verify): run the "重烤对账" code cell at the end of
+ *   `statistics/lunar_calendar.ipynb` (or the equivalent check in that notebook). It
+ *   re-encodes the re-bakeable subset (1600–1900 ∪ 2100–2199; the HKO slice is not
+ *   recomputed from algo2) and prints a mismatch count against this array. Print 0 =
+ *   Gate re-verified. The cell never writes this header back.
+ * - External oracle for a sampled subset of years: `src/test/lunar/algo3_ytliu0_golden_test.cpp`
+ *   (ytliu0 ChineseCalendar, see that file's provenance head). Dual-table / live-algo2
+ *   internal checks: `src/test/lunar/algo3_test.cpp`.
+ *
  * @details For years from 1901 to 2099, algo1 is used (i.e. Hong Kong Observatory data).
  * @details For other years, algo2 is used to generate the encoded data. (See `algo2.hpp`)
  * @details #64: entries for 2133/2165/2172 re-baked with algo5's ΔT — regenerate the
