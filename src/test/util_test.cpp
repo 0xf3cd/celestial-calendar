@@ -49,6 +49,35 @@ TEST(Util, ToYmd) {
   ASSERT_EQ(to_ymd(static_cast<int16_t>(2024), 3, 15), 2024y / 3 / 15);
 }
 
+/*! @brief Whether `to_ymd(y, m, d)` is a viable call. A concept rather than a bare
+           requires-expression: outside a template an ill-formed expression is a hard error,
+           not `false`. */
+template <typename Y, typename M, typename D>
+concept ToYmdCallable = requires (Y y, M m, D d) { to_ymd(y, m, d); };
+
+/*! @brief Whether `ymd + t` is a viable shift. */
+template <typename T>
+concept YmdShiftable = requires (std::chrono::year_month_day ymd, T t) {
+  util::ymd_operator::operator+(ymd, t);
+};
+
+TEST(Util, ToYmdInputTypes) {
+  using namespace std::chrono;
+
+  // #83: month and day are counts. They used to sit behind a constraint that paraphrased the
+  // body -- `days { static_cast<uint32_t>(t) }` -- and so admitted calendar fields and durations
+  // the body cannot use, moving the error from the call site into `to_ymd`.
+  static_assert(not ToYmdCallable<int, int, days>);
+  static_assert(not ToYmdCallable<int, int, day>);
+  static_assert(not ToYmdCallable<int, month, int>);
+
+  // Every shape the tree actually calls with.
+  static_assert(ToYmdCallable<int, int, int>);
+  static_assert(ToYmdCallable<unsigned, unsigned, unsigned>);
+  static_assert(ToYmdCallable<int, std::size_t, uint32_t>);
+  static_assert(ToYmdCallable<float, int, int>);
+}
+
 TEST(Util, FromYmd) {
   using namespace std::literals;
 
@@ -115,6 +144,24 @@ TEST(Util, OperatorSub) {
   ASSERT_EQ(ymd - 0, 1901y / 1 / 1);
   ASSERT_EQ(ymd - (-1), 1901y / 1 / 2);
   ASSERT_EQ(ymd - (-365), 1902y / 1 / 1);
+}
+
+TEST(Util, DaysConvertibleContract) {
+  using namespace std::chrono;
+
+  static_assert(DaysConvertible<days>);
+  static_assert(DaysConvertible<int>);
+  static_assert(DaysConvertible<uint32_t>);
+  static_assert(YmdShiftable<days>);
+  static_assert(YmdShiftable<int>);
+
+  // #83: a count of days, not a calendar field. `days { day { 1 } }` has no viable constructor,
+  // and the old paraphrasing constraint is what let that reach the body.
+  enum class Season : uint8_t { Spring = 1 };
+  static_assert(not DaysConvertible<day>);
+  static_assert(not DaysConvertible<month>);
+  static_assert(not DaysConvertible<Season>);
+  static_assert(not YmdShiftable<day>);
 }
 
 TEST(Util, GenRandomValue1) {
