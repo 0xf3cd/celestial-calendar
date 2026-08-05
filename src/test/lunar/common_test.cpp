@@ -86,6 +86,7 @@ TEST(LunarCommon, MonthTranslationRoundTrip) {
     for (uint32_t pos = 1; pos <= info.month_lengths.size(); ++pos) {
       const auto tm = month_at_position(info, static_cast<uint8_t>(pos));
       ASSERT_TRUE(tm.has_value());
+      // NOLINTNEXTLINE(bugprone-unchecked-optional-access) -- guarded by the ASSERT_TRUE above.
       EXPECT_EQ(month_position(info, tm->month, tm->is_leap), pos);
     }
   }

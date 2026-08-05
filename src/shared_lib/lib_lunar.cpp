@@ -62,6 +62,7 @@ auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day
 }
 
 template <calendar::lunar::common::Algo algo>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d(+leap) is the natural date order, as in every neighbour.
 auto convert_to_gregorian(const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> std::optional<GregorianDate> {
   // An out-of-window year throws here; the export's catch turns that into `valid = false`.
   const auto& info = calendar::lunar::common::AlgoMetadata<algo>::get_info_for_year(year);
