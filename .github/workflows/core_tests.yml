@@ -127,6 +127,13 @@ jobs:
           chmod +x project.py
           ./project.py --setup --clean --cmake --build --test -v 1
 
+      # The ctypes smoke gate needs the built shared library, and the linters leg
+      # configures without building -- so it lives on a build leg, one step after the
+      # library exists. One leg is enough: the wrappers and their goldens are
+      # toolchain-independent, and the C ABI itself is pinned on every leg.
+      - name: Smoke-test the ctypes bindings
+        run: python3 ./linter.py --ctypes-smoke
+
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
   # pull requests to main and packages the artifacts -- running them here too repeated the same

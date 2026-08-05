@@ -19,6 +19,7 @@ import argparse
 
 from automation import (
   run_ruff, run_clang_tidy, check_self_contained, probe_features, check_abi_layout,
+  check_ctypes_smoke,
 )
 
 
@@ -36,11 +37,14 @@ def parse_args() -> argparse.Namespace:
       "    ./linter.py --self-contained\n\n"
       "  To hold the ctypes mirror to the real ABI layout in celestial.h:\n"
       "    ./linter.py --abi-layout\n\n"
+      "  To run the ctypes wrappers against the built library (needs ./project.py --build first):\n"
+      "    ./linter.py --ctypes-smoke\n\n"
       "  To report which awaited C++ features this toolchain can compile:\n"
       "    ./linter.py --features\n\n"
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./linter.py --features libc++\n\n"
-      "  To run every check (ruff, clang-tidy, self-containment, ABI layout, feature report):\n"
+      "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
+      "  feature report):\n"
       "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
@@ -53,6 +57,8 @@ def parse_args() -> argparse.Namespace:
                       help="Compile every header alone to prove it is self-contained")
   parser.add_argument("--abi-layout", action="store_true",
                       help="Hold the ctypes mirror in statistics/common.py to the real ABI layout")
+  parser.add_argument("--ctypes-smoke", action="store_true",
+                      help="Run the ctypes wrappers against the built library (needs a build)")
   parser.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
                       help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
 
@@ -79,6 +85,11 @@ if __name__ == "__main__":
 
   if args.abi_layout or args.all:
     ret_code = check_abi_layout()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  if args.ctypes_smoke or args.all:
+    ret_code = check_ctypes_smoke()
     if ret_code != 0:
       sys.exit(ret_code)
 
