@@ -157,11 +157,11 @@ TEST(Util, DaysConvertibleContract) {
   static_assert(YmdShiftable<int>);
 
   // #83: a count of days, not a calendar field -- `days { day { 1 } }` has no viable constructor.
-  enum class Season : uint8_t { Spring = 1 };
   static_assert(not DaysConvertible<day>);
   static_assert(not DaysConvertible<month>);
   static_assert(not DaysConvertible<double>);
   static_assert(not DaysConvertible<hours>);   // pairs with `weeks` above: exact conversions only
+  enum class Season : uint8_t { Spring = 1 };
   static_assert(not DaysConvertible<Season>);
   static_assert(not YmdShiftable<day>);
 }
