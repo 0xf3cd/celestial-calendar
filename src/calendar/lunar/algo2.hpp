@@ -457,7 +457,7 @@ struct LunarYearContext {
  */
 // Function-local static: a namespace-scope wrapper would initialize at image load (#67).
 [[nodiscard]] inline auto get_info_for_year(const int32_t year) -> LunarYear {
-  static const auto cached = util::cache::cache_func(calc_lunar_year);
+  static const auto cached = util::cache::make_cached(calc_lunar_year);
   return cached(year);
 }
 

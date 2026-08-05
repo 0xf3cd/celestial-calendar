@@ -384,9 +384,15 @@ TEST(Util, HashCombineAvalanche) {
 }
 
 
-/*! @brief Whether `make_cached` accepts a signature. `cache_func` funnels through it. */
+/*! @brief Whether `make_cached` accepts a signature. */
 template <typename Sig>
 concept MakeCachedViable = requires (std::function<Sig> func) { util::cache::make_cached(func); };
+
+/*! @brief Whether `make_cached` accepts the callable `F` — spelled as a concept so rejection
+           goes through substitution; a bare `requires { make_cached(f) }` in a non-template
+           context turns the same rejection into a hard error (#83's lesson). */
+template <typename F>
+concept MakeCachedAccepts = requires (const F& func) { util::cache::make_cached(func); };
 
 TEST(Util, MakeCachedConstraints) {
   enum class Key : uint8_t { A };                      // stands in for `Jieqi` (jieqi.hpp)
@@ -399,6 +405,11 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedViable<void(int)>);
   static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
   static_assert(not MakeCachedViable<int(Unhashable)>);
+
+  // A generic lambda has no single `&F::operator()` — rejected at the call site
+  // (previously via the `std::function` CTAD failing on the same shape).
+  const auto generic = [](const auto& x) { return x; };
+  static_assert(not MakeCachedAccepts<decltype(generic)>);
 }
 
 TEST(Util, MakeCached1) {
@@ -407,7 +418,7 @@ TEST(Util, MakeCached1) {
     ++call_count;
     return a + b;
   };
-  const auto cached_f = util::cache::cache_func(f);
+  const auto cached_f = util::cache::make_cached(f);
 
   std::vector<int> original_results;
   for (int i = 0; i < 10; i++) {
@@ -442,7 +453,7 @@ TEST(Util, MakeCached2) {
     ++call_count;
     return a * b;
   };
-  const auto cached_f = util::cache::cache_func(f);
+  const auto cached_f = util::cache::make_cached(f);
 
   std::vector<double> original_results;
   for (int i = 0; i < 10; i++) {
@@ -477,7 +488,7 @@ TEST(Util, MakeCachedCopyShares) {
     ++call_count;
     return a * 2;
   };
-  const auto cached_f = util::cache::cache_func(f);
+  const auto cached_f = util::cache::make_cached(f);
 
   ASSERT_EQ(cached_f(21), 42);
   ASSERT_EQ(call_count, 1);
@@ -500,7 +511,7 @@ TEST(Util, MakeCachedThreadSafe) {
     ++call_count;
     return a * a;
   };
-  const auto cached_f = util::cache::cache_func(f);
+  const auto cached_f = util::cache::make_cached(f);
 
   constexpr int32_t THREAD_COUNT = 8;
   constexpr int32_t KEY_COUNT = 64;

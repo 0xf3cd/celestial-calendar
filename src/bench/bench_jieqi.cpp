@@ -72,7 +72,7 @@ auto main() -> int {
     // indexed directly rather than modulo, which is what keeps every call a miss.
     .name = "jieqi_jde -- cold (every call a miss)",
     .body = [&](const std::size_t iterations) {
-      const auto uncached = util::cache::cache_func(calendar::jieqi::calc_jieqi_jde);
+      const auto uncached = util::cache::make_cached(calendar::jieqi::calc_jieqi_jde);
       for (std::size_t i = 0; i < iterations; ++i) {
         const auto [year, jq] = keys.at(i);
         sink = sink + uncached(year, jq);

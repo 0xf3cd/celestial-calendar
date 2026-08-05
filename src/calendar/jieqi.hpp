@@ -235,7 +235,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  */
 // Function-local static: a namespace-scope wrapper would initialize at image load (#67).
 [[nodiscard]] inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
-  static const auto cached = util::cache::cache_func(calc_jieqi_jde);
+  static const auto cached = util::cache::make_cached(calc_jieqi_jde);
   return cached(year, jq);
 }
 
