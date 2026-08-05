@@ -283,8 +283,14 @@ TEST(CAbiSmoke, Lunar) {
   ASSERT_TRUE(range2.valid);
   EXPECT_LT(range2.start, range2.end);
 
+  // #128: algo=3 is now exported (1600-2199); the pin that held it "unsupported" flips here.
+  const SupportedLunarYearRange range3 = get_supported_lunar_year_range(3);
+  ASSERT_TRUE(range3.valid);
+  EXPECT_EQ(range3.start, 1600);
+  EXPECT_EQ(range3.end, 2199);
+
   EXPECT_FALSE(get_supported_lunar_year_range(0).valid);
-  EXPECT_FALSE(get_supported_lunar_year_range(3).valid);
+  EXPECT_FALSE(get_supported_lunar_year_range(4).valid);
 
   EXPECT_TRUE(get_lunar_year_info(2, 2024).valid);
   EXPECT_FALSE(get_lunar_year_info(9, 2024).valid); // unsupported algorithm
@@ -300,6 +306,62 @@ TEST(CAbiSmoke, Lunar) {
   EXPECT_TRUE(get_lunar_year_info(2, range2.end).valid);
   EXPECT_FALSE(get_lunar_year_info(2, range2.start - 1).valid);
   EXPECT_FALSE(get_lunar_year_info(2, range2.end + 1).valid);
+
+  EXPECT_TRUE(get_lunar_year_info(3, range3.start).valid);
+  EXPECT_TRUE(get_lunar_year_info(3, range3.end).valid);
+  EXPECT_FALSE(get_lunar_year_info(3, range3.start - 1).valid);
+  EXPECT_FALSE(get_lunar_year_info(3, range3.end + 1).valid);
+}
+
+
+// Golden: lunar 2023 has a leap 2nd month (闰二月), and 闰二月初一 (its 1st day) = 2023-03-22 /
+// 三月初一 = 2023-04-20 — HKO data, algo1's and algo3's baked tables agree
+// (pinned in `LunarCommon.Leap2023DataAgreement`).
+TEST(CAbiSmoke, LunarConverter) {
+  const LunarDate leap2 = gregorian_to_lunar(1, 2023, 3, 22);
+  ASSERT_TRUE(leap2.valid);
+  EXPECT_EQ(leap2.year, 2023);
+  EXPECT_EQ(leap2.month, 2U);
+  EXPECT_TRUE(leap2.is_leap);
+  EXPECT_EQ(leap2.day, 1U);
+
+  const LunarDate trad3 = gregorian_to_lunar(1, 2023, 4, 20);
+  ASSERT_TRUE(trad3.valid);
+  EXPECT_EQ(trad3.month, 3U);
+  EXPECT_FALSE(trad3.is_leap);
+
+  const LunarDate via_algo3 = gregorian_to_lunar(3, 2023, 3, 22);
+  ASSERT_TRUE(via_algo3.valid);
+  EXPECT_EQ(via_algo3.month, 2U);
+  EXPECT_TRUE(via_algo3.is_leap);
+
+  const GregorianDate back1 = lunar_to_gregorian(1, 2023, 2, true, 1);
+  ASSERT_TRUE(back1.valid);
+  EXPECT_EQ(back1.year, 2023);
+  EXPECT_EQ(back1.month, 3U);
+  EXPECT_EQ(back1.day, 22U);
+
+  const GregorianDate back2 = lunar_to_gregorian(1, 2023, 3, false, 1);
+  ASSERT_TRUE(back2.valid);
+  EXPECT_EQ(back2.month, 4U);
+  EXPECT_EQ(back2.day, 20U);
+
+  EXPECT_FALSE(gregorian_to_lunar(9, 2023, 3, 22).valid);
+  // The accepted Gregorian window does not line up with Gregorian years 1901-2099: it opens on
+  // lunar 1901's first day (1901-02-19) and closes on lunar 2099's last day (2100-02-08).
+  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 1, 1).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 2, 18).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 1901, 2, 19).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 1, 25).valid);
+  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 2, 8).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 2100, 2, 9).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 2101, 1, 1).valid);
+  EXPECT_FALSE(gregorian_to_lunar(1, 2023, 13, 1).valid);
+  EXPECT_FALSE(lunar_to_gregorian(9, 2023, 2, true, 1).valid);
+  EXPECT_FALSE(lunar_to_gregorian(1, 2100, 1, false, 1).valid);
+  EXPECT_FALSE(lunar_to_gregorian(1, 2024, 2, true, 1).valid); // 2024 has no leap month
+  EXPECT_FALSE(lunar_to_gregorian(1, 2023, 5, true, 1).valid); // 2023's leap month is the 2nd
+  EXPECT_FALSE(lunar_to_gregorian(1, 2023, 2, true, 30).valid); // 闰二月 has 29 days
 }
 
 

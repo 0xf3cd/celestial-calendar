@@ -35,6 +35,15 @@
  * version. And no dllexport/dllimport macros: `WINDOWS_EXPORT_ALL_SYMBOLS` exports
  * everything, and imports resolve implicitly against the import library.
  *
+ * ABI evolution policy (#129): within a major version, struct layouts never move —
+ * sizes and offsets are pinned by `c_header_check.c` at compile time, and a struct is
+ * frozen the moment it lands here. Changing a field (type, order, or count) or an
+ * existing function's signature means a new major version, or a `_v2`-named function
+ * returning a new, separately named struct. Adding a struct or a function never breaks
+ * the ABI; widening what an existing function accepts (as `algo` was widened to 3)
+ * breaks neither the ABI nor the contract; narrowing it keeps the ABI but breaks
+ * the contract, and needs a new major version just the same.
+ *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
  * On failure the Julian Day functions also record a thread-local message readable
@@ -287,7 +296,7 @@ typedef struct SupportedLunarYearRange {
 
 /**
  * @brief Get the supported lunar year range of the algorithm.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @returns A `SupportedLunarYearRange` struct.
  */
 SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo);
@@ -297,18 +306,71 @@ typedef struct LunarYearInfo {
   int32_t  year;       /* Gregorian year of the first day of the lunar year. */
   uint8_t  month;      /* Gregorian month of the first day of the lunar year. */
   uint8_t  day;        /* Gregorian day of the first day of the lunar year. */
-  uint8_t  leap_month; /* The leap month (1-12), or 0 if there is none. */
-  uint16_t month_len;  /* Least 12/13 bits: 1 = 30-day month, 0 = 29-day month. */
+  uint8_t  leap_month; /* The leap month (1-12) in **traditional** numbering, or 0 if none. */
+  uint16_t month_len;  /* Least 12/13 bits, one per month in calendar order (bit 0 = the first
+                          month): 1 = 30-day month, 0 = 29-day month. A leap month occupies a
+                          bit of its own, so with `leap_month = 2` the bits run 1, 2, leap 2,
+                          3, … `gregorian_to_lunar` / `lunar_to_gregorian` below instead speak
+                          traditional numbering + `is_leap`, where that leap month is
+                          `month = 2, is_leap = true`. */
 } LunarYearInfo;
 
 /**
  * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1 or 2.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @param year The lunar year. Outside the range `get_supported_lunar_year_range` reports for
  *             `algo`, the result is `valid = false`.
  * @returns A `LunarYearInfo` struct.
  */
 LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year);
+
+typedef struct LunarDate {
+  bool    valid;   /* Indicates if the result is valid. */
+  int32_t year;    /* The lunar year. */
+  uint8_t month;   /* The lunar month, in traditional numbering (1-12). */
+  bool    is_leap; /* Whether the month is the leap month. */
+  uint8_t day;     /* The day of the lunar month. */
+} LunarDate;
+
+typedef struct GregorianDate {
+  bool    valid; /* Indicates if the result is valid. */
+  int32_t year;  /* The year. */
+  uint8_t month; /* The month. */
+  uint8_t day;   /* The day. */
+} GregorianDate;
+
+/**
+ * @brief Convert a Gregorian date to a lunar date.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
+ * @param year The Gregorian year.
+ * @param month The Gregorian month.
+ * @param day The Gregorian day of the month.
+ * @returns A `LunarDate` struct; `valid = false` when `algo` is unknown, the input is not a
+ *          real Gregorian date, or it falls outside the Gregorian span the algorithm covers —
+ *          that span runs from the first day of lunar year `start` to the last day of lunar
+ *          year `end` (`start`/`end` as `get_supported_lunar_year_range` reports them), so it
+ *          begins and ends mid-Gregorian-year at both ends.
+ * @note The lunar month is in **traditional numbering** (1-12) plus the `is_leap` flag —
+ *       a leap month carries its predecessor's number with `is_leap = true`: in lunar 2023
+ *       (leap 2nd month), the leap 2nd month is `month = 2, is_leap = true`, and the
+ *       traditional 3rd month is `month = 3, is_leap = false`. This is NOT the positional
+ *       month index that `LunarYearInfo.month_len` is indexed by.
+ */
+LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day);
+
+/**
+ * @brief Convert a lunar date to a Gregorian date.
+ * @param algo The algorithm. Expected to be 1, 2, or 3.
+ * @param year The lunar year.
+ * @param month The lunar month, in traditional numbering (1-12) — see `gregorian_to_lunar`.
+ * @param is_leap Whether the month is the leap month. `true` is accepted only on the year's
+ *                actual leap month — `month = 2` in lunar 2023, and no month at all in a year
+ *                that has none.
+ * @param day The day of the lunar month.
+ * @returns A `GregorianDate` struct; `valid = false` when the input does not name a real
+ *          lunar date (bad `algo`, year out of range, no such leap month, day out of range).
+ */
+GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day);
 
 
 /* ---------- Delta T ---------- */

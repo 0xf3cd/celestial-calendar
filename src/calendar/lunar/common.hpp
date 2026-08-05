@@ -29,6 +29,7 @@
 #include <numeric>
 #include <cstdint>
 #include <concepts>
+#include <optional>
 #include <functional>
 #include <type_traits>
 
@@ -96,6 +97,71 @@ struct LunarYear {
     .leap_month        = leap_month,
     .month_lengths     = month_lengths,
   };  
+}
+
+
+/**
+ * @brief A lunar month in traditional numbering: month number (1-12) plus a leap flag.
+ *        传统编号的阴历月：月份 (1-12) 加闰月标记。
+ * @note  `leap_month` and the positional indexing of `month_lengths` speak different month
+ *        languages — a leap month has no traditional number of its own (it takes its predecessor's
+ *        number with the leap flag), but occupies its own position. E.g. lunar 2023 (leap 2nd
+ *        month): position 3 is the leap 2nd month, and the traditional 3rd month is position 4.
+ *        `leap_month` 是传统编号，而 `month_lengths` 按位置序号索引——闰月没有自己的传统编号
+ *        （承前一个月的编号加闰标记），但独占一个位置。例：2023 年闰二月，位置 3 = 闰二月，
+ *        传统三月 = 位置 4。
+ */
+struct TraditionalMonth {
+  uint8_t month;
+  bool is_leap;
+
+  [[nodiscard]] auto operator==(const TraditionalMonth& other) const -> bool = default;
+};
+
+/**
+ * @brief Translate a traditionally-numbered lunar month to its 1-based position in
+ *        `info.month_lengths`. 把传统编号的阴历月翻译成 `info.month_lengths` 里的位置序号（从 1 起）。
+ * @param info The lunar year. 阴历年信息。
+ * @param month The traditional month number (1-12). 传统编号 (1-12)。
+ * @param is_leap Whether the month is the leap month. 是否闰月。
+ * @return The 1-based position; `std::nullopt` if `month` is out of range, or if `is_leap`
+ *         does not match the year's actual leap month (including leap-less years).
+ *         位置序号（从 1 起）；`month` 越界，或 `is_leap` 与该年实际闰月不符（含无闰月年）时返回 `std::nullopt`。
+ */
+[[nodiscard]] inline auto month_position(const LunarYear& info, const uint8_t month, const bool is_leap) -> std::optional<uint8_t> {
+  if (month < 1 or month > 12) {
+    return std::nullopt;
+  }
+  if (is_leap) {
+    if (month != info.leap_month) {
+      return std::nullopt;
+    }
+    return static_cast<uint8_t>(month + 1);
+  }
+  const bool after_leap = (info.leap_month != 0 and month > info.leap_month);
+  return static_cast<uint8_t>(month + (after_leap ? 1 : 0));
+}
+
+/**
+ * @brief Translate a 1-based position in `info.month_lengths` back to traditional numbering.
+ *        把 `info.month_lengths` 里的位置序号（从 1 起）翻译回传统编号。
+ * @param info The lunar year. 阴历年信息。
+ * @param position The 1-based position. 位置序号（从 1 起）。
+ * @return The traditionally-numbered month; `std::nullopt` if `position` is out of range.
+ *         传统编号的月；`position` 越界时返回 `std::nullopt`。
+ */
+[[nodiscard]] inline auto month_at_position(const LunarYear& info, const uint8_t position) -> std::optional<TraditionalMonth> {
+  // `month_lengths.size()` is 12 or 13 by construction, so the cast cannot lose anything.
+  if (position < 1 or position > static_cast<uint8_t>(info.month_lengths.size())) {
+    return std::nullopt;
+  }
+  if (info.leap_month == 0 or position <= info.leap_month) {
+    return TraditionalMonth { .month = position, .is_leap = false };
+  }
+  if (position == info.leap_month + 1) {
+    return TraditionalMonth { .month = info.leap_month, .is_leap = true };
+  }
+  return TraditionalMonth { .month = static_cast<uint8_t>(position - 1), .is_leap = false };
 }
 
 

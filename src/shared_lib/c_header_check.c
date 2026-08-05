@@ -69,3 +69,11 @@ _Static_assert(offsetof(ApparentSolarTime, year) == 4 && offsetof(ApparentSolarT
                offsetof(ApparentSolarTime, day) == 12 && offsetof(ApparentSolarTime, fraction) == 16 &&
                sizeof(ApparentSolarTime) == 24, "ApparentSolarTime layout drifted");
 
+_Static_assert(offsetof(LunarDate, year) == 4 && offsetof(LunarDate, month) == 8 &&
+               offsetof(LunarDate, is_leap) == 9 && offsetof(LunarDate, day) == 10 &&
+               sizeof(LunarDate) == 12, "LunarDate layout drifted");
+
+_Static_assert(offsetof(GregorianDate, year) == 4 && offsetof(GregorianDate, month) == 8 &&
+               offsetof(GregorianDate, day) == 9 && sizeof(GregorianDate) == 12,
+               "GregorianDate layout drifted");
+

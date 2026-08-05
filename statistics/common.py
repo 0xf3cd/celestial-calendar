@@ -505,6 +505,7 @@ def new_moons_in_year(year: int) -> NewMoons:
 class LunarAlgo(Enum):
   ALGO_1 = 1
   ALGO_2 = 2
+  ALGO_3 = 3
 
 class _SupportedLunarYearRange(Structure):
   _fields_ = [
@@ -582,5 +583,80 @@ def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
     leap_month = result.leap_month,
     month_lengths = month_lengths,
   )
+
+
+class _LunarDate(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("year", c_int32),
+    ("month", c_uint8),
+    ("is_leap", c_bool),
+    ("day", c_uint8),
+  ]
+
+LIB.gregorian_to_lunar.argtypes = [c_uint8, c_int32, c_uint8, c_uint8]
+LIB.gregorian_to_lunar.restype = _LunarDate
+
+@dataclass
+class LunarDate:
+  year: int
+  month: int    # Traditional numbering (1-12).
+  is_leap: bool # Whether the month is the leap month.
+  day: int
+
+def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> LunarDate:
+  """
+  Convert a Gregorian date to a lunar date.
+
+  @param algo The algorithm to use.
+  @param year The Gregorian year.
+  @param month The Gregorian month.
+  @param day The Gregorian day of the month.
+  @returns A `LunarDate` instance; the month is in traditional numbering (1-12) plus
+           `is_leap` — e.g. 2023-03-22 is the leap 2nd month of lunar 2023
+           (month = 2, is_leap = True).
+  """
+  result = LIB.gregorian_to_lunar(algo.value, year, month, day)
+
+  if not result.valid:
+    raise ValueError("Error occurred in gregorian_to_lunar.")
+
+  return LunarDate(
+    year = result.year,
+    month = result.month,
+    is_leap = result.is_leap,
+    day = result.day,
+  )
+
+
+class _GregorianDate(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("year", c_int32),
+    ("month", c_uint8),
+    ("day", c_uint8),
+  ]
+
+LIB.lunar_to_gregorian.argtypes = [c_uint8, c_int32, c_uint8, c_bool, c_uint8]
+LIB.lunar_to_gregorian.restype = _GregorianDate
+
+def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, day: int) -> date:
+  """
+  Convert a lunar date to a Gregorian date.
+
+  @param algo The algorithm to use.
+  @param year The lunar year.
+  @param month The lunar month, in traditional numbering (1-12).
+  @param is_leap Whether the month is the leap month; only the year's actual leap month
+                 may be flagged, and a leap-less year has none.
+  @param day The day of the lunar month.
+  @returns A `date` instance representing the Gregorian date.
+  """
+  result = LIB.lunar_to_gregorian(algo.value, year, month, is_leap, day)
+
+  if not result.valid:
+    raise ValueError("Error occurred in lunar_to_gregorian.")
+
+  return date(result.year, result.month, result.day)
 
 #endregion
