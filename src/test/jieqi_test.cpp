@@ -34,14 +34,15 @@ namespace calendar::jieqi::test {
 using namespace calendar::jieqi;
 using namespace astro::sun::geocentric_coord::math;
 
-// The cached wrapper is a function, not a namespace-scope callable — the latter initializes
-// at image load, where an escaping exception terminates the host before `main` (#67).
-static_assert(std::is_function_v<decltype(jieqi_jde)>);
-
 // The UT1Moment test and its DATASET (wolfram/bmcx/weather.gov values of mixed, undocumented
 // time scales — "Assume they are in UT1"; split ymd+fraction assertion, #68) were retired
 // 2026-07-27: jieqi_golden_test.cpp supersedes them with the official HKO almanac (168
 // minute-precision values, single continuous JD assertion) and DE441-derived crossings.
+
+TEST(JieQi, CachedWrapperIsLazilyInitialized) {
+  // #67: the shape is the guarantee — a revert to a namespace-scope callable must fail to compile.
+  static_assert(std::is_function_v<decltype(jieqi_jde)>);
+}
 
 TEST(JieQi, NameQuery) {
   ASSERT_EQ(longitude_of(Jieqi::立春), 315.0);

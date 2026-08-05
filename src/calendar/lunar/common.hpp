@@ -160,9 +160,9 @@ enum class Algo : uint8_t { ALGO_1, ALGO_2, ALGO_3 };
  * @param get_info_for_year The function to get the lunar year information for the given year.
  *                          用于使用该算法获取给定年份的阴历年信息的函数。
  * @param bounds The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates.
- *               算法支持的阴历和公历日期的范围。
  *               Returned through an accessor function — an eagerly-bound member would
  *               initialize at image load (defeating algo2's lazy init, #67).
+ *               算法支持的阴历和公历日期的范围。
  */
 template <Algo algo>
 struct AlgoMetadata;

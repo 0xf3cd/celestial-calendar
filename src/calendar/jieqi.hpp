@@ -225,13 +225,14 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 
 /**
- * @brief Simply a cached version of `calc_jieqi_jde`.
+ * @brief Get the JDE for the given `year` and `jieqi`, using cache.
  * @param year The year, in gregorian calendar.
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
+ * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ * @throw std::runtime_error if the root search does not yield exactly one root.
  */
-// Function-local static: a namespace-scope wrapper would initialize at image load, where an
-// escaping exception terminates the host before `main` (#67).
+// Function-local static: a namespace-scope wrapper would initialize at image load (#67).
 [[nodiscard]] inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
   static const auto cached = util::cache::cache_func(calc_jieqi_jde);
   return cached(year, jq);

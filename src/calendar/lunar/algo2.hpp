@@ -483,7 +483,7 @@ namespace calendar::lunar::common {
 /** @brief Specialize `AlgoMetadata` for `Algo::ALGO_2`. */
 template <>
 struct AlgoMetadata<Algo::ALGO_2> {
-  // Memoized: forwards to algo2's cached wrapper (#78), not straight to `calc_lunar_year`.
+  // Memoized: forwards to algo2's cached wrapper (#75), not straight to `calc_lunar_year`.
   [[nodiscard]] static auto get_info_for_year(const int32_t year) -> LunarYear { return algo2::get_info_for_year(year); }
   // #67: an accessor, not an eager binding — an `inline` static member would initialize at
   // image load, running the whole astro pipeline before `main` and defeating `algo2::bounds()`.

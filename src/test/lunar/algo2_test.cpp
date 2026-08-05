@@ -35,10 +35,11 @@ using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
 using astro::julian_day::ut1_to_jde;
 
-// The cached wrapper and its `AlgoMetadata` forwarder are functions, not namespace-scope
-// callables / reference bindings — the latter initialize at image load (#67).
-static_assert(std::is_function_v<decltype(get_info_for_year)>);
-static_assert(std::is_function_v<std::remove_pointer_t<decltype(&AlgoMetadata<Algo::ALGO_2>::get_info_for_year)>>);
+TEST(LunarAlgo2, CachedWrapperIsLazilyInitialized) {
+  // #67: the shape is the guarantee — a revert to a namespace-scope callable must fail to compile.
+  static_assert(std::is_function_v<decltype(get_info_for_year)>);
+  static_assert(std::is_function_v<decltype(AlgoMetadata<Algo::ALGO_2>::get_info_for_year)>);
+}
 
 TEST(LunarAlgo2, LunarMonthGenerator) {
   const double random_jde = astro::julian_day::J2000 + util::random(-365250.0, 365250.0);
