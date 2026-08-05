@@ -336,10 +336,14 @@ struct Bits {
 
 } // namespace util::test
 
+namespace std {
+
 template <>
-struct std::hash<util::test::Bits> {
+struct hash<util::test::Bits> {
   [[nodiscard]] auto operator()(const util::test::Bits b) const noexcept -> std::size_t { return b.value; }
 };
+
+} // namespace std
 
 namespace util::test {
 

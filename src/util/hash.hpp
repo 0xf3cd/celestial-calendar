@@ -44,7 +44,8 @@ template <typename T>
 
   // The finalizer assumes a 64-bit `size_t`: on a 32-bit one the shifts would be UB rather
   // than merely weaker, so fail the compile instead.
-  static_assert(sizeof(std::size_t) == sizeof(std::uint64_t));
+  static_assert(sizeof(std::size_t) == sizeof(std::uint64_t),
+                "hash_combine's finalizer shifts by 32 and needs a 64-bit size_t");
 
   // A multiply only carries bits upward, so on its own the high half of the input never
   // reaches the low bits -- the xorshifts either side of the golden-ratio multiply bring
