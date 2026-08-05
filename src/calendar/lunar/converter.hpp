@@ -111,7 +111,7 @@ struct Converter {
    * @brief Converts gregorian date to lunar date. 将公历日期转换为阴历日期。 
    * @param gregorian_date The gregorian date. 公历日期。
    * @return The optional lunar date; its month is the positional index (see `Converter`'s note).
-              阴历日期（optional）；其「月」是位置序号（见 `Converter` 的注）。
+             阴历日期（optional）；其「月」是位置序号（见 `Converter` 的注）。
    * @attention The input date should be in the supported range.
                 输入的日期需要在所支持的范围内。
   * @attention `std::nullopt` is returned if the input date is invalid. No exception is thrown.
@@ -171,7 +171,7 @@ struct Converter {
    * @fn lunar_to_gregorian
    * @brief Converts lunar date to gregorian date. 将阴历日期转换为公历日期。 
    * @param lunar_date The lunar date; its month is the positional index (see `Converter`'s note).
-              阴历日期；其「月」是位置序号（见 `Converter` 的注）。
+                       阴历日期；其「月」是位置序号（见 `Converter` 的注）。
    * @return The optional gregorian date. 公历日期（optional）。
    * @attention The input date should be in the supported range.
                 输入的日期需要在所支持的范围内。
