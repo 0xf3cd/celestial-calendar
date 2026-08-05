@@ -27,6 +27,7 @@
 #include <cmath>
 #include <chrono>
 #include <format>
+#include <string>
 #include <vector>
 #include <cstddef>
 #include <ostream>
@@ -107,6 +108,20 @@ namespace detail {
 }
 
 
+/** @brief One paired ratio: a percentage while the two are within a factor of two, a factor past
+ *         that -- on the fast side because percentages bottom out (`-99.994%` rounds to `-100.0%`,
+ *         which reads as free), on the slow side so a pair reads alike whichever way it went. */
+[[nodiscard]] inline auto format_ratio(const double ratio) -> std::string {
+  if (ratio >= 2.0) {
+    return std::format("{:.1f}x slower", ratio);
+  }
+  if (ratio > 0.0 and ratio <= 0.5) { // `> 0` keeps a degenerate zero out of the reciprocal.
+    return std::format("{:.0f}x faster", 1.0 / ratio);
+  }
+  return std::format("{:+.1f}%", 100.0 * (ratio - 1.0));
+}
+
+
 /** @brief Run `body` once for `iterations` and return the nanoseconds each iteration took. */
 [[nodiscard]] inline auto time_once(const Case& bench_case, const std::size_t iterations) -> double {
   const auto started = std::chrono::steady_clock::now();
@@ -161,17 +176,21 @@ inline void run(const Plan& plan, const std::span<const Case> cases, std::ostrea
                        cases[index].name, stats.median, stats.min, stats.p10, stats.p90);
   }
 
-  // Ratios are paired inside a round, so machine drift cancels; the absolute figures above do not
-  // have that property and should not be compared across runs, let alone across machines.
+  // Ratios are paired inside a round, so machine drift cancels. The absolute figures above hold
+  // across runs only when a round is long enough for its fixed cost to amortize away, and never
+  // across machines.
+  // `p10..p90` reads high-to-low in the factor form, because a factor is the reciprocal of the
+  // ratio the quantiles were taken on. The labels say which is which; reordering them would make
+  // the labels lie.
   if (cases.size() > 1) {
     out << std::format("\n  vs {} (per-round paired ratio):\n", cases[0].name);
     for (std::size_t index = 1; index < cases.size(); ++index) {
       const auto stats = detail::summarize(ratios.at(index));
-      out << std::format("  {:<34} median {:+6.1f}%   p10..p90 {:+.1f}%..{:+.1f}%\n",
+      out << std::format("  {:<34} median {:>13}   p10..p90 {}..{}\n",
                          cases[index].name,
-                         100.0 * (stats.median - 1.0),
-                         100.0 * (stats.p10 - 1.0),
-                         100.0 * (stats.p90 - 1.0));
+                         detail::format_ratio(stats.median),
+                         detail::format_ratio(stats.p10),
+                         detail::format_ratio(stats.p90));
     }
   }
 

@@ -18,9 +18,13 @@ else()
 endif()
 
 include(FetchContent)
+# The release asset, not `archive/refs/tags/...`: GitHub generates archive tarballs on request and
+# has changed their compression before, which moves the hash for an unchanged tag. An uploaded
+# asset is a fixed file, so the hash below stays true (#72).
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
+  URL      https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz
+  URL_HASH SHA256=65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c
 )
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -32,6 +36,9 @@ target_compile_options(gtest_main PRIVATE -w)
 target_compile_options(gmock PRIVATE -w)
 target_compile_options(gmock_main PRIVATE -w)
 
+# Kept alongside the top-level call (#72): this directory declares its own `project()`, and
+# configuring it on its own still succeeds -- only configuring, since the `celestial_calendar`
+# target it links against lives one level up.
 enable_testing()
 include(GoogleTest)
 

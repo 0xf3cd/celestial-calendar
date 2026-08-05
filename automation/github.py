@@ -23,6 +23,11 @@ from .utils import green_print, red_print, blue_print
 OWNER = "0xf3cd" # Yes, it's me.
 REPO  = "celestial-calendar"
 
+# `requests` has no default timeout, so a server that accepts the connection and then goes quiet
+# hangs the release tooling with no ceiling. The pair is (connect, read); the read half applies
+# between bytes received, not to a whole transfer, so it stays short without capping big artifacts.
+TIMEOUT = (10, 60)
+
 
 def gen_headers() -> Dict[str, str]:
   """
@@ -65,7 +70,7 @@ class GitHub:
       Dict[str, str]: A dictionary mapping workflow names to their IDs.
     """
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/workflows"
-    response = requests.get(url, headers=gen_headers())
+    response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
 
     json_resp = response.json()
@@ -105,7 +110,7 @@ class GitHub:
       List[str]: A list of run IDs.
     """
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs"
-    response = requests.get(url, headers=gen_headers())
+    response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
 
     json_resp = response.json()
@@ -137,7 +142,7 @@ class GitHub:
     """
     artifacts_url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}/artifacts"
     
-    response = requests.get(artifacts_url, headers=gen_headers())
+    response = requests.get(artifacts_url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
     artifacts = response.json()
 
@@ -159,7 +164,7 @@ class GitHub:
     Returns:
       Path: The path to the downloaded artifact.
     """
-    with requests.get(download_url, headers=gen_headers(), stream=True) as response:
+    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
       response.raise_for_status()
 
       download_dir.mkdir(parents=True, exist_ok=True)
@@ -277,7 +282,7 @@ class GitHub:
       List['GitHub.Release']: A list of GitHub releases.
     """
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/releases"
-    response = requests.get(url, headers=gen_headers())
+    response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
 
     json_resp = response.json()
@@ -324,7 +329,7 @@ class GitHub:
     Returns:
       Path: The path to the downloaded asset.
     """
-    with requests.get(download_url, headers=gen_headers(), stream=True) as response:
+    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
       response.raise_for_status()
 
       download_dir.mkdir(parents=True, exist_ok=True)
@@ -370,8 +375,9 @@ class GitHub:
       queue.put_nowait((asset.name, asset.browser_download_url))
 
     tag_name = selected_release.tag_name
-    queue.put_nowait(("src.zip", f"https://github.com/0xf3cd/celestial-calendar/archive/refs/tags/{tag_name}.tar.gz"))
-    queue.put_nowait(("src.tar.gz", f"https://github.com/0xf3cd/celestial-calendar/archive/refs/tags/{tag_name}.tar.gz"))
+    archive_url = f"https://github.com/{OWNER}/{REPO}/archive/refs/tags/{tag_name}"
+    queue.put_nowait(("src.zip", f"{archive_url}.zip"))
+    queue.put_nowait(("src.tar.gz", f"{archive_url}.tar.gz"))
 
     paths: List[Path] = []
 

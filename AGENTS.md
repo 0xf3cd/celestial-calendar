@@ -101,9 +101,10 @@ taken to be a GoogleTest binary whose test count reconciles with the `TEST(` mac
 so a new file is picked up without a separate `--cmake`, and the runner finds the binary by
 directory. `--bench` clears stale binaries first, so a renamed or deleted benchmark stops running.
 
-A benchmark's absolute nanoseconds are not comparable across runs or machines — only the paired
-ratios inside one run are. `src/bench/harness.hpp` explains what it does about measurement bias
-and why (#81).
+A benchmark's absolute nanoseconds are never comparable across machines, and across runs only
+when a round is long enough for its fixed cost to amortize away — `bench_jieqi.cpp` runs the cache
+hit a second time at 24000 iterations for exactly that reason. Otherwise read the paired ratios
+inside one run. `src/bench/harness.hpp` explains what it does about measurement bias and why (#81).
 
 Windows PowerShell:
 
@@ -130,10 +131,9 @@ cmake --build build --parallel
 ctest --test-dir build/test
 ```
 
-`build/test`, not `build`: the tests register in the subdirectory, so
-`ctest --test-dir build` runs **zero** tests and still exits 0 — a green light
-that checked nothing. (The root cause, a missing top-level `enable_testing()`,
-is tracked in #72.)
+Either path works since #72 added the top-level `enable_testing()`. Without it only the
+subdirectory registered, so `ctest --test-dir build` ran **zero** tests and still exited 0 —
+a green light that checked nothing, which is why that call is load-bearing.
 
 ### Lint
 
@@ -157,10 +157,35 @@ is tracked in #72.)
 
 分工：转录/脚手架/CI 可放手；API 形状、类型设计、数值核心、容差判断留给作者。
 
-### Naming (SSOT: `.clang-tidy` CheckOptions)
+### Naming
 
-`lower_case` — variables / functions / params / members / methods / namespaces.
-`CamelCase` — class / struct.  `UPPER_CASE` — global constants / enums / enum constants.
+Nothing enforces this — `readability-identifier-naming` is deliberately off (#72). The convention
+lives here:
+
+`lower_case` — variables, functions, parameters, members, methods, namespaces, and any
+`const inline auto` that is called rather than read.
+`CamelCase` — classes, structs, **and enum types** (`Algo`, `AngleUnit`, `Jieqi`).
+`UPPER_CASE` — `inline constexpr` constants and enumerators.
+
+**Domain notation overrides all of it.** An identifier that stands for a symbol in the source keeps
+the source's spelling: `cos_λ`, `argL`, `A1`, `θCoeffs`, `gen_eval_θ`, and `Jieqi`'s 立春/冬至.
+Same discipline as the `@ref` rule above — the code should read next to the book.
+
+### Comment language
+
+Narrative in English; domain terms keep their own spelling (`Jieqi::冬至`), glossed once in
+parentheses where a reader who has only the English needs a handle — `the Chinese Jieqi (节气)`,
+`a Jie (节)`. Translating an entity loses it. Outside the lunar subtree, keep new full-Chinese runs
+to named or quoted material rather than explanation; the stray restatement that predates this
+paragraph can stay where it is.
+
+The lunar subtree is where Chinese restatement is concentrated, and stays that way: its Doxygen
+carries a Chinese line after or under the English, on `@brief` / `@param` / `@return` / `@note`
+and member docs alike (`@param year The Lunar year. 阴历年份。`). Match the neighbours when
+editing there — do not spread the habit outward, do not strip it inside.
+
+Punctuation follows the language of the run it sits in: full-width inside a Chinese phrase,
+half-width everywhere else.
 
 ### Header-only, and the code reads like the maths
 
@@ -192,7 +217,7 @@ is intentional. Keep it. That buys a discipline:
   with designated initializers (`.λ = …`). Keep units in the type system.
 - `const`-correct; modern C++ (`<ranges>`, `<span>`, `std::array`).
 - 2-space indentation. Compiler flags: `-Wall -Wextra -Werror -Wpedantic -Wnull-dereference
-  -Wunreachable-code -O2`.
+  -Wunreachable-code`; the optimization level is `CMAKE_BUILD_TYPE`'s (Release = `-O3 -DNDEBUG`).
 - **Multi-line call layout**: when an argument is itself a call, or the call grows long, put
   each argument on its own line and the closing `);` on its own line at the call's
   indentation — matching the existing `upper_bound` / `Datetime`-construction sites:
@@ -321,6 +346,17 @@ toolbox/        Helper scripts for artifacts, releases, build info
    (target state; #77, #67 and #64 are closed, #70 is the last one open): public input
    validation must `throw` (fail-fast, independent of build type); `assert` is only
    for internal invariants, never as an input guard.
+
+9. **CI toolchains are pinned — every one that can emit a diagnostic.** A tool that updates
+   itself turns "the code changed" and "the tool changed" into the same red X, on a day nobody
+   touched the repository; a pin that goes stale instead fails loudly with "no such version",
+   which says what to do. Pinned: clang-tidy and clang at **18** on the Linux legs, choco LLVM at
+   **20** on Windows (not the 18 the Linux legs use — a pre-existing split these pins record
+   rather than create), the Xcode **major** (a major carries an Apple Clang major, and `-Werror`
+   makes any new diagnostic in it a red build), and ruff. Exact versions live in the workflows,
+   not here — there is no gate reconciling two copies. Chocolatey's `make` is deliberately outside
+   this: it drives the build rather than diagnosing it, so a new version cannot turn `-Werror` red.
+   Bump deliberately, never incidentally (#72, #73).
 
 ## AI do / don't
 

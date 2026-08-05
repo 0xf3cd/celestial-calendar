@@ -114,6 +114,14 @@ jobs:
             fi
           done
 
+          # Guard on what was copied. The JSON files and the header below keep this directory
+          # non-empty whatever happens, so `if-no-files-found: error` on the upload cannot catch
+          # an artifact that ships with no library in it (#72).
+          if [ "$(find "$DEST_DIR" \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) -type f | wc -l)" -eq 0 ]; then
+            echo "No shared library copied out of $OUTPUT_DIR/shared_lib"
+            exit 1
+          fi
+
           # Copy the build info JSON files to the destination directory
           cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
           cp "$OUTPUT_DIR/cpu_info.json" "$DEST_DIR/"
@@ -154,9 +162,10 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
+    # Pinned; see AGENTS.md gotcha 9 (#72, #73).
     - uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: latest-stable
+        xcode-version: '26'
     
     - name: Set up Python ${{ matrix.python-version }}  
       uses: actions/setup-python@v6 
@@ -182,17 +191,19 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        # Check if any shared library is found
-        if [ ! -f ./build/shared_lib/*.dylib ]; then
-          echo "No shared lib found"
-          exit 1
-        fi
-
         # Create a folder "macos_arm64" at root dir and copy the new shared library to it
         mkdir -p ./macos_arm64
 
         # Find and copy real files (not symlinks)
         find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
+
+        # Guard on what was copied, not on what a glob matched: with only symlinks and no real
+        # file, `-type f` copies nothing while `celestial.h` and `build_info.json` keep the
+        # directory non-empty, so `if-no-files-found: error` never fires (#72).
+        if [ "$(find ./macos_arm64 -name '*.dylib' -type f | wc -l)" -eq 0 ]; then
+          echo "No real .dylib copied out of ./build/shared_lib"
+          exit 1
+        fi
 
         # Ship the published C-ABI header alongside the library
         cp ./src/shared_lib/celestial.h ./macos_arm64/
@@ -238,7 +249,9 @@ jobs:
           python3 -m pip install --upgrade pip  
           if (Test-Path "Requirements.txt") { python3 -m pip install -r "Requirements.txt" }
 
-          choco install -y make llvm
+          # Pinned; see AGENTS.md gotcha 9 (#72, #73).
+          choco install -y make
+          choco install -y llvm --version=20.1.8
 
       - name: Build and Test
         env:
@@ -275,6 +288,14 @@ jobs:
           # Copy all .lib files to the destination directory
           foreach ($lib in $libFiles) {
             Copy-Item -Path $lib.FullName -Destination $destDir
+          }
+
+          # Guard on what was copied. The header and build_info.json below keep this directory
+          # non-empty whatever happens, so `if-no-files-found: error` on the upload cannot catch an
+          # artifact that ships with no library in it (#72).
+          if (@(Get-ChildItem -Path $destDir -File | Where-Object { $_.Extension -in '.dll', '.lib' }).Count -eq 0) {
+            Write-Error "No shared library copied out of $LIB_DIR"
+            exit 1
           }
 
           # Ship the published C-ABI header alongside the library

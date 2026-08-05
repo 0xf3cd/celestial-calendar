@@ -7,14 +7,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add compile options for different compilers
 add_compile_options(-Wall -Wextra -Werror -Wpedantic -Wnull-dereference -Wunreachable-code)
 
-# Optimization flag
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+# Optimization is `CMAKE_BUILD_TYPE`'s job: a flag set in `CMAKE_CXX_FLAGS` lands before the build
+# type's own and silently loses to it. Debug is therefore really `-O0`, so golden values computed
+# there can differ from a Release run by a ulp (#72).
 
 # Include directories
-include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${PROJECT_SOURCE_DIR}/astro)
 include_directories(${PROJECT_SOURCE_DIR}/calendar)
 include_directories(${PROJECT_SOURCE_DIR}/util)
+
+# Here, not only in `test/`: without a top-level call CMake writes no `CTestTestfile.cmake` next to
+# this build tree's root, so `ctest --test-dir build` finds zero tests -- and reports success (#72).
+enable_testing()
 
 # Add subdirectories. The order is for readability only — CMake binds targets at generate
 # time, so `test` may reference `celestial_calendar` before its directory is processed (#67).

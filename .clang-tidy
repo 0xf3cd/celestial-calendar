@@ -25,36 +25,9 @@ Checks: |
   modernize-*,
   -modernize-use-std-numbers,
 
+# `readability-identifier-naming` is off on purpose: it cannot express domain notation (`cos_λ`,
+# `argL`, `θCoeffs`) or `const inline auto` callables. Conventions: AGENTS.md, "Naming". #72
+
 WarningsAsErrors: '*'
 
 UseColor: true
-
-CheckOptions:
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
-  - key: readability-identifier-naming.FunctionCase
-    value: lower_case
-  - key: readability-identifier-naming.ClassCase
-    value: CamelCase
-  - key: readability-identifier-naming.StructCase
-    value: CamelCase
-  - key: readability-identifier-naming.GlobalConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.EnumCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.NamespaceCase
-    value: lower_case
-  - key: readability-identifier-naming.MemberCase
-    value: lower_case
-  - key: readability-identifier-naming.ParameterCase
-    value: lower_case
-  - key: readability-identifier-naming.LocalVariableCase
-    value: lower_case
-  - key: readability-identifier-naming.FieldCase
-    value: lower_case
-  - key: readability-identifier-naming.MethodCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.MemberVariableCase
-    value: lower_case

@@ -69,8 +69,17 @@ TEST(Datetime, FromTimepoint) {
   }
 
   { // Test with random nanoseconds.
+    // The offset is bounded by construction: signed overflow here is undefined, and no assertion
+    // below can see it -- `Datetime` normalizes whatever the wrap produced, so the test passes
+    // either way. `now` sits some 1.8e18 ns past the epoch, so an offset drawn from the whole
+    // `int64_t` range overflows this addition for roughly its top 40%.
+    // `system_clock::duration` is not nanoseconds everywhere (libc++ counts microseconds, MSVC
+    // 100ns ticks), so the headroom is computed after converting, not from `count()` (#72).
+    const auto now_ns = duration_cast<nanoseconds>(now.time_since_epoch()).count();
+    const auto headroom = std::numeric_limits<int64_t>::max() - now_ns;
+
     for (auto i = 0; i < 1000; i++) {
-      const auto tp = now + nanoseconds { util::random<int64_t>() };
+      const auto tp = now + nanoseconds { util::random<int64_t>(-headroom, headroom) };
       const Datetime dt { tp };
 
       const auto time_of_day = dt.time_of_day;
@@ -251,9 +260,9 @@ TEST(Datetime, Consistency) {
 
   const auto random_tp_views = std::views::iota(0, 10000) | std::views::transform([&](auto) {
     const auto signed_ns = static_cast<int64_t>(ns_per_year);
-    return now + microseconds { 
-      util::random<int64_t>(-20 * signed_ns, 20 * signed_ns) 
-    };
+    // `nanoseconds`, matching what `ns_per_year` counts: +-20 years keeps this addition inside
+    // `int64_t`, and nothing below would notice if it did not (#72).
+    return now + nanoseconds { util::random<int64_t>(-20 * signed_ns, 20 * signed_ns) };
   });
 
   for (auto tp : random_tp_views) {

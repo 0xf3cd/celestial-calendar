@@ -30,9 +30,8 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-          # clang-tidy is pinned to match the clang-18 toolchain this job installs;
-          # newer clang-tidy ships new checks that flag pre-existing code.
-          python3 -m pip install ruff clang-tidy==18.1.8
+          # Both pinned; see AGENTS.md gotcha 9 (#72, #73).
+          python3 -m pip install ruff==0.16.1 clang-tidy==18.1.8
 
       - name: Install LLVM and clang++
         run: |
@@ -129,72 +128,90 @@ jobs:
           ./project.py --setup --clean --cmake --build --test -v 1
 
 
-  test-macos-apple-clang:  
-    runs-on: macos-latest
+  # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
+  # pull requests to main and packages the artifacts -- running them here too repeated the same
+  # compile-and-test on every push to a branch with a PR open. A push still gets both platforms from
+  # `self-contained-headers` and `cxx-feature-probe` below -- three-way matrices that catch
+  # platform-specific rot early (#72).
+
+  # ASan + UBSan on one Linux leg. It sits here rather than in `build_and_test.yml` because this
+  # workflow's critical path is `linters-and-static-analysis`, which has room a parallel job can
+  # use; the other workflow's is the docker build, which has none. TSan is deliberately absent --
+  # it cannot share a binary with ASan, and the only concurrency to point it at today is one test
+  # in `util_test.cpp`. Worth revisiting when there is more (#72).
+  sanitizers:
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ["3.12"]  
+        python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v7
-
-    - uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
-    
-    - name: Set up Python ${{ matrix.python-version }}  
-      uses: actions/setup-python@v6 
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install Python Dependencies
-      run: |  
-        python3 -m pip install --upgrade pip  
-        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
-
-    - name: Build and Test
-      env:
-        CXX: clang++
-        CC:  clang
-      run: |
-        chmod +x project.py
-        ./project.py --setup --clean --cmake --build --test -v 1
-
-
-  test-windows-clang:  
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]  
-  
-    steps:  
       - uses: actions/checkout@v7
 
-      - name: Set up Visual Studio
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: latest
-
-      - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v6 
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-  
-      - name: Install Dependencies
-        run: |  
-          python -m pip install --upgrade pip  
-          if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
 
-          choco install -y make llvm
-
-      - name: Build and Test
-        env:
-          CXX: clang++
-          CC:  clang
+      - name: Install Python Dependencies
         run: |
-          chcp.com 65001
-          $env:PYTHONIOENCODING = "utf-8"
-          python3 ./project.py --setup --clean --cmake --build --test -v 1
+          python3 -m pip install --upgrade pip
+          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+
+      - name: Install LLVM and clang++
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y llvm-18 clang-18
+
+      - name: Build under ASan + UBSan
+        env:
+          CXX: clang++-18
+          CC:  clang-18
+          # CMake seeds `CMAKE_CXX_FLAGS` from `CXXFLAGS` on a fresh configure, and `--clean` makes
+          # every configure fresh -- so the sanitizers reach the build without `project.py` growing
+          # a flag that exists for one CI job.
+          # `-fno-sanitize-recover=all` is what makes UBSan fail rather than narrate: by default it
+          # prints and carries on, and the job would stay green while reporting undefined behaviour.
+          CXXFLAGS: "-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g"
+        run: |
+          chmod +x project.py
+          ./project.py --setup --clean --cmake --build --cores all -v 1
+
+      - name: Run every test binary
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: |
+          # Not `--test`: that goes through `ctest -R <name>`, and a filter that matches nothing
+          # makes gtest exit 0, which ctest records as a pass. A sanitizer gate that can silently
+          # skip a binary is no gate, so run them directly and reconcile the count against the
+          # `TEST(` macros -- proving the ones that ran are also the ones that exist.
+          total=0
+          for exe in build/test/*; do
+            [ -f "$exe" ] && [ -x "$exe" ] || continue
+            out=$("$exe" 2>&1) || { echo "$out"; echo "FAILED: $exe"; exit 1; }
+            # `sed`, not a `grep | grep` pipeline: this step runs under `-eo pipefail`, where a
+            # grep that matches nothing kills the job with no output at all. Say what happened.
+            n=$(printf '%s' "$out" | sed -nE 's/^\[==========\] ([0-9]+) test.*/\1/p' | head -1)
+            if [ -z "$n" ]; then
+              echo "$out"
+              echo "NO GTEST SUMMARY: $exe -- not a test binary, or it died before reporting"
+              exit 1
+            fi
+            total=$((total + n))
+          done
+          # `TEST` and `TEST_F` only, because only those are one macro per test. `TEST_P` and
+          # `TYPED_TEST` expand to one per parameter or per type, so counting them would undercount
+          # and fail here for the wrong reason. Detect them instead: the day one appears, this
+          # reconciliation stops being valid and should be rewritten, not quietly widened.
+          if grep -rqE '^[[:space:]]*(TEST_P|TYPED_TEST)\(' src/test --include=*.cpp; then
+            echo "TEST_P/TYPED_TEST present: one macro no longer means one test, so the count below"
+            echo "cannot reconcile. Rewrite this check (count from --gtest_list_tests) before use."
+            exit 1
+          fi
+          declared=$(grep -rhoE '^[[:space:]]*TEST(_F)?\(' src/test --include=*.cpp | wc -l)
+          echo "ran $total, declared $declared"
+          [ "$total" -eq "$declared" ] || { echo "count mismatch"; exit 1; }
 
 
   # Header self-containment (#71). Deliberately a matrix, not a single job: whether a
@@ -243,7 +260,8 @@ jobs:
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
-        run: choco install -y llvm
+        # Pinned; see AGENTS.md gotcha 9 (#72, #73).
+        run: choco install -y llvm --version=20.1.8
 
       # The compiler comes from the matrix, not from $GITHUB_ENV: a step-level `env:`
       # outranks anything written to $GITHUB_ENV, so setting CXX in the install step
@@ -287,10 +305,11 @@ jobs:
 
       # Same Xcode the macOS build leg pins. Without it this job reads the image default, and
       # the baseline would record a toolchain the project never actually compiles with.
+      # Pinned; see AGENTS.md gotcha 9 (#72, #73).
       - uses: maxim-lobanov/setup-xcode@v1
         if: runner.os == 'macOS'
         with:
-          xcode-version: latest-stable
+          xcode-version: '26'
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -311,7 +330,8 @@ jobs:
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
-        run: choco install -y llvm
+        # Pinned; see AGENTS.md gotcha 9 (#72, #73).
+        run: choco install -y llvm --version=20.1.8
 
       - name: Probe awaited C++ features (${{ matrix.leg }})
         env:

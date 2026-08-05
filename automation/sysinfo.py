@@ -20,12 +20,17 @@ from .utils import run_cmd, ProcReturn
 
 def print_system_info() -> None:
   """Print system time and other system information."""
-  cmake_version: ProcReturn = run_cmd(["cmake", "--version"], print_cmd=False, print_stdout=False)
-  assert cmake_version.retcode == 0
+  # This function only reports -- whether a missing tool stops the run is `--setup`'s call, and it
+  # says something readable. `run_cmd` raises `FileNotFoundError` when the binary is absent (#72).
+  try:
+    cmake_version: ProcReturn = run_cmd(["cmake", "--version"], print_cmd=False, print_stdout=False)
+    if cmake_version.retcode == 0:
+      cmake_version_str = " | ".join(filter(lambda s: len(s.strip()) > 0, cmake_version.stdout.splitlines()))
+    else:
+      cmake_version_str = "present, but `cmake --version` failed"
+  except FileNotFoundError:
+    cmake_version_str = "not found"
 
-  cmake_version_str: str = " | ".join(
-    filter(lambda s: len(s.strip()) > 0, cmake_version.stdout.splitlines())
-  )
   this_moment: datetime = datetime.now()
 
   print(60 * "#")
