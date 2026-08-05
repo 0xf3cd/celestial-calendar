@@ -162,9 +162,8 @@ is tracked in #72.)
 Nothing checks this — `readability-identifier-naming` is off, and the CheckOptions that used to
 claim to be its SSOT described a codebase this is not (#72). Read it here instead:
 
-`lower_case` — variables, functions, parameters, members, methods, namespaces, and the
-`const inline auto` callables that `cache_func` returns (`jieqi_jde`, `get_info_for_year`): they
-are called, so they read as functions.
+`lower_case` — variables, functions, parameters, members, methods, namespaces, and any
+`const inline auto` that is called rather than read: it is invoked, so it reads as a function.
 `CamelCase` — classes, structs, **and enum types** (`Algo`, `AngleUnit`, `Jieqi`).
 `UPPER_CASE` — `inline constexpr` constants and enumerators.
 
