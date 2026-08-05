@@ -171,6 +171,20 @@ lives here:
 the source's spelling: `cos_λ`, `argL`, `A1`, `θCoeffs`, `gen_eval_θ`, and `Jieqi`'s 立春/冬至.
 Same discipline as the `@ref` rule above — the code should read next to the book.
 
+### Comment language
+
+Narrative in English; domain terms keep their own spelling, glossed once in parentheses — `the
+Chinese Jieqi (节气)`, `a Jie (节)`, `Jieqi::冬至`. Translating an entity loses it, and the gloss is
+what lets a reader who has only the English follow. Full-Chinese runs are for named or quoted
+material, never for explanation.
+
+The lunar subtree is the exception, and stays one: its Doxygen `@param` / `@return` lines carry a
+Chinese restatement after the English (`@param year The Lunar year. 阴历年份。`). Match the
+neighbours when editing there — do not spread it, do not strip it.
+
+Punctuation follows the language of the run it sits in: full-width inside a Chinese phrase,
+half-width everywhere else.
+
 ### Header-only, and the code reads like the maths
 
 Header-only is a **deliberate design choice** — the no-link, orthogonal, self-contained feel
