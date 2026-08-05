@@ -28,6 +28,7 @@ from .github import GitHub
 from .linter import run_ruff, run_clang_tidy
 from .self_contained import check_self_contained
 from .feature_probe import probe_features
+from .abi_layout import check_abi_layout
 from .bench import build_benchmarks, run_benchmarks, find_benchmarks
 
 __all__ = [
@@ -39,5 +40,6 @@ __all__ = [
   "run_cmd", "ProcReturn", "time_execution",
   "proj_root", "build_dir", "cpp_src_dir", "python_requirements", "cpp_test_dir",
   "GitHub", "run_ruff", "run_clang_tidy", "check_self_contained", "probe_features",
+  "check_abi_layout",
   "build_benchmarks", "run_benchmarks", "find_benchmarks"
 ]

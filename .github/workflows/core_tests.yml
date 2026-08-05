@@ -51,7 +51,7 @@ jobs:
           ./project.py --clean --cmake
           
           chmod +x linter.py
-          ./linter.py --ruff --clang-tidy
+          ./linter.py --ruff --clang-tidy --abi-layout
 
           
   test-ubuntu-gcc14:  
