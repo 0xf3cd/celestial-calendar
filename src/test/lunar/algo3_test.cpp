@@ -33,42 +33,68 @@ namespace calendar::lunar::algo3::test {
 
 using namespace calendar::lunar::common;
 
-TEST(LunarAlgo3, Correctness) {
-  const auto in_algo1_range = [](const int32_t year) -> bool {
-    return algo1::START_YEAR <= year and year <= algo1::END_YEAR;
-  };
+// The former single TEST(LunarAlgo3, Correctness) covered two windows with two
+// different meanings of "expected". Split so each name says what it proves.
+// External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp),
+// not either of the tests below.
 
-  const auto expected_info = [&](const int32_t year) -> LunarYear {
-    if (in_algo1_range(year)) {
-      return algo1::calc_lunar_year(year);
-    }
-    return algo2::calc_lunar_year(year);
-  };
-
-  std::vector<int32_t> years = std::views::iota(algo3::START_YEAR, algo3::END_YEAR + 1)
+// [1901, 2099]: algo3's baked slice is a byte-for-byte copy of algo1's HKO table
+// (driver probe: 199 entries, identical encodings). Both sides decode via the
+// shared `parse_lunar_year`, so this is a dual-table drift check — it catches
+// "only one of the two tables was edited", not an independent correctness proof.
+// Decoding itself has no independent discriminating power here.
+TEST(LunarAlgo3, HkoTableCopiesAgree) {
+  std::vector<int32_t> years = std::views::iota(algo1::START_YEAR, algo1::END_YEAR + 1)
                              | std::ranges::to<std::vector>();
 
-  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded, reproducible (#69).
+  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded (#69).
   years.resize(32);
 
   for (const auto year : years) {
-    const auto expected = expected_info(year);
+    const auto expected = algo1::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
-    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day);
-    ASSERT_EQ(expected.leap_month, actual.leap_month);
-    ASSERT_EQ(expected.month_lengths, actual.month_lengths);
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
+  }
+}
+
+// [1600, 1900] ∪ [2100, 2199]: algo3's baked value must still equal *today's*
+// live `algo2::calc_lunar_year` recompute. This HAS real discriminating power —
+// #64's 2133/2165/2172 first surfaced as drift against live algo2 under a new
+// default ΔT. It is NOT an external oracle (that is the ytliu0 golden).
+TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
+  const auto outside_hko = [](const int32_t year) -> bool {
+    return year < algo1::START_YEAR or year > algo1::END_YEAR;
+  };
+
+  std::vector<int32_t> years = std::views::iota(algo3::START_YEAR, algo3::END_YEAR + 1)
+                             | std::views::filter(outside_hko)
+                             | std::ranges::to<std::vector>();
+
+  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded (#69).
+  years.resize(32);
+
+  for (const auto year : years) {
+    const auto expected = algo2::calc_lunar_year(year);
+    const auto actual = algo3::calc_lunar_year(year);
+
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
   }
 
-  // #64: entries re-baked under algo5's ΔT — checked deterministically, since the random
-  // sample above only covers them ~15% of the time.
+  // #64: entries re-baked under algo5's ΔT — checked deterministically, since the
+  // random sample above only covers them ~15% of the time. Belongs on this test
+  // (baked vs live algo2), not on the HKO dual-table check.
   for (const int32_t year : { 2133, 2165, 2172 }) {
-    const auto expected = expected_info(year);
+    const auto expected = algo2::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
-    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day);
-    ASSERT_EQ(expected.leap_month, actual.leap_month);
-    ASSERT_EQ(expected.month_lengths, actual.month_lengths);
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
   }
 }
 
