@@ -26,7 +26,9 @@
 #include <mutex>
 #include <tuple>
 #include <memory>
+#include <cstddef>
 #include <utility>
+#include <concepts>
 #include <functional>
 #include <type_traits>
 #include <unordered_map>
@@ -41,11 +43,29 @@ using util::hash::TupleHash;
 // 1. Add a way to clear the cache (LRU, or something).
 
 /**
+ * @brief What one element of a cache key must support. Element-wise on purpose: `TupleHash`'s
+ *        `operator()` takes any tuple and fails inside its body, so constraining *it* would
+ *        constrain nothing.
+ */
+// Spelled as three library concepts rather than one `requires { std::hash<T> {}(v) }`: the latter
+// makes g++-14 ICE in `finish_compound_literal` when reached through a nested requires-expression.
+template <typename T>
+concept CacheKeyElement = std::equality_comparable<T>
+                      and std::default_initializable<std::hash<T>>
+                      and std::invocable<std::hash<T>&, const T&>;
+
+/**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache. Must be pure — same arguments ⇒ same result.
  * @return The cached function. Thread-safe; copies share one cache (#78).
+ * @note The constraints state what the `unordered_map` below already enforces, so misuse is
+ *       rejected here instead of inside its instantiation. `copy_constructible` also rules out
+ *       `void`, which has nothing to cache. A bounded key space is not expressible here — the
+ *       cache never evicts, so that stays the caller's contract.
  */
 template <typename RetType, typename... Args>
+requires std::copy_constructible<RetType>
+     and (... and CacheKeyElement<std::decay_t<Args>>)
 [[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
   // Cache and mutex live behind a `shared_ptr`, so copying the returned
   // `std::function` shares one cache instead of forking divergent replicas (#78).

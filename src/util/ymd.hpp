@@ -36,26 +36,28 @@ concept YearConvertible = requires (T t) {
   { std::chrono::year { static_cast<int32_t>(t) } } -> std::same_as<std::chrono::year>;
 };
 
-/*! @brief A type that can be converted to `std::chrono::month`. */
+/*! @brief A type `std::chrono::days` can be built from — what the operators below shift by. */
 template <typename T>
-concept MonthConvertible = std::same_as<T, std::chrono::month> or requires (T t) {
-  { std::chrono::month { static_cast<uint32_t>(t) } } -> std::same_as<std::chrono::month>;
+concept DaysConvertible = requires (const T& t) {
+  // The check is the operators' own expression, on the same const object they bind (#83): with a
+  // non-const `t` a conversion that is not const-qualified passes here and fails in the body.
+  { std::chrono::days { t } } -> std::same_as<std::chrono::days>;
 };
 
-/*! @brief A type that can be converted to `std::chrono::days`. */
-template <typename T>
-concept DayConvertible = std::same_as<T, std::chrono::days> or requires (T t) {
-  { std::chrono::days { static_cast<uint32_t>(t) } } -> std::same_as<std::chrono::days>;
-};
-
-/*! @brief Converts the input year, month, and date to a `std::chrono::year_month_day`. */
+/*!
+ * @brief Converts the input year, month, and date to a `std::chrono::year_month_day`.
+ * @note Month and day are plain `uint32_t` while `year` keeps a concept — a deliberate asymmetry,
+ *       not an oversight. Both are counts that become `std::chrono::month` / `day`, whose
+ *       constructors take `unsigned`; the parameter type is that contract, so a constraint there
+ *       could only restate it (#83).
+ */
 [[nodiscard]] constexpr auto to_ymd(
-  const YearConvertible auto year, 
-  const MonthConvertible auto month, 
-  const DayConvertible auto day
+  const YearConvertible auto year,
+  const uint32_t month,
+  const uint32_t day
 ) -> std::chrono::year_month_day {
   const std::chrono::year _year { static_cast<int32_t>(year) };
-  return std::chrono::year_month_day { _year / month / day };
+  return std::chrono::year_month_day { _year / std::chrono::month { month } / std::chrono::day { day } };
 }
 
 
@@ -71,11 +73,11 @@ concept DayConvertible = std::same_as<T, std::chrono::days> or requires (T t) {
 
 namespace util::ymd_operator {
 
-using util::DayConvertible;
+using util::DaysConvertible;
 
 [[nodiscard]] constexpr auto operator+(
   const std::chrono::year_month_day& ymd, 
-  const DayConvertible auto& days
+  const DaysConvertible auto& days
 ) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
   return std::chrono::year_month_day { time_point };
@@ -83,7 +85,7 @@ using util::DayConvertible;
 
 
 [[nodiscard]] constexpr auto operator+(
-  const DayConvertible auto& days,
+  const DaysConvertible auto& days,
   const std::chrono::year_month_day& ymd
 ) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } + std::chrono::days { days };
@@ -93,7 +95,7 @@ using util::DayConvertible;
 
 [[nodiscard]] constexpr auto operator-(
   const std::chrono::year_month_day& ymd, 
-  const DayConvertible auto& days
+  const DaysConvertible auto& days
 ) -> std::chrono::year_month_day {
   const auto time_point = std::chrono::sys_days { ymd } - std::chrono::days { days };
   return std::chrono::year_month_day { time_point };

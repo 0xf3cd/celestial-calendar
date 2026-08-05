@@ -27,6 +27,7 @@
 #include <print>
 #include <atomic>
 #include <cmath>
+#include <memory>
 #include <ranges>
 #include <thread>
 #include <unordered_set>
@@ -47,6 +48,27 @@ TEST(Util, ToYmd) {
   ASSERT_EQ(to_ymd(2024LLU, 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int32_t>(2024), 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int16_t>(2024), 3, 15), 2024y / 3 / 15);
+}
+
+/*! @brief Whether `to_ymd(y, m, d)` is a viable call. A concept rather than a bare
+           requires-expression: outside a template an ill-formed expression is a hard error,
+           not `false`. */
+template <typename Y, typename M, typename D>
+concept ToYmdCallable = requires (Y y, M m, D d) { to_ymd(y, m, d); };
+
+
+TEST(Util, ToYmdInputTypes) {
+  using namespace std::chrono;
+
+  // #83: month and day are counts, so calendar fields and durations must not reach the body.
+  static_assert(not ToYmdCallable<int, int, days>);
+  static_assert(not ToYmdCallable<int, int, day>);
+  static_assert(not ToYmdCallable<int, month, int>);
+
+  static_assert(ToYmdCallable<int, int, int>);
+  static_assert(ToYmdCallable<unsigned, unsigned, unsigned>);
+  static_assert(ToYmdCallable<int, std::size_t, uint32_t>);
+  static_assert(ToYmdCallable<float, int, int>);
 }
 
 TEST(Util, FromYmd) {
@@ -115,6 +137,39 @@ TEST(Util, OperatorSub) {
   ASSERT_EQ(ymd - 0, 1901y / 1 / 1);
   ASSERT_EQ(ymd - (-1), 1901y / 1 / 2);
   ASSERT_EQ(ymd - (-365), 1902y / 1 / 1);
+}
+
+/*! @brief Whether `util::ymd_operator::operator+(ymd, t)` is viable. Qualified because ADL from
+           `year_month_day` reaches only `std::chrono`, and the file's `using namespace util;`
+           does not reach into the nested namespace. */
+template <typename T>
+concept YmdShiftable = requires (std::chrono::year_month_day ymd, T t) {
+  util::ymd_operator::operator+(ymd, t);
+};
+
+TEST(Util, DaysConvertibleContract) {
+  using namespace std::chrono;
+
+  static_assert(DaysConvertible<days>);
+  static_assert(DaysConvertible<int>);
+  static_assert(DaysConvertible<weeks>);
+  static_assert(YmdShiftable<days>);
+  static_assert(YmdShiftable<int>);
+
+  // #83: a count of days, not a calendar field -- `days { day { 1 } }` has no viable constructor.
+  static_assert(not DaysConvertible<day>);
+  static_assert(not DaysConvertible<month>);
+  static_assert(not DaysConvertible<double>);
+  static_assert(not DaysConvertible<hours>);   // pairs with `weeks` above: exact conversions only
+  enum class Season : uint8_t { Spring = 1 };
+  static_assert(not DaysConvertible<Season>);
+
+  // The operators bind `const T&`, so the concept must check a const object too -- a conversion
+  // that is not const-qualified would otherwise pass here and fail in the body.
+  struct NonConstOnly { operator days() { return days { 3 }; } };   // NOLINT(google-explicit-constructor)
+  static_assert(not DaysConvertible<NonConstOnly>);
+  static_assert(not YmdShiftable<NonConstOnly>);
+  static_assert(not YmdShiftable<day>);
 }
 
 TEST(Util, GenRandomValue1) {
@@ -269,6 +324,23 @@ TEST(Util, HashCollision) {
   ASSERT_NEAR(tuples.size(), hash_values.size(), try_count * 0.00005);
 }
 
+
+/*! @brief Whether `make_cached` accepts a signature. `cache_func` funnels through it. */
+template <typename Sig>
+concept MakeCachedViable = requires (std::function<Sig> func) { util::cache::make_cached(func); };
+
+TEST(Util, MakeCachedConstraints) {
+  enum class Key : uint8_t { A };                      // stands in for `Jieqi` (jieqi.hpp)
+  struct Value { int32_t v; };                         // stands in for `LunarYear` (algo2.hpp)
+  struct Unhashable { auto operator==(const Unhashable&) const -> bool = default; };
+
+  static_assert(MakeCachedViable<double(int32_t, Key)>);
+  static_assert(MakeCachedViable<Value(int32_t)>);
+
+  static_assert(not MakeCachedViable<void(int)>);
+  static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
+  static_assert(not MakeCachedViable<int(Unhashable)>);
+}
 
 TEST(Util, MakeCached1) {
   std::atomic<int32_t> call_count { 0 };
