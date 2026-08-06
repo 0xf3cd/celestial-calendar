@@ -87,8 +87,8 @@ jobs:
             --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \
             --load .
 
-          # Run the Docker image and copy build artifacts to the output directory
-          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cp -r /app/build/shared_lib /output/ && cp /app/*.json /output/'
+          # Run the Docker image and install the artifacts to the output directory
+          docker run --rm -v $OUTPUT_DIR:/output $IMAGE_TAG /bin/bash -c 'tree /app/build && cmake --install /app/build --prefix /output/install && cp /app/*.json /output/'
 
 
       - name: Rename Shared Library
@@ -97,37 +97,31 @@ jobs:
           # Store the current working directory
           ROOT_DIR=$(pwd)
 
-          # Change to the directory containing the shared libraries
-          cd "$OUTPUT_DIR/shared_lib" || exit
-
-          # Create an array of shared library files
-          libs=(*.dylib *.so *.dll)
-
           # Create a destination directory
           DEST_DIR="$ROOT_DIR/${OS}_${ARCH}"
           mkdir -p "$DEST_DIR"
 
-          # Copy the shared libraries to the destination directory
-          for lib in "${libs[@]}"; do
-            if [ -f "$lib" ]; then
-              cp "$lib" "$DEST_DIR/"
-            fi
-          done
+          # Take what `cmake --install` produced in the container: real library file,
+          # SOVERSION symlinks, and the published header (lib/ + include/ tree).
+          cp -r "$OUTPUT_DIR/install/." "$DEST_DIR/"
 
-          # Guard on what was copied. The JSON files and the header below keep this directory
-          # non-empty whatever happens, so `if-no-files-found: error` on the upload cannot catch
-          # an artifact that ships with no library in it (#72).
-          if [ "$(find "$DEST_DIR" \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) -type f | wc -l)" -eq 0 ]; then
-            echo "No shared library copied out of $OUTPUT_DIR/shared_lib"
-            exit 1
-          fi
+          VERSION="${{ steps.get-build-version.outputs.BUILD_VERSION }}"
+          SOVERSION="${VERSION%.*}"  # major.minor -- the CMakeLists SOVERSION rule while 0.x
+
+          # Guard on what install produced, not on what a glob matched (#72): the JSON
+          # files below keep this directory non-empty whatever happens, so
+          # `if-no-files-found: error` on the upload cannot catch an artifact that ships
+          # with no library in it.
+          ok=1
+          [ -f "$DEST_DIR/lib/libcelestial_calendar.so.${VERSION}" ] || { echo "missing lib/libcelestial_calendar.so.${VERSION}"; ok=0; }
+          [ -L "$DEST_DIR/lib/libcelestial_calendar.so.${SOVERSION}" ] || { echo "missing symlink lib/libcelestial_calendar.so.${SOVERSION}"; ok=0; }
+          [ -L "$DEST_DIR/lib/libcelestial_calendar.so" ] || { echo "missing symlink lib/libcelestial_calendar.so"; ok=0; }
+          [ -f "$DEST_DIR/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
+          [ "$ok" -eq 1 ] || exit 1
 
           # Copy the build info JSON files to the destination directory
           cp "$OUTPUT_DIR/build_info.json" "$DEST_DIR/"
           cp "$OUTPUT_DIR/cpu_info.json" "$DEST_DIR/"
-
-          # Ship the published C-ABI header alongside the library
-          cp "$ROOT_DIR/src/shared_lib/celestial.h" "$DEST_DIR/"
 
           # Set environment variables for GitHub Actions
           {
@@ -191,22 +185,22 @@ jobs:
         CXX: clang++
         CC:  clang
       run: |
-        # Create a folder "macos_arm64" at root dir and copy the new shared library to it
-        mkdir -p ./macos_arm64
+        # Install by CMake's rules: real .dylib + version symlinks + the published header.
+        cmake --install ./build --prefix ./macos_arm64
 
-        # Find and copy real files (not symlinks)
-        find ./build/shared_lib -name "*.dylib" -type f -exec cp {} ./macos_arm64 \;
+        VERSION=$(./project.py --version)
+        SOVERSION="${VERSION%.*}"  # major.minor -- the CMakeLists SOVERSION rule while 0.x
 
-        # Guard on what was copied, not on what a glob matched: with only symlinks and no real
-        # file, `-type f` copies nothing while `celestial.h` and `build_info.json` keep the
-        # directory non-empty, so `if-no-files-found: error` never fires (#72).
-        if [ "$(find ./macos_arm64 -name '*.dylib' -type f | wc -l)" -eq 0 ]; then
-          echo "No real .dylib copied out of ./build/shared_lib"
-          exit 1
-        fi
-
-        # Ship the published C-ABI header alongside the library
-        cp ./src/shared_lib/celestial.h ./macos_arm64/
+        # Guard on what install produced, not on what a glob matched (#72). macOS puts the
+        # version inside the name: real file libcelestial_calendar.${VERSION}.dylib with
+        # .${SOVERSION}.dylib and .dylib symlinks (shape pinned by the first CI run of this
+        # step, 2026-08).
+        ok=1
+        [ -f "./macos_arm64/lib/libcelestial_calendar.${VERSION}.dylib" ] || { echo "missing lib/libcelestial_calendar.${VERSION}.dylib"; ok=0; }
+        [ -L "./macos_arm64/lib/libcelestial_calendar.${SOVERSION}.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.${SOVERSION}.dylib"; ok=0; }
+        [ -L "./macos_arm64/lib/libcelestial_calendar.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.dylib"; ok=0; }
+        [ -f "./macos_arm64/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
+        [ "$ok" -eq 1 ] || exit 1
 
         # Pack the "build_info.json" to the "macos_arm64" folder
         chmod +x ./toolbox/build_info.py
@@ -270,36 +264,21 @@ jobs:
         run: |
           # Define the root directory and output directory
           $ROOT_DIR = (Get-Location).Path
-          $LIB_DIR = "./build/shared_lib"
-
-          # Create a folder "windows_x86_64" at root dir
           $destDir = "$ROOT_DIR/windows_x86_64"
-          New-Item -ItemType Directory -Path $destDir -Force
 
-          # Get all .dll and .lib files
-          $dllFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.dll
-          $libFiles = Get-ChildItem -Path "$LIB_DIR" -Filter *.lib
+          # Install by CMake's rules: the .dll lands in bin/, its import .lib in lib/,
+          # the published header in include/.
+          cmake --install ./build --prefix $destDir
 
-          # Copy all .dll files to the destination directory
-          foreach ($dll in $dllFiles) {
-            Copy-Item -Path $dll.FullName -Destination $destDir
-          }
-
-          # Copy all .lib files to the destination directory
-          foreach ($lib in $libFiles) {
-            Copy-Item -Path $lib.FullName -Destination $destDir
-          }
-
-          # Guard on what was copied. The header and build_info.json below keep this directory
-          # non-empty whatever happens, so `if-no-files-found: error` on the upload cannot catch an
-          # artifact that ships with no library in it (#72).
-          if (@(Get-ChildItem -Path $destDir -File | Where-Object { $_.Extension -in '.dll', '.lib' }).Count -eq 0) {
-            Write-Error "No shared library copied out of $LIB_DIR"
-            exit 1
-          }
-
-          # Ship the published C-ABI header alongside the library
-          Copy-Item -Path ./src/shared_lib/celestial.h -Destination $destDir
+          # Guard on what install produced, not on what a glob matched (#72):
+          # build_info.json below keeps this directory non-empty whatever happens, so
+          # `if-no-files-found: error` on the upload cannot catch an artifact that ships
+          # with no library in it.
+          $ok = $true
+          if (!(Test-Path "$destDir/bin/celestial_calendar.dll")) { Write-Output "missing bin/celestial_calendar.dll"; $ok = $false }
+          if (!(Test-Path "$destDir/lib/celestial_calendar.lib")) { Write-Output "missing lib/celestial_calendar.lib"; $ok = $false }
+          if (!(Test-Path "$destDir/include/celestial.h")) { Write-Output "missing include/celestial.h"; $ok = $false }
+          if (!$ok) { exit 1 }
 
           # Pack the "build_info.json" to the "windows_x86_64" folder
           python3 ./toolbox/build_info.py --save-to $destDir

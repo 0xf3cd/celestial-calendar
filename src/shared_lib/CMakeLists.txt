@@ -43,6 +43,19 @@ set_target_properties(celestial_calendar PROPERTIES
   SOVERSION ${SOVERSION_NUMBER}
 )
 
+# Release packaging runs `cmake --install` (build_and_test.yml): the real file and the
+# SOVERSION symlinks land by CMake's rules, replacing the hand-rolled `-type f` copy that
+# shipped only the real file. All three destinations are required — the Windows .dll goes
+# to RUNTIME, its import .lib to ARCHIVE, and without ARCHIVE no .lib is installed.
+# No COMPONENT split: the release shape is a single zip, there is no per-component
+# audience (package config / find_package is deliberately not offered — no consumer).
+install(TARGETS celestial_calendar
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+install(FILES celestial.h DESTINATION include)
+
 # #67: compile-check the published C header as pure C (layouts pinned by `_Static_assert`
 # inside). Built as part of the default target, so CI exercises it on every platform.
 add_library(c_header_check OBJECT c_header_check.c)
