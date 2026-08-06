@@ -140,8 +140,7 @@ TEST(JulianDay, JdeUt1Anchors) {
   //               matches this repo's own ACCURATE_DELTA_T_TABLE (delta_t_test_helper.hpp).
   //   year 500:   5710 s  — Stephenson & Morrison, the same table the ΔT models fit, so the
   //               models sit within ~1 s of it there.
-  // The per-anchor tolerance bounds |model − observation| at that epoch; the conversion itself
-  // is far tighter than that.
+  // The conversion itself is far tighter than these tolerances.
   struct Anchor {
     Datetime tt;
     Datetime ut1;    // tt − observed ΔT
@@ -171,8 +170,8 @@ TEST(JulianDay, JdeUt1Anchors) {
 
 TEST(JulianDay, JdeUt1Consistency) {
   // The two directions read ΔT on different dates: `jde_to_ut1` on the TT date, `ut1_to_jde` on
-  // the UT1 date. The round-trip residual is the ΔT slope applied to a ΔT-sized time shift, plus
-  // `Datetime` rounding — ~1e-8 day in practice — so EPSILON leaves orders of magnitude of room
+  // the UT1 date. The round-trip residual is the ΔT slope applied to a ΔT-sized shift — ~2e-8 day
+  // at the 401-600 end of the span, bit-exact from 1900 on — so EPSILON keeps ~40x of headroom
   // while still catching a flipped sign or a stale/wrong scale in either direction.
   for (auto i = 0; i < 2000; ++i) {
     // 401-01-01 (the `jd_to_ut1` bound) through year 2100.

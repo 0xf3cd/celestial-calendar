@@ -90,7 +90,7 @@ TEST(NewMoon, InvalidArgument) {
   ASSERT_THROW(std::ignore = newton_method(root - 0.5, root + 2.0), std::invalid_argument);
 
   // `next_root` insists its seed is a root: ten days past conjunction the elongation is
-  // a third of a turn away.
+  // ~120 deg away.
   ASSERT_THROW(std::ignore = next_root(root + 10.0), std::invalid_argument);
 }
 

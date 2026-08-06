@@ -100,8 +100,8 @@ TEST(JieQi, GeneratorExclusiveStart) {
   ASSERT_EQ(jq2, Jieqi::春分);
   ASSERT_EQ(jde2, chunfen);
 
-  // The only deterministic way to hit the constructor's fall-through branch (jieqi.hpp:299-300):
-  // no jieqi of the start year lies ahead of 冬至, so it rolls over to next year's 小寒.
+  // The only deterministic way to hit the constructor's roll-over path (`++_year; _jq_index =
+  // 小寒`): no jieqi of the start year lies ahead of 冬至, so the next one is next year's 小寒.
   const auto [jq3, jde3] = JieqiGenerator { jieqi_jde(2025, Jieqi::冬至) }.next();
   ASSERT_EQ(jq3, Jieqi::小寒);
   ASSERT_EQ(jde3, jieqi_jde(2026, Jieqi::小寒));
