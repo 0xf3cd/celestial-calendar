@@ -53,16 +53,22 @@ PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
   ("astro::Foo::operator std::vector<double>()", False),
   ("typeinfo for astro::Foo", False),
   ("vtable for astro::Foo", False),
+  # The two residuals the predicate knowingly passes, pinned so that tightening the
+  # rule shows up here as a diff instead of silently changing what the gate accepts.
+  ("typeinfo for astro::Fn<double (int)>", True),
+  ("typeinfo for (anonymous namespace)::Foo", True),
 ]
 
 
 def is_std_vague_linkage(demangled: str) -> bool:
   """Whether a demangled survivor is a C++ vague-linkage artifact rather than API surface."""
-  # RTTI: builtin and function types are anonymous -- no named type to link against.
-  # A USER type's typeinfo is a linkable data symbol (cross-DSO catch / dynamic_cast
-  # match on its address), so it takes the qualified-name check like a vtable. An
-  # unqualified user type is indistinguishable from a builtin here; every class in
-  # this repo is namespaced.
+  # RTTI: a builtin's or a function type's typeinfo names nothing a consumer could link
+  # against; a user type's is a defined data symbol in the dynamic table, so it takes the
+  # qualified-name check like a vtable. Two residuals, both knowingly left: "(" stands in
+  # for "function type", so `Fn<double(int)>` and `(anonymous namespace)::Foo` pass; and a
+  # global-namespace class reads exactly like a builtin here -- celestial.h's C-ABI structs
+  # are that shape, and emit no RTTI only because they are POD. Both are strictly narrower
+  # than the "pass every typeinfo" this replaced; tighten if a survivor ever leaks through.
   for prefix in ("typeinfo for ", "typeinfo name for "):
     if demangled.startswith(prefix):
       rest = demangled[len(prefix):]
@@ -288,8 +294,12 @@ def check_export_surface() -> int:
       soname = read_soname(so)
       if soname != expected_soname:
         failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} (major.minor of VERSION while 0.x)")
-    except RuntimeError as e:  # nm / c++filt / readelf missing or failed
-      failures.append(str(e))
+    except Exception as e:  # noqa: BLE001 -- see below
+      # Deliberately broad: the sentence above promises that no tool failure loses the
+      # static findings, and the failure modes are not all `RuntimeError` -- c++filt can
+      # exit 0 with a short output (`ValueError` from the strict `zip`), and an exec that
+      # gets past `which` raises `OSError`. Narrowing this re-opens the swallow.
+      failures.append(f"{type(e).__name__}: {e}")
 
   print("#" * 60)
   if failures:
