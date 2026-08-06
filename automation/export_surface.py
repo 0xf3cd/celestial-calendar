@@ -20,12 +20,10 @@ from .abi_layout import STRUCT_RE
 from .utils import run_cmd, green_print, red_print, yellow_print
 
 
-# Non-entry exports that must stay exported anyway, each mapped to the reason it cannot
-# be hidden (#91: list every survivor with its reason, never fold them into a count).
-# Empty today: every current survivor is a std vague-linkage weak/unique symbol, matched
-# by the vague-linkage predicate below rather than listed here. The human-facing copy of
-# this list lives in src/shared_lib/CMakeLists.txt; this constant is the machine-readable
-# source.
+# Non-entry exports that must stay exported anyway, each mapped to the reason it cannot be
+# hidden (#91: every survivor gets a reason, never a count). Empty while the predicate below
+# accounts for all of them. Machine-readable source; the human-facing copy of whatever lands
+# here belongs in src/shared_lib/CMakeLists.txt.
 SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {
 }
 
@@ -36,10 +34,8 @@ SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {
 # escapes the hiding must be named in SURVIVOR_EXCEPTIONS with a reason -- widening this
 # predicate instead defeats the gate.
 
-# Predicate self-test: std-owned shapes must pass, user-owned shapes must not -- in
-# particular a user symbol whose argument, return type, or conversion-operator target
-# merely mentions std:: (that substring must not whitewash it), and user-type RTTI,
-# which unlike builtin/function-type RTTI names a type a consumer can link against.
+# Predicate self-test: std-owned shapes pass, user-owned shapes do not. The samples that
+# matter are the ones where a std:: substring must NOT whitewash a symbol we own.
 PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
   ("char* std::__add_grouping<char>(char*, char*, char)", True),
   ("vtable for std::vector<double, std::allocator<double> >", True),
@@ -52,27 +48,18 @@ PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
   ("astro::Foo::operator std::vector<double>()", False),
   ("typeinfo for astro::Foo", False),
   ("vtable for astro::Foo", False),
-  # A global-namespace class: the shape of celestial.h's own C-ABI structs, and the one
-  # the "no :: means builtin" branch used to wave through. Blocked now, and pinned here
-  # so that re-widening the rule turns this line red.
+  # A global-namespace class -- the shape of celestial.h's own structs. Re-widening the
+  # rule to wave these through turns this line red.
   ("typeinfo for JulianDay", False),
-  # "(" still stands in for "function type", so a function type mentioning a type this
-  # library owns passes. Pinned as the approximation it is.
+  # "(" stands in for "function type", so a function type naming one of ours passes.
   ("typeinfo for astro::Fn<double (int)>", True),
 ]
 
 
 def is_std_vague_linkage(demangled: str) -> bool:
   """Whether a demangled survivor is a C++ vague-linkage artifact rather than API surface."""
-  # RTTI for a function type is anonymous -- it names no type, so nobody can link
-  # against it. Everything else goes through the same qualified-name check as a vtable.
-  # An earlier version also waved through any RTTI whose name carried no "::", meaning
-  # to spare the builtins; that also spared every global-namespace class, which is the
-  # shape of celestial.h's own C-ABI structs. None of the 43 survivors this library
-  # actually exports took that branch -- builtin RTTI is referenced here, never defined
-  # -- so the branch is gone rather than justified. A builtin's RTTI turning up defined
-  # in this library would now be a finding, which is the right way round: put it in
-  # SURVIVOR_EXCEPTIONS with the reason it is there.
+  # RTTI for a function type is anonymous -- it names no type, so nobody can link against
+  # it. Every other RTTI takes the same qualified-name check as a vtable, builtins included.
   for prefix in ("typeinfo for ", "typeinfo name for "):
     if demangled.startswith(prefix):
       rest = demangled[len(prefix):]
@@ -117,11 +104,9 @@ def self_test_predicate() -> List[str]:
       failures.append(f"predicate self-test: {sample!r} -> {actual}, expected {expected}")
   return failures
 
-# Parser self-test samples (shape -> expected (name, has_macro) pairs). The gate runs
-# these before trusting the parser: a parser that cannot read the declaration shapes in
-# use would report a maimed entry set and call it green. One sample per shape in play:
-# macro-prefixed plain, pointer return type, multi-line parameter list, and one
-# declaration without the macro (the mutation the static half exists to catch).
+# Parser self-test samples (shape -> expected (name, has_macro) pairs), one per declaration
+# shape in play. A parser that cannot read them all would report a maimed entry set and
+# call the gate green, so these run before the parser is trusted.
 PARSER_SELF_TEST: Final[List[Tuple[str, List[Tuple[str, bool]]]]] = [
   ("CELESTIAL_API bool alpha(uint8_t v);", [("alpha", True)]),
   ("CELESTIAL_API const char *beta(void);", [("beta", True)]),
@@ -232,14 +217,11 @@ def check_export_surface() -> int:
   - static: every file-scope declaration in celestial.h carries CELESTIAL_API. A missing
     macro is a missing export on Windows -- caught here, without needing a Windows leg.
   - dynamic: the strong defined symbols of the built .so are exactly the entry set plus
-    SURVIVOR_EXCEPTIONS, and every survivor beyond that is a std vague-linkage weak/unique
-    symbol (the vague-linkage predicate). This is the half that proves the hiding held.
-  Plus a SONAME pin: DT_SONAME must be the major.minor form of the real file's version,
-  which is the promise the CMakeLists SOVERSION comment makes while 0.x.
+    SURVIVOR_EXCEPTIONS, everything else being vague linkage. This half proves the hiding held.
+  Plus a SONAME pin against the major.minor form the CMakeLists promises while 0.x.
 
-  Needs the built library (`./project.py --build`): a missing build turns the gate red,
-  never a silent skip. The parser self-test runs first -- a broken parser must fail the
-  gate, not pass it with a maimed entry set.
+  Needs the built library (`./project.py --build`); a missing build turns the gate red,
+  never a silent skip.
   """
   print("#" * 60)
   yellow_print("Checking that the export surface matches the celestial.h entry points...")
