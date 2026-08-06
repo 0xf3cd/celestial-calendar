@@ -48,16 +48,17 @@ namespace calendar::lunar::algo2 {
 
 using calendar::lunar::common::LunarYear;
 
-// A convention, not a physical ceiling — the method computes rather than looks up. Past ~2100 ΔT
-// is extrapolated with no observational anchor; by year 5000 it reaches ~0.36 day and is uncertain
-// to its own order, enough to move a new moon across the UTC+8 midnight that starts a month.
-// Narrowing the window needs an error budget, not a cliff to cut at (#139).
+// A convention, not a physical ceiling — the method computes rather than looks up. The ceiling
+// sits where the UTC+8 civil-day assignment stops being reliable: the ΔAT table freezes at 37 s
+// past its last entry (2017), so if UTC keeps tracking UT1 — leap seconds or a successor
+// mechanism (CGPM 2022 Res. 4) — the rendered civil time drifts from the real one by an unknowable
+// amount; VSOP·ELP drift is second-order. Error budget, measurement, threshold decision: #139.
 
 /** @brief The first supported lunar year. */
 inline constexpr int32_t START_YEAR = 410;
 
 /** @brief The last supported lunar year. */
-inline constexpr int32_t END_YEAR = 5000;
+inline constexpr int32_t END_YEAR = 2500;
 
 
 /**

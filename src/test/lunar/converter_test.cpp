@@ -54,8 +54,8 @@ TEST(Converter, IsValidGregorian) {
 
     ASSERT_TRUE(Converter::is_valid_gregorian(2024y / 3 / 17));
 
-    ASSERT_TRUE(Converter::is_valid_gregorian(5000y / 2 / 8));
-    ASSERT_FALSE(Converter::is_valid_gregorian(5002y / 2 / 9));
+    ASSERT_TRUE(Converter::is_valid_gregorian(2500y / 2 / 8));
+    ASSERT_FALSE(Converter::is_valid_gregorian(2502y / 2 / 9));
   }
 
   {
@@ -103,6 +103,9 @@ TEST(Converter, IsValidLunar) {
     
     ASSERT_FALSE(Converter::is_valid_lunar(409y / 12 / 29));
     ASSERT_TRUE(Converter::is_valid_lunar(410y / 1 / 1));
+
+    ASSERT_TRUE(Converter::is_valid_lunar(2500y / 1 / 1));
+    ASSERT_FALSE(Converter::is_valid_lunar(2501y / 1 / 1));
   }
 
   {
@@ -139,8 +142,8 @@ TEST(Converter, GregorianToLunarNegative) {
     ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(400y / 12 / 29));
     ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(411y / 1 / 1));
 
-    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(5000y / 1 / 1));
-    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(5002y / 1 / 1));
+    ASSERT_NE(std::nullopt, Converter::gregorian_to_lunar(2500y / 1 / 1));
+    ASSERT_EQ(std::nullopt, Converter::gregorian_to_lunar(2502y / 1 / 1));
   }
 
   {
