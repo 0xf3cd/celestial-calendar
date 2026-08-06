@@ -14,7 +14,7 @@ import re
 from typing import Final, List, Set
 
 from . import paths
-from .export_surface import entry_point_names
+from .export_surface import entry_point_names, self_test_parser
 from .utils import green_print, red_print, yellow_print
 
 
@@ -30,6 +30,10 @@ ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "slot_count",
 }
 
+# Only multi-word snake tokens are held: every entry point — and every function name a
+# log string could quote, by repo naming convention — is snake_case, while a lone
+# lowercase word cannot be told from English prose, and CamelCase/ALL_CAPS names are
+# types or constants, not functions (#72's defect class is function names).
 SNAKE_TOKEN_RE: Final[re.Pattern] = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
 STRING_LITERAL_RE: Final[re.Pattern] = re.compile(r'"((?:[^"\\]|\\.)*)"')
 
@@ -41,10 +45,18 @@ def check_log_names() -> int:
   message that names an internal or long-gone function sends that user chasing a
   symbol that does not exist. The entry set is parsed from celestial.h (the same
   parser the export-surface gate uses), so the check cannot drift from the header.
-  Pure parsing -- no build needed, any leg can run it.
+  Only multi-word snake_case tokens are held (see SNAKE_TOKEN_RE). Pure parsing --
+  no build needed, any leg can run it.
   """
   print("#" * 60)
   yellow_print("Checking that lib_*.cpp log strings name only celestial.h entry points...")
+
+  failures: List[str] = self_test_parser()
+  if failures:
+    for f in failures:
+      red_print(f"  - {f}")
+    red_print("Log-names gate is broken (parser self-test failed); fix the parser, not the data")
+    return 1
 
   header = paths.proj_root() / "src" / "shared_lib" / "celestial.h"
   entries = set(entry_point_names(header))
@@ -53,10 +65,12 @@ def check_log_names() -> int:
     return 1
   allowed = entries | ALLOWED_NON_ENTRY_TOKENS
 
-  failures: List[str] = []
+  failures = []
   lib_dir = paths.proj_root() / "src" / "shared_lib"
   for source in sorted(lib_dir.glob("lib*.cpp")):
     for lineno, line in enumerate(source.read_text().splitlines(), start=1):
+      if line.lstrip().startswith("#"):  # `#include "x.hpp"` is not a log string
+        continue
       for literal in STRING_LITERAL_RE.findall(line):
         for token in SNAKE_TOKEN_RE.findall(literal):
           if token not in allowed:

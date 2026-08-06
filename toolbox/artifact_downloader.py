@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Helper to download artifacts (latest builds) from GitHub.
+# Helper to download build artifacts from GitHub.
 #
 #########################################################################################
 #
@@ -50,17 +50,19 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
 def release_commit_sha() -> str:
   """The commit the artifacts must have been built from.
 
-  In CI (release.yml runs on a tag push) GITHUB_SHA is the tag's commit; locally, fall
-  back to `git rev-parse HEAD` -- release.yml checks the tag out, so HEAD there is the
-  tag's commit, and anywhere else HEAD is simply the commit the caller means.
+  `git rev-parse HEAD` first: release.yml checks the tag out, so HEAD there is the tag's
+  commit (already peeled, even for an annotated tag), and anywhere else HEAD is simply
+  the commit the caller means. GITHUB_SHA is the fallback. The rev-parse runs at the
+  repo root -- the caller's cwd may not be a repo at all.
   """
+  ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                       cwd=Path(__file__).parent.parent)
+  if ret.returncode == 0:
+    return ret.stdout.strip()
   sha = os.environ.get("GITHUB_SHA")
   if sha:
     return sha
-  ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
-  if ret.returncode != 0:
-    raise RuntimeError("Cannot resolve the release commit: GITHUB_SHA is unset and `git rev-parse HEAD` failed")
-  return ret.stdout.strip()
+  raise RuntimeError("Cannot resolve the release commit: `git rev-parse HEAD` failed and GITHUB_SHA is unset")
 
 
 def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
@@ -89,7 +91,7 @@ def parse_args() -> argparse.Namespace:
     type=int, 
     required=False,
     default=0,
-    help="The ID of the artifact run. If not specified, the latest artifact run will be used."
+    help="The ID of the artifact run. If not specified, the successful run that built the release commit is used."
   )
   parser.add_argument(
     "-s", "--save-to", 
