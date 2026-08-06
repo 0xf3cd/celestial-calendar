@@ -49,9 +49,10 @@
 // (algo1 ends 1915 with 29 days; algo2 with 30).
 //
 // Mechanism (ytliu0 廖育棟, ChineseCalendar computation page, accessed 2026-08-05):
-// from 1914 the published almanac switched to Beijing local mean time UT+7:46; from
-// 1929 it uses UT+8. That 14m20s offset is why a new moon a few minutes past UTC+8
-// midnight falls on the previous civil day under the almanac rule.
+// from 1914 the published almanac switched to Beijing local mean time (≈ UT+7:46;
+// more precisely 7h45m40s at 116°25′E); from 1929 it uses UT+8. That 14m20s offset
+// is why a new moon a few minutes past UTC+8 midnight falls on the previous civil
+// day under the almanac rule.
 //
 // 1906-04-24 00:06:35 UTC+8 is the counter-example that kills any pure time-zone rule
 // extrapolated into the Qing: HKO T1906c keeps 四月初一 on 04-24 (no flip). 1906 is
@@ -62,11 +63,12 @@
 //
 // Three-layer values (absolute pins below):
 //   1. notebook cell output in statistics/lunar_calendar.ipynb (algo1 vs algo2 dump)
-//   2. HKO T1914c / T1916c / T1920c.txt line-level text (presearch 08 evidence zone 2)
+//   2. HKO T1914c / T1916c / T1920c.txt line-level text
 //   3. ytliu0 page (mechanism + the three 初一 rows; no 1906 row there)
 //
-// Reproducible "3-of-4 hit" scan of 1901–1929 new moons that fall inside the first
-// 14m20s after UTC+8 midnight: statistics/algo3_ytliu0_golden.py --scan-near-midnight.
+// Reproducible near-midnight scan of 1901–1929 new moons that fall inside the first
+// 14m20s after UTC+8 midnight (4 hits, of which 3 flipped the almanac):
+//   python3 statistics/algo3_ytliu0_golden.py scan-near-midnight
 // That scan covers syzygies only (the four moons above); it does NOT cover the 1917 /
 // 1927 / 1928 jieqi-only differences noted by ytliu0.
 
@@ -76,7 +78,6 @@ auto pick_random_years() -> std::vector<int32_t> {
   using namespace std::ranges;
 
   const auto filter_year = [](int32_t year) {
-    // Two independent exclusion sets — keep them as two sentences, do not merge:
     // 1914/1915/1916/1920 → pinned in KnownDivergences below (#70 / D-Q).
     // 2057/2097 → still #64 (near-midnight syzygy under algo5 ΔT); excluded here and
     // NOT pinned in this PR (called out in the #70 close-out comment).

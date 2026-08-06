@@ -32,54 +32,48 @@
 
 // Independent external-oracle golden for algo3 baked years (#70 §2 / D-P).
 //
-// ## Source
-// ytliu0 / ChineseCalendar (廖育棟 / Yuk-Tung Liu), commit
+// Source: ytliu0 / ChineseCalendar (廖育棟 / Yuk-Tung Liu), commit
 //   d6aae82b63b79a6f8659ea3e064024b7d8ac3077
 // file `src/calendarData.js` (695460 bytes, md5 6c9649f384d178918d9cb4618f7d3e98),
 // function `ChineseToGregorian()` — the main year table.
-// License of that repository: GPLv3 (same family as this repo's GPLv3+). This comment
-// records the fact; it is not a legal opinion about combining the works.
-// Collected 2026-08-05. Frozen sample of the 114-row main table:
-//   vault `attachments/2026-08-05-P5b-golden-前期工/golden-采样草案.md`
-//   (in-repo copy under `.review/style-arch/golden-pre/` for CLI readers).
-// Regenerator / re-verifier: `statistics/algo3_ytliu0_golden.py`
-//   (`emit-cpp`, `compare-all`, and the 1901–1929 near-midnight scan).
+// That repository is GPLv3; this repo is GPL-3.0-or-later. Collected 2026-08-05.
 //
-// ## Row set
-// - 114 rows from the frozen sample (endpoint substitute **1603** — year 1600 itself is
-//   a Ming 订正 year and is only in the sample as 备查, not in this table).
-// - +1 row for **2099** (W-A2, 2026-08-05): upper algo1/algo3 seam next to 2100, decoded
-//   from the same commit's calendarData.js at byte offset noted on the row. No other
-//   re-sampling is in scope.
+// SSOT for the 115 rows is **this table**. Regenerate from the pinned ytliu0 commit with
+//   python3 statistics/algo3_ytliu0_golden.py emit-cpp --include-2099 --ytliu0 <checkout>
+// (optional frozen-sample path via `--sample` for the 114-row set without a checkout).
+// Re-verify against algo3: `compare-sample`. Near-midnight scan: `scan-near-midnight`.
+//
+// Rows: 114 from the frozen sample (endpoint substitute **1603** — year 1600 itself is
+// a Ming 订正 year and is only in the sample as 备查, not here) + **2099** (W-A2,
+// 2026-08-05) for the upper algo1/algo3 seam next to 2100, decoded from the same commit
+// at the byte offset on the row. No other re-sampling is in scope.
 // Coverage vs algo3's 600 baked years: 115/600 ≈ 19%. By window:
-//   69/301 in 1600–1900 (incl. lower seam 1900/1901), **2/199** in 1901–2099
-//   (only the two seams 1901 and 2099 — the HKO bulk has almost no external pin),
-//   45/100 in 2100–2199. Comments must NOT claim "algo3 already has a full external oracle".
+//   68/301 in 1600–1900 (incl. lower-seam year 1900), **2/199** in 1901–2099
+//   (only the seams 1901 and 2099 — the HKO bulk has almost no external pin),
+//   45/100 in 2100–2199.
 //
-// ## Independence (write per segment; do not collapse into one sentence)
+// Independence (per segment):
 // - 2100–2199 (45 rows): both sides are modern computation —
 //   ytliu0 DE441+SM16 vs this repo VSOP87/ELP2000+algo5. Fully independent chains.
 // - Qing 1645–1900 sample rows: ytliu0's pipeline is "modern compute then correct against
-//   the published almanac"; years that needed no correction are the modern-compute edge
-//   and may be compared for independence against algo3.
+//   the published almanac"; rows that needed no correction are pure modern computation,
+//   so they are independent of this repo's chain; corrected rows would not be.
 // - Ming 1600–1644 six rows in this table (1603/1607/1618/1625/1633/1639): labelled
 //   **巧合全等** — ytliu0's base material is 张培瑜 historical reconstruction, NOT DE441.
 //   Do not put these six under the DE441-independence sentence.
 //
-// ## Sampling honesty
-// Rows were selected only among years where the two chains already agreed on the four
-// structural fields at collection time. Under today's construction the table is therefore
-// green by design; what it pins is *future drift*, not "algo3 is correct today".
-// Qing "avoid 修正年" operational definition = avoid the 28 years where algo3 disagreed
-// on those fields (there is no published full 修正年 roster to cite).
+// Sampling honesty: rows were selected only among years where the two chains already
+// agreed on the four structural fields at collection time. Under today's construction
+// the table is therefore green by design; what it pins is *future drift*, not
+// "algo3 is correct today". Qing "avoid 修正年" operational definition = avoid the 28
+// years where algo3 disagreed on those fields (there is no published full 修正年 roster).
 // Residual full-range mismatches at collection: 52 of 600, bucketed by era
 // (Qing 28 + Ming 22 + 2057/2097) — case-by-case root causes are NOT claimed here.
 //
-// ## Seams / endpoints covered
-// 1603 (endpoint substitute) · 1900/1901 (algo1-source switch) · 2099/2100 (upper seam;
-// 2099 via W-A2) · 2199 · #64 re-bake years 2133/2165/2172.
+// Seams / endpoints covered in the table (and named in EndpointsAndSeams):
+// 1603 · 1900/1901 · 2099/2100 · 2199 · #64 years 2133/2165/2172.
 //
-// Integer civil-day fields: zero tolerance (`ASSERT_EQ`).
+// Integer civil-day fields: exact equality (`EXPECT_EQ` per field).
 
 namespace calendar::lunar::algo3::test {
 
@@ -94,7 +88,7 @@ struct Ytliu0Row {
 
 // 115 rows: frozen 114 + W-A2 2099. `js@N` = byte offset into calendarData.js at the
 // pinned commit (provenance for the pre-work package / the 2099 decode).
-const std::vector<Ytliu0Row> kYtliu0Rows {
+const std::vector<Ytliu0Row> YTLIU0_ROWS {
   { 1603, std::chrono::year { 1603 } / 2 / 11, 0, { 30, 29, 30, 29, 30, 29, 29, 30, 29, 30, 29, 30 } },  // js@103230 total=354
   { 1607, std::chrono::year { 1607 } / 1 / 28, 6, { 29, 30, 29, 30, 29, 30, 29, 30, 30, 29, 30, 29, 30 } },  // js@103474 total=384
   { 1618, std::chrono::year { 1618 } / 1 / 26, 4, { 30, 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29 } },  // js@104147 total=384
@@ -223,23 +217,20 @@ void expect_row_matches_algo3(const Ytliu0Row& row) {
 
 // Full sampled table (zero-tolerance civil-day fields).
 TEST(LunarAlgo3Ytliu0, SampledYearsMatch) {
-  ASSERT_EQ(kYtliu0Rows.size(), 115u);
-  for (const auto& row : kYtliu0Rows) {
+  ASSERT_EQ(YTLIU0_ROWS.size(), 115U);
+  for (const auto& row : YTLIU0_ROWS) {
     expect_row_matches_algo3(row);
   }
 }
 
-// Endpoint / seam / #64 pins called out by name so a filter can re-run just them.
-// Values come from the same table as SampledYearsMatch (no second source of truth).
+// Named endpoint / seam / #64 pins (same table as SampledYearsMatch — no second source).
 TEST(LunarAlgo3Ytliu0, EndpointsAndSeams) {
-  // 1603 (endpoint substitute) · 1900/1901 (lower seam) · 2099/2100 (upper seam,
-  // 2099 via W-A2) · 2199 · #64 years 2133/2165/2172.
   for (const int32_t y : { 1603, 1900, 1901, 2099, 2100, 2199, 2133, 2165, 2172 }) {
     const auto it = std::find_if(
-      kYtliu0Rows.begin(), kYtliu0Rows.end(),
+      YTLIU0_ROWS.begin(), YTLIU0_ROWS.end(),
       [y](const Ytliu0Row& r) { return r.year == y; }
     );
-    ASSERT_NE(it, kYtliu0Rows.end()) << "missing named year " << y;
+    ASSERT_NE(it, YTLIU0_ROWS.end()) << "missing named year " << y;
     expect_row_matches_algo3(*it);
   }
 }

@@ -13,36 +13,30 @@
 
 """algo3 ↔ ytliu0 external-oracle tooling for P5b (#70 §2 / D-P).
 
-Frozen sample source
---------------------
+Source
+------
 ytliu0/ChineseCalendar (廖育棟 / Yuk-Tung Liu), commit
   d6aae82b63b79a6f8659ea3e064024b7d8ac3077
-file `src/calendarData.js` (GPLv3). Collected 2026-08-05; the 114-row main table
-lives in the vault attachment `attachments/2026-08-05-P5b-golden-前期工/` (and the
-in-repo copy under `.review/style-arch/golden-pre/`). W-A2 (2026-08-05) additionally
-allows a single 2099 row to pin the upper algo1/algo3 seam (2099/2100); that row is
-extracted from the same commit under the same provenance discipline.
+file `src/calendarData.js` (GPLv3; md5 pin below). Collected 2026-08-05.
+W-A2 allows a single 2099 row for the upper algo1/algo3 seam (2099/2100).
 
-What this script does
----------------------
-1. `--scan-near-midnight`  Reproducible "3-of-4 hit" scan for #70 §1 provenance debt:
-   walk every new moon in 1901–1929 and report those that fall inside the first
-   14m20s after UTC+8 midnight. Expected hits (four syzygies):
+Subcommands
+-----------
+1. scan-near-midnight  Reproducible near-midnight syzygy scan (1901–1929, first
+   14m20s after UTC+8 midnight). Expected hits (4 syzygies; 3 flipped the almanac):
      1906-04-24 00:06:35  (no almanac flip — Qing counter-example)
      1914-11-18 00:01:49  (divergence)
      1916-02-04 00:05:13  (divergence; also drives 1915's last-month length)
      1920-11-11 00:04:48  (divergence)
-   Scope note: this scan covers **syzygies only**. It does NOT cover the 1917 /
-   1927 / 1928 jieqi-only differences listed by ytliu0.
-2. `--emit-cpp`            Emit the C++ row table for
-   `src/test/lunar/algo3_ytliu0_golden_test.cpp` from the frozen sample (and the
-   optional 2099 W-A2 row). See module docstring of that test for independence /
-   honesty claims; this mode does not re-argue them.
-3. `--compare-all`         Full 1600–2199 field-by-field compare of ytliu0 decode
-   vs algo3 (needs a local ytliu0 checkout). Used to re-derive the 548/52 split.
+   Syzygies only — does NOT cover 1917 / 1927 / 1928 jieqi-only differences.
+2. emit-cpp            Emit C++ rows matching `algo3_ytliu0_golden_test.cpp`
+   (`YTLIU0_ROWS`). Needs frozen sample and/or --ytliu0 for W-A2 2099.
+3. compare-sample      Compare the frozen 114-row sample (+ optional 2099) to
+   algo3 via the shared library. Does **not** re-derive the full-range 548/52
+   split (that needs a full ytliu0 decode over 1600–2199; not wired here).
 
-Modes 2–3 need either the frozen markdown table or a ytliu0 checkout; mode 1 only
-needs the built shared library (via statistics/common.py).
+Mode 1 needs the built shared library; modes 2–3 need the frozen sample path
+and/or a ytliu0 checkout at the pinned commit.
 """
 
 from __future__ import annotations
@@ -62,13 +56,15 @@ STATISTICS = Path(__file__).resolve().parent
 YTLIU0_COMMIT = "d6aae82b63b79a6f8659ea3e064024b7d8ac3077"
 YTLIU0_REPO = "https://github.com/ytliu0/ChineseCalendar"
 YTLIU0_DATA_REL = "src/calendarData.js"
+YTLIU0_DATA_MD5 = "6c9649f384d178918d9cb4618f7d3e98"
+YTLIU0_DATA_BYTES = 695460
 
-# Beijing local mean time offset from UT is +7h46m; the UTC+8 civil clock is 14m20s
-# ahead. A new moon in (midnight, midnight+14m20s] UTC+8 falls on the previous civil
-# day under the 1914–1928 almanac rule.
+# Beijing local mean time ≈ UT+7:46 (more precisely 7h45m40s at 116°25′E); UTC+8 is
+# 14m20s ahead. A new moon with 0 ≤ secs_after_midnight < 14m20s UTC+8 falls on the
+# previous civil day under the 1914–1928 almanac rule.
 NEAR_MIDNIGHT_WINDOW = timedelta(minutes=14, seconds=20)
 SCAN_YEAR_START = 1901
-SCAN_YEAR_END = 1929  # exclusive upper bound of the half-open mental range; inclusive walk
+SCAN_YEAR_END = 1929  # inclusive walk via range(start, end + 1)
 
 # Expected syzygies (UTC+8 civil clock, second precision). Used only as a self-check
 # printout — the scan itself is data-driven from the library.
@@ -96,12 +92,13 @@ class GoldenRow:
   js_offset: int  # byte offset into calendarData.js (provenance)
 
   def to_cpp_line(self) -> str:
+    """Emit one row matching `YTLIU0_ROWS` in algo3_ytliu0_golden_test.cpp."""
     ml = ", ".join(str(d) for d in self.month_lengths)
+    y, m, d = self.first_day.year, self.first_day.month, self.first_day.day
     return (
-      f"  {{ {self.year}, "
-      f"{{ {self.first_day.year}, {self.first_day.month}, {self.first_day.day} }}, "
-      f"{self.leap_month}, {{ {ml} }}, {self.total_days} }},"
-      f"  // calendarData.js @{self.js_offset}"
+      f"  {{ {self.year}, std::chrono::year {{ {y} }} / {m} / {d}, "
+      f"{self.leap_month}, {{ {ml} }} }},  "
+      f"// js@{self.js_offset} total={self.total_days}"
     )
 
 
@@ -213,7 +210,7 @@ def cmd_emit_cpp(args: argparse.Namespace) -> int:
     row_2099 = extract_ytliu0_year(2099, Path(args.ytliu0) if args.ytliu0 else None)
     # Keep chronological order: 2099 sits between 1901 and 2100.
     rows = sorted(rows + [row_2099], key=lambda r: r.year)
-  print(f"// generated by statistics/algo3_ytliu0_golden.py --emit-cpp")
+  print("// generated by statistics/algo3_ytliu0_golden.py emit-cpp")
   print(f"// ytliu0 commit {YTLIU0_COMMIT}; frozen sample 114 rows"
         + (" + W-A2 2099" if args.include_2099 else ""))
   print(f"// row count = {len(rows)}")
@@ -232,14 +229,15 @@ def _parse_calendar_data_js(data_path: Path) -> dict[int, list[int]]:
     nums = [int(x) for x in m.group(1).split(",")]
     year = nums[0]
     rows[year] = nums
-    # stash byte offset on a side channel via a parallel dict attribute
   return rows
 
 
 def _row_byte_offset(data_path: Path, year: int) -> int:
   raw = data_path.read_text(encoding="utf-8")
   m = re.search(rf"\[{year},", raw)
-  return m.start() if m else 0
+  if m is None:
+    raise KeyError(f"year {year} not found in {data_path}")
+  return m.start()
 
 
 def decode_ytliu0_row(nums: list[int], js_offset: int = 0) -> GoldenRow:
@@ -263,7 +261,6 @@ def decode_ytliu0_row(nums: list[int], js_offset: int = 0) -> GoldenRow:
   if sum(ml) != total:
     raise ValueError(f"year {year}: sum(ml)={sum(ml)} != total={total}")
   first = date(year, 1, 1) + timedelta(days=starts12[0] - 1)
-  # date() rejects year < 1; ytliu0 has negative years we never sample.
   return GoldenRow(
     year=year,
     first_day=first,
@@ -286,7 +283,12 @@ def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
     raise FileNotFoundError(data_path)
   raw = data_path.read_bytes()
   digest = hashlib.md5(raw).hexdigest()
-  print(f"# calendarData.js md5={digest} bytes={len(raw)} commit-expect={YTLIU0_COMMIT}",
+  if len(raw) != YTLIU0_DATA_BYTES or digest != YTLIU0_DATA_MD5:
+    raise SystemExit(
+      f"calendarData.js fingerprint mismatch: bytes={len(raw)} md5={digest}; "
+      f"expected bytes={YTLIU0_DATA_BYTES} md5={YTLIU0_DATA_MD5} at commit {YTLIU0_COMMIT}"
+    )
+  print(f"# calendarData.js md5={digest} bytes={len(raw)} commit={YTLIU0_COMMIT}",
         file=sys.stderr)
   table = _parse_calendar_data_js(data_path)
   if year not in table:
@@ -294,10 +296,10 @@ def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
   return decode_ytliu0_row(table[year], _row_byte_offset(data_path, year))
 
 
-def cmd_compare_all(args: argparse.Namespace) -> int:
-  """Full-range compare placeholder — filled in c3 once ytliu0 decode path is solid.
+def cmd_compare_sample(args: argparse.Namespace) -> int:
+  """Compare the frozen 114-row sample against algo3 (shared library).
 
-  For now, compare the frozen 114-row sample against algo3 via the shared library.
+  Not a full 1600–2199 oracle re-derivation of the 548/52 split.
   """
   common = _load_common()
   rows = load_frozen_sample(Path(args.sample) if args.sample else None)
@@ -324,26 +326,24 @@ def main(argv: list[str] | None = None) -> int:
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   sub = parser.add_subparsers(dest="cmd", required=True)
 
-  p_scan = sub.add_parser("scan-near-midnight", aliases=["--scan-near-midnight"],
-                          help="1901–1929 14m20s syzygy scan (3-of-4 provenance)")
+  p_scan = sub.add_parser("scan-near-midnight",
+                          help="1901–1929 14m20s syzygy scan (4 hits / 3 divergences)")
   p_scan.set_defaults(func=cmd_scan_near_midnight)
 
-  p_emit = sub.add_parser("emit-cpp", help="emit C++ golden rows from frozen sample")
+  p_emit = sub.add_parser("emit-cpp", help="emit C++ golden rows matching YTLIU0_ROWS")
   p_emit.add_argument("--sample", default=None, help="path to golden-采样草案.md")
   p_emit.add_argument("--include-2099", action="store_true",
                       help="W-A2: append ytliu0 year 2099 (needs --ytliu0)")
   p_emit.add_argument("--ytliu0", default=None, help="path to ytliu0/ChineseCalendar checkout")
   p_emit.set_defaults(func=cmd_emit_cpp)
 
-  p_cmp = sub.add_parser("compare-all", help="compare frozen sample (or full range) to algo3")
-  p_cmp.add_argument("--sample", default=None)
-  p_cmp.set_defaults(func=cmd_compare_all)
-
-  # Also accept the long-option form advertised in the module docstring / test header
-  # when users pass it as the sole argv token before subcommand migration.
-  argv = list(sys.argv[1:] if argv is None else argv)
-  if argv and argv[0] in {"--scan-near-midnight", "--emit-cpp", "--compare-all"}:
-    argv[0] = argv[0].lstrip("-")
+  for name, help_text in (
+    ("compare-sample", "compare frozen 114-row sample to algo3 (not full-range 548/52)"),
+    ("compare-all", argparse.SUPPRESS),  # legacy alias
+  ):
+    p = sub.add_parser(name, help=help_text)
+    p.add_argument("--sample", default=None)
+    p.set_defaults(func=cmd_compare_sample)
 
   args = parser.parse_args(argv)
   return args.func(args)

@@ -51,15 +51,17 @@ inline constexpr int32_t END_YEAR = 2199;
  *   all other years via live algo2 at generation time).
  * - Generation parameters: algo2 + the then-default ΔT model. #64 re-baked
  *   2133/2165/2172 under algo5's ΔT after the default switched.
- * - Gate 1 (issue70 范围注记): the 600 baked values were rechecked against today's
- *   default ΔT (algo5) and found **zero differences** — re-bake is a data no-op under
- *   the current default. This block is therefore a provenance note, not a data fix:
- *   **do not edit any of the 600 values here without a deliberate re-bake and review.**
+ * - Gate 1 (#70 §2): the 401 re-bakeable values (1600–1900 ∪ 2100–2199) re-encode
+ *   identically under today's default ΔT (algo5) — a re-bake is a data no-op. The 199
+ *   HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
+ *   Full-array re-encode against live algo2 is *not* zero-diff: the six known years
+ *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
+ *   provenance note, not a data fix: **do not edit any of the 600 values here without
+ *   a deliberate re-bake and review.**
  * - Refresh ritual (read-only re-verify): run the "重烤对账" code cell at the end of
- *   `statistics/lunar_calendar.ipynb` (or the equivalent check in that notebook). It
- *   re-encodes the re-bakeable subset (1600–1900 ∪ 2100–2199; the HKO slice is not
- *   recomputed from algo2) and prints a mismatch count against this array. Print 0 =
- *   Gate re-verified. The cell never writes this header back.
+ *   `statistics/lunar_calendar.ipynb`. It re-encodes the re-bakeable subset and prints a
+ *   mismatch count against this array. Print 0 = Gate re-verified. The cell never writes
+ *   this header back.
  * - External oracle for a sampled subset of years: `src/test/lunar/algo3_ytliu0_golden_test.cpp`
  *   (ytliu0 ChineseCalendar, see that file's provenance head). Dual-table / live-algo2
  *   internal checks: `src/test/lunar/algo3_test.cpp`.

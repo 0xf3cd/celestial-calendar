@@ -33,24 +33,15 @@ namespace calendar::lunar::algo3::test {
 
 using namespace calendar::lunar::common;
 
-// The former single TEST(LunarAlgo3, Correctness) covered two windows with two
-// different meanings of "expected". Split so each name says what it proves.
-// External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp),
-// not either of the tests below.
+// External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp);
+// neither test below is one.
 
-// [1901, 2099]: algo3's baked slice is a byte-for-byte copy of algo1's HKO table
-// (driver probe: 199 entries, identical encodings). Both sides decode via the
-// shared `parse_lunar_year`, so this is a dual-table drift check — it catches
-// "only one of the two tables was edited", not an independent correctness proof.
-// Decoding itself has no independent discriminating power here.
+// [1901, 2099]: algo3's baked slice is a byte-for-byte copy of algo1's HKO table.
+// Both sides decode via the shared `parse_lunar_year`, so this is a dual-table
+// drift check — it catches "only one of the two tables was edited", not an
+// independent correctness proof. Full window (199 years): decode is free.
 TEST(LunarAlgo3, HkoTableCopiesAgree) {
-  std::vector<int32_t> years = std::views::iota(algo1::START_YEAR, algo1::END_YEAR + 1)
-                             | std::ranges::to<std::vector>();
-
-  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded (#69).
-  years.resize(32);
-
-  for (const auto year : years) {
+  for (int32_t year = algo1::START_YEAR; year <= algo1::END_YEAR; ++year) {
     const auto expected = algo1::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
@@ -85,9 +76,8 @@ TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
     ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
   }
 
-  // #64: entries re-baked under algo5's ΔT — checked deterministically, since the
-  // random sample above only covers them ~15% of the time. Belongs on this test
-  // (baked vs live algo2), not on the HKO dual-table check.
+  // #64: entries re-baked under algo5's ΔT — deterministic, because the random
+  // sample above only covers them ~22% of the time on the 401-year pool.
   for (const int32_t year : { 2133, 2165, 2172 }) {
     const auto expected = algo2::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
@@ -95,6 +85,19 @@ TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
     ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
     ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
     ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
+  }
+}
+
+// Structural pin: `calc_lunar_year` must decode `LUNAR_DATA`, not bypass to live
+// algo2. If the table entry is wrong and calc called live, the two sides diverge
+// (BakedMatchesLive alone would stay green under a live bypass).
+TEST(LunarAlgo3, CalcReadsBakedTable) {
+  for (const int32_t year : { 1601, 1608, 2180 }) {
+    const auto from_table = parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+    const auto from_calc = calc_lunar_year(year);
+    ASSERT_EQ(from_table.date_of_first_day, from_calc.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(from_table.leap_month, from_calc.leap_month) << "year=" << year;
+    ASSERT_EQ(from_table.month_lengths, from_calc.month_lengths) << "year=" << year;
   }
 }
 
