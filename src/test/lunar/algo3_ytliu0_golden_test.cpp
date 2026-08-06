@@ -46,7 +46,7 @@
 // checks a frozen markdown if present. Near-midnight scan: `scan-near-midnight`.
 //
 // Rows: 114 from the frozen sample (endpoint substitute **1603** — year 1600 itself is
-// a Ming 订正 year and is only in the sample as 备查, not here) + **2099** (W-A2,
+// a Ming 订正 (almanac-correction) year and is only in the sample as kept for reference, not here) + **2099** (W-A2,
 // 2026-08-05) for the upper algo1/algo3 seam next to 2100, decoded from the same commit
 // at the byte offset on the row. No other re-sampling is in scope.
 // Coverage vs algo3's 600 baked years: 115/600 ≈ 19%. By window:
@@ -61,13 +61,13 @@
 //   the published almanac"; rows that needed no correction are pure modern computation,
 //   so they are independent of this repo's chain; corrected rows would not be.
 // - Ming 1600–1644 six rows in this table (1603/1607/1618/1625/1633/1639): labelled
-//   **巧合全等** — ytliu0's base material is 张培瑜 historical reconstruction, NOT DE441.
+//   **coincidental agreement (巧合全等 in the prep pack)** — ytliu0's base material is 张培瑜 historical reconstruction, NOT DE441.
 //   Do not put these six under the DE441-independence sentence.
 //
 // Sampling honesty: rows were selected only among years where the two chains already
 // agreed on the four structural fields at collection time. Under today's construction
 // the table is therefore green by design; what it pins is *future drift*, not
-// "algo3 is correct today". Qing "avoid 修正年" operational definition = avoid the 28
+// "algo3 is correct today". Qing "avoid 修正年 (correction years)" operational definition = avoid the 28
 // years where algo3 disagreed on those fields (there is no published full 修正年 roster).
 // Residual full-range mismatches at collection: 52 of 600, bucketed by era
 // (Qing 28 + Ming 22 + 2057/2097) — case-by-case root causes are NOT claimed here.
