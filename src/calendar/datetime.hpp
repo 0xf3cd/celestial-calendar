@@ -43,9 +43,9 @@ namespace calendar {
 // (`duration_cast` / `floor`) resolve via ADL and are intentionally not listed;
 // cross-stdlib risk is covered by CI (Windows/macOS).
 // Type aliases: `using X = …`. Templates imported by using-declaration:
-// `hh_mm_ss` / `time_point` are class templates (CTAD); `sys_time` is itself an
-// alias template in the standard library — same shape for consistency, not for
-// CTAD. Alias-template CTAD fails on the clang 18 frontend (CI compile + tidy).
+// `hh_mm_ss` / `time_point` are class templates (CTAD applies). `sys_time` is an
+// alias template in the standard library — imported in the same shape for
+// consistency only; do not rely on CTAD through it.
 using days            = std::chrono::days;
 using seconds         = std::chrono::seconds;
 using nanoseconds     = std::chrono::nanoseconds;
