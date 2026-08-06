@@ -3,20 +3,17 @@ name: Claude Code
 on:
   issue_comment:
     types: [created]
-  pull_request_review_comment:
-    types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened]
   pull_request_review:
     types: [submitted]
 
 jobs:
   claude:
-    # #144: defense in depth — the action has its own actor gate, but don't bet everything on
-    # upstream internals: require OWNER/MEMBER/COLLABORATOR here too.
+    # The action checks the caller too, but only after minting an App token and putting the API
+    # key in the step env — this gate keeps the job from ever starting (#144).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
@@ -24,18 +21,18 @@ jobs:
       contents: read
       pull-requests: read
       issues: read
-      id-token: write
+      id-token: write # traded for the action's App token; drop it and claude[bot] goes silent (#148)
     steps:
-      # The action fetches into an existing checkout and has no clone fallback of its own,
-      # so the job needs this step to have a repository at all (#144).
-      - uses: actions/checkout@v6
+      # The action fetches into an existing checkout and never clones, so without this step the
+      # fetch fails on an empty workspace (#144).
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1 (#144: pin the single security gate, no floating tag)
+      # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
+      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # #144: keep machine/external text out of the agent's context — only the owner's and
-          # the bot's own comments are included. Residual: the triggering issue/PR body itself
-          # still enters, so treat the key as prompt-injection-reachable (#144 item 2).
-          include_comments_by_actor: "0xf3cd, claude[bot]"
+          # Only comments are filtered; title, body, labels, branch and file names all still reach
+          # an agent holding the API key, so treat the key as injection-reachable (#144).
+          include_comments_by_actor: "0xf3cd, claude" # GraphQL bot logins carry no [bot] suffix

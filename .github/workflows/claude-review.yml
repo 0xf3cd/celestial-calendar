@@ -11,13 +11,14 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
+      id-token: write # traded for the action's App token; drop it and claude[bot] goes silent (#148)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1 (#144: pin the single security gate, no floating tag)
+      # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
+      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
