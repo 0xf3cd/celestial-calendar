@@ -31,7 +31,6 @@
 #include <array>
 #include <mutex>
 #include <atomic>
-#include <memory>
 #include <ranges>
 #include <thread>
 #include <vector>

@@ -92,9 +92,13 @@ using SignatureOfT = typename SignatureOf<F>::type;
 template <typename Sig>
 struct CacheableSignature : std::false_type {};
 
+// `is_object_v` rules out reference returns (and `void`): the hit path forms
+// `const RetType*` — a pointer-to-reference would be the hard error the concept promises away.
 template <typename R, typename... Args>
 struct CacheableSignature<R(Args...)>
-  : std::bool_constant<std::copy_constructible<R> and (... and CacheKeyElement<std::decay_t<Args>>)> {};
+  : std::bool_constant<std::is_object_v<R>
+                   and std::copy_constructible<R>
+                   and (... and CacheKeyElement<std::decay_t<Args>>)> {};
 
 
 /** @brief Whether `F` invokes as `R(Args...)` with a convertible result — this is what
@@ -166,9 +170,9 @@ struct ExpandSignature<RetType(Args...)> {
 /**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache. Must be pure — same arguments ⇒ same result — and have
- *        a single, non-generic, const call signature: a generic lambda is rejected at the
- *        call site, and so is a `mutable` or ref-qualified `operator()` — a non-const call
- *        is exactly where impurity would live.
+ *        a single, non-generic, const call signature (no `mutable`, no ref-qualifiers);
+ *        a generic lambda is rejected at the call site, and a `mutable` call is exactly
+ *        where impurity would live.
  * @return The cached closure (copies share one cache, #78; not assignable). Thread-safe.
  * @note The cache **never erases and never evicts** — an entry lives as long as its shared
  *       state. The hit path's out-of-lock copy depends on that: references into an

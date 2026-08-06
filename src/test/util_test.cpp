@@ -404,6 +404,7 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedViable<void(int)>);
   static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
   static_assert(not MakeCachedViable<int(Unhashable)>);
+  static_assert(not MakeCachedViable<int32_t&(int32_t)>);   // reference return: no `const RetType*`
 
   // A generic lambda has no single `&F::operator()` — rejected at the call site.
   const auto generic = [](const auto& x) { return x; };
