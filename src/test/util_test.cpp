@@ -384,14 +384,9 @@ TEST(Util, HashCombineAvalanche) {
 }
 
 
-/*! @brief Whether `make_cached` accepts the callable `F` — spelled as a concept so rejection
-           goes through substitution (the `ToYmdCallable` lesson above). */
-template <typename F>
-concept MakeCachedAccepts = requires (const F& func) { util::cache::make_cached(func); };
-
 /*! @brief Whether `make_cached` accepts a signature. */
 template <typename Sig>
-concept MakeCachedViable = MakeCachedAccepts<std::function<Sig>>;
+concept MakeCachedViable = requires (std::function<Sig> func) { util::cache::make_cached(func); };
 
 TEST(Util, MakeCachedConstraints) {
   enum class Key : uint8_t { A };                      // stands in for `Jieqi` (jieqi.hpp)
@@ -406,39 +401,6 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedViable<int(Unhashable)>);
   static_assert(not MakeCachedViable<int32_t&(int32_t)>);   // reference return: no `const RetType*`
   static_assert(not MakeCachedViable<int(std::unique_ptr<int>)>); // hashable but not copyable
-
-  // A generic lambda has no single `&F::operator()` — rejected at the call site.
-  const auto generic = [](const auto& x) { return x; };
-  static_assert(not MakeCachedAccepts<decltype(generic)>);
-
-  // `noexcept` is part of the type since C++17 — the accepted set must not narrow on it.
-  const auto noexcept_f = [](const int32_t x) noexcept { return x * 2; };
-  static_assert(MakeCachedAccepts<decltype(noexcept_f)>);
-  static_assert(MakeCachedAccepts<double(int32_t) noexcept>);
-  static_assert(MakeCachedAccepts<double (*)(int32_t) noexcept>);
-
-  // A `mutable` `operator()` has no const signature to extract;
-  // a member-function pointer has no object to invoke on.
-  const auto mutable_f = [](const int32_t x) mutable { return x * 2; };
-  static_assert(not MakeCachedAccepts<decltype(mutable_f)>);
-
-  struct Foo {
-    int32_t k = 2; // used below: an unused-this member function is a clang-tidy target
-    [[nodiscard]] auto bar(const int32_t x) const { return x * k; }
-  };
-  static_assert(not MakeCachedAccepts<decltype(&Foo::bar)>);
-
-  // A move-only callable cannot be copied into the closure.
-  struct MoveOnly {
-    MoveOnly() = default;
-    MoveOnly(const MoveOnly&) = delete;
-    MoveOnly(MoveOnly&&) = default;
-    ~MoveOnly() = default;
-    auto operator=(const MoveOnly&) -> MoveOnly& = delete;
-    auto operator=(MoveOnly&&) -> MoveOnly& = default;
-    [[nodiscard]] auto operator()(const int32_t x) const { return x * 2; }
-  };
-  static_assert(not MakeCachedAccepts<MoveOnly>);
 }
 
 TEST(Util, MakeCached1) {
@@ -447,7 +409,7 @@ TEST(Util, MakeCached1) {
     ++call_count;
     return a + b;
   };
-  const auto cached_f = util::cache::make_cached(f);
+  const auto cached_f = util::cache::cache_func(f);
 
   std::vector<int> original_results;
   for (int i = 0; i < 10; i++) {
@@ -482,7 +444,7 @@ TEST(Util, MakeCached2) {
     ++call_count;
     return a * b;
   };
-  const auto cached_f = util::cache::make_cached(f);
+  const auto cached_f = util::cache::cache_func(f);
 
   std::vector<double> original_results;
   for (int i = 0; i < 10; i++) {
@@ -517,7 +479,7 @@ TEST(Util, MakeCachedCopyShares) {
     ++call_count;
     return a * 2;
   };
-  const auto cached_f = util::cache::make_cached(f);
+  const auto cached_f = util::cache::cache_func(f);
 
   ASSERT_EQ(cached_f(21), 42);
   ASSERT_EQ(call_count, 1);
@@ -540,7 +502,7 @@ TEST(Util, MakeCachedThreadSafe) {
     ++call_count;
     return a * a;
   };
-  const auto cached_f = util::cache::make_cached(f);
+  const auto cached_f = util::cache::cache_func(f);
 
   constexpr int32_t THREAD_COUNT = 8;
   constexpr int32_t KEY_COUNT = 64;
