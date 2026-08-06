@@ -16,9 +16,11 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import sys
+import os
 import shutil
 import pprint
 import argparse
+import subprocess
 
 from pathlib import Path
 
@@ -45,28 +47,36 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
   return multi_platform_workflow[0]
 
 
-def latest_artifact_run() -> GitHub.Run:
-  """Find the latest artifact run."""
-  workflow = artifact_workflow()
+def release_commit_sha() -> str:
+  """The commit the artifacts must have been built from.
 
-  artifact_runs = list(filter(
-    lambda run: run.workflow_id == workflow.id, 
-    GitHub.list_runs()
-  ))
+  In CI (release.yml runs on a tag push) GITHUB_SHA is the tag's commit; locally, fall
+  back to `git rev-parse HEAD` -- release.yml checks the tag out, so HEAD there is the
+  tag's commit, and anywhere else HEAD is simply the commit the caller means.
+  """
+  sha = os.environ.get("GITHUB_SHA")
+  if sha:
+    return sha
+  ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+  if ret.returncode != 0:
+    raise RuntimeError("Cannot resolve the release commit: GITHUB_SHA is unset and `git rev-parse HEAD` failed")
+  return ret.stdout.strip()
 
-  if len(artifact_runs) == 0:
-    red_print("Cannot find any artifact runs")
-    raise RuntimeError("Cannot find any artifact runs")
-  
-  # Find the latest run.
-  latest_run = sorted(artifact_runs, key=lambda run: run.created_at, reverse=True)[0]
 
-  # Ensure the run is successful.
-  if latest_run.status != "completed":
-    red_print(f"Cannot download artifacts from a non-completed run: {latest_run}")
-    raise RuntimeError("Cannot download artifacts from a non-completed run")
-  
-  return latest_run
+def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
+  """Find the run of `workflow` that built `sha` and succeeded.
+
+  Fail loud when there is none -- never settle for "the latest run", which can belong
+  to an unrelated, even failing, WIP branch: a release ships the artifacts of the
+  commit it tags, or it does not ship.
+  """
+  runs, pages = GitHub.list_workflow_runs(workflow.id)
+  for run in runs:
+    if run.head_sha == sha and run.conclusion == "success":
+      return run
+  red_print(f'No successful "{workflow.name}" run found for commit {sha} '
+            f"(scanned {pages} page(s), {len(runs)} runs)")
+  raise RuntimeError(f'No successful "{workflow.name}" run for commit {sha}')
 
 
 def parse_args() -> argparse.Namespace:
@@ -124,7 +134,7 @@ def main() -> None:
   # Download artifacts.
   run_id = args.run_id
   if run_id == 0:
-    run = latest_artifact_run()
+    run = find_artifact_run(artifact_workflow(), release_commit_sha())
     run_id = run.id
   
   downloaded_artifacts = GitHub.download_artifacts(run_id, args.save_to, args.parallel)

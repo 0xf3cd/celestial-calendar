@@ -13,7 +13,7 @@ import os
 import asyncio
 import requests
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -96,37 +96,55 @@ class GitHub:
     name:        str
     run_number:  int
     status:      str
+    conclusion:  str
+    head_sha:    str
     workflow_id: int
     url:         str
     created_at:  str
     updated_at:  str
 
+  # Pagination cap for list_workflow_runs: 10 pages x 100 runs reaches far further back
+  # than a release ever needs to look; a caller that still finds nothing must say how
+  # many pages it scanned.
+  MAX_RUN_PAGES = 10
+
   @staticmethod
-  def list_runs() -> List[Run]:
-    """
-    List all runs in the repository.
+  def list_workflow_runs(workflow_id: int, max_pages: int = MAX_RUN_PAGES) -> Tuple[List[Run], int]:
+    """List the runs of ONE workflow, paginated (100 per page, newest first).
 
-    Returns:
-      List[str]: A list of run IDs.
+    Returns the runs and the number of pages scanned. The repo-wide
+    `.../actions/runs` endpoint is deliberately NOT the path here: it pages the whole
+    repo's history, and the workflow we care about can be a handful of entries inside
+    the first page -- client-side filtering of a global list silently narrows the
+    search window, so a "not found" answer from it means nothing.
     """
-    url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs"
-    response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
-    response.raise_for_status()
+    runs: List[GitHub.Run] = []
+    for page in range(1, max_pages + 1):
+      url = (f"https://api.github.com/repos/{OWNER}/{REPO}"
+             f"/actions/workflows/{workflow_id}/runs?per_page=100&page={page}")
+      response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
+      response.raise_for_status()
 
-    json_resp = response.json()
-    return [
-      GitHub.Run(
-        run["id"], 
-        run["name"],
-        run["run_number"],
-        run["status"],
-        run["workflow_id"],
-        run["url"],
-        run["created_at"],
-        run["updated_at"]
+      batch = response.json()["workflow_runs"]
+      runs.extend(
+        GitHub.Run(
+          run["id"],
+          run["name"],
+          run["run_number"],
+          run["status"],
+          run["conclusion"] or "",  # null while the run is still in progress
+          run["head_sha"],
+          run["workflow_id"],
+          run["url"],
+          run["created_at"],
+          run["updated_at"]
+        )
+        for run in batch
       )
-      for run in json_resp["workflow_runs"]
-    ]
+      if len(batch) < 100:
+        return runs, page
+
+    return runs, max_pages
 
 
   @staticmethod
@@ -202,6 +220,7 @@ class GitHub:
       queue.put_nowait((name, url))
 
     paths: List[Path] = []
+    failures: List[str] = []
 
     async def coro():
       while not queue.empty():
@@ -210,7 +229,10 @@ class GitHub:
           path = await asyncio.to_thread(GitHub.download_one_artifact, name, url, download_dir)
           paths.append(path)
         except Exception as e:
+          # Record, keep draining (or queue.join() hangs), then fail the whole call below:
+          # a release must never ship with artifacts silently missing.
           red_print(f"# Failed to download {name}: {e}")
+          failures.append(f"{name}: {e}")
         finally:
           queue.task_done()  # Signal that the current task is done.
 
@@ -221,6 +243,9 @@ class GitHub:
     await queue.join() 
     # Ensure all tasks are awaited.
     await asyncio.gather(*tasks)
+
+    if failures:
+      raise RuntimeError(f"{len(failures)} artifact(s) failed to download: {failures}")
 
     return paths
 
