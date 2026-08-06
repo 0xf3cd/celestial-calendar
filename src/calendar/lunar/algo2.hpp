@@ -48,16 +48,18 @@ namespace calendar::lunar::algo2 {
 
 using calendar::lunar::common::LunarYear;
 
-// A convention, not a physical ceiling — the method computes rather than looks up. Past ~2100 ΔT
-// is extrapolated with no observational anchor; by year 5000 it reaches ~0.36 day and is uncertain
-// to its own order, enough to move a new moon across the UTC+8 midnight that starts a month.
-// Narrowing the window needs an error budget, not a cliff to cut at (#139).
+// A convention, not a physical ceiling — the method computes rather than looks up. The ceiling
+// sits where the UTC+8 civil-day assignment stops being reliable: post-1972 the frozen ΔAT
+// table (37 s) diverges from future reality by ΔT − 69.184 s, and ΔT itself is unknowable
+// (Huber Brownian σ); VSOP·ELP drift is second-order. At 2500 the day-flip risk is ~3.6% per
+// new moon (~1.5% counting only the unknowable part); by 5000 the answer is essentially random.
+// Error budget, measurement, and the threshold decision: #139.
 
 /** @brief The first supported lunar year. */
 inline constexpr int32_t START_YEAR = 410;
 
 /** @brief The last supported lunar year. */
-inline constexpr int32_t END_YEAR = 5000;
+inline constexpr int32_t END_YEAR = 2500;
 
 
 /**

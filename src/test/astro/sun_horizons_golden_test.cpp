@@ -49,7 +49,8 @@
 //   pipeline, same DE family) to 0.51 min worst over 168 values — validating both sources
 //   before either was pinned. Pre-1582 Horizons date comments are in the Julian calendar.
 // - Epoch bands mirror moon_horizons_golden_test.cpp, plus the lunar-algo2 boundary years
-//   ~410 and ~5001 demanded by #94; JD 2^22 straddle guards the #76 cliff region.
+//   ~410 and ~5001 demanded by #94 (the algo2 ceiling later narrowed to 2500 under #139;
+//   5001 stays as far-future coverage); JD 2^22 straddle guards the #76 cliff region.
 // Measured worst residuals are recorded above each tolerance; mutation detection results
 // are in the header of jieqi_golden_test.cpp (shared mutants exercise both files).
 
@@ -144,8 +145,8 @@ const std::vector<HorizonsSunRow> SUN_CORE_ROWS {
   {  2486166.25,  202.9117822,  -0.0000328,  0.9973374702 },  // 2094-Oct-15 18:00:00.000 TT, rdot -0.5028 km/s
 };
 
-// ~410 / ~501 / ~999 / ~1599 / ~2500 / ~3000 / ~5001 CE (410 and 5001 are the lunar-algo2
-// boundary years, #94).
+// ~410 / ~501 / ~999 / ~1599 / ~2500 / ~3000 / ~5001 CE (410 and 5001 were the lunar-algo2
+// boundary years, #94; the ceiling narrowed to 2500 under #139, 5001 stays as far coverage).
 const std::vector<HorizonsSunRow> SUN_EXTENDED_ROWS {
   {  1870800.50,  271.7952269,  -0.0000561,  0.9833447140 },  // 0409-Dec-22 00:00:00.000 TT, rdot +0.1442 km/s
   {  1904000.50,  233.9657282,  -0.0000150,  0.9840446824 },  // 0500-Nov-14 00:00:00.000 TT, rdot -0.2157 km/s

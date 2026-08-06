@@ -45,7 +45,9 @@
 //   fixed-slope Newton iteration to < 0.05 s. Pure TT on both sides of the comparison —
 //   no ΔT model anywhere in this axis. Sampling: all 24 for 2026; the equinox/solstice
 //   quartet for 1900/1950/2000/2050/2100 (core), 410/1000/1600/3000/5001 (extended, incl.
-//   the lunar-algo2 boundary years, #94) and 6771/6772/9420 (JD 2^22 straddle, #76 guard).
+//   the lunar-algo2 boundary years at the time, #94 — the algo2 ceiling later narrowed to
+//   2500 under #139; 5001 stays as far-future coverage of the solar chain) and 6771/6772/9420
+//   (JD 2^22 straddle, #76 guard).
 //   Row semantics: the crossing CONTAINED in the calendar year, like `jieqi_jde` (the
 //   crawler pins containment on proleptic-Gregorian TT civil days while the C++ window is
 //   UT1-based — a ΔT-scale difference with days of margin for every jieqi). The crawler's
