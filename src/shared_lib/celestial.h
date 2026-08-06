@@ -51,6 +51,17 @@
  * On failure the Julian Day functions also record a thread-local message readable
  * through `last_error` (#97 pilot).
  *
+ * Thread-safety contract: every entry point may be called concurrently from any
+ * number of threads, with no host-side synchronization. `set_log_verbosity` turns
+ * a process-wide knob: writes are atomic — a concurrent reader always sees one
+ * whole level or another — but which of two racing writes wins is unspecified.
+ * `last_error` is per-thread: it reports the calling thread's most recent Julian
+ * Day call, and no thread ever observes another's message. The memoization caches
+ * behind the astronomical functions are shared process-wide and entries are never
+ * erased: the first call with a given argument pays the computation, later calls
+ * from any thread reuse it, and cache memory grows monotonically with the number
+ * of distinct arguments ever queried.
+ *
  * Platform note: the library logs to stdout and swallows any logging failure. On
  * Windows (UCRT), however, writing to a closed stdout fail-fasts the process
  * (0xc0000409) through the invalid-parameter handler — not an exception path, so
