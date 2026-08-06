@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+  # Pinning the AI action to a SHA (#144) moved "stay current" from GitHub's shoulders to
+  # nobody's: security advisories are matched against semver refs, so a SHA-pinned action
+  # raises no alert. Dependabot's version updates do follow SHA pins -- it rewrites both the
+  # SHA and the `# v1` marker beside it -- and grouping keeps a quiet week down to one PR.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
