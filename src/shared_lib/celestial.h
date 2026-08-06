@@ -65,8 +65,9 @@
  * Separately, the first `gregorian_to_lunar` or `lunar_to_gregorian` with `algo = 2`
  * runs the astronomical pipeline once to establish that algorithm's supported range;
  * unlike the caches above, that one blocks every thread that arrives while it is in
- * flight, and costs nothing afterwards. Everything else recomputes on each call,
- * apart from reads of compile-time constants such as `get_supported_lunar_year_range`.
+ * flight, and costs nothing afterwards. Everything else recomputes on each call, apart
+ * from lookups of values already fixed before `main` — the supported ranges reported by
+ * `get_supported_lunar_year_range`, which are settled at load time at the latest.
  *
  * Platform note: the library logs to stdout and swallows any logging failure. On
  * Windows (UCRT), however, writing to a closed stdout fail-fasts the process

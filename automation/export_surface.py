@@ -43,7 +43,6 @@ SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {
 PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
   ("char* std::__add_grouping<char>(char*, char*, char)", True),
   ("vtable for std::vector<double, std::allocator<double> >", True),
-  ("typeinfo for double", True),
   ("typeinfo for double (int, calendar::jieqi::Jieqi)", True),
   ("typeinfo name for std::vector<double>", True),
   ("astro::sun::geocentric_coord(double)", False),
@@ -53,34 +52,31 @@ PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
   ("astro::Foo::operator std::vector<double>()", False),
   ("typeinfo for astro::Foo", False),
   ("vtable for astro::Foo", False),
-  # The hole below, pinned on the shape that can actually reach the gate: a
-  # global-namespace user type is spelled like a builtin, and celestial.h's C-ABI
-  # structs are exactly that. Tightening the rule turns this line red instead of
-  # silently changing what the gate accepts.
-  ("typeinfo for JulianDay", True),
-  # The other pass-through, for symmetry: "(" is a stand-in for "function type".
+  # A global-namespace class: the shape of celestial.h's own C-ABI structs, and the one
+  # the "no :: means builtin" branch used to wave through. Blocked now, and pinned here
+  # so that re-widening the rule turns this line red.
+  ("typeinfo for JulianDay", False),
+  # "(" still stands in for "function type", so a function type mentioning a type this
+  # library owns passes. Pinned as the approximation it is.
   ("typeinfo for astro::Fn<double (int)>", True),
 ]
 
 
 def is_std_vague_linkage(demangled: str) -> bool:
   """Whether a demangled survivor is a C++ vague-linkage artifact rather than API surface."""
-  # RTTI. The line to draw is whether the name mentions a type this library owns: that
-  # is what a consumer could name, catch, or dynamic_cast against, so it takes the
-  # qualified-name check like a vtable. Being a defined data symbol does not separate
-  # anything -- function-type RTTI is one too (this .so exports `typeinfo for double
-  # (int, calendar::jieqi::Jieqi)`).
-  #
-  # The name is all we have, and it leaves one hole: a global-namespace user type is
-  # spelled exactly like a builtin. celestial.h's C-ABI structs are that shape; they
-  # emit no RTTI today because they are non-polymorphic and never an operand of typeid
-  # or throw -- POD-ness is not what decides it. Closing the hole means enumerating the
-  # builtin spellings; until something leaks, the hole is pinned in the self-test above.
-  # Using "(" for "function type" is the other approximation, kept for the same reason.
+  # RTTI for a function type is anonymous -- it names no type, so nobody can link
+  # against it. Everything else goes through the same qualified-name check as a vtable.
+  # An earlier version also waved through any RTTI whose name carried no "::", meaning
+  # to spare the builtins; that also spared every global-namespace class, which is the
+  # shape of celestial.h's own C-ABI structs. None of the 43 survivors this library
+  # actually exports took that branch -- builtin RTTI is referenced here, never defined
+  # -- so the branch is gone rather than justified. A builtin's RTTI turning up defined
+  # in this library would now be a finding, which is the right way round: put it in
+  # SURVIVOR_EXCEPTIONS with the reason it is there.
   for prefix in ("typeinfo for ", "typeinfo name for "):
     if demangled.startswith(prefix):
       rest = demangled[len(prefix):]
-      if "(" in rest or "::" not in rest:
+      if "(" in rest:
         return True
       return rest.startswith(("std::", "__gnu_cxx::"))
   # Only the qualified name may lend its std::-ness. Squeeze spaces inside <...> so the
