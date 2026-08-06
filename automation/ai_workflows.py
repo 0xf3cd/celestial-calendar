@@ -11,8 +11,6 @@
 
 import re
 
-import yaml
-
 from typing import Any, Dict, Final, List, Optional, Tuple
 
 from . import paths
@@ -58,6 +56,10 @@ def check_ai_workflows() -> int:
   (`prompt:` blocks quote this repo's own CI) must not be able to satisfy the gate.
   Pure parsing -- no build needed, any leg can run it.
   """
+  # Imported here, not at module scope: `automation/__init__` is on the import path of every
+  # `project.py` invocation, including CI steps that never install Requirements.txt.
+  import yaml
+
   print("#" * 60)
   yellow_print("Checking the AI workflows keep their OIDC permission and pinned action...")
 
