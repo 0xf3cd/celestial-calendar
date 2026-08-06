@@ -46,7 +46,6 @@
 
 namespace calendar::lunar::algo2 {
 
-using namespace calendar::jieqi;
 using calendar::lunar::common::LunarYear;
 
 // A convention, not a physical ceiling — the method computes rather than looks up. Past ~2100 ΔT
@@ -87,7 +86,7 @@ struct LunarMonth {
   calendar::Datetime end_moment_utc8;
 
   // Jieqis that fall in this lunar month.
-  std::vector<JieqiGenerator::JieqiPair> contained_jieqis;
+  std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> contained_jieqis;
 
   [[nodiscard]] auto operator==(const LunarMonth& other) const -> bool = default;
 };
@@ -108,7 +107,7 @@ private:
   calendar::jieqi::JieqiGenerator _jieqi_gen;
 
   std::optional<double> _next_new_moon;
-  std::optional<JieqiGenerator::JieqiPair> _next_jieqi;
+  std::optional<calendar::jieqi::JieqiGenerator::JieqiPair> _next_jieqi;
 
   std::optional<LunarMonth> _next_month;
 
@@ -127,7 +126,7 @@ private:
     _next_new_moon = jde;
   }
 
-  [[nodiscard]] auto next_jieqi() -> JieqiGenerator::JieqiPair {
+  [[nodiscard]] auto next_jieqi() -> calendar::jieqi::JieqiGenerator::JieqiPair {
     if (_next_jieqi.has_value()) {
       auto jieqi = *_next_jieqi;
       _next_jieqi = std::nullopt;
@@ -137,7 +136,7 @@ private:
     return _jieqi_gen.next();
   }
 
-  auto put_back_jieqi(const JieqiGenerator::JieqiPair jieqi) -> void {
+  auto put_back_jieqi(const calendar::jieqi::JieqiGenerator::JieqiPair jieqi) -> void {
     assert(!_next_jieqi.has_value());
     _next_jieqi = jieqi;
   }
@@ -159,7 +158,7 @@ private:
     const auto end_moment_utc8 = jde_to_utc8(end_jde);
 
     // Get the Jieqis that fall in this lunar month.
-    std::vector<JieqiGenerator::JieqiPair> jieqis;
+    std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> jieqis;
     while (true) {
       const auto jieqi = next_jieqi();
       const auto jieqi_moment_utc8 = jde_to_utc8(jieqi.jde);
@@ -226,7 +225,7 @@ using LunarMonthChunk = std::vector<LunarMonth>;
  */
 [[nodiscard]] inline auto calc_lunar_month_chunks(int32_t year) -> std::pair<LunarMonthChunk, LunarMonthChunk> {
   // The lunar month where Winter Solstice (i.e. Jieqi::冬至) occurs is defined as the 11th month.
-  const auto winter_solstice_last_year = jieqi_jde(year - 1, Jieqi::冬至);
+  const auto winter_solstice_last_year = calendar::jieqi::jieqi_jde(year - 1, calendar::jieqi::Jieqi::冬至);
 
   // Start from a bit earlier than the winter solstice, ensuring the entireness of the 11th lunar month.
   LunarMonthGenerator lunar_month_gen { winter_solstice_last_year - 90.0 };
@@ -234,7 +233,7 @@ using LunarMonthChunk = std::vector<LunarMonth>;
   // Define a helper function to check if the month is the 11th lunar month.
   const auto is_11th = [](const auto& month) {
     const auto& jieqis = month.contained_jieqis;
-    const auto is_winter_solstice = [](const auto& jq) { return jq.jieqi == Jieqi::冬至; };
+    const auto is_winter_solstice = [](const auto& jq) { return jq.jieqi == calendar::jieqi::Jieqi::冬至; };
     return std::ranges::any_of(jieqis, is_winter_solstice);
   };
 

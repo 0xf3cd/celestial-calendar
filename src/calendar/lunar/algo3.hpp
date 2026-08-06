@@ -33,8 +33,6 @@
 
 namespace calendar::lunar::algo3 {
 
-using namespace calendar::lunar::common;
-
 /** @brief The first supported lunar year. */
 inline constexpr int32_t START_YEAR = 1600;
 
@@ -138,14 +136,14 @@ inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = 
  * @param year The Lunar year. 阴历年份。
  * @return The lunar year information. 阴历年信息。
  */
-[[nodiscard]] inline auto calc_lunar_year(int32_t year) -> LunarYear {
+[[nodiscard]] inline auto calc_lunar_year(int32_t year) -> common::LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
     throw std::out_of_range {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
     };
   }
 
-  return parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+  return common::parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
 }
 
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */

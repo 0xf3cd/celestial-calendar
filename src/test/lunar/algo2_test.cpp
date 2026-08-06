@@ -53,7 +53,7 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
   // TODO: Use `std::views::pairwise` once every CI leg has it (./linter.py --features).
   const auto lunar_month_pairs = std::views::zip(lunar_months, lunar_months | std::views::drop(1));
 
-  std::vector<JieqiGenerator::JieqiPair> jieqi_pairs;
+  std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> jieqi_pairs;
   for (const auto &[a, b] : lunar_month_pairs) {
     ASSERT_EQ(a.end_moment_utc8, b.start_moment_utc8);
 
@@ -80,8 +80,8 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
   ASSERT_LT(first_jieqi_jde, random_jde + 45.0);
 
   // Ensure the Jieqis are consecutive and correct.
-  std::vector<JieqiGenerator::JieqiPair> expected_jieqi_pairs;
-  JieqiGenerator jieqi_gen { random_jde };
+  std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> expected_jieqi_pairs;
+  calendar::jieqi::JieqiGenerator jieqi_gen { random_jde };
 
   while (true) {
     const auto jq_pair = jieqi_gen.next();
