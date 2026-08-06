@@ -103,6 +103,11 @@ jobs:
 
           # Take what `cmake --install` produced in the container: real library file,
           # SOVERSION symlinks, and the published header (lib/ + include/ tree).
+          # The symlinks are checked below but do NOT survive the upload: upload-artifact@v7
+          # dereferences them, so a consumer downloading the artifact gets three identical
+          # copies rather than a version chain (measured on this PR's first green run).
+          # Harmless to link against -- the unversioned name is still there -- but do not
+          # promise a consumer a symlink chain.
           cp -r "$OUTPUT_DIR/install/." "$DEST_DIR/"
 
           VERSION="${{ steps.get-build-version.outputs.BUILD_VERSION }}"
@@ -186,6 +191,9 @@ jobs:
         CC:  clang
       run: |
         # Install by CMake's rules: real .dylib + version symlinks + the published header.
+        # The symlinks do not survive upload-artifact@v7 (it dereferences them) -- see the
+        # linux-docker packaging step for the measurement. Guard on install's output anyway:
+        # that is the step this job owns.
         cmake --install ./build --prefix ./macos_arm64
 
         VERSION=$(./project.py --version)
