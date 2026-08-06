@@ -143,6 +143,12 @@ jobs:
       - name: Check the export surface
         run: python3 ./linter.py --export-surface
 
+      # The log-names gate (#72) is pure parsing -- but it shares the entry-point parser
+      # with the export-surface gate above, so it sits on the same leg: one place to look
+      # when a header change trips the pair.
+      - name: Check the log strings
+        run: python3 ./linter.py --log-names
+
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
   # pull requests to main and packages the artifacts -- running them here too repeated the same
