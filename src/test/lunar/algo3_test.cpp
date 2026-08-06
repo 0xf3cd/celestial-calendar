@@ -89,11 +89,13 @@ TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
 }
 
 // Structural pin: `calc_lunar_year` must decode `LUNAR_DATA`, not bypass to live
-// algo2. If the table entry is wrong and calc called live, the two sides diverge
-// (BakedMatchesLive alone would stay green under a live bypass).
+// algo2. Years chosen from the known HKO divergences (baked ≡ algo1 ≠ live algo2),
+// so a pure live bypass fails without first dirtying the table. On re-bakeable years
+// baked already equals live, so this pin would be silent there.
 TEST(LunarAlgo3, CalcReadsBakedTable) {
-  for (const int32_t year : { 1601, 1608, 2180 }) {
-    const auto from_table = parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+  for (const int32_t year : { 1914, 1920, 2097 }) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) — year is a compile-time constant in {1914,1920,2097}
+    const auto from_table = parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]);
     const auto from_calc = calc_lunar_year(year);
     ASSERT_EQ(from_table.date_of_first_day, from_calc.date_of_first_day) << "year=" << year;
     ASSERT_EQ(from_table.leap_month, from_calc.leap_month) << "year=" << year;

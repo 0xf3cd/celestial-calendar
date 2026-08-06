@@ -38,10 +38,12 @@
 // function `ChineseToGregorian()` — the main year table.
 // That repository is GPLv3; this repo is GPL-3.0-or-later. Collected 2026-08-05.
 //
-// SSOT for the 115 rows is **this table**. Regenerate from the pinned ytliu0 commit with
-//   python3 statistics/algo3_ytliu0_golden.py emit-cpp --include-2099 --ytliu0 <checkout>
-// (optional frozen-sample path via `--sample` for the 114-row set without a checkout).
-// Re-verify against algo3: `compare-sample`. Near-midnight scan: `scan-near-midnight`.
+// SSOT for the 115 rows is **this table**. Regenerate from the pinned ytliu0 commit:
+//   python3 statistics/algo3_ytliu0_golden.py emit-cpp --ytliu0 <checkout>
+// (year set is embedded in the script as GOLDEN_YEARS; matches this table). Optional
+// frozen markdown via `--sample` is an author-side shortcut, not required for clone
+// readers. Re-verify table vs algo3 by running the tests; `compare-sample` only
+// checks a frozen markdown if present. Near-midnight scan: `scan-near-midnight`.
 //
 // Rows: 114 from the frozen sample (endpoint substitute **1603** — year 1600 itself is
 // a Ming 订正 year and is only in the sample as 备查, not here) + **2099** (W-A2,
