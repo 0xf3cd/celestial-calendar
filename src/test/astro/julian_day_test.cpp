@@ -134,11 +134,14 @@ TEST(JulianDay, JdeUt1Anchors) {
   // composition against *observed* ΔT values, not `delta_t::compute` itself — a sign flip in the
   // composition would err by 2ΔT (~128 s at the modern anchors), far outside any tolerance here.
   //
-  // Provenance: observed ΔT (TT − UT1) at the anchors — 63.83 s at 2000-01-01 and 69.18 s at
-  // 2020-01-01 (USNO/IERS, via https://eclipse.gsfc.nasa.gov/SEcat5/deltat.html); 5710 s at
-  // year 500 (Stephenson & Morrison, the same table the ΔT models fit, so the models sit within
-  // ~1 s of it there). The per-anchor tolerance bounds |model − observation| at that epoch;
-  // the conversion itself is far tighter than that.
+  // Provenance for the observed ΔT (TT − UT1) at each anchor:
+  //   2000-01-01: 63.83 s — NASA eclipse ΔT table (https://eclipse.gsfc.nasa.gov/SEcat5/deltat.html).
+  //   2020-01-01: 69.36 s — USNO observations (https://maia.usno.navy.mil/ser7/deltat.data);
+  //               matches this repo's own ACCURATE_DELTA_T_TABLE (delta_t_test_helper.hpp).
+  //   year 500:   5710 s  — Stephenson & Morrison, the same table the ΔT models fit, so the
+  //               models sit within ~1 s of it there.
+  // The per-anchor tolerance bounds |model − observation| at that epoch; the conversion itself
+  // is far tighter than that.
   struct Anchor {
     Datetime tt;
     Datetime ut1;    // tt − observed ΔT
@@ -146,15 +149,10 @@ TEST(JulianDay, JdeUt1Anchors) {
   };
 
   const std::vector<Anchor> anchors {
-    { Datetime { to_ymd(2000, 1, 1), 0.0 },
-      Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } },
-      0.2 },
-    { Datetime { to_ymd(2020, 1, 1), 0.0 },
-      Datetime { to_ymd(2019, 12, 31), hh_mm_ss { 23h + 58min + 50s + 820ms } },
-      1.0 },
-    { Datetime { to_ymd(500, 1, 1), 0.0 },
-      Datetime { to_ymd(499, 12, 31), hh_mm_ss { 22h + 24min + 50s } },
-      2.0 },
+    //                  tt                              ut1 (= tt − observed ΔT)                                     tol_sec
+    { Datetime { to_ymd(2000, 1, 1), 0.0 }, Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } }, 0.2 },
+    { Datetime { to_ymd(2020, 1, 1), 0.0 }, Datetime { to_ymd(2019, 12, 31), hh_mm_ss { 23h + 58min + 50s + 640ms } }, 0.2 },
+    { Datetime { to_ymd( 500, 1, 1), 0.0 }, Datetime { to_ymd( 499, 12, 31), hh_mm_ss { 22h + 24min + 50s } },         2.0 },
   };
 
   for (const auto& [tt, ut1, tol_sec] : anchors) {
@@ -169,23 +167,17 @@ TEST(JulianDay, JdeUt1Anchors) {
     // Reverse: the observed UT1 moment maps back to the same jde.
     ASSERT_NEAR(ut1_to_jde(ut1), jde, tol_day);
   }
-
-  // The delegation to `jd_to_ut1` keeps its domain gates: the JD of 1-01-01 sits below the
-  // 401-01-01 bound (see `JulianDay.InvalidInput` for the full boundary battery).
-  ASSERT_THROW(std::ignore = jde_to_ut1(1721425.5), std::runtime_error);
 }
 
 TEST(JulianDay, JdeUt1Consistency) {
-  // ΔT evaluation is mildly asymmetric: `jde_to_ut1` reads ΔT on the TT date, `ut1_to_jde` on the
-  // UT1 date. The residual of a round trip is the ΔT slope applied to a ΔT-sized time shift —
-  // ~1e-6 s over 401-2100 — plus double rounding, so 1e-6 day leaves orders of magnitude of room
+  // The two directions read ΔT on different dates: `jde_to_ut1` on the TT date, `ut1_to_jde` on
+  // the UT1 date. The round-trip residual is the ΔT slope applied to a ΔT-sized time shift, plus
+  // `Datetime` rounding — ~1e-8 day in practice — so EPSILON leaves orders of magnitude of room
   // while still catching a flipped sign or a stale/wrong scale in either direction.
-  constexpr double TOLERANCE = 1e-6;
-
   for (auto i = 0; i < 2000; ++i) {
     // 401-01-01 (the `jd_to_ut1` bound) through year 2100.
     const double jde = util::random(1867522.5, 2488070.5);
-    ASSERT_NEAR(ut1_to_jde(jde_to_ut1(jde)), jde, TOLERANCE);
+    ASSERT_NEAR(ut1_to_jde(jde_to_ut1(jde)), jde, EPSILON);
   }
 
   for (auto i = 0; i < 2000; ++i) {
@@ -195,7 +187,7 @@ TEST(JulianDay, JdeUt1Consistency) {
 
     const auto recovered_ut1 = jde_to_ut1(ut1_to_jde(ut1));
     ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
-    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), TOLERANCE);
+    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), EPSILON);
   }
 }
 
@@ -209,6 +201,10 @@ TEST(JulianDay, InvalidInput) {
 
   // The wrappers propagate the throw (this is what turns the C-ABI garbage into an error).
   ASSERT_THROW(std::ignore = tt_to_jde(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
+
+  // `jde_to_ut1` still runs `jd_to_ut1`'s domain gates: the JD of 1-01-01 sits below the
+  // 401-01-01 bound pinned below.
+  ASSERT_THROW(std::ignore = jde_to_ut1(1721425.5), std::runtime_error);
 
   // Both directions throw the same exception type on out-of-domain input. Their domains differ:
   // `ut1_to_jd` accepts years 1-400 that sit below `jd_to_ut1`'s bound, so round-trips only

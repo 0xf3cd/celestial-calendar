@@ -22,6 +22,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <ranges>
+#include <tuple>
+#include <unordered_map>
 #include "julian_day.hpp"
 #include "vsop87d/vsop87d.hpp"
 
@@ -32,7 +35,7 @@ using namespace astro::vsop87d;
 // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
 // PyMeeus is a well-implemented Python library for astronomical calculations.
 //
-// The values are directly returned by VSOP87D models, no any adjustment or correction.
+// The values are directly returned by VSOP87D models, no adjustment or correction.
 const std::unordered_map<double, std::tuple<double, double, double>> EARTH_DATASET {
   //    JDE          L-tables expected   B-tables expected        R-tables expected
   {     2445701.1, { -98.77924318611353, -2.4184395622860954e-07, 0.9832889892830442 } },
@@ -57,16 +60,11 @@ TEST(Vsop87d, Evaluate) {
 
 TEST(Vsop87d, EvaluateTemplate) {
   // `evaluate<Planet::EAR>` is the field-mapping layer over `evaluate_tables`: .λ ← L, .β ← B,
-  // .r ← R, unadjusted. A swapped or rescaled field passes neither assertion family below.
-  for (const auto& [jde, expected] : EARTH_DATASET) {
-    const auto& [lon, lat, r] = expected;
+  // .r ← R, unadjusted. A swapped or rescaled field fails the bit-exact checks below.
+  // (The external anchoring of the tables themselves lives in `Vsop87d.Evaluate` above.)
+  for (const double jde : EARTH_DATASET | std::views::keys) {
     const auto jm = julian_day::jde_to_jm(jde);
     const auto eval = evaluate<Planet::EAR>(jm);
-
-    // The external dataset through the template path.
-    ASSERT_NEAR(eval.λ, lon, 1e-10);
-    ASSERT_NEAR(eval.β, lat, 1e-10);
-    ASSERT_NEAR(eval.r, r,   1e-10);
 
     // Same bits as reading the tables directly — the wrapper neither scales nor reorders.
     ASSERT_EQ(eval.λ, evaluate_tables(earth_coeff::L, jm));
