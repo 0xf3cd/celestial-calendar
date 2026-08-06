@@ -56,14 +56,17 @@
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
  * `last_error` is per-thread: it reports the calling thread's most recent Julian
- * Day call, and no thread ever observes another's message. Two paths memoize per
- * argument — the Jieqi computation and the algo-2 lunar year info — and the algo-2
- * date range is a separate one-shot: it takes no argument, so it costs its first
- * caller the whole astronomical pipeline and is free from then on. Every other entry
- * point computes on each call. The per-argument memoization is shared process-wide
- * and entries are never erased: the first call with a given argument pays the
- * computation, later calls from any thread reuse it, and cache memory grows
- * monotonically with the number of distinct arguments ever queried.
+ * Day call, and no thread ever observes another's message. Two computations memoize
+ * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
+ * shared process-wide and never erased: the first call with a given argument pays for
+ * it, later calls from any thread reuse the result, and memory grows monotonically
+ * with the number of distinct arguments ever queried. Two threads that miss on the
+ * same argument at once both compute it, and one of the two results is discarded.
+ * Separately, the first `gregorian_to_lunar` or `lunar_to_gregorian` with `algo = 2`
+ * runs the astronomical pipeline once to establish that algorithm's supported range;
+ * unlike the caches above, that one blocks every thread that arrives while it is in
+ * flight, and costs nothing afterwards. Everything else recomputes on each call,
+ * apart from reads of compile-time constants such as `get_supported_lunar_year_range`.
  *
  * Platform note: the library logs to stdout and swallows any logging failure. On
  * Windows (UCRT), however, writing to a closed stdout fail-fasts the process
