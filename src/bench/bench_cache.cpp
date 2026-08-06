@@ -26,7 +26,6 @@
 // is the old/new pair below (see harness.hpp for why the paired ratio is the figure to read).
 // The copy pair: where a hit's copy happens, inside the lock or outside it, under contention.
 
-#include <bit>
 #include <span>
 #include <array>
 #include <mutex>
@@ -128,7 +127,9 @@ template <bool OUT_OF_LOCK>
       std::uintptr_t acc = 0;
       for (std::size_t i = 0; i < n; ++i) {
         const auto value = cache.get(keys[i % keys.size()]);
-        acc ^= std::bit_cast<std::uintptr_t>(value.month_lengths.data()) & 0xff;
+        // Hash the allocation address: the copy must materialize for the address to exist,
+        // and `std::hash` on a pointer is lint-clean where a cast is not.
+        acc ^= std::hash<const int32_t*> {}(value.month_lengths.data()) & 0xff;
       }
       sink.fetch_xor(acc, std::memory_order_relaxed);
     };

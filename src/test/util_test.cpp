@@ -433,6 +433,9 @@ TEST(Util, MakeCachedConstraints) {
     MoveOnly() = default;
     MoveOnly(const MoveOnly&) = delete;
     MoveOnly(MoveOnly&&) = default;
+    ~MoveOnly() = default;
+    auto operator=(const MoveOnly&) -> MoveOnly& = delete;
+    auto operator=(MoveOnly&&) -> MoveOnly& = default;
     [[nodiscard]] auto operator()(const int32_t x) const { return x * 2; }
   };
   static_assert(not MakeCachedAccepts<MoveOnly>);
