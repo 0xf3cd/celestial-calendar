@@ -94,7 +94,7 @@ TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
 // baked already equals live, so this pin would be silent there.
 TEST(LunarAlgo3, CalcReadsBakedTable) {
   for (const int32_t year : { 1914, 1920, 2097 }) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) — year is a compile-time constant in {1914,1920,2097}
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) — year ∈ {1914,1920,2097}, all in [START_YEAR, END_YEAR]; bounds guaranteed by fixed literal set
     const auto from_table = parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]);
     const auto from_calc = calc_lunar_year(year);
     ASSERT_EQ(from_table.date_of_first_day, from_calc.date_of_first_day) << "year=" << year;
