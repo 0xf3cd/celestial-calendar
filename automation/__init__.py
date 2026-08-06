@@ -32,6 +32,7 @@ from .abi_layout import check_abi_layout
 from .ctypes_smoke import check_ctypes_smoke
 from .export_surface import check_export_surface
 from .log_names import check_log_names
+from .ai_workflows import check_ai_workflows
 from .bench import build_benchmarks, run_benchmarks, find_benchmarks
 
 __all__ = [
@@ -44,5 +45,6 @@ __all__ = [
   "proj_root", "build_dir", "cpp_src_dir", "python_requirements", "cpp_test_dir",
   "GitHub", "run_ruff", "run_clang_tidy", "check_self_contained", "probe_features",
   "check_abi_layout", "check_ctypes_smoke", "check_export_surface", "check_log_names",
+  "check_ai_workflows",
   "build_benchmarks", "run_benchmarks", "find_benchmarks"
 ]
