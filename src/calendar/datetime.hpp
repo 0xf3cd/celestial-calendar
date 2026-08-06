@@ -37,11 +37,14 @@
 
 namespace calendar {
 
-// Closed set of chrono names used by this header and its callers (#51).
-// Replaces open `using namespace std::chrono;`. New chrono dependencies need an
-// explicit line here — do not reopen the namespace.
-// Type aliases stay `using X = …`. Class templates use using-declarations so
-// CTAD keeps working (alias-template CTAD is rejected by clang-tidy 18).
+// Closed set of chrono *type* names used by this header and its callers (#51).
+// Replaces open `using namespace std::chrono;`. New type dependencies need an
+// explicit line here — do not reopen the namespace. Function templates
+// (`duration_cast` / `floor`) resolve via ADL and are intentionally not listed;
+// cross-stdlib risk is covered by CI (Windows/macOS).
+// Type aliases: `using X = …`. Class templates: using-declarations (keeps CTAD
+// for `hh_mm_ss`; alias-template CTAD fails on the clang 18 frontend used by
+// clang-tidy — `sys_time` / `time_point` match that shape for consistency).
 using days            = std::chrono::days;
 using seconds         = std::chrono::seconds;
 using nanoseconds     = std::chrono::nanoseconds;

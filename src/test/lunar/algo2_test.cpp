@@ -163,7 +163,7 @@ TEST(LunarAlgo2, LeapMonth) {
     const auto is_leap = [](const LunarMonth& month) {
       const auto& jq_pairs = month.contained_jieqis;
       return not std::ranges::any_of(jq_pairs, [](const auto& jq_pair) {
-        return is_qi(jq_pair.jieqi);
+        return calendar::jieqi::is_qi(jq_pair.jieqi);
       });
     };
 

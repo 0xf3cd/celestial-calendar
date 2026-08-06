@@ -207,7 +207,11 @@ is intentional. Keep it. That buys a discipline:
 - **No `using namespace` and no namespace-scope `using` declarations in headers** — they leak
   into every including TU and cause conflicts / ambiguity. Put `using` inside function bodies
   (as `sun.hpp` already does with `using namespace astro::toolbox::literals;`) or fully-qualify.
-  Existing violations tracked in #51.
+  Closed-set forms that *are* allowed: `using X = Y` type aliases, and using-declarations that
+  import a class template so CTAD still works (see `datetime.hpp` for the chrono set). Remaining
+  ordinary using-declarations in lunar headers (`using std::chrono::year_month_day` etc.;
+  `using common::LunarYear` in algo2) are leftovers from the #51 sweep — fully-qualify when
+  those files are next touched.
 - **Nested `lower_case` namespaces** by domain (`astro::earth::nutation`,
   `lib::`, `calendar::`); close with a `} // namespace …` comment.
 - **Trailing return types**: `inline auto f(const double jde) -> SphericalCoordinate`.

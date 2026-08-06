@@ -85,7 +85,7 @@ inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = 
 }
 
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */
-const inline auto bounds = calc_bounds(START_YEAR, END_YEAR, calc_lunar_year);
+const inline auto bounds = common::calc_bounds(START_YEAR, END_YEAR, calc_lunar_year);
 
 } // namespace calendar::lunar::algo1
 

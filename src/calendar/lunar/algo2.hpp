@@ -276,7 +276,7 @@ using LunarMonthChunk = std::vector<LunarMonth>;
   for (const auto& [index, month] : std::views::zip(std::views::iota(0), chunk)) {
     const auto& jq_pairs = month.contained_jieqis;
     const bool has_qi = std::ranges::any_of(jq_pairs, [](const auto& pair) {
-      return is_qi(pair.jieqi);
+      return calendar::jieqi::is_qi(pair.jieqi);
     });
     if (not has_qi) {
       return index;
