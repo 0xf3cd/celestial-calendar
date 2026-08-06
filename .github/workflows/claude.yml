@@ -12,11 +12,15 @@ on:
 
 jobs:
   claude:
+    # #144: defense in depth — the action has its own actor gate (verified in the audit), but
+    # don't bet everything on upstream internals: require OWNER/MEMBER/COLLABORATOR here too.
+    # Side effect: bot-authored events (e.g. Copilot's review comments, association NONE) no
+    # longer reach the action, so they land `skipped` instead of `action_required`.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,6 +28,10 @@ jobs:
       issues: read
       id-token: write
     steps:
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1 (#144: pin the single security gate, no floating tag)
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # #144: keep machine/external text out of the agent's context — only the owner's and
+          # the bot's own comments are included. Residual: the triggering issue/PR body itself
+          # still enters, so treat the key as prompt-injection-reachable (#144 item 2).
+          include_comments_by_actor: "0xf3cd, claude[bot]"
