@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Export surface closed to the published C ABI (#91): explicit `CELESTIAL_API` on every `celestial.h` entry point, hidden default visibility, `SOVERSION` = major.minor while 0.x, and release packaging via `cmake --install` — with a CI gate holding the exported symbol set to the header's entry points.
+- Release downloads now fail loud (#72): artifacts must come from a successful `build_and_test` run of the exact tagged commit, and a single failed artifact download fails the whole download. Cutting a release is now three deliberate steps — push the tag, dispatch `build_and_test` on it, rerun the release workflow.
+- Logging is opt-in: the default verbosity is `NONE`, so loading the library no longer writes to the host's stdout unless asked.
+
 ## [v0.4.0] - 2026-07-29
 
 ### Added
