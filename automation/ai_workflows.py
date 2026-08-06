@@ -11,17 +11,18 @@
 
 import re
 
-from typing import Final, List, Tuple
+import yaml
+
+from typing import Any, Dict, Final, List, Optional, Tuple
 
 from . import paths
 from .utils import green_print, red_print, yellow_print
 
 
-# The two workflows that hand an agent a repo secret. Each keeps two settings whose removal
-# breaks nothing that anyone would notice: the OIDC permission the action trades for its
-# GitHub App token (#148 deleted it once -- claude[bot] went silent while every other check
-# stayed green), and the SHA pin on the action itself (#144 -- a floating tag lets the only
-# gate on this path be rewritten upstream). Neither has a test that would go red.
+# The workflows that hand an agent the API key, and the only ones this gate covers. A third
+# one belongs in this tuple the day it appears; `release.yml` pins its publisher by hand and
+# stays outside on purpose -- holding all 18 `actions/*@v7` references to a SHA would drown
+# the gate in noise (#144).
 AI_WORKFLOWS: Final[Tuple[str, ...]] = (
   "claude.yml",
   "claude-review.yml",
@@ -29,23 +30,33 @@ AI_WORKFLOWS: Final[Tuple[str, ...]] = (
 
 PINNED_ACTION: Final[str] = "anthropics/claude-code-action"
 
-OIDC_RE: Final[re.Pattern] = re.compile(r"^\s*id-token:\s*write\b", re.MULTILINE)
-USES_RE: Final[re.Pattern] = re.compile(
-  rf"^\s*-?\s*uses:\s*{re.escape(PINNED_ACTION)}@(\S+)", re.MULTILINE
-)
 SHA_RE: Final[re.Pattern] = re.compile(r"^[0-9a-f]{40}$")
 
 
+def _uses_target(step: Any) -> Optional[str]:
+  """The action a step calls, or None if the step calls no action."""
+  if not isinstance(step, dict):
+    return None
+  uses = step.get("uses")
+  return uses if isinstance(uses, str) else None
+
+
+def _grants_oidc(permissions: Any) -> bool:
+  """Whether a `permissions:` value grants `id-token: write`."""
+  if permissions == "write-all":
+    return True
+  return isinstance(permissions, dict) and permissions.get("id-token") == "write"
+
+
 def check_ai_workflows() -> int:
-  """Hold the AI workflows to the two settings of theirs that fail silently.
+  """Hold the AI workflows to two settings whose loss nothing else would report.
 
-  Both failures are silent by construction, which is why they get a gate rather than a
-  comment: dropping `id-token: write` leaves every check green and only claude[bot] mute,
-  and swapping the pinned SHA back to a tag changes nothing until the day upstream moves
-  it. Pure parsing -- no build needed, any leg can run it.
-
-  Not a general "pin every action" rule: the repo's other actions are first-party and none
-  of them is handed a secret, so widening this gate would turn it into noise (#144).
+  Deleting `id-token: write` leaves every check green and only claude[bot] mute (#148);
+  swapping the pinned SHA back to a tag changes nothing until the day upstream moves it
+  (#144). Both are read from the parsed YAML, not from the file text: the permission is
+  per-job and has to be checked on the job that calls the action, and a workflow's prose
+  (`prompt:` blocks quote this repo's own CI) must not be able to satisfy the gate.
+  Pure parsing -- no build needed, any leg can run it.
   """
   print("#" * 60)
   yellow_print("Checking the AI workflows keep their OIDC permission and pinned action...")
@@ -62,26 +73,50 @@ def check_ai_workflows() -> int:
       )
       continue
 
-    text = path.read_text()
+    try:
+      workflow: Dict[str, Any] = yaml.safe_load(path.read_text())
+    except yaml.YAMLError as exc:
+      failures.append(f"{name}: not valid YAML, so GitHub cannot run it either ({exc.__class__.__name__})")
+      continue
 
-    if not OIDC_RE.search(text):
-      failures.append(
-        f"{name}: no `id-token: write`. The action trades it for its GitHub App token, so "
-        f"removing it silences claude[bot] while the rest of CI stays green (#148)"
-      )
+    jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
+    calling_jobs = {
+      job_id: job
+      for job_id, job in (jobs or {}).items()
+      if isinstance(job, dict)
+      for step in (job.get("steps") or [])
+      if (_uses_target(step) or "").split("@")[0] == PINNED_ACTION
+    }
 
-    refs = USES_RE.findall(text)
-    if not refs:
+    if not calling_jobs:
       # A gate that cannot find what it guards passes vacuously; say so instead.
       failures.append(
-        f"{name}: no `uses: {PINNED_ACTION}` line. Either this check's parsing broke, or the "
+        f"{name}: no job calls {PINNED_ACTION}. Either this check's parsing broke, or the "
         f"workflow no longer calls the action and belongs out of AI_WORKFLOWS"
       )
-    failures.extend(
-      f"{name}: {PINNED_ACTION} is at `{ref}`, not a commit SHA. It is the only third-party "
-      f"action here handed a repo secret; a floating tag lets upstream rewrite it (#144)"
-      for ref in refs if not SHA_RE.match(ref)
-    )
+      continue
+
+    for job_id, job in calling_jobs.items():
+      # A job's `permissions:` replaces the workflow-level block outright, it does not merge.
+      permissions = job["permissions"] if "permissions" in job else workflow.get("permissions")
+      if not _grants_oidc(permissions):
+        failures.append(
+          f"{name}: job `{job_id}` calls the action without `id-token: write`. The action "
+          f"trades it for its GitHub App token, so the job silences claude[bot] while the "
+          f"rest of CI stays green (#148)"
+        )
+
+      for step in job["steps"]:
+        uses = _uses_target(step) or ""
+        if uses.split("@")[0] != PINNED_ACTION:
+          continue
+        ref = uses.partition("@")[2]
+        if not SHA_RE.match(ref):
+          failures.append(
+            f"{name}: job `{job_id}` calls the action at `{ref}`, not a commit SHA. It is the "
+            f"only third-party action here handed a repo secret; a floating tag lets upstream "
+            f"rewrite it (#144)"
+          )
 
   print("#" * 60)
   if failures:

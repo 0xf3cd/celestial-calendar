@@ -6,7 +6,9 @@ on:
 
 jobs:
   review:
-    if: ${{ !github.event.pull_request.draft }}
+    # Dependabot's runs get a read-only token and no Actions secrets, so on its PRs this job
+    # could only ever fail — and a weekly red is how people learn to ignore red (#144).
+    if: ${{ !github.event.pull_request.draft && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

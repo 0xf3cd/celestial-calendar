@@ -17,7 +17,8 @@ jobs:
 
       - name: Sanity Check on Version
         # The tag name is attacker-chosen text and this job runs with contents: write, so it
-        # goes through env rather than expression interpolation into the shell (#144).
+        # goes through env rather than expression interpolation into the shell (#144). The `v`
+        # stripped below is guaranteed by the tag filter above, not by anything in this step.
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
