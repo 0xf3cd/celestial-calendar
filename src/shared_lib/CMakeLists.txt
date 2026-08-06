@@ -14,7 +14,17 @@ message(STATUS "Building version ${VERSION_NUMBER}")
 
 add_library(celestial_calendar SHARED ${SOURCES})
 
-set_target_properties(celestial_calendar PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+# #91: the export set is exactly the entry points declared in celestial.h. Both halves
+# are required — hiding without CELESTIAL_API hides the entries too; the macro without
+# hiding exports internals as well (WINDOWS_EXPORT_ALL_SYMBOLS did the latter).
+set_target_properties(celestial_calendar PROPERTIES
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+)
+
+# Private to the library build: flips CELESTIAL_API from dllimport to dllexport on
+# Windows. Consumers of celestial.h need no defines.
+target_compile_definitions(celestial_calendar PRIVATE CELESTIAL_BUILDING_DLL)
 
 set_target_properties(celestial_calendar PROPERTIES VERSION ${VERSION_NUMBER})
 
