@@ -429,8 +429,13 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedAccepts<decltype(&Foo::bar)>);
 
   // A move-only callable cannot be copied into the closure.
-  auto move_only = [p = std::make_unique<int32_t>(1)](const int32_t x) { return x + *p; };
-  static_assert(not MakeCachedAccepts<decltype(move_only)>);
+  struct MoveOnly {
+    MoveOnly() = default;
+    MoveOnly(const MoveOnly&) = delete;
+    MoveOnly(MoveOnly&&) = default;
+    [[nodiscard]] auto operator()(const int32_t x) const { return x * 2; }
+  };
+  static_assert(not MakeCachedAccepts<MoveOnly>);
 }
 
 TEST(Util, MakeCached1) {
