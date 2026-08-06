@@ -34,8 +34,8 @@
 #include <ranges>
 #include <thread>
 #include <vector>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <iostream>
 #include <functional>
@@ -84,9 +84,9 @@ struct HeavyValue {
   int32_t leap_month = 0;
 };
 
-/** @brief The two hit-path copy placements, frozen for the paired measurement -- the same
- *         choice `make_cached` makes live. `OUT_OF_LOCK` copies the mapped value after
- *         releasing the mutex, under the same never-erase premise as `util/cache.hpp`. */
+/** @brief The two hit-path copy placements, frozen for the paired measurement; `OUT_OF_LOCK`
+ *         is the one `make_cached` makes live. Copying after releasing the mutex stands under
+ *         the same never-erase premise as `util/cache.hpp`. */
 template <bool OUT_OF_LOCK>
 struct FrozenHitCache {
   std::mutex mtx;

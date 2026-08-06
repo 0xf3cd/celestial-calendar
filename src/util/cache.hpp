@@ -40,16 +40,18 @@ namespace util::cache {
 using util::hash::TupleHash;
 
 /**
- * @brief What one element of a cache key must support. Element-wise on purpose: `TupleHash`'s
- *        `operator()` takes any tuple and fails inside its body, so constraining *it* would
- *        constrain nothing.
+ * @brief What one element of a cache key must support: equality, hashing, and being copyable —
+ *        the key is copied into a tuple and again into the map. Element-wise on purpose:
+ *        `TupleHash`'s `operator()` takes any tuple and fails inside its body, so
+ *        constraining *it* would constrain nothing.
  */
 // Spelled as three library concepts rather than one `requires { std::hash<T> {}(v) }`: the latter
 // makes g++-14 ICE in `finish_compound_literal` when reached through a nested requires-expression.
 template <typename T>
 concept CacheKeyElement = std::equality_comparable<T>
                       and std::default_initializable<std::hash<T>>
-                      and std::invocable<std::hash<T>&, const T&>;
+                      and std::invocable<std::hash<T>&, const T&>
+                      and std::copy_constructible<T>;
 
 
 namespace detail {
@@ -86,14 +88,12 @@ template <typename F>
 using SignatureOfT = typename SignatureOf<F>::type;
 
 
-/** @brief Whether a signature `R(Args...)` is cacheable — states what the `unordered_map`
- *         below enforces anyway, so misuse is rejected at the call site instead of inside
- *         its instantiation (`copy_constructible` also rules out `void`). */
+/** @brief Whether a signature `R(Args...)` is cacheable: an object, copy-constructible return
+ *         (rules out references and `void`), and key elements the map can hash, compare, and
+ *         copy — said here so misuse is rejected at the call site, not deeper in. */
 template <typename Sig>
 struct CacheableSignature : std::false_type {};
 
-// `is_object_v` rules out reference returns (and `void`): the hit path forms
-// `const RetType*` — a pointer-to-reference would be the hard error the concept promises away.
 template <typename R, typename... Args>
 struct CacheableSignature<R(Args...)>
   : std::bool_constant<std::is_object_v<R>

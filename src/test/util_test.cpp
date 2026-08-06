@@ -405,21 +405,27 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
   static_assert(not MakeCachedViable<int(Unhashable)>);
   static_assert(not MakeCachedViable<int32_t&(int32_t)>);   // reference return: no `const RetType*`
+  static_assert(not MakeCachedViable<int(std::unique_ptr<int>)>); // hashable but not copyable
 
   // A generic lambda has no single `&F::operator()` — rejected at the call site.
   const auto generic = [](const auto& x) { return x; };
   static_assert(not MakeCachedAccepts<decltype(generic)>);
 
-  // `noexcept` callables stay accepted, as they were through the `std::function` entry.
+  // `noexcept` is part of the type since C++17 — the accepted set must not narrow on it.
   const auto noexcept_f = [](const int32_t x) noexcept { return x * 2; };
   static_assert(MakeCachedAccepts<decltype(noexcept_f)>);
+  static_assert(MakeCachedAccepts<double(int32_t) noexcept>);
+  static_assert(MakeCachedAccepts<double (*)(int32_t) noexcept>);
 
-  // A non-const call is where impurity would live (`make_cached`'s @param): a `mutable`
-  // `operator()` has no const signature to extract, a member-function pointer has no object.
+  // A `mutable` `operator()` has no const signature to extract;
+  // a member-function pointer has no object to invoke on.
   const auto mutable_f = [](const int32_t x) mutable { return x * 2; };
   static_assert(not MakeCachedAccepts<decltype(mutable_f)>);
 
-  struct Foo { [[nodiscard]] auto bar(const int32_t x) const { return x * 2; } };
+  struct Foo {
+    int32_t k = 2; // used below: an unused-this member function is a clang-tidy target
+    [[nodiscard]] auto bar(const int32_t x) const { return x * k; }
+  };
   static_assert(not MakeCachedAccepts<decltype(&Foo::bar)>);
 
   // A move-only callable cannot be copied into the closure.
