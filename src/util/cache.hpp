@@ -39,36 +39,40 @@ namespace util::cache {
 
 using util::hash::TupleHash;
 
-// TODO:
-// 1. Add a way to clear the cache (LRU, or something).
-
 /**
- * @brief What one element of a cache key must support. Element-wise on purpose: `TupleHash`'s
- *        `operator()` takes any tuple and fails inside its body, so constraining *it* would
- *        constrain nothing.
+ * @brief What one element of a cache key must support: equality, hashing, and being copyable —
+ *        the key is copied into a tuple and again into the map. Element-wise on purpose:
+ *        `TupleHash`'s `operator()` takes any tuple and fails inside its body, so
+ *        constraining *it* would constrain nothing.
  */
 // Spelled as three library concepts rather than one `requires { std::hash<T> {}(v) }`: the latter
 // makes g++-14 ICE in `finish_compound_literal` when reached through a nested requires-expression.
 template <typename T>
 concept CacheKeyElement = std::equality_comparable<T>
                       and std::default_initializable<std::hash<T>>
-                      and std::invocable<std::hash<T>&, const T&>;
+                      and std::invocable<std::hash<T>&, const T&>
+                      and std::copy_constructible<T>;
 
 /**
  * @brief A wrapper that caches the result of a function.
- * @param func The function to cache. Must be pure — same arguments ⇒ same result.
- * @return The cached function. Thread-safe; copies share one cache (#78).
+ * @param func The function to cache. Must be pure — same arguments ⇒ same result — and have
+ *        a single, non-generic call signature (deduced through `std::function`).
+ * @return The cached closure (copies share one cache, #78; not assignable). Thread-safe.
  * @note The constraints state what the `unordered_map` below already enforces, so misuse is
  *       rejected here instead of inside its instantiation. `copy_constructible` also rules out
- *       `void`, which has nothing to cache. A bounded key space is not expressible here — the
- *       cache never evicts, so that stays the caller's contract.
+ *       `void`; `is_object_v` rules out reference returns — the hit path forms `const RetType*`.
+ * @note The cache **never erases and never evicts** — an entry lives as long as its shared
+ *       state. The hit path's out-of-lock copy depends on that: references into an
+ *       `unordered_map` survive rehash, only erase would invalidate them. No LRU and no
+ *       `clear`, by the same invariant. The key space is bounded only by the caller's contract.
  */
 template <typename RetType, typename... Args>
-requires std::copy_constructible<RetType>
-     and (... and CacheKeyElement<std::decay_t<Args>>)
-[[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) -> std::function<RetType(Args...)> {
+  requires std::is_object_v<RetType>
+       and std::copy_constructible<RetType>
+       and (... and CacheKeyElement<std::decay_t<Args>>)
+[[nodiscard]] inline auto make_cached(const std::function<RetType(Args...)>& func) {
   // Cache and mutex live behind a `shared_ptr`, so copying the returned
-  // `std::function` shares one cache instead of forking divergent replicas (#78).
+  // closure shares one cache instead of forking divergent replicas (#78).
   struct State {
     std::mutex mtx;
     std::unordered_map<std::tuple<std::decay_t<Args>...>, RetType, TupleHash<std::decay_t<Args>...>> cache;
@@ -77,12 +81,16 @@ requires std::copy_constructible<RetType>
   return [state = std::make_shared<State>(), func = func](Args... args) -> RetType {
     auto key = std::make_tuple(args...);
 
+    const RetType* hit = nullptr;
     {
       const std::lock_guard lock { state->mtx };
-      const auto found = state->cache.find(key);
-      if (found != state->cache.end()) {
-        return found->second;
+      if (const auto found = state->cache.find(key); found != state->cache.end()) {
+        hit = &found->second;
       }
+    }
+    // Copy outside the lock — sound only under the never-erase invariant (see above).
+    if (hit != nullptr) {
+      return *hit;
     }
 
     // Compute outside the lock: misses on different keys don't serialize, and `func`
@@ -107,7 +115,7 @@ concept FunctionConvertible = requires(T t) {
 /**
  * @brief A wrapper that caches the result of a function.
  * @param func The function to cache.
- * @return The cached function.
+ * @return The cached closure.
  */
 [[nodiscard]] inline auto cache_func(const FunctionConvertible auto& func) {
   return make_cached(std::function(func));

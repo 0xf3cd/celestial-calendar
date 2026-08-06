@@ -66,7 +66,7 @@ auto main() -> int {
   volatile double sink = 0.0;
 
   const bench::Case cold {
-    // A cache with no way to empty it -- `util/cache.hpp` still carries the TODO -- can only be
+    // A cache with no way to empty it -- `util/cache.hpp` deliberately has none -- can only be
     // made cold by being new, so this builds one per round. Per round, not per call: one wrapper
     // construction amortized over `iterations` is invisible next to a Newton search. And `keys` is
     // indexed directly rather than modulo, which is what keeps every call a miss.

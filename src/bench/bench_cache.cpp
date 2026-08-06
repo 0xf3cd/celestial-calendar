@@ -21,18 +21,25 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// The cache pays one `hash_combine` per lookup. The mixer's quality is a test
-// (`Util.HashCombineAvalanche`); its cost is the old/new pair below (see harness.hpp for why
-// the paired ratio is the figure to read).
+// Two pairs about the cache in util/cache.hpp. The mixer pair: the cache pays one
+// `hash_combine` per lookup -- its quality is a test (`Util.HashCombineAvalanche`), its cost
+// is the old/new pair below (see harness.hpp for why the paired ratio is the figure to read).
+// The copy pair: where a hit's copy happens, inside the lock or outside it, under contention.
 
+#include <span>
 #include <array>
+#include <mutex>
+#include <atomic>
+#include <ranges>
+#include <thread>
 #include <vector>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <iostream>
 #include <functional>
 #include <type_traits>
+#include <unordered_map>
 
 #include "hash.hpp"
 #include "harness.hpp"
@@ -67,6 +74,75 @@ template <typename T>
     }
   }
   return keys;
+}
+
+/** @brief A cached value that is expensive to copy: stands in for `LunarYear`, whose
+ *         `month_lengths` makes every cache hit a heap allocation. */
+struct HeavyValue {
+  std::vector<int32_t> month_lengths;
+  int32_t leap_month = 0;
+};
+
+/** @brief The two hit-path copy placements, frozen for the paired measurement; `OUT_OF_LOCK`
+ *         is the one `make_cached` makes live. Copying after releasing the mutex stands under
+ *         the same never-erase premise as `util/cache.hpp`. */
+template <bool OUT_OF_LOCK>
+struct FrozenHitCache {
+  std::mutex mtx;
+  std::unordered_map<int32_t, HeavyValue> cache;
+
+  // A lunar year has at most 13 months (12 + a leap month).
+  static constexpr std::size_t MONTH_COUNT = 13;
+
+  explicit FrozenHitCache(const std::span<const int32_t> keys) {
+    for (const int32_t key : keys) {
+      cache.emplace(key, HeavyValue { .month_lengths = std::vector<int32_t>(MONTH_COUNT, key), .leap_month = key });
+    }
+  }
+
+  [[nodiscard]] auto get(const int32_t key) -> HeavyValue {
+    if constexpr (OUT_OF_LOCK) {
+      const HeavyValue* found = nullptr;
+      {
+        const std::lock_guard lock { mtx };
+        found = &cache.at(key);
+      }
+      return *found;
+    } else {
+      const std::lock_guard lock { mtx };
+      return cache.at(key);
+    }
+  }
+};
+
+/** @brief One round of contended hits: `THREADS` workers split the iterations over one shared
+ *         cache. The copied bytes must survive the optimizer, so the sink folds in the
+ *         allocation address itself. */
+template <bool OUT_OF_LOCK>
+[[nodiscard]] auto contended_hits_body(FrozenHitCache<OUT_OF_LOCK>& cache, const std::vector<int32_t>& keys) {
+  return [&cache, &keys](const std::size_t iterations) {
+    constexpr std::size_t THREADS = 4;
+    std::atomic<std::uintptr_t> sink { 0 };
+    const auto worker = [&](const std::size_t n) {
+      std::uintptr_t acc = 0;
+      for (std::size_t i = 0; i < n; ++i) {
+        const auto value = cache.get(keys[i % keys.size()]);
+        // Hash the allocation address: the copy must materialize for the address to exist,
+        // and `std::hash` on a pointer is lint-clean where a cast is not.
+        acc ^= std::hash<const int32_t*> {}(value.month_lengths.data()) & 0xff;
+      }
+      sink.fetch_xor(acc, std::memory_order_relaxed);
+    };
+    {
+      // Split exactly: the harness contract is that `body` runs precisely `iterations`.
+      std::vector<std::jthread> workers;
+      workers.reserve(THREADS);
+      for (std::size_t t = 0; t < THREADS; ++t) {
+        const std::size_t n = iterations / THREADS + (t < iterations % THREADS ? 1 : 0);
+        workers.emplace_back(worker, n);
+      }
+    }
+  };
 }
 
 } // namespace
@@ -119,6 +195,25 @@ auto main() -> int {
   const std::array mixer_pair { old_mixer, new_mixer };
   const bench::Plan plan { .title = "Cache key hashing", .iterations = 240000 };
   bench::run(plan, mixer_pair, std::cout);
+
+  // Where a hit's copy happens. Single-threaded the two placements do the same work; the pair
+  // only separates under contention, so the measurement has to be contended (4 workers on one
+  // cache). The value mimics `LunarYear`: every hit is a heap allocation.
+  constexpr int32_t HEAVY_KEY_COUNT = 240;
+  const auto heavy_keys = std::views::iota(int32_t { 0 }, HEAVY_KEY_COUNT) | std::ranges::to<std::vector>();
+  FrozenHitCache<false> in_lock_cache { heavy_keys };
+  FrozenHitCache<true>  out_lock_cache { heavy_keys };
+  const bench::Case in_lock {
+    .name = "hit copy -- inside the lock",
+    .body = contended_hits_body(in_lock_cache, heavy_keys),
+  };
+  const bench::Case out_lock {
+    .name = "hit copy -- outside the lock",
+    .body = contended_hits_body(out_lock_cache, heavy_keys),
+  };
+  const std::array copy_pair { in_lock, out_lock };
+  const bench::Plan copy_plan { .title = "Cache hit copy (4 contended workers)", .iterations = 24000 };
+  bench::run(copy_plan, copy_pair, std::cout);
 
   return 0;
 }

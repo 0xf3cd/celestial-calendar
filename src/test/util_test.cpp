@@ -384,7 +384,7 @@ TEST(Util, HashCombineAvalanche) {
 }
 
 
-/*! @brief Whether `make_cached` accepts a signature. `cache_func` funnels through it. */
+/*! @brief Whether `make_cached` accepts a signature. */
 template <typename Sig>
 concept MakeCachedViable = requires (std::function<Sig> func) { util::cache::make_cached(func); };
 
@@ -399,6 +399,8 @@ TEST(Util, MakeCachedConstraints) {
   static_assert(not MakeCachedViable<void(int)>);
   static_assert(not MakeCachedViable<std::unique_ptr<int>(int)>);
   static_assert(not MakeCachedViable<int(Unhashable)>);
+  static_assert(not MakeCachedViable<int32_t&(int32_t)>);   // reference return: no `const RetType*`
+  static_assert(not MakeCachedViable<int(std::unique_ptr<int>)>); // hashable but not copyable
 }
 
 TEST(Util, MakeCached1) {
