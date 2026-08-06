@@ -50,8 +50,8 @@ using calendar::lunar::common::LunarYear;
 
 // A convention, not a physical ceiling — the method computes rather than looks up. The ceiling
 // sits where the UTC+8 civil-day assignment stops being reliable: the ΔAT table freezes at 37 s
-// past its last entry (2017), so if UTC keeps tracking UT1 — leap seconds or whatever succeeds
-// them (CGPM 2022 Res. 4) — the rendered civil time drifts from the real one by an unknowable
+// past its last entry (2017), so if UTC keeps tracking UT1 — leap seconds or a successor
+// mechanism (CGPM 2022 Res. 4) — the rendered civil time drifts from the real one by an unknowable
 // amount; VSOP·ELP drift is second-order. Error budget, measurement, threshold decision: #139.
 
 /** @brief The first supported lunar year. */
