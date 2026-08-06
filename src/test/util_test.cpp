@@ -385,7 +385,7 @@ TEST(Util, HashCombineAvalanche) {
 
 
 /*! @brief Whether `make_cached` accepts the callable `F` — spelled as a concept so rejection
-           goes through substitution (the `ToYmdViable` lesson above). */
+           goes through substitution (the `ToYmdCallable` lesson above). */
 template <typename F>
 concept MakeCachedAccepts = requires (const F& func) { util::cache::make_cached(func); };
 

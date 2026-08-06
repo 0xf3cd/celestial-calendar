@@ -18,7 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Two pairs about the cache in util/cache.hpp. The mixer pair: the cache pays one
