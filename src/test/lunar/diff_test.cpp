@@ -36,41 +36,17 @@
 //
 // ## Known divergences 1914 / 1915 / 1916 / 1920 (Provenance)
 //
-// algo1 = Hong Kong Observatory hard-coded table (T{Y}c.txt calendar text files).
-// algo2 = live VSOP87 / ELP2000 + algo5 ΔT computation.
-// On four years they disagree by one day at a single lunation boundary. Direction:
-// the almanac (algo1) places 初一 one civil day earlier than the pure calculation (algo2).
-//
-// Three root events (new moons just after UTC+8 midnight), not four independent ones:
-//   1914-11-18 00:01:49 UTC+8  (~109 s after midnight) → month_lengths[9]/[10] swap
-//   1916-02-04 00:05:13 UTC+8  (~313 s)                → first_day + month_lengths[0]
-//   1920-11-11 00:04:48 UTC+8  (~288 s)                → month_lengths[8]/[9] swap
-// 1915 is not independent: its last-month length is the upper bound of the 1916 event
-// (algo1 ends 1915 with 29 days; algo2 with 30).
-//
+// algo1 = HKO hard-coded table (T{Y}c.txt); algo2 = live VSOP87/ELP2000 + algo5 ΔT.
+// Four years disagree by one day at one lunation boundary. Direction is uniform:
+// the almanac (algo1) places 初一 one civil day earlier than pure calculation (algo2).
 // Mechanism (ytliu0 廖育棟, ChineseCalendar computation page, accessed 2026-08-05):
-// from 1914 the published almanac switched to Beijing local mean time (≈ UT+7:46;
-// more precisely 7h45m40s at 116°25′E); from 1929 it uses UT+8. That 14m20s offset
-// is why a new moon a few minutes past UTC+8 midnight falls on the previous civil
-// day under the almanac rule.
+// from 1914 the published almanac switched to Beijing local mean time.
+// Pins only these four measured years — no Qing closed rule claimed; 1906 falsifies
+// pure time-zone extrapolation outside that era.
 //
-// 1906-04-24 00:06:35 UTC+8 is the counter-example that kills any pure time-zone rule
-// extrapolated into the Qing: HKO T1906c keeps 四月初一 on 04-24 (no flip). 1906 is
-// still in the apparent-solar-time era, so it does not refute the 1914 mean-time claim;
-// it does show that Qing almanacs carry their own computational scatter (ytliu0 notes
-// 200+ Qing mismatches vs modern calculation). We therefore pin only the four measured
-// years and do not claim a closed rule for the Qing segment.
-//
-// Three-layer values (absolute pins below):
-//   1. notebook cell output in statistics/lunar_calendar.ipynb (algo1 vs algo2 dump)
-//   2. HKO T1914c / T1916c / T1920c.txt line-level text
-//   3. ytliu0 page (mechanism + the three 初一 rows; no 1906 row there)
-//
-// Reproducible near-midnight scan of 1901–1929 new moons that fall inside the first
-// 14m20s after UTC+8 midnight (4 hits, of which 3 flipped the almanac):
-//   python3 statistics/algo3_ytliu0_golden.py scan-near-midnight
-// That scan covers syzygies only (the four moons above); it does NOT cover the 1917 /
-// 1927 / 1928 jieqi-only differences noted by ytliu0.
+// Three-layer absolute pins: notebook cell output in statistics/lunar_calendar.ipynb;
+// HKO T1914c / T1916c / T1920c.txt; ytliu0 page (mechanism + 初一 rows).
+// Near-midnight scan: python3 statistics/algo3_ytliu0_golden.py scan-near-midnight
 
 namespace calendar::lunar::test {
 
