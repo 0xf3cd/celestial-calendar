@@ -193,8 +193,7 @@ jobs:
 
         # Guard on what install produced, not on what a glob matched (#72). macOS puts the
         # version inside the name: real file libcelestial_calendar.${VERSION}.dylib with
-        # .${SOVERSION}.dylib and .dylib symlinks (shape pinned by the first CI run of this
-        # step, 2026-08).
+        # .${SOVERSION}.dylib and .dylib symlinks.
         ok=1
         [ -f "./macos_arm64/lib/libcelestial_calendar.${VERSION}.dylib" ] || { echo "missing lib/libcelestial_calendar.${VERSION}.dylib"; ok=0; }
         [ -L "./macos_arm64/lib/libcelestial_calendar.${SOVERSION}.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.${SOVERSION}.dylib"; ok=0; }

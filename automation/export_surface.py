@@ -35,13 +35,74 @@ SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {
 # them visible; RTTI for builtin or function types names no symbol a consumer could link
 # against. Anything else that escapes the hiding must be named in SURVIVOR_EXCEPTIONS
 # with a reason -- widening this predicate instead defeats the gate.
+VAGUE_LINKAGE_PREFIXES: Final[Tuple[str, ...]] = (
+  "vtable for ",
+  "VTT for ",
+  "guard variable for ",
+)
+
+# Predicate self-test: std-owned shapes must pass, user-owned shapes must not -- in
+# particular a user symbol whose argument or return type merely mentions std:: (that
+# substring must not whitewash it), the hole this predicate was tightened for.
+PREDICATE_SELF_TEST: Final[List[Tuple[str, bool]]] = [
+  ("char* std::__add_grouping<char>(char*, char*, char)", True),
+  ("vtable for std::vector<double, std::allocator<double> >", True),
+  ("typeinfo for double (int, calendar::jieqi::Jieqi)", True),
+  ("typeinfo name for std::vector<double>", True),
+  ("astro::sun::geocentric_coord(double)", False),
+  ("astro::foo(std::basic_string<char, std::char_traits<char> >)", False),
+  ("std::vector<double> astro::make_vec(double)", False),
+  ("astro::Holder<std::string>::get()", False),
+]
+
+
 def is_std_vague_linkage(demangled: str) -> bool:
   """Whether a demangled survivor is a C++ vague-linkage artifact rather than API surface."""
-  if "std::" in demangled or "__gnu_cxx::" in demangled:
-    return True
   # "typeinfo for double", "typeinfo name for double (int, Jieqi)" -- the latter embeds
-  # our type names in the signature, but the symbol itself is anonymous RTTI.
-  return demangled.startswith(("typeinfo for ", "typeinfo name for "))
+  # our type names in the signature, but the symbol itself is anonymous RTTI. User-type
+  # RTTI passes too: RTTI is not a linkable API.
+  if demangled.startswith(("typeinfo for ", "typeinfo name for ")):
+    return True
+  core = demangled
+  for prefix in VAGUE_LINKAGE_PREFIXES:
+    if core.startswith(prefix):
+      core = core[len(prefix):]
+      break
+  # Only the qualified name may lend its std::-ness. Squeeze spaces inside <...> so the
+  # name is a single token, drop the argument list (the first "(" outside any template),
+  # and take the last token before it -- a return type, when demangled, comes first.
+  squeezed: List[str] = []
+  depth = 0
+  for ch in core:
+    if ch == "<":
+      depth += 1
+    elif ch == ">":
+      depth -= 1
+    if ch != " " or depth == 0:
+      squeezed.append(ch)
+  head = "".join(squeezed)
+  depth = 0
+  cut = len(head)
+  for i, ch in enumerate(head):
+    if ch == "<":
+      depth += 1
+    elif ch == ">":
+      depth -= 1
+    elif ch == "(" and depth == 0:
+      cut = i
+      break
+  name = head[:cut].rsplit(" ", 1)[-1]
+  return name.startswith(("std::", "__gnu_cxx::"))
+
+
+def self_test_predicate() -> List[str]:
+  """Hold the vague-linkage predicate to pinned shapes; a failure means the gate is broken."""
+  failures: List[str] = []
+  for sample, expected in PREDICATE_SELF_TEST:
+    actual = is_std_vague_linkage(sample)
+    if actual != expected:
+      failures.append(f"predicate self-test: {sample!r} -> {actual}, expected {expected}")
+  return failures
 
 # Parser self-test samples (shape -> expected (name, has_macro) pairs). The gate runs
 # these before trusting the parser: a parser that cannot read the declaration shapes in
@@ -59,7 +120,7 @@ PARSER_SELF_TEST: Final[List[Tuple[str, List[Tuple[str, bool]]]]] = [
 ]
 
 FUNC_NAME_RE: Final[re.Pattern] = re.compile(r"(\w+)\s*\(")
-SONAME_RE: Final[re.Pattern] = re.compile(r"Library soname: \[(libcelestial_calendar\.so\.\d+\.\d+)\]")
+SONAME_RE: Final[re.Pattern] = re.compile(r"Library soname: \[(libcelestial_calendar\.so\.[^\]]+)\]")
 REAL_SO_RE: Final[re.Pattern] = re.compile(r"^libcelestial_calendar\.so\.(\d+)\.(\d+)\.(\d+)$")
 
 
@@ -170,11 +231,11 @@ def check_export_surface() -> int:
   print("#" * 60)
   yellow_print("Checking that the export surface matches the celestial.h entry points...")
 
-  failures: List[str] = self_test_parser()
+  failures: List[str] = self_test_parser() + self_test_predicate()
   if failures:
     for f in failures:
       red_print(f"  - {f}")
-    red_print("Export-surface gate is broken (parser self-test failed); fix the parser, not the data")
+    red_print("Export-surface gate is broken (self-test failed); fix the gate, not the data")
     return 1
 
   header = paths.proj_root() / "src" / "shared_lib" / "celestial.h"
@@ -189,47 +250,48 @@ def check_export_surface() -> int:
       failures.append(f"{name}: declaration in celestial.h without CELESTIAL_API")
   entries = {name for name, _ in decls}
 
-  # Dynamic half, on the real built library.
+  # Dynamic half, on the real built library. A missing build fails the gate but must not
+  # swallow the static half's findings -- they are the part any leg can check.
   so = find_real_so(paths.build_dir() / "shared_lib")
+  soname: Optional[str] = None
   if so is None:
-    red_print("Built library not found (run ./project.py --build first)")
-    return 1
+    failures.append("Built library not found (run ./project.py --build first); dynamic half not run")
+  else:
+    try:
+      symbols = nm_defined(so)
+    except RuntimeError as e:
+      red_print(str(e))
+      return 1
 
-  try:
-    symbols = nm_defined(so)
-  except RuntimeError as e:
-    red_print(str(e))
-    return 1
+    exported = set(symbols.keys())
 
-  exported = set(symbols.keys())
+    missing = sorted(entries - exported)
+    for name in missing:
+      failures.append(f"{name}: entry point not exported by {so.name}")
 
-  missing = sorted(entries - exported)
-  for name in missing:
-    failures.append(f"{name}: entry point not exported by {so.name}")
+    survivors = sorted(exported - entries)
+    demangled = demangle(survivors) if survivors else {}
+    for name in survivors:
+      if name in SURVIVOR_EXCEPTIONS:
+        continue
+      if is_std_vague_linkage(demangled[name]):
+        continue
+      failures.append(
+        f"{name} ({demangled[name]}): exported but neither an entry point nor a std "
+        f"vague-linkage symbol -- hide it, or add it to SURVIVOR_EXCEPTIONS with a reason"
+      )
 
-  survivors = sorted(exported - entries)
-  demangled = demangle(survivors) if survivors else {}
-  for name in survivors:
-    if name in SURVIVOR_EXCEPTIONS:
-      continue
-    if is_std_vague_linkage(demangled[name]):
-      continue
-    failures.append(
-      f"{name} ({demangled[name]}): exported but neither an entry point nor a std "
-      f"vague-linkage symbol -- hide it, or add it to SURVIVOR_EXCEPTIONS with a reason"
-    )
-
-  # SONAME pin: major.minor of the real file's version, per the CMakeLists comment.
-  version = REAL_SO_RE.match(so.name)
-  assert version is not None  # find_real_so only returns REAL_SO_RE matches
-  expected_soname = f"libcelestial_calendar.so.{version.group(1)}.{version.group(2)}"
-  try:
-    soname = read_soname(so)
-  except RuntimeError as e:
-    red_print(str(e))
-    return 1
-  if soname != expected_soname:
-    failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} (major.minor of VERSION while 0.x)")
+    # SONAME pin: major.minor of the real file's version, per the CMakeLists comment.
+    version = REAL_SO_RE.match(so.name)
+    assert version is not None  # find_real_so only returns REAL_SO_RE matches
+    expected_soname = f"libcelestial_calendar.so.{version.group(1)}.{version.group(2)}"
+    try:
+      soname = read_soname(so)
+    except RuntimeError as e:
+      red_print(str(e))
+      return 1
+    if soname != expected_soname:
+      failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} (major.minor of VERSION while 0.x)")
 
   print("#" * 60)
   if failures:

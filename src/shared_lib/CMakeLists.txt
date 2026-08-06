@@ -28,9 +28,10 @@ target_compile_definitions(celestial_calendar PRIVATE CELESTIAL_BUILDING_DLL)
 
 # Surviving exports after the hiding (#91's exception list, human-facing copy; the
 # machine-readable source is SURVIVOR_EXCEPTIONS in automation/export_surface.py, empty
-# today): every remaining export is a weak/unique vague-linkage symbol from the standard
-# library — namespace std carries an explicit default-visibility attribute that overrides
-# -fvisibility=hidden, and cross-DSO coalescing of those symbols needs them visible.
+# today): every remaining export is a C++ vague-linkage artifact — a weak/unique symbol
+# from namespace std (std carries an explicit default-visibility attribute that overrides
+# -fvisibility=hidden, and cross-DSO coalescing needs those visible) or anonymous RTTI
+# for a builtin/function type (no symbol a consumer could link against).
 
 # SOVERSION tracks major.minor while 0.x: a 0.x minor may break the ABI, so SOVERSION=0
 # would falsely claim all 0.x releases mutually compatible. Trigger: at the 1.0 release,
@@ -44,9 +45,8 @@ set_target_properties(celestial_calendar PROPERTIES
 )
 
 # Release packaging runs `cmake --install` (build_and_test.yml): the real file and the
-# SOVERSION symlinks land by CMake's rules, replacing the hand-rolled `-type f` copy that
-# shipped only the real file. All three destinations are required — the Windows .dll goes
-# to RUNTIME, its import .lib to ARCHIVE, and without ARCHIVE no .lib is installed.
+# SOVERSION symlinks land by CMake's rules. All three destinations are required — the
+# Windows .dll goes to RUNTIME, its import .lib to ARCHIVE, and without ARCHIVE no .lib.
 # No COMPONENT split: the release shape is a single zip, there is no per-component
 # audience (package config / find_package is deliberately not offered — no consumer).
 install(TARGETS celestial_calendar
