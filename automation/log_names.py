@@ -69,7 +69,7 @@ def check_log_names() -> int:
   lib_dir = paths.proj_root() / "src" / "shared_lib"
   for source in sorted(lib_dir.glob("lib*.cpp")):
     for lineno, line in enumerate(source.read_text().splitlines(), start=1):
-      if line.lstrip().startswith("#"):  # `#include "x.hpp"` is not a log string
+      if line.lstrip().startswith("#include"):  # an include path is not a log string
         continue
       for literal in STRING_LITERAL_RE.findall(line):
         for token in SNAKE_TOKEN_RE.findall(literal):

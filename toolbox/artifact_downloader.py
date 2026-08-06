@@ -55,9 +55,12 @@ def release_commit_sha() -> str:
   the commit the caller means. GITHUB_SHA is the fallback. The rev-parse runs at the
   repo root -- the caller's cwd may not be a repo at all.
   """
-  ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
-                       cwd=Path(__file__).parent.parent)
-  if ret.returncode == 0:
+  try:
+    ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                         cwd=Path(__file__).parent.parent)
+  except FileNotFoundError:  # no git binary at all -- fall through to GITHUB_SHA
+    ret = None
+  if ret is not None and ret.returncode == 0:
     return ret.stdout.strip()
   sha = os.environ.get("GITHUB_SHA")
   if sha:
