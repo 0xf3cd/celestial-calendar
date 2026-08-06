@@ -54,18 +54,23 @@ TEST(JieQi, CachedWrapperIsLazilyInitialized) {
 }
 
 TEST(JieQi, YearGuard) {
-  // The conversion chain wraps years past 32767 (`std::chrono::year` is a `short`): 65537 used
-  // to silently compute as year 1 — and `jieqi_jde` cached that under key 65537; 100000 used
-  // to throw "The year -31072 is < 1". The guard keeps both from ever reaching the wrap.
+  // Without the guard the conversion chain wraps out-of-range years: 65537 wraps to year 1
+  // and would be cached under the *unwrapped* key; negative wraps hit the Julian-day layer's
+  // lower gate with a misleading message.
   ASSERT_THROW(std::ignore = calc_jieqi_jde(0, Jieqi::春分), std::out_of_range);
   ASSERT_THROW(std::ignore = calc_jieqi_jde(-5, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(32768, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(32767, Jieqi::春分), std::out_of_range);
   ASSERT_THROW(std::ignore = calc_jieqi_jde(65537, Jieqi::春分), std::out_of_range);
   ASSERT_THROW(std::ignore = calc_jieqi_jde(100000, Jieqi::春分), std::out_of_range);
 
   // The cached wrapper goes through the same guard — a poisoned entry never forms.
   ASSERT_THROW(std::ignore = jieqi_jde(65537, Jieqi::春分), std::out_of_range);
   ASSERT_THROW(std::ignore = jieqi_jde(100000, Jieqi::春分), std::out_of_range);
+
+  // Boundary years stay computable — the ceiling is 32766 because the root search brackets
+  // with `year + 1`.
+  ASSERT_NO_THROW(std::ignore = calc_jieqi_jde(1, Jieqi::春分));
+  ASSERT_NO_THROW(std::ignore = calc_jieqi_jde(32766, Jieqi::春分));
 }
 
 TEST(JieQi, NameQuery) {

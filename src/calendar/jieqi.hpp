@@ -205,19 +205,21 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`.
- * @param year The year, in gregorian calendar, in [1, 32767].
+ * @param year The gregorian year, in [1, 32766].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `year` is outside [1, 32767], or `jq` is not a valid Jieqi.
+ * @throw std::out_of_range if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 [[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
-  // A representability guard, not an accuracy one: the conversion chain wraps years past
-  // 32767 (`std::chrono::year` is a `short`) into silently wrong answers — and the cached
-  // wrapper would store them under the *unwrapped* key.
-  if (year < 1 or year > static_cast<int32_t>(static_cast<int>(std::chrono::year::max()))) {
+  // A representability guard, not an accuracy one: `std::chrono::year` stores an unspecified
+  // value beyond ±32767, and the conversion chain turns that into silently wrong answers —
+  // the cached wrapper would store them under the *unwrapped* key. The root search brackets
+  // with `year + 1`, so the usable ceiling is one below `year::max()`.
+  constexpr int32_t MAX_YEAR = static_cast<int32_t>(std::chrono::year::max()) - 1;
+  if (year < 1 or year > MAX_YEAR) {
     throw std::out_of_range {
-      std::vformat("The year {} is out of the range [1, 32767].", std::make_format_args(year))
+      std::vformat("The year {} is outside [1, {}].", std::make_format_args(year, MAX_YEAR))
     };
   }
 
@@ -238,10 +240,10 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`, using cache.
- * @param year The year, in gregorian calendar, in [1, 32767].
+ * @param year The gregorian year, in [1, 32766].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `year` is outside [1, 32767], or `jq` is not a valid Jieqi.
+ * @throw std::out_of_range if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 // Function-local static: a namespace-scope wrapper would initialize at image load (#67).
