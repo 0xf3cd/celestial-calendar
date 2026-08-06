@@ -53,6 +53,21 @@ TEST(JieQi, CachedWrapperIsLazilyInitialized) {
   static_assert(std::is_function_v<decltype(jieqi_jde)>);
 }
 
+TEST(JieQi, YearGuard) {
+  // The conversion chain wraps years past 32767 (`std::chrono::year` is a `short`): 65537 used
+  // to silently compute as year 1 — and `jieqi_jde` cached that under key 65537; 100000 used
+  // to throw "The year -31072 is < 1". The guard keeps both from ever reaching the wrap.
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(0, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(-5, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(32768, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(65537, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(100000, Jieqi::春分), std::out_of_range);
+
+  // The cached wrapper goes through the same guard — a poisoned entry never forms.
+  ASSERT_THROW(std::ignore = jieqi_jde(65537, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = jieqi_jde(100000, Jieqi::春分), std::out_of_range);
+}
+
 TEST(JieQi, NameQuery) {
   ASSERT_EQ(longitude_of(Jieqi::立春), 315.0);
   ASSERT_EQ(longitude_of(Jieqi::雨水), 330.0);

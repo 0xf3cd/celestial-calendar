@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <format>
 #include <ranges>
 #include <cstdint>
@@ -204,11 +205,22 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`.
- * @param year The year, in gregorian calendar.
+ * @param year The year, in gregorian calendar, in [1, 32767].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
+ * @throw std::out_of_range if `year` is outside [1, 32767], or `jq` is not a valid Jieqi.
+ * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 [[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
+  // A representability guard, not an accuracy one: the conversion chain wraps years past
+  // 32767 (`std::chrono::year` is a `short`) into silently wrong answers — and the cached
+  // wrapper would store them under the *unwrapped* key.
+  if (year < 1 or year > static_cast<int32_t>(static_cast<int>(std::chrono::year::max()))) {
+    throw std::out_of_range {
+      std::vformat("The year {} is out of the range [1, 32767].", std::make_format_args(year))
+    };
+  }
+
   const auto lon = longitude_of(jq);
   const auto roots = astro::sun::geocentric_coord::math::find_roots(year, lon);
 
@@ -226,12 +238,11 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /**
  * @brief Get the JDE for the given `year` and `jieqi`, using cache.
- * @param year The year, in gregorian calendar.
+ * @param year The year, in gregorian calendar, in [1, 32767].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `jq` is not a valid Jieqi.
- * @throw std::runtime_error if the root search does not yield exactly one root, or a `year`
- *        before 1 — inherited from `ut1_to_jd` (#77).
+ * @throw std::out_of_range if `year` is outside [1, 32767], or `jq` is not a valid Jieqi.
+ * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 // Function-local static: a namespace-scope wrapper would initialize at image load (#67).
 [[nodiscard]] inline auto jieqi_jde(const int32_t year, const Jieqi jq) -> double {
