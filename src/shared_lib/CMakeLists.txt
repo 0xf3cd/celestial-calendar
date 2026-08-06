@@ -26,7 +26,16 @@ set_target_properties(celestial_calendar PROPERTIES
 # Windows. Consumers of celestial.h need no defines.
 target_compile_definitions(celestial_calendar PRIVATE CELESTIAL_BUILDING_DLL)
 
-set_target_properties(celestial_calendar PROPERTIES VERSION ${VERSION_NUMBER})
+# SOVERSION tracks major.minor while 0.x: a 0.x minor may break the ABI, so SOVERSION=0
+# would falsely claim all 0.x releases mutually compatible. Trigger: at the 1.0 release,
+# switch to major-only — from then on the ABI holds within a major, which is exactly the
+# promise SOVERSION makes.
+string(REGEX MATCH "^[0-9]+\\.[0-9]+" SOVERSION_NUMBER "${VERSION_NUMBER}")
+
+set_target_properties(celestial_calendar PROPERTIES
+  VERSION ${VERSION_NUMBER}
+  SOVERSION ${SOVERSION_NUMBER}
+)
 
 # #67: compile-check the published C header as pure C (layouts pinned by `_Static_assert`
 # inside). Built as part of the default target, so CI exercises it on every platform.
