@@ -53,8 +53,8 @@ MEAN_MOTION = 360.0 / 365.2422
 # --- Axis 1 epochs (same banding philosophy as moon_horizons_crawler.py) ---
 # Core band 1901-2094 (32 epochs stepped 2283.25 days) + the Meeus 25.b anchor.
 SUN_CORE_EPOCHS = [2415385.5 + k * 2283.25 for k in range(32)] + [2448908.5]
-# ~501/999/1599/2500/3000 CE, plus ~410 and ~5001 — the lunar-algo2 boundary years at the
-# time (#94); the algo2 ceiling later narrowed to 2500 (#139), 5001 stays as far coverage.
+# ~501/999/1599/2500/3000 CE; ~410 is the lunar-algo2 lower bound and ~5001 is far-future
+# coverage (not the algo2 ceiling — #139).
 SUN_EXTENDED_EPOCHS = [1870800.5, 1904000.5, 2086000.5, 2305000.5, 2634000.5, 2817000.5, 3547660.5]
 # JD 2^22 straddle (~6771 CE, #76 cliff guard) and ~9420 CE.
 SUN_FAR_EPOCHS = [4194303.5, 4194304.5, 5161700.5]

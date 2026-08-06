@@ -12,7 +12,7 @@
 * Time scales and time-related quantities: UT1 / UTC / TT with leap seconds and ΔT, Julian Day, sidereal time, obliquity, nutation (时标转换、儒略日、恒星时、黄赤交角、章动)
 * A C ABI shared library (`src/shared_lib/celestial.h`), so the library is consumable from other languages (C 接口动态库)
 
-The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected. The 2500 ceiling is where the UTC+8 civil-day assignment stays reliable under the #139 error budget — frozen ΔAT table vs. unknowable future leap seconds, ~3.6% day-flip risk per new moon there). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI exports algo1 and algo2, and `get_supported_lunar_year_range` reports their bounds.
+The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected; the 2500 ceiling comes from the #139 error budget). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI exports algo1 and algo2, and `get_supported_lunar_year_range` reports their bounds.
 
 ## 2. Requirements
 
