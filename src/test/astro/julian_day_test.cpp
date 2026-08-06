@@ -25,6 +25,7 @@
 
 #include <tuple>
 #include <limits>
+#include <vector>
 #include <unordered_map>
 #include "util.hpp"
 #include "datetime.hpp"
@@ -125,6 +126,76 @@ TEST(JulianDay, Consistency) {
     const auto recovered_tt = jde_to_tt(recovered_jde);
     ASSERT_EQ(tt.ymd, recovered_tt.ymd);
     ASSERT_NEAR(tt.fraction(), recovered_tt.fraction(), EPSILON);
+  }
+}
+
+TEST(JulianDay, JdeUt1Anchors) {
+  // The UT1 family composes ΔT on top of the TT conversion: UT1 = TT − ΔT. The anchors pin the
+  // composition against *observed* ΔT values, not `delta_t::compute` itself — a sign flip in the
+  // composition would err by 2ΔT (~128 s at the modern anchors), far outside any tolerance here.
+  //
+  // Provenance: observed ΔT (TT − UT1) at the anchors — 63.83 s at 2000-01-01 and 69.18 s at
+  // 2020-01-01 (USNO/IERS, via https://eclipse.gsfc.nasa.gov/SEcat5/deltat.html); 5710 s at
+  // year 500 (Stephenson & Morrison, the same table the ΔT models fit, so the models sit within
+  // ~1 s of it there). The per-anchor tolerance bounds |model − observation| at that epoch;
+  // the conversion itself is far tighter than that.
+  struct Anchor {
+    Datetime tt;
+    Datetime ut1;    // tt − observed ΔT
+    double tol_sec;  // |model ΔT − observed ΔT| bound at this epoch
+  };
+
+  const std::vector<Anchor> anchors {
+    { Datetime { to_ymd(2000, 1, 1), 0.0 },
+      Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } },
+      0.2 },
+    { Datetime { to_ymd(2020, 1, 1), 0.0 },
+      Datetime { to_ymd(2019, 12, 31), hh_mm_ss { 23h + 58min + 50s + 820ms } },
+      1.0 },
+    { Datetime { to_ymd(500, 1, 1), 0.0 },
+      Datetime { to_ymd(499, 12, 31), hh_mm_ss { 22h + 24min + 50s } },
+      2.0 },
+  };
+
+  for (const auto& [tt, ut1, tol_sec] : anchors) {
+    const double tol_day = tol_sec / 86400.0;
+    const double jde = tt_to_jde(tt);
+
+    // Forward: a TT jde lands on the observed UT1 moment.
+    const auto converted_ut1 = jde_to_ut1(jde);
+    ASSERT_EQ(converted_ut1.ymd, ut1.ymd);
+    ASSERT_NEAR(converted_ut1.fraction(), ut1.fraction(), tol_day);
+
+    // Reverse: the observed UT1 moment maps back to the same jde.
+    ASSERT_NEAR(ut1_to_jde(ut1), jde, tol_day);
+  }
+
+  // The delegation to `jd_to_ut1` keeps its domain gates: the JD of 1-01-01 sits below the
+  // 401-01-01 bound (see `JulianDay.InvalidInput` for the full boundary battery).
+  ASSERT_THROW(std::ignore = jde_to_ut1(1721425.5), std::runtime_error);
+}
+
+TEST(JulianDay, JdeUt1Consistency) {
+  // ΔT evaluation is mildly asymmetric: `jde_to_ut1` reads ΔT on the TT date, `ut1_to_jde` on the
+  // UT1 date. The residual of a round trip is the ΔT slope applied to a ΔT-sized time shift —
+  // ~1e-6 s over 401-2100 — plus double rounding, so 1e-6 day leaves orders of magnitude of room
+  // while still catching a flipped sign or a stale/wrong scale in either direction.
+  constexpr double TOLERANCE = 1e-6;
+
+  for (auto i = 0; i < 2000; ++i) {
+    // 401-01-01 (the `jd_to_ut1` bound) through year 2100.
+    const double jde = util::random(1867522.5, 2488070.5);
+    ASSERT_NEAR(ut1_to_jde(jde_to_ut1(jde)), jde, TOLERANCE);
+  }
+
+  for (auto i = 0; i < 2000; ++i) {
+    // Round trips only close from 401-01-01 onwards (see `JulianDay.InvalidInput`).
+    const auto ymd = to_ymd(util::random(401, 2100), util::random(1, 12), util::random(1, 28));
+    const Datetime ut1 { ymd, util::random(0.0, 1.0) };
+
+    const auto recovered_ut1 = jde_to_ut1(ut1_to_jde(ut1));
+    ASSERT_EQ(ut1.ymd, recovered_ut1.ymd);
+    ASSERT_NEAR(ut1.fraction(), recovered_ut1.fraction(), TOLERANCE);
   }
 }
 

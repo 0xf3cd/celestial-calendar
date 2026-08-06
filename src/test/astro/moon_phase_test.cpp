@@ -26,6 +26,7 @@
 #include <vector>
 #include <chrono>
 #include <ranges>
+#include <stdexcept>
 #include "julian_day.hpp"
 #include "util.hpp"
 #include "astro.hpp"
@@ -69,6 +70,26 @@ TEST(NewMoon, RootGenerator) {
     const double day_diff = *next - *it;
     ASSERT_NEAR(day_diff, 29.5, 0.75);
   }
+}
+
+
+TEST(NewMoon, InvalidArgument) {
+  // `newton_method` demands both endpoints within BRACKET_TOLERANCE_DEG (15°) of conjunction —
+  // the left one trailing (elongation just under 360°) and the right one leading (just above 0°).
+  // The Moon's elongation rate runs 10.5–14.5°/day, so these cases sit far outside the window in
+  // either configuration and must be rejected. Negative-path assertions pin the exception type
+  // only; the message wording is free to change (#86).
+  const double root = moments(2024).front();
+
+  // Three days past conjunction the left endpoint already leads by ~31–44°: not a bracket at all.
+  ASSERT_THROW(std::ignore = newton_method(root + 3.0, root + 4.0), std::invalid_argument);
+
+  // Half a day before conjunction the left endpoint is fine, but two days after (~21–29° past)
+  // the right endpoint has left the tolerance window.
+  ASSERT_THROW(std::ignore = newton_method(root - 0.5, root + 2.0), std::invalid_argument);
+
+  // `next_root` insists its seed is a root: ten days past conjunction it is ~105–145° away.
+  ASSERT_THROW(std::ignore = next_root(root + 10.0), std::invalid_argument);
 }
 
 

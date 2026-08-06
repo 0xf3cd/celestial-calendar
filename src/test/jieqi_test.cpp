@@ -22,7 +22,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <cmath>
 #include <algorithm>
+#include <limits>
 #include <ranges>
 #include <type_traits>
 #include <vector>
@@ -71,6 +73,37 @@ TEST(JieQi, YearGuard) {
   // with `year + 1`.
   ASSERT_NO_THROW(std::ignore = calc_jieqi_jde(1, Jieqi::春分));
   ASSERT_NO_THROW(std::ignore = calc_jieqi_jde(32766, Jieqi::春分));
+}
+
+TEST(JieQi, FromIndexBounds) {
+  // `from_index` guards its own domain — `Jieqi::COUNT` and the uint8_t ceiling are both out.
+  ASSERT_THROW(std::ignore = from_index(JIEQI_COUNT), std::out_of_range);
+  ASSERT_THROW(std::ignore = from_index(std::numeric_limits<uint8_t>::max()), std::out_of_range);
+
+  // Both ends of the valid range stay valid.
+  ASSERT_EQ(from_index(0), Jieqi::立春);
+  ASSERT_EQ(from_index(JIEQI_COUNT - 1), Jieqi::大寒);
+}
+
+TEST(JieQi, GeneratorExclusiveStart) {
+  // The generator's start is exclusive (see the class comment): starting exactly at a jieqi
+  // moment yields the *next* jieqi. The start here is the cached wrapper's own return value, so
+  // the comparison sees identical bits — this pins the boundary, not float luck.
+  const double chunfen = jieqi_jde(2025, Jieqi::春分);
+
+  const auto [jq1, jde1] = JieqiGenerator { chunfen }.next();
+  ASSERT_EQ(jq1, Jieqi::清明);
+  ASSERT_EQ(jde1, jieqi_jde(2025, Jieqi::清明));
+
+  // One ulp before the moment, the moment itself is still ahead.
+  const auto [jq2, jde2] = JieqiGenerator { std::nextafter(chunfen, 0.0) }.next();
+  ASSERT_EQ(jq2, Jieqi::春分);
+  ASSERT_EQ(jde2, chunfen);
+
+  // Starting at the last jieqi of a year rolls over to next year's 小寒.
+  const auto [jq3, jde3] = JieqiGenerator { jieqi_jde(2025, Jieqi::冬至) }.next();
+  ASSERT_EQ(jq3, Jieqi::小寒);
+  ASSERT_EQ(jde3, jieqi_jde(2026, Jieqi::小寒));
 }
 
 TEST(JieQi, NameQuery) {
