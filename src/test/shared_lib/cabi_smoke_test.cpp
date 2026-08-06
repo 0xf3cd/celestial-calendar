@@ -399,4 +399,5 @@ TEST(CAbiSmoke, LoggingSwallowsBadFormatString) {
   // C-ABI setter — and its default is now NONE (D-F). Open the gate or info() no-ops.
   ASSERT_TRUE(lib::set_verbosity(lib::Verbosity::INFO));
   ASSERT_NO_THROW(lib::info("{"));
+  EXPECT_TRUE(lib::set_verbosity(lib::Verbosity::NONE)); // restore the default, same discipline as LogVerbosity
 }

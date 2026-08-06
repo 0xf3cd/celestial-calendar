@@ -56,12 +56,12 @@
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
  * `last_error` is per-thread: it reports the calling thread's most recent Julian
- * Day call, and no thread ever observes another's message. Memoization is shared
- * process-wide and entries are never erased: the Jieqi and lunar-algo2 paths are
- * cached, so the first call with a given argument pays the computation, later
+ * Day call, and no thread ever observes another's message. Only two paths memoize —
+ * the Jieqi computation and the algo-2 lunar year info; every other entry point
+ * computes on each call. The memoization is shared process-wide and entries are
+ * never erased: the first call with a given argument pays the computation, later
  * calls from any thread reuse it, and cache memory grows monotonically with the
- * number of distinct arguments ever queried. The sun/moon, solar-longitude,
- * solar-time and ΔT entries are not cached — every call computes.
+ * number of distinct arguments ever queried.
  *
  * Platform note: the library logs to stdout and swallows any logging failure. On
  * Windows (UCRT), however, writing to a closed stdout fail-fasts the process
