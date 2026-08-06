@@ -98,6 +98,7 @@ TEST(CAbiSmoke, LogVerbosity) {
   EXPECT_TRUE(set_log_verbosity(1));
   EXPECT_TRUE(set_log_verbosity(2));
   EXPECT_FALSE(set_log_verbosity(3)); // Verbosity::COUNT
+  EXPECT_TRUE(set_log_verbosity(0)); // restore the default (NONE) — later cases must not inherit DEBUG
 }
 
 
@@ -385,7 +386,7 @@ TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
 
   const JulianDay jd = ut1_to_jd(2024, 6, 1, NAN_VALUE); // logs via `lib::info` on failure
 
-  ASSERT_TRUE(set_log_verbosity(2)); // restore the default
+  ASSERT_TRUE(set_log_verbosity(0)); // restore the default
   EXPECT_FALSE(jd.valid);
 #endif
 }
@@ -394,5 +395,9 @@ TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
 // Portable counterpart of the test above: `std::vformat` throws `std::format_error` on a
 // runtime bad format string, and `log_noexcept` must swallow it on every platform.
 TEST(CAbiSmoke, LoggingSwallowsBadFormatString) {
+  // This TU has its own GLOBAL_VERBOSITY copy (hidden visibility), untouched by the
+  // C-ABI setter — and its default is now NONE (D-F). Open the gate or info() no-ops.
+  ASSERT_TRUE(lib::set_verbosity(lib::Verbosity::INFO));
   ASSERT_NO_THROW(lib::info("{"));
+  EXPECT_TRUE(lib::set_verbosity(lib::Verbosity::NONE)); // restore the default, same discipline as LogVerbosity
 }

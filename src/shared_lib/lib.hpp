@@ -49,7 +49,8 @@ enum class Verbosity : uint8_t {
  * @brief The global verbosity level of log printing.
  * @note #67: written via `set_log_verbosity` and read on every log path — atomic, or the two race.
  */
-inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::DEBUG; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::NONE; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+// Default NONE (D-F): logging is opt-in — the library must not claim the host's stdout unasked.
 
 
 /** @brief Set the verbosity level of log printing.
@@ -103,29 +104,28 @@ inline void debug(const std::string_view format_str, Args&&... args) { // NOLINT
  *       can learn *why* (the log goes to the library's stdout, which hosts may never see).
  *       Only the Julian Day exports fill it for now — pilot, not a full rollout.
  */
-inline thread_local std::string LAST_ERROR; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+/**
+ * @note The storage and these three bodies live in `lib.cpp`, deliberately not here. As an
+ *       `inline thread_local` in the header it had vague linkage, and under
+ *       `VISIBILITY_INLINES_HIDDEN` Mach-O does not coalesce a hidden TLS initialisation
+ *       routine across translation units -- the five `lib*.cpp` each kept one and the dylib
+ *       failed to link (2026-08-06, the macOS leg's first run after the visibility work).
+ *       One definition in one TU sidesteps the question instead of asking the linker to
+ *       merge something we have just told it to hide.
+ */
 
 /** @brief Clear the calling thread's last-error message. */
-inline auto clear_last_error() -> void {
-  LAST_ERROR.clear();
-}
+auto clear_last_error() -> void;
 
 /**
  * @brief Record the calling thread's last-error message.
  * @note `noexcept`: the string assignment can throw `bad_alloc`; on failure the previous
  *       message is kept.
  */
-inline auto set_last_error(const std::string& message) noexcept -> void {
-  try {
-    LAST_ERROR = message;
-  } catch (...) { // NOLINT(bugprone-empty-catch) — nowhere left to report; swallowing is the contract.
-  }
-}
+auto set_last_error(const std::string& message) noexcept -> void;
 
 /** @brief Read the calling thread's last-error message (empty if none). */
-[[nodiscard]] inline auto last_error_message() -> const char* {
-  return LAST_ERROR.c_str();
-}
+[[nodiscard]] auto last_error_message() -> const char*;
 
 
 } // namespace lib

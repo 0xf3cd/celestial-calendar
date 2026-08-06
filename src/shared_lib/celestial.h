@@ -32,8 +32,10 @@
  *
  * Two deliberate decisions: the exported symbols carry no prefix, matching the exports
  * shipped since 0.3.0 — the collision risk is accepted and revisited at the next major
- * version. And no dllexport/dllimport macros: `WINDOWS_EXPORT_ALL_SYMBOLS` exports
- * everything, and imports resolve implicitly against the import library.
+ * version. And the export set is exactly the entry points declared below (#91): each one
+ * is marked `CELESTIAL_API`, and consumers need no defines — the macro reads as dllimport
+ * on Windows and default visibility elsewhere; only the library's own build defines
+ * `CELESTIAL_BUILDING_DLL` (CMake injects it privately) to get dllexport.
  *
  * ABI evolution policy (#129): within a major version, struct layouts never move —
  * sizes and offsets are pinned by `c_header_check.c` at compile time, and a struct is
@@ -49,6 +51,24 @@
  * On failure the Julian Day functions also record a thread-local message readable
  * through `last_error` (#97 pilot).
  *
+ * Thread-safety contract: every entry point may be called concurrently from any
+ * number of threads, with no host-side synchronization. `set_log_verbosity` turns
+ * a process-wide knob: writes are atomic — a concurrent reader always sees one
+ * whole level or another — but which of two racing writes wins is unspecified.
+ * `last_error` is per-thread: it reports the calling thread's most recent Julian
+ * Day call, and no thread ever observes another's message. Two computations memoize
+ * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
+ * shared process-wide and never erased: the first call with a given argument pays for
+ * it, later calls from any thread reuse the result, and memory grows monotonically
+ * with the number of distinct arguments ever queried. Two threads that miss on the
+ * same argument at once both compute it, and one of the two results is discarded.
+ * Separately, the first `gregorian_to_lunar` or `lunar_to_gregorian` with `algo = 2`
+ * runs the astronomical pipeline once to establish that algorithm's supported range;
+ * unlike the caches above, that one blocks every thread that arrives while it is in
+ * flight, and costs nothing afterwards. Everything else recomputes on each call, apart
+ * from lookups of values already fixed before `main` — the supported ranges reported by
+ * `get_supported_lunar_year_range`, which are settled at load time at the latest.
+ *
  * Platform note: the library logs to stdout and swallows any logging failure. On
  * Windows (UCRT), however, writing to a closed stdout fail-fasts the process
  * (0xc0000409) through the invalid-parameter handler — not an exception path, so
@@ -58,6 +78,19 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+/* #91: export marker for the entry points below — contract in the header block above. */
+#if defined(_WIN32)
+  #if defined(CELESTIAL_BUILDING_DLL)
+    #define CELESTIAL_API __declspec(dllexport)
+  #else
+    #define CELESTIAL_API __declspec(dllimport)
+  #endif
+#elif defined(__GNUC__) || defined(__clang__)
+  #define CELESTIAL_API __attribute__((visibility("default")))
+#else
+  #define CELESTIAL_API
+#endif
 
 /* NOLINTBEGIN(modernize-use-trailing-return-type, modernize-use-using):
  * this header must stay valid C — C has neither trailing return types nor `using`. */
@@ -72,10 +105,10 @@ extern "C" {
 /**
  * @brief Set the verbosity level of log printing.
  * @param new_value The new verbosity level (in `uint8_t`): 0 = none, 1 = info, 2 = debug.
- *                  The initial level is 2 (debug).
+ *                  The initial level is 0 (none) — logging is opt-in.
  * @returns `true` if the level was stored, `false` if `new_value` is out of range.
  */
-bool set_log_verbosity(uint8_t new_value);
+CELESTIAL_API bool set_log_verbosity(uint8_t new_value);
 
 /**
  * @brief Get the last-error message of the calling thread.
@@ -86,7 +119,7 @@ bool set_log_verbosity(uint8_t new_value);
  *          until the next Julian Day call on the same thread.
  * @note #97 pilot: only the Julian Day functions record messages for now.
  */
-const char *last_error(void);
+CELESTIAL_API const char *last_error(void);
 
 
 /* ---------- Julian Days ---------- */
@@ -104,7 +137,7 @@ typedef struct JulianDay {
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
  * @returns A `JulianDay` struct. JD is based on UT1.
  */
-JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction);
+CELESTIAL_API JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction);
 
 /**
  * @brief Convert UT1 datetime to Julian Ephemeris Day Number (JDE).
@@ -114,7 +147,7 @@ JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction);
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
  * @returns A `JulianDay` struct. JDE is based on TT.
  */
-JulianDay ut1_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction);
+CELESTIAL_API JulianDay ut1_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction);
 
 typedef struct UT1Time {
   bool     valid;    /* Indicates if the result is valid. */
@@ -129,7 +162,7 @@ typedef struct UT1Time {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `UT1Time` struct.
  */
-UT1Time jde_to_ut1(double jde);
+CELESTIAL_API UT1Time jde_to_ut1(double jde);
 
 
 /* ---------- Sun and Moon Apparent Geocentric Position ---------- */
@@ -146,7 +179,7 @@ typedef struct SunCoordinate {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `SunCoordinate` struct.
  */
-SunCoordinate sun_apparent_geocentric_coord(double jde);
+CELESTIAL_API SunCoordinate sun_apparent_geocentric_coord(double jde);
 
 typedef struct MoonCoordinate {
   bool   valid; /* Indicates if the result is valid. */
@@ -160,7 +193,7 @@ typedef struct MoonCoordinate {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `MoonCoordinate` struct.
  */
-MoonCoordinate moon_apparent_geocentric_coord(double jde);
+CELESTIAL_API MoonCoordinate moon_apparent_geocentric_coord(double jde);
 
 
 /* ---------- Solar Longitude Roots ---------- */
@@ -178,7 +211,7 @@ typedef struct Discriminant {
  * @returns A `Discriminant` struct; `count` is 0, 1, or 2: the Sun won't reach the longitude
  *          in the year, reaches it once, or reaches it twice.
  */
-Discriminant solar_lon_root_discriminant(int32_t year, double longitude);
+CELESTIAL_API Discriminant solar_lon_root_discriminant(int32_t year, double longitude);
 
 /**
  * @brief Find the JDE(s) at which the Sun reaches `longitude` in `year`, written to `slots`.
@@ -189,7 +222,7 @@ Discriminant solar_lon_root_discriminant(int32_t year, double longitude);
  * @param slot_count The count of slots.
  * @returns How many slots are written.
  */
-uint32_t solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t slot_count);
+CELESTIAL_API uint32_t solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t slot_count);
 
 
 /* ---------- Sun Moon Conjunction ---------- */
@@ -202,7 +235,7 @@ uint32_t solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t
  * @param slot_count The count of slots.
  * @returns How many slots are written.
  */
-uint32_t new_moons_after_jde(double jde, double *slots, uint32_t slot_count);
+CELESTIAL_API uint32_t new_moons_after_jde(double jde, double *slots, uint32_t slot_count);
 
 /**
  * @brief Find the new-moon JDE(s) in `year`; the total count goes to `root_count`,
@@ -214,7 +247,7 @@ uint32_t new_moons_after_jde(double jde, double *slots, uint32_t slot_count);
  * @param slot_count The count of slots.
  * @returns How many slots are written.
  */
-uint32_t new_moons_in_year(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count);
+CELESTIAL_API uint32_t new_moons_in_year(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count);
 
 
 /* ---------- Solar Time ---------- */
@@ -231,7 +264,7 @@ typedef struct EquationOfTime {
  * @returns An `EquationOfTime` struct; `value` is E in degrees of hour angle
  *          (x240 = seconds of time).
  */
-EquationOfTime equation_of_time(double jde);
+CELESTIAL_API EquationOfTime equation_of_time(double jde);
 
 typedef struct ApparentSolarTime {
   bool     valid;    /* Indicates if the result is valid. */
@@ -251,7 +284,7 @@ typedef struct ApparentSolarTime {
  * @returns An `ApparentSolarTime` struct; the local apparent solar date may differ from the
  *          input UTC date — a large enough longitude shifts the moment across midnight.
  */
-ApparentSolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
+CELESTIAL_API ApparentSolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
 
 
 /* ---------- Jieqi ---------- */
@@ -274,7 +307,7 @@ typedef struct JieqiMomentQuery {
  *       to within DUT1 (±0.9 s), so modern-era civil consumers may treat it as UTC.
  *       Past the ΔAT table freeze the modelled gap follows ΔT−(ΔAT+32.184) (#115).
  */
-JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
+CELESTIAL_API JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
 
 /**
  * @brief Write the Chinese name of the Jieqi to `buf`.
@@ -283,7 +316,7 @@ JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
  * @param buf_size Maximum bytes that can be written to `buf`.
  * @returns `true` if the name is successfully written to `buf`.
  */
-bool get_jieqi_name(uint8_t jq_idx, char *buf, uint32_t buf_size);
+CELESTIAL_API bool get_jieqi_name(uint8_t jq_idx, char *buf, uint32_t buf_size);
 
 
 /* ---------- Lunar Calendar ---------- */
@@ -299,7 +332,7 @@ typedef struct SupportedLunarYearRange {
  * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @returns A `SupportedLunarYearRange` struct.
  */
-SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo);
+CELESTIAL_API SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo);
 
 typedef struct LunarYearInfo {
   bool     valid;      /* Indicates if the result is valid. */
@@ -322,7 +355,7 @@ typedef struct LunarYearInfo {
  *             `algo`, the result is `valid = false`.
  * @returns A `LunarYearInfo` struct.
  */
-LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year);
+CELESTIAL_API LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year);
 
 typedef struct LunarDate {
   bool    valid;   /* Indicates if the result is valid. */
@@ -356,7 +389,7 @@ typedef struct GregorianDate {
  *       traditional 3rd month is `month = 3, is_leap = false`. This is NOT the positional
  *       month index that `LunarYearInfo.month_len` is indexed by.
  */
-LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day);
+CELESTIAL_API LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day);
 
 /**
  * @brief Convert a lunar date to a Gregorian date.
@@ -370,7 +403,7 @@ LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t 
  * @returns A `GregorianDate` struct; `valid = false` when the input does not name a real
  *          lunar date (bad `algo`, year out of range, no such leap month, day out of range).
  */
-GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day);
+CELESTIAL_API GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day);
 
 
 /* ---------- Delta T ---------- */
@@ -385,37 +418,37 @@ typedef struct DeltaT {
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t_algo1(double year);
+CELESTIAL_API DeltaT delta_t_algo1(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 2.
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t_algo2(double year);
+CELESTIAL_API DeltaT delta_t_algo2(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 3.
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t_algo3(double year);
+CELESTIAL_API DeltaT delta_t_algo3(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 4.
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t_algo4(double year);
+CELESTIAL_API DeltaT delta_t_algo4(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 5.
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t_algo5(double year);
+CELESTIAL_API DeltaT delta_t_algo5(double year);
 /**
  * @brief Compute delta T of a given moment, using the best algorithm.
  * @param year The year.
  * @returns A `DeltaT` struct.
  */
-DeltaT delta_t(double year);
+CELESTIAL_API DeltaT delta_t(double year);
 
 
 #ifdef __cplusplus

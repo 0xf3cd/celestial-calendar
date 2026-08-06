@@ -163,10 +163,10 @@ There are basically two ways to download:
   # Download artifacts from a given run to the specified dir
   python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
 
-  # Download artifacts from latest run to the specified dir
+  # Download artifacts from the successful run that built HEAD, to the specified dir
   python3 ./toolbox/artifact_downloader.py -s <directory>
 
-  # Download artifacts from latest run to the specified dir and unzips them
+  # Same, and unzips them
   python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
 
   # More usages

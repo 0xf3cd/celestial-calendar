@@ -51,7 +51,7 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
     };
   } catch (const std::exception& e) {
     lib::set_last_error(e.what());
-    lib::info("Error in ut1_jd: {}", e.what());
+    lib::info("Error in ut1_to_jd: {}", e.what());
     lib::debug("ut1_to_jd: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
     return {};
@@ -76,7 +76,7 @@ auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const doubl
     };
   } catch (const std::exception& e) {
     lib::set_last_error(e.what());
-    lib::info("Error in ut1_jde: {}", e.what());
+    lib::info("Error in ut1_to_jde: {}", e.what());
     lib::debug("ut1_to_jde: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
 
     return {};
@@ -138,8 +138,8 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
       .r     = coord.r.au(),
     };
   } catch (const std::exception& e) {
-    lib::info("Error in sun_apparent_geocentric_position: {}", e.what());
-    lib::debug("sun_apparent_geocentric_position: jde = {}", jde);
+    lib::info("Error in sun_apparent_geocentric_coord: {}", e.what());
+    lib::debug("sun_apparent_geocentric_coord: jde = {}", jde);
 
     return {};
   } catch (...) {
@@ -169,8 +169,8 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
       .r     = coord.r.km(),
     };
   } catch (const std::exception& e) {
-    lib::info("Error in moon_apparent_geocentric_position: {}", e.what());
-    lib::debug("moon_apparent_geocentric_position: jde = {}", jde);
+    lib::info("Error in moon_apparent_geocentric_coord: {}", e.what());
+    lib::debug("moon_apparent_geocentric_coord: jde = {}", jde);
 
     return {};
   } catch (...) {
@@ -196,8 +196,8 @@ auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> 
       .count = astro::sun::geocentric_coord::math::discriminant(year, longitude),
     };
   } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of root_discriminant");
-    lib::debug("root_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
+    lib::info("Exception raised during execution of solar_lon_root_discriminant");
+    lib::debug("solar_lon_root_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
     return {};
   } catch (...) {
     return {};
@@ -230,7 +230,7 @@ auto solar_lon_roots(
     // Some sanity check...
     const auto root_count = discriminant(year, longitude);
     if (roots.size() != root_count) [[unlikely]] {
-      lib::info("Error in copy_roots: roots.size() is {}, but expected size is {}", roots.size(), root_count);
+      lib::info("Error in solar_lon_roots: roots.size() is {}, but expected size is {}", roots.size(), root_count);
       lib::info("No root will be written to the slots.");
 
       return 0;
@@ -241,8 +241,8 @@ auto solar_lon_roots(
 
     return num_written;
   } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of copy_roots");
-    lib::debug("copy_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
+    lib::info("Exception raised during execution of solar_lon_roots");
+    lib::debug("solar_lon_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
 
     return 0;
   } catch (...) {
@@ -281,8 +281,8 @@ auto new_moons_after_jde(
     std::copy(cbegin(roots), cend(roots), slots);
     return static_cast<uint32_t>(slot_count);
   } catch (const std::exception& e) {
-    lib::info("Exception thrown during execution of sun_moon_conjunctions_after_jde");
-    lib::debug("sun_moon_conjunctions_after_jde: jde = {}, error = {}", jde, e.what());
+    lib::info("Exception thrown during execution of new_moons_after_jde");
+    lib::debug("new_moons_after_jde: jde = {}, error = {}", jde, e.what());
 
     return 0;
   } catch (...) {
@@ -316,8 +316,8 @@ auto new_moons_in_year(
 
     return num_written;
   } catch (const std::exception& e) {
-    lib::info("Exception thrown during execution of sun_moon_conjunctions_in_year");
-    lib::debug("sun_moon_conjunctions_in_year: year = {}, error = {}", year, e.what());
+    lib::info("Exception thrown during execution of new_moons_in_year");
+    lib::debug("new_moons_in_year: year = {}, error = {}", year, e.what());
 
     return 0;
   } catch (...) {

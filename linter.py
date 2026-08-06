@@ -19,7 +19,7 @@ import argparse
 
 from automation import (
   run_ruff, run_clang_tidy, check_self_contained, probe_features, check_abi_layout,
-  check_ctypes_smoke,
+  check_ctypes_smoke, check_export_surface, check_log_names,
 )
 
 
@@ -39,12 +39,17 @@ def parse_args() -> argparse.Namespace:
       "    ./linter.py --abi-layout\n\n"
       "  To run the ctypes wrappers against the built library (needs ./project.py --build first):\n"
       "    ./linter.py --ctypes-smoke\n\n"
+      "  To hold the built library's export surface to the celestial.h entry points\n"
+      "  (needs ./project.py --build first):\n"
+      "    ./linter.py --export-surface\n\n"
+      "  To hold the lib_*.cpp log strings to the celestial.h entry-point names:\n"
+      "    ./linter.py --log-names\n\n"
       "  To report which awaited C++ features this toolchain can compile:\n"
       "    ./linter.py --features\n\n"
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./linter.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
-      "  feature report):\n"
+      "  export surface, log names, feature report):\n"
       "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
@@ -59,6 +64,10 @@ def parse_args() -> argparse.Namespace:
                       help="Hold the ctypes mirror in statistics/common.py to the real ABI layout")
   parser.add_argument("--ctypes-smoke", action="store_true",
                       help="Run the ctypes wrappers against the built library (needs a build)")
+  parser.add_argument("--export-surface", action="store_true",
+                      help="Hold the built library's export surface to the celestial.h entry points")
+  parser.add_argument("--log-names", action="store_true",
+                      help="Hold the lib_*.cpp log strings to the celestial.h entry-point names")
   parser.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
                       help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
 
@@ -90,6 +99,16 @@ if __name__ == "__main__":
 
   if args.ctypes_smoke or args.all:
     ret_code = check_ctypes_smoke()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  if args.export_surface or args.all:
+    ret_code = check_export_surface()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  if args.log_names or args.all:
+    ret_code = check_log_names()
     if ret_code != 0:
       sys.exit(ret_code)
 

@@ -28,6 +28,10 @@ FetchContent_Declare(
 )
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+# Keep googletest's own install rules out of the release: `cmake --install` is the
+# packaging path (build_and_test.yml), and the default INSTALL_GTEST would otherwise
+# drop gtest/gmock headers, static libs, and cmake configs into the release zip.
+set(INSTALL_GTEST OFF)
 FetchContent_MakeAvailable(googletest)
 
 # Suppress warnings from GTest

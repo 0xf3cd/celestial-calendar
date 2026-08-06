@@ -134,6 +134,21 @@ jobs:
       - name: Smoke-test the ctypes bindings
         run: python3 ./linter.py --ctypes-smoke
 
+      # The export-surface gate (#91) needs the built library for its dynamic half
+      # (nm/readelf on the real .so), so it sits next to the ctypes smoke gate. One leg
+      # is enough: the static half parses the header on any platform, and the dynamic
+      # verdict -- strong exports plus std vague-linkage survivors -- is
+      # toolchain-independent. What it cannot prove is the Windows/macOS branch of the
+      # CELESTIAL_API macro; only cabi_smoke_test linking the DLL on those CI legs can.
+      - name: Check the export surface
+        run: python3 ./linter.py --export-surface
+
+      # The log-names gate (#72) is pure parsing -- but it shares the entry-point parser
+      # with the export-surface gate above, so it sits on the same leg: one place to look
+      # when a header change trips the pair.
+      - name: Check the log strings
+        run: python3 ./linter.py --log-names
+
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
   # pull requests to main and packages the artifacts -- running them here too repeated the same
