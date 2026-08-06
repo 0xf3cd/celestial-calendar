@@ -33,42 +33,73 @@ namespace calendar::lunar::algo3::test {
 
 using namespace calendar::lunar::common;
 
-TEST(LunarAlgo3, Correctness) {
-  const auto in_algo1_range = [](const int32_t year) -> bool {
-    return algo1::START_YEAR <= year and year <= algo1::END_YEAR;
-  };
+// External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp);
+// neither test below is one.
 
-  const auto expected_info = [&](const int32_t year) -> LunarYear {
-    if (in_algo1_range(year)) {
-      return algo1::calc_lunar_year(year);
-    }
-    return algo2::calc_lunar_year(year);
+// [1901, 2099]: algo3's baked slice is a byte-for-byte copy of algo1's HKO table.
+// Both sides decode via the shared `parse_lunar_year`, so this is a dual-table
+// drift check — it catches "only one of the two tables was edited", not an
+// independent correctness proof. Full window (199 years): decode is free.
+TEST(LunarAlgo3, HkoTableCopiesAgree) {
+  for (int32_t year = algo1::START_YEAR; year <= algo1::END_YEAR; ++year) {
+    const auto expected = algo1::calc_lunar_year(year);
+    const auto actual = algo3::calc_lunar_year(year);
+
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
+  }
+}
+
+// [1600, 1900] ∪ [2100, 2199]: algo3's baked value must still equal *today's*
+// live `algo2::calc_lunar_year` recompute. This HAS real discriminating power —
+// #64's 2133/2165/2172 first surfaced as drift against live algo2 under a new
+// default ΔT. It is NOT an external oracle (that is the ytliu0 golden).
+TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
+  const auto outside_hko = [](const int32_t year) -> bool {
+    return year < algo1::START_YEAR or year > algo1::END_YEAR;
   };
 
   std::vector<int32_t> years = std::views::iota(algo3::START_YEAR, algo3::END_YEAR + 1)
+                             | std::views::filter(outside_hko)
                              | std::ranges::to<std::vector>();
 
-  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded, reproducible (#69).
+  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded (#69).
   years.resize(32);
 
   for (const auto year : years) {
-    const auto expected = expected_info(year);
+    const auto expected = algo2::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
-    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day);
-    ASSERT_EQ(expected.leap_month, actual.leap_month);
-    ASSERT_EQ(expected.month_lengths, actual.month_lengths);
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
   }
 
-  // #64: entries re-baked under algo5's ΔT — checked deterministically, since the random
-  // sample above only covers them ~15% of the time.
+  // #64: entries re-baked under algo5's ΔT — deterministic, because the random
+  // sample above only covers them ~22% of the time on the 401-year pool.
   for (const int32_t year : { 2133, 2165, 2172 }) {
-    const auto expected = expected_info(year);
+    const auto expected = algo2::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
-    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day);
-    ASSERT_EQ(expected.leap_month, actual.leap_month);
-    ASSERT_EQ(expected.month_lengths, actual.month_lengths);
+    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
+    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
+  }
+}
+
+// Structural pin: `calc_lunar_year` must decode `LUNAR_DATA`, not bypass to live
+// algo2. Years chosen from the known HKO divergences (baked ≡ algo1 ≠ live algo2),
+// so a pure live bypass fails without first dirtying the table. On re-bakeable years
+// baked already equals live, so this pin would be silent there.
+TEST(LunarAlgo3, CalcReadsBakedTable) {
+  for (const int32_t year : { 1914, 1920, 2097 }) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) — year ∈ {1914,1920,2097}, all in [START_YEAR, END_YEAR]; bounds guaranteed by fixed literal set
+    const auto from_table = parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]);
+    const auto from_calc = calc_lunar_year(year);
+    ASSERT_EQ(from_table.date_of_first_day, from_calc.date_of_first_day) << "year=" << year;
+    ASSERT_EQ(from_table.leap_month, from_calc.leap_month) << "year=" << year;
+    ASSERT_EQ(from_table.month_lengths, from_calc.month_lengths) << "year=" << year;
   }
 }
 

@@ -41,14 +41,32 @@ inline constexpr int32_t START_YEAR = 1600;
 /** @brief The last supported lunar year. */
 inline constexpr int32_t END_YEAR = 2199;
 
-/** 
+/**
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t.
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
- * @details For years from 1901 to 2099, algo1 is used (i.e. Hong Kong Observatory data).
- * @details For other years, algo2 is used to generate the encoded data. (See `algo2.hpp`)
- * @details #64: entries for 2133/2165/2172 re-baked with algo5's ΔT — regenerate the
- *          non-HKO entries (statistics/lunar_calendar.ipynb) whenever the default ΔT model changes.
+ *
+ * ## Provenance (baked table — #70 §2)
+ * - Generator: `statistics/lunar_calendar.ipynb` (encode cells: HKO years 1901–2099 via
+ *   algo1 / HKO table; all other years via live algo2 — see `algo2.hpp` — at generation
+ *   time).
+ * - Generation parameters: algo2 + the then-default ΔT model. #64 re-baked
+ *   2133/2165/2172 under algo5's ΔT after the default switched. Whenever the default ΔT
+ *   model changes, re-bake the non-HKO entries via the same notebook.
+ * - Gate 1 (#70 §2): the 401 re-bakeable values (1600–1900 ∪ 2100–2199) re-encode
+ *   identically under today's default ΔT (algo5) — a re-bake is a data no-op. The 199
+ *   HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
+ *   Full-array re-encode against live algo2 is *not* zero-diff: the six known years
+ *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
+ *   provenance note, not a data fix: **do not edit any of the 600 values here without
+ *   a deliberate re-bake and review.**
+ * - Refresh ritual (read-only re-verify): run the "重烤对账" code cell at the end of
+ *   `statistics/lunar_calendar.ipynb`. It re-encodes the re-bakeable subset and prints a
+ *   mismatch count against this array. Print 0 = Gate re-verified. The cell never writes
+ *   this header back.
+ * - External oracle for a sampled subset of years: `src/test/lunar/algo3_ytliu0_golden_test.cpp`
+ *   (ytliu0 ChineseCalendar, see that file's provenance head). Dual-table / live-algo2
+ *   internal checks: `src/test/lunar/algo3_test.cpp`.
  */
 inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x5a0ba4, 0x420b49, 0x2c7a93, 0x520a95, 0x3cf52d, 0x600556, 0x4a0ab5, 0x36d5aa, 0x5c05d2, 0x440da5,
