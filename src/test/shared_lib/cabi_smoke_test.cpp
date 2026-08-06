@@ -385,7 +385,7 @@ TEST(CAbiSmoke, LoggingSurvivesClosedStdout) {
 
   const JulianDay jd = ut1_to_jd(2024, 6, 1, NAN_VALUE); // logs via `lib::info` on failure
 
-  ASSERT_TRUE(set_log_verbosity(2)); // restore the default
+  ASSERT_TRUE(set_log_verbosity(0)); // restore the default
   EXPECT_FALSE(jd.valid);
 #endif
 }

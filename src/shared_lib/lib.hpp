@@ -49,7 +49,8 @@ enum class Verbosity : uint8_t {
  * @brief The global verbosity level of log printing.
  * @note #67: written via `set_log_verbosity` and read on every log path — atomic, or the two race.
  */
-inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::DEBUG; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::NONE; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+// Default NONE (D-F): logging is opt-in — the library must not claim the host's stdout unasked.
 
 
 /** @brief Set the verbosity level of log printing.

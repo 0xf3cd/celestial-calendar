@@ -88,7 +88,7 @@ extern "C" {
 /**
  * @brief Set the verbosity level of log printing.
  * @param new_value The new verbosity level (in `uint8_t`): 0 = none, 1 = info, 2 = debug.
- *                  The initial level is 2 (debug).
+ *                  The initial level is 0 (none) — logging is opt-in.
  * @returns `true` if the level was stored, `false` if `new_value` is out of range.
  */
 CELESTIAL_API bool set_log_verbosity(uint8_t new_value);
