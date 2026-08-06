@@ -26,6 +26,12 @@ jobs:
       issues: read
       id-token: write
     steps:
+      # The action fetches into an existing checkout and has no clone fallback of its own,
+      # so the job needs this step to have a repository at all (#144).
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
       - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1 (#144: pin the single security gate, no floating tag)
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
