@@ -12,10 +12,8 @@ on:
 
 jobs:
   claude:
-    # #144: defense in depth — the action has its own actor gate (verified in the audit), but
-    # don't bet everything on upstream internals: require OWNER/MEMBER/COLLABORATOR here too.
-    # Side effect: bot-authored events (e.g. Copilot's review comments, association NONE) no
-    # longer reach the action, so they land `skipped` instead of `action_required`.
+    # #144: defense in depth — the action has its own actor gate, but don't bet everything on
+    # upstream internals: require OWNER/MEMBER/COLLABORATOR here too.
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
