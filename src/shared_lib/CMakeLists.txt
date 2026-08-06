@@ -26,6 +26,12 @@ set_target_properties(celestial_calendar PROPERTIES
 # Windows. Consumers of celestial.h need no defines.
 target_compile_definitions(celestial_calendar PRIVATE CELESTIAL_BUILDING_DLL)
 
+# Surviving exports after the hiding (#91's exception list, human-facing copy; the
+# machine-readable source is SURVIVOR_EXCEPTIONS in automation/export_surface.py, empty
+# today): every remaining export is a weak/unique vague-linkage symbol from the standard
+# library — namespace std carries an explicit default-visibility attribute that overrides
+# -fvisibility=hidden, and cross-DSO coalescing of those symbols needs them visible.
+
 # SOVERSION tracks major.minor while 0.x: a 0.x minor may break the ABI, so SOVERSION=0
 # would falsely claim all 0.x releases mutually compatible. Trigger: at the 1.0 release,
 # switch to major-only — from then on the ABI holds within a major, which is exactly the
