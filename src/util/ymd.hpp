@@ -73,8 +73,6 @@ concept DaysConvertible = requires (const T& t) {
 
 namespace util::ymd_operator {
 
-using util::DaysConvertible;
-
 [[nodiscard]] constexpr auto operator+(
   const std::chrono::year_month_day& ymd, 
   const DaysConvertible auto& days
