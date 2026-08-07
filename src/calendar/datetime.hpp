@@ -200,9 +200,10 @@ struct Datetime {
       const double ns = static_cast<double>(
         time_of_day.to_duration().count()
       );
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
+          "(a time of day must be within [0, 24h))",
           std::make_format_args(ymd, ns)
         )
       };
@@ -223,9 +224,10 @@ struct Datetime {
       const double ns = static_cast<double>(
         this->time_of_day.to_duration().count()
       );
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
+          "(a time of day must be within [0, 24h))",
           std::make_format_args(this->ymd, ns)
         )
       };
@@ -256,9 +258,10 @@ struct Datetime {
       const double ns = static_cast<double>(
         time_of_day.to_duration().count()
       );
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
+          "(a time of day must be within [0, 24h))",
           std::make_format_args(ymd, ns)
         )
       };

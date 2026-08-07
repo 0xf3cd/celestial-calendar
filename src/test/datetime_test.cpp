@@ -394,9 +394,11 @@ TEST(Datetime, EdgeCases) {
     }
 
     {
+      // #86: a time of day outside [0, 24h) is a bad argument, not an internal sanity failure —
+      // all three constructors now say so with the same exception type.
       const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
       ASSERT_THROW((Datetime { today_tp, hms }),
-                   std::runtime_error);
+                   std::invalid_argument);
     }
 
     {
@@ -408,7 +410,7 @@ TEST(Datetime, EdgeCases) {
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
       ASSERT_THROW((Datetime { today_tp, hms }),
-                   std::runtime_error);
+                   std::invalid_argument);
     }
   }
 }
