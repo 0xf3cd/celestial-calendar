@@ -209,13 +209,7 @@ is intentional. Keep it. That buys a discipline:
   (as `sun.hpp` already does with `using namespace astro::toolbox::literals;`) or fully-qualify.
   Closed-set forms that *are* allowed: `using X = Y` type aliases, and using-declarations that
   import a named template from another namespace (see `datetime.hpp` for the chrono set —
-  class templates for CTAD, plus matching shape for stdlib alias templates). Remaining
-  ordinary using-declarations still left in production lunar headers after the #51 sweep
-  (documented exceptions, not a live cleanup ticket):
-  `using std::chrono::year_month_day` in `lunar/common.hpp` and `lunar/converter.hpp`;
-  `using std::chrono::sys_days` in `lunar/converter.hpp`;
-  `using calendar::lunar::common::LunarYear` in `lunar/algo2.hpp`.
-  Fully-qualify those when the files are next touched for other reasons. Test-only headers
+  class templates for CTAD, plus matching shape for stdlib alias templates). Test-only headers
   may still carry function-body or file-local usings (e.g. `delta_t_test_helper.hpp`).
 - **Nested `lower_case` namespaces** by domain (`astro::earth::nutation`,
   `lib::`, `calendar::`); close with a `} // namespace …` comment.

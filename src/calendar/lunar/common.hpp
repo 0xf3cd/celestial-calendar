@@ -37,7 +37,7 @@
 
 namespace calendar::lunar::common {
 
-using std::chrono::year_month_day;
+using year_month_day = std::chrono::year_month_day;
 
 /** 
  * @struct LunarYear 
