@@ -6,18 +6,21 @@ on:
 
 jobs:
   review:
-    if: ${{ !github.event.pull_request.draft }}
+    # Dependabot's runs cannot read Actions secrets, so on its PRs the API key is empty and this
+    # job could only ever fail — and a standing red is how people learn to ignore red (#144).
+    if: ${{ !github.event.pull_request.draft && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
+      id-token: write # traded for the action's App token; drop it and claude[bot] goes silent (#148)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - uses: anthropics/claude-code-action@v1
+      # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
+      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |

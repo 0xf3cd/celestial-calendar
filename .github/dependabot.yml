@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+  # A SHA pin (#144) raises no Dependabot alert -- advisories are matched against semver refs --
+  # so version updates are the only thing keeping it current. They rewrite the `# v1` marker
+  # next to the SHA, which is what makes those markers worth reading. Monthly and grouped: a
+  # pin whose diff nobody reads is a floating tag with extra steps.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

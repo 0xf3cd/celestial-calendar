@@ -33,6 +33,12 @@ jobs:
           # Both pinned; see AGENTS.md gotcha 9 (#72, #73).
           python3 -m pip install ruff==0.16.1 clang-tidy==18.1.8
 
+      # Pure parsing, so it rides this leg rather than paying for a job of its own -- but it
+      # goes before the toolchain: `linter.py` exits on the first finding, and behind the
+      # style checks a cmake or ruff failure would mask this verdict entirely (#144).
+      - name: Check the AI workflows
+        run: python3 ./linter.py --ai-workflows
+
       - name: Install LLVM and clang++
         run: |
           sudo add-apt-repository universe
@@ -49,7 +55,7 @@ jobs:
         run: |
           chmod +x project.py
           ./project.py --clean --cmake
-          
+
           chmod +x linter.py
           ./linter.py --ruff --clang-tidy --abi-layout
 

@@ -3,3 +3,6 @@
 # Linters are installed separately (README section 4); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
 requests
+# The AI-workflow gate reads `.github/workflows/*.yml` for real: a per-job permission and a
+# pinned SHA cannot be told apart from a workflow's own prose by matching lines (#144).
+pyyaml
