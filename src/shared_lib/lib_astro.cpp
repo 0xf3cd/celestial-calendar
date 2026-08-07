@@ -125,7 +125,7 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
   try {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
-        std::format("Argument `jde` is not finite, whose value is {}", jde)
+        std::format("Argument `jde` is not finite, got {}", jde)
       };
     }
 
@@ -156,7 +156,7 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
   try {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
-        std::format("Argument `jde` is not finite, whose value is {}", jde)
+        std::format("Argument `jde` is not finite, got {}", jde)
       };
     }
 
@@ -187,7 +187,7 @@ auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> 
   try {
     if (not std::isfinite(longitude)) {
       throw std::invalid_argument {
-        std::format("Argument `longitude` is not finite, whose value is {}", longitude)
+        std::format("Argument `longitude` is not finite, got {}", longitude)
       };
     }
 
@@ -221,7 +221,7 @@ auto solar_lon_roots(
   try {
     if (not std::isfinite(longitude)) {
       throw std::invalid_argument {
-        std::format("Argument `longitude` is not finite, whose value is {}", longitude)
+        std::format("Argument `longitude` is not finite, got {}", longitude)
       };
     }
 
@@ -268,7 +268,7 @@ auto new_moons_after_jde(
   try {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
-        std::format("Argument `jde` is not finite, whose value is {}", jde)
+        std::format("Argument `jde` is not finite, got {}", jde)
       };
     }
 
@@ -334,7 +334,7 @@ auto equation_of_time(const double jde) -> EquationOfTime {
   try {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
-        std::format("Argument `jde` is not finite, whose value is {}", jde)
+        std::format("Argument `jde` is not finite, got {}", jde)
       };
     }
 

@@ -34,7 +34,7 @@ auto delta_t_algo1(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 
@@ -56,7 +56,7 @@ auto delta_t_algo2(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 
@@ -78,7 +78,7 @@ auto delta_t_algo3(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 
@@ -100,7 +100,7 @@ auto delta_t_algo4(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 
@@ -122,7 +122,7 @@ auto delta_t_algo5(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 
@@ -144,7 +144,7 @@ auto delta_t(double year) -> DeltaT {
   try {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
-        std::format("Argument `year` is not finite, whose value is {}", year)
+        std::format("Argument `year` is not finite, got {}", year)
       };
     }
 

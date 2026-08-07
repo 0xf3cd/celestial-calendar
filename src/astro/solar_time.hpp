@@ -115,7 +115,7 @@ namespace detail {
   const double lon = longitude.deg();
   if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
     throw std::invalid_argument {
-      std::format("Argument `longitude` out of range [-180, 180], whose value is {}", lon)
+      std::format("Argument `longitude` out of range [-180, 180], got {}", lon)
     };
   }
 

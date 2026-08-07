@@ -47,7 +47,7 @@ namespace astro::toolbox {
 [[nodiscard]] constexpr auto normalize_deg(const double deg) -> double {
   if (not std::isfinite(deg)) [[unlikely]] {
     throw std::invalid_argument {
-      std::format("Argument `deg` is not finite, whose value is {}", deg)
+      std::format("Argument `deg` is not finite, got {}", deg)
     };
   }
 
@@ -67,7 +67,7 @@ namespace astro::toolbox {
 [[nodiscard]] constexpr auto normalize_rad(const double rad) -> double {
   if (not std::isfinite(rad)) [[unlikely]] {
     throw std::invalid_argument {
-      std::format("Argument `rad` is not finite, whose value is {}", rad)
+      std::format("Argument `rad` is not finite, got {}", rad)
     };
   }
 

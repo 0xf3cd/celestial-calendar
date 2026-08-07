@@ -136,7 +136,7 @@ concept Fractionable = requires (T t) {
     throw std::invalid_argument {
       std::vformat(
         "Argument `fraction` does not fit an int64 nanosecond count (|fraction| < {}), "
-        "whose value is {}",
+        "got {}",
         std::make_format_args(MAX_DAYS, fraction)
       )
     };
@@ -165,7 +165,7 @@ concept Fractionable = requires (T t) {
   if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#67).
     throw std::invalid_argument {
       std::vformat(
-        "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
+        "Argument `fraction` out of range [0.0, 1.0), got {}",
         std::make_format_args(fraction)
       )
     };
@@ -248,7 +248,7 @@ struct Datetime {
     if (not ymd.ok()) {
       throw std::invalid_argument { 
         std::vformat(
-          "Argument gregorian date `ymd` is invalid, whose value is `{}`", 
+          "Argument gregorian date `ymd` is invalid, got `{}`", 
           std::make_format_args(this->ymd)
         ) 
       };
