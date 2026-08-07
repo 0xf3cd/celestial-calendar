@@ -33,8 +33,7 @@ def find_test_binaries() -> List[Path]:
   (`CTestTestfile.cmake`, `<target>[1]_tests.cmake`) falls out of that check; `Makefile` is
   suffixless, so it is excluded by name -- on Unix the executable bit happens to exclude it,
   but on Windows (unreliable `X_OK`, and the build does use Unix Makefiles there) nothing else
-  would. Deleting build-system files is simply not this step's job; whether the next build
-  would shrug it off is beside the point.
+  would. Deleting build-system files is not this step's job.
   """
   if not TEST_DIR.is_dir():
     return []

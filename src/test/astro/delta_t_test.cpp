@@ -116,8 +116,7 @@ TEST(DeltaT, NonFiniteYears) {
   ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);
   ASSERT_THROW(std::ignore = algo3::compute(nan), std::out_of_range);
   ASSERT_THROW(std::ignore = algo4::compute(nan), std::out_of_range);
-  // ±inf sail past a single comparison exactly the way NaN does not: `inf >= -4000` is true.
-  // Each throwing algo bounds both ends now, so every non-finite year fails one of them.
+  // The throwing algos bound both ends, so every non-finite year fails one of them.
   ASSERT_THROW(std::ignore = algo1::compute(inf),  std::out_of_range);
   ASSERT_THROW(std::ignore = algo1::compute(-inf), std::out_of_range);
   ASSERT_THROW(std::ignore = algo3::compute(inf),  std::out_of_range);
@@ -131,8 +130,7 @@ TEST(DeltaT, NonFiniteYears) {
   ASSERT_FALSE(std::isfinite(algo2::compute(inf)));
   ASSERT_FALSE(std::isfinite(algo5::compute(inf)));
   ASSERT_FALSE(std::isfinite(compute(-inf)));
-  // A huge *finite* year is legal for algo1 (its late-era formula is open-ended); before the
-  // cast moved inside the table branch, this line was the same float→int UB as the NaN case.
+  // A huge finite year is inside algo1's throw contract; it used to be the same cast UB as NaN.
   ASSERT_NO_THROW(std::ignore = algo1::compute(1e300));
 }
 

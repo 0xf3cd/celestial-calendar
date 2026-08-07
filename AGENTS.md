@@ -282,7 +282,7 @@ Sort by *what happened to the answer*, not by how the failure feels:
 |---|---|---|
 | **Cannot be produced correctly** — bad input, outside a declared window, or the solver did not converge | `throw` | `sunrise_sunset::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154); the residual guard that throws rather than mislabel a day as polar |
 | **Was produced, and it is "none"** | `std::optional` | no sunrise on a polar night; no leap month in a common year |
-| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only (NDEBUG mechanics: gotcha 8) |
+| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only |
 
 A declared model window *is* the contract's domain, so leaving it is a bad argument like any
 other. `optional` never carries an error — it carries a legitimate "none". `std::expected` was

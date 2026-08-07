@@ -25,7 +25,6 @@
 
 #include <array>
 #include <cmath>
-#include <limits>
 #include <format>
 #include <ranges>
 #include <cassert>
@@ -132,9 +131,7 @@ find_coefficients(const int32_t year) -> std::optional<
  *       with the hope of getting more accurate results.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  // Every non-finite year fails a bound here (NaN fails both, each infinity fails one);
-  // the plain `year < -4000` form let them all through (#86).
-  if (not (year >= -4000 and year <= std::numeric_limits<double>::max())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  if (not std::isfinite(year) or year < -4000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
     };
@@ -313,7 +310,7 @@ namespace algo3 {
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (not (year < 3000 and year >= std::numeric_limits<double>::lowest())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  if (not std::isfinite(year) or year >= 3000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
     };
@@ -370,7 +367,7 @@ namespace algo4 {
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (not (year < 2035 and year >= std::numeric_limits<double>::lowest())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  if (not std::isfinite(year) or year >= 2035) {
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
     };
