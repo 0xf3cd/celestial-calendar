@@ -25,6 +25,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 #include <format>
 #include <ranges>
 #include <cassert>
@@ -131,25 +132,31 @@ find_coefficients(const int32_t year) -> std::optional<
  *       with the hope of getting more accurate results.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  // Negated form so NaN fails too (#86): `year < -4000` is false for NaN, which then reaches
-  // the float→int cast below — the one true UB site in this family (UBSan-reproducible).
-  if (not (year >= -4000)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  // Every non-finite year fails a bound here (NaN fails both, each infinity fails one);
+  // the plain `year < -4000` form let them all through (#86).
+  if (not (year >= -4000 and year <= std::numeric_limits<double>::max())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
     };
   }
 
-  // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
-  const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));
-  if (coefficients) {
-    const auto& [start, end] = *coefficients;
-    assert(year >= start.year and year < end.year);
+  // The cast lives inside the table's era on purpose: the table ends at 2005, so for any later
+  // year the closed-form segments below apply and no integer year is ever formed — which keeps
+  // the float→int cast inside int32's range by construction (#86; it used to run for every
+  // year, where a large-enough finite one was as undefined as NaN).
+  if (year < 2005.0) {
+    // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
+    const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));
+    if (coefficients) {
+      const auto& [start, end] = *coefficients;
+      assert(year >= start.year and year < end.year);
 
-    const double t1 = (year - start.year) / (end.year - start.year) * 10.0;
-    const double t2 = t1 * t1;
-    const double t3 = t2 * t1;
+      const double t1 = (year - start.year) / (end.year - start.year) * 10.0;
+      const double t2 = t1 * t1;
+      const double t3 = t2 * t1;
 
-    return start.a + start.b * t1 + start.c * t2 + start.d * t3;
+      return start.a + start.b * t1 + start.c * t2 + start.d * t3;
+    }
   }
 
   assert(year >= 2005);
@@ -306,8 +313,7 @@ namespace algo3 {
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  // Negated forms below so NaN fails a bound instead of flowing through the polynomial (#86).
-  if (not (year < 3000)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  if (not (year < 3000 and year >= std::numeric_limits<double>::lowest())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
     };
@@ -364,7 +370,7 @@ namespace algo4 {
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (not (year < 2035)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+  if (not (year < 2035 and year >= std::numeric_limits<double>::lowest())) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
     };

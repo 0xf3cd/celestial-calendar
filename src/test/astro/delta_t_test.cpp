@@ -112,12 +112,28 @@ TEST(DeltaT, NonFiniteYears) {
   // to reach the float→int cast — UB, UBSan-reproducible. The bounded algos now throw; the
   // noexcept ones (algo2, algo5, the dispatcher) propagate NaN, which is IEEE, not UB.
   const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
   ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);
   ASSERT_THROW(std::ignore = algo3::compute(nan), std::out_of_range);
   ASSERT_THROW(std::ignore = algo4::compute(nan), std::out_of_range);
+  // ±inf sail past a single comparison exactly the way NaN does not: `inf >= -4000` is true.
+  // Each throwing algo bounds both ends now, so every non-finite year fails one of them.
+  ASSERT_THROW(std::ignore = algo1::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(-inf), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(-inf), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(-inf), std::out_of_range);
+  // The noexcept ones propagate: non-finite in, non-finite out.
   ASSERT_TRUE(std::isnan(algo2::compute(nan)));
   ASSERT_TRUE(std::isnan(algo5::compute(nan)));
   ASSERT_TRUE(std::isnan(compute(nan)));
+  ASSERT_FALSE(std::isfinite(algo2::compute(inf)));
+  ASSERT_FALSE(std::isfinite(algo5::compute(inf)));
+  ASSERT_FALSE(std::isfinite(compute(-inf)));
+  // A huge *finite* year is legal for algo1 (its late-era formula is open-ended); before the
+  // cast moved inside the table branch, this line was the same float→int UB as the NaN case.
+  ASSERT_NO_THROW(std::ignore = algo1::compute(1e300));
 }
 
 

@@ -282,7 +282,7 @@ Sort by *what happened to the answer*, not by how the failure feels:
 |---|---|---|
 | **Cannot be produced correctly** — bad input, outside a declared window, or the solver did not converge | `throw` | `sunrise_sunset::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154); the residual guard that throws rather than mislabel a day as polar |
 | **Was produced, and it is "none"** | `std::optional` | no sunrise on a polar night; no leap month in a common year |
-| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only, never an input guard (see gotcha 8) |
+| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only (NDEBUG mechanics: gotcha 8) |
 
 A declared model window *is* the contract's domain, so leaving it is a bad argument like any
 other. `optional` never carries an error — it carries a legitimate "none". `std::expected` was
@@ -349,9 +349,8 @@ echo "ran=$total macros=$macros fail=$fail"
 
 The two checks catch different failures and neither implies the other: a binary that fails
 still prints its test count, so the totals can agree while `fail=1` — and a binary that is
-missing (or stale: a leftover whose source is gone skews the count in the *greener* direction,
-which is why the build clears `build/test/` before re-creating it, #155) trips the count while
-every survivor exits 0.
+missing or stale (cleared before every build, #155) trips the count while every survivor
+exits 0.
 
 ## Project Layout
 
@@ -442,8 +441,8 @@ say so and reopen it — that is what it is for.
 **Decided and already done** (kept because the reasoning gets re-proposed): longitude sign is
 west-positive in `sidereal`, east-positive elsewhere, disambiguated by name, not by type (D2) ·
 `nutation::longitude` and `obliquity` stay verbatim twins with `@note`s pointing at each other,
-so a fix to one cannot silently miss the other (#49) · core-layer `std::expected` was evaluated
-and declined (#97).
+so a fix to one cannot silently miss the other (#49). (`std::expected`'s rejection lives with
+the mechanism table above.)
 
 **Decided and not yet built** (the decision is real, the artifact is not — do not cite either
 as existing): a `wrap_export` helper to collect the C-ABI per-export `try`/`catch` boilerplate
