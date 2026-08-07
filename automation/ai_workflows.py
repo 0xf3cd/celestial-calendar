@@ -19,8 +19,8 @@ from .utils import green_print, red_print, yellow_print
 
 # The workflows that hand an agent the API key, and the only ones this gate covers. A third
 # one belongs in this tuple the day it appears; `release.yml` pins its publisher by hand and
-# stays outside on purpose -- holding all 18 `actions/*@v7` references to a SHA would drown
-# the gate in noise (#144).
+# stays outside on purpose -- holding every first-party action reference to a SHA would
+# drown the gate in noise (#144).
 AI_WORKFLOWS: Final[Tuple[str, ...]] = (
   "claude.yml",
   "claude-review.yml",
