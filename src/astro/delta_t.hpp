@@ -196,6 +196,7 @@ namespace algo2 {
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+ * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {
