@@ -119,7 +119,9 @@ TEST(SiderealTime, LocalApparentMeeus13b) {
   constexpr double lon = 77.0 + 3.0 / 60.0 + 56.0 / 3600.0;
 
   constexpr double α_hours = 23.0 + 9.0 / 60.0 + 16.641 / 3600.0;
-  const double expected = normalize_deg(64.352133 + α_hours * 15.0); // std::remainder is not constexpr until C++26.
+  // Not `constexpr`: `std::remainder` is constexpr since C++23 on paper (P0533) but not in the
+  // pinned toolchains — see the design ledger in AGENTS.md (#82).
+  const double expected = normalize_deg(64.352133 + α_hours * 15.0);
 
   ASSERT_NEAR(local_apparent(jd_ut1, jde_tt, AngleDeg { lon }).deg(), expected, 2e-4);
 }
