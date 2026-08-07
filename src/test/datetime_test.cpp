@@ -366,6 +366,21 @@ TEST(Datetime, EdgeCases) {
       ASSERT_THROW((Datetime { today_tp, 1e300 }),
                    std::invalid_argument);
     }
+
+    {
+      // #86: `from_fraction` is public and reachable without going through `validate_fraction`,
+      // whose [0.0, 1.0) contract it deliberately does not share (whole days are legal here).
+      // What it cannot accept is a product that does not fit the int64 cast.
+      ASSERT_NO_THROW(std::ignore = from_fraction(2.0));      // documented as legal
+      ASSERT_NO_THROW(std::ignore = from_fraction(-1.5));     // negative days likewise
+      ASSERT_THROW(std::ignore = from_fraction(std::numeric_limits<double>::quiet_NaN()),
+                   std::invalid_argument);
+      ASSERT_THROW(std::ignore = from_fraction(std::numeric_limits<double>::infinity()),
+                   std::invalid_argument);
+      ASSERT_THROW(std::ignore = from_fraction(-std::numeric_limits<double>::infinity()),
+                   std::invalid_argument);
+      ASSERT_THROW(std::ignore = from_fraction(1e300), std::invalid_argument);
+    }
   }
 
   { // Test ymd and hms constructor.

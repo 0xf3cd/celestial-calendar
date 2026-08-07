@@ -291,17 +291,23 @@ namespace literals {
 /** @enum The unit of distance, either AU or KM. */
 enum class DistanceUnit : uint8_t { AU, KM };
 
-/** @brief The scaling factor from AU to KM. */
-inline constexpr double au_km_scale = 149597870.691; 
+/**
+ * @brief The scaling factor from AU to KM.
+ * @ref IAU 2012 Resolution B2, which redefines the astronomical unit as exactly this many
+ *      metres -- a defined constant, not a measured one, so it takes no uncertainty and will
+ *      not be revised. The previous value here (149597870.691) was the IAU 1976 / DE405
+ *      measured figure, 9 mm/AU below the definition.
+ */
+inline constexpr double AU_KM_SCALE = 149597870.700;
 
 /** @brief Convert from AU to KM. */
 [[nodiscard]] constexpr auto au_to_km(const double au) -> double { 
-  return au * au_km_scale; 
+  return au * AU_KM_SCALE; 
 }
 
 /** @brief Convert from KM to AU. */
 [[nodiscard]] constexpr auto km_to_au(const double km) -> double { 
-  return km / au_km_scale; 
+  return km / AU_KM_SCALE; 
 }
 
 

@@ -117,8 +117,31 @@ concept Fractionable = requires (T t) {
  * @example `from_fraction(1.0) == 24:00:00.000000000`
  * @example `from_fraction(2.0) == 48:00:00.000000000`
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
+ * @throw std::invalid_argument if `fraction` days do not fit an `int64_t` count of nanoseconds
+ *        (which includes NaN and either infinity).
+ * @note Unlike `validate_fraction`, this does not require [0.0, 1.0) -- the examples above are
+ *       the contract, and callers do pass whole days. What it does require is that the product
+ *       survives the cast: `static_cast<int64_t>` of a value outside the destination's range is
+ *       undefined, and NaN is the case that reaches it most quietly (#86).
+ * @note Written as `not (lo < x and x < hi)` rather than a pair of `or`s, so that NaN fails the
+ *       check -- every comparison against NaN is false, which the negated form turns into a
+ *       throw and the plain form would turn into a pass. Same shape as `validate_fraction` (#67).
  */
 [[nodiscard]] constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
+  // The largest whole-day count whose nanoseconds still fit an int64_t, kept a hair inside the
+  // boundary: the exact ratio is not representable, so compare against a value known to convert.
+  constexpr double MAX_DAYS = 9.2e18 / static_cast<double>(in_a_day<nanoseconds>());
+
+  if (not (-MAX_DAYS < fraction and fraction < MAX_DAYS)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+    throw std::invalid_argument {
+      std::vformat(
+        "Argument `fraction` does not fit an int64 nanosecond count (|fraction| < {}), "
+        "whose value is {}",
+        std::make_format_args(MAX_DAYS, fraction)
+      )
+    };
+  }
+
   return hh_mm_ss {
     nanoseconds {
       static_cast<int64_t>(

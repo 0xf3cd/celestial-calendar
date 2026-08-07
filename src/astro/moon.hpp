@@ -24,6 +24,8 @@
 #pragma once
 
 #include <cmath>
+#include <format>
+#include <stdexcept>
 
 #include "earth.hpp"
 #include "julian_day.hpp"
@@ -111,9 +113,25 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
  * @brief Calculate the equatorial horizontal parallax of the Moon.
  * @param distance The geocentric distance of the Moon.
  * @return The equatorial horizontal parallax of the Moon.
+ * @throw std::invalid_argument if `distance` is not finite, or is not greater than Earth's
+ *        equatorial radius.
+ * @note The guard is the contract, not a reachability claim: the real Moon never comes near,
+ *       but this is a public function over a `Distance<KM>` that is open to any value, and
+ *       `asin` of an argument above 1 returns a silent NaN rather than failing (#86).
  */
 [[nodiscard]] inline auto equatorial_horizontal_parallax(const toolbox::DistanceKm& distance) -> toolbox::AngleRad {
-  const auto ppi_rad = std::asin(EARTH_EQUATORIAL_RADIUS_KM / distance.km());
+  const double km = distance.km();
+
+  // Written as `not (km > r)` so that a NaN distance fails the check too — `km <= r` is always
+  // false for NaN and would let it through to `asin` (#67's lesson, same shape).
+  if (not (km > EARTH_EQUATORIAL_RADIUS_KM)) {
+    throw std::invalid_argument {
+      std::format("Argument `distance` must exceed Earth's equatorial radius {} km, got {}",
+                  EARTH_EQUATORIAL_RADIUS_KM, km)
+    };
+  }
+
+  const auto ppi_rad = std::asin(EARTH_EQUATORIAL_RADIUS_KM / km);
   return toolbox::AngleRad { ppi_rad };
 }
 

@@ -161,7 +161,10 @@ inline constexpr double J2000 = 2451545.0;
   // JD 1867522.5 (#77: the old cutoff 1867524.457118 sat ~2 days high and wrongly rejected
   // the first two days of year 401).
   if (jd < 1867522.5) {
-    throw std::runtime_error("The estimated gregorian year is < 401.");
+    throw std::runtime_error {
+      std::format("The julian day number {} is below JD 1867522.5 (401-01-01), "
+                  "where the estimated gregorian year drops under 401.", jd)
+    };
   }
 
   // #67: bound the domain at the last `year_month_day`-representable day — JD 13689325.5 is
