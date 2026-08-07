@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <cmath>
+#include <limits>
 
 #include <tuple>
 #include <numeric>
@@ -104,6 +106,31 @@ TEST(DeltaT, Algo5) {
   ASSERT_NEAR(algo5::compute(algo5::LAST_OBSERVATION_YEAR - 1e-6),
               algo5::compute(algo5::LAST_OBSERVATION_YEAR + 1e-6), 1e-3);
 }
+
+TEST(DeltaT, NonFiniteYears) {
+  // #86: the throwing algos reject every non-finite year; the noexcept ones (algo2, algo5,
+  // the dispatcher) propagate it — IEEE, not UB.
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(nan), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(nan), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(-inf), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(-inf), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(inf),  std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(-inf), std::out_of_range);
+  // The noexcept ones propagate: non-finite in, non-finite out.
+  ASSERT_TRUE(std::isnan(algo2::compute(nan)));
+  ASSERT_TRUE(std::isnan(algo5::compute(nan)));
+  ASSERT_TRUE(std::isnan(compute(nan)));
+  ASSERT_FALSE(std::isfinite(algo2::compute(inf)));
+  ASSERT_FALSE(std::isfinite(algo5::compute(inf)));
+  ASSERT_FALSE(std::isfinite(compute(-inf)));
+  ASSERT_NO_THROW(std::ignore = algo1::compute(1e300));
+}
+
 
 TEST(DeltaT, DefaultDispatch) {
   // The default `compute` is algo5 for all years.

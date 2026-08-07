@@ -35,8 +35,8 @@
 
 namespace calendar::lunar::converter {
 
-using std::chrono::year_month_day;
-using std::chrono::sys_days;
+using year_month_day = std::chrono::year_month_day;
+using sys_days = std::chrono::sys_days;
 
 /**
  * @struct Converter

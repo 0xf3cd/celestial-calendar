@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <cmath>
+#include <limits>
 #include <tuple>
 #include <unordered_map>
 #include "util.hpp"
@@ -102,6 +104,29 @@ TEST(Moon, CoordAndPpi) {
 
     const auto ppi = equatorial_horizontal_parallax(DistanceKm { r });
     ASSERT_NEAR(ppi.rad(),  std::get<3>(expected), 1e-14);
+  }
+
+  // #86: the guard's contract is the @throw/@note on the function itself; these pin it.
+  {
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(DistanceKm { 0.0 }),
+                 std::invalid_argument);
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(DistanceKm { -1.0 }),
+                 std::invalid_argument);
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(
+                   DistanceKm { EARTH_EQUATORIAL_RADIUS_KM }), std::invalid_argument);
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(
+                   DistanceKm { std::numeric_limits<double>::quiet_NaN() }),
+                 std::invalid_argument);
+    // ±inf pass `inf > r` and would come back as a plausible 0 rad — the guard's other half.
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(
+                   DistanceKm { std::numeric_limits<double>::infinity() }),
+                 std::invalid_argument);
+    ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(
+                   DistanceKm { -std::numeric_limits<double>::infinity() }),
+                 std::invalid_argument);
+    // Just outside the radius is legal, and lands near the asin domain edge rather than in it.
+    ASSERT_NO_THROW(std::ignore = equatorial_horizontal_parallax(
+                      DistanceKm { std::nextafter(EARTH_EQUATORIAL_RADIUS_KM, 1e9) }));
   }
 }
 

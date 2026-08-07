@@ -178,13 +178,13 @@ inline void validate(const GeoLocation& location) {
 
   if (not std::isfinite(lat) or lat < -90.0 or lat > 90.0) {
     throw std::invalid_argument {
-      std::format("Argument `location.latitude` out of range [-90, 90], whose value is {}", lat)
+      std::format("Argument `location.latitude` out of range [-90, 90], got {}", lat)
     };
   }
 
   if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
     throw std::invalid_argument {
-      std::format("Argument `location.longitude` out of range [-180, 180], whose value is {}", lon)
+      std::format("Argument `location.longitude` out of range [-180, 180], got {}", lon)
     };
   }
 }
@@ -287,12 +287,12 @@ inline void validate_rise_set_inputs(
 
   if (not std::isfinite(transit)) {
     throw std::invalid_argument {
-      std::format("Argument `transit` is not finite, whose value is {}", transit)
+      std::format("Argument `transit` is not finite, got {}", transit)
     };
   }
   if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
     throw std::invalid_argument {
-      std::format("Argument `h0` out of range [-90, 90], whose value is {}", h0.deg())
+      std::format("Argument `h0` out of range [-90, 90], got {}", h0.deg())
     };
   }
 }
@@ -368,7 +368,7 @@ requires std::invocable<const Func&, double>
   const auto reject_outside_pm90 = [](const char* name, const double deg) {
     if (not std::isfinite(deg) or deg < -90.0 or deg > 90.0) {
       throw std::invalid_argument {
-        std::format("Argument `{}` out of range [-90, 90], whose value is {}", name, deg)
+        std::format("Argument `{}` out of range [-90, 90], got {}", name, deg)
       };
     }
   };

@@ -14,6 +14,7 @@ import json
 import shutil
 
 from . import paths
+from .gtest import clear_test_binaries
 from .utils import (
   run_cmd, yellow_print, red_print, green_print, ProcReturn
 )
@@ -78,6 +79,9 @@ def build_project(cpu_cores: int = 8) -> int:
 
   assert BUILD_DIR.exists(), "Build directory not found"
   assert BUILD_DIR.is_dir(), "Build directory is not a directory"
+
+  # Clear the test binaries first, so that the build is what puts every one of them back (#155).
+  clear_test_binaries()
 
   yellow_print("# Building the C++ projects...")
   ret: ProcReturn = run_cmd(["cmake", "--build", ".", "--parallel", str(cpu_cores)], 

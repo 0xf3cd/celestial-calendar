@@ -46,7 +46,7 @@
 
 namespace calendar::lunar::algo2 {
 
-using calendar::lunar::common::LunarYear;
+using LunarYear = calendar::lunar::common::LunarYear;
 
 // A convention, not a physical ceiling — the method computes rather than looks up. The ceiling
 // sits where the UTC+8 civil-day assignment stops being reliable: the ΔAT table freezes at 37 s

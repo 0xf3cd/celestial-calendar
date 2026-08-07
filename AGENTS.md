@@ -209,13 +209,7 @@ is intentional. Keep it. That buys a discipline:
   (as `sun.hpp` already does with `using namespace astro::toolbox::literals;`) or fully-qualify.
   Closed-set forms that *are* allowed: `using X = Y` type aliases, and using-declarations that
   import a named template from another namespace (see `datetime.hpp` for the chrono set —
-  class templates for CTAD, plus matching shape for stdlib alias templates). Remaining
-  ordinary using-declarations still left in production lunar headers after the #51 sweep
-  (documented exceptions, not a live cleanup ticket):
-  `using std::chrono::year_month_day` in `lunar/common.hpp` and `lunar/converter.hpp`;
-  `using std::chrono::sys_days` in `lunar/converter.hpp`;
-  `using calendar::lunar::common::LunarYear` in `lunar/algo2.hpp`.
-  Fully-qualify those when the files are next touched for other reasons. Test-only headers
+  class templates for CTAD, plus matching shape for stdlib alias templates). Test-only headers
   may still carry function-body or file-local usings (e.g. `delta_t_test_helper.hpp`).
 - **Nested `lower_case` namespaces** by domain (`astro::earth::nutation`,
   `lib::`, `calendar::`); close with a `} // namespace …` comment.
@@ -260,7 +254,8 @@ is intentional. Keep it. That buys a discipline:
   free functions over them); enum + table lookup is the sum-type idiom (`nutation::Model`
   → `find_model`), not vtables.
 - **Compile-time over runtime**: `constexpr` wherever the language allows (but don't force it —
-  `std::cos` / `std::pow` / `std::remainder` are only constexpr from C++26); constrain
+  `std::cos` / `std::pow` are only constexpr from C++26, and `std::remainder` — C++23 on
+  paper — is still rejected by the pinned toolchains, see the ledger, #82); constrain
   templates with `requires` clauses, never SFINAE.
 - **Names as contracts**: parameter names carry semantics that make misuse visible at the
   call site — e.g. the `jd_ut1` / `jde_tt` suffixes are the UT1/TT guard (issue #41).
@@ -278,6 +273,29 @@ is intentional. Keep it. That buys a discipline:
   silently clamp, swallow, or return a sentinel.
 - **KISS / minimal abstraction**: three similar lines beat a premature abstraction. Generalize
   when a second or third real caller demands it, not in anticipation.
+
+#### Which failure gets which mechanism (#97)
+
+Sort by *what happened to the answer*, not by how the failure feels:
+
+| The answer | Mechanism | Examples |
+|---|---|---|
+| **Cannot be produced correctly** — bad input, outside a declared window, or the solver did not converge | `throw` | `sunrise_sunset::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154); the residual guard that throws rather than mislabel a day as polar |
+| **Was produced, and it is "none"** | `std::optional` | no sunrise on a polar night; no leap month in a common year |
+| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only |
+
+A declared model window *is* the contract's domain, so leaving it is a bad argument like any
+other. `optional` never carries an error — it carries a legitimate "none". `std::expected` was
+evaluated for the core and declined (#97); the C-ABI boundary keeps its own translation
+(`catch` → `valid = false`, see `celestial.h`).
+
+#### Comments sit in one of three slots (#127)
+
+**Contract** (time scale, unit, valid range, sign convention) · **citation** (`@ref` to the
+formula or table number) · **numeric argument** (why this tolerance, this bracket, this step).
+Textbook exposition — "what nutation is" — is not a slot; move it out when passing through.
+What gets cut is the exposition, never the contract: the twin `@note`s on `nutation::longitude`
+and `obliquity` ("fix both or neither") are as load-bearing as the code.
 
 ### File header
 
@@ -307,6 +325,32 @@ project — keep the header.
 - Dataset **input columns must reproduce the reference source's actual inputs** — including
   any quantization the source applied (e.g. USNO evaluating LAST at 4-decimal longitudes).
   Otherwise tolerances silently absorb the mismatch and the dataset loses discriminating power.
+
+### Acceptance: run the binaries, and reconcile the count
+
+**Do not accept on ctest's numbers.** ctest reports on what it was told about, and its
+registration goes stale: the `GLOB` that discovers tests expands at configure time, so a
+`--build --test` run after adding a source file silently omits it — the suite passes with the
+new tests never compiled in.
+
+Run the binaries directly, and track two things: did every binary exit 0, and does the total
+reconcile against the `TEST` macros:
+
+```sh
+total=0; fail=0
+for exe in build/test/*; do [ -x "$exe" ] && [ -f "$exe" ] || continue
+  out=$("$exe" 2>&1) || { echo "FAIL $exe"; fail=1; }
+  n=$(echo "$out" | grep -oE "^\[==========\] [0-9]+ test" | grep -oE "[0-9]+" | head -1)
+  total=$((total + ${n:-0})); done
+macros=$(grep -rhoE '^\s*TEST(_F)?\(' src/test --include=*.cpp | wc -l)
+echo "ran=$total macros=$macros fail=$fail"
+[ "$fail" -eq 0 ] && [ "$total" -eq "$macros" ]   # this line is the verdict
+```
+
+The two checks catch different failures and neither implies the other: a binary that fails
+still prints its test count, so the totals can agree while `fail=1` — and a binary that is
+missing or stale (cleared before every build, #155) trips the count while every survivor
+exits 0.
 
 ## Project Layout
 
@@ -351,10 +395,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
    and test filtering consistently across platforms.
 8. **Assertions:** the default build is `Release` (`automation/build.py`), so `assert` is dead
    code in production. Test targets strip `NDEBUG` (`src/test/CMakeLists.txt`, #89), so asserts
-   ARE live inside test binaries — `build_integrity_test.cpp` guards this. The error contract
-   (target state; #77, #67 and #64 are closed, #70 is the last one open): public input
-   validation must `throw` (fail-fast, independent of build type); `assert` is only
-   for internal invariants, never as an input guard.
+   ARE live inside test binaries — `build_integrity_test.cpp` guards this. Which failure gets
+   `throw` vs `assert` vs `optional` is the mechanism table under "honest errors" — the short
+   of it: an input guard is never an `assert`.
 
 9. **CI toolchains are pinned — every one that can emit a diagnostic.** A tool that updates
    itself turns "the code changed" and "the tool changed" into the same red X, on a day nobody
@@ -366,6 +409,53 @@ toolbox/        Helper scripts for artifacts, releases, build info
    not here — there is no gate reconciling two copies. Chocolatey's `make` is deliberately outside
    this: it drives the build rather than diagnosing it, so a new version cannot turn `-Werror` red.
    Bump deliberately, never incidentally (#72, #73).
+
+## Design ledger — decisions taken, and what would reopen them
+
+Review after review kept re-litigating the same handful of deliberate bets. Each entry below
+records the **decision**, the **premise** it rests on, the **trigger** that would reopen it, and
+the **date** — a decision without a falsifiable premise is an opinion, and one without a trigger
+is a shackle. A trigger of "—" is deliberate: it marks the entry as structural (a line we hold),
+not provisional (a bet we revisit). Deciding *not* to do something is a decision: it belongs
+here, not in a comment thread. Full argument in #127; these are the conclusions.
+
+If you are about to propose one of these, check the trigger first. If the trigger has fired,
+say so and reopen it — that is what it is for.
+
+| Decision | Premise | Trigger to reopen | Date |
+|---|---|---|---|
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); the `jd_ut1` / `jde_tt` suffix convention carries it | Naming has held so far; #41 was the one near-miss and the suffixes came out of it | The Moon's rise/set work lands (#62), or a second #41-class mix-up reaches a test | 2026-08-02 |
+| **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer instead | Core functions are pure evaluations of a formula; caching there hides cost from the caller who chose to pay it | — (structural, not provisional) | 2026-08-02 |
+| **Header-only is the identity, and its compile cost is accepted** | The "Header-only" style section is the argument; the cost is real but unmeasured | Anyone produces a compile-time measurement (touch-one-header rebuild, TU count). Reopen on that data, not on taste | 2026-08-02 |
+| **The cache never evicts** — no LRU, no `clear` | Two separate things: the *mechanism* has no eviction by design (the invariant and why is `cache.hpp`'s own note), and the *key space* is bounded by each caller's declared window (`jieqi` to [1, 32766] since #154, `algo2` by its year range) | A caller appears whose key space is unbounded — then the bound has to move into the cache | 2026-08-02 |
+| **`algo1` and `algo3` stay near-duplicates** | They are two transcriptions that happen to rhyme; three similar lines beat an abstraction that makes each one harder to check against its source | A third algorithm of the same shape arrives | 2026-08-02 |
+| **`moon_phase`'s year-boundary hole is `wontfix`** | A conjunction exactly at Jan 1 00:00:00 UTC has no defined owner (floating-point noise decides); the set of such instants has measure zero and no test can pin one | A caller needs total coverage of the boundary | 2026-08-02 |
+| **No one-off namespace rename**; new code lands in the intended shape and old names stay | A rename touches everything and settles nothing; the drawer names (`sun::geocentric_coord::math`) are ugly, not wrong. #125 tightened the public surface without renaming | — (do it incidentally or not at all) | 2026-08-02 |
+| **No policy/context object for model selection**; the model stays a function parameter (`nutation::Model`) | Two models today, chosen at the call site. A policy object would be an abstraction over one real axis | A third real *ephemeris/nutation/EOP* backend appears — the lunar `Algo` set and the frozen ΔT exhibits do not count | 2026-08-02 |
+| **Coordinate frames stay untagged** (no frame / corrected-state tag in `SphericalCoordinate`) | D2's names-as-contracts pass (west-positive vs east-positive) covered the failure that motivated tagging, at a fraction of the cost | Another mix-up survives naming and reaches a result | 2026-08-05 |
+| **Transcription runs on a single track**; equivalence is proved once during a migration, not maintained as a permanent second implementation | #81's ELP merge did exactly this: a verbatim copy compared bit-for-bit in the same run, then deleted. A permanent audit track is a second thing to keep correct | A transcription lands that cannot be diffed against its predecessor in one run | 2026-08-06 |
+| **Error budgets are not part of the API contract** | Accuracy notes exist where they were measured (`obliquity`'s ±2000-year figure, the sunrise brackets), but there is no per-epoch, per-model budget and no one has asked for one. A fitted residual must never be dressed up as a 1σ | A caller needs a declared accuracy to decide something | 2026-08-06 |
+| **External ephemerides are oracles, never dependencies** | ytliu0, Horizons and USNO appear only under `src/test/` and in `@ref` comments; the build links none of them. Being able to check ourselves against an independent source depends on not being built on it | — (this one is a line, not a bet) | 2026-08-02 |
+| **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** | Standards-compliant is not the same as usable: P0533 made `std::remainder` constexpr in C++23, yet clang 18.1.8 and MSVC's UCRT both reject `constexpr double c = normalize_deg(361.0)` today. Four constexpr entry points, two direct call sites, all IF-NDR — recorded rather than papered over (#82) | A pinned toolchain bump. The probe is one line: the `constexpr` initialisation above either compiles or does not | 2026-08-05 |
+
+**Decided and already done** (kept because the reasoning gets re-proposed): longitude sign is
+west-positive in `sidereal`, east-positive elsewhere, disambiguated by name, not by type (D2) ·
+`nutation::longitude` and `obliquity` stay verbatim twins with `@note`s pointing at each other,
+so a fix to one cannot silently miss the other (#49). (`std::expected`'s rejection lives with
+the mechanism table above.)
+
+**Decided and not yet built** (the decision is real, the artifact is not — do not cite either
+as existing): a `wrap_export` helper to collect the C-ABI per-export `try`/`catch` boilerplate
+(#127 entry 20, option B; today every export still hand-writes it) · the `cpp26-lab` experiment
+branch (agreed in principle, never created, nothing tried on it yet).
+
+**Two conventions that look like drift and are not.** Time scales are spelled in the parameter
+name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C boundary
+(`jde_to_ut1` takes a bare `jde` documented by `@param`; `ut1_to_jde` takes a calendar date),
+because a C entry point only ever speaks one scale while a C++ scope can hold both. Reopen if a
+C entry point ever needs to accept two. And `last_error` is filled in by the three Julian Day
+exports only — a pilot with its boundary written down in `celestial.h`, not an oversight; it
+spreads when an out-of-repo consumer reports getting `valid = false` with no way to learn why.
 
 ## AI do / don't
 

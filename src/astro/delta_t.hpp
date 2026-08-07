@@ -122,7 +122,7 @@ find_coefficients(const int32_t year) -> std::optional<
  * @param year The year, of double type.
  * @return The delta T.
  *
- * @throw std::out_of_range if the year is < -4000.
+ * @throw std::out_of_range if the year is < -4000 or not finite.
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
@@ -131,23 +131,28 @@ find_coefficients(const int32_t year) -> std::optional<
  *       with the hope of getting more accurate results.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (year < -4000) {
+  if (not std::isfinite(year) or year < -4000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
     };
   }
 
-  // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
-  const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));
-  if (coefficients) {
-    const auto& [start, end] = *coefficients;
-    assert(year >= start.year and year < end.year);
+  // The cast lives inside the table's era on purpose: the table ends at 2005, so for any later
+  // year the closed-form segments below apply and no integer year is ever formed — which keeps
+  // the float→int cast inside int32's range by construction (#86).
+  if (year < 2005.0) {
+    // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
+    const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));
+    if (coefficients) {
+      const auto& [start, end] = *coefficients;
+      assert(year >= start.year and year < end.year);
 
-    const double t1 = (year - start.year) / (end.year - start.year) * 10.0;
-    const double t2 = t1 * t1;
-    const double t3 = t2 * t1;
+      const double t1 = (year - start.year) / (end.year - start.year) * 10.0;
+      const double t2 = t1 * t1;
+      const double t3 = t2 * t1;
 
-    return start.a + start.b * t1 + start.c * t2 + start.d * t3;
+      return start.a + start.b * t1 + start.c * t2 + start.d * t3;
+    }
   }
 
   assert(year >= 2005);
@@ -190,6 +195,7 @@ namespace algo2 {
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+ * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {
@@ -297,14 +303,14 @@ namespace algo3 {
  * @param year The year, of double type.
  * @return The delta T.
  * 
- * @throw std::out_of_range if the year is >= 3000.
+ * @throw std::out_of_range if the year is >= 3000 or not finite.
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
  * @ref https://eclipsewise.com/help/deltatpoly2014.html
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (year >= 3000) {
+  if (not std::isfinite(year) or year >= 3000) {
     throw std::out_of_range {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
     };
@@ -348,7 +354,7 @@ namespace algo4 {
  * @param year The year, of double type.
  * @return The delta T.
  *
- * @throw std::out_of_range if the year is >= 2035.
+ * @throw std::out_of_range if the year is >= 2035 or not finite.
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
@@ -361,7 +367,7 @@ namespace algo4 {
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (year >= 2035) {
+  if (not std::isfinite(year) or year >= 2035) {
     throw std::out_of_range {
       std::format("The year {} is out of range for algorithm 4.", year)
     };
@@ -421,6 +427,9 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @note For year < 2005.0, algo2 is used instead (same delegation as algo4).
  * @note There is no upper bound: beyond the last observation, the anchored integrated-lod
  *       curve extrapolates smoothly for all future years.
+ * @note `noexcept` (as is algo2), so a non-finite year propagates to a non-finite ΔT instead
+ *       of throwing — IEEE propagation, not UB. The C ABI rejects non-finite years before
+ *       calling; direct C++ callers get NaN back for NaN in (#86).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < 2005) {

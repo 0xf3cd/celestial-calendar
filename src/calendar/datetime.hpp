@@ -117,8 +117,28 @@ concept Fractionable = requires (T t) {
  * @example `from_fraction(1.0) == 24:00:00.000000000`
  * @example `from_fraction(2.0) == 48:00:00.000000000`
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
+ * @throw std::invalid_argument if `fraction` days do not fit an `int64_t` count of nanoseconds
+ *        (which includes NaN and either infinity).
+ * @note Unlike `validate_fraction` this does not require [0.0, 1.0) — whole days are the
+ *       documented contract. What it requires is that the product survives the cast, which is
+ *       undefined outside int64's range; the guard's negated form is `validate_fraction`'s
+ *       NaN-safe shape (#67, #86).
  */
 [[nodiscard]] constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
+  // The largest whole-day count whose nanoseconds still fit an int64_t, kept a hair inside the
+  // boundary: the exact ratio is not representable, so compare against a value known to convert.
+  constexpr double MAX_DAYS = 9.2e18 / static_cast<double>(in_a_day<nanoseconds>());
+
+  if (not (-MAX_DAYS < fraction and fraction < MAX_DAYS)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#86).
+    throw std::invalid_argument {
+      std::vformat(
+        "Argument `fraction` does not fit an int64 nanosecond count (|fraction| < {}), "
+        "got {}",
+        std::make_format_args(MAX_DAYS, fraction)
+      )
+    };
+  }
+
   return hh_mm_ss {
     nanoseconds {
       static_cast<int64_t>(
@@ -142,7 +162,7 @@ concept Fractionable = requires (T t) {
   if (not (fraction >= 0.0 and fraction < 1.0)) { // NOLINT(readability-simplify-boolean-expr) — NaN must fail this check (#67).
     throw std::invalid_argument {
       std::vformat(
-        "Argument `fraction` out of range [0.0, 1.0), whose value is {}",
+        "Argument `fraction` out of range [0.0, 1.0), got {}",
         std::make_format_args(fraction)
       )
     };
@@ -177,9 +197,10 @@ struct Datetime {
       const double ns = static_cast<double>(
         time_of_day.to_duration().count()
       );
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
+          "(the date must be valid and the time of day within [0, 24h))",
           std::make_format_args(ymd, ns)
         )
       };
@@ -200,9 +221,10 @@ struct Datetime {
       const double ns = static_cast<double>(
         this->time_of_day.to_duration().count()
       );
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
+          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
+          "(the date must be valid and the time of day within [0, 24h))",
           std::make_format_args(this->ymd, ns)
         )
       };
@@ -223,23 +245,13 @@ struct Datetime {
     if (not ymd.ok()) {
       throw std::invalid_argument { 
         std::vformat(
-          "Argument gregorian date `ymd` is invalid, whose value is `{}`", 
+          "Argument gregorian date `ymd` is invalid, got `{}`", 
           std::make_format_args(this->ymd)
         ) 
       };
     }
-
-    if (not ok()) {
-      const double ns = static_cast<double>(
-        time_of_day.to_duration().count()
-      );
-      throw std::runtime_error {
-        std::vformat(
-          "Sanity check failed, `ymd` is {} and `time_of_day` is {}ns",
-          std::make_format_args(ymd, ns)
-        )
-      };
-    }
+    // No `ok()` re-check: `ymd` was just validated, and `validate_fraction` bounds the fraction
+    // to [0.0, 1.0), which `from_fraction` maps inside [0, 24h) — the branch would be dead.
   }
 
   /** 

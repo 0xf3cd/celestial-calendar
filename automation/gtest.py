@@ -9,8 +9,10 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
+import os
 import re
 
+from pathlib import Path
 from typing import List, Dict, Optional
 
 from . import paths
@@ -21,6 +23,40 @@ from .utils import (
 
 BUILD_DIR = paths.build_dir()
 TEST_DIR = paths.cpp_test_dir()
+
+
+def find_test_binaries() -> List[Path]:
+  """Every test binary under the test output directory, sorted by name.
+
+  Same discovery as `bench.find_benchmarks`: the suffix is what carries the check on Windows,
+  where `os.access(X_OK)` passes for nearly any readable file. CMake's suffixed scaffolding
+  (`CTestTestfile.cmake`, `<target>[1]_tests.cmake`) falls out of that check; `Makefile` is
+  suffixless, so it is excluded by name -- on Unix the executable bit happens to exclude it,
+  but on Windows (unreliable `X_OK`, and the build does use Unix Makefiles there) nothing else
+  would. Deleting build-system files is not this step's job.
+  """
+  if not TEST_DIR.is_dir():
+    return []
+  return sorted(p for p in TEST_DIR.iterdir()
+                if p.is_file() and p.suffix.lower() in ("", ".exe")
+                and p.name != "Makefile" and os.access(p, os.X_OK))
+
+
+def clear_test_binaries() -> None:
+  """Unlink every test binary, for a build to re-create right after (#155).
+
+  Tests are run by scanning `build/test/`, so a binary left behind by a test file that has since
+  been renamed or deleted keeps being run forever -- and keeps passing, from a source file that
+  no longer exists. It skews acceptance in the *greener* direction, the one nobody goes looking for.
+
+  `--bench` has had this step since #133 (`build_benchmarks` unlinks before building). This is
+  the same step on the test side, which never got one.
+  """
+  stale = find_test_binaries()
+  for binary in stale:
+    binary.unlink()
+  if stale:
+    yellow_print(f"# Cleared {len(stale)} stale test binary/binaries before building")
 
 
 def list_gtests() -> Dict[str, str]:
