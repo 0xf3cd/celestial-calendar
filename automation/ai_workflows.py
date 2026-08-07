@@ -81,7 +81,7 @@ def check_ai_workflows() -> int:
       continue
 
     try:
-      workflow: Dict[str, Any] = yaml.safe_load(path.read_text())
+      workflow: Dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
       failures.append(f"{name}: not valid YAML, so GitHub cannot run it either ({exc.__class__.__name__})")
       continue
