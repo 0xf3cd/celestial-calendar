@@ -219,9 +219,10 @@ public:
  * @param year The Gregorian year.
  * @return The vector of the conjunction moments, in JDE (Julian Ephemeris Day).
  * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
- * @note A conjunction falling exactly on Jan 1 00:00:00 UTC is claimed by neither year:
- *       the range starts closed and ends open, so it misses both. Left as is on purpose
- *       (#127) — the set of such instants has measure zero, and no test can pin one.
+ * @note A conjunction falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
+ *       generator seeded at that instant returns it or skips to the next moon turns on
+ *       floating-point noise in the longitude difference. Left as is on purpose (#127) —
+ *       the set of such instants has measure zero, and no test can pin one.
  * @details The Sun's position is calculated using VSOP87D,
  * @details The Moon's position is calculated using truncated ELP2000-82B.
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.

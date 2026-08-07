@@ -22,6 +22,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <cmath>
+#include <limits>
 
 #include <tuple>
 #include <numeric>
@@ -104,6 +106,20 @@ TEST(DeltaT, Algo5) {
   ASSERT_NEAR(algo5::compute(algo5::LAST_OBSERVATION_YEAR - 1e-6),
               algo5::compute(algo5::LAST_OBSERVATION_YEAR + 1e-6), 1e-3);
 }
+
+TEST(DeltaT, NonFiniteYears) {
+  // #86: NaN slips through plain `<` guards (every comparison is false), and in algo1 it used
+  // to reach the float→int cast — UB, UBSan-reproducible. The bounded algos now throw; the
+  // noexcept ones (algo2, algo5, the dispatcher) propagate NaN, which is IEEE, not UB.
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(nan), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(nan), std::out_of_range);
+  ASSERT_TRUE(std::isnan(algo2::compute(nan)));
+  ASSERT_TRUE(std::isnan(algo5::compute(nan)));
+  ASSERT_TRUE(std::isnan(compute(nan)));
+}
+
 
 TEST(DeltaT, DefaultDispatch) {
   // The default `compute` is algo5 for all years.

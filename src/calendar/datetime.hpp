@@ -119,13 +119,10 @@ concept Fractionable = requires (T t) {
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
  * @throw std::invalid_argument if `fraction` days do not fit an `int64_t` count of nanoseconds
  *        (which includes NaN and either infinity).
- * @note Unlike `validate_fraction`, this does not require [0.0, 1.0) -- the examples above are
- *       the contract, and callers do pass whole days. What it does require is that the product
- *       survives the cast: `static_cast<int64_t>` of a value outside the destination's range is
- *       undefined, and NaN is the case that reaches it most quietly (#86).
- * @note Written as `not (lo < x and x < hi)` rather than a pair of `or`s, so that NaN fails the
- *       check -- every comparison against NaN is false, which the negated form turns into a
- *       throw and the plain form would turn into a pass. Same shape as `validate_fraction` (#67).
+ * @note Unlike `validate_fraction` this does not require [0.0, 1.0) — whole days are the
+ *       documented contract. What it requires is that the product survives the cast, which is
+ *       undefined outside int64's range; the guard's negated form is `validate_fraction`'s
+ *       NaN-safe shape (#67, #86).
  */
 [[nodiscard]] constexpr auto from_fraction(const double fraction) -> hh_mm_ss<nanoseconds> {
   // The largest whole-day count whose nanoseconds still fit an int64_t, kept a hair inside the
@@ -203,7 +200,7 @@ struct Datetime {
       throw std::invalid_argument {
         std::vformat(
           "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
-          "(a time of day must be within [0, 24h))",
+          "(the date must be valid and the time of day within [0, 24h))",
           std::make_format_args(ymd, ns)
         )
       };
@@ -227,7 +224,7 @@ struct Datetime {
       throw std::invalid_argument {
         std::vformat(
           "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
-          "(a time of day must be within [0, 24h))",
+          "(the date must be valid and the time of day within [0, 24h))",
           std::make_format_args(this->ymd, ns)
         )
       };
@@ -253,19 +250,8 @@ struct Datetime {
         ) 
       };
     }
-
-    if (not ok()) {
-      const double ns = static_cast<double>(
-        time_of_day.to_duration().count()
-      );
-      throw std::invalid_argument {
-        std::vformat(
-          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
-          "(a time of day must be within [0, 24h))",
-          std::make_format_args(ymd, ns)
-        )
-      };
-    }
+    // No `ok()` re-check: `ymd` was just validated, and `validate_fraction` bounds the fraction
+    // to [0.0, 1.0), which `from_fraction` maps inside [0, 24h) — the branch would be dead.
   }
 
   /** 

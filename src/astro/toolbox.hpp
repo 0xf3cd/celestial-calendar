@@ -293,10 +293,8 @@ enum class DistanceUnit : uint8_t { AU, KM };
 
 /**
  * @brief The scaling factor from AU to KM.
- * @ref IAU 2012 Resolution B2, which redefines the astronomical unit as exactly this many
- *      metres -- a defined constant, not a measured one, so it takes no uncertainty and will
- *      not be revised. The previous value here (149597870.691) was the IAU 1976 / DE405
- *      measured figure, 9 mm/AU below the definition.
+ * @ref IAU 2012 Resolution B2: the astronomical unit is defined as exactly 149'597'870'700 m
+ *      -- a defined constant, not a measured one, so it carries no uncertainty.
  */
 inline constexpr double AU_KM_SCALE = 149597870.700;
 

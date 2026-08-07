@@ -29,14 +29,17 @@ def find_test_binaries() -> List[Path]:
   """Every test binary under the test output directory, sorted by name.
 
   Same discovery as `bench.find_benchmarks`: the suffix is what carries the check on Windows,
-  where `os.access(X_OK)` passes for nearly any readable file. It also keeps CMake's own
-  scaffolding out -- `CTestTestfile.cmake`, `<target>[1]_tests.cmake` and `Makefile` all carry
-  a suffix, so none of them can be mistaken for a binary and unlinked.
+  where `os.access(X_OK)` passes for nearly any readable file. CMake's suffixed scaffolding
+  (`CTestTestfile.cmake`, `<target>[1]_tests.cmake`) falls out of that check; `Makefile` is
+  suffixless, so it is excluded by name -- on Unix the executable bit happens to exclude it,
+  but on Windows (unreliable `X_OK`, and the build does use Unix Makefiles there) nothing else
+  would, and unlinking it breaks the next build.
   """
   if not TEST_DIR.is_dir():
     return []
   return sorted(p for p in TEST_DIR.iterdir()
-                if p.is_file() and p.suffix.lower() in ("", ".exe") and os.access(p, os.X_OK))
+                if p.is_file() and p.suffix.lower() in ("", ".exe")
+                and p.name != "Makefile" and os.access(p, os.X_OK))
 
 
 def clear_test_binaries() -> None:

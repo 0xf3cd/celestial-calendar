@@ -59,7 +59,8 @@ def find_benchmarks() -> List[Path]:
   if not BENCH_OUTPUT_DIR.is_dir():
     return []
   return sorted(p for p in BENCH_OUTPUT_DIR.iterdir()
-                if p.is_file() and p.suffix.lower() in ("", ".exe") and os.access(p, os.X_OK))
+                if p.is_file() and p.suffix.lower() in ("", ".exe")
+                and p.name != "Makefile" and os.access(p, os.X_OK))  # See gtest.find_test_binaries on `Makefile`.
 
 
 def run_benchmarks() -> int:

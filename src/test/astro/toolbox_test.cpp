@@ -331,9 +331,10 @@ TEST(AstroMath, Distance) {
   static_assert(not std::is_convertible_v<double, DistanceAu>);
   static_assert(not std::is_convertible_v<DistanceAu, DistanceKm>);
 
-  // Pinned against the constant, not against its literal value: the re-value and rename to the
-  // IAU 2012 definition (#86) repointed this test rather than forcing expected values to be
-  // re-derived, which is what pinning the symbol bought.
+  // Two pins with different jobs: the literal pin holds the IAU 2012 defined value (nothing
+  // else in the suite would notice a re-value — every other assertion closes over the symbol),
+  // and the symbolic pins hold the wiring.
+  ASSERT_EQ(AU_KM_SCALE, 149597870.700); // IAU 2012 Resolution B2
   ASSERT_EQ(au_to_km(1.0), AU_KM_SCALE);
   ASSERT_EQ(km_to_au(AU_KM_SCALE), 1.0);
   ASSERT_EQ(au_to_km(0.0), 0.0);
