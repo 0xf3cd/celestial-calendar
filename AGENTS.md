@@ -308,6 +308,28 @@ project — keep the header.
   any quantization the source applied (e.g. USNO evaluating LAST at 4-decimal longitudes).
   Otherwise tolerances silently absorb the mismatch and the dataset loses discriminating power.
 
+### Acceptance: run the binaries, and reconcile the count
+
+**Do not accept on ctest's numbers.** ctest reports on what it was told about, and that
+registration goes stale in both directions: `ctest --test-dir build` finds *zero* tests and
+reports success (the registry lives in `build/test`), and a `--build --test` run after adding a
+source file silently omits it, because the `GLOB` that discovers tests expands at configure time.
+
+Run the binaries directly, then reconcile the total against the `TEST` macros:
+
+```sh
+total=0; for exe in build/test/*; do [ -x "$exe" ] && [ -f "$exe" ] || continue
+  out=$("$exe" 2>&1) || echo "FAIL $exe"
+  n=$(echo "$out" | grep -oE "^\[==========\] [0-9]+ test" | grep -oE "[0-9]+" | head -1)
+  total=$((total + ${n:-0})); done
+echo "$total"; grep -rhoE '^\s*TEST(_F)?\(' src/test --include=*.cpp | wc -l   # must be equal
+```
+
+**The reconciliation is the load-bearing half.** Running the binaries proves that what ran
+passed; only the count proves that everything that should have run *did*. A stale binary skews
+it in the greener direction — the one nobody goes looking for — which is why the build now
+clears `build/test/` before re-creating it (#155).
+
 ## Project Layout
 
 ```
