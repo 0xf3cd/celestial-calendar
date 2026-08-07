@@ -101,6 +101,11 @@ if __name__ == "__main__":
     if ret_code != 0:
       sys.exit(ret_code)
 
+  if args.ai_workflows or args.all:
+    ret_code = check_ai_workflows()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
   if args.ctypes_smoke or args.all:
     ret_code = check_ctypes_smoke()
     if ret_code != 0:
@@ -113,11 +118,6 @@ if __name__ == "__main__":
 
   if args.log_names or args.all:
     ret_code = check_log_names()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.ai_workflows or args.all:
-    ret_code = check_ai_workflows()
     if ret_code != 0:
       sys.exit(ret_code)
 

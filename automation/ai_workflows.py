@@ -54,11 +54,16 @@ def check_ai_workflows() -> int:
   (#144). Both are read from the parsed YAML, not from the file text: the permission is
   per-job and has to be checked on the job that calls the action, and a workflow's prose
   (`prompt:` blocks quote this repo's own CI) must not be able to satisfy the gate.
-  Pure parsing -- no build needed, any leg can run it.
+  Pure parsing -- no build needed, so any leg that installs Requirements.txt can run it.
   """
-  # Imported here, not at module scope: `automation/__init__` is on the import path of every
-  # `project.py` invocation, including CI steps that never install Requirements.txt.
-  import yaml
+  # This gate is the only part of the automation that parses YAML, so it pays for the import
+  # itself rather than putting it on every `project.py` invocation (`requests` already is on
+  # that path -- see the note next to the linters leg in core_tests.yml).
+  try:
+    import yaml
+  except ModuleNotFoundError:
+    red_print("This check needs PyYAML: run `pip install -r Requirements.txt` first")
+    return 1
 
   print("#" * 60)
   yellow_print("Checking the AI workflows keep their OIDC permission and pinned action...")
@@ -84,7 +89,7 @@ def check_ai_workflows() -> int:
     jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
     calling_jobs = {
       job_id: job
-      for job_id, job in (jobs or {}).items()
+      for job_id, job in (jobs if isinstance(jobs, dict) else {}).items()
       if isinstance(job, dict)
       for step in (job.get("steps") or [])
       if (_uses_target(step) or "").split("@")[0] == PINNED_ACTION

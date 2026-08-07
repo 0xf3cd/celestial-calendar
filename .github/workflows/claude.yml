@@ -11,8 +11,8 @@ on:
 jobs:
   claude:
     # The action checks the caller only inside the job, once the API key is in the step env and
-    # an App token is minted — and it waves any [bot] straight through. This gate keeps the job
-    # from starting. OWNER alone: COLLABORATOR also covers read-only access (#144).
+    # an App token is minted — and its write-permission check short-circuits for any [bot]. This
+    # gate keeps the job from starting. OWNER alone: COLLABORATOR also covers read access (#144).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && github.event.comment.author_association == 'OWNER') ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && github.event.review.author_association == 'OWNER') ||
@@ -37,5 +37,5 @@ jobs:
           # Only comments are filtered; title, body, labels, branch and file names all still reach
           # an agent holding the API key, so treat the key as injection-reachable (#144).
           # `claude` is the bot's GraphQL login (no [bot] suffix there) — and also a real human
-          # account, which this therefore lets in too; GraphQL offers nothing finer to filter on.
+          # account, which this therefore lets in too: the input matches on login and nothing else.
           include_comments_by_actor: "0xf3cd, claude"
