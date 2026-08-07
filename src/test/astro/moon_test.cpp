@@ -106,8 +106,7 @@ TEST(Moon, CoordAndPpi) {
     ASSERT_NEAR(ppi.rad(),  std::get<3>(expected), 1e-14);
   }
 
-  // #86: the function is public over a `Distance<KM>` open to any value, and `asin` of an
-  // argument above 1 returns a silent NaN. The Moon never gets here; the contract still holds.
+  // #86: the guard's contract is the @throw/@note on the function itself; these pin it.
   {
     ASSERT_THROW(std::ignore = equatorial_horizontal_parallax(DistanceKm { 0.0 }),
                  std::invalid_argument);

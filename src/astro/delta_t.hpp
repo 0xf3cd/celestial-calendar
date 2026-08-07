@@ -139,8 +139,7 @@ find_coefficients(const int32_t year) -> std::optional<
 
   // The cast lives inside the table's era on purpose: the table ends at 2005, so for any later
   // year the closed-form segments below apply and no integer year is ever formed — which keeps
-  // the float→int cast inside int32's range by construction (#86; it used to run for every
-  // year, where a large-enough finite one was as undefined as NaN).
+  // the float→int cast inside int32's range by construction (#86).
   if (year < 2005.0) {
     // #64: `static_cast` truncates toward zero — negative fractional years picked the wrong segment.
     const auto coefficients = find_coefficients(static_cast<int32_t>(std::floor(year)));

@@ -81,8 +81,6 @@ def build_project(cpu_cores: int = 8) -> int:
   assert BUILD_DIR.is_dir(), "Build directory is not a directory"
 
   # Clear the test binaries first, so that the build is what puts every one of them back (#155).
-  # Acceptance runs `build/test/*` and reconciles the count against the `TEST` macros, and a
-  # binary whose source is gone answers that reconciliation with a stale pass.
   clear_test_binaries()
 
   yellow_print("# Building the C++ projects...")

@@ -108,9 +108,8 @@ TEST(DeltaT, Algo5) {
 }
 
 TEST(DeltaT, NonFiniteYears) {
-  // #86: NaN slips through plain `<` guards (every comparison is false), and in algo1 it used
-  // to reach the float→int cast — UB, UBSan-reproducible. The bounded algos now throw; the
-  // noexcept ones (algo2, algo5, the dispatcher) propagate NaN, which is IEEE, not UB.
+  // #86: the throwing algos reject every non-finite year; the noexcept ones (algo2, algo5,
+  // the dispatcher) propagate it — IEEE, not UB.
   const double nan = std::numeric_limits<double>::quiet_NaN();
   const double inf = std::numeric_limits<double>::infinity();
   ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);

@@ -47,9 +47,7 @@ def clear_test_binaries() -> None:
 
   Tests are run by scanning `build/test/`, so a binary left behind by a test file that has since
   been renamed or deleted keeps being run forever -- and keeps passing, from a source file that
-  no longer exists. It skews acceptance in the *greener* direction, which is the one nobody goes
-  looking for: the util-batch acceptance once read 212 ran against 211 `TEST` macros, the extra
-  one being a `common_test` whose source had been deleted two days earlier.
+  no longer exists. It skews acceptance in the *greener* direction, the one nobody goes looking for.
 
   `--bench` has had this step since #133 (`build_benchmarks` unlinks before building). This is
   the same step on the test side, which never got one.
