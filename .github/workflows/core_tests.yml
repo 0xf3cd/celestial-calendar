@@ -60,7 +60,13 @@ jobs:
           ./linter.py --ruff --clang-tidy --abi-layout
 
           
-  test-ubuntu-gcc14:  
+  # Not deduplicated against linux-docker (build_and_test.yml), deliberately (#165, 2026-08-08).
+  # The overlap is amd64 only, and only when a PR is open or that workflow is dispatched by hand:
+  # this job runs on every push to every branch, while that one builds in a Debian container
+  # (sid repo for gcc-14), is CI's only *Linux* arm64 coverage, and produces the release
+  # artifacts. Delete this job and a branch gets no gcc feedback until a PR exists.
+  # Revisit if the two workflows' trigger sets are made the same.
+  test-ubuntu-gcc14:
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
@@ -271,9 +277,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # `linter.py` imports the `automation` package, whose __init__ pulls in
-      # `automation.github` and therefore `requests` -- needed even though this
-      # check never touches the network.
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip

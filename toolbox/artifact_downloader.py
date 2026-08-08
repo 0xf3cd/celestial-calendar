@@ -27,9 +27,8 @@ from pathlib import Path
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
 
-from automation import (
-  GitHub, red_print, yellow_print, blue_print,
-)
+from automation import red_print, yellow_print, blue_print
+from automation.github import GitHub
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
   """Find the workflow to download artifacts from."""

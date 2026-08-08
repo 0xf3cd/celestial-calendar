@@ -49,18 +49,12 @@ def build_benchmarks(cpu_cores: int = 8) -> int:
 
 
 def find_benchmarks() -> List[Path]:
-  """Every benchmark binary under the benchmark output directory, sorted by name.
+  """Every benchmark binary under the benchmark output directory.
 
   Discovery is by directory rather than by a hardcoded list so that adding a `bench_*.cpp`
-  is the whole job of adding a benchmark (#133). The suffix is what carries the check on Windows,
-  where `os.access(X_OK)` passes for nearly any readable file -- and what this returns is not only
-  what gets run, it is also what `build_benchmarks` unlinks.
+  is the whole job of adding a benchmark (#133). Filter details: `paths.find_executables`.
   """
-  if not BENCH_OUTPUT_DIR.is_dir():
-    return []
-  return sorted(p for p in BENCH_OUTPUT_DIR.iterdir()
-                if p.is_file() and p.suffix.lower() in ("", ".exe")
-                and p.name != "Makefile" and os.access(p, os.X_OK))  # See gtest.find_test_binaries on `Makefile`.
+  return paths.find_executables(BENCH_OUTPUT_DIR)
 
 
 def run_benchmarks() -> int:

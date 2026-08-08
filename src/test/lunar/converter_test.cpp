@@ -21,6 +21,10 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <ranges>
+#include <vector>
+
 #include <gtest/gtest.h>
 #include "lunar/converter.hpp"
 #include "lunar/algo1.hpp"
@@ -193,14 +197,50 @@ TEST(Converter, LunarToGregorianNegative) {
   }
 }
 
-TEST(Converter, GregorianToLunarAlgo1) {
+// The nine walks below differ in three parameters and nothing else: which algorithm, which
+// years, and how many round-trip draws. The bodies are shared; each test states its own
+// parameters, and asserts the year count so that a walk cannot be quietly narrowed to a
+// sample (or widened) without the assertion catching it.
+
+namespace {
+
+/** How many distinct years a sampled walk draws. algo2 is too slow to walk end to end. */
+constexpr size_t SAMPLE_SIZE = 8;
+
+/** Every year the algorithm declares. */
+template <common::Algo A>
+auto all_years() -> std::vector<int32_t> {
+  const auto& bounds = common::AlgoMetadata<A>::bounds();
+  return std::views::iota(bounds.start_lunar_year, bounds.end_lunar_year + 1)
+       | std::ranges::to<std::vector>();
+}
+
+/** `SAMPLE_SIZE` distinct years, drawn from the shared seeded engine (#69).
+ *  Shuffle-then-take rather than draw-until-distinct: a span shorter than `SAMPLE_SIZE` comes
+ *  back short and trips the caller's count assertion, instead of looping forever. */
+template <common::Algo A>
+auto sampled_years() -> std::vector<int32_t> {
+  auto years = all_years<A>();
+  std::shuffle(years.begin(), years.end(), util::detail::engine());
+  return years | std::views::take(SAMPLE_SIZE) | std::ranges::to<std::vector>();
+}
+
+/** The year count a full walk must yield — what such a walk asserts it really got. */
+template <common::Algo A>
+auto full_span() -> size_t {
+  const auto& bounds = common::AlgoMetadata<A>::bounds();
+  const int32_t span = bounds.end_lunar_year - bounds.start_lunar_year + 1;
+  return static_cast<size_t>(span);
+}
+
+/** Every day of every given year, Gregorian to Lunar. */
+template <common::Algo A>
+void check_gregorian_to_lunar(const std::vector<int32_t>& years) {
   using namespace util::ymd_operator;
+  using Converter = converter::Converter<A>;
 
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
-  using Converter = converter::Converter<common::Algo::ALGO_1>;
-
-  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
+  for (const auto year : years) {
+    const auto& info = common::AlgoMetadata<A>::get_info_for_year(year);
     ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
 
     uint32_t days_count = 0;
@@ -213,208 +253,105 @@ TEST(Converter, GregorianToLunarAlgo1) {
       }
     }
   }
+}
+
+/** Every day of every given year, Lunar to Gregorian. */
+template <common::Algo A>
+void check_lunar_to_gregorian(const std::vector<int32_t>& years) {
+  using namespace util::ymd_operator;
+  using Converter = converter::Converter<A>;
+
+  for (const auto year : years) {
+    const auto& info = common::AlgoMetadata<A>::get_info_for_year(year);
+    ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
+
+    uint32_t days_count = 0;
+    const auto& ml = info.month_lengths;
+    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
+      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
+        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
+        ASSERT_EQ(info.date_of_first_day + days_count, Converter::lunar_to_gregorian(lunar_date));
+        days_count++;
+      }
+    }
+  }
+}
+
+/** Random Gregorian dates through the lunar calendar and back, `draws` times. */
+template <common::Algo A>
+void check_round_trip(const int draws) {
+  using namespace util::ymd_operator;
+  using std::chrono::sys_days;
+  using std::chrono::year_month_day;
+
+  using AlgoMetadata = common::AlgoMetadata<A>;
+  using Converter = converter::Converter<A>;
+
+  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
+  for (auto _ = 0; _ < draws; ++_) {
+    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
+    ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
+
+    const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
+    ASSERT_TRUE(optional_lunar_date.has_value());
+
+    const year_month_day lunar_date = optional_lunar_date.value(); // NOLINT(bugprone-unchecked-optional-access)
+    ASSERT_TRUE(Converter::is_valid_lunar(lunar_date));
+
+    ASSERT_EQ(solar_date, Converter::lunar_to_gregorian(lunar_date));
+    ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(solar_date));
+  }
+}
+
+} // namespace
+
+
+TEST(Converter, GregorianToLunarAlgo1) {
+  const auto years = all_years<common::Algo::ALGO_1>();
+  ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_1>());
+  check_gregorian_to_lunar<common::Algo::ALGO_1>(years);
 }
 
 TEST(Converter, GregorianToLunarAlgo2) {
-  using namespace util::ymd_operator;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_2>;
-  using Converter = converter::Converter<common::Algo::ALGO_2>;
-
-  // Because algo2 is too slow, we randomly skip some years.
-  std::set<int32_t> years;
-  for (auto _ = 0; _ < 8; ++_) {
-    years.insert(
-      util::random(AlgoMetadata::bounds().start_lunar_year, 
-                   AlgoMetadata::bounds().end_lunar_year
-      )
-    );
-  }
-
-  for (const auto year : years) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
-    ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
-
-    uint32_t days_count = 0;
-    const auto& ml = info.month_lengths;
-    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
-      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
-        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
-        ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(info.date_of_first_day + days_count));
-        days_count++;
-      }
-    }
-  }
+  const auto years = sampled_years<common::Algo::ALGO_2>();
+  ASSERT_EQ(years.size(), SAMPLE_SIZE);
+  check_gregorian_to_lunar<common::Algo::ALGO_2>(years);
 }
 
 TEST(Converter, GregorianToLunarAlgo3) {
-  using namespace util::ymd_operator;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
-  using Converter = converter::Converter<common::Algo::ALGO_3>;
-
-  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
-    ASSERT_EQ(util::to_ymd(year, 1, 1), Converter::gregorian_to_lunar(info.date_of_first_day));
-
-    uint32_t days_count = 0;
-    const auto& ml = info.month_lengths;
-    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
-      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
-        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
-        ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(info.date_of_first_day + days_count));
-        days_count++;
-      }
-    }
-  }
+  const auto years = all_years<common::Algo::ALGO_3>();
+  ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_3>());
+  check_gregorian_to_lunar<common::Algo::ALGO_3>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo1) {
-  using namespace util::ymd_operator;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
-  using Converter = converter::Converter<common::Algo::ALGO_1>;
-
-  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
-    ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
-
-    uint32_t days_count = 0;
-    const auto& ml = info.month_lengths;
-    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
-      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
-        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
-        ASSERT_EQ(info.date_of_first_day + days_count, Converter::lunar_to_gregorian(lunar_date));
-        days_count++;
-      }
-    }
-  }
+  const auto years = all_years<common::Algo::ALGO_1>();
+  ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_1>());
+  check_lunar_to_gregorian<common::Algo::ALGO_1>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo2) {
-  using namespace util::ymd_operator;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_2>;
-  using Converter = converter::Converter<common::Algo::ALGO_2>;
-
-  // Because algo2 is too slow, we randomly skip some years.
-  std::set<int32_t> years;
-  for (auto _ = 0; _ < 8; ++_) {
-    years.insert(
-      util::random(AlgoMetadata::bounds().start_lunar_year, 
-                   AlgoMetadata::bounds().end_lunar_year
-      )
-    );
-  }
-
-  for (const auto year : years) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
-    ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
-
-    uint32_t days_count = 0;
-    const auto& ml = info.month_lengths;
-    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
-      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
-        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
-        ASSERT_EQ(info.date_of_first_day + days_count, Converter::lunar_to_gregorian(lunar_date));
-        days_count++;
-      }
-    }
-  }
+  const auto years = sampled_years<common::Algo::ALGO_2>();
+  ASSERT_EQ(years.size(), SAMPLE_SIZE);
+  check_lunar_to_gregorian<common::Algo::ALGO_2>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo3) {
-  using namespace util::ymd_operator;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
-  using Converter = converter::Converter<common::Algo::ALGO_3>;
-
-  for (auto year = AlgoMetadata::bounds().start_lunar_year; year <= AlgoMetadata::bounds().end_lunar_year; ++year) {
-    const auto& info = AlgoMetadata::get_info_for_year(year);
-    ASSERT_EQ(info.date_of_first_day, Converter::lunar_to_gregorian(util::to_ymd(year, 1, 1)));
-
-    uint32_t days_count = 0;
-    const auto& ml = info.month_lengths;
-    for (uint32_t month_idx = 0; month_idx < ml.size(); ++month_idx) { // Iterate over all months.
-      for (uint32_t day = 1; day <= ml[month_idx]; ++day) { // Iterate over all days in the month.
-        const auto lunar_date = util::to_ymd(year, month_idx + 1, day);
-        ASSERT_EQ(info.date_of_first_day + days_count, Converter::lunar_to_gregorian(lunar_date));
-        days_count++;
-      }
-    }
-  }
+  const auto years = all_years<common::Algo::ALGO_3>();
+  ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_3>());
+  check_lunar_to_gregorian<common::Algo::ALGO_3>(years);
 }
 
 TEST(Converter, IntegrationAlgo1) {
-  using namespace util::ymd_operator;
-  using std::chrono::sys_days;
-  using std::chrono::year_month_day;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_1>;
-  using Converter = converter::Converter<common::Algo::ALGO_1>;
-
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
-  for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
-    ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
-
-    const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
-    ASSERT_TRUE(optional_lunar_date.has_value());
-    
-    const year_month_day lunar_date = optional_lunar_date.value(); // NOLINT(bugprone-unchecked-optional-access)
-    ASSERT_TRUE(Converter::is_valid_lunar(lunar_date));
-
-    ASSERT_EQ(solar_date, Converter::lunar_to_gregorian(lunar_date));
-    ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(solar_date));
-  }
+  check_round_trip<common::Algo::ALGO_1>(5000);
 }
 
 TEST(Converter, IntegrationAlgo2) {
-  using namespace util::ymd_operator;
-  using std::chrono::sys_days;
-  using std::chrono::year_month_day;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_2>;
-  using Converter = converter::Converter<common::Algo::ALGO_2>;
-
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
-  for (auto _ = 0; _ < 16; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
-    ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
-
-    const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
-    ASSERT_TRUE(optional_lunar_date.has_value());
-    
-    const year_month_day lunar_date = optional_lunar_date.value(); // NOLINT(bugprone-unchecked-optional-access)
-    ASSERT_TRUE(Converter::is_valid_lunar(lunar_date));
-
-    ASSERT_EQ(solar_date, Converter::lunar_to_gregorian(lunar_date));
-    ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(solar_date));
-  }
+  check_round_trip<common::Algo::ALGO_2>(16); // algo2 is too slow for a full round.
 }
 
 TEST(Converter, IntegrationAlgo3) {
-  using namespace util::ymd_operator;
-  using std::chrono::sys_days;
-  using std::chrono::year_month_day;
-
-  using AlgoMetadata = common::AlgoMetadata<common::Algo::ALGO_3>;
-  using Converter = converter::Converter<common::Algo::ALGO_3>;
-
-  const uint32_t difference = (sys_days(AlgoMetadata::bounds().last_gregorian_date) - sys_days(AlgoMetadata::bounds().first_gregorian_date)).count();
-  for (auto _ = 0; _ < 5000; ++_) {
-    const year_month_day solar_date = AlgoMetadata::bounds().first_gregorian_date + util::random<uint32_t>(0, difference);
-    ASSERT_TRUE(Converter::is_valid_gregorian(solar_date));
-
-    const std::optional<year_month_day> optional_lunar_date = Converter::gregorian_to_lunar(solar_date);
-    ASSERT_TRUE(optional_lunar_date.has_value());
-    
-    const year_month_day lunar_date = optional_lunar_date.value(); // NOLINT(bugprone-unchecked-optional-access)
-    ASSERT_TRUE(Converter::is_valid_lunar(lunar_date));
-
-    ASSERT_EQ(solar_date, Converter::lunar_to_gregorian(lunar_date));
-    ASSERT_EQ(lunar_date, Converter::gregorian_to_lunar(solar_date));
-  }
+  check_round_trip<common::Algo::ALGO_3>(5000);
 }
 
 }  // namespace calendar::lunar::converter::test

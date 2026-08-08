@@ -57,8 +57,7 @@ def check_ai_workflows() -> int:
   Pure parsing -- no build needed, so any leg that installs Requirements.txt can run it.
   """
   # This gate is the only part of the automation that parses YAML, so it pays for the import
-  # itself rather than putting it on every `project.py` invocation (`requests` already is on
-  # that path -- see the note next to the linters leg in core_tests.yml).
+  # itself rather than putting PyYAML on every `project.py` invocation.
   try:
     import yaml
   except ModuleNotFoundError:

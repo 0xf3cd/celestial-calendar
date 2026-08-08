@@ -117,36 +117,14 @@ def check_tool(tool: Tool) -> bool:
 #endregion
 
 
-#region C/C++ Compiler Checks
-
-def find_c_compilers() -> List[str]:
-  """Find the C compilers in `PATH`."""
-  # Anchored at both ends, or the toolchain's companions (`gcc-ar`, `gcc-nm`, `clang-cl`, ...)
-  # get listed as compilers. The version and `.exe` tails keep Windows and `gcc-14.2` in.
-  c_compilers_pattern = re.compile(r"^(gcc|clang|icc)(-?\d+(\.\d+)*)?(\.exe)?$")
-
-  if "PATH" not in os.environ:
-    return []
-
-  c_compilers = []
-  for path in os.environ["PATH"].split(os.pathsep):
-    dir_path = Path(path)
-    if not dir_path.is_dir():
-      continue
-
-    for entry in dir_path.iterdir():
-      try:
-        if entry.is_file() and os.access(entry, os.X_OK) and c_compilers_pattern.match(entry.name):
-          c_compilers.append(entry.name)
-      except PermissionError:
-        pass
-
-  return c_compilers
-
+#region C++ Compiler Checks
 
 def find_cpp_compilers() -> List[str]:
   """Find the C++ compilers in `PATH`."""
-  cpp_compilers_pattern = re.compile(r"^(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?$")
+  # `fullmatch` below, so the whole file name has to be the pattern: neighbours like
+  # `x86_64-linux-gnu-g++-15` and `g++-ar` are out. The version and `.exe` tails keep Windows
+  # and `g++-14.2` in.
+  cpp_compilers_pattern = re.compile(r"(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?")
 
   if "PATH" not in os.environ:
     return []
@@ -159,7 +137,7 @@ def find_cpp_compilers() -> List[str]:
 
     for entry in dir_path.iterdir():
       try:
-        if entry.is_file() and os.access(entry, os.X_OK) and cpp_compilers_pattern.match(entry.name):
+        if entry.is_file() and os.access(entry, os.X_OK) and cpp_compilers_pattern.fullmatch(entry.name):
           cpp_compilers.append(entry.name)
       except PermissionError:
         pass
@@ -177,49 +155,6 @@ def make_compiler_args(compilers: Sequence[str], standards: Sequence[str]) -> Li
   """Create a list of C++ compiler arguments."""
   compiler_args = product(compilers, standards)
   return list(starmap(CompilerArgs, compiler_args))
-
-
-def check_c_support(c_args: CompilerArgs, silent: bool = False) -> bool:
-  """Check if the given compiler supports the specified C version."""
-  with tempfile.TemporaryDirectory() as tmpdir:
-    tmp_c_file = Path(tmpdir) / "test_c.c"
-    tmp_c_file.write_text("""
-      #include <stdio.h>
-
-      int main() {
-        printf("Hello, World!");
-        return 0;
-      }
-    """)
-
-    do_print = not silent
-
-    try:
-      compiler_command = [
-        c_args.compiler, 
-        f"-std={c_args.standard}", 
-        str(tmp_c_file), 
-        "-o", 
-        str(Path(tmpdir) / "test_c")
-      ]
-      compiler_ret = run_cmd(compiler_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
-
-      if compiler_ret.retcode != 0:
-        return False
-
-      # Execute the compiled program
-      program_command = [str(Path(tmpdir) / "test_c")]
-      program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
-      if program_ret.retcode != 0:
-        # Since the C compiler can be a cross-compiler, the program may fail
-        # So don't return False if the program fails
-        red_print(f"# Cannot execute the compiled program: {pformat(program_ret)}")
-      
-      return True
-    
-    except Exception as e:
-      red_print(f"# Failed to check C support: {str(e)}")
-      return False
 
 
 def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
