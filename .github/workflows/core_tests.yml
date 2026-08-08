@@ -60,7 +60,10 @@ jobs:
           ./linter.py --ruff --clang-tidy --abi-layout
 
           
-  test-ubuntu-gcc14:  
+  # Overlaps linux-docker (build_and_test.yml) on amd64 only, and only while a PR is open:
+  # this leg runs on every push to every branch, that one is Debian sid in Docker and carries
+  # CI's only arm64 coverage. Not deduplicated, deliberately (#165).
+  test-ubuntu-gcc14:
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
