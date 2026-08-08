@@ -71,8 +71,9 @@ def find_executables(directory: Path) -> List[Path]:
   `X_OK`, and the build does use Unix Makefiles there) nothing else would. Deleting build-system
   files is not this step's job.
 
-  Callers unlink what this returns, so a name that wrongly passes the filter is a file that
-  gets deleted.
+  What this returns is acted on, not just reported: it is unlinked before the next build, and
+  on the benchmark path it is executed. A name that wrongly passes the filter is a file that
+  gets deleted, or run.
   """
   if not directory.is_dir():
     return []
