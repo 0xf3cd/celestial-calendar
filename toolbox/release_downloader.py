@@ -24,9 +24,10 @@ from typing import Union
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
 
-from automation import (
-  GitHub, red_print, yellow_print, green_print,
-)
+from automation import red_print, yellow_print, green_print
+
+# See `artifact_downloader.py` on why `GitHub` comes from the submodule and not the package root.
+from automation.github import GitHub
 
 
 def find_release(keyword: Union[str, int]) -> GitHub.Release:

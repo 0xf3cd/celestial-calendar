@@ -22,7 +22,6 @@ from .utils import (
   green_print, red_print, yellow_print, blue_print,
   run_cmd, ProcReturn, time_execution
 )
-from .github import GitHub
 from .linter import run_ruff, run_clang_tidy
 from .self_contained import check_self_contained
 from .feature_probe import probe_features
@@ -40,7 +39,7 @@ __all__ = [
   "run_gtests", "print_system_info",
   "green_print", "red_print", "yellow_print", "blue_print",
   "run_cmd", "ProcReturn", "time_execution",
-  "GitHub", "run_ruff", "run_clang_tidy", "check_self_contained", "probe_features",
+  "run_ruff", "run_clang_tidy", "check_self_contained", "probe_features",
   "check_abi_layout", "check_ctypes_smoke", "check_export_surface", "check_log_names",
   "check_ai_workflows",
   "build_benchmarks", "run_benchmarks"

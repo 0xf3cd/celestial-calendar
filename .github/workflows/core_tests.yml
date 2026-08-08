@@ -271,9 +271,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # `linter.py` imports the `automation` package, whose __init__ pulls in
-      # `automation.github` and therefore `requests` -- needed even though this
-      # check never touches the network.
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
