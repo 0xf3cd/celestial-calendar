@@ -9,7 +9,6 @@ check_platform_arch.py
 
 artifacts/
 release/
-run-clang-tidy.py
 
 build_info.json
 cpu_info.json
