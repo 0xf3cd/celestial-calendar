@@ -17,11 +17,6 @@ from .env import Tool, check_tool
 from .utils import run_cmd, yellow_print, red_print, green_print
 
 
-# Tracked, not fetched: until 2026-08-07 this file was gitignored and pulled from llvm-project
-# `main` on every CI run, so a mutable third-party script drove the pinned clang-tidy (#72, #73).
-VENDORED_RUNNER = "run-clang-tidy.py"
-
-
 def run_ruff() -> int:
   """Run ruff on the project source code."""  
   print("#" * 60)
@@ -49,12 +44,7 @@ def run_clang_tidy() -> int:
 
   if not check_tool(Tool("clang-tidy")):
     red_print("clang-tidy not found!")
-    yellow_print("Install clang-tidy by `pip install clang-tidy` -- the version CI pins is in core_tests.yml")
-    return 1
-
-  if not (paths.proj_root() / VENDORED_RUNNER).exists():
-    red_print(f"{VENDORED_RUNNER} is missing from the repo root.")
-    yellow_print(f"It is tracked -- restore it with `git checkout -- {VENDORED_RUNNER}`.")
+    yellow_print("Install clang-tidy by `pip install clang-tidy`")
     return 1
 
   build_dir = paths.build_dir()
@@ -66,7 +56,7 @@ def run_clang_tidy() -> int:
 
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(["python3", VENDORED_RUNNER, "-p", str(build_dir), "-header-filter=src/"],
+  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/"],
                 cwd=str(paths.proj_root()))
 
   if ret.retcode == 0:
