@@ -121,10 +121,10 @@ def check_tool(tool: Tool) -> bool:
 
 def find_cpp_compilers() -> List[str]:
   """Find the C++ compilers in `PATH`."""
-  # Anchored at both ends: without `^` the target-triple aliases (`x86_64-linux-gnu-g++-15`)
-  # come back as compilers of their own, and without `$` any suffixed neighbour would. The
-  # version and `.exe` tails keep Windows and `g++-14.2` in.
-  cpp_compilers_pattern = re.compile(r"^(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?$")
+  # `fullmatch` below, so the whole file name has to be the pattern: neighbours like
+  # `x86_64-linux-gnu-g++-15` and `g++-ar` are out. The version and `.exe` tails keep Windows
+  # and `g++-14.2` in.
+  cpp_compilers_pattern = re.compile(r"(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?")
 
   if "PATH" not in os.environ:
     return []
@@ -137,7 +137,7 @@ def find_cpp_compilers() -> List[str]:
 
     for entry in dir_path.iterdir():
       try:
-        if entry.is_file() and os.access(entry, os.X_OK) and cpp_compilers_pattern.match(entry.name):
+        if entry.is_file() and os.access(entry, os.X_OK) and cpp_compilers_pattern.fullmatch(entry.name):
           cpp_compilers.append(entry.name)
       except PermissionError:
         pass

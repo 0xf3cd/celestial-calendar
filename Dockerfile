@@ -39,7 +39,8 @@ ENV CELESTIAL_TEST_SEED=${CELESTIAL_TEST_SEED}
 RUN if [ -f Requirements.txt ]; then /opt/venv/bin/pip install -r Requirements.txt; fi
 
 # The whole suite: `-k integration` was justified by the eight-platform QEMU matrix, retired in
-# 2026-07 for two native runners (#46), and these two legs are CI's only arm64 coverage (#72).
+# 2026-07 for two native runners (#46), and these two legs are CI's only Linux arm64 coverage
+# (#72) -- the macOS leg in build_and_test.yml is arm64 as well, but not Linux.
 RUN /opt/venv/bin/python ./project.py --clean --cores all --all -v 1
 
 # Save the build information
