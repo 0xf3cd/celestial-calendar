@@ -28,10 +28,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, blue_print
-
-# `automation.github` is the package's only user of `requests`, so it is no longer re-exported
-# from the package root -- that kept every `linter.py` run paying for a network dependency it
-# never uses. Importing the submodule here keeps the cost on the scripts that do download.
 from automation.github import GitHub
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:

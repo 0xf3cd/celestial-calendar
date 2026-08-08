@@ -14,9 +14,9 @@
 # - the Moon Phases from "丹尼爾的神祕學世界"（The Secret World of Daniel）
 # Ref: https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm
 #
-# Status (#168): the output `moon_phases.csv` has no test consumer, and no evidence of ever
-# having had one -- it appears nowhere under `src/`. The retired DiffTest1 drew on a different
-# source (nong-wiki), not this one. Kept as an evaluation asset for `new_moon.ipynb`.
+# Status (#168, 2026-08-08): the output `moon_phases.csv` has no test consumer, and no evidence
+# of ever having had one -- it appears nowhere under `src/`. Kept as an evaluation asset for
+# `new_moon.ipynb`; revisit if the source above stops being reachable or reproducible.
 #
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com

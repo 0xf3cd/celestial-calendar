@@ -117,12 +117,13 @@ def check_tool(tool: Tool) -> bool:
 #endregion
 
 
-#region C/C++ Compiler Checks
+#region C++ Compiler Checks
 
 def find_cpp_compilers() -> List[str]:
   """Find the C++ compilers in `PATH`."""
-  # Anchored at both ends, or the toolchain's companions (`g++-ar`, `clang-cl`, ...) get listed
-  # as compilers. The version and `.exe` tails keep Windows and `g++-14.2` in.
+  # Anchored at both ends: without `^` the target-triple aliases (`x86_64-linux-gnu-g++-15`)
+  # come back as compilers of their own, and without `$` any suffixed neighbour would. The
+  # version and `.exe` tails keep Windows and `g++-14.2` in.
   cpp_compilers_pattern = re.compile(r"^(g\+\+|clang\+\+|icpc)(-?\d+(\.\d+)*)?(\.exe)?$")
 
   if "PATH" not in os.environ:

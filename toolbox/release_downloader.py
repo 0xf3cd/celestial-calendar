@@ -25,8 +25,6 @@ from typing import Union
 sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, green_print
-
-# See `artifact_downloader.py` on why `GitHub` comes from the submodule and not the package root.
 from automation.github import GitHub
 
 

@@ -60,9 +60,12 @@ jobs:
           ./linter.py --ruff --clang-tidy --abi-layout
 
           
-  # Overlaps linux-docker (build_and_test.yml) on amd64 only, and only while a PR is open:
-  # this leg runs on every push to every branch, that one is Debian sid in Docker and carries
-  # CI's only arm64 coverage. Not deduplicated, deliberately (#165).
+  # Not deduplicated against linux-docker (build_and_test.yml), deliberately (#165, 2026-08-08).
+  # The overlap is amd64 only, and only when a PR is open or that workflow is dispatched by hand:
+  # this job runs on every push to every branch, while that one builds in a Debian container
+  # (sid repo for gcc-14), is CI's only *Linux* arm64 coverage, and produces the release
+  # artifacts. Delete this job and a branch gets no gcc feedback until a PR exists.
+  # Revisit if the two workflows' trigger sets are made the same.
   test-ubuntu-gcc14:
     runs-on: ubuntu-24.04 
     strategy:  

@@ -939,8 +939,7 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
 // undocumented time scales — "Assume they are in UT1") were retired 2026-08-08: the same
 // source family was retired on the jieqi side in #68, and what it covered —
 // `geocentric_coord::apparent` — is anchored by jieqi_golden_test.cpp (HKO almanac,
-// DE441 crossings) and sun_horizons_golden_test.cpp. FindRoots kept its own random data,
-// which checks the solver against the very function it was asked to solve.
+// DE441 crossings) and sun_horizons_golden_test.cpp.
 
 TEST(Sun, FindRoots) {
   // Test random data.

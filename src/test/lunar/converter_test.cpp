@@ -21,7 +21,8 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <set>
+#include <algorithm>
+#include <ranges>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -203,32 +204,28 @@ TEST(Converter, LunarToGregorianNegative) {
 
 namespace {
 
-/** Which years a walk covers: every year the algorithm declares, or a random sample of them. */
-enum class YearSupply : uint8_t { ALL, SAMPLED };
-
-/** How many distinct years `SAMPLED` draws. algo2 is too slow to walk end to end. */
+/** How many distinct years a sampled walk draws. algo2 is too slow to walk end to end. */
 constexpr size_t SAMPLE_SIZE = 8;
 
+/** Every year the algorithm declares. */
 template <common::Algo A>
-auto years_to_walk(const YearSupply supply) -> std::vector<int32_t> {
+auto all_years() -> std::vector<int32_t> {
   const auto& bounds = common::AlgoMetadata<A>::bounds();
-
-  if (supply == YearSupply::SAMPLED) {
-    std::set<int32_t> sampled;
-    while (sampled.size() < SAMPLE_SIZE) {
-      sampled.insert(util::random(bounds.start_lunar_year, bounds.end_lunar_year));
-    }
-    return { sampled.cbegin(), sampled.cend() };
-  }
-
-  std::vector<int32_t> all;
-  for (auto year = bounds.start_lunar_year; year <= bounds.end_lunar_year; ++year) {
-    all.push_back(year);
-  }
-  return all;
+  return std::views::iota(bounds.start_lunar_year, bounds.end_lunar_year + 1)
+       | std::ranges::to<std::vector>();
 }
 
-/** The year count `YearSupply::ALL` must yield — what an `ALL` walk asserts it really got. */
+/** `SAMPLE_SIZE` distinct years, drawn from the shared seeded engine (#69).
+ *  Shuffle-then-take rather than draw-until-distinct: a span shorter than `SAMPLE_SIZE` comes
+ *  back short and trips the caller's count assertion, instead of looping forever. */
+template <common::Algo A>
+auto sampled_years() -> std::vector<int32_t> {
+  auto years = all_years<A>();
+  std::shuffle(years.begin(), years.end(), util::detail::engine());
+  return years | std::views::take(SAMPLE_SIZE) | std::ranges::to<std::vector>();
+}
+
+/** The year count a full walk must yield — what such a walk asserts it really got. */
 template <common::Algo A>
 auto full_span() -> size_t {
   const auto& bounds = common::AlgoMetadata<A>::bounds();
@@ -310,37 +307,37 @@ void check_round_trip(const int draws) {
 
 
 TEST(Converter, GregorianToLunarAlgo1) {
-  const auto years = years_to_walk<common::Algo::ALGO_1>(YearSupply::ALL);
+  const auto years = all_years<common::Algo::ALGO_1>();
   ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_1>());
   check_gregorian_to_lunar<common::Algo::ALGO_1>(years);
 }
 
 TEST(Converter, GregorianToLunarAlgo2) {
-  const auto years = years_to_walk<common::Algo::ALGO_2>(YearSupply::SAMPLED);
+  const auto years = sampled_years<common::Algo::ALGO_2>();
   ASSERT_EQ(years.size(), SAMPLE_SIZE);
   check_gregorian_to_lunar<common::Algo::ALGO_2>(years);
 }
 
 TEST(Converter, GregorianToLunarAlgo3) {
-  const auto years = years_to_walk<common::Algo::ALGO_3>(YearSupply::ALL);
+  const auto years = all_years<common::Algo::ALGO_3>();
   ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_3>());
   check_gregorian_to_lunar<common::Algo::ALGO_3>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo1) {
-  const auto years = years_to_walk<common::Algo::ALGO_1>(YearSupply::ALL);
+  const auto years = all_years<common::Algo::ALGO_1>();
   ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_1>());
   check_lunar_to_gregorian<common::Algo::ALGO_1>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo2) {
-  const auto years = years_to_walk<common::Algo::ALGO_2>(YearSupply::SAMPLED);
+  const auto years = sampled_years<common::Algo::ALGO_2>();
   ASSERT_EQ(years.size(), SAMPLE_SIZE);
   check_lunar_to_gregorian<common::Algo::ALGO_2>(years);
 }
 
 TEST(Converter, LunarToGregorianAlgo3) {
-  const auto years = years_to_walk<common::Algo::ALGO_3>(YearSupply::ALL);
+  const auto years = all_years<common::Algo::ALGO_3>();
   ASSERT_EQ(years.size(), full_span<common::Algo::ALGO_3>());
   check_lunar_to_gregorian<common::Algo::ALGO_3>(years);
 }

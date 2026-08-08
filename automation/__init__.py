@@ -9,10 +9,8 @@
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
-# `paths` is re-exported as the submodule, not as its individual functions: every caller --
-# inside the package and in `toolbox/` -- reaches for `paths.build_dir()` rather than the bare
-# name. Binding it explicitly also keeps `from automation import paths` working on its own
-# terms instead of as a side effect of re-exporting something out of it.
+# `paths` is exported as the submodule, not as its individual functions: every caller -- inside
+# the package and in `toolbox/` -- reaches for `paths.build_dir()` rather than the bare name.
 from . import paths
 from .env import Tool, SetupPlan, setup_environment
 from .build import run_cmake, build_project, clean_build
