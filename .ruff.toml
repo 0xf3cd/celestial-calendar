@@ -1,7 +1,7 @@
 exclude = [
   "*.ipynb",
-  # Vendored verbatim from llvmorg-18.1.8 so it stays diffable against upstream. Our style rules
-  # are not upstream's -- linting it would only pressure us to edit a file we must not edit.
+  # Vendored verbatim from upstream so it stays diffable against it. Our style rules are not
+  # upstream's -- linting it would only pressure us to edit a file we must not edit.
   "run-clang-tidy.py",
 ]
 
