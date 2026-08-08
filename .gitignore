@@ -9,7 +9,10 @@ check_platform_arch.py
 
 artifacts/
 release/
-run-clang-tidy.py
+
+# `run-clang-tidy.py` used to be ignored and re-downloaded from llvm-project `main` on every run.
+# It is now vendored and tracked, pinned to the same LLVM release as the clang-tidy binary
+# (`automation/linter.py`). Do not re-add it here.
 
 build_info.json
 cpu_info.json
