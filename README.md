@@ -115,7 +115,8 @@ Neither is part of `Requirements.txt` — install them directly:
 ```sh
 python3 -m pip install ruff
 
-# clang-tidy: any 22.1.x. CI takes 22.1.2 from its runner image; pip has no such version.
+# clang-tidy: any 22.1.x will do. CI uses the 22.1.2 that ships in its runner image, and pip
+# does not carry that exact patch release -- take the nearest one, or your distro's package.
 python3 -m pip install clang-tidy==22.1.8      # or your distribution's clang-tidy-22
 ```
 
