@@ -132,6 +132,7 @@ struct GoldenRow {
 };
 
 // USNO rows, local standard time (see file header for provenance).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<GoldenRow> USNO_ROWS {
   {  3, 20,   -0.22,   -78.51,  -5, "05:57", "06:18", "12:21", "18:25", "18:45", false, false },  // Quito
   {  6, 21,   -0.22,   -78.51,  -5, "05:50", "06:13", "12:16", "18:19", "18:42", false, false },  // Quito
@@ -162,6 +163,7 @@ const std::vector<GoldenRow> USNO_ROWS {
   {  9, 23,   69.65,    18.96,   1, "04:27", "05:28", "11:37", "17:43", "18:43", false, false },  // Tromso
   { 12, 21,   69.65,    18.96,   1, "09:31", "     ", "     ", "     ", "13:53", false, true  },  // Tromso
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct TwilightRow {
   int month;
@@ -176,11 +178,13 @@ struct TwilightRow {
 };
 
 // Skyfield rows, local standard time (see file header for provenance).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<TwilightRow> TWILIGHT_ROWS {
   {  6, 21,   51.50,    -0.13,   0, "01:40:47", "22:23:51", "        ", "        " },  // London
   { 12, 21,   51.50,    -0.13,   0, "06:40:11", "17:16:58", "05:59:22", "17:57:46" },  // London
   { 12, 21,   69.65,    18.96,   1, "07:46:42", "15:37:40", "06:28:18", "16:56:03" },  // Tromso
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 

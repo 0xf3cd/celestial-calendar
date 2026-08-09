@@ -61,6 +61,7 @@ struct LeapSecondEntry {
  *          to discontinue them by 2035 — past the last entry, ΔAT is held at its final value.
  * @ref IERS Bulletin C; the transcription is pinned by `LeapSecond.TableMatchesIERS`.
  */
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<LeapSecondEntry, 28> LEAP_SECOND_TABLE {{
   { util::to_ymd(1972, 1, 1), 10.0 },
   { util::to_ymd(1972, 7, 1), 11.0 },
@@ -91,6 +92,7 @@ inline constexpr std::array<LeapSecondEntry, 28> LEAP_SECOND_TABLE {{
   { util::to_ymd(2015, 7, 1), 36.0 },
   { util::to_ymd(2017, 1, 1), 37.0 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 
 /**

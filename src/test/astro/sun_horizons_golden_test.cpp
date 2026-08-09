@@ -109,6 +109,7 @@ void check_band(const std::span<const HorizonsSunRow> rows, const Tolerance& tol
 }
 
 // 1901–2094 (32 epochs stepped 2283.25 days) + the Meeus Example 25.b anchor (2448908.50).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsSunRow> SUN_CORE_ROWS {
   {  2415385.50,  279.9091090,   0.0000094,  0.9832022703 },  // 1901-Jan-01 00:00:00.000 TT, rdot -0.0201 km/s
   {  2417668.75,   12.3366840,   0.0001985,  0.9999906874 },  // 1907-Apr-03 06:00:00.000 TT, rdot +0.5089 km/s
@@ -144,9 +145,11 @@ const std::vector<HorizonsSunRow> SUN_CORE_ROWS {
   {  2483883.00,  114.0000351,  -0.0000491,  1.0164639941 },  // 2088-Jul-15 12:00:00.000 TT, rdot -0.0756 km/s
   {  2486166.25,  202.9117822,  -0.0000328,  0.9973374702 },  // 2094-Oct-15 18:00:00.000 TT, rdot -0.5028 km/s
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 // ~410 / ~501 / ~999 / ~1599 / ~2500 / ~3000 / ~5001 CE (410 is the lunar-algo2 lower bound;
 // 5001 is far coverage, not the algo2 ceiling — #139).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsSunRow> SUN_EXTENDED_ROWS {
   {  1870800.50,  271.7952269,  -0.0000561,  0.9833447140 },  // 0409-Dec-22 00:00:00.000 TT, rdot +0.1442 km/s
   {  1904000.50,  233.9657282,  -0.0000150,  0.9840446824 },  // 0500-Nov-14 00:00:00.000 TT, rdot -0.2157 km/s
@@ -156,13 +159,16 @@ const std::vector<HorizonsSunRow> SUN_EXTENDED_ROWS {
   {  2817000.50,  130.4087188,   0.0000509,  1.0159827069 },  // 3000-Aug-02 00:00:00.000 TT, rdot -0.0969 km/s
   {  3547660.50,  303.1593554,   0.0001006,  0.9869292548 },  // 5001-Jan-24 00:00:00.000 TT, rdot -0.2291 km/s
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 // JD 2^22 = 4194304 straddle (~6771 CE, #76 cliff guard) and ~9420 CE.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsSunRow> SUN_FAR_ROWS {
   {  4194303.50,  108.0566192,   0.0000104,  1.0028098411 },  // 6771-Jul-07 00:00:00.000 TT, rdot +0.4094 km/s
   {  4194304.50,  109.0365470,  -0.0000267,  1.0030455660 },  // 6771-Jul-08 00:00:00.000 TT, rdot +0.4070 km/s
   {  5161700.50,  338.1310775,   0.0000780,  0.9964339347 },  // 9420-Feb-27 00:00:00.000 TT, rdot -0.3823 km/s
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 

@@ -55,6 +55,7 @@ struct EotRow {
 // 18 points within ±2 days of March equinoxes (where α and L0 straddle the 0°/360° seam and
 // an unwrapped E would come out ±357°). Seed 42, generated 2026-07-29. Measured worst
 // residual 3.0e-6° (0.0007 s of time) — tolerance 1e-5° ≈ 3× that.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
   { 2415495.227896,  +0.261331808 },
   { 2416847.510658,  -0.943318947 },
@@ -135,6 +136,7 @@ constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
   { 2484943.957712,  +0.033835542 },
   { 2486105.633443,  -1.095643546 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 // Definitional oracle, independent of the Meeus formula chain: Skyfield 1.49 + DE440s,
 // E = GHA of the apparent Sun + 180° − UT1 fraction of day × 360°. 40 uniform points over
@@ -142,6 +144,7 @@ constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
 // systematic gap between the UT1-based mean sun and Meeus's (28.2) mean sun (it grows
 // ∝ ΔT, ~0.0027·ΔT) plus IAU model differences: measured mean 0.17 s, worst 0.21 s of
 // time — tolerance 2e-3° (0.48 s) ≈ 2.3× the worst case.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
   { 2416419.907584,  +4.071353845 },
   { 2417836.673312,  +1.354031150 },
@@ -185,12 +188,14 @@ constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
   { 2483159.676504,  -1.668588454 },
   { 2483825.617097,  +0.846087960 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 // NOAA solcalc spreadsheet formulas (truncated-series family: Meeus (28.3)/Smart with the
 // low-precision sun of ch. 25), reimplemented, 20 uniform points over 1950–2050, seed 44,
 // generated 2026-07-29. Different formula family — catches structural errors (wrap, L0,
 // missing terms) rather than precision. Measured worst gap 2.66 s of time — tolerance
 // 2.5e-2° (6 s) ≈ 2.3× that.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 20> NOAA_ROWS {{
   { 2433604.125486,  +3.714276729 },
   { 2434345.277176,  +2.962950714 },
@@ -213,6 +218,7 @@ constexpr std::array<EotRow, 20> NOAA_ROWS {{
   { 2464768.387417,  -2.149671549 },
   { 2469423.728552,  +1.418854472 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct ApparentRow {
   int32_t  year;
@@ -230,6 +236,7 @@ struct ApparentRow {
 // carry the |UT1−UTC| steering gap plus the mean-sun definitional gap: measured worst
 // 0.20 s — tolerance 0.5 s ≈ 2.5× that. New rows must stick to low-|DUT1| epochs
 // (≲ 0.3 s): the documented 0.9 s steering gap would otherwise eat the tolerance.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<ApparentRow, 6> APPARENT_ROWS {{
   { 1992, 10, 13, 0.500000000,   +0.0000, +0.509604750, +0 }, // Greenwich noon
   { 2024,  2, 11, 0.166666667, +120.0000, +0.490145643, +0 }, // 120°E, near the EoT minimum
@@ -238,6 +245,7 @@ constexpr std::array<ApparentRow, 6> APPARENT_ROWS {{
   { 2030,  6,  1, 0.041666667, -179.9000, +0.543466642, -1 }, // −12 h offset carries to previous day
   { 1960,  7,  1, 0.250000000,  +90.0000, +0.497426816, +0 }, // Pre-1972, input read as UT1
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct TransitCase {
   int32_t  year;
@@ -246,12 +254,14 @@ struct TransitCase {
   astro::sunrise_sunset::GeoLocation location;
 };
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::array<TransitCase, 4> TRANSIT_CASES {{
   { 2024,  2, 11, { .latitude = AngleDeg { 39.9042 }, .longitude = AngleDeg { 116.4074 } } },
   { 2024, 11,  3, { .latitude = AngleDeg { 40.7128 }, .longitude = AngleDeg { -74.0060 } } },
   { 1992, 10, 13, { .latitude = AngleDeg { 51.4769 }, .longitude = AngleDeg {   0.0    } } },
   { 2024,  6, 21, { .latitude = AngleDeg { 69.65   }, .longitude = AngleDeg {  18.96   } } },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 } // namespace
 

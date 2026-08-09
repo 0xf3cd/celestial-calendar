@@ -147,12 +147,14 @@ TEST(JulianDay, JdeUt1Anchors) {
     double tol_sec;  // |model ΔT − observed ΔT| bound at this epoch
   };
 
+  // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<Anchor> anchors {
     //                  tt                              ut1 (= tt − observed ΔT)                                     tol_sec
     { Datetime { to_ymd(2000, 1, 1), 0.0 }, Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } }, 0.2 },
     { Datetime { to_ymd(2020, 1, 1), 0.0 }, Datetime { to_ymd(2019, 12, 31), hh_mm_ss { 23h + 58min + 50s + 640ms } }, 0.2 },
     { Datetime { to_ymd( 500, 1, 1), 0.0 }, Datetime { to_ymd( 499, 12, 31), hh_mm_ss { 22h + 24min + 50s } },         2.0 },
   };
+  // NOLINTEND(modernize-use-designated-initializers)
 
   for (const auto& [tt, ut1, tol_sec] : anchors) {
     const double tol_day = tol_sec / 86400.0;

@@ -108,6 +108,7 @@ auto jieqi_from_entry(const int32_t entry) -> Jieqi {
   return from_index(static_cast<uint8_t>((to_index(Jieqi::小寒) + entry) % JIEQI_COUNT));
 }
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<CrossingRow> DE441_ROWS {
   {  2026, 285.0,  2461045.850228372 },  // 2026-Jan-05 08:24:19.731 TT
   {  2026, 300.0,  2461060.573684652 },  // 2026-Jan-20 01:46:06.354 TT
@@ -186,8 +187,10 @@ const std::vector<CrossingRow> DE441_ROWS {
   {  9420, 180.0,  5161902.647076671 },  // 9420-Sep-16 03:31:47.424 TT
   {  9420, 270.0,  5161996.085451838 },  // 9420-Dec-18 14:03:03.039 TT
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 // 2022–2028 × 24 = 168 rows.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HkoRow> HKO_ROWS {
   { 2022,  0,  1,  5, 17, 14 },
   { 2022,  1,  1, 20, 10, 39 },
@@ -358,6 +361,7 @@ const std::vector<HkoRow> HKO_ROWS {
   { 2028, 22, 12,  6, 22, 25 },
   { 2028, 23, 12, 21, 16, 20 },
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 

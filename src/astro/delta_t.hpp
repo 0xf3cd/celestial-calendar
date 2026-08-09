@@ -70,6 +70,7 @@ struct Algo1Coefficients {
   double a, b, c, d; 
 };
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
   { -4000, 108371.7, -13036.80, 392.000,  0.0000 },
   {  -500,  17201.0,   -627.82,  16.170, -0.3413 },
@@ -92,6 +93,7 @@ inline constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
   {  2000,     63.87,     0.1,    0.0,    0.0    },
   {  2005,      0.0,      0.0,    0.0,    0.0    }, // This data point will not be used. So we don't care the values of a, b, c, d here.
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 
 /** @brief Get the coefficients of algorithm 1. Returns `std::nullopt` if not found. */
