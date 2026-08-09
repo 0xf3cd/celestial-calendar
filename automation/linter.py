@@ -50,9 +50,6 @@ def run_clang_tidy() -> int:
   # that empty string, so the fallback has to be `or`.
   binary = os.environ.get("CLANG_TIDY") or "clang-tidy"
 
-  # `report=True`: which binary answered, spelled out. A runner one major ahead of its
-  # clang-tidy analyses a subset in silence rather than failing (AGENTS.md gotcha 9), and
-  # `check_tool` has already resolved the path and run `--version` to get here.
   if not check_tool(Tool(binary), report=True):
     yellow_print("Install clang-tidy, or point CLANG_TIDY at the one to use")
     return 1

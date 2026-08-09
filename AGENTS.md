@@ -410,9 +410,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
    binary by its major, and the vendored `run-clang-tidy.py` carries the matching `llvmorg-22.1.2`.
    Of the two ways to get that pairing wrong, only one is loud: an older runner refuses to run
    at all, while a newer runner on an older binary exits 0 and quietly measures with a smaller
-   ruler. Exact versions live in the workflows,
-   not here — there is no gate reconciling two copies. Chocolatey's `make` is deliberately outside
-   this: it drives the build rather than diagnosing it, so a new version cannot turn `-Werror` red.
+   ruler. Exact versions live in the workflows, not here — there is no gate reconciling two
+   copies. Chocolatey's `make` is deliberately outside this: it drives the build rather than
+   diagnosing it, so a new version cannot turn `-Werror` red.
    Bump deliberately, never incidentally (#72, #73).
 
 ## Design ledger — decisions taken, and what would reopen them

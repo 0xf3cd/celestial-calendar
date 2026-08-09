@@ -103,7 +103,7 @@ def check_tool(tool: Tool, report: bool = False) -> bool:
   """Check if a tool exists and can be executed with the given arguments.
 
   `report` also says which binary answered and what it calls itself, out of the results this
-  already has in hand -- a caller that passes a version-suffixed name is asking exactly that.
+  already has in hand.
   """
   tool_path = shutil.which(tool.name)
   if tool_path is None:
