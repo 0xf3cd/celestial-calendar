@@ -3,14 +3,19 @@ Checks: |
   -clang-analyzer-security.insecureAPI.rand,
 
   performance-*,
+
   portability-*,
+  -portability-avoid-pragma-once,
 
   bugprone-*,
   -bugprone-reserved-identifier,
+  -bugprone-random-generator-seed,
+  -bugprone-throwing-static-initialization,
 
   cppcoreguidelines-*,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
 
   readability-*,
   -readability-magic-numbers,
@@ -21,13 +26,39 @@ Checks: |
   google-*,
   -google-build-using-namespace,
   -google-readability-todo,
+  -google-runtime-float,
 
   modernize-*,
   -modernize-use-std-numbers,
 
 # `readability-identifier-naming` is off on purpose: it cannot express domain notation (`cos_λ`,
 # `argL`, `θCoeffs`) or `const inline auto` callables. Conventions: AGENTS.md, "Naming". #72
+#
+# The rest of the disables above, in the order they appear (#73). Each says what it would cost
+# to obey, not that it is noisy:
+#
+# - `portability-avoid-pragma-once`: header-only with `#pragma once` is the identity, and no
+#   header is reachable by two paths. It was invisible rather than allowed before clang-tidy 21
+#   -- the check did not exist, so `portability-*` never turned it on.
+# - `bugprone-random-generator-seed`: a fixed default seed is the gate half of #69's dual track.
+#   The soak workflow draws a fresh one; reproducibility is the point of the pinned one.
+# - `bugprone-throwing-static-initialization`: throwing before `main` terminates loudly at
+#   startup, which is the honest outcome for a table that failed to build.
+# - `cppcoreguidelines-pro-bounds-avoid-unchecked-container-access`: every hit is an index a
+#   constant or a loop bound already proves; the places that genuinely need proof use `.at()`.
+# - `google-runtime-float`: `long double` in the UDL operators is what the standard requires
+#   those signatures to take, so the check fires on a shape we cannot change.
+#
+# `modernize-use-designated-initializers` is deliberately NOT disabled: the coefficient and
+# golden tables carry `NOLINTBEGIN/END`, so the check still guards ordinary code, where `.λ =`
+# is the style this repo asks for.
 
 WarningsAsErrors: '*'
 
 UseColor: true
+
+CheckOptions:
+  # 79 hits, every one a lambda: a lambda's return type is usually inferred from one expression,
+  # and spelling it out there buys nothing. The function side stays on, which gives the repo's
+  # own trailing-return rule a gate for the first time -- at zero current violations (#73).
+  modernize-use-trailing-return-type.TransformLambdas: none
