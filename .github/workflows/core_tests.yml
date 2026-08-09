@@ -13,8 +13,7 @@ env:
 jobs:
   linters-and-static-analysis:
     # 26.04 for the toolchain, not the OS: clang-tidy 22.1.2 ships in this image, and the
-    # vendored `run-clang-tidy.py` has to match its major (an 18 runner drives a 22 binary
-    # into `No checks enabled` -- zero findings, not a diagnosis). #73
+    # vendored `run-clang-tidy.py` has to match its major (AGENTS.md gotcha 9). #73
     runs-on: ubuntu-26.04
     strategy:
       matrix:
@@ -48,8 +47,7 @@ jobs:
 
       # Every name carries its major: the image also ships unsuffixed `clang++` / `clang-tidy`
       # symlinks, and inheriting whichever major those point at is the thing this job exists to
-      # prevent. `CLANG_TIDY` picks the binary, not a version -- the version is pinned by the
-      # image chosen above, and a second copy of it here is what gotcha 9 forbids.
+      # prevent. `CLANG_TIDY` selects the binary; the version is pinned by the image above.
       - name: Style Check
         env:
           CXX:         clang++-22

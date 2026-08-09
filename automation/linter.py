@@ -15,7 +15,7 @@ import re
 import shutil
 
 from . import paths
-from .env import Tool, check_tool
+from .env import Tool, check_tool, print_tool_version
 from .utils import run_cmd, yellow_print, red_print, green_print, blue_print
 
 
@@ -52,7 +52,6 @@ def run_clang_tidy() -> int:
   binary = os.environ.get("CLANG_TIDY") or "clang-tidy"
 
   if not check_tool(Tool(binary)):
-    red_print(f"{binary} not found!")
     yellow_print("Install clang-tidy, or point CLANG_TIDY at the one to use")
     return 1
 
@@ -66,9 +65,8 @@ def run_clang_tidy() -> int:
   # Which binary answered, spelled out: a runner one major ahead of its clang-tidy analyses a
   # subset in silence rather than failing, and 11 findings where CI reports 20 is otherwise a
   # mystery. Nothing here compares the version against anything -- it only says what ran.
-  version = run_cmd([binary, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
   blue_print(f"# clang-tidy: {shutil.which(binary) or binary}")
-  blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
+  print_tool_version(binary)
 
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error

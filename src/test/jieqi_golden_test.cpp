@@ -188,10 +188,8 @@ const std::vector<CrossingRow> DE441_ROWS {
   {  9420, 180.0,  5161902.647076671 },  // 9420-Sep-16 03:31:47.424 TT
   {  9420, 270.0,  5161996.085451838 },  // 9420-Dec-18 14:03:03.039 TT
 };
-// NOLINTEND(modernize-use-designated-initializers)
 
 // 2022–2028 × 24 = 168 rows.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HkoRow> HKO_ROWS {
   { 2022,  0,  1,  5, 17, 14 },
   { 2022,  1,  1, 20, 10, 39 },

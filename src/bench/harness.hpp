@@ -23,6 +23,10 @@
 
 #pragma once
 
+// Every `main` here lets exceptions escape, on purpose: nothing downstream reads a benchmark's
+// exit code, and a bench that cannot build its inputs has nothing left to measure -- terminating
+// reports that as loudly as a catch block would. Each one carries a NOLINT for it.
+
 #include <span>
 #include <cmath>
 #include <chrono>

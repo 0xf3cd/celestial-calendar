@@ -597,9 +597,7 @@ inline constexpr std::array<Coefficients, 559> L0 {{
   {            0.045,  3.18590558749,   45585.1728121874, },
   {            0.049,  2.44790934886,    13613.804277336, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 341> L1 {{
   { 628331966747.491,            0.0,                0.0, },
   {       206058.863,  2.67823455584,    6283.0758499914, },
@@ -943,9 +941,7 @@ inline constexpr std::array<Coefficients, 341> L1 {{
   {            0.024,  1.40237993205,    14712.317116458, },
   {            0.025,  5.71466092822,   25934.1243310894, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 142> L2 {{
   {         52918.87,            0.0,                0.0, },
   {         8719.837,  1.07209665242,    6283.0758499914, },
@@ -1090,9 +1086,7 @@ inline constexpr std::array<Coefficients, 142> L2 {{
   {            0.011,  3.05005267431,   17260.1546546904, },
   {             0.01,  4.93364992366,   12352.8526045448, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 22> L3 {{
   {          289.226,  5.84384198723,    6283.0758499914, },
   {           34.955,            0.0,                0.0, },
@@ -1117,9 +1111,7 @@ inline constexpr std::array<Coefficients, 22> L3 {{
   {            0.005,  3.76879847273,   12036.4607348882, },
   {            0.005,  4.28412873331,    6275.9623029906, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 11> L4 {{
   {          114.084,  3.14159265359,                0.0, },
   {            7.717,  4.13446589358,    6283.0758499914, },
@@ -1133,9 +1125,7 @@ inline constexpr std::array<Coefficients, 11> L4 {{
   {            0.008,  2.84160570605,  161000.6857376741, },
   {            0.002,  0.54912904658,    6438.4962494256, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 5> L5 {{
   {            0.878,  3.14159265359,                0.0, },
   {            0.172,   2.7657906951,    6283.0758499914, },
@@ -1342,9 +1332,7 @@ inline constexpr std::array<Coefficients, 184> B0 {{
   {            0.039,  3.28500401343,  71768.50988132549, },
   {            0.039,   3.1123991069,  96900.81328129109, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 99> B1 {{
   {             9.03,   3.8972906189,    5507.5532386674, },
   {            6.177,  1.73038850355,    5223.6939198022, },
@@ -1446,9 +1434,7 @@ inline constexpr std::array<Coefficients, 99> B1 {{
   {            0.018,  1.58348238359,    2118.7638603784, },
   {            0.019,  0.85407021371,    14712.317116458, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 49> B2 {{
   {            1.662,  1.62703209173,  84334.66158130829, },
   {            0.492,  2.41382223971,    1047.7473117547, },
@@ -1500,9 +1486,7 @@ inline constexpr std::array<Coefficients, 49> B2 {{
   {            0.013,  0.98720797401,     5729.506447149, },
   {            0.009,  5.94191743597,    7632.9432596502, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 11> B3 {{
   {            0.011,  0.23877262399,    7860.4193924392, },
   {            0.009,  1.16069982609,    5507.5532386674, },
@@ -1516,9 +1500,7 @@ inline constexpr std::array<Coefficients, 11> B3 {{
   {            0.006,  5.40160929468,    1577.3435424478, },
   {            0.007,  2.73399865247,    6309.3741697912, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 5> B4 {{
   {            0.004,  0.79662198849,    6438.4962494256, },
   {            0.005,  0.84308705203,    1047.7473117547, },
@@ -2068,9 +2050,7 @@ inline constexpr std::array<Coefficients, 526> R0 {{
   {             0.04,  3.30603243754,  23536.11695768099, },
   {             0.05,  6.15760345261,  78051.34191383338, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 292> R1 {{
   {       103018.608,  1.10748969588,    6283.0758499914, },
   {         1721.238,  1.06442301418,   12566.1516999828, },
@@ -2365,9 +2345,7 @@ inline constexpr std::array<Coefficients, 292> R1 {{
   {            0.019,  2.54227398241,  77736.78343050249, },
   {             0.02,  5.91915117116,    48739.859897083, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 139> R2 {{
   {         4359.385,  5.78455133738,    6283.0758499914, },
   {          123.633,  5.57934722157,   12566.1516999828, },
@@ -2509,9 +2487,7 @@ inline constexpr std::array<Coefficients, 139> R2 {{
   {            0.009,  2.04999402381,   22003.9146348698, },
   {            0.009,  4.91488110218,      213.299095438, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 27> R3 {{
   {          144.595,  4.27319435148,    6283.0758499914, },
   {            6.729,  3.91697608662,   12566.1516999828, },
@@ -2541,9 +2517,7 @@ inline constexpr std::array<Coefficients, 27> R3 {{
   {            0.005,  2.30961231391,   12036.4607348882, },
   {            0.005,  3.71102966917,    6290.1893969922, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 10> R4 {{
   {            3.858,  2.56384387339,    6283.0758499914, },
   {            0.306,   2.2676950123,   12566.1516999828, },
@@ -2556,9 +2530,7 @@ inline constexpr std::array<Coefficients, 10> R4 {{
   {            0.006,  3.81514213664,  149854.4001348079, },
   {            0.003,  1.28175749811,    6286.5989683404, },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 3> R5 {{
   {            0.086,  1.21579741687,    6283.0758499914, },
   {            0.012,  0.65617264033,   12566.1516999828, },

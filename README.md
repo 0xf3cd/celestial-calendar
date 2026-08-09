@@ -115,16 +115,14 @@ Neither is part of `Requirements.txt` — install them directly:
 ```sh
 python3 -m pip install ruff
 
-# clang-tidy: any 22.1.x. CI takes 22.1.2 from its runner image and pip has no such version,
-# but the patch axis is flat — 22.1.0 and 22.1.8 produce byte-identical diagnostics on this
-# repo, so any of them is the same ruler.
+# clang-tidy: any 22.1.x. CI takes 22.1.2 from its runner image; pip has no such version.
 python3 -m pip install clang-tidy==22.1.8      # or your distribution's clang-tidy-22
 ```
 
 `clang-tidy` runs with `WarningsAsErrors: '*'`, so its version is pinned deliberately — a newer
 one ships new checks that flag pre-existing code. Point `CLANG_TIDY` at the binary you want if
-`clang-tidy` on your `PATH` is a different major; the vendored `run-clang-tidy.py` must share
-that major, or it reports `No checks enabled` and zero findings instead of failing.
+`clang-tidy` on your `PATH` is a different major; it has to match the vendored
+`run-clang-tidy.py`, or you are measuring with a different ruler than CI (AGENTS.md gotcha 9).
 
 The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 

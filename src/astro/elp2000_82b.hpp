@@ -126,10 +126,8 @@ inline constexpr std::array<LRCoefficients, 60> LR {{
   { 2,  0,  3,  0,     294,         0 },
   { 2,  0, -1, -2,       0,      8752 },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
 /** @brief Represents coefficients of the B table. */
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<BCoefficients, 60> B {{
   { 0,  0,  0,  1, 5128122 },
   { 0,  0,  1,  1,  280602 },

@@ -136,7 +136,6 @@ constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
   { 2484943.957712,  +0.033835542 },
   { 2486105.633443,  -1.095643546 },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
 // Definitional oracle, independent of the Meeus formula chain: Skyfield 1.49 + DE440s,
 // E = GHA of the apparent Sun + 180° − UT1 fraction of day × 360°. 40 uniform points over
@@ -144,7 +143,6 @@ constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
 // systematic gap between the UT1-based mean sun and Meeus's (28.2) mean sun (it grows
 // ∝ ΔT, ~0.0027·ΔT) plus IAU model differences: measured mean 0.17 s, worst 0.21 s of
 // time — tolerance 2e-3° (0.48 s) ≈ 2.3× the worst case.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
   { 2416419.907584,  +4.071353845 },
   { 2417836.673312,  +1.354031150 },
@@ -188,14 +186,12 @@ constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
   { 2483159.676504,  -1.668588454 },
   { 2483825.617097,  +0.846087960 },
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
 // NOAA solcalc spreadsheet formulas (truncated-series family: Meeus (28.3)/Smart with the
 // low-precision sun of ch. 25), reimplemented, 20 uniform points over 1950–2050, seed 44,
 // generated 2026-07-29. Different formula family — catches structural errors (wrap, L0,
 // missing terms) rather than precision. Measured worst gap 2.66 s of time — tolerance
 // 2.5e-2° (6 s) ≈ 2.3× that.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 20> NOAA_ROWS {{
   { 2433604.125486,  +3.714276729 },
   { 2434345.277176,  +2.962950714 },

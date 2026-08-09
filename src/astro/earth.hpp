@@ -156,12 +156,10 @@ inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  3,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } },
   { {  2, -1,  0,  2,  2 }, {      -3.0,    0.0 }, {     0.0,  0.0 } }
 }};
-// NOLINTEND(modernize-use-designated-initializers)
 
 
 // The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
 // Compared to Meeus's omitted version, this table contains all terms.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },

@@ -50,9 +50,7 @@ namespace {
 } // namespace
 
 
-// Nothing downstream reads this exit code, and a bench that cannot build its inputs has
-// nothing left to measure -- terminating reports that as loudly as a catch block would.
-// NOLINTNEXTLINE(bugprone-exception-escape)
+// NOLINTNEXTLINE(bugprone-exception-escape) -- see harness.hpp
 auto main() -> int {
   const auto jcs = sample_jcs();
 

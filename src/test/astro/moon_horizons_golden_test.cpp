@@ -164,10 +164,8 @@ const std::vector<HorizonsRow> CORE_ROWS {
   {  2483883.00,   73.6307476,  -3.2605348,  361780.392 },  // 2088-Jul-15 12:00 TT, rdot -0.032 km/s
   {  2486166.25,  275.7230422,  -0.4400281,  380086.796 },  // 2094-Oct-15 18:00 TT, rdot -0.048 km/s
 };
-// NOLINTEND(modernize-use-designated-initializers)
 
 // ~501 / ~999 / ~1599 / ~2500 / ~3000 CE: truncation degradation away from the fitted era.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsRow> EXTENDED_ROWS {
   {  1904000.50,  319.4163685,  -0.0387457,  372646.267 },  // 0500-Nov-14 00:00 TT, rdot +0.043 km/s
   {  2086000.50,  103.8756791,   4.5422788,  380002.831 },  // 0999-Feb-28 00:00 TT, rdot +0.039 km/s
@@ -175,12 +173,10 @@ const std::vector<HorizonsRow> EXTENDED_ROWS {
   {  2634000.50,  241.6732448,   4.3528325,  364969.470 },  // 2499-Jul-19 00:00 TT, rdot -0.028 km/s
   {  2817000.50,  249.9951948,   3.0345156,  400763.976 },  // 3000-Aug-02 00:00 TT, rdot +0.037 km/s
 };
-// NOLINTEND(modernize-use-designated-initializers)
 
 // JD 2^22 = 4194304 straddle (~6771 CE; double-precision cliff regression guard, #76 context)
 // and ~9420 CE. Gross-breakage guards only: at |T| ≈ 48–74 centuries the mean-argument
 // extrapolation dominates every residual.
-// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsRow> FAR_ROWS {
   {  4194303.50,  173.7236957,   0.8425104,  367532.707 },  // 6771-Jul-07 00:00 TT, rdot +0.022 km/s
   {  4194304.50,  187.9429346,  -0.4108899,  369790.010 },  // 6771-Jul-08 00:00 TT, rdot +0.029 km/s

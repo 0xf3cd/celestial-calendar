@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, Final, List, Optional
 
 from . import paths
+from .env import print_tool_version
 from .utils import run_cmd, green_print, red_print, yellow_print, blue_print
 
 
@@ -27,14 +28,7 @@ CXX_STANDARD: Final[str] = "c++23"
 
 @dataclass(frozen=True)
 class Feature:
-  """A library feature this repo waits on -- or already uses on a half-kept promise -- and a
-  program that really uses it.
-
-  Most rows are the first kind: the code hand-rolls around them and a `TODO` marks each site.
-  A row of the second kind has no waiting sites, because the code already compiles; what it
-  watches is a guarantee the standard makes and the implementations have not (#82). Both want
-  the same machinery -- a real compile, per leg, compared against what was recorded.
-  """
+  """A library feature the codebase is waiting on, and a program that really uses it."""
 
   name: str        # As written in the code, e.g. "std::views::enumerate".
   token: str       # Substring that identifies this feature in a TODO comment.
@@ -158,15 +152,11 @@ FEATURES: Final[List[Feature]] = [
     """,
   ),
   Feature(
-    # Not a feature the code is waiting on -- one it already uses on a promise only half kept.
-    # `normalize_deg` / `normalize_rad` are `constexpr` and call `std::remainder`, which P0533
-    # made constexpr in C++23 and no standard library we target has actually shipped. Calling
-    # them is fine; evaluating one in a constant expression is IF-NDR, and the design ledger
-    # records that rather than papering over it (#82). This row is what turns "someone remembers
-    # to re-run the one-line probe" into a leg that reddens on the day it stops being true.
-    #
-    # Reproduced standalone rather than by including `toolbox.hpp`: `compiles()` gets no `-I`,
-    # and a standalone body also keeps the row measuring the library rather than our call site.
+    # The odd row out: nothing waits on this one, the code already calls `std::remainder` from
+    # `constexpr` functions and no standard library we target has shipped P0533, which makes
+    # evaluating one in a constant expression IF-NDR (#82). It sits here so the day that stops
+    # being true is a red leg rather than something someone remembers to re-check. Standalone
+    # because `compiles()` gets no `-I` -- and that keeps it measuring the library, not our call.
     name="constexpr std::remainder",
     token="remainder_constexpr",
     issue="#82",
@@ -338,9 +328,8 @@ def probe_features(leg: Optional[str] = None) -> int:
   yellow_print("Probing C++ features the codebase is waiting on...")
 
   cxx = os.environ.get("CXX", "clang++")
-  version = run_cmd([cxx, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
   blue_print(f"# Compiler: {cxx} -std={CXX_STANDARD}")
-  blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
+  print_tool_version(cxx)
 
   if leg is not None:
     if leg not in EXPECTED:
