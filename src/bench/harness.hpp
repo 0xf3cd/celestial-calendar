@@ -23,10 +23,6 @@
 
 #pragma once
 
-// Every `main` here lets exceptions escape, on purpose: nothing downstream reads a benchmark's
-// exit code, and a bench that cannot build its inputs has nothing left to measure -- terminating
-// reports that as loudly as a catch block would. Each one carries a NOLINT for it.
-
 #include <span>
 #include <cmath>
 #include <chrono>
@@ -38,6 +34,10 @@
 #include <algorithm>
 #include <functional>
 #include <string_view>
+
+// Every `main` in this directory lets exceptions escape, on purpose: a bench that cannot build
+// its inputs has nothing left to measure, and `automation/bench.py` already turns the resulting
+// non-zero exit into a failed benchmark -- a catch block would only restate that.
 
 /*
  * A benchmark is only as good as its ability to be re-run and land on the same number. Two ways of

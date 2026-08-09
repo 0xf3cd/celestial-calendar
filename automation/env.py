@@ -99,19 +99,12 @@ class Tool:
   args: Tuple[str, ...] = ("--version",)
 
 
-def print_tool_version(binary: str) -> None:
-  """Print the first line the tool gives for `--version`. Callers print their own label above it.
+def check_tool(tool: Tool, report: bool = False) -> bool:
+  """Check if a tool exists and can be executed with the given arguments.
 
-  Two of them want it: the lint run says which clang-tidy answered, the feature probe says which
-  compiler it measured with. Neither can be read off the pin alone -- both are asking what is
-  actually on this machine.
+  `report` also says which binary answered and what it calls itself, out of the results this
+  already has in hand -- a caller that passes a version-suffixed name is asking exactly that.
   """
-  result = run_cmd([binary, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
-  blue_print(f"# {(result.stdout or '').splitlines()[0] if result.stdout else 'version unknown'}")
-
-
-def check_tool(tool: Tool) -> bool:
-  """Check if a tool exists and can be executed with the given arguments."""
   tool_path = shutil.which(tool.name)
   if tool_path is None:
     red_print(f"# {tool.name} not found!")
@@ -122,6 +115,10 @@ def check_tool(tool: Tool) -> bool:
   if result.retcode != 0:
     red_print(f"# {tool.name} does not support required arguments!")
     return False
+
+  if report:
+    blue_print(f"# {tool.name}: {tool_path}")
+    blue_print(f"# {(result.stdout or '').splitlines()[0] if result.stdout else 'version unknown'}")
 
   return True
 

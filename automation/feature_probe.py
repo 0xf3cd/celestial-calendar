@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Dict, Final, List, Optional
 
 from . import paths
-from .env import print_tool_version
 from .utils import run_cmd, green_print, red_print, yellow_print, blue_print
 
 
@@ -154,9 +153,8 @@ FEATURES: Final[List[Feature]] = [
   Feature(
     # The odd row out: nothing waits on this one, the code already calls `std::remainder` from
     # `constexpr` functions and no standard library we target has shipped P0533, which makes
-    # evaluating one in a constant expression IF-NDR (#82). It sits here so the day that stops
-    # being true is a red leg rather than something someone remembers to re-check. Standalone
-    # because `compiles()` gets no `-I` -- and that keeps it measuring the library, not our call.
+    # evaluating one in a constant expression IF-NDR (#82). Standalone because `compiles()` gets no
+    # `-I` -- which also keeps it measuring the library rather than our own call site.
     name="constexpr std::remainder",
     token="remainder_constexpr",
     issue="#82",
@@ -328,8 +326,9 @@ def probe_features(leg: Optional[str] = None) -> int:
   yellow_print("Probing C++ features the codebase is waiting on...")
 
   cxx = os.environ.get("CXX", "clang++")
+  version = run_cmd([cxx, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
   blue_print(f"# Compiler: {cxx} -std={CXX_STANDARD}")
-  print_tool_version(cxx)
+  blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
 
   if leg is not None:
     if leg not in EXPECTED:

@@ -12,11 +12,10 @@
 
 import os
 import re
-import shutil
 
 from . import paths
-from .env import Tool, check_tool, print_tool_version
-from .utils import run_cmd, yellow_print, red_print, green_print, blue_print
+from .env import Tool, check_tool
+from .utils import run_cmd, yellow_print, red_print, green_print
 
 
 def run_ruff() -> int:
@@ -51,7 +50,10 @@ def run_clang_tidy() -> int:
   # that empty string, so the fallback has to be `or`.
   binary = os.environ.get("CLANG_TIDY") or "clang-tidy"
 
-  if not check_tool(Tool(binary)):
+  # `report=True`: which binary answered, spelled out. A runner one major ahead of its
+  # clang-tidy analyses a subset in silence rather than failing (AGENTS.md gotcha 9), and
+  # `check_tool` has already resolved the path and run `--version` to get here.
+  if not check_tool(Tool(binary), report=True):
     yellow_print("Install clang-tidy, or point CLANG_TIDY at the one to use")
     return 1
 
@@ -61,12 +63,6 @@ def run_clang_tidy() -> int:
   if not db_json_path.exists():
     red_print("compile_commands.json not found")
     return 1
-
-  # Which binary answered, spelled out: a runner one major ahead of its clang-tidy analyses a
-  # subset in silence rather than failing, and 11 findings where CI reports 20 is otherwise a
-  # mystery. Nothing here compares the version against anything -- it only says what ran.
-  blue_print(f"# clang-tidy: {shutil.which(binary) or binary}")
-  print_tool_version(binary)
 
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error
