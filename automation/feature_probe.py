@@ -27,7 +27,14 @@ CXX_STANDARD: Final[str] = "c++23"
 
 @dataclass(frozen=True)
 class Feature:
-  """A library feature the codebase is waiting on, and a program that really uses it."""
+  """A library feature this repo waits on -- or already uses on a half-kept promise -- and a
+  program that really uses it.
+
+  Most rows are the first kind: the code hand-rolls around them and a `TODO` marks each site.
+  A row of the second kind has no waiting sites, because the code already compiles; what it
+  watches is a guarantee the standard makes and the implementations have not (#82). Both want
+  the same machinery -- a real compile, per leg, compared against what was recorded.
+  """
 
   name: str        # As written in the code, e.g. "std::views::enumerate".
   token: str       # Substring that identifies this feature in a TODO comment.
@@ -150,6 +157,31 @@ FEATURES: Final[List[Feature]] = [
       auto main() -> int { return twice([](const int x) { return x; }); }
     """,
   ),
+  Feature(
+    # Not a feature the code is waiting on -- one it already uses on a promise only half kept.
+    # `normalize_deg` / `normalize_rad` are `constexpr` and call `std::remainder`, which P0533
+    # made constexpr in C++23 and no standard library we target has actually shipped. Calling
+    # them is fine; evaluating one in a constant expression is IF-NDR, and the design ledger
+    # records that rather than papering over it (#82). This row is what turns "someone remembers
+    # to re-run the one-line probe" into a leg that reddens on the day it stops being true.
+    #
+    # Reproduced standalone rather than by including `toolbox.hpp`: `compiles()` gets no `-I`,
+    # and a standalone body also keeps the row measuring the library rather than our call site.
+    name="constexpr std::remainder",
+    token="remainder_constexpr",
+    issue="#82",
+    program="""
+      #include <cmath>
+      constexpr auto normalize_deg(const double deg) -> double {
+        const double rem = std::remainder(deg, 360.0);
+        return rem < 0.0 ? rem + 360.0 : rem;
+      }
+      auto main() -> int {
+        constexpr double normalized = normalize_deg(361.0);
+        static_assert(normalized > 0.99 and normalized < 1.01);
+      }
+    """,
+  ),
 ]
 
 
@@ -167,6 +199,14 @@ FEATURES: Final[List[Feature]] = [
 #   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
 # `std::tuple_like` (#81): False on all three legs. libstdc++ exposes only the internal
 # `__glibcxx_want_tuple_like` machinery, with nothing under `std::`.
+#
+# `constexpr std::remainder` (#82): False on all three legs, and the compiler column above is
+# why. Measured 2026-08-09 on one machine, one set of libstdc++ 15 headers: g++-15 accepts,
+# `g++-15 -fno-builtin` rejects, clang 21 and clang 22 both reject and name glibc's
+# declaration. The accepting case is GCC folding `remainder` as a builtin, not libstdc++
+# implementing P0533 -- its `<cmath>` re-exports glibc's non-constexpr one with
+# `using ::remainder;`. Every leg here is measured by clang or MSVC, so every leg reads False;
+# a g++ reading does not belong in this column.
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::tuple_like": False,
@@ -177,6 +217,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": True,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
   "libc++": {
     "std::tuple_like": False,
@@ -187,6 +228,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": False,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
   "msvc-stl": {
     "std::tuple_like": False,
@@ -197,6 +239,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": True,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
 }
 
