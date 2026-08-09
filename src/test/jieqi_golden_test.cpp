@@ -412,7 +412,7 @@ TEST(JieqiGolden, HkoAlmanac) {
       util::to_ymd(row.year, static_cast<int32_t>(row.month), static_cast<int32_t>(row.day)),
       hh_mm_ss<nanoseconds> { hours { row.hour } + minutes { row.minute } },
     };
-    const double hko_jd = astro::julian_day::ut1_to_jd(hko_hkt) - 8.0 / 24.0;
+    const double hko_jd = astro::julian_day::ut1_to_jd(hko_hkt) - (8.0 / 24.0);
 
     const double diff_min = std::fabs(ours_jd - hko_jd) * 1440.0;
     // Measured worst residual 2026-07-27: 0.525 min over all 168 values — essentially

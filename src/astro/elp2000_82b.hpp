@@ -241,17 +241,17 @@ struct Context {
   const double jc3 = jc2 * jc;
   const double jc4 = jc3 * jc;
 
-  const toolbox::AngleDeg Lp { 218.3164477 + 481267.88123421 * jc - 0.0015786 * jc2 + jc3 / 538841 - jc4 / 65194000 };
-  const toolbox::AngleDeg D  { 297.8501921 + 445267.1114034 * jc - 0.0018819 * jc2 + jc3 / 545868 - jc4 / 113065000 };
-  const toolbox::AngleDeg M  { 357.5291092 + 35999.0502909 * jc - 0.0001536 * jc2 + jc3 / 24490000 };
-  const toolbox::AngleDeg Mp { 134.9633964 + 477198.8675055 * jc + 0.0087414 * jc2 + jc3 / 69699 - jc4 / 14712000 };
-  const toolbox::AngleDeg F  { 93.2720950 + 483202.0175233 * jc - 0.0036539 * jc2 - jc3 / 3526000 + jc4 / 863310000 };
+  const toolbox::AngleDeg Lp { 218.3164477 + (481267.88123421 * jc) - (0.0015786 * jc2) + (jc3 / 538841) - (jc4 / 65194000) };
+  const toolbox::AngleDeg D  { 297.8501921 + (445267.1114034 * jc) - (0.0018819 * jc2) + (jc3 / 545868) - (jc4 / 113065000) };
+  const toolbox::AngleDeg M  { 357.5291092 + (35999.0502909 * jc) - (0.0001536 * jc2) + (jc3 / 24490000) };
+  const toolbox::AngleDeg Mp { 134.9633964 + (477198.8675055 * jc) + (0.0087414 * jc2) + (jc3 / 69699) - (jc4 / 14712000) };
+  const toolbox::AngleDeg F  { 93.2720950 + (483202.0175233 * jc) - (0.0036539 * jc2) - (jc3 / 3526000) + (jc4 / 863310000) };
 
-  const toolbox::AngleDeg A1 { 119.75 + 131.849 * jc };
-  const toolbox::AngleDeg A2 { 53.09 + 479264.290 * jc };
-  const toolbox::AngleDeg A3 { 313.45 + 481266.484 * jc };
+  const toolbox::AngleDeg A1 { 119.75 + (131.849 * jc) };
+  const toolbox::AngleDeg A2 { 53.09 + (479264.290 * jc) };
+  const toolbox::AngleDeg A3 { 313.45 + (481266.484 * jc) };
 
-  const double E = 1 - 0.002516 * jc - 0.0000074 * jc2;
+  const double E = 1 - (0.002516 * jc) - (0.0000074 * jc2);
 
   return {
     .jc = jc,
@@ -312,10 +312,10 @@ struct Term {
 
   const auto θ_of = [&ctx](const auto& coeff) -> toolbox::AngleDeg {
     return toolbox::AngleDeg {
-      coeff.D  * ctx.D.deg()  +
-      coeff.M  * ctx.M.deg()  +
-      coeff.Mp * ctx.Mp.deg() +
-      coeff.F  * ctx.F.deg()
+      (coeff.D  * ctx.D.deg())  +
+      (coeff.M  * ctx.M.deg())  +
+      (coeff.Mp * ctx.Mp.deg()) +
+      (coeff.F  * ctx.F.deg())
     };
   };
 

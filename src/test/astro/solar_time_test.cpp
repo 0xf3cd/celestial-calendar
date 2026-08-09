@@ -317,7 +317,7 @@ TEST(SolarTime, BoundedAndSmooth1900To2100) {
   double max_e = prev;
   double min_e = prev;
   for (int32_t step = 1; step <= 14609; ++step) { // 5-day steps, up to JDE 2488065.5 (~2100.0).
-    const double jde = 2415020.5 + 5.0 * step;
+    const double jde = 2415020.5 + (5.0 * step);
     const double e = equation_of_time(jde).deg();
     ASSERT_LT(std::fabs(e), 4.25) << "jde " << jde;
     ASSERT_LT(std::fabs(e - prev), 0.8) << "jde " << jde;

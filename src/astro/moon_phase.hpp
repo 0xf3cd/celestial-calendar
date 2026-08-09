@@ -143,7 +143,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
   const double gap = 360.0 - cur_diff;
 
   constexpr double deg_per_day = astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
-  const double est_jde = jde + gap / deg_per_day; // Estimate the next root jde.
+  const double est_jde = jde + (gap / deg_per_day); // Estimate the next root jde.
 
   // Extrapolating at the mean rate lands near the root but not on it: the Moon's true rate runs
   // between about 10.5 and 14.5 deg/day, so a month of it can miss by several degrees either way.

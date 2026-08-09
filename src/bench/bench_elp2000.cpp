@@ -42,7 +42,7 @@ namespace {
   std::vector<double> jcs;
   jcs.reserve(COUNT);
   for (std::size_t i = 0; i < COUNT; ++i) {
-    jcs.push_back(-20.0 + (40.0 * static_cast<double>(i)) / static_cast<double>(COUNT));
+    jcs.push_back(-20.0 + ((40.0 * static_cast<double>(i)) / static_cast<double>(COUNT)));
   }
   return jcs;
 }

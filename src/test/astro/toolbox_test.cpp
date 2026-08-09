@@ -392,7 +392,7 @@ TEST(AstroMath, NewtonMethodConverges) {
   const double root = 2451545.25;
   const auto f = [&](const double jde) -> double {
     const double d = jde - root;
-    return d + 0.001 * d * d;
+    return d + (0.001 * d * d);
   };
 
   const double found = newton_method(f, 2451545.0, 2451546.0, 1.0);

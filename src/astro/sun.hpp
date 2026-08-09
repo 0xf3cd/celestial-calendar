@@ -82,10 +82,10 @@ struct Fk5Correction {
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
   // Calculate the deltas for longitude and latitude, in arcsec.
-  const toolbox::AngleDeg λ_dash = vsop_λ - toolbox::AngleDeg { (1.397 + 0.00031 * jc) * jc };
+  const toolbox::AngleDeg λ_dash = vsop_λ - toolbox::AngleDeg { (1.397 + (0.00031 * jc)) * jc };
   const double λ_dash_rad = λ_dash.rad();
 
-  const double delta_λ_arcsec = -0.09033 + 0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad());
+  const double delta_λ_arcsec = -0.09033 + (0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad()));
   const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
 
   return {

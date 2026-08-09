@@ -514,11 +514,11 @@ TEST(Earth, ObliquityMeeus22a) {
   const double jde = 2446895.5;
 
   // Expected mean obliquity: ε₀ = 23°26'27".407
-  const double expected_mean = 23.0 + 26.0 / 60.0 + 27.407 / 3600.0;
+  const double expected_mean = 23.0 + (26.0 / 60.0) + (27.407 / 3600.0);
   ASSERT_NEAR(mean(jde).as<DEG>(), expected_mean, 1e-5);
 
   // Expected true obliquity: ε = ε₀ + Δε = 23°26'36".850
-  const double expected_true = 23.0 + 26.0 / 60.0 + 36.850 / 3600.0;
+  const double expected_true = 23.0 + (26.0 / 60.0) + (36.850 / 3600.0);
   ASSERT_NEAR(true_obliquity(jde).as<DEG>(), expected_true, 1e-4);
 }
 

@@ -74,8 +74,8 @@ auto cell_minutes(const std::string_view cell) -> std::optional<double> {
   if (cell.size() - first < 5 or cell[first + 2] != ':') {
     throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
   }
-  const auto digits = [&](const size_t pos) { return 10.0 * (cell[pos] - '0') + (cell[pos + 1] - '0'); };
-  double minutes = 60.0 * digits(first) + digits(first + 3);
+  const auto digits = [&](const size_t pos) { return (10.0 * (cell[pos] - '0')) + (cell[pos + 1] - '0'); };
+  double minutes = (60.0 * digits(first)) + digits(first + 3);
   const auto second_colon = cell.find(':', first + 3);
   if (second_colon != std::string_view::npos) {
     if (second_colon != first + 5 or cell.size() - first < 8) {
@@ -91,7 +91,7 @@ auto cell_minutes(const std::string_view cell) -> std::optional<double> {
 /** @brief Our JDE(TT) result as minutes-of-day on the site's standard-time clock. */
 auto jde_to_local_minutes(const double jde, const int tz_hours) -> double {
   const calendar::Datetime ut1 = astro::julian_day::jde_to_ut1(jde);
-  return std::fmod(ut1.fraction() * 1440.0 + (tz_hours * 60.0) + 1440.0, 1440.0);
+  return std::fmod((ut1.fraction() * 1440.0) + (tz_hours * 60.0) + 1440.0, 1440.0);
 }
 
 /** @brief |a − b| in minutes on the 24h circle, so a source's day and ours may differ. */
@@ -207,7 +207,7 @@ TEST(SunriseSunsetGolden, UsnoRiseTransitSet) {
     // Pin the day axis: `clock_diff` alone is day-blind, and consecutive-day transits differ
     // only by the equation-of-time drift (≪ tolerance). The transit is ~local noon, so its
     // local-standard date must be the queried date on every row.
-    const double jd_local = detail::jde_tt_to_jd_ut1(result.transit_jde) + row.tz / 24.0;
+    const double jd_local = detail::jde_tt_to_jd_ut1(result.transit_jde) + (row.tz / 24.0);
     ASSERT_EQ(astro::julian_day::jd_to_ut1(jd_local).ymd, ymd) << tag << " transit date";
   }
 }

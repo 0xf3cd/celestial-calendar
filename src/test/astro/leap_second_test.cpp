@@ -258,7 +258,7 @@ TEST(LeapSecond, UtcBoundaryFormula) {
   for (const int32_t year : { 1980, 2026, 2500, 4500 }) {
     const Datetime jan1 { to_ymd(year, 1, 1), 0.0 };
     const double calendar_jd = astro::julian_day::ut1_to_jd(jan1); // pure calendar arithmetic
-    ASSERT_NEAR(astro::julian_day::utc_to_jde(jan1), calendar_jd + tt_minus_utc(jan1.ymd) / 86400.0, 1e-9);
+    ASSERT_NEAR(astro::julian_day::utc_to_jde(jan1), calendar_jd + (tt_minus_utc(jan1.ymd) / 86400.0), 1e-9);
   }
 }
 

@@ -73,7 +73,7 @@ TEST(CoordTransform, EclipticToEquatorialAsinDomain) {
   // the pole, and within [-90°, 90°]; α is arbitrary at the pole, so it is only required to be finite.
   // The 1e-5 tolerance reflects asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's precision.
   for (auto i = 0; i < 10000; ++i) {
-    const double ε = 22.0 + 3.0 * i / 9999.0;
+    const double ε = 22.0 + (3.0 * i / 9999.0);
 
     const auto north = ecliptic_to_equatorial(90.0_deg, AngleDeg { 90.0 - ε }, AngleDeg { ε });
     ASSERT_TRUE(std::isfinite(north.α.deg()));
@@ -109,8 +109,8 @@ TEST(CoordTransform, EclipticEquatorialRoundTrip) {
     const double sin_ε = std::sin(ε_rad);
     const double cos_ε = std::cos(ε_rad);
 
-    const double β_rt = rad_to_deg(std::asin(sin_δ * cos_ε - cos_δ * sin_ε * sin_α));
-    const double λ_rt = rad_to_deg(std::atan2(sin_α * cos_ε * cos_δ + sin_δ * sin_ε, cos_α * cos_δ));
+    const double β_rt = rad_to_deg(std::asin((sin_δ * cos_ε) - (cos_δ * sin_ε * sin_α)));
+    const double λ_rt = rad_to_deg(std::atan2((sin_α * cos_ε * cos_δ) + (sin_δ * sin_ε), cos_α * cos_δ));
 
     ASSERT_NEAR(β_rt, β, 1e-9);
 
@@ -165,7 +165,7 @@ TEST(CoordTransform, EquatorialToHorizontalAsinDomain) {
   // arbitrary at the zenith/nadir, so it is only required to be finite. The 1e-5 tolerance reflects
   // asin's √(2·Δ)-shaped sensitivity near ±1, not the transform's actual precision.
   for (auto i = 0; i < 10000; ++i) {
-    const double φ = -90.0 + 180.0 * i / 9999.0;
+    const double φ = -90.0 + (180.0 * i / 9999.0);
 
     const auto zenith = equatorial_to_horizontal(0.0_deg, AngleDeg { φ }, AngleDeg { φ });
     ASSERT_TRUE(std::isfinite(zenith.A.deg()));
@@ -202,11 +202,11 @@ TEST(CoordTransform, HorizontalRoundTrip) {
     const double sin_φ = std::sin(φ_rad);
     const double cos_φ = std::cos(φ_rad);
 
-    const double δ_rt = rad_to_deg(std::asin(sin_φ * sin_h - cos_φ * cos_h * cos_A));
+    const double δ_rt = rad_to_deg(std::asin((sin_φ * sin_h) - (cos_φ * cos_h * cos_A)));
     const double δ_rt_rad = deg_to_rad(δ_rt);
     const double H_rt = rad_to_deg(std::atan2(
       sin_A * cos_h,
-      (sin_h - sin_φ * std::sin(δ_rt_rad)) / cos_φ
+      (sin_h - (sin_φ * std::sin(δ_rt_rad))) / cos_φ
     ));
 
     ASSERT_NEAR(δ_rt, δ, 1e-9);
@@ -221,8 +221,8 @@ TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
   // Meeus Example 13.b: Venus on 1987 April 10 at 19h21m UT, observed from Washington (USNO).
   // The example's hour angle H = +64°.352133, declination δ = −6°43'11".61, latitude φ = +38°55'17".
   const double H = 64.352133;
-  const double δ = -(6.0 + 43.0 / 60.0 + 11.61 / 3600.0);
-  const double φ = 38.0 + 55.0 / 60.0 + 17.0 / 3600.0;
+  const double δ = -(6.0 + (43.0 / 60.0) + (11.61 / 3600.0));
+  const double φ = 38.0 + (55.0 / 60.0) + (17.0 / 3600.0);
 
   const auto [A, h] = equatorial_to_horizontal(AngleDeg { H }, AngleDeg { δ }, AngleDeg { φ });
 

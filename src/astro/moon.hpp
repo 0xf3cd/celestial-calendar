@@ -44,9 +44,9 @@ namespace astro::moon::perturbation {
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
 [[nodiscard]] inline auto longitude(const elp2000_82b::Context& ctx) -> double {
-  return 3958.0 * std::sin(ctx.A1.rad()) 
-       + 1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad()) 
-       + 318.0 * std::sin(ctx.A2.rad());
+  return (3958.0 * std::sin(ctx.A1.rad())) 
+       + (1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad())) 
+       + (318.0 * std::sin(ctx.A2.rad()));
 }
 
 
@@ -59,12 +59,12 @@ namespace astro::moon::perturbation {
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  */
 [[nodiscard]] inline auto latitude(const elp2000_82b::Context& ctx) -> double {
-  return -2235.0 * std::sin(ctx.Lp.rad())
-       + 382.0 * std::sin(ctx.A3.rad())
-       + 175.0 * std::sin(ctx.A1.rad() - ctx.F.rad())
-       + 175.0 * std::sin(ctx.A1.rad() + ctx.F.rad())
-       + 127.0 * std::sin(ctx.Lp.rad() - ctx.Mp.rad())
-       - 115.0 * std::sin(ctx.Lp.rad() + ctx.Mp.rad());
+  return (-2235.0 * std::sin(ctx.Lp.rad()))
+       + (382.0 * std::sin(ctx.A3.rad()))
+       + (175.0 * std::sin(ctx.A1.rad() - ctx.F.rad()))
+       + (175.0 * std::sin(ctx.A1.rad() + ctx.F.rad()))
+       + (127.0 * std::sin(ctx.Lp.rad() - ctx.Mp.rad()))
+       - (115.0 * std::sin(ctx.Lp.rad() + ctx.Mp.rad()));
 }
 
 } // namespace astro::moon::perturbation
@@ -99,7 +99,7 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
   const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
 
   // Distance, in KM.
-  const toolbox::DistanceKm r { 385000.56 + evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR };
+  const toolbox::DistanceKm r { 385000.56 + (evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR) };
 
   return {
     .λ = lon.normalize(),

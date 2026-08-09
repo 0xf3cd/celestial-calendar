@@ -138,7 +138,7 @@ template <bool OUT_OF_LOCK>
       std::vector<std::jthread> workers;
       workers.reserve(THREADS);
       for (std::size_t t = 0; t < THREADS; ++t) {
-        const std::size_t n = iterations / THREADS + (t < iterations % THREADS ? 1 : 0);
+        const std::size_t n = (iterations / THREADS) + (t < iterations % THREADS ? 1 : 0);
         workers.emplace_back(worker, n);
       }
     }

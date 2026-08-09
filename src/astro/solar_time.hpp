@@ -57,11 +57,11 @@ namespace detail {
 
   const double τ = astro::julian_day::jde_to_jm(jde_tt);
   const double L0 = 280.4664567
-                  + τ * (360007.6982779
-                  + τ * (0.03032028
-                  + τ * (1.0 / 49931.0
-                  + τ * (-1.0 / 15300.0
-                  + τ * (-1.0 / 2000000.0)))));
+                  + (τ * (360007.6982779
+                  + (τ * (0.03032028
+                  + (τ * ((1.0 / 49931.0)
+                  + (τ * ((-1.0 / 15300.0)
+                  + (τ * (-1.0 / 2000000.0))))))))));
   return AngleDeg { L0 };
 }
 
@@ -88,7 +88,7 @@ namespace detail {
   const auto ε  = astro::earth::obliquity::true_obliquity(jde_tt);
 
   // (28.1); the constant 0°.0057183 folds aberration and the FK5 correction into L0.
-  const double e = L0.deg() - 0.0057183 - α.deg() + Δψ.deg() * std::cos(ε.rad());
+  const double e = L0.deg() - 0.0057183 - α.deg() + (Δψ.deg() * std::cos(ε.rad()));
   return AngleDeg { normalize_pm180(e) };
 }
 

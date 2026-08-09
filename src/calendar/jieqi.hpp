@@ -156,7 +156,7 @@ inline constexpr std::array<double, JIEQI_COUNT> JIEQI_SOLAR_LONGITUDE {{
 // so the whole table has a closed form and any reorder breaks it.
 static_assert([] {
   for (uint8_t i = 0; i < JIEQI_COUNT; ++i) {
-    if (JIEQI_SOLAR_LONGITUDE.at(i) != static_cast<double>((i * 15 + 315) % 360)) {
+    if (JIEQI_SOLAR_LONGITUDE.at(i) != static_cast<double>(((i * 15) + 315) % 360)) {
       return false;
     }
   }
