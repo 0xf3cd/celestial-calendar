@@ -38,8 +38,7 @@ Checks: |
 # to obey, not that it is noisy:
 #
 # - `portability-avoid-pragma-once`: header-only with `#pragma once` is the identity, and no
-#   header is reachable by two paths. It was invisible rather than allowed before clang-tidy 21
-#   -- the check did not exist, so `portability-*` never turned it on.
+#   header is reachable by two paths.
 # - `bugprone-random-generator-seed`: a fixed default seed is the gate half of #69's dual track.
 #   The soak workflow draws a fresh one; reproducibility is the point of the pinned one.
 # - `bugprone-throwing-static-initialization`: throwing before `main` terminates loudly at
@@ -58,7 +57,7 @@ WarningsAsErrors: '*'
 UseColor: true
 
 CheckOptions:
-  # 79 hits, every one a lambda: a lambda's return type is usually inferred from one expression,
-  # and spelling it out there buys nothing. The function side stays on, which gives the repo's
-  # own trailing-return rule a gate for the first time -- at zero current violations (#73).
+  # A lambda's return type is usually inferred from the one expression it returns, and spelling
+  # it out there buys nothing. The function side stays on, so the repo's own trailing-return
+  # rule has a gate (#73).
   modernize-use-trailing-return-type.TransformLambdas: none

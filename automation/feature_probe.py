@@ -189,12 +189,9 @@ FEATURES: Final[List[Feature]] = [
 # `__glibcxx_want_tuple_like` machinery, with nothing under `std::`.
 #
 # `constexpr std::remainder` (#82): False on all three legs, and the compiler column above is
-# why. Measured 2026-08-09 on one machine, one set of libstdc++ 15 headers: g++-15 accepts,
-# `g++-15 -fno-builtin` rejects, clang 21 and clang 22 both reject and name glibc's
-# declaration. The accepting case is GCC folding `remainder` as a builtin, not libstdc++
-# implementing P0533 -- its `<cmath>` re-exports glibc's non-constexpr one with
-# `using ::remainder;`. Every leg here is measured by clang or MSVC, so every leg reads False;
-# a g++ reading does not belong in this column.
+# why -- every leg here is measured by clang or MSVC, and none of them folds it. GCC does, as a
+# builtin rather than because libstdc++ shipped P0533, so a g++ reading does not belong in this
+# column at all.
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::tuple_like": False,
