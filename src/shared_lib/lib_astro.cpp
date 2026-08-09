@@ -278,7 +278,7 @@ auto new_moons_after_jde(
     astro::moon_phase::new_moon::RootGenerator gen(jde);
     std::generate_n(std::back_inserter(roots), slot_count, [&] { return gen.next(); });
 
-    std::copy(cbegin(roots), cend(roots), slots);
+    std::ranges::copy(roots, slots);
     return static_cast<uint32_t>(slot_count);
   } catch (const std::exception& e) {
     lib::info("Exception thrown during execution of new_moons_after_jde");

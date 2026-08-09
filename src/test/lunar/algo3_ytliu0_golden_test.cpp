@@ -21,9 +21,9 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <algorithm>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -230,8 +230,8 @@ TEST(LunarAlgo3Ytliu0, SampledYearsMatch) {
 // Named endpoint / seam / #64 pins (same table as SampledYearsMatch — no second source).
 TEST(LunarAlgo3Ytliu0, EndpointsAndSeams) {
   for (const int32_t y : { 1603, 1900, 1901, 2099, 2100, 2199, 2133, 2165, 2172 }) {
-    const auto it = std::find_if(
-      YTLIU0_ROWS.begin(), YTLIU0_ROWS.end(),
+    const auto it = std::ranges::find_if(
+      YTLIU0_ROWS,
       [y](const Ytliu0Row& r) { return r.year == y; }
     );
     ASSERT_NE(it, YTLIU0_ROWS.end()) << "missing named year " << y;

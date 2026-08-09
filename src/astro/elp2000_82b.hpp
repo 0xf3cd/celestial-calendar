@@ -292,7 +292,7 @@ struct Term {
   double rad = 0.0; // Unit is 0.001 kilometers
 
   [[nodiscard]] constexpr auto operator+(const Term& other) const -> Term {
-    return { lon + other.lon, rad + other.rad };
+    return { .lon = lon + other.lon, .rad = rad + other.rad };
   }
 };
 

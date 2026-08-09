@@ -104,12 +104,12 @@ struct FrozenHitCache {
     if constexpr (OUT_OF_LOCK) {
       const HeavyValue* found = nullptr;
       {
-        const std::lock_guard lock { mtx };
+        const std::scoped_lock lock { mtx };
         found = &cache.at(key);
       }
       return *found;
     } else {
-      const std::lock_guard lock { mtx };
+      const std::scoped_lock lock { mtx };
       return cache.at(key);
     }
   }
@@ -148,6 +148,9 @@ template <bool OUT_OF_LOCK>
 } // namespace
 
 
+// Nothing downstream reads this exit code, and a bench that cannot build its inputs has
+// nothing left to measure -- terminating reports that as loudly as a catch block would.
+// NOLINTNEXTLINE(bugprone-exception-escape)
 auto main() -> int {
   const auto keys = sample_keys();
 

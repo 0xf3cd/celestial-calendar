@@ -80,7 +80,7 @@
 #include <stdint.h>
 
 /* #91: export marker for the entry points below — contract in the header block above. */
-#if defined(_WIN32)
+#ifdef _WIN32
   #if defined(CELESTIAL_BUILDING_DLL)
     #define CELESTIAL_API __declspec(dllexport)
   #else

@@ -26,6 +26,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -102,7 +103,7 @@ auto jieqi_from_lon(const double lon_deg) -> Jieqi {
 
 /** @brief HKO calendar-order entry index (0 = 小寒) → enum. */
 auto jieqi_from_entry(const int32_t entry) -> Jieqi {
-  if (entry < 0 or entry >= JIEQI_COUNT) {
+  if (entry < 0 or std::cmp_greater_equal(entry, JIEQI_COUNT)) {
     throw std::out_of_range { "HKO entry index must be in [0, 24)" };
   }
   return from_index(static_cast<uint8_t>((to_index(Jieqi::小寒) + entry) % JIEQI_COUNT));

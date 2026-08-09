@@ -384,7 +384,12 @@ struct LunarYearContext {
     months.push_back(m);
   }
 
-  return { lunar_year_start_moment, lunar_year_end_moment, leap_month_moment, months };
+  return {
+    .start_moment_utc8      = lunar_year_start_moment,
+    .end_moment_utc8        = lunar_year_end_moment,
+    .leap_month_moment_utc8 = leap_month_moment,
+    .months                 = months,
+  };
 }
 
 

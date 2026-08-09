@@ -27,6 +27,7 @@
 #include <limits>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #include "util.hpp"
 #include "jieqi.hpp"
@@ -147,7 +148,7 @@ TEST(JieQi, JDE) {
   const auto years = candidates | std::views::take(10) | std::ranges::to<std::vector>();
 
   for (const auto year : years) {
-    for (int32_t jq_idx = 0; jq_idx < to_index(Jieqi::COUNT); jq_idx++) {
+    for (int32_t jq_idx = 0; std::cmp_less(jq_idx, to_index(Jieqi::COUNT)); jq_idx++) {
       const auto jq = from_index(jq_idx);
 
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
@@ -168,7 +169,7 @@ TEST(JieQi, JDEOrder) {
                   | std::views::transform([&](const auto& jq) { return jieqi_jde(year, jq); })
                   | std::ranges::to<std::vector>();
 
-  ASSERT_TRUE(std::is_sorted(cbegin(jdes), cend(jdes)));
+  ASSERT_TRUE(std::ranges::is_sorted(jdes));
 
   // Ensure the JDEs are in the given year.
   for (const auto jde : jdes) {
@@ -198,7 +199,7 @@ TEST(JieQi, Generator) {
 
     // Update the Jieqi index.
     ++jq_index;
-    if (jq_index >= JIEQI_COUNT) {
+    if (std::cmp_greater_equal(jq_index, JIEQI_COUNT)) {
       jq_index = 0;
     }
 
@@ -214,7 +215,7 @@ TEST(JieQi, Generator) {
   }
 
   // Check if the JDEs are in order.
-  ASSERT_TRUE(std::is_sorted(cbegin(jdes), cend(jdes)));
+  ASSERT_TRUE(std::ranges::is_sorted(jdes));
 }
 
 } // namespace calendar::jieqi::test
