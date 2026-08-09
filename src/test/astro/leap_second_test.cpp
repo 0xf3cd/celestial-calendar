@@ -60,6 +60,7 @@ TEST(LeapSecond, TableMatchesIERS) {
   // Columns: year, month (day is always 1), ΔAT = TAI − UTC in seconds.
   // Source: IERS Bulletin C, dumped via pyerfa 2.0.1 `erfa.dat` over 1972-2026 (2026-07-28).
   struct Row { int32_t y; uint32_t m; double dat; };
+  // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<Row> expected {
     { 1972,  1, 10.0 }, { 1972,  7, 11.0 }, { 1973,  1, 12.0 }, { 1974,  1, 13.0 },
     { 1975,  1, 14.0 }, { 1976,  1, 15.0 }, { 1977,  1, 16.0 }, { 1978,  1, 17.0 },
@@ -69,6 +70,7 @@ TEST(LeapSecond, TableMatchesIERS) {
     { 1996,  1, 30.0 }, { 1997,  7, 31.0 }, { 1999,  1, 32.0 }, { 2006,  1, 33.0 },
     { 2009,  1, 34.0 }, { 2012,  7, 35.0 }, { 2015,  7, 36.0 }, { 2017,  1, 37.0 },
   };
+  // NOLINTEND(modernize-use-designated-initializers)
 
   ASSERT_EQ(LEAP_SECOND_TABLE.size(), expected.size());
   for (std::size_t i = 0; i < expected.size(); ++i) {
@@ -103,6 +105,7 @@ TEST(LeapSecond, TaiMinusUtcLookup) {
 // Source: pyerfa 2.0.1 (SOFA) dtf2d("UTC") → utctai → taitt, generated 2026-07-28, seed 42;
 // 34 random modern-UTC instants plus both sides of the 2015/2017 leap steps and the table start.
 struct UtcGoldenRow { int32_t y; uint32_t m; uint32_t d; double frac; double tt_jd; };
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<UtcGoldenRow> UTC_GOLDEN_ROWS {
   { 2012,  2,  1,    0.9703089467592593, 2455959.4710749653 },
   { 1980, 12,  4,     0.908258449074074, 2444578.4088508566 },
@@ -145,6 +148,7 @@ const std::vector<UtcGoldenRow> UTC_GOLDEN_ROWS {
   { 2015,  7,  1, 5.787037037037037e-06, 2457204.5007949537 },
   { 2026,  7, 28,                   0.5,  2461250.000800741 },
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 
 TEST(LeapSecond, UtcToJdeGolden) {
@@ -254,7 +258,7 @@ TEST(LeapSecond, UtcBoundaryFormula) {
   for (const int32_t year : { 1980, 2026, 2500, 4500 }) {
     const Datetime jan1 { to_ymd(year, 1, 1), 0.0 };
     const double calendar_jd = astro::julian_day::ut1_to_jd(jan1); // pure calendar arithmetic
-    ASSERT_NEAR(astro::julian_day::utc_to_jde(jan1), calendar_jd + tt_minus_utc(jan1.ymd) / 86400.0, 1e-9);
+    ASSERT_NEAR(astro::julian_day::utc_to_jde(jan1), calendar_jd + (tt_minus_utc(jan1.ymd) / 86400.0), 1e-9);
   }
 }
 

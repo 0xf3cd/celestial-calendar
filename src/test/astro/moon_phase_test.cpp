@@ -179,11 +179,13 @@ TEST(NewMoon, MomentsYearBoundaryIsUtc) {
   // chain, 2026-07-28; the assertion under test is the year attribution, whose boundary
   // formula is pinned against pyerfa in `LeapSecond.UtcBoundaryFormula`.
   struct Case { int32_t year; std::size_t n; std::size_t n_prev; double first; };
+  // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<Case> cases {
     { 3312, 13, 12, 2930742.50177006 }, // conjunction 83.7 s after UTC new-year midnight
     { 3999, 13, 12, 3181664.62194254 },
     { 4933, 13, 12, 3522801.58333821 },
   };
+  // NOLINTEND(modernize-use-designated-initializers)
 
   for (const auto& c : cases) {
     const auto roots = moments(c.year);

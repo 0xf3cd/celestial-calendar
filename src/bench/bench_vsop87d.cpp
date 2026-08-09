@@ -43,7 +43,7 @@ namespace {
   std::vector<double> jdes;
   jdes.reserve(COUNT);
   for (std::size_t i = 0; i < COUNT; ++i) {
-    const double jc = -20.0 + (40.0 * static_cast<double>(i)) / static_cast<double>(COUNT);
+    const double jc = -20.0 + ((40.0 * static_cast<double>(i)) / static_cast<double>(COUNT));
     jdes.push_back(astro::julian_day::jc_to_jde(jc));
   }
   return jdes;
@@ -52,6 +52,7 @@ namespace {
 } // namespace
 
 
+// NOLINTNEXTLINE(bugprone-exception-escape) -- see harness.hpp
 auto main() -> int {
   const auto jdes = sample_jdes();
 

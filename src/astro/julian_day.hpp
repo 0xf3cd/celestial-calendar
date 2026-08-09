@@ -296,7 +296,7 @@ inline constexpr double J2000 = 2451545.0;
  * @return The julian ephemeris day number, which is based on TT.
  */
 [[nodiscard]] constexpr auto jm_to_jde(const double jm) -> double {
-  return jm * 365250.0 + J2000;
+  return (jm * 365250.0) + J2000;
 }
 
 
@@ -316,7 +316,7 @@ inline constexpr double J2000 = 2451545.0;
  * @return The julian ephemeris day number, which is based on TT.
  */
 [[nodiscard]] constexpr auto jc_to_jde(const double jc) -> double {
-  return jc * 36525.0 + J2000;
+  return (jc * 36525.0) + J2000;
 }
 
 

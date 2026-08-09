@@ -59,6 +59,7 @@ using Key = std::pair<int32_t, calendar::jieqi::Jieqi>;
 } // namespace
 
 
+// NOLINTNEXTLINE(bugprone-exception-escape) -- see harness.hpp
 auto main() -> int {
   const auto keys = sample_keys();
 

@@ -99,8 +99,12 @@ class Tool:
   args: Tuple[str, ...] = ("--version",)
 
 
-def check_tool(tool: Tool) -> bool:
-  """Check if a tool exists and can be executed with the given arguments."""
+def check_tool(tool: Tool, report: bool = False) -> bool:
+  """Check if a tool exists and can be executed with the given arguments.
+
+  `report` also says which binary answered and what it calls itself, out of the results this
+  already has in hand.
+  """
   tool_path = shutil.which(tool.name)
   if tool_path is None:
     red_print(f"# {tool.name} not found!")
@@ -111,6 +115,10 @@ def check_tool(tool: Tool) -> bool:
   if result.retcode != 0:
     red_print(f"# {tool.name} does not support required arguments!")
     return False
+
+  if report:
+    blue_print(f"# {tool.name}: {tool_path}")
+    blue_print(f"# {(result.stdout or '').splitlines()[0] if result.stdout else 'version unknown'}")
 
   return True
 

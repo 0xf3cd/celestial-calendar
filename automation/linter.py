@@ -10,6 +10,7 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 
+import os
 import re
 
 from . import paths
@@ -42,9 +43,15 @@ def run_clang_tidy() -> int:
   """Run clang-tidy on the project CPP source code."""
   print("#" * 60)
 
-  if not check_tool(Tool("clang-tidy")):
-    red_print("clang-tidy not found!")
-    yellow_print("Install clang-tidy by `pip install clang-tidy`")
+  # `CLANG_TIDY` names the binary, never the version: the version is pinned in the workflow
+  # (gotcha 9) and a copy here would be a second one with no gate reconciling them. The default
+  # keeps the bare name so an unset variable behaves as it always has -- but an empty value is a
+  # typo rather than a request for the default, and `os.environ.get(name, default)` hands back
+  # that empty string, so the fallback has to be `or`.
+  binary = os.environ.get("CLANG_TIDY") or "clang-tidy"
+
+  if not check_tool(Tool(binary), report=True):
+    yellow_print("Install clang-tidy, or point CLANG_TIDY at the one to use")
     return 1
 
   build_dir = paths.build_dir()
@@ -56,7 +63,8 @@ def run_clang_tidy() -> int:
 
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/"],
+  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/",
+                 "-clang-tidy-binary", binary],
                 cwd=str(paths.proj_root()))
 
   if ret.retcode == 0:

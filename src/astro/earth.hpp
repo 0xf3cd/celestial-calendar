@@ -90,6 +90,7 @@ struct NutationCoeffs {
 
 // The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
 // This table is based on IAU 1980 nutation model, and some terms are omitted.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { { -2,  0,  0,  2,  2 }, {  -13187.0,   -1.6 }, {  5736.0, -3.1 } },
@@ -267,6 +268,7 @@ inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  4,  0,  0,  2,  2 }, {      -1.0,    0.0 }, {     0.0,  0.0 } },
   { {  1,  1,  0,  0,  0 }, {       1.0,    0.0 }, {     0.0,  0.0 } },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 
 /** @enum Specify which model to use when calculating Earth's nutation. */
@@ -296,18 +298,18 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
   const double jc3 = jc * jc2;
 
   // D is the mean elongation of the Moon from the Sun in degrees.
-  const double D  = 297.85036 + 445267.111480 * jc - 0.0019142 * jc2 + jc3 / 189474.0;
+  const double D  = 297.85036 + (445267.111480 * jc) - (0.0019142 * jc2) + (jc3 / 189474.0);
   // M is the mean anomaly of the Sun (Earth) in degrees.
-  const double M  = 357.52772 + 35999.050340  * jc - 0.0001603 * jc2 - jc3 / 300000.0;
+  const double M  = 357.52772 + (35999.050340  * jc) - (0.0001603 * jc2) - (jc3 / 300000.0);
   // Mp is the mean anomaly of the Moon in degrees.
-  const double Mp = 134.96298 + 477198.867398 * jc + 0.0086972 * jc2 + jc3 / 56250.0;
+  const double Mp = 134.96298 + (477198.867398 * jc) + (0.0086972 * jc2) + (jc3 / 56250.0);
   // F is the Moon's argument of latitude in degrees.
-  const double F  = 93.27191  + 483202.017538 * jc - 0.0036825 * jc2 + jc3 / 327270.0;
+  const double F  = 93.27191  + (483202.017538 * jc) - (0.0036825 * jc2) + (jc3 / 327270.0);
   // Ω is the longitude of the ascending node of the Moon's mean orbit on the ecliptic in degrees.
-  const double Ω  = 125.04452 - 1934.136261   * jc + 0.0020708 * jc2 + jc3 / 450000.0;
+  const double Ω  = 125.04452 - (1934.136261   * jc) + (0.0020708 * jc2) + (jc3 / 450000.0);
 
   return [=](const θCoeffs& coeffs) -> toolbox::AngleDeg {
-    const double degrees = D * coeffs.D + M * coeffs.M + Mp * coeffs.Mp + F * coeffs.F + Ω * coeffs.Ω;
+    const double degrees = (D * coeffs.D) + (M * coeffs.M) + (Mp * coeffs.Mp) + (F * coeffs.F) + (Ω * coeffs.Ω);
     return toolbox::AngleDeg { degrees };
   };
 }
@@ -338,7 +340,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
     const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
     const auto& [a, b] = coeffs.Δψ;
-    return (a + b * jc) * std::sin(θ.rad());
+    return (a + (b * jc)) * std::sin(θ.rad());
   });
 
   // Accumulate the results of all the terms.
@@ -376,7 +378,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
   const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
     const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
     const auto& [a, b] = coeffs.Δε;
-    return (a + b * jc) * std::cos(θ.rad());
+    return (a + (b * jc)) * std::cos(θ.rad());
   });
 
   // Accumulate the results of all the terms.
@@ -409,7 +411,7 @@ namespace astro::earth::obliquity {
 
   // IAU 1980: ε₀ = 23°26'21".448 - 46".8150T - 0".00059T² + 0".001813T³
   // The polynomial is evaluated in arcseconds.
-  const double ε0_arcsec = 84381.448 + jc * (-46.8150 + jc * (-0.00059 + jc * 0.001813));
+  const double ε0_arcsec = 84381.448 + (jc * (-46.8150 + (jc * (-0.00059 + (jc * 0.001813)))));
 
   return toolbox::AngleDeg::from_arcsec(ε0_arcsec);
 }
@@ -450,6 +452,7 @@ struct DailyVariationTerm {
  * @note Terms with rate 359993/719987/1079981 are due to the eccentricity, 4452671/9224659/4092677
  *       to the Moon, 450368/225184/315559/675553 to Venus, 329644/659289/299295 to Jupiter, 337181 to Mars.
  */
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
   { 118.568,  87.5287,  359993.7286, 0 },
   {   2.476,  85.0561,  719987.4571, 0 },
@@ -473,6 +476,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
   {   0.004, 297.8610, 4452671.1152, 2 },
   {   0.010, 154.7066,  359993.7286, 3 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 /**
  * @brief The daily variation Δλ of the Sun's geocentric longitude, mean equinox of the date.
@@ -486,7 +490,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
   using namespace std::ranges;
   const double τ = astro::julian_day::jde_to_jm(jde);
   const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
-    const toolbox::AngleDeg θ { t.phase + t.rate * τ };
+    const toolbox::AngleDeg θ { t.phase + (t.rate * τ) };
     return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
   });
   return 3548.330 + std::reduce(cbegin(terms), cend(terms));

@@ -150,6 +150,26 @@ FEATURES: Final[List[Feature]] = [
       auto main() -> int { return twice([](const int x) { return x; }); }
     """,
   ),
+  Feature(
+    # The odd row out: nothing waits on this one, the code already calls `std::remainder` from
+    # `constexpr` functions and no standard library we target has shipped P0533, which makes
+    # evaluating one in a constant expression IF-NDR (#82). Standalone because `compiles()` gets no
+    # `-I` -- which also keeps it measuring the library rather than our own call site.
+    name="constexpr std::remainder",
+    token="remainder_constexpr",
+    issue="#82",
+    program="""
+      #include <cmath>
+      constexpr auto normalize_deg(const double deg) -> double {
+        const double rem = std::remainder(deg, 360.0);
+        return rem < 0.0 ? rem + 360.0 : rem;
+      }
+      auto main() -> int {
+        constexpr double normalized = normalize_deg(361.0);
+        static_assert(normalized > 0.99 and normalized < 1.01);
+      }
+    """,
+  ),
 ]
 
 
@@ -167,6 +187,11 @@ FEATURES: Final[List[Feature]] = [
 #   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
 # `std::tuple_like` (#81): False on all three legs. libstdc++ exposes only the internal
 # `__glibcxx_want_tuple_like` machinery, with nothing under `std::`.
+#
+# `constexpr std::remainder` (#82): False on all three legs, and the compiler column above is
+# why -- every leg here is measured by clang or MSVC, and none of them folds it. GCC does, as a
+# builtin rather than because libstdc++ shipped P0533, so a g++ reading does not belong in this
+# column at all.
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::tuple_like": False,
@@ -177,6 +202,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": True,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
   "libc++": {
     "std::tuple_like": False,
@@ -187,6 +213,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": False,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
   "msvc-stl": {
     "std::tuple_like": False,
@@ -197,6 +224,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
     "std::views::slide": True,
     "std::views::concat": False,
     "std::function_ref": False,
+    "constexpr std::remainder": False,
   },
 }
 

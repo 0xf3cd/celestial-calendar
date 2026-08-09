@@ -382,7 +382,7 @@ requires std::invocable<const Func&, double>
   }
 
   // Meeus (15.1): cos H₀ = (sin h₀ - sin φ sin δ) / (cos φ cos δ).
-  double cos_H0 = (std::sin(h0.rad()) - std::sin(φ.rad()) * std::sin(δ.rad())) / denominator;
+  double cos_H0 = (std::sin(h0.rad()) - (std::sin(φ.rad()) * std::sin(δ.rad()))) / denominator;
 
   // Roundoff can push a grazing event just past ±1, where acos would return NaN — clamp within
   // the tolerance, and treat anything beyond it as a real polar day (< -1) or night (> +1).
@@ -424,7 +424,7 @@ requires std::invocable<const Func&, double>
   // The offset is applied in JDE arithmetic (not in the Datetime fraction) so longitudes near
   // ±180° cannot push the fraction outside [0, 1).
   const calendar::Datetime noon_ut1 { ymd, 0.5 };
-  const double estimate = astro::julian_day::ut1_to_jde(noon_ut1) - location.longitude.deg() / 360.0;
+  const double estimate = astro::julian_day::ut1_to_jde(noon_ut1) - (location.longitude.deg() / 360.0);
 
   const auto f = [&location](const double jde) -> double {
     return detail::sun_local(jde, location).hour_angle_deg;
@@ -481,7 +481,7 @@ requires std::invocable<const Func&, double>
 
   if (H0.has_value()) {
     const double sign = is_sunrise ? -1.0 : 1.0;
-    const double estimate = transit + sign * (H0->deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
+    const double estimate = transit + (sign * (H0->deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY));
     const auto solved = detail::crossing_in_bracket(
       f,
       estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS,

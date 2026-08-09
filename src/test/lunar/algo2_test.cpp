@@ -71,7 +71,7 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
 
   // Ensure the Jieqis are in order.
   const auto jieqi_jdes = jieqi_pairs | std::views::transform([](const auto& jq) { return jq.jde; });
-  ASSERT_TRUE(std::is_sorted(cbegin(jieqi_jdes), cend(jieqi_jdes)));
+  ASSERT_TRUE(std::ranges::is_sorted(jieqi_jdes));
 
   // Ensure the first Jieqi in `jieqi_pairs` is reasonable.
   ASSERT_FALSE(jieqi_pairs.empty());

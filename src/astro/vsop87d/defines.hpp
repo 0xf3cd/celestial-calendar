@@ -66,7 +66,7 @@ inline constexpr double SCALING_FACTOR = 1e8;
  */
 [[nodiscard]] inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
   const auto calc_term = [jm](const auto& term) constexpr -> double {
-    return term.A * std::cos(term.B + term.C * jm);
+    return term.A * std::cos(term.B + (term.C * jm));
   };
 
   const auto evaluated = vsop_table | std::views::transform(calc_term);
@@ -95,7 +95,7 @@ inline constexpr double SCALING_FACTOR = 1e8;
 
   // Evaluate the final result.
   const auto accumulated = std::accumulate(cbegin(reversed), cend(reversed), 0.0, [jm](double a, double b) {
-    return a * jm + b;
+    return (a * jm) + b;
   });
 
   return accumulated;

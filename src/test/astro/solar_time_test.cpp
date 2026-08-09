@@ -55,6 +55,7 @@ struct EotRow {
 // 18 points within ±2 days of March equinoxes (where α and L0 straddle the 0°/360° seam and
 // an unwrapped E would come out ±357°). Seed 42, generated 2026-07-29. Measured worst
 // residual 3.0e-6° (0.0007 s of time) — tolerance 1e-5° ≈ 3× that.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
   { 2415495.227896,  +0.261331808 },
   { 2416847.510658,  -0.943318947 },
@@ -213,6 +214,7 @@ constexpr std::array<EotRow, 20> NOAA_ROWS {{
   { 2464768.387417,  -2.149671549 },
   { 2469423.728552,  +1.418854472 },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct ApparentRow {
   int32_t  year;
@@ -230,6 +232,7 @@ struct ApparentRow {
 // carry the |UT1−UTC| steering gap plus the mean-sun definitional gap: measured worst
 // 0.20 s — tolerance 0.5 s ≈ 2.5× that. New rows must stick to low-|DUT1| epochs
 // (≲ 0.3 s): the documented 0.9 s steering gap would otherwise eat the tolerance.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 constexpr std::array<ApparentRow, 6> APPARENT_ROWS {{
   { 1992, 10, 13, 0.500000000,   +0.0000, +0.509604750, +0 }, // Greenwich noon
   { 2024,  2, 11, 0.166666667, +120.0000, +0.490145643, +0 }, // 120°E, near the EoT minimum
@@ -238,6 +241,7 @@ constexpr std::array<ApparentRow, 6> APPARENT_ROWS {{
   { 2030,  6,  1, 0.041666667, -179.9000, +0.543466642, -1 }, // −12 h offset carries to previous day
   { 1960,  7,  1, 0.250000000,  +90.0000, +0.497426816, +0 }, // Pre-1972, input read as UT1
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct TransitCase {
   int32_t  year;
@@ -246,12 +250,14 @@ struct TransitCase {
   astro::sunrise_sunset::GeoLocation location;
 };
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::array<TransitCase, 4> TRANSIT_CASES {{
   { 2024,  2, 11, { .latitude = AngleDeg { 39.9042 }, .longitude = AngleDeg { 116.4074 } } },
   { 2024, 11,  3, { .latitude = AngleDeg { 40.7128 }, .longitude = AngleDeg { -74.0060 } } },
   { 1992, 10, 13, { .latitude = AngleDeg { 51.4769 }, .longitude = AngleDeg {   0.0    } } },
   { 2024,  6, 21, { .latitude = AngleDeg { 69.65   }, .longitude = AngleDeg {  18.96   } } },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 } // namespace
 
@@ -307,7 +313,7 @@ TEST(SolarTime, BoundedAndSmooth1900To2100) {
   double max_e = prev;
   double min_e = prev;
   for (int32_t step = 1; step <= 14609; ++step) { // 5-day steps, up to JDE 2488065.5 (~2100.0).
-    const double jde = 2415020.5 + 5.0 * step;
+    const double jde = 2415020.5 + (5.0 * step);
     const double e = equation_of_time(jde).deg();
     ASSERT_LT(std::fabs(e), 4.25) << "jde " << jde;
     ASSERT_LT(std::fabs(e - prev), 0.8) << "jde " << jde;

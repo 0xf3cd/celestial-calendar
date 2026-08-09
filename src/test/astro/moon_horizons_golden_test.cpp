@@ -128,6 +128,7 @@ void check_band(const std::span<const HorizonsRow> rows, const Tolerance& tol,
 
 // 1900–2100 + the Meeus Example 47.a anchor (row 2448724.50). 32 epochs stepped 2283.25 days —
 // incommensurate with the anomalistic/synodic months, scanning all phases and radial velocities.
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsRow> CORE_ROWS {
   {  2415385.50,   48.3163870,   1.1700667,  370415.286 },  // 1901-Jan-01 00:00 TT, rdot +0.010 km/s
   {  2417668.75,  250.7492890,   3.7936814,  368501.225 },  // 1907-Apr-03 06:00 TT, rdot +0.000 km/s
@@ -181,6 +182,7 @@ const std::vector<HorizonsRow> FAR_ROWS {
   {  4194304.50,  187.9429346,  -0.4108899,  369790.010 },  // 6771-Jul-08 00:00 TT, rdot +0.029 km/s
   {  5161700.50,   92.9588919,  -0.7232190,  403742.696 },  // 9420-Feb-27 00:00 TT, rdot -0.014 km/s
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 

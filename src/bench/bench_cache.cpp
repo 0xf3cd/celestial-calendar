@@ -104,12 +104,12 @@ struct FrozenHitCache {
     if constexpr (OUT_OF_LOCK) {
       const HeavyValue* found = nullptr;
       {
-        const std::lock_guard lock { mtx };
+        const std::scoped_lock lock { mtx };
         found = &cache.at(key);
       }
       return *found;
     } else {
-      const std::lock_guard lock { mtx };
+      const std::scoped_lock lock { mtx };
       return cache.at(key);
     }
   }
@@ -138,7 +138,7 @@ template <bool OUT_OF_LOCK>
       std::vector<std::jthread> workers;
       workers.reserve(THREADS);
       for (std::size_t t = 0; t < THREADS; ++t) {
-        const std::size_t n = iterations / THREADS + (t < iterations % THREADS ? 1 : 0);
+        const std::size_t n = (iterations / THREADS) + (t < iterations % THREADS ? 1 : 0);
         workers.emplace_back(worker, n);
       }
     }
@@ -148,6 +148,7 @@ template <bool OUT_OF_LOCK>
 } // namespace
 
 
+// NOLINTNEXTLINE(bugprone-exception-escape) -- see harness.hpp
 auto main() -> int {
   const auto keys = sample_keys();
 

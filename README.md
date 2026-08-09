@@ -110,13 +110,20 @@ The project is written in C++, and automated with Python scripts.
 
 For C++ codes, `clang-tidy` is used; For Python codes, `ruff` is used.
 
-Neither is part of `Requirements.txt` — install them directly, the way CI does:
+Neither is part of `Requirements.txt` — install them directly:
 
 ```sh
-python3 -m pip install ruff clang-tidy==18.1.8
+python3 -m pip install ruff
+
+# clang-tidy: any 22.1.x will do. CI uses the 22.1.2 that ships in its runner image, and pip
+# does not carry that exact patch release -- take the nearest one, or your distro's package.
+python3 -m pip install clang-tidy==22.1.8      # or your distribution's clang-tidy-22
 ```
 
-`clang-tidy` is pinned to match the clang 18 toolchain: it runs with `WarningsAsErrors: '*'`, and a newer version ships new checks that flag pre-existing code.
+`clang-tidy` runs with `WarningsAsErrors: '*'`, so its version is pinned deliberately — a newer
+one ships new checks that flag pre-existing code. Point `CLANG_TIDY` at the binary you want if
+`clang-tidy` on your `PATH` is a different major; it has to match the vendored
+`run-clang-tidy.py`, or you are measuring with a different ruler than CI (AGENTS.md gotcha 9).
 
 The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 

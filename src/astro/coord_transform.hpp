@@ -84,14 +84,14 @@ struct HorizontalCoord {
 
   // Meeus (13.3): tan α = (sin λ cos ε − tan β sin ε) / cos λ, with α taken in the same quadrant as λ.
   // Multiplying through by cos β keeps it finite at β = ±90°.
-  const double y = sin_λ * cos_ε * cos_β - sin_β * sin_ε;
+  const double y = (sin_λ * cos_ε * cos_β) - (sin_β * sin_ε);
   const double x = cos_λ * cos_β;
   const double α_rad = std::atan2(y, x);
 
   // Meeus (13.4): sin δ = sin β cos ε + cos β sin ε sin λ. The argument is exactly ±1 at the
   // celestial poles, where roundoff can push it just outside asin's domain (yielding NaN) —
   // clamp it into [-1, 1], and then this really is safe everywhere.
-  const double δ_rad = std::asin(std::clamp(sin_β * cos_ε + cos_β * sin_ε * sin_λ, -1.0, 1.0));
+  const double δ_rad = std::asin(std::clamp((sin_β * cos_ε) + (cos_β * sin_ε * sin_λ), -1.0, 1.0));
 
   return {
     .α = AngleDeg { rad_to_deg(α_rad) }.normalize(),
@@ -136,13 +136,13 @@ struct HorizontalCoord {
   // Meeus (13.5): tan A = sin H / (cos H sin φ − tan δ cos φ), azimuth from the south, positive westward.
   // Multiplying through by cos δ keeps it finite at δ = ±90°.
   const double y = sin_H * cos_δ;
-  const double x = cos_H * sin_φ * cos_δ - sin_δ * cos_φ;
+  const double x = (cos_H * sin_φ * cos_δ) - (sin_δ * cos_φ);
   const double A_rad = std::atan2(y, x);
 
   // Meeus (13.6): sin h = sin φ sin δ + cos φ cos δ cos H. The argument is exactly ±1 at the zenith
   // and nadir, where roundoff can push it just outside asin's domain (a few percent of near-zenith
   // evaluations on common libms, yielding NaN) — clamp it into [-1, 1], then this is safe everywhere.
-  const double h_rad = std::asin(std::clamp(sin_φ * sin_δ + cos_φ * cos_δ * cos_H, -1.0, 1.0));
+  const double h_rad = std::asin(std::clamp((sin_φ * sin_δ) + (cos_φ * cos_δ * cos_H), -1.0, 1.0));
 
   return {
     .A = AngleDeg { rad_to_deg(A_rad) }.normalize(),

@@ -249,8 +249,8 @@ TEST(CAbiSmoke, ApparentSolarTime) {
   EXPECT_EQ(t.year, 2024);
   EXPECT_EQ(t.month, 6U);
   EXPECT_EQ(t.day, 1U);
-  EXPECT_GT(t.fraction, 0.5 + 111.4 / 360.0);
-  EXPECT_LT(t.fraction, 0.5 + 121.4 / 360.0);
+  EXPECT_GT(t.fraction, 0.5 + (111.4 / 360.0));
+  EXPECT_LT(t.fraction, 0.5 + (121.4 / 360.0));
 
   EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, 200.0).valid);     // longitude out of range
   EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, NAN_VALUE).valid); // NaN longitude

@@ -26,6 +26,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -102,12 +103,13 @@ auto jieqi_from_lon(const double lon_deg) -> Jieqi {
 
 /** @brief HKO calendar-order entry index (0 = 小寒) → enum. */
 auto jieqi_from_entry(const int32_t entry) -> Jieqi {
-  if (entry < 0 or entry >= JIEQI_COUNT) {
+  if (entry < 0 or std::cmp_greater_equal(entry, JIEQI_COUNT)) {
     throw std::out_of_range { "HKO entry index must be in [0, 24)" };
   }
   return from_index(static_cast<uint8_t>((to_index(Jieqi::小寒) + entry) % JIEQI_COUNT));
 }
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<CrossingRow> DE441_ROWS {
   {  2026, 285.0,  2461045.850228372 },  // 2026-Jan-05 08:24:19.731 TT
   {  2026, 300.0,  2461060.573684652 },  // 2026-Jan-20 01:46:06.354 TT
@@ -358,6 +360,7 @@ const std::vector<HkoRow> HKO_ROWS {
   { 2028, 22, 12,  6, 22, 25 },
   { 2028, 23, 12, 21, 16, 20 },
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 
@@ -408,7 +411,7 @@ TEST(JieqiGolden, HkoAlmanac) {
       util::to_ymd(row.year, static_cast<int32_t>(row.month), static_cast<int32_t>(row.day)),
       hh_mm_ss<nanoseconds> { hours { row.hour } + minutes { row.minute } },
     };
-    const double hko_jd = astro::julian_day::ut1_to_jd(hko_hkt) - 8.0 / 24.0;
+    const double hko_jd = astro::julian_day::ut1_to_jd(hko_hkt) - (8.0 / 24.0);
 
     const double diff_min = std::fabs(ours_jd - hko_jd) * 1440.0;
     // Measured worst residual 2026-07-27: 0.525 min over all 168 values — essentially

@@ -120,7 +120,7 @@ using namespace std::ranges;
 
 /** @brief Evaluate the ΔT values for the given year on all algorithms. */
 inline auto evaluate(const double year) {
-  return algo_info::DELTA_T_ALGO_FUNCS | views::transform([year](auto func) {
+  return algo_info::DELTA_T_ALGO_FUNCS | views::transform([year](const auto& func) {
     return func(year);
   });
 }

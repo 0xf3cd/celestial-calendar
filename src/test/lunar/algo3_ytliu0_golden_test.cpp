@@ -21,9 +21,9 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <algorithm>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -90,6 +90,7 @@ struct Ytliu0Row {
 
 // 115 rows: frozen 114 + W-A2 2099. `js@N` = byte offset into calendarData.js at the
 // pinned commit (provenance for the pre-work package / the 2099 decode).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<Ytliu0Row> YTLIU0_ROWS {
   { 1603, std::chrono::year { 1603 } / 2 / 11, 0, { 30, 29, 30, 29, 30, 29, 29, 30, 29, 30, 29, 30 } },  // js@103230 total=354
   { 1607, std::chrono::year { 1607 } / 1 / 28, 6, { 29, 30, 29, 30, 29, 30, 29, 30, 30, 29, 30, 29, 30 } },  // js@103474 total=384
@@ -207,6 +208,7 @@ const std::vector<Ytliu0Row> YTLIU0_ROWS {
   { 2196, std::chrono::year { 2196 } / 1 / 30, 7, { 30, 30, 29, 30, 29, 29, 30, 29, 29, 30, 29, 30, 30 } },  // js@139465 total=384
   { 2199, std::chrono::year { 2199 } / 1 / 27, 6, { 29, 30, 29, 30, 29, 30, 30, 29, 30, 29, 30, 29, 30 } },  // js@139648 total=384
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 void expect_row_matches_algo3(const Ytliu0Row& row) {
   const auto actual = algo3::calc_lunar_year(row.year);
@@ -228,8 +230,8 @@ TEST(LunarAlgo3Ytliu0, SampledYearsMatch) {
 // Named endpoint / seam / #64 pins (same table as SampledYearsMatch — no second source).
 TEST(LunarAlgo3Ytliu0, EndpointsAndSeams) {
   for (const int32_t y : { 1603, 1900, 1901, 2099, 2100, 2199, 2133, 2165, 2172 }) {
-    const auto it = std::find_if(
-      YTLIU0_ROWS.begin(), YTLIU0_ROWS.end(),
+    const auto it = std::ranges::find_if(
+      YTLIU0_ROWS,
       [y](const Ytliu0Row& r) { return r.year == y; }
     );
     ASSERT_NE(it, YTLIU0_ROWS.end()) << "missing named year " << y;

@@ -41,7 +41,7 @@ enum class Verbosity : uint8_t {
   INFO  = 1,
   DEBUG = 2,
 
-  COUNT,
+  COUNT = 3,
 };
 
 

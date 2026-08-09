@@ -61,10 +61,15 @@ inline constexpr uint64_t DEFAULT_SEED = 42;
 
   const std::string_view sv { text };
   uint64_t parsed = 0;
+  // `from_chars` wants a [first, last) pair of pointers; there is no size-taking overload to
+  // reach for. Keeping `data()` and the end expression side by side is also what lets
+  // `bugprone-suspicious-stringview-data-usage` see that the length travels with the pointer.
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), parsed);
 
   // Partial consume or overflow -- both fall back. `from_chars` reports them through its own
   // result, so parsing an env var no longer writes `errno`, a process-global, as a side effect.
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   if (ec != std::errc {} or ptr != sv.data() + sv.size()) {
     return std::nullopt;
   }

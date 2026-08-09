@@ -109,6 +109,7 @@ void check_band(const std::span<const HorizonsSunRow> rows, const Tolerance& tol
 }
 
 // 1901–2094 (32 epochs stepped 2283.25 days) + the Meeus Example 25.b anchor (2448908.50).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<HorizonsSunRow> SUN_CORE_ROWS {
   {  2415385.50,  279.9091090,   0.0000094,  0.9832022703 },  // 1901-Jan-01 00:00:00.000 TT, rdot -0.0201 km/s
   {  2417668.75,   12.3366840,   0.0001985,  0.9999906874 },  // 1907-Apr-03 06:00:00.000 TT, rdot +0.5089 km/s
@@ -163,6 +164,7 @@ const std::vector<HorizonsSunRow> SUN_FAR_ROWS {
   {  4194304.50,  109.0365470,  -0.0000267,  1.0030455660 },  // 6771-Jul-08 00:00:00.000 TT, rdot +0.4070 km/s
   {  5161700.50,  338.1310775,   0.0000780,  0.9964339347 },  // 9420-Feb-27 00:00:00.000 TT, rdot -0.3823 km/s
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 

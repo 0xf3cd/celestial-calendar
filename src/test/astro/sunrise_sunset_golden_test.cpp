@@ -74,8 +74,8 @@ auto cell_minutes(const std::string_view cell) -> std::optional<double> {
   if (cell.size() - first < 5 or cell[first + 2] != ':') {
     throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
   }
-  const auto digits = [&](const size_t pos) { return 10.0 * (cell[pos] - '0') + (cell[pos + 1] - '0'); };
-  double minutes = 60.0 * digits(first) + digits(first + 3);
+  const auto digits = [&](const size_t pos) { return (10.0 * (cell[pos] - '0')) + (cell[pos + 1] - '0'); };
+  double minutes = (60.0 * digits(first)) + digits(first + 3);
   const auto second_colon = cell.find(':', first + 3);
   if (second_colon != std::string_view::npos) {
     if (second_colon != first + 5 or cell.size() - first < 8) {
@@ -91,7 +91,7 @@ auto cell_minutes(const std::string_view cell) -> std::optional<double> {
 /** @brief Our JDE(TT) result as minutes-of-day on the site's standard-time clock. */
 auto jde_to_local_minutes(const double jde, const int tz_hours) -> double {
   const calendar::Datetime ut1 = astro::julian_day::jde_to_ut1(jde);
-  return std::fmod(ut1.fraction() * 1440.0 + (tz_hours * 60.0) + 1440.0, 1440.0);
+  return std::fmod((ut1.fraction() * 1440.0) + (tz_hours * 60.0) + 1440.0, 1440.0);
 }
 
 /** @brief |a − b| in minutes on the 24h circle, so a source's day and ours may differ. */
@@ -132,6 +132,7 @@ struct GoldenRow {
 };
 
 // USNO rows, local standard time (see file header for provenance).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<GoldenRow> USNO_ROWS {
   {  3, 20,   -0.22,   -78.51,  -5, "05:57", "06:18", "12:21", "18:25", "18:45", false, false },  // Quito
   {  6, 21,   -0.22,   -78.51,  -5, "05:50", "06:13", "12:16", "18:19", "18:42", false, false },  // Quito
@@ -162,6 +163,7 @@ const std::vector<GoldenRow> USNO_ROWS {
   {  9, 23,   69.65,    18.96,   1, "04:27", "05:28", "11:37", "17:43", "18:43", false, false },  // Tromso
   { 12, 21,   69.65,    18.96,   1, "09:31", "     ", "     ", "     ", "13:53", false, true  },  // Tromso
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 struct TwilightRow {
   int month;
@@ -176,11 +178,13 @@ struct TwilightRow {
 };
 
 // Skyfield rows, local standard time (see file header for provenance).
+// NOLINTBEGIN(modernize-use-designated-initializers)
 const std::vector<TwilightRow> TWILIGHT_ROWS {
   {  6, 21,   51.50,    -0.13,   0, "01:40:47", "22:23:51", "        ", "        " },  // London
   { 12, 21,   51.50,    -0.13,   0, "06:40:11", "17:16:58", "05:59:22", "17:57:46" },  // London
   { 12, 21,   69.65,    18.96,   1, "07:46:42", "15:37:40", "06:28:18", "16:56:03" },  // Tromso
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 }  // namespace
 
@@ -203,7 +207,7 @@ TEST(SunriseSunsetGolden, UsnoRiseTransitSet) {
     // Pin the day axis: `clock_diff` alone is day-blind, and consecutive-day transits differ
     // only by the equation-of-time drift (≪ tolerance). The transit is ~local noon, so its
     // local-standard date must be the queried date on every row.
-    const double jd_local = detail::jde_tt_to_jd_ut1(result.transit_jde) + row.tz / 24.0;
+    const double jd_local = detail::jde_tt_to_jd_ut1(result.transit_jde) + (row.tz / 24.0);
     ASSERT_EQ(astro::julian_day::jd_to_ut1(jd_local).ymd, ymd) << tag << " transit date";
   }
 }

@@ -63,7 +63,7 @@ const GeoLocation MIDLAT_0E = loc( 40.0,      0.0);
 /** @brief The estimate `transit_jde` starts from: local mean noon of the UT1 date, as a JDE. */
 auto local_mean_noon_jde(const std::chrono::year_month_day& ymd, const GeoLocation& location) -> double {
   const calendar::Datetime noon_ut1 { ymd, 0.5 };
-  return astro::julian_day::ut1_to_jde(noon_ut1) - location.longitude.deg() / 360.0;
+  return astro::julian_day::ut1_to_jde(noon_ut1) - (location.longitude.deg() / 360.0);
 }
 
 /**
@@ -198,8 +198,8 @@ TEST(SunriseSunset, TransitIsUpperCulmination) {
   const double transit = transit_jde(ymd, LONDON);
 
   const double h_transit = detail::sun_altitude(transit, LONDON).deg();
-  ASSERT_GT(h_transit, detail::sun_altitude(transit - 2.0 / 24.0, LONDON).deg());
-  ASSERT_GT(h_transit, detail::sun_altitude(transit + 2.0 / 24.0, LONDON).deg());
+  ASSERT_GT(h_transit, detail::sun_altitude(transit - (2.0 / 24.0), LONDON).deg());
+  ASSERT_GT(h_transit, detail::sun_altitude(transit + (2.0 / 24.0), LONDON).deg());
 }
 
 TEST(SunriseSunset, RiseSetAltitudeIsH0) {
@@ -632,7 +632,7 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
           }
           const double sign = is_sunrise ? -1.0 : 1.0;
           const double estimate =
-            transit + sign * (req(H0).deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY);
+            transit + (sign * (req(H0).deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY));
           samples.push_back({
             .deviation_days = std::fabs(req(root) - estimate),
             .at = std::format("{} at latitude {:+.0f}° ({})", date_str(ymd),

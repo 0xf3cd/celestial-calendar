@@ -402,12 +402,17 @@ toolbox/        Helper scripts for artifacts, releases, build info
 9. **CI toolchains are pinned — every one that can emit a diagnostic.** A tool that updates
    itself turns "the code changed" and "the tool changed" into the same red X, on a day nobody
    touched the repository; a pin that goes stale instead fails loudly with "no such version",
-   which says what to do. Pinned: clang-tidy and clang at **18** on the Linux legs, choco LLVM at
+   which says what to do. Pinned: clang at **18** on the Linux legs, choco LLVM at
    **20** on Windows (not the 18 the Linux legs use — a pre-existing split these pins record
    rather than create), the Xcode **major** (a major carries an Apple Clang major, and `-Werror`
-   makes any new diagnostic in it a red build), and ruff. Exact versions live in the workflows,
-   not here — there is no gate reconciling two copies. Chocolatey's `make` is deliberately outside
-   this: it drives the build rather than diagnosing it, so a new version cannot turn `-Werror` red.
+   makes any new diagnostic in it a red build), and ruff. **clang-tidy is pinned by the runner
+   image** since #73: the linters leg picks `ubuntu-26.04` for the 22.1.2 it ships, calls the
+   binary by its major, and the vendored `run-clang-tidy.py` carries the matching `llvmorg-22.1.2`.
+   Of the two ways to get that pairing wrong, only one is loud: an older runner refuses to run
+   at all, while a newer runner on an older binary exits 0 and quietly measures with a smaller
+   ruler. Exact versions live in the workflows, not here — there is no gate reconciling two
+   copies. Chocolatey's `make` is deliberately outside this: it drives the build rather than
+   diagnosing it, so a new version cannot turn `-Werror` red.
    Bump deliberately, never incidentally (#72, #73).
 
 ## Design ledger — decisions taken, and what would reopen them
@@ -436,8 +441,9 @@ say so and reopen it — that is what it is for.
 | **Transcription runs on a single track**; equivalence is proved once during a migration, not maintained as a permanent second implementation | #81's ELP merge did exactly this: a verbatim copy compared bit-for-bit in the same run, then deleted. A permanent audit track is a second thing to keep correct | A transcription lands that cannot be diffed against its predecessor in one run | 2026-08-06 |
 | **Error budgets are not part of the API contract** | Accuracy notes exist where they were measured (`obliquity`'s ±2000-year figure, the sunrise brackets), but there is no per-epoch, per-model budget and no one has asked for one. A fitted residual must never be dressed up as a 1σ | A caller needs a declared accuracy to decide something | 2026-08-06 |
 | **The tool-existence checks in `automation/` are not merged into one** | They share a line of `shutil.which`; what differs is what each does when the tool is missing — `env.check_tool` and `abi_layout` hand back a falsy value so the gate goes red, `export_surface` raises so the caller records it as a finding, and `sysinfo` reports and carries on because stopping the run is `--setup`'s call. One shared helper has to pick one of those for all of them. Separately, the `sys.path.append` copies in `toolbox/` cannot be merged at all: a shared bootstrap module would itself need the path fixed before it could be imported (#166) | A third call site needs the same failure policy as an existing two | 2026-08-08 |
+| **The `using X = Y` aliases in the lunar headers stay** (`common.hpp` / `converter.hpp` / `algo2.hpp`) | The style rule's closed set already allows this form (see "Header-only", above), and they are load-bearing besides: `lunar/common.hpp` and `lunar/converter.hpp` do not include `datetime.hpp`, so deleting their alias either reddens the self-contained gate or forces a new include — a worse outcome than the tidiness it was meant to buy | The style rule narrows what `using X = Y` may do | 2026-08-09 |
 | **External ephemerides are oracles, never dependencies** | ytliu0, Horizons and USNO appear only under `src/test/` and in `@ref` comments; the build links none of them. Being able to check ourselves against an independent source depends on not being built on it | — (this one is a line, not a bet) | 2026-08-02 |
-| **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** | Standards-compliant is not the same as usable: P0533 made `std::remainder` constexpr in C++23, yet clang 18.1.8 and MSVC's UCRT both reject `constexpr double c = normalize_deg(361.0)` today. Four constexpr entry points, two direct call sites, all IF-NDR — recorded rather than papered over (#82) | A pinned toolchain bump. The probe is one line: the `constexpr` initialisation above either compiles or does not | 2026-08-05 |
+| **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** | Standards-compliant is not the same as usable: P0533 made `std::remainder` constexpr in C++23 and no standard library we target has shipped it, so every leg we build with rejects `constexpr double c = normalize_deg(361.0)`. The per-leg readings and how they were taken live with the row that records them, in `automation/feature_probe.py`. Four constexpr entry points, two direct call sites, all IF-NDR — recorded rather than papered over (#82) | Any target standard library marks `std::remainder` constexpr. `automation/feature_probe.py` watches it per leg, so this fires as a red build rather than as someone remembering to re-run a probe. | 2026-08-05, premise and trigger refreshed 2026-08-09 |
 
 **Decided and already done** (kept because the reasoning gets re-proposed): longitude sign is
 west-positive in `sidereal`, east-positive elsewhere, disambiguated by name, not by type (D2) ·

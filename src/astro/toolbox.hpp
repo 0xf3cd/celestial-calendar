@@ -467,7 +467,7 @@ requires std::invocable<const Func&, double>
       break;
     }
 
-    jde   = pull_back(jde - residual / f_prime);
+    jde   = pull_back(jde - (residual / f_prime));
     step /= std::numbers::phi;
   }
 

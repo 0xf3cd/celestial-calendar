@@ -35,6 +35,7 @@ using Vsop87dTables = astro::vsop87d::Vsop87dTables;
 
 #pragma region L0-L5
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 559> L0 {{
   {    175347045.673,            0.0,                0.0, },
   {      3341656.456,  4.66925680417,    6283.0758499914, },
@@ -1132,6 +1133,7 @@ inline constexpr std::array<Coefficients, 5> L5 {{
   {            0.028,  2.21496423926,   12566.1516999828, },
   {            0.005,  1.75600058765,   18849.2275499742, },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 /** @brief Simply put all L tables together. */
 inline constexpr std::array<Vsop87dTable, 6> L_array { L0, L1, L2, L3, L4, L5, };
@@ -1143,6 +1145,7 @@ inline constexpr Vsop87dTables L { L_array };
 
 #pragma region B0-B4
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 184> B0 {{
   {           279.62,  3.19870156017,  84334.66158130829, },
   {          101.643,  5.42248619256,    5507.5532386674, },
@@ -1505,6 +1508,7 @@ inline constexpr std::array<Coefficients, 5> B4 {{
   {            0.003,  3.46779895686,    6279.5527316424, },
   {            0.003,  2.89822201212,    6127.6554505572, },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 /** @brief Simply put all B tables together. */
 inline constexpr std::array<Vsop87dTable, 5> B_array { B0, B1, B2, B3, B4, };
@@ -1517,6 +1521,7 @@ inline constexpr Vsop87dTables B { B_array };
 
 #pragma region R0-R5
 
+// NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<Coefficients, 526> R0 {{
   {    100013988.799,            0.0,                0.0, },
   {      1670699.626,  3.09846350771,    6283.0758499914, },
@@ -2531,6 +2536,7 @@ inline constexpr std::array<Coefficients, 3> R5 {{
   {            0.012,  0.65617264033,   12566.1516999828, },
   {            0.001,  0.38068797142,   18849.2275499742, },
 }};
+// NOLINTEND(modernize-use-designated-initializers)
 
 /** @brief Simply put all R tables together. */
 inline constexpr std::array<Vsop87dTable, 6> R_array { R0, R1, R2, R3, R4, R5, };

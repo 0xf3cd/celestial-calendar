@@ -61,7 +61,7 @@ TEST(SiderealTime, GreenwichMeanJ2000) {
 TEST(SiderealTime, GreenwichMeanArbitraryInstant) {
   // PyMeeus doctest value: 1987 April 10, 19h21m UT → mean sidereal time 0.357605204 d = 128.73787344°.
   // An arbitrary (non-0h) instant: the bare (12.3) polynomial would be off by ~360°×0.80625 ≈ 290°.
-  constexpr double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
+  constexpr double jd_ut1 = 2446895.5 + ((19.0 + (21.0 / 60.0)) / 24.0);
   ASSERT_NEAR(greenwich_mean(jd_ut1).deg(), 0.357605204 * 360.0, 5e-7);
 }
 
@@ -81,10 +81,10 @@ TEST(SiderealTime, GreenwichApparentMeeus12a) {
   //   GAST = 197.693195° + (−3.788/3600)°·cos(23.443569°) ≈ 197.6922296°.
   constexpr double jd_ut1 = 2446895.5;
   // The example evaluates nutation at 0h TD of the same date; ΔT ≈ 55 s (delta_t::compute).
-  const double jde_tt = jd_ut1 + astro::delta_t::compute(1987.0 + 99.0 / 365.0) / 86400.0; // std::pow is not constexpr until C++26.
+  const double jde_tt = jd_ut1 + (astro::delta_t::compute(1987.0 + (99.0 / 365.0)) / 86400.0); // std::pow is not constexpr until C++26.
 
-  constexpr double ε = 23.0 + 26.0 / 60.0 + 36.85 / 3600.0;
-  const double expected = normalize_deg(197.693195 + (-3.788 / 3600.0) * std::cos(deg_to_rad(ε)));
+  constexpr double ε = 23.0 + (26.0 / 60.0) + (36.85 / 3600.0);
+  const double expected = normalize_deg(197.693195 + ((-3.788 / 3600.0) * std::cos(deg_to_rad(ε))));
   ASSERT_NEAR(greenwich_apparent(jd_ut1, jde_tt).deg(), expected, 2e-6);
 
   // Cross-check with PyMeeus's doctest value (its nutation table = Meeus 22.A, Δψ = −3".788 there):
@@ -98,11 +98,11 @@ TEST(SiderealTime, GreenwichApparentComposition) {
   // and the correction (equation of the equinoxes) must stay small: |Δψ·cos ε| < ~17".4.
   for (auto i = 0; i < 100; ++i) {
     const double jd_ut1 = util::random(2378495.5, 2488069.5); // ~1800–2100
-    const double jde_tt = jd_ut1 + util::random(30.0, 100.0) / 86400.0; // realistic ΔT
+    const double jde_tt = jd_ut1 + (util::random(30.0, 100.0) / 86400.0); // realistic ΔT
 
     const auto Δψ = astro::earth::nutation::longitude(jde_tt);
     const auto ε  = astro::earth::obliquity::true_obliquity(jde_tt);
-    const double expected = normalize_deg(greenwich_mean(jd_ut1).deg() + Δψ.deg() * std::cos(ε.rad()));
+    const double expected = normalize_deg(greenwich_mean(jd_ut1).deg() + (Δψ.deg() * std::cos(ε.rad())));
 
     const auto gast = greenwich_apparent(jd_ut1, jde_tt);
     ASSERT_NEAR(gast.deg(), expected, 1e-12);
@@ -114,13 +114,13 @@ TEST(SiderealTime, LocalApparentMeeus13b) {
   // Meeus Example 13.b (Washington USNO, 1987 April 10, 19h21m UT): with α = 23h09m16.641s
   // (apparent RA of Venus) and H = +64°.352133, the local apparent sidereal time is
   // θ = H + α (mod 360°). Meeus's longitude is west-positive: lon = +77°03'56".
-  constexpr double jd_ut1 = 2446895.5 + (19.0 + 21.0 / 60.0) / 24.0;
-  const double jde_tt = jd_ut1 + astro::delta_t::compute(1987.0 + 99.0 / 365.0) / 86400.0; // ΔT ≈ 55 s in 1987.
-  constexpr double lon = 77.0 + 3.0 / 60.0 + 56.0 / 3600.0;
+  constexpr double jd_ut1 = 2446895.5 + ((19.0 + (21.0 / 60.0)) / 24.0);
+  const double jde_tt = jd_ut1 + (astro::delta_t::compute(1987.0 + (99.0 / 365.0)) / 86400.0); // ΔT ≈ 55 s in 1987.
+  constexpr double lon = 77.0 + (3.0 / 60.0) + (56.0 / 3600.0);
 
-  constexpr double α_hours = 23.0 + 9.0 / 60.0 + 16.641 / 3600.0;
+  constexpr double α_hours = 23.0 + (9.0 / 60.0) + (16.641 / 3600.0);
   // Not `constexpr`: the pinned toolchains still reject constexpr `std::remainder` (#82).
-  const double expected = normalize_deg(64.352133 + α_hours * 15.0);
+  const double expected = normalize_deg(64.352133 + (α_hours * 15.0));
 
   ASSERT_NEAR(local_apparent(jd_ut1, jde_tt, AngleDeg { lon }).deg(), expected, 2e-4);
 }
@@ -129,7 +129,7 @@ TEST(SiderealTime, LocalApparentLongitude) {
   // θ_local = θ_Greenwich − longitude, with longitude measured positive west (Meeus).
   for (auto i = 0; i < 100; ++i) {
     const double jd_ut1 = util::random(2378495.5, 2488069.5);
-    const double jde_tt = jd_ut1 + util::random(30.0, 100.0) / 86400.0;
+    const double jde_tt = jd_ut1 + (util::random(30.0, 100.0) / 86400.0);
     const double lon = util::random(-180.0, 180.0); // east-positive sites are negative here
 
     const double gast = greenwich_apparent(jd_ut1, jde_tt).deg();

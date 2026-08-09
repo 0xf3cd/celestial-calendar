@@ -56,9 +56,9 @@ namespace astro::sidereal {
   const double t_ut1 = d_ut1 / 36525.0;
 
   const double θ0 = 280.46061837
-                  + astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY * d_ut1
-                  + 0.000387933 * t_ut1 * t_ut1
-                  - (t_ut1 * t_ut1 * t_ut1) / 38710000.0;
+                  + (astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY * d_ut1)
+                  + (0.000387933 * t_ut1 * t_ut1)
+                  - ((t_ut1 * t_ut1 * t_ut1) / 38710000.0);
 
   return AngleDeg { θ0 }.normalize();
 }
