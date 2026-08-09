@@ -11,8 +11,11 @@ env:
   CELESTIAL_TEST_SEED: "42"
 
 jobs:
-  linters-and-static-analysis:  
-    runs-on: ubuntu-24.04
+  linters-and-static-analysis:
+    # 26.04 for the toolchain, not the OS: clang-tidy 22.1.2 ships in this image, and the
+    # vendored `run-clang-tidy.py` has to match its major (an 18 runner drives a 22 binary
+    # into `No checks enabled` -- zero findings, not a diagnosis). #73
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         python-version: ["3.12"]  
@@ -30,8 +33,9 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-          # Both pinned; see AGENTS.md gotcha 9 (#72, #73).
-          python3 -m pip install ruff==0.16.1 clang-tidy==18.1.8
+          # Pinned; see AGENTS.md gotcha 9 (#72). clang-tidy is not here any more -- it comes
+          # with the runner image, which is where its version is pinned now (#73).
+          python3 -m pip install ruff==0.16.1
 
       # Pure parsing, so it rides this leg rather than paying for a job of its own -- but it
       # goes before the toolchain: `linter.py` exits on the first finding, and behind the
@@ -39,19 +43,18 @@ jobs:
       - name: Check the AI workflows
         run: python3 ./linter.py --ai-workflows
 
-      - name: Install LLVM and clang++
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y llvm-18 clang-18
-
       - name: Install CMake
         run: sudo apt install cmake
 
+      # Every name carries its major: the image also ships unsuffixed `clang++` / `clang-tidy`
+      # symlinks, and inheriting whichever major those point at is the thing this job exists to
+      # prevent. `CLANG_TIDY` picks the binary, not a version -- the version is pinned by the
+      # image chosen above, and a second copy of it here is what gotcha 9 forbids.
       - name: Style Check
         env:
-          CXX: clang++-18
-          CC:  clang-18
+          CXX:         clang++-22
+          CC:          clang-22
+          CLANG_TIDY:  clang-tidy-22
         run: |
           chmod +x project.py
           ./project.py --clean --cmake

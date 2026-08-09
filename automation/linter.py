@@ -10,11 +10,13 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 
+import os
 import re
+import shutil
 
 from . import paths
 from .env import Tool, check_tool
-from .utils import run_cmd, yellow_print, red_print, green_print
+from .utils import run_cmd, yellow_print, red_print, green_print, blue_print
 
 
 def run_ruff() -> int:
@@ -42,9 +44,16 @@ def run_clang_tidy() -> int:
   """Run clang-tidy on the project CPP source code."""
   print("#" * 60)
 
-  if not check_tool(Tool("clang-tidy")):
-    red_print("clang-tidy not found!")
-    yellow_print("Install clang-tidy by `pip install clang-tidy`")
+  # `CLANG_TIDY` names the binary, never the version: the version is pinned in the workflow
+  # (gotcha 9) and a copy here would be a second one with no gate reconciling them. The default
+  # keeps the bare name so an unset variable behaves as it always has -- but an empty value is a
+  # typo rather than a request for the default, and `os.environ.get(name, default)` hands back
+  # that empty string, so the fallback has to be `or`.
+  binary = os.environ.get("CLANG_TIDY") or "clang-tidy"
+
+  if not check_tool(Tool(binary)):
+    red_print(f"{binary} not found!")
+    yellow_print("Install clang-tidy, or point CLANG_TIDY at the one to use")
     return 1
 
   build_dir = paths.build_dir()
@@ -54,9 +63,17 @@ def run_clang_tidy() -> int:
     red_print("compile_commands.json not found")
     return 1
 
+  # Which binary answered, spelled out: a runner one major ahead of its clang-tidy analyses a
+  # subset in silence rather than failing, and 11 findings where CI reports 20 is otherwise a
+  # mystery. Nothing here compares the version against anything -- it only says what ran.
+  version = run_cmd([binary, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
+  blue_print(f"# clang-tidy: {shutil.which(binary) or binary}")
+  blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
+
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/"],
+  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/",
+                 "-clang-tidy-binary", binary],
                 cwd=str(paths.proj_root()))
 
   if ret.retcode == 0:
