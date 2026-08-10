@@ -373,4 +373,52 @@ TEST(Illumination, PymeeusCrossDataset) {
   }
 }
 
+TEST(Illumination, HorizonsGoldenDataset) {
+  // Provenance: JPL Horizons, Moon (301), observer quantity 10 (Illu%), geocenter 500@399,
+  // TT scale, DE441 (gated at collection: the response must name {source: DE441}); 31 epochs
+  // = 30 seeded (uniform in [1900, 2053], seed 42) + the Example 48.a anchor, collected
+  // 2026-08-10. An independent ephemeris axis vs the pymeeus layer: DE441 positions instead
+  // of a formula re-implementation. Measured max gap 2.96e-5 (anchor 2.09e-5) — the VSOP87D
+  // + truncated-ELP position gap to DE441 in fraction units; tolerance 1e-4 ≈ 3.4× the
+  // measured max. (Collection note: Horizons sorts TLIST internally — pair rows with epochs
+  // by the date column or send the list sorted, never by input order.)
+  const std::vector<std::pair<double, double>> dataset {
+    { 2415385.489840, 0.8103975 },
+    { 2416425.179046, 0.9731384 },
+    { 2416510.839665, 0.9706886 },
+    { 2416694.001235, 0.7827412 },
+    { 2419903.245657, 0.7499212 },
+    { 2420229.384802, 0.8136035 },
+    { 2420452.381872, 0.0499964 },
+    { 2423752.695148, 0.7254120 },
+    { 2426187.818976, 0.2671733 },
+    { 2427299.864579, 0.2969376 },
+    { 2427401.106656, 0.5326651 },
+    { 2427556.684687, 0.9966361 },
+    { 2430466.971608, 0.0349559 },
+    { 2433924.659437, 0.1972981 },
+    { 2434129.989759, 0.1092300 },
+    { 2438716.895159, 0.9288772 },
+    { 2443402.769046, 0.1019231 },
+    { 2445626.048375, 0.8909732 },
+    { 2448115.428604, 0.6945596 },
+    { 2448724.500000, 0.6785466 },
+    { 2448927.565100, 0.3761539 },
+    { 2450932.627282, 0.1011004 },
+    { 2451519.959679, 0.0034017 },
+    { 2453025.973312, 0.0039855 },
+    { 2454230.102841, 0.5643179 },
+    { 2456382.932801, 0.7987653 },
+    { 2460277.726641, 0.9606601 },
+    { 2460480.542738, 0.9018989 },
+    { 2462618.326097, 0.2913258 },
+    { 2465127.981061, 0.3368562 },
+    { 2468780.457774, 0.9812148 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    ASSERT_NEAR(illumination::fraction(jde), expected, 1e-4);
+  }
+}
+
 } // namespace astro::moon_phase::test
