@@ -1,0 +1,52 @@
+name: WASM Build and Golden Check
+
+# Independent leg for the optional wasm target (#163) — deliberately outside the
+# build_and_test.yml matrix, so the emsdk toolchain never slows the main gate.
+on:
+  workflow_dispatch: {}  # Allows manual triggering of the workflow
+  pull_request:
+    branches: [ main ]  # Also triggers on pull requests to the main branch
+
+# Read-only is enough: this leg builds and checks, it uploads nothing and writes nothing.
+permissions:
+  contents: read
+
+# emsdk is pinned like every diagnostic-capable toolchain in this repo (AGENTS.md gotcha
+# 9): bump deliberately, never incidentally. The cache key makes a bump a fresh install.
+env:
+  EMSDK_VERSION: "6.0.6"
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # The unpacked SDK is ~2 GB; caching it turns the toolchain step into seconds.
+      # Activation state lives inside the directory, so a cache hit is ready to use.
+      - name: Cache emsdk
+        id: emsdk-cache
+        uses: actions/cache@v4
+        with:
+          path: emsdk
+          key: emsdk-${{ env.EMSDK_VERSION }}-${{ runner.os }}
+
+      - name: Install emsdk (cache miss only)
+        if: steps.emsdk-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git
+          ./emsdk/emsdk install "$EMSDK_VERSION"
+          ./emsdk/emsdk activate "$EMSDK_VERSION"
+
+      - name: Build the WASM module (web + node variants)
+        run: python3 toolbox/build_wasm.py --emsdk emsdk
+
+      # Runner's preinstalled node is enough — the checker is dependency-free.
+      - name: Golden dataset + sret + exception path + size gate
+        run: node toolbox/wasm_check.mjs

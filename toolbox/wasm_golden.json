@@ -1,0 +1,1258 @@
+{
+  "schema": "celestial-calendar/wasm-golden@1",
+  "provenance": {
+    "source_commit": "dbda68d1851db89ddd3a8e301a6e0b22eeb262cc",
+    "generated_on": "Darwin arm64, 2026-08-10",
+    "seed": 42
+  },
+  "entries": [
+    {
+      "year": 1950,
+      "idx": 0,
+      "y": 1950,
+      "m": 2,
+      "d": 4,
+      "frac_bits": "0x3fd8ece0ca06753c"
+    },
+    {
+      "year": 1950,
+      "idx": 1,
+      "y": 1950,
+      "m": 2,
+      "d": 19,
+      "frac_bits": "0x3fcc3a06b3fb663b"
+    },
+    {
+      "year": 1950,
+      "idx": 2,
+      "y": 1950,
+      "m": 3,
+      "d": 6,
+      "frac_bits": "0x3fc32798c48b7abc"
+    },
+    {
+      "year": 1950,
+      "idx": 3,
+      "y": 1950,
+      "m": 3,
+      "d": 21,
+      "frac_bits": "0x3fc875a7a8592552"
+    },
+    {
+      "year": 1950,
+      "idx": 4,
+      "y": 1950,
+      "m": 4,
+      "d": 5,
+      "frac_bits": "0x3fd74f9c836e4352"
+    },
+    {
+      "year": 1950,
+      "idx": 5,
+      "y": 1950,
+      "m": 4,
+      "d": 20,
+      "frac_bits": "0x3fe5508a580aff0a"
+    },
+    {
+      "year": 1950,
+      "idx": 6,
+      "y": 1950,
+      "m": 5,
+      "d": 6,
+      "frac_bits": "0x3fb9ba57be5aca3b"
+    },
+    {
+      "year": 1950,
+      "idx": 7,
+      "y": 1950,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fe49aaf1b220722"
+    },
+    {
+      "year": 1950,
+      "idx": 8,
+      "y": 1950,
+      "m": 6,
+      "d": 6,
+      "frac_bits": "0x3fd244d698c456f1"
+    },
+    {
+      "year": 1950,
+      "idx": 9,
+      "y": 1950,
+      "m": 6,
+      "d": 21,
+      "frac_bits": "0x3fef77d00055689a"
+    },
+    {
+      "year": 1950,
+      "idx": 10,
+      "y": 1950,
+      "m": 7,
+      "d": 7,
+      "frac_bits": "0x3fe6f69423dee5ae"
+    },
+    {
+      "year": 1950,
+      "idx": 11,
+      "y": 1950,
+      "m": 7,
+      "d": 23,
+      "frac_bits": "0x3fdbff716c2ebf02"
+    },
+    {
+      "year": 1950,
+      "idx": 12,
+      "y": 1950,
+      "m": 8,
+      "d": 8,
+      "frac_bits": "0x3fbf27ee291e1664"
+    },
+    {
+      "year": 1950,
+      "idx": 13,
+      "y": 1950,
+      "m": 8,
+      "d": 23,
+      "frac_bits": "0x3fe72ebabdd3f5f3"
+    },
+    {
+      "year": 1950,
+      "idx": 14,
+      "y": 1950,
+      "m": 9,
+      "d": 8,
+      "frac_bits": "0x3fcda9eaddff3a2f"
+    },
+    {
+      "year": 1950,
+      "idx": 15,
+      "y": 1950,
+      "m": 9,
+      "d": 23,
+      "frac_bits": "0x3fe3a29bb31b17b0"
+    },
+    {
+      "year": 1950,
+      "idx": 16,
+      "y": 1950,
+      "m": 10,
+      "d": 8,
+      "frac_bits": "0x3febd0ce71e668db"
+    },
+    {
+      "year": 1950,
+      "idx": 17,
+      "y": 1950,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fefa9509531294c"
+    },
+    {
+      "year": 1950,
+      "idx": 18,
+      "y": 1950,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3fefa3b098e11e68"
+    },
+    {
+      "year": 1950,
+      "idx": 19,
+      "y": 1950,
+      "m": 11,
+      "d": 22,
+      "frac_bits": "0x3fec0e6c5764df2e"
+    },
+    {
+      "year": 1950,
+      "idx": 20,
+      "y": 1950,
+      "m": 12,
+      "d": 7,
+      "frac_bits": "0x3fe5d0f10b4a883a"
+    },
+    {
+      "year": 1950,
+      "idx": 21,
+      "y": 1950,
+      "m": 12,
+      "d": 22,
+      "frac_bits": "0x3fdb429f1a55b03d"
+    },
+    {
+      "year": 1950,
+      "idx": 22,
+      "y": 1950,
+      "m": 1,
+      "d": 5,
+      "frac_bits": "0x3fecdc8bb4d885d6"
+    },
+    {
+      "year": 1950,
+      "idx": 23,
+      "y": 1950,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3fe3fdf718a7ff4a"
+    },
+    {
+      "year": 1999,
+      "idx": 0,
+      "y": 1999,
+      "m": 2,
+      "d": 4,
+      "frac_bits": "0x3fd2891ae8ab00fc"
+    },
+    {
+      "year": 1999,
+      "idx": 1,
+      "y": 1999,
+      "m": 2,
+      "d": 19,
+      "frac_bits": "0x3fbda8a97e95718f"
+    },
+    {
+      "year": 1999,
+      "idx": 2,
+      "y": 1999,
+      "m": 3,
+      "d": 6,
+      "frac_bits": "0x3fa4842b69b7e3d0"
+    },
+    {
+      "year": 1999,
+      "idx": 3,
+      "y": 1999,
+      "m": 3,
+      "d": 21,
+      "frac_bits": "0x3fb2d01f990c7a93"
+    },
+    {
+      "year": 1999,
+      "idx": 4,
+      "y": 1999,
+      "m": 4,
+      "d": 5,
+      "frac_bits": "0x3fcea2075f04fe6c"
+    },
+    {
+      "year": 1999,
+      "idx": 5,
+      "y": 1999,
+      "m": 4,
+      "d": 20,
+      "frac_bits": "0x3fe105a4ad4de61b"
+    },
+    {
+      "year": 1999,
+      "idx": 6,
+      "y": 1999,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3feeb05da542410d"
+    },
+    {
+      "year": 1999,
+      "idx": 7,
+      "y": 1999,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fdfa9cae2ab6ccc"
+    },
+    {
+      "year": 1999,
+      "idx": 8,
+      "y": 1999,
+      "m": 6,
+      "d": 6,
+      "frac_bits": "0x3fc0cfb4d1753580"
+    },
+    {
+      "year": 1999,
+      "idx": 9,
+      "y": 1999,
+      "m": 6,
+      "d": 21,
+      "frac_bits": "0x3fea6cbfb0eacd31"
+    },
+    {
+      "year": 1999,
+      "idx": 10,
+      "y": 1999,
+      "m": 7,
+      "d": 7,
+      "frac_bits": "0x3fe1e374f0e2a939"
+    },
+    {
+      "year": 1999,
+      "idx": 11,
+      "y": 1999,
+      "m": 7,
+      "d": 23,
+      "frac_bits": "0x3fd1f5e819b95dff"
+    },
+    {
+      "year": 1999,
+      "idx": 12,
+      "y": 1999,
+      "m": 8,
+      "d": 7,
+      "frac_bits": "0x3feefaf7913d3666"
+    },
+    {
+      "year": 1999,
+      "idx": 13,
+      "y": 1999,
+      "m": 8,
+      "d": 23,
+      "frac_bits": "0x3fe277da55ca893d"
+    },
+    {
+      "year": 1999,
+      "idx": 14,
+      "y": 1999,
+      "m": 9,
+      "d": 8,
+      "frac_bits": "0x3fb71c1302d6c2d8"
+    },
+    {
+      "year": 1999,
+      "idx": 15,
+      "y": 1999,
+      "m": 9,
+      "d": 23,
+      "frac_bits": "0x3fdebbc693258316"
+    },
+    {
+      "year": 1999,
+      "idx": 16,
+      "y": 1999,
+      "m": 10,
+      "d": 8,
+      "frac_bits": "0x3fe7bdd39ab125e3"
+    },
+    {
+      "year": 1999,
+      "idx": 17,
+      "y": 1999,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3febd3c46d35b200"
+    },
+    {
+      "year": 1999,
+      "idx": 18,
+      "y": 1999,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3febf3e9c246e59e"
+    },
+    {
+      "year": 1999,
+      "idx": 19,
+      "y": 1999,
+      "m": 11,
+      "d": 22,
+      "frac_bits": "0x3fe88d5272c739d3"
+    },
+    {
+      "year": 1999,
+      "idx": 20,
+      "y": 1999,
+      "m": 12,
+      "d": 7,
+      "frac_bits": "0x3fe26361c70aff1d"
+    },
+    {
+      "year": 1999,
+      "idx": 21,
+      "y": 1999,
+      "m": 12,
+      "d": 22,
+      "frac_bits": "0x3fd49d1ca74994e4"
+    },
+    {
+      "year": 1999,
+      "idx": 22,
+      "y": 1999,
+      "m": 1,
+      "d": 5,
+      "frac_bits": "0x3fe9b6e5aea0c07f"
+    },
+    {
+      "year": 1999,
+      "idx": 23,
+      "y": 1999,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3fe0d47387a2ec94"
+    },
+    {
+      "year": 2026,
+      "idx": 0,
+      "y": 2026,
+      "m": 2,
+      "d": 3,
+      "frac_bits": "0x3feab6b0f2d5c4fa"
+    },
+    {
+      "year": 2026,
+      "idx": 1,
+      "y": 2026,
+      "m": 2,
+      "d": 18,
+      "frac_bits": "0x3fe5274a36340733"
+    },
+    {
+      "year": 2026,
+      "idx": 2,
+      "y": 2026,
+      "m": 3,
+      "d": 5,
+      "frac_bits": "0x3fe2a4caa4bdc24d"
+    },
+    {
+      "year": 2026,
+      "idx": 3,
+      "y": 2026,
+      "m": 3,
+      "d": 20,
+      "frac_bits": "0x3fe3b0024a298438"
+    },
+    {
+      "year": 2026,
+      "idx": 4,
+      "y": 2026,
+      "m": 4,
+      "d": 4,
+      "frac_bits": "0x3fe8e360672bd818"
+    },
+    {
+      "year": 2026,
+      "idx": 5,
+      "y": 2026,
+      "m": 4,
+      "d": 20,
+      "frac_bits": "0x3fb19da9fe022582"
+    },
+    {
+      "year": 2026,
+      "idx": 6,
+      "y": 2026,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fdf7f87ebc115d0"
+    },
+    {
+      "year": 2026,
+      "idx": 7,
+      "y": 2026,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3f9a1c792a34741e"
+    },
+    {
+      "year": 2026,
+      "idx": 8,
+      "y": 2026,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fe51305f07d8ebc"
+    },
+    {
+      "year": 2026,
+      "idx": 9,
+      "y": 2026,
+      "m": 6,
+      "d": 21,
+      "frac_bits": "0x3fd66be7d6f433c6"
+    },
+    {
+      "year": 2026,
+      "idx": 10,
+      "y": 2026,
+      "m": 7,
+      "d": 7,
+      "frac_bits": "0x3fb4c9b99d001965"
+    },
+    {
+      "year": 2026,
+      "idx": 11,
+      "y": 2026,
+      "m": 7,
+      "d": 22,
+      "frac_bits": "0x3fe99fa4e63ba679"
+    },
+    {
+      "year": 2026,
+      "idx": 12,
+      "y": 2026,
+      "m": 8,
+      "d": 7,
+      "frac_bits": "0x3fdf3b5a9b247740"
+    },
+    {
+      "year": 2026,
+      "idx": 13,
+      "y": 2026,
+      "m": 8,
+      "d": 23,
+      "frac_bits": "0x3fb8ac126b7b62ce"
+    },
+    {
+      "year": 2026,
+      "idx": 14,
+      "y": 2026,
+      "m": 9,
+      "d": 7,
+      "frac_bits": "0x3fe395668a56e14e"
+    },
+    {
+      "year": 2026,
+      "idx": 15,
+      "y": 2026,
+      "m": 9,
+      "d": 23,
+      "frac_bits": "0x3f6d8bcf10a4c306"
+    },
+    {
+      "year": 2026,
+      "idx": 16,
+      "y": 2026,
+      "m": 10,
+      "d": 8,
+      "frac_bits": "0x3fd14cfe9bba7acd"
+    },
+    {
+      "year": 2026,
+      "idx": 17,
+      "y": 2026,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fd9af60d57f643e"
+    },
+    {
+      "year": 2026,
+      "idx": 18,
+      "y": 2026,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3fda503421e95315"
+    },
+    {
+      "year": 2026,
+      "idx": 19,
+      "y": 2026,
+      "m": 11,
+      "d": 22,
+      "frac_bits": "0x3fd3b401baf4bf70"
+    },
+    {
+      "year": 2026,
+      "idx": 20,
+      "y": 2026,
+      "m": 12,
+      "d": 7,
+      "frac_bits": "0x3fbeaac5be4f328a"
+    },
+    {
+      "year": 2026,
+      "idx": 21,
+      "y": 2026,
+      "m": 12,
+      "d": 21,
+      "frac_bits": "0x3febc856791e0205"
+    },
+    {
+      "year": 2026,
+      "idx": 22,
+      "y": 2026,
+      "m": 1,
+      "d": 5,
+      "frac_bits": "0x3fd65c97ca19e8e4"
+    },
+    {
+      "year": 2026,
+      "idx": 23,
+      "y": 2026,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3fb2a6d21b81104f"
+    },
+    {
+      "year": 2050,
+      "idx": 0,
+      "y": 2050,
+      "m": 2,
+      "d": 3,
+      "frac_bits": "0x3fe4f9608ae536a3"
+    },
+    {
+      "year": 2050,
+      "idx": 1,
+      "y": 2050,
+      "m": 2,
+      "d": 18,
+      "frac_bits": "0x3fdee55399998733"
+    },
+    {
+      "year": 2050,
+      "idx": 2,
+      "y": 2050,
+      "m": 3,
+      "d": 5,
+      "frac_bits": "0x3fd974a64fcde0aa"
+    },
+    {
+      "year": 2050,
+      "idx": 3,
+      "y": 2050,
+      "m": 3,
+      "d": 20,
+      "frac_bits": "0x3fdb8a596dbb292f"
+    },
+    {
+      "year": 2050,
+      "idx": 4,
+      "y": 2050,
+      "m": 4,
+      "d": 4,
+      "frac_bits": "0x3fe2bd4d4bec98fa"
+    },
+    {
+      "year": 2050,
+      "idx": 5,
+      "y": 2050,
+      "m": 4,
+      "d": 19,
+      "frac_bits": "0x3fec0ce0138a202e"
+    },
+    {
+      "year": 2050,
+      "idx": 6,
+      "y": 2050,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fd2c1c50d7a80c5"
+    },
+    {
+      "year": 2050,
+      "idx": 7,
+      "y": 2050,
+      "m": 5,
+      "d": 20,
+      "frac_bits": "0x3fea76fe180b9638"
+    },
+    {
+      "year": 2050,
+      "idx": 8,
+      "y": 2050,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fdd1b59170c7968"
+    },
+    {
+      "year": 2050,
+      "idx": 9,
+      "y": 2050,
+      "m": 6,
+      "d": 21,
+      "frac_bits": "0x3fc2f1408107ac8d"
+    },
+    {
+      "year": 2050,
+      "idx": 10,
+      "y": 2050,
+      "m": 7,
+      "d": 6,
+      "frac_bits": "0x3fec0b332a94d032"
+    },
+    {
+      "year": 2050,
+      "idx": 11,
+      "y": 2050,
+      "m": 7,
+      "d": 22,
+      "frac_bits": "0x3fe324de8e5db21a"
+    },
+    {
+      "year": 2050,
+      "idx": 12,
+      "y": 2050,
+      "m": 8,
+      "d": 7,
+      "frac_bits": "0x3fd2562886e16921"
+    },
+    {
+      "year": 2050,
+      "idx": 13,
+      "y": 2050,
+      "m": 8,
+      "d": 22,
+      "frac_bits": "0x3fecba5f01ee28b4"
+    },
+    {
+      "year": 2050,
+      "idx": 14,
+      "y": 2050,
+      "m": 9,
+      "d": 7,
+      "frac_bits": "0x3fdab2f25ac28d63"
+    },
+    {
+      "year": 2050,
+      "idx": 15,
+      "y": 2050,
+      "m": 9,
+      "d": 22,
+      "frac_bits": "0x3fe9f80b5ea30f2a"
+    },
+    {
+      "year": 2050,
+      "idx": 16,
+      "y": 2050,
+      "m": 10,
+      "d": 8,
+      "frac_bits": "0x3fb55fe5f58eea1a"
+    },
+    {
+      "year": 2050,
+      "idx": 17,
+      "y": 2050,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fcbba18e069328a"
+    },
+    {
+      "year": 2050,
+      "idx": 18,
+      "y": 2050,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3fcdaae31e348b40"
+    },
+    {
+      "year": 2050,
+      "idx": 19,
+      "y": 2050,
+      "m": 11,
+      "d": 22,
+      "frac_bits": "0x3fc091ffab29562e"
+    },
+    {
+      "year": 2050,
+      "idx": 20,
+      "y": 2050,
+      "m": 12,
+      "d": 6,
+      "frac_bits": "0x3fee4393e2372af7"
+    },
+    {
+      "year": 2050,
+      "idx": 21,
+      "y": 2050,
+      "m": 12,
+      "d": 21,
+      "frac_bits": "0x3fe63209bbca23c1"
+    },
+    {
+      "year": 2050,
+      "idx": 22,
+      "y": 2050,
+      "m": 1,
+      "d": 5,
+      "frac_bits": "0x3fc60a3b91c7152e"
+    },
+    {
+      "year": 2050,
+      "idx": 23,
+      "y": 2050,
+      "m": 1,
+      "d": 19,
+      "frac_bits": "0x3fecc0be6f3d2486"
+    },
+    {
+      "year": 2031,
+      "idx": 3,
+      "y": 2031,
+      "m": 3,
+      "d": 20,
+      "frac_bits": "0x3fea3e468f48b4a1"
+    },
+    {
+      "year": 1953,
+      "idx": 23,
+      "y": 1953,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3fd648606a3b6ea9"
+    },
+    {
+      "year": 1985,
+      "idx": 7,
+      "y": 1985,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fbcf76e9598b0cc"
+    },
+    {
+      "year": 1978,
+      "idx": 4,
+      "y": 1978,
+      "m": 4,
+      "d": 5,
+      "frac_bits": "0x3fc37fcf4d957519"
+    },
+    {
+      "year": 2044,
+      "idx": 3,
+      "y": 2044,
+      "m": 3,
+      "d": 19,
+      "frac_bits": "0x3fef1f9f144c613f"
+    },
+    {
+      "year": 2036,
+      "idx": 23,
+      "y": 2036,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3fe03ea158e73862"
+    },
+    {
+      "year": 2019,
+      "idx": 2,
+      "y": 2019,
+      "m": 3,
+      "d": 5,
+      "frac_bits": "0x3fec3754dc85cd4d"
+    },
+    {
+      "year": 2025,
+      "idx": 13,
+      "y": 2025,
+      "m": 8,
+      "d": 22,
+      "frac_bits": "0x3feb6b2605dddc15"
+    },
+    {
+      "year": 1954,
+      "idx": 0,
+      "y": 1954,
+      "m": 2,
+      "d": 4,
+      "frac_bits": "0x3fd6b33301a54365"
+    },
+    {
+      "year": 1961,
+      "idx": 6,
+      "y": 1961,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fe87937e7aedfbf"
+    },
+    {
+      "year": 1979,
+      "idx": 16,
+      "y": 1979,
+      "m": 10,
+      "d": 8,
+      "frac_bits": "0x3fecab081366c40b"
+    },
+    {
+      "year": 2027,
+      "idx": 0,
+      "y": 2027,
+      "m": 2,
+      "d": 4,
+      "frac_bits": "0x3fb2e50854fb4b89"
+    },
+    {
+      "year": 2021,
+      "idx": 6,
+      "y": 2021,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fd21880d174bb7c"
+    },
+    {
+      "year": 2041,
+      "idx": 20,
+      "y": 2041,
+      "m": 12,
+      "d": 6,
+      "frac_bits": "0x3fe859c3853277f0"
+    },
+    {
+      "year": 2039,
+      "idx": 17,
+      "y": 2039,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fe1e3c4b3cdd946"
+    },
+    {
+      "year": 2003,
+      "idx": 7,
+      "y": 2003,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fdde2686d8f2c23"
+    },
+    {
+      "year": 2007,
+      "idx": 18,
+      "y": 2007,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3fe9ddef857e6020"
+    },
+    {
+      "year": 1985,
+      "idx": 0,
+      "y": 1985,
+      "m": 2,
+      "d": 3,
+      "frac_bits": "0x3fec433861861193"
+    },
+    {
+      "year": 2047,
+      "idx": 5,
+      "y": 2047,
+      "m": 4,
+      "d": 20,
+      "frac_bits": "0x3fc2e51973bb0819"
+    },
+    {
+      "year": 2039,
+      "idx": 13,
+      "y": 2039,
+      "m": 8,
+      "d": 23,
+      "frac_bits": "0x3fcfe0effb0b81f6"
+    },
+    {
+      "year": 1993,
+      "idx": 8,
+      "y": 1993,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fe5ac075735d813"
+    },
+    {
+      "year": 1969,
+      "idx": 6,
+      "y": 1969,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fe670b0e458cbdd"
+    },
+    {
+      "year": 2047,
+      "idx": 10,
+      "y": 2047,
+      "m": 7,
+      "d": 7,
+      "frac_bits": "0x3fc2b68b76372142"
+    },
+    {
+      "year": 1963,
+      "idx": 2,
+      "y": 1963,
+      "m": 3,
+      "d": 6,
+      "frac_bits": "0x3fd36e588eaefc86"
+    },
+    {
+      "year": 1998,
+      "idx": 3,
+      "y": 1998,
+      "m": 3,
+      "d": 20,
+      "frac_bits": "0x3fea8b93743dacb9"
+    },
+    {
+      "year": 1995,
+      "idx": 11,
+      "y": 1995,
+      "m": 7,
+      "d": 23,
+      "frac_bits": "0x3fd3fc3a953140a3"
+    },
+    {
+      "year": 2027,
+      "idx": 8,
+      "y": 2027,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fec92a94b9a2730"
+    },
+    {
+      "year": 1955,
+      "idx": 23,
+      "y": 1955,
+      "m": 1,
+      "d": 20,
+      "frac_bits": "0x3feab5676f9a87e4"
+    },
+    {
+      "year": 2008,
+      "idx": 17,
+      "y": 2008,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fa866df5085a811"
+    },
+    {
+      "year": 1965,
+      "idx": 12,
+      "y": 1965,
+      "m": 8,
+      "d": 7,
+      "frac_bits": "0x3fe81a4ac5214b8f"
+    },
+    {
+      "year": 1960,
+      "idx": 17,
+      "y": 1960,
+      "m": 10,
+      "d": 23,
+      "frac_bits": "0x3fdabfd4323d1bd8"
+    },
+    {
+      "year": 1987,
+      "idx": 20,
+      "y": 1987,
+      "m": 12,
+      "d": 7,
+      "frac_bits": "0x3fe529260483f031"
+    },
+    {
+      "year": 2029,
+      "idx": 11,
+      "y": 2029,
+      "m": 7,
+      "d": 22,
+      "frac_bits": "0x3fe0ef4b5e168171"
+    },
+    {
+      "year": 2023,
+      "idx": 6,
+      "y": 2023,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fe86a9cc6f8574d"
+    },
+    {
+      "year": 2040,
+      "idx": 2,
+      "y": 2040,
+      "m": 3,
+      "d": 4,
+      "frac_bits": "0x3fef5c363855efc3"
+    },
+    {
+      "year": 1955,
+      "idx": 21,
+      "y": 1955,
+      "m": 12,
+      "d": 22,
+      "frac_bits": "0x3fe43e19e04b2848"
+    },
+    {
+      "year": 1979,
+      "idx": 9,
+      "y": 1979,
+      "m": 6,
+      "d": 21,
+      "frac_bits": "0x3fefea5ac1722174"
+    },
+    {
+      "year": 1960,
+      "idx": 7,
+      "y": 1960,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fb0a0f93ae50e24"
+    },
+    {
+      "year": 1962,
+      "idx": 12,
+      "y": 1962,
+      "m": 8,
+      "d": 8,
+      "frac_bits": "0x3f97fab7ecc59023"
+    },
+    {
+      "year": 1985,
+      "idx": 14,
+      "y": 1985,
+      "m": 9,
+      "d": 7,
+      "frac_bits": "0x3fe68318fac457c7"
+    },
+    {
+      "year": 2031,
+      "idx": 11,
+      "y": 2031,
+      "m": 7,
+      "d": 23,
+      "frac_bits": "0x3f7db26034db60f7"
+    },
+    {
+      "year": 1970,
+      "idx": 11,
+      "y": 1970,
+      "m": 7,
+      "d": 23,
+      "frac_bits": "0x3fd1a3cd29ae87f8"
+    },
+    {
+      "year": 1995,
+      "idx": 6,
+      "y": 1995,
+      "m": 5,
+      "d": 5,
+      "frac_bits": "0x3fef55bb6928cece"
+    },
+    {
+      "year": 2035,
+      "idx": 8,
+      "y": 2035,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fea765418767ef9"
+    },
+    {
+      "year": 2039,
+      "idx": 21,
+      "y": 2039,
+      "m": 12,
+      "d": 22,
+      "frac_bits": "0x3f9cd998a70e246a"
+    },
+    {
+      "year": 2032,
+      "idx": 2,
+      "y": 2032,
+      "m": 3,
+      "d": 5,
+      "frac_bits": "0x3f9c94bc827ea662"
+    },
+    {
+      "year": 2027,
+      "idx": 20,
+      "y": 2027,
+      "m": 12,
+      "d": 7,
+      "frac_bits": "0x3fd701b79d620775"
+    },
+    {
+      "year": 1971,
+      "idx": 17,
+      "y": 1971,
+      "m": 10,
+      "d": 24,
+      "frac_bits": "0x3fb41e672769a9de"
+    },
+    {
+      "year": 2043,
+      "idx": 7,
+      "y": 2043,
+      "m": 5,
+      "d": 21,
+      "frac_bits": "0x3fc0cff11a576e61"
+    },
+    {
+      "year": 1970,
+      "idx": 14,
+      "y": 1970,
+      "m": 9,
+      "d": 8,
+      "frac_bits": "0x3fb168c59cf0baed"
+    },
+    {
+      "year": 1998,
+      "idx": 8,
+      "y": 1998,
+      "m": 6,
+      "d": 5,
+      "frac_bits": "0x3fec4c2012a66260"
+    },
+    {
+      "year": 2031,
+      "idx": 22,
+      "y": 2031,
+      "m": 1,
+      "d": 5,
+      "frac_bits": "0x3fe1d8c84c834fcb"
+    },
+    {
+      "year": 2021,
+      "idx": 7,
+      "y": 2021,
+      "m": 5,
+      "d": 20,
+      "frac_bits": "0x3fea2858d66a4f5b"
+    },
+    {
+      "year": 2037,
+      "idx": 10,
+      "y": 2037,
+      "m": 7,
+      "d": 6,
+      "frac_bits": "0x3fe7e4360f93eeac"
+    },
+    {
+      "year": 2048,
+      "idx": 1,
+      "y": 2048,
+      "m": 2,
+      "d": 18,
+      "frac_bits": "0x3fefbed88d1496ee"
+    },
+    {
+      "year": 1979,
+      "idx": 1,
+      "y": 1979,
+      "m": 2,
+      "d": 19,
+      "frac_bits": "0x3fd09694ed9421ed"
+    },
+    {
+      "year": 1990,
+      "idx": 12,
+      "y": 1990,
+      "m": 8,
+      "d": 7,
+      "frac_bits": "0x3fe903139625a7da"
+    },
+    {
+      "year": 1984,
+      "idx": 2,
+      "y": 1984,
+      "m": 3,
+      "d": 5,
+      "frac_bits": "0x3fd918cda3330fde"
+    },
+    {
+      "year": 1977,
+      "idx": 18,
+      "y": 1977,
+      "m": 11,
+      "d": 7,
+      "frac_bits": "0x3fe104ce98530c93"
+    },
+    {
+      "year": 2041,
+      "idx": 10,
+      "y": 2041,
+      "m": 7,
+      "d": 6,
+      "frac_bits": "0x3fe6a20b36585db1"
+    }
+  ]
+}

@@ -387,7 +387,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
 4. **CI produces cross-platform artifacts:** GitHub Actions builds on macOS, Windows, and
    two Linux architectures (x86_64 and arm64), each in Docker on a *native* runner — the
    8-platform QEMU matrix was retired in 2026-07 (#46). Do not change compiler or Docker
-   base images without checking matrix impact.
+   base images without checking matrix impact. The optional wasm target (#163) has its own
+   independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`; its build
+   recipe lives in `toolbox/build_wasm.py` and is shared by the manual and CI legs.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -405,8 +407,8 @@ toolbox/        Helper scripts for artifacts, releases, build info
    touched the repository; a pin that goes stale instead fails loudly with "no such version",
    which says what to do. Pinned: clang on the Linux legs, choco LLVM on Windows (a different
    source, so the two are not expected to agree below the major), the Xcode **major** (a major
-   carries an Apple Clang major, and `-Werror` makes any new diagnostic in it a red build), and
-   ruff. **clang-tidy is pinned by the runner image** since #73: the linters leg picks its runner
+   carries an Apple Clang major, and `-Werror` makes any new diagnostic in it a red build),
+   ruff, and emsdk (`wasm.yml`, cache-keyed so a bump is a fresh install). **clang-tidy is pinned by the runner image** since #73: the linters leg picks its runner
    for the clang-tidy that image ships, calls the binary by its major, and the vendored
    `run-clang-tidy.py` carries the matching `llvmorg-` tag. A wrong pairing does not reliably
    announce itself. An older runner refuses to run at all, but a newer runner on an older binary
@@ -482,6 +484,7 @@ spreads when an out-of-repo consumer reports getting `valid = false` with no way
 | Build only | `./project.py --build` |
 | Run tests, verbose | `./project.py --test -v 1` |
 | Run benchmarks | `./project.py --bench` |
+| Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
 | Filtered tests | `./project.py --test -k <keyword>` |
 | Clean | `./project.py --clean` |
 | Python lint/format | `./linter.py --ruff` |
