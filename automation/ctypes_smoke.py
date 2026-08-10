@@ -78,6 +78,17 @@ def check_ctypes_smoke() -> int:
     ("algo3 supported range -> (1600, 2199)",
      lambda: common.get_supported_lunar_year_range(algo3),
      common.SupportedLunarYearRange(start=1600, end=2199)),
+    # Meeus Example 48.a (1992-04-12 0h TT): both fields must come back from the right
+    # struct members — that is the plumbing this gate exists to pin.
+    ("moon_illumination(1992-04-12 0h TT) -> Example 48.a",
+     lambda: round(common.moon_illumination(2448724.5).illumination, 4),
+     0.6786),
+    ("moon_illumination elongation_deg from the right member",
+     lambda: round(common.moon_illumination(2448724.5).elongation_deg, 4),
+     110.8275),
+    ("local_apparent_sidereal_time(2460463.0, +120E) -> 190.4627",
+     lambda: round(common.local_apparent_sidereal_time(2460463.0, 120.0), 4),
+     190.4627),
   ]
 
   # (label, call) -- invalid inputs must surface as ValueError, not a wrong date.
@@ -90,6 +101,8 @@ def check_ctypes_smoke() -> int:
      lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 30)),
     ("gregorian_to_lunar(2023-13-01): month out of range",
      lambda: common.gregorian_to_lunar(algo1, 2023, 13, 1)),
+    ("local_apparent_sidereal_time(1000000.0, 0): outside the [401, 32767] window",
+     lambda: common.local_apparent_sidereal_time(1000000.0, 0.0)),
   ]
 
   failures: List[str] = []

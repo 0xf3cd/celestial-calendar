@@ -181,6 +181,38 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 #pragma endregion
 
 
+#pragma region Moon Illumination
+
+auto moon_illumination(const double jde) -> MoonIllumination {
+  lib::clear_last_error();
+
+  try {
+    if (not std::isfinite(jde)) {
+      throw std::invalid_argument {
+        std::format("Argument `jde` is not finite, got {}", jde)
+      };
+    }
+
+    return {
+      .valid          = true,
+      .illumination   = astro::moon_phase::illumination::fraction(jde),
+      .elongation_deg = astro::moon_phase::new_moon::longitude_diff(jde),
+    };
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Error in moon_illumination: {}", e.what());
+    lib::debug("moon_illumination: jde = {}", jde);
+
+    return {};
+  } catch (...) {
+    lib::set_last_error("Unknown error in moon_illumination.");
+    return {};
+  }
+}
+
+#pragma endregion
+
+
 #pragma region Solar Longitude Roots
 
 auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
@@ -384,6 +416,50 @@ auto apparent_solar_time(
 
     return {};
   } catch (...) {
+    return {};
+  }
+}
+
+#pragma endregion
+
+
+#pragma region Sidereal Time
+
+auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> SiderealTime {
+  lib::clear_last_error();
+
+  try {
+    if (not std::isfinite(jd_ut1)) {
+      throw std::invalid_argument {
+        std::format("Argument `jd` is not finite, got {}", jd_ut1)
+      };
+    }
+    if (not std::isfinite(longitude)) {
+      throw std::invalid_argument {
+        std::format("Argument `longitude` is not finite, got {}", longitude)
+      };
+    }
+
+    // Nutation needs the instant on TT; this conversion also carries the [401, 32767]
+    // year window (jd_to_ut1's guard), which is this export's declared domain (celestial.h).
+    const double jde_tt = astro::julian_day::ut1_to_jde(astro::julian_day::jd_to_ut1(jd_ut1));
+
+    // The boundary speaks east-positive (like `apparent_solar_time`); the core's
+    // `local_apparent` takes west-positive, hence the negation (#127/D2).
+    const auto last = astro::sidereal::local_apparent(jd_ut1, jde_tt, astro::toolbox::AngleDeg { -longitude });
+
+    return {
+      .valid = true,
+      .value = last.deg(),
+    };
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Error in local_apparent_sidereal_time: {}", e.what());
+    lib::debug("local_apparent_sidereal_time: jd = {}, longitude = {}", jd_ut1, longitude);
+
+    return {};
+  } catch (...) {
+    lib::set_last_error("Unknown error in local_apparent_sidereal_time.");
     return {};
   }
 }
