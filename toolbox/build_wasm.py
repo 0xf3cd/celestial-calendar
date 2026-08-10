@@ -26,86 +26,121 @@ from typing import Final
 PROJ_ROOT: Final[Path] = Path(__file__).parent.parent
 SRC_DIR: Final[Path] = PROJ_ROOT / "src"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "wasm"
+MODULE_STEM: Final[str] = "celestial-jieqi"
 
-# The narrow export surface (#163): Jieqi + Julian Day only. Widening it is a deliberate
-# act -- every added entry ships bytes to every visitor's browser.
+# The narrow export surface (#163): Jieqi + Julian Day + `last_error` -- the three JD
+# functions are exactly the ones that WRITE `last_error` (celestial.h), and without the
+# reader a wasm consumer gets `valid = false` with no way to learn why. Widening the
+# surface further is a deliberate act -- every added entry ships bytes to the browser.
 EXPORTS: Final[list[str]] = [
-  "query_jieqi_moment", "get_jieqi_name",
-  "ut1_to_jd", "ut1_to_jde", "jde_to_ut1",
-  "malloc", "free",  # the sret struct return needs caller-side scratch space
+  "query_jieqi_moment",
+  "get_jieqi_name",
+  "ut1_to_jd",
+  "ut1_to_jde",
+  "jde_to_ut1",
+  "last_error",
+  "malloc",
+  "free",  # the sret struct return needs caller-side scratch space
 ]
 
 # HEAP* views are how the JS side reads the sret struct; ccall for convenience wrappers.
 RUNTIME_METHODS: Final[list[str]] = ["ccall", "HEAPU8", "HEAP32", "HEAPU32", "HEAPF64"]
 
 # -fwasm-exceptions is not optional: the library throws on bad input and the C ABI turns
-# that into `valid = false`; without it a throw is a module trap (#163 terrain).
+# that into `valid = false`; without it a throw is a module trap (#163).
+# -DNDEBUG keeps this a Release-shaped build like every other consumer (AGENTS.md gotcha
+# 8): without it asserts stay live -- they abort (which the valid=false contract forbids)
+# and bake the build machine's absolute paths into the artifact via __FILE__.
+# -sENVIRONMENT=web,node is one build for both homes: the two ENVIRONMENT variants produce
+# a bit-identical .wasm (measured #163), only the glue differs, and this glue speaks both.
 COMMON_FLAGS: Final[list[str]] = [
-  "-Oz", "-std=c++23", "-fwasm-exceptions",
-  "-I", str(SRC_DIR / "astro"), "-I", str(SRC_DIR / "calendar"), "-I", str(SRC_DIR / "util"),
-  "-sEXPORT_ES6=1", "-sMODULARIZE=1", "-sFILESYSTEM=0",
+  "-Oz",
+  "-std=c++23",
+  "-DNDEBUG",
+  "-fwasm-exceptions",
+  "-I",
+  str(SRC_DIR / "astro"),
+  "-I",
+  str(SRC_DIR / "calendar"),
+  "-I",
+  str(SRC_DIR / "util"),
+  "-sEXPORT_ES6=1",
+  "-sMODULARIZE=1",
+  "-sFILESYSTEM=0",
+  "-sENVIRONMENT=web,node",
 ]
 
 
 def emsdk_dir(explicit: str | None) -> Path:
-  """Locate the emsdk checkout: --emsdk wins, then $EMSDK, then ~/repos/emsdk."""
+  """Locate the emsdk checkout. An explicit --emsdk is authoritative: a bad one is an
+  error, not a hint to look elsewhere. Without it, $EMSDK (set by `emsdk_env.sh`) is
+  the only fallback -- no machine-specific default paths in a shared script."""
   candidates = [Path(explicit)] if explicit else []
-  if os.environ.get("EMSDK"):
+  if not explicit and os.environ.get("EMSDK"):
     candidates.append(Path(os.environ["EMSDK"]))
-  candidates.append(Path.home() / "repos" / "emsdk")
 
   for cand in candidates:
     if (cand / "upstream" / "emscripten" / "em++").is_file():
       return cand
-  tried = ", ".join(str(c) for c in candidates)
+  tried = ", ".join(str(c) for c in candidates) or "(none)"
   raise FileNotFoundError(
-    f"em++ not found under any candidate ({tried}) -- "
-    "clone https://github.com/emscripten-core/emsdk.git, then "
-    "./emsdk install <ver> && ./emsdk activate <ver>"
+    f"em++ not found under {tried} -- clone https://github.com/emscripten-core/emsdk.git, "
+    "then ./emsdk install <ver> && ./emsdk activate <ver>, and pass --emsdk or set $EMSDK"
   )
 
 
-def build_variant(sdk: Path, sources: list[Path], env_name: str, out_dir: Path) -> None:
-  """Build one -sENVIRONMENT=<env_name> variant. `web` is the shippable shape; `node`
-  exists so toolbox/wasm_check.mjs can run the golden dataset without a browser."""
+def emsdk_python(sdk: Path) -> Path:
+  """The python emsdk ships, so em++ does not depend on whatever python3 the host PATH
+  happens to hold (emscripten needs >= 3.10; a stock macOS has 3.9)."""
+  candidates = sorted((sdk / "python").glob("*/bin/python3"))
+  if not candidates:
+    raise FileNotFoundError(f"no bundled python under {sdk / 'python'}")
+  return candidates[0]
+
+
+def build(sdk: Path, sources: list[Path], out_dir: Path) -> None:
+  """Build celestial-jieqi.{mjs,wasm}. Stale outputs are cleared first (#155's lesson:
+  a renamed or deleted variant must stop silently passing the checker)."""
   env = dict(os.environ)
   env["EMSDK"] = str(sdk)
-  env["PATH"] = f"{sdk}:{sdk / 'upstream' / 'emscripten'}:{env['PATH']}"
+  env["EMSDK_PYTHON"] = str(emsdk_python(sdk))
+  env["PATH"] = os.pathsep.join([str(sdk), str(sdk / "upstream" / "emscripten"), env["PATH"]])
 
-  out = out_dir / f"celestial-jieqi-{env_name}.mjs"
+  out = out_dir / f"{MODULE_STEM}.mjs"
   cmd = [
     str(sdk / "upstream" / "emscripten" / "em++"),
     *COMMON_FLAGS,
     *[str(s) for s in sources],
     f"-sEXPORTED_FUNCTIONS={','.join('_' + e for e in EXPORTS)}",
     f"-sEXPORTED_RUNTIME_METHODS={','.join(RUNTIME_METHODS)}",
-    f"-sENVIRONMENT={env_name}",
-    "-o", str(out),
+    "-o",
+    str(out),
   ]
   print(f"[ build_wasm ] {' '.join(cmd)}")
   ret = subprocess.run(cmd, env=env)
   if ret.returncode != 0:
-    raise RuntimeError(f"em++ failed ({env_name} variant), exit {ret.returncode}")
+    raise RuntimeError(f"em++ failed, exit {ret.returncode}")
   print(f"[ build_wasm ] {out} + {out.with_suffix('.wasm')}")
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(
-    description="Build the browser WASM module from the shared-library sources (#163)."
+  parser = argparse.ArgumentParser(description="Build the browser WASM module from the shared-library sources (#163).")
+  parser.add_argument("--emsdk", default=None, help="path to the emsdk checkout (else $EMSDK)")
+  parser.add_argument(
+    "--out-dir", type=Path, default=DEFAULT_OUT_DIR, help=f"output directory (default {DEFAULT_OUT_DIR})"
   )
-  parser.add_argument("--emsdk", default=None, help="path to the emsdk checkout")
-  parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR,
-                      help=f"output directory (default {DEFAULT_OUT_DIR})")
   args = parser.parse_args()
 
   sdk = emsdk_dir(args.emsdk)
   args.out_dir.mkdir(parents=True, exist_ok=True)
+  for stale in args.out_dir.glob(f"{MODULE_STEM}*"):
+    stale.unlink()
 
-  # Mirror shared_lib/CMakeLists.txt's GLOB: every lib*.cpp goes in, so a new source file
-  # reaches the wasm build without anyone remembering this script.
+  # Mirrors shared_lib/CMakeLists.txt's GLOB for source FILES: a new lib*.cpp needs no
+  # edit here. Include DIRECTORIES are a second copy of src/CMakeLists.txt's
+  # include_directories (see COMMON_FLAGS) -- a new src/<domain>/ must be added by hand.
   sources = sorted((SRC_DIR / "shared_lib").glob("lib*.cpp"))
   if not sources:
     raise FileNotFoundError(f"no lib*.cpp under {SRC_DIR / 'shared_lib'}")
 
-  for variant in ("web", "node"):
-    build_variant(sdk, sources, variant, args.out_dir)
+  build(sdk, sources, args.out_dir)

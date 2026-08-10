@@ -20,6 +20,7 @@ import json
 import ctypes
 import random
 import platform
+import struct
 
 from ctypes import c_int32, c_uint32, c_uint8, c_double, c_bool, Structure
 from datetime import date
@@ -29,17 +30,17 @@ from typing import Final
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
 
-import struct
-
 from automation import paths, run_cmd
 
 
 OUT_PATH: Final[Path] = Path(__file__).parent / "wasm_golden.json"
 
-# Dataset shape (#163): the four window-edge years at all 24 indices (boundary behaviour
-# is where regressions would live), plus a seeded random fill for the interior.
+# Dataset shape (#163): the real validity edges at all 24 indices (401 = the UT1 chain's
+# floor, 32766 = the declared max of jieqi_jde), the site nav's consumer window
+# (1950/2050), and interior years -- plus a seeded random fill. Out-of-window years are
+# invalid natively, so the throw path lives in the checker's exception probe instead.
 SEED: Final[int] = 42
-EDGE_YEARS: Final[list[int]] = [1950, 1999, 2026, 2050]
+EDGE_YEARS: Final[list[int]] = [401, 1950, 1999, 2026, 2050, 32766]
 RANDOM_POINTS: Final[int] = 60
 
 
@@ -102,9 +103,6 @@ def generate() -> dict:
       "source_commit": source_commit(),
       "generated_on": f"{platform.system()} {platform.machine()}, {date.today().isoformat()}",
       "seed": SEED,
-      # The checker allows a ULP gap, not bit equality: the wasm build links musl's libm
-      # while each native platform links its own, and their trig results can differ at the
-      # 1-ULP level (#163 terrain: 208 ULP measured macOS-native vs wasm).
     },
     "entries": entries,
   }

@@ -388,8 +388,7 @@ toolbox/        Helper scripts for artifacts, releases, build info
    two Linux architectures (x86_64 and arm64), each in Docker on a *native* runner — the
    8-platform QEMU matrix was retired in 2026-07 (#46). Do not change compiler or Docker
    base images without checking matrix impact. The optional wasm target (#163) has its own
-   independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`; its build
-   recipe lives in `toolbox/build_wasm.py` and is shared by the manual and CI legs.
+   independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -408,7 +407,8 @@ toolbox/        Helper scripts for artifacts, releases, build info
    which says what to do. Pinned: clang on the Linux legs, choco LLVM on Windows (a different
    source, so the two are not expected to agree below the major), the Xcode **major** (a major
    carries an Apple Clang major, and `-Werror` makes any new diagnostic in it a red build),
-   ruff, and emsdk (`wasm.yml`, cache-keyed so a bump is a fresh install). **clang-tidy is pinned by the runner image** since #73: the linters leg picks its runner
+   ruff, and emsdk (`wasm.yml`, cache-keyed so a bump is a fresh install). **clang-tidy is
+   pinned by the runner image** since #73: the linters leg picks its runner
    for the clang-tidy that image ships, calls the binary by its major, and the vendored
    `run-clang-tidy.py` carries the matching `llvmorg-` tag. A wrong pairing does not reliably
    announce itself. An older runner refuses to run at all, but a newer runner on an older binary
@@ -472,7 +472,9 @@ spreads when an out-of-repo consumer reports getting `valid = false` with no way
 - DON'T round / drop astronomical constants or loosen tolerances to pass CI (see above).
 - DON'T ASCII-ise unicode identifiers, move logic out of headers, or add namespace-scope
   `using` to a header.
-- DON'T add a dependency or build step outside the `project.py` / `linter.py` flow.
+- DON'T add a dependency or build step outside the `project.py` / `linter.py` flow — the
+  wasm build is the sanctioned exception (#163): its recipe lives in `toolbox/build_wasm.py`
+  and is shared by the manual leg and the `wasm.yml` CI leg.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference

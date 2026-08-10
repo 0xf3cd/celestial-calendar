@@ -41,7 +41,6 @@ template <typename T>
 
   // Mix in 64 bits regardless of size_t's width (#163): a 32-bit accumulator would UB
   // the >> 32 finalizer on wasm32; on 64-bit this is bit-identical to the old size_t mix.
-  // Only cache keys depend on it, so wasm/native key divergence is unobservable.
   v_hash ^= static_cast<std::uint64_t>(seed) * 0xc4ceb9fe1a85ec53;
   v_hash ^= (v_hash >> 13) * 0xff51afd7ed558ccd;
 

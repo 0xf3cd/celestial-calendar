@@ -40,7 +40,7 @@ jobs:
       - name: Install emsdk (cache miss only)
         if: steps.emsdk-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 https://github.com/emscripten-core/emsdk.git
+          git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git
           ./emsdk/emsdk install "$EMSDK_VERSION"
           ./emsdk/emsdk activate "$EMSDK_VERSION"
 
