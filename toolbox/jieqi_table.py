@@ -89,8 +89,10 @@ def find_shared_lib() -> Path:
   ] if folder.is_dir() else []
 
   # Prefer the unversioned name (the latest build's link): versioned outputs accumulate
-  # in the build dir. The name tiebreak keeps the pick deterministic.
-  candidates.sort(key=lambda p: (p.name != f"libcelestial_calendar{ext}", p.name))
+  # in the build dir. Either prefix counts -- Windows drops the `lib`. Name tiebreak
+  # keeps the pick deterministic.
+  unversioned_re = re.compile(rf"^(?:lib)?celestial_calendar{re.escape(ext)}$")
+  candidates.sort(key=lambda p: (not unversioned_re.match(p.name), p.name))
   if not candidates:
     raise FileNotFoundError(f"Shared library not found under {folder} -- run ./project.py --build first")
   return candidates[0]
@@ -127,7 +129,10 @@ def to_unix_ms(y: int, m: int, d: int, frac: float) -> int:
 def iso_from_unix_ms(unix_ms: int) -> str:
   """ISO-8601 rendering of the same millisecond, so the two fields cannot drift apart."""
   dt = datetime(1970, 1, 1) + timedelta(milliseconds=unix_ms)
-  return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
+  # No strftime: %Y is platform-dependent below year 1000 (glibc doesn't zero-pad,
+  # the Windows CRT rejects years < 1900), and the window starts at 401.
+  return (f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
+          f"T{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}.{dt.microsecond // 1000:03d}Z")
 
 
 def source_commit() -> str:
