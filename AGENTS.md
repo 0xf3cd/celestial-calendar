@@ -403,16 +403,17 @@ toolbox/        Helper scripts for artifacts, releases, build info
 9. **CI toolchains are pinned — every one that can emit a diagnostic.** A tool that updates
    itself turns "the code changed" and "the tool changed" into the same red X, on a day nobody
    touched the repository; a pin that goes stale instead fails loudly with "no such version",
-   which says what to do. Pinned: clang at **18** on the Linux legs, choco LLVM at
-   **20** on Windows (not the 18 the Linux legs use — a pre-existing split these pins record
-   rather than create), the Xcode **major** (a major carries an Apple Clang major, and `-Werror`
-   makes any new diagnostic in it a red build), and ruff. **clang-tidy is pinned by the runner
-   image** since #73: the linters leg picks `ubuntu-26.04` for the 22.1.2 it ships, calls the
-   binary by its major, and the vendored `run-clang-tidy.py` carries the matching `llvmorg-22.1.2`.
-   Of the two ways to get that pairing wrong, only one is loud: an older runner refuses to run
-   at all, while a newer runner on an older binary exits 0 and quietly measures with a smaller
-   ruler. Exact versions live in the workflows, not here — there is no gate reconciling two
-   copies. Chocolatey's `make` is deliberately outside this: it drives the build rather than
+   which says what to do. Pinned: clang on the Linux legs, choco LLVM on Windows (a different
+   source, so the two are not expected to agree below the major), the Xcode **major** (a major
+   carries an Apple Clang major, and `-Werror` makes any new diagnostic in it a red build), and
+   ruff. **clang-tidy is pinned by the runner image** since #73: the linters leg picks its runner
+   for the clang-tidy that image ships, calls the binary by its major, and the vendored
+   `run-clang-tidy.py` carries the matching `llvmorg-` tag. A wrong pairing does not reliably
+   announce itself. An older runner refuses to run at all, but a newer runner on an older binary
+   has been measured both ways — exiting 0 while quietly analysing with a smaller ruler, and
+   failing on diagnostics the newer binary no longer emits. Read the version the binary reports,
+   not the exit code. Exact versions live in the workflows, not here — there is no gate
+   reconciling two copies. Chocolatey's `make` is deliberately outside this: it drives the build rather than
    diagnosing it, so a new version cannot turn `-Werror` red.
    Bump deliberately, never incidentally (#72, #73).
 

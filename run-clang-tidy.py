@@ -7,6 +7,11 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # ===-----------------------------------------------------------------------===#
+#
+# Vendored from llvm-project at tag llvmorg-22.1.2; this comment is the only local edit. Its
+# major has to match the clang-tidy CI runs (AGENTS.md gotcha 9), so re-vendor rather than patch:
+# raw.githubusercontent.com/llvm/llvm-project/llvmorg-<tag>/clang-tools-extra/clang-tidy/tool/
+#
 # FIXME: Integrate with clang-tidy-diff.py
 
 
