@@ -29,7 +29,7 @@ import { statSync } from 'node:fs';
 //                    absolute. 1e-8 day = 0.86 ms, ~5x above the measured worst; the ΔT
 //                    models' own uncertainty at those eras is minutes. Year/month/day
 //                    must match exactly -- no tolerance there.
-//   MAX_WASM_BYTES — raw-byte cap on the .wasm (measured 381,216 on 2026-08-10 with
+//   MAX_WASM_BYTES — raw-byte cap on the .wasm (measured 381,216 with
 //                    -Oz -DNDEBUG, emsdk 6.0.6). Crossing it means someone's export or
 //                    dependency fattened the artifact; that takes an explanation.
 const MAX_FRAC_DIFF_DAYS = 1e-8;

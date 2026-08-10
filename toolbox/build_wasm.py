@@ -92,10 +92,9 @@ def emsdk_dir(explicit: str | None) -> Path:
 
 def emsdk_python(sdk: Path) -> str:
   """The interpreter em++ is driven with. Prefer the python emsdk ships -- it does not
-  ship one on every platform (Linux 6.0.6 has none, macOS does); without a bundled one,
-  use the interpreter running this script (already >= 3.10 wherever this script parses).
-  The point is keeping em++ off whatever python3 the host PATH holds (stock macOS = 3.9,
-  which emscripten rejects)."""
+  ship one on every platform; without a bundled one, use the interpreter running this
+  script (already >= 3.10 wherever this script parses). The point is keeping em++ off
+  whatever python3 the host PATH holds (stock macOS = 3.9, which emscripten rejects)."""
   candidates = sorted((sdk / "python").glob("*/bin/python3"))
   return str(candidates[0]) if candidates else sys.executable
 
