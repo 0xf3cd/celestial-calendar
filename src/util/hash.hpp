@@ -36,16 +36,13 @@ template <typename T>
 [[nodiscard]] inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
   // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   // Don't lint this code, because clang-tidy complains about calculating hash for `std::string`.
-  auto v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
+  std::uint64_t v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
   // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
-  v_hash ^= seed * 0xc4ceb9fe1a85ec53;
+  // Mix in 64 bits regardless of size_t's width (#163): a 32-bit accumulator would UB
+  // the >> 32 finalizer on wasm32; on 64-bit this is bit-identical to the old size_t mix.
+  v_hash ^= static_cast<std::uint64_t>(seed) * 0xc4ceb9fe1a85ec53;
   v_hash ^= (v_hash >> 13) * 0xff51afd7ed558ccd;
-
-  // The finalizer assumes a 64-bit `size_t`: on a 32-bit one the shifts would be UB rather
-  // than merely weaker, so fail the compile instead.
-  static_assert(sizeof(std::size_t) == sizeof(std::uint64_t),
-                "hash_combine's finalizer shifts by 32 and needs a 64-bit size_t");
 
   // A multiply only carries bits upward, so on its own the high half of the input never
   // reaches the low bits -- the xorshifts either side of the golden-ratio multiply bring
@@ -54,7 +51,7 @@ template <typename T>
   v_hash *= 0x9e3779b97f4a7c15;
   v_hash ^= v_hash >> 32;
 
-  return v_hash;
+  return static_cast<std::size_t>(v_hash);
 }
 
 template <typename T>
