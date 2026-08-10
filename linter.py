@@ -20,6 +20,7 @@ import argparse
 from automation import (
   run_ruff, run_clang_tidy, check_self_contained, probe_features, check_abi_layout,
   check_ctypes_smoke, check_export_surface, check_log_names, check_ai_workflows,
+  check_jieqi_table,
 )
 
 
@@ -46,12 +47,15 @@ def parse_args() -> argparse.Namespace:
       "    ./linter.py --log-names\n\n"
       "  To hold the AI workflows to the settings of theirs that fail silently:\n"
       "    ./linter.py --ai-workflows\n\n"
+      "  To hold the exported jieqi table to its invariants and the HKO anchors\n"
+      "  (needs ./project.py --build first):\n"
+      "    ./linter.py --jieqi-table\n\n"
       "  To report which awaited C++ features this toolchain can compile:\n"
       "    ./linter.py --features\n\n"
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./linter.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
-      "  export surface, log names, AI workflows, feature report):\n"
+      "  export surface, log names, AI workflows, jieqi table, feature report):\n"
       "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
@@ -72,6 +76,8 @@ def parse_args() -> argparse.Namespace:
                       help="Hold the lib_*.cpp log strings to the celestial.h entry-point names")
   parser.add_argument("--ai-workflows", action="store_true",
                       help="Hold the AI workflows to the settings of theirs that fail silently")
+  parser.add_argument("--jieqi-table", action="store_true",
+                      help="Hold the exported jieqi table to its invariants (needs a build)")
   parser.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
                       help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
 
@@ -108,6 +114,11 @@ if __name__ == "__main__":
 
   if args.ctypes_smoke or args.all:
     ret_code = check_ctypes_smoke()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  if args.jieqi_table or args.all:
+    ret_code = check_jieqi_table()
     if ret_code != 0:
       sys.exit(ret_code)
 
