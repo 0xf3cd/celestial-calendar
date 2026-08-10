@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Jieqi table JSON export (#164): `toolbox/jieqi_table.py` turns `query_jieqi_moment` into one static table (default 1950–2051, the last year being tail margin so every 1950–2050 moment keeps its successor in-table). Entries are `{year, idx, name_zh, unix_ms, iso_utc}`, sorted by moment rather than by ABI index; the timescale is stated as modelled UT1 with the per-era distance from UTC written into the table's own metadata. Held by a `./linter.py --jieqi-table` gate: count, strict ordering, year containment, the idx ↔ name mapping against an independent transcription, determinism, re-derivation through the second ctypes binding, and HKO almanac anchors.
+
 ### Changed
 
 - Export surface closed to the published C ABI (#91): explicit `CELESTIAL_API` on every `celestial.h` entry point, hidden default visibility, `SOVERSION` = major.minor while 0.x, and release packaging via `cmake --install` — with a CI gate holding the exported symbol set to the header's entry points. Release archives change shape: the library now sits under `lib/` (`bin/` on Windows, with the import library in `lib/`) and the header under `include/`; the JSON build metadata stays at the top level.

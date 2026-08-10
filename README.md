@@ -213,7 +213,43 @@ There are basically two ways to download:
   python3 -m toolbox.release_downloader --help
   ```
 
-## 7. TODO List
+## 7. Export the Jieqi Table (JSON)
+
+`toolbox/jieqi_table.py` turns `query_jieqi_moment` into one static JSON table (#164), for
+consumers that only need "which Jieqi is now, and how many days to the next" without linking
+the library. Build first (`./project.py --build`), then:
+
+```sh
+# The default table: 1950–2051 inclusive (24 × 102 = 2448 entries), to stdout
+python3 ./toolbox/jieqi_table.py
+
+# Write to a file, or choose another window within [1, 32766]
+python3 ./toolbox/jieqi_table.py -o jieqi.json --start-year 2000 --end-year 2031
+```
+
+The contract of the emitted table:
+
+* One entry per Jieqi moment: `{year, idx, name_zh, unix_ms, iso_utc}`. `idx` counts from
+  立春 = 0 (the ABI's `to_index` order); `name_zh` echoes the ABI's own `get_jieqi_name`,
+  so a consumer can cross-check the mapping instead of trusting it.
+* Entries are sorted by moment, strictly increasing — within a calendar year the index order
+  runs 22, 23, 0, …, 21 (小寒/大寒 lead the year), and the sort is done here, once.
+* `year` is the attribution year: all 24 crossings queried with `year = Y` land inside
+  calendar year `Y`.
+* The default window ends at 2051, one tail-margin year, so every moment of 1950–2050 has
+  its successor inside the table.
+* Timescale is **UT1**, stated honestly per era in the table's own `timescale_note`:
+  1950–1971 the library has no UTC to model (read the fields as UT1 civil time);
+  1972–2017 UT1 matches UTC to within |DUT1| ≤ 0.9 s; from 2018 the frozen ΔAT table lets
+  the modelled gap grow with ΔT − (ΔAT + 32.184 s), measured −2.57 s at 2050.
+* Sub-millisecond precision is truncated, never rounded; `iso_utc` renders the same
+  millisecond as `unix_ms`. Output carries no generation timestamp — two runs of the same
+  commit are byte-identical.
+
+The table is held to all of the above (plus HKO almanac anchors and an independent
+re-derivation through `statistics/common.py`) by `./linter.py --jieqi-table`.
+
+## 8. TODO List
 
 * C++20/23 features are not fully supported by the compilers...
   * Modules
@@ -225,7 +261,7 @@ There are basically two ways to download:
 * DUT1 (i.e. UT1 - UTC) is not modelled
   * UTC became a first-class time scale in v0.4.0 (leap-second aware, `utc_to_tt` / `tt_to_utc`), but UT1 and UTC are still treated as interchangeable — the gap stays below 0.9 s while leap seconds are in force.
 
-## 8. References
+## 9. References
 
 * [Julian Day Numbers](https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
