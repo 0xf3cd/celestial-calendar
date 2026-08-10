@@ -31,14 +31,18 @@ MODULE_STEM: Final[str] = "celestial-jieqi"
 
 # The narrow export surface (#163): Jieqi + Julian Day + `last_error` -- the three JD
 # functions are exactly the ones that WRITE `last_error` (celestial.h), and without the
-# reader a wasm consumer gets `valid = false` with no way to learn why. Widening the
-# surface further is a deliberate act -- every added entry ships bytes to the browser.
+# reader a wasm consumer gets `valid = false` with no way to learn why. Widened once
+# (#183 follow-up): moon illumination + local apparent sidereal time, the nav's two
+# remaining real-data needs. Widening the surface further is a deliberate act -- every
+# added entry ships bytes to the browser.
 EXPORTS: Final[list[str]] = [
   "query_jieqi_moment",
   "get_jieqi_name",
   "ut1_to_jd",
   "ut1_to_jde",
   "jde_to_ut1",
+  "moon_illumination",
+  "local_apparent_sidereal_time",
   "last_error",
   "malloc",
   "free",  # the sret struct return needs caller-side scratch space
