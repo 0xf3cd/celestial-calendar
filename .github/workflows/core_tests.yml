@@ -104,8 +104,8 @@ jobs:
           ./project.py --setup --clean --cmake --build --test -v 1
 
 
-  test-ubuntu-clang:  
-    runs-on: ubuntu-24.04
+  test-ubuntu-clang:
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         python-version: ["3.12"]  
@@ -123,19 +123,13 @@ jobs:
           python3 -m pip install --upgrade pip  
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi  
 
-      - name: Install LLVM and clang++
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y llvm-18 clang-18
-
       - name: Install CMake
         run: sudo apt install cmake
 
       - name: Build and Test
         env:
-          CXX: clang++-18
-          CC:  clang-18
+          CXX: clang++-22
+          CC:  clang-22
         run: |
           chmod +x project.py
           ./project.py --setup --clean --cmake --build --test -v 1
@@ -175,7 +169,7 @@ jobs:
   # it cannot share a binary with ASan, and the only concurrency to point it at today is one test
   # in `util_test.cpp`. Worth revisiting when there is more (#72).
   sanitizers:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -193,16 +187,10 @@ jobs:
           python3 -m pip install --upgrade pip
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-      - name: Install LLVM and clang++
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y llvm-18 clang-18
-
       - name: Build under ASan + UBSan
         env:
-          CXX: clang++-18
-          CC:  clang-18
+          CXX: clang++-22
+          CC:  clang-22
           # CMake seeds `CMAKE_CXX_FLAGS` from `CXXFLAGS` on a fresh configure, and `--clean` makes
           # every configure fresh -- so the sanitizers reach the build without `project.py` growing
           # a flag that exists for one CI job.
@@ -260,9 +248,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04     # libstdc++
+          - runner: ubuntu-26.04     # libstdc++
             stdlib: libstdc++
-            cxx: clang++-18
+            cxx: clang++-22
           - runner: macos-latest     # libc++
             stdlib: libc++
             cxx: clang++
@@ -283,13 +271,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r Requirements.txt
 
-      - name: Install clang (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y clang-18
-
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
         # Pinned; see AGENTS.md gotcha 9 (#72, #73).
@@ -309,22 +290,22 @@ jobs:
   # gate fails when someone breaks a header, this one fails when the world moves and a waiting
   # TODO becomes actionable. Sharing a job would let either verdict hide the other.
   #
-  # clang++-18 on the Linux leg, which pairs it with the runner's default libstdc++ -- exactly
-  # what `test-ubuntu-clang` builds against. That is deliberately NOT the same standard library
-  # as `test-ubuntu-gcc14`, which installs g++-14 and gets libstdc++-14: `<generator>` landed in
-  # libstdc++ 14, and this leg measures it as gated, which is the difference showing through.
-  # Probing the weaker of the two is the useful answer, since adoption has to wait for it either
-  # way. The Docker arm64/x86_64 legs are not probed -- a toolchain difference in those images
-  # surfaces there as a build failure rather than as a missed unlock here.
+  # clang++-22 on the Linux leg, which pairs it with the runner's default libstdc++ -- exactly
+  # what `test-ubuntu-clang` builds against, so a row here describes a standard library the
+  # project really compiles with. It is not the oldest one in the matrix: `test-ubuntu-gcc14`
+  # installs g++-14 and gets libstdc++-14, older than ubuntu-26.04's default, and nothing probes
+  # it. A feature can therefore read usable on all three legs here and still be missing there --
+  # where it surfaces as a build failure rather than as a missed unlock, which is also why the
+  # Docker arm64/x86_64 legs are not probed.
   cxx-feature-probe:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04     # libstdc++
+          - runner: ubuntu-26.04     # libstdc++
             leg: libstdc++
-            cxx: clang++-18
+            cxx: clang++-22
           - runner: macos-latest     # libc++
             leg: libc++
             cxx: clang++
@@ -352,13 +333,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r Requirements.txt
-
-      - name: Install clang (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y clang-18
 
       - name: Install clang (Windows)
         if: runner.os == 'Windows'

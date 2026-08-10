@@ -173,8 +173,8 @@ FEATURES: Final[List[Feature]] = [
 ]
 
 
-# What each CI leg supports, measured by this probe on 2026-08-02 -- not inferred from release
-# notes, and not guessed. A mismatch is the point of the gate: it fires the day a runner's
+# What each CI leg supports, measured by this probe -- not inferred from release notes, and not
+# guessed. A mismatch is the point of the gate: it fires the day a runner's
 # toolchain gains one of these, which is the day the waiting TODOs become actionable, and
 # nothing else in the repo would ever notice.
 #
@@ -182,7 +182,7 @@ FEATURES: Final[List[Feature]] = [
 # and on Linux the two ship separately. Record both, or a runner image bumping its default GCC
 # leaves a flipped row with nothing to explain it.
 #
-#   libstdc++  clang 18.1.3 + ubuntu-24.04's default libstdc++ (GCC 13)
+#   libstdc++  clang 22.1.2 + ubuntu-26.04's default libstdc++ (GCC 15)
 #   libc++     Apple clang 21.0.0 + its bundled libc++
 #   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
 # `std::tuple_like` (#81): False on all three legs. libstdc++ exposes only the internal
@@ -195,7 +195,7 @@ FEATURES: Final[List[Feature]] = [
 EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::tuple_like": False,
-    "std::generator": False,
+    "std::generator": True,
     "std::ranges::fold_left": True,
     "std::views::enumerate": True,
     "std::views::pairwise": True,
