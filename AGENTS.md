@@ -306,7 +306,10 @@ toolbox/        Helper scripts for artifacts, releases, build info
 4. **CI produces cross-platform artifacts:** macOS, Windows, and two Linux architectures
    (x86_64 and arm64), each in Docker on a *native* runner. Do not change compiler or
    Docker base images without checking matrix impact. The optional wasm target (#163) has
-   its own independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`.
+   its own independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`; it
+   uploads `celestial-wasm`, and the release downloader pulls both build legs' artifacts
+   for the tagged commit. Cutting a release is a manual ritual: push the tag, dispatch
+   **both** `build_and_test.yml` and `wasm.yml` on it, then rerun the release workflow.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -369,9 +372,11 @@ boilerplate (#127 entry 20) · the `cpp26-lab` experiment branch.
 parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
 boundary (`jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
 scale; reopen if a C entry point ever needs to accept two. And `last_error` is filled in
-by the three Julian Day exports only — a pilot with its boundary written down in
-`celestial.h`, not an oversight; it spreads when an out-of-repo consumer reports getting
-`valid = false` with no way to learn why.
+by the three Julian Day exports plus `moon_illumination` and
+`local_apparent_sidereal_time` — a pilot whose boundary lives in `celestial.h`, not an
+oversight; it widened when the wasm consumer became the first out-of-repo reader that
+gets `valid = false` with no other way to learn why, and it spreads further the next
+time such a consumer appears.
 
 ## AI do / don't
 
@@ -380,7 +385,8 @@ by the three Julian Day exports only — a pilot with its boundary written down 
   `using` to a header.
 - DON'T add a dependency or build step outside the `project.py` / `linter.py` flow — the
   wasm build is the sanctioned exception (#163): its recipe lives in
-  `toolbox/build_wasm.py` and is shared by the manual leg and the `wasm.yml` CI leg.
+  `toolbox/build_wasm.py`, shared by the manual leg and the `wasm.yml` CI leg; the
+  release flow consumes the CI-built artifact, it does not run the recipe.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
