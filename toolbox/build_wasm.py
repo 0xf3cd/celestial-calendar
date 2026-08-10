@@ -16,6 +16,7 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import os
+import sys
 import argparse
 import subprocess
 
@@ -89,13 +90,14 @@ def emsdk_dir(explicit: str | None) -> Path:
   )
 
 
-def emsdk_python(sdk: Path) -> Path:
-  """The python emsdk ships, so em++ does not depend on whatever python3 the host PATH
-  happens to hold (emscripten needs >= 3.10; a stock macOS has 3.9)."""
+def emsdk_python(sdk: Path) -> str:
+  """The interpreter em++ is driven with. Prefer the python emsdk ships -- it does not
+  ship one on every platform (Linux 6.0.6 has none, macOS does); without a bundled one,
+  use the interpreter running this script (already >= 3.10 wherever this script parses).
+  The point is keeping em++ off whatever python3 the host PATH holds (stock macOS = 3.9,
+  which emscripten rejects)."""
   candidates = sorted((sdk / "python").glob("*/bin/python3"))
-  if not candidates:
-    raise FileNotFoundError(f"no bundled python under {sdk / 'python'}")
-  return candidates[0]
+  return str(candidates[0]) if candidates else sys.executable
 
 
 def build(sdk: Path, sources: list[Path], out_dir: Path) -> None:

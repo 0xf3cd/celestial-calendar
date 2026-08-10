@@ -44,7 +44,7 @@ jobs:
           ./emsdk/emsdk install "$EMSDK_VERSION"
           ./emsdk/emsdk activate "$EMSDK_VERSION"
 
-      - name: Build the WASM module (web + node variants)
+      - name: Build the WASM module (web,node single build)
         run: python3 toolbox/build_wasm.py --emsdk emsdk
 
       # Runner's preinstalled node is enough — the checker is dependency-free.
