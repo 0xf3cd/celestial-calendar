@@ -2,7 +2,12 @@
 # The CI jobs and the Dockerfile install this file alone, so keep it minimal.
 # Linters are installed separately (README section 4); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
-requests
+#
+# Pinned; see AGENTS.md gotcha 9 (#72). These two decide CI verdicts, so an unpinned upgrade
+# would turn "the code changed" and "the dependency changed" into the same red X.
+requests==2.34.2
 # The AI-workflow gate reads `.github/workflows/*.yml` for real: a per-job permission and a
 # pinned SHA cannot be told apart from a workflow's own prose by matching lines (#144).
-pyyaml
+# That makes this parser part of a gate, not a convenience -- a silent major would change what
+# the gate accepts on a day nobody touched the repository.
+pyyaml==6.0.3
