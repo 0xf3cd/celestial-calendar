@@ -3,8 +3,12 @@
 # Linters are installed separately (README section 4); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
 #
-# Pinned; see AGENTS.md gotcha 9 (#72). These two decide CI verdicts, so an unpinned upgrade
-# would turn "the code changed" and "the dependency changed" into the same red X.
+# Both pinned; see AGENTS.md gotcha 9 (#72). The reasons differ, so they are stated apart.
+#
+# `requests` reaches CI through `automation/github.py`, which only `toolbox/*_downloader.py`
+# import -- that is `release.yml` collecting the artifacts, not the build and test legs. A break
+# there does not turn a leg red, it fails a release; pinned because that is the worse day to
+# discover a dependency moved, not because it decides a verdict.
 requests==2.34.2
 # The AI-workflow gate reads `.github/workflows/*.yml` for real: a per-job permission and a
 # pinned SHA cannot be told apart from a workflow's own prose by matching lines (#144).
