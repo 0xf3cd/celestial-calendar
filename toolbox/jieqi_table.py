@@ -61,8 +61,7 @@ TIMESCALE_NOTE: Final[str] = (
 
 
 class _JieqiMomentQuery(Structure):
-  """Minimal mirror of `JieqiMomentQuery` in `celestial.h` -- deliberately local (#164:
-  sharing the `statistics/common.py` binding is the open follow-up, not this PR)."""
+  """Minimal mirror of `JieqiMomentQuery` in `celestial.h`."""
   _fields_ = [
     ("valid",  c_bool),
     ("jq_idx", c_uint8),
