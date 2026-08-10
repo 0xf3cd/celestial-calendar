@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [ main ]  # Also triggers on pull requests to the main branch
 
+# Read-only is enough: the artifacts go through `actions/upload-artifact`, which uses the Actions
+# runtime token rather than this one, and nothing here pushes an image or writes to the repo.
+permissions:
+  contents: read
+
 # Gate track of the #69 dual-track policy: the pinned default seed (the soak workflow
 # random_soak.yml draws a fresh one per run). Must match DEFAULT_SEED in
 # src/util/random.hpp.

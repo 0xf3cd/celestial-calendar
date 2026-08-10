@@ -4,6 +4,12 @@ on:
   push:
     branches: [ '**' ]
 
+# Nothing here needs more than the source. Said out loud rather than inherited: the repo-level
+# default is `read` today, but that lives in a setting no one reviews, and raising it would widen
+# every job in this file without a diff to show for it.
+permissions:
+  contents: read
+
 # Gate track of the #69 dual-track policy: the pinned default seed (the soak workflow
 # random_soak.yml draws a fresh one per run). Must match DEFAULT_SEED in
 # src/util/random.hpp.
