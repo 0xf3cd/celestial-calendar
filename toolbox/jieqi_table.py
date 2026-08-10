@@ -17,6 +17,7 @@
 
 import sys
 import json
+import re
 import ctypes
 import argparse
 
@@ -79,15 +80,17 @@ def find_shared_lib() -> Path:
     raise OSError(f"Unsupported platform: {sys.platform}")
   ext = exts[sys.platform]
 
+  # Real library outputs only, unversioned or versioned -- a substring test would also take
+  # *.dll.manifest / *.dll.a and the like.
+  name_re = re.compile(rf"^(?:lib)?celestial_calendar(?:\.\d+)*{re.escape(ext)}(?:\.\d+)*$")
   folder = paths.shared_lib_dir()
   candidates = [
-    p for p in folder.iterdir()
-    if p.is_file() and ext in p.name and "celestial_calendar" in p.name
+    p for p in folder.iterdir() if p.is_file() and name_re.match(p.name)
   ] if folder.is_dir() else []
 
   # Prefer the unversioned name (the latest build's link): versioned outputs accumulate
-  # in the build dir and directory order is arbitrary.
-  candidates.sort(key=lambda p: p.name != f"libcelestial_calendar{ext}")
+  # in the build dir. The name tiebreak keeps the pick deterministic.
+  candidates.sort(key=lambda p: (p.name != f"libcelestial_calendar{ext}", p.name))
   if not candidates:
     raise FileNotFoundError(f"Shared library not found under {folder} -- run ./project.py --build first")
   return candidates[0]
