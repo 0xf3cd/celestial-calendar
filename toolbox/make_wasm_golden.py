@@ -92,7 +92,7 @@ def generate() -> dict:
     if not q.valid or q.jq_idx != idx:
       raise RuntimeError(f"query_jieqi_moment({year}, {idx}) failed natively")
     # frac as its IEEE-754 bit pattern (hex string): JSON numbers cannot hold a uint64,
-    # and the checker compares bit distances, not floats.
+    # and decoding the bits is exact -- no float round-trip through JSON text.
     bits = struct.unpack("<Q", struct.pack("<d", q.frac))[0]
     entries.append({"year": year, "idx": idx, "y": q.y, "m": q.m, "d": q.d,
                     "frac_bits": f"0x{bits:016x}"})
