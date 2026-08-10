@@ -39,9 +39,11 @@ JIEQI_PER_YEAR: Final[int] = 24
 DEFAULT_START_YEAR: Final[int] = 1950
 DEFAULT_END_YEAR:   Final[int] = 2051
 
-# `jieqi_ut1_moment`'s declared window (src/calendar/jieqi.hpp).
-MIN_YEAR: Final[int] = 1
-MAX_YEAR: Final[int] = 32766
+# The window this export can actually honor: below 401 the ABI's UT1 chain returns
+# `valid = false` (its own floor is JD 1867522.5 = 401-01-01, enforced library-side);
+# above 9999 the datetime-based rendering overflows Python's year range.
+MIN_YEAR: Final[int] = 401
+MAX_YEAR: Final[int] = 9999
 
 MS_PER_DAY: Final[int] = 86_400_000
 UNIX_EPOCH: Final[date] = date(1970, 1, 1)
@@ -50,10 +52,10 @@ UNIX_EPOCH: Final[date] = date(1970, 1, 1)
 # on the era -- so the table states the gap in three segments instead of one blanket claim.
 TIMESCALE_NOTE: Final[str] = (
   "Moments are modelled UT1 (query_jieqi_moment); unix_ms and iso_utc write those UT1 civil "
-  "fields onto the proleptic UTC calendar. 1950-1971: the library has no UTC to model "
+  "fields onto the proleptic UTC calendar. Before 1972 the library has no UTC to model "
   "(pre-leap-second era) -- read the fields as UT1 civil time. 1972-2017: UT1 matches UTC to "
-  "within |DUT1| <= 0.9 s. 2018-2051: the ΔAT table is frozen at 37 s and the modelled "
-  "UT1-UTC gap follows ΔT-(ΔAT+32.184 s), measured -2.57 s at 2050."
+  "within |DUT1| <= 0.9 s. From 2018 the ΔAT table is frozen at 37 s, and the modelled "
+  "UT1-UTC follows (ΔAT+32.184 s)-ΔT, measured -2.57 s at 2050."
 )
 
 

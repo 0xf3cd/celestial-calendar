@@ -223,7 +223,7 @@ the library. Build first (`./project.py --build`), then:
 # The default table: 1950–2051 inclusive (24 × 102 = 2448 entries), to stdout
 python3 ./toolbox/jieqi_table.py
 
-# Write to a file, or choose another window within [1, 32766]
+# Write to a file, or choose another window within [401, 9999]
 python3 ./toolbox/jieqi_table.py -o jieqi.json --start-year 2000 --end-year 2031
 ```
 
@@ -235,13 +235,12 @@ The contract of the emitted table:
 * Entries are sorted by moment, strictly increasing — within a calendar year the index order
   runs 22, 23, 0, …, 21 (小寒/大寒 lead the year), and the sort is done here, once.
 * `year` is the attribution year: all 24 crossings queried with `year = Y` land inside
-  calendar year `Y`.
+  calendar year `Y` (held by the gate over the default window; extreme custom windows are
+  outside that proof).
 * The default window ends at 2051, one tail-margin year, so every moment of 1950–2050 has
   its successor inside the table.
-* Timescale is **UT1**, stated honestly per era in the table's own `timescale_note`:
-  1950–1971 the library has no UTC to model (read the fields as UT1 civil time);
-  1972–2017 UT1 matches UTC to within |DUT1| ≤ 0.9 s; from 2018 the frozen ΔAT table lets
-  the modelled gap grow with ΔT − (ΔAT + 32.184 s), measured −2.57 s at 2050.
+* Timescale is **UT1**; how far that sits from UTC depends on the era, and each table states
+  it per era in its own `timescale_note`.
 * Sub-millisecond precision is truncated, never rounded; `iso_utc` renders the same
   millisecond as `unix_ms`. Output carries no generation timestamp — two runs of the same
   commit are byte-identical.

@@ -98,7 +98,7 @@ HKO_ANCHORS: Final[List[Tuple[int, int, int, int, int, int]]] = [
 ]
 
 # Same budget as the C++ golden test: HKO's own ±0.5 min rounding + UT1/UTC conflation
-# (±0.9 s) + full-chain error (seconds). The export's millisecond truncation (≤ 1 s)
+# (±0.9 s) + full-chain error (seconds). The export's millisecond truncation (< 1 ms)
 # fits inside it; a ΔT-class 69 s slip does not.
 HKO_TOLERANCE_MS: Final[int] = 60_000
 
