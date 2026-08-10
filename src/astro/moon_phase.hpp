@@ -261,3 +261,80 @@ public:
 }
 
 } // namespace astro::moon_phase::new_moon
+
+
+namespace astro::moon_phase::illumination {
+
+// The illuminated fraction k and the phase angle i, Meeus Chapter 48. The exact path is
+// taken throughout — (48.2) elongation, (48.3) phase angle, (48.1) fraction — because the
+// library already carries high-precision apparent positions; the no-positions fallback
+// (48.4) would only import a coarser error story.
+
+/**
+ * @brief Compute the Moon's selenocentric phase angle i from two positions, Meeus (48.2)+(48.3).
+ * @param sun_pos The Sun's position, in any spherical frame shared with `moon_pos`
+ *        (in-library: apparent geocentric ecliptic).
+ * @param moon_pos The Moon's position, same frame as `sun_pos`.
+ * @return The phase angle i, in [0°, 180°] — 0° at full moon, 180° at new moon.
+ * @note The spherical law of cosines is frame-agnostic, so equatorial (α, δ) plugs into (λ, β)
+ *       as-is — the golden test feeds the book's equatorial worked values directly. Meeus
+ *       prints (48.2) with the solar latitude dropped; the sin β sin β₀ term is restored here,
+ *       since the library carries the Sun's apparent β.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ */
+[[nodiscard]] inline auto phase_angle(
+  const astro::toolbox::SphericalCoordinate& sun_pos,
+  const astro::toolbox::SphericalCoordinate& moon_pos
+) -> astro::toolbox::AngleDeg {
+  const double sin_βs = std::sin(sun_pos.β.rad());
+  const double cos_βs = std::cos(sun_pos.β.rad());
+  const double sin_βm = std::sin(moon_pos.β.rad());
+  const double cos_βm = std::cos(moon_pos.β.rad());
+  const double Δλ = (moon_pos.λ - sun_pos.λ).rad();
+
+  // Geocentric elongation ψ, (48.2). ψ ∈ [0°, 180°], so sin ψ ≥ 0 and the root is safe.
+  const double cos_ψ = (sin_βs * sin_βm) + (cos_βs * cos_βm * std::cos(Δλ));
+  const double sin_ψ = std::sqrt(1.0 - (cos_ψ * cos_ψ));
+
+  // (48.3): atan2 keeps i in [0°, 180°] with no quadrant bookkeeping — near conjunction
+  // Δ − R·cos ψ < 0 and i lands above 90°, as a dark disk requires.
+  const double R_km = sun_pos.r.km();
+  const double Δ_km = moon_pos.r.km();
+  const auto i_rad = astro::toolbox::AngleRad { std::atan2(R_km * sin_ψ, Δ_km - (R_km * cos_ψ)) };
+  return astro::toolbox::AngleDeg { i_rad };
+}
+
+/**
+ * @brief Compute the Moon's selenocentric phase angle i at a JDE, Meeus (48.2)+(48.3).
+ * @param jde The Julian Ephemeris Day, on the TT scale.
+ * @return The phase angle i, in [0°, 180°].
+ * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ */
+[[nodiscard]] inline auto phase_angle(const double jde) -> astro::toolbox::AngleDeg {
+  return phase_angle(
+    astro::sun::geocentric_coord::apparent(jde),
+    astro::moon::geocentric_coord::apparent(jde)
+  );
+}
+
+/**
+ * @brief Compute the illuminated fraction k of the Moon's disk from the phase angle, Meeus (48.1).
+ * @param i The selenocentric phase angle.
+ * @return k in [0, 1].
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ */
+[[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& i) -> double {
+  return (1.0 + std::cos(i.rad())) / 2.0;
+}
+
+/**
+ * @brief Compute the illuminated fraction k of the Moon's disk at a JDE, Meeus (48.1).
+ * @param jde The Julian Ephemeris Day, on the TT scale.
+ * @return k in [0, 1] — 0 at new moon, 1 at full moon.
+ */
+[[nodiscard]] inline auto fraction(const double jde) -> double {
+  return fraction(phase_angle(jde));
+}
+
+} // namespace astro::moon_phase::illumination

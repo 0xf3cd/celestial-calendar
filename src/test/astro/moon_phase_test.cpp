@@ -271,4 +271,106 @@ TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
   }
 }
 
+TEST(Illumination, Example48aFormulaLayer) {
+  // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), mirrored value-by-value. The inputs
+  // are the book's own printed (rounded) positions from Example 47.a, so this layer pins the
+  // formula transcription exactly — no position-model error is absorbed. Tolerances are the
+  // print digits; measured gaps recomputing from the rounded inputs: i 3.8e-5 deg, k 3.3e-5.
+  const astro::toolbox::SphericalCoordinate sun_pos {
+    .λ = astro::toolbox::AngleDeg { 20.6579 },    // α₀ — equatorial plugs into (λ, β) as-is
+    .β = astro::toolbox::AngleDeg { 8.6964 },     // δ₀
+    .r = astro::toolbox::DistanceAu { 1.0024977 },
+  };
+  const astro::toolbox::SphericalCoordinate moon_pos {
+    .λ = astro::toolbox::AngleDeg { 134.6885 },   // α
+    .β = astro::toolbox::AngleDeg { 13.7684 },    // δ
+    .r = astro::toolbox::DistanceAu { astro::toolbox::DistanceKm { 368410.0 } },
+  };
+
+  const auto i = illumination::phase_angle(sun_pos, moon_pos);
+  ASSERT_NEAR(i.deg(), 69.0756, 5e-5);
+  ASSERT_NEAR(illumination::fraction(i), 0.6786, 5e-5);
+}
+
+TEST(Illumination, Example48aEndToEnd) {
+  // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
+  // Measured gap vs the book's 0.6786: 3.3e-5 — below the print digit.
+  ASSERT_NEAR(illumination::fraction(2448724.5), 0.6786, 5e-5);
+}
+
+TEST(Illumination, PymeeusCrossDataset) {
+  // Provenance: pymeeus `Moon.illuminated_fraction_disk` at 60 seeded epochs (uniform year in
+  // [1900, 2100], uniform day-of-year; seed 42), generated 2026-08-10 — regenerable with
+  // pymeeus at the same seed. pymeeus implements the approximate (48.4) path, so the gap vs
+  // the exact (48.2)+(48.3) path is formula-level, not transcription-level (the book's own
+  // Example 48.a shows (48.4) landing 1.6e-3 off the exact path). Measured max gap over the
+  // dataset: 2.26e-3; tolerance 3e-3 ≈ 1.3× the measured max.
+  const std::vector<std::pair<double, double>> dataset {
+    { 2415661.705882, 0.5744942573 },
+    { 2419303.122370, 0.0115935997 },
+    { 2420940.297755, 0.9602622885 },
+    { 2423500.084223, 0.1403494467 },
+    { 2423695.604705, 0.5148993205 },
+    { 2424762.818613, 0.0747153135 },
+    { 2425302.134240, 0.2263787042 },
+    { 2427988.967571, 0.1933014889 },
+    { 2429883.622740, 0.7374126951 },
+    { 2429917.816889, 0.9907848617 },
+    { 2430130.245872, 0.7362033238 },
+    { 2434622.443763, 0.3445383105 },
+    { 2435456.925558, 0.0114056616 },
+    { 2435722.699587, 0.0275041743 },
+    { 2435890.291806, 0.5753612055 },
+    { 2436503.636144, 0.9976968016 },
+    { 2436884.900055, 0.9191876171 },
+    { 2439542.325436, 0.8056783514 },
+    { 2439763.413027, 0.2047232637 },
+    { 2442407.120634, 0.8472281484 },
+    { 2442715.403298, 0.2826306086 },
+    { 2444316.896062, 0.0401455011 },
+    { 2444385.523982, 0.8606832238 },
+    { 2446468.704541, 0.0422868571 },
+    { 2446897.645168, 0.9562060720 },
+    { 2447381.256275, 0.2045835863 },
+    { 2448832.656181, 0.0065961828 },
+    { 2450112.183272, 0.7112773044 },
+    { 2450484.704761, 0.0860882650 },
+    { 2450550.682392, 0.2589244546 },
+    { 2450953.409420, 0.4211645692 },
+    { 2452407.266706, 0.0010118690 },
+    { 2454181.740386, 0.1414635124 },
+    { 2454478.068895, 0.1711910211 },
+    { 2454683.592887, 0.1595332936 },
+    { 2455159.307530, 0.3984987257 },
+    { 2458257.621781, 0.1761725939 },
+    { 2458677.097622, 0.8186877049 },
+    { 2461550.510012, 0.8160821436 },
+    { 2462356.634817, 0.0461960237 },
+    { 2465104.936723, 0.0004837875 },
+    { 2465821.145735, 0.5425807506 },
+    { 2467322.876905, 0.1237975152 },
+    { 2468300.497816, 0.4405895754 },
+    { 2469908.761418, 0.7643007247 },
+    { 2473051.804436, 0.1229509146 },
+    { 2474252.794468, 0.3943262704 },
+    { 2474494.116195, 0.0055678367 },
+    { 2474596.024509, 0.8928529375 },
+    { 2474805.990953, 0.9963444502 },
+    { 2475087.522074, 0.0136169798 },
+    { 2475312.490513, 0.7566098284 },
+    { 2475906.782290, 0.3436284625 },
+    { 2476830.454972, 0.0543428978 },
+    { 2480740.442270, 0.9927113619 },
+    { 2480789.818074, 0.1611430406 },
+    { 2483045.611177, 0.9936233548 },
+    { 2484152.610672, 0.0003388020 },
+    { 2484621.838001, 0.0984980504 },
+    { 2486890.963968, 0.4174081992 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    ASSERT_NEAR(illumination::fraction(jde), expected, 3e-3);
+  }
+}
+
 } // namespace astro::moon_phase::test
