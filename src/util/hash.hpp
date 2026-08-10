@@ -36,14 +36,12 @@ template <typename T>
 [[nodiscard]] inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
   // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   // Don't lint this code, because clang-tidy complains about calculating hash for `std::string`.
-  const std::uint64_t v_hash_0 = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
+  std::uint64_t v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
   // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
-  // Mix in 64 bits regardless of size_t's width (#163): on wasm32 `std::hash` narrows to
-  // 32 bits and the >> 32 finalizer would be UB on a 32-bit accumulator. On 64-bit targets
-  // this is bit-identical to mixing in size_t. Only cache keys depend on this, so keys
-  // differing between wasm and native runs is unobservable.
-  std::uint64_t v_hash = v_hash_0;
+  // Mix in 64 bits regardless of size_t's width (#163): a 32-bit accumulator would UB
+  // the >> 32 finalizer on wasm32; on 64-bit this is bit-identical to the old size_t mix.
+  // Only cache keys depend on it, so wasm/native key divergence is unobservable.
   v_hash ^= static_cast<std::uint64_t>(seed) * 0xc4ceb9fe1a85ec53;
   v_hash ^= (v_hash >> 13) * 0xff51afd7ed558ccd;
 
