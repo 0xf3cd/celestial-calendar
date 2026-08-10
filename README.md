@@ -234,9 +234,10 @@ The contract of the emitted table:
   so a consumer can cross-check the mapping instead of trusting it.
 * Entries are sorted by moment, strictly increasing — within a calendar year the index order
   runs 22, 23, 0, …, 21 (小寒/大寒 lead the year), and the sort is done here, once.
-* `year` is the attribution year: all 24 crossings queried with `year = Y` land inside
-  calendar year `Y` (held by the gate over the default window; extreme custom windows are
-  outside that proof).
+* `year` is the attribution year — the `Y` passed to the query. Over the default window all
+  24 crossings of `Y` land inside calendar year `Y`, and the gate holds this. At high years
+  it stops holding — observed at year 9999, whose 小寒 lands on 9998-12-31 — and then `year`
+  and the year inside `iso_utc` diverge.
 * The default window ends at 2051, one tail-margin year, so every moment of 1950–2050 has
   its successor inside the table.
 * Timescale is **UT1**; how far that sits from UTC depends on the era, and each table states
