@@ -64,7 +64,8 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
 
 ## Tech Stack
 
-- **C++23** — Core library (`src/`); clang++ (LLVM 18+) and g++ 14+ are supported.
+- **C++23** — Core library (`src/`); CI builds it with clang++ 22 and g++ 14. Older compilers
+  may work; nothing checks them.
 - **CMake ≥ 3.22** — Build system.
 - **Python 3** — Build/test/lint automation (`project.py`, `linter.py`, `automation/`,
   `toolbox/`). All build/lint/CI is Python-orchestrated.

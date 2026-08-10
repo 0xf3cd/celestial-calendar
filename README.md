@@ -17,7 +17,7 @@ The supported year range of lunar conversions depends on the algorithm: 1901–2
 ## 2. Requirements
 
 * C++ Compiler that supports C++23
-  * Currently, clang++ (LLVM 18) is able to compile the project on macOS, Windows, and Linux. g++ 14 also works.
+  * CI builds it with clang++ 22 on Linux and Windows, the Apple clang in Xcode 26 on macOS, and g++ 14 on Linux. Older compilers may work; nothing checks them.
 * CMake >=3.22, and make
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`

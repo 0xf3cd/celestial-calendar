@@ -184,7 +184,7 @@ FEATURES: Final[List[Feature]] = [
 #
 #   libstdc++  clang 22.1.2 + ubuntu-26.04's default libstdc++ (GCC 15)
 #   libc++     Apple clang 21.0.0 + its bundled libc++
-#   msvc-stl   clang 20.1.8 + the MSVC STL on the runner image
+#   msvc-stl   clang 22.1.7 + the MSVC STL on the runner image
 # `std::tuple_like` (#81): False on all three legs. libstdc++ exposes only the internal
 # `__glibcxx_want_tuple_like` machinery, with nothing under `std::`.
 #

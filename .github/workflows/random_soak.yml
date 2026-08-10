@@ -106,7 +106,7 @@ jobs:
 
           # Pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
-          choco install -y llvm --version=20.1.8
+          choco install -y llvm --version=22.1.7
 
       - name: Build and Test
         env:

@@ -274,7 +274,7 @@ jobs:
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
         # Pinned; see AGENTS.md gotcha 9 (#72, #73).
-        run: choco install -y llvm --version=20.1.8
+        run: choco install -y llvm --version=22.1.7
 
       # The compiler comes from the matrix, not from $GITHUB_ENV: a step-level `env:`
       # outranks anything written to $GITHUB_ENV, so setting CXX in the install step
@@ -337,7 +337,7 @@ jobs:
       - name: Install clang (Windows)
         if: runner.os == 'Windows'
         # Pinned; see AGENTS.md gotcha 9 (#72, #73).
-        run: choco install -y llvm --version=20.1.8
+        run: choco install -y llvm --version=22.1.7
 
       - name: Probe awaited C++ features (${{ matrix.leg }})
         env:
