@@ -410,9 +410,8 @@ toolbox/        Helper scripts for artifacts, releases, build info
    for the clang-tidy that image ships, calls the binary by its major, and the vendored
    `run-clang-tidy.py` carries the matching `llvmorg-` tag. A wrong pairing does not reliably
    announce itself. An older runner refuses to run at all, but a newer runner on an older binary
-   has been measured both ways — exiting 0 while quietly analysing with a smaller ruler, and
-   failing on diagnostics the newer binary no longer emits. Read the version the binary reports,
-   not the exit code. Exact versions live in the workflows, not here — there is no gate
+   can exit 0 having quietly analysed with a smaller ruler, or fail on diagnostics the newer
+   binary no longer emits. Read the version the binary reports, not the exit code. Exact versions live in the workflows, not here — there is no gate
    reconciling two copies. Chocolatey's `make` is deliberately outside this: it drives the build rather than
    diagnosing it, so a new version cannot turn `-Werror` red.
    Bump deliberately, never incidentally (#72, #73).
