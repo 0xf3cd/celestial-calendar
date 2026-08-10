@@ -17,7 +17,7 @@ env:
 
 jobs:
   soak-ubuntu-clang:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -35,19 +35,13 @@ jobs:
           python3 -m pip install --upgrade pip
           if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
 
-      - name: Install LLVM and clang++
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install -y llvm-18 clang-18
-
       - name: Install CMake
         run: sudo apt install cmake
 
       - name: Build and Test
         env:
-          CXX: clang++-18
-          CC:  clang-18
+          CXX: clang++-22
+          CC:  clang-22
         run: |
           chmod +x project.py
           ./project.py --setup --clean --cmake --build --test -v 1
@@ -112,7 +106,7 @@ jobs:
 
           # Pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
-          choco install -y llvm --version=20.1.8
+          choco install -y llvm --version=22.1.7
 
       - name: Build and Test
         env:
