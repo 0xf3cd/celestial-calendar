@@ -29,6 +29,7 @@ from .export_surface import check_export_surface
 from .log_names import check_log_names
 from .ai_workflows import check_ai_workflows
 from .jieqi_table import check_jieqi_table
+from .seed_reconcile import check_seed_reconcile
 from .bench import build_benchmarks, run_benchmarks
 
 __all__ = [
@@ -40,6 +41,6 @@ __all__ = [
   "run_cmd", "ProcReturn", "time_execution",
   "run_ruff", "run_clang_tidy", "check_self_contained", "probe_features",
   "check_abi_layout", "check_ctypes_smoke", "check_export_surface", "check_log_names",
-  "check_ai_workflows", "check_jieqi_table",
+  "check_ai_workflows", "check_jieqi_table", "check_seed_reconcile",
   "build_benchmarks", "run_benchmarks"
 ]
