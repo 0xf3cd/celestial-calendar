@@ -265,6 +265,222 @@ public:
 } // namespace astro::moon_phase::new_moon
 
 
+namespace astro::moon_phase::phase_moments {
+
+// The four principal Moon phases, defined by the Moon-Sun apparent geocentric ecliptic
+// longitude difference Δλ: New Moon = 0°, First Quarter = 90°, Full Moon = 180°,
+// Last Quarter = 270°. Meeus, Astronomical Algorithms, Chapter 49.
+
+/** @brief The four principal Moon phases. */
+enum class PhaseKind : uint8_t {
+  NEW_MOON = 0,
+  FIRST_QUARTER = 1,
+  FULL_MOON = 2,
+  LAST_QUARTER = 3,
+};
+
+/** @brief The target elongation for a given phase, in degrees. */
+[[nodiscard]] inline auto target_angle_deg(const PhaseKind kind) -> double {
+  switch (kind) {
+    case PhaseKind::NEW_MOON:       return 0.0;
+    case PhaseKind::FIRST_QUARTER:  return 90.0;
+    case PhaseKind::FULL_MOON:      return 180.0;
+    case PhaseKind::LAST_QUARTER:   return 270.0;
+  }
+  std::unreachable();
+}
+
+/**
+ * @brief Moon-Sun apparent longitude difference normalized to [0°, 360°).
+ * @param jde The Julian Ephemeris Day.
+ * @return The normalized difference, in degrees.
+ */
+[[nodiscard]] inline auto longitude_diff(const double jde) -> double {
+  return astro::moon_phase::new_moon::longitude_diff(jde);
+}
+
+/**
+ * @brief Signed difference from the target elongation, folded to [-180°, 180°).
+ * @param jde The Julian Ephemeris Day.
+ * @param target_deg The target elongation, in degrees.
+ * @return The signed, folded difference.
+ * @note Folding keeps `f` smooth across the root for any target, not just 0°.
+ */
+[[nodiscard]] inline auto phase_diff(const double jde, const double target_deg) -> double {
+  return astro::toolbox::normalize_pm180(longitude_diff(jde) - target_deg);
+}
+
+/**
+ * @brief How near the target elongation a bracket endpoint must sit before Newton's method
+ *        accepts it, in degrees.
+ */
+inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
+
+/**
+ * @brief How far the mean-rate extrapolation may miss the root and still be worth refining,
+ *        in degrees.
+ */
+inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
+
+/**
+ * @brief Half the width of the bracket handed to Newton's method, in days.
+ * @note Same value as `new_moon::BRACKET_HALF_WIDTH_DAYS`; the mean-rate miss dominates
+ *       the bracket choice, and that rate is the same for all four phases.
+ */
+inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
+
+/**
+ * @brief Apply Newton's method to find the JDE at which the Moon-Sun elongation equals
+ *        the target value.
+ * @param left_jde The left bound of the search, inclusive.
+ * @param right_jde The right bound of the search, exclusive.
+ * @param target_deg The target elongation, in degrees.
+ * @param iterations The maximum number of iterations.
+ * @return The JDE of the phase moment.
+ * @throw std::invalid_argument If no root exists in the range for the given target.
+ */
+// The `_jde` / `_deg` / `_iterations` suffixes carry the contract at the call site.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+[[nodiscard]] inline auto newton_method(
+  const double left_jde,
+  const double right_jde,
+  const double target_deg,
+  const std::size_t iterations = astro::toolbox::NEWTON_MAX_ITERATIONS
+) -> double {
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+  // The root is between left and right when left trails the target (negative signed diff)
+  // and right leads it (positive signed diff). A margin of BRACKET_TOLERANCE_DEG keeps the
+  // endpoints safely inside the smooth branch of `phase_diff`.
+  const double left_diff = phase_diff(left_jde, target_deg);
+  const double right_diff = phase_diff(right_jde, target_deg);
+
+  if (left_diff >= 0.0 or right_diff <= 0.0
+      or std::fabs(left_diff) >= BRACKET_TOLERANCE_DEG
+      or std::fabs(right_diff) >= BRACKET_TOLERANCE_DEG) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format(
+        "No root between jde {} (elongation {} deg) and jde {} (elongation {} deg) for target {} deg.",
+        left_jde, left_diff, right_jde, right_diff, target_deg
+      )
+    };
+  }
+
+  const auto f = [target_deg](const double jde) -> double {
+    return phase_diff(jde, target_deg);
+  };
+
+  return astro::toolbox::newton_method(
+    f, left_jde, right_jde, astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
+  );
+}
+
+/**
+ * @brief Approximate the range of the first root after the given JDE for a target elongation.
+ * @param jde The JDE.
+ * @param target_deg The target elongation, in degrees.
+ * @return The bracket [left, right) containing the first root after `jde`.
+ * @throw std::invalid_argument If the mean-rate estimate lands too far from the target.
+ */
+[[nodiscard]] inline auto first_root_range_after(const double jde, const double target_deg) -> std::pair<double, double> {
+  const double cur_diff = longitude_diff(jde);
+
+  // The signed distance to the next target, measured along the increasing elongation.
+  const double gap = (target_deg > cur_diff)
+                   ? (target_deg - cur_diff)
+                   : (360.0 - cur_diff + target_deg);
+
+  constexpr double deg_per_day = astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
+  const double est_jde = jde + (gap / deg_per_day);
+
+  const double est_jde_diff = phase_diff(est_jde, target_deg);
+  if (std::fabs(est_jde_diff) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format(
+        "Cannot find the first root after jde {} for target {} deg: the estimate at jde {} "
+        "misses the target by {} deg (elongation {} deg).",
+        jde, target_deg, est_jde, est_jde_diff, longitude_diff(est_jde)
+      )
+    };
+  }
+
+  const double root_est = est_jde - (est_jde_diff / deg_per_day);
+  return { root_est - BRACKET_HALF_WIDTH_DAYS, root_est + BRACKET_HALF_WIDTH_DAYS };
+}
+
+/**
+ * @brief Find the next root after a known root for the same target elongation.
+ * @param jde The known root JDE.
+ * @param target_deg The target elongation, in degrees.
+ * @return The next root JDE.
+ * @throw std::invalid_argument If `jde` is not a root for the target.
+ */
+[[nodiscard]] inline auto next_root(const double jde, const double target_deg) -> double {
+  if (std::fabs(phase_diff(jde, target_deg)) > 1.0) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("The jde {} is not a root for target {} deg.", jde, target_deg)
+    };
+  }
+
+  const auto [left, right] = first_root_range_after(jde + 1.0, target_deg);
+  return newton_method(left, right, target_deg);
+}
+
+/**
+ * @brief Generator for finding phase moments of a given kind.
+ */
+// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
+struct RootGenerator {
+private:
+  double _root;
+  double _target;
+
+public:
+  explicit RootGenerator(const double start_jde, const PhaseKind kind)
+    : _target { target_angle_deg(kind) } {
+    const auto [left, right] = first_root_range_after(start_jde, _target);
+    _root = newton_method(left, right, _target);
+  }
+
+  [[nodiscard]] auto next() -> double {
+    const double root = _root;
+    _root = next_root(_root, _target);
+    return root;
+  }
+};
+
+/**
+ * @brief Calculate the moments of a given Moon phase in a Gregorian year.
+ * @param year The Gregorian year.
+ * @param kind The phase kind.
+ * @return The phase moments in the year, in JDE (TT-scale ephemeris time).
+ * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
+ * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
+ */
+[[nodiscard]] inline auto moments(const int32_t year, const PhaseKind kind) -> std::vector<double> {
+  const calendar::Datetime start_moment_utc { util::to_ymd(year, 1, 1), 0.0 };
+  const calendar::Datetime end_moment_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
+
+  const auto start_jde = astro::julian_day::utc_to_jde(start_moment_utc);
+  const auto end_jde = astro::julian_day::utc_to_jde(end_moment_utc);
+
+  RootGenerator gen(start_jde, kind);
+  std::vector<double> roots;
+
+  while (true) {
+    const auto root = gen.next();
+    if (root >= end_jde) {
+      break;
+    }
+    roots.push_back(root);
+  }
+
+  return roots;
+}
+
+} // namespace astro::moon_phase::phase_moments
+
+
 namespace astro::moon_phase::illumination {
 
 // The illuminated fraction k and the phase angle i, Meeus Chapter 48. The exact path is
