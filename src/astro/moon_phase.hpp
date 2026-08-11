@@ -35,6 +35,7 @@
 #include "ymd.hpp"
 #include "datetime.hpp"
 #include "julian_day.hpp"
+#include "coord_transform.hpp"
 
 #include "sun.hpp"
 #include "moon.hpp"
@@ -319,6 +320,49 @@ namespace astro::moon_phase::illumination {
     astro::sun::geocentric_coord::apparent(jde),
     astro::moon::geocentric_coord::apparent(jde)
   );
+}
+
+/**
+ * @brief Compute the position angle χ of the Moon's bright limb, Meeus (48.5).
+ * @param sun_eq The Sun's apparent geocentric equatorial coordinates (α₀, δ₀).
+ * @param moon_eq The Moon's apparent geocentric equatorial coordinates (α, δ).
+ * @return χ in [0°, 360°), measured eastward from the north point of the disk.
+ * @note The formula uses equatorial coordinates; the spherical geometry is identical to (48.2),
+ *       so the ecliptic-to-equatorial conversion must use the true obliquity for apparent places.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ */
+[[nodiscard]] inline auto position_angle(
+  const astro::coords::EquatorialCoord& sun_eq, // NOLINT(bugprone-easily-swappable-parameters) -- Sun vs Moon, ordered α₀δ₀ vs αδ.
+  const astro::coords::EquatorialCoord& moon_eq
+) -> astro::toolbox::AngleDeg {
+  const double α0 = sun_eq.α.rad();
+  const double δ0 = sun_eq.δ.rad();
+  const double α  = moon_eq.α.rad();
+  const double δ  = moon_eq.δ.rad();
+  const double Δα = α0 - α;
+
+  // Meeus (48.5). atan2 places χ in the correct quadrant; normalize to [0°, 360°).
+  const double y = std::cos(δ0) * std::sin(Δα);
+  const double x = (std::sin(δ0) * std::cos(δ)) - (std::cos(δ0) * std::sin(δ) * std::cos(Δα));
+
+  const auto χ_rad = astro::toolbox::AngleRad { std::atan2(y, x) }.normalize();
+  return astro::toolbox::AngleDeg { χ_rad.deg() };
+}
+
+/**
+ * @brief Compute the position angle χ of the Moon's bright limb at a JDE, Meeus (48.5).
+ * @param jde The Julian Ephemeris Day, on the TT scale.
+ * @return χ in [0°, 360°), measured eastward from the north point of the disk.
+ * @details Sun: VSOP87D apparent equatorial; Moon: truncated ELP2000-82B apparent ecliptic,
+ *          converted to equatorial with the true obliquity.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ */
+[[nodiscard]] inline auto position_angle(const double jde) -> astro::toolbox::AngleDeg {
+  const auto sun_eq = astro::sun::equatorial_coord::apparent(jde);
+  const auto moon_ecl = astro::moon::geocentric_coord::apparent(jde);
+  const auto ε = astro::earth::obliquity::true_obliquity(jde);
+  const auto moon_eq = astro::coords::ecliptic_to_equatorial(moon_ecl.λ, moon_ecl.β, ε);
+  return position_angle(sun_eq, moon_eq);
 }
 
 /**

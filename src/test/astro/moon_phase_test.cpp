@@ -435,6 +435,31 @@ TEST(Illumination, HorizonsGoldenDataset) {
   }
 }
 
+TEST(Illumination, Example48aPositionAngleFormulaLayer) {
+  // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), printed equatorial positions.
+  // The book rounds χ to 285°.0; the inputs are rounded to 4 decimals, so the formula-layer
+  // tolerance is half a print digit. Measured recomputation from the rounded inputs: 285.0000.
+  const astro::coords::EquatorialCoord sun_eq {
+    .α = astro::toolbox::AngleDeg { 20.6579 },
+    .δ = astro::toolbox::AngleDeg { 8.6964 },
+  };
+  const astro::coords::EquatorialCoord moon_eq {
+    .α = astro::toolbox::AngleDeg { 134.6885 },
+    .δ = astro::toolbox::AngleDeg { 13.7684 },
+  };
+
+  const auto χ = illumination::position_angle(sun_eq, moon_eq);
+  ASSERT_NEAR(χ.deg(), 285.0, 0.05);
+}
+
+TEST(Illumination, Example48aPositionAngleEndToEnd) {
+  // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
+  // Measured native value: 285.04424°; pymeeus (pure-Python Meeus) gives 285.04435°.
+  // The book rounds both to 285°.0. The tolerance keeps the model difference to pymeeus
+  // and the print-digit anchor well inside.
+  ASSERT_NEAR(illumination::position_angle(2448724.5).deg(), 285.0442, 0.001);
+}
+
 TEST(Illumination, ConjunctionReadsZero) {
   // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
   // phase angle reads 180° and k = 0 — finite, never NaN. β is tuned so cos_ψ lands an
