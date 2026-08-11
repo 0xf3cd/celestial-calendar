@@ -115,10 +115,11 @@ CELESTIAL_API bool set_log_verbosity(uint8_t new_value);
  * @brief Get the last-error message of the calling thread.
  * @returns A pointer to a thread-local C string, empty if there is no recorded error.
  *          Only the recording functions (`ut1_to_jd`, `ut1_to_jde`, `jde_to_ut1`,
- *          `moon_illumination`, `local_apparent_sidereal_time`) write and clear the
- *          message; other functions neither set nor clear it, so the pointer always
- *          refers to the most recent recording call on this thread. It stays valid
- *          until the next recording call on the same thread.
+ *          `moon_illumination`, `moon_position_angle`, `moon_phase_moments`,
+ *          `local_apparent_sidereal_time`) write and clear the message; other functions
+ *          neither set nor clear it, so the pointer always refers to the most recent
+ *          recording call on this thread. It stays valid until the next recording call
+ *          on the same thread.
  * @note #97 pilot, widened for the wasm consumer: it gets `valid = false` across an
  *       FFI boundary with no other way to learn why.
  */
@@ -213,6 +214,35 @@ typedef struct MoonIllumination {
  *          270° last quarter.
  */
 CELESTIAL_API MoonIllumination moon_illumination(double jde);
+
+typedef struct MoonPositionAngle {
+  bool   valid;     /* Indicates if the result is valid. */
+  double angle_deg; /* Position angle of the Moon's bright limb, in [0, 360). */
+} MoonPositionAngle;
+
+/**
+ * @brief Compute the position angle of the Moon's bright limb at a JDE (Meeus ch. 48, (48.5)).
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @returns A `MoonPositionAngle` struct; `angle_deg` is measured eastward from the north
+ *          point of the disk, in [0, 360).
+ */
+CELESTIAL_API MoonPositionAngle moon_position_angle(double jde);
+
+
+/* ---------- Moon Phase Moments ---------- */
+
+/**
+ * @brief Find the moments of a given Moon phase in `year`; the total count goes to `root_count`,
+ *        up to `slot_count` of them are written to `slots`.
+ * @param year The Gregorian year.
+ * @param phase_kind The phase kind: 0 = New Moon, 1 = First Quarter, 2 = Full Moon, 3 = Last Quarter.
+ * @param root_count Where the total count of the roots is written. Must not be null.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written.
+ */
+CELESTIAL_API uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count);
 
 
 /* ---------- Solar Longitude Roots ---------- */

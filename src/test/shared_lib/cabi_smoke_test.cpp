@@ -212,6 +212,41 @@ TEST(CAbiSmoke, MoonIllumination) {
 }
 
 
+TEST(CAbiSmoke, MoonPositionAngle) {
+  // Meeus Example 48.a's instant (1992-04-12 0h TT): χ = 285°.0 by the book.
+  const MoonPositionAngle pa = moon_position_angle(2448724.5);
+  ASSERT_TRUE(pa.valid);
+  EXPECT_NEAR(pa.angle_deg, 285.0, 0.05);
+  EXPECT_GE(pa.angle_deg, 0.0);
+  EXPECT_LT(pa.angle_deg, 360.0);
+
+  EXPECT_FALSE(moon_position_angle(NAN_VALUE).valid);  // non-finite JDE
+  EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
+  EXPECT_FALSE(moon_position_angle(HUGE_VAL).valid);
+}
+
+
+TEST(CAbiSmoke, MoonPhaseMoments) {
+  uint32_t root_count = 0;
+  std::array<double, 15> slots {};
+  const uint32_t written = moon_phase_moments(2024, 0, &root_count, slots.data(), slots.size());
+  EXPECT_EQ(written, root_count);
+  EXPECT_TRUE(root_count == 12U or root_count == 13U);
+
+  // First new moon of 2024: 2024-01-11 11:57 UTC -> JDE ~2460320.998.
+  EXPECT_NEAR(slots.at(0), 2460320.998, 0.002);
+
+  // Other phases should also succeed.
+  EXPECT_GT(moon_phase_moments(2024, 1, &root_count, slots.data(), slots.size()), 0U);
+  EXPECT_GT(moon_phase_moments(2024, 2, &root_count, slots.data(), slots.size()), 0U);
+  EXPECT_GT(moon_phase_moments(2024, 3, &root_count, slots.data(), slots.size()), 0U);
+
+  EXPECT_EQ(moon_phase_moments(2024, 0, nullptr, slots.data(), slots.size()), 0U);    // null root_count
+  EXPECT_EQ(moon_phase_moments(2024, 0, &root_count, nullptr, 15), 0U);               // null slots
+  EXPECT_EQ(moon_phase_moments(2024, 4, &root_count, slots.data(), slots.size()), 0U); // bad phase_kind
+}
+
+
 TEST(CAbiSmoke, LocalApparentSiderealTime) {
   const SiderealTime last = local_apparent_sidereal_time(2460463.0, 120.0);
   ASSERT_TRUE(last.valid);

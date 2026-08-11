@@ -89,6 +89,12 @@ def check_ctypes_smoke() -> int:
     ("local_apparent_sidereal_time(2460463.0, +120E) -> 190.4627",
      lambda: round(common.local_apparent_sidereal_time(2460463.0, 120.0), 4),
      190.4627),
+    ("moon_position_angle(1992-04-12 0h TT) -> Example 48.a",
+     lambda: round(common.moon_position_angle(2448724.5).angle_deg, 4),
+     285.0442),
+    ("moon_phase_moments(2024, NEW_MOON) first moment",
+     lambda: round(common.moon_phase_moments(2024, common.MoonPhaseKind.NEW_MOON).jdes[0], 4),
+     2460320.999),  # USNO 2024-01-11 11:57 UTC; C++ returns ~2460320.9990
   ]
 
   # (label, call) -- invalid inputs must surface as ValueError, not a wrong date.

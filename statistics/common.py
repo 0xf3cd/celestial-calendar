@@ -279,6 +279,15 @@ LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
 LIB.moon_illumination.argtypes = [c_double]
 LIB.moon_illumination.restype = _MoonIllumination
 
+class _MoonPositionAngle(Structure):
+  _fields_ = [
+    ("valid",    c_bool  ),
+    ("angle_deg", c_double),
+  ]
+
+LIB.moon_position_angle.argtypes = [c_double]
+LIB.moon_position_angle.restype = _MoonPositionAngle
+
 
 @dataclass
 class SunCoordinate:
@@ -348,6 +357,68 @@ def moon_illumination(jde: float) -> MoonIllumination:
     illumination   = result.illumination,
     elongation_deg = result.elongation_deg,
   )
+
+
+@dataclass
+class MoonPositionAngle:
+  angle_deg: float # In [0, 360)
+
+def moon_position_angle(jde: float) -> MoonPositionAngle:
+  """
+  @brief Compute the position angle of the Moon's bright limb (Meeus ch. 48, (48.5)).
+  @param jde The julian ephemeris day number, which is based on TT.
+  @returns A `MoonPositionAngle` with the angle in degrees, in [0, 360).
+  """
+  result = LIB.moon_position_angle(jde)
+
+  if not result.valid:
+    raise ValueError("Error occurred in moon_position_angle.")
+
+  return MoonPositionAngle(angle_deg = result.angle_deg)
+
+
+LIB.moon_phase_moments.argtypes = [c_int32, c_uint8, POINTER(c_uint32), POINTER(c_double), c_uint32]
+LIB.moon_phase_moments.restype = c_uint32
+
+class MoonPhaseKind(Enum):
+  NEW_MOON = 0
+  FIRST_QUARTER = 1
+  FULL_MOON = 2
+  LAST_QUARTER = 3
+
+@dataclass
+class MoonPhaseMoments:
+  year: int
+  phase: MoonPhaseKind
+  jdes: List[float]
+  moments: List[datetime]
+
+def moon_phase_moments(year: int, phase: MoonPhaseKind) -> MoonPhaseMoments:
+  """
+  Find the Julian Ephemeris Days (JDEs) of the given Moon phase in a year.
+
+  @param year The Gregorian year.
+  @param phase The phase kind.
+  @returns A `MoonPhaseMoments` with the JDEs and corresponding UT1 datetimes.
+  """
+  slot_count = 15  # 12 or 13 moments per year per phase.
+  root_count = c_uint32(0)
+  slots = (c_double * slot_count)()
+
+  num_written = LIB.moon_phase_moments(year, phase.value, ctypes.byref(root_count), slots, slot_count)
+
+  if num_written == 0:
+    raise ValueError(f"Error occurred in moon_phase_moments for year {year}, phase {phase}.")
+
+  if num_written != root_count.value:
+    raise ValueError(
+      f"moon_phase_moments wrote {num_written} of {root_count.value} roots for year {year}; "
+      f"slot_count is {slot_count}."
+    )
+
+  jdes = [slots[i] for i in range(num_written)]
+  moments = [jde_to_ut1(jde) for jde in jdes]
+  return MoonPhaseMoments(year=year, phase=phase, jdes=jdes, moments=moments)
 
 #endregion
 
