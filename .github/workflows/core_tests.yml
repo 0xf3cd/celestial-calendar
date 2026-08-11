@@ -324,8 +324,8 @@ jobs:
 
       # Same Xcode the macOS build leg pins. Without it this job reads the image default, and
       # the baseline would record a toolchain the project never actually compiles with.
-      # Pinned; see AGENTS.md gotcha 9 (#72, #73).
-      - uses: maxim-lobanov/setup-xcode@v1
+      # Pinned (version + action SHA); see AGENTS.md gotcha 9 (#72, #73) and #177.
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
         if: runner.os == 'macOS'
         with:
           xcode-version: '26'
