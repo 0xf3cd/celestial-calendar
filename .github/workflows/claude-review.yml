@@ -26,8 +26,10 @@ jobs:
         with:
           fetch-depth: 1
 
+      # --detach: for a fork PR whose head branch is named e.g. `main`, plain `gh pr checkout`
+      # would try to create a local branch that already exists here and abort before Claude runs.
       - name: Check out the PR branch
-        run: gh pr checkout "${{ inputs.pr_number }}"
+        run: gh pr checkout --detach "${{ inputs.pr_number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
