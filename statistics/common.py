@@ -261,12 +261,23 @@ class _MoonCoordinate(Structure):
     ("r",     c_double),
   ]
 
+# Define the MoonIllumination struct
+class _MoonIllumination(Structure):
+  _fields_ = [
+    ("valid",          c_bool  ),
+    ("illumination",   c_double),
+    ("elongation_deg", c_double),
+  ]
+
 
 LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
 LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
 
 LIB.moon_apparent_geocentric_coord.argtypes = [c_double]
 LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
+
+LIB.moon_illumination.argtypes = [c_double]
+LIB.moon_illumination.restype = _MoonIllumination
 
 
 @dataclass
@@ -315,6 +326,58 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
     lat = coord.lat,
     r   = coord.r,
   )
+
+
+@dataclass
+class MoonIllumination:
+  illumination:   float # In [0, 1]
+  elongation_deg: float # In degrees, in [0, 360)
+
+def moon_illumination(jde: float) -> MoonIllumination:
+  """
+  @brief Compute the Moon's illuminated fraction and elongation (Meeus ch. 48).
+  @param jde The julian ephemeris day number, which is based on TT.
+  @returns A `MoonIllumination` with the fraction in [0, 1] and the elongation in degrees.
+  """
+  result = LIB.moon_illumination(jde)
+
+  if not result.valid:
+    raise ValueError("Error occurred in moon_illumination.")
+
+  return MoonIllumination(
+    illumination   = result.illumination,
+    elongation_deg = result.elongation_deg,
+  )
+
+#endregion
+
+
+#region Sidereal Time
+
+class _SiderealTime(Structure):
+  _fields_ = [
+    ("valid", c_bool  ),
+    ("value", c_double),
+  ]
+
+
+LIB.local_apparent_sidereal_time.argtypes = [c_double, c_double]
+LIB.local_apparent_sidereal_time.restype = _SiderealTime
+
+
+def local_apparent_sidereal_time(jd_ut1: float, longitude: float) -> float:
+  """
+  @brief Compute the Local Apparent Sidereal Time (LAST).
+  @param jd_ut1 The julian day number, which is based on UT1.
+  @param longitude The observer's geographic longitude in degrees, positive east.
+  @returns The LAST in degrees, in [0, 360).
+  """
+  result = LIB.local_apparent_sidereal_time(jd_ut1, longitude)
+
+  if not result.valid:
+    raise ValueError("Error occurred in local_apparent_sidereal_time.")
+
+  return result.value
 
 #endregion
 

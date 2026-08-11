@@ -45,6 +45,9 @@ _Static_assert(offsetof(MoonCoordinate, lon) == 8 && offsetof(MoonCoordinate, la
                offsetof(MoonCoordinate, r) == 24 && sizeof(MoonCoordinate) == 32,
                "MoonCoordinate layout drifted");
 
+_Static_assert(offsetof(MoonIllumination, illumination) == 8 && offsetof(MoonIllumination, elongation_deg) == 16 &&
+               sizeof(MoonIllumination) == 24, "MoonIllumination layout drifted");
+
 _Static_assert(offsetof(Discriminant, count) == 4 && sizeof(Discriminant) == 8, "Discriminant layout drifted");
 
 _Static_assert(offsetof(JieqiMomentQuery, jq_idx) == 1 && offsetof(JieqiMomentQuery, y) == 4 &&
@@ -64,6 +67,9 @@ _Static_assert(offsetof(DeltaT, value) == 8 && sizeof(DeltaT) == 16, "DeltaT lay
 
 _Static_assert(offsetof(EquationOfTime, value) == 8 && sizeof(EquationOfTime) == 16,
                "EquationOfTime layout drifted");
+
+_Static_assert(offsetof(SiderealTime, value) == 8 && sizeof(SiderealTime) == 16,
+               "SiderealTime layout drifted");
 
 _Static_assert(offsetof(ApparentSolarTime, year) == 4 && offsetof(ApparentSolarTime, month) == 8 &&
                offsetof(ApparentSolarTime, day) == 12 && offsetof(ApparentSolarTime, fraction) == 16 &&

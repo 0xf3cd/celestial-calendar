@@ -181,6 +181,44 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 #pragma endregion
 
 
+#pragma region Moon Illumination
+
+auto moon_illumination(const double jde) -> MoonIllumination {
+  lib::clear_last_error();
+
+  try {
+    if (not std::isfinite(jde)) {
+      throw std::invalid_argument {
+        std::format("Argument `jde` is not finite, got {}", jde)
+      };
+    }
+
+    // Both fields come from the same position pair — evaluate VSOP87D/ELP2000-82B once.
+    const auto sun_pos = astro::sun::geocentric_coord::apparent(jde);
+    const auto moon_pos = astro::moon::geocentric_coord::apparent(jde);
+
+    return {
+      .valid          = true,
+      .illumination   = astro::moon_phase::illumination::fraction(
+        astro::moon_phase::illumination::phase_angle(sun_pos, moon_pos)
+      ),
+      .elongation_deg = (moon_pos.λ - sun_pos.λ).normalize().deg(),
+    };
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Error in moon_illumination: {}", e.what());
+    lib::debug("moon_illumination: jde = {}", jde);
+
+    return {};
+  } catch (...) {
+    lib::set_last_error("Unknown error in moon_illumination.");
+    return {};
+  }
+}
+
+#pragma endregion
+
+
 #pragma region Solar Longitude Roots
 
 auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
@@ -384,6 +422,58 @@ auto apparent_solar_time(
 
     return {};
   } catch (...) {
+    return {};
+  }
+}
+
+#pragma endregion
+
+
+#pragma region Sidereal Time
+
+auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> SiderealTime {
+  lib::clear_last_error();
+
+  try {
+    if (not std::isfinite(jd_ut1)) {
+      throw std::invalid_argument {
+        std::format("Argument `jd_ut1` is not finite, got {}", jd_ut1)
+      };
+    }
+    if (not std::isfinite(longitude) or longitude < -180.0 or longitude > 180.0) {
+      throw std::invalid_argument {
+        std::format("Argument `longitude` out of range [-180, 180], got {}", longitude)
+      };
+    }
+
+    // Nutation needs the instant on TT. jd_to_ut1 guards the floor (401); the ceiling is
+    // declared as 32766 — late 32767 would survive jd_to_ut1 only to have the ΔT shift
+    // (~34.8 days at that era) push the TT date past the representable years.
+    const auto ut1_dt = astro::julian_day::jd_to_ut1(jd_ut1);
+    const auto year = static_cast<int32_t>(ut1_dt.ymd.year());
+    if (year > 32766) {
+      throw std::out_of_range {
+        std::format("Year {} is outside the declared domain [401, 32766].", year)
+      };
+    }
+    const double jde_tt = astro::julian_day::ut1_to_jde(ut1_dt);
+
+    // The boundary speaks east-positive (like `apparent_solar_time`); the core's
+    // `local_apparent` takes west-positive, hence the negation (#127/D2).
+    const auto last = astro::sidereal::local_apparent(jd_ut1, jde_tt, astro::toolbox::AngleDeg { -longitude });
+
+    return {
+      .valid = true,
+      .value = last.deg(),
+    };
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Error in local_apparent_sidereal_time: {}", e.what());
+    lib::debug("local_apparent_sidereal_time: jd_ut1 = {}, longitude = {}", jd_ut1, longitude);
+
+    return {};
+  } catch (...) {
+    lib::set_last_error("Unknown error in local_apparent_sidereal_time.");
     return {};
   }
 }

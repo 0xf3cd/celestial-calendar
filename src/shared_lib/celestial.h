@@ -48,15 +48,16 @@
  *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
- * On failure the Julian Day functions also record a thread-local message readable
- * through `last_error` (#97 pilot).
+ * On failure the recording functions (the set is listed on `last_error`) also
+ * record a thread-local message readable through it.
  *
  * Thread-safety contract: every entry point may be called concurrently from any
  * number of threads, with no host-side synchronization. `set_log_verbosity` turns
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
- * `last_error` is per-thread: it reports the calling thread's most recent Julian
- * Day call, and no thread ever observes another's message. Two computations memoize
+ * `last_error` is per-thread: it reports the calling thread's most recent call to a
+ * recording function (the set is listed on `last_error` itself), and no thread ever
+ * observes another's message. Two computations memoize
  * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
  * shared process-wide and never erased: the first call with a given argument pays for
  * it, later calls from any thread reuse the result, and memory grows monotonically
@@ -113,11 +114,13 @@ CELESTIAL_API bool set_log_verbosity(uint8_t new_value);
 /**
  * @brief Get the last-error message of the calling thread.
  * @returns A pointer to a thread-local C string, empty if there is no recorded error.
- *          Only the Julian Day functions (`ut1_to_jd`, `ut1_to_jde`, `jde_to_ut1`) write
- *          and clear the message; other functions neither set nor clear it, so the pointer
- *          always refers to the most recent Julian Day call on this thread. It stays valid
- *          until the next Julian Day call on the same thread.
- * @note #97 pilot: only the Julian Day functions record messages for now.
+ *          Only the recording functions (`ut1_to_jd`, `ut1_to_jde`, `jde_to_ut1`,
+ *          `moon_illumination`, `local_apparent_sidereal_time`) write and clear the
+ *          message; other functions neither set nor clear it, so the pointer always
+ *          refers to the most recent recording call on this thread. It stays valid
+ *          until the next recording call on the same thread.
+ * @note #97 pilot, widened for the wasm consumer: it gets `valid = false` across an
+ *       FFI boundary with no other way to learn why.
  */
 CELESTIAL_API const char *last_error(void);
 
@@ -194,6 +197,22 @@ typedef struct MoonCoordinate {
  * @returns A `MoonCoordinate` struct.
  */
 CELESTIAL_API MoonCoordinate moon_apparent_geocentric_coord(double jde);
+
+typedef struct MoonIllumination {
+  bool   valid;          /* Indicates if the result is valid. */
+  double illumination;   /* The illuminated fraction of the Moon's disk, in [0, 1]. */
+  double elongation_deg; /* The apparent longitude difference Moon − Sun, in degrees, in [0, 360). */
+} MoonIllumination;
+
+/**
+ * @brief Compute the Moon's illuminated fraction k and elongation at a JDE
+ *        (Meeus ch. 48: k from (48.2)+(48.3)+(48.1)).
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @returns A `MoonIllumination` struct. `elongation_deg` is the apparent ecliptic longitude
+ *          difference that defines the phases: 0° new, 90° first quarter, 180° full,
+ *          270° last quarter.
+ */
+CELESTIAL_API MoonIllumination moon_illumination(double jde);
 
 
 /* ---------- Solar Longitude Roots ---------- */
@@ -285,6 +304,25 @@ typedef struct ApparentSolarTime {
  *          input UTC date — a large enough longitude shifts the moment across midnight.
  */
 CELESTIAL_API ApparentSolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
+
+
+/* ---------- Sidereal Time ---------- */
+
+typedef struct SiderealTime {
+  bool   valid; /* Indicates if the result is valid. */
+  double value; /* The local apparent sidereal time, in degrees, in [0, 360). */
+} SiderealTime;
+
+/**
+ * @brief Compute the Local Apparent Sidereal Time (LAST) for an observer.
+ * @param jd_ut1 The julian day number, which is based on **UT1**. Declared domain:
+ *        Gregorian years in [401, 32766].
+ * @param longitude The observer's geographic longitude in degrees, positive east, in [-180, 180].
+ * @returns A `SiderealTime` struct. The ΔT model is the library default (algo5) and the
+ *          nutation model is IAU 1980 — both baked in, matching the other single-default
+ *          entry points.
+ */
+CELESTIAL_API SiderealTime local_apparent_sidereal_time(double jd_ut1, double longitude);
 
 
 /* ---------- Jieqi ---------- */

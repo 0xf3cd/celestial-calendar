@@ -198,6 +198,42 @@ TEST(CAbiSmoke, SunMoonCoords) {
 }
 
 
+TEST(CAbiSmoke, MoonIllumination) {
+  // Meeus Example 48.a's instant (1992-04-12 0h TT): k = 0.6786 by the book.
+  const MoonIllumination mi = moon_illumination(2448724.5);
+  ASSERT_TRUE(mi.valid);
+  EXPECT_NEAR(mi.illumination, 0.6786, 5e-5);
+  EXPECT_GE(mi.elongation_deg, 0.0);
+  EXPECT_LT(mi.elongation_deg, 360.0);
+
+  EXPECT_FALSE(moon_illumination(NAN_VALUE).valid);  // non-finite JDE
+  EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
+  EXPECT_FALSE(moon_illumination(HUGE_VAL).valid);
+}
+
+
+TEST(CAbiSmoke, LocalApparentSiderealTime) {
+  const SiderealTime last = local_apparent_sidereal_time(2460463.0, 120.0);
+  ASSERT_TRUE(last.valid);
+  EXPECT_GE(last.value, 0.0);
+  EXPECT_LT(last.value, 360.0);
+  EXPECT_STREQ(last_error(), ""); // a valid call clears the message
+
+  // Outside the declared [401, 32766] window: valid = false, and the reason is
+  // readable — the widened last_error boundary (#97). jd 1000000 ≈ year -1975 is
+  // below the floor; 13689294.5 is 32767-12-01, above the ceiling.
+  EXPECT_FALSE(local_apparent_sidereal_time(1000000.0, 0.0).valid);
+  EXPECT_STRNE(last_error(), "");
+  EXPECT_FALSE(local_apparent_sidereal_time(13689294.5, 0.0).valid);
+  EXPECT_NE(std::strstr(last_error(), "32766"), nullptr);
+
+  EXPECT_FALSE(local_apparent_sidereal_time(NAN_VALUE, 0.0).valid);  // non-finite jd
+  EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
+  EXPECT_FALSE(local_apparent_sidereal_time(2460463.0, NAN_VALUE).valid);  // non-finite longitude
+  EXPECT_FALSE(local_apparent_sidereal_time(2460463.0, 999.0).valid);      // out of [-180, 180]
+}
+
+
 TEST(CAbiSmoke, SolarLonRoots) {
   const Discriminant disc = solar_lon_root_discriminant(2024, 0.0);
   ASSERT_TRUE(disc.valid);

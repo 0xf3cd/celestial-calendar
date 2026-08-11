@@ -7,7 +7,8 @@ on:
   pull_request:
     branches: [ main ]  # Also triggers on pull requests to the main branch
 
-# Read-only is enough: this leg builds and checks, it uploads nothing and writes nothing.
+# Read-only is enough: this leg builds and checks, and the upload goes through
+# `actions/upload-artifact`, which uses the Actions runtime token rather than this one.
 permissions:
   contents: read
 
@@ -50,3 +51,17 @@ jobs:
       # Runner's preinstalled node is enough — the checker is dependency-free.
       - name: Golden dataset + sret + exception path + size gate
         run: node toolbox/wasm_check.mjs
+
+      # The release flow downloads this artifact for the tagged commit (the ritual
+      # dispatches both build workflows; this leg stays dispatch+PR only). Alignment
+      # with build_and_test.yml's four uploads: v7 action, 30-day retention, and a
+      # missing payload is an error, never a silently empty package.
+      - name: Upload the WASM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: celestial-wasm
+          path: |
+            build/wasm/celestial-jieqi.mjs
+            build/wasm/celestial-jieqi.wasm
+          retention-days: 30
+          if-no-files-found: error

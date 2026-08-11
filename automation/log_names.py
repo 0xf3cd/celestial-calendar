@@ -25,6 +25,7 @@ from .utils import green_print, red_print, yellow_print
 # user greps a name that does not exist).
 ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "is_leap",
+  "jd_ut1",  # local_apparent_sidereal_time's parameter, quoted by its guard messages
   "jq_idx",
   "root_count",
   "slot_count",

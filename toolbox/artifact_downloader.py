@@ -23,6 +23,7 @@ import argparse
 import subprocess
 
 from pathlib import Path
+from typing import Final
 
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
@@ -44,6 +45,17 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
     raise RuntimeError(f'Cannot find the workflow "{workflow_name}"')
   
   return multi_platform_workflow[0]
+
+
+# A release ships the artifacts of the tagged commit from BOTH build legs: the platform
+# packages and the wasm module (`celestial-wasm`). Each source names its expected minimum
+# count -- a successful run with fewer artifacts must fail loudly: a release must never
+# ship with artifacts silently missing. The minimums track the legs' upload steps; a PR
+# that adds or removes an upload updates its number here.
+ARTIFACT_SOURCES: Final[tuple[tuple[str, int], ...]] = (
+  ("Build and Test on Multiple Platforms", 4),
+  ("WASM Build and Golden Check", 1),
+)
 
 
 def release_commit_sha() -> str:
@@ -93,7 +105,8 @@ def parse_args() -> argparse.Namespace:
     type=int, 
     required=False,
     default=0,
-    help="The ID of the artifact run. If not specified, the successful run that built the release commit is used."
+    help="The ID of a single artifact run to download, skipping the dual-source lookup. "
+         "If not specified, the successful runs that built the release commit are used."
   )
   parser.add_argument(
     "-s", "--save-to", 
@@ -134,14 +147,28 @@ def main() -> None:
   # Parse the command line arguments.
   args = parse_args()
   validate_args(args)
-  
-  # Download artifacts.
-  run_id = args.run_id
-  if run_id == 0:
-    run = find_artifact_run(artifact_workflow(), release_commit_sha())
-    run_id = run.id
-  
-  downloaded_artifacts = GitHub.download_artifacts(run_id, args.save_to, args.parallel)
+
+  downloaded_artifacts = []
+
+  if args.run_id != 0:
+    # --run-id pins one specific run and skips the dual-source lookup entirely
+    # (and with it the per-source minimum -- the caller asked for this run deliberately).
+    downloaded_artifacts = GitHub.download_artifacts(args.run_id, args.save_to, args.parallel)
+  else:
+    sha = release_commit_sha()
+    for workflow_name, min_artifacts in ARTIFACT_SOURCES:
+      run = find_artifact_run(artifact_workflow(workflow_name), sha)
+      downloaded = GitHub.download_artifacts(run.id, args.save_to, args.parallel)
+      if len(downloaded) < min_artifacts:
+        red_print(
+          f'"{workflow_name}" run {run.id} (commit {sha}) yielded {len(downloaded)} '
+          f"artifact(s), expected at least {min_artifacts}"
+        )
+        raise RuntimeError(
+          f'"{workflow_name}" run {run.id} has {len(downloaded)} of ≥{min_artifacts} '
+          "artifacts -- a release must never ship with artifacts silently missing"
+        )
+      downloaded_artifacts.extend(downloaded)
 
   # Unzip the downloaded artifacts.
   if args.unzip:

@@ -26,6 +26,7 @@
 #include <tuple>
 #include <vector>
 #include <chrono>
+#include <cmath>
 #include <ranges>
 #include <stdexcept>
 #include "julian_day.hpp"
@@ -269,6 +270,188 @@ TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
       jde = root + 1.0;
     }
   }
+}
+
+TEST(Illumination, Example48aFormulaLayer) {
+  // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), mirrored value-by-value. The inputs
+  // are the book's own printed (rounded) positions from Example 47.a, so this layer pins the
+  // formula transcription exactly — no position-model error is absorbed. Tolerances are the
+  // print digits; measured gaps recomputing from the rounded inputs: i 3.8e-5 deg, k 3.2e-5.
+  const astro::toolbox::SphericalCoordinate sun_pos {
+    .λ = astro::toolbox::AngleDeg { 20.6579 },    // α₀ — equatorial plugs into (λ, β) as-is
+    .β = astro::toolbox::AngleDeg { 8.6964 },     // δ₀
+    .r = astro::toolbox::DistanceAu { 1.0024977 },
+  };
+  const astro::toolbox::SphericalCoordinate moon_pos {
+    .λ = astro::toolbox::AngleDeg { 134.6885 },   // α
+    .β = astro::toolbox::AngleDeg { 13.7684 },    // δ
+    .r = astro::toolbox::DistanceAu { astro::toolbox::DistanceKm { 368410.0 } },
+  };
+
+  const auto i = illumination::phase_angle(sun_pos, moon_pos);
+  ASSERT_NEAR(i.deg(), 69.0756, 5e-5);
+  ASSERT_NEAR(illumination::fraction(i), 0.6786, 5e-5);
+}
+
+TEST(Illumination, Example48aEndToEnd) {
+  // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
+  // Measured gap vs the book's 0.6786: 3.3e-5 — below the print digit.
+  ASSERT_NEAR(illumination::fraction(2448724.5), 0.6786, 5e-5);
+}
+
+TEST(Illumination, HorizonsGoldenDataset) {
+  // Provenance: JPL Horizons, Moon (301), observer quantity 10 (Illu%), geocenter 500@399,
+  // TT scale, DE441 (gated at collection: the response must name {source: DE441}) — 121
+  // epochs = 120 seeded (uniform in [1900, 2100], seed 42) + the Example 48.a anchor,
+  // collected 2026-08-10. Regenerable: statistics/moon_illumination_horizons_crawler.py
+  // prints this exact block. Measured max gap 4.33e-5 — the VSOP87D + truncated-ELP position
+  // gap to DE441 in fraction units; tolerance 1e-4 ≈ 2.3x the measured max.
+  const std::vector<std::pair<double, double>> dataset {
+    { 2415495.221397, 0.0499048 },
+    { 2415859.165691, 0.9064972 },
+    { 2416847.485648, 0.1605078 },
+    { 2416958.899513, 0.8035806 },
+    { 2417197.127286, 0.7013731 },
+    { 2417365.358617, 0.8653171 },
+    { 2418367.879577, 0.8078125 },
+    { 2418462.256992, 0.9945935 },
+    { 2419661.071879, 0.2347863 },
+    { 2420849.144330, 0.8684526 },
+    { 2421371.207846, 0.0309711 },
+    { 2421661.250740, 0.2244547 },
+    { 2421795.398367, 0.8981585 },
+    { 2422085.437895, 0.4966899 },
+    { 2422398.452416, 0.2973007 },
+    { 2423030.149674, 0.4164011 },
+    { 2423169.163177, 0.0611201 },
+    { 2426185.102889, 0.0478350 },
+    { 2426377.966502, 0.9117812 },
+    { 2426956.725364, 0.3527883 },
+    { 2427521.835974, 0.7085953 },
+    { 2428070.662569, 0.0592515 },
+    { 2429545.192707, 0.2326025 },
+    { 2430324.569584, 0.5347329 },
+    { 2430432.374758, 0.1100487 },
+    { 2430991.566783, 0.2482774 },
+    { 2431041.442815, 0.9893363 },
+    { 2431123.246559, 0.6514258 },
+    { 2431325.598000, 0.1565728 },
+    { 2431668.013240, 0.5500878 },
+    { 2431752.003561, 0.9225587 },
+    { 2432025.408667, 0.2702747 },
+    { 2433036.146182, 0.0169205 },
+    { 2434213.249019, 0.0463504 },
+    { 2434260.543379, 0.9872230 },
+    { 2434369.466402, 0.4040310 },
+    { 2434511.546476, 0.0106313 },
+    { 2434522.695945, 0.8747469 },
+    { 2434578.435508, 0.5726832 },
+    { 2435110.841648, 0.6672698 },
+    { 2435325.915760, 0.9280245 },
+    { 2436159.711965, 0.2484178 },
+    { 2436821.295126, 0.4866637 },
+    { 2438007.089837, 0.8930581 },
+    { 2438063.714255, 0.7030747 },
+    { 2439608.058331, 0.8712686 },
+    { 2439875.119731, 0.8295192 },
+    { 2441670.761009, 0.9795634 },
+    { 2442061.479286, 0.6382433 },
+    { 2442671.679186, 0.8380223 },
+    { 2442738.961110, 0.8731821 },
+    { 2442897.025641, 0.0074965 },
+    { 2443920.619109, 0.8606838 },
+    { 2444195.908099, 0.0207052 },
+    { 2445841.045084, 0.7074255 },
+    { 2445858.441255, 0.5294866 },
+    { 2446779.232031, 0.9772301 },
+    { 2448164.109300, 0.7384120 },
+    { 2448538.710128, 0.0217882 },
+    { 2448724.500000, 0.6785466 },
+    { 2451587.314386, 0.4833009 },
+    { 2451935.693085, 0.0247754 },
+    { 2452240.376700, 0.8396190 },
+    { 2453671.244681, 0.2571356 },
+    { 2454190.889625, 0.9521361 },
+    { 2454245.108696, 0.5725217 },
+    { 2454827.385275, 0.0044279 },
+    { 2455345.964033, 0.9755430 },
+    { 2455704.564883, 0.6674708 },
+    { 2456027.319464, 0.8698555 },
+    { 2457194.919507, 0.2275006 },
+    { 2457723.337414, 0.0177715 },
+    { 2458065.179676, 0.8348281 },
+    { 2459121.479139, 0.9218714 },
+    { 2459504.556005, 0.8742156 },
+    { 2459516.301702, 0.5048929 },
+    { 2460202.130871, 0.0025634 },
+    { 2460854.178454, 0.0663995 },
+    { 2461455.977285, 0.9677618 },
+    { 2461694.482701, 0.9963768 },
+    { 2461729.348774, 0.6350671 },
+    { 2461771.202458, 0.1313261 },
+    { 2461841.477463, 0.9988023 },
+    { 2462358.188821, 0.0027702 },
+    { 2462493.258411, 0.9675424 },
+    { 2462898.983622, 0.7018253 },
+    { 2464452.044157, 0.1425957 },
+    { 2464818.079037, 0.6506119 },
+    { 2465030.201806, 0.9884338 },
+    { 2466018.186525, 0.0497111 },
+    { 2466488.063492, 0.2494912 },
+    { 2467667.787461, 0.3669594 },
+    { 2468281.754337, 0.9381064 },
+    { 2468325.947554, 0.0883016 },
+    { 2468818.249252, 0.4388863 },
+    { 2471705.741539, 0.9873530 },
+    { 2472880.313408, 0.6231106 },
+    { 2473883.984708, 0.6576397 },
+    { 2473979.606106, 0.9919025 },
+    { 2474147.775999, 0.3964703 },
+    { 2475606.851914, 0.8424850 },
+    { 2476589.147066, 0.0643513 },
+    { 2476928.268473, 0.8631709 },
+    { 2477898.735689, 0.4197385 },
+    { 2477966.465654, 0.9715314 },
+    { 2478610.140489, 0.7286617 },
+    { 2478999.805589, 0.9961750 },
+    { 2479037.402379, 0.3069011 },
+    { 2480192.433062, 0.0659402 },
+    { 2480604.666001, 0.1448120 },
+    { 2481686.138408, 0.9964132 },
+    { 2481826.372335, 0.5698777 },
+    { 2483441.244323, 0.0611491 },
+    { 2483898.168813, 0.9215425 },
+    { 2484694.845874, 0.9051406 },
+    { 2484943.000499, 0.3613973 },
+    { 2485955.833328, 0.0979221 },
+    { 2486104.660327, 0.1380310 },
+    { 2487303.201717, 0.5540065 },
+    { 2487785.174584, 0.0047887 },
+    { 2487888.627079, 0.9742504 },
+  };
+
+  for (const auto& [jde, expected] : dataset) {
+    ASSERT_NEAR(illumination::fraction(jde), expected, 1e-4);
+  }
+}
+
+TEST(Illumination, ConjunctionReadsZero) {
+  // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
+  // phase angle reads 180° and k = 0 — finite, never NaN. β is tuned so cos_ψ lands an
+  // ulp above 1: the clamp's corner is exercised (without the clamp this test reads NaN).
+  const astro::toolbox::SphericalCoordinate sun_pos {
+    .λ = astro::toolbox::AngleDeg { 100.0 },
+    .β = astro::toolbox::AngleDeg { 0.100008 },
+    .r = astro::toolbox::DistanceAu { 1.0 },
+  };
+  const astro::toolbox::SphericalCoordinate moon_pos {
+    .λ = astro::toolbox::AngleDeg { 100.0 },
+    .β = astro::toolbox::AngleDeg { 0.100008 },
+    .r = astro::toolbox::DistanceAu { astro::toolbox::DistanceKm { 384400.0 } },
+  };
+  const auto i = illumination::phase_angle(sun_pos, moon_pos);
+  ASSERT_TRUE(std::isfinite(i.rad()));
+  ASSERT_NEAR(illumination::fraction(i), 0.0, 1e-15);
 }
 
 } // namespace astro::moon_phase::test
