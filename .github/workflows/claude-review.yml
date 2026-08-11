@@ -1,23 +1,35 @@
-name: Claude Auto Review
+name: Claude Review (manual)
 
+# No automatic trigger: the daily auto-review seat moved to Codex; this workflow is the
+# on-demand Claude seat, so the API key is spent only when someone dispatches it (#144:
+# a standing red — e.g. an empty API balance — is how people learn to ignore red).
+# Asking Claude about a PR also works via the `@claude` mention path in claude.yml.
 on:
-  pull_request:
-    types: [opened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        required: true
+        type: number
 
 jobs:
   review:
-    # Dependabot's runs cannot read Actions secrets, so on its PRs the API key is empty and this
-    # job could only ever fail — and a standing red is how people learn to ignore red (#144).
-    if: ${{ !github.event.pull_request.draft && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       id-token: write # traded for the action's App token; drop it and claude[bot] goes silent (#148)
     steps:
+      # The action fetches into an existing checkout and never clones, so the repo must be
+      # checked out first; `gh pr checkout` then switches it onto the requested PR branch.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+
+      - name: Check out the PR branch
+        run: gh pr checkout "${{ inputs.pr_number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
       - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
@@ -25,7 +37,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ inputs.pr_number }}
 
             Please review this pull request with a focus on:
             - Code quality and best practices
