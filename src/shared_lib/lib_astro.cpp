@@ -264,10 +264,16 @@ auto moon_phase_moments(
   lib::clear_last_error();
 
   if (root_count == nullptr) {
+    lib::set_last_error("Error in moon_phase_moments: `root_count` is null.");
     lib::info("Error in moon_phase_moments: `root_count` is null.");
     return 0;
   }
+
+  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+  *root_count = 0;
+
   if (slots == nullptr and slot_count > 0) {
+    lib::set_last_error("Error in moon_phase_moments: `slots` is null, but `slot_count` is greater than 0.");
     lib::info("Error in moon_phase_moments: `slots` is null, but `slot_count` is {}.", slot_count);
     return 0;
   }
@@ -423,6 +429,10 @@ auto new_moons_in_year(
     lib::info("Error in new_moons_in_year: `root_count` is null.");
     return 0;
   }
+
+  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+  *root_count = 0;
+
   if (slots == nullptr and slot_count > 0) {
     lib::info("Error in new_moons_in_year: `slots` is null, but `slot_count` is {}.", slot_count);
     return 0;

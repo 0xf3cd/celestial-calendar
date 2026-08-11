@@ -241,9 +241,38 @@ TEST(CAbiSmoke, MoonPhaseMoments) {
   EXPECT_GT(moon_phase_moments(2024, 2, &root_count, slots.data(), slots.size()), 0U);
   EXPECT_GT(moon_phase_moments(2024, 3, &root_count, slots.data(), slots.size()), 0U);
 
-  EXPECT_EQ(moon_phase_moments(2024, 0, nullptr, slots.data(), slots.size()), 0U);    // null root_count
-  EXPECT_EQ(moon_phase_moments(2024, 0, &root_count, nullptr, 15), 0U);               // null slots
-  EXPECT_EQ(moon_phase_moments(2024, 4, &root_count, slots.data(), slots.size()), 0U); // bad phase_kind
+  // Failure paths must record a diagnostic and reset the out-parameter to a
+  // deterministic value (Codex P2: stale root_count and missing last_error).
+  uint32_t sentinel = 0xDEADBEEFU;
+
+  EXPECT_EQ(moon_phase_moments(2024, 0, nullptr, slots.data(), slots.size()), 0U); // null root_count
+  EXPECT_STRNE(last_error(), "");
+
+  EXPECT_EQ(moon_phase_moments(2024, 0, &root_count, nullptr, 15), 0U); // null slots
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(2024, 4, &sentinel, slots.data(), slots.size()), 0U); // bad phase_kind
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(0, 0, &sentinel, slots.data(), slots.size()), 0U); // year below range
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(32767, 0, &sentinel, slots.data(), slots.size()), 0U); // year above range
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(
+    moon_phase_moments(std::numeric_limits<int32_t>::max(), 0, &sentinel, slots.data(), slots.size()),
+    0U
+  ); // would overflow year + 1
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -299,8 +328,21 @@ TEST(CAbiSmoke, NewMoons) {
   const uint32_t written = new_moons_in_year(2024, &root_count, slots.data(), slots.size());
   EXPECT_EQ(written, root_count);
   EXPECT_TRUE(root_count == 12U or root_count == 13U);
+
+  // Failure paths must reset root_count to a deterministic value.
+  // (new_moons_in_year is not a recording function; only the out-parameter state is checked here.)
+  uint32_t sentinel = 0xDEADBEEFU;
   EXPECT_EQ(new_moons_in_year(2024, nullptr, slots.data(), slots.size()), 0U); // null root_count
-  EXPECT_EQ(new_moons_in_year(2024, &root_count, nullptr, 15), 0U);            // null slots
+
+  EXPECT_EQ(new_moons_in_year(2024, &root_count, nullptr, 15), 0U); // null slots
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(new_moons_in_year(0, &sentinel, slots.data(), slots.size()), 0U); // year below range
+  EXPECT_EQ(sentinel, 0U);
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(new_moons_in_year(32767, &sentinel, slots.data(), slots.size()), 0U); // year above range
+  EXPECT_EQ(sentinel, 0U);
 }
 
 

@@ -27,6 +27,7 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 #include "julian_day.hpp"
@@ -93,6 +94,18 @@ TEST(NewMoon, InvalidArgument) {
   // `next_root` insists its seed is a root: ten days past conjunction the elongation is
   // ~120 deg away.
   ASSERT_THROW(std::ignore = next_root(root + 10.0), std::invalid_argument);
+}
+
+
+TEST(NewMoon, YearRange) {
+  // The public `moments(year)` API is documented as [1, 32766]; the exclusive end of the
+  // interval uses year + 1, so anything larger risks signed overflow before validation.
+  EXPECT_NO_THROW(std::ignore = moments(1));
+  EXPECT_NO_THROW(std::ignore = moments(32766));
+
+  EXPECT_THROW(std::ignore = moments(0), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(32767), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(std::numeric_limits<int32_t>::max()), std::invalid_argument);
 }
 
 
@@ -569,6 +582,24 @@ TEST(PhaseMoments, InvalidArgument) {
 
   // next_root insists its seed is a root.
   ASSERT_THROW(std::ignore = next_root(root + 10.0, 0.0), std::invalid_argument);
+}
+
+
+TEST(PhaseMoments, YearRange) {
+  using astro::moon_phase::phase_moments::moments;
+  using astro::moon_phase::phase_moments::PhaseKind;
+
+  // Valid edges of the declared [1, 32766] window.
+  EXPECT_NO_THROW(std::ignore = moments(1, PhaseKind::NEW_MOON));
+  EXPECT_NO_THROW(std::ignore = moments(32766, PhaseKind::NEW_MOON));
+
+  // Invalid: 0, 32767, and INT32_MAX (the last would overflow year + 1).
+  EXPECT_THROW(std::ignore = moments(0, PhaseKind::NEW_MOON), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(32767, PhaseKind::NEW_MOON), std::invalid_argument);
+  EXPECT_THROW(
+    std::ignore = moments(std::numeric_limits<int32_t>::max(), PhaseKind::NEW_MOON),
+    std::invalid_argument
+  );
 }
 
 } // namespace astro::moon_phase::test

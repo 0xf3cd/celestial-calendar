@@ -218,8 +218,9 @@ public:
 /**
  * @brief Calculate conjunctions moments of the Sun and Moon in a given Gregorian year.
           计算某一个公历年中日月合朔的时刻。
- * @param year The Gregorian year.
+ * @param year The Gregorian year, in [1, 32766].
  * @return The vector of the conjunction moments, in JDE (Julian Ephemeris Day).
+ * @throw std::invalid_argument if `year` is outside [1, 32766].
  * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
  * @note A conjunction falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
  *       generator seeded at that instant returns it or skips to the next moon turns on
@@ -230,6 +231,12 @@ public:
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
 [[nodiscard]] inline auto moments(const int32_t year) -> std::vector<double> {
+  if (year < 1 or year > 32766) {
+    throw std::invalid_argument {
+      std::format("Year {} is out of range [1, 32766].", year)
+    };
+  }
+
   // The first moment of the year, inclusive.
   const calendar::Datetime start_moment_utc {
     util::to_ymd(year, 1, 1),
@@ -451,9 +458,10 @@ public:
 
 /**
  * @brief Calculate the moments of a given Moon phase in a Gregorian year.
- * @param year The Gregorian year.
+ * @param year The Gregorian year, in [1, 32766].
  * @param kind The phase kind.
  * @return The phase moments in the year, in JDE (TT-scale ephemeris time).
+ * @throw std::invalid_argument if `year` is outside [1, 32766].
  * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
  * @note A phase falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
  *       generator seeded at that instant returns it or skips to the next moon turns on
@@ -462,6 +470,12 @@ public:
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
  */
 [[nodiscard]] inline auto moments(const int32_t year, const PhaseKind kind) -> std::vector<double> {
+  if (year < 1 or year > 32766) {
+    throw std::invalid_argument {
+      std::format("Year {} is out of range [1, 32766].", year)
+    };
+  }
+
   const calendar::Datetime start_moment_utc { util::to_ymd(year, 1, 1), 0.0 };
   const calendar::Datetime end_moment_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
 

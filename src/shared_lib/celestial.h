@@ -234,13 +234,15 @@ CELESTIAL_API MoonPositionAngle moon_position_angle(double jde);
 /**
  * @brief Find the moments of a given Moon phase in `year`; the total count goes to `root_count`,
  *        up to `slot_count` of them are written to `slots`.
- * @param year The Gregorian year.
+ * @param year The Gregorian year, in [1, 32766].
  * @param phase_kind The phase kind: 0 = New Moon, 1 = First Quarter, 2 = Full Moon, 3 = Last Quarter.
  * @param root_count Where the total count of the roots is written. Must not be null.
+ *                   On every failure `*root_count` is set to 0.
  * @param slots The output slots, allocated and freed by the caller; may be null only when
  *              `slot_count` is 0.
  * @param slot_count The count of slots.
  * @returns How many slots are written.
+ * @note This is a recording function: on failure the reason is readable through `last_error()`.
  */
 CELESTIAL_API uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count);
 
@@ -289,8 +291,9 @@ CELESTIAL_API uint32_t new_moons_after_jde(double jde, double *slots, uint32_t s
 /**
  * @brief Find the new-moon JDE(s) in `year`; the total count goes to `root_count`,
  *        up to `slot_count` of them are written to `slots`.
- * @param year The Gregorian year.
+ * @param year The Gregorian year, in [1, 32766].
  * @param root_count Where the total count of the roots is written. Must not be null.
+ *                   On every failure `*root_count` is set to 0.
  * @param slots The output slots, allocated and freed by the caller; may be null only when
  *              `slot_count` is 0.
  * @param slot_count The count of slots.
