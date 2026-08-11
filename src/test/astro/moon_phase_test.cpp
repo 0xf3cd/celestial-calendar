@@ -437,15 +437,16 @@ TEST(Illumination, HorizonsGoldenDataset) {
 
 TEST(Illumination, ConjunctionReadsZero) {
   // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
-  // phase angle reads 180° and k = 0 — finite, never NaN.
+  // phase angle reads 180° and k = 0 — finite, never NaN. β is tuned so cos_ψ lands an
+  // ulp above 1: the clamp's corner is exercised (without the clamp this test reads NaN).
   const astro::toolbox::SphericalCoordinate sun_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
-    .β = astro::toolbox::AngleDeg { 0.1 },
+    .β = astro::toolbox::AngleDeg { 0.100008 },
     .r = astro::toolbox::DistanceAu { 1.0 },
   };
   const astro::toolbox::SphericalCoordinate moon_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
-    .β = astro::toolbox::AngleDeg { 0.1 },
+    .β = astro::toolbox::AngleDeg { 0.100008 },
     .r = astro::toolbox::DistanceAu { astro::toolbox::DistanceKm { 384400.0 } },
   };
   const auto i = illumination::phase_angle(sun_pos, moon_pos);
