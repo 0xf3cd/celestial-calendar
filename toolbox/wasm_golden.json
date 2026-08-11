@@ -1,7 +1,7 @@
 {
   "schema": "celestial-calendar/wasm-golden@2",
   "provenance": {
-    "source_commit": "5b014bfa3f1ab5a4c513ff25cdd27f05490750c5",
+    "source_commit": "3f11591668fde3bec16452d2bb5b4c017e354eba",
     "generated_on": "Darwin arm64, 2026-08-10",
     "seed": 42
   },

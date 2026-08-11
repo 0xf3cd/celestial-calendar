@@ -30,11 +30,11 @@ import { statSync } from 'node:fs';
 //                    models' own uncertainty at those eras is minutes. Year/month/day
 //                    must match exactly -- no tolerance there.
 //   MAX_VALUE_DIFF_* — same story for the @2 sections. Moon illumination / elongation are
-//                    direct evaluations (no solver amplification), cap 1e-9. Sidereal
-//                    differs in shape: the GMST polynomial multiplies by (jd − J2000), so
-//                    its rounding steps with the product's magnitude — musl and native
-//                    libm land one product-ulp apart, and inside the declared window the
-//                    product stays below 2^32, so the step tops out at 2^-21 deg ≈ 4.77e-7.
+//                    direct evaluations (no solver amplification), cap 1e-9. Sidereal:
+//                    the GMST polynomial is libm-free arithmetic, and native arm64
+//                    contracts its multiply-add into fma while em++ does not, so the two
+//                    builds land one product-ulp apart; inside the declared window the
+//                    product stays below 2^32 and the step tops out at 2^-21 deg ≈ 4.77e-7.
 //                    Cap 1e-6 deg (≈ 3.6 mas) is ~2x that; the ΔT models' own uncertainty
 //                    at those eras swamps it.
 //   MAX_WASM_BYTES — raw-byte cap on the .wasm. The size check below prints the current
@@ -123,7 +123,7 @@ const replay = (entries, call, fields, cap, exact = null) => {
       continue;
     }
     const diff = Math.max(...fields.map((name) => Math.abs(w[name] - bitsOf(g[`${name}_bits`]))));
-    // NaN never trips `>`: an unfinite field must count as bad outright, not sail through.
+    // NaN never trips `>`: a non-finite field must count as bad outright, not sail through.
     if (!Number.isFinite(diff)) {
       diffBad++;
       if (offenders.length < 3) offenders.push(`non-finite field at ${JSON.stringify(g)} (wasm ${JSON.stringify(w)})`);

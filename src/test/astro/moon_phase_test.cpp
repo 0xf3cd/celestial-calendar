@@ -276,7 +276,7 @@ TEST(Illumination, Example48aFormulaLayer) {
   // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), mirrored value-by-value. The inputs
   // are the book's own printed (rounded) positions from Example 47.a, so this layer pins the
   // formula transcription exactly — no position-model error is absorbed. Tolerances are the
-  // print digits; measured gaps recomputing from the rounded inputs: i 3.8e-5 deg, k 3.3e-5.
+  // print digits; measured gaps recomputing from the rounded inputs: i 3.8e-5 deg, k 3.2e-5.
   const astro::toolbox::SphericalCoordinate sun_pos {
     .λ = astro::toolbox::AngleDeg { 20.6579 },    // α₀ — equatorial plugs into (λ, β) as-is
     .β = astro::toolbox::AngleDeg { 8.6964 },     // δ₀
@@ -435,10 +435,9 @@ TEST(Illumination, HorizonsGoldenDataset) {
   }
 }
 
-TEST(Illumination, IdenticalPositionsClamp) {
-  // Conjunction geometry: cos_ψ evaluates to 1 within a rounding — past 1 by an ulp on
-  // some platforms — which is where the clamp earns its keep (sqrt of a hair below zero
-  // is NaN). The invariant: never NaN, and with Δ ≪ R a conjunction reads k = 0.
+TEST(Illumination, ConjunctionReadsZero) {
+  // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
+  // phase angle reads 180° and k = 0 — finite, never NaN.
   const astro::toolbox::SphericalCoordinate sun_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
     .β = astro::toolbox::AngleDeg { 0.1 },
