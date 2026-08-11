@@ -1,8 +1,8 @@
 {
   "schema": "celestial-calendar/wasm-golden@2",
   "provenance": {
-    "source_commit": "3f11591668fde3bec16452d2bb5b4c017e354eba",
-    "generated_on": "Darwin arm64, 2026-08-10",
+    "source_commit": "PR-2 c9 wasm golden update",
+    "generated_on": "Darwin arm64, 2026-08-11",
     "seed": 42
   },
   "sections": {
@@ -2067,6 +2067,538 @@
           "jd_ut1_bits": "0x415bfc80c4298338",
           "longitude": 134.81494346540876,
           "value_bits": "0x406e0baa2511e931"
+        }
+      ]
+    },
+    "moon_position_angle": {
+      "entries": [
+        {
+          "jde_bits": "0x4142aeaa40000000",
+          "angle_deg_bits": "0x4071d0b5366725b1"
+        },
+        {
+          "jde_bits": "0x41428b2c38ce1ce8",
+          "angle_deg_bits": "0x40530f21626b58a7"
+        },
+        {
+          "jde_bits": "0x4142b4102c2a61c2",
+          "angle_deg_bits": "0x405e7488f6b76230"
+        },
+        {
+          "jde_bits": "0x4142eb0e6ae21a5e",
+          "angle_deg_bits": "0x406ee034d4add86a"
+        },
+        {
+          "jde_bits": "0x4142c88dc58e9a63",
+          "angle_deg_bits": "0x4072754f8bb3402c"
+        },
+        {
+          "jde_bits": "0x414281387df1b34f",
+          "angle_deg_bits": "0x4070bc44c4aa9c38"
+        },
+        {
+          "jde_bits": "0x414280c21b9825fa",
+          "angle_deg_bits": "0x406ead993d6a0670"
+        },
+        {
+          "jde_bits": "0x4142d7203a42ceed",
+          "angle_deg_bits": "0x405b6d80995c1d1c"
+        },
+        {
+          "jde_bits": "0x4142b9bbdb45680c",
+          "angle_deg_bits": "0x40709f9598952e32"
+        },
+        {
+          "jde_bits": "0x4142d76a2eb57ced",
+          "angle_deg_bits": "0x405176d41467b752"
+        },
+        {
+          "jde_bits": "0x4142a9f65dfacc03",
+          "angle_deg_bits": "0x4055e87a165e3781"
+        },
+        {
+          "jde_bits": "0x4142c01734e081f7",
+          "angle_deg_bits": "0x406fa11b7cdaab42"
+        },
+        {
+          "jde_bits": "0x4142a07bcee04f4f",
+          "angle_deg_bits": "0x40714b5f95c89a3b"
+        },
+        {
+          "jde_bits": "0x4142fb2093a39cc2",
+          "angle_deg_bits": "0x4065f24e255d68fe"
+        },
+        {
+          "jde_bits": "0x41428092adbc083e",
+          "angle_deg_bits": "0x4071e3a16e147e45"
+        },
+        {
+          "jde_bits": "0x4142b33f6c1f5c0c",
+          "angle_deg_bits": "0x4056f51c5bfcba6c"
+        },
+        {
+          "jde_bits": "0x4142d8aa70016d1c",
+          "angle_deg_bits": "0x406121e5f1f7ecac"
+        },
+        {
+          "jde_bits": "0x4142e7b12c34469a",
+          "angle_deg_bits": "0x40701aec1ebe52fa"
+        },
+        {
+          "jde_bits": "0x414282a4a058559b",
+          "angle_deg_bits": "0x4071af36e2f10647"
+        },
+        {
+          "jde_bits": "0x414283a96ec0e63d",
+          "angle_deg_bits": "0x405c5cacb5889ea8"
+        },
+        {
+          "jde_bits": "0x4142cdec2555e25f",
+          "angle_deg_bits": "0x406f8b7351c940e1"
+        },
+        {
+          "jde_bits": "0x4142c1ed7e51fb89",
+          "angle_deg_bits": "0x4071b3cc1b1ecb4f"
+        },
+        {
+          "jde_bits": "0x4142a3bb7dc54948",
+          "angle_deg_bits": "0x405c4edc52628a7c"
+        },
+        {
+          "jde_bits": "0x4142c1da7a9cf4cb",
+          "angle_deg_bits": "0x4021b67e372f593a"
+        },
+        {
+          "jde_bits": "0x4142af9d4dd997ac",
+          "angle_deg_bits": "0x4052e7a580ef88a2"
+        },
+        {
+          "jde_bits": "0x414290b4e639b7f5",
+          "angle_deg_bits": "0x40501c6a6f51e97b"
+        },
+        {
+          "jde_bits": "0x4142bbc445cb4ce4",
+          "angle_deg_bits": "0x407145e17e10add8"
+        },
+        {
+          "jde_bits": "0x4142f34b984391eb",
+          "angle_deg_bits": "0x407258869744c707"
+        },
+        {
+          "jde_bits": "0x4142cde4ebd8c1f5",
+          "angle_deg_bits": "0x405b128e8be407dd"
+        },
+        {
+          "jde_bits": "0x41427d2e234ad759",
+          "angle_deg_bits": "0x406ec3e18b9acbf8"
+        },
+        {
+          "jde_bits": "0x4142eb12436b120a",
+          "angle_deg_bits": "0x405a0aeefc7c2a84"
+        },
+        {
+          "jde_bits": "0x4142d7f74f8d7631",
+          "angle_deg_bits": "0x4071606f6d4e0ab6"
+        },
+        {
+          "jde_bits": "0x4142da7e8cd41cd0",
+          "angle_deg_bits": "0x40710441c54ba0e6"
+        },
+        {
+          "jde_bits": "0x41429d5ed1a879cb",
+          "angle_deg_bits": "0x4071e6769699c8ce"
+        },
+        {
+          "jde_bits": "0x414296b60c7784ec",
+          "angle_deg_bits": "0x40764b5bf78f2354"
+        },
+        {
+          "jde_bits": "0x41428366cdc7207a",
+          "angle_deg_bits": "0x4071dd55b77838d9"
+        },
+        {
+          "jde_bits": "0x41426d4cc82c41a6",
+          "angle_deg_bits": "0x4073e8e79614baff"
+        },
+        {
+          "jde_bits": "0x4142d3dbf0c12735",
+          "angle_deg_bits": "0x40720dbccf902644"
+        },
+        {
+          "jde_bits": "0x4142d383dde35a81",
+          "angle_deg_bits": "0x406f4177c05225e0"
+        },
+        {
+          "jde_bits": "0x4142f77f7dad236d",
+          "angle_deg_bits": "0x4070fe0bd6f4c61e"
+        },
+        {
+          "jde_bits": "0x4142d98c2848a023",
+          "angle_deg_bits": "0x4050f7e62b13c9ae"
+        }
+      ]
+    },
+    "phases": {
+      "entries": [
+        {
+          "year": 2024,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c5507fe051f6"
+        },
+        {
+          "year": 2025,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c610834d2070"
+        },
+        {
+          "year": 2026,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c6c1aa0d0bcf"
+        },
+        {
+          "year": 2027,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c772acecb0b3"
+        },
+        {
+          "year": 2028,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c8329137ca7d"
+        },
+        {
+          "year": 2029,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c8e39cf27139"
+        },
+        {
+          "year": 2030,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142c994cf2d5c71"
+        },
+        {
+          "year": 2031,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142ca54d82fda50"
+        },
+        {
+          "year": 2032,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cb062b5e529b"
+        },
+        {
+          "year": 2033,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cbb776f604af"
+        },
+        {
+          "year": 2034,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cc77759500ac"
+        },
+        {
+          "year": 2035,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cd28905f6c79"
+        },
+        {
+          "year": 2036,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cde876f6724b"
+        },
+        {
+          "year": 2037,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142ce9973288d0c"
+        },
+        {
+          "year": 2038,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142cf4a891f5cb9"
+        },
+        {
+          "year": 2039,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d00a88ab6071"
+        },
+        {
+          "year": 2040,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d0bbd259b54f"
+        },
+        {
+          "year": 2041,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d16d2624850f"
+        },
+        {
+          "year": 2042,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d22d2e8423b2"
+        },
+        {
+          "year": 2043,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d2de64d54324"
+        },
+        {
+          "year": 2044,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d39e55d65336"
+        },
+        {
+          "year": 2045,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d44f57b3d42a"
+        },
+        {
+          "year": 2046,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d5005794ea0b"
+        },
+        {
+          "year": 2047,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d5c049581683"
+        },
+        {
+          "year": 2048,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d6717da9e89e"
+        },
+        {
+          "year": 2049,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d722ccf4f480"
+        },
+        {
+          "year": 2050,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d7e2da81a67d"
+        },
+        {
+          "year": 2051,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d894254615ed"
+        },
+        {
+          "year": 2052,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142d945509a495e"
+        },
+        {
+          "year": 2053,
+          "phase_kind": 0,
+          "index": 0,
+          "jde_bits": "0x4142da053bde35c1"
+        },
+        {
+          "year": 2024,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c553d4c74590"
+        },
+        {
+          "year": 2024,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c5579f91e1b3"
+        },
+        {
+          "year": 2024,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c54cd2d01b16"
+        },
+        {
+          "year": 2025,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c6053fc4f813"
+        },
+        {
+          "year": 2025,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c608b7d7350f"
+        },
+        {
+          "year": 2025,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c60cad83a461"
+        },
+        {
+          "year": 2026,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c6c559a338b5"
+        },
+        {
+          "year": 2026,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c6b9f5b39b50"
+        },
+        {
+          "year": 2026,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c6bd94681f0c"
+        },
+        {
+          "year": 2027,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c776add7234b"
+        },
+        {
+          "year": 2027,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c77a01a374bb"
+        },
+        {
+          "year": 2027,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c77d7a5d3cd8"
+        },
+        {
+          "year": 2028,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c827c909b7e7"
+        },
+        {
+          "year": 2028,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c82b55b6d260"
+        },
+        {
+          "year": 2028,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c82ea7c137dc"
+        },
+        {
+          "year": 2029,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c8e7a780c0ed"
+        },
+        {
+          "year": 2029,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c8eb606a13f9"
+        },
+        {
+          "year": 2029,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c8e007cb87c6"
+        },
+        {
+          "year": 2030,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142c9988b4da27e"
+        },
+        {
+          "year": 2030,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142c99c94ee4429"
+        },
+        {
+          "year": 2030,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142c9a021631437"
+        },
+        {
+          "year": 2031,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142ca58694465d4"
+        },
+        {
+          "year": 2031,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142ca4da266e6c2"
+        },
+        {
+          "year": 2031,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142ca51844e5342"
+        },
+        {
+          "year": 2032,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142cb09815f135e"
+        },
+        {
+          "year": 2032,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142cb0d84c56c45"
+        },
+        {
+          "year": 2032,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142cb02b5cf7918"
+        },
+        {
+          "year": 2033,
+          "phase_kind": 1,
+          "index": 0,
+          "jde_bits": "0x4142cbbad32be5fb"
+        },
+        {
+          "year": 2033,
+          "phase_kind": 2,
+          "index": 0,
+          "jde_bits": "0x4142cbbe8613d539"
+        },
+        {
+          "year": 2033,
+          "phase_kind": 3,
+          "index": 0,
+          "jde_bits": "0x4142cbc29ed896e4"
         }
       ]
     }
