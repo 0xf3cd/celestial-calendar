@@ -212,6 +212,70 @@ TEST(CAbiSmoke, MoonIllumination) {
 }
 
 
+TEST(CAbiSmoke, MoonPositionAngle) {
+  // Meeus Example 48.a's instant (1992-04-12 0h TT): χ = 285°.0 by the book.
+  const MoonPositionAngle pa = moon_position_angle(2448724.5);
+  ASSERT_TRUE(pa.valid);
+  EXPECT_NEAR(pa.angle_deg, 285.0, 0.05);
+  EXPECT_GE(pa.angle_deg, 0.0);
+  EXPECT_LT(pa.angle_deg, 360.0);
+
+  EXPECT_FALSE(moon_position_angle(NAN_VALUE).valid);  // non-finite JDE
+  EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
+  EXPECT_FALSE(moon_position_angle(HUGE_VAL).valid);
+}
+
+
+TEST(CAbiSmoke, MoonPhaseMoments) {
+  uint32_t root_count = 0;
+  std::array<double, 15> slots {};
+  const uint32_t written = moon_phase_moments(2024, 0, &root_count, slots.data(), slots.size());
+  EXPECT_EQ(written, root_count);
+  EXPECT_TRUE(root_count == 12U or root_count == 13U);
+
+  // First new moon of 2024: 2024-01-11 11:57 UTC -> JDE ~2460320.998.
+  EXPECT_NEAR(slots.at(0), 2460320.998, 0.002);
+
+  // Other phases should also succeed.
+  EXPECT_GT(moon_phase_moments(2024, 1, &root_count, slots.data(), slots.size()), 0U);
+  EXPECT_GT(moon_phase_moments(2024, 2, &root_count, slots.data(), slots.size()), 0U);
+  EXPECT_GT(moon_phase_moments(2024, 3, &root_count, slots.data(), slots.size()), 0U);
+
+  // Failure paths must record a diagnostic and reset the out-parameter to a
+  // deterministic value (Codex P2: stale root_count and missing last_error).
+  uint32_t sentinel = 0xDEADBEEFU;
+
+  EXPECT_EQ(moon_phase_moments(2024, 0, nullptr, slots.data(), slots.size()), 0U); // null root_count
+  EXPECT_STRNE(last_error(), "");
+
+  EXPECT_EQ(moon_phase_moments(2024, 0, &root_count, nullptr, 15), 0U); // null slots
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(2024, 4, &sentinel, slots.data(), slots.size()), 0U); // bad phase_kind
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(0, 0, &sentinel, slots.data(), slots.size()), 0U); // year below range
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(32767, 0, &sentinel, slots.data(), slots.size()), 0U); // year above range
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(
+    moon_phase_moments(std::numeric_limits<int32_t>::max(), 0, &sentinel, slots.data(), slots.size()),
+    0U
+  ); // would overflow year + 1
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
+}
+
+
 TEST(CAbiSmoke, LocalApparentSiderealTime) {
   const SiderealTime last = local_apparent_sidereal_time(2460463.0, 120.0);
   ASSERT_TRUE(last.valid);
@@ -264,8 +328,21 @@ TEST(CAbiSmoke, NewMoons) {
   const uint32_t written = new_moons_in_year(2024, &root_count, slots.data(), slots.size());
   EXPECT_EQ(written, root_count);
   EXPECT_TRUE(root_count == 12U or root_count == 13U);
+
+  // Failure paths must reset root_count to a deterministic value.
+  // (new_moons_in_year is not a recording function; only the out-parameter state is checked here.)
+  uint32_t sentinel = 0xDEADBEEFU;
   EXPECT_EQ(new_moons_in_year(2024, nullptr, slots.data(), slots.size()), 0U); // null root_count
-  EXPECT_EQ(new_moons_in_year(2024, &root_count, nullptr, 15), 0U);            // null slots
+
+  EXPECT_EQ(new_moons_in_year(2024, &root_count, nullptr, 15), 0U); // null slots
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(new_moons_in_year(0, &sentinel, slots.data(), slots.size()), 0U); // year below range
+  EXPECT_EQ(sentinel, 0U);
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(new_moons_in_year(32767, &sentinel, slots.data(), slots.size()), 0U); // year above range
+  EXPECT_EQ(sentinel, 0U);
 }
 
 

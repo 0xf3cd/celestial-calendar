@@ -42,6 +42,8 @@ import { statSync } from 'node:fs';
 //                    or dependency fattened the artifact, and that takes an explanation.
 const MAX_FRAC_DIFF_DAYS = 1e-8;
 const MAX_VALUE_DIFF_MOON = 1e-9;      // illumination and elongation_deg
+const MAX_VALUE_DIFF_PA = 1e-9;        // bright-limb position angle χ in degrees
+const MAX_FRAC_DIFF_PHASES = 1e-8;     // phase-moment JDE, same solver story as jieqi
 const MAX_VALUE_DIFF_SIDEREAL = 1e-6;  // degrees; one product-ulp, see above
 const MAX_WASM_BYTES = 420_000;
 const MIN_SECTION_ENTRIES = 30; // an empty section must not pass vacuously (#72's shape)
@@ -101,6 +103,23 @@ const illum = (jde) => {
 const last = (jdUt1, lon) => {
   M._local_apparent_sidereal_time(ptr16, jdUt1, lon);
   return { valid: M.HEAPU8[ptr16] === 1, value: M.HEAPF64[(ptr16 + 8) >> 3] };
+};
+const pa = (jde) => {
+  M._moon_position_angle(ptr16, jde);
+  return { valid: M.HEAPU8[ptr16] === 1, angle_deg: M.HEAPF64[(ptr16 + 8) >> 3] };
+};
+const phaseMoments = (year, phaseKind) => {
+  const slots = M._malloc(15 * 8);
+  const rootCountPtr = M._malloc(4);
+  const written = M._moon_phase_moments(year, phaseKind, rootCountPtr, slots, 15);
+  const rootCount = M.HEAPU32[rootCountPtr >> 2];
+  const jdes = [];
+  for (let i = 0; i < rootCount; ++i) {
+    jdes.push(M.HEAPF64[(slots + i * 8) >> 3]);
+  }
+  M._free(rootCountPtr);
+  M._free(slots);
+  return { valid: written > 0 && written === rootCount, count: rootCount, jdes };
 };
 
 // 1) sret layout smoke: 2026 处暑 (idx 13) = 2026-08-23
@@ -171,6 +190,35 @@ check(st.exactBad + st.diffBad === 0,
   `golden replay sidereal ${sections.sidereal.entries.length} pts (invalid ${st.exactBad}, overflows ${st.diffBad}, max diff ${st.worstDiff.toExponential(2)} deg at ${JSON.stringify(st.worstPoint)})`);
 for (const o of st.offenders) console.log(`  offender: ${o}`);
 
+// 2d) golden replay, moon position angle section: angle_deg within the cap.
+const paResult = replay(
+  sections.moon_position_angle.entries,
+  (g) => pa(bitsOf(g.jde_bits)),
+  ["angle_deg"],
+  MAX_VALUE_DIFF_PA,
+);
+check(paResult.exactBad + paResult.diffBad === 0,
+  `golden replay moon_position_angle ${sections.moon_position_angle.entries.length} pts (invalid ${paResult.exactBad}, overflows ${paResult.diffBad}, max diff ${paResult.worstDiff.toExponential(2)} deg at ${JSON.stringify(paResult.worstPoint)})`);
+for (const o of paResult.offenders) console.log(`  offender: ${o}`);
+
+// 2e) golden replay, phases section: JDE within the cap.
+const ph = replay(
+  sections.phases.entries,
+  (g) => {
+    const result = phaseMoments(g.year, g.phase_kind);
+    // result.jdes[g.index] may be undefined if count is too low.
+    if (!result.valid || g.index >= result.jdes.length) {
+      return { valid: false };
+    }
+    return { valid: true, jde: result.jdes[g.index] };
+  },
+  ["jde"],
+  MAX_FRAC_DIFF_PHASES,
+);
+check(ph.exactBad + ph.diffBad === 0,
+  `golden replay phases ${sections.phases.entries.length} pts (invalid ${ph.exactBad}, overflows ${ph.diffBad}, max diff ${ph.worstDiff.toExponential(2)} d at ${JSON.stringify(ph.worstPoint)})`);
+for (const o of ph.offenders) console.log(`  offender: ${o}`);
+
 // 3) input guard: out-of-range jq_idx returns valid=false via the early guard (no throw)
 check(!query(2026, 200).valid, 'input guard (idx=200 -> valid=false)');
 
@@ -195,6 +243,18 @@ const book = illum(2448724.5);
 check(book.valid && Math.abs(book.illumination - 0.6786) < 5e-5,
   'moon sret smoke (Example 48.a: k = 0.6786)', JSON.stringify(book));
 check(!illum(Number.NaN).valid, 'moon input guard (NaN -> valid=false)');
+
+// 4c2) sret smoke, moon position angle: Example 48.a -> χ ≈ 285.0442° by the native build.
+const bookPa = pa(2448724.5);
+check(bookPa.valid && Math.abs(bookPa.angle_deg - 285.0442) < 1e-3,
+  'moon position angle sret smoke (Example 48.a: χ ≈ 285.0442°)', JSON.stringify(bookPa));
+check(!pa(Number.NaN).valid, 'moon position angle input guard (NaN -> valid=false)');
+
+// 4c3) phases smoke: 2024 new-moon count and first moment.
+const phases2024 = phaseMoments(2024, 0);
+check(phases2024.valid && phases2024.count >= 12 && Math.abs(phases2024.jdes[0] - 2460320.999) < 0.002,
+  'phases smoke (2024 new moon: count and first moment)', JSON.stringify(phases2024));
+check(!phaseMoments(2024, 4).valid, 'phases input guard (phase_kind=4 -> valid=false)');
 
 // 4d) sret smoke, UT1Time (jde_to_ut1): 2451545.0 is 12:00 TT at J2000, and UT1 trails TT
 //     by ΔT ≈ 63.8 s there, so the fraction is 0.5 − 63.8/86400 ≈ 0.49926, not 0.5.

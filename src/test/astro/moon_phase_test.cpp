@@ -27,6 +27,7 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 #include "julian_day.hpp"
@@ -93,6 +94,18 @@ TEST(NewMoon, InvalidArgument) {
   // `next_root` insists its seed is a root: ten days past conjunction the elongation is
   // ~120 deg away.
   ASSERT_THROW(std::ignore = next_root(root + 10.0), std::invalid_argument);
+}
+
+
+TEST(NewMoon, YearRange) {
+  // The public `moments(year)` API is documented as [1, 32766]; the exclusive end of the
+  // interval uses year + 1, so anything larger risks signed overflow before validation.
+  EXPECT_NO_THROW(std::ignore = moments(1));
+  EXPECT_NO_THROW(std::ignore = moments(32766));
+
+  EXPECT_THROW(std::ignore = moments(0), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(32767), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(std::numeric_limits<int32_t>::max()), std::invalid_argument);
 }
 
 
@@ -435,6 +448,30 @@ TEST(Illumination, HorizonsGoldenDataset) {
   }
 }
 
+TEST(Illumination, Example48aPositionAngleFormulaLayer) {
+  // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), printed equatorial positions.
+  // The book rounds χ to 285°.0; the inputs are rounded to 4 decimals, so the formula-layer
+  // tolerance is half a print digit. Measured recomputation from the rounded inputs: 285.0000.
+  const astro::coords::EquatorialCoord sun_eq {
+    .α = astro::toolbox::AngleDeg { 20.6579 },
+    .δ = astro::toolbox::AngleDeg { 8.6964 },
+  };
+  const astro::coords::EquatorialCoord moon_eq {
+    .α = astro::toolbox::AngleDeg { 134.6885 },
+    .δ = astro::toolbox::AngleDeg { 13.7684 },
+  };
+
+  const auto χ = illumination::position_angle(sun_eq, moon_eq);
+  ASSERT_NEAR(χ.deg(), 285.0, 0.05);
+}
+
+TEST(Illumination, Example48aPositionAngleEndToEnd) {
+  // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
+  // The book rounds the result to 285°.0; the tolerance keeps the print-digit anchor
+  // and the model-to-model spread to pure-Python Meeus well inside.
+  ASSERT_NEAR(illumination::position_angle(2448724.5).deg(), 285.0442, 0.001);
+}
+
 TEST(Illumination, ConjunctionReadsZero) {
   // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
   // phase angle reads 180° and k = 0 — finite, never NaN. β is tuned so cos_ψ lands an
@@ -452,6 +489,117 @@ TEST(Illumination, ConjunctionReadsZero) {
   const auto i = illumination::phase_angle(sun_pos, moon_pos);
   ASSERT_TRUE(std::isfinite(i.rad()));
   ASSERT_NEAR(illumination::fraction(i), 0.0, 1e-15);
+}
+
+
+TEST(PhaseMoments, UsnoGolden2024) {
+  using astro::moon_phase::phase_moments::moments;
+  using astro::moon_phase::phase_moments::PhaseKind;
+
+  // Provenance: USNO Moon Phases API, https://aa.usno.navy.mil/api/moon/phases/year?year=2024.
+  // Times are UTC to the nearest minute; converted to JDE with the standard Gregorian-to-JD
+  // formula. Collected 2026-08-11.
+  // NOLINTBEGIN(modernize-use-designated-initializers)
+  const std::vector<double> usno_new_moon_2024 {
+    2460320.997917, 2460350.457639, 2460379.875000, 2460409.264583,
+    2460438.640278, 2460468.026389, 2460497.456250, 2460526.967361,
+    2460556.579861, 2460586.284028, 2460616.032639, 2460645.764583,
+    2460675.435417,
+  };
+  const std::vector<double> usno_first_quarter_2024 {
+    2460327.661111, 2460357.125694, 2460386.674306, 2460416.300694,
+    2460445.991667, 2460475.720833, 2460505.450694, 2460535.138194,
+    2460564.753472, 2460594.288194, 2460623.746528, 2460653.143056,
+  };
+  const std::vector<double> usno_full_moon_2024 {
+    2460335.245833, 2460365.020833, 2460394.791667, 2460424.492361,
+    2460454.078472, 2460483.547222, 2460512.928472, 2460542.268056,
+    2460571.606944, 2460600.976389, 2460630.394444, 2460659.876389,
+  };
+  const std::vector<double> usno_last_quarter_2024 {
+    2460313.645833, 2460343.470833, 2460373.140972, 2460402.635417,
+    2460431.977083, 2460461.217361, 2460490.411806, 2460519.618750,
+    2460548.893056, 2460578.284722, 2460607.835417, 2460637.561111,
+    2460667.429167,
+  };
+  // NOLINTEND(modernize-use-designated-initializers)
+
+  const auto check = [](const std::vector<double>& expected, const PhaseKind kind) {
+    const auto actual = moments(2024, kind);
+    ASSERT_EQ(expected.size(), actual.size()) << "phase kind = " << static_cast<int>(kind);
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+      // USNO rounds to the minute; the tolerance covers that plus the ephemeris/model
+      // difference between VSOP87D + truncated ELP2000-82B and USNO's underlying series.
+      ASSERT_NEAR(actual[i], expected[i], 0.003) << "phase kind = " << static_cast<int>(kind) << ", index = " << i;
+    }
+  };
+
+  check(usno_new_moon_2024, PhaseKind::NEW_MOON);
+  check(usno_first_quarter_2024, PhaseKind::FIRST_QUARTER);
+  check(usno_full_moon_2024, PhaseKind::FULL_MOON);
+  check(usno_last_quarter_2024, PhaseKind::LAST_QUARTER);
+}
+
+
+TEST(PhaseMoments, RootGeneratorOrderAndSpacing) {
+  using astro::moon_phase::phase_moments::PhaseKind;
+  using astro::moon_phase::phase_moments::RootGenerator;
+
+  const auto jde = astro::julian_day::J2000 + util::random(-200000.0, 200000.0);
+
+  for (const auto kind : {
+    PhaseKind::NEW_MOON,
+    PhaseKind::FIRST_QUARTER,
+    PhaseKind::FULL_MOON,
+    PhaseKind::LAST_QUARTER,
+  }) {
+    RootGenerator gen(jde, kind);
+    double prev = gen.next();
+    for (int i = 0; i < 32; ++i) {
+      const double cur = gen.next();
+      ASSERT_GT(cur, prev) << "kind = " << static_cast<int>(kind);
+      ASSERT_NEAR(cur - prev, 29.5, 0.75) << "kind = " << static_cast<int>(kind);
+      prev = cur;
+    }
+  }
+}
+
+
+TEST(PhaseMoments, InvalidArgument) {
+  using astro::moon_phase::phase_moments::moments;
+  using astro::moon_phase::phase_moments::newton_method;
+  using astro::moon_phase::phase_moments::next_root;
+  using astro::moon_phase::phase_moments::PhaseKind;
+
+  const auto roots = moments(2024, PhaseKind::NEW_MOON);
+  const double root = roots.front();
+
+  // Both endpoints lead the target: not a bracket at all.
+  ASSERT_THROW(std::ignore = newton_method(root + 3.0, root + 4.0, 0.0), std::invalid_argument);
+
+  // Left endpoint trails, but the right endpoint has left the tolerance window.
+  ASSERT_THROW(std::ignore = newton_method(root - 0.5, root + 2.0, 0.0), std::invalid_argument);
+
+  // next_root insists its seed is a root.
+  ASSERT_THROW(std::ignore = next_root(root + 10.0, 0.0), std::invalid_argument);
+}
+
+
+TEST(PhaseMoments, YearRange) {
+  using astro::moon_phase::phase_moments::moments;
+  using astro::moon_phase::phase_moments::PhaseKind;
+
+  // Valid edges of the declared [1, 32766] window.
+  EXPECT_NO_THROW(std::ignore = moments(1, PhaseKind::NEW_MOON));
+  EXPECT_NO_THROW(std::ignore = moments(32766, PhaseKind::NEW_MOON));
+
+  // Invalid: 0, 32767, and INT32_MAX (the last would overflow year + 1).
+  EXPECT_THROW(std::ignore = moments(0, PhaseKind::NEW_MOON), std::invalid_argument);
+  EXPECT_THROW(std::ignore = moments(32767, PhaseKind::NEW_MOON), std::invalid_argument);
+  EXPECT_THROW(
+    std::ignore = moments(std::numeric_limits<int32_t>::max(), PhaseKind::NEW_MOON),
+    std::invalid_argument
+  );
 }
 
 } // namespace astro::moon_phase::test

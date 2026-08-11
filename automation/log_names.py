@@ -27,6 +27,7 @@ ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "is_leap",
   "jd_ut1",  # local_apparent_sidereal_time's parameter, quoted by its guard messages
   "jq_idx",
+  "phase_kind",  # moon_phase_moments's parameter, quoted by its guard messages
   "root_count",
   "slot_count",
 }

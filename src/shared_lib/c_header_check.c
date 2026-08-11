@@ -48,6 +48,9 @@ _Static_assert(offsetof(MoonCoordinate, lon) == 8 && offsetof(MoonCoordinate, la
 _Static_assert(offsetof(MoonIllumination, illumination) == 8 && offsetof(MoonIllumination, elongation_deg) == 16 &&
                sizeof(MoonIllumination) == 24, "MoonIllumination layout drifted");
 
+_Static_assert(offsetof(MoonPositionAngle, angle_deg) == 8 && sizeof(MoonPositionAngle) == 16,
+               "MoonPositionAngle layout drifted");
+
 _Static_assert(offsetof(Discriminant, count) == 4 && sizeof(Discriminant) == 8, "Discriminant layout drifted");
 
 _Static_assert(offsetof(JieqiMomentQuery, jq_idx) == 1 && offsetof(JieqiMomentQuery, y) == 4 &&

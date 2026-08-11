@@ -219,6 +219,96 @@ auto moon_illumination(const double jde) -> MoonIllumination {
 #pragma endregion
 
 
+#pragma region Moon Position Angle
+
+auto moon_position_angle(const double jde) -> MoonPositionAngle {
+  lib::clear_last_error();
+
+  try {
+    if (not std::isfinite(jde)) {
+      throw std::invalid_argument {
+        std::format("Argument `jde` is not finite, got {}", jde)
+      };
+    }
+
+    const auto angle = astro::moon_phase::illumination::position_angle(jde);
+
+    return {
+      .valid    = true,
+      .angle_deg = angle.deg(),
+    };
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Error in moon_position_angle: {}", e.what());
+    lib::debug("moon_position_angle: jde = {}", jde);
+
+    return {};
+  } catch (...) {
+    lib::set_last_error("Unknown error in moon_position_angle.");
+    return {};
+  }
+}
+
+#pragma endregion
+
+
+#pragma region Moon Phase Moments
+
+auto moon_phase_moments(
+  const int32_t year,
+  const uint8_t phase_kind,
+  uint32_t * const root_count,
+  double * const slots,
+  const uint32_t slot_count
+) -> uint32_t {
+  lib::clear_last_error();
+
+  if (root_count == nullptr) {
+    lib::set_last_error("Error in moon_phase_moments: `root_count` is null.");
+    lib::info("Error in moon_phase_moments: `root_count` is null.");
+    return 0;
+  }
+
+  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+  *root_count = 0;
+
+  if (slots == nullptr and slot_count > 0) {
+    lib::set_last_error("Error in moon_phase_moments: `slots` is null, but `slot_count` is greater than 0.");
+    lib::info("Error in moon_phase_moments: `slots` is null, but `slot_count` is {}.", slot_count);
+    return 0;
+  }
+
+  try {
+    if (phase_kind > 3) {
+      throw std::invalid_argument {
+        std::format("Argument `phase_kind` must be in [0, 3], got {}", phase_kind)
+      };
+    }
+
+    const auto kind = static_cast<astro::moon_phase::phase_moments::PhaseKind>(phase_kind);
+    const auto roots = astro::moon_phase::phase_moments::moments(year, kind);
+
+    *root_count = static_cast<uint32_t>(roots.size());
+
+    const auto num_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
+    std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
+
+    return num_written;
+  } catch (const std::exception& e) {
+    lib::set_last_error(e.what());
+    lib::info("Exception thrown during execution of moon_phase_moments");
+    lib::debug("moon_phase_moments: year = {}, phase_kind = {}, error = {}", year, phase_kind, e.what());
+
+    return 0;
+  } catch (...) {
+    lib::set_last_error("Unknown error in moon_phase_moments.");
+    return 0;
+  }
+}
+
+#pragma endregion
+
+
 #pragma region Solar Longitude Roots
 
 auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
@@ -339,6 +429,10 @@ auto new_moons_in_year(
     lib::info("Error in new_moons_in_year: `root_count` is null.");
     return 0;
   }
+
+  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+  *root_count = 0;
+
   if (slots == nullptr and slot_count > 0) {
     lib::info("Error in new_moons_in_year: `slots` is null, but `slot_count` is {}.", slot_count);
     return 0;

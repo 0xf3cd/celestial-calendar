@@ -40,6 +40,8 @@ EXPORTS: Final[list[str]] = [
   "ut1_to_jde",
   "jde_to_ut1",
   "moon_illumination",
+  "moon_position_angle",
+  "moon_phase_moments",
   "local_apparent_sidereal_time",
   "last_error",
   "malloc",
