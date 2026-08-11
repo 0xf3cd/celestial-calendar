@@ -197,8 +197,7 @@ check(book.valid && Math.abs(book.illumination - 0.6786) < 5e-5,
 check(!illum(Number.NaN).valid, 'moon input guard (NaN -> valid=false)');
 
 // 4d) sret smoke, UT1Time (jde_to_ut1): 2451545.0 is 12:00 TT at J2000, and UT1 trails TT
-//     by ΔT ≈ 63.8 s there, so the fraction is 0.5 − 63.8/86400 ≈ 0.49926, not 0.5. The
-//     struct was in EXPORTS since #163 but no check ever called it -- this pins its layout.
+//     by ΔT ≈ 63.8 s there, so the fraction is 0.5 − 63.8/86400 ≈ 0.49926, not 0.5.
 M._jde_to_ut1(ptr24, 2451545.0);
 check(
   M.HEAPU8[ptr24] === 1 &&

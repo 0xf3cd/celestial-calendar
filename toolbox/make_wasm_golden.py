@@ -39,8 +39,8 @@ OUT_PATH: Final[Path] = Path(__file__).parent / "wasm_golden.json"
 # floor, 32766 = the declared max of jieqi_jde), the site nav's consumer window
 # (1950/2050), and interior years -- plus a seeded random fill. Out-of-window years are
 # invalid natively, so the throw path lives in the checker's exception probe instead.
-# @2 (#183 follow-up): moon illumination and sidereal sections join. The jieqi section
-# keeps its exact point set -- it is generated first, consuming the seeded PRNG in the
+# @2: moon illumination and sidereal sections join. The jieqi section keeps its exact
+# point set -- it is generated first, consuming the seeded PRNG in the
 # same order as @1. Moon points cover the Example 48.a anchor plus a uniform fill over
 # [1900, 2100]; sidereal points cover the J2000 anchor plus a uniform fill over the
 # export's declared window [401, 32766] with east-positive longitudes.
