@@ -71,6 +71,17 @@ def run_clang_tidy() -> int:
     green_print("clang-tidy passed")
   else:
     red_print("clang-tidy failed")
+    # A local run without the pinned-toolchain recipe fails as a cascade of
+    # 'xxx file not found' diagnostics (the system headers are not on the default
+    # search path) — that is an environment failure, not code findings. Point at the
+    # recipe instead of letting someone read the noise as signal.
+    if "file not found" in ret.stdout:
+      yellow_print(
+        "note: 'file not found' diagnostics mean the local clang-tidy can't see the C++ "
+        "standard headers — pass -isysroot (xcrun --show-sdk-path) plus the libstdc++ "
+        "include dirs matching the CI leg's gcc major, e.g. via run-clang-tidy.py's "
+        "-extra-arg. The diagnostics above are environment noise, not findings."
+      )
 
   # Save stderr and stdout to files.
   def clean_text(text: str) -> str:
