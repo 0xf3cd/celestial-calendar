@@ -454,9 +454,8 @@ TEST(Illumination, Example48aPositionAngleFormulaLayer) {
 
 TEST(Illumination, Example48aPositionAngleEndToEnd) {
   // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
-  // Measured native value: 285.04424°; pymeeus (pure-Python Meeus) gives 285.04435°.
-  // The book rounds both to 285°.0. The tolerance keeps the model difference to pymeeus
-  // and the print-digit anchor well inside.
+  // The book rounds the result to 285°.0; the tolerance keeps the print-digit anchor
+  // and the model-to-model spread to pure-Python Meeus well inside.
   ASSERT_NEAR(illumination::position_angle(2448724.5).deg(), 285.0442, 0.001);
 }
 
@@ -486,7 +485,7 @@ TEST(PhaseMoments, UsnoGolden2024) {
 
   // Provenance: USNO Moon Phases API, https://aa.usno.navy.mil/api/moon/phases/year?year=2024.
   // Times are UTC to the nearest minute; converted to JDE with the standard Gregorian-to-JD
-  // formula. Collected 2026-08-11. See .review/pr2/usno-phases-2024-golden.json.
+  // formula. Collected 2026-08-11.
   // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<double> usno_new_moon_2024 {
     2460320.997917, 2460350.457639, 2460379.875000, 2460409.264583,
@@ -516,8 +515,8 @@ TEST(PhaseMoments, UsnoGolden2024) {
     const auto actual = moments(2024, kind);
     ASSERT_EQ(expected.size(), actual.size()) << "phase kind = " << static_cast<int>(kind);
     for (std::size_t i = 0; i < expected.size(); ++i) {
-      // USNO rounds to the minute; the library's VSOP87D + truncated ELP2000-82B positions differ
-      // from USNO's underlying ephemeris by well under a minute. Measured max gap across 2024: 0.0013 day.
+      // USNO rounds to the minute; the tolerance covers that plus the ephemeris/model
+      // difference between VSOP87D + truncated ELP2000-82B and USNO's underlying series.
       ASSERT_NEAR(actual[i], expected[i], 0.003) << "phase kind = " << static_cast<int>(kind) << ", index = " << i;
     }
   };

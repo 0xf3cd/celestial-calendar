@@ -455,6 +455,10 @@ public:
  * @param kind The phase kind.
  * @return The phase moments in the year, in JDE (TT-scale ephemeris time).
  * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
+ * @note A phase falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
+ *       generator seeded at that instant returns it or skips to the next moon turns on
+ *       floating-point noise in the longitude difference. Left as is on purpose (#127) —
+ *       the set of such instants has measure zero, and no test can pin one.
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
  */
 [[nodiscard]] inline auto moments(const int32_t year, const PhaseKind kind) -> std::vector<double> {
