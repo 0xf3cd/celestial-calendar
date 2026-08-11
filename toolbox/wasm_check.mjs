@@ -30,17 +30,16 @@ import { statSync } from 'node:fs';
 //                    models' own uncertainty at those eras is minutes. Year/month/day
 //                    must match exactly -- no tolerance there.
 //   MAX_VALUE_DIFF_* — same story for the @2 sections. Moon illumination / elongation are
-//                    direct evaluations: measured worst 6.03e-11 over 41 points, cap 1e-9
-//                    is ~16x that. Sidereal differs in shape: the GMST polynomial multiplies
-//                    by (jd − J2000), so its rounding steps with the product's magnitude —
-//                    musl and native libm land one product-ulp apart, and inside the
-//                    declared window the product stays below 2^32, so the step tops out at
-//                    2^-21 deg ≈ 4.77e-7 (measured worst over 43 points, including the
-//                    401/32766 edge anchors). Cap 1e-6 deg (≈ 3.6 mas) is ~2x that; the ΔT
-//                    models' own uncertainty at those eras swamps it.
-//   MAX_WASM_BYTES — raw-byte cap on the .wasm (measured 390,767 with
-//                    -Oz -DNDEBUG, emsdk 6.0.6). Crossing it means someone's export or
-//                    dependency fattened the artifact; that takes an explanation.
+//                    direct evaluations (no solver amplification), cap 1e-9. Sidereal
+//                    differs in shape: the GMST polynomial multiplies by (jd − J2000), so
+//                    its rounding steps with the product's magnitude — musl and native
+//                    libm land one product-ulp apart, and inside the declared window the
+//                    product stays below 2^32, so the step tops out at 2^-21 deg ≈ 4.77e-7.
+//                    Cap 1e-6 deg (≈ 3.6 mas) is ~2x that; the ΔT models' own uncertainty
+//                    at those eras swamps it.
+//   MAX_WASM_BYTES — raw-byte cap on the .wasm. The size check below prints the current
+//                    artifact's bytes every run; crossing the cap means someone's export
+//                    or dependency fattened the artifact, and that takes an explanation.
 const MAX_FRAC_DIFF_DAYS = 1e-8;
 const MAX_VALUE_DIFF_MOON = 1e-9;      // illumination and elongation_deg
 const MAX_VALUE_DIFF_SIDEREAL = 1e-6;  // degrees; one product-ulp, see above
@@ -182,7 +181,7 @@ const alive = query(2026, 13);
 check(!thrown.valid && alive.valid && alive.y === 2026,
   'exception path (year=40000 throws -> valid=false, module survives)');
 
-// 4b) exception path, sidereal: jd_ut1 outside the [401, 32767] window throws inside the
+// 4b) exception path, sidereal: jd_ut1 outside the [401, 32766] window throws inside the
 //     wrapper (jd_to_ut1's guard) -> valid=false AND the reason is readable (#97 pilot).
 const outWindow = last(1000000.0, 0.0);
 const errWindow = M.ccall('last_error', 'string', [], []);

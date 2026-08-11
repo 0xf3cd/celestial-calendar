@@ -436,17 +436,17 @@ TEST(Illumination, HorizonsGoldenDataset) {
 }
 
 TEST(Illumination, IdenticalPositionsClamp) {
-  // Sun and Moon at the same longitude/latitude: cos_ψ is 1 within a rounding, and without
-  // the clamp sqrt(1 - cos_ψ²) is a NaN path. With realistic distances (Δ ≪ R) conjunction
-  // must read k = 0, robustly.
+  // Conjunction geometry: cos_ψ evaluates to 1 within a rounding — past 1 by an ulp on
+  // some platforms — which is where the clamp earns its keep (sqrt of a hair below zero
+  // is NaN). The invariant: never NaN, and with Δ ≪ R a conjunction reads k = 0.
   const astro::toolbox::SphericalCoordinate sun_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
-    .β = astro::toolbox::AngleDeg { 0.0 },
+    .β = astro::toolbox::AngleDeg { 0.1 },
     .r = astro::toolbox::DistanceAu { 1.0 },
   };
   const astro::toolbox::SphericalCoordinate moon_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
-    .β = astro::toolbox::AngleDeg { 0.0 },
+    .β = astro::toolbox::AngleDeg { 0.1 },
     .r = astro::toolbox::DistanceAu { astro::toolbox::DistanceKm { 384400.0 } },
   };
   const auto i = illumination::phase_angle(sun_pos, moon_pos);

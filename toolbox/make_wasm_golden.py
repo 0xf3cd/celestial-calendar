@@ -43,7 +43,7 @@ OUT_PATH: Final[Path] = Path(__file__).parent / "wasm_golden.json"
 # keeps its exact point set -- it is generated first, consuming the seeded PRNG in the
 # same order as @1. Moon points cover the Example 48.a anchor plus a uniform fill over
 # [1900, 2100]; sidereal points cover the J2000 anchor plus a uniform fill over the
-# export's declared window [401, 32767] with east-positive longitudes.
+# export's declared window [401, 32766] with east-positive longitudes.
 SEED: Final[int] = 42
 EDGE_YEARS: Final[list[int]] = [401, 1950, 1999, 2026, 2050, 32766]
 RANDOM_POINTS: Final[int] = 60
@@ -53,9 +53,9 @@ SIDEREAL_RANDOM_POINTS: Final[int] = 40
 EXAMPLE_48A_JDE: Final[float] = 2448724.5  # 1992-04-12 0h TT
 J2000_JD: Final[float] = 2451545.0         # 2000-01-01 12:00
 # JDE bounds for [1900, 2100], and JD bounds for the sidereal export's declared [401, 32766]
-# window (jd_to_ut1's floor guard, and 32766-12-31 at the top).
+# window (jd_to_ut1's floor guard at one end, ut1_to_jd(32766-12-31 0h) at the other).
 MOON_JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)
-SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13652959.5)
+SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13688959.5)
 
 
 class _JieqiMomentQuery(Structure):

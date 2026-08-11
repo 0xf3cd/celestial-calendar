@@ -28,7 +28,7 @@ from typing import Final
 # percent, geocenter observer, TT scale. Horizons sorts TLIST internally (2026-08-10:
 # pairing rows to epochs by input order manufactures phantom gaps), so the epochs go out
 # sorted and the row count is asserted. TLIST travels in the query string, so it goes in
-# chunks: 121 JDs in one GET is a ~2.6 KB URL and the API answers 502.
+# chunks: the full set in one GET got the API answering 502.
 SEED: Final[int] = 42
 RANDOM_POINTS: Final[int] = 120
 JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)

@@ -48,10 +48,8 @@
  *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
- * On failure the Julian Day, moon-illumination, and sidereal-time functions also
- * record a thread-local message readable through `last_error` (#97 pilot, widened
- * when the wasm consumer became the first out-of-repo reader that gets `valid = false`
- * with no other way to learn why).
+ * On failure the recording functions (the set is listed on `last_error`) also
+ * record a thread-local message readable through it.
  *
  * Thread-safety contract: every entry point may be called concurrently from any
  * number of threads, with no host-side synchronization. `set_log_verbosity` turns
@@ -318,8 +316,8 @@ typedef struct SiderealTime {
 /**
  * @brief Compute the Local Apparent Sidereal Time (LAST) for an observer.
  * @param jd_ut1 The julian day number, which is based on **UT1**. Declared domain: Gregorian
- *        years in [401, 32766] — nutation needs the instant on TT, and the UT1→TT conversion
- *        is guarded to that window (late 32767 would survive the JD guard only to have the
+ *        years in [401, 32766] — nutation needs the instant on TT, and this export guards
+ *        the window outright (late 32767 would survive the JD guard only to have the
  *        ΔT shift push the TT date past the representable years).
  * @param longitude The observer's geographic longitude in degrees, positive east, in [-180, 180].
  * @returns A `SiderealTime` struct. The ΔT model is the library default (algo5) and the
