@@ -293,6 +293,15 @@ CANARY: Final[str] = """
   auto main() -> int { const std::vector<int> v { 1 }; return v.empty() ? 1 : 0; }
 """
 
+# The mirror image: a program every real compiler must REJECT. A `CXX` that accepts everything
+# (a wrapper script, `/bin/echo`) "compiles" this too -- and then every probe below reports
+# USABLE, which the baseline comparison only catches on rows that happen to record False
+# (#174). Any real front end stops at the #error, so accepting is the tell, not the verdict.
+ANTI_CANARY: Final[str] = """
+  #error This program must not compile -- it exists to unmask a CXX that accepts everything.
+  auto main() -> int { return 0; }
+"""
+
 
 def compiles(cxx: str, program: str) -> bool:
   """Compile `program` on its own, and report whether the front end accepted it."""
@@ -349,6 +358,12 @@ def probe_features(leg: Optional[str] = None) -> int:
     red_print(f"{cxx} cannot compile a trivial -std={CXX_STANDARD} program.")
     yellow_print("Fix the toolchain first. Every probe below would report GATED for the same")
     yellow_print("reason, and on a leg whose baseline is mostly False that reads as a pass.")
+    return 1
+
+  if compiles(cxx, ANTI_CANARY):
+    red_print(f"{cxx} accepted a program that must not compile -- it is not a real compiler.")
+    yellow_print("A CXX that accepts everything reports every feature as USABLE, and only a")
+    yellow_print("baseline row that happens to record False would ever turn that red.")
     return 1
 
   actual: Dict[str, bool] = {}
