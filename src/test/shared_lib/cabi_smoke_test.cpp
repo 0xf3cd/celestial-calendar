@@ -219,14 +219,18 @@ TEST(CAbiSmoke, LocalApparentSiderealTime) {
   EXPECT_LT(last.value, 360.0);
   EXPECT_STREQ(last_error(), ""); // a valid call clears the message
 
-  // Outside the declared [401, 32767] window (jd_ut1 ≈ year -2700): valid = false,
-  // and the reason is readable — the widened last_error boundary (#97).
+  // Outside the declared [401, 32766] window: valid = false, and the reason is
+  // readable — the widened last_error boundary (#97). jd 1000000 ≈ year -1975 is
+  // below the floor; 13689294.5 is 32767-12-01, above the ceiling.
   EXPECT_FALSE(local_apparent_sidereal_time(1000000.0, 0.0).valid);
   EXPECT_STRNE(last_error(), "");
+  EXPECT_FALSE(local_apparent_sidereal_time(13689294.5, 0.0).valid);
+  EXPECT_NE(std::strstr(last_error(), "32766"), nullptr);
 
   EXPECT_FALSE(local_apparent_sidereal_time(NAN_VALUE, 0.0).valid);  // non-finite jd
   EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
   EXPECT_FALSE(local_apparent_sidereal_time(2460463.0, NAN_VALUE).valid);  // non-finite longitude
+  EXPECT_FALSE(local_apparent_sidereal_time(2460463.0, 999.0).valid);      // out of [-180, 180]
 }
 
 

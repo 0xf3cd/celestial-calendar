@@ -26,6 +26,7 @@
 #include <cmath>
 #include <vector>
 #include <format>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -293,7 +294,9 @@ namespace astro::moon_phase::illumination {
   const double Δλ = (moon_pos.λ - sun_pos.λ).rad();
 
   // Geocentric elongation ψ, (48.2). ψ ∈ [0°, 180°], so sin ψ ≥ 0 and the root is safe.
-  const double cos_ψ = (sin_βs * sin_βm) + (cos_βs * cos_βm * std::cos(Δλ));
+  // The clamp closes the floating-point corner where cos_ψ lands an ulp outside [-1, 1]
+  // (same guard as coord_transform.hpp's asin inputs): sqrt of a hair below zero is NaN.
+  const double cos_ψ = std::clamp((sin_βs * sin_βm) + (cos_βs * cos_βm * std::cos(Δλ)), -1.0, 1.0);
   const double sin_ψ = std::sqrt(1.0 - (cos_ψ * cos_ψ));
 
   // (48.3): atan2 keeps i in [0°, 180°] with no quadrant bookkeeping — near conjunction

@@ -1,7 +1,7 @@
 {
   "schema": "celestial-calendar/wasm-golden@2",
   "provenance": {
-    "source_commit": "af382cd44e39454e820634d731700e1fca72eaad",
+    "source_commit": "727b15c42c43fe42c90361833603f27439c69611",
     "generated_on": "Darwin arm64, 2026-08-10",
     "seed": 42
   },
@@ -1859,204 +1859,214 @@
           "value_bits": "0x40718750287e8165"
         },
         {
-          "jd_ut1_bits": "0x415e04ccbf5cd770",
+          "jd_ut1_bits": "0x413c7f0280000000",
+          "longitude": 0.0,
+          "value_bits": "0x40591445fe2ef0bd"
+        },
+        {
+          "jd_ut1_bits": "0x416a0a7bf0000000",
+          "longitude": 45.0,
+          "value_bits": "0x40759e629a24e68d"
+        },
+        {
+          "jd_ut1_bits": "0x415df2c539183a6e",
           "longitude": -141.6921037928262,
-          "value_bits": "0x40687039e9eb00a3"
+          "value_bits": "0x407431110d514080"
         },
         {
-          "jd_ut1_bits": "0x4161a9563c879c2b",
+          "jd_ut1_bits": "0x41619e3bd13217b4",
           "longitude": 123.00096534208814,
-          "value_bits": "0x404bd8f73e486de8"
+          "value_bits": "0x406863c1a32811bc"
         },
         {
-          "jd_ut1_bits": "0x415e049534f2d144",
+          "jd_ut1_bits": "0x415df28dda6b1550",
           "longitude": -108.39200336469611,
-          "value_bits": "0x4073740f0a65d5b1"
+          "value_bits": "0x4074582f5f516901"
         },
         {
-          "jd_ut1_bits": "0x4157fc7c8de901fc",
+          "jd_ut1_bits": "0x4157ef3529cd0ccf",
           "longitude": -121.84234712886479,
-          "value_bits": "0x404a90734b1718c8"
+          "value_bits": "0x405fe52951874d20"
         },
         {
-          "jd_ut1_bits": "0x41690fd3066afbdb",
+          "jd_ut1_bits": "0x4168fee4b69357e9",
           "longitude": 152.0762690225789,
-          "value_bits": "0x4063d50f10b35755"
+          "value_bits": "0x400b2a21074d5f80"
         },
         {
-          "jd_ut1_bits": "0x416845c16606658f",
+          "jd_ut1_bits": "0x4168357236d1cce8",
           "longitude": 35.620050405682434,
-          "value_bits": "0x4031f85bb44b8e30"
+          "value_bits": "0x4046518622955e48"
         },
         {
-          "jd_ut1_bits": "0x415d2892ab907082",
+          "jd_ut1_bits": "0x415d1738928c568f",
           "longitude": -139.72761888447778,
-          "value_bits": "0x40721ced7a721cde"
+          "value_bits": "0x40713a9f43064528"
         },
         {
-          "jd_ut1_bits": "0x41577e445c37e4c7",
+          "jd_ut1_bits": "0x415771605daf44d1",
           "longitude": 174.71569641977237,
-          "value_bits": "0x405d0b18dc06ad18"
+          "value_bits": "0x405277c9f86fc188"
         },
         {
-          "jd_ut1_bits": "0x4165c0dfdcefecc7",
+          "jd_ut1_bits": "0x4165b28c8452ef45",
           "longitude": -93.79716827829883,
-          "value_bits": "0x4061532be0f96936"
+          "value_bits": "0x4059f73bb30fac93"
         },
         {
-          "jd_ut1_bits": "0x4151fc8cb9338e24",
+          "jd_ut1_bits": "0x4151f3fede95877e",
           "longitude": 24.2484997280076,
-          "value_bits": "0x402ce97f3c3be400"
+          "value_bits": "0x406ce11599c11d08"
         },
         {
-          "jd_ut1_bits": "0x414559f6629bed21",
+          "jd_ut1_bits": "0x4145545e5d8f9174",
           "longitude": 83.48673414406596,
-          "value_bits": "0x40748530970403d8"
+          "value_bits": "0x402666c6694eed40"
         },
         {
-          "jd_ut1_bits": "0x4165f64287984981",
+          "jd_ut1_bits": "0x4165e7c52499556b",
           "longitude": 172.07441772384033,
-          "value_bits": "0x407210a149535e99"
+          "value_bits": "0x4064bff4d3dbccb0"
         },
         {
-          "jd_ut1_bits": "0x415f25b3681c01f6",
+          "jd_ut1_bits": "0x415f12c860083723",
           "longitude": -134.72621585264113,
-          "value_bits": "0x404e9eee2b8aaae4"
+          "value_bits": "0x3ffa9b8ae6b38080"
         },
         {
-          "jd_ut1_bits": "0x41627032cd9f987a",
+          "jd_ut1_bits": "0x4162647bc83ae0ca",
           "longitude": 160.86552469379671,
-          "value_bits": "0x40736a6377534004"
+          "value_bits": "0x40008a11b29f8500"
         },
         {
-          "jd_ut1_bits": "0x414d243265f10439",
+          "jd_ut1_bits": "0x414d1877ef9d6812",
           "longitude": 9.962563470571439,
-          "value_bits": "0x40587eab0db0db68"
+          "value_bits": "0x40746721da3f9050"
         },
         {
-          "jd_ut1_bits": "0x41613d5b7faf8fee",
+          "jd_ut1_bits": "0x416132961cc5385a",
           "longitude": 167.17064616268385,
-          "value_bits": "0x4074699bdb8f5fa2"
+          "value_bits": "0x4062e77080e56478"
         },
         {
-          "jd_ut1_bits": "0x416881e74b52cba3",
+          "jd_ut1_bits": "0x41687168be6842a8",
           "longitude": 91.89547078888995,
-          "value_bits": "0x406cb76cf2eb2040"
+          "value_bits": "0x4070ca9012d65000"
         },
         {
-          "jd_ut1_bits": "0x41631e0b2cbafa34",
+          "jd_ut1_bits": "0x416311cb4086c09c",
           "longitude": 76.66163021488387,
-          "value_bits": "0x4061dad728c8d428"
+          "value_bits": "0x405d88044f32c68e"
         },
         {
-          "jd_ut1_bits": "0x41591e02aada9184",
+          "jd_ut1_bits": "0x41590fd7475de087",
           "longitude": 61.80730546978191,
-          "value_bits": "0x407298fa03cb8c6c"
+          "value_bits": "0x4068938e036034a1"
         },
         {
-          "jd_ut1_bits": "0x4157f6ca7b8ae360",
+          "jd_ut1_bits": "0x4157e98793a6fdbe",
           "longitude": 143.86107047146038,
-          "value_bits": "0x406c5da80994ee62"
+          "value_bits": "0x40729cb409e5359a"
         },
         {
-          "jd_ut1_bits": "0x415b7c099fae4b0d",
+          "jd_ut1_bits": "0x415b6c00fe727eda",
           "longitude": -90.75397908023714,
-          "value_bits": "0x405b2dc8d20c5cda"
+          "value_bits": "0x4072adef136109bd"
         },
         {
-          "jd_ut1_bits": "0x414405d40029241c",
+          "jd_ut1_bits": "0x41440147d5716202",
           "longitude": -172.4276663974588,
-          "value_bits": "0x406c47493b3c3db0"
+          "value_bits": "0x4074b294f50b26ee"
         },
         {
-          "jd_ut1_bits": "0x41600d502ad5d2dc",
+          "jd_ut1_bits": "0x4160037a3693462a",
           "longitude": 31.838441187726374,
-          "value_bits": "0x4021e1af4a258c40"
+          "value_bits": "0x40559b7cf8466024"
         },
         {
-          "jd_ut1_bits": "0x413dcb132da47be6",
+          "jd_ut1_bits": "0x413dca0dae09bacf",
           "longitude": 74.82274075744348,
-          "value_bits": "0x40747e2bbe405d0f"
+          "value_bits": "0x406f564c776dc62c"
         },
         {
-          "jd_ut1_bits": "0x41438ede45b04e61",
+          "jd_ut1_bits": "0x41438aafc9054760",
           "longitude": -155.7358818802893,
-          "value_bits": "0x4064a60d1f707b3c"
+          "value_bits": "0x406c09d4cbcbd110"
         },
         {
-          "jd_ut1_bits": "0x414114d0249d1356",
+          "jd_ut1_bits": "0x41411294f8143bdd",
           "longitude": -61.04574393102047,
-          "value_bits": "0x406cbfbbb1cfeec4"
+          "value_bits": "0x404d64ca55bb08fe"
         },
         {
-          "jd_ut1_bits": "0x415e4f8ba6901285",
+          "jd_ut1_bits": "0x415e3d4943b908b4",
           "longitude": -79.74818497276308,
-          "value_bits": "0x4073f403ff6febae"
+          "value_bits": "0x404b0468d70dd998"
         },
         {
-          "jd_ut1_bits": "0x415d03bb35bbe675",
+          "jd_ut1_bits": "0x415cf27e1fe9776a",
           "longitude": 14.12421530211165,
-          "value_bits": "0x40422efc89a998f0"
+          "value_bits": "0x406352ecebe86188"
         },
         {
-          "jd_ut1_bits": "0x4163df54b57eac6c",
+          "jd_ut1_bits": "0x4163d27c9301df44",
           "longitude": 137.65790705066559,
-          "value_bits": "0x406d5e0f30d5135c"
+          "value_bits": "0x4068e9b4b3c11bee"
         },
         {
-          "jd_ut1_bits": "0x41608dfada474482",
+          "jd_ut1_bits": "0x416083bf931621f2",
           "longitude": -92.52099273753917,
-          "value_bits": "0x406c555581b4684c"
+          "value_bits": "0x40286b2936de36d0"
         },
         {
-          "jd_ut1_bits": "0x415c7418ce0994a4",
+          "jd_ut1_bits": "0x415c634cd4980330",
           "longitude": -33.45841386506282,
-          "value_bits": "0x406d4ea9da81fcdc"
+          "value_bits": "0x406dc808d5d21d02"
         },
         {
-          "jd_ut1_bits": "0x4146c16fb7e87adc",
+          "jd_ut1_bits": "0x4146babc9db327de",
           "longitude": 57.233789825278706,
-          "value_bits": "0x4062e270bbc50eee"
+          "value_bits": "0x4072866a10b3c93e"
         },
         {
-          "jd_ut1_bits": "0x41571a0596f0e1ee",
+          "jd_ut1_bits": "0x41570d70899e6cc9",
           "longitude": -32.003180622094305,
-          "value_bits": "0x406bb90b106f7e81"
+          "value_bits": "0x4047c4603850931c"
         },
         {
-          "jd_ut1_bits": "0x41670a41bdce953d",
+          "jd_ut1_bits": "0x4166faeb0270301a",
           "longitude": -160.49837259641862,
-          "value_bits": "0x404d2a87c1c958c4"
+          "value_bits": "0x405ad14b55c3084c"
         },
         {
-          "jd_ut1_bits": "0x41624bdc0731b827",
+          "jd_ut1_bits": "0x416240419fa8061c",
           "longitude": 52.62471046619439,
-          "value_bits": "0x406af755df5d1fa8"
+          "value_bits": "0x405b2aef99eb635c"
         },
         {
-          "jd_ut1_bits": "0x4143b704c7ed7f2a",
+          "jd_ut1_bits": "0x4143b2b6ad05b0ea",
           "longitude": 82.15689183882574,
-          "value_bits": "0x4062eb3765575a64"
+          "value_bits": "0x404f8c715b307598"
         },
         {
-          "jd_ut1_bits": "0x41659d30217bfeb8",
+          "jd_ut1_bits": "0x41658ef8e32e8cca",
           "longitude": -140.66314839187055,
-          "value_bits": "0x405a685920dba128"
+          "value_bits": "0x406c9002209e0980"
         },
         {
-          "jd_ut1_bits": "0x414f87373f357940",
+          "jd_ut1_bits": "0x414f799b9cce77f0",
           "longitude": 13.062871407723975,
-          "value_bits": "0x4067007eeb90cae5"
+          "value_bits": "0x404dfda7ebe89b6e"
         },
         {
-          "jd_ut1_bits": "0x414ae43cf71274dd",
+          "jd_ut1_bits": "0x414ada4810c22cc6",
           "longitude": -113.94430711659602,
-          "value_bits": "0x406e747f13359952"
+          "value_bits": "0x4074b3e5255d8bef"
         },
         {
-          "jd_ut1_bits": "0x415bfcab09f53b33",
+          "jd_ut1_bits": "0x415bec3d1d17b230",
           "longitude": 134.81494346540876,
-          "value_bits": "0x4053e85a25c46674"
+          "value_bits": "0x40649f1d7d2ba8d3"
         }
       ]
     }

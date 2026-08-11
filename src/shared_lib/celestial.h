@@ -57,8 +57,9 @@
  * number of threads, with no host-side synchronization. `set_log_verbosity` turns
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
- * `last_error` is per-thread: it reports the calling thread's most recent Julian
- * Day call, and no thread ever observes another's message. Two computations memoize
+ * `last_error` is per-thread: it reports the calling thread's most recent call to a
+ * recording function (the set is listed on `last_error` itself), and no thread ever
+ * observes another's message. Two computations memoize
  * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
  * shared process-wide and never erased: the first call with a given argument pays for
  * it, later calls from any thread reuse the result, and memory grows monotonically
@@ -207,7 +208,7 @@ typedef struct MoonIllumination {
 
 /**
  * @brief Compute the Moon's illuminated fraction k and elongation at a JDE
- *        (Meeus ch. 48: (48.2) elongation, (48.3) phase angle, (48.1) fraction).
+ *        (Meeus ch. 48: k from (48.2)+(48.3)+(48.1)).
  * @param jde The julian ephemeris day number, which is based on TT.
  * @returns A `MoonIllumination` struct. `elongation_deg` is the apparent ecliptic longitude
  *          difference that defines the phases: 0° new, 90° first quarter, 180° full,
@@ -317,8 +318,9 @@ typedef struct SiderealTime {
 /**
  * @brief Compute the Local Apparent Sidereal Time (LAST) for an observer.
  * @param jd_ut1 The julian day number, which is based on **UT1**. Declared domain: Gregorian
- *        years in [401, 32767] — nutation needs the instant on TT, and the UT1→TT conversion
- *        is guarded to that window.
+ *        years in [401, 32766] — nutation needs the instant on TT, and the UT1→TT conversion
+ *        is guarded to that window (late 32767 would survive the JD guard only to have the
+ *        ΔT shift push the TT date past the representable years).
  * @param longitude The observer's geographic longitude in degrees, positive east, in [-180, 180].
  * @returns A `SiderealTime` struct. The ΔT model is the library default (algo5) and the
  *          nutation model is IAU 1980 — both baked in, matching the other single-default

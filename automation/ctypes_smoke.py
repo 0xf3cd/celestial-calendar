@@ -101,7 +101,7 @@ def check_ctypes_smoke() -> int:
      lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 30)),
     ("gregorian_to_lunar(2023-13-01): month out of range",
      lambda: common.gregorian_to_lunar(algo1, 2023, 13, 1)),
-    ("local_apparent_sidereal_time(1000000.0, 0): outside the [401, 32767] window",
+    ("local_apparent_sidereal_time(1000000.0, 0): outside the [401, 32766] window",
      lambda: common.local_apparent_sidereal_time(1000000.0, 0.0)),
   ]
 

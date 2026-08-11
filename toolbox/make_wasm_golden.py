@@ -52,10 +52,10 @@ SIDEREAL_RANDOM_POINTS: Final[int] = 40
 
 EXAMPLE_48A_JDE: Final[float] = 2448724.5  # 1992-04-12 0h TT
 J2000_JD: Final[float] = 2451545.0         # 2000-01-01 12:00
-# JDE bounds for [1900-01-01, 2100-01-01], and JD bounds for the sidereal export's
-# declared [401, 32767] window (jd_to_ut1's guard).
+# JDE bounds for [1900, 2100], and JD bounds for the sidereal export's declared [401, 32766]
+# window (jd_to_ut1's floor guard, and 32766-12-31 at the top).
 MOON_JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)
-SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13689325.0)
+SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13652959.5)
 
 
 class _JieqiMomentQuery(Structure):
@@ -146,7 +146,7 @@ def generate() -> dict:
                          "illumination_bits": f64_bits(mi.illumination),
                          "elongation_deg_bits": f64_bits(mi.elongation_deg)})
 
-  sidereal_points = [(J2000_JD, 0.0)]
+  sidereal_points = [(J2000_JD, 0.0), (SIDEREAL_JD_RANGE[0], 0.0), (SIDEREAL_JD_RANGE[1], 45.0)]
   sidereal_points += [(random.uniform(*SIDEREAL_JD_RANGE), random.uniform(-180.0, 180.0))
                       for _ in range(SIDEREAL_RANDOM_POINTS)]
   sidereal_entries = []

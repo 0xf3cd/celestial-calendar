@@ -31,21 +31,21 @@ import { statSync } from 'node:fs';
 //                    must match exactly -- no tolerance there.
 //   MAX_VALUE_DIFF_* — same story for the @2 sections. Moon illumination / elongation are
 //                    direct evaluations: measured worst 6.03e-11 over 41 points, cap 1e-9
-//                    is ~16x that. Sidereal is different: the GMST polynomial multiplies by
-//                    (jd − J2000), so its rounding grows with |jd| — musl vs native libm land
-//                    1 product-ulp apart, a constant 2.4e-7 deg at jd ≈ 8e6 rising to
-//                    4.77e-7 at the 32766 window edge (measured, 41 points). Cap 1e-6 deg
-//                    (≈ 3.6 mas) is ~2x the measured worst; the ΔT models' own uncertainty
-//                    at those eras swamps it.
-//   MAX_WASM_BYTES — raw-byte cap on the .wasm (measured 381,216 with
-//                    -Oz -DNDEBUG, emsdk 6.0.6, #163 export set). Crossing it means
-//                    someone's export or dependency fattened the artifact; that takes an
-//                    explanation.
+//                    is ~16x that. Sidereal differs in shape: the GMST polynomial multiplies
+//                    by (jd − J2000), so its rounding steps with the product's magnitude —
+//                    musl and native libm land one product-ulp apart, and inside the
+//                    declared window the product stays below 2^32, so the step tops out at
+//                    2^-21 deg ≈ 4.77e-7 (measured worst over 43 points, including the
+//                    401/32766 edge anchors). Cap 1e-6 deg (≈ 3.6 mas) is ~2x that; the ΔT
+//                    models' own uncertainty at those eras swamps it.
+//   MAX_WASM_BYTES — raw-byte cap on the .wasm (measured 390,767 with
+//                    -Oz -DNDEBUG, emsdk 6.0.6). Crossing it means someone's export or
+//                    dependency fattened the artifact; that takes an explanation.
 const MAX_FRAC_DIFF_DAYS = 1e-8;
 const MAX_VALUE_DIFF_MOON = 1e-9;      // illumination and elongation_deg
-const MAX_VALUE_DIFF_SIDEREAL = 1e-6;  // degrees; grows with |jd − J2000|, see above
+const MAX_VALUE_DIFF_SIDEREAL = 1e-6;  // degrees; one product-ulp, see above
 const MAX_WASM_BYTES = 420_000;
-const MIN_GOLDEN_ENTRIES = 150; // an empty dataset must not pass vacuously (#72's shape)
+const MIN_SECTION_ENTRIES = 30; // an empty section must not pass vacuously (#72's shape)
 
 const HERE = new URL('.', import.meta.url);
 const MODULE_URL = new URL('../build/wasm/celestial-jieqi.mjs', HERE);
@@ -64,9 +64,10 @@ if (golden.schema !== 'celestial-calendar/wasm-golden@2') {
   throw new Error(`unknown golden schema: ${golden.schema}`);
 }
 const sections = golden.sections;
-const totalEntries = Object.values(sections).reduce((n, s) => n + s.entries.length, 0);
-check(totalEntries >= MIN_GOLDEN_ENTRIES,
-  `golden size ${totalEntries} >= ${MIN_GOLDEN_ENTRIES}`);
+for (const [name, s] of Object.entries(sections)) {
+  check(s.entries.length >= MIN_SECTION_ENTRIES,
+    `golden section ${name}: ${s.entries.length} entries >= ${MIN_SECTION_ENTRIES}`);
+}
 
 // Doubles travel as IEEE-754 bit patterns (hex strings) -- decoding is exact.
 const f64 = new Float64Array(1);
@@ -110,18 +111,25 @@ check(smoke.valid && smoke.jq === 13 && smoke.y === 2026 && smoke.m === 8 && smo
 
 // 2) golden replay, jieqi section: year/month/day exactly equal, frac within the cap.
 //    Date mismatches and tolerance overflows are different failure shapes -- count them
-//    apart and print the first offenders, or a red log says nothing.
-const replay = (entries, call, fields, cap, exact) => {
+//    apart and print the first offenders, or a red log says nothing. `exact` is the
+//    jieqi-only exact-match predicate; the other sections have none.
+const replay = (entries, call, fields, cap, exact = null) => {
   let exactBad = 0, diffBad = 0, worstDiff = -1, worstPoint = null;
   const offenders = [];
   for (const g of entries) {
     const w = call(g);
-    if (!w.valid || !exact(w, g)) {
+    if (!w.valid || (exact !== null && !exact(w, g))) {
       exactBad++;
       if (offenders.length < 3) offenders.push(`exact mismatch: golden ${JSON.stringify(g)} vs wasm ${JSON.stringify(w)}`);
       continue;
     }
-    const diff = Math.max(...fields.map(([name]) => Math.abs(w[name] - bitsOf(g[`${name}_bits`]))));
+    const diff = Math.max(...fields.map((name) => Math.abs(w[name] - bitsOf(g[`${name}_bits`]))));
+    // NaN never trips `>`: an unfinite field must count as bad outright, not sail through.
+    if (!Number.isFinite(diff)) {
+      diffBad++;
+      if (offenders.length < 3) offenders.push(`non-finite field at ${JSON.stringify(g)} (wasm ${JSON.stringify(w)})`);
+      continue;
+    }
     if (diff > worstDiff) { worstDiff = diff; worstPoint = g; }
     if (diff > cap) {
       diffBad++;
@@ -134,36 +142,34 @@ const replay = (entries, call, fields, cap, exact) => {
 const jq = replay(
   sections.jieqi.entries,
   (g) => query(g.year, g.idx),
-  [["frac"]],
+  ["frac"],
   MAX_FRAC_DIFF_DAYS,
   (w, g) => w.jq === g.idx && w.y === g.y && w.m === g.m && w.d === g.d,
 );
 check(jq.exactBad + jq.diffBad === 0,
-  `golden replay jieqi ${sections.jieqi.entries.length} pts (date mismatches ${jq.exactBad}, overflows ${jq.diffBad}, max diff ${jq.worstDiff.toExponential(2)} d)`);
+  `golden replay jieqi ${sections.jieqi.entries.length} pts (date mismatches ${jq.exactBad}, overflows ${jq.diffBad}, max diff ${jq.worstDiff.toExponential(2)} d at ${JSON.stringify(jq.worstPoint)})`);
 for (const o of jq.offenders) console.log(`  offender: ${o}`);
 
 // 2b) golden replay, moon section: illumination and elongation_deg within the cap.
 const mi = replay(
   sections.moon.entries,
   (g) => illum(bitsOf(g.jde_bits)),
-  [["illumination"], ["elongation_deg"]],
+  ["illumination", "elongation_deg"],
   MAX_VALUE_DIFF_MOON,
-  () => true,
 );
 check(mi.exactBad + mi.diffBad === 0,
-  `golden replay moon ${sections.moon.entries.length} pts (invalid ${mi.exactBad}, overflows ${mi.diffBad}, max diff ${mi.worstDiff.toExponential(2)})`);
+  `golden replay moon ${sections.moon.entries.length} pts (invalid ${mi.exactBad}, overflows ${mi.diffBad}, max diff ${mi.worstDiff.toExponential(2)} at ${JSON.stringify(mi.worstPoint)})`);
 for (const o of mi.offenders) console.log(`  offender: ${o}`);
 
 // 2c) golden replay, sidereal section: value within the cap.
 const st = replay(
   sections.sidereal.entries,
   (g) => last(bitsOf(g.jd_ut1_bits), g.longitude),
-  [["value"]],
+  ["value"],
   MAX_VALUE_DIFF_SIDEREAL,
-  () => true,
 );
 check(st.exactBad + st.diffBad === 0,
-  `golden replay sidereal ${sections.sidereal.entries.length} pts (invalid ${st.exactBad}, overflows ${st.diffBad}, max diff ${st.worstDiff.toExponential(2)} deg)`);
+  `golden replay sidereal ${sections.sidereal.entries.length} pts (invalid ${st.exactBad}, overflows ${st.diffBad}, max diff ${st.worstDiff.toExponential(2)} deg at ${JSON.stringify(st.worstPoint)})`);
 for (const o of st.offenders) console.log(`  offender: ${o}`);
 
 // 3) input guard: out-of-range jq_idx returns valid=false via the early guard (no throw)

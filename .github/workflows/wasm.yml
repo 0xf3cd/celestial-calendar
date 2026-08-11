@@ -7,7 +7,8 @@ on:
   pull_request:
     branches: [ main ]  # Also triggers on pull requests to the main branch
 
-# Read-only is enough: this leg builds and checks, it uploads nothing and writes nothing.
+# Read-only is enough: this leg builds and checks, and the upload goes through
+# `actions/upload-artifact`, which uses the Actions runtime token rather than this one.
 permissions:
   contents: read
 

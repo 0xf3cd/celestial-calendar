@@ -29,12 +29,12 @@ SRC_DIR: Final[Path] = PROJ_ROOT / "src"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "wasm"
 MODULE_STEM: Final[str] = "celestial-jieqi"
 
-# The narrow export surface (#163): Jieqi + Julian Day + `last_error` -- the three JD
-# functions are exactly the ones that WRITE `last_error` (celestial.h), and without the
-# reader a wasm consumer gets `valid = false` with no way to learn why. Widened once
-# (#183 follow-up): moon illumination + local apparent sidereal time, the nav's two
-# remaining real-data needs. Widening the surface further is a deliberate act -- every
-# added entry ships bytes to the browser.
+# The narrow export surface (#163): Jieqi + Julian Day + `last_error` -- the reader is
+# exported so a wasm consumer getting `valid = false` can learn why (the writers are
+# listed on `last_error` in celestial.h). Widened once (#183 follow-up): moon
+# illumination + local apparent sidereal time, the nav's two remaining real-data needs.
+# Widening the surface further is a deliberate act -- every added entry ships bytes to
+# the browser.
 EXPORTS: Final[list[str]] = [
   "query_jieqi_moment",
   "get_jieqi_name",
