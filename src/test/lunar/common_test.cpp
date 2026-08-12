@@ -22,6 +22,13 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <chrono>
+#include <cstdint>
+#include <stdexcept>
+#include <tuple>
+#include <vector>
+
 #include "lunar/algo1.hpp"
 #include "lunar/algo3.hpp"
 #include "lunar/common.hpp"
@@ -90,6 +97,62 @@ TEST(LunarCommon, MonthTranslationRoundTrip) {
       EXPECT_EQ(month_position(info, tm->month, tm->is_leap), pos);
     }
   }
+}
+
+// Direct pin of the LUNAR_DATA bitmap decoder (#87): days_offset = encoded >> 17,
+// leap_month = (encoded >> 13) & 0xf, month lengths from the low 13 bits (bit set = 30
+// days, clear = 29; 13 months iff leap_month != 0).
+// Provenance: `encoded` is copied verbatim from algo1::LUNAR_DATA[year - 1901] (HKO
+// 1901-2100 conversion table, https://www.hko.gov.hk/sc/gts/time/conversion.htm); the
+// expected fields were hand-decoded from the bitmap and cross-checked against ytliu0's
+// calendarData.js (pinned commit d6aae82b63b79a6f8659ea3e064024b7d8ac3077, md5
+// 6c9649f384d178918d9cb4618f7d3e98; decode via statistics/algo3_ytliu0_golden.py
+// `extract_ytliu0_year`) — all four years agree. Public anchors: lunar 2023 starts
+// 2023-01-22 with a leap 2nd month (闰二月, the `TraditionalMonth` docstring instance),
+// lunar 2024 starts 2024-02-10 with no leap month.
+// Integer civil-day fields: exact equality (EXPECT_EQ per field).
+TEST(LunarCommon, ParseLunarYear) {
+  struct ParseCase {
+    int32_t year;
+    uint32_t encoded;
+    std::chrono::year_month_day first_day;
+    uint8_t leap_month;
+    std::vector<uint32_t> month_lengths;
+  };
+
+  const std::vector<ParseCase> cases {
+    { .year = 1901, .encoded = 0x620752, .first_day = std::chrono::year { 1901 } / 2 / 19, .leap_month = 0, .month_lengths = { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29 } },              // START_YEAR (table start)
+    { .year = 2023, .encoded = 0x2a55b2, .first_day = std::chrono::year { 2023 } / 1 / 22, .leap_month = 2, .month_lengths = { 29, 30, 29, 29, 30, 30, 29, 30, 30, 29, 30, 29, 30 } },  // leap 2nd month (闰二月)
+    { .year = 2024, .encoded = 0x5006d2, .first_day = std::chrono::year { 2024 } / 2 / 10, .leap_month = 0, .month_lengths = { 29, 30, 29, 29, 30, 29, 30, 30, 29, 30, 30, 29 } },              // no leap month
+    { .year = 2099, .encoded = 0x28549b, .first_day = std::chrono::year { 2099 } / 1 / 21, .leap_month = 2, .month_lengths = { 30, 30, 29, 30, 30, 29, 29, 30, 29, 29, 30, 29, 30 } },  // END_YEAR (table end)
+  };
+
+  for (const auto& c : cases) {
+    const auto info = parse_lunar_year(c.year, c.encoded);
+    EXPECT_EQ(info.date_of_first_day, c.first_day) << "year=" << c.year;
+    EXPECT_EQ(info.leap_month, c.leap_month) << "year=" << c.year;
+    EXPECT_EQ(info.month_lengths, c.month_lengths) << "year=" << c.year;
+  }
+}
+
+TEST(LunarCommon, CalcBounds) {
+  // calc_bounds threads the algo through its declared window (#87): the lunar dates come
+  // from the window arguments, the Gregorian dates from `algo_f` at the two ends.
+  const auto b = calc_bounds(algo1::START_YEAR, algo1::END_YEAR, algo1::calc_lunar_year);
+
+  EXPECT_EQ(b.start_lunar_year, algo1::START_YEAR);
+  EXPECT_EQ(b.end_lunar_year, algo1::END_YEAR);
+  EXPECT_EQ(b.first_lunar_date, std::chrono::year { 1901 } / 1 / 1);
+  // Lunar 2099 has a leap 2nd month (13 months), so its last day is 2099/13/30.
+  EXPECT_EQ(b.last_lunar_date, std::chrono::year { 2099 } / 13 / 30);
+  // Lunar 1901 starts 1901-02-19 (HKO); lunar 2099 ends the day before lunar 2100's first
+  // day (2100-02-09, ytliu0 pinned commit above), i.e. 2100-02-08.
+  EXPECT_EQ(b.first_gregorian_date, std::chrono::year { 1901 } / 2 / 19);
+  EXPECT_EQ(b.last_gregorian_date, std::chrono::year { 2100 } / 2 / 8);
+
+  // No guard of its own: an out-of-window year falls through to the algo's out_of_range.
+  ASSERT_THROW(std::ignore = calc_bounds(1900, 2099, algo1::calc_lunar_year), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_bounds(1901, 2100, algo1::calc_lunar_year), std::out_of_range);
 }
 
 } // namespace calendar::lunar::common::test
