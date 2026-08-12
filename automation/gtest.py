@@ -46,6 +46,20 @@ def clear_test_binaries() -> None:
     yellow_print(f"# Cleared {len(stale)} stale test binary/binaries before building")
 
 
+def parse_ctest_listing(stdout: str) -> Dict[str, str]:
+  """The {test_no: test_name} mapping from a `ctest -N` listing.
+
+  Pure, so the parsing is unit-testable without a build (#87).
+  """
+  d: Dict[str, str] = {}
+  for line in stdout.splitlines():
+    if "Test" in line and "#" in line:
+      test_no = line.split(":")[0].strip()
+      test_name = line.split(":")[1].strip()
+      d[test_no] = test_name
+  return d
+
+
 def list_gtests() -> Dict[str, str]:
   """List all available tests in the build directory."""
   assert TEST_DIR.exists(), "Test directory not found"
@@ -53,15 +67,8 @@ def list_gtests() -> Dict[str, str]:
 
   proc_ret = run_cmd(["ctest", "-N"], print_stdout=False, cwd=TEST_DIR)
   assert proc_ret.retcode == 0, 'Failed to run "ctest -N"'
-  
-  d: Dict[str, str] = {}
-  for line in proc_ret.stdout.splitlines():
-    if "Test" in line and "#" in line: 
-      test_no = line.split(":")[0].strip()
-      test_name = line.split(":")[1].strip()
-      d[test_no] = test_name
 
-  return d
+  return parse_ctest_listing(proc_ret.stdout)
 
 
 def find_gtests(keywords: List[str]) -> List[str]:

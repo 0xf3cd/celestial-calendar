@@ -10,8 +10,10 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 
+import importlib.util
 import os
 import re
+import sys
 
 from . import paths
 from .env import Tool, check_tool
@@ -97,5 +99,28 @@ def run_clang_tidy() -> int:
 
   with stderr_log.open("w", encoding="utf-8") as f:
     f.write(clean_text(ret.stderr))
+
+  return ret.retcode
+
+
+def run_pytest() -> int:
+  """Run the automation layer's own unit tests (automation/tests/)."""
+  print("#" * 60)
+
+  # `python -m pytest`, never the console script: only the -m form puts the project root
+  # on sys.path, and the tests import `automation.*`.
+  if importlib.util.find_spec("pytest") is None:
+    red_print("pytest not found!")
+    yellow_print("Install the pinned pytest from Requirements.txt")
+    return 1
+
+  yellow_print("Running pytest on automation/tests/...")
+  tests_dir = paths.proj_root() / "automation" / "tests"
+  ret = run_cmd([sys.executable, "-m", "pytest", str(tests_dir), "-q"], cwd=paths.proj_root())
+
+  if ret.retcode == 0:
+    green_print("pytest passed")
+  else:
+    red_print("pytest failed")
 
   return ret.retcode

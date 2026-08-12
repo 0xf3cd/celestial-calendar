@@ -15,3 +15,7 @@ requests==2.34.2
 # That makes this parser part of a gate, not a convenience -- a silent major would change what
 # the gate accepts on a day nobody touched the repository.
 pyyaml==6.0.3
+# The automation layer's own unit tests (#87): pytest runs `automation/tests/` via
+# `linter.py --pytest`. It is a gate like any other here -- a silent major would change
+# what the gate accepts on a day nobody touched the repository.
+pytest==9.1.1
