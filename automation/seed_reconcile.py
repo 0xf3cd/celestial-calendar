@@ -24,29 +24,32 @@ from .utils import green_print, red_print, yellow_print
 # chose (#170). Pure parsing -- no build needed, any leg can run it.
 #
 # Each entry: (label, path relative to the project root, regex with one capture group for
-# the seed value).
+# the seed value). Patterns are anchored at line start: a commented-out or inline-comment
+# copy (`# CELESTIAL_TEST_SEED: "42"`, `/* DEFAULT_SEED = 42 */`) then simply does not
+# match -- three rounds of review injections taught this gate not to read comments (#170).
 SEED_COPIES: Final[Tuple[Tuple[str, str, re.Pattern], ...]] = (
-  ("core_tests.yml env", ".github/workflows/core_tests.yml", re.compile(r'CELESTIAL_TEST_SEED:\s*"(\d+)"')),
-  ("build_and_test.yml env", ".github/workflows/build_and_test.yml", re.compile(r'CELESTIAL_TEST_SEED:\s*"(\d+)"')),
+  (
+    "core_tests.yml env",
+    ".github/workflows/core_tests.yml",
+    re.compile(r'^\s*CELESTIAL_TEST_SEED:\s*"(\d+)"', re.MULTILINE),
+  ),
+  (
+    "build_and_test.yml env",
+    ".github/workflows/build_and_test.yml",
+    re.compile(r'^\s*CELESTIAL_TEST_SEED:\s*"(\d+)"', re.MULTILINE),
+  ),
   ("Dockerfile ARG", "Dockerfile", re.compile(r"^\s*ARG\s+CELESTIAL_TEST_SEED=(\d+)", re.MULTILINE)),
-  ("random.hpp DEFAULT_SEED", "src/util/random.hpp", re.compile(r"DEFAULT_SEED\s*=\s*(\d+)")),
+  (
+    "random.hpp DEFAULT_SEED",
+    "src/util/random.hpp",
+    re.compile(r"^\s*inline\s+constexpr\s+uint64_t\s+DEFAULT_SEED\s*=\s*(\d+)", re.MULTILINE),
+  ),
 )
 
 # The docker legs pass the workflow seed into the image explicitly. Lose this line and the
 # build does not fail -- it falls back to the Dockerfile default, so a later seed change in
 # the workflows would silently stop reaching the docker legs (#170, issue comment).
 BUILD_ARG_LINE: Final[str] = "--build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }}"
-
-# A gate that reconciles *config* must not read comments: a line that is commented out still
-# matches a bare regex/substring, so deleting the real copy while leaving the comment behind
-# would pass green -- the same silent-fallback shape this gate exists to catch (#170; the
-# comment-escape injection was caught in review, not imagined).
-COMMENT_PREFIXES: Final[Tuple[str, ...]] = ("#", "//")
-
-
-def _active_lines(text: str) -> List[str]:
-  """Lines that are not comments (YAML/shell `#`, C++ `//`)."""
-  return [line for line in text.splitlines() if not line.lstrip().startswith(COMMENT_PREFIXES)]
 
 
 def _strip_continuation(line: str) -> str:
@@ -72,6 +75,9 @@ def _self_test() -> List[str]:
     matches = pattern.findall(examples[label])
     if matches != ["42"]:
       failures.append(f"self-test: pattern for {label} gave {matches} on its canonical example")
+    # The anchor is what keeps comments out: a commented example must NOT match.
+    if pattern.findall("# " + examples[label]):
+      failures.append(f"self-test: pattern for {label} matches a commented-out line")
 
   # The build-arg matcher was falsified twice (substring, then prefix): pin its three states.
   canonical = "  --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \\"
@@ -80,16 +86,16 @@ def _self_test() -> List[str]:
     ("# " + canonical, False),  # commented out
     (canonical.replace("}}", "}}_BROKEN"), False),  # suffixed payload
   ]:
-    actual = any(_strip_continuation(line) == BUILD_ARG_LINE for line in _active_lines(text))
+    actual = any(_strip_continuation(line) == BUILD_ARG_LINE for line in text.splitlines())
     if actual != expected:
       failures.append(f"self-test: build-arg matcher gave {actual} on {text!r}")
   return failures
 
 
 def _read_seed(label: str, rel_path: str, pattern: re.Pattern) -> Tuple[Optional[str], Optional[str]]:
-  """Read one copy, from active (non-comment) lines only. Returns (seed, None) or (None, failure-message)."""
+  """Read one copy. Returns (seed, None) or (None, failure-message)."""
   path = paths.proj_root() / rel_path
-  matches = pattern.findall("\n".join(_active_lines(path.read_text(encoding="utf-8"))))
+  matches = pattern.findall(path.read_text(encoding="utf-8"))
   if len(matches) != 1:
     return None, f"{label}: expected exactly one seed in {rel_path}, found {len(matches)}"
   return matches[0], None
@@ -125,7 +131,7 @@ def check_seed_reconcile() -> int:
       failures.append(f"value drift: {label} has {seed}")
 
   build_and_test = (paths.proj_root() / ".github" / "workflows" / "build_and_test.yml").read_text(encoding="utf-8")
-  active_build_arg = any(_strip_continuation(line) == BUILD_ARG_LINE for line in _active_lines(build_and_test))
+  active_build_arg = any(_strip_continuation(line) == BUILD_ARG_LINE for line in build_and_test.splitlines())
   if not active_build_arg:
     failures.append(
       "build-arg line missing: build_and_test.yml no longer passes CELESTIAL_TEST_SEED into "
