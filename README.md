@@ -56,7 +56,7 @@ int main(void) {
 }
 ```
 
-Build the shared library first (`./project.py --build`, or download a prebuilt one — §9/§10), then:
+Build the shared library first (§4, or download a prebuilt one — §9/§10), then:
 
 ```sh
 cc quickstart.c -I src/shared_lib -L build/shared_lib -lcelestial_calendar -Wl,-rpath,build/shared_lib -o quickstart_c
