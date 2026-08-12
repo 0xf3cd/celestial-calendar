@@ -295,7 +295,7 @@ toolbox/        Helper scripts for artifacts, releases, build info
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active
    use. Features the weakest CI toolchain doesn't support yet — **modules**,
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
-   wait for compiler support (README §7 tracks the wishlist). **Availability is settled by
+   wait for compiler support (README §11 tracks the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./linter.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`; an unlock fails CI and names the waiting sites it can

@@ -2,7 +2,77 @@
 
 > A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
 
-## 1. Features
+Three ways in, depending on what you are here for:
+
+* **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
+* **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
+* **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
+
+## 1. Quick Start
+
+### 1.1. From C++ (header-only)
+
+No build step: point the compiler at the headers and call. Query the UT1 moment of a Jieqi (节气):
+
+```cpp
+#include <iostream>
+
+#include "jieqi.hpp"
+
+int main() {
+  using namespace calendar::jieqi;
+  const Jieqi jq = Jieqi::冬至;
+  const auto moment = jieqi_ut1_moment(2026, jq);
+  std::cout << name_of(jq) << " 2026 (UT1): " << moment.year() << '-' << moment.month() << '-'
+            << moment.day() << ", day fraction " << moment.fraction() << '\n';
+}
+```
+
+```sh
+# The headers include each other by basename, so pass all three include dirs
+clang++ -std=c++23 -I src/astro -I src/calendar -I src/util quickstart.cpp -o quickstart
+./quickstart
+# 冬至 2026 (UT1): 2026-12-21, day fraction 0.868205
+```
+
+The Jieqi query API lives in `src/calendar/jieqi.hpp` (`jieqi_ut1_moment`, `jieqi_jde`, `JieqiGenerator`). The rest of the library is organized the same way — self-contained headers under `src/astro/`, `src/calendar/`, and `src/util/`.
+
+### 1.2. From C and other languages (the C ABI)
+
+The same query across the C ABI (`src/shared_lib/celestial.h`), consumable from C, ctypes, and any FFI:
+
+```c
+#include <stdio.h>
+
+#include "celestial.h"
+
+int main(void) {
+  char name[16]; /* index 21 = 冬至 in the to_index order (0 = 立春) */
+  if (!get_jieqi_name(21, name, sizeof name)) return 1;
+  const JieqiMomentQuery m = query_jieqi_moment(2026, 21);
+  if (!m.valid) return 1;
+  printf("%s (UT1): %d-%02u-%02u, day fraction %.6f\n", name, m.y, m.m, m.d, m.frac);
+  return 0;
+}
+```
+
+Build the shared library first (§4, or download a prebuilt one — §9/§10), then:
+
+```sh
+cc quickstart.c -I src/shared_lib -L build/shared_lib -lcelestial_calendar -Wl,-rpath,build/shared_lib -o quickstart_c
+./quickstart_c
+# 冬至 (UT1): 2026-12-21, day fraction 0.868205
+```
+
+With a downloaded prebuilt artifact (§9/§10) instead, point at its packaged layout — headers under `<artifact>/include`, the library under `<artifact>/lib`:
+
+```sh
+cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl,-rpath,<artifact>/lib -o quickstart_c
+```
+
+(On Windows, link against the import library instead and keep the DLL next to the executable.)
+
+## 2. Features
 
 * Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
@@ -14,7 +84,7 @@
 
 The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected; the 2500 ceiling comes from the #139 error budget). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI exports algo1 and algo2, and `get_supported_lunar_year_range` reports their bounds.
 
-## 2. Requirements
+## 3. Requirements
 
 * C++ Compiler that supports C++23
   * CI builds it with clang++ 22 on Linux and Windows, the Apple clang in Xcode 26 on macOS, and g++ 14 on Linux. Older compilers may work; nothing checks them.
@@ -22,11 +92,11 @@ The supported year range of lunar conversions depends on the algorithm: 1901–2
 * Python 3, mostly for build automation
   * Install dependencies: `python3 -m pip install -r Requirements.txt`
   * A distro-packaged Python (Debian, Ubuntu, ...) refuses that install under PEP 668. Work in a virtual environment there: `python3 -m venv .venv && .venv/bin/python project.py --all`. `--setup` installs nothing when the dependencies are already present, so an interpreter that already has them is fine as well.
-  * `Requirements.txt` covers the build/test automation only. The linters come separately (see §4), and the notebooks and crawlers under `statistics/` need `python3 -m pip install -r Requirements-statistics.txt`
+  * `Requirements.txt` covers the build/test automation only. The linters come separately (see §8), and the notebooks and crawlers under `statistics/` need `python3 -m pip install -r Requirements-statistics.txt`
 
-## 3. How to Build
+## 4. How to Build
 
-### 3.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
+### 4.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
 
 Follow these steps to set up, build, and test the project on Unix-like systems. Ensure you have a C++23 compatible compiler installed.
 
@@ -64,7 +134,7 @@ CELESTIAL_TEST_SEED=123 ./project.py --test
 ./project.py --help
 ```
 
-### 3.2. On Windows
+### 4.2. On Windows
 
 Follow these steps to set up, build, and test the project on Windows. Ensure you have a C++23 compatible compiler installed.
 
@@ -104,114 +174,27 @@ python3 ./project.py --clean
 python3 ./project.py --help
 ```
 
-## 4. Linters and Static Analysis
+## 5. How the Library Is Verified
 
-The project is written in C++, and automated with Python scripts.
+Correctness here is numerical, proven against external references. The test suite (`src/test/`) is data-driven: each golden dataset holds the library to reference values with a declared tolerance and a stated provenance, so every dataset stays regenerable and auditable. `src/test/jieqi_golden_test.cpp` is a representative example; the convention itself is documented in `AGENTS.md`.
 
-For C++ codes, `clang-tidy` is used; For Python codes, `ruff` is used.
+The external oracles the library is held against include:
 
-Neither is part of `Requirements.txt` — install them directly:
+* **JPL Horizons** (DE441) — Sun/Moon apparent positions and Jieqi crossings, collected by the crawlers under `statistics/` (`moon_horizons_crawler.py`, `sun_jieqi_golden_crawler.py`).
+* **Hong Kong Observatory almanac** — published Jieqi wall clocks (2022–2028); the Jieqi chain is held to within 60 s of them, a budget that mostly absorbs HKO's own minute rounding (`automation/jieqi_table.py`, run by `./linter.py --jieqi-table`).
+* **ytliu0's ChineseCalendar** — an independent lunar-calendar year table, pinned by commit, as the golden oracle for the baked lunar algorithm (`src/test/lunar/algo3_ytliu0_golden_test.cpp`).
+* **Observed ΔT** — the UT1 ↔ TT conversion is anchored to observed values (NASA eclipse ΔT table, USNO observations, Stephenson & Morrison), not to the library's own fitted ΔT model (`src/test/astro/julian_day_test.cpp`).
+* **Sunrise/sunset** — held within ±2 min of USNO / NOAA / JPL DE references (§2).
 
-```sh
-python3 -m pip install ruff
+The `statistics/` directory holds the crawlers that regenerate these datasets and the evaluation notebooks behind them (`python3 -m pip install -r Requirements-statistics.txt`).
 
-# clang-tidy: any 22.1.x will do. CI uses the 22.1.2 that ships in its runner image, and pip
-# does not carry that exact patch release -- take the nearest one, or your distro's package.
-python3 -m pip install clang-tidy==22.1.8      # or your distribution's clang-tidy-22
-```
+## 6. WebAssembly Module
 
-`clang-tidy` runs with `WarningsAsErrors: '*'`, so its version is pinned deliberately — a newer
-one ships new checks that flag pre-existing code. Point `CLANG_TIDY` at the binary you want if
-`clang-tidy` on your `PATH` is a different major; it has to match the vendored
-`run-clang-tidy.py`, or you are measuring with a different ruler than CI (AGENTS.md gotcha 9).
+`python3 toolbox/build_wasm.py` compiles the shared-library sources into a browser/Node ES module, emitting `build/wasm/celestial-jieqi.mjs` + `celestial-jieqi.wasm`. It needs an emsdk checkout — point at it with `--emsdk` or the `$EMSDK` environment variable.
 
-The check configuration for `clang-tidy` is placed at `.clang-tidy`.
+The export surface is deliberately narrow: Jieqi moments, Julian Day conversions, Moon illumination / position angle / phase moments, and local apparent sidereal time — a subset of the C ABI, listed in `toolbox/build_wasm.py`.
 
-### 4.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
-
-```sh
-# Run ruff
-./linter.py --ruff
-
-# Run clang-tidy
-./linter.py --clang-tidy
-```
-
-### 4.2. On Windows
-
-```powershell
-# Run ruff
-python3 ./linter.py --ruff
-
-# Run clang-tidy
-python3 ./linter.py --clang-tidy
-```
-
-## 5. Download Artifacts (Shared Libs)
-
-There are basically two ways to download:
-
-### 5.1. From GitHub Web UI
-
-* Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
-* Download from the latest completed run
-  
-### 5.2. Use `toolbox/artifact_downloader.py`
-
-* Install dependencies: `python3 -m pip install -r Requirements.txt`
-* Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
-* Run `toolbox/artifact_downloader.py`
-
-  ```sh
-  # Ensure env var `GITHUB_TOKEN` is correctly set
-  echo $GITHUB_TOKEN     # Unix-like platforms
-  echo $env:GITHUB_TOKEN # Windows powershell
-
-  # Download artifacts from a given run to the specified dir
-  python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
-
-  # Download artifacts from the successful run that built HEAD, to the specified dir
-  python3 ./toolbox/artifact_downloader.py -s <directory>
-
-  # Same, and unzips them
-  python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
-
-  # More usages
-  python3 ./toolbox/artifact_downloader.py --help
-
-  # Or run it as a Python module from root dir
-  python3 -m toolbox.artifact_downloader --help
-  ```
-
-## 6. Download Release
-
-There are basically two ways to download:
-
-### 6.1. From GitHub Web UI
-
-* Go to [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
-* Download the assets and source codes
-
-### 6.2. Use `toolbox/release_downloader.py`
-
-* Install dependencies: `python3 -m pip install -r Requirements.txt`
-* Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download assets
-* Run `toolbox/release_downloader.py`
-
-  ```sh
-  # Ensure env var `GITHUB_TOKEN` is correctly set
-  echo $GITHUB_TOKEN     # Unix-like platforms
-  echo $env:GITHUB_TOKEN # Windows powershell
-
-  # Download assets from the latest release to the specified dir
-  python3 ./toolbox/release_downloader.py -s <directory>
-
-  # More usages
-  python3 ./toolbox/release_downloader.py --help
-
-  # Or run it as a Python module from root dir
-  python3 -m toolbox.release_downloader --help
-  ```
+CI builds the module on an independent leg (`wasm.yml`) and uploads it as the `celestial-wasm` artifact, which the release flow (§10) picks up. The same leg replays a native-generated golden dataset against the module and holds its moments to within 1e-8 days of the native build (`toolbox/wasm_check.mjs`).
 
 ## 7. Export the Jieqi Table (JSON)
 
@@ -249,7 +232,116 @@ The contract of the emitted table:
 The table is held to all of the above (plus HKO almanac anchors and an independent
 re-derivation through `statistics/common.py`) by `./linter.py --jieqi-table`.
 
-## 8. TODO List
+## 8. Linters and Static Analysis
+
+The project is written in C++, and automated with Python scripts.
+
+For C++ codes, `clang-tidy` is used; For Python codes, `ruff` is used.
+
+Neither is part of `Requirements.txt` — install them directly:
+
+```sh
+python3 -m pip install ruff
+
+# clang-tidy: any 22.1.x will do. CI uses the 22.1.2 that ships in its runner image, and pip
+# does not carry that exact patch release -- take the nearest one, or your distro's package.
+python3 -m pip install clang-tidy==22.1.8      # or your distribution's clang-tidy-22
+```
+
+`clang-tidy` runs with `WarningsAsErrors: '*'`, so its version is pinned deliberately — a newer
+one ships new checks that flag pre-existing code. Point `CLANG_TIDY` at the binary you want if
+`clang-tidy` on your `PATH` is a different major; it has to match the vendored
+`run-clang-tidy.py`, or you are measuring with a different ruler than CI (AGENTS.md gotcha 9).
+
+The check configuration for `clang-tidy` is placed at `.clang-tidy`.
+
+### 8.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
+
+```sh
+# Run ruff
+./linter.py --ruff
+
+# Run clang-tidy
+./linter.py --clang-tidy
+```
+
+### 8.2. On Windows
+
+```powershell
+# Run ruff
+python3 ./linter.py --ruff
+
+# Run clang-tidy
+python3 ./linter.py --clang-tidy
+```
+
+## 9. Download Artifacts (Shared Libs)
+
+There are basically two ways to download:
+
+### 9.1. From GitHub Web UI
+
+* Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
+* Download from the latest completed run
+  
+### 9.2. Use `toolbox/artifact_downloader.py`
+
+* Install dependencies: `python3 -m pip install -r Requirements.txt`
+* Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download artifacts
+* Run `toolbox/artifact_downloader.py`
+
+  ```sh
+  # Ensure env var `GITHUB_TOKEN` is correctly set
+  echo $GITHUB_TOKEN     # Unix-like platforms
+  echo $env:GITHUB_TOKEN # Windows powershell
+
+  # Download artifacts from a given run to the specified dir
+  python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
+
+  # Download artifacts from the successful run that built HEAD, to the specified dir
+  python3 ./toolbox/artifact_downloader.py -s <directory>
+
+  # Same, and unzips them
+  python3 ./toolbox/artifact_downloader.py -s <directory> --unzip
+
+  # More usages
+  python3 ./toolbox/artifact_downloader.py --help
+
+  # Or run it as a Python module from root dir
+  python3 -m toolbox.artifact_downloader --help
+  ```
+
+## 10. Download Release
+
+There are basically two ways to download:
+
+### 10.1. From GitHub Web UI
+
+* Go to [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
+* Download the assets and source codes
+
+### 10.2. Use `toolbox/release_downloader.py`
+
+* Install dependencies: `python3 -m pip install -r Requirements.txt`
+* Set environment variable `GITHUB_TOKEN` to your GitHub personal access token, because it is needed to download assets
+* Run `toolbox/release_downloader.py`
+
+  ```sh
+  # Ensure env var `GITHUB_TOKEN` is correctly set
+  echo $GITHUB_TOKEN     # Unix-like platforms
+  echo $env:GITHUB_TOKEN # Windows powershell
+
+  # Download assets from the latest release to the specified dir
+  python3 ./toolbox/release_downloader.py -s <directory>
+
+  # More usages
+  python3 ./toolbox/release_downloader.py --help
+
+  # Or run it as a Python module from root dir
+  python3 -m toolbox.release_downloader --help
+  ```
+
+## 11. TODO List
 
 * C++20/23 features are not fully supported by the compilers...
   * Modules
@@ -261,12 +353,13 @@ re-derivation through `statistics/common.py`) by `./linter.py --jieqi-table`.
 * DUT1 (i.e. UT1 - UTC) is not modelled
   * UTC became a first-class time scale in v0.4.0 (leap-second aware, `utc_to_tt` / `tt_to_utc`), but UT1 and UTC are still treated as interchangeable — the gap stays below 0.9 s while leap seconds are in force.
 
-## 9. References
+## 12. References
 
 * [Julian Day Numbers](https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
 * [USNO Delta T Values](https://maia.usno.navy.mil/ser7/deltat.data)
-* [SOFA Library](https://www.iausofa.org/2021_0512_C)
+* [SOFA Library (ANSI C)](https://www.iausofa.org/2023-10-11c)
+* [Stephenson, Morrison & Hohenkerk, "Measurement of the Earth's rotation: 720 BC to AD 2015" (Proc. R. Soc. A 472)](https://doi.org/10.1098/rspa.2016.0404)
 * [vsop87c](https://github.com/hongzhen/vsop87c)
 * [PyMeeus](https://github.com/architest/pymeeus)
 * [meeus-elp82](https://www.celestialprogramming.com/meeus-elp82.html)
@@ -277,3 +370,6 @@ re-derivation through `statistics/common.py`) by `./linter.py --jieqi-table`.
 * [算法系列之十九：用天文方法计算日月合朔（新月）](https://github.com/leetcola/nong/wiki/算法系列之十九：用天文方法计算日月合朔（新月）)
 * [历书科普问题解答 - 中国科学院紫金山天文台](http://www.pmo.cas.cn/xwdt2019/kpdt2019/202203/t20220317_6399980.html)
 * [农历编算法则](https://ytliu0.github.io/ChineseCalendar/rules_simp.html)
+* [ytliu0 / ChineseCalendar](https://github.com/ytliu0/ChineseCalendar)
+* [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
+* [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm)
