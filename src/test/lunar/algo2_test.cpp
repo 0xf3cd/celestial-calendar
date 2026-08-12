@@ -24,8 +24,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cstdint>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 #include "lunar/algo2.hpp"
 
 
@@ -200,6 +203,47 @@ TEST(LunarAlgo2, LeapMonth) {
         ASSERT_TRUE(is_leap(chunk2[leap_month]));
       }
     }
+  }
+}
+
+
+// 2032–2034 golden against ytliu0's year table, pinning the 2033 problem (#87).
+//
+// Source: ytliu0 / ChineseCalendar (廖育棟 / Yuk-Tung Liu), commit
+//   d6aae82b63b79a6f8659ea3e064024b7d8ac3077
+// file `src/calendarData.js` (695460 bytes, md5 6c9649f384d178918d9cb4618f7d3e98),
+// decoded with `extract_ytliu0_year` from `statistics/algo3_ytliu0_golden.py`.
+// Collected 2026-08-11; regenerate by re-running that decoder on the same pinned checkout.
+//
+// 2033 is the discriminator: two months lack a 中气 that year — one after month 7
+// (Aug 25 – Sep 22) and one right after the winter solstice (Dec 22 – Jan 19). The naive
+// reading ("the first 无中气月 is leap") gives 闰七月, and that was #87's original
+// expectation. But the rules (GB/T 33661, and ytliu0's rules page, which algo2's @see
+// cites) anchor 冬至 in month 11: the 冬至2032→冬至2033 span has only 12 months, so no
+// leap falls there; the 13-month span after 冬至2033 takes its first 无中气月 — the one
+// starting Dec 22 — as 闰十一月. 2262 is not pinned: the pinned table ends at 2199.
+//
+// Integer civil-day fields: exact equality (`EXPECT_EQ` per field), same idiom as the
+// algo3 ytliu0 golden.
+TEST(LunarAlgo2, Ytliu0Golden2032To2034) {
+  struct GoldenRow {
+    int32_t year;
+    std::chrono::year_month_day first_day;
+    uint8_t leap_month;
+    std::vector<uint32_t> month_lengths;
+  };
+
+  const std::vector<GoldenRow> rows {
+    { 2032, std::chrono::year { 2032 } / 2 / 11, 0,  { 30, 29, 29, 30, 29, 30, 30, 29, 30, 30, 29, 30 } },     // total=355
+    { 2033, std::chrono::year { 2033 } / 1 / 31, 11, { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29, 30 } },  // total=384
+    { 2034, std::chrono::year { 2034 } / 2 / 19, 0,  { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 29, 30 } },     // total=354
+  };
+
+  for (const auto& [year, first_day, leap_month, month_lengths] : rows) {
+    const LunarYear info = calc_lunar_year(year);
+    ASSERT_EQ(info.date_of_first_day, first_day) << "year " << year;
+    ASSERT_EQ(info.leap_month, leap_month) << "year " << year;
+    ASSERT_EQ(info.month_lengths, month_lengths) << "year " << year;
   }
 }
 
