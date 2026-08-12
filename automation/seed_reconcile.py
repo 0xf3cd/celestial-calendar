@@ -13,8 +13,6 @@ import re
 
 from typing import Final, List, Optional, Tuple
 
-import yaml
-
 from . import paths
 from .utils import green_print, red_print, yellow_print
 
@@ -69,6 +67,8 @@ def _read_workflow_seed(label: str, rel_path: str) -> Tuple[Optional[str], Optio
   A job- or step-level `env` entry sits at a different path in the document, so it cannot
   shadow the copy this gate reconciles (#191 review).
   """
+  import yaml  # Lazy, like ai_workflows: a checkout without Requirements still imports automation.
+
   path = paths.proj_root() / rel_path
   document = yaml.safe_load(path.read_text(encoding="utf-8"))
   env = document.get("env") or {}
@@ -92,6 +92,8 @@ def _read_text_seed(label: str, rel_path: str, pattern: re.Pattern) -> Tuple[Opt
 def _self_test() -> List[str]:
   """Prove every reader can still find the shape it was written for -- and rejects the
   comment-shaped decoys review injected (#191)."""
+  import yaml  # Lazy, like ai_workflows: a checkout without Requirements still imports automation.
+
   failures = []
 
   workflow_example = 'env:\n  CELESTIAL_TEST_SEED: "42"\n'
