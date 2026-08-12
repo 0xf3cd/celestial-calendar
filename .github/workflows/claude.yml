@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 1
 
       # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
-      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
+      - uses: anthropics/claude-code-action@6b082c41935b4c8a3b8b0ef85ba4ba4d9eeb8975 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Only comments are filtered; title, body, labels, branch and file names all still reach
