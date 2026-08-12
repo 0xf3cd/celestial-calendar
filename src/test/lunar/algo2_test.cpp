@@ -233,11 +233,15 @@ TEST(LunarAlgo2, Ytliu0Golden2032To2034) {
     std::vector<uint32_t> month_lengths;
   };
 
+  // Positional rows keep the dataset column-aligned, same as the algo3 golden table —
+  // designated initializers would scatter the values the eye compares across rows.
+  // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<GoldenRow> rows {
     { 2032, std::chrono::year { 2032 } / 2 / 11, 0,  { 30, 29, 29, 30, 29, 30, 30, 29, 30, 30, 29, 30 } },     // total=355
     { 2033, std::chrono::year { 2033 } / 1 / 31, 11, { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29, 30 } },  // total=384
     { 2034, std::chrono::year { 2034 } / 2 / 19, 0,  { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 29, 30 } },     // total=354
   };
+  // NOLINTEND(modernize-use-designated-initializers)
 
   for (const auto& [year, first_day, leap_month, month_lengths] : rows) {
     const LunarYear info = calc_lunar_year(year);
