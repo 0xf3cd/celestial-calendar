@@ -5,7 +5,7 @@
 Three ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
-* **C / other-language users** — the core queries are reachable through the C ABI (`src/shared_lib/celestial.h`); start at §1.2, then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
+* **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
 ## 1. Quick Start
