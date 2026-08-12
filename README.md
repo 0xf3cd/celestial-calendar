@@ -5,7 +5,7 @@
 Three ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
-* **C / other-language users** — everything is reachable through the C ABI (`src/shared_lib/celestial.h`); start at §1.2, then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
+* **C / other-language users** — the core queries are reachable through the C ABI (`src/shared_lib/celestial.h`); start at §1.2, then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
 ## 1. Quick Start
@@ -15,7 +15,6 @@ Three ways in, depending on what you are here for:
 No build step: point the compiler at the headers and call. Query the UT1 moment of a Jieqi (节气):
 
 ```cpp
-#include <cstdint>
 #include <iostream>
 
 #include "jieqi.hpp"
@@ -171,12 +170,12 @@ python3 ./project.py --help
 
 ## 5. How the Library Is Verified
 
-Correctness here is numerical, proven against external references rather than assumed. The test suite (`src/test/`) is data-driven: each golden dataset is a column-aligned table of reference values with a per-column tolerance, and its header comment states the provenance — a book example number, or the external source plus the collection date — so every dataset stays regenerable and auditable. `src/test/jieqi_golden_test.cpp` is a representative example.
+Correctness here is numerical, proven against external references. The test suite (`src/test/`) is data-driven: each golden dataset holds the library to reference values with a declared tolerance and a stated provenance, so every dataset stays regenerable and auditable. `src/test/jieqi_golden_test.cpp` is a representative example; the convention itself is documented in `AGENTS.md`.
 
 The external oracles the library is held against include:
 
 * **JPL Horizons** (DE441) — Sun/Moon apparent positions and Jieqi crossings, collected by the crawlers under `statistics/` (`moon_horizons_crawler.py`, `sun_jieqi_golden_crawler.py`).
-* **Hong Kong Observatory almanac** — published Jieqi wall clocks (2022–2028), cross-validated against the DE441 axis before either was pinned; the Jieqi chain is held to within 60 s of them, a budget that mostly absorbs HKO's own minute rounding (`automation/jieqi_table.py`, run by `./linter.py --jieqi-table`).
+* **Hong Kong Observatory almanac** — published Jieqi wall clocks (2022–2028); the Jieqi chain is held to within 60 s of them, a budget that mostly absorbs HKO's own minute rounding (`automation/jieqi_table.py`, run by `./linter.py --jieqi-table`).
 * **ytliu0's ChineseCalendar** — an independent lunar-calendar year table, pinned by commit, as the golden oracle for the baked lunar algorithm (`src/test/lunar/algo3_ytliu0_golden_test.cpp`).
 * **Observed ΔT** — the UT1 ↔ TT conversion is anchored to observed values (NASA eclipse ΔT table, USNO observations, Stephenson & Morrison), not to the library's own fitted ΔT model (`src/test/astro/julian_day_test.cpp`).
 * **Sunrise/sunset** — held within ±2 min of USNO / NOAA / JPL DE references (§2).
@@ -189,7 +188,7 @@ The `statistics/` directory holds the crawlers that regenerate these datasets an
 
 The export surface is deliberately narrow: Jieqi moments, Julian Day conversions, Moon illumination / position angle / phase moments, and local apparent sidereal time — a subset of the C ABI, listed in `toolbox/build_wasm.py`.
 
-CI builds the module on an independent leg (`wasm.yml`, deliberately outside the main matrix) and uploads it as the `celestial-wasm` artifact, which the release flow (§10) picks up. The same leg replays a native-generated golden dataset against the module and holds its moments to within 1e-8 days of the native build (`toolbox/wasm_check.mjs`).
+CI builds the module on an independent leg (`wasm.yml`) and uploads it as the `celestial-wasm` artifact, which the release flow (§10) picks up. The same leg replays a native-generated golden dataset against the module and holds its moments to within 1e-8 days of the native build (`toolbox/wasm_check.mjs`).
 
 ## 7. Export the Jieqi Table (JSON)
 
@@ -365,6 +364,6 @@ There are basically two ways to download:
 * [算法系列之十九：用天文方法计算日月合朔（新月）](https://github.com/leetcola/nong/wiki/算法系列之十九：用天文方法计算日月合朔（新月）)
 * [历书科普问题解答 - 中国科学院紫金山天文台](http://www.pmo.cas.cn/xwdt2019/kpdt2019/202203/t20220317_6399980.html)
 * [农历编算法则](https://ytliu0.github.io/ChineseCalendar/rules_simp.html)
-* [ytliu0 / ChineseCalendar](https://github.com/ytliu0/ChineseCalendar) — the lunar golden oracle, pinned at commit `d6aae82b63b79a6f8659ea3e064024b7d8ac3077`
-* [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) — the Sun/Moon ephemeris oracle, queried through the Horizons API by the `statistics/` crawlers
-* [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm) — the almanac anchor for Jieqi moments
+* [ytliu0 / ChineseCalendar](https://github.com/ytliu0/ChineseCalendar)
+* [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
+* [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm)
