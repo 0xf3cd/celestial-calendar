@@ -48,6 +48,12 @@ jobs:
       - name: Check the AI workflows
         run: python3 ./linter.py --ai-workflows
 
+      # Same pure-parsing kind as --ai-workflows: holds the four CELESTIAL_TEST_SEED copies
+      # to each other, and the docker --build-arg line that keeps the docker legs from
+      # silently falling back to the Dockerfile default (#170).
+      - name: Check the seed copies agree
+        run: python3 ./linter.py --seed-reconcile
+
       - name: Install CMake
         run: sudo apt install cmake
 
