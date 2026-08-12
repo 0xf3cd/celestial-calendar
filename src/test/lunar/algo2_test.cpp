@@ -217,11 +217,11 @@ TEST(LunarAlgo2, LeapMonth) {
 //
 // 2033 is the discriminator: two months lack a 中气 that year — one after month 7
 // (Aug 25 – Sep 22) and one right after the winter solstice (Dec 22 – Jan 19). The naive
-// reading ("the first 无中气月 is leap") gives 闰七月, and that was #87's original
-// expectation. But the rules (GB/T 33661, and ytliu0's rules page, which algo2's @see
-// cites) anchor 冬至 in month 11: the 冬至2032→冬至2033 span has only 12 months, so no
-// leap falls there; the 13-month span after 冬至2033 takes its first 无中气月 — the one
-// starting Dec 22 — as 闰十一月. 2262 is not pinned: the pinned table ends at 2199.
+// reading ("the first 无中气月 is leap") gives 闰七月. But the rules (GB/T 33661, and
+// ytliu0's rules page, which algo2's @see cites) anchor 冬至 in month 11: the
+// 冬至2032→冬至2033 span has only 12 months, so no leap falls there; the 13-month span
+// after 冬至2033 takes its first 无中气月 — the one starting Dec 22 — as 闰十一月.
+// 2262 is not pinned: the pinned table ends at 2199.
 //
 // Integer civil-day fields: exact equality (`EXPECT_EQ` per field), same idiom as the
 // algo3 ytliu0 golden.
