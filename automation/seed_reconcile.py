@@ -39,7 +39,8 @@ BUILD_ARG_LINE: Final[str] = "--build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_
 
 # A gate that reconciles *config* must not read comments: a line that is commented out still
 # matches a bare regex/substring, so deleting the real copy while leaving the comment behind
-# would pass green -- the same silent-fallback shape this gate exists to catch (PR #190 R1).
+# would pass green -- the same silent-fallback shape this gate exists to catch (#170; the
+# comment-escape injection was caught in review, not imagined).
 COMMENT_PREFIXES: Final[Tuple[str, ...]] = ("#", "//")
 
 
