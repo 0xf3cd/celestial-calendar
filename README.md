@@ -64,6 +64,12 @@ cc quickstart.c -I src/shared_lib -L build/shared_lib -lcelestial_calendar -Wl,-
 # 冬至 (UT1): 2026-12-21, day fraction 0.868205
 ```
 
+With a downloaded prebuilt artifact (§9/§10) instead, point at its packaged layout — headers under `<artifact>/include`, the library under `<artifact>/lib`:
+
+```sh
+cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl,-rpath,<artifact>/lib -o quickstart_c
+```
+
 (On Windows, link against the import library instead and keep the DLL next to the executable.)
 
 ## 2. Features
