@@ -48,6 +48,11 @@ jobs:
       - name: Check the AI workflows
         run: python3 ./linter.py --ai-workflows
 
+      # The automation layer's own unit tests -- pure, rides the same leg; pytest comes in
+      # pinned via Requirements.txt above (#87).
+      - name: Run the automation unit tests
+        run: python3 ./linter.py --pytest
+
       # Same pure-parsing kind as --ai-workflows: holds the four CELESTIAL_TEST_SEED copies
       # to each other, and the docker --build-arg line that keeps the docker legs from
       # silently falling back to the Dockerfile default (#170).
