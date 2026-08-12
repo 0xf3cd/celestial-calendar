@@ -229,6 +229,24 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
 }
 
 
+# How many TODO sites each feature's token must be visible at. `todo_sites` only sees a TODO
+# that names its feature on the same line, so a wrapped or reworded comment silently drops a
+# site (#175) -- and `monuments()` only notices when the count reaches zero. The count is the
+# tripwire: drift in either direction stays red until this table is updated by hand, which is
+# what keeps a site going dark (or a new workaround appearing) a deliberate act.
+SITE_COUNTS: Final[Dict[str, int]] = {
+  "tuple_like": 1,
+  "generator": 3,
+  "fold_left": 0,
+  "enumerate": 2,
+  "pairwise": 4,
+  "slide": 1,
+  "concat": 2,
+  "function_ref": 0,
+  "remainder_constexpr": 0,
+}
+
+
 def todo_sites(token: str) -> List[str]:
   """Find the TODO comments waiting on `token`, with their current line numbers.
 
@@ -272,6 +290,23 @@ def adoptable(feature: Feature) -> List[str]:
   return todo_sites(feature.token)
 
 
+def site_drift() -> List[str]:
+  """Features whose visible TODO-site count no longer matches SITE_COUNTS (#175).
+
+  `todo_sites` derives the sites, so the count is the only thing to hold: a wrapped or
+  reworded TODO drops it, a newly tagged workaround raises it. `monuments()` alone only
+  catches the count reaching zero; this catches the step before.
+  """
+  drift = []
+  for f in FEATURES:
+    visible = todo_sites(f.token)
+    recorded = SITE_COUNTS[f.token]
+    if len(visible) != recorded:
+      drift.append(f"{f.name} ({f.issue}): {recorded} recorded, {len(visible)} visible "
+                   f"({', '.join(visible) if visible else 'none'})")
+  return drift
+
+
 def monuments() -> List[Feature]:
   """Features that are usable everywhere with nothing left waiting on them.
 
@@ -291,6 +326,15 @@ def monuments() -> List[Feature]:
 CANARY: Final[str] = """
   #include <vector>
   auto main() -> int { const std::vector<int> v { 1 }; return v.empty() ? 1 : 0; }
+"""
+
+# The mirror image: a program every real compiler must REJECT. A `CXX` that accepts everything
+# (a wrapper script, `/bin/echo`) "compiles" this too -- and then every probe below reports
+# USABLE, which the baseline comparison only catches on rows that happen to record False
+# (#174). Any real front end stops at the #error, so accepting is the tell, not the verdict.
+ANTI_CANARY: Final[str] = """
+  #error This program must not compile -- it exists to unmask a CXX that accepts everything.
+  auto main() -> int { return 0; }
 """
 
 
@@ -344,11 +388,22 @@ def probe_features(leg: Optional[str] = None) -> int:
       red_print(f"EXPECTED['{leg}'] still records features nobody probes: {', '.join(stale)}")
       yellow_print("Drop them -- a baseline for a feature that is no longer measured records nothing.")
       return 1
+    uncounted = [f.token for f in FEATURES if f.token not in SITE_COUNTS]
+    if uncounted:
+      red_print(f"No recorded TODO-site count for: {', '.join(uncounted)}")
+      yellow_print("Add them to SITE_COUNTS -- an uncounted feature's sites can go dark unseen (#175).")
+      return 1
 
   if not compiles(cxx, CANARY):
     red_print(f"{cxx} cannot compile a trivial -std={CXX_STANDARD} program.")
     yellow_print("Fix the toolchain first. Every probe below would report GATED for the same")
     yellow_print("reason, and on a leg whose baseline is mostly False that reads as a pass.")
+    return 1
+
+  if compiles(cxx, ANTI_CANARY):
+    red_print(f"{cxx} accepted a program that must not compile -- it is not a real compiler.")
+    yellow_print("A CXX that accepts everything reports every feature as USABLE, and only a")
+    yellow_print("baseline row that happens to record False would ever turn that red.")
     return 1
 
   actual: Dict[str, bool] = {}
@@ -366,6 +421,15 @@ def probe_features(leg: Optional[str] = None) -> int:
   changed = [f for f in FEATURES if actual[f.name] != EXPECTED[leg][f.name]]
   if not changed:
     green_print(f"All {len(FEATURES)} feature(s) match the recorded state of '{leg}'")
+
+    drift = site_drift()
+    if drift:
+      red_print("TODO-site counts drifted from SITE_COUNTS (#175):")
+      for line in drift:
+        red_print(f"  {line}")
+      yellow_print("A wrapped or reworded TODO goes dark silently; a new site means new hand-rolling.")
+      yellow_print("Restore the marker, or update SITE_COUNTS if the change is deliberate.")
+      return 1
 
     ready = {f: sites for f in FEATURES if (sites := adoptable(f))}
     if ready:
