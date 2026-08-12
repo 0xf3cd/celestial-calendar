@@ -23,11 +23,9 @@ from .utils import green_print, red_print, yellow_print
 # comments alone, and a drift fails *green*: every leg still runs, just with a seed nobody
 # chose (#170). Pure parsing -- no build needed, any leg can run it.
 #
-# Structured files are parsed, not pattern-matched: review kept finding shapes where text
-# *looks like* the config without *being* it (commented-out lines, inline and block
-# comments, a job-level env shadowing the workflow-level one). Workflows go through the
-# same YAML parser the ai-workflows gate uses (#144's argument: prose and config cannot be
-# told apart by matching lines); random.hpp is read with C++ comments stripped. Only the
+# Structured files are parsed, not pattern-matched: prose and config cannot be told apart
+# by matching lines (#144's argument; the ai-workflows gate already pays for the same YAML
+# parser). Workflows are read as documents, random.hpp with C++ comments stripped. Only the
 # Dockerfile keeps a regex -- its comment syntax is line-start `#` alone, so a `^` anchor
 # is complete there.
 WORKFLOW_COPIES: Final[Tuple[Tuple[str, str], ...]] = (
@@ -65,7 +63,7 @@ def _read_workflow_seed(label: str, rel_path: str) -> Tuple[Optional[str], Optio
   """The workflow-level `env.CELESTIAL_TEST_SEED`, from the parsed document.
 
   A job- or step-level `env` entry sits at a different path in the document, so it cannot
-  shadow the copy this gate reconciles (#191 review).
+  shadow the copy this gate reconciles.
   """
   import yaml  # Lazy, like ai_workflows: a checkout without Requirements still imports automation.
 
@@ -91,8 +89,8 @@ def _read_text_seed(label: str, rel_path: str, pattern: re.Pattern) -> Tuple[Opt
 
 def _self_test() -> List[str]:
   """Prove every reader can still find the shape it was written for -- and rejects the
-  comment-shaped decoys review injected (#191)."""
-  import yaml  # Lazy, like ai_workflows: a checkout without Requirements still imports automation.
+  comment-shaped decoys."""
+  import yaml  # Lazy: see _read_workflow_seed.
 
   failures = []
 
@@ -118,7 +116,7 @@ def _self_test() -> List[str]:
   if TEXT_COPIES[1][2].findall(_strip_cpp_comments(block)):
     failures.append("self-test: DEFAULT_SEED pattern matches inside a block comment")
 
-  # The build-arg matcher was falsified twice (substring, then prefix): pin its three states.
+  # Pin the build-arg matcher's three states: real line, commented out, suffixed payload.
   canonical = "  --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \\"
   for text, expected in [
     (canonical, True),  # the real line, with its continuation backslash
