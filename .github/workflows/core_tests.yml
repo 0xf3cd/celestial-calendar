@@ -3,6 +3,11 @@ name: Core Tests
 on:
   push:
     branches: [ '**' ]
+  # Fork PRs never push a branch here, so without this the whole file is blind to external
+  # contributions (#194). Every job below carries `head.repo.fork` in its `if`: a same-repo PR
+  # is already covered by the push run of its branch, and running both would double every leg.
+  pull_request:
+    branches: [ main ]
 
 # Nothing here needs more than the source. Said out loud rather than inherited: the repo-level
 # default is `read` today, but that lives in a setting no one reviews, and raising it would widen
@@ -18,6 +23,7 @@ env:
 
 jobs:
   linters-and-static-analysis:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     # 26.04 for the toolchain, not the OS: clang-tidy 22.1.2 ships in this image, and the
     # vendored `run-clang-tidy.py` has to match its major (AGENTS.md gotcha 9). #73
     runs-on: ubuntu-26.04
@@ -85,6 +91,7 @@ jobs:
   # artifacts. Delete this job and a branch gets no gcc feedback until a PR exists.
   # Revisit if the two workflows' trigger sets are made the same.
   test-ubuntu-gcc14:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     runs-on: ubuntu-24.04 
     strategy:  
       matrix:  
@@ -122,6 +129,7 @@ jobs:
 
 
   test-ubuntu-clang:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     runs-on: ubuntu-26.04
     strategy:
       matrix:
@@ -186,6 +194,7 @@ jobs:
   # it cannot share a binary with ASan, and the only concurrency to point it at today is one test
   # in `util_test.cpp`. Worth revisiting when there is more (#72).
   sanitizers:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     runs-on: ubuntu-26.04
     strategy:
       matrix:
@@ -260,6 +269,7 @@ jobs:
   # <cassert> and was green on MSVC STL for months while broken on libc++. One leg
   # would have kept missing it, so run all three.
   self-contained-headers:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -315,6 +325,7 @@ jobs:
   # where it surfaces as a build failure rather than as a missed unlock, which is also why the
   # Docker arm64/x86_64 legs are not probed.
   cxx-feature-probe:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
