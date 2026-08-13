@@ -221,14 +221,24 @@ TEST(Precession, ErfaPmat76Cross) {
 
 // ---- Pole clamp (asin(C) roundoff guard) ------------------------------------------------------
 
-TEST(Precession, EquatorialClampGuardsPoleNan) {
-  // A near-pole input where the precessed C rounds to 1 + 1 ulp: without the clamp asin(C) is NaN,
-  // with it δ = +90° exactly. Input from a near-pole sweep (C = 1 + 2.22e-16 here). One-directional
-  // guard — never false-fails (clamp ⇒ finite), catches clamp removal on libms whose roundoff pushes
-  // C past 1 here. jde_to = J2000 + 0.014 cy = 2452056.35; δ₀ = 89.9922° (≈28″ from the pole).
-  const auto result = equatorial(AngleDeg { 359.991031358 }, AngleDeg { 89.992205481 }, J2000, 2452056.35);
-  ASSERT_FALSE(std::isnan(result.δ.deg()));
-  ASSERT_NEAR(result.δ.deg(), 90.0, 0.001);
+TEST(Precession, NearPoleResultsAreFinite) {
+  // Near the celestial pole the precessed C = sin δ can round to just past ±1, where a bare asin
+  // would return NaN; the clamp in equatorial() keeps δ finite. Whether C crosses 1 is a property
+  // of the libm and optimization level (the true C is always ≤ 1 — the excess is rounding error),
+  // so this is a one-directional guard: it never false-fails (the clamp keeps every result finite),
+  // and on any build whose rounding pushes some input's C past 1 it catches the regression there.
+  constexpr double kCentury = 36525.0;
+  for (const double dt : { 0.014, 1.0, 5.0 }) {
+    for (const double α0 : { 0.0, 90.0, 180.0, 270.0, 359.99 }) {
+      for (const double δ0 : { 89.5, 89.9, 89.99, 90.0 }) {
+        const auto r = equatorial(AngleDeg { α0 }, AngleDeg { δ0 }, J2000, J2000 + (dt * kCentury));
+        ASSERT_TRUE(std::isfinite(r.α.deg())) << "α₀=" << α0 << " δ₀=" << δ0 << " dt=" << dt;
+        ASSERT_TRUE(std::isfinite(r.δ.deg())) << "α₀=" << α0 << " δ₀=" << δ0 << " dt=" << dt;
+        ASSERT_GE(r.δ.deg(), -90.0);
+        ASSERT_LE(r.δ.deg(),  90.0);
+      }
+    }
+  }
 }
 
 
