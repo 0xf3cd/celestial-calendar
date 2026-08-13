@@ -73,8 +73,8 @@ struct EclipticAngles {
   const double ζ_arcsec = t * (lead_ζz + (t * ((0.30188 - (0.000344 * t0)) + (0.017998 * t))));
   const double z_arcsec  = t * (lead_ζz + (t * ((1.09468 + (0.000066 * t0)) + (0.018203 * t))));
   const double θ_arcsec = t * (2004.3109
-                             + (t0 * (-0.85330 - (0.000217 * t0)))
-                             + (t * (-(0.42665 + (0.000217 * t0)) - (0.041833 * t))));
+                               + (t0 * (-0.85330 - (0.000217 * t0)))
+                               + (t * (-(0.42665 + (0.000217 * t0)) - (0.041833 * t))));
 
   return {
     .ζ = AngleDeg::from_arcsec(ζ_arcsec),
@@ -147,12 +147,12 @@ struct EclipticAngles {
 
   // Meeus (21.5): η and p are t-scaled; Π's variable part is added to 174.876384°.
   const double η_arcsec = t * ((47.0029 + (t0 * (-0.06603 + (0.000598 * t0))))
-                            + (t * ((-0.03302 + (0.000598 * t0)) + (0.00006 * t))));
+                               + (t * ((-0.03302 + (0.000598 * t0)) + (0.00006 * t))));
   const double pie_var_arcsec = (t0 * (3289.4789 + (0.60622 * t0)))
-                             + (t * (-(869.8089 + (0.50491 * t0)) + (0.03536 * t)));
+                                + (t * (-(869.8089 + (0.50491 * t0)) + (0.03536 * t)));
   const double p_arcsec = t * (5029.0966
-                            + (t0 * (2.22226 - (0.000042 * t0)))
-                            + (t * (1.11113 - (0.000042 * t0) - (0.000006 * t))));
+                               + (t0 * (2.22226 - (0.000042 * t0)))
+                               + (t * (1.11113 - (0.000042 * t0) - (0.000006 * t))));
 
   // Π = 174°52'34.9824" + variable part; the constant is in degrees while the polynomial is in arcseconds.
   const AngleDeg Π { 174.876384 + arcsec_to_deg(pie_var_arcsec) };
