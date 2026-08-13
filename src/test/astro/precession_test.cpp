@@ -21,15 +21,20 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Provenance: three-layer validation per the project's standard chain.
-//  (1) Meeus Ch.21 worked examples — Example 21.b (ecliptic, no proper motion, book prints
-//      λ=118.704°, β=1.615°) and Example 21.a inputs (equatorial, proper motion zeroed here to
-//      isolate precession from proper motion). Book digits give a 1e-3° anchor.
-//  (2) pymeeus v0.5.11-13-g7196dff (git, 2026-08-12), an independent transcription of the same
-//      Meeus formulas, over 30 random (from, to) epoch pairs in the J2000 ± 2000 year window,
-//      seed 42. Same algebra ⇒ agrees with this implementation to ~1e-14° (measured); held at 1e-6°.
-//  (3) erfa.pmat76 — the IAU 1976 precession matrix (matrix method, independent of the angle-form
-//      Meeus 21.7). Same model ⇒ agrees to ~1e-14° (measured); held at 1e-6°.
+// Provenance: three oracles, applied per-path as noted. Tolerance 1e-6° throughout; stored columns
+//  are printed to 10 decimals, so they agree with the live oracles only at the ~1e-10° print floor —
+//  the 1e-6° tolerance holds ~1e4× margin there (not 1e-14°; that is the impl-vs-live agreement).
+//  (1) Meeus Ch.21 worked examples — Example 21.b (ecliptic, no proper motion; book prints
+//      λ=118.704°, β=1.615°, held at the book's 1e-3° digit precision) and Example 21.a inputs
+//      (equatorial, proper motion zeroed to isolate precession; expected values from pymeeus at
+//      PM=0, since the book's printed answer includes proper motion).
+//  (2) pymeeus v0.5.11-13-g7196dff (git, 2026-08-12) — independent transcription of the same Meeus
+//      formulas. 60 random (from, to) epoch pairs in the J2000 ± 2000 year window, seed 42: 30
+//      equatorial + 30 ecliptic. This is the ONLY layer exercising the T₀ ≠ 0 half of (21.2)/(21.5).
+//  (3) erfa.pmat76 (IAU 1976 precession matrix; erfa 2.0.1.5.dev2+gd4d4fd5) — the same ζ/z/θ angles
+//      assembled as a rotation matrix, so it cross-checks the (21.4) transform step and the
+//      independent transcription. It precesses from J2000 only: 12 equatorial rows, T₀ = 0; the
+//      ecliptic path has no erfa layer.
 
 #include <gtest/gtest.h>
 #include <array>
@@ -81,8 +86,8 @@ TEST(Precession, EclipticAnglesAtOneCentury) {
 // ---- Meeus worked examples (the absolute-correctness anchor) -----------------------------------
 
 TEST(Precession, MeeusExample21bEcliptic) {
-  // Example 21.b: J2000 → 2028-... no; this is the ecliptic example. J2000 → epoch −214/6/30
-  // (JDE 1643074.5), λ₀ = 149.48194°, β₀ = 1.76549°. Book prints λ = 118.704°, β = 1.615°.
+  // Example 21.b: J2000 → epoch −214/6/30 (JDE 1643074.5), λ₀ = 149.48194°, β₀ = 1.76549°.
+  // Book prints λ = 118.704°, β = 1.615°.
   const auto result = ecliptic(AngleDeg { 149.48194 }, AngleDeg { 1.76549 }, J2000, 1643074.5);
   // Book values at printed precision (3 decimals).
   EXPECT_NEAR(angdiff(result.λ.deg(), 118.704), 0.0, 1e-3);
@@ -176,7 +181,7 @@ TEST(Precession, PymeeusEclipticCross) {
     { 2533022.520496, 2770639.490208, 55.7268570987, -36.1860070620, 64.8674327226, -36.1126993268 },
     { 3136329.382220, 2567227.404883, 195.1902724947, 44.1396497475, 173.1239002225, 44.1369138373 },
     { 1804563.463718, 2574528.465505, 181.0261378510, 62.7841407846, 210.8594729620, 62.6555450245 },
-    { 1951054.215520, 3124742.977684, 28.8401274866, -55.9231569454, 74.1346673458, -55.5841210350 },
+    { 1951054.215520, 3124742.977684, 28.8401274866, -55.9231569454, 74.1346673458, -55.5841218530 },
     { 2590391.290523, 2707530.540816, 84.6734022003, -67.6601827174, 89.1694374686, -67.6186661307 },
     { 3021754.765943, 2080765.623119, 214.0268952720, 21.2499088391, 177.8696889301, 21.3560797301 },
   };
@@ -211,6 +216,19 @@ TEST(Precession, ErfaPmat76Cross) {
     ASSERT_NEAR(angdiff(result.α.deg(), ra_e), 0.0, 1e-6) << "row {α₀=" << a0 << ", δ₀=" << d0 << "}";
     ASSERT_NEAR(result.δ.deg() - dec_e, 0.0, 1e-6)        << "row {α₀=" << a0 << ", δ₀=" << d0 << "}";
   }
+}
+
+
+// ---- Pole clamp (asin(C) roundoff guard) ------------------------------------------------------
+
+TEST(Precession, EquatorialClampGuardsPoleNan) {
+  // A near-pole input where the precessed C rounds to 1 + 1 ulp: without the clamp asin(C) is NaN,
+  // with it δ = +90° exactly. Input from a near-pole sweep (C = 1 + 2.22e-16 here). One-directional
+  // guard — never false-fails (clamp ⇒ finite), catches clamp removal on libms whose roundoff pushes
+  // C past 1 here. jde_to = J2000 + 0.014 cy = 2452056.35; δ₀ = 89.9922° (≈28″ from the pole).
+  const auto result = equatorial(AngleDeg { 359.991031358 }, AngleDeg { 89.992205481 }, J2000, 2452056.35);
+  ASSERT_FALSE(std::isnan(result.δ.deg()));
+  ASSERT_NEAR(result.δ.deg(), 90.0, 0.001);
 }
 
 

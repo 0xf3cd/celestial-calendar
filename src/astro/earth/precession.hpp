@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 #include "toolbox.hpp"
@@ -33,12 +34,13 @@
 namespace astro::earth::precession {
 
 // Precession is the secular, conical motion of Earth's rotation axis (period ~25770 years): the
-// celestial equator and the equinox points drift westward along the ecliptic by ~50.3"/year. It is
-// the smooth counterpart to nutation (astro::earth::nutation), the short-period oscillation riding
-// on top of it. This module carries a direction between two epochs — fixed-epoch catalogue
-// positions (e.g. J2000) to the equinox of the date — precession only, no proper motion, nutation,
-// or aberration. Note the VSOP87D solar/lunar pipeline does NOT need this: VSOP87D is already
-// referred to the mean equinox of the date, so precession here is a standalone catalogue capability.
+// equinox points drift westward along the ecliptic by ~50.3"/year, tilting the celestial equator
+// with them. It is the smooth counterpart to nutation (astro::earth::nutation), the short-period
+// oscillation riding on top of it. This module carries a direction between two epochs — e.g.
+// fixed-epoch catalogue positions (J2000) to the mean equinox of the date — precession only, no
+// proper motion, nutation, or aberration. The solar and lunar pipelines do NOT need this: VSOP87D
+// (Sun) and ELP2000-82B (Moon) are both referred to the mean equinox of the date, so precession
+// here is a standalone catalogue capability.
 
 /// The three equatorial precession angles of Meeus (21.2): ζ (zeta), z, θ (theta), in degrees.
 struct EquatorialAngles {
@@ -95,9 +97,9 @@ struct EclipticAngles {
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return The precessed coordinates (α, δ); α is normalized to [0°, 360°), δ lies in [-90°, 90°].
  * @note This is precession only — proper motion, nutation, and aberration are not applied.
- * @note sin δ = C (Meeus 21.7); C is clamped to [-1, 1] against the roundoff that, exactly at the
- *       celestial pole, would push it just past ±1 and make asin return NaN.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).
+ * @note sin δ = C (Meeus 21.4); C is clamped to [-1, 1] against the roundoff that, when the
+ *       precessed position falls near the pole, pushes it just past ±1 and would make asin return NaN.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.4).
  */
 [[nodiscard]] inline auto equatorial(
   const astro::toolbox::AngleDeg& α0,
@@ -116,7 +118,7 @@ struct EclipticAngles {
   const double cos_θ  = std::cos(θ.rad());
   const double sin_θ  = std::sin(θ.rad());
 
-  // Meeus (21.7): tan(α − z) = A/B and sin δ = C, with α taken in atan2's quadrant.
+  // Meeus (21.4): tan(α − z) = A/B and sin δ = C, with α taken in atan2's quadrant.
   const double A = cos_δ0 * std::sin(α0_plus_ζ);
   const double B = (cos_θ * cos_δ0 * std::cos(α0_plus_ζ)) - (sin_θ * sin_δ0);
   const double C = (sin_θ * cos_δ0 * std::cos(α0_plus_ζ)) + (cos_θ * sin_δ0);
@@ -137,7 +139,7 @@ struct EclipticAngles {
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return {η, Π, p} in degrees; Π carries the constant 174.876384°, p's linear term is the
  *         ~50.29"/year general precession in longitude.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.5).
  */
 [[nodiscard]] inline auto ecliptic_angles(const double jde_from, const double jde_to) -> EclipticAngles {
   using astro::toolbox::AngleDeg;
@@ -147,7 +149,7 @@ struct EclipticAngles {
   const double t0 = jde_to_jc(jde_from);
   const double t  = (jde_to - jde_from) / 36525.0;
 
-  // Meeus Ch.21 ecliptic method: η and p are t-scaled; Π's variable part is added to 174.876384°.
+  // Meeus (21.5): η and p are t-scaled; Π's variable part is added to 174.876384°.
   const double η_arcsec = t * ((47.0029 + (t0 * (-0.06603 + (0.000598 * t0))))
                             + (t * ((-0.03302 + (0.000598 * t0)) + (0.00006 * t))));
   const double pie_var_arcsec = (t0 * (3289.4789 + (0.60622 * t0)))
@@ -174,10 +176,13 @@ struct EclipticAngles {
  * @param jde_from The Julian ephemeris day of the initial epoch.
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return The precessed coordinates (λ, β); λ is normalized to [0°, 360°), β lies in [-90°, 90°].
- * @note This is precession only — proper motion, nutation, and aberration are not applied. Unlike
- *       declination, ecliptic longitude of a fixed body increases monotonically under precession
- *       (~50"/year), since precession rotates the equinox along the ecliptic in one direction.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21.
+ * @note This is precession only — proper motion, nutation, and aberration are not applied. For a
+ *       body near the ecliptic plane, λ increases monotonically under precession (~50"/year) as the
+ *       equinox drifts along the ecliptic; near the ecliptic pole (|β₀| ≳ 89°) the ecliptic's own
+ *       tilt (η) breaks this and the per-year drift varies with β₀.
+ * @note sin β = C (Meeus 21.7); C is clamped to [-1, 1] for the same pole-roundoff reason as δ in
+ *       equatorial() above.
+ * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).
  */
 [[nodiscard]] inline auto ecliptic(
   const astro::toolbox::AngleDeg& λ0,
@@ -196,7 +201,7 @@ struct EclipticAngles {
   const double cos_η  = std::cos(η.rad());
   const double sin_η  = std::sin(η.rad());
 
-  // Meeus Ch.21: λ = p + Π − atan2(A, B) and sin β = C.
+  // Meeus (21.7): λ = p + Π − atan2(A, B) and sin β = C.
   const double A = (cos_η * cos_β0 * std::sin(Π_minus_λ0)) - (sin_η * sin_β0);
   const double B = cos_β0 * std::cos(Π_minus_λ0);
   const double C = (cos_η * sin_β0) + (sin_η * cos_β0 * std::sin(Π_minus_λ0));
