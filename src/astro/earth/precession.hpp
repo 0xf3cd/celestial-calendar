@@ -49,7 +49,7 @@ struct EquatorialAngles {
   astro::toolbox::AngleDeg θ; // Meeus theta
 };
 
-/// The three ecliptic precession quantities of Meeus Ch.21: η (eta), Π (Pi), p, in degrees.
+/// The three ecliptic precession quantities of Meeus (21.5): η (eta), Π (Pi), p, in degrees.
 struct EclipticAngles {
   astro::toolbox::AngleDeg η; // Meeus eta
   astro::toolbox::AngleDeg Π; // Meeus Pi — longitude of the ascending node of the moving ecliptic

@@ -21,9 +21,10 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Provenance: three oracles, applied per-path as noted. Tolerance 1e-6° throughout; stored columns
-//  are printed to 10 decimals, so they agree with the live oracles only at the ~1e-10° print floor —
-//  the 1e-6° tolerance holds ~1e4× margin there (not 1e-14°; that is the impl-vs-live agreement).
+// Provenance: three oracles, applied per-path. Tolerances track what each reference supports — the
+//  book's printed digits for the worked examples, and 1e-6° for the random cross-tables (whose output
+//  columns are the oracles' values rounded to 10 decimals, so 1e-6° is a print-floor tolerance, not
+//  an algorithm-agreement one).
 //  (1) Meeus Ch.21 worked examples — Example 21.b (ecliptic, no proper motion; book prints
 //      λ=118.704°, β=1.615°, held at the book's 1e-3° digit precision) and Example 21.a inputs
 //      (equatorial, proper motion zeroed to isolate precession; expected values from pymeeus at
@@ -171,7 +172,7 @@ TEST(Precession, PymeeusEclipticCross) {
     { 1862660.919588, 2350810.777496, 152.4883042872, -5.8696090895, 171.0625595055, -5.8556899187 },
     { 2786224.816061, 2704830.603596, 354.2994760917, -71.4816189350, 351.0905712563, -71.4768436761 },
     { 2309274.693151, 2216766.106482, 310.2021130870, -44.7391725622, 306.6473820319, -44.7169900965 },
-    { 1998940.215232, 2376469.393384, 151.8773903404, -39.4189642493, 166.1600571940, -39.3969730036 },
+    { 1998940.215232, 2376469.393384, 151.8773903404, -39.4189642493, 166.1600571940, -39.3969733026 },
     { 2086012.220356, 3069936.040542, 159.5270682192, 64.3201406476, 197.9436927253, 64.3164461622 },
     { 2525070.281489, 1794954.549436, 359.7416886286, 59.8129101442, 332.3690611272, 59.8202208624 },
     { 3136748.531893, 3074467.162175, 305.5304643891, -59.3966223125, 303.1151380605, -59.3765652241 },
@@ -221,32 +222,29 @@ TEST(Precession, ErfaPmat76Cross) {
 
 // ---- Pole clamp (asin(C) roundoff guard) ------------------------------------------------------
 
-TEST(Precession, NearPoleResultsAreFinite) {
-  // Near the celestial pole the precessed C = sin δ can round to just past ±1, where a bare asin
-  // would return NaN; the clamp in equatorial() keeps δ finite. Whether C crosses 1 is a property
-  // of the libm and optimization level (the true C is always ≤ 1 — the excess is rounding error),
-  // so this is a one-directional guard: it never false-fails (the clamp keeps every result finite),
-  // and on any build whose rounding pushes some input's C past 1 it catches the regression there.
+TEST(Precession, EquatorialClampGuardsPoleNan) {
+  // Feed the input that precesses to EXACTLY the north celestial pole: α₀ = -ζ, δ₀ = 90° - θ. There
+  // C = sin δ = sin 90° = 1 mathematically (A = cos δ₀ sin 0 = 0, B = cos(θ+δ₀) = 0, C = sin(θ+δ₀) =
+  // 1), but the cos/sin sum rounds to 1 + 1 ulp, so a bare asin returns NaN; the clamp keeps δ
+  // finite. Stable on both -O2 and -O3 — the true value is exactly 1, so the overshoot is a libm
+  // constant, not input-dependent (a random near-pole sweep misses it; this construction hits it).
   constexpr double kCentury = 36525.0;
   for (const double dt : { 0.014, 1.0, 5.0 }) {
-    for (const double α0 : { 0.0, 90.0, 180.0, 270.0, 359.99 }) {
-      for (const double δ0 : { 89.5, 89.9, 89.99, 90.0 }) {
-        const auto r = equatorial(AngleDeg { α0 }, AngleDeg { δ0 }, J2000, J2000 + (dt * kCentury));
-        ASSERT_TRUE(std::isfinite(r.α.deg())) << "α₀=" << α0 << " δ₀=" << δ0 << " dt=" << dt;
-        ASSERT_TRUE(std::isfinite(r.δ.deg())) << "α₀=" << α0 << " δ₀=" << δ0 << " dt=" << dt;
-        ASSERT_GE(r.δ.deg(), -90.0);
-        ASSERT_LE(r.δ.deg(),  90.0);
-      }
-    }
+    const auto jde_to = J2000 + (dt * kCentury);
+    const auto ang = equatorial_angles(J2000, jde_to);
+    const auto r = equatorial(AngleDeg { -ang.ζ.deg() }, AngleDeg { 90.0 - ang.θ.deg() }, J2000, jde_to);
+    ASSERT_TRUE(std::isfinite(r.δ.deg())) << "dt=" << dt;
+    ASSERT_LE(r.δ.deg(), 90.0);
   }
 }
 
 
-// ---- Property tests (Opus P3-2: monotonic drift attaches to λ, not δ) ------------------------
+// ---- Property tests (monotonic drift attaches to λ, not δ) ------------------------------------
 
 TEST(Precession, LongitudeDriftsMonotonically) {
-  // Ecliptic longitude of a fixed body increases monotonically under precession at ~50.3"/year
-  // (the general precession in longitude). β stays near zero for an ecliptic body.
+  // For a body near the ecliptic plane (this test uses β₀ = 0), λ increases monotonically under
+  // precession (~50"/year). Near the ecliptic pole the ecliptic's own tilt breaks this — see the
+  // @note on ecliptic(); this test does not cover that regime.
   constexpr double kCentury = 36525.0;
   double prev = -1.0;
   for (int k = 0; k <= 5; ++k) {
