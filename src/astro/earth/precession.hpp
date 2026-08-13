@@ -33,14 +33,8 @@
 
 namespace astro::earth::precession {
 
-// Precession is the secular, conical motion of Earth's rotation axis (period ~25770 years): the
-// equinox points drift westward along the ecliptic by ~50.3"/year, tilting the celestial equator
-// with them. It is the smooth counterpart to nutation (astro::earth::nutation), the short-period
-// oscillation riding on top of it. This module carries a direction between two epochs — e.g.
-// fixed-epoch catalogue positions (J2000) to the mean equinox of the date — precession only, no
-// proper motion, nutation, or aberration. The solar and lunar pipelines do NOT need this: VSOP87D
-// (Sun) and ELP2000-82B (Moon) are both referred to the mean equinox of the date, so precession
-// here is a standalone catalogue capability.
+// Precession carries a direction between two epochs — e.g. fixed-epoch catalogue positions (J2000)
+// to the mean equinox of the date. Precession only — no proper motion, nutation, or aberration.
 
 /// The three equatorial precession angles of Meeus (21.2): ζ (zeta), z, θ (theta), in degrees.
 struct EquatorialAngles {
@@ -176,10 +170,7 @@ struct EclipticAngles {
  * @param jde_from The Julian ephemeris day of the initial epoch.
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return The precessed coordinates (λ, β); λ is normalized to [0°, 360°), β lies in [-90°, 90°].
- * @note This is precession only — proper motion, nutation, and aberration are not applied. For a
- *       body near the ecliptic plane, λ increases monotonically under precession (~50"/year) as the
- *       equinox drifts along the ecliptic; near the ecliptic pole (|β₀| ≳ 89°) the ecliptic's own
- *       tilt (η) breaks this and the per-year drift varies with β₀.
+ * @note This is precession only — proper motion, nutation, and aberration are not applied.
  * @note sin β = C (Meeus 21.7); C is clamped to [-1, 1] for the same pole-roundoff reason as δ in
  *       equatorial() above.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).

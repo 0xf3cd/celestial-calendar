@@ -242,9 +242,7 @@ TEST(Precession, EquatorialClampGuardsPoleNan) {
 // ---- Property tests (monotonic drift attaches to λ, not δ) ------------------------------------
 
 TEST(Precession, LongitudeDriftsMonotonically) {
-  // For a body near the ecliptic plane (this test uses β₀ = 0), λ increases monotonically under
-  // precession (~50"/year). Near the ecliptic pole the ecliptic's own tilt breaks this — see the
-  // @note on ecliptic(); this test does not cover that regime.
+  // For an ecliptic-plane body (β₀ = 0), λ increases monotonically under precession (~50"/year).
   constexpr double kCentury = 36525.0;
   double prev = -1.0;
   for (int k = 0; k <= 5; ++k) {
