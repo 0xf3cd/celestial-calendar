@@ -41,6 +41,15 @@ struct EquatorialCoord {
 };
 
 /**
+ * @brief Represents a position in the ecliptic coordinate system.
+ * @note λ is the ecliptic longitude, normalized to [0°, 360°). β is the ecliptic latitude, in [-90°, 90°].
+ */
+struct EclipticCoord {
+  astro::toolbox::AngleDeg λ; // Ecliptic longitude
+  astro::toolbox::AngleDeg β; // Ecliptic latitude
+};
+
+/**
  * @brief Represents a position in the horizontal coordinate system.
  * @note A is the azimuth, measured from the south point and positive westward (Meeus's convention),
  *       normalized to [0°, 360°). h is the altitude, in [-90°, 90°].

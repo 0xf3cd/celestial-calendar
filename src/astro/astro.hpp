@@ -26,6 +26,7 @@
 #include "julian_day.hpp"
 #include "delta_t.hpp"
 #include "earth.hpp"
+#include "earth/precession.hpp"
 #include "coord_transform.hpp"
 #include "sidereal_time.hpp"
 #include "sun.hpp"
