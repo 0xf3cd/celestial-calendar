@@ -22,9 +22,7 @@
  */
 
 // Provenance: three oracles, applied per-path. Tolerances track what each reference supports — the
-//  book's printed digits for the worked examples, and 1e-6° for the random cross-tables (whose output
-//  columns are the oracles' values rounded to 10 decimals, so 1e-6° is a print-floor tolerance, not
-//  an algorithm-agreement one).
+//  book's printed digits for the worked examples, and 1e-6° for the random cross-tables.
 //  (1) Meeus Ch.21 worked examples — Example 21.b (ecliptic, no proper motion; book prints
 //      λ=118.704°, β=1.615°, held at the book's 1e-3° digit precision) and Example 21.a inputs
 //      (equatorial, proper motion zeroed to isolate precession; expected values from pymeeus at
@@ -223,11 +221,8 @@ TEST(Precession, ErfaPmat76Cross) {
 // ---- Pole clamp (asin(C) roundoff guard) ------------------------------------------------------
 
 TEST(Precession, EquatorialClampGuardsPoleNan) {
-  // Feed the input that precesses to EXACTLY the north celestial pole: α₀ = -ζ, δ₀ = 90° - θ. There
-  // C = sin δ = sin 90° = 1 mathematically (A = cos δ₀ sin 0 = 0, B = cos(θ+δ₀) = 0, C = sin(θ+δ₀) =
-  // 1), but the cos/sin sum rounds to 1 + 1 ulp, so a bare asin returns NaN; the clamp keeps δ
-  // finite. Stable on both -O2 and -O3 — the true value is exactly 1, so the overshoot is a libm
-  // constant, not input-dependent (a random near-pole sweep misses it; this construction hits it).
+  // Feed the input that precesses to the north celestial pole: α₀ = -ζ, δ₀ = 90° - θ. Removing the
+  // clamp in equatorial() fails this test (verified by mutation).
   constexpr double kCentury = 36525.0;
   for (const double dt : { 0.014, 1.0, 5.0 }) {
     const auto jde_to = J2000 + (dt * kCentury);
@@ -239,7 +234,7 @@ TEST(Precession, EquatorialClampGuardsPoleNan) {
 }
 
 
-// ---- Property tests (monotonic drift attaches to λ, not δ) ------------------------------------
+// ---- Property tests ---------------------------------------------------------------------------
 
 TEST(Precession, LongitudeDriftsMonotonically) {
   // For an ecliptic-plane body (β₀ = 0), λ increases monotonically under precession (~50"/year).
@@ -259,7 +254,7 @@ TEST(Precession, LongitudeDriftsMonotonically) {
 TEST(Precession, DeclinationTurnsUnderPrecession) {
   // Counterpart to LongitudeDriftsMonotonically: declination does NOT drift monotonically. For a
   // star at (α₀ = 90°, δ₀ = 40°), δ peaks at J2000 and falls off symmetrically on both sides — a
-  // turn, not a monotone drift. So a "monotonic precession drift" property belongs on λ, never δ.
+  // turn, not a monotone drift.
   constexpr double kCentury = 36525.0;
   const auto dec_at = [](const double k) {
     return equatorial(AngleDeg { 90.0 }, AngleDeg { 40.0 }, J2000, J2000 + (k * kCentury)).δ.deg();
