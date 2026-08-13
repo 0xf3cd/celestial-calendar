@@ -50,6 +50,7 @@ namespace astro::earth::precession::test {
 
 using namespace astro::earth::precession;
 using astro::toolbox::AngleDeg;
+using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
 using astro::julian_day::J2000;
 
 // Smallest signed difference a−b in degrees, aware of the [0°, 360°) wrap.
@@ -64,7 +65,7 @@ using astro::julian_day::J2000;
 
 TEST(Precession, EquatorialAnglesAtOneCentury) {
   // J2000 → J2000 + 1 Julian century: T₀ = 0, t = 1, so only the t-linear/t-quadratic terms remain.
-  const auto [ζ, z, θ] = equatorial_angles(J2000, J2000 + 36525.0);
+  const auto [ζ, z, θ] = equatorial_angles(J2000, J2000 + DAYS_PER_JULIAN_CENTURY);
   // Expected (arcsec): ζ = 2306.2181 + 0.30188 + 0.017998, z = 2306.2181 + 1.09468 + 0.018203,
   // θ = 2004.3109 − 0.42665 − 0.041833.
   EXPECT_NEAR(ζ.deg() * 3600.0, 2306.537978, 1e-6);
@@ -73,7 +74,7 @@ TEST(Precession, EquatorialAnglesAtOneCentury) {
 }
 
 TEST(Precession, EclipticAnglesAtOneCentury) {
-  const auto [η, Π, p] = ecliptic_angles(J2000, J2000 + 36525.0);
+  const auto [η, Π, p] = ecliptic_angles(J2000, J2000 + DAYS_PER_JULIAN_CENTURY);
   // η = 47.0029 − 0.03302 + 0.00006 arcsec; p = 5029.0966 + 1.11113 − 0.000006 arcsec;
   // Π = 174.876384° + (−869.8089 + 0.03536)/3600 deg.
   EXPECT_NEAR(η.deg() * 3600.0, 46.96994, 1e-6);
@@ -223,9 +224,8 @@ TEST(Precession, ErfaPmat76Cross) {
 TEST(Precession, EquatorialClampGuardsPoleNan) {
   // Feed the input that precesses to the north celestial pole: α₀ = -ζ, δ₀ = 90° - θ. Removing the
   // clamp in equatorial() fails this test (verified by mutation).
-  constexpr double kCentury = 36525.0;
   for (const double dt : { 0.014, 1.0, 5.0 }) {
-    const auto jde_to = J2000 + (dt * kCentury);
+    const auto jde_to = J2000 + (dt * DAYS_PER_JULIAN_CENTURY);
     const auto ang = equatorial_angles(J2000, jde_to);
     const auto r = equatorial(AngleDeg { -ang.ζ.deg() }, AngleDeg { 90.0 - ang.θ.deg() }, J2000, jde_to);
     ASSERT_TRUE(std::isfinite(r.δ.deg())) << "dt=" << dt;
@@ -238,10 +238,9 @@ TEST(Precession, EquatorialClampGuardsPoleNan) {
 
 TEST(Precession, LongitudeDriftsMonotonically) {
   // For an ecliptic-plane body (β₀ = 0), λ increases monotonically under precession (~50"/year).
-  constexpr double kCentury = 36525.0;
   double prev = -1.0;
   for (int k = 0; k <= 5; ++k) {
-    const double lon = ecliptic(AngleDeg { 0.0 }, AngleDeg { 0.0 }, J2000, J2000 + (k * kCentury)).λ.deg();
+    const double lon = ecliptic(AngleDeg { 0.0 }, AngleDeg { 0.0 }, J2000, J2000 + (k * DAYS_PER_JULIAN_CENTURY)).λ.deg();
     if (k > 0) {
       ASSERT_GT(lon, prev);
       // Per-century drift ≈ 1.397° ≈ 5029"/cy ≈ 50.3"/yr.
@@ -255,9 +254,8 @@ TEST(Precession, DeclinationTurnsUnderPrecession) {
   // Counterpart to LongitudeDriftsMonotonically: declination does NOT drift monotonically. For a
   // star at (α₀ = 90°, δ₀ = 40°), δ peaks at J2000 and falls off symmetrically on both sides — a
   // turn, not a monotone drift.
-  constexpr double kCentury = 36525.0;
   const auto dec_at = [](const double k) {
-    return equatorial(AngleDeg { 90.0 }, AngleDeg { 40.0 }, J2000, J2000 + (k * kCentury)).δ.deg();
+    return equatorial(AngleDeg { 90.0 }, AngleDeg { 40.0 }, J2000, J2000 + (k * DAYS_PER_JULIAN_CENTURY)).δ.deg();
   };
   EXPECT_GT(dec_at(0.0), dec_at(2.0));
   EXPECT_GT(dec_at(0.0), dec_at(-2.0));

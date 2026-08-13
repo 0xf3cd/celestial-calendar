@@ -48,6 +48,11 @@ namespace astro::julian_day {
  */
 inline constexpr double J2000 = 2451545.0;
 
+/**
+ * @brief The number of days in one Julian century (36525 days).
+ */
+inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
+
 
 /**
  * @brief Convert UT1 datetime to julian day number.
@@ -306,7 +311,7 @@ inline constexpr double J2000 = 2451545.0;
  * @return The julian century since J2000.
  */
 [[nodiscard]] constexpr auto jde_to_jc(const double jde) -> double {
-  return (jde - J2000) / 36525.0;
+  return (jde - J2000) / DAYS_PER_JULIAN_CENTURY;
 }
 
 
@@ -316,7 +321,7 @@ inline constexpr double J2000 = 2451545.0;
  * @return The julian ephemeris day number, which is based on TT.
  */
 [[nodiscard]] constexpr auto jc_to_jde(const double jc) -> double {
-  return (jc * 36525.0) + J2000;
+  return (jc * DAYS_PER_JULIAN_CENTURY) + J2000;
 }
 
 

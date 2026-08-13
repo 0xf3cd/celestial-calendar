@@ -60,11 +60,12 @@ struct EclipticAngles {
  */
 [[nodiscard]] inline auto equatorial_angles(const double jde_from, const double jde_to) -> EquatorialAngles {
   using astro::toolbox::AngleDeg;
+  using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
   using astro::julian_day::jde_to_jc;
 
   // T0: Julian centuries from J2000 to the initial epoch; t: centuries between the two epochs.
   const double t0 = jde_to_jc(jde_from);
-  const double t  = (jde_to - jde_from) / 36525.0;
+  const double t  = (jde_to - jde_from) / DAYS_PER_JULIAN_CENTURY;
 
   // Meeus (21.2): ζ, z, θ in arcseconds. ζ and z share their leading term (2306.2181) and the
   // T₀-linear part (1.39656 T₀ − 0.000139 T₀²); they differ in the t-linear and t-quadratic parts.
@@ -138,10 +139,11 @@ struct EclipticAngles {
 [[nodiscard]] inline auto ecliptic_angles(const double jde_from, const double jde_to) -> EclipticAngles {
   using astro::toolbox::AngleDeg;
   using astro::toolbox::arcsec_to_deg;
+  using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
   using astro::julian_day::jde_to_jc;
 
   const double t0 = jde_to_jc(jde_from);
-  const double t  = (jde_to - jde_from) / 36525.0;
+  const double t  = (jde_to - jde_from) / DAYS_PER_JULIAN_CENTURY;
 
   // Meeus (21.5): η and p are t-scaled; Π's variable part is added to 174.876384°.
   const double η_arcsec = t * ((47.0029 + (t0 * (-0.06603 + (0.000598 * t0))))
