@@ -49,7 +49,7 @@ SITES = [
 # Consecutive-day span per site, plus Tromso lunar-polar dates (DAY: circumpolar; NIGHT:
 # never rises) and the double-rise day.
 SPAN = [(2026, 8, d) for d in range(13, 18)]
-TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21), (2026, 5, 14)]
+TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21), (2026, 5, 14), (2026, 6, 18)]
 
 PHEN_KEYS = ["Rise", "Upper Transit", "Set"]
 

@@ -801,6 +801,11 @@ template <BodyProvider P>
  *         criterion — for any dδ/dt, including high-latitude standstill days whose window
  *         ends dip below an interior extremum (R2 实录:2026-06-18 Tromsø, pinned by a
  *         golden row).
+ * @note Boundary attribution: the window is [0h, 24h), and the crossing checks are strict
+ *         sign comparisons, so an event landing EXACTLY on a UT midnight is not owned by
+ *         either adjacent day. That is a measure-zero edge (the TT/UT1 conversions make an
+ *         exact landing practically unreachable for real ephemerides), accepted deliberately
+ *         rather than given a fake-precision rounding rule.
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
  *        not finite or outside [-90°, 90°].
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD

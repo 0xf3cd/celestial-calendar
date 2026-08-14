@@ -27,6 +27,7 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <numbers>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -373,6 +374,60 @@ TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
   ASSERT_FALSE(result.rise_jde.has_value());
   ASSERT_FALSE(result.set_jde.has_value());
   ASSERT_EQ(result.polar, Polar::NIGHT);
+}
+
+TEST(RiseSet, FindExtremaFindsEveryInteriorExtremum) {
+  // cos(2πt) + 0.5·cos(4πt) has exactly three interior extrema on [0, 1]: minima at t = 1/3
+  // and 2/3 (value −0.75) and a maximum at t = 1/2 (value −0.5). Pins the grid-scan +
+  // refinement machinery directly (the R2 测试缝隙席 noted it was only covered end-to-end).
+  const auto f = [](const double t) {
+    return std::cos(2.0 * std::numbers::pi * t) + (0.5 * std::cos(4.0 * std::numbers::pi * t));
+  };
+
+  const auto extrema = detail::find_extrema(f, 0.0, 1.0);
+  ASSERT_EQ(extrema.size(), 3UZ);
+
+  ASSERT_TRUE(extrema[0].is_minimum);
+  ASSERT_NEAR(extrema[0].jde, 1.0 / 3.0, 1e-6);
+  ASSERT_NEAR(extrema[0].altitude_deg, -0.75, 1e-9);
+
+  ASSERT_FALSE(extrema[1].is_minimum);
+  ASSERT_NEAR(extrema[1].jde, 0.5, 1e-6);
+  ASSERT_NEAR(extrema[1].altitude_deg, -0.5, 1e-9);
+
+  ASSERT_TRUE(extrema[2].is_minimum);
+  ASSERT_NEAR(extrema[2].jde, 2.0 / 3.0, 1e-6);
+  ASSERT_NEAR(extrema[2].altitude_deg, -0.75, 1e-9);
+}
+
+TEST(RiseSet, TransitResidualGuardThrowsForRootlessBracket) {
+  // A body whose α sweeps forward at 761°/day — faster than sidereal time, so H runs
+  // backwards and the forward-angle estimate points the wrong way; the polish bracket holds
+  // no root. The residual guard must throw rather than ship a fake transit (shape first
+  // proven by the R2 probe; fixed inputs make it deterministic).
+  const double jde0 = astro::julian_day::ut1_to_jde(
+    calendar::Datetime { util::to_ymd(2026, 8, 15), 0.0 });
+  const auto retrograde = [jde0](const double jde) -> astro::coords::EquatorialCoord {
+    return { .α = AngleDeg { 761.0 * (jde - jde0) }.normalize(), .δ = AngleDeg { 5.0 } };
+  };
+
+  ASSERT_THROW(std::ignore = transit_in_window(jde0, jde0 + 1.0, EQUATOR, retrograde),
+               std::runtime_error);
+}
+
+TEST(RiseSet, RiseSetResidualGuardThrowsOnDiscontinuousProvider) {
+  // δ cliff at 80°N: +80° (circumpolar, always above h0 = 0) until 16:48, then −80° (always
+  // below). No smooth crossing exists anywhere — f straddles only across the discontinuity,
+  // so the bracketed solve can only return a best-effort iterate, and the residual guard
+  // must throw instead of letting the day be misread as eventless/polar.
+  const GeoLocation POLE80 = loc(80.0, 0.0);
+  const auto cliff = [](const double jde) -> astro::coords::EquatorialCoord {
+    const double frac = jde - std::floor(jde);
+    return { .α = AngleDeg { 0.0 }, .δ = AngleDeg { frac < 0.7 ? 80.0 : -80.0 } };
+  };
+
+  ASSERT_THROW(std::ignore = calculate_day(util::to_ymd(2026, 8, 15), POLE80, AngleDeg { 0.0 }, cliff),
+               std::runtime_error);
 }
 
 TEST(RiseSet, InvalidInputsThrow) {

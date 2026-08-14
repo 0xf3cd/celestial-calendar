@@ -66,6 +66,15 @@ TEST(RiseSetMoon, H0FormulaProvenance) {
   astro::earth::refraction::Params cold;
   cold.temperature_c = -20.0;
   ASSERT_LT(moon::h0(astro::toolbox::AngleRad { Π.rad() }, cold).deg(), h0.deg());
+
+  // The Saemundsson model flows through the same wiring (R2 测试缝隙席:这条链之前没有
+  // 端到端覆盖):h0 与手工合成的 0.7275·Π − at_horizon 逐项一致。
+  astro::earth::refraction::Params saemundsson;
+  saemundsson.model = astro::earth::refraction::Model::SAEMUNDSSON;
+  const auto expected = astro::toolbox::AngleDeg { 0.7275 * Π.deg() }
+                      - astro::earth::refraction::at_horizon(saemundsson);
+  ASSERT_NEAR(moon::h0(astro::toolbox::AngleRad { Π.rad() }, saemundsson).deg(),
+              expected.deg(), 1e-12);
 }
 
 TEST(RiseSetMoon, RiseSetAltitudeIsH0) {
