@@ -37,6 +37,7 @@
 #include "coord_transform.hpp"
 #include "sidereal_time.hpp"
 #include "sun.hpp"
+#include "earth/refraction.hpp"
 
 
 namespace astro::sunrise_sunset {
@@ -49,6 +50,22 @@ namespace astro::sunrise_sunset {
  *       plus -16' so that the event refers to the Sun's upper limb, not its center.
  */
 inline constexpr auto STANDARD_ALTITUDE = astro::toolbox::AngleDeg::from_arcmin(-50.0);
+
+/**
+ * @brief Convert atmospheric conditions to the sunrise/sunset altitude convention.
+ * @param p The atmospheric refraction parameters. Defaults to 15°C/1013.25 hPa/Bennett.
+ * @return The geometric altitude of the Sun's center that makes the Sun's upper limb appear at
+ *         the horizon: `−(horizon refraction + 16′)`.
+ * @throw std::invalid_argument If `p` contains non-finite, non-positive pressure, or temperature
+ *        at or below −273°C. For `Model::SAEMUNDSSON`, may throw `std::runtime_error` if the
+ *        horizon iteration does not converge.
+ * @note The default parameters reproduce `STANDARD_ALTITUDE` to within 0.02′.
+ */
+[[nodiscard]] inline auto h0_from(const astro::earth::refraction::Params& p = {}) -> astro::toolbox::AngleDeg {
+  const auto horizon_refraction = astro::earth::refraction::at_horizon(p);
+  const auto upper_limb = astro::toolbox::AngleDeg::from_arcmin(16.0);
+  return -(horizon_refraction + upper_limb);
+}
 
 /** @brief The Sun's altitude at civil twilight: -6°. */
 inline constexpr astro::toolbox::AngleDeg CIVIL_TWILIGHT { -6.0 };
