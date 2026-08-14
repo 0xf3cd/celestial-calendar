@@ -172,11 +172,12 @@ TEST(RiseSetMoon, TransitInWindowHandlesNonUnitWindows) {
 }
 
 TEST(RiseSetMoon, TransitInWindowMeasuresAlphaRate) {
-  // Synthetic fast body: α sweeps 30°/day (2.3× the Moon's fastest). If `transit_in_window`
-  // fell back to the raw sidereal rate instead of measuring dα/dt (the R1 gate mutation that
-  // survived the suite), the estimate would miss the ±0.05-day polish bracket whenever the
-  // forward hour angle is large (error up to ~0.09 day) and the residual guard would throw.
-  // Sweeping the window start covers the full circle of forward angles.
+  // Synthetic fast body: α sweeps 30°/day — far faster than the Moon ever gets. If
+  // `transit_in_window` fell back to the raw sidereal rate instead of measuring dα/dt
+  // (the R1 gate mutation that survived the suite), the estimate would miss the ±0.05-day
+  // polish bracket whenever the forward hour angle is large (error up to ~0.09 day) and
+  // the residual guard would throw. Sweeping the window start covers the full circle of
+  // forward angles.
   const double jde0 = astro::julian_day::ut1_to_jde(
     calendar::Datetime { util::to_ymd(2026, 8, 15), 0.0 });
   const auto fast_body = [jde0](const double jde) -> astro::coords::EquatorialCoord {

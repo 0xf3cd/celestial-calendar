@@ -32,6 +32,7 @@
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 #include "toolbox.hpp"
 #include "datetime.hpp"
@@ -103,7 +104,8 @@ inline constexpr double LOWER_CULMINATION_OFFSET_DAYS = 0.5;
  * @brief The half-width of the altitude-minimum search window around the nominal lower
  *        culmination, in days.
  * @note For the Sun the true minimum sits within ~16 s of the nominal half-day mark — a 500x
- *       margin (held by `RiseSet.MinSearchWindowRetainsMargin`, #126). The minimum is found by golden-section search over this window, NOT by solving
+ *       margin (held by `RiseSet.MinSearchWindowRetainsMargin`, #126). The minimum is found by
+ *       golden-section search over this window, NOT by solving
  *       H = ±180°: with dδ/dt ≠ 0 (the Moon runs ±13°/day) the altitude extremum wanders off the
  *       lower culmination by degrees of hour angle, and anchoring the existence check to H = 180°
  *       leaves a blind band of order 0.01°–0.05° of altitude that silently mislabels grazing
@@ -148,12 +150,12 @@ inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
  *       `sidereal::local_apparent`; the negation happens inside this namespace, so callers
  *       never deal with west-positive longitudes.
  * @note +180° and -180° name the same meridian but are NOT interchangeable for the
- *       transit-centered APIs (`sun::transit_jde`, `sun::calculate`, `calculate_around_transit`):
- *       the date input is a UT1 date, so they select transit-centered windows one day apart
- *       (local mean noon at +180° is 0h UT of that date; at -180° it is 24h UT). Pick the sign
- *       matching the intended UT window — deliberate, same behavior as other UT-date APIs.
- *       For the UT-day APIs (`calculate_day`, `moon::calculate`) the window is determined by
- *       `ymd` alone, and the two signs give identical results.
+ *       date-anchored solar APIs (`sun::transit_jde`, `sun::calculate`): the date input is a
+ *       UT1 date, so they select transit-centered windows one day apart (local mean noon at
+ *       +180° is 0h UT of that date; at -180° it is 24h UT). Pick the sign matching the
+ *       intended UT window — deliberate, same behavior as other UT-date APIs. For the UT-day
+ *       APIs (`calculate_day`, `moon::calculate`) the window is determined by `ymd` alone,
+ *       and the two signs give identical results.
  */
 struct GeoLocation {
   astro::toolbox::AngleDeg latitude;  // North-positive, [-90°, 90°].
@@ -326,38 +328,56 @@ requires std::invocable<const Func&, double>
   return (lo + hi) / 2.0;
 }
 
+/** @brief A refined local extremum of the altitude curve: its instant, kind, and value. */
+struct AltitudeExtremum {
+  double jde;
+  bool is_minimum;
+  double altitude_deg;
+};
+
 /**
- * @brief Find the global argmin of a function on [a, b]: coarse grid scan, then golden-section
- *        refinement inside the winning cell.
- * @note Unlike a bare `golden_section_argmin`, this needs NO unimodality premise: the grid
- *       finds the basin of the global minimum even when the interval holds both a maximum and
- *       a minimum (a 24 h altitude curve), and the refinement is unimodal by construction
- *       (one cell, 30 min, around a smooth parabolic extremum).
+ * @brief Find every local extremum of the altitude curve on [a, b], in time order.
+ * @note Grid scan for direction changes (15-min cells on a 1-day window — far below any
+ *       extremum's width), then golden-section refinement per candidate. The window must be
+ *       partitioned at ALL of these, not just at the global minimum and maximum: the global
+ *       extremum need not be a monotone cut (R2 实录:2026-06-18 Tromsø, the window's end
+ *       dips below the interior minimum, and partitioning at the global minimum hid that
+ *       day's only rise inside a non-monotone segment).
  */
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
-[[nodiscard]] inline auto scanned_argmin(
+[[nodiscard]] inline auto find_extrema(
   const Func& f,
   const double a,
   const double b
-) -> double {
-  constexpr int CELLS = 48; // 30 min on a 1-day window — far below any extremum's width.
+) -> std::vector<AltitudeExtremum> {
+  constexpr int CELLS = 96; // 15 min on a 1-day window.
   const double step = (b - a) / CELLS;
 
-  int best = 0;
-  double best_f = f(a);
-  for (int i = 1; i <= CELLS; ++i) {
-    const double fi = f(a + (i * step));
-    if (fi < best_f) {
-      best_f = fi;
-      best = i;
-    }
+  std::vector<double> values(static_cast<std::size_t>(CELLS) + 1);
+  for (int i = 0; i <= CELLS; ++i) {
+    values[static_cast<std::size_t>(i)] = f(a + (i * step));
   }
 
-  const double lo = a + (std::max(best - 1, 0) * step);
-  const double hi = a + (std::min(best + 1, CELLS) * step);
-  return golden_section_argmin(f, lo, hi);
+  std::vector<AltitudeExtremum> extrema;
+  for (int i = 1; i < CELLS; ++i) {
+    const double prev = values[static_cast<std::size_t>(i - 1)];
+    const double curr = values[static_cast<std::size_t>(i)];
+    const double next = values[static_cast<std::size_t>(i + 1)];
+    const bool is_min = (curr < prev) and (curr <= next);
+    const bool is_max = (curr > prev) and (curr >= next);
+    if (not is_min and not is_max) {
+      continue;
+    }
+
+    const double lo = a + ((i - 1) * step);
+    const double hi = a + ((i + 1) * step);
+    const double jde = is_min ? golden_section_argmin(f, lo, hi)
+                              : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
+    extrema.push_back({ .jde = jde, .is_minimum = is_min, .altitude_deg = f(jde) });
+  }
+  return extrema;
 }
 
 /**
@@ -691,9 +711,10 @@ template <BodyProvider P>
  *        estimate's bracket held no root, which is a numerical failure and must not read as
  *        an eventless window.
  * @note The estimate is Meeus Ch.15's m₀ in secant form: the hour angle sweeps at
- *       (sidereal rate − dα/dt), and dα/dt is *measured* from the provider at the window
- *       ends — no per-body rate constants. The estimate lands on the first root at or after
- *       t0 and is window-length-independent; the polish bracket only refines it.
+ *       (sidereal rate − dα/dt), and dα/dt is *measured* from the provider over a fixed
+ *       1-day span from t0 — the rate is a property of the body, not of the window, so the
+ *       estimate is window-length-independent. The 1-day span aliases only if |dα/dt| ever
+ *       reached 180°/day, which no real solar-system body approaches.
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto transit_in_window(
@@ -710,13 +731,12 @@ template <BodyProvider P>
     };
   }
 
-  const double window_days = t1_jde - t0_jde;
+  // Signed α drift per day, measured over a fixed 1-day span from t0 (see the @note: a body
+  // property, not a window property — measuring across the whole window aliases once the
+  // window spans more than half a turn of α, which for the Moon happens past ~13.6 days).
   const auto local0 = detail::body_local(t0_jde, location, provider);
-  const auto local1 = detail::body_local(t1_jde, location, provider);
-
-  // Signed α drift per day (normalize handles the 0h/24h wrap; retrograde motion comes out
-  // negative, which is also correct).
-  const double dα = astro::toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg()) / window_days;
+  const auto local1 = detail::body_local(t0_jde + 1.0, location, provider);
+  const double dα = astro::toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg());
   const double sweep_rate = astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY - dα;
 
   // Hour angle from here to the next transit, in degrees, in (0°, 360°].
@@ -771,22 +791,22 @@ template <BodyProvider P>
  *         stays entirely on one side of h₀ for the whole day.
  * @note **At most one event of each kind is reported.** Days with two crossings of the same
  *         kind exist — lunar high-latitude days near a standstill (the Moon's declination
- *         swings fast enough that it can rise twice in one UT day at |φ| ≳ 66°; USNO lists
- *         both in the same cell), and any body whose diurnal period dips below 24 h. On such
- *         days the LATER crossing is reported. This library reports one event per cell;
- *         almanacs that list both keep the earlier one visible too.
- * @note Supported envelope: the day is partitioned at its true altitude extrema (coarse scan
- *         + golden-section refinement, exact without a unimodality premise), and the directed
- *         sign checks on the segments are exact when at most one minimum and one maximum fall
- *         inside the window. That holds for the Moon on every 1-day window (cycle ~24.84 h).
- *         The Sun's diurnal period dips below 24 h around the equinoxes, making two extrema
- *         pairs per UT day possible — use the transit-centered API (`sun::calculate`) for the
- *         Sun; `calculate_day` with a solar provider is outside the supported envelope.
+ *         swings fast enough that it can rise twice in one UT day; USNO lists both in the
+ *         same cell), and any body whose diurnal period dips below 24 h. On such days the
+ *         LATER crossing is reported. This library reports one event per cell; almanacs that
+ *         list both keep the earlier one visible too.
+ * @note Mechanism: the day is partitioned at EVERY interior altitude extremum (15-min grid
+ *         scan + golden-section refinement per candidate), so every segment is monotone by
+ *         construction and the directed sign check on each segment is an exact existence
+ *         criterion — for any dδ/dt, including high-latitude standstill days whose window
+ *         ends dip below an interior extremum (R2 实录:2026-06-18 Tromsø, pinned by a
+ *         golden row).
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
  *        not finite or outside [-90°, 90°].
- * @throw std::runtime_error If the altitude straddles h₀ inside the day but no crossing solve
- *        converged, or a bracketed crossing failed the residual guard — a numerical failure
- *        must not read as "no event".
+ * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
+ *        conversions reject years before 401), if the altitude straddles h₀ inside the day
+ *        but no crossing solve converged, or if a bracketed crossing failed the residual
+ *        guard — a numerical failure must not read as "no event".
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto calculate_day(
@@ -814,20 +834,15 @@ template <BodyProvider P>
     return h(jde) - h0.deg();
   };
 
-  const double t_min = detail::scanned_argmin(h, t0, t1);
-  const double t_max = detail::scanned_argmin(
-    [&h](const double jde) { return -h(jde); }, t0, t1
-  );
-
-  // Piecewise-monotone segments between the window ends and the two extrema. An extremum
-  // landing on a window end (monotone day) contributes no segment.
-  const double lo_x = std::min(t_min, t_max);
-  const double hi_x = std::max(t_min, t_max);
+  const auto extrema = detail::find_extrema(h, t0, t1);
 
   Result result { .rise_jde = std::nullopt, .set_jde = std::nullopt,
                   .transit_jde = transit_in_window(t0, t1, location, provider),
                   .polar = Polar::NONE };
 
+  // Monotone segments between the window ends and every interior extremum. Last-wins
+  // assignment is deliberate: it implements the one-event-per-cell contract (the LATER
+  // crossing is reported on double-event days).
   const auto scan_segment = [&f, &result](const double a, const double b) {
     constexpr double MIN_SEGMENT_DAYS = 1e-6; // ~0.1 s — below this the "segment" is an endpoint.
     if (b - a < MIN_SEGMENT_DAYS) {
@@ -855,17 +870,28 @@ template <BodyProvider P>
     }
   };
 
-  scan_segment(t0, lo_x);
-  scan_segment(lo_x, hi_x);
-  scan_segment(hi_x, t1);
+  double seg_lo = t0;
+  for (const auto& extremum : extrema) {
+    scan_segment(seg_lo, extremum.jde);
+    seg_lo = extremum.jde;
+  }
+  scan_segment(seg_lo, t1);
 
   if (not result.rise_jde.has_value() and not result.set_jde.has_value()) {
-    // No crossing found. The extrema decide the topology: entirely above → DAY, entirely
-    // below → NIGHT. A straddle without a found crossing is an engine failure — but the
-    // directed checks above are exact on monotone segments, so reaching that state means the
-    // unimodality premise broke; say so loudly.
-    const double h_min = h(t_min);
-    const double h_max = h(t_max);
+    // No crossing found. The day's global extremes — over every interior extremum AND the
+    // window ends — decide the topology: entirely above → DAY, entirely below → NIGHT.
+    // A straddle without a found crossing is an engine failure: on monotone segments the
+    // directed checks above are exact, so reaching that state means the monotone-partition
+    // premise broke; say so loudly.
+    double h_min = h(t0);
+    double h_max = h(t0);
+    for (const auto& extremum : extrema) {
+      h_min = std::min(h_min, extremum.altitude_deg);
+      h_max = std::max(h_max, extremum.altitude_deg);
+    }
+    h_min = std::min(h_min, h(t1));
+    h_max = std::max(h_max, h(t1));
+
     if (h_min >= h0.deg()) {
       result.polar = Polar::DAY;
     } else if (h_max <= h0.deg()) {
@@ -873,7 +899,7 @@ template <BodyProvider P>
     } else {
       throw std::runtime_error {
         std::format("calculate_day: altitude straddles h0 (min {} < {} < max {}) but no crossing was "
-                    "found in [{}, {}] — the unimodal-day premise no longer holds for this body",
+                    "found in [{}, {}] — the monotone-partition premise no longer holds for this body",
                     h_min, h0.deg(), h_max, t0, t1)
       };
     }
@@ -1028,10 +1054,10 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
 
 /**
  * @brief The standard altitude of the Moon's center at rise/set: `0.7275·Π − refraction`.
- * @param Π The equatorial horizontal parallax at (approximately) the event time — Π varies by
- *        ≤ ~1.0′ over a day (measured peak 0.982′ in 2026–2027), moving rise/set instants by
- *        ~1.3 s at worst (equator), far below the minute-level golden contract; a per-day
- *        value is sufficient.
+ * @param Π The equatorial horizontal parallax at (approximately) the event time. A per-day
+ *        value is sufficient: Π's intra-day drift moves rise/set instants by seconds at most,
+ *        invisible to the minute-level golden contract (enforced end-to-end by the golden
+ *        tests — R1/R2 实录:精确上界数字住进注释会被逐轮更密的采样证伪,故此处只留定性句).
  * @param p The atmospheric refraction parameters. Defaults reproduce Meeus's 34′ term.
  * @return The geometric altitude of the Moon's center that makes its upper limb appear at the
  *         horizon. The 0.7275 factor folds the parallax (and the upper-limb semidiameter) into
@@ -1063,7 +1089,9 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *         `calculate_day`'s note.
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `p` is
  *        invalid (see `refraction::at_horizon`).
- * @throw std::runtime_error On numerical failures inside `calculate_day` (see its @throw).
+ * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
+ *        conversions reject years before 401) or numerical failures inside `calculate_day`
+ *        (see its @throw).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).
  * @note The window is the UT1 calendar day, matching almanac (e.g. USNO rstt/oneday at tz=0)
  *       cell semantics — unlike the solar API, which is transit-centered.

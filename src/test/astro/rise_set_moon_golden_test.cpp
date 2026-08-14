@@ -135,6 +135,9 @@ const std::vector<MoonRow> USNO_ROWS {
   {  8, 21,   69.65,    18.96, "     ", "     ", "     " },  // Tromso polar night
   {  5, 14,   69.65,    18.96, "23:56", "08:20", "17:09" },  // Tromso double-rise day: USNO
   // lists rises 00:31 AND 23:56 in this cell; this library reports the later one (see header).
+  {  6, 18,   69.65,    18.96, "02:42", "14:11", "23:38" },  // Tromso double-SET day (R2
+  // regression pin): USNO lists sets 01:07 AND 23:38; the window end dips below the interior
+  // minimum, the shape that once hid this day's only rise inside a non-monotone segment.
 };
 // NOLINTEND(modernize-use-designated-initializers)
 
