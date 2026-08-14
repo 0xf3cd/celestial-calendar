@@ -209,8 +209,8 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
 
 TEST(Refraction, BennettMatchesMeeusNativeValues) {
   // Golden anchors for the native (10°C/1010 hPa) Bennett formula.
-  // Values are computed from Meeus (16.3). The 45° value cross-checks Meeus Example 16.a
-  // (h = 45°, R ≈ 59″); the others are formula outputs pinned at six decimals to catch
+  // Values are computed from Meeus (16.3). The 0.5° value cross-checks Meeus Example 16.a
+  // (h0 = 0°.5, R = 28.754′); the others are formula outputs pinned at six decimals to catch
   // transcription regressions.
   const auto r0    = bennett(AngleDeg { 0.0 });
   const auto r0_5  = bennett(AngleDeg { 0.5 });
@@ -224,14 +224,18 @@ TEST(Refraction, BennettMatchesMeeusNativeValues) {
 
 TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
   // Golden anchors for the native (10°C/1010 hPa) Saemundsson formula.
-  // Values are computed from Meeus (16.4); four-decimal pins catch transcription regressions.
-  const auto r0  = saemundsson(AngleDeg { 0.0 });
-  const auto r30 = saemundsson(AngleDeg { 30.0 });
-  const auto r60 = saemundsson(AngleDeg { 60.0 });
+  // Values are computed from Meeus (16.4). The h = 0.5541 value cross-checks Meeus Example 16.a
+  // (the true altitude of the Sun's upper limb in the flattening calculation); the others are
+  // formula outputs pinned at four decimals to catch transcription regressions.
+  const auto r0     = saemundsson(AngleDeg { 0.0 });
+  const auto r0_55  = saemundsson(AngleDeg { 0.5541 });
+  const auto r30    = saemundsson(AngleDeg { 30.0 });
+  const auto r60    = saemundsson(AngleDeg { 60.0 });
 
-  ASSERT_NEAR(r0.deg(),  AngleDeg::from_arcmin(28.9819).deg(), AngleDeg::from_arcmin(1e-4).deg());
-  ASSERT_NEAR(r30.deg(), AngleDeg::from_arcmin(1.7460).deg(), AngleDeg::from_arcmin(1e-4).deg());
-  ASSERT_NEAR(r60.deg(), AngleDeg::from_arcmin(0.5851).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r0.deg(),    AngleDeg::from_arcmin(28.9819).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r0_55.deg(), AngleDeg::from_arcmin(24.6181).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r30.deg(),   AngleDeg::from_arcmin(1.7460).deg(),  AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r60.deg(),   AngleDeg::from_arcmin(0.5851).deg(),  AngleDeg::from_arcmin(1e-4).deg());
 }
 
 
