@@ -133,10 +133,11 @@ inline constexpr double RISE_SET_RESIDUAL_GUARD_DEG = 1e-3;
 
 /**
  * @brief Convergence tolerance for the golden-section extremum searches, in days.
- * @note 1e-9 day ≈ 0.1 ms of time; at the fastest conceivable dh/dt (~15°/day) that is
- *       ~1e-8° of altitude — far below the rise/set residual guard. Termination is by the
- *       iteration cap in `golden_section_argmin`, not by this number: past JDE 2²³
- *       (≈ year 18255) the double ulp exceeds it (see that function's note).
+ * @note 1e-9 day ≈ 0.1 ms of time — far below the precision the rise/set residual guard
+ *       (1e-3°) cares about. In the representable range's ordinary part this tolerance is
+ *       what ends the search (≤ 40 iterations for any bracket here); past JDE 2²³
+ *       (≈ year 18255) the double ulp exceeds it and only the iteration cap in
+ *       `golden_section_argmin` ends the loop (see that function's note).
  */
 inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
 
@@ -144,9 +145,9 @@ inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
  * @brief Coarser tolerance for the edge-cell probes of `find_extrema`, in days.
  * @note The probes only locate a cut point — crossings are re-solved by Newton afterwards,
  *       and the polar verdict's altitude values need ~1e-3° — so ~0.1 s of time precision
- *       is far more than enough, and the coarser target roughly halves the probe's
- *       provider-evaluation cost (R4: each edge probe is a golden-section over a body
- *       position, and the Moon's is a full ELP2000 evaluation).
+ *       is far more than enough, and the coarser target cuts the probe's evaluation count
+ *       by ~40% (20 vs 34 iterations on a 15-min cell; R4 measured 144 → 88 provider
+ *       evaluations per `find_extrema`).
  */
 inline constexpr double EDGE_PROBE_TOLERANCE_DAYS = 1e-6;
 
@@ -303,11 +304,13 @@ template <BodyProvider P>
  * @note Derivative-free and unconditionally convergent — the altitude curve's derivative is
  *       not written by hand anywhere in this engine, and this keeps it that way. Converges
  *       to a bracket endpoint when the function is monotonic on [a, b] (polar-boundary arcs).
- * @note Termination is by ITERATION CAP, not by the tolerance: once the JDE magnitude passes
- *       2²³ (≈ year 18255) the double ulp exceeds `EXTREMUM_SEARCH_TOLERANCE_DAYS` and an
- *       absolute-day tolerance can never be reached (R4 实录:the loop hung forever, inside
- *       the library's declared domain). 64 iterations shrink any bracket here by > 10¹³× —
- *       past every tolerance used — and the final midpoint is always returned.
+ * @note In the ordinary part of the date range the loop ends on `tolerance` (≤ 40 iterations
+ *       for any bracket used here); the ITERATION CAP is the guarantee, not the normal exit:
+ *       once the JDE magnitude passes 2²³ (≈ year 18255) the double ulp exceeds
+ *       `EXTREMUM_SEARCH_TOLERANCE_DAYS`, the bracket can never shrink to the tolerance, and
+ *       without a cap the loop hangs forever (R4 实录, inside the declared domain). After
+ *       the cap the midpoint of the final, ulp-wide bracket is returned — the best answer
+ *       representable at that magnitude.
  */
 template <typename Func>
 requires std::invocable<const Func&, double>
@@ -320,7 +323,8 @@ requires std::invocable<const Func&, double>
 ) -> double {
   constexpr double INV_PHI = 0.61803398874989484820; // (√5 − 1)/2
   constexpr double INV_PHI_SQ = 0.38196601125010515180; // (3 − √5)/2
-  constexpr int MAX_ITERATIONS = 64; // ≥ the ~43 any tolerance here needs; see the @note.
+  constexpr int MAX_ITERATIONS = 64; // ≥ the 40 any bracket/tolerance here needs (0.2-day
+                                     // bracket at 1e-9); see the @note above.
 
   double lo = a;
   double hi = b;
@@ -412,9 +416,11 @@ requires std::invocable<const Func&, double>
       const double jde = want_min
         ? golden_section_argmin(f, lo, hi, EDGE_PROBE_TOLERANCE_DAYS)
         : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi, EDGE_PROBE_TOLERANCE_DAYS);
-      // Golden-section never returns the endpoint exactly (it converges to within its
-      // tolerance of it), so "strictly inside" needs an epsilon: anything within ~0.1 s of
-      // a cell end IS the endpoint extremum, already a segment end.
+      // The loop exits with (hi − lo) ≤ tolerance, so the returned midpoint sits within
+      // tolerance/2 of the true extremum — and of the cell end, when the extremum IS the
+      // endpoint. "Strictly inside" therefore needs an epsilon larger than tolerance/2;
+      // EDGE_EPSILON_DAYS and EDGE_PROBE_TOLERANCE_DAYS are tied by that constraint
+      // (currently 2x), and loosening the tolerance without the epsilon breaks it.
       constexpr double EDGE_EPSILON_DAYS = 1e-6;
       if (jde - lo <= EDGE_EPSILON_DAYS or hi - jde <= EDGE_EPSILON_DAYS) {
         continue;
@@ -436,8 +442,10 @@ requires std::invocable<const Func&, double>
   probe_edge_cell(a, a + step);
   probe_edge_cell(b - step, b);
 
-  // The partition in `calculate_day` consumes these in time order; the edge probes do not
-  // produce it (a cell can hold both kinds, probed min-first).
+  // The partition in `calculate_day` consumes these in time order. The collection order is
+  // NOT time order: the grid loop emits in order, but the edge probes append afterwards —
+  // a first-cell candidate lands behind every grid-found extremum even when it precedes
+  // them all. Sorting is what makes the partition's monotone-segment premise hold.
   std::ranges::sort(extrema, {}, &AltitudeExtremum::jde);
 
   return extrema;
@@ -646,6 +654,8 @@ template <BodyProvider P>
  *        is not finite or outside [-90°, 90°].
  * @throw std::runtime_error If a directed sign change proved a crossing exists but the solve
  *        failed the residual guard — a numerical failure must not read as a polar verdict.
+ *        The UT1/JD conversions also propagate `std::runtime_error` when `transit` lies
+ *        outside the representable years.
  * @note Solves (altitude − h₀) = 0 directly: no hand-written dh/dH derivative, no hour-angle
  *       sign convention — the bracket side selects the event. Existence is decided by the
  *       directed sign check at the *true* altitude minimum (`detail::min_altitude_jde`,
@@ -876,8 +886,9 @@ template <BodyProvider P>
  *        not finite or outside [-90°, 90°].
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
  *        conversions reject dates outside the representable years), if the altitude straddles h₀ inside the day
- *        but no crossing solve converged, or if a bracketed crossing failed the residual
- *        guard — a numerical failure must not read as "no event".
+ *        but no crossing solve converged, if a bracketed crossing failed the residual
+ *        guard, or if the transit solve failed its own residual guard (see
+ *        `transit_in_window`) — a numerical failure must not read as "no event".
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto calculate_day(
@@ -1161,8 +1172,9 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `p` is
  *        invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject dates outside the representable years) or numerical failures inside `calculate_day`
- *        (see its @throw).
+ *        conversions reject dates outside the representable years), for a refraction
+ *        failure at the h₀ stage (see `h0`'s @throw — e.g. SAEMUNDSSON non-convergence),
+ *        or numerical failures inside `calculate_day` (see its @throw).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).
  * @note The window is the UT1 calendar day, matching almanac (e.g. USNO rstt/oneday at tz=0)
  *       cell semantics — unlike the solar API, which is transit-centered.

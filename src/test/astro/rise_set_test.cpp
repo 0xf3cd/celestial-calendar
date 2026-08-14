@@ -512,9 +512,10 @@ TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {
 }
 
 TEST(RiseSet, FindExtremaKeepsDistinctSameCellExtrema) {
-  // Two genuinely distinct maxima inside one edge cell (0.9 cells ≈ 13.5 min apart) must
-  // both survive the duplicate filter (R4: a whole-cell, kind-blind radius ate one), and
-  // the result must come out time-ordered for the partition in calculate_day.
+  // An edge-cell candidate (the bump at 0.3 cells) must survive the duplicate filter even
+  // though a same-kind, grid-found extremum sits just ~1 cell away (at 1.2 cells) — the
+  // whole-cell, kind-blind radius from R4 merged them. Also pins time-ordering with
+  // several extrema sharing the edge region (the partition consumes them sorted).
   const auto bump = [](const double center, const double t) {
     const double d = (t - center) / (0.15 / 96.0);
     return std::exp(-0.5 * d * d);
