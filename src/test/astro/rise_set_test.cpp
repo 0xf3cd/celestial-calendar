@@ -456,7 +456,10 @@ TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
 TEST(RiseSet, SolarProviderThroughCalculateDay) {
   // The gate for a loosened contract (R3): the old "solar provider is outside the supported
   // envelope" note was deleted once the mechanism handled the geometry — this is what holds
-  // the loosening. London's tz=0 USNO cells are exactly the UT-day window's semantics.
+  // the loosening. London's tz=0 USNO cells are exactly the UT-day window's semantics; the
+  // coordinates reproduce the golden set's quantized inputs (51.50, -0.13), not the city's
+  // more precise centroid.
+  const GeoLocation LONDON_GOLDEN = loc(51.50, -0.13);
   const std::vector<std::tuple<int, int, double, double, double>> cases {
     // (month, day, rise, transit, set) in UT minutes — the London rows of the solar golden set.
     { 3, 20,  363.0, 728.0, 1093.0 },
@@ -466,7 +469,7 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
   };
   for (const auto& [month, day, rise_min, transit_min, set_min] : cases) {
     const auto ymd = util::to_ymd(2026, month, day);
-    const auto result = calculate_day(ymd, LONDON, sun::STANDARD_ALTITUDE, sun::provider);
+    const auto result = calculate_day(ymd, LONDON_GOLDEN, sun::STANDARD_ALTITUDE, sun::provider);
     const auto tag = std::to_string(month) + "-" + std::to_string(day);
     ASSERT_EQ(result.polar, Polar::NONE) << tag;
     ASSERT_TRUE(result.rise_jde.has_value()) << tag;
@@ -482,12 +485,53 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
   }
 
   // A UT day with TWO solar transits (the apparent solar day dips below 24 h around the
-  // equinoxes; 2026-09-15 at this longitude has transits at ~00:00:06 and ~23:59:49):
+  // equinoxes; 2026-09-15 at this longitude has transits at ~00:00:10.7 and ~23:59:49):
   // the engine returns the first one and does not throw.
   const auto two_transits = calculate_day(util::to_ymd(2026, 9, 15), loc(0.0, 178.8046),
                                           sun::STANDARD_ALTITUDE, sun::provider);
   ASSERT_TRUE(two_transits.transit_jde.has_value());
   ASSERT_LT(astro::julian_day::jde_to_ut1(req(two_transits.transit_jde)).fraction() * 1440.0, 2.0);
+}
+
+TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {
+  // R4: `golden_section_argmin`'s absolute 1e-9-day tolerance is unreachable once the JDE
+  // ulp exceeds it (JDE ≥ 2²³, ≈ year 18255) — the loop hung forever, inside the declared
+  // domain. The iteration cap guarantees termination; without it each of these calls would
+  // hang. (The ephemerides are physically meaningless at year 20000; the pin is
+  // termination, not accuracy.)
+  const auto ymd = util::to_ymd(20000, 6, 21);
+
+  // The unconditional path: calculate_day probes edge cells on every call.
+  ASSERT_NO_THROW(std::ignore = moon::calculate(ymd, BEIJING));
+  ASSERT_NO_THROW(std::ignore = calculate_day(ymd, EQUATOR, sun::STANDARD_ALTITUDE, sun::provider));
+
+  // The fallback path: June at 69.65°N is a polar day, so rise_set_jde's fast bracket finds
+  // no crossing and the authority path enters `min_altitude_jde`'s golden-section search.
+  const auto polar = sun::calculate(ymd, TROMSO);
+  ASSERT_EQ(polar.polar, Polar::DAY);
+}
+
+TEST(RiseSet, FindExtremaKeepsDistinctSameCellExtrema) {
+  // Two genuinely distinct maxima inside one edge cell (0.9 cells ≈ 13.5 min apart) must
+  // both survive the duplicate filter (R4: a whole-cell, kind-blind radius ate one), and
+  // the result must come out time-ordered for the partition in calculate_day.
+  const auto bump = [](const double center, const double t) {
+    const double d = (t - center) / (0.15 / 96.0);
+    return std::exp(-0.5 * d * d);
+  };
+  const auto two_bumps = [&bump](const double t) {
+    return bump(0.3 / 96.0, t) + bump(1.2 / 96.0, t);
+  };
+
+  const auto extrema = detail::find_extrema(two_bumps, 0.0, 1.0);
+  ASSERT_EQ(extrema.size(), 3UZ); // MAX @0.3c, MIN in between, MAX @1.2c.
+  ASSERT_FALSE(extrema[0].is_minimum);
+  ASSERT_TRUE(extrema[1].is_minimum);
+  ASSERT_FALSE(extrema[2].is_minimum);
+  ASSERT_LT(extrema[0].jde, extrema[1].jde);
+  ASSERT_LT(extrema[1].jde, extrema[2].jde);
+  ASSERT_NEAR(extrema[0].jde, 0.3 / 96.0, 1e-6);
+  ASSERT_NEAR(extrema[2].jde, 1.2 / 96.0, 1e-6);
 }
 
 TEST(RiseSet, InvalidInputsThrow) {

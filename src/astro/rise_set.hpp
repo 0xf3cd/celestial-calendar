@@ -134,9 +134,21 @@ inline constexpr double RISE_SET_RESIDUAL_GUARD_DEG = 1e-3;
 /**
  * @brief Convergence tolerance for the golden-section extremum searches, in days.
  * @note 1e-9 day ≈ 0.1 ms of time; at the fastest conceivable dh/dt (~15°/day) that is
- *       ~1e-8° of altitude — far below the rise/set residual guard.
+ *       ~1e-8° of altitude — far below the rise/set residual guard. Termination is by the
+ *       iteration cap in `golden_section_argmin`, not by this number: past JDE 2²³
+ *       (≈ year 18255) the double ulp exceeds it (see that function's note).
  */
 inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
+
+/**
+ * @brief Coarser tolerance for the edge-cell probes of `find_extrema`, in days.
+ * @note The probes only locate a cut point — crossings are re-solved by Newton afterwards,
+ *       and the polar verdict's altitude values need ~1e-3° — so ~0.1 s of time precision
+ *       is far more than enough, and the coarser target roughly halves the probe's
+ *       provider-evaluation cost (R4: each edge probe is a golden-section over a body
+ *       position, and the Moon's is a full ELP2000 evaluation).
+ */
+inline constexpr double EDGE_PROBE_TOLERANCE_DAYS = 1e-6;
 
 #pragma endregion
 
@@ -291,6 +303,11 @@ template <BodyProvider P>
  * @note Derivative-free and unconditionally convergent — the altitude curve's derivative is
  *       not written by hand anywhere in this engine, and this keeps it that way. Converges
  *       to a bracket endpoint when the function is monotonic on [a, b] (polar-boundary arcs).
+ * @note Termination is by ITERATION CAP, not by the tolerance: once the JDE magnitude passes
+ *       2²³ (≈ year 18255) the double ulp exceeds `EXTREMUM_SEARCH_TOLERANCE_DAYS` and an
+ *       absolute-day tolerance can never be reached (R4 实录:the loop hung forever, inside
+ *       the library's declared domain). 64 iterations shrink any bracket here by > 10¹³× —
+ *       past every tolerance used — and the final midpoint is always returned.
  */
 template <typename Func>
 requires std::invocable<const Func&, double>
@@ -298,10 +315,12 @@ requires std::invocable<const Func&, double>
 [[nodiscard]] inline auto golden_section_argmin(
   const Func& f,
   const double a,
-  const double b
+  const double b,
+  const double tolerance = EXTREMUM_SEARCH_TOLERANCE_DAYS
 ) -> double {
   constexpr double INV_PHI = 0.61803398874989484820; // (√5 − 1)/2
   constexpr double INV_PHI_SQ = 0.38196601125010515180; // (3 − √5)/2
+  constexpr int MAX_ITERATIONS = 64; // ≥ the ~43 any tolerance here needs; see the @note.
 
   double lo = a;
   double hi = b;
@@ -310,7 +329,7 @@ requires std::invocable<const Func&, double>
   double f1 = f(x1);
   double f2 = f(x2);
 
-  while (hi - lo > EXTREMUM_SEARCH_TOLERANCE_DAYS) {
+  for (int i = 0; i < MAX_ITERATIONS and hi - lo > tolerance; ++i) {
     if (f1 < f2) {
       hi = x2;
       x2 = x1;
@@ -367,7 +386,7 @@ requires std::invocable<const Func&, double>
     const double next = values[static_cast<std::size_t>(i + 1)];
     // Strict on both sides: a non-strict comparison fires on the edge of a flat plateau
     // (e.g. exp() tails underflowing to exact zeros), manufacturing a spurious extremum
-    // out of numerical noise. A genuine plateau is constant altitude — no extremum to find.
+    // out of numerical noise.
     const bool is_min = (curr < prev) and (curr < next);
     const bool is_max = (curr > prev) and (curr > next);
     if (not is_min and not is_max) {
@@ -386,15 +405,16 @@ requires std::invocable<const Func&, double>
   // and it is exactly the band a grazing h₀ query asks about). Probe both edge cells
   // directly; a candidate counts only if it lands strictly inside the cell and beats both
   // cell ends. Skip duplicates of grid-found extrema (a bump near the cell boundary shows
-  // up in both).
-  const auto probe_edge_cell = [&](const double lo, const double hi, const bool first_cell) {
+  // up in both) — same kind and sub-second distance, nothing broader: two genuinely
+  // distinct extrema can share one cell (R4: a whole-cell, kind-blind radius ate them).
+  const auto probe_edge_cell = [&](const double lo, const double hi) {
     for (const bool want_min : { true, false }) {
       const double jde = want_min
-        ? golden_section_argmin(f, lo, hi)
-        : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
-      // Golden-section never returns the endpoint exactly (it converges to within
-      // EXTREMUM_SEARCH_TOLERANCE_DAYS of it), so "strictly inside" needs an epsilon:
-      // anything within ~0.1 s of a cell end IS the endpoint extremum, already a segment end.
+        ? golden_section_argmin(f, lo, hi, EDGE_PROBE_TOLERANCE_DAYS)
+        : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi, EDGE_PROBE_TOLERANCE_DAYS);
+      // Golden-section never returns the endpoint exactly (it converges to within its
+      // tolerance of it), so "strictly inside" needs an epsilon: anything within ~0.1 s of
+      // a cell end IS the endpoint extremum, already a segment end.
       constexpr double EDGE_EPSILON_DAYS = 1e-6;
       if (jde - lo <= EDGE_EPSILON_DAYS or hi - jde <= EDGE_EPSILON_DAYS) {
         continue;
@@ -405,21 +425,20 @@ requires std::invocable<const Func&, double>
         continue;
       }
       const bool duplicate = std::ranges::any_of(extrema, [&](const AltitudeExtremum& e) {
-        return std::fabs(e.jde - jde) < step;
+        return e.is_minimum == want_min and std::fabs(e.jde - jde) < EDGE_EPSILON_DAYS;
       });
       if (duplicate) {
         continue;
       }
-      const AltitudeExtremum edge { .jde = jde, .is_minimum = want_min, .altitude_deg = v };
-      if (first_cell) {
-        extrema.insert(extrema.begin(), edge);
-      } else {
-        extrema.push_back(edge);
-      }
+      extrema.push_back({ .jde = jde, .is_minimum = want_min, .altitude_deg = v });
     }
   };
-  probe_edge_cell(a, a + step, true);
-  probe_edge_cell(b - step, b, false);
+  probe_edge_cell(a, a + step);
+  probe_edge_cell(b - step, b);
+
+  // The partition in `calculate_day` consumes these in time order; the edge probes do not
+  // produce it (a cell can hold both kinds, probed min-first).
+  std::ranges::sort(extrema, {}, &AltitudeExtremum::jde);
 
   return extrema;
 }
@@ -856,7 +875,7 @@ template <BodyProvider P>
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
  *        not finite or outside [-90°, 90°].
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject years before 401), if the altitude straddles h₀ inside the day
+ *        conversions reject dates outside the representable years), if the altitude straddles h₀ inside the day
  *        but no crossing solve converged, or if a bracketed crossing failed the residual
  *        guard — a numerical failure must not read as "no event".
  */
@@ -1011,7 +1030,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  * @return The transit instant, as a julian ephemeris day on the **TT** scale.
  * @throw std::invalid_argument If `ymd` is invalid or `location` is out of range.
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject years before 401 with `std::runtime_error`).
+ *        conversions reject dates outside the representable years with `std::runtime_error`).
  * @note The estimate is local mean noon; the bracket around it is one the equation of time can
  *       never escape (see `TRANSIT_BRACKET_HALF_WIDTH_DAYS`).
  */
@@ -1059,7 +1078,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  *         for the exact semantics.
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
  *        not finite or outside [-90°, 90°].
- * @throw std::runtime_error For unsupported dates (year < 401, see `transit_jde`) or a
+ * @throw std::runtime_error For dates outside the representable years (see `transit_jde`) or a
  *        residual-guard failure inside `rise_set_jde`.
  * @note Consumer trap (deliberate semantics): because `ymd` is a UT1 date, for eastern
  *       longitudes the returned sunrise can fall on the *previous* UT1 calendar day (e.g.
@@ -1142,7 +1161,7 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `p` is
  *        invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject years before 401) or numerical failures inside `calculate_day`
+ *        conversions reject dates outside the representable years) or numerical failures inside `calculate_day`
  *        (see its @throw).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).
  * @note The window is the UT1 calendar day, matching almanac (e.g. USNO rstt/oneday at tz=0)
