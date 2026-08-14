@@ -37,7 +37,7 @@
 #include "datetime.hpp"
 #include "julian_day.hpp"
 #include "solar_time.hpp"
-#include "sunrise_sunset.hpp"
+#include "rise_set.hpp"
 
 namespace astro::solar_time::test {
 
@@ -247,7 +247,7 @@ struct TransitCase {
   int32_t  year;
   uint32_t month;
   uint32_t day;
-  astro::sunrise_sunset::GeoLocation location;
+  astro::rise_set::GeoLocation location;
 };
 
 // NOLINTBEGIN(modernize-use-designated-initializers)
@@ -331,7 +331,7 @@ TEST(SolarTime, TransitReadsApparentNoon) {
   // ours through the (28.2) mean longitude — an error in either shows up here, on top of
   // the 28.a anchor both are pinned to. Measured worst gap 0.17 s — tolerance 0.5 s.
   for (const auto& c : TRANSIT_CASES) {
-    const double transit = astro::sunrise_sunset::transit_jde(util::to_ymd(c.year, c.month, c.day), c.location);
+    const double transit = astro::rise_set::sun::transit_jde(util::to_ymd(c.year, c.month, c.day), c.location);
     const auto utc = astro::julian_day::jde_to_utc(transit);
     const auto apparent_dt = apparent(utc, c.location.longitude);
     ASSERT_NEAR(apparent_dt.fraction(), 0.5, 0.5 / 86400.0) << c.year << '-' << c.month << '-' << c.day;

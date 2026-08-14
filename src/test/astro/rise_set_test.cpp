@@ -38,11 +38,11 @@
 #include <gtest/gtest.h>
 
 #include "util.hpp"
-#include "sunrise_sunset.hpp"
+#include "rise_set.hpp"
 
-namespace astro::sunrise_sunset::test {
+namespace astro::rise_set::test {
 
-using namespace astro::sunrise_sunset;
+using namespace astro::rise_set;
 using astro::toolbox::AngleDeg;
 
 namespace {
@@ -60,7 +60,7 @@ const GeoLocation SYDNEY    = loc(-33.8688, 151.2093);
 const GeoLocation TROMSO    = loc( 69.65,    18.96);
 const GeoLocation MIDLAT_0E = loc( 40.0,      0.0);
 
-/** @brief The estimate `transit_jde` starts from: local mean noon of the UT1 date, as a JDE. */
+/** @brief The estimate `sun::transit_jde` starts from: local mean noon of the UT1 date, as a JDE. */
 auto local_mean_noon_jde(const std::chrono::year_month_day& ymd, const GeoLocation& location) -> double {
   const calendar::Datetime noon_ut1 { ymd, 0.5 };
   return astro::julian_day::ut1_to_jde(noon_ut1) - (location.longitude.deg() / 360.0);
@@ -82,7 +82,7 @@ auto req(const std::optional<T>& opt) -> const T& {
 } // anonymous namespace
 
 
-TEST(SunriseSunset, HourAngleAtAltitudeMatchesHorizontalAltitude) {
+TEST(RiseSet, HourAngleAtAltitudeMatchesHorizontalAltitude) {
   // Meeus (15.1) inverts (13.6); feeding H₀ back through `equatorial_to_horizontal` must
   // reproduce h₀ (and at -H₀ too, by the symmetry of the diurnal arc).
   const std::vector<double> declinations { -23.44, -10.0, 0.0, 10.0, 23.44 };
@@ -109,7 +109,7 @@ TEST(SunriseSunset, HourAngleAtAltitudeMatchesHorizontalAltitude) {
   }
 }
 
-TEST(SunriseSunset, HourAngleAtAltitudePolarAndDegenerateCases) {
+TEST(RiseSet, HourAngleAtAltitudePolarAndDegenerateCases) {
   const AngleDeg h0_standard { -0.8333 };
 
   // Midnight sun at 80°N in northern summer: the Sun's minimum altitude is ~+13.4°, far above h₀.
@@ -127,18 +127,18 @@ TEST(SunriseSunset, HourAngleAtAltitudePolarAndDegenerateCases) {
   ASSERT_NEAR(req(H0).deg(), 90.0, 1e-9);
 }
 
-TEST(SunriseSunset, AltitudeConstantsProvenance) {
+TEST(RiseSet, AltitudeConstantsProvenance) {
   // Pin the externally-meaningful constants to their literature values (Meeus Ch.15's
   // -34' refraction - 16' upper limb; the standard civil/nautical/astronomical twilight
   // definitions). The solver tests are parametric in h₀ and would stay green with a silently
   // wrong constant — e.g. even h₀ = 0° keeps EquatorDayLength inside its ±30 min (per review).
-  ASSERT_NEAR(STANDARD_ALTITUDE.deg(), -50.0 / 60.0, 1e-12);
-  ASSERT_NEAR(CIVIL_TWILIGHT.deg(), -6.0, 1e-12);
-  ASSERT_NEAR(NAUTICAL_TWILIGHT.deg(), -12.0, 1e-12);
-  ASSERT_NEAR(ASTRONOMICAL_TWILIGHT.deg(), -18.0, 1e-12);
+  ASSERT_NEAR(sun::STANDARD_ALTITUDE.deg(), -50.0 / 60.0, 1e-12);
+  ASSERT_NEAR(sun::CIVIL_TWILIGHT.deg(), -6.0, 1e-12);
+  ASSERT_NEAR(sun::NAUTICAL_TWILIGHT.deg(), -12.0, 1e-12);
+  ASSERT_NEAR(sun::ASTRONOMICAL_TWILIGHT.deg(), -18.0, 1e-12);
 }
 
-TEST(SunriseSunset, TransitHourAngleIsZero) {
+TEST(RiseSet, TransitHourAngleIsZero) {
   const std::vector<std::pair<std::chrono::year_month_day, GeoLocation>> cases {
     { util::to_ymd(2024, 6, 21), NEW_YORK },
     { util::to_ymd(2024, 6, 21), BEIJING  },
@@ -147,18 +147,18 @@ TEST(SunriseSunset, TransitHourAngleIsZero) {
   };
 
   for (const auto& [ymd, location] : cases) {
-    const double transit = transit_jde(ymd, location);
-    const double H = detail::sun_local(transit, location).hour_angle_deg;
+    const double transit = sun::transit_jde(ymd, location);
+    const double H = detail::body_local(transit, location, sun::provider).hour_angle_deg;
     // 0.001° of hour angle ≈ 0.24 s of time. Self-consistency only: solver and checker share
-    // `detail::sun_local`, so a systematic error (e.g. a UT1/TT mixup) cancels out here — the
+    // `detail::body_local`, so a systematic error (e.g. a UT1/TT mixup) cancels out here — the
     // Meeus 28.a anchor below is the absolute guard (mutation-verified).
     ASSERT_NEAR(H, 0.0, 0.001);
   }
 }
 
-TEST(SunriseSunset, TransitNearLocalMeanNoon) {
+TEST(RiseSet, TransitNearLocalMeanNoon) {
   // The transit deviates from local mean noon by the equation of time only (|EoT| ≤ 16.5 min
-  // ≈ 0.0115 day). A sign flip in `sun_local`'s longitude negation moves the H = 0 root ~0.65
+  // ≈ 0.0115 day). A sign flip in `body_local`'s longitude negation moves the H = 0 root ~0.65
   // day off Beijing's bracket — 32x this tolerance — so this pins that negation. (It does NOT
   // pin the estimate formula itself: the `local_mean_noon_jde` helper mirrors it by construction.)
   const std::vector<std::pair<std::chrono::year_month_day, GeoLocation>> cases {
@@ -168,23 +168,23 @@ TEST(SunriseSunset, TransitNearLocalMeanNoon) {
   };
 
   for (const auto& [ymd, location] : cases) {
-    const double transit = transit_jde(ymd, location);
+    const double transit = sun::transit_jde(ymd, location);
     ASSERT_NEAR(transit, local_mean_noon_jde(ymd, location), 0.02);
   }
 }
 
-TEST(SunriseSunset, TransitAnchoredToMeeusEquationOfTime) {
+TEST(RiseSet, TransitAnchoredToMeeusEquationOfTime) {
   // Meeus Example 28.a: 1992 October 13, 0h TD — E = +3°.427351 = +13.70940 min. E > 0 means
   // the true Sun crosses the meridian before the mean sun, so at Greenwich the transit falls
   // at ≈ 12h − E of mean time (= UT). This is the one assertion in this file tied to a value
   // from OUTSIDE the computation chain: the self-consistency tests (H(transit) ≈ 0 etc.) run
-  // solver and checker through the same `detail::sun_local`, so a systematic error — e.g.
+  // solver and checker through the same `detail::body_local`, so a systematic error — e.g.
   // feeding TT to the sidereal-time step — cancels out of them, but not out of this one.
   // Tolerance ±20 s: E drifts only a few seconds between 0h TD and the ~11h46m transit, and
   // the model differences are ~1 s; a UT1/TT mixup would shift the transit by ΔT ≈ 59 s
   // (epoch 1992), i.e. ~3x this tolerance.
   const auto ymd = util::to_ymd(1992, 10, 13);
-  const double transit = transit_jde(ymd, loc(51.4769, 0.0)); // Greenwich; latitude does not move the transit.
+  const double transit = sun::transit_jde(ymd, loc(51.4769, 0.0)); // Greenwich; latitude does not move the transit.
 
   const auto ut1 = astro::julian_day::jde_to_ut1(transit);
   ASSERT_EQ(ut1.ymd, ymd);
@@ -193,36 +193,36 @@ TEST(SunriseSunset, TransitAnchoredToMeeusEquationOfTime) {
   ASSERT_NEAR(ut1.fraction(), expected_fraction, 20.0 / 86400.0);
 }
 
-TEST(SunriseSunset, TransitIsUpperCulmination) {
+TEST(RiseSet, TransitIsUpperCulmination) {
   const auto ymd = util::to_ymd(2024, 9, 22);
-  const double transit = transit_jde(ymd, LONDON);
+  const double transit = sun::transit_jde(ymd, LONDON);
 
-  const double h_transit = detail::sun_altitude(transit, LONDON).deg();
-  ASSERT_GT(h_transit, detail::sun_altitude(transit - (2.0 / 24.0), LONDON).deg());
-  ASSERT_GT(h_transit, detail::sun_altitude(transit + (2.0 / 24.0), LONDON).deg());
+  const double h_transit = detail::altitude(transit, LONDON, sun::provider).deg();
+  ASSERT_GT(h_transit, detail::altitude(transit - (2.0 / 24.0), LONDON, sun::provider).deg());
+  ASSERT_GT(h_transit, detail::altitude(transit + (2.0 / 24.0), LONDON, sun::provider).deg());
 }
 
-TEST(SunriseSunset, RiseSetAltitudeIsH0) {
+TEST(RiseSet, RiseSetAltitudeIsH0) {
   const std::vector<std::tuple<std::chrono::year_month_day, GeoLocation, AngleDeg>> cases {
-    { util::to_ymd(2024, 3, 20), LONDON,  STANDARD_ALTITUDE },
-    { util::to_ymd(2024, 6, 21), BEIJING, STANDARD_ALTITUDE },
-    { util::to_ymd(2024, 12, 21), SYDNEY, STANDARD_ALTITUDE },
-    { util::to_ymd(2024, 3, 20), LONDON,  CIVIL_TWILIGHT    },
-    { util::to_ymd(2024, 3, 20), LONDON,  ASTRONOMICAL_TWILIGHT },
+    { util::to_ymd(2024, 3, 20), LONDON,  sun::STANDARD_ALTITUDE },
+    { util::to_ymd(2024, 6, 21), BEIJING, sun::STANDARD_ALTITUDE },
+    { util::to_ymd(2024, 12, 21), SYDNEY, sun::STANDARD_ALTITUDE },
+    { util::to_ymd(2024, 3, 20), LONDON,  sun::CIVIL_TWILIGHT    },
+    { util::to_ymd(2024, 3, 20), LONDON,  sun::ASTRONOMICAL_TWILIGHT },
   };
 
   for (const auto& [ymd, location, h0] : cases) {
-    const auto result = calculate(ymd, location, h0);
-    ASSERT_TRUE(result.sunrise_jde.has_value());
-    ASSERT_TRUE(result.sunset_jde.has_value());
+    const auto result = sun::calculate(ymd, location, h0);
+    ASSERT_TRUE(result.rise_jde.has_value());
+    ASSERT_TRUE(result.set_jde.has_value());
 
     // 0.001° ≈ 0.36". At typical crossing rates (~200°/day) that is ~0.4 s of time.
-    ASSERT_NEAR(detail::sun_altitude(req(result.sunrise_jde), location).deg(), h0.deg(), 0.001);
-    ASSERT_NEAR(detail::sun_altitude(req(result.sunset_jde), location).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::altitude(req(result.rise_jde), location, sun::provider).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::altitude(req(result.set_jde), location, sun::provider).deg(), h0.deg(), 0.001);
   }
 }
 
-TEST(SunriseSunset, OrderIsCorrect) {
+TEST(RiseSet, OrderIsCorrect) {
   const std::vector<std::pair<std::chrono::year_month_day, GeoLocation>> cases {
     { util::to_ymd(2024, 6, 21), BEIJING },
     { util::to_ymd(2024, 12, 21), BEIJING },
@@ -231,114 +231,108 @@ TEST(SunriseSunset, OrderIsCorrect) {
   };
 
   for (const auto& [ymd, location] : cases) {
-    const auto result = calculate(ymd, location);
-    ASSERT_TRUE(result.sunrise_jde.has_value());
-    ASSERT_TRUE(result.sunset_jde.has_value());
-    ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
-    ASSERT_LT(result.transit_jde, req(result.sunset_jde));
-    ASSERT_FALSE(result.is_polar_day);
-    ASSERT_FALSE(result.is_polar_night);
+    const auto result = sun::calculate(ymd, location);
+    ASSERT_TRUE(result.rise_jde.has_value());
+    ASSERT_TRUE(result.set_jde.has_value());
+    ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
+    ASSERT_LT(req(result.transit_jde), req(result.set_jde));
+    ASSERT_EQ(result.polar, Polar::NONE);
   }
 }
 
-TEST(SunriseSunset, TwilightOrder) {
+TEST(RiseSet, TwilightOrder) {
   // At 40°N the midsummer Sun still dips to ~-26.6°, so all three twilights exist.
   const auto ymd = util::to_ymd(2024, 6, 21);
 
-  const auto r_standard = calculate(ymd, MIDLAT_0E, STANDARD_ALTITUDE);
-  const auto r_civil    = calculate(ymd, MIDLAT_0E, CIVIL_TWILIGHT);
-  const auto r_nautical = calculate(ymd, MIDLAT_0E, NAUTICAL_TWILIGHT);
-  const auto r_astro    = calculate(ymd, MIDLAT_0E, ASTRONOMICAL_TWILIGHT);
+  const auto r_standard = sun::calculate(ymd, MIDLAT_0E, sun::STANDARD_ALTITUDE);
+  const auto r_civil    = sun::calculate(ymd, MIDLAT_0E, sun::CIVIL_TWILIGHT);
+  const auto r_nautical = sun::calculate(ymd, MIDLAT_0E, sun::NAUTICAL_TWILIGHT);
+  const auto r_astro    = sun::calculate(ymd, MIDLAT_0E, sun::ASTRONOMICAL_TWILIGHT);
 
   for (const auto& r : { r_standard, r_civil, r_nautical, r_astro }) {
-    ASSERT_TRUE(r.sunrise_jde.has_value());
-    ASSERT_TRUE(r.sunset_jde.has_value());
+    ASSERT_TRUE(r.rise_jde.has_value());
+    ASSERT_TRUE(r.set_jde.has_value());
   }
 
   // Morning: astronomical dawn < nautical dawn < civil dawn < sunrise.
-  ASSERT_LT(req(r_astro.sunrise_jde), req(r_nautical.sunrise_jde));
-  ASSERT_LT(req(r_nautical.sunrise_jde), req(r_civil.sunrise_jde));
-  ASSERT_LT(req(r_civil.sunrise_jde), req(r_standard.sunrise_jde));
+  ASSERT_LT(req(r_astro.rise_jde), req(r_nautical.rise_jde));
+  ASSERT_LT(req(r_nautical.rise_jde), req(r_civil.rise_jde));
+  ASSERT_LT(req(r_civil.rise_jde), req(r_standard.rise_jde));
 
   // Evening: sunset < civil dusk < nautical dusk < astronomical dusk.
-  ASSERT_LT(req(r_standard.sunset_jde), req(r_civil.sunset_jde));
-  ASSERT_LT(req(r_civil.sunset_jde), req(r_nautical.sunset_jde));
-  ASSERT_LT(req(r_nautical.sunset_jde), req(r_astro.sunset_jde));
+  ASSERT_LT(req(r_standard.set_jde), req(r_civil.set_jde));
+  ASSERT_LT(req(r_civil.set_jde), req(r_nautical.set_jde));
+  ASSERT_LT(req(r_nautical.set_jde), req(r_astro.set_jde));
 }
 
-TEST(SunriseSunset, EquatorDayLength) {
+TEST(RiseSet, EquatorDayLength) {
   // At the equator the day is close to 12h all year; h₀ = -50' stretches it by a few minutes.
   for (int month = 1; month <= 12; ++month) {
     const auto ymd = util::to_ymd(2024, month, 15);
-    const auto result = calculate(ymd, EQUATOR);
+    const auto result = sun::calculate(ymd, EQUATOR);
 
-    ASSERT_TRUE(result.sunrise_jde.has_value());
-    ASSERT_TRUE(result.sunset_jde.has_value());
+    ASSERT_TRUE(result.rise_jde.has_value());
+    ASSERT_TRUE(result.set_jde.has_value());
 
-    const double day_length = req(result.sunset_jde) - req(result.sunrise_jde);
+    const double day_length = req(result.set_jde) - req(result.rise_jde);
     ASSERT_NEAR(day_length, 0.5, 30.0 / (24.0 * 60.0)) << "month=" << month; // 12h ± 30 min.
   }
 }
 
-TEST(SunriseSunset, RiseSetSymmetryAroundTransit) {
+TEST(RiseSet, RiseSetSymmetryAroundTransit) {
   // δ drifts slowly, so morning and afternoon half-arcs agree to well under a minute — but
   // assert only a loose bound to keep the test about symmetry, not about δ's exact rate.
-  const auto result = calculate(util::to_ymd(2024, 9, 22), EQUATOR);
-  ASSERT_TRUE(result.sunrise_jde.has_value());
-  ASSERT_TRUE(result.sunset_jde.has_value());
+  const auto result = sun::calculate(util::to_ymd(2024, 9, 22), EQUATOR);
+  ASSERT_TRUE(result.rise_jde.has_value());
+  ASSERT_TRUE(result.set_jde.has_value());
 
-  const double morning = result.transit_jde - req(result.sunrise_jde);
-  const double evening = req(result.sunset_jde) - result.transit_jde;
+  const double morning = req(result.transit_jde) - req(result.rise_jde);
+  const double evening = req(result.set_jde) - req(result.transit_jde);
   ASSERT_NEAR(morning, evening, 0.01);
 }
 
-TEST(SunriseSunset, PolarDayAndPolarNight) {
+TEST(RiseSet, PolarDayAndPolarNight) {
   // Tromsø (69.65°N) is inside the Arctic Circle: midnight sun in June, polar night in December.
-  const auto summer = calculate(util::to_ymd(2024, 6, 21), TROMSO);
-  ASSERT_FALSE(summer.sunrise_jde.has_value());
-  ASSERT_FALSE(summer.sunset_jde.has_value());
-  ASSERT_TRUE(summer.is_polar_day);
-  ASSERT_FALSE(summer.is_polar_night);
+  const auto summer = sun::calculate(util::to_ymd(2024, 6, 21), TROMSO);
+  ASSERT_FALSE(summer.rise_jde.has_value());
+  ASSERT_FALSE(summer.set_jde.has_value());
+  ASSERT_EQ(summer.polar, Polar::DAY);
 
-  const auto winter = calculate(util::to_ymd(2024, 12, 21), TROMSO);
-  ASSERT_FALSE(winter.sunrise_jde.has_value());
-  ASSERT_FALSE(winter.sunset_jde.has_value());
-  ASSERT_FALSE(winter.is_polar_day);
-  ASSERT_TRUE(winter.is_polar_night);
+  const auto winter = sun::calculate(util::to_ymd(2024, 12, 21), TROMSO);
+  ASSERT_FALSE(winter.rise_jde.has_value());
+  ASSERT_FALSE(winter.set_jde.has_value());
+  ASSERT_EQ(winter.polar, Polar::NIGHT);
 
   // In the December polar night the Sun still culminates at ~-3.1°, above the civil-twilight
   // altitude — so civil dawn/dusk exist even though sunrise/sunset do not.
-  const auto winter_civil = calculate(util::to_ymd(2024, 12, 21), TROMSO, CIVIL_TWILIGHT);
-  ASSERT_TRUE(winter_civil.sunrise_jde.has_value());
-  ASSERT_TRUE(winter_civil.sunset_jde.has_value());
-  ASSERT_FALSE(winter_civil.is_polar_day);
-  ASSERT_FALSE(winter_civil.is_polar_night);
+  const auto winter_civil = sun::calculate(util::to_ymd(2024, 12, 21), TROMSO, sun::CIVIL_TWILIGHT);
+  ASSERT_TRUE(winter_civil.rise_jde.has_value());
+  ASSERT_TRUE(winter_civil.set_jde.has_value());
+  ASSERT_EQ(winter_civil.polar, Polar::NONE);
 }
 
-TEST(SunriseSunset, PolarNightOnsetWeekIsCoherent) {
+TEST(RiseSet, PolarNightOnsetWeekIsCoherent) {
   // Tromsø's polar night (h₀ = -50') begins in the last days of November. Scan the onset
   // window: every day must be exactly one of {both events; one event + no flags; no events +
   // the night flag}, and once polar night starts it must persist through the window. This
-  // exercises the fallback bracket (transit → solved lower culmination) in the regime the
+  // exercises the fallback bracket (transit → true altitude minimum) in the regime the
   // review flagged: short nights centered near the lower culmination.
   bool seen_polar_night = false;
 
   for (int day = 20; day <= 30; ++day) {
-    const auto result = calculate(util::to_ymd(2024, 11, day), TROMSO);
-    const int events = static_cast<int>(result.sunrise_jde.has_value())
-                     + static_cast<int>(result.sunset_jde.has_value());
+    const auto result = sun::calculate(util::to_ymd(2024, 11, day), TROMSO);
+    const int events = static_cast<int>(result.rise_jde.has_value())
+                     + static_cast<int>(result.set_jde.has_value());
 
     if (events == 0) {
-      ASSERT_TRUE(result.is_polar_night) << "day=" << day; // November at 69.65°N: night, never day.
-      ASSERT_FALSE(result.is_polar_day) << "day=" << day;
+      ASSERT_EQ(result.polar, Polar::NIGHT) << "day=" << day; // November at 69.65°N: night, never day.
       seen_polar_night = true;
     } else {
-      ASSERT_FALSE(result.is_polar_day) << "day=" << day;
-      ASSERT_FALSE(result.is_polar_night) << "day=" << day;
+      ASSERT_EQ(result.polar, Polar::NONE) << "day=" << day;
       ASSERT_FALSE(seen_polar_night) << "day=" << day; // No coming back out of the night in this window.
       if (events == 2) {
-        ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
-        ASSERT_LT(result.transit_jde, req(result.sunset_jde));
+        ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
+        ASSERT_LT(req(result.transit_jde), req(result.set_jde));
       }
     }
   }
@@ -346,7 +340,7 @@ TEST(SunriseSunset, PolarNightOnsetWeekIsCoherent) {
   ASSERT_TRUE(seen_polar_night); // The onset falls inside the scanned window.
 }
 
-TEST(SunriseSunset, MidnightSunOnsetWeekIsCoherent) {
+TEST(RiseSet, MidnightSunOnsetWeekIsCoherent) {
   // The mirror window: Tromsø's midnight sun begins in mid-May. This is the only regime where
   // one-sided days (a rise or set alone, both flags false) can occur — the nights collapse one
   // side at a time around the lower culminations — so the scan exercises that branch when the
@@ -354,20 +348,18 @@ TEST(SunriseSunset, MidnightSunOnsetWeekIsCoherent) {
   bool seen_polar_day = false;
 
   for (int day = 12; day <= 24; ++day) {
-    const auto result = calculate(util::to_ymd(2024, 5, day), TROMSO);
-    const int events = static_cast<int>(result.sunrise_jde.has_value())
-                     + static_cast<int>(result.sunset_jde.has_value());
+    const auto result = sun::calculate(util::to_ymd(2024, 5, day), TROMSO);
+    const int events = static_cast<int>(result.rise_jde.has_value())
+                     + static_cast<int>(result.set_jde.has_value());
 
     if (events == 0) {
-      ASSERT_TRUE(result.is_polar_day) << "day=" << day; // May at 69.65°N: day, never night.
-      ASSERT_FALSE(result.is_polar_night) << "day=" << day;
+      ASSERT_EQ(result.polar, Polar::DAY) << "day=" << day; // May at 69.65°N: day, never night.
       seen_polar_day = true;
     } else {
-      ASSERT_FALSE(result.is_polar_day) << "day=" << day;
-      ASSERT_FALSE(result.is_polar_night) << "day=" << day;
+      ASSERT_EQ(result.polar, Polar::NONE) << "day=" << day;
       if (events == 2) {
-        ASSERT_LT(req(result.sunrise_jde), result.transit_jde);
-        ASSERT_LT(result.transit_jde, req(result.sunset_jde));
+        ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
+        ASSERT_LT(req(result.transit_jde), req(result.set_jde));
       }
     }
   }
@@ -375,23 +367,23 @@ TEST(SunriseSunset, MidnightSunOnsetWeekIsCoherent) {
   ASSERT_TRUE(seen_polar_day); // The onset falls inside the scanned window.
 }
 
-TEST(SunriseSunset, InvalidInputsThrow) {
+TEST(RiseSet, InvalidInputsThrow) {
   const auto ymd = util::to_ymd(2024, 6, 21);
   constexpr double NAN_D = std::numeric_limits<double>::quiet_NaN();
 
-  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(90.5, 0.0)), std::invalid_argument);
-  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(0.0, 180.5)), std::invalid_argument);
-  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(NAN_D, 0.0)), std::invalid_argument);
-  ASSERT_THROW(std::ignore = transit_jde(ymd, loc(0.0, NAN_D)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::transit_jde(ymd, loc(90.5, 0.0)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::transit_jde(ymd, loc(0.0, 180.5)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::transit_jde(ymd, loc(NAN_D, 0.0)), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::transit_jde(ymd, loc(0.0, NAN_D)), std::invalid_argument);
 
   // An invalid gregorian date is rejected by `Datetime`'s constructor.
-  ASSERT_THROW(std::ignore = transit_jde(util::to_ymd(2024, 2, 30), EQUATOR), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::transit_jde(util::to_ymd(2024, 2, 30), EQUATOR), std::invalid_argument);
 
-  const double transit = transit_jde(ymd, EQUATOR);
-  ASSERT_THROW(std::ignore = rise_set_jde(NAN_D, true, EQUATOR), std::invalid_argument);
-  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, EQUATOR, AngleDeg { NAN_D }), std::invalid_argument);
-  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, EQUATOR, AngleDeg { 100.0 }), std::invalid_argument);
-  ASSERT_THROW(std::ignore = rise_set_jde(transit, true, loc(-91.0, 0.0)), std::invalid_argument);
+  const double transit = sun::transit_jde(ymd, EQUATOR);
+  ASSERT_THROW(std::ignore = sun::rise_set_jde(NAN_D, true, EQUATOR), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::rise_set_jde(transit, true, EQUATOR, AngleDeg { NAN_D }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::rise_set_jde(transit, true, EQUATOR, AngleDeg { 100.0 }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = sun::rise_set_jde(transit, true, loc(-91.0, 0.0)), std::invalid_argument);
 
   // hour_angle_at_altitude is public API too: out-of-domain angles alias through sin/cos into
   // physically meaningless H₀ values, so they are rejected rather than returned (per review).
@@ -404,7 +396,7 @@ TEST(SunriseSunset, InvalidInputsThrow) {
 }
 
 
-// Each bracket constant in `sunrise_sunset.hpp` carries a note arguing why it is wide enough:
+// Each bracket constant in `rise_set.hpp` carries a note arguing why it is wide enough:
 // "|EoT| ≤ 16.5 min — a 8.7x margin", and so on. Those arguments were maintained by attention —
 // shrink a bracket, widen the supported span, or swap a model, and the number beside it does not
 // object. The three tests below sweep the span, measure the deviation each bracket actually has
@@ -517,7 +509,7 @@ auto margin_report(const BracketClaim& claim, const Sample& measured) -> std::st
     "\n    measured worst   : {:.6e} day ({}) at {}"
     "\n    margin left      : {:.1f}x"
     "\n  Fix: if the model or the swept span changed, re-measure and update BOTH the bound in"
-    "\n       this test and the @note on {} in src/astro/sunrise_sunset.hpp.",
+    "\n       this test and the @note on {} in src/astro/rise_set.hpp.",
     claim.constant, claim.bracket_days,
     claim.bound_days, human(claim.bound_days), claim.bracket_days / claim.bound_days,
     measured.deviation_days, human(measured.deviation_days), measured.at,
@@ -541,7 +533,7 @@ const GeoLocation SUBPOLAR_S = loc(-65.0, 0.0);
 // "simplify" these back: the reports already carry both sides of the comparison.
 
 
-TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
+TEST(RiseSet, TransitBracketCoversTheEquationOfTime) {
   constexpr BracketClaim CLAIM {
     .constant     = "TRANSIT_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = TRANSIT_BRACKET_HALF_WIDTH_DAYS,
@@ -557,7 +549,7 @@ TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
   std::vector<Sample> samples;
   for (const int year : sampled_years(250)) {
     for (const auto& ymd : sampled_days(year)) {
-      const double transit = transit_jde(ymd, EQUATOR);
+      const double transit = sun::transit_jde(ymd, EQUATOR);
       samples.push_back({
         .deviation_days = std::fabs(transit - local_mean_noon_jde(ymd, EQUATOR)),
         .at = date_str(ymd),
@@ -571,25 +563,31 @@ TEST(SunriseSunset, TransitBracketCoversTheEquationOfTime) {
   }
 }
 
-TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
+TEST(RiseSet, MinSearchWindowRetainsMargin) {
   constexpr BracketClaim CLAIM {
-    .constant     = "LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS",
-    .bracket_days = LOWER_CULMINATION_BRACKET_HALF_WIDTH_DAYS,
-    .bound_days   = 1.85e-4, // 16.0 s; this sweep peaks at 1.7632e-4 day (15.23 s).
+    .constant     = "MIN_SEARCH_HALF_WIDTH_DAYS",
+    .bracket_days = MIN_SEARCH_HALF_WIDTH_DAYS,
+    .bound_days   = 1.86e-4, // 16.1 s; this sweep peaks at 1.8518e-4 day (16.00 s). The true
+                             // minimum deviates slightly more than the old H = ±180° solve did
+                             // (15.23 s) — it also absorbs the dδ/dt shift, which is the point.
   };
   if (CLAIM.bracket_days < CLAIM.bound_days * MIN_BRACKET_MARGIN) {
     FAIL() << narrowed_report(CLAIM);
   }
 
+  // A minimum outside the search window reads as the argmin pinning to the window's edge —
+  // deviation ≈ the full half-width — so this gate keeps teeth even though the search is
+  // bounded by construction.
   std::vector<Sample> samples;
   for (const int year : sampled_years(250)) {
     for (const auto& ymd : sampled_days(year)) {
-      const double transit = transit_jde(ymd, EQUATOR);
+      const double transit = sun::transit_jde(ymd, EQUATOR);
       for (const bool before : { true, false }) {
-        const double culmination = detail::lower_culmination_jde(transit, before, EQUATOR);
-        const double estimate = before ? transit - HALF_SOLAR_DAY_DAYS : transit + HALF_SOLAR_DAY_DAYS;
+        const double argmin = detail::min_altitude_jde(transit, before, EQUATOR, sun::provider);
+        const double estimate = before ? transit - LOWER_CULMINATION_OFFSET_DAYS
+                                       : transit + LOWER_CULMINATION_OFFSET_DAYS;
         samples.push_back({
-          .deviation_days = std::fabs(culmination - estimate),
+          .deviation_days = std::fabs(argmin - estimate),
           .at = std::format("{} ({})", date_str(ymd), before ? "before transit" : "after transit"),
         });
       }
@@ -602,7 +600,7 @@ TEST(SunriseSunset, LowerCulminationBracketRetainsMargin) {
   }
 }
 
-TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
+TEST(RiseSet, RiseSetBracketRetainsMargin) {
   constexpr BracketClaim CLAIM {
     .constant     = "RISE_SET_BRACKET_HALF_WIDTH_DAYS",
     .bracket_days = RISE_SET_BRACKET_HALF_WIDTH_DAYS,
@@ -618,25 +616,25 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
   for (const int year : { FIRST_YEAR, 2026, 5000, LAST_YEAR }) {
     for (const auto& ymd : sampled_days(year)) {
       for (const auto& location : { SUBPOLAR_N, SUBPOLAR_S }) {
-        const double transit = transit_jde(ymd, location);
-        const auto eq = astro::sun::equatorial_coord::apparent(transit);
-        const auto H0 = hour_angle_at_altitude(eq.δ, location.latitude, STANDARD_ALTITUDE);
+        const double transit = sun::transit_jde(ymd, location);
+        const auto eq = sun::provider(transit);
+        const auto H0 = hour_angle_at_altitude(eq.δ, location.latitude, sun::STANDARD_ALTITUDE);
         if (not H0.has_value()) {
           continue; // Polar day or night: no crossing to bracket.
         }
 
-        for (const bool is_sunrise : { true, false }) {
-          const auto root = rise_set_jde(transit, is_sunrise, location, STANDARD_ALTITUDE);
+        for (const bool is_rise : { true, false }) {
+          const auto root = sun::rise_set_jde(transit, is_rise, location, sun::STANDARD_ALTITUDE);
           if (not root.has_value()) {
             continue;
           }
-          const double sign = is_sunrise ? -1.0 : 1.0;
+          const double sign = is_rise ? -1.0 : 1.0;
           const double estimate =
             transit + (sign * (req(H0).deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY));
           samples.push_back({
             .deviation_days = std::fabs(req(root) - estimate),
             .at = std::format("{} at latitude {:+.0f}° ({})", date_str(ymd),
-                              location.latitude.deg(), is_sunrise ? "sunrise" : "sunset"),
+                              location.latitude.deg(), is_rise ? "rise" : "set"),
           });
         }
       }
@@ -649,4 +647,4 @@ TEST(SunriseSunset, RiseSetBracketRetainsMargin) {
   }
 }
 
-} // namespace astro::sunrise_sunset::test
+} // namespace astro::rise_set::test

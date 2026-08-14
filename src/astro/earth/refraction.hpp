@@ -71,7 +71,7 @@ enum class Model : uint8_t { BENNETT, SAEMUNDSSON };
 /**
  * @brief Atmospheric conditions for refraction calculations.
  * @note Defaults (15°C / 1013.25 hPa / Bennett) reproduce the historical −34′ horizon refraction
- *       used by `sunrise_sunset::STANDARD_ALTITUDE` to within 0.02′.
+ *       used by `rise_set::sun::STANDARD_ALTITUDE` to within 0.02′.
  */
 struct Params {
   double temperature_c = 15.0;   // °C

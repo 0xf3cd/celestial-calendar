@@ -78,10 +78,10 @@ TEST(Refraction, SaemundssonAtHorizonIsConsistentWithBennett) {
 
 
 TEST(Refraction, H0FromDefaultsMatchesStandardAltitude) {
-  // The default params must reproduce `sunrise_sunset::STANDARD_ALTITUDE` to within 0.02′.
-  const auto h0 = astro::sunrise_sunset::h0_from(Params {});
+  // The default params must reproduce `rise_set::sun::STANDARD_ALTITUDE` to within 0.02′.
+  const auto h0 = astro::rise_set::sun::h0_from(Params {});
 
-  ASSERT_NEAR(h0.deg(), astro::sunrise_sunset::STANDARD_ALTITUDE.deg(),
+  ASSERT_NEAR(h0.deg(), astro::rise_set::sun::STANDARD_ALTITUDE.deg(),
               AngleDeg::from_arcmin(0.02).deg());
 }
 
@@ -178,9 +178,9 @@ TEST(Refraction, SaemundssonDecreasesWithTrueAltitude) {
 TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
   // Using `h0_from(Params{})` instead of the default `STANDARD_ALTITUDE` should not move
   // sunrise/sunset times at low/mid latitudes by more than 0.1 s.
-  using astro::sunrise_sunset::calculate;
-  using astro::sunrise_sunset::GeoLocation;
-  using astro::sunrise_sunset::h0_from;
+  using astro::rise_set::sun::calculate;
+  using astro::rise_set::GeoLocation;
+  using astro::rise_set::sun::h0_from;
 
   const auto ymd = util::to_ymd(2024, 6, 21);
   const std::vector<GeoLocation> locations {
@@ -193,15 +193,15 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
     const auto r_default = calculate(ymd, location);
     const auto r_params = calculate(ymd, location, h0_from(Params {}));
 
-    ASSERT_TRUE(r_default.sunrise_jde.has_value());
-    ASSERT_TRUE(r_default.sunset_jde.has_value());
-    ASSERT_TRUE(r_params.sunrise_jde.has_value());
-    ASSERT_TRUE(r_params.sunset_jde.has_value());
+    ASSERT_TRUE(r_default.rise_jde.has_value());
+    ASSERT_TRUE(r_default.set_jde.has_value());
+    ASSERT_TRUE(r_params.rise_jde.has_value());
+    ASSERT_TRUE(r_params.set_jde.has_value());
 
     const double tol_days = 0.1 / 86400.0;
-    ASSERT_NEAR(req(r_default.sunrise_jde), req(r_params.sunrise_jde), tol_days)
+    ASSERT_NEAR(req(r_default.rise_jde), req(r_params.rise_jde), tol_days)
       << "lat=" << location.latitude.deg();
-    ASSERT_NEAR(req(r_default.sunset_jde), req(r_params.sunset_jde), tol_days)
+    ASSERT_NEAR(req(r_default.set_jde), req(r_params.set_jde), tol_days)
       << "lat=" << location.latitude.deg();
   }
 }

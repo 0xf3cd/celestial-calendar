@@ -33,5 +33,5 @@
 #include "sun.hpp"
 #include "moon.hpp"
 #include "moon_phase.hpp"
-#include "sunrise_sunset.hpp"
+#include "rise_set.hpp"
 #include "solar_time.hpp"

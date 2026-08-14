@@ -21,7 +21,6 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -31,7 +30,7 @@
 #include <gtest/gtest.h>
 
 #include "util.hpp"
-#include "sunrise_sunset.hpp"
+#include "rise_set.hpp"
 
 // End-to-end golden dataset for sunrise/sunset/twilight (#44), collected 2026-07-27 by
 // `statistics/sunrise_golden_crawler.py`:
@@ -50,11 +49,11 @@
 // (±0.5 min quantization) and agree pairwise within 1 min; this library's measured worst
 // residual over all 143 golden time values is 0.55 min (2026-07-27), a 3.6× margin.
 // A TT/UT1 mixup (~69 s) is inside this tolerance by design — that axis is pinned by the
-// Meeus Example 28.a anchor (±20 s) in sunrise_sunset_test.cpp, not here.
+// Meeus Example 28.a anchor (±20 s) in rise_set_test.cpp, not here.
 
-namespace astro::sunrise_sunset::test {
+namespace astro::rise_set::test {
 
-using namespace astro::sunrise_sunset;
+using namespace astro::rise_set;
 using astro::toolbox::AngleDeg;
 
 namespace {
@@ -63,6 +62,19 @@ constexpr double TOL_MIN = 2.0;
 
 constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
   return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
+}
+
+/**
+ * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
+ *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper
+ *        rather than NOLINT-ing every access.
+ */
+template <typename T>
+auto req(const std::optional<T>& opt) -> const T& {
+  if (not opt.has_value()) {
+    throw std::logic_error { "expected optional to hold a value" };
+  }
+  return *opt;
 }
 
 /** @brief Parse "HH:MM" / "HH:MM:SS" into minutes-of-day; blank cell → `nullopt`. */
@@ -155,9 +167,9 @@ const std::vector<GoldenRow> USNO_ROWS {
   {  9, 23,   40.71,   -74.01,  -5, "05:17", "05:45", "11:48", "17:51", "18:19", false, false },  // NewYork
   { 12, 21,   40.71,   -74.01,  -5, "06:46", "07:17", "11:54", "16:32", "17:03", false, false },  // NewYork
   {  3, 20,  -33.87,   151.21,  10, "05:33", "05:58", "12:03", "18:07", "18:32", false, false },  // Sydney
-  {  6, 21,  -33.87,   151.21,  10, "06:32", "07:00", "11:57", "16:54", "17:22", false, false },  // Sydney
-  {  9, 23,  -33.87,   151.21,  10, "05:19", "05:44", "11:48", "17:52", "18:17", false, false },  // Sydney
-  { 12, 21,  -33.87,   151.21,  10, "04:11", "04:41", "11:53", "19:05", "19:35", false, false },  // Sydney
+  {  6, 21,   -33.87,   151.21,  10, "06:32", "07:00", "11:57", "16:54", "17:22", false, false },  // Sydney
+  {  9, 23,   -33.87,   151.21,  10, "05:19", "05:44", "11:48", "17:52", "18:17", false, false },  // Sydney
+  { 12, 21,   -33.87,   151.21,  10, "04:11", "04:41", "11:53", "19:05", "19:35", false, false },  // Sydney
   {  3, 20,   69.65,    18.96,   1, "04:44", "05:44", "11:52", "18:01", "19:02", false, false },  // Tromso
   {  6, 21,   69.65,    18.96,   1, "     ", "     ", "11:46", "     ", "     ", true , false },  // Tromso
   {  9, 23,   69.65,    18.96,   1, "04:27", "05:28", "11:37", "17:43", "18:43", false, false },  // Tromso
@@ -189,33 +201,34 @@ const std::vector<TwilightRow> TWILIGHT_ROWS {
 }  // namespace
 
 
-TEST(SunriseSunsetGolden, UsnoRiseTransitSet) {
+TEST(RiseSetGolden, UsnoRiseTransitSet) {
   for (const auto& row : USNO_ROWS) {
     const auto ymd = util::to_ymd(2026, row.month, row.day);
-    const Result result = calculate(ymd, loc(row.lat, row.lon));
+    const Result result = sun::calculate(ymd, loc(row.lat, row.lon));
     const auto tag = std::to_string(row.month) + "-" + std::to_string(row.day)
                    + " @ " + std::to_string(row.lat);
 
-    ASSERT_EQ(result.is_polar_day, row.polar_day) << tag;
-    ASSERT_EQ(result.is_polar_night, row.polar_night) << tag;
-    expect_event(result.sunrise_jde, row.rise, row.tz, tag + " rise");
-    expect_event(result.sunset_jde, row.set, row.tz, tag + " set");
+    ASSERT_EQ(result.polar == Polar::DAY, row.polar_day) << tag;
+    ASSERT_EQ(result.polar == Polar::NIGHT, row.polar_night) << tag;
+    expect_event(result.rise_jde, row.rise, row.tz, tag + " rise");
+    expect_event(result.set_jde, row.set, row.tz, tag + " set");
     if (cell_minutes(row.transit).has_value()) {
       expect_event(result.transit_jde, row.transit, row.tz, tag + " transit");
     }
 
     // Pin the day axis: `clock_diff` alone is day-blind, and consecutive-day transits differ
     // only by the equation-of-time drift (≪ tolerance). The transit is ~local noon, so its
-    // local-standard date must be the queried date on every row.
-    const double jd_local = detail::jde_tt_to_jd_ut1(result.transit_jde) + (row.tz / 24.0);
+    // local-standard date must be the queried date on every row. The solar API is
+    // transit-centered, so the transit always has a value here.
+    const double jd_local = detail::jde_tt_to_jd_ut1(req(result.transit_jde)) + (row.tz / 24.0);
     ASSERT_EQ(astro::julian_day::jd_to_ut1(jd_local).ymd, ymd) << tag << " transit date";
   }
 }
 
-TEST(SunriseSunsetGolden, UsnoCivilTwilight) {
+TEST(RiseSetGolden, UsnoCivilTwilight) {
   for (const auto& row : USNO_ROWS) {
     const auto ymd = util::to_ymd(2026, row.month, row.day);
-    const Result result = calculate(ymd, loc(row.lat, row.lon), CIVIL_TWILIGHT);
+    const Result result = sun::calculate(ymd, loc(row.lat, row.lon), sun::CIVIL_TWILIGHT);
     const auto tag = std::to_string(row.month) + "-" + std::to_string(row.day)
                    + " @ " + std::to_string(row.lat) + " civil";
 
@@ -226,32 +239,32 @@ TEST(SunriseSunsetGolden, UsnoCivilTwilight) {
     // horizon with crossings (Tromsø December) is no polar anything at −6°.
     const bool has_civil = cell_minutes(row.civil_dawn).has_value()
                         or cell_minutes(row.civil_dusk).has_value();
-    ASSERT_EQ(result.is_polar_day, not has_civil and not row.polar_night) << tag;
-    ASSERT_EQ(result.is_polar_night, not has_civil and row.polar_night) << tag;
-    expect_event(result.sunrise_jde, row.civil_dawn, row.tz, tag + " dawn");
-    expect_event(result.sunset_jde, row.civil_dusk, row.tz, tag + " dusk");
+    ASSERT_EQ(result.polar == Polar::DAY, not has_civil and not row.polar_night) << tag;
+    ASSERT_EQ(result.polar == Polar::NIGHT, not has_civil and row.polar_night) << tag;
+    expect_event(result.rise_jde, row.civil_dawn, row.tz, tag + " dawn");
+    expect_event(result.set_jde, row.civil_dusk, row.tz, tag + " dusk");
   }
 }
 
-TEST(SunriseSunsetGolden, SkyfieldDeepTwilights) {
+TEST(RiseSetGolden, SkyfieldDeepTwilights) {
   for (const auto& row : TWILIGHT_ROWS) {
     const auto ymd = util::to_ymd(2026, row.month, row.day);
     const auto tag = std::to_string(row.month) + "-" + std::to_string(row.day)
                    + " @ " + std::to_string(row.lat);
 
-    const Result nautical = calculate(ymd, loc(row.lat, row.lon), NAUTICAL_TWILIGHT);
-    expect_event(nautical.sunrise_jde, row.nautical_dawn, row.tz, tag + " nautical dawn");
-    expect_event(nautical.sunset_jde, row.nautical_dusk, row.tz, tag + " nautical dusk");
+    const Result nautical = sun::calculate(ymd, loc(row.lat, row.lon), sun::NAUTICAL_TWILIGHT);
+    expect_event(nautical.rise_jde, row.nautical_dawn, row.tz, tag + " nautical dawn");
+    expect_event(nautical.set_jde, row.nautical_dusk, row.tz, tag + " nautical dusk");
 
-    const Result astronomical = calculate(ymd, loc(row.lat, row.lon), ASTRONOMICAL_TWILIGHT);
-    expect_event(astronomical.sunrise_jde, row.astronomical_dawn, row.tz, tag + " astronomical dawn");
-    expect_event(astronomical.sunset_jde, row.astronomical_dusk, row.tz, tag + " astronomical dusk");
+    const Result astronomical = sun::calculate(ymd, loc(row.lat, row.lon), sun::ASTRONOMICAL_TWILIGHT);
+    expect_event(astronomical.rise_jde, row.astronomical_dawn, row.tz, tag + " astronomical dawn");
+    expect_event(astronomical.set_jde, row.astronomical_dusk, row.tz, tag + " astronomical dusk");
     // London's June solstice Sun never reaches −18°: "polar day" at that altitude. All rows
     // here keep the transit-time Sun above −18°, so empty cells always mean polar day; a
     // future polar-night-at-−18° row would need a flag column like `GoldenRow`'s.
-    ASSERT_EQ(astronomical.is_polar_day, not cell_minutes(row.astronomical_dawn).has_value()) << tag;
-    ASSERT_FALSE(astronomical.is_polar_night) << tag;
+    ASSERT_EQ(astronomical.polar == Polar::DAY, not cell_minutes(row.astronomical_dawn).has_value()) << tag;
+    ASSERT_FALSE(astronomical.polar == Polar::NIGHT) << tag;
   }
 }
 
-}  // namespace astro::sunrise_sunset::test
+}  // namespace astro::rise_set::test
