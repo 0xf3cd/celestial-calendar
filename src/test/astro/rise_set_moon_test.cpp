@@ -32,6 +32,7 @@
 
 #include "util.hpp"
 #include "rise_set.hpp"
+#include "rise_set_test_helper.hpp"
 
 // Unit-level pins for the lunar entry points (#62) — semantics and coherence properties that
 // do not need external data. External accuracy is pinned by rise_set_moon_golden_test.cpp
@@ -44,21 +45,8 @@ using astro::toolbox::AngleDeg;
 
 namespace {
 
-constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
-}
-
 const GeoLocation BEIJING = loc( 39.9042, 116.4074);
 const GeoLocation EQUATOR = loc(  0.0,      0.0);
-
-/** @brief Checked unwrap for assertions; see rise_set_test.cpp. */
-template <typename T>
-auto req(const std::optional<T>& opt) -> const T& {
-  if (not opt.has_value()) {
-    throw std::logic_error { "expected optional to hold a value" };
-  }
-  return *opt;
-}
 
 } // anonymous namespace
 
@@ -114,8 +102,10 @@ TEST(RiseSetMoon, OrderIsCorrectWhenAllThreeExist) {
 TEST(RiseSetMoon, ThirtyDayScanIsCoherent) {
   // A 30-day Beijing scan exercises every branch of the day-window engine: normal days,
   // the skipped-moonrise day, and transit-less days. The properties pinned here are the
-  // almanac semantics themselves: at most one event of each kind per UT date, instants
-  // strictly inside the date, consecutive same-kind events 24–26 h apart, no duplicates.
+  // UT-day window semantics at MID-LATITUDE: at most one event of each kind per UT date
+  // (high-latitude standstill days can have two — see moon::calculate's note and the
+  // 2026-05-14 golden row), instants strictly inside the date, consecutive same-kind
+  // events 24–26 h apart, no duplicates.
   int rise_less = 0;
   int transit_less = 0;
   std::optional<double> prev_rise;
@@ -156,6 +146,60 @@ TEST(RiseSetMoon, ThirtyDayScanIsCoherent) {
   // No instant may be attributed to two dates — the UT-day windows partition the timeline.
   std::ranges::sort(all_events);
   ASSERT_EQ(std::ranges::adjacent_find(all_events), all_events.end());
+}
+
+TEST(RiseSetMoon, TransitInWindowHandlesNonUnitWindows) {
+  // The estimate must not scale with the window length (R1: it once multiplied by
+  // `window_days`, silently correct only for the 1-day windows `calculate_day` passes).
+  // 2026-08-15 Beijing: the true lunar transit is at ~06:19 UT (fraction ≈ 0.2635).
+  const calendar::Datetime day_start { util::to_ymd(2026, 8, 15), 0.0 };
+  const double t0 = astro::julian_day::ut1_to_jde(day_start);
+
+  // A 0.3-day window containing the transit finds it, on the root (residual guard).
+  const auto found = transit_in_window(t0, t0 + 0.3, BEIJING, moon::apparent_equatorial);
+  ASSERT_TRUE(found.has_value());
+  ASSERT_NEAR(req(found), t0 + 0.2635, 2.0 / 1440.0);
+  ASSERT_NEAR(detail::body_local(req(found), BEIJING, moon::apparent_equatorial).hour_angle_deg,
+              0.0, TRANSIT_RESIDUAL_GUARD_DEG);
+
+  // A later window that day has no transit.
+  ASSERT_FALSE(transit_in_window(t0 + 0.3, t0 + 0.9, BEIJING, moon::apparent_equatorial).has_value());
+
+  // A two-day window returns the FIRST transit inside it.
+  const auto first = transit_in_window(t0, t0 + 2.0, BEIJING, moon::apparent_equatorial);
+  ASSERT_TRUE(first.has_value());
+  ASSERT_NEAR(req(first), req(found), 1e-9);
+}
+
+TEST(RiseSetMoon, TransitInWindowMeasuresAlphaRate) {
+  // Synthetic fast body: α sweeps 30°/day (2.3× the Moon's fastest). If `transit_in_window`
+  // fell back to the raw sidereal rate instead of measuring dα/dt (the R1 gate mutation that
+  // survived the suite), the estimate would miss the ±0.05-day polish bracket whenever the
+  // forward hour angle is large (error up to ~0.09 day) and the residual guard would throw.
+  // Sweeping the window start covers the full circle of forward angles.
+  const double jde0 = astro::julian_day::ut1_to_jde(
+    calendar::Datetime { util::to_ymd(2026, 8, 15), 0.0 });
+  const auto fast_body = [jde0](const double jde) -> astro::coords::EquatorialCoord {
+    return {
+      .α = AngleDeg { 30.0 * (jde - jde0) }.normalize(),
+      .δ = AngleDeg { 10.0 },
+    };
+  };
+
+  int found_count = 0;
+  for (int k = 0; k < 8; ++k) {
+    const double start = jde0 + (0.15 * k);
+    const auto transit = transit_in_window(start, start + 1.0, EQUATOR, fast_body);
+    if (not transit.has_value()) {
+      continue; // Period ~1.088 d > 1 d window: some windows legitimately hold no transit.
+    }
+    ASSERT_NEAR(detail::body_local(req(transit), EQUATOR, fast_body).hour_angle_deg,
+                0.0, TRANSIT_RESIDUAL_GUARD_DEG) << "start offset=" << 0.15 * k;
+    ++found_count;
+  }
+  // ~92% of 1-day windows hold a transit (1.0/1.088); assert a loose floor against an
+  // engine that silently finds none.
+  ASSERT_GE(found_count, 5);
 }
 
 TEST(RiseSetMoon, InvalidInputsThrow) {

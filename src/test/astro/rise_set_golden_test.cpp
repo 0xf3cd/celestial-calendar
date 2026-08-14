@@ -31,6 +31,7 @@
 
 #include "util.hpp"
 #include "rise_set.hpp"
+#include "rise_set_test_helper.hpp"
 
 // End-to-end golden dataset for sunrise/sunset/twilight (#44), collected 2026-07-27 by
 // `statistics/sunrise_golden_crawler.py`:
@@ -60,56 +61,12 @@ namespace {
 
 constexpr double TOL_MIN = 2.0;
 
-constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
-}
-
-/**
- * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
- *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper
- *        rather than NOLINT-ing every access.
- */
-template <typename T>
-auto req(const std::optional<T>& opt) -> const T& {
-  if (not opt.has_value()) {
-    throw std::logic_error { "expected optional to hold a value" };
-  }
-  return *opt;
-}
-
-/** @brief Parse "HH:MM" / "HH:MM:SS" into minutes-of-day; blank cell → `nullopt`. */
-auto cell_minutes(const std::string_view cell) -> std::optional<double> {
-  const auto first = cell.find_first_not_of(' ');
-  if (first == std::string_view::npos) {
-    return std::nullopt;
-  }
-  if (cell.size() - first < 5 or cell[first + 2] != ':') {
-    throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
-  }
-  const auto digits = [&](const size_t pos) { return (10.0 * (cell[pos] - '0')) + (cell[pos + 1] - '0'); };
-  double minutes = (60.0 * digits(first)) + digits(first + 3);
-  const auto second_colon = cell.find(':', first + 3);
-  if (second_colon != std::string_view::npos) {
-    if (second_colon != first + 5 or cell.size() - first < 8) {
-      throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
-    }
-    minutes += digits(first + 6) / 60.0;
-  }
-  return minutes;
-}
-
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): tiny comparison helpers.
 
 /** @brief Our JDE(TT) result as minutes-of-day on the site's standard-time clock. */
 auto jde_to_local_minutes(const double jde, const int tz_hours) -> double {
   const calendar::Datetime ut1 = astro::julian_day::jde_to_ut1(jde);
   return std::fmod((ut1.fraction() * 1440.0) + (tz_hours * 60.0) + 1440.0, 1440.0);
-}
-
-/** @brief |a − b| in minutes on the 24h circle, so a source's day and ours may differ. */
-auto clock_diff(const double a, const double b) -> double {
-  const double diff = std::fabs(a - b);
-  return std::min(diff, 1440.0 - diff);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)

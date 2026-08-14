@@ -14,11 +14,14 @@
 # - Source: USNO "Complete Sun and Moon Data for One Day" API (aa.usno.navy.mil/api/rstt/oneday),
 #   queried per site at tz=0, so each response lists the events of one UT day — matching
 #   `astro::rise_set::moon::calculate`'s UT-day window semantics 1:1, including empty cells
-#   (UT dates without a moonrise are routine: lunar transits are ~24.84 h apart).
-# - The consecutive-day August span captures a skipped-moonrise day at most sites; the Tromso
-#   extra rows are lunar polar day/night dates (2026 is inside the major-standstill season,
-#   so the Moon is circumpolar / never-rising at 69.65°N for several days each month — the
-#   candidate dates were located with the library's own engine, then pinned against USNO here).
+#   (UT dates without a moonrise are routine: lunar transits are ~24.84 h apart; the August
+#   span below catches skipped events at 3 of 7 sites — Singapore/Beijing rise, Quito set).
+# - The Tromso extra rows are lunar polar day/night dates (2026 is inside the major-standstill
+#   season, so the Moon is circumpolar / never-rising at 69.65°N for several days each month —
+#   the candidate dates were located with the library's own engine, then pinned against USNO
+#   here), plus one DOUBLE-RISE day (2026-05-14): USNO lists two rises in the same cell, and
+#   the library's one-event-per-cell contract reports the later one — the dict below keeps
+#   last-wins on purpose and says so loudly when it happens.
 # The script emits column-aligned C++ dataset rows to paste into
 # src/test/astro/rise_set_moon_golden_test.cpp.
 #
@@ -43,10 +46,10 @@ SITES = [
   ("Tromso",    69.65,   18.96),
 ]
 
-# Consecutive-day span per site (a skipped-moonrise day falls inside it at most longitudes),
-# plus Tromso lunar-polar dates (DAY: circumpolar; NIGHT: never rises).
+# Consecutive-day span per site, plus Tromso lunar-polar dates (DAY: circumpolar; NIGHT:
+# never rises) and the double-rise day.
 SPAN = [(2026, 8, d) for d in range(13, 18)]
-TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21)]
+TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21), (2026, 5, 14)]
 
 PHEN_KEYS = ["Rise", "Upper Transit", "Set"]
 
@@ -58,7 +61,14 @@ def fetch_usno_moon(lat: float, lon: float, y: int, m: int, d: int) -> dict:
   resp.raise_for_status()
   payload = resp.json()
   moondata = payload["properties"]["data"]["moondata"]
-  return {entry["phen"]: entry["time"] for entry in moondata}
+  times: dict[str, list[str]] = {}
+  for entry in moondata:
+    times.setdefault(entry["phen"], []).append(entry["time"])
+  for phen, vals in times.items():
+    if len(vals) > 1:
+      print(f"NOTE double event {y}-{m:02d}-{d:02d} ({lat},{lon}) {phen}: {vals} "
+            f"— keeping the later one per the library's one-event-per-cell contract", file=sys.stderr)
+  return {phen: vals[-1] for phen, vals in times.items()}
 
 
 def main() -> None:

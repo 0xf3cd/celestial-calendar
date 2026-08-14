@@ -31,17 +31,22 @@
 
 #include "util.hpp"
 #include "rise_set.hpp"
+#include "rise_set_test_helper.hpp"
 
 // End-to-end golden dataset for moonrise/moonset/lunar-transit (#62), collected 2026-08-14 by
 // `statistics/moonrise_golden_crawler.py`:
 // - Source: USNO rstt/oneday API, queried per site at tz=0, minute precision — each response
 //   lists the events of one UT day, matching `moon::calculate`'s UT-day window 1:1.
 // - Empty cell = the event does not occur on that UT date. For the Moon this is routine
-//   calendar arithmetic (transits ~24.84 h apart → one skipped moonrise every ~29.5 days),
-//   NOT a polar verdict; the Tromsø August rows also pin the true polar cases (2026 is inside
-//   the major-standstill season, so the Moon is circumpolar / never-rising at 69.65°N for
-//   several days each month — candidate dates located with the library's engine, then pinned
-//   against USNO).
+//   calendar arithmetic (transits ~24.84 h apart → one skipped moonrise every ~29.5 days;
+//   the August span catches skipped events at 3 of 7 sites — Singapore/Beijing rise, Quito
+//   set), NOT a polar verdict; the Tromsø August rows also pin the true polar cases (2026 is
+//   inside the major-standstill season, so the Moon is circumpolar / never-rising at 69.65°N
+//   for several days each month — candidate dates located with the library's engine, then
+//   pinned against USNO).
+// - The 2026-05-14 Tromsø row is a DOUBLE-RISE day: USNO lists two rises in the same cell
+//   (00:31 and 23:56); this library reports one event per cell — the later one (see
+//   `moon::calculate`'s note) — and the crawler's last-wins dict keeps 23:56 accordingly.
 // - Polar direction inference: a transit-only row means the Moon stayed above the horizon all
 //   day (USNO lists the upper culmination) → DAY; an all-blank row means it never rose → NIGHT.
 // Tolerance: ±2 min, the same contract as the solar golden set (#44) — USNO cells are
@@ -56,33 +61,10 @@ namespace {
 
 constexpr double TOL_MIN = 2.0;
 
-constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
-}
-
-/** @brief Parse "HH:MM" into minutes-of-day; blank cell → `nullopt`. */
-auto cell_minutes(const std::string_view cell) -> std::optional<double> {
-  const auto first = cell.find_first_not_of(' ');
-  if (first == std::string_view::npos) {
-    return std::nullopt;
-  }
-  if (cell.size() - first < 5 or cell[first + 2] != ':') {
-    throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
-  }
-  const auto digits = [&](const size_t pos) { return (10.0 * (cell[pos] - '0')) + (cell[pos + 1] - '0'); };
-  return (60.0 * digits(first)) + digits(first + 3);
-}
-
 /** @brief Our JDE(TT) result as minutes-of-day on the UT clock. */
 auto jde_to_ut_minutes(const double jde) -> double {
   const calendar::Datetime ut1 = astro::julian_day::jde_to_ut1(jde);
   return ut1.fraction() * 1440.0;
-}
-
-/** @brief |a − b| in minutes on the 24h circle. */
-auto clock_diff(const double a, const double b) -> double {
-  const double diff = std::fabs(a - b);
-  return std::min(diff, 1440.0 - diff);
 }
 
 void expect_event(
@@ -151,6 +133,8 @@ const std::vector<MoonRow> USNO_ROWS {
   {  8,  9,   69.65,    18.96, "     ", "07:32", "     " },  // Tromso polar day
   {  8, 20,   69.65,    18.96, "     ", "     ", "     " },  // Tromso polar night
   {  8, 21,   69.65,    18.96, "     ", "     ", "     " },  // Tromso polar night
+  {  5, 14,   69.65,    18.96, "23:56", "08:20", "17:09" },  // Tromso double-rise day: USNO
+  // lists rises 00:31 AND 23:56 in this cell; this library reports the later one (see header).
 };
 // NOLINTEND(modernize-use-designated-initializers)
 

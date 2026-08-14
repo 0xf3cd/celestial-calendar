@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <concepts>
@@ -74,10 +75,7 @@ inline constexpr double POLAR_DENOMINATOR_EPSILON = 1e-10;
  * @brief The half-width of the root bracket around a transit estimate, in days.
  * @note For the Sun the estimate is local mean noon; the true transit deviates from it by the
  *       equation of time only (≤ 20.4 min ≈ 0.0142 day across the supported span — a 7.1x margin).
- *       The same ±0.1 day window is also safe for the Moon: successive lunar transits are at
- *       least ~1.03 days apart (measured over a 40-day span, 2026-08-14 plan-review probe), so a
- *       centered ±0.1 day bracket can never reach an adjacent transit.
- *       Held by `SunriseSunset.TransitBracketCoversTheEquationOfTime` (#126).
+ *       Held by `RiseSet.TransitBracketCoversTheEquationOfTime` (#126).
  */
 inline constexpr double TRANSIT_BRACKET_HALF_WIDTH_DAYS = 0.1;
 
@@ -88,15 +86,16 @@ inline constexpr double TRANSIT_BRACKET_HALF_WIDTH_DAYS = 0.1;
  *       ±72 min is a comfortable margin. Near the polar boundary the extrapolation degrades
  *       without bound — which is why this bracket is only an accelerator: the decider is the
  *       sign check at the true altitude extremum (see `rise_set_jde`).
- *       Held out to |φ| = 65° by `SunriseSunset.RiseSetBracketRetainsMargin` (#126).
+ *       Held out to |φ| = 65° by `RiseSet.RiseSetBracketRetainsMargin` (#126).
  */
 inline constexpr double RISE_SET_BRACKET_HALF_WIDTH_DAYS = 0.05;
 
 /**
  * @brief The nominal offset of the adjacent lower culmination from a transit, in days — the
  *        mean-time *estimate* used to center the altitude-minimum search window.
- * @note This is only a search-window center, not a solved quantity: the apparent value deviates
- *       by ≤ ~15 s for the Sun, and the window half-width below dwarfs that.
+ * @note This is only a search-window center, not a solved quantity: for the Sun the true
+ *       altitude minimum deviates from the nominal half-day mark by ≤ ~16 s (measured peak
+ *       16.00 s over the supported span), and the window half-width below dwarfs that.
  */
 inline constexpr double LOWER_CULMINATION_OFFSET_DAYS = 0.5;
 
@@ -111,6 +110,15 @@ inline constexpr double LOWER_CULMINATION_OFFSET_DAYS = 0.5;
  *       days as polar (#62 mechanism 2).
  */
 inline constexpr double MIN_SEARCH_HALF_WIDTH_DAYS = 0.1;
+
+/**
+ * @brief The residual guard on a transit root, in degrees of hour angle.
+ * @note Same philosophy as `RISE_SET_RESIDUAL_GUARD_DEG`: a converged Newton solve leaves
+ *       |H| ~ 1e-7°, so this guard (4 orders looser) only fires when the bracket held no root
+ *       and `newton_method` returned a best-effort iterate — a numerical failure that must
+ *       never ship as a fake transit or a fake eventless window.
+ */
+inline constexpr double TRANSIT_RESIDUAL_GUARD_DEG = 1e-3;
 
 /**
  * @brief The residual guard on a rise/set root, in degrees of altitude.
@@ -139,10 +147,13 @@ inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
  *       in [-180°, 180°]. This is the opposite of Meeus's west-positive convention used by
  *       `sidereal::local_apparent`; the negation happens inside this namespace, so callers
  *       never deal with west-positive longitudes.
- * @note +180° and -180° name the same meridian but are NOT interchangeable here: the date
- *       input is a UT1 date, so they select transit-centered windows one day apart (local
- *       mean noon at +180° is 0h UT of that date; at -180° it is 24h UT). Pick the sign
+ * @note +180° and -180° name the same meridian but are NOT interchangeable for the
+ *       transit-centered APIs (`sun::transit_jde`, `sun::calculate`, `calculate_around_transit`):
+ *       the date input is a UT1 date, so they select transit-centered windows one day apart
+ *       (local mean noon at +180° is 0h UT of that date; at -180° it is 24h UT). Pick the sign
  *       matching the intended UT window — deliberate, same behavior as other UT-date APIs.
+ *       For the UT-day APIs (`calculate_day`, `moon::calculate`) the window is determined by
+ *       `ymd` alone, and the two signs give identical results.
  */
 struct GeoLocation {
   astro::toolbox::AngleDeg latitude;  // North-positive, [-90°, 90°].
@@ -316,6 +327,40 @@ requires std::invocable<const Func&, double>
 }
 
 /**
+ * @brief Find the global argmin of a function on [a, b]: coarse grid scan, then golden-section
+ *        refinement inside the winning cell.
+ * @note Unlike a bare `golden_section_argmin`, this needs NO unimodality premise: the grid
+ *       finds the basin of the global minimum even when the interval holds both a maximum and
+ *       a minimum (a 24 h altitude curve), and the refinement is unimodal by construction
+ *       (one cell, 30 min, around a smooth parabolic extremum).
+ */
+template <typename Func>
+requires std::invocable<const Func&, double>
+     and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
+[[nodiscard]] inline auto scanned_argmin(
+  const Func& f,
+  const double a,
+  const double b
+) -> double {
+  constexpr int CELLS = 48; // 30 min on a 1-day window — far below any extremum's width.
+  const double step = (b - a) / CELLS;
+
+  int best = 0;
+  double best_f = f(a);
+  for (int i = 1; i <= CELLS; ++i) {
+    const double fi = f(a + (i * step));
+    if (fi < best_f) {
+      best_f = fi;
+      best = i;
+    }
+  }
+
+  const double lo = a + (std::max(best - 1, 0) * step);
+  const double hi = a + (std::min(best + 1, CELLS) * step);
+  return golden_section_argmin(f, lo, hi);
+}
+
+/**
  * @brief Find the instant of minimum altitude in the half-arc adjacent to a transit.
  * @param transit The upper-culmination instant (JDE, TT scale).
  * @param before True for the half-arc preceding the transit, false for the following one.
@@ -410,6 +455,36 @@ requires std::invocable<const Func&, double>
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+/**
+ * @brief Polish a transit estimate into the instant of upper culmination (H = 0).
+ * @param estimate_jde The estimated transit instant, as a julian ephemeris day on the **TT**
+ *        scale. Must lie within `TRANSIT_BRACKET_HALF_WIDTH_DAYS` of the true transit.
+ * @param location The observer's location.
+ * @param provider The body's position provider.
+ * @return The transit instant (JDE, TT scale).
+ * @throw std::invalid_argument If `location` is out of range.
+ * @note The root of H = 0 is found with `toolbox::newton_method` on the unwrapped hour angle.
+ */
+template <BodyProvider P>
+[[nodiscard]] inline auto polish_transit(
+  const double estimate_jde,
+  const GeoLocation& location,
+  const P& provider
+) -> double {
+  validate(location);
+
+  const auto f = [&location, &provider](const double jde) -> double {
+    return body_local(jde, location, provider).hour_angle_deg;
+  };
+
+  return astro::toolbox::newton_method(
+    f,
+    estimate_jde - TRANSIT_BRACKET_HALF_WIDTH_DAYS,
+    estimate_jde + TRANSIT_BRACKET_HALF_WIDTH_DAYS,
+    astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY
+  );
+}
+
 } // namespace detail
 
 
@@ -470,37 +545,6 @@ requires std::invocable<const Func&, double>
   }
 
   return AngleDeg { rad_to_deg(std::acos(cos_H0)) };
-}
-
-
-/**
- * @brief Polish a transit estimate into the instant of upper culmination (H = 0).
- * @param estimate_jde The estimated transit instant, as a julian ephemeris day on the **TT**
- *        scale. Must lie within `TRANSIT_BRACKET_HALF_WIDTH_DAYS` of the true transit.
- * @param location The observer's location.
- * @param provider The body's position provider.
- * @return The transit instant (JDE, TT scale).
- * @throw std::invalid_argument If `location` is out of range.
- * @note The root of H = 0 is found with `toolbox::newton_method` on the unwrapped hour angle.
- */
-template <BodyProvider P>
-[[nodiscard]] inline auto polish_transit(
-  const double estimate_jde,
-  const GeoLocation& location,
-  const P& provider
-) -> double {
-  detail::validate(location);
-
-  const auto f = [&location, &provider](const double jde) -> double {
-    return detail::body_local(jde, location, provider).hour_angle_deg;
-  };
-
-  return astro::toolbox::newton_method(
-    f,
-    estimate_jde - TRANSIT_BRACKET_HALF_WIDTH_DAYS,
-    estimate_jde + TRANSIT_BRACKET_HALF_WIDTH_DAYS,
-    astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY
-  );
 }
 
 
@@ -595,6 +639,8 @@ template <BodyProvider P>
  * @param h0 The event altitude.
  * @param provider The body's position provider.
  * @return The three instants (JDE, TT scale) and the polar topology; see `Result`'s notes.
+ * @throw std::invalid_argument / std::runtime_error See the generic `rise_set_jde`, whose
+ *        validation and residual-guard failures propagate through this function.
  * @note The rise is searched between the preceding altitude minimum and the transit, the set
  *       between the transit and the following one — the window is a half-period on each side,
  *       NOT a calendar day. For the Moon this means consecutive dates' results tile the
@@ -616,9 +662,10 @@ template <BodyProvider P>
   };
 
   if (not result.rise_jde.has_value() and not result.set_jde.has_value()) {
-    // `>=`: an exact graze (the body's center touching h₀ at transit without crossing) counts
-    // as a polar day — the midnight-sun convention "never goes below" includes the touch.
-    const bool above = detail::altitude(transit, location, provider).deg() >= h0.deg();
+    // `>`, not `>=`: an exact graze AT the transit means the day's *highest* point merely
+    // touched h₀ — every other instant stayed below it, which is a polar NIGHT, not a day.
+    // (The transit-centered twin of `calculate_day`'s `h_max <= h0 → NIGHT`.)
+    const bool above = detail::altitude(transit, location, provider).deg() > h0.deg();
     result.polar = above ? Polar::DAY : Polar::NIGHT;
   }
 
@@ -627,21 +674,26 @@ template <BodyProvider P>
 
 
 /**
- * @brief Find a body's upper culmination inside a time window, if there is one (#62 mechanism 1).
+ * @brief Find a body's first upper culmination inside a time window, if there is one (#62 mechanism 1).
  * @param t0_jde The window start (inclusive), as a julian ephemeris day on the **TT** scale.
  * @param t1_jde The window end (exclusive), same scale.
  * @param location The observer's location.
  * @param provider The body's position provider.
- * @return The transit instant (JDE, TT scale), or `nullopt` when no transit falls in the
- *         window — a regular event for slow bodies (the Moon transits ~24.84 h apart, so a
- *         1-day window without a transit occurs roughly one day in 29).
+ * @return The first transit instant in the window (JDE, TT scale), or `nullopt` when no transit
+ *         falls in the window — a regular event for slow bodies (the Moon transits ~24.84 h
+ *         apart, so a 1-day window without a transit occurs roughly one day in 29). If the
+ *         window holds more than one transit (possible when it is not shorter than the body's
+ *         transit period — the solar day dips below 24 h around the equinoxes, so even a 1-day
+ *         window can contain two solar transits), the FIRST one is returned.
  * @throw std::invalid_argument If `location` is out of range, or the window is not finite and
  *        positive.
+ * @throw std::runtime_error If the polished root fails the hour-angle residual guard — the
+ *        estimate's bracket held no root, which is a numerical failure and must not read as
+ *        an eventless window.
  * @note The estimate is Meeus Ch.15's m₀ in secant form: the hour angle sweeps at
  *       (sidereal rate − dα/dt), and dα/dt is *measured* from the provider at the window
- *       ends — no per-body rate constants. The first root at or after t0 is polished with a
- *       narrow bracket; at most one transit per body can fit in a window shorter than the
- *       body's transit period, which every supported window is.
+ *       ends — no per-body rate constants. The estimate lands on the first root at or after
+ *       t0 and is window-length-independent; the polish bracket only refines it.
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto transit_in_window(
@@ -662,16 +714,16 @@ template <BodyProvider P>
   const auto local0 = detail::body_local(t0_jde, location, provider);
   const auto local1 = detail::body_local(t1_jde, location, provider);
 
-  // Signed α drift over the window (normalize handles the 0h/24h wrap; retrograde motion
-  // comes out negative, which is also correct).
-  const double dα = astro::toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg());
-  const double sweep_rate = astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY - (dα / window_days);
+  // Signed α drift per day (normalize handles the 0h/24h wrap; retrograde motion comes out
+  // negative, which is also correct).
+  const double dα = astro::toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg()) / window_days;
+  const double sweep_rate = astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY - dα;
 
   // Hour angle from here to the next transit, in degrees, in (0°, 360°].
   const double H0 = local0.hour_angle_deg; // ∈ [-180°, 180°)
   const double forward_deg = H0 <= 0.0 ? -H0 : 360.0 - H0;
 
-  const double estimate = t0_jde + ((forward_deg / sweep_rate) * window_days);
+  const double estimate = t0_jde + (forward_deg / sweep_rate);
 
   const auto f = [&location, &provider](const double jde) -> double {
     return detail::body_local(jde, location, provider).hour_angle_deg;
@@ -683,9 +735,21 @@ template <BodyProvider P>
     sweep_rate
   );
 
-  // The estimate lands on the first root at/after t0, but the polish bracket can slide the
-  // root slightly before the window start — and the estimate itself may sit past the window
-  // end. Either way: no transit *in this window*.
+  // Residual guard: `newton_method` returns a best-effort iterate when its bracket holds no
+  // root, so a converged-looking answer can be degrees of hour angle away from a real transit.
+  // That is a numerical failure — say so loudly instead of shipping a fake transit or a fake
+  // eventless window (same philosophy as `rise_set_jde`'s residual guard).
+  const double H_root = detail::body_local(root, location, provider).hour_angle_deg;
+  if (std::fabs(H_root) > TRANSIT_RESIDUAL_GUARD_DEG) [[unlikely]] {
+    throw std::runtime_error {
+      std::format(
+        "transit_in_window: bracketed root failed to converge: |H| = {} deg at jde {} "
+        "(estimate {}, bracket ±{} day, guard {} deg)",
+        H_root, root, estimate, RISE_SET_BRACKET_HALF_WIDTH_DAYS, TRANSIT_RESIDUAL_GUARD_DEG
+      )
+    };
+  }
+
   if (root < t0_jde or root >= t1_jde) {
     return std::nullopt;
   }
@@ -705,14 +769,24 @@ template <BodyProvider P>
  *         no rise, no set, or no transit — that absence is calendar arithmetic, NOT a polar
  *         verdict. `polar` is `DAY`/`NIGHT` only when no crossing exists *and* the altitude
  *         stays entirely on one side of h₀ for the whole day.
- * @throw std::invalid_argument If `ymd` is invalid or `location` is out of range.
+ * @note **At most one event of each kind is reported.** Days with two crossings of the same
+ *         kind exist — lunar high-latitude days near a standstill (the Moon's declination
+ *         swings fast enough that it can rise twice in one UT day at |φ| ≳ 66°; USNO lists
+ *         both in the same cell), and any body whose diurnal period dips below 24 h. On such
+ *         days the LATER crossing is reported. This library reports one event per cell;
+ *         almanacs that list both keep the earlier one visible too.
+ * @note Supported envelope: the day is partitioned at its true altitude extrema (coarse scan
+ *         + golden-section refinement, exact without a unimodality premise), and the directed
+ *         sign checks on the segments are exact when at most one minimum and one maximum fall
+ *         inside the window. That holds for the Moon on every 1-day window (cycle ~24.84 h).
+ *         The Sun's diurnal period dips below 24 h around the equinoxes, making two extrema
+ *         pairs per UT day possible — use the transit-centered API (`sun::calculate`) for the
+ *         Sun; `calculate_day` with a solar provider is outside the supported envelope.
+ * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
+ *        not finite or outside [-90°, 90°].
  * @throw std::runtime_error If the altitude straddles h₀ inside the day but no crossing solve
- *         converged — a numerical failure must not read as "no event".
- * @note Existence is decided against the day's true altitude extrema (golden-section on the
- *       whole window), so a body with large dδ/dt gets the same exact verdict as the Sun:
- *       at most one minimum and one maximum fit in 24 h (the fastest supported cycle is the
- *       Moon's ~24.84 h), making the day piecewise monotone between the extrema and the
- *       directed sign checks on the segments exact.
+ *        converged, or a bracketed crossing failed the residual guard — a numerical failure
+ *        must not read as "no event".
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto calculate_day(
@@ -722,6 +796,12 @@ template <BodyProvider P>
   const P& provider
 ) -> Result {
   detail::validate(location);
+
+  if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
+    throw std::invalid_argument {
+      std::format("Argument `h0` out of range [-90, 90], got {}", h0.deg())
+    };
+  }
 
   const calendar::Datetime day_start { ymd, 0.0 };
   const double t0 = astro::julian_day::ut1_to_jde(day_start);
@@ -734,8 +814,8 @@ template <BodyProvider P>
     return h(jde) - h0.deg();
   };
 
-  const double t_min = detail::golden_section_argmin(h, t0, t1);
-  const double t_max = detail::golden_section_argmin(
+  const double t_min = detail::scanned_argmin(h, t0, t1);
+  const double t_max = detail::scanned_argmin(
     [&h](const double jde) { return -h(jde); }, t0, t1
   );
 
@@ -852,6 +932,8 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  * @param location The observer's location.
  * @return The transit instant, as a julian ephemeris day on the **TT** scale.
  * @throw std::invalid_argument If `ymd` is invalid or `location` is out of range.
+ * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
+ *        conversions reject years before 401 with `std::runtime_error`).
  * @note The estimate is local mean noon; the bracket around it is one the equation of time can
  *       never escape (see `TRANSIT_BRACKET_HALF_WIDTH_DAYS`).
  */
@@ -864,7 +946,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
   // ±180° cannot push the fraction outside [0, 1).
   const calendar::Datetime noon_ut1 { ymd, 0.5 };
   const double estimate = astro::julian_day::ut1_to_jde(noon_ut1) - (location.longitude.deg() / 360.0);
-  return polish_transit(estimate, location, provider);
+  return detail::polish_transit(estimate, location, provider);
 }
 
 /**
@@ -899,6 +981,8 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  *         for the exact semantics.
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `h0` is
  *        not finite or outside [-90°, 90°].
+ * @throw std::runtime_error For unsupported dates (year < 401, see `transit_jde`) or a
+ *        residual-guard failure inside `rise_set_jde`.
  * @note Consumer trap (deliberate semantics): because `ymd` is a UT1 date, for eastern
  *       longitudes the returned sunrise can fall on the *previous* UT1 calendar day (e.g.
  *       Beijing's sunrise is ~21-22h UT of `ymd - 1`); callers building a local calendar day
@@ -925,14 +1009,10 @@ namespace moon {
 
 /**
  * @brief The Moon's position provider: apparent geocentric equatorial coordinates at one
- *        instant (TT). ELP2000-82B ecliptic position (nutation in longitude included)
- *        converted with the true obliquity — the same chain `moon_phase` uses.
+ *        instant (TT) — an alias of `astro::moon::equatorial_coord::apparent`, the lunar
+ *        counterpart of the solar provider.
  */
-[[nodiscard]] inline auto apparent_equatorial(const double jde_tt) -> astro::coords::EquatorialCoord {
-  const auto ecl = astro::moon::geocentric_coord::apparent(jde_tt);
-  const auto ε = astro::earth::obliquity::true_obliquity(jde_tt);
-  return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
-}
+inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::apparent;
 
 /**
  * @brief The Moon's equatorial horizontal parallax Π at one instant.
@@ -949,13 +1029,17 @@ namespace moon {
 /**
  * @brief The standard altitude of the Moon's center at rise/set: `0.7275·Π − refraction`.
  * @param Π The equatorial horizontal parallax at (approximately) the event time — Π varies by
- *        ≤ ~0.9′ over a day, moving rise/set instants by ~2.5 s at worst (equator), far below
- *        the minute-level golden contract; a per-day value is sufficient.
+ *        ≤ ~1.0′ over a day (measured peak 0.982′ in 2026–2027), moving rise/set instants by
+ *        ~1.3 s at worst (equator), far below the minute-level golden contract; a per-day
+ *        value is sufficient.
  * @param p The atmospheric refraction parameters. Defaults reproduce Meeus's 34′ term.
  * @return The geometric altitude of the Moon's center that makes its upper limb appear at the
  *         horizon. The 0.7275 factor folds the parallax (and the upper-limb semidiameter) into
  *         the horizon dip, so **geocentric** coordinates can be used directly — no topocentric
  *         reduction (Ch.40) is needed at minute-level accuracy.
+ * @throw std::invalid_argument If `p` is invalid (see `refraction::at_horizon`).
+ * @throw std::runtime_error For `Model::SAEMUNDSSON`, if the horizon iteration does not
+ *        converge (see `refraction::at_horizon`).
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15.
  */
 [[nodiscard]] inline auto h0(
@@ -974,7 +1058,12 @@ namespace moon {
  * @return The events inside the UT day and the polar topology. Any instant may be absent —
  *         with lunar transits ~24.84 h apart, a UT date without a moonrise (or without a
  *         transit) is routine, and that absence must not be read as a polar verdict; check
- *         `polar` for the topology.
+ *         `polar` for the topology. On double-event days (the Moon can rise or set twice in
+ *         one UT day at |φ| ≳ 66° near a standstill) the LATER event is reported; see
+ *         `calculate_day`'s note.
+ * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `p` is
+ *        invalid (see `refraction::at_horizon`).
+ * @throw std::runtime_error On numerical failures inside `calculate_day` (see its @throw).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).
  * @note The window is the UT1 calendar day, matching almanac (e.g. USNO rstt/oneday at tz=0)
  *       cell semantics — unlike the solar API, which is transit-centered.

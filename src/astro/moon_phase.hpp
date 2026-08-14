@@ -593,9 +593,7 @@ namespace astro::moon_phase::illumination {
  */
 [[nodiscard]] inline auto position_angle(const double jde) -> astro::toolbox::AngleDeg {
   const auto sun_eq = astro::sun::equatorial_coord::apparent(jde);
-  const auto moon_ecl = astro::moon::geocentric_coord::apparent(jde);
-  const auto ε = astro::earth::obliquity::true_obliquity(jde);
-  const auto moon_eq = astro::coords::ecliptic_to_equatorial(moon_ecl.λ, moon_ecl.β, ε);
+  const auto moon_eq = astro::moon::equatorial_coord::apparent(jde);
   return position_angle(sun_eq, moon_eq);
 }
 

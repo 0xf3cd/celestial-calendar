@@ -207,7 +207,7 @@ Which failure gets which mechanism (#97) — sort by *what happened to the answe
 
 | The answer | Mechanism | Examples |
 |---|---|---|
-| **Cannot be produced correctly** — bad input, outside a declared window, no convergence | `throw` | `sunrise_sunset::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154) |
+| **Cannot be produced correctly** — bad input, outside a declared window, no convergence | `throw` | `rise_set::detail::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154) |
 | **Was produced, and it is "none"** | `std::optional` | no sunrise on a polar night; no leap month in a common year |
 | **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only |
 

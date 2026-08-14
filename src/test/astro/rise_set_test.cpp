@@ -39,6 +39,7 @@
 
 #include "util.hpp"
 #include "rise_set.hpp"
+#include "rise_set_test_helper.hpp"
 
 namespace astro::rise_set::test {
 
@@ -46,10 +47,6 @@ using namespace astro::rise_set;
 using astro::toolbox::AngleDeg;
 
 namespace {
-
-constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
-  return { .latitude = AngleDeg { lat_deg }, .longitude = AngleDeg { lon_deg } };
-}
 
 // East-positive longitudes, per `GeoLocation`'s convention.
 const GeoLocation EQUATOR   = loc(  0.0,      0.0);
@@ -64,19 +61,6 @@ const GeoLocation MIDLAT_0E = loc( 40.0,      0.0);
 auto local_mean_noon_jde(const std::chrono::year_month_day& ymd, const GeoLocation& location) -> double {
   const calendar::Datetime noon_ut1 { ymd, 0.5 };
   return astro::julian_day::ut1_to_jde(noon_ut1) - (location.longitude.deg() / 360.0);
-}
-
-/**
- * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
- *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper
- *        rather than NOLINT-ing every access.
- */
-template <typename T>
-auto req(const std::optional<T>& opt) -> const T& {
-  if (not opt.has_value()) {
-    throw std::logic_error { "expected optional to hold a value" };
-  }
-  return *opt;
 }
 
 } // anonymous namespace
@@ -365,6 +349,30 @@ TEST(RiseSet, MidnightSunOnsetWeekIsCoherent) {
   }
 
   ASSERT_TRUE(seen_polar_day); // The onset falls inside the scanned window.
+}
+
+TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
+  // Synthetic fixed body (α = 0°, δ = +10°): at 70°N its transit altitude is exactly
+  // 90° − (70° − 10°) = 30°. With h0 set to that value the day merely *touches* h0 at its
+  // highest point — every other instant stays below: a polar NIGHT, not a day. (R1: a `>=`
+  // here once counted the graze as DAY, diverging from `calculate_day`'s h_max <= h0 → NIGHT;
+  // real ephemerides never hit exact equality, so only a synthetic body can pin it.)
+  const auto fixed_body = [](const double) -> astro::coords::EquatorialCoord {
+    return { .α = AngleDeg { 0.0 }, .δ = AngleDeg { 10.0 } };
+  };
+  const GeoLocation site = loc(70.0, 0.0);
+  const auto ymd = util::to_ymd(2024, 6, 21);
+  // A fixed-α body's transit can fall anywhere in the day (local mean noon is a solar-only
+  // estimate), so find it with the window mechanism instead.
+  const double day_start = astro::julian_day::ut1_to_jde(calendar::Datetime { ymd, 0.0 });
+  const double transit = req(transit_in_window(day_start, day_start + 1.0, site, fixed_body));
+  const double h_transit = detail::altitude(transit, site, fixed_body).deg();
+  ASSERT_NEAR(h_transit, 30.0, 1e-9);
+
+  const auto result = calculate_around_transit(transit, site, AngleDeg { h_transit }, fixed_body);
+  ASSERT_FALSE(result.rise_jde.has_value());
+  ASSERT_FALSE(result.set_jde.has_value());
+  ASSERT_EQ(result.polar, Polar::NIGHT);
 }
 
 TEST(RiseSet, InvalidInputsThrow) {

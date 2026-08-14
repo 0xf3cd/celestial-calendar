@@ -30,6 +30,7 @@
 #include "earth.hpp"
 #include "julian_day.hpp"
 #include "toolbox.hpp"
+#include "coord_transform.hpp"
 #include "elp2000_82b.hpp"
 
 
@@ -138,3 +139,21 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
 }
 
 } // namespace astro::moon::geocentric_coord
+
+
+namespace astro::moon::equatorial_coord {
+
+/**
+ * @brief Calculate the apparent equatorial position (α, δ) of the Moon.
+ * @param jde The julian ephemeris day number, which is based on TT.
+ * @return The Moon's apparent equatorial coordinates: the ELP2000-82B apparent ecliptic
+ *         position (nutation in longitude included) converted with the true obliquity —
+ *         the lunar counterpart of `astro::sun::equatorial_coord::apparent`.
+ */
+[[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
+  const auto ecl = geocentric_coord::apparent(jde);
+  const auto ε = astro::earth::obliquity::true_obliquity(jde);
+  return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+}
+
+} // namespace astro::moon::equatorial_coord

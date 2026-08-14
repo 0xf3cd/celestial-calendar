@@ -13,7 +13,7 @@
 # This file is used to download the golden dataset for sunrise/sunset tests (#44):
 # - Primary source: USNO "Complete Sun and Moon Data for One Day" API (aa.usno.navy.mil/api/rstt/oneday),
 #   queried per site at its fixed standard-time offset (no DST), so each response lists the
-#   events of one local civil day — matching `astro::sunrise_sunset::calculate`'s local-day semantics.
+#   events of one local civil day — matching `astro::rise_set::sun::calculate`'s local-day semantics.
 # - Cross-check source: NOAA solcalc yearly tables (gml.noaa.gov/grad/solcalc/table.php),
 #   which render sunrise/sunset/solar-noon in the site's IANA zone (DST applied per date);
 #   zoneinfo converts them to the site's fixed standard offset before comparison.
@@ -22,7 +22,7 @@
 #   values are accepted; sunrise-sunset.org is a third cross-check for the twilight rows only
 #   (its rise/set column is a documented ~2-3 min outlier vs USNO+NOAA and is not used).
 # The script prints the agreement reports and emits the column-aligned C++ dataset rows to
-# paste into src/test/astro/sunrise_sunset_golden_test.cpp.
+# paste into src/test/astro/rise_set_golden_test.cpp.
 #
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
@@ -59,7 +59,7 @@ PHEN_KEYS = ["Begin Civil Twilight", "Rise", "Upper Transit", "Set", "End Civil 
 def fetch_usno(lat: float, lon: float, y: int, m: int, d: int, tz: int) -> dict:
   url = "https://aa.usno.navy.mil/api/rstt/oneday"
   params = {"date": f"{y:04d}-{m:02d}-{d:02d}", "coords": f"{lat},{lon}", "tz": str(tz)}
-  resp = requests.get(url, params=params, timeout=30)
+  resp = requests.get(url, params=params, headers={"User-Agent": "celestial-calendar-golden/0.1"}, timeout=30)
   resp.raise_for_status()
   payload = resp.json()
   print(f"USNO apiversion={payload.get('apiversion')}", file=sys.stderr)
