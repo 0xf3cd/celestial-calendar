@@ -337,8 +337,8 @@ struct AltitudeExtremum {
 
 /**
  * @brief Find every local extremum of the altitude curve on [a, b], in time order.
- * @note Grid scan for direction changes (15-min cells on a 1-day window — far below any
- *       extremum's width), then golden-section refinement per candidate. The window must be
+ * @note Grid scan for direction changes (15-min cells on a 1-day window) plus a direct probe
+ *       of each edge cell, then golden-section refinement per candidate. The window must be
  *       partitioned at ALL of these, not just at the global minimum and maximum: the global
  *       extremum need not be a monotone cut (R2 实录:2026-06-18 Tromsø, the window's end
  *       dips below the interior minimum, and partitioning at the global minimum hid that
@@ -365,8 +365,11 @@ requires std::invocable<const Func&, double>
     const double prev = values[static_cast<std::size_t>(i - 1)];
     const double curr = values[static_cast<std::size_t>(i)];
     const double next = values[static_cast<std::size_t>(i + 1)];
-    const bool is_min = (curr < prev) and (curr <= next);
-    const bool is_max = (curr > prev) and (curr >= next);
+    // Strict on both sides: a non-strict comparison fires on the edge of a flat plateau
+    // (e.g. exp() tails underflowing to exact zeros), manufacturing a spurious extremum
+    // out of numerical noise. A genuine plateau is constant altitude — no extremum to find.
+    const bool is_min = (curr < prev) and (curr < next);
+    const bool is_max = (curr > prev) and (curr > next);
     if (not is_min and not is_max) {
       continue;
     }
@@ -377,6 +380,47 @@ requires std::invocable<const Func&, double>
                               : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
     extrema.push_back({ .jde = jde, .is_minimum = is_min, .altitude_deg = f(jde) });
   }
+
+  // Edge cells: an extremum inside the first or last cell has no grid neighbor on one side,
+  // so the direction check above can miss it (R3 实录:1.5% of lunar days, worst 0.53° —
+  // and it is exactly the band a grazing h₀ query asks about). Probe both edge cells
+  // directly; a candidate counts only if it lands strictly inside the cell and beats both
+  // cell ends. Skip duplicates of grid-found extrema (a bump near the cell boundary shows
+  // up in both).
+  const auto probe_edge_cell = [&](const double lo, const double hi, const bool first_cell) {
+    for (const bool want_min : { true, false }) {
+      const double jde = want_min
+        ? golden_section_argmin(f, lo, hi)
+        : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
+      // Golden-section never returns the endpoint exactly (it converges to within
+      // EXTREMUM_SEARCH_TOLERANCE_DAYS of it), so "strictly inside" needs an epsilon:
+      // anything within ~0.1 s of a cell end IS the endpoint extremum, already a segment end.
+      constexpr double EDGE_EPSILON_DAYS = 1e-6;
+      if (jde - lo <= EDGE_EPSILON_DAYS or hi - jde <= EDGE_EPSILON_DAYS) {
+        continue;
+      }
+      const double v = f(jde);
+      const bool beats = want_min ? (v < f(lo) and v < f(hi)) : (v > f(lo) and v > f(hi));
+      if (not beats) {
+        continue;
+      }
+      const bool duplicate = std::ranges::any_of(extrema, [&](const AltitudeExtremum& e) {
+        return std::fabs(e.jde - jde) < step;
+      });
+      if (duplicate) {
+        continue;
+      }
+      const AltitudeExtremum edge { .jde = jde, .is_minimum = want_min, .altitude_deg = v };
+      if (first_cell) {
+        extrema.insert(extrema.begin(), edge);
+      } else {
+        extrema.push_back(edge);
+      }
+    }
+  };
+  probe_edge_cell(a, a + step, true);
+  probe_edge_cell(b - step, b, false);
+
   return extrema;
 }
 
@@ -709,12 +753,17 @@ template <BodyProvider P>
  *        positive.
  * @throw std::runtime_error If the polished root fails the hour-angle residual guard — the
  *        estimate's bracket held no root, which is a numerical failure and must not read as
- *        an eventless window.
+ *        an eventless window. The date-range guard of the UT1/JD conversions also propagates
+ *        as `std::runtime_error` (reachable near the representable-range top, where the
+ *        1-day α sample overshoots).
  * @note The estimate is Meeus Ch.15's m₀ in secant form: the hour angle sweeps at
  *       (sidereal rate − dα/dt), and dα/dt is *measured* from the provider over a fixed
  *       1-day span from t0 — the rate is a property of the body, not of the window, so the
- *       estimate is window-length-independent. The 1-day span aliases only if |dα/dt| ever
- *       reached 180°/day, which no real solar-system body approaches.
+ *       estimate is window-length-independent. The span aliases only if |dα/dt| ever
+ *       reached 180°/day; the library's own providers stay an order of magnitude below
+ *       that, and a custom provider that does not is outside this premise. Near the top of
+ *       the representable date range the 1-day sample can itself leave the range and throw
+ *       (see @throw).
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto transit_in_window(
@@ -795,12 +844,10 @@ template <BodyProvider P>
  *         same cell), and any body whose diurnal period dips below 24 h. On such days the
  *         LATER crossing is reported. This library reports one event per cell; almanacs that
  *         list both keep the earlier one visible too.
- * @note Mechanism: the day is partitioned at EVERY interior altitude extremum (15-min grid
- *         scan + golden-section refinement per candidate), so every segment is monotone by
- *         construction and the directed sign check on each segment is an exact existence
- *         criterion — for any dδ/dt, including high-latitude standstill days whose window
- *         ends dip below an interior extremum (R2 实录:2026-06-18 Tromsø, pinned by a
- *         golden row).
+ * @note Mechanism: the day is partitioned at its detected altitude extrema
+ *         (`detail::find_extrema`), each segment's crossing is decided by a directed sign
+ *         check, and the polar verdict compares the day's global extremes (window ends
+ *         included) against h₀.
  * @note Boundary attribution: the window is [0h, 24h), and the crossing checks are strict
  *         sign comparisons, so an event landing EXACTLY on a UT midnight is not owned by
  *         either adjacent day. That is a measure-zero edge (the TT/UT1 conversions make an
@@ -1090,7 +1137,7 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *         with lunar transits ~24.84 h apart, a UT date without a moonrise (or without a
  *         transit) is routine, and that absence must not be read as a polar verdict; check
  *         `polar` for the topology. On double-event days (the Moon can rise or set twice in
- *         one UT day at |φ| ≳ 66° near a standstill) the LATER event is reported; see
+ *         one UT day at high latitudes near a standstill) the LATER event is reported; see
  *         `calculate_day`'s note.
  * @throw std::invalid_argument If `ymd` is invalid, `location` is out of range, or `p` is
  *        invalid (see `refraction::at_horizon`).

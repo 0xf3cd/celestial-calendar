@@ -430,6 +430,66 @@ TEST(RiseSet, RiseSetResidualGuardThrowsOnDiscontinuousProvider) {
                std::runtime_error);
 }
 
+TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
+  // A bump entirely inside the FIRST 15-min cell and a dip inside the LAST one. The grid
+  // direction check alone is blind to both (R3: 1.5% of real lunar days, worst 0.53°) —
+  // the edge-cell probes must catch them.
+  const auto gaussian = [](const double center) {
+    return [center](const double t) {
+      const double d = (t - center) / (0.2 / 96.0);
+      return std::exp(-0.5 * d * d);
+    };
+  };
+
+  const auto first = detail::find_extrema(gaussian(0.1 / 96.0), 0.0, 1.0);
+  ASSERT_EQ(first.size(), 1UZ);
+  ASSERT_FALSE(first[0].is_minimum);
+  ASSERT_NEAR(first[0].jde, 0.1 / 96.0, 1e-6);
+
+  const auto dip = [g = gaussian(1.0 - (0.3 / 96.0))](const double t) { return -g(t); };
+  const auto last = detail::find_extrema(dip, 0.0, 1.0);
+  ASSERT_EQ(last.size(), 1UZ);
+  ASSERT_TRUE(last[0].is_minimum);
+  ASSERT_NEAR(last[0].jde, 1.0 - (0.3 / 96.0), 1e-6);
+}
+
+TEST(RiseSet, SolarProviderThroughCalculateDay) {
+  // The gate for a loosened contract (R3): the old "solar provider is outside the supported
+  // envelope" note was deleted once the mechanism handled the geometry — this is what holds
+  // the loosening. London's tz=0 USNO cells are exactly the UT-day window's semantics.
+  const std::vector<std::tuple<int, int, double, double, double>> cases {
+    // (month, day, rise, transit, set) in UT minutes — the London rows of the solar golden set.
+    { 3, 20,  363.0, 728.0, 1093.0 },
+    { 6, 21,  223.0, 722.0, 1221.0 },
+    { 9, 23,  348.0, 713.0, 1077.0 },
+    { 12, 21, 484.0, 719.0,  953.0 },
+  };
+  for (const auto& [month, day, rise_min, transit_min, set_min] : cases) {
+    const auto ymd = util::to_ymd(2026, month, day);
+    const auto result = calculate_day(ymd, LONDON, sun::STANDARD_ALTITUDE, sun::provider);
+    const auto tag = std::to_string(month) + "-" + std::to_string(day);
+    ASSERT_EQ(result.polar, Polar::NONE) << tag;
+    ASSERT_TRUE(result.rise_jde.has_value()) << tag;
+    ASSERT_TRUE(result.transit_jde.has_value()) << tag;
+    ASSERT_TRUE(result.set_jde.has_value()) << tag;
+
+    const auto ut_minutes = [](const double jde) {
+      return astro::julian_day::jde_to_ut1(jde).fraction() * 1440.0;
+    };
+    ASSERT_NEAR(ut_minutes(req(result.rise_jde)), rise_min, 2.0) << tag << " rise";
+    ASSERT_NEAR(ut_minutes(req(result.transit_jde)), transit_min, 2.0) << tag << " transit";
+    ASSERT_NEAR(ut_minutes(req(result.set_jde)), set_min, 2.0) << tag << " set";
+  }
+
+  // A UT day with TWO solar transits (the apparent solar day dips below 24 h around the
+  // equinoxes; 2026-09-15 at this longitude has transits at ~00:00:06 and ~23:59:49):
+  // the engine returns the first one and does not throw.
+  const auto two_transits = calculate_day(util::to_ymd(2026, 9, 15), loc(0.0, 178.8046),
+                                          sun::STANDARD_ALTITUDE, sun::provider);
+  ASSERT_TRUE(two_transits.transit_jde.has_value());
+  ASSERT_LT(astro::julian_day::jde_to_ut1(req(two_transits.transit_jde)).fraction() * 1440.0, 2.0);
+}
+
 TEST(RiseSet, InvalidInputsThrow) {
   const auto ymd = util::to_ymd(2024, 6, 21);
   constexpr double NAN_D = std::numeric_limits<double>::quiet_NaN();
