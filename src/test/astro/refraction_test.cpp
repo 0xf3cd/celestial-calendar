@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
@@ -208,7 +209,8 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
 
 TEST(Refraction, BennettMatchesMeeusNativeValues) {
   // Golden anchors for the native (10°C/1010 hPa) Bennett formula.
-  // Values are from Meeus, "Astronomical Algorithms", 2nd ed., Example 16.a / Table 16.A.
+  // Values are computed from Meeus (16.3). The 0.5° value cross-checks Example 16.a (R = 28.754′);
+  // the other two are formula outputs pinned at six decimals to catch transcription regressions.
   const auto r0    = bennett(AngleDeg { 0.0 });
   const auto r0_5  = bennett(AngleDeg { 0.5 });
   const auto r45   = bennett(AngleDeg { 45.0 });
@@ -233,8 +235,9 @@ TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
 
 
 TEST(Refraction, SaemundssonAtHorizonMatchesGoldenValue) {
-  // Tight golden anchor for the Saemundsson horizon iteration. The value is independent of the
-  // Bennett seed and is sensitive to whether the fixed-point iteration actually converges.
+  // Tight golden anchor for the Saemundsson horizon iteration. Value is the converged output of
+  // `at_horizon({.model = SAEMUNDSSON})` at default Params (15°C/1013.25 hPa); it is independent
+  // of the Bennett seed and is sensitive to whether the fixed-point iteration actually converges.
   const auto r = at_horizon(Params { .model = Model::SAEMUNDSSON });
 
   ASSERT_NEAR(r.deg(), AngleDeg::from_arcmin(33.845957671).deg(),
@@ -259,6 +262,19 @@ TEST(Refraction, RejectsNonPhysicalParams) {
                std::invalid_argument);
   EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = -300.0, .pressure_hpa = 1013.25 }),
                std::invalid_argument);
+
+  // NaN and infinities are rejected by the isfinite guard.
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = std::numeric_limits<double>::quiet_NaN(),
+                                                 .pressure_hpa = 1013.25 }),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = 15.0,
+                                                 .pressure_hpa = std::numeric_limits<double>::infinity() }),
+               std::invalid_argument);
+
+  // The Saemundsson horizon iteration diverges for strongly non-physical conditions.
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = -250.0, .pressure_hpa = 1100.0,
+                                                 .model = Model::SAEMUNDSSON }),
+               std::runtime_error);
 }
 
 

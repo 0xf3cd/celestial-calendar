@@ -27,7 +27,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
-#include <numbers>
 #include <stdexcept>
 
 #include "toolbox.hpp"
@@ -102,7 +101,7 @@ namespace detail {
 }
 
 /**
- * @brief Validate refraction parameters are physically admissible and finite.
+ * @brief Validate refraction parameters are finite and above the numerical pole at −273°C.
  * @throw std::invalid_argument If temperature is not finite or ≤ −273°C, or pressure is not finite
  *        or non-positive.
  */
@@ -133,8 +132,8 @@ inline auto validate_params(const Params& params) -> void {
  * @param apparent_alt The apparent altitude of the body (what an observer sees), in degrees.
  * @return The refraction angle, positive in degrees.
  * @note Meeus (16.3) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
- *       native (10°C/1010 hPa) refraction; pass it through `at_horizon(Params)` to apply a T/P
- *       correction. The formula is valid for apparent altitudes in [0°, 90°] and becomes
+ *       native (10°C/1010 hPa) refraction; `at_horizon(Params)` computes the T/P-corrected
+ *       horizon refraction. The formula is valid for apparent altitudes in [0°, 90°] and becomes
  *       numerically unstable below about −2°.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.3).
  */
@@ -157,8 +156,10 @@ inline auto validate_params(const Params& params) -> void {
  * @param true_alt The true geometric altitude of the body, in degrees.
  * @return The refraction angle, positive in degrees.
  * @note Meeus (16.4) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
- *       native (10°C/1010 hPa) refraction; pass it through `at_horizon(Params)` to apply a T/P
- *       correction. The input is the geometric altitude (before refraction), opposite to Bennett.
+ *       native (10°C/1010 hPa) refraction; `at_horizon(Params)` computes the T/P-corrected
+ *       horizon refraction. The input is the geometric altitude (before refraction), opposite to
+ *       Bennett. The formula is valid for true altitudes in [0°, 90°] and becomes numerically
+ *       unstable below about −2°.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.4).
  */
 [[nodiscard]] inline auto saemundsson(const astro::toolbox::AngleDeg& true_alt) -> astro::toolbox::AngleDeg {
