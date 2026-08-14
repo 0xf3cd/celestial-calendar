@@ -209,8 +209,9 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
 
 TEST(Refraction, BennettMatchesMeeusNativeValues) {
   // Golden anchors for the native (10°C/1010 hPa) Bennett formula.
-  // Values are computed from Meeus (16.3). The 0.5° value cross-checks Example 16.a (R = 28.754′);
-  // the other two are formula outputs pinned at six decimals to catch transcription regressions.
+  // Values are computed from Meeus (16.3). The 45° value cross-checks Meeus Example 16.a
+  // (h = 45°, R ≈ 59″); the others are formula outputs pinned at six decimals to catch
+  // transcription regressions.
   const auto r0    = bennett(AngleDeg { 0.0 });
   const auto r0_5  = bennett(AngleDeg { 0.5 });
   const auto r45   = bennett(AngleDeg { 45.0 });
@@ -223,7 +224,7 @@ TEST(Refraction, BennettMatchesMeeusNativeValues) {
 
 TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
   // Golden anchors for the native (10°C/1010 hPa) Saemundsson formula.
-  // Values are computed from Meeus (16.4) and checked against the Bennett cross-reference.
+  // Values are computed from Meeus (16.4); four-decimal pins catch transcription regressions.
   const auto r0  = saemundsson(AngleDeg { 0.0 });
   const auto r30 = saemundsson(AngleDeg { 30.0 });
   const auto r60 = saemundsson(AngleDeg { 60.0 });

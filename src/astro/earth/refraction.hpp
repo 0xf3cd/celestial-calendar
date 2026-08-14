@@ -130,7 +130,8 @@ inline auto validate_params(const Params& params) -> void {
 /**
  * @brief Bennett's formula for atmospheric refraction from apparent altitude.
  * @param apparent_alt The apparent altitude of the body (what an observer sees), in degrees.
- * @return The refraction angle, positive in degrees.
+ * @return The refraction angle in degrees (the formula yields a negligible negative value at
+ *         exactly 90°).
  * @note Meeus (16.3) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
  *       native (10°C/1010 hPa) refraction; `at_horizon(Params)` computes the T/P-corrected
  *       horizon refraction. The formula is valid for apparent altitudes in [0°, 90°] and becomes
@@ -154,7 +155,8 @@ inline auto validate_params(const Params& params) -> void {
 /**
  * @brief Saemundsson's formula for atmospheric refraction from true (geometric) altitude.
  * @param true_alt The true geometric altitude of the body, in degrees.
- * @return The refraction angle, positive in degrees.
+ * @return The refraction angle in degrees (the formula yields a negligible negative value at
+ *         exactly 90°).
  * @note Meeus (16.4) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
  *       native (10°C/1010 hPa) refraction; `at_horizon(Params)` computes the T/P-corrected
  *       horizon refraction. The input is the geometric altitude (before refraction), opposite to
