@@ -24,7 +24,11 @@
 #pragma once
 
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <format>
 #include <numbers>
+#include <stdexcept>
 
 #include "toolbox.hpp"
 
@@ -52,7 +56,7 @@ inline constexpr double NATIVE_PRESSURE_HPA = 1010.0;
 inline constexpr double NATIVE_TEMPERATURE_K = 273.0 + NATIVE_TEMPERATURE_C;
 
 /** @brief Iteration tolerance for Saemundsson's horizon refraction, in degrees. */
-inline constexpr double SAEMUNDSSON_HORIZON_TOL_DEG = 1e-12;
+inline constexpr double SAEMUNDSSON_HORIZON_TOL_DEG = 1e-9;
 
 /** @brief Maximum number of iterations for Saemundsson's horizon solve. */
 inline constexpr std::size_t SAEMUNDSSON_HORIZON_MAX_ITER = 20;
@@ -97,6 +101,30 @@ namespace detail {
   return r_native * factor;
 }
 
+/**
+ * @brief Validate refraction parameters are physically admissible and finite.
+ * @throw std::invalid_argument If temperature is not finite or ≤ −273°C, or pressure is not finite
+ *        or non-positive.
+ */
+inline auto validate_params(const Params& params) -> void {
+  if (not std::isfinite(params.temperature_c) or not std::isfinite(params.pressure_hpa)) {
+    throw std::invalid_argument {
+      std::format("Refraction params must be finite, got T={}°C, P={} hPa",
+                  params.temperature_c, params.pressure_hpa)
+    };
+  }
+  if (params.temperature_c <= -273.0) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Refraction temperature must be above -273°C, got {}°C", params.temperature_c)
+    };
+  }
+  if (params.pressure_hpa <= 0.0) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Refraction pressure must be positive, got {} hPa", params.pressure_hpa)
+    };
+  }
+}
+
 } // namespace detail
 
 
@@ -104,10 +132,10 @@ namespace detail {
  * @brief Bennett's formula for atmospheric refraction from apparent altitude.
  * @param apparent_alt The apparent altitude of the body (what an observer sees), in degrees.
  * @return The refraction angle, positive in degrees.
- * @note Meeus (16.3) gives the result in arcminutes for 10°C/1010 hPa; this function applies the
- *       T/P correction from the default `Params` values. The formula is valid for apparent
- *       altitudes above about −5°; below that the atmosphere cannot be treated as a plane-parallel
- *       slab.
+ * @note Meeus (16.3) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
+ *       native (10°C/1010 hPa) refraction; pass it through `at_horizon(Params)` to apply a T/P
+ *       correction. The formula is valid for apparent altitudes in [0°, 90°] and becomes
+ *       numerically unstable below about −2°.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.3).
  */
 [[nodiscard]] inline auto bennett(const astro::toolbox::AngleDeg& apparent_alt) -> astro::toolbox::AngleDeg {
@@ -128,9 +156,9 @@ namespace detail {
  * @brief Saemundsson's formula for atmospheric refraction from true (geometric) altitude.
  * @param true_alt The true geometric altitude of the body, in degrees.
  * @return The refraction angle, positive in degrees.
- * @note Meeus (16.4) gives the result in arcminutes for 10°C/1010 hPa; this function applies the
- *       T/P correction from the default `Params` values. The input is the geometric altitude
- *       (before refraction), opposite to Bennett.
+ * @note Meeus (16.4) gives the result in arcminutes for 10°C/1010 hPa. The returned value is the
+ *       native (10°C/1010 hPa) refraction; pass it through `at_horizon(Params)` to apply a T/P
+ *       correction. The input is the geometric altitude (before refraction), opposite to Bennett.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.4).
  */
 [[nodiscard]] inline auto saemundsson(const astro::toolbox::AngleDeg& true_alt) -> astro::toolbox::AngleDeg {
@@ -153,32 +181,41 @@ namespace detail {
  * @return The horizon refraction, positive in degrees.
  * @note For Bennett the apparent altitude is already 0°, so the formula can be evaluated directly.
  *       For Saemundsson the input is the true altitude, which at the apparent horizon equals
- *       −R; this function iterates `R = saemundsson(−R)` to convergence.
+ *       −R; this function iterates `R = apply_tp_correction(saemundsson(−R), params)` to
+ *       convergence.
  */
 [[nodiscard]] inline auto at_horizon(const Params& params = {}) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
+
+  detail::validate_params(params);
 
   if (params.model == Model::BENNETT) {
     const auto r_native = bennett(AngleDeg { 0.0 });
     return detail::apply_tp_correction(r_native, params);
   }
 
-  // Saemundsson: solve R = saemundsson(−R), where R is the refraction at apparent altitude 0°.
-  // Start from Bennett's value for the same conditions — it is the right order of magnitude.
+  // Saemundsson: solve R = apply_tp_correction(saemundsson(−R), params), where R is the
+  // refraction at apparent altitude 0°. Start from Bennett's value for the same conditions — it
+  // is the right order of magnitude.
   auto r = bennett(AngleDeg { 0.0 });
   r = detail::apply_tp_correction(r, params);
 
+  double delta_deg = 0.0;
   for (std::size_t i = 0; i < SAEMUNDSSON_HORIZON_MAX_ITER; ++i) {
     const auto r_next = saemundsson(-r);
     const auto r_next_corrected = detail::apply_tp_correction(r_next, params);
 
-    if (std::fabs((r_next_corrected - r).deg()) < SAEMUNDSSON_HORIZON_TOL_DEG) {
+    delta_deg = std::fabs((r_next_corrected - r).deg());
+    if (delta_deg < SAEMUNDSSON_HORIZON_TOL_DEG) {
       return r_next_corrected;
     }
     r = r_next_corrected;
   }
 
-  return r;
+  throw std::runtime_error {
+    std::format("refraction::at_horizon: Saemundsson iteration did not converge in {} iterations, "
+                "last |Δ| = {} deg", SAEMUNDSSON_HORIZON_MAX_ITER, delta_deg)
+  };
 }
 
 } // namespace astro::earth::refraction

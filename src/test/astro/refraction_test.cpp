@@ -26,6 +26,7 @@
 #include <optional>
 #include <ranges>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -124,8 +125,8 @@ TEST(Refraction, ExtremeConditionsSpanReasonableRange) {
 
 
 TEST(Refraction, BennettIsPositiveForValidAltitudes) {
-  // Refraction always lifts the apparent position; the returned value must be positive where
-  // Bennett's formula is valid (apparent altitude ≥ 0°; Meeus warns against using it below −5°).
+  // Refraction always lifts the apparent position; the returned value must be positive over the
+  // tested altitudes (apparent altitude ≥ 0°). Meeus gives the formula for 0°–90°.
   // At the zenith (90°) the formula rounds to a tiny negative value, but the physical refraction
   // is zero, so we assert it is near zero rather than strictly positive.
   const std::vector<double> altitudes { 0.0, 5.0, 10.0, 30.0, 60.0 };
@@ -140,8 +141,8 @@ TEST(Refraction, BennettIsPositiveForValidAltitudes) {
 
 
 TEST(Refraction, SaemundssonIsPositiveForValidAltitudes) {
-  // Refraction always lifts the apparent position; the returned value must be positive where
-  // Saemundsson's formula is valid (true altitude ≥ 0°; Meeus warns against using it below −5°).
+  // Refraction always lifts the apparent position; the returned value must be positive over the
+  // tested altitudes (true altitude ≥ 0°). Meeus gives the formula for 0°–90°.
   // At the zenith (90°) the formula rounds to a tiny negative value, but the physical refraction
   // is zero, so we assert it is near zero rather than strictly positive.
   const std::vector<double> altitudes { 0.0, 5.0, 10.0, 30.0, 60.0 };
@@ -205,12 +206,60 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
 }
 
 
-TEST(Refraction, H0FromSaemundssonIsCloseToBennett) {
-  // The two models should produce similar h₀ values at default T/P.
-  const auto h0_bennett = astro::sunrise_sunset::h0_from(Params { .model = Model::BENNETT });
-  const auto h0_saemundsson = astro::sunrise_sunset::h0_from(Params { .model = Model::SAEMUNDSSON });
+TEST(Refraction, BennettMatchesMeeusNativeValues) {
+  // Golden anchors for the native (10°C/1010 hPa) Bennett formula.
+  // Values are from Meeus, "Astronomical Algorithms", 2nd ed., Example 16.a / Table 16.A.
+  const auto r0    = bennett(AngleDeg { 0.0 });
+  const auto r0_5  = bennett(AngleDeg { 0.5 });
+  const auto r45   = bennett(AngleDeg { 45.0 });
 
-  ASSERT_NEAR(h0_bennett.deg(), h0_saemundsson.deg(), AngleDeg::from_arcmin(1.0).deg());
+  ASSERT_NEAR(r0.deg(),   AngleDeg::from_arcmin(34.477534).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r0_5.deg(), AngleDeg::from_arcmin(28.753710).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r45.deg(),  AngleDeg::from_arcsec(59.690878).deg(), AngleDeg::from_arcsec(1e-4).deg());
 }
+
+
+TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
+  // Golden anchors for the native (10°C/1010 hPa) Saemundsson formula.
+  // Values are computed from Meeus (16.4) and checked against the Bennett cross-reference.
+  const auto r0  = saemundsson(AngleDeg { 0.0 });
+  const auto r30 = saemundsson(AngleDeg { 30.0 });
+  const auto r60 = saemundsson(AngleDeg { 60.0 });
+
+  ASSERT_NEAR(r0.deg(),  AngleDeg::from_arcmin(28.9819).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r30.deg(), AngleDeg::from_arcmin(1.7460).deg(), AngleDeg::from_arcmin(1e-4).deg());
+  ASSERT_NEAR(r60.deg(), AngleDeg::from_arcmin(0.5851).deg(), AngleDeg::from_arcmin(1e-4).deg());
+}
+
+
+TEST(Refraction, SaemundssonAtHorizonMatchesGoldenValue) {
+  // Tight golden anchor for the Saemundsson horizon iteration. The value is independent of the
+  // Bennett seed and is sensitive to whether the fixed-point iteration actually converges.
+  const auto r = at_horizon(Params { .model = Model::SAEMUNDSSON });
+
+  ASSERT_NEAR(r.deg(), AngleDeg::from_arcmin(33.845957671).deg(),
+              AngleDeg::from_arcmin(1e-4).deg());
+}
+
+
+TEST(Refraction, TpCorrectionIsLinearInPressure) {
+  // At fixed temperature, refraction scales linearly with pressure.
+  const auto r_1010 = at_horizon(Params { .temperature_c = 15.0, .pressure_hpa = 1010.0 });
+  const auto r_2020 = at_horizon(Params { .temperature_c = 15.0, .pressure_hpa = 2020.0 });
+
+  ASSERT_NEAR(r_2020.deg(), 2.0 * r_1010.deg(), AngleDeg::from_arcmin(1e-6).deg());
+}
+
+
+TEST(Refraction, RejectsNonPhysicalParams) {
+  // Non-physical temperatures and pressures must not silently produce garbage.
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = -273.0, .pressure_hpa = 1013.25 }),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = 15.0, .pressure_hpa = 0.0 }),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = at_horizon(Params { .temperature_c = -300.0, .pressure_hpa = 1013.25 }),
+               std::invalid_argument);
+}
+
 
 } // namespace astro::earth::refraction::test
