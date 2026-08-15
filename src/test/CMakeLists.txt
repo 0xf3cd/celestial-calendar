@@ -69,7 +69,16 @@ macro(CELESTIAL_ADD_TEST test_path test_name)
       )
     endif()
   endif()
-  gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180) # Increase discovery timeout for docker builds
+  # rise_set_test holds a test whose failure MODE is a hang (it pins the golden-section
+  # iteration cap: without the cap the loop never terminates). Give its tests a bounded
+  # TIMEOUT so that shape fails red instead of stalling the gate — no other suite needs one
+  # (R5 P3-6). `set_tests_properties` cannot name the test here: discovery happens at build
+  # time, after configure.
+  if("${test_name}" STREQUAL "rise_set_test")
+    gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180 PROPERTIES TIMEOUT 120)
+  else()
+    gtest_discover_tests(${test_name} DISCOVERY_TIMEOUT 180) # Increase discovery timeout for docker builds
+  endif()
 endmacro()
 
 file(GLOB_RECURSE SRC_PATHS "*.cpp")
