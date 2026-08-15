@@ -312,6 +312,9 @@ template <BodyProvider P>
  *       the cap the midpoint of the final, ulp-wide bracket is returned — the best answer
  *       representable at that magnitude.
  */
+// The `_jde` suffixes and the leading `f` carry the contract at the call site;
+// `a`/`b`/`tolerance` are three adjacent doubles by design.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
@@ -350,6 +353,7 @@ requires std::invocable<const Func&, double>
   }
   return (lo + hi) / 2.0;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /** @brief A refined local extremum of the altitude curve: its instant, kind, and value. */
 struct AltitudeExtremum {
@@ -385,9 +389,10 @@ requires std::invocable<const Func&, double>
 
   std::vector<AltitudeExtremum> extrema;
   for (int i = 1; i < CELLS; ++i) {
-    const double prev = values[static_cast<std::size_t>(i - 1)];
-    const double curr = values[static_cast<std::size_t>(i)];
-    const double next = values[static_cast<std::size_t>(i + 1)];
+    const std::size_t idx = static_cast<std::size_t>(i);
+    const double prev = values[idx - 1];
+    const double curr = values[idx];
+    const double next = values[idx + 1];
     // Strict on both sides: a non-strict comparison fires on the edge of a flat plateau
     // (e.g. exp() tails underflowing to exact zeros), manufacturing a spurious extremum
     // out of numerical noise.
@@ -907,7 +912,14 @@ template <BodyProvider P>
 
   const calendar::Datetime day_start { ymd, 0.0 };
   const double t0 = astro::julian_day::ut1_to_jde(day_start);
-  const double t1 = t0 + 1.0;
+  // The window ends at the NEXT UT1 MIDNIGHT, not one TT day later: t0 + 1.0 advances by
+  // 86400 TT seconds, and ΔT's drift (ms-scale now, ~0.5 s/day at the domain's far end)
+  // would leave a gap/overlap between adjacent days' windows that events could fall
+  // through (PR #199 review). Convert both endpoints to keep the UT1/TT distinction.
+  const auto next_day = std::chrono::year_month_day {
+    std::chrono::sys_days { ymd } + std::chrono::days { 1 }
+  };
+  const double t1 = astro::julian_day::ut1_to_jde(calendar::Datetime { next_day, 0.0 });
 
   const auto h = [&location, &provider](const double jde) -> double {
     return detail::altitude(jde, location, provider).deg();
@@ -1105,7 +1117,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
   return calculate_around_transit(transit, location, h0, provider);
 }
 
-} // namespace astro::rise_set::sun
+} // namespace sun
 
 
 /**
@@ -1190,6 +1202,6 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
   return calculate_day(ymd, location, h0_moon, apparent_equatorial);
 }
 
-} // namespace astro::rise_set::moon
+} // namespace moon
 
 } // namespace astro::rise_set
