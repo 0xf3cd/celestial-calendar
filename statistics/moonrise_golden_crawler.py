@@ -20,8 +20,7 @@
 #   season, so the Moon is circumpolar / never-rising at 69.65°N for several days each month —
 #   the candidate dates were located with the library's own engine, then pinned against USNO
 #   here), plus two DOUBLE-EVENT days: 2026-05-14 (two rises in one cell) and 2026-06-18
-#   (two sets in one cell, the R2 regression pin — its window end dips below the interior
-#   minimum). USNO lists both events on those days, and the library's one-event-per-cell
+#   (two sets in one cell — its window end dips below the interior minimum). USNO lists both events on those days, and the library's one-event-per-cell
 #   contract reports the later one — the dict below keeps last-wins on purpose and says so
 #   loudly when it happens.
 # The script emits column-aligned C++ dataset rows to paste into

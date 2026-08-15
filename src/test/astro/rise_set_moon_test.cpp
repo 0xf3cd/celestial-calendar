@@ -59,7 +59,7 @@ TEST(RiseSetMoon, H0FormulaProvenance) {
   const auto h0 = moon::h0(astro::toolbox::AngleRad { Π.rad() });
   // The refraction term is `at_horizon(Params{})` = 33.988′ (Bennett@standard), not exactly
   // 34′ — the same 0.02′ residual the solar convention carries (#61). Tolerance absorbs it.
-  ASSERT_NEAR(h0.deg(), (0.7275 * 57.0 - 34.0) / 60.0, AngleDeg::from_arcmin(0.02).deg());
+  ASSERT_NEAR(h0.deg(), ((0.7275 * 57.0) - 34.0) / 60.0, AngleDeg::from_arcmin(0.02).deg());
 
   // A non-standard atmosphere must flow through the same convention: colder, denser air
   // refracts more, so h₀ sinks.
@@ -67,8 +67,8 @@ TEST(RiseSetMoon, H0FormulaProvenance) {
   cold.temperature_c = -20.0;
   ASSERT_LT(moon::h0(astro::toolbox::AngleRad { Π.rad() }, cold).deg(), h0.deg());
 
-  // The Saemundsson model flows through the same wiring (R2 测试缝隙席:这条链之前没有
-  // 端到端覆盖):h0 与手工合成的 0.7275·Π − at_horizon 逐项一致。
+  // The Saemundsson model flows through the same wiring (previously uncovered end-to-end):
+  // h0 matches the manually composed 0.7275·Π − at_horizon term by term.
   astro::earth::refraction::Params saemundsson;
   saemundsson.model = astro::earth::refraction::Model::SAEMUNDSSON;
   const auto expected = astro::toolbox::AngleDeg { 0.7275 * Π.deg() }
@@ -158,8 +158,8 @@ TEST(RiseSetMoon, ThirtyDayScanIsCoherent) {
 }
 
 TEST(RiseSetMoon, TransitInWindowHandlesNonUnitWindows) {
-  // The estimate must not scale with the window length (R1: it once multiplied by
-  // `window_days`, silently correct only for the 1-day windows `calculate_day` passes).
+  // The estimate must not scale with the window length (multiplying by `window_days`
+  // is silently correct only for the 1-day windows `calculate_day` passes).
   // 2026-08-15 Beijing: the true lunar transit is at ~06:19 UT (fraction ≈ 0.2635).
   const calendar::Datetime day_start { util::to_ymd(2026, 8, 15), 0.0 };
   const double t0 = astro::julian_day::ut1_to_jde(day_start);
@@ -183,7 +183,7 @@ TEST(RiseSetMoon, TransitInWindowHandlesNonUnitWindows) {
 TEST(RiseSetMoon, TransitInWindowMeasuresAlphaRate) {
   // Synthetic fast body: α sweeps 30°/day — far faster than the Moon ever gets. If
   // `transit_in_window` fell back to the raw sidereal rate instead of measuring dα/dt
-  // (the R1 gate mutation that survived the suite), the estimate would miss the ±0.05-day
+  // (a mutation this test must catch), the estimate would miss the ±0.05-day
   // polish bracket whenever the forward hour angle is large (error up to ~0.09 day) and
   // the residual guard would throw. Sweeping the window start covers the full circle of
   // forward angles.

@@ -23,9 +23,9 @@
 
 #pragma once
 
-// Shared helpers for the rise_set test family (#62 R1: the four test files had grown four
-// copies of these, and `cell_minutes` had already diverged — one parsed HH:MM:SS, another
-// only HH:MM). Pure functions only; per-file constants stay in their own anonymous namespaces.
+// Shared helpers for the rise_set test family (#62: four test files had grown four copies
+// of these, and `cell_minutes` had already diverged — one parsed HH:MM:SS, another only
+// HH:MM). Pure functions only; per-file constants stay in their own anonymous namespaces.
 
 #include <cmath>
 #include <optional>
@@ -38,7 +38,7 @@
 namespace astro::rise_set::test {
 
 /** @brief Build a GeoLocation from degrees (east-positive longitude). */
-inline constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
+constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
   return { .latitude = astro::toolbox::AngleDeg { lat_deg },
            .longitude = astro::toolbox::AngleDeg { lon_deg } };
 }

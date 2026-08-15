@@ -146,8 +146,7 @@ inline constexpr double EXTREMUM_SEARCH_TOLERANCE_DAYS = 1e-9;
  * @note The probes only locate a cut point — crossings are re-solved by Newton afterwards,
  *       and the polar verdict's altitude values need ~1e-3° — so ~0.1 s of time precision
  *       is far more than enough, and the coarser target cuts the probe's evaluation count
- *       by ~40% (20 vs 34 iterations on a 15-min cell; R4 measured 144 → 88 provider
- *       evaluations per `find_extrema`).
+ *       by ~40% (20 vs 34 iterations on a 15-min cell).
  */
 inline constexpr double EDGE_PROBE_TOLERANCE_DAYS = 1e-6;
 
@@ -308,7 +307,7 @@ template <BodyProvider P>
  *       for any bracket used here); the ITERATION CAP is the guarantee, not the normal exit:
  *       once the JDE magnitude passes 2²³ (≈ year 18255) the double ulp exceeds
  *       `EXTREMUM_SEARCH_TOLERANCE_DAYS`, the bracket can never shrink to the tolerance, and
- *       without a cap the loop hangs forever (R4 实录, inside the declared domain). After
+ *       without a cap the loop hangs forever (observed inside the declared domain). After
  *       the cap the midpoint of the final, ulp-wide bracket is returned — the best answer
  *       representable at that magnitude.
  */
@@ -367,9 +366,9 @@ struct AltitudeExtremum {
  * @note Grid scan for direction changes (15-min cells on a 1-day window) plus a direct probe
  *       of each edge cell, then golden-section refinement per candidate. The window must be
  *       partitioned at ALL of these, not just at the global minimum and maximum: the global
- *       extremum need not be a monotone cut (R2 实录:2026-06-18 Tromsø, the window's end
- *       dips below the interior minimum, and partitioning at the global minimum hid that
- *       day's only rise inside a non-monotone segment).
+ *       extremum need not be a monotone cut (2026-06-18 Tromsø: the window's end dips
+ *       below the interior minimum, and partitioning at the global minimum hid that day's
+ *       only rise inside a non-monotone segment — pinned by a golden row).
  */
 template <typename Func>
 requires std::invocable<const Func&, double>
@@ -389,7 +388,7 @@ requires std::invocable<const Func&, double>
 
   std::vector<AltitudeExtremum> extrema;
   for (int i = 1; i < CELLS; ++i) {
-    const std::size_t idx = static_cast<std::size_t>(i);
+    const auto idx = static_cast<std::size_t>(i);
     const double prev = values[idx - 1];
     const double curr = values[idx];
     const double next = values[idx + 1];
@@ -410,12 +409,12 @@ requires std::invocable<const Func&, double>
   }
 
   // Edge cells: an extremum inside the first or last cell has no grid neighbor on one side,
-  // so the direction check above can miss it (R3 实录:1.5% of lunar days, worst 0.53° —
+  // so the direction check above can miss it (1.5% of lunar days by measurement —
   // and it is exactly the band a grazing h₀ query asks about). Probe both edge cells
   // directly; a candidate counts only if it lands strictly inside the cell and beats both
   // cell ends. Skip duplicates of grid-found extrema (a bump near the cell boundary shows
   // up in both) — same kind and sub-second distance, nothing broader: two genuinely
-  // distinct extrema can share one cell (R4: a whole-cell, kind-blind radius ate them).
+  // distinct extrema can share one cell (a whole-cell or kind-blind radius would eat them).
   const auto probe_edge_cell = [&](const double lo, const double hi) {
     for (const bool want_min : { true, false }) {
       const double jde = want_min
@@ -915,7 +914,7 @@ template <BodyProvider P>
   // The window ends at the NEXT UT1 MIDNIGHT, not one TT day later: t0 + 1.0 advances by
   // 86400 TT seconds, and ΔT's drift (ms-scale now, ~0.5 s/day at the domain's far end)
   // would leave a gap/overlap between adjacent days' windows that events could fall
-  // through (PR #199 review). Convert both endpoints to keep the UT1/TT distinction.
+  // through. Convert both endpoints to keep the UT1/TT distinction.
   const auto next_day = std::chrono::year_month_day {
     std::chrono::sys_days { ymd } + std::chrono::days { 1 }
   };
@@ -1151,7 +1150,7 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @param Π The equatorial horizontal parallax at (approximately) the event time. A per-day
  *        value is sufficient: Π's intra-day drift moves rise/set instants by seconds at most,
  *        invisible to the minute-level golden contract (enforced end-to-end by the golden
- *        tests — R1/R2 实录:精确上界数字住进注释会被逐轮更密的采样证伪,故此处只留定性句).
+ *        tests).
  * @param p The atmospheric refraction parameters. Defaults reproduce Meeus's 34′ term.
  * @return The geometric altitude of the Moon's center that makes its upper limb appear at the
  *         horizon. The 0.7275 factor folds the parallax (and the upper-limb semidiameter) into

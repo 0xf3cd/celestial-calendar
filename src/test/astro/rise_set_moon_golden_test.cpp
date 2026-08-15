@@ -67,6 +67,8 @@ auto jde_to_ut_minutes(const double jde) -> double {
   return ut1.fraction() * 1440.0;
 }
 
+// `cell` and `what` are two adjacent string_views by design (golden cell first, tag last).
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 void expect_event(
   const std::optional<double>& event_jde, const std::string_view cell,
   const std::string_view what
@@ -80,6 +82,7 @@ void expect_event(
   }
   ASSERT_LE(clock_diff(jde_to_ut_minutes(*event_jde), *golden), TOL_MIN) << what;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 struct MoonRow {
   int month;
@@ -135,9 +138,9 @@ const std::vector<MoonRow> USNO_ROWS {
   {  8, 21,   69.65,    18.96, "     ", "     ", "     " },  // Tromso polar night
   {  5, 14,   69.65,    18.96, "23:56", "08:20", "17:09" },  // Tromso double-rise day: USNO
   // lists rises 00:31 AND 23:56 in this cell; this library reports the later one (see header).
-  {  6, 18,   69.65,    18.96, "02:42", "14:11", "23:38" },  // Tromso double-SET day (R2
-  // regression pin): USNO lists sets 01:07 AND 23:38; the window end dips below the interior
-  // minimum, the shape that once hid this day's only rise inside a non-monotone segment.
+  {  6, 18,   69.65,    18.96, "02:42", "14:11", "23:38" },  // Tromso double-SET day: USNO
+  // lists sets 01:07 AND 23:38; the window end dips below the interior minimum — the shape
+  // that once hid this day's only rise inside a non-monotone segment.
 };
 // NOLINTEND(modernize-use-designated-initializers)
 
@@ -154,25 +157,27 @@ TEST(RiseSetMoonGolden, UsnoRiseTransitSet) {
     expect_event(result.rise_jde, row.rise, tag + " rise");
     expect_event(result.set_jde, row.set, tag + " set");
 
+    const bool has_rise = cell_minutes(row.rise).has_value();
+    const bool has_transit = cell_minutes(row.transit).has_value();
+    const bool has_set = cell_minutes(row.set).has_value();
+    const bool no_events = not has_rise and not has_transit and not has_set;
+
     // USNO omits the transit on never-rising days; ours always reports the (real, sub-horizon)
     // meridian crossing, like the solar API does. On those rows the transit cell has no golden
     // value and is skipped — same precedent as the solar polar-night row (#44).
-    const bool all_blank = not cell_minutes(row.rise).has_value()
-                       and not cell_minutes(row.transit).has_value()
-                       and not cell_minutes(row.set).has_value();
-    if (not all_blank) {
+    if (not no_events) {
       expect_event(result.transit_jde, row.transit, tag + " transit");
     }
 
     // Topology follows from the cells (see the file header for the direction inference):
     // all-blank ⇒ NIGHT; transit-only ⇒ DAY; anything else ⇒ NONE (a lone missing rise/set
     // is the Moon's skipped-day calendar arithmetic, not a polar verdict).
-    const bool has_rise = cell_minutes(row.rise).has_value();
-    const bool has_transit = cell_minutes(row.transit).has_value();
-    const bool has_set = cell_minutes(row.set).has_value();
-    const Polar expected = (not has_rise and not has_transit and not has_set) ? Polar::NIGHT
-                         : (not has_rise and has_transit and not has_set)     ? Polar::DAY
-                                                                              : Polar::NONE;
+    Polar expected = Polar::NONE;
+    if (no_events) {
+      expected = Polar::NIGHT;
+    } else if (not has_rise and has_transit and not has_set) {
+      expected = Polar::DAY;
+    }
     ASSERT_EQ(result.polar, expected) << tag;
 
     // Pin the day axis: every event the engine emits must land inside the queried UT date —

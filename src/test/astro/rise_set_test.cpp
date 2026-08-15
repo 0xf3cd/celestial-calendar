@@ -355,8 +355,8 @@ TEST(RiseSet, MidnightSunOnsetWeekIsCoherent) {
 TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
   // Synthetic fixed body (α = 0°, δ = +10°): at 70°N its transit altitude is exactly
   // 90° − (70° − 10°) = 30°. With h0 set to that value the day merely *touches* h0 at its
-  // highest point — every other instant stays below: a polar NIGHT, not a day. (R1: a `>=`
-  // here once counted the graze as DAY, diverging from `calculate_day`'s h_max <= h0 → NIGHT;
+  // highest point — every other instant stays below: a polar NIGHT, not a day. (A `>=`
+  // here would count the graze as DAY, diverging from `calculate_day`'s h_max <= h0 → NIGHT;
   // real ephemerides never hit exact equality, so only a synthetic body can pin it.)
   const auto fixed_body = [](const double) -> astro::coords::EquatorialCoord {
     return { .α = AngleDeg { 0.0 }, .δ = AngleDeg { 10.0 } };
@@ -379,7 +379,7 @@ TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
 TEST(RiseSet, FindExtremaFindsEveryInteriorExtremum) {
   // cos(2πt) + 0.5·cos(4πt) has exactly three interior extrema on [0, 1]: minima at t = 1/3
   // and 2/3 (value −0.75) and a maximum at t = 1/2 (value −0.5). Pins the grid-scan +
-  // refinement machinery directly (the R2 测试缝隙席 noted it was only covered end-to-end).
+  // refinement machinery directly (previously covered only end-to-end).
   const auto f = [](const double t) {
     return std::cos(2.0 * std::numbers::pi * t) + (0.5 * std::cos(4.0 * std::numbers::pi * t));
   };
@@ -404,7 +404,7 @@ TEST(RiseSet, TransitResidualGuardThrowsForRootlessBracket) {
   // A body whose α sweeps forward at 761°/day — faster than sidereal time, so H runs
   // backwards and the forward-angle estimate points the wrong way; the polish bracket holds
   // no root. The residual guard must throw rather than ship a fake transit (shape first
-  // proven by the R2 probe; fixed inputs make it deterministic).
+  // fixed inputs make it deterministic).
   const double jde0 = astro::julian_day::ut1_to_jde(
     calendar::Datetime { util::to_ymd(2026, 8, 15), 0.0 });
   const auto retrograde = [jde0](const double jde) -> astro::coords::EquatorialCoord {
@@ -432,7 +432,7 @@ TEST(RiseSet, RiseSetResidualGuardThrowsOnDiscontinuousProvider) {
 
 TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
   // A bump entirely inside the FIRST 15-min cell and a dip inside the LAST one. The grid
-  // direction check alone is blind to both (R3: 1.5% of real lunar days, worst 0.53°) —
+  // direction check alone is blind to both (1.5% of real lunar days, worst 0.53°) —
   // the edge-cell probes must catch them.
   const auto gaussian = [](const double center) {
     return [center](const double t) {
@@ -454,7 +454,7 @@ TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
 }
 
 TEST(RiseSet, SolarProviderThroughCalculateDay) {
-  // The gate for a loosened contract (R3): the old "solar provider is outside the supported
+  // The gate for a loosened contract: the old "solar provider is outside the supported
   // envelope" note was deleted once the mechanism handled the geometry — this is what holds
   // the loosening. London's tz=0 USNO cells are exactly the UT-day window's semantics; the
   // coordinates reproduce the golden set's quantized inputs (51.50, -0.13), not the city's
@@ -494,7 +494,7 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
 }
 
 TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {
-  // R4: `golden_section_argmin`'s absolute 1e-9-day tolerance is unreachable once the JDE
+  // `golden_section_argmin`'s absolute 1e-9-day tolerance is unreachable once the JDE
   // ulp exceeds it (JDE ≥ 2²³, ≈ year 18255) — the loop hung forever, inside the declared
   // domain. The iteration cap guarantees termination; without it each of these calls would
   // hang. (The ephemerides are physically meaningless at year 20000; the pin is
@@ -514,7 +514,7 @@ TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {
 TEST(RiseSet, FindExtremaKeepsDistinctSameCellExtrema) {
   // An edge-cell candidate (the bump at 0.3 cells) must survive the duplicate filter even
   // though a same-kind, grid-found extremum sits just ~1 cell away (at 1.2 cells) — the
-  // whole-cell, kind-blind radius from R4 merged them. Also pins time-ordering with
+  // whole-cell, kind-blind radius would merge them. Also pins time-ordering with
   // several extrema sharing the edge region (the partition consumes them sorted).
   const auto bump = [](const double center, const double t) {
     const double d = (t - center) / (0.15 / 96.0);
