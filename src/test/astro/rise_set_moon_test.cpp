@@ -67,8 +67,8 @@ TEST(RiseSetMoon, H0FormulaProvenance) {
   cold.temperature_c = -20.0;
   ASSERT_LT(moon::h0(astro::toolbox::AngleRad { Π.rad() }, cold).deg(), h0.deg());
 
-  // The Saemundsson model flows through the same wiring (previously uncovered end-to-end):
-  // h0 matches the manually composed 0.7275·Π − at_horizon term by term.
+  // The Saemundsson model flows through the same wiring: h0 matches the manually
+  // composed 0.7275·Π − at_horizon term by term.
   astro::earth::refraction::Params saemundsson;
   saemundsson.model = astro::earth::refraction::Model::SAEMUNDSSON;
   const auto expected = astro::toolbox::AngleDeg { 0.7275 * Π.deg() }

@@ -136,7 +136,7 @@ TEST(RiseSet, TransitHourAngleIsZero) {
     const double H = detail::body_local(transit, location, sun::provider).hour_angle_deg;
     // 0.001° of hour angle ≈ 0.24 s of time. Self-consistency only: solver and checker share
     // `detail::body_local`, so a systematic error (e.g. a UT1/TT mixup) cancels out here — the
-    // Meeus 28.a anchor below is the absolute guard (mutation-verified).
+    // Meeus 28.a anchor below is the absolute guard.
     ASSERT_NEAR(H, 0.0, 0.001);
   }
 }
@@ -379,7 +379,7 @@ TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
 TEST(RiseSet, FindExtremaFindsEveryInteriorExtremum) {
   // cos(2πt) + 0.5·cos(4πt) has exactly three interior extrema on [0, 1]: minima at t = 1/3
   // and 2/3 (value −0.75) and a maximum at t = 1/2 (value −0.5). Pins the grid-scan +
-  // refinement machinery directly (previously covered only end-to-end).
+  // refinement machinery directly.
   const auto f = [](const double t) {
     return std::cos(2.0 * std::numbers::pi * t) + (0.5 * std::cos(4.0 * std::numbers::pi * t));
   };
@@ -403,8 +403,8 @@ TEST(RiseSet, FindExtremaFindsEveryInteriorExtremum) {
 TEST(RiseSet, TransitResidualGuardThrowsForRootlessBracket) {
   // A body whose α sweeps forward at 761°/day — faster than sidereal time, so H runs
   // backwards and the forward-angle estimate points the wrong way; the polish bracket holds
-  // no root. The residual guard must throw rather than ship a fake transit (shape first
-  // fixed inputs make it deterministic).
+  // no root. The residual guard must throw rather than ship a fake transit (fixed synthetic inputs
+  // make it deterministic).
   const double jde0 = astro::julian_day::ut1_to_jde(
     calendar::Datetime { util::to_ymd(2026, 8, 15), 0.0 });
   const auto retrograde = [jde0](const double jde) -> astro::coords::EquatorialCoord {
@@ -454,9 +454,8 @@ TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
 }
 
 TEST(RiseSet, SolarProviderThroughCalculateDay) {
-  // The gate for a loosened contract: the old "solar provider is outside the supported
-  // envelope" note was deleted once the mechanism handled the geometry — this is what holds
-  // the loosening. London's tz=0 USNO cells are exactly the UT-day window's semantics; the
+  // The gate for the loosened contract — `calculate_day` accepts the solar provider, and
+  // this test holds that acceptance. London's tz=0 USNO cells are exactly the UT-day window's semantics; the
   // coordinates reproduce the golden set's quantized inputs (51.50, -0.13), not the city's
   // more precise centroid.
   const GeoLocation LONDON_GOLDEN = loc(51.50, -0.13);
@@ -565,7 +564,7 @@ TEST(RiseSet, InvalidInputsThrow) {
 
 
 // Each bracket constant in `rise_set.hpp` carries a note arguing why it is wide enough:
-// "|EoT| ≤ 16.5 min — a 8.7x margin", and so on. Those arguments were maintained by attention —
+// "≤ 20.4 min ≈ 0.0142 day across the supported span — a 7.1x margin", and so on. Those arguments were maintained by attention —
 // shrink a bracket, widen the supported span, or swap a model, and the number beside it does not
 // object. The three tests below sweep the span, measure the deviation each bracket actually has
 // to cover, and hold it to what its note claims (#126).

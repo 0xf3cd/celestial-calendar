@@ -179,7 +179,7 @@ struct GeoLocation {
  *        which side of h₀ it stays on.
  * @note First-class member of `Result` — the event topology (normal / polar day / polar
  *       night) is part of the result's type, not inferred from counting empty optionals
- *       (design constraint from issue #62, 2026-08-02).
+ *       (design constraint from issue #62).
  */
 enum class Polar : uint8_t { NONE, DAY, NIGHT };
 
@@ -409,8 +409,8 @@ requires std::invocable<const Func&, double>
   }
 
   // Edge cells: an extremum inside the first or last cell has no grid neighbor on one side,
-  // so the direction check above can miss it (1.5% of lunar days by measurement —
-  // and it is exactly the band a grazing h₀ query asks about). Probe both edge cells
+  // so the direction check above can miss it — routinely, on lunar days, and it is
+  // exactly the band a grazing h₀ query asks about). Probe both edge cells
   // directly; a candidate counts only if it lands strictly inside the cell and beats both
   // cell ends. Skip duplicates of grid-found extrema (a bump near the cell boundary shows
   // up in both) — same kind and sub-second distance, nothing broader: two genuinely
@@ -424,7 +424,7 @@ requires std::invocable<const Func&, double>
       // tolerance/2 of the true extremum — and of the cell end, when the extremum IS the
       // endpoint. "Strictly inside" therefore needs an epsilon larger than tolerance/2;
       // EDGE_EPSILON_DAYS and EDGE_PROBE_TOLERANCE_DAYS are tied by that constraint
-      // (currently 2x), and loosening the tolerance without the epsilon breaks it.
+      // (currently 2x that floor), and loosening the tolerance without the epsilon breaks it.
       constexpr double EDGE_EPSILON_DAYS = 1e-6;
       if (jde - lo <= EDGE_EPSILON_DAYS or hi - jde <= EDGE_EPSILON_DAYS) {
         continue;

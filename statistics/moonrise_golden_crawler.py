@@ -20,9 +20,9 @@
 #   season, so the Moon is circumpolar / never-rising at 69.65°N for several days each month —
 #   the candidate dates were located with the library's own engine, then pinned against USNO
 #   here), plus two DOUBLE-EVENT days: 2026-05-14 (two rises in one cell) and 2026-06-18
-#   (two sets in one cell — its window end dips below the interior minimum). USNO lists both events on those days, and the library's one-event-per-cell
-#   contract reports the later one — the dict below keeps last-wins on purpose and says so
-#   loudly when it happens.
+#   (two sets in one cell — its window end dips below the interior minimum). USNO lists
+#   both events on those days, and the library's one-event-per-cell contract reports the
+#   later one — the dict below keeps last-wins on purpose and says so loudly when it happens.
 # The script emits column-aligned C++ dataset rows to paste into
 # src/test/astro/rise_set_moon_golden_test.cpp.
 #
@@ -47,9 +47,16 @@ SITES = [
   ("Tromso",    69.65,   18.96),
 ]
 
-# Consecutive-day span per site, plus Tromso lunar-polar dates (DAY: circumpolar; NIGHT:
-# never rises) and the double-rise day.
-SPAN = [(2026, 8, d) for d in range(13, 18)]
+# Consecutive-day spans per site, spread over decades and seasons (1999 / 2024 / 2026
+# standstill / 2028 / 2049; USNO rstt/oneday serves 1900–2100 fine), plus Tromso
+# lunar-polar dates (DAY: circumpolar; NIGHT: never rises) and the double-event days.
+SPANS = [
+  [(1999, 6, d) for d in range(14, 19)],
+  [(2024, 3, d) for d in range(19, 24)],
+  [(2026, 8, d) for d in range(13, 18)],
+  [(2028, 12, d) for d in range(15, 20)],
+  [(2049, 6, d) for d in range(14, 19)],
+]
 TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21), (2026, 5, 14), (2026, 6, 18)]
 
 PHEN_KEYS = ["Rise", "Upper Transit", "Set"]
@@ -73,14 +80,14 @@ def fetch_usno_moon(lat: float, lon: float, y: int, m: int, d: int) -> dict:
 
 
 def main() -> None:
-  print("// --- C++ rows (USNO rstt/oneday, tz=0; "" = event absent that UT day) ---")
+  print("// --- C++ rows (USNO rstt/oneday, tz=0; blank cell = event absent that UT day) ---")
   for (name, lat, lon) in SITES:
-    dates = SPAN + (TROMSO_EXTRA if name == "Tromso" else [])
+    dates = [date for span in SPANS for date in span] + (TROMSO_EXTRA if name == "Tromso" else [])
     for (y, m, d) in dates:
       rec = fetch_usno_moon(lat, lon, y, m, d)
       print(f"USNO {name} {y}-{m:02d}-{d:02d}: {rec}", file=sys.stderr)
       cells = ", ".join(f'"{rec.get(k) or "":5s}"' for k in PHEN_KEYS)
-      print(f"  {{ {m:2d}, {d:2d}, {lat:7.2f}, {lon:8.2f}, {cells} }},  // {name}")
+      print(f"  {{ {y:5d}, {m:2d}, {d:2d}, {lat:7.2f}, {lon:8.2f}, {cells} }},  // {name}")
 
 
 if __name__ == "__main__":
