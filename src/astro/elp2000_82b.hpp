@@ -28,6 +28,7 @@
 #include <ranges>
 #include <cstddef>
 #include <cstdlib> // The integral `std::abs` overloads live here, not in <cmath>.
+#include <functional>
 #include <numeric>
 #include <cstdint>
 #include <algorithm>
@@ -297,13 +298,10 @@ struct Term {
 } // namespace detail
 
 
-/**
- * @brief Evaluate ELP2000-82B on the given parameters.
- * @param jc The julian century.
- * @return The evaluated result.
- * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- */
-[[nodiscard]] inline auto evaluate(const double jc) -> Evaluation {
+namespace detail {
+
+template <typename Fold>
+[[nodiscard]] inline auto evaluate_with(const double jc, Fold fold) -> Evaluation {
   using namespace std::ranges;
 
   const auto ctx = create_context(jc);
@@ -349,14 +347,30 @@ struct Term {
     return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });
 
-  const auto [Σl, Σr] = std::reduce(cbegin(lr_terms), cend(lr_terms), detail::Term {});
+  const auto [Σl, Σr] = fold(lr_terms, detail::Term {}, std::plus {});
 
   return {
     .Σl  = Σl,
-    .Σb  = std::reduce(cbegin(lat_terms), cend(lat_terms)),
+    .Σb  = fold(lat_terms, 0.0, std::plus {}),
     .Σr  = Σr,
     .ctx = ctx
   };
+}
+
+} // namespace detail
+
+
+/**
+ * @brief Evaluate ELP2000-82B on the given parameters.
+ * @param jc The julian century.
+ * @return The evaluated result.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+[[nodiscard]] inline auto evaluate(const double jc) -> Evaluation {
+  const auto reduce = [](auto&& range, auto init, auto op) {
+    return std::reduce(cbegin(range), cend(range), init, op);
+  };
+  return detail::evaluate_with(jc, reduce);
 }
 
 } // namespace astro::elp2000_82b
