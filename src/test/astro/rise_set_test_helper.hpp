@@ -62,11 +62,14 @@ inline auto cell_minutes(const std::string_view cell) -> std::optional<double> {
   if (first == std::string_view::npos) {
     return std::nullopt;
   }
+
   if (cell.size() - first < 5 or cell[first + 2] != ':') {
     throw std::invalid_argument { "malformed golden cell: " + std::string { cell } };
   }
+
   const auto digits = [&](const size_t pos) { return (10.0 * (cell[pos] - '0')) + (cell[pos + 1] - '0'); };
   double minutes = (60.0 * digits(first)) + digits(first + 3);
+
   const auto second_colon = cell.find(':', first + 3);
   if (second_colon != std::string_view::npos) {
     if (second_colon != first + 5 or cell.size() - first < 8) {
@@ -74,6 +77,7 @@ inline auto cell_minutes(const std::string_view cell) -> std::optional<double> {
     }
     minutes += digits(first + 6) / 60.0;
   }
+
   return minutes;
 }
 
