@@ -30,7 +30,6 @@
 #include <functional>
 #include <ranges>
 #include <cstdint>
-#include <numeric>
 
 #include "toolbox.hpp"
 #include "julian_day.hpp"
@@ -317,42 +316,6 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
 }
 
 
-namespace detail {
-
-template <typename Fold>
-[[nodiscard]] inline auto longitude_sum(const double jde, const Model model, Fold fold) -> double {
-  const double jc = astro::julian_day::jde_to_jc(jde);
-  const auto eval_θ = gen_eval_θ(jc);
-  const auto& coeff_terms = find_model(model);
-
-  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
-    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
-    const auto& [a, b] = coeffs.Δψ;
-    return (a + (b * jc)) * std::sin(θ.rad());
-  });
-
-  return fold(results, 0.0, std::plus {});
-}
-
-
-template <typename Fold>
-[[nodiscard]] inline auto obliquity_sum(const double jde, const Model model, Fold fold) -> double {
-  const double jc = astro::julian_day::jde_to_jc(jde);
-  const auto eval_θ = gen_eval_θ(jc);
-  const auto& coeff_terms = find_model(model);
-
-  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
-    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
-    const auto& [a, b] = coeffs.Δε;
-    return (a + (b * jc)) * std::cos(θ.rad());
-  });
-
-  return fold(results, 0.0, std::plus {});
-}
-
-} // namespace detail
-
-
 /**
  * @brief Calculates the nutation in longitude (Δψ) for the given julian day.
  * @param jde The julian ephemeris day number, which is based on TT.
@@ -365,10 +328,25 @@ template <typename Fold>
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
-  };
-  const auto sum_results = detail::longitude_sum(jde, model, reduce); // Unit: 0".0001.
+  // Get the Julian century since J2000.
+  const double jc = astro::julian_day::jde_to_jc(jde);
+
+  // Create the function to calculate the θ values.
+  const auto eval_θ = gen_eval_θ(jc);
+
+  // Select the coefficient terms to use.
+  const auto& coeff_terms = find_model(model);
+
+  // Evaluate each term.
+  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
+    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
+    const auto& [a, b] = coeffs.Δψ;
+    return (a + (b * jc)) * std::sin(θ.rad());
+  });
+
+  // Accumulate the results of all the terms.
+  // The unit is 0".0001.
+  const auto sum_results = std::ranges::fold_left(results, 0.0, std::plus {});
   const auto Δψ_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
@@ -388,10 +366,25 @@ template <typename Fold>
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
-  };
-  const auto sum_results = detail::obliquity_sum(jde, model, reduce); // Unit: 0".0001.
+  // Get the Julian century since J2000.
+  const double jc = astro::julian_day::jde_to_jc(jde);
+
+  // Create the function to calculate the θ values.
+  const auto eval_θ = gen_eval_θ(jc);
+
+  // Select the coefficient terms to use.
+  const auto& coeff_terms = find_model(model);
+
+  // Evaluate each term.
+  const auto results = coeff_terms | std::views::transform([&](const NutationCoeffs& coeffs) {
+    const toolbox::AngleDeg θ = eval_θ(coeffs.θ);
+    const auto& [a, b] = coeffs.Δε;
+    return (a + (b * jc)) * std::cos(θ.rad());
+  });
+
+  // Accumulate the results of all the terms.
+  // The unit is 0".0001.
+  const auto sum_results = std::ranges::fold_left(results, 0.0, std::plus {});
   const auto Δε_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
@@ -486,22 +479,6 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
 }};
 // NOLINTEND(modernize-use-designated-initializers)
 
-
-namespace detail {
-
-template <typename Fold>
-[[nodiscard]] inline auto daily_λ_sum(const double jde, Fold fold) -> double {
-  using namespace std::ranges;
-  const double τ = astro::julian_day::jde_to_jm(jde);
-  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
-    const toolbox::AngleDeg θ { t.phase + (t.rate * τ) };
-    return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
-  });
-  return fold(terms, 0.0, std::plus {});
-}
-
-} // namespace detail
-
 /**
  * @brief The daily variation Δλ of the Sun's geocentric longitude, mean equinox of the date.
  * @param jde The julian ephemeris day number, which is based on TT.
@@ -511,10 +488,13 @@ template <typename Fold>
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
  */
 [[nodiscard]] inline auto daily_λ_variation(const double jde) -> double {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
-  };
-  return 3548.330 + detail::daily_λ_sum(jde, reduce);
+  using namespace std::ranges;
+  const double τ = astro::julian_day::jde_to_jm(jde);
+  const auto terms = MEEUS_DAILY_VARIATION_TERMS | views::transform([τ](const DailyVariationTerm& t) {
+    const toolbox::AngleDeg θ { t.phase + (t.rate * τ) };
+    return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
+  });
+  return 3548.330 + fold_left(terms, 0.0, std::plus {});
 }
 
 /** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).

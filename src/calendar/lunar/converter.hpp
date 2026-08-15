@@ -23,10 +23,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cassert>
-#include <numeric>
 #include <cstdint>
+#include <functional>
 #include <optional>
 
 #include "ymd.hpp"
@@ -153,7 +154,7 @@ struct Converter {
       using namespace util::ymd_operator;
       const auto& info = AlgoMetadata::get_info_for_year(g_year);
       const auto& ml = info.month_lengths;
-      const uint32_t lunar_year_days_count = std::reduce(cbegin(ml), cend(ml));
+      const uint32_t lunar_year_days_count = std::ranges::fold_left(ml, uint32_t { 0 }, std::plus {});
 
       // Calculate the gregorian date of the last day in the lunar year.
       const year_month_day last_lunar_day = info.date_of_first_day + (lunar_year_days_count - 1);
@@ -186,7 +187,12 @@ struct Converter {
     const auto& info = AlgoMetadata::get_info_for_year(y);
     const auto& ml = info.month_lengths;
 
-    const uint32_t past_days_count = d + std::reduce(cbegin(ml), cbegin(ml) + m - 1);
+    const uint32_t past_days_count = d + std::ranges::fold_left(
+      cbegin(ml),
+      cbegin(ml) + m - 1,
+      uint32_t { 0 },
+      std::plus {}
+    );
 
     using namespace util::ymd_operator;
     return info.date_of_first_day + (past_days_count - 1);

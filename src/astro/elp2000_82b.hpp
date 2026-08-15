@@ -29,7 +29,6 @@
 #include <cstddef>
 #include <cstdlib> // The integral `std::abs` overloads live here, not in <cmath>.
 #include <functional>
-#include <numeric>
 #include <cstdint>
 #include <algorithm>
 
@@ -284,7 +283,7 @@ namespace detail {
 /**
  * @struct One row's contribution to Σl and Σr.
  * @details Both sums walk `coeff::LR` and share every step but the last, so one pass yields both.
- *          Adding componentwise is what lets a single `std::reduce` carry the pair.
+ *          Adding componentwise is what lets a single fold carry the pair.
  */
 struct Term {
   double lon = 0.0; // Unit is 0.000001 degrees
@@ -298,10 +297,13 @@ struct Term {
 } // namespace detail
 
 
-namespace detail {
-
-template <typename Fold>
-[[nodiscard]] inline auto evaluate_with(const double jc, Fold fold) -> Evaluation {
+/**
+ * @brief Evaluate ELP2000-82B on the given parameters.
+ * @param jc The julian century.
+ * @return The evaluated result.
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ */
+[[nodiscard]] inline auto evaluate(const double jc) -> Evaluation {
   using namespace std::ranges;
 
   const auto ctx = create_context(jc);
@@ -327,13 +329,7 @@ template <typename Fold>
     return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
   };
 
-  // Deliberately not a hand-written loop. Writing the fold out by hand would pin the summation
-  // order, and pinning it is a numerical change in its own right -- one that belongs with #131,
-  // where such changes get cross-platform evidence. Leaving it to `std::reduce` changes nothing
-  // that was not already the library's choice; `detail::Term::operator+` adds componentwise, so each
-  // sum sees whatever grouping the implementation would have given it on its own.
-  // None of which guarantees Σl and Σr are identical across standard libraries -- nothing here does,
-  // and Σl measurably is not on libc++. #131 tracks pinning the order.
+  // The aggregate adds componentwise, so one strict left fold preserves each series' term order.
   const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> detail::Term {
     const auto θ_rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);
@@ -347,30 +343,14 @@ template <typename Fold>
     return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });
 
-  const auto [Σl, Σr] = fold(lr_terms, detail::Term {}, std::plus {});
+  const auto [Σl, Σr] = fold_left(lr_terms, detail::Term {}, std::plus {});
 
   return {
     .Σl  = Σl,
-    .Σb  = fold(lat_terms, 0.0, std::plus {}),
+    .Σb  = fold_left(lat_terms, 0.0, std::plus {}),
     .Σr  = Σr,
     .ctx = ctx
   };
-}
-
-} // namespace detail
-
-
-/**
- * @brief Evaluate ELP2000-82B on the given parameters.
- * @param jc The julian century.
- * @return The evaluated result.
- * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- */
-[[nodiscard]] inline auto evaluate(const double jc) -> Evaluation {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
-  };
-  return detail::evaluate_with(jc, reduce);
 }
 
 } // namespace astro::elp2000_82b

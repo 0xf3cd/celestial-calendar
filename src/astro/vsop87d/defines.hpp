@@ -28,7 +28,6 @@
 #include <cmath>
 #include <functional>
 #include <ranges>
-#include <numeric>
 #include <cstdint>
 
 namespace astro::vsop87d {
@@ -58,47 +57,6 @@ using Vsop87dTables = std::span<const Vsop87dTable>;
  */
 inline constexpr double SCALING_FACTOR = 1e8;
 
-namespace detail {
-
-template <typename Fold>
-[[nodiscard]] inline auto evaluate_table_with(
-  const Vsop87dTable& vsop_table,
-  const double jm,
-  Fold fold
-) -> double {
-  const auto calc_term = [jm](const auto& term) constexpr -> double {
-    return term.A * std::cos(term.B + (term.C * jm));
-  };
-
-  const auto evaluated = vsop_table | std::views::transform(calc_term);
-  return fold(evaluated, 0.0, std::plus {}) / SCALING_FACTOR;
-}
-
-
-template <std::ranges::bidirectional_range Values, typename Fold>
-requires std::ranges::common_range<Values>
-[[nodiscard]] inline auto evaluate_horner_with(Values& values, const double jm, Fold fold) -> double {
-  const auto reversed = std::views::reverse(values);
-  return fold(reversed, 0.0, [jm](double a, double b) {
-    return (a * jm) + b;
-  });
-}
-
-
-template <typename TermFold, typename HornerFold>
-[[nodiscard]] inline auto evaluate_tables_with(
-  const Vsop87dTables& vsop_tables,
-  const double jm,
-  TermFold term_fold,
-  HornerFold horner_fold
-) -> double {
-  const auto values = vsop_tables | std::views::transform([&](const Vsop87dTable& vsop_table) {
-    return evaluate_table_with(vsop_table, jm, term_fold);
-  });
-  return evaluate_horner_with(values, jm, horner_fold);
-}
-
-} // namespace detail
 
 /** 
  * @brief Return the sum of all the terms in the given VSOP87D table, for the given julian millennium. 
@@ -108,10 +66,14 @@ template <typename TermFold, typename HornerFold>
  * @example `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
  */
 [[nodiscard]] inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
+  const auto calc_term = [jm](const auto& term) constexpr -> double {
+    return term.A * std::cos(term.B + (term.C * jm));
   };
-  return detail::evaluate_table_with(vsop_table, jm, reduce);
+
+  const auto evaluated = vsop_table | std::views::transform(calc_term);
+  const auto terms_sum = std::ranges::fold_left(evaluated, 0.0, std::plus {});
+
+  return terms_sum / SCALING_FACTOR;
 }
 
 
@@ -123,13 +85,19 @@ template <typename TermFold, typename HornerFold>
  * @example `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
  */
 [[nodiscard]] inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -> double {
-  const auto reduce = [](auto&& range, auto init, auto op) {
-    return std::reduce(cbegin(range), cend(range), init, op);
-  };
-  const auto accumulate = [](auto&& range, auto init, auto op) {
-    return std::accumulate(cbegin(range), cend(range), init, op);
-  };
-  return detail::evaluate_tables_with(vsop_tables, jm, reduce, accumulate);
+  // Evaluate the result for each table in `vsop_tables`.
+  const auto values = vsop_tables | std::views::transform([jm](const Vsop87dTable& vsop_table) {
+    return evaluate_table(vsop_table, jm);
+  });
+
+  // Create the reversed view of `table_results`.
+  // In order to get the correct result, the values need to be reversed.
+  const auto reversed = std::views::reverse(values);
+
+  // Evaluate the final result.
+  return std::ranges::fold_left(reversed, 0.0, [jm](double a, double b) {
+    return (a * jm) + b;
+  });
 }
 
 /** @enum The planets supported by VSOP87D. */

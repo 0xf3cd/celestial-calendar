@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <vector>
 #include <ranges>
-#include <numeric>
 #include <cstdint>
 #include <concepts>
 #include <optional>
@@ -200,7 +200,7 @@ requires std::invocable<const Func&, int32_t>
   const auto last_gregorian_date = std::invoke([&] {
     const LunarYear& info = algo_f(end_lunar_year);
     const auto& ml = info.month_lengths;
-    const uint32_t days_count = std::reduce(cbegin(ml), cend(ml));
+    const uint32_t days_count = std::ranges::fold_left(ml, uint32_t { 0 }, std::plus {});
 
     using namespace util::ymd_operator;
     return (days_count - 1) + info.date_of_first_day;
