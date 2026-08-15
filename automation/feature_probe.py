@@ -68,25 +68,9 @@ FEATURES: Final[List[Feature]] = [
     """,
   ),
   Feature(
-    name="std::ranges::fold_left",
-    token="fold_left",
-    issue="#131",
-    deferred=("compiles everywhere, but MS STL's result drifts 1-3 ulp from the hand-rolled sum "
-              "from n~63 up, which would fork the golden data per platform (#131)"),
-    program="""
-      #include <algorithm>
-      #include <functional>
-      #include <vector>
-      auto main() -> int {
-        const std::vector<int> v { 1, 2, 3 };
-        return std::ranges::fold_left(v, 0, std::plus {}) == 6 ? 0 : 1;
-      }
-    """,
-  ),
-  Feature(
     name="std::views::enumerate",
     token="enumerate",
-    issue="#131",
+    issue="#203",
     program="""
       #include <ranges>
       #include <vector>
@@ -99,7 +83,7 @@ FEATURES: Final[List[Feature]] = [
   Feature(
     name="std::views::pairwise",
     token="pairwise",
-    issue="#131",
+    issue="#203",
     program="""
       #include <ranges>
       #include <vector>
@@ -112,7 +96,7 @@ FEATURES: Final[List[Feature]] = [
   Feature(
     name="std::views::slide",
     token="slide",
-    issue="#131",
+    issue="#203",
     program="""
       #include <ranges>
       #include <vector>
@@ -127,7 +111,7 @@ FEATURES: Final[List[Feature]] = [
     # because two sites already hand-roll around it and this is where they will find out.
     name="std::views::concat",
     token="concat",
-    issue="#131",
+    issue="#203",
     program="""
       #include <ranges>
       #include <vector>
@@ -196,7 +180,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libstdc++": {
     "std::tuple_like": False,
     "std::generator": True,
-    "std::ranges::fold_left": True,
     "std::views::enumerate": True,
     "std::views::pairwise": True,
     "std::views::slide": True,
@@ -207,7 +190,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "libc++": {
     "std::tuple_like": False,
     "std::generator": False,
-    "std::ranges::fold_left": True,
     "std::views::enumerate": False,
     "std::views::pairwise": False,
     "std::views::slide": False,
@@ -218,7 +200,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
   "msvc-stl": {
     "std::tuple_like": False,
     "std::generator": True,
-    "std::ranges::fold_left": True,
     "std::views::enumerate": True,
     "std::views::pairwise": True,
     "std::views::slide": True,
@@ -237,7 +218,6 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
 SITE_COUNTS: Final[Dict[str, int]] = {
   "tuple_like": 1,
   "generator": 3,
-  "fold_left": 0,
   "enumerate": 2,
   "pairwise": 4,
   "slide": 1,
@@ -280,10 +260,9 @@ def adoptable(feature: Feature) -> List[str]:
   the exact failure mode this gate replaces. So the recorded state is also read forwards: usable
   on every leg, nothing recorded holding it back, and sites still working around it.
 
-  Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. Workarounds
-  with no such marker -- `fold_left`'s eleven `std::reduce`/`std::accumulate` sums, for one --
-  cannot be named, which is why `monuments()` below refuses to let a feature sit in the table
-  with nothing to point at.
+  Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. An unmarked
+  workaround cannot be named, which is why `monuments()` below refuses to let a feature sit in
+  the table with nothing to point at.
   """
   if feature.deferred or not all(EXPECTED[leg][feature.name] for leg in EXPECTED):
     return []

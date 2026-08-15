@@ -28,7 +28,7 @@
 #include <ranges>
 #include <cstddef>
 #include <cstdlib> // The integral `std::abs` overloads live here, not in <cmath>.
-#include <numeric>
+#include <functional>
 #include <cstdint>
 #include <algorithm>
 
@@ -283,7 +283,7 @@ namespace detail {
 /**
  * @struct One row's contribution to Σl and Σr.
  * @details Both sums walk `coeff::LR` and share every step but the last, so one pass yields both.
- *          Adding componentwise is what lets a single `std::reduce` carry the pair.
+ *          Adding componentwise is what lets a single fold carry the pair.
  */
 struct Term {
   double lon = 0.0; // Unit is 0.000001 degrees
@@ -329,13 +329,7 @@ struct Term {
     return E_pow.at(static_cast<std::size_t>(std::abs(coeff.M)));
   };
 
-  // Deliberately not a hand-written loop. Writing the fold out by hand would pin the summation
-  // order, and pinning it is a numerical change in its own right -- one that belongs with #131,
-  // where such changes get cross-platform evidence. Leaving it to `std::reduce` changes nothing
-  // that was not already the library's choice; `detail::Term::operator+` adds componentwise, so each
-  // sum sees whatever grouping the implementation would have given it on its own.
-  // None of which guarantees Σl and Σr are identical across standard libraries -- nothing here does,
-  // and Σl measurably is not on libc++. #131 tracks pinning the order.
+  // The aggregate adds componentwise, so one strict left fold preserves each series' term order.
   const auto lr_terms = coeff::LR | views::transform([&](const coeff::LRCoefficients& coeff) -> detail::Term {
     const auto θ_rad = θ_of(coeff).rad();
     const auto M_correction = correction_of(coeff);
@@ -349,11 +343,11 @@ struct Term {
     return coeff.argB * std::sin(θ_of(coeff).rad()) * correction_of(coeff);
   });
 
-  const auto [Σl, Σr] = std::reduce(cbegin(lr_terms), cend(lr_terms), detail::Term {});
+  const auto [Σl, Σr] = fold_left(lr_terms, detail::Term {}, std::plus {});
 
   return {
     .Σl  = Σl,
-    .Σb  = std::reduce(cbegin(lat_terms), cend(lat_terms)),
+    .Σb  = fold_left(lat_terms, 0.0, std::plus {}),
     .Σr  = Σr,
     .ctx = ctx
   };

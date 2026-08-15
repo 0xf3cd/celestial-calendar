@@ -23,10 +23,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <span>
 #include <cmath>
+#include <functional>
 #include <ranges>
-#include <numeric>
 #include <cstdint>
 
 namespace astro::vsop87d {
@@ -70,7 +71,7 @@ inline constexpr double SCALING_FACTOR = 1e8;
   };
 
   const auto evaluated = vsop_table | std::views::transform(calc_term);
-  const auto terms_sum = std::reduce(cbegin(evaluated), cend(evaluated));
+  const auto terms_sum = std::ranges::fold_left(evaluated, 0.0, std::plus {});
 
   return terms_sum / SCALING_FACTOR;
 }
@@ -94,11 +95,9 @@ inline constexpr double SCALING_FACTOR = 1e8;
   const auto reversed = std::views::reverse(values);
 
   // Evaluate the final result.
-  const auto accumulated = std::accumulate(cbegin(reversed), cend(reversed), 0.0, [jm](double a, double b) {
+  return std::ranges::fold_left(reversed, 0.0, [jm](double a, double b) {
     return (a * jm) + b;
   });
-
-  return accumulated;
 }
 
 /** @enum The planets supported by VSOP87D. */

@@ -25,10 +25,11 @@
 
 #include <span>
 #include <array>
+#include <algorithm>
 #include <cmath>
+#include <functional>
 #include <ranges>
 #include <cstdint>
-#include <numeric>
 
 #include "toolbox.hpp"
 #include "julian_day.hpp"
@@ -345,7 +346,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
 
   // Accumulate the results of all the terms.
   // The unit is 0".0001.
-  const auto sum_results = std::reduce(cbegin(results), cend(results));
+  const auto sum_results = std::ranges::fold_left(results, 0.0, std::plus {});
   const auto Δψ_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
@@ -383,7 +384,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
 
   // Accumulate the results of all the terms.
   // The unit is 0".0001.
-  const auto sum_results = std::reduce(cbegin(results), cend(results));
+  const auto sum_results = std::ranges::fold_left(results, 0.0, std::plus {});
   const auto Δε_arcsec = sum_results * 0.0001;
 
   // Convert the result to degrees.
@@ -493,7 +494,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
     const toolbox::AngleDeg θ { t.phase + (t.rate * τ) };
     return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
   });
-  return 3548.330 + std::reduce(cbegin(terms), cend(terms));
+  return 3548.330 + fold_left(terms, 0.0, std::plus {});
 }
 
 /** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).
@@ -519,4 +520,3 @@ inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
 }
 
 } // namespace astro::earth::aberration
-
