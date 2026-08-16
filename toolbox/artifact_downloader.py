@@ -80,7 +80,7 @@ def release_commit_sha() -> str:
 
 
 def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
-  """Find the run of `workflow` that built `sha` and succeeded.
+  """Find the dispatched run of `workflow` that built `sha` and succeeded.
 
   Fail loud when there is none -- never settle for "the latest run", which can belong
   to an unrelated, even failing, WIP branch: a release ships the artifacts of the
@@ -88,11 +88,11 @@ def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
   """
   runs, pages = GitHub.list_workflow_runs(workflow.id)
   for run in runs:
-    if run.head_sha == sha and run.conclusion == "success":
+    if run.event == "workflow_dispatch" and run.head_sha == sha and run.conclusion == "success":
       return run
-  red_print(f'No successful "{workflow.name}" run found for commit {sha} '
+  red_print(f'No successful dispatched "{workflow.name}" run found for commit {sha} '
             f"(scanned {pages} page(s), {len(runs)} runs)")
-  raise RuntimeError(f'No successful "{workflow.name}" run for commit {sha}')
+  raise RuntimeError(f'No successful dispatched "{workflow.name}" run for commit {sha}')
 
 
 def parse_args() -> argparse.Namespace:
