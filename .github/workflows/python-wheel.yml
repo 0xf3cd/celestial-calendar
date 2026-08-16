@@ -139,10 +139,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Python 3.11.15
+      - name: Set up Python 3.11.9
         uses: actions/setup-python@v7
         with:
-          python-version: "3.11.15"
+          python-version: "3.11.9"
 
       - name: Download exact macOS wheel artifact
         uses: actions/download-artifact@v8
@@ -183,7 +183,7 @@ jobs:
     runs-on: windows-latest
     env:
       CIBW_ARCHS_WINDOWS: AMD64
-      CIBW_ENVIRONMENT_WINDOWS: CC=clang CXX=clang++
+      CIBW_ENVIRONMENT_WINDOWS: CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja
     steps:
       - uses: actions/checkout@v7
 

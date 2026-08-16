@@ -66,3 +66,16 @@ def test_python_wheel_acceptance_has_one_entry_point():
   assert "test/abi/raw_protocol.py" not in text
   assert "test/consumer/smoke.py" not in text
   assert text.replace("\\", "/").count("test/run_all.py") == 5
+
+
+def test_python_wheel_platform_toolchains_are_explicit():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  jobs = workflow["jobs"]
+  floor_python = next(
+    step["with"]["python-version"]
+    for step in jobs["macos-14-floor"]["steps"]
+    if str(step.get("uses", "")).startswith("actions/setup-python@")
+  )
+
+  assert floor_python == "3.11.9"
+  assert jobs["windows-amd64"]["env"]["CIBW_ENVIRONMENT_WINDOWS"] == ("CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja")
