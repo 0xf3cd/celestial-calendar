@@ -53,6 +53,30 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   methodology change. In-repo `statistics/` holds evaluation notebooks and golden-dataset
   crawlers — **no model training**.
 
+### Golden data and the three-source validation chain
+
+New numerics earn trust through three layers, **generating the data before fixing the
+tolerance**:
+
+1. **Book-example goldens** — Meeus worked examples (12.a, 13.a/13.b, …). Tolerance
+   follows the book's printed digits: 6 decimals → 5e-7, 4 → 1e-4, loosened where the
+   book rounds an intermediate.
+2. **pymeeus cross-dataset** — import the `pymeeus` clone (pure Python) directly, emit
+   seeded random points (~60) as C++ initializer lines, substitute into the test file.
+   Tolerance ~1e-6 after a sanity-check pass. When this repo and pymeeus disagree,
+   **suspect this repo first** — this layer caught the bare-(12.3) 0h-grid error before
+   any test existed.
+3. **USNO online API** — the external authority (`aa.usno.navy.mil/api/siderealtime`).
+   Tolerance ≈ 3× the measured model gap (IAU 1980/1982 here vs USNO's modern model,
+   measured ≲0.07″).
+
+USNO API gotchas: `coords=lat,lon` — latitude first, **east-positive** longitude; a
+swapped pair is silently ignored (`last == gast`), so probe one point first. The API
+quantizes coordinates to ~4 decimals — round before querying **and store the rounded
+value**, or full-precision residuals carry ~0.18″ of API noise. `reps` / `intv_mag` /
+`intv_unit` are all-or-nothing; the date window is the current year ±1; up to 9999
+points per call; sleep ~0.15 s between calls.
+
 ## Tech Stack
 
 - **C++23** — Core library (`src/`); CI builds it with clang++ 22 and g++ 14. Older compilers
@@ -343,6 +367,7 @@ trigger is for.
 
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
+| **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
 | **No strong types for time scales** (`JdUt1` / `JdeTt`); the `jd_ut1` / `jde_tt` suffix convention carries it | Moon rise/set lands (#62), or a second #41-class mix-up reaches a test |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
 | **Header-only is the identity, and its compile cost is accepted** | Someone produces a compile-time measurement |
@@ -377,6 +402,26 @@ by the three Julian Day exports plus `moon_illumination` and
 oversight; it widened when the wasm consumer became the first out-of-repo reader that
 gets `valid = false` with no other way to learn why, and it spreads further the next
 time such a consumer appears.
+
+## Phase and PR workflow
+
+- One issue per phase; branch `phaseN-<topic>` from `main`; PR body in the established
+  four blocks — 内容 / 测试 / 验证 / 范围说明 (see #52, #54 for the shape).
+- `Closes #N` must be verified via the API (`closingIssuesReferences`) after merge —
+  backticks in a squash body can kill the keyword. Merge runs through the GitHub merge
+  API with a controlled squash body, not the UI button.
+- Repo merge settings: squash merge; `squash_merge_commit_message = COMMIT_MESSAGES` —
+  the default squash body is the **concatenated commit messages**, the PR body does not
+  participate. After merging, read back `git log -1 --format='%b' origin/main` to verify
+  what actually landed.
+- Agents never run a bare local `git commit` here: `commit.gpgsign=true` with a hardware
+  key means signing pops pinentry in the user's terminal and hangs the session — commits
+  are made server-signed through the GitHub API instead.
+- Every PR is preceded by local review rounds (adversarial correctness + style/design)
+  before it is opened; CI and PR bots are later gates, not substitutes.
+- Post-merge queue: delete the remote branch → update the phase tracking doc → write
+  the phase dev log (validation chain / decisions / environment notes / next-phase prep;
+  the log lives outside this repo) → open the next phase.
 
 ## AI do / don't
 
