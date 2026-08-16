@@ -113,6 +113,12 @@ bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.
 `python3 toolbox/build_npm.py`. Consumer tests take the exact tarball named by
 `build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer.
 
+Python wheels likewise use their independent package path: install the exact pins from
+`bindings/python/pyproject.toml` / `python-wheel.yml`, then run `python -m cibuildwheel --only
+<identifier> bindings/python --output-dir wheelhouse`. The wheel is `py3` but native per platform;
+floor and current interpreters must install the same repaired wheel from an unrelated cwd. Do not
+build an sdist or upload to PyPI — GitHub Release receives the four CI-tested wheels directly.
+
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
 GoogleTest target. Adding `src/bench/bench_*.cpp` is the whole job of adding a benchmark:
@@ -322,6 +328,7 @@ automation/     Python modules used by project.py and linter.py
 toolbox/        Helper scripts for artifacts, releases, build info
 bindings/
   javascript/   ESM npm package source, declarations, ABI oracle and consumer tests
+  python/       ctypes package, native-wheel CMake composition, ABI oracle and consumer tests
 ```
 
 ## Project-Specific Rules and Gotchas
@@ -340,14 +347,15 @@ bindings/
 3. **Shared library target:** `src/shared_lib/CMakeLists.txt` builds
    `libcelestial_calendar` from `lib*.cpp`. Version is injected via the `BUILD_VERSION`
    environment variable (defaults to `0.0.0`).
-4. **CI produces cross-platform artifacts:** macOS, Windows, and two Linux architectures
-   (x86_64 and arm64), each in Docker on a *native* runner. Do not change compiler or
-   Docker base images without checking matrix impact. The optional wasm target (#163) has
-   its own independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`; it
-   uploads `celestial-wasm` (raw module + exact npm tarball + pack JSON/SHA-256 sidecars),
-   and the release downloader pulls both build legs' artifacts for the tagged commit.
+4. **CI produces cross-platform artifacts:** the native release covers macOS, Windows, and
+   two Linux architectures (x86_64 and arm64); Linux builds in Docker on native runners.
+   Do not change compiler or Docker base images without checking matrix impact. The optional
+   wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
+   `python-wheel.yml` legs. The former uploads `celestial-wasm` (raw module + exact npm
+   tarball + pack JSON/SHA-256 sidecars); the latter uploads four exact wheels and sidecars;
+   the release downloader pulls all three build legs' artifacts for the tagged commit.
    Cutting a release is a manual ritual: push the tag, dispatch
-   **both** `build_and_test.yml` and `wasm.yml` on it, then rerun the release workflow.
+   `build_and_test.yml`, `wasm.yml`, and `python-wheel.yml` on it, then rerun the release workflow.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -446,9 +454,10 @@ time such a consumer appears.
 - DON'T ASCII-ise unicode identifiers, move logic out of headers, or add namespace-scope
   `using` to a header.
 - DON'T add a dependency or build step outside the `project.py` / `linter.py` flow — the
-  wasm/npm build is the sanctioned exception (#163, #182): its recipes live in
+  wasm/npm and Python wheel builds are the sanctioned exceptions (#163, #182, #211): their recipes live in
   `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
-  `wasm.yml` CI leg; the release flow consumes the CI-built artifact, it does not rebuild it.
+  `wasm.yml` CI leg, and in `bindings/python` / `python-wheel.yml`; the release flow consumes
+  the CI-built artifacts, it does not rebuild them.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
@@ -461,6 +470,7 @@ time such a consumer appears.
 | Run benchmarks | `./project.py --bench` |
 | Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
 | Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
+| Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir wheelhouse` |
 | Clean | `./project.py --clean` |
 | Python lint/format · C++ lint | `./linter.py --ruff` · `./linter.py --clang-tidy` |
 | Show version | `./project.py --version` |

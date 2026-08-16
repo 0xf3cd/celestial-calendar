@@ -2,10 +2,11 @@
 
 > A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
 
-Four ways in, depending on what you are here for:
+Five ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
-* **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.3 shows the package entry point.
+* **Python users** — install a platform wheel and `import celestial_calendar`; §1.3 shows the package entry point.
+* **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.4 shows the package entry point.
 * **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
@@ -73,7 +74,27 @@ cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl
 
 (On Windows, link against the import library instead and keep the DLL next to the executable.)
 
-### 1.3. From JavaScript or TypeScript
+### 1.3. From Python
+
+Install the wheel for your platform from the GitHub release, then import the flat API:
+
+```sh
+python -m pip install "./celestial_calendar-<version>-py3-none-<platform>.whl"
+```
+
+```python
+import celestial_calendar as celestial
+
+ut1 = celestial.CivilDateTime(2026, 8, 16, 0.5)
+jde = celestial.ut1_to_jde(ut1)
+winter_solstice = celestial.jieqi_moment(2026, celestial.Jieqi.DONGZHI)
+```
+
+Python 3.11 or newer is supported. Each wheel owns its native library; it neither searches the system nor downloads a
+fallback at import time. Public calls use enums, frozen dataclasses, ordinary scalars and tuples rather than exposing
+the underlying ctypes protocol. See `bindings/python/README.md` for the package contract.
+
+### 1.4. From JavaScript or TypeScript
 
 Install the ESM package, initialize its package-owned WebAssembly module once, then use the synchronous APIs:
 
@@ -102,6 +123,7 @@ JD/JDE/UT1 distinctions and expose enum-like inputs as string unions. See
 * Equation of time and local apparent solar time (均时差与真太阳时)
 * Time scales and time-related quantities: UT1 / UTC / TT with leap seconds and ΔT, Julian Day, sidereal time, obliquity, nutation (时标转换、儒略日、恒星时、黄赤交角、章动)
 * A C ABI shared library (`src/shared_lib/celestial.h`), so the library is consumable from other languages (C 接口动态库)
+* Native Python wheels for manylinux x86_64/aarch64, macOS arm64, and Windows AMD64
 
 The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected; the 2500 ceiling comes from the #139 error budget). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI and JavaScript package expose all three, and `get_supported_lunar_year_range` reports their bounds.
 
@@ -303,14 +325,15 @@ python3 ./linter.py --ruff
 python3 ./linter.py --clang-tidy
 ```
 
-## 9. Download Artifacts (Shared Libs)
+## 9. Download Build Artifacts
 
 There are basically two ways to download:
 
 ### 9.1. From GitHub Web UI
 
-* Go to [Action Page](https://github.com/0xf3cd/celestial-calendar/actions/workflows/build_and_test.yml)
-* Download from the latest completed run
+* Open the native, [WASM](https://github.com/0xf3cd/celestial-calendar/actions/workflows/wasm.yml), or
+  [Python wheel](https://github.com/0xf3cd/celestial-calendar/actions/workflows/python-wheel.yml) workflow.
+* Download from the completed run that built your commit.
   
 ### 9.2. Use `toolbox/artifact_downloader.py`
 
@@ -326,7 +349,7 @@ There are basically two ways to download:
   # Download artifacts from a given run to the specified dir
   python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
 
-  # Download artifacts from the successful run that built HEAD, to the specified dir
+  # Download the exact native, WASM, and Python inventories built from HEAD
   python3 ./toolbox/artifact_downloader.py -s <directory>
 
   # Same, and unzips them
@@ -346,7 +369,7 @@ There are basically two ways to download:
 ### 10.1. From GitHub Web UI
 
 * Go to [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
-* Download the assets and source codes
+* Download the native/WASM archives, direct Python wheels with SHA-256 sidecars, and source code
 
 ### 10.2. Use `toolbox/release_downloader.py`
 

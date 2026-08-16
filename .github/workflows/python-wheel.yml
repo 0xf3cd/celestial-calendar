@@ -1,0 +1,229 @@
+name: Python Wheels
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+env:
+  CIBW_BEFORE_BUILD: python -m pip install build==1.5.0
+  CIBW_BUILD_VERBOSITY: "1"
+  CIBW_TEST_COMMAND: python {package}/test/run_all.py
+
+jobs:
+  manylinux:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            identifier: cp311-manylinux_x86_64
+            artifact: celestial-python-manylinux-x86_64
+            image: quay.io/pypa/manylinux_2_28_x86_64@sha256:012f4a50472412f18bb2b450c1cce7158434cfae4ae878591c2748a13a30c2be
+          - runner: ubuntu-24.04-arm
+            identifier: cp311-manylinux_aarch64
+            artifact: celestial-python-manylinux-aarch64
+            image: quay.io/pypa/manylinux_2_28_aarch64@sha256:52e4da6e9348db7cd0b529a827623b62b7c1fe867ba515ae752fa13d41f7f46e
+    env:
+      CIBW_ENVIRONMENT_LINUX: CC=gcc CXX=g++
+      CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+      CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
+      - name: Install pinned wheel tools
+        run: python -m pip install scikit-build-core==1.0.3 cibuildwheel==4.2.0 build==1.5.0
+
+      - name: Build and test the floor wheel
+        run: python -m cibuildwheel --only ${{ matrix.identifier }} bindings/python --output-dir wheelhouse
+
+      - name: Prepare exact artifact
+        id: wheel
+        run: python bindings/python/test/wheel/prepare.py wheelhouse "$GITHUB_OUTPUT"
+
+      - name: Inspect repaired wheel
+        env:
+          MANYLINUX_IMAGE: ${{ matrix.image }}
+          WHEEL_FILENAME: ${{ steps.wheel.outputs.filename }}
+        run: |
+          docker run --rm \
+            -v "$PWD:/project:ro" \
+            -v "$PWD/wheelhouse:/wheels:ro" \
+            "$MANYLINUX_IMAGE" \
+            /opt/python/cp311-cp311/bin/python \
+            /project/bindings/python/test/wheel/verify.py \
+            "/wheels/$WHEEL_FILENAME"
+
+      - name: Test exact wheel on Python 3.14.7
+        env:
+          WHEEL: ${{ steps.wheel.outputs.wheel }}
+        run: |
+          python -m venv current-venv
+          current-venv/bin/python -m pip install --no-deps "$WHEEL"
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/current-venv/bin/python" "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
+
+      - name: Upload exact wheel artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ steps.wheel.outputs.wheel }}
+            ${{ steps.wheel.outputs.sidecar }}
+          retention-days: 30
+          if-no-files-found: error
+
+  macos-arm64:
+    runs-on: macos-latest
+    env:
+      CIBW_ARCHS_MACOS: arm64
+      CIBW_ENVIRONMENT_MACOS: CC=clang CXX=clang++ MACOSX_DEPLOYMENT_TARGET=14.0
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
+    steps:
+      - uses: actions/checkout@v7
+
+      # Xcode is pinned independently of the moving macos-latest image.
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: "26"
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
+      - name: Install pinned wheel tools
+        run: python -m pip install scikit-build-core==1.0.3 cibuildwheel==4.2.0 build==1.5.0
+
+      - name: Build and test the floor wheel
+        run: python -m cibuildwheel --only cp311-macosx_arm64 bindings/python --output-dir wheelhouse
+
+      - name: Prepare exact artifact
+        id: wheel
+        run: python bindings/python/test/wheel/prepare.py wheelhouse "$GITHUB_OUTPUT"
+
+      - name: Inspect repaired wheel
+        run: python bindings/python/test/wheel/verify.py "${{ steps.wheel.outputs.wheel }}"
+
+      - name: Test exact wheel on Python 3.14.7
+        env:
+          WHEEL: ${{ steps.wheel.outputs.wheel }}
+        run: |
+          python -m venv current-venv
+          current-venv/bin/python -m pip install --no-deps "$WHEEL"
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/current-venv/bin/python" "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
+
+      - name: Upload exact wheel artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: celestial-python-macos-arm64
+          path: |
+            ${{ steps.wheel.outputs.wheel }}
+            ${{ steps.wheel.outputs.sidecar }}
+          retention-days: 30
+          if-no-files-found: error
+
+  macos-14-floor:
+    runs-on: macos-14
+    needs: macos-arm64
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.11.9
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11.9"
+
+      - name: Download exact macOS wheel artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: celestial-python-macos-arm64
+          path: floor-wheel
+
+      - name: Verify artifact digest and locate wheel
+        id: wheel
+        run: |
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import hashlib
+          import sys
+          from pathlib import Path
+
+          wheelhouse = Path("floor-wheel").resolve()
+          wheels = list(wheelhouse.glob("*.whl"))
+          assert len(wheels) == 1
+          wheel = wheels[0]
+          sidecars = list(wheelhouse.glob("*.sha256"))
+          assert sidecars == [wheel.with_name(f"{wheel.name}.sha256")]
+          digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+          assert sidecars[0].read_text(encoding="ascii") == f"{digest}  {wheel.name}\n"
+          with Path(sys.argv[1]).open("a", encoding="utf-8", newline="\n") as output:
+            output.write(f"wheel={wheel}\n")
+          PY
+
+      - name: Clean-install and test on macOS 14
+        env:
+          WHEEL: ${{ steps.wheel.outputs.wheel }}
+        run: |
+          python -m venv floor-venv
+          floor-venv/bin/python -m pip install --no-deps "$WHEEL"
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/floor-venv/bin/python" "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
+
+  windows-amd64:
+    runs-on: windows-latest
+    env:
+      CIBW_ARCHS_WINDOWS: AMD64
+      CIBW_ENVIRONMENT_WINDOWS: CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
+      - name: Install pinned LLVM and wheel tools
+        run: |
+          choco install -y llvm --version=22.1.7
+          python -m pip install scikit-build-core==1.0.3 cibuildwheel==4.2.0 build==1.5.0
+
+      - name: Build and test the floor wheel
+        run: python -m cibuildwheel --only cp311-win_amd64 bindings/python --output-dir wheelhouse
+
+      - name: Prepare exact artifact
+        id: wheel
+        run: python bindings/python/test/wheel/prepare.py wheelhouse "$env:GITHUB_OUTPUT"
+
+      - name: Inspect repaired wheel
+        run: python bindings/python/test/wheel/verify.py "${{ steps.wheel.outputs.wheel }}"
+
+      - name: Test exact wheel on Python 3.14.7
+        env:
+          WHEEL: ${{ steps.wheel.outputs.wheel }}
+        run: |
+          python -m venv current-venv
+          .\current-venv\Scripts\python.exe -m pip install --no-deps "$env:WHEEL"
+          Push-Location $env:RUNNER_TEMP
+          & "$env:GITHUB_WORKSPACE\current-venv\Scripts\python.exe" "$env:GITHUB_WORKSPACE\bindings\python\test\run_all.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+
+      - name: Upload exact wheel artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: celestial-python-windows-amd64
+          path: |
+            ${{ steps.wheel.outputs.wheel }}
+            ${{ steps.wheel.outputs.sidecar }}
+          retention-days: 30
+          if-no-files-found: error
