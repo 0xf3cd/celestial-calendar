@@ -1,0 +1,50 @@
+[build-system]
+requires = ["scikit-build-core==1.0.3"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "celestial-calendar"
+dynamic = ["version"]
+description = "Astronomical calculations and Chinese calendar conversion powered by CelestialCalendar"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+authors = [{ name = "Ningqi Wang (0xf3cd)", email = "nq.maigre@gmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+[project.urls]
+Homepage = "https://github.com/0xf3cd/celestial-calendar"
+Repository = "https://github.com/0xf3cd/celestial-calendar"
+Issues = "https://github.com/0xf3cd/celestial-calendar/issues"
+
+[[tool.dynamic-metadata]]
+provider = "scikit_build_core.metadata.regex"
+field = "version"
+input = "../../project.py"
+regex = '''BUILD_VERSION: Final\[str\] = "(?P<value>[^"]+)"'''
+
+[[tool.scikit-build.generate]]
+path = "celestial_calendar/_version.py"
+template = '''VERSION = "${version}"'''
+
+[tool.scikit-build]
+minimum-version = "1.0.3"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["src/celestial_calendar"]
+wheel.py-api = "py3"
+wheel.platlib = true
+wheel.license-files = []
+install.components = ["python"]

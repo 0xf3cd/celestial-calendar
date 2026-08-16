@@ -150,7 +150,7 @@ class GitHub:
 
 
   @staticmethod
-  def get_artifacts_download_urls(run_id: int) -> Dict[str, str]:
+  def get_artifacts_download_urls(run_id: int) -> List[Tuple[str, str]]:
     """
     Fetch the download URLs for all artifacts of a specific run.
 
@@ -158,18 +158,25 @@ class GitHub:
       run_id (int): The ID of the GitHub Actions run.
 
     Returns:
-      Dict[str, str]: A dictionary mapping artifact names to their download URLs.
+      List[Tuple[str, str]]: Artifact names and download URLs in API order. A list is
+                            deliberate: duplicate names must remain visible to callers.
     """
-    artifacts_url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}/artifacts"
+    artifacts_url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}/artifacts?per_page=100"
     
     response = requests.get(artifacts_url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
     artifacts = response.json()
 
-    return {
-      artifact["name"]: artifact["archive_download_url"]
+    entries = [
+      (artifact["name"], artifact["archive_download_url"])
       for artifact in artifacts["artifacts"]
-    }
+    ]
+    if artifacts["total_count"] != len(entries):
+      raise RuntimeError(
+        f"Artifact response for run {run_id} returned {len(entries)} of "
+        f"{artifacts['total_count']} entries"
+      )
+    return entries
 
   @staticmethod
   def download_one_artifact(name: str, download_url: str, download_dir: Path) -> Path:
@@ -184,27 +191,39 @@ class GitHub:
     Returns:
       Path: The path to the downloaded artifact.
     """
-    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
-      response.raise_for_status()
+    download_dir.mkdir(parents=True, exist_ok=True)
+    artifact = download_dir / f"{name}.zip"
+    partial = artifact.with_suffix(".zip.part")
+    if artifact.exists():
+      raise FileExistsError(f"Refusing to overwrite artifact: {artifact}")
+    if partial.exists():
+      raise FileExistsError(f"Refusing to overwrite partial artifact: {partial}")
 
-      download_dir.mkdir(parents=True, exist_ok=True)
-      artifact = download_dir / f"{name}.zip"  # Ensure the file has a .zip extension
+    try:
+      with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
+        response.raise_for_status()
 
-      with artifact.open("wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-          f.write(chunk)
+        with partial.open("wb") as f:
+          for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+      partial.replace(artifact)
+    except Exception:
+      partial.unlink(missing_ok=True)
+      raise
 
-      green_print(f"# Downloaded {name}")
-      return artifact
+    green_print(f"# Downloaded {name}")
+    return artifact
 
 
   @staticmethod
-  async def async_download_artifacts(run_id: int, download_dir: Path, parallel: int) -> List[Path]:
+  async def async_download_artifact_urls(
+    artifact_urls: List[Tuple[str, str]], download_dir: Path, parallel: int
+  ) -> List[Path]:
     """
-    Asynchronously fetch all artifacts for a given run.
+    Asynchronously download the given artifact names and URLs.
 
     Args:
-      run_id (int): The ID of the GitHub Actions run.
+      artifact_urls (List[Tuple[str, str]]): Artifact names and URLs to download.
       download_dir (Path): The directory where artifacts should be saved.
       parallel (int): The number of parallel download tasks.
 
@@ -214,11 +233,13 @@ class GitHub:
     if parallel < 1 or parallel > 20:
       raise ValueError("Invalid parallel value")
 
-    artifact_urls = GitHub.get_artifacts_download_urls(run_id)
+    names = [name for name, _ in artifact_urls]
+    if len(names) != len(set(names)):
+      raise RuntimeError(f"Duplicate artifact names are not safe to download: {names}")
     blue_print(f"# Downloading {len(artifact_urls)} artifacts...")
 
     queue = asyncio.Queue()
-    for name, url in artifact_urls.items():
+    for name, url in artifact_urls:
       queue.put_nowait((name, url))
 
     paths: List[Path] = []
@@ -250,6 +271,19 @@ class GitHub:
       raise RuntimeError(f"{len(failures)} artifact(s) failed to download: {failures}")
 
     return paths
+
+  @staticmethod
+  async def async_download_artifacts(run_id: int, download_dir: Path, parallel: int) -> List[Path]:
+    """Fetch and download all artifacts for one run."""
+    artifact_urls = GitHub.get_artifacts_download_urls(run_id)
+    return await GitHub.async_download_artifact_urls(artifact_urls, download_dir, parallel)
+
+  @staticmethod
+  def download_artifact_urls(
+    artifact_urls: List[Tuple[str, str]], download_dir: Path, parallel: int = 4
+  ) -> List[Path]:
+    """Download a pre-validated artifact inventory in parallel."""
+    return asyncio.run(GitHub.async_download_artifact_urls(artifact_urls, download_dir, parallel))
 
 
   @staticmethod
