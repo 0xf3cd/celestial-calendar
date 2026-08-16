@@ -102,7 +102,7 @@ inline void debug(const std::string_view format_str, Args&&... args) { // NOLINT
  * @brief The calling thread's last-error message.
  * @note #97 pilot: a thread-local last-error channel, so an FFI caller that got `valid = false`
  *       can learn *why* (the log goes to the library's stdout, which hosts may never see).
- *       Only the Julian Day exports fill it for now — pilot, not a full rollout.
+ *       The recording set is listed once on `last_error` in `celestial.h`.
  */
 /**
  * @note The storage and these three bodies live in `lib.cpp`, deliberately not here. As an

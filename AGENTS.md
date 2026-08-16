@@ -87,7 +87,9 @@ points per call; sleep ~0.15 s between calls.
   may work; nothing checks them.
 - **CMake ≥ 3.22** — Build system.
 - **Python 3** — Build/test/lint automation (`project.py`, `linter.py`, `automation/`,
-  `toolbox/`). All build/lint/CI is Python-orchestrated.
+  `toolbox/`). Core build and lint tasks are Python-orchestrated.
+- **Node.js ≥ 22 / npm** — `bindings/javascript/` package tests and consumers; CI pins the
+  runtime floor and the current build toolchain separately.
 - **GoogleTest** — Fetched at configure time by CMake (`src/test/CMakeLists.txt`).
 - **clang-tidy** — C++ static analysis; **ruff** — Python linting/formatting.
 
@@ -105,6 +107,11 @@ export CXX=clang++
 
 Windows PowerShell: `$env:CXX = "clang++"; $env:CC = "clang"`, then the same commands.
 Individual steps: `--setup` / `--cmake` / `--build` / `--test` / `--bench` / `--clean`.
+
+The WASM/npm exception has its own shared manual/CI path: `npm ci --ignore-scripts --prefix
+bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.mjs`, then
+`python3 toolbox/build_npm.py`. Consumer tests take the exact tarball named by
+`build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer.
 
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
@@ -313,6 +320,8 @@ src/
   util/         Utility headers (hash, cache, random, YMD, ...)
 automation/     Python modules used by project.py and linter.py
 toolbox/        Helper scripts for artifacts, releases, build info
+bindings/
+  javascript/   ESM npm package source, declarations, ABI oracle and consumer tests
 ```
 
 ## Project-Specific Rules and Gotchas
@@ -335,8 +344,9 @@ toolbox/        Helper scripts for artifacts, releases, build info
    (x86_64 and arm64), each in Docker on a *native* runner. Do not change compiler or
    Docker base images without checking matrix impact. The optional wasm target (#163) has
    its own independent leg (`wasm.yml`) — deliberately outside `build_and_test.yml`; it
-   uploads `celestial-wasm`, and the release downloader pulls both build legs' artifacts
-   for the tagged commit. Cutting a release is a manual ritual: push the tag, dispatch
+   uploads `celestial-wasm` (raw module + exact npm tarball + pack JSON/SHA-256 sidecars),
+   and the release downloader pulls both build legs' artifacts for the tagged commit.
+   Cutting a release is a manual ritual: push the tag, dispatch
    **both** `build_and_test.yml` and `wasm.yml` on it, then rerun the release workflow.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
@@ -401,9 +411,9 @@ boilerplate (#127 entry 20) · the `cpp26-lab` experiment branch.
 parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
 boundary (`jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
 scale; reopen if a C entry point ever needs to accept two. And `last_error` is filled in
-by the three Julian Day exports plus `moon_illumination` and
-`local_apparent_sidereal_time` — a pilot whose boundary lives in `celestial.h`, not an
-oversight; it widened when the wasm consumer became the first out-of-repo reader that
+by the three Julian Day exports, `moon_illumination`, `moon_position_angle`,
+`moon_phase_moments`, and `local_apparent_sidereal_time` — a pilot whose boundary lives in
+`celestial.h`, not an oversight; it widened when the wasm consumer became the first out-of-repo reader that
 gets `valid = false` with no other way to learn why, and it spreads further the next
 time such a consumer appears.
 
@@ -436,9 +446,9 @@ time such a consumer appears.
 - DON'T ASCII-ise unicode identifiers, move logic out of headers, or add namespace-scope
   `using` to a header.
 - DON'T add a dependency or build step outside the `project.py` / `linter.py` flow — the
-  wasm build is the sanctioned exception (#163): its recipe lives in
-  `toolbox/build_wasm.py`, shared by the manual leg and the `wasm.yml` CI leg; the
-  release flow consumes the CI-built artifact, it does not run the recipe.
+  wasm/npm build is the sanctioned exception (#163, #182): its recipes live in
+  `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
+  `wasm.yml` CI leg; the release flow consumes the CI-built artifact, it does not rebuild it.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
@@ -450,6 +460,7 @@ time such a consumer appears.
 | Run tests, verbose / filtered | `./project.py --test -v 1 -k <keyword>` |
 | Run benchmarks | `./project.py --bench` |
 | Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
+| Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
 | Clean | `./project.py --clean` |
 | Python lint/format · C++ lint | `./linter.py --ruff` · `./linter.py --clang-tidy` |
 | Show version | `./project.py --version` |

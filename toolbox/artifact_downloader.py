@@ -48,7 +48,7 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
 
 
 # A release ships the artifacts of the tagged commit from BOTH build legs: the platform
-# packages and the wasm module (`celestial-wasm`). Each source names its expected minimum
+# packages and the wasm/npm bundle (`celestial-wasm`). Each source names its expected minimum
 # count -- a successful run with fewer artifacts must fail loudly: a release must never
 # ship with artifacts silently missing. The minimums track the legs' upload steps; a PR
 # that adds or removes an upload updates its number here.

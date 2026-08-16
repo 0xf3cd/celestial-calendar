@@ -171,6 +171,26 @@ def build(out_dir: Path) -> Path:
   digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
   (out_dir / "npm-pack.sha256").write_text(f"{digest}  {tarball.name}\n", encoding="utf-8")
 
+  artifact_dir = out_dir / "artifact"
+  artifact_dir.mkdir()
+  for source in [
+    WASM_SOURCE / "celestial-jieqi.mjs",
+    WASM_SOURCE / "celestial-jieqi.wasm",
+    tarball,
+    out_dir / "npm-pack.json",
+    out_dir / "npm-pack.sha256",
+  ]:
+    shutil.copy2(source, artifact_dir / source.name)
+  expected_artifact = {
+    "celestial-jieqi.mjs",
+    "celestial-jieqi.wasm",
+    tarball.name,
+    "npm-pack.json",
+    "npm-pack.sha256",
+  }
+  if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
+    raise RuntimeError("celestial-wasm artifact staging must contain exactly five top-level files")
+
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")
   print(f"[ build_npm ] tarball={tarball.stat().st_size}/{MAX_TARBALL_BYTES} bytes")
