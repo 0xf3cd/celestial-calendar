@@ -21,6 +21,7 @@ import ctypes
 import random
 import platform
 import struct
+import argparse
 
 from ctypes import c_int32, c_uint32, c_uint8, c_double, c_bool, Structure
 from datetime import date
@@ -39,16 +40,17 @@ OUT_PATH: Final[Path] = Path(__file__).parent / "wasm_golden.json"
 # floor, 32766 = the declared max of jieqi_jde), the site nav's consumer window
 # (1950/2050), and interior years -- plus a seeded random fill. Out-of-window years are
 # invalid natively, so the throw path lives in the checker's exception probe instead.
-# @2: moon illumination and sidereal sections join. The jieqi section keeps its exact
-# point set -- it is generated first, consuming the seeded PRNG in the
-# same order as @1. Moon points cover the Example 48.a anchor plus a uniform fill over
-# [1900, 2100]; sidereal points cover the J2000 anchor plus a uniform fill over the
-# export's declared window [401, 32766] with east-positive longitudes.
+# The jieqi section is generated first to preserve its seeded point set. Moon illumination
+# and position angle share the same Example 48.a anchor plus uniform [1900, 2100] inputs;
+# sidereal points span its declared [401, 32766] window. Phase rows hold the first moment
+# for the existing 2024-2053 new-moon and 2024-2033 quarter/full-moon grids.
 SEED: Final[int] = 42
 EDGE_YEARS: Final[list[int]] = [401, 1950, 1999, 2026, 2050, 32766]
 RANDOM_POINTS: Final[int] = 60
 MOON_RANDOM_POINTS: Final[int] = 40
 SIDEREAL_RANDOM_POINTS: Final[int] = 40
+PHASE_NEW_MOON_YEARS: Final[range] = range(2024, 2054)
+PHASE_OTHER_YEARS: Final[range] = range(2024, 2034)
 
 EXAMPLE_48A_JDE: Final[float] = 2448724.5  # 1992-04-12 0h TT
 J2000_JD: Final[float] = 2451545.0         # 2000-01-01 12:00
@@ -76,6 +78,14 @@ class _MoonIllumination(Structure):
     ("valid",          c_bool),
     ("illumination",   c_double),
     ("elongation_deg", c_double),
+  ]
+
+
+class _MoonPositionAngle(Structure):
+  """Minimal mirror of `MoonPositionAngle` in `celestial.h`."""
+  _fields_ = [
+    ("valid",     c_bool),
+    ("angle_deg", c_double),
   ]
 
 
@@ -120,6 +130,10 @@ def generate() -> dict:
   lib.query_jieqi_moment.restype = _JieqiMomentQuery
   lib.moon_illumination.argtypes = [c_double]
   lib.moon_illumination.restype = _MoonIllumination
+  lib.moon_position_angle.argtypes = [c_double]
+  lib.moon_position_angle.restype = _MoonPositionAngle
+  lib.moon_phase_moments.argtypes = [c_int32, c_uint8, ctypes.POINTER(c_uint32), ctypes.POINTER(c_double), c_uint32]
+  lib.moon_phase_moments.restype = c_uint32
   lib.local_apparent_sidereal_time.argtypes = [c_double, c_double]
   lib.local_apparent_sidereal_time.restype = _SiderealTime
 
@@ -143,8 +157,15 @@ def generate() -> dict:
     if not mi.valid:
       raise RuntimeError(f"moon_illumination({jde}) failed natively")
     moon_entries.append({"jde_bits": f64_bits(jde),
-                         "illumination_bits": f64_bits(mi.illumination),
-                         "elongation_deg_bits": f64_bits(mi.elongation_deg)})
+                          "illumination_bits": f64_bits(mi.illumination),
+                          "elongation_deg_bits": f64_bits(mi.elongation_deg)})
+
+  moon_position_angle_entries = []
+  for jde in moon_jdes:
+    pa = lib.moon_position_angle(jde)
+    if not pa.valid:
+      raise RuntimeError(f"moon_position_angle({jde}) failed natively")
+    moon_position_angle_entries.append({"jde_bits": f64_bits(jde), "angle_deg_bits": f64_bits(pa.angle_deg)})
 
   sidereal_points = [(J2000_JD, 0.0), (SIDEREAL_JD_RANGE[0], 0.0), (SIDEREAL_JD_RANGE[1], 45.0)]
   sidereal_points += [(random.uniform(*SIDEREAL_JD_RANGE), random.uniform(-180.0, 180.0))
@@ -155,7 +176,28 @@ def generate() -> dict:
     if not st.valid:
       raise RuntimeError(f"local_apparent_sidereal_time({jd_ut1}, {lon}) failed natively")
     sidereal_entries.append({"jd_ut1_bits": f64_bits(jd_ut1), "longitude": lon,
-                             "value_bits": f64_bits(st.value)})
+                              "value_bits": f64_bits(st.value)})
+
+  phase_points = [(year, 0) for year in PHASE_NEW_MOON_YEARS]
+  phase_points += [(year, phase_kind) for year in PHASE_OTHER_YEARS for phase_kind in range(1, 4)]
+  phase_entries = []
+  for year, phase_kind in phase_points:
+    root_count = c_uint32(0)
+    if lib.moon_phase_moments(year, phase_kind, ctypes.byref(root_count), None, 0) != 0 or root_count.value == 0:
+      raise RuntimeError(f"moon_phase_moments({year}, {phase_kind}) count query failed")
+
+    slots = (c_double * root_count.value)()
+    written = lib.moon_phase_moments(year, phase_kind, ctypes.byref(root_count), slots, root_count.value)
+    if written == 0 or written != root_count.value:
+      raise RuntimeError(
+        f"moon_phase_moments({year}, {phase_kind}) wrote {written} of {root_count.value} roots"
+      )
+    phase_entries.append({
+      "year": year,
+      "phase_kind": phase_kind,
+      "index": 0,
+      "jde_bits": f64_bits(slots[0]),
+    })
 
   return {
     "schema": "celestial-calendar/wasm-golden@2",
@@ -168,12 +210,18 @@ def generate() -> dict:
       "jieqi":    {"entries": jieqi_entries},
       "moon":     {"entries": moon_entries},
       "sidereal": {"entries": sidereal_entries},
+      "moon_position_angle": {"entries": moon_position_angle_entries},
+      "phases": {"entries": phase_entries},
     },
   }
 
 
 if __name__ == "__main__":
+  parser = argparse.ArgumentParser(description="Regenerate the native WASM golden dataset.")
+  parser.add_argument("--out-path", type=Path, default=OUT_PATH, help=f"output path (default {OUT_PATH})")
+  args = parser.parse_args()
+
   doc = generate()
   total = sum(len(section["entries"]) for section in doc["sections"].values())
-  OUT_PATH.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-  print(f"[ make_wasm_golden ] {total} points -> {OUT_PATH}")
+  args.out_path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+  print(f"[ make_wasm_golden ] {total} points -> {args.out_path}")
