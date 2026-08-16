@@ -74,7 +74,7 @@ the WASM32 output-buffer byte count from wrapping. Requests near the address-spa
 ## 中文
 
 `@0xf3cd/celestial` 把 CelestialCalendar 的天文计算与公历/阴历转换包装为一个自带 WebAssembly 的
-ESM 包。Node 需要 22 或更新版本;浏览器端在 Chrome 上测试。
+ESM 包。Node 需要 22 或更新版本；浏览器端在 Chrome 上测试。
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
@@ -83,8 +83,8 @@ await celestial.init();
 const result = celestial.lunar.fromGregorian("algo3", { year: 2026, month: 8, day: 15 });
 ```
 
-包只提供 `jieqi` / `lunar` 这一套正式命名,不另设 `solarTerms` / `lunarCalendar` 别名。时间尺度、
-经度符号与单位见上面的 API 契约;不要把 JavaScript `Date` 隐式当作 UT1 或 TT。
+包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。时间尺度、
+经度符号与单位见上面的 API 契约；不要把 JavaScript `Date` 隐式当作 UT1 或 TT。
 
 ## License
 

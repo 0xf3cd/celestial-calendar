@@ -128,7 +128,12 @@ check("sun.apparentGeocentricCoordinates", () => {
   const value = celestial.sun.apparentGeocentricCoordinates(2451545.0);
   finite(value.longitudeDeg, value.latitudeDeg, value.radiusAu);
 });
-check("sun.longitudeCrossings", () => assert.equal(celestial.sun.longitudeCrossings(2024, 0).length, 1));
+check("sun.longitudeCrossings", () => {
+  assert.equal(celestial.sun.longitudeCrossings(2024, 0).length, 1);
+  const roots = celestial.sun.longitudeCrossings(2024, 280.1);
+  assert.equal(roots.length, 2);
+  assert(roots[0] < roots[1]);
+});
 check("sun.equationOfTime", () => finite(celestial.sun.equationOfTime(2451545.0)));
 check("sun.apparentSolarTime", () => {
   const value = celestial.sun.apparentSolarTime({ year: 2024, month: 6, day: 1, fraction: 0.5 }, 116.4);
@@ -165,7 +170,13 @@ check("lunar.supportedYearRange", () => {
 check("lunar.yearInfo", () => {
   const value = celestial.lunar.yearInfo("algo3", 2024);
   assert.deepEqual(value.firstDay, { year: 2024, month: 2, day: 10 });
-  assert([12, 13].includes(value.monthLengths.length));
+  assert.equal(value.leapMonth, null);
+  assert.deepEqual(value.monthLengths, [29, 30, 29, 29, 30, 29, 30, 30, 29, 30, 30, 29]);
+
+  // Same HKO-backed leap-year anchor as lunar/common_test.cpp.
+  const leap = celestial.lunar.yearInfo("algo1", 2023);
+  assert.equal(leap.leapMonth, 2);
+  assert.deepEqual(leap.monthLengths, [29, 30, 29, 29, 30, 30, 29, 30, 30, 29, 30, 29, 30]);
 });
 check("lunar.fromGregorian", () => assert.deepEqual(
   celestial.lunar.fromGregorian("algo3", { year: 2024, month: 2, day: 10 }),
