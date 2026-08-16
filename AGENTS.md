@@ -53,10 +53,12 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   methodology change. In-repo `statistics/` holds evaluation notebooks and golden-dataset
   crawlers — **no model training**.
 
-### Golden data and the three-source validation chain
+### Golden data and the validation chain (worked example: sidereal time)
 
-New numerics earn trust through three layers, **generating the data before fixing the
-tolerance**:
+This is the layer recipe that the sidereal-time work validated in practice; treat it
+as the **shape**, not a mandate that every numeric has all three layers. A new numeric
+earns trust by **generating the data before fixing the tolerance**, drawing on whichever
+authorities exist for that algorithm:
 
 1. **Book-example goldens** — Meeus worked examples (12.a, 13.a/13.b, …). Tolerance
    follows the book's printed digits: 6 decimals → 5e-7, 4 → 1e-4, loosened where the
@@ -65,10 +67,12 @@ tolerance**:
    seeded random points (~60) as C++ initializer lines, substitute into the test file.
    Tolerance ~1e-6 after a sanity-check pass. When this repo and pymeeus disagree,
    **suspect this repo first** — this layer caught the bare-(12.3) 0h-grid error before
-   any test existed.
-3. **USNO online API** — the external authority (`aa.usno.navy.mil/api/siderealtime`).
-   Tolerance ≈ 3× the measured model gap (IAU 1980/1982 here vs USNO's modern model,
-   measured ≲0.07″).
+   any test existed. Not every algorithm has a pymeeus counterpart — use whichever
+   independent implementation exists, or skip the layer and say so in the PR.
+3. **USNO online API** — the external authority for sidereal time
+   (`aa.usno.navy.mil/api/siderealtime`); other numerics use their own authority
+   (an observatory dataset, a standards table). Tolerance ≈ 3× the measured model gap
+   (IAU 1980/1982 here vs USNO's modern model, measured ≲0.07″).
 
 USNO API gotchas: `coords=lat,lon` — latitude first, **east-positive** longitude; a
 swapped pair is silently ignored (`last == gast`), so probe one point first. The API
@@ -414,9 +418,12 @@ time such a consumer appears.
   the default squash body is the **concatenated commit messages**, the PR body does not
   participate. After merging, read back `git log -1 --format='%b' origin/main` to verify
   what actually landed.
-- Agents never run a bare local `git commit` here: `commit.gpgsign=true` with a hardware
-  key means signing pops pinentry in the user's terminal and hangs the session — commits
-  are made server-signed through the GitHub API instead.
+- On the author's workstations `commit.gpgsign=true` is set machine-globally with a
+  hardware key: there, a bare local `git commit` from an agent pops pinentry in the
+  user's terminal and hangs the session — commit server-signed through the GitHub API
+  instead. A fresh clone elsewhere (CI, a contributor machine) has no such config and
+  may commit normally; if you are an agent unsure which world you are in, ask before
+  the first commit.
 - Every PR is preceded by local review rounds (adversarial correctness + style/design)
   before it is opened; CI and PR bots are later gates, not substitutes.
 - Post-merge queue: delete the remote branch → update the phase tracking doc → write
