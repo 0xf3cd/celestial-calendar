@@ -34,9 +34,5 @@ def test_npm_publish_stays_a_dry_run():
   assert len(publish_steps) == 1
   publish_step = publish_steps[0]
   assert publish_step.get("env", {}).get("NPM_CONFIG_DRY_RUN") == "true"
-  publish_commands = [
-    line.strip()
-    for line in publish_step["run"].splitlines()
-    if line.strip().startswith("npm publish")
-  ]
-  assert publish_commands == ['npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"']
+  commands = [line.strip() for line in publish_step["run"].splitlines() if line.strip()]
+  assert commands == ['npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"']

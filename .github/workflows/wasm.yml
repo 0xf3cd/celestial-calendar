@@ -84,12 +84,15 @@ jobs:
           echo "tarball=build/npm/$filename" >> "$GITHUB_OUTPUT"
 
       - name: Current Node package, types, and exact-tarball consumers
-        env:
-          NPM_CONFIG_DRY_RUN: "true"
         run: |
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
           npm run test:types --prefix bindings/javascript
+
+      - name: npm package publish dry-run
+        env:
+          NPM_CONFIG_DRY_RUN: "true"
+        run: |
           npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"
 
       - name: Astro production build and Chrome package smoke
