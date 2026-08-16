@@ -26,7 +26,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { BINDINGS } from "../../src/bindings.mjs";
+import { BINDINGS, LAYOUTS } from "../../src/bindings.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../../../..");
@@ -126,6 +126,7 @@ sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifes
 for (const name of manifestLayoutNames) {
   assert.deepEqual(manifest.layouts[name], parsedLayouts[name], `layout ${name}`);
 }
+assert.deepEqual(LAYOUTS, manifest.layouts, "runtime layouts = manifest layouts");
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));

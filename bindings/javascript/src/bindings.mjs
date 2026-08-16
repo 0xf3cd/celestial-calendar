@@ -28,6 +28,171 @@ const binding = (cName, result, readsLastError = false) => Object.freeze({
   readsLastError,
 });
 
+const deepFreeze = (value) => {
+  for (const child of Object.values(value)) {
+    if (child !== null && typeof child === "object") deepFreeze(child);
+  }
+  return Object.freeze(value);
+};
+
+// The runtime decoder reads these offsets after every native call. Keeping the table here,
+// rather than in the public wrapper, lets the ABI verifier compare it directly with the C header.
+export const LAYOUTS = deepFreeze({
+  JulianDay: {
+    size: 16,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "value", type: "double", offset: 8 },
+    ],
+  },
+  UT1Time: {
+    size: 24,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "year", type: "int32_t", offset: 4 },
+      { name: "month", type: "uint32_t", offset: 8 },
+      { name: "day", type: "uint32_t", offset: 12 },
+      { name: "fraction", type: "double", offset: 16 },
+    ],
+  },
+  SunCoordinate: {
+    size: 32,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "lon", type: "double", offset: 8 },
+      { name: "lat", type: "double", offset: 16 },
+      { name: "r", type: "double", offset: 24 },
+    ],
+  },
+  MoonCoordinate: {
+    size: 32,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "lon", type: "double", offset: 8 },
+      { name: "lat", type: "double", offset: 16 },
+      { name: "r", type: "double", offset: 24 },
+    ],
+  },
+  MoonIllumination: {
+    size: 24,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "illumination", type: "double", offset: 8 },
+      { name: "elongation_deg", type: "double", offset: 16 },
+    ],
+  },
+  MoonPositionAngle: {
+    size: 16,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "angle_deg", type: "double", offset: 8 },
+    ],
+  },
+  Discriminant: {
+    size: 8,
+    alignment: 4,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "count", type: "uint32_t", offset: 4 },
+    ],
+  },
+  EquationOfTime: {
+    size: 16,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "value", type: "double", offset: 8 },
+    ],
+  },
+  ApparentSolarTime: {
+    size: 24,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "year", type: "int32_t", offset: 4 },
+      { name: "month", type: "uint32_t", offset: 8 },
+      { name: "day", type: "uint32_t", offset: 12 },
+      { name: "fraction", type: "double", offset: 16 },
+    ],
+  },
+  SiderealTime: {
+    size: 16,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "value", type: "double", offset: 8 },
+    ],
+  },
+  JieqiMomentQuery: {
+    size: 24,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "jq_idx", type: "uint8_t", offset: 1 },
+      { name: "y", type: "int32_t", offset: 4 },
+      { name: "m", type: "uint32_t", offset: 8 },
+      { name: "d", type: "uint32_t", offset: 12 },
+      { name: "frac", type: "double", offset: 16 },
+    ],
+  },
+  SupportedLunarYearRange: {
+    size: 12,
+    alignment: 4,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "start", type: "int32_t", offset: 4 },
+      { name: "end", type: "int32_t", offset: 8 },
+    ],
+  },
+  LunarYearInfo: {
+    size: 16,
+    alignment: 4,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "year", type: "int32_t", offset: 4 },
+      { name: "month", type: "uint8_t", offset: 8 },
+      { name: "day", type: "uint8_t", offset: 9 },
+      { name: "leap_month", type: "uint8_t", offset: 10 },
+      { name: "month_len", type: "uint16_t", offset: 12 },
+    ],
+  },
+  LunarDate: {
+    size: 12,
+    alignment: 4,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "year", type: "int32_t", offset: 4 },
+      { name: "month", type: "uint8_t", offset: 8 },
+      { name: "is_leap", type: "bool", offset: 9 },
+      { name: "day", type: "uint8_t", offset: 10 },
+    ],
+  },
+  GregorianDate: {
+    size: 12,
+    alignment: 4,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "year", type: "int32_t", offset: 4 },
+      { name: "month", type: "uint8_t", offset: 8 },
+      { name: "day", type: "uint8_t", offset: 9 },
+    ],
+  },
+  DeltaT: {
+    size: 16,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "value", type: "double", offset: 8 },
+    ],
+  },
+});
+
 // Internal metadata for the complete celestial.h surface. Package entry points consume
 // this table; it is not itself part of the JavaScript package's public exports.
 export const BINDINGS = Object.freeze([
