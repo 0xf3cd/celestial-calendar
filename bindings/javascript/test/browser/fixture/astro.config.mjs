@@ -21,16 +21,7 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import assert from "node:assert/strict";
-import { statSync } from "node:fs";
-
-const MAX_WASM_BYTES = 465_000;
-const WASM_URL = new URL("../build/wasm/celestial-jieqi.wasm", import.meta.url);
-
-await import("../bindings/javascript/test/abi/verify.mjs");
-await import("../bindings/javascript/test/abi/raw_protocol_test.mjs");
-
-const size = statSync(WASM_URL).size;
-assert(size <= MAX_WASM_BYTES, `WASM size ${size} exceeds ${MAX_WASM_BYTES} bytes`);
-console.log(`PASS raw WASM size ${size} <= ${MAX_WASM_BYTES} bytes`);
-console.log("wasm_check: all green");
+export default {
+  output: "static",
+  build: { assets: "assets" },
+};

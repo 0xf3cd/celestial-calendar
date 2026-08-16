@@ -29,27 +29,44 @@ SRC_DIR: Final[Path] = PROJ_ROOT / "src"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "wasm"
 MODULE_STEM: Final[str] = "celestial-jieqi"
 
-# The narrow export surface (#163): Jieqi + Julian Day + `last_error` (the reader for the
-# writers listed on `last_error` in celestial.h) + moon illumination + local apparent
-# sidereal time. Widening the surface further is a deliberate act -- every added entry
-# ships bytes to the browser.
+# The JavaScript package exposes the complete celestial.h ABI. malloc/free are internal
+# protocol exports for caller-owned sret, string, count, and fill storage.
 EXPORTS: Final[list[str]] = [
-  "query_jieqi_moment",
-  "get_jieqi_name",
+  "set_log_verbosity",
+  "last_error",
   "ut1_to_jd",
   "ut1_to_jde",
   "jde_to_ut1",
+  "sun_apparent_geocentric_coord",
+  "moon_apparent_geocentric_coord",
   "moon_illumination",
   "moon_position_angle",
   "moon_phase_moments",
+  "solar_lon_root_discriminant",
+  "solar_lon_roots",
+  "new_moons_after_jde",
+  "new_moons_in_year",
+  "equation_of_time",
+  "apparent_solar_time",
   "local_apparent_sidereal_time",
-  "last_error",
+  "query_jieqi_moment",
+  "get_jieqi_name",
+  "get_supported_lunar_year_range",
+  "get_lunar_year_info",
+  "gregorian_to_lunar",
+  "lunar_to_gregorian",
+  "delta_t_algo1",
+  "delta_t_algo2",
+  "delta_t_algo3",
+  "delta_t_algo4",
+  "delta_t_algo5",
+  "delta_t",
   "malloc",
-  "free",  # the sret struct return needs caller-side scratch space
+  "free",
 ]
 
-# HEAP* views are how the JS side reads the sret struct; ccall for convenience wrappers.
-RUNTIME_METHODS: Final[list[str]] = ["ccall", "HEAPU8", "HEAP32", "HEAPU32", "HEAPF64"]
+# HEAP* views decode all 16 C layouts; ccall decodes last_error's borrowed C string.
+RUNTIME_METHODS: Final[list[str]] = ["ccall", "HEAPU8", "HEAPU16", "HEAP32", "HEAPU32", "HEAPF64"]
 
 # -fwasm-exceptions is not optional: the library throws on bad input and the C ABI turns
 # that into `valid = false`; without it a throw is a module trap (#163).
@@ -72,6 +89,7 @@ COMMON_FLAGS: Final[list[str]] = [
   "-sEXPORT_ES6=1",
   "-sMODULARIZE=1",
   "-sFILESYSTEM=0",
+  "-sALLOW_MEMORY_GROWTH=1",
   "-sENVIRONMENT=web,node",
 ]
 

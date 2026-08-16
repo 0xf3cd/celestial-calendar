@@ -97,6 +97,7 @@ class GitHub:
     run_number:  int
     status:      str
     conclusion:  str
+    event:       str
     head_sha:    str
     workflow_id: int
     url:         str
@@ -133,6 +134,7 @@ class GitHub:
           run["run_number"],
           run["status"],
           run["conclusion"] or "",  # null while the run is still in progress
+          run["event"],
           run["head_sha"],
           run["workflow_id"],
           run["url"],

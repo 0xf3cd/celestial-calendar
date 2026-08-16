@@ -2,10 +2,11 @@
 
 > A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
 
-Three ways in, depending on what you are here for:
+Four ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
-* **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries, or §6 for the WebAssembly module.
+* **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.3 shows the package entry point.
+* **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
 ## 1. Quick Start
@@ -72,6 +73,26 @@ cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl
 
 (On Windows, link against the import library instead and keep the DLL next to the executable.)
 
+### 1.3. From JavaScript or TypeScript
+
+Install the ESM package, initialize its package-owned WebAssembly module once, then use the synchronous APIs:
+
+```sh
+npm install @0xf3cd/celestial
+```
+
+```js
+import * as celestial from "@0xf3cd/celestial";
+
+await celestial.init();
+const moon = celestial.moon.illumination(2448724.5);
+const lichun = celestial.jieqi.moment(2026, 0);
+```
+
+Node 22 or newer is supported; the browser package is tested on Chrome. The bundled declarations preserve the
+JD/JDE/UT1 distinctions and expose enum-like inputs as string unions. See
+`bindings/javascript/README.md` for the complete package contract.
+
 ## 2. Features
 
 * Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
@@ -82,7 +103,7 @@ cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl
 * Time scales and time-related quantities: UT1 / UTC / TT with leap seconds and ΔT, Julian Day, sidereal time, obliquity, nutation (时标转换、儒略日、恒星时、黄赤交角、章动)
 * A C ABI shared library (`src/shared_lib/celestial.h`), so the library is consumable from other languages (C 接口动态库)
 
-The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected; the 2500 ceiling comes from the #139 error budget). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI exports algo1 and algo2, and `get_supported_lunar_year_range` reports their bounds.
+The supported year range of lunar conversions depends on the algorithm: 1901–2099 for algo1 (Hong Kong Observatory data), 1600–2199 for algo3 (baked table), and 410–2500 for algo2 (computed from VSOP87D / ELP2000-82B — that window is a convention rather than a limit of the method, and it is enforced: years outside it are rejected; the 2500 ceiling comes from the #139 error budget). In C++ the bounds are the `START_YEAR` / `END_YEAR` constants of each `calendar::lunar::algoN`; the C ABI and JavaScript package expose all three, and `get_supported_lunar_year_range` reports their bounds.
 
 ## 3. Requirements
 
@@ -188,13 +209,20 @@ The external oracles the library is held against include:
 
 The `statistics/` directory holds the crawlers that regenerate these datasets and the evaluation notebooks behind them (`python3 -m pip install -r Requirements-statistics.txt`).
 
-## 6. WebAssembly Module
+## 6. WebAssembly and npm Package
 
 `python3 toolbox/build_wasm.py` compiles the shared-library sources into a browser/Node ES module, emitting `build/wasm/celestial-jieqi.mjs` + `celestial-jieqi.wasm`. It needs an emsdk checkout — point at it with `--emsdk` or the `$EMSDK` environment variable.
 
-The export surface is deliberately narrow: Jieqi moments, Julian Day conversions, Moon illumination / position angle / phase moments, and local apparent sidereal time — a subset of the C ABI, listed in `toolbox/build_wasm.py`.
+The module contains all 29 stable exports in `celestial.h`; `@0xf3cd/celestial` wraps them as the `config`,
+`time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces. Raw heap pointers, count/fill protocols, sret layouts,
+and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact eight-file npm tarball
+from the generated module and the version in `project.py`.
 
-CI builds the module on an independent leg (`wasm.yml`) and uploads it as the `celestial-wasm` artifact, which the release flow (§10) picks up. The same leg replays a native-generated golden dataset against the module and holds its moments to within 1e-8 days of the native build (`toolbox/wasm_check.mjs`).
+CI builds the module and package on an independent leg (`wasm.yml`). Its `celestial-wasm` artifact contains the
+raw `.mjs/.wasm` pair, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar; the release flow (§10) picks
+up that artifact unchanged. The same leg reconciles all 29 signatures and 16 layouts, replays the 389-point
+native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its TypeScript
+declarations, and runs an Astro/Vite production smoke in Chrome.
 
 ## 7. Export the Jieqi Table (JSON)
 

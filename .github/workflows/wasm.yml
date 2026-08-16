@@ -16,6 +16,9 @@ permissions:
 # 9): bump deliberately, never incidentally. The cache key makes a bump a fresh install.
 env:
   EMSDK_VERSION: "6.0.6"
+  NODE_CURRENT: "24.19.0"
+  NODE_FLOOR: "22.0.0"
+  NPM_VERSION: "11.17.0"
 
 jobs:
   wasm:
@@ -45,12 +48,67 @@ jobs:
           ./emsdk/emsdk install "$EMSDK_VERSION"
           ./emsdk/emsdk activate "$EMSDK_VERSION"
 
+      - name: Set up current Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_CURRENT }}
+          cache: npm
+          cache-dependency-path: bindings/javascript/package-lock.json
+
+      - name: Pin npm and install JavaScript development dependencies
+        run: |
+          npm install --global "npm@$NPM_VERSION"
+          node --version
+          npm --version
+          npm ci --ignore-scripts --prefix bindings/javascript
+
       - name: Build the WASM module (web,node single build)
         run: python3 toolbox/build_wasm.py --emsdk emsdk
 
-      # Runner's preinstalled node is enough — the checker is dependency-free.
-      - name: Golden dataset + sret + exception path + size gate
+      - name: Full ABI protocol + golden dataset + size gate
         run: node toolbox/wasm_check.mjs
+
+      - name: Stage and pack the npm package
+        id: npm-package
+        run: |
+          python3 toolbox/build_npm.py
+          filename=$(node -e '
+            const pack = require("./build/npm/npm-pack.json");
+            if (!Array.isArray(pack) || pack.length !== 1) process.exit(1);
+            process.stdout.write(pack[0].filename);
+          ')
+          if [ "$(basename "$filename")" != "$filename" ] || [ ! -f "build/npm/$filename" ]; then
+            echo "Invalid npm-pack.json filename: $filename"
+            exit 1
+          fi
+          echo "tarball=build/npm/$filename" >> "$GITHUB_OUTPUT"
+
+      - name: Current Node package, types, and exact-tarball consumers
+        run: |
+          node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
+          npm run test:types --prefix bindings/javascript
+
+      - name: npm package publish dry-run
+        env:
+          NPM_CONFIG_DRY_RUN: "true"
+        run: |
+          npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"
+
+      - name: Astro production build and Chrome package smoke
+        run: node bindings/javascript/test/browser/browser_test.mjs "${{ steps.npm-package.outputs.tarball }}"
+
+      - name: Set up Node runtime floor
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_FLOOR }}
+
+      - name: Exact Node floor package consumers
+        run: |
+          node --version
+          npm --version
+          node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
 
       # The release flow downloads this artifact for the tagged commit (the ritual
       # dispatches both build workflows; this leg stays dispatch+PR only). Alignment
@@ -60,8 +118,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: celestial-wasm
-          path: |
-            build/wasm/celestial-jieqi.mjs
-            build/wasm/celestial-jieqi.wasm
+          path: build/npm/artifact/
           retention-days: 30
           if-no-files-found: error
