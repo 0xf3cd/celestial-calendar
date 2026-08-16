@@ -29,10 +29,16 @@ WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "wasm.yml"
 
 def test_npm_publish_stays_a_dry_run():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-  publish_steps = [step for step in workflow["jobs"]["wasm"]["steps"] if "npm publish" in step.get("run", "")]
+  job = workflow["jobs"]["wasm"]
+  steps = job["steps"]
+  publish_steps = [step for step in steps if "npm publish" in step.get("run", "")]
 
   assert len(publish_steps) == 1
   publish_step = publish_steps[0]
+  assert "NPM_CONFIG_DRY_RUN" not in workflow.get("env", {})
+  assert "NPM_CONFIG_DRY_RUN" not in job.get("env", {})
+  dry_run_steps = [step for step in steps if "NPM_CONFIG_DRY_RUN" in step.get("env", {})]
+  assert dry_run_steps == [publish_step]
   assert publish_step.get("env", {}).get("NPM_CONFIG_DRY_RUN") == "true"
   commands = [line.strip() for line in publish_step["run"].splitlines() if line.strip()]
   assert commands == ['npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"']
