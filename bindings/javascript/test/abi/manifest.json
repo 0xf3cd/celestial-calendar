@@ -169,7 +169,6 @@
     {
       "name": "set_log_verbosity",
       "signature": "bool set_log_verbosity(uint8_t new_value)",
-      "parameters": [{"name": "new_value", "type": "uint8_t"}],
       "return": {"kind": "primitive", "type": "bool"},
       "protocol": {"kind": "primitive", "zero": "false is failure; true is success"},
       "recording": false
@@ -177,7 +176,6 @@
     {
       "name": "last_error",
       "signature": "const char *last_error(void)",
-      "parameters": [],
       "return": {"kind": "borrowed-string", "pointer_width_bits": 32},
       "protocol": {"kind": "borrowed-string", "zero": "an empty string is the legal no-error state", "lifetime": "until the next recording call"},
       "recording": false
@@ -185,7 +183,6 @@
     {
       "name": "ut1_to_jd",
       "signature": "JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction)",
-      "parameters": [{"name": "y", "type": "int32_t"}, {"name": "m", "type": "uint32_t"}, {"name": "d", "type": "uint32_t"}, {"name": "fraction", "type": "double"}],
       "return": {"kind": "sret", "layout": "JulianDay"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": true
@@ -193,7 +190,6 @@
     {
       "name": "ut1_to_jde",
       "signature": "JulianDay ut1_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction)",
-      "parameters": [{"name": "y", "type": "int32_t"}, {"name": "m", "type": "uint32_t"}, {"name": "d", "type": "uint32_t"}, {"name": "fraction", "type": "double"}],
       "return": {"kind": "sret", "layout": "JulianDay"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": true
@@ -201,7 +197,6 @@
     {
       "name": "jde_to_ut1",
       "signature": "UT1Time jde_to_ut1(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "UT1Time"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": true
@@ -209,7 +204,6 @@
     {
       "name": "sun_apparent_geocentric_coord",
       "signature": "SunCoordinate sun_apparent_geocentric_coord(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "SunCoordinate"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": false
@@ -217,7 +211,6 @@
     {
       "name": "moon_apparent_geocentric_coord",
       "signature": "MoonCoordinate moon_apparent_geocentric_coord(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "MoonCoordinate"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": false
@@ -225,7 +218,6 @@
     {
       "name": "moon_illumination",
       "signature": "MoonIllumination moon_illumination(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "MoonIllumination"},
       "protocol": {"kind": "sret", "zero": "illumination=0 is legal when valid=true"},
       "recording": true
@@ -233,7 +225,6 @@
     {
       "name": "moon_position_angle",
       "signature": "MoonPositionAngle moon_position_angle(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "MoonPositionAngle"},
       "protocol": {"kind": "sret", "zero": "angle_deg=0 is legal when valid=true"},
       "recording": true
@@ -241,7 +232,6 @@
     {
       "name": "moon_phase_moments",
       "signature": "uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count)",
-      "parameters": [{"name": "year", "type": "int32_t"}, {"name": "phase_kind", "type": "uint8_t"}, {"name": "root_count", "type": "uint32_t *", "pointer_width_bits": 32, "nullable": false}, {"name": "slots", "type": "double *", "pointer_width_bits": 32, "nullable": "only when slot_count=0"}, {"name": "slot_count", "type": "uint32_t"}],
       "return": {"kind": "primitive", "type": "uint32_t"},
       "protocol": {"kind": "count-fill", "count": "root_count always reports the total", "fill": "writes min(root_count, slot_count)", "zero": "zero written is legal for a count query"},
       "recording": true
@@ -249,7 +239,6 @@
     {
       "name": "solar_lon_root_discriminant",
       "signature": "Discriminant solar_lon_root_discriminant(int32_t year, double longitude)",
-      "parameters": [{"name": "year", "type": "int32_t"}, {"name": "longitude", "type": "double"}],
       "return": {"kind": "sret", "layout": "Discriminant"},
       "protocol": {"kind": "companion-count", "zero": "count=0 is legal when valid=true"},
       "recording": false
@@ -257,7 +246,6 @@
     {
       "name": "solar_lon_roots",
       "signature": "uint32_t solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t slot_count)",
-      "parameters": [{"name": "year", "type": "int32_t"}, {"name": "longitude", "type": "double"}, {"name": "slots", "type": "double *", "pointer_width_bits": 32, "nullable": "only when slot_count=0"}, {"name": "slot_count", "type": "uint32_t"}],
       "return": {"kind": "primitive", "type": "uint32_t"},
       "protocol": {"kind": "companion-fill", "count": "solar_lon_root_discriminant", "fill": "writes min(discriminant count, slot_count)", "zero": "zero written is legal when slot_count=0 or count=0"},
       "recording": false
@@ -265,7 +253,6 @@
     {
       "name": "new_moons_after_jde",
       "signature": "uint32_t new_moons_after_jde(double jde, double *slots, uint32_t slot_count)",
-      "parameters": [{"name": "jde", "type": "double"}, {"name": "slots", "type": "double *", "pointer_width_bits": 32, "nullable": "only when slot_count=0"}, {"name": "slot_count", "type": "uint32_t"}],
       "return": {"kind": "primitive", "type": "uint32_t"},
       "protocol": {"kind": "requested-fill", "count": "caller requests slot_count results", "fill": "writes exactly slot_count on success", "zero": "zero is legal when slot_count=0"},
       "recording": false
@@ -273,7 +260,6 @@
     {
       "name": "new_moons_in_year",
       "signature": "uint32_t new_moons_in_year(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count)",
-      "parameters": [{"name": "year", "type": "int32_t"}, {"name": "root_count", "type": "uint32_t *", "pointer_width_bits": 32, "nullable": false}, {"name": "slots", "type": "double *", "pointer_width_bits": 32, "nullable": "only when slot_count=0"}, {"name": "slot_count", "type": "uint32_t"}],
       "return": {"kind": "primitive", "type": "uint32_t"},
       "protocol": {"kind": "count-fill", "count": "root_count always reports the total", "fill": "writes min(root_count, slot_count)", "zero": "zero written is legal for a count query"},
       "recording": false
@@ -281,7 +267,6 @@
     {
       "name": "equation_of_time",
       "signature": "EquationOfTime equation_of_time(double jde)",
-      "parameters": [{"name": "jde", "type": "double"}],
       "return": {"kind": "sret", "layout": "EquationOfTime"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -289,7 +274,6 @@
     {
       "name": "apparent_solar_time",
       "signature": "ApparentSolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude)",
-      "parameters": [{"name": "y", "type": "int32_t"}, {"name": "m", "type": "uint32_t"}, {"name": "d", "type": "uint32_t"}, {"name": "fraction", "type": "double"}, {"name": "longitude", "type": "double"}],
       "return": {"kind": "sret", "layout": "ApparentSolarTime"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": false
@@ -297,7 +281,6 @@
     {
       "name": "local_apparent_sidereal_time",
       "signature": "SiderealTime local_apparent_sidereal_time(double jd_ut1, double longitude)",
-      "parameters": [{"name": "jd_ut1", "type": "double"}, {"name": "longitude", "type": "double"}],
       "return": {"kind": "sret", "layout": "SiderealTime"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": true
@@ -305,7 +288,6 @@
     {
       "name": "query_jieqi_moment",
       "signature": "JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx)",
-      "parameters": [{"name": "year", "type": "int32_t"}, {"name": "jq_idx", "type": "uint8_t"}],
       "return": {"kind": "sret", "layout": "JieqiMomentQuery"},
       "protocol": {"kind": "sret", "zero": "jq_idx=0 is legal when valid=true"},
       "recording": false
@@ -313,7 +295,6 @@
     {
       "name": "get_jieqi_name",
       "signature": "bool get_jieqi_name(uint8_t jq_idx, char *buf, uint32_t buf_size)",
-      "parameters": [{"name": "jq_idx", "type": "uint8_t"}, {"name": "buf", "type": "char *", "pointer_width_bits": 32, "nullable": false}, {"name": "buf_size", "type": "uint32_t"}],
       "return": {"kind": "primitive", "type": "bool"},
       "protocol": {"kind": "caller-string", "fill": "writes a NUL-terminated UTF-8 string without truncation", "zero": "false is failure"},
       "recording": false
@@ -321,7 +302,6 @@
     {
       "name": "get_supported_lunar_year_range",
       "signature": "SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo)",
-      "parameters": [{"name": "algo", "type": "uint8_t"}],
       "return": {"kind": "sret", "layout": "SupportedLunarYearRange"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": false
@@ -329,7 +309,6 @@
     {
       "name": "get_lunar_year_info",
       "signature": "LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year)",
-      "parameters": [{"name": "algo", "type": "uint8_t"}, {"name": "year", "type": "int32_t"}],
       "return": {"kind": "sret", "layout": "LunarYearInfo"},
       "protocol": {"kind": "sret", "zero": "leap_month=0 is legal when valid=true"},
       "recording": false
@@ -337,7 +316,6 @@
     {
       "name": "gregorian_to_lunar",
       "signature": "LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day)",
-      "parameters": [{"name": "algo", "type": "uint8_t"}, {"name": "year", "type": "int32_t"}, {"name": "month", "type": "uint8_t"}, {"name": "day", "type": "uint8_t"}],
       "return": {"kind": "sret", "layout": "LunarDate"},
       "protocol": {"kind": "sret", "zero": "is_leap=false is legal when valid=true"},
       "recording": false
@@ -345,7 +323,6 @@
     {
       "name": "lunar_to_gregorian",
       "signature": "GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day)",
-      "parameters": [{"name": "algo", "type": "uint8_t"}, {"name": "year", "type": "int32_t"}, {"name": "month", "type": "uint8_t"}, {"name": "is_leap", "type": "bool"}, {"name": "day", "type": "uint8_t"}],
       "return": {"kind": "sret", "layout": "GregorianDate"},
       "protocol": {"kind": "sret", "zero": "valid=false is failure"},
       "recording": false
@@ -353,7 +330,6 @@
     {
       "name": "delta_t_algo1",
       "signature": "DeltaT delta_t_algo1(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -361,7 +337,6 @@
     {
       "name": "delta_t_algo2",
       "signature": "DeltaT delta_t_algo2(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -369,7 +344,6 @@
     {
       "name": "delta_t_algo3",
       "signature": "DeltaT delta_t_algo3(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -377,7 +351,6 @@
     {
       "name": "delta_t_algo4",
       "signature": "DeltaT delta_t_algo4(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -385,7 +358,6 @@
     {
       "name": "delta_t_algo5",
       "signature": "DeltaT delta_t_algo5(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false
@@ -393,7 +365,6 @@
     {
       "name": "delta_t",
       "signature": "DeltaT delta_t(double year)",
-      "parameters": [{"name": "year", "type": "double"}],
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
       "recording": false

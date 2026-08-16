@@ -169,7 +169,11 @@ def build(out_dir: Path) -> Path:
 
   (out_dir / "npm-pack.json").write_text(completed.stdout, encoding="utf-8")
   digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
-  (out_dir / "npm-pack.sha256").write_text(f"{digest}  {tarball.name}\n", encoding="utf-8")
+  sidecar = out_dir / "npm-pack.sha256"
+  sidecar.write_text(f"{digest}  {tarball.name}\n", encoding="utf-8")
+  expected_sidecar = f"{hashlib.sha256(tarball.read_bytes()).hexdigest()}  {tarball.name}\n"
+  if sidecar.read_text(encoding="utf-8") != expected_sidecar:
+    raise RuntimeError("npm tarball SHA-256 sidecar does not match the tarball")
 
   artifact_dir = out_dir / "artifact"
   artifact_dir.mkdir()

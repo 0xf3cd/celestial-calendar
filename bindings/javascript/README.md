@@ -64,9 +64,9 @@ Time scales and units stay explicit:
 
 JavaScript `Date` is intentionally not accepted because it represents UTC milliseconds, not UT1 or TT.
 
-Bad shapes and types throw `TypeError`; values outside a declared domain throw `RangeError`. Native calculation
-failures throw `CelestialError`, whose `operation` names the public method and whose `recorded` flag says whether
-the message came from the native error channel. A legitimate absence remains `null` or `[]`.
+Bad shapes and types throw `TypeError`; JavaScript range guards throw `RangeError`. Native failures throw
+`CelestialError`, whose `operation` names the public method and whose `recorded` flag says whether the message came
+from the native error channel. A legitimate absence remains `null` or `[]`.
 
 `moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 536870911]`; zero returns `[]`. The upper bound prevents
 the WASM32 output-buffer byte count from wrapping. Requests near the address-space limit may still exhaust memory.

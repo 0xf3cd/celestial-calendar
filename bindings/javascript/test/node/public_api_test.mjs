@@ -67,7 +67,12 @@ const edge = (label, action, ErrorType) => {
   ++edges;
 };
 
-edge("pre-init call", () => celestial.moon.illumination(2448724.5), Error);
+assert.throws(
+  () => celestial.moon.illumination(2448724.5),
+  { name: "Error", message: "Call and await init() before moon.illumination()." },
+  "pre-init call",
+);
+++edges;
 
 await rename(wasmPath, heldWasmPath);
 let failedInitialization;

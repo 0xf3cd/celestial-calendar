@@ -88,7 +88,7 @@ jobs:
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
           npm run test:types --prefix bindings/javascript
-          npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"
+          npm publish --dry-run --registry=https://registry.invalid "${{ steps.npm-package.outputs.tarball }}"
 
       - name: Astro production build and Chrome package smoke
         run: node bindings/javascript/test/browser/browser_test.mjs "${{ steps.npm-package.outputs.tarball }}"

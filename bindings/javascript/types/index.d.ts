@@ -83,7 +83,7 @@ export class CelestialError extends Error {
   recorded: boolean;
 }
 
-/** Load and instantiate the package-owned WASM module. Repeated calls share one promise. */
+/** Load the package-owned WASM module. Concurrent calls share one promise; a failed load can be retried. */
 export function init(): Promise<void>;
 
 export const config: Readonly<{
