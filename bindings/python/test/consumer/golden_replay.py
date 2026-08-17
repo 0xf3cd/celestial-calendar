@@ -71,8 +71,6 @@ def bits_from_float(value: float) -> str:
 
 @dataclass
 class Residual:
-  """Accumulate one output column before the tolerance verdict."""
-
   points: int = 0
   mismatches: int = 0
   maximum: float = -1.0
