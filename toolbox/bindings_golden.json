@@ -1,8 +1,8 @@
 {
-  "schema": "celestial-calendar/wasm-golden@2",
+  "schema": "celestial-calendar/bindings-golden@2",
   "provenance": {
-    "source_commit": "PR-2 c9 wasm golden update",
-    "generated_on": "Darwin arm64, 2026-08-11",
+    "source_commit": "1f5542971f59a3daab6b96d751aa9299b31f6e7b",
+    "generated_on": "Linux x86_64, 2026-08-17",
     "seed": 42
   },
   "sections": {
@@ -54,7 +54,7 @@
           "y": 401,
           "m": 4,
           "d": 20,
-          "frac_bits": "0x3fe8c5dbd7f34ce9"
+          "frac_bits": "0x3fe8c5dbd8134cae"
         },
         {
           "year": 401,
@@ -86,7 +86,7 @@
           "y": 401,
           "m": 6,
           "d": 22,
-          "frac_bits": "0x3fe3710759090878"
+          "frac_bits": "0x3fe3710758e9084b"
         },
         {
           "year": 401,
@@ -158,7 +158,7 @@
           "y": 401,
           "m": 11,
           "d": 7,
-          "frac_bits": "0x3fb44b058b26cba2"
+          "frac_bits": "0x3fb44b058a26ca39"
         },
         {
           "year": 401,
@@ -974,7 +974,7 @@
           "y": 32766,
           "m": 2,
           "d": 6,
-          "frac_bits": "0x3fe34f65cfa4afa1"
+          "frac_bits": "0x3fe34f65d0a4af01"
         },
         {
           "year": 32766,
@@ -982,7 +982,7 @@
           "y": 32766,
           "m": 2,
           "d": 21,
-          "frac_bits": "0x3fe16305d1ee8504"
+          "frac_bits": "0x3fe16305d1ee856c"
         },
         {
           "year": 32766,
@@ -998,7 +998,7 @@
           "y": 32766,
           "m": 3,
           "d": 22,
-          "frac_bits": "0x3feebc2f75212c2c"
+          "frac_bits": "0x3feebc2f76212bf4"
         },
         {
           "year": 32766,
@@ -1006,7 +1006,7 @@
           "y": 32766,
           "m": 4,
           "d": 6,
-          "frac_bits": "0x3fe2fb91dc41a3cf"
+          "frac_bits": "0x3fe2fb91db41a408"
         },
         {
           "year": 32766,
@@ -1014,7 +1014,7 @@
           "y": 32766,
           "m": 4,
           "d": 21,
-          "frac_bits": "0x3fd4d596e527f646"
+          "frac_bits": "0x3fd4d596e527f716"
         },
         {
           "year": 32766,
@@ -1022,7 +1022,7 @@
           "y": 32766,
           "m": 5,
           "d": 6,
-          "frac_bits": "0x3fc522d46b6075b5"
+          "frac_bits": "0x3fc522d46f6074d4"
         },
         {
           "year": 32766,
@@ -1030,7 +1030,7 @@
           "y": 32766,
           "m": 5,
           "d": 21,
-          "frac_bits": "0x3fc872ca43d368d8"
+          "frac_bits": "0x3fc872ca47d36655"
         },
         {
           "year": 32766,
@@ -1038,7 +1038,7 @@
           "y": 32766,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fd534eb348c19f4"
+          "frac_bits": "0x3fd534eb328c1a65"
         },
         {
           "year": 32766,
@@ -1046,7 +1046,7 @@
           "y": 32766,
           "m": 6,
           "d": 20,
-          "frac_bits": "0x3fe314167bcfef7f"
+          "frac_bits": "0x3fe314167ccfee76"
         },
         {
           "year": 32766,
@@ -1070,7 +1070,7 @@
           "y": 32766,
           "m": 8,
           "d": 5,
-          "frac_bits": "0x3fe143ecc67f3a17"
+          "frac_bits": "0x3fe143ecc57f3a50"
         },
         {
           "year": 32766,
@@ -1086,7 +1086,7 @@
           "y": 32766,
           "m": 9,
           "d": 5,
-          "frac_bits": "0x3fd413b0b3590a60"
+          "frac_bits": "0x3fd413b0b3590b30"
         },
         {
           "year": 32766,
@@ -1102,7 +1102,7 @@
           "y": 32766,
           "m": 10,
           "d": 6,
-          "frac_bits": "0x3fd1deaf8bd53001"
+          "frac_bits": "0x3fd1deaf8dd52f90"
         },
         {
           "year": 32766,
@@ -1118,7 +1118,7 @@
           "y": 32766,
           "m": 11,
           "d": 6,
-          "frac_bits": "0x3fd858168127ca54"
+          "frac_bits": "0x3fd858168327c913"
         },
         {
           "year": 32766,
@@ -1134,7 +1134,7 @@
           "y": 32765,
           "m": 12,
           "d": 7,
-          "frac_bits": "0x3fc527010b6311e6"
+          "frac_bits": "0x3fc527010f630dc2"
         },
         {
           "year": 32766,
@@ -1142,7 +1142,7 @@
           "y": 32765,
           "m": 12,
           "d": 22,
-          "frac_bits": "0x3fe6f8b3bcb1e316"
+          "frac_bits": "0x3fe6f8b3bdb1e2de"
         },
         {
           "year": 32766,
@@ -1158,7 +1158,7 @@
           "y": 32766,
           "m": 1,
           "d": 22,
-          "frac_bits": "0x3fdf61088f0d47e5"
+          "frac_bits": "0x3fdf61088f0d48b5"
         },
         {
           "year": 2031,
@@ -1262,7 +1262,7 @@
           "y": 2021,
           "m": 5,
           "d": 5,
-          "frac_bits": "0x3fd21880d174bb7c"
+          "frac_bits": "0x3fd21880d174baac"
         },
         {
           "year": 2041,
@@ -1646,43 +1646,43 @@
       "entries": [
         {
           "jde_bits": "0x4142aeaa40000000",
-          "illumination_bits": "0x3fe5b6d31ae867f6",
-          "elongation_deg_bits": "0x405bb4f59eaa53f1"
+          "illumination_bits": "0x3fe5b6d31ae8683f",
+          "elongation_deg_bits": "0x405bb4f59eaa5437"
         },
         {
           "jde_bits": "0x41428b2c38ce1ce8",
-          "illumination_bits": "0x3f984b1c29ff2290",
-          "elongation_deg_bits": "0x40756e9227c20feb"
+          "illumination_bits": "0x3f984b1c29fe7a40",
+          "elongation_deg_bits": "0x40756e9227c213eb"
         },
         {
           "jde_bits": "0x4142b4102c2a61c2",
-          "illumination_bits": "0x3faaf69ad3e81ce0",
-          "elongation_deg_bits": "0x4074deb81f851c32"
+          "illumination_bits": "0x3faaf69ad3e81ca8",
+          "elongation_deg_bits": "0x4074deb81f851c34"
         },
         {
           "jde_bits": "0x4142eb0e6ae21a5e",
-          "illumination_bits": "0x3fec7562af2d021a",
-          "elongation_deg_bits": "0x4061a5752bb7760c"
+          "illumination_bits": "0x3fec7562af2d0da6",
+          "elongation_deg_bits": "0x4061a5752bb77e56"
         },
         {
           "jde_bits": "0x4142c88dc58e9a63",
-          "illumination_bits": "0x3fd3fd475bcb7e5f",
-          "elongation_deg_bits": "0x4050eec4489f2cec"
+          "illumination_bits": "0x3fd3fd475bcb8036",
+          "elongation_deg_bits": "0x4050eec4489f2dd0"
         },
         {
           "jde_bits": "0x414281387df1b34f",
-          "illumination_bits": "0x3fecd77399f17b29",
-          "elongation_deg_bits": "0x4061ea8d2fc36cde"
+          "illumination_bits": "0x3fecd77399f17c1e",
+          "elongation_deg_bits": "0x4061ea8d2fc36d98"
         },
         {
           "jde_bits": "0x414280c21b9825fa",
-          "illumination_bits": "0x3febee89912ed6c0",
-          "elongation_deg_bits": "0x406148ee230eeddc"
+          "illumination_bits": "0x3febee89912ed54e",
+          "elongation_deg_bits": "0x406148ee230eecdb"
         },
         {
           "jde_bits": "0x4142d7203a42ceed",
-          "illumination_bits": "0x3fd54af13d5ac0c3",
-          "elongation_deg_bits": "0x40721bcb486995d3"
+          "illumination_bits": "0x3fd54af13d5ad0f8",
+          "elongation_deg_bits": "0x40721bcb486993e6"
         },
         {
           "jde_bits": "0x4142b9bbdb45680c",
@@ -1691,18 +1691,18 @@
         },
         {
           "jde_bits": "0x4142d76a2eb57ced",
-          "illumination_bits": "0x3fcbd10f278d3cd2",
-          "elongation_deg_bits": "0x40730aba2bc6c3f0"
+          "illumination_bits": "0x3fcbd10f278d3e78",
+          "elongation_deg_bits": "0x40730aba2bc6c3d4"
         },
         {
           "jde_bits": "0x4142a9f65dfacc03",
-          "illumination_bits": "0x3fdb9b70b731f8cd",
-          "elongation_deg_bits": "0x407160e19a420e74"
+          "illumination_bits": "0x3fdb9b70b731f95a",
+          "elongation_deg_bits": "0x407160e19a420e64"
         },
         {
           "jde_bits": "0x4142c01734e081f7",
-          "illumination_bits": "0x3fee7d5eb9743dcc",
-          "elongation_deg_bits": "0x40635c37558a0103"
+          "illumination_bits": "0x3fee7d5eb9743dcd",
+          "elongation_deg_bits": "0x40635c37558a0107"
         },
         {
           "jde_bits": "0x4142a07bcee04f4f",
@@ -1711,13 +1711,13 @@
         },
         {
           "jde_bits": "0x4142fb2093a39cc2",
-          "illumination_bits": "0x3f5f5db9592d1500",
-          "elongation_deg_bits": "0x40767b6958a89e00"
+          "illumination_bits": "0x3f5f5db9592ced00",
+          "elongation_deg_bits": "0x40767b6958a8a1f4"
         },
         {
           "jde_bits": "0x41428092adbc083e",
-          "illumination_bits": "0x3fd0cd19827bb61c",
-          "elongation_deg_bits": "0x404eb95231a18fe4"
+          "illumination_bits": "0x3fd0cd19827bbafe",
+          "elongation_deg_bits": "0x404eb95231a194f0"
         },
         {
           "jde_bits": "0x4142b33f6c1f5c0c",
@@ -1731,13 +1731,13 @@
         },
         {
           "jde_bits": "0x4142e7b12c34469a",
-          "illumination_bits": "0x3f841cf7feab4560",
-          "elongation_deg_bits": "0x40264c62352cdb74"
+          "illumination_bits": "0x3f841cf7feab52a0",
+          "elongation_deg_bits": "0x40264c62352ce11f"
         },
         {
           "jde_bits": "0x414282a4a058559b",
-          "illumination_bits": "0x3fac983664e03860",
-          "elongation_deg_bits": "0x403afa69d0ef061c"
+          "illumination_bits": "0x3fac983664e0b3d0",
+          "elongation_deg_bits": "0x403afa69d0ef42ec"
         },
         {
           "jde_bits": "0x414283a96ec0e63d",
@@ -1746,23 +1746,23 @@
         },
         {
           "jde_bits": "0x4142cdec2555e25f",
-          "illumination_bits": "0x3fdca022d72fb111",
-          "elongation_deg_bits": "0x4054f198c73aa4ac"
+          "illumination_bits": "0x3fdca022d72f9f4a",
+          "elongation_deg_bits": "0x4054f198c73a9ca4"
         },
         {
           "jde_bits": "0x4142c1ed7e51fb89",
-          "illumination_bits": "0x3fe289000b93a7fe",
-          "elongation_deg_bits": "0x4058be9a98337d0a"
+          "illumination_bits": "0x3fe289000b93a399",
+          "elongation_deg_bits": "0x4058be9a9833790d"
         },
         {
           "jde_bits": "0x4142a3bb7dc54948",
-          "illumination_bits": "0x3fdfb0829f323261",
-          "elongation_deg_bits": "0x4070eb40e6d13adc"
+          "illumination_bits": "0x3fdfb0829f323325",
+          "elongation_deg_bits": "0x4070eb40e6d13ac6"
         },
         {
           "jde_bits": "0x4142c1da7a9cf4cb",
-          "illumination_bits": "0x3f589ec3b1449000",
-          "elongation_deg_bits": "0x40765add3ac99821"
+          "illumination_bits": "0x3f589ec3b1448900",
+          "elongation_deg_bits": "0x40765add3ac99820"
         },
         {
           "jde_bits": "0x4142af9d4dd997ac",
@@ -1771,28 +1771,28 @@
         },
         {
           "jde_bits": "0x414290b4e639b7f5",
-          "illumination_bits": "0x3fb56eb9143133f0",
-          "elongation_deg_bits": "0x407467ab2b43734c"
+          "illumination_bits": "0x3fb56eb91431354c",
+          "elongation_deg_bits": "0x407467ab2b43733b"
         },
         {
           "jde_bits": "0x4142bbc445cb4ce4",
-          "illumination_bits": "0x3fefd7f13b4dced4",
-          "elongation_deg_bits": "0x40659797e3e08e2a"
+          "illumination_bits": "0x3fefd7f13b4dcece",
+          "elongation_deg_bits": "0x40659797e3e08e16"
         },
         {
           "jde_bits": "0x4142f34b984391eb",
-          "illumination_bits": "0x3fdefc4d9450723d",
-          "elongation_deg_bits": "0x4056023fe9efd07a"
+          "illumination_bits": "0x3fdefc4d945095ef",
+          "elongation_deg_bits": "0x4056023fe9efe07a"
         },
         {
           "jde_bits": "0x4142cde4ebd8c1f5",
-          "illumination_bits": "0x3fd945ff85c4189e",
-          "elongation_deg_bits": "0x4071a557d750d04a"
+          "illumination_bits": "0x3fd945ff85c418e8",
+          "elongation_deg_bits": "0x4071a557d750d042"
         },
         {
           "jde_bits": "0x41427d2e234ad759",
-          "illumination_bits": "0x3fe9ae8a6fc5f467",
-          "elongation_deg_bits": "0x405fc80c9c2f0bc4"
+          "illumination_bits": "0x3fe9ae8a6fc5f46b",
+          "elongation_deg_bits": "0x405fc80c9c2f0bc6"
         },
         {
           "jde_bits": "0x4142eb12436b120a",
@@ -1801,13 +1801,13 @@
         },
         {
           "jde_bits": "0x4142d7f74f8d7631",
-          "illumination_bits": "0x3fec85750efd9958",
-          "elongation_deg_bits": "0x4061b4ea8bb2086b"
+          "illumination_bits": "0x3fec85750efd9940",
+          "elongation_deg_bits": "0x4061b4ea8bb20859"
         },
         {
           "jde_bits": "0x4142da7e8cd41cd0",
-          "illumination_bits": "0x3fde45eb098b038b",
-          "elongation_deg_bits": "0x4055af589b96e898"
+          "illumination_bits": "0x3fde45eb098b05d6",
+          "elongation_deg_bits": "0x4055af589b96e9a0"
         },
         {
           "jde_bits": "0x41429d5ed1a879cb",
@@ -1816,38 +1816,38 @@
         },
         {
           "jde_bits": "0x414296b60c7784ec",
-          "illumination_bits": "0x3f4692ebf86a0200",
-          "elongation_deg_bits": "0x3ff564a833119a80"
+          "illumination_bits": "0x3f4692ebf86a0a00",
+          "elongation_deg_bits": "0x3ff564a83311ba00"
         },
         {
           "jde_bits": "0x41428366cdc7207a",
-          "illumination_bits": "0x3fdd6677efa6f203",
-          "elongation_deg_bits": "0x40554c15ede59db8"
+          "illumination_bits": "0x3fdd6677efa6eef5",
+          "elongation_deg_bits": "0x40554c15ede59c58"
         },
         {
           "jde_bits": "0x41426d4cc82c41a6",
           "illumination_bits": "0x3f835702e85a1be0",
-          "elongation_deg_bits": "0x4023ed47c30e9de0"
+          "elongation_deg_bits": "0x4023ed47c30e9e60"
         },
         {
           "jde_bits": "0x4142d3dbf0c12735",
-          "illumination_bits": "0x3fd66139d83b7542",
-          "elongation_deg_bits": "0x4052170d7d3dde27"
+          "illumination_bits": "0x3fd66139d83b7553",
+          "elongation_deg_bits": "0x4052170d7d3dde2d"
         },
         {
           "jde_bits": "0x4142d383dde35a81",
-          "illumination_bits": "0x3fd6e678dbd7e360",
-          "elongation_deg_bits": "0x4052547ce7823510"
+          "illumination_bits": "0x3fd6e678dbd7e2d6",
+          "elongation_deg_bits": "0x4052547ce78234d0"
         },
         {
           "jde_bits": "0x4142f77f7dad236d",
-          "illumination_bits": "0x3fb82479caa82208",
-          "elongation_deg_bits": "0x4041d6d39a337985"
+          "illumination_bits": "0x3fb82479caa8282c",
+          "elongation_deg_bits": "0x4041d6d39a337bdf"
         },
         {
           "jde_bits": "0x4142d98c2848a023",
-          "illumination_bits": "0x3fd8dcd050d6e913",
-          "elongation_deg_bits": "0x4071b09ecbf0631a"
+          "illumination_bits": "0x3fd8dcd050d6e924",
+          "elongation_deg_bits": "0x4071b09ecbf06318"
         }
       ]
     },
@@ -1866,12 +1866,12 @@
         {
           "jd_ut1_bits": "0x416a1c0ff0000000",
           "longitude": 45.0,
-          "value_bits": "0x4067adcdb939c742"
+          "value_bits": "0x4067adcdb939c736"
         },
         {
           "jd_ut1_bits": "0x415e049e5bac4523",
           "longitude": -141.6921037928262,
-          "value_bits": "0x40657b74f7ff036b"
+          "value_bits": "0x40657b74f7ff0369"
         },
         {
           "jd_ut1_bits": "0x4161a939ab04c714",
@@ -1881,7 +1881,7 @@
         {
           "jd_ut1_bits": "0x415e0466d1b2c868",
           "longitude": -108.39200336469611,
-          "value_bits": "0x40722158ad2e21b3"
+          "value_bits": "0x40722158ad2e21b2"
         },
         {
           "jd_ut1_bits": "0x4157fc5a63513da2",
@@ -1891,22 +1891,22 @@
         {
           "jd_ut1_bits": "0x41690fa77648ec63",
           "longitude": 152.0762690225789,
-          "value_bits": "0x40761a7e68ce824d"
+          "value_bits": "0x40761a7e694e824d"
         },
         {
           "jd_ut1_bits": "0x416845976f53383a",
           "longitude": 35.620050405682434,
-          "value_bits": "0x4062f686481dbe0c"
+          "value_bits": "0x4062f686481dbe0e"
         },
         {
           "jd_ut1_bits": "0x415d286606197879",
           "longitude": -139.72761888447778,
-          "value_bits": "0x407070bca4d2929d"
+          "value_bits": "0x407070bca492929d"
         },
         {
           "jd_ut1_bits": "0x41577e23315f4a61",
           "longitude": 174.71569641977237,
-          "value_bits": "0x405a197007bad218"
+          "value_bits": "0x405a197006bad214"
         },
         {
           "jd_ut1_bits": "0x4165c0bb00e62abf",
@@ -1921,27 +1921,27 @@
         {
           "jd_ut1_bits": "0x414559e7fe0a122c",
           "longitude": 83.48673414406596,
-          "value_bits": "0x40311971fba8c140"
+          "value_bits": "0x40311971fbe8c140"
         },
         {
           "jd_ut1_bits": "0x4165f61d3f630bd9",
           "longitude": 172.07441772384033,
-          "value_bits": "0x40706b921b54cbc0"
+          "value_bits": "0x40706b921bd4cbc0"
         },
         {
           "jd_ut1_bits": "0x415f2582bb0bf3b3",
           "longitude": -134.72621585264113,
-          "value_bits": "0x4074fda5db320fd5"
+          "value_bits": "0x4074fda5daf20fd7"
         },
         {
           "jd_ut1_bits": "0x41627014a92d8422",
           "longitude": 160.86552469379671,
-          "value_bits": "0x4036f52b0f1717e0"
+          "value_bits": "0x4036f52b0f1717d0"
         },
         {
           "jd_ut1_bits": "0x414d241438a44e73",
           "longitude": 9.962563470571439,
-          "value_bits": "0x4070f1607223db32"
+          "value_bits": "0x4070f1607223db34"
         },
         {
           "jd_ut1_bits": "0x41613d3fc8f69cde",
@@ -1951,7 +1951,7 @@
         {
           "jd_ut1_bits": "0x416881bcdac04f02",
           "longitude": 91.89547078888995,
-          "value_bits": "0x4051298d03c74b30"
+          "value_bits": "0x4051298d03c74b38"
         },
         {
           "jd_ut1_bits": "0x41631deba809dec2",
@@ -1961,7 +1961,7 @@
         {
           "jd_ut1_bits": "0x41591dde35a03b12",
           "longitude": 61.80730546978191,
-          "value_bits": "0x406acd4ceabd01ab"
+          "value_bits": "0x406acd4cea3d01ab"
         },
         {
           "jd_ut1_bits": "0x4157f6a85c7d799b",
@@ -1971,7 +1971,7 @@
         {
           "jd_ut1_bits": "0x415b7be05e845afc",
           "longitude": -90.75397908023714,
-          "value_bits": "0x4072b84d032e0448"
+          "value_bits": "0x4072b84d02ee0448"
         },
         {
           "jd_ut1_bits": "0x414405c84cc5eeb3",
@@ -1981,12 +1981,12 @@
         {
           "jd_ut1_bits": "0x41600d36dc2b4b9b",
           "longitude": 31.838441187726374,
-          "value_bits": "0x401193076194a680"
+          "value_bits": "0x401193078194a700"
         },
         {
           "jd_ut1_bits": "0x413dcb108ccf6247",
           "longitude": 74.82274075744348,
-          "value_bits": "0x4058c7f92a3274f2"
+          "value_bits": "0x4058c7f92a3274f1"
         },
         {
           "jd_ut1_bits": "0x41438ed38356a07e",
@@ -1996,7 +1996,7 @@
         {
           "jd_ut1_bits": "0x414114ca66fd600b",
           "longitude": -61.04574393102047,
-          "value_bits": "0x4046add79d4a1278"
+          "value_bits": "0x4046add79d6a1276"
         },
         {
           "jd_ut1_bits": "0x415e4f5cab6c3e75",
@@ -2011,7 +2011,7 @@
         {
           "jd_ut1_bits": "0x4163df33a929c7fe",
           "longitude": 137.65790705066559,
-          "value_bits": "0x406873c11f06de42"
+          "value_bits": "0x406873c12006de44"
         },
         {
           "jd_ut1_bits": "0x41608de086e82cd2",
@@ -2021,7 +2021,7 @@
         {
           "jd_ut1_bits": "0x415c73ed96411c9f",
           "longitude": -33.45841386506282,
-          "value_bits": "0x405b92593e1ba752"
+          "value_bits": "0x405b92593d1ba752"
         },
         {
           "jd_ut1_bits": "0x4146c15e7af855f6",
@@ -2031,12 +2031,12 @@
         {
           "jd_ut1_bits": "0x415719e537365750",
           "longitude": -32.003180622094305,
-          "value_bits": "0x40713abc896c8b03"
+          "value_bits": "0x40713abc892c8b03"
         },
         {
           "jd_ut1_bits": "0x41670a1a465f52b5",
           "longitude": -160.49837259641862,
-          "value_bits": "0x40696fbcc285e55f"
+          "value_bits": "0x40696fbcc385e55f"
         },
         {
           "jd_ut1_bits": "0x41624bbe2c60fab4",
@@ -2066,7 +2066,7 @@
         {
           "jd_ut1_bits": "0x415bfc80c4298338",
           "longitude": 134.81494346540876,
-          "value_bits": "0x406e0baa2511e931"
+          "value_bits": "0x406e0baa2491e934"
         }
       ]
     },
@@ -2074,35 +2074,35 @@
       "entries": [
         {
           "jde_bits": "0x4142aeaa40000000",
-          "angle_deg_bits": "0x4071d0b5366725b1"
+          "angle_deg_bits": "0x4071d0b5366725b5"
         },
         {
           "jde_bits": "0x41428b2c38ce1ce8",
-          "angle_deg_bits": "0x40530f21626b58a7"
+          "angle_deg_bits": "0x40530f21626b5184"
         },
         {
           "jde_bits": "0x4142b4102c2a61c2",
-          "angle_deg_bits": "0x405e7488f6b76230"
+          "angle_deg_bits": "0x405e7488f6b76236"
         },
         {
           "jde_bits": "0x4142eb0e6ae21a5e",
-          "angle_deg_bits": "0x406ee034d4add86a"
+          "angle_deg_bits": "0x406ee034d4add921"
         },
         {
           "jde_bits": "0x4142c88dc58e9a63",
-          "angle_deg_bits": "0x4072754f8bb3402c"
+          "angle_deg_bits": "0x4072754f8bb34023"
         },
         {
           "jde_bits": "0x414281387df1b34f",
-          "angle_deg_bits": "0x4070bc44c4aa9c38"
+          "angle_deg_bits": "0x4070bc44c4aa9bfc"
         },
         {
           "jde_bits": "0x414280c21b9825fa",
-          "angle_deg_bits": "0x406ead993d6a0670"
+          "angle_deg_bits": "0x406ead993d6a06c6"
         },
         {
           "jde_bits": "0x4142d7203a42ceed",
-          "angle_deg_bits": "0x405b6d80995c1d1c"
+          "angle_deg_bits": "0x405b6d80995c1f12"
         },
         {
           "jde_bits": "0x4142b9bbdb45680c",
@@ -2110,15 +2110,15 @@
         },
         {
           "jde_bits": "0x4142d76a2eb57ced",
-          "angle_deg_bits": "0x405176d41467b752"
+          "angle_deg_bits": "0x405176d41467b777"
         },
         {
           "jde_bits": "0x4142a9f65dfacc03",
-          "angle_deg_bits": "0x4055e87a165e3781"
+          "angle_deg_bits": "0x4055e87a165e3775"
         },
         {
           "jde_bits": "0x4142c01734e081f7",
-          "angle_deg_bits": "0x406fa11b7cdaab42"
+          "angle_deg_bits": "0x406fa11b7cdaaba1"
         },
         {
           "jde_bits": "0x4142a07bcee04f4f",
@@ -2126,15 +2126,15 @@
         },
         {
           "jde_bits": "0x4142fb2093a39cc2",
-          "angle_deg_bits": "0x4065f24e255d68fe"
+          "angle_deg_bits": "0x4065f24e255dc70a"
         },
         {
           "jde_bits": "0x41428092adbc083e",
-          "angle_deg_bits": "0x4071e3a16e147e45"
+          "angle_deg_bits": "0x4071e3a16e147e65"
         },
         {
           "jde_bits": "0x4142b33f6c1f5c0c",
-          "angle_deg_bits": "0x4056f51c5bfcba6c"
+          "angle_deg_bits": "0x4056f51c5bfcba6d"
         },
         {
           "jde_bits": "0x4142d8aa70016d1c",
@@ -2142,11 +2142,11 @@
         },
         {
           "jde_bits": "0x4142e7b12c34469a",
-          "angle_deg_bits": "0x40701aec1ebe52fa"
+          "angle_deg_bits": "0x40701aec1ebe5475"
         },
         {
           "jde_bits": "0x414282a4a058559b",
-          "angle_deg_bits": "0x4071af36e2f10647"
+          "angle_deg_bits": "0x4071af36e2f10845"
         },
         {
           "jde_bits": "0x414283a96ec0e63d",
@@ -2154,11 +2154,11 @@
         },
         {
           "jde_bits": "0x4142cdec2555e25f",
-          "angle_deg_bits": "0x406f8b7351c940e1"
+          "angle_deg_bits": "0x406f8b7351c94036"
         },
         {
           "jde_bits": "0x4142c1ed7e51fb89",
-          "angle_deg_bits": "0x4071b3cc1b1ecb4f"
+          "angle_deg_bits": "0x4071b3cc1b1ecaec"
         },
         {
           "jde_bits": "0x4142a3bb7dc54948",
@@ -2166,7 +2166,7 @@
         },
         {
           "jde_bits": "0x4142c1da7a9cf4cb",
-          "angle_deg_bits": "0x4021b67e372f593a"
+          "angle_deg_bits": "0x4021b67e372f6938"
         },
         {
           "jde_bits": "0x4142af9d4dd997ac",
@@ -2174,19 +2174,19 @@
         },
         {
           "jde_bits": "0x414290b4e639b7f5",
-          "angle_deg_bits": "0x40501c6a6f51e97b"
+          "angle_deg_bits": "0x40501c6a6f51e988"
         },
         {
           "jde_bits": "0x4142bbc445cb4ce4",
-          "angle_deg_bits": "0x407145e17e10add8"
+          "angle_deg_bits": "0x407145e17e10adb5"
         },
         {
           "jde_bits": "0x4142f34b984391eb",
-          "angle_deg_bits": "0x407258869744c707"
+          "angle_deg_bits": "0x407258869744c6ca"
         },
         {
           "jde_bits": "0x4142cde4ebd8c1f5",
-          "angle_deg_bits": "0x405b128e8be407dd"
+          "angle_deg_bits": "0x405b128e8be407e1"
         },
         {
           "jde_bits": "0x41427d2e234ad759",
@@ -2198,11 +2198,11 @@
         },
         {
           "jde_bits": "0x4142d7f74f8d7631",
-          "angle_deg_bits": "0x4071606f6d4e0ab6"
+          "angle_deg_bits": "0x4071606f6d4e0ab8"
         },
         {
           "jde_bits": "0x4142da7e8cd41cd0",
-          "angle_deg_bits": "0x40710441c54ba0e6"
+          "angle_deg_bits": "0x40710441c54ba0e8"
         },
         {
           "jde_bits": "0x41429d5ed1a879cb",
@@ -2210,31 +2210,31 @@
         },
         {
           "jde_bits": "0x414296b60c7784ec",
-          "angle_deg_bits": "0x40764b5bf78f2354"
+          "angle_deg_bits": "0x40764b5bf78f2121"
         },
         {
           "jde_bits": "0x41428366cdc7207a",
-          "angle_deg_bits": "0x4071dd55b77838d9"
+          "angle_deg_bits": "0x4071dd55b77838f9"
         },
         {
           "jde_bits": "0x41426d4cc82c41a6",
-          "angle_deg_bits": "0x4073e8e79614baff"
+          "angle_deg_bits": "0x4073e8e79614bacb"
         },
         {
           "jde_bits": "0x4142d3dbf0c12735",
-          "angle_deg_bits": "0x40720dbccf902644"
+          "angle_deg_bits": "0x40720dbccf90263a"
         },
         {
           "jde_bits": "0x4142d383dde35a81",
-          "angle_deg_bits": "0x406f4177c05225e0"
+          "angle_deg_bits": "0x406f4177c05225eb"
         },
         {
           "jde_bits": "0x4142f77f7dad236d",
-          "angle_deg_bits": "0x4070fe0bd6f4c61e"
+          "angle_deg_bits": "0x4070fe0bd6f4c633"
         },
         {
           "jde_bits": "0x4142d98c2848a023",
-          "angle_deg_bits": "0x4050f7e62b13c9ae"
+          "angle_deg_bits": "0x4050f7e62b13c9dc"
         }
       ]
     },
