@@ -31,10 +31,15 @@ import { BINDINGS } from "../../src/bindings.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../../../..");
 const manifest = JSON.parse(await readFile(resolve(HERE, "manifest.json"), "utf8"));
-const golden = JSON.parse(await readFile(resolve(REPO, "toolbox/wasm_golden.json"), "utf8"));
+const golden = JSON.parse(await readFile(resolve(REPO, "toolbox/bindings_golden.json"), "utf8"));
 const M = await (await import(pathToFileURL(resolve(REPO, "build/wasm/celestial-jieqi.mjs")))).default();
 
-assert.equal(golden.schema, "celestial-calendar/wasm-golden@2");
+assert.equal(golden.schema, "celestial-calendar/bindings-golden@2");
+assert.deepEqual(Object.keys(golden.provenance).sort(), ["generated_on", "seed", "source_commit"]);
+assert.match(golden.provenance.source_commit, /^[0-9a-f]{40}$/);
+assert.equal(typeof golden.provenance.generated_on, "string");
+assert(golden.provenance.generated_on.length > 0);
+assert.equal(golden.provenance.seed, 42);
 assert.deepEqual(
   Object.fromEntries(Object.entries(golden.sections).map(([name, section]) => [name, section.entries.length])),
   { jieqi: 204, moon: 41, sidereal: 43, moon_position_angle: 41, phases: 60 },
@@ -399,4 +404,4 @@ assert.deepEqual(
 console.log("PASS raw exports 29/29; layouts 16/16; recording seams 7/7");
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
-console.log(`PASS existing WASM golden replay ${goldenCount}/389`);
+console.log(`PASS shared binding golden replay ${goldenCount}/389`);

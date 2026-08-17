@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Regenerate the WASM golden dataset (toolbox/wasm_golden.json) from the native library.
+# Regenerate the shared binding golden dataset (toolbox/bindings_golden.json) from the native library.
 #
 #########################################################################################
 #
@@ -34,7 +34,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from automation import paths, run_cmd
 
 
-OUT_PATH: Final[Path] = Path(__file__).parent / "wasm_golden.json"
+OUT_PATH: Final[Path] = Path(__file__).parent / "bindings_golden.json"
 
 # Dataset shape (#163): the real validity edges at all 24 indices (401 = the UT1 chain's
 # floor, 32766 = the declared max of jieqi_jde), the site nav's consumer window
@@ -200,7 +200,7 @@ def generate() -> dict:
     })
 
   return {
-    "schema": "celestial-calendar/wasm-golden@2",
+    "schema": "celestial-calendar/bindings-golden@2",
     "provenance": {
       "source_commit": source_commit(),
       "generated_on": f"{platform.system()} {platform.machine()}, {date.today().isoformat()}",
@@ -217,11 +217,11 @@ def generate() -> dict:
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description="Regenerate the native WASM golden dataset.")
+  parser = argparse.ArgumentParser(description="Regenerate the native binding golden dataset.")
   parser.add_argument("--out-path", type=Path, default=OUT_PATH, help=f"output path (default {OUT_PATH})")
   args = parser.parse_args()
 
   doc = generate()
   total = sum(len(section["entries"]) for section in doc["sections"].values())
   args.out_path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-  print(f"[ make_wasm_golden ] {total} points -> {args.out_path}")
+  print(f"[ make_bindings_golden ] {total} points -> {args.out_path}")
