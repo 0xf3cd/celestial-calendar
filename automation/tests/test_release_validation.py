@@ -31,7 +31,8 @@ from toolbox.release_validation import _native_layout, validate_release_archives
 
 
 VERSION = project_version()
-MAJOR_MINOR = ".".join(VERSION.split(".")[:2])
+MAJOR, MINOR, _PATCH = VERSION.split(".")
+SOVERSION = f"{MAJOR}.{MINOR}" if MAJOR == "0" else MAJOR
 TARBALL = f"0xf3cd-celestial-{VERSION}.tgz"
 NATIVE_MEMBERS = {
   "linux_amd64.zip": [
@@ -39,7 +40,7 @@ NATIVE_MEMBERS = {
     "cpu_info.json",
     "include/celestial.h",
     "lib/libcelestial_calendar.so",
-    f"lib/libcelestial_calendar.so.{MAJOR_MINOR}",
+    f"lib/libcelestial_calendar.so.{SOVERSION}",
     f"lib/libcelestial_calendar.so.{VERSION}",
   ],
   "linux_arm64.zip": [
@@ -47,7 +48,7 @@ NATIVE_MEMBERS = {
     "cpu_info.json",
     "include/celestial.h",
     "lib/libcelestial_calendar.so",
-    f"lib/libcelestial_calendar.so.{MAJOR_MINOR}",
+    f"lib/libcelestial_calendar.so.{SOVERSION}",
     f"lib/libcelestial_calendar.so.{VERSION}",
   ],
   "macos_arm64.zip": [
@@ -55,7 +56,7 @@ NATIVE_MEMBERS = {
     "cpu_info.json",
     "include/celestial.h",
     "lib/libcelestial_calendar.dylib",
-    f"lib/libcelestial_calendar.{MAJOR_MINOR}.dylib",
+    f"lib/libcelestial_calendar.{SOVERSION}.dylib",
     f"lib/libcelestial_calendar.{VERSION}.dylib",
   ],
   "windows_x86_64.zip": [
@@ -104,7 +105,7 @@ def native_members(filename):
   for name in NATIVE_MEMBERS[filename]:
     content = f"payload:{name}".encode()
     members.append((name, content))
-    if name.endswith((".so", f".so.{MAJOR_MINOR}", f".so.{VERSION}", ".dylib", ".dll")):
+    if name.endswith((".so", f".so.{SOVERSION}", f".so.{VERSION}", ".dylib", ".dll")):
       hashes[name.rsplit("/", maxsplit=1)[-1]] = hashlib.sha256(content).hexdigest()
   build_info = {"build_version": VERSION, "sha256": hashes}
   return [

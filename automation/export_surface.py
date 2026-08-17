@@ -273,13 +273,15 @@ def check_export_surface() -> int:
           f"vague-linkage symbol -- hide it, or add it to SURVIVOR_EXCEPTIONS with a reason"
         )
 
-      # SONAME pin: major.minor of the real file's version, per the CMakeLists comment.
+      # SONAME pin follows the version rule in the CMakeLists comment.
       version = REAL_SO_RE.match(so.name)
       assert version is not None  # find_real_so only returns REAL_SO_RE matches
-      expected_soname = f"libcelestial_calendar.so.{version.group(1)}.{version.group(2)}"
+      major = version.group(1)
+      soversion = f"{major}.{version.group(2)}" if major == "0" else major
+      expected_soname = f"libcelestial_calendar.so.{soversion}"
       soname = read_soname(so)
       if soname != expected_soname:
-        failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} (major.minor of VERSION while 0.x)")
+        failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} for VERSION {version.group(0)!r}")
     except Exception as e:  # noqa: BLE001 -- see below
       # Deliberately broad: the sentence above promises that no tool failure loses the
       # static findings, and the failure modes are not all `RuntimeError` -- c++filt can

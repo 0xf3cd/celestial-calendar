@@ -117,7 +117,12 @@ jobs:
           cp -r "$OUTPUT_DIR/install/." "$DEST_DIR/"
 
           VERSION="${{ steps.get-build-version.outputs.BUILD_VERSION }}"
-          SOVERSION="${VERSION%.*}"  # major.minor -- the CMakeLists SOVERSION rule while 0.x
+          MAJOR="${VERSION%%.*}"
+          if [ "$MAJOR" = "0" ]; then
+            SOVERSION="${VERSION%.*}"
+          else
+            SOVERSION="$MAJOR"
+          fi
 
           # Guard on what install produced, not on what a glob matched (#72): the JSON
           # files below keep this directory non-empty whatever happens, so
@@ -203,7 +208,12 @@ jobs:
         cmake --install ./build --prefix ./macos_arm64
 
         VERSION=$(./project.py --version)
-        SOVERSION="${VERSION%.*}"  # major.minor -- the CMakeLists SOVERSION rule while 0.x
+        MAJOR="${VERSION%%.*}"
+        if [ "$MAJOR" = "0" ]; then
+          SOVERSION="${VERSION%.*}"
+        else
+          SOVERSION="$MAJOR"
+        fi
 
         # Guard on what install produced, not on what a glob matched (#72). macOS puts the
         # version inside the name: real file libcelestial_calendar.${VERSION}.dylib with

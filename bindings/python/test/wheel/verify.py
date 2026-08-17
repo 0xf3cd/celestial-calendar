@@ -123,7 +123,8 @@ def verify_linux(native: Path, wheel: Path, version: str, platform_tags: list[st
   expected_machine = "Advanced Micro Devices X86-64" if architecture == "x86_64" else "AArch64"
   assert f"Machine:                           {expected_machine}" in elf_header
   dynamic = run("readelf", "-d", str(native))
-  soname_version = ".".join(version.split(".")[:2])
+  major, minor, _patch = version.split(".")
+  soname_version = f"{major}.{minor}" if major == "0" else major
   assert f"Library soname: [libcelestial_calendar.so.{soname_version}]" in dynamic
   dependencies = set(re.findall(r"Shared library: \[([^\]]+)\]", dynamic))
   allowed = {
