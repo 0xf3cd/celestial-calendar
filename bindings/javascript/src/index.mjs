@@ -403,7 +403,7 @@ const newMoonsInYear = (year) => {
 const jieqiMoment = (year, index) => {
   const operation = "jieqi.moment";
   requireModule(operation);
-  const checkedYear = rangedInteger(year, "year", 1, MAX_CALENDAR_YEAR);
+  const checkedYear = rangedInteger(year, "year", 401, MAX_CALENDAR_YEAR);
   const checkedIndex = rangedInteger(index, "index", 0, 23);
   const value = callSret("query_jieqi_moment", operation, [checkedYear, checkedIndex]);
   return {

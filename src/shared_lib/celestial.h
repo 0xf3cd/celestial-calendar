@@ -371,7 +371,7 @@ typedef struct JieqiMomentQuery {
 
 /**
  * @brief Query the accurate UT1 moment of the Jieqi in the given `year`.
- * @param year The year, in gregorian calendar.
+ * @param year The Gregorian year, in [401, 32766].
  * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24).
  * @returns A `JieqiMomentQuery` struct.
  * @note The returned civil moment is UT1; while leap seconds are applied it matches UTC
