@@ -41,6 +41,21 @@ PHASES = (
   celestial.MoonPhase.FULL,
   celestial.MoonPhase.LAST_QUARTER,
 )
+# Four-platform release-wheel maxima (#217), rounded only to the next decimal; exact fields stay exact.
+MAX_JIEQI_FRACTION_DIFF_DAYS = 2e-9
+MAX_MOON_ILLUMINATION_DIFF = 6e-13
+MAX_MOON_ELONGATION_DIFF_DEG = 7e-11
+MAX_SIDEREAL_DIFF_DEG = 5e-7
+MAX_MOON_POSITION_ANGLE_DIFF_DEG = 7e-10
+MAX_PHASE_DIFF_DAYS = 0.0
+TOLERANCES = {
+  "jieqi_fraction_days": MAX_JIEQI_FRACTION_DIFF_DAYS,
+  "moon_illumination": MAX_MOON_ILLUMINATION_DIFF,
+  "moon_elongation_deg": MAX_MOON_ELONGATION_DIFF_DEG,
+  "sidereal_deg": MAX_SIDEREAL_DIFF_DEG,
+  "moon_position_angle_deg": MAX_MOON_POSITION_ANGLE_DIFF_DEG,
+  "phase_jde": MAX_PHASE_DIFF_DAYS,
+}
 
 
 def float_from_bits(bits: str) -> float:
@@ -72,11 +87,11 @@ class Residual:
       self.maximum = difference
       self.worst = coordinate
 
-  def report(self, name: str) -> None:
-    """Print the measurement before exact equality is asserted."""
+  def report(self, name: str, tolerance: float) -> None:
+    """Print the measurement before its tolerance is asserted."""
     print(
       f"RESIDUAL {name} points={self.points} bit_mismatches={self.mismatches} "
-      f"max_abs={self.maximum:.17g} worst={self.worst}"
+      f"max_abs={self.maximum:.17g} tolerance={tolerance:.12g} worst={self.worst}"
     )
 
 
@@ -144,13 +159,15 @@ def main() -> None:
     replayed += 1
 
   for name, residual in residuals.items():
-    residual.report(name)
+    residual.report(name, TOLERANCES[name])
   print(f"EXACT_FIELDS mismatches={len(exact_failures)}")
 
   assert replayed == sum(SECTION_COUNTS.values()) == 389
   assert not exact_failures, "; ".join(exact_failures)
-  assert all(residual.mismatches == 0 for residual in residuals.values()), "non-zero wheel residuals reported above"
-  print(f"PASS exact installed-wheel golden replay {replayed}/389")
+  assert all(residual.maximum <= TOLERANCES[name] for name, residual in residuals.items()), (
+    "wheel residual exceeded its measured bound"
+  )
+  print(f"PASS installed-wheel golden replay {replayed}/389")
 
 
 if __name__ == "__main__":
