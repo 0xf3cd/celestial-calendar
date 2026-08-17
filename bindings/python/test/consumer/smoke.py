@@ -129,11 +129,14 @@ def run_happy_paths() -> None:
   checks.append("supported_lunar_year_range")
   year_info = celestial.lunar_year_info(celestial.LunarAlgorithm.ALGO1, 2023)
   assert year_info.leap_month == 2 and len(year_info.month_lengths) == 13
+  algo2_year_info = celestial.lunar_year_info(celestial.LunarAlgorithm.ALGO2, 2024)
+  assert algo2_year_info.first_day == celestial.GregorianDate(2024, 2, 10)
   checks.append("lunar_year_info")
-  lunar = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, celestial.GregorianDate(2024, 2, 10))
-  assert lunar == celestial.LunarDate(2024, 1, 1, False)
+  for algorithm in (celestial.LunarAlgorithm.ALGO2, celestial.LunarAlgorithm.ALGO3):
+    lunar = celestial.gregorian_to_lunar(algorithm, celestial.GregorianDate(2024, 2, 10))
+    assert lunar == celestial.LunarDate(2024, 1, 1, False)
+    assert celestial.lunar_to_gregorian(algorithm, lunar) == celestial.GregorianDate(2024, 2, 10)
   checks.append("gregorian_to_lunar")
-  assert celestial.lunar_to_gregorian(celestial.LunarAlgorithm.ALGO3, lunar) == celestial.GregorianDate(2024, 2, 10)
   checks.append("lunar_to_gregorian")
   assert all(math.isfinite(celestial.delta_t(2024.5, model)) for model in celestial.DeltaTModel)
   checks.append("delta_t")
@@ -196,6 +199,45 @@ def run_validation_guards() -> None:
       raises(error_type, action)
     assert trap.calls == 0, binding_name
   print(f"PASS hostile inputs pre-native {len(cases)}/{len(cases)}")
+
+
+def run_native_failures() -> None:
+  """Prove recording and non-recording failures against the real native library."""
+  recording = raises(celestial.CelestialError, lambda: celestial.local_apparent_sidereal_time(1e6, 0.0))
+  assert recording.operation == "local_apparent_sidereal_time" and recording.recorded
+  assert "julian day number" in str(recording) and "below JD 1867522.5" in str(recording)
+
+  nonrecording = raises(
+    celestial.CelestialError,
+    lambda: celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO1, celestial.GregorianDate(2100, 2, 9)),
+  )
+  assert nonrecording.operation == "gregorian_to_lunar" and not nonrecording.recorded
+  assert str(nonrecording) == "gregorian_to_lunar failed"
+  print("PASS real native failures recording=1 non-recording=1")
+
+
+def run_acceptance_boundaries() -> None:
+  """Pin every inclusive public boundary that must remain accepted."""
+  assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(1, 1, 1, 0.0)))
+  assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(32767, 1, 1, 0.0)))
+  assert len(celestial.moon_phase_moments(32766, celestial.MoonPhase.NEW)) >= 12
+  assert celestial.jieqi_moment(401, celestial.Jieqi.LICHUN).moment_ut1.year == 401
+  assert celestial.jieqi_moment(32766, celestial.Jieqi.LICHUN).moment_ut1.year == 32766
+  assert celestial.ut1_to_jd(celestial.CivilDateTime(2000, 1, 1, 0.0)) == 2451544.5
+  for longitude in (-180.0, 180.0):
+    assert math.isfinite(celestial.local_apparent_sidereal_time(2451545.0, longitude)), longitude
+  assert math.isfinite(celestial.delta_t(-4000, celestial.DeltaTModel.ALGO1))
+
+  lunar_ranges = {
+    celestial.LunarAlgorithm.ALGO1: celestial.LunarYearRange(1901, 2099),
+    celestial.LunarAlgorithm.ALGO2: celestial.LunarYearRange(410, 2500),
+    celestial.LunarAlgorithm.ALGO3: celestial.LunarYearRange(1600, 2199),
+  }
+  for algorithm, expected in lunar_ranges.items():
+    assert celestial.supported_lunar_year_range(algorithm) == expected
+    for year in (expected.start, expected.end):
+      assert celestial.lunar_year_info(algorithm, year).first_day.year == year, (algorithm, year)
+  print("PASS inclusive public boundaries 15/15")
 
 
 def run_protocol_seams() -> None:
@@ -273,6 +315,8 @@ def main() -> None:
   """Run the installed-wheel consumer suite."""
   run_happy_paths()
   run_validation_guards()
+  run_native_failures()
+  run_acceptance_boundaries()
   run_protocol_seams()
   run_value_contract()
 

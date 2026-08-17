@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+import re
 from pathlib import Path
 
 import yaml
@@ -27,6 +28,7 @@ from toolbox.artifact_downloader import ARTIFACT_SOURCES, PYTHON_ARTIFACTS
 
 
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "python-wheel.yml"
+WHEEL_TEST_ROOT = Path(__file__).parents[2] / "bindings" / "python" / "test" / "wheel"
 
 
 def test_python_wheel_artifact_inventory_is_exact():
@@ -66,6 +68,13 @@ def test_python_wheel_acceptance_has_one_entry_point():
   assert "test/abi/raw_protocol.py" not in text
   assert "test/consumer/smoke.py" not in text
   assert text.replace("\\", "/").count("test/run_all.py") == 5
+
+
+def test_python_wheel_scripts_are_all_referenced():
+  text = WORKFLOW.read_text(encoding="utf-8").replace("\\", "/")
+  referenced = set(re.findall(r"bindings/python/test/wheel/([A-Za-z0-9_-]+\.py)", text))
+  discovered = {path.name for path in WHEEL_TEST_ROOT.glob("*.py")}
+  assert referenced == discovered
 
 
 def test_python_wheel_platform_toolchains_are_explicit():

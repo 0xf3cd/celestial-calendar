@@ -23,6 +23,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import ctypes
 import json
@@ -37,6 +38,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
+PYTHON_WRAPPERS = REPO / "bindings" / "python" / "src" / "celestial_calendar" / "__init__.py"
 EXPECTED_EXPORT_COUNT = 29
 EXPECTED_LAYOUT_COUNT = 16
 EXPECTED_RECORDING_COUNT = 7
@@ -160,6 +162,64 @@ def function_body(sources: str, name: str) -> str:
   raise AssertionError(f"unterminated implementation for {name}")
 
 
+def parse_wrapper_recording(source: str) -> dict[str, bool]:
+  """Map every native export used by a public wrapper to its static recording policy."""
+  module = ast.parse(source)
+  delta_t_exports = set()
+  for statement in module.body:
+    if not isinstance(statement, ast.Assign):
+      continue
+    if not any(isinstance(target, ast.Name) and target.id == "_DELTA_T_EXPORT" for target in statement.targets):
+      continue
+    assert isinstance(statement.value, ast.Dict)
+    delta_t_exports = {
+      value.value
+      for value in statement.value.values
+      if isinstance(value, ast.Constant) and isinstance(value.value, str)
+    }
+  assert len(delta_t_exports) == 6, "cannot parse _DELTA_T_EXPORT"
+
+  policies = {}
+  for function in (node for node in module.body if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")):
+    exports = set()
+    recording_values = []
+    for call in (node for node in ast.walk(function) if isinstance(node, ast.Call)):
+      if (
+        isinstance(call.func, ast.Attribute)
+        and isinstance(call.func.value, ast.Name)
+        and call.func.value.id == "_binding"
+        and call.func.attr == "call"
+      ):
+        assert call.args, f"missing binding name in {function.name}"
+        binding_name = call.args[0]
+        if isinstance(binding_name, ast.Constant) and isinstance(binding_name.value, str):
+          exports.add(binding_name.value)
+        else:
+          assert (
+            isinstance(binding_name, ast.Subscript)
+            and isinstance(binding_name.value, ast.Name)
+            and binding_name.value.id == "_DELTA_T_EXPORT"
+          ), f"dynamic binding name in {function.name}"
+          exports.update(delta_t_exports)
+
+      if isinstance(call.func, ast.Name) and call.func.id in {"_valid", "_failure"}:
+        keyword = next((keyword for keyword in call.keywords if keyword.arg == "recording"), None)
+        if keyword is None:
+          assert call.func.id == "_valid", f"missing recording policy in {function.name}"
+          recording_values.append(False)
+        else:
+          assert isinstance(keyword.value, ast.Constant) and isinstance(keyword.value.value, bool)
+          recording_values.append(keyword.value.value)
+
+    if not exports:
+      continue
+    assert recording_values and len(set(recording_values)) == 1, f"ambiguous recording policy in {function.name}"
+    for name in exports:
+      assert name not in policies, f"native export wrapped twice: {name}"
+      policies[name] = recording_values[0]
+  return policies
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -262,15 +322,23 @@ def main() -> None:
   documented_recording = set(re.findall(r"`([a-z0-9_]+)`", recording_match.group(1)))
   sources = "\n".join(path.read_text(encoding="utf-8") for path in sorted(SOURCE_DIR.glob("lib*.cpp")))
   implementation_writers = {name for name in header_names if "lib::clear_last_error()" in function_body(sources, name)}
+  wrapper_recording = parse_wrapper_recording(PYTHON_WRAPPERS.read_text(encoding="utf-8"))
   assert len(documented_recording) == EXPECTED_RECORDING_COUNT
   assert documented_recording == implementation_writers == set(_binding.RECORDING_EXPORTS)
+  wrapper_exports = set(wrapper_recording)
+  expected_wrapper_exports = header_names - {"last_error"}
+  wrapper_export_difference = sorted(wrapper_exports ^ expected_wrapper_exports)
+  assert wrapper_exports == expected_wrapper_exports, f"wrapper exports: {wrapper_export_difference}"
+  wrapper_writers = {name for name, recording in wrapper_recording.items() if recording}
+  wrapper_recording_difference = sorted(wrapper_writers ^ documented_recording)
+  assert wrapper_writers == documented_recording, f"wrapper recording policy: {wrapper_recording_difference}"
 
   verify_manifest(manifest, header_exports, header_layouts, documented_recording)
   run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording)
 
   print("PASS exports header=manifest=ctypes=loaded 29")
   print("PASS layouts header=manifest=ctypes 16")
-  print("PASS recording docs=writers=manifest=error policy 7")
+  print("PASS recording docs=writers=manifest=ctypes=wrappers 7/28")
   print("PASS ABI mutations rejected 5/5")
 
 
