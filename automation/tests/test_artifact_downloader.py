@@ -202,7 +202,7 @@ def test_parallel_download_rejects_duplicate_names_before_writes(tmp_path):
   assert list(tmp_path.iterdir()) == []
 
 
-def test_release_collector_validates_wasm_before_python_flatten(monkeypatch, tmp_path):
+def test_release_collector_validates_archives_before_python_flatten(monkeypatch, tmp_path):
   workflows = {
     name: GitHub.Workflow(index, name, "active", "", "", "")
     for index, (name, _expected) in enumerate(ARTIFACT_SOURCES, start=1)
@@ -252,7 +252,7 @@ def test_release_collector_validates_wasm_before_python_flatten(monkeypatch, tmp
     return []
 
   monkeypatch.setattr(GitHub, "download_artifact_urls", download)
-  monkeypatch.setattr(artifact_downloader_module, "validate_wasm_release_archive", validate)
+  monkeypatch.setattr(artifact_downloader_module, "validate_release_archives", validate)
   monkeypatch.setattr(artifact_downloader_module, "flatten_python_artifacts", flatten)
 
   artifact_downloader_module.main()

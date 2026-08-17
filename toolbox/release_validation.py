@@ -17,6 +17,7 @@
 
 import hashlib
 import json
+import re
 import zipfile
 
 from collections import Counter
@@ -27,6 +28,13 @@ from toolbox.build_npm import PACKAGE_NAME
 
 
 WASM_ARCHIVE: Final[str] = "celestial-wasm.zip"
+NATIVE_ARCHIVES: Final[dict[str, str]] = {
+  "linux_amd64.zip": "linux_amd64",
+  "linux_arm64.zip": "linux_arm64",
+  "macos_arm64.zip": "macos_arm64",
+  "windows_x86_64.zip": "windows_x86_64",
+}
+RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
 
 
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
@@ -94,11 +102,71 @@ def validate_wasm_archive(archive_path: Path, version: str) -> None:
     raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
 
 
-def validate_wasm_release_archive(downloaded: Iterable[Path], version: str) -> None:
-  """Require and validate the WASM/npm archive among downloaded release artifacts."""
-  archives = [path for path in downloaded if path.name == WASM_ARCHIVE]
-  if len(archives) != 1:
-    raise RuntimeError(f"Expected one downloaded {WASM_ARCHIVE}, found {len(archives)}")
-  if not archives[0].is_file():
-    raise RuntimeError(f"Downloaded release archive is not a file: {archives[0]}")
-  validate_wasm_archive(archives[0], version)
+def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str, str]]:
+  match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+  if match is None:
+    raise RuntimeError(f"Native archive validation requires a major.minor.patch version, got {version!r}")
+  major_minor = f"{match.group(1)}.{match.group(2)}"
+
+  fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
+  if artifact_name in {"linux_amd64", "linux_arm64"}:
+    runtime_members = {
+      "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
+      f"lib/libcelestial_calendar.so.{major_minor}": f"libcelestial_calendar.so.{major_minor}",
+      f"lib/libcelestial_calendar.so.{version}": f"libcelestial_calendar.so.{version}",
+    }
+  elif artifact_name == "macos_arm64":
+    runtime_members = {
+      "lib/libcelestial_calendar.dylib": "libcelestial_calendar.dylib",
+      f"lib/libcelestial_calendar.{major_minor}.dylib": f"libcelestial_calendar.{major_minor}.dylib",
+      f"lib/libcelestial_calendar.{version}.dylib": f"libcelestial_calendar.{version}.dylib",
+    }
+  elif artifact_name == "windows_x86_64":
+    runtime_members = {"bin/celestial_calendar.dll": "celestial_calendar.dll"}
+    fixed.add("lib/celestial_calendar.lib")
+  else:
+    raise RuntimeError(f"Unknown native artifact: {artifact_name}")
+  return fixed | set(runtime_members), runtime_members
+
+
+def validate_native_archive(archive_path: Path, artifact_name: str, version: str) -> None:
+  """Validate one native artifact's members and producer-recorded runtime hashes."""
+  expected, runtime_members = _native_layout(artifact_name, version)
+  try:
+    with zipfile.ZipFile(archive_path) as archive:
+      _require_members(archive, expected, archive_path.name)
+      build_info = _read_json(archive, "build_info.json", archive_path.name)
+      if not isinstance(build_info, dict) or build_info.get("build_version") != version:
+        raise RuntimeError(f"Build version mismatch in {archive_path.name}")
+      hashes = build_info.get("sha256")
+      if not isinstance(hashes, dict) or set(hashes) != set(runtime_members.values()):
+        raise RuntimeError(f"Runtime hash inventory mismatch in {archive_path.name}")
+
+      for member, basename in runtime_members.items():
+        recorded = hashes[basename]
+        actual = hashlib.sha256(archive.read(member)).hexdigest()
+        if not isinstance(recorded, str) or recorded != actual:
+          raise RuntimeError(f"Runtime library hash mismatch for {member} in {archive_path.name}")
+  except zipfile.BadZipFile as error:
+    raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
+
+
+def validate_release_archives(downloaded: Iterable[Path], version: str) -> None:
+  """Require and validate the five v0.6+ product archives among downloaded assets."""
+  archives: dict[str, Path] = {}
+  for path in downloaded:
+    if path.name not in RELEASE_ARCHIVES:
+      continue
+    if path.name in archives:
+      raise RuntimeError(f"Duplicate downloaded release archive: {path.name}")
+    if not path.is_file():
+      raise RuntimeError(f"Downloaded release archive is not a file: {path}")
+    archives[path.name] = path
+
+  missing = sorted(RELEASE_ARCHIVES - set(archives))
+  if missing:
+    raise RuntimeError(f"Missing downloaded release archives: {missing}")
+
+  validate_wasm_archive(archives[WASM_ARCHIVE], version)
+  for filename, artifact_name in NATIVE_ARCHIVES.items():
+    validate_native_archive(archives[filename], artifact_name, version)

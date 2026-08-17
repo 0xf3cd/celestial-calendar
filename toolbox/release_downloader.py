@@ -17,15 +17,20 @@
 
 import sys
 import argparse
+import re
 
 from pathlib import Path
-from typing import Union
+from typing import Final, Union
 
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, green_print
 from automation.github import GitHub
+from toolbox.release_validation import validate_release_archives
+
+
+STRICT_ARCHIVE_VERSION: Final[tuple[int, int, int]] = (0, 6, 0)
 
 
 def find_release(keyword: Union[str, int]) -> GitHub.Release:
@@ -47,6 +52,15 @@ def get_latest_release() -> GitHub.Release:
   
   sorted_releases = sorted(releases, key=lambda release: release.published_at, reverse=True)
   return sorted_releases[0]
+
+
+def archive_validation_version(tag_name: str) -> str | None:
+  """Return the package version when a release uses the v0.6+ archive contract."""
+  match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag_name)
+  if match is None:
+    raise RuntimeError(f"Cannot determine the archive contract from release tag {tag_name!r}")
+  components = tuple(int(part) for part in match.groups())
+  return ".".join(match.groups()) if components >= STRICT_ARCHIVE_VERSION else None
 
 
 def parse_args() -> argparse.Namespace:
@@ -98,7 +112,10 @@ def main() -> None:
     return get_latest_release()
 
   release = get_release()
+  validation_version = archive_validation_version(release.tag_name)
   downloaded_assets = GitHub.download_release(release.id, args.save_to, args.parallel)
+  if validation_version is not None:
+    validate_release_archives(downloaded_assets, validation_version)
   green_print(f"Downloaded {len(downloaded_assets)} assets to {args.save_to}")
 
 
