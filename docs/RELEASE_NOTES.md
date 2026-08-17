@@ -20,7 +20,7 @@
 - The WASM module now exposes the complete 29-entry ABI and allows memory growth for the singleton's bounded
   calendar caches. Its test oracle reconciles 29 signatures, 16 struct layouts, and seven recording functions.
 - The npm tarball contains exactly eight files and takes its `0.6.0` version from the C++ release SSOT. CI checks
-  22 public methods, 30 edge/error cases, all 389 existing WASM goldens, Node 22 and current-Node consumers,
+  22 public methods, 31 edge/error cases, all 389 existing WASM goldens, Node 22 and current-Node consumers,
   TypeScript declarations, and an Astro/Vite production build in Chrome.
 - `celestial-wasm.zip` keeps the raw `.mjs/.wasm` pair and adds the exact npm tarball, `npm-pack.json`, and its
   SHA-256 sidecar. The four native platform archives are unchanged.

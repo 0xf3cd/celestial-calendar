@@ -17,7 +17,7 @@
 #### Packaging and Verification
 
 - The WASM recipe exports all 29 C entries plus internal allocation helpers and allows memory growth for the package singleton's bounded, never-evicted calendar caches. A test-only ABI oracle reconciles all 29 signatures, 16 struct layouts, and seven recording functions with the header, implementation, binding table, and built module.
-- `toolbox/build_npm.py` produces one eight-file tarball whose version comes from `project.py`, with a 250,000-byte package cap and a 465,000-byte raw-WASM cap. The independent WASM leg checks 22 public methods, 30 edge/error cases, all 389 existing WASM goldens, exact-tarball installation under Node 22 and the current Node, TypeScript declarations, and an Astro/Vite production build in Chrome. The `celestial-wasm` release artifact keeps the raw module and adds the exact tarball plus pack JSON/SHA-256 sidecars.
+- `toolbox/build_npm.py` produces one eight-file tarball whose version comes from `project.py`, with a 250,000-byte package cap and a 465,000-byte raw-WASM cap. The independent WASM leg checks 22 public methods, 31 edge/error cases, all 389 existing WASM goldens, exact-tarball installation under Node 22 and the current Node, TypeScript declarations, and an Astro/Vite production build in Chrome. The `celestial-wasm` release artifact keeps the raw module and adds the exact tarball plus pack JSON/SHA-256 sidecars.
 
 ## [v0.5.0] - 2026-08-15
 

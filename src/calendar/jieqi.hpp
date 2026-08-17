@@ -258,9 +258,11 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /**
  * @brief Get the UT1 moment of the given `year` and `jieqi`.
- * @param year The year, in gregorian calendar.
+ * @param year The gregorian year, in [401, 32766].
  * @param jq The jieqi.
  * @return The UT1 (Universal Time 1).
+ * @throw std::out_of_range if `year` is outside [401, 32766], or `jq` is not a valid Jieqi.
+ * @throw std::runtime_error if the root search does not yield exactly one root.
  * @details This is just a thin wrapper around `jieqi_jde`.
  * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
  *       leap-second-aware path instead (#84). Remaining consumers: the C-ABI
