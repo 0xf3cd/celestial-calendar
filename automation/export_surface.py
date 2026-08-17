@@ -218,7 +218,7 @@ def check_export_surface() -> int:
     macro is a missing export on Windows -- caught here, without needing a Windows leg.
   - dynamic: the strong defined symbols of the built .so are exactly the entry set plus
     SURVIVOR_EXCEPTIONS, everything else being vague linkage. This half proves the hiding held.
-  Plus a SONAME pin against the major.minor form the CMakeLists promises while 0.x.
+  Plus a SONAME pin against the SOVERSION rule documented in CMakeLists.
 
   Needs the built library (`./project.py --build`); a missing build turns the gate red,
   never a silent skip.
@@ -281,7 +281,9 @@ def check_export_surface() -> int:
       expected_soname = f"libcelestial_calendar.so.{soversion}"
       soname = read_soname(so)
       if soname != expected_soname:
-        failures.append(f"SONAME is {soname!r}, expected {expected_soname!r} for VERSION {version.group(0)!r}")
+        failures.append(
+          f"SONAME is {soname!r}, expected {expected_soname!r} for VERSION {'.'.join(version.groups())!r}"
+        )
     except Exception as e:  # noqa: BLE001 -- see below
       # Deliberately broad: the sentence above promises that no tool failure loses the
       # static findings, and the failure modes are not all `RuntimeError` -- c++filt can
