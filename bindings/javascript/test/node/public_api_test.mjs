@@ -158,8 +158,8 @@ check("moon.phaseMoments", () => {
 check("moon.newMoonsAfter", () => assert.equal(celestial.moon.newMoonsAfter(2451545.0, 3).length, 3));
 check("moon.newMoonsInYear", () => assert(celestial.moon.newMoonsInYear(2024).length >= 12));
 check("jieqi.moment", () => {
-  const value = celestial.jieqi.moment(2024, 0);
-  assert.deepEqual([value.index, value.year, value.month], [0, 2024, 2]);
+  const value = celestial.jieqi.moment(401, 0);
+  assert.deepEqual([value.index, value.year, value.month, value.day], [0, 401, 2, 3]);
 });
 check("jieqi.name", () => assert.equal(celestial.jieqi.name(0), "立春"));
 check("lunar.supportedYearRange", () => {
@@ -222,6 +222,7 @@ edge("count boolean", () => celestial.moon.newMoonsAfter(2451545.0, true), TypeE
 edge("count integer", () => celestial.moon.newMoonsAfter(2451545.0, 1.5), TypeError);
 edge("count non-negative", () => celestial.moon.newMoonsAfter(2451545.0, -1), RangeError);
 edge("count WASM32 bound", () => celestial.moon.newMoonsAfter(2451545.0, 536870912), RangeError);
+edge("Jieqi year", () => celestial.jieqi.moment(400, 0), RangeError);
 edge("Jieqi index", () => celestial.jieqi.name(24), RangeError);
 edge("lunar algorithm", () => celestial.lunar.yearInfo("algo4", 2024), RangeError);
 edge(
@@ -255,5 +256,5 @@ assert.equal(nonRecordingError.message, "lunar.fromGregorian failed.");
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 assert.equal(happy, 22, "public method denominator");
-assert.equal(edges, 30, "public edge denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/30`);
+assert.equal(edges, 31, "public edge denominator");
+console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/31`);

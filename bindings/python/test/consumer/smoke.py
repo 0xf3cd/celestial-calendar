@@ -120,7 +120,8 @@ def run_happy_paths() -> None:
   checks.append("apparent_solar_time")
   assert 0.0 <= celestial.local_apparent_sidereal_time(2451545.0, 0.0) < 360.0
   checks.append("local_apparent_sidereal_time")
-  assert celestial.jieqi_moment(2024, celestial.Jieqi.LICHUN).moment_ut1.month == 2
+  lichun = celestial.jieqi_moment(401, celestial.Jieqi.LICHUN).moment_ut1
+  assert (lichun.year, lichun.month, lichun.day) == (401, 2, 3)
   checks.append("jieqi_moment")
   assert celestial.jieqi_name(celestial.Jieqi.LICHUN) == "立春"
   checks.append("jieqi_name")
