@@ -20,11 +20,14 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
+import re
 import zipfile
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 import automation.github as github_module
 import toolbox.artifact_downloader as artifact_downloader_module
@@ -41,6 +44,7 @@ from toolbox.artifact_downloader import (
 
 
 PROJECT_VERSION = project_version()
+NATIVE_WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "build_and_test.yml"
 
 
 class Response:
@@ -173,6 +177,36 @@ def test_artifact_inventory_rejects_cross_source_collision():
     validate_artifact_inventory("Workflow", 7, [("same", "url")], frozenset({"same"}), {"same"})
 
 
+def test_native_workflow_artifact_inventory_matches_collector():
+  workflow = yaml.safe_load(NATIVE_WORKFLOW.read_text(encoding="utf-8"))
+  jobs = workflow["jobs"]
+  linux = jobs["linux-docker"]
+  linux_names = {
+    entry["platform"].replace("/", "_") for entry in linux["strategy"]["matrix"]["include"]
+  }
+  linux_pack = next(step for step in linux["steps"] if step.get("id") == "shared_lib")
+  assert "artifact_name=${OS}_${ARCH}" in linux_pack["run"]
+
+  uploaded = set(linux_names)
+  for job_name in ("macos", "windows"):
+    job = jobs[job_name]
+    pack = next(step for step in job["steps"] if step.get("id") == "shared_lib")
+    names = set(re.findall(r"artifact_name=([a-z0-9_]+)", pack["run"]))
+    assert len(names) == 1
+    uploaded.update(names)
+
+  for job_name in ("linux-docker", "macos", "windows"):
+    upload = next(
+      step
+      for step in jobs[job_name]["steps"]
+      if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+    )
+    assert upload["with"]["name"] == "${{ steps.shared_lib.outputs.artifact_name }}"
+
+  expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
+  assert uploaded == expected
+
+
 def test_download_rejects_existing_destination_before_request(monkeypatch, tmp_path):
   destination = tmp_path / "artifact.zip"
   destination.write_bytes(b"keep")
@@ -202,7 +236,17 @@ def test_parallel_download_rejects_duplicate_names_before_writes(tmp_path):
   assert list(tmp_path.iterdir()) == []
 
 
-def test_release_collector_validates_archives_before_python_flatten(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+  ("unzip", "validation_error"),
+  [(False, None), (True, RuntimeError("invalid archive"))],
+  ids=["success", "failure"],
+)
+def test_release_collector_validates_archives_before_python_flatten(
+  monkeypatch,
+  tmp_path,
+  unzip,
+  validation_error,
+):
   workflows = {
     name: GitHub.Workflow(index, name, "active", "", "", "")
     for index, (name, _expected) in enumerate(ARTIFACT_SOURCES, start=1)
@@ -212,11 +256,12 @@ def test_release_collector_validates_archives_before_python_flatten(monkeypatch,
     for index, (_name, expected) in enumerate(ARTIFACT_SOURCES, start=1)
   }
   order = []
+  downloaded_paths = []
 
   monkeypatch.setattr(
     artifact_downloader_module,
     "parse_args",
-    lambda: SimpleNamespace(run_id=0, save_to=tmp_path, parallel=4, unzip=False),
+    lambda: SimpleNamespace(run_id=0, save_to=tmp_path, parallel=4, unzip=unzip),
   )
   monkeypatch.setattr(artifact_downloader_module, "validate_args", lambda _args: None)
   monkeypatch.setattr(artifact_downloader_module, "release_commit_sha", lambda: "tagged-sha")
@@ -238,12 +283,15 @@ def test_release_collector_validates_archives_before_python_flatten(monkeypatch,
       path = save_to / f"{name}.zip"
       path.write_bytes(b"zip")
       paths.append(path)
+    downloaded_paths.extend(paths)
     return paths
 
   def validate(paths, version):
     order.append("validate")
     assert version == PROJECT_VERSION
     assert {path.stem for path in paths} == set().union(*(expected for _name, expected in ARTIFACT_SOURCES))
+    if validation_error is not None:
+      raise validation_error
 
   def flatten(paths, save_to):
     order.append("flatten")
@@ -255,9 +303,15 @@ def test_release_collector_validates_archives_before_python_flatten(monkeypatch,
   monkeypatch.setattr(artifact_downloader_module, "validate_release_archives", validate)
   monkeypatch.setattr(artifact_downloader_module, "flatten_python_artifacts", flatten)
 
-  artifact_downloader_module.main()
-
-  assert order == ["validate", "flatten"]
+  if validation_error is None:
+    artifact_downloader_module.main()
+    assert order == ["validate", "flatten"]
+  else:
+    with pytest.raises(RuntimeError, match="invalid archive"):
+      artifact_downloader_module.main()
+    assert order == ["validate"]
+    assert downloaded_paths
+    assert all(path.read_bytes() == b"zip" for path in downloaded_paths)
 
 
 def python_wheels():

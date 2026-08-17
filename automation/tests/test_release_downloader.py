@@ -35,21 +35,27 @@ def release(tag_name):
 
 @pytest.mark.parametrize(
   ("tag_name", "expected"),
-  [("v0.5.0", None), ("v0.6.0", "0.6.0"), ("v1.2.3", "1.2.3")],
+  [("v0.5.0", None), ("v0.6.0", "0.6.0"), ("v0.10.0", "0.10.0"), ("v1.2.3", "1.2.3")],
 )
 def test_archive_validation_starts_at_v060(tag_name, expected):
   assert archive_validation_version(tag_name) == expected
 
 
-def test_archive_validation_rejects_unknown_tag_shape():
+@pytest.mark.parametrize("tag_name", ["latest", "v0.6.0-rc1"])
+def test_archive_validation_rejects_unknown_tag_shape(tag_name):
   with pytest.raises(RuntimeError, match="Cannot determine the archive contract"):
-    archive_validation_version("latest")
+    archive_validation_version(tag_name)
 
 
-def run_download(monkeypatch, tmp_path, tag_name):
+def run_download(monkeypatch, tmp_path, tag_name, validator=None):
   selected = release(tag_name)
   downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
   calls = []
+  for path in downloaded:
+    path.write_bytes(b"downloaded")
+
+  def record_validation(paths, version):
+    calls.append((paths, version))
 
   monkeypatch.setattr(
     release_downloader_module,
@@ -62,7 +68,7 @@ def run_download(monkeypatch, tmp_path, tag_name):
   monkeypatch.setattr(
     release_downloader_module,
     "validate_release_archives",
-    lambda paths, version: calls.append((paths, version)),
+    validator or record_validation,
   )
 
   release_downloader_module.main()
@@ -73,6 +79,26 @@ def test_v060_release_download_reuses_archive_validation(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v0.6.0")
 
   assert calls == [(downloaded, "0.6.0")]
+
+
+def test_release_download_validates_against_tag_version(monkeypatch, tmp_path):
+  downloaded, calls = run_download(monkeypatch, tmp_path, "v1.2.3")
+
+  assert calls == [(downloaded, "1.2.3")]
+
+
+def test_release_download_preserves_assets_when_validation_fails(monkeypatch, tmp_path):
+  downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
+
+  def reject_archives(paths, version):
+    assert paths == downloaded
+    assert version == "0.6.0"
+    raise RuntimeError("invalid archive")
+
+  with pytest.raises(RuntimeError, match="invalid archive"):
+    run_download(monkeypatch, tmp_path, "v0.6.0", validator=reject_archives)
+
+  assert all(path.read_bytes() == b"downloaded" for path in downloaded)
 
 
 def test_historical_release_download_keeps_legacy_behavior(monkeypatch, tmp_path):

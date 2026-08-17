@@ -23,6 +23,8 @@ from pathlib import Path
 
 import yaml
 
+from toolbox.artifact_downloader import ARTIFACT_SOURCES
+
 
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "wasm.yml"
 
@@ -54,6 +56,18 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
     "exit 1",
     "fi",
   ]
+
+
+def test_wasm_artifact_inventory_matches_collector():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  uploads = [
+    step["with"]["name"]
+    for step in workflow["jobs"]["wasm"]["steps"]
+    if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+  ]
+  expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
+
+  assert set(uploads) == expected
 
 
 def test_npm_publish_stays_a_dry_run():
