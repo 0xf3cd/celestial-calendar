@@ -28,7 +28,8 @@ from toolbox.artifact_downloader import ARTIFACT_SOURCES, PYTHON_ARTIFACTS
 
 
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "python-wheel.yml"
-WHEEL_TEST_ROOT = Path(__file__).parents[2] / "bindings" / "python" / "test" / "wheel"
+PYTHON_TEST_ROOT = Path(__file__).parents[2] / "bindings" / "python" / "test"
+WHEEL_TEST_ROOT = PYTHON_TEST_ROOT / "wheel"
 
 
 def test_python_wheel_artifact_inventory_is_exact():
@@ -63,14 +64,17 @@ def test_python_wheel_workflow_never_publishes():
 def test_python_wheel_acceptance_has_one_entry_point():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   assert workflow["env"]["CIBW_TEST_COMMAND"] == "python {package}/test/run_all.py"
-  text = WORKFLOW.read_text(encoding="utf-8")
-  assert "test/abi/verify.py" not in text
-  assert "test/abi/raw_protocol.py" not in text
-  assert "test/consumer/smoke.py" not in text
-  assert text.replace("\\", "/").count("test/run_all.py") == 5
+  text = WORKFLOW.read_text(encoding="utf-8").replace("\\", "/")
+  acceptance_scripts = {
+    path.relative_to(PYTHON_TEST_ROOT).as_posix()
+    for directory in ("abi", "consumer")
+    for path in (PYTHON_TEST_ROOT / directory).glob("*.py")
+  }
+  assert all(f"test/{script}" not in text for script in acceptance_scripts)
+  assert text.count("test/run_all.py") == 5
 
 
-def test_python_wheel_scripts_are_all_referenced():
+def test_python_wheel_scripts_and_references_match():
   text = WORKFLOW.read_text(encoding="utf-8").replace("\\", "/")
   referenced = set(re.findall(r"bindings/python/test/wheel/([A-Za-z0-9_-]+\.py)", text))
   discovered = {path.name for path in WHEEL_TEST_ROOT.glob("*.py")}

@@ -12,12 +12,12 @@
 #### Python
 
 - `celestial-calendar` native wheels (#211) expose the complete 29-export C ABI as a flat `celestial_calendar` API built from enums, frozen dataclasses, scalars, tuples, and `CelestialError`; ctypes structs, count/fill protocols, `last_error`, and model-specific C symbols remain private. Inputs are checked before native calls, including a 4096-result cap on `new_moons_after`.
-- One `py3` wheel is built and clean-installed on floor/current Python for manylinux_2_28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64. The ABI gate reconciles 29 signatures, 16 layouts, and seven recording exports; every platform also replays the shared 389-point native golden dataset. Release collection requires exact duplicate-free inventories and publishes wheels plus SHA-256 sidecars as direct assets without uploading to PyPI.
+- One `py3` wheel is built and clean-installed on floor/current Python for manylinux_2_28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64. The ABI gate reconciles 29 signatures, 16 layouts, and seven recording exports; every platform also replays the same 389-point native golden dataset as the WASM leg. Release collection requires exact duplicate-free inventories and publishes wheels plus SHA-256 sidecars as direct assets without uploading to PyPI.
 
 #### Packaging and Verification
 
 - The WASM recipe exports all 29 C entries plus internal allocation helpers and allows memory growth for the package singleton's bounded, never-evicted calendar caches. A test-only ABI oracle reconciles all 29 signatures, 16 struct layouts, and seven recording functions with the header, implementation, binding table, and built module.
-- `toolbox/build_npm.py` produces one eight-file tarball whose version comes from `project.py`, with a 250,000-byte package cap and a 465,000-byte raw-WASM cap. The independent WASM leg checks 22 public methods, 31 edge/error cases, all 389 existing WASM goldens, exact-tarball installation under Node 22 and the current Node, TypeScript declarations, and an Astro/Vite production build in Chrome. The `celestial-wasm` release artifact keeps the raw module and adds the exact tarball plus pack JSON/SHA-256 sidecars.
+- `toolbox/build_npm.py` produces one eight-file tarball whose version comes from `project.py`, with a 250,000-byte package cap and a 465,000-byte raw-WASM cap. The independent WASM leg checks 22 public methods, 31 edge/error cases, the shared 389-point native golden dataset, exact-tarball installation under Node 22 and the current Node, TypeScript declarations, and an Astro/Vite production build in Chrome. The `celestial-wasm` release artifact keeps the raw module and adds the exact tarball plus pack JSON/SHA-256 sidecars.
 
 ## [v0.5.0] - 2026-08-15
 

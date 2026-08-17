@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,7 +43,7 @@ PHASES = (
   celestial.MoonPhase.FULL,
   celestial.MoonPhase.LAST_QUARTER,
 )
-# Four-platform release-wheel maxima (#217), rounded only to the next decimal; exact fields stay exact.
+# Four-platform release-wheel maxima (#217), rounded only to the next decimal; dates, enums, and phase JDE stay exact.
 MAX_JIEQI_FRACTION_DIFF_DAYS = 2e-9
 MAX_MOON_ILLUMINATION_DIFF = 6e-13
 MAX_MOON_ELONGATION_DIFF_DEG = 7e-11
@@ -96,10 +97,23 @@ class Residual:
     )
 
 
+def run_residual_self_test() -> None:
+  """Prove a non-finite wheel result cannot satisfy any measured tolerance."""
+  residual = Residual()
+  residual.observe(math.nan, bits_from_float(0.0), "non-finite")
+  assert (residual.points, residual.mismatches, residual.maximum, residual.worst) == (1, 1, math.inf, "non-finite")
+
+
 def main() -> None:
   """Replay every encoded point and report all residual columns before asserting."""
+  run_residual_self_test()
   golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
   assert golden["schema"] == "celestial-calendar/bindings-golden@2"
+  provenance = golden["provenance"]
+  assert set(provenance) == {"source_commit", "generated_on", "seed"}
+  assert re.fullmatch(r"[0-9a-f]{40}", provenance["source_commit"])
+  assert isinstance(provenance["generated_on"], str) and provenance["generated_on"]
+  assert provenance["seed"] == 42
   section_counts = {name: len(section["entries"]) for name, section in golden["sections"].items()}
   assert section_counts == SECTION_COUNTS
 

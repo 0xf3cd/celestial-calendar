@@ -220,6 +220,30 @@ def parse_wrapper_recording(source: str) -> dict[str, bool]:
   return policies
 
 
+def verify_wrapper_recording(source: str, expected_exports: set[str], expected_recording: set[str]) -> None:
+  """Require public wrappers to cover every export with the documented recording policy."""
+  wrapper_recording = parse_wrapper_recording(source)
+  wrapper_exports = set(wrapper_recording)
+  wrapper_export_difference = sorted(wrapper_exports ^ expected_exports)
+  assert wrapper_exports == expected_exports, f"wrapper exports: {wrapper_export_difference}"
+  wrapper_writers = {name for name, recording in wrapper_recording.items() if recording}
+  wrapper_recording_difference = sorted(wrapper_writers ^ expected_recording)
+  assert wrapper_writers == expected_recording, f"wrapper recording policy: {wrapper_recording_difference}"
+
+
+def run_wrapper_mutation_self_test(
+  source: str, expected_exports: set[str], expected_recording: set[str]
+) -> None:
+  """Prove wrapper reconciliation rejects one directed recording-policy defect."""
+  mutated = source.replace("recording=True", "recording=False", 1)
+  assert mutated != source, "cannot inject wrapper recording mutation"
+  try:
+    verify_wrapper_recording(mutated, expected_exports, expected_recording)
+  except AssertionError:
+    return
+  raise AssertionError("wrapper gate accepted recording mutation")
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -322,24 +346,20 @@ def main() -> None:
   documented_recording = set(re.findall(r"`([a-z0-9_]+)`", recording_match.group(1)))
   sources = "\n".join(path.read_text(encoding="utf-8") for path in sorted(SOURCE_DIR.glob("lib*.cpp")))
   implementation_writers = {name for name in header_names if "lib::clear_last_error()" in function_body(sources, name)}
-  wrapper_recording = parse_wrapper_recording(PYTHON_WRAPPERS.read_text(encoding="utf-8"))
+  wrapper_source = PYTHON_WRAPPERS.read_text(encoding="utf-8")
   assert len(documented_recording) == EXPECTED_RECORDING_COUNT
   assert documented_recording == implementation_writers == set(_binding.RECORDING_EXPORTS)
-  wrapper_exports = set(wrapper_recording)
   expected_wrapper_exports = header_names - {"last_error"}
-  wrapper_export_difference = sorted(wrapper_exports ^ expected_wrapper_exports)
-  assert wrapper_exports == expected_wrapper_exports, f"wrapper exports: {wrapper_export_difference}"
-  wrapper_writers = {name for name, recording in wrapper_recording.items() if recording}
-  wrapper_recording_difference = sorted(wrapper_writers ^ documented_recording)
-  assert wrapper_writers == documented_recording, f"wrapper recording policy: {wrapper_recording_difference}"
+  verify_wrapper_recording(wrapper_source, expected_wrapper_exports, documented_recording)
 
   verify_manifest(manifest, header_exports, header_layouts, documented_recording)
   run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording)
+  run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
   print("PASS exports header=manifest=ctypes=loaded 29")
   print("PASS layouts header=manifest=ctypes 16")
-  print("PASS recording docs=writers=manifest=ctypes=wrappers 7/28")
-  print("PASS ABI mutations rejected 5/5")
+  print("PASS recording policies 7/7; wrapper exports 28/28; docs=writers=manifest=ctypes=wrappers")
+  print("PASS ABI mutations rejected manifest=5/5 wrapper=1/1")
 
 
 if __name__ == "__main__":
