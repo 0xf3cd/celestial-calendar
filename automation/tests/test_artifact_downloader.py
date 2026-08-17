@@ -22,6 +22,8 @@
 import hashlib
 import zipfile
 
+from types import SimpleNamespace
+
 import pytest
 
 import automation.github as github_module
@@ -29,6 +31,7 @@ import toolbox.artifact_downloader as artifact_downloader_module
 
 from automation.github import GitHub
 from toolbox.artifact_downloader import (
+  ARTIFACT_SOURCES,
   PYTHON_ARTIFACTS,
   find_artifact_run,
   flatten_python_artifacts,
@@ -197,6 +200,64 @@ def test_parallel_download_rejects_duplicate_names_before_writes(tmp_path):
   with pytest.raises(RuntimeError, match="Duplicate artifact names"):
     GitHub.download_artifact_urls([("same", "one"), ("same", "two")], tmp_path)
   assert list(tmp_path.iterdir()) == []
+
+
+def test_release_collector_validates_wasm_before_python_flatten(monkeypatch, tmp_path):
+  workflows = {
+    name: GitHub.Workflow(index, name, "active", "", "", "")
+    for index, (name, _expected) in enumerate(ARTIFACT_SOURCES, start=1)
+  }
+  artifact_names = {
+    index: expected
+    for index, (_name, expected) in enumerate(ARTIFACT_SOURCES, start=1)
+  }
+  order = []
+
+  monkeypatch.setattr(
+    artifact_downloader_module,
+    "parse_args",
+    lambda: SimpleNamespace(run_id=0, save_to=tmp_path, parallel=4, unzip=False),
+  )
+  monkeypatch.setattr(artifact_downloader_module, "validate_args", lambda _args: None)
+  monkeypatch.setattr(artifact_downloader_module, "release_commit_sha", lambda: "tagged-sha")
+  monkeypatch.setattr(artifact_downloader_module, "artifact_workflow", lambda name: workflows[name])
+  monkeypatch.setattr(
+    artifact_downloader_module,
+    "find_artifact_run",
+    lambda workflow, _sha: run(workflow.id, "workflow_dispatch"),
+  )
+  monkeypatch.setattr(
+    GitHub,
+    "get_artifacts_download_urls",
+    lambda run_id: [(name, f"https://example.invalid/{name}") for name in artifact_names[run_id]],
+  )
+
+  def download(artifact_urls, save_to, _parallel):
+    paths = []
+    for name, _url in artifact_urls:
+      path = save_to / f"{name}.zip"
+      path.write_bytes(b"zip")
+      paths.append(path)
+    return paths
+
+  def validate(paths, version):
+    order.append("validate")
+    assert version == PROJECT_VERSION
+    assert {path.stem for path in paths} == set().union(*(expected for _name, expected in ARTIFACT_SOURCES))
+
+  def flatten(paths, save_to):
+    order.append("flatten")
+    assert save_to == tmp_path
+    assert all(path.is_file() for path in paths)
+    return []
+
+  monkeypatch.setattr(GitHub, "download_artifact_urls", download)
+  monkeypatch.setattr(artifact_downloader_module, "validate_wasm_release_archive", validate)
+  monkeypatch.setattr(artifact_downloader_module, "flatten_python_artifacts", flatten)
+
+  artifact_downloader_module.main()
+
+  assert order == ["validate", "flatten"]
 
 
 def python_wheels():
