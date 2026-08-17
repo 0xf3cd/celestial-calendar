@@ -106,19 +106,20 @@ def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str
   match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
   if match is None:
     raise RuntimeError(f"Native archive validation requires a major.minor.patch version, got {version!r}")
-  major_minor = f"{match.group(1)}.{match.group(2)}"
+  major = match.group(1)
+  soversion = f"{major}.{match.group(2)}" if major == "0" else major
 
   fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
   if artifact_name in {"linux_amd64", "linux_arm64"}:
     runtime_members = {
       "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
-      f"lib/libcelestial_calendar.so.{major_minor}": f"libcelestial_calendar.so.{major_minor}",
+      f"lib/libcelestial_calendar.so.{soversion}": f"libcelestial_calendar.so.{soversion}",
       f"lib/libcelestial_calendar.so.{version}": f"libcelestial_calendar.so.{version}",
     }
   elif artifact_name == "macos_arm64":
     runtime_members = {
       "lib/libcelestial_calendar.dylib": "libcelestial_calendar.dylib",
-      f"lib/libcelestial_calendar.{major_minor}.dylib": f"libcelestial_calendar.{major_minor}.dylib",
+      f"lib/libcelestial_calendar.{soversion}.dylib": f"libcelestial_calendar.{soversion}.dylib",
       f"lib/libcelestial_calendar.{version}.dylib": f"libcelestial_calendar.{version}.dylib",
     }
   elif artifact_name == "windows_x86_64":

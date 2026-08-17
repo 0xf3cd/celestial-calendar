@@ -42,8 +42,18 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
   assert 'git -C emsdk fetch --depth 1 origin "$EMSDK_COMMIT"' in install_step["run"]
   assert "git -C emsdk checkout --detach FETCH_HEAD" in install_step["run"]
   assert "if" not in identity_step
-  assert "git -C emsdk rev-parse HEAD" in identity_step["run"]
-  assert "git -C emsdk symbolic-ref --quiet HEAD" in identity_step["run"]
+  commands = [line.strip() for line in identity_step["run"].splitlines() if line.strip()]
+  assert commands == [
+    "actual_commit=$(git -C emsdk rev-parse HEAD)",
+    'if [ "$actual_commit" != "$EMSDK_COMMIT" ]; then',
+    'echo "Unexpected emsdk commit: $actual_commit"',
+    "exit 1",
+    "fi",
+    "if git -C emsdk symbolic-ref --quiet HEAD >/dev/null; then",
+    'echo "emsdk checkout is not detached"',
+    "exit 1",
+    "fi",
+  ]
 
 
 def test_npm_publish_stays_a_dry_run():

@@ -27,7 +27,7 @@ import pytest
 
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
-from toolbox.release_validation import validate_release_archives
+from toolbox.release_validation import _native_layout, validate_release_archives
 
 
 VERSION = project_version()
@@ -196,3 +196,13 @@ def test_release_archive_inventory_is_complete(tmp_path):
 
   with pytest.raises(RuntimeError, match="Missing downloaded release archives"):
     validate_release_archives(archives[:-1], VERSION)
+
+
+def test_native_soversion_switches_to_major_at_v1():
+  linux_members, _linux_runtime = _native_layout("linux_amd64", "1.0.0")
+  macos_members, _macos_runtime = _native_layout("macos_arm64", "1.0.0")
+
+  assert "lib/libcelestial_calendar.so.1" in linux_members
+  assert "lib/libcelestial_calendar.so.1.0" not in linux_members
+  assert "lib/libcelestial_calendar.1.dylib" in macos_members
+  assert "lib/libcelestial_calendar.1.0.dylib" not in macos_members
