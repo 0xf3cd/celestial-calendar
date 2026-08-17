@@ -23,6 +23,7 @@ import hashlib
 import re
 import zipfile
 
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -180,31 +181,55 @@ def test_artifact_inventory_rejects_cross_source_collision():
 def test_native_workflow_artifact_inventory_matches_collector():
   workflow = yaml.safe_load(NATIVE_WORKFLOW.read_text(encoding="utf-8"))
   jobs = workflow["jobs"]
-  linux = jobs["linux-docker"]
-  linux_names = {
-    entry["platform"].replace("/", "_") for entry in linux["strategy"]["matrix"]["include"]
-  }
-  linux_pack = next(step for step in linux["steps"] if step.get("id") == "shared_lib")
-  assert "artifact_name=${OS}_${ARCH}" in linux_pack["run"]
-
-  uploaded = set(linux_names)
-  for job_name in ("macos", "windows"):
-    job = jobs[job_name]
-    pack = next(step for step in job["steps"] if step.get("id") == "shared_lib")
-    names = set(re.findall(r"artifact_name=([a-z0-9_]+)", pack["run"]))
-    assert len(names) == 1
-    uploaded.update(names)
-
-  for job_name in ("linux-docker", "macos", "windows"):
-    upload = next(
+  uploaded = []
+  for job_name, job in jobs.items():
+    upload_steps = [
       step
-      for step in jobs[job_name]["steps"]
+      for step in job["steps"]
       if str(step.get("uses", "")).startswith("actions/upload-artifact@")
-    )
-    assert upload["with"]["name"] == "${{ steps.shared_lib.outputs.artifact_name }}"
+    ]
+    if not upload_steps:
+      continue
+
+    pack = next(step for step in job["steps"] if step.get("id") == "shared_lib")
+    output_lines = {line.strip() for line in pack["run"].splitlines()}
+    if job_name == "linux-docker":
+      setup = next(step for step in job["steps"] if step.get("id") == "set-env-vars")
+      setup_lines = {line.strip() for line in setup["run"].splitlines()}
+      assert 'os=$(echo "${platform}" | cut -d \'/\' -f 1)' in setup_lines
+      assert 'arch=$(echo "${platform}" | cut -d \'/\' -f 2- | tr \'/\' \'_\')' in setup_lines
+      assert 'echo "OS=${os}" >> $GITHUB_ENV' in setup_lines
+      assert 'echo "ARCH=${arch}" >> $GITHUB_ENV' in setup_lines
+      commands = [line.strip() for line in pack["run"].splitlines() if line.strip()]
+      output_end = commands.index("} >> $GITHUB_OUTPUT")
+      assert commands[output_end - 3 : output_end + 1] == [
+        "{",
+        'echo "artifact_name=${OS}_${ARCH}"',
+        'echo "artifact_path=${DEST_DIR}"',
+        "} >> $GITHUB_OUTPUT",
+      ]
+      artifact_names = [
+        entry["platform"].replace("/", "_") for entry in job["strategy"]["matrix"]["include"]
+      ]
+    else:
+      pattern = (
+        r'Write-Output "artifact_name=([a-z0-9_]+)" >> \$env:GITHUB_OUTPUT'
+        if job_name == "windows"
+        else r'echo "artifact_name=([a-z0-9_]+)" >> \$GITHUB_OUTPUT'
+      )
+      artifact_names = [
+        match.group(1)
+        for line in output_lines
+        if (match := re.fullmatch(pattern, line)) is not None
+      ]
+      assert len(artifact_names) == 1
+
+    for upload in upload_steps:
+      assert upload["with"]["name"] == "${{ steps.shared_lib.outputs.artifact_name }}"
+      uploaded.extend(artifact_names)
 
   expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
-  assert uploaded == expected
+  assert Counter(uploaded) == Counter(expected)
 
 
 def test_download_rejects_existing_destination_before_request(monkeypatch, tmp_path):

@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -62,12 +63,13 @@ def test_wasm_artifact_inventory_matches_collector():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   uploads = [
     step["with"]["name"]
-    for step in workflow["jobs"]["wasm"]["steps"]
+    for job in workflow["jobs"].values()
+    for step in job["steps"]
     if str(step.get("uses", "")).startswith("actions/upload-artifact@")
   ]
   expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
 
-  assert set(uploads) == expected
+  assert Counter(uploads) == Counter(expected)
 
 
 def test_npm_publish_stays_a_dry_run():
