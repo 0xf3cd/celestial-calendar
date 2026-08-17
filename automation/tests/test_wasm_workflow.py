@@ -19,12 +19,67 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+from collections import Counter
 from pathlib import Path
 
 import yaml
 
+from toolbox.artifact_downloader import ARTIFACT_SOURCES
+
 
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "wasm.yml"
+
+
+def test_emsdk_source_is_pinned_even_on_cache_hits():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  env = workflow["env"]
+  steps = workflow["jobs"]["wasm"]["steps"]
+  cache_step = next(step for step in steps if step.get("name") == "Cache emsdk")
+  install_step = next(step for step in steps if step.get("name") == "Install emsdk (cache miss only)")
+  identity_step = next(step for step in steps if step.get("name") == "Verify emsdk source identity")
+
+  assert env["EMSDK_VERSION"] == "6.0.6"
+  assert env["EMSDK_COMMIT"] == "9981799f744be74ac67b1c1813ff172f63be0630"
+  assert cache_step["with"]["key"] == "emsdk-${{ env.EMSDK_VERSION }}-${{ env.EMSDK_COMMIT }}-${{ runner.os }}"
+  assert install_step["if"] == "steps.emsdk-cache.outputs.cache-hit != 'true'"
+  assert 'git -C emsdk fetch --depth 1 origin "$EMSDK_COMMIT"' in install_step["run"]
+  assert "git -C emsdk checkout --detach FETCH_HEAD" in install_step["run"]
+  assert "if" not in identity_step
+  commands = [line.strip() for line in identity_step["run"].splitlines() if line.strip()]
+  assert commands == [
+    "actual_commit=$(git -C emsdk rev-parse HEAD)",
+    'if [ "$actual_commit" != "$EMSDK_COMMIT" ]; then',
+    'echo "Unexpected emsdk commit: $actual_commit"',
+    "exit 1",
+    "fi",
+    "if git -C emsdk symbolic-ref --quiet HEAD >/dev/null; then",
+    'echo "emsdk checkout is not detached"',
+    "exit 1",
+    "fi",
+  ]
+
+
+def test_wasm_artifact_inventory_matches_collector():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  upload_jobs = [
+    job
+    for job in workflow["jobs"].values()
+    if any(str(step.get("uses", "")).startswith("actions/upload-artifact@") for step in job["steps"])
+  ]
+  for job in upload_jobs:
+    matrix = job.get("strategy", {}).get("matrix", {})
+    assert set(matrix).isdisjoint({"include", "exclude"})
+    assert all(len(values) == 1 for values in matrix.values())
+
+  uploads = [
+    step["with"]["name"]
+    for job in upload_jobs
+    for step in job["steps"]
+    if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+  ]
+  expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
+
+  assert Counter(uploads) == Counter(expected)
 
 
 def test_npm_publish_stays_a_dry_run():

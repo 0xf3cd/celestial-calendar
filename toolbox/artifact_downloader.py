@@ -36,6 +36,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, blue_print
 from automation.github import GitHub
+from toolbox.release_validation import validate_release_archives
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
   """Find the workflow to download artifacts from."""
@@ -305,6 +306,7 @@ def main() -> None:
       downloaded = GitHub.download_artifact_urls(artifact_urls, args.save_to, args.parallel)
       downloaded_artifacts.extend(downloaded)
 
+    validate_release_archives(downloaded_artifacts, project_version())
     downloaded_artifacts.extend(flatten_python_artifacts(downloaded_artifacts, args.save_to))
 
   # Unzip the downloaded artifacts.

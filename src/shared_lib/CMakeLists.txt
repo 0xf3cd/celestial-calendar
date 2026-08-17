@@ -34,10 +34,13 @@ target_compile_definitions(celestial_calendar PRIVATE CELESTIAL_BUILDING_DLL)
 # for a builtin/function type (no symbol a consumer could link against).
 
 # SOVERSION tracks major.minor while 0.x: a 0.x minor may break the ABI, so SOVERSION=0
-# would falsely claim all 0.x releases mutually compatible. Trigger: at the 1.0 release,
-# switch to major-only — from then on the ABI holds within a major, which is exactly the
-# promise SOVERSION makes.
-string(REGEX MATCH "^[0-9]+\\.[0-9]+" SOVERSION_NUMBER "${VERSION_NUMBER}")
+# would falsely claim all 0.x releases mutually compatible. From 1.0 onward the ABI holds
+# within a major, which is exactly the promise a major-only SOVERSION makes.
+if(VERSION_NUMBER VERSION_LESS "1.0.0")
+  string(REGEX MATCH "^[0-9]+\\.[0-9]+" SOVERSION_NUMBER "${VERSION_NUMBER}")
+else()
+  string(REGEX MATCH "^[0-9]+" SOVERSION_NUMBER "${VERSION_NUMBER}")
+endif()
 
 set_target_properties(celestial_calendar PROPERTIES
   VERSION ${VERSION_NUMBER}
