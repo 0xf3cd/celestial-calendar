@@ -13,9 +13,11 @@ permissions:
   contents: read
 
 # emsdk is pinned like every diagnostic-capable toolchain in this repo (AGENTS.md gotcha
-# 9): bump deliberately, never incidentally. The cache key makes a bump a fresh install.
+# 9): bump deliberately, never incidentally. The commit fixes the installer and manifest;
+# the version still selects the prebuilt toolchain. Either bump makes a fresh install.
 env:
   EMSDK_VERSION: "6.0.6"
+  EMSDK_COMMIT: "9981799f744be74ac67b1c1813ff172f63be0630"
   NODE_CURRENT: "24.19.0"
   NODE_FLOOR: "22.0.0"
   NPM_VERSION: "11.17.0"
@@ -39,14 +41,29 @@ jobs:
         uses: actions/cache@v4
         with:
           path: emsdk
-          key: emsdk-${{ env.EMSDK_VERSION }}-${{ runner.os }}
+          key: emsdk-${{ env.EMSDK_VERSION }}-${{ env.EMSDK_COMMIT }}-${{ runner.os }}
 
       - name: Install emsdk (cache miss only)
         if: steps.emsdk-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git
+          git init emsdk
+          git -C emsdk remote add origin https://github.com/emscripten-core/emsdk.git
+          git -C emsdk fetch --depth 1 origin "$EMSDK_COMMIT"
+          git -C emsdk checkout --detach FETCH_HEAD
           ./emsdk/emsdk install "$EMSDK_VERSION"
           ./emsdk/emsdk activate "$EMSDK_VERSION"
+
+      - name: Verify emsdk source identity
+        run: |
+          actual_commit=$(git -C emsdk rev-parse HEAD)
+          if [ "$actual_commit" != "$EMSDK_COMMIT" ]; then
+            echo "Unexpected emsdk commit: $actual_commit"
+            exit 1
+          fi
+          if git -C emsdk symbolic-ref --quiet HEAD >/dev/null; then
+            echo "emsdk checkout is not detached"
+            exit 1
+          fi
 
       - name: Set up current Node
         uses: actions/setup-node@v6
