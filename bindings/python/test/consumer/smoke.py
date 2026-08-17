@@ -217,7 +217,6 @@ def run_native_failures() -> None:
 
 
 def run_acceptance_boundaries() -> None:
-  """Exercise selected inclusive public boundaries."""
   assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(1, 1, 1, 0.0)))
   assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(32767, 1, 1, 0.0)))
   assert len(celestial.moon_phase_moments(32766, celestial.MoonPhase.NEW)) >= 12
