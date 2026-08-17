@@ -31,7 +31,7 @@ from pathlib import Path
 def main() -> None:
   """Run each acceptance script with the active interpreter."""
   test_root = Path(__file__).resolve().parent
-  scripts = ("abi/verify.py", "abi/raw_protocol.py", "consumer/smoke.py")
+  scripts = ("abi/verify.py", "abi/raw_protocol.py", "consumer/smoke.py", "consumer/golden_replay.py")
   discovered = {
     path.relative_to(test_root).as_posix()
     for directory in ("abi", "consumer")

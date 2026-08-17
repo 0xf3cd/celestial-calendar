@@ -12,7 +12,7 @@
 #### Python
 
 - `celestial-calendar` native wheels (#211) expose the complete 29-export C ABI as a flat `celestial_calendar` API built from enums, frozen dataclasses, scalars, tuples, and `CelestialError`; ctypes structs, count/fill protocols, `last_error`, and model-specific C symbols remain private. Inputs are checked before native calls, including a 4096-result cap on `new_moons_after`.
-- One `py3` wheel is built and clean-installed on floor/current Python for manylinux_2_28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64. The ABI gate reconciles 29 signatures, 16 layouts, and seven recording exports; release collection requires exact duplicate-free inventories and publishes wheels plus SHA-256 sidecars as direct assets without uploading to PyPI.
+- One `py3` wheel is built and clean-installed on floor/current Python for manylinux_2_28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64. The ABI gate reconciles 29 signatures, 16 layouts, and seven recording exports; every platform also replays the shared 389-point native golden dataset. Release collection requires exact duplicate-free inventories and publishes wheels plus SHA-256 sidecars as direct assets without uploading to PyPI.
 
 #### Packaging and Verification
 
