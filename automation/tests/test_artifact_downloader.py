@@ -196,6 +196,7 @@ def test_native_workflow_artifact_inventory_matches_collector():
     if job_name == "linux-docker":
       setup = next(step for step in job["steps"] if step.get("id") == "set-env-vars")
       setup_lines = {line.strip() for line in setup["run"].splitlines()}
+      assert 'platform="${{ matrix.platform }}"' in setup_lines
       assert 'os=$(echo "${platform}" | cut -d \'/\' -f 1)' in setup_lines
       assert 'arch=$(echo "${platform}" | cut -d \'/\' -f 2- | tr \'/\' \'_\')' in setup_lines
       assert 'echo "OS=${os}" >> $GITHUB_ENV' in setup_lines
@@ -212,6 +213,9 @@ def test_native_workflow_artifact_inventory_matches_collector():
         entry["platform"].replace("/", "_") for entry in job["strategy"]["matrix"]["include"]
       ]
     else:
+      matrix = job.get("strategy", {}).get("matrix", {})
+      assert set(matrix).isdisjoint({"include", "exclude"})
+      assert all(len(values) == 1 for values in matrix.values())
       pattern = (
         r'Write-Output "artifact_name=([a-z0-9_]+)" >> \$env:GITHUB_OUTPUT'
         if job_name == "windows"

@@ -61,9 +61,19 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
 
 def test_wasm_artifact_inventory_matches_collector():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  upload_jobs = [
+    job
+    for job in workflow["jobs"].values()
+    if any(str(step.get("uses", "")).startswith("actions/upload-artifact@") for step in job["steps"])
+  ]
+  for job in upload_jobs:
+    matrix = job.get("strategy", {}).get("matrix", {})
+    assert set(matrix).isdisjoint({"include", "exclude"})
+    assert all(len(values) == 1 for values in matrix.values())
+
   uploads = [
     step["with"]["name"]
-    for job in workflow["jobs"].values()
+    for job in upload_jobs
     for step in job["steps"]
     if str(step.get("uses", "")).startswith("actions/upload-artifact@")
   ]
