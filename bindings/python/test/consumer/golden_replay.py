@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import json
+import math
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -70,7 +71,7 @@ def bits_from_float(value: float) -> str:
 
 @dataclass
 class Residual:
-  """Accumulate one output column before the exact-bit verdict."""
+  """Accumulate one output column before the tolerance verdict."""
 
   points: int = 0
   mismatches: int = 0
@@ -81,6 +82,8 @@ class Residual:
     """Record one comparison without failing early."""
     expected = float_from_bits(expected_bits)
     difference = abs(actual - expected)
+    if not math.isfinite(difference):
+      difference = math.inf
     self.points += 1
     self.mismatches += bits_from_float(actual) != expected_bits
     if difference > self.maximum:
