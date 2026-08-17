@@ -263,7 +263,6 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @return The UT1 (Universal Time 1).
  * @throw std::out_of_range if `year` is outside [401, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
- * @details This is just a thin wrapper around `jieqi_jde`.
  * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
  *       leap-second-aware path instead (#84). Remaining consumers: the C-ABI
  *       `query_jieqi_moment` (contract: `celestial.h`) and the HKO golden axis; UT1 stays
@@ -271,6 +270,12 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
  */
 [[nodiscard]] inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
+  if (year < 401) {
+    throw std::out_of_range {
+      std::vformat("The year {} is outside [401, 32766].", std::make_format_args(year))
+    };
+  }
+
   return astro::julian_day::jde_to_ut1(jieqi_jde(year, jq));
 }
 

@@ -76,6 +76,11 @@ TEST(JieQi, YearGuard) {
   ASSERT_NO_THROW(std::ignore = calc_jieqi_jde(32766, Jieqi::春分));
 }
 
+TEST(JieQi, Ut1MomentYearGuard) {
+  ASSERT_THROW(std::ignore = jieqi_ut1_moment(400, Jieqi::春分), std::out_of_range);
+  ASSERT_NO_THROW(std::ignore = jieqi_ut1_moment(401, Jieqi::春分));
+}
+
 TEST(JieQi, FromIndexBounds) {
   // 255 is the largest value the uint8_t parameter can carry — the input a checkless
   // `static_cast` implementation would happily accept.
