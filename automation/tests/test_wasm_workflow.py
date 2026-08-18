@@ -113,13 +113,24 @@ def test_javascript_test_entries_match_their_execution_owners():
   }
 
   wasm_check = WASM_CHECK.read_text(encoding="utf-8")
-  workflow = WORKFLOW.read_text(encoding="utf-8")
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   package = json.loads((JAVASCRIPT / "package.json").read_text(encoding="utf-8"))
   tsconfig = json.loads((test_root / "types" / "tsconfig.json").read_text(encoding="utf-8"))
+  workflow_commands = "\n".join(str(step.get("run", "")) for step in workflow["jobs"]["wasm"]["steps"])
 
-  abi_entries = set(re.findall(r"bindings/javascript/test/(abi/[a-z0-9_.-]+\.mjs)", wasm_check))
+  abi_entries = set(
+    re.findall(
+      r'^\s*await import\("\.\./bindings/javascript/test/(abi/[a-z0-9_.-]+\.mjs)"\);\s*$',
+      wasm_check,
+      re.MULTILINE,
+    )
+  )
   workflow_entries = set(
-    re.findall(r"bindings/javascript/test/((?:node|browser)/[a-z0-9_.-]+\.mjs)", workflow)
+    re.findall(
+      r"^\s*node\s+bindings/javascript/test/((?:node|browser)/[a-z0-9_.-]+\.mjs)(?:\s|$)",
+      workflow_commands,
+      re.MULTILINE,
+    )
   )
   type_entries = {f"types/{path}" for path in tsconfig["include"]}
 
@@ -128,5 +139,5 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert workflow_entries == {path for path in entries if path.startswith(("node/", "browser/"))}
   assert type_entries == {path for path in entries if path.startswith("types/")}
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
-  assert "node toolbox/wasm_check.mjs" in workflow
-  assert "npm run test:types --prefix bindings/javascript" in workflow
+  assert "node toolbox/wasm_check.mjs" in workflow_commands
+  assert "npm run test:types --prefix bindings/javascript" in workflow_commands

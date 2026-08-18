@@ -167,6 +167,7 @@ check("lunar.supportedYearRange", () => {
   assert.deepEqual(celestial.lunar.supportedYearRange("algo2"), { start: 410, end: 2500 });
   assert.deepEqual(celestial.lunar.supportedYearRange("algo3"), { start: 1600, end: 2199 });
 });
+// The HKO-backed 2024-02-10 new-year anchor is sourced in lunar/common_test.cpp::ParseLunarYear.
 check("lunar.yearInfo", () => {
   const value = celestial.lunar.yearInfo("algo3", 2024);
   assert.deepEqual(value.firstDay, { year: 2024, month: 2, day: 10 });
