@@ -62,26 +62,11 @@ const headerEntries = declarations.map((signature) => {
   return { name, signature };
 });
 const headerNames = headerEntries.map(({ name }) => name);
-const manifestNames = manifest.exports.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
 uniqueCount("celestial.h exports", headerNames, 29);
-uniqueCount("manifest exports", manifestNames, 29);
 uniqueCount("internal bindings", bindingNames, 29);
-sameSet("header = manifest", headerNames, manifestNames);
 sameSet("header = bindings", headerNames, bindingNames);
-
-for (const entry of manifest.exports) {
-  const declared = headerEntries.find(({ name }) => name === entry.name);
-  assert(declared, `missing header declaration for ${entry.name}`);
-  assert.equal(canonical(entry.signature), canonical(declared.signature), `signature ${entry.name}`);
-
-  const bindingEntry = BINDINGS.find(({ cName }) => cName === entry.name);
-  assert(bindingEntry, `missing binding for ${entry.name}`);
-  if (entry.return.kind === "sret") {
-    assert.equal(bindingEntry.result, `sret:${entry.return.layout}`, `binding result ${entry.name}`);
-  }
-}
 
 const expectedWidths = {
   bool: 8,
@@ -92,7 +77,6 @@ const expectedWidths = {
   pointer: 32,
   double: 64,
 };
-assert.deepEqual(manifest.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
 
 const typeLayout = {
   bool: { size: 1, alignment: 1 },
@@ -120,13 +104,6 @@ for (const match of header.matchAll(/typedef struct (\w+)\s*\{([\s\S]*?)\}\s*\1;
   }
   parsedLayouts[name] = { size: alignTo(offset, alignment), alignment, fields };
 }
-const manifestLayoutNames = Object.keys(manifest.layouts);
-uniqueCount("manifest layouts", manifestLayoutNames, 16);
-sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifestLayoutNames);
-for (const name of manifestLayoutNames) {
-  assert.deepEqual(manifest.layouts[name], parsedLayouts[name], `layout ${name}`);
-}
-assert.deepEqual(LAYOUTS, manifest.layouts, "runtime layouts = manifest layouts");
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));
@@ -136,7 +113,6 @@ const listValues = (constantName) => {
 const recipeExports = listValues("EXPORTS");
 const runtimeMethods = listValues("RUNTIME_METHODS");
 uniqueCount("build recipe exports", recipeExports, 31);
-sameSet("manifest + malloc/free = build recipe", [...manifestNames, "malloc", "free"], recipeExports);
 assert(runtimeMethods.includes("HEAPU16"), "build recipe must export HEAPU16");
 assert(buildScript.includes('"-sALLOW_MEMORY_GROWTH=1"'), "build recipe must enable ALLOW_MEMORY_GROWTH");
 assert.equal((buildScript.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1, "one em++ export recipe");
@@ -170,14 +146,77 @@ const functionBody = (name) => {
   assert.fail(`unterminated implementation for ${name}`);
 };
 const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::clear_last_error()"));
-const manifestRecording = manifest.exports.filter(({ recording }) => recording).map(({ name }) => name);
 const bindingErrorPolicy = BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName);
 
 uniqueCount("recording exports", documentedRecording, 7);
 sameSet("recording docs = implementation writers", documentedRecording, implementationWriters);
-sameSet("recording docs = manifest", documentedRecording, manifestRecording);
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
+
+const verifyManifest = (candidate) => {
+  const manifestNames = candidate.exports.map(({ name }) => name);
+  uniqueCount("manifest exports", manifestNames, 29);
+  sameSet("header = manifest", headerNames, manifestNames);
+
+  for (const entry of candidate.exports) {
+    const declared = headerEntries.find(({ name }) => name === entry.name);
+    assert(declared, `missing header declaration for ${entry.name}`);
+    assert.equal(canonical(entry.signature), canonical(declared.signature), `signature ${entry.name}`);
+
+    const bindingEntry = BINDINGS.find(({ cName }) => cName === entry.name);
+    assert(bindingEntry, `missing binding for ${entry.name}`);
+    if (entry.return.kind === "sret") {
+      assert.equal(bindingEntry.result, `sret:${entry.return.layout}`, `binding result ${entry.name}`);
+    }
+  }
+
+  assert.deepEqual(candidate.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
+
+  const manifestLayoutNames = Object.keys(candidate.layouts);
+  uniqueCount("manifest layouts", manifestLayoutNames, 16);
+  sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifestLayoutNames);
+  for (const name of manifestLayoutNames) {
+    assert.deepEqual(candidate.layouts[name], parsedLayouts[name], `layout ${name}`);
+  }
+  assert.deepEqual(LAYOUTS, candidate.layouts, "runtime layouts = manifest layouts");
+
+  sameSet("manifest + malloc/free = build recipe", [...manifestNames, "malloc", "free"], recipeExports);
+  const manifestRecording = candidate.exports.filter(({ recording }) => recording).map(({ name }) => name);
+  sameSet("recording docs = manifest", documentedRecording, manifestRecording);
+};
+
+const runMutationSelfTests = (candidate) => {
+  const mutations = [];
+
+  const missingExport = structuredClone(candidate);
+  missingExport.exports.pop();
+  mutations.push(["missing export", missingExport]);
+
+  const wrongSignature = structuredClone(candidate);
+  wrongSignature.exports.at(-1).signature = "DeltaT delta_t(int32_t year)";
+  mutations.push(["wrong signature", wrongSignature]);
+
+  const wrongFieldType = structuredClone(candidate);
+  wrongFieldType.layouts.LunarDate.fields[3].type = "uint8_t";
+  mutations.push(["same-width field type", wrongFieldType]);
+
+  const wrongOffset = structuredClone(candidate);
+  wrongOffset.layouts.JieqiMomentQuery.fields[1].offset = 2;
+  mutations.push(["wrong offset", wrongOffset]);
+
+  const wrongRecording = structuredClone(candidate);
+  wrongRecording.exports.find(({ name }) => name === "moon_illumination").recording = false;
+  mutations.push(["wrong recording marker", wrongRecording]);
+
+  assert.equal(mutations.length, 5, "ABI mutation denominator");
+  for (const [label, mutated] of mutations) {
+    assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
+  }
+};
+
+verifyManifest(manifest);
+runMutationSelfTests(manifest);
 
 console.log("PASS exports header=manifest=bindings=recipe=built 29 (+ malloc/free)");
 console.log("PASS layouts header=manifest 16; HEAPU16 present; memory growth enabled");
 console.log("PASS recording docs=writers=manifest=binding error policy 7");
+console.log("PASS ABI mutations rejected 5/5");

@@ -167,25 +167,60 @@ check("lunar.supportedYearRange", () => {
   assert.deepEqual(celestial.lunar.supportedYearRange("algo2"), { start: 410, end: 2500 });
   assert.deepEqual(celestial.lunar.supportedYearRange("algo3"), { start: 1600, end: 2199 });
 });
+// The HKO-backed 2024-02-10 new-year anchor is sourced in lunar/common_test.cpp::ParseLunarYear.
 check("lunar.yearInfo", () => {
   const value = celestial.lunar.yearInfo("algo3", 2024);
   assert.deepEqual(value.firstDay, { year: 2024, month: 2, day: 10 });
   assert.equal(value.leapMonth, null);
   assert.deepEqual(value.monthLengths, [29, 30, 29, 29, 30, 29, 30, 30, 29, 30, 30, 29]);
 
+  const algo2 = celestial.lunar.yearInfo("algo2", 2024);
+  assert.deepEqual(algo2.firstDay, { year: 2024, month: 2, day: 10 });
+
   // Same HKO-backed leap-year anchor as lunar/common_test.cpp.
   const leap = celestial.lunar.yearInfo("algo1", 2023);
   assert.equal(leap.leapMonth, 2);
   assert.deepEqual(leap.monthLengths, [29, 30, 29, 29, 30, 30, 29, 30, 30, 29, 30, 29, 30]);
 });
-check("lunar.fromGregorian", () => assert.deepEqual(
-  celestial.lunar.fromGregorian("algo3", { year: 2024, month: 2, day: 10 }),
-  { year: 2024, month: 1, day: 1, isLeap: false },
-));
-check("lunar.toGregorian", () => assert.deepEqual(
-  celestial.lunar.toGregorian("algo3", { year: 2024, month: 1, day: 1, isLeap: false }),
-  { year: 2024, month: 2, day: 10 },
-));
+check("lunar.fromGregorian", () => {
+  for (const algorithm of ["algo2", "algo3"]) {
+    assert.deepEqual(
+      celestial.lunar.fromGregorian(algorithm, { year: 2024, month: 2, day: 10 }),
+      { year: 2024, month: 1, day: 1, isLeap: false },
+    );
+  }
+});
+check("lunar.toGregorian", () => {
+  for (const algorithm of ["algo2", "algo3"]) {
+    assert.deepEqual(
+      celestial.lunar.toGregorian(algorithm, { year: 2024, month: 1, day: 1, isLeap: false }),
+      { year: 2024, month: 2, day: 10 },
+    );
+  }
+});
+
+const acceptedBoundaries = [
+  ["civil year lower", () => finite(celestial.time.ut1ToJd({ year: 1, month: 1, day: 1, fraction: 0 }))],
+  ["civil year upper", () => finite(celestial.time.ut1ToJd({ year: 32767, month: 1, day: 1, fraction: 0 }))],
+  ["civil fraction lower", () => assert.equal(
+    celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0 }),
+    2451544.5,
+  )],
+  ["phase year upper", () => assert(celestial.moon.phaseMoments(32766, "new").length >= 12)],
+  ["new moons year upper", () => assert(celestial.moon.newMoonsInYear(32766).length >= 12)],
+  ["Jieqi year lower", () => assert.equal(celestial.jieqi.moment(401, 0).year, 401)],
+  ["Jieqi year upper", () => assert.equal(celestial.jieqi.moment(32766, 0).year, 32766)],
+  ["longitude lower", () => finite(celestial.time.localApparentSiderealTime(2451545.0, -180))],
+  ["longitude upper", () => finite(celestial.time.localApparentSiderealTime(2451545.0, 180))],
+  ["delta T algo1 lower", () => finite(celestial.time.deltaT(-4000, "algo1"))],
+  ["algo1 year lower", () => assert.equal(celestial.lunar.yearInfo("algo1", 1901).firstDay.year, 1901)],
+  ["algo1 year upper", () => assert.equal(celestial.lunar.yearInfo("algo1", 2099).firstDay.year, 2099)],
+  ["algo2 year lower", () => assert.equal(celestial.lunar.yearInfo("algo2", 410).firstDay.year, 410)],
+  ["algo2 year upper", () => assert.equal(celestial.lunar.yearInfo("algo2", 2500).firstDay.year, 2500)],
+  ["algo3 year lower", () => assert.equal(celestial.lunar.yearInfo("algo3", 1600).firstDay.year, 1600)],
+  ["algo3 year upper", () => assert.equal(celestial.lunar.yearInfo("algo3", 2199).firstDay.year, 2199)],
+];
+for (const [label, action] of acceptedBoundaries) assert.doesNotThrow(action, label);
 
 assert.deepEqual(celestial.sun.longitudeCrossings(1, 281.3), [], "valid no-root result");
 assert.deepEqual(celestial.moon.newMoonsAfter(2451545.0, 0), [], "zero requested count");
@@ -257,4 +292,6 @@ assert.equal(nonRecordingError.message, "lunar.fromGregorian failed.");
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 assert.equal(happy, 22, "public method denominator");
 assert.equal(edges, 31, "public edge denominator");
+assert.equal(acceptedBoundaries.length, 16, "public acceptance denominator");
 console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/31`);
+console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/16`);

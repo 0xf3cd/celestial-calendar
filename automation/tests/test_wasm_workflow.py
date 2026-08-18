@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -27,7 +29,10 @@ import yaml
 from toolbox.artifact_downloader import ARTIFACT_SOURCES
 
 
-WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "wasm.yml"
+ROOT = Path(__file__).parents[2]
+WORKFLOW = ROOT / ".github" / "workflows" / "wasm.yml"
+JAVASCRIPT = ROOT / "bindings" / "javascript"
+WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 
 
 def test_emsdk_source_is_pinned_even_on_cache_hits():
@@ -97,3 +102,42 @@ def test_npm_publish_stays_a_dry_run():
   assert publish_step.get("env", {}).get("NPM_CONFIG_DRY_RUN") == "true"
   commands = [line.strip() for line in publish_step["run"].splitlines() if line.strip()]
   assert commands == ['npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"']
+
+
+def test_javascript_test_entries_match_their_execution_owners():
+  test_root = JAVASCRIPT / "test"
+  entries = {
+    path.relative_to(test_root).as_posix()
+    for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "types/*.ts")
+    for path in test_root.glob(pattern)
+  }
+
+  wasm_check = WASM_CHECK.read_text(encoding="utf-8")
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  package = json.loads((JAVASCRIPT / "package.json").read_text(encoding="utf-8"))
+  tsconfig = json.loads((test_root / "types" / "tsconfig.json").read_text(encoding="utf-8"))
+  workflow_commands = "\n".join(str(step.get("run", "")) for step in workflow["jobs"]["wasm"]["steps"])
+
+  abi_entries = set(
+    re.findall(
+      r'^\s*await import\("\.\./bindings/javascript/test/(abi/[a-z0-9_.-]+\.mjs)"\);\s*$',
+      wasm_check,
+      re.MULTILINE,
+    )
+  )
+  workflow_entries = set(
+    re.findall(
+      r"^\s*node\s+bindings/javascript/test/((?:node|browser)/[a-z0-9_.-]+\.mjs)(?:\s|$)",
+      workflow_commands,
+      re.MULTILINE,
+    )
+  )
+  type_entries = {f"types/{path}" for path in tsconfig["include"]}
+
+  assert entries == abi_entries | workflow_entries | type_entries
+  assert abi_entries == {path for path in entries if path.startswith("abi/")}
+  assert workflow_entries == {path for path in entries if path.startswith(("node/", "browser/"))}
+  assert type_entries == {path for path in entries if path.startswith("types/")}
+  assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
+  assert "node toolbox/wasm_check.mjs" in workflow_commands
+  assert "npm run test:types --prefix bindings/javascript" in workflow_commands
