@@ -20,9 +20,10 @@
 ### Python
 
 - Install a `celestial-calendar` wheel from the matching GitHub Release; wheels are not uploaded to PyPI. The
-  supported targets are manylinux 2.28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or newer.
+  supported targets are `manylinux_2_28` x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or
+  newer.
 - The flat `celestial_calendar` API wraps the complete C ABI with enums, frozen dataclasses, scalars, and tuples;
-  ctypes structures and count/fill protocols remain private. Wrong types raise `TypeError`, invalid values raise
+  the raw ctypes layer remains private. Wrong types raise `TypeError`, invalid values raise
   `ValueError`, and native failures raise `CelestialError` with `operation` and `recorded` attributes.
 
 ### Changed
@@ -43,8 +44,7 @@
 - emsdk is pinned to a commit included in the cache key. Before publishing, the release collector verifies the WASM
   archive's exact members, npm package identity, and tarball sidecar; it separately verifies each native archive's
   members, build version, and runtime-library hashes. `release_downloader.py` repeats those checks after download.
-- Each platform clean-installs its repaired wheel and replays the same binding-neutral native golden dataset as the
-  WASM leg. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
-- The JavaScript acceptance suite pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm
-  boundaries. Directed manifest mutations prove that the ABI gate detects export, signature, layout, and recording
-  drift; CI also rejects ABI, Node, browser, or TypeScript test entries that are not wired into their runner.
+- Each platform clean-installs its wheel and replays the same native golden dataset as the WASM leg.
+- The JavaScript acceptance suite pins the inclusive endpoints of the civil, calendar, Jieqi, longitude, ΔT, and
+  lunar-algorithm domains. Directed mutations prove that the ABI oracle detects export, signature, layout, and
+  recording drift; CI also rejects ABI, Node, browser, or TypeScript test entries that are not wired into their runner.
