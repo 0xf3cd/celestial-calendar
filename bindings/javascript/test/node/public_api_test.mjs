@@ -211,13 +211,13 @@ const acceptedBoundaries = [
   ["Jieqi year upper", () => assert.equal(celestial.jieqi.moment(32766, 0).year, 32766)],
   ["longitude lower", () => finite(celestial.time.localApparentSiderealTime(2451545.0, -180))],
   ["longitude upper", () => finite(celestial.time.localApparentSiderealTime(2451545.0, 180))],
-  ["delta T ALGO1 lower", () => finite(celestial.time.deltaT(-4000, "algo1"))],
-  ["ALGO1 year lower", () => assert.equal(celestial.lunar.yearInfo("algo1", 1901).firstDay.year, 1901)],
-  ["ALGO1 year upper", () => assert.equal(celestial.lunar.yearInfo("algo1", 2099).firstDay.year, 2099)],
-  ["ALGO2 year lower", () => assert.equal(celestial.lunar.yearInfo("algo2", 410).firstDay.year, 410)],
-  ["ALGO2 year upper", () => assert.equal(celestial.lunar.yearInfo("algo2", 2500).firstDay.year, 2500)],
-  ["ALGO3 year lower", () => assert.equal(celestial.lunar.yearInfo("algo3", 1600).firstDay.year, 1600)],
-  ["ALGO3 year upper", () => assert.equal(celestial.lunar.yearInfo("algo3", 2199).firstDay.year, 2199)],
+  ["delta T algo1 lower", () => finite(celestial.time.deltaT(-4000, "algo1"))],
+  ["algo1 year lower", () => assert.equal(celestial.lunar.yearInfo("algo1", 1901).firstDay.year, 1901)],
+  ["algo1 year upper", () => assert.equal(celestial.lunar.yearInfo("algo1", 2099).firstDay.year, 2099)],
+  ["algo2 year lower", () => assert.equal(celestial.lunar.yearInfo("algo2", 410).firstDay.year, 410)],
+  ["algo2 year upper", () => assert.equal(celestial.lunar.yearInfo("algo2", 2500).firstDay.year, 2500)],
+  ["algo3 year lower", () => assert.equal(celestial.lunar.yearInfo("algo3", 1600).firstDay.year, 1600)],
+  ["algo3 year upper", () => assert.equal(celestial.lunar.yearInfo("algo3", 2199).firstDay.year, 2199)],
 ];
 for (const [label, action] of acceptedBoundaries) assert.doesNotThrow(action, label);
 

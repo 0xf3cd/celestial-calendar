@@ -207,6 +207,7 @@ const runMutationSelfTests = (candidate) => {
   wrongRecording.exports.find(({ name }) => name === "moon_illumination").recording = false;
   mutations.push(["wrong recording marker", wrongRecording]);
 
+  assert.equal(mutations.length, 5, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
