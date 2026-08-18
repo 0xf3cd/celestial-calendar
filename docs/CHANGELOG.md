@@ -1,6 +1,6 @@
 # Changelog
 
-## [v0.6.0] - 2026-08-15
+## [v0.6.0] - 2026-08-17
 
 ### Added
 
@@ -18,6 +18,12 @@
 
 - The WASM recipe exports all 29 C entries plus internal allocation helpers and allows memory growth for the package singleton's bounded, never-evicted calendar caches. A test-only ABI oracle reconciles all 29 signatures, 16 struct layouts, and seven recording functions with the header, implementation, binding table, and built module.
 - `toolbox/build_npm.py` produces one eight-file tarball whose version comes from `project.py`, with a 250,000-byte package cap and a 465,000-byte raw-WASM cap. The independent WASM leg checks 22 public methods, 31 edge/error cases, the shared 389-point native golden dataset, exact-tarball installation under Node 22 and the current Node, TypeScript declarations, and an Astro/Vite production build in Chrome. The `celestial-wasm` release artifact keeps the raw module and adds the exact tarball plus pack JSON/SHA-256 sidecars.
+- The emsdk checkout is pinned to a repository commit and that commit participates in the cache key (#220). Before publishing, the release collector opens the WASM and native archives to verify their exact members, package identity, build version, tarball sidecar, and runtime-library hashes; `release_downloader.py` applies the same archive validation after download.
+- JavaScript package acceptance now pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm boundaries (#223). The ABI oracle proves its own export, signature, layout, and recording checks with directed mutations, while an inventory keeps every ABI, Node, browser, and TypeScript test entry connected to its execution owner.
+
+### Changed
+
+- Jieqi moment APIs now share the effective Gregorian-year domain `[401, 32766]` across C++, C, Python, and JavaScript (#219). `jieqi_ut1_moment` rejects earlier years with `std::out_of_range` before calculating or caching a JDE; the lower-level `jieqi_jde` calculation and its cache retain their `[1, 32766]` domain.
 
 ## [v0.5.0] - 2026-08-15
 

@@ -2,7 +2,7 @@
      v*.*.* tag is pushed. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
-## [v0.6.0] - 2026-08-15
+## [v0.6.0] - 2026-08-17
 
 ### JavaScript / TypeScript
 
@@ -14,6 +14,24 @@
   or implicit number coercion.
 - Input shape, finiteness, integer width, and operation domains are checked before WASM. Bad input throws
   `TypeError` / `RangeError`; native failures become `CelestialError`. Legitimate absence remains `null` or `[]`.
+- The npm registry package is not yet published. Install the exact npm tarball from `celestial-wasm.zip` on the
+  matching GitHub Release.
+
+### Python
+
+- Install a `celestial-calendar` wheel from the matching GitHub Release; wheels are not uploaded to PyPI. The
+  supported targets are manylinux 2.28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or newer.
+- The flat `celestial_calendar` API wraps the complete C ABI with enums, frozen dataclasses, scalars, and tuples;
+  ctypes structures and count/fill protocols remain private. Wrong types raise `TypeError`, rejected values raise
+  `ValueError`, and native failures raise `CelestialError` with `operation` and `recorded` attributes.
+- Each platform clean-installs its repaired wheel and replays the same binding-neutral native golden dataset as the
+  WASM package. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
+
+### Changed
+
+- Jieqi moment APIs now use Gregorian years in `[401, 32766]` across C++, C, Python, and JavaScript. The C++
+  `jieqi_ut1_moment` facade rejects earlier years before calculation or caching; `jieqi_jde` and its cache retain
+  their `[1, 32766]` domain.
 
 ### Packaging and Verification
 
@@ -23,4 +41,10 @@
   22 public methods, 31 edge/error cases, all 389 existing WASM goldens, Node 22 and current-Node consumers,
   TypeScript declarations, and an Astro/Vite production build in Chrome.
 - `celestial-wasm.zip` keeps the raw `.mjs/.wasm` pair and adds the exact npm tarball, `npm-pack.json`, and its
-  SHA-256 sidecar. The four native platform archives are unchanged.
+  SHA-256 sidecar.
+- emsdk is pinned to a repository commit included in its cache key. The release collector validates the contents,
+  identity, version, and available hash inventory of every WASM and native archive before publishing;
+  `release_downloader.py` repeats that validation after download.
+- JavaScript acceptance pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm boundaries.
+  Directed manifest mutations prove the ABI gate detects export, signature, layout, and recording drift, and the
+  test-entry inventory keeps ABI, Node, browser, and TypeScript checks attached to their execution owners.
