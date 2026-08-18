@@ -22,16 +22,14 @@
 - Install a `celestial-calendar` wheel from the matching GitHub Release; wheels are not uploaded to PyPI. The
   supported targets are manylinux 2.28 x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or newer.
 - The flat `celestial_calendar` API wraps the complete C ABI with enums, frozen dataclasses, scalars, and tuples;
-  ctypes structures and count/fill protocols remain private. Wrong types raise `TypeError`, rejected values raise
+  ctypes structures and count/fill protocols remain private. Wrong types raise `TypeError`, invalid values raise
   `ValueError`, and native failures raise `CelestialError` with `operation` and `recorded` attributes.
-- Each platform clean-installs its repaired wheel and replays the same binding-neutral native golden dataset as the
-  WASM package. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
 
 ### Changed
 
 - Jieqi moment APIs now use Gregorian years in `[401, 32766]` across C++, C, Python, and JavaScript. The C++
-  `jieqi_ut1_moment` facade rejects earlier years before calculation or caching; `jieqi_jde` and its cache retain
-  their `[1, 32766]` domain.
+  `jieqi_ut1_moment` now rejects earlier years; the lower-level `jieqi_jde` remains available for years in
+  `[1, 32766]`.
 
 ### Packaging and Verification
 
@@ -42,9 +40,11 @@
   TypeScript declarations, and an Astro/Vite production build in Chrome.
 - `celestial-wasm.zip` keeps the raw `.mjs/.wasm` pair and adds the exact npm tarball, `npm-pack.json`, and its
   SHA-256 sidecar.
-- emsdk is pinned to a repository commit included in its cache key. The release collector validates the contents,
-  identity, version, and available hash inventory of every WASM and native archive before publishing;
-  `release_downloader.py` repeats that validation after download.
-- JavaScript acceptance pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm boundaries.
-  Directed manifest mutations prove the ABI gate detects export, signature, layout, and recording drift, and the
-  test-entry inventory keeps ABI, Node, browser, and TypeScript checks attached to their execution owners.
+- emsdk is pinned to a commit included in the cache key. Before publishing, the release collector verifies the WASM
+  archive's exact members, npm package identity, and tarball sidecar; it separately verifies each native archive's
+  members, build version, and runtime-library hashes. `release_downloader.py` repeats those checks after download.
+- Each platform clean-installs its repaired wheel and replays the same binding-neutral native golden dataset as the
+  raw WASM ABI. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
+- The JavaScript acceptance suite pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm
+  boundaries. Directed manifest mutations prove that the ABI gate detects export, signature, layout, and recording
+  drift; CI also rejects ABI, Node, browser, or TypeScript test entries that are not wired into their runner.
