@@ -28,7 +28,7 @@
 ### Changed
 
 - Jieqi moment APIs now use Gregorian years in `[401, 32766]` across C++, C, Python, and JavaScript. The C++
-  `jieqi_ut1_moment` now rejects earlier years; the lower-level `jieqi_jde` remains available for years in
+  `jieqi_ut1_moment` rejects earlier years; the lower-level `jieqi_jde` remains available for years in
   `[1, 32766]`.
 
 ### Packaging and Verification
@@ -44,7 +44,7 @@
   archive's exact members, npm package identity, and tarball sidecar; it separately verifies each native archive's
   members, build version, and runtime-library hashes. `release_downloader.py` repeats those checks after download.
 - Each platform clean-installs its repaired wheel and replays the same binding-neutral native golden dataset as the
-  raw WASM ABI. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
+  WASM leg. Release collection requires exact wheel inventories and matching SHA-256 sidecars.
 - The JavaScript acceptance suite pins inclusive civil, calendar, Jieqi, longitude, Delta T, and lunar-algorithm
   boundaries. Directed manifest mutations prove that the ABI gate detects export, signature, layout, and recording
   drift; CI also rejects ABI, Node, browser, or TypeScript test entries that are not wired into their runner.
