@@ -68,6 +68,9 @@ Time scales and units stay explicit:
 - The equation of time is degrees of hour angle; multiply by 240 for seconds of time.
 
 `jieqi.moment(year, index)` accepts Gregorian years in `[401, 32766]` and Jieqi indices in `[0, 23]`.
+`sun.longitudeCrossings(year, longitudeDeg)`, `moon.phaseMoments(year, phase)`, and `moon.newMoonsInYear(year)` accept
+Gregorian years in `[1, 32766]`.
+Lunar conversions use algorithm-specific year windows; query them with `lunar.supportedYearRange(algorithm)`.
 
 `time.deltaT(year, model)` accepts a finite decimal Gregorian year. Three models have additional bounds:
 

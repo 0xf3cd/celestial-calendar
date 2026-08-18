@@ -401,7 +401,12 @@ def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
 
 
 def solar_longitude_roots(year: int, longitude_deg: float) -> tuple[float, ...]:
-  """Return JDEs when the Sun reaches an apparent geocentric longitude."""
+  """Return JDEs when the Sun reaches an apparent geocentric longitude.
+
+  Raises:
+    ValueError: If year is outside [1, 32766].
+    CelestialError: If the native calculation cannot produce the roots.
+  """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
   longitude = _ranged_float(longitude_deg, "longitude_deg", 0.0, 360.0, include_maximum=False)
   discriminant = _valid(
@@ -436,7 +441,12 @@ def new_moons_after(jde: float, count: int) -> tuple[float, ...]:
 
 
 def new_moons_in_year(year: int) -> tuple[float, ...]:
-  """Return all new-moon JDEs in a Gregorian year."""
+  """Return all new-moon JDEs in a Gregorian year.
+
+  Raises:
+    ValueError: If year is outside [1, 32766].
+    CelestialError: If the native calculation cannot produce the moments.
+  """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
   total = _ctypes.c_uint32()
   written = _binding.call("new_moons_in_year", checked_year, _ctypes.byref(total), None, 0)

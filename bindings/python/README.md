@@ -49,6 +49,8 @@ channel. A legitimate absence remains `None` or `()`.
 
 `jieqi_moment(year, jieqi)` accepts Gregorian years in `[401, 32766]`.
 Lunar conversions use algorithm-specific year windows; query them with `supported_lunar_year_range(algorithm)`.
+`moon_phase_moments(year, phase)`, `solar_longitude_roots(year, longitude_deg)`, and `new_moons_in_year(year)` accept
+Gregorian years in `[1, 32766]`.
 
 `delta_t(year, model)` accepts a finite decimal Gregorian year. Three models have additional bounds:
 

@@ -110,7 +110,7 @@ export const time: Readonly<{
 export const sun: Readonly<{
   /** Apparent geocentric ecliptic coordinates at a TT-based JDE. */
   apparentGeocentricCoordinates(jde: number): EclipticCoordinateAu;
-  /** TT-based JDEs when the Sun reaches longitudeDeg in the Gregorian year. */
+  /** TT-based JDEs when the Sun reaches longitudeDeg in a Gregorian year in [1, 32766]. */
   longitudeCrossings(year: number, longitudeDeg: number): number[];
   /** Equation of time in degrees of hour angle; multiply by 240 for seconds. */
   equationOfTime(jde: number): number;
@@ -124,11 +124,11 @@ export const moon: Readonly<{
   illumination(jde: number): MoonIllumination;
   /** Position angle of the bright limb, in degrees eastward from north. */
   brightLimbPositionAngle(jde: number): number;
-  /** TT-based JDEs of the selected phase in the Gregorian year. */
+  /** TT-based JDEs of the selected phase in a Gregorian year in [1, 32766]. */
   phaseMoments(year: number, phase: MoonPhase): number[];
   /** The next count New Moon JDEs; count is in [0, 536870911]. */
   newMoonsAfter(jde: number, count: number): number[];
-  /** New Moon JDEs in the Gregorian year. */
+  /** New Moon JDEs in a Gregorian year in [1, 32766]. */
   newMoonsInYear(year: number): number[];
 }>;
 

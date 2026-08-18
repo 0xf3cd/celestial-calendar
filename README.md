@@ -103,7 +103,6 @@ GitHub release, then install its exact npm tarball:
 npm install ./0xf3cd-celestial-<version>.tgz
 ```
 
-`npm install @0xf3cd/celestial` will work once the registry package exists.
 Initialize the package-owned WebAssembly module once, then use the synchronous APIs:
 
 ```js
