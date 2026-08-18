@@ -100,8 +100,9 @@ export const time: Readonly<{
   /** Local apparent sidereal time in degrees; longitude is east-positive. */
   localApparentSiderealTime(jdUt1: number, longitudeDeg: number): number;
   /**
-   * Delta T (TT - UT1), in seconds. Algo1 requires year >= -4000, algo3 year < 3000,
-   * and algo4 year < 2035; the other models have no model-specific year bound.
+   * Delta T (TT - UT1), in seconds.
+   * Algo1 requires year >= -4000; algo3 requires year < 3000; algo4 requires year < 2035.
+   * The other models have no model-specific year bound.
    */
   deltaT(year: number, model?: DeltaTModel): number;
 }>;

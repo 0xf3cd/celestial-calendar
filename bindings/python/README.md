@@ -10,19 +10,20 @@ Download the wheel for your platform from the matching
 [GitHub release](https://github.com/0xf3cd/celestial-calendar/releases), then install the local file:
 
 ```sh
-python -m pip install "./celestial_calendar-<version>-py3-none-<platform>.whl"
+python -m pip install "./<downloaded-wheel>.whl"
 ```
 
 The project publishes four wheels directly to GitHub Releases rather than PyPI:
 
-| System | Architecture | Wheel platform tag |
+| System | Architecture | Required tag in the wheel filename |
 |---|---|---|
 | Linux (manylinux 2.28) | x86_64 | `manylinux_2_28_x86_64` |
 | Linux (manylinux 2.28) | aarch64 | `manylinux_2_28_aarch64` |
 | macOS 14 or newer | arm64 | `macosx_14_0_arm64` |
 | Windows | AMD64 | `win_amd64` |
 
-Each is a `py3` wheel usable with supported Python 3.11 or newer interpreters on that platform.
+Linux wheel filenames may contain additional compatible manylinux tags. Each is a `py3` wheel for Python 3.11 or
+newer on that platform.
 No wheel is published for other platforms, such as Intel macOS, Windows on ARM, or musl-based Linux.
 
 ## API
@@ -43,8 +44,8 @@ in the function or field name; they are not silently converted to Python's narro
 
 Wrong input types, including members of the wrong enum, raise `TypeError`. Values rejected by finiteness, range, or
 domain checks raise `ValueError`. A failure reported by the native boundary raises `CelestialError`. Its `operation`
-attribute identifies the public function, while `recorded` says whether the message came from the native error channel.
-A legitimate absence remains `None` or `()`.
+attribute names the public function, and its `recorded` attribute says whether the message came from the native error
+channel. A legitimate absence remains `None` or `()`.
 
 `jieqi_moment(year, jieqi)` accepts Gregorian years in `[401, 32766]`.
 Lunar conversions use algorithm-specific year windows; query them with `supported_lunar_year_range(algorithm)`.
