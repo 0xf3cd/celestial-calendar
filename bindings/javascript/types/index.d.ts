@@ -99,7 +99,10 @@ export const time: Readonly<{
   jdeToUt1(jde: number): CivilDateTime;
   /** Local apparent sidereal time in degrees; longitude is east-positive. */
   localApparentSiderealTime(jdUt1: number, longitudeDeg: number): number;
-  /** Delta T (TT - UT1), in seconds. */
+  /**
+   * Delta T (TT - UT1), in seconds. Algo1 requires year >= -4000, algo3 year < 3000,
+   * and algo4 year < 2035; the other models have no model-specific year bound.
+   */
   deltaT(year: number, model?: DeltaTModel): number;
 }>;
 
@@ -129,7 +132,7 @@ export const moon: Readonly<{
 }>;
 
 export const jieqi: Readonly<{
-  /** UT1 civil moment for a Jieqi index in [0, 23]. */
+  /** UT1 civil moment for a Gregorian year in [401, 32766] and a Jieqi index in [0, 23]. */
   moment(year: number, index: number): JieqiMoment;
   name(index: number): string;
 }>;

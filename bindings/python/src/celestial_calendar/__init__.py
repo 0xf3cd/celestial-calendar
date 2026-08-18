@@ -178,7 +178,12 @@ class LunarYearInfo:
 
 
 class CelestialError(RuntimeError):
-  """A failure reported by the native CelestialCalendar boundary."""
+  """A failure reported by the native CelestialCalendar boundary.
+
+  Attributes:
+    operation: The public function that failed.
+    recorded: Whether the message came from the native error channel.
+  """
 
   def __init__(self, operation: str, message: str, *, recorded: bool) -> None:
     super().__init__(message)
@@ -361,7 +366,12 @@ def moon_bright_limb_position_angle(jde: float) -> float:
 
 
 def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
-  """Return the JDE moments of a principal Moon phase in a Gregorian year."""
+  """Return the JDE moments of a principal Moon phase in a Gregorian year.
+
+  Raises:
+    ValueError: If year is outside [1, 32766].
+    CelestialError: If the native calculation cannot produce the phase moments.
+  """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
   checked_phase = _enum(phase, MoonPhase, "phase")
   total = _ctypes.c_uint32()
@@ -408,7 +418,12 @@ def solar_longitude_roots(year: int, longitude_deg: float) -> tuple[float, ...]:
 
 
 def new_moons_after(jde: float, count: int) -> tuple[float, ...]:
-  """Return the requested number of new-moon JDEs after a starting JDE."""
+  """Return the requested number of new-moon JDEs after a starting JDE.
+
+  Raises:
+    ValueError: If count is outside [0, 4096].
+    CelestialError: If the native calculation cannot produce the requested moments.
+  """
   start = _finite(jde, "jde")
   checked_count = _integer(count, "count", 0, _MAX_NEW_MOON_COUNT)
   if checked_count == 0:
@@ -450,7 +465,11 @@ def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTi
 
 
 def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
-  """Return local apparent sidereal time in degrees at an east-positive longitude."""
+  """Return local apparent sidereal time in degrees at an east-positive longitude.
+
+  Raises:
+    CelestialError: If the native calculation cannot produce sidereal time.
+  """
   jd = _finite(jd_ut1, "jd_ut1")
   longitude = _ranged_float(longitude_deg, "longitude_deg", -180.0, 180.0)
   result = _valid(
@@ -462,7 +481,12 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
 
 
 def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
-  """Return the UT1 civil moment of a Jieqi in a Gregorian year."""
+  """Return the UT1 civil moment of a Jieqi in a Gregorian year.
+
+  Raises:
+    ValueError: If year is outside [401, 32766].
+    CelestialError: If the native calculation cannot produce the moment.
+  """
   checked_year = _integer(year, "year", _MIN_JIEQI_YEAR, _MAX_CALENDAR_YEAR)
   checked_jieqi = _enum(jieqi, Jieqi, "jieqi")
   result = _valid(_binding.call("query_jieqi_moment", checked_year, checked_jieqi.value), "jieqi_moment")
@@ -489,7 +513,12 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
 
 
 def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
-  """Return the first day and month lengths of a Lunar year."""
+  """Return the first day and month lengths of a Lunar year.
+
+  Raises:
+    ValueError: If year is outside the selected algorithm's supported range.
+    CelestialError: If the native calculation cannot produce the year information.
+  """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
   start, end = _LUNAR_YEAR_RANGE[checked]
   checked_year = _integer(year, "year", start, end)
@@ -501,7 +530,11 @@ def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
 
 
 def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate) -> LunarDate:
-  """Convert a Gregorian date to a Chinese Lunar date."""
+  """Convert a Gregorian date to a Chinese Lunar date.
+
+  Raises:
+    CelestialError: If date cannot be represented by the selected algorithm.
+  """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
   value = _civil_date(date, "date")
   result = _valid(_binding.call("gregorian_to_lunar", _LUNAR_ALGORITHM[checked], *value), "gregorian_to_lunar")
@@ -509,7 +542,12 @@ def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate) -> LunarD
 
 
 def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianDate:
-  """Convert a Chinese Lunar date to a Gregorian date."""
+  """Convert a Chinese Lunar date to a Gregorian date.
+
+  Raises:
+    ValueError: If date.year is outside the selected algorithm's supported range.
+    CelestialError: If date does not exist in the selected algorithm.
+  """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
   year, month, is_leap, day = _lunar_date(date, checked, "date")
   result = _valid(
@@ -520,7 +558,15 @@ def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianD
 
 
 def delta_t(year: float, model: DeltaTModel = DeltaTModel.DEFAULT) -> float:
-  """Return ΔT in seconds for a decimal Gregorian year."""
+  """Return ΔT in seconds for a decimal Gregorian year.
+
+  ALGO1 requires year >= -4000, ALGO3 requires year < 3000, and ALGO4 requires year < 2035. The other models have no
+  model-specific year bound.
+
+  Raises:
+    ValueError: If year is outside the selected model's bounds above.
+    CelestialError: If the native calculation fails.
+  """
   decimal_year = _finite(year, "year")
   checked_model = _enum(model, DeltaTModel, "model")
   if checked_model is DeltaTModel.ALGO1 and decimal_year < -4000.0:

@@ -29,9 +29,14 @@ WebAssembly module.
 
 ## Install
 
+The package is not yet published to the npm registry. Download and extract `celestial-wasm.zip` from the matching
+[GitHub release](https://github.com/0xf3cd/celestial-calendar/releases), then install the exact npm tarball used by CI:
+
 ```sh
-npm install @0xf3cd/celestial
+npm install ./0xf3cd-celestial-<version>.tgz
 ```
+
+`npm install @0xf3cd/celestial` will work once the registry package exists.
 
 Node 22 or newer is supported. The browser package is tested on Chrome. Importing the package performs no I/O;
 call `init()` once before using the synchronous calculation APIs.
@@ -61,6 +66,18 @@ Time scales and units stay explicit:
 - Angular results use degrees; Sun distance uses AU and Moon distance uses kilometres.
 - `time.deltaT()` returns seconds.
 - The equation of time is degrees of hour angle; multiply by 240 for seconds of time.
+
+`jieqi.moment(year, index)` accepts Gregorian years in `[401, 32766]` and Jieqi indices in `[0, 23]`.
+
+`time.deltaT(year, model)` accepts a finite decimal Gregorian year. Three models have additional bounds:
+
+| Model | Year domain |
+|---|---|
+| `"algo1"` | `year >= -4000` |
+| `"algo3"` | `year < 3000` |
+| `"algo4"` | `year < 2035` |
+
+`"default"`, `"algo2"`, and `"algo5"` have no model-specific year bound.
 
 JavaScript `Date` is intentionally not accepted because it represents UTC milliseconds, not UT1 or TT.
 

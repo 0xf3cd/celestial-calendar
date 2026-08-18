@@ -6,7 +6,7 @@ Five ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
 * **Python users** — install a platform wheel and `import celestial_calendar`; §1.3 shows the package entry point.
-* **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.4 shows the package entry point.
+* **JavaScript / TypeScript users** — install the exact npm tarball from a GitHub release; §1.4 shows the package entry point.
 * **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
@@ -96,11 +96,15 @@ the underlying ctypes protocol. See `bindings/python/README.md` for the package 
 
 ### 1.4. From JavaScript or TypeScript
 
-Install the ESM package, initialize its package-owned WebAssembly module once, then use the synchronous APIs:
+The package is not yet published to the npm registry. Download and extract `celestial-wasm.zip` from the matching
+GitHub release, then install its exact npm tarball:
 
 ```sh
-npm install @0xf3cd/celestial
+npm install ./0xf3cd-celestial-<version>.tgz
 ```
+
+`npm install @0xf3cd/celestial` will work once the registry package exists.
+Initialize the package-owned WebAssembly module once, then use the synchronous APIs:
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
