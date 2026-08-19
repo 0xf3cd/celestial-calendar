@@ -20,13 +20,18 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
+import yaml
 
 import toolbox.release_downloader as release_downloader_module
 
 from automation.github import GitHub
 from toolbox.release_downloader import archive_validation_version
+
+
+RELEASE_WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "release.yml"
 
 
 def release(tag_name):
@@ -106,3 +111,20 @@ def test_historical_release_download_keeps_legacy_behavior(monkeypatch, tmp_path
   _downloaded, calls = run_download(monkeypatch, tmp_path, "v0.5.0")
 
   assert calls == []
+
+
+def test_release_workflow_installs_dependencies_before_validating_versions():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["create_release"]["steps"]
+  names = [step.get("name") for step in steps]
+
+  setup = next(step for step in steps if step.get("name") == "Set up Python")
+  assert setup["uses"] == "actions/setup-python@v6"
+  assert setup["with"]["python-version"] == "3.12"
+  assert names.index("Install Python Dependencies") < names.index("Sanity Check on Version")
+  install = next(step for step in steps if step.get("name") == "Install Python Dependencies")
+  assert install["run"] == "python3 -m pip install -r Requirements.txt"
+
+  sanity = next(step for step in steps if step.get("name") == "Sanity Check on Version")
+  assert "validate_release_document_versions" in sanity["run"]
+  assert '"$TAG_NAME"' in sanity["run"]

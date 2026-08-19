@@ -1,0 +1,104 @@
+# CelestialCalendar:
+#   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
+#   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+#
+# Copyright (C) 2026 Ningqi Wang (0xf3cd)
+# Email: nq.maigre@gmail.com
+# Repo : https://github.com/0xf3cd/celestial-calendar
+#
+# This project is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This project is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this project. If not, see <https://www.gnu.org/licenses/>.
+
+import re
+
+from pathlib import Path
+from typing import Final, Iterable
+
+from . import paths
+from .utils import green_print, red_print, yellow_print
+
+
+SHA: Final[re.Pattern] = re.compile(r"^[0-9a-f]{40}$")
+MAJOR_TAG: Final[re.Pattern] = re.compile(r"^v[1-9][0-9]*$")
+
+
+def _uses_nodes(node, yaml) -> Iterable:
+  if isinstance(node, yaml.MappingNode):
+    for key, value in node.value:
+      if isinstance(key, yaml.ScalarNode) and key.value == "uses":
+        yield value
+      yield from _uses_nodes(value, yaml)
+  elif isinstance(node, yaml.SequenceNode):
+    for value in node.value:
+      yield from _uses_nodes(value, yaml)
+
+
+def check_action_pins(workflow_dir: Path | None = None) -> int:
+  """Require immutable refs for third-party actions in every workflow."""
+  try:
+    import yaml
+  except ModuleNotFoundError:
+    red_print("This check needs PyYAML: run `pip install -r Requirements.txt` first")
+    return 1
+
+  print("#" * 60)
+  yellow_print("Checking GitHub Action pins across all workflows...")
+  workflow_dir = workflow_dir or paths.proj_root() / ".github" / "workflows"
+  workflow_paths = sorted((*workflow_dir.rglob("*.yml"), *workflow_dir.rglob("*.yaml")))
+  failures = []
+  if not workflow_paths:
+    failures.append(f"{workflow_dir}: no workflow files found")
+
+  for path in workflow_paths:
+    display_path = path.relative_to(workflow_dir)
+    text = path.read_text(encoding="utf-8")
+    try:
+      workflow = yaml.compose(text)
+    except yaml.YAMLError as error:
+      failures.append(f"{display_path}: invalid YAML ({error.__class__.__name__})")
+      continue
+    if workflow is None:
+      failures.append(f"{display_path}: empty workflow")
+      continue
+
+    lines = text.splitlines()
+    for node in _uses_nodes(workflow, yaml):
+      line_number = node.start_mark.line + 1
+      reference = node.value if isinstance(node, yaml.ScalarNode) else ""
+      if reference.startswith("./"):
+        continue
+      target, separator, ref = reference.rpartition("@")
+      label = f"{display_path}:{line_number}: `{reference}`"
+      if not separator or not target or not ref:
+        failures.append(f"{label} is not an action pinned to a ref")
+        continue
+      if SHA.fullmatch(ref):
+        if target.startswith("actions/"):
+          continue
+        source_line = lines[node.start_mark.line]
+        if "#" not in source_line[node.end_mark.column:]:
+          failures.append(f"{label} needs an inline release/tag provenance comment")
+        continue
+      if target.startswith("actions/") and MAJOR_TAG.fullmatch(ref):
+        continue
+      policy = "a major tag or commit SHA" if target.startswith("actions/") else "a 40-character commit SHA"
+      failures.append(f"{label} must use {policy}")
+
+  print("#" * 60)
+  if failures:
+    red_print(f"Action-pin gate failed ({len(failures)} finding(s)):")
+    for failure in failures:
+      red_print(f"  - {failure}")
+    return 1
+  green_print(f"GitHub Action pins satisfy policy ({len(workflow_paths)} files)")
+  return 0

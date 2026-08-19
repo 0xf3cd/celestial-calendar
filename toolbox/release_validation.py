@@ -43,6 +43,10 @@ NATIVE_ARCHIVES: Final[dict[str, str]] = {
 }
 RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
+RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
+  Path(__file__).resolve().parents[1] / "docs" / "RELEASE_NOTES.md",
+  Path(__file__).resolve().parents[1] / "docs" / "CHANGELOG.md",
+)
 RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
 
 
@@ -102,6 +106,47 @@ def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]
       f"extra={sorted(set(matrix) - expected)}"
     )
   return matrix
+
+
+def validate_release_document_versions(tag_name: str, documents: Iterable[Path] = RELEASE_DOCUMENTS) -> None:
+  """Require each release document's first version heading to match the tag."""
+  expected = tag_name.removeprefix("v")
+  for document in documents:
+    headings = re.findall(r"^## \[v([^]]+)\](?: - .+)?$", document.read_text(encoding="utf-8"), re.MULTILINE)
+    if not headings:
+      raise RuntimeError(f"Cannot find a version heading in {document}")
+    if headings[0] != expected:
+      raise RuntimeError(
+        f"Release version mismatch in {document}: expected {expected}, found {headings[0]}"
+      )
+
+
+def validate_wheel_sidecars(downloaded: Iterable[Path]) -> None:
+  """Validate every downloaded wheel against its adjacent SHA-256 sidecar."""
+  payloads: dict[str, Path] = {}
+  for path in downloaded:
+    if not (path.name.endswith(".whl") or path.name.endswith(".whl.sha256")):
+      continue
+    if path.name in payloads:
+      raise RuntimeError(f"Duplicate downloaded Python release asset: {path.name}")
+    if not path.is_file():
+      raise RuntimeError(f"Downloaded Python release asset is not a file: {path}")
+    payloads[path.name] = path
+
+  wheels = {name for name in payloads if name.endswith(".whl")}
+  sidecars = {name for name in payloads if name.endswith(".whl.sha256")}
+  expected_sidecars = {f"{name}.sha256" for name in wheels}
+  if sidecars != expected_sidecars:
+    raise RuntimeError(
+      f"Wheel sidecar inventory mismatch: missing={sorted(expected_sidecars - sidecars)}, "
+      f"extra={sorted(sidecars - expected_sidecars)}"
+    )
+
+  for wheel_name in wheels:
+    digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
+    expected = f"{digest}  {wheel_name}\n".encode()
+    if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
+      raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel_name}")
 
 
 def validate_wasm_archive(archive_path: Path, version: str) -> None:
@@ -214,7 +259,9 @@ def validate_release_archives(
   version: str,
   check_documented_runtime: bool = True,
 ) -> None:
-  """Require and validate the five v0.6+ product archives among downloaded assets."""
+  """Validate the v0.6+ product archives and any downloaded wheel sidecars."""
+  downloaded = list(downloaded)
+  validate_wheel_sidecars(downloaded)
   archives: dict[str, Path] = {}
   for path in downloaded:
     if path.name not in RELEASE_ARCHIVES:

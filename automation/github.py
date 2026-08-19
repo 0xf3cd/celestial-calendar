@@ -29,6 +29,27 @@ REPO  = "celestial-calendar"
 TIMEOUT = (10, 60)
 
 
+def _download_file(download_url: str, destination: Path) -> None:
+  """Download one URL without exposing a partial file as the destination."""
+  destination.parent.mkdir(parents=True, exist_ok=True)
+  partial = destination.with_name(f"{destination.name}.part")
+  if destination.exists():
+    raise FileExistsError(f"Refusing to overwrite download: {destination}")
+  if partial.exists():
+    raise FileExistsError(f"Refusing to overwrite partial download: {partial}")
+
+  try:
+    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
+      response.raise_for_status()
+      with partial.open("wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+          f.write(chunk)
+    partial.replace(destination)
+  except Exception:
+    partial.unlink(missing_ok=True)
+    raise
+
+
 def gen_headers() -> Dict[str, str]:
   """
   Generate headers for GitHub API requests.
@@ -191,25 +212,8 @@ class GitHub:
     Returns:
       Path: The path to the downloaded artifact.
     """
-    download_dir.mkdir(parents=True, exist_ok=True)
     artifact = download_dir / f"{name}.zip"
-    partial = artifact.with_suffix(".zip.part")
-    if artifact.exists():
-      raise FileExistsError(f"Refusing to overwrite artifact: {artifact}")
-    if partial.exists():
-      raise FileExistsError(f"Refusing to overwrite partial artifact: {partial}")
-
-    try:
-      with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
-        response.raise_for_status()
-
-        with partial.open("wb") as f:
-          for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-      partial.replace(artifact)
-    except Exception:
-      partial.unlink(missing_ok=True)
-      raise
+    _download_file(download_url, artifact)
 
     green_print(f"# Downloaded {name}")
     return artifact
@@ -390,18 +394,10 @@ class GitHub:
     Returns:
       Path: The path to the downloaded asset.
     """
-    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
-      response.raise_for_status()
-
-      download_dir.mkdir(parents=True, exist_ok=True)
-      asset = download_dir / name
-
-      with open(asset, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-          f.write(chunk)
-
-      green_print(f"# Downloaded {name}")
-      return asset
+    asset = download_dir / name
+    _download_file(download_url, asset)
+    green_print(f"# Downloaded {name}")
+    return asset
 
   @staticmethod
   async def async_download_release(release_id: int, download_dir: Path, parallel: int) -> List[Path]:
@@ -441,6 +437,7 @@ class GitHub:
     queue.put_nowait(("src.tar.gz", f"{archive_url}.tar.gz"))
 
     paths: List[Path] = []
+    failures: List[str] = []
 
     async def coro():
       while not queue.empty():
@@ -450,6 +447,7 @@ class GitHub:
           paths.append(path)
         except Exception as e:
           red_print(f"# Failed to download {name}: {e}")
+          failures.append(f"{name}: {e}")
         finally:
           queue.task_done() # Signal that the current task is done.
 
@@ -460,6 +458,9 @@ class GitHub:
     await queue.join() 
     # Ensure all tasks are awaited.
     await asyncio.gather(*tasks)
+
+    if failures:
+      raise RuntimeError(f"{len(failures)} release asset(s) failed to download: {failures}")
 
     return paths
 

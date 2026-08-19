@@ -28,6 +28,7 @@ from .ctypes_smoke import check_ctypes_smoke
 from .export_surface import check_export_surface
 from .log_names import check_log_names
 from .ai_workflows import check_ai_workflows
+from .action_pins import check_action_pins
 from .jieqi_table import check_jieqi_table
 from .seed_reconcile import check_seed_reconcile
 from .bench import build_benchmarks, run_benchmarks
@@ -41,6 +42,6 @@ __all__ = [
   "run_cmd", "ProcReturn", "time_execution",
   "run_ruff", "run_clang_tidy", "run_pytest", "check_self_contained", "probe_features",
   "check_abi_layout", "check_ctypes_smoke", "check_export_surface", "check_log_names",
-  "check_ai_workflows", "check_jieqi_table", "check_seed_reconcile",
+  "check_ai_workflows", "check_action_pins", "check_jieqi_table", "check_seed_reconcile",
   "build_benchmarks", "run_benchmarks"
 ]

@@ -20,7 +20,7 @@ import argparse
 from automation import (
   run_ruff, run_clang_tidy, run_pytest, check_self_contained, probe_features, check_abi_layout,
   check_ctypes_smoke, check_export_surface, check_log_names, check_ai_workflows,
-  check_jieqi_table, check_seed_reconcile,
+  check_action_pins, check_jieqi_table, check_seed_reconcile,
 )
 
 
@@ -51,6 +51,8 @@ def parse_args() -> argparse.Namespace:
       "    ./linter.py --seed-reconcile\n\n"
       "  To hold the AI workflows to the settings of theirs that fail silently:\n"
       "    ./linter.py --ai-workflows\n\n"
+      "  To require immutable refs for third-party GitHub Actions:\n"
+      "    ./linter.py --action-pins\n\n"
       "  To hold the exported jieqi table to its invariants and the HKO anchors\n"
       "  (needs ./project.py --build first):\n"
       "    ./linter.py --jieqi-table\n\n"
@@ -59,7 +61,7 @@ def parse_args() -> argparse.Namespace:
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./linter.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
-      "  export surface, log names, pytest, seed reconcile, AI workflows, jieqi table, feature report):\n"
+      "  export surface, log names, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
       "    ./linter.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
@@ -84,6 +86,8 @@ def parse_args() -> argparse.Namespace:
                       help="Hold the four CELESTIAL_TEST_SEED copies to each other")
   parser.add_argument("--ai-workflows", action="store_true",
                       help="Hold the AI workflows to the settings of theirs that fail silently")
+  parser.add_argument("--action-pins", action="store_true",
+                      help="Require immutable refs for third-party GitHub Actions")
   parser.add_argument("--jieqi-table", action="store_true",
                       help="Hold the exported jieqi table to its invariants (needs a build)")
   parser.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
@@ -117,6 +121,11 @@ if __name__ == "__main__":
 
   if args.ai_workflows or args.all:
     ret_code = check_ai_workflows()
+    if ret_code != 0:
+      sys.exit(ret_code)
+
+  if args.action_pins or args.all:
+    ret_code = check_action_pins()
     if ret_code != 0:
       sys.exit(ret_code)
 

@@ -28,7 +28,12 @@ import pytest
 from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
-from toolbox.release_validation import _native_layout, _runtime_matrix, validate_release_archives
+from toolbox.release_validation import (
+  _native_layout,
+  _runtime_matrix,
+  validate_release_archives,
+  validate_release_document_versions,
+)
 
 
 VERSION = project_version()
@@ -140,6 +145,14 @@ def write_release_archives(directory):
   return paths
 
 
+def write_wheel(directory, content=b"wheel"):
+  wheel = directory / f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
+  wheel.write_bytes(content)
+  sidecar = directory / f"{wheel.name}.sha256"
+  sidecar.write_text(f"{hashlib.sha256(content).hexdigest()}  {wheel.name}\n", encoding="utf-8")
+  return wheel, sidecar
+
+
 def test_release_archives_validate_without_modification(tmp_path):
   archives = write_release_archives(tmp_path)
   before = {path.name: path.read_bytes() for path in archives}
@@ -147,6 +160,58 @@ def test_release_archives_validate_without_modification(tmp_path):
   validate_release_archives([*archives, tmp_path / "CHANGELOG.md"], VERSION)
 
   assert {path.name: path.read_bytes() for path in archives} == before
+
+
+def test_downloaded_wheel_sidecar_validates_without_modification(tmp_path):
+  archives = write_release_archives(tmp_path)
+  wheel, sidecar = write_wheel(tmp_path)
+  before = {path.name: path.read_bytes() for path in (wheel, sidecar)}
+
+  validate_release_archives([*archives, wheel, sidecar], VERSION)
+
+  assert {path.name: path.read_bytes() for path in (wheel, sidecar)} == before
+
+
+@pytest.mark.parametrize("mutation", ["missing", "mismatch", "orphan"])
+def test_downloaded_wheel_sidecar_mutations_fail(tmp_path, mutation):
+  archives = write_release_archives(tmp_path)
+  wheel, sidecar = write_wheel(tmp_path)
+  if mutation == "missing":
+    sidecar.unlink()
+    downloaded = [*archives, wheel]
+  elif mutation == "mismatch":
+    sidecar.write_text(f"{'0' * 64}  {wheel.name}\n", encoding="utf-8")
+    downloaded = [*archives, wheel, sidecar]
+  else:
+    wheel.unlink()
+    downloaded = [*archives, sidecar]
+
+  with pytest.raises(RuntimeError, match="sidecar"):
+    validate_release_archives(downloaded, VERSION)
+
+
+def test_release_document_versions_match_tag(tmp_path):
+  release_notes = tmp_path / "RELEASE_NOTES.md"
+  changelog = tmp_path / "CHANGELOG.md"
+  release_notes.write_text("Release notes\n\n## [v0.6.0] - 2026-08-17\n", encoding="utf-8")
+  changelog.write_text("# Changelog\n\n## [v0.6.0] - 2026-08-17\n", encoding="utf-8")
+
+  validate_release_document_versions("v0.6.0", (release_notes, changelog))
+
+
+@pytest.mark.parametrize(
+  ("contents", "message"),
+  [
+    ("# Release notes\n", "Cannot find a version heading"),
+    ("## [v0.5.0] - 2026-08-15\n", "expected 0.6.0, found 0.5.0"),
+  ],
+)
+def test_release_document_versions_reject_missing_or_stale_heading(tmp_path, contents, message):
+  document = tmp_path / "RELEASE_NOTES.md"
+  document.write_text(contents, encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match=message):
+    validate_release_document_versions("v0.6.0", (document,))
 
 
 def test_wasm_tarball_name_comes_from_pack_metadata(tmp_path):
