@@ -217,15 +217,28 @@ def run_native_failures() -> None:
 
 
 def run_acceptance_boundaries() -> None:
+  # Keep boundary categories aligned with
+  # bindings/javascript/test/node/public_api_test.mjs::acceptedBoundaries; each package runner remains independent.
+  boundaries = []
   assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(1, 1, 1, 0.0)))
+  boundaries.append("civil year lower")
   assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(32767, 1, 1, 0.0)))
+  boundaries.append("civil year upper")
   assert len(celestial.moon_phase_moments(32766, celestial.MoonPhase.NEW)) >= 12
+  boundaries.append("phase year upper")
+  assert len(celestial.new_moons_in_year(32766)) >= 12
+  boundaries.append("new moons year upper")
   assert celestial.jieqi_moment(401, celestial.Jieqi.LICHUN).moment_ut1.year == 401
+  boundaries.append("Jieqi year lower")
   assert celestial.jieqi_moment(32766, celestial.Jieqi.LICHUN).moment_ut1.year == 32766
+  boundaries.append("Jieqi year upper")
   assert celestial.ut1_to_jd(celestial.CivilDateTime(2000, 1, 1, 0.0)) == 2451544.5
+  boundaries.append("civil fraction lower")
   for longitude in (-180.0, 180.0):
     assert math.isfinite(celestial.local_apparent_sidereal_time(2451545.0, longitude)), longitude
+    boundaries.append(f"longitude {longitude}")
   assert math.isfinite(celestial.delta_t(-4000, celestial.DeltaTModel.ALGO1))
+  boundaries.append("delta T algo1 lower")
 
   lunar_ranges = {
     celestial.LunarAlgorithm.ALGO1: celestial.LunarYearRange(1901, 2099),
@@ -236,7 +249,9 @@ def run_acceptance_boundaries() -> None:
     assert celestial.supported_lunar_year_range(algorithm) == expected
     for year in (expected.start, expected.end):
       assert celestial.lunar_year_info(algorithm, year).first_day.year == year, (algorithm, year)
-  print("PASS inclusive public boundaries 15/15")
+      boundaries.append(f"{algorithm.value} year {year}")
+  assert len(boundaries) == len(set(boundaries)) == 16
+  print("PASS inclusive public boundaries 16/16")
 
 
 def run_protocol_seams() -> None:

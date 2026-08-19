@@ -27,12 +27,15 @@ import type { DeltaTModel, LunarAlgorithm, MoonPhase } from "@0xf3cd/celestial";
 const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
 const lunarAlgorithm: LunarAlgorithm = "algo3";
+const constructedError = new celestial.CelestialError("consumer", "consumer failure", false);
+constructedError.operation;
+constructedError.recorded;
 
 await celestial.init();
 celestial.config.setLogVerbosity("none");
 celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 celestial.time.ut1ToJde({ year: 2000, month: 1, day: 1, fraction: 0.5 });
-celestial.time.jdeToUt1(2451545.0);
+const ut1 = celestial.time.jdeToUt1(2451545.0);
 celestial.time.localApparentSiderealTime(2451545.0, 0);
 celestial.time.deltaT(2024.5, deltaTModel);
 celestial.sun.apparentGeocentricCoordinates(2451545.0);
@@ -45,12 +48,22 @@ celestial.moon.brightLimbPositionAngle(2451545.0);
 celestial.moon.phaseMoments(2024, phase);
 celestial.moon.newMoonsAfter(2451545.0, 2);
 celestial.moon.newMoonsInYear(2024);
-celestial.jieqi.moment(2024, 0);
+const lichun = celestial.jieqi.moment(2024, 0);
 celestial.jieqi.name(0);
 celestial.lunar.supportedYearRange(lunarAlgorithm);
 celestial.lunar.yearInfo(lunarAlgorithm, 2024);
-celestial.lunar.fromGregorian(lunarAlgorithm, { year: 2024, month: 2, day: 10 });
-celestial.lunar.toGregorian(lunarAlgorithm, { year: 2024, month: 1, day: 1, isLeap: false });
+const lunarDate = celestial.lunar.fromGregorian(lunarAlgorithm, { year: 2024, month: 2, day: 10 });
+const gregorianDate = celestial.lunar.toGregorian(
+  lunarAlgorithm,
+  { year: 2024, month: 1, day: 1, isLeap: false },
+);
+
+celestial.time.ut1ToJd(lichun);
+celestial.time.ut1ToJde(lichun);
+celestial.sun.apparentSolarTime(lichun, 116.4);
+celestial.lunar.fromGregorian(lunarAlgorithm, ut1);
+celestial.lunar.fromGregorian(lunarAlgorithm, lunarDate);
+celestial.lunar.fromGregorian(lunarAlgorithm, gregorianDate);
 
 // @ts-expect-error no numeric phase entry
 celestial.moon.phaseMoments(2024, 0);
