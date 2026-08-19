@@ -158,11 +158,13 @@ try {
   const discriminant = validSret("solar_lon_root_discriminant", [2024, 0.0]);
   assert.equal(discriminant.count, 1);
   assert.equal(M._solar_lon_roots(2024, 0.0, 0, 0), 0);
+  assert.equal(lastError(), "");
   assert.equal(M._solar_lon_roots(2024, 0.0, oneSlot, 1), 1);
   finite(M.HEAPF64[oneSlot >> 3]);
   const noRoot = validSret("solar_lon_root_discriminant", [1, 281.3]);
   assert.equal(noRoot.count, 0, "valid discriminant can report no root");
   assert.equal(M._solar_lon_roots(1, 281.3, 0, 0), 0);
+  assert.equal(lastError(), "");
   const twoRoots = validSret("solar_lon_root_discriminant", [2024, 280.1]);
   assert.equal(twoRoots.count, 2);
   const twoSlots = M._malloc(twoRoots.count * 8);
@@ -176,6 +178,7 @@ try {
   happyExports.add("solar_lon_roots");
 
   assert.equal(M._new_moons_after_jde(2460463.0, 0, 0), 0);
+  assert.equal(lastError(), "");
   const requestedSlots = M._malloc(3 * 8);
   try {
     assert.equal(M._new_moons_after_jde(2460463.0, requestedSlots, 3), 3);

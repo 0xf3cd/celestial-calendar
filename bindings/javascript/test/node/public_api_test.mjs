@@ -298,16 +298,16 @@ assert.equal(recordingError.operation, "time.localApparentSiderealTime");
 assert.equal(recordingError.recorded, true);
 ++edges;
 
-let widenedRecordingError;
+let lunarError;
 try {
   celestial.lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 });
 } catch (error) {
-  widenedRecordingError = error;
+  lunarError = error;
 }
-assert(widenedRecordingError instanceof celestial.CelestialError);
-assert.equal(widenedRecordingError.operation, "lunar.fromGregorian");
-assert.equal(widenedRecordingError.recorded, true);
-assert.match(widenedRecordingError.message, /cannot be represented/);
+assert(lunarError instanceof celestial.CelestialError);
+assert.equal(lunarError.operation, "lunar.fromGregorian");
+assert.equal(lunarError.recorded, true);
+assert.match(lunarError.message, /cannot be represented/);
 ++edges;
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");

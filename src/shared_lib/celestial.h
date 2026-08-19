@@ -55,14 +55,13 @@
  * number of threads, with no host-side synchronization. `set_log_verbosity` turns
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
- * `last_error` is per-thread: it reports the calling thread's most recent call to a
- * exported function except `last_error`, and no thread ever
- * observes another's message. Two computations memoize
- * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
- * shared process-wide and never erased: the first call with a given argument pays for
- * it, later calls from any thread reuse the result, and memory grows monotonically
- * with the number of distinct arguments ever queried. Two threads that miss on the
- * same argument at once both compute it, and one of the two results is discarded.
+ * `last_error` is per-thread: it reports the calling thread's most recent call to an
+ * exported function except `last_error`, and no thread ever observes another's message.
+ * Two computations memoize per argument — the jieqi moments and the algo-2 lunar year
+ * info. Both caches are shared process-wide and never erased: the first call with a given
+ * argument pays for it, later calls from any thread reuse the result, and memory grows
+ * monotonically with the number of distinct arguments ever queried. Two threads that
+ * miss on the same argument at once both compute it, and one of the results is discarded.
  * Separately, the first `gregorian_to_lunar` or `lunar_to_gregorian` with `algo = 2`
  * runs the astronomical pipeline once to establish that algorithm's supported range;
  * unlike the caches above, that one blocks every thread that arrives while it is in
@@ -238,7 +237,6 @@ CELESTIAL_API MoonPositionAngle moon_position_angle(double jde);
  *              `slot_count` is 0.
  * @param slot_count The count of slots.
  * @returns How many slots are written.
- * @note This is a recording function: on failure the reason is readable through `last_error()`.
  */
 CELESTIAL_API uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count);
 

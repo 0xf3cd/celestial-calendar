@@ -202,7 +202,7 @@ def run_validation_guards() -> None:
 
 
 def run_native_failures() -> None:
-  """Prove native reasons cross the real library through two public wrappers."""
+  """Prove native reasons cross the real library through public wrappers."""
   sidereal = raises(celestial.CelestialError, lambda: celestial.local_apparent_sidereal_time(1e6, 0.0))
   assert sidereal.operation == "local_apparent_sidereal_time" and sidereal.recorded
   assert "julian day number" in str(sidereal) and "below JD 1867522.5" in str(sidereal)
@@ -255,7 +255,7 @@ def run_acceptance_boundaries() -> None:
 
 
 def run_protocol_seams() -> None:
-  """Pin the count cap and widened last-error reads."""
+  """Pin the count cap and last-error reads."""
   accepted = Trap(4096)
   with replaced_binding("new_moons_after_jde", accepted):
     assert len(celestial.new_moons_after(2451545.0, 4096)) == 4096
@@ -279,12 +279,12 @@ def run_protocol_seams() -> None:
   assert str(error) == "fill failed"
 
   error_reader = Trap(b"new moon fill failed")
-  widened_fill_failure = CountFillFailure(13)
+  new_moon_fill_failure = CountFillFailure(13)
   with replaced_binding("last_error", error_reader), replaced_binding(
-    "new_moons_in_year", widened_fill_failure
+    "new_moons_in_year", new_moon_fill_failure
   ):
     error = raises(celestial.CelestialError, lambda: celestial.new_moons_in_year(2024))
-  assert error.recorded and widened_fill_failure.calls == 2 and error_reader.calls == 1
+  assert error.recorded and new_moon_fill_failure.calls == 2 and error_reader.calls == 1
   assert str(error) == "new moon fill failed"
 
   error_reader = Trap(b"recorded detail")
@@ -297,19 +297,19 @@ def run_protocol_seams() -> None:
   assert recording_failure.calls == error_reader.calls == 1
 
   error_reader = Trap(b"sun coordinate failed")
-  widened_failure = Trap(SimpleNamespace(valid=False))
+  sun_failure = Trap(SimpleNamespace(valid=False))
   with replaced_binding("last_error", error_reader), replaced_binding(
-    "sun_apparent_geocentric_coord", widened_failure
+    "sun_apparent_geocentric_coord", sun_failure
   ):
     error = raises(celestial.CelestialError, lambda: celestial.sun_apparent_geocentric_coordinate(2451545.0))
   assert error.operation == "sun_apparent_geocentric_coordinate" and error.recorded
-  assert widened_failure.calls == error_reader.calls == 1
+  assert sun_failure.calls == error_reader.calls == 1
 
   assert celestial.solar_longitude_roots(1, 281.3) == ()
   assert celestial.new_moons_after(2451545.0, 0) == ()
   assert celestial.lunar_year_info(celestial.LunarAlgorithm.ALGO3, 2024).leap_month is None
   assert celestial.jieqi_name(celestial.Jieqi.LICHUN) == "立春"
-  print("PASS count boundary 4096/4097; widened last_error reads 4/4")
+  print("PASS count boundary 4096/4097; last_error reads 4/4")
 
 
 def run_value_contract() -> None:

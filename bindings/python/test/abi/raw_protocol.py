@@ -242,11 +242,13 @@ def edge_solar_lon_root_discriminant() -> None:
 
 def edge_solar_lon_roots() -> None:
   assert call("solar_lon_roots", 2024, 0.0, None, 0) == 0
+  assert _binding.last_error_text() == ""
   assert call("solar_lon_roots", 2024, 0.0, None, 2) == 0
 
 
 def edge_new_moons_after_jde() -> None:
   assert call("new_moons_after_jde", 2460463.0, None, 0) == 0
+  assert _binding.last_error_text() == ""
   assert call("new_moons_after_jde", 2460463.0, None, 3) == 0
 
 
