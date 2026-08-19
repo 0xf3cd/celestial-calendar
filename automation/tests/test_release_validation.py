@@ -27,7 +27,7 @@ import pytest
 
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
-from toolbox.release_validation import _native_layout, validate_release_archives
+from toolbox.release_validation import _native_layout, _runtime_matrix, validate_release_archives
 
 
 VERSION = project_version()
@@ -66,6 +66,21 @@ NATIVE_MEMBERS = {
     "bin/celestial_calendar.dll",
     "lib/celestial_calendar.lib",
   ],
+}
+RUNTIME_FLOORS = {
+  "linux_amd64.zip": {
+    "supported": {"glibc": "2.28"},
+    "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
+  },
+  "linux_arm64.zip": {
+    "supported": {"glibc": "2.28"},
+    "measured": {"glibc": "2.17", "glibcxx": "3.4.21"},
+  },
+  "macos_arm64.zip": {"supported": {"macos": "14.0"}, "measured": {"macos": "14.0"}},
+  "windows_x86_64.zip": {
+    "supported": {"msvc_runtime": "static"},
+    "measured": {"msvc_runtime": "static"},
+  },
 }
 
 
@@ -107,7 +122,11 @@ def native_members(filename, build_version=VERSION):
     members.append((name, content))
     if name.endswith((".so", f".so.{SOVERSION}", f".so.{VERSION}", ".dylib", ".dll")):
       hashes[name.rsplit("/", maxsplit=1)[-1]] = hashlib.sha256(content).hexdigest()
-  build_info = {"build_version": build_version, "sha256": hashes}
+  build_info = {
+    "build_version": build_version,
+    "runtime_floor": RUNTIME_FLOORS[filename],
+    "sha256": hashes,
+  }
   return [
     (name, json.dumps(build_info).encode() if name == "build_info.json" else content)
     for name, content in members
@@ -219,6 +238,30 @@ def test_native_archive_rejects_wrong_build_version(tmp_path):
   write_zip(tmp_path / "linux_amd64.zip", native_members("linux_amd64.zip", build_version="9.9.9"))
 
   with pytest.raises(RuntimeError, match="Build version mismatch"):
+    validate_release_archives(archives, VERSION)
+
+
+def test_readme_runtime_matrix_matches_reference_values():
+  assert _runtime_matrix() == {
+    filename.removesuffix(".zip"): floor for filename, floor in RUNTIME_FLOORS.items()
+  }
+
+
+@pytest.mark.parametrize("field", ["supported", "measured"])
+def test_native_archive_rejects_runtime_floor_drift(tmp_path, field):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"][field] = {"glibc": "99.0"}
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match="Runtime floor mismatch"):
     validate_release_archives(archives, VERSION)
 
 

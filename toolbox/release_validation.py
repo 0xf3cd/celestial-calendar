@@ -41,6 +41,8 @@ NATIVE_ARCHIVES: Final[dict[str, str]] = {
   "windows_x86_64.zip": "windows_x86_64",
 }
 RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
+README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
+RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
 
 
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
@@ -60,6 +62,45 @@ def _read_json(archive: zipfile.ZipFile, member: str, archive_name: str):
     return json.loads(archive.read(member))
   except (json.JSONDecodeError, UnicodeDecodeError) as error:
     raise RuntimeError(f"Invalid {member} in {archive_name}: {error}") from error
+
+
+def _runtime_values(cell: str) -> dict[str, str]:
+  values = {}
+  for assignment in cell.strip().strip("`").split(","):
+    parts = assignment.strip().split("=", maxsplit=1)
+    if len(parts) != 2 or not all(parts):
+      raise RuntimeError(f"Invalid native runtime matrix cell: {cell!r}")
+    key, value = parts
+    values[key] = value
+  return values
+
+
+def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]]]:
+  """Read the native support and measured-requirement matrix from README."""
+  lines = readme.read_text(encoding="utf-8").splitlines()
+  try:
+    start = lines.index(RUNTIME_MATRIX_MARKER) + 3
+  except ValueError as error:
+    raise RuntimeError("README is missing the native runtime matrix") from error
+  matrix = {}
+  for line in lines[start:]:
+    if not line.startswith("|"):
+      break
+    cells = [cell.strip() for cell in line.strip("|").split("|")]
+    if len(cells) != 3:
+      raise RuntimeError(f"Invalid native runtime matrix row: {line}")
+    artifact = cells[0].strip("`")
+    matrix[artifact] = {
+      "supported": _runtime_values(cells[1]),
+      "measured": _runtime_values(cells[2]),
+    }
+  expected = set(NATIVE_ARCHIVES.values())
+  if set(matrix) != expected:
+    raise RuntimeError(
+      f"Native runtime matrix inventory mismatch: missing={sorted(expected - set(matrix))}, "
+      f"extra={sorted(set(matrix) - expected)}"
+    )
+  return matrix
 
 
 def validate_wasm_archive(archive_path: Path, version: str) -> None:
@@ -145,6 +186,9 @@ def validate_native_archive(archive_path: Path, artifact_name: str, version: str
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
+      expected_runtime = _runtime_matrix()[artifact_name]
+      if build_info.get("runtime_floor") != expected_runtime:
+        raise RuntimeError(f"Runtime floor mismatch in {archive_path.name}")
       hashes = build_info.get("sha256")
       if not isinstance(hashes, dict) or set(hashes) != set(runtime_members.values()):
         raise RuntimeError(f"Runtime hash inventory mismatch in {archive_path.name}")

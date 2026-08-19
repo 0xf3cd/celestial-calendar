@@ -140,6 +140,20 @@ The supported year range of lunar conversions depends on the algorithm: 1901–2
   * A distro-packaged Python (Debian, Ubuntu, ...) refuses that install under PEP 668. Work in a virtual environment there: `python3 -m venv .venv && .venv/bin/python project.py --all`. `--setup` installs nothing when the dependencies are already present, so an interpreter that already has them is fine as well.
   * `Requirements.txt` covers the build/test automation only. The linters come separately (see §8), and the notebooks and crawlers under `statistics/` need `python3 -m pip install -r Requirements-statistics.txt`
 
+### 3.1. Prebuilt Native Archives
+
+The GitHub Release archives support these runtimes. The measured column records the greatest versioned symbol or
+deployment requirement present in the packaged library; CI writes the same values to `build_info.json` and release
+validation rejects any drift from this matrix.
+
+<!-- native-runtime-matrix -->
+| Artifact | Supported runtime | Measured binary requirement |
+|---|---|---|
+| `linux_amd64` | `glibc=2.28` | `glibc=2.26, glibcxx=3.4.21` |
+| `linux_arm64` | `glibc=2.28` | `glibc=2.17, glibcxx=3.4.21` |
+| `macos_arm64` | `macos=14.0` | `macos=14.0` |
+| `windows_x86_64` | `msvc_runtime=static` | `msvc_runtime=static` |
+
 ## 4. How to Build
 
 ### 4.1. On Unix-like Systems (macOS / Ubuntu / Debian ...)
