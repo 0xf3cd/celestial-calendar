@@ -219,7 +219,8 @@ check("lunar.toGregorian", () => {
   console.log("PASS composed public records");
 }
 
-// Keep boundary categories aligned with Python's run_acceptance_boundaries; each package runner remains independent.
+// Keep boundary categories aligned with bindings/python/test/consumer/smoke.py::run_acceptance_boundaries;
+// each package runner remains independent.
 const acceptedBoundaries = [
   ["civil year lower", () => finite(celestial.time.ut1ToJd({ year: 1, month: 1, day: 1, fraction: 0 }))],
   ["civil year upper", () => finite(celestial.time.ut1ToJd({ year: 32767, month: 1, day: 1, fraction: 0 }))],

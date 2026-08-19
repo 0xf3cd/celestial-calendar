@@ -217,7 +217,8 @@ def run_native_failures() -> None:
 
 
 def run_acceptance_boundaries() -> None:
-  # Keep boundary categories aligned with the JavaScript matrix; each package runner remains independent.
+  # Keep boundary categories aligned with
+  # bindings/javascript/test/node/public_api_test.mjs::acceptedBoundaries; each package runner remains independent.
   boundaries = []
   assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(1, 1, 1, 0.0)))
   boundaries.append("civil year lower")

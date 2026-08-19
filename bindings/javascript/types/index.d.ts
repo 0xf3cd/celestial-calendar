@@ -26,7 +26,7 @@ export type MoonPhase = "new" | "firstQuarter" | "full" | "lastQuarter";
 export type DeltaTModel = "default" | "algo1" | "algo2" | "algo3" | "algo4" | "algo5";
 export type LunarAlgorithm = "algo1" | "algo2" | "algo3";
 
-/** Record inputs require the declared fields and may include additional fields. */
+/** Runtime record inputs require the declared fields as own properties and may include additional fields. */
 export interface CivilDate {
   year: number;
   month: number;
