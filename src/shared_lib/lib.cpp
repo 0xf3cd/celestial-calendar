@@ -29,25 +29,34 @@
 
 namespace lib {
 
-// #97 pilot: the calling thread's last-error message. Declared in lib.hpp and defined here so
+// #97: the calling thread's last-error message. Declared in lib.hpp and defined here so
 // that exactly one of it exists -- see the note there for what an `inline thread_local` cost
 // us on Mach-O once the inlines went hidden.
 namespace {
 thread_local std::string LAST_ERROR; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 } // namespace
 
-auto clear_last_error() -> void {
+auto clear_last_error() noexcept -> void {
   LAST_ERROR.clear();
 }
 
-auto set_last_error(const std::string& message) noexcept -> void {
+auto set_last_error(const std::string_view message) noexcept -> void {
   try {
     LAST_ERROR = message;
   } catch (...) { // NOLINT(bugprone-empty-catch) — nowhere left to report; swallowing is the contract.
   }
 }
 
-auto last_error_message() -> const char* {
+auto set_unknown_error(const std::string_view operation) noexcept -> void {
+  try {
+    LAST_ERROR = "Unknown error in ";
+    LAST_ERROR += operation;
+    LAST_ERROR += '.';
+  } catch (...) { // NOLINT(bugprone-empty-catch) — nowhere left to report; swallowing is the contract.
+  }
+}
+
+auto last_error_message() noexcept -> const char* {
   return LAST_ERROR.c_str();
 }
 
@@ -57,11 +66,14 @@ auto last_error_message() -> const char* {
 extern "C" {
 
 auto set_log_verbosity(const uint8_t new_value) -> bool {
-  try {
-    return lib::set_verbosity(static_cast<lib::Verbosity>(new_value));
-  } catch (...) {
-    return false;
-  }
+  return lib::wrap_export("set_log_verbosity", [=] {
+    if (not lib::set_verbosity(static_cast<lib::Verbosity>(new_value))) {
+      throw std::invalid_argument {
+        std::format("Argument `new_value` must be in [0, 2], got {}", new_value)
+      };
+    }
+    return true;
+  });
 }
 
 

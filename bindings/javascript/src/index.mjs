@@ -29,7 +29,7 @@ const WASM_URL = new URL("./celestial-jieqi.wasm", import.meta.url);
 const UTF8 = new TextDecoder();
 const MAX_CIVIL_YEAR = 32_767;
 const MAX_CALENDAR_YEAR = 32_766;
-const MAX_WASM_DOUBLE_COUNT = 536_870_911;
+const MAX_NEW_MOON_COUNT = 4_096;
 const JIEQI_NAME_BYTES = 16;
 
 const LOG_VERBOSITY = Object.freeze({ none: 0, info: 1, debug: 2 });
@@ -121,18 +121,12 @@ const rangedNumber = (value, name, minimum, maximum, includeMaximum = true) => {
   return value;
 };
 
-const exactRecord = (value, name, fields) => {
+const requiredRecord = (value, name, fields) => {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object.`);
   }
-  const actual = Reflect.ownKeys(value);
-  if (actual.some((field) => typeof field !== "string")) {
-    throw new TypeError(`${name} must contain only named fields.`);
-  }
-  actual.sort();
-  const expected = [...fields].sort();
-  if (actual.length !== expected.length || actual.some((field, index) => field !== expected[index])) {
-    throw new TypeError(`${name} must contain exactly: ${fields.join(", ")}.`);
+  if (fields.some((field) => !Object.hasOwn(value, field))) {
+    throw new TypeError(`${name} must contain: ${fields.join(", ")}.`);
   }
   return value;
 };
@@ -146,7 +140,7 @@ const gregorianMonthLength = (year, month) => {
 };
 
 const civilDate = (value, name, maximumYear = MAX_CIVIL_YEAR) => {
-  exactRecord(value, name, ["year", "month", "day"]);
+  requiredRecord(value, name, ["year", "month", "day"]);
   const year = rangedInteger(value.year, `${name}.year`, 1, maximumYear);
   const month = rangedInteger(value.month, `${name}.month`, 1, 12);
   const day = rangedInteger(value.day, `${name}.day`, 1, gregorianMonthLength(year, month));
@@ -154,7 +148,7 @@ const civilDate = (value, name, maximumYear = MAX_CIVIL_YEAR) => {
 };
 
 const civilDateTime = (value, name, maximumYear = MAX_CIVIL_YEAR) => {
-  exactRecord(value, name, ["year", "month", "day", "fraction"]);
+  requiredRecord(value, name, ["year", "month", "day", "fraction"]);
   const date = civilDate({ year: value.year, month: value.month, day: value.day }, name, maximumYear);
   const fraction = rangedNumber(value.fraction, `${name}.fraction`, 0, 1, false);
   return { ...date, fraction };
@@ -201,13 +195,9 @@ const readCString = (M, ptr) => {
   return UTF8.decode(M.HEAPU8.slice(ptr, end));
 };
 
-const fail = (M, binding, operation) => {
+const fail = (M, binding, operation, fallback = `${operation} failed.`) => {
   const message = binding.readsLastError ? M.ccall("last_error", "string", [], []) : "";
-  throw new CelestialError(operation, message || `${operation} failed.`, message.length > 0);
-};
-
-const protocolFailure = (operation) => {
-  throw new CelestialError(operation, `${operation} returned an inconsistent native result.`, false);
+  throw new CelestialError(operation, message || fallback, message.length > 0);
 };
 
 const callSret = (cName, operation, args) => {
@@ -241,13 +231,17 @@ const countThenFill = (cName, operation, args) => {
     M.HEAPU32[countPtr >> 2] = 0;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
     const count = M.HEAPU32[countPtr >> 2];
-    if (queried !== 0) protocolFailure(operation);
+    if (queried !== 0) {
+      fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
+    }
     if (count === 0) fail(M, binding, operation);
 
     const slots = M._malloc(count * 8);
     try {
       const written = M[binding.wasmName](...args, countPtr, slots, count);
-      if (written !== count || M.HEAPU32[countPtr >> 2] !== count) protocolFailure(operation);
+      if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
+        fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
+      }
       return readDoubles(M, slots, count);
     } finally {
       M._free(slots);
@@ -322,7 +316,9 @@ const longitudeCrossings = (year, longitudeDeg) => {
   const slots = M._malloc(discriminant.count * 8);
   try {
     const written = M._solar_lon_roots(checkedYear, longitude, slots, discriminant.count);
-    if (written !== discriminant.count) protocolFailure(operation);
+    if (written !== discriminant.count) {
+      fail(M, bindingOf("solar_lon_roots"), operation, `${operation} returned an inconsistent native result.`);
+    }
     return readDoubles(M, slots, written);
   } finally {
     M._free(slots);
@@ -380,10 +376,13 @@ const newMoonsAfter = (jde, count) => {
   const operation = "moon.newMoonsAfter";
   const M = requireModule(operation);
   const start = finiteNumber(jde, "jde");
-  const checkedCount = rangedInteger(count, "count", 0, MAX_WASM_DOUBLE_COUNT);
+  const checkedCount = rangedInteger(count, "count", 0, MAX_NEW_MOON_COUNT);
   if (checkedCount === 0) return [];
 
   const slots = M._malloc(checkedCount * 8);
+  if (slots === 0) {
+    throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
+  }
   try {
     const written = M._new_moons_after_jde(start, slots, checkedCount);
     if (written !== checkedCount) fail(M, bindingOf("new_moons_after_jde"), operation);
@@ -474,7 +473,7 @@ const toGregorian = (algorithm, date) => {
   const operation = "lunar.toGregorian";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  exactRecord(date, "date", ["year", "month", "day", "isLeap"]);
+  requiredRecord(date, "date", ["year", "month", "day", "isLeap"]);
   const year = lunarYear(algorithm, date.year, "date.year");
   const month = rangedInteger(date.month, "date.month", 1, 12);
   const day = rangedInteger(date.day, "date.day", 1, 30);

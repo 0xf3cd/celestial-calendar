@@ -37,10 +37,9 @@ extern "C" {
 
 #pragma region Julian Days
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("ut1_to_jd", [=]() -> JulianDay {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
     const auto jd = astro::julian_day::ut1_to_jd(ut1_dt);
@@ -49,23 +48,13 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
       .valid = true,
       .value = jd,
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in ut1_to_jd: {}", e.what());
-    lib::debug("ut1_to_jd: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in ut1_to_jd.");
-    return {};
-  }
+  });
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("ut1_to_jde", [=]() -> JulianDay {
     const auto ymd = util::to_ymd(y, m, d);
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
     const auto jde = astro::julian_day::ut1_to_jde(ut1_dt);
@@ -74,23 +63,12 @@ auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const doubl
       .valid = true,
       .value = jde,
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in ut1_to_jde: {}", e.what());
-    lib::debug("ut1_to_jde: y = {}, m = {}, d = {}, fraction = {}", y, m, d, fraction);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in ut1_to_jde.");
-    return {};
-  }
+  });
 }
 
 
 auto jde_to_ut1(const double jde) -> UT1Time {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("jde_to_ut1", [=]() -> UT1Time {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
     const auto [y, m, d] = util::from_ymd(ut1_dt.ymd);
@@ -103,16 +81,7 @@ auto jde_to_ut1(const double jde) -> UT1Time {
       .day        = d,
       .fraction   = fraction,
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in jde_to_ut1: {}", e.what());
-    lib::debug("jde_to_ut1: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in jde_to_ut1.");
-    return {};
-  }
+  });
 }
 
 
@@ -122,7 +91,7 @@ auto jde_to_ut1(const double jde) -> UT1Time {
 #pragma region Solar Apparent Geocentric Position
 
 auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
-  try {
+  return lib::wrap_export("sun_apparent_geocentric_coord", [=]() -> SunCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -137,14 +106,7 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
       .lat   = coord.β.deg(),
       .r     = coord.r.au(),
     };
-  } catch (const std::exception& e) {
-    lib::info("Error in sun_apparent_geocentric_coord: {}", e.what());
-    lib::debug("sun_apparent_geocentric_coord: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 #pragma endregion
@@ -153,7 +115,7 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
 #pragma region Moon Apparent Geocentric Position
 
 auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
-  try {
+  return lib::wrap_export("moon_apparent_geocentric_coord", [=]() -> MoonCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -168,14 +130,7 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
       .lat   = coord.β.deg(),
       .r     = coord.r.km(),
     };
-  } catch (const std::exception& e) {
-    lib::info("Error in moon_apparent_geocentric_coord: {}", e.what());
-    lib::debug("moon_apparent_geocentric_coord: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 #pragma endregion
@@ -184,9 +139,7 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 #pragma region Moon Illumination
 
 auto moon_illumination(const double jde) -> MoonIllumination {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("moon_illumination", [=]() -> MoonIllumination {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -204,16 +157,7 @@ auto moon_illumination(const double jde) -> MoonIllumination {
       ),
       .elongation_deg = (moon_pos.λ - sun_pos.λ).normalize().deg(),
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in moon_illumination: {}", e.what());
-    lib::debug("moon_illumination: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in moon_illumination.");
-    return {};
-  }
+  });
 }
 
 #pragma endregion
@@ -222,9 +166,7 @@ auto moon_illumination(const double jde) -> MoonIllumination {
 #pragma region Moon Position Angle
 
 auto moon_position_angle(const double jde) -> MoonPositionAngle {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("moon_position_angle", [=]() -> MoonPositionAngle {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -237,16 +179,7 @@ auto moon_position_angle(const double jde) -> MoonPositionAngle {
       .valid    = true,
       .angle_deg = angle.deg(),
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in moon_position_angle: {}", e.what());
-    lib::debug("moon_position_angle: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in moon_position_angle.");
-    return {};
-  }
+  });
 }
 
 #pragma endregion
@@ -255,30 +188,24 @@ auto moon_position_angle(const double jde) -> MoonPositionAngle {
 #pragma region Moon Phase Moments
 
 auto moon_phase_moments(
-  const int32_t year,
+  const int32_t year, // NOLINT(bugprone-easily-swappable-parameters) -- year/phase is the published query order.
   const uint8_t phase_kind,
   uint32_t * const root_count,
   double * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
-  lib::clear_last_error();
+  return lib::wrap_export("moon_phase_moments", [=] {
+    if (root_count == nullptr) {
+      throw std::invalid_argument { "Argument `root_count` is null." };
+    }
 
-  if (root_count == nullptr) {
-    lib::set_last_error("Error in moon_phase_moments: `root_count` is null.");
-    lib::info("Error in moon_phase_moments: `root_count` is null.");
-    return 0;
-  }
+    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+    *root_count = 0;
 
-  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-  *root_count = 0;
+    if (slots == nullptr and slot_count > 0) {
+      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+    }
 
-  if (slots == nullptr and slot_count > 0) {
-    lib::set_last_error("Error in moon_phase_moments: `slots` is null, but `slot_count` is greater than 0.");
-    lib::info("Error in moon_phase_moments: `slots` is null, but `slot_count` is {}.", slot_count);
-    return 0;
-  }
-
-  try {
     if (phase_kind > 3) {
       throw std::invalid_argument {
         std::format("Argument `phase_kind` must be in [0, 3], got {}", phase_kind)
@@ -294,16 +221,7 @@ auto moon_phase_moments(
     std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
 
     return num_written;
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Exception thrown during execution of moon_phase_moments");
-    lib::debug("moon_phase_moments: year = {}, phase_kind = {}, error = {}", year, phase_kind, e.what());
-
-    return 0;
-  } catch (...) {
-    lib::set_last_error("Unknown error in moon_phase_moments.");
-    return 0;
-  }
+  });
 }
 
 #pragma endregion
@@ -312,7 +230,7 @@ auto moon_phase_moments(
 #pragma region Solar Longitude Roots
 
 auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
-  try {
+  return lib::wrap_export("solar_lon_root_discriminant", [=]() -> Discriminant {
     if (not std::isfinite(longitude)) {
       throw std::invalid_argument {
         std::format("Argument `longitude` is not finite, got {}", longitude)
@@ -323,13 +241,7 @@ auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> 
       .valid = true,
       .count = astro::sun::geocentric_coord::math::discriminant(year, longitude),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of solar_lon_root_discriminant");
-    lib::debug("solar_lon_root_discriminant: year = {}, lon = {}, error = {}", year, longitude, e.what());
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 
@@ -339,14 +251,13 @@ auto solar_lon_roots(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  using namespace astro::sun::geocentric_coord::math;
+  return lib::wrap_export("solar_lon_roots", [=] {
+    using namespace astro::sun::geocentric_coord::math;
 
-  if (slots == nullptr and slot_count > 0) {
-    lib::info("Error in solar_lon_roots: `slots` is null, but `slot_count` is {}.", slot_count);
-    return 0;
-  }
+    if (slots == nullptr and slot_count > 0) {
+      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+    }
 
-  try {
     if (not std::isfinite(longitude)) {
       throw std::invalid_argument {
         std::format("Argument `longitude` is not finite, got {}", longitude)
@@ -358,24 +269,16 @@ auto solar_lon_roots(
     // Some sanity check...
     const auto root_count = discriminant(year, longitude);
     if (roots.size() != root_count) [[unlikely]] {
-      lib::info("Error in solar_lon_roots: roots.size() is {}, but expected size is {}", roots.size(), root_count);
-      lib::info("No root will be written to the slots.");
-
-      return 0;
+      throw std::runtime_error {
+        std::format("Root count mismatch: found {}, expected {}", roots.size(), root_count)
+      };
     }
 
     const auto num_written = std::min(static_cast<uint32_t>(roots.size()), slot_count);
     std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
 
     return num_written;
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of solar_lon_roots");
-    lib::debug("solar_lon_roots: year = {}, lon = {}, error = {}", year, longitude, e.what());
-
-    return 0;
-  } catch (...) {
-    return 0;
-  }
+  });
 }
 
 #pragma endregion
@@ -388,12 +291,11 @@ auto new_moons_after_jde(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  if (slots == nullptr and slot_count > 0) {
-    lib::info("Error in new_moons_after_jde: `slots` is null, but `slot_count` is {}.", slot_count);
-    return 0;
-  }
+  return lib::wrap_export("new_moons_after_jde", [=] {
+    if (slots == nullptr and slot_count > 0) {
+      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+    }
 
-  try {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -408,14 +310,7 @@ auto new_moons_after_jde(
 
     std::ranges::copy(roots, slots);
     return static_cast<uint32_t>(slot_count);
-  } catch (const std::exception& e) {
-    lib::info("Exception thrown during execution of new_moons_after_jde");
-    lib::debug("new_moons_after_jde: jde = {}, error = {}", jde, e.what());
-
-    return 0;
-  } catch (...) {
-    return 0;
-  }
+  });
 }
 
 
@@ -425,20 +320,18 @@ auto new_moons_in_year(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  if (root_count == nullptr) {
-    lib::info("Error in new_moons_in_year: `root_count` is null.");
-    return 0;
-  }
+  return lib::wrap_export("new_moons_in_year", [=] {
+    if (root_count == nullptr) {
+      throw std::invalid_argument { "Argument `root_count` is null." };
+    }
 
-  // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-  *root_count = 0;
+    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
+    *root_count = 0;
 
-  if (slots == nullptr and slot_count > 0) {
-    lib::info("Error in new_moons_in_year: `slots` is null, but `slot_count` is {}.", slot_count);
-    return 0;
-  }
+    if (slots == nullptr and slot_count > 0) {
+      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+    }
 
-  try {
     const auto roots = astro::moon_phase::new_moon::moments(year);
 
     *root_count = static_cast<uint32_t>(roots.size());
@@ -447,14 +340,7 @@ auto new_moons_in_year(
     std::copy(cbegin(roots), cbegin(roots) + num_written, slots);
 
     return num_written;
-  } catch (const std::exception& e) {
-    lib::info("Exception thrown during execution of new_moons_in_year");
-    lib::debug("new_moons_in_year: year = {}, error = {}", year, e.what());
-
-    return 0;
-  } catch (...) {
-    return 0;
-  }
+  });
 }
 
 #pragma endregion
@@ -463,7 +349,7 @@ auto new_moons_in_year(
 #pragma region Solar Time
 
 auto equation_of_time(const double jde) -> EquationOfTime {
-  try {
+  return lib::wrap_export("equation_of_time", [=]() -> EquationOfTime {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -474,25 +360,18 @@ auto equation_of_time(const double jde) -> EquationOfTime {
       .valid = true,
       .value = astro::solar_time::equation_of_time(jde).deg(),
     };
-  } catch (const std::exception& e) {
-    lib::info("Error in equation_of_time: {}", e.what());
-    lib::debug("equation_of_time: jde = {}", jde);
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 
 auto apparent_solar_time(
   const int32_t y,
   const uint32_t m,
-  const uint32_t d,
+  const uint32_t d, // NOLINT(bugprone-easily-swappable-parameters) -- civil date then longitude is the published API order.
   const double fraction,
   const double longitude
 ) -> ApparentSolarTime {
-  try {
+  return lib::wrap_export("apparent_solar_time", [=]() -> ApparentSolarTime {
     const auto ymd = util::to_ymd(y, m, d);
     const auto utc_dt = calendar::Datetime(ymd, fraction);
     const auto lon = astro::toolbox::AngleDeg { longitude };
@@ -507,17 +386,7 @@ auto apparent_solar_time(
       .day      = ad,
       .fraction = apparent_dt.fraction(),
     };
-  } catch (const std::exception& e) {
-    lib::info("Error in apparent_solar_time: {}", e.what());
-    lib::debug(
-      "apparent_solar_time: y = {}, m = {}, d = {}, fraction = {}, longitude = {}",
-      y, m, d, fraction, longitude
-    );
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 #pragma endregion
@@ -526,9 +395,7 @@ auto apparent_solar_time(
 #pragma region Sidereal Time
 
 auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> SiderealTime {
-  lib::clear_last_error();
-
-  try {
+  return lib::wrap_export("local_apparent_sidereal_time", [=]() -> SiderealTime {
     if (not std::isfinite(jd_ut1)) {
       throw std::invalid_argument {
         std::format("Argument `jd_ut1` is not finite, got {}", jd_ut1)
@@ -560,16 +427,7 @@ auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -
       .valid = true,
       .value = last.deg(),
     };
-  } catch (const std::exception& e) {
-    lib::set_last_error(e.what());
-    lib::info("Error in local_apparent_sidereal_time: {}", e.what());
-    lib::debug("local_apparent_sidereal_time: jd_ut1 = {}, longitude = {}", jd_ut1, longitude);
-
-    return {};
-  } catch (...) {
-    lib::set_last_error("Unknown error in local_apparent_sidereal_time.");
-    return {};
-  }
+  });
 }
 
 #pragma endregion

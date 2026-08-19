@@ -412,18 +412,14 @@ is west-positive in `sidereal`, east-positive elsewhere, disambiguated by name (
 other (#49).
 
 **Decided and not yet built** (the decision is real, the artifact is not — do not cite
-either as existing): a `wrap_export` helper for the C-ABI per-export `try`/`catch`
-boilerplate (#127 entry 20) · the `cpp26-lab` experiment branch.
+it as existing): the `cpp26-lab` experiment branch.
 
 **Two conventions that look like drift and are not.** Time scales are spelled in the
 parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
 boundary (`jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
-scale; reopen if a C entry point ever needs to accept two. And `last_error` is filled in
-by the three Julian Day exports, `moon_illumination`, `moon_position_angle`,
-`moon_phase_moments`, and `local_apparent_sidereal_time` — a pilot whose boundary lives in
-`celestial.h`, not an oversight; it widened when the wasm consumer became the first out-of-repo reader that
-gets `valid = false` with no other way to learn why, and it spreads further the next
-time such a consumer appears.
+scale; reopen if a C entry point ever needs to accept two. And every C export except the
+`last_error` reader records failures through `wrap_export`; the boundary lives in
+`celestial.h` and is mechanically reconciled with both bindings.
 
 ## Phase and PR workflow
 

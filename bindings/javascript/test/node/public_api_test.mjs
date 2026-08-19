@@ -22,7 +22,8 @@
  */
 
 import assert from "node:assert/strict";
-import { rename } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -199,6 +200,27 @@ check("lunar.toGregorian", () => {
   }
 });
 
+{
+  const lichun = celestial.jieqi.moment(2024, 0);
+  finite(celestial.time.ut1ToJd(lichun), celestial.time.ut1ToJde(lichun));
+  finite(celestial.sun.apparentSolarTime(lichun, 116.4).fraction);
+
+  const ut1 = celestial.time.jdeToUt1(2451545.0);
+  const fromMoment = celestial.lunar.fromGregorian("algo3", ut1);
+  assert.equal(fromMoment.year, 1999);
+  assert.equal(celestial.lunar.fromGregorian("algo3", fromMoment).isLeap, false);
+  assert.deepEqual(
+    celestial.lunar.fromGregorian(
+      "algo3",
+      celestial.lunar.toGregorian("algo3", { ...fromMoment, source: "public output" }),
+    ),
+    fromMoment,
+  );
+  console.log("PASS composed public records");
+}
+
+// Keep boundary categories aligned with bindings/python/test/consumer/smoke.py::run_acceptance_boundaries;
+// each package runner remains independent.
 const acceptedBoundaries = [
   ["civil year lower", () => finite(celestial.time.ut1ToJd({ year: 1, month: 1, day: 1, fraction: 0 }))],
   ["civil year upper", () => finite(celestial.time.ut1ToJd({ year: 32767, month: 1, day: 1, fraction: 0 }))],
@@ -229,10 +251,9 @@ edge("log level type", () => celestial.config.setLogVerbosity(true), TypeError);
 edge("log level value", () => celestial.config.setLogVerbosity("trace"), RangeError);
 edge("date object", () => celestial.time.ut1ToJd(null), TypeError);
 edge("missing date field", () => celestial.time.ut1ToJd({ year: 2024, month: 1, day: 1 }), TypeError);
-edge(
-  "extra date field",
+assert.doesNotThrow(
   () => celestial.time.ut1ToJd({ year: 2024, month: 1, day: 1, fraction: 0, utc: true }),
-  TypeError,
+  "additional date field",
 );
 edge(
   "real Gregorian date",
@@ -256,7 +277,7 @@ edge("phase type", () => celestial.moon.phaseMoments(2024, 0), TypeError);
 edge("count boolean", () => celestial.moon.newMoonsAfter(2451545.0, true), TypeError);
 edge("count integer", () => celestial.moon.newMoonsAfter(2451545.0, 1.5), TypeError);
 edge("count non-negative", () => celestial.moon.newMoonsAfter(2451545.0, -1), RangeError);
-edge("count WASM32 bound", () => celestial.moon.newMoonsAfter(2451545.0, 536870912), RangeError);
+edge("count resource bound", () => celestial.moon.newMoonsAfter(2451545.0, 4097), RangeError);
 edge("Jieqi year", () => celestial.jieqi.moment(400, 0), RangeError);
 edge("Jieqi index", () => celestial.jieqi.name(24), RangeError);
 edge("lunar algorithm", () => celestial.lunar.yearInfo("algo4", 2024), RangeError);
@@ -277,21 +298,97 @@ assert.equal(recordingError.operation, "time.localApparentSiderealTime");
 assert.equal(recordingError.recorded, true);
 ++edges;
 
-let nonRecordingError;
+let lunarError;
 try {
   celestial.lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 });
 } catch (error) {
-  nonRecordingError = error;
+  lunarError = error;
 }
-assert(nonRecordingError instanceof celestial.CelestialError);
-assert.equal(nonRecordingError.operation, "lunar.fromGregorian");
-assert.equal(nonRecordingError.recorded, false);
-assert.equal(nonRecordingError.message, "lunar.fromGregorian failed.");
+assert(lunarError instanceof celestial.CelestialError);
+assert.equal(lunarError.operation, "lunar.fromGregorian");
+assert.equal(lunarError.recorded, true);
+assert.match(lunarError.message, /cannot be represented/);
 ++edges;
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 assert.equal(happy, 22, "public method denominator");
-assert.equal(edges, 31, "public edge denominator");
+assert.equal(edges, 30, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 16, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/31`);
+console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/30`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/16`);
+
+const fixtureDirectory = await mkdtemp(resolve(tmpdir(), "celestial-js-contract-"));
+try {
+  const fixtureEntry = resolve(fixtureDirectory, "index.mjs");
+  const source = await readFile(fileURLToPath(entryUrl), "utf8");
+  await writeFile(fixtureEntry, source.replace("./celestial-jieqi.mjs", "./mock-module.mjs"), "utf8");
+  await copyFile(fileURLToPath(new URL("./bindings.mjs", entryUrl)), resolve(fixtureDirectory, "bindings.mjs"));
+  await writeFile(
+    resolve(fixtureDirectory, "mock-module.mjs"),
+    `export default async () => {
+  const buffer = new ArrayBuffer(65_536);
+  const M = {
+    HEAPU8: new Uint8Array(buffer),
+    HEAPU16: new Uint16Array(buffer),
+    HEAP32: new Int32Array(buffer),
+    HEAPU32: new Uint32Array(buffer),
+    HEAPF64: new Float64Array(buffer),
+  };
+  let next = 8;
+  let lastError = "";
+  M._malloc = (bytes) => {
+    if (globalThis.__celestialFailAllocation === bytes) return 0;
+    const ptr = next;
+    next += bytes;
+    return ptr;
+  };
+  M._free = () => {};
+  M._new_moons_after_jde = (_jde, _slots, count) => count;
+  M._moon_phase_moments = (_year, _phase, countPtr, slots) => {
+    if (slots === 0) {
+      M.HEAPU32[countPtr >> 2] = 2;
+      return 0;
+    }
+    lastError = "native phase fill failed";
+    M.HEAPU32[countPtr >> 2] = 0;
+    return 0;
+  };
+  M.ccall = () => lastError;
+  return M;
+};
+`,
+    "utf8",
+  );
+
+  const fixture = await import(pathToFileURL(fixtureEntry));
+  await fixture.init();
+  assert.equal(fixture.moon.newMoonsAfter(2451545.0, 4096).length, 4096, "count 4096 accepted");
+
+  globalThis.__celestialFailAllocation = 4096 * 8;
+  assert.throws(
+    () => fixture.moon.newMoonsAfter(2451545.0, 4096),
+    {
+      name: "CelestialError",
+      message: "moon.newMoonsAfter failed to allocate the WASM output buffer.",
+      operation: "moon.newMoonsAfter",
+      recorded: false,
+    },
+    "allocation failure",
+  );
+  delete globalThis.__celestialFailAllocation;
+
+  assert.throws(
+    () => fixture.moon.phaseMoments(2024, "new"),
+    {
+      name: "CelestialError",
+      message: "native phase fill failed",
+      operation: "moon.phaseMoments",
+      recorded: true,
+    },
+    "recording fill failure",
+  );
+  console.log("PASS count boundary 4096/4097; allocation failure; recording fill reason");
+} finally {
+  delete globalThis.__celestialFailAllocation;
+  await rm(fixtureDirectory, { recursive: true, force: true });
+}

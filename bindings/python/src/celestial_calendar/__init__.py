@@ -290,7 +290,7 @@ def _failure(operation: str, *, recording: bool) -> CelestialError:
   return CelestialError(operation, message, recorded=bool(detail))
 
 
-def _valid(result: object, operation: str, *, recording: bool = False) -> object:
+def _valid(result: object, operation: str, *, recording: bool = True) -> object:
   if not result.valid:
     raise _failure(operation, recording=recording)
   return result
@@ -304,7 +304,7 @@ def set_log_verbosity(level: LogVerbosity) -> None:
   """Set process-wide native log verbosity."""
   checked = _enum(level, LogVerbosity, "level")
   if not _binding.call("set_log_verbosity", _LOG_VERBOSITY[checked]):
-    raise _failure("set_log_verbosity", recording=False)
+    raise _failure("set_log_verbosity", recording=True)
 
 
 def ut1_to_jd(ut1: CivilDateTime) -> float:
@@ -418,7 +418,7 @@ def solar_longitude_roots(year: int, longitude_deg: float) -> tuple[float, ...]:
   slots = (_ctypes.c_double * discriminant.count)()
   written = _binding.call("solar_lon_roots", checked_year, longitude, slots, discriminant.count)
   if written != discriminant.count:
-    raise _failure("solar_longitude_roots", recording=False)
+    raise _failure("solar_longitude_roots", recording=True)
   return tuple(slots[:written])
 
 
@@ -436,7 +436,7 @@ def new_moons_after(jde: float, count: int) -> tuple[float, ...]:
   slots = (_ctypes.c_double * checked_count)()
   written = _binding.call("new_moons_after_jde", start, slots, checked_count)
   if written != checked_count:
-    raise _failure("new_moons_after", recording=False)
+    raise _failure("new_moons_after", recording=True)
   return tuple(slots[:written])
 
 
@@ -451,12 +451,12 @@ def new_moons_in_year(year: int) -> tuple[float, ...]:
   total = _ctypes.c_uint32()
   written = _binding.call("new_moons_in_year", checked_year, _ctypes.byref(total), None, 0)
   if written != 0 or total.value == 0:
-    raise _failure("new_moons_in_year", recording=False)
+    raise _failure("new_moons_in_year", recording=True)
   expected = total.value
   slots = (_ctypes.c_double * expected)()
   written = _binding.call("new_moons_in_year", checked_year, _ctypes.byref(total), slots, expected)
   if written != expected:
-    raise _failure("new_moons_in_year", recording=False)
+    raise _failure("new_moons_in_year", recording=True)
   return tuple(slots[:written])
 
 
@@ -508,7 +508,7 @@ def jieqi_name(jieqi: Jieqi) -> str:
   checked_jieqi = _enum(jieqi, Jieqi, "jieqi")
   buffer = _ctypes.create_string_buffer(_JIEQI_NAME_BYTES)
   if not _binding.call("get_jieqi_name", checked_jieqi.value, buffer, len(buffer)):
-    raise _failure("jieqi_name", recording=False)
+    raise _failure("jieqi_name", recording=True)
   return buffer.value.decode("utf-8")
 
 

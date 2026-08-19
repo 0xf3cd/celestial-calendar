@@ -31,7 +31,7 @@ extern "C" {
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 auto delta_t_algo1(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t_algo1", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -42,18 +42,11 @@ auto delta_t_algo1(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::algo1::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t_algo1");
-    lib::debug("delta_t_algo1: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 auto delta_t_algo2(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t_algo2", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -64,18 +57,11 @@ auto delta_t_algo2(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::algo2::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t_algo2");
-    lib::debug("delta_t_algo2: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 auto delta_t_algo3(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t_algo3", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -86,18 +72,11 @@ auto delta_t_algo3(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::algo3::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t_algo3");
-    lib::debug("delta_t_algo3: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 auto delta_t_algo4(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t_algo4", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -108,18 +87,11 @@ auto delta_t_algo4(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::algo4::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t_algo4");
-    lib::debug("delta_t_algo4: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 auto delta_t_algo5(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t_algo5", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -130,18 +102,11 @@ auto delta_t_algo5(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::algo5::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t_algo5");
-    lib::debug("delta_t_algo5: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 auto delta_t(double year) -> DeltaT {
-  try {
+  return lib::wrap_export("delta_t", [=]() -> DeltaT {
     if (not std::isfinite(year)) {
       throw std::invalid_argument {
         std::format("Argument `year` is not finite, got {}", year)
@@ -152,14 +117,7 @@ auto delta_t(double year) -> DeltaT {
       .valid = true,
       .value = astro::delta_t::compute(year),
     };
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of delta_t");
-    lib::debug("delta_t: year = {}, error = {}", year, e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }   
 
 }

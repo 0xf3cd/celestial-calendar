@@ -25,10 +25,13 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <format>
 #include <print>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 
 // Internal helpers for the C-ABI layer (`lib*.cpp`): an atomic verbosity knob, never-throwing
 // logging safe to call inside catch handlers, and a thread-local last-error channel.
@@ -83,7 +86,7 @@ inline void log_noexcept(const std::string_view format_str, Args&&... args) noex
 
 /** @brief Log a message, at the `INFO` verbosity level. */
 template <typename... Args>
-inline void info(const std::string_view format_str, Args&&... args) { // NOLINT(cppcoreguidelines-missing-std-forward)
+inline void info(const std::string_view format_str, Args&&... args) noexcept { // NOLINT(cppcoreguidelines-missing-std-forward)
   if (GLOBAL_VERBOSITY >= Verbosity::INFO) {
     log_noexcept(format_str, args...);
   }
@@ -91,7 +94,7 @@ inline void info(const std::string_view format_str, Args&&... args) { // NOLINT(
 
 /** @brief Log a message, at the `DEBUG` verbosity level. */
 template <typename... Args>
-inline void debug(const std::string_view format_str, Args&&... args) { // NOLINT(cppcoreguidelines-missing-std-forward)
+inline void debug(const std::string_view format_str, Args&&... args) noexcept { // NOLINT(cppcoreguidelines-missing-std-forward)
   if (GLOBAL_VERBOSITY >= Verbosity::DEBUG) {
     log_noexcept(format_str, args...);
   }
@@ -100,9 +103,8 @@ inline void debug(const std::string_view format_str, Args&&... args) { // NOLINT
 
 /**
  * @brief The calling thread's last-error message.
- * @note #97 pilot: a thread-local last-error channel, so an FFI caller that got `valid = false`
+ * @note #97: a thread-local last-error channel, so an FFI caller that got `valid = false`
  *       can learn *why* (the log goes to the library's stdout, which hosts may never see).
- *       The recording set is listed once on `last_error` in `celestial.h`.
  */
 /**
  * @note The storage and these three bodies live in `lib.cpp`, deliberately not here. As an
@@ -115,17 +117,38 @@ inline void debug(const std::string_view format_str, Args&&... args) { // NOLINT
  */
 
 /** @brief Clear the calling thread's last-error message. */
-auto clear_last_error() -> void;
+auto clear_last_error() noexcept -> void;
 
 /**
  * @brief Record the calling thread's last-error message.
  * @note `noexcept`: the string assignment can throw `bad_alloc`; on failure the previous
  *       message is kept.
  */
-auto set_last_error(const std::string& message) noexcept -> void;
+auto set_last_error(std::string_view message) noexcept -> void;
+
+/** @brief Record an export-specific fallback for a non-standard exception. */
+auto set_unknown_error(std::string_view operation) noexcept -> void;
 
 /** @brief Read the calling thread's last-error message (empty if none). */
-[[nodiscard]] auto last_error_message() -> const char*;
+[[nodiscard]] auto last_error_message() noexcept -> const char*;
+
+/** @brief Translate all exceptions from a C export to its zero-initialized failure sentinel. */
+template <typename Function>
+[[nodiscard]] inline auto wrap_export(const std::string_view operation, Function&& function) noexcept
+  -> std::invoke_result_t<Function> {
+  using Result = std::invoke_result_t<Function>;
+
+  clear_last_error();
+  try {
+    return std::invoke(std::forward<Function>(function));
+  } catch (const std::exception& e) {
+    set_last_error(e.what());
+    info("Error in {}: {}", operation, e.what());
+  } catch (...) {
+    set_unknown_error(operation);
+  }
+  return Result {};
+}
 
 
 } // namespace lib

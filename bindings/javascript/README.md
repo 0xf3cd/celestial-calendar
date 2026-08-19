@@ -88,8 +88,8 @@ Bad shapes and types throw `TypeError`; JavaScript range guards throw `RangeErro
 `CelestialError`, whose `operation` names the public method and whose `recorded` flag says whether the message came
 from the native error channel. A legitimate absence remains `null` or `[]`.
 
-`moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 536870911]`; zero returns `[]`. The upper bound prevents
-the WASM32 output-buffer byte count from wrapping. Requests near the address-space limit may still exhaust memory.
+`moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 4096]`; zero returns `[]`. The upper bound keeps the WASM
+output buffer at or below 32 KiB, matching the Python package.
 
 ## 中文
 

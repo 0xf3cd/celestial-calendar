@@ -48,21 +48,20 @@
  *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
- * On failure the recording functions (the set is listed on `last_error`) also
- * record a thread-local message readable through it.
+ * On failure every function except `last_error` also records a thread-local
+ * message readable through it.
  *
  * Thread-safety contract: every entry point may be called concurrently from any
  * number of threads, with no host-side synchronization. `set_log_verbosity` turns
  * a process-wide knob: writes are atomic — a concurrent reader always sees one
  * whole level or another — but which of two racing writes wins is unspecified.
- * `last_error` is per-thread: it reports the calling thread's most recent call to a
- * recording function (the set is listed on `last_error` itself), and no thread ever
- * observes another's message. Two computations memoize
- * per argument — the jieqi moments and the algo-2 lunar year info. Both caches are
- * shared process-wide and never erased: the first call with a given argument pays for
- * it, later calls from any thread reuse the result, and memory grows monotonically
- * with the number of distinct arguments ever queried. Two threads that miss on the
- * same argument at once both compute it, and one of the two results is discarded.
+ * `last_error` is per-thread: it reports the calling thread's most recent call to an
+ * exported function except `last_error`, and no thread ever observes another's message.
+ * Two computations memoize per argument — the jieqi moments and the algo-2 lunar year
+ * info. Both caches are shared process-wide and never erased: the first call with a given
+ * argument pays for it, later calls from any thread reuse the result, and memory grows
+ * monotonically with the number of distinct arguments ever queried. Two threads that
+ * miss on the same argument at once both compute it, and one of the results is discarded.
  * Separately, the first `gregorian_to_lunar` or `lunar_to_gregorian` with `algo = 2`
  * runs the astronomical pipeline once to establish that algorithm's supported range;
  * unlike the caches above, that one blocks every thread that arrives while it is in
@@ -114,14 +113,10 @@ CELESTIAL_API bool set_log_verbosity(uint8_t new_value);
 /**
  * @brief Get the last-error message of the calling thread.
  * @returns A pointer to a thread-local C string, empty if there is no recorded error.
- *          Only the recording functions (`ut1_to_jd`, `ut1_to_jde`, `jde_to_ut1`,
- *          `moon_illumination`, `moon_position_angle`, `moon_phase_moments`,
- *          `local_apparent_sidereal_time`) write and clear the message; other functions
- *          neither set nor clear it, so the pointer always refers to the most recent
- *          recording call on this thread. It stays valid until the next recording call
- *          on the same thread.
- * @note #97 pilot, widened for the wasm consumer: it gets `valid = false` across an
- *       FFI boundary with no other way to learn why.
+ *          Every exported function except `last_error` writes and clears the message,
+ *          so the pointer refers to the most recent call on this thread. It stays valid
+ *          until the next exported function call other than `last_error` on the same thread.
+ * @note #97: FFI consumers get only a failure sentinel without this channel.
  */
 CELESTIAL_API const char *last_error(void);
 
@@ -242,7 +237,6 @@ CELESTIAL_API MoonPositionAngle moon_position_angle(double jde);
  *              `slot_count` is 0.
  * @param slot_count The count of slots.
  * @returns How many slots are written.
- * @note This is a recording function: on failure the reason is readable through `last_error()`.
  */
 CELESTIAL_API uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count);
 

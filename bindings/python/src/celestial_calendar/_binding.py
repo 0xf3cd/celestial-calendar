@@ -208,17 +208,7 @@ STRUCT_TYPES = {
   )
 }
 
-RECORDING_EXPORTS = frozenset(
-  {
-    "ut1_to_jd",
-    "ut1_to_jde",
-    "jde_to_ut1",
-    "moon_illumination",
-    "moon_position_angle",
-    "moon_phase_moments",
-    "local_apparent_sidereal_time",
-  }
-)
+RECORDING_EXPORTS = frozenset(BINDING_SPECS) - {"last_error"}
 
 
 def _native_filename() -> str:

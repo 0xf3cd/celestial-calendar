@@ -186,8 +186,8 @@ def happy_delta_t() -> None:
 
 
 def edge_set_log_verbosity() -> None:
-  assert not call("set_log_verbosity", 3)
   assert call("set_log_verbosity", 0)
+  assert not call("set_log_verbosity", 3)
 
 
 def edge_last_error() -> None:
@@ -195,7 +195,7 @@ def edge_last_error() -> None:
   recorded = _binding.last_error_text()
   assert recorded
   assert not call("sun_apparent_geocentric_coord", NAN).valid
-  assert _binding.last_error_text() == recorded
+  assert _binding.last_error_text() and _binding.last_error_text() != recorded
   assert call("ut1_to_jd", 2024, 6, 1, 0.5).valid
   assert _binding.last_error_text() == ""
 
@@ -242,11 +242,13 @@ def edge_solar_lon_root_discriminant() -> None:
 
 def edge_solar_lon_roots() -> None:
   assert call("solar_lon_roots", 2024, 0.0, None, 0) == 0
+  assert _binding.last_error_text() == ""
   assert call("solar_lon_roots", 2024, 0.0, None, 2) == 0
 
 
 def edge_new_moons_after_jde() -> None:
   assert call("new_moons_after_jde", 2460463.0, None, 0) == 0
+  assert _binding.last_error_text() == ""
   assert call("new_moons_after_jde", 2460463.0, None, 3) == 0
 
 
@@ -333,7 +335,12 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
   passed = 0
   for name, test in tests.items():
     try:
+      if label == "EDGE" and name != "last_error":
+        assert call("ut1_to_jd", 2000, 1, 1, 0.5).valid
+        assert _binding.last_error_text() == ""
       test()
+      if label == "EDGE" and name != "last_error":
+        assert _binding.last_error_text(), f"{name} did not record its failure"
     except Exception:
       print(f"FAIL {label} {name}")
       traceback.print_exc()

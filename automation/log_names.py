@@ -24,9 +24,11 @@ from .utils import green_print, red_print, yellow_print
 # not slip past the gate (#72: log strings name the exported function, or an FFI
 # user greps a name that does not exist).
 ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
+  "buf_size",
   "is_leap",
   "jd_ut1",  # local_apparent_sidereal_time's parameter, quoted by its guard messages
   "jq_idx",
+  "new_value",
   "phase_kind",  # moon_phase_moments's parameter, quoted by its guard messages
   "root_count",
   "slot_count",
