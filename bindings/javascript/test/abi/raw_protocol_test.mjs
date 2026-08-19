@@ -245,6 +245,8 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
 
 const recordedNames = new Set();
 const recordedFailure = (name, invoke) => {
+  assert.equal(rawSret("ut1_to_jd", [2000, 1, 1, 0.5]).valid, true, "recording precondition");
+  assert.equal(lastError(), "", `${name} starts with empty last_error`);
   assert.equal(invoke(), true, `${name} failure result`);
   assert(lastError().length > 0, `${name} records last_error`);
   recordedNames.add(name);

@@ -333,6 +333,9 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
   passed = 0
   for name, test in tests.items():
     try:
+      if label == "EDGE" and name != "last_error":
+        assert call("ut1_to_jd", 2000, 1, 1, 0.5).valid
+        assert _binding.last_error_text() == ""
       test()
       if label == "EDGE" and name != "last_error":
         assert _binding.last_error_text(), f"{name} did not record its failure"
