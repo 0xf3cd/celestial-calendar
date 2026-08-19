@@ -168,6 +168,9 @@ def test_native_and_wheel_workflows_share_manylinux_digests():
   native_workflow = yaml.safe_load(BUILD_WORKFLOW.read_text(encoding="utf-8"))
   wheel_text = WHEEL_WORKFLOW.read_text(encoding="utf-8")
   wheel_workflow = yaml.safe_load(wheel_text)
+  assert native_workflow["jobs"]["linux-docker"]["name"] == (
+    "linux-docker (${{ matrix.platform }}, ${{ matrix.runner }})"
+  )
   native_images = {
     row["platform"].removeprefix("linux/").replace("amd64", "x86_64").replace("arm64", "aarch64"):
       row["image"]

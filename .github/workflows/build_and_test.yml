@@ -18,6 +18,7 @@ env:
 
 jobs:
   linux-docker:
+    name: linux-docker (${{ matrix.platform }}, ${{ matrix.runner }})
     # 2026-07: matrix trimmed from 8 QEMU-emulated platforms to the two real
     # deployment targets (x86_64 servers, arm64 Pi/Apple Silicon), both on
     # native runners — no QEMU, wall-clock minutes instead of ~40. The wide
