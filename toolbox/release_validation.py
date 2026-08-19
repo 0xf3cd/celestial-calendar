@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Final, Iterable
 
 from toolbox.build_npm import PACKAGE_NAME
-from toolbox.runtime_floor import version_key
+from toolbox.runtime_floor import validate_runtime_floor
 
 
 WASM_ARCHIVE: Final[str] = "celestial-wasm.zip"
@@ -102,33 +102,6 @@ def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]
       f"extra={sorted(set(matrix) - expected)}"
     )
   return matrix
-
-
-def _validate_runtime_floor(runtime_floor, archive_name: str) -> None:
-  if not isinstance(runtime_floor, dict) or set(runtime_floor) != {"supported", "measured"}:
-    raise RuntimeError(f"Invalid runtime floor in {archive_name}")
-  supported = runtime_floor["supported"]
-  measured = runtime_floor["measured"]
-  if not all(
-    isinstance(values, dict)
-    and values
-    and all(isinstance(key, str) and isinstance(value, str) and key and value for key, value in values.items())
-    for values in (supported, measured)
-  ):
-    raise RuntimeError(f"Invalid runtime floor in {archive_name}")
-  for key in supported.keys() & measured.keys():
-    try:
-      exceeds_support = version_key(measured[key]) > version_key(supported[key])
-    except ValueError:
-      if measured[key] != supported[key]:
-        raise RuntimeError(
-          f"Measured {key} property {measured[key]} does not match supported {supported[key]} in {archive_name}"
-        ) from None
-      continue
-    if exceeds_support:
-      raise RuntimeError(
-        f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {archive_name}"
-      )
 
 
 def validate_wasm_archive(archive_path: Path, version: str) -> None:
@@ -211,7 +184,7 @@ def validate_native_archive(
   version: str,
   expected_runtime: dict[str, dict[str, str]] | None = None,
 ) -> None:
-  """Validate one native artifact's members and producer-recorded runtime hashes."""
+  """Validate one native artifact's members, runtime floor, and producer-recorded hashes."""
   expected, runtime_members = _native_layout(artifact_name, version)
   try:
     with zipfile.ZipFile(archive_path) as archive:
@@ -220,7 +193,7 @@ def validate_native_archive(
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
       runtime_floor = build_info.get("runtime_floor")
-      _validate_runtime_floor(runtime_floor, archive_path.name)
+      validate_runtime_floor(runtime_floor, archive_path.name)
       if expected_runtime is not None and runtime_floor != expected_runtime:
         raise RuntimeError(f"Runtime floor mismatch in {archive_path.name}")
       hashes = build_info.get("sha256")

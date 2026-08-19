@@ -248,6 +248,61 @@ def test_readme_runtime_matrix_matches_reference_values():
   }
 
 
+@pytest.mark.parametrize(
+  ("runtime_floor_value", "message"),
+  [
+    ([], "Invalid runtime floor"),
+    ({"supported": {"glibc": "2.28"}}, "Invalid runtime floor"),
+    ({"supported": {}, "measured": {"glibc": "2.26"}}, "Invalid runtime floor"),
+    ({"supported": {"glibc": "2.28"}, "measured": {"glibc": 2.26}}, "Invalid runtime floor"),
+    ({"supported": {"": "2.28"}, "measured": {"glibc": "2.26"}}, "Invalid runtime floor"),
+  ],
+)
+def test_native_archive_rejects_invalid_runtime_floor_schema(tmp_path, runtime_floor_value, message):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"] = runtime_floor_value
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match=message):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
+@pytest.mark.parametrize(
+  ("contents", "message"),
+  [
+    ("no matrix here\n", "README is missing the native runtime matrix"),
+    (
+      "<!-- native-runtime-matrix -->\n| header | row |\n|---|---|\n| only | two |\n",
+      "Invalid native runtime matrix row",
+    ),
+    (
+      "<!-- native-runtime-matrix -->\n| Artifact | Supported | Measured |\n|---|---|---|\n"
+      "| `linux_amd64` | `glibc 2.28` | `glibc=2.26` |\n",
+      "Invalid native runtime matrix cell",
+    ),
+    (
+      "<!-- native-runtime-matrix -->\n| Artifact | Supported | Measured |\n|---|---|---|\n"
+      "| `linux_amd64` | `glibc=2.28` | `glibc=2.26` |\n",
+      "Native runtime matrix inventory mismatch",
+    ),
+  ],
+)
+def test_runtime_matrix_rejects_invalid_documentation(tmp_path, contents, message):
+  readme = tmp_path / "README.md"
+  readme.write_text(contents, encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match=message):
+    _runtime_matrix(readme)
+
+
 @pytest.mark.parametrize("field", ["supported", "measured"])
 def test_native_archive_rejects_runtime_floor_drift(tmp_path, field):
   archives = write_release_archives(tmp_path)

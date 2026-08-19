@@ -43,6 +43,34 @@ def version_key(version: str) -> tuple[int, ...]:
   return tuple(int(part) for part in version.split("."))
 
 
+def validate_runtime_floor(runtime_floor, context: str) -> None:
+  """Validate recorded runtime metadata and its support relationship."""
+  if not isinstance(runtime_floor, dict) or set(runtime_floor) != {"supported", "measured"}:
+    raise RuntimeError(f"Invalid runtime floor in {context}")
+  supported = runtime_floor["supported"]
+  measured = runtime_floor["measured"]
+  if not all(
+    isinstance(values, dict)
+    and values
+    and all(isinstance(key, str) and isinstance(value, str) and key and value for key, value in values.items())
+    for values in (supported, measured)
+  ):
+    raise RuntimeError(f"Invalid runtime floor in {context}")
+  for key in supported.keys() & measured.keys():
+    try:
+      exceeds_support = version_key(measured[key]) > version_key(supported[key])
+    except ValueError:
+      if measured[key] != supported[key]:
+        raise RuntimeError(
+          f"Measured {key} property {measured[key]} does not match supported {supported[key]} in {context}"
+        ) from None
+      continue
+    if exceeds_support:
+      raise RuntimeError(
+        f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {context}"
+      )
+
+
 def parse_elf_versions(output: str) -> dict[str, str]:
   """Return the greatest required GLIBC and GLIBCXX symbol versions."""
   glibc = set(re.findall(r"\bGLIBC_([0-9]+(?:\.[0-9]+)+)\b", output))
@@ -102,10 +130,12 @@ def record_runtime_floor(artifact: str, binary: Path, build_info_path: Path) -> 
     raise RuntimeError(f"Invalid build info {build_info_path}: {error}") from error
   if not isinstance(build_info, dict):
     raise RuntimeError(f"Build info must be a JSON object: {build_info_path}")
-  build_info["runtime_floor"] = {
+  runtime_floor = {
     "supported": SUPPORTED_RUNTIME[artifact],
     "measured": inspect(artifact, binary),
   }
+  validate_runtime_floor(runtime_floor, str(build_info_path))
+  build_info["runtime_floor"] = runtime_floor
   build_info_path.write_text(f"{json.dumps(build_info, indent=2)}\n", encoding="utf-8")
 
 
