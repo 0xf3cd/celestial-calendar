@@ -101,6 +101,16 @@ def test_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
   assert check_action_pins(tmp_path) == 0
 
 
+def test_nested_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
+  workflow = tmp_path / "check.yml"
+  workflow.write_text(
+    f"jobs:\n  check:\n    steps:\n      - [{{uses: owner/action@{SHA}}}] # v2\n",
+    encoding="utf-8",
+  )
+
+  assert check_action_pins(tmp_path) == 0
+
+
 def test_first_party_action_rejects_floating_branch(tmp_path, capsys):
   write_workflow(tmp_path, "actions/checkout@main")
 

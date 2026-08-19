@@ -32,15 +32,16 @@ SHA: Final[re.Pattern] = re.compile(r"^[0-9a-f]{40}$")
 MAJOR_TAG: Final[re.Pattern] = re.compile(r"^v[1-9][0-9]*$")
 
 
-def _uses_nodes(node, yaml) -> Iterable:
+def _uses_nodes(node, yaml, flow_end=None) -> Iterable:
+  cutoff = flow_end or (node.end_mark if getattr(node, "flow_style", False) else None)
   if isinstance(node, yaml.MappingNode):
     for key, value in node.value:
       if isinstance(key, yaml.ScalarNode) and key.value == "uses":
-        yield value, node.end_mark if node.flow_style else value.end_mark
-      yield from _uses_nodes(value, yaml)
+        yield value, cutoff or value.end_mark
+      yield from _uses_nodes(value, yaml, cutoff)
   elif isinstance(node, yaml.SequenceNode):
     for value in node.value:
-      yield from _uses_nodes(value, yaml)
+      yield from _uses_nodes(value, yaml, cutoff)
 
 
 def check_action_pins(workflow_dir: Path | None = None) -> int:

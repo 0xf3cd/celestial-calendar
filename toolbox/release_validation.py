@@ -163,7 +163,6 @@ def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -
 
 
 def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_complete: bool = False) -> None:
-  """Validate wheel filenames, platform inventory, and adjacent SHA-256 sidecars."""
   payloads: dict[str, Path] = {}
   for path in downloaded:
     if not (path.name.endswith(".whl") or path.name.endswith(".whl.sha256")):
