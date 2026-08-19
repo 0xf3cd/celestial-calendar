@@ -186,7 +186,7 @@ jobs:
         xcode-version: '26'
     
     - name: Set up Python ${{ matrix.python-version }}  
-      uses: actions/setup-python@v6 
+      uses: actions/setup-python@v7 
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -267,12 +267,12 @@ jobs:
 
       - name: Set up Visual Studio
         # Pinned to a SHA: third-party action on the Windows build path (#177).
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
         with:
           vs-version: latest
 
       - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v6 
+        uses: actions/setup-python@v7 
         with:
           python-version: ${{ matrix.python-version }}
   
