@@ -315,6 +315,32 @@ def test_self_validation_accepts_archive_runtime_schema_independent_of_checkout(
     validate_release_archives(archives, VERSION)
 
 
+def test_self_validation_compares_shared_nonversion_properties(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "windows_x86_64.zip"
+  members = native_members(filename)
+
+  def write_runtime_property(measured):
+    mutated = []
+    for name, content in members:
+      if name == "build_info.json":
+        build_info = json.loads(content)
+        build_info["runtime_floor"] = {
+          "supported": {"msvc_runtime": "static"},
+          "measured": {"msvc_runtime": measured},
+        }
+        content = json.dumps(build_info).encode()
+      mutated.append((name, content))
+    write_zip(tmp_path / filename, mutated)
+
+  write_runtime_property("static")
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+  write_runtime_property("dynamic")
+  with pytest.raises(RuntimeError, match="Measured msvc_runtime property dynamic does not match supported static"):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
 @pytest.mark.parametrize("filename", NATIVE_MEMBERS)
 def test_each_native_archive_is_required_and_validated(tmp_path, filename):
   archives = write_release_archives(tmp_path)

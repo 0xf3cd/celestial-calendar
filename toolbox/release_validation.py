@@ -119,8 +119,12 @@ def _validate_runtime_floor(runtime_floor, archive_name: str) -> None:
   for key in supported.keys() & measured.keys():
     try:
       exceeds_support = version_key(measured[key]) > version_key(supported[key])
-    except ValueError as error:
-      raise RuntimeError(f"Invalid versioned runtime floor in {archive_name}") from error
+    except ValueError:
+      if measured[key] != supported[key]:
+        raise RuntimeError(
+          f"Measured {key} property {measured[key]} does not match supported {supported[key]} in {archive_name}"
+        ) from None
+      continue
     if exceeds_support:
       raise RuntimeError(
         f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {archive_name}"
