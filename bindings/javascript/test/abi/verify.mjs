@@ -127,9 +127,11 @@ const builtExports = Object.keys(M)
 sameSet("build recipe = built module", recipeExports, builtExports);
 assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
 
-const recordingParagraph = header.match(/Only the recording functions \(([\s\S]*?)\) write and clear the message/);
-assert(recordingParagraph, "cannot parse celestial.h recording list");
-const documentedRecording = [...recordingParagraph[1].matchAll(/`([a-z0-9_]+)`/g)].map((match) => match[1]);
+assert(
+  header.includes("Every exported function except `last_error` writes and clears the message"),
+  "celestial.h recording contract",
+);
+const documentedRecording = headerNames.filter((name) => name !== "last_error");
 
 const sourceDir = resolve(REPO, "src/shared_lib");
 const sourceNames = (await readdir(sourceDir)).filter((name) => /^lib.*\.cpp$/.test(name));
@@ -145,10 +147,10 @@ const functionBody = (name) => {
   }
   assert.fail(`unterminated implementation for ${name}`);
 };
-const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::clear_last_error()"));
+const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::wrap_export("));
 const bindingErrorPolicy = BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName);
 
-uniqueCount("recording exports", documentedRecording, 7);
+uniqueCount("recording exports", documentedRecording, 28);
 sameSet("recording docs = implementation writers", documentedRecording, implementationWriters);
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
@@ -205,9 +207,13 @@ const runMutationSelfTests = (candidate) => {
 
   const wrongRecording = structuredClone(candidate);
   wrongRecording.exports.find(({ name }) => name === "moon_illumination").recording = false;
-  mutations.push(["wrong recording marker", wrongRecording]);
+  mutations.push(["missing recording marker", wrongRecording]);
 
-  assert.equal(mutations.length, 5, "ABI mutation denominator");
+  const recordingReader = structuredClone(candidate);
+  recordingReader.exports.find(({ name }) => name === "last_error").recording = true;
+  mutations.push(["recording last_error", recordingReader]);
+
+  assert.equal(mutations.length, 6, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -218,5 +224,5 @@ runMutationSelfTests(manifest);
 
 console.log("PASS exports header=manifest=bindings=recipe=built 29 (+ malloc/free)");
 console.log("PASS layouts header=manifest 16; HEAPU16 present; memory growth enabled");
-console.log("PASS recording docs=writers=manifest=binding error policy 7");
-console.log("PASS ABI mutations rejected 5/5");
+console.log("PASS recording docs=writers=manifest=binding error policy 28");
+console.log("PASS ABI mutations rejected 6/6");

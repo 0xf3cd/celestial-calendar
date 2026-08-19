@@ -94,37 +94,38 @@ extern "C" {
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
-  if (algo == 1) {
-    return {
-      .valid = true,
-      .start = calendar::lunar::algo1::START_YEAR,
-      .end   = calendar::lunar::algo1::END_YEAR,
+  return lib::wrap_export("get_supported_lunar_year_range", [=]() -> SupportedLunarYearRange {
+    if (algo == 1) {
+      return {
+        .valid = true,
+        .start = calendar::lunar::algo1::START_YEAR,
+        .end   = calendar::lunar::algo1::END_YEAR,
+      };
+    }
+    if (algo == 2) {
+      return {
+        .valid = true,
+        .start = calendar::lunar::algo2::START_YEAR,
+        .end   = calendar::lunar::algo2::END_YEAR,
+      };
+    }
+    if (algo == 3) {
+      return {
+        .valid = true,
+        .start = calendar::lunar::algo3::START_YEAR,
+        .end   = calendar::lunar::algo3::END_YEAR,
+      };
+    }
+    throw std::invalid_argument {
+      std::format("Unsupported algorithm: {}", algo)
     };
-  }
-
-  if (algo == 2) {
-    return {
-      .valid = true,
-      .start = calendar::lunar::algo2::START_YEAR,
-      .end   = calendar::lunar::algo2::END_YEAR,
-    };
-  }
-
-  if (algo == 3) {
-    return {
-      .valid = true,
-      .start = calendar::lunar::algo3::START_YEAR,
-      .end   = calendar::lunar::algo3::END_YEAR,
-    };
-  }
-
-  return {};
+  });
 }
 
 auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters)
-  using namespace std::views;
-  
-  try {
+  return lib::wrap_export("get_lunar_year_info", [=]() -> LunarYearInfo {
+    using namespace std::views;
+
     if (algo != 1 and algo != 2 and algo != 3) {
       throw std::runtime_error {
         std::format("Unsupported algorithm: {}", algo)
@@ -159,20 +160,12 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
       .leap_month = raw.leap_month,
       .month_len  = month_len,
     };
-
-  } catch (const std::exception& e) {
-    // #67: `e.what()` is a message, not a format string — pass it as an argument.
-    lib::info("Exception raised during execution of get_lunar_year_info, algo = {}, year = {}", algo, year);
-    lib::info("{}", e.what());
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
 auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t month, const uint8_t day) -> LunarDate {
-  try {
+  return lib::wrap_export("gregorian_to_lunar", [=]() -> LunarDate {
     if (algo != 1 and algo != 2 and algo != 3) {
       throw std::runtime_error {
         std::format("Unsupported algorithm: {}", algo)
@@ -190,22 +183,15 @@ auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t mo
     });
 
     if (not converted) {
-      return {};
+      throw std::invalid_argument { "The Gregorian date cannot be represented by the selected algorithm." };
     }
     return *converted;
-
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of gregorian_to_lunar, algo = {}, year = {}, month = {}, day = {}", algo, year, month, day);
-    lib::info("{}", e.what());
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
 auto lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> GregorianDate {
-  try {
+  return lib::wrap_export("lunar_to_gregorian", [=]() -> GregorianDate {
     if (algo != 1 and algo != 2 and algo != 3) {
       throw std::runtime_error {
         std::format("Unsupported algorithm: {}", algo)
@@ -223,17 +209,10 @@ auto lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t mo
     });
 
     if (not converted) {
-      return {};
+      throw std::invalid_argument { "The Lunar date does not exist in the selected algorithm." };
     }
     return *converted;
-
-  } catch (const std::exception& e) {
-    lib::info("Exception raised during execution of lunar_to_gregorian, algo = {}, year = {}, month = {}, is_leap = {}, day = {}", algo, year, month, is_leap, day);
-    lib::info("{}", e.what());
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 }

@@ -200,10 +200,6 @@ const fail = (M, binding, operation, fallback = `${operation} failed.`) => {
   throw new CelestialError(operation, message || fallback, message.length > 0);
 };
 
-const protocolFailure = (operation) => {
-  throw new CelestialError(operation, `${operation} returned an inconsistent native result.`, false);
-};
-
 const callSret = (cName, operation, args) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
@@ -235,17 +231,16 @@ const countThenFill = (cName, operation, args) => {
     M.HEAPU32[countPtr >> 2] = 0;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
     const count = M.HEAPU32[countPtr >> 2];
-    if (queried !== 0) protocolFailure(operation);
+    if (queried !== 0) {
+      fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
+    }
     if (count === 0) fail(M, binding, operation);
 
     const slots = M._malloc(count * 8);
     try {
       const written = M[binding.wasmName](...args, countPtr, slots, count);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
-        if (binding.readsLastError) {
-          fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
-        }
-        protocolFailure(operation);
+        fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
       }
       return readDoubles(M, slots, count);
     } finally {
@@ -321,7 +316,9 @@ const longitudeCrossings = (year, longitudeDeg) => {
   const slots = M._malloc(discriminant.count * 8);
   try {
     const written = M._solar_lon_roots(checkedYear, longitude, slots, discriminant.count);
-    if (written !== discriminant.count) protocolFailure(operation);
+    if (written !== discriminant.count) {
+      fail(M, bindingOf("solar_lon_roots"), operation, `${operation} returned an inconsistent native result.`);
+    }
     return readDoubles(M, slots, written);
   } finally {
     M._free(slots);

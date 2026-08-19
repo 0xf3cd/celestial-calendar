@@ -202,18 +202,18 @@ def run_validation_guards() -> None:
 
 
 def run_native_failures() -> None:
-  """Prove recording and non-recording failures against the real native library."""
-  recording = raises(celestial.CelestialError, lambda: celestial.local_apparent_sidereal_time(1e6, 0.0))
-  assert recording.operation == "local_apparent_sidereal_time" and recording.recorded
-  assert "julian day number" in str(recording) and "below JD 1867522.5" in str(recording)
+  """Prove native reasons cross the real library through public wrappers."""
+  sidereal = raises(celestial.CelestialError, lambda: celestial.local_apparent_sidereal_time(1e6, 0.0))
+  assert sidereal.operation == "local_apparent_sidereal_time" and sidereal.recorded
+  assert "julian day number" in str(sidereal) and "below JD 1867522.5" in str(sidereal)
 
-  nonrecording = raises(
+  lunar = raises(
     celestial.CelestialError,
     lambda: celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO1, celestial.GregorianDate(2100, 2, 9)),
   )
-  assert nonrecording.operation == "gregorian_to_lunar" and not nonrecording.recorded
-  assert str(nonrecording) == "gregorian_to_lunar failed"
-  print("PASS real native failures recording=1 non-recording=1")
+  assert lunar.operation == "gregorian_to_lunar" and lunar.recorded
+  assert "cannot be represented" in str(lunar)
+  print("PASS real native failure reasons 2/2")
 
 
 def run_acceptance_boundaries() -> None:
@@ -255,7 +255,7 @@ def run_acceptance_boundaries() -> None:
 
 
 def run_protocol_seams() -> None:
-  """Pin the count cap and exact recording/non-recording last-error reads."""
+  """Pin the count cap and last-error reads."""
   accepted = Trap(4096)
   with replaced_binding("new_moons_after_jde", accepted):
     assert len(celestial.new_moons_after(2451545.0, 4096)) == 4096
@@ -278,14 +278,14 @@ def run_protocol_seams() -> None:
   assert error.recorded and recording_fill_failure.calls == 2 and error_reader.calls == 1
   assert str(error) == "fill failed"
 
-  error_reader = Trap(b"stale detail")
-  nonrecording_fill_failure = CountFillFailure(13)
+  error_reader = Trap(b"new moon fill failed")
+  new_moon_fill_failure = CountFillFailure(13)
   with replaced_binding("last_error", error_reader), replaced_binding(
-    "new_moons_in_year", nonrecording_fill_failure
+    "new_moons_in_year", new_moon_fill_failure
   ):
     error = raises(celestial.CelestialError, lambda: celestial.new_moons_in_year(2024))
-  assert not error.recorded and nonrecording_fill_failure.calls == 2 and error_reader.calls == 0
-  assert str(error) == "new_moons_in_year failed"
+  assert error.recorded and new_moon_fill_failure.calls == 2 and error_reader.calls == 1
+  assert str(error) == "new moon fill failed"
 
   error_reader = Trap(b"recorded detail")
   recording_failure = Trap(SimpleNamespace(valid=False))
@@ -296,20 +296,20 @@ def run_protocol_seams() -> None:
   assert error.operation == "local_apparent_sidereal_time" and error.recorded
   assert recording_failure.calls == error_reader.calls == 1
 
-  error_reader = Trap(b"stale detail")
-  nonrecording_failure = Trap(SimpleNamespace(valid=False))
+  error_reader = Trap(b"sun coordinate failed")
+  sun_failure = Trap(SimpleNamespace(valid=False))
   with replaced_binding("last_error", error_reader), replaced_binding(
-    "sun_apparent_geocentric_coord", nonrecording_failure
+    "sun_apparent_geocentric_coord", sun_failure
   ):
     error = raises(celestial.CelestialError, lambda: celestial.sun_apparent_geocentric_coordinate(2451545.0))
-  assert error.operation == "sun_apparent_geocentric_coordinate" and not error.recorded
-  assert nonrecording_failure.calls == 1 and error_reader.calls == 0
+  assert error.operation == "sun_apparent_geocentric_coordinate" and error.recorded
+  assert sun_failure.calls == error_reader.calls == 1
 
   assert celestial.solar_longitude_roots(1, 281.3) == ()
   assert celestial.new_moons_after(2451545.0, 0) == ()
   assert celestial.lunar_year_info(celestial.LunarAlgorithm.ALGO3, 2024).leap_month is None
   assert celestial.jieqi_name(celestial.Jieqi.LICHUN) == "立春"
-  print("PASS count boundary 4096/4097; last_error reads recording=1 non-recording=0")
+  print("PASS count boundary 4096/4097; last_error reads 4/4")
 
 
 def run_value_contract() -> None:

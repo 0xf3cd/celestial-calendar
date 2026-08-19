@@ -98,7 +98,9 @@ TEST(CAbiSmoke, LogVerbosity) {
   EXPECT_TRUE(set_log_verbosity(1));
   EXPECT_TRUE(set_log_verbosity(2));
   EXPECT_FALSE(set_log_verbosity(3)); // Verbosity::COUNT
+  EXPECT_STRNE(last_error(), "");
   EXPECT_TRUE(set_log_verbosity(0)); // restore the default (NONE) — later cases must not inherit DEBUG
+  EXPECT_STREQ(last_error(), "");
 }
 
 
@@ -124,6 +126,7 @@ TEST(CAbiSmoke, DeltaTRejectsNonFiniteYear) {
   EXPECT_FALSE(delta_t_algo4(HUGE_VAL).valid);
   EXPECT_FALSE(delta_t_algo5(NAN_VALUE).valid);
   EXPECT_FALSE(delta_t_algo5(HUGE_VAL).valid);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -167,8 +170,7 @@ TEST(CAbiSmoke, JdeToUt1RejectsBadInput) {
 }
 
 
-// #97 pilot: the Julian Day exports record *why* they failed, readable via `last_error`.
-TEST(CAbiSmoke, LastErrorPilot) {
+TEST(CAbiSmoke, LastErrorRecordsAndClears) {
   ASSERT_FALSE(ut1_to_jd(2024, 6, 1, NAN_VALUE).valid);
   EXPECT_NE(std::strstr(last_error(), "fraction"), nullptr);
 
@@ -195,6 +197,7 @@ TEST(CAbiSmoke, SunMoonCoords) {
   EXPECT_FALSE(sun_apparent_geocentric_coord(HUGE_VAL).valid);
   EXPECT_FALSE(moon_apparent_geocentric_coord(NAN_VALUE).valid);
   EXPECT_FALSE(moon_apparent_geocentric_coord(HUGE_VAL).valid);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -311,6 +314,7 @@ TEST(CAbiSmoke, SolarLonRoots) {
   EXPECT_FALSE(solar_lon_root_discriminant(2024, HUGE_VAL).valid);
   EXPECT_EQ(solar_lon_roots(2024, NAN_VALUE, slots.data(), slots.size()), 0U);
   EXPECT_EQ(solar_lon_roots(2024, HUGE_VAL, slots.data(), slots.size()), 0U);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -329,8 +333,7 @@ TEST(CAbiSmoke, NewMoons) {
   EXPECT_EQ(written, root_count);
   EXPECT_TRUE(root_count == 12U or root_count == 13U);
 
-  // Failure paths must reset root_count to a deterministic value.
-  // (new_moons_in_year is not a recording function; only the out-parameter state is checked here.)
+  // Failure paths must reset root_count to a deterministic value and record the reason.
   uint32_t sentinel = 0xDEADBEEFU;
   EXPECT_EQ(new_moons_in_year(2024, nullptr, slots.data(), slots.size()), 0U); // null root_count
 
@@ -343,6 +346,7 @@ TEST(CAbiSmoke, NewMoons) {
   sentinel = 0xDEADBEEFU;
   EXPECT_EQ(new_moons_in_year(32767, &sentinel, slots.data(), slots.size()), 0U); // year above range
   EXPECT_EQ(sentinel, 0U);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -352,6 +356,7 @@ TEST(CAbiSmoke, EquationOfTime) {
   EXPECT_LT(std::fabs(e.value), 5.0); // |E| stays under 5° (Meeus ch. 28).
 
   EXPECT_FALSE(equation_of_time(NAN_VALUE).valid); // non-finite JDE
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -368,6 +373,7 @@ TEST(CAbiSmoke, ApparentSolarTime) {
   EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, 200.0).valid);     // longitude out of range
   EXPECT_FALSE(apparent_solar_time(2024, 6, 1, 0.5, NAN_VALUE).valid); // NaN longitude
   EXPECT_FALSE(apparent_solar_time(2024, 6, 1, NAN_VALUE, 116.4).valid); // NaN fraction
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -385,6 +391,7 @@ TEST(CAbiSmoke, Jieqi) {
   EXPECT_FALSE(get_jieqi_name(0, buf.data(), 2));       // buffer too small
   EXPECT_FALSE(get_jieqi_name(0, nullptr, buf.size())); // null out-pointer
   EXPECT_FALSE(get_jieqi_name(24, buf.data(), buf.size()));
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -425,6 +432,7 @@ TEST(CAbiSmoke, Lunar) {
   EXPECT_TRUE(get_lunar_year_info(3, range3.end).valid);
   EXPECT_FALSE(get_lunar_year_info(3, range3.start - 1).valid);
   EXPECT_FALSE(get_lunar_year_info(3, range3.end + 1).valid);
+  EXPECT_STRNE(last_error(), "");
 }
 
 
@@ -476,6 +484,7 @@ TEST(CAbiSmoke, LunarConverter) {
   EXPECT_FALSE(lunar_to_gregorian(1, 2024, 2, true, 1).valid); // 2024 has no leap month
   EXPECT_FALSE(lunar_to_gregorian(1, 2023, 5, true, 1).valid); // 2023's leap month is the 2nd
   EXPECT_FALSE(lunar_to_gregorian(1, 2023, 2, true, 30).valid); // 闰二月 has 29 days
+  EXPECT_STRNE(last_error(), "");
 }
 
 

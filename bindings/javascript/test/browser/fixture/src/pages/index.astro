@@ -43,12 +43,12 @@
           await celestial.init();
           let translated = false;
           try {
-            celestial.time.localApparentSiderealTime(1000000.0, 0.0);
+            celestial.lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 });
           } catch (error) {
             translated = error instanceof celestial.CelestialError
-              && error.operation === "time.localApparentSiderealTime"
+              && error.operation === "lunar.fromGregorian"
               && error.recorded
-              && error.message.length > 0;
+              && error.message.includes("cannot be represented");
           }
           window.__CELESTIAL_RESULT__ = {
             translated,
