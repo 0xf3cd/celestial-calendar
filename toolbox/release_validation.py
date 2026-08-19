@@ -42,6 +42,12 @@ NATIVE_ARCHIVES: Final[dict[str, str]] = {
   "windows_x86_64.zip": "windows_x86_64",
 }
 RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
+PYTHON_ARTIFACTS: Final[dict[str, tuple[str, str]]] = {
+  "celestial-python-manylinux-x86_64": ("manylinux", "x86_64"),
+  "celestial-python-manylinux-aarch64": ("manylinux", "aarch64"),
+  "celestial-python-macos-arm64": ("macos", "arm64"),
+  "celestial-python-windows-amd64": ("windows", "amd64"),
+}
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
   Path(__file__).resolve().parents[1] / "docs" / "RELEASE_NOTES.md",
@@ -121,7 +127,38 @@ def validate_release_document_versions(tag_name: str, documents: Iterable[Path] 
       )
 
 
-def validate_wheel_sidecars(downloaded: Iterable[Path]) -> None:
+def _wheel_artifact(wheel_name: str, version: str) -> str:
+  match = re.fullmatch(rf"celestial_calendar-{re.escape(version)}-py3-none-(.+)\.whl", wheel_name)
+  if match is None:
+    raise RuntimeError(f"Unexpected wheel filename: {wheel_name}")
+  tags = match.group(1).split(".")
+
+  for artifact_name, (family, architecture) in PYTHON_ARTIFACTS.items():
+    if family == "manylinux":
+      expected = f"manylinux_2_28_{architecture}"
+      tag_matches = [re.fullmatch(rf"manylinux_(\d+)_(\d+)_{architecture}", tag) for tag in tags]
+      valid = expected in tags and all(tag_match is not None for tag_match in tag_matches)
+      valid = valid and all(
+        (int(tag_match.group(1)), int(tag_match.group(2))) <= (2, 28)
+        for tag_match in tag_matches
+        if tag_match is not None
+      )
+    elif family == "macos":
+      valid = tags == ["macosx_14_0_arm64"]
+    else:
+      valid = tags == ["win_amd64"]
+    if valid:
+      return artifact_name
+  raise RuntimeError(f"Unexpected wheel platform in filename: {wheel_name}")
+
+
+def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -> None:
+  """Match one artifact name to its one permitted wheel platform tag."""
+  if _wheel_artifact(wheel_name, version) != artifact_name:
+    raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}")
+
+
+def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_complete: bool = False) -> None:
   """Validate every downloaded wheel against its adjacent SHA-256 sidecar."""
   payloads: dict[str, Path] = {}
   for path in downloaded:
@@ -142,11 +179,22 @@ def validate_wheel_sidecars(downloaded: Iterable[Path]) -> None:
       f"extra={sorted(sidecars - expected_sidecars)}"
     )
 
+  artifacts = {}
   for wheel_name in wheels:
+    artifact_name = _wheel_artifact(wheel_name, version)
+    if artifact_name in artifacts:
+      raise RuntimeError(f"Duplicate wheel platform: {artifact_name}")
+    artifacts[artifact_name] = wheel_name
     digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
     expected = f"{digest}  {wheel_name}\n".encode()
     if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
       raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel_name}")
+
+  if require_complete and set(artifacts) != set(PYTHON_ARTIFACTS):
+    raise RuntimeError(
+      f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}, "
+      f"extra={sorted(set(artifacts) - set(PYTHON_ARTIFACTS))}"
+    )
 
 
 def validate_wasm_archive(archive_path: Path, version: str) -> None:
@@ -258,10 +306,11 @@ def validate_release_archives(
   downloaded: Iterable[Path],
   version: str,
   check_documented_runtime: bool = True,
+  require_wheels: bool = False,
 ) -> None:
   """Validate the v0.6+ product archives and any downloaded wheel sidecars."""
   downloaded = list(downloaded)
-  validate_wheel_sidecars(downloaded)
+  validate_wheel_sidecars(downloaded, version, require_complete=require_wheels)
   archives: dict[str, Path] = {}
   for path in downloaded:
     if path.name not in RELEASE_ARCHIVES:

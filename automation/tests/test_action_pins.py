@@ -25,10 +25,10 @@ from automation.action_pins import check_action_pins
 SHA = "0123456789abcdef0123456789abcdef01234567"
 
 
-def write_workflow(directory, uses, suffix="", comment=""):
+def write_workflow(directory, uses, suffix=""):
   workflow = directory / "check.yml"
   workflow.write_text(
-    f"jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: {uses}{comment}\n{suffix}",
+    f"jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: {uses}\n{suffix}",
     encoding="utf-8",
   )
   return workflow
@@ -75,6 +75,17 @@ def test_third_party_action_requires_full_sha_and_reports_location(tmp_path, cap
 
 def test_third_party_sha_requires_provenance_comment(tmp_path, capsys):
   write_workflow(tmp_path, f"owner/action@{SHA}")
+
+  assert check_action_pins(tmp_path) == 1
+  assert "inline release/tag provenance comment" in capsys.readouterr().out
+
+
+def test_hash_inside_another_scalar_is_not_provenance(tmp_path, capsys):
+  workflow = tmp_path / "check.yml"
+  workflow.write_text(
+    f'jobs:\n  check: {{uses: owner/workflow@{SHA}, note: "not a # provenance comment"}}\n',
+    encoding="utf-8",
+  )
 
   assert check_action_pins(tmp_path) == 1
   assert "inline release/tag provenance comment" in capsys.readouterr().out

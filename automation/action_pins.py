@@ -86,7 +86,7 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
         if target.startswith("actions/"):
           continue
         source_line = lines[node.start_mark.line]
-        if "#" not in source_line[node.end_mark.column:]:
+        if re.match(r"^\s+#\s*\S", source_line[node.end_mark.column:]) is None:
           failures.append(f"{label} needs an inline release/tag provenance comment")
         continue
       if target.startswith("actions/") and MAJOR_TAG.fullmatch(ref):

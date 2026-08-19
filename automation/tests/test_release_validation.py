@@ -145,12 +145,31 @@ def write_release_archives(directory):
   return paths
 
 
-def write_wheel(directory, content=b"wheel"):
-  wheel = directory / f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
+def write_wheel_named(directory, name, content=b"wheel"):
+  wheel = directory / name
   wheel.write_bytes(content)
   sidecar = directory / f"{wheel.name}.sha256"
-  sidecar.write_text(f"{hashlib.sha256(content).hexdigest()}  {wheel.name}\n", encoding="utf-8")
+  sidecar.write_text(
+    f"{hashlib.sha256(content).hexdigest()}  {wheel.name}\n",
+    encoding="utf-8",
+    newline="\n",
+  )
   return wheel, sidecar
+
+
+def write_wheel(directory, content=b"wheel"):
+  name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
+  return write_wheel_named(directory, name, content)
+
+
+def write_wheels(directory, version=VERSION):
+  names = [
+    f"celestial_calendar-{version}-py3-none-manylinux_2_28_x86_64.whl",
+    f"celestial_calendar-{version}-py3-none-manylinux_2_28_aarch64.whl",
+    f"celestial_calendar-{version}-py3-none-macosx_14_0_arm64.whl",
+    f"celestial_calendar-{version}-py3-none-win_amd64.whl",
+  ]
+  return [path for name in names for path in write_wheel_named(directory, name)]
 
 
 def test_release_archives_validate_without_modification(tmp_path):
@@ -170,6 +189,30 @@ def test_downloaded_wheel_sidecar_validates_without_modification(tmp_path):
   validate_release_archives([*archives, wheel, sidecar], VERSION)
 
   assert {path.name: path.read_bytes() for path in (wheel, sidecar)} == before
+
+
+def test_complete_wheel_inventory_is_bound_to_release_version(tmp_path):
+  archives = write_release_archives(tmp_path)
+  wheels = write_wheels(tmp_path)
+
+  validate_release_archives([*archives, *wheels], VERSION, require_wheels=True)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "stale-version"])
+def test_complete_wheel_inventory_rejects_missing_or_stale_wheel(tmp_path, mutation):
+  archives = write_release_archives(tmp_path)
+  wheels = write_wheels(tmp_path)
+  if mutation == "missing":
+    downloaded = [*archives, *wheels[2:]]
+  else:
+    stale = write_wheel_named(
+      tmp_path,
+      "celestial_calendar-0.5.0-py3-none-manylinux_2_28_x86_64.whl",
+    )
+    downloaded = [*archives, *stale, *wheels[2:]]
+
+  with pytest.raises(RuntimeError):
+    validate_release_archives(downloaded, VERSION, require_wheels=True)
 
 
 @pytest.mark.parametrize("mutation", ["missing", "mismatch", "orphan"])
