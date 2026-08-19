@@ -25,6 +25,7 @@ import zipfile
 
 import pytest
 
+from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
 from toolbox.release_validation import _native_layout, _runtime_matrix, validate_release_archives
@@ -69,16 +70,16 @@ NATIVE_MEMBERS = {
 }
 RUNTIME_FLOORS = {
   "linux_amd64.zip": {
-    "supported": {"glibc": "2.28"},
+    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
     "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
   },
   "linux_arm64.zip": {
-    "supported": {"glibc": "2.28"},
+    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
     "measured": {"glibc": "2.17", "glibcxx": "3.4.21"},
   },
   "macos_arm64.zip": {"supported": {"macos": "14.0"}, "measured": {"macos": "14.0"}},
   "windows_x86_64.zip": {
-    "supported": {"msvc_runtime": "static"},
+    "supported": {"windows": "not_declared"},
     "measured": {"msvc_runtime": "static"},
   },
 }
@@ -256,13 +257,41 @@ def test_native_archive_rejects_runtime_floor_drift(tmp_path, field):
   for name, content in members:
     if name == "build_info.json":
       build_info = json.loads(content)
-      build_info["runtime_floor"][field] = {"glibc": "99.0"}
+      build_info["runtime_floor"][field]["glibc"] = "2.29" if field == "supported" else "2.25"
       content = json.dumps(build_info).encode()
     mutated.append((name, content))
   write_zip(tmp_path / filename, mutated)
 
   with pytest.raises(RuntimeError, match="Runtime floor mismatch"):
     validate_release_archives(archives, VERSION)
+
+
+def test_native_archive_rejects_measured_requirement_above_support(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"]["measured"]["glibc"] = "2.34"
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match="Measured glibc requirement 2.34 exceeds supported 2.28"):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
+def test_self_validation_does_not_read_checkout_runtime_matrix(tmp_path, monkeypatch):
+  archives = write_release_archives(tmp_path)
+  monkeypatch.setattr(
+    release_validation,
+    "_runtime_matrix",
+    lambda: pytest.fail("self-validation read the checkout README"),
+  )
+
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
 
 
 @pytest.mark.parametrize("filename", NATIVE_MEMBERS)

@@ -31,10 +31,10 @@ from pathlib import Path
 
 
 SUPPORTED_RUNTIME = {
-  "linux_amd64": {"glibc": "2.28"},
-  "linux_arm64": {"glibc": "2.28"},
+  "linux_amd64": {"glibc": "2.28", "glibcxx": "3.4.21"},
+  "linux_arm64": {"glibc": "2.28", "glibcxx": "3.4.21"},
   "macos_arm64": {"macos": "14.0"},
-  "windows_x86_64": {"msvc_runtime": "static"},
+  "windows_x86_64": {"windows": "not_declared"},
 }
 
 

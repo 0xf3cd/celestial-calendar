@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Final, Iterable
 
 from toolbox.build_npm import PACKAGE_NAME
+from toolbox.runtime_floor import version_key
 
 
 WASM_ARCHIVE: Final[str] = "celestial-wasm.zip"
@@ -43,6 +44,12 @@ NATIVE_ARCHIVES: Final[dict[str, str]] = {
 RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
+RUNTIME_KEYS: Final[dict[str, tuple[set[str], set[str]]]] = {
+  "linux_amd64": ({"glibc", "glibcxx"}, {"glibc", "glibcxx"}),
+  "linux_arm64": ({"glibc", "glibcxx"}, {"glibc", "glibcxx"}),
+  "macos_arm64": ({"macos"}, {"macos"}),
+  "windows_x86_64": ({"windows"}, {"msvc_runtime"}),
+}
 
 
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
@@ -101,6 +108,36 @@ def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]
       f"extra={sorted(set(matrix) - expected)}"
     )
   return matrix
+
+
+def _validate_runtime_floor(runtime_floor, artifact_name: str, archive_name: str) -> None:
+  if not isinstance(runtime_floor, dict) or set(runtime_floor) != {"supported", "measured"}:
+    raise RuntimeError(f"Invalid runtime floor in {archive_name}")
+  supported = runtime_floor["supported"]
+  measured = runtime_floor["measured"]
+  if not all(
+    isinstance(values, dict)
+    and values
+    and all(isinstance(key, str) and isinstance(value, str) and key and value for key, value in values.items())
+    for values in (supported, measured)
+  ):
+    raise RuntimeError(f"Invalid runtime floor in {archive_name}")
+  supported_keys, measured_keys = RUNTIME_KEYS[artifact_name]
+  if set(supported) != supported_keys or set(measured) != measured_keys:
+    raise RuntimeError(f"Invalid runtime floor keys in {archive_name}")
+  if artifact_name == "windows_x86_64" and (
+    supported != {"windows": "not_declared"} or measured != {"msvc_runtime": "static"}
+  ):
+    raise RuntimeError(f"Invalid Windows runtime floor in {archive_name}")
+  for key in supported.keys() & measured.keys():
+    try:
+      exceeds_support = version_key(measured[key]) > version_key(supported[key])
+    except ValueError as error:
+      raise RuntimeError(f"Invalid versioned runtime floor in {archive_name}") from error
+    if exceeds_support:
+      raise RuntimeError(
+        f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {archive_name}"
+      )
 
 
 def validate_wasm_archive(archive_path: Path, version: str) -> None:
@@ -177,7 +214,12 @@ def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str
   return fixed | set(runtime_members), runtime_members
 
 
-def validate_native_archive(archive_path: Path, artifact_name: str, version: str) -> None:
+def validate_native_archive(
+  archive_path: Path,
+  artifact_name: str,
+  version: str,
+  expected_runtime: dict[str, dict[str, str]] | None = None,
+) -> None:
   """Validate one native artifact's members and producer-recorded runtime hashes."""
   expected, runtime_members = _native_layout(artifact_name, version)
   try:
@@ -186,8 +228,9 @@ def validate_native_archive(archive_path: Path, artifact_name: str, version: str
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
-      expected_runtime = _runtime_matrix()[artifact_name]
-      if build_info.get("runtime_floor") != expected_runtime:
+      runtime_floor = build_info.get("runtime_floor")
+      _validate_runtime_floor(runtime_floor, artifact_name, archive_path.name)
+      if expected_runtime is not None and runtime_floor != expected_runtime:
         raise RuntimeError(f"Runtime floor mismatch in {archive_path.name}")
       hashes = build_info.get("sha256")
       if not isinstance(hashes, dict) or set(hashes) != set(runtime_members.values()):
@@ -202,7 +245,11 @@ def validate_native_archive(archive_path: Path, artifact_name: str, version: str
     raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
 
 
-def validate_release_archives(downloaded: Iterable[Path], version: str) -> None:
+def validate_release_archives(
+  downloaded: Iterable[Path],
+  version: str,
+  check_documented_runtime: bool = True,
+) -> None:
   """Require and validate the five v0.6+ product archives among downloaded assets."""
   archives: dict[str, Path] = {}
   for path in downloaded:
@@ -218,6 +265,8 @@ def validate_release_archives(downloaded: Iterable[Path], version: str) -> None:
   if missing:
     raise RuntimeError(f"Missing downloaded release archives: {missing}")
 
+  runtime_matrix = _runtime_matrix() if check_documented_runtime else None
   validate_wasm_archive(archives[WASM_ARCHIVE], version)
   for filename, artifact_name in NATIVE_ARCHIVES.items():
-    validate_native_archive(archives[filename], artifact_name, version)
+    expected_runtime = runtime_matrix[artifact_name] if runtime_matrix is not None else None
+    validate_native_archive(archives[filename], artifact_name, version, expected_runtime)

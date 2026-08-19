@@ -115,7 +115,9 @@ def main() -> None:
   validation_version = archive_validation_version(release.tag_name)
   downloaded_assets = GitHub.download_release(release.id, args.save_to, args.parallel)
   if validation_version is not None:
-    validate_release_archives(downloaded_assets, validation_version)
+    # A general downloader may target any tag; its local README describes the checkout,
+    # not that release. The tag checkout's collector already verified the documented matrix.
+    validate_release_archives(downloaded_assets, validation_version, check_documented_runtime=False)
   green_print(f"Downloaded {len(downloaded_assets)} assets to {args.save_to}")
 
 

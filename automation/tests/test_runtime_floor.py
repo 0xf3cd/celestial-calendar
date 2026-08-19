@@ -24,8 +24,10 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 from toolbox import runtime_floor
+from toolbox.release_validation import _runtime_matrix
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -63,25 +65,46 @@ def test_record_runtime_floor_updates_build_info(tmp_path, monkeypatch):
   binary.write_bytes(b"library")
   build_info = tmp_path / "build_info.json"
   build_info.write_text('{"build_version": "0.6.0"}\n', encoding="utf-8")
-  monkeypatch.setattr(runtime_floor, "inspect", lambda _artifact, _binary: {"glibc": "2.26"})
+  monkeypatch.setattr(
+    runtime_floor,
+    "inspect",
+    lambda _artifact, _binary: {"glibc": "2.26", "glibcxx": "3.4.21"},
+  )
 
   runtime_floor.record_runtime_floor("linux_amd64", binary, build_info)
 
   assert json.loads(build_info.read_text(encoding="utf-8"))["runtime_floor"] == {
-    "supported": {"glibc": "2.28"},
-    "measured": {"glibc": "2.26"},
+    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
+    "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
   }
 
 
 def test_native_and_wheel_workflows_share_manylinux_digests():
-  pattern = r"quay\.io/pypa/manylinux_2_28_(?:x86_64|aarch64)@sha256:[0-9a-f]{64}"
-  native_images = set(re.findall(pattern, BUILD_WORKFLOW.read_text(encoding="utf-8")))
+  pattern = r"quay\.io/pypa/manylinux_2_28_(x86_64|aarch64)@sha256:[0-9a-f]{64}"
+  native_workflow = yaml.safe_load(BUILD_WORKFLOW.read_text(encoding="utf-8"))
   wheel_text = WHEEL_WORKFLOW.read_text(encoding="utf-8")
+  wheel_workflow = yaml.safe_load(wheel_text)
+  native_images = {
+    row["platform"].removeprefix("linux/").replace("amd64", "x86_64").replace("arm64", "aarch64"):
+      row["image"]
+    for row in native_workflow["jobs"]["linux-docker"]["strategy"]["matrix"]["include"]
+  }
+  wheel_images = {
+    row["identifier"].removeprefix("cp311-manylinux_"): row["image"]
+    for row in wheel_workflow["jobs"]["manylinux"]["strategy"]["matrix"]["include"]
+  }
 
-  assert len(native_images) == 2
-  assert set(re.findall(pattern, wheel_text)) == native_images
+  assert native_images == wheel_images
+  assert set(native_images) == {"x86_64", "aarch64"}
+  assert all(re.fullmatch(pattern, image) for image in native_images.values())
   assert "CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28" not in wheel_text
   assert "CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28" not in wheel_text
+
+
+def test_supported_runtime_matches_readme():
+  assert runtime_floor.SUPPORTED_RUNTIME == {
+    artifact: runtime["supported"] for artifact, runtime in _runtime_matrix().items()
+  }
 
 
 def test_native_workflow_records_each_runtime_floor():

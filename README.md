@@ -142,17 +142,19 @@ The supported year range of lunar conversions depends on the algorithm: 1901–2
 
 ### 3.1. Prebuilt Native Archives
 
-The GitHub Release archives support these runtimes. The measured column records the greatest versioned symbol or
-deployment requirement present in the packaged library; CI writes the same values to `build_info.json` and release
-validation rejects any drift from this matrix.
+The supported column is the consumer compatibility promise; the measured column is an audit record and does not lower
+that support floor. Linux records the greatest GLIBC and GLIBCXX requirements, macOS records the Mach-O deployment
+target, and Windows records the Visual C++ runtime linkage. CI writes the same values to `build_info.json`, rejects a
+measured version above its supported counterpart, and checks release artifacts against this matrix. Linux assumes the
+standard `libstdc++.so.6` and `libgcc_s.so.1` system runtimes are present. No Windows OS version floor is declared.
 
 <!-- native-runtime-matrix -->
-| Artifact | Supported runtime | Measured binary requirement |
+| Artifact | Supported runtime | Measured artifact property |
 |---|---|---|
-| `linux_amd64` | `glibc=2.28` | `glibc=2.26, glibcxx=3.4.21` |
-| `linux_arm64` | `glibc=2.28` | `glibc=2.17, glibcxx=3.4.21` |
+| `linux_amd64` | `glibc=2.28, glibcxx=3.4.21` | `glibc=2.26, glibcxx=3.4.21` |
+| `linux_arm64` | `glibc=2.28, glibcxx=3.4.21` | `glibc=2.17, glibcxx=3.4.21` |
 | `macos_arm64` | `macos=14.0` | `macos=14.0` |
-| `windows_x86_64` | `msvc_runtime=static` | `msvc_runtime=static` |
+| `windows_x86_64` | `windows=not_declared` | `msvc_runtime=static` |
 
 ## 4. How to Build
 
