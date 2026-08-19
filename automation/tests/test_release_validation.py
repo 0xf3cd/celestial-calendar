@@ -25,9 +25,10 @@ import zipfile
 
 import pytest
 
+from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
-from toolbox.release_validation import _native_layout, validate_release_archives
+from toolbox.release_validation import _native_layout, _runtime_matrix, validate_release_archives
 
 
 VERSION = project_version()
@@ -66,6 +67,21 @@ NATIVE_MEMBERS = {
     "bin/celestial_calendar.dll",
     "lib/celestial_calendar.lib",
   ],
+}
+RUNTIME_FLOORS = {
+  "linux_amd64.zip": {
+    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
+    "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
+  },
+  "linux_arm64.zip": {
+    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
+    "measured": {"glibc": "2.17", "glibcxx": "3.4.21"},
+  },
+  "macos_arm64.zip": {"supported": {"macos": "14.0"}, "measured": {"macos": "14.0"}},
+  "windows_x86_64.zip": {
+    "supported": {"windows": "not_declared"},
+    "measured": {"msvc_runtime": "static"},
+  },
 }
 
 
@@ -107,7 +123,11 @@ def native_members(filename, build_version=VERSION):
     members.append((name, content))
     if name.endswith((".so", f".so.{SOVERSION}", f".so.{VERSION}", ".dylib", ".dll")):
       hashes[name.rsplit("/", maxsplit=1)[-1]] = hashlib.sha256(content).hexdigest()
-  build_info = {"build_version": build_version, "sha256": hashes}
+  build_info = {
+    "build_version": build_version,
+    "runtime_floor": RUNTIME_FLOORS[filename],
+    "sha256": hashes,
+  }
   return [
     (name, json.dumps(build_info).encode() if name == "build_info.json" else content)
     for name, content in members
@@ -220,6 +240,160 @@ def test_native_archive_rejects_wrong_build_version(tmp_path):
 
   with pytest.raises(RuntimeError, match="Build version mismatch"):
     validate_release_archives(archives, VERSION)
+
+
+def test_readme_runtime_matrix_matches_reference_values():
+  assert _runtime_matrix() == {
+    filename.removesuffix(".zip"): floor for filename, floor in RUNTIME_FLOORS.items()
+  }
+
+
+@pytest.mark.parametrize(
+  ("runtime_floor_value", "message"),
+  [
+    ([], "Invalid runtime floor"),
+    ({"supported": {"glibc": "2.28"}}, "Invalid runtime floor"),
+    ({"supported": {}, "measured": {"glibc": "2.26"}}, "Invalid runtime floor"),
+    ({"supported": {"glibc": "2.28"}, "measured": {"glibc": 2.26}}, "Invalid runtime floor"),
+    ({"supported": {"": "2.28"}, "measured": {"glibc": "2.26"}}, "Invalid runtime floor"),
+  ],
+)
+def test_native_archive_rejects_invalid_runtime_floor_schema(tmp_path, runtime_floor_value, message):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"] = runtime_floor_value
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match=message):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
+@pytest.mark.parametrize(
+  ("contents", "message"),
+  [
+    ("no matrix here\n", "README is missing the native runtime matrix"),
+    (
+      "<!-- native-runtime-matrix -->\n| header | row |\n|---|---|\n| only | two |\n",
+      "Invalid native runtime matrix row",
+    ),
+    (
+      "<!-- native-runtime-matrix -->\n| Artifact | Supported | Measured |\n|---|---|---|\n"
+      "| `linux_amd64` | `glibc 2.28` | `glibc=2.26` |\n",
+      "Invalid native runtime matrix cell",
+    ),
+    (
+      "<!-- native-runtime-matrix -->\n| Artifact | Supported | Measured |\n|---|---|---|\n"
+      "| `linux_amd64` | `glibc=2.28` | `glibc=2.26` |\n",
+      "Native runtime matrix inventory mismatch",
+    ),
+  ],
+)
+def test_runtime_matrix_rejects_invalid_documentation(tmp_path, contents, message):
+  readme = tmp_path / "README.md"
+  readme.write_text(contents, encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match=message):
+    _runtime_matrix(readme)
+
+
+@pytest.mark.parametrize("field", ["supported", "measured"])
+def test_native_archive_rejects_runtime_floor_drift(tmp_path, field):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"][field]["glibc"] = "2.29" if field == "supported" else "2.25"
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match="Runtime floor mismatch"):
+    validate_release_archives(archives, VERSION)
+
+
+def test_native_archive_rejects_measured_requirement_above_support(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "linux_amd64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"]["measured"]["glibc"] = "2.34"
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  with pytest.raises(RuntimeError, match="Measured glibc requirement 2.34 exceeds supported 2.28"):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
+def test_self_validation_does_not_read_checkout_runtime_matrix(tmp_path, monkeypatch):
+  archives = write_release_archives(tmp_path)
+  monkeypatch.setattr(
+    release_validation,
+    "_runtime_matrix",
+    lambda: pytest.fail("self-validation read the checkout README"),
+  )
+
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+
+def test_self_validation_accepts_archive_runtime_schema_independent_of_checkout(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "windows_x86_64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"] = {
+        "supported": {"future_windows_floor": "1.0"},
+        "measured": {"future_windows_floor": "0.9"},
+      }
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
+  with pytest.raises(RuntimeError, match="Runtime floor mismatch"):
+    validate_release_archives(archives, VERSION)
+
+
+def test_self_validation_compares_shared_nonversion_properties(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "windows_x86_64.zip"
+  members = native_members(filename)
+
+  def write_runtime_property(measured):
+    mutated = []
+    for name, content in members:
+      if name == "build_info.json":
+        build_info = json.loads(content)
+        build_info["runtime_floor"] = {
+          "supported": {"msvc_runtime": "static"},
+          "measured": {"msvc_runtime": measured},
+        }
+        content = json.dumps(build_info).encode()
+      mutated.append((name, content))
+    write_zip(tmp_path / filename, mutated)
+
+  write_runtime_property("static")
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
+
+  write_runtime_property("dynamic")
+  with pytest.raises(RuntimeError, match="Measured msvc_runtime property dynamic does not match supported static"):
+    validate_release_archives(archives, VERSION, check_documented_runtime=False)
 
 
 @pytest.mark.parametrize("filename", NATIVE_MEMBERS)

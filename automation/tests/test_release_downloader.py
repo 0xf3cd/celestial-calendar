@@ -54,8 +54,8 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
   for path in downloaded:
     path.write_bytes(b"downloaded")
 
-  def record_validation(paths, version):
-    calls.append((paths, version))
+  def record_validation(paths, version, check_documented_runtime):
+    calls.append((paths, version, check_documented_runtime))
 
   monkeypatch.setattr(
     release_downloader_module,
@@ -78,21 +78,22 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
 def test_v060_release_download_reuses_archive_validation(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v0.6.0")
 
-  assert calls == [(downloaded, "0.6.0")]
+  assert calls == [(downloaded, "0.6.0", False)]
 
 
 def test_release_download_validates_against_tag_version(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v1.2.3")
 
-  assert calls == [(downloaded, "1.2.3")]
+  assert calls == [(downloaded, "1.2.3", False)]
 
 
 def test_release_download_preserves_assets_when_validation_fails(monkeypatch, tmp_path):
   downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
 
-  def reject_archives(paths, version):
+  def reject_archives(paths, version, check_documented_runtime):
     assert paths == downloaded
     assert version == "0.6.0"
+    assert check_documented_runtime is False
     raise RuntimeError("invalid archive")
 
   with pytest.raises(RuntimeError, match="invalid archive"):

@@ -36,6 +36,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 MANIFEST = HERE.parent / "abi" / "manifest.json"
+sys.path.append(str(REPO))
+
+from toolbox.runtime_floor import parse_windows_imports  # noqa: E402
 
 
 def run(*command: str) -> str:
@@ -166,7 +169,7 @@ def verify_windows(native: Path, exports: set[str]) -> None:
   """Verify PE AMD64, the exact C export set, and absence of VC runtime DLL imports."""
   output = run("llvm-readobj", "--file-headers", "--coff-imports", "--coff-exports", str(native))
   assert "Machine: IMAGE_FILE_MACHINE_AMD64" in output
-  assert re.search(r"\b(?:MSVCP|VCRUNTIME)[^\s]*\.dll\b", output, flags=re.IGNORECASE) is None
+  assert parse_windows_imports(output) == {"msvc_runtime": "static"}
   exported = set(re.findall(r"Export \{[\s\S]*?\n\s*Name: ([A-Za-z_]\w*)", output))
   assert exported == exports
 

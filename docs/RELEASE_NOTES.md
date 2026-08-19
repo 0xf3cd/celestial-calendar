@@ -43,7 +43,8 @@
   SHA-256 sidecar.
 - emsdk is pinned to a commit included in the cache key. Before publishing, the release collector verifies the WASM
   archive's exact members, npm package identity, and tarball sidecar; it separately verifies each native archive's
-  members, build version, and runtime-library hashes. `release_downloader.py` repeats those checks after download.
+  members, build version, and runtime-library hashes. `release_downloader.py` repeats the archive-internal checks after
+  download without comparing against the caller's checkout documentation.
 - Each platform clean-installs its wheel and replays the same native golden dataset as the WASM leg.
 - The JavaScript acceptance suite pins the inclusive endpoints of the civil, calendar, Jieqi, longitude, ΔT, and
   lunar-algorithm domains. Directed mutations prove that the ABI oracle detects export, signature, layout, and
