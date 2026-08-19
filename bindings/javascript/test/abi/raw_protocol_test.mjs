@@ -243,9 +243,11 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
   finite(validSret(name, [2024.5]).value);
 }
 
+const recordedNames = new Set();
 const recordedFailure = (name, invoke) => {
   assert.equal(invoke(), true, `${name} failure result`);
   assert(lastError().length > 0, `${name} records last_error`);
+  recordedNames.add(name);
 };
 recordedFailure("ut1_to_jd", () => !rawSret("ut1_to_jd", [2024, 6, 1, 1.5]).valid);
 recordedFailure("ut1_to_jde", () => !rawSret("ut1_to_jde", [2024, 13, 1, 0.5]).valid);
@@ -286,42 +288,43 @@ try {
 const stale = lastError();
 assert(stale.length > 0);
 assert.equal(rawSret("sun_apparent_geocentric_coord", [Number.NaN]).valid, false);
-assert.equal(lastError(), stale, "non-recording failure leaves stale last_error untouched");
+assert(lastError().length > 0 && lastError() !== stale, "new recording failure replaces last_error");
 assert.equal(rawSret("moon_illumination", [2448724.5]).valid, true);
 assert.equal(lastError(), "", "successful recording call clears last_error");
 
-assert.equal(M._set_log_verbosity(3), 0);
-assert.equal(rawSret("moon_apparent_geocentric_coord", [Number.NaN]).valid, false);
-assert.equal(rawSret("solar_lon_root_discriminant", [2024, Number.NaN]).valid, false);
+recordedFailure("set_log_verbosity", () => M._set_log_verbosity(3) === 0);
+recordedFailure("sun_apparent_geocentric_coord", () => !rawSret("sun_apparent_geocentric_coord", [Number.NaN]).valid);
+recordedFailure("moon_apparent_geocentric_coord", () => !rawSret("moon_apparent_geocentric_coord", [Number.NaN]).valid);
+recordedFailure("solar_lon_root_discriminant", () => !rawSret("solar_lon_root_discriminant", [2024, Number.NaN]).valid);
 assert.equal(rawSret("solar_lon_root_discriminant", [0, 0]).valid, false);
 const edgeSlot = M._malloc(8);
 const edgeCount = M._malloc(4);
 try {
-  assert.equal(M._solar_lon_roots(2024, Number.NaN, edgeSlot, 1), 0);
-  assert.equal(M._new_moons_after_jde(Number.NaN, edgeSlot, 1), 0);
+  recordedFailure("solar_lon_roots", () => M._solar_lon_roots(2024, Number.NaN, edgeSlot, 1) === 0);
+  recordedFailure("new_moons_after_jde", () => M._new_moons_after_jde(Number.NaN, edgeSlot, 1) === 0);
   M.HEAPU32[edgeCount >> 2] = 0xDEADBEEF;
-  assert.equal(M._new_moons_in_year(0, edgeCount, edgeSlot, 1), 0);
+  recordedFailure("new_moons_in_year", () => M._new_moons_in_year(0, edgeCount, edgeSlot, 1) === 0);
   assert.equal(M.HEAPU32[edgeCount >> 2], 0);
 } finally {
   M._free(edgeCount);
   M._free(edgeSlot);
 }
-assert.equal(rawSret("equation_of_time", [Number.NaN]).valid, false);
-assert.equal(rawSret("apparent_solar_time", [2024, 6, 1, 0.5, 200]).valid, false);
-assert.equal(rawSret("query_jieqi_moment", [2024, 24]).valid, false);
-assert.equal(rawSret("get_supported_lunar_year_range", [0]).valid, false);
-assert.equal(rawSret("get_lunar_year_info", [9, 2024]).valid, false);
-assert.equal(rawSret("gregorian_to_lunar", [1, 2023, 13, 1]).valid, false);
-assert.equal(rawSret("lunar_to_gregorian", [1, 2024, 2, true, 1]).valid, false);
+recordedFailure("equation_of_time", () => !rawSret("equation_of_time", [Number.NaN]).valid);
+recordedFailure("apparent_solar_time", () => !rawSret("apparent_solar_time", [2024, 6, 1, 0.5, 200]).valid);
+recordedFailure("query_jieqi_moment", () => !rawSret("query_jieqi_moment", [2024, 24]).valid);
+recordedFailure("get_supported_lunar_year_range", () => !rawSret("get_supported_lunar_year_range", [0]).valid);
+recordedFailure("get_lunar_year_info", () => !rawSret("get_lunar_year_info", [9, 2024]).valid);
+recordedFailure("gregorian_to_lunar", () => !rawSret("gregorian_to_lunar", [1, 2023, 13, 1]).valid);
+recordedFailure("lunar_to_gregorian", () => !rawSret("lunar_to_gregorian", [1, 2024, 2, true, 1]).valid);
 for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_algo4", "delta_t_algo5", "delta_t"]) {
-  assert.equal(rawSret(name, [Number.NaN]).valid, false);
+  recordedFailure(name, () => !rawSret(name, [Number.NaN]).valid);
 }
 
 const tinyName = M._malloc(2);
 try {
   M.HEAPU8[tinyName] = 0x41;
   M.HEAPU8[tinyName + 1] = 0x42;
-  assert.equal(M._get_jieqi_name(0, tinyName, 2), 0);
+  recordedFailure("get_jieqi_name", () => M._get_jieqi_name(0, tinyName, 2) === 0);
   assert.deepEqual([M.HEAPU8[tinyName], M.HEAPU8[tinyName + 1]], [0x41, 0x42]);
   assert.equal(M._get_jieqi_name(0, 0, 16), 0);
   assert.equal(M._get_jieqi_name(24, tinyName, 2), 0);
@@ -392,6 +395,11 @@ for (const point of golden.sections.phases.entries) {
 }
 
 const expectedExports = BINDINGS.map(({ cName }) => cName);
+assert.deepEqual(
+  [...recordedNames].sort(),
+  BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName).sort(),
+  "all recording exports exercised a failure",
+);
 assert.equal(goldenCount, 389, "golden replay count");
 assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 29 exports executed successfully");
 assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 16 layouts decoded");
@@ -401,7 +409,7 @@ assert.deepEqual(
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 29/29; layouts 16/16; recording seams 7/7");
+console.log("PASS raw exports 29/29; layouts 16/16; recording seams 28/28");
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
 console.log(`PASS shared binding golden replay ${goldenCount}/389`);

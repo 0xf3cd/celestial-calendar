@@ -41,7 +41,7 @@ SOURCE_DIR = REPO / "src" / "shared_lib"
 PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
 EXPECTED_EXPORT_COUNT = 29
 EXPECTED_LAYOUT_COUNT = 16
-EXPECTED_RECORDING_COUNT = 7
+EXPECTED_RECORDING_COUNT = 28
 
 TYPE_LAYOUT = {
   "bool": (1, 1),
@@ -206,7 +206,7 @@ def parse_wrapper_recording(source: str) -> dict[str, bool]:
         keyword = next((keyword for keyword in call.keywords if keyword.arg == "recording"), None)
         if keyword is None:
           assert call.func.id == "_valid", f"missing recording policy in {function.name}"
-          recording_values.append(False)
+          recording_values.append(True)
         else:
           assert isinstance(keyword.value, ast.Constant) and isinstance(keyword.value.value, bool)
           recording_values.append(keyword.value.value)
@@ -322,7 +322,12 @@ def run_mutation_self_tests(
   wrong_recording = copy.deepcopy(manifest)
   recording_entry = next(entry for entry in wrong_recording["exports"] if entry["name"] == "moon_illumination")
   recording_entry["recording"] = False
-  mutations["wrong recording marker"] = wrong_recording
+  mutations["missing recording marker"] = wrong_recording
+
+  recording_reader = copy.deepcopy(manifest)
+  last_error_entry = next(entry for entry in recording_reader["exports"] if entry["name"] == "last_error")
+  last_error_entry["recording"] = True
+  mutations["recording last_error"] = recording_reader
 
   for label, mutated in mutations.items():
     try:
@@ -341,11 +346,10 @@ def main() -> None:
   header_names = set(header_exports)
   header_layouts = parse_header_layouts(header)
 
-  recording_match = re.search(r"Only the recording functions \(([\s\S]*?)\) write and clear the message", header)
-  assert recording_match is not None, "cannot parse celestial.h recording list"
-  documented_recording = set(re.findall(r"`([a-z0-9_]+)`", recording_match.group(1)))
+  assert "Every exported function except `last_error` writes and clears the message" in header
+  documented_recording = header_names - {"last_error"}
   sources = "\n".join(path.read_text(encoding="utf-8") for path in sorted(SOURCE_DIR.glob("lib*.cpp")))
-  implementation_writers = {name for name in header_names if "lib::clear_last_error()" in function_body(sources, name)}
+  implementation_writers = {name for name in header_names if "lib::wrap_export(" in function_body(sources, name)}
   wrapper_source = PYTHON_WRAPPERS.read_text(encoding="utf-8")
   assert len(documented_recording) == EXPECTED_RECORDING_COUNT
   assert documented_recording == implementation_writers == set(_binding.RECORDING_EXPORTS)
@@ -358,8 +362,8 @@ def main() -> None:
 
   print("PASS exports header=manifest=ctypes=loaded 29")
   print("PASS layouts header=manifest=ctypes 16")
-  print("PASS recording policies 7/7; wrapper exports 28/28; docs=writers=manifest=ctypes=wrappers")
-  print("PASS ABI mutations rejected manifest=5/5 wrapper=1/1")
+  print("PASS recording policies 28/28; wrapper exports 28/28; docs=writers=manifest=ctypes=wrappers")
+  print("PASS ABI mutations rejected manifest=6/6 wrapper=1/1")
 
 
 if __name__ == "__main__":

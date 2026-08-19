@@ -33,14 +33,14 @@ extern "C" {
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
-  // Validate the input.
-  if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
-    return {};
-  }
+  return lib::wrap_export("query_jieqi_moment", [=]() -> JieqiMomentQuery {
+    if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
+      throw std::invalid_argument {
+        std::format("Argument `jq_idx` must be in [0, 23], got {}", jq_idx)
+      };
+    }
 
-  using namespace calendar::jieqi;
-
-  try {
+    using namespace calendar::jieqi;
     const auto jq = from_index(jq_idx);
 
     const calendar::Datetime ut1_dt = jieqi_ut1_moment(year, jq);
@@ -56,46 +56,35 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
       .d      = d,
       .frac   = fraction,
     };
-    
-  } catch (const std::exception& e) {
-    lib::info("Error in query_jieqi_moment: {}", e.what());
-
-    return {};
-  } catch (...) {
-    return {};
-  }
+  });
 }
 
 
 auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
-  // Validate the input.
-  if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
-    lib::info("Error in get_jieqi_name: jq_idx is {}, but expected to be in the range [0, 24).", jq_idx);
-    return false;
-  }
-  if (buf == nullptr) {
-    lib::info("Error in get_jieqi_name: `buf` is null.");
-    return false;
-  }
+  return lib::wrap_export("get_jieqi_name", [=] {
+    if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
+      throw std::invalid_argument {
+        std::format("Argument `jq_idx` must be in [0, 23], got {}", jq_idx)
+      };
+    }
+    if (buf == nullptr) {
+      throw std::invalid_argument { "Argument `buf` is null." };
+    }
 
-  try {
     using namespace calendar::jieqi;
     const std::string_view name = name_of(from_index(jq_idx));
 
-    // Check if the buffer is large enough to hold the name and the null terminator
     if (buf_size < name.size() + 1) {
-      lib::info("Error in get_jieqi_name: provided buffer is too small. Required {}, actual {}.", name.size() + 1, buf_size);
-      return false;
+      throw std::invalid_argument {
+        std::format("Argument `buf_size` must be at least {}, got {}", name.size() + 1, buf_size)
+      };
     }
 
-    // Copy the name to the buffer
     std::memcpy(buf, name.data(), name.size());
     buf[name.size()] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     return true;
-  } catch (...) {
-    return false;
-  }
+  });
 }
 
 }
