@@ -144,9 +144,9 @@ def _wheel_artifact(wheel_name: str, version: str) -> str:
         if tag_match is not None
       )
     elif family == "macos":
-      valid = tags == ["macosx_14_0_arm64"]
+      valid = tags == [f"macosx_14_0_{architecture}"]
     else:
-      valid = tags == ["win_amd64"]
+      valid = tags == [f"win_{architecture}"]
     if valid:
       return artifact_name
   raise RuntimeError(f"Unexpected wheel platform in filename: {wheel_name}")
@@ -154,7 +154,11 @@ def _wheel_artifact(wheel_name: str, version: str) -> str:
 
 def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -> None:
   """Match one artifact name to its one permitted wheel platform tag."""
-  if _wheel_artifact(wheel_name, version) != artifact_name:
+  try:
+    actual_artifact = _wheel_artifact(wheel_name, version)
+  except RuntimeError as error:
+    raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}") from error
+  if actual_artifact != artifact_name:
     raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}")
 
 
@@ -192,8 +196,7 @@ def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_co
 
   if require_complete and set(artifacts) != set(PYTHON_ARTIFACTS):
     raise RuntimeError(
-      f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}, "
-      f"extra={sorted(set(artifacts) - set(PYTHON_ARTIFACTS))}"
+      f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}"
     )
 
 
@@ -308,7 +311,7 @@ def validate_release_archives(
   check_documented_runtime: bool = True,
   require_wheels: bool = False,
 ) -> None:
-  """Validate the v0.6+ product archives and any downloaded wheel sidecars."""
+  """Validate v0.6+ product archives and wheels, optionally requiring every wheel platform."""
   downloaded = list(downloaded)
   validate_wheel_sidecars(downloaded, version, require_complete=require_wheels)
   archives: dict[str, Path] = {}

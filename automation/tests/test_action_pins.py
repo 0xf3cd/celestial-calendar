@@ -91,6 +91,16 @@ def test_hash_inside_another_scalar_is_not_provenance(tmp_path, capsys):
   assert "inline release/tag provenance comment" in capsys.readouterr().out
 
 
+def test_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
+  workflow = tmp_path / "check.yml"
+  workflow.write_text(
+    f"jobs:\n  check: {{uses: owner/workflow@{SHA}}} # v2\n",
+    encoding="utf-8",
+  )
+
+  assert check_action_pins(tmp_path) == 0
+
+
 def test_first_party_action_rejects_floating_branch(tmp_path, capsys):
   write_workflow(tmp_path, "actions/checkout@main")
 

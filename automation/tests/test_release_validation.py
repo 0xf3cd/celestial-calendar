@@ -145,7 +145,8 @@ def write_release_archives(directory):
   return paths
 
 
-def write_wheel_named(directory, name, content=b"wheel"):
+def write_wheel_named(directory, name):
+  content = b"wheel"
   wheel = directory / name
   wheel.write_bytes(content)
   sidecar = directory / f"{wheel.name}.sha256"
@@ -157,17 +158,17 @@ def write_wheel_named(directory, name, content=b"wheel"):
   return wheel, sidecar
 
 
-def write_wheel(directory, content=b"wheel"):
+def write_wheel(directory):
   name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
-  return write_wheel_named(directory, name, content)
+  return write_wheel_named(directory, name)
 
 
-def write_wheels(directory, version=VERSION):
+def write_wheels(directory):
   names = [
-    f"celestial_calendar-{version}-py3-none-manylinux_2_28_x86_64.whl",
-    f"celestial_calendar-{version}-py3-none-manylinux_2_28_aarch64.whl",
-    f"celestial_calendar-{version}-py3-none-macosx_14_0_arm64.whl",
-    f"celestial_calendar-{version}-py3-none-win_amd64.whl",
+    f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl",
+    f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_aarch64.whl",
+    f"celestial_calendar-{VERSION}-py3-none-macosx_14_0_arm64.whl",
+    f"celestial_calendar-{VERSION}-py3-none-win_amd64.whl",
   ]
   return [path for name in names for path in write_wheel_named(directory, name)]
 
