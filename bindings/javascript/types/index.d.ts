@@ -26,6 +26,7 @@ export type MoonPhase = "new" | "firstQuarter" | "full" | "lastQuarter";
 export type DeltaTModel = "default" | "algo1" | "algo2" | "algo3" | "algo4" | "algo5";
 export type LunarAlgorithm = "algo1" | "algo2" | "algo3";
 
+/** Record inputs require the declared fields and may include additional fields. */
 export interface CivilDate {
   year: number;
   month: number;
@@ -126,7 +127,7 @@ export const moon: Readonly<{
   brightLimbPositionAngle(jde: number): number;
   /** TT-based JDEs of the selected phase in a Gregorian year in [1, 32766]. */
   phaseMoments(year: number, phase: MoonPhase): number[];
-  /** The next count New Moon JDEs; count is in [0, 536870911]. */
+  /** The next count New Moon JDEs; count is in [0, 4096]. */
   newMoonsAfter(jde: number, count: number): number[];
   /** New Moon JDEs in a Gregorian year in [1, 32766]. */
   newMoonsInYear(year: number): number[];
