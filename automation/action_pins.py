@@ -36,7 +36,7 @@ def _uses_nodes(node, yaml) -> Iterable:
   if isinstance(node, yaml.MappingNode):
     for key, value in node.value:
       if isinstance(key, yaml.ScalarNode) and key.value == "uses":
-        yield value
+        yield value, node.end_mark if node.flow_style else value.end_mark
       yield from _uses_nodes(value, yaml)
   elif isinstance(node, yaml.SequenceNode):
     for value in node.value:
@@ -72,7 +72,7 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
       continue
 
     lines = text.splitlines()
-    for node in _uses_nodes(workflow, yaml):
+    for node, cutoff in _uses_nodes(workflow, yaml):
       line_number = node.start_mark.line + 1
       reference = node.value if isinstance(node, yaml.ScalarNode) else ""
       if reference.startswith("./"):
@@ -86,7 +86,10 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
         if target.startswith("actions/"):
           continue
         source_line = lines[node.start_mark.line]
-        if re.match(r"^[\s,}\]]*#\s*\S", source_line[node.end_mark.column:]) is None:
+        has_provenance = cutoff.line == node.start_mark.line and (
+          re.match(r"^\s+#\s*\S", source_line[cutoff.column:]) is not None
+        )
+        if not has_provenance:
           failures.append(f"{label} needs an inline release/tag provenance comment")
         continue
       if target.startswith("actions/") and MAJOR_TAG.fullmatch(ref):

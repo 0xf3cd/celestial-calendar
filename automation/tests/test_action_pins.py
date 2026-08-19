@@ -94,7 +94,7 @@ def test_hash_inside_another_scalar_is_not_provenance(tmp_path, capsys):
 def test_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
   workflow = tmp_path / "check.yml"
   workflow.write_text(
-    f"jobs:\n  check: {{uses: owner/workflow@{SHA}}} # v2\n",
+    f"jobs:\n  check: {{uses: owner/workflow@{SHA}, name: reusable}} # v2\n",
     encoding="utf-8",
   )
 

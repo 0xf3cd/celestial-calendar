@@ -130,7 +130,7 @@ def validate_release_document_versions(tag_name: str, documents: Iterable[Path] 
 def _wheel_artifact(wheel_name: str, version: str) -> str:
   match = re.fullmatch(rf"celestial_calendar-{re.escape(version)}-py3-none-(.+)\.whl", wheel_name)
   if match is None:
-    raise RuntimeError(f"Unexpected wheel filename: {wheel_name}")
+    raise RuntimeError(f"Unexpected wheel filename for release {version}: {wheel_name}")
   tags = match.group(1).split(".")
 
   for artifact_name, (family, architecture) in PYTHON_ARTIFACTS.items():
@@ -163,7 +163,7 @@ def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -
 
 
 def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_complete: bool = False) -> None:
-  """Validate every downloaded wheel against its adjacent SHA-256 sidecar."""
+  """Validate wheel filenames, platform inventory, and adjacent SHA-256 sidecars."""
   payloads: dict[str, Path] = {}
   for path in downloaded:
     if not (path.name.endswith(".whl") or path.name.endswith(".whl.sha256")):
