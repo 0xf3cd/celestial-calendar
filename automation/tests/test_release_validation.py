@@ -294,6 +294,27 @@ def test_self_validation_does_not_read_checkout_runtime_matrix(tmp_path, monkeyp
   validate_release_archives(archives, VERSION, check_documented_runtime=False)
 
 
+def test_self_validation_accepts_archive_runtime_schema_independent_of_checkout(tmp_path):
+  archives = write_release_archives(tmp_path)
+  filename = "windows_x86_64.zip"
+  members = native_members(filename)
+  mutated = []
+  for name, content in members:
+    if name == "build_info.json":
+      build_info = json.loads(content)
+      build_info["runtime_floor"] = {
+        "supported": {"future_windows_floor": "1.0"},
+        "measured": {"future_windows_floor": "0.9"},
+      }
+      content = json.dumps(build_info).encode()
+    mutated.append((name, content))
+  write_zip(tmp_path / filename, mutated)
+
+  validate_release_archives(archives, VERSION, check_documented_runtime=False)
+  with pytest.raises(RuntimeError, match="Runtime floor mismatch"):
+    validate_release_archives(archives, VERSION)
+
+
 @pytest.mark.parametrize("filename", NATIVE_MEMBERS)
 def test_each_native_archive_is_required_and_validated(tmp_path, filename):
   archives = write_release_archives(tmp_path)

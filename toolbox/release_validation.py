@@ -44,12 +44,6 @@ NATIVE_ARCHIVES: Final[dict[str, str]] = {
 RELEASE_ARCHIVES: Final[frozenset[str]] = frozenset({WASM_ARCHIVE, *NATIVE_ARCHIVES})
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
-RUNTIME_KEYS: Final[dict[str, tuple[set[str], set[str]]]] = {
-  "linux_amd64": ({"glibc", "glibcxx"}, {"glibc", "glibcxx"}),
-  "linux_arm64": ({"glibc", "glibcxx"}, {"glibc", "glibcxx"}),
-  "macos_arm64": ({"macos"}, {"macos"}),
-  "windows_x86_64": ({"windows"}, {"msvc_runtime"}),
-}
 
 
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
@@ -110,7 +104,7 @@ def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]
   return matrix
 
 
-def _validate_runtime_floor(runtime_floor, artifact_name: str, archive_name: str) -> None:
+def _validate_runtime_floor(runtime_floor, archive_name: str) -> None:
   if not isinstance(runtime_floor, dict) or set(runtime_floor) != {"supported", "measured"}:
     raise RuntimeError(f"Invalid runtime floor in {archive_name}")
   supported = runtime_floor["supported"]
@@ -122,13 +116,6 @@ def _validate_runtime_floor(runtime_floor, artifact_name: str, archive_name: str
     for values in (supported, measured)
   ):
     raise RuntimeError(f"Invalid runtime floor in {archive_name}")
-  supported_keys, measured_keys = RUNTIME_KEYS[artifact_name]
-  if set(supported) != supported_keys or set(measured) != measured_keys:
-    raise RuntimeError(f"Invalid runtime floor keys in {archive_name}")
-  if artifact_name == "windows_x86_64" and (
-    supported != {"windows": "not_declared"} or measured != {"msvc_runtime": "static"}
-  ):
-    raise RuntimeError(f"Invalid Windows runtime floor in {archive_name}")
   for key in supported.keys() & measured.keys():
     try:
       exceeds_support = version_key(measured[key]) > version_key(supported[key])
@@ -229,7 +216,7 @@ def validate_native_archive(
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
       runtime_floor = build_info.get("runtime_floor")
-      _validate_runtime_floor(runtime_floor, artifact_name, archive_path.name)
+      _validate_runtime_floor(runtime_floor, archive_path.name)
       if expected_runtime is not None and runtime_floor != expected_runtime:
         raise RuntimeError(f"Runtime floor mismatch in {archive_path.name}")
       hashes = build_info.get("sha256")
