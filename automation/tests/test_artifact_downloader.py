@@ -329,6 +329,15 @@ def test_release_download_propagates_asset_failure(monkeypatch, tmp_path):
     GitHub.download_release(selected.id, tmp_path, parallel=2)
 
 
+def test_parallel_artifact_download_propagates_failure(monkeypatch, tmp_path):
+  def fail(name, _url, _download_dir):
+    raise OSError(f"cannot download {name}")
+
+  monkeypatch.setattr(GitHub, "download_one_artifact", fail)
+  with pytest.raises(RuntimeError, match=r"2 artifact\(s\) failed to download"):
+    GitHub.download_artifact_urls([("one", "one-url"), ("two", "two-url")], tmp_path, parallel=2)
+
+
 def test_release_download_rejects_invalid_parallel_before_listing(monkeypatch, tmp_path):
   def unexpected_list():
     raise AssertionError("release listing must not start")

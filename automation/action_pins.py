@@ -45,7 +45,7 @@ def _uses_nodes(node, yaml, flow_end=None) -> Iterable:
 
 
 def check_action_pins(workflow_dir: Path | None = None) -> int:
-  """Require major tags or SHAs for actions/* and provenance-tagged SHAs elsewhere."""
+  """Require major tags or SHAs for actions/* and provenance-tagged SHAs for other remote actions."""
   try:
     import yaml
   except ModuleNotFoundError:
@@ -92,7 +92,8 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
         )
         if not has_provenance:
           failures.append(
-            f"{label} needs a trailing release/tag provenance comment on the same line (for example, `# v2`)"
+            f"{label} needs a same-line trailing release/tag comment (e.g. `# v2`); "
+            "rewrite multi-line flow-style `uses` as block style"
           )
         continue
       if target.startswith("actions/") and MAJOR_TAG.fullmatch(ref):
