@@ -216,6 +216,18 @@ def test_complete_wheel_inventory_rejects_missing_or_stale_wheel(tmp_path, mutat
     validate_release_archives(downloaded, VERSION, require_wheels=True)
 
 
+def test_complete_wheel_inventory_rejects_duplicate_platform(tmp_path):
+  archives = write_release_archives(tmp_path)
+  wheels = write_wheels(tmp_path)
+  duplicate = write_wheel_named(
+    tmp_path,
+    f"celestial_calendar-{VERSION}-py3-none-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",
+  )
+
+  with pytest.raises(RuntimeError, match="Duplicate wheel platform"):
+    validate_release_archives([*archives, *wheels, *duplicate], VERSION, require_wheels=True)
+
+
 @pytest.mark.parametrize("mutation", ["missing", "mismatch", "orphan"])
 def test_downloaded_wheel_sidecar_mutations_fail(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
@@ -241,6 +253,10 @@ def test_release_document_versions_match_tag(tmp_path):
   changelog.write_text("# Changelog\n\n## [v0.6.0] - 2026-08-17\n", encoding="utf-8")
 
   validate_release_document_versions("v0.6.0", (release_notes, changelog))
+
+
+def test_release_document_versions_match_project_version():
+  validate_release_document_versions(f"v{VERSION}")
 
 
 @pytest.mark.parametrize(

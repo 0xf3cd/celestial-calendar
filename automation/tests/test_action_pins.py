@@ -77,7 +77,7 @@ def test_third_party_sha_requires_provenance_comment(tmp_path, capsys):
   write_workflow(tmp_path, f"owner/action@{SHA}")
 
   assert check_action_pins(tmp_path) == 1
-  assert "inline release/tag provenance comment" in capsys.readouterr().out
+  assert "trailing release/tag provenance comment on the same line" in capsys.readouterr().out
 
 
 def test_hash_inside_another_scalar_is_not_provenance(tmp_path, capsys):
@@ -88,7 +88,7 @@ def test_hash_inside_another_scalar_is_not_provenance(tmp_path, capsys):
   )
 
   assert check_action_pins(tmp_path) == 1
-  assert "inline release/tag provenance comment" in capsys.readouterr().out
+  assert "trailing release/tag provenance comment on the same line" in capsys.readouterr().out
 
 
 def test_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
@@ -99,6 +99,17 @@ def test_flow_style_action_accepts_trailing_provenance_comment(tmp_path):
   )
 
   assert check_action_pins(tmp_path) == 0
+
+
+def test_multiline_flow_style_action_rejects_comment_after_uses_line(tmp_path, capsys):
+  workflow = tmp_path / "check.yml"
+  workflow.write_text(
+    f"jobs:\n  check: {{uses: owner/workflow@{SHA},\n          name: reusable}} # v2\n",
+    encoding="utf-8",
+  )
+
+  assert check_action_pins(tmp_path) == 1
+  assert "trailing release/tag provenance comment on the same line" in capsys.readouterr().out
 
 
 def test_nested_flow_style_action_accepts_trailing_provenance_comment(tmp_path):

@@ -36,7 +36,13 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, blue_print
 from automation.github import GitHub
-from toolbox.release_validation import PYTHON_ARTIFACTS, validate_release_archives, validate_wheel_platform
+from toolbox.release_validation import (
+  NATIVE_ARCHIVES,
+  PYTHON_ARTIFACTS,
+  WASM_ARCHIVE,
+  validate_release_archives,
+  validate_wheel_platform,
+)
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
   """Find the workflow to download artifacts from."""
@@ -59,20 +65,10 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
 ARTIFACT_SOURCES: Final[tuple[tuple[str, frozenset[str]], ...]] = (
   (
     "Build and Test on Multiple Platforms",
-    frozenset({"linux_amd64", "linux_arm64", "macos_arm64", "windows_x86_64"}),
+    frozenset(NATIVE_ARCHIVES.values()),
   ),
-  ("WASM Build and Golden Check", frozenset({"celestial-wasm"})),
-  (
-    "Python Wheels",
-    frozenset(
-      {
-        "celestial-python-manylinux-x86_64",
-        "celestial-python-manylinux-aarch64",
-        "celestial-python-macos-arm64",
-        "celestial-python-windows-amd64",
-      }
-    ),
-  ),
+  ("WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
+  ("Python Wheels", frozenset(PYTHON_ARTIFACTS)),
 )
 
 def release_commit_sha() -> str:

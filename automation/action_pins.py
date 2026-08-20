@@ -45,7 +45,7 @@ def _uses_nodes(node, yaml, flow_end=None) -> Iterable:
 
 
 def check_action_pins(workflow_dir: Path | None = None) -> int:
-  """Require immutable refs for third-party actions in every workflow."""
+  """Require major tags or SHAs for actions/* and provenance-tagged SHAs elsewhere."""
   try:
     import yaml
   except ModuleNotFoundError:
@@ -91,7 +91,9 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
           re.match(r"^\s+#\s*\S", source_line[cutoff.column:]) is not None
         )
         if not has_provenance:
-          failures.append(f"{label} needs an inline release/tag provenance comment")
+          failures.append(
+            f"{label} needs a trailing release/tag provenance comment on the same line (for example, `# v2`)"
+          )
         continue
       if target.startswith("actions/") and MAJOR_TAG.fullmatch(ref):
         continue

@@ -302,6 +302,20 @@ def test_release_asset_download_rejects_existing_destination_before_request(monk
   assert destination.read_bytes() == b"keep"
 
 
+def test_release_asset_download_rejects_existing_partial_before_request(monkeypatch, tmp_path):
+  partial = tmp_path / "asset.tar.gz.part"
+  partial.write_bytes(b"stale")
+
+  def unexpected_request(*_args, **_kwargs):
+    raise AssertionError("request must not start")
+
+  monkeypatch.setattr(github_module.requests, "get", unexpected_request)
+  with pytest.raises(FileExistsError, match="Refusing to overwrite partial download"):
+    GitHub.download_one_release_asset("asset.tar.gz", "https://example.invalid/asset", tmp_path)
+  assert partial.read_bytes() == b"stale"
+  assert not (tmp_path / "asset.tar.gz").exists()
+
+
 def test_release_download_propagates_asset_failure(monkeypatch, tmp_path):
   selected = GitHub.Release(7, "v0.6.0", False, False, "", "", "", "", "", "", "", "", [])
   monkeypatch.setattr(GitHub, "list_releases", lambda: [selected])
@@ -313,6 +327,15 @@ def test_release_download_propagates_asset_failure(monkeypatch, tmp_path):
 
   with pytest.raises(RuntimeError, match=r"2 release asset\(s\) failed to download"):
     GitHub.download_release(selected.id, tmp_path, parallel=2)
+
+
+def test_release_download_rejects_invalid_parallel_before_listing(monkeypatch, tmp_path):
+  def unexpected_list():
+    raise AssertionError("release listing must not start")
+
+  monkeypatch.setattr(GitHub, "list_releases", unexpected_list)
+  with pytest.raises(ValueError, match="Invalid parallel value"):
+    GitHub.download_release(7, tmp_path, parallel=0)
 
 
 def test_parallel_download_rejects_duplicate_names_before_writes(tmp_path):
