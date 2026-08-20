@@ -357,6 +357,7 @@ def validate_release_archives(
     validate_native_archive(archives[filename], artifact_name, version, expected_runtime)
 
 
+# JSON booleans are Python integers; manifest schemas, IDs, and sizes require exact integer values.
 def _validate_release_sources(sources: object, commit: str) -> list[dict]:
   """Validate the three producer identities embedded in a release manifest."""
   if not isinstance(sources, list) or len(sources) != 3:
@@ -373,47 +374,53 @@ def _validate_release_sources(sources: object, commit: str) -> list[dict]:
     workflow = source.get("workflow")
     run = source.get("run")
     artifacts = source.get("artifacts")
-    if (
-      not isinstance(workflow, dict)
-      or not isinstance(workflow.get("id"), int)
-      or workflow["id"] <= 0
-      or not isinstance(workflow.get("name"), str)
-      or not isinstance(run, dict)
-      or not isinstance(run.get("id"), int)
-      or run["id"] <= 0
-      or run.get("head_sha") != commit
-      or not isinstance(artifacts, list)
-    ):
+    if not isinstance(workflow, dict) or not isinstance(run, dict) or not isinstance(artifacts, list):
       raise RuntimeError("Invalid release source workflow or run identity")
-    if workflow["id"] in workflow_ids or workflow["name"] in workflow_names:
-      raise RuntimeError(f"Duplicate release source workflow: {workflow['name']}")
-    if run["id"] in run_ids:
-      raise RuntimeError(f"Duplicate release source run ID: {run['id']}")
-    workflow_ids.add(workflow["id"])
-    workflow_names.add(workflow["name"])
-    run_ids.add(run["id"])
+    workflow_id = workflow.get("id")
+    workflow_name = workflow.get("name")
+    run_id = run.get("id")
+    valid_workflow = type(workflow_id) is int and workflow_id > 0 and isinstance(workflow_name, str)
+    valid_run = type(run_id) is int and run_id > 0 and run.get("head_sha") == commit
+    if not valid_workflow or not valid_run:
+      raise RuntimeError("Invalid release source workflow or run identity")
+    if workflow_id in workflow_ids or workflow_name in workflow_names:
+      raise RuntimeError(f"Duplicate release source workflow: {workflow_name}")
+    if run_id in run_ids:
+      raise RuntimeError(f"Duplicate release source run ID: {run_id}")
+    workflow_ids.add(workflow_id)
+    workflow_names.add(workflow_name)
+    run_ids.add(run_id)
     source_artifact_names = set()
     for artifact in artifacts:
+      if not isinstance(artifact, dict):
+        raise RuntimeError("Invalid release source artifact identity")
+      artifact_id = artifact.get("id")
+      artifact_name = artifact.get("name")
+      artifact_size = artifact.get("size")
+      artifact_digest = artifact.get("digest")
+      valid_artifact_id = type(artifact_id) is int and artifact_id > 0
+      valid_artifact_size = type(artifact_size) is int and artifact_size > 0
+      valid_artifact_digest = (
+        isinstance(artifact_digest, str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", artifact_digest) is not None
+      )
       if (
-        not isinstance(artifact, dict)
-        or not isinstance(artifact.get("id"), int)
-        or artifact["id"] <= 0
-        or not isinstance(artifact.get("name"), str)
-        or not isinstance(artifact.get("size"), int)
-        or artifact["size"] <= 0
-        or re.fullmatch(r"sha256:[0-9a-f]{64}", artifact.get("digest", "")) is None
+        not valid_artifact_id
+        or not isinstance(artifact_name, str)
+        or not valid_artifact_size
+        or not valid_artifact_digest
       ):
         raise RuntimeError("Invalid release source artifact identity")
-      if artifact["id"] in artifact_ids:
-        raise RuntimeError(f"Duplicate release source artifact ID: {artifact['id']}")
-      if artifact["name"] in artifact_names:
-        raise RuntimeError(f"Duplicate release source artifact name: {artifact['name']}")
-      artifact_ids.add(artifact["id"])
-      source_artifact_names.add(artifact["name"])
-      artifact_names.add(artifact["name"])
-    expected_artifacts = SOURCE_WORKFLOWS.get(workflow["name"])
+      if artifact_id in artifact_ids:
+        raise RuntimeError(f"Duplicate release source artifact ID: {artifact_id}")
+      if artifact_name in artifact_names:
+        raise RuntimeError(f"Duplicate release source artifact name: {artifact_name}")
+      artifact_ids.add(artifact_id)
+      source_artifact_names.add(artifact_name)
+      artifact_names.add(artifact_name)
+    expected_artifacts = SOURCE_WORKFLOWS.get(workflow_name)
     if expected_artifacts is None or source_artifact_names != set(expected_artifacts):
-      raise RuntimeError(f"Release source workflow artifact mismatch: {workflow['name']}")
+      raise RuntimeError(f"Release source workflow artifact mismatch: {workflow_name}")
   if workflow_names != set(SOURCE_WORKFLOWS):
     raise RuntimeError("Release source workflow inventory mismatch")
   if artifact_names != set(SOURCE_ARTIFACTS):
@@ -430,7 +437,10 @@ def _release_sources(path: Path, commit: str) -> list[dict]:
     payload = json.loads(path.read_text(encoding="utf-8"))
   except (json.JSONDecodeError, UnicodeDecodeError) as error:
     raise RuntimeError(f"Invalid release source manifest: {error}") from error
-  if not isinstance(payload, dict) or payload.get("schema") != 1 or payload.get("commit") != commit:
+  if not isinstance(payload, dict):
+    raise RuntimeError("Release source manifest identity mismatch")
+  schema = payload.get("schema")
+  if type(schema) is not int or schema != 1 or payload.get("commit") != commit:
     raise RuntimeError("Release source manifest identity mismatch")
   return _validate_release_sources(payload.get("sources"), commit)
 
@@ -460,9 +470,12 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
   except (json.JSONDecodeError, UnicodeDecodeError) as error:
     raise RuntimeError(f"Invalid release candidate manifest: {error}") from error
+  if not isinstance(manifest, dict):
+    raise RuntimeError("Release candidate identity mismatch")
+  schema = manifest.get("schema")
   if (
-    not isinstance(manifest, dict)
-    or manifest.get("schema") != 1
+    type(schema) is not int
+    or schema != 1
     or manifest.get("tag") != tag_name
     or manifest.get("version") != version
     or manifest.get("commit") != commit
@@ -488,15 +501,16 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   if non_files or set(files) != set(actual_files):
     raise RuntimeError("Release candidate file inventory mismatch")
   for relative, identity in files.items():
-    if (
-      not isinstance(identity, dict)
-      or not isinstance(identity.get("size"), int)
-      or identity["size"] < 0
-      or re.fullmatch(r"[0-9a-f]{64}", identity.get("sha256", "")) is None
-    ):
+    if not isinstance(identity, dict):
+      raise RuntimeError(f"Invalid release candidate file identity: {relative}")
+    size = identity.get("size")
+    sha256 = identity.get("sha256")
+    valid_size = type(size) is int and size >= 0
+    valid_digest = isinstance(sha256, str) and re.fullmatch(r"[0-9a-f]{64}", sha256) is not None
+    if not valid_size or not valid_digest:
       raise RuntimeError(f"Invalid release candidate file identity: {relative}")
     content = actual_files[relative].read_bytes()
-    if len(content) != identity["size"] or hashlib.sha256(content).hexdigest() != identity["sha256"]:
+    if len(content) != size or hashlib.sha256(content).hexdigest() != sha256:
       raise RuntimeError(f"Release candidate file mismatch: {relative}")
 
   github = candidate / "github"

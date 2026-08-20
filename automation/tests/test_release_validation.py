@@ -400,7 +400,7 @@ def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
   assert manifest["version"] == VERSION
 
 
-@pytest.mark.parametrize("mutation", ["bytes", "manifest-hash", "extra-directory", "identity"])
+@pytest.mark.parametrize("mutation", ["bytes", "manifest-hash", "extra-directory", "identity", "schema-type"])
 def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
   release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
   candidate = tmp_path / "candidate"
@@ -423,7 +423,10 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
   else:
     manifest_path = candidate / "evidence" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["commit"] = "other-sha"
+    if mutation == "identity":
+      manifest["commit"] = "other-sha"
+    else:
+      manifest["schema"] = True
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
   with pytest.raises(RuntimeError):
@@ -434,6 +437,7 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
   ("mutation", "message"),
   [
     (lambda payload: payload.update(commit="other-sha"), "identity mismatch"),
+    (lambda payload: payload.update(schema=True), "identity mismatch"),
     (lambda payload: payload["sources"][0]["artifacts"].pop(), "workflow artifact mismatch"),
     (
       lambda payload: payload["sources"][0]["artifacts"].append(payload["sources"][1]["artifacts"].pop()),
@@ -443,6 +447,11 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
       lambda payload: payload["sources"][0]["artifacts"][0].update(digest="missing"),
       "artifact identity",
     ),
+    (lambda payload: payload["sources"][0]["workflow"].update(id=True), "workflow or run identity"),
+    (lambda payload: payload["sources"][0]["run"].update(id=True), "workflow or run identity"),
+    (lambda payload: payload["sources"][0]["artifacts"][0].update(id=True), "artifact identity"),
+    (lambda payload: payload["sources"][0]["artifacts"][0].update(size=True), "artifact identity"),
+    (lambda payload: payload["sources"][0]["artifacts"][0].update(digest=0), "artifact identity"),
   ],
 )
 def test_release_candidate_rejects_invalid_source_manifest(tmp_path, mutation, message):
@@ -462,6 +471,27 @@ def test_release_candidate_rejects_invalid_source_manifest(tmp_path, mutation, m
     )
 
   assert not (tmp_path / "candidate").exists()
+
+
+@pytest.mark.parametrize(("field", "value"), [("size", True), ("sha256", 0)])
+def test_frozen_candidate_rejects_invalid_file_identity_types(tmp_path, field, value):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  candidate = tmp_path / "candidate"
+  manifest_path = stage_release_candidate(
+    release_assets,
+    source_manifest,
+    candidate,
+    f"v{VERSION}",
+    "tagged-sha",
+    release_notes,
+  )
+  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+  first_identity = next(iter(manifest["files"].values()))
+  first_identity[field] = value
+  manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match="Invalid release candidate file identity"):
+    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
 
 
 def test_release_candidate_rejects_extra_asset_and_existing_destination(tmp_path):

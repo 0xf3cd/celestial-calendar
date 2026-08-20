@@ -171,18 +171,22 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
   for filename, wheel in expected.items():
     entry = entries[filename]
     digests = entry.get("digests")
+    size = entry.get("size")
     url = entry.get("url")
+    sha256 = digests.get("sha256") if isinstance(digests, dict) else None
+    valid_digest = isinstance(sha256, str) and re.fullmatch(r"[0-9a-f]{64}", sha256) is not None
+    valid_size = type(size) is int and size >= 0
+    valid_url = isinstance(url, str) and unquote(Path(urlparse(url).path).name) == filename
+    # JSON booleans are Python integers; a registry file size must be an exact integer.
     if (
       entry.get("packagetype") != "bdist_wheel"
-      or not isinstance(digests, dict)
-      or re.fullmatch(r"[0-9a-f]{64}", digests.get("sha256", "")) is None
-      or not isinstance(entry.get("size"), int)
-      or not isinstance(url, str)
-      or unquote(Path(urlparse(url).path).name) != filename
+      or not valid_digest
+      or not valid_size
+      or not valid_url
     ):
       raise RuntimeError(f"Invalid PyPI file identity: {filename}")
     candidate = wheel.read_bytes()
-    if entry["size"] != len(candidate) or digests["sha256"] != hashlib.sha256(candidate).hexdigest():
+    if size != len(candidate) or sha256 != hashlib.sha256(candidate).hexdigest():
       raise RuntimeError(f"PyPI metadata does not match the candidate: {filename}")
     if _download(url, PYPI_FILE_HOST, session) != candidate:
       raise RuntimeError(f"PyPI file bytes do not match the candidate: {filename}")

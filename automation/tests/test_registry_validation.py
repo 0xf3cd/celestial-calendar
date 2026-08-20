@@ -194,6 +194,21 @@ def test_pypi_version_rejects_inventory_and_metadata_mutations(tmp_path, mutatio
   assert not isinstance(error.value, RegistryPendingError)
 
 
+@pytest.mark.parametrize(("field", "value"), [("size", True), ("size", -1), ("sha256", 0)])
+def test_pypi_version_rejects_invalid_file_identity_types(tmp_path, field, value):
+  wheels = pypi_wheels(tmp_path)
+  metadata = pypi_metadata(wheels)
+  target = metadata["urls"][0]
+  if field == "sha256":
+    target["digests"][field] = value
+  else:
+    target[field] = value
+
+  with pytest.raises(RuntimeError, match="Invalid PyPI file identity") as error:
+    pypi_version_is_exact(wheels, VERSION, pypi_session(wheels, metadata))
+  assert not isinstance(error.value, RegistryPendingError)
+
+
 @pytest.mark.parametrize("mutation", ["bytes", "url", "redirect"])
 def test_pypi_version_rejects_file_transport_mutations(tmp_path, mutation):
   wheels = pypi_wheels(tmp_path)
