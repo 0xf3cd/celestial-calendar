@@ -6,14 +6,14 @@ no compiler or separate CelestialCalendar installation is required at runtime. P
 
 ## Install
 
-Download the wheel for your platform from the matching
-[GitHub release](https://github.com/0xf3cd/celestial-calendar/releases), then install the local file:
+Install the wheel for your platform from PyPI:
 
 ```sh
-python -m pip install "./<downloaded-wheel>.whl"
+python -m pip install celestial-calendar
 ```
 
-The project publishes four wheels directly to GitHub Releases rather than PyPI:
+The same four wheel bytes are published to PyPI and the matching
+[GitHub release](https://github.com/0xf3cd/celestial-calendar/releases):
 
 | System | Architecture | Required tag in the wheel filename |
 |---|---|---|

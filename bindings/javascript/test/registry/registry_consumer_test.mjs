@@ -21,16 +21,23 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { basename, dirname, resolve } from "node:path";
-
 import { runPackageConsumer } from "../support/package_consumer.mjs";
 
-if (process.argv.length !== 3) throw new Error("usage: node tarball_consumer_test.mjs <package.tgz>");
+if (process.argv.length !== 3 || !/^\d+\.\d+\.\d+$/.test(process.argv[2])) {
+  throw new Error("usage: node registry_consumer_test.mjs <version>");
+}
 
-const tarball = resolve(process.argv[2]);
+const version = process.argv[2];
 await runPackageConsumer({
-  dependency: `file:${tarball}`,
-  installArgs: ["--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"],
-  prefix: "celestial-npm-consumer-",
-  success: `PASS unrelated offline install ${basename(tarball)} from ${dirname(tarball)}`,
+  dependency: version,
+  expectedVersion: version,
+  installArgs: [
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--package-lock=false",
+    "--registry=https://registry.npmjs.org",
+  ],
+  prefix: "celestial-npm-registry-consumer-",
+  success: `PASS registry install @0xf3cd/celestial@${version}`,
 });

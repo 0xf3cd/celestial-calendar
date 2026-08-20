@@ -1,66 +1,278 @@
 name: Create Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      native_run_id:
+        description: Successful native workflow run ID for this tag
+        required: true
+        type: string
+      wasm_run_id:
+        description: Successful WASM/npm workflow run ID for this tag
+        required: true
+        type: string
+      python_run_id:
+        description: Successful Python-wheel workflow run ID for this tag
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  prepare_release:
+    runs-on: ubuntu-latest
+
+    outputs:
+      npm_publish_required: ${{ steps.npm-version.outputs.publish_required }}
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate protected release context
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+
+          ref_name = os.environ["REF_NAME"]
+          if os.environ["REF_TYPE"] != "tag" or re.fullmatch(r"v\d+\.\d+\.\d+", ref_name) is None:
+            raise SystemExit(f"Release workflow requires a vMAJOR.MINOR.PATCH tag, got {ref_name!r}")
+          if os.environ["REF_PROTECTED"] != "true":
+            raise SystemExit(f"Release tag is not protected by a ruleset: {ref_name}")
+          expected = subprocess.run(
+            ["./project.py", "--version"], check=True, capture_output=True, text=True
+          ).stdout.strip()
+          if ref_name != f"v{expected}":
+            raise SystemExit(f"Release tag {ref_name} does not match project version {expected}")
+          PY
+          git merge-base --is-ancestor HEAD origin/main
+          python3 -c \
+            'import os; from toolbox.release_validation import validate_release_document_versions; validate_release_document_versions(os.environ["REF_NAME"])'
+
+      - name: Install pinned Python dependencies
+        run: python3 -m pip install -r Requirements.txt
+
+      - name: Download exact producer runs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+          PYTHON_RUN_ID: ${{ inputs.python_run_id }}
+          WASM_RUN_ID: ${{ inputs.wasm_run_id }}
+        run: |
+          python3 toolbox/artifact_downloader.py \
+            --save-to release_assets \
+            --native-run-id "$NATIVE_RUN_ID" \
+            --wasm-run-id "$WASM_RUN_ID" \
+            --python-run-id "$PYTHON_RUN_ID" \
+            --source-manifest release-sources.json
+
+      - name: Stage immutable release candidate
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          cp docs/CHANGELOG.md release_assets/CHANGELOG.md
+          python3 toolbox/release_candidate.py \
+            --release-assets release_assets \
+            --source-manifest release-sources.json \
+            --save-to candidate \
+            --tag "$TAG_NAME" \
+            --commit "$COMMIT_SHA"
+          {
+            echo "## Release candidate"
+            echo '```json'
+            python3 -m json.tool candidate/evidence/manifest.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Classify exact npm version
+        id: npm-version
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py classify-npm \
+            --candidate candidate \
+            --version "${TAG_NAME#v}" \
+            --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload immutable release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: celestial-release-candidate
+          path: candidate/
+          retention-days: 30
+          if-no-files-found: error
+
   create_release:
+    needs: prepare_release
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      # Pinned because this job can publish release assets with contents: write (#214).
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Download immutable release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          python-version: "3.12"
+          name: celestial-release-candidate
+          path: candidate
 
-      - name: Install Python Dependencies
-        run: python3 -m pip install -r Requirements.txt
+      - name: Create immutable GitHub Release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
+        with:
+          artifacts: "candidate/github/*"
+          bodyFile: "candidate/evidence/RELEASE_NOTES.md"
+          immutableCreate: true
+          artifactErrorsFailBuild: true
 
-      - name: Sanity Check on Version
-        # The tag name is attacker-chosen text and this job runs with contents: write, so it
-        # goes through env rather than expression interpolation into the shell (#144). The `v`
-        # stripped below is guaranteed by the tag filter above, not by anything in this step.
+  publish_pypi:
+    needs: create_release
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download immutable release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: celestial-release-candidate
+          path: candidate
+
+      - name: Publish exact wheels to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: candidate/pypi
+          verify-metadata: true
+          attestations: true
+
+  publish_npm:
+    needs: [prepare_release, create_release]
+    runs-on: ubuntu-latest
+    environment: npm
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download immutable release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: celestial-release-candidate
+          path: candidate
+
+      - name: Set up the trusted npm runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.19.0"
+
+      - name: Publish exact tarball or report verified bootstrap
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          PUBLISH_REQUIRED: ${{ needs.prepare_release.outputs.npm_publish_required }}
         run: |
-          version_nums=${TAG_NAME#v}
-
-          chmod +x project.py
-          expected_version_nums=$(./project.py --version)
-          expected_version_nums=$(echo "$expected_version_nums" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-
-          if [ "$version_nums" != "$expected_version_nums" ]; then
-            echo "Expected version number: $expected_version_nums"
-            echo "Actual version number: $version_nums"
+          if [ "$(node --version)" != "v24.19.0" ] || [ "$(npm --version)" != "11.17.0" ]; then
+            echo "Unexpected Node/npm runtime: $(node --version) / $(npm --version)"
+            exit 1
+          fi
+          shopt -s nullglob
+          tarballs=(candidate/npm/*.tgz)
+          if [ "${#tarballs[@]}" -ne 1 ]; then
+            echo "Expected exactly one npm tarball"
+            exit 1
+          fi
+          if [ "$PUBLISH_REQUIRED" = "true" ]; then
+            npm publish "${tarballs[0]}" --access public --ignore-scripts
+          elif [ "$PUBLISH_REQUIRED" = "false" ]; then
+            echo "Exact npm version already exists; publication is not required."
+          else
+            echo "Invalid npm publication decision: $PUBLISH_REQUIRED"
             exit 1
           fi
 
-          python3 -c \
-            'import sys; from toolbox.release_validation import validate_release_document_versions; validate_release_document_versions(sys.argv[1])' \
-            "$TAG_NAME"
+  verify_registries:
+    needs: [publish_pypi, publish_npm]
+    runs-on: ubuntu-latest
 
-      - name: Download Artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x toolbox/artifact_downloader.py
-          ./toolbox/artifact_downloader.py --save-to ./release_assets
+    permissions:
+      contents: read
 
-      - name: Copy CHANGELOG.md
-        run: cp docs/CHANGELOG.md ./release_assets
-
-      - name: Create Release
-        id: create_release
-        # Pinned to a SHA: it runs in a contents: write job and publishes the release assets (#144).
-        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          artifacts: "release_assets/*"
-          bodyFile: "docs/RELEASE_NOTES.md"
+          persist-credentials: false
+
+      - name: Download immutable release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: celestial-release-candidate
+          path: candidate
+
+      - name: Set up Python floor
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11.9"
+
+      - name: Install pinned registry verifier dependencies
+        run: python3 -m pip install -r Requirements.txt
+
+      - name: Verify exact registry metadata and bytes
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py verify \
+            --candidate candidate \
+            --version "${TAG_NAME#v}" \
+            --commit "$COMMIT_SHA"
+
+      - name: Clean-install the PyPI wheel and run acceptance
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 -m venv registry-venv
+          registry-venv/bin/python -m pip --isolated install \
+            --index-url https://pypi.org/simple \
+            --only-binary=:all: \
+            --no-cache-dir \
+            --no-deps \
+            "celestial-calendar==${TAG_NAME#v}"
+          (
+            cd "$RUNNER_TEMP"
+            "$GITHUB_WORKSPACE/registry-venv/bin/python" \
+              "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
+          )
+
+      - name: Set up Node registry consumer
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.19.0"
+
+      - name: Clean-install the npm package and run acceptance
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: node bindings/javascript/test/registry/registry_consumer_test.mjs "${TAG_NAME#v}"

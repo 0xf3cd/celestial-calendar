@@ -125,6 +125,30 @@ class GitHub:
     created_at:  str
     updated_at:  str
 
+  @staticmethod
+  def _run(data) -> Run:
+    return GitHub.Run(
+      data["id"],
+      data["name"],
+      data["run_number"],
+      data["status"],
+      data["conclusion"] or "",
+      data["event"],
+      data["head_sha"],
+      data["workflow_id"],
+      data["url"],
+      data["created_at"],
+      data["updated_at"],
+    )
+
+  @staticmethod
+  def get_workflow_run(run_id: int) -> Run:
+    """Get one workflow run by its immutable ID."""
+    url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}"
+    response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
+    response.raise_for_status()
+    return GitHub._run(response.json())
+
   # Pagination cap for list_workflow_runs: 10 pages x 100 runs reaches far further back
   # than a release ever needs to look; a caller that still finds nothing must say how
   # many pages it scanned.
@@ -148,39 +172,32 @@ class GitHub:
       response.raise_for_status()
 
       batch = response.json()["workflow_runs"]
-      runs.extend(
-        GitHub.Run(
-          run["id"],
-          run["name"],
-          run["run_number"],
-          run["status"],
-          run["conclusion"] or "",  # null while the run is still in progress
-          run["event"],
-          run["head_sha"],
-          run["workflow_id"],
-          run["url"],
-          run["created_at"],
-          run["updated_at"]
-        )
-        for run in batch
-      )
+      runs.extend(GitHub._run(run) for run in batch)
       if len(batch) < 100:
         return runs, page
 
     return runs, max_pages
 
 
+  @dataclass
+  class WorkflowArtifact:
+    """One immutable artifact uploaded by a workflow run."""
+    id: int
+    name: str
+    size: int
+    digest: str
+    archive_download_url: str
+
   @staticmethod
-  def get_artifacts_download_urls(run_id: int) -> List[Tuple[str, str]]:
+  def get_workflow_artifacts(run_id: int) -> List[WorkflowArtifact]:
     """
     Fetch the download URLs for all artifacts of a specific run.
 
     Args:
       run_id (int): The ID of the GitHub Actions run.
 
-    Returns:
-      List[Tuple[str, str]]: Artifact names and download URLs in API order. A list is
-                            deliberate: duplicate names must remain visible to callers.
+    Returns artifacts in API order. A list is deliberate: duplicate names must remain
+    visible to callers.
     """
     artifacts_url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}/artifacts?per_page=100"
     
@@ -189,7 +206,13 @@ class GitHub:
     artifacts = response.json()
 
     entries = [
-      (artifact["name"], artifact["archive_download_url"])
+      GitHub.WorkflowArtifact(
+        artifact["id"],
+        artifact["name"],
+        artifact["size_in_bytes"],
+        artifact.get("digest") or "",
+        artifact["archive_download_url"],
+      )
       for artifact in artifacts["artifacts"]
     ]
     if artifacts["total_count"] != len(entries):
@@ -198,6 +221,14 @@ class GitHub:
         f"{artifacts['total_count']} entries"
       )
     return entries
+
+  @staticmethod
+  def get_artifacts_download_urls(run_id: int) -> List[Tuple[str, str]]:
+    """Fetch artifact names and download URLs while preserving API order."""
+    return [
+      (artifact.name, artifact.archive_download_url)
+      for artifact in GitHub.get_workflow_artifacts(run_id)
+    ]
 
   @staticmethod
   def download_one_artifact(name: str, download_url: str, download_dir: Path) -> Path:

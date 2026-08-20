@@ -5,8 +5,8 @@
 Five ways in, depending on what you are here for:
 
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
-* **Python users** — install a platform wheel and `import celestial_calendar`; §1.3 shows the package entry point.
-* **JavaScript / TypeScript users** — install the exact npm tarball from a GitHub release; §1.4 shows the package entry point.
+* **Python users** — install `celestial-calendar` and `import celestial_calendar`; §1.3 shows the package entry point.
+* **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.4 shows the package entry point.
 * **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
@@ -76,10 +76,10 @@ cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl
 
 ### 1.3. From Python
 
-Install the wheel for your platform from the GitHub release, then import the flat API:
+Install the wheel for your platform from PyPI, then import the flat API:
 
 ```sh
-python -m pip install "./celestial_calendar-<version>-py3-none-<platform>.whl"
+python -m pip install celestial-calendar
 ```
 
 ```python
@@ -96,11 +96,10 @@ the underlying ctypes protocol. See `bindings/python/README.md` for the package 
 
 ### 1.4. From JavaScript or TypeScript
 
-The package is not yet published to the npm registry. Download and extract `celestial-wasm.zip` from the matching
-GitHub release, then install its exact npm tarball:
+Install the package from npm:
 
 ```sh
-npm install ./0xf3cd-celestial-<version>.tgz
+npm install @0xf3cd/celestial
 ```
 
 Initialize the package-owned WebAssembly module once, then use the synchronous APIs:
@@ -260,10 +259,10 @@ and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs 
 from the generated module and the version in `project.py`.
 
 CI builds the module and package on an independent leg (`wasm.yml`). Its `celestial-wasm` artifact contains the
-raw `.mjs/.wasm` pair, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar; the release flow (§10) picks
-up that artifact unchanged. The same leg reconciles all 29 signatures and 16 layouts, replays the 389-point
-native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its TypeScript
-declarations, and runs an Astro/Vite production smoke in Chrome.
+raw `.mjs/.wasm` pair, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar. The release flow publishes
+that tarball to npm without rebuilding it. The same leg reconciles all 29 signatures and 16 layouts, replays the
+389-point native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its
+TypeScript declarations, and runs an Astro/Vite production smoke in Chrome.
 
 ## 7. Export the Jieqi Table (JSON)
 
@@ -361,10 +360,6 @@ There are basically two ways to download:
 * Run `toolbox/artifact_downloader.py`
 
   ```sh
-  # Ensure env var `GITHUB_TOKEN` is correctly set
-  echo $GITHUB_TOKEN     # Unix-like platforms
-  echo $env:GITHUB_TOKEN # Windows powershell
-
   # Download artifacts from a given run to the specified dir
   python3 ./toolbox/artifact_downloader.py -id <run-id> -s <directory>
 
@@ -385,6 +380,8 @@ There are basically two ways to download:
 
 There are basically two ways to download:
 
+Maintainers cutting a release should follow the protected workflow in [`docs/RELEASING.md`](docs/RELEASING.md).
+
 ### 10.1. From GitHub Web UI
 
 * Go to [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
@@ -397,10 +394,6 @@ There are basically two ways to download:
 * Run `toolbox/release_downloader.py`
 
   ```sh
-  # Ensure env var `GITHUB_TOKEN` is correctly set
-  echo $GITHUB_TOKEN     # Unix-like platforms
-  echo $env:GITHUB_TOKEN # Windows powershell
-
   # Download assets from the latest release to the specified dir
   python3 ./toolbox/release_downloader.py -s <directory>
 
