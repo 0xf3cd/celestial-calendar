@@ -29,6 +29,27 @@ REPO  = "celestial-calendar"
 TIMEOUT = (10, 60)
 
 
+def _download_file(download_url: str, destination: Path) -> None:
+  """Download one URL without exposing a partial file as the destination."""
+  destination.parent.mkdir(parents=True, exist_ok=True)
+  partial = destination.with_name(f"{destination.name}.part")
+  if destination.exists():
+    raise FileExistsError(f"Refusing to overwrite download: {destination}")
+  if partial.exists():
+    raise FileExistsError(f"Refusing to overwrite partial download: {partial}")
+
+  try:
+    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
+      response.raise_for_status()
+      with partial.open("wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+          f.write(chunk)
+    partial.replace(destination)
+  except Exception:
+    partial.unlink(missing_ok=True)
+    raise
+
+
 def gen_headers() -> Dict[str, str]:
   """
   Generate headers for GitHub API requests.
@@ -191,29 +212,54 @@ class GitHub:
     Returns:
       Path: The path to the downloaded artifact.
     """
-    download_dir.mkdir(parents=True, exist_ok=True)
     artifact = download_dir / f"{name}.zip"
-    partial = artifact.with_suffix(".zip.part")
-    if artifact.exists():
-      raise FileExistsError(f"Refusing to overwrite artifact: {artifact}")
-    if partial.exists():
-      raise FileExistsError(f"Refusing to overwrite partial artifact: {partial}")
-
-    try:
-      with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
-        response.raise_for_status()
-
-        with partial.open("wb") as f:
-          for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-      partial.replace(artifact)
-    except Exception:
-      partial.unlink(missing_ok=True)
-      raise
+    _download_file(download_url, artifact)
 
     green_print(f"# Downloaded {name}")
     return artifact
 
+
+  @staticmethod
+  def _validate_parallel(parallel: int) -> None:
+    if parallel < 1 or parallel > 20:
+      raise ValueError("Invalid parallel value")
+
+  @staticmethod
+  async def _async_download_urls(
+    download_urls: List[Tuple[str, str]], download_dir: Path, parallel: int, download_one, noun: str
+  ) -> List[Path]:
+    queue = asyncio.Queue()
+    for name, url in download_urls:
+      queue.put_nowait((name, url))
+
+    paths: List[Path] = []
+    failures: List[str] = []
+
+    async def coro():
+      while not queue.empty():
+        name, url = await queue.get()
+        try:
+          path = await asyncio.to_thread(download_one, name, url, download_dir)
+          paths.append(path)
+        except Exception as e:
+          # Keep draining before raising; otherwise queue.join() waits forever.
+          red_print(f"# Failed to download {name}: {e}")
+          failures.append(f"{name}: {e}")
+        finally:
+          queue.task_done()  # Signal that the current task is done.
+
+    tasks = [asyncio.create_task(coro()) for _ in range(parallel)]
+
+    # Block until all items in the queue have been processed.
+    # This may be redundant though, since we will `asyncio.gather` later.
+    await queue.join()
+    # Ensure all tasks are awaited.
+    await asyncio.gather(*tasks)
+
+    if failures:
+      raise RuntimeError(f"{len(failures)} {noun}(s) failed to download: {failures}")
+
+    return paths
 
   @staticmethod
   async def async_download_artifact_urls(
@@ -230,47 +276,18 @@ class GitHub:
     Returns:
       List[Path]: The path to the downloaded artifacts.
     """
-    if parallel < 1 or parallel > 20:
-      raise ValueError("Invalid parallel value")
-
+    GitHub._validate_parallel(parallel)
     names = [name for name, _ in artifact_urls]
     if len(names) != len(set(names)):
       raise RuntimeError(f"Duplicate artifact names are not safe to download: {names}")
     blue_print(f"# Downloading {len(artifact_urls)} artifacts...")
-
-    queue = asyncio.Queue()
-    for name, url in artifact_urls:
-      queue.put_nowait((name, url))
-
-    paths: List[Path] = []
-    failures: List[str] = []
-
-    async def coro():
-      while not queue.empty():
-        name, url = await queue.get()
-        try:
-          path = await asyncio.to_thread(GitHub.download_one_artifact, name, url, download_dir)
-          paths.append(path)
-        except Exception as e:
-          # Record, keep draining (or queue.join() hangs), then fail the whole call below:
-          # a release must never ship with artifacts silently missing.
-          red_print(f"# Failed to download {name}: {e}")
-          failures.append(f"{name}: {e}")
-        finally:
-          queue.task_done()  # Signal that the current task is done.
-
-    tasks = [asyncio.create_task(coro()) for _ in range(parallel)]
-
-    # Block until all items in the queue have been processed. 
-    # This may be redundant though, since we will `asyncio.gather` later.
-    await queue.join() 
-    # Ensure all tasks are awaited.
-    await asyncio.gather(*tasks)
-
-    if failures:
-      raise RuntimeError(f"{len(failures)} artifact(s) failed to download: {failures}")
-
-    return paths
+    return await GitHub._async_download_urls(
+      artifact_urls,
+      download_dir,
+      parallel,
+      GitHub.download_one_artifact,
+      "artifact",
+    )
 
   @staticmethod
   async def async_download_artifacts(run_id: int, download_dir: Path, parallel: int) -> List[Path]:
@@ -390,18 +407,10 @@ class GitHub:
     Returns:
       Path: The path to the downloaded asset.
     """
-    with requests.get(download_url, headers=gen_headers(), stream=True, timeout=TIMEOUT) as response:
-      response.raise_for_status()
-
-      download_dir.mkdir(parents=True, exist_ok=True)
-      asset = download_dir / name
-
-      with open(asset, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-          f.write(chunk)
-
-      green_print(f"# Downloaded {name}")
-      return asset
+    asset = download_dir / name
+    _download_file(download_url, asset)
+    green_print(f"# Downloaded {name}")
+    return asset
 
   @staticmethod
   async def async_download_release(release_id: int, download_dir: Path, parallel: int) -> List[Path]:
@@ -416,9 +425,7 @@ class GitHub:
     Returns:
       List[Path]: The path to the downloaded assets.
     """
-    if parallel < 1 or parallel > 20:
-      raise ValueError("Invalid parallel value")
-    
+    GitHub._validate_parallel(parallel)
     releases = GitHub.list_releases()
     selected_release = None
     for release in releases:
@@ -429,39 +436,22 @@ class GitHub:
     if selected_release is None:
       raise ValueError(f"Invalid release id: {release_id}")
 
-    assets = selected_release.assets
-
-    queue = asyncio.Queue()
-    for asset in assets:
-      queue.put_nowait((asset.name, asset.browser_download_url))
-
+    download_urls = [(asset.name, asset.browser_download_url) for asset in selected_release.assets]
     tag_name = selected_release.tag_name
     archive_url = f"https://github.com/{OWNER}/{REPO}/archive/refs/tags/{tag_name}"
-    queue.put_nowait(("src.zip", f"{archive_url}.zip"))
-    queue.put_nowait(("src.tar.gz", f"{archive_url}.tar.gz"))
-
-    paths: List[Path] = []
-
-    async def coro():
-      while not queue.empty():
-        name, url = await queue.get()
-        try:
-          path = await asyncio.to_thread(GitHub.download_one_release_asset, name, url, download_dir)
-          paths.append(path)
-        except Exception as e:
-          red_print(f"# Failed to download {name}: {e}")
-        finally:
-          queue.task_done() # Signal that the current task is done.
-
-    tasks = [asyncio.create_task(coro()) for _ in range(parallel)]
-
-    # Block until all items in the queue have been processed. 
-    # This may be redundant though, since we will `asyncio.gather` later.
-    await queue.join() 
-    # Ensure all tasks are awaited.
-    await asyncio.gather(*tasks)
-
-    return paths
+    download_urls.extend(
+      (
+        ("src.zip", f"{archive_url}.zip"),
+        ("src.tar.gz", f"{archive_url}.tar.gz"),
+      )
+    )
+    return await GitHub._async_download_urls(
+      download_urls,
+      download_dir,
+      parallel,
+      GitHub.download_one_release_asset,
+      "release asset",
+    )
 
   @staticmethod
   def download_release(release_id: int, download_dir: Path, parallel: int = 4) -> List[Path]:

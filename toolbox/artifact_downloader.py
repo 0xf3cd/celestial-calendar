@@ -36,7 +36,13 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, blue_print
 from automation.github import GitHub
-from toolbox.release_validation import validate_release_archives
+from toolbox.release_validation import (
+  NATIVE_ARCHIVES,
+  PYTHON_ARTIFACTS,
+  WASM_ARCHIVE,
+  validate_release_archives,
+  validate_wheel_platform,
+)
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
   """Find the workflow to download artifacts from."""
@@ -59,29 +65,11 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
 ARTIFACT_SOURCES: Final[tuple[tuple[str, frozenset[str]], ...]] = (
   (
     "Build and Test on Multiple Platforms",
-    frozenset({"linux_amd64", "linux_arm64", "macos_arm64", "windows_x86_64"}),
+    frozenset(NATIVE_ARCHIVES.values()),
   ),
-  ("WASM Build and Golden Check", frozenset({"celestial-wasm"})),
-  (
-    "Python Wheels",
-    frozenset(
-      {
-        "celestial-python-manylinux-x86_64",
-        "celestial-python-manylinux-aarch64",
-        "celestial-python-macos-arm64",
-        "celestial-python-windows-amd64",
-      }
-    ),
-  ),
+  ("WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
+  ("Python Wheels", frozenset(PYTHON_ARTIFACTS)),
 )
-
-PYTHON_ARTIFACTS: Final[dict[str, tuple[str, str]]] = {
-  "celestial-python-manylinux-x86_64": ("manylinux", "x86_64"),
-  "celestial-python-manylinux-aarch64": ("manylinux", "aarch64"),
-  "celestial-python-macos-arm64": ("macos", "arm64"),
-  "celestial-python-windows-amd64": ("windows", "amd64"),
-}
-
 
 def release_commit_sha() -> str:
   """The commit the artifacts must have been built from.
@@ -149,29 +137,6 @@ def project_version() -> str:
   if match is None:
     raise RuntimeError("Cannot parse BUILD_VERSION from project.py")
   return match.group(1)
-
-
-def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -> None:
-  """Match one artifact name to its one permitted wheel platform tag."""
-  match = re.fullmatch(rf"celestial_calendar-{re.escape(version)}-py3-none-(.+)\.whl", wheel_name)
-  if match is None:
-    raise RuntimeError(f"Unexpected wheel filename in {artifact_name}: {wheel_name}")
-  tags = match.group(1).split(".")
-  family, architecture = PYTHON_ARTIFACTS[artifact_name]
-  if family == "manylinux":
-    expected = f"manylinux_2_28_{architecture}"
-    valid = expected in tags
-    for tag in tags:
-      tag_match = re.fullmatch(rf"manylinux_(\d+)_(\d+)_{architecture}", tag)
-      valid = valid and tag_match is not None
-      if tag_match is not None:
-        valid = valid and (int(tag_match.group(1)), int(tag_match.group(2))) <= (2, 28)
-  elif family == "macos":
-    valid = tags == ["macosx_14_0_arm64"]
-  else:
-    valid = tags == ["win_amd64"]
-  if not valid:
-    raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}")
 
 
 def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) -> list[Path]:

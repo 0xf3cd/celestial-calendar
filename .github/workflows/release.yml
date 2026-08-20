@@ -13,7 +13,16 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v7
+      # Pinned because this job can publish release assets with contents: write (#214).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Dependencies
+        run: python3 -m pip install -r Requirements.txt
 
       - name: Sanity Check on Version
         # The tag name is attacker-chosen text and this job runs with contents: write, so it
@@ -34,6 +43,10 @@ jobs:
             exit 1
           fi
 
+          python3 -c \
+            'import sys; from toolbox.release_validation import validate_release_document_versions; validate_release_document_versions(sys.argv[1])' \
+            "$TAG_NAME"
+
       - name: Download Artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,4 +64,3 @@ jobs:
         with:
           artifacts: "release_assets/*"
           bodyFile: "docs/RELEASE_NOTES.md"
-

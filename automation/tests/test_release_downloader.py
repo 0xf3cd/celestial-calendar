@@ -20,13 +20,18 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
+import yaml
 
 import toolbox.release_downloader as release_downloader_module
 
 from automation.github import GitHub
 from toolbox.release_downloader import archive_validation_version
+
+
+RELEASE_WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "release.yml"
 
 
 def release(tag_name):
@@ -54,8 +59,8 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
   for path in downloaded:
     path.write_bytes(b"downloaded")
 
-  def record_validation(paths, version, check_documented_runtime):
-    calls.append((paths, version, check_documented_runtime))
+  def record_validation(paths, version, check_documented_runtime, require_wheels):
+    calls.append((paths, version, check_documented_runtime, require_wheels))
 
   monkeypatch.setattr(
     release_downloader_module,
@@ -78,22 +83,23 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
 def test_v060_release_download_reuses_archive_validation(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v0.6.0")
 
-  assert calls == [(downloaded, "0.6.0", False)]
+  assert calls == [(downloaded, "0.6.0", False, True)]
 
 
 def test_release_download_validates_against_tag_version(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v1.2.3")
 
-  assert calls == [(downloaded, "1.2.3", False)]
+  assert calls == [(downloaded, "1.2.3", False, True)]
 
 
 def test_release_download_preserves_assets_when_validation_fails(monkeypatch, tmp_path):
   downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
 
-  def reject_archives(paths, version, check_documented_runtime):
+  def reject_archives(paths, version, check_documented_runtime, require_wheels):
     assert paths == downloaded
     assert version == "0.6.0"
     assert check_documented_runtime is False
+    assert require_wheels is True
     raise RuntimeError("invalid archive")
 
   with pytest.raises(RuntimeError, match="invalid archive"):
@@ -106,3 +112,23 @@ def test_historical_release_download_keeps_legacy_behavior(monkeypatch, tmp_path
   _downloaded, calls = run_download(monkeypatch, tmp_path, "v0.5.0")
 
   assert calls == []
+
+
+def test_release_workflow_installs_dependencies_before_downloading_artifacts():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["create_release"]["steps"]
+  names = [step.get("name") for step in steps]
+
+  setup = next(step for step in steps if step.get("name") == "Set up Python")
+  assert setup["with"]["python-version"] == "3.12"
+  assert names.index("Install Python Dependencies") < names.index("Download Artifacts")
+  install = next(step for step in steps if step.get("name") == "Install Python Dependencies")
+  assert install["run"] == "python3 -m pip install -r Requirements.txt"
+
+
+def test_release_workflow_validates_document_versions():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["create_release"]["steps"]
+  sanity = next(step for step in steps if step.get("name") == "Sanity Check on Version")
+  assert "validate_release_document_versions" in sanity["run"]
+  assert '"$TAG_NAME"' in sanity["run"]
