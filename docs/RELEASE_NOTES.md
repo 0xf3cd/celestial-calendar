@@ -1,5 +1,5 @@
-<!-- This file is the release body: release.yml passes it verbatim as `bodyFile` when a
-     v*.*.* tag is pushed. Keep ONLY the notes of the release being cut; history lives in
+<!-- This file is the release body: release.yml passes it verbatim as `bodyFile` when it is
+     dispatched on a v*.*.* tag. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
 ## [v0.6.0] - 2026-08-17
@@ -14,14 +14,16 @@
   or implicit number coercion.
 - Input shape, finiteness, integer width, and operation domains are checked before WASM. Bad input throws
   `TypeError` / `RangeError`; native failures become `CelestialError`. Legitimate absence remains `null` or `[]`.
-- The npm registry package is not yet published. Install the exact npm tarball from `celestial-wasm.zip` on the
-  matching GitHub Release.
+- Install the package with `npm install @0xf3cd/celestial`. The matching GitHub Release carries the exact published
+  tarball and its SHA-256 sidecar in `celestial-wasm.zip`.
+- npm v0.6.0 was bootstrapped once from that exact CI tarball with a short-lived token before Trusted Publishing
+  could be registered, so this version has no OIDC-generated provenance. Later releases publish through OIDC; the
+  v0.6.0 workflow's verified no-op is not an OIDC publication test.
 
 ### Python
 
-- Install a `celestial-calendar` wheel from the matching GitHub Release; wheels are not uploaded to PyPI. The
-  supported targets are `manylinux_2_28` x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or
-  newer.
+- Install `celestial-calendar` from PyPI or use the identical wheel from the matching GitHub Release. The supported
+  targets are `manylinux_2_28` x86_64/aarch64, macOS 14 arm64, and Windows AMD64, with Python 3.11 or newer.
 - The flat `celestial_calendar` API wraps the complete C ABI with enums, frozen dataclasses, scalars, and tuples;
   the raw ctypes layer remains private. Wrong types raise `TypeError`, invalid values raise
   `ValueError`, and native failures raise `CelestialError` with `operation` and `recorded` attributes.
@@ -46,6 +48,10 @@
   members, build version, and runtime-library hashes. `release_downloader.py` repeats the archive-internal checks after
   download without comparing against the caller's checkout documentation.
 - Each platform clean-installs its wheel and replays the same native golden dataset as the WASM leg.
+- The protected release workflow freezes one candidate before publishing. GitHub Release receives the archives and
+  wheels first; PyPI receives the same wheel bytes, while npm either publishes the exact tarball or proves the
+  v0.6.0 bootstrap byte-identical. An unprivileged final job compares registry metadata, SHA-256, npm SHA-512
+  integrity, downloaded bytes, and clean installs.
 - The JavaScript acceptance suite pins the inclusive endpoints of the civil, calendar, Jieqi, longitude, ΔT, and
   lunar-algorithm domains. Directed mutations prove that the ABI oracle detects export, signature, layout, and
   recording drift; CI also rejects ABI, Node, browser, or TypeScript test entries that are not wired into their runner.

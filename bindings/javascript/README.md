@@ -29,14 +29,14 @@ WebAssembly module.
 
 ## Install
 
-The package is not yet published to the npm registry. Download and extract `celestial-wasm.zip` from the matching
-[GitHub release](https://github.com/0xf3cd/celestial-calendar/releases), then install the exact npm tarball used by CI:
+Install the package from npm:
 
 ```sh
-npm install ./0xf3cd-celestial-<version>.tgz
+npm install @0xf3cd/celestial
 ```
 
-`npm install @0xf3cd/celestial` will work once the registry package exists.
+The matching [GitHub release](https://github.com/0xf3cd/celestial-calendar/releases) also carries
+`celestial-wasm.zip`, including the exact tarball published to npm and its SHA-256 sidecar.
 
 Node 22 or newer is supported. The browser package is tested on Chrome. Importing the package performs no I/O;
 call `init()` once before using the synchronous calculation APIs.

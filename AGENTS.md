@@ -111,13 +111,15 @@ Individual steps: `--setup` / `--cmake` / `--build` / `--test` / `--bench` / `--
 The WASM/npm exception has its own shared manual/CI path: `npm ci --ignore-scripts --prefix
 bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.mjs`, then
 `python3 toolbox/build_npm.py`. Consumer tests take the exact tarball named by
-`build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer.
+`build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer. The release
+workflow publishes that exact tested tarball to npm; it never repacks from source.
 
 Python wheels likewise use their independent package path: install the exact pins from
 `bindings/python/pyproject.toml` / `python-wheel.yml`, then run `python -m cibuildwheel --only
 <identifier> bindings/python --output-dir wheelhouse`. The wheel is `py3` but native per platform;
 floor and current interpreters must install the same repaired wheel from an unrelated cwd. Do not
-build an sdist or upload to PyPI — GitHub Release receives the four CI-tested wheels directly.
+build an sdist. The release workflow publishes the same four CI-tested wheels to PyPI and GitHub
+Release; it never builds another distribution.
 
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
@@ -353,9 +355,9 @@ bindings/
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
    `python-wheel.yml` legs. The former uploads `celestial-wasm` (raw module + exact npm
    tarball + pack JSON/SHA-256 sidecars); the latter uploads four exact wheels and sidecars;
-   the release downloader pulls all three build legs' artifacts for the tagged commit.
-   Cutting a release is a manual ritual: push the tag, dispatch
-   `build_and_test.yml`, `wasm.yml`, and `python-wheel.yml` on it, then rerun the release workflow.
+   the release downloader pulls all three build legs' artifacts for the tagged commit. Cutting a
+   release is the protected-tag, explicit-run ritual in `docs/RELEASING.md`; it freezes one candidate,
+   publishes GitHub Release before npm/PyPI, and verifies registry bytes without rebuilding.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -453,7 +455,7 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
   wasm/npm and Python wheel builds are the sanctioned exceptions (#163, #182, #211): their recipes live in
   `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
   `wasm.yml` CI leg, and in `bindings/python` / `python-wheel.yml`; the release flow consumes
-  the CI-built artifacts, it does not rebuild them.
+  the CI-built artifacts and publishes those exact bytes, it does not rebuild them.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
