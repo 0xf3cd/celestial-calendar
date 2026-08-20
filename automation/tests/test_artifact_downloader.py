@@ -36,15 +36,17 @@ import toolbox.artifact_downloader as artifact_downloader_module
 
 from automation.github import GitHub
 from toolbox.artifact_downloader import (
-  ARTIFACT_SOURCES,
   PYTHON_ARTIFACTS,
   find_artifact_run,
   flatten_python_artifacts,
   project_version,
+  validate_args,
   validate_artifact_download,
   validate_artifact_inventory,
   validate_artifact_run,
+  write_source_manifest,
 )
+from toolbox.release_validation import SOURCE_SPECS
 
 
 PROJECT_VERSION = project_version()
@@ -304,8 +306,46 @@ def test_native_workflow_artifact_inventory_matches_collector():
       assert upload["with"]["name"] == "${{ steps.shared_lib.outputs.artifact_name }}"
       uploaded.extend(artifact_names)
 
-  expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
+  expected = next(names for _field, name, names in SOURCE_SPECS if name == workflow["name"])
   assert Counter(uploaded) == Counter(expected)
+
+
+@pytest.mark.parametrize(
+  ("values", "message"),
+  [
+    ({"native_run_id": 1}, "supplied together"),
+    ({"run_id": 1, "native_run_id": 1, "wasm_run_id": 2, "python_run_id": 3}, "cannot be combined"),
+    ({"source_manifest": Path("manifest.json")}, "requires all three"),
+  ],
+)
+def test_release_source_argument_combinations_fail_closed(tmp_path, values, message):
+  args = SimpleNamespace(
+    run_id=0,
+    native_run_id=0,
+    wasm_run_id=0,
+    python_run_id=0,
+    source_manifest=None,
+    save_to=tmp_path,
+    parallel=4,
+  )
+  for field, value in values.items():
+    setattr(args, field, value)
+
+  with pytest.raises(RuntimeError, match=message):
+    validate_args(args)
+
+
+@pytest.mark.parametrize("existing_name", ["release-sources.json", "release-sources.json.part"])
+def test_source_manifest_refuses_existing_final_or_partial_file(tmp_path, existing_name):
+  manifest = tmp_path / "release-sources.json"
+  existing = tmp_path / existing_name
+  existing.write_bytes(b"keep")
+
+  with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+    write_source_manifest(manifest, "tagged-sha", [])
+
+  assert existing.read_bytes() == b"keep"
+  assert [path.name for path in tmp_path.iterdir()] == [existing_name]
 
 
 def test_download_rejects_existing_destination_before_request(monkeypatch, tmp_path):
@@ -432,13 +472,19 @@ def test_release_collector_validates_archives_before_python_flatten(
 ):
   workflows = {
     name: GitHub.Workflow(index, name, "active", "", "", "")
-    for index, (name, _expected) in enumerate(ARTIFACT_SOURCES, start=1)
+    for index, (_field, name, _expected) in enumerate(SOURCE_SPECS, start=1)
+  }
+  run_ids = {
+    field: 100 + index
+    for index, (field, _name, _expected) in enumerate(SOURCE_SPECS, start=1)
   }
   artifact_names = {
-    index: expected
-    for index, (_name, expected) in enumerate(ARTIFACT_SOURCES, start=1)
+    run_ids[field]: expected
+    for field, _name, expected in SOURCE_SPECS
   }
   order = []
+  selected_runs = []
+  validated_downloads = []
   downloaded_paths = []
   source_manifest = tmp_path / "release-sources.json"
 
@@ -447,22 +493,30 @@ def test_release_collector_validates_archives_before_python_flatten(
     "parse_args",
     lambda: SimpleNamespace(
       run_id=0,
-      native_run_id=0,
-      wasm_run_id=0,
-      python_run_id=0,
+      native_run_id=run_ids["native_run_id"],
+      wasm_run_id=run_ids["wasm_run_id"],
+      python_run_id=run_ids["python_run_id"],
       source_manifest=source_manifest,
       save_to=tmp_path,
       parallel=4,
       unzip=unzip,
     ),
   )
-  monkeypatch.setattr(artifact_downloader_module, "validate_args", lambda _args: None)
   monkeypatch.setattr(artifact_downloader_module, "release_commit_sha", lambda: "tagged-sha")
   monkeypatch.setattr(artifact_downloader_module, "artifact_workflow", lambda name: workflows[name])
+
+  def select_run(workflow, run_id, sha):
+    assert sha == "tagged-sha"
+    selected_runs.append((workflow.name, run_id))
+    selected = run(run_id, "workflow_dispatch")
+    selected.workflow_id = workflow.id
+    return selected
+
+  monkeypatch.setattr(artifact_downloader_module, "validate_artifact_run", select_run)
   monkeypatch.setattr(
     artifact_downloader_module,
     "find_artifact_run",
-    lambda workflow, _sha: run(workflow.id, "workflow_dispatch"),
+    lambda *_args: (_ for _ in ()).throw(AssertionError("fallback lookup must not run")),
   )
   monkeypatch.setattr(
     GitHub,
@@ -491,7 +545,9 @@ def test_release_collector_validates_archives_before_python_flatten(
   def validate(paths, version):
     order.append("validate")
     assert version == PROJECT_VERSION
-    assert {path.stem for path in paths} == set().union(*(expected for _name, expected in ARTIFACT_SOURCES))
+    assert {path.stem for path in paths} == set().union(
+      *(expected for _field, _name, expected in SOURCE_SPECS)
+    )
     if validation_error is not None:
       raise validation_error
 
@@ -502,6 +558,12 @@ def test_release_collector_validates_archives_before_python_flatten(
     return []
 
   monkeypatch.setattr(GitHub, "download_artifact_urls", download)
+
+  def validate_download(path, artifact):
+    validate_artifact_download(path, artifact)
+    validated_downloads.append(artifact.name)
+
+  monkeypatch.setattr(artifact_downloader_module, "validate_artifact_download", validate_download)
   monkeypatch.setattr(artifact_downloader_module, "validate_release_archives", validate)
   monkeypatch.setattr(artifact_downloader_module, "flatten_python_artifacts", flatten)
 
@@ -510,7 +572,7 @@ def test_release_collector_validates_archives_before_python_flatten(
     assert order == ["validate", "flatten"]
     manifest = json.loads(source_manifest.read_text(encoding="utf-8"))
     assert manifest["commit"] == "tagged-sha"
-    assert [source["run"]["id"] for source in manifest["sources"]] == [1, 2, 3]
+    assert [source["run"]["id"] for source in manifest["sources"]] == list(run_ids.values())
   else:
     with pytest.raises(RuntimeError, match="invalid archive"):
       artifact_downloader_module.main()
@@ -518,6 +580,12 @@ def test_release_collector_validates_archives_before_python_flatten(
     assert downloaded_paths
     assert all(path.read_bytes() == b"zip" for path in downloaded_paths)
     assert not source_manifest.exists()
+  assert selected_runs == [
+    (workflow, run_ids[field]) for field, workflow, _artifacts in SOURCE_SPECS
+  ]
+  assert Counter(validated_downloads) == Counter(
+    artifact for _field, _workflow, artifacts in SOURCE_SPECS for artifact in artifacts
+  )
 
 
 def python_wheels():

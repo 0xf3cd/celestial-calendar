@@ -30,7 +30,6 @@ import zipfile
 from collections import Counter
 
 from pathlib import Path
-from typing import Final
 
 # Apply a workaround to import from the parent directory...
 sys.path.append(str(Path(__file__).parent.parent))
@@ -38,9 +37,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from automation import red_print, yellow_print, blue_print
 from automation.github import GitHub
 from toolbox.release_validation import (
-  NATIVE_ARCHIVES,
   PYTHON_ARTIFACTS,
-  WASM_ARCHIVE,
+  SOURCE_SPECS,
   validate_release_archives,
   validate_wheel_platform,
 )
@@ -60,18 +58,6 @@ def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms
   
   return multi_platform_workflow[0]
 
-
-# A release takes one exact inventory from each independent build leg. Missing, extra, or
-# duplicate artifacts are all contract drift; checking only a minimum would bless the wrong run.
-ARTIFACT_SOURCES: Final[tuple[tuple[str, frozenset[str]], ...]] = (
-  (
-    "Build and Test on Multiple Platforms",
-    frozenset(NATIVE_ARCHIVES.values()),
-  ),
-  ("WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
-  ("Python Wheels", frozenset(PYTHON_ARTIFACTS)),
-)
-SOURCE_RUN_FIELDS: Final[tuple[str, ...]] = ("native_run_id", "wasm_run_id", "python_run_id")
 
 def release_commit_sha() -> str:
   """The commit the artifacts must have been built from.
@@ -295,11 +281,13 @@ def validate_args(args: argparse.Namespace) -> None: # Exception raised on failu
     red_print(f"Directory path is not a directory: {args.save_to}")
     raise RuntimeError(f"Directory path is not a directory: {args.save_to}")
 
-  run_ids = [getattr(args, field, 0) for field in SOURCE_RUN_FIELDS]
+  run_ids = [getattr(args, field, 0) for field, _workflow, _artifacts in SOURCE_SPECS]
   if any(run_ids) and not all(run_id > 0 for run_id in run_ids):
     raise RuntimeError("Native, WASM, and Python producer run IDs must be supplied together")
   if args.run_id != 0 and (any(run_ids) or getattr(args, "source_manifest", None) is not None):
     raise RuntimeError("--run-id cannot be combined with release source run IDs or --source-manifest")
+  if getattr(args, "source_manifest", None) is not None and not all(run_id > 0 for run_id in run_ids):
+    raise RuntimeError("--source-manifest requires all three explicit release source run IDs")
   
 
 def main() -> None:
@@ -318,12 +306,12 @@ def main() -> None:
     plans = []
     sources = []
     seen_names: set[str] = set()
-    explicit_run_ids = [getattr(args, field, 0) for field in SOURCE_RUN_FIELDS]
-    for index, (workflow_name, expected_names) in enumerate(ARTIFACT_SOURCES):
+    for run_field, workflow_name, expected_names in SOURCE_SPECS:
       workflow = artifact_workflow(workflow_name)
+      explicit_run_id = getattr(args, run_field, 0)
       run = (
-        validate_artifact_run(workflow, explicit_run_ids[index], sha)
-        if explicit_run_ids[index]
+        validate_artifact_run(workflow, explicit_run_id, sha)
+        if explicit_run_id
         else find_artifact_run(workflow, sha)
       )
       artifacts = GitHub.get_workflow_artifacts(run.id)

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import yaml
 
-from toolbox.artifact_downloader import ARTIFACT_SOURCES
+from toolbox.release_validation import SOURCE_SPECS
 
 
 ROOT = Path(__file__).parents[2]
@@ -83,7 +83,7 @@ def test_wasm_artifact_inventory_matches_collector():
     for step in job["steps"]
     if str(step.get("uses", "")).startswith("actions/upload-artifact@")
   ]
-  expected = next(names for name, names in ARTIFACT_SOURCES if name == workflow["name"])
+  expected = next(names for _field, name, names in SOURCE_SPECS if name == workflow["name"])
 
   assert Counter(uploads) == Counter(expected)
 

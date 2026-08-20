@@ -50,16 +50,17 @@ PYTHON_ARTIFACTS: Final[dict[str, tuple[str, str]]] = {
   "celestial-python-macos-arm64": ("macos", "arm64"),
   "celestial-python-windows-amd64": ("windows", "amd64"),
 }
-SOURCE_ARTIFACTS: Final[frozenset[str]] = frozenset({
-  *NATIVE_ARCHIVES.values(),
-  Path(WASM_ARCHIVE).stem,
-  *PYTHON_ARTIFACTS,
-})
+SOURCE_SPECS: Final[tuple[tuple[str, str, frozenset[str]], ...]] = (
+  ("native_run_id", "Build and Test on Multiple Platforms", frozenset(NATIVE_ARCHIVES.values())),
+  ("wasm_run_id", "WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
+  ("python_run_id", "Python Wheels", frozenset(PYTHON_ARTIFACTS)),
+)
 SOURCE_WORKFLOWS: Final[dict[str, frozenset[str]]] = {
-  "Build and Test on Multiple Platforms": frozenset(NATIVE_ARCHIVES.values()),
-  "WASM Build and Golden Check": frozenset({Path(WASM_ARCHIVE).stem}),
-  "Python Wheels": frozenset(PYTHON_ARTIFACTS),
+  workflow: artifacts for _run_field, workflow, artifacts in SOURCE_SPECS
 }
+SOURCE_ARTIFACTS: Final[frozenset[str]] = frozenset(
+  artifact for _run_field, _workflow, artifacts in SOURCE_SPECS for artifact in artifacts
+)
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
   Path(__file__).resolve().parents[1] / "docs" / "RELEASE_NOTES.md",

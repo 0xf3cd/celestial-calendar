@@ -45,6 +45,23 @@ POLL_ATTEMPTS = 30
 POLL_DELAY_SECONDS = 10
 
 
+class RegistryPendingError(RuntimeError):
+  """A registry transport or indexing state that may settle within the polling ceiling."""
+
+
+def _registry_get(url: str, session: object):
+  try:
+    response = session.get(url, timeout=REQUEST_TIMEOUT)
+  except requests.RequestException as error:
+    raise RegistryPendingError(f"Registry request failed transiently for {url}: {error}") from error
+  if response.status_code == 404:
+    return response
+  if response.status_code >= 500:
+    raise RegistryPendingError(f"Registry returned HTTP {response.status_code} for {url}")
+  response.raise_for_status()
+  return response
+
+
 def pypi_metadata_url(version: str) -> str:
   """Return the version-specific PyPI JSON endpoint."""
   return f"https://pypi.org/pypi/{PYPI_PACKAGE}/{quote(version, safe='')}/json"
@@ -57,10 +74,9 @@ def npm_metadata_url(version: str) -> str:
 
 
 def _metadata(url: str, session: object) -> dict | None:
-  response = session.get(url, timeout=REQUEST_TIMEOUT)
+  response = _registry_get(url, session)
   if response.status_code == 404:
     return None
-  response.raise_for_status()
   try:
     payload = response.json()
   except (ValueError, UnicodeDecodeError) as error:
@@ -74,8 +90,9 @@ def _download(url: str, expected_host: str, session: object) -> bytes:
   parsed = urlparse(url)
   if parsed.scheme != "https" or parsed.hostname != expected_host:
     raise RuntimeError(f"Unexpected registry file URL: {url}")
-  response = session.get(url, timeout=REQUEST_TIMEOUT)
-  response.raise_for_status()
+  response = _registry_get(url, session)
+  if response.status_code == 404:
+    raise RegistryPendingError(f"Registry file is not yet available: {url}")
   final_url = getattr(response, "url", url)
   final = urlparse(final_url)
   if final.scheme != "https" or final.hostname != expected_host:
@@ -140,7 +157,13 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
       raise RuntimeError("PyPI registry contains an invalid or duplicate filename")
     entries[filename] = entry
   expected = {wheel.name: wheel for wheel in wheels}
-  if len(expected) != 4 or set(entries) != set(expected):
+  if len(expected) != 4:
+    raise RuntimeError("PyPI candidate must contain four distinct wheels")
+  if set(entries) < set(expected):
+    raise RegistryPendingError(
+      f"PyPI wheel inventory is still incomplete: missing={sorted(set(expected) - set(entries))}"
+    )
+  if set(entries) != set(expected):
     raise RuntimeError(
       f"PyPI wheel inventory mismatch: missing={sorted(set(expected) - set(entries))}, "
       f"extra={sorted(set(entries) - set(expected))}"
@@ -195,14 +218,27 @@ def wait_for_candidate_registries(
 
   pypi_ready = False
   npm_ready = False
+  pending_reasons = {"PyPI": "version is absent", "npm": "version is absent"}
   for attempt in range(1, attempts + 1):
     if not pypi_ready:
-      pypi_ready = pypi_version_is_exact(wheels, version, session)
+      try:
+        pypi_ready = pypi_version_is_exact(wheels, version, session)
+        pending_reasons["PyPI"] = "version is absent"
+      except RegistryPendingError as error:
+        pending_reasons["PyPI"] = str(error)
     if not npm_ready:
-      npm_ready = npm_version_is_exact(tarballs[0], version, session)
+      try:
+        npm_ready = npm_version_is_exact(tarballs[0], version, session)
+        pending_reasons["npm"] = "version is absent"
+      except RegistryPendingError as error:
+        pending_reasons["npm"] = str(error)
     if pypi_ready and npm_ready:
       return
     if attempt != attempts:
       sleep(delay_seconds)
-  pending = [name for name, ready in (("PyPI", pypi_ready), ("npm", npm_ready)) if not ready]
-  raise RuntimeError(f"Registry version did not become available after {attempts} attempts: {', '.join(pending)}")
+  pending = [
+    f"{name} ({pending_reasons[name]})"
+    for name, ready in (("PyPI", pypi_ready), ("npm", npm_ready))
+    if not ready
+  ]
+  raise RuntimeError(f"Registry version did not become available after {attempts} attempts: {'; '.join(pending)}")

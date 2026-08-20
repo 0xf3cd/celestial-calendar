@@ -24,7 +24,8 @@ from pathlib import Path
 
 import yaml
 
-from toolbox.artifact_downloader import ARTIFACT_SOURCES, PYTHON_ARTIFACTS
+from toolbox.artifact_downloader import PYTHON_ARTIFACTS
+from toolbox.release_validation import SOURCE_SPECS
 
 
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "python-wheel.yml"
@@ -44,7 +45,7 @@ def test_python_wheel_artifact_inventory_is_exact():
         name = step["with"]["name"]
         uploaded.update(matrix_artifacts if name == "${{ matrix.artifact }}" else {name})
 
-  expected = next(names for name, names in ARTIFACT_SOURCES if name == "Python Wheels")
+  expected = next(names for _field, name, names in SOURCE_SPECS if name == "Python Wheels")
   assert workflow["name"] == "Python Wheels"
   assert uploaded == set(PYTHON_ARTIFACTS) == expected
 

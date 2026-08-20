@@ -189,6 +189,83 @@ def test_pypi_version_rejects_inventory_and_metadata_mutations(tmp_path, mutatio
     pypi_version_is_exact(wheels, VERSION, pypi_session(wheels, metadata))
 
 
+@pytest.mark.parametrize("mutation", ["bytes", "url", "redirect"])
+def test_pypi_version_rejects_file_transport_mutations(tmp_path, mutation):
+  wheels = pypi_wheels(tmp_path)
+  metadata = pypi_metadata(wheels)
+  if mutation == "url":
+    metadata["urls"][0]["url"] = f"http://example.invalid/{wheels[0].name}"
+  session = pypi_session(wheels, metadata)
+  first_url = metadata["urls"][0]["url"]
+  if mutation == "bytes":
+    session.routes[first_url].content = b"different-wheel"
+  elif mutation == "redirect":
+    session.routes[first_url].url = f"https://example.invalid/{wheels[0].name}"
+
+  with pytest.raises(RuntimeError):
+    pypi_version_is_exact(wheels, VERSION, session)
+
+
+def test_npm_classification_validates_the_complete_candidate_first(monkeypatch, tmp_path):
+  def reject_candidate(*_args):
+    raise RuntimeError("invalid complete candidate")
+
+  monkeypatch.setattr(registry_validation, "validate_release_candidate", reject_candidate)
+
+  with pytest.raises(RuntimeError, match="invalid complete candidate"):
+    registry_validation.classify_npm_candidate(tmp_path / "candidate", VERSION, "tagged-sha")
+
+
+@pytest.mark.parametrize("transient", ["metadata-503", "partial-inventory", "file-503"])
+def test_registry_polling_retries_transient_registry_states(monkeypatch, tmp_path, transient):
+  candidate = tmp_path / "candidate"
+  (candidate / "pypi").mkdir(parents=True)
+  (candidate / "npm").mkdir()
+  wheels = pypi_wheels(candidate / "pypi")
+  tarball = candidate / "npm" / "package.tgz"
+  tarball.write_bytes(b"candidate")
+  complete = pypi_metadata(wheels)
+  if transient == "metadata-503":
+    metadata_responses = [Response(status=503), Response(payload=complete)]
+  elif transient == "partial-inventory":
+    metadata_responses = [
+      Response(payload={**complete, "urls": complete["urls"][:-1]}),
+      Response(payload=complete),
+    ]
+  else:
+    metadata_responses = [Response(payload=complete), Response(payload=complete)]
+  routes = {
+    pypi_metadata_url(VERSION): metadata_responses,
+    npm_metadata_url(VERSION): Response(payload=npm_metadata(tarball.read_bytes())),
+    NPM_TARBALL_URL: Response(content=tarball.read_bytes()),
+  }
+  routes.update({
+    entry["url"]: Response(content=wheel.read_bytes())
+    for entry, wheel in zip(complete["urls"], wheels, strict=True)
+  })
+  if transient == "file-503":
+    first_url = complete["urls"][0]["url"]
+    routes[first_url] = [Response(status=503), routes[first_url]]
+  session = Session(routes)
+  sleeps = []
+  monkeypatch.setattr(registry_validation, "validate_release_candidate", lambda *_args: {})
+
+  wait_for_candidate_registries(
+    candidate,
+    VERSION,
+    "tagged-sha",
+    session=session,
+    attempts=2,
+    delay_seconds=3,
+    sleep=sleeps.append,
+  )
+
+  called_urls = [url for url, _timeout in session.calls]
+  assert called_urls.count(pypi_metadata_url(VERSION)) == 2
+  assert called_urls.count(npm_metadata_url(VERSION)) == 1
+  assert sleeps == [3]
+
+
 def test_registry_polling_retains_each_success(monkeypatch, tmp_path):
   candidate = tmp_path / "candidate"
   (candidate / "pypi").mkdir(parents=True)
@@ -237,7 +314,7 @@ def test_registry_polling_has_a_fixed_ceiling(monkeypatch, tmp_path):
   monkeypatch.setattr(registry_validation, "npm_version_is_exact", lambda *_args: False)
   sleeps = []
 
-  with pytest.raises(RuntimeError, match="after 2 attempts: PyPI, npm"):
+  with pytest.raises(RuntimeError, match=r"after 2 attempts: PyPI \(version is absent\); npm \(version is absent\)"):
     wait_for_candidate_registries(
       candidate,
       VERSION,

@@ -21,73 +21,23 @@
  * along with this project. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { runPackageConsumer } from "../support/package_consumer.mjs";
 
 if (process.argv.length !== 3 || !/^\d+\.\d+\.\d+$/.test(process.argv[2])) {
   throw new Error("usage: node registry_consumer_test.mjs <version>");
 }
 
 const version = process.argv[2];
-const consumer = await mkdtemp(join(tmpdir(), "celestial-npm-registry-consumer-"));
-const cache = join(consumer, "npm-cache");
-const run = (command, args) => {
-  const completed = spawnSync(command, args, {
-    cwd: consumer,
-    encoding: "utf8",
-    env: { ...process.env, npm_config_cache: cache },
-  });
-  if (completed.status !== 0) {
-    throw new Error(
-      `${command} ${args.join(" ")} failed (${completed.status})\n${completed.stdout}\n${completed.stderr}`,
-    );
-  }
-  return completed;
-};
-
-try {
-  await writeFile(
-    join(consumer, "package.json"),
-    JSON.stringify({
-      name: "celestial-registry-consumer",
-      version: "0.0.0",
-      private: true,
-      type: "module",
-      dependencies: { "@0xf3cd/celestial": version },
-    }, null, 2),
-  );
-  run("npm", [
-    "install",
+await runPackageConsumer({
+  dependency: version,
+  expectedVersion: version,
+  installArgs: [
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
     "--package-lock=false",
     "--registry=https://registry.npmjs.org",
-  ]);
-  const installed = JSON.parse(
-    await readFile(join(consumer, "node_modules", "@0xf3cd", "celestial", "package.json"), "utf8"),
-  );
-  assert.equal(installed.name, "@0xf3cd/celestial");
-  assert.equal(installed.version, version);
-
-  await writeFile(
-    join(consumer, "consumer.mjs"),
-    `import assert from "node:assert/strict";
-import * as celestial from "@0xf3cd/celestial";
-
-await celestial.init();
-const value = celestial.moon.illumination(2448724.5);
-assert(Math.abs(value.fraction - 0.6786) < 5e-5);
-console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumination" }));
-`,
-  );
-  const executed = run(process.execPath, ["consumer.mjs"]);
-  const result = JSON.parse(executed.stdout);
-  assert.equal(result.operation, "moon.illumination");
-  console.log(`PASS registry install @0xf3cd/celestial@${version}`);
-} finally {
-  await rm(consumer, { recursive: true, force: true });
-}
+  ],
+  prefix: "celestial-npm-registry-consumer-",
+  success: `PASS registry install @0xf3cd/celestial@${version}`,
+});
