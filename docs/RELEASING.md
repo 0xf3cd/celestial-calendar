@@ -159,25 +159,28 @@ For the terminal ambiguous-success case, verify and consume the same candidate m
 the release tag. `RUN_ID` is the release workflow run, not a producer run:
 
 ```sh
-tag=vMAJOR.MINOR.PATCH
-version=${tag#v}
-commit=$(git rev-parse "$tag^{commit}")
-test ! -e candidate || exit 1
-gh run download RUN_ID --name celestial-release-candidate --dir candidate
+(
+  set -euo pipefail
+  tag=vMAJOR.MINOR.PATCH
+  version=${tag#v}
+  commit=$(git rev-parse "$tag^{commit}")
+  test ! -e candidate
+  gh run download RUN_ID --name celestial-release-candidate --dir candidate
 
-python3 -m venv registry-verify
-registry-verify/bin/python -m pip install -r Requirements.txt
-registry-verify/bin/python toolbox/registry_verifier.py verify \
-  --candidate candidate --version "$version" --commit "$commit"
+  python3 -m venv registry-verify
+  registry-verify/bin/python -m pip install -r Requirements.txt
+  registry-verify/bin/python toolbox/registry_verifier.py verify \
+    --candidate candidate --version "$version" --commit "$commit"
 
-python3 -m venv registry-python
-registry-python/bin/python -m pip --isolated install \
-  --index-url https://pypi.org/simple --only-binary=:all: --no-cache-dir --no-deps \
-  "celestial-calendar==$version"
-root=$(pwd)
-work=$(mktemp -d)
-(cd "$work" && "$root/registry-python/bin/python" "$root/bindings/python/test/run_all.py")
-node bindings/javascript/test/registry/registry_consumer_test.mjs "$version"
+  python3 -m venv registry-python
+  registry-python/bin/python -m pip --isolated install \
+    --index-url https://pypi.org/simple --only-binary=:all: --no-cache-dir --no-deps \
+    "celestial-calendar==$version"
+  root=$(pwd)
+  work=$(mktemp -d)
+  (cd "$work" && "$root/registry-python/bin/python" "$root/bindings/python/test/run_all.py")
+  node bindings/javascript/test/registry/registry_consumer_test.mjs "$version"
+)
 ```
 
 Rehearse environment self-approval and same-run failed-job artifact recovery after workflow changes and before the
