@@ -18,6 +18,7 @@
 import sys
 import os
 import hashlib
+import json
 import re
 import shutil
 import pprint
@@ -70,6 +71,7 @@ ARTIFACT_SOURCES: Final[tuple[tuple[str, frozenset[str]], ...]] = (
   ("WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
   ("Python Wheels", frozenset(PYTHON_ARTIFACTS)),
 )
+SOURCE_RUN_FIELDS: Final[tuple[str, ...]] = ("native_run_id", "wasm_run_id", "python_run_id")
 
 def release_commit_sha() -> str:
   """The commit the artifacts must have been built from.
@@ -108,6 +110,25 @@ def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
   raise RuntimeError(f'No successful dispatched "{workflow.name}" run for commit {sha}')
 
 
+def validate_artifact_run(workflow: GitHub.Workflow, run_id: int, sha: str) -> GitHub.Run:
+  """Bind an explicit run ID to its expected workflow, event, commit, and conclusion."""
+  run = GitHub.get_workflow_run(run_id)
+  mismatches = []
+  if run.workflow_id != workflow.id:
+    mismatches.append(f"workflow_id={run.workflow_id}, expected {workflow.id}")
+  if run.event != "workflow_dispatch":
+    mismatches.append(f"event={run.event!r}")
+  if run.head_sha != sha:
+    mismatches.append(f"head_sha={run.head_sha}, expected {sha}")
+  if run.status != "completed" or run.conclusion != "success":
+    mismatches.append(f"status={run.status!r}, conclusion={run.conclusion!r}")
+  if mismatches:
+    raise RuntimeError(
+      f'Run {run_id} is not a valid "{workflow.name}" release source: {", ".join(mismatches)}'
+    )
+  return run
+
+
 def validate_artifact_inventory(
   workflow_name: str,
   run_id: int,
@@ -128,6 +149,32 @@ def validate_artifact_inventory(
       f"duplicates={duplicates}, missing={missing}, extra={extra}, cross-source={collisions}"
     )
   seen_names.update(actual)
+
+
+def validate_artifact_download(path: Path, artifact: GitHub.WorkflowArtifact) -> None:
+  """Match a downloaded artifact ZIP to the size and digest recorded by GitHub."""
+  match = re.fullmatch(r"sha256:([0-9a-f]{64})", artifact.digest)
+  if match is None:
+    raise RuntimeError(f"Artifact {artifact.name} has no valid GitHub SHA-256 digest")
+  size = path.stat().st_size
+  if size != artifact.size:
+    raise RuntimeError(f"Artifact {artifact.name} size mismatch: downloaded {size}, API {artifact.size}")
+  digest = hashlib.sha256(path.read_bytes()).hexdigest()
+  if digest != match.group(1):
+    raise RuntimeError(f"Artifact {artifact.name} GitHub digest mismatch")
+
+
+def write_source_manifest(path: Path, commit: str, sources: list[dict]) -> None:
+  """Write the immutable producer-run identities after every artifact validates."""
+  if path.exists():
+    raise FileExistsError(f"Refusing to overwrite release source manifest: {path}")
+  path.parent.mkdir(parents=True, exist_ok=True)
+  partial = path.with_name(f"{path.name}.part")
+  if partial.exists():
+    raise FileExistsError(f"Refusing to overwrite partial release source manifest: {partial}")
+  payload = {"schema": 1, "commit": commit, "sources": sources}
+  partial.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+  partial.replace(path)
 
 
 def project_version() -> str:
@@ -207,6 +254,14 @@ def parse_args() -> argparse.Namespace:
     help="The ID of a single artifact run to download, skipping the release-source lookup. "
          "If not specified, the successful runs that built the release commit are used."
   )
+  parser.add_argument("--native-run-id", type=int, default=0, help="Exact native producer run ID.")
+  parser.add_argument("--wasm-run-id", type=int, default=0, help="Exact WASM/npm producer run ID.")
+  parser.add_argument("--python-run-id", type=int, default=0, help="Exact Python-wheel producer run ID.")
+  parser.add_argument(
+    "--source-manifest",
+    type=lambda arg: Path(arg).resolve(),
+    help="Write the validated producer runs and artifact API digests to this JSON file.",
+  )
   parser.add_argument(
     "-s", "--save-to", 
     type=lambda arg: Path(arg).resolve(),
@@ -239,6 +294,12 @@ def validate_args(args: argparse.Namespace) -> None: # Exception raised on failu
   if args.save_to.exists() and args.save_to.is_file():
     red_print(f"Directory path is not a directory: {args.save_to}")
     raise RuntimeError(f"Directory path is not a directory: {args.save_to}")
+
+  run_ids = [getattr(args, field, 0) for field in SOURCE_RUN_FIELDS]
+  if any(run_ids) and not all(run_id > 0 for run_id in run_ids):
+    raise RuntimeError("Native, WASM, and Python producer run IDs must be supplied together")
+  if args.run_id != 0 and (any(run_ids) or getattr(args, "source_manifest", None) is not None):
+    raise RuntimeError("--run-id cannot be combined with release source run IDs or --source-manifest")
   
 
 def main() -> None:
@@ -255,24 +316,50 @@ def main() -> None:
   else:
     sha = release_commit_sha()
     plans = []
+    sources = []
     seen_names: set[str] = set()
-    for workflow_name, expected_names in ARTIFACT_SOURCES:
-      run = find_artifact_run(artifact_workflow(workflow_name), sha)
-      artifact_urls = GitHub.get_artifacts_download_urls(run.id)
+    explicit_run_ids = [getattr(args, field, 0) for field in SOURCE_RUN_FIELDS]
+    for index, (workflow_name, expected_names) in enumerate(ARTIFACT_SOURCES):
+      workflow = artifact_workflow(workflow_name)
+      run = (
+        validate_artifact_run(workflow, explicit_run_ids[index], sha)
+        if explicit_run_ids[index]
+        else find_artifact_run(workflow, sha)
+      )
+      artifacts = GitHub.get_workflow_artifacts(run.id)
+      artifact_urls = [(artifact.name, artifact.archive_download_url) for artifact in artifacts]
       validate_artifact_inventory(workflow_name, run.id, artifact_urls, expected_names, seen_names)
-      plans.append(artifact_urls)
+      plans.append((artifacts, artifact_urls))
+      sources.append({
+        "workflow": {"id": workflow.id, "name": workflow.name},
+        "run": {"id": run.id, "head_sha": run.head_sha},
+        "artifacts": [
+          {
+            "id": artifact.id,
+            "name": artifact.name,
+            "size": artifact.size,
+            "digest": artifact.digest,
+          }
+          for artifact in artifacts
+        ],
+      })
 
-    zip_destinations = [args.save_to / f"{name}.zip" for plan in plans for name, _ in plan]
+    zip_destinations = [args.save_to / f"{name}.zip" for _artifacts, plan in plans for name, _ in plan]
     existing = [str(path) for path in zip_destinations if path.exists()]
     if existing:
       raise FileExistsError(f"Refusing to overwrite downloaded artifacts: {existing}")
 
-    for artifact_urls in plans:
+    for artifacts, artifact_urls in plans:
       downloaded = GitHub.download_artifact_urls(artifact_urls, args.save_to, args.parallel)
+      by_name = {path.stem: path for path in downloaded}
+      for artifact in artifacts:
+        validate_artifact_download(by_name[artifact.name], artifact)
       downloaded_artifacts.extend(downloaded)
 
     validate_release_archives(downloaded_artifacts, project_version())
     downloaded_artifacts.extend(flatten_python_artifacts(downloaded_artifacts, args.save_to))
+    if getattr(args, "source_manifest", None) is not None:
+      write_source_manifest(args.source_manifest, sha, sources)
 
   # Unzip the downloaded artifacts.
   if args.unzip:

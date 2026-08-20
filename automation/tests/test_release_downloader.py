@@ -114,21 +114,83 @@ def test_historical_release_download_keeps_legacy_behavior(monkeypatch, tmp_path
   assert calls == []
 
 
-def test_release_workflow_installs_dependencies_before_downloading_artifacts():
+def test_release_workflow_is_deliberately_dispatched_with_exact_runs():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  steps = workflow["jobs"]["create_release"]["steps"]
+  trigger = workflow.get("on", workflow.get(True))
+
+  assert set(trigger) == {"workflow_dispatch"}
+  assert set(trigger["workflow_dispatch"]["inputs"]) == {"native_run_id", "wasm_run_id", "python_run_id"}
+  assert all(value["required"] for value in trigger["workflow_dispatch"]["inputs"].values())
+  assert workflow["concurrency"] == {
+    "group": "release-${{ github.ref }}",
+    "cancel-in-progress": False,
+  }
+
+
+def test_release_preparation_has_read_only_permissions_and_pinned_context():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["prepare_release"]
+  steps = job["steps"]
   names = [step.get("name") for step in steps]
 
+  assert job["permissions"] == {"actions": "read", "contents": "read"}
+  checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout@"))
+  assert checkout["with"] == {"fetch-depth": 0, "persist-credentials": False}
   setup = next(step for step in steps if step.get("name") == "Set up Python")
   assert setup["with"]["python-version"] == "3.12"
-  assert names.index("Install Python Dependencies") < names.index("Download Artifacts")
-  install = next(step for step in steps if step.get("name") == "Install Python Dependencies")
+  assert names.index("Install pinned Python dependencies") < names.index("Download exact producer runs")
+  install = next(step for step in steps if step.get("name") == "Install pinned Python dependencies")
   assert install["run"] == "python3 -m pip install -r Requirements.txt"
 
 
-def test_release_workflow_validates_document_versions():
+def test_release_preparation_validates_ref_and_stages_one_candidate():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  steps = workflow["jobs"]["create_release"]["steps"]
-  sanity = next(step for step in steps if step.get("name") == "Sanity Check on Version")
-  assert "validate_release_document_versions" in sanity["run"]
-  assert '"$TAG_NAME"' in sanity["run"]
+  steps = workflow["jobs"]["prepare_release"]["steps"]
+  context = next(step for step in steps if step.get("name") == "Validate protected release context")
+  download = next(step for step in steps if step.get("name") == "Download exact producer runs")
+  stage = next(step for step in steps if step.get("name") == "Stage immutable release candidate")
+  upload = next(step for step in steps if step.get("name") == "Upload immutable release candidate")
+
+  assert context["env"] == {
+    "REF_NAME": "${{ github.ref_name }}",
+    "REF_PROTECTED": "${{ github.ref_protected }}",
+    "REF_TYPE": "${{ github.ref_type }}",
+  }
+  assert "git merge-base --is-ancestor HEAD origin/main" in context["run"]
+  assert "validate_release_document_versions" in context["run"]
+  assert download["env"] == {
+    "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+    "NATIVE_RUN_ID": "${{ inputs.native_run_id }}",
+    "PYTHON_RUN_ID": "${{ inputs.python_run_id }}",
+    "WASM_RUN_ID": "${{ inputs.wasm_run_id }}",
+  }
+  assert "--source-manifest release-sources.json" in download["run"]
+  assert "toolbox/release_candidate.py" in stage["run"]
+  assert "candidate/evidence/manifest.json" in stage["run"]
+  assert upload["with"] == {
+    "name": "celestial-release-candidate",
+    "path": "candidate/",
+    "retention-days": 30,
+    "if-no-files-found": "error",
+  }
+
+
+def test_github_release_job_only_downloads_and_publishes_frozen_candidate():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["create_release"]
+  steps = job["steps"]
+
+  assert job["needs"] == "prepare_release"
+  assert job["permissions"] == {"contents": "write"}
+  assert [step["name"] for step in steps] == [
+    "Download immutable release candidate",
+    "Create immutable GitHub Release",
+  ]
+  release = steps[1]
+  assert release["uses"] == "ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd"
+  assert release["with"] == {
+    "artifacts": "candidate/github/*",
+    "bodyFile": "candidate/evidence/RELEASE_NOTES.md",
+    "immutableCreate": True,
+    "artifactErrorsFailBuild": True,
+  }

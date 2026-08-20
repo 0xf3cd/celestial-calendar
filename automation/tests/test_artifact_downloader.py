@@ -20,6 +20,7 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
+import json
 import re
 import zipfile
 
@@ -40,7 +41,9 @@ from toolbox.artifact_downloader import (
   find_artifact_run,
   flatten_python_artifacts,
   project_version,
+  validate_artifact_download,
   validate_artifact_inventory,
+  validate_artifact_run,
 )
 
 
@@ -82,6 +85,11 @@ class ArtifactResponse:
     return {"total_count": self.total_count, "artifacts": self.artifacts}
 
 
+class RunResponse(Response):
+  def json(self):
+    return super().json()["workflow_runs"][0]
+
+
 class FailingDownloadResponse:
   def __enter__(self):
     return self
@@ -120,6 +128,16 @@ def run(run_id: int, event: str) -> GitHub.Run:
   )
 
 
+def artifact(name, artifact_id, content=b"zip"):
+  return {
+    "id": artifact_id,
+    "name": name,
+    "size_in_bytes": len(content),
+    "digest": f"sha256:{hashlib.sha256(content).hexdigest()}",
+    "archive_download_url": f"https://example.invalid/{name}",
+  }
+
+
 def test_workflow_run_event_is_parsed(monkeypatch):
   monkeypatch.setattr(github_module, "gen_headers", lambda: {})
   monkeypatch.setattr(github_module.requests, "get", lambda *_args, **_kwargs: Response())
@@ -128,6 +146,36 @@ def test_workflow_run_event_is_parsed(monkeypatch):
 
   assert pages == 1
   assert runs[0].event == "workflow_dispatch"
+
+
+def test_workflow_run_lookup_preserves_release_identity(monkeypatch):
+  monkeypatch.setattr(github_module, "gen_headers", lambda: {})
+  monkeypatch.setattr(github_module.requests, "get", lambda *_args, **_kwargs: RunResponse())
+
+  selected = GitHub.get_workflow_run(7)
+
+  assert selected.id == 7
+  assert selected.workflow_id == 13
+  assert selected.head_sha == "tagged-sha"
+
+
+@pytest.mark.parametrize(
+  ("field", "value", "message"),
+  [
+    ("workflow_id", 99, "workflow_id"),
+    ("event", "pull_request", "event"),
+    ("head_sha", "other-sha", "head_sha"),
+    ("conclusion", "failure", "conclusion"),
+  ],
+)
+def test_explicit_release_run_rejects_wrong_identity(monkeypatch, field, value, message):
+  selected = run(7, "workflow_dispatch")
+  setattr(selected, field, value)
+  monkeypatch.setattr(GitHub, "get_workflow_run", lambda _run_id: selected)
+  workflow = GitHub.Workflow(13, "WASM Build and Golden Check", "active", "", "", "")
+
+  with pytest.raises(RuntimeError, match=message):
+    validate_artifact_run(workflow, 7, "tagged-sha")
 
 
 def test_artifact_lookup_rejects_pull_request_run(monkeypatch):
@@ -141,8 +189,8 @@ def test_artifact_lookup_rejects_pull_request_run(monkeypatch):
 
 def test_artifact_api_preserves_duplicate_names(monkeypatch):
   artifacts = [
-    {"name": "same", "archive_download_url": "https://example.invalid/one"},
-    {"name": "same", "archive_download_url": "https://example.invalid/two"},
+    {**artifact("same", 1), "archive_download_url": "https://example.invalid/one"},
+    {**artifact("same", 2), "archive_download_url": "https://example.invalid/two"},
   ]
   monkeypatch.setattr(github_module, "gen_headers", lambda: {})
   monkeypatch.setattr(github_module.requests, "get", lambda *_args, **_kwargs: ArtifactResponse(artifacts))
@@ -154,7 +202,7 @@ def test_artifact_api_preserves_duplicate_names(monkeypatch):
 
 
 def test_artifact_api_rejects_truncated_response(monkeypatch):
-  artifacts = [{"name": "one", "archive_download_url": "https://example.invalid/one"}]
+  artifacts = [artifact("one", 1)]
   monkeypatch.setattr(github_module, "gen_headers", lambda: {})
   monkeypatch.setattr(
     github_module.requests,
@@ -164,6 +212,24 @@ def test_artifact_api_rejects_truncated_response(monkeypatch):
 
   with pytest.raises(RuntimeError, match="returned 1 of 2"):
     GitHub.get_artifacts_download_urls(7)
+
+
+@pytest.mark.parametrize("mutation", ["size", "digest", "missing-digest"])
+def test_downloaded_artifact_must_match_github_identity(tmp_path, mutation):
+  path = tmp_path / "artifact.zip"
+  path.write_bytes(b"zip")
+  expected = GitHub.WorkflowArtifact(
+    1,
+    "artifact",
+    3 if mutation != "size" else 4,
+    f"sha256:{hashlib.sha256(b'zip').hexdigest()}" if mutation != "digest" else f"sha256:{'0' * 64}",
+    "https://example.invalid/artifact",
+  )
+  if mutation == "missing-digest":
+    expected.digest = ""
+
+  with pytest.raises(RuntimeError):
+    validate_artifact_download(path, expected)
 
 
 @pytest.mark.parametrize(
@@ -374,11 +440,21 @@ def test_release_collector_validates_archives_before_python_flatten(
   }
   order = []
   downloaded_paths = []
+  source_manifest = tmp_path / "release-sources.json"
 
   monkeypatch.setattr(
     artifact_downloader_module,
     "parse_args",
-    lambda: SimpleNamespace(run_id=0, save_to=tmp_path, parallel=4, unzip=unzip),
+    lambda: SimpleNamespace(
+      run_id=0,
+      native_run_id=0,
+      wasm_run_id=0,
+      python_run_id=0,
+      source_manifest=source_manifest,
+      save_to=tmp_path,
+      parallel=4,
+      unzip=unzip,
+    ),
   )
   monkeypatch.setattr(artifact_downloader_module, "validate_args", lambda _args: None)
   monkeypatch.setattr(artifact_downloader_module, "release_commit_sha", lambda: "tagged-sha")
@@ -390,8 +466,17 @@ def test_release_collector_validates_archives_before_python_flatten(
   )
   monkeypatch.setattr(
     GitHub,
-    "get_artifacts_download_urls",
-    lambda run_id: [(name, f"https://example.invalid/{name}") for name in artifact_names[run_id]],
+    "get_workflow_artifacts",
+    lambda run_id: [
+      GitHub.WorkflowArtifact(
+        index,
+        name,
+        3,
+        f"sha256:{hashlib.sha256(b'zip').hexdigest()}",
+        f"https://example.invalid/{name}",
+      )
+      for index, name in enumerate(artifact_names[run_id], start=1)
+    ],
   )
 
   def download(artifact_urls, save_to, _parallel):
@@ -423,12 +508,16 @@ def test_release_collector_validates_archives_before_python_flatten(
   if validation_error is None:
     artifact_downloader_module.main()
     assert order == ["validate", "flatten"]
+    manifest = json.loads(source_manifest.read_text(encoding="utf-8"))
+    assert manifest["commit"] == "tagged-sha"
+    assert [source["run"]["id"] for source in manifest["sources"]] == [1, 2, 3]
   else:
     with pytest.raises(RuntimeError, match="invalid archive"):
       artifact_downloader_module.main()
     assert order == ["validate"]
     assert downloaded_paths
     assert all(path.read_bytes() == b"zip" for path in downloaded_paths)
+    assert not source_manifest.exists()
 
 
 def python_wheels():

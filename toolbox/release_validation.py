@@ -24,6 +24,8 @@
 import hashlib
 import json
 import re
+import shutil
+import tempfile
 import zipfile
 
 from collections import Counter
@@ -47,6 +49,16 @@ PYTHON_ARTIFACTS: Final[dict[str, tuple[str, str]]] = {
   "celestial-python-manylinux-aarch64": ("manylinux", "aarch64"),
   "celestial-python-macos-arm64": ("macos", "arm64"),
   "celestial-python-windows-amd64": ("windows", "amd64"),
+}
+SOURCE_ARTIFACTS: Final[frozenset[str]] = frozenset({
+  *NATIVE_ARCHIVES.values(),
+  Path(WASM_ARCHIVE).stem,
+  *PYTHON_ARTIFACTS,
+})
+SOURCE_WORKFLOWS: Final[dict[str, frozenset[str]]] = {
+  "Build and Test on Multiple Platforms": frozenset(NATIVE_ARCHIVES.values()),
+  "WASM Build and Golden Check": frozenset({Path(WASM_ARCHIVE).stem}),
+  "Python Wheels": frozenset(PYTHON_ARTIFACTS),
 }
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
@@ -199,8 +211,8 @@ def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_co
     )
 
 
-def validate_wasm_archive(archive_path: Path, version: str) -> None:
-  """Validate the exact WASM/npm artifact contract without changing the ZIP."""
+def npm_archive_payload(archive_path: Path, version: str) -> dict[str, bytes]:
+  """Validate one WASM archive and return its registry publication payload."""
   try:
     with zipfile.ZipFile(archive_path) as archive:
       names = archive.namelist()
@@ -241,8 +253,18 @@ def validate_wasm_archive(archive_path: Path, version: str) -> None:
       expected_sidecar = f"{digest}  {tarball_name}\n".encode()
       if archive.read("npm-pack.sha256") != expected_sidecar:
         raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}")
+      return {
+        tarball_name: tarball,
+        "npm-pack.json": archive.read("npm-pack.json"),
+        "npm-pack.sha256": archive.read("npm-pack.sha256"),
+      }
   except zipfile.BadZipFile as error:
     raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
+
+
+def validate_wasm_archive(archive_path: Path, version: str) -> None:
+  """Validate the exact WASM/npm artifact contract without changing the ZIP."""
+  npm_archive_payload(archive_path, version)
 
 
 def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str, str]]:
@@ -332,3 +354,164 @@ def validate_release_archives(
   for filename, artifact_name in NATIVE_ARCHIVES.items():
     expected_runtime = runtime_matrix[artifact_name] if runtime_matrix is not None else None
     validate_native_archive(archives[filename], artifact_name, version, expected_runtime)
+
+
+def _release_sources(path: Path, commit: str) -> list[dict]:
+  try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+  except (json.JSONDecodeError, UnicodeDecodeError) as error:
+    raise RuntimeError(f"Invalid release source manifest: {error}") from error
+  if not isinstance(payload, dict) or payload.get("schema") != 1 or payload.get("commit") != commit:
+    raise RuntimeError("Release source manifest identity mismatch")
+  sources = payload.get("sources")
+  if not isinstance(sources, list) or len(sources) != 3:
+    raise RuntimeError("Release source manifest must contain exactly three workflows")
+
+  workflow_ids = set()
+  workflow_names = set()
+  run_ids = set()
+  artifact_ids = set()
+  artifact_names = set()
+  for source in sources:
+    if not isinstance(source, dict):
+      raise RuntimeError("Invalid release source entry")
+    workflow = source.get("workflow")
+    run = source.get("run")
+    artifacts = source.get("artifacts")
+    if (
+      not isinstance(workflow, dict)
+      or not isinstance(workflow.get("id"), int)
+      or workflow["id"] <= 0
+      or not isinstance(workflow.get("name"), str)
+      or not isinstance(run, dict)
+      or not isinstance(run.get("id"), int)
+      or run["id"] <= 0
+      or run.get("head_sha") != commit
+      or not isinstance(artifacts, list)
+    ):
+      raise RuntimeError("Invalid release source workflow or run identity")
+    if workflow["id"] in workflow_ids or workflow["name"] in workflow_names:
+      raise RuntimeError(f"Duplicate release source workflow: {workflow['name']}")
+    if run["id"] in run_ids:
+      raise RuntimeError(f"Duplicate release source run ID: {run['id']}")
+    workflow_ids.add(workflow["id"])
+    workflow_names.add(workflow["name"])
+    run_ids.add(run["id"])
+    source_artifact_names = set()
+    for artifact in artifacts:
+      if (
+        not isinstance(artifact, dict)
+        or not isinstance(artifact.get("id"), int)
+        or artifact["id"] <= 0
+        or not isinstance(artifact.get("name"), str)
+        or not isinstance(artifact.get("size"), int)
+        or artifact["size"] <= 0
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", artifact.get("digest", "")) is None
+      ):
+        raise RuntimeError("Invalid release source artifact identity")
+      if artifact["id"] in artifact_ids:
+        raise RuntimeError(f"Duplicate release source artifact ID: {artifact['id']}")
+      if artifact["name"] in artifact_names:
+        raise RuntimeError(f"Duplicate release source artifact name: {artifact['name']}")
+      artifact_ids.add(artifact["id"])
+      source_artifact_names.add(artifact["name"])
+      artifact_names.add(artifact["name"])
+    expected_artifacts = SOURCE_WORKFLOWS.get(workflow["name"])
+    if expected_artifacts is None or source_artifact_names != set(expected_artifacts):
+      raise RuntimeError(f"Release source workflow artifact mismatch: {workflow['name']}")
+  if workflow_names != set(SOURCE_WORKFLOWS):
+    raise RuntimeError("Release source workflow inventory mismatch")
+  if artifact_names != set(SOURCE_ARTIFACTS):
+    raise RuntimeError(
+      f"Release source artifact inventory mismatch: "
+      f"missing={sorted(set(SOURCE_ARTIFACTS) - artifact_names)}, "
+      f"extra={sorted(artifact_names - set(SOURCE_ARTIFACTS))}"
+    )
+  return sources
+
+
+def _copy_bytes(destination: Path, content: bytes) -> None:
+  if destination.exists():
+    raise FileExistsError(f"Refusing to overwrite release candidate file: {destination}")
+  destination.parent.mkdir(parents=True, exist_ok=True)
+  destination.write_bytes(content)
+
+
+def stage_release_candidate(
+  release_assets: Path,
+  source_manifest: Path,
+  save_to: Path,
+  tag_name: str,
+  commit: str,
+  release_notes: Path = RELEASE_DOCUMENTS[0],
+) -> Path:
+  """Partition one validated release inventory into GitHub, npm, PyPI, and evidence."""
+  version = tag_name.removeprefix("v")
+  if tag_name != f"v{version}" or re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
+    raise RuntimeError(f"Invalid release tag: {tag_name}")
+  if save_to.exists():
+    raise FileExistsError(f"Refusing to overwrite release candidate: {save_to}")
+  if not release_assets.is_dir():
+    raise RuntimeError(f"Release assets directory does not exist: {release_assets}")
+
+  assets = list(release_assets.iterdir())
+  non_files = sorted(path.name for path in assets if not path.is_file() or path.is_symlink())
+  if non_files:
+    raise RuntimeError(f"GitHub Release assets must be regular files: {non_files}")
+  validate_release_archives(assets, version, require_wheels=True)
+  wheels = sorted(path for path in assets if path.name.endswith(".whl"))
+  sidecars = sorted(path for path in assets if path.name.endswith(".whl.sha256"))
+  expected_names = {
+    *RELEASE_ARCHIVES,
+    *(path.name for path in wheels),
+    *(path.name for path in sidecars),
+    "CHANGELOG.md",
+  }
+  actual_names = {path.name for path in assets}
+  if len(actual_names) != len(assets) or actual_names != expected_names:
+    raise RuntimeError(
+      f"GitHub Release asset inventory mismatch: missing={sorted(expected_names - actual_names)}, "
+      f"extra={sorted(actual_names - expected_names)}"
+    )
+  changelog = release_assets / "CHANGELOG.md"
+  validate_release_document_versions(tag_name, (release_notes, changelog))
+  sources = _release_sources(source_manifest, commit)
+  npm_payload = npm_archive_payload(release_assets / WASM_ARCHIVE, version)
+  tarball_name = next(name for name in npm_payload if name.endswith(".tgz"))
+
+  save_to.parent.mkdir(parents=True, exist_ok=True)
+  staging = Path(tempfile.mkdtemp(prefix=f".{save_to.name}-", dir=save_to.parent))
+  try:
+    for asset in assets:
+      _copy_bytes(staging / "github" / asset.name, asset.read_bytes())
+    for wheel in wheels:
+      _copy_bytes(staging / "pypi" / wheel.name, wheel.read_bytes())
+    _copy_bytes(staging / "npm" / tarball_name, npm_payload[tarball_name])
+    for sidecar in sidecars:
+      _copy_bytes(staging / "evidence" / sidecar.name, sidecar.read_bytes())
+    _copy_bytes(staging / "evidence" / "npm-pack.json", npm_payload["npm-pack.json"])
+    _copy_bytes(staging / "evidence" / "npm-pack.sha256", npm_payload["npm-pack.sha256"])
+    _copy_bytes(staging / "evidence" / "RELEASE_NOTES.md", release_notes.read_bytes())
+
+    files = {}
+    for path in sorted(path for path in staging.rglob("*") if path.is_file()):
+      relative = path.relative_to(staging).as_posix()
+      content = path.read_bytes()
+      files[relative] = {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}
+    manifest = {
+      "schema": 1,
+      "tag": tag_name,
+      "version": version,
+      "commit": commit,
+      "sources": sources,
+      "files": files,
+    }
+    _copy_bytes(
+      staging / "evidence" / "manifest.json",
+      (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode(),
+    )
+    staging.replace(save_to)
+  except Exception:
+    shutil.rmtree(staging, ignore_errors=True)
+    raise
+  return save_to / "evidence" / "manifest.json"

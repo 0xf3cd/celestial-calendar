@@ -29,8 +29,13 @@ from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
 from toolbox.release_validation import (
+  NATIVE_ARCHIVES,
+  PYTHON_ARTIFACTS,
+  SOURCE_ARTIFACTS,
   _native_layout,
   _runtime_matrix,
+  npm_archive_payload,
+  stage_release_candidate,
   validate_release_archives,
   validate_release_document_versions,
 )
@@ -173,6 +178,54 @@ def write_wheels(directory):
   return [path for name in names for path in write_wheel_named(directory, name)]
 
 
+def write_source_manifest(path, commit="tagged-sha", mutation=None):
+  groups = [
+    (1, "Build and Test on Multiple Platforms", set(NATIVE_ARCHIVES.values())),
+    (2, "WASM Build and Golden Check", {"celestial-wasm"}),
+    (3, "Python Wheels", set(PYTHON_ARTIFACTS)),
+  ]
+  sources = []
+  artifact_id = 10
+  for workflow_id, workflow_name, names in groups:
+    artifacts = []
+    for name in sorted(names):
+      artifacts.append({
+        "id": artifact_id,
+        "name": name,
+        "size": 100 + artifact_id,
+        "digest": f"sha256:{artifact_id:064x}",
+      })
+      artifact_id += 1
+    sources.append({
+      "workflow": {"id": workflow_id, "name": workflow_name},
+      "run": {"id": 100 + workflow_id, "head_sha": commit},
+      "artifacts": artifacts,
+    })
+  payload = {"schema": 1, "commit": commit, "sources": sources}
+  if mutation is not None:
+    mutation(payload)
+  path.write_text(json.dumps(payload), encoding="utf-8")
+  return path
+
+
+def write_candidate_inputs(directory):
+  release_assets = directory / "release-assets"
+  release_assets.mkdir()
+  write_release_archives(release_assets)
+  write_wheels(release_assets)
+  (release_assets / "CHANGELOG.md").write_text(
+    f"# Changelog\n\n## [v{VERSION}] - 2026-08-19\n",
+    encoding="utf-8",
+  )
+  release_notes = directory / "RELEASE_NOTES.md"
+  release_notes.write_text(
+    f"# Release notes\n\n## [v{VERSION}] - 2026-08-19\n",
+    encoding="utf-8",
+  )
+  source_manifest = write_source_manifest(directory / "release-sources.json")
+  return release_assets, source_manifest, release_notes
+
+
 def test_release_archives_validate_without_modification(tmp_path):
   archives = write_release_archives(tmp_path)
   before = {path.name: path.read_bytes() for path in archives}
@@ -279,6 +332,131 @@ def test_wasm_tarball_name_comes_from_pack_metadata(tmp_path):
   write_zip(tmp_path / "celestial-wasm.zip", wasm_members(tarball_name="custom.tgz"))
 
   validate_release_archives(archives, VERSION)
+
+
+def test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path):
+  archive = write_wasm_archive(tmp_path)
+  before = archive.read_bytes()
+
+  payload = npm_archive_payload(archive, VERSION)
+
+  assert payload == {
+    TARBALL: b"npm tarball",
+    "npm-pack.json": json.dumps([{"name": PACKAGE_NAME, "version": VERSION, "filename": TARBALL}]).encode(),
+    "npm-pack.sha256": f"{hashlib.sha256(b'npm tarball').hexdigest()}  {TARBALL}\n".encode(),
+  }
+  assert archive.read_bytes() == before
+
+
+def test_release_candidate_partitions_one_validated_inventory(tmp_path):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  candidate = tmp_path / "candidate"
+
+  manifest_path = stage_release_candidate(
+    release_assets,
+    source_manifest,
+    candidate,
+    f"v{VERSION}",
+    "tagged-sha",
+    release_notes,
+  )
+
+  assert len(list((candidate / "github").iterdir())) == 14
+  assert {path.suffix for path in (candidate / "pypi").iterdir()} == {".whl"}
+  assert [path.name for path in (candidate / "npm").iterdir()] == [TARBALL]
+  assert (candidate / "evidence" / "RELEASE_NOTES.md").read_bytes() == release_notes.read_bytes()
+  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+  assert manifest["tag"] == f"v{VERSION}"
+  assert manifest["commit"] == "tagged-sha"
+  assert {artifact["name"] for source in manifest["sources"] for artifact in source["artifacts"]} == set(
+    SOURCE_ARTIFACTS
+  )
+  assert "evidence/manifest.json" not in manifest["files"]
+  assert set(manifest["files"]) == {
+    path.relative_to(candidate).as_posix()
+    for path in candidate.rglob("*")
+    if path.is_file() and path != manifest_path
+  }
+  for relative, identity in manifest["files"].items():
+    content = (candidate / relative).read_bytes()
+    assert identity == {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}
+
+
+@pytest.mark.parametrize(
+  ("mutation", "message"),
+  [
+    (lambda payload: payload.update(commit="other-sha"), "identity mismatch"),
+    (lambda payload: payload["sources"][0]["artifacts"].pop(), "workflow artifact mismatch"),
+    (
+      lambda payload: payload["sources"][0]["artifacts"].append(payload["sources"][1]["artifacts"].pop()),
+      "workflow artifact mismatch",
+    ),
+    (
+      lambda payload: payload["sources"][0]["artifacts"][0].update(digest="missing"),
+      "artifact identity",
+    ),
+  ],
+)
+def test_release_candidate_rejects_invalid_source_manifest(tmp_path, mutation, message):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  payload = json.loads(source_manifest.read_text(encoding="utf-8"))
+  mutation(payload)
+  source_manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match=message):
+    stage_release_candidate(
+      release_assets,
+      source_manifest,
+      tmp_path / "candidate",
+      f"v{VERSION}",
+      "tagged-sha",
+      release_notes,
+    )
+
+  assert not (tmp_path / "candidate").exists()
+
+
+def test_release_candidate_rejects_extra_asset_and_existing_destination(tmp_path):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  (release_assets / "unexpected.txt").write_text("extra", encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match="asset inventory mismatch"):
+    stage_release_candidate(
+      release_assets,
+      source_manifest,
+      tmp_path / "candidate",
+      f"v{VERSION}",
+      "tagged-sha",
+      release_notes,
+    )
+
+  (release_assets / "unexpected.txt").unlink()
+  candidate = tmp_path / "candidate"
+  candidate.mkdir()
+  with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+    stage_release_candidate(
+      release_assets,
+      source_manifest,
+      candidate,
+      f"v{VERSION}",
+      "tagged-sha",
+      release_notes,
+    )
+
+
+def test_release_candidate_rejects_non_file_asset(tmp_path):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  (release_assets / "unexpected").mkdir()
+
+  with pytest.raises(RuntimeError, match="must be regular files"):
+    stage_release_candidate(
+      release_assets,
+      source_manifest,
+      tmp_path / "candidate",
+      f"v{VERSION}",
+      "tagged-sha",
+      release_notes,
+    )
 
 
 @pytest.mark.parametrize(
