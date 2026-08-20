@@ -31,6 +31,7 @@ from toolbox.artifact_downloader import ARTIFACT_SOURCES
 
 ROOT = Path(__file__).parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "wasm.yml"
+RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 JAVASCRIPT = ROOT / "bindings" / "javascript"
 WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 
@@ -108,15 +109,19 @@ def test_javascript_test_entries_match_their_execution_owners():
   test_root = JAVASCRIPT / "test"
   entries = {
     path.relative_to(test_root).as_posix()
-    for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "types/*.ts")
+    for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "registry/*.mjs", "types/*.ts")
     for path in test_root.glob(pattern)
   }
 
   wasm_check = WASM_CHECK.read_text(encoding="utf-8")
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  release_workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
   package = json.loads((JAVASCRIPT / "package.json").read_text(encoding="utf-8"))
   tsconfig = json.loads((test_root / "types" / "tsconfig.json").read_text(encoding="utf-8"))
   workflow_commands = "\n".join(str(step.get("run", "")) for step in workflow["jobs"]["wasm"]["steps"])
+  release_commands = "\n".join(
+    str(step.get("run", "")) for job in release_workflow["jobs"].values() for step in job["steps"]
+  )
 
   abi_entries = set(
     re.findall(
@@ -132,11 +137,19 @@ def test_javascript_test_entries_match_their_execution_owners():
       re.MULTILINE,
     )
   )
+  registry_entries = set(
+    re.findall(
+      r"^\s*node\s+bindings/javascript/test/(registry/[a-z0-9_.-]+\.mjs)(?:\s|$)",
+      release_commands,
+      re.MULTILINE,
+    )
+  )
   type_entries = {f"types/{path}" for path in tsconfig["include"]}
 
-  assert entries == abi_entries | workflow_entries | type_entries
+  assert entries == abi_entries | workflow_entries | registry_entries | type_entries
   assert abi_entries == {path for path in entries if path.startswith("abi/")}
   assert workflow_entries == {path for path in entries if path.startswith(("node/", "browser/"))}
+  assert registry_entries == {path for path in entries if path.startswith("registry/")}
   assert type_entries == {path for path in entries if path.startswith("types/")}
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
   assert "node toolbox/wasm_check.mjs" in workflow_commands

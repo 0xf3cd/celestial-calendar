@@ -356,14 +356,8 @@ def validate_release_archives(
     validate_native_archive(archives[filename], artifact_name, version, expected_runtime)
 
 
-def _release_sources(path: Path, commit: str) -> list[dict]:
-  try:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-  except (json.JSONDecodeError, UnicodeDecodeError) as error:
-    raise RuntimeError(f"Invalid release source manifest: {error}") from error
-  if not isinstance(payload, dict) or payload.get("schema") != 1 or payload.get("commit") != commit:
-    raise RuntimeError("Release source manifest identity mismatch")
-  sources = payload.get("sources")
+def _validate_release_sources(sources: object, commit: str) -> list[dict]:
+  """Validate the three producer identities embedded in a release manifest."""
   if not isinstance(sources, list) or len(sources) != 3:
     raise RuntimeError("Release source manifest must contain exactly three workflows")
 
@@ -430,11 +424,126 @@ def _release_sources(path: Path, commit: str) -> list[dict]:
   return sources
 
 
+def _release_sources(path: Path, commit: str) -> list[dict]:
+  try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+  except (json.JSONDecodeError, UnicodeDecodeError) as error:
+    raise RuntimeError(f"Invalid release source manifest: {error}") from error
+  if not isinstance(payload, dict) or payload.get("schema") != 1 or payload.get("commit") != commit:
+    raise RuntimeError("Release source manifest identity mismatch")
+  return _validate_release_sources(payload.get("sources"), commit)
+
+
 def _copy_bytes(destination: Path, content: bytes) -> None:
   if destination.exists():
     raise FileExistsError(f"Refusing to overwrite release candidate file: {destination}")
   destination.parent.mkdir(parents=True, exist_ok=True)
   destination.write_bytes(content)
+
+
+def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> dict:
+  """Reconcile a frozen candidate with its manifest and original release contracts."""
+  version = tag_name.removeprefix("v")
+  if tag_name != f"v{version}" or re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
+    raise RuntimeError(f"Invalid release tag: {tag_name}")
+  expected_directories = {"github", "pypi", "npm", "evidence"}
+  if not candidate.is_dir() or {path.name for path in candidate.iterdir()} != expected_directories:
+    raise RuntimeError("Release candidate directory inventory mismatch")
+  if any(not path.is_dir() or path.is_symlink() for path in candidate.iterdir()):
+    raise RuntimeError("Release candidate entries must be regular directories")
+
+  manifest_path = candidate / "evidence" / "manifest.json"
+  if not manifest_path.is_file() or manifest_path.is_symlink():
+    raise RuntimeError("Release candidate manifest must be a regular file")
+  try:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+  except (json.JSONDecodeError, UnicodeDecodeError) as error:
+    raise RuntimeError(f"Invalid release candidate manifest: {error}") from error
+  if (
+    not isinstance(manifest, dict)
+    or manifest.get("schema") != 1
+    or manifest.get("tag") != tag_name
+    or manifest.get("version") != version
+    or manifest.get("commit") != commit
+  ):
+    raise RuntimeError("Release candidate identity mismatch")
+  _validate_release_sources(manifest.get("sources"), commit)
+
+  files = manifest.get("files")
+  if not isinstance(files, dict) or "evidence/manifest.json" in files:
+    raise RuntimeError("Invalid release candidate file manifest")
+  top_level = set(candidate.iterdir())
+  all_entries = list(candidate.rglob("*"))
+  actual_files = {
+    path.relative_to(candidate).as_posix(): path
+    for path in all_entries
+    if path.is_file() and path != manifest_path
+  }
+  non_files = [
+    path
+    for path in all_entries
+    if path not in top_level and path != manifest_path and (path.is_dir() or path.is_symlink())
+  ]
+  if non_files or set(files) != set(actual_files):
+    raise RuntimeError("Release candidate file inventory mismatch")
+  for relative, identity in files.items():
+    if (
+      not isinstance(identity, dict)
+      or not isinstance(identity.get("size"), int)
+      or identity["size"] < 0
+      or re.fullmatch(r"[0-9a-f]{64}", identity.get("sha256", "")) is None
+    ):
+      raise RuntimeError(f"Invalid release candidate file identity: {relative}")
+    content = actual_files[relative].read_bytes()
+    if len(content) != identity["size"] or hashlib.sha256(content).hexdigest() != identity["sha256"]:
+      raise RuntimeError(f"Release candidate file mismatch: {relative}")
+
+  github = candidate / "github"
+  pypi = candidate / "pypi"
+  npm = candidate / "npm"
+  evidence = candidate / "evidence"
+  github_files = list(github.iterdir())
+  validate_release_archives(github_files, version, require_wheels=True)
+  wheels = sorted(pypi.iterdir())
+  if len(wheels) != len(PYTHON_ARTIFACTS) or any(not path.name.endswith(".whl") for path in wheels):
+    raise RuntimeError("PyPI candidate must contain exactly four wheels")
+  sidecars = [evidence / f"{wheel.name}.sha256" for wheel in wheels]
+  expected_github = {
+    *RELEASE_ARCHIVES,
+    *(wheel.name for wheel in wheels),
+    *(path.name for path in sidecars),
+    "CHANGELOG.md",
+  }
+  if {path.name for path in github_files} != expected_github:
+    raise RuntimeError("GitHub candidate asset inventory mismatch")
+  expected_evidence = {
+    *(path.name for path in sidecars),
+    "npm-pack.json",
+    "npm-pack.sha256",
+    "RELEASE_NOTES.md",
+    "manifest.json",
+  }
+  if {path.name for path in evidence.iterdir()} != expected_evidence:
+    raise RuntimeError("Release candidate evidence inventory mismatch")
+  validate_wheel_sidecars([*wheels, *sidecars], version, require_complete=True)
+  for wheel, sidecar in zip(wheels, sidecars, strict=True):
+    if wheel.read_bytes() != (github / wheel.name).read_bytes():
+      raise RuntimeError(f"PyPI/GitHub wheel mismatch: {wheel.name}")
+    if sidecar.read_bytes() != (github / sidecar.name).read_bytes():
+      raise RuntimeError(f"Evidence/GitHub wheel sidecar mismatch: {sidecar.name}")
+
+  npm_files = list(npm.iterdir())
+  if len(npm_files) != 1 or not npm_files[0].name.endswith(".tgz"):
+    raise RuntimeError("npm candidate must contain exactly one tarball")
+  npm_payload = npm_archive_payload(github / WASM_ARCHIVE, version)
+  tarball = npm_files[0]
+  if npm_payload.get(tarball.name) != tarball.read_bytes():
+    raise RuntimeError("npm candidate tarball does not match the WASM archive")
+  for sidecar_name in ("npm-pack.json", "npm-pack.sha256"):
+    if npm_payload[sidecar_name] != (evidence / sidecar_name).read_bytes():
+      raise RuntimeError(f"npm evidence mismatch: {sidecar_name}")
+  validate_release_document_versions(tag_name, (evidence / "RELEASE_NOTES.md", github / "CHANGELOG.md"))
+  return manifest
 
 
 def stage_release_candidate(
@@ -510,6 +619,7 @@ def stage_release_candidate(
       staging / "evidence" / "manifest.json",
       (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode(),
     )
+    validate_release_candidate(staging, tag_name, commit)
     staging.replace(save_to)
   except Exception:
     shutil.rmtree(staging, ignore_errors=True)

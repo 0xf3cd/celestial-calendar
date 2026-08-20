@@ -36,6 +36,7 @@ from toolbox.release_validation import (
   _runtime_matrix,
   npm_archive_payload,
   stage_release_candidate,
+  validate_release_candidate,
   validate_release_archives,
   validate_release_document_versions,
 )
@@ -380,6 +381,49 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
   for relative, identity in manifest["files"].items():
     content = (candidate / relative).read_bytes()
     assert identity == {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}
+
+
+def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  candidate = tmp_path / "candidate"
+  stage_release_candidate(
+    release_assets,
+    source_manifest,
+    candidate,
+    f"v{VERSION}",
+    "tagged-sha",
+    release_notes,
+  )
+
+  manifest = validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+
+  assert manifest["version"] == VERSION
+
+
+@pytest.mark.parametrize("mutation", ["bytes", "extra-directory", "identity"])
+def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  candidate = tmp_path / "candidate"
+  stage_release_candidate(
+    release_assets,
+    source_manifest,
+    candidate,
+    f"v{VERSION}",
+    "tagged-sha",
+    release_notes,
+  )
+  if mutation == "bytes":
+    next((candidate / "pypi").iterdir()).write_bytes(b"changed")
+  elif mutation == "extra-directory":
+    (candidate / "evidence" / "extra").mkdir()
+  else:
+    manifest_path = candidate / "evidence" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["commit"] = "other-sha"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+  with pytest.raises(RuntimeError):
+    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
 
 
 @pytest.mark.parametrize(

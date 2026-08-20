@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+import re
+
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -149,6 +151,7 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   context = next(step for step in steps if step.get("name") == "Validate protected release context")
   download = next(step for step in steps if step.get("name") == "Download exact producer runs")
   stage = next(step for step in steps if step.get("name") == "Stage immutable release candidate")
+  classify = next(step for step in steps if step.get("name") == "Classify exact npm version")
   upload = next(step for step in steps if step.get("name") == "Upload immutable release candidate")
 
   assert context["env"] == {
@@ -156,6 +159,10 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
     "REF_PROTECTED": "${{ github.ref_protected }}",
     "REF_TYPE": "${{ github.ref_type }}",
   }
+  assert 'os.environ["REF_TYPE"] != "tag"' in context["run"]
+  assert 're.fullmatch(r"v\\d+\\.\\d+\\.\\d+", ref_name)' in context["run"]
+  assert 'os.environ["REF_PROTECTED"] != "true"' in context["run"]
+  assert '["./project.py", "--version"]' in context["run"]
   assert "git merge-base --is-ancestor HEAD origin/main" in context["run"]
   assert "validate_release_document_versions" in context["run"]
   assert download["env"] == {
@@ -167,6 +174,13 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   assert "--source-manifest release-sources.json" in download["run"]
   assert "toolbox/release_candidate.py" in stage["run"]
   assert "candidate/evidence/manifest.json" in stage["run"]
+  assert workflow["jobs"]["prepare_release"]["outputs"] == {
+    "npm_publish_required": "${{ steps.npm-version.outputs.publish_required }}"
+  }
+  assert steps.index(stage) < steps.index(classify) < steps.index(upload)
+  assert "toolbox/registry_verifier.py classify-npm" in classify["run"]
+  assert '--github-output "$GITHUB_OUTPUT"' in classify["run"]
+  assert '--github-summary "$GITHUB_STEP_SUMMARY"' in classify["run"]
   assert upload["with"] == {
     "name": "celestial-release-candidate",
     "path": "candidate/",
@@ -194,3 +208,94 @@ def test_github_release_job_only_downloads_and_publishes_frozen_candidate():
     "immutableCreate": True,
     "artifactErrorsFailBuild": True,
   }
+
+
+def test_pypi_job_has_only_candidate_download_and_oidc_publication():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["publish_pypi"]
+  steps = job["steps"]
+
+  assert RELEASE_WORKFLOW.name == "release.yml"
+  assert job["needs"] == "create_release"
+  assert job["environment"] == "pypi"
+  assert job["permissions"] == {"contents": "read", "id-token": "write"}
+  assert [step["name"] for step in steps] == [
+    "Download immutable release candidate",
+    "Publish exact wheels to PyPI",
+  ]
+  assert "run" not in steps[0] and "run" not in steps[1]
+  publish = steps[1]
+  assert publish["uses"] == "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+  assert publish["with"] == {
+    "packages-dir": "candidate/pypi",
+    "verify-metadata": True,
+    "attestations": True,
+  }
+
+
+def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["publish_npm"]
+  text = yaml.safe_dump(job)
+  setup = next(step for step in job["steps"] if step.get("name") == "Set up the trusted npm runtime")
+  publish = next(
+    step for step in job["steps"] if step.get("name") == "Publish exact tarball or report verified bootstrap"
+  )
+
+  assert job["needs"] == ["prepare_release", "create_release"]
+  assert job["environment"] == "npm"
+  assert job["permissions"] == {"contents": "read", "id-token": "write"}
+  assert setup == {
+    "name": "Set up the trusted npm runtime",
+    "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "with": {"node-version": "24.19.0"},
+  }
+  assert publish["env"] == {
+    "PUBLISH_REQUIRED": "${{ needs.prepare_release.outputs.npm_publish_required }}"
+  }
+  assert '"$(npm --version)" != "11.17.0"' in publish["run"]
+  assert 'npm publish "${tarballs[0]}" --access public --ignore-scripts' in publish["run"]
+  assert "NODE_AUTH_TOKEN" not in text
+  assert "skip-existing" not in text
+  assert "npm install" not in text
+  assert "actions/checkout" not in text
+  assert "toolbox/" not in text
+
+
+def test_registry_verifier_is_unprivileged_and_runs_both_clean_installs():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["verify_registries"]
+  commands = "\n".join(str(step.get("run", "")) for step in job["steps"])
+
+  assert job["needs"] == ["publish_pypi", "publish_npm"]
+  assert job["permissions"] == {"contents": "read"}
+  assert "environment" not in job
+  assert "id-token" not in job["permissions"]
+  assert "toolbox/registry_verifier.py verify" in commands
+  assert "pip --isolated install" in commands
+  assert "--only-binary=:all:" in commands
+  assert "--no-deps" in commands
+  assert 'cd "$RUNNER_TEMP"' in commands
+  assert 'bindings/javascript/test/registry/registry_consumer_test.mjs "${TAG_NAME#v}"' in commands
+
+
+def test_registry_jobs_start_only_after_the_immutable_github_release():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  jobs = workflow["jobs"]
+
+  assert jobs["create_release"]["needs"] == "prepare_release"
+  assert "create_release" in [jobs["publish_pypi"]["needs"], *jobs["publish_npm"]["needs"]]
+  assert jobs["verify_registries"]["needs"] == ["publish_pypi", "publish_npm"]
+
+
+def test_every_release_action_is_sha_pinned():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  actions = [
+    step["uses"]
+    for job in workflow["jobs"].values()
+    for step in job["steps"]
+    if "uses" in step
+  ]
+
+  assert actions
+  assert all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", action) for action in actions)
