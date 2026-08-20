@@ -64,6 +64,8 @@ After they finish, list the dispatched runs at that exact commit. Record the `da
 each workflow, then inspect each selected ID before continuing:
 
 ```sh
+tag=vMAJOR.MINOR.PATCH
+commit=$(git rev-parse "$tag^{commit}")
 for workflow in build_and_test.yml wasm.yml python-wheel.yml; do
   gh run list --workflow "$workflow" --event workflow_dispatch --commit "$commit" \
     --json databaseId,workflowName,event,headSha,status,conclusion,url
@@ -160,7 +162,7 @@ the release tag. `RUN_ID` is the release workflow run, not a producer run:
 tag=vMAJOR.MINOR.PATCH
 version=${tag#v}
 commit=$(git rev-parse "$tag^{commit}")
-test ! -e candidate
+test ! -e candidate || exit 1
 gh run download RUN_ID --name celestial-release-candidate --dir candidate
 
 python3 -m venv registry-verify

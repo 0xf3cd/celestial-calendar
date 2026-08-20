@@ -31,6 +31,7 @@ from toolbox import registry_validation, registry_verifier
 from toolbox.registry_validation import (
   NPM_PACKAGE,
   PYPI_PACKAGE,
+  RegistryPendingError,
   npm_metadata_url,
   npm_version_is_exact,
   pypi_metadata_url,
@@ -68,6 +69,8 @@ class Session:
     response = self.routes[url]
     if isinstance(response, list):
       response = response.pop(0)
+    if isinstance(response, requests.RequestException):
+      raise response
     if not response.url:
       response.url = url
     return response
@@ -155,8 +158,9 @@ def test_existing_npm_version_rejects_any_identity_mismatch(tmp_path, metadata, 
     NPM_TARBALL_URL: Response(content=remote),
   })
 
-  with pytest.raises(RuntimeError, match=message):
+  with pytest.raises(RuntimeError, match=message) as error:
     npm_version_is_exact(tarball, VERSION, session)
+  assert not isinstance(error.value, RegistryPendingError)
 
 
 def test_pypi_version_requires_four_exact_wheel_streams(tmp_path):
@@ -185,8 +189,9 @@ def test_pypi_version_rejects_inventory_and_metadata_mutations(tmp_path, mutatio
   else:
     metadata["urls"].append({**metadata["urls"][0], "filename": "extra.whl"})
 
-  with pytest.raises(RuntimeError):
+  with pytest.raises(RuntimeError) as error:
     pypi_version_is_exact(wheels, VERSION, pypi_session(wheels, metadata))
+  assert not isinstance(error.value, RegistryPendingError)
 
 
 @pytest.mark.parametrize("mutation", ["bytes", "url", "redirect"])
@@ -202,8 +207,9 @@ def test_pypi_version_rejects_file_transport_mutations(tmp_path, mutation):
   elif mutation == "redirect":
     session.routes[first_url].url = f"https://example.invalid/{wheels[0].name}"
 
-  with pytest.raises(RuntimeError):
+  with pytest.raises(RuntimeError) as error:
     pypi_version_is_exact(wheels, VERSION, session)
+  assert not isinstance(error.value, RegistryPendingError)
 
 
 def test_npm_classification_validates_the_complete_candidate_first(monkeypatch, tmp_path):
@@ -216,7 +222,7 @@ def test_npm_classification_validates_the_complete_candidate_first(monkeypatch, 
     registry_validation.classify_npm_candidate(tmp_path / "candidate", VERSION, "tagged-sha")
 
 
-@pytest.mark.parametrize("transient", ["metadata-503", "partial-inventory", "file-503"])
+@pytest.mark.parametrize("transient", ["connection", "metadata-503", "partial-inventory", "file-503"])
 def test_registry_polling_retries_transient_registry_states(monkeypatch, tmp_path, transient):
   candidate = tmp_path / "candidate"
   (candidate / "pypi").mkdir(parents=True)
@@ -225,7 +231,9 @@ def test_registry_polling_retries_transient_registry_states(monkeypatch, tmp_pat
   tarball = candidate / "npm" / "package.tgz"
   tarball.write_bytes(b"candidate")
   complete = pypi_metadata(wheels)
-  if transient == "metadata-503":
+  if transient == "connection":
+    metadata_responses = [requests.ConnectionError("connection reset"), Response(payload=complete)]
+  elif transient == "metadata-503":
     metadata_responses = [Response(status=503), Response(payload=complete)]
   elif transient == "partial-inventory":
     metadata_responses = [
@@ -264,6 +272,32 @@ def test_registry_polling_retries_transient_registry_states(monkeypatch, tmp_pat
   assert called_urls.count(pypi_metadata_url(VERSION)) == 2
   assert called_urls.count(npm_metadata_url(VERSION)) == 1
   assert sleeps == [3]
+
+
+def test_registry_polling_aborts_immediately_on_identity_mismatch(monkeypatch, tmp_path):
+  candidate = tmp_path / "candidate"
+  (candidate / "pypi").mkdir(parents=True)
+  (candidate / "npm").mkdir()
+  wheels = pypi_wheels(candidate / "pypi")
+  (candidate / "npm" / "package.tgz").write_bytes(b"candidate")
+  session = pypi_session(wheels)
+  session.routes[session.routes[pypi_metadata_url(VERSION)].payload["urls"][0]["url"]].content = b"wrong"
+  sleeps = []
+  monkeypatch.setattr(registry_validation, "validate_release_candidate", lambda *_args: {})
+
+  with pytest.raises(RuntimeError, match="PyPI file bytes") as error:
+    wait_for_candidate_registries(
+      candidate,
+      VERSION,
+      "tagged-sha",
+      session=session,
+      attempts=2,
+      delay_seconds=3,
+      sleep=sleeps.append,
+    )
+
+  assert not isinstance(error.value, RegistryPendingError)
+  assert sleeps == []
 
 
 def test_registry_polling_retains_each_success(monkeypatch, tmp_path):
@@ -319,6 +353,33 @@ def test_registry_polling_has_a_fixed_ceiling(monkeypatch, tmp_path):
       candidate,
       VERSION,
       "tagged-sha",
+      attempts=2,
+      delay_seconds=3,
+      sleep=sleeps.append,
+    )
+
+  assert sleeps == [3]
+
+
+def test_registry_polling_ceiling_reports_the_last_transient_state(monkeypatch, tmp_path):
+  candidate = tmp_path / "candidate"
+  (candidate / "pypi").mkdir(parents=True)
+  (candidate / "npm").mkdir()
+  pypi_wheels(candidate / "pypi")
+  (candidate / "npm" / "package.tgz").write_bytes(b"candidate")
+  session = Session({
+    pypi_metadata_url(VERSION): [Response(status=503), Response(status=503)],
+    npm_metadata_url(VERSION): Response(status=404),
+  })
+  sleeps = []
+  monkeypatch.setattr(registry_validation, "validate_release_candidate", lambda *_args: {})
+
+  with pytest.raises(RuntimeError, match=r"PyPI \(Registry returned HTTP 503.*npm \(version is absent\)"):
+    wait_for_candidate_registries(
+      candidate,
+      VERSION,
+      "tagged-sha",
+      session=session,
       attempts=2,
       delay_seconds=3,
       sleep=sleeps.append,

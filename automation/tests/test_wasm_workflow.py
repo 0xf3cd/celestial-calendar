@@ -107,6 +107,17 @@ def test_npm_publish_stays_a_dry_run():
 
 def test_javascript_test_entries_match_their_execution_owners():
   test_root = JAVASCRIPT / "test"
+  assert {path.name for path in test_root.iterdir() if path.is_dir()} == {
+    "abi",
+    "browser",
+    "node",
+    "registry",
+    "support",
+    "types",
+  }
+  assert {path.relative_to(test_root).as_posix() for path in test_root.glob("support/*.mjs")} == {
+    "support/package_consumer.mjs"
+  }
   entries = {
     path.relative_to(test_root).as_posix()
     for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "registry/*.mjs", "types/*.ts")
