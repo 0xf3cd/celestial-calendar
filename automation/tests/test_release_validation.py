@@ -400,7 +400,7 @@ def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
   assert manifest["version"] == VERSION
 
 
-@pytest.mark.parametrize("mutation", ["bytes", "extra-directory", "identity"])
+@pytest.mark.parametrize("mutation", ["bytes", "manifest-hash", "extra-directory", "identity"])
 def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
   release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
   candidate = tmp_path / "candidate"
@@ -414,6 +414,10 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
   )
   if mutation == "bytes":
     next((candidate / "pypi").iterdir()).write_bytes(b"changed")
+  elif mutation == "manifest-hash":
+    release_notes = candidate / "evidence" / "RELEASE_NOTES.md"
+    content = release_notes.read_bytes()
+    release_notes.write_bytes(content[:-1] + bytes((content[-1] ^ 1,)))
   elif mutation == "extra-directory":
     (candidate / "evidence" / "extra").mkdir()
   else:
