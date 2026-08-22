@@ -166,8 +166,10 @@ jobs:
       # configures without building -- so it lives on a build leg, one step after the
       # library exists. One leg is enough: the wrappers and their goldens are
       # toolchain-independent, and the C ABI itself is pinned on every leg.
+      # The jieqi-table gate (#181 deferred the wiring) rides the same step: it also
+      # re-derives through the ctypes binding against the built library.
       - name: Smoke-test the ctypes bindings
-        run: python3 ./checks.py --ctypes-smoke
+        run: python3 ./checks.py --ctypes-smoke --jieqi-table
 
       # The export-surface gate (#91) needs the built library for its dynamic half
       # (nm/readelf on the real .so), so it sits next to the ctypes smoke gate. One leg
