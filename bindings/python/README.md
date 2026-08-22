@@ -65,5 +65,18 @@ Gregorian years in `[1, 32766]`.
 `new_moons_after(jde, count)` accepts `count` in `[0, 4096]`; zero returns `()`. The upper bound keeps one native
 output buffer at or below 32 KiB.
 
+## 中文
+
+`celestial-calendar` 把 CelestialCalendar 的天文计算与公历/阴历转换包装为自带原生库的 Python 包，
+运行时不需编译器或另行安装 CelestialCalendar。需要 Python 3.11 或更新版本；支持平台见上面的 wheel 表。
+
+```python
+import celestial_calendar as celestial
+
+result = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, celestial.GregorianDate(2026, 8, 15))
+```
+
+公开 API 使用不可变 dataclass 与枚举；时间尺度、年域与错误契约见上面的 API 节。
+
 The project is licensed under GPL-3.0-or-later. Source and issue tracking are at
 <https://github.com/0xf3cd/celestial-calendar>.

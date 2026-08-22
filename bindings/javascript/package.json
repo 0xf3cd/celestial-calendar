@@ -26,6 +26,14 @@
     "url": "git+https://github.com/0xf3cd/celestial-calendar.git",
     "directory": "bindings/javascript"
   },
+  "homepage": "https://github.com/0xf3cd/celestial-calendar",
+  "keywords": [
+    "astronomy",
+    "chinese-calendar",
+    "lunar-calendar",
+    "jieqi",
+    "webassembly"
+  ],
   "license": "GPL-3.0-or-later",
   "publishConfig": {
     "access": "public"
