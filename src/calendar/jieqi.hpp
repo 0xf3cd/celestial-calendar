@@ -282,7 +282,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 
 /** @brief A generator that generates consecutive Jieqis and their moments (in JDE), 
  *         starting from a given JDE (exclusive). */
-// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
+// TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
 struct JieqiGenerator {
 private:
   int32_t _year;

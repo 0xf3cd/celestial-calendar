@@ -53,7 +53,7 @@ TEST(LunarAlgo2, LunarMonthGenerator) {
   std::vector<LunarMonth> lunar_months;
   std::generate_n(std::back_inserter(lunar_months), 200, [&]() { return lunar_gen.next(); });
 
-  // TODO: Use `std::views::pairwise` once every CI leg has it (./linter.py --features).
+  // TODO: Use `std::views::pairwise` once every CI leg has it (./checks.py --features).
   const auto lunar_month_pairs = std::views::zip(lunar_months, lunar_months | std::views::drop(1));
 
   std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> jieqi_pairs;
@@ -281,7 +281,7 @@ TEST(LunarAlgo2, LunarContext) {
     ASSERT_EQ(context.months.back().end_moment_utc8, context.end_moment_utc8);
 
     // Ensure the months are in order.
-    // TODO: Use `std::views::pairwise` or `std::views::slide` once every CI leg has one (./linter.py --features).
+    // TODO: Use `std::views::pairwise` or `std::views::slide` once every CI leg has one (./checks.py --features).
     const auto month_pairs = std::views::zip(context.months, context.months | std::views::drop(1));
     for (const auto& [a, b] : month_pairs) {
       ASSERT_LE(a.start_moment_utc8, b.start_moment_utc8);

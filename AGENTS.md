@@ -86,7 +86,7 @@ points per call; sleep ~0.15 s between calls.
 - **C++23** — Core library (`src/`); CI builds it with clang++ 22 and g++ 14. Older compilers
   may work; nothing checks them.
 - **CMake ≥ 3.22** — Build system.
-- **Python 3** — Build/test/lint automation (`project.py`, `linter.py`, `automation/`,
+- **Python 3** — Build/test/lint automation (`project.py`, `checks.py`, `automation/`,
   `toolbox/`). Core build and lint tasks are Python-orchestrated.
 - **Node.js ≥ 22 / npm** — `bindings/javascript/` package tests and consumers; CI pins the
   runtime floor and the current build toolchain separately.
@@ -146,9 +146,9 @@ exits 0, a green light that checked nothing (#72).
 - `clang-tidy` runs with **`WarningsAsErrors: '*'`** — zero warnings. `.clang-tidy` is the
   config; respect its deliberate disables (magic-numbers, identifier-length,
   identifier-naming) instead of "fixing" code to satisfy a disabled check.
-- Python: ruff (`./linter.py --ruff` or `ruff check .` / `ruff format .`), config
+- Python: ruff (`./checks.py --ruff` or `ruff check .` / `ruff format .`), config
   `.ruff.toml` (line length 120, 2-space indent, rules `E`/`F`/`B`/`Q`, double quotes).
-- Run `./linter.py --all` to check both C++ and Python.
+- Run `./checks.py --all` to check both C++ and Python.
 
 ## Code Style
 
@@ -326,7 +326,7 @@ src/
   shared_lib/   C++ shared-library wrapper over core algorithms
   test/         GoogleTest-based tests (auto-discovered by CMake)
   util/         Utility headers (hash, cache, random, YMD, ...)
-automation/     Python modules used by project.py and linter.py
+automation/     Python modules used by project.py and checks.py
 toolbox/        Helper scripts for artifacts, releases, build info
 bindings/
   javascript/   ESM npm package source, declarations, ABI oracle and consumer tests
@@ -343,7 +343,7 @@ bindings/
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
    wait for compiler support (README §11 tracks the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
-   `./linter.py --features LEG` holds each CI leg to the state in
+   `./checks.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`; an unlock fails CI and names the waiting sites it can
    see — the ones tagged `TODO` with the feature's name.
 3. **Shared library target:** `src/shared_lib/CMakeLists.txt` builds
@@ -451,7 +451,7 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 - DON'T round / drop astronomical constants or loosen tolerances to pass CI.
 - DON'T ASCII-ise unicode identifiers, move logic out of headers, or add namespace-scope
   `using` to a header.
-- DON'T add a dependency or build step outside the `project.py` / `linter.py` flow — the
+- DON'T add a dependency or build step outside the `project.py` / `checks.py` flow — the
   wasm/npm and Python wheel builds are the sanctioned exceptions (#163, #182, #211): their recipes live in
   `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
   `wasm.yml` CI leg, and in `bindings/python` / `python-wheel.yml`; the release flow consumes
@@ -470,5 +470,5 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 | Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
 | Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir wheelhouse` |
 | Clean | `./project.py --clean` |
-| Python lint/format · C++ lint | `./linter.py --ruff` · `./linter.py --clang-tidy` |
+| Python lint/format · C++ lint | `./checks.py --ruff` · `./checks.py --clang-tidy` |
 | Show version | `./project.py --version` |

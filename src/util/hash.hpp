@@ -68,7 +68,7 @@ template <typename T, typename... Rest>
 
 /** @brief A concept which ensures the type is tuple-like. */
 template <typename T>
-// TODO: Use `std::tuple_like` once every CI leg has it (./linter.py --features). (#81)
+// TODO: Use `std::tuple_like` once every CI leg has it (./checks.py --features). (#81)
 concept IsTuple = requires {
   typename std::tuple_size<T>::type;
 };

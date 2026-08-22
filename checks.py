@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Automation script for running Python and C++ linters (ruff and clang-tidy, respectively).
+# Automation entry point for the repo's checks: linters (ruff, clang-tidy), invariant gates,
+# the toolchain feature probe, and the automation layer's own tests.
 #
 #########################################################################################
 # CelestialCalendar Automation:
@@ -27,71 +28,81 @@ from automation import (
 def parse_args() -> argparse.Namespace:
   """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
-    description="Build and Test Automation",
+    description="Repo checks: lint, gates, probes, and the automation layer's tests",
     epilog=(
       "Examples of usage:\n"
       "  To run ruff to check Python codes:\n"
-      "    ./linter.py --ruff\n\n"
+      "    ./checks.py --ruff\n\n"
       "  To run clang-tidy to check C++ codes:\n"
-      "    ./linter.py --clang-tidy\n\n"
+      "    ./checks.py --clang-tidy\n\n"
       "  To check that every header is self-contained:\n"
-      "    ./linter.py --self-contained\n\n"
+      "    ./checks.py --self-contained\n\n"
       "  To hold the ctypes mirror to the real ABI layout in celestial.h:\n"
-      "    ./linter.py --abi-layout\n\n"
+      "    ./checks.py --abi-layout\n\n"
       "  To run the ctypes wrappers against the built library (needs ./project.py --build first):\n"
-      "    ./linter.py --ctypes-smoke\n\n"
+      "    ./checks.py --ctypes-smoke\n\n"
       "  To hold the built library's export surface to the celestial.h entry points\n"
       "  (needs ./project.py --build first):\n"
-      "    ./linter.py --export-surface\n\n"
+      "    ./checks.py --export-surface\n\n"
       "  To hold the lib_*.cpp log strings to the celestial.h entry-point names:\n"
-      "    ./linter.py --log-names\n\n"
+      "    ./checks.py --log-names\n\n"
       "  To run the automation layer's own unit tests:\n"
-      "    ./linter.py --pytest\n\n"
+      "    ./checks.py --pytest\n\n"
       "  To hold the four CELESTIAL_TEST_SEED copies to each other:\n"
-      "    ./linter.py --seed-reconcile\n\n"
+      "    ./checks.py --seed-reconcile\n\n"
       "  To hold the AI workflows to the settings of theirs that fail silently:\n"
-      "    ./linter.py --ai-workflows\n\n"
+      "    ./checks.py --ai-workflows\n\n"
       "  To require immutable refs for third-party GitHub Actions:\n"
-      "    ./linter.py --action-pins\n\n"
+      "    ./checks.py --action-pins\n\n"
       "  To hold the exported jieqi table to its invariants and the HKO anchors\n"
       "  (needs ./project.py --build first):\n"
-      "    ./linter.py --jieqi-table\n\n"
+      "    ./checks.py --jieqi-table\n\n"
       "  To report which awaited C++ features this toolchain can compile:\n"
-      "    ./linter.py --features\n\n"
+      "    ./checks.py --features\n\n"
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
-      "    ./linter.py --features libc++\n\n"
+      "    ./checks.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
       "  export surface, log names, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
-      "    ./linter.py -a/--all\n\n"
+      "    ./checks.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter
   )
 
   parser.add_argument("-a", "--all", action="store_true", help="Run every check")
-  parser.add_argument("--ruff", action="store_true", help="Run ruff")
-  parser.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
-  parser.add_argument("--self-contained", action="store_true",
-                      help="Compile every header alone to prove it is self-contained")
-  parser.add_argument("--abi-layout", action="store_true",
-                      help="Hold the ctypes mirror in statistics/common.py to the real ABI layout")
-  parser.add_argument("--ctypes-smoke", action="store_true",
-                      help="Run the ctypes wrappers against the built library (needs a build)")
-  parser.add_argument("--export-surface", action="store_true",
-                      help="Hold the built library's export surface to the celestial.h entry points")
-  parser.add_argument("--log-names", action="store_true",
-                      help="Hold the lib_*.cpp log strings to the celestial.h entry-point names")
-  parser.add_argument("--pytest", action="store_true",
-                      help="Run the automation layer's own unit tests (automation/tests/)")
-  parser.add_argument("--seed-reconcile", action="store_true",
-                      help="Hold the four CELESTIAL_TEST_SEED copies to each other")
-  parser.add_argument("--ai-workflows", action="store_true",
-                      help="Hold the AI workflows to the settings of theirs that fail silently")
-  parser.add_argument("--action-pins", action="store_true",
-                      help="Require immutable refs for third-party GitHub Actions")
-  parser.add_argument("--jieqi-table", action="store_true",
-                      help="Hold the exported jieqi table to its invariants (needs a build)")
-  parser.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
-                      help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
+
+  lint = parser.add_argument_group("lint")
+  lint.add_argument("--ruff", action="store_true", help="Run ruff")
+  lint.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
+
+  gate = parser.add_argument_group(
+    "gate", "repo invariants; ctypes-smoke, export-surface and jieqi-table need ./project.py --build first"
+  )
+  gate.add_argument("--self-contained", action="store_true",
+                    help="Compile every header alone to prove it is self-contained")
+  gate.add_argument("--abi-layout", action="store_true",
+                    help="Hold the ctypes mirror in statistics/common.py to the real ABI layout")
+  gate.add_argument("--ctypes-smoke", action="store_true",
+                    help="Run the ctypes wrappers against the built library (needs a build)")
+  gate.add_argument("--export-surface", action="store_true",
+                    help="Hold the built library's export surface to the celestial.h entry points")
+  gate.add_argument("--jieqi-table", action="store_true",
+                    help="Hold the exported jieqi table to its invariants (needs a build)")
+  gate.add_argument("--log-names", action="store_true",
+                    help="Hold the lib_*.cpp log strings to the celestial.h entry-point names")
+  gate.add_argument("--seed-reconcile", action="store_true",
+                    help="Hold the four CELESTIAL_TEST_SEED copies to each other")
+  gate.add_argument("--ai-workflows", action="store_true",
+                    help="Hold the AI workflows to the settings of theirs that fail silently")
+  gate.add_argument("--action-pins", action="store_true",
+                    help="Require immutable refs for third-party GitHub Actions")
+
+  probe = parser.add_argument_group("probe")
+  probe.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
+                     help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
+
+  test = parser.add_argument_group("test")
+  test.add_argument("--pytest", action="store_true",
+                    help="Run the automation layer's own unit tests (automation/tests/)")
 
   return parser.parse_args()
 

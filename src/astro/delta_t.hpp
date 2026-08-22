@@ -101,7 +101,7 @@ constexpr auto
 find_coefficients(const int32_t year) -> std::optional<
   std::pair<Algo1Coefficients, Algo1Coefficients>
 > {
-  // TODO: Use `std::views::pairwise` once every CI leg has it (./linter.py --features).
+  // TODO: Use `std::views::pairwise` once every CI leg has it (./checks.py --features).
   const auto pairwise = [](const auto& range) {
     using namespace std::ranges;
     return views::iota(0, distance(range) - 1) | views::transform([&range](auto i) {

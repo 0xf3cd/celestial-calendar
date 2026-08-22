@@ -360,7 +360,7 @@ def probe_features(leg: Optional[str] = None) -> int:
     unrecorded = [f.name for f in FEATURES if f.name not in EXPECTED[leg]]
     if unrecorded:
       red_print(f"No recorded state on '{leg}' for: {', '.join(unrecorded)}")
-      yellow_print(f"Run `./linter.py --features` on that toolchain and add the result to EXPECTED['{leg}'].")
+      yellow_print(f"Run `./checks.py --features` on that toolchain and add the result to EXPECTED['{leg}'].")
       return 1
     stale = [name for name in EXPECTED[leg] if name not in probed]
     if stale:

@@ -195,7 +195,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 /**
  * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).
  */
-// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
+// TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
 struct RootGenerator {
 private:
   double _root;
@@ -436,7 +436,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 /**
  * @brief Generator for finding phase moments of a given kind.
  */
-// TODO: Use `std::generator` once every CI leg has it (./linter.py --features).
+// TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
 struct RootGenerator {
 private:
   double _root;
