@@ -29,6 +29,8 @@ def parse_args() -> argparse.Namespace:
   """Parse the command line arguments."""
   parser = argparse.ArgumentParser(
     description="Repo checks: lint, gates, probes, and the automation layer's tests",
+    # CI writes every flag in full; a typo must fail loudly, not resolve to a unique prefix.
+    allow_abbrev=False,
     epilog=(
       "Examples of usage:\n"
       "  To run ruff to check Python codes:\n"
