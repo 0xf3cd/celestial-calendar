@@ -76,7 +76,7 @@ import celestial_calendar as celestial
 result = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, celestial.GregorianDate(2026, 8, 15))
 ```
 
-公开 API 由不可变 dataclass 与枚举组成;时间尺度、年域与错误契约见上面的 API 节。
+公开 API 使用不可变 dataclass 与枚举;时间尺度、年域与错误契约见上面的 API 节。
 
 The project is licensed under GPL-3.0-or-later. Source and issue tracking are at
 <https://github.com/0xf3cd/celestial-calendar>.
