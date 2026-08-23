@@ -160,7 +160,7 @@ inline auto make_line(
 ) -> std::string {
   const std::string separator { " | " };
 
-  // TODO: Use `std::views::concat` once C++26 is in reach (./linter.py --features).
+  // TODO: Use `std::views::concat` once C++26 is in reach (./checks.py --features).
   using namespace std::views;
   return (range1 | transform(pad) | join_with(separator) | std::ranges::to<std::string>())
        + separator

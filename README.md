@@ -242,7 +242,7 @@ Correctness here is numerical, proven against external references. The test suit
 The external oracles the library is held against include:
 
 * **JPL Horizons** (DE441) — Sun/Moon apparent positions and Jieqi crossings, collected by the crawlers under `statistics/` (`moon_horizons_crawler.py`, `sun_jieqi_golden_crawler.py`).
-* **Hong Kong Observatory almanac** — published Jieqi wall clocks (2022–2028); the Jieqi chain is held to within 60 s of them, a budget that mostly absorbs HKO's own minute rounding (`automation/jieqi_table.py`, run by `./linter.py --jieqi-table`).
+* **Hong Kong Observatory almanac** — published Jieqi wall clocks (2022–2028); the Jieqi chain is held to within 60 s of them, a budget that mostly absorbs HKO's own minute rounding (`automation/jieqi_table.py`, run by `./checks.py --jieqi-table`).
 * **ytliu0's ChineseCalendar** — an independent lunar-calendar year table, pinned by commit, as the golden oracle for the baked lunar algorithm (`src/test/lunar/algo3_ytliu0_golden_test.cpp`).
 * **Observed ΔT** — the UT1 ↔ TT conversion is anchored to observed values (NASA eclipse ΔT table, USNO observations, Stephenson & Morrison), not to the library's own fitted ΔT model (`src/test/astro/julian_day_test.cpp`).
 * **Sunrise/sunset** — held within ±2 min of USNO / NOAA / JPL DE references (§2).
@@ -298,7 +298,7 @@ The contract of the emitted table:
   commit are byte-identical.
 
 The table is held to all of the above (plus HKO almanac anchors and an independent
-re-derivation through `statistics/common.py`) by `./linter.py --jieqi-table`.
+re-derivation through `statistics/common.py`) by `./checks.py --jieqi-table`.
 
 ## 8. Linters and Static Analysis
 
@@ -327,20 +327,20 @@ The check configuration for `clang-tidy` is placed at `.clang-tidy`.
 
 ```sh
 # Run ruff
-./linter.py --ruff
+./checks.py --ruff
 
 # Run clang-tidy
-./linter.py --clang-tidy
+./checks.py --clang-tidy
 ```
 
 ### 8.2. On Windows
 
 ```powershell
 # Run ruff
-python3 ./linter.py --ruff
+python3 ./checks.py --ruff
 
 # Run clang-tidy
-python3 ./linter.py --clang-tidy
+python3 ./checks.py --clang-tidy
 ```
 
 ## 9. Download Build Artifacts
@@ -410,7 +410,7 @@ Maintainers cutting a release should follow the protected workflow in [`docs/REL
   * Modules
   * Ranges and views (e.g. `std::views::enumerate`, `pairwise`...)
   * Use `std::generator` in Newton's method (moon_phase and jieqi).
-  * Which of these a toolchain can actually compile: `./linter.py --features`. CI runs the same
+  * Which of these a toolchain can actually compile: `./checks.py --features`. CI runs the same
     probe on libstdc++ / libc++ / MSVC STL and fails when a leg gains a feature the code is
     still hand-rolling around, so the list above cannot go quietly stale.
 * DUT1 (i.e. UT1 - UTC) is not modelled

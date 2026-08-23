@@ -49,24 +49,24 @@ jobs:
           python3 -m pip install ruff==0.16.1
 
       # Pure parsing, so it rides this leg rather than paying for a job of its own -- but it
-      # goes before the toolchain: `linter.py` exits on the first finding, and behind the
+      # goes before the toolchain: `checks.py` exits on the first finding, and behind the
       # style checks a cmake or ruff failure would mask this verdict entirely (#144).
       - name: Check the AI workflows
-        run: python3 ./linter.py --ai-workflows
+        run: python3 ./checks.py --ai-workflows
 
       - name: Check GitHub Action pins
-        run: python3 ./linter.py --action-pins
+        run: python3 ./checks.py --action-pins
 
       # The automation layer's own unit tests -- pure, rides the same leg; pytest comes in
       # pinned via Requirements.txt above (#87).
       - name: Run the automation unit tests
-        run: python3 ./linter.py --pytest
+        run: python3 ./checks.py --pytest
 
       # Same pure-parsing kind as --ai-workflows: holds the four CELESTIAL_TEST_SEED copies
       # to each other, and the docker --build-arg line that keeps the docker legs from
       # silently falling back to the Dockerfile default (#170).
       - name: Check the seed copies agree
-        run: python3 ./linter.py --seed-reconcile
+        run: python3 ./checks.py --seed-reconcile
 
       - name: Install CMake
         run: sudo apt install cmake
@@ -83,8 +83,8 @@ jobs:
           chmod +x project.py
           ./project.py --clean --cmake
 
-          chmod +x linter.py
-          ./linter.py --ruff --clang-tidy --abi-layout
+          chmod +x checks.py
+          ./checks.py --ruff --clang-tidy --abi-layout
 
           
   # Not deduplicated against linux-docker (build_and_test.yml), deliberately (#165, 2026-08-08).
@@ -166,8 +166,10 @@ jobs:
       # configures without building -- so it lives on a build leg, one step after the
       # library exists. One leg is enough: the wrappers and their goldens are
       # toolchain-independent, and the C ABI itself is pinned on every leg.
+      # The jieqi-table gate (#181) rides the same step: it also re-derives
+      # through the ctypes binding against the built library.
       - name: Smoke-test the ctypes bindings
-        run: python3 ./linter.py --ctypes-smoke
+        run: python3 ./checks.py --ctypes-smoke --jieqi-table
 
       # The export-surface gate (#91) needs the built library for its dynamic half
       # (nm/readelf on the real .so), so it sits next to the ctypes smoke gate. One leg
@@ -176,13 +178,13 @@ jobs:
       # toolchain-independent. What it cannot prove is the Windows/macOS branch of the
       # CELESTIAL_API macro; only cabi_smoke_test linking the DLL on those CI legs can.
       - name: Check the export surface
-        run: python3 ./linter.py --export-surface
+        run: python3 ./checks.py --export-surface
 
       # The log-names gate (#72) is pure parsing -- but it shares the entry-point parser
       # with the export-surface gate above, so it sits on the same leg: one place to look
       # when a header change trips the pair.
       - name: Check the log strings
-        run: python3 ./linter.py --log-names
+        run: python3 ./checks.py --log-names
 
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
@@ -312,7 +314,7 @@ jobs:
       - name: Check every header compiles alone (${{ matrix.stdlib }})
         env:
           CXX: ${{ matrix.cxx }}
-        run: python ./linter.py --self-contained
+        run: python ./checks.py --self-contained
 
 
   # Which of the C++ features the codebase is waiting on each standard library can actually
@@ -373,4 +375,4 @@ jobs:
       - name: Probe awaited C++ features (${{ matrix.leg }})
         env:
           CXX: ${{ matrix.cxx }}
-        run: python ./linter.py --features ${{ matrix.leg }}
+        run: python ./checks.py --features ${{ matrix.leg }}
