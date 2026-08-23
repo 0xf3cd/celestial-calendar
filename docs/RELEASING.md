@@ -184,8 +184,9 @@ the release tag. `RUN_ID` is the release workflow run, not a producer run:
 ```
 
 Rehearse environment self-approval and same-run failed-job artifact recovery after workflow changes and before the
-final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: dispatch it on a disposable `v0.0.0`
-tag (the tag rulesets cover it — create via the Admin bypass, remove via the recovery path recorded in #215), approve
-both environment gates against the staged manifest, then rerun the deliberately failed job with
+final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: push a disposable `vX.Y.Z-rehearsal`
+tag — never a plain `vX.Y.Z`, which is release identity — (the tag rulesets cover it: create via the Admin bypass,
+remove afterwards via the ruleset recovery path recorded in #215), dispatch the workflow on that tag, approve both
+environment gates against the staged manifest, then rerun the deliberately failed job with
 `gh run rerun RUN_ID --failed` and confirm it recovers the same-run artifact. The v0.6.0 npm no-op cannot rehearse a
 live OIDC publish.

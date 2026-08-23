@@ -1,5 +1,6 @@
-# Rehearsal-only workflow: environment self-approval + same-run failed-job artifact recovery.
-# Lives on a throwaway branch, dispatched once on a disposable v0.0.0 tag, then deleted.
+# Rehearsal instrument for the release gates (docs/RELEASING.md). Dispatch-only, never
+# triggered by push/PR: run it on a disposable vX.Y.Z-rehearsal tag after release-workflow
+# changes, before the release tag. Carries no secrets and requests no OIDC token.
 
 name: release-rehearsal
 
@@ -10,8 +11,26 @@ permissions:
   contents: read
 
 jobs:
+  validate_ref:
+    name: Require a disposable rehearsal tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check ref
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          # A real vX.Y.Z tag is the release identity; the rehearsal only runs on a clearly
+          # disposable vX.Y.Z-rehearsal tag, which still matches the environments' v*.*.*
+          # deployment tag policy. Any other ref fails loudly instead of skipping the gates.
+          if [ "$REF_TYPE" != "tag" ] || ! [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rehearsal$ ]]; then
+            echo "dispatch on a disposable vX.Y.Z-rehearsal tag, got $REF_TYPE $REF_NAME"
+            exit 1
+          fi
+
   stage_candidate:
     name: Stage a stand-in candidate artifact
+    needs: validate_ref
     runs-on: ubuntu-latest
     steps:
       - name: Write stand-in manifest
@@ -20,7 +39,7 @@ jobs:
             echo "rehearsal candidate manifest"
             echo "tag: ${{ github.ref_name }}"
             echo "commit: ${{ github.sha }}"
-          } > manifest.txt
+          } | tee manifest.txt >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         with:
           name: rehearsal-candidate
@@ -33,7 +52,11 @@ jobs:
     environment: pypi
     runs-on: ubuntu-latest
     steps:
-      - run: echo "pypi gate passed for ${{ github.ref_name }}"
+      - uses: actions/download-artifact@v8
+        with:
+          name: rehearsal-candidate
+      - name: Show the manifest being approved
+        run: cat manifest.txt
 
   gate_npm:
     name: Rehearse npm environment approval
@@ -41,7 +64,11 @@ jobs:
     environment: npm
     runs-on: ubuntu-latest
     steps:
-      - run: echo "npm gate passed for ${{ github.ref_name }}"
+      - uses: actions/download-artifact@v8
+        with:
+          name: rehearsal-candidate
+      - name: Show the manifest being approved
+        run: cat manifest.txt
 
   recovery_drill:
     name: Fail once, recover the same-run artifact on rerun
