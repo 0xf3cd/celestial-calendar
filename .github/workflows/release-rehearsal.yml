@@ -1,0 +1,61 @@
+# Rehearsal-only workflow: environment self-approval + same-run failed-job artifact recovery.
+# Lives on a throwaway branch, dispatched once on a disposable v0.0.0 tag, then deleted.
+
+name: release-rehearsal
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  stage_candidate:
+    name: Stage a stand-in candidate artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write stand-in manifest
+        run: |
+          {
+            echo "rehearsal candidate manifest"
+            echo "tag: ${{ github.ref_name }}"
+            echo "commit: ${{ github.sha }}"
+          } > manifest.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rehearsal-candidate
+          path: manifest.txt
+          retention-days: 1
+
+  gate_pypi:
+    name: Rehearse pypi environment approval
+    needs: stage_candidate
+    environment: pypi
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "pypi gate passed for ${{ github.ref_name }}"
+
+  gate_npm:
+    name: Rehearse npm environment approval
+    needs: stage_candidate
+    environment: npm
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "npm gate passed for ${{ github.ref_name }}"
+
+  recovery_drill:
+    name: Fail once, recover the same-run artifact on rerun
+    needs: stage_candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: rehearsal-candidate
+      - name: Verify artifact, fail on first attempt only
+        run: |
+          grep -q "rehearsal candidate manifest" manifest.txt
+          if [ "${{ github.run_attempt }}" = "1" ]; then
+            echo "attempt 1: failing on purpose; rerun with --failed to rehearse recovery"
+            exit 1
+          fi
+          echo "attempt ${{ github.run_attempt }}: same-run artifact recovered"
