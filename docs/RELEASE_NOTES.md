@@ -11,5 +11,5 @@
 
 ### Packaging and Verification
 
-- Wheel verification pins `py.typed` in the exact member allowlist, and the clean-installed consumer suite checks that
-  the marker is discoverable through `importlib.resources`.
+- Wheel verification pins the empty marker, its `RECORD` entry, and the exact member allowlist. A clean-installed mypy
+  consumer checks the typed success path, a bad assignment, and the `import-untyped` failure when the marker is hidden.

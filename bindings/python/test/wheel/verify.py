@@ -23,6 +23,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import re
 import subprocess
@@ -83,6 +85,12 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert len(members) == len(set(members)), "duplicate wheel member"
   file_members = {member for member in members if not member.endswith("/")}
   assert file_members == expected_members, f"wheel allowlist mismatch: {sorted(file_members ^ expected_members)}"
+  assert archive.read("celestial_calendar/py.typed") == b""
+
+  record = csv.reader(io.StringIO(archive.read(f"{dist_info}/RECORD").decode("utf-8")))
+  record_members = [row[0] for row in record if len(row) == 3]
+  assert len(record_members) == len(set(record_members)), "duplicate RECORD member"
+  assert set(record_members) == file_members, f"RECORD mismatch: {sorted(set(record_members) ^ file_members)}"
 
   metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/METADATA"))
   assert metadata["Name"] == "celestial-calendar"

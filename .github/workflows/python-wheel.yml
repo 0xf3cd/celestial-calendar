@@ -78,6 +78,13 @@ jobs:
           cd "$RUNNER_TEMP"
           "$GITHUB_WORKSPACE/current-venv/bin/python" "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
 
+      - name: Verify installed typing contract
+        if: matrix.identifier == 'cp311-manylinux_x86_64'
+        run: |
+          current-venv/bin/python -m pip install mypy==2.3.0
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/current-venv/bin/python" "$GITHUB_WORKSPACE/bindings/python/test/types/consumer.py"
+
       - name: Upload exact wheel artifact
         uses: actions/upload-artifact@v7
         with:
