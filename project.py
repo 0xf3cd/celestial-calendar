@@ -31,7 +31,7 @@ from automation import (
 )
 
 
-BUILD_VERSION: Final[str] = "0.6.0"
+BUILD_VERSION: Final[str] = "0.6.1"
 
 def parse_args() -> argparse.Namespace:
   """Parse the command line arguments."""

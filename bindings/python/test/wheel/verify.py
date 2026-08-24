@@ -72,6 +72,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     "celestial_calendar/__init__.py",
     "celestial_calendar/_binding.py",
     "celestial_calendar/_version.py",
+    "celestial_calendar/py.typed",
     native_member,
     f"{dist_info}/METADATA",
     f"{dist_info}/WHEEL",
