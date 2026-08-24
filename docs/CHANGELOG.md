@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.6.1] - 2026-08-24
+
+### Fixed
+
+- Python wheels now include the PEP 561 `py.typed` marker, so type checkers consume the annotations already present
+  in the public package. Wheel verification and a clean-installed mypy consumer both pin the contract.
+
 ## [v0.6.0] - 2026-08-17
 
 ### Added

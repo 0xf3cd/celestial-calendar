@@ -26,6 +26,7 @@ from __future__ import annotations
 import math
 from contextlib import contextmanager
 from dataclasses import FrozenInstanceError
+from importlib import resources
 from types import SimpleNamespace
 
 import celestial_calendar as celestial
@@ -86,6 +87,7 @@ class CountFillFailure:
 
 def run_happy_paths() -> None:
   """Exercise every public function against the native wheel."""
+  assert resources.files(celestial).joinpath("py.typed").is_file()
   checks = []
 
   celestial.set_log_verbosity(celestial.LogVerbosity.NONE)

@@ -31,6 +31,7 @@ from toolbox.release_validation import SOURCE_SPECS
 WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "python-wheel.yml"
 PYTHON_TEST_ROOT = Path(__file__).parents[2] / "bindings" / "python" / "test"
 WHEEL_TEST_ROOT = PYTHON_TEST_ROOT / "wheel"
+TYPE_TEST_ROOT = PYTHON_TEST_ROOT / "types"
 
 
 def test_python_wheel_artifact_inventory_is_exact():
@@ -80,6 +81,22 @@ def test_python_wheel_scripts_and_references_match():
   referenced = set(re.findall(r"bindings/python/test/wheel/([A-Za-z0-9_-]+\.py)", text))
   discovered = {path.name for path in WHEEL_TEST_ROOT.glob("*.py")}
   assert referenced == discovered
+
+
+def test_python_wheel_typing_contract_is_pinned_and_wired():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  step = next(
+    step
+    for step in workflow["jobs"]["manylinux"]["steps"]
+    if step.get("name") == "Verify installed typing contract"
+  )
+  command = step["run"].replace("\\", "/")
+  referenced = set(re.findall(r"bindings/python/test/types/([A-Za-z0-9_-]+\.py)", command))
+  discovered = {path.name for path in TYPE_TEST_ROOT.glob("*.py")}
+
+  assert step["if"] == "matrix.identifier == 'cp311-manylinux_x86_64'"
+  assert "python -m pip install mypy==2.3.0" in command
+  assert referenced == discovered == {"consumer.py"}
 
 
 def test_python_wheel_platform_toolchains_are_explicit():
