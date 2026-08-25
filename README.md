@@ -259,7 +259,7 @@ and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs 
 from the generated module and the version in `project.py`.
 
 CI builds the module and package on an independent leg (`wasm.yml`). Its `celestial-wasm` artifact contains the
-raw `.mjs/.wasm` pair, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar. The release flow publishes
+raw `.mjs/.wasm` pair, `LICENSE`, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar. The release flow publishes
 that tarball to npm without rebuilding it. The same leg reconciles all 29 signatures and 16 layouts, replays the
 389-point native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its
 TypeScript declarations, and runs an Astro/Vite production smoke in Chrome.

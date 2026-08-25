@@ -32,6 +32,7 @@ from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import PACKAGE_NAME
 from toolbox.release_validation import (
+  LicenseValidation,
   NATIVE_ARCHIVES,
   PYTHON_ARTIFACTS,
   SOURCE_ARTIFACTS,
@@ -593,6 +594,13 @@ def test_wasm_archive_rejects_wrong_package_identity(tmp_path, package_name, pac
     validate_release_archives(archives, VERSION)
 
 
+def test_license_bytes_are_platform_stable():
+  attributes = (Path(__file__).parents[2] / ".gitattributes").read_text(encoding="utf-8").splitlines()
+
+  assert "LICENSE text eol=lf" in attributes
+  assert b"\r\n" not in LICENSE_BYTES
+
+
 @pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
 def test_wheel_license_mutations_fail(tmp_path, mutation):
   name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
@@ -636,6 +644,56 @@ def test_native_license_mutations_fail(tmp_path, mutation):
 
   with pytest.raises(RuntimeError, match="LICENSE"):
     validate_release_archives(archives, VERSION)
+
+
+def test_pre_a2_archives_keep_the_legacy_member_contract(tmp_path):
+  archives = write_release_archives(tmp_path)
+  write_zip(tmp_path / "celestial-wasm.zip", mutate_license(wasm_members(), "missing"))
+  for filename in NATIVE_MEMBERS:
+    write_zip(tmp_path / filename, mutate_license(native_members(filename), "missing"))
+  wheel_name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
+  wheel_member = f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE"
+  wheel, sidecar = write_wheel_named(
+    tmp_path,
+    wheel_name,
+    mutate_license([(wheel_member, LICENSE_BYTES)], "changed"),
+  )
+
+  validate_release_archives(
+    [*archives, wheel, sidecar],
+    VERSION,
+    license_validation=LicenseValidation.LEGACY,
+  )
+
+
+def test_historical_canonical_license_contract_checks_members_without_checkout_bytes(tmp_path):
+  archives = write_release_archives(tmp_path)
+  tarball = npm_tarball(mutate_license([("package/LICENSE", LICENSE_BYTES)], "changed"))
+  wasm = mutate_license(wasm_members(tarball=tarball), "changed")
+  write_zip(tmp_path / "celestial-wasm.zip", wasm)
+  filename = "linux_amd64.zip"
+  write_zip(tmp_path / filename, mutate_license(native_members(filename), "changed"))
+  wheel_name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
+  wheel_member = f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE"
+  wheel, sidecar = write_wheel_named(
+    tmp_path,
+    wheel_name,
+    mutate_license([(wheel_member, LICENSE_BYTES)], "changed"),
+  )
+
+  validate_release_archives(
+    [*archives, wheel, sidecar],
+    VERSION,
+    license_validation=LicenseValidation.MEMBERS,
+  )
+
+  write_zip(tmp_path / "celestial-wasm.zip", mutate_license(wasm, "missing"))
+  with pytest.raises(RuntimeError, match="LICENSE"):
+    validate_release_archives(
+      [*archives, wheel, sidecar],
+      VERSION,
+      license_validation=LicenseValidation.MEMBERS,
+    )
 
 
 @pytest.mark.parametrize(

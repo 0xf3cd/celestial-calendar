@@ -31,6 +31,7 @@ import tempfile
 import zipfile
 
 from collections import Counter
+from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
@@ -72,6 +73,12 @@ RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
 RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
 
 
+class LicenseValidation(Enum):
+  LEGACY = "legacy"
+  MEMBERS = "members"
+  REPOSITORY = "repository"
+
+
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
   names = archive.namelist()
   duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
@@ -84,15 +91,20 @@ def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name:
     )
 
 
-def _require_license(archive: zipfile.ZipFile, member: str, archive_name: str) -> None:
+def _require_license(
+  archive: zipfile.ZipFile,
+  member: str,
+  archive_name: str,
+  expected_license: bytes | None,
+) -> None:
   license_members = [name for name in archive.namelist() if PurePosixPath(name).name == "LICENSE"]
   if license_members != [member]:
     raise RuntimeError(f"Invalid LICENSE members in {archive_name}: {license_members}")
-  if archive.read(member) != ROOT_LICENSE.read_bytes():
+  if expected_license is not None and archive.read(member) != expected_license:
     raise RuntimeError(f"LICENSE in {archive_name} does not match the repository LICENSE")
 
 
-def _require_npm_license(tarball: bytes, tarball_name: str) -> None:
+def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: bytes | None) -> None:
   try:
     with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
       members = [
@@ -102,7 +114,7 @@ def _require_npm_license(tarball: bytes, tarball_name: str) -> None:
       if names != ["package/LICENSE"]:
         raise RuntimeError(f"Invalid LICENSE members in {tarball_name}: {names}")
       source = archive.extractfile(members[0])
-      if source is None or source.read() != ROOT_LICENSE.read_bytes():
+      if source is None or (expected_license is not None and source.read() != expected_license):
         raise RuntimeError(f"LICENSE in {tarball_name} does not match the repository LICENSE")
   except tarfile.TarError as error:
     raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
@@ -202,7 +214,12 @@ def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -
     raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}")
 
 
-def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_complete: bool = False) -> None:
+def validate_wheel_sidecars(
+  downloaded: Iterable[Path],
+  version: str,
+  require_complete: bool = False,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
+) -> None:
   payloads: dict[str, Path] = {}
   for path in downloaded:
     if not (path.name.endswith(".whl") or path.name.endswith(".whl.sha256")):
@@ -223,16 +240,23 @@ def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_co
     )
 
   artifacts = {}
+  expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
   for wheel_name in wheels:
     artifact_name = _wheel_artifact(wheel_name, version)
     if artifact_name in artifacts:
       raise RuntimeError(f"Duplicate wheel platform: {artifact_name}")
     artifacts[artifact_name] = wheel_name
-    try:
-      with zipfile.ZipFile(payloads[wheel_name]) as archive:
-        _require_license(archive, f"celestial_calendar-{version}.dist-info/licenses/LICENSE", wheel_name)
-    except zipfile.BadZipFile as error:
-      raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
+    if license_validation is not LicenseValidation.LEGACY:
+      try:
+        with zipfile.ZipFile(payloads[wheel_name]) as archive:
+          _require_license(
+            archive,
+            f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
+            wheel_name,
+            expected_license,
+          )
+      except zipfile.BadZipFile as error:
+        raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
     digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
     expected = f"{digest}  {wheel_name}\n".encode()
     if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
@@ -244,7 +268,11 @@ def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_co
     )
 
 
-def npm_archive_payload(archive_path: Path, version: str) -> dict[str, bytes]:
+def npm_archive_payload(
+  archive_path: Path,
+  version: str,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
+) -> dict[str, bytes]:
   """Validate one WASM archive and return its registry publication payload."""
   try:
     with zipfile.ZipFile(archive_path) as archive:
@@ -275,20 +303,24 @@ def npm_archive_payload(archive_path: Path, version: str) -> dict[str, bytes]:
       expected = {
         "celestial-jieqi.mjs",
         "celestial-jieqi.wasm",
-        "LICENSE",
         tarball_name,
         "npm-pack.json",
         "npm-pack.sha256",
       }
+      if license_validation is not LicenseValidation.LEGACY:
+        expected.add("LICENSE")
       _require_members(archive, expected, archive_path.name)
-      _require_license(archive, "LICENSE", archive_path.name)
+      expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+      if license_validation is not LicenseValidation.LEGACY:
+        _require_license(archive, "LICENSE", archive_path.name, expected_license)
 
       tarball = archive.read(tarball_name)
       digest = hashlib.sha256(tarball).hexdigest()
       expected_sidecar = f"{digest}  {tarball_name}\n".encode()
       if archive.read("npm-pack.sha256") != expected_sidecar:
         raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}")
-      _require_npm_license(tarball, tarball_name)
+      if license_validation is not LicenseValidation.LEGACY:
+        _require_npm_license(tarball, tarball_name, expected_license)
       return {
         tarball_name: tarball,
         "npm-pack.json": archive.read("npm-pack.json"),
@@ -298,19 +330,29 @@ def npm_archive_payload(archive_path: Path, version: str) -> dict[str, bytes]:
     raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
 
 
-def validate_wasm_archive(archive_path: Path, version: str) -> None:
+def validate_wasm_archive(
+  archive_path: Path,
+  version: str,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
+) -> None:
   """Validate the exact WASM/npm artifact contract without changing the ZIP."""
-  npm_archive_payload(archive_path, version)
+  npm_archive_payload(archive_path, version, license_validation)
 
 
-def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str, str]]:
+def _native_layout(
+  artifact_name: str,
+  version: str,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
+) -> tuple[set[str], dict[str, str]]:
   match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
   if match is None:
     raise RuntimeError(f"Native archive validation requires a major.minor.patch version, got {version!r}")
   major = match.group(1)
   soversion = f"{major}.{match.group(2)}" if major == "0" else major
 
-  fixed = {"LICENSE", "build_info.json", "cpu_info.json", "include/celestial.h"}
+  fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
+  if license_validation is not LicenseValidation.LEGACY:
+    fixed.add("LICENSE")
   if artifact_name in {"linux_amd64", "linux_arm64"}:
     runtime_members = {
       "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
@@ -336,13 +378,16 @@ def validate_native_archive(
   artifact_name: str,
   version: str,
   expected_runtime: dict[str, dict[str, str]] | None = None,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
   """Validate one native artifact's members, runtime floor, and producer-recorded hashes."""
-  expected, runtime_members = _native_layout(artifact_name, version)
+  expected, runtime_members = _native_layout(artifact_name, version, license_validation)
   try:
     with zipfile.ZipFile(archive_path) as archive:
       _require_members(archive, expected, archive_path.name)
-      _require_license(archive, "LICENSE", archive_path.name)
+      if license_validation is not LicenseValidation.LEGACY:
+        expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+        _require_license(archive, "LICENSE", archive_path.name, expected_license)
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
@@ -368,10 +413,16 @@ def validate_release_archives(
   version: str,
   check_documented_runtime: bool = True,
   require_wheels: bool = False,
+  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
-  """Validate v0.6+ product archives and wheels, optionally requiring every wheel platform."""
+  """Validate product archives under the selected historical or current LICENSE contract."""
   downloaded = list(downloaded)
-  validate_wheel_sidecars(downloaded, version, require_complete=require_wheels)
+  validate_wheel_sidecars(
+    downloaded,
+    version,
+    require_complete=require_wheels,
+    license_validation=license_validation,
+  )
   archives: dict[str, Path] = {}
   for path in downloaded:
     if path.name not in RELEASE_ARCHIVES:
@@ -387,10 +438,20 @@ def validate_release_archives(
     raise RuntimeError(f"Missing downloaded release archives: {missing}")
 
   runtime_matrix = _runtime_matrix() if check_documented_runtime else None
-  validate_wasm_archive(archives[WASM_ARCHIVE], version)
+  validate_wasm_archive(
+    archives[WASM_ARCHIVE],
+    version,
+    license_validation,
+  )
   for filename, artifact_name in NATIVE_ARCHIVES.items():
     expected_runtime = runtime_matrix[artifact_name] if runtime_matrix is not None else None
-    validate_native_archive(archives[filename], artifact_name, version, expected_runtime)
+    validate_native_archive(
+      archives[filename],
+      artifact_name,
+      version,
+      expected_runtime,
+      license_validation,
+    )
 
 
 # JSON booleans are Python integers; manifest schemas, IDs, and sizes require exact integer values.
