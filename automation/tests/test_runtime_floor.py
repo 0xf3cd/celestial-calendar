@@ -123,10 +123,12 @@ def test_record_runtime_floor_updates_build_info(tmp_path, monkeypatch):
 
   runtime_floor.record_runtime_floor("linux_amd64", binary, build_info)
 
-  expected = original | {"runtime_floor": {
-    "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
-    "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
-  }}
+  expected = original | {
+    "runtime_floor": {
+      "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
+      "measured": {"glibc": "2.26", "glibcxx": "3.4.21"},
+    }
+  }
   assert json.loads(build_info.read_text(encoding="utf-8")) == expected
   assert build_info.read_bytes().endswith(b"\n")
 
@@ -172,8 +174,7 @@ def test_native_and_wheel_workflows_share_manylinux_digests():
     "linux-docker (${{ matrix.platform }}, ${{ matrix.runner }})"
   )
   native_images = {
-    row["platform"].removeprefix("linux/").replace("amd64", "x86_64").replace("arm64", "aarch64"):
-      row["image"]
+    row["platform"].removeprefix("linux/").replace("amd64", "x86_64").replace("arm64", "aarch64"): row["image"]
     for row in native_workflow["jobs"]["linux-docker"]["strategy"]["matrix"]["include"]
   }
   wheel_images = {
@@ -197,10 +198,11 @@ def test_macos_workflows_match_supported_runtime():
     for step in native_workflow["jobs"]["macos"]["steps"]
     if "MACOSX_DEPLOYMENT_TARGET" in step.get("env", {})
   ]
-  wheel_env = wheel_workflow["jobs"]["macos-arm64"]["env"]
+  wheel_job_env = wheel_workflow["jobs"]["macos-arm64"]["env"]
+  wheel_env = wheel_workflow["env"]
 
   assert native_targets == [supported, supported]
-  assert wheel_env["MACOSX_DEPLOYMENT_TARGET"] == supported
+  assert wheel_job_env["MACOSX_DEPLOYMENT_TARGET"] == supported
   assert f"MACOSX_DEPLOYMENT_TARGET={supported}" in wheel_env["CIBW_ENVIRONMENT_MACOS"]
 
 

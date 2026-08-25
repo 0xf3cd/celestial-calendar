@@ -191,9 +191,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Install Python Dependencies
-      run: |  
-        python3 -m pip install --upgrade pip  
-        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+      run: >-
+        python3 -m pip install --require-hashes --only-binary :all:
+        -r Requirements-producer.txt
 
     - name: Build and Test
       env:
@@ -202,7 +202,7 @@ jobs:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
       run: |
         chmod +x project.py
-        ./project.py --setup --clean --cmake --cores all --build --test -v 1
+        ./project.py --clean --cmake --cores all --build --test -v 1
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
@@ -278,8 +278,7 @@ jobs:
   
       - name: Install Dependencies
         run: |  
-          python3 -m pip install --upgrade pip  
-          if (Test-Path "Requirements.txt") { python3 -m pip install -r "Requirements.txt" }
+          python3 -m pip install --require-hashes --only-binary :all: -r Requirements-producer.txt
 
           # Pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
@@ -292,7 +291,7 @@ jobs:
         run: |
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
-          python3 ./project.py --setup --clean --cmake --cores all --build --test -v 1
+          python3 ./project.py --clean --cmake --cores all --build --test -v 1
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
