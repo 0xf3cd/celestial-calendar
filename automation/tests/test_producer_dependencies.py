@@ -191,13 +191,45 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
 @pytest.mark.parametrize(
   ("old", "new"),
   [
-    (" --generate-hashes", ""),
-    (" --universal", ""),
-    ("--python-version 3.12", "--python-version 3.11"),
-    (f"    --hash=sha256:{'0' * 64}\n", ""),
-    ("    # via source.in\n", ""),
-    (f"    --hash=sha256:{'0' * 64}\n", f"    --hash=sha256:{'0' * 64} \\\n"),
-    ("uv pip compile", "uv pip compile --index-url https://pypi.org/simple"),
+    pytest.param(
+      "".join(
+        [
+          "example==1.0 \\\n",
+          f"    --hash=sha256:{'0' * 64} \\\n",
+          f"    --hash=sha256:{'1' * 64}\n",
+          "    # via source.in\n",
+        ]
+      ),
+      "",
+      id="no-requirement-block",
+    ),
+    pytest.param("uvx --from uv==0.12.5 uv pip compile", "uv pip compile", id="wrong-command"),
+    pytest.param(" --generate-hashes", "", id="no-generate-hashes"),
+    pytest.param(" --universal", "", id="no-universal"),
+    pytest.param("--python-version 3.12", "--python-version 3.11", id="wrong-python-version"),
+    pytest.param(
+      "uv pip compile",
+      "uv pip compile --index-url https://pypi.org/simple",
+      id="index-url",
+    ),
+    pytest.param("example==1.0 \\", "example== \\", id="malformed-requirement"),
+    pytest.param(
+      f"    --hash=sha256:{'0' * 64} \\\n    --hash=sha256:{'1' * 64}\n",
+      "",
+      id="no-hash",
+    ),
+    pytest.param("    # via source.in\n", "", id="no-via"),
+    pytest.param("example==1.0 \\", "example==1.0", id="no-requirement-continuation"),
+    pytest.param(
+      f"    --hash=sha256:{'0' * 64} \\",
+      f"    --hash=sha256:{'0' * 64}",
+      id="no-intermediate-hash-continuation",
+    ),
+    pytest.param(
+      f"    --hash=sha256:{'1' * 64}\n",
+      f"    --hash=sha256:{'1' * 64} \\\n",
+      id="final-hash-continuation",
+    ),
   ],
 )
 def test_complete_hash_lock_gate_rejects_invalid_fixtures(tmp_path, old, new):
@@ -207,9 +239,12 @@ def test_complete_hash_lock_gate_rejects_invalid_fixtures(tmp_path, old, new):
     "# uvx --from uv==0.12.5 uv pip compile source.in --generate-hashes --universal "
     "--python-version 3.12 --output-file requirements.txt\n"
     "example==1.0 \\\n"
-    f"    --hash=sha256:{'0' * 64}\n"
+    f"    --hash=sha256:{'0' * 64} \\\n"
+    f"    --hash=sha256:{'1' * 64}\n"
     "    # via source.in\n"
   )
+  lock.write_text(complete, encoding="utf-8")
+  assert_complete_hash_lock(lock, "3.12")
   lock.write_text(complete.replace(old, new), encoding="utf-8")
 
   with pytest.raises(AssertionError):
@@ -236,6 +271,46 @@ def test_producer_install_gate_reads_every_workflow_env_scope(tmp_path):
   assert set(workflow_install_lines(workflow)) == {
     "python -m pip install top==1",
     "python -m pip install job==1",
+    "python -m pip install step==1",
+  }
+
+
+def test_release_candidate_install_gate_honors_upload_boundary_and_env_scopes(tmp_path):
+  workflow = tmp_path / "release.yml"
+  workflow.write_text(
+    yaml.safe_dump(
+      {
+        "env": {"WORKFLOW_INSTALL": "python -m pip install workflow==1"},
+        "jobs": {
+          "prepare_release": {
+            "env": {"JOB_INSTALL": "python -m pip install job==1"},
+            "steps": [
+              {"run": "python -m pip install run==1"},
+              {
+                "uses": "actions/upload-artifact@digest",
+                "with": {"name": "diagnostics"},
+              },
+              {"env": {"STEP_INSTALL": "python -m pip install step==1"}},
+              {
+                "uses": "actions/upload-artifact@digest",
+                "with": {"name": "celestial-release-candidate"},
+              },
+              {
+                "run": "python -m pip install after==1",
+                "env": {"AFTER_INSTALL": "python -m pip install after-env==1"},
+              },
+            ],
+          }
+        },
+      }
+    ),
+    encoding="utf-8",
+  )
+
+  assert set(release_candidate_install_lines(workflow)) == {
+    "python -m pip install workflow==1",
+    "python -m pip install job==1",
+    "python -m pip install run==1",
     "python -m pip install step==1",
   }
 

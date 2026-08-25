@@ -88,18 +88,17 @@ def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
   assert producers
   floor_consumers = set()
   for job_name, job in jobs.items():
-    commands = "\n".join(str(step.get("run", "")) for step in job["steps"]).replace("\\", "/")
-    setup_versions = {
-      str(step.get("with", {}).get("python-version", ""))
-      for step in job["steps"]
-      if str(step.get("uses", "")).startswith("actions/setup-python@")
-    }
-    if (
-      "pip install --no-deps" in commands
-      and "test/run_all.py" in commands
-      and ("cp311-cp311" in commands or any(version.startswith("3.11") for version in setup_versions))
-    ):
-      floor_consumers.add(job_name)
+    active_python = ""
+    for step in job["steps"]:
+      if str(step.get("uses", "")).startswith("actions/setup-python@"):
+        active_python = str(step.get("with", {}).get("python-version", ""))
+      command = str(step.get("run", "")).replace("\\", "/")
+      if (
+        "pip install --no-deps" in command
+        and "test/run_all.py" in command
+        and ("cp311-cp311" in command or active_python.startswith("3.11"))
+      ):
+        floor_consumers.add(job_name)
 
   for producer_name in producers:
     candidates = {producer_name}
