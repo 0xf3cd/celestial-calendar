@@ -385,7 +385,7 @@ bindings/
 
 Reviews kept re-litigating the same deliberate bets, so each entry records the decision
 and the trigger that reopens it. "—" marks a structural line, not a provisional bet.
-Premises and full arguments live in issue #127 and the project vault. If you are about to
+Premises and full arguments live in issue #127 and in notes kept outside this repo. If you are about to
 propose one of these and the trigger has fired, say so and reopen it — that is what the
 trigger is for.
 
@@ -442,9 +442,9 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
   the first commit.
 - Every PR is preceded by local review rounds (adversarial correctness + style/design)
   before it is opened; CI and PR bots are later gates, not substitutes.
-- Post-merge queue: delete the remote branch → update the phase tracking doc → write
-  the phase dev log (validation chain / decisions / environment notes / next-phase prep;
-  the log lives outside this repo) → open the next phase.
+- Post-merge queue: delete the remote branch → update the phase tracking doc → record the
+  phase's validation chain, decisions, environment notes and next-phase prep (that record is
+  kept outside this repo) → open the next phase.
 
 ## AI do / don't
 
@@ -456,6 +456,9 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
   `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
   `wasm.yml` CI leg, and in `bindings/python` / `python-wheel.yml`; the release flow consumes
   the CI-built artifacts and publishes those exact bytes, it does not rebuild them.
+- DON'T quote paths, hostnames, or tooling from outside this repository in anything public
+  (comments, reviews, commit messages, PR text) — a path appearing in a file here does not
+  make it publishable, and that includes files you were handed rather than wrote.
 - Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
