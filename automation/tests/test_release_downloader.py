@@ -58,13 +58,21 @@ def test_archive_validation_rejects_unknown_tag_shape(tag_name):
 @pytest.mark.parametrize(
   ("version", "expected"),
   [
+    ("0.6.0", LicenseValidation.LEGACY),
     ("0.6.1", LicenseValidation.LEGACY),
+    ("0.6.2", LicenseValidation.MEMBERS),
     ("0.7.0", LicenseValidation.MEMBERS),
     ("1.2.3", LicenseValidation.MEMBERS),
   ],
 )
-def test_canonical_license_contract_starts_at_v070(version, expected):
+def test_published_legacy_license_contract_is_closed_at_v061(version, expected):
   assert release_license_validation(version) is expected
+
+
+@pytest.mark.parametrize("version", ["0.7", "latest"])
+def test_license_contract_rejects_unknown_version_shape(version):
+  with pytest.raises(RuntimeError, match="Cannot determine the LICENSE contract"):
+    release_license_validation(version)
 
 
 def run_download(monkeypatch, tmp_path, tag_name, validator=None):

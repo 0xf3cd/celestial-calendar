@@ -425,6 +425,22 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
     assert identity == {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}
 
 
+def test_release_candidate_requires_repository_license_bytes(tmp_path):
+  release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
+  filename = "linux_amd64.zip"
+  write_zip(release_assets / filename, mutate_license(native_members(filename), "changed"))
+
+  with pytest.raises(RuntimeError, match="does not match the repository LICENSE"):
+    stage_release_candidate(
+      release_assets,
+      source_manifest,
+      tmp_path / "candidate",
+      f"v{VERSION}",
+      "tagged-sha",
+      release_notes,
+    )
+
+
 def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
   release_assets, source_manifest, release_notes = write_candidate_inputs(tmp_path)
   candidate = tmp_path / "candidate"

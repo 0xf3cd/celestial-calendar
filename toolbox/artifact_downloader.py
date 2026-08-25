@@ -37,6 +37,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from automation import red_print, yellow_print, blue_print
 from automation.github import GitHub
 from toolbox.release_validation import (
+  LicenseValidation,
   PYTHON_ARTIFACTS,
   SOURCE_SPECS,
   validate_release_archives,
@@ -344,7 +345,11 @@ def main() -> None:
         validate_artifact_download(by_name[artifact.name], artifact)
       downloaded_artifacts.extend(downloaded)
 
-    validate_release_archives(downloaded_artifacts, project_version())
+    validate_release_archives(
+      downloaded_artifacts,
+      project_version(),
+      license_validation=LicenseValidation.REPOSITORY,
+    )
     downloaded_artifacts.extend(flatten_python_artifacts(downloaded_artifacts, args.save_to))
     if getattr(args, "source_manifest", None) is not None:
       write_source_manifest(args.source_manifest, sha, sources)

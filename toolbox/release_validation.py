@@ -415,7 +415,7 @@ def validate_release_archives(
   require_wheels: bool = False,
   license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
-  """Validate product archives under the selected historical or current LICENSE contract."""
+  """Validate release archives and wheels under the selected LICENSE contract."""
   downloaded = list(downloaded)
   validate_wheel_sidecars(
     downloaded,
@@ -615,7 +615,12 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   npm = candidate / "npm"
   evidence = candidate / "evidence"
   github_files = list(github.iterdir())
-  validate_release_archives(github_files, version, require_wheels=True)
+  validate_release_archives(
+    github_files,
+    version,
+    require_wheels=True,
+    license_validation=LicenseValidation.REPOSITORY,
+  )
   wheels = sorted(pypi.iterdir())
   if len(wheels) != len(PYTHON_ARTIFACTS) or any(not path.name.endswith(".whl") for path in wheels):
     raise RuntimeError("PyPI candidate must contain exactly four wheels")
@@ -637,7 +642,12 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   }
   if {path.name for path in evidence.iterdir()} != expected_evidence:
     raise RuntimeError("Release candidate evidence inventory mismatch")
-  validate_wheel_sidecars([*wheels, *sidecars], version, require_complete=True)
+  validate_wheel_sidecars(
+    [*wheels, *sidecars],
+    version,
+    require_complete=True,
+    license_validation=LicenseValidation.REPOSITORY,
+  )
   for wheel, sidecar in zip(wheels, sidecars, strict=True):
     if wheel.read_bytes() != (github / wheel.name).read_bytes():
       raise RuntimeError(f"PyPI/GitHub wheel mismatch: {wheel.name}")
@@ -647,7 +657,11 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   npm_files = list(npm.iterdir())
   if len(npm_files) != 1 or not npm_files[0].name.endswith(".tgz"):
     raise RuntimeError("npm candidate must contain exactly one tarball")
-  npm_payload = npm_archive_payload(github / WASM_ARCHIVE, version)
+  npm_payload = npm_archive_payload(
+    github / WASM_ARCHIVE,
+    version,
+    license_validation=LicenseValidation.REPOSITORY,
+  )
   tarball = npm_files[0]
   if npm_payload.get(tarball.name) != tarball.read_bytes():
     raise RuntimeError("npm candidate tarball does not match the WASM archive")
@@ -679,7 +693,12 @@ def stage_release_candidate(
   non_files = sorted(path.name for path in assets if not path.is_file() or path.is_symlink())
   if non_files:
     raise RuntimeError(f"GitHub Release assets must be regular files: {non_files}")
-  validate_release_archives(assets, version, require_wheels=True)
+  validate_release_archives(
+    assets,
+    version,
+    require_wheels=True,
+    license_validation=LicenseValidation.REPOSITORY,
+  )
   wheels = sorted(path for path in assets if path.name.endswith(".whl"))
   sidecars = sorted(path for path in assets if path.name.endswith(".whl.sha256"))
   expected_names = {
@@ -697,7 +716,11 @@ def stage_release_candidate(
   changelog = release_assets / "CHANGELOG.md"
   validate_release_document_versions(tag_name, (release_notes, changelog))
   sources = _release_sources(source_manifest, commit)
-  npm_payload = npm_archive_payload(release_assets / WASM_ARCHIVE, version)
+  npm_payload = npm_archive_payload(
+    release_assets / WASM_ARCHIVE,
+    version,
+    license_validation=LicenseValidation.REPOSITORY,
+  )
   tarball_name = next(name for name in npm_payload if name.endswith(".tgz"))
 
   save_to.parent.mkdir(parents=True, exist_ok=True)

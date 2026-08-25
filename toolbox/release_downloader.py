@@ -31,7 +31,7 @@ from toolbox.release_validation import LicenseValidation, validate_release_archi
 
 
 STRICT_ARCHIVE_VERSION: Final[tuple[int, int, int]] = (0, 6, 0)
-CANONICAL_LICENSE_VERSION: Final[tuple[int, int, int]] = (0, 7, 0)
+LEGACY_LICENSE_VERSIONS: Final[frozenset[tuple[int, int, int]]] = frozenset({(0, 6, 0), (0, 6, 1)})
 
 
 def find_release(keyword: Union[str, int]) -> GitHub.Release:
@@ -66,8 +66,11 @@ def archive_validation_version(tag_name: str) -> str | None:
 
 def release_license_validation(version: str) -> LicenseValidation:
   """Select the LICENSE member contract without binding historical bytes to this checkout."""
-  components = tuple(int(part) for part in version.split("."))
-  return LicenseValidation.MEMBERS if components >= CANONICAL_LICENSE_VERSION else LicenseValidation.LEGACY
+  match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+  if match is None:
+    raise RuntimeError(f"Cannot determine the LICENSE contract from version {version!r}")
+  components = tuple(int(part) for part in match.groups())
+  return LicenseValidation.LEGACY if components in LEGACY_LICENSE_VERSIONS else LicenseValidation.MEMBERS
 
 
 def parse_args() -> argparse.Namespace:
