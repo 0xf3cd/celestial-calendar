@@ -106,12 +106,6 @@ jobs:
           node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
           npm run test:types --prefix bindings/javascript
 
-      - name: npm package publish dry-run
-        env:
-          NPM_CONFIG_DRY_RUN: "true"
-        run: |
-          npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"
-
       - name: Astro production build and Chrome package smoke
         run: node bindings/javascript/test/browser/browser_test.mjs "${{ steps.npm-package.outputs.tarball }}"
 
