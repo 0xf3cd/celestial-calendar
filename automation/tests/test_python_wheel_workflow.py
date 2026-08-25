@@ -76,13 +76,11 @@ def test_python_wheel_acceptance_has_one_entry_point():
   assert text.count("test/run_all.py") == 6
 
 
-def test_python_wheel_floor_consumers_are_offline_or_artifact_only():
+def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   jobs = workflow["jobs"]
 
-  linux = next(
-    step for step in jobs["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11 floor"
-  )
+  linux = next(step for step in jobs["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11")
   macos = next(
     step for step in jobs["macos-14-floor"]["steps"] if step.get("name") == "Clean-install and test on macOS 14"
   )
@@ -105,18 +103,33 @@ def test_python_wheel_scripts_and_references_match():
   assert referenced == discovered
 
 
-def test_python_wheel_producers_verify_the_bootstrap_pip_is_embedded():
+def test_python_wheel_producers_test_and_run_the_bootstrap_verifier():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-  commands = [
-    step["run"]
-    for job_name in ("manylinux", "macos-arm64", "windows-amd64")
-    for step in workflow["jobs"][job_name]["steps"]
-    if step.get("name") == "Verify cibuildwheel bootstrap"
-  ]
-  assert (
-    commands
-    == ["python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt"] * 3
-  )
+  producers = {
+    job_name: job
+    for job_name, job in workflow["jobs"].items()
+    if any("python -m cibuildwheel --only" in str(step.get("run", "")) for step in job["steps"])
+  }
+
+  assert producers
+  for job in producers.values():
+    steps = job["steps"]
+    install_index = next(
+      index for index, step in enumerate(steps) if "hash-locked wheel host tools" in str(step.get("name", ""))
+    )
+    build_index = next(
+      index for index, step in enumerate(steps) if "python -m cibuildwheel --only" in str(step.get("run", ""))
+    )
+    test_indices = [
+      index for index, step in enumerate(steps) if step.get("name") == "Test cibuildwheel bootstrap verifier"
+    ]
+    verify_indices = [index for index, step in enumerate(steps) if step.get("name") == "Verify cibuildwheel bootstrap"]
+    assert len(test_indices) == len(verify_indices) == 1
+    assert install_index < test_indices[0] < verify_indices[0] < build_index
+    assert steps[test_indices[0]]["run"] == "python bindings/python/test/wheel/verify_bootstrap_test.py"
+    assert steps[verify_indices[0]]["run"] == (
+      "python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt"
+    )
 
 
 def test_python_wheel_typing_contract_is_pinned_and_wired():
@@ -139,13 +152,22 @@ def test_python_wheel_typing_contract_is_pinned_and_wired():
 def test_python_wheel_platform_toolchains_are_explicit():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   jobs = workflow["jobs"]
-  floor_python = next(
+  macos_floor_python = next(
     step["with"]["python-version"]
     for step in jobs["macos-14-floor"]["steps"]
     if str(step.get("uses", "")).startswith("actions/setup-python@")
   )
+  windows_steps = jobs["windows-amd64"]["steps"]
+  windows_floor_setup = next(
+    (index, step) for index, step in enumerate(windows_steps) if step.get("name") == "Set up Python 3.11.9"
+  )
+  windows_floor_test = next(
+    index for index, step in enumerate(windows_steps) if step.get("name") == "Test exact wheel on Python 3.11.9"
+  )
 
-  assert floor_python == "3.11.9"
+  assert macos_floor_python == "3.11.9"
+  assert windows_floor_setup[1]["with"]["python-version"] == "3.11.9"
+  assert windows_floor_setup[0] < windows_floor_test
   assert workflow["env"]["CIBW_ENVIRONMENT_WINDOWS"] == (
     "CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:"
   )

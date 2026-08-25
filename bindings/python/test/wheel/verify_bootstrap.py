@@ -40,7 +40,7 @@ def main():
   lock = selector.parent / selector_lines[0].removeprefix("-c ")
   selected_pip = _parse_pip_constraint_for_virtualenv(selector)
   if selected_pip == "embed":
-    raise RuntimeError(f"Cibuildwheel cannot read the pip pin in {selector}")
+    raise RuntimeError(f"cibuildwheel cannot read the pip pin in {selector}")
 
   with resources.VIRTUALENV.open("rb") as source:
     configs = tomllib.load(source)
@@ -48,7 +48,7 @@ def main():
   pyz, version = _ensure_virtualenv("3.11")
   digest = hashlib.sha256(pyz.read_bytes()).hexdigest()
   if str(version) != expected["version"] or digest != expected["sha256"]:
-    raise RuntimeError(f"Cibuildwheel bootstrap virtualenv does not match {resources.VIRTUALENV}")
+    raise RuntimeError(f"cibuildwheel bootstrap virtualenv does not match {resources.VIRTUALENV}")
 
   with zipfile.ZipFile(pyz) as archive:
     embedded_pip = {

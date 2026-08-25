@@ -48,6 +48,9 @@ jobs:
           python -m pip install --require-hashes --only-binary :all:
           -r bindings/python/requirements-host.txt
 
+      - name: Test cibuildwheel bootstrap verifier
+        run: python bindings/python/test/wheel/verify_bootstrap_test.py
+
       - name: Verify cibuildwheel bootstrap
         run: python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt
 
@@ -79,7 +82,7 @@ jobs:
             /project/bindings/python/test/wheel/verify.py \
             "/wheels/$WHEEL_FILENAME"
 
-      - name: Test exact wheel on Python 3.11 floor
+      - name: Test exact wheel on Python 3.11
         env:
           MANYLINUX_IMAGE: ${{ matrix.image }}
           WHEEL_FILENAME: ${{ steps.wheel.outputs.filename }}
@@ -144,6 +147,9 @@ jobs:
         run: >-
           python -m pip install --require-hashes --only-binary :all:
           -r bindings/python/requirements-host.txt
+
+      - name: Test cibuildwheel bootstrap verifier
+        run: python bindings/python/test/wheel/verify_bootstrap_test.py
 
       - name: Verify cibuildwheel bootstrap
         run: python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt
@@ -240,6 +246,9 @@ jobs:
           choco install -y llvm --version=22.1.7
           python -m pip install --require-hashes --only-binary :all: -r bindings/python/requirements-host.txt
 
+      - name: Test cibuildwheel bootstrap verifier
+        run: python bindings/python/test/wheel/verify_bootstrap_test.py
+
       - name: Verify cibuildwheel bootstrap
         run: python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt
 
@@ -264,7 +273,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
 
-      - name: Set up Python 3.11.9 floor
+      - name: Set up Python 3.11.9
         uses: actions/setup-python@v7
         with:
           python-version: "3.11.9"

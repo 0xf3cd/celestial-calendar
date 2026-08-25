@@ -20,10 +20,13 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
 import yaml
+
+from toolbox.release_validation import SOURCE_WORKFLOWS
 
 
 REPO = Path(__file__).parents[2]
@@ -33,16 +36,15 @@ DOCKERFILE = REPO / "Dockerfile"
 CIBW_CONSTRAINTS = REPO / "bindings" / "python" / "constraints-cibuildwheel.txt"
 CIBW_LOCK = REPO / "bindings" / "python" / "requirements-cibuildwheel.txt"
 CIBW_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-cibuildwheel.in"
+BUILD_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-build.in"
+PYPROJECT = REPO / "bindings" / "python" / "pyproject.toml"
 LOCK_INPUTS = {
   REPO / "Requirements-producer.txt": (REPO / "Requirements.txt", "3.12"),
   REPO / "bindings" / "python" / "requirements-host.txt": (
     REPO / "bindings" / "python" / "requirements-host.in",
     "3.14",
   ),
-  REPO / "bindings" / "python" / "requirements-build.txt": (
-    REPO / "bindings" / "python" / "requirements-build.in",
-    "3.11",
-  ),
+  REPO / "bindings" / "python" / "requirements-build.txt": (BUILD_LOCK_INPUT, "3.11"),
   CIBW_LOCK: (CIBW_LOCK_INPUT, "3.11"),
   REPO / "bindings" / "python" / "requirements-mypy.txt": (
     REPO / "bindings" / "python" / "requirements-mypy.in",
@@ -97,6 +99,7 @@ def assert_complete_hash_lock(path, python_version):
     hash_lines = [line for line in lines if "--hash=" in line]
     assert REQUIREMENT_RE.match(block)
     assert hash_lines and HASH_RE.search(block)
+    assert "# via" in block
     assert lines[0].endswith("\\")
     assert all(line.endswith("\\") for line in hash_lines[:-1])
     assert not hash_lines[-1].endswith("\\")
@@ -143,7 +146,19 @@ def test_producer_lock_files_pin_every_requirement_with_hashes():
     assert requirement_pins(source).items() <= requirement_pins(lock).items()
 
 
-def test_cibuildwheel_selector_and_lock_pin_bootstrap_pip():
+def test_build_lock_matches_pyproject_backend_requirements():
+  requirements = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["build-system"]["requires"]
+  backend_pins = {
+    match.group(1).lower().replace("_", "-"): match.group(2)
+    for requirement in requirements
+    if (match := REQUIREMENT_RE.match(requirement))
+  }
+
+  assert len(backend_pins) == len(requirements)
+  assert backend_pins.items() <= requirement_pins(BUILD_LOCK_INPUT).items()
+
+
+def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
   lines = [
     line for line in CIBW_CONSTRAINTS.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
   ]
@@ -152,7 +167,16 @@ def test_cibuildwheel_selector_and_lock_pin_bootstrap_pip():
 
 
 def test_every_explicit_producer_pip_install_is_hash_locked():
-  lines = workflow_install_lines(BUILD_WORKFLOW) + workflow_install_lines(WHEEL_WORKFLOW)
+  producer_workflows = []
+  remaining = set(SOURCE_WORKFLOWS)
+  for path in (REPO / ".github" / "workflows").glob("*.yml"):
+    name = yaml.safe_load(path.read_text(encoding="utf-8")).get("name")
+    if name in remaining:
+      producer_workflows.append(path)
+      remaining.remove(name)
+
+  assert not remaining
+  lines = [line for path in producer_workflows for line in workflow_install_lines(path)]
   lines += pip_install_lines(DOCKERFILE.read_text(encoding="utf-8"))
 
   assert lines
@@ -161,7 +185,7 @@ def test_every_explicit_producer_pip_install_is_hash_locked():
     assert_hash_locked_install(line)
 
 
-def test_wheel_build_backend_cannot_escape_into_an_isolated_resolver():
+def test_wheel_build_configuration_uses_only_hash_locked_dependency_paths():
   workflow = yaml.safe_load(WHEEL_WORKFLOW.read_text(encoding="utf-8"))
   env = workflow["env"]
   assert {key for key in env if key.startswith("CIBW_")} == TOP_LEVEL_CIBW_KEYS
@@ -184,10 +208,13 @@ def test_wheel_build_backend_cannot_escape_into_an_isolated_resolver():
 def test_native_producers_do_not_run_unlocked_project_setup():
   commands = BUILD_WORKFLOW.read_text(encoding="utf-8") + DOCKERFILE.read_text(encoding="utf-8")
   project_commands = [
-    line for line in commands.splitlines() if "project.py" in line and not line.lstrip().startswith("#")
+    line
+    for line in commands.splitlines()
+    if "project.py" in line and "--clean" in line and not line.lstrip().startswith("#")
   ]
   assert project_commands
   assert all("--setup" not in line and "--all" not in line for line in project_commands)
+  assert all({"--clean", "--cmake", "--build", "--test"} <= set(line.split()) for line in project_commands)
 
 
 @pytest.mark.parametrize(
