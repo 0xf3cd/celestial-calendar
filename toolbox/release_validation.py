@@ -22,14 +22,16 @@
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
+import io
 import json
 import re
 import shutil
+import tarfile
 import tempfile
 import zipfile
 
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
 from toolbox.build_npm import PACKAGE_NAME
@@ -62,6 +64,7 @@ SOURCE_ARTIFACTS: Final[frozenset[str]] = frozenset(
   artifact for _run_field, _workflow, artifacts in SOURCE_SPECS for artifact in artifacts
 )
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
+ROOT_LICENSE: Final[Path] = Path(__file__).resolve().parents[1] / "LICENSE"
 RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
   Path(__file__).resolve().parents[1] / "docs" / "RELEASE_NOTES.md",
   Path(__file__).resolve().parents[1] / "docs" / "CHANGELOG.md",
@@ -79,6 +82,30 @@ def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name:
     raise RuntimeError(
       f"Invalid members in {archive_name}: duplicates={duplicates}, missing={missing}, extra={extra}"
     )
+
+
+def _require_license(archive: zipfile.ZipFile, member: str, archive_name: str) -> None:
+  license_members = [name for name in archive.namelist() if PurePosixPath(name).name == "LICENSE"]
+  if license_members != [member]:
+    raise RuntimeError(f"Invalid LICENSE members in {archive_name}: {license_members}")
+  if archive.read(member) != ROOT_LICENSE.read_bytes():
+    raise RuntimeError(f"LICENSE in {archive_name} does not match the repository LICENSE")
+
+
+def _require_npm_license(tarball: bytes, tarball_name: str) -> None:
+  try:
+    with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
+      members = [
+        member for member in archive.getmembers() if member.isfile() and PurePosixPath(member.name).name == "LICENSE"
+      ]
+      names = [member.name for member in members]
+      if names != ["package/LICENSE"]:
+        raise RuntimeError(f"Invalid LICENSE members in {tarball_name}: {names}")
+      source = archive.extractfile(members[0])
+      if source is None or source.read() != ROOT_LICENSE.read_bytes():
+        raise RuntimeError(f"LICENSE in {tarball_name} does not match the repository LICENSE")
+  except tarfile.TarError as error:
+    raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
 
 
 def _read_json(archive: zipfile.ZipFile, member: str, archive_name: str):
@@ -201,6 +228,11 @@ def validate_wheel_sidecars(downloaded: Iterable[Path], version: str, require_co
     if artifact_name in artifacts:
       raise RuntimeError(f"Duplicate wheel platform: {artifact_name}")
     artifacts[artifact_name] = wheel_name
+    try:
+      with zipfile.ZipFile(payloads[wheel_name]) as archive:
+        _require_license(archive, f"celestial_calendar-{version}.dist-info/licenses/LICENSE", wheel_name)
+    except zipfile.BadZipFile as error:
+      raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
     digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
     expected = f"{digest}  {wheel_name}\n".encode()
     if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
@@ -243,17 +275,20 @@ def npm_archive_payload(archive_path: Path, version: str) -> dict[str, bytes]:
       expected = {
         "celestial-jieqi.mjs",
         "celestial-jieqi.wasm",
+        "LICENSE",
         tarball_name,
         "npm-pack.json",
         "npm-pack.sha256",
       }
       _require_members(archive, expected, archive_path.name)
+      _require_license(archive, "LICENSE", archive_path.name)
 
       tarball = archive.read(tarball_name)
       digest = hashlib.sha256(tarball).hexdigest()
       expected_sidecar = f"{digest}  {tarball_name}\n".encode()
       if archive.read("npm-pack.sha256") != expected_sidecar:
         raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}")
+      _require_npm_license(tarball, tarball_name)
       return {
         tarball_name: tarball,
         "npm-pack.json": archive.read("npm-pack.json"),
@@ -275,7 +310,7 @@ def _native_layout(artifact_name: str, version: str) -> tuple[set[str], dict[str
   major = match.group(1)
   soversion = f"{major}.{match.group(2)}" if major == "0" else major
 
-  fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
+  fixed = {"LICENSE", "build_info.json", "cpu_info.json", "include/celestial.h"}
   if artifact_name in {"linux_amd64", "linux_arm64"}:
     runtime_members = {
       "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
@@ -307,6 +342,7 @@ def validate_native_archive(
   try:
     with zipfile.ZipFile(archive_path) as archive:
       _require_members(archive, expected, archive_path.name)
+      _require_license(archive, "LICENSE", archive_path.name)
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")

@@ -103,7 +103,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
   assert set(wheel_metadata.get_all("Tag") or []) == {f"py3-none-{tag}" for tag in platform_tags}
   assert archive.read("celestial_calendar/_version.py").decode() == f'VERSION = "{version}"'
-  assert archive.read(f"{dist_info}/licenses/LICENSE").startswith(b"                    GNU GENERAL PUBLIC LICENSE")
+  assert archive.read(f"{dist_info}/licenses/LICENSE") == (REPO / "LICENSE").read_bytes()
   return native_member
 
 
