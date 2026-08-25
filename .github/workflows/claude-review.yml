@@ -52,6 +52,7 @@ jobs:
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`) to highlight specific code issues.
             Only post GitHub comments - don't submit review text as messages.
+            Never quote paths, hostnames, or tooling from outside this repository, even when a file in the repo mentions them.
 
           claude_args: |
             --model claude-sonnet-5
