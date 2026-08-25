@@ -146,7 +146,7 @@ def test_producer_lock_files_pin_every_requirement_with_hashes():
     assert requirement_pins(source).items() <= requirement_pins(lock).items()
 
 
-def test_build_lock_matches_pyproject_backend_requirements():
+def test_build_lock_input_pins_every_pyproject_backend_requirement():
   requirements = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["build-system"]["requires"]
   backend_pins = {
     match.group(1).lower().replace("_", "-"): match.group(2)
@@ -207,14 +207,12 @@ def test_wheel_build_configuration_uses_only_hash_locked_dependency_paths():
 
 def test_native_producers_do_not_run_unlocked_project_setup():
   commands = BUILD_WORKFLOW.read_text(encoding="utf-8") + DOCKERFILE.read_text(encoding="utf-8")
-  project_commands = [
-    line
-    for line in commands.splitlines()
-    if "project.py" in line and "--clean" in line and not line.lstrip().startswith("#")
-  ]
-  assert project_commands
-  assert all("--setup" not in line and "--all" not in line for line in project_commands)
-  assert all({"--clean", "--cmake", "--build", "--test"} <= set(line.split()) for line in project_commands)
+  project_lines = [line for line in commands.splitlines() if "project.py" in line and not line.lstrip().startswith("#")]
+  build_commands = [line for line in project_lines if "--build" in line]
+
+  assert project_lines and build_commands
+  assert all("--setup" not in line and "--all" not in line for line in project_lines)
+  assert all({"--clean", "--cmake", "--build", "--test"} <= set(line.split()) for line in build_commands)
 
 
 @pytest.mark.parametrize(

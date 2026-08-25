@@ -62,7 +62,7 @@ def expect_error(expected, *args):
   except RuntimeError as error:
     assert expected in str(error)
   else:
-    raise AssertionError(f"Expected RuntimeError containing {expected!r}")
+    raise AssertionError(f"expected RuntimeError containing {expected!r}")
 
 
 def main():
@@ -98,7 +98,7 @@ def main():
     lock.write_text("pip==26.2 \\\n    --hash=sha256:" + "0" * 64 + "\n", encoding="utf-8")
     expect_error("embedded pip 26.2 wheel is not hash-locked", selector, resource, pyz, "26.2")
 
-  print("PASS cibuildwheel bootstrap verifier accepts its contract and rejects broken inputs")
+  print("PASS cibuildwheel bootstrap verifier accepted a valid fixture and rejected invalid fixtures")
 
 
 if __name__ == "__main__":

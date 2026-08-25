@@ -69,7 +69,7 @@ def main():
   block_end = start.end() + end.start() if end else len(lock_text)
   lock_hashes = set(re.findall(r"--hash=sha256:([0-9a-f]{64})", lock_text[start.start() : block_end]))
   if embedded_pip[selected_pip] not in lock_hashes:
-    raise RuntimeError(f"The embedded pip {selected_pip} wheel is not hash-locked in {lock}")
+    raise RuntimeError(f"the embedded pip {selected_pip} wheel is not hash-locked in {lock}")
 
   print(f"PASS cibuildwheel bootstrap uses hash-locked embedded pip {selected_pip} from {pyz.name}")
 
