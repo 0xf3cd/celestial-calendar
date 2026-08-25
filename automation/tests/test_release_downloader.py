@@ -184,7 +184,7 @@ def test_release_preparation_has_read_only_permissions_and_pinned_context():
   assert setup["with"]["python-version"] == "3.12"
   assert names.index("Install pinned Python dependencies") < names.index("Download exact producer runs")
   install = next(step for step in steps if step.get("name") == "Install pinned Python dependencies")
-  assert install["run"] == "python3 -m pip install -r Requirements.txt"
+  assert install["run"] == "python3 -m pip install --require-hashes --only-binary :all: -r Requirements-producer.txt"
 
 
 def test_release_preparation_validates_ref_and_stages_one_candidate():
