@@ -88,21 +88,16 @@ def test_wasm_artifact_inventory_matches_collector():
   assert Counter(uploads) == Counter(expected)
 
 
-def test_npm_publish_stays_a_dry_run():
+def test_wasm_workflow_never_publishes_to_npm():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   job = workflow["jobs"]["wasm"]
   steps = job["steps"]
-  publish_steps = [step for step in steps if "npm publish" in step.get("run", "")]
+  commands = "\n".join(str(step.get("run", "")) for step in steps)
 
-  assert len(publish_steps) == 1
-  publish_step = publish_steps[0]
+  assert "npm publish" not in commands
   assert "NPM_CONFIG_DRY_RUN" not in workflow.get("env", {})
   assert "NPM_CONFIG_DRY_RUN" not in job.get("env", {})
-  dry_run_steps = [step for step in steps if "NPM_CONFIG_DRY_RUN" in step.get("env", {})]
-  assert dry_run_steps == [publish_step]
-  assert publish_step.get("env", {}).get("NPM_CONFIG_DRY_RUN") == "true"
-  commands = [line.strip() for line in publish_step["run"].splitlines() if line.strip()]
-  assert commands == ['npm publish --dry-run "${{ steps.npm-package.outputs.tarball }}"']
+  assert all("NPM_CONFIG_DRY_RUN" not in step.get("env", {}) for step in steps)
 
 
 def test_javascript_test_entries_match_their_execution_owners():
