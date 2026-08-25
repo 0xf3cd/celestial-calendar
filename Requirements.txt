@@ -1,5 +1,5 @@
 # Dependencies of the build/test automation (`project.py`, `automation/`, `toolbox/`).
-# Native release producers install this file alone through the hash-locked closure in
+# Native producers and release staging install this file through the hash-locked closure in
 # `Requirements-producer.txt`; regenerate it after changing a pin here.
 # Linters are installed separately (README section 4); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.

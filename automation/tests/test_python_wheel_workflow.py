@@ -79,6 +79,35 @@ def test_python_wheel_acceptance_has_one_entry_point():
 def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   jobs = workflow["jobs"]
+  producers = {
+    job_name: job
+    for job_name, job in jobs.items()
+    if any("python -m cibuildwheel --only" in str(step.get("run", "")) for step in job["steps"])
+  }
+
+  assert producers
+  floor_consumers = set()
+  for job_name, job in jobs.items():
+    commands = "\n".join(str(step.get("run", "")) for step in job["steps"]).replace("\\", "/")
+    setup_versions = {
+      str(step.get("with", {}).get("python-version", ""))
+      for step in job["steps"]
+      if str(step.get("uses", "")).startswith("actions/setup-python@")
+    }
+    if (
+      "pip install --no-deps" in commands
+      and "test/run_all.py" in commands
+      and ("cp311-cp311" in commands or any(version.startswith("3.11") for version in setup_versions))
+    ):
+      floor_consumers.add(job_name)
+
+  for producer_name in producers:
+    candidates = {producer_name}
+    for job_name, job in jobs.items():
+      needs = job.get("needs", [])
+      if producer_name in ({needs} if isinstance(needs, str) else set(needs)):
+        candidates.add(job_name)
+    assert candidates & floor_consumers
 
   linux = next(step for step in jobs["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11")
   macos = next(
