@@ -44,7 +44,7 @@ LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "# Vendored from llvm-project at tag llvmorg-22.1.2; this comment is the only local edit. Its\n",
   "# major has to match the clang-tidy CI runs (AGENTS.md gotcha 9), so re-vendor rather than patch:\n",
   "# raw.githubusercontent.com/llvm/llvm-project/llvmorg-<tag>/clang-tools-extra/clang-tidy/tool/\n",
-  "# Companion license: third_party/llvm/llvmorg-22.1.2/LICENSE.TXT\n",
+  "# Companion license: third_party/llvm/llvmorg-22.1.2/LICENSE.TXT (upstream LICENSE.TXT at the same tag)\n",
 )
 
 

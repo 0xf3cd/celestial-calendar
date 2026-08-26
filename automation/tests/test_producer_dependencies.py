@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from toolbox.build_npm import PACKAGE_FILES, PACK_ALLOWLIST, WASM_ARTIFACT_FILES
+from toolbox.build_npm import PACKAGE_FILES, PACK_ALLOWLIST, WASM_ARTIFACT_ALLOWLIST, WASM_ARTIFACT_FILES
 from toolbox.release_validation import SOURCE_WORKFLOWS
 
 
@@ -425,13 +425,16 @@ def test_native_producers_install_and_guard_canonical_notices():
 
 
 def test_package_producers_include_the_canonical_notice():
+  license_file = REPO / "LICENSE"
   notice = REPO / "THIRD_PARTY_NOTICES.txt"
   python_cmake = PYTHON_CMAKE.read_text(encoding="utf-8")
 
   assert '"${REPO_ROOT}/THIRD_PARTY_NOTICES.txt"' in python_cmake
   assert PACKAGE_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
   assert {"package.json", *PACKAGE_FILES.values()} == PACK_ALLOWLIST
+  assert WASM_ARTIFACT_FILES[license_file] == "LICENSE"
   assert WASM_ARTIFACT_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
+  assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
 
 
 def test_readme_describes_the_current_npm_and_wasm_members():

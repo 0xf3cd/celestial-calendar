@@ -60,6 +60,12 @@ WASM_ARTIFACT_FILES: Final[dict[Path, str]] = {
   PROJ_ROOT / "LICENSE": "LICENSE",
   PROJ_ROOT / "THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
 }
+WASM_ARTIFACT_ALLOWLIST: Final[set[str]] = {
+  "celestial-jieqi.mjs",
+  "celestial-jieqi.wasm",
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.txt",
+}
 PACK_ALLOWLIST: Final[set[str]] = {
   "package.json",
   "README.md",
@@ -193,7 +199,7 @@ def build(out_dir: Path) -> Path:
   }
   for source, target in artifact_files.items():
     shutil.copy2(source, artifact_dir / target)
-  expected_artifact = set(artifact_files.values())
+  expected_artifact = WASM_ARTIFACT_ALLOWLIST | {tarball.name, "npm-pack.json", "npm-pack.sha256"}
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
     raise RuntimeError("celestial-wasm artifact staging must contain exactly seven top-level files")
 
