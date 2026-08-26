@@ -133,6 +133,8 @@ def test_python_wheel_scripts_and_references_match():
 
 def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  test_command = "python bindings/python/test/wheel/verify_bootstrap_test.py"
+  verify_command = "python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt"
   producers = {
     job_name: job
     for job_name, job in workflow["jobs"].items()
@@ -149,18 +151,22 @@ def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier()
       index for index, step in enumerate(steps) if "python -m cibuildwheel --only" in str(step.get("run", ""))
     )
     test_indices = [
-      index for index, step in enumerate(steps) if step.get("name") == "Test cibuildwheel bootstrap verifier"
+      index
+      for index, step in enumerate(steps)
+      if test_command in str(step.get("run", "")).splitlines()
     ]
-    verify_indices = [index for index, step in enumerate(steps) if step.get("name") == "Verify cibuildwheel bootstrap"]
+    verify_indices = [
+      index
+      for index, step in enumerate(steps)
+      if verify_command in str(step.get("run", "")).splitlines()
+    ]
     if job_name == "manylinux":
       assert test_indices == verify_indices == []
       continue
     assert len(test_indices) == len(verify_indices) == 1
     assert install_index < test_indices[0] < verify_indices[0] < build_index
-    assert steps[test_indices[0]]["run"] == "python bindings/python/test/wheel/verify_bootstrap_test.py"
-    assert steps[verify_indices[0]]["run"] == (
-      "python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt"
-    )
+    assert steps[test_indices[0]]["run"] == test_command
+    assert steps[verify_indices[0]]["run"] == verify_command
 
 
 def test_python_wheel_typing_contract_is_pinned_and_wired():

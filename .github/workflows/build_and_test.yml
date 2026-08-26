@@ -273,9 +273,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
   
-      - name: Install pinned build tools
+      - name: Install LLVM and make
         run: |  
-          # Pinned; see AGENTS.md gotcha 9 (#72, #73).
+          # LLVM is pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
           choco install -y llvm --version=22.1.7
 

@@ -86,8 +86,12 @@ def requirement_pins(path):
 
 def assert_complete_hash_lock(path, python_version):
   text = path.read_text(encoding="utf-8")
+  requirement_lines = [
+    line for line in text.splitlines() if line and not line.startswith("#") and not line[0].isspace()
+  ]
   starts = list(re.finditer(r"(?m)^[A-Za-z0-9][A-Za-z0-9_.-]*==", text))
   assert starts
+  assert all(REQUIREMENT_RE.match(line) for line in requirement_lines)
   assert "uvx --from uv==0.12.5 uv pip compile" in text
   assert "--generate-hashes" in text
   assert "--universal" in text
@@ -170,7 +174,12 @@ def test_producer_lock_files_pin_every_requirement_with_hashes():
 
 
 def test_release_staging_lock_contains_only_requests_closure():
-  assert requirement_pins(REPO / "Requirements-producer.in") == {"requests": "2.34.2"}
+  source_lines = [
+    line
+    for line in (REPO / "Requirements-producer.in").read_text(encoding="utf-8").splitlines()
+    if line and not line.startswith("#")
+  ]
+  assert source_lines == ["requests==2.34.2"]
   assert set(requirement_pins(REPO / "Requirements-producer.txt")) == {
     "certifi",
     "charset-normalizer",
@@ -225,6 +234,7 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
       id="index-url",
     ),
     pytest.param("example==1.0 \\", "example== \\", id="malformed-requirement"),
+    pytest.param("example==1.0 \\", "example>=1.0 \\", id="non-exact-requirement"),
     pytest.param(
       f"    --hash=sha256:{'0' * 64} \\\n    --hash=sha256:{'1' * 64}\n",
       "",
@@ -387,9 +397,10 @@ def test_native_producers_install_no_python_dependencies():
 
 def test_native_producers_install_and_guard_canonical_license():
   cmake = NATIVE_CMAKE.read_text(encoding="utf-8")
+  cmake_lines = {line.strip() for line in cmake.splitlines() if not line.lstrip().startswith("#")}
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
 
-  assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)' in cmake
+  assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)' in cmake_lines
   assert '[ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
   assert '[ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
   assert 'if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }' in workflow
