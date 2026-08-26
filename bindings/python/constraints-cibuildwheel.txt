@@ -19,5 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
+# Linux copies only this file into its container; mount the nested lock before enabling CIBW_TEST_COMMAND.
 -c requirements-cibuildwheel.txt
 pip==26.2

@@ -114,9 +114,10 @@ bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.
 `build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer. The release
 workflow publishes that exact tested tarball to npm; it never repacks from source.
 
-Python wheels likewise use their independent package path: install the exact pins from
-`bindings/python/pyproject.toml` / `python-wheel.yml`, then run `python -m cibuildwheel --only
-<identifier> bindings/python --output-dir wheelhouse`. The wheel is `py3` but native per platform;
+Python wheels likewise use their independent package path: install the exact host pins from
+`bindings/python/requirements-host.txt`; the before-build hook installs `requirements-build.txt`,
+and `constraints-cibuildwheel.txt` selects the bootstrap pins. Then run `python -m cibuildwheel
+--only <identifier> bindings/python --output-dir wheelhouse`. The wheel is `py3` but native per platform;
 floor and current interpreters must install the same repaired wheel from an unrelated cwd. Do not
 build an sdist. The release workflow publishes the same four CI-tested wheels to PyPI and GitHub
 Release; it never builds another distribution.

@@ -48,12 +48,6 @@ jobs:
           python -m pip install --require-hashes --only-binary :all:
           -r bindings/python/requirements-host.txt
 
-      - name: Test cibuildwheel bootstrap verifier
-        run: python bindings/python/test/wheel/verify_bootstrap_test.py
-
-      - name: Verify cibuildwheel bootstrap
-        run: python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt
-
       - name: Select the pinned manylinux image
         run: |
           if [ "${{ matrix.identifier }}" = "cp311-manylinux_x86_64" ]; then

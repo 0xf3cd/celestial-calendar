@@ -34,13 +34,14 @@ BUILD_WORKFLOW = REPO / ".github" / "workflows" / "build_and_test.yml"
 WHEEL_WORKFLOW = REPO / ".github" / "workflows" / "python-wheel.yml"
 RELEASE_WORKFLOW = REPO / ".github" / "workflows" / "release.yml"
 DOCKERFILE = REPO / "Dockerfile"
+NATIVE_CMAKE = REPO / "src" / "shared_lib" / "CMakeLists.txt"
 CIBW_CONSTRAINTS = REPO / "bindings" / "python" / "constraints-cibuildwheel.txt"
 CIBW_LOCK = REPO / "bindings" / "python" / "requirements-cibuildwheel.txt"
 CIBW_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-cibuildwheel.in"
 BUILD_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-build.in"
 PYPROJECT = REPO / "bindings" / "python" / "pyproject.toml"
 LOCK_INPUTS = {
-  REPO / "Requirements-producer.txt": (REPO / "Requirements.txt", "3.12"),
+  REPO / "Requirements-producer.txt": (REPO / "Requirements-producer.in", "3.12"),
   REPO / "bindings" / "python" / "requirements-host.txt": (
     REPO / "bindings" / "python" / "requirements-host.in",
     "3.14",
@@ -166,6 +167,17 @@ def test_producer_lock_files_pin_every_requirement_with_hashes():
   for lock, (source, python_version) in LOCK_INPUTS.items():
     assert_complete_hash_lock(lock, python_version)
     assert requirement_pins(source).items() <= requirement_pins(lock).items()
+
+
+def test_release_staging_lock_contains_only_requests_closure():
+  assert requirement_pins(REPO / "Requirements-producer.in") == {"requests": "2.34.2"}
+  assert set(requirement_pins(REPO / "Requirements-producer.txt")) == {
+    "certifi",
+    "charset-normalizer",
+    "idna",
+    "requests",
+    "urllib3",
+  }
 
 
 def test_build_lock_input_pins_every_pyproject_backend_requirement():
@@ -366,6 +378,21 @@ def test_native_producers_do_not_run_unlocked_project_setup():
   assert project_lines and build_commands
   assert all("--setup" not in line and "--all" not in line for line in project_lines)
   assert all({"--clean", "--cmake", "--build", "--test"} <= set(line.split()) for line in build_commands)
+
+
+def test_native_producers_install_no_python_dependencies():
+  assert workflow_install_lines(BUILD_WORKFLOW) == []
+  assert pip_install_lines(DOCKERFILE.read_text(encoding="utf-8")) == []
+
+
+def test_native_producers_install_and_guard_canonical_license():
+  cmake = NATIVE_CMAKE.read_text(encoding="utf-8")
+  workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
+
+  assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)' in cmake
+  assert '[ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert '[ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert 'if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }' in workflow
 
 
 @pytest.mark.parametrize(

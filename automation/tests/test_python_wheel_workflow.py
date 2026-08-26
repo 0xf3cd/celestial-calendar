@@ -131,7 +131,7 @@ def test_python_wheel_scripts_and_references_match():
   assert referenced == discovered
 
 
-def test_python_wheel_producers_test_and_run_the_bootstrap_verifier():
+def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   producers = {
     job_name: job
@@ -139,8 +139,8 @@ def test_python_wheel_producers_test_and_run_the_bootstrap_verifier():
     if any("python -m cibuildwheel --only" in str(step.get("run", "")) for step in job["steps"])
   }
 
-  assert producers
-  for job in producers.values():
+  assert set(producers) == {"manylinux", "macos-arm64", "windows-amd64"}
+  for job_name, job in producers.items():
     steps = job["steps"]
     install_index = next(
       index for index, step in enumerate(steps) if "hash-locked wheel host tools" in str(step.get("name", ""))
@@ -152,6 +152,9 @@ def test_python_wheel_producers_test_and_run_the_bootstrap_verifier():
       index for index, step in enumerate(steps) if step.get("name") == "Test cibuildwheel bootstrap verifier"
     ]
     verify_indices = [index for index, step in enumerate(steps) if step.get("name") == "Verify cibuildwheel bootstrap"]
+    if job_name == "manylinux":
+      assert test_indices == verify_indices == []
+      continue
     assert len(test_indices) == len(verify_indices) == 1
     assert install_index < test_indices[0] < verify_indices[0] < build_index
     assert steps[test_indices[0]]["run"] == "python bindings/python/test/wheel/verify_bootstrap_test.py"

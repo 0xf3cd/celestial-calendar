@@ -16,8 +16,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # DEFAULT_SEED in src/util/random.hpp).
 ARG CELESTIAL_TEST_SEED=42
 ENV CELESTIAL_TEST_SEED=${CELESTIAL_TEST_SEED}
-RUN /opt/venv/bin/pip install --require-hashes --only-binary :all: -r Requirements-producer.txt
-
 # The whole suite: `-k integration` was justified by the eight-platform QEMU matrix, retired in
 # 2026-07 for two native runners (#46), and these two legs are CI's only Linux arm64 coverage
 # (#72) -- the macOS leg in build_and_test.yml is arm64 as well, but not Linux.
