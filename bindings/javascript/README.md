@@ -109,3 +109,5 @@ const result = celestial.lunar.fromGregorian("algo3", { year: 2026, month: 8, da
 ## License
 
 GPL-3.0-or-later.
+
+Bundled build inputs retain their own terms in `THIRD_PARTY_NOTICES.txt`.

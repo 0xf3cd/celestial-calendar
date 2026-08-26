@@ -59,6 +59,7 @@ install(TARGETS celestial_calendar
 )
 install(FILES celestial.h DESTINATION include)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../THIRD_PARTY_NOTICES.txt" DESTINATION .)
 
 # #67: compile-check the published C header as pure C (layouts pinned by `_Static_assert`
 # inside). Built as part of the default target, so CI exercises it on every platform.

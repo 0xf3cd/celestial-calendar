@@ -3,3 +3,7 @@ statistics/moon_longitude.ipynb linguist-vendored
 statistics/new_moon.ipynb linguist-vendored
 statistics/lunar_calendar.ipynb linguist-vendored
 LICENSE text eol=lf
+THIRD_PARTY_NOTICES.txt text eol=lf whitespace=-blank-at-eof,-trailing-space
+third_party/emscripten/6.0.6/** text eol=lf whitespace=-blank-at-eof,-trailing-space
+third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space
+src/test/provenance/** text eol=lf

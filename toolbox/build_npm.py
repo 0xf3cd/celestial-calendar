@@ -47,6 +47,7 @@ REPOSITORY: Final[dict[str, str]] = {
 PACKAGE_FILES: Final[dict[Path, str]] = {
   PACKAGE_SOURCE / "README.md": "README.md",
   PROJ_ROOT / "LICENSE": "LICENSE",
+  PROJ_ROOT / "THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
   PACKAGE_SOURCE / "src" / "index.mjs": "index.mjs",
   PACKAGE_SOURCE / "src" / "bindings.mjs": "bindings.mjs",
   PACKAGE_SOURCE / "types" / "index.d.ts": "index.d.ts",
@@ -57,6 +58,7 @@ PACK_ALLOWLIST: Final[set[str]] = {
   "package.json",
   "README.md",
   "LICENSE",
+  "THIRD_PARTY_NOTICES.txt",
   "index.mjs",
   "bindings.mjs",
   "index.d.ts",
@@ -181,6 +183,7 @@ def build(out_dir: Path) -> Path:
     WASM_SOURCE / "celestial-jieqi.mjs",
     WASM_SOURCE / "celestial-jieqi.wasm",
     PROJ_ROOT / "LICENSE",
+    PROJ_ROOT / "THIRD_PARTY_NOTICES.txt",
     tarball,
     out_dir / "npm-pack.json",
     out_dir / "npm-pack.sha256",
@@ -190,12 +193,13 @@ def build(out_dir: Path) -> Path:
     "celestial-jieqi.mjs",
     "celestial-jieqi.wasm",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.txt",
     tarball.name,
     "npm-pack.json",
     "npm-pack.sha256",
   }
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
-    raise RuntimeError("celestial-wasm artifact staging must contain exactly six top-level files")
+    raise RuntimeError("celestial-wasm artifact staging must contain exactly seven top-level files")
 
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")

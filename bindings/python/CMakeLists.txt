@@ -53,7 +53,9 @@ install(
   COMPONENT python
 )
 install(
-  FILES "${REPO_ROOT}/LICENSE"
+  FILES
+    "${REPO_ROOT}/LICENSE"
+    "${REPO_ROOT}/THIRD_PARTY_NOTICES.txt"
   DESTINATION "${SKBUILD_METADATA_DIR}/licenses"
   COMPONENT python
 )

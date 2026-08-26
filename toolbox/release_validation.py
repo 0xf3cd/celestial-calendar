@@ -66,6 +66,8 @@ SOURCE_ARTIFACTS: Final[frozenset[str]] = frozenset(
 )
 README: Final[Path] = Path(__file__).resolve().parents[1] / "README.md"
 ROOT_LICENSE: Final[Path] = Path(__file__).resolve().parents[1] / "LICENSE"
+ROOT_NOTICE: Final[Path] = Path(__file__).resolve().parents[1] / "THIRD_PARTY_NOTICES.txt"
+NOTICE_MEMBER: Final[str] = "THIRD_PARTY_NOTICES.txt"
 RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
   Path(__file__).resolve().parents[1] / "docs" / "RELEASE_NOTES.md",
   Path(__file__).resolve().parents[1] / "docs" / "CHANGELOG.md",
@@ -104,6 +106,19 @@ def _require_license(
     raise RuntimeError(f"LICENSE in {archive_name} does not match the repository LICENSE")
 
 
+def _require_notice(
+  archive: zipfile.ZipFile,
+  member: str,
+  archive_name: str,
+  expected_notice: bytes | None,
+) -> None:
+  notice_members = [name for name in archive.namelist() if PurePosixPath(name).name == NOTICE_MEMBER]
+  if notice_members != [member]:
+    raise RuntimeError(f"Invalid {NOTICE_MEMBER} members in {archive_name}: {notice_members}")
+  if expected_notice is not None and archive.read(member) != expected_notice:
+    raise RuntimeError(f"{NOTICE_MEMBER} in {archive_name} does not match the repository notice")
+
+
 def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: bytes | None) -> None:
   try:
     with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
@@ -116,6 +131,24 @@ def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: by
       source = archive.extractfile(members[0])
       if source is None or (expected_license is not None and source.read() != expected_license):
         raise RuntimeError(f"LICENSE in {tarball_name} does not match the repository LICENSE")
+  except tarfile.TarError as error:
+    raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
+
+
+def _require_npm_notice(tarball: bytes, tarball_name: str, expected_notice: bytes | None) -> None:
+  try:
+    with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
+      members = [
+        member
+        for member in archive.getmembers()
+        if member.isfile() and PurePosixPath(member.name).name == NOTICE_MEMBER
+      ]
+      names = [member.name for member in members]
+      if names != [f"package/{NOTICE_MEMBER}"]:
+        raise RuntimeError(f"Invalid {NOTICE_MEMBER} members in {tarball_name}: {names}")
+      source = archive.extractfile(members[0])
+      if source is None or (expected_notice is not None and source.read() != expected_notice):
+        raise RuntimeError(f"{NOTICE_MEMBER} in {tarball_name} does not match the repository notice")
   except tarfile.TarError as error:
     raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
 
@@ -241,6 +274,7 @@ def validate_wheel_sidecars(
 
   artifacts = {}
   expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+  expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
   for wheel_name in wheels:
     artifact_name = _wheel_artifact(wheel_name, version)
     if artifact_name in artifacts:
@@ -254,6 +288,12 @@ def validate_wheel_sidecars(
             f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
             wheel_name,
             expected_license,
+          )
+          _require_notice(
+            archive,
+            f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
+            wheel_name,
+            expected_notice,
           )
       except zipfile.BadZipFile as error:
         raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
@@ -309,10 +349,13 @@ def npm_archive_payload(
       }
       if license_validation is not LicenseValidation.LEGACY:
         expected.add("LICENSE")
+        expected.add(NOTICE_MEMBER)
       _require_members(archive, expected, archive_path.name)
       expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+      expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
       if license_validation is not LicenseValidation.LEGACY:
         _require_license(archive, "LICENSE", archive_path.name, expected_license)
+        _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
 
       tarball = archive.read(tarball_name)
       digest = hashlib.sha256(tarball).hexdigest()
@@ -321,6 +364,7 @@ def npm_archive_payload(
         raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}")
       if license_validation is not LicenseValidation.LEGACY:
         _require_npm_license(tarball, tarball_name, expected_license)
+        _require_npm_notice(tarball, tarball_name, expected_notice)
       return {
         tarball_name: tarball,
         "npm-pack.json": archive.read("npm-pack.json"),
@@ -353,6 +397,7 @@ def _native_layout(
   fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
   if license_validation is not LicenseValidation.LEGACY:
     fixed.add("LICENSE")
+    fixed.add(NOTICE_MEMBER)
   if artifact_name in {"linux_amd64", "linux_arm64"}:
     runtime_members = {
       "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
@@ -387,7 +432,9 @@ def validate_native_archive(
       _require_members(archive, expected, archive_path.name)
       if license_validation is not LicenseValidation.LEGACY:
         expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+        expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
         _require_license(archive, "LICENSE", archive_path.name, expected_license)
+        _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")

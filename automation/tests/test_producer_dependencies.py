@@ -401,16 +401,25 @@ def test_native_producers_install_no_python_dependencies():
   assert pip_install_lines(DOCKERFILE.read_text(encoding="utf-8")) == []
 
 
-def test_native_producers_install_and_guard_canonical_license():
+def test_native_producers_install_and_guard_canonical_notices():
   cmake = NATIVE_CMAKE.read_text(encoding="utf-8")
   cmake = re.sub(r"#\[(=*)\[.*?\]\1\]", "", cmake, flags=re.DOTALL)
   cmake_lines = {line.strip() for line in cmake.splitlines() if not line.lstrip().startswith("#")}
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
 
   assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)' in cmake_lines
+  assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../THIRD_PARTY_NOTICES.txt" DESTINATION .)' in cmake_lines
   assert '[ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert '[ -f "$DEST_DIR/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }' in workflow
   assert '[ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert (
+    '[ -f "./macos_arm64/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }' in workflow
+  )
   assert 'if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }' in workflow
+  assert (
+    'if (!(Test-Path "$destDir/THIRD_PARTY_NOTICES.txt")) '
+    '{ Write-Output "missing THIRD_PARTY_NOTICES.txt"; $ok = $false }' in workflow
+  )
 
 
 @pytest.mark.parametrize(
