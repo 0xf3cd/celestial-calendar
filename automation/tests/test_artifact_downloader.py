@@ -46,7 +46,7 @@ from toolbox.artifact_downloader import (
   validate_artifact_run,
   write_source_manifest,
 )
-from toolbox.release_validation import SOURCE_SPECS
+from toolbox.release_validation import LicenseValidation, SOURCE_SPECS
 
 
 PROJECT_VERSION = project_version()
@@ -542,9 +542,10 @@ def test_release_collector_validates_archives_before_python_flatten(
     downloaded_paths.extend(paths)
     return paths
 
-  def validate(paths, version):
+  def validate(paths, version, license_validation):
     order.append("validate")
     assert version == PROJECT_VERSION
+    assert license_validation is LicenseValidation.REPOSITORY
     assert {path.stem for path in paths} == set().union(
       *(expected for _field, _name, expected in SOURCE_SPECS)
     )

@@ -1,5 +1,6 @@
 # Dependencies of the build/test automation (`project.py`, `automation/`, `toolbox/`).
-# The CI jobs and the Dockerfile install this file alone, so keep it minimal.
+# Release staging has a separate minimal closure in `Requirements-producer.txt`; each generated
+# lock records its regeneration command in its header.
 # Linters are installed separately (README section 4); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
 #

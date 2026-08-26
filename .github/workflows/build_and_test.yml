@@ -141,6 +141,7 @@ jobs:
           [ -L "$DEST_DIR/lib/libcelestial_calendar.so.${SOVERSION}" ] || { echo "missing symlink lib/libcelestial_calendar.so.${SOVERSION}"; ok=0; }
           [ -L "$DEST_DIR/lib/libcelestial_calendar.so" ] || { echo "missing symlink lib/libcelestial_calendar.so"; ok=0; }
           [ -f "$DEST_DIR/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
+          [ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
           [ "$ok" -eq 1 ] || exit 1
 
           # Copy the build info JSON files to the destination directory
@@ -190,11 +191,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install Python Dependencies
-      run: |  
-        python3 -m pip install --upgrade pip  
-        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
-
     - name: Build and Test
       env:
         CXX: clang++
@@ -202,7 +198,7 @@ jobs:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
       run: |
         chmod +x project.py
-        ./project.py --setup --clean --cmake --cores all --build --test -v 1
+        ./project.py --clean --cmake --cores all --build --test -v 1
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
@@ -233,6 +229,7 @@ jobs:
         [ -L "./macos_arm64/lib/libcelestial_calendar.${SOVERSION}.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.${SOVERSION}.dylib"; ok=0; }
         [ -L "./macos_arm64/lib/libcelestial_calendar.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.dylib"; ok=0; }
         [ -f "./macos_arm64/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
+        [ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
         [ "$ok" -eq 1 ] || exit 1
 
         # Pack the "build_info.json" to the "macos_arm64" folder
@@ -276,12 +273,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
   
-      - name: Install Dependencies
+      - name: Install LLVM and make
         run: |  
-          python3 -m pip install --upgrade pip  
-          if (Test-Path "Requirements.txt") { python3 -m pip install -r "Requirements.txt" }
-
-          # Pinned; see AGENTS.md gotcha 9 (#72, #73).
+          # LLVM is pinned; see AGENTS.md gotcha 9 (#72, #73).
           choco install -y make
           choco install -y llvm --version=22.1.7
 
@@ -292,7 +286,7 @@ jobs:
         run: |
           chcp.com 65001
           $env:PYTHONIOENCODING = "utf-8"
-          python3 ./project.py --setup --clean --cmake --cores all --build --test -v 1
+          python3 ./project.py --clean --cmake --cores all --build --test -v 1
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
@@ -316,6 +310,7 @@ jobs:
           if (!(Test-Path "$destDir/bin/celestial_calendar.dll")) { Write-Output "missing bin/celestial_calendar.dll"; $ok = $false }
           if (!(Test-Path "$destDir/lib/celestial_calendar.lib")) { Write-Output "missing lib/celestial_calendar.lib"; $ok = $false }
           if (!(Test-Path "$destDir/include/celestial.h")) { Write-Output "missing include/celestial.h"; $ok = $false }
+          if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }
           if (!$ok) { exit 1 }
 
           # Pack the "build_info.json" to the "windows_x86_64" folder

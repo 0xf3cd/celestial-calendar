@@ -58,6 +58,7 @@ install(TARGETS celestial_calendar
   ARCHIVE DESTINATION lib
 )
 install(FILES celestial.h DESTINATION include)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)
 
 # #67: compile-check the published C header as pure C (layouts pinned by `_Static_assert`
 # inside). Built as part of the default target, so CI exercises it on every platform.

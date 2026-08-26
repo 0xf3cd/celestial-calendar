@@ -65,7 +65,7 @@ def test_python_wheel_workflow_never_publishes():
 
 def test_python_wheel_acceptance_has_one_entry_point():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-  assert workflow["env"]["CIBW_TEST_COMMAND"] == "python {package}/test/run_all.py"
+  assert "CIBW_TEST_COMMAND" not in workflow["env"]
   text = WORKFLOW.read_text(encoding="utf-8").replace("\\", "/")
   acceptance_scripts = {
     path.relative_to(PYTHON_TEST_ROOT).as_posix()
@@ -73,7 +73,55 @@ def test_python_wheel_acceptance_has_one_entry_point():
     for path in (PYTHON_TEST_ROOT / directory).glob("*.py")
   }
   assert all(f"test/{script}" not in text for script in acceptance_scripts)
-  assert text.count("test/run_all.py") == 5
+  assert text.count("test/run_all.py") == 6
+
+
+def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  jobs = workflow["jobs"]
+  producers = {
+    job_name: job
+    for job_name, job in jobs.items()
+    if any("python -m cibuildwheel --only" in str(step.get("run", "")) for step in job["steps"])
+  }
+
+  assert producers
+  floor_consumers = set()
+  for job_name, job in jobs.items():
+    active_python = ""
+    for step in job["steps"]:
+      if str(step.get("uses", "")).startswith("actions/setup-python@"):
+        active_python = str(step.get("with", {}).get("python-version", ""))
+      command = str(step.get("run", "")).replace("\\", "/")
+      if (
+        "pip install --no-deps" in command
+        and "test/run_all.py" in command
+        and ("cp311-cp311" in command or active_python.startswith("3.11"))
+      ):
+        floor_consumers.add(job_name)
+
+  for producer_name in producers:
+    candidates = {producer_name}
+    for job_name, job in jobs.items():
+      needs = job.get("needs", [])
+      if producer_name in ({needs} if isinstance(needs, str) else set(needs)):
+        candidates.add(job_name)
+    assert candidates & floor_consumers
+
+  linux = next(step for step in jobs["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11")
+  macos = next(
+    step for step in jobs["macos-14-floor"]["steps"] if step.get("name") == "Clean-install and test on macOS 14"
+  )
+  windows = next(
+    step for step in jobs["windows-amd64"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11.9"
+  )
+
+  assert "--network none" in linux["run"]
+  assert "/opt/python/cp311-cp311/bin/python" in linux["run"]
+  for step in (linux, macos, windows):
+    command = step["run"].replace("\\", "/")
+    assert "pip install --no-deps" in command
+    assert "test/run_all.py" in command
 
 
 def test_python_wheel_scripts_and_references_match():
@@ -83,30 +131,82 @@ def test_python_wheel_scripts_and_references_match():
   assert referenced == discovered
 
 
+def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  test_script = "bindings/python/test/wheel/verify_bootstrap_test.py"
+  verify_script = "bindings/python/test/wheel/verify_bootstrap.py"
+  test_command = f"python {test_script}"
+  verify_command = f"python {verify_script} bindings/python/constraints-cibuildwheel.txt"
+  producers = {
+    job_name: job
+    for job_name, job in workflow["jobs"].items()
+    if any("python -m cibuildwheel --only" in str(step.get("run", "")) for step in job["steps"])
+  }
+
+  assert set(producers) == {"manylinux", "macos-arm64", "windows-amd64"}
+  for job_name, job in producers.items():
+    steps = job["steps"]
+    install_index = next(
+      index for index, step in enumerate(steps) if "hash-locked wheel host tools" in str(step.get("name", ""))
+    )
+    build_index = next(
+      index for index, step in enumerate(steps) if "python -m cibuildwheel --only" in str(step.get("run", ""))
+    )
+    test_indices = [
+      index
+      for index, step in enumerate(steps)
+      if test_script in str(step.get("run", ""))
+    ]
+    verify_indices = [
+      index
+      for index, step in enumerate(steps)
+      if verify_script in str(step.get("run", ""))
+    ]
+    if job_name == "manylinux":
+      assert test_indices == verify_indices == []
+      continue
+    assert len(test_indices) == len(verify_indices) == 1
+    assert install_index < test_indices[0] < verify_indices[0] < build_index
+    assert steps[test_indices[0]]["run"] == test_command
+    assert steps[verify_indices[0]]["run"] == verify_command
+
+
 def test_python_wheel_typing_contract_is_pinned_and_wired():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   step = next(
-    step
-    for step in workflow["jobs"]["manylinux"]["steps"]
-    if step.get("name") == "Verify installed typing contract"
+    step for step in workflow["jobs"]["manylinux"]["steps"] if step.get("name") == "Verify installed typing contract"
   )
   command = step["run"].replace("\\", "/")
   referenced = set(re.findall(r"bindings/python/test/types/([A-Za-z0-9_-]+\.py)", command))
   discovered = {path.name for path in TYPE_TEST_ROOT.glob("*.py")}
 
   assert step["if"] == "matrix.identifier == 'cp311-manylinux_x86_64'"
-  assert "python -m pip install mypy==2.3.0" in command
+  assert (
+    "current-venv/bin/python -m pip install --require-hashes --only-binary :all: "
+    "-r bindings/python/requirements-mypy.txt"
+  ) in command
   assert referenced == discovered == {"consumer.py"}
 
 
 def test_python_wheel_platform_toolchains_are_explicit():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   jobs = workflow["jobs"]
-  floor_python = next(
+  macos_floor_python = next(
     step["with"]["python-version"]
     for step in jobs["macos-14-floor"]["steps"]
     if str(step.get("uses", "")).startswith("actions/setup-python@")
   )
+  windows_steps = jobs["windows-amd64"]["steps"]
+  windows_floor_setup = next(
+    (index, step) for index, step in enumerate(windows_steps) if step.get("name") == "Set up Python 3.11.9"
+  )
+  windows_floor_test = next(
+    index for index, step in enumerate(windows_steps) if step.get("name") == "Test exact wheel on Python 3.11.9"
+  )
 
-  assert floor_python == "3.11.9"
-  assert jobs["windows-amd64"]["env"]["CIBW_ENVIRONMENT_WINDOWS"] == ("CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja")
+  assert macos_floor_python == "3.11.9"
+  assert windows_floor_setup[1]["with"]["python-version"] == "3.11.9"
+  assert windows_floor_setup[0] < windows_floor_test
+  assert workflow["env"]["CIBW_ENVIRONMENT_WINDOWS"] == (
+    "CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:"
+  )

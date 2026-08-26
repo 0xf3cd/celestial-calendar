@@ -30,7 +30,8 @@ import yaml
 import toolbox.release_downloader as release_downloader_module
 
 from automation.github import GitHub
-from toolbox.release_downloader import archive_validation_version
+from toolbox.release_downloader import archive_validation_version, release_license_validation
+from toolbox.release_validation import LicenseValidation
 
 
 RELEASE_WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "release.yml"
@@ -54,6 +55,26 @@ def test_archive_validation_rejects_unknown_tag_shape(tag_name):
     archive_validation_version(tag_name)
 
 
+@pytest.mark.parametrize(
+  ("version", "expected"),
+  [
+    ("0.6.0", LicenseValidation.LEGACY),
+    ("0.6.1", LicenseValidation.LEGACY),
+    ("0.6.2", LicenseValidation.MEMBERS),
+    ("0.7.0", LicenseValidation.MEMBERS),
+    ("1.2.3", LicenseValidation.MEMBERS),
+  ],
+)
+def test_published_legacy_license_contract_is_closed_at_v061(version, expected):
+  assert release_license_validation(version) is expected
+
+
+@pytest.mark.parametrize("version", ["0.7", "latest"])
+def test_license_contract_rejects_unknown_version_shape(version):
+  with pytest.raises(RuntimeError, match="Cannot determine the LICENSE contract"):
+    release_license_validation(version)
+
+
 def run_download(monkeypatch, tmp_path, tag_name, validator=None):
   selected = release(tag_name)
   downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
@@ -61,8 +82,22 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
   for path in downloaded:
     path.write_bytes(b"downloaded")
 
-  def record_validation(paths, version, check_documented_runtime, require_wheels):
-    calls.append((paths, version, check_documented_runtime, require_wheels))
+  def record_validation(
+    paths,
+    version,
+    check_documented_runtime,
+    require_wheels,
+    license_validation,
+  ):
+    calls.append(
+      (
+        paths,
+        version,
+        check_documented_runtime,
+        require_wheels,
+        license_validation,
+      )
+    )
 
   monkeypatch.setattr(
     release_downloader_module,
@@ -85,23 +120,30 @@ def run_download(monkeypatch, tmp_path, tag_name, validator=None):
 def test_v060_release_download_reuses_archive_validation(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v0.6.0")
 
-  assert calls == [(downloaded, "0.6.0", False, True)]
+  assert calls == [(downloaded, "0.6.0", False, True, LicenseValidation.LEGACY)]
 
 
 def test_release_download_validates_against_tag_version(monkeypatch, tmp_path):
   downloaded, calls = run_download(monkeypatch, tmp_path, "v1.2.3")
 
-  assert calls == [(downloaded, "1.2.3", False, True)]
+  assert calls == [(downloaded, "1.2.3", False, True, LicenseValidation.MEMBERS)]
 
 
 def test_release_download_preserves_assets_when_validation_fails(monkeypatch, tmp_path):
   downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
 
-  def reject_archives(paths, version, check_documented_runtime, require_wheels):
+  def reject_archives(
+    paths,
+    version,
+    check_documented_runtime,
+    require_wheels,
+    license_validation,
+  ):
     assert paths == downloaded
     assert version == "0.6.0"
     assert check_documented_runtime is False
     assert require_wheels is True
+    assert license_validation is LicenseValidation.LEGACY
     raise RuntimeError("invalid archive")
 
   with pytest.raises(RuntimeError, match="invalid archive"):
@@ -142,7 +184,7 @@ def test_release_preparation_has_read_only_permissions_and_pinned_context():
   assert setup["with"]["python-version"] == "3.12"
   assert names.index("Install pinned Python dependencies") < names.index("Download exact producer runs")
   install = next(step for step in steps if step.get("name") == "Install pinned Python dependencies")
-  assert install["run"] == "python3 -m pip install -r Requirements.txt"
+  assert install["run"] == "python3 -m pip install --require-hashes --only-binary :all: -r Requirements-producer.txt"
 
 
 def test_release_preparation_validates_ref_and_stages_one_candidate():

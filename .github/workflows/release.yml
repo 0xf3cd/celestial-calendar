@@ -69,7 +69,9 @@ jobs:
             'import os; from toolbox.release_validation import validate_release_document_versions; validate_release_document_versions(os.environ["REF_NAME"])'
 
       - name: Install pinned Python dependencies
-        run: python3 -m pip install -r Requirements.txt
+        run: >-
+          python3 -m pip install --require-hashes --only-binary :all:
+          -r Requirements-producer.txt
 
       - name: Download exact producer runs
         env:

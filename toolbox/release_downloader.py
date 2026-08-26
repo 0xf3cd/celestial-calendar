@@ -27,10 +27,11 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import red_print, yellow_print, green_print
 from automation.github import GitHub
-from toolbox.release_validation import validate_release_archives
+from toolbox.release_validation import LicenseValidation, validate_release_archives
 
 
 STRICT_ARCHIVE_VERSION: Final[tuple[int, int, int]] = (0, 6, 0)
+LEGACY_LICENSE_VERSIONS: Final[frozenset[tuple[int, int, int]]] = frozenset({(0, 6, 0), (0, 6, 1)})
 
 
 def find_release(keyword: Union[str, int]) -> GitHub.Release:
@@ -61,6 +62,15 @@ def archive_validation_version(tag_name: str) -> str | None:
     raise RuntimeError(f"Cannot determine the archive contract from release tag {tag_name!r}")
   components = tuple(int(part) for part in match.groups())
   return ".".join(match.groups()) if components >= STRICT_ARCHIVE_VERSION else None
+
+
+def release_license_validation(version: str) -> LicenseValidation:
+  """Select the LICENSE member contract without binding historical bytes to this checkout."""
+  match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+  if match is None:
+    raise RuntimeError(f"Cannot determine the LICENSE contract from version {version!r}")
+  components = tuple(int(part) for part in match.groups())
+  return LicenseValidation.LEGACY if components in LEGACY_LICENSE_VERSIONS else LicenseValidation.MEMBERS
 
 
 def parse_args() -> argparse.Namespace:
@@ -122,6 +132,7 @@ def main() -> None:
       validation_version,
       check_documented_runtime=False,
       require_wheels=True,
+      license_validation=release_license_validation(validation_version),
     )
   green_print(f"Downloaded {len(downloaded_assets)} assets to {args.save_to}")
 

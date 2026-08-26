@@ -180,6 +180,7 @@ def build(out_dir: Path) -> Path:
   for source in [
     WASM_SOURCE / "celestial-jieqi.mjs",
     WASM_SOURCE / "celestial-jieqi.wasm",
+    PROJ_ROOT / "LICENSE",
     tarball,
     out_dir / "npm-pack.json",
     out_dir / "npm-pack.sha256",
@@ -188,12 +189,13 @@ def build(out_dir: Path) -> Path:
   expected_artifact = {
     "celestial-jieqi.mjs",
     "celestial-jieqi.wasm",
+    "LICENSE",
     tarball.name,
     "npm-pack.json",
     "npm-pack.sha256",
   }
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
-    raise RuntimeError("celestial-wasm artifact staging must contain exactly five top-level files")
+    raise RuntimeError("celestial-wasm artifact staging must contain exactly six top-level files")
 
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")
