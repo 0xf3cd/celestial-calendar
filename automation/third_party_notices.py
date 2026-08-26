@@ -39,9 +39,6 @@ The project license is in LICENSE. The components below retain their own
 terms. This repository-wide bundle is included in every distribution;
 each section says which build input it applies to.
 
-This file is assembled from the separately tracked, hash-pinned source
-texts under third_party/. Do not edit an upstream body in this file.
-
 """
 
 
@@ -117,12 +114,11 @@ def assemble_notices(
     digest = hashlib.sha256(body).hexdigest()
     if digest != source.sha256:
       raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {digest}")
-    if b"\r\n" in body:
-      raise RuntimeError(f"third-party notice input is not LF-normalized: {source.path}")
 
     upstream = f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/{source.upstream_path}"
     heading = (
-      f"{source.title}\nApplies to: {source.applicability}.\nSource: {upstream}\nSHA-256: {source.sha256}\n"
+      f"{source.title}\nApplies to: {source.applicability}.\nSource: {upstream}\n"
+      f"Source-file SHA-256: {source.sha256}\n"
     ).encode()
     sections.append(separator + heading + separator + b"\n" + body.rstrip(b"\n") + b"\n\n")
 

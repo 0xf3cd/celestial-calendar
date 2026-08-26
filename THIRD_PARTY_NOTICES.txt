@@ -4,14 +4,11 @@ The project license is in LICENSE. The components below retain their own
 terms. This repository-wide bundle is included in every distribution;
 each section says which build input it applies to.
 
-This file is assembled from the separately tracked, hash-pinned source
-texts under third_party/. Do not edit an upstream body in this file.
-
 ==============================================================================
 Emscripten 6.0.6 — LICENSE
 Applies to: the Emscripten 6.0.6 WebAssembly build and generated JavaScript glue.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/LICENSE
-SHA-256: 620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86
+Source-file SHA-256: 620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86
 ==============================================================================
 
 Emscripten is available under 2 licenses, the MIT license and the
@@ -120,7 +117,7 @@ flag will run closure compiler from third_party/).
 musl — COPYRIGHT
 Applies to: the musl C library supplied by the Emscripten 6.0.6 WebAssembly build.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/system/lib/libc/musl/COPYRIGHT
-SHA-256: b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b
+Source-file SHA-256: b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b
 ==============================================================================
 
 musl as a whole is licensed under the following standard MIT license:
@@ -321,7 +318,7 @@ obstacle to adoption, that text has been removed.
 libc++ — LICENSE.TXT
 Applies to: the libc++ library supplied by the Emscripten 6.0.6 WebAssembly build.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/system/lib/libcxx/LICENSE.TXT
-SHA-256: 539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b
+Source-file SHA-256: 539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b
 ==============================================================================
 
 ==============================================================================
@@ -640,7 +637,7 @@ THE SOFTWARE.
 libc++abi — LICENSE.TXT
 Applies to: the libc++abi library supplied by the Emscripten 6.0.6 WebAssembly build.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/system/lib/libcxxabi/LICENSE.TXT
-SHA-256: e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c
+Source-file SHA-256: e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c
 ==============================================================================
 
 ==============================================================================
@@ -959,7 +956,7 @@ THE SOFTWARE.
 libunwind — LICENSE.TXT
 Applies to: the libunwind support supplied by the Emscripten 6.0.6 WebAssembly build.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/system/lib/libunwind/LICENSE.TXT
-SHA-256: b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d
+Source-file SHA-256: b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d
 ==============================================================================
 
 ==============================================================================
@@ -1278,7 +1275,7 @@ THE SOFTWARE.
 compiler-rt — LICENSE.TXT
 Applies to: the compiler-rt builtins supplied by the Emscripten 6.0.6 WebAssembly build.
 Source: https://github.com/emscripten-core/emscripten/blob/ce75e06884093bcefb86a6b8fd56a5d62a4cc245/system/lib/compiler-rt/LICENSE.TXT
-SHA-256: 1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d
+Source-file SHA-256: 1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d
 ==============================================================================
 
 ==============================================================================
