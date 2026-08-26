@@ -431,17 +431,22 @@ def test_package_producers_include_the_canonical_notice():
 
   assert '"${REPO_ROOT}/THIRD_PARTY_NOTICES.txt"' in python_cmake
   assert PACKAGE_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
+  assert len(PACKAGE_FILES) == len(set(PACKAGE_FILES.values()))
   assert {"package.json", *PACKAGE_FILES.values()} == PACK_ALLOWLIST
   assert WASM_ARTIFACT_FILES[license_file] == "LICENSE"
   assert WASM_ARTIFACT_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
+  assert len(WASM_ARTIFACT_FILES) == len(set(WASM_ARTIFACT_FILES.values()))
   assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
 
 
 def test_readme_describes_the_current_npm_and_wasm_members():
   readme = (REPO / "README.md").read_text(encoding="utf-8")
+  wasm_section = readme.split("## 6.", maxsplit=1)[1].split("## 7.", maxsplit=1)[0]
 
-  assert "exact nine-file npm tarball" in readme
-  assert "raw `.mjs/.wasm` pair, `LICENSE`, `THIRD_PARTY_NOTICES.txt`" in readme
+  assert f"exact {len(PACK_ALLOWLIST)}-file npm tarball" in wasm_section
+  assert f"contains exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3} top-level files" in wasm_section
+  assert all(f"`{member}`" in wasm_section for member in WASM_ARTIFACT_ALLOWLIST)
+  assert "the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`" in wasm_section
 
 
 @pytest.mark.parametrize(

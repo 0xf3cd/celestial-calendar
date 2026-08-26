@@ -53,7 +53,7 @@ SOVERSION = f"{MAJOR}.{MINOR}" if MAJOR == "0" else MAJOR
 TARBALL = f"0xf3cd-celestial-{VERSION}.tgz"
 LICENSE_BYTES = (Path(__file__).parents[2] / "LICENSE").read_bytes()
 NOTICE_BYTES = (Path(__file__).parents[2] / "THIRD_PARTY_NOTICES.txt").read_bytes()
-LICENSE_MUTATIONS = ("missing", "changed", "duplicate", "extra")
+LICENSE_MUTATIONS = ("missing", "changed", "duplicate", "renamed", "extra")
 NOTICE_MUTATIONS = LICENSE_MUTATIONS
 NATIVE_MEMBERS = {
   "linux_amd64.zip": [
@@ -135,6 +135,8 @@ def mutate_member(members, basename, mutation):
     return [*members[:member_index], (name, b"changed member"), *members[member_index + 1 :]]
   if mutation == "duplicate":
     return [*members, (name, content)]
+  if mutation == "renamed":
+    return [*members[:member_index], (f"renamed/{name}", content), *members[member_index + 1 :]]
   if mutation == "extra":
     return [*members, (f"extra/{basename}", content)]
   raise AssertionError(f"unknown {basename} mutation: {mutation}")

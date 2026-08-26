@@ -201,7 +201,7 @@ def build(out_dir: Path) -> Path:
     shutil.copy2(source, artifact_dir / target)
   expected_artifact = WASM_ARTIFACT_ALLOWLIST | {tarball.name, "npm-pack.json", "npm-pack.sha256"}
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
-    raise RuntimeError("celestial-wasm artifact staging must contain exactly seven top-level files")
+    raise RuntimeError(f"celestial-wasm artifact staging must contain exactly {len(expected_artifact)} top-level files")
 
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")
