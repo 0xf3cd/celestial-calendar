@@ -133,8 +133,10 @@ def test_python_wheel_scripts_and_references_match():
 
 def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-  test_command = "python bindings/python/test/wheel/verify_bootstrap_test.py"
-  verify_command = "python bindings/python/test/wheel/verify_bootstrap.py bindings/python/constraints-cibuildwheel.txt"
+  test_script = "bindings/python/test/wheel/verify_bootstrap_test.py"
+  verify_script = "bindings/python/test/wheel/verify_bootstrap.py"
+  test_command = f"python {test_script}"
+  verify_command = f"python {verify_script} bindings/python/constraints-cibuildwheel.txt"
   producers = {
     job_name: job
     for job_name, job in workflow["jobs"].items()
@@ -153,12 +155,12 @@ def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier()
     test_indices = [
       index
       for index, step in enumerate(steps)
-      if test_command in str(step.get("run", "")).splitlines()
+      if test_script in str(step.get("run", ""))
     ]
     verify_indices = [
       index
       for index, step in enumerate(steps)
-      if verify_command in str(step.get("run", "")).splitlines()
+      if verify_script in str(step.get("run", ""))
     ]
     if job_name == "manylinux":
       assert test_indices == verify_indices == []

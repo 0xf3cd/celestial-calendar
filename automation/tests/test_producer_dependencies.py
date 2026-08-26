@@ -79,9 +79,15 @@ JOB_CIBW_KEYS = {
 def requirement_pins(path):
   return {
     match.group(1).lower().replace("_", "-"): match.group(2)
-    for line in path.read_text(encoding="utf-8").splitlines()
+    for line in source_requirements(path)
     if (match := REQUIREMENT_RE.match(line))
   }
+
+
+def source_requirements(path):
+  return [
+    line for line in path.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
+  ]
 
 
 def assert_complete_hash_lock(path, python_version):
@@ -169,17 +175,13 @@ def release_candidate_install_lines(path):
 
 def test_producer_lock_files_pin_every_requirement_with_hashes():
   for lock, (source, python_version) in LOCK_INPUTS.items():
+    assert all(REQUIREMENT_RE.match(line) for line in source_requirements(source))
     assert_complete_hash_lock(lock, python_version)
     assert requirement_pins(source).items() <= requirement_pins(lock).items()
 
 
 def test_release_staging_lock_contains_only_requests_closure():
-  source_lines = [
-    line
-    for line in (REPO / "Requirements-producer.in").read_text(encoding="utf-8").splitlines()
-    if line and not line.startswith("#")
-  ]
-  assert source_lines == ["requests==2.34.2"]
+  assert source_requirements(REPO / "Requirements-producer.in") == ["requests==2.34.2"]
   assert set(requirement_pins(REPO / "Requirements-producer.txt")) == {
     "certifi",
     "charset-normalizer",
@@ -234,7 +236,11 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
       id="index-url",
     ),
     pytest.param("example==1.0 \\", "example== \\", id="malformed-requirement"),
-    pytest.param("example==1.0 \\", "example>=1.0 \\", id="non-exact-requirement"),
+    pytest.param(
+      "    # via source.in\n",
+      "    # via source.in\nextra>=1.0\n",
+      id="non-exact-requirement",
+    ),
     pytest.param(
       f"    --hash=sha256:{'0' * 64} \\\n    --hash=sha256:{'1' * 64}\n",
       "",
@@ -397,6 +403,7 @@ def test_native_producers_install_no_python_dependencies():
 
 def test_native_producers_install_and_guard_canonical_license():
   cmake = NATIVE_CMAKE.read_text(encoding="utf-8")
+  cmake = re.sub(r"#\[(=*)\[.*?\]\1\]", "", cmake, flags=re.DOTALL)
   cmake_lines = {line.strip() for line in cmake.splitlines() if not line.lstrip().startswith("#")}
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
 
