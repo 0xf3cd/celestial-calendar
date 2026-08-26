@@ -431,10 +431,10 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 - `Closes #N` must be verified via the API (`closingIssuesReferences`) after merge —
   backticks in a squash body can kill the keyword. Merge runs through the GitHub merge
   API with a controlled squash body, not the UI button.
-- Repo merge settings: squash merge; `squash_merge_commit_message = COMMIT_MESSAGES` —
-  the default squash body is the **concatenated commit messages**, the PR body does not
-  participate. After merging, read back `git log -1 --format='%b' origin/main` to verify
-  what actually landed.
+- Repo merge settings: squash merge; `squash_merge_commit_message = PR_BODY` — the
+  default squash body is the PR body. The controlled merge still supplies that body
+  explicitly instead of relying on the default. After merging, read back
+  `git log -1 --format='%b' origin/main` to verify what actually landed.
 - On the author's workstations `commit.gpgsign=true` is set machine-globally with a
   hardware key: there, a bare local `git commit` from an agent pops pinentry in the
   user's terminal and hangs the session — commit server-signed through the GitHub API
