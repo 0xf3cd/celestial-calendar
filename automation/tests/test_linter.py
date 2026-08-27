@@ -20,7 +20,9 @@ from automation.utils import ProcReturn
   [
     ([0, 0], 2, 0),
     ([1], 1, 1),
+    ([2], 1, 2),
     ([0, 1], 2, 1),
+    ([0, 2], 2, 2),
   ],
 )
 def test_run_ruff_checks_lint_and_format(monkeypatch, tmp_path, retcodes, expected_commands, expected_result):
