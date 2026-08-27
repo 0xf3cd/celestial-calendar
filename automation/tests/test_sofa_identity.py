@@ -68,6 +68,40 @@ def test_sofa_inputs_and_repository_tables_are_pinned():
   assert verify_sofa_identities() == IdentityCounts(28, 120, 106, 63, 12)
 
 
+def test_sofa_derived_work_markings_are_pinned():
+  required_markings = {
+    Path("src/astro/leap_second.hpp"): (
+      "These 28 post-1972 rows are unchanged from SOFA's user-replaceable `iauDat` table",
+      "pre-1972 drift rows and routine body are not used",
+      "This project is not SOFA software",
+      "is not endorsed by SOFA",
+    ),
+    Path("src/astro/elp2000_82b.hpp"): (
+      "These are the truncated lunar tables used by SOFA issue 2023-10-11 `moon98.c`",
+      "angular amplitudes scaled by 1e6 to integer microdegrees",
+      "They are not the full ELP2000-82B model",
+      "This project is not SOFA software and is not endorsed by SOFA",
+    ),
+    Path("src/astro/earth.hpp"): (
+      "This 63-row IAU 1980 truncation is derived from SOFA issue 2023-10-11 `nut80.c`",
+      "terms with |longitude constant| >= 3",
+      "permute (l,l',F,D,Om) to (D,M,M',F,Om)",
+      "obliquity constants with magnitude below 3",
+      "repository's original table order",
+      "The complete 106-row IAU 1980 table is unchanged from SOFA issue 2023-10-11 `nut80.c`",
+      "with arguments reordered from (l,l',F,D,Om) to (D,M,M',F,Om)",
+      "software and is not endorsed by SOFA",
+    ),
+  }
+
+  for path, markings in required_markings.items():
+    source = " ".join(
+      line.strip().removeprefix("//").strip() for line in (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
+    )
+    for marking in markings:
+      assert marking in source
+
+
 @pytest.mark.parametrize("mutation", ["leap", "lunar", "iau1980", "meeus-order"])
 def test_sofa_identity_mutations_fail(tmp_path, mutation):
   sofa_root = materialize_inputs(tmp_path)

@@ -59,9 +59,12 @@ def test_run_clang_tidy_matches_llvmorg_22_1_2_outside_the_local_pin():
 
 
 def test_canonical_notice_is_the_pinned_deterministic_assembly():
-  assert ROOT_NOTICE.read_bytes() == assemble_notices()
-  assert hashlib.sha256(ROOT_NOTICE.read_bytes()).hexdigest() == CANONICAL_NOTICE_SHA256
+  notice = ROOT_NOTICE.read_bytes()
+  assert notice == assemble_notices()
+  assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
   assert len(NOTICE_SOURCES) == 7
+  for marking in NOTICE_SOURCES[-1].marking:
+    assert marking.encode() in notice
   assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-1].marking[1]
   assert "user-replaceable DAT terms" in NOTICE_SOURCES[-1].marking[-1]
 
@@ -73,7 +76,7 @@ def materialize_inputs(destination: Path) -> None:
     target.write_bytes((REPO_ROOT / source.path).read_bytes())
 
 
-@pytest.mark.parametrize("mutation", ["body", "delimiter", "applicability", "order", "omitted"])
+@pytest.mark.parametrize("mutation", ["body", "delimiter", "applicability", "marking", "order", "omitted"])
 def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation):
   materialize_inputs(tmp_path)
   sources = NOTICE_SOURCES
@@ -88,6 +91,8 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
     separator = b"-" * 78 + b"\n"
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
+  elif mutation == "marking":
+    sources = (*sources[:-1], replace(sources[-1], marking=()))
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:

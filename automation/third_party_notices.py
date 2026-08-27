@@ -28,6 +28,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Sequence
 
+if __package__:
+  from .sofa_identity import SOFA_ARCHIVE_URL
+else:
+  from sofa_identity import SOFA_ARCHIVE_URL
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ROOT_NOTICE: Final[Path] = REPO_ROOT / "THIRD_PARTY_NOTICES.txt"
@@ -109,7 +114,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     title="IAU SOFA issue 2023-10-11 — SOFA Software License",
     applicability="the lunar and nutation data derived from IAU SOFA issue 2023-10-11",
     path=Path("src/test/provenance/sofa/2023-10-11/doc/copyr.lis"),
-    upstream=("https://www.iausofa.org/s/sofa_c-20231011tar.gz (member sofa/20231011/c/doc/copyr.lis)"),
+    upstream=f"{SOFA_ARCHIVE_URL} (member sofa/20231011/c/doc/copyr.lis)",
     sha256="ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994",
     marking=(
       "Derived-work statement: this project uses data derived from software provided by SOFA under license.",
