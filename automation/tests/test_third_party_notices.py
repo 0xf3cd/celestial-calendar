@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "09e119aec9a52888ea9b9a8bc5a9312e5f1c8cdc2fc60fa294881b3bc62f1d67"
+CANONICAL_NOTICE_SHA256 = "7b39a37e8445c806e34ded33765840d66faf76f776f14df08ff4af98cb2934eb"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -59,9 +59,14 @@ def test_run_clang_tidy_matches_llvmorg_22_1_2_outside_the_local_pin():
 
 
 def test_canonical_notice_is_the_pinned_deterministic_assembly():
-  assert ROOT_NOTICE.read_bytes() == assemble_notices()
-  assert hashlib.sha256(ROOT_NOTICE.read_bytes()).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 6
+  notice = ROOT_NOTICE.read_bytes()
+  assert notice == assemble_notices()
+  assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
+  assert len(NOTICE_SOURCES) == 7
+  for marking in NOTICE_SOURCES[-1].marking:
+    assert marking.encode() in notice
+  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-1].marking[1]
+  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-1].marking[-1]
 
 
 def materialize_inputs(destination: Path) -> None:
@@ -71,7 +76,7 @@ def materialize_inputs(destination: Path) -> None:
     target.write_bytes((REPO_ROOT / source.path).read_bytes())
 
 
-@pytest.mark.parametrize("mutation", ["body", "delimiter", "applicability", "order", "omitted"])
+@pytest.mark.parametrize("mutation", ["body", "delimiter", "applicability", "marking", "order", "omitted"])
 def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation):
   materialize_inputs(tmp_path)
   sources = NOTICE_SOURCES
@@ -86,6 +91,8 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
     separator = b"-" * 78 + b"\n"
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
+  elif mutation == "marking":
+    sources = (*sources[:-1], replace(sources[-1], marking=()))
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:

@@ -36,12 +36,10 @@
 
 namespace astro::elp2000_82b::coeff {
 
-// This namespace is mostly used to store the coefficients of the truncated ELP2000-82B model.
-// Ref: Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
-//
-// As indicated in the book, the model is truncated for the sake of simplicity.
-// So the results are not exactly the same as the original ELP2000-82B model.
-// For better accuracy, please refer to Chapront's Lunar Tables and Programs, and the original ELP2000-82B model.
+// These are the truncated lunar tables used by SOFA issue 2023-10-11 `moon98.c`, with its
+// angular amplitudes scaled by 1e6 to integer microdegrees. They are not the full ELP2000-82B
+// model. This project is not SOFA software and is not endorsed by SOFA; the pinned source and
+// exact 120-row transformation are checked by `automation/sofa_identity.py`.
 
 /** @brief Represents a coefficient term in the truncated ELP2000-82B model, used to calculate Longitude and Radius. */
 struct LRCoefficients {

@@ -55,10 +55,10 @@ inline auto diff_ns(
 }
 
 
-TEST(LeapSecond, TableMatchesIERS) {
+TEST(LeapSecond, TableMatchesSofaDat) {
   // Transcription guard for `LEAP_SECOND_TABLE` (#65).
   // Columns: year, month (day is always 1), ΔAT = TAI − UTC in seconds.
-  // Source: IERS Bulletin C, dumped via pyerfa 2.0.1 `erfa.dat` over 1972-2026 (2026-07-28).
+  // Source: vendored SOFA issue 2023-10-11 `dat.c`; IERS Bulletin C remains the update authority.
   struct Row { int32_t y; uint32_t m; double dat; };
   // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<Row> expected {

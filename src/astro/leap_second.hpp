@@ -59,8 +59,11 @@ struct LeapSecondEntry {
  *        Each new entry is one inserted leap second.
  * @details No leap second has been announced since 2017, and CGPM Resolution 4 (2022) decided
  *          to discontinue them by 2035 — past the last entry, ΔAT is held at its final value.
- * @ref IERS Bulletin C; the transcription is pinned by `LeapSecond.TableMatchesIERS`.
+ * @ref SOFA issue 2023-10-11 `dat.c`; IERS Bulletin C remains the leap-update authority.
  */
+// These 28 post-1972 rows are unchanged from SOFA's user-replaceable `iauDat` table; the
+// pre-1972 drift rows and routine body are not used. This project is not SOFA software and
+// is not endorsed by SOFA. `automation/sofa_identity.py` pins the source and transformation.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<LeapSecondEntry, 28> LEAP_SECOND_TABLE {{
   { util::to_ymd(1972, 1, 1), 10.0 },
