@@ -306,7 +306,8 @@ TEST(Earth, NutationMeeus) {
 TEST(Earth, NutationIau1980) {
   using namespace nutation;
 
-  // The following data was collected from running https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
+  // Characterization output from SOFA `iauNut80`; the source is pinned at
+  // `src/test/provenance/sofa/2023-10-11/src/nut80.c`.
   const std::unordered_map<double, std::pair<double, double>> dataset = {
     // JDE                   Δlongitude [rad]         Δobliquity [rad]
     { 2421984.2444770792, {   8.446894530911212e-05,  -1.580994865478172e-05 } },

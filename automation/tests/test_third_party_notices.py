@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "09e119aec9a52888ea9b9a8bc5a9312e5f1c8cdc2fc60fa294881b3bc62f1d67"
+CANONICAL_NOTICE_SHA256 = "afb4263e04fec1a0df3c79cdf150c1e8ec251c7cf9edd546654ccc936e18c46f"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -61,7 +61,7 @@ def test_run_clang_tidy_matches_llvmorg_22_1_2_outside_the_local_pin():
 def test_canonical_notice_is_the_pinned_deterministic_assembly():
   assert ROOT_NOTICE.read_bytes() == assemble_notices()
   assert hashlib.sha256(ROOT_NOTICE.read_bytes()).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 6
+  assert len(NOTICE_SOURCES) == 7
 
 
 def materialize_inputs(destination: Path) -> None:

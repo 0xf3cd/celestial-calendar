@@ -89,8 +89,10 @@ struct NutationCoeffs {
   εCoeffs Δε; // Coefficients for the Earth's nutation in obliquity.
 };
 
-// The following data was collected from Jean Meeus, "Astronomical Algorithms", 2nd ed, Table 22.A in Ch. 22.
-// This table is based on IAU 1980 nutation model, and some terms are omitted.
+// This 63-row IAU 1980 truncation is derived from SOFA issue 2023-10-11 `nut80.c`: retain
+// terms with |longitude constant| >= 3, zero obliquity constants with magnitude below 3,
+// and preserve the existing equal-amplitude row order. This project is not SOFA software
+// and is not endorsed by SOFA; `automation/sofa_identity.py` checks the exact mapping.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
@@ -159,8 +161,9 @@ inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
 }};
 
 
-// The following IAU 1980 Nutation Model data was collected from https://www.iausofa.org/2021_0512_C/sofa/nut80.c.
-// Compared to Meeus's omitted version, this table contains all terms.
+// The complete 106-row IAU 1980 table is unchanged from SOFA issue 2023-10-11 `nut80.c`,
+// with arguments reordered from (l,l',F,D,Om) to (D,M,M',F,Om). This project is not SOFA
+// software and is not endorsed by SOFA; `automation/sofa_identity.py` pins every row.
 inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },

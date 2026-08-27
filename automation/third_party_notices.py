@@ -47,7 +47,7 @@ class NoticeSource:
   title: str
   applicability: str
   path: Path
-  upstream_path: str
+  upstream: str
   sha256: str
 
 
@@ -56,43 +56,60 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     title="Emscripten 6.0.6 — LICENSE",
     applicability="the Emscripten 6.0.6 WebAssembly build and generated JavaScript glue",
     path=Path("third_party/emscripten/6.0.6/emscripten-LICENSE"),
-    upstream_path="LICENSE",
+    upstream=f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/LICENSE",
     sha256="620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
   ),
   NoticeSource(
     title="musl — COPYRIGHT",
     applicability="the musl C library supplied by the Emscripten 6.0.6 WebAssembly build",
     path=Path("third_party/emscripten/6.0.6/musl-COPYRIGHT"),
-    upstream_path="system/lib/libc/musl/COPYRIGHT",
+    upstream=(
+      f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/system/lib/libc/musl/COPYRIGHT"
+    ),
     sha256="b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b",
   ),
   NoticeSource(
     title="libc++ — LICENSE.TXT",
     applicability="the libc++ library supplied by the Emscripten 6.0.6 WebAssembly build",
     path=Path("third_party/emscripten/6.0.6/libcxx-LICENSE.TXT"),
-    upstream_path="system/lib/libcxx/LICENSE.TXT",
+    upstream=(
+      f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/system/lib/libcxx/LICENSE.TXT"
+    ),
     sha256="539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
   ),
   NoticeSource(
     title="libc++abi — LICENSE.TXT",
     applicability="the libc++abi library supplied by the Emscripten 6.0.6 WebAssembly build",
     path=Path("third_party/emscripten/6.0.6/libcxxabi-LICENSE.TXT"),
-    upstream_path="system/lib/libcxxabi/LICENSE.TXT",
+    upstream=(
+      f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/system/lib/libcxxabi/LICENSE.TXT"
+    ),
     sha256="e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
   ),
   NoticeSource(
     title="libunwind — LICENSE.TXT",
     applicability="the libunwind support supplied by the Emscripten 6.0.6 WebAssembly build",
     path=Path("third_party/emscripten/6.0.6/libunwind-LICENSE.TXT"),
-    upstream_path="system/lib/libunwind/LICENSE.TXT",
+    upstream=(
+      f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/system/lib/libunwind/LICENSE.TXT"
+    ),
     sha256="b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
   ),
   NoticeSource(
     title="compiler-rt — LICENSE.TXT",
     applicability="the compiler-rt builtins supplied by the Emscripten 6.0.6 WebAssembly build",
     path=Path("third_party/emscripten/6.0.6/compiler-rt-LICENSE.TXT"),
-    upstream_path="system/lib/compiler-rt/LICENSE.TXT",
+    upstream=(
+      f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/system/lib/compiler-rt/LICENSE.TXT"
+    ),
     sha256="1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+  ),
+  NoticeSource(
+    title="IAU SOFA issue 2023-10-11 — SOFA Software License",
+    applicability="the leap-second, lunar, and nutation data derived from IAU SOFA issue 2023-10-11",
+    path=Path("src/test/provenance/sofa/2023-10-11/doc/copyr.lis"),
+    upstream=("https://www.iausofa.org/s/sofa_c-20231011tar.gz (member sofa/20231011/c/doc/copyr.lis)"),
+    sha256="ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994",
   ),
 )
 
@@ -115,9 +132,8 @@ def assemble_notices(
     if digest != source.sha256:
       raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {digest}")
 
-    upstream = f"https://github.com/emscripten-core/emscripten/blob/{EMSCRIPTEN_REVISION}/{source.upstream_path}"
     heading = (
-      f"{source.title}\nApplies to: {source.applicability}.\nSource: {upstream}\n"
+      f"{source.title}\nApplies to: {source.applicability}.\nSource: {source.upstream}\n"
       f"Source-file SHA-256: {source.sha256}\n"
     ).encode()
     sections.append(separator + heading + separator + b"\n" + body.rstrip(b"\n") + b"\n\n")
