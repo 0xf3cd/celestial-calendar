@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from toolbox.build_npm import PACKAGE_FILES, PACK_ALLOWLIST, WASM_ARTIFACT_ALLOWLIST, WASM_ARTIFACT_FILES
 from toolbox.release_validation import SOURCE_WORKFLOWS
 
 
@@ -35,6 +36,7 @@ WHEEL_WORKFLOW = REPO / ".github" / "workflows" / "python-wheel.yml"
 RELEASE_WORKFLOW = REPO / ".github" / "workflows" / "release.yml"
 DOCKERFILE = REPO / "Dockerfile"
 NATIVE_CMAKE = REPO / "src" / "shared_lib" / "CMakeLists.txt"
+PYTHON_CMAKE = REPO / "bindings" / "python" / "CMakeLists.txt"
 CIBW_CONSTRAINTS = REPO / "bindings" / "python" / "constraints-cibuildwheel.txt"
 CIBW_LOCK = REPO / "bindings" / "python" / "requirements-cibuildwheel.txt"
 CIBW_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-cibuildwheel.in"
@@ -401,16 +403,50 @@ def test_native_producers_install_no_python_dependencies():
   assert pip_install_lines(DOCKERFILE.read_text(encoding="utf-8")) == []
 
 
-def test_native_producers_install_and_guard_canonical_license():
+def test_native_producers_install_and_guard_canonical_notices():
   cmake = NATIVE_CMAKE.read_text(encoding="utf-8")
   cmake = re.sub(r"#\[(=*)\[.*?\]\1\]", "", cmake, flags=re.DOTALL)
   cmake_lines = {line.strip() for line in cmake.splitlines() if not line.lstrip().startswith("#")}
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
 
   assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE" DESTINATION .)' in cmake_lines
+  assert 'install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../THIRD_PARTY_NOTICES.txt" DESTINATION .)' in cmake_lines
   assert '[ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert '[ -f "$DEST_DIR/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }' in workflow
   assert '[ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }' in workflow
+  assert (
+    '[ -f "./macos_arm64/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }' in workflow
+  )
   assert 'if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }' in workflow
+  assert (
+    'if (!(Test-Path "$destDir/THIRD_PARTY_NOTICES.txt")) '
+    '{ Write-Output "missing THIRD_PARTY_NOTICES.txt"; $ok = $false }' in workflow
+  )
+
+
+def test_package_producers_include_the_canonical_notice():
+  license_file = REPO / "LICENSE"
+  notice = REPO / "THIRD_PARTY_NOTICES.txt"
+  python_cmake = PYTHON_CMAKE.read_text(encoding="utf-8")
+
+  assert '"${REPO_ROOT}/THIRD_PARTY_NOTICES.txt"' in python_cmake
+  assert PACKAGE_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
+  assert len(PACKAGE_FILES) == len(set(PACKAGE_FILES.values()))
+  assert {"package.json", *PACKAGE_FILES.values()} == PACK_ALLOWLIST
+  assert WASM_ARTIFACT_FILES[license_file] == "LICENSE"
+  assert WASM_ARTIFACT_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
+  assert len(WASM_ARTIFACT_FILES) == len(set(WASM_ARTIFACT_FILES.values()))
+  assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
+
+
+def test_readme_describes_the_current_npm_and_wasm_members():
+  readme = (REPO / "README.md").read_text(encoding="utf-8")
+  wasm_section = readme.split("## 6.", maxsplit=1)[1].split("## 7.", maxsplit=1)[0]
+
+  assert f"exact {len(PACK_ALLOWLIST)}-file npm tarball" in wasm_section
+  assert f"contains exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3} top-level files" in wasm_section
+  assert all(f"`{member}`" in wasm_section for member in WASM_ARTIFACT_ALLOWLIST)
+  assert "the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`" in wasm_section
 
 
 @pytest.mark.parametrize(

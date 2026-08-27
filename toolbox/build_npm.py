@@ -47,16 +47,30 @@ REPOSITORY: Final[dict[str, str]] = {
 PACKAGE_FILES: Final[dict[Path, str]] = {
   PACKAGE_SOURCE / "README.md": "README.md",
   PROJ_ROOT / "LICENSE": "LICENSE",
+  PROJ_ROOT / "THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
   PACKAGE_SOURCE / "src" / "index.mjs": "index.mjs",
   PACKAGE_SOURCE / "src" / "bindings.mjs": "bindings.mjs",
   PACKAGE_SOURCE / "types" / "index.d.ts": "index.d.ts",
   WASM_SOURCE / "celestial-jieqi.mjs": "celestial-jieqi.mjs",
   WASM_SOURCE / "celestial-jieqi.wasm": "celestial-jieqi.wasm",
 }
+WASM_ARTIFACT_FILES: Final[dict[Path, str]] = {
+  WASM_SOURCE / "celestial-jieqi.mjs": "celestial-jieqi.mjs",
+  WASM_SOURCE / "celestial-jieqi.wasm": "celestial-jieqi.wasm",
+  PROJ_ROOT / "LICENSE": "LICENSE",
+  PROJ_ROOT / "THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
+}
+WASM_ARTIFACT_ALLOWLIST: Final[set[str]] = {
+  "celestial-jieqi.mjs",
+  "celestial-jieqi.wasm",
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.txt",
+}
 PACK_ALLOWLIST: Final[set[str]] = {
   "package.json",
   "README.md",
   "LICENSE",
+  "THIRD_PARTY_NOTICES.txt",
   "index.mjs",
   "bindings.mjs",
   "index.d.ts",
@@ -177,25 +191,17 @@ def build(out_dir: Path) -> Path:
 
   artifact_dir = out_dir / "artifact"
   artifact_dir.mkdir()
-  for source in [
-    WASM_SOURCE / "celestial-jieqi.mjs",
-    WASM_SOURCE / "celestial-jieqi.wasm",
-    PROJ_ROOT / "LICENSE",
-    tarball,
-    out_dir / "npm-pack.json",
-    out_dir / "npm-pack.sha256",
-  ]:
-    shutil.copy2(source, artifact_dir / source.name)
-  expected_artifact = {
-    "celestial-jieqi.mjs",
-    "celestial-jieqi.wasm",
-    "LICENSE",
-    tarball.name,
-    "npm-pack.json",
-    "npm-pack.sha256",
+  artifact_files = {
+    **WASM_ARTIFACT_FILES,
+    tarball: tarball.name,
+    out_dir / "npm-pack.json": "npm-pack.json",
+    out_dir / "npm-pack.sha256": "npm-pack.sha256",
   }
+  for source, target in artifact_files.items():
+    shutil.copy2(source, artifact_dir / target)
+  expected_artifact = WASM_ARTIFACT_ALLOWLIST | {tarball.name, "npm-pack.json", "npm-pack.sha256"}
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
-    raise RuntimeError("celestial-wasm artifact staging must contain exactly six top-level files")
+    raise RuntimeError(f"celestial-wasm artifact staging must contain exactly {len(expected_artifact)} top-level files")
 
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")

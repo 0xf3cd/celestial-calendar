@@ -255,11 +255,12 @@ The `statistics/` directory holds the crawlers that regenerate these datasets an
 
 The module contains all 29 stable exports in `celestial.h`; `@0xf3cd/celestial` wraps them as the `config`,
 `time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces. Raw heap pointers, count/fill protocols, sret layouts,
-and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact eight-file npm tarball
+and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact 9-file npm tarball
 from the generated module and the version in `project.py`.
 
-CI builds the module and package on an independent leg (`wasm.yml`). Its `celestial-wasm` artifact contains the
-raw `.mjs/.wasm` pair, `LICENSE`, the exact npm tarball, `npm-pack.json`, and a SHA-256 sidecar. The release flow publishes
+CI builds the module and package on an independent leg (`wasm.yml`). Its
+`celestial-wasm` artifact contains exactly 7 top-level files: `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `LICENSE`,
+`THIRD_PARTY_NOTICES.txt`, the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`. The release flow publishes
 that tarball to npm without rebuilding it. The same leg reconciles all 29 signatures and 16 layouts, replays the
 389-point native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its
 TypeScript declarations, and runs an Astro/Vite production smoke in Chrome.

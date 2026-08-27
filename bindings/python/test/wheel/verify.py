@@ -79,6 +79,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     f"{dist_info}/METADATA",
     f"{dist_info}/WHEEL",
     f"{dist_info}/licenses/LICENSE",
+    f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt",
     f"{dist_info}/RECORD",
   }
   members = archive.namelist()
@@ -104,6 +105,9 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert set(wheel_metadata.get_all("Tag") or []) == {f"py3-none-{tag}" for tag in platform_tags}
   assert archive.read("celestial_calendar/_version.py").decode() == f'VERSION = "{version}"'
   assert archive.read(f"{dist_info}/licenses/LICENSE") == (REPO / "LICENSE").read_bytes()
+  assert (
+    archive.read(f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt") == (REPO / "THIRD_PARTY_NOTICES.txt").read_bytes()
+  )
   return native_member
 
 

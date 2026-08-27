@@ -142,6 +142,7 @@ jobs:
           [ -L "$DEST_DIR/lib/libcelestial_calendar.so" ] || { echo "missing symlink lib/libcelestial_calendar.so"; ok=0; }
           [ -f "$DEST_DIR/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
           [ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
+          [ -f "$DEST_DIR/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }
           [ "$ok" -eq 1 ] || exit 1
 
           # Copy the build info JSON files to the destination directory
@@ -230,6 +231,7 @@ jobs:
         [ -L "./macos_arm64/lib/libcelestial_calendar.dylib" ] || { echo "missing symlink lib/libcelestial_calendar.dylib"; ok=0; }
         [ -f "./macos_arm64/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
         [ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
+        [ -f "./macos_arm64/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }
         [ "$ok" -eq 1 ] || exit 1
 
         # Pack the "build_info.json" to the "macos_arm64" folder
@@ -311,6 +313,7 @@ jobs:
           if (!(Test-Path "$destDir/lib/celestial_calendar.lib")) { Write-Output "missing lib/celestial_calendar.lib"; $ok = $false }
           if (!(Test-Path "$destDir/include/celestial.h")) { Write-Output "missing include/celestial.h"; $ok = $false }
           if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }
+          if (!(Test-Path "$destDir/THIRD_PARTY_NOTICES.txt")) { Write-Output "missing THIRD_PARTY_NOTICES.txt"; $ok = $false }
           if (!$ok) { exit 1 }
 
           # Pack the "build_info.json" to the "windows_x86_64" folder

@@ -354,8 +354,8 @@ bindings/
    two Linux architectures (x86_64 and arm64); Linux builds in Docker on native runners.
    Do not change compiler or Docker base images without checking matrix impact. The optional
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
-   `python-wheel.yml` legs. The former uploads `celestial-wasm` (raw module + `LICENSE` + exact
-   npm tarball + pack JSON/SHA-256 sidecars); the latter uploads four exact wheels and sidecars;
+   `python-wheel.yml` legs. The former uploads `celestial-wasm` (README §6 records its exact
+   members); the latter uploads four exact wheels and sidecars;
    the release downloader pulls all three build legs' artifacts for the tagged commit. Cutting a
    release is the protected-tag, explicit-run ritual in `docs/RELEASING.md`; it freezes one candidate,
    publishes GitHub Release before npm/PyPI, and verifies registry bytes without rebuilding.

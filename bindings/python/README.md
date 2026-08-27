@@ -78,5 +78,6 @@ result = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, celestial.
 
 公开 API 使用不可变 dataclass 与枚举；时间尺度、年域与错误契约见上面的 API 节。
 
-The project is licensed under GPL-3.0-or-later. Source and issue tracking are at
-<https://github.com/0xf3cd/celestial-calendar>.
+The project is licensed under GPL-3.0-or-later. Third-party components retain their own terms in the
+included `THIRD_PARTY_NOTICES.txt`; each section states where it applies. Source and issue tracking are
+at <https://github.com/0xf3cd/celestial-calendar>.
