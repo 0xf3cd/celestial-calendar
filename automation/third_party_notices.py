@@ -49,6 +49,7 @@ class NoticeSource:
   path: Path
   upstream: str
   sha256: str
+  marking: tuple[str, ...] = ()
 
 
 NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
@@ -106,10 +107,17 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   ),
   NoticeSource(
     title="IAU SOFA issue 2023-10-11 — SOFA Software License",
-    applicability="the leap-second, lunar, and nutation data derived from IAU SOFA issue 2023-10-11",
+    applicability="the lunar and nutation data derived from IAU SOFA issue 2023-10-11",
     path=Path("src/test/provenance/sofa/2023-10-11/doc/copyr.lis"),
     upstream=("https://www.iausofa.org/s/sofa_c-20231011tar.gz (member sofa/20231011/c/doc/copyr.lis)"),
     sha256="ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994",
+    marking=(
+      "Derived-work statement: this project uses data derived from software provided by SOFA under license.",
+      "This project does not itself constitute software provided by or endorsed by SOFA.",
+      "Source comments identify whether each table is truncated or complete and describe any scaling or argument "
+      "reordering applied; project routine names do not use iau or sofa prefixes.",
+      "The SOFA user-replaceable DAT terms for the leap-second derivation remain in the vendored dat.c source file.",
+    ),
   ),
 )
 
@@ -132,10 +140,14 @@ def assemble_notices(
     if digest != source.sha256:
       raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {digest}")
 
-    heading = (
-      f"{source.title}\nApplies to: {source.applicability}.\nSource: {source.upstream}\n"
-      f"Source-file SHA-256: {source.sha256}\n"
-    ).encode()
+    heading_lines = (
+      source.title,
+      f"Applies to: {source.applicability}.",
+      f"Source: {source.upstream}",
+      f"Source-file SHA-256: {source.sha256}",
+      *source.marking,
+    )
+    heading = ("\n".join(heading_lines) + "\n").encode()
     sections.append(separator + heading + separator + b"\n" + body.rstrip(b"\n") + b"\n\n")
 
   return b"".join(sections)

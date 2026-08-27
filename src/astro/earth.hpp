@@ -84,15 +84,16 @@ struct εCoeffs {
 };
 
 struct NutationCoeffs {
-  θCoeffs θ;  // Including D, M, Mp, F, Ω (Meeus's expressions); or, l,l',F,D,Om (IAU 1980's expressions).
+  θCoeffs θ;  // Stored as D, M, Mp, F, Ω; SOFA source arguments are permuted into these slots.
   ψCoeffs Δψ; // Coefficients for the Earth's nutation in longitude.
   εCoeffs Δε; // Coefficients for the Earth's nutation in obliquity.
 };
 
 // This 63-row IAU 1980 truncation is derived from SOFA issue 2023-10-11 `nut80.c`: retain
-// terms with |longitude constant| >= 3, zero obliquity constants with magnitude below 3,
-// and preserve the existing equal-amplitude row order. This project is not SOFA software
-// and is not endorsed by SOFA; `automation/sofa_identity.py` checks the exact mapping.
+// terms with |longitude constant| >= 3, permute (l,l',F,D,Om) to (D,M,M',F,Om), zero
+// obliquity constants with magnitude below 3, and use `MEEUS_SOURCE_INDICES` to retain the
+// repository's original table order. This project is not SOFA software and is not endorsed
+// by SOFA; `automation/sofa_identity.py` checks the exact mapping.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },

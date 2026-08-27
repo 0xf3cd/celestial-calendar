@@ -59,8 +59,8 @@ SOFA_INPUTS: Final[tuple[PinnedInput, ...]] = (
   PinnedInput(Path("doc/copyr.lis"), "ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994"),
 )
 
-# Meeus orders equal-amplitude rows differently from nut80.c. This fixed mapping preserves the
-# repository's summation order while tying every row to its one-based SOFA source row.
+# The Meeus table order differs from nut80.c. This fixed mapping preserves the repository's
+# summation order while tying every row to its one-based SOFA source row.
 MEEUS_SOURCE_INDICES: Final[tuple[int, ...]] = (
   1,
   9,
