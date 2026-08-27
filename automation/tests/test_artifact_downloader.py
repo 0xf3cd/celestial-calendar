@@ -59,19 +59,21 @@ class Response:
 
   def json(self):
     return {
-      "workflow_runs": [{
-        "id": 7,
-        "name": "WASM Build and Golden Check",
-        "run_number": 11,
-        "status": "completed",
-        "conclusion": "success",
-        "event": "workflow_dispatch",
-        "head_sha": "tagged-sha",
-        "workflow_id": 13,
-        "url": "https://example.invalid/run/7",
-        "created_at": "2026-08-15T00:00:00Z",
-        "updated_at": "2026-08-15T00:01:00Z",
-      }],
+      "workflow_runs": [
+        {
+          "id": 7,
+          "name": "WASM Build and Golden Check",
+          "run_number": 11,
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "tagged-sha",
+          "workflow_id": 13,
+          "url": "https://example.invalid/run/7",
+          "created_at": "2026-08-15T00:00:00Z",
+          "updated_at": "2026-08-15T00:01:00Z",
+        }
+      ],
     }
 
 
@@ -257,11 +259,7 @@ def test_native_workflow_artifact_inventory_matches_collector():
   jobs = workflow["jobs"]
   uploaded = []
   for job_name, job in jobs.items():
-    upload_steps = [
-      step
-      for step in job["steps"]
-      if str(step.get("uses", "")).startswith("actions/upload-artifact@")
-    ]
+    upload_steps = [step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/upload-artifact@")]
     if not upload_steps:
       continue
 
@@ -271,8 +269,8 @@ def test_native_workflow_artifact_inventory_matches_collector():
       setup = next(step for step in job["steps"] if step.get("id") == "set-env-vars")
       setup_lines = {line.strip() for line in setup["run"].splitlines()}
       assert 'platform="${{ matrix.platform }}"' in setup_lines
-      assert 'os=$(echo "${platform}" | cut -d \'/\' -f 1)' in setup_lines
-      assert 'arch=$(echo "${platform}" | cut -d \'/\' -f 2- | tr \'/\' \'_\')' in setup_lines
+      assert "os=$(echo \"${platform}\" | cut -d '/' -f 1)" in setup_lines
+      assert "arch=$(echo \"${platform}\" | cut -d '/' -f 2- | tr '/' '_')" in setup_lines
       assert 'echo "OS=${os}" >> $GITHUB_ENV' in setup_lines
       assert 'echo "ARCH=${arch}" >> $GITHUB_ENV' in setup_lines
       commands = [line.strip() for line in pack["run"].splitlines() if line.strip()]
@@ -283,9 +281,7 @@ def test_native_workflow_artifact_inventory_matches_collector():
         'echo "artifact_path=${DEST_DIR}"',
         "} >> $GITHUB_OUTPUT",
       ]
-      artifact_names = [
-        entry["platform"].replace("/", "_") for entry in job["strategy"]["matrix"]["include"]
-      ]
+      artifact_names = [entry["platform"].replace("/", "_") for entry in job["strategy"]["matrix"]["include"]]
     else:
       matrix = job.get("strategy", {}).get("matrix", {})
       assert set(matrix).isdisjoint({"include", "exclude"})
@@ -295,11 +291,7 @@ def test_native_workflow_artifact_inventory_matches_collector():
         if job_name == "windows"
         else r'echo "artifact_name=([a-z0-9_]+)" >> \$GITHUB_OUTPUT'
       )
-      artifact_names = [
-        match.group(1)
-        for line in output_lines
-        if (match := re.fullmatch(pattern, line)) is not None
-      ]
+      artifact_names = [match.group(1) for line in output_lines if (match := re.fullmatch(pattern, line)) is not None]
       assert len(artifact_names) == 1
 
     for upload in upload_steps:
@@ -474,14 +466,8 @@ def test_release_collector_validates_archives_before_python_flatten(
     name: GitHub.Workflow(index, name, "active", "", "", "")
     for index, (_field, name, _expected) in enumerate(SOURCE_SPECS, start=1)
   }
-  run_ids = {
-    field: 100 + index
-    for index, (field, _name, _expected) in enumerate(SOURCE_SPECS, start=1)
-  }
-  artifact_names = {
-    run_ids[field]: expected
-    for field, _name, expected in SOURCE_SPECS
-  }
+  run_ids = {field: 100 + index for index, (field, _name, _expected) in enumerate(SOURCE_SPECS, start=1)}
+  artifact_names = {run_ids[field]: expected for field, _name, expected in SOURCE_SPECS}
   order = []
   selected_runs = []
   validated_downloads = []
@@ -546,9 +532,7 @@ def test_release_collector_validates_archives_before_python_flatten(
     order.append("validate")
     assert version == PROJECT_VERSION
     assert license_validation is LicenseValidation.REPOSITORY
-    assert {path.stem for path in paths} == set().union(
-      *(expected for _field, _name, expected in SOURCE_SPECS)
-    )
+    assert {path.stem for path in paths} == set().union(*(expected for _field, _name, expected in SOURCE_SPECS))
     if validation_error is not None:
       raise validation_error
 
@@ -581,9 +565,7 @@ def test_release_collector_validates_archives_before_python_flatten(
     assert downloaded_paths
     assert all(path.read_bytes() == b"zip" for path in downloaded_paths)
     assert not source_manifest.exists()
-  assert selected_runs == [
-    (workflow, run_ids[field]) for field, workflow, _artifacts in SOURCE_SPECS
-  ]
+  assert selected_runs == [(workflow, run_ids[field]) for field, workflow, _artifacts in SOURCE_SPECS]
   assert Counter(validated_downloads) == Counter(
     artifact for _field, _workflow, artifacts in SOURCE_SPECS for artifact in artifacts
   )
@@ -594,9 +576,7 @@ def python_wheels():
     "celestial-python-manylinux-x86_64": (
       f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl"
     ),
-    "celestial-python-manylinux-aarch64": (
-      f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_28_aarch64.whl"
-    ),
+    "celestial-python-manylinux-aarch64": (f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_28_aarch64.whl"),
     "celestial-python-macos-arm64": f"celestial_calendar-{PROJECT_VERSION}-py3-none-macosx_14_0_arm64.whl",
     "celestial-python-windows-amd64": f"celestial_calendar-{PROJECT_VERSION}-py3-none-win_amd64.whl",
   }

@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -21,7 +21,7 @@ from .utils import run_cmd, yellow_print, red_print, green_print
 
 
 def run_ruff() -> int:
-  """Run ruff on the project source code."""  
+  """Run ruff on the project source code."""
   print("#" * 60)
 
   if not check_tool(Tool("ruff")):
@@ -29,16 +29,19 @@ def run_ruff() -> int:
     yellow_print("Install ruff by `pip install ruff`")
     return 1
 
-  yellow_print("Running ruff...")
+  yellow_print("Running ruff lint and format checks...")
   proj_root = paths.proj_root()
-  ret = run_cmd(["ruff", "check", str(proj_root)])
+  for command in (
+    ["ruff", "check", str(proj_root)],
+    ["ruff", "format", "--check", str(proj_root)],
+  ):
+    ret = run_cmd(command)
+    if ret.retcode != 0:
+      red_print("ruff failed")
+      return ret.retcode
 
-  if ret.retcode == 0:
-    green_print("ruff passed")
-  else:
-    red_print("ruff failed")
-
-  return ret.retcode
+  green_print("ruff passed")
+  return 0
 
 
 def run_clang_tidy() -> int:
@@ -65,9 +68,10 @@ def run_clang_tidy() -> int:
 
   yellow_print("Running clang-tidy...")
   # Ensure non-0 exit code on any warning or error
-  ret = run_cmd(["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/",
-                 "-clang-tidy-binary", binary],
-                cwd=str(paths.proj_root()))
+  ret = run_cmd(
+    ["python3", "run-clang-tidy.py", "-p", str(build_dir), "-header-filter=src/", "-clang-tidy-binary", binary],
+    cwd=str(paths.proj_root()),
+  )
 
   if ret.retcode == 0:
     green_print("clang-tidy passed")

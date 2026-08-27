@@ -77,8 +77,7 @@ def check_self_contained() -> int:
     ret = run_cmd(
       # -Wno-pragma-once-outside-header: compiling a header as the main file is the
       # whole point here, so that warning is an artefact of the check, not a finding.
-      [cxx, "-std=c++23", "-fsyntax-only", "-Wno-pragma-once-outside-header",
-       *includes, "-x", "c++", str(header)],
+      [cxx, "-std=c++23", "-fsyntax-only", "-Wno-pragma-once-outside-header", *includes, "-x", "c++", str(header)],
       print_cmd=False,
       print_stdout=False,
       print_stderr=False,

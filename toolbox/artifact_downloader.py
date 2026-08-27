@@ -6,12 +6,12 @@
 #
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -44,19 +44,17 @@ from toolbox.release_validation import (
   validate_wheel_platform,
 )
 
+
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
   """Find the workflow to download artifacts from."""
-  multi_platform_workflow = list(filter(
-    lambda wf: wf.name == workflow_name, 
-    GitHub.list_workflows()
-  ))
+  multi_platform_workflow = list(filter(lambda wf: wf.name == workflow_name, GitHub.list_workflows()))
 
   if len(multi_platform_workflow) != 1:
     red_print(f'Cannot find the workflow "{workflow_name}"')
     red_print(f"Found {len(multi_platform_workflow)} workflows:")
     red_print(pprint.pformat(multi_platform_workflow))
     raise RuntimeError(f'Cannot find the workflow "{workflow_name}"')
-  
+
   return multi_platform_workflow[0]
 
 
@@ -69,8 +67,7 @@ def release_commit_sha() -> str:
   repo root -- the caller's cwd may not be a repo at all.
   """
   try:
-    ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
-                         cwd=Path(__file__).parent.parent)
+    ret = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=Path(__file__).parent.parent)
   except FileNotFoundError:  # no git binary at all -- fall through to GITHUB_SHA
     ret = None
   if ret is not None and ret.returncode == 0:
@@ -92,8 +89,9 @@ def find_artifact_run(workflow: GitHub.Workflow, sha: str) -> GitHub.Run:
   for run in runs:
     if run.event == "workflow_dispatch" and run.head_sha == sha and run.conclusion == "success":
       return run
-  red_print(f'No successful dispatched "{workflow.name}" run found for commit {sha} '
-            f"(scanned {pages} page(s), {len(runs)} runs)")
+  red_print(
+    f'No successful dispatched "{workflow.name}" run found for commit {sha} (scanned {pages} page(s), {len(runs)} runs)'
+  )
   raise RuntimeError(f'No successful dispatched "{workflow.name}" run for commit {sha}')
 
 
@@ -110,9 +108,7 @@ def validate_artifact_run(workflow: GitHub.Workflow, run_id: int, sha: str) -> G
   if run.status != "completed" or run.conclusion != "success":
     mismatches.append(f"status={run.status!r}, conclusion={run.conclusion!r}")
   if mismatches:
-    raise RuntimeError(
-      f'Run {run_id} is not a valid "{workflow.name}" release source: {", ".join(mismatches)}'
-    )
+    raise RuntimeError(f'Run {run_id} is not a valid "{workflow.name}" release source: {", ".join(mismatches)}')
   return run
 
 
@@ -230,16 +226,15 @@ def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) ->
 
 def parse_args() -> argparse.Namespace:
   """Parse the command line arguments."""
-  parser = argparse.ArgumentParser(
-    description="CelestialCalendar automation script for downloading artifacts."
-  )
+  parser = argparse.ArgumentParser(description="CelestialCalendar automation script for downloading artifacts.")
   parser.add_argument(
-    "-id", "--run-id",
-    type=int, 
+    "-id",
+    "--run-id",
+    type=int,
     required=False,
     default=0,
     help="The ID of a single artifact run to download, skipping the release-source lookup. "
-         "If not specified, the successful runs that built the release commit are used."
+    "If not specified, the successful runs that built the release commit are used.",
   )
   parser.add_argument("--native-run-id", type=int, default=0, help="Exact native producer run ID.")
   parser.add_argument("--wasm-run-id", type=int, default=0, help="Exact WASM/npm producer run ID.")
@@ -250,27 +245,19 @@ def parse_args() -> argparse.Namespace:
     help="Write the validated producer runs and artifact API digests to this JSON file.",
   )
   parser.add_argument(
-    "-s", "--save-to", 
+    "-s",
+    "--save-to",
     type=lambda arg: Path(arg).resolve(),
-    required=True, 
-    help="Directory path to save the downloaded artifacts."
+    required=True,
+    help="Directory path to save the downloaded artifacts.",
   )
-  parser.add_argument(
-    "-p", "--parallel", 
-    type=int, 
-    default=4, 
-    help="Number of parallel downloads (default: 4)."
-  )
-  parser.add_argument(
-    "--unzip",
-    action="store_true",
-    help="Unzip the downloaded artifacts."
-  )
+  parser.add_argument("-p", "--parallel", type=int, default=4, help="Number of parallel downloads (default: 4).")
+  parser.add_argument("--unzip", action="store_true", help="Unzip the downloaded artifacts.")
 
   return parser.parse_args()
 
 
-def validate_args(args: argparse.Namespace) -> None: # Exception raised on failure.
+def validate_args(args: argparse.Namespace) -> None:  # Exception raised on failure.
   """Validate the command line arguments."""
   # Validate the number of parallel downloads.
   if args.parallel < 1:
@@ -289,7 +276,7 @@ def validate_args(args: argparse.Namespace) -> None: # Exception raised on failu
     raise RuntimeError("--run-id cannot be combined with release source run IDs or --source-manifest")
   if getattr(args, "source_manifest", None) is not None and not all(run_id > 0 for run_id in run_ids):
     raise RuntimeError("--source-manifest requires all three explicit release source run IDs")
-  
+
 
 def main() -> None:
   """Main function to download artifacts."""
@@ -311,27 +298,27 @@ def main() -> None:
       workflow = artifact_workflow(workflow_name)
       explicit_run_id = getattr(args, run_field, 0)
       run = (
-        validate_artifact_run(workflow, explicit_run_id, sha)
-        if explicit_run_id
-        else find_artifact_run(workflow, sha)
+        validate_artifact_run(workflow, explicit_run_id, sha) if explicit_run_id else find_artifact_run(workflow, sha)
       )
       artifacts = GitHub.get_workflow_artifacts(run.id)
       artifact_urls = [(artifact.name, artifact.archive_download_url) for artifact in artifacts]
       validate_artifact_inventory(workflow_name, run.id, artifact_urls, expected_names, seen_names)
       plans.append((artifacts, artifact_urls))
-      sources.append({
-        "workflow": {"id": workflow.id, "name": workflow.name},
-        "run": {"id": run.id, "head_sha": run.head_sha},
-        "artifacts": [
-          {
-            "id": artifact.id,
-            "name": artifact.name,
-            "size": artifact.size,
-            "digest": artifact.digest,
-          }
-          for artifact in artifacts
-        ],
-      })
+      sources.append(
+        {
+          "workflow": {"id": workflow.id, "name": workflow.name},
+          "run": {"id": run.id, "head_sha": run.head_sha},
+          "artifacts": [
+            {
+              "id": artifact.id,
+              "name": artifact.name,
+              "size": artifact.size,
+              "digest": artifact.digest,
+            }
+            for artifact in artifacts
+          ],
+        }
+      )
 
     zip_destinations = [args.save_to / f"{name}.zip" for _artifacts, plan in plans for name, _ in plan]
     existing = [str(path) for path in zip_destinations if path.exists()]

@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -77,6 +77,8 @@ def find_executables(directory: Path) -> List[Path]:
   """
   if not directory.is_dir():
     return []
-  return sorted(p for p in directory.iterdir()
-                if p.is_file() and p.suffix.lower() in ("", ".exe")
-                and p.name != "Makefile" and os.access(p, os.X_OK))
+  return sorted(
+    p
+    for p in directory.iterdir()
+    if p.is_file() and p.suffix.lower() in ("", ".exe") and p.name != "Makefile" and os.access(p, os.X_OK)
+  )

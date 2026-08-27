@@ -27,12 +27,12 @@ from .utils import run_cmd, green_print, red_print, yellow_print
 # A field type outside it fails the gate loudly: extending the ABI with a new field
 # type is a deliberate act that must extend this table, not something to wave through.
 C_TO_CTYPES: Final[Dict[str, str]] = {
-  "bool":     "c_bool",
-  "uint8_t":  "c_uint8",
+  "bool": "c_bool",
+  "uint8_t": "c_uint8",
   "uint16_t": "c_uint16",
   "uint32_t": "c_uint32",
-  "int32_t":  "c_int32",
-  "double":   "c_double",
+  "int32_t": "c_int32",
+  "double": "c_double",
 }
 
 STRUCT_RE: Final[re.Pattern] = re.compile(r"typedef\s+struct\s+(\w+)\s*\{(.*?)\}\s*\1\s*;", re.DOTALL)
@@ -68,8 +68,7 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
     if not isinstance(node, ast.ClassDef):
       continue
     is_structure = any(
-      (isinstance(b, ast.Name) and b.id == "Structure") or
-      (isinstance(b, ast.Attribute) and b.attr == "Structure")
+      (isinstance(b, ast.Name) and b.id == "Structure") or (isinstance(b, ast.Attribute) and b.attr == "Structure")
       for b in node.bases
     )
     if not is_structure:
@@ -77,8 +76,9 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
 
     fields: Optional[Fields] = None
     for stmt in node.body:
-      if not (isinstance(stmt, ast.Assign) and
-              any(isinstance(t, ast.Name) and t.id == "_fields_" for t in stmt.targets)):
+      if not (
+        isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_fields_" for t in stmt.targets)
+      ):
         continue
       if not isinstance(stmt.value, (ast.List, ast.Tuple)):
         raise RuntimeError(f"Unreadable _fields_ on Structure subclass {node.name}: not a literal list/tuple")
@@ -128,8 +128,12 @@ def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optiona
   exe = workdir / "abi_layout_probe"
   src.write_text("\n".join(lines) + "\n")
 
-  ret = run_cmd([cc, "-Wall", "-Werror", f"-I{header.parent}", str(src), "-o", str(exe)],
-                print_cmd=False, print_stdout=False, print_stderr=False)
+  ret = run_cmd(
+    [cc, "-Wall", "-Werror", f"-I{header.parent}", str(src), "-o", str(exe)],
+    print_cmd=False,
+    print_stdout=False,
+    print_stderr=False,
+  )
   if ret.retcode != 0:
     red_print(f"Layout probe failed to compile with {cc}:")
     for line in (ret.stderr or ret.stdout).splitlines()[:12]:
@@ -218,9 +222,7 @@ def check_abi_layout() -> int:
       if py_type_of[fname] != expected:
         failures.append(f"{name}.{fname}: {ctype} mirrored as {py_type_of[fname]}, expected {expected}")
       if py_offsets[fname] != ground_truth[f"{name}.{fname}"]:
-        failures.append(
-          f"{name}.{fname}: offset {ground_truth[f'{name}.{fname}']} (C) != {py_offsets[fname]} (ctypes)"
-        )
+        failures.append(f"{name}.{fname}: offset {ground_truth[f'{name}.{fname}']} (C) != {py_offsets[fname]} (ctypes)")
 
   print("#" * 60)
   if failures:

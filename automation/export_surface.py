@@ -24,8 +24,7 @@ from .utils import run_cmd, green_print, red_print, yellow_print
 # hidden (#91: every survivor gets a reason, never a count). Empty while the predicate below
 # accounts for all of them. Machine-readable source; the human-facing copy of whatever lands
 # here belongs in src/shared_lib/CMakeLists.txt.
-SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {
-}
+SURVIVOR_EXCEPTIONS: Final[Dict[str, str]] = {}
 
 # What a survivor may look like without being listed in SURVIVOR_EXCEPTIONS: vague-linkage
 # artifacts of C++ itself. Namespace std carries an explicit default-visibility attribute
@@ -62,7 +61,7 @@ def is_std_vague_linkage(demangled: str) -> bool:
   # it. Every other RTTI takes the same qualified-name check as a vtable, builtins included.
   for prefix in ("typeinfo for ", "typeinfo name for "):
     if demangled.startswith(prefix):
-      rest = demangled[len(prefix):]
+      rest = demangled[len(prefix) :]
       if "(" in rest:
         return True
       return rest.startswith(("std::", "__gnu_cxx::"))
@@ -104,16 +103,20 @@ def self_test_predicate() -> List[str]:
       failures.append(f"predicate self-test: {sample!r} -> {actual}, expected {expected}")
   return failures
 
+
 # Parser self-test samples (shape -> expected (name, has_macro) pairs), one per declaration
 # shape in play. A parser that cannot read them all would report a maimed entry set and
 # call the gate green, so these run before the parser is trusted.
 PARSER_SELF_TEST: Final[List[Tuple[str, List[Tuple[str, bool]]]]] = [
   ("CELESTIAL_API bool alpha(uint8_t v);", [("alpha", True)]),
   ("CELESTIAL_API const char *beta(void);", [("beta", True)]),
-  ("CELESTIAL_API uint32_t gamma(int32_t year,\n"
-   "                                double longitude,\n"
-   "                                double *slots,\n"
-   "                                uint32_t slot_count);", [("gamma", True)]),
+  (
+    "CELESTIAL_API uint32_t gamma(int32_t year,\n"
+    "                                double longitude,\n"
+    "                                double *slots,\n"
+    "                                uint32_t slot_count);",
+    [("gamma", True)],
+  ),
   ("double delta(double jde);", [("delta", False)]),
 ]
 
@@ -298,6 +301,8 @@ def check_export_surface() -> int:
       red_print(f"  - {f}")
     return 1
 
-  green_print(f"export surface == celestial.h entry points ({len(entries)} entries, "
-              f"{len(survivors)} std vague-linkage survivors, SONAME {soname})")
+  green_print(
+    f"export surface == celestial.h entry points ({len(entries)} entries, "
+    f"{len(survivors)} std vague-linkage survivors, SONAME {soname})"
+  )
   return 0

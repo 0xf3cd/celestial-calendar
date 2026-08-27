@@ -152,16 +152,8 @@ def test_python_wheel_virtualenv_producers_test_and_run_the_bootstrap_verifier()
     build_index = next(
       index for index, step in enumerate(steps) if "python -m cibuildwheel --only" in str(step.get("run", ""))
     )
-    test_indices = [
-      index
-      for index, step in enumerate(steps)
-      if test_script in str(step.get("run", ""))
-    ]
-    verify_indices = [
-      index
-      for index, step in enumerate(steps)
-      if verify_script in str(step.get("run", ""))
-    ]
+    test_indices = [index for index, step in enumerate(steps) if test_script in str(step.get("run", ""))]
+    verify_indices = [index for index, step in enumerate(steps) if verify_script in str(step.get("run", ""))]
     if job_name == "manylinux":
       assert test_indices == verify_indices == []
       continue

@@ -82,20 +82,125 @@ EXPECTED_HITS = (
 # Year set for the C++ golden table (SSOT also in algo3_ytliu0_golden_test.cpp).
 # Readers regenerate with: emit-cpp --ytliu0 <checkout-at-YTLIU0_COMMIT>
 GOLDEN_YEARS = (
-  1603, 1607, 1618, 1625, 1633, 1639, 1647, 1652, 1656, 1660, 1666, 1669, 1674, 1678, 1681, 1688,
-  1692, 1696, 1700, 1705, 1710, 1713, 1717, 1722, 1725, 1730, 1734, 1737, 1741, 1745, 1749, 1752,
-  1756, 1761, 1765, 1769, 1773, 1776, 1782, 1786, 1792, 1795, 1800, 1805, 1808, 1812, 1816, 1819,
-  1823, 1827, 1832, 1835, 1839, 1844, 1847, 1851, 1855, 1858, 1863, 1867, 1871, 1874, 1878, 1883,
-  1886, 1890, 1894, 1900, 1901, 2099, 2100, 2101, 2103, 2105, 2108, 2110, 2112, 2115, 2117, 2120,
-  2122, 2124, 2127, 2129, 2131, 2133, 2135, 2137, 2140, 2142, 2144, 2147, 2149, 2151, 2154, 2156,
-  2159, 2161, 2163, 2165, 2167, 2169, 2171, 2172, 2175, 2177, 2180, 2182, 2184, 2187, 2189, 2191,
-  2194, 2196, 2199,
+  1603,
+  1607,
+  1618,
+  1625,
+  1633,
+  1639,
+  1647,
+  1652,
+  1656,
+  1660,
+  1666,
+  1669,
+  1674,
+  1678,
+  1681,
+  1688,
+  1692,
+  1696,
+  1700,
+  1705,
+  1710,
+  1713,
+  1717,
+  1722,
+  1725,
+  1730,
+  1734,
+  1737,
+  1741,
+  1745,
+  1749,
+  1752,
+  1756,
+  1761,
+  1765,
+  1769,
+  1773,
+  1776,
+  1782,
+  1786,
+  1792,
+  1795,
+  1800,
+  1805,
+  1808,
+  1812,
+  1816,
+  1819,
+  1823,
+  1827,
+  1832,
+  1835,
+  1839,
+  1844,
+  1847,
+  1851,
+  1855,
+  1858,
+  1863,
+  1867,
+  1871,
+  1874,
+  1878,
+  1883,
+  1886,
+  1890,
+  1894,
+  1900,
+  1901,
+  2099,
+  2100,
+  2101,
+  2103,
+  2105,
+  2108,
+  2110,
+  2112,
+  2115,
+  2117,
+  2120,
+  2122,
+  2124,
+  2127,
+  2129,
+  2131,
+  2133,
+  2135,
+  2137,
+  2140,
+  2142,
+  2144,
+  2147,
+  2149,
+  2151,
+  2154,
+  2156,
+  2159,
+  2161,
+  2163,
+  2165,
+  2167,
+  2169,
+  2171,
+  2172,
+  2175,
+  2177,
+  2180,
+  2182,
+  2184,
+  2187,
+  2189,
+  2191,
+  2194,
+  2196,
+  2199,
 )
 
 # Optional author-side frozen markdown (not in the public tree; --sample overrides).
-FROZEN_SAMPLE_CANDIDATES = (
-  REPO_ROOT / ".review" / "style-arch" / "golden-pre" / "golden-采样草案.md",
-)
+FROZEN_SAMPLE_CANDIDATES = (REPO_ROOT / ".review" / "style-arch" / "golden-pre" / "golden-采样草案.md",)
 
 
 @dataclass(frozen=True)
@@ -122,11 +227,13 @@ def _load_common():
   """Import statistics/common.py against the built shared library."""
   sys.path.insert(0, str(STATISTICS))
   import common  # type: ignore  # noqa: PLC0415
+
   return common
 
 
-def scan_near_midnight(year_start: int = SCAN_YEAR_START,
-                       year_end: int = SCAN_YEAR_END) -> list[tuple[int, datetime, float]]:
+def scan_near_midnight(
+  year_start: int = SCAN_YEAR_START, year_end: int = SCAN_YEAR_END
+) -> list[tuple[int, datetime, float]]:
   """Return (year, utc8_datetime, seconds_after_midnight) for every hit."""
   common = _load_common()
   hits: list[tuple[int, datetime, float]] = []
@@ -137,12 +244,7 @@ def scan_near_midnight(year_start: int = SCAN_YEAR_START,
       # common.py renders new moons in UT1 civil clock; add 8h for UTC+8 wall time
       # (the notebooks use the same convention; |UT1−UTC| is sub-second here).
       utc8 = moment + timedelta(hours=8)
-      secs = (
-        utc8.hour * 3600
-        + utc8.minute * 60
-        + utc8.second
-        + utc8.microsecond / 1e6
-      )
+      secs = utc8.hour * 3600 + utc8.minute * 60 + utc8.second + utc8.microsecond / 1e6
       if secs < window_s:
         hits.append((year, utc8, secs))
   return hits
@@ -188,8 +290,7 @@ def load_frozen_sample(path: Path | None = None) -> list[GoldenRow]:
         break
     else:
       raise FileNotFoundError(
-        "frozen sample not found; pass --sample PATH or place the draft under "
-        ".review/style-arch/golden-pre/"
+        "frozen sample not found; pass --sample PATH or place the draft under .review/style-arch/golden-pre/"
       )
   text = path.read_text(encoding="utf-8")
   rows: list[GoldenRow] = []
@@ -307,10 +408,7 @@ def decode_ytliu0_row(nums: list[int], js_offset: int = 0) -> GoldenRow:
 def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
   """Decode one year from ytliu0 calendarData.js at the pinned commit."""
   if ytliu0_root is None:
-    raise SystemExit(
-      f"extract year {year} needs --ytliu0 PATH "
-      f"(checkout of {YTLIU0_REPO} at {YTLIU0_COMMIT})"
-    )
+    raise SystemExit(f"extract year {year} needs --ytliu0 PATH (checkout of {YTLIU0_REPO} at {YTLIU0_COMMIT})")
   data_path = ytliu0_root / YTLIU0_DATA_REL
   if not data_path.is_file():
     raise FileNotFoundError(data_path)
@@ -321,8 +419,7 @@ def extract_ytliu0_year(year: int, ytliu0_root: Path | None) -> GoldenRow:
       f"calendarData.js fingerprint mismatch: bytes={len(raw)} md5={digest}; "
       f"expected bytes={YTLIU0_DATA_BYTES} md5={YTLIU0_DATA_MD5} at commit {YTLIU0_COMMIT}"
     )
-  print(f"# calendarData.js md5={digest} bytes={len(raw)} commit={YTLIU0_COMMIT}",
-        file=sys.stderr)
+  print(f"# calendarData.js md5={digest} bytes={len(raw)} commit={YTLIU0_COMMIT}", file=sys.stderr)
   table = _parse_calendar_data_js(data_path)
   if year not in table:
     raise KeyError(f"year {year} not in {data_path}")
@@ -340,9 +437,7 @@ def cmd_compare_sample(args: argparse.Namespace) -> int:
   for r in rows:
     info = common.get_lunar_year_info(common.LunarAlgo.ALGO_3, r.year)
     ok = (
-      info.first_day == r.first_day
-      and info.leap_month == r.leap_month
-      and tuple(info.month_lengths) == r.month_lengths
+      info.first_day == r.first_day and info.leap_month == r.leap_month and tuple(info.month_lengths) == r.month_lengths
     )
     if not ok:
       mismatches += 1
@@ -359,14 +454,12 @@ def main(argv: list[str] | None = None) -> int:
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   sub = parser.add_subparsers(dest="cmd", required=True)
 
-  p_scan = sub.add_parser("scan-near-midnight",
-                          help="1901–1929 14m20s syzygy scan (4 hits / 3 divergences)")
+  p_scan = sub.add_parser("scan-near-midnight", help="1901–1929 14m20s syzygy scan (4 hits / 3 divergences)")
   p_scan.set_defaults(func=cmd_scan_near_midnight)
 
   p_emit = sub.add_parser("emit-cpp", help="emit C++ golden rows matching YTLIU0_ROWS")
   p_emit.add_argument("--sample", default=None, help="path to golden-采样草案.md")
-  p_emit.add_argument("--include-2099", action="store_true",
-                      help="W-A2: append ytliu0 year 2099 (needs --ytliu0)")
+  p_emit.add_argument("--include-2099", action="store_true", help="W-A2: append ytliu0 year 2099 (needs --ytliu0)")
   p_emit.add_argument("--ytliu0", default=None, help="path to ytliu0/ChineseCalendar checkout")
   p_emit.set_defaults(func=cmd_emit_cpp)
 

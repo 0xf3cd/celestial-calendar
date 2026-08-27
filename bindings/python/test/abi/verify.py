@@ -231,9 +231,7 @@ def verify_wrapper_recording(source: str, expected_exports: set[str], expected_r
   assert wrapper_writers == expected_recording, f"wrapper recording policy: {wrapper_recording_difference}"
 
 
-def run_wrapper_mutation_self_test(
-  source: str, expected_exports: set[str], expected_recording: set[str]
-) -> None:
+def run_wrapper_mutation_self_test(source: str, expected_exports: set[str], expected_recording: set[str]) -> None:
   """Prove wrapper reconciliation rejects one directed recording-policy defect."""
   mutated = source.replace("recording=True", "recording=False", 1)
   assert mutated != source, "cannot inject wrapper recording mutation"

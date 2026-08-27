@@ -1,12 +1,12 @@
 # CelestialCalendar Statistics:
 #   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
 #   No model training happens here (see AGENTS.md).
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -109,7 +109,7 @@ def fetch_horizons(jds: list[float]) -> dict[float, dict]:
   col = {name: header.index(name) for name in ["ObsEcLon", "ObsEcLat", "delta", "deldot"]}
 
   out = {}
-  for line in lines[soe + 1:eoe]:
+  for line in lines[soe + 1 : eoe]:
     cells = [c.strip() for c in line.split(",")]
     jd = float(cells[jd_i])
     out[jd] = {
@@ -150,8 +150,10 @@ def skyfield_report(rows: dict[float, dict]) -> None:
     worst_ang, worst_r = max(worst_ang, d_lon, d_lat), max(worst_r, d_r)
     flag = "  <-- CHECK" if max(d_lon, d_lat) > 0.5 or d_r > 50.0 else ""
     print(f"{h['date']}  dlon={d_lon:6.3f}″  dlat={d_lat:6.3f}″  dr={d_r:6.1f} m{flag}")
-  print(f"\nskyfield/DE421 cross-check on {len(in_span)} core epochs: "
-        f"worst angle diff {worst_ang:.3f} arcsec, worst distance diff {worst_r:.1f} m")
+  print(
+    f"\nskyfield/DE421 cross-check on {len(in_span)} core epochs: "
+    f"worst angle diff {worst_ang:.3f} arcsec, worst distance diff {worst_r:.1f} m"
+  )
   # Semantic-regression gate: the two sources agree to 0.23″ / 1.0 m today; anything past
   # 1″ / 10 m on a re-run means the query semantics (frame, time scale, correction level)
   # changed on one side, not that the ephemerides drifted.
@@ -174,18 +176,20 @@ def erfa_report(rows: dict[float, dict]) -> None:
       e_km = float(np.linalg.norm(pv[0])) * AU_KM
       diffs.append(abs(e_km - rows[jd]["r_km"]))
       if jd == BOOK_47A[0]:
-        print(f"  47.a anchor: moon98 r={e_km:.3f} km, book {BOOK_47A[3]} km "
-              f"(transcription check, expect ~m-level)")
-    print(f"|moon98 - Horizons| distance envelope, {name:8s}: "
-          f"median {median(diffs):8.2f} km, worst {max(diffs):8.2f} km")
+        print(f"  47.a anchor: moon98 r={e_km:.3f} km, book {BOOK_47A[3]} km (transcription check, expect ~m-level)")
+    print(
+      f"|moon98 - Horizons| distance envelope, {name:8s}: median {median(diffs):8.2f} km, worst {max(diffs):8.2f} km"
+    )
 
 
 def emit_rows(rows: dict[float, dict], name: str, epochs: list[float]) -> None:
   print(f"\n// --- C++ rows: {name} ---")
   for jd in sorted(epochs):
     h = rows[jd]
-    print(f"  {{ {jd:11.2f}, {h['lon']:12.7f}, {h['lat']:11.7f}, {h['r_km']:11.3f} }},"
-          f"  // {h['date']} TT, rdot {h['deldot']:+.3f} km/s")
+    print(
+      f"  {{ {jd:11.2f}, {h['lon']:12.7f}, {h['lat']:11.7f}, {h['r_km']:11.3f} }},"
+      f"  // {h['date']} TT, rdot {h['deldot']:+.3f} km/s"
+    )
 
 
 def main() -> None:
@@ -195,12 +199,13 @@ def main() -> None:
   anchor = rows[BOOK_47A[0]]
   d_lon = (BOOK_47A[1] - anchor["lon"]) * 3600.0
   d_lat = (BOOK_47A[2] - anchor["lat"]) * 3600.0
-  print(f'Meeus 47.a book vs Horizons/DE441: dlon={d_lon:+.2f}" dlat={d_lat:+.2f}" '
-        f"dr={BOOK_47A[3] - anchor['r_km']:+.2f} km (model envelope at the anchor epoch)")
+  print(
+    f'Meeus 47.a book vs Horizons/DE441: dlon={d_lon:+.2f}" dlat={d_lat:+.2f}" '
+    f"dr={BOOK_47A[3] - anchor['r_km']:+.2f} km (model envelope at the anchor epoch)"
+  )
 
   fast = sum(1 for h in rows.values() if abs(h["deldot"]) >= 0.03)
-  print(f"epochs with |range-rate| >= 0.03 km/s: {fast}/{len(rows)} "
-        f"(non-extremum coverage, #68)")
+  print(f"epochs with |range-rate| >= 0.03 km/s: {fast}/{len(rows)} (non-extremum coverage, #68)")
 
   skyfield_report(rows)
   erfa_report(rows)

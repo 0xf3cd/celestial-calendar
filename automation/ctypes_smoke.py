@@ -60,55 +60,84 @@ def check_ctypes_smoke() -> int:
 
   # (label, call, expected return value).
   value_cases: List[Tuple[str, Callable[[], object], object]] = [
-    ("gregorian_to_lunar(2023-03-22) -> leap 2nd month, day 1",
-     lambda: common.gregorian_to_lunar(algo1, 2023, 3, 22),
-     common.LunarDate(year=2023, month=2, is_leap=True, day=1)),
-    ("gregorian_to_lunar(2023-04-20) -> 3rd month, day 1",
-     lambda: common.gregorian_to_lunar(algo1, 2023, 4, 20),
-     common.LunarDate(year=2023, month=3, is_leap=False, day=1)),
-    ("gregorian_to_lunar(2023-03-22) via algo3 agrees",
-     lambda: common.gregorian_to_lunar(algo3, 2023, 3, 22),
-     common.LunarDate(year=2023, month=2, is_leap=True, day=1)),
-    ("lunar_to_gregorian(2023, leap 2nd, 1) -> 2023-03-22",
-     lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 1),
-     date(2023, 3, 22)),
-    ("lunar_to_gregorian(2023, 3rd, 1) -> 2023-04-20",
-     lambda: common.lunar_to_gregorian(algo1, 2023, 3, False, 1),
-     date(2023, 4, 20)),
-    ("algo3 supported range -> (1600, 2199)",
-     lambda: common.get_supported_lunar_year_range(algo3),
-     common.SupportedLunarYearRange(start=1600, end=2199)),
+    (
+      "gregorian_to_lunar(2023-03-22) -> leap 2nd month, day 1",
+      lambda: common.gregorian_to_lunar(algo1, 2023, 3, 22),
+      common.LunarDate(year=2023, month=2, is_leap=True, day=1),
+    ),
+    (
+      "gregorian_to_lunar(2023-04-20) -> 3rd month, day 1",
+      lambda: common.gregorian_to_lunar(algo1, 2023, 4, 20),
+      common.LunarDate(year=2023, month=3, is_leap=False, day=1),
+    ),
+    (
+      "gregorian_to_lunar(2023-03-22) via algo3 agrees",
+      lambda: common.gregorian_to_lunar(algo3, 2023, 3, 22),
+      common.LunarDate(year=2023, month=2, is_leap=True, day=1),
+    ),
+    (
+      "lunar_to_gregorian(2023, leap 2nd, 1) -> 2023-03-22",
+      lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 1),
+      date(2023, 3, 22),
+    ),
+    (
+      "lunar_to_gregorian(2023, 3rd, 1) -> 2023-04-20",
+      lambda: common.lunar_to_gregorian(algo1, 2023, 3, False, 1),
+      date(2023, 4, 20),
+    ),
+    (
+      "algo3 supported range -> (1600, 2199)",
+      lambda: common.get_supported_lunar_year_range(algo3),
+      common.SupportedLunarYearRange(start=1600, end=2199),
+    ),
     # Meeus Example 48.a (1992-04-12 0h TT): both fields must come back from the right
     # struct members — that is the plumbing this gate exists to pin.
-    ("moon_illumination(1992-04-12 0h TT) -> Example 48.a",
-     lambda: round(common.moon_illumination(2448724.5).illumination, 4),
-     0.6786),
-    ("moon_illumination elongation_deg from the right member",
-     lambda: round(common.moon_illumination(2448724.5).elongation_deg, 4),
-     110.8275),
-    ("local_apparent_sidereal_time(2460463.0, +120E) -> 190.4627",
-     lambda: round(common.local_apparent_sidereal_time(2460463.0, 120.0), 4),
-     190.4627),
-    ("moon_position_angle(1992-04-12 0h TT) -> Example 48.a",
-     lambda: round(common.moon_position_angle(2448724.5).angle_deg, 4),
-     285.0442),
-    ("moon_phase_moments(2024, NEW_MOON) first moment",
-     lambda: round(common.moon_phase_moments(2024, common.MoonPhaseKind.NEW_MOON).jdes[0], 4),
-     2460320.999),  # USNO 2024-01-11 11:57 UTC; C++ returns ~2460320.9990
+    (
+      "moon_illumination(1992-04-12 0h TT) -> Example 48.a",
+      lambda: round(common.moon_illumination(2448724.5).illumination, 4),
+      0.6786,
+    ),
+    (
+      "moon_illumination elongation_deg from the right member",
+      lambda: round(common.moon_illumination(2448724.5).elongation_deg, 4),
+      110.8275,
+    ),
+    (
+      "local_apparent_sidereal_time(2460463.0, +120E) -> 190.4627",
+      lambda: round(common.local_apparent_sidereal_time(2460463.0, 120.0), 4),
+      190.4627,
+    ),
+    (
+      "moon_position_angle(1992-04-12 0h TT) -> Example 48.a",
+      lambda: round(common.moon_position_angle(2448724.5).angle_deg, 4),
+      285.0442,
+    ),
+    (
+      "moon_phase_moments(2024, NEW_MOON) first moment",
+      lambda: round(common.moon_phase_moments(2024, common.MoonPhaseKind.NEW_MOON).jdes[0], 4),
+      2460320.999,
+    ),  # USNO 2024-01-11 11:57 UTC; C++ returns ~2460320.9990
   ]
 
   # (label, call) -- invalid inputs must surface as ValueError, not a wrong date.
   raising_cases: List[Tuple[str, Callable[[], object]]] = [
-    ("lunar_to_gregorian(2024, leap 2nd, 1): 2024 has no leap month",
-     lambda: common.lunar_to_gregorian(algo1, 2024, 2, True, 1)),
-    ("lunar_to_gregorian(2023, leap 5th, 1): 2023's leap month is the 2nd",
-     lambda: common.lunar_to_gregorian(algo1, 2023, 5, True, 1)),
-    ("lunar_to_gregorian(2023, leap 2nd, 30): the leap 2nd month has 29 days",
-     lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 30)),
-    ("gregorian_to_lunar(2023-13-01): month out of range",
-     lambda: common.gregorian_to_lunar(algo1, 2023, 13, 1)),
-    ("local_apparent_sidereal_time(1000000.0, 0): outside the [401, 32766] window",
-     lambda: common.local_apparent_sidereal_time(1000000.0, 0.0)),
+    (
+      "lunar_to_gregorian(2024, leap 2nd, 1): 2024 has no leap month",
+      lambda: common.lunar_to_gregorian(algo1, 2024, 2, True, 1),
+    ),
+    (
+      "lunar_to_gregorian(2023, leap 5th, 1): 2023's leap month is the 2nd",
+      lambda: common.lunar_to_gregorian(algo1, 2023, 5, True, 1),
+    ),
+    (
+      "lunar_to_gregorian(2023, leap 2nd, 30): the leap 2nd month has 29 days",
+      lambda: common.lunar_to_gregorian(algo1, 2023, 2, True, 30),
+    ),
+    ("gregorian_to_lunar(2023-13-01): month out of range", lambda: common.gregorian_to_lunar(algo1, 2023, 13, 1)),
+    (
+      "local_apparent_sidereal_time(1000000.0, 0): outside the [401, 32766] window",
+      lambda: common.local_apparent_sidereal_time(1000000.0, 0.0),
+    ),
   ]
 
   failures: List[str] = []

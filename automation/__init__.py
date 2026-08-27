@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -16,10 +16,7 @@ from .env import Tool, SetupPlan, setup_environment
 from .build import run_cmake, build_project, clean_build
 from .gtest import run_gtests
 from .sysinfo import print_system_info
-from .utils import (
-  green_print, red_print, yellow_print, blue_print,
-  run_cmd, ProcReturn, time_execution
-)
+from .utils import green_print, red_print, yellow_print, blue_print, run_cmd, ProcReturn, time_execution
 from .linter import run_ruff, run_clang_tidy, run_pytest
 from .self_contained import check_self_contained
 from .feature_probe import probe_features
@@ -35,13 +32,34 @@ from .bench import build_benchmarks, run_benchmarks
 
 __all__ = [
   "paths",
-  "Tool", "SetupPlan", "setup_environment",
-  "run_cmake", "build_project", "clean_build",
-  "run_gtests", "print_system_info",
-  "green_print", "red_print", "yellow_print", "blue_print",
-  "run_cmd", "ProcReturn", "time_execution",
-  "run_ruff", "run_clang_tidy", "run_pytest", "check_self_contained", "probe_features",
-  "check_abi_layout", "check_ctypes_smoke", "check_export_surface", "check_log_names",
-  "check_ai_workflows", "check_action_pins", "check_jieqi_table", "check_seed_reconcile",
-  "build_benchmarks", "run_benchmarks"
+  "Tool",
+  "SetupPlan",
+  "setup_environment",
+  "run_cmake",
+  "build_project",
+  "clean_build",
+  "run_gtests",
+  "print_system_info",
+  "green_print",
+  "red_print",
+  "yellow_print",
+  "blue_print",
+  "run_cmd",
+  "ProcReturn",
+  "time_execution",
+  "run_ruff",
+  "run_clang_tidy",
+  "run_pytest",
+  "check_self_contained",
+  "probe_features",
+  "check_abi_layout",
+  "check_ctypes_smoke",
+  "check_export_surface",
+  "check_log_names",
+  "check_ai_workflows",
+  "check_action_pins",
+  "check_jieqi_table",
+  "check_seed_reconcile",
+  "build_benchmarks",
+  "run_benchmarks",
 ]

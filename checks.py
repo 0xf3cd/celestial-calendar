@@ -6,12 +6,12 @@
 #########################################################################################
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -19,9 +19,19 @@ import sys
 import argparse
 
 from automation import (
-  run_ruff, run_clang_tidy, run_pytest, check_self_contained, probe_features, check_abi_layout,
-  check_ctypes_smoke, check_export_surface, check_log_names, check_ai_workflows,
-  check_action_pins, check_jieqi_table, check_seed_reconcile,
+  run_ruff,
+  run_clang_tidy,
+  run_pytest,
+  check_self_contained,
+  probe_features,
+  check_abi_layout,
+  check_ctypes_smoke,
+  check_export_surface,
+  check_log_names,
+  check_ai_workflows,
+  check_action_pins,
+  check_jieqi_table,
+  check_seed_reconcile,
 )
 
 
@@ -67,7 +77,7 @@ def parse_args() -> argparse.Namespace:
       "  export surface, log names, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
       "    ./checks.py -a/--all\n\n"
     ),
-    formatter_class=argparse.RawTextHelpFormatter
+    formatter_class=argparse.RawTextHelpFormatter,
   )
 
   parser.add_argument("-a", "--all", action="store_true", help="Run every check")
@@ -79,32 +89,48 @@ def parse_args() -> argparse.Namespace:
   gate = parser.add_argument_group(
     "gate", "repo invariants; ctypes-smoke, export-surface and jieqi-table need ./project.py --build first"
   )
-  gate.add_argument("--self-contained", action="store_true",
-                    help="Compile every header alone to prove it is self-contained")
-  gate.add_argument("--abi-layout", action="store_true",
-                    help="Hold the ctypes mirror in statistics/common.py to the real ABI layout")
-  gate.add_argument("--ctypes-smoke", action="store_true",
-                    help="Run the ctypes wrappers against the built library (needs a build)")
-  gate.add_argument("--export-surface", action="store_true",
-                    help="Hold the built library's export surface to the celestial.h entry points")
-  gate.add_argument("--jieqi-table", action="store_true",
-                    help="Hold the exported jieqi table to its invariants (needs a build)")
-  gate.add_argument("--log-names", action="store_true",
-                    help="Hold the lib_*.cpp log strings to the celestial.h entry-point names")
-  gate.add_argument("--seed-reconcile", action="store_true",
-                    help="Hold the four CELESTIAL_TEST_SEED copies to each other")
-  gate.add_argument("--ai-workflows", action="store_true",
-                    help="Hold the AI workflows to the settings of theirs that fail silently")
-  gate.add_argument("--action-pins", action="store_true",
-                    help="Require immutable refs for third-party GitHub Actions")
+  gate.add_argument(
+    "--self-contained", action="store_true", help="Compile every header alone to prove it is self-contained"
+  )
+  gate.add_argument(
+    "--abi-layout", action="store_true", help="Hold the ctypes mirror in statistics/common.py to the real ABI layout"
+  )
+  gate.add_argument(
+    "--ctypes-smoke", action="store_true", help="Run the ctypes wrappers against the built library (needs a build)"
+  )
+  gate.add_argument(
+    "--export-surface",
+    action="store_true",
+    help="Hold the built library's export surface to the celestial.h entry points",
+  )
+  gate.add_argument(
+    "--jieqi-table", action="store_true", help="Hold the exported jieqi table to its invariants (needs a build)"
+  )
+  gate.add_argument(
+    "--log-names", action="store_true", help="Hold the lib_*.cpp log strings to the celestial.h entry-point names"
+  )
+  gate.add_argument(
+    "--seed-reconcile", action="store_true", help="Hold the four CELESTIAL_TEST_SEED copies to each other"
+  )
+  gate.add_argument(
+    "--ai-workflows", action="store_true", help="Hold the AI workflows to the settings of theirs that fail silently"
+  )
+  gate.add_argument("--action-pins", action="store_true", help="Require immutable refs for third-party GitHub Actions")
 
   probe = parser.add_argument_group("probe")
-  probe.add_argument("--features", nargs="?", const="", default=None, metavar="LEG",
-                     help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state")
+  probe.add_argument(
+    "--features",
+    nargs="?",
+    const="",
+    default=None,
+    metavar="LEG",
+    help="Probe the awaited C++ features; with a CI leg name, hold it to the recorded state",
+  )
 
   test = parser.add_argument_group("test")
-  test.add_argument("--pytest", action="store_true",
-                    help="Run the automation layer's own unit tests (automation/tests/)")
+  test.add_argument(
+    "--pytest", action="store_true", help="Run the automation layer's own unit tests (automation/tests/)"
+  )
 
   return parser.parse_args()
 

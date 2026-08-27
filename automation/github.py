@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from .utils import green_print, red_print, blue_print
 
 
-OWNER = "0xf3cd" # Yes, it's me.
-REPO  = "celestial-calendar"
+OWNER = "0xf3cd"  # Yes, it's me.
+REPO = "celestial-calendar"
 
 # `requests` has no default timeout, so a server that accepts the connection and then goes quiet
 # hangs the release tooling with no ceiling. The pair is (connect, read); the read half applies
@@ -59,9 +59,11 @@ def gen_headers() -> Dict[str, str]:
   """
   github_token = os.environ.get("GITHUB_TOKEN")
   if not github_token:
-    raise ValueError("GITHUB_TOKEN is not set in the environment. "
-                     "It is required for downloading artifacts. "
-                     "Please set your GitHub personal access token and try again.")
+    raise ValueError(
+      "GITHUB_TOKEN is not set in the environment. "
+      "It is required for downloading artifacts. "
+      "Please set your GitHub personal access token and try again."
+    )
   return {"Authorization": f"Bearer {github_token}"}
 
 
@@ -75,13 +77,14 @@ class GitHub:
     """
     A class for representing a workflow in the repository.
     """
-    id:         int
-    name:       str
-    state:      str
+
+    id: int
+    name: str
+    state: str
     created_at: str
     updated_at: str
-    url:        str
-  
+    url: str
+
   @staticmethod
   def list_workflows() -> List[Workflow]:
     """
@@ -96,34 +99,27 @@ class GitHub:
 
     json_resp = response.json()
     return [
-      GitHub.Workflow(
-        wf["id"],
-        wf["name"],
-        wf["state"],
-        wf["created_at"],
-        wf["updated_at"],
-        wf["url"]
-      ) 
+      GitHub.Workflow(wf["id"], wf["name"], wf["state"], wf["created_at"], wf["updated_at"], wf["url"])
       for wf in json_resp["workflows"]
     ]
-  
 
   @dataclass
   class Run:
     """
     A class for representing a run in the repository.
     """
-    id:          int
-    name:        str
-    run_number:  int
-    status:      str
-    conclusion:  str
-    event:       str
-    head_sha:    str
+
+    id: int
+    name: str
+    run_number: int
+    status: str
+    conclusion: str
+    event: str
+    head_sha: str
     workflow_id: int
-    url:         str
-    created_at:  str
-    updated_at:  str
+    url: str
+    created_at: str
+    updated_at: str
 
   @staticmethod
   def _run(data) -> Run:
@@ -166,8 +162,7 @@ class GitHub:
     """
     runs: List[GitHub.Run] = []
     for page in range(1, max_pages + 1):
-      url = (f"https://api.github.com/repos/{OWNER}/{REPO}"
-             f"/actions/workflows/{workflow_id}/runs?per_page=100&page={page}")
+      url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/workflows/{workflow_id}/runs?per_page=100&page={page}"
       response = requests.get(url, headers=gen_headers(), timeout=TIMEOUT)
       response.raise_for_status()
 
@@ -178,10 +173,10 @@ class GitHub:
 
     return runs, max_pages
 
-
   @dataclass
   class WorkflowArtifact:
     """One immutable artifact uploaded by a workflow run."""
+
     id: int
     name: str
     size: int
@@ -200,7 +195,7 @@ class GitHub:
     visible to callers.
     """
     artifacts_url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/runs/{run_id}/artifacts?per_page=100"
-    
+
     response = requests.get(artifacts_url, headers=gen_headers(), timeout=TIMEOUT)
     response.raise_for_status()
     artifacts = response.json()
@@ -217,18 +212,14 @@ class GitHub:
     ]
     if artifacts["total_count"] != len(entries):
       raise RuntimeError(
-        f"Artifact response for run {run_id} returned {len(entries)} of "
-        f"{artifacts['total_count']} entries"
+        f"Artifact response for run {run_id} returned {len(entries)} of {artifacts['total_count']} entries"
       )
     return entries
 
   @staticmethod
   def get_artifacts_download_urls(run_id: int) -> List[Tuple[str, str]]:
     """Fetch artifact names and download URLs while preserving API order."""
-    return [
-      (artifact.name, artifact.archive_download_url)
-      for artifact in GitHub.get_workflow_artifacts(run_id)
-    ]
+    return [(artifact.name, artifact.archive_download_url) for artifact in GitHub.get_workflow_artifacts(run_id)]
 
   @staticmethod
   def download_one_artifact(name: str, download_url: str, download_dir: Path) -> Path:
@@ -248,7 +239,6 @@ class GitHub:
 
     green_print(f"# Downloaded {name}")
     return artifact
-
 
   @staticmethod
   def _validate_parallel(parallel: int) -> None:
@@ -327,12 +317,9 @@ class GitHub:
     return await GitHub.async_download_artifact_urls(artifact_urls, download_dir, parallel)
 
   @staticmethod
-  def download_artifact_urls(
-    artifact_urls: List[Tuple[str, str]], download_dir: Path, parallel: int = 4
-  ) -> List[Path]:
+  def download_artifact_urls(artifact_urls: List[Tuple[str, str]], download_dir: Path, parallel: int = 4) -> List[Path]:
     """Download a pre-validated artifact inventory in parallel."""
     return asyncio.run(GitHub.async_download_artifact_urls(artifact_urls, download_dir, parallel))
-
 
   @staticmethod
   def download_artifacts(run_id: int, download_dir: Path, parallel: int = 4) -> List[Path]:
@@ -349,12 +336,12 @@ class GitHub:
     """
     return asyncio.run(GitHub.async_download_artifacts(run_id, download_dir, parallel))
 
-
   @dataclass
   class Asset:
     """
     A class representing a GitHub asset.
     """
+
     id: int
     name: str
     content_type: str
@@ -368,6 +355,7 @@ class GitHub:
     """
     A class representing a GitHub release.
     """
+
     id: int
     tag_name: str
     draft: bool
@@ -417,14 +405,14 @@ class GitHub:
             asset["size"],
             asset["download_count"],
             asset["url"],
-            asset["browser_download_url"]
+            asset["browser_download_url"],
           )
           for asset in release["assets"]
-        ]
+        ],
       )
       for release in json_resp
     ]
-  
+
   @staticmethod
   def download_one_release_asset(name: str, download_url: str, download_dir: Path) -> Path:
     """

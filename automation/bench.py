@@ -40,9 +40,11 @@ def build_benchmarks(cpu_cores: int = 8) -> int:
     stale.unlink()
 
   yellow_print(f"# Building the benchmarks (target: {BENCH_TARGET})...")
-  ret: ProcReturn = run_cmd(["cmake", "--build", ".", "--target", BENCH_TARGET,
-                             "--parallel", str(cpu_cores)],
-                            cwd=BUILD_DIR, env=os.environ.copy())
+  ret: ProcReturn = run_cmd(
+    ["cmake", "--build", ".", "--target", BENCH_TARGET, "--parallel", str(cpu_cores)],
+    cwd=BUILD_DIR,
+    env=os.environ.copy(),
+  )
 
   print("#" * 60)
   return ret.retcode

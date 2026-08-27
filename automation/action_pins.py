@@ -88,13 +88,11 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
           continue
         source_line = lines[node.start_mark.line]
         has_provenance = cutoff.line == node.start_mark.line and (
-          re.match(r"^\s+#\s*\S", source_line[cutoff.column:]) is not None
+          re.match(r"^\s+#\s*\S", source_line[cutoff.column :]) is not None
         )
         if not has_provenance:
           if cutoff.line != node.start_mark.line:
-            failures.append(
-              f"{label} uses a multi-line YAML node; rewrite it as plain `uses: <target>@<SHA> # v2`"
-            )
+            failures.append(f"{label} uses a multi-line YAML node; rewrite it as plain `uses: <target>@<SHA> # v2`")
           else:
             failures.append(f"{label} needs a trailing release/tag provenance comment (e.g. `# v2`)")
         continue

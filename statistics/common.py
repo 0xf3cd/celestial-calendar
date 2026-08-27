@@ -1,12 +1,12 @@
 # CelestialCalendar Statistics:
 #   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
 #   No model training happens here (see AGENTS.md).
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -17,10 +17,7 @@ from datetime import date, datetime, timedelta
 from dataclasses import dataclass
 
 import ctypes
-from ctypes import (
-  c_int32, c_uint32,  c_uint16, c_uint8, c_double, c_bool, c_char, c_char_p,
-  POINTER, Structure
-)
+from ctypes import c_int32, c_uint32, c_uint16, c_uint8, c_double, c_bool, c_char, c_char_p, POINTER, Structure
 
 from typing import Optional, List
 
@@ -60,17 +57,17 @@ def search_lib_path(folder: Path) -> Optional[Path]:
 
 
 # Define constants for paths.
-PROJ_PATH        = Path(__file__).parent.parent
-USNO_DATA_PATH   = Path(__file__).parent / "usno_data.txt"  # notebook-only; no test consumer (#168)
-BINDINGS_PATH    = PROJ_PATH / "build" / "shared_lib"
-LIB_PATH         = search_lib_path(BINDINGS_PATH)
+PROJ_PATH = Path(__file__).parent.parent
+USNO_DATA_PATH = Path(__file__).parent / "usno_data.txt"  # notebook-only; no test consumer (#168)
+BINDINGS_PATH = PROJ_PATH / "build" / "shared_lib"
+LIB_PATH = search_lib_path(BINDINGS_PATH)
 
-assert PROJ_PATH.exists(),        f"Project path not found: {PROJ_PATH}"
-assert USNO_DATA_PATH.exists(),   f"USNO data not found: {USNO_DATA_PATH}"
-assert BINDINGS_PATH.exists(),    f"Bindings path not found: {BINDINGS_PATH}"
+assert PROJ_PATH.exists(), f"Project path not found: {PROJ_PATH}"
+assert USNO_DATA_PATH.exists(), f"USNO data not found: {USNO_DATA_PATH}"
+assert BINDINGS_PATH.exists(), f"Bindings path not found: {BINDINGS_PATH}"
 
-assert LIB_PATH is not None,      f"Shared library not found in {BINDINGS_PATH}"
-assert LIB_PATH.exists(),         f"Shared library not found: {LIB_PATH}"
+assert LIB_PATH is not None, f"Shared library not found in {BINDINGS_PATH}"
+assert LIB_PATH.exists(), f"Shared library not found: {LIB_PATH}"
 
 
 # Define the argument and return types of the C functions.
@@ -80,7 +77,7 @@ assert LIB_PATH.exists(),         f"Shared library not found: {LIB_PATH}"
 LIB = ctypes.CDLL(str(LIB_PATH))
 
 
-#region Library-level
+# region Library-level
 
 LIB.set_log_verbosity.argtypes = [c_uint8]
 LIB.set_log_verbosity.restype = c_bool
@@ -88,16 +85,18 @@ LIB.set_log_verbosity.restype = c_bool
 LIB.last_error.argtypes = []
 LIB.last_error.restype = c_char_p
 
-#endregion
+# endregion
 
 
-#region Delta T functions
+# region Delta T functions
+
 
 class DeltaT(Structure):
   _fields_ = [
     ("valid", c_bool),
     ("value", c_double),
   ]
+
 
 LIB.delta_t_algo1.argtypes = [c_double]
 LIB.delta_t_algo1.restype = DeltaT
@@ -122,11 +121,13 @@ def delta_t_algo1(year: float) -> float:
     raise ValueError("Error occurred in delta_t_algo1.")
   return result.value
 
+
 def delta_t_algo2(year: float) -> float:
   result = LIB.delta_t_algo2(year)
   if not result.valid:
     raise ValueError("Error occurred in delta_t_algo2.")
   return result.value
+
 
 def delta_t_algo3(year: float) -> float:
   result = LIB.delta_t_algo3(year)
@@ -134,11 +135,13 @@ def delta_t_algo3(year: float) -> float:
     raise ValueError("Error occurred in delta_t_algo3.")
   return result.value
 
+
 def delta_t_algo4(year: float) -> float:
   result = LIB.delta_t_algo4(year)
   if not result.valid:
     raise ValueError("Error occurred in delta_t_algo4.")
   return result.value
+
 
 def delta_t_algo5(year: float) -> float:
   result = LIB.delta_t_algo5(year)
@@ -146,8 +149,10 @@ def delta_t_algo5(year: float) -> float:
     raise ValueError("Error occurred in delta_t_algo5.")
   return result.value
 
+
 LIB.delta_t.argtypes = [c_double]
 LIB.delta_t.restype = DeltaT
+
 
 def delta_t(year: float) -> float:
   """The library's default ΔT, currently algo5."""
@@ -156,27 +161,31 @@ def delta_t(year: float) -> float:
     raise ValueError("Error occurred in delta_t.")
   return result.value
 
-#endregion
+
+# endregion
 
 
-#region Delta T and Julian Day
+# region Delta T and Julian Day
+
 
 # Define the JulianDay struct
 class _JulianDay(Structure):
   _fields_ = [
-    ("valid", c_bool  ),
+    ("valid", c_bool),
     ("value", c_double),
   ]
+
 
 # Define the UT1Time struct
 class _UT1Time(Structure):
   _fields_ = [
     ("valid", c_bool),
-    ("year",  c_int32),
+    ("year", c_int32),
     ("month", c_uint32),
-    ("day",   c_uint32),
+    ("day", c_uint32),
     ("fraction", c_double),
   ]
+
 
 # Define the function signatures
 LIB.ut1_to_jd.argtypes = [c_int32, c_uint32, c_uint32, c_double]
@@ -205,6 +214,7 @@ def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
     raise ValueError("Error occurred in ut1_to_jd.")
 
   return jd.value
+
 
 def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
   """
@@ -238,34 +248,38 @@ def jde_to_ut1(jde: float) -> datetime:
   elapsed_microseconds = int(ut1.fraction * 86400 * 1000000)
   return date + timedelta(microseconds=elapsed_microseconds)
 
-#endregion
+
+# endregion
 
 
-#region Sun and Moon Coordinates
+# region Sun and Moon Coordinates
+
 
 # Define the SunCoordinate struct
 class _SunCoordinate(Structure):
   _fields_ = [
-    ("valid", c_bool  ),
-    ("lon",   c_double),
-    ("lat",   c_double),
-    ("r",     c_double),
+    ("valid", c_bool),
+    ("lon", c_double),
+    ("lat", c_double),
+    ("r", c_double),
   ]
+
 
 # Define the MoonCoordinate struct
 class _MoonCoordinate(Structure):
   _fields_ = [
-    ("valid", c_bool  ),
-    ("lon",   c_double),
-    ("lat",   c_double),
-    ("r",     c_double),
+    ("valid", c_bool),
+    ("lon", c_double),
+    ("lat", c_double),
+    ("r", c_double),
   ]
+
 
 # Define the MoonIllumination struct
 class _MoonIllumination(Structure):
   _fields_ = [
-    ("valid",          c_bool  ),
-    ("illumination",   c_double),
+    ("valid", c_bool),
+    ("illumination", c_double),
     ("elongation_deg", c_double),
   ]
 
@@ -279,11 +293,13 @@ LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
 LIB.moon_illumination.argtypes = [c_double]
 LIB.moon_illumination.restype = _MoonIllumination
 
+
 class _MoonPositionAngle(Structure):
   _fields_ = [
-    ("valid",    c_bool  ),
+    ("valid", c_bool),
     ("angle_deg", c_double),
   ]
+
 
 LIB.moon_position_angle.argtypes = [c_double]
 LIB.moon_position_angle.restype = _MoonPositionAngle
@@ -291,9 +307,10 @@ LIB.moon_position_angle.restype = _MoonPositionAngle
 
 @dataclass
 class SunCoordinate:
-  lon: float # In degrees
-  lat: float # In degrees
-  r:   float # In AU
+  lon: float  # In degrees
+  lat: float  # In degrees
+  r: float  # In AU
+
 
 def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
   """
@@ -307,17 +324,18 @@ def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
     raise ValueError("Error occurred in sun_apparent_geocentric_coord.")
 
   return SunCoordinate(
-    lon = coord.lon,
-    lat = coord.lat,
-    r   = coord.r,
+    lon=coord.lon,
+    lat=coord.lat,
+    r=coord.r,
   )
 
 
 @dataclass
 class MoonCoordinate:
-  lon: float # In degrees
-  lat: float # In degrees
-  r:   float # In KM
+  lon: float  # In degrees
+  lat: float  # In degrees
+  r: float  # In KM
+
 
 def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
   """
@@ -331,16 +349,17 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
     raise ValueError("Error occurred in moon_apparent_geocentric_coord.")
 
   return MoonCoordinate(
-    lon = coord.lon,
-    lat = coord.lat,
-    r   = coord.r,
+    lon=coord.lon,
+    lat=coord.lat,
+    r=coord.r,
   )
 
 
 @dataclass
 class MoonIllumination:
-  illumination:   float # In [0, 1]
-  elongation_deg: float # In degrees, in [0, 360)
+  illumination: float  # In [0, 1]
+  elongation_deg: float  # In degrees, in [0, 360)
+
 
 def moon_illumination(jde: float) -> MoonIllumination:
   """
@@ -354,14 +373,15 @@ def moon_illumination(jde: float) -> MoonIllumination:
     raise ValueError("Error occurred in moon_illumination.")
 
   return MoonIllumination(
-    illumination   = result.illumination,
-    elongation_deg = result.elongation_deg,
+    illumination=result.illumination,
+    elongation_deg=result.elongation_deg,
   )
 
 
 @dataclass
 class MoonPositionAngle:
-  angle_deg: float # In [0, 360)
+  angle_deg: float  # In [0, 360)
+
 
 def moon_position_angle(jde: float) -> MoonPositionAngle:
   """
@@ -374,11 +394,12 @@ def moon_position_angle(jde: float) -> MoonPositionAngle:
   if not result.valid:
     raise ValueError("Error occurred in moon_position_angle.")
 
-  return MoonPositionAngle(angle_deg = result.angle_deg)
+  return MoonPositionAngle(angle_deg=result.angle_deg)
 
 
 LIB.moon_phase_moments.argtypes = [c_int32, c_uint8, POINTER(c_uint32), POINTER(c_double), c_uint32]
 LIB.moon_phase_moments.restype = c_uint32
+
 
 class MoonPhaseKind(Enum):
   NEW_MOON = 0
@@ -386,12 +407,14 @@ class MoonPhaseKind(Enum):
   FULL_MOON = 2
   LAST_QUARTER = 3
 
+
 @dataclass
 class MoonPhaseMoments:
   year: int
   phase: MoonPhaseKind
   jdes: List[float]
   moments: List[datetime]
+
 
 def moon_phase_moments(year: int, phase: MoonPhaseKind) -> MoonPhaseMoments:
   """
@@ -412,22 +435,23 @@ def moon_phase_moments(year: int, phase: MoonPhaseKind) -> MoonPhaseMoments:
 
   if num_written != root_count.value:
     raise ValueError(
-      f"moon_phase_moments wrote {num_written} of {root_count.value} roots for year {year}; "
-      f"slot_count is {slot_count}."
+      f"moon_phase_moments wrote {num_written} of {root_count.value} roots for year {year}; slot_count is {slot_count}."
     )
 
   jdes = [slots[i] for i in range(num_written)]
   moments = [jde_to_ut1(jde) for jde in jdes]
   return MoonPhaseMoments(year=year, phase=phase, jdes=jdes, moments=moments)
 
-#endregion
+
+# endregion
 
 
-#region Sidereal Time
+# region Sidereal Time
+
 
 class _SiderealTime(Structure):
   _fields_ = [
-    ("valid", c_bool  ),
+    ("valid", c_bool),
     ("value", c_double),
   ]
 
@@ -450,10 +474,12 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude: float) -> float:
 
   return result.value
 
-#endregion
+
+# endregion
 
 
-#region Solar Time
+# region Solar Time
+
 
 class _EquationOfTime(Structure):
   _fields_ = [
@@ -461,25 +487,29 @@ class _EquationOfTime(Structure):
     ("value", c_double),
   ]
 
+
 LIB.equation_of_time.argtypes = [c_double]
 LIB.equation_of_time.restype = _EquationOfTime
 
+
 class _ApparentSolarTime(Structure):
   _fields_ = [
-    ("valid",    c_bool),
-    ("year",     c_int32),
-    ("month",    c_uint32),
-    ("day",      c_uint32),
+    ("valid", c_bool),
+    ("year", c_int32),
+    ("month", c_uint32),
+    ("day", c_uint32),
     ("fraction", c_double),
   ]
+
 
 LIB.apparent_solar_time.argtypes = [c_int32, c_uint32, c_uint32, c_double, c_double]
 LIB.apparent_solar_time.restype = _ApparentSolarTime
 
-#endregion
+# endregion
 
 
-#region Jieqi
+# region Jieqi
+
 
 class Jieqi(Enum):
   立春 = 0
@@ -507,6 +537,7 @@ class Jieqi(Enum):
   小寒 = 22
   大寒 = 23
 
+
 class _JieqiMomentQuery(Structure):
   _fields_ = [
     ("valid", c_bool),
@@ -517,6 +548,7 @@ class _JieqiMomentQuery(Structure):
     ("frac", c_double),
   ]
 
+
 LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
 LIB.query_jieqi_moment.restype = _JieqiMomentQuery
 
@@ -525,11 +557,13 @@ LIB.query_jieqi_moment.restype = _JieqiMomentQuery
 LIB.get_jieqi_name.argtypes = [c_uint8, POINTER(c_char), c_uint32]
 LIB.get_jieqi_name.restype = c_bool
 
+
 class _Discriminant(Structure):
   _fields_ = [
     ("valid", c_bool),
     ("count", c_uint32),
   ]
+
 
 LIB.solar_lon_root_discriminant.argtypes = [c_int32, c_double]
 LIB.solar_lon_root_discriminant.restype = _Discriminant
@@ -542,6 +576,7 @@ LIB.solar_lon_roots.restype = c_uint32
 class JieqiMoment:
   jq: Jieqi
   moment: datetime
+
 
 def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
   """
@@ -557,7 +592,7 @@ def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
 
   if query.jq_idx != jq.value:
     raise ValueError("Unexpected jq_idx.")
-  
+
   # Combine y, m, d, and frac into a datetime
   elapsed_microseconds = int(query.frac * 86400 * 1000000)
   dt = datetime(query.y, query.m, query.d) + timedelta(microseconds=elapsed_microseconds)
@@ -565,9 +600,9 @@ def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
   return JieqiMoment(jq, dt)
 
 
-#endregion
+# endregion
 
-#region New Moon
+# region New Moon
 
 LIB.new_moons_in_year.argtypes = [c_int32, POINTER(c_uint32), POINTER(c_double), c_uint32]
 LIB.new_moons_in_year.restype = c_uint32
@@ -575,12 +610,14 @@ LIB.new_moons_in_year.restype = c_uint32
 LIB.new_moons_after_jde.argtypes = [c_double, POINTER(c_double), c_uint32]
 LIB.new_moons_after_jde.restype = c_uint32
 
+
 @dataclass
 class NewMoons:
   """
   A data class to hold the year and the list of Julian Ephemeris Days (JDEs)
   when new moons occur.
   """
+
   year: int
   new_moon_jdes: List[float]
   new_moon_moments: List[datetime]
@@ -599,7 +636,7 @@ def new_moons_in_year(year: int) -> NewMoons:
            of JDEs representing the conjunction moments (new moons).
   """
   # There should be either 12 or 13 new moons in a year, so 15 slots should be enough.
-  slot_count = 15 
+  slot_count = 15
 
   # Allocate memory for the number of roots (new moons) and the slots to hold the JDEs.
   root_count = c_uint32(0)
@@ -616,8 +653,7 @@ def new_moons_in_year(year: int) -> NewMoons:
   # Raised rather than asserted: `python -O` strips asserts.
   if num_written != root_count.value:
     raise ValueError(
-      f"new_moons_in_year wrote {num_written} of {root_count.value} roots for year {year}; "
-      f"slot_count is {slot_count}."
+      f"new_moons_in_year wrote {num_written} of {root_count.value} roots for year {year}; slot_count is {slot_count}."
     )
 
   # Return the result as an instance of the NewMoons data class.
@@ -631,15 +667,18 @@ def new_moons_in_year(year: int) -> NewMoons:
     new_moon_moments=moments,
   )
 
-#endregion
+
+# endregion
 
 
-#region Lunar Year
+# region Lunar Year
+
 
 class LunarAlgo(Enum):
   ALGO_1 = 1
   ALGO_2 = 2
   ALGO_3 = 3
+
 
 class _SupportedLunarYearRange(Structure):
   _fields_ = [
@@ -648,13 +687,16 @@ class _SupportedLunarYearRange(Structure):
     ("end", c_int32),
   ]
 
+
 LIB.get_supported_lunar_year_range.argtypes = [c_uint8]
 LIB.get_supported_lunar_year_range.restype = _SupportedLunarYearRange
+
 
 @dataclass
 class SupportedLunarYearRange:
   start: int
   end: int
+
 
 def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
   """
@@ -669,8 +711,8 @@ def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
     raise ValueError("Error occurred in get_supported_lunar_year_range.")
 
   return SupportedLunarYearRange(
-    start = result.start,
-    end   = result.end,
+    start=result.start,
+    end=result.end,
   )
 
 
@@ -684,14 +726,17 @@ class _LunarYearInfo(Structure):
     ("month_len", c_uint16),
   ]
 
+
 LIB.get_lunar_year_info.argtypes = [c_uint8, c_int32]
 LIB.get_lunar_year_info.restype = _LunarYearInfo
 
+
 @dataclass
 class LunarYearInfo:
-  first_day: date # The first day of the lunar year in the Gregorian calendar.
-  leap_month: int # The month of the leap month (1 <= leap_month <= 12). 0 if there is no leap month.
-  month_lengths: List[int] # The number of days in each month of the lunar year.
+  first_day: date  # The first day of the lunar year in the Gregorian calendar.
+  leap_month: int  # The month of the leap month (1 <= leap_month <= 12). 0 if there is no leap month.
+  month_lengths: List[int]  # The number of days in each month of the lunar year.
+
 
 def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
   """
@@ -705,7 +750,7 @@ def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
 
   if not result.valid:
     raise ValueError("Error occurred in get_lunar_year_info.")
-  
+
   month_count = 12 if result.leap_month == 0 else 13
   month_lengths = []
   for i in range(month_count):
@@ -713,9 +758,9 @@ def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
     month_lengths.append(30 if big else 29)
 
   return LunarYearInfo(
-    first_day = date(result.year, result.month, result.day),
-    leap_month = result.leap_month,
-    month_lengths = month_lengths,
+    first_day=date(result.year, result.month, result.day),
+    leap_month=result.leap_month,
+    month_lengths=month_lengths,
   )
 
 
@@ -728,15 +773,18 @@ class _LunarDate(Structure):
     ("day", c_uint8),
   ]
 
+
 LIB.gregorian_to_lunar.argtypes = [c_uint8, c_int32, c_uint8, c_uint8]
 LIB.gregorian_to_lunar.restype = _LunarDate
+
 
 @dataclass
 class LunarDate:
   year: int
-  month: int    # Traditional numbering (1-12).
-  is_leap: bool # Whether the month is the leap month.
+  month: int  # Traditional numbering (1-12).
+  is_leap: bool  # Whether the month is the leap month.
   day: int
+
 
 def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> LunarDate:
   """
@@ -756,10 +804,10 @@ def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> Luna
     raise ValueError("Error occurred in gregorian_to_lunar.")
 
   return LunarDate(
-    year = result.year,
-    month = result.month,
-    is_leap = result.is_leap,
-    day = result.day,
+    year=result.year,
+    month=result.month,
+    is_leap=result.is_leap,
+    day=result.day,
   )
 
 
@@ -771,8 +819,10 @@ class _GregorianDate(Structure):
     ("day", c_uint8),
   ]
 
+
 LIB.lunar_to_gregorian.argtypes = [c_uint8, c_int32, c_uint8, c_bool, c_uint8]
 LIB.lunar_to_gregorian.restype = _GregorianDate
+
 
 def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, day: int) -> date:
   """
@@ -793,4 +843,5 @@ def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, da
 
   return date(result.year, result.month, result.day)
 
-#endregion
+
+# endregion

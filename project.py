@@ -5,12 +5,12 @@
 #########################################################################################
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -23,15 +23,25 @@ from dataclasses import dataclass
 from typing import List, Callable, Sequence, Final
 
 from automation import (
-  run_cmake, build_project, clean_build,
-  run_gtests, print_system_info,
-  build_benchmarks, run_benchmarks,
-  time_execution, red_print, green_print, blue_print,
-  setup_environment, Tool, SetupPlan
+  run_cmake,
+  build_project,
+  clean_build,
+  run_gtests,
+  print_system_info,
+  build_benchmarks,
+  run_benchmarks,
+  time_execution,
+  red_print,
+  green_print,
+  blue_print,
+  setup_environment,
+  Tool,
+  SetupPlan,
 )
 
 
 BUILD_VERSION: Final[str] = "0.6.1"
+
 
 def parse_args() -> argparse.Namespace:
   """Parse the command line arguments."""
@@ -60,7 +70,7 @@ def parse_args() -> argparse.Namespace:
       "  To clean, set up, run CMake, build the project using all CPU cores, and run tests:\n"
       "    ./project.py --clean --all --cores all\n\n"
     ),
-    formatter_class=argparse.RawTextHelpFormatter
+    formatter_class=argparse.RawTextHelpFormatter,
   )
 
   available_cpu_cores: int = os.cpu_count() or 1
@@ -87,24 +97,31 @@ def parse_args() -> argparse.Namespace:
       return "Debug"
     else:
       raise argparse.ArgumentTypeError(f"Invalid build type: {value}")
-    
+
   parser.add_argument("--version", action="store_true", help="Print build version")
   parser.add_argument("--setup", action="store_true", help="Set up and install dependencies")
 
   parser.add_argument("--clean", action="store_true", help="Clean build")
   parser.add_argument("-cmk", "--cmake", action="store_true", help="Run CMake")
   parser.add_argument("-b", "--build", action="store_true", help="Build the project")
-  parser.add_argument("-bt", "--build-type", type=build_type, default="Release", 
-                      help='Build type, either "Release" or "Debug"')
-  parser.add_argument("-c", "--cores", type=cores, default=max(1, available_cpu_cores // 2), 
-                      help='Number of CPU cores to use for building the project (integer or "all")')
-  
+  parser.add_argument(
+    "-bt", "--build-type", type=build_type, default="Release", help='Build type, either "Release" or "Debug"'
+  )
+  parser.add_argument(
+    "-c",
+    "--cores",
+    type=cores,
+    default=max(1, available_cpu_cores // 2),
+    help='Number of CPU cores to use for building the project (integer or "all")',
+  )
+
   parser.add_argument("-t", "--test", action="store_true", help="Run tests")
   parser.add_argument("-k", "--keyword", nargs="*", help="Keywords to filter tests", default=[])
   parser.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=0, help="Verbosity level of tests")
 
-  parser.add_argument("--bench", action="store_true",
-                      help="Build and run the benchmarks (opt-in: --all does not include them)")
+  parser.add_argument(
+    "--bench", action="store_true", help="Build and run the benchmarks (opt-in: --all does not include them)"
+  )
 
   parser.add_argument("-a", "--all", action="store_true", help="Set up, run CMake, build, and test the project")
 
@@ -134,7 +151,7 @@ def print_steps(args: argparse.Namespace) -> None:
   if args.test:
     green_print(f"# - Run tests with verbosity level {args.verbosity}")
     if args.keyword:
-      green_print(f'# - Filter tests with keywords: {", ".join(args.keyword)}')
+      green_print(f"# - Filter tests with keywords: {', '.join(args.keyword)}")
   if args.bench:
     green_print(f"# - Build and run the benchmarks using {args.cores} CPU cores")
   print(60 * "#")
@@ -148,8 +165,8 @@ class Task:
 
 @dataclass
 class TaskResult:
-  task:    Task
-  time:    float
+  task: Task
+  time: float
   retcode: int
 
 

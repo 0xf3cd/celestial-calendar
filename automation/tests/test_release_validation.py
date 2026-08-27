@@ -207,8 +207,7 @@ def native_members(filename, build_version=VERSION):
     "sha256": hashes,
   }
   return [
-    (name, json.dumps(build_info).encode() if name == "build_info.json" else content)
-    for name, content in members
+    (name, json.dumps(build_info).encode() if name == "build_info.json" else content) for name, content in members
   ]
 
 
@@ -265,18 +264,22 @@ def write_source_manifest(path, commit="tagged-sha", mutation=None):
   for workflow_id, workflow_name, names in groups:
     artifacts = []
     for name in sorted(names):
-      artifacts.append({
-        "id": artifact_id,
-        "name": name,
-        "size": 100 + artifact_id,
-        "digest": f"sha256:{artifact_id:064x}",
-      })
+      artifacts.append(
+        {
+          "id": artifact_id,
+          "name": name,
+          "size": 100 + artifact_id,
+          "digest": f"sha256:{artifact_id:064x}",
+        }
+      )
       artifact_id += 1
-    sources.append({
-      "workflow": {"id": workflow_id, "name": workflow_name},
-      "run": {"id": 100 + workflow_id, "head_sha": commit},
-      "artifacts": artifacts,
-    })
+    sources.append(
+      {
+        "workflow": {"id": workflow_id, "name": workflow_name},
+        "run": {"id": 100 + workflow_id, "head_sha": commit},
+        "artifacts": artifacts,
+      }
+    )
   payload = {"schema": 1, "commit": commit, "sources": sources}
   if mutation is not None:
     mutation(payload)
@@ -450,9 +453,7 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
   )
   assert "evidence/manifest.json" not in manifest["files"]
   assert set(manifest["files"]) == {
-    path.relative_to(candidate).as_posix()
-    for path in candidate.rglob("*")
-    if path.is_file() and path != manifest_path
+    path.relative_to(candidate).as_posix() for path in candidate.rglob("*") if path.is_file() and path != manifest_path
   }
   for relative, identity in manifest["files"].items():
     content = (candidate / relative).read_bytes()
@@ -686,8 +687,7 @@ def test_license_bytes_are_platform_stable():
   assert "THIRD_PARTY_NOTICES.txt text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
   assert "third_party/emscripten/6.0.6/** text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
   assert (
-    "third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space"
-    in attributes
+    "third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
   )
   assert "src/test/provenance/** text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
   assert b"\r\n" not in LICENSE_BYTES
@@ -920,9 +920,7 @@ def test_historical_canonical_license_contract_checks_members_without_checkout_b
     lambda members: members[:-1],
     lambda members: [*members, ("unexpected.txt", b"extra")],
     lambda members: [*members, members[0]],
-    lambda members: [
-      (name, b"changed tarball" if name == TARBALL else content) for name, content in members
-    ],
+    lambda members: [(name, b"changed tarball" if name == TARBALL else content) for name, content in members],
     lambda members: [
       (
         name,
@@ -952,15 +950,12 @@ def test_wasm_archive_mutations_fail_without_modification(tmp_path, mutation):
     lambda members: [*members, ("unexpected.txt", b"extra")],
     lambda members: [*members, members[-1]],
     lambda members: [
-      (name, b"changed library" if name == "lib/libcelestial_calendar.so" else content)
-      for name, content in members
+      (name, b"changed library" if name == "lib/libcelestial_calendar.so" else content) for name, content in members
     ],
     lambda members: [
       (
         name,
-        json.dumps({"build_version": VERSION, "sha256": {}}).encode()
-        if name == "build_info.json"
-        else content,
+        json.dumps({"build_version": VERSION, "sha256": {}}).encode() if name == "build_info.json" else content,
       )
       for name, content in members
     ],
@@ -986,9 +981,7 @@ def test_native_archive_rejects_wrong_build_version(tmp_path):
 
 
 def test_readme_runtime_matrix_matches_reference_values():
-  assert _runtime_matrix() == {
-    filename.removesuffix(".zip"): floor for filename, floor in RUNTIME_FLOORS.items()
-  }
+  assert _runtime_matrix() == {filename.removesuffix(".zip"): floor for filename, floor in RUNTIME_FLOORS.items()}
 
 
 @pytest.mark.parametrize(

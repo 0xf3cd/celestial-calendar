@@ -66,9 +66,7 @@ def validate_runtime_floor(runtime_floor, context: str) -> None:
         ) from None
       continue
     if exceeds_support:
-      raise RuntimeError(
-        f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {context}"
-      )
+      raise RuntimeError(f"Measured {key} requirement {measured[key]} exceeds supported {supported[key]} in {context}")
 
 
 def parse_elf_versions(output: str) -> dict[str, str]:

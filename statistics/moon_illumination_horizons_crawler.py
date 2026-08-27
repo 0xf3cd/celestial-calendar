@@ -40,7 +40,7 @@ def fetch_illumination(jdes: list[float]) -> list[float]:
   """Horizons observer quantity 10 (Illu%) for the Moon, as a fraction in [0, 1]."""
   out: list[float] = []
   for start in range(0, len(jdes), CHUNK):
-    chunk = jdes[start:start + CHUNK]
+    chunk = jdes[start : start + CHUNK]
     params = {
       "format": "text",
       "COMMAND": "'301'",
@@ -65,7 +65,7 @@ def fetch_illumination(jdes: list[float]) -> list[float]:
 
     lines = text.splitlines()
     soe, eoe = lines.index("$$SOE"), lines.index("$$EOE")
-    rows = lines[soe + 1:eoe]
+    rows = lines[soe + 1 : eoe]
     if len(rows) != len(chunk):
       raise RuntimeError(f"expected {len(chunk)} rows, got {len(rows)}")
     out.extend(float(line.split(",")[-2]) / 100.0 for line in rows)
