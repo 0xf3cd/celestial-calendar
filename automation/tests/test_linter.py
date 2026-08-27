@@ -10,6 +10,7 @@
 # See <https://www.gnu.org/licenses/> for more details.
 
 import pytest
+import yaml
 
 from automation import linter
 from automation.utils import ProcReturn
@@ -45,3 +46,14 @@ def test_run_ruff_checks_lint_and_format(monkeypatch, tmp_path, retcodes, expect
       ["ruff", "format", "--check", str(tmp_path)],
     ][:expected_commands]
   )
+
+
+def test_core_tests_pin_ruff_and_run_repo_entrypoint():
+  workflow_path = linter.paths.proj_root() / ".github" / "workflows" / "core_tests.yml"
+  workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["linters-and-static-analysis"]["steps"]
+  install = next(step for step in steps if step.get("name") == "Install Python Dependencies")
+  style = next(step for step in steps if step.get("name") == "Style Check")
+
+  assert "python3 -m pip install ruff==0.16.1" in install["run"].splitlines()
+  assert "./checks.py --ruff --clang-tidy --abi-layout" in [line.strip() for line in style["run"].splitlines()]
