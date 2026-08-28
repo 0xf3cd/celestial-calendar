@@ -71,7 +71,10 @@ def test_erfa_inputs_nist_evidence_and_repository_values_are_pinned():
   assert ERFA_VERSION == "2.0.1"
   assert ERFA_TAG_OBJECT == "944bc0956f1d236e5982ee63930e060e60ec85f9"
   assert ERFA_COMMIT == "9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
-  assert len(ERFA_INPUTS) == 6
+  assert len(ERFA_INPUTS) == 8
+  input_hashes = {source.path: source.sha256 for source in ERFA_INPUTS}
+  assert input_hashes[Path("src/cal2jd.c")] == "95d13243cfa6ed019cd4e1737388d97cc6be3a5e9bd99a35ea9938934d439a0f"
+  assert input_hashes[Path("src/jd2cal.c")] == "f1f15f0295348efc51c3f0a43608b46cbe514d65846935b3f609406f731b1961"
   assert NIST_SP330_URL == "https://doi.org/10.6028/NIST.SP.330-2019"
   assert NIST_SP330_PDF_SHA256 == "57fadf9d4d086bd167634afc02ed9cb71278d16a676f36bc89f7148cbe64bf78"
   assert verify_erfa_identities() == IdentityCounts(9, 4, 14, 1, 5, 1)

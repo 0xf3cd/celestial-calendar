@@ -128,7 +128,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   ),
   NoticeSource(
     title=f"ERFA v{ERFA_VERSION} — LICENSE",
-    applicability="the runtime constants and coefficients derived from the pinned ERFA source files",
+    applicability="runtime lineage and the test-only calendar oracle derived from the pinned ERFA source files",
     path=Path(f"src/test/provenance/erfa/v{ERFA_VERSION}/LICENSE"),
     upstream=f"{ERFA_RAW_BASE}/LICENSE",
     sha256="b1858f9a263f22c438a455a32945da51a31a0ae25a21055da13bb7ed57cc3b51",

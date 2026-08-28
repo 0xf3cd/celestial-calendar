@@ -46,12 +46,27 @@ target_compile_options(gmock_main PRIVATE -w)
 enable_testing()
 include(GoogleTest)
 
+set(ERFA_PROVENANCE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/provenance/erfa/v2.0.1/src)
+set(ERFA_CALENDAR_ORACLE_SOURCES
+  ${ERFA_PROVENANCE_SRC_DIR}/cal2jd.c
+  ${ERFA_PROVENANCE_SRC_DIR}/jd2cal.c
+)
+
 # Named `CELESTIAL_ADD_TEST`, not `ADD_TEST`: CMake command names are case-insensitive, and command
 # definitions are global once executed — a macro called `ADD_TEST` would shadow the built-in
 # `add_test` for everything processed afterwards (including sibling directories). (#89)
 macro(CELESTIAL_ADD_TEST test_path test_name)
   message("Adding ${test_name}")
   add_executable(${test_name} ${test_path})
+  if("${test_name}" STREQUAL "julian_day_erfa_test")
+    target_sources(${test_name} PRIVATE ${ERFA_CALENDAR_ORACLE_SOURCES})
+    target_include_directories(${test_name} SYSTEM PRIVATE ${ERFA_PROVENANCE_SRC_DIR})
+    if(MSVC)
+      set_source_files_properties(${ERFA_CALENDAR_ORACLE_SOURCES} PROPERTIES COMPILE_OPTIONS "/w")
+    else()
+      set_source_files_properties(${ERFA_CALENDAR_ORACLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-w")
+    endif()
+  endif()
   target_link_libraries(
     ${test_name}
     GTest::gtest_main
