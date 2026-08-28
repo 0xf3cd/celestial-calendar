@@ -293,8 +293,8 @@ enum class DistanceUnit : uint8_t { AU, KM };
 
 /**
  * @brief The scaling factor from AU to KM.
- * @ref IAU 2012 Resolution B2: the astronomical unit is defined as exactly 149'597'870'700 m
- *      -- a defined constant, not a measured one, so it carries no uncertainty.
+ * @ref NIST SP 330 (2019), Table 8: the astronomical unit is exactly 149'597'870'700 m.
+ * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DAU`.
  */
 inline constexpr double AU_KM_SCALE = 149597870.700;
 

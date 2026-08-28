@@ -43,6 +43,7 @@ namespace astro::moon::perturbation {
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ * @ref ERFA v2.0.1 `moon98.c`, Meeus additive longitude terms.
  */
 [[nodiscard]] inline auto longitude(const elp2000_82b::Context& ctx) -> double {
   return (3958.0 * std::sin(ctx.A1.rad())) 
@@ -58,6 +59,7 @@ namespace astro::moon::perturbation {
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
+ * @ref ERFA v2.0.1 `moon98.c`, Meeus additive latitude terms.
  */
 [[nodiscard]] inline auto latitude(const elp2000_82b::Context& ctx) -> double {
   return (-2235.0 * std::sin(ctx.Lp.rad()))
@@ -99,7 +101,7 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
   const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
   const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
 
-  // Distance, in KM.
+  // ERFA v2.0.1 moon98.c r0, converted from meters to kilometers.
   const toolbox::DistanceKm r { 385000.56 + (evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR) };
 
   return {

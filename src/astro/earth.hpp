@@ -409,6 +409,7 @@ namespace astro::earth::obliquity {
  * @return The mean obliquity (ε₀) in degrees.
  * @details Accuracy ~1" over ±2000 years from J2000; the polynomial degrades farther out.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
+ * @ref ERFA v2.0.1 `obl80.c`.
  */
 [[nodiscard]] inline auto mean(const double jde) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
@@ -502,7 +503,9 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
 }
 
 /** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).
- *  @note (25.11) prints 0.005775518; the 8th significant digit here is from τ_A = 499.004784 s / 86400. */
+ *  @note This stored value is the fixed ten-decimal rounding of
+ *        `ERFA_DAU / ERFA_CMPS / ERFA_DAYSEC`, not a digit copy of `ERFA_AULT`.
+ *  @ref ERFA v2.0.1 `erfam.h`. */
 inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
 
 /**

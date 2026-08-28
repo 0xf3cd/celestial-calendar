@@ -1,0 +1,21 @@
+NIST Special Publication 330 (2019)
+The International System of Units (SI), 2019 Edition
+David B. Newell and Eite Tiesinga, editors
+
+DOI: https://doi.org/10.6028/NIST.SP.330-2019
+Official PDF: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.330-2019.pdf
+PDF SHA-256: 57fadf9d4d086bd167634afc02ed9cb71278d16a676f36bc89f7148cbe64bf78
+
+Relevant exact definitions transcribed from the cited publication:
+Unit exponents use ASCII notation, and table footnote markers are omitted.
+
+Section 2.2, Table 1 (page 4):
+speed of light in vacuum  c  299 792 458  m s-1
+The numerical values of the seven defining constants have no uncertainty.
+
+Section 2.3.1, The meter (page 7):
+This definition implies the exact relation c = 299 792 458 m s-1.
+
+Section 4, Table 8 (page 25):
+day  d  1 d = 24 h = 86 400 s
+astronomical unit  au  1 au = 149 597 870 700 m

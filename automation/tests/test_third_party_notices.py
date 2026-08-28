@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "7b39a37e8445c806e34ded33765840d66faf76f776f14df08ff4af98cb2934eb"
+CANONICAL_NOTICE_SHA256 = "764e5183a2565114f9003659d367d69f89afc6660e769999befbe890147731f1"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -62,11 +62,13 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
   assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 7
-  for marking in NOTICE_SOURCES[-1].marking:
+  assert len(NOTICE_SOURCES) == 8
+  for marking in NOTICE_SOURCES[-2].marking:
     assert marking.encode() in notice
-  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-1].marking[1]
-  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-1].marking[-1]
+  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-2].marking[1]
+  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-2].marking[-1]
+  assert NOTICE_SOURCES[-1].title == "ERFA v2.0.1 — LICENSE"
+  assert b"Redistributions in binary form must reproduce the above copyright" in notice
 
 
 def materialize_inputs(destination: Path) -> None:
@@ -92,7 +94,7 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
   elif mutation == "marking":
-    sources = (*sources[:-1], replace(sources[-1], marking=()))
+    sources = (*sources[:-2], replace(sources[-2], marking=()), sources[-1])
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:

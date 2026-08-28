@@ -57,6 +57,7 @@ struct EclipticAngles {
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return {ζ, z, θ} in degrees; ζ and z nearly coincide for a small Δt, θ is the tilting angle.
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.2).
+ * @ref ERFA v2.0.1 `prec76.c`.
  */
 [[nodiscard]] inline auto equatorial_angles(const double jde_from, const double jde_to) -> EquatorialAngles {
   using astro::toolbox::AngleDeg;
