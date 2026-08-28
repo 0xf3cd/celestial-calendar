@@ -29,8 +29,10 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
+  from .erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
   from .sofa_identity import SOFA_ARCHIVE_URL
 else:
+  from erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
   from sofa_identity import SOFA_ARCHIVE_URL
 
 
@@ -123,6 +125,13 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
       "reordering applied; project routine names do not use iau or sofa prefixes.",
       "The SOFA user-replaceable DAT terms for the leap-second derivation remain in the vendored dat.c source file.",
     ),
+  ),
+  NoticeSource(
+    title=f"ERFA v{ERFA_VERSION} — LICENSE",
+    applicability="the runtime constants and coefficients derived from the pinned ERFA source files",
+    path=Path(f"src/test/provenance/erfa/v{ERFA_VERSION}/LICENSE"),
+    upstream=f"{ERFA_RAW_BASE}/LICENSE",
+    sha256="b1858f9a263f22c438a455a32945da51a31a0ae25a21055da13bb7ed57cc3b51",
   ),
 )
 

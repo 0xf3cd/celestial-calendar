@@ -45,11 +45,13 @@ namespace astro::julian_day {
 
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
+ * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJ00`.
  */
 inline constexpr double J2000 = 2451545.0;
 
 /**
  * @brief The number of days in one Julian century (36525 days).
+ * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJC`.
  */
 inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 
@@ -290,6 +292,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a julian ephemeris day number to julian millennium.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
+ * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
  */
 [[nodiscard]] constexpr auto jde_to_jm(const double jde) -> double {
   return (jde - J2000) / 365250.0;
@@ -299,6 +302,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a julian millennium to julian ephemeris day number.
  * @param jm The julian millennium since J2000.
  * @return The julian ephemeris day number, which is based on TT.
+ * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
  */
 [[nodiscard]] constexpr auto jm_to_jde(const double jm) -> double {
   return (jm * 365250.0) + J2000;
