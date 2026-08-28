@@ -32,6 +32,7 @@ from typing import Final
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ERFA_VERSION: Final[str] = "2.0.1"
+# The annotated liberfa/erfa v2.0.1 tag object peels (`v2.0.1^{commit}`) to ERFA_COMMIT.
 ERFA_TAG_OBJECT: Final[str] = "944bc0956f1d236e5982ee63930e060e60ec85f9"
 ERFA_COMMIT: Final[str] = "9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
 ERFA_RAW_BASE: Final[str] = f"https://raw.githubusercontent.com/liberfa/erfa/{ERFA_COMMIT}"
@@ -68,7 +69,7 @@ ERFA_INPUTS: Final[tuple[PinnedInput, ...]] = (
 )
 NIST_EVIDENCE: Final[PinnedInput] = PinnedInput(
   Path("src/test/provenance/nist/sp-330-2019/definitions.txt"),
-  "33ae0e89635bf96e3b858745367a476f2c69a8da70501ac13d3176810d44e281",
+  "553a419ab0691c0f14abf4656adc35cc4a9762a1ed938375418c2d41e61ef7e2",
 )
 
 

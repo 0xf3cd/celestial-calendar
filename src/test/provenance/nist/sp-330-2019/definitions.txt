@@ -7,12 +7,13 @@ Official PDF: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.330-
 PDF SHA-256: 57fadf9d4d086bd167634afc02ed9cb71278d16a676f36bc89f7148cbe64bf78
 
 Relevant exact definitions transcribed from the cited publication:
+Unit exponents use ASCII notation, and table footnote markers are omitted.
 
-Section 2.2, Table 1 (page 3):
+Section 2.2, Table 1 (page 4):
 speed of light in vacuum  c  299 792 458  m s-1
 The numerical values of the seven defining constants have no uncertainty.
 
-Section 2.3.2, The meter (page 6):
+Section 2.3.1, The meter (page 7):
 This definition implies the exact relation c = 299 792 458 m s-1.
 
 Section 4, Table 8 (page 25):
