@@ -1715,7 +1715,7 @@ second updates with no need to download new SOFA code.
 
 ==============================================================================
 ERFA v2.0.1 — LICENSE
-Applies to: runtime lineage and the test-only calendar oracle derived from the pinned ERFA source files.
+Applies to: runtime constants, coefficients, and calendar conversions derived from the pinned ERFA source files, plus the test-only calendar oracle.
 Source: https://raw.githubusercontent.com/liberfa/erfa/9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3/LICENSE
 Source-file SHA-256: b1858f9a263f22c438a455a32945da51a31a0ae25a21055da13bb7ed57cc3b51
 ==============================================================================

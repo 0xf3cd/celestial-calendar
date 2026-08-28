@@ -193,14 +193,13 @@ TEST(JulianDay, JdeUt1Consistency) {
 }
 
 TEST(JulianDay, InvalidInput) {
-  // #77: `ut1_to_jd` rejects year < 1 explicitly — its unsigned arithmetic would otherwise
-  // wrap around and silently produce a garbage JD (release builds included).
+  // #77: preserve the published forward domain, including through the thin wrappers.
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 2, 29), 0.5 }), std::runtime_error);
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-1, 12, 31), 0.99 }), std::runtime_error);
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-4712, 1, 1), 0.0 }), std::runtime_error);
 
-  // The wrappers propagate the throw (this is what turns the C-ABI garbage into an error).
+  // The wrappers propagate the same domain error.
   ASSERT_THROW(std::ignore = tt_to_jde(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
 
   // `jde_to_ut1` still runs `jd_to_ut1`'s domain gates: the JD of 1-01-01 sits below the
@@ -219,11 +218,10 @@ TEST(JulianDay, InvalidInput) {
   ASSERT_THROW(std::ignore = jd_to_ut1(std::numeric_limits<double>::infinity()), std::runtime_error);
   ASSERT_THROW(std::ignore = jd_to_ut1(-std::numeric_limits<double>::infinity()), std::runtime_error);
 
-  // #67: above JD 13689325.5 (conceptually 32768-01-01) `std::chrono::year` overflows, and the
-  // uint32 arithmetic wraps into valid-looking but wrong dates.
+  // #67: JD 13689325.5 is conceptually 32768-01-01, beyond `std::chrono::year`.
   ASSERT_NO_THROW(std::ignore = jd_to_ut1(13689325.499999));
   ASSERT_THROW(std::ignore = jd_to_ut1(13689325.5), std::runtime_error);
-  ASSERT_THROW(std::ignore = jd_to_ut1(4.0e9), std::runtime_error); // wrapped to 2403-12-05 before #67.
+  ASSERT_THROW(std::ignore = jd_to_ut1(4.0e9), std::runtime_error);
 
   // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);

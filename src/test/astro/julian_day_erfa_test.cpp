@@ -29,12 +29,12 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <random>
 #include <stdexcept>
 #include <string>
 
 #include "datetime.hpp"
 #include "julian_day.hpp"
+#include "random.hpp"
 #include "ymd.hpp"
 
 extern "C" {
@@ -78,10 +78,6 @@ constexpr std::int64_t NS_PER_DAY = 86'400'000'000'000;
   };
 }
 
-[[nodiscard]] auto same_datetime(const Datetime& left, const Datetime& right) -> bool {
-  return left.ymd == right.ymd && left.time_of_day.to_duration() == right.time_of_day.to_duration();
-}
-
 [[nodiscard]] auto forward_matches(const Datetime& input) -> bool {
   const auto [year, month, day] = util::from_ymd(input.ymd);
   const double expected = erfa_day_start(year, month, day) + input.fraction();
@@ -89,7 +85,7 @@ constexpr std::int64_t NS_PER_DAY = 86'400'000'000'000;
 }
 
 [[nodiscard]] auto inverse_matches(const double jd) -> bool {
-  return same_datetime(jd_to_ut1(jd), erfa_datetime(jd));
+  return jd_to_ut1(jd) == erfa_datetime(jd);
 }
 
 template <typename Callable>
@@ -169,19 +165,26 @@ TEST(JulianDayErfaOracle, ExhaustiveDomainAndFractions) {
   }
   EXPECT_EQ(directed_fractions, 1'080U);
 
-  std::mt19937_64 random { 42 };
-  std::uniform_int_distribution<std::int64_t> day_offset { 0, inverse_days - 1 };
-  std::uniform_int_distribution<std::int64_t> nanoseconds { 0, NS_PER_DAY - 1 };
   constexpr std::uint64_t RANDOM_ROWS = 200'000;
   for (std::uint64_t index = 0; index < RANDOM_ROWS; ++index) {
-    const double jd = LOWER_JD + static_cast<double>(day_offset(random))
-                    + (static_cast<double>(nanoseconds(random)) / static_cast<double>(NS_PER_DAY));
+    const double jd = LOWER_JD + static_cast<double>(util::random<std::int64_t>(0, inverse_days - 1))
+                    + (static_cast<double>(util::random<std::int64_t>(0, NS_PER_DAY - 1))
+                       / static_cast<double>(NS_PER_DAY));
     if (!inverse_matches(jd)) {
       FAIL() << "random inverse mismatch at row " << index;
     }
 
     const Datetime current = jd_to_ut1(jd);
-    if (!forward_matches(current) || !same_datetime(current, jd_to_ut1(ut1_to_jd(current)))) {
+    const Datetime independent_forward {
+      current.ymd,
+      std::chrono::hh_mm_ss {
+        std::chrono::nanoseconds { util::random<std::int64_t>(0, NS_PER_DAY - 1) },
+      },
+    };
+    if (!forward_matches(independent_forward)) {
+      FAIL() << "random forward mismatch at row " << index;
+    }
+    if (!forward_matches(current) || current != jd_to_ut1(ut1_to_jd(current))) {
       FAIL() << "random round-trip mismatch at row " << index;
     }
   }
