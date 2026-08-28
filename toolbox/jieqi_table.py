@@ -6,12 +6,12 @@
 #
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -38,7 +38,7 @@ JIEQI_PER_YEAR: Final[int] = 24
 # The default table window (#164): 2051 is the tail-margin year, so every moment of 1950–2050
 # has its successor inside the table.
 DEFAULT_START_YEAR: Final[int] = 1950
-DEFAULT_END_YEAR:   Final[int] = 2051
+DEFAULT_END_YEAR: Final[int] = 2051
 
 # The window this export can actually honor: below 401 the ABI's UT1 chain returns
 # `valid = false` (its own floor is JD 1867522.5 = 401-01-01, enforced library-side);
@@ -62,19 +62,20 @@ TIMESCALE_NOTE: Final[str] = (
 
 class _JieqiMomentQuery(Structure):
   """Minimal mirror of `JieqiMomentQuery` in `celestial.h`."""
+
   _fields_ = [
-    ("valid",  c_bool),
+    ("valid", c_bool),
     ("jq_idx", c_uint8),
-    ("y",      c_int32),
-    ("m",      c_uint32),
-    ("d",      c_uint32),
-    ("frac",   c_double),
+    ("y", c_int32),
+    ("m", c_uint32),
+    ("d", c_uint32),
+    ("frac", c_double),
   ]
 
 
 def find_shared_lib() -> Path:
   """Locate the built `libcelestial_calendar` under `build/shared_lib` (build it first)."""
-  exts = { "win32": ".dll", "darwin": ".dylib", "linux": ".so" }
+  exts = {"win32": ".dll", "darwin": ".dylib", "linux": ".so"}
   if sys.platform not in exts:
     raise OSError(f"Unsupported platform: {sys.platform}")
   ext = exts[sys.platform]
@@ -83,9 +84,7 @@ def find_shared_lib() -> Path:
   # *.dll.manifest / *.dll.a and the like.
   name_re = re.compile(rf"^(?:lib)?celestial_calendar(?:\.\d+)*{re.escape(ext)}(?:\.\d+)*$")
   folder = paths.shared_lib_dir()
-  candidates = [
-    p for p in folder.iterdir() if p.is_file() and name_re.match(p.name)
-  ] if folder.is_dir() else []
+  candidates = [p for p in folder.iterdir() if p.is_file() and name_re.match(p.name)] if folder.is_dir() else []
 
   # Prefer the unversioned name (the latest build's link): versioned outputs accumulate
   # in the build dir. Either prefix counts -- Windows drops the `lib`. Name tiebreak
@@ -130,15 +129,20 @@ def iso_from_unix_ms(unix_ms: int) -> str:
   dt = datetime(1970, 1, 1) + timedelta(milliseconds=unix_ms)
   # No strftime: %Y is platform-dependent below year 1000 (glibc doesn't zero-pad,
   # the Windows CRT rejects years < 1900), and the window starts at 401.
-  return (f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
-          f"T{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}.{dt.microsecond // 1000:03d}Z")
+  return (
+    f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
+    f"T{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}.{dt.microsecond // 1000:03d}Z"
+  )
 
 
 def source_commit() -> str:
   """The commit the table is generated from -- provenance, pinned per checkout."""
   ret = run_cmd(
     ["git", "rev-parse", "HEAD"],
-    cwd=str(paths.proj_root()), print_cmd=False, print_stdout=False, print_stderr=False,
+    cwd=str(paths.proj_root()),
+    print_cmd=False,
+    print_stdout=False,
+    print_stderr=False,
   )
   if ret.retcode != 0:
     raise RuntimeError("git rev-parse HEAD failed -- the table records its source commit")
@@ -148,10 +152,7 @@ def source_commit() -> str:
 def generate(start_year: int, end_year: int) -> dict:
   """Query every Jieqi moment in `start_year..end_year` (inclusive) and build the table."""
   if not MIN_YEAR <= start_year <= end_year <= MAX_YEAR:
-    raise ValueError(
-      f"year range must satisfy {MIN_YEAR} <= start <= end <= {MAX_YEAR}, "
-      f"got {start_year}..{end_year}"
-    )
+    raise ValueError(f"year range must satisfy {MIN_YEAR} <= start <= end <= {MAX_YEAR}, got {start_year}..{end_year}")
 
   lib = load_lib()
   names = [jieqi_name_zh(lib, idx) for idx in range(JIEQI_PER_YEAR)]
@@ -166,13 +167,15 @@ def generate(start_year: int, end_year: int) -> dict:
         raise RuntimeError(f"query_jieqi_moment({year}, {idx}) echoed jq_idx {query.jq_idx}")
 
       unix_ms = to_unix_ms(query.y, query.m, query.d, query.frac)
-      entries.append({
-        "year":    year,
-        "idx":     idx,
-        "name_zh": names[idx],
-        "unix_ms": unix_ms,
-        "iso_utc": iso_from_unix_ms(unix_ms),
-      })
+      entries.append(
+        {
+          "year": year,
+          "idx": idx,
+          "name_zh": names[idx],
+          "unix_ms": unix_ms,
+          "iso_utc": iso_from_unix_ms(unix_ms),
+        }
+      )
 
   # Time order, not index order: within a calendar year the ABI index runs 22, 23, 0, …, 21
   # (小寒/大寒 lead the year), and sorting here saves every consumer from re-sorting (#164).
@@ -181,12 +184,12 @@ def generate(start_year: int, end_year: int) -> dict:
   return {
     "schema": "celestial-calendar/jieqi-table@1",
     "source": {
-      "repo":   "https://github.com/0xf3cd/celestial-calendar",
+      "repo": "https://github.com/0xf3cd/celestial-calendar",
       "commit": source_commit(),
     },
     "parameters": {
       "start_year": start_year,
-      "end_year":   end_year,
+      "end_year": end_year,
     },
     "timescale": "UT1",
     "timescale_note": TIMESCALE_NOTE,
@@ -200,15 +203,17 @@ def serialize(doc: dict) -> str:
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(
-    description="Export the Jieqi (节气) moments over a year range as one JSON table."
+  parser = argparse.ArgumentParser(description="Export the Jieqi (节气) moments over a year range as one JSON table.")
+  parser.add_argument(
+    "--start-year", type=int, default=DEFAULT_START_YEAR, help=f"first year, inclusive (default {DEFAULT_START_YEAR})"
   )
-  parser.add_argument("--start-year", type=int, default=DEFAULT_START_YEAR,
-                      help=f"first year, inclusive (default {DEFAULT_START_YEAR})")
-  parser.add_argument("--end-year", type=int, default=DEFAULT_END_YEAR,
-                      help=f"last year, inclusive (default {DEFAULT_END_YEAR}: one tail-margin year)")
-  parser.add_argument("-o", "--output", type=Path, default=None,
-                      help="write the table here instead of stdout")
+  parser.add_argument(
+    "--end-year",
+    type=int,
+    default=DEFAULT_END_YEAR,
+    help=f"last year, inclusive (default {DEFAULT_END_YEAR}: one tail-margin year)",
+  )
+  parser.add_argument("-o", "--output", type=Path, default=None, help="write the table here instead of stdout")
   args = parser.parse_args()
 
   text = serialize(generate(args.start_year, args.end_year))

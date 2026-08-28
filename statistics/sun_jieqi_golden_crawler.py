@@ -1,12 +1,12 @@
 # CelestialCalendar Statistics:
 #   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
 #   No model training happens here (see AGENTS.md).
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -115,7 +115,7 @@ def parse_csv_block(text: str) -> tuple[list[str], list[list[str]]]:
       break
   if header is None:
     raise RuntimeError("column header line not found")
-  rows = [[c.strip() for c in line.split(",")] for line in lines[soe + 1:eoe]]
+  rows = [[c.strip() for c in line.split(",")] for line in lines[soe + 1 : eoe]]
   return header, rows
 
 
@@ -124,15 +124,26 @@ def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
   if len(jds) > TLIST_CHUNK:
     out = {}
     for i in range(0, len(jds), TLIST_CHUNK):
-      out.update(fetch_observer(command, jds[i:i + TLIST_CHUNK]))
+      out.update(fetch_observer(command, jds[i : i + TLIST_CHUNK]))
     return out
-  text = horizons_get({
-    "format": "text", "COMMAND": f"'{command}'", "OBJ_DATA": "'NO'", "MAKE_EPHEM": "'YES'",
-    "EPHEM_TYPE": "'OBSERVER'", "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
-    "TLIST_TYPE": "'JD'", "TIME_TYPE": "'TT'", "QUANTITIES": "'31,20'",
-    "ANG_FORMAT": "'DEG'", "EXTRA_PREC": "'YES'", "CAL_FORMAT": "'BOTH'", "CSV_FORMAT": "'YES'",
-  })
+  text = horizons_get(
+    {
+      "format": "text",
+      "COMMAND": f"'{command}'",
+      "OBJ_DATA": "'NO'",
+      "MAKE_EPHEM": "'YES'",
+      "EPHEM_TYPE": "'OBSERVER'",
+      "CENTER": "'500@399'",
+      "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
+      "TLIST_TYPE": "'JD'",
+      "TIME_TYPE": "'TT'",
+      "QUANTITIES": "'31,20'",
+      "ANG_FORMAT": "'DEG'",
+      "EXTRA_PREC": "'YES'",
+      "CAL_FORMAT": "'BOTH'",
+      "CSV_FORMAT": "'YES'",
+    }
+  )
   if f"({command})" not in text:
     raise RuntimeError(f"observer response is not for body {command}")
   header, rows = parse_csv_block(text)
@@ -156,14 +167,23 @@ def fetch_vectors_r(command: str, jds: list[float]) -> dict[float, float]:
   if len(jds) > TLIST_CHUNK:
     out = {}
     for i in range(0, len(jds), TLIST_CHUNK):
-      out.update(fetch_vectors_r(command, jds[i:i + TLIST_CHUNK]))
+      out.update(fetch_vectors_r(command, jds[i : i + TLIST_CHUNK]))
     return out
-  text = horizons_get({
-    "format": "text", "COMMAND": f"'{command}'", "OBJ_DATA": "'NO'", "MAKE_EPHEM": "'YES'",
-    "EPHEM_TYPE": "'VECTORS'", "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
-    "TLIST_TYPE": "'JD'", "VEC_TABLE": "'1'", "OUT_UNITS": "'AU-D'", "CSV_FORMAT": "'YES'",
-  })
+  text = horizons_get(
+    {
+      "format": "text",
+      "COMMAND": f"'{command}'",
+      "OBJ_DATA": "'NO'",
+      "MAKE_EPHEM": "'YES'",
+      "EPHEM_TYPE": "'VECTORS'",
+      "CENTER": "'500@399'",
+      "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
+      "TLIST_TYPE": "'JD'",
+      "VEC_TABLE": "'1'",
+      "OUT_UNITS": "'AU-D'",
+      "CSV_FORMAT": "'YES'",
+    }
+  )
   if f"({command})" not in text:
     raise RuntimeError(f"vectors response is not for body {command}")
   header, rows = parse_csv_block(text)
@@ -274,13 +294,14 @@ def jd_from_civil(year: int, month: int, day: int, hour: int, minute: int) -> fl
   return jdn - 0.5 + (hour + minute / 60.0) / 24.0
 
 
-def emit_sun_rows(obs: dict[float, dict], radii: dict[float, float],
-                  name: str, epochs: list[float]) -> None:
+def emit_sun_rows(obs: dict[float, dict], radii: dict[float, float], name: str, epochs: list[float]) -> None:
   print(f"\n// --- sun rows: {name} ---")
   for jd in sorted(epochs):
     h = obs[jd]
-    print(f"  {{ {jd:11.2f}, {h['lon']:12.7f}, {h['lat']:11.7f}, {radii[jd]:13.10f} }},"
-          f"  // {h['date']} TT, rdot {h['deldot']:+.4f} km/s")
+    print(
+      f"  {{ {jd:11.2f}, {h['lon']:12.7f}, {h['lat']:11.7f}, {radii[jd]:13.10f} }},"
+      f"  // {h['date']} TT, rdot {h['deldot']:+.4f} km/s"
+    )
 
 
 def main() -> None:
@@ -290,8 +311,10 @@ def main() -> None:
   radii = fetch_vectors_r("10", sun_jds)
 
   anchor = obs[BOOK_25B[0]]
-  print(f"Meeus 25.b book vs Horizons/DE441: dlon={(BOOK_25B[1] - anchor['lon']) * 3600:+.3f}″ "
-        f"(book chain truncation scale)")
+  print(
+    f"Meeus 25.b book vs Horizons/DE441: dlon={(BOOK_25B[1] - anchor['lon']) * 3600:+.3f}″ "
+    f"(book chain truncation scale)"
+  )
 
   # ---- Axis 2: DE441 jieqi crossings ----
   targets = [(y, float(lon)) for (y, lons) in JIEQI_SAMPLES for lon in lons]
@@ -311,8 +334,10 @@ def main() -> None:
       worst_min = max(worst_min, diff_min)
       if diff_min > 1.0:
         print(f"CHECK HKO {y} lon={lon}: |HKO - DE441| = {diff_min:.2f} min")
-  print(f"HKO(2022-2028, 168 values) vs DE441 crossings: worst {worst_min:.2f} min "
-        f"(expect <= ~0.5 min rounding + chain difference)")
+  print(
+    f"HKO(2022-2028, 168 values) vs DE441 crossings: worst {worst_min:.2f} min "
+    f"(expect <= ~0.5 min rounding + chain difference)"
+  )
   # Hard acceptance gate (#94): nothing is emitted unless the two independent pipelines
   # agree. Threshold 0.6 min = HKO's ±0.5 min rounding bound plus a small chain allowance
   # (measured worst 0.51); anything larger means real drift, not rounding. The first run's
@@ -326,7 +351,7 @@ def main() -> None:
   emit_sun_rows(obs, radii, "FAR (JD 2^22 straddle ~6771 CE; ~9420 CE)", SUN_FAR_EPOCHS)
 
   print("\n// --- jieqi DE441 crossing rows (year, target lon deg, JDE TT) ---")
-  for (y, lon) in targets:
+  for y, lon in targets:
     c = crossings[(y, lon)]
     print(f"  {{ {y:5d}, {lon:5.1f}, {c['jde']:18.9f} }},  // {c['date']} TT")
 

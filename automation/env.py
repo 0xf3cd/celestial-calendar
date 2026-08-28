@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -28,11 +28,16 @@ from typing import Tuple, Sequence, List
 
 from . import paths
 from .utils import (
-  yellow_print, red_print, green_print, blue_print, run_cmd,
+  yellow_print,
+  red_print,
+  green_print,
+  blue_print,
+  run_cmd,
 )
 
 
-#region Python Dependencies
+# region Python Dependencies
+
 
 def unsatisfied_requirements(req_txt: Path) -> List[str]:
   """The requirements of `req_txt` that the running interpreter does not already provide.
@@ -76,7 +81,7 @@ def install_dependencies() -> int:
 
   # Named individually, but pip is pointed at the whole file: the lines this probe punts on
   # (specifiers, extras, `-r other.txt`) still have to go through it.
-  yellow_print(f'# Installing {req_txt.name}, missing: {", ".join(missing)}')
+  yellow_print(f"# Installing {req_txt.name}, missing: {', '.join(missing)}")
   this_python = sys.executable
   ret = run_cmd([this_python, "-m", "pip", "install", "-r", str(req_txt)])
 
@@ -88,10 +93,12 @@ def install_dependencies() -> int:
 
   return ret.retcode
 
-#endregion
+
+# endregion
 
 
-#region Tool Existence Checks
+# region Tool Existence Checks
+
 
 @dataclass(frozen=True)
 class Tool:
@@ -110,8 +117,7 @@ def check_tool(tool: Tool, report: bool = False) -> bool:
     red_print(f"# {tool.name} not found!")
     return False
 
-  result = run_cmd([tool_path] + list(tool.args), 
-                   print_cmd=False, print_stdout=False, print_stderr=False)
+  result = run_cmd([tool_path] + list(tool.args), print_cmd=False, print_stdout=False, print_stderr=False)
   if result.retcode != 0:
     red_print(f"# {tool.name} does not support required arguments!")
     return False
@@ -122,10 +128,12 @@ def check_tool(tool: Tool, report: bool = False) -> bool:
 
   return True
 
-#endregion
+
+# endregion
 
 
-#region C++ Compiler Checks
+# region C++ Compiler Checks
+
 
 def find_cpp_compilers() -> List[str]:
   """Find the C++ compilers in `PATH`."""
@@ -182,16 +190,16 @@ def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
 
     try:
       compiler_command = [
-        cpp_args.compiler, 
-        f"-std={cpp_args.standard}", 
-        str(tmp_cpp_file), 
-        "-o", 
-        str(Path(tmpdir) / "test_cpp")
+        cpp_args.compiler,
+        f"-std={cpp_args.standard}",
+        str(tmp_cpp_file),
+        "-o",
+        str(Path(tmpdir) / "test_cpp"),
       ]
       compiler_ret = run_cmd(compiler_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
       if compiler_ret.retcode != 0:
         return False
-      
+
       # Execute the compiled program
       program_command = [str(Path(tmpdir) / "test_cpp")]
       program_ret = run_cmd(program_command, print_cmd=do_print, print_stdout=do_print, print_stderr=do_print)
@@ -199,17 +207,19 @@ def check_cpp_support(cpp_args: CompilerArgs, silent: bool = False) -> bool:
         # Since the C++ compiler can be a cross-compiler, the program may fail
         # So don't return False if the program fails
         red_print(f"# Cannot execute the compiled program: {pformat(program_ret)}")
-      
+
       return True
-    
+
     except Exception as e:
       red_print(f"# Failed to check C++ support: {str(e)}")
       return False
 
-#endregion
+
+# endregion
 
 
-#region Environment Setup
+# region Environment Setup
+
 
 @dataclass(frozen=True)
 class SetupPlan:
@@ -220,9 +230,10 @@ class SetupPlan:
   # The C++ standards to check
   cpp_standards: List[str]
 
+
 def setup_environment(plan: SetupPlan) -> int:
   """Set up the environment by installing dependencies and checking tool availability and C++ support."""
-  
+
   # Install dependencies
   if plan.install_dependencies:
     print(60 * "#")
@@ -240,7 +251,7 @@ def setup_environment(plan: SetupPlan) -> int:
     tool_check_results = [check_tool(t) for t in plan.required_tools]
     if not all(tool_check_results):
       unavailable = compress(plan.required_tools, map(not_, tool_check_results))
-      red_print(f'Some tools are not available: {", ".join([t.name for t in unavailable])}.')
+      red_print(f"Some tools are not available: {', '.join([t.name for t in unavailable])}.")
       return 1
 
     green_print("All tools are available.")
@@ -255,11 +266,10 @@ def setup_environment(plan: SetupPlan) -> int:
   # If CXX not set, return error.
   if cxx_env is None:
     red_print(60 * "-")
-    red_print("CXX environment variable not set. \n"
-              "Please set CXX environment variable and try again.")
+    red_print("CXX environment variable not set. \nPlease set CXX environment variable and try again.")
     red_print(60 * "-")
 
-    if sys.stdout.isatty(): # The warning above goes to stdout; no point pausing when nobody is watching.
+    if sys.stdout.isatty():  # The warning above goes to stdout; no point pausing when nobody is watching.
       time.sleep(5)
 
     cpp_compilers = find_cpp_compilers()
@@ -267,7 +277,7 @@ def setup_environment(plan: SetupPlan) -> int:
       blue_print(f"Found C++ compilers from PATH: {pformat(cpp_compilers)}")
 
     return 1
-  
+
   yellow_print(60 * "-")
   yellow_print(f"# CXX environment variable set to: {cxx_env}")
 
@@ -275,15 +285,15 @@ def setup_environment(plan: SetupPlan) -> int:
   cxx_env_supports = [check_cpp_support(args) for args in cxx_env_args]
   if not any(cxx_env_supports):
     red_print(60 * "-")
-    red_print("CXX environment variable set to an unsupported compiler. \n"
-              "Building is likely to fail. Early exiting...")
+    red_print("CXX environment variable set to an unsupported compiler. \nBuilding is likely to fail. Early exiting...")
     red_print(60 * "-")
 
-    if sys.stdout.isatty(): # The warning above goes to stdout; no point pausing when nobody is watching.
+    if sys.stdout.isatty():  # The warning above goes to stdout; no point pausing when nobody is watching.
       time.sleep(5)
     return 1
-  
+
   green_print("# Environment setup complete.")
   return 0
 
-#endregion
+
+# endregion

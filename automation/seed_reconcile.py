@@ -34,12 +34,12 @@ WORKFLOW_COPIES: Final[Tuple[Tuple[str, str], ...]] = (
 )
 
 TEXT_COPIES: Final[Tuple[Tuple[str, str, re.Pattern], ...]] = (
-  ("Dockerfile ARG",
-   "Dockerfile",
-   re.compile(r"^\s*ARG\s+CELESTIAL_TEST_SEED=(\d+)", re.MULTILINE)),
-  ("random.hpp DEFAULT_SEED",
-   "src/util/random.hpp",
-   re.compile(r"^\s*inline\s+constexpr\s+uint64_t\s+DEFAULT_SEED\s*=\s*(\d+)", re.MULTILINE)),
+  ("Dockerfile ARG", "Dockerfile", re.compile(r"^\s*ARG\s+CELESTIAL_TEST_SEED=(\d+)", re.MULTILINE)),
+  (
+    "random.hpp DEFAULT_SEED",
+    "src/util/random.hpp",
+    re.compile(r"^\s*inline\s+constexpr\s+uint64_t\s+DEFAULT_SEED\s*=\s*(\d+)", re.MULTILINE),
+  ),
 )
 
 # The docker legs pass the workflow seed into the image explicitly. Lose this line and the
@@ -179,6 +179,7 @@ def check_seed_reconcile() -> int:
       red_print(f"  - {f}")
     return 1
 
-  green_print(f"All {len(WORKFLOW_COPIES) + len(TEXT_COPIES)} seed copies agree "
-              "(and the docker build-arg line is in place)")
+  green_print(
+    f"All {len(WORKFLOW_COPIES) + len(TEXT_COPIES)} seed copies agree (and the docker build-arg line is in place)"
+  )
   return 0

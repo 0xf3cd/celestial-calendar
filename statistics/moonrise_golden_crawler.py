@@ -38,13 +38,13 @@ import requests
 
 # (name, lat, lon) — the same city-centroid coordinates as sunrise_golden_crawler.py.
 SITES = [
-  ("Quito",     -0.22,  -78.51),
-  ("Singapore",  1.35,  103.82),
-  ("London",    51.50,   -0.13),
-  ("Beijing",   39.90,  116.41),
-  ("NewYork",   40.71,  -74.01),
-  ("Sydney",   -33.87,  151.21),
-  ("Tromso",    69.65,   18.96),
+  ("Quito", -0.22, -78.51),
+  ("Singapore", 1.35, 103.82),
+  ("London", 51.50, -0.13),
+  ("Beijing", 39.90, 116.41),
+  ("NewYork", 40.71, -74.01),
+  ("Sydney", -33.87, 151.21),
+  ("Tromso", 69.65, 18.96),
 ]
 
 # Consecutive-day spans per site, spread over decades and seasons (1999 / 2024 / 2026
@@ -74,16 +74,19 @@ def fetch_usno_moon(lat: float, lon: float, y: int, m: int, d: int) -> dict:
     times.setdefault(entry["phen"], []).append(entry["time"])
   for phen, vals in times.items():
     if len(vals) > 1:
-      print(f"NOTE double event {y}-{m:02d}-{d:02d} ({lat},{lon}) {phen}: {vals} "
-            f"— keeping the later one per the library's one-event-per-cell contract", file=sys.stderr)
+      print(
+        f"NOTE double event {y}-{m:02d}-{d:02d} ({lat},{lon}) {phen}: {vals} "
+        f"— keeping the later one per the library's one-event-per-cell contract",
+        file=sys.stderr,
+      )
   return {phen: vals[-1] for phen, vals in times.items()}
 
 
 def main() -> None:
   print("// --- C++ rows (USNO rstt/oneday, tz=0; blank cell = event absent that UT day) ---")
-  for (name, lat, lon) in SITES:
+  for name, lat, lon in SITES:
     dates = [date for span in SPANS for date in span] + (TROMSO_EXTRA if name == "Tromso" else [])
-    for (y, m, d) in dates:
+    for y, m, d in dates:
       rec = fetch_usno_moon(lat, lon, y, m, d)
       print(f"USNO {name} {y}-{m:02d}-{d:02d}: {rec}", file=sys.stderr)
       cells = ", ".join(f'"{rec.get(k) or "":5s}"' for k in PHEN_KEYS)

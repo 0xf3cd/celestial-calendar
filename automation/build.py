@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -15,20 +15,14 @@ import shutil
 
 from . import paths
 from .gtest import clear_test_binaries
-from .utils import (
-  run_cmd, yellow_print, red_print, green_print, ProcReturn
-)
+from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 
 BUILD_DIR = paths.build_dir()
 SRC_DIR = paths.cpp_src_dir()
 
 
-def run_cmake(
-  build_version: str, 
-  build_type: str = "Release", 
-  export_compile_commands: bool = True
-) -> int:
+def run_cmake(build_version: str, build_type: str = "Release", export_compile_commands: bool = True) -> int:
   """Run CMake to generate build files."""
   print("#" * 60)
   yellow_print(f"# Building version {build_version} in {build_type} mode")
@@ -58,7 +52,7 @@ def run_cmake(
 
   ret: ProcReturn = run_cmd(cmds, cwd=BUILD_DIR, env=env)
   if ret.retcode == 0:
-    green_print("# CMake ran successfully")    
+    green_print("# CMake ran successfully")
   else:
     red_print("# Failed to run CMake")
 
@@ -84,8 +78,9 @@ def build_project(cpu_cores: int = 8) -> int:
   clear_test_binaries()
 
   yellow_print("# Building the C++ projects...")
-  ret: ProcReturn = run_cmd(["cmake", "--build", ".", "--parallel", str(cpu_cores)], 
-                            cwd=BUILD_DIR, env=os.environ.copy())
+  ret: ProcReturn = run_cmd(
+    ["cmake", "--build", ".", "--parallel", str(cpu_cores)], cwd=BUILD_DIR, env=os.environ.copy()
+  )
 
   print("#" * 60)
   return ret.retcode

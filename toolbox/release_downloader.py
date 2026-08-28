@@ -6,12 +6,12 @@
 #
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -50,7 +50,7 @@ def get_latest_release() -> GitHub.Release:
   if len(releases) == 0:
     red_print("Cannot find any releases")
     raise RuntimeError("Cannot find any releases")
-  
+
   sorted_releases = sorted(releases, key=lambda release: release.published_at, reverse=True)
   return sorted_releases[0]
 
@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
       "Examples of usage:\n"
       "  To download the latest release assets:\n"
       "    ./release_downloader.py -s/--save-to /some/path\n\n"
-    )
+    ),
   )
   parser.add_argument("-s", "--save-to", type=Path, required=True, help="The directory to save the release assets to.")
   parser.add_argument("-id", "--id", type=int, required=False, help="The ID of the release.")
@@ -90,7 +90,7 @@ def parse_args() -> argparse.Namespace:
   return parser.parse_args()
 
 
-def validate_args(args: argparse.Namespace) -> None: # Exception raised on failure.
+def validate_args(args: argparse.Namespace) -> None:  # Exception raised on failure.
   """Validate the command line arguments."""
   # Validate the number of parallel downloads.
   if args.parallel < 1:
@@ -101,14 +101,14 @@ def validate_args(args: argparse.Namespace) -> None: # Exception raised on failu
   if args.save_to.exists() and args.save_to.is_file():
     red_print(f"Directory path is not a directory: {args.save_to}")
     raise RuntimeError(f"Directory path is not a directory: {args.save_to}")
-  
+
   if args.id is None and args.tag is None:
     yellow_print("Neither --id nor --tag is specified. Download from latest release.")
 
   if args.id is not None and args.tag is not None:
     red_print("Both --id and --tag are specified. Only one is allowed.")
     raise RuntimeError("Both --id and --tag are specified. Only one is allowed.")
-  
+
 
 def main() -> None:
   args = parse_args()

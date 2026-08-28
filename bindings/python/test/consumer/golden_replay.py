@@ -144,9 +144,7 @@ def main() -> None:
     jde = float_from_bits(point["jde_bits"])
     value = celestial.moon_illumination(jde)
     residuals["moon_illumination"].observe(value.fraction, point["illumination_bits"], f"jde={jde:.17g}")
-    residuals["moon_elongation_deg"].observe(
-      value.elongation_deg, point["elongation_deg_bits"], f"jde={jde:.17g}"
-    )
+    residuals["moon_elongation_deg"].observe(value.elongation_deg, point["elongation_deg_bits"], f"jde={jde:.17g}")
     replayed += 1
 
   for point in golden["sections"]["sidereal"]["entries"]:

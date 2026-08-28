@@ -64,8 +64,7 @@ def main() -> None:
 
     negative = root / "negative.py"
     negative.write_text(
-      "from celestial_calendar import Jieqi, jieqi_moment\n"
-      "moment: str = jieqi_moment(2026, Jieqi.LICHUN)\n",
+      "from celestial_calendar import Jieqi, jieqi_moment\nmoment: str = jieqi_moment(2026, Jieqi.LICHUN)\n",
       encoding="utf-8",
     )
     result = run_mypy(negative)

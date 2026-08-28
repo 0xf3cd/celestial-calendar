@@ -88,9 +88,7 @@ def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name:
   missing = sorted(expected - actual)
   extra = sorted(actual - expected)
   if duplicates or missing or extra:
-    raise RuntimeError(
-      f"Invalid members in {archive_name}: duplicates={duplicates}, missing={missing}, extra={extra}"
-    )
+    raise RuntimeError(f"Invalid members in {archive_name}: duplicates={duplicates}, missing={missing}, extra={extra}")
 
 
 def _require_license(
@@ -207,9 +205,7 @@ def validate_release_document_versions(tag_name: str, documents: Iterable[Path] 
     if not headings:
       raise RuntimeError(f"Cannot find a version heading in {document}")
     if headings[0] != expected:
-      raise RuntimeError(
-        f"Release version mismatch in {document}: expected {expected}, found {headings[0]}"
-      )
+      raise RuntimeError(f"Release version mismatch in {document}: expected {expected}, found {headings[0]}")
 
 
 def _wheel_artifact(wheel_name: str, version: str) -> str:
@@ -303,9 +299,7 @@ def validate_wheel_sidecars(
       raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel_name}")
 
   if require_complete and set(artifacts) != set(PYTHON_ARTIFACTS):
-    raise RuntimeError(
-      f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}"
-    )
+    raise RuntimeError(f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}")
 
 
 def npm_archive_payload(
@@ -545,8 +539,7 @@ def _validate_release_sources(sources: object, commit: str) -> list[dict]:
       valid_artifact_id = type(artifact_id) is int and artifact_id > 0
       valid_artifact_size = type(artifact_size) is int and artifact_size > 0
       valid_artifact_digest = (
-        isinstance(artifact_digest, str)
-        and re.fullmatch(r"sha256:[0-9a-f]{64}", artifact_digest) is not None
+        isinstance(artifact_digest, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", artifact_digest) is not None
       )
       if (
         not valid_artifact_id
@@ -633,9 +626,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   top_level = set(candidate.iterdir())
   all_entries = list(candidate.rglob("*"))
   actual_files = {
-    path.relative_to(candidate).as_posix(): path
-    for path in all_entries
-    if path.is_file() and path != manifest_path
+    path.relative_to(candidate).as_posix(): path for path in all_entries if path.is_file() and path != manifest_path
   }
   non_files = [
     path

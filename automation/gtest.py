@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -16,8 +16,12 @@ from typing import List, Dict, Optional
 
 from . import paths
 from .utils import (
-  yellow_print, blue_print, red_print, green_print,
-  ProcReturn, run_cmd, 
+  yellow_print,
+  blue_print,
+  red_print,
+  green_print,
+  ProcReturn,
+  run_cmd,
 )
 
 BUILD_DIR = paths.build_dir()
@@ -76,8 +80,8 @@ def find_gtests(keywords: List[str]) -> List[str]:
   assert TEST_DIR.exists(), "Test directory not found"
   assert TEST_DIR.is_dir(), "Test directory is not a directory"
 
-  no_to_name = list_gtests() # {test_no: test_name}
-  name_to_no = { v: k for k, v in no_to_name.items() } # {test_name: test_no}
+  no_to_name = list_gtests()  # {test_no: test_name}
+  name_to_no = {v: k for k, v in no_to_name.items()}  # {test_name: test_no}
 
   def __find_test_no(keyword: str) -> List[str]:
     # Match the number exactly. A substring test happens to work while the ids run without gaps,
@@ -91,14 +95,14 @@ def find_gtests(keywords: List[str]) -> List[str]:
     return [test_name for test_name in name_to_no.keys() if keyword.lower() in test_name.lower()]
 
   def __do_find(keyword: str) -> List[str]:
-    if keyword.strip().isnumeric(): # The test no is given.
+    if keyword.strip().isnumeric():  # The test no is given.
       return __find_test_no(keyword)
     return __find_test_name(keyword)
 
   test_list: List[str] = []
-  if len(keywords) == 0: # If no test is selected, run all tests.
+  if len(keywords) == 0:  # If no test is selected, run all tests.
     test_list.extend(name_to_no.keys())
-  else: # If test names are given, locate the full test names.
+  else:  # If test names are given, locate the full test names.
     for keyword in keywords:
       found: List[str] = __do_find(keyword)
       if len(found) == 0:
@@ -140,7 +144,7 @@ def run_gtest(
 
 
 def run_gtests(
-  keywords: Optional[List[str]] = None, # When None, run all tests.
+  keywords: Optional[List[str]] = None,  # When None, run all tests.
   verbose_level: int = 0,
   debug: bool = False,
   output_on_failure: bool = True,
@@ -149,20 +153,20 @@ def run_gtests(
   assert TEST_DIR.exists(), "Test directory not found"
   assert TEST_DIR.is_dir(), "Test directory is not a directory"
 
-  name_to_no = { v: k for k, v in list_gtests().items() } # {test_name: test_no}
+  name_to_no = {v: k for k, v in list_gtests().items()}  # {test_name: test_no}
   test_list = find_gtests([] if not keywords else keywords)
-  
+
   print("#" * 60)
   blue_print(f"# *** {len(test_list)} tests to run ***:")
   for test in test_list:
     yellow_print(f"# test no: {name_to_no[test]}, test name: {test}")
-  
+
   for test in test_list:
     assert test in name_to_no.keys(), f"Invalid test {test}"
 
     print("#" * 60)
     yellow_print(f"# Running test {test} - {name_to_no[test]}")
-    
+
     test_proc_ret = run_gtest(test, verbose_level, debug, output_on_failure)
     if test_proc_ret.retcode != 0:
       red_print(f"# Test {test} failed!")

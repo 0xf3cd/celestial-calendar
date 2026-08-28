@@ -270,9 +270,7 @@ def run_protocol_seams() -> None:
 
   error_reader = Trap(b"fill failed")
   recording_fill_failure = CountFillFailure(13)
-  with replaced_binding("last_error", error_reader), replaced_binding(
-    "moon_phase_moments", recording_fill_failure
-  ):
+  with replaced_binding("last_error", error_reader), replaced_binding("moon_phase_moments", recording_fill_failure):
     error = raises(
       celestial.CelestialError,
       lambda: celestial.moon_phase_moments(2024, celestial.MoonPhase.NEW),
@@ -282,17 +280,16 @@ def run_protocol_seams() -> None:
 
   error_reader = Trap(b"new moon fill failed")
   new_moon_fill_failure = CountFillFailure(13)
-  with replaced_binding("last_error", error_reader), replaced_binding(
-    "new_moons_in_year", new_moon_fill_failure
-  ):
+  with replaced_binding("last_error", error_reader), replaced_binding("new_moons_in_year", new_moon_fill_failure):
     error = raises(celestial.CelestialError, lambda: celestial.new_moons_in_year(2024))
   assert error.recorded and new_moon_fill_failure.calls == 2 and error_reader.calls == 1
   assert str(error) == "new moon fill failed"
 
   error_reader = Trap(b"recorded detail")
   recording_failure = Trap(SimpleNamespace(valid=False))
-  with replaced_binding("last_error", error_reader), replaced_binding(
-    "local_apparent_sidereal_time", recording_failure
+  with (
+    replaced_binding("last_error", error_reader),
+    replaced_binding("local_apparent_sidereal_time", recording_failure),
   ):
     error = raises(celestial.CelestialError, lambda: celestial.local_apparent_sidereal_time(2451545.0, 0.0))
   assert error.operation == "local_apparent_sidereal_time" and error.recorded
@@ -300,9 +297,7 @@ def run_protocol_seams() -> None:
 
   error_reader = Trap(b"sun coordinate failed")
   sun_failure = Trap(SimpleNamespace(valid=False))
-  with replaced_binding("last_error", error_reader), replaced_binding(
-    "sun_apparent_geocentric_coord", sun_failure
-  ):
+  with replaced_binding("last_error", error_reader), replaced_binding("sun_apparent_geocentric_coord", sun_failure):
     error = raises(celestial.CelestialError, lambda: celestial.sun_apparent_geocentric_coordinate(2451545.0))
   assert error.operation == "sun_apparent_geocentric_coordinate" and error.recorded
   assert sun_failure.calls == error_reader.calls == 1

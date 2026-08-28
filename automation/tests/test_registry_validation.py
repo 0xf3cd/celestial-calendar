@@ -113,10 +113,9 @@ def pypi_metadata(wheels):
 def pypi_session(wheels, metadata=None):
   payload = metadata or pypi_metadata(wheels)
   routes = {pypi_metadata_url(VERSION): Response(payload=payload)}
-  routes.update({
-    entry["url"]: Response(content=wheel.read_bytes())
-    for entry, wheel in zip(payload["urls"], wheels, strict=False)
-  })
+  routes.update(
+    {entry["url"]: Response(content=wheel.read_bytes()) for entry, wheel in zip(payload["urls"], wheels, strict=False)}
+  )
   return Session(routes)
 
 
@@ -133,10 +132,12 @@ def test_existing_npm_version_requires_exact_bytes_and_sha512(tmp_path):
   content = b"candidate"
   tarball = tmp_path / "package.tgz"
   tarball.write_bytes(content)
-  session = Session({
-    npm_metadata_url(VERSION): Response(payload=npm_metadata(content)),
-    NPM_TARBALL_URL: Response(content=content),
-  })
+  session = Session(
+    {
+      npm_metadata_url(VERSION): Response(payload=npm_metadata(content)),
+      NPM_TARBALL_URL: Response(content=content),
+    }
+  )
 
   assert npm_version_is_exact(tarball, VERSION, session)
 
@@ -153,10 +154,12 @@ def test_existing_npm_version_requires_exact_bytes_and_sha512(tmp_path):
 def test_existing_npm_version_rejects_any_identity_mismatch(tmp_path, metadata, remote, message):
   tarball = tmp_path / "package.tgz"
   tarball.write_bytes(b"candidate")
-  session = Session({
-    npm_metadata_url(VERSION): Response(payload=metadata),
-    NPM_TARBALL_URL: Response(content=remote),
-  })
+  session = Session(
+    {
+      npm_metadata_url(VERSION): Response(payload=metadata),
+      NPM_TARBALL_URL: Response(content=remote),
+    }
+  )
 
   with pytest.raises(RuntimeError, match=message) as error:
     npm_version_is_exact(tarball, VERSION, session)
@@ -262,10 +265,9 @@ def test_registry_polling_retries_transient_registry_states(monkeypatch, tmp_pat
     npm_metadata_url(VERSION): Response(payload=npm_metadata(tarball.read_bytes())),
     NPM_TARBALL_URL: Response(content=tarball.read_bytes()),
   }
-  routes.update({
-    entry["url"]: Response(content=wheel.read_bytes())
-    for entry, wheel in zip(complete["urls"], wheels, strict=True)
-  })
+  routes.update(
+    {entry["url"]: Response(content=wheel.read_bytes()) for entry, wheel in zip(complete["urls"], wheels, strict=True)}
+  )
   if transient == "file-503":
     first_url = complete["urls"][0]["url"]
     routes[first_url] = [Response(status=503), routes[first_url]]
@@ -382,10 +384,12 @@ def test_registry_polling_ceiling_reports_the_last_transient_state(monkeypatch, 
   (candidate / "npm").mkdir()
   pypi_wheels(candidate / "pypi")
   (candidate / "npm" / "package.tgz").write_bytes(b"candidate")
-  session = Session({
-    pypi_metadata_url(VERSION): [Response(status=503), Response(status=503)],
-    npm_metadata_url(VERSION): Response(status=404),
-  })
+  session = Session(
+    {
+      pypi_metadata_url(VERSION): [Response(status=503), Response(status=503)],
+      npm_metadata_url(VERSION): Response(status=404),
+    }
+  )
   sleeps = []
   monkeypatch.setattr(registry_validation, "validate_release_candidate", lambda *_args: {})
 

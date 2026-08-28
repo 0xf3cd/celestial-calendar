@@ -1,11 +1,11 @@
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -41,12 +41,12 @@ def print_system_info() -> None:
   print(f"-- python executable: {sys.executable}")
   print(f"-- python version: {sys.version}")
 
-  print(f'-- cmake path: {shutil.which("cmake")}')
+  print(f"-- cmake path: {shutil.which('cmake')}")
   print(f"-- cmake version: {cmake_version_str}")
-  print(f'-- os env CXX: {os.environ.get("CXX", None)}')
-  print(f'-- os env CC: {os.environ.get("CC", None)}')
-  print(f'-- clang++: {shutil.which("clang++")}')
-  print(f'-- g++: {shutil.which("g++")}')
+  print(f"-- os env CXX: {os.environ.get('CXX', None)}")
+  print(f"-- os env CC: {os.environ.get('CC', None)}")
+  print(f"-- clang++: {shutil.which('clang++')}")
+  print(f"-- g++: {shutil.which('g++')}")
 
   print(f"-- node: {platform.node()}")
   print(f"-- system: {platform.system()}")

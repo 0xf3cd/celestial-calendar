@@ -147,8 +147,8 @@ exits 0, a green light that checked nothing (#72).
 - `clang-tidy` runs with **`WarningsAsErrors: '*'`** — zero warnings. `.clang-tidy` is the
   config; respect its deliberate disables (magic-numbers, identifier-length,
   identifier-naming) instead of "fixing" code to satisfy a disabled check.
-- Python: ruff (`./checks.py --ruff` or `ruff check .` / `ruff format .`), config
-  `.ruff.toml` (line length 120, 2-space indent, rules `E`/`F`/`B`/`Q`, double quotes).
+- Python: `./checks.py --ruff` checks Ruff lint and formatting; `ruff format .` applies formatting.
+  Configuration lives in `.ruff.toml`.
 - Run `./checks.py --all` to check both C++ and Python.
 
 ## Code Style

@@ -292,9 +292,7 @@ def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
     "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
     "with": {"node-version": "24.19.0"},
   }
-  assert publish["env"] == {
-    "PUBLISH_REQUIRED": "${{ needs.prepare_release.outputs.npm_publish_required }}"
-  }
+  assert publish["env"] == {"PUBLISH_REQUIRED": "${{ needs.prepare_release.outputs.npm_publish_required }}"}
   assert '"$(npm --version)" != "11.17.0"' in publish["run"]
   assert 'npm publish "${tarballs[0]}" --access public --ignore-scripts' in publish["run"]
   assert "NODE_AUTH_TOKEN" not in text
@@ -332,12 +330,7 @@ def test_registry_jobs_start_only_after_the_immutable_github_release():
 
 def test_every_release_action_is_sha_pinned():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  actions = [
-    step["uses"]
-    for job in workflow["jobs"].values()
-    for step in job["steps"]
-    if "uses" in step
-  ]
+  actions = [step["uses"] for job in workflow["jobs"].values() for step in job["steps"] if "uses" in step]
 
   assert actions
   assert all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", action) for action in actions)

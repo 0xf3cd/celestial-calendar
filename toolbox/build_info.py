@@ -6,12 +6,12 @@
 #
 # CelestialCalendar Automation:
 #   Python automation scripts for building and testing the CelestialCalendar C++ project.
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -34,13 +34,17 @@ from typing import Optional, List, Sequence, Dict
 sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import (
-  paths, run_cmd, ProcReturn, 
-  yellow_print, green_print, red_print,
+  paths,
+  run_cmd,
+  ProcReturn,
+  yellow_print,
+  green_print,
+  red_print,
 )
 
 
 def silent_run(cmd: Sequence[str], **kwargs) -> ProcReturn:
-  """Run a command without printing anything. Also check the return code. """
+  """Run a command without printing anything. Also check the return code."""
   proc_ret = run_cmd(cmd, print_cmd=False, print_stdout=False, print_stderr=False, **kwargs)
   if proc_ret.retcode != 0:
     yellow_print(f"Command failed: {' '.join(cmd)}")
@@ -84,6 +88,7 @@ def compiler_version(compiler: str) -> str:
 
 def get_cpu_info() -> Dict:
   """Return the CPU information as a string. The returned str is ready to write to a file."""
+
   def command() -> List[str]:
     if sys.platform == "darwin":
       return ["system_profiler", "SPHardwareDataType", "-json"]
@@ -101,7 +106,7 @@ def get_cpu_info() -> Dict:
     info = json.loads(proc_ret.stdout)
     info["cmd"] = " ".join(cmd)
     return info
-  
+
   except Exception as e:
     return {"error": str(e)}
 
@@ -139,10 +144,7 @@ def shared_lib_hashs() -> Dict[str, str]:
   if not shared_libs:
     return {}
 
-  return {
-    p.name: calc_file_hash(p, "sha256")
-    for p in shared_libs
-  }
+  return {p.name: calc_file_hash(p, "sha256") for p in shared_libs}
 
 
 def pack_build_info(docker: Optional[str]) -> BuildInfo:
@@ -186,7 +188,7 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
     python_version=platform.python_version(),
     sha256=shared_lib_hashs(),
     pack_time=datetime.now(UTC).isoformat(),
-    git_commit=commit_hash
+    git_commit=commit_hash,
   )
 
 

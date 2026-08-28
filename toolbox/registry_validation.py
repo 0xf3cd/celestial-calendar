@@ -112,9 +112,8 @@ def _validate_ssri(content: bytes, integrity: object) -> None:
     expected = base64.b64decode(tokens[0].removeprefix("sha512-"), validate=True)
   except (binascii.Error, ValueError) as error:
     raise RuntimeError("npm metadata contains invalid SHA-512 integrity") from error
-  if (
-    len(expected) != hashlib.sha512().digest_size
-    or not hmac.compare_digest(hashlib.sha512(content).digest(), expected)
+  if len(expected) != hashlib.sha512().digest_size or not hmac.compare_digest(
+    hashlib.sha512(content).digest(), expected
   ):
     raise RuntimeError("npm registry SHA-512 integrity mismatch")
 
@@ -178,12 +177,7 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
     valid_size = type(size) is int and size >= 0
     valid_url = isinstance(url, str) and unquote(Path(urlparse(url).path).name) == filename
     # JSON booleans are Python integers; a registry file size must be an exact integer.
-    if (
-      entry.get("packagetype") != "bdist_wheel"
-      or not valid_digest
-      or not valid_size
-      or not valid_url
-    ):
+    if entry.get("packagetype") != "bdist_wheel" or not valid_digest or not valid_size or not valid_url:
       raise RuntimeError(f"Invalid PyPI file identity: {filename}")
     candidate = wheel.read_bytes()
     if size != len(candidate) or sha256 != hashlib.sha256(candidate).hexdigest():
@@ -241,8 +235,6 @@ def wait_for_candidate_registries(
     if attempt != attempts:
       sleep(delay_seconds)
   pending = [
-    f"{name} ({pending_reasons[name]})"
-    for name, ready in (("PyPI", pypi_ready), ("npm", npm_ready))
-    if not ready
+    f"{name} ({pending_reasons[name]})" for name, ready in (("PyPI", pypi_ready), ("npm", npm_ready)) if not ready
   ]
   raise RuntimeError(f"Registry version did not become available after {attempts} attempts: {'; '.join(pending)}")

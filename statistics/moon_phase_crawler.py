@@ -1,12 +1,12 @@
 # CelestialCalendar Statistics:
 #   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
 #   No model training happens here (see AGENTS.md).
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -36,7 +36,7 @@ CSV_PATH = Path(__file__).parent / "moon_phases.csv"
 
 def main() -> None:
   response = requests.get(URL, timeout=30)
-  response.raise_for_status() # An error page parses into plausible-looking garbage otherwise.
+  response.raise_for_status()  # An error page parses into plausible-looking garbage otherwise.
   soup = BeautifulSoup(response.content, "html.parser")
 
   # Find all tables

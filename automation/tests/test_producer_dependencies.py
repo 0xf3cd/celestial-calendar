@@ -87,9 +87,7 @@ def requirement_pins(path):
 
 
 def source_requirements(path):
-  return [
-    line for line in path.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
-  ]
+  return [line for line in path.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")]
 
 
 def assert_complete_hash_lock(path, python_version):

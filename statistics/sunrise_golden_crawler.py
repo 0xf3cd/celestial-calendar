@@ -1,12 +1,12 @@
 # CelestialCalendar Statistics:
 #   Golden-dataset crawlers and evaluation notebooks for the CelestialCalendar C++ project.
 #   No model training happens here (see AGENTS.md).
-# 
+#
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # License: GNU General Public License v3.0
-# 
+#
 # This software is distributed without any warranty.
 # See <https://www.gnu.org/licenses/> for more details.
 
@@ -41,13 +41,13 @@ import requests
 # Coordinates are city centroids rounded to 0.01° — they only need to be identical across
 # sources and the C++ dataset, not to match any authority's database.
 SITES = [
-  ("Quito",     -0.22,  -78.51, -5, "America/Guayaquil"),
-  ("Singapore",  1.35,  103.82,  8, "Asia/Singapore"),
-  ("London",    51.50,   -0.13,  0, "Europe/London"),
-  ("Beijing",   39.90,  116.41,  8, "Asia/Shanghai"),
-  ("NewYork",   40.71,  -74.01, -5, "America/New_York"),
-  ("Sydney",   -33.87,  151.21, 10, "Australia/Sydney"),
-  ("Tromso",    69.65,   18.96,  1, "Europe/Oslo"),
+  ("Quito", -0.22, -78.51, -5, "America/Guayaquil"),
+  ("Singapore", 1.35, 103.82, 8, "Asia/Singapore"),
+  ("London", 51.50, -0.13, 0, "Europe/London"),
+  ("Beijing", 39.90, 116.41, 8, "Asia/Shanghai"),
+  ("NewYork", 40.71, -74.01, -5, "America/New_York"),
+  ("Sydney", -33.87, 151.21, 10, "Australia/Sydney"),
+  ("Tromso", 69.65, 18.96, 1, "Europe/Oslo"),
 ]
 
 # 2026 equinoxes / solstices (sample dates; the exact instants are irrelevant here).
@@ -76,10 +76,9 @@ def fetch_noaa_tables(lat: float, lon: float, year: int) -> list[list[list[str]]
   parsed = []
   for tbl in tables:
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", tbl, re.S)
-    parsed.append([
-      [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, re.S)]
-      for r in rows
-    ])
+    parsed.append(
+      [[re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, re.S)] for r in rows]
+    )
   return parsed
 
 
@@ -110,6 +109,7 @@ def skyfield_boundaries(lat: float, lon: float, tz: int, y: int, m: int, d: int)
   (from-state, to-state) using state indices 0..4 = night/astro/nautical/civil/day."""
   import tempfile
   from skyfield import api, almanac
+
   load = api.Loader(tempfile.gettempdir() + "/skyfield-cache")
   eph = load("de421.bsp")
   ts = load.timescale()
@@ -135,14 +135,17 @@ def min_to_hms(minutes: float | None) -> str:
 
 def skyfield_report(usno: dict) -> None:
   import skyfield
+
   print(f"skyfield version {skyfield.__version__}", file=sys.stderr)
   worst = 0.0
-  for (name, lat, lon, tz, _zone) in SITES:
-    for (y, m, d) in DATES:
+  for name, lat, lon, tz, _zone in SITES:
+    for y, m, d in DATES:
       bounds = skyfield_boundaries(lat, lon, tz, y, m, d)
       pairs = [
-        ("Begin Civil Twilight", (2, 3)), ("Rise", (3, 4)),
-        ("Set", (4, 3)), ("End Civil Twilight", (3, 2)),
+        ("Begin Civil Twilight", (2, 3)),
+        ("Rise", (3, 4)),
+        ("Set", (4, 3)),
+        ("End Civil Twilight", (3, 2)),
       ]
       for phen, key in pairs:
         u, s = hm_to_min(usno[(name, m, d)].get(phen)), bounds.get(key)
@@ -159,7 +162,7 @@ def skyfield_report(usno: dict) -> None:
 
   print("\n// --- C++ twilight rows (nautical / astronomical, HH:MM:SS local standard) ---")
   site_by_name = {s[0]: s for s in SITES}
-  for (name, y, m, d) in TWILIGHT_CASES:
+  for name, y, m, d in TWILIGHT_CASES:
     _, lat, lon, tz, _zone = site_by_name[name]
     b = skyfield_boundaries(lat, lon, tz, y, m, d)
     cells = ", ".join(
@@ -171,16 +174,16 @@ def skyfield_report(usno: dict) -> None:
 
 def main() -> None:
   usno: dict[tuple, dict] = {}
-  for (name, lat, lon, tz, _zone) in SITES:
-    for (y, m, d) in DATES:
+  for name, lat, lon, tz, _zone in SITES:
+    for y, m, d in DATES:
       usno[(name, m, d)] = fetch_usno(lat, lon, y, m, d, tz)
       print(f"USNO {name} {y}-{m:02d}-{d:02d}: {usno[(name, m, d)]}", file=sys.stderr)
 
   # Cross-check against NOAA (sunrise / sunset / solar noon).
   worst = 0.0
-  for (name, lat, lon, tz, zone) in SITES:
+  for name, lat, lon, tz, zone in SITES:
     tables = fetch_noaa_tables(lat, lon, DATES[0][0])
-    for (y, m, d) in DATES:
+    for y, m, d in DATES:
       noaa_cells = []
       for rows in tables:  # sunrise, sunset, solar noon
         cell = next((r[m] for r in rows if r and r[0] == str(d)), "")
@@ -196,14 +199,15 @@ def main() -> None:
         delta = min(delta, 1440 - delta)
         worst = max(worst, delta)
         flag = "  <-- CHECK" if delta > 2.0 else ""
-        print(f"{name:10s} {m:02d}-{d:02d} {phen:14s} "
-              f"usno={usno_min:7.1f} noaa={noaa_min:7.1f} d={delta:4.1f}min{flag}")
+        print(
+          f"{name:10s} {m:02d}-{d:02d} {phen:14s} usno={usno_min:7.1f} noaa={noaa_min:7.1f} d={delta:4.1f}min{flag}"
+        )
   print(f"\nworst |USNO - NOAA| = {worst:.2f} min")
 
   # Emit C++ dataset rows (local standard time "HH:MM"; "" = event absent that day).
   print("\n// --- C++ rows ---")
-  for (name, lat, lon, tz, _zone) in SITES:
-    for (_y, m, d) in DATES:
+  for name, lat, lon, tz, _zone in SITES:
+    for _y, m, d in DATES:
       rec = usno[(name, m, d)]
       cells = ", ".join(f'"{rec.get(k) or "":5s}"' for k in PHEN_KEYS)
       above = "Object continuously above the Horizon" in rec

@@ -29,10 +29,10 @@ CXX_STANDARD: Final[str] = "c++23"
 class Feature:
   """A library feature the codebase is waiting on, and a program that really uses it."""
 
-  name: str        # As written in the code, e.g. "std::views::enumerate".
-  token: str       # Substring that identifies this feature in a TODO comment.
-  issue: str       # Where the adoption work is tracked.
-  program: str     # Must *use* the feature -- a feature-test macro is not evidence (see below).
+  name: str  # As written in the code, e.g. "std::views::enumerate".
+  token: str  # Substring that identifies this feature in a TODO comment.
+  issue: str  # Where the adoption work is tracked.
+  program: str  # Must *use* the feature -- a feature-test macro is not evidence (see below).
   deferred: str = ""  # Why it stays hand-rolled even where it compiles. Empty means adopt on sight.
 
 
@@ -281,8 +281,10 @@ def site_drift() -> List[str]:
     visible = todo_sites(f.token)
     recorded = SITE_COUNTS[f.token]
     if len(visible) != recorded:
-      drift.append(f"{f.name} ({f.issue}): {recorded} recorded, {len(visible)} visible "
-                   f"({', '.join(visible) if visible else 'none'})")
+      drift.append(
+        f"{f.name} ({f.issue}): {recorded} recorded, {len(visible)} visible "
+        f"({', '.join(visible) if visible else 'none'})"
+      )
   return drift
 
 
@@ -294,10 +296,9 @@ def monuments() -> List[Feature]:
   the git history, not in this table -- or its workarounds carry no TODO and the gate is blind
   to them. Both need a person, so say so rather than keeping a decoration.
   """
-  return [f for f in FEATURES
-          if not f.deferred
-          and all(EXPECTED[leg][f.name] for leg in EXPECTED)
-          and not todo_sites(f.token)]
+  return [
+    f for f in FEATURES if not f.deferred and all(EXPECTED[leg][f.name] for leg in EXPECTED) and not todo_sites(f.token)
+  ]
 
 
 # Nothing exotic -- if this will not compile, the toolchain is broken and every `False` below
