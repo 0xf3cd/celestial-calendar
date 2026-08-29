@@ -1,0 +1,31 @@
+{
+  "source_url_pattern": "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T{year}e.txt",
+  "source_files": 200,
+  "source_years": [
+    1901,
+    2100
+  ],
+  "boundary_only_years": [
+    2100
+  ],
+  "reconstructed_years": [
+    1901,
+    2099
+  ],
+  "reconstructed_count": 199,
+  "repository_word_count": 199,
+  "agreement_count": 199,
+  "mismatches": [],
+  "daily_row_anomalies": [
+    {
+      "year": 2069,
+      "missing_dates": [
+        "2069-12-30"
+      ],
+      "extra_dates": []
+    }
+  ],
+  "source_manifest_sha256": "8f3980c799312490a516725a038162f6c16e6521515bfb196c4fcd6ab0baad1e",
+  "comparison_sha256": "aee2f24dc535fe2fd282e7d23e10acdd12dca9d9a8024584e50ac6a1deaa1d79",
+  "reconstructed_words_sha256": "ecca33a7bb3f77dfd5fb2dba75fc30391a9451d3e9fb00800488a0ac09064542"
+}

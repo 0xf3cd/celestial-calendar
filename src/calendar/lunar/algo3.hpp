@@ -53,7 +53,9 @@ inline constexpr int32_t END_YEAR = 2199;
  *   identically under live algo2. Re-bake through the same notebook whenever its
  *   time-scale dependencies change.
  * - The 199 HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
- *   Full-array re-encode against live algo2 is *not* zero-diff: the six known years
+ *   Their retained HKO identity record is `src/test/provenance/hko/2026-08-25/`.
+ *   Exact identity does not settle R01/V01 redistribution permission. Full-array re-encode against
+ *   live algo2 is *not* zero-diff: the six known years
  *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
  *   provenance note, not a data fix: **do not edit any of the 600 values here without
  *   a deliberate re-bake and review.**
