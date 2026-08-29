@@ -22,12 +22,9 @@
  */
 
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <vector>
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
 #include "lunar/algo3.hpp"
-#include "random.hpp"
 
 namespace calendar::lunar::algo3::test {
 
@@ -51,41 +48,23 @@ TEST(LunarAlgo3, HkoTableCopiesAgree) {
   }
 }
 
-// [1600, 1900] ∪ [2100, 2199]: algo3's baked value must still equal *today's*
-// live `algo2::calc_lunar_year` recompute. This HAS real discriminating power —
-// #64's 2133/2165/2172 first surfaced as drift against live algo2 under a new
-// default ΔT. It is NOT an external oracle (that is the ytliu0 golden).
+// [1600, 1900] ∪ [2100, 2199]: all 401 baked values must equal a current live-algo2
+// regeneration. This is a full drift gate, not an external oracle (that is the ytliu0 golden).
 TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
-  const auto outside_hko = [](const int32_t year) -> bool {
-    return year < algo1::START_YEAR or year > algo1::END_YEAR;
-  };
-
-  std::vector<int32_t> years = std::views::iota(algo3::START_YEAR, algo3::END_YEAR + 1)
-                             | std::views::filter(outside_hko)
-                             | std::ranges::to<std::vector>();
-
-  std::shuffle(years.begin(), years.end(), util::detail::engine()); // Seeded (#69).
-  years.resize(32);
-
-  for (const auto year : years) {
+  int32_t checked = 0;
+  for (int32_t year = START_YEAR; year <= END_YEAR; ++year) {
+    if (year >= algo1::START_YEAR and year <= algo1::END_YEAR) {
+      continue;
+    }
     const auto expected = algo2::calc_lunar_year(year);
     const auto actual = algo3::calc_lunar_year(year);
 
     ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
     ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
     ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
+    ++checked;
   }
-
-  // #64: entries re-baked under algo5's ΔT — deterministic, because the random
-  // sample above only covers them ~22% of the time on the 401-year pool.
-  for (const int32_t year : { 2133, 2165, 2172 }) {
-    const auto expected = algo2::calc_lunar_year(year);
-    const auto actual = algo3::calc_lunar_year(year);
-
-    ASSERT_EQ(expected.date_of_first_day, actual.date_of_first_day) << "year=" << year;
-    ASSERT_EQ(expected.leap_month, actual.leap_month) << "year=" << year;
-    ASSERT_EQ(expected.month_lengths, actual.month_lengths) << "year=" << year;
-  }
+  ASSERT_EQ(401, checked);
 }
 
 // Structural pin: `calc_lunar_year` must decode `LUNAR_DATA`, not bypass to live

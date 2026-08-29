@@ -135,11 +135,12 @@ TEST(JulianDay, JdeUt1Anchors) {
   // composition would err by 2ΔT (~128 s at the modern anchors), far outside any tolerance here.
   //
   // Provenance for the observed ΔT (TT − UT1) at each anchor:
-  //   2000-01-01: 63.83 s — NASA eclipse ΔT table (https://eclipse.gsfc.nasa.gov/SEcat5/deltat.html).
+  //   2000-01-01: 63.8285 s from USNO deltat.data, rounded to the stored 63.83 s.
+  //               https://maia.usno.navy.mil/ser7/deltat.data
   //   2020-01-01: 69.36 s — USNO observations (https://maia.usno.navy.mil/ser7/deltat.data);
   //               matches this repo's own ACCURATE_DELTA_T_TABLE (delta_t_test_helper.hpp).
-  //   year 500:   5710 s  — Stephenson & Morrison, the same table the ΔT models fit, so the
-  //               models sit within ~1 s of it there.
+  //   year 500:   5710 s from NASA/TP-2006-214141 Table 2-1 (standard error 140 s),
+  //               with Morrison-Stephenson (2004) scientific lineage in Section 2.6.
   // The conversion itself is far tighter than these tolerances.
   struct Anchor {
     Datetime tt;

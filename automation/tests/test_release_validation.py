@@ -690,6 +690,7 @@ def test_license_bytes_are_platform_stable():
     "third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
   )
   assert "src/test/provenance/** text eol=lf whitespace=-blank-at-eof,-trailing-space" in attributes
+  assert "statistics/usno_data.txt text eol=lf" in attributes
   assert b"\r\n" not in LICENSE_BYTES
   assert b"\r\n" not in NOTICE_BYTES
 

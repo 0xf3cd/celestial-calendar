@@ -1,0 +1,3284 @@
+{
+  "schema": 1,
+  "row": "V12",
+  "endpoint": "https://aa.usno.navy.mil/api/rstt/oneday",
+  "query_parameter_order": [
+    "date",
+    "coords",
+    "tz"
+  ],
+  "coordinate_order": "latitude,east-positive-longitude",
+  "normalization": "last event wins for duplicate phenomena; absent phenomenon is an empty string",
+  "historical_collection": {
+    "date": "2026-08-15",
+    "apiversion": null,
+    "response_bodies_retained": false
+  },
+  "current_recapture": {
+    "date": "2026-08-26",
+    "apiversion": "4.0.1",
+    "response_bodies_in_repository": false,
+    "response_hashes_recorded": 181,
+    "retention": "Raw response bodies are not included; this record retains hashes and normalized cells."
+  },
+  "records": [
+    {
+      "index": 0,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d355f6c6f4265d6b03b6408d5c1d73bca8c25b0dc6220e26c70be078661c871d",
+        "bytes": 1186,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:58",
+        "transit": "18:13",
+        "set": ""
+      }
+    },
+    {
+      "index": 1,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "65c73d73e32948b02972ec62d362d947a8a1811fe239e086bec46b3b387000d8",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:00",
+        "transit": "19:14",
+        "set": "00:27"
+      }
+    },
+    {
+      "index": 2,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7d0c27b479c325ea73f950a75fb298de3e29c145f8a83db3e65cfca71c134aa0",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:00",
+        "transit": "20:13",
+        "set": "01:28"
+      }
+    },
+    {
+      "index": 3,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2f0b204dcfa01ac8331a01b52123d9021db19491b9b5551e6fc475dcf1957d85",
+        "bytes": 1268,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:55",
+        "transit": "21:08",
+        "set": "02:26"
+      }
+    },
+    {
+      "index": 4,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "03299ccd1c7baf706b6c8563a1d4154793f3d15ca087023d3497916219a3acee",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "15:47",
+        "transit": "21:59",
+        "set": "03:20"
+      }
+    },
+    {
+      "index": 5,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1b4ca22c9b90d98ff5f105f1b05683114092810dc00a9ddda26dd0819959976d",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "19:37",
+        "transit": "00:58",
+        "set": "07:10"
+      }
+    },
+    {
+      "index": 6,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5e5cbc88b06bc0fb097861968acf3a79bbba4341fa57db19799c1d3ff6e0c60b",
+        "bytes": 1268,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "20:25",
+        "transit": "01:49",
+        "set": "08:00"
+      }
+    },
+    {
+      "index": 7,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "daaa189efa505ab6338659d59741e1c3294d5d3a8f1acda6c6dac5c39bd6c759",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:09",
+        "transit": "02:36",
+        "set": "08:46"
+      }
+    },
+    {
+      "index": 8,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a2b854001c06e964d74dfe7c52c0580c69e9269eead2c00c30b80f2f0a9bd0f1",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:51",
+        "transit": "03:19",
+        "set": "09:29"
+      }
+    },
+    {
+      "index": 9,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5d7a15c7730bbc3851f96b0089f397af71c95ac4ccbf0db7f9bb3c7c25a85bce",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:31",
+        "transit": "04:00",
+        "set": "10:10"
+      }
+    },
+    {
+      "index": 10,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b4ea2592eae1869e719d233641e52b5387f5962f05c35b43d75bbedd70cbdb13",
+        "bytes": 1188,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:59",
+        "transit": "18:11",
+        "set": ""
+      }
+    },
+    {
+      "index": 11,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a5fa077612fca989b7f175baa55df886ea6db864f534bac35f6b7b77fde90bab",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:47",
+        "transit": "18:58",
+        "set": "00:22"
+      }
+    },
+    {
+      "index": 12,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "fd8bf2dc6a1e6b03dfe4c3e7d90a400eba2f866cd15f392aee7e66466d6f7b0a",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:33",
+        "transit": "19:44",
+        "set": "01:09"
+      }
+    },
+    {
+      "index": 13,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "20793a0074f04a3cbbda852dc3eff108a2b0f4f0eb8946e0f00143a31be3e7be",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:17",
+        "transit": "20:28",
+        "set": "01:54"
+      }
+    },
+    {
+      "index": 14,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "184142753b552991b9dc18b5f64454e0271bedbaeb71d761ec450ed5b774f26e",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "15:02",
+        "transit": "21:13",
+        "set": "02:39"
+      }
+    },
+    {
+      "index": 15,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5571cc0b8054aa0cc2294e0352544b3060c880d1e9b0eb6c27622c5dee22001f",
+        "bytes": 1255,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:33",
+        "transit": "16:47",
+        "set": "23:02"
+      }
+    },
+    {
+      "index": 16,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "696e0aaadb9574f5f9573f093f34838c3ae46c05aa184ce538715565c856b2a5",
+        "bytes": 1183,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:32",
+        "transit": "17:46",
+        "set": ""
+      }
+    },
+    {
+      "index": 17,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f6930bd248cf3f6d3a50b015267c22ca5e59d29c43ad138d8bce4ec37801ffbb",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:28",
+        "transit": "18:41",
+        "set": "00:00"
+      }
+    },
+    {
+      "index": 18,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "dafb023d34569a248ab4fb390a7c2ece13959bd2e1e0961df2ffd8f3be35c206",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:20",
+        "transit": "19:32",
+        "set": "00:54"
+      }
+    },
+    {
+      "index": 19,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "eacf07bbdddb7df9892d608126d0b73d63674b22f22d5549c7ec708a45432151",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:08",
+        "transit": "20:20",
+        "set": "01:44"
+      }
+    },
+    {
+      "index": 20,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "230ee112ded0eb89963360b892d291f87e74adaa1d2ce61407482aef32fb307b",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:22",
+        "transit": "03:36",
+        "set": "09:51"
+      }
+    },
+    {
+      "index": 21,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2f293f50310f6326e5f6a60a87d587a4c94edbee8390a887ecf9ade4fdaa3b9b",
+        "bytes": 1258,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:25",
+        "transit": "04:38",
+        "set": "10:53"
+      }
+    },
+    {
+      "index": 22,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "14dc299fbdbb69c56bd55d3a7d71e9ee030f4546294676ecb00e4391e6e15641",
+        "bytes": 1189,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "05:41",
+        "set": "11:56"
+      }
+    },
+    {
+      "index": 23,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f7494d3af4b0273512164b83755e657b47fee3919a036efe26e4db72ab9f5550",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:28",
+        "transit": "06:43",
+        "set": "12:58"
+      }
+    },
+    {
+      "index": 24,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "-0.22,-78.51",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "68442fde302e078ed48345502bf04c3feb9dc6aada1b2f28d3a6ab8e3f853b71",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:29",
+        "transit": "07:43",
+        "set": "13:57"
+      }
+    },
+    {
+      "index": 25,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8c2a16ecbccfc58d8e21122d39f545ac0d3fcf3bc1f8990bb6279e6d25420c36",
+        "bytes": 1184,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "05:32",
+        "set": "11:49"
+      }
+    },
+    {
+      "index": 26,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "69463b2a1860eb78736edf878b57f43b937bdab2ed21c838fbdc9b71c1ee7cbb",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:17",
+        "transit": "06:34",
+        "set": "12:51"
+      }
+    },
+    {
+      "index": 27,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6ad1102395e81a02c7ecbbfce3b8c924f404dfde835b6a13a064ec675a20ad9b",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:18",
+        "transit": "07:34",
+        "set": "13:50"
+      }
+    },
+    {
+      "index": 28,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "c9836bdff5776936009bd565c06e545f436af9cb962648e3d8647c47cc2990c9",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:16",
+        "transit": "08:31",
+        "set": "14:46"
+      }
+    },
+    {
+      "index": 29,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b82e2cece52e7ccc106ae8a7e62d8d50b144b4c682a333e3475bc337376923cf",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "03:11",
+        "transit": "09:24",
+        "set": "15:38"
+      }
+    },
+    {
+      "index": 30,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "30c88715b161f89b3533c2918f7f4882aaa1efc67b10f36add0d64a4d64671fc",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:59",
+        "transit": "13:14",
+        "set": "19:29"
+      }
+    },
+    {
+      "index": 31,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "bf53fb73ca3a36227cf4eedd38e476c99dd241b95f2658b49757235da81ef5f1",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:49",
+        "transit": "14:03",
+        "set": "20:16"
+      }
+    },
+    {
+      "index": 32,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6e94f6362d43fca38bf2000c49a3301f456cf21d5a271da77b3d21c154063763",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:36",
+        "transit": "14:48",
+        "set": "21:00"
+      }
+    },
+    {
+      "index": 33,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6cdefbb0d8a80fc428af58e6ac57992e2dbbec80407c01c99f403b78e58d2ba1",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:19",
+        "transit": "15:30",
+        "set": "21:42"
+      }
+    },
+    {
+      "index": 34,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1281c4b299bda7967507f0e2c5622d8723151cce0f2efe1eae49725bcc77d812",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:00",
+        "transit": "16:11",
+        "set": "22:21"
+      }
+    },
+    {
+      "index": 35,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5b53aa8086f3c4169359be046134fc2390ed76e9a4e2bf449750b7207038eb77",
+        "bytes": 1186,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "05:36",
+        "set": "11:49"
+      }
+    },
+    {
+      "index": 36,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "560114d1c11572a7888e1772a46c38f461ef8648a7f4fba1cae05cdcedfbf88a",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:13",
+        "transit": "06:25",
+        "set": "12:37"
+      }
+    },
+    {
+      "index": 37,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "eb2892d4f77b7b3eff8d47db24e74d409be931dae01d12a2cf6e7afb08c0e25c",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:01",
+        "transit": "07:11",
+        "set": "13:22"
+      }
+    },
+    {
+      "index": 38,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d90dba7d49cc7dde7bcb66620fef5278c3a6134793220b16cc02a07e09c8615a",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:46",
+        "transit": "07:56",
+        "set": "14:06"
+      }
+    },
+    {
+      "index": 39,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2548694d8988aa39a44d87cf7af791ada7ea0aba612346ac6998102ccf087223",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:31",
+        "transit": "08:41",
+        "set": "14:50"
+      }
+    },
+    {
+      "index": 40,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8b83d1b2299a3afcd75d969ff91d736770b58d34ac0891d6c53b9b50edf6f0e1",
+        "bytes": 1254,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:56",
+        "transit": "04:08",
+        "set": "10:20"
+      }
+    },
+    {
+      "index": 41,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "68707a67301b123e3d5b444e451beb67ae937af461fc7ea0dd82b5752c1712be",
+        "bytes": 1256,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:53",
+        "transit": "05:07",
+        "set": "11:18"
+      }
+    },
+    {
+      "index": 42,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7dc9bc05930d7142803fa9e182be79511cc9ab034eb09a6f340c56c55c77c08c",
+        "bytes": 1186,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "06:04",
+        "set": "12:15"
+      }
+    },
+    {
+      "index": 43,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8f69a6ecb4ea046fb5f1fc5fe2e3cf2c85f488dc9bcbba9cecb2bca12be27f07",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:47",
+        "transit": "06:58",
+        "set": "13:08"
+      }
+    },
+    {
+      "index": 44,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ccd0b6f2b2a1bd196473e699fcf524c09dd418f6854561ab17737509e1d04286",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:37",
+        "transit": "07:47",
+        "set": "13:57"
+      }
+    },
+    {
+      "index": 45,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ed323b984415b8808768bc616262491dd1c755106b96eec6ff54a411d07d6f47",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:44",
+        "transit": "15:57",
+        "set": "22:09"
+      }
+    },
+    {
+      "index": 46,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "086b4150dc9855b5ef150c6ebdaa362ef3a8b4c8e8cfebec760818aed8f2af75",
+        "bytes": 1257,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:47",
+        "transit": "16:59",
+        "set": "23:12"
+      }
+    },
+    {
+      "index": 47,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "484640abe20b542be8cfe4f5c99ca545d90bfe91d6012fdf89d9f0099a3e890e",
+        "bytes": 1189,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:50",
+        "transit": "18:03",
+        "set": ""
+      }
+    },
+    {
+      "index": 48,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6bd7dded1705445165c408a1881db51989f0b4c86e092b72d0562450892c5f9d",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:51",
+        "transit": "19:04",
+        "set": "00:15"
+      }
+    },
+    {
+      "index": 49,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "1.35,103.82",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "db8867364647c5fc6c0612405c7db101f787c3ca6948c230724b4d786ad04a11",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:50",
+        "transit": "20:02",
+        "set": "01:16"
+      }
+    },
+    {
+      "index": 50,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "36d7dad29033f2b1c7d7de0e73b223fe45f7c521639944ca0e18f0638726f85d",
+        "bytes": 1258,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "04:39",
+        "transit": "12:46",
+        "set": "20:55"
+      }
+    },
+    {
+      "index": 51,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "869cd885120f2152236a964f39890f218dfd5997c3ab432ba85eff7035b02336",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:39",
+        "transit": "13:48",
+        "set": "21:52"
+      }
+    },
+    {
+      "index": 52,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2a68082109a1726e870f3f2faecf851304448c24e62435f042741def1b2248e9",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:47",
+        "transit": "14:47",
+        "set": "22:38"
+      }
+    },
+    {
+      "index": 53,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d5a4ff2762eecdb0a058727ea82efa27f9912cc42089b8db0065ff390a285757",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:59",
+        "transit": "15:43",
+        "set": "23:15"
+      }
+    },
+    {
+      "index": 54,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7f8d5f400378af3cf848e7ed3ce21a62ddf0f303c456d955eb3e232f87c5add3",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:12",
+        "transit": "16:35",
+        "set": "23:45"
+      }
+    },
+    {
+      "index": 55,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "04e06eae24e0582603a6a7aa90b408be8a5b09e37b188a143170c06a9925159c",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:36",
+        "transit": "20:24",
+        "set": "04:28"
+      }
+    },
+    {
+      "index": 56,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b8f967304da5c143687723f1f82e9e1f1068cfa4d7e093edc9fbee4782ef87bb",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:50",
+        "transit": "21:12",
+        "set": "04:56"
+      }
+    },
+    {
+      "index": 57,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1daa243a93855f50f52347dae2366a16b6af2dcce89c3646a4f99f3758008ed9",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:04",
+        "transit": "21:56",
+        "set": "05:15"
+      }
+    },
+    {
+      "index": 58,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a43e1d9ca4e1d0e0d90b54b255308ecf91ac88b6a1526afd0e55eacff154d3fe",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "15:17",
+        "transit": "22:38",
+        "set": "05:30"
+      }
+    },
+    {
+      "index": 59,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d9df1e2f6963b2e5e94496e4cd0521d8ad9e653fa0bcb72ceaa29e0e1f9b89ca",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "16:28",
+        "transit": "23:18",
+        "set": "05:42"
+      }
+    },
+    {
+      "index": 60,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1d3898a91a6589dd2f692772b9a761c479f404254439fd55b3a3cfddefbf1c9e",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:27",
+        "transit": "12:46",
+        "set": "19:45"
+      }
+    },
+    {
+      "index": 61,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "58b273dfe0b652c5ccb2e56051ab7d63f283c948bb1a5c71071cc5481e9963be",
+        "bytes": 1258,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:52",
+        "transit": "13:35",
+        "set": "19:58"
+      }
+    },
+    {
+      "index": 62,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "e28cff0aebc988a52c1dc80d69d66cb5cfcda26f95785a088c394a016f5bc6d6",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:14",
+        "transit": "14:20",
+        "set": "20:10"
+      }
+    },
+    {
+      "index": 63,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "3003b8272e89db3af1e2e46aca071d8c102c0d614ac5e526de68d8d40030acf4",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:33",
+        "transit": "15:05",
+        "set": "20:22"
+      }
+    },
+    {
+      "index": 64,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "204879129e015a12cd2f9afe8206bcebc5caa8820d44e09928eac528e5177e81",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:51",
+        "transit": "15:50",
+        "set": "20:36"
+      }
+    },
+    {
+      "index": 65,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "4574365ebf9588242ac3248b47d30a57847b6c661cfe60f479d9e331b02c16ef",
+        "bytes": 1253,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:38",
+        "transit": "11:21",
+        "set": "15:03"
+      }
+    },
+    {
+      "index": 66,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "3ad5ecef980febbca88ee28f23d95d0401f4969c18d44f22936b51828ba8f672",
+        "bytes": 1255,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:35",
+        "transit": "12:20",
+        "set": "16:08"
+      }
+    },
+    {
+      "index": 67,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ba8b3d88a928947d49595892476d5ad985f5de19d973970f2db0a7eaa3224e5c",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:17",
+        "transit": "13:16",
+        "set": "17:20"
+      }
+    },
+    {
+      "index": 68,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7f541b6360ee28c7bd6ff8b5cbb09e31af251028a785126683f2d410c882df53",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:49",
+        "transit": "14:08",
+        "set": "18:35"
+      }
+    },
+    {
+      "index": 69,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f7c8b822bc590fa77b441aee9ac8a581e1c3d9c84d211a9c52da8c70f376f8fd",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:13",
+        "transit": "14:56",
+        "set": "19:50"
+      }
+    },
+    {
+      "index": 70,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "c774ef5f6c5158eb7a75a3acc49d53550c82663677b7796c1aee7638c3e6f34c",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "19:03",
+        "transit": "23:10",
+        "set": "02:23"
+      }
+    },
+    {
+      "index": 71,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5c8ff02de2161f31ec0cffe4d2540320b83f85d6f63d1e2ae9a82bfbf01211a1",
+        "bytes": 1172,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "20:06",
+        "transit": "",
+        "set": "03:17"
+      }
+    },
+    {
+      "index": 72,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "cc276c29f6a0c94b7c3a1cdf8f2eef8f621b3bcc82d25496bf1bb27828d4bedc",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "20:57",
+        "transit": "00:14",
+        "set": "04:24"
+      }
+    },
+    {
+      "index": 73,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2f3a8a62e85591a0c00350919bf382597033e694e884167abf030f1b8c874c20",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:37",
+        "transit": "01:16",
+        "set": "05:42"
+      }
+    },
+    {
+      "index": 74,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "51.5,-0.13",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "9f7c66c94259768c50698a6c039fadca4cb03a4e671cd37f8b4b9ccfb8c992e0",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:09",
+        "transit": "02:17",
+        "set": "07:05"
+      }
+    },
+    {
+      "index": 75,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2e0d38424b1325f67db6bf84b57acd8b2c57a69f685e05fb45d9cc140160a958",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:12",
+        "transit": "04:39",
+        "set": "12:08"
+      }
+    },
+    {
+      "index": 76,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b1439ccaae0ee8b7a8d64a47610143a86fa29256307c11fa1ea9b2b33cbdcfab",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:16",
+        "transit": "05:42",
+        "set": "13:10"
+      }
+    },
+    {
+      "index": 77,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "313d9079065c7c31d9e3eea47c6b2da0fe229315aa08b2a2f241f25831079133",
+        "bytes": 1188,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "06:42",
+        "set": "14:03"
+      }
+    },
+    {
+      "index": 78,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ef35a1190bc4fb8cb08382a4d65678ab01b2aba2bdbe528714430738a5d892b3",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:23",
+        "transit": "07:39",
+        "set": "14:49"
+      }
+    },
+    {
+      "index": 79,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6fe0e06345dbe53d3e980bcc6f61ea307a6da1d143eb324bfc9bb56f3e5adabd",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:29",
+        "transit": "08:32",
+        "set": "15:28"
+      }
+    },
+    {
+      "index": 80,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "e9c243250594d9b466fc6baab1aef533ad60acb7de9cc87c37c7c198d3bb5d7f",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "04:27",
+        "transit": "12:22",
+        "set": "20:09"
+      }
+    },
+    {
+      "index": 81,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "79de7c19a621265920af679610f86f1c00f6494b200779847ba7de7ebc802917",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:30",
+        "transit": "13:11",
+        "set": "20:41"
+      }
+    },
+    {
+      "index": 82,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8e888a2bcbc6686ba2b6ed0b0e38c760022c9c9460f872e5d2c48f7d0cd076f9",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:33",
+        "transit": "13:56",
+        "set": "21:08"
+      }
+    },
+    {
+      "index": 83,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "14e6704d0c66aae7804bcb9b6d0eeb588ce1b58a815008f4f7b014d031b2f976",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:35",
+        "transit": "14:39",
+        "set": "21:31"
+      }
+    },
+    {
+      "index": 84,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "56e363cf2caed36ef04e4030edd49fb51f005fde67b3863e3de61f1ef5f69eea",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:36",
+        "transit": "15:19",
+        "set": "21:51"
+      }
+    },
+    {
+      "index": 85,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1aded6e6f085433707e79a2d1ea04da4e2a011dadeb50a1b7bd2ab6a9c29c381",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:54",
+        "transit": "04:44",
+        "set": "11:35"
+      }
+    },
+    {
+      "index": 86,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "58ebc741c57479eea375380a8b13b3f7cfb3f90c0a2d0169e0511258fd4a5a73",
+        "bytes": 1184,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "05:33",
+        "set": "12:00"
+      }
+    },
+    {
+      "index": 87,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "bdf4c0eb6319aac5353716729992040eacb18b4ffe586b572c622b079167532f",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:04",
+        "transit": "06:19",
+        "set": "12:23"
+      }
+    },
+    {
+      "index": 88,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "52f6bdaa1efb29294128460fc389e48cbe854abe11b16f7e91ec02bf0c17a61d",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:12",
+        "transit": "07:04",
+        "set": "12:46"
+      }
+    },
+    {
+      "index": 89,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2e6de4e659e8f0377c3335881e82b64a190d423ac088103cb49ae22d57238c5f",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:18",
+        "transit": "07:49",
+        "set": "13:10"
+      }
+    },
+    {
+      "index": 90,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a253c34321168af9aa1a7d27e7b88ca7dc6da6af9dd59e8fde685a2f1e8abb84",
+        "bytes": 1254,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:37",
+        "transit": "03:15",
+        "set": "07:53"
+      }
+    },
+    {
+      "index": 91,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5c2dbe96c11e642f1515acf87674f7893cca435e65289a93b9091fd4b98680a9",
+        "bytes": 1181,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "04:15",
+        "set": "08:54"
+      }
+    },
+    {
+      "index": 92,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7c7eca9157673dc31c63874fe1fac4f1cd789144fa9eff2e3cfbf1a5002679f1",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:29",
+        "transit": "05:12",
+        "set": "09:59"
+      }
+    },
+    {
+      "index": 93,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "872c7fb572948d3a140f804f0daf0ad47bd8eac8c37508fd47c907927ef28bbd",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:12",
+        "transit": "06:05",
+        "set": "11:05"
+      }
+    },
+    {
+      "index": 94,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "bd6e2986012c37b5fa3560be416001ed31f8c031b695716126197c53481b9a90",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:47",
+        "transit": "06:55",
+        "set": "12:10"
+      }
+    },
+    {
+      "index": 95,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ac62fcdee6111aecbbe5ce17c87b3d10097889ec74bb3cb36e1aba999dcbeede",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:10",
+        "transit": "15:04",
+        "set": "19:57"
+      }
+    },
+    {
+      "index": 96,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f2ef874ad24c1f1c463eb2a6a65349212052182929811718454ea1fd07fd65f4",
+        "bytes": 1257,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:15",
+        "transit": "16:07",
+        "set": "21:00"
+      }
+    },
+    {
+      "index": 97,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8c98dff0b73ada9bf8c18f9d83068504c77eb66f5e768d00991b33a7bd2d024a",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:13",
+        "transit": "17:10",
+        "set": "22:10"
+      }
+    },
+    {
+      "index": 98,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "47c132ba1806572fd634ce8f657a96693e08e5a4c5acdcf6a413fd650ebef93d",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:04",
+        "transit": "18:11",
+        "set": "23:24"
+      }
+    },
+    {
+      "index": 99,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "39.9,116.41",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "c48b7a86f6f2567d72ffb89cf7bc8b7e9c68247cc2efc08f5c94580932974a97",
+        "bytes": 1186,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:47",
+        "transit": "19:09",
+        "set": ""
+      }
+    },
+    {
+      "index": 100,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "68f4dfc96d776119af015e0a21c9b807e9175e4581109cd6aa166f4a77fe4eee",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:23",
+        "transit": "17:54",
+        "set": "00:20"
+      }
+    },
+    {
+      "index": 101,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8f54cb7ef5f17cc0d47230cdc1d330f779f18b9165881beb9e9d0bcf99fce609",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:25",
+        "transit": "18:56",
+        "set": "01:26"
+      }
+    },
+    {
+      "index": 102,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "dedc75f6661631eefec3f61644aed5e0d729b70e98ec880998814ef9972062e9",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:31",
+        "transit": "19:54",
+        "set": "02:23"
+      }
+    },
+    {
+      "index": 103,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2b8aaf47a2fd3b80e81305136d1909fc4a73772cd8170eed77be8f67e5908a26",
+        "bytes": 1268,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:38",
+        "transit": "20:49",
+        "set": "03:12"
+      }
+    },
+    {
+      "index": 104,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b0b6342487635ef65900d8d974745942931657a23c8d6c990c4d5281dcec2958",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:43",
+        "transit": "21:40",
+        "set": "03:53"
+      }
+    },
+    {
+      "index": 105,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "12a33888a1a26ef7c788356ab9004bf35b1cce82cb237138fcf554884ea7f5b1",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "17:39",
+        "transit": "00:39",
+        "set": "08:36"
+      }
+    },
+    {
+      "index": 106,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "65d469b9ffc201bd96bedb4d6273aa30b73cbf526d3d9add10b531b262a9f65c",
+        "bytes": 1268,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "18:43",
+        "transit": "01:30",
+        "set": "09:11"
+      }
+    },
+    {
+      "index": 107,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1a109e8c9d55632f6eb7f308fba8938a864b270a16289c3ff7e10a13bbc4a887",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "19:46",
+        "transit": "02:17",
+        "set": "09:40"
+      }
+    },
+    {
+      "index": 108,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "658b651f7f0944c8538dd66d29dbb012febab447cc9e52730bc2942013272e02",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "20:48",
+        "transit": "03:01",
+        "set": "10:04"
+      }
+    },
+    {
+      "index": 109,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7d74f8e17e9f330c17620fdfe17cd08f2204f1129f489bb7a76b395c56d818d6",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:49",
+        "transit": "03:42",
+        "set": "10:24"
+      }
+    },
+    {
+      "index": 110,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "faebe2968b6ea49271adddb4ee41a3956c417e36e46b6ed33a6d311f7b2f0fcb",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:00",
+        "transit": "17:52",
+        "set": "00:05"
+      }
+    },
+    {
+      "index": 111,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "12bc913f95539b251724936e6643b9417e2c74fb64993aed5fd819219effcaae",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:12",
+        "transit": "18:40",
+        "set": "00:31"
+      }
+    },
+    {
+      "index": 112,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "22145c14e54eeef1d32c1a1317b9cd4f6ba893d3ee592e45500c1da27e97fce8",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:22",
+        "transit": "19:25",
+        "set": "00:54"
+      }
+    },
+    {
+      "index": 113,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "77d47ecb67a5eb00e4082edd97917b6a1c1f21154f1f53cab057986692db521b",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:30",
+        "transit": "20:10",
+        "set": "01:17"
+      }
+    },
+    {
+      "index": 114,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d0db17130006ae787f6266292fb6e16aab8ff9c380c241c9ee3d7185fc0f2276",
+        "bytes": 1266,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "15:36",
+        "transit": "20:54",
+        "set": "01:39"
+      }
+    },
+    {
+      "index": 115,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6b93b3341c97839b27c2d6aa4754b735134e8f931cd2a071ea0463a330414ce3",
+        "bytes": 1255,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:54",
+        "transit": "16:29",
+        "set": "21:03"
+      }
+    },
+    {
+      "index": 116,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "fdae982fce3ddc8b72982f7e3c385e7dcfabc4a731b46a89bfbf0706303b3d29",
+        "bytes": 1257,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:50",
+        "transit": "17:27",
+        "set": "22:07"
+      }
+    },
+    {
+      "index": 117,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "3f6b1190e891bd50f81ae9997296f09bd24929ac859ef27468aed0108771061e",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "13:37",
+        "transit": "18:22",
+        "set": "23:13"
+      }
+    },
+    {
+      "index": 118,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "cbc4d20f20f65e9795c522e879fc0b42431d77707e7b95aada6c586f6e2f6eae",
+        "bytes": 1188,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:15",
+        "transit": "19:14",
+        "set": ""
+      }
+    },
+    {
+      "index": 119,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "dfa5dc233152450a92abb574ec899ac5a4cba70a138f583012320505ce12183a",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:46",
+        "transit": "20:01",
+        "set": "00:19"
+      }
+    },
+    {
+      "index": 120,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "c92897c26a97bdfa50649a9aa1eac54759a763de98ee3c052943577bf06c316e",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:29",
+        "transit": "03:17",
+        "set": "08:09"
+      }
+    },
+    {
+      "index": 121,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "9474ef8e0789ff7ae9a608ebe1a82295e332eda4dbb18397b2665ba68c52ec95",
+        "bytes": 1183,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "04:19",
+        "set": "09:08"
+      }
+    },
+    {
+      "index": 122,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6e3825046f398ac5f243a4dfa2d2eb77b2a6a72da61ec59686a3a995c9a5c8a6",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:31",
+        "transit": "05:22",
+        "set": "10:16"
+      }
+    },
+    {
+      "index": 123,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a60335649512aff2527e1031203f4fba1d77e2c0d8c0f58bd2444caab331c108",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "01:25",
+        "transit": "06:24",
+        "set": "11:29"
+      }
+    },
+    {
+      "index": 124,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "40.71,-74.01",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b15f9a82bd3eacda42a1997469d23caa6f9d720e3d94850c945e1d1e41285581",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:11",
+        "transit": "07:24",
+        "set": "12:44"
+      }
+    },
+    {
+      "index": 125,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "03ad2cee3bc379c26a9d7c6f73cadf578981e21a3ce4d5daeab19191aacd883f",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:02",
+        "transit": "02:14",
+        "set": "07:30"
+      }
+    },
+    {
+      "index": 126,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "eac4ada75a07b916d675a7d20388b3677be55ca80b786ea0cfe0f1341772b166",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:00",
+        "transit": "03:16",
+        "set": "08:32"
+      }
+    },
+    {
+      "index": 127,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b62d6d87b1c67a0433995e0ddb5bb6eaf49f3fae2e2c9e0c057d673d3d781e26",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:52",
+        "transit": "04:17",
+        "set": "09:36"
+      }
+    },
+    {
+      "index": 128,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "0253c5b1781b5817d6255d96d5347dce27add7997e53cfb1344a878952c8d166",
+        "bytes": 1194,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "05:14",
+        "set": "10:40"
+      }
+    },
+    {
+      "index": 129,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "56aa032d0863d4b274921dc21eea9ba4f5045ac77ac4b36b86ef083f97ee59c8",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:37",
+        "transit": "06:08",
+        "set": "11:43"
+      }
+    },
+    {
+      "index": 130,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "694fe6e20983c4555bd5b986f42c9da84734a0f7a779b4728b9cdd1c0c097990",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:07",
+        "transit": "09:58",
+        "set": "14:52"
+      }
+    },
+    {
+      "index": 131,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "e07432dc32b1fb065349ff5d71763e4f1fa3c3d7ed1717fa268a684ca5d0976f",
+        "bytes": 1269,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:47",
+        "transit": "10:47",
+        "set": "15:52"
+      }
+    },
+    {
+      "index": 132,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a4eea9affb5f42d816b71b8e5904a4bfc824c61566dc28859a77fceba4da5a18",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:20",
+        "transit": "11:33",
+        "set": "16:52"
+      }
+    },
+    {
+      "index": 133,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "eaf5822f87f978447fcdcb73e52242e8a4668589c077fd6037f9883d00fbf63c",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:49",
+        "transit": "12:15",
+        "set": "17:49"
+      }
+    },
+    {
+      "index": 134,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a5cbeb579de89e1d9f5c71a9db2e6221dadb1dab7d3cd90b4dad300450cd34cb",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:14",
+        "transit": "12:56",
+        "set": "18:45"
+      }
+    },
+    {
+      "index": 135,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "cf0ee82c4a21ccb82b7b99825eab1af516c295d1d6799997e334004f12964249",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:22",
+        "transit": "02:20",
+        "set": "07:58"
+      }
+    },
+    {
+      "index": 136,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "2155c9adcbfaf35fc64692f615450408c3e4e2b5626b2ae3a719bb19726c9be0",
+        "bytes": 1261,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:51",
+        "transit": "03:09",
+        "set": "09:05"
+      }
+    },
+    {
+      "index": 137,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "a56dacb008ef59059f554935db1cd9ca9c58ff796c976b5f050efd41b1ec286f",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:18",
+        "transit": "03:56",
+        "set": "10:10"
+      }
+    },
+    {
+      "index": 138,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d0669ca72789ec88df9b4d03a2c25f22b9c90688acc916e6cf6759824ced2b7c",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:45",
+        "transit": "04:41",
+        "set": "11:13"
+      }
+    },
+    {
+      "index": 139,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "0f75027b23ef55db842e304f4c261c833323ac4bb9848a8314a5c2da6931a385",
+        "bytes": 1267,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:14",
+        "transit": "05:25",
+        "set": "12:15"
+      }
+    },
+    {
+      "index": 140,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d9e131364fb1a5ac1a3ef1a2facee8f53b783456590c31ecb36ddc65d611aa2a",
+        "bytes": 1256,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "18:19",
+        "transit": "00:50",
+        "set": "08:21"
+      }
+    },
+    {
+      "index": 141,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6a1ba704c7357fbeb11ced52de4b9b82e40ef75e9137fae479111d747e895c4b",
+        "bytes": 1258,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "19:21",
+        "transit": "01:50",
+        "set": "09:19"
+      }
+    },
+    {
+      "index": 142,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f42217ad211adf83b67d918dbc05f7f7abe51f7104e3d2bf74bc95fd5a9eb2a1",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "20:24",
+        "transit": "02:47",
+        "set": "10:09"
+      }
+    },
+    {
+      "index": 143,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5bb13e6ca235876a1450adc0d15407cafa11bf47e16281c0bdbbf604465b4080",
+        "bytes": 1263,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "21:27",
+        "transit": "03:41",
+        "set": "10:51"
+      }
+    },
+    {
+      "index": 144,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "3d3a46da1c3917ca1f5184296fe2ce04e68d7aca0a3494b123d82cf233943127",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:27",
+        "transit": "04:31",
+        "set": "11:28"
+      }
+    },
+    {
+      "index": 145,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "dbac7f21f914127745a1194fc48f5901d47f3ad3e655fae06be9e07c4b6aa4bc",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "05:22",
+        "transit": "12:39",
+        "set": "19:59"
+      }
+    },
+    {
+      "index": 146,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "b8bed9e6223b7e9890ef859a8a29c31c46219dbc40f89ec6a9fcdbce1f3fa897",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:21",
+        "transit": "13:42",
+        "set": "21:02"
+      }
+    },
+    {
+      "index": 147,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "66fc679c5d2dd059e40d555478116235e773666d6bda7dadbfc0e907002aea4d",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "07:27",
+        "transit": "14:45",
+        "set": "21:59"
+      }
+    },
+    {
+      "index": 148,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "44e658b644adad078e8b5a021c0b6749988a877aab4a1cb517a607880d03c069",
+        "bytes": 1264,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:37",
+        "transit": "15:46",
+        "set": "22:49"
+      }
+    },
+    {
+      "index": 149,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "-33.87,151.21",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "0cdb7c1f82a29c2f876fce8732c0f5057105183abad6912b2d1a68a9bf30b7a6",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:48",
+        "transit": "16:45",
+        "set": "23:33"
+      }
+    },
+    {
+      "index": 150,
+      "request": {
+        "date": "1999-06-14",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5c3549b5e681a621f988c49cf162b96ead51ba1657178523085a0de9e5e30b68",
+        "bytes": 1231,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:13",
+        "transit": "11:26",
+        "set": "23:13"
+      }
+    },
+    {
+      "index": 151,
+      "request": {
+        "date": "1999-06-15",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6bc50c9bca6da33a9a615229042564df36bcea9dad65e3d3544f1b1b5c196b86",
+        "bytes": 1232,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "00:41",
+        "transit": "12:28",
+        "set": "23:39"
+      }
+    },
+    {
+      "index": 152,
+      "request": {
+        "date": "1999-06-16",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "32486e7566f8a863de3131ff76ed167bba4cbf317a83c7d915575adf872945ac",
+        "bytes": 1235,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:23",
+        "transit": "13:28",
+        "set": "23:42"
+      }
+    },
+    {
+      "index": 153,
+      "request": {
+        "date": "1999-06-17",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "eb4b51035520c98f19960d394328f286f5c458716797692613b00e9bffe0d5e7",
+        "bytes": 1239,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "04:22",
+        "transit": "14:24",
+        "set": "23:40"
+      }
+    },
+    {
+      "index": 154,
+      "request": {
+        "date": "1999-06-18",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "c98a1eddd7bd99f94a6ca858a5d8089f986d574ca223b8536214650ba55b4639",
+        "bytes": 1237,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:15",
+        "transit": "15:16",
+        "set": "23:37"
+      }
+    },
+    {
+      "index": 155,
+      "request": {
+        "date": "2024-03-19",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "0c42f552458866591b230a3ca26babc422199043ea750507c289cfc34f6336c5",
+        "bytes": 1305,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "19:05",
+        "set": ""
+      }
+    },
+    {
+      "index": 156,
+      "request": {
+        "date": "2024-03-20",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "d7cbc7cf5f28157b97e6d3c5b443cf1fd38ba41727597e98dd6bfa4a2b3fe4a7",
+        "bytes": 1307,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "19:53",
+        "set": ""
+      }
+    },
+    {
+      "index": 157,
+      "request": {
+        "date": "2024-03-21",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "8064619f7ccff2718a973b7b8a0a637f58fd9b68fe40aefdf0103cf68e0c10c1",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "09:39",
+        "transit": "20:38",
+        "set": "07:10"
+      }
+    },
+    {
+      "index": 158,
+      "request": {
+        "date": "2024-03-22",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "1d751b783344c6b5d3d0f9bb25e262f08fa994c1d79910f3b7030e32ba312c70",
+        "bytes": 1260,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "12:16",
+        "transit": "21:20",
+        "set": "06:03"
+      }
+    },
+    {
+      "index": 159,
+      "request": {
+        "date": "2024-03-23",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "5b2fef46d14223866c3d70defc3585bc321a7ce8307cda11df4caeeaada56a98",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "14:15",
+        "transit": "21:59",
+        "set": "05:30"
+      }
+    },
+    {
+      "index": 160,
+      "request": {
+        "date": "2026-08-13",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "0ac8f036bcecc083ddfe76aba3b18eabbb8854b6728f704ef1ad12fa065fbf2b",
+        "bytes": 1193,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:31",
+        "transit": "11:27",
+        "set": "19:23"
+      }
+    },
+    {
+      "index": 161,
+      "request": {
+        "date": "2026-08-14",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7035048db7367dbcdeeaa4e19455bea105209f50495f971ec4aabf063f3aef00",
+        "bytes": 1259,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "04:51",
+        "transit": "12:16",
+        "set": "18:56"
+      }
+    },
+    {
+      "index": 162,
+      "request": {
+        "date": "2026-08-15",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "73da66094fbbcc1f87a5bffae83db77db5e4efbc614ce023a337b915eb6a1ae3",
+        "bytes": 1262,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "06:57",
+        "transit": "13:02",
+        "set": "18:32"
+      }
+    },
+    {
+      "index": 163,
+      "request": {
+        "date": "2026-08-16",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "df2765e35d2ef038fc7ca63b78a7de76632407ae663405cdb791b052a56f2592",
+        "bytes": 1265,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "08:59",
+        "transit": "13:46",
+        "set": "18:05"
+      }
+    },
+    {
+      "index": 164,
+      "request": {
+        "date": "2026-08-17",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f531aa54f879a6d0d6b041cbf5692916e60516c9dfe068bf7dae8cca67d91703",
+        "bytes": 1174,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:07",
+        "transit": "14:31",
+        "set": "17:32"
+      }
+    },
+    {
+      "index": 165,
+      "request": {
+        "date": "2028-12-15",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "4e14bbba779b60f8a535b187147a28cf49dce653280d6da17d7f7b9d46ee2785",
+        "bytes": 998,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 166,
+      "request": {
+        "date": "2028-12-16",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "4f987d04f2cffc4585d45f42b4d3373813263a840df4b988ccfa23e44909c088",
+        "bytes": 1000,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 167,
+      "request": {
+        "date": "2028-12-17",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "35d757413fc81a9903de126dc7ab33a0442a05fbb534a2644f3b2244abfc063d",
+        "bytes": 1005,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 168,
+      "request": {
+        "date": "2028-12-18",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "705d62b3c9715ea9113f1917e5bc4f60b5379daa3837d5d3ea1f7b72a8e219b8",
+        "bytes": 1133,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "11:53",
+        "transit": "12:49",
+        "set": "14:00"
+      }
+    },
+    {
+      "index": 169,
+      "request": {
+        "date": "2028-12-19",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "e464c0f1e0a186e85701a7f1f577775886752fb0d4073e795ee2b5ac39835dad",
+        "bytes": 1135,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "10:56",
+        "transit": "13:37",
+        "set": "16:38"
+      }
+    },
+    {
+      "index": 170,
+      "request": {
+        "date": "2049-06-14",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f174e2070e18675be92436b1ba4edda9d172a1bc87b48673a110f7aaf4002507",
+        "bytes": 1104,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 171,
+      "request": {
+        "date": "2049-06-15",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "627a977ac8d9fd48c6e345cbb3a299ff99816b88d00a62e360cda1ddce7a3b31",
+        "bytes": 1101,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 172,
+      "request": {
+        "date": "2049-06-16",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "849def61369622f0d2875bfa8c6b3aa94c0fef46e02a17e367936fd70773169f",
+        "bytes": 1161,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:20",
+        "transit": "23:57",
+        "set": ""
+      }
+    },
+    {
+      "index": 173,
+      "request": {
+        "date": "2049-06-17",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "db3e089399800a885f5571dd65756381c2d70a761e8ba3ef2ff98042331d6293",
+        "bytes": 1150,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:35",
+        "transit": "",
+        "set": "00:45"
+      }
+    },
+    {
+      "index": 174,
+      "request": {
+        "date": "2049-06-18",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "3b13190b3691f74abe8e6589a04d4f4675054d6e739966b5fa395336af75259f",
+        "bytes": 1232,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "22:18",
+        "transit": "00:57",
+        "set": "03:36"
+      }
+    },
+    {
+      "index": 175,
+      "request": {
+        "date": "2026-08-08",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "6d3dc1ed5be34fb2b7b53c97f149b257de0afca5c08d838eea903eda2f7721b9",
+        "bytes": 1236,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "06:28",
+        "set": ""
+      }
+    },
+    {
+      "index": 176,
+      "request": {
+        "date": "2026-08-09",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "258fdba5c4e93eaa705caa73d7cedfc4d4a4016bf71f2271b44115547934cc29",
+        "bytes": 1231,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "07:32",
+        "set": ""
+      }
+    },
+    {
+      "index": 177,
+      "request": {
+        "date": "2026-08-20",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "7980eae7c3b9e1bd15b2073f5ff6780cf7567a60aa533b0444a553c163eca9d3",
+        "bytes": 1138,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 178,
+      "request": {
+        "date": "2026-08-21",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "ec4e0fbaa5b315aac762d0414b871b83c623629c23dc67bb9dd22dab940dbcc4",
+        "bytes": 1136,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "",
+        "transit": "",
+        "set": ""
+      }
+    },
+    {
+      "index": 179,
+      "request": {
+        "date": "2026-05-14",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "e6a4f74a232eb4f2b11f4a1591bee6539d0cb72bde6de04b6102557952c31a6f",
+        "bytes": 1268,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "23:56",
+        "transit": "08:20",
+        "set": "17:09"
+      }
+    },
+    {
+      "index": 180,
+      "request": {
+        "date": "2026-06-18",
+        "coords": "69.65,18.96",
+        "tz": "0"
+      },
+      "response": {
+        "sha256": "f4e9697e535d069fb8c0b7832fe1a9ef062d674d51220284324c522a2c950c85",
+        "bytes": 1308,
+        "apiversion": "4.0.1"
+      },
+      "normalized_cells": {
+        "rise": "02:42",
+        "transit": "14:11",
+        "set": "23:38"
+      }
+    }
+  ]
+}

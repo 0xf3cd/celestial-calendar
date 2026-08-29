@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "row": "V26",
+  "source": {
+    "url": "https://maia.usno.navy.mil/ser7/deltat.data",
+    "product_url": "https://maia.usno.navy.mil/products/deltaT",
+    "distribution": "Distribution Statement A. Approved for public release: distribution unlimited."
+  },
+  "tracked_copy": {
+    "path": "statistics/usno_data.txt",
+    "retrieved": "2026-08-01",
+    "retrieval": "direct curl of the source URL",
+    "sha256": "9f88e53593495a09219fe956eeadea0fa9f8e3e02c310b2aa2b70852383cdf6f",
+    "bytes": 13419,
+    "rows": 639,
+    "first_date": "1973-02-01",
+    "last_date": "2026-04-01",
+    "last_modified": "Thu, 18 Jun 2026 17:26:25 GMT",
+    "last_modified_observed": "2026-08-26"
+  },
+  "revision": {
+    "previous_commit": "202a0bdd2e26198988ac256b95ec6f65625597c3",
+    "current_commit": "9ecb18ac19b30f69d7887d44a9b87ed638ae2760",
+    "previous_sha256": "f3ebe52ca09176b8b84b01af53182eec83f52adc45b68ce737e8eb0b81a37ad9",
+    "previous_rows": 617,
+    "overlap_rows": 617,
+    "unchanged_overlap_values": 616,
+    "appended_rows": 22,
+    "format_change": "one leading space added to every row",
+    "changed_values": [
+      {
+        "date": "2024-06-01",
+        "before": "69.2045",
+        "after": "69.2044"
+      }
+    ]
+  },
+  "citation_relations": [
+    {
+      "condition": "V27 year 2000",
+      "date": "2000-01-01",
+      "source_value": "63.8285",
+      "repository_path": "src/test/astro/julian_day_test.cpp",
+      "repository_value": "63.83",
+      "rounding_places": 2
+    },
+    {
+      "condition": "V25 year 2010",
+      "date": "2010-01-01",
+      "source_value": "66.0699",
+      "repository_path": "src/test/astro/delta_t_test_helper.hpp",
+      "repository_value": "66.1",
+      "rounding_places": 1
+    },
+    {
+      "condition": "V25 year 2014",
+      "date": "2014-01-01",
+      "source_value": "67.2810",
+      "repository_path": "src/test/astro/delta_t_test_helper.hpp",
+      "repository_value": "67.3",
+      "rounding_places": 1
+    }
+  ]
+}

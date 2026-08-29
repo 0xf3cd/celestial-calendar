@@ -50,10 +50,11 @@ using namespace dataset;
 
 using DatasetType = std::map<double, double>; // { year, ΔT }
 
-// Ref: https://eclipse.gsfc.nasa.gov/LEcat5/deltat.html
-// Ref: https://www.eclipsewise.com/help/deltat.html
 // Recent values of ΔT from direct observations.
-// 2015+ entries: IERS Bulletin A final values (AstroTime-Analysis @ ddf3be1),
+// 1955-2005: NASA/TP-2006-214141 Table 2-2, exact one-decimal values.
+// 2010/2014: USNO deltat.data values 66.0699/67.2810, rounded to one decimal.
+// 2015+ entries remain inherited from unresolved R09: IERS Bulletin A final values
+// (AstroTime-Analysis @ ddf3be1),
 // median of ±15 days around each year boundary.
 const inline DatasetType ACCURATE_DELTA_T_TABLE {
   { 1955.0, 31.1 },

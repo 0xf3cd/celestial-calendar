@@ -143,6 +143,7 @@ jobs:
           [ -f "$DEST_DIR/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
           [ -f "$DEST_DIR/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
           [ -f "$DEST_DIR/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }
+          cmp -s "$DEST_DIR/THIRD_PARTY_NOTICES.txt" "$ROOT_DIR/THIRD_PARTY_NOTICES.txt" || { echo "THIRD_PARTY_NOTICES.txt differs from repository bytes"; ok=0; }
           [ "$ok" -eq 1 ] || exit 1
 
           # Copy the build info JSON files to the destination directory
@@ -232,6 +233,7 @@ jobs:
         [ -f "./macos_arm64/include/celestial.h" ] || { echo "missing include/celestial.h"; ok=0; }
         [ -f "./macos_arm64/LICENSE" ] || { echo "missing LICENSE"; ok=0; }
         [ -f "./macos_arm64/THIRD_PARTY_NOTICES.txt" ] || { echo "missing THIRD_PARTY_NOTICES.txt"; ok=0; }
+        cmp -s "./macos_arm64/THIRD_PARTY_NOTICES.txt" "./THIRD_PARTY_NOTICES.txt" || { echo "THIRD_PARTY_NOTICES.txt differs from repository bytes"; ok=0; }
         [ "$ok" -eq 1 ] || exit 1
 
         # Pack the "build_info.json" to the "macos_arm64" folder
@@ -314,6 +316,7 @@ jobs:
           if (!(Test-Path "$destDir/include/celestial.h")) { Write-Output "missing include/celestial.h"; $ok = $false }
           if (!(Test-Path "$destDir/LICENSE")) { Write-Output "missing LICENSE"; $ok = $false }
           if (!(Test-Path "$destDir/THIRD_PARTY_NOTICES.txt")) { Write-Output "missing THIRD_PARTY_NOTICES.txt"; $ok = $false }
+          if ((Get-FileHash "$destDir/THIRD_PARTY_NOTICES.txt" -Algorithm SHA256).Hash -ne (Get-FileHash "$ROOT_DIR/THIRD_PARTY_NOTICES.txt" -Algorithm SHA256).Hash) { Write-Output "THIRD_PARTY_NOTICES.txt differs from repository bytes"; $ok = $false }
           if (!$ok) { exit 1 }
 
           # Pack the "build_info.json" to the "windows_x86_64" folder

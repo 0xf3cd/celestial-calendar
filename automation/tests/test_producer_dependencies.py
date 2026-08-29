@@ -37,6 +37,7 @@ RELEASE_WORKFLOW = REPO / ".github" / "workflows" / "release.yml"
 DOCKERFILE = REPO / "Dockerfile"
 NATIVE_CMAKE = REPO / "src" / "shared_lib" / "CMakeLists.txt"
 PYTHON_CMAKE = REPO / "bindings" / "python" / "CMakeLists.txt"
+WHEEL_VERIFY = REPO / "bindings" / "python" / "test" / "wheel" / "verify.py"
 CIBW_CONSTRAINTS = REPO / "bindings" / "python" / "constraints-cibuildwheel.txt"
 CIBW_LOCK = REPO / "bindings" / "python" / "requirements-cibuildwheel.txt"
 CIBW_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-cibuildwheel.in"
@@ -435,6 +436,27 @@ def test_package_producers_include_the_canonical_notice():
   assert WASM_ARTIFACT_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
   assert len(WASM_ARTIFACT_FILES) == len(set(WASM_ARTIFACT_FILES.values()))
   assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
+
+
+def test_producers_verify_notice_bytes():
+  workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
+  wheel = WHEEL_VERIFY.read_text(encoding="utf-8")
+  npm = (REPO / "toolbox" / "build_npm.py").read_text(encoding="utf-8")
+
+  assert 'cmp -s "$DEST_DIR/THIRD_PARTY_NOTICES.txt" "$ROOT_DIR/THIRD_PARTY_NOTICES.txt"' in workflow
+  assert 'cmp -s "./macos_arm64/THIRD_PARTY_NOTICES.txt" "./THIRD_PARTY_NOTICES.txt"' in workflow
+  assert (
+    '(Get-FileHash "$destDir/THIRD_PARTY_NOTICES.txt" -Algorithm SHA256).Hash -ne '
+    '(Get-FileHash "$ROOT_DIR/THIRD_PARTY_NOTICES.txt" -Algorithm SHA256).Hash'
+  ) in workflow
+  assert (
+    'archive.read(f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt") == (REPO / "THIRD_PARTY_NOTICES.txt").read_bytes()'
+  ) in " ".join(wheel.split())
+  assert 'member.name == "package/THIRD_PARTY_NOTICES.txt"' in npm
+  assert 'notice.read() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes()' in npm
+  assert (
+    '(artifact_dir / "THIRD_PARTY_NOTICES.txt").read_bytes() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes()'
+  ) in " ".join(npm.split())
 
 
 def test_readme_describes_the_current_npm_and_wasm_members():

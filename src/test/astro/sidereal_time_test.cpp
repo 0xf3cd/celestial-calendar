@@ -289,6 +289,9 @@ TEST(SiderealTime, GreenwichApparentPymeeus) {
 TEST(SiderealTime, GreenwichUsno) {
   // Data collected from the USNO Sidereal Time API (aa.usno.navy.mil/api/siderealtime) on
   // 2026-07-19: 40 random UT1 instants in 2025–2027 (the API's allowed window), at lon = 0.
+  // The 60 reconstructed requests and current API 4.0.1 response hashes are pinned in
+  // `src/test/provenance/usno/2026-08-26/v13-siderealtime.json`; the historical API version
+  // and original random seed remain unknown.
   // jde_tt uses a fixed ΔT = 69.184 s (TT − UT1 for that window; DUT1 < 1 s is immaterial here).
   // USNO uses the modern IAU 2000/2006 models; on this dataset our GMST (IAU 1982 polynomial)
   // and GAST (IAU 1980 nutation) were observed to agree with USNO to ≲ 0.07". The tolerances

@@ -60,6 +60,8 @@ SPANS = [
 TROMSO_EXTRA = [(2026, 8, 8), (2026, 8, 9), (2026, 8, 20), (2026, 8, 21), (2026, 5, 14), (2026, 6, 18)]
 
 PHEN_KEYS = ["Rise", "Upper Transit", "Set"]
+# Current refresh pin; the API version used for the 2026-08-15 stored rows is unknown.
+USNO_API_VERSION = "4.0.1"
 
 
 def fetch_usno_moon(lat: float, lon: float, y: int, m: int, d: int) -> dict:
@@ -68,6 +70,8 @@ def fetch_usno_moon(lat: float, lon: float, y: int, m: int, d: int) -> dict:
   resp = requests.get(url, params=params, headers={"User-Agent": "celestial-calendar-golden/0.1"}, timeout=30)
   resp.raise_for_status()
   payload = resp.json()
+  if payload.get("apiversion") != USNO_API_VERSION:
+    raise RuntimeError(f"unexpected USNO API version: {payload.get('apiversion')}")
   moondata = payload["properties"]["data"]["moondata"]
   times: dict[str, list[str]] = {}
   for entry in moondata:

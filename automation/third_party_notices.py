@@ -30,9 +30,11 @@ from typing import Final, Sequence
 
 if __package__:
   from .erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
+  from .nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
   from .sofa_identity import SOFA_ARCHIVE_URL
 else:
   from erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
+  from nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
   from sofa_identity import SOFA_ARCHIVE_URL
 
 
@@ -135,6 +137,18 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path(f"src/test/provenance/erfa/v{ERFA_VERSION}/LICENSE"),
     upstream=f"{ERFA_RAW_BASE}/LICENSE",
     sha256="b1858f9a263f22c438a455a32945da51a31a0ae25a21055da13bb7ed57cc3b51",
+  ),
+  NoticeSource(
+    title="NASA/TP-2006-214141 — acknowledgment",
+    applicability=NASA_NOTICE_APPLICABILITY,
+    path=Path("src/test/provenance/nasa/tp-2006-214141/ACKNOWLEDGMENT.txt"),
+    upstream="https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html",
+    sha256=NASA_ACKNOWLEDGMENT_SHA256,
+    marking=(
+      "The NASA publication bytes are not included in this repository; the checked provenance relation is a "
+      "transcription record, not an upstream-byte identity claim.",
+      "The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.",
+    ),
   ),
 )
 
