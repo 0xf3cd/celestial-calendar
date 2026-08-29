@@ -94,7 +94,14 @@ def test_erfa_runtime_source_markings_are_pinned_and_distinct_from_generated_out
       "not a digit copy of `ERFA_AULT`",
     ),
     Path("src/astro/earth/precession.hpp"): ("ERFA v2.0.1 `prec76.c`",),
-    Path("src/astro/julian_day.hpp"): ("ERFA v2.0.1 `erfam.h`", "`ERFA_DJ00`", "`ERFA_DJC`", "`ERFA_DJM`"),
+    Path("src/astro/julian_day.hpp"): (
+      "ERFA v2.0.1 `erfam.h`",
+      "`ERFA_DJ00`",
+      "`ERFA_DJC`",
+      "`ERFA_DJM`",
+      "ERFA v2.0.1 `src/cal2jd.c`, `eraCal2jd`",
+      "ERFA v2.0.1 `src/jd2cal.c`, `eraJd2cal`",
+    ),
     Path("src/astro/toolbox.hpp"): ("NIST SP 330 (2019), Table 8", "ERFA v2.0.1 `erfam.h`, `ERFA_DAU`"),
   }
   for path, markings in required_markings.items():

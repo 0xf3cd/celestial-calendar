@@ -113,7 +113,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
     };
   }
 
-  // #77: preserve the lower bound at the first full year in the public inverse domain.
+  // #77: the public inverse domain starts at 401-01-01 (JD 1867522.5).
   if (jd < 1867522.5) {
     throw std::runtime_error {
       std::format("The julian day number {} is below JD 1867522.5 (401-01-01), "

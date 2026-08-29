@@ -193,7 +193,7 @@ TEST(JulianDay, JdeUt1Consistency) {
 }
 
 TEST(JulianDay, InvalidInput) {
-  // #77: preserve the published forward domain, including through the thin wrappers.
+  // #77: year 1 is the lower bound of the public forward domain.
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 2, 29), 0.5 }), std::runtime_error);
   ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-1, 12, 31), 0.99 }), std::runtime_error);
