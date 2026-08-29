@@ -3,6 +3,8 @@ exclude = [
   # Vendored upstream code. Our style rules are not upstream's -- linting it would only
   # pressure us to edit a file we must not edit.
   "run-clang-tidy.py",
+  # Frozen historical extractor; its exact bytes are part of the HKO identity record.
+  "src/test/provenance/hko/2026-08-25/extract.py",
 ]
 
 # Matches the Python version used across CI jobs.

@@ -42,7 +42,9 @@ inline constexpr int32_t END_YEAR = 2099;
 /** 
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t. 
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
- * @details Data collected from Hong Kong Observatory.
+ * @details All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record in
+ *          `src/test/provenance/hko/2026-08-25/`.
+ * @note Numerical identity does not settle redistribution permission; that question remains open.
  */
 inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x620752, 0x4c0ea5, 0x38b64a, 0x5c064b, 0x440a9b, 0x309556, 0x56056a, 0x400b59, 0x2a5752, 0x500752, 
