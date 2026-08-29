@@ -438,7 +438,7 @@ def test_package_producers_include_the_canonical_notice():
   assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
 
 
-def test_all_real_producers_compare_notice_bytes_to_the_repository_after_production():
+def test_producers_verify_notice_bytes():
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
   wheel = WHEEL_VERIFY.read_text(encoding="utf-8")
   npm = (REPO / "toolbox" / "build_npm.py").read_text(encoding="utf-8")

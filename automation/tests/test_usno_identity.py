@@ -76,11 +76,11 @@ def replace_once(path: Path, old: str, new: str) -> None:
   path.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def test_usno_records_reproduce_every_retained_relation_offline():
+def test_usno_relations_reproduce_offline():
   assert verify_usno_identities() == IdentityCounts(181, 60, 50, 12, 1, 639, 3, 1)
 
 
-def test_usno_record_directory_inventory_is_exact(tmp_path):
+def test_usno_inventory_is_exact(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   (usno_root / "extra.json").write_text("{}\n", encoding="utf-8")
 
@@ -88,7 +88,7 @@ def test_usno_record_directory_inventory_is_exact(tmp_path):
     verify_usno_identities(repo_root=tmp_path, usno_root=usno_root)
 
 
-def test_usno_response_hash_mutation_fails_the_record_pin(tmp_path):
+def test_usno_response_hashes_are_pinned(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   mutate_record(
     usno_root,
@@ -124,7 +124,7 @@ def test_usno_response_hash_mutation_fails_the_record_pin(tmp_path):
     "v29-jd",
   ],
 )
-def test_usno_record_mutations_fail_semantic_gate(tmp_path, mutation):
+def test_usno_semantics_are_pinned(tmp_path, mutation):
   usno_root = materialize_inputs(tmp_path)
 
   def change_v12(payload):
@@ -189,7 +189,7 @@ def test_usno_record_mutations_fail_semantic_gate(tmp_path, mutation):
     verify_usno_identities(repo_root=tmp_path, usno_root=usno_root, record_hashes=record_hashes(usno_root))
 
 
-def test_v03_silent_one_minute_resource_mutation_fails(tmp_path):
+def test_v03_minute_difference_is_pinned(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/test/astro/moon_phase_test.cpp",

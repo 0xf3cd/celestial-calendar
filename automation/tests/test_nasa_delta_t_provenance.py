@@ -75,7 +75,7 @@ def mutate_record(path: Path, mutation) -> str:
   return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
+def test_nasa_record_is_pinned():
   assert NASA_RECORD_SHA256 == "1088eaa11c030319c646b340afce0081da0f878833bb02a27b3749934fabe090"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
@@ -94,7 +94,7 @@ def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byt
   ],
   ids=["interval", "coefficient"],
 )
-def test_nasa_runtime_interval_and_coefficient_mutations_fail(tmp_path, old, new, message):
+def test_nasa_runtime_relations_are_pinned(tmp_path, old, new, message):
   nasa_root = materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/astro/delta_t.hpp", old, new)
 
@@ -102,7 +102,7 @@ def test_nasa_runtime_interval_and_coefficient_mutations_fail(tmp_path, old, new
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_nasa_runtime_unrecorded_control_flow_fails(tmp_path):
+def test_nasa_runtime_control_flow_is_pinned(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/astro/delta_t.hpp",
@@ -119,7 +119,7 @@ def test_nasa_runtime_unrecorded_control_flow_fails(tmp_path):
 
 
 @pytest.mark.parametrize("mutation", ["partition", "value"], ids=["source-partition", "source-value"])
-def test_v25_source_partition_and_value_mutations_fail(tmp_path, mutation):
+def test_v25_partition_is_pinned(tmp_path, mutation):
   nasa_root = materialize_inputs(tmp_path)
   record = nasa_root / "delta_t.json"
 
@@ -144,7 +144,7 @@ def test_v25_source_partition_and_value_mutations_fail(tmp_path, mutation):
   ],
   ids=["5710-seconds", "63.83-seconds", "140-seconds"],
 )
-def test_v27_value_rounding_and_locator_mutations_fail(tmp_path, relation, field, value, message):
+def test_v27_relations_are_pinned(tmp_path, relation, field, value, message):
   nasa_root = materialize_inputs(tmp_path)
   record = nasa_root / "delta_t.json"
   digest = mutate_record(
@@ -164,7 +164,7 @@ def test_missing_nasa_acknowledgment_fails(tmp_path):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_overbroad_nasa_notice_applicability_fails():
+def test_nasa_notice_scope_is_exact():
   with pytest.raises(RuntimeError, match="applicability differs"):
     verify_nasa_delta_t_provenance(notice_applicability="all NASA material in this repository")
 
@@ -178,7 +178,7 @@ def test_unpartitioned_v25_row_fails(tmp_path):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_nasa_lunar_table_citation_cannot_be_removed(tmp_path):
+def test_lunar_table_citation_is_pinned(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
   replace_once(
@@ -199,7 +199,7 @@ def test_nasa_lunar_table_citation_cannot_be_removed(tmp_path):
   ],
   ids=["entry-count", "source-relation"],
 )
-def test_nasa_lunar_table_historical_generation_is_pinned(tmp_path, field, value):
+def test_lunar_origin_is_pinned(tmp_path, field, value):
   nasa_root = materialize_inputs(tmp_path)
   record = nasa_root / "delta_t.json"
   digest = mutate_record(
@@ -220,7 +220,7 @@ def test_nasa_lunar_table_historical_generation_is_pinned(tmp_path, field, value
   ],
   ids=["retained-count", "retained-values", "rebake"],
 )
-def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
+def test_lunar_retention_is_pinned(tmp_path, field, value):
   nasa_root = materialize_inputs(tmp_path)
   record = nasa_root / "delta_t.json"
   digest = mutate_record(
@@ -232,7 +232,7 @@ def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
 
 
-def test_nasa_lunar_table_retained_origin_value_mutation_fails(tmp_path):
+def test_retained_lunar_values_are_pinned(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
   replace_once(lunar_table, "  0x5a0ba4, 0x420b49,", "  0x5a0ba5, 0x420b49,")
@@ -246,7 +246,7 @@ def test_nasa_lunar_table_retained_origin_value_mutation_fails(tmp_path):
   ["  ASSERT_EQ(400, checked);\n", "  // ASSERT_EQ(401, checked);\n", ""],
   ids=["weakened", "commented-out", "removed"],
 )
-def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path, replacement):
+def test_lunar_regeneration_gate_is_pinned(tmp_path, replacement):
   nasa_root = materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/lunar/algo3_test.cpp", "  ASSERT_EQ(401, checked);\n", replacement)
 
@@ -254,7 +254,7 @@ def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path, replacement
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_nasa_lunar_table_regeneration_early_return_fails(tmp_path):
+def test_lunar_regeneration_body_is_pinned(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/test/lunar/algo3_test.cpp",
