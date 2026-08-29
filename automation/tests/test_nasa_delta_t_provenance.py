@@ -76,7 +76,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
-  assert NASA_RECORD_SHA256 == "2f53f22b7787b43f96849e90c5e001353a44bb367c3bddd5c521f0af4176eed2"
+  assert NASA_RECORD_SHA256 == "e325f0ed2efa923935504e29abad0006c548bba34ce28e97c1e74447e4641dab"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -99,6 +99,22 @@ def test_nasa_runtime_interval_and_coefficient_mutations_fail(tmp_path, old, new
   replace_once(tmp_path / "src/astro/delta_t.hpp", old, new)
 
   with pytest.raises(RuntimeError, match=message):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_runtime_unrecorded_control_flow_fails(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/astro/delta_t.hpp",
+    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n  if (year < -500) {\n",
+    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n"
+    "  if (year == 0) {\n"
+    "    return 0;\n"
+    "  }\n"
+    "  if (year < -500) {\n",
+  )
+
+  with pytest.raises(RuntimeError, match="canonical function differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 

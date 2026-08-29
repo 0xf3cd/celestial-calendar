@@ -35,7 +35,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "2f53f22b7787b43f96849e90c5e001353a44bb367c3bddd5c521f0af4176eed2"
+NASA_RECORD_SHA256: Final[str] = "e325f0ed2efa923935504e29abad0006c548bba34ce28e97c1e74447e4641dab"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -134,6 +134,14 @@ def verify_nasa_delta_t_provenance(
   )
   branches = runtime["branches"]
   _require([branch["equation"] for branch in branches] == list(range(11, 26)), "NASA equation inventory differs")
+  _require(
+    runtime["canonical_function"]
+    == {
+      "canonicalization": "remove C/C++ comments, then replace each whitespace run with one ASCII space",
+      "sha256": "ae0fd9457995ccb48cc61593f832ed2f5be91dfdde3314a60580f285e1806b9f",
+    },
+    "NASA canonical function record differs",
+  )
   expected_intervals = (
     "year < -500",
     "-500 <= year < 500",
@@ -153,14 +161,22 @@ def verify_nasa_delta_t_provenance(
   )
   _require(tuple(branch["interval"] for branch in branches) == expected_intervals, "NASA interval inventory differs")
 
-  delta_t = _normalized((repo_root / runtime["repository_path"]).read_text(encoding="utf-8"))
-  algo2 = delta_t[delta_t.index("namespace algo2 {") : delta_t.index("} // namespace algo2")]
+  delta_t = (repo_root / runtime["repository_path"]).read_text(encoding="utf-8")
+  algo2_source = delta_t[delta_t.index("namespace algo2 {") : delta_t.index("} // namespace algo2")]
+  algo2 = _normalized(algo2_source)
   for branch in branches:
     snippet = branch["cpp"]
     _require(algo2.count(snippet) == 1, f"NASA equation ({branch['equation']}) repository relation differs")
   _require(
     "NASA/TP-2006-214141, Section 2.7, equations (11)-(25)" in algo2,
     "NASA runtime citation differs",
+  )
+  function_start = algo2_source.index("[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {")
+  function_source = algo2_source[function_start : algo2_source.rindex("}") + 1]
+  canonical_function = _normalized(re.sub(r"//[^\n]*|/\*.*?\*/", " ", function_source, flags=re.DOTALL))
+  _require(
+    hashlib.sha256(canonical_function.encode("utf-8")).hexdigest() == runtime["canonical_function"]["sha256"],
+    "NASA runtime canonical function differs",
   )
 
   downstream = record["downstream_runtime_relation"]

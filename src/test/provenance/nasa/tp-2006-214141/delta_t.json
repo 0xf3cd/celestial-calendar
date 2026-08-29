@@ -19,6 +19,10 @@
     "repository_symbol": "astro::delta_t::algo2::compute",
     "source_location": "Section 2.7, equations (11)-(25), printed pages 14-16",
     "input_relation": "The source decimal year y is the repository parameter year.",
+    "canonical_function": {
+      "canonicalization": "remove C/C++ comments, then replace each whitespace run with one ASCII space",
+      "sha256": "ae0fd9457995ccb48cc61593f832ed2f5be91dfdde3314a60580f285e1806b9f"
+    },
     "branches": [
       {
         "equation": 11,
