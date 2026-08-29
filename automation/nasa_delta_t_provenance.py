@@ -203,7 +203,7 @@ def verify_nasa_delta_t_provenance(
   lunar_test = (repo_root / current_regeneration["repository_test"]).read_text(encoding="utf-8")
   _require(
     f"TEST({current_regeneration['test'].replace('.', ', ')})" in lunar_test
-    and "ASSERT_EQ(401, checked)" in lunar_test,
+    and "  ASSERT_EQ(401, checked);\n" in lunar_test,
     "NASA lunar-table full-regeneration gate differs",
   )
 

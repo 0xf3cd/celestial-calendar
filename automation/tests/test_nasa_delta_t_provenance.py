@@ -215,9 +215,14 @@ def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
 
 
-def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path):
+@pytest.mark.parametrize(
+  "replacement",
+  ["  ASSERT_EQ(400, checked);\n", "  // ASSERT_EQ(401, checked);\n", ""],
+  ids=["weakened", "commented-out", "removed"],
+)
+def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path, replacement):
   nasa_root = materialize_inputs(tmp_path)
-  replace_once(tmp_path / "src/test/lunar/algo3_test.cpp", "ASSERT_EQ(401, checked);", "ASSERT_EQ(400, checked);")
+  replace_once(tmp_path / "src/test/lunar/algo3_test.cpp", "  ASSERT_EQ(401, checked);\n", replacement)
 
   with pytest.raises(RuntimeError, match="full-regeneration gate differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
