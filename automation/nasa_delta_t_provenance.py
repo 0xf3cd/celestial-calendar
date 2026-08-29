@@ -159,12 +159,39 @@ def verify_nasa_delta_t_provenance(
     retired_lunar["former_source_url"] == "https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html",
     "NASA retired lunar-table source differs",
   )
+  _require(
+    retired_lunar["status"] == "superseded by a byte-identical full regeneration",
+    "NASA retired lunar-table status differs",
+  )
+  _require(
+    retired_lunar["replacement_generator"] == "calendar::lunar::algo2::calc_lunar_year",
+    "NASA retired lunar-table replacement generator differs",
+  )
   _require(retired_lunar["regenerated_entries"] == 401, "NASA retired lunar-table regeneration count differs")
   _require(retired_lunar["changed_entries"] == 0, "NASA retired lunar-table regeneration was not byte-identical")
   _require(
-    [(item["years"], item["entries"]) for item in retired_lunar["replacement_relations"]]
-    == [("1600-1900", 301), ("2100-2199", 100)],
+    retired_lunar["replacement_relations"]
+    == [
+      {
+        "years": "1600-1900",
+        "entries": 301,
+        "time_scale": "pre-1972 TT-to-UT1 fallback through astro::delta_t::algo5",
+      },
+      {
+        "years": "2100-2199",
+        "entries": 100,
+        "time_scale": "TT-to-UTC with Delta-AT held at 37 seconds after the leap-second table ends",
+      },
+    ],
     "NASA retired lunar-table replacement partition differs",
+  )
+  _require(
+    retired_lunar["verification"]
+    == {
+      "repository_test": "src/test/lunar/algo3_test.cpp",
+      "test": "LunarAlgo3.BakedMatchesLiveAlgo2",
+    },
+    "NASA retired lunar-table verification relation differs",
   )
   lunar_table = (repo_root / retired_lunar["repository_path"]).read_text(encoding="utf-8")
   _require(retired_lunar["former_source_url"] not in lunar_table, "NASA retired lunar-table citation returned")
@@ -172,9 +199,18 @@ def verify_nasa_delta_t_provenance(
     "all 401 non-HKO entries equal a full live-algo2 regeneration" in lunar_table,
     "NASA retired lunar-table replacement relation differs",
   )
+  _require(
+    "Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo5`" in lunar_table,
+    "NASA retired lunar-table pre-1972 relation differs",
+  )
+  _require(
+    "years 2100–2199 use TT-to-UTC with ΔAT held at 37 s after the leap-second table ends" in lunar_table,
+    "NASA retired lunar-table post-1972 relation differs",
+  )
   lunar_test = (repo_root / retired_lunar["verification"]["repository_test"]).read_text(encoding="utf-8")
   _require(
-    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2)" in lunar_test and "ASSERT_EQ(401, checked)" in lunar_test,
+    f"TEST({retired_lunar['verification']['test'].replace('.', ', ')})" in lunar_test
+    and "ASSERT_EQ(401, checked)" in lunar_test,
     "NASA retired lunar-table full-regeneration gate differs",
   )
 

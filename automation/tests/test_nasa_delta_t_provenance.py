@@ -185,3 +185,27 @@ def test_retired_lunar_table_regeneration_must_remain_byte_identical(tmp_path):
 
   with pytest.raises(RuntimeError, match="regeneration was not byte-identical"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
+
+
+@pytest.mark.parametrize(
+  ("old", "new", "message"),
+  [
+    (
+      "Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo5`",
+      "Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo2`",
+      "pre-1972 relation differs",
+    ),
+    (
+      "years 2100–2199 use TT-to-UTC with ΔAT held at 37 s after the leap-second table ends",
+      "years 2100–2199 use TT-to-UTC with ΔAT held at 38 s after the leap-second table ends",
+      "post-1972 relation differs",
+    ),
+  ],
+  ids=["pre-1972-algo5", "post-1972-delta-at"],
+)
+def test_retired_lunar_table_time_scale_relations_are_pinned(tmp_path, old, new, message):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/calendar/lunar/algo3.hpp", old, new)
+
+  with pytest.raises(RuntimeError, match=message):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
