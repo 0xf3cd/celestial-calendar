@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "a0aa3070a4617f64d0d59987f947a54af646cc81ba775e05b57c39f428e546fe"
+CANONICAL_NOTICE_SHA256 = "26adc197b1123bbf67d4b345c9de2304486a2da3e2fccac5b59ddf5931217e99"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -70,7 +70,8 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   assert NOTICE_SOURCES[-2].title == "ERFA v2.0.1 — LICENSE"
   assert NOTICE_SOURCES[-1].title == "NASA/TP-2006-214141 — acknowledgment"
   assert NOTICE_SOURCES[-1].applicability == (
-    "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
+    "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
+    "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
     "NASA-sourced historical Delta-T validation values in src/test"
   )
   assert b"NASA/TP-2006-214141 (October 2006)" in notice

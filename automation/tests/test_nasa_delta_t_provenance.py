@@ -76,10 +76,11 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
-  assert NASA_RECORD_SHA256 == "9539cfe87e0abc622b18b502e4838a5e6e1e1b163cb84825e7373431cf53bc13"
-  assert NASA_ACKNOWLEDGMENT_SHA256 == "1f772efcfc102cc2e2bccdefa3720cbbba1c0a7835173c0af60c4efdb9d31670"
+  assert NASA_RECORD_SHA256 == "032c18173f4d250aceab5df81cf7904cc0608b7af3e445dcd1af79e7045a759b"
+  assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
-    "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
+    "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
+    "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
     "NASA-sourced historical Delta-T validation values in src/test"
   )
   assert verify_nasa_delta_t_provenance() == ProvenanceCounts(15, 11, 2, 12, 2)
@@ -147,8 +148,8 @@ def test_missing_nasa_acknowledgment_fails(tmp_path):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_broadened_nasa_notice_applicability_fails():
-  with pytest.raises(RuntimeError, match="applicability was broadened"):
+def test_overbroad_nasa_notice_applicability_fails():
+  with pytest.raises(RuntimeError, match="applicability differs"):
     verify_nasa_delta_t_provenance(notice_applicability="all NASA material in this repository")
 
 
@@ -161,51 +162,62 @@ def test_unpartitioned_v25_row_fails(tmp_path):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_retired_lunar_table_nasa_citation_cannot_return(tmp_path):
+def test_nasa_lunar_table_citation_cannot_be_removed(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
   replace_once(
     lunar_table,
-    " * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm\n",
-    " * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm\n"
-    " * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html\n",
+    " * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398\n",
+    "",
   )
 
-  with pytest.raises(RuntimeError, match="retired lunar-table citation returned"):
+  with pytest.raises(RuntimeError, match="lunar-table citation differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
-def test_retired_lunar_table_regeneration_must_remain_byte_identical(tmp_path):
+@pytest.mark.parametrize(
+  ("field", "value"),
+  [
+    ("entries", 400),
+    ("source_relation", "unrecorded source"),
+  ],
+  ids=["entry-count", "source-relation"],
+)
+def test_nasa_lunar_table_historical_generation_is_pinned(tmp_path, field, value):
   nasa_root = materialize_inputs(tmp_path)
   record = nasa_root / "delta_t.json"
   digest = mutate_record(
     record,
-    lambda payload: payload["retired_runtime_relations"][0].update({"changed_entries": 1}),
+    lambda payload: payload["downstream_runtime_relation"]["historical_generation"].update({field: value}),
   )
 
-  with pytest.raises(RuntimeError, match="regeneration was not byte-identical"):
+  with pytest.raises(RuntimeError, match="historical generation differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
 
 
 @pytest.mark.parametrize(
-  ("old", "new", "message"),
+  ("field", "value"),
   [
-    (
-      "Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo5`",
-      "Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo2`",
-      "pre-1972 relation differs",
-    ),
-    (
-      "years 2100–2199 use TT-to-UTC with ΔAT held at 37 s after the leap-second table ends",
-      "years 2100–2199 use TT-to-UTC with ΔAT held at 38 s after the leap-second table ends",
-      "post-1972 relation differs",
-    ),
+    ("entries_from_origin", 399),
+    ("rebake", {"commit": "unrecorded", "generator": "unrecorded", "years": []}),
   ],
-  ids=["pre-1972-algo5", "post-1972-delta-at"],
+  ids=["retained-count", "rebake"],
 )
-def test_retired_lunar_table_time_scale_relations_are_pinned(tmp_path, old, new, message):
+def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
   nasa_root = materialize_inputs(tmp_path)
-  replace_once(tmp_path / "src/calendar/lunar/algo3.hpp", old, new)
+  record = nasa_root / "delta_t.json"
+  digest = mutate_record(
+    record,
+    lambda payload: payload["downstream_runtime_relation"]["current_retention"].update({field: value}),
+  )
 
-  with pytest.raises(RuntimeError, match=message):
+  with pytest.raises(RuntimeError, match="current retention differs"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
+
+
+def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/test/lunar/algo3_test.cpp", "ASSERT_EQ(401, checked);", "ASSERT_EQ(400, checked);")
+
+  with pytest.raises(RuntimeError, match="full-regeneration gate differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)

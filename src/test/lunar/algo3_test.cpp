@@ -49,8 +49,7 @@ TEST(LunarAlgo3, HkoTableCopiesAgree) {
 }
 
 // [1600, 1900] ∪ [2100, 2199]: all 401 baked values must equal a current live-algo2
-// regeneration. This pins the table's current source relation; it is not an external
-// oracle (that is the ytliu0 golden).
+// regeneration. This is a full drift gate, not an external oracle (that is the ytliu0 golden).
 TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {
   int32_t checked = 0;
   for (int32_t year = START_YEAR; year <= END_YEAR; ++year) {
