@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "ea7cfd56ab51ae21c63a8786a228a900325d7235a532bab78e7353c7417ca9e3"
+CANONICAL_NOTICE_SHA256 = "a0aa3070a4617f64d0d59987f947a54af646cc81ba775e05b57c39f428e546fe"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -75,6 +75,7 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   )
   assert b"NASA/TP-2006-214141 (October 2006)" in notice
   assert b"not an upstream-byte identity claim" in notice
+  assert b"covers this repository's acknowledgment file, not the linked NASA page" in notice
   assert b"Redistributions in binary form must reproduce the above copyright" in notice
 
 
@@ -113,10 +114,3 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
 def test_notice_assembly_rejects_duplicate_inputs():
   with pytest.raises(RuntimeError, match="must be unique"):
     assemble_notices(sources=(*NOTICE_SOURCES, NOTICE_SOURCES[0]))
-
-
-def test_canonical_notice_byte_mutation_fails():
-  mutated = ROOT_NOTICE.read_bytes() + b"changed"
-
-  with pytest.raises(AssertionError):
-    assert mutated == assemble_notices()

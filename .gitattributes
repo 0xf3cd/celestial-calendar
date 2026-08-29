@@ -7,3 +7,4 @@ THIRD_PARTY_NOTICES.txt text eol=lf whitespace=-blank-at-eof,-trailing-space
 third_party/emscripten/6.0.6/** text eol=lf whitespace=-blank-at-eof,-trailing-space
 third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space
 src/test/provenance/** text eol=lf whitespace=-blank-at-eof,-trailing-space
+statistics/usno_data.txt text eol=lf

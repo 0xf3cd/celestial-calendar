@@ -183,9 +183,7 @@ def build(out_dir: Path) -> Path:
     raise RuntimeError(f"npm tarball allowlist mismatch: {sorted(packed_files)}")
   with tarfile.open(tarball, "r:gz") as archive:
     notice_members = [
-      member
-      for member in archive.getmembers()
-      if member.isfile() and member.name == "package/THIRD_PARTY_NOTICES.txt"
+      member for member in archive.getmembers() if member.isfile() and member.name == "package/THIRD_PARTY_NOTICES.txt"
     ]
     if len(notice_members) != 1:
       raise RuntimeError("packed npm tarball must contain one canonical notice")

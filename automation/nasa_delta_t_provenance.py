@@ -75,6 +75,15 @@ def _delta_t_rows(text: str) -> dict[int, Decimal]:
   return {int(year): Decimal(value) for year, value in rows}
 
 
+def _usno_delta_t_rows(path: Path) -> dict[int, Decimal]:
+  rows = {}
+  for line in path.read_text(encoding="ascii").splitlines():
+    year, month, day, value = line.split()
+    if month == "1" and day == "1":
+      rows[int(year)] = Decimal(value)
+  return rows
+
+
 def _rounded(value: str, places: int) -> Decimal:
   quantum = Decimal(1).scaleb(-places)
   return Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP)
@@ -102,8 +111,7 @@ def verify_nasa_delta_t_provenance(
   _require(b"NASA/TP-2006-214141" in acknowledgment, "NASA acknowledgment omits the publication identifier")
   _require(b"Fred Espenak and Jean Meeus" in acknowledgment, "NASA acknowledgment omits the authors")
   _require(
-    notice_applicability
-    == "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
+    notice_applicability == "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
     "NASA-sourced historical Delta-T validation values in src/test",
     "NASA notice applicability was broadened",
   )
@@ -159,14 +167,18 @@ def verify_nasa_delta_t_provenance(
 
   helper_text = (repo_root / v25["repository_path"]).read_text(encoding="utf-8")
   repository_rows = _delta_t_rows(helper_text)
+  covered_years = set(nasa_partition["years"]) | set(usno_partition["years"]) | set(inherited_partition["years"])
+  _require(set(repository_rows) == covered_years, "V25 dataset rows are not covered by the recorded source partitions")
   for year, value in zip(nasa_partition["years"], nasa_partition["repository_values"], strict=True):
     _require(repository_rows[year] == Decimal(value), f"V25 NASA value differs for {year}")
+  usno_rows = _usno_delta_t_rows(repo_root / "statistics/usno_data.txt")
   for year, source, target in zip(
     usno_partition["years"],
     usno_partition["source_values"],
     usno_partition["repository_values"],
     strict=True,
   ):
+    _require(usno_rows[year] == Decimal(source), f"V25 USNO source value differs for {year}")
     _require(_rounded(source, 1) == Decimal(target), f"V25 USNO rounding relation differs for {year}")
     _require(repository_rows[year] == Decimal(target), f"V25 repository value differs for {year}")
   _require("NASA/TP-2006-214141 Table 2-2" in helper_text, "V25 NASA citation differs")
@@ -186,6 +198,7 @@ def verify_nasa_delta_t_provenance(
     _rounded(year_2000["source_value"], 2) == Decimal(year_2000["repository_value"]),
     "V27 year-2000 rounding differs",
   )
+  _require(usno_rows[2000] == Decimal(year_2000["source_value"]), "V27 year-2000 USNO source value differs")
   julian_day = (repo_root / v27["repository_path"]).read_text(encoding="utf-8")
   _require("63.8285 s" in julian_day and "63.83 s" in julian_day, "V27 year-2000 citation relation differs")
   _require("NASA/TP-2006-214141 Table 2-1" in julian_day, "V27 year-500 NASA citation differs")

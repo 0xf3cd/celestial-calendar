@@ -44,6 +44,7 @@ TARGET_FILES = (
   Path("src/astro/delta_t.hpp"),
   Path("src/test/astro/delta_t_test_helper.hpp"),
   Path("src/test/astro/julian_day_test.cpp"),
+  Path("statistics/usno_data.txt"),
 )
 
 
@@ -147,3 +148,12 @@ def test_missing_nasa_acknowledgment_fails(tmp_path):
 def test_broadened_nasa_notice_applicability_fails():
   with pytest.raises(RuntimeError, match="applicability was broadened"):
     verify_nasa_delta_t_provenance(notice_applicability="all NASA material in this repository")
+
+
+def test_unpartitioned_v25_row_fails(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  helper = tmp_path / "src/test/astro/delta_t_test_helper.hpp"
+  replace_once(helper, "  { 2026.0, 69.11 },", "  { 2026.0, 69.11 },\n  { 2027.0, 69.3 },")
+
+  with pytest.raises(RuntimeError, match="not covered by the recorded source partitions"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)

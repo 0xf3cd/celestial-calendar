@@ -21,7 +21,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this project. If not, see <https://www.gnu.org/licenses/>.
 
-"""Rebuild the committed USNO provenance records from retained response bodies, offline."""
+"""Rebuild the committed USNO records from local, untracked response bodies.
+
+The committed records retain hashes and normalized values, not the raw recapture corpus. The
+`--evidence-dir` layout is `v12-bodies/NNN-*.json`, `v13-bodies/{g,l}NN-YYYY-MM-DD.json`,
+`v14-year-2024.json`, `v26-current-deltat.data`, and `v29-jd-api.json`.
+"""
 
 import argparse
 import hashlib
@@ -69,7 +74,7 @@ def v12_rows(repo_root: Path) -> list[dict[str, str | int]]:
   source = (repo_root / "src/test/astro/rise_set_moon_golden_test.cpp").read_text(encoding="utf-8")
   table = block(source, "const std::vector<MoonRow> USNO_ROWS {", "};")
   pattern = re.compile(
-    rf'\{{\s*(\d+),\s*(\d+),\s*(\d+),\s*({NUMBER}),\s*({NUMBER}),\s*'
+    rf"\{{\s*(\d+),\s*(\d+),\s*(\d+),\s*({NUMBER}),\s*({NUMBER}),\s*"
     r'"([^"]*)",\s*"([^"]*)",\s*"([^"]*)"\s*\}'
   )
   rows = [
@@ -144,7 +149,9 @@ def build_v12(repo_root: Path, evidence: Path) -> dict:
     "current_recapture": {
       "date": "2026-08-26",
       "apiversion": API_VERSION,
-      "response_bodies_retained_for_reconstruction": 181,
+      "response_bodies_in_repository": False,
+      "response_hashes_recorded": 181,
+      "retention": "Raw response bodies are not included; this record retains hashes and normalized cells.",
     },
     "records": records,
   }
@@ -257,7 +264,13 @@ def build_v13(repo_root: Path, evidence: Path) -> dict:
     "normalization": {"hms_to_degrees": "(hours + minutes/60 + seconds/3600) * 15", "decimal_places": 12},
     "delta_t_relation_seconds": "69.184",
     "historical_collection": {"date": "2026-07-19", "apiversion": None, "original_seed": None},
-    "current_recapture": {"date": "2026-08-26", "apiversion": API_VERSION, "response_bodies_retained": 60},
+    "current_recapture": {
+      "date": "2026-08-26",
+      "apiversion": API_VERSION,
+      "response_bodies_in_repository": False,
+      "response_hashes_recorded": 60,
+      "retention": "Raw response bodies are not included; this record retains hashes, cells, and normalized values.",
+    },
     "records": records,
   }
 
@@ -340,6 +353,8 @@ def build_v14(repo_root: Path, evidence: Path) -> dict:
     "current_recapture": {
       "date": "2026-08-26",
       "apiversion": API_VERSION,
+      "raw_response_body_in_repository": False,
+      "retention": "The raw response body is not included; this record retains its hash and normalized events.",
       "response_sha256": sha256(response),
       "numphases": 50,
     },
@@ -446,7 +461,14 @@ def build_v29(evidence: Path) -> dict:
     "endpoint": "https://aa.usno.navy.mil/api/juliandate",
     "request": {"date": "2024-06-01", "time": "12:00:00"},
     "historical_collection": {"date": None, "apiversion": None, "response_body_retained": False},
-    "current_recapture": {"date": "2026-08-26", "response_sha256": sha256(response), "response": payload},
+    "current_recapture": {
+      "date": "2026-08-26",
+      "raw_response_body_in_repository": False,
+      "normalized_response_embedded": True,
+      "retention": "The raw response body is not included; this record embeds its parsed response and raw-body hash.",
+      "response_sha256": sha256(response),
+      "response": payload,
+    },
     "repository_relation": {"path": "src/test/shared_lib/cabi_smoke_test.cpp", "jd": "2460463.000000"},
   }
 

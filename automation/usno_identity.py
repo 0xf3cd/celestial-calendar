@@ -37,11 +37,11 @@ USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2
 API_VERSION: Final[str] = "4.0.1"
 NUMBER: Final[str] = r"[+-]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)"
 USNO_RECORD_SHA256: Final[dict[str, str]] = {
-  "v12-rstt-oneday.json": "8fd6fcd1f0bf7342fc5d59b8c9bbc67de98251f2b1545d69dd69ad159d5b29b2",
-  "v13-siderealtime.json": "2b674f7ebe6cf6a7faa17ef3284b858822f28579f114a4957cc2554e3af5ba69",
-  "v14-moon-phases-year-2024.json": "e6317df9f40fd61d5e34bbad5dc1a51855c7b21903adc0efe9716a5bfe9e9767",
+  "v12-rstt-oneday.json": "4eb0687ca55f0be00a8ee265e3b05dc586e093f7e19e0ba0536f705106b26d77",
+  "v13-siderealtime.json": "129dc55146f8f103cda3691d2ec3a14570413b8d07f4719ef8090b6f8409d658",
+  "v14-moon-phases-year-2024.json": "86d0bf8c6aeaa2d25729d6252709d65d508f20f8533d266eb034bdc3d876979e",
   "v26-deltat.json": "c6574d897385bc84f8ebe5b6d392c666d3bf81583e8a6ac83e91ab080560b998",
-  "v29-juliandate.json": "01835371a90a3581bda45adad5b31385e812ca108f31609f1eba8eb42f4135fa",
+  "v29-juliandate.json": "25e368ba28f4d0874a89d588205e9658d0bf7aff09eafa54b6852691b25b99da",
 }
 
 
@@ -85,7 +85,10 @@ def _decimal_text(value: Decimal) -> str:
 
 def _response_identity(response: dict, label: str) -> None:
   _require(response.get("apiversion") == API_VERSION, f"{label} API version differs")
-  _require(re.fullmatch(r"[0-9a-f]{64}", response.get("sha256", "")) is not None, f"{label} response hash differs")
+  _require(
+    re.fullmatch(r"[0-9a-f]{64}", response.get("sha256", "")) is not None,
+    f"{label} response hash format differs",
+  )
   _require(type(response.get("bytes")) is int and response["bytes"] > 0, f"{label} response byte count differs")
 
 
@@ -93,7 +96,7 @@ def _v12_source_rows(repo_root: Path) -> list[dict[str, str | int]]:
   source = (repo_root / "src/test/astro/rise_set_moon_golden_test.cpp").read_text(encoding="utf-8")
   table = _block(source, "const std::vector<MoonRow> USNO_ROWS {", "};")
   pattern = re.compile(
-    rf'\{{\s*(\d+),\s*(\d+),\s*(\d+),\s*({NUMBER}),\s*({NUMBER}),\s*'
+    rf"\{{\s*(\d+),\s*(\d+),\s*(\d+),\s*({NUMBER}),\s*({NUMBER}),\s*"
     r'"([^"]*)",\s*"([^"]*)",\s*"([^"]*)"\s*\}'
   )
   return [
@@ -117,8 +120,11 @@ def _verify_v12(record: dict, repo_root: Path) -> int:
   _require(record["query_parameter_order"] == ["date", "coords", "tz"], "V12 request shape differs")
   _require(record["coordinate_order"] == "latitude,east-positive-longitude", "V12 coordinate order differs")
   _require(
-    record["historical_collection"]
-    == {"date": "2026-08-15", "apiversion": None, "response_bodies_retained": False},
+    record["normalization"] == "last event wins for duplicate phenomena; absent phenomenon is an empty string",
+    "V12 normalization rule differs",
+  )
+  _require(
+    record["historical_collection"] == {"date": "2026-08-15", "apiversion": None, "response_bodies_retained": False},
     "V12 historical boundary differs",
   )
   _require(
@@ -126,7 +132,9 @@ def _verify_v12(record: dict, repo_root: Path) -> int:
     == {
       "date": "2026-08-26",
       "apiversion": API_VERSION,
-      "response_bodies_retained_for_reconstruction": 181,
+      "response_bodies_in_repository": False,
+      "response_hashes_recorded": 181,
+      "retention": "Raw response bodies are not included; this record retains hashes and normalized cells.",
     },
     "V12 recapture metadata differs",
   )
@@ -191,8 +199,7 @@ def _verify_v13(record: dict, repo_root: Path) -> int:
   _require(record["coordinate_order"] == "latitude,east-positive-longitude", "V13 coordinate order differs")
   _require(record["repository_longitude_convention"] == "west-positive", "V13 repository longitude convention differs")
   _require(
-    record["normalization"]
-    == {"hms_to_degrees": "(hours + minutes/60 + seconds/3600) * 15", "decimal_places": 12},
+    record["normalization"] == {"hms_to_degrees": "(hours + minutes/60 + seconds/3600) * 15", "decimal_places": 12},
     "V13 normalization differs",
   )
   _require(record["delta_t_relation_seconds"] == "69.184", "V13 Delta-T relation differs")
@@ -202,7 +209,13 @@ def _verify_v13(record: dict, repo_root: Path) -> int:
   )
   _require(
     record["current_recapture"]
-    == {"date": "2026-08-26", "apiversion": API_VERSION, "response_bodies_retained": 60},
+    == {
+      "date": "2026-08-26",
+      "apiversion": API_VERSION,
+      "response_bodies_in_repository": False,
+      "response_hashes_recorded": 60,
+      "retention": "Raw response bodies are not included; this record retains hashes, cells, and normalized values.",
+    },
     "V13 recapture metadata differs",
   )
 
@@ -226,14 +239,10 @@ def _verify_v13(record: dict, repo_root: Path) -> int:
     date_text, time_text = _jd_request_time(row[0])
     request = item["request"]
     expected_common = {"date": date_text, "time": time_text, "reps": "1", "intv_mag": "1", "intv_unit": "days"}
-    _require(
-      {key: request[key] for key in expected_common} == expected_common,
-      f"V13 request differs at {kind} {index}",
-    )
     _response_identity(item["response"], f"V13 {kind} {index}")
     cells = item["response"]["cells"]
     if kind == "greenwich":
-      _require(request["coords"] == "0,0", f"V13 Greenwich coordinates differ at {index}")
+      expected_coords = "0,0"
       _require(
         repository["expected_gmst_deg"] == row[2] and repository["expected_gast_deg"] == row[3],
         f"V13 Greenwich repository values differ at {index}",
@@ -243,10 +252,11 @@ def _verify_v13(record: dict, repo_root: Path) -> int:
     else:
       _require(repository["longitude_west"] == row[2], f"V13 west longitude differs at {index}")
       lon_east = _decimal_text(-Decimal(row[2]))
-      _require(request["coords"] == f"0,{lon_east}", f"V13 longitude sign differs at {index}")
+      expected_coords = f"0,{lon_east}"
       _require(repository["expected_last_deg"] == row[3], f"V13 local repository value differs at {index}")
       expected = {"last_deg": _normalized_degrees(row[3])}
       normalized = {"last_deg": _hms_degrees(cells["last"])}
+    _require(request == {**expected_common, "coords": expected_coords}, f"V13 request differs at {kind} {index}")
     _require(item["normalized_cells"] == normalized == expected, f"V13 normalized cell differs at {kind} {index}")
   return len(records)
 
@@ -292,13 +302,16 @@ def _verify_v14(record: dict, repo_root: Path) -> tuple[int, int, int]:
   _require(record["endpoint"] == "https://aa.usno.navy.mil/api/moon/phases/year", "V14 endpoint differs")
   _require(record["request"] == {"year": "2024"}, "V14 request differs")
   _require(
-    record["historical_collection"]
-    == {"date": "2026-08-11", "apiversion": None, "response_body_retained": False},
+    record["historical_collection"] == {"date": "2026-08-11", "apiversion": None, "response_body_retained": False},
     "V14 historical boundary differs",
   )
   recapture = record["current_recapture"]
   _require(
-    recapture["date"] == "2026-08-26" and recapture["apiversion"] == API_VERSION,
+    recapture["date"] == "2026-08-26"
+    and recapture["apiversion"] == API_VERSION
+    and recapture["raw_response_body_in_repository"] is False
+    and recapture["retention"]
+    == "The raw response body is not included; this record retains its hash and normalized events.",
     "V14 recapture metadata differs",
   )
   _require(re.fullmatch(r"[0-9a-f]{64}", recapture["response_sha256"]) is not None, "V14 response hash differs")
@@ -451,7 +464,14 @@ def _verify_v29(record: dict, repo_root: Path) -> int:
     "V29 historical boundary differs",
   )
   recapture = record["current_recapture"]
-  _require(recapture["date"] == "2026-08-26", "V29 recapture date differs")
+  _require(
+    recapture["date"] == "2026-08-26"
+    and recapture["raw_response_body_in_repository"] is False
+    and recapture["normalized_response_embedded"] is True
+    and recapture["retention"]
+    == "The raw response body is not included; this record embeds its parsed response and raw-body hash.",
+    "V29 recapture metadata differs",
+  )
   _require(
     recapture["response_sha256"] == "3637571ae2f4c4b7bca03e7e57d99ba1d14982a5b339b4efd1aa97dc967e6c84",
     "V29 response hash differs",
@@ -462,8 +482,7 @@ def _verify_v29(record: dict, repo_root: Path) -> int:
   expected = {"day": 1, "era": "AD", "jd": "2460463.000000", "month": 6, "time": "12:00:00.0", "tz": 0, "year": 2024}
   _require(row == expected, "V29 timezone/era/JD response differs")
   _require(
-    record["repository_relation"]
-    == {"path": "src/test/shared_lib/cabi_smoke_test.cpp", "jd": "2460463.000000"},
+    record["repository_relation"] == {"path": "src/test/shared_lib/cabi_smoke_test.cpp", "jd": "2460463.000000"},
     "V29 repository relation differs",
   )
   source = (repo_root / record["repository_relation"]["path"]).read_text(encoding="utf-8")
@@ -479,6 +498,10 @@ def verify_usno_identities(
   record_hashes: Mapping[str, str] = USNO_RECORD_SHA256,
 ) -> IdentityCounts:
   _require(set(record_hashes) == set(USNO_RECORD_SHA256), "USNO record inventory differs")
+  _require(
+    {path.name for path in usno_root.iterdir() if path.is_file()} == set(record_hashes),
+    "USNO record directory inventory differs",
+  )
   records = {name: _record(usno_root / name, digest) for name, digest in record_hashes.items()}
   v12 = _verify_v12(records["v12-rstt-oneday.json"], repo_root)
   v13 = _verify_v13(records["v13-siderealtime.json"], repo_root)

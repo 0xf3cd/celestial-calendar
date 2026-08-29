@@ -13,6 +13,8 @@
   "current_recapture": {
     "date": "2026-08-26",
     "apiversion": "4.0.1",
+    "raw_response_body_in_repository": false,
+    "retention": "The raw response body is not included; this record retains its hash and normalized events.",
     "response_sha256": "64107d6828e5d1cb8b3e7ff0c0fc9e147aaf4bc873db6640f2d104fb8e31ebf5",
     "numphases": 50
   },

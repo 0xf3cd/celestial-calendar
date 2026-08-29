@@ -147,6 +147,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     marking=(
       "The NASA publication bytes are not included in this repository; the checked provenance relation is a "
       "transcription record, not an upstream-byte identity claim.",
+      "The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.",
     ),
   ),
 )

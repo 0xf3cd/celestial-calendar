@@ -80,6 +80,14 @@ def test_usno_records_reproduce_every_retained_relation_offline():
   assert verify_usno_identities() == IdentityCounts(181, 60, 50, 12, 1, 639, 3, 1)
 
 
+def test_usno_record_directory_inventory_is_exact(tmp_path):
+  usno_root = materialize_inputs(tmp_path)
+  (usno_root / "extra.json").write_text("{}\n", encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match="directory inventory differs"):
+    verify_usno_identities(repo_root=tmp_path, usno_root=usno_root)
+
+
 def test_usno_response_hash_mutation_fails_the_record_pin(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   mutate_record(
@@ -99,6 +107,7 @@ def test_usno_response_hash_mutation_fails_the_record_pin(tmp_path):
     "v12-api-version",
     "v12-normalized-cell",
     "v12-record-count",
+    "v12-normalization",
     "v13-longitude-sign",
     "v13-jd-request-conversion",
     "v14-civil-jd",
@@ -125,6 +134,8 @@ def test_usno_record_mutations_fail_semantic_gate(tmp_path, mutation):
       payload["records"][0]["response"]["apiversion"] = "4.0.0"
     elif mutation == "v12-normalized-cell":
       payload["records"][0]["normalized_cells"]["rise"] = "11:59"
+    elif mutation == "v12-normalization":
+      payload["normalization"] = "first event wins"
     else:
       payload["records"].pop()
 

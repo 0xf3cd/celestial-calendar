@@ -17,7 +17,9 @@
   "current_recapture": {
     "date": "2026-08-26",
     "apiversion": "4.0.1",
-    "response_bodies_retained_for_reconstruction": 181
+    "response_bodies_in_repository": false,
+    "response_hashes_recorded": 181,
+    "retention": "Raw response bodies are not included; this record retains hashes and normalized cells."
   },
   "records": [
     {

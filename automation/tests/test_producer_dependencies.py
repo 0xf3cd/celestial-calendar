@@ -450,14 +450,12 @@ def test_all_real_producers_compare_notice_bytes_to_the_repository_after_product
     '(Get-FileHash "$ROOT_DIR/THIRD_PARTY_NOTICES.txt" -Algorithm SHA256).Hash'
   ) in workflow
   assert (
-    'archive.read(f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt") '
-    '== (REPO / "THIRD_PARTY_NOTICES.txt").read_bytes()'
+    'archive.read(f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt") == (REPO / "THIRD_PARTY_NOTICES.txt").read_bytes()'
   ) in " ".join(wheel.split())
   assert 'member.name == "package/THIRD_PARTY_NOTICES.txt"' in npm
   assert 'notice.read() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes()' in npm
   assert (
-    '(artifact_dir / "THIRD_PARTY_NOTICES.txt").read_bytes() '
-    '!= (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes()'
+    '(artifact_dir / "THIRD_PARTY_NOTICES.txt").read_bytes() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes()'
   ) in " ".join(npm.split())
 
 

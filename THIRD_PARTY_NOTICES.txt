@@ -1780,6 +1780,7 @@ Applies to: the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/del
 Source: https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html
 Source-file SHA-256: 1f772efcfc102cc2e2bccdefa3720cbbba1c0a7835173c0af60c4efdb9d31670
 The NASA publication bytes are not included in this repository; the checked provenance relation is a transcription record, not an upstream-byte identity claim.
+The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.
 ==============================================================================
 
 CelestialCalendar acknowledges Fred Espenak and Jean Meeus, Five Millennium

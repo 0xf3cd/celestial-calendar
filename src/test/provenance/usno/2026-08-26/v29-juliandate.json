@@ -14,6 +14,9 @@
   },
   "current_recapture": {
     "date": "2026-08-26",
+    "raw_response_body_in_repository": false,
+    "normalized_response_embedded": true,
+    "retention": "The raw response body is not included; this record embeds its parsed response and raw-body hash.",
     "response_sha256": "3637571ae2f4c4b7bca03e7e57d99ba1d14982a5b339b4efd1aa97dc967e6c84",
     "response": {
       "apiversion": "4.0.1",
