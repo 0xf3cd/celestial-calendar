@@ -56,11 +56,19 @@ def run_cmake(build_version: str, build_type: str = "Release", export_compile_co
   else:
     red_print("# Failed to run CMake")
 
-  # Remove googletest files in `compile_commands.json`
+  # Remove external translation units from `compile_commands.json`.
   if export_compile_commands and ret.retcode == 0:
     db = BUILD_DIR / "compile_commands.json"
     raw_contents = json.loads(db.read_text())
-    filtered = list(filter(lambda x: "googletest" not in x["file"], raw_contents))
+    filtered = [
+      entry
+      for entry in raw_contents
+      if "googletest" not in entry["file"]
+      and not (
+        "/src/test/provenance/erfa/" in entry["file"].replace("\\", "/")
+        and entry["file"].replace("\\", "/").endswith(("/cal2jd.c", "/jd2cal.c"))
+      )
+    ]
     db.write_text(json.dumps(filtered, indent=2))
 
   print("#" * 60)

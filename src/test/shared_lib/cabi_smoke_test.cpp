@@ -166,7 +166,7 @@ TEST(CAbiSmoke, JdeToUt1RejectsBadInput) {
   EXPECT_FALSE(jde_to_ut1(NAN_VALUE).valid);  // non-finite
   EXPECT_FALSE(jde_to_ut1(1000.0).valid);     // gregorian year < 401
   EXPECT_FALSE(jde_to_ut1(13689325.5).valid); // first JD beyond the representable years
-  EXPECT_FALSE(jde_to_ut1(4.0e9).valid);      // uint32 wrap: valid-looking but wrong date
+  EXPECT_FALSE(jde_to_ut1(4.0e9).valid);      // far beyond the representable years
 }
 
 

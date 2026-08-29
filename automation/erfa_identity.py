@@ -61,6 +61,8 @@ class IdentityCounts:
 
 ERFA_INPUTS: Final[tuple[PinnedInput, ...]] = (
   PinnedInput(Path("LICENSE"), "b1858f9a263f22c438a455a32945da51a31a0ae25a21055da13bb7ed57cc3b51"),
+  PinnedInput(Path("src/cal2jd.c"), "95d13243cfa6ed019cd4e1737388d97cc6be3a5e9bd99a35ea9938934d439a0f"),
+  PinnedInput(Path("src/jd2cal.c"), "f1f15f0295348efc51c3f0a43608b46cbe514d65846935b3f609406f731b1961"),
   PinnedInput(Path("src/moon98.c"), "8633f78b8ec33132743596700fd3ecfbb2ebcb4e886894e377556de9655d1237"),
   PinnedInput(Path("src/obl80.c"), "74e53b23c209f9101615015db7a4e7097c8d0ce0d0c8fa005476bf9e32a882fe"),
   PinnedInput(Path("src/prec76.c"), "809c200e6cd70c3eaabfed9c5d8a9dec573b67bc8e7d623cc5818550993bc684"),

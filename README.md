@@ -419,7 +419,7 @@ Maintainers cutting a release should follow the protected workflow in [`docs/REL
 
 ## 12. References
 
-* [Julian Day Numbers](https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html)
+* [ERFA v2.0.1](https://github.com/liberfa/erfa/tree/9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
 * [USNO Delta T Values](https://maia.usno.navy.mil/ser7/deltat.data)
 * [SOFA Library (ANSI C)](https://www.iausofa.org/2023-10-11c)
