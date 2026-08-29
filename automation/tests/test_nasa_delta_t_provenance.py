@@ -76,7 +76,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
-  assert NASA_RECORD_SHA256 == "e325f0ed2efa923935504e29abad0006c548bba34ce28e97c1e74447e4641dab"
+  assert NASA_RECORD_SHA256 == "1088eaa11c030319c646b340afce0081da0f878833bb02a27b3749934fabe090"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -251,4 +251,16 @@ def test_nasa_lunar_table_full_regeneration_gate_is_pinned(tmp_path, replacement
   replace_once(tmp_path / "src/test/lunar/algo3_test.cpp", "  ASSERT_EQ(401, checked);\n", replacement)
 
   with pytest.raises(RuntimeError, match="full-regeneration gate differs"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_lunar_table_regeneration_early_return_fails(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/test/lunar/algo3_test.cpp",
+    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {\n",
+    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2) {\n  return;\n",
+  )
+
+  with pytest.raises(RuntimeError, match="canonical regeneration test differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)

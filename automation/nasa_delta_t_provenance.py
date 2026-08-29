@@ -35,7 +35,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "e325f0ed2efa923935504e29abad0006c548bba34ce28e97c1e74447e4641dab"
+NASA_RECORD_SHA256: Final[str] = "1088eaa11c030319c646b340afce0081da0f878833bb02a27b3749934fabe090"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -96,6 +96,24 @@ def _lunar_data_values(text: str) -> tuple[int, ...]:
   values = tuple(int(value, 16) for value in re.findall(r"0x[0-9a-fA-F]+", match.group(1)))
   _require(len(values) == 600, "NASA lunar-table data differs")
   return values
+
+
+def _cpp_block(text: str, declaration: str) -> str:
+  start = text.index(declaration)
+  opening = text.index("{", start)
+  depth = 0
+  for index in range(opening, len(text)):
+    if text[index] == "{":
+      depth += 1
+    elif text[index] == "}":
+      depth -= 1
+      if depth == 0:
+        return text[start : index + 1]
+  raise RuntimeError(f"C++ block is incomplete: {declaration}")
+
+
+def _canonical_cpp(text: str) -> str:
+  return _normalized(re.sub(r"//[^\n]*|/\*.*?\*/", " ", text, flags=re.DOTALL))
 
 
 def verify_nasa_delta_t_provenance(
@@ -171,9 +189,11 @@ def verify_nasa_delta_t_provenance(
     "NASA/TP-2006-214141, Section 2.7, equations (11)-(25)" in algo2,
     "NASA runtime citation differs",
   )
-  function_start = algo2_source.index("[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {")
-  function_source = algo2_source[function_start : algo2_source.rindex("}") + 1]
-  canonical_function = _normalized(re.sub(r"//[^\n]*|/\*.*?\*/", " ", function_source, flags=re.DOTALL))
+  function_source = _cpp_block(
+    algo2_source,
+    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double",
+  )
+  canonical_function = _canonical_cpp(function_source)
   _require(
     hashlib.sha256(canonical_function.encode("utf-8")).hexdigest() == runtime["canonical_function"]["sha256"],
     "NASA runtime canonical function differs",
@@ -221,6 +241,10 @@ def verify_nasa_delta_t_provenance(
       "matching_entries": 401,
       "repository_test": "src/test/lunar/algo3_test.cpp",
       "test": "LunarAlgo3.BakedMatchesLiveAlgo2",
+      "canonical_test": {
+        "canonicalization": "remove C/C++ comments, then replace each whitespace run with one ASCII space",
+        "sha256": "236ca2928c891d2ea9d5bb0a3030f830f1af54496319d5534ac92ef4d33672e8",
+      },
     },
     "NASA lunar-table current regeneration differs",
   )
@@ -246,6 +270,12 @@ def verify_nasa_delta_t_provenance(
     f"TEST({current_regeneration['test'].replace('.', ', ')})" in lunar_test
     and "  ASSERT_EQ(401, checked);\n" in lunar_test,
     "NASA lunar-table full-regeneration gate differs",
+  )
+  test_source = _cpp_block(lunar_test, f"TEST({current_regeneration['test'].replace('.', ', ')})")
+  _require(
+    hashlib.sha256(_canonical_cpp(test_source).encode("utf-8")).hexdigest()
+    == current_regeneration["canonical_test"]["sha256"],
+    "NASA lunar-table canonical regeneration test differs",
   )
 
   validation = record["validation_relations"]

@@ -126,7 +126,11 @@
     "current_regeneration": {
       "matching_entries": 401,
       "repository_test": "src/test/lunar/algo3_test.cpp",
-      "test": "LunarAlgo3.BakedMatchesLiveAlgo2"
+      "test": "LunarAlgo3.BakedMatchesLiveAlgo2",
+      "canonical_test": {
+        "canonicalization": "remove C/C++ comments, then replace each whitespace run with one ASCII space",
+        "sha256": "236ca2928c891d2ea9d5bb0a3030f830f1af54496319d5534ac92ef4d33672e8"
+      }
     }
   },
   "validation_relations": {
