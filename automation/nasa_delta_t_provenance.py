@@ -35,7 +35,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "032c18173f4d250aceab5df81cf7904cc0608b7af3e445dcd1af79e7045a759b"
+NASA_RECORD_SHA256: Final[str] = "2f53f22b7787b43f96849e90c5e001353a44bb367c3bddd5c521f0af4176eed2"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -88,6 +88,14 @@ def _usno_delta_t_rows(path: Path) -> dict[int, Decimal]:
 def _rounded(value: str, places: int) -> Decimal:
   quantum = Decimal(1).scaleb(-places)
   return Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP)
+
+
+def _lunar_data_values(text: str) -> tuple[int, ...]:
+  match = re.search(r"LUNAR_DATA\s*=\s*\{(.*?)\n\};", text, re.DOTALL)
+  _require(match is not None, "NASA lunar-table data differs")
+  values = tuple(int(value, 16) for value in re.findall(r"0x[0-9a-fA-F]+", match.group(1)))
+  _require(len(values) == 600, "NASA lunar-table data differs")
+  return values
 
 
 def verify_nasa_delta_t_provenance(
@@ -176,6 +184,12 @@ def verify_nasa_delta_t_provenance(
     downstream["current_retention"]
     == {
       "entries_from_origin": 398,
+      "retained_origin_values": {
+        "canonicalization": (
+          "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x"
+        ),
+        "sha256": "66c5892f0de175f4aee35bd41912f8290bda5b1a4b239d784dcc89f4a589f9a4",
+      },
       "rebake": {
         "commit": "8194ffbf38657d66158d2314bdf66294c7a8d001",
         "generator": "calendar::lunar::algo2::calc_lunar_year",
@@ -195,6 +209,17 @@ def verify_nasa_delta_t_provenance(
     "NASA lunar-table current regeneration differs",
   )
   lunar_table = (repo_root / downstream["repository_path"]).read_text(encoding="utf-8")
+  lunar_values = _lunar_data_values(lunar_table)
+  retained_years = tuple(year for year in (*range(1600, 1901), *range(2100, 2200)) if year not in {2133, 2165, 2172})
+  _require(
+    len(retained_years) == downstream["current_retention"]["entries_from_origin"],
+    "NASA lunar-table retained count differs",
+  )
+  retained_bytes = "".join(f"{year}:{lunar_values[year - 1600]:08x}\n" for year in retained_years).encode("ascii")
+  _require(
+    hashlib.sha256(retained_bytes).hexdigest() == downstream["current_retention"]["retained_origin_values"]["sha256"],
+    "NASA lunar-table retained origin values differ",
+  )
   _require(
     "NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398\n"
     " *      retained non-HKO entries." in lunar_table,

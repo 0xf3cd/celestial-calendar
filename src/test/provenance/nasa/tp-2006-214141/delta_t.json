@@ -109,6 +109,10 @@
     },
     "current_retention": {
       "entries_from_origin": 398,
+      "retained_origin_values": {
+        "canonicalization": "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x",
+        "sha256": "66c5892f0de175f4aee35bd41912f8290bda5b1a4b239d784dcc89f4a589f9a4"
+      },
       "rebake": {
         "commit": "8194ffbf38657d66158d2314bdf66294c7a8d001",
         "generator": "calendar::lunar::algo2::calc_lunar_year",

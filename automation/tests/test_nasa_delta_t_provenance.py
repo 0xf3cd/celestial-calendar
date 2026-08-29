@@ -76,7 +76,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
-  assert NASA_RECORD_SHA256 == "032c18173f4d250aceab5df81cf7904cc0608b7af3e445dcd1af79e7045a759b"
+  assert NASA_RECORD_SHA256 == "2f53f22b7787b43f96849e90c5e001353a44bb367c3bddd5c521f0af4176eed2"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -199,9 +199,10 @@ def test_nasa_lunar_table_historical_generation_is_pinned(tmp_path, field, value
   ("field", "value"),
   [
     ("entries_from_origin", 399),
+    ("retained_origin_values", {"canonicalization": "unrecorded", "sha256": "unrecorded"}),
     ("rebake", {"commit": "unrecorded", "generator": "unrecorded", "years": []}),
   ],
-  ids=["retained-count", "rebake"],
+  ids=["retained-count", "retained-values", "rebake"],
 )
 def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
   nasa_root = materialize_inputs(tmp_path)
@@ -213,6 +214,15 @@ def test_nasa_lunar_table_current_retention_is_pinned(tmp_path, field, value):
 
   with pytest.raises(RuntimeError, match="current retention differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
+
+
+def test_nasa_lunar_table_retained_origin_value_mutation_fails(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
+  replace_once(lunar_table, "  0x5a0ba4, 0x420b49,", "  0x5a0ba5, 0x420b49,")
+
+  with pytest.raises(RuntimeError, match="retained origin values differ"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
 @pytest.mark.parametrize(
