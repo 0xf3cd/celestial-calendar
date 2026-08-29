@@ -42,8 +42,10 @@ from automation.nasa_delta_t_provenance import (
 
 TARGET_FILES = (
   Path("src/astro/delta_t.hpp"),
+  Path("src/calendar/lunar/algo3.hpp"),
   Path("src/test/astro/delta_t_test_helper.hpp"),
   Path("src/test/astro/julian_day_test.cpp"),
+  Path("src/test/lunar/algo3_test.cpp"),
   Path("statistics/usno_data.txt"),
 )
 
@@ -74,7 +76,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_tp_relations_and_acknowledgment_are_pinned_without_an_upstream_byte_claim():
-  assert NASA_RECORD_SHA256 == "0d2850c8c6a8d151739bdde98667c5aaf7e041fb08fda1854da03d1bd8bb015e"
+  assert NASA_RECORD_SHA256 == "9539cfe87e0abc622b18b502e4838a5e6e1e1b163cb84825e7373431cf53bc13"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "1f772efcfc102cc2e2bccdefa3720cbbba1c0a7835173c0af60c4efdb9d31670"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
@@ -157,3 +159,29 @@ def test_unpartitioned_v25_row_fails(tmp_path):
 
   with pytest.raises(RuntimeError, match="not covered by the recorded source partitions"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_retired_lunar_table_nasa_citation_cannot_return(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
+  replace_once(
+    lunar_table,
+    " * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm\n",
+    " * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm\n"
+    " * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html\n",
+  )
+
+  with pytest.raises(RuntimeError, match="retired lunar-table citation returned"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_retired_lunar_table_regeneration_must_remain_byte_identical(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  record = nasa_root / "delta_t.json"
+  digest = mutate_record(
+    record,
+    lambda payload: payload["retired_runtime_relations"][0].update({"changed_entries": 1}),
+  )
+
+  with pytest.raises(RuntimeError, match="regeneration was not byte-identical"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)

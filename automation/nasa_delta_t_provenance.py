@@ -35,7 +35,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "0d2850c8c6a8d151739bdde98667c5aaf7e041fb08fda1854da03d1bd8bb015e"
+NASA_RECORD_SHA256: Final[str] = "9539cfe87e0abc622b18b502e4838a5e6e1e1b163cb84825e7373431cf53bc13"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "1f772efcfc102cc2e2bccdefa3720cbbba1c0a7835173c0af60c4efdb9d31670"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
@@ -150,6 +150,32 @@ def verify_nasa_delta_t_provenance(
   _require(
     "NASA/TP-2006-214141, Section 2.7, equations (11)-(25)" in algo2,
     "NASA runtime citation differs",
+  )
+
+  retired_relations = record["retired_runtime_relations"]
+  _require(len(retired_relations) == 1, "NASA retired runtime relation inventory differs")
+  retired_lunar = retired_relations[0]
+  _require(
+    retired_lunar["former_source_url"] == "https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html",
+    "NASA retired lunar-table source differs",
+  )
+  _require(retired_lunar["regenerated_entries"] == 401, "NASA retired lunar-table regeneration count differs")
+  _require(retired_lunar["changed_entries"] == 0, "NASA retired lunar-table regeneration was not byte-identical")
+  _require(
+    [(item["years"], item["entries"]) for item in retired_lunar["replacement_relations"]]
+    == [("1600-1900", 301), ("2100-2199", 100)],
+    "NASA retired lunar-table replacement partition differs",
+  )
+  lunar_table = (repo_root / retired_lunar["repository_path"]).read_text(encoding="utf-8")
+  _require(retired_lunar["former_source_url"] not in lunar_table, "NASA retired lunar-table citation returned")
+  _require(
+    "all 401 non-HKO entries equal a full live-algo2 regeneration" in lunar_table,
+    "NASA retired lunar-table replacement relation differs",
+  )
+  lunar_test = (repo_root / retired_lunar["verification"]["repository_test"]).read_text(encoding="utf-8")
+  _require(
+    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2)" in lunar_test and "ASSERT_EQ(401, checked)" in lunar_test,
+    "NASA retired lunar-table full-regeneration gate differs",
   )
 
   validation = record["validation_relations"]

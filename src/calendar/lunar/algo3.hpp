@@ -42,18 +42,16 @@ inline constexpr int32_t END_YEAR = 2199;
 /**
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t.
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
- * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
  *
  * ## Provenance (baked table — #70 §2)
  * - Generator: `statistics/lunar_calendar.ipynb` (encode cells: HKO years 1901–2099 via
- *   algo1 / HKO table; all other years via live algo2 — see `algo2.hpp` — at generation
- *   time).
- * - Generation parameters: algo2 + the then-default ΔT model. #64 re-baked
- *   2133/2165/2172 under algo5's ΔT after the default switched. Whenever the default ΔT
- *   model changes, re-bake the non-HKO entries via the same notebook.
- * - Gate 1 (#70 §2): the 401 re-bakeable values (1600–1900 ∪ 2100–2199) re-encode
- *   identically under today's default ΔT (algo5) — a re-bake is a data no-op. The 199
- *   HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
+ *   algo1 / HKO table; all other years via live algo2 — see `algo2.hpp`).
+ * - Current source relation: all 401 non-HKO entries equal a full live-algo2 regeneration.
+ *   Years 1600–1900 use the pre-1972 TT-to-UT1 fallback through `astro::delta_t::algo5`;
+ *   years 2100–2199 use TT-to-UTC with ΔAT held at 37 s after the leap-second table ends.
+ *   `LunarAlgo3.BakedMatchesLiveAlgo2` checks every entry in both ranges. Re-bake through
+ *   the same notebook whenever either time-scale relation changes.
+ * - The 199 HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
  *   Full-array re-encode against live algo2 is *not* zero-diff: the six known years
  *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
  *   provenance note, not a data fix: **do not edit any of the 600 values here without

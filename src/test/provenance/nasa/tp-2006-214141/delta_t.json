@@ -97,6 +97,32 @@
       }
     ]
   },
+  "retired_runtime_relations": [
+    {
+      "repository_path": "src/calendar/lunar/algo3.hpp",
+      "former_source_url": "https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html",
+      "status": "superseded by a byte-identical full regeneration",
+      "replacement_generator": "calendar::lunar::algo2::calc_lunar_year",
+      "replacement_relations": [
+        {
+          "years": "1600-1900",
+          "entries": 301,
+          "time_scale": "pre-1972 TT-to-UT1 fallback through astro::delta_t::algo5"
+        },
+        {
+          "years": "2100-2199",
+          "entries": 100,
+          "time_scale": "TT-to-UTC with Delta-AT held at 37 seconds after the leap-second table ends"
+        }
+      ],
+      "regenerated_entries": 401,
+      "changed_entries": 0,
+      "verification": {
+        "repository_test": "src/test/lunar/algo3_test.cpp",
+        "test": "LunarAlgo3.BakedMatchesLiveAlgo2"
+      }
+    }
+  ],
   "validation_relations": {
     "v25": {
       "repository_path": "src/test/astro/delta_t_test_helper.hpp",
