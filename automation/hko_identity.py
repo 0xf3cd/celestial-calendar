@@ -25,6 +25,10 @@
 
 The raw HKO responses remain outside the repository. The committed record preserves their
 hashes, the exact historical extractor, its outputs, and the 199-word runtime relation.
+The extractor is historical evidence, not an in-place regeneration tool. Its tracked path is five
+levels below the repository root, while its `parents[3]` assumption requires replaying it with the
+retained responses from a directory four levels below the root.
+Numerical identity does not settle redistribution permission; that question remains open.
 """
 
 import csv
@@ -75,19 +79,16 @@ def _require(condition: bool, message: str) -> None:
     raise RuntimeError(message)
 
 
-def _sha256(data: bytes) -> str:
-  return hashlib.sha256(data).hexdigest()
-
-
 def _read_artifacts(hko_root: Path, expected_hashes: dict[str, str]) -> dict[str, str]:
   _require(set(expected_hashes) == set(HKO_ARTIFACT_SHA256), "HKO artifact hash inventory differs")
+  # Reject subdirectories too, so nested raw responses cannot bypass the exact inventory.
   inventory = {path.name for path in hko_root.iterdir()}
   _require(inventory == set(expected_hashes), f"HKO artifact inventory differs: {sorted(inventory)}")
 
   artifacts = {}
   for name, expected in expected_hashes.items():
     data = (hko_root / name).read_bytes()
-    digest = _sha256(data)
+    digest = hashlib.sha256(data).hexdigest()
     _require(digest == expected, f"HKO artifact hash mismatch for {name}: {digest}")
     artifacts[name] = data.decode("utf-8")
   return artifacts
@@ -188,7 +189,7 @@ def _verify_source_markings(repo_root: Path) -> None:
     "algo1 HKO identity marking differs",
   )
   _require(
-    "Numerical identity does not settle redistribution permission; R01/V01 remain open." in algo1,
+    "Numerical identity does not settle redistribution permission; that question remains open." in algo1,
     "algo1 HKO permission boundary differs",
   )
   _require(
@@ -196,7 +197,7 @@ def _verify_source_markings(repo_root: Path) -> None:
     "algo3 HKO identity marking differs",
   )
   _require(
-    "Exact identity does not settle R01/V01 redistribution permission." in algo3,
+    "Exact identity does not settle redistribution permission, which remains open." in algo3,
     "algo3 HKO permission boundary differs",
   )
 
