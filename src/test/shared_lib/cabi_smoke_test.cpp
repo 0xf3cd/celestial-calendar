@@ -131,7 +131,8 @@ TEST(CAbiSmoke, DeltaTRejectsNonFiniteYear) {
 
 
 TEST(CAbiSmoke, Ut1ToJd) {
-  // 2024-06-01 12:00 UT1 is JD 2460463.0 (USNO, https://aa.usno.navy.mil/data/JulianDate).
+  // USNO API 4.0.1: /api/juliandate?date=2024-06-01&time=12:00:00 returns
+  // era=AD, tz=0, JD 2460463.000000 (`src/test/provenance/usno/2026-08-26/v29-juliandate.json`).
   const JulianDay jd = ut1_to_jd(2024, 6, 1, 0.5);
   ASSERT_TRUE(jd.valid);
   ASSERT_NEAR(jd.value, 2460463.0, 1e-6);

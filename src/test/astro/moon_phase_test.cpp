@@ -497,8 +497,10 @@ TEST(PhaseMoments, UsnoGolden2024) {
   using astro::moon_phase::phase_moments::PhaseKind;
 
   // Provenance: USNO Moon Phases API, https://aa.usno.navy.mil/api/moon/phases/year?year=2024.
-  // Times are UTC to the nearest minute; converted to JDE with the standard Gregorian-to-JD
-  // formula. Collected 2026-08-11.
+  // Times are UTC to the nearest minute; converted to six-decimal civil-JD strings with no
+  // ΔT adjustment. Collected 2026-08-11; the complete current API 4.0.1 recapture, conversion,
+  // and the still-open HKO 01:56 versus USNO 01:55 September boundary are pinned in
+  // `src/test/provenance/usno/2026-08-26/v14-moon-phases-year-2024.json`.
   // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<double> usno_new_moon_2024 {
     2460320.997917, 2460350.457639, 2460379.875000, 2460409.264583,

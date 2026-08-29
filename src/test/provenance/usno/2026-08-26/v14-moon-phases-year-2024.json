@@ -1,0 +1,549 @@
+{
+  "schema": 1,
+  "row": "V14",
+  "endpoint": "https://aa.usno.navy.mil/api/moon/phases/year",
+  "request": {
+    "year": "2024"
+  },
+  "historical_collection": {
+    "date": "2026-08-11",
+    "apiversion": null,
+    "response_body_retained": false
+  },
+  "current_recapture": {
+    "date": "2026-08-26",
+    "apiversion": "4.0.1",
+    "response_sha256": "64107d6828e5d1cb8b3e7ff0c0fc9e147aaf4bc873db6640f2d104fb8e31ebf5",
+    "numphases": 50
+  },
+  "conversion": {
+    "input": "UTC civil minute",
+    "delta_t_applied": false,
+    "decimal_places": 6,
+    "rounding": "ROUND_HALF_UP"
+  },
+  "events": [
+    {
+      "day": 4,
+      "month": 1,
+      "phase": "Last Quarter",
+      "time": "03:30",
+      "year": 2024,
+      "utc": "2024-01-04T03:30Z",
+      "civil_jd": "2460313.645833"
+    },
+    {
+      "day": 11,
+      "month": 1,
+      "phase": "New Moon",
+      "time": "11:57",
+      "year": 2024,
+      "utc": "2024-01-11T11:57Z",
+      "civil_jd": "2460320.997917"
+    },
+    {
+      "day": 18,
+      "month": 1,
+      "phase": "First Quarter",
+      "time": "03:52",
+      "year": 2024,
+      "utc": "2024-01-18T03:52Z",
+      "civil_jd": "2460327.661111"
+    },
+    {
+      "day": 25,
+      "month": 1,
+      "phase": "Full Moon",
+      "time": "17:54",
+      "year": 2024,
+      "utc": "2024-01-25T17:54Z",
+      "civil_jd": "2460335.245833"
+    },
+    {
+      "day": 2,
+      "month": 2,
+      "phase": "Last Quarter",
+      "time": "23:18",
+      "year": 2024,
+      "utc": "2024-02-02T23:18Z",
+      "civil_jd": "2460343.470833"
+    },
+    {
+      "day": 9,
+      "month": 2,
+      "phase": "New Moon",
+      "time": "22:59",
+      "year": 2024,
+      "utc": "2024-02-09T22:59Z",
+      "civil_jd": "2460350.457639"
+    },
+    {
+      "day": 16,
+      "month": 2,
+      "phase": "First Quarter",
+      "time": "15:01",
+      "year": 2024,
+      "utc": "2024-02-16T15:01Z",
+      "civil_jd": "2460357.125694"
+    },
+    {
+      "day": 24,
+      "month": 2,
+      "phase": "Full Moon",
+      "time": "12:30",
+      "year": 2024,
+      "utc": "2024-02-24T12:30Z",
+      "civil_jd": "2460365.020833"
+    },
+    {
+      "day": 3,
+      "month": 3,
+      "phase": "Last Quarter",
+      "time": "15:23",
+      "year": 2024,
+      "utc": "2024-03-03T15:23Z",
+      "civil_jd": "2460373.140972"
+    },
+    {
+      "day": 10,
+      "month": 3,
+      "phase": "New Moon",
+      "time": "09:00",
+      "year": 2024,
+      "utc": "2024-03-10T09:00Z",
+      "civil_jd": "2460379.875000"
+    },
+    {
+      "day": 17,
+      "month": 3,
+      "phase": "First Quarter",
+      "time": "04:11",
+      "year": 2024,
+      "utc": "2024-03-17T04:11Z",
+      "civil_jd": "2460386.674306"
+    },
+    {
+      "day": 25,
+      "month": 3,
+      "phase": "Full Moon",
+      "time": "07:00",
+      "year": 2024,
+      "utc": "2024-03-25T07:00Z",
+      "civil_jd": "2460394.791667"
+    },
+    {
+      "day": 2,
+      "month": 4,
+      "phase": "Last Quarter",
+      "time": "03:15",
+      "year": 2024,
+      "utc": "2024-04-02T03:15Z",
+      "civil_jd": "2460402.635417"
+    },
+    {
+      "day": 8,
+      "month": 4,
+      "phase": "New Moon",
+      "time": "18:21",
+      "year": 2024,
+      "utc": "2024-04-08T18:21Z",
+      "civil_jd": "2460409.264583"
+    },
+    {
+      "day": 15,
+      "month": 4,
+      "phase": "First Quarter",
+      "time": "19:13",
+      "year": 2024,
+      "utc": "2024-04-15T19:13Z",
+      "civil_jd": "2460416.300694"
+    },
+    {
+      "day": 23,
+      "month": 4,
+      "phase": "Full Moon",
+      "time": "23:49",
+      "year": 2024,
+      "utc": "2024-04-23T23:49Z",
+      "civil_jd": "2460424.492361"
+    },
+    {
+      "day": 1,
+      "month": 5,
+      "phase": "Last Quarter",
+      "time": "11:27",
+      "year": 2024,
+      "utc": "2024-05-01T11:27Z",
+      "civil_jd": "2460431.977083"
+    },
+    {
+      "day": 8,
+      "month": 5,
+      "phase": "New Moon",
+      "time": "03:22",
+      "year": 2024,
+      "utc": "2024-05-08T03:22Z",
+      "civil_jd": "2460438.640278"
+    },
+    {
+      "day": 15,
+      "month": 5,
+      "phase": "First Quarter",
+      "time": "11:48",
+      "year": 2024,
+      "utc": "2024-05-15T11:48Z",
+      "civil_jd": "2460445.991667"
+    },
+    {
+      "day": 23,
+      "month": 5,
+      "phase": "Full Moon",
+      "time": "13:53",
+      "year": 2024,
+      "utc": "2024-05-23T13:53Z",
+      "civil_jd": "2460454.078472"
+    },
+    {
+      "day": 30,
+      "month": 5,
+      "phase": "Last Quarter",
+      "time": "17:13",
+      "year": 2024,
+      "utc": "2024-05-30T17:13Z",
+      "civil_jd": "2460461.217361"
+    },
+    {
+      "day": 6,
+      "month": 6,
+      "phase": "New Moon",
+      "time": "12:38",
+      "year": 2024,
+      "utc": "2024-06-06T12:38Z",
+      "civil_jd": "2460468.026389"
+    },
+    {
+      "day": 14,
+      "month": 6,
+      "phase": "First Quarter",
+      "time": "05:18",
+      "year": 2024,
+      "utc": "2024-06-14T05:18Z",
+      "civil_jd": "2460475.720833"
+    },
+    {
+      "day": 22,
+      "month": 6,
+      "phase": "Full Moon",
+      "time": "01:08",
+      "year": 2024,
+      "utc": "2024-06-22T01:08Z",
+      "civil_jd": "2460483.547222"
+    },
+    {
+      "day": 28,
+      "month": 6,
+      "phase": "Last Quarter",
+      "time": "21:53",
+      "year": 2024,
+      "utc": "2024-06-28T21:53Z",
+      "civil_jd": "2460490.411806"
+    },
+    {
+      "day": 5,
+      "month": 7,
+      "phase": "New Moon",
+      "time": "22:57",
+      "year": 2024,
+      "utc": "2024-07-05T22:57Z",
+      "civil_jd": "2460497.456250"
+    },
+    {
+      "day": 13,
+      "month": 7,
+      "phase": "First Quarter",
+      "time": "22:49",
+      "year": 2024,
+      "utc": "2024-07-13T22:49Z",
+      "civil_jd": "2460505.450694"
+    },
+    {
+      "day": 21,
+      "month": 7,
+      "phase": "Full Moon",
+      "time": "10:17",
+      "year": 2024,
+      "utc": "2024-07-21T10:17Z",
+      "civil_jd": "2460512.928472"
+    },
+    {
+      "day": 28,
+      "month": 7,
+      "phase": "Last Quarter",
+      "time": "02:51",
+      "year": 2024,
+      "utc": "2024-07-28T02:51Z",
+      "civil_jd": "2460519.618750"
+    },
+    {
+      "day": 4,
+      "month": 8,
+      "phase": "New Moon",
+      "time": "11:13",
+      "year": 2024,
+      "utc": "2024-08-04T11:13Z",
+      "civil_jd": "2460526.967361"
+    },
+    {
+      "day": 12,
+      "month": 8,
+      "phase": "First Quarter",
+      "time": "15:19",
+      "year": 2024,
+      "utc": "2024-08-12T15:19Z",
+      "civil_jd": "2460535.138194"
+    },
+    {
+      "day": 19,
+      "month": 8,
+      "phase": "Full Moon",
+      "time": "18:26",
+      "year": 2024,
+      "utc": "2024-08-19T18:26Z",
+      "civil_jd": "2460542.268056"
+    },
+    {
+      "day": 26,
+      "month": 8,
+      "phase": "Last Quarter",
+      "time": "09:26",
+      "year": 2024,
+      "utc": "2024-08-26T09:26Z",
+      "civil_jd": "2460548.893056"
+    },
+    {
+      "day": 3,
+      "month": 9,
+      "phase": "New Moon",
+      "time": "01:55",
+      "year": 2024,
+      "utc": "2024-09-03T01:55Z",
+      "civil_jd": "2460556.579861"
+    },
+    {
+      "day": 11,
+      "month": 9,
+      "phase": "First Quarter",
+      "time": "06:05",
+      "year": 2024,
+      "utc": "2024-09-11T06:05Z",
+      "civil_jd": "2460564.753472"
+    },
+    {
+      "day": 18,
+      "month": 9,
+      "phase": "Full Moon",
+      "time": "02:34",
+      "year": 2024,
+      "utc": "2024-09-18T02:34Z",
+      "civil_jd": "2460571.606944"
+    },
+    {
+      "day": 24,
+      "month": 9,
+      "phase": "Last Quarter",
+      "time": "18:50",
+      "year": 2024,
+      "utc": "2024-09-24T18:50Z",
+      "civil_jd": "2460578.284722"
+    },
+    {
+      "day": 2,
+      "month": 10,
+      "phase": "New Moon",
+      "time": "18:49",
+      "year": 2024,
+      "utc": "2024-10-02T18:49Z",
+      "civil_jd": "2460586.284028"
+    },
+    {
+      "day": 10,
+      "month": 10,
+      "phase": "First Quarter",
+      "time": "18:55",
+      "year": 2024,
+      "utc": "2024-10-10T18:55Z",
+      "civil_jd": "2460594.288194"
+    },
+    {
+      "day": 17,
+      "month": 10,
+      "phase": "Full Moon",
+      "time": "11:26",
+      "year": 2024,
+      "utc": "2024-10-17T11:26Z",
+      "civil_jd": "2460600.976389"
+    },
+    {
+      "day": 24,
+      "month": 10,
+      "phase": "Last Quarter",
+      "time": "08:03",
+      "year": 2024,
+      "utc": "2024-10-24T08:03Z",
+      "civil_jd": "2460607.835417"
+    },
+    {
+      "day": 1,
+      "month": 11,
+      "phase": "New Moon",
+      "time": "12:47",
+      "year": 2024,
+      "utc": "2024-11-01T12:47Z",
+      "civil_jd": "2460616.032639"
+    },
+    {
+      "day": 9,
+      "month": 11,
+      "phase": "First Quarter",
+      "time": "05:55",
+      "year": 2024,
+      "utc": "2024-11-09T05:55Z",
+      "civil_jd": "2460623.746528"
+    },
+    {
+      "day": 15,
+      "month": 11,
+      "phase": "Full Moon",
+      "time": "21:28",
+      "year": 2024,
+      "utc": "2024-11-15T21:28Z",
+      "civil_jd": "2460630.394444"
+    },
+    {
+      "day": 23,
+      "month": 11,
+      "phase": "Last Quarter",
+      "time": "01:28",
+      "year": 2024,
+      "utc": "2024-11-23T01:28Z",
+      "civil_jd": "2460637.561111"
+    },
+    {
+      "day": 1,
+      "month": 12,
+      "phase": "New Moon",
+      "time": "06:21",
+      "year": 2024,
+      "utc": "2024-12-01T06:21Z",
+      "civil_jd": "2460645.764583"
+    },
+    {
+      "day": 8,
+      "month": 12,
+      "phase": "First Quarter",
+      "time": "15:26",
+      "year": 2024,
+      "utc": "2024-12-08T15:26Z",
+      "civil_jd": "2460653.143056"
+    },
+    {
+      "day": 15,
+      "month": 12,
+      "phase": "Full Moon",
+      "time": "09:02",
+      "year": 2024,
+      "utc": "2024-12-15T09:02Z",
+      "civil_jd": "2460659.876389"
+    },
+    {
+      "day": 22,
+      "month": 12,
+      "phase": "Last Quarter",
+      "time": "22:18",
+      "year": 2024,
+      "utc": "2024-12-22T22:18Z",
+      "civil_jd": "2460667.429167"
+    },
+    {
+      "day": 30,
+      "month": 12,
+      "phase": "New Moon",
+      "time": "22:27",
+      "year": 2024,
+      "utc": "2024-12-30T22:27Z",
+      "civil_jd": "2460675.435417"
+    }
+  ],
+  "v03_hko_boundary": {
+    "status": "open",
+    "matching_minutes": 12,
+    "mismatching_minutes": 1,
+    "events": [
+      {
+        "hko_utc": "2024-01-11T11:57Z",
+        "usno_utc": "2024-01-11T11:57Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-02-09T22:59Z",
+        "usno_utc": "2024-02-09T22:59Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-03-10T09:00Z",
+        "usno_utc": "2024-03-10T09:00Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-04-08T18:21Z",
+        "usno_utc": "2024-04-08T18:21Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-05-08T03:22Z",
+        "usno_utc": "2024-05-08T03:22Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-06-06T12:38Z",
+        "usno_utc": "2024-06-06T12:38Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-07-05T22:57Z",
+        "usno_utc": "2024-07-05T22:57Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-08-04T11:13Z",
+        "usno_utc": "2024-08-04T11:13Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-09-03T01:56Z",
+        "usno_utc": "2024-09-03T01:55Z",
+        "relation": "mismatch_one_minute"
+      },
+      {
+        "hko_utc": "2024-10-02T18:49Z",
+        "usno_utc": "2024-10-02T18:49Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-11-01T12:47Z",
+        "usno_utc": "2024-11-01T12:47Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-12-01T06:21Z",
+        "usno_utc": "2024-12-01T06:21Z",
+        "relation": "match"
+      },
+      {
+        "hko_utc": "2024-12-30T22:27Z",
+        "usno_utc": "2024-12-30T22:27Z",
+        "relation": "match"
+      }
+    ]
+  }
+}

@@ -27,6 +27,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tarfile
 
 from pathlib import Path
 from typing import Final
@@ -180,6 +181,17 @@ def build(out_dir: Path) -> Path:
   packed_files = {entry["path"] for entry in pack.get("files", [])}
   if packed_files != PACK_ALLOWLIST:
     raise RuntimeError(f"npm tarball allowlist mismatch: {sorted(packed_files)}")
+  with tarfile.open(tarball, "r:gz") as archive:
+    notice_members = [
+      member
+      for member in archive.getmembers()
+      if member.isfile() and member.name == "package/THIRD_PARTY_NOTICES.txt"
+    ]
+    if len(notice_members) != 1:
+      raise RuntimeError("packed npm tarball must contain one canonical notice")
+    notice = archive.extractfile(notice_members[0])
+    if notice is None or notice.read() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes():
+      raise RuntimeError("packed npm notice does not match the repository notice")
 
   (out_dir / "npm-pack.json").write_text(completed.stdout, encoding="utf-8")
   digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
@@ -202,6 +214,8 @@ def build(out_dir: Path) -> Path:
   expected_artifact = WASM_ARTIFACT_ALLOWLIST | {tarball.name, "npm-pack.json", "npm-pack.sha256"}
   if {path.name for path in artifact_dir.iterdir()} != expected_artifact:
     raise RuntimeError(f"celestial-wasm artifact staging must contain exactly {len(expected_artifact)} top-level files")
+  if (artifact_dir / "THIRD_PARTY_NOTICES.txt").read_bytes() != (PROJ_ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes():
+    raise RuntimeError("outer WASM notice does not match the repository notice")
 
   print(f"[ build_npm ] version={version}")
   print(f"[ build_npm ] wasm={wasm_size}/{MAX_WASM_BYTES} bytes")

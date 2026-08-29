@@ -1,0 +1,1852 @@
+{
+  "schema": 1,
+  "row": "V13",
+  "endpoint": "https://aa.usno.navy.mil/api/siderealtime",
+  "query_parameter_order": [
+    "date",
+    "time",
+    "coords",
+    "reps",
+    "intv_mag",
+    "intv_unit"
+  ],
+  "coordinate_order": "latitude,east-positive-longitude",
+  "repository_longitude_convention": "west-positive",
+  "normalization": {
+    "hms_to_degrees": "(hours + minutes/60 + seconds/3600) * 15",
+    "decimal_places": 12
+  },
+  "delta_t_relation_seconds": "69.184",
+  "historical_collection": {
+    "date": "2026-07-19",
+    "apiversion": null,
+    "original_seed": null
+  },
+  "current_recapture": {
+    "date": "2026-08-26",
+    "apiversion": "4.0.1",
+    "response_bodies_retained": 60
+  },
+  "records": [
+    {
+      "kind": "greenwich",
+      "index": 0,
+      "repository": {
+        "jd_ut1": "2461428.1534375",
+        "jde_tt": "2461428.154238241",
+        "expected_gmst_deg": "357.00228625",
+        "expected_gast_deg": "357.00534999999996"
+      },
+      "request": {
+        "date": "2027-01-22",
+        "time": "15:40:57",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "ed9d6cff675944ab56d75716aba7ef93152974155cc44c96fc565c8fce6b11d8",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "23:48:00.5487",
+          "gast": "23:48:01.2840"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "357.002286250000",
+        "gast_deg": "357.005350000000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 1,
+      "repository": {
+        "jd_ut1": "2461438.902615741",
+        "jde_tt": "2461438.903416482",
+        "expected_gmst_deg": "277.30135208333337",
+        "expected_gast_deg": "277.3044208333333"
+      },
+      "request": {
+        "date": "2027-02-02",
+        "time": "09:39:46",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "eedfc1e9d418d25261f2cf958d6412111f1ba172fef915054376578b128cd2bf",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "18:29:12.3245",
+          "gast": "18:29:13.0610"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "277.301352083333",
+        "gast_deg": "277.304420833333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 2,
+      "repository": {
+        "jd_ut1": "2461079.6915856483",
+        "jde_tt": "2461079.6923863892",
+        "expected_gmst_deg": "207.27511166666665",
+        "expected_gast_deg": "207.2768795833333"
+      },
+      "request": {
+        "date": "2026-02-08",
+        "time": "04:35:53",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "3f4bed40f9e51a527d77a32e4bac3bd98c0d1a8473162b1431988c8308b92fad",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "13:49:06.0268",
+          "gast": "13:49:06.4511"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "207.275111666667",
+        "gast_deg": "207.276879583333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 3,
+      "repository": {
+        "jd_ut1": "2461622.921875",
+        "jde_tt": "2461622.922675741",
+        "expected_gmst_deg": "105.61278458333332",
+        "expected_gast_deg": "105.61635541666666"
+      },
+      "request": {
+        "date": "2027-08-05",
+        "time": "10:07:30",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "b89305ac276df484d5529e84524956f2fc0ed41de4ce90f4e96356925023c2d9",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "07:02:27.0683",
+          "gast": "07:02:27.9253"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "105.612784583333",
+        "gast_deg": "105.616355416667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 4,
+      "repository": {
+        "jd_ut1": "2461261.3744675927",
+        "jde_tt": "2461261.3752683336",
+        "expected_gmst_deg": "272.18786666666665",
+        "expected_gast_deg": "272.19026875"
+      },
+      "request": {
+        "date": "2026-08-08",
+        "time": "20:59:14",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "61a3fda437cc632acd6b733f1f3968afa6a18ad7da58fa9ca3c602aa9ad60ec5",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "18:08:45.0880",
+          "gast": "18:08:45.6645"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "272.187866666667",
+        "gast_deg": "272.190268750000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 5,
+      "repository": {
+        "jd_ut1": "2460914.3613310186",
+        "jde_tt": "2460914.3621317595",
+        "expected_gmst_deg": "285.4261145833333",
+        "expected_gast_deg": "285.42714249999995"
+      },
+      "request": {
+        "date": "2025-08-26",
+        "time": "20:40:19",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "51af2f916b68b9438db7f7923f69fab25f0462038bb32695edd11ac2da51993c",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "19:01:42.2675",
+          "gast": "19:01:42.5142"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "285.426114583333",
+        "gast_deg": "285.427142500000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 6,
+      "repository": {
+        "jd_ut1": "2461439.1521296296",
+        "jde_tt": "2461439.1529303705",
+        "expected_gmst_deg": "7.372285",
+        "expected_gast_deg": "7.37536"
+      },
+      "request": {
+        "date": "2027-02-02",
+        "time": "15:39:04",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "bd062a55bd88e56a371c311c952deaa0554188583c4cfe160a8e019b69fa47f1",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "00:29:29.3484",
+          "gast": "00:29:30.0864"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "7.372285000000",
+        "gast_deg": "7.375360000000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 7,
+      "repository": {
+        "jd_ut1": "2461409.4263541666",
+        "jde_tt": "2461409.4271549075",
+        "expected_gmst_deg": "76.79398583333332",
+        "expected_gast_deg": "76.79671083333334"
+      },
+      "request": {
+        "date": "2027-01-03",
+        "time": "22:13:57",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "5237bf1830aa8534b29f087c72d0c4230e55474bc38f9c075b01bee284da37f7",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "05:07:10.5566",
+          "gast": "05:07:11.2106"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "76.793985833333",
+        "gast_deg": "76.796710833333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 8,
+      "repository": {
+        "jd_ut1": "2460748.985625",
+        "jde_tt": "2460748.986425741",
+        "expected_gmst_deg": "347.1698183333333",
+        "expected_gast_deg": "347.1701175"
+      },
+      "request": {
+        "date": "2025-03-14",
+        "time": "11:39:18",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "22f08b131053058ea33b12e5119e2e1944db6dc4bf2f89eee3dd23c6918968d2",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "23:08:40.7564",
+          "gast": "23:08:40.8282"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "347.169818333333",
+        "gast_deg": "347.170117500000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 9,
+      "repository": {
+        "jd_ut1": "2460858.66462963",
+        "jde_tt": "2460858.6654303707",
+        "expected_gmst_deg": "339.71630749999997",
+        "expected_gast_deg": "339.7170433333333"
+      },
+      "request": {
+        "date": "2025-07-02",
+        "time": "03:57:04",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "61455d1aefef3ca9c61f3470f50a8689798694fe862e78844ba803139a5f3861",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "22:38:51.9138",
+          "gast": "22:38:52.0904"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "339.716307500000",
+        "gast_deg": "339.717043333333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 10,
+      "repository": {
+        "jd_ut1": "2460866.4265046297",
+        "jde_tt": "2460866.4273053706",
+        "expected_gmst_deg": "261.64177916666665",
+        "expected_gast_deg": "261.64261125"
+      },
+      "request": {
+        "date": "2025-07-09",
+        "time": "22:14:10",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "ecbbe88f8f38b5fe137873d38d51ed93212cbe423eca2c48d3f52df4db6c6cd6",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:26:34.0270",
+          "gast": "17:26:34.2267"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "261.641779166667",
+        "gast_deg": "261.642611250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 11,
+      "repository": {
+        "jd_ut1": "2461175.196574074",
+        "jde_tt": "2461175.197374815",
+        "expected_gmst_deg": "123.20518583333333",
+        "expected_gast_deg": "123.20663124999999"
+      },
+      "request": {
+        "date": "2026-05-14",
+        "time": "16:43:04",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "7fefa208102486d470f7b1d055614b6e44b529c25fdbac1779c0d23790e1431a",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "08:12:49.2446",
+          "gast": "08:12:49.5915"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "123.205185833333",
+        "gast_deg": "123.206631250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 12,
+      "repository": {
+        "jd_ut1": "2461671.218391204",
+        "jde_tt": "2461671.2191919447",
+        "expected_gmst_deg": "259.9619520833333",
+        "expected_gast_deg": "259.96525375"
+      },
+      "request": {
+        "date": "2027-09-22",
+        "time": "17:14:29",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "71f32a4764a71bcb49df5869404a176e0561418d2a9e102b1c6627cdfbffabe9",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:19:50.8685",
+          "gast": "17:19:51.6609"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "259.961952083333",
+        "gast_deg": "259.965253750000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 13,
+      "repository": {
+        "jd_ut1": "2460775.7176967594",
+        "jde_tt": "2460775.7184975003",
+        "expected_gmst_deg": "277.06404791666665",
+        "expected_gast_deg": "277.0641870833333"
+      },
+      "request": {
+        "date": "2025-04-10",
+        "time": "05:13:29",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "100bc7a0b165e7229179831cb05f095e14447cf3f9c7bc81a98e15c17116e20a",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "18:28:15.3715",
+          "gast": "18:28:15.4049"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "277.064047916667",
+        "gast_deg": "277.064187083333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 14,
+      "repository": {
+        "jd_ut1": "2460973.0421875",
+        "jde_tt": "2460973.0429882407",
+        "expected_gmst_deg": "228.37307958333335",
+        "expected_gast_deg": "228.37374125"
+      },
+      "request": {
+        "date": "2025-10-24",
+        "time": "13:00:45",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "033d1bc1e6dc1f2f45335a6654ec56ac5939f08e076f14840bafd0be8a89c47d",
+        "bytes": 511,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "15:13:29.5391",
+          "gast": "15:13:29.6979"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "228.373079583333",
+        "gast_deg": "228.373741250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 15,
+      "repository": {
+        "jd_ut1": "2461558.550138889",
+        "jde_tt": "2461558.55093963",
+        "expected_gmst_deg": "268.3399520833333",
+        "expected_gast_deg": "268.34274208333335"
+      },
+      "request": {
+        "date": "2027-06-02",
+        "time": "01:12:12",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "dab24b72245c528601bfaaafdb393d3d8f6e1fe6d20c8ccd54094998d68fc723",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:53:21.5885",
+          "gast": "17:53:22.2581"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "268.339952083333",
+        "gast_deg": "268.342742083333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 16,
+      "repository": {
+        "jd_ut1": "2461312.031111111",
+        "jde_tt": "2461312.031911852",
+        "expected_gmst_deg": "198.50912083333333",
+        "expected_gast_deg": "198.51122958333332"
+      },
+      "request": {
+        "date": "2026-09-28",
+        "time": "12:44:48",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "2bb055a8cfa0e0e372720b3cf687724dd6ed6926feb74d9e47fe5bfcfc326726",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "13:14:02.1890",
+          "gast": "13:14:02.6951"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "198.509120833333",
+        "gast_deg": "198.511229583333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 17,
+      "repository": {
+        "jd_ut1": "2460922.3513310184",
+        "jde_tt": "2460922.3521317593",
+        "expected_gmst_deg": "289.70143708333336",
+        "expected_gast_deg": "289.70248541666666"
+      },
+      "request": {
+        "date": "2025-09-03",
+        "time": "20:25:55",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "0026affb3d6a1bbaac800bca565181105321f9a343aee79a96dc1c5299b87c36",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "19:18:48.3449",
+          "gast": "19:18:48.5965"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "289.701437083333",
+        "gast_deg": "289.702485416667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 18,
+      "repository": {
+        "jd_ut1": "2460952.1751967594",
+        "jde_tt": "2460952.1759975003",
+        "expected_gmst_deg": "255.68891875",
+        "expected_gast_deg": "255.68976791666668"
+      },
+      "request": {
+        "date": "2025-10-03",
+        "time": "16:12:17",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "d15dfbfae2fb0d48b5c981e1019cbad7cfb4b64f9a688bb0ac885779f707cbb6",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:02:45.3405",
+          "gast": "17:02:45.5443"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "255.688918750000",
+        "gast_deg": "255.689767916667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 19,
+      "repository": {
+        "jd_ut1": "2460861.441574074",
+        "jde_tt": "2460861.442374815",
+        "expected_gmst_deg": "262.1533954166666",
+        "expected_gast_deg": "262.15410375"
+      },
+      "request": {
+        "date": "2025-07-04",
+        "time": "22:35:52",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "add50c5fa6521719ee6ab27c8dce27d2b5648ff47759238c75e282165b2a1c4e",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:28:36.8149",
+          "gast": "17:28:36.9849"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "262.153395416667",
+        "gast_deg": "262.154103750000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 20,
+      "repository": {
+        "jd_ut1": "2461515.094502315",
+        "jde_tt": "2461515.095303056",
+        "expected_gmst_deg": "61.47885166666667",
+        "expected_gast_deg": "61.481521666666666"
+      },
+      "request": {
+        "date": "2027-04-19",
+        "time": "14:16:05",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "ae5e8ba20254243ae1fe3f005bc9e19b8e09b5f1328b6144427b3ac0eb87dbd5",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "04:05:54.9244",
+          "gast": "04:05:55.5652"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "61.478851666667",
+        "gast_deg": "61.481521666667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 21,
+      "repository": {
+        "jd_ut1": "2461451.157361111",
+        "jde_tt": "2461451.158161852",
+        "expected_gmst_deg": "21.088542916666665",
+        "expected_gast_deg": "21.09155125"
+      },
+      "request": {
+        "date": "2027-02-14",
+        "time": "15:46:36",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "9bce24f47ca2d604a0dcade1f1f2d6f184d06d5bd4f89f13607ffe0cc70c3763",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "01:24:21.2503",
+          "gast": "01:24:21.9723"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "21.088542916667",
+        "gast_deg": "21.091551250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 22,
+      "repository": {
+        "jd_ut1": "2461660.4346875",
+        "jde_tt": "2461660.435488241",
+        "expected_gmst_deg": "327.19968958333334",
+        "expected_gast_deg": "327.20317916666664"
+      },
+      "request": {
+        "date": "2027-09-11",
+        "time": "22:25:57",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "7f98c29f852aa8a9a4e68d1b1e10d577ff6c6506ddbe2f5ff73de44e14601b13",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "21:48:47.9255",
+          "gast": "21:48:48.7630"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "327.199689583333",
+        "gast_deg": "327.203179166667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 23,
+      "repository": {
+        "jd_ut1": "2461002.814178241",
+        "jde_tt": "2461002.814978982",
+        "expected_gmst_deg": "175.6344308333333",
+        "expected_gast_deg": "175.63528624999998"
+      },
+      "request": {
+        "date": "2025-11-23",
+        "time": "07:32:25",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "6641bdd59297fc3f9d97a97f7d5d2b722b4f672303a57f914e4b2a9310a6ae4d",
+        "bytes": 511,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "11:42:32.2634",
+          "gast": "11:42:32.4687"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "175.634430833333",
+        "gast_deg": "175.635286250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 24,
+      "repository": {
+        "jd_ut1": "2461227.171678241",
+        "jde_tt": "2461227.172478982",
+        "expected_gmst_deg": "165.47181041666667",
+        "expected_gast_deg": "165.47395166666666"
+      },
+      "request": {
+        "date": "2026-07-05",
+        "time": "16:07:13",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "f0803ee270ec4abe3d8f30aa7644f33d85d8d267a504c73d39a4dbec99f08828",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "11:01:53.2345",
+          "gast": "11:01:53.7484"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "165.471810416667",
+        "gast_deg": "165.473951666667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 25,
+      "repository": {
+        "jd_ut1": "2461264.4290046296",
+        "jde_tt": "2461264.4298053705",
+        "expected_gmst_deg": "294.83189625",
+        "expected_gast_deg": "294.8344020833333"
+      },
+      "request": {
+        "date": "2026-08-11",
+        "time": "22:17:46",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "9d8f8cffee3515f4492150bcb4a069dd29a97e05c0dd2165e4da5f9e3d2dba7d",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "19:39:19.6551",
+          "gast": "19:39:20.2565"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "294.831896250000",
+        "gast_deg": "294.834402083333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 26,
+      "repository": {
+        "jd_ut1": "2460691.1211458333",
+        "jde_tt": "2460691.121946574",
+        "expected_gmst_deg": "338.92334666666665",
+        "expected_gast_deg": "338.92365041666665"
+      },
+      "request": {
+        "date": "2025-01-15",
+        "time": "14:54:27",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "adf20531e8c6e692c0a6e4d7c97bd33ad684a8767d790ecc9ab1034dc9e4dd2d",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "22:35:41.6032",
+          "gast": "22:35:41.6761"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "338.923346666667",
+        "gast_deg": "338.923650416667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 27,
+      "repository": {
+        "jd_ut1": "2461440.0376273147",
+        "jde_tt": "2461440.0384280556",
+        "expected_gmst_deg": "327.02423999999996",
+        "expected_gast_deg": "327.02733666666666"
+      },
+      "request": {
+        "date": "2027-02-03",
+        "time": "12:54:11",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "eeb8fe8224a2bc848d04ee351df71bfb09341efa5f57d2801300bb46d762eb77",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "21:48:05.8176",
+          "gast": "21:48:06.5608"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "327.024240000000",
+        "gast_deg": "327.027336666667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 28,
+      "repository": {
+        "jd_ut1": "2461531.4332407406",
+        "jde_tt": "2461531.4340414815",
+        "expected_gmst_deg": "199.52891916666667",
+        "expected_gast_deg": "199.5315175"
+      },
+      "request": {
+        "date": "2027-05-05",
+        "time": "22:23:52",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "f6a8994e36e7506437293f7376fdad45bef60b36d246be076b6a9f84ff54ea58",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "13:18:06.9406",
+          "gast": "13:18:07.5642"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "199.528919166667",
+        "gast_deg": "199.531517500000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 29,
+      "repository": {
+        "jd_ut1": "2460777.7849768517",
+        "jde_tt": "2460777.7857775926",
+        "expected_gmst_deg": "303.32249041666665",
+        "expected_gast_deg": "303.3225583333333"
+      },
+      "request": {
+        "date": "2025-04-12",
+        "time": "06:50:22",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "91b62eaebecb9c393896cbfa2648e91f6daa88845549b22a17f688b329538276",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "20:13:17.3977",
+          "gast": "20:13:17.4140"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "303.322490416667",
+        "gast_deg": "303.322558333333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 30,
+      "repository": {
+        "jd_ut1": "2461306.8025115742",
+        "jde_tt": "2461306.803312315",
+        "expected_gmst_deg": "111.05973208333333",
+        "expected_gast_deg": "111.06200625000001"
+      },
+      "request": {
+        "date": "2026-09-23",
+        "time": "07:15:37",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "3bb2de6afed6bcea597a5ea4179d94cb2b56e8a39e761f596d76eb4c8005a242",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "07:24:14.3357",
+          "gast": "07:24:14.8815"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "111.059732083333",
+        "gast_deg": "111.062006250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 31,
+      "repository": {
+        "jd_ut1": "2461650.167847222",
+        "jde_tt": "2461650.168647963",
+        "expected_gmst_deg": "221.01770541666664",
+        "expected_gast_deg": "221.02123041666664"
+      },
+      "request": {
+        "date": "2027-09-01",
+        "time": "16:01:42",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "a9ad567b7b7deccd5bc6b242ec6b8fbf149d309963596a5ba86e99c0417cf3fc",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "14:44:04.2493",
+          "gast": "14:44:05.0953"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "221.017705416667",
+        "gast_deg": "221.021230416667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 32,
+      "repository": {
+        "jd_ut1": "2461547.6035763887",
+        "jde_tt": "2461547.6043771296",
+        "expected_gmst_deg": "276.78800125",
+        "expected_gast_deg": "276.7907633333333"
+      },
+      "request": {
+        "date": "2027-05-22",
+        "time": "02:29:09",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "3230293d862b5ff83c45a198b94af113d4bd0018dacb0a7f76c12d548ee4e385",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "18:27:09.1203",
+          "gast": "18:27:09.7832"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "276.788001250000",
+        "gast_deg": "276.790763333333"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 33,
+      "repository": {
+        "jd_ut1": "2460800.389699074",
+        "jde_tt": "2460800.390499815",
+        "expected_gmst_deg": "183.30277541666666",
+        "expected_gast_deg": "183.30294874999998"
+      },
+      "request": {
+        "date": "2025-05-04",
+        "time": "21:21:10",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "299a84aab4ccb392bdcba3ec4221a57684f255809684d3e75afa34e5231b1985",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "12:13:12.6661",
+          "gast": "12:13:12.7077"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "183.302775416667",
+        "gast_deg": "183.302948750000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 34,
+      "repository": {
+        "jd_ut1": "2461653.772337963",
+        "jde_tt": "2461653.773138704",
+        "expected_gmst_deg": "82.18712875",
+        "expected_gast_deg": "82.19056125"
+      },
+      "request": {
+        "date": "2027-09-05",
+        "time": "06:32:10",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "526731916a603219d3c6dedf642611e2e5c81815c8b50743f4685cd8095a798e",
+        "bytes": 509,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "05:28:44.9109",
+          "gast": "05:28:45.7347"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "82.187128750000",
+        "gast_deg": "82.190561250000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 35,
+      "repository": {
+        "jd_ut1": "2461518.8428703705",
+        "jde_tt": "2461518.8436711114",
+        "expected_gmst_deg": "334.5859208333333",
+        "expected_gast_deg": "334.5885616666667"
+      },
+      "request": {
+        "date": "2027-04-23",
+        "time": "08:13:44",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "c667c345acc41c152050800ed277849c6f2859b8802159c602a76b1868d35298",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "22:18:20.6210",
+          "gast": "22:18:21.2548"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "334.585920833333",
+        "gast_deg": "334.588561666667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 36,
+      "repository": {
+        "jd_ut1": "2461737.7639699075",
+        "jde_tt": "2461737.7647706484",
+        "expected_gmst_deg": "161.96076",
+        "expected_gast_deg": "161.963985"
+      },
+      "request": {
+        "date": "2027-11-28",
+        "time": "06:20:07",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "efe2fac1e5d17be41ea1f497ab4ef9e0d281f15e9911eb1b9780b47f6d3bd965",
+        "bytes": 511,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "10:47:50.5824",
+          "gast": "10:47:51.3564"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "161.960760000000",
+        "gast_deg": "161.963985000000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 37,
+      "repository": {
+        "jd_ut1": "2461188.5507870372",
+        "jde_tt": "2461188.551587778",
+        "expected_gmst_deg": "263.8843975",
+        "expected_gast_deg": "263.8859954166666"
+      },
+      "request": {
+        "date": "2026-05-28",
+        "time": "01:13:08",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "58e9e91f254ef36649e62d67e45097a52838424024f43c3257ea0eafcc3e0e45",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "17:35:32.2554",
+          "gast": "17:35:32.6389"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "263.884397500000",
+        "gast_deg": "263.885995416667"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 38,
+      "repository": {
+        "jd_ut1": "2461613.776666667",
+        "jde_tt": "2461613.7774674078",
+        "expected_gmst_deg": "44.32383416666667",
+        "expected_gast_deg": "44.327245000000005"
+      },
+      "request": {
+        "date": "2027-07-27",
+        "time": "06:38:24",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "c36a21c298589dd0c29f32c4b97963ff1e590cea46ad9ff7ca0d012dfc8afe9e",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "02:57:17.7202",
+          "gast": "02:57:18.5388"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "44.323834166667",
+        "gast_deg": "44.327245000000"
+      }
+    },
+    {
+      "kind": "greenwich",
+      "index": 39,
+      "repository": {
+        "jd_ut1": "2460851.6308101853",
+        "jde_tt": "2460851.6316109262",
+        "expected_gmst_deg": "320.6084416666667",
+        "expected_gast_deg": "320.60908291666664"
+      },
+      "request": {
+        "date": "2025-06-25",
+        "time": "03:08:22",
+        "coords": "0,0",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "c21ebaa422499f7f69be456c6ff1f47da56e8623eb127377ed8266c7f277a0a1",
+        "bytes": 510,
+        "apiversion": "4.0.1",
+        "cells": {
+          "gmst": "21:22:26.0260",
+          "gast": "21:22:26.1799"
+        }
+      },
+      "normalized_cells": {
+        "gmst_deg": "320.608441666667",
+        "gast_deg": "320.609082916667"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 0,
+      "repository": {
+        "jd_ut1": "2461123.9418287035",
+        "jde_tt": "2461123.9426294444",
+        "longitude_west": "-74.0403",
+        "expected_last_deg": "55.0196375"
+      },
+      "request": {
+        "date": "2026-03-24",
+        "time": "10:36:14",
+        "coords": "0,74.0403",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "d678ba9dd7b4fdc4675e4de619b42353c1239746cba45d11df5a045656ec53d7",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "03:40:04.7130"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "55.019637500000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 1,
+      "repository": {
+        "jd_ut1": "2461409.5752314813",
+        "jde_tt": "2461409.5760322222",
+        "longitude_west": "-137.9183",
+        "expected_last_deg": "268.45758875"
+      },
+      "request": {
+        "date": "2027-01-04",
+        "time": "01:48:20",
+        "coords": "0,137.9183",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "e2314e2ffc4e3a912ebfd0d221ba3cc4a0d348078a6303a22cbeb47155a4ba1c",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "17:53:49.8213"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "268.457588750000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 2,
+      "repository": {
+        "jd_ut1": "2460921.334583333",
+        "jde_tt": "2460921.335384074",
+        "longitude_west": "-29.7034",
+        "expected_last_deg": "312.3745458333333"
+      },
+      "request": {
+        "date": "2025-09-02",
+        "time": "20:01:48",
+        "coords": "0,29.7034",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "9411b4c2a7e9e24a23ccd01617ff62f32df392d752ed8da811a8d717571a21bc",
+        "bytes": 513,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "20:49:29.8910"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "312.374545833333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 3,
+      "repository": {
+        "jd_ut1": "2460861.5418171296",
+        "jde_tt": "2460861.5426178705",
+        "longitude_west": "48.7255",
+        "expected_last_deg": "249.61490833333335"
+      },
+      "request": {
+        "date": "2025-07-05",
+        "time": "01:00:13",
+        "coords": "0,-48.7255",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "974e843643144aeb17bbb4d04edd74c402eb8ce497e1554656f8b2b9b9b84a3c",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "16:38:27.5780"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "249.614908333333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 4,
+      "repository": {
+        "jd_ut1": "2460834.1820486113",
+        "jde_tt": "2460834.1828493522",
+        "longitude_west": "-60.0960",
+        "expected_last_deg": "201.9522795833333"
+      },
+      "request": {
+        "date": "2025-06-07",
+        "time": "16:22:09",
+        "coords": "0,60.096",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "bf13f192ac4b32b3d5d3b8b822d4929124d6a99670c0b2ce0321c757adcda7f3",
+        "bytes": 512,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "13:27:48.5471"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "201.952279583333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 5,
+      "repository": {
+        "jd_ut1": "2461311.9063657406",
+        "jde_tt": "2461311.9071664815",
+        "longitude_west": "-43.4381",
+        "expected_last_deg": "196.91804375"
+      },
+      "request": {
+        "date": "2026-09-28",
+        "time": "09:45:10",
+        "coords": "0,43.4381",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "d28cb3e66fdb71a04bf742260ddc303fcb68f16498609004541600b4fbb2fcc6",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "13:07:40.3305"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "196.918043750000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 6,
+      "repository": {
+        "jd_ut1": "2460793.662488426",
+        "jde_tt": "2460793.663289167",
+        "longitude_west": "-107.9593",
+        "expected_last_deg": "22.835579583333335"
+      },
+      "request": {
+        "date": "2025-04-28",
+        "time": "03:53:59",
+        "coords": "0,107.9593",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "4c1da42a564ebf3a047be7de7a425ac2cbeca17839ff410016c8126c90dac92e",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "01:31:20.5391"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "22.835579583333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 7,
+      "repository": {
+        "jd_ut1": "2460857.679351852",
+        "jde_tt": "2460857.6801525927",
+        "longitude_west": "-152.8154",
+        "expected_last_deg": "136.86132375"
+      },
+      "request": {
+        "date": "2025-07-01",
+        "time": "04:18:16",
+        "coords": "0,152.8154",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "d448eb56076107864ad32243d7acdc4c187e69b8617181d035a8f8e866325766",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "09:07:26.7177"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "136.861323750000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 8,
+      "repository": {
+        "jd_ut1": "2461373.2350462964",
+        "jde_tt": "2461373.2358470373",
+        "longitude_west": "90.6598",
+        "expected_last_deg": "241.59378666666672"
+      },
+      "request": {
+        "date": "2026-11-28",
+        "time": "17:38:28",
+        "coords": "0,-90.6598",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "e8c35e6631e4d459b8c53f8ea557822a25e3aa008f86ed3ca40b17180388c666",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "16:06:22.5088"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "241.593786666667"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 9,
+      "repository": {
+        "jd_ut1": "2461013.8825347223",
+        "jde_tt": "2461013.8833354632",
+        "longitude_west": "166.0591",
+        "expected_last_deg": "45.09409958333334"
+      },
+      "request": {
+        "date": "2025-12-04",
+        "time": "09:10:51",
+        "coords": "0,-166.0591",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "37e5cb17a0b481bc3941dd03364b50e63f8fa78c70572c3aa1d8da73f036be4c",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "03:00:22.5839"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "45.094099583333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 10,
+      "repository": {
+        "jd_ut1": "2461138.316574074",
+        "jde_tt": "2461138.317374815",
+        "longitude_west": "14.2908",
+        "expected_last_deg": "115.76520708333334"
+      },
+      "request": {
+        "date": "2026-04-07",
+        "time": "19:35:52",
+        "coords": "0,-14.2908",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "aeb0930129403f80a372327991661461f380b9d38f74e84241b9b606d37b2a2e",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "07:43:03.6497"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "115.765207083333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 11,
+      "repository": {
+        "jd_ut1": "2461138.5236574076",
+        "jde_tt": "2461138.5244581485",
+        "longitude_west": "110.4733",
+        "expected_last_deg": "94.33682166666667"
+      },
+      "request": {
+        "date": "2026-04-08",
+        "time": "00:34:04",
+        "coords": "0,-110.4733",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "9174023bc40e9d11be523867ca4d187faebbbda7dfbf337fdf0a2bbd21a607c1",
+        "bytes": 515,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "06:17:20.8372"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "94.336821666667"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 12,
+      "repository": {
+        "jd_ut1": "2461188.569409722",
+        "jde_tt": "2461188.570210463",
+        "longitude_west": "-98.3976",
+        "expected_last_deg": "9.0061175"
+      },
+      "request": {
+        "date": "2026-05-28",
+        "time": "01:39:57",
+        "coords": "0,98.3976",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "91c0d6e4cd2c2cdc754678274c5cd93352a4c6b386b27d6046cb2769fcf2c394",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "00:36:01.4682"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "9.006117500000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 13,
+      "repository": {
+        "jd_ut1": "2461361.8996643517",
+        "jde_tt": "2461361.9004650926",
+        "longitude_west": "-173.2139",
+        "expected_last_deg": "13.557140833333335"
+      },
+      "request": {
+        "date": "2026-11-17",
+        "time": "09:35:31",
+        "coords": "0,173.2139",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "58b678eac367e1ebe7ba4277b41cbeabb4d1534dd29ee61c8d7627085805b428",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "00:54:13.7138"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "13.557140833333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 14,
+      "repository": {
+        "jd_ut1": "2461557.615335648",
+        "jde_tt": "2461557.616136389",
+        "longitude_west": "-169.3442",
+        "expected_last_deg": "100.23639166666668"
+      },
+      "request": {
+        "date": "2027-06-01",
+        "time": "02:46:05",
+        "coords": "0,169.3442",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "5946ac36c81f9554eaa072cc60a5346f4108cf681f757c74ae2e7797cadccfc8",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "06:40:56.7340"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "100.236391666667"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 15,
+      "repository": {
+        "jd_ut1": "2460957.538252315",
+        "jde_tt": "2460957.539053056",
+        "longitude_west": "-34.7657",
+        "expected_last_deg": "66.44140166666668"
+      },
+      "request": {
+        "date": "2025-10-09",
+        "time": "00:55:05",
+        "coords": "0,34.7657",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "bc33e940e9cfe419d2233cb275dbef4877f45ec2df0c335d554f163240c58dce",
+        "bytes": 514,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "04:25:45.9364"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "66.441401666667"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 16,
+      "repository": {
+        "jd_ut1": "2461400.8136689817",
+        "jde_tt": "2461400.8144697226",
+        "longitude_west": "-38.2352",
+        "expected_last_deg": "245.9761595833333"
+      },
+      "request": {
+        "date": "2026-12-26",
+        "time": "07:31:41",
+        "coords": "0,38.2352",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "49485416f22d0f5678a81cd84a0f312923acf9e52e3dde78867bbdb53a71396d",
+        "bytes": 515,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "16:23:54.2783"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "245.976159583333"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 17,
+      "repository": {
+        "jd_ut1": "2461450.3994907406",
+        "jde_tt": "2461450.4002914815",
+        "longitude_west": "111.5716",
+        "expected_last_deg": "355.93961375"
+      },
+      "request": {
+        "date": "2027-02-13",
+        "time": "21:35:16",
+        "coords": "0,-111.5716",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "e3b437d36fe030112a510a3a846b46966634fa2da68613da4e686acf314f4101",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "23:43:45.5073"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "355.939613750000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 18,
+      "repository": {
+        "jd_ut1": "2461023.501689815",
+        "jde_tt": "2461023.502490556",
+        "longitude_west": "-153.2071",
+        "expected_last_deg": "236.73741625"
+      },
+      "request": {
+        "date": "2025-12-14",
+        "time": "00:02:26",
+        "coords": "0,153.2071",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "42d14907bdd02cc19396406bbbfbf6fe532c8efb41c465340bfe33db8bb1ae5f",
+        "bytes": 516,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "15:46:56.9799"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "236.737416250000"
+      }
+    },
+    {
+      "kind": "local",
+      "index": 19,
+      "repository": {
+        "jd_ut1": "2461734.4402430556",
+        "jde_tt": "2461734.4410437965",
+        "longitude_west": "-85.3336",
+        "expected_last_deg": "127.47985083333333"
+      },
+      "request": {
+        "date": "2027-11-24",
+        "time": "22:33:57",
+        "coords": "0,85.3336",
+        "reps": "1",
+        "intv_mag": "1",
+        "intv_unit": "days"
+      },
+      "response": {
+        "sha256": "9043f2099779ac0dc1d035fc9340ef2704da149b22368ac13ae11854d2d84e05",
+        "bytes": 515,
+        "apiversion": "4.0.1",
+        "cells": {
+          "last": "08:29:55.1642"
+        }
+      },
+      "normalized_cells": {
+        "last_deg": "127.479850833333"
+      }
+    }
+  ]
+}

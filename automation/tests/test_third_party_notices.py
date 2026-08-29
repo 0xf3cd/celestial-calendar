@@ -38,7 +38,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "68a14e64cc50216921321ad02199346786915f0dec84daeee9360c6ccc0da5ef"
+CANONICAL_NOTICE_SHA256 = "ea7cfd56ab51ae21c63a8786a228a900325d7235a532bab78e7353c7417ca9e3"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -62,12 +62,19 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
   assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 8
-  for marking in NOTICE_SOURCES[-2].marking:
+  assert len(NOTICE_SOURCES) == 9
+  for marking in NOTICE_SOURCES[-3].marking:
     assert marking.encode() in notice
-  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-2].marking[1]
-  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-2].marking[-1]
-  assert NOTICE_SOURCES[-1].title == "ERFA v2.0.1 — LICENSE"
+  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-3].marking[1]
+  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-3].marking[-1]
+  assert NOTICE_SOURCES[-2].title == "ERFA v2.0.1 — LICENSE"
+  assert NOTICE_SOURCES[-1].title == "NASA/TP-2006-214141 — acknowledgment"
+  assert NOTICE_SOURCES[-1].applicability == (
+    "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the "
+    "NASA-sourced historical Delta-T validation values in src/test"
+  )
+  assert b"NASA/TP-2006-214141 (October 2006)" in notice
+  assert b"not an upstream-byte identity claim" in notice
   assert b"Redistributions in binary form must reproduce the above copyright" in notice
 
 
@@ -94,7 +101,7 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
   elif mutation == "marking":
-    sources = (*sources[:-2], replace(sources[-2], marking=()), sources[-1])
+    sources = (*sources[:-3], replace(sources[-3], marking=()), *sources[-2:])
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:
@@ -106,3 +113,10 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
 def test_notice_assembly_rejects_duplicate_inputs():
   with pytest.raises(RuntimeError, match="must be unique"):
     assemble_notices(sources=(*NOTICE_SOURCES, NOTICE_SOURCES[0]))
+
+
+def test_canonical_notice_byte_mutation_fails():
+  mutated = ROOT_NOTICE.read_bytes() + b"changed"
+
+  with pytest.raises(AssertionError):
+    assert mutated == assemble_notices()

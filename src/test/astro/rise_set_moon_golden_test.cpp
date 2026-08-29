@@ -48,6 +48,9 @@
 // - The 2026-05-14 / 2026-06-18 Tromsø rows are DOUBLE-EVENT days: USNO lists two events of
 //   one kind in the same cell; this library reports one event per cell — the later one (see
 //   `moon::calculate`'s note) — and the crawler's last-wins dict keeps it accordingly.
+// - The complete 181-request current-endpoint recapture and response hashes are pinned in
+//   `src/test/provenance/usno/2026-08-26/v12-rstt-oneday.json`. Its API 4.0.1 field is
+//   current evidence, not an inferred version for the historical 2026-08-15 collection.
 // - Polar direction inference: a transit-only row means the Moon stayed above the horizon all
 //   day (USNO lists the upper culmination) → DAY; an all-blank row means it never rose → NIGHT.
 // Tolerance: ±2 min, the same contract as the solar golden set (#44) — USNO cells are

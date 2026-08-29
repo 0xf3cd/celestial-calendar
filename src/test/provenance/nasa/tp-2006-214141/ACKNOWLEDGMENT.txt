@@ -1,0 +1,5 @@
+CelestialCalendar acknowledges Fred Espenak and Jean Meeus, Five Millennium
+Canon of Solar Eclipses: -1999 to +3000, NASA/TP-2006-214141 (October 2006),
+NASA Technical Reports Server document 20070003587, as the source of the
+Delta-T polynomial material in src/astro/delta_t.hpp and the NASA-sourced
+historical Delta-T validation values in src/test.

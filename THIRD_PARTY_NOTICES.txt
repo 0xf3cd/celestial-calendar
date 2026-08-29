@@ -1774,3 +1774,17 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+==============================================================================
+NASA/TP-2006-214141 — acknowledgment
+Applies to: the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp and the NASA-sourced historical Delta-T validation values in src/test.
+Source: https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html
+Source-file SHA-256: 1f772efcfc102cc2e2bccdefa3720cbbba1c0a7835173c0af60c4efdb9d31670
+The NASA publication bytes are not included in this repository; the checked provenance relation is a transcription record, not an upstream-byte identity claim.
+==============================================================================
+
+CelestialCalendar acknowledges Fred Espenak and Jean Meeus, Five Millennium
+Canon of Solar Eclipses: -1999 to +3000, NASA/TP-2006-214141 (October 2006),
+NASA Technical Reports Server document 20070003587, as the source of the
+Delta-T polynomial material in src/astro/delta_t.hpp and the NASA-sourced
+historical Delta-T validation values in src/test.
+

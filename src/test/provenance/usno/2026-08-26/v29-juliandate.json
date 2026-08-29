@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "row": "V29",
+  "service_url": "https://aa.usno.navy.mil/data/JulianDate",
+  "endpoint": "https://aa.usno.navy.mil/api/juliandate",
+  "request": {
+    "date": "2024-06-01",
+    "time": "12:00:00"
+  },
+  "historical_collection": {
+    "date": null,
+    "apiversion": null,
+    "response_body_retained": false
+  },
+  "current_recapture": {
+    "date": "2026-08-26",
+    "response_sha256": "3637571ae2f4c4b7bca03e7e57d99ba1d14982a5b339b4efd1aa97dc967e6c84",
+    "response": {
+      "apiversion": "4.0.1",
+      "data": [
+        {
+          "day": 1,
+          "era": "AD",
+          "jd": "2460463.000000",
+          "month": 6,
+          "time": "12:00:00.0",
+          "tz": 0,
+          "year": 2024
+        }
+      ]
+    }
+  },
+  "repository_relation": {
+    "path": "src/test/shared_lib/cabi_smoke_test.cpp",
+    "jd": "2460463.000000"
+  }
+}

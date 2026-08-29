@@ -186,7 +186,8 @@ find_coefficients(const int32_t year) -> std::optional<
 #pragma region Algorithm 2
 
 namespace algo2 {
-// Algo2 ref: https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+// Source: Espenak and Meeus, NASA/TP-2006-214141, Section 2.7,
+// equations (11)-(25), printed pages 14-16 (NTRS document 20070003587).
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 2.
@@ -196,7 +197,8 @@ namespace algo2 {
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html
+ * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
+ *      https://ntrs.nasa.gov/citations/20070003587
  * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {

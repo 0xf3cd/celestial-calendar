@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "publication": {
+    "authors": [
+      "Fred Espenak",
+      "Jean Meeus"
+    ],
+    "title": "Five Millennium Canon of Solar Eclipses: -1999 to +3000",
+    "identifier": "NASA/TP-2006-214141",
+    "published": "2006-10",
+    "ntrs_document": "20070003587",
+    "ntrs_url": "https://ntrs.nasa.gov/citations/20070003587",
+    "acknowledgment_url": "https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html",
+    "upstream_publication_bytes_retained": false,
+    "upstream_byte_identity_claim": false
+  },
+  "runtime_relation": {
+    "repository_path": "src/astro/delta_t.hpp",
+    "repository_symbol": "astro::delta_t::algo2::compute",
+    "source_location": "Section 2.7, equations (11)-(25), printed pages 14-16",
+    "input_relation": "The source decimal year y is the repository parameter year.",
+    "branches": [
+      {
+        "equation": 11,
+        "interval": "year < -500",
+        "cpp": "if (year < -500) { const double u = (year - 1820) / 100.0; return -20.0 + (32.0 * std::pow(u, 2)); }"
+      },
+      {
+        "equation": 12,
+        "interval": "-500 <= year < 500",
+        "cpp": "if (year >= -500 and year < 500) { const double u = year / 100.0; return 10583.6 - (1014.41 * u) + (33.78311 * std::pow(u, 2)) - (5.952053 * std::pow(u, 3)) - (0.1798452 * std::pow(u, 4)) + (0.022174192 * std::pow(u, 5)) + (0.0090316521 * std::pow(u, 6)); }"
+      },
+      {
+        "equation": 13,
+        "interval": "500 <= year < 1600",
+        "cpp": "if (year >= 500 and year < 1600) { const double u = (year - 1000) / 100.0; return 1574.2 - (556.01 * u) + (71.23472 * std::pow(u, 2)) + (0.319781 * std::pow(u, 3)) - (0.8503463 * std::pow(u, 4)) - (0.005050998 * std::pow(u, 5)) + (0.0083572073 * std::pow(u, 6)); }"
+      },
+      {
+        "equation": 14,
+        "interval": "1600 <= year < 1700",
+        "cpp": "if (year >= 1600 and year < 1700) { const double t = year - 1600; return 120.0 - (0.9808 * t) - (0.01532 * std::pow(t, 2)) + (std::pow(t, 3) / 7129.0); }"
+      },
+      {
+        "equation": 15,
+        "interval": "1700 <= year < 1800",
+        "cpp": "if (year >= 1700 and year < 1800) { const double t = year - 1700; return 8.83 + (0.1603 * t) - (0.0059285 * std::pow(t, 2)) + (0.00013336 * std::pow(t, 3)) - (std::pow(t, 4) / 1174000.0); }"
+      },
+      {
+        "equation": 16,
+        "interval": "1800 <= year < 1860",
+        "cpp": "if (year >= 1800 and year < 1860) { const double t = year - 1800; return 13.72 - (0.332447 * t) + (0.0068612 * std::pow(t, 2)) + (0.0041116 * std::pow(t, 3)) - (0.00037436 * std::pow(t, 4)) + (0.0000121272 * std::pow(t, 5)) - (0.0000001699 * std::pow(t, 6)) + (0.000000000875 * std::pow(t, 7)); }"
+      },
+      {
+        "equation": 17,
+        "interval": "1860 <= year < 1900",
+        "cpp": "if (year >= 1860 and year < 1900) { const double t = year - 1860; return 7.62 + (0.5737 * t) - (0.251754 * std::pow(t, 2)) + (0.01680668 * std::pow(t, 3)) - (0.0004473624 * std::pow(t, 4)) + (std::pow(t, 5) / 233174.0); }"
+      },
+      {
+        "equation": 18,
+        "interval": "1900 <= year < 1920",
+        "cpp": "if (year >= 1900 and year < 1920) { const double t = year - 1900; return -2.79 + (1.494119 * t) - (0.0598939 * std::pow(t, 2)) + (0.0061966 * std::pow(t, 3)) - (0.000197 * std::pow(t, 4)); }"
+      },
+      {
+        "equation": 19,
+        "interval": "1920 <= year < 1941",
+        "cpp": "if (year >= 1920 and year < 1941) { const double t = year - 1920; return 21.20 + (0.84493 * t) - (0.076100 * std::pow(t, 2)) + (0.0020936 * std::pow(t, 3)); }"
+      },
+      {
+        "equation": 20,
+        "interval": "1941 <= year < 1961",
+        "cpp": "if (year >= 1941 and year < 1961) { const double t = year - 1950; return 29.07 + (0.407 * t) - (std::pow(t, 2) / 233.0) + (std::pow(t, 3) / 2547.0); }"
+      },
+      {
+        "equation": 21,
+        "interval": "1961 <= year < 1986",
+        "cpp": "if (year >= 1961 and year < 1986) { const double t = year - 1975; return 45.45 + (1.067 * t) - (std::pow(t, 2) / 260.0) - (std::pow(t, 3) / 718.0); }"
+      },
+      {
+        "equation": 22,
+        "interval": "1986 <= year < 2005",
+        "cpp": "if (year >= 1986 and year < 2005) { const double t = year - 2000; return 63.86 + (0.3345 * t) - (0.060374 * std::pow(t, 2)) + (0.0017275 * std::pow(t, 3)) + (0.000651814 * std::pow(t, 4)) + (0.00002373599 * std::pow(t, 5)); }"
+      },
+      {
+        "equation": 23,
+        "interval": "2005 <= year < 2050",
+        "cpp": "if (year >= 2005 and year < 2050) { const double t = year - 2000; return 62.92 + (0.32217 * t) + (0.005589 * std::pow(t, 2)); }"
+      },
+      {
+        "equation": 24,
+        "interval": "2050 <= year < 2150",
+        "cpp": "if (year >= 2050 and year < 2150) { return -20.0 + (32.0 * std::pow((year - 1820) / 100.0, 2)) - (0.5628 * (2150 - year)); }"
+      },
+      {
+        "equation": 25,
+        "interval": "year >= 2150",
+        "cpp": "return -20.0 + (32 * std::pow((year - 1820) / 100.0, 2));"
+      }
+    ]
+  },
+  "validation_relations": {
+    "v25": {
+      "repository_path": "src/test/astro/delta_t_test_helper.hpp",
+      "partitions": [
+        {
+          "source": "NASA/TP-2006-214141 Table 2-2",
+          "years": [1955, 1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005],
+          "repository_values": ["31.1", "33.2", "35.7", "40.2", "45.5", "50.5", "54.3", "56.9", "60.8", "63.8", "64.7"],
+          "relation": "exact one-decimal transcription"
+        },
+        {
+          "source": "USNO deltat.data",
+          "years": [2010, 2014],
+          "source_values": ["66.0699", "67.2810"],
+          "repository_values": ["66.1", "67.3"],
+          "relation": "round to one decimal place"
+        },
+        {
+          "source": "inherited from unresolved R09",
+          "years": [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+          "relation": "not closed by A3.5"
+        }
+      ]
+    },
+    "v27": {
+      "repository_path": "src/test/astro/julian_day_test.cpp",
+      "year_500": {
+        "source_location": "Table 2-1; scientific lineage in Section 2.6",
+        "delta_t_seconds": 5710,
+        "source_standard_error_seconds": 140,
+        "repository_relation": "TT 500-01-01 00:00 minus UT1 499-12-31 22:24:50 equals 5710 seconds"
+      },
+      "year_2000": {
+        "source": "USNO deltat.data",
+        "source_value": "63.8285",
+        "repository_value": "63.83",
+        "relation": "round to two decimal places"
+      }
+    }
+  }
+}
