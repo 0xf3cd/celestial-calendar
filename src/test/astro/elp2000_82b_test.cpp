@@ -37,8 +37,7 @@ using astro::toolbox::AngleUnit::DEG;
 TEST(Elp2000, Evaluate) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
   // Introduced by 066c28d (#34, 2024-08-06); values shifted in 7ea26ee (#65 / PR #96, 2026-07-26).
-  // The largest shift was <= 9.2e-5 in Σr. Independent references are the two tests below and the
-  // JPL DE441 Moon dataset.
+  // Independent references: the two tests below and moon_horizons_golden_test.cpp (JPL DE441).
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {
     //JDE                   L expected            B expected          R expected           L perturbation       B perturbation
     { 2455157.8937397725, { -166691.76694626233,  961656.21785964631,  19612316.117669303, 832.45418051691058,  2363.0903304329381 } },

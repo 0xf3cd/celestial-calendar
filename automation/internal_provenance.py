@@ -32,6 +32,11 @@ from pathlib import Path
 from types import ModuleType
 from typing import Callable, Final
 
+if __package__:
+  from .source_digest import canonical_cpp
+else:
+  from source_digest import canonical_cpp
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NOAA_ACKNOWLEDGMENT: Final[str] = (
@@ -114,11 +119,6 @@ def _test_block(text: str, marker: str) -> str:
   start = text.index(marker)
   end = text.find("\nTEST(", start + len(marker))
   return text[start:] if end == -1 else text[start:end]
-
-
-def _canonical_cpp(text: str) -> str:
-  without_comments = re.sub(r"//[^\n]*|/\*.*?\*/", " ", text, flags=re.DOTALL)
-  return " ".join(without_comments.split())
 
 
 def _normalized_comment_text(text: str) -> str:
@@ -296,7 +296,7 @@ def _verify_v07(repo_root: Path) -> int:
     stored_de_sources == [HORIZONS_STORED_DE_SOURCE],
     "V07 stored table DE source differs",
   )
-  golden_code_sha256 = hashlib.sha256(_canonical_cpp(golden_block).encode("utf-8")).hexdigest()
+  golden_code_sha256 = hashlib.sha256(canonical_cpp(golden_block).encode("utf-8")).hexdigest()
   _require(
     golden_code_sha256 == SUN_EQUATORIAL_GOLDEN_CODE_SHA256,
     f"V07 active golden values or assertions differ; got {golden_code_sha256}",
@@ -432,7 +432,7 @@ def _verify_v11_v42(repo_root: Path) -> None:
     crawler_code_sha256 == SUNRISE_CRAWLER_CODE_SHA256,
     f"V11 crawler active code or values differ; got {crawler_code_sha256}",
   )
-  canonical_test = _canonical_cpp(test_text)
+  canonical_test = canonical_cpp(test_text)
   golden_code_sha256 = hashlib.sha256(canonical_test.encode("utf-8")).hexdigest()
   _require(
     golden_code_sha256 == RISE_SET_GOLDEN_CODE_SHA256,
