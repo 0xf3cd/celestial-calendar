@@ -273,9 +273,9 @@ TEST(Sun, FK5Correction) {
 
 TEST(Sun, CorrectedPosition) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
-  // Introduced by f4b0980 (#11, 2024-07-15) from Sun.apparent_geocentric_position(Epoch(jd),
-  // nutation=True). The λ column shifted in da22c87 (#66 / PR #100, 2026-07-26) by <= 4.2e-6 deg
-  // for the move from bare-κ/R to Meeus (25.11); β and r did not shift.
+  // Introduced by f4b0980 (#11, 2024-07-15) from PyMeeus-derived apparent-geocentric calculations
+  // using the then-current bare-κ/R aberration. The λ column shifted in da22c87 (#66 / PR #100,
+  // 2026-07-26) by <= 4.2e-6 deg for the move to Meeus (25.11); β and r did not shift.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, { 291.51569666171963,  -9.920119287353568e-07, 0.9834987939042306 } },
@@ -875,8 +875,8 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
   // 42 random JDEs, uniform on JD 2432000..2471000 (~1946..2053), seed 42.
   //
   // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.058", with a secular
-  // drift (negative in 1949 → positive in 2050). The gap is dominated by the nutation series
-  // (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-JPL ephemeris series truncation; the #66
+  // drift from negative at early epochs to positive at late epochs. The gap is dominated by the
+  // nutation series (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-DE440 series truncation; the #66
   // aberration bias (bare-κ vs κ(1−e²), ~0.006") was fixed by adopting Meeus (25.11).
   // Tolerances apply ~3× margin.
   constexpr double α_TOL_DEG = 0.4 / 3600.0;

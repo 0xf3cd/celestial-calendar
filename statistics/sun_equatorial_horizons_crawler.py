@@ -123,7 +123,8 @@ def _validate_response_identity(text: str) -> str:
   prelude, marker, remainder = text.partition("$$SOE")
   if not marker:
     raise RuntimeError("Horizons response has no data marker")
-  if f"API VERSION: {HORIZONS_API_VERSION}" not in prelude:
+  api_version = re.search(r"(?m)^API VERSION:\s*(\S+)\s*$", prelude)
+  if api_version is None or api_version.group(1) != HORIZONS_API_VERSION:
     raise RuntimeError(f"unexpected Horizons API version; expected {HORIZONS_API_VERSION}")
   if "Sun (10)" not in prelude:
     raise RuntimeError("Horizons response is not for Sun (10)")

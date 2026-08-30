@@ -40,9 +40,10 @@ using astro::toolbox::DistanceKm;
 
 TEST(Moon, CoordAndPpi) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
-  // Introduced by 066c28d (#34, 2024-08-06) from Moon.apparent_ecliptical_pos(Epoch(jd)). All four
-  // columns shifted in 7ea26ee (#65 / PR #96, 2026-07-26), by at most 2.6e-11 deg λ, 9.4e-13 deg β,
-  // 9.5e-8 km r, and 4.4e-15 rad ppi. The independent anchor is JPL DE441, whose
+  // Introduced by 066c28d (#34, 2024-08-06) from Moon.apparent_ecliptical_pos(Epoch(jd)), with ppi
+  // converted from degrees to radians. All four columns shifted in 7ea26ee (#65 / PR #96,
+  // 2026-07-26), by at most 2.6e-11 deg λ, 9.4e-13 deg β, 9.5e-8 km r, and 4.4e-15 rad ppi.
+  // The independent anchor is JPL DE441, whose
   // measurements resolved the historical distance doubt — the truncated series has an inherent
   // ~30-46 km range envelope.
   const std::unordered_map<double, std::tuple<double, double, double, double>> dataset {

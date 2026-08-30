@@ -42,6 +42,7 @@ HORIZONS_API_VERSION: Final[str] = "1.2"
 HORIZONS_DE_SOURCE: Final[str] = "DE441"
 HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 USNO_API_VERSION: Final[str] = "4.0.1"
+HORIZONS_CRAWLER_CODE_SHA256: Final[str] = "a3658f360dc3d1dbb5f8e21715c49e39cb7dee7c11cb9da24cd4fd003d4225cd"
 SUNRISE_CRAWLER_CODE_SHA256: Final[str] = "89efef54952feb4671c0447bdb6d0bcb449bfbee5ff143ef33205759e6a020fa"
 RISE_SET_GOLDEN_CODE_SHA256: Final[str] = "de32a033ebc2c61656b4220dea1532edf54c71810878cf12c411235b245352ff"
 
@@ -226,7 +227,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
   meeus_marker = "Meeus Ch.7 textbook anchor"
   meeus_worked_marker = "Meeus Ch.7 worked value"
   v28_marker = "V28 rows from http://www.stevegs.com/utils/jd_calc/"
-  _require(dataset.count("internal regression material") == 1, "V37 Julian-day internal label is over-broad")
+  _require(dataset.count("internal regression material") == 1, "V37 Julian-day internal label count differs")
   _require(
     meeus_marker in dataset and meeus_worked_marker in dataset and internal_marker in dataset and v28_marker in dataset,
     "V37 Julian-day row labels differ",
@@ -236,7 +237,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
   pre_v28_rows = len(row_pattern.findall(dataset[:v28_at]))
   internal_rows = pre_v28_rows - 2
   _require(pre_v28_rows == 9 and internal_rows == 7, "V37 internal Julian-day row count differs")
-  _require(len(row_pattern.findall(dataset[v28_at:])) == 4, "V37 V28 rows were relabelled as internal")
+  _require(len(row_pattern.findall(dataset[v28_at:])) == 4, "V37 V28 Julian-day row count differs")
   return len(table_records) + 1, internal_rows
 
 
@@ -322,7 +323,15 @@ def _verify_v07(repo_root: Path) -> int:
     "stored digits differ",
     "V07 stored-digit mismatch",
   )
-  _require(len(crawler.format_rows(stored).splitlines()) == 42, "V07 emitted table row count differs")
+  expected_format = "\n".join(
+    f"    {{ {jde:>14}, {{ {stored[jde][0]:>13}, {stored[jde][1]:>13} }} }}," for jde in HORIZONS_JDES
+  )
+  _require(crawler.format_rows(stored) == expected_format, "V07 emitted table format differs")
+  crawler_code_sha256 = _python_code_sha256(crawler_path.read_text(encoding="utf-8"))
+  _require(
+    crawler_code_sha256 == HORIZONS_CRAWLER_CODE_SHA256,
+    f"V07 crawler active code or values differ; got {crawler_code_sha256}",
+  )
   return len(crawler.JDES)
 
 
@@ -341,7 +350,12 @@ def _verify_v11_v42(repo_root: Path) -> None:
   crawler = _load_module(crawler_path)
   _require(crawler.USNO_API_VERSION == USNO_API_VERSION, "V11 USNO API version pin differs")
   _require_rejection(
-    lambda: crawler.parse_usno({"apiversion": "9.9"}),
+    lambda: crawler.parse_usno(
+      {
+        "apiversion": "9.9",
+        "properties": {"data": {"sundata": [{"phen": "Rise", "time": "06:18"}]}},
+      }
+    ),
     "unexpected USNO API version",
     "V11 unexpected USNO API version",
   )
@@ -355,7 +369,10 @@ def _verify_v11_v42(repo_root: Path) -> None:
 
     @staticmethod
     def json() -> dict:
-      return {"apiversion": USNO_API_VERSION, "properties": {"data": {"sundata": []}}}
+      return {
+        "apiversion": USNO_API_VERSION,
+        "properties": {"data": {"sundata": [{"phen": "Rise", "time": "06:18"}]}},
+      }
 
   def fake_get(url: str, **kwargs) -> FakeResponse:
     calls.append((url, kwargs))
@@ -367,7 +384,10 @@ def _verify_v11_v42(repo_root: Path) -> None:
   original_requests = crawler.requests
   crawler.requests = FakeRequests()
   try:
-    _require(crawler.fetch_usno(-0.22, -78.51, 2026, 3, 20, -5) == {}, "V11 USNO parser result differs")
+    _require(
+      crawler.fetch_usno(-0.22, -78.51, 2026, 3, 20, -5) == {"Rise": "06:18"},
+      "V11 USNO parser result differs",
+    )
   finally:
     crawler.requests = original_requests
   _require(

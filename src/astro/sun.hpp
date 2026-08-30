@@ -158,10 +158,10 @@ namespace astro::sun::geocentric_coord::math {
 //
 // The solar-longitude notebook landed in 202a0bd (#12), Newton inversion in 397422cc (#13), and
 // a second Moon-phase copy in 066c28db (#34). Commit 5101b6d2 (#95) introduced the shared toolbox
-// helper and best-iterate/bracket policy; the rise/set golden-section solver landed in bc79c991
-// (#199). The lower nong page supplied conceptual and implementation ideas for this solver; the
-// upper page is a historical Sun-coordinate reference. This record does not claim copied code or
-// byte identity.
+// helper and best-iterate/bracket policy. The lower nong page supplied conceptual and implementation
+// ideas for the solar-longitude solver in this namespace; the upper page is a historical
+// Sun-coordinate reference. This record does not claim copied code or byte identity. The rise/set
+// golden-section solver landed separately in bc79c991 (#199).
 //
 // Given a year and a geocentric longitude, our goal is to find the JDE(s) that satisfy the following condition:
 // 1. The JDE(s) must fall in the given year.

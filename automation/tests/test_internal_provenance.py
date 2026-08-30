@@ -163,12 +163,12 @@ def test_missing_v37_history_anchor_fails(tmp_path, relative, old, new):
     (
       "Meeus Ch.7 worked value",
       "Meeus Ch.7 worked value; internal regression material",
-      "internal label is over-broad",
+      "internal label count differs",
     ),
     (
       "V28 rows from http://www.stevegs.com/utils/jd_calc/",
       "V28 internal regression material from http://www.stevegs.com/utils/jd_calc/",
-      "internal label is over-broad",
+      "internal label count differs",
     ),
   ],
   ids=["all-rows", "meeus-row", "v28-rows"],
@@ -213,8 +213,8 @@ def test_r35_history_and_source_role_are_required(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/astro/sun.hpp",
-    "conceptual and implementation ideas",
-    "background reading",
+    "conceptual and implementation\n// ideas",
+    "background\n// reading",
   )
 
   with pytest.raises(RuntimeError, match="R35 nong source role differs"):
@@ -237,8 +237,8 @@ def test_v07_fixed_input_inventory_is_exact(tmp_path):
   ("old", "new", "message"),
   [
     (
-      'if f"API VERSION: {HORIZONS_API_VERSION}" not in prelude:',
-      'if "API VERSION:" not in prelude:',
+      "if api_version is None or api_version.group(1) != HORIZONS_API_VERSION:",
+      "if api_version is None:",
       "unexpected API version",
     ),
     (
@@ -260,6 +260,28 @@ def test_v07_identity_checks_run_before_values(tmp_path, old, new, message):
 @pytest.mark.parametrize(
   ("old", "new"),
   [
+    (
+      "if api_version is None or api_version.group(1) != HORIZONS_API_VERSION:",
+      'if api_version is None or api_version.group(1) not in {HORIZONS_API_VERSION, "1.3"}:',
+    ),
+    (
+      'if f"{{source: {HORIZONS_DE_SOURCE}}}" not in prelude:',
+      'if not any(f"{{source: {source}}}" in prelude for source in (HORIZONS_DE_SOURCE, "DE442")):',
+    ),
+  ],
+  ids=["api-version-whitelist", "de-source-whitelist"],
+)
+def test_v07_identity_whitelists_cannot_be_broadened(tmp_path, old, new):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
+
+  with pytest.raises(RuntimeError, match="V07 crawler active code or values differ"):
+    verify_internal_provenance(tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
     ("https://ssd.jpl.nasa.gov/api/horizons.api", "https://example.invalid/horizons"),
     ("params=horizons_params(), timeout=60", "params=horizons_params(), timeout=30"),
   ],
@@ -273,6 +295,22 @@ def test_v07_request_target_is_complete(tmp_path, old, new):
     verify_internal_provenance(tmp_path)
 
 
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
+    ("{rows[jde][0]:>13}, {rows[jde][1]:>13}", "{rows[jde][1]:>13}, {rows[jde][0]:>13}"),
+    ('return "\\n".join(f"    {{ {jde:>14}', 'return "\\n".join(f"  {{ {jde:>14}'),
+  ],
+  ids=["column-order", "padding"],
+)
+def test_v07_emitted_table_format_is_exact(tmp_path, old, new):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
+
+  with pytest.raises(RuntimeError, match="emitted table format differs"):
+    verify_internal_provenance(tmp_path)
+
+
 def test_v11_usno_version_check_cannot_be_weakened(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(
@@ -281,7 +319,7 @@ def test_v11_usno_version_check_cannot_be_weakened(tmp_path):
     'if "apiversion" not in payload:',
   )
 
-  with pytest.raises(RuntimeError, match="expected diagnostic"):
+  with pytest.raises(RuntimeError, match="is not rejected"):
     verify_internal_provenance(tmp_path)
 
 

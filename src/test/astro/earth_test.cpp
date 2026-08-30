@@ -41,7 +41,7 @@ TEST(Earth, Vsop87dEvaluate) {
 
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
   // Introduced by b5f6c35 ("Enhanced testing", 2024-07-15); no later numeric shift is recorded.
-  // The source call was Earth.geometric_heliocentric_position(Epoch(jd), tofk5=False). Tolerances
+  // The rows are reproduced by Earth.geometric_heliocentric_position(Epoch(jd), tofk5=False). Tolerances
   // remain characterization-tight: 1e-11 deg λ, 1e-16 deg β, and 1e-14 AU r.
   // Independent accuracy anchor: the geocentric-Sun pipeline built on this evaluation is
   // validated against JPL DE441 in sun_horizons_golden_test.cpp.
