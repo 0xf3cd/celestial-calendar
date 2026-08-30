@@ -245,13 +245,24 @@ def test_v07_active_goldens_are_immutable(tmp_path):
     verify_internal_provenance(tmp_path)
 
 
-def test_v07_stored_de_source_is_immutable(tmp_path):
+@pytest.mark.parametrize("source", ["DE441", "DE4401"])
+def test_v07_stored_de_source_is_immutable(tmp_path, source):
   materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/test/astro/sun_test.cpp",
     "VSOP87D-vs-DE440 series truncation",
-    "VSOP87D-vs-DE441 series truncation",
+    f"VSOP87D-vs-{source} series truncation",
   )
+
+  with pytest.raises(RuntimeError, match="V07 stored table DE source differs"):
+    verify_internal_provenance(tmp_path)
+
+
+def test_v07_stored_de_source_cannot_move_to_a_decoy(tmp_path):
+  materialize_inputs(tmp_path)
+  path = tmp_path / "src/test/astro/sun_test.cpp"
+  replace_once(path, "VSOP87D-vs-DE440 series truncation", "VSOP87D-vs-DE441 series truncation")
+  replace_once(path, "// Tolerances apply ~3× margin.", "// VSOP87D-vs-DE440\n  // Tolerances apply ~3× margin.")
 
   with pytest.raises(RuntimeError, match="V07 stored table DE source differs"):
     verify_internal_provenance(tmp_path)

@@ -291,8 +291,9 @@ def _verify_v07(repo_root: Path) -> int:
 
   sun_test = sun_test_path.read_text(encoding="utf-8")
   golden_block = _test_block(sun_test, "TEST(Sun, EquatorialApparentVsJplHorizons)")
+  stored_de_sources = re.findall(r"\bVSOP87D-vs-(DE\d+)\b", golden_block)
   _require(
-    f"VSOP87D-vs-{HORIZONS_STORED_DE_SOURCE}" in golden_block,
+    stored_de_sources == [HORIZONS_STORED_DE_SOURCE],
     "V07 stored table DE source differs",
   )
   golden_code_sha256 = hashlib.sha256(_canonical_cpp(golden_block).encode("utf-8")).hexdigest()
