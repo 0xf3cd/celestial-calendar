@@ -39,10 +39,11 @@ NOAA_ACKNOWLEDGMENT: Final[str] = (
   "in this comparison."
 )
 HORIZONS_API_VERSION: Final[str] = "1.2"
-HORIZONS_DE_SOURCE: Final[str] = "DE441"
+HORIZONS_STORED_DE_SOURCE: Final[str] = "DE440"
+HORIZONS_CURRENT_DE_SOURCE: Final[str] = "DE441"
 HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 USNO_API_VERSION: Final[str] = "4.0.1"
-HORIZONS_CRAWLER_CODE_SHA256: Final[str] = "a3658f360dc3d1dbb5f8e21715c49e39cb7dee7c11cb9da24cd4fd003d4225cd"
+HORIZONS_CRAWLER_CODE_SHA256: Final[str] = "21ccaf5b6ea041947df0c7844f083e48fcb24f5e56509d82eddf03342b41ebe1"
 SUN_EQUATORIAL_GOLDEN_CODE_SHA256: Final[str] = "9a3ea072d0d94c912570deab756ff8b3cdd9718667e0d7e9f0d8eb3c6f0d0396"
 SUNRISE_CRAWLER_CODE_SHA256: Final[str] = "89efef54952feb4671c0447bdb6d0bcb449bfbee5ff143ef33205759e6a020fa"
 RISE_SET_GOLDEN_CODE_SHA256: Final[str] = "de32a033ebc2c61656b4220dea1532edf54c71810878cf12c411235b245352ff"
@@ -247,7 +248,14 @@ def _verify_v07(repo_root: Path) -> int:
   sun_test_path = repo_root / "src" / "test" / "astro" / "sun_test.cpp"
   crawler = _load_module(crawler_path)
   _require(crawler.HORIZONS_API_VERSION == HORIZONS_API_VERSION, "V07 Horizons API version pin differs")
-  _require(crawler.HORIZONS_DE_SOURCE == HORIZONS_DE_SOURCE, "V07 Horizons DE-source pin differs")
+  _require(
+    crawler.STORED_TABLE_DE_SOURCE == HORIZONS_STORED_DE_SOURCE,
+    "V07 stored-table DE-source pin differs",
+  )
+  _require(
+    crawler.CURRENT_HORIZONS_DE_SOURCE == HORIZONS_CURRENT_DE_SOURCE,
+    "V07 current Horizons DE-source pin differs",
+  )
   _require(tuple(crawler.JDES) == HORIZONS_JDES, "V07 fixed 42-input inventory differs")
   expected_params = {
     "format": "text",
@@ -271,7 +279,7 @@ def _verify_v07(repo_root: Path) -> int:
     return f"API VERSION: {version}\nTarget body name: Sun (10)\n{{source: {source}}}\n$$SOE\nnot,a,row\n$$EOE\n"
 
   _require_rejection(
-    lambda: crawler.parse_horizons_response(response("9.9", HORIZONS_DE_SOURCE)),
+    lambda: crawler.parse_horizons_response(response("9.9", HORIZONS_CURRENT_DE_SOURCE)),
     "API version",
     "V07 unexpected API version",
   )
@@ -283,6 +291,10 @@ def _verify_v07(repo_root: Path) -> int:
 
   sun_test = sun_test_path.read_text(encoding="utf-8")
   golden_block = _test_block(sun_test, "TEST(Sun, EquatorialApparentVsJplHorizons)")
+  _require(
+    f"VSOP87D-vs-{HORIZONS_STORED_DE_SOURCE}" in golden_block,
+    "V07 stored table DE source differs",
+  )
   golden_code_sha256 = hashlib.sha256(_canonical_cpp(golden_block).encode("utf-8")).hexdigest()
   _require(
     golden_code_sha256 == SUN_EQUATORIAL_GOLDEN_CODE_SHA256,
@@ -295,7 +307,7 @@ def _verify_v07(repo_root: Path) -> int:
   )
   valid_response = (
     f"API VERSION: {HORIZONS_API_VERSION}\nTarget body name: Sun (10)\n"
-    f"{{source: {HORIZONS_DE_SOURCE}}}\n$$SOE\n{data}\n$$EOE\n"
+    f"{{source: {HORIZONS_CURRENT_DE_SOURCE}}}\n$$SOE\n{data}\n$$EOE\n"
   )
 
   calls: list[tuple[str, dict]] = []

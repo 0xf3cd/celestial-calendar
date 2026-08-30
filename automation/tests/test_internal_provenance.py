@@ -245,6 +245,18 @@ def test_v07_active_goldens_are_immutable(tmp_path):
     verify_internal_provenance(tmp_path)
 
 
+def test_v07_stored_de_source_is_immutable(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/test/astro/sun_test.cpp",
+    "VSOP87D-vs-DE440 series truncation",
+    "VSOP87D-vs-DE441 series truncation",
+  )
+
+  with pytest.raises(RuntimeError, match="V07 stored table DE source differs"):
+    verify_internal_provenance(tmp_path)
+
+
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [
@@ -254,7 +266,7 @@ def test_v07_active_goldens_are_immutable(tmp_path):
       "unexpected API version",
     ),
     (
-      'if f"{{source: {HORIZONS_DE_SOURCE}}}" not in prelude:',
+      'if f"{{source: {CURRENT_HORIZONS_DE_SOURCE}}}" not in prelude:',
       'if "{source:" not in prelude:',
       "unexpected DE source",
     ),
@@ -277,8 +289,8 @@ def test_v07_identity_checks_run_before_values(tmp_path, old, new, message):
       'if api_version is None or api_version.group(1) not in {HORIZONS_API_VERSION, "1.3"}:',
     ),
     (
-      'if f"{{source: {HORIZONS_DE_SOURCE}}}" not in prelude:',
-      'if not any(f"{{source: {source}}}" in prelude for source in (HORIZONS_DE_SOURCE, "DE442")):',
+      'if f"{{source: {CURRENT_HORIZONS_DE_SOURCE}}}" not in prelude:',
+      'if not any(f"{{source: {source}}}" in prelude for source in (CURRENT_HORIZONS_DE_SOURCE, "DE442")):',
     ),
   ],
   ids=["api-version-whitelist", "de-source-whitelist"],

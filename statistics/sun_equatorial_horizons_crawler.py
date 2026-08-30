@@ -23,7 +23,6 @@
 #
 # Manual replay for TEST(Sun, EquatorialApparentVsJplHorizons). It submits the fixed 42 JDEs
 # below and rejects an unexpected API identity or any stored-digit mismatch before printing rows.
-# The stored table's 2026-07-23 record names DE440; current Horizons responses identify DE441.
 # Importing this module does not contact Horizons; only main() performs the request.
 
 import re
@@ -40,7 +39,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 SUN_TEST: Final[Path] = REPO_ROOT / "src" / "test" / "astro" / "sun_test.cpp"
 HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 HORIZONS_API_VERSION: Final[str] = "1.2"
-HORIZONS_DE_SOURCE: Final[str] = "DE441"
+STORED_TABLE_DE_SOURCE: Final[str] = "DE440"
+CURRENT_HORIZONS_DE_SOURCE: Final[str] = "DE441"
 
 JDES: Final[tuple[str, ...]] = (
   "2432253.451627",
@@ -129,8 +129,8 @@ def _validate_response_identity(text: str) -> str:
     raise RuntimeError(f"unexpected Horizons API version; expected {HORIZONS_API_VERSION}")
   if "Sun (10)" not in prelude:
     raise RuntimeError("Horizons response is not for Sun (10)")
-  if f"{{source: {HORIZONS_DE_SOURCE}}}" not in prelude:
-    raise RuntimeError(f"unexpected Horizons ephemeris; expected {HORIZONS_DE_SOURCE}")
+  if f"{{source: {CURRENT_HORIZONS_DE_SOURCE}}}" not in prelude:
+    raise RuntimeError(f"unexpected Horizons ephemeris; expected {CURRENT_HORIZONS_DE_SOURCE}")
   return remainder
 
 
