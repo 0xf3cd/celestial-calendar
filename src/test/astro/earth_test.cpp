@@ -39,9 +39,10 @@ using astro::toolbox::AngleUnit::RAD;
 TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;
 
-  // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Enhanced
-  // testing", b5f6c35) with no recorded source. Tolerances are characterization-tight (1e-11 deg
-  // λ, 1e-16 deg β, 1e-14 AU r) — a determinism/regression baseline, not an accuracy benchmark.
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by b5f6c35 ("Enhanced testing", 2024-07-15); no later numeric shift is recorded.
+  // The rows are reproduced by Earth.geometric_heliocentric_position(Epoch(jd), tofk5=False). Tolerances
+  // remain characterization-tight: 1e-11 deg λ, 1e-16 deg β, and 1e-14 AU r.
   // Independent accuracy anchor: the geocentric-Sun pipeline built on this evaluation is
   // validated against JPL DE441 in sun_horizons_golden_test.cpp.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
@@ -116,9 +117,10 @@ TEST(Earth, Vsop87dEvaluate) {
 TEST(Earth, NutationMeeus) {
   using namespace nutation;
 
-  // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Earth
-  // nutation" #10) with no recorded source. Tolerances are characterization-tight (1e-14 deg
-  // Δψ, 1e-15 deg Δε) — a determinism/regression baseline, not an accuracy benchmark.
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by a99d4d7 ("Earth nutation" #10, 2024-07-15); no later numeric shift is recorded.
+  // The rows are reproduced by PyMeeus nutation_longitude/obliquity(Epoch(jd)). Tolerances remain
+  // characterization-tight: 1e-14 deg Δψ and 1e-15 deg Δε.
   // Independent anchors: Meeus Example 22.a (Earth.ObliquityMeeus22a below) and the PyMeeus
   // Table 22.A cross-dataset in sidereal_time_test.cpp.
   const std::unordered_map<double, std::tuple<double, double>> dataset {

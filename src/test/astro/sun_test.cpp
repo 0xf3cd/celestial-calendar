@@ -36,9 +36,10 @@ using namespace astro::sun::geocentric_coord::math;
 using astro::toolbox::AngleUnit::DEG;
 
 TEST(Sun, GeocentricPosition) {
-  // Provenance (#68): self-generated characterization data, introduced 2024-07 ("Enhanced
-  // testing", b5f6c35) with no recorded source. Tolerances are characterization-tight (1e-11 deg
-  // λ, 1e-15 deg β, 1e-15 AU r) — a determinism/regression baseline, not an accuracy benchmark. The
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by b5f6c35 ("Enhanced testing", 2024-07-15); no later numeric shift is recorded.
+  // The source call was Sun.geometric_geocentric_position(Epoch(jd), tofk5=False). Tolerances
+  // remain characterization-tight: 1e-11 deg λ, 1e-15 deg β, and 1e-15 AU r. The
   // geocentric and heliocentric evaluations are geometric mirrors (λ+180°, −β, same r): the 7
   // JDEs this table shares with earth_test.cpp's Vsop87dEvaluate dataset match exactly under
   // that relation; all other rows are independent samples. Independent accuracy anchor:
@@ -271,9 +272,10 @@ TEST(Sun, FK5Correction) {
 
 
 TEST(Sun, CorrectedPosition) {
-  // Self-generated characterization data (λ tolerance 7e-7 deg, β/r at machine epsilon). The λ
-  // column was shifted 2026-07-26 by the measured #66 deltas (<= 4.1e-6 deg; bare-κ/R -> Meeus
-  // (25.11) aberration), preserving per-platform jitter margins; dβ = dr = 0 by construction.
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by f4b0980 (#11, 2024-07-15) from PyMeeus-derived apparent-geocentric calculations
+  // using the then-current bare-κ/R aberration. The λ column shifted in da22c87 (#66 / PR #100,
+  // 2026-07-26) by <= 4.2e-6 deg for the move to Meeus (25.11); β and r did not shift.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, { 291.51569666171963,  -9.920119287353568e-07, 0.9834987939042306 } },
@@ -870,11 +872,11 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
   //     QUANTITIES='2' — apparent RA/Dec w.r.t. the of-date true equator & equinox,
   //     corrected for light-time and aberration; TIME_TYPE='TT', TLIST_TYPE='JD',
   //     ANG_FORMAT='DEG', EXTRA_PREC='YES', CSV_FORMAT='YES'.
-  // 42 random JDEs, uniform on JD 2432000..2471000 (~1949..2050), seed 42.
+  // 42 random JDEs, uniform on JD 2432000..2471000 (~1946..2053), seed 42.
   //
-  // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.058", with a secular
-  // drift (negative in 1949 → positive in 2050). The gap is dominated by the nutation series
-  // (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-DE440 series truncation; the #66
+  // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.060", with a secular
+  // drift from negative at early epochs to positive at late epochs. The gap is dominated by the
+  // nutation series (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-DE440 series truncation; the #66
   // aberration bias (bare-κ vs κ(1−e²), ~0.006") was fixed by adopting Meeus (25.11).
   // Tolerances apply ~3× margin.
   constexpr double α_TOL_DEG = 0.4 / 3600.0;

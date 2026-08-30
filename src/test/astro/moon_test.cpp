@@ -39,11 +39,10 @@ using astro::toolbox::DistanceKm;
 
 
 TEST(Moon, CoordAndPpi) {
-  // Characterization-tight columns (β/r/ppi are self-generated, see #65's comment); values shifted
-  // 2026-07-26 by the measured #65 deltas (<= 2.6e-11 deg λ, 9.5e-8 km r), preserving per-platform
-  // jitter margins. Regression baseline only, not an accuracy benchmark (#94): the independent
-  // anchor for λ/β/r is moon_horizons_golden_test.cpp (JPL DE441), whose measurements resolved
-  // the historical distance doubt — the truncated series has an inherent ~30-46 km range envelope.
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by 066c28d (#34, 2024-08-06) from Moon.apparent_ecliptical_pos(Epoch(jd)), with ppi
+  // converted from degrees to radians. All four columns shifted in 7ea26ee (#65 / PR #96, 2026-07-26).
+  // Independent accuracy anchor: moon_horizons_golden_test.cpp (JPL DE441).
   const std::unordered_map<double, std::tuple<double, double, double, double>> dataset {
     // JDE                  Longitude in deg     Latitude in deg      Radius in km          PPI in rad
     { 2455820.8787544146, { 36.726233329781266,   3.3231721517193722, 405517.13842505851, 0.015729059017928697 } },
@@ -132,10 +131,10 @@ TEST(Moon, CoordAndPpi) {
 
 
 TEST(Moon, Perturbation) {
-  // Provenance (#68): same self-generated ELP2000-82B characterization family as
-  // elp2000_82b_test.cpp (see its header comment and #65's root-cause discussion), introduced
-  // 2024-08 (Release/v0.1.0 #34). Determinism/regression baseline; the independent accuracy
-  // anchor is moon_horizons_golden_test.cpp (JPL DE441).
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by 066c28d (#34, 2024-08-06); no stored digit has shifted since.
+  // The paired ELP regeneration in 7ea26ee (#65 / PR #96) shifted only B perturbation.
+  // Independent accuracy anchor: moon_horizons_golden_test.cpp (JPL DE441).
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {
     //JDE                   L expected            B expected          R expected           L perturbation       B perturbation
     { 2455157.8937397725, { -166691.76694696903,   961656.2178595652,  19612316.117669746,   832.4541805169106,  2363.0903304329554 } },

@@ -43,15 +43,18 @@ using namespace util::ymd_operator;
 using namespace calendar;
 using namespace std::chrono_literals;
 
-// Provenance (#68): the first row is a textbook anchor (2299160.5 = 1582-10-15, the Gregorian
-// adoption, Meeus Ch.7); the other rows below are legacy spot checks introduced by "Julian day
-// numbers" #5 (2024-06) with no recorded source, except the last 4 rows (stevegs.com's JD
-// calculator, cited inline). The real correctness gate for these conversions is the Consistency
-// round-trip suite (5000 random points each direction) plus the InvalidInput boundary tests.
+// This spot-check family was introduced by da333dd (#5, 2024-06-30); no later numeric shift is
+// recorded. The real correctness gate is the Consistency round-trip suite (5000 random points
+// each direction) plus the InvalidInput boundary tests.
 const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
+  // Meeus Ch.7 textbook anchor: 2299160.5 = 1582-10-15, the Gregorian adoption.
   { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
-  { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
+  // Meeus Ch.7 worked value: 2443259.9 = 1977 April 26.4.
   { 2443259.9,         Datetime { to_ymd(1977, 4, 26),  0.4, } },
+
+  // Seven rows are internal regression material with no recovered source,
+  // generator, or seed.
+  { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
   { 2450084.0,         Datetime { to_ymd(1996, 1, 1),   0.5, } },
   { 2456293.520833,    Datetime { to_ymd(2013, 1, 1),   hh_mm_ss { 30min } } },
   { 2460491.1846759,   Datetime { to_ymd(2024, 6, 29),  hh_mm_ss { 16h + 25min + 56s } } },
@@ -59,7 +62,7 @@ const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   { 2500000.0,         Datetime { to_ymd(2132, 8, 31),  0.5, } },
   { 2305993.3852315,   Datetime { to_ymd(1601, 6, 29),  hh_mm_ss { 21h + 14min + 44s } } },
 
-  // From http://www.stevegs.com/utils/jd_calc/
+  // Four rows from http://www.stevegs.com/utils/jd_calc/.
   { 2458908.7084259,   Datetime { to_ymd(2020, 2, 29),  hh_mm_ss { 5h + 8s } } },
   { 2461436.1508698,   Datetime { to_ymd(2027, 1, 30),  hh_mm_ss { 15h + 37min + 15s + 150ms } } },
   { 2473063.7966088,   Datetime { to_ymd(2058, 12, 1),  hh_mm_ss { 7h + 7min + 7s } } },

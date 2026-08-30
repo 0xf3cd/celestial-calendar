@@ -30,6 +30,11 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Final
 
+if __package__:
+  from .source_digest import canonical_cpp
+else:
+  from source_digest import canonical_cpp
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
@@ -112,10 +117,6 @@ def _cpp_block(text: str, declaration: str) -> str:
   raise RuntimeError(f"C++ block is incomplete: {declaration}")
 
 
-def _canonical_cpp(text: str) -> str:
-  return _normalized(re.sub(r"//[^\n]*|/\*.*?\*/", " ", text, flags=re.DOTALL))
-
-
 def verify_nasa_delta_t_provenance(
   repo_root: Path = REPO_ROOT,
   nasa_root: Path = NASA_ROOT,
@@ -193,7 +194,7 @@ def verify_nasa_delta_t_provenance(
     algo2_source,
     "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double",
   )
-  canonical_function = _canonical_cpp(function_source)
+  canonical_function = canonical_cpp(function_source)
   _require(
     hashlib.sha256(canonical_function.encode("utf-8")).hexdigest() == runtime["canonical_function"]["sha256"],
     "NASA runtime canonical function differs",
@@ -273,7 +274,7 @@ def verify_nasa_delta_t_provenance(
   )
   test_source = _cpp_block(lunar_test, f"TEST({current_regeneration['test'].replace('.', ', ')})")
   _require(
-    hashlib.sha256(_canonical_cpp(test_source).encode("utf-8")).hexdigest()
+    hashlib.sha256(canonical_cpp(test_source).encode("utf-8")).hexdigest()
     == current_regeneration["canonical_test"]["sha256"],
     "NASA lunar-table canonical regeneration test differs",
   )

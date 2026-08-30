@@ -39,10 +39,10 @@
 //   queried per site at the fixed standard-time offset in the `tz` column (no DST), minute
 //   precision. Cross-checked against NOAA solcalc `table.php` (independent implementation,
 //   DST unwound via IANA zones): worst disagreement 1.0 min over all 42 shared values.
+//   CelestialCalendar acknowledges NOAA's Global Monitoring Laboratory (GML) for the
+//   solar-calculator output used in this comparison.
 // - Nautical/astronomical twilight: Skyfield 1.54 + JPL DE421, second precision. Skyfield was
-//   validated against USNO on every shared quantity of the full matrix first (worst 0.52 min),
-//   and its −12°/−18° rows agree with sunrise-sunset.org to ≤ 0.2 min. (That site's own
-//   rise/set column is a ~2–3 min outlier vs USNO+NOAA and was rejected as a source.)
+//   validated against USNO on every shared quantity of the full matrix first (worst 0.52 min).
 // - Empty cell = the source states the event does not occur that day (polar day/night, or the
 //   Sun never reaching −18° at London's June solstice). USNO omits the transit time during
 //   polar night, so that single cell has no golden value and is skipped.
