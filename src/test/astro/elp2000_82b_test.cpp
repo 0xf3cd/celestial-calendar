@@ -35,10 +35,10 @@ using namespace astro::elp2000_82b;
 using astro::toolbox::AngleUnit::DEG;
 
 TEST(Elp2000, Evaluate) {
-  // Characterization data self-generated from this code (determinism check only, see #65's root-cause
-  // discussion). Values shifted 2026-07-26 by the measured #65 deltas (<= 3.7e-5 in Σl), so each
-  // platform keeps its prior jitter margin. Independent references: the two tests below; full
-  // independent dataset rebuild is tracked in #94.
+  // PyMeeus-derived regression material; the original version and sample seed are not recorded.
+  // Introduced by 066c28d (#34, 2024-08-06); values shifted in 7ea26ee (#65 / PR #96, 2026-07-26).
+  // The largest shift was <= 9.2e-5 in Σr; L perturbation did not shift. Independent references
+  // are the two tests below and the JPL DE441 Moon dataset.
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {
     //JDE                   L expected            B expected          R expected           L perturbation       B perturbation
     { 2455157.8937397725, { -166691.76694626233,  961656.21785964631,  19612316.117669303, 832.45418051691058,  2363.0903304329381 } },

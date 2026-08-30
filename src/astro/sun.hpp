@@ -156,8 +156,12 @@ namespace astro::sun::geocentric_coord::math {
 // In this namespace, we use Newton's method to approximate the JDE,
 // at which time the Sun reaches a given geocentric longitude in a year.
 //
-// The following codes are implementing the ideas illustrated in:
-// https://github.com/0xf3cd/celestial-calendar/blob/main/statistics/sun_longitude.ipynb
+// The solar-longitude notebook landed in 202a0bd (#12), Newton inversion in 397422cc (#13), and
+// a second Moon-phase copy in 066c28db (#34). Commit 5101b6d2 (#95) introduced the shared toolbox
+// helper and best-iterate/bracket policy; the rise/set golden-section solver landed in bc79c991
+// (#199). The lower nong page supplied conceptual and implementation ideas for this solver; the
+// upper page is a historical Sun-coordinate reference. This record does not claim copied code or
+// byte identity.
 //
 // Given a year and a geocentric longitude, our goal is to find the JDE(s) that satisfy the following condition:
 // 1. The JDE(s) must fall in the given year.
@@ -169,6 +173,7 @@ namespace astro::sun::geocentric_coord::math {
 
 /** 
  * @see https://github.com/0xf3cd/celestial-calendar/blob/main/statistics/sun_longitude.ipynb
+ * @see https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（上）
  * @see https://github.com/leetcola/nong/wiki/算法系列之十八：用天文方法计算二十四节气（下）
  */
 

@@ -17,10 +17,11 @@
 # - Cross-check source: NOAA solcalc yearly tables (gml.noaa.gov/grad/solcalc/table.php),
 #   which render sunrise/sunset/solar-noon in the site's IANA zone (DST applied per date);
 #   zoneinfo converts them to the site's fixed standard offset before comparison.
+#   CelestialCalendar acknowledges NOAA's Global Monitoring Laboratory (GML) for the
+#   solar-calculator output used in this comparison.
 # - Nautical/astronomical twilight golden values come from Skyfield (JPL DE421), validated here
 #   against USNO on every overlapping quantity (rise/set/civil twilight) before its -12/-18
-#   values are accepted; sunrise-sunset.org is a third cross-check for the twilight rows only
-#   (its rise/set column is a documented ~2-3 min outlier vs USNO+NOAA and is not used).
+#   values are accepted.
 # The script prints the agreement reports and emits the column-aligned C++ dataset rows to
 # paste into src/test/astro/rise_set_golden_test.cpp.
 #
@@ -54,6 +55,14 @@ SITES = [
 DATES = [(2026, 3, 20), (2026, 6, 21), (2026, 9, 23), (2026, 12, 21)]
 
 PHEN_KEYS = ["Begin Civil Twilight", "Rise", "Upper Transit", "Set", "End Civil Twilight"]
+USNO_API_VERSION = "4.0.1"
+
+
+def parse_usno(payload: dict) -> dict:
+  if payload.get("apiversion") != USNO_API_VERSION:
+    raise RuntimeError(f"unexpected USNO API version: {payload.get('apiversion')}")
+  sundata = payload["properties"]["data"]["sundata"]
+  return {entry["phen"]: entry["time"] for entry in sundata}
 
 
 def fetch_usno(lat: float, lon: float, y: int, m: int, d: int, tz: int) -> dict:
@@ -61,10 +70,7 @@ def fetch_usno(lat: float, lon: float, y: int, m: int, d: int, tz: int) -> dict:
   params = {"date": f"{y:04d}-{m:02d}-{d:02d}", "coords": f"{lat},{lon}", "tz": str(tz)}
   resp = requests.get(url, params=params, headers={"User-Agent": "celestial-calendar-golden/0.1"}, timeout=30)
   resp.raise_for_status()
-  payload = resp.json()
-  print(f"USNO apiversion={payload.get('apiversion')}", file=sys.stderr)
-  sundata = payload["properties"]["data"]["sundata"]
-  return {entry["phen"]: entry["time"] for entry in sundata}
+  return parse_usno(resp.json())
 
 
 def fetch_noaa_tables(lat: float, lon: float, year: int) -> list[list[list[str]]]:
