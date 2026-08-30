@@ -225,21 +225,24 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
   dataset = julian[start:end]
   _require("introduced by da333dd" in julian[:start], "V37 Julian-day introduction anchor is missing")
   _require("no later numeric shift is" in julian[:start], "V37 Julian-day shift history is missing")
-  internal_marker = "The other seven pre-V28 rows are internal regression material"
+  internal_marker = "Seven rows are internal regression material"
   meeus_marker = "Meeus Ch.7 textbook anchor"
   meeus_worked_marker = "Meeus Ch.7 worked value"
-  v28_marker = "V28 rows from http://www.stevegs.com/utils/jd_calc/"
+  external_marker = "Four rows from http://www.stevegs.com/utils/jd_calc/"
   _require(dataset.count("internal regression material") == 1, "V37 Julian-day internal label count differs")
   _require(
-    meeus_marker in dataset and meeus_worked_marker in dataset and internal_marker in dataset and v28_marker in dataset,
+    meeus_marker in dataset
+    and meeus_worked_marker in dataset
+    and internal_marker in dataset
+    and external_marker in dataset,
     "V37 Julian-day row labels differ",
   )
-  v28_at = dataset.index(v28_marker)
+  external_at = dataset.index(external_marker)
   row_pattern = re.compile(r"^\s*\{\s*\d", re.MULTILINE)
-  pre_v28_rows = len(row_pattern.findall(dataset[:v28_at]))
-  internal_rows = pre_v28_rows - 2
-  _require(pre_v28_rows == 9 and internal_rows == 7, "V37 internal Julian-day row count differs")
-  _require(len(row_pattern.findall(dataset[v28_at:])) == 4, "V37 V28 Julian-day row count differs")
+  rows_before_external = len(row_pattern.findall(dataset[:external_at]))
+  internal_rows = rows_before_external - 2
+  _require(rows_before_external == 9 and internal_rows == 7, "V37 internal Julian-day row count differs")
+  _require(len(row_pattern.findall(dataset[external_at:])) == 4, "V37 external Julian-day row count differs")
   return len(table_records) + 1, internal_rows
 
 

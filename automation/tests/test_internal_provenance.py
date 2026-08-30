@@ -156,7 +156,7 @@ def test_missing_v37_history_anchor_fails(tmp_path, relative, old, new):
   ("old", "new", "message"),
   [
     (
-      "The other seven pre-V28 rows are internal regression material",
+      "Seven rows are internal regression material",
       "All thirteen rows are internal regression material",
       "row labels differ",
     ),
@@ -166,12 +166,12 @@ def test_missing_v37_history_anchor_fails(tmp_path, relative, old, new):
       "internal label count differs",
     ),
     (
-      "V28 rows from http://www.stevegs.com/utils/jd_calc/",
-      "V28 internal regression material from http://www.stevegs.com/utils/jd_calc/",
+      "Four rows from http://www.stevegs.com/utils/jd_calc/",
+      "Four rows from http://www.stevegs.com/utils/jd_calc/; internal regression material",
       "internal label count differs",
     ),
   ],
-  ids=["all-rows", "meeus-row", "v28-rows"],
+  ids=["all-rows", "meeus-row", "external-rows"],
 )
 def test_julian_internal_partition_is_exact(tmp_path, old, new, message):
   materialize_inputs(tmp_path)

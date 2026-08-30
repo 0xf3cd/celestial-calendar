@@ -52,7 +52,7 @@ const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   // Meeus Ch.7 worked value: 2443259.9 = 1977 April 26.4.
   { 2443259.9,         Datetime { to_ymd(1977, 4, 26),  0.4, } },
 
-  // The other seven pre-V28 rows are internal regression material with no recovered source,
+  // Seven rows are internal regression material with no recovered source,
   // generator, or seed.
   { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
   { 2450084.0,         Datetime { to_ymd(1996, 1, 1),   0.5, } },
@@ -62,7 +62,7 @@ const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   { 2500000.0,         Datetime { to_ymd(2132, 8, 31),  0.5, } },
   { 2305993.3852315,   Datetime { to_ymd(1601, 6, 29),  hh_mm_ss { 21h + 14min + 44s } } },
 
-  // V28 rows from http://www.stevegs.com/utils/jd_calc/.
+  // Four rows from http://www.stevegs.com/utils/jd_calc/.
   { 2458908.7084259,   Datetime { to_ymd(2020, 2, 29),  hh_mm_ss { 5h + 8s } } },
   { 2461436.1508698,   Datetime { to_ymd(2027, 1, 30),  hh_mm_ss { 15h + 37min + 15s + 150ms } } },
   { 2473063.7966088,   Datetime { to_ymd(2058, 12, 1),  hh_mm_ss { 7h + 7min + 7s } } },
