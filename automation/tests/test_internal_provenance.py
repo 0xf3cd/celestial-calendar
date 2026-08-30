@@ -233,6 +233,18 @@ def test_v07_fixed_input_inventory_is_exact(tmp_path):
     verify_internal_provenance(tmp_path)
 
 
+def test_v07_active_goldens_are_immutable(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/test/astro/sun_test.cpp",
+    "62.035999382,  20.945745250",
+    "62.035999383,  20.945745250",
+  )
+
+  with pytest.raises(RuntimeError, match="V07 active golden values or assertions differ"):
+    verify_internal_provenance(tmp_path)
+
+
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [

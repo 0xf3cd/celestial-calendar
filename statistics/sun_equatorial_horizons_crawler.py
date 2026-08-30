@@ -23,6 +23,7 @@
 #
 # Manual replay for TEST(Sun, EquatorialApparentVsJplHorizons). It submits the fixed 42 JDEs
 # below and rejects an unexpected API identity or any stored-digit mismatch before printing rows.
+# The stored table's 2026-07-23 record names DE440; current Horizons responses identify DE441.
 # Importing this module does not contact Horizons; only main() performs the request.
 
 import re

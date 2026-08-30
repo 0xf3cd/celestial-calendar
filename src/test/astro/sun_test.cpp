@@ -874,7 +874,7 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
   //     ANG_FORMAT='DEG', EXTRA_PREC='YES', CSV_FORMAT='YES'.
   // 42 random JDEs, uniform on JD 2432000..2471000 (~1946..2053), seed 42.
   //
-  // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.058", with a secular
+  // Measured model differences on this dataset: |Δα| ≤ 0.117", |Δδ| ≤ 0.060", with a secular
   // drift from negative at early epochs to positive at late epochs. The gap is dominated by the
   // nutation series (IAU 1980 here vs JPL's modern model) and VSOP87D-vs-DE440 series truncation; the #66
   // aberration bias (bare-κ vs κ(1−e²), ~0.006") was fixed by adopting Meeus (25.11).
