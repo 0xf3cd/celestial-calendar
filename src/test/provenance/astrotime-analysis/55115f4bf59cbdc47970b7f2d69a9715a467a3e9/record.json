@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "record_type": "historical_input_output_record",
+  "scope": {
+    "description": "Delta T algo4 coefficient vectors consumed by 0xf3cd/celestial-calendar",
+    "grant": "DeltaT/algo4/GRANT.md",
+    "consumer_repository": "https://github.com/0xf3cd/celestial-calendar",
+    "consumer_symbol": "astro::delta_t::algo4::compute"
+  },
+  "historical_generation": {
+    "repository": "https://github.com/0xf3cd/AstroTime-Analysis",
+    "commit": "298fa51777ec533951c4c1f83f8e5704b586754f",
+    "commit_date": "2024-07-12T13:46:18-07:00",
+    "notebook": {
+      "path": "DeltaT/models.ipynb",
+      "git_blob_sha1": "ed201d0ca1ff8f5fa885fef4ed61a65f44f3c3ac",
+      "sha256": "3fd893bbbb90bcd85e693afa675a818eaaad931b0e75f32a1853e6672e93c567"
+    },
+    "analyzer": {
+      "path": "DeltaT/analyzer.py",
+      "git_blob_sha1": "47388e7dabadd5aa13710c785b1ef65d5a6bc6d3",
+      "sha256": "df7a637305da0ea544c4d5a86cfd0b216ce3315038395544eafe846bab0b31a7"
+    },
+    "inputs": {
+      "iers_bulletin_a": {
+        "source": "https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html",
+        "raw_tree_sha1": "03776616ea6c4821084ee57b717a1948620f9388",
+        "raw_file_count": 1018,
+        "latest_bulletin_date": "2024-07-11",
+        "header_csv": {
+          "path": "DeltaT/cvs/bulletin_a_header.csv",
+          "git_blob_sha1": "1af825afd25887a7225110309fd00ce17afd243e",
+          "sha256": "5aeda02ed40696fda4e281f17f2b5b82a1a78bedc4a5b903ae1bc3a938db3560",
+          "data_rows": 1018
+        },
+        "final_values_csv": {
+          "path": "DeltaT/cvs/bulletin_a_final_values.csv",
+          "git_blob_sha1": "fd907a4952efb70cbb987f5874c3d3e367eaeb81",
+          "sha256": "678ea86e0d1da792d5450b2e383276e16c4933c0d66bdb897452bcba7fbc69d1",
+          "data_rows": 7118,
+          "mjd_range": [
+            53315,
+            60462
+          ]
+        }
+      },
+      "usno_predictions": {
+        "source": "https://maia.usno.navy.mil/ser7/deltat.preds",
+        "storage": "USNO_PREDICTION string in DeltaT/models.ipynb",
+        "normalization": "Remove the initial newline from the triple-quoted string; retain all other bytes",
+        "sha256": "5d864fddd30b2c64d2a86d3debbb25604eb5de44370c96bccf2abd5463f3db08",
+        "data_rows": 46,
+        "year_range": [
+          "2022.50",
+          "2033.75"
+        ],
+        "later_exact_copy": {
+          "path": "USNO_FINALS_DAILY/deltat.preds",
+          "first_commit": "ddf3be1972e405ed02233837394cd3377226b65c",
+          "git_blob_sha1": "92d32b72e26e9571c94f8fdf9b4458bdbf3a1959"
+        }
+      }
+    },
+    "transformations": [
+      "Parse TAI-UTC effective dates from Bulletin A headers",
+      "Discard (33.0, 1999-01-01) as an explicit project decision recorded by the notebook",
+      "Parse final UT1-UTC rows and convert MJD from the 1858-11-17 epoch",
+      "Compute decimal year with naive datetime.timestamp()",
+      "Compute Delta T as TAI-UTC minus UT1-UTC plus 32.184 seconds",
+      "Use degree-3 linear regression residuals and a two-standard-deviation threshold; the notebook reports zero rows removed",
+      "Fit the observed and prediction model definitions with scipy.optimize.curve_fit"
+    ],
+    "observed_input_range": {
+      "decimal_year_min": "2004.8469945355191",
+      "decimal_year_max": "2024.4151867030967",
+      "outliers_removed": 0
+    },
+    "environment": {
+      "recorded": {
+        "python": "3.12.3"
+      },
+      "unrecovered": [
+        "Matplotlib version",
+        "NumPy version",
+        "SciPy version",
+        "pandas version",
+        "scikit-learn version",
+        "BLAS implementation",
+        "operating system and architecture",
+        "timezone",
+        "notebook execution command"
+      ]
+    }
+  },
+  "outputs": {
+    "observed_segment": {
+      "notebook_execution_count": 12,
+      "consumer_interval": "2005.0 <= year < 2024.0",
+      "fit_basis": "u = x - 1990",
+      "consumer_basis": "u = year - 1990",
+      "model": "a + b / u + c * u + d * u^2 + e * u^3 + f * u^4 + g * u^5 + h * u^6",
+      "coefficients": [
+        "-1539.5103964825782",
+        "7305.087465383047",
+        "116.17205714035308",
+        "-1.1279910329686536",
+        "-0.2754809577876994",
+        "0.01542796862306066",
+        "-0.0003332548091334704",
+        "2.6541070013360904e-06"
+      ],
+      "metrics": {
+        "r2": "0.9996631800017091",
+        "mse": "0.000883173700993998",
+        "mae": "0.023569581927838656",
+        "mape": "0.000348269442798718",
+        "max_error": "0.09903018031658917"
+      }
+    },
+    "prediction_segment": {
+      "notebook_execution_count": 16,
+      "consumer_interval": "2024.0 <= year < 2035.0",
+      "fit_basis": "u = x - 2020",
+      "consumer_basis": "u = year - 2020",
+      "model": "a + b / u + c * u + d * u^2 + e * u^3",
+      "coefficients": [
+        "73.38076003516039",
+        "-4.199766017124573",
+        "-1.3053623848472002",
+        "0.14136771053009262",
+        "-0.004086715638812636"
+      ],
+      "metrics": {
+        "r2": "0.998487355243141",
+        "max_error": "0.05866409260934802",
+        "mse": "0.0007612049469331545",
+        "mae": "0.02337720117426826",
+        "mape": "0.000334747642232296"
+      }
+    }
+  },
+  "consumer_contract": {
+    "pre_2005": "Delegate to astro::delta_t::algo2::compute",
+    "non_finite_or_year_at_least_2035": "Throw std::out_of_range",
+    "default_model": false
+  },
+  "reproducibility": {
+    "historical_input_output_identity": "pinned",
+    "bit_for_bit_regeneration_environment": "unrecovered",
+    "claim": "This record identifies the historical inputs, procedure and stored outputs. It does not claim bit-for-bit regeneration of the unrecovered 2024 numerical environment."
+  }
+}

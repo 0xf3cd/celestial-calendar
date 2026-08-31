@@ -345,11 +345,11 @@ namespace algo3 {
 namespace algo4 {
 
 // Algo4 is a polynomial model fitting the ΔT values.
-// Model training: https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/models.ipynb
+// Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json
 // The model is based on:
 //   Year 2005.0 - 2024.0: IERS's Bulletin A observations
 //                         (https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html),
-//                         fitted over 2004.85-2024.42 in the 2024-08 snapshot.
+//                         fitted over 2004.85-2024.42 in the snapshot ending 2024-07-11.
 //   Year 2024.0 - 2035.0: USNO's ΔT predictions
 //                         (deltat.preds, https://maia.usno.navy.mil/ser7/deltat.preds).
 
@@ -364,7 +364,7 @@ namespace algo4 {
  * 
  * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
  * @ref USNO ΔT predictions (deltat.preds) - https://maia.usno.navy.mil/ser7/deltat.preds
- * @ref Models - https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/models.ipynb
+ * @ref Generation record - https://github.com/0xf3cd/AstroTime-Analysis/blob/55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json
  * 
  * @note For year < 2005.0, algo2 is used instead.
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
