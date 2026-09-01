@@ -80,7 +80,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_record_is_pinned():
-  assert NASA_RECORD_SHA256 == "b7088a9c8be176116780f10410a1855b4c83fa59ca1ad169670c9d8fa6750b64"
+  assert NASA_RECORD_SHA256 == "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "

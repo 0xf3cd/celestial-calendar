@@ -48,7 +48,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "b7088a9c8be176116780f10410a1855b4c83fa59ca1ad169670c9d8fa6750b64"
+NASA_RECORD_SHA256: Final[str] = "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -317,9 +317,7 @@ def verify_nasa_delta_t_provenance(
       "source_medians": algo5_v25["source_medians"],
       "repository_values": algo5_v25["repository_values"],
       "relation": (
-        "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal "
-        "places; separate from the algo5 fit output but drawn from the same Bulletin A input tree, so these rows "
-        "measure fit residual rather than independent accuracy"
+        "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal places"
       ),
     },
     "V25 Bulletin A relation differs",

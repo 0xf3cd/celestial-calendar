@@ -1789,7 +1789,7 @@ NASA Technical Reports Server document 20070003587.
 
 ==============================================================================
 Delta T algorithms 1, 3, and 5 — source attribution
-Applies to: source attribution for Delta T algorithms 1, 3, and 5 in src/astro/delta_t.hpp.
+Applies to: the Delta T algo1 coefficient table, algo3 expressions, and algo5 long-term branch in src/astro/delta_t.hpp.
 Source: multiple sources; exact authors, works, and URLs are listed in the attribution record
 Source-file SHA-256: 4ead1c6c3ec76c0eefe79ec926fbdce769b8ecbdec10142f7dbe373871d853f9
 This project-authored record identifies sources; it is not an upstream licence or permission grant.

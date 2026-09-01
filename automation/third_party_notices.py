@@ -153,7 +153,9 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   ),
   NoticeSource(
     title="Delta T algorithms 1, 3, and 5 — source attribution",
-    applicability="source attribution for Delta T algorithms 1, 3, and 5 in src/astro/delta_t.hpp",
+    applicability=(
+      "the Delta T algo1 coefficient table, algo3 expressions, and algo5 long-term branch in src/astro/delta_t.hpp"
+    ),
     path=Path("src/test/provenance/delta-t-sources/ATTRIBUTION.md"),
     upstream="multiple sources; exact authors, works, and URLs are listed in the attribution record",
     sha256=DELTA_T_ATTRIBUTION_SHA256,

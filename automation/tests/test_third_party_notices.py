@@ -39,7 +39,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "0775afa357b1b4e9eba2612ff39cb25e935e039f6cc075bd942906c538598b89"
+CANONICAL_NOTICE_SHA256 = "4e142b6b1c0821d08eaaef232f224c396d9510bd3b08f479d49dbc15c1f83665"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -77,7 +77,7 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   )
   assert NOTICE_SOURCES[-1].title == "Delta T algorithms 1, 3, and 5 — source attribution"
   assert NOTICE_SOURCES[-1].applicability == (
-    "source attribution for Delta T algorithms 1, 3, and 5 in src/astro/delta_t.hpp"
+    "the Delta T algo1 coefficient table, algo3 expressions, and algo5 long-term branch in src/astro/delta_t.hpp"
   )
   assert NOTICE_SOURCES[-1].sha256 == DELTA_T_ATTRIBUTION_SHA256
   for marking in NOTICE_SOURCES[-1].marking:

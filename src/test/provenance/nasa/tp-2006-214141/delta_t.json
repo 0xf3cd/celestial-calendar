@@ -160,7 +160,7 @@
           "window_observations": [31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31],
           "source_medians": ["67.64391", "68.10247", "68.5927", "68.96763", "69.22018", "69.36113", "69.35938", "69.29403", "69.20172", "69.17573", "69.1385", "69.10959"],
           "repository_values": ["67.64", "68.10", "68.59", "68.97", "69.22", "69.36", "69.36", "69.29", "69.20", "69.18", "69.14", "69.11"],
-          "relation": "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal places; separate from the algo5 fit output but drawn from the same Bulletin A input tree, so these rows measure fit residual rather than independent accuracy"
+          "relation": "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal places"
         }
       ]
     },
