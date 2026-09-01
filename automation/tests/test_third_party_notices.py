@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 
 from automation.third_party_notices import (
+  DELTA_T_ATTRIBUTION_SHA256,
   NOTICE_SOURCES,
   PREAMBLE,
   REPO_ROOT,
@@ -38,7 +39,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "26adc197b1123bbf67d4b345c9de2304486a2da3e2fccac5b59ddf5931217e99"
+CANONICAL_NOTICE_SHA256 = "0775afa357b1b4e9eba2612ff39cb25e935e039f6cc075bd942906c538598b89"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -62,22 +63,63 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
   assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 9
-  for marking in NOTICE_SOURCES[-3].marking:
+  assert len(NOTICE_SOURCES) == 10
+  for marking in NOTICE_SOURCES[-4].marking:
     assert marking.encode() in notice
-  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-3].marking[1]
-  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-3].marking[-1]
-  assert NOTICE_SOURCES[-2].title == "ERFA v2.0.1 — LICENSE"
-  assert NOTICE_SOURCES[-1].title == "NASA/TP-2006-214141 — acknowledgment"
-  assert NOTICE_SOURCES[-1].applicability == (
+  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-4].marking[1]
+  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-4].marking[-1]
+  assert NOTICE_SOURCES[-3].title == "ERFA v2.0.1 — LICENSE"
+  assert NOTICE_SOURCES[-2].title == "NASA/TP-2006-214141 — acknowledgment"
+  assert NOTICE_SOURCES[-2].applicability == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
     "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
     "NASA-sourced historical Delta-T validation values in src/test"
   )
+  assert NOTICE_SOURCES[-1].title == "Delta T algorithms 1, 3, and 5 — source attribution"
+  assert NOTICE_SOURCES[-1].applicability == (
+    "source attribution for Delta T algorithms 1, 3, and 5 in src/astro/delta_t.hpp"
+  )
+  assert NOTICE_SOURCES[-1].sha256 == DELTA_T_ATTRIBUTION_SHA256
+  for marking in NOTICE_SOURCES[-1].marking:
+    assert marking.encode() in notice
   assert b"NASA/TP-2006-214141 (October 2006)" in notice
   assert b"not an upstream-byte identity claim" in notice
   assert b"covers this repository's acknowledgment file, not the linked NASA page" in notice
+  assert b"It records attribution only" in notice
+  assert b"Xu Jianwei" in notice
+  assert b"Fred Espenak" in notice
+  assert b"M. Zawilski" in notice
+  assert b"does not describe the corrected expression as MIT, CC BY, OGL, permission-granted, or" in notice
   assert b"Redistributions in binary form must reproduce the above copyright" in notice
+
+
+def test_delta_t_source_markings_are_immutable_and_exact():
+  delta_t = (REPO_ROOT / "src" / "astro" / "delta_t.hpp").read_text(encoding="utf-8")
+  readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+  xu_url = "https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm"
+  eclipsewise_url = "https://www.eclipsewise.com/help/deltatpoly2014.html"
+  addendum_url = "https://doi.org/10.1098/rspa.2020.0776"
+  hmnao_url = "https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/"
+  record_url = (
+    "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
+    "ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json"
+  )
+
+  assert delta_t.count(xu_url) == 2
+  assert "Xu Jianwei, 寿星万年历2008版(V1.3.2)" in delta_t
+  assert "www.cnblogs.com/qintangtao" not in delta_t
+  assert delta_t.count(eclipsewise_url) == 2
+  assert "Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014)" in delta_t
+  assert "quadratic trend to Marc van der Sluys" in delta_t
+  assert delta_t.count(addendum_url) == 2
+  assert delta_t.count(hmnao_url) == 2
+  assert delta_t.count(record_url) == 2
+  assert "AstroTime-Analysis/blob/main/DeltaT/algo5.py" not in delta_t
+  assert delta_t.count("https://astro.ukho.gov.uk/nao/lvm/") == 2
+  for source in (xu_url, eclipsewise_url, addendum_url):
+    assert source in readme
+  assert "10.1098/rspa.2016.0404" not in readme
+  assert "www.cnblogs.com/qintangtao" not in readme
 
 
 def materialize_inputs(destination: Path) -> None:
@@ -103,7 +145,7 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
   elif mutation == "marking":
-    sources = (*sources[:-3], replace(sources[-3], marking=()), *sources[-2:])
+    sources = (*sources[:-4], replace(sources[-4], marking=()), *sources[-3:])
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:

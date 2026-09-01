@@ -41,6 +41,7 @@ else:
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ROOT_NOTICE: Final[Path] = REPO_ROOT / "THIRD_PARTY_NOTICES.txt"
 EMSCRIPTEN_REVISION: Final[str] = "ce75e06884093bcefb86a6b8fd56a5d62a4cc245"
+DELTA_T_ATTRIBUTION_SHA256: Final[str] = "4ead1c6c3ec76c0eefe79ec926fbdce769b8ecbdec10142f7dbe373871d853f9"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
 PREAMBLE: Final[bytes] = b"""Third-Party Notices
 
@@ -148,6 +149,17 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
       "The NASA publication bytes are not included in this repository; the checked provenance relation is a "
       "transcription record, not an upstream-byte identity claim.",
       "The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.",
+    ),
+  ),
+  NoticeSource(
+    title="Delta T algorithms 1, 3, and 5 — source attribution",
+    applicability="source attribution for Delta T algorithms 1, 3, and 5 in src/astro/delta_t.hpp",
+    path=Path("src/test/provenance/delta-t-sources/ATTRIBUTION.md"),
+    upstream="multiple sources; exact authors, works, and URLs are listed in the attribution record",
+    sha256=DELTA_T_ATTRIBUTION_SHA256,
+    marking=(
+      "This project-authored record identifies sources; it is not an upstream licence or permission grant.",
+      "No upstream source bytes are included; the Source-file SHA-256 covers this attribution record only.",
     ),
   ),
 )

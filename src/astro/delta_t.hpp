@@ -62,7 +62,8 @@ namespace astro::delta_t {
 #pragma region Algorithm 1
 
 namespace algo1 {
-// Algo1 ref: https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html
+// Algo1 source: Xu Jianwei, 寿星万年历2008版(V1.3.2), dated 2008-08-31.
+// https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
 
 /** @brief The coefficients of algorithm 1. */
 struct Algo1Coefficients {
@@ -128,7 +129,8 @@ find_coefficients(const int32_t year) -> std::optional<
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref https://www.cnblogs.com/qintangtao/archive/2013/03/04/2942245.html
+ * @ref Xu Jianwei, 寿星万年历2008版(V1.3.2) -
+ *      https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
  */
@@ -300,7 +302,9 @@ namespace algo2 {
 #pragma region Algorithm 3
 
 namespace algo3 {
-// Algo3 ref: https://eclipsewise.com/help/deltatpoly2014.html
+// Algo3 source: Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014).
+// The source credits the quadratic trend to Marc van der Sluys.
+// https://www.eclipsewise.com/help/deltatpoly2014.html
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 3.
@@ -311,7 +315,8 @@ namespace algo3 {
  * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref https://eclipsewise.com/help/deltatpoly2014.html
+ * @ref Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014) -
+ *      https://www.eclipsewise.com/help/deltatpoly2014.html
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= 3000) {
@@ -404,13 +409,14 @@ namespace algo4 {
 namespace algo5 {
 
 // Algo5 is algo4's successor, retrained on the 2026-07 data refresh.
-// Model training: https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/algo5.py
+// Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json
 // The model is based on:
 //   Year 2005.0 - 2026.41: IERS's Bulletin A observations, fitted as a single segment,
 //                          pinned to observed medians at both edges.
-//   Year > 2026.41:        Stephenson-Morrison-Hohenkerk integrated-lod curve
-//                          (https://astro.ukho.gov.uk/nao/lvm/), anchored at the last
-//                          observation — continuous there, valid for all future years.
+//   Year > 2026.41:        corrected Morrison-Stephenson-Hohenkerk-Zawilski integrated-LOD
+//                          expression (https://doi.org/10.1098/rspa.2020.0776), as combined at
+//                          https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/;
+//                          anchored at the last observation and continuous there.
 
 /** @brief The decimal year of the last Bulletin A observation in the training data;
  *         also the boundary between the fitted and the extrapolated segments. */
@@ -425,8 +431,11 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
  *
  * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
- * @ref UKHO long-term variation model - https://astro.ukho.gov.uk/nao/lvm/
- * @ref Model - https://github.com/0xf3cd/AstroTime-Analysis/blob/main/DeltaT/algo5.py
+ * @ref Morrison et al. 2021 addendum - https://doi.org/10.1098/rspa.2020.0776
+ * @ref Corrected HMNAO combined expression -
+ *      https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/
+ * @ref Generation record -
+ *      https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json
  *
  * @note For year < 2005.0, algo2 is used instead (same delegation as algo4).
  * @note There is no upper bound: beyond the last observation, the anchored integrated-lod

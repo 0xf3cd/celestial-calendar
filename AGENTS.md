@@ -49,9 +49,10 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
 - **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo5 (the default) is trained in
   [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis) (`DeltaT/algo5.py`);
   algo1–algo4 are frozen exhibits. Refresh ritual: re-run that repo's downloaders +
-  `algo5.py`, update the coefficients + anchor here — a new algoN is only for a
-  methodology change. In-repo `statistics/` holds evaluation notebooks and golden-dataset
-  crawlers — **no model training**.
+  `algo5.py`, publish and retain a new algo5 grant/record commit, then repin the coefficients,
+  V25 relation and provenance gates here — a new algoN is only for a methodology change.
+  In-repo `statistics/` holds evaluation notebooks and golden-dataset crawlers — **no model
+  training**.
 
 ### Golden data and the validation chain (worked example: sidereal time)
 
