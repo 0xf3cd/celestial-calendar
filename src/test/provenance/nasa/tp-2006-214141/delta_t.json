@@ -151,9 +151,16 @@
           "relation": "round to one decimal place"
         },
         {
-          "source": "inherited from unresolved R09",
+          "source": "IERS Bulletin A via the retained AstroTime algo5 record",
+          "source_record": "src/test/provenance/astrotime-analysis/ed1cdc2fd6c5122b391a82289aa2cc060340552d/record.json",
+          "source_record_sha256": "77fa6748fc19954073ee3c013731ac0200f4730efcb483f9f08fe8c921666455",
+          "source_commit": "ddf3be1972e405ed02233837394cd3377226b65c",
+          "source_tree": "23574b254efe669d792dc2881dd133ea931cfaab",
           "years": [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
-          "relation": "not closed by A3.5"
+          "window_observations": [31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31],
+          "source_medians": ["67.64391", "68.10247", "68.5927", "68.96763", "69.22018", "69.36113", "69.35938", "69.29403", "69.20172", "69.17573", "69.1385", "69.10959"],
+          "repository_values": ["67.64", "68.10", "68.59", "68.97", "69.22", "69.36", "69.36", "69.29", "69.20", "69.18", "69.14", "69.11"],
+          "relation": "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal places"
         }
       ]
     },

@@ -53,9 +53,10 @@ using DatasetType = std::map<double, double>; // { year, ΔT }
 // Recent values of ΔT from direct observations.
 // 1955-2005: NASA/TP-2006-214141 Table 2-2, exact one-decimal values.
 // 2010/2014: USNO deltat.data values 66.0699/67.2810, rounded to one decimal.
-// 2015+ entries remain inherited from unresolved R09: IERS Bulletin A final values
-// (AstroTime-Analysis @ ddf3be1),
-// median of ±15 days around each year boundary.
+// 2015-2026: IERS Bulletin A final values at AstroTime-Analysis ddf3be1, pinned by
+// record ed1cdc2f; medians within ±15 days of each January 1 boundary, rounded to
+// two decimals. These rows share algo5's fit input and measure fit residual,
+// not independent accuracy.
 const inline DatasetType ACCURATE_DELTA_T_TABLE {
   { 1955.0, 31.1 },
   { 1960.0, 33.2 },

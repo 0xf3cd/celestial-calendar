@@ -31,8 +31,16 @@ from pathlib import Path
 from typing import Final
 
 if __package__:
+  from .astrotime_delta_t_provenance import (
+    ASTROTIME_ALGO5_RECORD_SHA256,
+    ASTROTIME_ALGO5_ROOT_RELATIVE,
+  )
   from .source_digest import canonical_cpp
 else:
+  from astrotime_delta_t_provenance import (
+    ASTROTIME_ALGO5_RECORD_SHA256,
+    ASTROTIME_ALGO5_ROOT_RELATIVE,
+  )
   from source_digest import canonical_cpp
 
 
@@ -40,7 +48,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "1088eaa11c030319c646b340afce0081da0f878833bb02a27b3749934fabe090"
+NASA_RECORD_SHA256: Final[str] = "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -54,7 +62,7 @@ class ProvenanceCounts:
   runtime_branches: int
   nasa_v25_rows: int
   usno_v25_rows: int
-  inherited_v25_rows: int
+  bulletin_a_v25_rows: int
   v27_relations: int
 
 
@@ -123,11 +131,18 @@ def verify_nasa_delta_t_provenance(
   record_sha256: str = NASA_RECORD_SHA256,
   acknowledgment_sha256: str = NASA_ACKNOWLEDGMENT_SHA256,
   notice_applicability: str = NASA_NOTICE_APPLICABILITY,
+  algo5_root: Path | None = None,
+  algo5_record_sha256: str = ASTROTIME_ALGO5_RECORD_SHA256,
 ) -> ProvenanceCounts:
   record_path = nasa_root / "delta_t.json"
   acknowledgment_path = nasa_root / "ACKNOWLEDGMENT.txt"
   record = json.loads(_read_pinned(record_path, record_sha256, "NASA provenance record"))
   acknowledgment = _read_pinned(acknowledgment_path, acknowledgment_sha256, "NASA acknowledgment")
+  if algo5_root is None:
+    algo5_root = repo_root / ASTROTIME_ALGO5_ROOT_RELATIVE
+  algo5_record = json.loads(
+    _read_pinned(algo5_root / "record.json", algo5_record_sha256, "AstroTime algo5 provenance record")
+  )
 
   publication = record["publication"]
   _require(record["schema"] == 1, "NASA provenance schema differs")
@@ -283,18 +298,34 @@ def verify_nasa_delta_t_provenance(
   v25 = validation["v25"]
   partitions = v25["partitions"]
   _require(len(partitions) == 3, "V25 source partition count differs")
-  nasa_partition, usno_partition, inherited_partition = partitions
+  nasa_partition, usno_partition, bulletin_a_partition = partitions
   _require(nasa_partition["source"] == "NASA/TP-2006-214141 Table 2-2", "V25 NASA source differs")
   _require(usno_partition["source"] == "USNO deltat.data", "V25 USNO source differs")
-  _require(inherited_partition["source"] == "inherited from unresolved R09", "V25 inherited source differs")
-  _require(inherited_partition["relation"] == "not closed by A3.5", "V25 inherited condition was closed")
   _require(nasa_partition["years"] == list(range(1955, 2010, 5)), "V25 NASA year partition differs")
   _require(usno_partition["years"] == [2010, 2014], "V25 USNO year partition differs")
-  _require(inherited_partition["years"] == list(range(2015, 2027)), "V25 inherited year partition differs")
+  algo5_v25 = algo5_record["validation_relations"]["v25_2015_2026"]
+  _require(
+    bulletin_a_partition
+    == {
+      "source": "IERS Bulletin A via the retained AstroTime algo5 record",
+      "source_record": (ASTROTIME_ALGO5_ROOT_RELATIVE / "record.json").as_posix(),
+      "source_record_sha256": ASTROTIME_ALGO5_RECORD_SHA256,
+      "source_commit": algo5_v25["source_commit"],
+      "source_tree": algo5_v25["source_tree"],
+      "years": algo5_v25["years"],
+      "window_observations": algo5_v25["window_observations"],
+      "source_medians": algo5_v25["source_medians"],
+      "repository_values": algo5_v25["repository_values"],
+      "relation": (
+        "median of 31 observations within 15 days inclusive of each January 1 boundary, rounded to two decimal places"
+      ),
+    },
+    "V25 Bulletin A relation differs",
+  )
 
   helper_text = (repo_root / v25["repository_path"]).read_text(encoding="utf-8")
   repository_rows = _delta_t_rows(helper_text)
-  covered_years = set(nasa_partition["years"]) | set(usno_partition["years"]) | set(inherited_partition["years"])
+  covered_years = set(nasa_partition["years"]) | set(usno_partition["years"]) | set(bulletin_a_partition["years"])
   _require(set(repository_rows) == covered_years, "V25 dataset rows are not covered by the recorded source partitions")
   for year, value in zip(nasa_partition["years"], nasa_partition["repository_values"], strict=True):
     _require(repository_rows[year] == Decimal(value), f"V25 NASA value differs for {year}")
@@ -308,9 +339,23 @@ def verify_nasa_delta_t_provenance(
     _require(usno_rows[year] == Decimal(source), f"V25 USNO source value differs for {year}")
     _require(_rounded(source, 1) == Decimal(target), f"V25 USNO rounding relation differs for {year}")
     _require(repository_rows[year] == Decimal(target), f"V25 repository value differs for {year}")
+  for year, source, target in zip(
+    bulletin_a_partition["years"],
+    bulletin_a_partition["source_medians"],
+    bulletin_a_partition["repository_values"],
+    strict=True,
+  ):
+    _require(_rounded(source, 2) == Decimal(target), f"V25 Bulletin A rounding relation differs for {year}")
+    _require(repository_rows[year] == Decimal(target), f"V25 Bulletin A repository value differs for {year}")
   _require("NASA/TP-2006-214141 Table 2-2" in helper_text, "V25 NASA citation differs")
   _require("USNO deltat.data" in helper_text, "V25 USNO citation differs")
-  _require("2015+ entries" in helper_text and "R09" in helper_text, "V25 inherited R09 boundary differs")
+  _require(
+    "2015-2026: IERS Bulletin A final values at AstroTime-Analysis ddf3be1" in helper_text
+    and "record ed1cdc2f" in helper_text
+    and "share algo5's fit input" in helper_text
+    and "not independent accuracy" in helper_text,
+    "V25 Bulletin A citation differs",
+  )
 
   v27 = validation["v27"]
   year_500 = v27["year_500"]
@@ -337,7 +382,7 @@ def verify_nasa_delta_t_provenance(
     runtime_branches=len(branches),
     nasa_v25_rows=len(nasa_partition["years"]),
     usno_v25_rows=len(usno_partition["years"]),
-    inherited_v25_rows=len(inherited_partition["years"]),
+    bulletin_a_v25_rows=len(bulletin_a_partition["years"]),
     v27_relations=2,
   )
 

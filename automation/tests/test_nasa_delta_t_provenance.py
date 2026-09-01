@@ -27,6 +27,7 @@ from shutil import copy2
 
 import pytest
 
+from automation.astrotime_delta_t_provenance import ASTROTIME_ALGO5_ROOT, ASTROTIME_ALGO5_ROOT_RELATIVE
 from automation.nasa_delta_t_provenance import (
   NASA_ACKNOWLEDGMENT,
   NASA_ACKNOWLEDGMENT_SHA256,
@@ -59,6 +60,9 @@ def materialize_inputs(destination: Path) -> Path:
     target = destination / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     copy2(REPO_ROOT / relative, target)
+  algo5_root = destination / ASTROTIME_ALGO5_ROOT_RELATIVE
+  algo5_root.mkdir(parents=True)
+  copy2(ASTROTIME_ALGO5_ROOT / "record.json", algo5_root / "record.json")
   return nasa_root
 
 
@@ -76,7 +80,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_record_is_pinned():
-  assert NASA_RECORD_SHA256 == "1088eaa11c030319c646b340afce0081da0f878833bb02a27b3749934fabe090"
+  assert NASA_RECORD_SHA256 == "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
@@ -136,6 +140,43 @@ def test_v25_partition_is_pinned(tmp_path, mutation):
 
 
 @pytest.mark.parametrize(
+  ("field", "value"),
+  [
+    ("source", "unidentified source"),
+    ("source_record", "record.json"),
+    ("source_record_sha256", "0" * 64),
+    ("source_commit", "main"),
+    ("source_tree", "unknown"),
+    ("years", list(range(2016, 2028))),
+    ("window_observations", [30] * 12),
+    ("source_medians", ["0"] * 12),
+    ("repository_values", ["0"] * 12),
+    ("relation", "algo5 fit output"),
+  ],
+  ids=["source", "record", "record-hash", "commit", "tree", "years", "window", "medians", "values", "relation"],
+)
+def test_v25_bulletin_a_relation_is_pinned(tmp_path, field, value):
+  nasa_root = materialize_inputs(tmp_path)
+  record = nasa_root / "delta_t.json"
+  digest = mutate_record(
+    record,
+    lambda payload: payload["validation_relations"]["v25"]["partitions"][2].update({field: value}),
+  )
+
+  with pytest.raises(RuntimeError, match="V25 Bulletin A relation differs"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
+
+
+def test_v25_bulletin_a_record_bytes_are_pinned(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  algo5_record = tmp_path / ASTROTIME_ALGO5_ROOT_RELATIVE / "record.json"
+  algo5_record.write_bytes(algo5_record.read_bytes() + b"\n")
+
+  with pytest.raises(RuntimeError, match="AstroTime algo5 provenance record hash mismatch"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+@pytest.mark.parametrize(
   ("relation", "field", "value", "message"),
   [
     ("year_500", "delta_t_seconds", 5711, "year-500 value"),
@@ -175,6 +216,15 @@ def test_unpartitioned_v25_row_fails(tmp_path):
   replace_once(helper, "  { 2026.0, 69.11 },", "  { 2026.0, 69.11 },\n  { 2027.0, 69.3 },")
 
   with pytest.raises(RuntimeError, match="not covered by the recorded source partitions"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_v25_bulletin_a_repository_value_is_pinned(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  helper = tmp_path / "src/test/astro/delta_t_test_helper.hpp"
+  replace_once(helper, "  { 2026.0, 69.11 },", "  { 2026.0, 69.12 },")
+
+  with pytest.raises(RuntimeError, match="V25 Bulletin A repository value differs for 2026"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 

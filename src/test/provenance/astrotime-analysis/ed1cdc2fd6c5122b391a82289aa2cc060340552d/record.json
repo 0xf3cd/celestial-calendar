@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "record_type": "historical_input_output_record",
+  "scope": {
+    "description": "Delta T algo5 outputs consumed by 0xf3cd/celestial-calendar",
+    "grant": "DeltaT/algo5/GRANT.md",
+    "consumer_repository": "https://github.com/0xf3cd/celestial-calendar",
+    "consumer_symbol": "astro::delta_t::algo5::compute"
+  },
+  "historical_generation": {
+    "repository": "https://github.com/0xf3cd/AstroTime-Analysis",
+    "commit": "a1e95811b47c084f44b4b4bb7444560dd5b863bc",
+    "parent_data_commit": "ddf3be1972e405ed02233837394cd3377226b65c",
+    "commit_date": "2026-07-26T21:50:31-07:00",
+    "script": {
+      "path": "DeltaT/algo5.py",
+      "git_blob_sha1": "76b9a60cb5b12b3f315c58b1a00828c8ba32751a",
+      "sha256": "4457e4eb88034aee34a680cac353e2f02a2eefddfc886fdaa73000638fe6fa1b"
+    },
+    "analyzer": {
+      "path": "DeltaT/analyzer.py",
+      "git_blob_sha1": "47388e7dabadd5aa13710c785b1ef65d5a6bc6d3",
+      "sha256": "df7a637305da0ea544c4d5a86cfd0b216ce3315038395544eafe846bab0b31a7"
+    },
+    "inputs": {
+      "iers_bulletin_a": {
+        "source": "https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html",
+        "raw_tree_sha1": "23574b254efe669d792dc2881dd133ea931cfaab",
+        "raw_file_count": 1124,
+        "header_csv": {
+          "path": "DeltaT/cvs/bulletin_a_header.csv",
+          "git_blob_sha1": "0a8a7301dd0ad7a1b4b09ab58d6a4d11fba27a66",
+          "sha256": "5ab36a79166111ef47210f558e44eccd32bbe0d1160365a8ae1105e5415c44d5",
+          "data_rows": 1124
+        },
+        "final_values_csv": {
+          "path": "DeltaT/cvs/bulletin_a_final_values.csv",
+          "git_blob_sha1": "37f7c65d757bc1bdeb56e929400755f8af6c15ef",
+          "sha256": "bee082ca1a5d302603af7d07146c25dc07d7b700e4b8f502493672db3b3798d6",
+          "data_rows": 7848,
+          "mjd_range": [53315, 61192],
+          "date_range": ["2004-11-06", "2026-06-01"]
+        }
+      }
+    },
+    "transformations": [
+      "Parse TAI-UTC effective dates from Bulletin A headers",
+      "Discard (33.0, 1999-01-01) as the explicit historical project decision in algo5.py",
+      "Parse final UT1-UTC rows and convert MJD from the 1858-11-17 epoch",
+      "Compute decimal year with naive datetime.timestamp()",
+      "Compute Delta T as TAI-UTC minus UT1-UTC plus 32.184 seconds",
+      "Remove observations beyond two standard deviations of a degree-3 polynomial residual",
+      "Fit the eight-term observed segment by constrained least squares at 2005.0 and the last observation",
+      "Choose C so the long-term branch equals the observed fit at the last-observation boundary"
+    ],
+    "observed_input": {
+      "deduplicated_rows": 7848,
+      "decimal_year_range": ["2004.8469945355191", "2026.4135844748857"],
+      "left_anchor": {
+        "year": "2005.0",
+        "window": "absolute decimal-year distance at most 30 / 365.25",
+        "observations": 30,
+        "median_delta_t_seconds": "64.697075"
+      },
+      "right_anchor": {
+        "year": "2026.4135844748857",
+        "window": "last 60 observations",
+        "observations": 60,
+        "median_delta_t_seconds": "69.15163"
+      }
+    },
+    "environment": {
+      "recorded": {},
+      "unrecovered": [
+        "Python version",
+        "NumPy version",
+        "BLAS implementation",
+        "operating system and architecture",
+        "timezone",
+        "script invocation"
+      ]
+    }
+  },
+  "third_party_inputs": {
+    "corrected_lod_expression": {
+      "authors": [
+        "L. V. Morrison",
+        "F. R. Stephenson",
+        "C. Y. Hohenkerk",
+        "M. Zawilski"
+      ],
+      "addendum": "https://doi.org/10.1098/rspa.2020.0776",
+      "combined_expression": "https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/",
+      "lod": "1.72 * t - 3.5 * sin(2 * pi * (t + 0.75) / 14), where t = (year - 1825) / 100",
+      "analytic_integral": "31.4115 * t^2 + 284.8435805251424 * cos(0.4487989505128276 * (t + 0.75))",
+      "grant_status": "excluded from DeltaT/algo5/GRANT.md"
+    }
+  },
+  "outputs": {
+    "observed_segment": {
+      "consumer_interval": "2005.0 <= year <= 2026.4135844748857",
+      "fit_basis": "u = year - 1990",
+      "consumer_basis": "u = year - 1990",
+      "model": "a + b / u + c * u + d * u^2 + e * u^3 + f * u^4 + g * u^5 + h * u^6",
+      "coefficients": [
+        "-9963.526300002133",
+        "33695.46874239917",
+        "1251.8488008787037",
+        "-84.95374332215921",
+        "3.383624734734596",
+        "-0.079054553776811",
+        "0.0010034123781420099",
+        "-5.341580725291782e-06"
+      ]
+    },
+    "last_observation_year": "2026.4135844748857",
+    "fitted_integration_constant": "-150.64706473230285"
+  },
+  "validation_relations": {
+    "v25_2015_2026": {
+      "source_commit": "ddf3be1972e405ed02233837394cd3377226b65c",
+      "source_tree": "23574b254efe669d792dc2881dd133ea931cfaab",
+      "repository_path": "src/test/astro/delta_t_test_helper.hpp",
+      "procedure": [
+        "Build the Delta T series from the pinned header and final-values CSVs using the historical TAI-UTC and UT1-UTC conversion",
+        "For each January 1 boundary from 2015 through 2026, select the 31 observations whose dates are within 15 days inclusive",
+        "Take the median and round it to two decimal places for the retained validation table"
+      ],
+      "years": [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+      "window_observations": [31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31],
+      "source_medians": [
+        "67.64391",
+        "68.10247",
+        "68.5927",
+        "68.96763",
+        "69.22018",
+        "69.36113",
+        "69.35938",
+        "69.29403",
+        "69.20172",
+        "69.17573",
+        "69.1385",
+        "69.10959"
+      ],
+      "repository_values": [
+        "67.64",
+        "68.10",
+        "68.59",
+        "68.97",
+        "69.22",
+        "69.36",
+        "69.36",
+        "69.29",
+        "69.20",
+        "69.18",
+        "69.14",
+        "69.11"
+      ],
+      "relation": "separate Bulletin A generation pin; not an algo5 fit output"
+    }
+  },
+  "consumer_contract": {
+    "pre_2005": "Delegate to astro::delta_t::algo2::compute",
+    "observed_branch_boundary": "year <= LAST_OBSERVATION_YEAR",
+    "future_branch": "Use the corrected integrated LOD expression with the fitted integration constant; no upper bound",
+    "non_finite": "Propagate through the noexcept arithmetic",
+    "default_model": true
+  },
+  "reproducibility": {
+    "historical_input_output_identity": "pinned",
+    "bit_for_bit_regeneration_environment": "unrecovered",
+    "claim": "This record identifies the historical inputs, procedure and stored outputs. It does not claim bit-for-bit regeneration of the unrecovered 2026 numerical environment."
+  }
+}

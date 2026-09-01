@@ -53,7 +53,7 @@ def test_canonical_cpp(source, expected):
     ),
     (
       "automation/nasa_delta_t_provenance.py",
-      "ProvenanceCounts(runtime_branches=15, nasa_v25_rows=11, usno_v25_rows=2, inherited_v25_rows=12, "
+      "ProvenanceCounts(runtime_branches=15, nasa_v25_rows=11, usno_v25_rows=2, bulletin_a_v25_rows=12, "
       "v27_relations=2)",
     ),
   ],

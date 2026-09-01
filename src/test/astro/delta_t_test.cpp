@@ -192,8 +192,8 @@ TEST(DeltaT, Statistics) {
   }
 
   // #64: assert the default dispatch against observations (this test used to only print).
-  // 0.15 covers the measured worst model-vs-observation gap: 0.097 s for algo2 (pre-2005),
-  // 0.114 s for algo5's fitted segment.
+  // 0.15 keeps margin above this table's 0.097 s maximum residual. The 2015-2026
+  // rows share algo5's Bulletin A fit input and are not independent accuracy evidence.
   for (const auto& [year, expected_delta_t] : dataset::test::ACCURATE_DELTA_T_TABLE) {
     ASSERT_NEAR(compute(year), expected_delta_t, 0.15)
       << "default delta_t::compute drifted from observed ΔT at year " << year;
