@@ -150,9 +150,13 @@ def _response_arguments(path: Path) -> list[str]:
   raw = path.read_bytes()
   for encoding in ("utf-8-sig", "utf-16"):
     try:
-      return _windows_command_line(raw.decode(encoding))
+      command_line = raw.decode(encoding).strip()
     except UnicodeDecodeError:
       continue
+    _require(command_line, f"Linker response file is empty: {path}")
+    arguments = _windows_command_line(f"response-file {command_line}")
+    _require(arguments and arguments[0] == "response-file", f"Cannot parse linker response file: {path}")
+    return arguments[1:]
   raise RuntimeError(f"Cannot decode linker response file: {path}")
 
 
@@ -299,6 +303,8 @@ def _library_names(arguments: Sequence[str], verbose_link: str) -> list[str]:
         value += ".lib"
       defaults.append(Path(value).name.lower())
       continue
+    if lower.startswith(("/", "-")):
+      continue
     value = argument.strip('"')
     if value.lower().endswith(".lib"):
       explicit.append(Path(value).name.lower())
@@ -423,7 +429,7 @@ def _mt_request(producer: str) -> dict:
   return {"cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>", "path": relative.as_posix()}
 
 
-def _runner_identity() -> dict:
+def _runner_identity(search_paths: Sequence[Path]) -> dict:
   names = (
     "ImageOS",
     "ImageVersion",
@@ -434,7 +440,25 @@ def _runner_identity() -> dict:
     "VCToolsInstallDir",
     "VCToolsVersion",
   )
-  return {name: os.environ.get(name) for name in names}
+  identity = {name: os.environ.get(name) for name in names}
+  msvc_identities: set[tuple[str, str]] = set()
+  sdk_identities: set[tuple[str, str]] = set()
+  for path in search_paths:
+    parts = path.parts
+    folded = tuple(part.casefold() for part in parts)
+    for index in range(len(parts) - 4):
+      if folded[index : index + 3] == ("vc", "tools", "msvc") and folded[index + 4] == "lib":
+        msvc_identities.add((str(Path(*parts[: index + 4])), parts[index + 3]))
+      if folded[index] == "windows kits" and folded[index + 2] == "lib":
+        sdk_identities.add((str(Path(*parts[: index + 2])), parts[index + 3]))
+
+  _require(len(msvc_identities) <= 1, "MSVC toolset identity differs across linker search paths")
+  _require(len(sdk_identities) <= 1, "Windows SDK identity differs across linker search paths")
+  if msvc_identities:
+    identity["VCToolsInstallDir"], identity["VCToolsVersion"] = next(iter(msvc_identities))
+  if sdk_identities:
+    identity["WindowsSdkDir"], identity["WindowsSDKVersion"] = next(iter(sdk_identities))
+  return identity
 
 
 def _tool_identity(command: str, version_argument: str = "--version") -> dict:
@@ -530,6 +554,23 @@ def _validate_intrinsic(report: dict, packaged_dll: Path, producer: str) -> None
     "Windows evidence import inventory is malformed or duplicated",
   )
   _require(not any(_forbidden_import(name) for name in imports), "Windows DLL imports an unapproved dynamic runtime")
+  runner = report.get("runner")
+  required_runner_fields = {
+    "ImageOS",
+    "ImageVersion",
+    "RUNNER_ARCH",
+    "RUNNER_OS",
+    "VCToolsInstallDir",
+    "VCToolsVersion",
+    "WindowsSDKVersion",
+    "WindowsSdkDir",
+  }
+  _require(
+    isinstance(runner, dict)
+    and set(runner) == required_runner_fields
+    and all(isinstance(runner[field], str) and runner[field] for field in required_runner_fields),
+    "Windows runner/toolset/SDK identity is incomplete",
+  )
   selected = report.get("selected_default_libraries")
   _require(
     isinstance(selected, list)
@@ -713,7 +754,7 @@ def collect_evidence(
     "raw_dll_sha256": _sha256(packaged_data),
     "response_expanded": not any(argument.startswith("@") for argument in invocation["expanded_arguments"]),
     "response_files": invocation["response_files"],
-    "runner": _runner_identity(),
+    "runner": _runner_identity(search_paths),
     "schema": 1,
     "selected_default_libraries": library_names,
     "static_library_roles": roles,

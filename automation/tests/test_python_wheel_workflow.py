@@ -203,7 +203,7 @@ def test_python_wheel_platform_toolchains_are_explicit():
   assert windows_floor_setup[0] < windows_floor_test
   assert workflow["env"]["CIBW_ENVIRONMENT_WINDOWS"] == (
     "CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all: "
-    'CELESTIAL_WINDOWS_EVIDENCE_DIR="$GITHUB_WORKSPACE\\windows-link-evidence-wheel" '
+    'CELESTIAL_WINDOWS_EVIDENCE_DIR="$GITHUB_WORKSPACE/windows-link-evidence-wheel" '
     "CELESTIAL_WINDOWS_EVIDENCE_PRODUCER=wheel"
   )
 
