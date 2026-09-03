@@ -255,6 +255,13 @@ def test_runner_identity_recovers_toolset_and_sdk_from_linker_paths(monkeypatch,
     evidence._runner_identity([msvc, other_msvc, sdk])
 
 
+def test_mt_request_precedes_native_and_wheel_target_creation():
+  expected = {"cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>"}
+
+  assert evidence._mt_request("native") == expected | {"path": "src/CMakeLists.txt"}
+  assert evidence._mt_request("wheel") == expected | {"path": "bindings/python/CMakeLists.txt"}
+
+
 def test_microsoft_terms_are_searched_and_retained(monkeypatch, tmp_path):
   installation = tmp_path / "Visual Studio"
   installation.mkdir()
@@ -395,7 +402,7 @@ def test_windows_link_capture_is_target_specific_and_not_installed():
   combined += (REPO / "bindings" / "python" / "CMakeLists.txt").read_text(encoding="utf-8")
 
   assert "CXX_LINKER_LAUNCHER" in cmake
-  assert 'target_link_options(celestial_calendar PRIVATE "LINKER:/VERBOSE")' in cmake
+  assert 'target_link_options(celestial_calendar PRIVATE "LINKER:-verbose")' in cmake
   assert "/Brepro" not in combined
   assert "MultiThreadedDLL" not in combined
   assert "install" not in "\n".join(line for line in cmake.splitlines() if "EVIDENCE" in line)

@@ -435,7 +435,7 @@ def _mt_request(producer: str) -> dict:
   relative = Path("src/CMakeLists.txt") if producer == "native" else Path("bindings/python/CMakeLists.txt")
   text = (REPO_ROOT / relative).read_text(encoding="utf-8")
   request = 'set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")'
-  target = "add_subdirectory(shared_lib)" if producer == "native" else "add_subdirectory(${REPO_ROOT}/src/shared_lib"
+  target = "add_subdirectory(shared_lib)" if producer == "native" else 'add_subdirectory("${REPO_ROOT}/src/shared_lib"'
   _require(text.count(request) == 1, f"{producer} /MT request differs")
   _require(text.index(request) < text.index(target), f"{producer} /MT request must precede target creation")
   return {"cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>", "path": relative.as_posix()}
