@@ -69,7 +69,16 @@ def report_for(data: bytes, producer: str = "native") -> dict:
     "raw_dll_sha256": sha256(data),
     "response_expanded": True,
     "response_files": [{"path": "link.rsp", "sha256": "d" * 64}],
-    "runner": {"ImageOS": "win25", "ImageVersion": "1"},
+    "runner": {
+      "ImageOS": "win25",
+      "ImageVersion": "1",
+      "RUNNER_ARCH": "X64",
+      "RUNNER_OS": "Windows",
+      "VCToolsInstallDir": "C:/Visual Studio/VC/Tools/MSVC/14.51.1",
+      "VCToolsVersion": "14.51.1",
+      "WindowsSDKVersion": "10.0.26100.0",
+      "WindowsSdkDir": "C:/Windows Kits/10",
+    },
     "schema": 1,
     "selected_default_libraries": sorted(evidence.REQUIRED_STATIC_ROLES.values()),
     "static_library_roles": roles,
@@ -185,6 +194,10 @@ def test_excluded_default_libraries_do_not_count_as_selected():
     ["lld-link.exe", "/DEFAULTLIB:libcmt", "/NODEFAULTLIB:libcmt.lib"],
     "Loaded C:/toolchain/libcmt.lib(member.obj)",
   ) == ["libcmt.lib"]
+  assert evidence._library_names(
+    ["lld-link.exe", "-implib:output.lib", "/implib:output.lib", "C:/toolchain/explicit.lib"],
+    "",
+  ) == ["explicit.lib"]
   assert (
     evidence._library_names(
       ["lld-link.exe", "/DEFAULTLIB:libcmt", "/NODEFAULTLIB"],
@@ -192,6 +205,61 @@ def test_excluded_default_libraries_do_not_count_as_selected():
     )
     == []
   )
+
+
+def test_response_file_parsing_uses_argument_position_and_normalizes_line_endings(monkeypatch, tmp_path):
+  response = tmp_path / "objects.rsp"
+  response.write_bytes(b'  "two words.obj"\r\none.obj\r\n')
+  seen = []
+
+  def parse(command_line):
+    seen.append(command_line)
+    return ["response-file", "two words.obj", "one.obj"]
+
+  monkeypatch.setattr(evidence, "_windows_command_line", parse)
+
+  assert evidence._response_arguments(response) == ["two words.obj", "one.obj"]
+  assert seen == ['response-file "two words.obj" one.obj']
+
+
+def test_response_file_parsing_rejects_nul(tmp_path):
+  response = tmp_path / "objects.rsp"
+  response.write_bytes(b"one.obj\0two.obj")
+
+  with pytest.raises(RuntimeError, match="contains NUL"):
+    evidence._response_arguments(response)
+
+
+def test_runner_identity_recovers_toolset_and_sdk_from_linker_paths(monkeypatch, tmp_path):
+  monkeypatch.setenv("ImageOS", "win25")
+  monkeypatch.setenv("ImageVersion", "1")
+  monkeypatch.setenv("RUNNER_ARCH", "X64")
+  monkeypatch.setenv("RUNNER_OS", "Windows")
+  msvc = tmp_path / "Visual Studio" / "VC" / "Tools" / "MSVC" / "14.51.1" / "lib" / "x64"
+  sdk = tmp_path / "Windows Kits" / "10" / "Lib" / "10.0.26100.0" / "ucrt" / "x64"
+
+  identity = evidence._runner_identity([msvc, sdk])
+
+  assert identity == {
+    "ImageOS": "win25",
+    "ImageVersion": "1",
+    "RUNNER_ARCH": "X64",
+    "RUNNER_OS": "Windows",
+    "VCToolsInstallDir": str(msvc.parents[1]),
+    "VCToolsVersion": "14.51.1",
+    "WindowsSDKVersion": "10.0.26100.0",
+    "WindowsSdkDir": str(sdk.parents[3]),
+  }
+  other_msvc = tmp_path / "Visual Studio" / "VC" / "Tools" / "MSVC" / "14.52.1" / "lib" / "x64"
+  with pytest.raises(RuntimeError, match="MSVC toolset identity differs"):
+    evidence._runner_identity([msvc, other_msvc, sdk])
+
+
+def test_mt_request_precedes_native_and_wheel_target_creation():
+  expected = {"cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>"}
+
+  assert evidence._mt_request("native") == expected | {"path": "src/CMakeLists.txt"}
+  assert evidence._mt_request("wheel") == expected | {"path": "bindings/python/CMakeLists.txt"}
 
 
 def test_microsoft_terms_are_searched_and_retained(monkeypatch, tmp_path):
@@ -241,6 +309,12 @@ def test_capture_requires_positive_static_roles_and_rejects_dynamic_runtime(tmp_
   )
   dynamic = report | {"imports": ["KERNEL32.DLL", "UCRTBASE.DLL"]}
   assert "dynamic runtime" in evidence.evaluate_contract(dynamic, empty_contract, "capture", binary, "native")[0]
+
+  incomplete_runner = report | {"runner": report["runner"] | {"VCToolsVersion": None}}
+  assert (
+    "runner/toolset/SDK identity is incomplete"
+    in evidence.evaluate_contract(incomplete_runner, empty_contract, "capture", binary, "native")[0]
+  )
 
   duplicated_import = report | {"imports": ["KERNEL32.DLL", "KERNEL32.DLL"]}
   assert (
@@ -328,7 +402,7 @@ def test_windows_link_capture_is_target_specific_and_not_installed():
   combined += (REPO / "bindings" / "python" / "CMakeLists.txt").read_text(encoding="utf-8")
 
   assert "CXX_LINKER_LAUNCHER" in cmake
-  assert 'target_link_options(celestial_calendar PRIVATE "LINKER:/VERBOSE:LIB")' in cmake
+  assert 'target_link_options(celestial_calendar PRIVATE "LINKER:-verbose")' in cmake
   assert "/Brepro" not in combined
   assert "MultiThreadedDLL" not in combined
   assert "install" not in "\n".join(line for line in cmake.splitlines() if "EVIDENCE" in line)
