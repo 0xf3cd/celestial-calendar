@@ -34,6 +34,8 @@ using namespace astro::vsop87d;
 
 // Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
 // PyMeeus is a well-implemented Python library for astronomical calculations.
+// Retained material boundary (V15): these output rows remain subject to PyMeeus's output conditional
+// and outside the project MIT grant; no permission conclusion is claimed.
 //
 // The values are directly returned by VSOP87D models, no adjustment or correction.
 const std::unordered_map<double, std::tuple<double, double, double>> EARTH_DATASET {

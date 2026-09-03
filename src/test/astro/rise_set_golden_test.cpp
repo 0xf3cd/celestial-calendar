@@ -33,6 +33,8 @@
 #include "rise_set.hpp"
 #include "rise_set_test_helper.hpp"
 
+// Retained material boundary (V11): the USNO, NOAA, and unrecovered Skyfield/DE421 output blocks
+// below remain under their source terms and outside the project MIT grant.
 // End-to-end golden dataset for sunrise/sunset/twilight (#44), collected 2026-07-27 by
 // `statistics/sunrise_golden_crawler.py`:
 // - Rise / upper transit / set / civil twilight: USNO rstt/oneday API (apiversion 4.0.1),

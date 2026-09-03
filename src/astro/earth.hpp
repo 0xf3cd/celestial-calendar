@@ -94,6 +94,8 @@ struct NutationCoeffs {
 // obliquity constants with magnitude below 3, and use `MEEUS_SOURCE_INDICES` to retain the
 // repository's original table order. This project is not SOFA software and is not endorsed
 // by SOFA; `automation/sofa_identity.py` checks the exact mapping.
+// Retained material boundary (R18): this transformed table remains under the SOFA source terms
+// and outside the project MIT grant.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
@@ -165,6 +167,8 @@ inline constexpr std::array<NutationCoeffs, 63> MEEUS_NUTATION_COEFFS {{
 // The complete 106-row IAU 1980 table is unchanged from SOFA issue 2023-10-11 `nut80.c`,
 // with arguments reordered from (l,l',F,D,Om) to (D,M,M',F,Om). This project is not SOFA
 // software and is not endorsed by SOFA; `automation/sofa_identity.py` pins every row.
+// Retained material boundary (R19): this table remains under the SOFA source terms and outside
+// the project MIT grant.
 inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
   { {  0,  0,  0,  0,  1 }, { -171996.0, -174.2 }, { 92025.0,  8.9 } },
   { {  0,  0,  0,  0,  2 }, {    2062.0,    0.2 }, {  -895.0,  0.5 } },
@@ -411,6 +415,8 @@ namespace astro::earth::obliquity {
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
  * @ref ERFA v2.0.1 `obl80.c`.
  */
+// Retained material boundary (R21): the exact `obl80.c` coefficients remain under the ERFA source
+// terms and outside the project MIT grant; the evaluator is project-authored.
 [[nodiscard]] inline auto mean(const double jde) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
   const double jc = astro::julian_day::jde_to_jc(jde);
@@ -458,6 +464,8 @@ struct DailyVariationTerm {
  * @note Terms with rate 359993/719987/1079981 are due to the eccentricity, 4452671/9224659/4092677
  *       to the Moon, 450368/225184/315559/675553 to Venus, 329644/659289/299295 to Jupiter, 337181 to Mars.
  */
+// Retained material boundary (R22): this 21-row Meeus p.168 compilation remains under its source
+// terms and outside the project MIT grant; written permission to reproduce it was not obtained.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
   { 118.568,  87.5287,  359993.7286, 0 },
@@ -506,6 +514,8 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
  *  @note This stored value is the fixed ten-decimal rounding of
  *        `ERFA_DAU / ERFA_CMPS / ERFA_DAYSEC`, not a digit copy of `ERFA_AULT`.
  *  @ref ERFA v2.0.1 `erfam.h`. */
+// Retained material boundary (R23): this rounded ERFA-derived constant remains under the ERFA source
+// terms and outside the project MIT grant; the surrounding aberration expression is project-authored.
 inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
 
 /**

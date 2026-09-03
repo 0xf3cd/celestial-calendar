@@ -366,7 +366,9 @@ def build_v14(repo_root: Path, evidence: Path) -> dict:
     },
     "events": events,
     "v03_hko_boundary": {
-      "status": "open",
+      "status": "retained_under_owner_risk_acceptance",
+      "permission_claim": False,
+      "upstream_permission_obtained": False,
       "matching_minutes": 12,
       "mismatching_minutes": 1,
       "events": boundary,

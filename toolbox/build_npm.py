@@ -38,7 +38,7 @@ PACKAGE_SOURCE: Final[Path] = PROJ_ROOT / "bindings" / "javascript"
 WASM_SOURCE: Final[Path] = PROJ_ROOT / "build" / "wasm"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "npm"
 MAX_WASM_BYTES: Final[int] = 465_000
-MAX_TARBALL_BYTES: Final[int] = 255_000
+MAX_TARBALL_BYTES: Final[int] = 300_000
 PACKAGE_NAME: Final[str] = "@0xf3cd/celestial"
 REPOSITORY: Final[dict[str, str]] = {
   "type": "git",

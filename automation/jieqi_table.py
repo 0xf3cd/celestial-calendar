@@ -64,6 +64,8 @@ JIEQI_NAMES_ZH: Final[List[str]] = [
   "大寒",
 ]
 
+# Retained material boundary (V04): the 48 HKO reference instants below remain under their source
+# terms and outside the project MIT grant; upstream permission was not obtained and is not claimed.
 # Chain-external anchors: HKO almanac wall clocks (HKT = UTC+8, minute precision), the first
 # and last years of the HKO window. Transcribed from HKO_ROWS in
 # `src/test/jieqi_golden_test.cpp`; entry is the calendar-order index (0 = 小寒).

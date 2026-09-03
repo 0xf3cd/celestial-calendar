@@ -41,6 +41,10 @@
 
 namespace astro::solar_time::test {
 
+// Retained material boundaries: the V19 PyMeeus, V23 Skyfield/DE440s, and V32 printed Meeus rows remain
+// under their source terms and outside the project MIT grant. The V24 formula-family output and V31
+// evaluations are project-authored and remain inside the project licence scope.
+
 using astro::toolbox::AngleDeg;
 
 namespace {

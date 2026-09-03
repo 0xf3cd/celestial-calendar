@@ -29,6 +29,11 @@ import re
 import subprocess
 from pathlib import Path
 
+if __package__:
+  from .windows_toolchain_evidence import validate_windows_evidence
+else:
+  from windows_toolchain_evidence import validate_windows_evidence
+
 
 SUPPORTED_RUNTIME = {
   "linux_amd64": {"glibc": "2.28", "glibcxx": "3.4.21"},
@@ -86,14 +91,12 @@ def parse_macos_versions(output: str) -> dict[str, str]:
   return {"macos": max(versions, key=version_key)}
 
 
-def parse_windows_imports(output: str) -> dict[str, str]:
-  """Require the Windows library not to import the dynamic Visual C++ runtime."""
-  if re.search(r"\b(?:MSVCP|VCRUNTIME)[^\s]*\.dll\b", output, flags=re.IGNORECASE):
-    raise RuntimeError("Windows library imports the dynamic Visual C++ runtime")
-  return {"msvc_runtime": "static"}
-
-
-def inspect(artifact: str, binary: Path) -> dict[str, str]:
+def inspect(
+  artifact: str,
+  binary: Path,
+  windows_evidence: Path | None = None,
+  producer: str | None = None,
+) -> dict[str, str]:
   """Inspect one packaged binary using the platform's native object tool."""
   if artifact.startswith("linux_"):
     command = ["readelf", "--version-info", str(binary)]
@@ -102,8 +105,9 @@ def inspect(artifact: str, binary: Path) -> dict[str, str]:
     command = ["otool", "-l", str(binary)]
     parser = parse_macos_versions
   elif artifact.startswith("windows_"):
-    command = ["llvm-readobj", "--coff-imports", str(binary)]
-    parser = parse_windows_imports
+    if windows_evidence is None or producer is None:
+      raise RuntimeError("Windows runtime-floor measurement requires positive link evidence")
+    return validate_windows_evidence(windows_evidence, binary, producer)
   else:
     raise RuntimeError(f"Unknown native artifact: {artifact}")
   output = subprocess.run(
@@ -116,7 +120,13 @@ def inspect(artifact: str, binary: Path) -> dict[str, str]:
   return parser(output)
 
 
-def record_runtime_floor(artifact: str, binary: Path, build_info_path: Path) -> None:
+def record_runtime_floor(
+  artifact: str,
+  binary: Path,
+  build_info_path: Path,
+  windows_evidence: Path | None = None,
+  producer: str | None = None,
+) -> None:
   """Add declared support and measured requirements to build_info.json."""
   if artifact not in SUPPORTED_RUNTIME:
     raise RuntimeError(f"Unknown native artifact: {artifact}")
@@ -130,7 +140,7 @@ def record_runtime_floor(artifact: str, binary: Path, build_info_path: Path) -> 
     raise RuntimeError(f"Build info must be a JSON object: {build_info_path}")
   runtime_floor = {
     "supported": SUPPORTED_RUNTIME[artifact],
-    "measured": inspect(artifact, binary),
+    "measured": inspect(artifact, binary, windows_evidence, producer),
   }
   validate_runtime_floor(runtime_floor, str(build_info_path))
   build_info["runtime_floor"] = runtime_floor
@@ -143,8 +153,10 @@ def main() -> None:
   parser.add_argument("--artifact", choices=SUPPORTED_RUNTIME, required=True)
   parser.add_argument("--binary", type=Path, required=True)
   parser.add_argument("--build-info", type=Path, required=True)
+  parser.add_argument("--windows-evidence", type=Path)
+  parser.add_argument("--producer", choices=("native", "wheel"))
   args = parser.parse_args()
-  record_runtime_floor(args.artifact, args.binary, args.build_info)
+  record_runtime_floor(args.artifact, args.binary, args.build_info, args.windows_evidence, args.producer)
 
 
 if __name__ == "__main__":

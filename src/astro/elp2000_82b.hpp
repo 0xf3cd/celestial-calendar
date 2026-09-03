@@ -61,6 +61,8 @@ struct BCoefficients {
 };
 
 /** @brief Represents coefficients of the LR table. */
+// Retained material boundary (R13): this 60-row table is derived from SOFA 2023-10-11 `moon98.c`;
+// it remains under the SOFA source terms and outside the project MIT grant.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<LRCoefficients, 60> LR {{
   { 0,  0,  1,  0, 6288774, -20905355 },
@@ -126,6 +128,8 @@ inline constexpr std::array<LRCoefficients, 60> LR {{
 }};
 
 /** @brief Represents coefficients of the B table. */
+// Retained material boundary (R14): this 60-row table is derived from SOFA 2023-10-11 `moon98.c`;
+// it remains under the SOFA source terms and outside the project MIT grant.
 inline constexpr std::array<BCoefficients, 60> B {{
   { 0,  0,  0,  1, 5128122 },
   { 0,  0,  1,  1,  280602 },

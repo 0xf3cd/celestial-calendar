@@ -30,6 +30,9 @@
 
 namespace calendar::lunar::algo1::test {
 
+// Retained material boundary (V01): HKO-derived expected rows remain under their source terms and
+// outside the project MIT grant; upstream permission was not obtained and is not claimed.
+
 using namespace calendar::lunar::common;
 using namespace calendar::lunar::algo1;
 

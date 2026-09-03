@@ -32,6 +32,8 @@ include_directories("${REPO_ROOT}/src/calendar")
 include_directories("${REPO_ROOT}/src/util")
 
 if(WIN32)
+  # Retained material boundary (T03): Windows wheels statically include Microsoft runtime portions.
+  # Those portions remain under the selected Visual Studio terms and outside the project MIT grant.
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 

@@ -42,12 +42,19 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ROOT_NOTICE: Final[Path] = REPO_ROOT / "THIRD_PARTY_NOTICES.txt"
 EMSCRIPTEN_REVISION: Final[str] = "ce75e06884093bcefb86a6b8fd56a5d62a4cc245"
 DELTA_T_ATTRIBUTION_SHA256: Final[str] = "4ead1c6c3ec76c0eefe79ec926fbdce769b8ecbdec10142f7dbe373871d853f9"
+HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "1272446f24ddf193d4198da3dea983bdfee48b4c6e0dde7a0fe6725baed4e93a"
+VSOP87D_ATTRIBUTION_SHA256: Final[str] = "10d15127db166e9d584877d2b6a9d25b8ade0323a6a253c6f9f24b918b1b3809"
+MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9"
+WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "990298a6b0f32986d3008f0bc6e985d658258d365d715287b559f18d59b9339f"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
 PREAMBLE: Final[bytes] = b"""Third-Party Notices
 
-The project license is in LICENSE. The components below retain their own
-terms. This repository-wide bundle is included in every distribution;
-each section says which build input it applies to.
+The project license is in LICENSE.
+Retained third-party components identified below remain under their own terms
+and outside the project MIT grant. This
+bundle also records source attributions for project-authored generated material;
+each section states its applicability and scope. The repository-wide bundle is
+included in every distribution.
 
 """
 
@@ -117,7 +124,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   ),
   NoticeSource(
     title="IAU SOFA issue 2023-10-11 — SOFA Software License",
-    applicability="the lunar and nutation data derived from IAU SOFA issue 2023-10-11",
+    applicability="the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11",
     path=Path("src/test/provenance/sofa/2023-10-11/doc/copyr.lis"),
     upstream=f"{SOFA_ARCHIVE_URL} (member sofa/20231011/c/doc/copyr.lis)",
     sha256="ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994",
@@ -148,6 +155,8 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     marking=(
       "The NASA publication bytes are not included in this repository; the checked provenance relation is a "
       "transcription record, not an upstream-byte identity claim.",
+      "The generated lunar-year values remain project-authored material inside the project licence scope; the "
+      "acknowledgment records their historical generation relation only.",
       "The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.",
     ),
   ),
@@ -162,6 +171,45 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     marking=(
       "This project-authored record identifies sources; it is not an upstream licence or permission grant.",
       "No upstream source bytes are included; the Source-file SHA-256 covers this attribution record only.",
+    ),
+  ),
+  NoticeSource(
+    title="Hong Kong Observatory — retained lunar-year words",
+    applicability="the HKO-derived runtime words in the native library, wheels, npm package, and WebAssembly build",
+    path=Path("src/test/provenance/batch-a-closeout/HKO_RUNTIME_ATTRIBUTION.md"),
+    upstream="https://www.hko.gov.hk/en/gts/time/calendar/text/files/T{year}e.txt",
+    sha256=HKO_RUNTIME_ATTRIBUTION_SHA256,
+    marking=("This project-authored attribution record is not HKO licence text or a permission grant.",),
+  ),
+  NoticeSource(
+    title="VSOP87D — retained Earth coefficients",
+    applicability=(
+      "the VSOP87D Earth coefficient tables in the native library, wheels, npm package, and WebAssembly build"
+    ),
+    path=Path("src/test/provenance/batch-a-closeout/VSOP87D_ATTRIBUTION.md"),
+    upstream="CDS VI/81, VSOP87D.ear, Bretagnon and Francou January 1996 IMCCE distribution",
+    sha256=VSOP87D_ATTRIBUTION_SHA256,
+    marking=("This project-authored attribution record is not upstream licence text or a permission grant.",),
+  ),
+  NoticeSource(
+    title="Astronomical Algorithms — retained daily-variation series",
+    applicability=(
+      "the Meeus p.168 daily-variation compilation in the native library, wheels, npm package, and WebAssembly build"
+    ),
+    path=Path("src/test/provenance/batch-a-closeout/MEEUS_R22_ATTRIBUTION.md"),
+    upstream="Jean Meeus, Astronomical Algorithms, second edition, p.168, ISBN 978-0943396613",
+    sha256=MEEUS_R22_ATTRIBUTION_SHA256,
+    marking=("This project-authored attribution record is not the book's licence text or a permission grant.",),
+  ),
+  NoticeSource(
+    title="Microsoft — statically linked C/C++ runtime portions",
+    applicability="the Windows native DLL and the Windows wheel's native DLL",
+    path=Path("src/test/provenance/batch-a-closeout/WINDOWS_RUNTIME_ATTRIBUTION.md"),
+    upstream="Visual Studio Enterprise 2026 terms text was not captured by the retained build evidence",
+    sha256=WINDOWS_RUNTIME_ATTRIBUTION_SHA256,
+    marking=(
+      "No application-local notice-reproduction condition was inferred; this is not a compatibility conclusion.",
+      "This project-authored attribution record does not copy or invent Microsoft licence text.",
     ),
   ),
 )

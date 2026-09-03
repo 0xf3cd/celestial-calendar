@@ -64,6 +64,8 @@ namespace astro::delta_t {
 namespace algo1 {
 // Algo1 source: Xu Jianwei, 寿星万年历2008版(V1.3.2), dated 2008-08-31.
 // https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
+// Retained material boundary (R05): the source-derived coefficient block remains under its source
+// terms and outside the project MIT grant; attribution is not a permission claim.
 
 /** @brief The coefficients of algorithm 1. */
 struct Algo1Coefficients {
@@ -190,6 +192,8 @@ find_coefficients(const int32_t year) -> std::optional<
 namespace algo2 {
 // Source: Espenak and Meeus, NASA/TP-2006-214141, Section 2.7,
 // equations (11)-(25), printed pages 14-16 (NTRS document 20070003587).
+// Retained material boundary (R06): the transcribed polynomial block remains under its source terms
+// and outside the project MIT grant; the NASA acknowledgment is carried with distributions.
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 2.
@@ -305,6 +309,8 @@ namespace algo3 {
 // Algo3 source: Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014).
 // The source credits the quadratic trend to Marc van der Sluys.
 // https://www.eclipsewise.com/help/deltatpoly2014.html
+// Retained material boundary (R07): the two post-2005 expressions remain under their source terms
+// and outside the project MIT grant; the project does not claim that the located permission covers them.
 
 /**
  * @brief The function to compute △T of a given gregorian year, using algorithm 3.
@@ -417,6 +423,8 @@ namespace algo5 {
 //                          expression (https://doi.org/10.1098/rspa.2020.0776), as combined at
 //                          https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/;
 //                          anchored at the last observation and continuous there.
+// Retained material boundary (R09): the source-derived long-term branch remains under its source terms
+// and outside the project MIT grant; attribution and owner risk acceptance do not claim permission.
 
 /** @brief The decimal year of the last Bulletin A observation in the training data;
  *         also the boundary between the fitted and the extrapolated segments. */

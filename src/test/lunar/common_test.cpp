@@ -35,6 +35,9 @@
 
 namespace calendar::lunar::common::test {
 
+// Retained material boundary (V02): the sparse HKO date and encoded-word anchors remain under their
+// source terms and outside the project MIT grant; upstream permission was not obtained and is not claimed.
+
 // Provenance of the 2023 pins: lunar 2023 carries a leap 2nd month (闰二月) — HKO data
 // (https://www.hko.gov.hk/sc/gts/time/conversion.htm, published for 1901-2100) baked into
 // algo1's table (1901-2099); algo3's baked entry for 2023 must agree.

@@ -28,6 +28,10 @@
 
 namespace astro::vsop87d::earth_coeff {
 
+// Retained material boundary (R12): the 17 VSOP87D Earth coefficient tables are identified to
+// Bretagnon and Francou's January 1996 IMCCE distribution, CDS VI/81, `VSOP87D.ear`. They remain
+// under their source terms and outside the project MIT grant.
+
 using Coefficients  = astro::vsop87d::Coefficients;
 using Vsop87dTable  = astro::vsop87d::Vsop87dTable;
 using Vsop87dTables = astro::vsop87d::Vsop87dTables;

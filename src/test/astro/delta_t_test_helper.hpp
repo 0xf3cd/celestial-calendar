@@ -23,6 +23,9 @@
 
 #pragma once
 
+// Retained material boundary (V25): the NASA, USNO, and IERS observation anchors in this file remain
+// under their respective source terms and outside the project MIT grant.
+
 #include <array>
 #include <concepts>
 #include <cstdint>

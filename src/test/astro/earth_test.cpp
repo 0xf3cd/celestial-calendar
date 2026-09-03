@@ -31,6 +31,10 @@
 
 namespace astro::earth::test {
 
+// Retained material boundaries: the V20 SOFA output, V32 printed Meeus rows, and V37 PyMeeus-derived
+// regression blocks remain under their source terms and outside the project MIT grant. The evaluated
+// V31 rows are project-authored and remain inside the project licence scope.
+
 using namespace astro::earth;
 using astro::toolbox::DistanceAu;
 using astro::toolbox::AngleUnit::DEG;

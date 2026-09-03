@@ -85,7 +85,7 @@ def test_erfa_runtime_source_markings_are_pinned_and_distinct_from_generated_out
     Path("src/astro/moon.hpp"): (
       "ERFA v2.0.1 `moon98.c`, Meeus additive longitude terms",
       "ERFA v2.0.1 `moon98.c`, Meeus additive latitude terms",
-      "ERFA v2.0.1 moon98.c r0, converted from meters to kilometers",
+      "ERFA v2.0.1 `moon98.c` r0, converted from meters to kilometers",
     ),
     Path("src/astro/earth.hpp"): (
       "ERFA v2.0.1 `obl80.c`",

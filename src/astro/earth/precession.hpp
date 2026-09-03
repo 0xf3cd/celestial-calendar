@@ -59,6 +59,8 @@ struct EclipticAngles {
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.2).
  * @ref ERFA v2.0.1 `prec76.c`.
  */
+// Retained material boundary (R27): the exact `prec76.c` angle coefficients remain under the ERFA
+// source terms and outside the project MIT grant; the coordinate application is project-authored.
 [[nodiscard]] inline auto equatorial_angles(const double jde_from, const double jde_to) -> EquatorialAngles {
   using astro::toolbox::AngleDeg;
   using astro::julian_day::DAYS_PER_JULIAN_CENTURY;

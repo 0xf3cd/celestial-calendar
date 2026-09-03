@@ -38,6 +38,10 @@
 
 namespace astro::earth::refraction::test {
 
+// Retained material boundary: the V32 printed Meeus rows remain under the book's source terms and
+// outside the project MIT grant. The independently evaluated V31 rows are project-authored and remain
+// inside the project licence scope.
+
 using astro::toolbox::AngleDeg;
 using astro::earth::refraction::Model;
 using astro::earth::refraction::Params;

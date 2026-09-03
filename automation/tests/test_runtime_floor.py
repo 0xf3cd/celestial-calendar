@@ -62,22 +62,12 @@ def test_parse_macos_versions_selects_natural_maximum():
   assert runtime_floor.parse_macos_versions(output) == {"macos": "14.0"}
 
 
-def test_parse_windows_imports_rejects_dynamic_runtime():
-  for dependency in ("VCRUNTIME140.dll", "MSVCP140.dll", "msvcp140d.dll", "vcruntime140.dll"):
-    with pytest.raises(RuntimeError, match=r"dynamic Visual C\+\+ runtime"):
-      runtime_floor.parse_windows_imports(f"Name: {dependency}")
-
-  output = "Name: KERNEL32.dll\nName: api-ms-win-crt-runtime-l1-1-0.dll\nName: ucrtbase.dll"
-  assert runtime_floor.parse_windows_imports(output) == {"msvc_runtime": "static"}
-
-
 @pytest.mark.parametrize(
   ("artifact", "command", "output", "expected"),
   [
     ("linux_amd64", "readelf", "GLIBC_2.28 GLIBCXX_3.4.21", {"glibc": "2.28", "glibcxx": "3.4.21"}),
     ("linux_arm64", "readelf", "GLIBC_2.17 GLIBCXX_3.4.21", {"glibc": "2.17", "glibcxx": "3.4.21"}),
     ("macos_arm64", "otool", "minos 14.0", {"macos": "14.0"}),
-    ("windows_x86_64", "llvm-readobj", "Name: KERNEL32.dll", {"msvc_runtime": "static"}),
   ],
 )
 def test_inspect_uses_platform_object_tool(monkeypatch, tmp_path, artifact, command, output, expected):
@@ -94,14 +84,29 @@ def test_inspect_uses_platform_object_tool(monkeypatch, tmp_path, artifact, comm
   expected_args = [command, "--version-info", str(binary)] if command == "readelf" else None
   if command == "otool":
     expected_args = [command, "-l", str(binary)]
-  elif command == "llvm-readobj":
-    expected_args = [command, "--coff-imports", str(binary)]
   assert calls == [
     (
       expected_args,
       {"check": True, "text": True, "stdout": runtime_floor.subprocess.PIPE, "stderr": runtime_floor.subprocess.STDOUT},
     )
   ]
+
+
+def test_inspect_windows_requires_positive_link_evidence(tmp_path, monkeypatch):
+  binary = tmp_path / "library.dll"
+  binary.write_bytes(b"library")
+  report = tmp_path / "report.json"
+  calls = []
+
+  def validate(report_path, packaged_dll, producer):
+    calls.append((report_path, packaged_dll, producer))
+    return {"msvc_runtime": "static"}
+
+  monkeypatch.setattr(runtime_floor, "validate_windows_evidence", validate)
+  with pytest.raises(RuntimeError, match="positive link evidence"):
+    runtime_floor.inspect("windows_x86_64", binary)
+  assert runtime_floor.inspect("windows_x86_64", binary, report, "native") == {"msvc_runtime": "static"}
+  assert calls == [(report, binary, "native")]
 
 
 def test_inspect_rejects_unknown_artifact(tmp_path):
@@ -118,7 +123,7 @@ def test_record_runtime_floor_updates_build_info(tmp_path, monkeypatch):
   monkeypatch.setattr(
     runtime_floor,
     "inspect",
-    lambda _artifact, _binary: {"glibc": "2.26", "glibcxx": "3.4.21"},
+    lambda _artifact, _binary, _evidence, _producer: {"glibc": "2.26", "glibcxx": "3.4.21"},
   )
 
   runtime_floor.record_runtime_floor("linux_amd64", binary, build_info)
@@ -158,7 +163,7 @@ def test_record_runtime_floor_rejects_requirement_above_support(tmp_path, monkey
   monkeypatch.setattr(
     runtime_floor,
     "inspect",
-    lambda _artifact, _binary: {"glibc": "2.34", "glibcxx": "3.4.21"},
+    lambda _artifact, _binary, _evidence, _producer: {"glibc": "2.34", "glibcxx": "3.4.21"},
   )
 
   with pytest.raises(RuntimeError, match="Measured glibc requirement 2.34 exceeds supported 2.28"):

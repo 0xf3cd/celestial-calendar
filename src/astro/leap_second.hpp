@@ -64,6 +64,8 @@ struct LeapSecondEntry {
 // These 28 post-1972 rows are unchanged from SOFA's user-replaceable `iauDat` table; the
 // pre-1972 drift rows and routine body are not used. This project is not SOFA software and
 // is not endorsed by SOFA. `automation/sofa_identity.py` pins the source and transformation.
+// Retained material boundary (R10): this table remains under the SOFA source terms and outside
+// the project MIT grant.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<LeapSecondEntry, 28> LEAP_SECOND_TABLE {{
   { util::to_ymd(1972, 1, 1), 10.0 },

@@ -33,6 +33,9 @@
 
 namespace astro::moon::test {
 
+// Retained material boundary (V37): the PyMeeus-derived regression blocks remain under their source
+// terms and outside the project MIT grant.
+
 using namespace astro::moon::geocentric_coord;
 using astro::elp2000_82b::evaluate;
 using astro::toolbox::DistanceKm;

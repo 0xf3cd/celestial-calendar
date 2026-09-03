@@ -26,6 +26,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -40,7 +41,7 @@ REPO = HERE.parents[3]
 MANIFEST = HERE.parent / "abi" / "manifest.json"
 sys.path.append(str(REPO))
 
-from toolbox.runtime_floor import parse_windows_imports  # noqa: E402
+from toolbox.windows_toolchain_evidence import validate_windows_evidence  # noqa: E402
 
 
 def run(*command: str) -> str:
@@ -179,10 +180,12 @@ def verify_macos(native: Path, exports: set[str]) -> None:
 
 
 def verify_windows(native: Path, exports: set[str]) -> None:
-  """Verify PE AMD64, the exact C export set, and absence of VC runtime DLL imports."""
+  """Verify PE AMD64, exact C exports, and positive static-runtime link evidence."""
   output = run("llvm-readobj", "--file-headers", "--coff-imports", "--coff-exports", str(native))
   assert "Machine: IMAGE_FILE_MACHINE_AMD64" in output
-  assert parse_windows_imports(output) == {"msvc_runtime": "static"}
+  evidence_dir = os.environ.get("CELESTIAL_WINDOWS_EVIDENCE_DIR")
+  assert evidence_dir is not None, "Windows wheel verification requires link evidence"
+  assert validate_windows_evidence(Path(evidence_dir) / "report.json", native, "wheel") == {"msvc_runtime": "static"}
   exported = set(re.findall(r"Export \{[\s\S]*?\n\s*Name: ([A-Za-z_]\w*)", output))
   assert exported == exports
 

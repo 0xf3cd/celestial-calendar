@@ -80,11 +80,11 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_record_is_pinned():
-  assert NASA_RECORD_SHA256 == "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
+  assert NASA_RECORD_SHA256 == "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
   assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
-    "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
+    "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
     "NASA-sourced historical Delta-T validation values in src/test"
   )
   assert verify_nasa_delta_t_provenance() == ProvenanceCounts(15, 11, 2, 12, 2)
@@ -289,6 +289,25 @@ def test_retained_lunar_values_are_pinned(tmp_path):
 
   with pytest.raises(RuntimeError, match="retained origin values differ"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+@pytest.mark.parametrize("partition", ["all", "rebake", "environment"])
+def test_lunar_closeout_boundaries_are_pinned(tmp_path, partition):
+  nasa_root = materialize_inputs(tmp_path)
+  record = nasa_root / "delta_t.json"
+
+  def change(payload):
+    downstream = payload["downstream_runtime_relation"]
+    if partition == "all":
+      downstream["current_retention"]["all_current_values"]["sha256"] = "0" * 64
+    elif partition == "rebake":
+      downstream["current_retention"]["rebake"]["values"]["sha256"] = "0" * 64
+    else:
+      downstream["historical_environment"]["status"] = "recovered"
+
+  digest = mutate_record(record, change)
+  with pytest.raises(RuntimeError):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root, record_sha256=digest)
 
 
 @pytest.mark.parametrize(

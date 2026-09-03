@@ -33,6 +33,8 @@
 #include "rise_set.hpp"
 #include "rise_set_test_helper.hpp"
 
+// Retained material boundary (V12): the USNO API output rows below remain under their source terms
+// and outside the project MIT grant.
 // End-to-end golden dataset for moonrise/moonset/lunar-transit (#62), collected 2026-08-15 by
 // `statistics/moonrise_golden_crawler.py`:
 // - Source: USNO rstt/oneday API, queried per site at tz=0, minute precision — each response

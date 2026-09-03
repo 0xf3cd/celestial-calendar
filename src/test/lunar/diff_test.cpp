@@ -50,6 +50,9 @@
 
 namespace calendar::lunar::test {
 
+// Retained material boundary (V02): the HKO divergence anchors remain under their source terms and
+// outside the project MIT grant; upstream permission was not obtained and is not claimed.
+
 auto pick_random_years() -> std::vector<int32_t> {
   using namespace std::ranges;
 

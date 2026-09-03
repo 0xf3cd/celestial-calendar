@@ -259,7 +259,19 @@ def test_native_workflow_artifact_inventory_matches_collector():
   jobs = workflow["jobs"]
   uploaded = []
   for job_name, job in jobs.items():
-    upload_steps = [step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/upload-artifact@")]
+    all_upload_steps = [
+      step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+    ]
+    evidence_uploads = [
+      step for step in all_upload_steps if step.get("with", {}).get("name", "").startswith("windows-link-evidence-")
+    ]
+    upload_steps = [step for step in all_upload_steps if step not in evidence_uploads]
+    if job_name == "windows":
+      assert len(evidence_uploads) == 1
+      assert evidence_uploads[0]["with"]["name"] == "windows-link-evidence-native"
+      assert "WINDOWS_EVIDENCE_MODE != 'standing'" in evidence_uploads[0]["if"]
+    else:
+      assert evidence_uploads == []
     if not upload_steps:
       continue
 

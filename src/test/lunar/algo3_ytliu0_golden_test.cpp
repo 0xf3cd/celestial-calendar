@@ -36,7 +36,9 @@
 //   d6aae82b63b79a6f8659ea3e064024b7d8ac3077
 // file `src/calendarData.js` (695460 bytes, md5 6c9649f384d178918d9cb4618f7d3e98),
 // function `ChineseToGregorian()` — the main year table.
-// That repository is GPLv3; this repo is GPL-3.0-or-later. Collected 2026-08-05.
+// Retained material boundary (V05): the decoded rows remain under the source GPLv3 terms and outside
+// the project MIT grant. No permission beyond those source terms is claimed. Collected 2026-08-05.
+// This project's current licence is recorded separately in the file header.
 //
 // SSOT for the 115 rows is **this table**. Regenerate from the pinned ytliu0 commit:
 //   python3 statistics/algo3_ytliu0_golden.py emit-cpp --ytliu0 <checkout>

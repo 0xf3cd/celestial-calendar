@@ -24,6 +24,9 @@
 // #67: smoke tests for the C-ABI layer — every export is driven across the real
 // `extern "C"` boundary (this target links the built shared library), including the
 // `valid = false` paths: bad arguments, NaN, null out-pointers, and a closed stdout.
+// Retained material boundaries: V02 identifies the sparse HKO lunar-date anchor, V29 the USNO
+// Julian-date anchor, and V32 the Meeus worked-example smoke anchors. Each remains under its source
+// terms and outside the project MIT grant.
 
 #include <array>
 #include <cmath>

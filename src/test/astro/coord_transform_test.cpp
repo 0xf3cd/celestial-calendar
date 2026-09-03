@@ -34,6 +34,9 @@
 
 namespace astro::coords::test {
 
+// Retained material boundaries: V16 identifies the PyMeeus output tables and V32 the Meeus worked
+// examples. Each block remains under its source terms and outside the project MIT grant.
+
 using namespace astro::coords;
 using namespace astro::toolbox;
 using namespace astro::toolbox::literals;

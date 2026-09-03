@@ -1,7 +1,14 @@
 name: Python Wheels
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      windows_evidence_mode:
+        description: Windows link-evidence policy
+        required: true
+        default: standing
+        type: choice
+        options: [standing, capture, verify-approved]
   pull_request:
     branches: [ main ]
 
@@ -17,6 +24,8 @@ env:
     CC=clang CXX=clang++ MACOSX_DEPLOYMENT_TARGET=14.0 PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:
   CIBW_ENVIRONMENT_WINDOWS: >-
     CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:
+    CELESTIAL_WINDOWS_EVIDENCE_DIR="$GITHUB_WORKSPACE\windows-link-evidence-wheel"
+    CELESTIAL_WINDOWS_EVIDENCE_PRODUCER=wheel
 
 jobs:
   manylinux:
@@ -227,6 +236,9 @@ jobs:
     runs-on: windows-latest
     env:
       CIBW_ARCHS_WINDOWS: AMD64
+      CELESTIAL_WINDOWS_EVIDENCE_DIR: ${{ github.workspace }}\windows-link-evidence-wheel
+      CELESTIAL_WINDOWS_EVIDENCE_PRODUCER: wheel
+      WINDOWS_EVIDENCE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_evidence_mode || 'standing' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -252,6 +264,32 @@ jobs:
       - name: Prepare exact artifact
         id: wheel
         run: python bindings/python/test/wheel/prepare.py wheelhouse "$env:GITHUB_OUTPUT"
+
+      - name: Collect Windows link evidence
+        id: windows_evidence
+        run: >-
+          python toolbox/windows_toolchain_evidence.py collect
+          --evidence-dir "$env:CELESTIAL_WINDOWS_EVIDENCE_DIR"
+          --producer wheel
+          --mode "$env:WINDOWS_EVIDENCE_MODE"
+          --wheel "${{ steps.wheel.outputs.wheel }}"
+          --sidecar "${{ steps.wheel.outputs.sidecar }}"
+          --github-output "$env:GITHUB_OUTPUT"
+
+      - name: Upload raw Windows link evidence
+        if: ${{ always() && (failure() || env.WINDOWS_EVIDENCE_MODE != 'standing' || steps.windows_evidence.outputs.upload_raw == 'true') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-link-evidence-wheel
+          path: ${{ env.CELESTIAL_WINDOWS_EVIDENCE_DIR }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Enforce Windows link evidence
+        if: ${{ always() }}
+        run: >-
+          python toolbox/windows_toolchain_evidence.py enforce
+          --evidence-dir "$env:CELESTIAL_WINDOWS_EVIDENCE_DIR"
 
       - name: Inspect repaired wheel
         run: python bindings/python/test/wheel/verify.py "${{ steps.wheel.outputs.wheel }}"

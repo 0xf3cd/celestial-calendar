@@ -44,6 +44,9 @@
 
 namespace astro::rise_set::test {
 
+// Retained material boundary (V32): the Meeus worked-example rows remain under the book's source
+// terms and outside the project MIT grant; written permission to reproduce them was not obtained.
+
 using namespace astro::rise_set;
 using astro::toolbox::AngleDeg;
 

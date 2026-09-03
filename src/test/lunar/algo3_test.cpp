@@ -28,6 +28,9 @@
 
 namespace calendar::lunar::algo3::test {
 
+// Retained material boundary (V01): checks over the copied HKO slice remain under the HKO source
+// terms and outside the project MIT grant; upstream permission was not obtained and is not claimed.
+
 using namespace calendar::lunar::common;
 
 // External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp);

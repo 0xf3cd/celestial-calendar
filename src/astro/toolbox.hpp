@@ -296,6 +296,8 @@ enum class DistanceUnit : uint8_t { AU, KM };
  * @ref NIST SP 330 (2019), Table 8: the astronomical unit is exactly 149'597'870'700 m.
  * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DAU`.
  */
+// Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
+// and outside the project MIT grant; the unit wrapper is project-authored.
 inline constexpr double AU_KM_SCALE = 149597870.700;
 
 /** @brief Convert from AU to KM. */

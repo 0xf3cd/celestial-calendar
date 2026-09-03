@@ -37,6 +37,9 @@
 
 namespace astro::leap_second::test {
 
+// Retained material boundary (V22): the SOFA/pyerfa leap facts and generated JDE goldens remain under
+// their source terms and outside the project MIT grant.
+
 using namespace astro::leap_second;
 using namespace util;
 using namespace util::ymd_operator;

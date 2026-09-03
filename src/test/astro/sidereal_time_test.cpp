@@ -36,6 +36,9 @@
 
 namespace astro::sidereal::test {
 
+// Retained material boundaries: V13 identifies the USNO rows, V17 the PyMeeus rows, and V32 the
+// Meeus worked examples. Each block remains under its source terms and outside the project MIT grant.
+
 using namespace astro::sidereal;
 using namespace astro::toolbox;
 using namespace astro::toolbox::literals;

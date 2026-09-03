@@ -48,6 +48,9 @@
 
 namespace astro::earth::precession::test {
 
+// Retained material boundaries: V18 identifies the PyMeeus output rows, V21 the ERFA output rows,
+// and V32 the Meeus worked examples. Each remains under its source terms and outside the project MIT grant.
+
 using namespace astro::earth::precession;
 using astro::toolbox::AngleDeg;
 using astro::julian_day::DAYS_PER_JULIAN_CENTURY;

@@ -28,6 +28,10 @@
 
 namespace astro::sun::test {
 
+// Retained material boundaries: the V07 JPL Horizons DE440 table and V37 PyMeeus-derived regression
+// blocks remain under their source terms and outside the project MIT grant. The independently
+// evaluated V31 rows are project-authored and remain inside the project licence scope.
+
 using namespace std::chrono;
 using namespace std::literals;
 

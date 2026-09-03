@@ -28,7 +28,7 @@ hashes, the exact historical extractor, its outputs, and the 199-word runtime re
 The extractor is historical evidence, not an in-place regeneration tool. Its tracked path is five
 levels below the repository root, while its `parents[3]` assumption requires replaying it with the
 retained responses from a directory four levels below the root.
-Numerical identity does not settle redistribution permission; that question remains open.
+The bytes are retained under owner risk acceptance. Upstream permission was not obtained and is not claimed.
 """
 
 import csv
@@ -189,7 +189,7 @@ def _verify_source_markings(repo_root: Path) -> None:
     "algo1 HKO identity marking differs",
   )
   _require(
-    "Numerical identity does not settle redistribution permission; that question remains open." in algo1,
+    "Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed." in algo1,
     "algo1 HKO permission boundary differs",
   )
   _require(
@@ -197,7 +197,7 @@ def _verify_source_markings(repo_root: Path) -> None:
     "algo3 HKO identity marking differs",
   )
   _require(
-    "Exact identity does not settle redistribution permission, which remains open." in algo3,
+    "Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed." in algo3,
     "algo3 HKO permission boundary differs",
   )
 

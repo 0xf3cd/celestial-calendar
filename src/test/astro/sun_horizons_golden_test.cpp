@@ -32,6 +32,8 @@
 
 #include "sun.hpp"
 
+// Retained material boundary (V06): the JPL Horizons DE441 output rows below remain under their
+// source terms and outside the project MIT grant.
 // Independent golden dataset for the Sun's apparent geocentric position (#94, #68), collected
 // 2026-07-27 by `statistics/sun_jieqi_golden_crawler.py`:
 // - Source: JPL Horizons API v1.2, ephemeris DE441, Sun (10) from the geocenter (500@399).

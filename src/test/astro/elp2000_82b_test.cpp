@@ -30,6 +30,10 @@
 
 namespace astro::elp2000_82b::test {
 
+// Retained material boundaries: the V32 printed Meeus rows and V37 PyMeeus-derived regression block
+// remain under their source terms and outside the project MIT grant. The evaluated V31 rows are
+// project-authored and remain inside the project licence scope.
+
 using namespace astro::elp2000_82b::coeff;
 using namespace astro::elp2000_82b;
 using astro::toolbox::AngleUnit::DEG;

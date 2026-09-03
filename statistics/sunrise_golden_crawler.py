@@ -24,6 +24,8 @@
 #   values are accepted.
 # The script prints the agreement reports and emits the column-aligned C++ dataset rows to
 # paste into src/test/astro/rise_set_golden_test.cpp.
+# Retained material boundary (V11): the external output blocks addressed by this crawler remain under
+# their source terms and outside the project MIT grant; this crawler is project-authored.
 #
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com

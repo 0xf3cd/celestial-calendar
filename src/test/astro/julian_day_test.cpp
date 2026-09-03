@@ -33,6 +33,10 @@
 
 namespace astro::julian_day::test {
 
+// Retained material boundaries: the V27 NASA/USNO anchors, V28 stevegs.com rows, V32 printed Meeus
+// examples, and V37 internal rows with an unrecovered source remain outside the project MIT grant. The
+// independently evaluated V31 formulas are project-authored and remain inside its scope.
+
 // The UTC family (`utc_to_jde` / `jde_to_utc`) is exercised in `leap_second_test.cpp`,
 // alongside the ΔAT machinery it composes.
 

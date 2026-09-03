@@ -34,6 +34,9 @@
 
 namespace calendar::lunar::algo2::test {
 
+// Retained material boundary (V02): the sparse HKO almanac anchors remain under their source terms
+// and outside the project MIT grant; upstream permission was not obtained and is not claimed.
+
 using namespace calendar::lunar::algo2;
 using namespace calendar::lunar::common;
 using astro::julian_day::ut1_to_jde;

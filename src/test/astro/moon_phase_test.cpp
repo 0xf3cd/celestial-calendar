@@ -37,6 +37,10 @@
 
 namespace astro::moon_phase::test {
 
+// Retained material boundaries: V03/V14 identify the USNO phase rows and retained HKO comparison;
+// V09 identifies the JPL Horizons illumination rows; V32 identifies the Meeus worked-example rows.
+// Each block remains under its respective source terms and outside the project MIT grant.
+
 using namespace astro::moon_phase::new_moon;
 
 TEST(NewMoon, RootGenerator) {
@@ -151,8 +155,10 @@ TEST(NewMoon, DiffTest2) {
   using namespace std::chrono_literals;
   using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
 
-  // Datetimes in UTC+8 (Hong Kong time).
-  // Data source: https://www.hko.gov.hk/tc/gts/astronomy/Moon_Phase.htm
+  // Datetimes in UTC+8. Twelve minutes match the re-sourced USNO 2024 phase response; September keeps
+  // the HKO 09:56 boundary against USNO 09:55 without changing the retained value.
+  // Sources: https://aa.usno.navy.mil/api/moon/phases/year?year=2024 and
+  // https://www.hko.gov.hk/tc/gts/astronomy/Moon_Phase.htm
   const std::vector<calendar::Datetime> datetimes {
     calendar::Datetime { util::to_ymd(2024,  1, 11), hms { 19h + 57min } },
     calendar::Datetime { util::to_ymd(2024,  2, 10), hms {  6h + 59min } },
@@ -499,7 +505,7 @@ TEST(PhaseMoments, UsnoGolden2024) {
   // Provenance: USNO Moon Phases API, https://aa.usno.navy.mil/api/moon/phases/year?year=2024.
   // Times are UTC to the nearest minute; converted to six-decimal civil-JD strings with no
   // ΔT adjustment. Collected 2026-08-11; the complete current API 4.0.1 recapture, conversion,
-  // and the still-open HKO 01:56 versus USNO 01:55 September boundary are pinned in
+  // and the owner-accepted HKO 01:56 versus USNO 01:55 September boundary are pinned in
   // `src/test/provenance/usno/2026-08-26/v14-moon-phases-year-2024.json`.
   // NOLINTBEGIN(modernize-use-designated-initializers)
   const std::vector<double> usno_new_moon_2024 {

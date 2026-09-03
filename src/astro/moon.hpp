@@ -45,6 +45,8 @@ namespace astro::moon::perturbation {
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  * @ref ERFA v2.0.1 `moon98.c`, Meeus additive longitude terms.
  */
+// Retained material boundary (R16): these exact ERFA `moon98.c` additive longitude terms remain under the ERFA
+// source terms and outside the project MIT grant.
 [[nodiscard]] inline auto longitude(const elp2000_82b::Context& ctx) -> double {
   return (3958.0 * std::sin(ctx.A1.rad())) 
        + (1962.0 * std::sin(ctx.Lp.rad() - ctx.F.rad())) 
@@ -61,6 +63,8 @@ namespace astro::moon::perturbation {
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
  * @ref ERFA v2.0.1 `moon98.c`, Meeus additive latitude terms.
  */
+// Retained material boundary (R16): these exact ERFA `moon98.c` additive latitude terms remain under the ERFA
+// source terms and outside the project MIT grant.
 [[nodiscard]] inline auto latitude(const elp2000_82b::Context& ctx) -> double {
   return (-2235.0 * std::sin(ctx.Lp.rad()))
        + (382.0 * std::sin(ctx.A3.rad()))
@@ -101,7 +105,8 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
   const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
   const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
 
-  // ERFA v2.0.1 moon98.c r0, converted from meters to kilometers.
+  // Retained material boundary (R17): ERFA v2.0.1 `moon98.c` r0, converted from meters to kilometers,
+  // remains under the ERFA source terms and outside the project MIT grant.
   const toolbox::DistanceKm r { 385000.56 + (evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR) };
 
   return {
