@@ -59,6 +59,16 @@ FORBIDDEN_DYNAMIC_IMPORTS: Final[tuple[str, ...]] = (
 WINDOWS_NATIVE_MEMBER: Final[str] = "celestial_calendar/_native/_celestial_calendar.dll"
 TERMS_NAME_TOKENS: Final[tuple[str, ...]] = ("eula", "licence", "license")
 TERMS_SUFFIXES: Final[frozenset[str]] = frozenset({"", ".htm", ".html", ".rtf", ".txt", ".xml"})
+RUNNER_IDENTITY_FIELDS: Final[tuple[str, ...]] = (
+  "ImageOS",
+  "ImageVersion",
+  "RUNNER_ARCH",
+  "RUNNER_OS",
+  "WindowsSdkDir",
+  "WindowsSDKVersion",
+  "VCToolsInstallDir",
+  "VCToolsVersion",
+)
 
 
 def _require(condition: bool, message: str) -> None:
@@ -154,6 +164,8 @@ def _response_arguments(path: Path) -> list[str]:
     except UnicodeDecodeError:
       continue
     _require(command_line, f"Linker response file is empty: {path}")
+    _require("\0" not in command_line, f"Linker response file contains NUL: {path}")
+    command_line = re.sub(r"[\r\n]+", " ", command_line)
     arguments = _windows_command_line(f"response-file {command_line}")
     _require(arguments and arguments[0] == "response-file", f"Cannot parse linker response file: {path}")
     return arguments[1:]
@@ -430,17 +442,7 @@ def _mt_request(producer: str) -> dict:
 
 
 def _runner_identity(search_paths: Sequence[Path]) -> dict:
-  names = (
-    "ImageOS",
-    "ImageVersion",
-    "RUNNER_ARCH",
-    "RUNNER_OS",
-    "WindowsSdkDir",
-    "WindowsSDKVersion",
-    "VCToolsInstallDir",
-    "VCToolsVersion",
-  )
-  identity = {name: os.environ.get(name) for name in names}
+  identity = {name: os.environ.get(name) for name in RUNNER_IDENTITY_FIELDS}
   msvc_identities: set[tuple[str, str]] = set()
   sdk_identities: set[tuple[str, str]] = set()
   for path in search_paths:
@@ -555,20 +557,10 @@ def _validate_intrinsic(report: dict, packaged_dll: Path, producer: str) -> None
   )
   _require(not any(_forbidden_import(name) for name in imports), "Windows DLL imports an unapproved dynamic runtime")
   runner = report.get("runner")
-  required_runner_fields = {
-    "ImageOS",
-    "ImageVersion",
-    "RUNNER_ARCH",
-    "RUNNER_OS",
-    "VCToolsInstallDir",
-    "VCToolsVersion",
-    "WindowsSDKVersion",
-    "WindowsSdkDir",
-  }
   _require(
     isinstance(runner, dict)
-    and set(runner) == required_runner_fields
-    and all(isinstance(runner[field], str) and runner[field] for field in required_runner_fields),
+    and set(runner) == set(RUNNER_IDENTITY_FIELDS)
+    and all(isinstance(runner[field], str) and runner[field] for field in RUNNER_IDENTITY_FIELDS),
     "Windows runner/toolset/SDK identity is incomplete",
   )
   selected = report.get("selected_default_libraries")

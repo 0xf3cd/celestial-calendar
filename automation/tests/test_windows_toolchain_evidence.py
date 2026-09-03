@@ -207,9 +207,9 @@ def test_excluded_default_libraries_do_not_count_as_selected():
   )
 
 
-def test_response_file_parsing_uses_argument_position_and_strips_outer_whitespace(monkeypatch, tmp_path):
+def test_response_file_parsing_uses_argument_position_and_normalizes_line_endings(monkeypatch, tmp_path):
   response = tmp_path / "objects.rsp"
-  response.write_bytes(b'  "two words.obj" one.obj\r\n')
+  response.write_bytes(b'  "two words.obj"\r\none.obj\r\n')
   seen = []
 
   def parse(command_line):
@@ -220,6 +220,14 @@ def test_response_file_parsing_uses_argument_position_and_strips_outer_whitespac
 
   assert evidence._response_arguments(response) == ["two words.obj", "one.obj"]
   assert seen == ['response-file "two words.obj" one.obj']
+
+
+def test_response_file_parsing_rejects_nul(tmp_path):
+  response = tmp_path / "objects.rsp"
+  response.write_bytes(b"one.obj\0two.obj")
+
+  with pytest.raises(RuntimeError, match="contains NUL"):
+    evidence._response_arguments(response)
 
 
 def test_runner_identity_recovers_toolset_and_sdk_from_linker_paths(monkeypatch, tmp_path):
