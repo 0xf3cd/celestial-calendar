@@ -5,10 +5,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # This file downloads the golden dataset for the Moon geocentric-position tests (#94 / #65):
 # - Primary source: JPL Horizons API (ssd.jpl.nasa.gov/api/horizons.api), Moon (301) seen from

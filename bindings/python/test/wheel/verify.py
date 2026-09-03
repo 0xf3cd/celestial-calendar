@@ -6,18 +6,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 """Inspect one repaired wheel's metadata, payload, architecture, exports, and dependencies."""
 
@@ -98,7 +87,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert metadata["Name"] == "celestial-calendar"
   assert metadata["Version"] == version
   assert metadata["Requires-Python"] == ">=3.11"
-  assert metadata["License-Expression"] == "GPL-3.0-or-later"
+  assert metadata["License-Expression"] == "MIT"
   project_urls = metadata.get_all("Project-URL") or []
   assert "Repository, https://github.com/0xf3cd/celestial-calendar" in project_urls
 

@@ -5,10 +5,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # This file downloads the golden datasets for the Sun-position and jieqi tests (#94 / #68):
 # - Axis 1, Sun apparent position: JPL Horizons API, Sun (10) from the geocenter (500@399),

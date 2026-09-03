@@ -7,18 +7,7 @@
   Email: nq.maigre@gmail.com
   Repo : https://github.com/0xf3cd/celestial-calendar
 
-  This project is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  This project is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this project. If not, see <https://www.gnu.org/licenses/>.
+  SPDX-License-Identifier: MIT
 -->
 
 # @0xf3cd/celestial
@@ -108,6 +97,6 @@ const result = celestial.lunar.fromGregorian("algo3", { year: 2026, month: 8, da
 
 ## License
 
-GPL-3.0-or-later.
+Project-authored package material is licensed under MIT.
 
-Bundled build inputs retain their own terms in `THIRD_PARTY_NOTICES.txt`.
+Bundled third-party components retain their own terms in `THIRD_PARTY_NOTICES.txt`.

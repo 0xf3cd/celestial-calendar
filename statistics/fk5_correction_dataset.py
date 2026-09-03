@@ -5,10 +5,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # This file regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68):
 # it evaluates Meeus (25.9) with mpmath at 50-digit precision,

@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <algorithm>
@@ -38,7 +27,7 @@
 // function `ChineseToGregorian()` — the main year table.
 // Retained material boundary (V05): the decoded rows remain under the source GPLv3 terms and outside
 // the project MIT grant. No permission beyond those source terms is claimed. Collected 2026-08-05.
-// This project's current licence is recorded separately in the file header.
+// Project-authored material in this file is MIT-licensed, as recorded in the file header.
 //
 // SSOT for the 115 rows is **this table**. Regenerate from the pinned ytliu0 commit:
 //   python3 statistics/algo3_ytliu0_golden.py emit-cpp --ytliu0 <checkout>

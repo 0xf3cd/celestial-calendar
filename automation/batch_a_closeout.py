@@ -8,23 +8,13 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import hashlib
 import json
 import re
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Sequence
@@ -185,6 +175,88 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
 )
 
 NON_PROJECT_SPDX_HOSTS: Final[frozenset[str]] = frozenset({"THIRD_PARTY_NOTICES.txt", "run-clang-tidy.py"})
+MIT_LICENSE_BYTES: Final[bytes] = b"""MIT License
+
+Copyright (c) 2024-2026 Ningqi Wang (0xf3cd)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
+OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
+OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
+EXPECTED_PROJECT_SPDX_FILES: Final[int] = 199
+A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
+  "automation",
+  "bindings",
+  "docs",
+  "src",
+  "statistics",
+  "third_party",
+  "toolbox",
+)
+A4_SCAN_FILES: Final[tuple[str, ...]] = (
+  "AGENTS.md",
+  "Dockerfile",
+  "LICENSE",
+  "README.md",
+  "Requirements-producer.in",
+  "Requirements-producer.txt",
+  "Requirements-statistics.txt",
+  "Requirements.txt",
+  "THIRD_PARTY_NOTICES.txt",
+  "checks.py",
+  "project.py",
+  "run-clang-tidy.py",
+)
+A4_SCAN_EXCLUDED_PARTS: Final[frozenset[str]] = frozenset(
+  {".git", ".review", ".venv", "__pycache__", "build", "node_modules", "wheelhouse"}
+)
+GPL_3_OR_LATER: Final[str] = "GPL" + "-3.0-or-later"
+GPL_V2: Final[str] = "GPL" + "v2"
+GPL_V3: Final[str] = "GPL" + "v3"
+LGPL_3_OR_LATER: Final[str] = "LGPL" + "-3.0-or-later"
+RESIDUAL_GPL_PATTERN: Final[re.Pattern[str]] = re.compile(
+  "GNU General "
+  r"Public License|(?<![A-Za-z0-9])L?GPL(?:v[0-9]+|-[0-9]+(?:\.[0-9]+)?(?:-or-later)?)(?![A-Za-z0-9.-])"
+)
+RESIDUAL_GPL_ALLOWLIST: Final[Counter[tuple[str, str]]] = Counter(
+  {
+    ("THIRD_PARTY_NOTICES.txt", GPL_V2): 8,
+    ("automation/astrotime_delta_t_provenance.py", GPL_3_OR_LATER): 2,
+    ("bindings/javascript/package-lock.json", LGPL_3_OR_LATER): 14,
+    (
+      "src/test/provenance/astrotime-analysis/55115f4bf59cbdc47970b7f2d69a9715a467a3e9/GRANT.md",
+      GPL_3_OR_LATER,
+    ): 1,
+    (
+      "src/test/provenance/astrotime-analysis/ed1cdc2fd6c5122b391a82289aa2cc060340552d/GRANT.md",
+      GPL_3_OR_LATER,
+    ): 1,
+    ("src/test/lunar/algo3_ytliu0_golden_test.cpp", GPL_V3): 1,
+    ("statistics/algo3_ytliu0_golden.py", GPL_V3): 1,
+    ("third_party/emscripten/6.0.6/compiler-rt-LICENSE.TXT", GPL_V2): 2,
+    ("third_party/emscripten/6.0.6/libcxx-LICENSE.TXT", GPL_V2): 2,
+    ("third_party/emscripten/6.0.6/libcxxabi-LICENSE.TXT", GPL_V2): 2,
+    ("third_party/emscripten/6.0.6/libunwind-LICENSE.TXT", GPL_V2): 2,
+    ("third_party/llvm/llvmorg-22.1.2/LICENSE.TXT", GPL_V2): 2,
+  }
+)
 ROW_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
   r"\b(?:R(?:0[1-9]|[12][0-9]|3[0-7])|V(?:0[1-9]|[1-3][0-9]|4[0-3])|T0[1-3])\b"
 )
@@ -497,6 +569,108 @@ def _normalise_marking(text: str) -> str:
   return _normalise(" ".join(lines))
 
 
+def _a4_scan_texts(repo_root: Path) -> dict[str, str]:
+  paths = [repo_root / relative for relative in A4_SCAN_FILES]
+  for relative in A4_SCAN_ROOTS:
+    root = repo_root / relative
+    _require(root.is_dir(), f"A4 scan root is missing: {relative}")
+    paths.extend(path for path in root.rglob("*") if path.is_file())
+
+  texts: dict[str, str] = {}
+  for path in sorted(set(paths)):
+    relative = path.relative_to(repo_root)
+    if relative.suffix == ".ipynb" or A4_SCAN_EXCLUDED_PARTS.intersection(relative.parts):
+      continue
+    try:
+      texts[relative.as_posix()] = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+      continue
+  return texts
+
+
+def _exact_marker_hosts(texts: dict[str, str], marker: str) -> set[str]:
+  return {relative for relative, text in texts.items() if marker in text}
+
+
+def _residual_gpl_tokens(texts: dict[str, str]) -> Counter[tuple[str, str]]:
+  tokens: Counter[tuple[str, str]] = Counter()
+  for relative, text in texts.items():
+    tokens.update((relative, match.group(0)) for match in RESIDUAL_GPL_PATTERN.finditer(text))
+  return tokens
+
+
+def _verify_a4_license_surfaces(repo_root: Path) -> None:
+  _require((repo_root / "LICENSE").read_bytes() == MIT_LICENSE_BYTES, "root LICENSE is not canonical MIT text")
+  texts = _a4_scan_texts(repo_root)
+
+  for label, marker in (("full", OLD_FULL_HEADER_MARKER), ("short", OLD_SHORT_HEADER_MARKER)):
+    control = _exact_marker_hosts({"<known-positive>": marker}, marker)
+    _require(control == {"<known-positive>"}, f"old {label} header scan positive control failed")
+    hosts = _exact_marker_hosts(texts, marker)
+    _require(not hosts, f"old {label} project header remains: {sorted(hosts)}")
+
+  project_spdx_hosts: set[str] = set()
+  for relative, text in texts.items():
+    header = "\n".join(text.splitlines()[:25])
+    if "Ningqi Wang (0xf3cd)" not in header or "https://github.com/0xf3cd/celestial-calendar" not in header:
+      continue
+    _require(header.count(MIT_SPDX_MARKER) == 1, f"MIT SPDX project header differs: {relative}")
+    project_spdx_hosts.add(relative)
+  _require(
+    len(project_spdx_hosts) == EXPECTED_PROJECT_SPDX_FILES,
+    f"MIT SPDX project-header population differs: {len(project_spdx_hosts)}",
+  )
+  _require(
+    texts["run-clang-tidy.py"].count("SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception") == 1,
+    "run-clang-tidy.py upstream SPDX marking differs",
+  )
+
+  package = _load_json(texts["bindings/javascript/package.json"].encode(), "npm project metadata")
+  package_lock = _load_json(texts["bindings/javascript/package-lock.json"].encode(), "npm lock metadata")
+  _require(package.get("license") == "MIT", "npm project license metadata differs")
+  _require(package_lock.get("packages", {}).get("", {}).get("license") == "MIT", "npm root lock license differs")
+  _require(texts["bindings/python/pyproject.toml"].count('license = "MIT"') == 1, "Python license metadata differs")
+  _require(texts["toolbox/build_npm.py"].count('"license": "MIT",') == 1, "staged npm license differs")
+  _require(
+    texts["bindings/python/test/wheel/verify.py"].count('metadata["License-Expression"] == "MIT"') == 1,
+    "wheel License-Expression expectation differs",
+  )
+
+  for relative in ("bindings/javascript/README.md", "bindings/python/README.md"):
+    section = _section(texts[relative], "## License")
+    _require("licensed under MIT" in section, f"package README MIT scope differs: {relative}")
+    _require("THIRD_PARTY_NOTICES.txt" in section, f"package README third-party exception differs: {relative}")
+  readme_license = _section(texts["README.md"], "## 13. License")
+  _require("Project-authored material is licensed under the MIT License" in readme_license, "README MIT scope differs")
+  for pointer in ("THIRD_PARTY_NOTICES.txt", "inline or adjacent attribution records"):
+    _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
+
+  _require(
+    texts["project.py"].count('BUILD_VERSION: Final[str] = "0.7.0"') == 1,
+    "project version is not 0.7.0",
+  )
+  for relative in ("docs/CHANGELOG.md", "docs/RELEASE_NOTES.md"):
+    _require(texts[relative].count("## [v0.7.0]") == 1, f"v0.7.0 release heading differs: {relative}")
+    _require(
+      "Project-authored material is now licensed under MIT" in texts[relative],
+      f"MIT release note differs: {relative}",
+    )
+  _require("License: MIT." in texts["AGENTS.md"], "AGENTS.md repository license differs")
+  _require(MIT_SPDX_MARKER in texts["AGENTS.md"], "AGENTS.md file-header convention differs")
+
+  residual_control = _residual_gpl_tokens({"<known-positive>": GPL_V3})
+  _require(
+    residual_control == Counter({("<known-positive>", GPL_V3): 1}),
+    "residual GPL scan positive control failed",
+  )
+  residual = _residual_gpl_tokens(texts)
+  _require(
+    residual == RESIDUAL_GPL_ALLOWLIST,
+    f"residual GPL allowlist differs: missing={RESIDUAL_GPL_ALLOWLIST - residual}, "
+    f"unexpected={residual - RESIDUAL_GPL_ALLOWLIST}",
+  )
+
+
 def _verify_source_identity(block: dict, host_text: str) -> None:
   identity = block["source_identity"].casefold()
   context = " ".join(
@@ -724,6 +898,11 @@ def verify_batch_a_closeout(
   notice_sources: Sequence[NoticeSource] = NOTICE_SOURCES,
   require_mit_spdx: bool | None = None,
 ) -> CloseoutCounts:
+  if require_mit_spdx is None:
+    require_mit_spdx = (repo_root / "LICENSE").read_bytes().startswith(b"MIT License\n")
+  if require_mit_spdx:
+    _verify_a4_license_surfaces(repo_root)
+
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
   record = _load_json(_read_pinned(closeout_root / RECORD_NAME, record_sha256, "closeout record"), "closeout record")
   registry = _load_json(

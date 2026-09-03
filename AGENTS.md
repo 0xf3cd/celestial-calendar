@@ -11,7 +11,7 @@
 **CelestialCalendar** — A C++23 astronomical-calculation library that converts among
 Gregorian, Lunar, and Chinese Ganzhi calendars, and computes accurate Jieqi (节气)
 moments, sun/moon positions, and sunrise/sunset. 天文计算与历法转换.
-Repository: `https://github.com/0xf3cd/celestial-calendar` · License: GPL-3.0.
+Repository: `https://github.com/0xf3cd/celestial-calendar` · License: MIT.
 
 Write code **in the author's style**, so contributions stay indistinguishable from
 hand-written code. For *style* questions, read a neighbouring header and imitate it
@@ -269,8 +269,8 @@ slot. What gets cut is the exposition, never the contract: the twin `@note`s on
 
 ### File header
 
-Every file opens with the full GPL-3.0 block comment (copy from any src file), verbatim
-except the year: `Copyright (C) <year> Ningqi Wang (0xf3cd)`. New files use the current
+Every project-authored source file opens with the neighbouring project banner, its copyright
+line, and a language-appropriate `SPDX-License-Identifier: MIT`. New files use the current
 year; never change an existing file's year — except a wholesale rewrite, which may set a
 `<original>-<current>` range (user-directed, e.g. `util/random.hpp` 2024-2026).
 
@@ -429,13 +429,13 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 
 - One issue per phase; branch `phaseN-<topic>` from `main`; PR body in the established
   four blocks — 内容 / 测试 / 验证 / 范围说明 (see #52, #54 for the shape).
-- `Closes #N` must be verified via the API (`closingIssuesReferences`) after merge —
-  backticks in a squash body can kill the keyword. Merge runs through the GitHub merge
-  API with a controlled squash body, not the UI button.
-- Repo merge settings: squash merge; `squash_merge_commit_message = COMMIT_MESSAGES` —
-  the default squash body is the **concatenated commit messages**, the PR body does not
-  participate. After merging, read back `git log -1 --format='%b' origin/main` to verify
-  what actually landed.
+- A closing PR body contains the sole unbackticked `Closes #N`. Before merge, query
+  `closingIssuesReferences` through GraphQL and assert the exact expected issue list.
+- Repo merge settings default the squash title and body to `PR_TITLE` and `PR_BODY`. A
+  controlled GitHub merge API call may supply a different squash body; whichever body is
+  supplied must contain only the same unbackticked `Closes #N` and pass protection scan as
+  permanent main history. After merging, read back `git log -1 --format='%b' origin/main`
+  to verify what actually landed.
 - On the author's workstations `commit.gpgsign=true` is set machine-globally with a
   hardware key: there, a bare local `git commit` from an agent pops pinentry in the
   user's terminal and hangs the session — commit server-signed through the GitHub API

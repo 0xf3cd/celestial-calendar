@@ -4,10 +4,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # `paths` is exported as the submodule, not as its individual functions: every caller -- inside
 # the package and in `toolbox/` -- reaches for `paths.build_dir()` rather than the bare name.

@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.7.0]
+
+### Changed
+
+- Project-authored material is now licensed under MIT. Retained third-party material keeps its source terms and remains
+  outside the project MIT grant; `THIRD_PARTY_NOTICES.txt` and the source-tree attribution boundaries identify the
+  applicable exceptions.
+
 ## [v0.6.1] - 2026-08-24
 
 ### Fixed

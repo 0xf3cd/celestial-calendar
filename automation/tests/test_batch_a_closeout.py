@@ -6,29 +6,25 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import hashlib
 import json
 
 from pathlib import Path
-from shutil import copy2
+from shutil import copy2, copytree, ignore_patterns
 
 import pytest
 
 from automation.batch_a_closeout import (
+  A4_SCAN_FILES,
+  A4_SCAN_ROOTS,
   CLOSEOUT_ROOT_RELATIVE,
+  GPL_V3,
+  MIT_LICENSE_BYTES,
+  MIT_SPDX_MARKER,
+  OLD_FULL_HEADER_MARKER,
+  OLD_SHORT_HEADER_MARKER,
   RECORD_NAME,
   RECORD_SHA256,
   REGISTRY_NAME,
@@ -64,7 +60,7 @@ def _referenced_paths(record: dict, registry: dict) -> set[Path]:
   return paths
 
 
-def materialize_inputs(destination: Path) -> tuple[Path, Path]:
+def materialize_inputs(destination: Path, include_a4: bool = False) -> tuple[Path, Path]:
   record, registry = _source_payloads()
   closeout_root = destination / CLOSEOUT_ROOT_RELATIVE
   closeout_root.mkdir(parents=True)
@@ -78,6 +74,20 @@ def materialize_inputs(destination: Path) -> tuple[Path, Path]:
       continue
     target.parent.mkdir(parents=True, exist_ok=True)
     copy2(REPO_ROOT / relative, target)
+  if include_a4:
+    for relative in A4_SCAN_ROOTS:
+      copytree(
+        REPO_ROOT / relative,
+        destination / relative,
+        dirs_exist_ok=True,
+        ignore=ignore_patterns(".venv", "__pycache__", "build", "node_modules", "wheelhouse", "*.ipynb"),
+      )
+    for relative in A4_SCAN_FILES:
+      target = destination / relative
+      target.parent.mkdir(parents=True, exist_ok=True)
+      copy2(REPO_ROOT / relative, target)
+  else:
+    (destination / "LICENSE").write_text("legacy license fixture\n", encoding="utf-8")
   return record_path, registry_path
 
 
@@ -290,8 +300,107 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
 
 
-def test_mit_spdx_population_gate_is_armed_before_a4(tmp_path):
-  materialize_inputs(tmp_path)
+def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
+  materialize_inputs(tmp_path, include_a4=True)
+
+  assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 90, 47, 2, 14)
+
+
+@pytest.mark.parametrize(
+  ("relative", "marker", "message"),
+  [
+    ("automation/action_pins.py", OLD_FULL_HEADER_MARKER, "old full project header remains"),
+    ("project.py", OLD_SHORT_HEADER_MARKER, "old short project header remains"),
+  ],
+)
+def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relative, marker, message):
+  materialize_inputs(tmp_path, include_a4=True)
+  replace_once(tmp_path / relative, MIT_SPDX_MARKER, marker)
+
+  with pytest.raises(RuntimeError, match=message):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("mutation", "message"),
+  [
+    ("license", "root LICENSE is not canonical MIT text"),
+    ("project-spdx", "MIT SPDX project header differs"),
+    ("upstream-spdx", "run-clang-tidy.py upstream SPDX marking differs"),
+    ("npm-project", "npm project license metadata differs"),
+    ("npm-lock", "npm root lock license differs"),
+    ("python-project", "Python license metadata differs"),
+    ("npm-staged", "staged npm license differs"),
+    ("wheel", "wheel License-Expression expectation differs"),
+    ("javascript-readme", "package README MIT scope differs"),
+    ("python-readme", "package README third-party exception differs"),
+    ("root-readme", "README third-party exception pointer differs"),
+    ("version", "project version is not 0.7.0"),
+    ("release-notes", "MIT release note differs"),
+    ("agents", "AGENTS.md repository license differs"),
+    ("residual", "residual GPL allowlist differs"),
+  ],
+)
+def test_a4_surface_mutations_fail(tmp_path, mutation, message):
+  materialize_inputs(tmp_path, include_a4=True)
+  if mutation == "license":
+    (tmp_path / "LICENSE").write_bytes(MIT_LICENSE_BYTES + b"changed\n")
+  elif mutation == "project-spdx":
+    replace_once(tmp_path / "automation/action_pins.py", MIT_SPDX_MARKER, "SPDX-License-Identifier: Apache-2.0")
+  elif mutation == "upstream-spdx":
+    replace_once(
+      tmp_path / "run-clang-tidy.py",
+      "SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception",
+      MIT_SPDX_MARKER,
+    )
+  elif mutation == "npm-project":
+    replace_once(tmp_path / "bindings/javascript/package.json", '"license": "MIT"', '"license": "ISC"')
+  elif mutation == "npm-lock":
+    package_lock = tmp_path / "bindings/javascript/package-lock.json"
+    payload = json.loads(package_lock.read_text(encoding="utf-8"))
+    payload["packages"][""]["license"] = "ISC"
+    write_json(package_lock, payload)
+  elif mutation == "python-project":
+    replace_once(tmp_path / "bindings/python/pyproject.toml", 'license = "MIT"', 'license = "ISC"')
+  elif mutation == "npm-staged":
+    replace_once(tmp_path / "toolbox/build_npm.py", '"license": "MIT",', '"license": "ISC",')
+  elif mutation == "wheel":
+    replace_once(
+      tmp_path / "bindings/python/test/wheel/verify.py",
+      'metadata["License-Expression"] == "MIT"',
+      'metadata["License-Expression"] == "ISC"',
+    )
+  elif mutation == "javascript-readme":
+    replace_once(tmp_path / "bindings/javascript/README.md", "licensed under MIT", "licensed permissively")
+  elif mutation == "python-readme":
+    replace_once(tmp_path / "bindings/python/README.md", "THIRD_PARTY_NOTICES.txt", "NOTICE.txt")
+  elif mutation == "root-readme":
+    replace_once(
+      tmp_path / "README.md",
+      "inline or adjacent attribution records",
+      "source-tree records",
+    )
+  elif mutation == "version":
+    replace_once(tmp_path / "project.py", 'BUILD_VERSION: Final[str] = "0.7.0"', 'BUILD_VERSION: Final[str] = "0.7.1"')
+  elif mutation == "release-notes":
+    replace_once(
+      tmp_path / "docs/RELEASE_NOTES.md",
+      "Project-authored material is now licensed under MIT",
+      "Project-authored material changed license",
+    )
+  elif mutation == "agents":
+    replace_once(tmp_path / "AGENTS.md", "License: MIT.", "License: permissive.")
+  else:
+    replace_once(tmp_path / "statistics/algo3_ytliu0_golden.py", GPL_V3, "GPL" + "v4")
+
+  with pytest.raises(RuntimeError, match=message):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):
+  materialize_inputs(tmp_path, include_a4=True)
+  replace_once(tmp_path / "src/CMakeLists.txt", MIT_SPDX_MARKER, "")
 
   with pytest.raises(RuntimeError, match="MIT SPDX host marking differs"):
-    verify_batch_a_closeout(repo_root=tmp_path, require_mit_spdx=True)
+    verify_batch_a_closeout(repo_root=tmp_path)

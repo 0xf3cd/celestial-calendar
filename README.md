@@ -438,3 +438,34 @@ Maintainers cutting a release should follow the protected workflow in [`docs/REL
 * [ytliu0 / ChineseCalendar](https://github.com/ytliu0/ChineseCalendar)
 * [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
 * [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm)
+
+## 13. License
+
+Project-authored material is licensed under the MIT License; see `LICENSE`.
+
+The MIT grant covers the material this project authored: the C++ and C sources and headers, the
+shared-library implementation and C ABI, the JavaScript and Python binding sources and type
+declarations, the build, packaging, release, and validation automation, the documentation written
+here, and the project-generated build and release evidence members.
+
+The MIT grant does not extend to third-party material this project redistributes. Three families
+keep their own terms and travel with their own notices:
+
+1. **Third-party material inside this project's own sources and binaries** — each runtime
+   coefficient table, encoded dataset, or formula transcription retained from an external source is
+   retained under that source's terms, together with any attribution, origin, difference,
+   non-endorsement, or notice condition those terms impose.
+2. **Third-party toolchain material embedded by the build** — the Emscripten, musl, and LLVM-runtime
+   portions inside `celestial-jieqi.wasm` and its generated glue, and the Microsoft C/C++ runtime
+   portions statically linked into the Windows DLL and the Windows wheel's native member. These are
+   governed by their own terms and are accompanied by the canonical third-party notice bundle where
+   one is required.
+3. **Repository-only validation material** — the stored golden datasets, crawler outputs, notebook
+   inputs, and book-derived anchors under `src/test/` and `statistics/`. These reach the tagged tree
+   and the GitHub-generated source archives and reach no native archive, wheel, npm tarball, or WASM
+   artifact. Each keeps its own source attribution and terms; MIT is not asserted over any of them.
+
+Retained third-party material is not relicensed by sitting beside MIT-licensed code, and this
+project asserts no ownership of an upstream source's data merely because this project's code reads
+or compares against it. See `THIRD_PARTY_NOTICES.txt` and the inline or adjacent attribution records
+for the applicable exceptions.
