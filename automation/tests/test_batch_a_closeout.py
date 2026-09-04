@@ -102,7 +102,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "fcc705215221f6924d0406728f48b19166f197a7dc72389b6d48dc50cf7959fb"
-  assert REGISTRY_SHA256 == "c8f4391b1d8740c74cd2720835e2dce8f8e75b0a4c7425fa892115095319bf64"
+  assert REGISTRY_SHA256 == "2f31482e49d51f1f7b80ad979ece00fda088a16161b41dd45ae456ffe32cfe6e"
   assert verify_batch_a_closeout() == CloseoutCounts(57, 90, 47, 2, 14)
 
 
@@ -194,6 +194,7 @@ def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
     ("wrong-scope", "r12 scope differs"),
     ("wrong-source", "r12 source identity is not recognised"),
     ("changed-marker", "r12 retained marking differs"),
+    ("changed-marking-hash", "r12 retained marking hash differs"),
     ("unknown-mode", "r12 marking mode differs"),
     ("notice-map", "notice applicability mapping differs"),
   ],
@@ -209,12 +210,15 @@ def test_registry_mutations_fail(tmp_path, mutation, message):
     by_id["r13"]["path"] = by_id["r14"]["path"]
     by_id["r13"]["locator"] = by_id["r14"]["locator"]
     by_id["r13"]["marker"] = by_id["r14"]["marker"]
+    by_id["r13"]["marking_sha256"] = by_id["r14"]["marking_sha256"]
   elif mutation == "wrong-scope":
     by_id["r12"]["material_scope"] = "project_authored_mit"
   elif mutation == "wrong-source":
     by_id["r12"]["source_identity"] = "unidentified source"
   elif mutation == "changed-marker":
     by_id["r12"]["marker"] = "Retained material boundary (R12): changed"
+  elif mutation == "changed-marking-hash":
+    by_id["r12"]["marking_sha256"] = "0" * 64
   elif mutation == "unknown-mode":
     by_id["r12"]["marking_mode"] = "notice_only"
   else:
@@ -292,6 +296,7 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
   entry["path"] = "src/test/astro/sun_test.cpp"
   entry["locator"] = "V07 refresh relation"
   entry["marker"] = "Retained material boundaries: the V07 JPL Horizons DE440 table"
+  entry["marking_sha256"] = next(block for block in registry["blocks"] if block["id"] == "v07")["marking_sha256"]
   digest = write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match="identity-gate hosts lack registry entries"):
@@ -384,7 +389,7 @@ def test_a4_text_surface_mutations_fail(tmp_path, relative, old, new, message):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
-def test_a4_license_mutation_fails_closed(tmp_path):
+def test_a4_license_mutation_fails(tmp_path):
   materialize_inputs(tmp_path)
   (tmp_path / "LICENSE").write_bytes(MIT_LICENSE_BYTES + b"changed\n")
 
@@ -436,6 +441,18 @@ def test_t03_terms_capture_must_match_the_approved_evidence(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
+@pytest.mark.parametrize("producer", ["native", "wheel"])
+def test_t03_terms_document_identities_must_match_the_approved_evidence(tmp_path, producer):
+  materialize_inputs(tmp_path)
+  contract_path = tmp_path / "automation/windows_toolchain_contract.json"
+  contract = json.loads(contract_path.read_text(encoding="utf-8"))
+  contract["approved_evidence"][producer]["terms"]["documents"][0]["sha256"] = "0" * 64
+  write_json(contract_path, contract)
+
+  with pytest.raises(RuntimeError, match=rf"T03 {producer} terms document identities differ"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
 def test_mit_spdx_host_identity_swap_fails(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "checks.py", "Ningqi Wang (0xf3cd)", "Anonymous")
@@ -452,7 +469,7 @@ def test_mit_spdx_host_identity_swap_fails(tmp_path):
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [
-    ("under its source", "under changed source", "retained marking slices differ"),
+    ("under its source", "under changed source", "r22 retained marking hash differs"),
     (
       "// terms and outside the project MIT grant; written permission",
       "// terms; written permission",

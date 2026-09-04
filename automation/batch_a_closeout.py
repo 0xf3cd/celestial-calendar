@@ -32,7 +32,9 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "fcc705215221f6924d0406728f48b19166f197a7dc72389b6d48dc50cf7959fb"
-REGISTRY_SHA256: Final[str] = "c8f4391b1d8740c74cd2720835e2dce8f8e75b0a4c7425fa892115095319bf64"
+REGISTRY_SHA256: Final[str] = "2f31482e49d51f1f7b80ad979ece00fda088a16161b41dd45ae456ffe32cfe6e"
+WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
+WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "93aa641a2e80dadf0e9f63bce49088d84e1a5325d949052f10775622b498f54a"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -202,7 +204,6 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
 PROJECT_SPDX_HOSTS_SHA256: Final[str] = "b0165dd74a75228fa17d566285e6dcfc549691005522d043964d96f3d5b70125"
-RETAINED_MARKING_SLICES_SHA256: Final[str] = "c07f78d54cf53a0c8349610ae9f70fee48c8f5b486e58c5b49c8a4ae5e9ca6d0"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -468,10 +469,16 @@ def _verify_row_record(repo_root: Path, record: dict) -> dict[str, dict]:
     and "internal Julian-row source" in rows["V37"]["unavailable"],
     "V37 source partition differs",
   )
+  _verify_windows_terms(repo_root, rows["T03"])
+  _verify_vsop87d(repo_root, rows["R12"])
+  return rows
+
+
+def _verify_windows_terms(repo_root: Path, row: dict) -> None:
   _require(
-    rows["T03"]["current_reproducibility"]
+    row["current_reproducibility"]
     == "native and wheel approved evidence and standing contracts are pinned from branch captures"
-    and rows["T03"]["unavailable"]
+    and row["unavailable"]
     == ["assessment of notice or redistribution obligations in the 25 captured Enterprise 2026 terms documents"],
     "T03 capture boundary differs",
   )
@@ -483,17 +490,22 @@ def _verify_row_record(repo_root: Path, record: dict) -> dict[str, dict]:
   _require(isinstance(approved_evidence, dict), "T03 approved evidence differs")
   for producer in ("native", "wheel"):
     profile = approved_evidence.get(producer)
-    terms = profile.get("terms") if isinstance(profile, dict) else None
+    _require(isinstance(profile, dict), f"T03 {producer} approved profile differs")
+    terms = profile.get("terms")
+    _require(isinstance(terms, dict), f"T03 {producer} terms object differs")
+    _require(terms.get("terms_text_captured") is True, f"T03 {producer} terms capture differs")
+    _require(terms.get("identity_unrecovered") is False, f"T03 {producer} terms identity differs")
+    documents = terms.get("documents")
+    _require(isinstance(documents, list), f"T03 {producer} terms documents must be an array")
     _require(
-      isinstance(terms, dict)
-      and terms.get("terms_text_captured") is True
-      and terms.get("identity_unrecovered") is False
-      and isinstance(terms.get("documents"), list)
-      and len(terms["documents"]) == 25,
-      f"T03 {producer} terms capture differs",
+      len(documents) == WINDOWS_TERMS_DOCUMENT_COUNT,
+      f"T03 {producer} terms document count differs: {len(documents)}",
     )
-  _verify_vsop87d(repo_root, rows["R12"])
-  return rows
+    digest = hashlib.sha256(json.dumps(documents, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    _require(
+      digest == WINDOWS_TERMS_DOCUMENTS_SHA256,
+      f"T03 {producer} terms document identities differ: {digest}",
+    )
 
 
 def _verify_evidence(repo_root: Path, row_id: str, evidence: object) -> None:
@@ -590,6 +602,7 @@ def _comment_blocks(text: str) -> list[str]:
   current: list[str] = []
   for line in text.splitlines():
     stripped = line.lstrip()
+    # A bare hash is a comment, but shebangs and preprocessor directives are not.
     is_comment = stripped.startswith(("//", "*", "/*")) or stripped == "#" or stripped.startswith(("# ", "#\t"))
     if is_comment:
       current.append(line)
@@ -601,12 +614,17 @@ def _comment_blocks(text: str) -> list[str]:
   return blocks
 
 
-def _marking_slice(text: str, marker: str, block_id: str) -> str:
-  candidates = {candidate for candidate in _comment_blocks(text) if marker in candidate}
-  if not candidates and marker in _normalise_marking(text):
-    candidates = {marker}
-  _require(len(candidates) == 1, f"{block_id} retained marking slice differs")
-  return candidates.pop()
+def _marking_slice(relative: str, text: str, marker: str, block_id: str) -> str:
+  if relative == "THIRD_PARTY_NOTICES.txt":
+    marking = _normalise(
+      text.partition("==============================================================================")[0]
+    )
+    _require(marker in marking, f"{block_id} retained marking is outside the notice preamble")
+    return marking
+
+  marking = next((candidate for candidate in _comment_blocks(text) if marker in candidate), None)
+  _require(marking is not None, f"{block_id} retained marking is outside a comment block")
+  return marking
 
 
 def _a4_scan_texts(repo_root: Path) -> dict[str, str]:
@@ -743,7 +761,7 @@ def _source_families(text: str) -> list[tuple[str, ...]]:
 
 
 def _section(text: str, heading: str) -> str:
-  _require(text.count(heading) == 1, f"adjacent attribution section differs: {heading}")
+  _require(text.count(heading) == 1, f"section differs: {heading}")
   start = text.index(heading)
   end = text.find("\n## ", start + len(heading))
   return (text[start:] if end < 0 else text[start:end]).rstrip() + "\n"
@@ -759,7 +777,7 @@ def _verify_registry(
     set(registry) == {"schema", "scope", "non_project_spdx_hosts", "blocks"},
     "retained registry top-level fields differ",
   )
-  _require(registry["schema"] == 1, "retained registry schema differs")
+  _require(registry["schema"] == 2, "retained registry schema differs")
   _require(isinstance(registry["scope"], str) and registry["scope"], "retained registry scope is empty")
   _require(
     set(registry["non_project_spdx_hosts"]) == NON_PROJECT_SPDX_HOSTS,
@@ -780,14 +798,13 @@ def _verify_registry(
   locators: set[tuple[str, str]] = set()
   registered_paths: set[str] = set()
   owners: set[str] = set()
-  marking_slices: list[str] = []
   adjacent_sections: dict[str, set[str]] = {}
   notice_applicability: dict[str, set[str]] = {}
   base_fields = {"id", "path", "locator", "source_identity", "material_scope", "owner", "marking_mode"}
   for block in blocks:
     mode = block.get("marking_mode")
     mode_fields = (
-      {"marker"}
+      {"marker", "marking_sha256"}
       if mode == "in_file"
       else {
         "data_sha256",
@@ -823,11 +840,16 @@ def _verify_registry(
 
     if mode == "in_file":
       marker = _normalise_marking(block["marker"])
-      host = _normalise_marking(path.read_text(encoding="utf-8"))
+      text = path.read_text(encoding="utf-8")
+      host = _normalise_marking(text)
       _require(host.count(marker) == 1, f"{block['id']} retained marking differs")
-      marking = _marking_slice(path.read_text(encoding="utf-8"), marker, block["id"])
+      marking = _marking_slice(block["path"], text, marker, block["id"])
       _require("outside the project MIT grant" in marking, f"{block['id']} MIT boundary is missing")
-      marking_slices.append("\0".join((block["id"], block["path"], marking)))
+      marking_digest = hashlib.sha256(marking.encode()).hexdigest()
+      _require(
+        marking_digest == block["marking_sha256"],
+        f"{block['id']} retained marking hash differs: {marking_digest}",
+      )
       _verify_source_identity(block, host)
     else:
       _verify_adjacent_record(repo_root, block, adjacent_sections)
@@ -858,8 +880,6 @@ def _verify_registry(
     "notice applicability mapping differs",
   )
 
-  marking_digest = hashlib.sha256("\n".join(sorted(marking_slices)).encode()).hexdigest()
-  _require(marking_digest == RETAINED_MARKING_SLICES_SHA256, "retained marking slices differ")
   project_hosts = {block["path"] for block in blocks if block["marking_mode"] == "in_file"} - NON_PROJECT_SPDX_HOSTS
   for relative in project_hosts:
     text = (repo_root / relative).read_text(encoding="utf-8")

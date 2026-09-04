@@ -452,8 +452,8 @@ The MIT grant does not extend to third-party material this project redistributes
 terms, with notices and attribution carried where applicable:
 
 1. **Retained blocks inside project-maintained files** — coefficient tables, encoded datasets,
-   formula transcriptions, and validation rows inside source, test, or automation files keep their
-   source terms and carry a pinned in-file or adjacent attribution boundary.
+   formula transcriptions, and validation rows keep their source terms and carry a pinned in-file or
+   adjacent attribution boundary.
 2. **Third-party toolchain material embedded by the build** — the Emscripten, musl, and LLVM-runtime
    portions inside `celestial-jieqi.wasm` and its generated glue, and the Microsoft C/C++ runtime
    portions statically linked into the Windows DLL and the native library inside the Windows wheel.
