@@ -9,6 +9,8 @@
 # SPDX-License-Identifier: MIT
 
 import hashlib
+import json
+import re
 import struct
 
 from pathlib import Path
@@ -57,7 +59,14 @@ def report_for(data: bytes, producer: str = "native") -> dict:
     "producer": producer,
     "raw_dll_sha256": sha256(data),
     "response_expanded": True,
-    "response_files": [{"path": "link.rsp", "sha256": "d" * 64}],
+    "response_files": [
+      {
+        "arguments": ["one.obj"],
+        "path": "link.rsp",
+        "retained_path": "link/response-files/00-link.rsp",
+        "sha256": "d" * 64,
+      }
+    ],
     "runner": {
       "ImageOS": "win25",
       "ImageVersion": "1",
@@ -77,7 +86,11 @@ def report_for(data: bytes, producer: str = "native") -> dict:
       "searched_roots": ["C:/Program Files/Microsoft Visual Studio"],
       "terms_text_captured": False,
     },
-    "visual_studio": {"installation_version": "18"},
+    "visual_studio": {
+      "installation_path": "C:/Visual Studio",
+      "installation_version": "18",
+      "product_id": "Enterprise",
+    },
   }
 
 
@@ -367,6 +380,49 @@ def test_approved_profile_compares_normalized_pe_not_cross_run_raw_hash(tmp_path
     "Approved Windows evidence profile differs"
     in evidence.evaluate_contract(changed, contract, "verify-approved", changed_binary, "native")[0]
   )
+
+
+def test_approved_profile_replaces_external_paths_with_exact_identities():
+  report = report_for(pe_bytes())
+  report["compiler"] = {
+    "path": r"C:\Program Files\LLVM\bin\clang++.exe",
+    "sha256": "b" * 64,
+    "version": "clang version 22.1.7\nInstalledDir: C:\\Program Files\\LLVM\\bin",
+  }
+  report["response_files"] = [
+    {
+      "arguments": [r"C:\build\one.obj", "kernel32.lib"],
+      "path": r"C:\build\objects.rsp",
+      "retained_path": "link/response-files/00-objects.rsp",
+      "sha256": "d" * 64,
+    }
+  ]
+  report["static_library_roles"]["c_runtime"]["members"] = [r"D:\archive\member.obj"]
+  report["static_library_roles"]["c_runtime"]["path"] = r"C:\toolchain\libcmt.lib"
+  report["terms"]["documents"] = [
+    {
+      "path": r"C:\Visual Studio\License.rtf",
+      "retained_path": "terms/00-License.rtf",
+      "sha256": "e" * 64,
+    }
+  ]
+  report["terms"]["identity_unrecovered"] = False
+  report["terms"]["terms_text_captured"] = True
+  report["visual_studio"] = {
+    "installation_path": r"C:\Visual Studio",
+    "installation_version": "18",
+    "product_id": "Enterprise",
+  }
+
+  profile = evidence.approved_view(report)
+  encoded = json.dumps(profile)
+
+  assert re.search(r"(?i)(?<![a-z0-9])[a-z]:[\\/]", encoded) is None
+  assert profile["compiler"]["basename"] == "clang++.exe"
+  assert profile["compiler"]["version"] == "clang version 22.1.7"
+  assert profile["response_files"][0]["argument_count"] == 2
+  assert profile["static_library_roles"]["c_runtime"]["member_count"] == 1
+  assert profile["terms"]["documents"][0]["retained_path"] == "terms/00-License.rtf"
 
 
 def test_response_files_are_retained_and_fully_expanded(tmp_path):

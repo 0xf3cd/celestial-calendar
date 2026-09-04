@@ -119,7 +119,8 @@ DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   ("out_of_denominator", "citation_only", "not_applicable"): frozenset({"V43"}),
 }
 WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
-SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "93aa641a2e80dadf0e9f63bce49088d84e1a5325d949052f10775622b498f54a"
+SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "ee2fe84134c32a7ae7b3c6f0581b14fb864664be8ac3db357ab327b3848fc53c"
+WINDOWS_ABSOLUTE_PATH: Final[re.Pattern[str]] = re.compile(r"(?i)(?<![a-z0-9])(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)")
 EXPECTED_ROWS: Final[frozenset[str]] = frozenset().union(*DISPOSITION_GROUPS.values())
 
 SPLIT_ROW_PARTS: Final[dict[str, str]] = {
@@ -370,6 +371,16 @@ def _load_json(data: bytes, label: str) -> dict:
   return value
 
 
+def _contains_absolute_windows_path(value: object) -> bool:
+  if isinstance(value, str):
+    return WINDOWS_ABSOLUTE_PATH.search(value) is not None
+  if isinstance(value, dict):
+    return any(_contains_absolute_windows_path(item) for item in value.values())
+  if isinstance(value, list):
+    return any(_contains_absolute_windows_path(item) for item in value)
+  return False
+
+
 def _safe_path(repo_root: Path, relative: str, label: str) -> Path:
   path = Path(relative)
   _require(not path.is_absolute() and ".." not in path.parts, f"{label} path must remain repository-relative")
@@ -488,6 +499,10 @@ def _verify_windows_terms(repo_root: Path, row: dict) -> None:
   )
   approved_evidence = windows_contract.get("approved_evidence")
   _require(isinstance(approved_evidence, dict), "T03 approved evidence differs")
+  _require(
+    not _contains_absolute_windows_path(approved_evidence),
+    "T03 approved evidence contains absolute Windows paths",
+  )
   for producer in ("native", "wheel"):
     profile = approved_evidence.get(producer)
     _require(isinstance(profile, dict), f"T03 {producer} approved profile differs")

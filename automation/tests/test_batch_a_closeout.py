@@ -443,6 +443,18 @@ def test_t03_terms_capture_must_match_the_approved_evidence(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
+@pytest.mark.parametrize("path", [r"C:\toolchain\clang++.exe", r"\\runner\tools\clang++.exe"])
+def test_t03_approved_evidence_rejects_absolute_windows_paths(tmp_path, path):
+  materialize_inputs(tmp_path)
+  contract_path = tmp_path / "automation/windows_toolchain_contract.json"
+  contract = json.loads(contract_path.read_text(encoding="utf-8"))
+  contract["approved_evidence"]["native"]["compiler"]["path"] = path
+  write_json(contract_path, contract)
+
+  with pytest.raises(RuntimeError, match="T03 approved evidence contains absolute Windows paths"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
 @pytest.mark.parametrize("producer", ["native", "wheel"])
 def test_t03_terms_document_identities_must_match_the_approved_evidence(tmp_path, producer):
   materialize_inputs(tmp_path)

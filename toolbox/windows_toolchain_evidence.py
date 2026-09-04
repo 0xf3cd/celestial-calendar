@@ -26,7 +26,7 @@ import subprocess
 import sys
 import zipfile
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Final, Sequence
 
 
@@ -58,6 +58,15 @@ RUNNER_IDENTITY_FIELDS: Final[tuple[str, ...]] = (
   "VCToolsInstallDir",
   "VCToolsVersion",
 )
+APPROVED_RUNNER_FIELDS: Final[tuple[str, ...]] = (
+  "ImageOS",
+  "ImageVersion",
+  "RUNNER_ARCH",
+  "RUNNER_OS",
+  "VCToolsVersion",
+  "WindowsSDKVersion",
+)
+WINDOWS_ABSOLUTE_PATH: Final[re.Pattern[str]] = re.compile(r"(?i)(?<![a-z0-9])(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)")
 
 
 def _require(condition: bool, message: str) -> None:
@@ -484,22 +493,98 @@ def _packaged_dll(binary: Path | None, wheel: Path | None, evidence_dir: Path) -
   }
 
 
+def _json_sha256(value: object) -> str:
+  encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+  return _sha256(encoded)
+
+
+def _path_sha256(value: str) -> str:
+  _require(isinstance(value, str) and value, "Windows evidence path identity is missing")
+  return _sha256(value.encode())
+
+
+def _approved_tool_identity(tool: dict) -> dict:
+  path = tool["path"]
+  version = tool["version"]
+  public_version = "\n".join(line for line in version.splitlines() if WINDOWS_ABSOLUTE_PATH.search(line) is None)
+  _require(public_version, "Windows tool version has no path-neutral lines")
+  return {
+    "basename": PureWindowsPath(path).name,
+    "path_sha256": _path_sha256(path),
+    "sha256": tool["sha256"],
+    "version": public_version,
+    "version_sha256": _sha256(version.encode()),
+  }
+
+
+def _contains_absolute_windows_path(value: object) -> bool:
+  if isinstance(value, str):
+    return WINDOWS_ABSOLUTE_PATH.search(value) is not None
+  if isinstance(value, dict):
+    return any(_contains_absolute_windows_path(item) for item in value.values())
+  if isinstance(value, list):
+    return any(_contains_absolute_windows_path(item) for item in value)
+  return False
+
+
 def approved_view(report: dict) -> dict:
-  """Return the exact capture profile retained for deliberate approval."""
-  keys = (
-    "compiler",
-    "imports",
-    "linker",
-    "normalized_pe",
-    "raw_dll_sha256",
-    "response_files",
-    "runner",
-    "selected_default_libraries",
-    "static_library_roles",
-    "terms",
-    "visual_studio",
-  )
-  return {key: report[key] for key in keys}
+  """Return an exact, path-neutral capture profile for deliberate approval."""
+  runner = report["runner"]
+  terms = report["terms"]
+  visual_studio = report["visual_studio"]
+  profile = {
+    "compiler": _approved_tool_identity(report["compiler"]),
+    "imports": report["imports"],
+    "linker": _approved_tool_identity(report["linker"]),
+    "normalized_pe": report["normalized_pe"],
+    "raw_dll_sha256": report["raw_dll_sha256"],
+    "response_files": [
+      {
+        "argument_count": len(response["arguments"]),
+        "arguments_sha256": _json_sha256(response["arguments"]),
+        "retained_path": response["retained_path"],
+        "sha256": response["sha256"],
+        "source_path_sha256": _path_sha256(response["path"]),
+      }
+      for response in report["response_files"]
+    ],
+    "runner": {field: runner[field] for field in APPROVED_RUNNER_FIELDS}
+    | {
+      "vctools_install_dir_sha256": _path_sha256(runner["VCToolsInstallDir"]),
+      "windows_sdk_dir_sha256": _path_sha256(runner["WindowsSdkDir"]),
+    },
+    "selected_default_libraries": report["selected_default_libraries"],
+    "static_library_roles": {
+      role: {
+        "basename": archive["basename"],
+        "member_count": len(archive["members"]),
+        "members_sha256": _json_sha256(archive["members"]),
+        "path_sha256": _path_sha256(archive["path"]),
+        "sha256": archive["sha256"],
+      }
+      for role, archive in report["static_library_roles"].items()
+    },
+    "terms": {
+      "documents": [
+        {
+          "retained_path": document["retained_path"],
+          "sha256": document["sha256"],
+          "source_path_sha256": _path_sha256(document["path"]),
+        }
+        for document in terms["documents"]
+      ],
+      "identity_unrecovered": terms["identity_unrecovered"],
+      "searched_roots_sha256": [_path_sha256(root) for root in terms["searched_roots"]],
+      "terms_text_captured": terms["terms_text_captured"],
+    },
+    "visual_studio": {
+      "installation_path_sha256": _path_sha256(visual_studio["installation_path"]),
+      "installation_version": visual_studio["installation_version"],
+      "product_id": visual_studio["product_id"],
+    },
+  }
+  _require(not _contains_absolute_windows_path(profile), "Approved Windows evidence contains an absolute path")
+  return profile
 
 
 def standing_view(report: dict) -> dict:
