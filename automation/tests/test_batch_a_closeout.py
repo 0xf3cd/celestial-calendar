@@ -34,6 +34,7 @@ from automation.batch_a_closeout import (
   CloseoutCounts,
   verify_batch_a_closeout,
 )
+from automation.third_party_notices import SEPARATOR
 
 
 def _source_payloads() -> tuple[dict, dict]:
@@ -293,10 +294,11 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   entry = next(block for block in registry["blocks"] if block["id"] == "v07-refresh")
+  v07 = next(block for block in registry["blocks"] if block["id"] == "v07")
   entry["path"] = "src/test/astro/sun_test.cpp"
   entry["locator"] = "V07 refresh relation"
   entry["marker"] = "Retained material boundaries: the V07 JPL Horizons DE440 table"
-  entry["marking_sha256"] = next(block for block in registry["blocks"] if block["id"] == "v07")["marking_sha256"]
+  entry["marking_sha256"] = v07["marking_sha256"]
   digest = write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match="identity-gate hosts lack registry entries"):
@@ -449,7 +451,7 @@ def test_t03_terms_document_identities_must_match_the_approved_evidence(tmp_path
   contract["approved_evidence"][producer]["terms"]["documents"][0]["sha256"] = "0" * 64
   write_json(contract_path, contract)
 
-  with pytest.raises(RuntimeError, match=rf"T03 {producer} terms document identities differ"):
+  with pytest.raises(RuntimeError, match=f"T03 {producer} terms document identities differ"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -482,4 +484,16 @@ def test_retained_marking_body_mutation_fails(tmp_path, old, new, message):
   replace_once(tmp_path / "src/astro/earth.hpp", old, new)
 
   with pytest.raises(RuntimeError, match=message):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+def test_notice_separator_mutation_fails(tmp_path):
+  materialize_inputs(tmp_path)
+  notice_path = tmp_path / "THIRD_PARTY_NOTICES.txt"
+  text = notice_path.read_text(encoding="utf-8")
+  separator = SEPARATOR.decode()
+  assert separator in text
+  notice_path.write_text(text.replace(separator, "-" * 78 + "\n"), encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match="notice-emscripten notice separator differs"):
     verify_batch_a_closeout(repo_root=tmp_path)

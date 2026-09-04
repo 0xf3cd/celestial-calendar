@@ -21,10 +21,10 @@ from typing import Final, Sequence
 
 if __package__:
   from .source_digest import canonical_cpp
-  from .third_party_notices import NOTICE_SOURCES, NoticeSource
+  from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
   from source_digest import canonical_cpp
-  from third_party_notices import NOTICE_SOURCES, NoticeSource
+  from third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
@@ -33,8 +33,6 @@ RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "fcc705215221f6924d0406728f48b19166f197a7dc72389b6d48dc50cf7959fb"
 REGISTRY_SHA256: Final[str] = "2f31482e49d51f1f7b80ad979ece00fda088a16161b41dd45ae456ffe32cfe6e"
-WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
-WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "93aa641a2e80dadf0e9f63bce49088d84e1a5325d949052f10775622b498f54a"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -120,6 +118,8 @@ DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   ("out_of_denominator", "no_active_stored_bytes", "not_applicable"): frozenset({"V39", "V40", "V41"}),
   ("out_of_denominator", "citation_only", "not_applicable"): frozenset({"V43"}),
 }
+WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
+SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "93aa641a2e80dadf0e9f63bce49088d84e1a5325d949052f10775622b498f54a"
 EXPECTED_ROWS: Final[frozenset[str]] = frozenset().union(*DISPOSITION_GROUPS.values())
 
 SPLIT_ROW_PARTS: Final[dict[str, str]] = {
@@ -503,7 +503,7 @@ def _verify_windows_terms(repo_root: Path, row: dict) -> None:
     )
     digest = hashlib.sha256(json.dumps(documents, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     _require(
-      digest == WINDOWS_TERMS_DOCUMENTS_SHA256,
+      digest == SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256,
       f"T03 {producer} terms document identities differ: {digest}",
     )
 
@@ -616,9 +616,9 @@ def _comment_blocks(text: str) -> list[str]:
 
 def _marking_slice(relative: str, text: str, marker: str, block_id: str) -> str:
   if relative == "THIRD_PARTY_NOTICES.txt":
-    marking = _normalise(
-      text.partition("==============================================================================")[0]
-    )
+    separator = SEPARATOR.decode()
+    _require(separator in text, f"{block_id} notice separator differs")
+    marking = _normalise(text.partition(separator)[0])
     _require(marker in marking, f"{block_id} retained marking is outside the notice preamble")
     return marking
 

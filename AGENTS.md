@@ -270,12 +270,13 @@ slot. What gets cut is the exposition, never the contract: the twin `@note`s on
 
 ### File header
 
-New project-authored source files copy the neighbouring project banner, its copyright line, and a
-language-appropriate `SPDX-License-Identifier: MIT`. Retained third-party hosts follow
-`src/test/provenance/batch-a-closeout/retained_host_blocks.json`: `in_file` hosts carry the boundary
-pinned by `marker` and `marking_sha256`; `adjacent_record` data use the named attribution file. New
-files use the current year; never change an existing file's year — except a wholesale rewrite, which
-may set a `<original>-<current>` range (user-directed, e.g. `util/random.hpp` 2024-2026).
+Frozen provenance snapshots under `src/test/provenance/**` are outside the project-header convention.
+For a new project-authored source file elsewhere, copy the neighbouring project banner, its copyright
+line, and a language-appropriate `SPDX-License-Identifier: MIT`; use the current year. For an existing
+project-authored source file, keep its year unless a user-directed wholesale rewrite warrants a
+`<original>-<current>` range (for example, `util/random.hpp` 2024-2026). Retained third-party hosts
+follow `src/test/provenance/batch-a-closeout/retained_host_blocks.json`: `in_file` hosts carry the
+boundary pinned by `marker` and `marking_sha256`; `adjacent_record` data use the named attribution file.
 
 ## Tests
 
