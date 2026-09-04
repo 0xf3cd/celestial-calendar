@@ -120,6 +120,13 @@ DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
 }
 WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
 SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "ee2fe84134c32a7ae7b3c6f0581b14fb864664be8ac3db357ab327b3848fc53c"
+WINDOWS_STATIC_ARCHIVE_MEMBER_COUNTS: Final[dict[str, int]] = {
+  "c_runtime": 1190,
+  "cxx_runtime": 107,
+  "ucrt": 784,
+  "vcruntime": 60,
+}
+SHARED_WINDOWS_STATIC_ARCHIVES_SHA256: Final[str] = "b200036dd3c9ddb7ffd8d49513b65d9b0653c739296b11053856bba112426ae3"
 WINDOWS_ABSOLUTE_PATH: Final[re.Pattern[str]] = re.compile(r"(?i)(?<![a-z0-9])(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)")
 EXPECTED_ROWS: Final[frozenset[str]] = frozenset().union(*DISPOSITION_GROUPS.values())
 
@@ -520,6 +527,20 @@ def _verify_windows_terms(repo_root: Path, row: dict) -> None:
     _require(
       digest == SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256,
       f"T03 {producer} terms document identities differ: {digest}",
+    )
+    archives = profile.get("static_library_roles")
+    _require(isinstance(archives, dict), f"T03 {producer} static archive profile differs")
+    member_counts = {
+      role: archive.get("member_count") if isinstance(archive, dict) else None for role, archive in archives.items()
+    }
+    _require(
+      member_counts == WINDOWS_STATIC_ARCHIVE_MEMBER_COUNTS,
+      f"T03 {producer} static archive member counts differ",
+    )
+    digest = hashlib.sha256(json.dumps(archives, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    _require(
+      digest == SHARED_WINDOWS_STATIC_ARCHIVES_SHA256,
+      f"T03 {producer} static archive identities differ: {digest}",
     )
 
 

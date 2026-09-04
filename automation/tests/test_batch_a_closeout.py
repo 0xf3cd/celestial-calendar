@@ -443,12 +443,23 @@ def test_t03_terms_capture_must_match_the_approved_evidence(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
-@pytest.mark.parametrize("path", [r"C:\toolchain\clang++.exe", r"\\runner\tools\clang++.exe"])
-def test_t03_approved_evidence_rejects_absolute_windows_paths(tmp_path, path):
+@pytest.mark.parametrize(
+  ("location", "path"),
+  [
+    ("dict", r"C:\toolchain\clang++.exe"),
+    ("dict", r"\\runner\tools\clang++.exe"),
+    ("list", r"C:\toolchain\clang++.exe"),
+  ],
+)
+def test_t03_approved_evidence_rejects_absolute_windows_paths(tmp_path, location, path):
   materialize_inputs(tmp_path)
   contract_path = tmp_path / "automation/windows_toolchain_contract.json"
   contract = json.loads(contract_path.read_text(encoding="utf-8"))
-  contract["approved_evidence"]["native"]["compiler"]["path"] = path
+  profile = contract["approved_evidence"]["native"]
+  if location == "dict":
+    profile["compiler"]["path"] = path
+  else:
+    profile["selected_default_libraries"].append(path)
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match="T03 approved evidence contains absolute Windows paths"):
@@ -464,6 +475,25 @@ def test_t03_terms_document_identities_must_match_the_approved_evidence(tmp_path
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match=f"T03 {producer} terms document identities differ"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("field", "message"),
+  [
+    ("member_count", "static archive member counts differ"),
+    ("members_sha256", "static archive identities differ"),
+  ],
+)
+def test_t03_static_archive_identities_must_match_the_approved_evidence(tmp_path, field, message):
+  materialize_inputs(tmp_path)
+  contract_path = tmp_path / "automation/windows_toolchain_contract.json"
+  contract = json.loads(contract_path.read_text(encoding="utf-8"))
+  archive = contract["approved_evidence"]["native"]["static_library_roles"]["c_runtime"]
+  archive[field] = 1189 if field == "member_count" else "0" * 64
+  write_json(contract_path, contract)
+
+  with pytest.raises(RuntimeError, match=f"T03 native {message}"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 

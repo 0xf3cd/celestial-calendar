@@ -10,7 +10,6 @@
 
 import hashlib
 import json
-import re
 import struct
 
 from pathlib import Path
@@ -415,14 +414,67 @@ def test_approved_profile_replaces_external_paths_with_exact_identities():
   }
 
   profile = evidence.approved_view(report)
-  encoded = json.dumps(profile)
 
-  assert re.search(r"(?i)(?<![a-z0-9])[a-z]:[\\/]", encoded) is None
+  assert not evidence._contains_absolute_windows_path(profile)
   assert profile["compiler"]["basename"] == "clang++.exe"
   assert profile["compiler"]["version"] == "clang version 22.1.7"
   assert profile["response_files"][0]["argument_count"] == 2
   assert profile["static_library_roles"]["c_runtime"]["member_count"] == 1
   assert profile["terms"]["documents"][0]["retained_path"] == "terms/00-License.rtf"
+
+
+@pytest.mark.parametrize("path", [r"C:\untransformed\library.lib", r"\\runner\tools\library.lib"])
+def test_approved_profile_rejects_untransformed_external_paths(path):
+  report = report_for(pe_bytes())
+  report["selected_default_libraries"].append(path)
+
+  with pytest.raises(RuntimeError, match="Approved Windows evidence contains an absolute path"):
+    evidence.approved_view(report)
+
+
+@pytest.mark.parametrize(
+  ("keys", "replacement"),
+  [
+    (("compiler", "path"), r"D:\other\clang++.exe"),
+    (("compiler", "version"), "22.1.7\nInstalledDir: D:\\other"),
+    (("linker", "path"), r"D:\other\lld-link.exe"),
+    (("response_files", 0, "arguments"), ["two.obj"]),
+    (("response_files", 0, "path"), r"D:\other\link.rsp"),
+    (("runner", "VCToolsInstallDir"), "D:/Visual Studio/VC/Tools/MSVC/14.51.1"),
+    (("runner", "WindowsSdkDir"), "D:/Windows Kits/10"),
+    (("runner", "ImageVersion"), "2"),
+    (("static_library_roles", "c_runtime", "members"), ["other.obj"]),
+    (("static_library_roles", "c_runtime", "path"), r"D:\other\libcmt.lib"),
+    (("terms", "documents", 0, "path"), r"D:\Visual Studio\License.txt"),
+    (("terms", "searched_roots"), ["D:/Visual Studio"]),
+    (("visual_studio", "installation_path"), "D:/Visual Studio"),
+  ],
+)
+def test_approved_profile_identity_changes_are_detected(tmp_path, keys, replacement):
+  data = pe_bytes()
+  binary = tmp_path / "library.dll"
+  binary.write_bytes(data)
+  report = report_for(data)
+  report["compiler"]["version"] = "22.1.7\nInstalledDir: C:\\original"
+  report["terms"]["documents"] = [
+    {
+      "path": r"C:\Visual Studio\License.txt",
+      "retained_path": "terms/00-License.txt",
+      "sha256": "e" * 64,
+    }
+  ]
+  report["terms"]["identity_unrecovered"] = False
+  report["terms"]["terms_text_captured"] = True
+  contract = contract_for(report)
+  changed = json.loads(json.dumps(report))
+  target = changed
+  for key in keys[:-1]:
+    target = target[key]
+  target[keys[-1]] = replacement
+
+  assert evidence.evaluate_contract(changed, contract, "verify-approved", binary, "native") == [
+    "Approved Windows evidence profile differs for native"
+  ]
 
 
 def test_response_files_are_retained_and_fully_expanded(tmp_path):
