@@ -1913,10 +1913,10 @@ licence terms nor grants permission.
 ==============================================================================
 Microsoft — statically linked C/C++ runtime portions
 Applies to: the Windows native DLL and the Windows wheel's native DLL.
-Source: Visual Studio Enterprise 2026 terms text was not captured by the retained build evidence
-Source-file SHA-256: 990298a6b0f32986d3008f0bc6e985d658258d365d715287b559f18d59b9339f
-No application-local notice-reproduction condition was inferred; this is not a compatibility conclusion.
-This project-authored attribution record does not copy or invent Microsoft licence text.
+Source: Visual Studio Enterprise 2026 terms captured by both approved Windows evidence profiles
+Source-file SHA-256: a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e
+No conclusion about application-local notice or redistribution obligations is drawn from the captured text.
+This project-authored attribution record does not copy or interpret Microsoft licence text.
 ==============================================================================
 
 # Microsoft Static-Runtime Attribution
@@ -1927,15 +1927,16 @@ This project-authored attribution record does not copy or invent Microsoft licen
 - Build policy: Release uses static `/MT`; debug `/MTd` artifacts are not publication inputs.
 - Evidence: `toolbox/windows_toolchain_evidence.py` has capture paths for both Windows producers and
   records the actual linker, expanded response files, selected libraries, archive paths/hashes/members,
-  imports, runner image, and tool versions. Approved evidence and standing contracts remain pending the
-  branch captures.
-- Terms capture: `terms_text_captured=false`; the Visual Studio Enterprise 2026 terms text and exact
-  selected runtime identity were unrecovered from the earlier builds.
-- Notice boundary: no application-local notice-reproduction condition was inferred. This statement is
-  not a substantive compatibility conclusion.
+  imports, runner image, and tool versions. Approved evidence and standing contracts are pinned for
+  both producers.
+- Terms capture: `terms_text_captured=true`; each approved profile records 25 Visual Studio Enterprise
+  2026 terms documents with their paths and SHA-256 digests. The terms are not reproduced or interpreted
+  here.
+- Notice boundary: no conclusion about application-local notice or redistribution obligations is drawn
+  from the captured text. This is not a substantive compatibility or legal conclusion.
 - Disposition: retained under owner risk acceptance, subject to the applicable Microsoft terms and
   outside the project MIT grant. Permission is not claimed.
 
 This project-authored record identifies applicability and known evidence boundaries. It does not copy
-or invent Microsoft licence text.
+or interpret Microsoft licence text.
 

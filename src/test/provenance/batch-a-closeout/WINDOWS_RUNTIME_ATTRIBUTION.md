@@ -6,14 +6,15 @@
 - Build policy: Release uses static `/MT`; debug `/MTd` artifacts are not publication inputs.
 - Evidence: `toolbox/windows_toolchain_evidence.py` has capture paths for both Windows producers and
   records the actual linker, expanded response files, selected libraries, archive paths/hashes/members,
-  imports, runner image, and tool versions. Approved evidence and standing contracts remain pending the
-  branch captures.
-- Terms capture: `terms_text_captured=false`; the Visual Studio Enterprise 2026 terms text and exact
-  selected runtime identity were unrecovered from the earlier builds.
-- Notice boundary: no application-local notice-reproduction condition was inferred. This statement is
-  not a substantive compatibility conclusion.
+  imports, runner image, and tool versions. Approved evidence and standing contracts are pinned for
+  both producers.
+- Terms capture: `terms_text_captured=true`; each approved profile records 25 Visual Studio Enterprise
+  2026 terms documents with their paths and SHA-256 digests. The terms are not reproduced or interpreted
+  here.
+- Notice boundary: no conclusion about application-local notice or redistribution obligations is drawn
+  from the captured text. This is not a substantive compatibility or legal conclusion.
 - Disposition: retained under owner risk acceptance, subject to the applicable Microsoft terms and
   outside the project MIT grant. Permission is not claimed.
 
 This project-authored record identifies applicability and known evidence boundaries. It does not copy
-or invent Microsoft licence text.
+or interpret Microsoft licence text.

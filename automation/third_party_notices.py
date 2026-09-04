@@ -34,7 +34,7 @@ DELTA_T_ATTRIBUTION_SHA256: Final[str] = "4ead1c6c3ec76c0eefe79ec926fbdce769b8ec
 HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "1272446f24ddf193d4198da3dea983bdfee48b4c6e0dde7a0fe6725baed4e93a"
 VSOP87D_ATTRIBUTION_SHA256: Final[str] = "10d15127db166e9d584877d2b6a9d25b8ade0323a6a253c6f9f24b918b1b3809"
 MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9"
-WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "990298a6b0f32986d3008f0bc6e985d658258d365d715287b559f18d59b9339f"
+WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
 PREAMBLE: Final[bytes] = b"""Third-Party Notices
 
@@ -194,11 +194,11 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     title="Microsoft — statically linked C/C++ runtime portions",
     applicability="the Windows native DLL and the Windows wheel's native DLL",
     path=Path("src/test/provenance/batch-a-closeout/WINDOWS_RUNTIME_ATTRIBUTION.md"),
-    upstream="Visual Studio Enterprise 2026 terms text was not captured by the retained build evidence",
+    upstream="Visual Studio Enterprise 2026 terms captured by both approved Windows evidence profiles",
     sha256=WINDOWS_RUNTIME_ATTRIBUTION_SHA256,
     marking=(
-      "No application-local notice-reproduction condition was inferred; this is not a compatibility conclusion.",
-      "This project-authored attribution record does not copy or invent Microsoft licence text.",
+      "No conclusion about application-local notice or redistribution obligations is drawn from the captured text.",
+      "This project-authored attribution record does not copy or interpret Microsoft licence text.",
     ),
   ),
 )

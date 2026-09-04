@@ -446,24 +446,24 @@ Project-authored material is licensed under the MIT License; see `LICENSE`.
 The MIT grant covers the material this project authored: the C++ and C sources and headers, the
 shared-library implementation and C ABI, the JavaScript and Python binding sources and type
 declarations, the build, packaging, release, and validation automation, the documentation written
-here, and the project-generated build and release evidence members.
+here, and the project-generated build and release evidence files.
 
-The MIT grant does not extend to third-party material this project redistributes. Three families
-keep their own terms and travel with their own notices:
+The MIT grant does not extend to third-party material this project redistributes. It keeps its source
+terms, with notices and attribution carried where applicable:
 
-1. **Third-party material inside this project's own sources and binaries** — each runtime
-   coefficient table, encoded dataset, or formula transcription retained from an external source is
-   retained under that source's terms, together with any attribution, origin, difference,
-   non-endorsement, or notice condition those terms impose.
+1. **Retained blocks inside project-maintained files** — coefficient tables, encoded datasets,
+   formula transcriptions, and validation rows inside source, test, or automation files keep their
+   source terms and carry a pinned in-file or adjacent attribution boundary.
 2. **Third-party toolchain material embedded by the build** — the Emscripten, musl, and LLVM-runtime
    portions inside `celestial-jieqi.wasm` and its generated glue, and the Microsoft C/C++ runtime
-   portions statically linked into the Windows DLL and the Windows wheel's native member. These are
-   governed by their own terms and are accompanied by the canonical third-party notice bundle where
-   one is required.
-3. **Repository-only validation material** — the stored golden datasets, crawler outputs, notebook
-   inputs, and book-derived anchors under `src/test/` and `statistics/`. These reach the tagged tree
-   and the GitHub-generated source archives and reach no native archive, wheel, npm tarball, or WASM
-   artifact. Each keeps its own source attribution and terms; MIT is not asserted over any of them.
+   portions statically linked into the Windows DLL and the native library inside the Windows wheel.
+   These are governed by their own terms and are accompanied by the canonical third-party notice
+   bundle where one is required.
+3. **Standalone third-party files and data** — the vendored `run-clang-tidy.py`, upstream licence
+   texts under `third_party/`, frozen source captures, stored golden datasets, crawler outputs,
+   notebook inputs, and book-derived anchors keep their own source attribution and terms. They reach
+   the tagged tree and GitHub-generated source archives, but not the native archives, wheels, npm
+   tarball, or WASM artifact as standalone files.
 
 Retained third-party material is not relicensed by sitting beside MIT-licensed code, and this
 project asserts no ownership of an upstream source's data merely because this project's code reads
