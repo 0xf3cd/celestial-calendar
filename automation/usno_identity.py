@@ -25,6 +25,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2026-08-26"
 API_VERSION: Final[str] = "4.0.1"
 NUMBER: Final[str] = r"[+-]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)"
+USNO_VALIDATION_REPRO_SHA256: Final[str] = "85b11f7def6207c487b7bc91ca3a48e4d6c983e33e687cf18169226251eec061"
 USNO_RECORD_SHA256: Final[dict[str, str]] = {
   "v12-rstt-oneday.json": "4eb0687ca55f0be00a8ee265e3b05dc586e093f7e19e0ba0536f705106b26d77",
   "v13-siderealtime.json": "129dc55146f8f103cda3691d2ec3a14570413b8d07f4719ef8090b6f8409d658",
@@ -491,6 +492,9 @@ def verify_usno_identities(
   usno_root: Path = USNO_ROOT,
   record_hashes: Mapping[str, str] = USNO_RECORD_SHA256,
 ) -> IdentityCounts:
+  generator = repo_root / "statistics" / "usno_validation_repro.py"
+  digest = hashlib.sha256(generator.read_bytes()).hexdigest()
+  _require(digest == USNO_VALIDATION_REPRO_SHA256, f"USNO validation generator hash mismatch: {digest}")
   _require(set(record_hashes) == set(USNO_RECORD_SHA256), "USNO record inventory differs")
   _require(
     {path.name for path in usno_root.iterdir() if path.is_file()} == set(record_hashes),
