@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Pinned to a SHA: the only third-party action here that is handed a repo secret (#144).
-      - uses: anthropics/claude-code-action@c038e4dcdedfbbca18dfb17df35a17e40ded4ddc # v1
+      - uses: anthropics/claude-code-action@fa2b2666b747000bf42767d1f332065b375e3c8f # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
