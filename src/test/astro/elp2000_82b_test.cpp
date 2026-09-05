@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <gtest/gtest.h>
@@ -29,6 +18,10 @@
 #include "elp2000_82b.hpp"
 
 namespace astro::elp2000_82b::test {
+
+// Retained material boundaries: the V32 printed Meeus rows and V37 PyMeeus-derived regression block
+// remain under their source terms and outside the project MIT grant. The evaluated V31 rows are
+// project-authored and remain inside the project licence scope.
 
 using namespace astro::elp2000_82b::coeff;
 using namespace astro::elp2000_82b;

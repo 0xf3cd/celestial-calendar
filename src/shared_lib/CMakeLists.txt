@@ -14,6 +14,19 @@ message(STATUS "Building version ${VERSION_NUMBER}")
 
 add_library(celestial_calendar SHARED ${SOURCES})
 
+# Capture the original Windows final link. The launcher executes that command once;
+# -verbose changes lld-link diagnostics only and the evidence stays outside install artifacts.
+if(WIN32 AND DEFINED ENV{CELESTIAL_WINDOWS_EVIDENCE_DIR})
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  if(NOT DEFINED ENV{CELESTIAL_WINDOWS_EVIDENCE_PRODUCER})
+    message(FATAL_ERROR "CELESTIAL_WINDOWS_EVIDENCE_PRODUCER is required")
+  endif()
+  set_property(TARGET celestial_calendar PROPERTY CXX_LINKER_LAUNCHER
+    "${Python3_EXECUTABLE};${CMAKE_CURRENT_SOURCE_DIR}/../../toolbox/windows_toolchain_evidence.py;link;--evidence-dir;$ENV{CELESTIAL_WINDOWS_EVIDENCE_DIR};--producer;$ENV{CELESTIAL_WINDOWS_EVIDENCE_PRODUCER};--"
+  )
+  target_link_options(celestial_calendar PRIVATE "LINKER:-verbose")
+endif()
+
 # #91: the export set is exactly the entry points declared in celestial.h. Both halves
 # are required — hiding without CELESTIAL_API hides the entries too; the macro without
 # hiding exports internals as well (WINDOWS_EXPORT_ALL_SYMBOLS did the latter).

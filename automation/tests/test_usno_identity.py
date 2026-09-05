@@ -6,18 +6,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import hashlib
 import json
@@ -44,6 +33,7 @@ TARGET_FILES = (
   Path("src/test/astro/julian_day_test.cpp"),
   Path("src/test/shared_lib/cabi_smoke_test.cpp"),
   Path("statistics/usno_data.txt"),
+  Path("statistics/usno_validation_repro.py"),
 )
 
 
@@ -111,6 +101,7 @@ def test_usno_response_hashes_are_pinned(tmp_path):
     "v13-longitude-sign",
     "v13-jd-request-conversion",
     "v14-civil-jd",
+    "v14-generator-vocabulary",
     "v14-six-decimal-rule",
     "v26-source-value-2000",
     "v26-source-value-2010",
@@ -179,7 +170,14 @@ def test_usno_semantics_are_pinned(tmp_path, mutation):
   elif mutation.startswith("v13-"):
     mutate_record(usno_root, "v13-siderealtime.json", change_v13)
   elif mutation.startswith("v14-"):
-    mutate_record(usno_root, "v14-moon-phases-year-2024.json", change_v14)
+    if mutation == "v14-generator-vocabulary":
+      replace_once(
+        tmp_path / "statistics/usno_validation_repro.py",
+        '"status": "retained_under_owner_risk_acceptance"',
+        '"status": "open"',
+      )
+    else:
+      mutate_record(usno_root, "v14-moon-phases-year-2024.json", change_v14)
   elif mutation.startswith("v26-"):
     mutate_record(usno_root, "v26-deltat.json", change_v26)
   else:

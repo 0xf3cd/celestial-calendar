@@ -112,6 +112,11 @@
       "source_relation": "the then-default Delta-T route used astro::delta_t::algo2::compute"
     },
     "current_retention": {
+      "all_current_values": {
+        "entries": 401,
+        "canonicalization": "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x",
+        "sha256": "0c110ba78423f7babededdf3629f349d6bcf2906af71594bdb5688998f8ea359"
+      },
       "entries_from_origin": 398,
       "retained_origin_values": {
         "canonicalization": "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x",
@@ -120,8 +125,23 @@
       "rebake": {
         "commit": "8194ffbf38657d66158d2314bdf66294c7a8d001",
         "generator": "calendar::lunar::algo2::calc_lunar_year",
-        "years": [2133, 2165, 2172]
+        "years": [2133, 2165, 2172],
+        "values": {
+          "canonicalization": "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x",
+          "sha256": "8a9e82b389f66578387f3bc098600f555f0f39b460fc40751e789cb5ffda71a4"
+        }
       }
+    },
+    "historical_environment": {
+      "status": "unrecovered",
+      "unavailable": [
+        "compiler and version",
+        "compiler flags",
+        "standard library and libm versions",
+        "operating system and architecture",
+        "dependency versions"
+      ],
+      "claim": "The 2024 numerical environment was not recovered; no bit-for-bit historical regeneration is claimed."
     },
     "current_regeneration": {
       "matching_entries": 401,

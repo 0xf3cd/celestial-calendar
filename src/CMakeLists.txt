@@ -1,8 +1,12 @@
+# SPDX-License-Identifier: MIT
+
 cmake_minimum_required(VERSION 3.22)
 project(celestial-calendar)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Retained material boundary (T03): Release DLLs statically include Microsoft runtime portions. Those
+# portions remain under the selected Visual Studio terms and outside the project MIT grant.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # Add compile options for different compilers

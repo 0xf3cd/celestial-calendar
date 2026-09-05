@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <algorithm>
@@ -37,6 +26,8 @@
 #include "util.hpp"
 #include "ymd.hpp"
 
+// Retained material boundaries (V04/V10): the HKO and JPL Horizons DE441 output blocks below remain
+// under their respective source terms and outside the project MIT grant.
 // Independent golden datasets for jieqi instants (#94, #68), collected 2026-07-27 by
 // `statistics/sun_jieqi_golden_crawler.py`. Two sources, cross-validated against each
 // other before either was pinned (#94: worst |HKO − DE441| = 0.51 min over all 168 shared

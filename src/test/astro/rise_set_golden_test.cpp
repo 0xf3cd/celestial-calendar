@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <optional>
@@ -33,6 +22,8 @@
 #include "rise_set.hpp"
 #include "rise_set_test_helper.hpp"
 
+// Retained material boundary (V11): the USNO, NOAA, and unrecovered Skyfield/DE421 output blocks
+// below remain under their source terms and outside the project MIT grant.
 // End-to-end golden dataset for sunrise/sunset/twilight (#44), collected 2026-07-27 by
 // `statistics/sunrise_golden_crawler.py`:
 // - Rise / upper transit / set / civil twilight: USNO rstt/oneday API (apiversion 4.0.1),

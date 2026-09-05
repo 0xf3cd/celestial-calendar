@@ -6,18 +6,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 """Inspect one repaired wheel's metadata, payload, architecture, exports, and dependencies."""
 
@@ -26,6 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -40,7 +30,7 @@ REPO = HERE.parents[3]
 MANIFEST = HERE.parent / "abi" / "manifest.json"
 sys.path.append(str(REPO))
 
-from toolbox.runtime_floor import parse_windows_imports  # noqa: E402
+from toolbox.windows_toolchain_evidence import validate_windows_evidence  # noqa: E402
 
 
 def run(*command: str) -> str:
@@ -97,7 +87,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert metadata["Name"] == "celestial-calendar"
   assert metadata["Version"] == version
   assert metadata["Requires-Python"] == ">=3.11"
-  assert metadata["License-Expression"] == "GPL-3.0-or-later"
+  assert metadata["License-Expression"] == "MIT"
   project_urls = metadata.get_all("Project-URL") or []
   assert "Repository, https://github.com/0xf3cd/celestial-calendar" in project_urls
 
@@ -179,10 +169,12 @@ def verify_macos(native: Path, exports: set[str]) -> None:
 
 
 def verify_windows(native: Path, exports: set[str]) -> None:
-  """Verify PE AMD64, the exact C export set, and absence of VC runtime DLL imports."""
+  """Verify PE AMD64, exact C exports, and positive static-runtime link evidence."""
   output = run("llvm-readobj", "--file-headers", "--coff-imports", "--coff-exports", str(native))
   assert "Machine: IMAGE_FILE_MACHINE_AMD64" in output
-  assert parse_windows_imports(output) == {"msvc_runtime": "static"}
+  evidence_dir = os.environ.get("CELESTIAL_WINDOWS_EVIDENCE_DIR")
+  assert evidence_dir is not None, "Windows wheel verification requires link evidence"
+  assert validate_windows_evidence(Path(evidence_dir) / "report.json", native, "wheel") == {"msvc_runtime": "static"}
   exported = set(re.findall(r"Export \{[\s\S]*?\n\s*Name: ([A-Za-z_]\w*)", output))
   assert exported == exports
 

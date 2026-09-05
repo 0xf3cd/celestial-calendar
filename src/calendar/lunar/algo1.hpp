@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -44,7 +33,8 @@ inline constexpr int32_t END_YEAR = 2099;
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record in
  *          `src/test/provenance/hko/2026-08-25/`.
- * @note Numerical identity does not settle redistribution permission; that question remains open.
+ * @note Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed.
+ *       These HKO-derived words remain under their source terms and outside the project MIT grant.
  */
 inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = {
   0x620752, 0x4c0ea5, 0x38b64a, 0x5c064b, 0x440a9b, 0x309556, 0x56056a, 0x400b59, 0x2a5752, 0x500752, 

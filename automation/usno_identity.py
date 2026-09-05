@@ -8,18 +8,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import hashlib
 import json
@@ -36,10 +25,11 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2026-08-26"
 API_VERSION: Final[str] = "4.0.1"
 NUMBER: Final[str] = r"[+-]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)"
+USNO_VALIDATION_REPRO_SHA256: Final[str] = "85b11f7def6207c487b7bc91ca3a48e4d6c983e33e687cf18169226251eec061"
 USNO_RECORD_SHA256: Final[dict[str, str]] = {
   "v12-rstt-oneday.json": "4eb0687ca55f0be00a8ee265e3b05dc586e093f7e19e0ba0536f705106b26d77",
   "v13-siderealtime.json": "129dc55146f8f103cda3691d2ec3a14570413b8d07f4719ef8090b6f8409d658",
-  "v14-moon-phases-year-2024.json": "86d0bf8c6aeaa2d25729d6252709d65d508f20f8533d266eb034bdc3d876979e",
+  "v14-moon-phases-year-2024.json": "2f6ba692bf8f9f3ecd810b763e704fad3054f32b5ff88b8ebbed238213c0eeb5",
   "v26-deltat.json": "c6574d897385bc84f8ebe5b6d392c666d3bf81583e8a6ac83e91ab080560b998",
   "v29-juliandate.json": "25e368ba28f4d0874a89d588205e9658d0bf7aff09eafa54b6852691b25b99da",
 }
@@ -347,7 +337,12 @@ def _verify_v14(record: dict, repo_root: Path) -> tuple[int, int, int]:
 
   hko = _hko_new_moons(repo_root)
   boundary = record["v03_hko_boundary"]
-  _require(boundary["status"] == "open", "V03 was incorrectly closed")
+  _require(
+    boundary["status"] == "retained_under_owner_risk_acceptance",
+    "V03 owner-risk disposition differs",
+  )
+  _require(boundary["permission_claim"] is False, "V03 permission claim differs")
+  _require(boundary["upstream_permission_obtained"] is False, "V03 upstream permission fact differs")
   _require(len(hko) == len(new_moons) == len(boundary["events"]) == 13, "V03 boundary count differs")
   expected_boundary = []
   for hko_utc, usno_utc in zip(hko, new_moons, strict=True):
@@ -497,6 +492,9 @@ def verify_usno_identities(
   usno_root: Path = USNO_ROOT,
   record_hashes: Mapping[str, str] = USNO_RECORD_SHA256,
 ) -> IdentityCounts:
+  generator = repo_root / "statistics" / "usno_validation_repro.py"
+  digest = hashlib.sha256(generator.read_bytes()).hexdigest()
+  _require(digest == USNO_VALIDATION_REPRO_SHA256, f"USNO validation generator hash mismatch: {digest}")
   _require(set(record_hashes) == set(USNO_RECORD_SHA256), "USNO record inventory differs")
   _require(
     {path.name for path in usno_root.iterdir() if path.is_file()} == set(record_hashes),

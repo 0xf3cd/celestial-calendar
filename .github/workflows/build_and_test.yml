@@ -1,7 +1,14 @@
 name: Build and Test on Multiple Platforms
 
 on:
-  workflow_dispatch: {}  # Allows manual triggering of the workflow
+  workflow_dispatch:
+    inputs:
+      windows_evidence_mode:
+        description: Windows link-evidence policy
+        required: true
+        default: standing
+        type: choice
+        options: [standing, capture, verify-approved]
   pull_request:
     branches: [ main ]  # Also triggers on pull requests to the main branch
 
@@ -259,6 +266,10 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    env:
+      CELESTIAL_WINDOWS_EVIDENCE_DIR: ${{ github.workspace }}\windows-link-evidence-native
+      CELESTIAL_WINDOWS_EVIDENCE_PRODUCER: native
+      WINDOWS_EVIDENCE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_evidence_mode || 'standing' }}
     strategy:  
       matrix:  
         python-version: ["3.12"]  
@@ -321,10 +332,19 @@ jobs:
 
           # Pack the "build_info.json" to the "windows_x86_64" folder
           python3 ./toolbox/build_info.py --save-to $destDir
+          python3 ./toolbox/windows_toolchain_evidence.py collect `
+            --evidence-dir "$env:CELESTIAL_WINDOWS_EVIDENCE_DIR" `
+            --producer native `
+            --mode "$env:WINDOWS_EVIDENCE_MODE" `
+            --binary "$destDir/bin/celestial_calendar.dll" `
+            --build-info "$destDir/build_info.json" `
+            --github-output "$env:GITHUB_OUTPUT"
           python3 ./toolbox/runtime_floor.py `
             --artifact windows_x86_64 `
             --binary "$destDir/bin/celestial_calendar.dll" `
-            --build-info "$destDir/build_info.json"
+            --build-info "$destDir/build_info.json" `
+            --windows-evidence "$env:CELESTIAL_WINDOWS_EVIDENCE_DIR/report.json" `
+            --producer native
 
           # Set the lib environment variables
           Write-Output "artifact_name=windows_x86_64" >> $env:GITHUB_OUTPUT
@@ -333,6 +353,21 @@ jobs:
           # Print to stdout
           Write-Output "artifact_name=windows_x86_64"
           Write-Output "artifact_path=$destDir"
+
+      - name: Upload raw Windows link evidence
+        if: ${{ always() && (failure() || env.WINDOWS_EVIDENCE_MODE != 'standing' || steps.shared_lib.outputs.upload_raw == 'true') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-link-evidence-native
+          path: ${{ env.CELESTIAL_WINDOWS_EVIDENCE_DIR }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Enforce Windows link evidence
+        if: ${{ always() }}
+        run: >-
+          python3 ./toolbox/windows_toolchain_evidence.py enforce
+          --evidence-dir "$env:CELESTIAL_WINDOWS_EVIDENCE_DIR"
 
       - name: GitHub Artifact
         uses: actions/upload-artifact@v7

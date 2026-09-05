@@ -7,23 +7,15 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 // #67: smoke tests for the C-ABI layer — every export is driven across the real
 // `extern "C"` boundary (this target links the built shared library), including the
 // `valid = false` paths: bad arguments, NaN, null out-pointers, and a closed stdout.
+// Retained material boundaries: V02 identifies the sparse HKO lunar-date anchor, V29 the USNO
+// Julian-date anchor, and V32 the Meeus worked-example smoke anchors. Each remains under its source
+// terms and outside the project MIT grant.
 
 #include <array>
 #include <cmath>

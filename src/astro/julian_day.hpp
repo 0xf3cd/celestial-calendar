@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -50,6 +39,8 @@ namespace astro::julian_day {
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
  * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJ00`.
  */
+// Retained material boundary (R34): the exact ERFA J2000, Julian-century, and Julian-millennium
+// definitions in this file remain under the ERFA source terms and outside the project MIT grant.
 inline constexpr double J2000 = 2451545.0;
 
 /**
@@ -68,6 +59,8 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  *       only close from 401-01-01 onwards.
  * @ref ERFA v2.0.1 `src/cal2jd.c`, `eraCal2jd`.
  */
+// Retained material boundary (R11): this conversion is derived from ERFA v2.0.1 `cal2jd.c`; the
+// derived block remains under the ERFA source terms and outside the project MIT grant.
 [[nodiscard]] inline auto ut1_to_jd(const calendar::Datetime& ut1_dt) -> double {
   assert(ut1_dt.ok());
   
@@ -104,6 +97,8 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  *       13689325.5, which this function rejects — a 1-ulp round-trip break callers must expect.
  * @ref ERFA v2.0.1 `src/jd2cal.c`, `eraJd2cal`.
  */
+// Retained material boundary (R11): this conversion is derived from ERFA v2.0.1 `jd2cal.c`; the
+// derived block remains under the ERFA source terms and outside the project MIT grant.
 [[nodiscard]] inline auto jd_to_ut1(const double jd) -> calendar::Datetime {
   // #77: NaN/Inf would slip past the range check below (NaN comparisons are false) and reach
   // undefined float→int conversions. Reject them first.

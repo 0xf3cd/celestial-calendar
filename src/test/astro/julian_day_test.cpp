@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <gtest/gtest.h>
@@ -32,6 +21,10 @@
 #include "julian_day.hpp"
 
 namespace astro::julian_day::test {
+
+// Retained material boundaries: the V27 NASA/USNO anchors, V28 stevegs.com rows, V32 printed Meeus
+// examples, and V37 internal rows with an unrecovered source remain outside the project MIT grant. The
+// independently evaluated V31 formulas are project-authored and remain inside its scope.
 
 // The UTC family (`utc_to_jde` / `jde_to_utc`) is exercised in `leap_second_test.cpp`,
 // alongside the ΔAT machinery it composes.

@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <gtest/gtest.h>
@@ -49,6 +38,9 @@
 // Near-midnight scan: python3 statistics/algo3_ytliu0_golden.py scan-near-midnight
 
 namespace calendar::lunar::test {
+
+// Retained material boundary (V02): the HKO divergence anchors remain under their source terms and
+// outside the project MIT grant; upstream permission was not obtained and is not claimed.
 
 auto pick_random_years() -> std::vector<int32_t> {
   using namespace std::ranges;

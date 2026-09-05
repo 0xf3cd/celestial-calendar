@@ -6,18 +6,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import re
 from pathlib import Path
@@ -44,6 +33,8 @@ def test_python_wheel_artifact_inventory_is_exact():
     for step in job["steps"]:
       if str(step.get("uses", "")).startswith("actions/upload-artifact@"):
         name = step["with"]["name"]
+        if name.startswith("windows-link-evidence-"):
+          continue
         uploaded.update(matrix_artifacts if name == "${{ matrix.artifact }}" else {name})
 
   expected = next(names for _field, name, names in SOURCE_SPECS if name == "Python Wheels")
@@ -200,5 +191,21 @@ def test_python_wheel_platform_toolchains_are_explicit():
   assert windows_floor_setup[1]["with"]["python-version"] == "3.11.9"
   assert windows_floor_setup[0] < windows_floor_test
   assert workflow["env"]["CIBW_ENVIRONMENT_WINDOWS"] == (
-    "CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:"
+    "CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all: "
+    'CELESTIAL_WINDOWS_EVIDENCE_DIR="$GITHUB_WORKSPACE/windows-link-evidence-wheel" '
+    "CELESTIAL_WINDOWS_EVIDENCE_PRODUCER=wheel"
   )
+
+
+def test_windows_wheel_evidence_upload_precedes_enforcement_and_release_artifact():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["windows-amd64"]["steps"]
+  names = [step.get("name") for step in steps]
+  upload = steps[names.index("Upload raw Windows link evidence")]
+
+  assert names.index("Collect Windows link evidence") < names.index("Upload raw Windows link evidence")
+  assert names.index("Upload raw Windows link evidence") < names.index("Enforce Windows link evidence")
+  assert names.index("Enforce Windows link evidence") < names.index("Upload exact wheel artifact")
+  assert upload["with"]["name"] == "windows-link-evidence-wheel"
+  assert "WINDOWS_EVIDENCE_MODE != 'standing'" in upload["if"]
+  assert "failure()" in upload["if"]

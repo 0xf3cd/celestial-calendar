@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -296,6 +285,8 @@ enum class DistanceUnit : uint8_t { AU, KM };
  * @ref NIST SP 330 (2019), Table 8: the astronomical unit is exactly 149'597'870'700 m.
  * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DAU`.
  */
+// Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
+// and outside the project MIT grant; the unit wrapper is project-authored.
 inline constexpr double AU_KM_SCALE = 149597870.700;
 
 /** @brief Convert from AU to KM. */

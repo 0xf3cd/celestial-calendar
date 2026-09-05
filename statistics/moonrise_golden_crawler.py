@@ -5,10 +5,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # Golden-dataset crawler for moonrise/moonset/lunar-transit tests (#62):
 # - Source: USNO "Complete Sun and Moon Data for One Day" API (aa.usno.navy.mil/api/rstt/oneday),

@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -54,7 +43,9 @@ inline constexpr int32_t END_YEAR = 2199;
  *   time-scale dependencies change.
  * - The 199 HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
  *   Their retained HKO identity record is `src/test/provenance/hko/2026-08-25/`.
- *   Exact identity does not settle redistribution permission, which remains open. Full-array re-encode against
+ *   Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed.
+ *   These HKO-derived words remain under their source terms and outside the project MIT grant.
+ *   Full-array re-encode against
  *   live algo2 is *not* zero-diff: the six known years
  *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
  *   provenance note, not a data fix: **do not edit any of the 600 values here without

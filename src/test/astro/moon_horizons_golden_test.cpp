@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <algorithm>
@@ -32,6 +21,8 @@
 
 #include "moon.hpp"
 
+// Retained material boundary (V08): the JPL Horizons DE441 output rows and recorded cross-check
+// relations below remain under their respective source terms and outside the project MIT grant.
 // Independent golden dataset for the Moon's apparent geocentric position (#94, #65), collected
 // 2026-07-27 by `statistics/moon_horizons_crawler.py`:
 // - Source: JPL Horizons API v1.2, ephemeris DE441, Moon (301) from the geocenter (500@399).

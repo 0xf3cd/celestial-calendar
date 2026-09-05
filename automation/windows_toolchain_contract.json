@@ -1,0 +1,520 @@
+{
+  "approved_evidence": {
+    "native": {
+      "compiler": {
+        "basename": "clang++.exe",
+        "path_sha256": "62b1fea9d086713ec5403129263d023ede149b66c1eaa1c7d5bb95313744810f",
+        "sha256": "6692256b824551ab2cae62d4b8351b2357ec79fe5ddd6129b5f6d95616140383",
+        "version": "clang version 22.1.7 (https://github.com/llvm/llvm-project a255c1ed36a1d06f79bd2633ba9f8d900153007c)\nTarget: x86_64-pc-windows-msvc\nThread model: posix",
+        "version_sha256": "45ab406f4e1704fda480ac4fd5f1ceccba98e83421dda2cf184e66c6a793eb47"
+      },
+      "imports": [
+        "KERNEL32.DLL"
+      ],
+      "linker": {
+        "basename": "lld-link.EXE",
+        "path_sha256": "0593c8618c6d35b9fa3b26e6b82e0d9e57bc73cc67453509b85705c704e684eb",
+        "sha256": "09e9fd8c1bba1ac771f45f3c79f0c08ad3f1fa249fe64aed33764292f9240e5b",
+        "version": "LLD 22.1.7 (https://github.com/llvm/llvm-project a255c1ed36a1d06f79bd2633ba9f8d900153007c)",
+        "version_sha256": "fa9e88db6704a02d0ac1492a1eb8fd99e36ae3b8cad623400cf246c1efdbdd14"
+      },
+      "normalized_pe": {
+        "algorithm": "coff_timestamp_zero_v1",
+        "coff_timestamp": 1788416666,
+        "coff_timestamp_offset": 128,
+        "sha256": "70d59205b80f28534987baf60eb7467f6e4e1dd36341a544b70a7b05e926169d"
+      },
+      "raw_dll_sha256": "84154d514cf34240b11c87156f8cfe644b3fd7f063db79b7a880c785e9d0c02f",
+      "response_files": [
+        {
+          "argument_count": 5,
+          "arguments_sha256": "1eba1f7320f8f65db34e09aa9ffe9fd3de5bdbec080bad4569021355165b4926",
+          "retained_path": "link/response-files/00-objects1.rsp",
+          "sha256": "d981477a47578c6e4392cc7fc05692aa8733d7394f6b4ca407bea8713e53ea7a",
+          "source_path_sha256": "edb3a5e098344545a2bfbf5c84b614d55eda13ba7177e2b9f029e970a923e528"
+        },
+        {
+          "argument_count": 11,
+          "arguments_sha256": "654d36bc56725b3ade17f46bf8dec06620a14230ae68187026a85f0b5c2a720b",
+          "retained_path": "link/response-files/01-linkLibs.rsp",
+          "sha256": "2c09ae48801f6cec0699e65b4d64fbc9d640da431364b80bb864787eb849d214",
+          "source_path_sha256": "3551d9e68df3ba75d165a315aca6fc11f2122ada031bfa51187b8f0deaaaff58"
+        }
+      ],
+      "runner": {
+        "ImageOS": "win25-vs2026",
+        "ImageVersion": "20260824.214.3",
+        "RUNNER_ARCH": "X64",
+        "RUNNER_OS": "Windows",
+        "VCToolsVersion": "14.51.36231",
+        "WindowsSDKVersion": "10.0.26100.0",
+        "vctools_install_dir_sha256": "8f88e89226c120a67053907f2701966004590e54f496795f1208ce3dc870dad8",
+        "windows_sdk_dir_sha256": "580357bc7423bc310d3c05b39dcd99951c781b05b1c2734e8f8675cd2722c6e1"
+      },
+      "selected_default_libraries": [
+        "kernel32.lib",
+        "user32.lib",
+        "gdi32.lib",
+        "winspool.lib",
+        "shell32.lib",
+        "ole32.lib",
+        "oleaut32.lib",
+        "uuid.lib",
+        "comdlg32.lib",
+        "advapi32.lib",
+        "oldnames.lib",
+        "libcmt.lib",
+        "libcpmt.lib",
+        "libvcruntime.lib",
+        "libucrt.lib"
+      ],
+      "static_library_roles": {
+        "c_runtime": {
+          "basename": "libcmt.lib",
+          "member_count": 1190,
+          "members_sha256": "636739c13ed08ca0c215899a347af8759ddb024cc7b521572049e3285f829970",
+          "path_sha256": "c8498cd897ac0b5896f3bc53a45f4d081ddc2517ed34ddc50acd1525925fd7b1",
+          "sha256": "b0d63342d47be1f3f5c2a5f7ee1bea1f1e81ace5adfc3ca68282a863d7c47d27"
+        },
+        "cxx_runtime": {
+          "basename": "libcpmt.lib",
+          "member_count": 107,
+          "members_sha256": "fa7629afd03e424f733776b8d643a42649326e443b5e299d5c531fec14df1816",
+          "path_sha256": "79d34e4072dde56e0917ada2b96754700eba3993f6cb58c55fe34870d9231bd9",
+          "sha256": "2e0bdbb409b7e829a8f11f08af3794f71c76aad47699cec787e4f055c248accc"
+        },
+        "ucrt": {
+          "basename": "libucrt.lib",
+          "member_count": 784,
+          "members_sha256": "9c2ac1f288fbb3225e652f113772918b8aac299a53e20cfa4dc3432f24e22b7b",
+          "path_sha256": "7968b9c9e9ac56ebbccd577d294c1eeec5fc123725455ba9c955aa0b0d61706d",
+          "sha256": "ea2ffa5d9b1ebc3fa76f34c364471750db8951b341dbccbc1bef628ef1a20e39"
+        },
+        "vcruntime": {
+          "basename": "libvcruntime.lib",
+          "member_count": 60,
+          "members_sha256": "9b3487e474d61bc2f98a4088cf6c5c00e7162e1a2c1d9d37d28284ca0dabec33",
+          "path_sha256": "8004dc0ab66ebbb2f8fbbb447cb28fda5378e88d14678c7f1049d388d82aeb34",
+          "sha256": "2d8c0eae0b8df5f7e6a2ae9b52cdaa2812d7253a1254fa02d25de60720c48486"
+        }
+      },
+      "terms": {
+        "documents": [
+          {
+            "retained_path": "terms/00-EULA.rtf",
+            "sha256": "b35d4245cc0baba4559a51682fe076a36692025fbdaa495f56f93512a72f87b6",
+            "source_path_sha256": "531bd4c997c7dfe9b2dcdf2029d628800606a6023de8823318f6d28dcaa160d3"
+          },
+          {
+            "retained_path": "terms/01-License.rtf",
+            "sha256": "39fa1e8286c7517bbf9ee4ec1040a8f0312f3cdb947658579d36e90a011cb25c",
+            "source_path_sha256": "07a6b00ce986167b4557f715842dbbaed8b8f26d9a60ab979902af9a96beeda5"
+          },
+          {
+            "retained_path": "terms/02-TypeScript_License.rtf",
+            "sha256": "410def30c8748a4541a6c1aa4e2999b49d6b1cc79bc895e1036ad9a1807dd455",
+            "source_path_sha256": "84bc26fd0e49c80014f767fe54862577ba503446964aeabd2d87d597553bfe01"
+          },
+          {
+            "retained_path": "terms/03-EULA.rtf",
+            "sha256": "de735fd5f96edb927bcadb7b8b827bd4fd5ffd0288cae994fae8fc045faeed66",
+            "source_path_sha256": "d877984d20136ac299ada34b4b5482dfc706e2f7f89e7fb41d6e7d9760b29f1b"
+          },
+          {
+            "retained_path": "terms/04-EULA.rtf",
+            "sha256": "c5ebba4063eb171db8681e3aad1bacfd244d2820a623644fe5885dd194e52579",
+            "source_path_sha256": "e7dc7261752cffa70a6ea5a43274696ed486d9832450fcdfa3ae4bb73e0cd938"
+          },
+          {
+            "retained_path": "terms/05-License.htm",
+            "sha256": "eefc025e81493d255d195fd253a961d2fa75a7511ed8ff9b832b53d85723b5a4",
+            "source_path_sha256": "42eeeb1143aec7b73987c5c776e6b625088f8e3ed8aa0d8bfbeb676d4aa65de8"
+          },
+          {
+            "retained_path": "terms/06-License.htm",
+            "sha256": "564deb49390c434bf45e197f1d5cc3ab68a28e98359483d8fd405ba22aa100ed",
+            "source_path_sha256": "88406d681cb52d4555b8b903fe65daa3ce85742860c325fabc8b0009570bc024"
+          },
+          {
+            "retained_path": "terms/07-License.htm",
+            "sha256": "b7bc1f26d4a32e2b48827bc2c629c49c830a1efd4c14f3d08ece64d63711b911",
+            "source_path_sha256": "98f7eb0a073f59fe171b4885ec6da67003aa11b423c4ce1e5e53bb7b56a98cbd"
+          },
+          {
+            "retained_path": "terms/08-License.htm",
+            "sha256": "0cc09d032d61d4536b56b6bc5b5f6fd0b49862f3c04b774c58bb89c1f50264d0",
+            "source_path_sha256": "a80a6ad5dce3e7d7e556959ff964d03db43f109d90c5bf5e46f3e67475782f4f"
+          },
+          {
+            "retained_path": "terms/09-License.htm",
+            "sha256": "00e2525ad82c878e779eab50fff3d4a5761bfb3b36ee87918b1f753d76c4cf17",
+            "source_path_sha256": "b66c42c48a992eb97c31cb0c31975f2714d58bafe27ca62915e0e2e3fa5ac3ea"
+          },
+          {
+            "retained_path": "terms/10-License.htm",
+            "sha256": "94d8f8f972b723d9d5206bef84a8d31aea9d768c38dff003d72c15657eabe5a4",
+            "source_path_sha256": "74cf08c39d6cef9690186a0af297640813fe15ed15561af3b4709959e3d6eff0"
+          },
+          {
+            "retained_path": "terms/11-License.htm",
+            "sha256": "ba3aadca391564d6f7068de8c8bcf732bae4570750060aa874c7dedd03abd3ce",
+            "source_path_sha256": "09593be29fd0f3041fa093e4c824a75d7b1a083e3f8f2ca1f17d0ef739e12ae4"
+          },
+          {
+            "retained_path": "terms/12-License.htm",
+            "sha256": "5fcabc1e666a6fd791942af41927e892b15c8df7a913f26bdc1c5628d723eedc",
+            "source_path_sha256": "d8adac182ae4da61664f3032827e67b94933bc0ebd05bee7b7b77aad2656d653"
+          },
+          {
+            "retained_path": "terms/13-License.htm",
+            "sha256": "fe957793d29277b338a7b71697908af939a16cbd9a8cb5cad4ccb729aedbc69f",
+            "source_path_sha256": "7cbf5305af3243f4171742ff74a172410a4cdca8c1408df0d84fa8b43687fb34"
+          },
+          {
+            "retained_path": "terms/14-LICENSE.txt",
+            "sha256": "cdb4cd6e206d378efebfb4cf7ba2adf3583b3e70cd85d229c7bcef06055f9b88",
+            "source_path_sha256": "a7e7a024c3a584d0795a5ee0471c18fb26070df5c8f097ff1170cdbf1d5628c1"
+          },
+          {
+            "retained_path": "terms/15-EULA.rtf",
+            "sha256": "9171f897fe449e66b5352ac5d8624c97d4dd844aa2692963ed62e40806a7d0ac",
+            "source_path_sha256": "c76f08227481f43dc18453ab60a534bad5dfdf1645afa4ab0890d1c80e055653"
+          },
+          {
+            "retained_path": "terms/16-LICENSE.txt",
+            "sha256": "3239c1af6dcc1358ea254806d7966d3f4f613c2790fb9be966579b7d9c6d462f",
+            "source_path_sha256": "00da4eb774b7fa243cca9b12ca940e9992d518f442cd1402f946f8b8e00e4ee2"
+          },
+          {
+            "retained_path": "terms/17-LICENSE.txt",
+            "sha256": "1c3e834a7af79ee2b40edc3f6760e52e3910408908b995518b95aeab89936744",
+            "source_path_sha256": "ec4cc5bb8f61d86a65a2624f986eaec7519697b0140f2f9bba5c58b8994e208a"
+          },
+          {
+            "retained_path": "terms/18-AzureFunctionsEULA.RTF",
+            "sha256": "8c527224dfe8492cc4156e36f21261808ec0101b169a5a681855a691bf0b5790",
+            "source_path_sha256": "bb3f415bd7da585baf8de050396d33a007db12a07e4da9b817821e9b59f5a156"
+          },
+          {
+            "retained_path": "terms/19-License.rtf",
+            "sha256": "c72ff505af1fc6fc0fd9612e7862b8697a3d2829304caa1a60dbed169779bd68",
+            "source_path_sha256": "3782cd67f1d2eb4554c00504bb52c050743dd2eb0f80fc18e59f898ad80c38aa"
+          },
+          {
+            "retained_path": "terms/20-LICENSE",
+            "sha256": "87f781aa22776ca8afedbcf31365dcff0c1fb22701f90254025bb21fce2e57d2",
+            "source_path_sha256": "29c00c168822fec9d671e33c4ddf233e8bc652defc4e8bc8b973b4f34f57ec99"
+          },
+          {
+            "retained_path": "terms/21-eula.rtf",
+            "sha256": "3fa19ee36cc51b7968ebfdfccab732ac4cd94e525bbf557a45790a2c4f05d9be",
+            "source_path_sha256": "500471994d20042c7bffa32ec1b441af0a1b1d4b663855b7211aa14321080905"
+          },
+          {
+            "retained_path": "terms/22-NuGetEula.rtf",
+            "sha256": "0ad468c4ebce3ea1d36ac6c7e275ab90f49e18434f6dd5f087f68d21a93a6f5f",
+            "source_path_sha256": "c4a5c76747c3f393b608968b4963d12e538629fb9cff8161b73afddc2c428095"
+          },
+          {
+            "retained_path": "terms/23-NuGetEula.rtf",
+            "sha256": "0bcd55ff17bfb805f7fb38e0dce1f98615c4b70f95dbb3b44c2fa2d8b68afab0",
+            "source_path_sha256": "d00f0052749a82bf1f2e2f8a8cebc284dae9ebe3d526f547af3565fade7c6ccf"
+          },
+          {
+            "retained_path": "terms/24-NuGetEula.rtf",
+            "sha256": "c15500db33a26f2d209e7b21c76d3b4e5ee3e81a9d2e05f33c86663272cd7caa",
+            "source_path_sha256": "c9640f6bc5394ca62253bc282dea1f408f04df03ed08cb6d75520b1c6facb0b8"
+          }
+        ],
+        "identity_unrecovered": false,
+        "searched_roots_sha256": [
+          "529798c370b326b38d3d2758467025c9771286d46ed6800a57d9caacf8cfdebb",
+          "606b6bf88768592e9ad770d2791e2940ed567b4d63e83b2e381f2b140f9abba2"
+        ],
+        "terms_text_captured": true
+      },
+      "visual_studio": {
+        "installation_path_sha256": "529798c370b326b38d3d2758467025c9771286d46ed6800a57d9caacf8cfdebb",
+        "installation_version": "18.9.12112.369",
+        "product_id": "Microsoft.VisualStudio.Product.Enterprise"
+      }
+    },
+    "wheel": {
+      "compiler": {
+        "basename": "clang++.exe",
+        "path_sha256": "62b1fea9d086713ec5403129263d023ede149b66c1eaa1c7d5bb95313744810f",
+        "sha256": "6692256b824551ab2cae62d4b8351b2357ec79fe5ddd6129b5f6d95616140383",
+        "version": "clang version 22.1.7 (https://github.com/llvm/llvm-project a255c1ed36a1d06f79bd2633ba9f8d900153007c)\nTarget: x86_64-pc-windows-msvc\nThread model: posix",
+        "version_sha256": "45ab406f4e1704fda480ac4fd5f1ceccba98e83421dda2cf184e66c6a793eb47"
+      },
+      "imports": [
+        "KERNEL32.DLL"
+      ],
+      "linker": {
+        "basename": "lld-link.EXE",
+        "path_sha256": "0593c8618c6d35b9fa3b26e6b82e0d9e57bc73cc67453509b85705c704e684eb",
+        "sha256": "09e9fd8c1bba1ac771f45f3c79f0c08ad3f1fa249fe64aed33764292f9240e5b",
+        "version": "LLD 22.1.7 (https://github.com/llvm/llvm-project a255c1ed36a1d06f79bd2633ba9f8d900153007c)",
+        "version_sha256": "fa9e88db6704a02d0ac1492a1eb8fd99e36ae3b8cad623400cf246c1efdbdd14"
+      },
+      "normalized_pe": {
+        "algorithm": "coff_timestamp_zero_v1",
+        "coff_timestamp": 1788416779,
+        "coff_timestamp_offset": 128,
+        "sha256": "70d59205b80f28534987baf60eb7467f6e4e1dd36341a544b70a7b05e926169d"
+      },
+      "raw_dll_sha256": "09d095cef446cf5474bd201f42fed07da6e0db9d16c831daf5bc7c9ec60cac9d",
+      "response_files": [],
+      "runner": {
+        "ImageOS": "win25-vs2026",
+        "ImageVersion": "20260824.214.3",
+        "RUNNER_ARCH": "X64",
+        "RUNNER_OS": "Windows",
+        "VCToolsVersion": "14.51.36231",
+        "WindowsSDKVersion": "10.0.26100.0",
+        "vctools_install_dir_sha256": "8f88e89226c120a67053907f2701966004590e54f496795f1208ce3dc870dad8",
+        "windows_sdk_dir_sha256": "580357bc7423bc310d3c05b39dcd99951c781b05b1c2734e8f8675cd2722c6e1"
+      },
+      "selected_default_libraries": [
+        "kernel32.lib",
+        "user32.lib",
+        "gdi32.lib",
+        "winspool.lib",
+        "shell32.lib",
+        "ole32.lib",
+        "oleaut32.lib",
+        "uuid.lib",
+        "comdlg32.lib",
+        "advapi32.lib",
+        "oldnames.lib",
+        "libcmt.lib",
+        "libcpmt.lib",
+        "libvcruntime.lib",
+        "libucrt.lib"
+      ],
+      "static_library_roles": {
+        "c_runtime": {
+          "basename": "libcmt.lib",
+          "member_count": 1190,
+          "members_sha256": "636739c13ed08ca0c215899a347af8759ddb024cc7b521572049e3285f829970",
+          "path_sha256": "c8498cd897ac0b5896f3bc53a45f4d081ddc2517ed34ddc50acd1525925fd7b1",
+          "sha256": "b0d63342d47be1f3f5c2a5f7ee1bea1f1e81ace5adfc3ca68282a863d7c47d27"
+        },
+        "cxx_runtime": {
+          "basename": "libcpmt.lib",
+          "member_count": 107,
+          "members_sha256": "fa7629afd03e424f733776b8d643a42649326e443b5e299d5c531fec14df1816",
+          "path_sha256": "79d34e4072dde56e0917ada2b96754700eba3993f6cb58c55fe34870d9231bd9",
+          "sha256": "2e0bdbb409b7e829a8f11f08af3794f71c76aad47699cec787e4f055c248accc"
+        },
+        "ucrt": {
+          "basename": "libucrt.lib",
+          "member_count": 784,
+          "members_sha256": "9c2ac1f288fbb3225e652f113772918b8aac299a53e20cfa4dc3432f24e22b7b",
+          "path_sha256": "7968b9c9e9ac56ebbccd577d294c1eeec5fc123725455ba9c955aa0b0d61706d",
+          "sha256": "ea2ffa5d9b1ebc3fa76f34c364471750db8951b341dbccbc1bef628ef1a20e39"
+        },
+        "vcruntime": {
+          "basename": "libvcruntime.lib",
+          "member_count": 60,
+          "members_sha256": "9b3487e474d61bc2f98a4088cf6c5c00e7162e1a2c1d9d37d28284ca0dabec33",
+          "path_sha256": "8004dc0ab66ebbb2f8fbbb447cb28fda5378e88d14678c7f1049d388d82aeb34",
+          "sha256": "2d8c0eae0b8df5f7e6a2ae9b52cdaa2812d7253a1254fa02d25de60720c48486"
+        }
+      },
+      "terms": {
+        "documents": [
+          {
+            "retained_path": "terms/00-EULA.rtf",
+            "sha256": "b35d4245cc0baba4559a51682fe076a36692025fbdaa495f56f93512a72f87b6",
+            "source_path_sha256": "531bd4c997c7dfe9b2dcdf2029d628800606a6023de8823318f6d28dcaa160d3"
+          },
+          {
+            "retained_path": "terms/01-License.rtf",
+            "sha256": "39fa1e8286c7517bbf9ee4ec1040a8f0312f3cdb947658579d36e90a011cb25c",
+            "source_path_sha256": "07a6b00ce986167b4557f715842dbbaed8b8f26d9a60ab979902af9a96beeda5"
+          },
+          {
+            "retained_path": "terms/02-TypeScript_License.rtf",
+            "sha256": "410def30c8748a4541a6c1aa4e2999b49d6b1cc79bc895e1036ad9a1807dd455",
+            "source_path_sha256": "84bc26fd0e49c80014f767fe54862577ba503446964aeabd2d87d597553bfe01"
+          },
+          {
+            "retained_path": "terms/03-EULA.rtf",
+            "sha256": "de735fd5f96edb927bcadb7b8b827bd4fd5ffd0288cae994fae8fc045faeed66",
+            "source_path_sha256": "d877984d20136ac299ada34b4b5482dfc706e2f7f89e7fb41d6e7d9760b29f1b"
+          },
+          {
+            "retained_path": "terms/04-EULA.rtf",
+            "sha256": "c5ebba4063eb171db8681e3aad1bacfd244d2820a623644fe5885dd194e52579",
+            "source_path_sha256": "e7dc7261752cffa70a6ea5a43274696ed486d9832450fcdfa3ae4bb73e0cd938"
+          },
+          {
+            "retained_path": "terms/05-License.htm",
+            "sha256": "eefc025e81493d255d195fd253a961d2fa75a7511ed8ff9b832b53d85723b5a4",
+            "source_path_sha256": "42eeeb1143aec7b73987c5c776e6b625088f8e3ed8aa0d8bfbeb676d4aa65de8"
+          },
+          {
+            "retained_path": "terms/06-License.htm",
+            "sha256": "564deb49390c434bf45e197f1d5cc3ab68a28e98359483d8fd405ba22aa100ed",
+            "source_path_sha256": "88406d681cb52d4555b8b903fe65daa3ce85742860c325fabc8b0009570bc024"
+          },
+          {
+            "retained_path": "terms/07-License.htm",
+            "sha256": "b7bc1f26d4a32e2b48827bc2c629c49c830a1efd4c14f3d08ece64d63711b911",
+            "source_path_sha256": "98f7eb0a073f59fe171b4885ec6da67003aa11b423c4ce1e5e53bb7b56a98cbd"
+          },
+          {
+            "retained_path": "terms/08-License.htm",
+            "sha256": "0cc09d032d61d4536b56b6bc5b5f6fd0b49862f3c04b774c58bb89c1f50264d0",
+            "source_path_sha256": "a80a6ad5dce3e7d7e556959ff964d03db43f109d90c5bf5e46f3e67475782f4f"
+          },
+          {
+            "retained_path": "terms/09-License.htm",
+            "sha256": "00e2525ad82c878e779eab50fff3d4a5761bfb3b36ee87918b1f753d76c4cf17",
+            "source_path_sha256": "b66c42c48a992eb97c31cb0c31975f2714d58bafe27ca62915e0e2e3fa5ac3ea"
+          },
+          {
+            "retained_path": "terms/10-License.htm",
+            "sha256": "94d8f8f972b723d9d5206bef84a8d31aea9d768c38dff003d72c15657eabe5a4",
+            "source_path_sha256": "74cf08c39d6cef9690186a0af297640813fe15ed15561af3b4709959e3d6eff0"
+          },
+          {
+            "retained_path": "terms/11-License.htm",
+            "sha256": "ba3aadca391564d6f7068de8c8bcf732bae4570750060aa874c7dedd03abd3ce",
+            "source_path_sha256": "09593be29fd0f3041fa093e4c824a75d7b1a083e3f8f2ca1f17d0ef739e12ae4"
+          },
+          {
+            "retained_path": "terms/12-License.htm",
+            "sha256": "5fcabc1e666a6fd791942af41927e892b15c8df7a913f26bdc1c5628d723eedc",
+            "source_path_sha256": "d8adac182ae4da61664f3032827e67b94933bc0ebd05bee7b7b77aad2656d653"
+          },
+          {
+            "retained_path": "terms/13-License.htm",
+            "sha256": "fe957793d29277b338a7b71697908af939a16cbd9a8cb5cad4ccb729aedbc69f",
+            "source_path_sha256": "7cbf5305af3243f4171742ff74a172410a4cdca8c1408df0d84fa8b43687fb34"
+          },
+          {
+            "retained_path": "terms/14-LICENSE.txt",
+            "sha256": "cdb4cd6e206d378efebfb4cf7ba2adf3583b3e70cd85d229c7bcef06055f9b88",
+            "source_path_sha256": "a7e7a024c3a584d0795a5ee0471c18fb26070df5c8f097ff1170cdbf1d5628c1"
+          },
+          {
+            "retained_path": "terms/15-EULA.rtf",
+            "sha256": "9171f897fe449e66b5352ac5d8624c97d4dd844aa2692963ed62e40806a7d0ac",
+            "source_path_sha256": "c76f08227481f43dc18453ab60a534bad5dfdf1645afa4ab0890d1c80e055653"
+          },
+          {
+            "retained_path": "terms/16-LICENSE.txt",
+            "sha256": "3239c1af6dcc1358ea254806d7966d3f4f613c2790fb9be966579b7d9c6d462f",
+            "source_path_sha256": "00da4eb774b7fa243cca9b12ca940e9992d518f442cd1402f946f8b8e00e4ee2"
+          },
+          {
+            "retained_path": "terms/17-LICENSE.txt",
+            "sha256": "1c3e834a7af79ee2b40edc3f6760e52e3910408908b995518b95aeab89936744",
+            "source_path_sha256": "ec4cc5bb8f61d86a65a2624f986eaec7519697b0140f2f9bba5c58b8994e208a"
+          },
+          {
+            "retained_path": "terms/18-AzureFunctionsEULA.RTF",
+            "sha256": "8c527224dfe8492cc4156e36f21261808ec0101b169a5a681855a691bf0b5790",
+            "source_path_sha256": "bb3f415bd7da585baf8de050396d33a007db12a07e4da9b817821e9b59f5a156"
+          },
+          {
+            "retained_path": "terms/19-License.rtf",
+            "sha256": "c72ff505af1fc6fc0fd9612e7862b8697a3d2829304caa1a60dbed169779bd68",
+            "source_path_sha256": "3782cd67f1d2eb4554c00504bb52c050743dd2eb0f80fc18e59f898ad80c38aa"
+          },
+          {
+            "retained_path": "terms/20-LICENSE",
+            "sha256": "87f781aa22776ca8afedbcf31365dcff0c1fb22701f90254025bb21fce2e57d2",
+            "source_path_sha256": "29c00c168822fec9d671e33c4ddf233e8bc652defc4e8bc8b973b4f34f57ec99"
+          },
+          {
+            "retained_path": "terms/21-eula.rtf",
+            "sha256": "3fa19ee36cc51b7968ebfdfccab732ac4cd94e525bbf557a45790a2c4f05d9be",
+            "source_path_sha256": "500471994d20042c7bffa32ec1b441af0a1b1d4b663855b7211aa14321080905"
+          },
+          {
+            "retained_path": "terms/22-NuGetEula.rtf",
+            "sha256": "0ad468c4ebce3ea1d36ac6c7e275ab90f49e18434f6dd5f087f68d21a93a6f5f",
+            "source_path_sha256": "c4a5c76747c3f393b608968b4963d12e538629fb9cff8161b73afddc2c428095"
+          },
+          {
+            "retained_path": "terms/23-NuGetEula.rtf",
+            "sha256": "0bcd55ff17bfb805f7fb38e0dce1f98615c4b70f95dbb3b44c2fa2d8b68afab0",
+            "source_path_sha256": "d00f0052749a82bf1f2e2f8a8cebc284dae9ebe3d526f547af3565fade7c6ccf"
+          },
+          {
+            "retained_path": "terms/24-NuGetEula.rtf",
+            "sha256": "c15500db33a26f2d209e7b21c76d3b4e5ee3e81a9d2e05f33c86663272cd7caa",
+            "source_path_sha256": "c9640f6bc5394ca62253bc282dea1f408f04df03ed08cb6d75520b1c6facb0b8"
+          }
+        ],
+        "identity_unrecovered": false,
+        "searched_roots_sha256": [
+          "529798c370b326b38d3d2758467025c9771286d46ed6800a57d9caacf8cfdebb",
+          "606b6bf88768592e9ad770d2791e2940ed567b4d63e83b2e381f2b140f9abba2"
+        ],
+        "terms_text_captured": true
+      },
+      "visual_studio": {
+        "installation_path_sha256": "529798c370b326b38d3d2758467025c9771286d46ed6800a57d9caacf8cfdebb",
+        "installation_version": "18.9.12112.369",
+        "product_id": "Microsoft.VisualStudio.Product.Enterprise"
+      }
+    }
+  },
+  "schema": 1,
+  "standing_contract": {
+    "native": {
+      "artifact_binding_required": true,
+      "forbidden_dynamic_imports": [
+        "API-MS-WIN-CRT-*.DLL",
+        "MSVCP*.DLL",
+        "MSVCR*.DLL",
+        "UCRTBASE*.DLL",
+        "VCRUNTIME*.DLL"
+      ],
+      "imports": [
+        "KERNEL32.DLL"
+      ],
+      "mt_request": {
+        "cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+        "path": "src/CMakeLists.txt"
+      },
+      "producer": "native",
+      "required_static_roles": [
+        "c_runtime",
+        "cxx_runtime",
+        "ucrt",
+        "vcruntime"
+      ],
+      "response_expansion_required": true
+    },
+    "wheel": {
+      "artifact_binding_required": true,
+      "forbidden_dynamic_imports": [
+        "API-MS-WIN-CRT-*.DLL",
+        "MSVCP*.DLL",
+        "MSVCR*.DLL",
+        "UCRTBASE*.DLL",
+        "VCRUNTIME*.DLL"
+      ],
+      "imports": [
+        "KERNEL32.DLL"
+      ],
+      "mt_request": {
+        "cmake_value": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+        "path": "bindings/python/CMakeLists.txt"
+      },
+      "producer": "wheel",
+      "required_static_roles": [
+        "c_runtime",
+        "cxx_runtime",
+        "ucrt",
+        "vcruntime"
+      ],
+      "response_expansion_required": true
+    }
+  }
+}

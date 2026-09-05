@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -64,6 +53,8 @@ struct LeapSecondEntry {
 // These 28 post-1972 rows are unchanged from SOFA's user-replaceable `iauDat` table; the
 // pre-1972 drift rows and routine body are not used. This project is not SOFA software and
 // is not endorsed by SOFA. `automation/sofa_identity.py` pins the source and transformation.
+// Retained material boundary (R10): this table remains under the SOFA source terms and outside
+// the project MIT grant.
 // NOLINTBEGIN(modernize-use-designated-initializers)
 inline constexpr std::array<LeapSecondEntry, 28> LEAP_SECOND_TABLE {{
   { util::to_ymd(1972, 1, 1), 10.0 },

@@ -1,8 +1,11 @@
 Third-Party Notices
 
-The project license is in LICENSE. The components below retain their own
-terms. This repository-wide bundle is included in every distribution;
-each section says which build input it applies to.
+The project license is in LICENSE.
+Retained third-party components identified below remain under their own terms
+and outside the project MIT grant. This
+bundle also records source attributions for project-authored generated material;
+each section states its applicability and scope. The repository-wide bundle is
+included in every distribution.
 
 ==============================================================================
 Emscripten 6.0.6 — LICENSE
@@ -1592,7 +1595,7 @@ THE SOFTWARE.
 
 ==============================================================================
 IAU SOFA issue 2023-10-11 — SOFA Software License
-Applies to: the lunar and nutation data derived from IAU SOFA issue 2023-10-11.
+Applies to: the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11.
 Source: https://www.iausofa.org/s/sofa_c-20231011tar.gz (member sofa/20231011/c/doc/copyr.lis)
 Source-file SHA-256: ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994
 Derived-work statement: this project uses data derived from software provided by SOFA under license.
@@ -1776,10 +1779,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
 NASA/TP-2006-214141 — acknowledgment
-Applies to: the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the NASA-sourced historical Delta-T validation values in src/test.
+Applies to: the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the NASA-sourced historical Delta-T validation values in src/test.
 Source: https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html
 Source-file SHA-256: 2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881
 The NASA publication bytes are not included in this repository; the checked provenance relation is a transcription record, not an upstream-byte identity claim.
+The generated lunar-year values remain project-authored material inside the project licence scope; the acknowledgment records their historical generation relation only.
 The Source-file SHA-256 above covers this repository's acknowledgment file, not the linked NASA page.
 ==============================================================================
 
@@ -1834,4 +1838,105 @@ in software.
 The 2016 article's `1.78 / 4.0 / 15` expression is different and is not the implemented source. The
 project does not describe the corrected expression as MIT, CC BY, OGL, permission-granted, or
 relicensed.
+
+==============================================================================
+Hong Kong Observatory — retained lunar-year words
+Applies to: the HKO-derived runtime words in the native library, wheels, npm package, and WebAssembly build.
+Source: https://www.hko.gov.hk/en/gts/time/calendar/text/files/T{year}e.txt
+Source-file SHA-256: 1272446f24ddf193d4198da3dea983bdfee48b4c6e0dde7a0fe6725baed4e93a
+This project-authored attribution record is not HKO licence text or a permission grant.
+==============================================================================
+
+# HKO Runtime-Table Attribution
+
+- Source: Hong Kong Observatory yearly calendar text tables for 1901-2100.
+- Applies to: the 199 HKO-derived encoded lunar-year words in `src/calendar/lunar/algo1.hpp` and the
+  identical 1901-2099 slice in `src/calendar/lunar/algo3.hpp`, including their consumer binaries.
+- Identity record: `src/test/provenance/hko/2026-08-25/` reconstructs all 199 words exactly.
+- Terms facts: the located HKO website terms require prior written authorization for commercial use and
+  state that sale or exchange of any part of the materials is prohibited. The authorization conditions
+  cover only rights owned by the Government; the yearly tables do not allocate rights by source.
+- Disposition: retained under owner risk acceptance. Upstream permission was not obtained and is not
+  claimed. The HKO-derived words remain outside the project MIT grant.
+
+This project-authored record identifies source, applicability, and known terms facts. It does not copy
+the HKO terms, supply a permission grant, or relicense HKO material.
+
+==============================================================================
+VSOP87D — retained Earth coefficients
+Applies to: the VSOP87D Earth coefficient tables in the native library, wheels, npm package, and WebAssembly build.
+Source: CDS VI/81, VSOP87D.ear, Bretagnon and Francou January 1996 IMCCE distribution
+Source-file SHA-256: ad6357383e646cc2747c147e00c1e721280b437ac7a087d8ceb439b51d102218
+This project-authored attribution record is not upstream licence text or a permission grant.
+==============================================================================
+
+# VSOP87D Earth-Series Attribution
+
+- Source: Bretagnon and Francou's January 1996 IMCCE distribution, CDS VI/81, file `VSOP87D.ear`.
+- Applies to: the 17 Earth coefficient tables and 2,425 rows in
+  `src/astro/vsop87d/earth_coeff.hpp`, including their consumer binaries.
+- Measured relation: all repository rows are binary64-identical after the repository's `1e8` amplitude
+  scaling. Amplitude and phase spellings are decimal-identical; 61 frequency spellings differ by at
+  most `4e-11`.
+- Source SHA-256: `8b160c859136d467f2be7fc29efa8a9652e95516dfbde00e4c739d7ddc90ca91`.
+- Evidence boundary: the source bytes and comparison program are not retained, so this is a historical
+  measurement rather than an offline replay claim.
+- Terms fact: no redistribution grant was located; the located scientific-context wording does not
+  establish package redistribution permission.
+- Disposition: retained under owner risk acceptance, outside the project MIT grant. Permission is not
+  claimed.
+
+This project-authored record supplies attribution and known facts only; it is not upstream licence text.
+
+==============================================================================
+Astronomical Algorithms — retained daily-variation series
+Applies to: the Meeus p.168 daily-variation compilation in the native library, wheels, npm package, and WebAssembly build.
+Source: Jean Meeus, Astronomical Algorithms, second edition, p.168, ISBN 978-0943396613
+Source-file SHA-256: d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9
+This project-authored attribution record is not the book's licence text or a permission grant.
+==============================================================================
+
+# Meeus Daily-Variation Attribution
+
+- Source: Jean Meeus, `Astronomical Algorithms`, second edition, p. 168, ISBN 978-0943396613.
+- Applies to: the 21-row `MEEUS_DAILY_VARIATION_TERMS` compilation and `3548.330` constant in
+  `src/astro/earth.hpp`, including their consumer binaries.
+- Terms fact: the book carries a written reservation against reproduction without publisher permission.
+- Rights-holder boundary: AAS Sky Publishing currently sells the title, but no assignment record from
+  Willmann-Bell, Inc. was located; this project does not identify the current legal rights holder.
+- Disposition: retained under owner risk acceptance. Written permission was not obtained or claimed,
+  and the retained compilation remains outside the project MIT grant.
+
+This project-authored record supplies attribution and known facts only; it neither copies the book's
+licence terms nor grants permission.
+
+==============================================================================
+Microsoft — statically linked C/C++ runtime portions
+Applies to: the Windows native DLL and the Windows wheel's native DLL.
+Source: Visual Studio Enterprise 2026 terms captured by both approved Windows evidence profiles
+Source-file SHA-256: a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e
+No conclusion about application-local notice or redistribution obligations is drawn from the captured text.
+This project-authored attribution record does not copy or interpret Microsoft licence text.
+==============================================================================
+
+# Microsoft Static-Runtime Attribution
+
+- Source identity: the Microsoft C/C++ static runtime selected by the Windows build toolchain.
+- Applies to: Microsoft runtime portions statically linked into the Windows native DLL and the Windows
+  wheel's native DLL; corresponding publication destinations are D05, D09, and D12-D15.
+- Build policy: Release uses static `/MT`; debug `/MTd` artifacts are not publication inputs.
+- Evidence: `toolbox/windows_toolchain_evidence.py` has capture paths for both Windows producers and
+  records the actual linker, expanded response files, selected libraries, archive paths/hashes/members,
+  imports, runner image, and tool versions. Approved evidence and standing contracts are pinned for
+  both producers.
+- Terms capture: `terms_text_captured=true`; each approved profile records 25 Visual Studio Enterprise
+  2026 terms documents with their paths and SHA-256 digests. The terms are not reproduced or interpreted
+  here.
+- Notice boundary: no conclusion about application-local notice or redistribution obligations is drawn
+  from the captured text. This is not a substantive compatibility or legal conclusion.
+- Disposition: retained under owner risk acceptance, subject to the applicable Microsoft terms and
+  outside the project MIT grant. Permission is not claimed.
+
+This project-authored record identifies applicability and known evidence boundaries. It does not copy
+or interpret Microsoft licence text.
 

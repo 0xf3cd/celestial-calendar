@@ -8,18 +8,7 @@
 # Email: nq.maigre@gmail.com
 # Repo : https://github.com/0xf3cd/celestial-calendar
 #
-# This project is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This project is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this project. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: MIT
 
 import hashlib
 import json
@@ -48,11 +37,11 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "5e35a45fb997103cf41ce83c02605e67d05367f46c4e3597a7bf968cf7673e6d"
+NASA_RECORD_SHA256: Final[str] = "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
-  "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
+  "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
   "NASA-sourced historical Delta-T validation values in src/test"
 )
 
@@ -156,7 +145,7 @@ def verify_nasa_delta_t_provenance(
   _require(
     notice_applicability
     == "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
-    "table values in src/calendar/lunar/algo3.hpp retained from its NASA-backed original generation, and the "
+    "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
     "NASA-sourced historical Delta-T validation values in src/test",
     "NASA notice applicability differs",
   )
@@ -235,6 +224,13 @@ def verify_nasa_delta_t_provenance(
   _require(
     downstream["current_retention"]
     == {
+      "all_current_values": {
+        "entries": 401,
+        "canonicalization": (
+          "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x"
+        ),
+        "sha256": "0c110ba78423f7babededdf3629f349d6bcf2906af71594bdb5688998f8ea359",
+      },
       "entries_from_origin": 398,
       "retained_origin_values": {
         "canonicalization": (
@@ -246,9 +242,30 @@ def verify_nasa_delta_t_provenance(
         "commit": "8194ffbf38657d66158d2314bdf66294c7a8d001",
         "generator": "calendar::lunar::algo2::calc_lunar_year",
         "years": [2133, 2165, 2172],
+        "values": {
+          "canonicalization": (
+            "ASCII lines YEAR:VALUE\\n in ascending year order; VALUE is eight lowercase hexadecimal digits without 0x"
+          ),
+          "sha256": "8a9e82b389f66578387f3bc098600f555f0f39b460fc40751e789cb5ffda71a4",
+        },
       },
     },
     "NASA lunar-table current retention differs",
+  )
+  _require(
+    downstream["historical_environment"]
+    == {
+      "status": "unrecovered",
+      "unavailable": [
+        "compiler and version",
+        "compiler flags",
+        "standard library and libm versions",
+        "operating system and architecture",
+        "dependency versions",
+      ],
+      "claim": ("The 2024 numerical environment was not recovered; no bit-for-bit historical regeneration is claimed."),
+    },
+    "NASA lunar-table historical environment differs",
   )
   current_regeneration = downstream["current_regeneration"]
   _require(
@@ -266,6 +283,7 @@ def verify_nasa_delta_t_provenance(
   )
   lunar_table = (repo_root / downstream["repository_path"]).read_text(encoding="utf-8")
   lunar_values = _lunar_data_values(lunar_table)
+  all_years = (*range(1600, 1901), *range(2100, 2200))
   retained_years = tuple(year for year in (*range(1600, 1901), *range(2100, 2200)) if year not in {2133, 2165, 2172})
   _require(
     len(retained_years) == downstream["current_retention"]["entries_from_origin"],
@@ -275,6 +293,17 @@ def verify_nasa_delta_t_provenance(
   _require(
     hashlib.sha256(retained_bytes).hexdigest() == downstream["current_retention"]["retained_origin_values"]["sha256"],
     "NASA lunar-table retained origin values differ",
+  )
+  rebake_years = downstream["current_retention"]["rebake"]["years"]
+  rebake_bytes = "".join(f"{year}:{lunar_values[year - 1600]:08x}\n" for year in rebake_years).encode("ascii")
+  _require(
+    hashlib.sha256(rebake_bytes).hexdigest() == downstream["current_retention"]["rebake"]["values"]["sha256"],
+    "NASA lunar-table rebake values differ",
+  )
+  all_current_bytes = "".join(f"{year}:{lunar_values[year - 1600]:08x}\n" for year in all_years).encode("ascii")
+  _require(
+    hashlib.sha256(all_current_bytes).hexdigest() == downstream["current_retention"]["all_current_values"]["sha256"],
+    "NASA lunar-table all current values differ",
   )
   _require(
     "NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398\n"

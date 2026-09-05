@@ -477,7 +477,9 @@
     }
   ],
   "v03_hko_boundary": {
-    "status": "open",
+    "status": "retained_under_owner_risk_acceptance",
+    "permission_claim": false,
+    "upstream_permission_obtained": false,
     "matching_minutes": 12,
     "mismatching_minutes": 1,
     "events": [

@@ -5,10 +5,7 @@
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com
 # Repo   : https://github.com/0xf3cd/celestial-calendar
-# License: GNU General Public License v3.0
-#
-# This software is distributed without any warranty.
-# See <https://www.gnu.org/licenses/> for more details.
+# SPDX-License-Identifier: MIT
 
 # This file is used to download the golden dataset for sunrise/sunset tests (#44):
 # - Primary source: USNO "Complete Sun and Moon Data for One Day" API (aa.usno.navy.mil/api/rstt/oneday),
@@ -24,6 +21,8 @@
 #   values are accepted.
 # The script prints the agreement reports and emits the column-aligned C++ dataset rows to
 # paste into src/test/astro/rise_set_golden_test.cpp.
+# Retained material boundary (V11): the external output blocks addressed by this crawler remain under
+# their source terms and outside the project MIT grant; this crawler is project-authored.
 #
 # Author : Ningqi Wang (0xf3cd)
 # Email  : nq.maigre@gmail.com

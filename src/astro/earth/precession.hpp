@@ -7,18 +7,7 @@
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
  *  
- * This project is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This project is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this project. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -59,6 +48,8 @@ struct EclipticAngles {
  * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.2).
  * @ref ERFA v2.0.1 `prec76.c`.
  */
+// Retained material boundary (R27): the exact `prec76.c` angle coefficients remain under the ERFA
+// source terms and outside the project MIT grant; the coordinate application is project-authored.
 [[nodiscard]] inline auto equatorial_angles(const double jde_from, const double jde_to) -> EquatorialAngles {
   using astro::toolbox::AngleDeg;
   using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
