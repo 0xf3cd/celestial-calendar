@@ -61,7 +61,7 @@ inline constexpr int32_t END_YEAR = 2500;
  *          after that three-era conversion.
  * @note The result assigns a calendar-date label; it is not an instant carrying a time zone.
  *       返回值用于确定日历日期标记；它不是携带时区的时刻。
- * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 — the non-invertible second of
+ * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 (#84) — the non-invertible second of
  *       `leap_second::tt_to_utc` never lands on a civil-day boundary here. 闰秒在 UTC 午夜、即
  *       UTC+8 的 08:00 跳变，因此 `leap_second::tt_to_utc` 的不可逆一秒不会落在这里的民用日边界上。
  */

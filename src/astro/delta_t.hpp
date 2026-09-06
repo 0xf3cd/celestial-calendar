@@ -124,6 +124,7 @@ find_coefficients(const int32_t year) -> std::optional<
  *      https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
+ * @note Frozen exhibit, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year < -4000) {
@@ -195,6 +196,7 @@ namespace algo2 {
  * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
  *      https://ntrs.nasa.gov/citations/20070003587
  * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
+ * @note Frozen exhibit, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {
@@ -312,6 +314,7 @@ namespace algo3 {
  * 
  * @ref Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014) -
  *      https://www.eclipsewise.com/help/deltatpoly2014.html
+ * @note Frozen exhibit, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= 3000) {
@@ -369,6 +372,7 @@ namespace algo4 {
  * @note For year < 2005.0, algo2 is used instead.
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
  * @note For 2024.0 <= year < 2035.0, poly model trained on USNO ΔT predictions (deltat.preds) is used.
+ * @note Frozen predecessor to algorithm 5, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= 2035) {

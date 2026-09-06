@@ -398,7 +398,7 @@ trigger is for.
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
 | **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
-| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public rise/set parameters and result members carry `ut1` / `jde_tt` suffixes | A second #41-class mix-up reaches a test, or one public entry point must accept two civil scales |
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes | A second #41-class mix-up reaches a test, or one public entry point must accept two civil scales |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
 | **Header-only is the identity, and its compile cost is accepted** | Someone produces a compile-time measurement |
 | **The cache never evicts** — the mechanism has no eviction by design; each caller's key space is bounded by its declared window (`jieqi` [1, 32766], `algo2` by year range) | A caller with an unbounded key space appears |

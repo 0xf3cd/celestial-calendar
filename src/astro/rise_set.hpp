@@ -474,8 +474,8 @@ template <BodyProvider P>
 
 /**
  * @brief Validate `rise_set_jde`'s inputs.
- * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or `h0`
- *        is not finite or outside [-90°, 90°].
+ * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or
+ *        `h0` is not finite or outside [-90°, 90°].
  */
 inline void validate_rise_set_inputs(
   const double transit_jde_tt,
@@ -643,8 +643,8 @@ template <BodyProvider P>
  * @param provider The body's position provider.
  * @return The crossing instant (JDE, TT scale), or `nullopt` when the body does not cross h₀
  *         between the transit and the adjacent altitude minimum (polar day/night).
- * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or `h0`
- *        is not finite or outside [-90°, 90°].
+ * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or
+ *        `h0` is not finite or outside [-90°, 90°].
  * @throw std::runtime_error If a directed sign change proved a crossing exists but the solve
  *        failed the residual guard — a numerical failure must not read as a polar verdict.
  *        The UT1/JD conversions also propagate `std::runtime_error` when `transit_jde_tt` lies
@@ -802,8 +802,8 @@ template <BodyProvider P>
     };
   }
 
-  // Signed α drift per day, measured over a fixed 1-day span from `t0_jde_tt` (see the @note: a body
-  // property, not a window property — measuring across the whole window aliases once the
+  // Signed α drift per day, measured over a fixed 1-day span from `t0_jde_tt` (see the @note: a
+  // body property, not a window property — measuring across the whole window aliases once the
   // window spans more than half a turn of α, which for the Moon happens past ~13.6 days).
   const auto local0 = detail::body_local(t0_jde_tt, location, provider);
   const auto local1 = detail::body_local(t0_jde_tt + 1.0, location, provider);
