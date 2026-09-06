@@ -196,7 +196,7 @@ namespace algo2 {
  * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
  *      https://ntrs.nasa.gov/citations/20070003587
  * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
- * @note Frozen exhibit, retained for historical comparison.
+ * @note Frozen model; algorithms 3, 4, and 5 delegate to it for years before 2005.
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   if (year < -500) {

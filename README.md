@@ -147,7 +147,7 @@ through 2026.41, and an anchored long-term extrapolation afterward. Algo1 (Xu Ji
 (Espenak and Meeus, NASA/TP-2006-214141), algo3 (Fred Espenak's 2014 eclipse canon), and algo4 (IERS
 Bulletin A plus USNO predictions) are frozen exhibits retained for historical comparison.
 
-Their hard domains are year ≥ -4000 for algo1, year < 3000 for algo3, year < 2035 for algo4, and no
+Hard domains are year ≥ -4000 for algo1, year < 3000 for algo3, year < 2035 for algo4, and no
 model-specific year bound for algo2/algo5. Fitted residuals and test tolerances are not published as
 statistical error guarantees.
 
