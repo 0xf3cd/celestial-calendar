@@ -51,13 +51,19 @@ inline constexpr int32_t END_YEAR = 2500;
 
 
 /**
- * @brief Convert a JDE moment to UTC+8, the civil scale the lunar-calendar rules are defined in.
- * @param jde The julian ephemeris day number, which is based on TT.
- * @return The datetime in UTC+8.
- * @note Leap-second aware (#84): rendering through UT1 sat model ΔT − (ΔAT + 32.184 s) off
- *       UTC — enough to flip the civil date near midnight.
- * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 — the non-invertible second of
- *       `leap_second::tt_to_utc` never lands on a civil-day boundary here.
+ * @brief Convert a JDE (TT) moment to fixed-offset east-eight civil time for lunar date assignment.
+ *        把 JDE（TT）时刻转换为固定东八区民用时间，用于确定阴历日期。
+ * @param jde The julian ephemeris day number, which is based on TT. 基于 TT 的儒略历书日。
+ * @return The datetime at the fixed UTC+8 offset. 固定 UTC+8 偏移下的日期时间。
+ * @details Before 1972, `jde_to_utc` deliberately uses UT1 as a proxy because historical UTC is
+ *          not modelled. From 1972 through the final announced leap-second step it uses the ΔAT
+ *          table; beyond that table, ΔAT is held at 37 s. The fixed eight-hour offset is applied
+ *          after that three-era conversion.
+ * @note The result assigns a calendar-date label; it is not an instant carrying a time zone.
+ *       返回值用于确定日历日期标记；它不是携带时区的时刻。
+ * @note Leap seconds step at UTC midnight, i.e. 08:00 in UTC+8 (#84) — the non-invertible second of
+ *       `leap_second::tt_to_utc` never lands on a civil-day boundary here. 闰秒在 UTC 午夜、即
+ *       UTC+8 的 08:00 跳变，因此 `leap_second::tt_to_utc` 的不可逆一秒不会落在这里的民用日边界上。
  */
 [[nodiscard]] inline auto jde_to_utc8(const double jde) -> calendar::Datetime {
   return calendar::add_seconds(

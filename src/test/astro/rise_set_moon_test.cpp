@@ -70,8 +70,8 @@ TEST(RiseSetMoon, RiseSetAltitudeIsH0) {
   // The events must actually sit on the h₀ curve, with h₀ from the same day's Π.
   const auto ymd = util::to_ymd(2026, 8, 15); // Beijing: rise, transit, and set all exist.
   const auto result = moon::calculate(ymd, BEIJING);
-  ASSERT_TRUE(result.rise_jde.has_value());
-  ASSERT_TRUE(result.set_jde.has_value());
+  ASSERT_TRUE(result.rise_jde_tt.has_value());
+  ASSERT_TRUE(result.set_jde_tt.has_value());
 
   // h₀ must be reconstructed with the engine's own convention: Π at mid-day, fixed for the
   // whole UT day (see `moon::h0`'s error-budget note). Comparing against the transit-time Π
@@ -80,20 +80,20 @@ TEST(RiseSetMoon, RiseSetAltitudeIsH0) {
   const double midday = astro::julian_day::ut1_to_jde(day_start) + 0.5;
   const auto h0 = moon::h0(moon::horizontal_parallax(midday));
   // 0.002° of altitude at the Moon's ~10-14°/h horizon-crossing rate is ~1 s of time.
-  ASSERT_NEAR(detail::altitude(req(result.rise_jde), BEIJING, moon::apparent_equatorial).deg(),
+  ASSERT_NEAR(detail::altitude(req(result.rise_jde_tt), BEIJING, moon::apparent_equatorial).deg(),
               h0.deg(), 0.002);
-  ASSERT_NEAR(detail::altitude(req(result.set_jde), BEIJING, moon::apparent_equatorial).deg(),
+  ASSERT_NEAR(detail::altitude(req(result.set_jde_tt), BEIJING, moon::apparent_equatorial).deg(),
               h0.deg(), 0.002);
 }
 
 TEST(RiseSetMoon, OrderIsCorrectWhenAllThreeExist) {
   const auto ymd = util::to_ymd(2026, 8, 15); // Beijing: rise 00:04, transit 06:19, set 12:23 UT.
   const auto result = moon::calculate(ymd, BEIJING);
-  ASSERT_TRUE(result.rise_jde.has_value());
-  ASSERT_TRUE(result.transit_jde.has_value());
-  ASSERT_TRUE(result.set_jde.has_value());
-  ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
-  ASSERT_LT(req(result.transit_jde), req(result.set_jde));
+  ASSERT_TRUE(result.rise_jde_tt.has_value());
+  ASSERT_TRUE(result.transit_jde_tt.has_value());
+  ASSERT_TRUE(result.set_jde_tt.has_value());
+  ASSERT_LT(req(result.rise_jde_tt), req(result.transit_jde_tt));
+  ASSERT_LT(req(result.transit_jde_tt), req(result.set_jde_tt));
   ASSERT_EQ(result.polar, Polar::NONE);
 }
 
@@ -114,23 +114,23 @@ TEST(RiseSetMoon, ThirtyDayScanIsCoherent) {
     const auto result = moon::calculate(ymd, BEIJING);
     ASSERT_EQ(result.polar, Polar::NONE) << "day=" << day; // 39.9°N: never polar for the Moon.
 
-    rise_less += result.rise_jde.has_value() ? 0 : 1;
-    transit_less += result.transit_jde.has_value() ? 0 : 1;
+    rise_less += result.rise_jde_tt.has_value() ? 0 : 1;
+    transit_less += result.transit_jde_tt.has_value() ? 0 : 1;
 
-    for (const auto& event : { result.rise_jde, result.transit_jde, result.set_jde }) {
+    for (const auto& event : { result.rise_jde_tt, result.transit_jde_tt, result.set_jde_tt }) {
       if (event.has_value()) {
         ASSERT_EQ(astro::julian_day::jde_to_ut1(*event).ymd, ymd) << "day=" << day;
         all_events.push_back(*event);
       }
     }
 
-    if (result.rise_jde.has_value() and prev_rise.has_value()) {
-      const double gap_hours = (req(result.rise_jde) - req(prev_rise)) * 24.0;
+    if (result.rise_jde_tt.has_value() and prev_rise.has_value()) {
+      const double gap_hours = (req(result.rise_jde_tt) - req(prev_rise)) * 24.0;
       ASSERT_GT(gap_hours, 24.0) << "day=" << day;
       ASSERT_LT(gap_hours, 26.0) << "day=" << day;
     }
-    if (result.rise_jde.has_value()) {
-      prev_rise = result.rise_jde;
+    if (result.rise_jde_tt.has_value()) {
+      prev_rise = result.rise_jde_tt;
     }
   }
 

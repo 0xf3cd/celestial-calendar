@@ -34,6 +34,11 @@ inline constexpr int32_t END_YEAR = 2199;
  * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398
  *      retained non-HKO entries.
  *      https://ntrs.nasa.gov/citations/20070003587
+ * @note Gregorian dates use a baked hybrid basis: 1901–2099 preserves algo1's HKO labels;
+ *       every other year was generated from algo2's fixed-east-eight civil rendering. No one
+ *       historical time-zone rule describes the whole table. 公历日期基准是混合的：1901 至
+ *       2099 年保留 algo1 的香港天文台日期标记，其余年份由 algo2 的固定东八区民用时间生成；
+ *       不存在一条历史时区规则可以概括整张表。
  *
  * ## Provenance (baked table — #70 §2)
  * - Generator: `statistics/lunar_calendar.ipynb` (encode cells: HKO years 1901–2099 via

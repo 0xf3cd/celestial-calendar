@@ -190,12 +190,12 @@ TEST(RiseSet, RiseSetAltitudeIsH0) {
 
   for (const auto& [ymd, location, h0] : cases) {
     const auto result = sun::calculate(ymd, location, h0);
-    ASSERT_TRUE(result.rise_jde.has_value());
-    ASSERT_TRUE(result.set_jde.has_value());
+    ASSERT_TRUE(result.rise_jde_tt.has_value());
+    ASSERT_TRUE(result.set_jde_tt.has_value());
 
     // 0.001° ≈ 0.36". At typical crossing rates (~200°/day) that is ~0.4 s of time.
-    ASSERT_NEAR(detail::altitude(req(result.rise_jde), location, sun::provider).deg(), h0.deg(), 0.001);
-    ASSERT_NEAR(detail::altitude(req(result.set_jde), location, sun::provider).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::altitude(req(result.rise_jde_tt), location, sun::provider).deg(), h0.deg(), 0.001);
+    ASSERT_NEAR(detail::altitude(req(result.set_jde_tt), location, sun::provider).deg(), h0.deg(), 0.001);
   }
 }
 
@@ -209,10 +209,10 @@ TEST(RiseSet, OrderIsCorrect) {
 
   for (const auto& [ymd, location] : cases) {
     const auto result = sun::calculate(ymd, location);
-    ASSERT_TRUE(result.rise_jde.has_value());
-    ASSERT_TRUE(result.set_jde.has_value());
-    ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
-    ASSERT_LT(req(result.transit_jde), req(result.set_jde));
+    ASSERT_TRUE(result.rise_jde_tt.has_value());
+    ASSERT_TRUE(result.set_jde_tt.has_value());
+    ASSERT_LT(req(result.rise_jde_tt), req(result.transit_jde_tt));
+    ASSERT_LT(req(result.transit_jde_tt), req(result.set_jde_tt));
     ASSERT_EQ(result.polar, Polar::NONE);
   }
 }
@@ -227,19 +227,19 @@ TEST(RiseSet, TwilightOrder) {
   const auto r_astro    = sun::calculate(ymd, MIDLAT_0E, sun::ASTRONOMICAL_TWILIGHT);
 
   for (const auto& r : { r_standard, r_civil, r_nautical, r_astro }) {
-    ASSERT_TRUE(r.rise_jde.has_value());
-    ASSERT_TRUE(r.set_jde.has_value());
+    ASSERT_TRUE(r.rise_jde_tt.has_value());
+    ASSERT_TRUE(r.set_jde_tt.has_value());
   }
 
   // Morning: astronomical dawn < nautical dawn < civil dawn < sunrise.
-  ASSERT_LT(req(r_astro.rise_jde), req(r_nautical.rise_jde));
-  ASSERT_LT(req(r_nautical.rise_jde), req(r_civil.rise_jde));
-  ASSERT_LT(req(r_civil.rise_jde), req(r_standard.rise_jde));
+  ASSERT_LT(req(r_astro.rise_jde_tt), req(r_nautical.rise_jde_tt));
+  ASSERT_LT(req(r_nautical.rise_jde_tt), req(r_civil.rise_jde_tt));
+  ASSERT_LT(req(r_civil.rise_jde_tt), req(r_standard.rise_jde_tt));
 
   // Evening: sunset < civil dusk < nautical dusk < astronomical dusk.
-  ASSERT_LT(req(r_standard.set_jde), req(r_civil.set_jde));
-  ASSERT_LT(req(r_civil.set_jde), req(r_nautical.set_jde));
-  ASSERT_LT(req(r_nautical.set_jde), req(r_astro.set_jde));
+  ASSERT_LT(req(r_standard.set_jde_tt), req(r_civil.set_jde_tt));
+  ASSERT_LT(req(r_civil.set_jde_tt), req(r_nautical.set_jde_tt));
+  ASSERT_LT(req(r_nautical.set_jde_tt), req(r_astro.set_jde_tt));
 }
 
 TEST(RiseSet, EquatorDayLength) {
@@ -248,10 +248,10 @@ TEST(RiseSet, EquatorDayLength) {
     const auto ymd = util::to_ymd(2024, month, 15);
     const auto result = sun::calculate(ymd, EQUATOR);
 
-    ASSERT_TRUE(result.rise_jde.has_value());
-    ASSERT_TRUE(result.set_jde.has_value());
+    ASSERT_TRUE(result.rise_jde_tt.has_value());
+    ASSERT_TRUE(result.set_jde_tt.has_value());
 
-    const double day_length = req(result.set_jde) - req(result.rise_jde);
+    const double day_length = req(result.set_jde_tt) - req(result.rise_jde_tt);
     ASSERT_NEAR(day_length, 0.5, 30.0 / (24.0 * 60.0)) << "month=" << month; // 12h ± 30 min.
   }
 }
@@ -260,31 +260,31 @@ TEST(RiseSet, RiseSetSymmetryAroundTransit) {
   // δ drifts slowly, so morning and afternoon half-arcs agree to well under a minute — but
   // assert only a loose bound to keep the test about symmetry, not about δ's exact rate.
   const auto result = sun::calculate(util::to_ymd(2024, 9, 22), EQUATOR);
-  ASSERT_TRUE(result.rise_jde.has_value());
-  ASSERT_TRUE(result.set_jde.has_value());
+  ASSERT_TRUE(result.rise_jde_tt.has_value());
+  ASSERT_TRUE(result.set_jde_tt.has_value());
 
-  const double morning = req(result.transit_jde) - req(result.rise_jde);
-  const double evening = req(result.set_jde) - req(result.transit_jde);
+  const double morning = req(result.transit_jde_tt) - req(result.rise_jde_tt);
+  const double evening = req(result.set_jde_tt) - req(result.transit_jde_tt);
   ASSERT_NEAR(morning, evening, 0.01);
 }
 
 TEST(RiseSet, PolarDayAndPolarNight) {
   // Tromsø (69.65°N) is inside the Arctic Circle: midnight sun in June, polar night in December.
   const auto summer = sun::calculate(util::to_ymd(2024, 6, 21), TROMSO);
-  ASSERT_FALSE(summer.rise_jde.has_value());
-  ASSERT_FALSE(summer.set_jde.has_value());
+  ASSERT_FALSE(summer.rise_jde_tt.has_value());
+  ASSERT_FALSE(summer.set_jde_tt.has_value());
   ASSERT_EQ(summer.polar, Polar::DAY);
 
   const auto winter = sun::calculate(util::to_ymd(2024, 12, 21), TROMSO);
-  ASSERT_FALSE(winter.rise_jde.has_value());
-  ASSERT_FALSE(winter.set_jde.has_value());
+  ASSERT_FALSE(winter.rise_jde_tt.has_value());
+  ASSERT_FALSE(winter.set_jde_tt.has_value());
   ASSERT_EQ(winter.polar, Polar::NIGHT);
 
   // In the December polar night the Sun still culminates at ~-3.1°, above the civil-twilight
   // altitude — so civil dawn/dusk exist even though sunrise/sunset do not.
   const auto winter_civil = sun::calculate(util::to_ymd(2024, 12, 21), TROMSO, sun::CIVIL_TWILIGHT);
-  ASSERT_TRUE(winter_civil.rise_jde.has_value());
-  ASSERT_TRUE(winter_civil.set_jde.has_value());
+  ASSERT_TRUE(winter_civil.rise_jde_tt.has_value());
+  ASSERT_TRUE(winter_civil.set_jde_tt.has_value());
   ASSERT_EQ(winter_civil.polar, Polar::NONE);
 }
 
@@ -298,8 +298,8 @@ TEST(RiseSet, PolarNightOnsetWeekIsCoherent) {
 
   for (int day = 20; day <= 30; ++day) {
     const auto result = sun::calculate(util::to_ymd(2024, 11, day), TROMSO);
-    const int events = static_cast<int>(result.rise_jde.has_value())
-                     + static_cast<int>(result.set_jde.has_value());
+    const int events = static_cast<int>(result.rise_jde_tt.has_value())
+                     + static_cast<int>(result.set_jde_tt.has_value());
 
     if (events == 0) {
       ASSERT_EQ(result.polar, Polar::NIGHT) << "day=" << day; // November at 69.65°N: night, never day.
@@ -308,8 +308,8 @@ TEST(RiseSet, PolarNightOnsetWeekIsCoherent) {
       ASSERT_EQ(result.polar, Polar::NONE) << "day=" << day;
       ASSERT_FALSE(seen_polar_night) << "day=" << day; // No coming back out of the night in this window.
       if (events == 2) {
-        ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
-        ASSERT_LT(req(result.transit_jde), req(result.set_jde));
+        ASSERT_LT(req(result.rise_jde_tt), req(result.transit_jde_tt));
+        ASSERT_LT(req(result.transit_jde_tt), req(result.set_jde_tt));
       }
     }
   }
@@ -326,8 +326,8 @@ TEST(RiseSet, MidnightSunOnsetWeekIsCoherent) {
 
   for (int day = 12; day <= 24; ++day) {
     const auto result = sun::calculate(util::to_ymd(2024, 5, day), TROMSO);
-    const int events = static_cast<int>(result.rise_jde.has_value())
-                     + static_cast<int>(result.set_jde.has_value());
+    const int events = static_cast<int>(result.rise_jde_tt.has_value())
+                     + static_cast<int>(result.set_jde_tt.has_value());
 
     if (events == 0) {
       ASSERT_EQ(result.polar, Polar::DAY) << "day=" << day; // May at 69.65°N: day, never night.
@@ -335,8 +335,8 @@ TEST(RiseSet, MidnightSunOnsetWeekIsCoherent) {
     } else {
       ASSERT_EQ(result.polar, Polar::NONE) << "day=" << day;
       if (events == 2) {
-        ASSERT_LT(req(result.rise_jde), req(result.transit_jde));
-        ASSERT_LT(req(result.transit_jde), req(result.set_jde));
+        ASSERT_LT(req(result.rise_jde_tt), req(result.transit_jde_tt));
+        ASSERT_LT(req(result.transit_jde_tt), req(result.set_jde_tt));
       }
     }
   }
@@ -363,8 +363,8 @@ TEST(RiseSet, GrazeAtTransitIsPolarNightNotDay) {
   ASSERT_NEAR(h_transit, 30.0, 1e-9);
 
   const auto result = calculate_around_transit(transit, site, AngleDeg { h_transit }, fixed_body);
-  ASSERT_FALSE(result.rise_jde.has_value());
-  ASSERT_FALSE(result.set_jde.has_value());
+  ASSERT_FALSE(result.rise_jde_tt.has_value());
+  ASSERT_FALSE(result.set_jde_tt.has_value());
   ASSERT_EQ(result.polar, Polar::NIGHT);
 }
 
@@ -463,16 +463,16 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
     const auto result = calculate_day(ymd, LONDON_GOLDEN, sun::STANDARD_ALTITUDE, sun::provider);
     const auto tag = std::to_string(month) + "-" + std::to_string(day);
     ASSERT_EQ(result.polar, Polar::NONE) << tag;
-    ASSERT_TRUE(result.rise_jde.has_value()) << tag;
-    ASSERT_TRUE(result.transit_jde.has_value()) << tag;
-    ASSERT_TRUE(result.set_jde.has_value()) << tag;
+    ASSERT_TRUE(result.rise_jde_tt.has_value()) << tag;
+    ASSERT_TRUE(result.transit_jde_tt.has_value()) << tag;
+    ASSERT_TRUE(result.set_jde_tt.has_value()) << tag;
 
     const auto ut_minutes = [](const double jde) {
       return astro::julian_day::jde_to_ut1(jde).fraction() * 1440.0;
     };
-    ASSERT_NEAR(ut_minutes(req(result.rise_jde)), rise_min, 2.0) << tag << " rise";
-    ASSERT_NEAR(ut_minutes(req(result.transit_jde)), transit_min, 2.0) << tag << " transit";
-    ASSERT_NEAR(ut_minutes(req(result.set_jde)), set_min, 2.0) << tag << " set";
+    ASSERT_NEAR(ut_minutes(req(result.rise_jde_tt)), rise_min, 2.0) << tag << " rise";
+    ASSERT_NEAR(ut_minutes(req(result.transit_jde_tt)), transit_min, 2.0) << tag << " transit";
+    ASSERT_NEAR(ut_minutes(req(result.set_jde_tt)), set_min, 2.0) << tag << " set";
   }
 
   // A UT day with TWO solar transits (the apparent solar day dips below 24 h around the
@@ -480,8 +480,8 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
   // the engine returns the first one and does not throw.
   const auto two_transits = calculate_day(util::to_ymd(2026, 9, 15), loc(0.0, 178.8046),
                                           sun::STANDARD_ALTITUDE, sun::provider);
-  ASSERT_TRUE(two_transits.transit_jde.has_value());
-  ASSERT_LT(astro::julian_day::jde_to_ut1(req(two_transits.transit_jde)).fraction() * 1440.0, 2.0);
+  ASSERT_TRUE(two_transits.transit_jde_tt.has_value());
+  ASSERT_LT(astro::julian_day::jde_to_ut1(req(two_transits.transit_jde_tt)).fraction() * 1440.0, 2.0);
 }
 
 TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {

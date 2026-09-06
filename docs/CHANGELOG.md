@@ -7,6 +7,14 @@
 - Project-authored material is now licensed under MIT. Retained third-party material keeps its source terms and remains
   outside the project MIT grant; `THIRD_PARTY_NOTICES.txt` and the source-tree attribution boundaries identify the
   applicable exceptions.
+- Lunar conversion documentation now states each algorithm's actual civil-date basis instead of one universal UTC+8
+  history: algo1 preserves HKO labels, algo2 applies its three-era UTC model followed by a fixed east-eight offset, and
+  algo3 is their baked hybrid. Jieqi civil output is explicitly UT1 rather than an east-eight wall date, and Delta T
+  profiles identify each model's source, frozen/current status, hard domain, and selection role without presenting test
+  residuals as statistical error guarantees.
+- Rise/set's name-carried time-scale contract is complete: the nine public UT1/TT parameters now use `ymd_ut1`,
+  `transit_jde_tt`, `t0_jde_tt`, or `t1_jde_tt`, and `Result::{rise_jde,transit_jde,set_jde}` became
+  `Result::{rise_jde_tt,transit_jde_tt,set_jde_tt}` without compatibility aliases.
 
 ## [v0.6.1] - 2026-08-24
 

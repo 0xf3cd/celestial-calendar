@@ -360,6 +360,8 @@ typedef struct JieqiMomentQuery {
  * @note The returned civil moment is UT1; while leap seconds are applied it matches UTC
  *       to within DUT1 (±0.9 s), so modern-era civil consumers may treat it as UTC.
  *       Past the ΔAT table freeze the modelled gap follows ΔT−(ΔAT+32.184) (#115).
+ * @note The returned date is not an east-eight wall date; rendering the same instant at a
+ *       fixed UTC+8 offset can change its calendar date.
  */
 CELESTIAL_API JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
 
@@ -385,6 +387,14 @@ typedef struct SupportedLunarYearRange {
  * @brief Get the supported lunar year range of the algorithm.
  * @param algo The algorithm. Expected to be 1, 2, or 3.
  * @returns A `SupportedLunarYearRange` struct.
+ * @details Algorithm profiles:
+ *          - 1: preserves the published HKO calendar-date labels for 1901-2099;
+ *          - 2: computation from VSOP87D/ELP2000-82B for 410-2500, with TT moments rendered
+ *            through the library's UTC model and then a fixed east-eight offset; that model uses
+ *            UT1 as a pre-1972 proxy, the ΔAT table from 1972 through its final announced step,
+ *            and a frozen ΔAT of 37 s afterward;
+ *          - 3: a baked table for 1600-2199, using algorithm 1 for 1901-2099 and algorithm 2
+ *            for the other years.
  */
 CELESTIAL_API SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo);
 
@@ -404,7 +414,7 @@ typedef struct LunarYearInfo {
 
 /**
  * @brief Get the lunar year information for the given year.
- * @param algo The algorithm. Expected to be 1, 2, or 3.
+ * @param algo The algorithm profile described by `get_supported_lunar_year_range`.
  * @param year The lunar year. Outside the range `get_supported_lunar_year_range` reports for
  *             `algo`, the result is `valid = false`.
  * @returns A `LunarYearInfo` struct.
@@ -428,7 +438,7 @@ typedef struct GregorianDate {
 
 /**
  * @brief Convert a Gregorian date to a lunar date.
- * @param algo The algorithm. Expected to be 1, 2, or 3.
+ * @param algo The algorithm profile described by `get_supported_lunar_year_range`.
  * @param year The Gregorian year.
  * @param month The Gregorian month.
  * @param day The Gregorian day of the month.
@@ -442,12 +452,14 @@ typedef struct GregorianDate {
  *       (leap 2nd month), the leap 2nd month is `month = 2, is_leap = true`, and the
  *       traditional 3rd month is `month = 3, is_leap = false`. This is NOT the positional
  *       month index that `LunarYearInfo.month_len` is indexed by.
+ * @note The Gregorian input is a calendar-date label on the selected algorithm's basis, not
+ *       an instant.
  */
 CELESTIAL_API LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day);
 
 /**
  * @brief Convert a lunar date to a Gregorian date.
- * @param algo The algorithm. Expected to be 1, 2, or 3.
+ * @param algo The algorithm profile described by `get_supported_lunar_year_range`.
  * @param year The lunar year.
  * @param month The lunar month, in traditional numbering (1-12) — see `gregorian_to_lunar`.
  * @param is_leap Whether the month is the leap month. `true` is accepted only on the year's
@@ -456,6 +468,8 @@ CELESTIAL_API LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t m
  * @param day The day of the lunar month.
  * @returns A `GregorianDate` struct; `valid = false` when the input does not name a real
  *          lunar date (bad `algo`, year out of range, no such leap month, day out of range).
+ * @note The returned Gregorian value is a calendar-date label on the selected algorithm's
+ *       basis, not an instant; see `gregorian_to_lunar`.
  */
 CELESTIAL_API GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day);
 
@@ -469,37 +483,45 @@ typedef struct DeltaT {
 
 /**
  * @brief Compute delta T of a given moment using algorithm 1.
- * @param year The year.
+ * @param year A finite decimal Gregorian year, at least -4000.
  * @returns A `DeltaT` struct.
+ * @note Frozen exhibit from Xu Jianwei's 2008 model, retained for historical comparison.
  */
 CELESTIAL_API DeltaT delta_t_algo1(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 2.
- * @param year The year.
+ * @param year A finite decimal Gregorian year; no model-specific year bound.
  * @returns A `DeltaT` struct.
+ * @note Frozen exhibit from Espenak and Meeus, NASA/TP-2006-214141, retained for historical
+ *       comparison.
  */
 CELESTIAL_API DeltaT delta_t_algo2(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 3.
- * @param year The year.
+ * @param year A finite decimal Gregorian year below 3000.
  * @returns A `DeltaT` struct.
+ * @note Frozen exhibit from Fred Espenak's 2014 eclipse canon, retained for historical comparison.
  */
 CELESTIAL_API DeltaT delta_t_algo3(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 4.
- * @param year The year.
+ * @param year A finite decimal Gregorian year below 2035.
  * @returns A `DeltaT` struct.
+ * @note Frozen predecessor to algorithm 5, fitted from IERS Bulletin A observations and USNO
+ *       predictions; retained for historical comparison.
  */
 CELESTIAL_API DeltaT delta_t_algo4(double year);
 /**
  * @brief Compute delta T of a given moment using algorithm 5.
- * @param year The year.
+ * @param year A finite decimal Gregorian year; no model-specific year bound.
  * @returns A `DeltaT` struct.
+ * @note The current project model and default: algorithm 2 before 2005, IERS Bulletin A fit
+ *       through 2026.41, then an anchored long-term extrapolation.
  */
 CELESTIAL_API DeltaT delta_t_algo5(double year);
 /**
- * @brief Compute delta T of a given moment, using the best algorithm.
- * @param year The year.
+ * @brief Compute delta T of a given moment using the current default model (algorithm 5).
+ * @param year A finite decimal Gregorian year; no model-specific year bound.
  * @returns A `DeltaT` struct.
  */
 CELESTIAL_API DeltaT delta_t(double year);

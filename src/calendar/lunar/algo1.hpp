@@ -33,6 +33,11 @@ inline constexpr int32_t END_YEAR = 2099;
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record in
  *          `src/test/provenance/hko/2026-08-25/`.
+ * @note Gregorian dates preserve HKO's published calendar labels, not a uniform historical
+ *       time-zone rule. Known differences from algo2 are documented in
+ *       `src/test/lunar/diff_test.cpp` (#64, #70).
+ *       公历日期保留香港天文台发布的日期标记，不代表统一的历史时区规则。
+ *       与 algo2 的已知差异见 `src/test/lunar/diff_test.cpp`（#64、#70）。
  * @note Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed.
  *       These HKO-derived words remain under their source terms and outside the project MIT grant.
  */

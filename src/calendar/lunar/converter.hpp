@@ -44,6 +44,10 @@ using sys_days = std::chrono::sys_days;
  *         从 1 起的位置，闰月独占一位——不是传统编号（本接口没有闰月标记，表达不了）。
  *         例：2023 年闰二月，月 3 = 闰二月，传统三月 = 月 4。与传统编号的互转见
  *         `common::month_position` / `common::month_at_position`（#130）。
+ * @note   Gregorian inputs and outputs are calendar-date labels on the selected algorithm's
+ *         basis, not instants. See `algo1.hpp`, `algo2.hpp`, and `algo3.hpp` for their date bases.
+ *         公历输入和输出是所选算法基准上的日期标记，不是时刻。
+ *         各算法的日期基准见 `algo1.hpp`、`algo2.hpp` 和 `algo3.hpp`。
  */
 template <common::Algo algo>
 struct Converter {

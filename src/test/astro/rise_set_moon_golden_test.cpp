@@ -297,8 +297,8 @@ TEST(RiseSetMoonGolden, UsnoRiseTransitSet) {
                    + std::to_string(row.day)
                    + " @ " + std::to_string(row.lat);
 
-    expect_event(result.rise_jde, row.rise, tag + " rise");
-    expect_event(result.set_jde, row.set, tag + " set");
+    expect_event(result.rise_jde_tt, row.rise, tag + " rise");
+    expect_event(result.set_jde_tt, row.set, tag + " set");
 
     const bool has_rise = cell_minutes(row.rise).has_value();
     const bool has_transit = cell_minutes(row.transit).has_value();
@@ -309,7 +309,7 @@ TEST(RiseSetMoonGolden, UsnoRiseTransitSet) {
     // meridian crossing, like the solar API does. On those rows the transit cell has no golden
     // value and is skipped — same precedent as the solar polar-night row (#44).
     if (not no_events) {
-      expect_event(result.transit_jde, row.transit, tag + " transit");
+      expect_event(result.transit_jde_tt, row.transit, tag + " transit");
     }
 
     // Topology follows from the cells (see the file header for the direction inference):
@@ -326,7 +326,7 @@ TEST(RiseSetMoonGolden, UsnoRiseTransitSet) {
     // Pin the day axis: every event the engine emits must land inside the queried UT date —
     // `clock_diff` above is day-blind, and the whole point of the UT-day window is that the
     // cell attribution matches the almanac's.
-    for (const auto& event : { result.rise_jde, result.transit_jde, result.set_jde }) {
+    for (const auto& event : { result.rise_jde_tt, result.transit_jde_tt, result.set_jde_tt }) {
       if (event.has_value()) {
         ASSERT_EQ(astro::julian_day::jde_to_ut1(*event).ymd, ymd) << tag << " event date";
       }
