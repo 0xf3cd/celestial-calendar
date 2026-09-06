@@ -186,15 +186,15 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
     const auto r_default = calculate(ymd, location);
     const auto r_params = calculate(ymd, location, h0_from(Params {}));
 
-    ASSERT_TRUE(r_default.rise_jde.has_value());
-    ASSERT_TRUE(r_default.set_jde.has_value());
-    ASSERT_TRUE(r_params.rise_jde.has_value());
-    ASSERT_TRUE(r_params.set_jde.has_value());
+    ASSERT_TRUE(r_default.rise_jde_tt.has_value());
+    ASSERT_TRUE(r_default.set_jde_tt.has_value());
+    ASSERT_TRUE(r_params.rise_jde_tt.has_value());
+    ASSERT_TRUE(r_params.set_jde_tt.has_value());
 
     const double tol_days = 0.1 / 86400.0;
-    ASSERT_NEAR(req(r_default.rise_jde), req(r_params.rise_jde), tol_days)
+    ASSERT_NEAR(req(r_default.rise_jde_tt), req(r_params.rise_jde_tt), tol_days)
       << "lat=" << location.latitude.deg();
-    ASSERT_NEAR(req(r_default.set_jde), req(r_params.set_jde), tol_days)
+    ASSERT_NEAR(req(r_default.set_jde_tt), req(r_params.set_jde_tt), tol_days)
       << "lat=" << location.latitude.deg();
   }
 }

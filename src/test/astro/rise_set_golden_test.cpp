@@ -158,17 +158,17 @@ TEST(RiseSetGolden, UsnoRiseTransitSet) {
 
     ASSERT_EQ(result.polar == Polar::DAY, row.polar_day) << tag;
     ASSERT_EQ(result.polar == Polar::NIGHT, row.polar_night) << tag;
-    expect_event(result.rise_jde, row.rise, row.tz, tag + " rise");
-    expect_event(result.set_jde, row.set, row.tz, tag + " set");
+    expect_event(result.rise_jde_tt, row.rise, row.tz, tag + " rise");
+    expect_event(result.set_jde_tt, row.set, row.tz, tag + " set");
     if (cell_minutes(row.transit).has_value()) {
-      expect_event(result.transit_jde, row.transit, row.tz, tag + " transit");
+      expect_event(result.transit_jde_tt, row.transit, row.tz, tag + " transit");
     }
 
     // Pin the day axis: `clock_diff` alone is day-blind, and consecutive-day transits differ
     // only by the equation-of-time drift (≪ tolerance). The transit is ~local noon, so its
     // local-standard date must be the queried date on every row. The solar API is
     // transit-centered, so the transit always has a value here.
-    const double jd_local = detail::jde_tt_to_jd_ut1(req(result.transit_jde)) + (row.tz / 24.0);
+    const double jd_local = detail::jde_tt_to_jd_ut1(req(result.transit_jde_tt)) + (row.tz / 24.0);
     ASSERT_EQ(astro::julian_day::jd_to_ut1(jd_local).ymd, ymd) << tag << " transit date";
   }
 }
@@ -189,8 +189,8 @@ TEST(RiseSetGolden, UsnoCivilTwilight) {
                         or cell_minutes(row.civil_dusk).has_value();
     ASSERT_EQ(result.polar == Polar::DAY, not has_civil and not row.polar_night) << tag;
     ASSERT_EQ(result.polar == Polar::NIGHT, not has_civil and row.polar_night) << tag;
-    expect_event(result.rise_jde, row.civil_dawn, row.tz, tag + " dawn");
-    expect_event(result.set_jde, row.civil_dusk, row.tz, tag + " dusk");
+    expect_event(result.rise_jde_tt, row.civil_dawn, row.tz, tag + " dawn");
+    expect_event(result.set_jde_tt, row.civil_dusk, row.tz, tag + " dusk");
   }
 }
 
@@ -201,12 +201,12 @@ TEST(RiseSetGolden, SkyfieldDeepTwilights) {
                    + " @ " + std::to_string(row.lat);
 
     const Result nautical = sun::calculate(ymd, loc(row.lat, row.lon), sun::NAUTICAL_TWILIGHT);
-    expect_event(nautical.rise_jde, row.nautical_dawn, row.tz, tag + " nautical dawn");
-    expect_event(nautical.set_jde, row.nautical_dusk, row.tz, tag + " nautical dusk");
+    expect_event(nautical.rise_jde_tt, row.nautical_dawn, row.tz, tag + " nautical dawn");
+    expect_event(nautical.set_jde_tt, row.nautical_dusk, row.tz, tag + " nautical dusk");
 
     const Result astronomical = sun::calculate(ymd, loc(row.lat, row.lon), sun::ASTRONOMICAL_TWILIGHT);
-    expect_event(astronomical.rise_jde, row.astronomical_dawn, row.tz, tag + " astronomical dawn");
-    expect_event(astronomical.set_jde, row.astronomical_dusk, row.tz, tag + " astronomical dusk");
+    expect_event(astronomical.rise_jde_tt, row.astronomical_dawn, row.tz, tag + " astronomical dawn");
+    expect_event(astronomical.set_jde_tt, row.astronomical_dusk, row.tz, tag + " astronomical dusk");
     // London's June solstice Sun never reaches −18°: "polar day" at that altitude. All rows
     // here keep the transit-time Sun above −18°, so empty cells always mean polar day; a
     // future polar-night-at-−18° row would need a flag column like `GoldenRow`'s.

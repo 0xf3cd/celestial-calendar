@@ -31,8 +31,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
-RECORD_SHA256: Final[str] = "fcc705215221f6924d0406728f48b19166f197a7dc72389b6d48dc50cf7959fb"
-REGISTRY_SHA256: Final[str] = "2f31482e49d51f1f7b80ad979ece00fda088a16161b41dd45ae456ffe32cfe6e"
+RECORD_SHA256: Final[str] = "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
+REGISTRY_SHA256: Final[str] = "85c2df0dc31292bf3af1799c4fd26a1d3bd5fd827976bdbee3b368d2ea3eece1"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (

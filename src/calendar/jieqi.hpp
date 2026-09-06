@@ -257,6 +257,8 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  *       `query_jieqi_moment` (contract: `celestial.h`) and the HKO golden axis; UT1 stays
  *       for contract stability. The UT1/UTC gap is DUT1 (≤ 0.9 s while leap seconds are
  *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
+ * @note The returned date is not an east-eight wall date; rendering the same instant at a
+ *       fixed UTC+8 offset can change its calendar date.
  */
 [[nodiscard]] inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   if (year < 401) {

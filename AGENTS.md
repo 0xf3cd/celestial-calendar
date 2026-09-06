@@ -398,7 +398,7 @@ trigger is for.
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
 | **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
-| **No strong types for time scales** (`JdUt1` / `JdeTt`); the `jd_ut1` / `jde_tt` suffix convention carries it | Moon rise/set lands (#62), or a second #41-class mix-up reaches a test |
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public rise/set parameters and result members carry `ut1` / `jde_tt` suffixes | A second #41-class mix-up reaches a test, or one public entry point must accept two civil scales |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
 | **Header-only is the identity, and its compile cost is accepted** | Someone produces a compile-time measurement |
 | **The cache never evicts** — the mechanism has no eviction by design; each caller's key space is bounded by its declared window (`jieqi` [1, 32766], `algo2` by year range) | A caller with an unbounded key space appears |
@@ -408,7 +408,7 @@ trigger is for.
 | **No policy/context object for model selection**; the model stays a function parameter (`nutation::Model`) | A third real *ephemeris/nutation/EOP* backend appears (lunar `Algo` and frozen ΔT exhibits don't count) |
 | **Coordinate frames stay untagged**; names disambiguate (D2) | Another mix-up survives naming and reaches a result |
 | **Transcription runs on a single track**; equivalence is proved once during a migration, not maintained as a parallel implementation | A transcription lands that cannot be diffed against its predecessor in one run |
-| **Error budgets are not part of the API contract**; a fitted residual is never dressed up as a 1σ | A caller needs a declared accuracy to decide something |
+| **Quantified error budgets are not part of the API contract**; model selection uses source, status, hard domain, and role, and a fitted residual is never dressed up as a 1σ | A caller needs a validated quantitative bound that source/status/domain guidance cannot answer |
 | **The tool-existence checks in `automation/` are not merged into one**; the `toolbox/` `sys.path.append` copies cannot be merged either (#166) | A third call site needs the same failure policy as an existing two |
 | **The `using X = Y` aliases in the lunar headers stay** — load-bearing for self-containment (`common.hpp` / `converter.hpp` / `algo2.hpp`) | The style rule narrows what `using X = Y` may do |
 | **External ephemerides are oracles, never dependencies** — ytliu0, Horizons, USNO appear only under `src/test/` and in `@ref` comments | — (a line, not a bet) |

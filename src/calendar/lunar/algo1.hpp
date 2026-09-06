@@ -33,6 +33,12 @@ inline constexpr int32_t END_YEAR = 2099;
  * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record in
  *          `src/test/provenance/hko/2026-08-25/`.
+ * @note Gregorian dates preserve HKO's published calendar labels. Four divergences from algo2 in
+ *       1914/1915/1916/1920 reflect almanac/local-mean-time differences; the separate 2057/2097
+ *       divergences are near-midnight computational differences. These pins do not establish a
+ *       general historical time-zone rule. 公历日期保留香港天文台发布的日期标记。1914、1915、1916、
+ *       1920 年与 algo2 的四处分歧反映历书与地方平太阳时差异；2057、2097 年则是独立的临近午夜计算
+ *       分歧。这些已验证案例不能推出普遍的历史时区规则。
  * @note Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed.
  *       These HKO-derived words remain under their source terms and outside the project MIT grant.
  */
