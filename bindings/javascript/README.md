@@ -49,13 +49,14 @@ with the package. Model, phase, and logging choices are string unions such as `"
 `Jieqi` is a frozen object with 24 named constants, from `Jieqi.LICHUN = 0` through `Jieqi.DAHAN = 23`, using the
 same spellings as the Python package. The TypeScript type `Jieqi` is the corresponding `0 | 1 | ... | 23` union;
 a general `number` variable must be narrowed before passing it to `jieqi.moment()` or `jieqi.name()`.
+`jieqi.name()` returns the Chinese name, such as `"立春"` for `Jieqi.LICHUN`.
 
 Time scales and units stay explicit:
 
 - JD inputs and outputs are named as UT1 or JDE (TT) by the operation.
 - `jieqi.moment()` returns `{ jieqi, momentUt1 }`. Its nested civil moment is UT1, not UTC or an east-eight wall
   clock; rendering the same instant at UTC+8 can change its calendar date. Establish the time-scale conversion
-  before using a UTC or fixed-offset display.
+  before using a UTC or fixed-offset display. The returned UT1 year can differ from the requested year.
 - `sun.apparentSolarTime()` accepts civil UTC and east-positive longitude.
 - Angular results use degrees; Sun distance uses AU and Moon distance uses kilometres.
 - `time.deltaT()` returns seconds.
@@ -64,6 +65,7 @@ Time scales and units stay explicit:
   each at a TT-based JDE.
 
 `jieqi.moment(year, index)` accepts Gregorian years in `[401, 32766]` and Jieqi indices in `[0, 23]`.
+An in-range query can still throw `CelestialError` if the native calculation cannot produce a unique moment.
 `sun.longitudeCrossings(year, longitudeDeg)`, `moon.phaseMoments(year, phase)`, and `moon.newMoonsInYear(year)` accept
 Gregorian years in `[1, 32766]`.
 

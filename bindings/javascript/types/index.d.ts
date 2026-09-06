@@ -190,8 +190,11 @@ export const jieqi: Readonly<{
   /**
    * UT1 civil moment for a Gregorian year in [401, 32766].
    * Not an east-eight wall date or UTC: establish the time-scale conversion before displaying either.
+   * The returned UT1 year can differ from the requested year.
+   * @throws {CelestialError} If the native calculation cannot produce the moment.
    */
   moment(year: number, index: Jieqi): JieqiMoment;
+  /** Return the Chinese name of a Jieqi. */
   name(index: Jieqi): string;
 }>;
 
@@ -219,7 +222,7 @@ export const lunar: Readonly<{
    */
   yearInfo(algorithm: LunarAlgorithm, year: number): LunarYearInfo;
   /**
-    * Convert Gregorian date fields on the selected algorithm's basis, not a civil moment.
+   * Convert Gregorian date fields on the selected algorithm's basis, not a civil moment.
    * @throws {TypeError} For wrong types, missing own fields, fraction/isLeap tags, or non-integer date fields.
    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, or an invalid Gregorian date.
    * @throws {CelestialError} If the date is outside native Gregorian coverage or native conversion fails.

@@ -11,7 +11,6 @@
  */
 
 export const MAX_CIVIL_YEAR = 32_767;
-export const MILLISECONDS_PER_DAY = 86_400_000;
 const SECONDS_PER_DAY = 86_400;
 
 export const finiteNumber = (value, name) => {
@@ -44,7 +43,7 @@ export const rangedNumber = (value, name, minimum, maximum, includeMaximum = tru
   return value;
 };
 
-export const requiredRecord = (value, name, fields, excluded = []) => {
+export const requiredRecord = (value, name, fields, excluded) => {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object.`);
   }

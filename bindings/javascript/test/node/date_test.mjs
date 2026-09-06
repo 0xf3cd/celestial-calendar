@@ -214,8 +214,15 @@ check("invalid civil records", () => {
     }
   }
   for (const extra of [{ source: "extra field" }, { hour: 0, minute: 0, second: 0 }]) {
-    assert.equal(date.civilUtcToDate({ ...validCivil, ...extra }).getTime(), validDate.getTime(), "fraction is authoritative");
-    assert.equal(date.civilAtOffsetToDate({ ...validCivil, ...extra }, 480).getTime(), validDate.getTime() - 28_800_000);
+    assert.equal(
+      date.civilUtcToDate({ ...validCivil, ...extra }).getTime(),
+      validDate.getTime(),
+      "fraction is authoritative",
+    );
+    assert.equal(
+      date.civilAtOffsetToDate({ ...validCivil, ...extra }, 480).getTime(),
+      validDate.getTime() - 28_800_000,
+    );
   }
 });
 
@@ -236,7 +243,10 @@ check("invalid Date and out-of-domain UTC years", () => {
 
 check("offset endpoints and rejections", () => {
   for (const offset of [-1439, 1439]) {
-    assert.equal(date.civilAtOffsetToDate(date.dateToCivilAtOffset(validDate, offset), offset).getTime(), validDate.getTime());
+    assert.equal(
+      date.civilAtOffsetToDate(date.dateToCivilAtOffset(validDate, offset), offset).getTime(),
+      validDate.getTime(),
+    );
   }
   for (const [offset, ErrorType] of [
     [-1440, RangeError], [1440, RangeError], [-1439.5, TypeError], [1439.5, TypeError],
@@ -270,7 +280,10 @@ if (exhaustive) {
     ++checked;
   }
   assert.equal(checked, 86_400_000, "every millisecond position of the representative UTC day");
-  console.log(`PASS exhaustive public Date -> civil -> Date ${checked}/86400000 in ${((performance.now() - exhaustiveStarted) / 1000).toFixed(3)} s`);
+  console.log(
+    `PASS exhaustive public Date -> civil -> Date ${checked}/86400000 in ` +
+    `${((performance.now() - exhaustiveStarted) / 1000).toFixed(3)} s`,
+  );
 } else {
   console.log("SKIP exhaustive millisecond sweep (enable --exhaustive)");
 }

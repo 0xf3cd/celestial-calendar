@@ -12,13 +12,13 @@
 
 import {
   MAX_CIVIL_YEAR,
-  MILLISECONDS_PER_DAY,
   civilDateTime,
   civilDateTimeResult,
   finiteNumber,
   rangedInteger,
 } from "./validation.mjs";
 
+const MILLISECONDS_PER_DAY = 86_400_000;
 const MILLISECONDS_PER_MINUTE = 60_000;
 
 export const dateToCivilAtOffset = (date, offsetMinutesEast) => {

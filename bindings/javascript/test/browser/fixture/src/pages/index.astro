@@ -29,11 +29,11 @@
 
       const output = document.querySelector("#result");
       const civil = dateToCivilAtOffset(new Date("2024-02-03T16:00:00.000Z"), 480);
-      window.__CELESTIAL_DATE_RESULT__ = {
+      const dateResult = {
         civil,
         iso: civilAtOffsetToDate(civil, 480).toISOString(),
       };
-      document.querySelector("#date-result").textContent = JSON.stringify(window.__CELESTIAL_DATE_RESULT__);
+      document.querySelector("#date-result").textContent = JSON.stringify(dateResult);
       window.__CELESTIAL_IMPORTED__ = true;
       window.__START_CELESTIAL__ = async () => {
         try {
