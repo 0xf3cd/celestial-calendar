@@ -55,8 +55,28 @@ export async function runPackageConsumer({ dependency, expectedVersion, installA
       join(consumer, "consumer.mjs"),
       `import assert from "node:assert/strict";
 import * as celestial from "@0xf3cd/celestial";
+import {
+  dateToCivilUtc, civilUtcToDate, dateToCivilAtOffset, civilAtOffsetToDate,
+} from "@0xf3cd/celestial/date";
+
+const date = new Date("2024-02-03T16:00:00.000Z");
+const utc = dateToCivilUtc(date);
+assert.deepEqual(utc, {
+  year: 2024, month: 2, day: 3, fraction: 2 / 3, hour: 16, minute: 0, second: 0,
+});
+assert.equal(civilUtcToDate(utc).getTime(), date.getTime());
+const local = dateToCivilAtOffset(date, 480);
+assert.deepEqual(local, {
+  year: 2024, month: 2, day: 4, fraction: 0, hour: 0, minute: 0, second: 0,
+});
+assert.equal(civilAtOffsetToDate(local, 480).getTime(), date.getTime());
 
 await celestial.init();
+const lichun = celestial.jieqi.moment(2024, celestial.Jieqi.LICHUN);
+assert.deepEqual(Object.keys(lichun).sort(), ["jieqi", "momentUt1"]);
+assert.equal(lichun.jieqi, celestial.Jieqi.LICHUN);
+assert.equal(lichun.momentUt1.year, 2024);
+assert(Number.isFinite(celestial.time.ut1ToJd(lichun.momentUt1)));
 const value = celestial.moon.illumination(2448724.5);
 assert(Math.abs(value.fraction - 0.6786) < 5e-5);
 console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumination" }));

@@ -98,7 +98,16 @@ try {
 
   await page.goto(ORIGIN, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => window.__CELESTIAL_IMPORTED__ === true, { timeout: 60_000 });
-  assert.equal(requests.filter((url) => new URL(url).pathname.endsWith(".wasm")).length, 0, "import fetched WASM");
+  const dateResult = await page.$eval("#date-result", (output) => JSON.parse(output.textContent));
+  assert.deepEqual(dateResult, {
+    civil: { year: 2024, month: 2, day: 4, fraction: 0, hour: 0, minute: 0, second: 0 },
+    iso: "2024-02-03T16:00:00.000Z",
+  });
+  assert.equal(
+    requests.filter((url) => new URL(url).pathname.endsWith(".wasm")).length,
+    0,
+    "import or date conversion fetched WASM",
+  );
 
   await page.evaluate(() => window.__START_CELESTIAL__());
   await page.waitForFunction(() => window.__CELESTIAL_RESULT__ !== undefined, { timeout: 60_000 });
@@ -106,6 +115,13 @@ try {
   assert(!result.fatal, result.fatal);
   assert.equal(result.translated, true, "recording failure was not translated");
   assert.equal(result.survived, true, "module did not survive a translated failure");
+  assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
+  assert.equal(result.lichunMatches, true);
+  assert.equal(result.lichun.momentUt1.year, 2024);
+  assert(Number.isInteger(result.lichun.momentUt1.hour));
+  assert(Number.isInteger(result.lichun.momentUt1.minute));
+  assert(Number.isFinite(result.lichun.momentUt1.second));
+  assert(Number.isFinite(result.jdUt1));
 
   const wasmRequests = requests.filter((url) => new URL(url).pathname.endsWith(".wasm"));
   assert.equal(wasmRequests.length, 1, `expected one WASM request: ${JSON.stringify(wasmRequests)}`);
@@ -132,6 +148,7 @@ try {
     wasmAsset: `dist/assets/${wasmAssets[0]}`,
     wasmBytes,
     importedWithoutFetch: true,
+    dateConvertedWithoutFetch: true,
     exceptionTranslated: true,
     moduleSurvived: true,
   }));

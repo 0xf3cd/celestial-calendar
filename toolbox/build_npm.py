@@ -40,7 +40,10 @@ PACKAGE_FILES: Final[dict[Path, str]] = {
   PROJ_ROOT / "THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
   PACKAGE_SOURCE / "src" / "index.mjs": "index.mjs",
   PACKAGE_SOURCE / "src" / "bindings.mjs": "bindings.mjs",
+  PACKAGE_SOURCE / "src" / "validation.mjs": "validation.mjs",
+  PACKAGE_SOURCE / "src" / "date.mjs": "date.mjs",
   PACKAGE_SOURCE / "types" / "index.d.ts": "index.d.ts",
+  PACKAGE_SOURCE / "types" / "date.d.ts": "date.d.ts",
   WASM_SOURCE / "celestial-jieqi.mjs": "celestial-jieqi.mjs",
   WASM_SOURCE / "celestial-jieqi.wasm": "celestial-jieqi.wasm",
 }
@@ -63,7 +66,10 @@ PACK_ALLOWLIST: Final[set[str]] = {
   "THIRD_PARTY_NOTICES.txt",
   "index.mjs",
   "bindings.mjs",
+  "validation.mjs",
+  "date.mjs",
   "index.d.ts",
+  "date.d.ts",
   "celestial-jieqi.mjs",
   "celestial-jieqi.wasm",
 }
@@ -97,6 +103,11 @@ def staging_manifest(version: str) -> dict:
       "import": "./index.mjs",
       "default": "./index.mjs",
     },
+    "./date": {
+      "types": "./date.d.ts",
+      "import": "./date.mjs",
+      "default": "./date.mjs",
+    },
   }
   source["types"] = "./index.d.ts"
   source["files"] = sorted(path for path in PACK_ALLOWLIST if path != "package.json")
@@ -109,6 +120,19 @@ def verify_manifest(manifest: dict, version: str) -> None:
     "version": version,
     "type": "module",
     "types": "./index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./index.d.ts",
+        "import": "./index.mjs",
+        "default": "./index.mjs",
+      },
+      "./date": {
+        "types": "./date.d.ts",
+        "import": "./date.mjs",
+        "default": "./date.mjs",
+      },
+    },
+    "files": sorted(path for path in PACK_ALLOWLIST if path != "package.json"),
     "engines": {"node": ">=22"},
     "repository": REPOSITORY,
     "license": "MIT",

@@ -103,6 +103,7 @@ jobs:
       - name: Current Node package, types, and exact-tarball consumers
         run: |
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs --exhaustive
           node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
           npm run test:types --prefix bindings/javascript
 
@@ -119,6 +120,7 @@ jobs:
           node --version
           npm --version
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs
           node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
 
       # The release flow downloads this artifact for the tagged commit (the ritual
