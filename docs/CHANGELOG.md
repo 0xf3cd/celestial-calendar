@@ -32,6 +32,13 @@
   failure throws `CelestialError` with the caller's public operation name.
 - The npm tarball grows from nine to twelve members for the pure date bridge, shared validators, and date
   declarations. The outer `celestial-wasm` artifact still has seven members.
+- Python `solar_longitude_roots()` is renamed to `sun_longitude_crossings()`, including its
+  `CelestialError.operation` name, without a compatibility alias. Other flat function names are unchanged.
+- Python lunar-year validation now queries the native range once per year-consuming call instead of keeping a
+  duplicate range table. Out-of-range lunar years still raise `ValueError`; native range-query failures raise
+  `CelestialError` with the caller's public operation name.
+- The Python package README now documents algorithm-specific lunar date bases, the Jieqi UT1 contract, and Delta T
+  model profiles. Python's four-field `CivilDateTime` and nested `JieqiMoment` are unchanged.
 
 ### Added
 
@@ -40,6 +47,10 @@
 - `@0xf3cd/celestial/date` exports `dateToCivilUtc()`, `civilUtcToDate()`, `dateToCivilAtOffset()`, and
   `civilAtOffsetToDate()` without `init()`, WASM, or runtime dependencies. The bridge does not supply IANA-zone,
   UT1/TT, or Date-to-JDE conversion. See `bindings/javascript/README.md` for the date bridge contract.
+- Python adds the static `GregorianDate.from_date()` factory and `GregorianDate.to_date()`; `gregorian_to_lunar()`
+  also accepts standard-library date-only values. Date subclasses are accepted, but all `datetime.datetime` values
+  are rejected. The bridge preserves date labels without timezone or time-scale conversion; `GregorianDate` remains
+  wider than the standard-library date domain. See `bindings/python/README.md` for the full contract.
 
 ## [v0.6.1] - 2026-08-24
 

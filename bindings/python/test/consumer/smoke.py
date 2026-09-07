@@ -12,7 +12,10 @@
 
 from __future__ import annotations
 
+import datetime
+import importlib
 import math
+import sys
 from contextlib import contextmanager
 from dataclasses import FrozenInstanceError
 from importlib import resources
@@ -49,9 +52,11 @@ class Trap:
     self.result = result
     self.fail = fail
     self.calls = 0
+    self.args = ()
 
   def __call__(self, *args: object) -> object:
     self.calls += 1
+    self.args = args
     if self.fail:
       raise AssertionError("native call crossed a rejected-input guard")
     return self.result
@@ -98,9 +103,9 @@ def run_happy_paths() -> None:
   checks.append("moon_bright_limb_position_angle")
   assert all(len(celestial.moon_phase_moments(2024, phase)) >= 12 for phase in celestial.MoonPhase)
   checks.append("moon_phase_moments")
-  assert len(celestial.solar_longitude_roots(2024, 0.0)) == 1
-  assert len(celestial.solar_longitude_roots(2024, 280.1)) == 2
-  checks.append("solar_longitude_roots")
+  assert len(celestial.sun_longitude_crossings(2024, 0.0)) == 1
+  assert len(celestial.sun_longitude_crossings(2024, 280.1)) == 2
+  checks.append("sun_longitude_crossings")
   assert len(celestial.new_moons_after(2451545.0, 3)) == 3
   checks.append("new_moons_after")
   assert len(celestial.new_moons_in_year(2024)) >= 12
@@ -148,7 +153,7 @@ def run_validation_guards() -> None:
     ("moon_illumination", lambda: celestial.moon_illumination("2451545"), TypeError),
     ("moon_position_angle", lambda: celestial.moon_bright_limb_position_angle(float("-inf")), ValueError),
     ("moon_phase_moments", lambda: celestial.moon_phase_moments(2024, 0), TypeError),
-    ("solar_lon_root_discriminant", lambda: celestial.solar_longitude_roots(2024, 360.0), ValueError),
+    ("solar_lon_root_discriminant", lambda: celestial.sun_longitude_crossings(2024, 360.0), ValueError),
     ("new_moons_after_jde", lambda: celestial.new_moons_after(2451545.0, celestial.Jieqi.DAHAN), TypeError),
     ("new_moons_after_jde", lambda: celestial.new_moons_after(2451545.0, 1.5), TypeError),
     ("new_moons_after_jde", lambda: celestial.new_moons_after(2451545.0, -1), ValueError),
@@ -190,6 +195,213 @@ def run_validation_guards() -> None:
       raises(error_type, action)
     assert trap.calls == 0, binding_name
   print(f"PASS hostile inputs pre-native {len(cases)}/{len(cases)}")
+
+
+def run_date_bridge() -> None:
+  """Keep date-only conversion separate from time scales and the wider project date range."""
+
+  class DateSubclass(datetime.date):
+    pass
+
+  class DateTimeSubclass(datetime.datetime):
+    pass
+
+  class GregorianDateSubclass(celestial.GregorianDate):
+    pass
+
+  assert isinstance(celestial.GregorianDate.__dict__["from_date"], staticmethod)
+  for value in (
+    datetime.date(1, 1, 1),
+    datetime.date(9999, 12, 31),
+    datetime.date(2000, 2, 29),
+    DateSubclass(2024, 2, 10),
+  ):
+    expected = celestial.GregorianDate(value.year, value.month, value.day)
+    for factory in (
+      celestial.GregorianDate.from_date,
+      GregorianDateSubclass.from_date,
+      GregorianDateSubclass(10000, 1, 1).from_date,
+    ):
+      converted = factory(value)
+      assert type(converted) is celestial.GregorianDate and converted == expected
+      restored = converted.to_date()
+      assert type(restored) is datetime.date and restored == value
+  assert GregorianDateSubclass(2024, 2, 29).to_date() == datetime.date(2024, 2, 29)
+
+  rejected_dates = (
+    datetime.datetime(2024, 2, 10),
+    datetime.datetime(2024, 2, 10, 23, 30, tzinfo=datetime.timezone(datetime.timedelta(hours=-8))),
+    DateTimeSubclass(2024, 2, 10),
+    DateTimeSubclass(2024, 2, 10, tzinfo=datetime.timezone.utc),
+    celestial.CivilDateTime(2024, 2, 10, 0.0),
+    {"year": 2024, "month": 2, "day": 10},
+    "2024-02-10",
+    None,
+  )
+  for value in (*rejected_dates, celestial.GregorianDate(2024, 2, 10)):
+    raises(TypeError, lambda value=value: celestial.GregorianDate.from_date(value))
+
+  invalid_dates = [
+    (celestial.GregorianDate(0, 1, 1), ValueError),
+    (celestial.GregorianDate(-1, 1, 1), ValueError),
+    (celestial.GregorianDate(32768, 1, 1), ValueError),
+    (celestial.GregorianDate(2024, 0, 1), ValueError),
+    (celestial.GregorianDate(2024, 13, 1), ValueError),
+    (celestial.GregorianDate(2024, 1, 0), ValueError),
+    (celestial.GregorianDate(2024, 1, 32), ValueError),
+    (celestial.GregorianDate(2024, 4, 31), ValueError),
+    (celestial.GregorianDate(2023, 2, 29), ValueError),
+    (celestial.GregorianDate(1900, 2, 29), ValueError),
+  ]
+  for field in ("year", "month", "day"):
+    for value in (True, 1.0, "1", None, celestial.Jieqi.YUSHUI):
+      fields = {"year": 2024, "month": 1, "day": 1, field: value}
+      invalid_dates.append((celestial.GregorianDate(**fields), TypeError))
+  for value, error_type in invalid_dates:
+    raises(error_type, value.to_date)
+  for year in (10000, 32767):
+    value = celestial.GregorianDate(year, 1, 1)
+    assert value.year == year
+    raises(ValueError, value.to_date)
+
+  for algorithm, native_algorithm in zip(celestial.LunarAlgorithm, (1, 2, 3), strict=True):
+    rejected = Trap(fail=True)
+    with replaced_binding("gregorian_to_lunar", rejected):
+      for value in rejected_dates:
+        raises(TypeError, lambda value=value, algorithm=algorithm: celestial.gregorian_to_lunar(algorithm, value))
+      for value, error_type in invalid_dates:
+        raises(error_type, lambda value=value, algorithm=algorithm: celestial.gregorian_to_lunar(algorithm, value))
+    assert rejected.calls == 0
+
+    accepted = Trap(SimpleNamespace(valid=True, year=2024, month=1, day=1, is_leap=False))
+    with replaced_binding("gregorian_to_lunar", accepted):
+      for year in (1, 9999, 10000, 32767):
+        assert celestial.gregorian_to_lunar(algorithm, celestial.GregorianDate(year, 1, 1)) == celestial.LunarDate(
+          2024, 1, 1, False
+        )
+        assert accepted.args == (native_algorithm, year, 1, 1)
+        if year <= datetime.MAXYEAR:
+          assert celestial.gregorian_to_lunar(algorithm, datetime.date(year, 1, 1)) == celestial.LunarDate(
+            2024, 1, 1, False
+          )
+          assert accepted.args == (native_algorithm, year, 1, 1)
+    assert accepted.calls == 6
+
+    for value in (datetime.date(2024, 2, 10), DateSubclass(2024, 2, 10)):
+      lunar = celestial.gregorian_to_lunar(algorithm, value)
+      assert lunar == celestial.LunarDate(2024, 1, 1, False)
+      gregorian = celestial.lunar_to_gregorian(algorithm, lunar)
+      assert type(gregorian) is celestial.GregorianDate
+      assert gregorian.to_date() == value
+      assert celestial.gregorian_to_lunar(algorithm, gregorian.to_date()) == lunar
+    assert celestial.lunar_year_info(algorithm, 2024).first_day.to_date() == datetime.date(2024, 2, 10)
+  print("PASS date-only factory, guards, wide years and Lunar round trips")
+
+
+def run_lunar_range_queries() -> None:
+  """Use changing native bounds to detect tables, caches and reordered validation."""
+  query = Trap(fail=True)
+  with replaced_binding("get_supported_lunar_year_range", query):
+    original = sys.modules.pop("celestial_calendar")
+    try:
+      imported = importlib.import_module("celestial_calendar")
+      assert imported is not original and imported._binding is _binding
+    finally:
+      sys.modules["celestial_calendar"] = original
+  assert query.calls == 0
+
+  for algorithm, native_algorithm in zip(celestial.LunarAlgorithm, (1, 2, 3), strict=True):
+    query = Trap()
+    with replaced_binding("get_supported_lunar_year_range", query):
+      for count, (start, end) in enumerate(((2024, 2024), (10000, 10001)), start=1):
+        query.result = SimpleNamespace(valid=True, start=start, end=end)
+        assert celestial.supported_lunar_year_range(algorithm) == celestial.LunarYearRange(start, end)
+        assert query.calls == count and query.args == (native_algorithm,)
+
+    cases = (
+      (
+        "lunar_year_info",
+        "get_lunar_year_info",
+        lambda year, algorithm=algorithm: celestial.lunar_year_info(algorithm, year),
+        SimpleNamespace(valid=True, year=2024, month=2, day=10, leap_month=0, month_len=0),
+      ),
+      (
+        "lunar_to_gregorian",
+        "lunar_to_gregorian",
+        lambda year, algorithm=algorithm: celestial.lunar_to_gregorian(
+          algorithm, celestial.LunarDate(year, 1, 1, False)
+        ),
+        SimpleNamespace(valid=True, year=2024, month=2, day=10),
+      ),
+    )
+    for operation, binding_name, action, result in cases:
+      query = Trap(SimpleNamespace(valid=True, start=2024, end=2024))
+      calculation = Trap(result)
+      with replaced_binding("get_supported_lunar_year_range", query), replaced_binding(binding_name, calculation):
+        for count in (1, 2):
+          action(2024)
+          assert query.calls == calculation.calls == count
+          assert query.args == (native_algorithm,)
+        for count, year in enumerate((2025, 2023), start=3):
+          query.result = SimpleNamespace(valid=True, start=year, end=year)
+          raises(ValueError, lambda action=action: action(2024))
+          assert query.calls == count and calculation.calls == 2
+        query.result = SimpleNamespace(valid=True, start=10000, end=10001)
+        for count, year in enumerate((10000, 10001), start=5):
+          action(year)
+          assert query.calls == count and calculation.calls == count - 2
+          assert calculation.args[:2] == (native_algorithm, year)
+
+        calculation.fail = True
+        query.result = SimpleNamespace(valid=True, start=2024, end=2024)
+        for year, error_type in ((0, ValueError), (True, TypeError), (2024.0, TypeError)):
+          before = query.calls
+          raises(error_type, lambda year=year, action=action: action(year))
+          assert query.calls == before + 1 and calculation.calls == 4
+
+        query.result = SimpleNamespace(valid=False)
+        for detail in (b"range query failed", b""):
+          error_reader = Trap(detail)
+          with replaced_binding("last_error", error_reader):
+            for count, year in enumerate((0, True), start=1):
+              before = query.calls
+              error = raises(celestial.CelestialError, lambda year=year, action=action: action(year))
+              assert error.operation == operation and error.recorded is bool(detail)
+              assert str(error) == (detail.decode() if detail else f"{operation} failed")
+              assert query.calls == before + 1 and query.args == (native_algorithm,)
+              assert calculation.calls == 4 and error_reader.calls == count
+
+    for detail in (b"range query failed", b""):
+      query = Trap(SimpleNamespace(valid=False))
+      error_reader = Trap(detail)
+      with replaced_binding("get_supported_lunar_year_range", query), replaced_binding("last_error", error_reader):
+        error = raises(
+          celestial.CelestialError,
+          lambda algorithm=algorithm: celestial.supported_lunar_year_range(algorithm),
+        )
+      assert error.operation == "supported_lunar_year_range" and error.recorded is bool(detail)
+      assert str(error) == (detail.decode() if detail else "supported_lunar_year_range failed")
+      assert query.calls == error_reader.calls == 1 and query.args == (native_algorithm,)
+
+    query = Trap(fail=True)
+    calculation = Trap(fail=True)
+    with replaced_binding("get_supported_lunar_year_range", query), replaced_binding("lunar_to_gregorian", calculation):
+      for value in (None, {"year": 2024}, celestial.GregorianDate(2024, 1, 1)):
+        raises(TypeError, lambda value=value, algorithm=algorithm: celestial.lunar_to_gregorian(algorithm, value))
+    assert query.calls == calculation.calls == 0
+
+    query = Trap(SimpleNamespace(valid=True, start=2024, end=2024))
+    invalid_dates = (
+      (celestial.LunarDate(2024, True, 1, False), TypeError),
+      (celestial.LunarDate(2024, 0, 1, False), ValueError),
+      (celestial.LunarDate(2024, 1, 31, False), ValueError),
+      (celestial.LunarDate(2024, 1, 1, 1), TypeError),
+    )
+    with replaced_binding("get_supported_lunar_year_range", query), replaced_binding("lunar_to_gregorian", calculation):
+      for count, (value, error_type) in enumerate(invalid_dates, start=1):
+        raises(error_type, lambda value=value, algorithm=algorithm: celestial.lunar_to_gregorian(algorithm, value))
+        assert query.calls == count and calculation.calls == 0
+  print("PASS fresh native Lunar bounds, query counts, failure ordering and query-free import")
 
 
 def run_native_failures() -> None:
@@ -291,11 +503,45 @@ def run_protocol_seams() -> None:
   assert error.operation == "sun_apparent_geocentric_coordinate" and error.recorded
   assert sun_failure.calls == error_reader.calls == 1
 
-  assert celestial.solar_longitude_roots(1, 281.3) == ()
+  assert celestial.sun_longitude_crossings(1, 281.3) == ()
   assert celestial.new_moons_after(2451545.0, 0) == ()
   assert celestial.lunar_year_info(celestial.LunarAlgorithm.ALGO3, 2024).leap_month is None
   assert celestial.jieqi_name(celestial.Jieqi.LICHUN) == "立春"
   print("PASS count boundary 4096/4097; last_error reads 4/4")
+
+
+def run_sun_crossing_failures() -> None:
+  """Both unchanged native entry points report the renamed public operation."""
+  discriminant = Trap(fail=True)
+  roots = Trap(fail=True)
+  with replaced_binding("solar_lon_root_discriminant", discriminant), replaced_binding("solar_lon_roots", roots):
+    for year, longitude, error_type in (
+      (0, 0.0, ValueError),
+      (32767, 0.0, ValueError),
+      (2024, -1.0, ValueError),
+      (2024, 360.0, ValueError),
+      (2024, float("nan"), ValueError),
+      (True, 0.0, TypeError),
+      (2024, "0.0", TypeError),
+    ):
+      raises(error_type, lambda year=year, longitude=longitude: celestial.sun_longitude_crossings(year, longitude))
+  assert discriminant.calls == roots.calls == 0
+
+  for detail in (b"sun crossing failed", b""):
+    for valid in (False, True):
+      discriminant = Trap(SimpleNamespace(valid=valid, count=1))
+      roots = Trap(0, fail=not valid)
+      error_reader = Trap(detail)
+      with (
+        replaced_binding("solar_lon_root_discriminant", discriminant),
+        replaced_binding("solar_lon_roots", roots),
+        replaced_binding("last_error", error_reader),
+      ):
+        error = raises(celestial.CelestialError, lambda: celestial.sun_longitude_crossings(2024, 0.0))
+      assert error.operation == "sun_longitude_crossings" and error.recorded is bool(detail)
+      assert str(error) == (detail.decode() if detail else "sun_longitude_crossings failed")
+      assert discriminant.calls == error_reader.calls == 1 and roots.calls == int(valid)
+  print("PASS renamed sun crossing failure operations")
 
 
 def run_value_contract() -> None:
@@ -305,6 +551,47 @@ def run_value_contract() -> None:
   assert len(celestial.__all__) == len(set(celestial.__all__))
   public_names = {name for name in celestial.__dict__ if not name.startswith("_")} | {"__version__"}
   assert set(celestial.__all__) == public_names
+  assert set(celestial.__all__) == {
+    "CelestialError",
+    "CivilDateTime",
+    "DeltaTModel",
+    "GregorianDate",
+    "Jieqi",
+    "JieqiMoment",
+    "LogVerbosity",
+    "LunarAlgorithm",
+    "LunarDate",
+    "LunarYearInfo",
+    "LunarYearRange",
+    "MoonCoordinate",
+    "MoonIllumination",
+    "MoonPhase",
+    "SunCoordinate",
+    "__version__",
+    "apparent_solar_time",
+    "delta_t",
+    "equation_of_time",
+    "gregorian_to_lunar",
+    "jde_to_ut1",
+    "jieqi_moment",
+    "jieqi_name",
+    "local_apparent_sidereal_time",
+    "lunar_to_gregorian",
+    "lunar_year_info",
+    "moon_apparent_geocentric_coordinate",
+    "moon_bright_limb_position_angle",
+    "moon_illumination",
+    "moon_phase_moments",
+    "new_moons_after",
+    "new_moons_in_year",
+    "set_log_verbosity",
+    "sun_apparent_geocentric_coordinate",
+    "sun_longitude_crossings",
+    "supported_lunar_year_range",
+    "ut1_to_jd",
+    "ut1_to_jde",
+  }
+  assert not hasattr(celestial, "solar_longitude_roots")
   assert not hasattr(celestial, "last_error")
   assert not hasattr(celestial, "solar_lon_root_discriminant")
   assert not hasattr(celestial, "delta_t_algo1")
@@ -315,9 +602,12 @@ def main() -> None:
   """Run the installed-wheel consumer suite."""
   run_happy_paths()
   run_validation_guards()
+  run_date_bridge()
+  run_lunar_range_queries()
   run_native_failures()
   run_acceptance_boundaries()
   run_protocol_seams()
+  run_sun_crossing_failures()
   run_value_contract()
 
 
