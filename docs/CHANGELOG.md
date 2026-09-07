@@ -38,14 +38,8 @@
 - JavaScript exports a frozen `Jieqi` object with 24 named constants, using the Python spellings from `LICHUN = 0`
   through `DAHAN = 23`, and a corresponding TypeScript `0`-through-`23` union.
 - `@0xf3cd/celestial/date` exports `dateToCivilUtc()`, `civilUtcToDate()`, `dateToCivilAtOffset()`, and
-  `civilAtOffsetToDate()` without `init()`, WASM, or runtime dependencies. Fixed offsets are safe integer minutes
-  in `[-1439, 1439]`, positive east of UTC. Date-to-civil conversion preserves millisecond resolution;
-  civil-to-Date conversion rounds locally to the nearest millisecond, with ties toward the next instant and
-  explicit day carry. Same-offset Date round trips preserve `getTime()` exactly for local civil years in
-  `[1, 32767]`. Input and rounded local years must stay in that domain; returned UTC carriers may have year 0 or
-  32768 at offset edges. Invalid dates, offsets, and upper-bound rounding carry are rejected. The bridge does not
-  supply IANA-zone, UT1/TT, or Date-to-JDE conversion. Record inputs read explicit fields without converting
-  `Date` timestamps.
+  `civilAtOffsetToDate()` without `init()`, WASM, or runtime dependencies. The bridge does not supply IANA-zone,
+  UT1/TT, or Date-to-JDE conversion. See the [date bridge contract](../bindings/javascript/README.md#fixed-offset-date-bridge).
 
 ## [v0.6.1] - 2026-08-24
 

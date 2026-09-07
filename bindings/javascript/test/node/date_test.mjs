@@ -99,6 +99,47 @@ check("minute boundary 00:13:00", () => {
   assert.equal(date.civilUtcToDate(value).getTime(), instant.getTime());
 });
 
+check("UTC and fixed offsets are independent of the host timezone", () => {
+  const originalTimezone = process.env.TZ;
+  try {
+    for (const [timezone, timezoneOffset] of [
+      ["UTC", 0], ["Pacific/Kiritimati", -840], ["America/Los_Angeles", 480],
+    ]) {
+      process.env.TZ = timezone;
+      assert.equal(
+        new Date("2024-01-01T00:00:00.000Z").getTimezoneOffset(),
+        timezoneOffset,
+        "host timezone must be active",
+      );
+
+      for (const [iso, year] of [
+        ["0099-12-31T23:13:00.000Z", 99],
+        ["2023-12-31T23:13:00.000Z", 2023],
+      ]) {
+        const instant = new Date(iso);
+        const utc = date.dateToCivilUtc(instant);
+        civilResult(utc, year, 12, 31, 23, 13, 83_580_000);
+        assert.equal(date.civilUtcToDate(utc).getTime(), instant.getTime());
+
+        const local = date.dateToCivilAtOffset(instant, 480);
+        civilResult(local, year + 1, 1, 1, 7, 13, 25_980_000);
+        assert.equal(date.civilAtOffsetToDate(local, 480).getTime(), instant.getTime());
+      }
+
+      const carry = { year: 2024, month: 2, day: 28, fraction: (millisecondsPerDay - 0.5) / millisecondsPerDay };
+      assert.equal(date.civilUtcToDate(carry).toISOString(), "2024-02-29T00:00:00.000Z");
+      assert.equal(date.civilAtOffsetToDate(carry, 480).toISOString(), "2024-02-28T16:00:00.000Z");
+
+      const firstDay = { year: 1, month: 1, day: 1, fraction: 0 };
+      assert.equal(date.civilUtcToDate(firstDay).toISOString(), "0001-01-01T00:00:00.000Z");
+      assert.equal(date.civilAtOffsetToDate(firstDay, 1439).toISOString(), "0000-12-31T00:01:00.000Z");
+    }
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+});
+
 check("Gregorian leap days", () => {
   for (const year of [4, 400, 2000, 2024]) {
     const civil = { year, month: 2, day: 29, fraction: 0 };
@@ -258,8 +299,8 @@ check("offset endpoints and rejections", () => {
   }
 });
 
-assert.equal(directed, 17, "directed date case groups");
-console.log(`PASS directed date groups ${directed}/17 in ${((performance.now() - started) / 1000).toFixed(3)} s`);
+assert.equal(directed, 18, "directed date case groups");
+console.log(`PASS directed date groups ${directed}/18 in ${((performance.now() - started) / 1000).toFixed(3)} s`);
 
 if (exhaustive) {
   const exhaustiveStarted = performance.now();

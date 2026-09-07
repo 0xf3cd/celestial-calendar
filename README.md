@@ -113,11 +113,8 @@ const lichun = celestial.jieqi.moment(2026, celestial.Jieqi.LICHUN);
 console.log(celestial.jieqi.name(lichun.jieqi), lichun.momentUt1);
 ```
 
-Node 22 or newer is supported; the browser package is tested on Chrome. `Jieqi` is a frozen 24-property constant
-object with a literal `0`-through-`23` TypeScript value union; phase, model, and logging choices remain string
-unions. Jieqi results are `{ jieqi, momentUt1 }`, with UT1 civil fields nested under `momentUt1`, not an east-eight
-wall date. Civil outputs add integer `hour`/`minute` and fractional `second` without millisecond rounding.
-`sun.apparentGeocentricCoordinate()` and `moon.apparentGeocentricCoordinate()` each return one coordinate record.
+Node 22 or newer is supported; the browser package is tested on Chrome. Jieqi results are `{ jieqi, momentUt1 }`,
+with UT1 civil fields nested under `momentUt1`, not an east-eight wall date.
 
 The root APIs read explicit fields without converting `Date` timestamps. `GregorianDate`, `CivilDateTime`, and
 `LunarDate` remain disjoint; do not pass a civil moment or lunar date directly to `lunar.fromGregorian()`.
@@ -131,13 +128,8 @@ const eastEight = dateToCivilAtOffset(date, 480); // 2024-02-10, 00:00:00.123
 console.log(civilAtOffsetToDate(eastEight, 480).getTime() === date.getTime()); // true
 ```
 
-The subpath also exports `dateToCivilUtc()` and `civilUtcToDate()`. Offsets are safe integer minutes in
-`[-1439, 1439]`, positive east of UTC; civil years before and after nearest-millisecond rounding/carry must be in
-`[1, 32767]`. A UTC carrier may have year 0 or 32768 at an offset edge. Date-to-civil conversion preserves Date's
-millisecond resolution; civil-to-Date conversion rounds to the nearest millisecond, with ties toward the next
-civil instant and explicit day carry. Same-offset Date round trips preserve `getTime()` exactly when the local
-civil year is in range. This is not a UT1/TT conversion or an IANA-zone API, and it makes no full-domain claim that
-UTC and UT1 coincide. See `bindings/javascript/README.md` for the date, lunar, model, and error contracts.
+The subpath also exports `dateToCivilUtc()` and `civilUtcToDate()`. This is not a UT1/TT conversion or an IANA-zone
+API. See `bindings/javascript/README.md` for the date, lunar, model, and error contracts.
 
 ## 2. Features
 
@@ -302,10 +294,8 @@ The `statistics/` directory holds the crawlers that regenerate these datasets an
 The module contains all 29 stable exports in `celestial.h`; `@0xf3cd/celestial` wraps them as the `config`,
 `time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces. Raw heap pointers, count/fill protocols, sret layouts,
 and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact 12-file npm tarball
-from the generated module and the version in `project.py`: `package.json`, `index.mjs`, `bindings.mjs`,
-`validation.mjs`, `date.mjs`, `index.d.ts`, `date.d.ts`, `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `README.md`,
-`LICENSE`, and `THIRD_PARTY_NOTICES.txt`. The `@0xf3cd/celestial/date` entry imports only the pure validators,
-not the root entry or Emscripten glue.
+from the generated module and the version in `project.py`. The `@0xf3cd/celestial/date` entry imports only the pure
+validators, not the root entry or Emscripten glue.
 
 CI builds the module and package on an independent leg (`wasm.yml`). Its
 `celestial-wasm` artifact contains exactly 7 top-level files: `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `LICENSE`,
