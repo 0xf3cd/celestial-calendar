@@ -10,6 +10,7 @@
 
 import json
 import re
+import shlex
 from collections import Counter
 from pathlib import Path
 
@@ -149,3 +150,22 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
+
+
+def test_date_bridge_runs_on_current_and_floor_node():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  entry = "bindings/javascript/test/node/date_test.mjs"
+  command = ["node", entry, "build/npm/package/date.mjs"]
+  node_version = None
+  invocations = []
+  for step in workflow["jobs"]["wasm"]["steps"]:
+    if str(step.get("uses", "")).startswith("actions/setup-node@"):
+      node_version = step["with"]["node-version"]
+    for line in step.get("run", "").splitlines():
+      if line.strip().startswith(f"node {entry} "):
+        invocations.append((node_version, shlex.split(line)))
+
+  assert invocations == [
+    ("${{ env.NODE_CURRENT }}", [*command, "--exhaustive"]),
+    ("${{ env.NODE_FLOOR }}", command),
+  ]

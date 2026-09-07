@@ -20,12 +20,20 @@
   <body>
     <main>
       <h1>Celestial package smoke</h1>
+      <output id="date-result">waiting</output>
       <output id="result">waiting</output>
     </main>
     <script>
       import * as celestial from "@0xf3cd/celestial";
+      import { dateToCivilAtOffset, civilAtOffsetToDate } from "@0xf3cd/celestial/date";
 
       const output = document.querySelector("#result");
+      const civil = dateToCivilAtOffset(new Date("2024-02-03T16:00:00.000Z"), 480);
+      const dateResult = {
+        civil,
+        iso: civilAtOffsetToDate(civil, 480).toISOString(),
+      };
+      document.querySelector("#date-result").textContent = JSON.stringify(dateResult);
       window.__CELESTIAL_IMPORTED__ = true;
       window.__START_CELESTIAL__ = async () => {
         try {
@@ -39,9 +47,13 @@
               && error.recorded
               && error.message.includes("cannot be represented");
           }
+          const lichun = celestial.jieqi.moment(2024, celestial.Jieqi.LICHUN);
           window.__CELESTIAL_RESULT__ = {
             translated,
-            survived: celestial.jieqi.name(0) === "立春",
+            survived: celestial.jieqi.name(celestial.Jieqi.LICHUN) === "立春",
+            lichun,
+            lichunMatches: lichun.jieqi === celestial.Jieqi.LICHUN,
+            jdUt1: celestial.time.ut1ToJd(lichun.momentUt1),
           };
         } catch (error) {
           window.__CELESTIAL_RESULT__ = { fatal: String(error?.stack || error) };

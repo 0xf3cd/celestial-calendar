@@ -13,10 +13,20 @@
 import createWasmModule from "./celestial-jieqi.mjs";
 
 import { BINDINGS, LAYOUTS } from "./bindings.mjs";
+import {
+  booleanValue,
+  civilDateTime,
+  civilDateTimeResult,
+  enumValue,
+  finiteNumber,
+  gregorianDate,
+  rangedInteger,
+  rangedNumber,
+  requiredRecord,
+} from "./validation.mjs";
 
 const WASM_URL = new URL("./celestial-jieqi.wasm", import.meta.url);
 const UTF8 = new TextDecoder();
-const MAX_CIVIL_YEAR = 32_767;
 const MAX_CALENDAR_YEAR = 32_766;
 const MAX_NEW_MOON_COUNT = 4_096;
 const JIEQI_NAME_BYTES = 16;
@@ -32,12 +42,34 @@ const DELTA_T_MODEL = Object.freeze({
   algo5: "delta_t_algo5",
 });
 const LUNAR_ALGORITHM = Object.freeze({ algo1: 1, algo2: 2, algo3: 3 });
-const LUNAR_YEAR_RANGE = Object.freeze({
-  algo1: Object.freeze({ start: 1901, end: 2099 }),
-  algo2: Object.freeze({ start: 410, end: 2500 }),
-  algo3: Object.freeze({ start: 1600, end: 2199 }),
-});
 const BINDING_BY_NAME = Object.freeze(Object.fromEntries(BINDINGS.map((entry) => [entry.cName, entry])));
+
+export const Jieqi = Object.freeze({
+  LICHUN: 0,
+  YUSHUI: 1,
+  JINGZHE: 2,
+  CHUNFEN: 3,
+  QINGMING: 4,
+  GUYU: 5,
+  LIXIA: 6,
+  XIAOMAN: 7,
+  MANGZHONG: 8,
+  XIAZHI: 9,
+  XIAOSHU: 10,
+  DASHU: 11,
+  LIQIU: 12,
+  CHUSHU: 13,
+  BAILU: 14,
+  QIUFEN: 15,
+  HANLU: 16,
+  SHUANGJIANG: 17,
+  LIDONG: 18,
+  XIAOXUE: 19,
+  DAXUE: 20,
+  DONGZHI: 21,
+  XIAOHAN: 22,
+  DAHAN: 23,
+});
 
 let moduleInstance;
 let initialization;
@@ -80,84 +112,8 @@ const bindingOf = (cName) => {
   return entry;
 };
 
-const finiteNumber = (value, name) => {
-  if (typeof value !== "number") throw new TypeError(`${name} must be a number.`);
-  if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite.`);
-  return value;
-};
-
-const integer = (value, name) => {
-  finiteNumber(value, name);
-  if (!Number.isInteger(value)) throw new TypeError(`${name} must be an integer.`);
-  if (!Number.isSafeInteger(value)) throw new RangeError(`${name} must be a safe integer.`);
-  return value;
-};
-
-const rangedInteger = (value, name, minimum, maximum) => {
-  integer(value, name);
-  if (value < minimum || value > maximum) {
-    throw new RangeError(`${name} must be in [${minimum}, ${maximum}].`);
-  }
-  return value;
-};
-
-const rangedNumber = (value, name, minimum, maximum, includeMaximum = true) => {
-  finiteNumber(value, name);
-  if (value < minimum || (includeMaximum ? value > maximum : value >= maximum)) {
-    const closing = includeMaximum ? "]" : ")";
-    throw new RangeError(`${name} must be in [${minimum}, ${maximum}${closing}.`);
-  }
-  return value;
-};
-
-const requiredRecord = (value, name, fields) => {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new TypeError(`${name} must be an object.`);
-  }
-  if (fields.some((field) => !Object.hasOwn(value, field))) {
-    throw new TypeError(`${name} must contain: ${fields.join(", ")}.`);
-  }
-  return value;
-};
-
-const gregorianMonthLength = (year, month) => {
-  if (month === 2) {
-    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-    return leap ? 29 : 28;
-  }
-  return [4, 6, 9, 11].includes(month) ? 30 : 31;
-};
-
-const civilDate = (value, name, maximumYear = MAX_CIVIL_YEAR) => {
-  requiredRecord(value, name, ["year", "month", "day"]);
-  const year = rangedInteger(value.year, `${name}.year`, 1, maximumYear);
-  const month = rangedInteger(value.month, `${name}.month`, 1, 12);
-  const day = rangedInteger(value.day, `${name}.day`, 1, gregorianMonthLength(year, month));
-  return { year, month, day };
-};
-
-const civilDateTime = (value, name, maximumYear = MAX_CIVIL_YEAR) => {
-  requiredRecord(value, name, ["year", "month", "day", "fraction"]);
-  const date = civilDate({ year: value.year, month: value.month, day: value.day }, name, maximumYear);
-  const fraction = rangedNumber(value.fraction, `${name}.fraction`, 0, 1, false);
-  return { ...date, fraction };
-};
-
-const enumValue = (value, name, values) => {
-  if (typeof value !== "string") throw new TypeError(`${name} must be a string.`);
-  if (!Object.hasOwn(values, value)) {
-    throw new RangeError(`${name} must be one of: ${Object.keys(values).join(", ")}.`);
-  }
-  return values[value];
-};
-
-const booleanValue = (value, name) => {
-  if (typeof value !== "boolean") throw new TypeError(`${name} must be a boolean.`);
-  return value;
-};
-
-const lunarYear = (algorithm, year, name) => {
-  const range = LUNAR_YEAR_RANGE[algorithm];
+const lunarYear = (nativeAlgorithm, year, name, operation) => {
+  const range = callSret("get_supported_lunar_year_range", operation, [nativeAlgorithm]);
   return rangedInteger(year, name, range.start, range.end);
 };
 
@@ -265,7 +221,7 @@ const jdeToUt1 = (jde) => {
   const operation = "time.jdeToUt1";
   requireModule(operation);
   const value = callSret("jde_to_ut1", operation, [finiteNumber(jde, "jde")]);
-  return { year: value.year, month: value.month, day: value.day, fraction: value.fraction };
+  return civilDateTimeResult(value);
 };
 
 const localApparentSiderealTime = (jdUt1, longitudeDeg) => {
@@ -287,8 +243,8 @@ const deltaT = (year, model = "default") => {
   return callSret(cName, operation, [decimalYear]).value;
 };
 
-const sunApparentGeocentricCoordinates = (jde) => {
-  const operation = "sun.apparentGeocentricCoordinates";
+const sunApparentGeocentricCoordinate = (jde) => {
+  const operation = "sun.apparentGeocentricCoordinate";
   requireModule(operation);
   const value = callSret("sun_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
   return { longitudeDeg: value.lon, latitudeDeg: value.lat, radiusAu: value.r };
@@ -330,11 +286,11 @@ const apparentSolarTime = (utc, longitudeDeg) => {
     operation,
     [value.year, value.month, value.day, value.fraction, longitude],
   );
-  return { year: result.year, month: result.month, day: result.day, fraction: result.fraction };
+  return civilDateTimeResult(result);
 };
 
-const moonApparentGeocentricCoordinates = (jde) => {
-  const operation = "moon.apparentGeocentricCoordinates";
+const moonApparentGeocentricCoordinate = (jde) => {
+  const operation = "moon.apparentGeocentricCoordinate";
   requireModule(operation);
   const value = callSret("moon_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
   return { longitudeDeg: value.lon, latitudeDeg: value.lat, distanceKm: value.r };
@@ -395,11 +351,8 @@ const jieqiMoment = (year, index) => {
   const checkedIndex = rangedInteger(index, "index", 0, 23);
   const value = callSret("query_jieqi_moment", operation, [checkedYear, checkedIndex]);
   return {
-    index: value.jq_idx,
-    year: value.y,
-    month: value.m,
-    day: value.d,
-    fraction: value.frac,
+    jieqi: value.jq_idx,
+    momentUt1: civilDateTimeResult({ year: value.y, month: value.m, day: value.d, fraction: value.frac }),
   };
 };
 
@@ -431,7 +384,7 @@ const yearInfo = (algorithm, year) => {
   const operation = "lunar.yearInfo";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  const checkedYear = lunarYear(algorithm, year, "year");
+  const checkedYear = lunarYear(nativeAlgorithm, year, "year", operation);
   const value = callSret("get_lunar_year_info", operation, [nativeAlgorithm, checkedYear]);
   const monthCount = value.leap_month === 0 ? 12 : 13;
   const monthLengths = Array.from(
@@ -449,7 +402,7 @@ const fromGregorian = (algorithm, date) => {
   const operation = "lunar.fromGregorian";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  const value = civilDate(date, "date");
+  const value = gregorianDate(date, "date");
   const result = callSret(
     "gregorian_to_lunar",
     operation,
@@ -462,8 +415,8 @@ const toGregorian = (algorithm, date) => {
   const operation = "lunar.toGregorian";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  requiredRecord(date, "date", ["year", "month", "day", "isLeap"]);
-  const year = lunarYear(algorithm, date.year, "date.year");
+  requiredRecord(date, "date", ["year", "month", "day", "isLeap"], ["fraction"]);
+  const year = lunarYear(nativeAlgorithm, date.year, "date.year", operation);
   const month = rangedInteger(date.month, "date.month", 1, 12);
   const day = rangedInteger(date.day, "date.day", 1, 30);
   const isLeap = booleanValue(date.isLeap, "date.isLeap");
@@ -474,13 +427,13 @@ const toGregorian = (algorithm, date) => {
 export const config = Object.freeze({ setLogVerbosity });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
-  apparentGeocentricCoordinates: sunApparentGeocentricCoordinates,
+  apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,
   longitudeCrossings,
   equationOfTime,
   apparentSolarTime,
 });
 export const moon = Object.freeze({
-  apparentGeocentricCoordinates: moonApparentGeocentricCoordinates,
+  apparentGeocentricCoordinate: moonApparentGeocentricCoordinate,
   illumination,
   brightLimbPositionAngle,
   phaseMoments,

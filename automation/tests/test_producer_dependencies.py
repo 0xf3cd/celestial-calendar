@@ -8,6 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -15,7 +16,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from toolbox.build_npm import PACKAGE_FILES, PACK_ALLOWLIST, WASM_ARTIFACT_ALLOWLIST, WASM_ARTIFACT_FILES
+from toolbox.build_npm import (
+  PACKAGE_FILES,
+  PACKAGE_SOURCE,
+  PACK_ALLOWLIST,
+  WASM_ARTIFACT_ALLOWLIST,
+  WASM_ARTIFACT_FILES,
+  staging_manifest,
+  verify_manifest,
+)
 from toolbox.release_validation import SOURCE_WORKFLOWS
 
 
@@ -425,6 +434,54 @@ def test_package_producers_include_the_canonical_notice():
   assert WASM_ARTIFACT_FILES[notice] == "THIRD_PARTY_NOTICES.txt"
   assert len(WASM_ARTIFACT_FILES) == len(set(WASM_ARTIFACT_FILES.values()))
   assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
+
+
+def test_npm_date_subpath_inventory_and_exports():
+  source = json.loads((PACKAGE_SOURCE / "package.json").read_text(encoding="utf-8"))
+  assert source["exports"] == {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.mjs",
+      "default": "./src/index.mjs",
+    },
+    "./date": {
+      "types": "./types/date.d.ts",
+      "import": "./src/date.mjs",
+      "default": "./src/date.mjs",
+    },
+  }
+  assert set(source["files"]) == {
+    path.relative_to(PACKAGE_SOURCE).as_posix() for path in PACKAGE_FILES if path.is_relative_to(PACKAGE_SOURCE)
+  }
+  assert PACK_ALLOWLIST == {
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.txt",
+    "index.mjs",
+    "bindings.mjs",
+    "validation.mjs",
+    "date.mjs",
+    "index.d.ts",
+    "date.d.ts",
+    "celestial-jieqi.mjs",
+    "celestial-jieqi.wasm",
+  }
+  assert len(WASM_ARTIFACT_ALLOWLIST) + 3 == 7
+  verify_manifest(staging_manifest("0.7.0"), "0.7.0")
+
+
+@pytest.mark.parametrize("mutation", ["date-export", "date-file"])
+def test_npm_manifest_rejects_date_surface_mutations(mutation):
+  manifest = staging_manifest("0.7.0")
+  verify_manifest(manifest, "0.7.0")
+  if mutation == "date-export":
+    manifest["exports"]["./date"]["import"] = "./index.mjs"
+  else:
+    manifest["files"].remove("date.mjs")
+
+  with pytest.raises(RuntimeError, match=r"staging package (exports|files) mismatch"):
+    verify_manifest(manifest, "0.7.0")
 
 
 def test_producers_verify_notice_bytes():

@@ -15,6 +15,31 @@
 - Rise/set's name-carried time-scale contract is complete: the nine public UT1/TT parameters now use `ymd_ut1`,
   `transit_jde_tt`, `t0_jde_tt`, or `t1_jde_tt`, and `Result::{rise_jde,transit_jde,set_jde}` became
   `Result::{rise_jde_tt,transit_jde_tt,set_jde_tt}` without compatibility aliases.
+- JavaScript's `CivilDate` is renamed to `GregorianDate`. `GregorianDate`, `CivilDateTime`, and `LunarDate` are
+  independent records with mutually excluded `fraction`/`isLeap` tags; runtime validation also rejects these tags
+  when inherited or explicitly `undefined`. Civil and lunar results can no longer pass silently as Gregorian
+  inputs to `lunar.fromGregorian()`.
+- JavaScript `JieqiMoment` is now `{ jieqi, momentUt1 }`, replacing the flat `index/year/month/day/fraction` shape.
+  `jieqi.moment()` and `jieqi.name()` take the `Jieqi` literal value union in TypeScript, not a general `number`.
+  `time.jdeToUt1()`, `sun.apparentSolarTime()`, and nested `momentUt1` now return `CivilDateTimeResult`, which extends
+  the unchanged four-field civil input with integer `hour`/`minute` and fractional `second`. Inputs still read
+  `fraction`; the derived clock fields do not impose millisecond rounding.
+- JavaScript `sun.apparentGeocentricCoordinates()` and `moon.apparentGeocentricCoordinates()` are renamed to
+  singular `apparentGeocentricCoordinate()`, including their `CelestialError.operation` names. The old method and
+  type names have no compatibility aliases.
+- JavaScript lunar-year validation now queries the native algorithm's range once per year-consuming call instead
+  of keeping a duplicate range table. Out-of-range lunar years still throw `RangeError`; a native range-query
+  failure throws `CelestialError` with the caller's public operation name.
+- The npm tarball grows from nine to twelve members for the pure date bridge, shared validators, and date
+  declarations. The outer `celestial-wasm` artifact still has seven members.
+
+### Added
+
+- JavaScript exports a frozen `Jieqi` object with 24 named constants, using the Python spellings from `LICHUN = 0`
+  through `DAHAN = 23`, and a corresponding TypeScript `0`-through-`23` union.
+- `@0xf3cd/celestial/date` exports `dateToCivilUtc()`, `civilUtcToDate()`, `dateToCivilAtOffset()`, and
+  `civilAtOffsetToDate()` without `init()`, WASM, or runtime dependencies. The bridge does not supply IANA-zone,
+  UT1/TT, or Date-to-JDE conversion. See `bindings/javascript/README.md` for the date bridge contract.
 
 ## [v0.6.1] - 2026-08-24
 

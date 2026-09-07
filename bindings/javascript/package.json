@@ -9,13 +9,21 @@
       "types": "./types/index.d.ts",
       "import": "./src/index.mjs",
       "default": "./src/index.mjs"
+    },
+    "./date": {
+      "types": "./types/date.d.ts",
+      "import": "./src/date.mjs",
+      "default": "./src/date.mjs"
     }
   },
   "types": "./types/index.d.ts",
   "files": [
     "src/index.mjs",
     "src/bindings.mjs",
+    "src/validation.mjs",
+    "src/date.mjs",
     "types/index.d.ts",
+    "types/date.d.ts",
     "README.md"
   ],
   "engines": {

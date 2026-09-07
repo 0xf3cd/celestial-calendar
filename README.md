@@ -109,12 +109,27 @@ import * as celestial from "@0xf3cd/celestial";
 
 await celestial.init();
 const moon = celestial.moon.illumination(2448724.5);
-const lichun = celestial.jieqi.moment(2026, 0);
+const lichun = celestial.jieqi.moment(2026, celestial.Jieqi.LICHUN);
+console.log(celestial.jieqi.name(lichun.jieqi), lichun.momentUt1);
 ```
 
-Node 22 or newer is supported; the browser package is tested on Chrome. The bundled declarations preserve the
-JD/JDE/UT1 distinctions and expose enum-like inputs as string unions. See
-`bindings/javascript/README.md` for the complete package contract.
+Node 22 or newer is supported; the browser package is tested on Chrome. Jieqi results are `{ jieqi, momentUt1 }`,
+with UT1 civil fields nested under `momentUt1`, not an east-eight wall date.
+
+The root APIs read explicit fields without converting `Date` timestamps. `GregorianDate`, `CivilDateTime`, and
+`LunarDate` remain disjoint; do not pass a civil moment or lunar date directly to `lunar.fromGregorian()`.
+For UTC/fixed-offset calendar conversion, the pure `@0xf3cd/celestial/date` subpath works without `init()` or WASM:
+
+```js
+import { civilAtOffsetToDate, dateToCivilAtOffset } from "@0xf3cd/celestial/date";
+
+const date = new Date("2024-02-09T16:00:00.123Z");
+const eastEight = dateToCivilAtOffset(date, 480); // 2024-02-10, 00:00:00.123
+console.log(civilAtOffsetToDate(eastEight, 480).getTime() === date.getTime()); // true
+```
+
+The subpath also exports `dateToCivilUtc()` and `civilUtcToDate()`. This is not a UT1/TT conversion or an IANA-zone
+API. See `bindings/javascript/README.md` for the date, lunar, model, and error contracts.
 
 ## 2. Features
 
@@ -145,7 +160,8 @@ three, and `get_supported_lunar_year_range` reports their bounds.
 For ΔT, `default` and algo5 select the current project model: algo2 before 2005, an IERS Bulletin A fit
 through 2026.41, and an anchored long-term extrapolation afterward. Algo1 (Xu Jianwei 2008), algo2
 (Espenak and Meeus, NASA/TP-2006-214141), algo3 (Fred Espenak's 2014 eclipse canon), and algo4 (IERS
-Bulletin A plus USNO predictions) are frozen exhibits retained for historical comparison.
+Bulletin A plus USNO predictions) are frozen exhibits retained for historical comparison. Frozen does not mean
+unused: algo2 remains the live pre-2005 branch of algo3, algo4, and the current default/algo5.
 
 Hard domains are year ≥ -4000 for algo1, year < 3000 for algo3, year < 2035 for algo4, and no
 model-specific year bound for algo2/algo5. Fitted residuals and test tolerances are not published as
@@ -277,8 +293,9 @@ The `statistics/` directory holds the crawlers that regenerate these datasets an
 
 The module contains all 29 stable exports in `celestial.h`; `@0xf3cd/celestial` wraps them as the `config`,
 `time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces. Raw heap pointers, count/fill protocols, sret layouts,
-and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact 9-file npm tarball
-from the generated module and the version in `project.py`.
+and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs the exact 12-file npm tarball
+from the generated module and the version in `project.py`. The `@0xf3cd/celestial/date` entry imports only the pure
+validators, not the root entry or Emscripten glue.
 
 CI builds the module and package on an independent leg (`wasm.yml`). Its
 `celestial-wasm` artifact contains exactly 7 top-level files: `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `LICENSE`,
