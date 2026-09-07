@@ -39,7 +39,7 @@
   through `DAHAN = 23`, and a corresponding TypeScript `0`-through-`23` union.
 - `@0xf3cd/celestial/date` exports `dateToCivilUtc()`, `civilUtcToDate()`, `dateToCivilAtOffset()`, and
   `civilAtOffsetToDate()` without `init()`, WASM, or runtime dependencies. The bridge does not supply IANA-zone,
-  UT1/TT, or Date-to-JDE conversion. See the [date bridge contract](../bindings/javascript/README.md#fixed-offset-date-bridge).
+  UT1/TT, or Date-to-JDE conversion. See `bindings/javascript/README.md` for the date bridge contract.
 
 ## [v0.6.1] - 2026-08-24
 
