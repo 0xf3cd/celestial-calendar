@@ -13,6 +13,8 @@
 import ctypes as _ctypes
 import math as _math
 from dataclasses import dataclass as _dataclass
+from datetime import date as _date
+from datetime import datetime as _datetime
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
 from typing import TypeVar as _TypeVar
@@ -50,7 +52,14 @@ class DeltaTModel(_StrEnum):
 
 
 class LunarAlgorithm(_StrEnum):
-  """A Chinese Lunar calendar conversion algorithm."""
+  """A Chinese Lunar calendar algorithm with its own Gregorian date-label basis.
+
+  ALGO1 preserves HKO labels for Lunar years 1901-2099. ALGO2 computes from VSOP87D / truncated ELP2000-82B
+  for 410-2500. ALGO3 is a baked hybrid for 1600-2199, using HKO for 1901-2099 and ALGO2 elsewhere.
+  ALGO2 renders TT through the library's UTC model, then adds 8 hours: a UT1 proxy before 1972,
+  the leap-second table from 1972, and frozen Delta AT = 37 s after its last entry.
+  Select table compatibility or computation, not an assumed accuracy ranking.
+  """
 
   ALGO1 = "algo1"
   ALGO2 = "algo2"
@@ -98,11 +107,34 @@ class CivilDateTime:
 
 @_dataclass(frozen=True)
 class GregorianDate:
-  """A proleptic Gregorian calendar date."""
+  """A proleptic Gregorian date label; Lunar conversion uses the selected algorithm's basis."""
 
   year: int
   month: int
   day: int
+
+  @staticmethod
+  def from_date(value: _date) -> "GregorianDate":
+    """Copy a standard-library date's fields into a GregorianDate.
+
+    Date subclasses are accepted; datetime instances are rejected without discarding their time.
+    This always returns GregorianDate and does not convert a time scale or timezone.
+
+    Raises:
+      TypeError: If value is not a datetime.date, or is a datetime.datetime.
+    """
+    if not isinstance(value, _date) or isinstance(value, _datetime):
+      raise TypeError("value must be a datetime.date")
+    return GregorianDate(value.year, value.month, value.day)
+
+  def to_date(self) -> _date:
+    """Return the same date label in the standard library's year range [1, 9999].
+
+    Raises:
+      TypeError: If a date field has the wrong type.
+      ValueError: If the date is invalid or outside the standard-library range.
+    """
+    return _date(*_civil_date(self, "date"))
 
 
 @_dataclass(frozen=True)
@@ -143,7 +175,7 @@ class MoonIllumination:
 
 @_dataclass(frozen=True)
 class JieqiMoment:
-  """The UT1 civil moment of a Jieqi."""
+  """The UT1 civil moment of a Jieqi, not a UTC or east-eight wall date."""
 
   jieqi: Jieqi
   moment_ut1: CivilDateTime
@@ -159,7 +191,7 @@ class LunarYearRange:
 
 @_dataclass(frozen=True)
 class LunarYearInfo:
-  """The Gregorian first day and month structure of a Lunar year."""
+  """A Lunar year's month structure and first Gregorian date on the selected algorithm's basis."""
 
   first_day: GregorianDate
   leap_month: int | None
@@ -189,11 +221,6 @@ _JIEQI_NAME_BYTES = 16
 _LOG_VERBOSITY = {LogVerbosity.NONE: 0, LogVerbosity.INFO: 1, LogVerbosity.DEBUG: 2}
 _MOON_PHASE = {MoonPhase.NEW: 0, MoonPhase.FIRST_QUARTER: 1, MoonPhase.FULL: 2, MoonPhase.LAST_QUARTER: 3}
 _LUNAR_ALGORITHM = {LunarAlgorithm.ALGO1: 1, LunarAlgorithm.ALGO2: 2, LunarAlgorithm.ALGO3: 3}
-_LUNAR_YEAR_RANGE = {
-  LunarAlgorithm.ALGO1: (1901, 2099),
-  LunarAlgorithm.ALGO2: (410, 2500),
-  LunarAlgorithm.ALGO3: (1600, 2199),
-}
 _DELTA_T_EXPORT = {
   DeltaTModel.DEFAULT: "delta_t",
   DeltaTModel.ALGO1: "delta_t_algo1",
@@ -242,10 +269,10 @@ def _gregorian_month_length(year: int, month: int) -> int:
   return 30 if month in (4, 6, 9, 11) else 31
 
 
-def _civil_date(value: object, name: str, *, maximum_year: int = _MAX_CIVIL_YEAR) -> tuple[int, int, int]:
+def _civil_date(value: object, name: str) -> tuple[int, int, int]:
   if not isinstance(value, GregorianDate):
     raise TypeError(f"{name} must be a GregorianDate")
-  year = _integer(value.year, f"{name}.year", 1, maximum_year)
+  year = _integer(value.year, f"{name}.year", 1, _MAX_CIVIL_YEAR)
   month = _integer(value.month, f"{name}.month", 1, 12)
   day = _integer(value.day, f"{name}.day", 1, _gregorian_month_length(year, month))
   return year, month, day
@@ -261,10 +288,10 @@ def _civil_datetime(value: object, name: str) -> tuple[int, int, int, float]:
   return year, month, day, fraction
 
 
-def _lunar_date(value: object, algorithm: LunarAlgorithm, name: str) -> tuple[int, int, bool, int]:
+def _lunar_date(value: object, algorithm: LunarAlgorithm, name: str, *, operation: str) -> tuple[int, int, bool, int]:
   if not isinstance(value, LunarDate):
     raise TypeError(f"{name} must be a LunarDate")
-  start, end = _LUNAR_YEAR_RANGE[algorithm]
+  start, end = _lunar_range(algorithm, operation)
   year = _integer(value.year, f"{name}.year", start, end)
   month = _integer(value.month, f"{name}.month", 1, 12)
   day = _integer(value.day, f"{name}.day", 1, 30)
@@ -283,6 +310,11 @@ def _valid(result: object, operation: str, *, recording: bool = True) -> object:
   if not result.valid:
     raise _failure(operation, recording=recording)
   return result
+
+
+def _lunar_range(algorithm: LunarAlgorithm, operation: str) -> tuple[int, int]:
+  result = _valid(_binding.call("get_supported_lunar_year_range", _LUNAR_ALGORITHM[algorithm]), operation)
+  return result.start, result.end
 
 
 def _civil_result(result: object) -> CivilDateTime:
@@ -389,25 +421,25 @@ def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
   return tuple(slots[:written])
 
 
-def solar_longitude_roots(year: int, longitude_deg: float) -> tuple[float, ...]:
+def sun_longitude_crossings(year: int, longitude_deg: float) -> tuple[float, ...]:
   """Return JDEs when the Sun reaches an apparent geocentric longitude.
 
   Raises:
     ValueError: If year is outside [1, 32766].
-    CelestialError: If the native calculation cannot produce the roots.
+    CelestialError: If the native calculation cannot produce the crossings.
   """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
   longitude = _ranged_float(longitude_deg, "longitude_deg", 0.0, 360.0, include_maximum=False)
   discriminant = _valid(
     _binding.call("solar_lon_root_discriminant", checked_year, longitude),
-    "solar_longitude_roots",
+    "sun_longitude_crossings",
   )
   if discriminant.count == 0:
     return ()
   slots = (_ctypes.c_double * discriminant.count)()
   written = _binding.call("solar_lon_roots", checked_year, longitude, slots, discriminant.count)
   if written != discriminant.count:
-    raise _failure("solar_longitude_roots", recording=True)
+    raise _failure("sun_longitude_crossings", recording=True)
   return tuple(slots[:written])
 
 
@@ -482,6 +514,9 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
 def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
   """Return the UT1 civil moment of a Jieqi in a Gregorian year.
 
+  Establish the time-scale conversion before displaying UTC or an east-eight wall date.
+  The returned UT1 year can differ from the requested year.
+
   Raises:
     ValueError: If year is outside [401, 32766].
     CelestialError: If the native calculation cannot produce the moment.
@@ -502,7 +537,12 @@ def jieqi_name(jieqi: Jieqi) -> str:
 
 
 def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
-  """Return the inclusive Lunar year range supported by an algorithm."""
+  """Query the native algorithm's inclusive Lunar-year bounds, not Gregorian-year bounds.
+
+  Raises:
+    TypeError: If algorithm is not a LunarAlgorithm member.
+    CelestialError: If the native range query fails.
+  """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
   result = _valid(
     _binding.call("get_supported_lunar_year_range", _LUNAR_ALGORITHM[checked]),
@@ -512,14 +552,14 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
 
 
 def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
-  """Return the first day and month lengths of a Lunar year.
+  """Return a Lunar year's month lengths and first date on the selected algorithm's basis.
 
   Raises:
     ValueError: If year is outside the selected algorithm's supported range.
-    CelestialError: If the native calculation cannot produce the year information.
+    CelestialError: If the native range query or year calculation fails.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
-  start, end = _LUNAR_YEAR_RANGE[checked]
+  start, end = _lunar_range(checked, "lunar_year_info")
   checked_year = _integer(year, "year", start, end)
   result = _valid(_binding.call("get_lunar_year_info", _LUNAR_ALGORITHM[checked], checked_year), "lunar_year_info")
   month_count = 12 if result.leap_month == 0 else 13
@@ -528,27 +568,34 @@ def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
   return LunarYearInfo(GregorianDate(result.year, result.month, result.day), leap_month, month_lengths)
 
 
-def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate) -> LunarDate:
-  """Convert a Gregorian date to a Chinese Lunar date.
+def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate | _date) -> LunarDate:
+  """Convert a Gregorian date label on the selected LunarAlgorithm's basis to a Lunar date.
+
+  Standard-library date subclasses are accepted. Datetime instances are rejected without dropping
+  a time or timezone; this operation does not convert an instant into the algorithm's date basis.
 
   Raises:
+    TypeError: If date has the wrong type, is a datetime, or has non-integer fields.
+    ValueError: If a Gregorian date field is outside its valid range.
     CelestialError: If date cannot be represented by the selected algorithm.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
+  if isinstance(date, _date):
+    date = GregorianDate.from_date(date)
   value = _civil_date(date, "date")
   result = _valid(_binding.call("gregorian_to_lunar", _LUNAR_ALGORITHM[checked], *value), "gregorian_to_lunar")
   return LunarDate(result.year, result.month, result.day, result.is_leap)
 
 
 def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianDate:
-  """Convert a Chinese Lunar date to a Gregorian date.
+  """Convert a Lunar date to a Gregorian date label on the selected LunarAlgorithm's basis.
 
   Raises:
     ValueError: If date.year is outside the selected algorithm's supported range.
-    CelestialError: If date does not exist in the selected algorithm.
+    CelestialError: If the native range query fails or date does not exist in the selected algorithm.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
-  year, month, is_leap, day = _lunar_date(date, checked, "date")
+  year, month, is_leap, day = _lunar_date(date, checked, "date", operation="lunar_to_gregorian")
   result = _valid(
     _binding.call("lunar_to_gregorian", _LUNAR_ALGORITHM[checked], year, month, is_leap, day),
     "lunar_to_gregorian",
@@ -559,8 +606,13 @@ def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianD
 def delta_t(year: float, model: DeltaTModel = DeltaTModel.DEFAULT) -> float:
   """Return ΔT in seconds for a decimal Gregorian year.
 
+  DEFAULT/ALGO5 is the current model: ALGO2 before 2005, an IERS Bulletin A fit through about 2026.41,
+  then an anchored Morrison et al. (2021) long-term relation. ALGO1 (Xu Jianwei 2008), ALGO2 (Espenak
+  and Meeus 2006), ALGO3 (Espenak 2014), and ALGO4 (IERS Bulletin A / USNO predictions) are frozen
+  comparison models. ALGO2 remains the live pre-2005 branch of ALGO3, ALGO4, and ALGO5.
+
   ALGO1 requires year >= -4000, ALGO3 requires year < 3000, and ALGO4 requires year < 2035. The other models have no
-  model-specific year bound.
+  model-specific year bound. These domains and fitted residuals are not statistical accuracy guarantees.
 
   Raises:
     ValueError: If year is outside the selected model's bounds above.
@@ -612,8 +664,8 @@ __all__ = [
   "new_moons_after",
   "new_moons_in_year",
   "set_log_verbosity",
-  "solar_longitude_roots",
   "sun_apparent_geocentric_coordinate",
+  "sun_longitude_crossings",
   "supported_lunar_year_range",
   "ut1_to_jd",
   "ut1_to_jde",

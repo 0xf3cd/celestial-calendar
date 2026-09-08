@@ -83,16 +83,18 @@ python -m pip install celestial-calendar
 ```
 
 ```python
+from datetime import date
+
 import celestial_calendar as celestial
 
-ut1 = celestial.CivilDateTime(2026, 8, 16, 0.5)
-jde = celestial.ut1_to_jde(ut1)
+lunar = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, date(2026, 8, 15))
 winter_solstice = celestial.jieqi_moment(2026, celestial.Jieqi.DONGZHI)
+print(lunar, winter_solstice.moment_ut1)
 ```
 
 Python 3.11 or newer is supported. Each wheel owns its native library; it neither searches the system nor downloads a
 fallback at import time. Public calls use enums, frozen dataclasses, ordinary scalars and tuples rather than exposing
-the underlying ctypes protocol. See `bindings/python/README.md` for the package contract.
+the underlying ctypes protocol. See `bindings/python/README.md` for the date-only bridge and package contract.
 
 ### 1.4. From JavaScript or TypeScript
 
