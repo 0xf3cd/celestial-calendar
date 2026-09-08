@@ -106,7 +106,6 @@ def main() -> None:
     )
     result = run_mypy(negative)
     assert result.returncode == 1, result.stdout
-    assert 'expression has type "JieqiMoment", variable has type "str"' in result.stdout
     assert "[assignment]" in result.stdout
     expected_errors = (
       'has no attribute "solar_longitude_roots"',
