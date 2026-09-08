@@ -124,7 +124,7 @@ class GregorianDate:
       TypeError: If value is not a datetime.date, or is a datetime.datetime.
     """
     if not isinstance(value, _date) or isinstance(value, _datetime):
-      raise TypeError("value must be a datetime.date, not a datetime.datetime")
+      raise TypeError("value must be a datetime.date")
     return GregorianDate(value.year, value.month, value.day)
 
   def to_date(self) -> _date:

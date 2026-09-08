@@ -39,9 +39,10 @@ print(jde)
 print(winter_solstice.moment_ut1)
 ```
 
-The flat public API uses immutable dataclasses and enums. `CivilDateTime` has four fields: `year`, `month`,
-`day`, and `fraction`, a finite day fraction in `[0, 1)`. It has no separate hour, minute, or second fields. The function
-or field name identifies the time scale; civil moments are not silently converted to Python's `datetime` types.
+The flat public API uses immutable dataclasses and enums. `CivilDateTime` has four fields:
+`year`, `month`, `day`, and `fraction`, a finite day fraction in `[0, 1)`.
+It has no separate hour, minute, or second fields. The function or field name identifies the time scale;
+civil moments are not silently converted to Python's `datetime` types.
 
 Wrong input types, including members of the wrong enum, raise `TypeError`. Values rejected by finiteness, range, or
 domain checks raise `ValueError`. A failure reported by the native boundary raises `CelestialError`. Its `operation`
@@ -59,7 +60,7 @@ Gregorian years in `[1, 32766]`.
 
 `sun_longitude_crossings()` returns a tuple of TT-based JDEs when the Sun reaches the requested apparent geocentric
 longitude. `longitude_deg` must be finite and in `[0, 360)`. Native failures use
-`CelestialError.operation == "sun_longitude_crossings"`. The previous name has no compatibility alias.
+`CelestialError.operation == "sun_longitude_crossings"`.
 
 `new_moons_after(jde, count)` accepts `count` in `[0, 4096]`; zero returns `()`. The upper bound keeps one native
 output buffer at or below 32 KiB.
