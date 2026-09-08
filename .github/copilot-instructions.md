@@ -1,6 +1,6 @@
 # Copilot Instructions — celestial-calendar
 
-C++23 astronomical-calculation library (Gregorian ↔ Lunar ↔ Ganzhi, Jieqi, sun/moon positions, sunrise/sunset). Conventions live in `AGENTS.md` (single source of truth) — read it first.
+C++23 astronomical-calculation library (Gregorian ↔ Lunar, Jieqi, sun/moon positions, sunrise/sunset). Conventions live in `AGENTS.md` (single source of truth) — read it first.
 
 ## Review focus
 

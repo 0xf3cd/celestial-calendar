@@ -2,7 +2,7 @@
 #
 # CelestialCalendar:
 #   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
-#   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+#   including Gregorian and Chinese Lunar calendars.
 #
 # Copyright (C) 2026 Ningqi Wang (0xf3cd)
 # Email: nq.maigre@gmail.com
@@ -25,7 +25,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2026-08-26"
 API_VERSION: Final[str] = "4.0.1"
 NUMBER: Final[str] = r"[+-]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)"
-USNO_VALIDATION_REPRO_SHA256: Final[str] = "85b11f7def6207c487b7bc91ca3a48e4d6c983e33e687cf18169226251eec061"
+USNO_VALIDATION_REPRO_SHA256: Final[str] = "2271de1b46b2c9124e0b68c42c66c39386a6d0b6b3694d72c2b7093b79fb4375"
 USNO_RECORD_SHA256: Final[dict[str, str]] = {
   "v12-rstt-oneday.json": "4eb0687ca55f0be00a8ee265e3b05dc586e093f7e19e0ba0536f705106b26d77",
   "v13-siderealtime.json": "129dc55146f8f103cda3691d2ec3a14570413b8d07f4719ef8090b6f8409d658",

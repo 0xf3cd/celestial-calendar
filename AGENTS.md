@@ -8,8 +8,8 @@
 
 ## Project Overview
 
-**CelestialCalendar** — A C++23 astronomical-calculation library that converts among
-Gregorian, Lunar, and Chinese Ganzhi calendars, and computes accurate Jieqi (节气)
+**CelestialCalendar** — A C++23 astronomical-calculation library that converts between
+Gregorian and Chinese Lunar calendars, and computes accurate Jieqi (节气)
 moments, sun/moon positions, and sunrise/sunset. 天文计算与历法转换.
 Repository: `https://github.com/0xf3cd/celestial-calendar` · Project-authored material: MIT;
 retained third-party material keeps its source terms.

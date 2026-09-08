@@ -1,6 +1,6 @@
 # CelestialCalendar:
 #   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
-#   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+#   including Gregorian and Chinese Lunar calendars.
 #
 # Copyright (C) 2026 Ningqi Wang (0xf3cd)
 # Email: nq.maigre@gmail.com
@@ -103,7 +103,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-  assert REGISTRY_SHA256 == "5242445b1174e0600fbb689a964d089f3e632873c3dbb09ecefc951dee2ef423"
+  assert REGISTRY_SHA256 == "397281a5652d76b1f0cbb980f1b26230236c430e79e775ce8f15be2b2d722c4e"
   assert verify_batch_a_closeout() == CloseoutCounts(57, 90, 47, 2, 14)
 
 
