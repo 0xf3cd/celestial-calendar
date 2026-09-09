@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 #
 # CelestialCalendar:
-#   A C++23-style library that performs astronomical calculations and date conversions among various calendars,
-#   including Gregorian, Lunar, and Chinese Ganzhi calendars.
+#   A C++23-style library that performs astronomical calculations and date conversions between
+#   Gregorian and Chinese Lunar calendars.
 #
 # Copyright (C) 2026 Ningqi Wang (0xf3cd)
 # Email: nq.maigre@gmail.com
@@ -32,7 +32,7 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-REGISTRY_SHA256: Final[str] = "5242445b1174e0600fbb689a964d089f3e632873c3dbb09ecefc951dee2ef423"
+REGISTRY_SHA256: Final[str] = "51cffcbaf521dc4d23cb9e0c43aef91406b4f667f9cb4b290b5c58ccde04dce1"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (

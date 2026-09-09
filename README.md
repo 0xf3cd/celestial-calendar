@@ -1,6 +1,6 @@
 # Celestial Calendar
 
-> A C++23-style library that performs astronomical calculations and date conversions among various calendars, including Gregorian, Lunar, and Chinese Ganzhi calendars.
+> A C++23-style library that performs astronomical calculations and date conversions between Gregorian and Chinese Lunar calendars.
 
 Five ways in, depending on what you are here for:
 
@@ -135,7 +135,7 @@ API. See `bindings/javascript/README.md` for the date, lunar, model, and error c
 
 ## 2. Features
 
-* Conversions between Gregorian, Lunar, and Ganzhi dates (公历、阴历、干支历之间的转换)
+* Conversions between Gregorian and Chinese Lunar dates (公历与阴历之间的转换)
 * Accurate Jieqi moment queries (查询某一年的某节气的具体时刻)
 * Sunrise, sunset, transit, twilight, and polar day/night queries, within ±2 min of external references (USNO / NOAA / JPL DE) (日出日落、中天、曙暮光、极昼极夜)
 * Geocentric apparent positions: ecliptic coordinates for the Sun and Moon, equatorial for the Sun, plus New Moon moments (日月视位置与合朔)
@@ -143,6 +143,8 @@ API. See `bindings/javascript/README.md` for the date, lunar, model, and error c
 * Time scales and time-related quantities: UT1 / UTC / TT with leap seconds and ΔT, Julian Day, sidereal time, obliquity, nutation (时标转换、儒略日、恒星时、黄赤交角、章动)
 * A C ABI shared library (`src/shared_lib/celestial.h`), so the library is consumable from other languages (C 接口动态库)
 * Native Python wheels for manylinux x86_64/aarch64, macOS arm64, and Windows AMD64
+
+For Ganzhi (干支) calculations, see [bazi](https://github.com/0xf3cd/bazi).
 
 The supported year range and civil-date basis of lunar conversion depend on the algorithm:
 
