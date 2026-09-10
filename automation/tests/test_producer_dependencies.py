@@ -484,6 +484,26 @@ def test_npm_manifest_rejects_date_surface_mutations(mutation):
     verify_manifest(manifest, "0.7.0")
 
 
+@pytest.mark.parametrize("key", ["dependencies", "optionalDependencies", "peerDependencies"])
+@pytest.mark.parametrize("dependencies", [None, {}, {"unexpected-runtime-package": "1.0.0"}])
+def test_npm_manifest_runtime_dependency_fields(tmp_path, monkeypatch, key, dependencies):
+  manifest = staging_manifest("0.7.0")
+  manifest[key] = dependencies
+  source = json.loads((PACKAGE_SOURCE / "package.json").read_text(encoding="utf-8"))
+  source[key] = dependencies
+  (tmp_path / "package.json").write_text(json.dumps(source), encoding="utf-8")
+  monkeypatch.setattr("toolbox.build_npm.PACKAGE_SOURCE", tmp_path)
+
+  if dependencies:
+    with pytest.raises(RuntimeError, match="zero runtime dependencies"):
+      staging_manifest("0.7.0")
+    with pytest.raises(RuntimeError, match="zero runtime dependencies"):
+      verify_manifest(manifest, "0.7.0")
+  else:
+    verify_manifest(staging_manifest("0.7.0"), "0.7.0")
+    verify_manifest(manifest, "0.7.0")
+
+
 def test_producers_verify_notice_bytes():
   workflow = BUILD_WORKFLOW.read_text(encoding="utf-8")
   wheel = WHEEL_VERIFY.read_text(encoding="utf-8")

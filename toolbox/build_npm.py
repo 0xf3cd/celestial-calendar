@@ -29,6 +29,7 @@ DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "npm"
 MAX_WASM_BYTES: Final[int] = 465_000
 MAX_TARBALL_BYTES: Final[int] = 300_000
 PACKAGE_NAME: Final[str] = "@0xf3cd/celestial"
+RUNTIME_DEPENDENCY_KEYS: Final[tuple[str, ...]] = ("dependencies", "optionalDependencies", "peerDependencies")
 REPOSITORY: Final[dict[str, str]] = {
   "type": "git",
   "url": "git+https://github.com/0xf3cd/celestial-calendar.git",
@@ -90,7 +91,7 @@ def staging_manifest(version: str) -> dict:
   source = json.loads((PACKAGE_SOURCE / "package.json").read_text(encoding="utf-8"))
   if source.get("private") is not True or source.get("version") != "0.0.0-development":
     raise RuntimeError("development package must stay private at version 0.0.0-development")
-  if source.get("dependencies") not in (None, {}):
+  if any(source.get(key) not in (None, {}) for key in RUNTIME_DEPENDENCY_KEYS):
     raise RuntimeError("JavaScript package must have zero runtime dependencies")
 
   source.pop("private")
@@ -143,7 +144,7 @@ def verify_manifest(manifest: dict, version: str) -> None:
       raise RuntimeError(f"staging package {key} mismatch: {manifest.get(key)!r} != {value!r}")
   if "private" in manifest or "scripts" in manifest or "devDependencies" in manifest:
     raise RuntimeError("staging package must not carry development-only metadata")
-  if manifest.get("dependencies") not in (None, {}):
+  if any(manifest.get(key) not in (None, {}) for key in RUNTIME_DEPENDENCY_KEYS):
     raise RuntimeError("staging package must be public with zero runtime dependencies")
 
 
