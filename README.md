@@ -291,7 +291,7 @@ The external oracles the library is held against include:
 
 The `statistics/` directory holds the crawlers that regenerate these datasets and the evaluation notebooks behind them (`python3 -m pip install -r Requirements-statistics.txt`).
 
-## 6. WebAssembly and npm Package
+## 6. WebAssembly and npm Packages
 
 `python3 toolbox/build_wasm.py` compiles the shared-library sources into a browser/Node ES module, emitting `build/wasm/celestial-jieqi.mjs` + `celestial-jieqi.wasm`. It needs an emsdk checkout — point at it with `--emsdk` or the `$EMSDK` environment variable.
 
@@ -301,12 +301,20 @@ and `last_error` stay internal. `python3 toolbox/build_npm.py` stages and packs 
 from the generated module and the version in `project.py`. The `@0xf3cd/celestial/date` entry imports only the pure
 validators, not the root entry or Emscripten glue.
 
+The same builder packs a 7-file alias tarball, `celestial-calendar`, with root and `/date` ESM and declaration
+forwarders. Its only runtime dependency is the exact same-version `@0xf3cd/celestial`; it contains no WASM copy.
+Both names share exported references and initialized state when they resolve to the same primary installation,
+not across arbitrary mixed-version dependency graphs. The alias's MIT `LICENSE` covers its own material;
+retained-component notices remain in the primary dependency.
+
 CI builds the module and package on an independent leg (`wasm.yml`). Its
-`celestial-wasm` artifact contains exactly 7 top-level files: `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `LICENSE`,
-`THIRD_PARTY_NOTICES.txt`, the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`. The release flow publishes
-that tarball to npm without rebuilding it. The same leg reconciles all 29 signatures and 16 layouts, replays the
-389-point native-generated golden dataset, installs the tarball in unrelated Node consumers, compiles its
-TypeScript declarations, and runs an Astro/Vite production smoke in Chrome.
+`celestial-wasm` artifact contains exactly 10 top-level files: `celestial-jieqi.mjs`, `celestial-jieqi.wasm`, `LICENSE`,
+`THIRD_PARTY_NOTICES.txt`, the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`, plus the alias tarball,
+`npm-alias-pack.json`, and `npm-alias-pack.sha256`. Each metadata file selects its own tarball. The release flow
+publishes primary then alias without rebuilding either. Historical 0.6.x archives retain the singleton format.
+The same leg reconciles all 29 signatures and 16 layouts, replays the 389-point native-generated golden dataset,
+installs the same pair in unrelated current/floor Node consumers, compiles installed TypeScript declarations for
+both names and `/date`, and runs an Astro/Vite production smoke in Chrome.
 
 ## 7. Export the Jieqi Table (JSON)
 

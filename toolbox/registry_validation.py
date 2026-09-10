@@ -22,8 +22,8 @@ from urllib.parse import quote, unquote, urlparse
 
 import requests
 
-from toolbox.build_npm import PACKAGE_NAME as NPM_PACKAGE
-from toolbox.release_validation import validate_release_candidate
+from toolbox.build_npm import ALIAS_NAME, PACKAGE_NAME as NPM_PACKAGE
+from toolbox.release_validation import npm_candidate_tarballs, validate_release_candidate
 
 
 PYPI_PACKAGE = "celestial-calendar"
@@ -32,6 +32,7 @@ NPM_REGISTRY_HOST = "registry.npmjs.org"
 REQUEST_TIMEOUT = 30
 POLL_ATTEMPTS = 30
 POLL_DELAY_SECONDS = 10
+NPM_LABELS = {NPM_PACKAGE: "npm-primary", ALIAS_NAME: "npm-alias"}
 
 
 class RegistryPendingError(RuntimeError):
@@ -56,10 +57,12 @@ def pypi_metadata_url(version: str) -> str:
   return f"https://pypi.org/pypi/{PYPI_PACKAGE}/{quote(version, safe='')}/json"
 
 
-def npm_metadata_url(version: str) -> str:
+def npm_metadata_url(package_name: str, version: str | None = None) -> str:
   """Return the version-specific npm registry endpoint."""
-  package = quote(NPM_PACKAGE, safe="@")
-  return f"https://{NPM_REGISTRY_HOST}/{package}/{quote(version, safe='')}"
+  if package_name not in NPM_LABELS:
+    raise ValueError(f"Unknown npm package: {package_name}")
+  package = quote(package_name, safe="@")
+  return f"https://{NPM_REGISTRY_HOST}/{package}" + (f"/{quote(version, safe='')}" if version is not None else "")
 
 
 def _metadata(url: str, session: object) -> dict | None:
@@ -107,12 +110,12 @@ def _validate_ssri(content: bytes, integrity: object) -> None:
     raise RuntimeError("npm registry SHA-512 integrity mismatch")
 
 
-def npm_version_is_exact(tarball: Path, version: str, session: object = requests) -> bool:
+def npm_version_is_exact(tarball: Path, version: str, package_name: str, session: object = requests) -> bool:
   """Return false for an absent npm version; reject anything present but non-identical."""
-  metadata = _metadata(npm_metadata_url(version), session)
+  metadata = _metadata(npm_metadata_url(package_name, version), session)
   if metadata is None:
     return False
-  if metadata.get("name") != NPM_PACKAGE or metadata.get("version") != version:
+  if metadata.get("name") != package_name or metadata.get("version") != version:
     raise RuntimeError("npm registry package identity mismatch")
   dist = metadata.get("dist")
   if not isinstance(dist, dict) or not isinstance(dist.get("tarball"), str):
@@ -176,13 +179,26 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
   return True
 
 
-def classify_npm_candidate(candidate: Path, version: str, commit: str, session: object = requests) -> bool:
-  """Return whether npm publication is required after validating the complete candidate."""
+def classify_npm_candidate(
+  candidate: Path,
+  version: str,
+  commit: str,
+  package_name: str,
+  session: object = requests,
+) -> str:
+  """Classify fresh bytes; conflicts and uncertain responses raise rather than permit publication."""
   validate_release_candidate(candidate, f"v{version}", commit)
-  tarballs = list((candidate / "npm").glob("*.tgz"))
-  if len(tarballs) != 1:
-    raise RuntimeError("npm candidate must contain exactly one tarball")
-  return not npm_version_is_exact(tarballs[0], version, session)
+  tarballs = npm_candidate_tarballs(candidate, version)
+  if package_name not in tarballs:
+    raise ValueError(f"npm identity is not in candidate: {package_name}")
+  if npm_version_is_exact(tarballs[package_name], version, package_name, session):
+    return "exact"
+  metadata = _metadata(npm_metadata_url(package_name), session)
+  if metadata is None:
+    return "bootstrap_required"
+  if metadata.get("name") != package_name:
+    raise RuntimeError(f"npm package-level identity mismatch: {package_name}")
+  return "absent"
 
 
 def wait_for_candidate_registries(
@@ -199,13 +215,13 @@ def wait_for_candidate_registries(
     raise ValueError("Registry polling requires positive attempts and a non-negative delay")
   validate_release_candidate(candidate, f"v{version}", commit)
   wheels = sorted((candidate / "pypi").glob("*.whl"))
-  tarballs = list((candidate / "npm").glob("*.tgz"))
-  if len(wheels) != 4 or len(tarballs) != 1:
+  tarballs = npm_candidate_tarballs(candidate, version)
+  if len(wheels) != 4:
     raise RuntimeError("Invalid registry candidate inventory")
 
   pypi_ready = False
-  npm_ready = False
-  pending_reasons = {"PyPI": "version is absent", "npm": "version is absent"}
+  npm_ready = dict.fromkeys(tarballs, False)
+  pending_reasons = dict.fromkeys(["PyPI", *tarballs], "version is absent")
   for attempt in range(1, attempts + 1):
     if not pypi_ready:
       try:
@@ -213,17 +229,24 @@ def wait_for_candidate_registries(
         pending_reasons["PyPI"] = "version is absent"
       except RegistryPendingError as error:
         pending_reasons["PyPI"] = str(error)
-    if not npm_ready:
-      try:
-        npm_ready = npm_version_is_exact(tarballs[0], version, session)
-        pending_reasons["npm"] = "version is absent"
-      except RegistryPendingError as error:
-        pending_reasons["npm"] = str(error)
-    if pypi_ready and npm_ready:
+      except requests.HTTPError as error:
+        raise RuntimeError(f"PyPI: {error}") from error
+    for name, tarball in tarballs.items():
+      if not npm_ready[name]:
+        try:
+          npm_ready[name] = npm_version_is_exact(tarball, version, name, session)
+          pending_reasons[name] = "version is absent"
+        except RegistryPendingError as error:
+          pending_reasons[name] = str(error)
+        except (RuntimeError, requests.HTTPError) as error:
+          raise RuntimeError(f"{NPM_LABELS[name]}: {error}") from error
+    if pypi_ready and all(npm_ready.values()):
       return
     if attempt != attempts:
       sleep(delay_seconds)
   pending = [
-    f"{name} ({pending_reasons[name]})" for name, ready in (("PyPI", pypi_ready), ("npm", npm_ready)) if not ready
+    f"{NPM_LABELS.get(name, name)} ({pending_reasons[name]})"
+    for name, ready in [("PyPI", pypi_ready), *npm_ready.items()]
+    if not ready
   ]
   raise RuntimeError(f"Registry version did not become available after {attempts} attempts: {'; '.join(pending)}")

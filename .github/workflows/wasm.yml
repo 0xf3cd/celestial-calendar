@@ -85,30 +85,43 @@ jobs:
       - name: Full ABI protocol + golden dataset + size gate
         run: node toolbox/wasm_check.mjs
 
-      - name: Stage and pack the npm package
+      - name: Stage and pack the npm pair
         id: npm-package
         run: |
           python3 toolbox/build_npm.py
-          filename=$(node -e '
-            const pack = require("./build/npm/npm-pack.json");
-            if (!Array.isArray(pack) || pack.length !== 1) process.exit(1);
-            process.stdout.write(pack[0].filename);
-          ')
-          if [ "$(basename "$filename")" != "$filename" ] || [ ! -f "build/npm/$filename" ]; then
-            echo "Invalid npm-pack.json filename: $filename"
-            exit 1
-          fi
-          echo "tarball=build/npm/$filename" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from toolbox.build_npm import NPM_METADATA, PACKAGE_NAME, project_version
+          from toolbox.release_validation import npm_pack_filename
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+            for name, stem in NPM_METADATA.items():
+              pack = json.loads(Path(f"build/npm/{stem}.json").read_bytes())
+              filename = npm_pack_filename(pack, project_version(), name)
+              path = Path("build/npm") / filename
+              if not path.is_file() or path.is_symlink():
+                raise SystemExit("npm tarball is not a regular file")
+              key = "tarball" if name == PACKAGE_NAME else "alias_tarball"
+              output.write(f"{key}={path}\n")
+          PY
 
       - name: Current Node package, types, and exact-tarball consumers
+        env:
+          TARBALL: ${{ steps.npm-package.outputs.tarball }}
+          ALIAS_TARBALL: ${{ steps.npm-package.outputs.alias_tarball }}
         run: |
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs --exhaustive
-          node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
+          node bindings/javascript/test/node/tarball_consumer_test.mjs "$TARBALL" "$ALIAS_TARBALL"
           npm run test:types --prefix bindings/javascript
 
       - name: Astro production build and Chrome package smoke
-        run: node bindings/javascript/test/browser/browser_test.mjs "${{ steps.npm-package.outputs.tarball }}"
+        env:
+          TARBALL: ${{ steps.npm-package.outputs.tarball }}
+          ALIAS_TARBALL: ${{ steps.npm-package.outputs.alias_tarball }}
+        run: node bindings/javascript/test/browser/browser_test.mjs "$TARBALL" "$ALIAS_TARBALL"
 
       - name: Set up Node runtime floor
         uses: actions/setup-node@v6
@@ -116,12 +129,15 @@ jobs:
           node-version: ${{ env.NODE_FLOOR }}
 
       - name: Exact Node floor package consumers
+        env:
+          TARBALL: ${{ steps.npm-package.outputs.tarball }}
+          ALIAS_TARBALL: ${{ steps.npm-package.outputs.alias_tarball }}
         run: |
           node --version
           npm --version
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs
-          node bindings/javascript/test/node/tarball_consumer_test.mjs "${{ steps.npm-package.outputs.tarball }}"
+          node bindings/javascript/test/node/tarball_consumer_test.mjs "$TARBALL" "$ALIAS_TARBALL"
 
       # The release flow downloads this artifact for the tagged commit (the ritual
       # dispatches both build workflows; this leg stays dispatch+PR only). Alignment

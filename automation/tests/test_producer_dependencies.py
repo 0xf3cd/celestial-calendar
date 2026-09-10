@@ -9,6 +9,9 @@
 # SPDX-License-Identifier: MIT
 
 import json
+import io
+import tarfile
+from types import SimpleNamespace
 import re
 import tomllib
 from pathlib import Path
@@ -17,6 +20,12 @@ import pytest
 import yaml
 
 from toolbox.build_npm import (
+  ALIAS_ALLOWLIST,
+  ALIAS_FILES,
+  ALIAS_NAME,
+  ALIAS_SOURCE,
+  NPM_METADATA,
+  PACKAGE_NAME,
   PACKAGE_FILES,
   PACKAGE_SOURCE,
   PACK_ALLOWLIST,
@@ -26,6 +35,7 @@ from toolbox.build_npm import (
   verify_manifest,
 )
 from toolbox.release_validation import SOURCE_WORKFLOWS
+from toolbox import build_npm
 
 
 REPO = Path(__file__).parents[2]
@@ -467,7 +477,7 @@ def test_npm_date_subpath_inventory_and_exports():
     "celestial-jieqi.mjs",
     "celestial-jieqi.wasm",
   }
-  assert len(WASM_ARTIFACT_ALLOWLIST) + 3 == 7
+  assert len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA) == 10
   verify_manifest(staging_manifest("0.7.0"), "0.7.0")
 
 
@@ -530,9 +540,174 @@ def test_readme_describes_the_current_npm_and_wasm_members():
   wasm_section = readme.split("## 6.", maxsplit=1)[1].split("## 7.", maxsplit=1)[0]
 
   assert f"exact {len(PACK_ALLOWLIST)}-file npm tarball" in wasm_section
-  assert f"contains exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3} top-level files" in wasm_section
+  assert f"contains exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA)} top-level files" in wasm_section
+  assert f"{len(ALIAS_ALLOWLIST)}-file alias tarball" in wasm_section
   assert all(f"`{member}`" in wasm_section for member in WASM_ARTIFACT_ALLOWLIST)
   assert "the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`" in wasm_section
+  assert "`npm-alias-pack.json`" in wasm_section and "`npm-alias-pack.sha256`" in wasm_section
+
+
+def test_npm_alias_source_and_staging_contract():
+  source = json.loads((ALIAS_SOURCE / "package.json").read_text(encoding="utf-8"))
+  assert source["private"] is True and source["version"] == "0.0.0-development"
+  assert "devDependencies" not in source
+  assert source["dependencies"] == {PACKAGE_NAME: "0.0.0-development"}
+  assert ALIAS_ALLOWLIST == {"package.json", "LICENSE", "README.md", "index.mjs", "index.d.ts", "date.mjs", "date.d.ts"}
+  assert {"package.json", *ALIAS_FILES.values()} == ALIAS_ALLOWLIST
+  assert ALIAS_FILES[REPO / "LICENSE"] == "LICENSE"
+  for entry in ("index", "date"):
+    target = PACKAGE_NAME + ("/date" if entry == "date" else "")
+    for extension in ("mjs", "d.ts"):
+      text = (ALIAS_SOURCE / f"{entry}.{extension}").read_text(encoding="utf-8")
+      assert text.split("*/", 1)[1].strip() == f'export * from "{target}";'
+  manifest = staging_manifest("0.7.0", ALIAS_NAME)
+  verify_manifest(manifest, "0.7.0", ALIAS_NAME)
+  assert manifest["dependencies"] == {PACKAGE_NAME: "0.7.0"}
+
+
+@pytest.mark.parametrize(
+  "key,value",
+  [
+    ("dependencies", None),
+    ("dependencies", {}),
+    ("dependencies", {PACKAGE_NAME: "^0.7.0"}),
+    ("dependencies", {PACKAGE_NAME: "0.7.1"}),
+    ("dependencies", {PACKAGE_NAME: "0.7.0", "extra": "1.0.0"}),
+    ("optionalDependencies", {PACKAGE_NAME: "0.7.0"}),
+    ("peerDependencies", {PACKAGE_NAME: "0.7.0"}),
+  ],
+)
+def test_alias_rejects_wrong_dependency_graph(tmp_path, monkeypatch, key, value):
+  source = json.loads((ALIAS_SOURCE / "package.json").read_text(encoding="utf-8"))
+  manifest = staging_manifest("0.7.0", ALIAS_NAME)
+  source[key] = value
+  manifest[key] = value
+  (tmp_path / "package.json").write_text(json.dumps(source), encoding="utf-8")
+  monkeypatch.setattr("toolbox.build_npm.ALIAS_SOURCE", tmp_path)
+  with pytest.raises(RuntimeError, match="exact same-version"):
+    staging_manifest("0.7.0", ALIAS_NAME)
+  with pytest.raises(RuntimeError, match="exact same-version"):
+    verify_manifest(manifest, "0.7.0", ALIAS_NAME)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+def test_registry_classifier_and_verifier_installs_are_hash_locked(job_name):
+  job = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))["jobs"][job_name]
+  steps = [step for step in job["steps"] if "Requirements" in step.get("run", "")]
+  assert len(steps) == 1
+  assert steps[0]["run"] == ("python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-producer.txt")
+  assert_hash_locked_install(steps[0]["run"])
+
+
+@pytest.mark.parametrize(
+  "mutation",
+  [
+    None,
+    "filename",
+    "missing-tarball",
+    "extra-tarball",
+    "wrong-name",
+    "wrong-version",
+    "missing-files",
+    "duplicate-files",
+    "extra-member",
+    "wrong-bytes",
+    "tarball-budget",
+    "outer-extra",
+  ],
+)
+def test_builder_packs_each_identity_once_and_checks_fresh_inventories(tmp_path, monkeypatch, mutation):
+  inputs = tmp_path / "inputs"
+  inputs.mkdir()
+  for filename in ("celestial-jieqi.mjs", "celestial-jieqi.wasm"):
+    (inputs / filename).write_bytes(b"wasm fixture")
+  for attribute in ("PACKAGE_FILES", "WASM_ARTIFACT_FILES"):
+    files = getattr(build_npm, attribute)
+    monkeypatch.setattr(
+      build_npm,
+      attribute,
+      {(inputs / name if name.startswith("celestial-jieqi.") else path): name for path, name in files.items()},
+    )
+  monkeypatch.setattr(build_npm, "project_version", lambda: "0.7.0")
+  monkeypatch.setattr(build_npm.shutil, "which", lambda _name: "fake-npm")
+  out = tmp_path / "out"
+  out.mkdir()
+  (out / "stale.tgz").write_bytes(b"stale")
+  calls = []
+
+  def pack(command, **_kwargs):
+    assert command[:4] == ["fake-npm", "pack", "--json", "--pack-destination"]
+    assert not (out / "stale.tgz").exists()
+    stage = Path(command[-1])
+    manifest = json.loads((stage / "package.json").read_bytes())
+    name = manifest["name"]
+    calls.append(name)
+    if name == ALIAS_NAME:
+      assert (out / "primary-custom.tgz").is_file()
+    filename = "alias-custom.tgz" if name == ALIAS_NAME else "primary-custom.tgz"
+    content = io.BytesIO()
+    with tarfile.open(fileobj=content, mode="w:gz") as archive:
+      for path in stage.iterdir():
+        data = path.read_bytes()
+        if name == ALIAS_NAME and mutation == "wrong-bytes" and path.name == "date.mjs":
+          data = b"changed"
+        info = tarfile.TarInfo(f"package/{path.name}")
+        info.size = len(data)
+        archive.addfile(info, io.BytesIO(data))
+      if name == ALIAS_NAME and mutation == "extra-member":
+        archive.addfile(tarfile.TarInfo("package/extra.txt"), io.BytesIO())
+    (out / filename).write_bytes(content.getvalue())
+    record = {
+      "name": name,
+      "version": "0.7.0",
+      "filename": filename,
+      "files": [{"path": path.name} for path in stage.iterdir()],
+    }
+    if name == ALIAS_NAME:
+      if mutation == "filename":
+        record["filename"] = "../escape.tgz"
+      elif mutation == "missing-tarball":
+        (out / filename).unlink()
+      elif mutation == "extra-tarball":
+        (out / "extra.tgz").write_bytes(b"extra")
+      elif mutation == "wrong-name":
+        record["name"] = PACKAGE_NAME
+      elif mutation == "wrong-version":
+        record["version"] = "0.7.1"
+      elif mutation == "missing-files":
+        record["files"].pop()
+      elif mutation == "duplicate-files":
+        record["files"].append(record["files"][0])
+      elif mutation == "tarball-budget":
+        (out / filename).write_bytes(b"0" * (build_npm.MAX_TARBALL_BYTES + 1))
+    return SimpleNamespace(stdout=json.dumps([record]))
+
+  monkeypatch.setattr(build_npm.subprocess, "run", pack)
+  if mutation == "outer-extra":
+    original_copy = build_npm.shutil.copy2
+
+    def copy(source, destination):
+      result = original_copy(source, destination)
+      if destination.parent.name == "artifact":
+        (destination.parent / "extra").mkdir(exist_ok=True)
+      return result
+
+    monkeypatch.setattr(build_npm.shutil, "copy2", copy)
+  if mutation is not None:
+    with pytest.raises(RuntimeError):
+      build_npm.build(out)
+  else:
+    primary, alias = build_npm.build(out)
+    assert [primary.name, alias.name] == ["primary-custom.tgz", "alias-custom.tgz"]
+    assert len(list((out / "artifact").iterdir())) == 10
+    assert len(list((out / "package").iterdir())) == 12
+    assert len(list((out / "alias-package").iterdir())) == 7
+    assert (out / "alias-package/LICENSE").read_bytes() == (REPO / "LICENSE").read_bytes()
+    for package_name, stem in NPM_METADATA.items():
+      metadata = json.loads((out / f"{stem}.json").read_bytes())
+      assert metadata[0]["name"] == package_name
+      assert (out / "artifact" / metadata[0]["filename"]).read_bytes() == (out / metadata[0]["filename"]).read_bytes()
+  assert calls == [PACKAGE_NAME, ALIAS_NAME]
 
 
 @pytest.mark.parametrize(

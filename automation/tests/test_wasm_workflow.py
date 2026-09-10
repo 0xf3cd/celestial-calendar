@@ -11,10 +11,14 @@
 import json
 import re
 import shlex
+import subprocess
+import sys
+import shutil
 from collections import Counter
 from pathlib import Path
 
 import yaml
+import pytest
 
 from toolbox.release_validation import SOURCE_SPECS
 
@@ -169,3 +173,48 @@ def test_date_bridge_runs_on_current_and_floor_node():
     ("${{ env.NODE_CURRENT }}", [*command, "--exhaustive"]),
     ("${{ env.NODE_FLOOR }}", command),
   ]
+
+
+def test_wasm_consumers_receive_the_metadata_pair_through_quoted_environment(tmp_path):
+  if shutil.which("bash") is None:
+    pytest.skip("WASM consumer steps require bash")
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["wasm"]["steps"]
+  consumers = [step for step in steps if "TARBALL" in step.get("env", {})]
+  assert len(consumers) == 3
+  assert sum("toolbox/build_npm.py" in step.get("run", "") for step in steps) == 1
+  fake_bin = tmp_path / "bin"
+  fake_bin.mkdir()
+  calls = tmp_path / "calls.jsonl"
+  for name in ("node", "npm"):
+    executable = fake_bin / name
+    executable.write_text(
+      f"#!{sys.executable}\nimport json, os, sys\n"
+      "with open(os.environ['CALLS'], 'a') as output:\n"
+      "  output.write(json.dumps(sys.argv[1:]) + '\\n')\n",
+      encoding="utf-8",
+    )
+    executable.chmod(0o755)
+  primary = 'primary $(touch INJECTED) " ;.tgz'
+  alias = 'alias `touch INJECTED` " ;.tgz'
+  for step in consumers:
+    assert step["env"] == {
+      "TARBALL": "${{ steps.npm-package.outputs.tarball }}",
+      "ALIAS_TARBALL": "${{ steps.npm-package.outputs.alias_tarball }}",
+    }
+    assert "${{" not in step["run"]
+    result = subprocess.run(
+      [shutil.which("bash"), "--noprofile", "--norc", "-euo", "pipefail", "-c", step["run"]],
+      cwd=tmp_path,
+      env={"PATH": str(fake_bin), "CALLS": str(calls), "TARBALL": primary, "ALIAS_TARBALL": alias},
+      capture_output=True,
+      text=True,
+    )
+    assert result.returncode == 0, result.stderr
+  records = [json.loads(line) for line in calls.read_text().splitlines()]
+  pair_calls = [
+    args for args in records if args and args[0].endswith(("tarball_consumer_test.mjs", "browser_test.mjs"))
+  ]
+  assert len(pair_calls) == 3
+  assert all(args[1:] == [primary, alias] for args in pair_calls)
+  assert not (tmp_path / "INJECTED").exists()

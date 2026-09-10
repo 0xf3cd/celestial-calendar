@@ -113,8 +113,10 @@ Individual steps: `--setup` / `--cmake` / `--build` / `--test` / `--bench` / `--
 The WASM/npm exception has its own shared manual/CI path: `npm ci --ignore-scripts --prefix
 bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.mjs`, then
 `python3 toolbox/build_npm.py`. Consumer tests take the exact tarball named by
-`build/npm/npm-pack.json`; do not select it with a glob or rebuild it per consumer. The release
-workflow publishes that exact tested tarball to npm; it never repacks from source.
+`build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json`; do not select either with a glob or
+rebuild per consumer. The builder packs primary and alias once each in separate staging directories.
+The release workflow freshly classifies and publishes those exact tested bytes, primary before alias;
+it never repacks from source. Registry acceptance covers each name alone and the same-version pair.
 
 Python wheels likewise use their independent package path: install the exact host pins from
 `bindings/python/requirements-host.txt`; the before-build hook installs `requirements-build.txt`,

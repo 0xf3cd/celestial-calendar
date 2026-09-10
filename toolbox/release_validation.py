@@ -24,7 +24,7 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
-from toolbox.build_npm import PACKAGE_NAME
+from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, NPM_METADATA, PACKAGE_NAME, PACK_ALLOWLIST, verify_manifest
 from toolbox.runtime_floor import validate_runtime_floor
 
 
@@ -291,6 +291,39 @@ def validate_wheel_sidecars(
     raise RuntimeError(f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}")
 
 
+def npm_package_metadata(version: str) -> dict[str, str]:
+  """Select the package format independently of historical license validation."""
+  if re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
+    raise RuntimeError(f"Invalid npm release version: {version}")
+  return {PACKAGE_NAME: NPM_METADATA[PACKAGE_NAME]} if re.fullmatch(r"0\.6\.\d+", version) else dict(NPM_METADATA)
+
+
+def npm_pack_filename(pack: object, version: str, package_name: str) -> str:
+  """Read one explicit identity, never select a tarball by archive or glob order."""
+  if not isinstance(pack, list) or len(pack) != 1 or not isinstance(pack[0], dict):
+    raise RuntimeError("npm pack metadata must describe exactly one package")
+  package = pack[0]
+  filename = package.get("filename")
+  if (
+    package.get("name") != package_name
+    or package.get("version") != version
+    or not isinstance(filename, str)
+    or re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*\.tgz", filename) is None
+  ):
+    raise RuntimeError(f"Invalid npm package identity: {package_name}@{version}")
+  return filename
+
+
+def npm_candidate_tarballs(candidate: Path, version: str) -> dict[str, Path]:
+  """Select identities from evidence after complete candidate validation."""
+  return {
+    name: candidate
+    / "npm"
+    / npm_pack_filename(json.loads((candidate / "evidence" / f"{stem}.json").read_bytes()), version, name)
+    for name, stem in npm_package_metadata(version).items()
+  }
+
+
 def npm_archive_payload(
   archive_path: Path,
   version: str,
@@ -303,33 +336,17 @@ def npm_archive_payload(
       duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
       if duplicates:
         raise RuntimeError(f"Duplicate archive member in {archive_path.name}: {duplicates}")
-      required_metadata = {"npm-pack.json", "npm-pack.sha256"}
+      packages = npm_package_metadata(version)
+      required_metadata = {f"{stem}.{suffix}" for stem in packages.values() for suffix in ("json", "sha256")}
       missing_metadata = sorted(required_metadata - set(names))
       if missing_metadata:
         raise RuntimeError(f"Missing npm metadata in {archive_path.name}: {missing_metadata}")
 
-      pack = _read_json(archive, "npm-pack.json", archive_path.name)
-      if not isinstance(pack, list) or len(pack) != 1 or not isinstance(pack[0], dict):
-        raise RuntimeError(f"npm-pack.json in {archive_path.name} must describe exactly one package")
-      package = pack[0]
-      tarball_name = package.get("filename")
-      if (
-        package.get("name") != PACKAGE_NAME
-        or package.get("version") != version
-        or not isinstance(tarball_name, str)
-        or Path(tarball_name).name != tarball_name
-        or "\\" in tarball_name
-        or not tarball_name.endswith(".tgz")
-      ):
-        raise RuntimeError(f"Invalid npm package identity in {archive_path.name}")
-
-      expected = {
-        "celestial-jieqi.mjs",
-        "celestial-jieqi.wasm",
-        tarball_name,
-        "npm-pack.json",
-        "npm-pack.sha256",
-      }
+      packs = {name: _read_json(archive, f"{stem}.json", archive_path.name) for name, stem in packages.items()}
+      tarballs = {name: npm_pack_filename(pack, version, name) for name, pack in packs.items()}
+      if len(set(tarballs.values())) != len(packages):
+        raise RuntimeError("Duplicate npm tarball identity")
+      expected = {"celestial-jieqi.mjs", "celestial-jieqi.wasm", *tarballs.values(), *required_metadata}
       if license_validation is not LicenseValidation.LEGACY:
         expected.add("LICENSE")
         expected.add(NOTICE_MEMBER)
@@ -340,19 +357,41 @@ def npm_archive_payload(
         _require_license(archive, "LICENSE", archive_path.name, expected_license)
         _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
 
-      tarball = archive.read(tarball_name)
-      digest = hashlib.sha256(tarball).hexdigest()
-      expected_sidecar = f"{digest}  {tarball_name}\n".encode()
-      if archive.read("npm-pack.sha256") != expected_sidecar:
-        raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}")
-      if license_validation is not LicenseValidation.LEGACY:
-        _require_npm_license(tarball, tarball_name, expected_license)
-        _require_npm_notice(tarball, tarball_name, expected_notice)
-      return {
-        tarball_name: tarball,
-        "npm-pack.json": archive.read("npm-pack.json"),
-        "npm-pack.sha256": archive.read("npm-pack.sha256"),
-      }
+      payload = {name: archive.read(name) for name in required_metadata}
+      for name, tarball_name in tarballs.items():
+        tarball = archive.read(tarball_name)
+        digest = hashlib.sha256(tarball).hexdigest()
+        expected_sidecar = f"{digest}  {tarball_name}\n".encode()
+        if archive.read(f"{packages[name]}.sha256") != expected_sidecar:
+          raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}: {name}")
+        if license_validation is not LicenseValidation.LEGACY:
+          _require_npm_license(tarball, tarball_name, expected_license)
+          if name == PACKAGE_NAME:
+            _require_npm_notice(tarball, tarball_name, expected_notice)
+        if len(packages) == 2:
+          allowlist = ALIAS_ALLOWLIST if name == ALIAS_NAME else PACK_ALLOWLIST
+          files = packs[name][0].get("files")
+          if (
+            not isinstance(files, list)
+            or any(not isinstance(entry, dict) or not isinstance(entry.get("path"), str) for entry in files)
+            or (len(files) != len(allowlist) or {entry.get("path") for entry in files} != allowlist)
+          ):
+            raise RuntimeError(f"npm pack files inventory mismatch: {name}")
+          try:
+            with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as packed:
+              members = packed.getmembers()
+              if (
+                len(members) != len(allowlist)
+                or {member.name for member in members} != {f"package/{member}" for member in allowlist}
+                or any(not member.isfile() for member in members)
+              ):
+                raise RuntimeError(f"npm tarball member inventory mismatch: {name}")
+              manifest = packed.extractfile("package/package.json")
+              verify_manifest(json.loads(manifest.read()), version, name)
+          except (tarfile.TarError, ValueError) as error:
+            raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
+        payload[tarball_name] = tarball
+      return payload
   except zipfile.BadZipFile as error:
     raise RuntimeError(f"Invalid ZIP archive {archive_path.name}: {error}") from error
 
@@ -662,8 +701,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     raise RuntimeError("GitHub candidate asset inventory mismatch")
   expected_evidence = {
     *(path.name for path in sidecars),
-    "npm-pack.json",
-    "npm-pack.sha256",
+    *(f"{stem}.{suffix}" for stem in npm_package_metadata(version).values() for suffix in ("json", "sha256")),
     "RELEASE_NOTES.md",
     "manifest.json",
   }
@@ -681,20 +719,17 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     if sidecar.read_bytes() != (github / sidecar.name).read_bytes():
       raise RuntimeError(f"Evidence/GitHub wheel sidecar mismatch: {sidecar.name}")
 
-  npm_files = list(npm.iterdir())
-  if len(npm_files) != 1 or not npm_files[0].name.endswith(".tgz"):
-    raise RuntimeError("npm candidate must contain exactly one tarball")
   npm_payload = npm_archive_payload(
     github / WASM_ARCHIVE,
     version,
     license_validation=LicenseValidation.REPOSITORY,
   )
-  tarball = npm_files[0]
-  if npm_payload.get(tarball.name) != tarball.read_bytes():
-    raise RuntimeError("npm candidate tarball does not match the WASM archive")
-  for sidecar_name in ("npm-pack.json", "npm-pack.sha256"):
-    if npm_payload[sidecar_name] != (evidence / sidecar_name).read_bytes():
-      raise RuntimeError(f"npm evidence mismatch: {sidecar_name}")
+  if {path.name for path in npm.iterdir()} != {name for name in npm_payload if name.endswith(".tgz")}:
+    raise RuntimeError("npm candidate tarball inventory mismatch")
+  for name, content in npm_payload.items():
+    directory = npm if name.endswith(".tgz") else evidence
+    if content != (directory / name).read_bytes():
+      raise RuntimeError(f"npm candidate does not match the WASM archive: {name}")
   validate_release_document_versions(tag_name, (evidence / "RELEASE_NOTES.md", github / "CHANGELOG.md"))
   return manifest
 
@@ -748,7 +783,6 @@ def stage_release_candidate(
     version,
     license_validation=LicenseValidation.REPOSITORY,
   )
-  tarball_name = next(name for name in npm_payload if name.endswith(".tgz"))
 
   save_to.parent.mkdir(parents=True, exist_ok=True)
   staging = Path(tempfile.mkdtemp(prefix=f".{save_to.name}-", dir=save_to.parent))
@@ -757,11 +791,10 @@ def stage_release_candidate(
       _copy_bytes(staging / "github" / asset.name, asset.read_bytes())
     for wheel in wheels:
       _copy_bytes(staging / "pypi" / wheel.name, wheel.read_bytes())
-    _copy_bytes(staging / "npm" / tarball_name, npm_payload[tarball_name])
+    for name, content in npm_payload.items():
+      _copy_bytes(staging / ("npm" if name.endswith(".tgz") else "evidence") / name, content)
     for sidecar in sidecars:
       _copy_bytes(staging / "evidence" / sidecar.name, sidecar.read_bytes())
-    _copy_bytes(staging / "evidence" / "npm-pack.json", npm_payload["npm-pack.json"])
-    _copy_bytes(staging / "evidence" / "npm-pack.sha256", npm_payload["npm-pack.sha256"])
     _copy_bytes(staging / "evidence" / "RELEASE_NOTES.md", release_notes.read_bytes())
 
     files = {}

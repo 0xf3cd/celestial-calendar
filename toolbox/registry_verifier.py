@@ -17,7 +17,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from toolbox.registry_validation import classify_npm_candidate, wait_for_candidate_registries
+from toolbox.registry_validation import NPM_LABELS, classify_npm_candidate, wait_for_candidate_registries
+from toolbox.release_validation import npm_candidate_tarballs, npm_package_metadata
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +27,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--candidate", type=Path, required=True)
   parser.add_argument("--version", required=True)
   parser.add_argument("--commit", required=True)
+  parser.add_argument("--package", choices=tuple(NPM_LABELS))
   parser.add_argument("--github-output", type=Path)
   parser.add_argument("--github-summary", type=Path)
   return parser.parse_args()
@@ -40,20 +42,26 @@ def main() -> None:
   args = parse_args()
   candidate = args.candidate.resolve()
   if args.command == "classify-npm":
-    if args.github_output is None:
-      raise RuntimeError("classify-npm requires --github-output")
-    publish_required = classify_npm_candidate(candidate, args.version, args.commit)
-    value = str(publish_required).lower()
-    append_line(args.github_output, f"publish_required={value}")
+    if args.github_output is None or args.package is None:
+      raise RuntimeError("classify-npm requires --package and --github-output")
+    label = NPM_LABELS[args.package]
+    try:
+      state = classify_npm_candidate(candidate, args.version, args.commit, args.package)
+    except Exception as error:
+      raise RuntimeError(f"{label} classification failed: {error}") from error
+    tarball = npm_candidate_tarballs(candidate, args.version)[args.package]
+    append_line(args.github_output, f"state={state}")
+    append_line(args.github_output, f"tarball={tarball}")
     if args.github_summary is not None:
-      append_line(args.github_summary, f"- npm publication required: `{value}`")
-    print(f"npm publication required: {value}")
+      append_line(args.github_summary, f"- {label} ({args.package}): `{state}`")
+    print(f"{label} ({args.package}): {state}")
     return
 
-  if args.github_output is not None or args.github_summary is not None:
-    raise RuntimeError("verify does not write GitHub step files")
+  if args.github_output is not None or args.github_summary is not None or args.package is not None:
+    raise RuntimeError("verify takes no package selector or GitHub step files")
   wait_for_candidate_registries(candidate, args.version, args.commit)
-  print(f"Verified exact PyPI and npm registry bytes for {args.version}")
+  labels = ", ".join(NPM_LABELS[name] for name in npm_package_metadata(args.version))
+  print(f"Verified exact PyPI, {labels} registry bytes for {args.version}")
 
 
 if __name__ == "__main__":

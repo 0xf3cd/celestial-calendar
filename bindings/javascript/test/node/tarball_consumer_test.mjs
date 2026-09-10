@@ -10,16 +10,21 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { basename, dirname, resolve } from "node:path";
+import { basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { runPackageConsumer } from "../support/package_consumer.mjs";
 
-if (process.argv.length !== 3) throw new Error("usage: node tarball_consumer_test.mjs <package.tgz>");
+if (process.argv.length !== 4) throw new Error("usage: node tarball_consumer_test.mjs <primary.tgz> <alias.tgz>");
 
 const tarball = resolve(process.argv[2]);
+const alias = resolve(process.argv[3]);
 await runPackageConsumer({
-  dependency: `file:${tarball}`,
+  dependencies: { "@0xf3cd/celestial": `file:${tarball}`, "celestial-calendar": `file:${alias}` },
+  packageName: "celestial-calendar",
   installArgs: ["--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"],
   prefix: "celestial-npm-consumer-",
-  success: `PASS unrelated offline install ${basename(tarball)} from ${dirname(tarball)}`,
+  typeCompiler: fileURLToPath(new URL("../../node_modules/typescript/bin/tsc", import.meta.url)),
+  success: `PASS unrelated offline pair, installed types, shared state, and /date without WASM: ${basename(tarball)} + ${basename(alias)}`,
 });
+console.log("PASS installed version drift rejected");

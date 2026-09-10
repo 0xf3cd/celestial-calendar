@@ -9,6 +9,10 @@
 # SPDX-License-Identifier: MIT
 
 import re
+import json
+import subprocess
+import sys
+import shutil
 
 from types import SimpleNamespace
 from pathlib import Path
@@ -182,7 +186,7 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   context = next(step for step in steps if step.get("name") == "Validate protected release context")
   download = next(step for step in steps if step.get("name") == "Download exact producer runs")
   stage = next(step for step in steps if step.get("name") == "Stage immutable release candidate")
-  classify = next(step for step in steps if step.get("name") == "Classify exact npm version")
+  classifiers = [step for step in steps if step.get("name", "").startswith("Classify exact npm-")]
   upload = next(step for step in steps if step.get("name") == "Upload immutable release candidate")
 
   assert context["env"] == {
@@ -205,13 +209,15 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   assert "--source-manifest release-sources.json" in download["run"]
   assert "toolbox/release_candidate.py" in stage["run"]
   assert "candidate/evidence/manifest.json" in stage["run"]
-  assert workflow["jobs"]["prepare_release"]["outputs"] == {
-    "npm_publish_required": "${{ steps.npm-version.outputs.publish_required }}"
-  }
-  assert steps.index(stage) < steps.index(classify) < steps.index(upload)
-  assert "toolbox/registry_verifier.py classify-npm" in classify["run"]
-  assert '--github-output "$GITHUB_OUTPUT"' in classify["run"]
-  assert '--github-summary "$GITHUB_STEP_SUMMARY"' in classify["run"]
+  assert "outputs" not in workflow["jobs"]["prepare_release"]
+  assert len(classifiers) == 2
+  assert "--package '@0xf3cd/celestial'" in classifiers[0]["run"]
+  assert "--package celestial-calendar" in classifiers[1]["run"]
+  for classify in classifiers:
+    assert steps.index(stage) < steps.index(classify) < steps.index(upload)
+    assert "toolbox/registry_verifier.py classify-npm" in classify["run"]
+    assert '--github-output "$GITHUB_OUTPUT"' in classify["run"]
+    assert '--github-summary "$GITHUB_STEP_SUMMARY"' in classify["run"]
   assert upload["with"] == {
     "name": "celestial-release-candidate",
     "path": "candidate/",
@@ -269,9 +275,7 @@ def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
   job = workflow["jobs"]["publish_npm"]
   text = yaml.safe_dump(job)
   setup = next(step for step in job["steps"] if step.get("name") == "Set up the trusted npm runtime")
-  publish = next(
-    step for step in job["steps"] if step.get("name") == "Publish exact tarball or report verified bootstrap"
-  )
+  steps = job["steps"]
 
   assert job["needs"] == ["prepare_release", "create_release"]
   assert job["environment"] == "npm"
@@ -281,14 +285,33 @@ def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
     "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
     "with": {"node-version": "24.19.0"},
   }
-  assert publish["env"] == {"PUBLISH_REQUIRED": "${{ needs.prepare_release.outputs.npm_publish_required }}"}
-  assert '"$(npm --version)" != "11.17.0"' in publish["run"]
-  assert 'npm publish "${tarballs[0]}" --access public --ignore-scripts' in publish["run"]
+  checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout@"))
+  assert checkout["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
+  runtime = next(step for step in steps if step.get("name") == "Verify the trusted npm runtime")
+  assert '"$(npm --version)" != "11.17.0"' in runtime["run"]
+  last_publish = steps.index(runtime)
+  for label, package in (("npm-primary", "'@0xf3cd/celestial'"), ("npm-alias", "celestial-calendar")):
+    classify = next(step for step in steps if step.get("id") == label)
+    publish = next(step for step in steps if step.get("name") == f"Publish exact {label} tarball")
+    assert last_publish < steps.index(classify) == steps.index(publish) - 1
+    last_publish = steps.index(publish)
+    assert "toolbox/registry_verifier.py classify-npm" in classify["run"]
+    assert f"--package {package}" in classify["run"]
+    assert '--candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA"' in classify["run"]
+    assert classify["env"] == {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"}
+    assert publish["env"] == {
+      "STATE": "${{ steps." + label + ".outputs.state }}",
+      "TARBALL": "${{ steps." + label + ".outputs.tarball }}",
+    }
+    assert 'npm publish "$TARBALL" --access public --ignore-scripts' in publish["run"]
+    assert "bootstrap_required)" in publish["run"] and "exit 1" in publish["run"]
+    assert "${{" not in publish["run"]
   assert "NODE_AUTH_TOKEN" not in text
   assert "skip-existing" not in text
   assert "npm install" not in text
-  assert "actions/checkout" not in text
-  assert "toolbox/" not in text
+  assert "npm pack" not in text
+  assert "build_npm" not in text and "build_wasm" not in text
+  assert "tarballs[0]" not in text and "*.tgz" not in text
 
 
 def test_registry_verifier_is_unprivileged_and_runs_both_clean_installs():
@@ -317,9 +340,97 @@ def test_registry_jobs_start_only_after_the_immutable_github_release():
   assert jobs["verify_registries"]["needs"] == ["publish_pypi", "publish_npm"]
 
 
+def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
+  guide = (RELEASE_WORKFLOW.parents[2] / "docs/RELEASING.md").read_text(encoding="utf-8")
+  recovery = " ".join(guide.split("## Recovery", maxsplit=1)[1].split())
+
+  assert (
+    "An unambiguous PyPI failure before registry acceptance may use "
+    "`gh run rerun RUN_ID --failed` after reviewing the evidence."
+  ) in recovery
+  assert (
+    "If a PyPI publish command fails ambiguously but registry queries prove the exact candidate is present, "
+    "leave that publication job red. Do not rerun it or use `skip-existing`; "
+    "record the recovery and complete consumer validation manually."
+  ) in recovery
+  assert (
+    "For npm publication failure, inspect the evidence and retry only the npm job using "
+    "`gh run rerun RUN_ID --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes "
+    "and continues with the remaining package."
+  ) in recovery
+  assert 'After any irreversible job succeeds, never use "Re-run all jobs".' in recovery
+
+
 def test_every_release_action_is_sha_pinned():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
   actions = [step["uses"] for job in workflow["jobs"].values() for step in job["steps"] if "uses" in step]
 
   assert actions
   assert all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", action) for action in actions)
+
+
+@pytest.mark.parametrize(
+  "states, exits, published, npm_exit",
+  [
+    (("absent", "absent"), (0, 0), ["primary", "alias"], 0),
+    (("exact", "absent"), (0, 0), ["alias"], 0),
+    (("exact", "exact"), (0, 0), [], 0),
+    (("absent", "bootstrap_required"), (0, 1), ["primary"], 0),
+    (("bootstrap_required", "absent"), (1,), [], 0),
+    (("exact", "conflict"), (0, 1), [], 0),
+    (("absent", "absent"), (9,), ["primary"], 9),
+    (("exact", "absent"), (0, 9), ["alias"], 9),
+  ],
+)
+def test_extracted_npm_publication_steps_only_publish_absent_exact_selected_bytes(
+  tmp_path, states, exits, published, npm_exit
+):
+  if shutil.which("bash") is None:
+    pytest.skip("publisher steps require bash")
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  steps = [
+    step for step in workflow["jobs"]["publish_npm"]["steps"] if step.get("name", "").startswith("Publish exact npm-")
+  ]
+  assert len(steps) == 2
+  fake_bin = tmp_path / "bin"
+  fake_bin.mkdir()
+  fake_npm = fake_bin / "npm"
+  fake_npm.write_text(
+    f"#!{sys.executable}\nimport json, os, sys\n"
+    "from pathlib import Path\n"
+    "assert sys.argv[1] == 'publish'\n"
+    "assert sys.argv[3:] == ['--access', 'public', '--ignore-scripts']\n"
+    "with Path(os.environ['CALLS']).open('a') as output:\n"
+    "  output.write(json.dumps([sys.argv[2], Path(sys.argv[2]).read_text()]) + '\\n')\n"
+    "raise SystemExit(int(os.environ['NPM_EXIT']))\n",
+    encoding="utf-8",
+  )
+  fake_npm.chmod(0o755)
+  calls = tmp_path / "calls.jsonl"
+  actual_exits = []
+  paths = {}
+  for step, state, label in zip(steps, states, ("primary", "alias"), strict=True):
+    tarball = tmp_path / f'{label} $(touch INJECTED); "quoted".tgz'
+    tarball.write_text(label, encoding="utf-8")
+    paths[label] = str(tarball)
+    result = subprocess.run(
+      [shutil.which("bash"), "--noprofile", "--norc", "-euo", "pipefail", "-c", step["run"]],
+      cwd=tmp_path,
+      env={
+        "PATH": str(fake_bin),
+        "CALLS": str(calls),
+        "STATE": state,
+        "TARBALL": str(tarball),
+        "NPM_EXIT": str(npm_exit),
+      },
+      capture_output=True,
+      text=True,
+    )
+    actual_exits.append(result.returncode)
+    if result.returncode:
+      assert "npm-" + label in result.stdout
+      break
+  assert tuple(actual_exits) == exits
+  recorded = [json.loads(line) for line in calls.read_text().splitlines()] if calls.exists() else []
+  assert recorded == [[paths[label], label] for label in published]
+  assert not (tmp_path / "INJECTED").exists()

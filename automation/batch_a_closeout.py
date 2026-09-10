@@ -211,7 +211,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "2e48e7154c748386cee2e63250032fb82d98fb7dcfc69e087869ca1c641048cb"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "2eedfd029fff5053f9adbb925466c49e3f7c371f2d9126c8cacbb8dd97cf9105"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -723,6 +723,8 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   package = _load_json(texts["bindings/javascript/package.json"].encode(), "npm project metadata")
   package_lock = _load_json(texts["bindings/javascript/package-lock.json"].encode(), "npm lock metadata")
   _require(package.get("license") == "MIT", "npm project license metadata differs")
+  alias = _load_json(texts["bindings/javascript-alias/package.json"].encode(), "npm alias metadata")
+  _require(alias.get("license") == "MIT", "npm alias license metadata differs")
   _require(package_lock.get("packages", {}).get("", {}).get("license") == "MIT", "npm root lock license differs")
   _require(texts["bindings/python/pyproject.toml"].count('license = "MIT"') == 1, "Python license metadata differs")
   _require(texts["toolbox/build_npm.py"].count('"license": "MIT",') == 1, "staged npm license differs")
@@ -731,10 +733,15 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     "wheel License-Expression expectation differs",
   )
 
-  for relative in ("bindings/javascript/README.md", "bindings/python/README.md"):
+  for relative in ("bindings/javascript/README.md", "bindings/python/README.md", "bindings/javascript-alias/README.md"):
     section = _section(texts[relative], "## License")
     _require("licensed under MIT" in section, f"package README MIT scope differs: {relative}")
     _require("THIRD_PARTY_NOTICES.txt" in section, f"package README third-party exception differs: {relative}")
+  alias_license = _section(texts["bindings/javascript-alias/README.md"], "## License")
+  _require(
+    "@0xf3cd/celestial/THIRD_PARTY_NOTICES.txt" in alias_license and "not bundled in this alias" in alias_license,
+    "alias README dependency-notice pointer differs",
+  )
   readme_license = _section(texts["README.md"], "## 13. License")
   _require("Project-authored material is licensed under the MIT License" in readme_license, "README MIT scope differs")
   for pointer in (
