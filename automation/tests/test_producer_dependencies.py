@@ -68,9 +68,29 @@ LOCK_NAMES = {path.relative_to(REPO).as_posix() for path in LOCK_INPUTS}
 LOCK_REFERENCES = LOCK_NAMES | {path.name for path in LOCK_INPUTS}
 REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9_.-]*)==([^\s;\\]+)")
 HASH_RE = re.compile(r"--hash=sha256:([0-9a-f]{64})(?:\s|$)")
-PIP_INSTALL_RE = re.compile(r"(?:^|[/\\\s])pip(?:3(?:\.\d+)?)?(?:\.exe)?(?:\s+--\S+)*\s+install(?:\s|$)")
+PIP_WORD_PATTERN = r"""(?:[^\s"'\\]|\\.|"(?:\\.|[^"\\])*"|'[^']*')+"""
+PIP_INSTALL_RE = re.compile(
+  r"(?:^|[/\\\s])pip(?:3(?:\.\d+)?)?(?:\.exe)?"
+  rf"(?:\s+-{PIP_WORD_PATTERN}(?:\s+(?!install(?:\s|$)|-){PIP_WORD_PATTERN})?)*\s+install(?:\s|$)"
+)
 LOCAL_WHEEL_INSTALL_RE = re.compile(
   r'^\S+ -m pip install --no-deps "(?:/wheels/\$WHEEL_FILENAME|\$WHEEL|\$env:WHEEL)"$'
+)
+REGISTRY_DEPENDENCY_INSTALL = "python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-producer.txt"
+PYPI_CONSUMER_INSTALL = (
+  "registry-venv/bin/python -m pip --isolated install "
+  "--index-url https://pypi.org/simple --only-binary=:all: --no-cache-dir --no-deps "
+  '"celestial-calendar==${TAG_NAME#v}"'
+)
+QUOTED_PIP_INSTALLS = (
+  'pip --log "path with spaces.log" install requests==2.34.2',
+  "pip --log 'path with spaces.log' install requests==2.34.2",
+  'pip --log="path with spaces.log" install requests==2.34.2',
+  "pip --log='path with spaces.log' install requests==2.34.2",
+  'python3 -m pip --python "path with spaces/bin/python" install requests==2.34.2',
+  "python3 -m pip --python 'path with spaces/bin/python' install requests==2.34.2",
+  'python3 -m pip --python="path with spaces/bin/python" install requests==2.34.2',
+  "python3 -m pip --python='path with spaces/bin/python' install requests==2.34.2",
 )
 TOP_LEVEL_CIBW_KEYS = {
   "CIBW_BEFORE_BUILD",
@@ -127,6 +147,7 @@ def assert_complete_hash_lock(path, python_version):
 
 
 def pip_install_lines(command):
+  command = re.sub(r"\\\r?\n", "", command)
   return [
     line.strip() for line in command.splitlines() if not line.lstrip().startswith("#") and PIP_INSTALL_RE.search(line)
   ]
@@ -142,19 +163,15 @@ def assert_hash_locked_install(line):
   assert any(name in line for name in LOCK_REFERENCES)
 
 
-def workflow_install_lines(path):
+def workflow_install_lines(path, job_name=None):
   workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
-  lines = [
-    line
-    for job in workflow["jobs"].values()
-    for step in job["steps"]
-    for line in pip_install_lines(str(step.get("run", "")))
-  ]
+  jobs = list(workflow["jobs"].values()) if job_name is None else [workflow["jobs"][job_name]]
+  lines = [line for job in jobs for step in job["steps"] for line in pip_install_lines(str(step.get("run", "")))]
   lines += [
     line
     for env in [workflow.get("env", {})]
-    + [job.get("env", {}) for job in workflow["jobs"].values()]
-    + [step.get("env", {}) for job in workflow["jobs"].values() for step in job["steps"]]
+    + [job.get("env", {}) for job in jobs]
+    + [step.get("env", {}) for job in jobs for step in job["steps"]]
     for value in env.values()
     for line in pip_install_lines(str(value))
   ]
@@ -592,11 +609,158 @@ def test_alias_rejects_wrong_dependency_graph(tmp_path, monkeypatch, key, value)
 
 @pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
 def test_registry_classifier_and_verifier_installs_are_hash_locked(job_name):
-  job = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))["jobs"][job_name]
-  steps = [step for step in job["steps"] if "Requirements" in step.get("run", "")]
-  assert len(steps) == 1
-  assert steps[0]["run"] == ("python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-producer.txt")
-  assert_hash_locked_install(steps[0]["run"])
+  lines = [" ".join(line.split()) for line in workflow_install_lines(RELEASE_WORKFLOW, job_name)]
+  expected = [REGISTRY_DEPENDENCY_INSTALL]
+  if job_name == "verify_registries":
+    expected.append(PYPI_CONSUMER_INSTALL)
+  assert sorted(lines) == sorted(expected)
+  for line in lines:
+    if job_name == "verify_registries" and line == PYPI_CONSUMER_INSTALL:
+      continue
+    assert_hash_locked_install(line)
+
+
+@pytest.fixture
+def registry_install_workflow(tmp_path, monkeypatch, job_name):
+  steps = [{"run": REGISTRY_DEPENDENCY_INSTALL}]
+  if job_name == "verify_registries":
+    steps.append({"run": PYPI_CONSUMER_INSTALL})
+  workflow = {"jobs": {job_name: {"steps": steps}}}
+  path = tmp_path / "release.yml"
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  monkeypatch.setattr(f"{__name__}.RELEASE_WORKFLOW", path)
+  test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+  return path, workflow
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize("scope", ["run", "workflow-env", "job-env", "step-env", "same-run"])
+@pytest.mark.parametrize(
+  "command",
+  [
+    "python3 -m pip install requests==2.34.2",
+    "python3 -m pip --isolated install requests==2.34.2",
+    "pip3 --timeout 30 --no-input install requests==2.34.2",
+    *QUOTED_PIP_INSTALLS,
+  ],
+)
+def test_registry_install_gate_rejects_unlocked_siblings(registry_install_workflow, job_name, scope, command):
+  path, workflow = registry_install_workflow
+  job = workflow["jobs"][job_name]
+  if scope == "run":
+    job["steps"].append({"run": command})
+  elif scope == "workflow-env":
+    workflow["env"] = {"EXTRA_INSTALL": command}
+  elif scope == "job-env":
+    job["env"] = {"EXTRA_INSTALL": command}
+  elif scope == "same-run":
+    job["steps"][0]["run"] += "\n" + command
+  else:
+    job["steps"].append({"env": {"EXTRA_INSTALL": command}})
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize(
+  "old,new",
+  [
+    (" --require-hashes", ""),
+    (" --only-binary=:all:", ""),
+    (" --only-binary=:all:", " --only-binary=requests"),
+    (" -r Requirements-producer.txt", " requests==2.34.2"),
+    ("Requirements-producer.txt", "Requirements.txt"),
+    ("Requirements-producer.txt", "bindings/python/requirements-host.txt"),
+  ],
+)
+def test_registry_install_gate_rejects_changed_bootstrap(registry_install_workflow, job_name, old, new):
+  path, workflow = registry_install_workflow
+  workflow["jobs"][job_name]["steps"][0]["run"] = REGISTRY_DEPENDENCY_INSTALL.replace(old, new)
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["verify_registries"])
+@pytest.mark.parametrize(
+  "old,new",
+  [
+    ('"celestial-calendar==${TAG_NAME#v}"', '"celestial-calendar==${TAG_NAME#v}" requests==2.34.2'),
+    ("celestial-calendar==${TAG_NAME#v}", "requests==2.34.2"),
+    ("celestial-calendar==${TAG_NAME#v}", "celestial-calendar>=0.7.0"),
+    ("celestial-calendar==${TAG_NAME#v}", "celestial-calendar"),
+    (" --isolated", ""),
+    (" --no-deps", ""),
+    (" --only-binary=:all:", ""),
+    (" --no-cache-dir", ""),
+    ("https://pypi.org/simple", "https://example.invalid/simple"),
+  ],
+)
+def test_registry_install_gate_rejects_changed_consumer(registry_install_workflow, job_name, old, new):
+  path, workflow = registry_install_workflow
+  workflow["jobs"][job_name]["steps"][1]["run"] = PYPI_CONSUMER_INSTALL.replace(old, new)
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["verify_registries"])
+@pytest.mark.parametrize("scope", ["run", "env"])
+@pytest.mark.parametrize(
+  "command",
+  [
+    "python3 -m pip install --no-deps requests==2.34.2",
+    'python -m pip install --no-deps "$WHEEL"',
+  ],
+)
+def test_registry_consumer_exception_does_not_exempt_its_step(registry_install_workflow, job_name, scope, command):
+  path, workflow = registry_install_workflow
+  step = workflow["jobs"][job_name]["steps"][1]
+  if scope == "run":
+    step["run"] += "\n" + command
+  else:
+    step["env"] = {"EXTRA_INSTALL": command}
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm"])
+def test_pypi_consumer_exception_is_not_allowed_in_publisher(registry_install_workflow, job_name):
+  path, workflow = registry_install_workflow
+  workflow["jobs"][job_name]["steps"].append({"run": PYPI_CONSUMER_INSTALL})
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+def test_registry_install_gate_accepts_private_multiline_yaml(registry_install_workflow, job_name):
+  path, workflow = registry_install_workflow
+  for step in workflow["jobs"][job_name]["steps"]:
+    step["run"] = step["run"].replace(" install ", " install \\\n    ")
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize(
+  "command",
+  [
+    "python3 -m pip --isolated install requests==2.34.2",
+    "pip3 --disable-pip-version-check install requests==2.34.2",
+    "/tools/pip3.12 --timeout 30 --no-input install requests==2.34.2",
+    "pip.exe -q --retries=2 install requests==2.34.2",
+    "python3 -m pip --isolated \\\n  install \\\n  requests==2.34.2",
+    *QUOTED_PIP_INSTALLS,
+  ],
+)
+def test_install_scanner_recognizes_pip_options_and_continuations(command):
+  lines = pip_install_lines(command)
+  assert len(lines) == 1
+  assert " ".join(lines[0].split()) == " ".join(command.replace("\\\n", "").split())
+  with pytest.raises(AssertionError):
+    assert_hash_locked_install(lines[0])
 
 
 @pytest.mark.parametrize(
