@@ -13,8 +13,9 @@ import io
 import tarfile
 from types import SimpleNamespace
 import re
+import shlex
 import tomllib
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 import yaml
@@ -68,11 +69,45 @@ LOCK_NAMES = {path.relative_to(REPO).as_posix() for path in LOCK_INPUTS}
 LOCK_REFERENCES = LOCK_NAMES | {path.name for path in LOCK_INPUTS}
 REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9_.-]*)==([^\s;\\]+)")
 HASH_RE = re.compile(r"--hash=sha256:([0-9a-f]{64})(?:\s|$)")
-PIP_WORD_PATTERN = r"""(?:[^\s"'\\]|\\.|"(?:\\.|[^"\\])*"|'[^']*')+"""
-PIP_INSTALL_RE = re.compile(
-  r"(?:^|[/\\\s])pip(?:3(?:\.\d+)?)?(?:\.exe)?"
-  rf"(?:\s+-{PIP_WORD_PATTERN}(?:\s+(?!install(?:\s|$)|-){PIP_WORD_PATTERN})?)*\s+install(?:\s|$)"
-)
+PIP_EXECUTABLE_RE = re.compile(r"pip(?:3(?:\.\d+)?)?(?:\.exe)?", re.IGNORECASE)
+PYTHON_EXECUTABLE_RE = re.compile(r"python(?:3(?:\.\d+)?)?(?:\.exe)?", re.IGNORECASE)
+PIP_VALUE_OPTIONS = {
+  "--python",
+  "--log",
+  "--proxy",
+  "--retries",
+  "--timeout",
+  "--exists-action",
+  "--trusted-host",
+  "--cert",
+  "--client-cert",
+  "--cache-dir",
+  "--use-feature",
+  "--use-deprecated",
+  "--keyring-provider",
+  "--resume-retries",
+  "--index-url",
+  "--extra-index-url",
+  "--only-binary",
+  "--no-binary",
+  "--requirement",
+  "-r",
+}
+PIP_FLAG_OPTIONS = {
+  "--isolated",
+  "--require-virtualenv",
+  "--require-venv",
+  "--verbose",
+  "--quiet",
+  "--no-input",
+  "--no-cache-dir",
+  "--disable-pip-version-check",
+  "--no-color",
+  "--no-python-version-warning",
+  "--debug",
+  "--no-deps",
+  "--require-hashes",
+}
 LOCAL_WHEEL_INSTALL_RE = re.compile(
   r'^\S+ -m pip install --no-deps "(?:/wheels/\$WHEEL_FILENAME|\$WHEEL|\$env:WHEEL)"$'
 )
@@ -91,6 +126,15 @@ QUOTED_PIP_INSTALLS = (
   "python3 -m pip --python 'path with spaces/bin/python' install requests==2.34.2",
   'python3 -m pip --python="path with spaces/bin/python" install requests==2.34.2',
   "python3 -m pip --python='path with spaces/bin/python' install requests==2.34.2",
+)
+HARMLESS_ENV_TEXT = (
+  "plain environment description",
+  "It's an environment description",
+  'A note with "unfinished quoting',
+  '"An unfinished environment description',
+  "Python's environment notes",
+  "pip is an installer's tool",
+  '"pip install is mentioned as prose',
 )
 TOP_LEVEL_CIBW_KEYS = {
   "CIBW_BEFORE_BUILD",
@@ -146,10 +190,186 @@ def assert_complete_hash_lock(path, python_version):
     assert not hash_lines[-1].endswith("\\")
 
 
+def command_fragments(command):
+  # Split only outside quoted words and substitutions; here-document bodies are data.
+  command = command.replace("\\\r\n", "").replace("\\\n", "").replace("`\r\n", "").replace("`\n", "")
+  start = index = substitution = 0
+  quote = None
+  escaped = False
+  heredocs = []
+  while index < len(command):
+    char = command[index]
+    if escaped:
+      escaped = False
+    elif char == "\\" and quote != "'":
+      escaped = True
+    elif quote is not None:
+      if char == quote:
+        quote = None
+    elif char in "\"'`":
+      quote = char
+    elif substitution:
+      substitution += (char == "(") - (char == ")")
+    elif command.startswith(("$(", "<(", ">("), index):
+      substitution = 1
+      index += 1
+    elif command.startswith("<<", index):
+      header = command[index + 2 :].split("\n", maxsplit=1)[0]
+      strip_tabs = header.startswith("-")
+      try:
+        delimiter = shlex.split(header[1:] if strip_tabs else header)[0]
+      except (ValueError, IndexError) as error:
+        if has_pip_install_prefix(command[start:]):
+          raise ValueError("Invalid here-document delimiter in installer command") from error
+        return
+      heredocs.append((delimiter, strip_tabs))
+      index += 1
+    elif char == "#" and (index == start or command[index - 1].isspace()):
+      yield command[start:index].strip()
+      index = command.find("\n", index)
+      if index == -1:
+        return
+      start = index
+      continue
+    elif char in ";&|()\n":
+      fragment = command[start:index].strip()
+      yield fragment
+      start = index + 1
+      if char == "\n":
+        for delimiter, strip_tabs in heredocs:
+          while start < len(command):
+            end = command.find("\n", start)
+            end = len(command) if end == -1 else end
+            line = command[start:end].rstrip("\r")
+            start = end + 1
+            if (line.lstrip("\t") if strip_tabs else line) == delimiter:
+              break
+          else:
+            if has_pip_install_prefix(fragment):
+              raise ValueError(f"Unterminated here-document: {delimiter}")
+            return
+        heredocs.clear()
+        index = start - 1
+    index += 1
+  if quote is not None or substitution or heredocs:
+    if has_pip_install_prefix(command[start:]):
+      raise ValueError("Unterminated quote, substitution, or here-document in installer command")
+    return
+  yield command[start:].strip()
+
+
+def command_words(command):
+  raw = shlex.shlex(command, posix=False)
+  raw.whitespace_split = True
+  executable = raw.get_token().strip("\"'")
+  lexer = shlex.shlex(command, posix=True)
+  lexer.whitespace_split = True
+  lexer.commenters = ""
+  # Unquoted Windows executable paths use backslashes as separators, not escapes.
+  if "\\" in executable and "/" not in executable:
+    lexer.escape = ""
+  return lexer
+
+
+def python_module_arguments(words):
+  arguments = iter(words)
+  for word in arguments:
+    if word in ("--help", "--help-env", "--help-xoptions", "--help-all", "--version", "--"):
+      return None
+    if word == "--check-hash-based-pycs":
+      if next(arguments, None) is None:
+        raise ValueError(f"Missing Python option value: {word}")
+      continue
+    if word.startswith("--check-hash-based-pycs="):
+      continue
+    if not word.startswith("-") or word == "-":
+      return None
+    for index, flag in enumerate(word[1:], start=1):
+      if flag in "cVh":
+        return None
+      if flag in "mWX":
+        value = word[index + 1 :] or next(arguments, None)
+        if value is None:
+          raise ValueError(f"Missing Python option value: {word}")
+        if flag == "m":
+          return arguments if value == "pip" else None
+        break
+      if flag not in "bBdEiIOPqRsSuvx":
+        raise ValueError(f"Unhandled Python option before module selection: {word}")
+  return None
+
+
+def pip_subcommand(arguments, *, stop_at_install=False):
+  subcommand = None
+  arguments = iter(arguments)
+  for word in arguments:
+    option, equals, _value = word.partition("=")
+    if word == "--":
+      return subcommand or next(arguments, None)
+    if option in ("--version", "--help", "-V", "-h"):
+      return None
+    if option in PIP_VALUE_OPTIONS:
+      if not equals and next(arguments, None) is None:
+        raise ValueError(f"Missing pip option value: {word}")
+    elif option in PIP_FLAG_OPTIONS or (word.startswith("-") and set(word[1:]) <= {"v", "q"}):
+      continue
+    elif word.startswith("-"):
+      if subcommand == "install":
+        # Once install is selected, unknown option arity must not hide it as help.
+        return subcommand
+      raise ValueError(f"Unhandled pip option before subcommand: {word}")
+    else:
+      subcommand = subcommand or word
+      if subcommand != "install" or stop_at_install:
+        return subcommand
+  return subcommand
+
+
+def command_executable(words):
+  arguments = iter(words)
+  for word in arguments:
+    if word in ("if", "elif", "then", "else", "while", "until", "do", "!", "RUN", "command", "exec") or (
+      "=" in word and word.partition("=")[0].isidentifier()
+    ):
+      continue
+    return PureWindowsPath(word).name, arguments
+  return "", arguments
+
+
+def is_pip_install(words):
+  executable, arguments = command_executable(words)
+  if PYTHON_EXECUTABLE_RE.fullmatch(executable):
+    arguments = python_module_arguments(arguments)
+    if arguments is None:
+      return False
+  elif not PIP_EXECUTABLE_RE.fullmatch(executable):
+    return False
+  return pip_subcommand(arguments) == "install"
+
+
+def has_pip_install_prefix(command):
+  # Env strings need not be shell programs; only an installer prefix makes syntax errors actionable.
+  try:
+    executable, arguments = command_executable(command_words(command))
+  except ValueError:
+    return False
+  try:
+    if PYTHON_EXECUTABLE_RE.fullmatch(executable):
+      arguments = python_module_arguments(arguments)
+      if arguments is None:
+        return False
+    elif not PIP_EXECUTABLE_RE.fullmatch(executable):
+      return False
+    return pip_subcommand(arguments, stop_at_install=True) == "install"
+  except ValueError:
+    return True
+
+
 def pip_install_lines(command):
-  command = re.sub(r"\\\r?\n", "", command)
   return [
-    line.strip() for line in command.splitlines() if not line.lstrip().startswith("#") and PIP_INSTALL_RE.search(line)
+    fragment
+    for fragment in command_fragments(command)
+    if fragment and has_pip_install_prefix(fragment) and is_pip_install(command_words(fragment))
   ]
 
 
@@ -387,6 +607,21 @@ def test_every_explicit_producer_pip_install_is_hash_locked():
   assert all("--upgrade pip" not in line for line in lines)
   for line in lines:
     assert_hash_locked_install(line)
+
+
+def test_manylinux_inline_consumer_install_has_an_explicit_owner():
+  workflow = yaml.safe_load(WHEEL_WORKFLOW.read_text(encoding="utf-8"))
+  step = next(
+    step for step in workflow["jobs"]["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11"
+  )
+  outer = [fragment for fragment in command_fragments(step["run"]) if fragment]
+  assert len(outer) == 1
+  words = list(command_words(outer[0]))
+  assert words[-5:-1] == ["/bin/bash", "-euo", "pipefail", "-c"]
+  # This recipe owns a shell body; the generic recognizer does not inspect quoted code.
+  installs = pip_install_lines(words[-1])
+  assert installs == ['/tmp/floor-venv/bin/python -m pip install --no-deps "/wheels/$WHEEL_FILENAME"']
+  assert_hash_locked_install(installs[0])
 
 
 def test_wheel_build_configuration_uses_only_hash_locked_dependency_paths():
@@ -641,6 +876,7 @@ def registry_install_workflow(tmp_path, monkeypatch, job_name):
     "python3 -m pip install requests==2.34.2",
     "python3 -m pip --isolated install requests==2.34.2",
     "pip3 --timeout 30 --no-input install requests==2.34.2",
+    "python3 -mpip install requests==2.34.2",
     *QUOTED_PIP_INSTALLS,
   ],
 )
@@ -687,6 +923,7 @@ def test_registry_install_gate_rejects_changed_bootstrap(registry_install_workfl
   "old,new",
   [
     ('"celestial-calendar==${TAG_NAME#v}"', '"celestial-calendar==${TAG_NAME#v}" requests==2.34.2'),
+    ('"celestial-calendar==${TAG_NAME#v}"', "'celestial-calendar==${TAG_NAME#v}'"),
     ("celestial-calendar==${TAG_NAME#v}", "requests==2.34.2"),
     ("celestial-calendar==${TAG_NAME#v}", "celestial-calendar>=0.7.0"),
     ("celestial-calendar==${TAG_NAME#v}", "celestial-calendar"),
@@ -751,6 +988,7 @@ def test_registry_install_gate_accepts_private_multiline_yaml(registry_install_w
     "pip3 --disable-pip-version-check install requests==2.34.2",
     "/tools/pip3.12 --timeout 30 --no-input install requests==2.34.2",
     "pip.exe -q --retries=2 install requests==2.34.2",
+    "python3 -mpip install requests==2.34.2",
     "python3 -m pip --isolated \\\n  install \\\n  requests==2.34.2",
     *QUOTED_PIP_INSTALLS,
   ],
@@ -761,6 +999,190 @@ def test_install_scanner_recognizes_pip_options_and_continuations(command):
   assert " ".join(lines[0].split()) == " ".join(command.replace("\\\n", "").split())
   with pytest.raises(AssertionError):
     assert_hash_locked_install(lines[0])
+
+
+@pytest.mark.parametrize(
+  "command",
+  [
+    '"pip" install requests==2.34.2',
+    "pip3 install requests==2.34.2",
+    "pip.exe install requests==2.34.2",
+    '"/opt/tools with spaces/bin/pip3" install requests==2.34.2',
+    "'/opt/python tools/bin/python3.12' -m 'pip' install requests==2.34.2",
+    'python3 -m "p""ip" --log="path ; with spaces" install requests==2.34.2',
+    "python3 -I -W ignore -X dev -mpip install requests==2.34.2",
+    "python3 -Impip --isolated install requests==2.34.2",
+    'python3 "-m" "pip" install requests==2.34.2',
+    'python3 -m"pip" install requests==2.34.2',
+    r".\venv\Scripts\python.exe -mpip install requests==2.34.2",
+    r'"C:\Program Files\Python\python.exe" -m "pip" install requests==2.34.2',
+    "pip --log ';' install requests==2.34.2",
+    "pip --log install install requests==2.34.2",
+    "pip install --log '--help' requests==2.34.2",
+    "pip install -- --help",
+    "pip install --future-option '--help' requests==2.34.2",
+    "pip -- install requests==2.34.2",
+    "PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -mpip install requests==2.34.2",
+    "RUN python3 -m pip install requests==2.34.2",
+    "python3 -mpip `\n  install requests==2.34.2",
+  ],
+)
+def test_install_recognition_uses_command_words(command):
+  assert pip_install_lines(command) == [command.replace("`\n", "").strip()]
+
+
+@pytest.mark.parametrize("separator", [";", "&&", "||", "|", "&", "\n"])
+@pytest.mark.parametrize("other", ["echo ready", "pip --version", "echo ';'", "python3 -c \"print('pip install')\""])
+def test_install_recognition_respects_command_boundaries(separator, other):
+  install = "python3 -mpip install requests==2.34.2"
+  assert pip_install_lines(f"{other}{separator}{install}") == [install]
+  assert pip_install_lines(f"{install}{separator}{other}") == [install]
+  assert pip_install_lines(f"{install}{separator}{install}") == [install, install]
+  assert pip_install_lines(f"({install})") == [install]
+
+
+def test_install_recognition_handles_literal_command_prefixes():
+  install = "python3 -mpip install requests==2.34.2"
+  assert pip_install_lines(f"if true; then {install}; fi") == [f"then {install}"]
+  assert pip_install_lines(f"! {install}") == [f"! {install}"]
+  windows = r'"C:\Program Files\Python\python.exe" -m "pip" install requests==2.34.2'
+  assert pip_install_lines(f"& {windows}") == [windows]
+  assert pip_install_lines(f"true;# 'quoted prose, not a command\n{install}") == [install]
+
+
+@pytest.mark.parametrize(
+  "command",
+  [
+    "pip --version",
+    "pip3 -V",
+    "pip show install",
+    "pip help install",
+    "pip --help install",
+    "pip install --help",
+    "pip install --no-deps --help",
+    "pip --log install --version",
+    "pip --python 'install'",
+    "pip --log=install show requests",
+    "python3 -mpip --version",
+    "python3 -m pip help install",
+    "python3 -m other pip install requests==2.34.2",
+    "python3 script.py pip install requests==2.34.2",
+    '"pip install requests==2.34.2"',
+    "echo 'pip install requests==2.34.2'",
+    "echo ';' pip install requests==2.34.2",
+    "python3 -c \"print('pip install requests==2.34.2')\"",
+    'python3 -c \'"""\npip install requests==2.34.2\n"""\'',
+    "eval 'pip install requests==2.34.2'",
+    "bash -c 'pip install requests==2.34.2'",
+    "xargs pip install",
+    "$(pip install requests==2.34.2)",
+    "echo <(pip install requests==2.34.2)",
+    ">(pip install requests==2.34.2)",
+    "`pip install requests==2.34.2`",
+    "# pip install requests==2.34.2",
+    'DESCRIPTION="pip install requests==2.34.2" echo ready',
+  ],
+)
+def test_non_install_commands_and_indirection_are_not_literal_installs(command):
+  assert pip_install_lines(command) == []
+
+
+def test_here_document_contents_are_opaque_but_following_installs_are_scanned():
+  script = 'python3 - <<\'PY\'\ntext = """\npip install hidden==1\n"""\nPY\n'
+  assert pip_install_lines(script) == []
+  assert pip_install_lines(script + "pip install explicit==1") == ["pip install explicit==1"]
+
+
+@pytest.mark.parametrize(
+  "command",
+  [
+    "pip --unhandled-option install requests==2.34.2",
+    "python3 --unhandled-option -mpip install requests==2.34.2",
+    "pip --log 'unterminated install requests==2.34.2",
+    "pip --log",
+    "python3 -m",
+    "python3 -X",
+    "echo ready; pip install 'unterminated",
+    "python3 -mpip install 'unterminated",
+    "'/opt/python tools/bin/python3.12' -mpip install 'unterminated",
+  ],
+)
+def test_unhandled_explicit_command_syntax_fails_loudly(command):
+  with pytest.raises(ValueError):
+    pip_install_lines(command)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize(
+  "command",
+  [
+    '"/opt/python tools/bin/python3.12" -m "pip" install requests==2.34.2',
+    r".\venv\Scripts\python.exe -mpip install requests==2.34.2",
+    "echo ready;python3 -mpip install requests==2.34.2",
+    "pip --version&&pip install requests==2.34.2",
+    "python3 -c \"print('pip install')\";pip install requests==2.34.2",
+    REGISTRY_DEPENDENCY_INSTALL + ";" + REGISTRY_DEPENDENCY_INSTALL,
+  ],
+)
+def test_job_gate_rejects_independent_literal_and_duplicate_installs(registry_install_workflow, job_name, command):
+  path, workflow = registry_install_workflow
+  workflow["jobs"][job_name]["steps"].append({"run": command})
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize(
+  "command",
+  [
+    "python3 -c \"print('pip install requests==2.34.2')\"",
+    "pip --log install --version",
+    "echo ';' pip install requests==2.34.2",
+  ],
+)
+def test_job_gate_does_not_mistake_non_installs_for_dependencies(registry_install_workflow, job_name, command):
+  path, workflow = registry_install_workflow
+  workflow["jobs"][job_name]["steps"].append({"run": command})
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("text", HARMLESS_ENV_TEXT)
+def test_install_scanner_accepts_unrelated_env_prose(text):
+  assert pip_install_lines(text) == []
+  install = "python3 -mpip install requests==2.34.2"
+  assert pip_install_lines(f"{install};\n{text}") == [install]
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize("scope", ["workflow", "job", "step"])
+@pytest.mark.parametrize("text", HARMLESS_ENV_TEXT)
+def test_job_gate_accepts_env_prose_without_hiding_installs(registry_install_workflow, job_name, scope, text):
+  path, workflow = registry_install_workflow
+  job = workflow["jobs"][job_name]
+  owner = workflow if scope == "workflow" else job if scope == "job" else job["steps"][0]
+  owner["env"] = {"DESCRIPTION": text}
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+  owner["env"]["EXTRA_INSTALL"] = "python3 -mpip install requests==2.34.2"
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize("scope", ["workflow", "job", "step"])
+@pytest.mark.parametrize("command", ["pip install 'unterminated", "python3 -mpip install 'unterminated"])
+def test_malformed_installer_env_still_fails_loudly(registry_install_workflow, job_name, scope, command):
+  path, workflow = registry_install_workflow
+  job = workflow["jobs"][job_name]
+  owner = workflow if scope == "workflow" else job if scope == "job" else job["steps"][0]
+  owner["env"] = {"DESCRIPTION": "It's an environment description", "INSTALL": command}
+  path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  with pytest.raises(ValueError, match="installer command"):
+    test_registry_classifier_and_verifier_installs_are_hash_locked(job_name)
 
 
 @pytest.mark.parametrize(
