@@ -8,12 +8,15 @@
 #
 # SPDX-License-Identifier: MIT
 
+import gzip
 import hashlib
 import io
 import json
 import tarfile
 import zipfile
+from itertools import count
 from pathlib import Path, PurePosixPath
+from types import SimpleNamespace
 
 import pytest
 
@@ -534,15 +537,28 @@ def test_singleton_format_selection_is_independent_of_license_history(tmp_path, 
 
 def test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path):
   tarball = npm_tarball()
-  archive = write_zip(tmp_path / "celestial-wasm.zip", wasm_members(tarball=tarball))
+  members = wasm_members(tarball=tarball)
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members)
   before = archive.read_bytes()
 
   payload = npm_archive_payload(archive, VERSION)
 
-  assert payload == {
-    name: content for name, content in wasm_members(tarball=tarball) if name.endswith((".tgz", ".json", ".sha256"))
-  }
+  assert payload == {name: content for name, content in members if name.endswith((".tgz", ".json", ".sha256"))}
   assert archive.read_bytes() == before
+
+
+def test_validated_npm_payload_with_advancing_gzip_clock(tmp_path, monkeypatch):
+  timestamps = count(1_700_000_000)
+  with monkeypatch.context() as patch:
+    # Replace only gzip's clock reference, not the shared time module.
+    patch.setattr(gzip, "time", SimpleNamespace(time=lambda: next(timestamps)))
+    test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path)
+
+  with zipfile.ZipFile(tmp_path / "celestial-wasm.zip") as archive:
+    assert [int.from_bytes(archive.read(name)[4:8], "little") for name in (TARBALL, ALIAS_TARBALL)] == [
+      1_700_000_000,
+      1_700_000_001,
+    ]
 
 
 def test_release_candidate_partitions_one_validated_inventory(tmp_path):
