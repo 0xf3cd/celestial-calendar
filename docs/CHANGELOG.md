@@ -31,7 +31,7 @@
   of keeping a duplicate range table. Out-of-range lunar years still throw `RangeError`; a native range-query
   failure throws `CelestialError` with the caller's public operation name.
 - The npm tarball grows from nine to twelve members for the pure date bridge, shared validators, and date
-  declarations. The outer `celestial-wasm` artifact still has seven members.
+  declarations.
 - Python `solar_longitude_roots()` is renamed to `sun_longitude_crossings()`, including its
   `CelestialError.operation` name, without a compatibility alias. Other flat function names are unchanged.
 - Python lunar-year validation now queries the native range once per year-consuming call instead of keeping a
