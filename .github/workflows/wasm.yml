@@ -93,8 +93,7 @@ jobs:
           import json
           import os
           from pathlib import Path
-          from toolbox.build_npm import NPM_METADATA, PACKAGE_NAME, project_version
-          from toolbox.release_validation import npm_pack_filename
+          from toolbox.build_npm import NPM_METADATA, PACKAGE_NAME, npm_pack_filename, project_version
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             for name, stem in NPM_METADATA.items():

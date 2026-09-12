@@ -58,7 +58,7 @@ def pypi_metadata_url(version: str) -> str:
 
 
 def npm_metadata_url(package_name: str, version: str | None = None) -> str:
-  """Return the version-specific npm registry endpoint."""
+  """Return the package-level or version-specific npm registry endpoint."""
   if package_name not in NPM_LABELS:
     raise ValueError(f"Unknown npm package: {package_name}")
   package = quote(package_name, safe="@")
@@ -186,7 +186,7 @@ def classify_npm_candidate(
   package_name: str,
   session: object = requests,
 ) -> str:
-  """Classify fresh bytes; conflicts and uncertain responses raise rather than permit publication."""
+  """Return exact, absent or bootstrap_required; reject conflicts and uncertain registry responses."""
   validate_release_candidate(candidate, f"v{version}", commit)
   tarballs = npm_candidate_tarballs(candidate, version)
   if package_name not in tarballs:

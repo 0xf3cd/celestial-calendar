@@ -20,6 +20,7 @@ from pathlib import Path
 import yaml
 import pytest
 
+from toolbox import build_npm
 from toolbox.release_validation import SOURCE_SPECS
 
 
@@ -172,6 +173,37 @@ def test_date_bridge_runs_on_current_and_floor_node():
   assert invocations == [
     ("${{ env.NODE_CURRENT }}", [*command, "--exhaustive"]),
     ("${{ env.NODE_FLOOR }}", command),
+  ]
+
+
+def test_wasm_pack_outputs_select_both_tarballs_from_metadata(tmp_path, monkeypatch):
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  step = next(step for step in workflow["jobs"]["wasm"]["steps"] if step.get("id") == "npm-package")
+  build, separator, script = step["run"].partition("python3 - <<'PY'\n")
+  assert build.strip() == "python3 toolbox/build_npm.py"
+  assert separator and script.endswith("PY\n")
+
+  out = tmp_path / "build" / "npm"
+  out.mkdir(parents=True)
+  for name, stem, filename in (
+    ("@0xf3cd/celestial", "npm-pack", "primary-selected.tgz"),
+    ("celestial-calendar", "npm-alias-pack", "alias-selected.tgz"),
+  ):
+    (out / filename).write_bytes(b"tarball fixture")
+    (out / f"{stem}.json").write_text(
+      json.dumps([{"name": name, "version": "0.7.0", "filename": filename}]), encoding="utf-8"
+    )
+  (out / "000-decoy.tgz").write_bytes(b"not selected by metadata")
+  output = tmp_path / "github-output"
+  monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+  monkeypatch.setattr(build_npm, "project_version", lambda: "0.7.0")
+  monkeypatch.chdir(tmp_path)
+
+  exec(compile(script.removesuffix("PY\n"), str(WORKFLOW), "exec"), {})
+
+  assert output.read_text(encoding="utf-8").splitlines() == [
+    f"tarball={Path('build/npm/primary-selected.tgz')}",
+    f"alias_tarball={Path('build/npm/alias-selected.tgz')}",
   ]
 
 

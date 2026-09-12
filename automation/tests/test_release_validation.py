@@ -449,7 +449,8 @@ def test_each_npm_payload_is_required_and_bound_to_its_metadata(tmp_path, member
 
 
 @pytest.mark.parametrize(
-  "mutation", ["crossed-name", "duplicate-filename", "unknown-name", "version-drift", "crossed-sidecar"]
+  "mutation",
+  ["crossed-name", "duplicate-filename", "unknown-name", "version-drift", "crossed-sidecar", "escaping-filename"],
 )
 def test_npm_pair_rejects_crossed_identities(tmp_path, mutation):
   members = dict(wasm_members())
@@ -462,11 +463,13 @@ def test_npm_pair_rejects_crossed_identities(tmp_path, mutation):
     pack[0]["name"] = "unknown"
   elif mutation == "version-drift":
     pack[0]["version"] = "0.7.1"
+  elif mutation == "escaping-filename":
+    pack[0]["filename"] = "../escape.tgz"
   else:
     members["npm-alias-pack.sha256"] = members["npm-pack.sha256"]
   members["npm-alias-pack.json"] = json.dumps(pack).encode()
   archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
-  with pytest.raises(RuntimeError):
+  with pytest.raises(RuntimeError, match="Invalid npm package identity" if mutation == "escaping-filename" else None):
     npm_archive_payload(archive, VERSION)
 
 

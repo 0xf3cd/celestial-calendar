@@ -24,7 +24,15 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
-from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, NPM_METADATA, PACKAGE_NAME, PACK_ALLOWLIST, verify_manifest
+from toolbox.build_npm import (
+  ALIAS_ALLOWLIST,
+  ALIAS_NAME,
+  NPM_METADATA,
+  PACKAGE_NAME,
+  PACK_ALLOWLIST,
+  npm_pack_filename,
+  verify_manifest,
+)
 from toolbox.runtime_floor import validate_runtime_floor
 
 
@@ -292,30 +300,14 @@ def validate_wheel_sidecars(
 
 
 def npm_package_metadata(version: str) -> dict[str, str]:
-  """Select the package format independently of historical license validation."""
+  """Map npm names to metadata stems: primary only for 0.6.x, both names otherwise."""
   if re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
     raise RuntimeError(f"Invalid npm release version: {version}")
   return {PACKAGE_NAME: NPM_METADATA[PACKAGE_NAME]} if re.fullmatch(r"0\.6\.\d+", version) else dict(NPM_METADATA)
 
 
-def npm_pack_filename(pack: object, version: str, package_name: str) -> str:
-  """Read one explicit identity, never select a tarball by archive or glob order."""
-  if not isinstance(pack, list) or len(pack) != 1 or not isinstance(pack[0], dict):
-    raise RuntimeError("npm pack metadata must describe exactly one package")
-  package = pack[0]
-  filename = package.get("filename")
-  if (
-    package.get("name") != package_name
-    or package.get("version") != version
-    or not isinstance(filename, str)
-    or re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*\.tgz", filename) is None
-  ):
-    raise RuntimeError(f"Invalid npm package identity: {package_name}@{version}")
-  return filename
-
-
 def npm_candidate_tarballs(candidate: Path, version: str) -> dict[str, Path]:
-  """Select identities from evidence after complete candidate validation."""
+  """Map npm names to metadata-selected tarball paths in an already validated candidate."""
   return {
     name: candidate
     / "npm"

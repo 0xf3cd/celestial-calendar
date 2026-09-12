@@ -185,6 +185,22 @@ def verify_manifest(manifest: dict, version: str, package_name: str = PACKAGE_NA
   verify_dependencies(manifest, version, package_name)
 
 
+def npm_pack_filename(pack: object, version: str, package_name: str) -> str:
+  """Read one explicit identity, never select a tarball by archive or glob order."""
+  if not isinstance(pack, list) or len(pack) != 1 or not isinstance(pack[0], dict):
+    raise RuntimeError("npm pack metadata must describe exactly one package")
+  package = pack[0]
+  filename = package.get("filename")
+  if (
+    package.get("name") != package_name
+    or package.get("version") != version
+    or not isinstance(filename, str)
+    or re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*\.tgz", filename) is None
+  ):
+    raise RuntimeError(f"Invalid npm package identity: {package_name}@{version}")
+  return filename
+
+
 def pack_package(out_dir: Path, version: str, package_name: str) -> Path:
   package_dir = out_dir / ("alias-package" if package_name == ALIAS_NAME else "package")
   package_dir.mkdir(parents=True)
@@ -216,15 +232,8 @@ def pack_package(out_dir: Path, version: str, package_name: str) -> Path:
     text=True,
   )
   pack_json = json.loads(completed.stdout)
-  if not isinstance(pack_json, list) or len(pack_json) != 1:
-    raise RuntimeError("npm pack --json must return exactly one package")
+  filename = npm_pack_filename(pack_json, version, package_name)
   pack = pack_json[0]
-  if not isinstance(pack, dict) or pack.get("name") != package_name or pack.get("version") != version:
-    raise RuntimeError("npm pack name/version does not match the staging manifest")
-
-  filename = pack.get("filename")
-  if not isinstance(filename, str) or re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*\.tgz", filename) is None:
-    raise RuntimeError("Invalid npm pack filename")
   tarball = out_dir / filename
   if not tarball.is_file() or tarball.is_symlink():
     raise RuntimeError("npm pack output must be a regular tarball")
