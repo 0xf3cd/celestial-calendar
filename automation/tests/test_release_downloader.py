@@ -270,65 +270,263 @@ def test_pypi_job_has_only_candidate_download_and_oidc_publication():
   }
 
 
-def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
-  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  job = workflow["jobs"]["publish_npm"]
-  text = yaml.safe_dump(job)
-  setup = next(step for step in job["steps"] if step.get("name") == "Set up the trusted npm runtime")
-  steps = job["steps"]
-
-  assert job["needs"] == ["prepare_release", "create_release"]
-  assert job["environment"] == "npm"
-  assert job["permissions"] == {"contents": "read", "id-token": "write"}
-  assert setup == {
+def assert_registry_job_contract(workflow, job_name):
+  assert workflow.get("env", {}) == {}
+  assert workflow.get("defaults", {}) == {}
+  assert job_name in ("publish_npm", "verify_registries")
+  checkout = {
+    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "with": {"persist-credentials": False},
+  }
+  download = {
+    "name": "Download immutable release candidate",
+    "uses": "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+    "with": {"name": "celestial-release-candidate", "path": "candidate"},
+  }
+  python = {
+    "name": "Set up Python",
+    "uses": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+    "with": {"python-version": "3.12"},
+  }
+  install = {
+    "name": "Install pinned classifier dependencies",
+    "run": "python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-producer.txt",
+  }
+  node = {
     "name": "Set up the trusted npm runtime",
     "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
     "with": {"node-version": "24.19.0"},
   }
-  checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout@"))
-  assert checkout["with"] == {"ref": "${{ github.sha }}", "persist-credentials": False}
-  runtime = next(step for step in steps if step.get("name") == "Verify the trusted npm runtime")
-  assert '"$(npm --version)" != "11.17.0"' in runtime["run"]
-  last_publish = steps.index(runtime)
-  for label, package in (("npm-primary", "'@0xf3cd/celestial'"), ("npm-alias", "celestial-calendar")):
-    classify = next(step for step in steps if step.get("id") == label)
-    publish = next(step for step in steps if step.get("name") == f"Publish exact {label} tarball")
-    assert last_publish < steps.index(classify) == steps.index(publish) - 1
-    last_publish = steps.index(publish)
-    assert "toolbox/registry_verifier.py classify-npm" in classify["run"]
-    assert f"--package {package}" in classify["run"]
-    assert '--candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA"' in classify["run"]
-    assert classify["env"] == {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"}
-    assert publish["env"] == {
-      "STATE": "${{ steps." + label + ".outputs.state }}",
-      "TARBALL": "${{ steps." + label + ".outputs.tarball }}",
+  identity = {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"}
+
+  if job_name == "publish_npm":
+    checkout["with"]["ref"] = "${{ github.sha }}"
+    steps = [
+      checkout,
+      python,
+      install,
+      download,
+      node,
+      {
+        "name": "Verify the trusted npm runtime",
+        "run": 'if [ "$(node --version)" != "v24.19.0" ] || [ "$(npm --version)" != "11.17.0" ]; then\n'
+        '  echo "Unexpected Node/npm runtime: $(node --version) / $(npm --version)"\n'
+        "  exit 1\n"
+        "fi\n",
+      },
+    ]
+    publications = (
+      (
+        "npm-primary",
+        "'@0xf3cd/celestial'",
+        'case "$STATE" in\n'
+        '  absent) echo "npm-primary: publishing frozen tarball."; '
+        'npm publish "$TARBALL" --access public --ignore-scripts ;;\n'
+        '  exact) echo "npm-primary: exact bytes already published; verified no-op." ;;\n'
+        '  bootstrap_required) echo "npm-primary: bootstrap required; no publication attempted."; exit 1 ;;\n'
+        '  *) echo "npm-primary: invalid classification: $STATE"; exit 1 ;;\n'
+        "esac\n",
+      ),
+      (
+        "npm-alias",
+        "celestial-calendar",
+        'case "$STATE" in\n'
+        '  absent) echo "npm-alias: publishing frozen tarball; npm-primary completed."; '
+        'npm publish "$TARBALL" --access public --ignore-scripts ;;\n'
+        '  exact) echo "npm-alias: exact bytes already published; verified no-op." ;;\n'
+        '  bootstrap_required) echo "npm-alias: bootstrap required; npm-primary completed. '
+        'Retain the frozen candidate and retry only this npm job after authorized bootstrap."; exit 1 ;;\n'
+        '  *) echo "npm-alias: invalid classification: $STATE; npm-primary completed."; exit 1 ;;\n'
+        "esac\n",
+      ),
+    )
+    for label, package, publish in publications:
+      steps.extend(
+        [
+          {
+            "name": f"Freshly classify {label}",
+            "id": label,
+            "env": identity,
+            "run": "python3 toolbox/registry_verifier.py classify-npm \\\n"
+            f"  --package {package} \\\n"
+            '  --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \\\n'
+            '  --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"\n',
+          },
+          {
+            "name": f"Publish exact {label} tarball",
+            "env": {
+              "STATE": "${{ steps." + label + ".outputs.state }}",
+              "TARBALL": "${{ steps." + label + ".outputs.tarball }}",
+            },
+            "run": publish,
+          },
+        ]
+      )
+    expected = {
+      "needs": ["prepare_release", "create_release"],
+      "runs-on": "ubuntu-latest",
+      "environment": "npm",
+      "permissions": {"contents": "read", "id-token": "write"},
+      "steps": steps,
     }
-    assert 'npm publish "$TARBALL" --access public --ignore-scripts' in publish["run"]
-    assert "bootstrap_required)" in publish["run"] and "exit 1" in publish["run"]
-    assert "${{" not in publish["run"]
-  assert "NODE_AUTH_TOKEN" not in text
-  assert "skip-existing" not in text
-  assert "npm install" not in text
-  assert "npm pack" not in text
-  assert "build_npm" not in text and "build_wasm" not in text
-  assert "tarballs[0]" not in text and "*.tgz" not in text
+  else:
+    python["name"] = "Set up Python floor"
+    python["with"]["python-version"] = "3.11.9"
+    install["name"] = "Install pinned registry verifier dependencies"
+    node["name"] = "Set up Node registry consumer"
+    expected = {
+      "needs": ["publish_pypi", "publish_npm"],
+      "runs-on": "ubuntu-latest",
+      "permissions": {"contents": "read"},
+      "steps": [
+        checkout,
+        download,
+        python,
+        install,
+        {
+          "name": "Verify exact registry metadata and bytes",
+          "env": identity,
+          "run": "python3 toolbox/registry_verifier.py verify \\\n"
+          "  --candidate candidate \\\n"
+          '  --version "${TAG_NAME#v}" \\\n'
+          '  --commit "$COMMIT_SHA"\n',
+        },
+        {
+          "name": "Clean-install the PyPI wheel and run acceptance",
+          "env": {"TAG_NAME": "${{ github.ref_name }}"},
+          "run": "python3 -m venv registry-venv\n"
+          "registry-venv/bin/python -m pip --isolated install \\\n"
+          "  --index-url https://pypi.org/simple \\\n"
+          "  --only-binary=:all: \\\n"
+          "  --no-cache-dir \\\n"
+          "  --no-deps \\\n"
+          '  "celestial-calendar==${TAG_NAME#v}"\n'
+          "(\n"
+          '  cd "$RUNNER_TEMP"\n'
+          '  "$GITHUB_WORKSPACE/registry-venv/bin/python" \\\n'
+          '    "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"\n'
+          ")\n",
+        },
+        node,
+        {
+          "name": "Clean-install npm-primary, npm-alias, and the pair and run acceptance",
+          "env": {"TAG_NAME": "${{ github.ref_name }}"},
+          "run": 'node bindings/javascript/test/registry/registry_consumer_test.mjs "${TAG_NAME#v}"',
+        },
+      ],
+    }
+  assert workflow["jobs"][job_name] == expected
+
+
+def test_npm_job_uses_exact_candidate_with_no_token_or_mutable_install():
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  assert_registry_job_contract(workflow, "publish_npm")
 
 
 def test_registry_verifier_is_unprivileged_and_runs_both_clean_installs():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  job = workflow["jobs"]["verify_registries"]
-  commands = "\n".join(str(step.get("run", "")) for step in job["steps"])
+  assert_registry_job_contract(workflow, "verify_registries")
 
-  assert job["needs"] == ["publish_pypi", "publish_npm"]
-  assert job["permissions"] == {"contents": "read"}
-  assert "environment" not in job
-  assert "id-token" not in job["permissions"]
-  assert "toolbox/registry_verifier.py verify" in commands
-  assert "pip --isolated install" in commands
-  assert "--only-binary=:all:" in commands
-  assert "--no-deps" in commands
-  assert 'cd "$RUNNER_TEMP"' in commands
-  assert 'bindings/javascript/test/registry/registry_consumer_test.mjs "${TAG_NAME#v}"' in commands
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize(
+  "mutation",
+  [
+    "extra-run",
+    "extra-action",
+    "duplicate-step",
+    "changed-run",
+    "changed-action",
+    "action-input",
+    "workflow-env",
+    "job-env",
+    "step-env",
+    "workflow-defaults",
+    "job-defaults",
+    "step-shell",
+    "step-condition",
+    "continue-on-error",
+    "runner",
+    "permissions",
+    "missing-hashes",
+  ],
+)
+def test_registry_job_rejects_execution_changes(job_name, mutation):
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  assert_registry_job_contract(workflow, job_name)
+  job = workflow["jobs"][job_name]
+  steps = job["steps"]
+  run = next(step for step in steps if "run" in step)
+  action = next(step for step in steps if "uses" in step)
+  if mutation == "extra-run":
+    steps.append({"name": "Unexpected step", "run": "py -m pip install unexpected==1"})
+  elif mutation == "extra-action":
+    steps.append({"uses": action["uses"]})
+  elif mutation == "duplicate-step":
+    steps.append(steps[-1])
+  elif mutation == "changed-run":
+    run = next(step for step in steps if "run" in step and "Requirements" not in step["run"])
+    run["run"] += "\ntime pip install unexpected==1\n"
+  elif mutation == "changed-action":
+    action["uses"] = "./unexpected-action"
+  elif mutation == "action-input":
+    action["with"]["ref"] = "unreviewed-ref"
+  elif mutation == "workflow-env":
+    workflow["env"] = {"NEW_VALUE": "ordinary text"}
+  elif mutation == "job-env":
+    job["env"] = {"NEW_VALUE": "ordinary text"}
+  elif mutation == "step-env":
+    run.setdefault("env", {})["NEW_VALUE"] = "ordinary text"
+  elif mutation == "workflow-defaults":
+    workflow["defaults"] = {"run": {"shell": "sh"}}
+  elif mutation == "job-defaults":
+    job["defaults"] = {"run": {"shell": "sh"}}
+  elif mutation == "step-shell":
+    run["shell"] = "sh"
+  elif mutation == "step-condition":
+    run["if"] = False
+  elif mutation == "continue-on-error":
+    run["continue-on-error"] = True
+  elif mutation == "runner":
+    job["runs-on"] = "windows-latest"
+  elif mutation == "permissions":
+    job["permissions"]["contents"] = "write"
+  elif mutation == "missing-hashes":
+    run["run"] = run["run"].replace("--require-hashes", "")
+  with pytest.raises(AssertionError):
+    assert_registry_job_contract(workflow, job_name)
+
+
+@pytest.mark.parametrize("mutation", ["target", "dependencies", "extra-command"])
+def test_registry_consumer_is_an_exact_step_not_an_install_exception(mutation):
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  assert_registry_job_contract(workflow, "verify_registries")
+  consumer = next(
+    step
+    for step in workflow["jobs"]["verify_registries"]["steps"]
+    if step.get("name") == "Clean-install the PyPI wheel and run acceptance"
+  )
+  if mutation == "target":
+    consumer["run"] = consumer["run"].replace("celestial-calendar==${TAG_NAME#v}", "unexpected==1")
+  elif mutation == "dependencies":
+    consumer["run"] = consumer["run"].replace("--no-deps", "")
+  else:
+    consumer["run"] += "\n{ pip install unexpected==1; }\n"
+  with pytest.raises(AssertionError):
+    assert_registry_job_contract(workflow, "verify_registries")
+
+
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+def test_registry_job_pins_every_script_body(job_name):
+  source = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+  workflow = yaml.safe_load(source)
+  assert_registry_job_contract(workflow, job_name)
+  for index, step in enumerate(workflow["jobs"][job_name]["steps"]):
+    if "run" in step:
+      changed = yaml.safe_load(source)
+      changed["jobs"][job_name]["steps"][index]["run"] += "\n: unexpected-command\n"
+      with pytest.raises(AssertionError):
+        assert_registry_job_contract(changed, job_name)
 
 
 def test_registry_jobs_start_only_after_the_immutable_github_release():
