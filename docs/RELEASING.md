@@ -117,8 +117,8 @@ For the alias's first version, after npm-primary 0.7.0 is available:
 1. Obtain separate authorization for account setup and publication. Download the original release run's
    `celestial-release-candidate`, not a rebuilt producer output.
 2. Select the alias tarball from `candidate/evidence/npm-alias-pack.json`, requiring exactly one
-   `celestial-calendar@0.7.0` record and a plain filename. Verify its SHA-256 against
-   `candidate/evidence/npm-alias-pack.sha256` in `candidate/npm`. Keep both frozen tarballs unchanged.
+   `celestial-calendar@0.7.0` record and a plain filename. Verify the SHA-256 of the tarball in
+   `candidate/npm` against `candidate/evidence/npm-alias-pack.sha256`. Keep both frozen tarballs unchanged.
 3. Publish that exact alias tarball with `--access public --ignore-scripts` using a separately authorized
    short-lived credential. Do not print or store that credential in the repository. Revoke it immediately.
 4. Register the alias Trusted Publisher for owner `0xf3cd`, repository `celestial-calendar`, workflow `release.yml`,
