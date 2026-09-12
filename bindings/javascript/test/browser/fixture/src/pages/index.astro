@@ -25,7 +25,10 @@
     </main>
     <script>
       import * as celestial from "@0xf3cd/celestial";
-      import { dateToCivilAtOffset, civilAtOffsetToDate } from "@0xf3cd/celestial/date";
+      import * as alias from "celestial-calendar";
+      import * as primaryDate from "@0xf3cd/celestial/date";
+      import * as aliasDate from "celestial-calendar/date";
+      import { dateToCivilAtOffset, civilAtOffsetToDate } from "celestial-calendar/date";
 
       const output = document.querySelector("#result");
       const civil = dateToCivilAtOffset(new Date("2024-02-03T16:00:00.000Z"), 480);
@@ -47,9 +50,13 @@
               && error.recorded
               && error.message.includes("cannot be represented");
           }
-          const lichun = celestial.jieqi.moment(2024, celestial.Jieqi.LICHUN);
+          const lichun = alias.jieqi.moment(2024, alias.Jieqi.LICHUN);
           window.__CELESTIAL_RESULT__ = {
             translated,
+            sharedExports: Object.keys(celestial).join() === Object.keys(alias).join()
+              && Object.keys(primaryDate).join() === Object.keys(aliasDate).join()
+              && Object.keys(celestial).every((key) => celestial[key] === alias[key])
+              && Object.keys(primaryDate).every((key) => primaryDate[key] === aliasDate[key]),
             survived: celestial.jieqi.name(celestial.Jieqi.LICHUN) === "立春",
             lichun,
             lichunMatches: lichun.jieqi === celestial.Jieqi.LICHUN,

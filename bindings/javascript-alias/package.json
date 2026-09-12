@@ -1,0 +1,30 @@
+{
+  "name": "celestial-calendar",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Full-surface ESM alias for @0xf3cd/celestial",
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "default": "./index.mjs"
+    },
+    "./date": {
+      "types": "./date.d.ts",
+      "import": "./date.mjs",
+      "default": "./date.mjs"
+    }
+  },
+  "files": ["README.md", "LICENSE", "index.mjs", "index.d.ts", "date.mjs", "date.d.ts"],
+  "engines": { "node": ">=22" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xf3cd/celestial-calendar.git",
+    "directory": "bindings/javascript-alias"
+  },
+  "license": "MIT",
+  "publishConfig": { "access": "public" },
+  "dependencies": { "@0xf3cd/celestial": "0.0.0-development" }
+}

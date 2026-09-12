@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 import puppeteer from "puppeteer-core";
 
-if (process.argv.length !== 3) throw new Error("usage: node browser_test.mjs <package.tgz>");
+if (process.argv.length !== 4) throw new Error("usage: node browser_test.mjs <primary.tgz> <alias.tgz>");
 
 const HOST = "127.0.0.1";
 const PORT = 4321;
@@ -28,6 +28,7 @@ const PACKAGE_ROOT = resolve(HERE, "../..");
 const FIXTURE = resolve(HERE, "fixture");
 const WORK = resolve(PACKAGE_ROOT, "build/browser-consumer");
 const TARBALL = resolve(process.argv[2]);
+const ALIAS_TARBALL = resolve(process.argv[3]);
 const ASTRO = resolve(PACKAGE_ROOT, "node_modules/astro/bin/astro.mjs");
 const VITE = resolve(PACKAGE_ROOT, "node_modules/vite/bin/vite.js");
 const NPM_CACHE = resolve(PACKAGE_ROOT, "build/npm-cache");
@@ -55,7 +56,7 @@ await writeFile(
     version: "0.0.0",
     private: true,
     type: "module",
-    dependencies: { "@0xf3cd/celestial": `file:${TARBALL}` },
+    dependencies: { "@0xf3cd/celestial": `file:${TARBALL}`, "celestial-calendar": `file:${ALIAS_TARBALL}` },
   }, null, 2),
 );
 run("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], WORK);
@@ -115,6 +116,7 @@ try {
   assert(!result.fatal, result.fatal);
   assert.equal(result.translated, true, "recording failure was not translated");
   assert.equal(result.survived, true, "module did not survive a translated failure");
+  assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");
   assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
   assert.equal(result.lichunMatches, true);
   assert.equal(result.lichun.momentUt1.year, 2024);

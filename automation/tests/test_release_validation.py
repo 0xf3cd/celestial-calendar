@@ -8,18 +8,21 @@
 #
 # SPDX-License-Identifier: MIT
 
+import gzip
 import hashlib
 import io
 import json
 import tarfile
 import zipfile
+from itertools import count
 from pathlib import Path, PurePosixPath
+from types import SimpleNamespace
 
 import pytest
 
 from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
-from toolbox.build_npm import PACKAGE_NAME
+from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
 from toolbox.release_validation import (
   LicenseValidation,
   NATIVE_ARCHIVES,
@@ -40,6 +43,7 @@ VERSION = project_version()
 MAJOR, MINOR, _PATCH = VERSION.split(".")
 SOVERSION = f"{MAJOR}.{MINOR}" if MAJOR == "0" else MAJOR
 TARBALL = f"0xf3cd-celestial-{VERSION}.tgz"
+ALIAS_TARBALL = f"celestial-calendar-{VERSION}.tgz"
 LICENSE_BYTES = (Path(__file__).parents[2] / "LICENSE").read_bytes()
 NOTICE_BYTES = (Path(__file__).parents[2] / "THIRD_PARTY_NOTICES.txt").read_bytes()
 LICENSE_MUTATIONS = ("missing", "changed", "duplicate", "renamed", "extra")
@@ -139,7 +143,7 @@ def mutate_notice(members, mutation):
   return mutate_member(members, "THIRD_PARTY_NOTICES.txt", mutation)
 
 
-def npm_tarball(members=None):
+def npm_tarball(members=None, package_name=PACKAGE_NAME):
   members = (
     [
       ("package/LICENSE", LICENSE_BYTES),
@@ -148,6 +152,19 @@ def npm_tarball(members=None):
     if members is None
     else members
   )
+  allowlist = ALIAS_ALLOWLIST if package_name == ALIAS_NAME else PACK_ALLOWLIST
+  members = [
+    *members,
+    *(
+      (
+        f"package/{name}",
+        json.dumps(staging_manifest(VERSION, package_name)).encode() if name == "package.json" else b"fixture",
+      )
+      for name in sorted(allowlist - {"LICENSE", "THIRD_PARTY_NOTICES.txt"})
+    ),
+  ]
+  if package_name == ALIAS_NAME:
+    members = [(name, content) for name, content in members if name != "package/THIRD_PARTY_NOTICES.txt"]
   payload = io.BytesIO()
   with tarfile.open(fileobj=payload, mode="w:gz") as archive:
     for name, content in members:
@@ -161,7 +178,23 @@ def npm_tarball(members=None):
 def wasm_members(tarball_name=TARBALL, package_name=PACKAGE_NAME, package_version=VERSION, tarball=None):
   tarball = npm_tarball() if tarball is None else tarball
   digest = hashlib.sha256(tarball).hexdigest()
-  pack = [{"name": package_name, "version": package_version, "filename": tarball_name}]
+  pack = [
+    {
+      "name": package_name,
+      "version": package_version,
+      "filename": tarball_name,
+      "files": [{"path": name} for name in sorted(PACK_ALLOWLIST)],
+    }
+  ]
+  alias = npm_tarball(package_name=ALIAS_NAME)
+  alias_pack = [
+    {
+      "name": ALIAS_NAME,
+      "version": package_version,
+      "filename": ALIAS_TARBALL,
+      "files": [{"path": name} for name in sorted(ALIAS_ALLOWLIST)],
+    }
+  ]
   return [
     ("celestial-jieqi.mjs", b"mjs"),
     ("celestial-jieqi.wasm", b"wasm"),
@@ -170,6 +203,9 @@ def wasm_members(tarball_name=TARBALL, package_name=PACKAGE_NAME, package_versio
     (tarball_name, tarball),
     ("npm-pack.json", json.dumps(pack).encode()),
     ("npm-pack.sha256", f"{digest}  {tarball_name}\n".encode()),
+    (ALIAS_TARBALL, alias),
+    ("npm-alias-pack.json", json.dumps(alias_pack).encode()),
+    ("npm-alias-pack.sha256", f"{hashlib.sha256(alias).hexdigest()}  {ALIAS_TARBALL}\n".encode()),
   ]
 
 
@@ -402,19 +438,130 @@ def test_wasm_tarball_name_comes_from_pack_metadata(tmp_path):
   validate_release_archives(archives, VERSION)
 
 
+@pytest.mark.parametrize(
+  "member", [TARBALL, "npm-pack.json", "npm-pack.sha256", ALIAS_TARBALL, "npm-alias-pack.json", "npm-alias-pack.sha256"]
+)
+@pytest.mark.parametrize("mutation", ["missing", "changed", "duplicate", "renamed", "extra"])
+def test_each_npm_payload_is_required_and_bound_to_its_metadata(tmp_path, member, mutation):
+  archive = write_zip(tmp_path / "celestial-wasm.zip", mutate_member(wasm_members(), member, mutation))
+  with pytest.raises(RuntimeError):
+    npm_archive_payload(archive, VERSION)
+
+
+@pytest.mark.parametrize(
+  "mutation",
+  ["crossed-name", "duplicate-filename", "unknown-name", "version-drift", "crossed-sidecar", "escaping-filename"],
+)
+def test_npm_pair_rejects_crossed_identities(tmp_path, mutation):
+  members = dict(wasm_members())
+  pack = json.loads(members["npm-alias-pack.json"])
+  if mutation == "crossed-name":
+    pack[0]["name"] = PACKAGE_NAME
+  elif mutation == "duplicate-filename":
+    pack[0]["filename"] = TARBALL
+  elif mutation == "unknown-name":
+    pack[0]["name"] = "unknown"
+  elif mutation == "version-drift":
+    pack[0]["version"] = "0.7.1"
+  elif mutation == "escaping-filename":
+    pack[0]["filename"] = "../escape.tgz"
+  else:
+    members["npm-alias-pack.sha256"] = members["npm-pack.sha256"]
+  members["npm-alias-pack.json"] = json.dumps(pack).encode()
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
+  with pytest.raises(RuntimeError, match="Invalid npm package identity" if mutation == "escaping-filename" else None):
+    npm_archive_payload(archive, VERSION)
+
+
+@pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
+def test_alias_tarball_requires_canonical_license(tmp_path, mutation):
+  members = dict(wasm_members())
+  tarball = npm_tarball(mutate_license([("package/LICENSE", LICENSE_BYTES)], mutation), package_name=ALIAS_NAME)
+  members[ALIAS_TARBALL] = tarball
+  members["npm-alias-pack.sha256"] = f"{hashlib.sha256(tarball).hexdigest()}  {ALIAS_TARBALL}\n".encode()
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
+  with pytest.raises(RuntimeError, match="LICENSE"):
+    npm_archive_payload(archive, VERSION)
+
+
+@pytest.mark.parametrize("mutation", ["name", "version", "dependency", "extra-wasm", "duplicate", "symlink"])
+def test_alias_inner_identity_cannot_be_hidden_by_updated_sidecar(tmp_path, mutation):
+  members = dict(wasm_members())
+  with tarfile.open(fileobj=io.BytesIO(members[ALIAS_TARBALL]), mode="r:gz") as archive:
+    files = {member.name: archive.extractfile(member).read() for member in archive.getmembers()}
+  manifest = json.loads(files["package/package.json"])
+  if mutation == "name":
+    manifest["name"] = PACKAGE_NAME
+  elif mutation == "version":
+    manifest["version"] = "0.7.1"
+  elif mutation == "dependency":
+    manifest["dependencies"][PACKAGE_NAME] = "^0.7.0"
+  elif mutation == "extra-wasm":
+    files["package/celestial-jieqi.wasm"] = b"unexpected copied WASM"
+  files["package/package.json"] = json.dumps(manifest).encode()
+  content = io.BytesIO()
+  with tarfile.open(fileobj=content, mode="w:gz") as archive:
+    for name, data in files.items():
+      info = tarfile.TarInfo(name)
+      info.size = len(data)
+      if mutation == "symlink" and name == "package/date.mjs":
+        info.type = tarfile.SYMTYPE
+        info.linkname = "index.mjs"
+        info.size = 0
+      archive.addfile(info, io.BytesIO(data))
+      if mutation == "duplicate" and name == "package/date.mjs":
+        archive.addfile(info, io.BytesIO(data))
+  members[ALIAS_TARBALL] = content.getvalue()
+  members["npm-alias-pack.sha256"] = f"{hashlib.sha256(content.getvalue()).hexdigest()}  {ALIAS_TARBALL}\n".encode()
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
+  with pytest.raises(RuntimeError):
+    npm_archive_payload(archive, VERSION)
+
+
+@pytest.mark.parametrize("version", ["0.6.0", "0.6.1", "0.6.2"])
+@pytest.mark.parametrize("mode", [LicenseValidation.LEGACY, LicenseValidation.MEMBERS, LicenseValidation.REPOSITORY])
+def test_singleton_format_selection_is_independent_of_license_history(tmp_path, version, mode):
+  members = dict(wasm_members())
+  for name in (ALIAS_TARBALL, "npm-alias-pack.json", "npm-alias-pack.sha256"):
+    del members[name]
+  pack = json.loads(members["npm-pack.json"])
+  pack[0]["version"] = version
+  members["npm-pack.json"] = json.dumps(pack).encode()
+  if mode is LicenseValidation.LEGACY:
+    del members["LICENSE"]
+    del members["THIRD_PARTY_NOTICES.txt"]
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
+  before = archive.read_bytes()
+  assert set(npm_archive_payload(archive, version, mode)) == {TARBALL, "npm-pack.json", "npm-pack.sha256"}
+  assert archive.read_bytes() == before
+  with pytest.raises(RuntimeError, match="Missing npm metadata"):
+    npm_archive_payload(archive, VERSION, mode)
+
+
 def test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path):
   tarball = npm_tarball()
-  archive = write_zip(tmp_path / "celestial-wasm.zip", wasm_members(tarball=tarball))
+  members = wasm_members(tarball=tarball)
+  archive = write_zip(tmp_path / "celestial-wasm.zip", members)
   before = archive.read_bytes()
 
   payload = npm_archive_payload(archive, VERSION)
 
-  assert payload == {
-    TARBALL: tarball,
-    "npm-pack.json": json.dumps([{"name": PACKAGE_NAME, "version": VERSION, "filename": TARBALL}]).encode(),
-    "npm-pack.sha256": f"{hashlib.sha256(tarball).hexdigest()}  {TARBALL}\n".encode(),
-  }
+  assert payload == {name: content for name, content in members if name.endswith((".tgz", ".json", ".sha256"))}
   assert archive.read_bytes() == before
+
+
+def test_validated_npm_payload_with_advancing_gzip_clock(tmp_path, monkeypatch):
+  timestamps = count(1_700_000_000)
+  with monkeypatch.context() as patch:
+    # Replace only gzip's clock reference, not the shared time module.
+    patch.setattr(gzip, "time", SimpleNamespace(time=lambda: next(timestamps)))
+    test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path)
+
+  with zipfile.ZipFile(tmp_path / "celestial-wasm.zip") as archive:
+    assert [int.from_bytes(archive.read(name)[4:8], "little") for name in (TARBALL, ALIAS_TARBALL)] == [
+      1_700_000_000,
+      1_700_000_001,
+    ]
 
 
 def test_release_candidate_partitions_one_validated_inventory(tmp_path):
@@ -432,7 +579,8 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
 
   assert len(list((candidate / "github").iterdir())) == 14
   assert {path.suffix for path in (candidate / "pypi").iterdir()} == {".whl"}
-  assert [path.name for path in (candidate / "npm").iterdir()] == [TARBALL]
+  assert {path.name for path in (candidate / "npm").iterdir()} == {TARBALL, ALIAS_TARBALL}
+  assert len(list(candidate.rglob("*.*"))) == 30
   assert (candidate / "evidence" / "RELEASE_NOTES.md").read_bytes() == release_notes.read_bytes()
   manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
   assert manifest["tag"] == f"v{VERSION}"
@@ -441,6 +589,7 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
     SOURCE_ARTIFACTS
   )
   assert "evidence/manifest.json" not in manifest["files"]
+  assert len(manifest["files"]) == 29
   assert set(manifest["files"]) == {
     path.relative_to(candidate).as_posix() for path in candidate.rglob("*") if path.is_file() and path != manifest_path
   }
@@ -496,6 +645,40 @@ def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
   manifest = validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
 
   assert manifest["version"] == VERSION
+
+
+@pytest.mark.parametrize("tarball", [TARBALL, ALIAS_TARBALL])
+@pytest.mark.parametrize("mutation", ["bytes", "missing", "extra", "crossed-metadata"])
+def test_npm_candidate_reconciles_original_archive_even_with_rehashed_manifest(tmp_path, tarball, mutation):
+  assets, sources, notes = write_candidate_inputs(tmp_path)
+  candidate = tmp_path / "candidate"
+  stage_release_candidate(assets, sources, candidate, f"v{VERSION}", "tagged-sha", notes)
+  target = candidate / "npm" / tarball
+  if mutation == "bytes":
+    target.write_bytes(b"changed tarball")
+  elif mutation == "missing":
+    target.unlink()
+  elif mutation == "extra":
+    (candidate / "npm" / "extra.tgz").write_bytes(target.read_bytes())
+  else:
+    primary = candidate / "evidence/npm-pack.json"
+    alias = candidate / "evidence/npm-alias-pack.json"
+    primary_bytes, alias_bytes = primary.read_bytes(), alias.read_bytes()
+    primary.write_bytes(alias_bytes)
+    alias.write_bytes(primary_bytes)
+  manifest_path = candidate / "evidence/manifest.json"
+  manifest = json.loads(manifest_path.read_bytes())
+  manifest["files"] = {
+    path.relative_to(candidate).as_posix(): {
+      "size": path.stat().st_size,
+      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+    for path in candidate.rglob("*")
+    if path.is_file() and path != manifest_path
+  }
+  manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+  with pytest.raises(RuntimeError, match="npm candidate"):
+    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
 
 
 def test_frozen_candidate_requires_current_repository_license(tmp_path, monkeypatch):

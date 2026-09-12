@@ -24,9 +24,6 @@ jobs:
   prepare_release:
     runs-on: ubuntu-latest
 
-    outputs:
-      npm_publish_required: ${{ steps.npm-version.outputs.publish_required }}
-
     permissions:
       actions: read
       contents: read
@@ -106,13 +103,26 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Classify exact npm version
-        id: npm-version
+      - name: Classify exact npm-primary version
         env:
           COMMIT_SHA: ${{ github.sha }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
           python3 toolbox/registry_verifier.py classify-npm \
+            --package '@0xf3cd/celestial' \
+            --candidate candidate \
+            --version "${TAG_NAME#v}" \
+            --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Classify exact npm-alias version
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py classify-npm \
+            --package celestial-calendar \
             --candidate candidate \
             --version "${TAG_NAME#v}" \
             --commit "$COMMIT_SHA" \
@@ -182,6 +192,21 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned classifier dependencies
+        run: >-
+          python3 -m pip install --require-hashes --only-binary=:all:
+          -r Requirements-producer.txt
+
       - name: Download immutable release candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -193,28 +218,58 @@ jobs:
         with:
           node-version: "24.19.0"
 
-      - name: Publish exact tarball or report verified bootstrap
-        env:
-          PUBLISH_REQUIRED: ${{ needs.prepare_release.outputs.npm_publish_required }}
+      - name: Verify the trusted npm runtime
         run: |
           if [ "$(node --version)" != "v24.19.0" ] || [ "$(npm --version)" != "11.17.0" ]; then
             echo "Unexpected Node/npm runtime: $(node --version) / $(npm --version)"
             exit 1
           fi
-          shopt -s nullglob
-          tarballs=(candidate/npm/*.tgz)
-          if [ "${#tarballs[@]}" -ne 1 ]; then
-            echo "Expected exactly one npm tarball"
-            exit 1
-          fi
-          if [ "$PUBLISH_REQUIRED" = "true" ]; then
-            npm publish "${tarballs[0]}" --access public --ignore-scripts
-          elif [ "$PUBLISH_REQUIRED" = "false" ]; then
-            echo "Exact npm version already exists; publication is not required."
-          else
-            echo "Invalid npm publication decision: $PUBLISH_REQUIRED"
-            exit 1
-          fi
+
+      - name: Freshly classify npm-primary
+        id: npm-primary
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py classify-npm \
+            --package '@0xf3cd/celestial' \
+            --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish exact npm-primary tarball
+        env:
+          STATE: ${{ steps.npm-primary.outputs.state }}
+          TARBALL: ${{ steps.npm-primary.outputs.tarball }}
+        run: |
+          case "$STATE" in
+            absent) echo "npm-primary: publishing frozen tarball."; npm publish "$TARBALL" --access public --ignore-scripts ;;
+            exact) echo "npm-primary: exact bytes already published; verified no-op." ;;
+            bootstrap_required) echo "npm-primary: bootstrap required; no publication attempted."; exit 1 ;;
+            *) echo "npm-primary: invalid classification: $STATE"; exit 1 ;;
+          esac
+
+      - name: Freshly classify npm-alias
+        id: npm-alias
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py classify-npm \
+            --package celestial-calendar \
+            --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish exact npm-alias tarball
+        env:
+          STATE: ${{ steps.npm-alias.outputs.state }}
+          TARBALL: ${{ steps.npm-alias.outputs.tarball }}
+        run: |
+          case "$STATE" in
+            absent) echo "npm-alias: publishing frozen tarball; npm-primary completed."; npm publish "$TARBALL" --access public --ignore-scripts ;;
+            exact) echo "npm-alias: exact bytes already published; verified no-op." ;;
+            bootstrap_required) echo "npm-alias: bootstrap required; npm-primary completed. Retain the frozen candidate and retry only this npm job after authorized bootstrap."; exit 1 ;;
+            *) echo "npm-alias: invalid classification: $STATE; npm-primary completed."; exit 1 ;;
+          esac
 
   verify_registries:
     needs: [publish_pypi, publish_npm]
@@ -240,7 +295,9 @@ jobs:
           python-version: "3.11.9"
 
       - name: Install pinned registry verifier dependencies
-        run: python3 -m pip install -r Requirements.txt
+        run: >-
+          python3 -m pip install --require-hashes --only-binary=:all:
+          -r Requirements-producer.txt
 
       - name: Verify exact registry metadata and bytes
         env:
@@ -274,7 +331,7 @@ jobs:
         with:
           node-version: "24.19.0"
 
-      - name: Clean-install the npm package and run acceptance
+      - name: Clean-install npm-primary, npm-alias, and the pair and run acceptance
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: node bindings/javascript/test/registry/registry_consumer_test.mjs "${TAG_NAME#v}"

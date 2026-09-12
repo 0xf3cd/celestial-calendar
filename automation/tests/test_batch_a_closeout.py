@@ -410,6 +410,25 @@ def test_a4_npm_lock_mutation_fails(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
+@pytest.mark.parametrize(
+  "old", ["licensed under MIT", "@0xf3cd/celestial/THIRD_PARTY_NOTICES.txt", "not bundled in this alias"]
+)
+@pytest.mark.parametrize("replacement", ["", "incorrect scope"])
+def test_alias_readme_license_controls(tmp_path, old, replacement):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "bindings/javascript-alias/README.md", old, replacement)
+  with pytest.raises(RuntimeError, match="(MIT scope|third-party exception|dependency-notice)"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize("replacement", ["", "ISC"])
+def test_alias_metadata_license_controls(tmp_path, replacement):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "bindings/javascript-alias/package.json", '"license": "MIT"', f'"license": "{replacement}"')
+  with pytest.raises(RuntimeError, match="npm alias license metadata"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
 def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "project.py", 'BUILD_VERSION: Final[str] = "0.7.0"', 'BUILD_VERSION: Final[str] = "0.8.0"')

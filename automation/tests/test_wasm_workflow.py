@@ -11,11 +11,16 @@
 import json
 import re
 import shlex
+import subprocess
+import sys
+import shutil
 from collections import Counter
 from pathlib import Path
 
 import yaml
+import pytest
 
+from toolbox import build_npm
 from toolbox.release_validation import SOURCE_SPECS
 
 
@@ -169,3 +174,79 @@ def test_date_bridge_runs_on_current_and_floor_node():
     ("${{ env.NODE_CURRENT }}", [*command, "--exhaustive"]),
     ("${{ env.NODE_FLOOR }}", command),
   ]
+
+
+def test_wasm_pack_outputs_select_both_tarballs_from_metadata(tmp_path, monkeypatch):
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  step = next(step for step in workflow["jobs"]["wasm"]["steps"] if step.get("id") == "npm-package")
+  build, separator, script = step["run"].partition("python3 - <<'PY'\n")
+  assert build.strip() == "python3 toolbox/build_npm.py"
+  assert separator and script.endswith("PY\n")
+
+  out = tmp_path / "build" / "npm"
+  out.mkdir(parents=True)
+  for name, stem, filename in (
+    ("@0xf3cd/celestial", "npm-pack", "primary-selected.tgz"),
+    ("celestial-calendar", "npm-alias-pack", "alias-selected.tgz"),
+  ):
+    (out / filename).write_bytes(b"tarball fixture")
+    (out / f"{stem}.json").write_text(
+      json.dumps([{"name": name, "version": "0.7.0", "filename": filename}]), encoding="utf-8"
+    )
+  (out / "000-decoy.tgz").write_bytes(b"not selected by metadata")
+  output = tmp_path / "github-output"
+  monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+  monkeypatch.setattr(build_npm, "project_version", lambda: "0.7.0")
+  monkeypatch.chdir(tmp_path)
+
+  exec(compile(script.removesuffix("PY\n"), str(WORKFLOW), "exec"), {})
+
+  assert output.read_text(encoding="utf-8").splitlines() == [
+    f"tarball={Path('build/npm/primary-selected.tgz')}",
+    f"alias_tarball={Path('build/npm/alias-selected.tgz')}",
+  ]
+
+
+def test_wasm_consumers_receive_the_metadata_pair_through_quoted_environment(tmp_path):
+  if shutil.which("bash") is None:
+    pytest.skip("WASM consumer steps require bash")
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  steps = workflow["jobs"]["wasm"]["steps"]
+  consumers = [step for step in steps if "TARBALL" in step.get("env", {})]
+  assert len(consumers) == 3
+  assert sum("toolbox/build_npm.py" in step.get("run", "") for step in steps) == 1
+  fake_bin = tmp_path / "bin"
+  fake_bin.mkdir()
+  calls = tmp_path / "calls.jsonl"
+  for name in ("node", "npm"):
+    executable = fake_bin / name
+    executable.write_text(
+      f"#!{sys.executable}\nimport json, os, sys\n"
+      "with open(os.environ['CALLS'], 'a') as output:\n"
+      "  output.write(json.dumps(sys.argv[1:]) + '\\n')\n",
+      encoding="utf-8",
+    )
+    executable.chmod(0o755)
+  primary = 'primary $(touch INJECTED) " ;.tgz'
+  alias = 'alias `touch INJECTED` " ;.tgz'
+  for step in consumers:
+    assert step["env"] == {
+      "TARBALL": "${{ steps.npm-package.outputs.tarball }}",
+      "ALIAS_TARBALL": "${{ steps.npm-package.outputs.alias_tarball }}",
+    }
+    assert "${{" not in step["run"]
+    result = subprocess.run(
+      [shutil.which("bash"), "--noprofile", "--norc", "-euo", "pipefail", "-c", step["run"]],
+      cwd=tmp_path,
+      env={"PATH": str(fake_bin), "CALLS": str(calls), "TARBALL": primary, "ALIAS_TARBALL": alias},
+      capture_output=True,
+      text=True,
+    )
+    assert result.returncode == 0, result.stderr
+  records = [json.loads(line) for line in calls.read_text().splitlines()]
+  pair_calls = [
+    args for args in records if args and args[0].endswith(("tarball_consumer_test.mjs", "browser_test.mjs"))
+  ]
+  assert len(pair_calls) == 3
+  assert all(args[1:] == [primary, alias] for args in pair_calls)
+  assert not (tmp_path / "INJECTED").exists()
