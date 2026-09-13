@@ -95,6 +95,7 @@ print(lunar, winter_solstice.moment_ut1)
 Python 3.11 or newer is supported. Each wheel owns its native library; it neither searches the system nor downloads a
 fallback at import time. Public calls use enums, frozen dataclasses, ordinary scalars and tuples rather than exposing
 the underlying ctypes protocol. See `bindings/python/README.md` for the date-only bridge and package contract.
+To build a host-local wheel from a full checkout, see the [local-wheel recipe](bindings/python/README.md#build-a-local-wheel).
 
 ### 1.4. From JavaScript or TypeScript
 

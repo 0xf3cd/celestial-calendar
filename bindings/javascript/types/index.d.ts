@@ -126,13 +126,19 @@ export interface LunarDate {
   fraction?: never;
 }
 
+/** A namespace-method failure; recorded is true only when the message came from the native error channel. */
 export class CelestialError extends Error {
   constructor(operation: string, message: string, recorded: boolean);
   operation: string;
   recorded: boolean;
 }
 
-/** Load the package-owned WASM module. Concurrent calls share one promise; a failed load can be retried. */
+/**
+ * Load the package-owned WASM module, resolving to undefined. Concurrent and completed calls share one promise.
+ * A failed load preserves its original rejection and can be retried.
+ * Namespace methods throw CelestialError with their operation and recorded=false until initialization completes,
+ * before argument validation, including zero-count calls.
+ */
 export function init(): Promise<void>;
 
 export const config: Readonly<{
@@ -146,7 +152,12 @@ export const time: Readonly<{
   ut1ToJde(ut1: CivilDateTime): number;
   /** Convert a TT-based JDE to a UT1 civil moment. */
   jdeToUt1(jde: number): CivilDateTimeResult;
-  /** Local apparent sidereal time in degrees; longitude is east-positive. */
+  /**
+   * Local apparent sidereal time in [0, 360) degrees, at a finite JD on UT1 in Gregorian years [401, 32766].
+   * Geographic longitude is finite, east-positive, in [-180, 180] degrees.
+   * @throws {RangeError} For non-finite numbers or longitude outside its range.
+   * @throws {CelestialError} If the native boundary rejects the JD's year or cannot produce sidereal time.
+   */
   localApparentSiderealTime(jdUt1: number, longitudeDeg: number): number;
   /**
    * Delta T (TT - UT1), in seconds, for a finite decimal Gregorian year.
@@ -164,11 +175,14 @@ export const time: Readonly<{
 export const sun: Readonly<{
   /** Apparent geocentric ecliptic coordinates at a TT-based JDE. */
   apparentGeocentricCoordinate(jde: number): EclipticCoordinateAu;
-  /** TT-based JDEs when the Sun reaches longitudeDeg in a Gregorian year in [1, 32766]. */
+  /**
+   * TT-based JDEs when the Sun reaches a finite apparent geocentric longitude in [0, 360) degrees.
+   * The Gregorian year is in [1, 32766]; returns [] when that year has no crossing.
+   */
   longitudeCrossings(year: number, longitudeDeg: number): number[];
   /** Equation of time in degrees of hour angle; multiply by 240 for seconds. */
   equationOfTime(jde: number): number;
-  /** Convert a civil UTC moment to local apparent solar time; longitude is east-positive. */
+  /** Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees. */
   apparentSolarTime(utc: CivilDateTime, longitudeDeg: number): CivilDateTimeResult;
 }>;
 
@@ -204,7 +218,7 @@ export const jieqi: Readonly<{
  * for 1901-2099 and algo2-generated dates elsewhere. Choose table compatibility or computation,
  * not an assumed accuracy ranking. Algo2 renders TT through the library's UTC model, then +8 h:
  * UT1 proxy before 1972, the leap-second table from 1972, and frozen Delta AT = 37 s after its last entry.
- * All methods throw Error if called before init() completes.
+ * All methods throw CelestialError with recorded=false before init() completes, before argument validation.
  */
 export const lunar: Readonly<{
   /**

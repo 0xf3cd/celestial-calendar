@@ -26,6 +26,30 @@ Linux wheel filenames may contain additional compatible manylinux tags. Each is 
 newer on that platform.
 No wheel is published for other platforms, such as Intel macOS, Windows on ARM, or musl-based Linux.
 
+### Build a local wheel
+
+Use a full source checkout, not a copy of `bindings/python` alone. The Linux shell example below needs Python
+3.11 or newer, system CMake 3.22 or newer, and an installed C/C++23 toolchain. It selects `clang-22` and
+`clang++-22`; set `CC` and `CXX` to your installed compilers if they have different names. The existing hash-locked
+requirements supply the build frontend, backend and Ninja. Run from the repository root with unused build,
+environment and output directories:
+
+```sh
+python3 -m venv build/local-wheel-env
+. build/local-wheel-env/bin/activate
+python -m pip install --require-hashes -r bindings/python/requirements-build.txt
+CC=clang-22 CXX=clang++-22 python -m build \
+  --wheel --no-isolation \
+  --outdir build/local-wheelhouse \
+  --config-setting=build-dir="$PWD/build/local-wheel-build" \
+  bindings/python
+deactivate
+```
+
+Install the resulting `.whl` from `build/local-wheelhouse` into your application environment. This builds only
+a wheel, not an sdist. The wheel uses your host's native libraries; it is not an official repaired or portable
+release wheel and does not extend the supported-platform table above.
+
 ## API
 
 ```python
@@ -48,6 +72,12 @@ Wrong input types, including members of the wrong enum, raise `TypeError`. Value
 domain checks raise `ValueError`. A failure reported by the native boundary raises `CelestialError`. Its `operation`
 attribute names the public function, and its `recorded` attribute says whether the message came from the native error
 channel. A legitimate absence remains `None` or `()`.
+
+`local_apparent_sidereal_time(jd_ut1, longitude_deg)` takes a finite JD on UT1 whose Gregorian year is in
+`[401, 32766]`, and finite east-positive geographic longitude in `[-180, 180]` degrees. The result is in `[0, 360)`
+degrees. The native boundary enforces the year window, so an out-of-window JD raises `CelestialError`, not the
+`ValueError` used by Python's finiteness and longitude guards. `apparent_solar_time()` also takes east-positive
+geographic longitude in `[-180, 180]` degrees, but its civil input is UTC.
 
 `jieqi_moment(year, jieqi)` returns `JieqiMoment(jieqi, moment_ut1)`. The nested `CivilDateTime` is UT1, not UTC or an
 east-eight wall clock; rendering the same instant at UTC+8 can change its calendar date. Establish the time-scale

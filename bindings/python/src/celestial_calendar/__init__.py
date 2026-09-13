@@ -422,10 +422,13 @@ def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
 
 
 def sun_longitude_crossings(year: int, longitude_deg: float) -> tuple[float, ...]:
-  """Return JDEs when the Sun reaches an apparent geocentric longitude.
+  """Return TT-based JDEs when the Sun reaches an apparent geocentric longitude.
+
+  Longitude is finite and in [0, 360) degrees. An empty tuple means no crossing in the Gregorian year.
 
   Raises:
-    ValueError: If year is outside [1, 32766].
+    TypeError: If year is not an integer or longitude_deg is not a real number.
+    ValueError: If year is outside [1, 32766], or longitude_deg is non-finite or outside [0, 360).
     CelestialError: If the native calculation cannot produce the crossings.
   """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
@@ -488,7 +491,7 @@ def equation_of_time(jde: float) -> float:
 
 
 def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTime:
-  """Convert civil UTC to local apparent solar time at an east-positive longitude in degrees."""
+  """Convert civil UTC to local apparent solar time at an east-positive longitude in [-180, 180] degrees."""
   value = _civil_datetime(utc, "utc")
   longitude = _ranged_float(longitude_deg, "longitude_deg", -180.0, 180.0)
   result = _valid(_binding.call("apparent_solar_time", *value, longitude), "apparent_solar_time")
@@ -496,10 +499,15 @@ def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTi
 
 
 def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
-  """Return local apparent sidereal time in degrees at an east-positive longitude.
+  """Return local apparent sidereal time in [0, 360) degrees at a UT1-based Julian Day.
+
+  The JD must be finite and fall in Gregorian years [401, 32766]. Geographic longitude is finite,
+  east-positive, in [-180, 180] degrees. The native boundary enforces the JD's year window.
 
   Raises:
-    CelestialError: If the native calculation cannot produce sidereal time.
+    TypeError: If either argument is not a real number.
+    ValueError: If either argument is non-finite, or longitude_deg is outside [-180, 180].
+    CelestialError: If the native boundary rejects the JD's year or cannot produce sidereal time.
   """
   jd = _finite(jd_ut1, "jd_ut1")
   longitude = _ranged_float(longitude_deg, "longitude_deg", -180.0, 180.0)

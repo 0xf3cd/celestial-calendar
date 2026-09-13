@@ -64,7 +64,8 @@ const constructedError = new celestial.CelestialError("consumer", "consumer fail
 constructedError.operation;
 constructedError.recorded;
 
-await celestial.init();
+const initialization: Promise<void> = celestial.init();
+await initialization;
 celestial.config.setLogVerbosity("none");
 celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 celestial.time.ut1ToJde({ year: 2000, month: 1, day: 1, fraction: 0.5 });

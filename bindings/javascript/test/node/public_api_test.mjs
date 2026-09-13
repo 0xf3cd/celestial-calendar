@@ -132,12 +132,53 @@ const edge = (label, action, ErrorType) => {
   ++edges;
 };
 
-assert.throws(
-  () => celestial.moon.illumination(2448724.5),
-  { name: "Error", message: "Call and await init() before moon.illumination()." },
-  "pre-init call",
+const uninitializedCalls = [
+  ["config.setLogVerbosity", ["none"]],
+  ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
+  ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
+  ["time.jdeToUt1", [2451545.0]],
+  ["time.localApparentSiderealTime", [2451545.0, 0]],
+  ["time.deltaT", [2024.5]],
+  ["sun.apparentGeocentricCoordinate", [2451545.0]],
+  ["sun.longitudeCrossings", [2024, 0]],
+  ["sun.equationOfTime", [2451545.0]],
+  ["sun.apparentSolarTime", [{ year: 2024, month: 6, day: 1, fraction: 0.5 }, 0]],
+  ["moon.apparentGeocentricCoordinate", [2451545.0]],
+  ["moon.illumination", [2448724.5]],
+  ["moon.brightLimbPositionAngle", [2448724.5]],
+  ["moon.phaseMoments", [2024, "new"]],
+  ["moon.newMoonsAfter", [2451545.0, 1]],
+  ["moon.newMoonsInYear", [2024]],
+  ["jieqi.moment", [2024, 0]],
+  ["jieqi.name", [0]],
+  ["lunar.supportedYearRange", ["algo3"]],
+  ["lunar.yearInfo", ["algo3", 2024]],
+  ["lunar.fromGregorian", ["algo3", { year: 2024, month: 2, day: 10 }]],
+  ["lunar.toGregorian", ["algo3", { year: 2024, month: 1, day: 1, isLeap: false }]],
+];
+assert.deepEqual(
+  uninitializedCalls.map(([operation]) => operation).sort(),
+  namespaces.flatMap((name) => declared.members[name].map((method) => `${name}.${method}`)).sort(),
+  "pre-init cases cover every namespace method",
 );
-++edges;
+const checkUninitialized = (runtime, operation, args) => {
+  const [namespace, method] = operation.split(".");
+  assert.throws(() => runtime[namespace][method](...args), (error) => {
+    assert(error instanceof runtime.CelestialError, `${operation}: pre-init CelestialError identity`);
+    assert.equal(error.name, "CelestialError");
+    assert.equal(error.operation, operation);
+    assert.equal(error.message, `Call and await init() before ${operation}().`);
+    assert.equal(error.recorded, false);
+    return true;
+  });
+};
+for (const [operation, args] of uninitializedCalls) {
+  checkUninitialized(celestial, operation, args);
+  checkUninitialized(celestial, operation, []);
+}
+checkUninitialized(celestial, "moon.newMoonsAfter", [2451545.0, 0]);
+checkUninitialized(celestial, "moon.newMoonsAfter", [NaN, 0]);
+console.log(`PASS pre-init coverage: ${uninitializedCalls.length} methods; validation order; zero count`);
 
 await rename(wasmPath, heldWasmPath);
 let failedInitialization;
@@ -147,7 +188,9 @@ try {
   console.error = (...args) => initializationErrors.push(args.join(" "));
   failedInitialization = celestial.init();
   assert.strictEqual(celestial.init(), failedInitialization, "concurrent init shares one promise");
+  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
   await assert.rejects(failedInitialization);
+  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
 } finally {
   console.error = originalConsoleError;
   await rename(heldWasmPath, wasmPath);
@@ -156,7 +199,7 @@ assert(initializationErrors.length > 0, "failed init reported its load error");
 
 const retry = celestial.init();
 assert.notStrictEqual(retry, failedInitialization, "failed init can retry");
-await retry;
+assert.equal(await retry, undefined, "init resolves without a namespace");
 assert.strictEqual(celestial.init(), retry, "completed init reuses one promise");
 
 let happy = 0;
@@ -442,9 +485,9 @@ assert.match(lunarError.message, /cannot be represented/);
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 assert.equal(happy, 22, "public method denominator");
-assert.equal(edges, 30, "public edge denominator");
+assert.equal(edges, 29, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 16, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/30`);
+console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/29`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/16`);
 
 const fixtureDirectory = await mkdtemp(resolve(tmpdir(), "celestial-js-contract-"));
@@ -457,6 +500,7 @@ try {
   await writeFile(
     resolve(fixtureDirectory, "mock-module.mjs"),
     `export default async () => {
+  await globalThis.__celestialLoad;
   const buffer = new ArrayBuffer(65_536);
   const M = {
     HEAPU8: new Uint8Array(buffer),
@@ -520,7 +564,27 @@ try {
   globalThis.__celestialLunarRange = { start: 2024, end: 2024 };
   const fixture = await import(pathToFileURL(fixtureEntry));
   assert.deepEqual(globalThis.__celestialLunarCalls, [], "no import-time lunar range query");
-  await fixture.init();
+  let previousInitialization;
+  for (const rejection of [new Error("original loader failure"), { loaderFailure: true }]) {
+    let rejectLoad;
+    globalThis.__celestialLoad = new Promise((_resolve, reject) => { rejectLoad = reject; });
+    const pending = fixture.init();
+    assert.notStrictEqual(pending, previousInitialization, "retry creates a new promise");
+    assert.strictEqual(fixture.init(), pending, "pending mock load shares one promise");
+    rejectLoad(rejection);
+    await assert.rejects(pending, (error) => {
+      assert.strictEqual(error, rejection, "loader rejection identity is preserved");
+      return true;
+    });
+    previousInitialization = pending;
+  }
+  delete globalThis.__celestialLoad;
+  const initialized = fixture.init();
+  assert.notStrictEqual(initialized, previousInitialization, "mock load retries after rejection");
+  assert.strictEqual(fixture.init(), initialized, "successful pending retry shares one promise");
+  assert.equal(await initialized, undefined, "mock init resolves without a namespace");
+  assert.strictEqual(fixture.init(), initialized, "completed mock init reuses one promise");
+  console.log("PASS original Error/object loader rejections; shared promises; retry; undefined resolution");
   assert.deepEqual(globalThis.__celestialLunarCalls, [], "no init-time lunar range query");
   assert.equal(fixture.moon.newMoonsAfter(2451545.0, 4096).length, 4096, "count 4096 accepted");
 
@@ -608,6 +672,7 @@ try {
   }
   console.log("PASS singular error operations; per-call native lunar ranges, validation order and recorded failures");
 } finally {
+  delete globalThis.__celestialLoad;
   delete globalThis.__celestialFailAllocation;
   delete globalThis.__celestialLunarCalls;
   delete globalThis.__celestialLunarRange;

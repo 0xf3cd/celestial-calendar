@@ -101,7 +101,7 @@ export function init() {
 
 const requireModule = (operation) => {
   if (moduleInstance === undefined) {
-    throw new Error(`Call and await init() before ${operation}().`);
+    throw new CelestialError(operation, `Call and await init() before ${operation}().`, false);
   }
   return moduleInstance;
 };
