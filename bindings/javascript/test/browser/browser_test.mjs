@@ -12,12 +12,14 @@
 
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream, existsSync } from "node:fs";
+import { appendFile, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import puppeteer, { PUPPETEER_REVISIONS } from "puppeteer-core";
-import { install } from "@puppeteer/browsers";
+import { computeExecutablePath, detectBrowserPlatform, getDownloadUrl, install } from "@puppeteer/browsers";
 
 if (process.argv.length !== 4) throw new Error("usage: node browser_test.mjs <primary.tgz> <alias.tgz>");
 
@@ -34,6 +36,7 @@ const ASTRO = resolve(PACKAGE_ROOT, "node_modules/astro/bin/astro.mjs");
 const VITE = resolve(PACKAGE_ROOT, "node_modules/vite/bin/vite.js");
 const NPM_CACHE = resolve(PACKAGE_ROOT, "build/npm-cache");
 const BROWSER_CACHE = resolve(PACKAGE_ROOT, "build/browsers");
+const BROWSER_RECEIPTS = resolve(PACKAGE_ROOT, "build/browser-downloads.jsonl");
 
 const run = (command, args, cwd) => {
   const completed = spawnSync(command, args, {
@@ -102,7 +105,26 @@ try {
   const tested = [];
   for (const name of ["chrome", "firefox"]) {
     const buildId = PUPPETEER_REVISIONS[name];
-    const installed = await install({ browser: name, buildId, cacheDir: BROWSER_CACHE });
+    const platform = detectBrowserPlatform();
+    const options = { browser: name, buildId, platform, cacheDir: BROWSER_CACHE };
+    if (!existsSync(computeExecutablePath(options))) {
+      const archive = await install({ ...options, unpack: false });
+      try {
+        const hash = createHash("sha256");
+        for await (const chunk of createReadStream(archive)) hash.update(chunk);
+        await appendFile(BROWSER_RECEIPTS, `${JSON.stringify({
+          browser: name,
+          buildId,
+          platform,
+          requestedUrl: getDownloadUrl(name, platform, buildId).href,
+          sha256: hash.digest("hex"),
+          recordedAt: new Date().toISOString(),
+        })}\n`, "utf8");
+      } catch (error) {
+        console.warn(`Could not record ${name} archive receipt (${error.code ?? error.name}).`);
+      }
+    }
+    const installed = await install(options);
     browser = await puppeteer.launch({
       browser: name,
       executablePath: installed.executablePath,
