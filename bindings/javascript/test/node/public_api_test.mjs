@@ -221,7 +221,7 @@ for (const [name, index] of Object.entries(expectedJieqi)) {
   // Same native-output reference and WASM/libm moment cap as test/abi/raw_protocol_test.mjs.
   assert(Math.abs(moment.fraction - bitsOf(point.frac_bits)) <= 1e-8, `${name}: reference UT1 fraction`);
 }
-// Same delegated/fitted/extrapolated branches as DeltaT.DefaultDispatch in the native tests.
+// Delegated/fitted/extrapolated cases from src/test/astro/delta_t_test.cpp::DefaultDispatch.
 for (const year of [1950, 2020, 2040]) {
   const expected = celestial.time.deltaT(year, "algo5");
   assert.equal(celestial.time.deltaT(year), expected, `${year}: omitted model`);

@@ -107,6 +107,8 @@ try {
     const buildId = PUPPETEER_REVISIONS[name];
     const platform = detectBrowserPlatform();
     const options = { browser: name, buildId, platform, cacheDir: BROWSER_CACHE };
+    // Receipts are local archive observations, not authenticity checks or execution gates.
+    // Observe before unpacking; executable-cache hits deliberately add no receipt.
     if (!existsSync(computeExecutablePath(options))) {
       const archive = await install({ ...options, unpack: false });
       try {
@@ -166,7 +168,7 @@ try {
     assert(Number.isInteger(result.lichun.momentUt1.minute));
     assert(Number.isFinite(result.lichun.momentUt1.second));
     assert(Number.isFinite(result.jdUt1));
-    // Same native-output reference and WASM/libm lunar-value cap as the raw protocol replay.
+    // Native-output reference and WASM/libm lunar-value cap: test/abi/raw_protocol_test.mjs.
     assert(Math.abs(result.illumination - bitsOf(moon.illumination_bits)) <= 1e-9, `${name}: reference illumination`);
 
     const wasmRequests = requests.filter((url) => new URL(url).pathname.endsWith(".wasm"));

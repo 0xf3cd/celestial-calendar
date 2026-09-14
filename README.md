@@ -7,7 +7,7 @@ Five ways in, depending on what you are here for:
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
 * **Python users** — install `celestial-calendar` and `import celestial_calendar`; §1.3 shows the package entry point.
 * **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.4 shows the package entry point.
-* **C / other-language users** — §1.2 shows the C ABI, prebuilt release files, and linking instructions.
+* **C / other-language users** — §1.2 shows the C ABI, native release ZIPs, and linking instructions.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
 ## 1. Quick Start
@@ -101,11 +101,10 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
   -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o quickstart_c
 ```
 
-Check `valid` before reading a returned result structure. Follow each scalar/count function's own return
-contract; a zero count can be a legitimate empty result. Every export except `last_error()` clears or records
-the calling thread's error message. Read or copy that library-owned string before another recording call on the
-same thread; the example prints it immediately on failure. Jieqi moments are UT1, not UTC or an east-eight
-wall date.
+Check `valid` before reading a returned result structure. Follow the scalar/count contracts in
+[`celestial.h`](src/shared_lib/celestial.h); a zero count can be a legitimate empty result. Every export except
+`last_error()` clears or records the calling thread's error message. Read or copy that library-owned string
+before another recording call on the same thread. Jieqi moments are UT1, not UTC or an east-eight wall date.
 
 ### 1.3. From Python
 
