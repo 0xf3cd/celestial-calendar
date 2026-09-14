@@ -4,6 +4,9 @@
 
 ### Changed
 
+- JavaScript namespace methods called before `init()` completes now throw `CelestialError` with the public
+  operation and `recorded = false`, preserving the message and precedence over argument validation.
+  `init()` still resolves to `undefined`, shares its promise, and preserves original loader rejections and retry.
 - Project-authored material is now licensed under MIT. Retained third-party material keeps its source terms and remains
   outside the project MIT grant; `THIRD_PARTY_NOTICES.txt` and the source-tree attribution boundaries identify the
   applicable exceptions.

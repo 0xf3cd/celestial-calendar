@@ -40,7 +40,13 @@ const lichun = celestial.jieqi.moment(2026, celestial.Jieqi.LICHUN);
 console.log(moon.fraction, lichun.momentUt1, celestial.jieqi.name(lichun.jieqi));
 ```
 
-Concurrent and repeated `init()` calls share one initialization. If loading fails, a later explicit call may retry.
+Concurrent and repeated `init()` calls share one promise, which resolves to `undefined`. If loading fails, the
+promise rejects with the original loader error; a later explicit call may retry. Namespace methods called before
+initialization completes throw `CelestialError` with the public `operation` and `recorded === false`, before
+validating arguments, even for a zero-count call.
+
+For browser deployments, keep the package's `.wasm` asset available at its emitted URL and configure your static
+host to serve it with `Content-Type: application/wasm`.
 
 ## API
 
@@ -57,7 +63,7 @@ Time scales and units stay explicit:
 - `jieqi.moment()` returns `{ jieqi, momentUt1 }`. Its nested civil moment is UT1, not UTC or an east-eight wall
   clock; rendering the same instant at UTC+8 can change its calendar date. Establish the time-scale conversion
   before using a UTC or fixed-offset display. The returned UT1 year can differ from the requested year.
-- `sun.apparentSolarTime()` accepts civil UTC and east-positive longitude.
+- `sun.apparentSolarTime()` accepts civil UTC and east-positive geographic longitude in `[-180, 180]` degrees.
 - Angular results use degrees; Sun distance uses AU and Moon distance uses kilometres.
 - `time.deltaT()` returns seconds.
 - The equation of time is degrees of hour angle; multiply by 240 for seconds of time.
@@ -69,12 +75,20 @@ An in-range query can still throw `CelestialError` if the native calculation can
 `sun.longitudeCrossings(year, longitudeDeg)`, `moon.phaseMoments(year, phase)`, and `moon.newMoonsInYear(year)` accept
 Gregorian years in `[1, 32766]`.
 
-Bad shapes and types throw `TypeError`; JavaScript range guards throw `RangeError`. Native failures throw
+`time.localApparentSiderealTime(jdUt1, longitudeDeg)` takes a finite JD on UT1 whose Gregorian year is in
+`[401, 32766]`, and finite east-positive geographic longitude in `[-180, 180]` degrees. It returns degrees in
+`[0, 360)`. The native boundary enforces the year window, so an out-of-window JD throws `CelestialError`, not
+the `RangeError` used by JavaScript's finiteness and longitude guards.
+
+`sun.longitudeCrossings(year, longitudeDeg)` takes finite apparent geocentric solar longitude in `[0, 360)`
+degrees and returns TT-based JDEs, or `[]` when there is no crossing in that year.
+
+After initialization, bad shapes and types throw `TypeError`; JavaScript range guards throw `RangeError`. Native failures throw
 `CelestialError`, whose `operation` names the public method and whose `recorded` flag says whether the message came
 from the native error channel. A legitimate absence remains `null` or `[]`.
 
 `moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 4096]`; zero returns `[]`. The upper bound keeps the WASM
-output buffer at or below 32 KiB, matching the Python package.
+output buffer at or below 32 KiB.
 
 ### Date records
 
@@ -171,7 +185,8 @@ January-to-December bounds. `lunar.yearInfo(algorithm, year)` returns the Gregor
 month index. `yearInfo()` and `toGregorian()` query the native range once per call before validating the lunar year;
 the JavaScript package keeps no duplicate range table or cache.
 
-All four lunar methods require `await init()`; a call before initialization throws `Error`. After initialization:
+All four lunar methods require `await init()`; a call before initialization completes throws `CelestialError`
+with `recorded === false`, before argument validation. After initialization:
 
 - `TypeError` means a wrong input type, missing own field, excluded date-kind tag, non-integer date field, or
   non-boolean `isLeap`.
