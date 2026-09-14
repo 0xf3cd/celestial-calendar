@@ -155,6 +155,7 @@ const verifyManifest = (candidate) => {
 
     const bindingEntry = BINDINGS.find(({ cName }) => cName === entry.name);
     assert(bindingEntry, `missing binding for ${entry.name}`);
+    assert.equal(entry.return.kind === "sret", bindingEntry.result.startsWith("sret:"), `return kind ${entry.name}`);
     if (entry.return.kind === "sret") {
       assert.equal(bindingEntry.result, `sret:${entry.return.layout}`, `binding result ${entry.name}`);
     }
@@ -194,6 +195,14 @@ const runMutationSelfTests = (candidate) => {
   wrongOffset.layouts.JieqiMomentQuery.fields[1].offset = 2;
   mutations.push(["wrong offset", wrongOffset]);
 
+  const wrongReturnKind = structuredClone(candidate);
+  wrongReturnKind.exports.find(({ name }) => name === "moon_illumination").return.kind = "primitive";
+  mutations.push(["wrong return kind", wrongReturnKind]);
+
+  const wrongReturnLayout = structuredClone(candidate);
+  wrongReturnLayout.exports.find(({ name }) => name === "moon_illumination").return.layout = "JulianDay";
+  mutations.push(["wrong return layout", wrongReturnLayout]);
+
   const wrongRecording = structuredClone(candidate);
   wrongRecording.exports.find(({ name }) => name === "moon_illumination").recording = false;
   mutations.push(["missing recording marker", wrongRecording]);
@@ -202,7 +211,7 @@ const runMutationSelfTests = (candidate) => {
   recordingReader.exports.find(({ name }) => name === "last_error").recording = true;
   mutations.push(["recording last_error", recordingReader]);
 
-  assert.equal(mutations.length, 6, "ABI mutation denominator");
+  assert.equal(mutations.length, 8, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -214,4 +223,4 @@ runMutationSelfTests(manifest);
 console.log("PASS exports header=manifest=bindings=recipe=built 29 (+ malloc/free)");
 console.log("PASS layouts header=manifest 16; HEAPU16 present; memory growth enabled");
 console.log("PASS recording docs=writers=manifest=binding error policy 28");
-console.log("PASS ABI mutations rejected 6/6");
+console.log("PASS ABI mutations rejected 8/8");

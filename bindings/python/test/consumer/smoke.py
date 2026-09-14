@@ -84,7 +84,20 @@ def run_happy_paths() -> None:
   assert resources.files(celestial).joinpath("py.typed").is_file()
   checks = []
 
-  celestial.set_log_verbosity(celestial.LogVerbosity.NONE)
+  try:
+    celestial.set_log_verbosity(celestial.LogVerbosity.INFO)
+    celestial.set_log_verbosity(celestial.LogVerbosity.DEBUG)
+  finally:
+    celestial.set_log_verbosity(celestial.LogVerbosity.NONE)
+  for level, native_level in (
+    (celestial.LogVerbosity.NONE, 0),
+    (celestial.LogVerbosity.INFO, 1),
+    (celestial.LogVerbosity.DEBUG, 2),
+  ):
+    setter = Trap(True)
+    with replaced_binding("set_log_verbosity", setter):
+      celestial.set_log_verbosity(level)
+    assert setter.calls == 1 and setter.args == (native_level,), (level, setter.args)
   checks.append("set_log_verbosity")
   ut1 = celestial.CivilDateTime(2000, 1, 1, 0.5)
   assert celestial.ut1_to_jd(ut1) == 2451545.0
@@ -119,7 +132,38 @@ def run_happy_paths() -> None:
   lichun = celestial.jieqi_moment(401, celestial.Jieqi.LICHUN).moment_ut1
   assert (lichun.year, lichun.month, lichun.day) == (401, 2, 3)
   checks.append("jieqi_moment")
-  assert celestial.jieqi_name(celestial.Jieqi.LICHUN) == "立春"
+  # src/calendar/jieqi.hpp: Jieqi English aliases and JIEQI_NAME, indexed from Lichun.
+  jieqi_names = (
+    ("LICHUN", "立春"),
+    ("YUSHUI", "雨水"),
+    ("JINGZHE", "惊蛰"),
+    ("CHUNFEN", "春分"),
+    ("QINGMING", "清明"),
+    ("GUYU", "谷雨"),
+    ("LIXIA", "立夏"),
+    ("XIAOMAN", "小满"),
+    ("MANGZHONG", "芒种"),
+    ("XIAZHI", "夏至"),
+    ("XIAOSHU", "小暑"),
+    ("DASHU", "大暑"),
+    ("LIQIU", "立秋"),
+    ("CHUSHU", "处暑"),
+    ("BAILU", "白露"),
+    ("QIUFEN", "秋分"),
+    ("HANLU", "寒露"),
+    ("SHUANGJIANG", "霜降"),
+    ("LIDONG", "立冬"),
+    ("XIAOXUE", "小雪"),
+    ("DAXUE", "大雪"),
+    ("DONGZHI", "冬至"),
+    ("XIAOHAN", "小寒"),
+    ("DAHAN", "大寒"),
+  )
+  assert len(celestial.Jieqi) == len(jieqi_names) == 24
+  for index, (symbol, expected) in enumerate(jieqi_names):
+    jieqi = celestial.Jieqi[symbol]
+    assert jieqi.name == symbol and jieqi.value == index
+    assert celestial.jieqi_name(jieqi) == expected
   checks.append("jieqi_name")
   assert celestial.supported_lunar_year_range(celestial.LunarAlgorithm.ALGO3) == celestial.LunarYearRange(1600, 2199)
   checks.append("supported_lunar_year_range")
@@ -135,6 +179,22 @@ def run_happy_paths() -> None:
   checks.append("gregorian_to_lunar")
   checks.append("lunar_to_gregorian")
   assert all(math.isfinite(celestial.delta_t(2024.5, model)) for model in celestial.DeltaTModel)
+  # src/test/astro/delta_t_test.cpp::DefaultDispatch uses these three algo5 branches.
+  for year in (1950.0, 2020.0, 2040.0):
+    assert (
+      celestial.delta_t(year)
+      == celestial.delta_t(year, celestial.DeltaTModel.DEFAULT)
+      == celestial.delta_t(year, celestial.DeltaTModel.ALGO5)
+    )
+    default = Trap(SimpleNamespace(valid=True, value=12.5))
+    algo5 = Trap(SimpleNamespace(valid=True, value=67.5))
+    with replaced_binding("delta_t", default), replaced_binding("delta_t_algo5", algo5):
+      assert celestial.delta_t(year) == 12.5
+      assert default.calls == 1 and default.args == (year,) and algo5.calls == 0
+      assert celestial.delta_t(year, celestial.DeltaTModel.DEFAULT) == 12.5
+      assert default.calls == 2 and default.args == (year,) and algo5.calls == 0
+      assert celestial.delta_t(year, celestial.DeltaTModel.ALGO5) == 67.5
+      assert algo5.calls == 1 and algo5.args == (year,) and default.calls == 2
   checks.append("delta_t")
 
   assert len(checks) == len(set(checks)) == 22
@@ -440,6 +500,9 @@ def run_acceptance_boundaries() -> None:
   for longitude in (-180.0, 180.0):
     assert math.isfinite(celestial.local_apparent_sidereal_time(2451545.0, longitude)), longitude
     boundaries.append(f"longitude {longitude}")
+    solar = celestial.apparent_solar_time(celestial.CivilDateTime(2024, 6, 1, 0.5), longitude)
+    assert 0.0 <= solar.fraction < 1.0, longitude
+    boundaries.append(f"solar longitude {longitude}")
   assert math.isfinite(celestial.delta_t(-4000, celestial.DeltaTModel.ALGO1))
   boundaries.append("delta T algo1 lower")
 
@@ -453,8 +516,8 @@ def run_acceptance_boundaries() -> None:
     for year in (expected.start, expected.end):
       assert celestial.lunar_year_info(algorithm, year).first_day.year == year, (algorithm, year)
       boundaries.append(f"{algorithm.value} year {year}")
-  assert len(boundaries) == len(set(boundaries)) == 16
-  print("PASS inclusive public boundaries 16/16")
+  assert len(boundaries) == len(set(boundaries)) == 18
+  print("PASS inclusive public boundaries 18/18")
 
 
 def run_protocol_seams() -> None:

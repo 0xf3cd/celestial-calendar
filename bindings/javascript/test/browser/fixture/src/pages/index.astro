@@ -38,7 +38,7 @@
       };
       document.querySelector("#date-result").textContent = JSON.stringify(dateResult);
       window.__CELESTIAL_IMPORTED__ = true;
-      window.__START_CELESTIAL__ = async () => {
+      window.__START_CELESTIAL__ = async (jdeTt) => {
         try {
           await celestial.init();
           let translated = false;
@@ -61,6 +61,7 @@
             lichun,
             lichunMatches: lichun.jieqi === celestial.Jieqi.LICHUN,
             jdUt1: celestial.time.ut1ToJd(lichun.momentUt1),
+            illumination: celestial.moon.illumination(jdeTt).fraction,
           };
         } catch (error) {
           window.__CELESTIAL_RESULT__ = { fatal: String(error?.stack || error) };
