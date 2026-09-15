@@ -10,7 +10,7 @@ JavaScript / TypeScript, and a C ABI.
 This guide describes the **0.7.0 source and APIs**, not a claim that 0.7.0 has been published. The install commands
 below select versions currently available on PyPI or npm, which may lag this guide. Check the documentation shipped
 with your installed version. To use APIs not yet published, build from the full checkout using the
-[local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the [WASM/npm recipe](README.md#wasm).
+[local Python wheel recipe (Chinese)](bindings/python/README.md#build-a-local-wheel) or the [WASM/npm recipe](README.md#wasm).
 
 For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); this library has no Ganzhi API.
 
@@ -25,7 +25,7 @@ python -m pip install celestial-calendar
 
 Each wheel contains its platform's native library, so using it requires no compiler or separate CelestialCalendar
 installation. Importing neither searches system libraries nor downloads a fallback. See the
-[package platform table](bindings/python/README.md) for available wheel targets.
+[package platform table (Chinese)](bindings/python/README.md) for available wheel targets.
 
 Each Python block below is a standalone program for `example.py` in your application directory. Run it with
 `python example.py` in the environment where the package is installed.
@@ -51,7 +51,7 @@ print(today, lunar)
 the offset is deliberate: the library does not silently discard a time or timezone. The lunar algorithms use
 different date bases and year windows; see [Choosing Inputs](#choosing-inputs).
 
-### Next Jieqi And Remaining Days
+### Next Jieqi and Remaining Days
 
 The reference instant is explicitly supplied as **2026-12-31 00:00 UT1**, not taken from the current clock.
 Query every Jieqi in both 2026 and 2027, sort by actual UT1 moment, and select the first strictly later event.
@@ -138,7 +138,7 @@ const lunar = celestial.lunar.fromGregorian("algo3", gregorian);
 console.log(gregorian, lunar);
 ```
 
-### Next Jieqi And Remaining Days
+### Next Jieqi and Remaining Days
 
 As in the Python example, the supplied cutoff is **2026-12-31 00:00 UT1**. No `Date` timestamp is treated as UT1.
 
@@ -162,8 +162,8 @@ console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 ```
 
 This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
-UT1 days. It handles this fixed year-boundary query, not arbitrary years across the API's whole domain.
-`momentUt1` is UT1; the query-year domain and failure conditions are the same as in the Python example.
+UT1 days. `momentUt1` is UT1; the example scope, query-year domain and failure conditions are the same as
+in the Python example.
 
 ### Fixed-Offset Date Round Trip
 
@@ -198,7 +198,7 @@ See the English [type declarations](bindings/javascript/types/index.d.ts) and
 The 0.7.0 source also provides the npm alias `celestial-calendar`, forwarding the root and `/date` entries to an
 exact same-version `@0xf3cd/celestial` dependency without another WASM copy. The names share exports and initialized
 state only when they resolve to the same primary installation, not across arbitrary mixed-version dependency
-graphs. Check availability before choosing the alias; see its [package guide](bindings/javascript-alias/README.md).
+graphs. Check availability before choosing the alias; see its [package guide (Chinese)](bindings/javascript-alias/README.md).
 
 <a id="cpp"></a>
 ## 3. C++
@@ -237,7 +237,7 @@ and `JieqiGenerator`. Other self-contained headers are organized under `src/astr
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>
-## 4. C And FFI
+## 4. C and FFI
 
 The C ABI in [`celestial.h`](src/shared_lib/celestial.h) supports C, ctypes, and other FFIs. This is a complete
 `quickstart.c` for the same query:
@@ -334,7 +334,7 @@ residuals or test tolerances are not statistical error bounds. The [canonical al
 and [reference list](README.md#references) give the sources; English per-model contracts remain in the API
 docstrings and declarations linked above.
 
-## 6. Building And Checking
+## 6. Building and Checking
 
 These are source-development instructions, not prerequisites for using installed packages. Work from a full
 checkout. The core build needs a C++23 compiler, CMake ≥ 3.22, make, and Python 3. CI uses clang++ 22 on Linux and
@@ -365,7 +365,7 @@ $env:CC = "clang"
 python project.py --all
 ```
 
-The separate [local wheel recipe](bindings/python/README.md#build-a-local-wheel) uses the full checkout,
+The separate [local wheel recipe (Chinese)](bindings/python/README.md#build-a-local-wheel) uses the full checkout,
 hash-locked Python build requirements, system CMake, and an installed C/C++23 toolchain. It builds only a wheel,
 not an sdist. That host-local wheel uses the host's native libraries; it is not an official repaired portable
 wheel and does not extend the official platform list.
@@ -379,7 +379,7 @@ select them by glob or rebuild them for each consumer.
 as errors. [AGENTS.md](AGENTS.md) is the source of truth for build, test, and contribution conventions, including
 direct test-binary execution and reconciliation against the test macros rather than accepting ctest counts alone.
 
-## 7. Downloads And Reference Data
+## 7. Downloads and Reference Data
 
 Users can download native / WASM archives, Python wheels with SHA-256 sidecars, and source archives from the
 public [Releases page](https://github.com/0xf3cd/celestial-calendar/releases) without a token. Use the documentation
@@ -394,7 +394,7 @@ release must follow [docs/RELEASING.md](docs/RELEASING.md), not the consumer ins
 For an application that needs a static event table without a linked library, the [Jieqi JSON exporter](README.md#jieqi-table)
 provides entries sorted by actual moment. Its default 1950–2051 window includes a successor year for 1950–2050.
 Despite the `iso_utc` field name, the table's time scale is UT1; read its `timescale_note` before interpreting the
-timestamp fields. This exporter is separate from the fixed two-year API examples above.
+timestamp fields.
 
 Further reading:
 

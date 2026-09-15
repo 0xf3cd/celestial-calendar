@@ -1181,6 +1181,14 @@ def test_readme_runtime_navigation():
   )
 
 
+def test_python_local_wheel_fragment_is_preserved():
+  root = Path(__file__).parents[2]
+  readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
+  assert readme.count('<a id="build-a-local-wheel"></a>') == 1
+  for name in ("README.md", "README_EN.md"):
+    assert "](bindings/python/README.md#build-a-local-wheel)" in (root / name).read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize(
   ("document", "old", "new"),
   [

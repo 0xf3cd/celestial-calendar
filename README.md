@@ -1,6 +1,6 @@
 # Celestial Calendar
 
-天文计算与公历、农历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
+天文计算与公历、阴历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
 也可通过 Python、JavaScript / TypeScript 或 C ABI 使用。
 
 [English Guide](README_EN.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
@@ -12,7 +12,7 @@
 
 ## 1. 安装与示例
 
-先选一种语言。下面分别给出三个独立示例：今天的农历、指定 UT1 时刻之后的下一个节气、日期往返转换。
+先选一种语言。下面分别给出三个独立示例：今天的阴历、指定 UT1 时刻之后的下一个节气、日期往返转换。
 干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。
 
 <a id="python"></a>
@@ -28,9 +28,9 @@ wheel 自带对应平台的原生库，使用时不需要编译器；导入时�
 支持平台及完整契约见 [Python 包文档](bindings/python/README.md)。
 下面每个 Python 代码块都是独立程序，可作为应用目录中的 `example.py`，用该环境的 `python example.py` 运行。
 
-**今天的农历**
+**今天的阴历**
 
-先取固定 UTC+8 下的今天，再把年月日交给农历转换。这里选用 `ALGO3`；日期基准与年域见
+先取固定 UTC+8 下的今天，再把年月日交给阴历转换。这里选用 `ALGO3`；日期基准与年域见
 [算法说明](#features)。这一步不涉及 UT1。
 
 ```python
@@ -71,7 +71,7 @@ print("Remaining UT1 days:", remaining_days)
 不是覆盖整个 API 年域的通用搜索。节气查询的输入年域为 `[401, 32766]`，返回时刻的年份可能与查询年份不同；
 即使输入在年域内，原生计算无法得到唯一时刻时仍会报错。`moment_ut1` 不是 UTC 或东八区时间，不能直接当作它们显示。
 
-**公历与农历往返**
+**公历与阴历往返**
 
 ```python
 from datetime import date
@@ -105,7 +105,7 @@ npm install @0xf3cd/celestial
 TypeScript 声明随包提供。计算 API 在 `await celestial.init()` 完成后同步调用；
 浏览器部署还需保留构建工具输出的 `.wasm` 地址，并以 `Content-Type: application/wasm` 提供该文件。
 
-**今天的农历**
+**今天的阴历**
 
 `/date` 子路径先把当前时间戳转换为固定 UTC+8 的民用时间。只取年月日构造公历日期，
 不要把含有 `fraction` 的整个民用时间对象传给 `lunar.fromGregorian()`。
@@ -145,7 +145,7 @@ console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 ```
 
 这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
-它只处理这次跨年查询，不是任意年份的通用算法。`momentUt1` 是 UT1；查询年域与失败条件同上。
+`momentUt1` 是 UT1；示例范围、查询年域与失败条件同上。
 
 **固定偏移下的日期往返**
 
@@ -269,7 +269,7 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 <a id="features"></a>
 ## 2. 功能与算法
 
-- 公历与农历日期互转。
+- 公历与阴历日期互转。
 - 查询节气的具体时刻。
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
 - 日月地心视黄道坐标、太阳视赤道坐标，以及合朔时刻。
@@ -277,14 +277,14 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
 - [C ABI 共享库](#c-abi)、[Python 原生 wheel](#python) 和 [JavaScript / TypeScript WASM 包](#javascript)。
 
-农历转换的支持年域与日期基准取决于所选算法，不应把编号当作精度排名：
+阴历转换的支持年域与日期基准取决于所选算法，不应把编号当作精度排名：
 
-- Algo1 保留香港天文台公布的日期标签，支持农历年 1901–2099。
-- Algo2 用 VSOP87D / 截断的 ELP2000-82B 计算，支持农历年 410–2500。TT 时刻先经过本库的 UTC 模型，
+- Algo1 保留香港天文台公布的日期标签，支持阴历年 1901–2099。
+- Algo2 用 VSOP87D / 截断的 ELP2000-82B 计算，支持阴历年 410–2500。TT 时刻先经过本库的 UTC 模型，
   再加固定的八小时偏移；1972 年前该模型明确以 UT1 代替，闰秒表最后一项之后保持 ΔAT 为 37 秒。
-- Algo3 是预先生成的混合表，支持农历年 1600–2199：1901–2099 使用 Algo1 / HKO，其余年份由 Algo2 生成。
+- Algo3 是预先生成的混合表，支持阴历年 1600–2199：1901–2099 使用 Algo1 / HKO，其余年份由 Algo2 生成。
 
-公历输入输出是所选基准下的日期标签，不是时刻。年域指农历年，并非对应公历年的 1 月 1 日到 12 月 31 日，
+公历输入输出是所选基准下的日期标签，不是时刻。年域指阴历年，并非对应公历年的 1 月 1 日到 12 月 31 日，
 超出覆盖范围会被拒绝。Algo2 的 2500 年上限来自 #139 的民用日期误差预算，不是计算方法的极限。
 C++ 中各 `calendar::lunar::algoN` 的 `START_YEAR` / `END_YEAR` 给出边界；
 C ABI 和两个语言包均提供三种算法，可通过 `get_supported_lunar_year_range` 及其对应封装查询年域。
@@ -386,7 +386,7 @@ python project.py --all
   `sun_equatorial_horizons_crawler.py`、`sun_jieqi_golden_crawler.py` 采集或重放。
 - **香港天文台历书**：2022–2028 年公布的节气钟表时间，整条计算链与其差异须在 60 秒内，
   主要容纳历书自身的分钟舍入。由 `automation/jieqi_table.py` 实现，入口为 `./checks.py --jieqi-table`。
-- **ytliu0's ChineseCalendar**：按 commit 固定的独立农历年表，用于验证预生成算法，
+- **ytliu0's ChineseCalendar**：按 commit 固定的独立阴历年表，用于验证预生成算法，
   见 `src/test/lunar/algo3_ytliu0_golden_test.cpp`。
 - **ΔT 观测值**：NASA eclipse ΔT table、USNO observations、Stephenson & Morrison，
   为 UT1 ↔ TT 转换提供不依赖本库拟合模型的基准，见 `src/test/astro/julian_day_test.cpp`。

@@ -26,7 +26,7 @@
 - C++ rise/set parameters and result members carry UT1/TT suffixes; use `rise_jde_tt`, `transit_jde_tt` and `set_jde_tt`
   rather than the old unsuffixed members. The C ABI is unchanged.
 
-### Packages And Documentation
+### Packages and Documentation
 
 - The npm alias `celestial-calendar` forwards the root and `/date` entries to the exact same-version
   `@0xf3cd/celestial`, without another WASM copy. Both names share state when they resolve to the same primary
@@ -35,12 +35,9 @@
   the next Jieqi after an explicit UT1 instant, and date round trips. Native C/C++ guidance distinguishes source
   headers from prebuilt C ABI archives; the Python guide includes a full-checkout local-wheel recipe.
 - Installed consumers check enum names, default-model routing, numerical references and TypeScript declarations.
-  Browser checks now cover Chrome and Firefox. Browser-download digests are observations, not an authenticity gate.
-- Release publishing consumes the tested package bytes without rebuilding. npm recovery classifies each package
-  afresh, publishes primary before alias, and permits a targeted retry of the same frozen candidate. PyPI's
-  recovery policy is unchanged; see the release procedure before retrying any publication.
+  Browser checks now cover Chrome and Firefox.
 
-### Changed
+### License
 
 - Project-authored material is now licensed under MIT. Retained third-party material keeps its source terms and remains
   outside the project MIT grant; `THIRD_PARTY_NOTICES.txt` and the source-tree attribution boundaries identify the
