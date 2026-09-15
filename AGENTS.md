@@ -433,8 +433,11 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 
 ## Phase and PR workflow
 
-- One issue per phase; branch `phaseN-<topic>` from `main`; PR body in the established
-  four blocks — 内容 / 测试 / 验证 / 范围说明 (see #52, #54 for the shape).
+- One issue per phase; branch `phaseN-<topic>` from `main`; PR bodies use four blocks:
+  Summary / Tests / Validation / Scope.
+- PR titles, headings and prose use one language throughout. Default to English; when the
+  author requests Chinese, use Chinese throughout, including headings. Do not mix Chinese
+  headings with English prose.
 - A closing PR body contains exactly one unbackticked `Closes #N`; backticks prevent GitHub from
   recognising the closing keyword. Before merge, query `closingIssuesReferences` through GraphQL
   and assert the exact expected issue list.
