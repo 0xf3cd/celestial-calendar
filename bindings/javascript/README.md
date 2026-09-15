@@ -12,23 +12,56 @@
 
 # @0xf3cd/celestial
 
-Astronomical calculations and Chinese calendar conversion from
-[CelestialCalendar](https://github.com/0xf3cd/celestial-calendar), distributed as one ESM package with its own
-WebAssembly module.
+来自 [CelestialCalendar](https://github.com/0xf3cd/celestial-calendar) 的天文计算与公历/阴历转换，
+以自带 WebAssembly 模块的 ESM 包提供。
 
-## Install
+[English guide](https://github.com/0xf3cd/celestial-calendar/blob/main/README_EN.md)
 
-Install the package from npm:
+本文对应当前 `0.7.0` 源码。npm 上的版本可能滞后；以下安装命令获取已发布版本，不表示 `0.7.0` 已发布。
+使用示例前请核对安装版本是否提供相应 API。
+
+## 安装
+
+在应用项目目录中从 npm 安装：
 
 ```sh
 npm install @0xf3cd/celestial
 ```
 
-The matching [GitHub release](https://github.com/0xf3cd/celestial-calendar/releases) also carries
-`celestial-wasm.zip`, including the exact tarball published to npm and its SHA-256 sidecar.
+正式发布时，对应的 [GitHub Release](https://github.com/0xf3cd/celestial-calendar/releases) 还提供
+`celestial-wasm.zip`，其中包含与 npm 发布内容逐字节相同的 tarball 及其 SHA-256 校验文件。
 
-Node 22 or newer is supported. The browser package is tested on Chrome and Firefox. Importing the package performs no I/O;
-call `init()` once before using the synchronous calculation APIs.
+支持 Node 22 或更新版本；浏览器端在 Chrome 和 Firefox 上测试。导入包不会进行 I/O；
+使用同步计算 API 前，先调用一次 `init()` 并等待完成。
+
+以下每个 JavaScript 代码块均可独立作为应用项目中的 `example.mjs`，从该目录用 `node example.mjs` 运行。
+
+## 示例
+
+### 今天的阴历日期
+
+先取当前时刻在固定 UTC+8 下的公历日期，再按所选算法转换为阴历；这里的“今天”不取决于主机时区。
+
+```js
+import * as celestial from "@0xf3cd/celestial";
+import { dateToCivilAtOffset } from "@0xf3cd/celestial/date";
+
+const eastEight = dateToCivilAtOffset(new Date(), 480);
+const { year, month, day } = eastEight;
+const gregorian = { year, month, day };
+
+await celestial.init();
+const lunar = celestial.lunar.fromGregorian("algo3", gregorian);
+console.log("UTC+8 公历日期：", gregorian);
+console.log("阴历日期：", lunar);
+```
+
+只选取 `year`、`month`、`day`，不把带 `fraction` 的民用时刻直接传给阴历 API。
+日期桥接不把时钟 UTC 转成 UT1 或 TT；阴历日期基准与算法年域见下文。
+
+### 月面照明与节气时刻
+
+`2448724.5` 是 TT 下的 JDE。节气结果的 `momentUt1` 则是 UT1 民用时刻，不是 UTC+8 显示时间。
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
@@ -40,86 +73,96 @@ const lichun = celestial.jieqi.moment(2026, celestial.Jieqi.LICHUN);
 console.log(moon.fraction, lichun.momentUt1, celestial.jieqi.name(lichun.jieqi));
 ```
 
-Concurrent and repeated `init()` calls share one promise, which resolves to `undefined`. If loading fails, the
-promise rejects with the original loader error; a later explicit call may retry. Namespace methods called before
-initialization completes throw `CelestialError` with the public `operation` and `recorded === false`, before
-validating arguments, even for a zero-count call.
+### 公历与阴历往返
 
-For browser deployments, keep the package's `.wasm` asset available at its emitted URL and configure your static
-host to serve it with `Content-Type: application/wasm`.
+```js
+import * as celestial from "@0xf3cd/celestial";
 
-## API
+await celestial.init();
+const result = celestial.lunar.fromGregorian("algo3", { year: 2026, month: 8, day: 15 });
+console.log(result);
+console.log(celestial.lunar.toGregorian("algo3", result));
+```
 
-The root entry exposes `config`, `time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces. TypeScript declarations ship
-with the package. Model, phase, and logging choices are string unions such as `"full"`, `"algo3"`, and `"debug"`.
-`Jieqi` is a frozen object with 24 named constants, from `Jieqi.LICHUN = 0` through `Jieqi.DAHAN = 23`, using the
-same spellings as the Python package. The TypeScript type `Jieqi` is the corresponding `0 | 1 | ... | 23` union;
-a general `number` variable must be narrowed before passing it to `jieqi.moment()` or `jieqi.name()`.
-`jieqi.name()` returns the Chinese name, such as `"立春"` for `Jieqi.LICHUN`.
+## 初始化与浏览器部署
 
-Time scales and units stay explicit:
+并发和重复的 `init()` 调用共享同一个 promise，完成值为 `undefined`。加载失败时，promise 以原始加载器错误
+拒绝；之后可显式再次调用以重试。初始化完成前调用命名空间方法，会在参数校验之前抛出 `CelestialError`，
+其 `operation` 为公开方法名，`recorded === false`；即使请求数量为零也一样。
 
-- JD inputs and outputs are named as UT1 or JDE (TT) by the operation.
-- `jieqi.moment()` returns `{ jieqi, momentUt1 }`. Its nested civil moment is UT1, not UTC or an east-eight wall
-  clock; rendering the same instant at UTC+8 can change its calendar date. Establish the time-scale conversion
-  before using a UTC or fixed-offset display. The returned UT1 year can differ from the requested year.
-- `sun.apparentSolarTime()` accepts civil UTC and east-positive geographic longitude in `[-180, 180]` degrees.
-- Angular results use degrees; Sun distance uses AU and Moon distance uses kilometres.
-- `time.deltaT()` returns seconds.
-- The equation of time is degrees of hour angle; multiply by 240 for seconds of time.
-- `sun.apparentGeocentricCoordinate(jde)` and `moon.apparentGeocentricCoordinate(jde)` return one coordinate record
-  each at a TT-based JDE.
+浏览器部署时，确保包的 `.wasm` 资源在构建产物指定的 URL 上可访问，并将静态服务器的响应类型设为
+`Content-Type: application/wasm`。
 
-`jieqi.moment(year, index)` accepts Gregorian years in `[401, 32766]` and Jieqi indices in `[0, 23]`.
-An in-range query can still throw `CelestialError` if the native calculation cannot produce a unique moment.
-`sun.longitudeCrossings(year, longitudeDeg)`, `moon.phaseMoments(year, phase)`, and `moon.newMoonsInYear(year)` accept
-Gregorian years in `[1, 32766]`.
+## API 契约
 
-`time.localApparentSiderealTime(jdUt1, longitudeDeg)` takes a finite JD on UT1 whose Gregorian year is in
-`[401, 32766]`, and finite east-positive geographic longitude in `[-180, 180]` degrees. It returns degrees in
-`[0, 360)`. The native boundary enforces the year window, so an out-of-window JD throws `CelestialError`, not
-the `RangeError` used by JavaScript's finiteness and longitude guards.
+根入口提供 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间，并随包提供 TypeScript 声明。
+包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。
+模型、月相和日志选项使用字符串联合类型，如 `"full"`、`"algo3"`、`"debug"`。
+`Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
+TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，
+才能传给 `jieqi.moment()` 或 `jieqi.name()`。`jieqi.name()` 返回中文名，如 `Jieqi.LICHUN` 对应 `"立春"`。
 
-`sun.longitudeCrossings(year, longitudeDeg)` takes finite apparent geocentric solar longitude in `[0, 360)`
-degrees and returns TT-based JDEs, or `[]` when there is no crossing in that year.
+时间尺度与单位须明确区分：
 
-After initialization, bad shapes and types throw `TypeError`; JavaScript range guards throw `RangeError`. Native failures throw
-`CelestialError`, whose `operation` names the public method and whose `recorded` flag says whether the message came
-from the native error channel. A legitimate absence remains `null` or `[]`.
+- JD 输入和输出的操作名区分 UT1 与 JDE（TT）。
+- `jieqi.moment()` 返回 `{ jieqi, momentUt1 }`。其中的民用时刻是 UT1，不是 UTC 或东八区钟表时间；
+  同一瞬间显示为 UTC+8 时，日期可能改变。显示为 UTC 或固定偏移时间前，须先确定时标转换。
+  返回的 UT1 年份可能与请求年份不同。
+- `sun.apparentSolarTime()` 接受 UTC 民用时刻，以及 `[-180, 180]` 度范围内、东正西负的地理经度。
+- 角度结果以度为单位；日地距离使用 AU，月地距离使用千米。
+- `time.deltaT()` 返回秒数。
+- 均时差以时角度数表示，乘以 240 可换算为时间秒数。
+- `sun.apparentGeocentricCoordinate(jde)` 和 `moon.apparentGeocentricCoordinate(jde)`
+  各自返回给定 TT 下 JDE 的一个坐标记录。
 
-`moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 4096]`; zero returns `[]`. The upper bound keeps the WASM
-output buffer at or below 32 KiB.
+`jieqi.moment(year, index)` 接受 `[401, 32766]` 内的公历年份及 `[0, 23]` 内的节气索引。
+即使输入在范围内，原生计算无法得到唯一时刻时仍会抛出 `CelestialError`。
+`sun.longitudeCrossings(year, longitudeDeg)`、`moon.phaseMoments(year, phase)` 和 `moon.newMoonsInYear(year)`
+接受 `[1, 32766]` 内的公历年份。
 
-### Date records
+`time.localApparentSiderealTime(jdUt1, longitudeDeg)` 接受有限的 UT1 下 JD，其公历年份须在 `[401, 32766]` 内；
+地理经度须有限、东正西负，范围为 `[-180, 180]` 度。返回值为 `[0, 360)` 度。
+年份范围由原生边界校验，因此超出年域的 JD 抛出 `CelestialError`，而非 JavaScript 有限性与经度校验使用的
+`RangeError`。
 
-The three input kinds are disjoint, both in TypeScript and at runtime:
+`sun.longitudeCrossings(year, longitudeDeg)` 接受有限的太阳视地心黄经，范围为 `[0, 360)` 度；
+返回 TT 下的 JDE 数组，当年没有经过该黄经的时刻时返回 `[]`。
 
-| Type | Required own fields | Excluded fields |
+初始化完成后，错误的结构和类型抛出 `TypeError`；JavaScript 范围校验抛出 `RangeError`。
+原生失败抛出 `CelestialError`，其 `operation` 为公开方法名，`recorded` 表明消息是否来自原生错误通道。
+合法的“无结果”仍以 `null` 或 `[]` 表示。
+
+`moon.newMoonsAfter(jde, count)` 接受 `[0, 4096]` 内的 `count`，零返回 `[]`。
+上限使 WASM 输出缓冲区不超过 32 KiB。
+
+### 日期记录
+
+以下三种输入在 TypeScript 与运行时均互斥：
+
+| 类型 | 必需的自有字段 | 排除字段 |
 |---|---|---|
 | `GregorianDate` | `year`, `month`, `day` | `fraction`, `isLeap` |
 | `CivilDateTime` | `year`, `month`, `day`, `fraction` | `isLeap` |
 | `LunarDate` | `year`, `month`, `day`, `isLeap` | `fraction` |
 
-Civil and Gregorian years are integers in `[1, 32767]`, with valid Gregorian month/day fields. Lunar years and
-dates must exist in the selected algorithm. `fraction` is a finite day fraction in `[0, 1)`. Unrelated extra
-properties are allowed at runtime, but excluded fields are rejected even when inherited or set to `undefined`.
-Enable TypeScript's `exactOptionalPropertyTypes` to reject explicit `undefined` on the optional `never` fields too.
+民用时刻与公历日期的年份须为 `[1, 32767]` 内的整数，月、日须为有效公历日期；阴历年份和日期须在所选算法中存在。
+`fraction` 是 `[0, 1)` 内的有限日小数。运行时允许无关的额外属性，但排除字段即使来自继承或值为 `undefined`
+也会被拒绝。启用 TypeScript 的 `exactOptionalPropertyTypes`，也可在类型检查时拒绝可选 `never` 字段上的
+显式 `undefined`。
 
-`CivilDateTimeResult` extends `CivilDateTime` with integer `hour` and `minute` and fractional `second`.
-`time.jdeToUt1()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this richer output. These fields are
-derived from the day fraction without rounding to milliseconds; `second` is seconds, not a millisecond count.
-Results remain valid civil inputs: functions read `fraction`, not the derived clock fields. Time scales are named
-by operations, not encoded in this shared record type.
+`CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
+`time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
+这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
+结果仍可作为民用时刻输入：函数读取 `fraction`，而非派生的时分秒字段。
+时间尺度由操作命名区分，不编码在这个共用记录类型中。
 
-Record inputs use structural typing: the explicit own fields and excluded tags determine their kind, not their
-constructor. No `Date` methods or timestamps are read. An ordinary `Date` lacks the required fields; use the
-date bridge below to render its timestamp as civil fields. A civil result or lunar date cannot be passed
-directly to `lunar.fromGregorian()`; select a date basis first, then construct a `GregorianDate` explicitly.
+记录输入按结构识别：显式自有字段与排除标签决定种类，而非构造函数；不会读取 `Date` 方法或时间戳。
+普通 `Date` 缺少必需字段，须用下文的日期桥接将时间戳转换为民用字段。
+民用时刻结果或阴历日期不能直接传给 `lunar.fromGregorian()`；先选定日期基准，再显式构造 `GregorianDate`。
 
-### Fixed-offset Date bridge
+### 固定偏移的 Date 桥接
 
-`@0xf3cd/celestial/date` is a pure calendar bridge with no runtime dependencies. It does not import the root entry
-or load WASM, and works without `init()`:
+`@0xf3cd/celestial/date` 是无运行时依赖的纯历法桥接，不导入根入口、不加载 WASM，无需调用 `init()`：
 
 ```js
 import { civilAtOffsetToDate, dateToCivilAtOffset } from "@0xf3cd/celestial/date";
@@ -131,36 +174,32 @@ console.log(eastEight.year, eastEight.month, eastEight.day, eastEight.second);
 console.log(civilAtOffsetToDate(eastEight, 480).getTime() === date.getTime()); // true
 ```
 
-| Function | Input | Output |
+| 函数 | 输入 | 输出 |
 |---|---|---|
-| `dateToCivilUtc(date)` | `Date` | `CivilDateTimeResult` in UTC |
-| `civilUtcToDate(civil)` | `CivilDateTime` in UTC | `Date` |
-| `dateToCivilAtOffset(date, offsetMinutesEast)` | `Date`, fixed offset | `CivilDateTimeResult` at that offset |
-| `civilAtOffsetToDate(civil, offsetMinutesEast)` | `CivilDateTime` at the fixed offset | `Date` |
+| `dateToCivilUtc(date)` | `Date` | UTC 下的 `CivilDateTimeResult` |
+| `civilUtcToDate(civil)` | UTC 下的 `CivilDateTime` | `Date` |
+| `dateToCivilAtOffset(date, offsetMinutesEast)` | `Date`、固定偏移 | 该偏移下的 `CivilDateTimeResult` |
+| `civilAtOffsetToDate(civil, offsetMinutesEast)` | 固定偏移下的 `CivilDateTime` | `Date` |
 
-`offsetMinutesEast` is a safe integer in `[-1439, 1439]`, positive east of UTC. Conversion uses epoch arithmetic
-and UTC fields, not the host's local zone, `Intl`, locale parsing, IANA zones, or daylight-saving rules.
+`offsetMinutesEast` 是 `[-1439, 1439]` 内的安全整数，以分钟为单位，UTC 以东为正。
+转换使用纪元时间运算与 UTC 字段，不使用主机本地时区、`Intl`、区域格式解析、IANA 时区或夏令时规则。
 
-Date-to-civil conversion preserves the host value's millisecond resolution; its fractional `second` has no extra
-sub-millisecond information. Civil-to-Date conversion rounds the non-negative local time of day to the nearest
-millisecond, with exact half milliseconds toward the next civil instant and explicit carry into the next day.
-For any representable `Date` whose civil year at the chosen offset is in `[1, 32767]`, a same-offset
-`Date -> civil -> Date` round trip preserves `getTime()` exactly.
+`Date` 转民用时刻保留主机值的毫秒分辨率，带小数的 `second` 不含额外的亚毫秒信息。
+民用时刻转 `Date` 时，将非负的本地日内时间舍入到最近的毫秒，恰好半毫秒时向较晚的民用时刻舍入，并显式处理跨日进位。
+对任何可表示的 `Date`，只要所选偏移下的民用年份在 `[1, 32767]` 内，使用同一偏移的
+`Date -> civil -> Date` 往返就精确保留 `getTime()`。
 
-The year bound applies to the local civil record, not always the UTC carrier. Both the input and the rounded,
-carry-adjusted local year must remain in `[1, 32767]`; rounding the end of year 32767 into local year 32768 is
-rejected. At offset edges a returned UTC `Date` may have year 0 or 32768, and can be converted back with the same
-offset. The UTC-only functions apply the bound to UTC civil fields.
+年份边界约束本地民用记录，不一定约束承载它的 UTC 值。输入与舍入进位后的本地年份都须在 `[1, 32767]` 内；
+将本地 32767 年末舍入到 32768 年会被拒绝。在偏移边缘，返回的 UTC `Date` 年份可能为 0 或 32768，
+仍可使用同一偏移转回。仅处理 UTC 的函数将年域约束施加于 UTC 民用字段。
 
-Wrong types, missing civil fields, mixed date kinds, and non-integer date/offset fields throw `TypeError`.
-Invalid `Date` values, invalid Gregorian dates, non-finite/unsafe numbers, out-of-range fractions or offsets, and
-out-of-domain local years throw `RangeError`.
+错误类型、缺少民用字段、混合日期种类，以及非整数的日期或偏移字段，均抛出 `TypeError`。
+无效 `Date`、无效公历日期、非有限数或非安全数、越界的日小数或偏移，以及超出年域的本地年份，均抛出 `RangeError`。
 
-This bridge does not convert time scales or account for leap seconds. It provides neither Date-to-JDE nor
-UTC-to-UT1 conversion. Do not pass `momentUt1` to `civilUtcToDate()` as though it were UTC: the library does not
-model DUT1, and no full-domain `UTC == UT1` approximation is promised.
+此桥接不转换时间尺度，也不处理闰秒；既不提供 Date 到 JDE 的转换，也不提供 UTC 到 UT1 的转换。
+不要把 `momentUt1` 当成 UTC 传给 `civilUtcToDate()`：本库没有 DUT1 模型，也不承诺全域适用的 `UTC == UT1` 近似。
 
-### Lunar algorithms
+### 阴历算法
 
 Gregorian inputs and outputs are calendar-date labels on the selected algorithm's basis, not instants.
 Choose the source and compatibility role you need, not an assumed accuracy ranking:
@@ -178,28 +217,25 @@ preserves HKO's published labels rather than imposing this rule on their history
 source slice. The 2500 ceiling is the computed algorithm's enforced civil-date domain, not a physical limit of
 VSOP87D or ELP2000-82B.
 
-`lunar.supportedYearRange(algorithm)` queries the native inclusive **lunar-year** range. These are not Gregorian
-January-to-December bounds. `lunar.yearInfo(algorithm, year)` returns the Gregorian `firstDay`, a traditional
-`leapMonth` number or `null`, and `monthLengths` in calendar order, with the leap month after its ordinary namesake.
-`lunar.toGregorian()` takes traditional month numbers `[1, 12]` and an explicit `isLeap` boolean, not a positional
-month index. `yearInfo()` and `toGregorian()` query the native range once per call before validating the lunar year;
-the JavaScript package keeps no duplicate range table or cache.
+`lunar.supportedYearRange(algorithm)` 查询原生算法包含两端的**阴历年**范围，而非公历一月至十二月的边界。
+`lunar.yearInfo(algorithm, year)` 返回公历 `firstDay`、传统 `leapMonth` 月号或 `null`，
+以及按历法顺序排列的 `monthLengths`，闰月紧随同名普通月份。
+`lunar.toGregorian()` 使用 `[1, 12]` 内的传统月号和显式 `isLeap` 布尔值，不使用月份的位置索引。
+`yearInfo()` 和 `toGregorian()` 每次调用都先查询一次原生范围，再校验阴历年；JavaScript 包不另存范围表或缓存。
 
-All four lunar methods require `await init()`; a call before initialization completes throws `CelestialError`
-with `recorded === false`, before argument validation. After initialization:
+四个阴历方法都要求先 `await init()`；初始化完成前调用，会在参数校验之前抛出
+`recorded === false` 的 `CelestialError`。初始化完成后：
 
-- `TypeError` means a wrong input type, missing own field, excluded date-kind tag, non-integer date field, or
-  non-boolean `isLeap`.
-- `RangeError` means an unknown algorithm, non-finite/unsafe number, invalid Gregorian date (including a year
-  outside `[1, 32767]`), a lunar year outside the native range, or lunar month/day outside `[1, 12]`/`[1, 30]`.
-- `CelestialError` means a native failure, including a Gregorian label outside the selected algorithm's coverage
-  or a lunar leap-month/day combination that does not exist. A native range-query failure also uses this class,
-  with `operation` naming the caller, such as `"lunar.yearInfo"`, not the internal query.
+- `TypeError` 表示输入类型错误、缺少自有字段、带有排除的日期种类标签、日期字段非整数，或 `isLeap` 非布尔值。
+- `RangeError` 表示未知算法、非有限数或非安全数、无效公历日期（包括年份超出 `[1, 32767]`）、
+  阴历年超出原生范围，或阴历月/日超出 `[1, 12]` / `[1, 30]`。
+- `CelestialError` 表示原生失败，包括公历日期标签超出所选算法覆盖范围，或阴历闰月/日组合不存在。
+  原生范围查询失败也使用此类，`operation` 指向调用者，如 `"lunar.yearInfo"`，而非内部查询。
 
-For example, `lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 })` passes Gregorian validation but throws
-`CelestialError` because algo1 cannot represent it. `lunar.yearInfo("algo1", 1900)` instead throws `RangeError`.
+例如，`lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 })` 能通过公历校验，
+但 algo1 无法表示该日期，因此抛出 `CelestialError`；`lunar.yearInfo("algo1", 1900)` 则抛出 `RangeError`。
 
-### Delta T models
+### Delta T 模型
 
 `time.deltaT(year, model)` returns TT minus UT1 in seconds for a finite decimal Gregorian year.
 The default is the current project model; the named older models allow historical comparison:
@@ -215,23 +251,6 @@ The default is the current project model; the named older models allow historica
 "Frozen" describes model maintenance, not dead code: algo2 still supplies the pre-2005 values used by the current
 default. A hard domain is an input contract, not an accuracy claim. Fitted residuals and test tolerances are not
 statistical error guarantees, and an unbounded model does not promise useful accuracy at arbitrary years.
-
-## 中文
-
-`@0xf3cd/celestial` 把 CelestialCalendar 的天文计算与公历/阴历转换包装为一个自带 WebAssembly 的
-ESM 包。Node 需要 22 或更新版本；浏览器端在 Chrome 和 Firefox 上测试。
-
-```js
-import * as celestial from "@0xf3cd/celestial";
-
-await celestial.init();
-const result = celestial.lunar.fromGregorian("algo3", { year: 2026, month: 8, day: 15 });
-```
-
-包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。时间尺度、
-经度符号与单位见上面的 API 契约；不要把 JavaScript `Date` 隐式当作 UT1 或 TT。
-`@0xf3cd/celestial/date` 可在不调用 `init()` 的情况下转换 UTC 或固定偏移下的民用时间，
-但不做 UT1/TT 时标转换。节气结果的 `momentUt1` 是 UT1，不是东八区日期；阴历转换的日期基准取决于所选算法。
 
 ## License
 

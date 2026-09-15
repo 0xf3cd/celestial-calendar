@@ -132,8 +132,8 @@ TEST(SiderealTime, LocalApparentLongitude) {
 }
 
 TEST(SiderealTime, GreenwichMeanPymeeus) {
-  // The following data was collected from running PyMeeus's `mean_sidereal_time` (see README
-  // §8. References), over random jd_ut1 ∈ ~[1800, 2100] including fractional-day instants
+  // The following data was collected from running PyMeeus's `mean_sidereal_time` (see README.md#references),
+  // over random jd_ut1 ∈ ~[1800, 2100] including fractional-day instants
   // (seed 42). PyMeeus uses the (12.2) 0h polynomial + the 1.00273790935 ratio; agreement with
   // our (12.4) form is ≲ 3e-7° on this dataset.
   const std::vector<std::tuple<double, double>> dataset {

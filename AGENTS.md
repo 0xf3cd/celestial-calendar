@@ -28,7 +28,7 @@ intent you can't verify from existing code. Prefer asking over guessing.
 ## Correctness is numerical, measured against references
 
 This is precision astronomy, not vibes. Every algorithm traces to a named reference
-(Meeus, VSOP87D, ELP2000-82B, SOFA, USNO ΔT — see README §References).
+(Meeus, VSOP87D, ELP2000-82B, SOFA, USNO ΔT — see [References](README.md#references)).
 
 - **Name cross-formula physical constants** as `constexpr` (UPPER_CASE), shared between
   implementation and tests. Single-use coefficients of a cited reference polynomial stay
@@ -349,7 +349,7 @@ bindings/
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active
    use. Features the weakest CI toolchain doesn't support yet — **modules**,
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
-   wait for compiler support (README §11 tracks the wishlist). **Availability is settled by
+   wait for compiler support ([remaining work](README.md#todo) tracks the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./checks.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`; an unlock fails CI and names the waiting sites it can
@@ -361,7 +361,7 @@ bindings/
    two Linux architectures (x86_64 and arm64); Linux builds in Docker on native runners.
    Do not change compiler or Docker base images without checking matrix impact. The optional
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
-   `python-wheel.yml` legs. The former uploads `celestial-wasm` (README §6 records its exact
+   `python-wheel.yml` legs. The former uploads `celestial-wasm` ([WASM/npm](README.md#wasm) records its exact
    members); the latter uploads four exact wheels and sidecars;
    the release downloader pulls all three build legs' artifacts for the tagged commit. Cutting a
    release is the protected-tag, explicit-run ritual in `docs/RELEASING.md`; it freezes one candidate,
