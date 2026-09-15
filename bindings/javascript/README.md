@@ -27,7 +27,7 @@ npm install @0xf3cd/celestial
 The matching [GitHub release](https://github.com/0xf3cd/celestial-calendar/releases) also carries
 `celestial-wasm.zip`, including the exact tarball published to npm and its SHA-256 sidecar.
 
-Node 22 or newer is supported. The browser package is tested on Chrome. Importing the package performs no I/O;
+Node 22 or newer is supported. The browser package is tested on Chrome and Firefox. Importing the package performs no I/O;
 call `init()` once before using the synchronous calculation APIs.
 
 ```js
@@ -219,7 +219,7 @@ statistical error guarantees, and an unbounded model does not promise useful acc
 ## 中文
 
 `@0xf3cd/celestial` 把 CelestialCalendar 的天文计算与公历/阴历转换包装为一个自带 WebAssembly 的
-ESM 包。Node 需要 22 或更新版本；浏览器端在 Chrome 上测试。
+ESM 包。Node 需要 22 或更新版本；浏览器端在 Chrome 和 Firefox 上测试。
 
 ```js
 import * as celestial from "@0xf3cd/celestial";

@@ -7,14 +7,16 @@ Five ways in, depending on what you are here for:
 * **C++ users** — the library is header-only; start at §1.1, then browse §2 Features.
 * **Python users** — install `celestial-calendar` and `import celestial_calendar`; §1.3 shows the package entry point.
 * **JavaScript / TypeScript users** — install `@0xf3cd/celestial`; §1.4 shows the package entry point.
-* **C / other-language users** — start at §1.2 for a taste of the C ABI (`src/shared_lib/celestial.h`), then §9/§10 for prebuilt shared libraries.
+* **C / other-language users** — §1.2 shows the C ABI, native release ZIPs, and linking instructions.
 * **Contributors** — `AGENTS.md` at the repository root is the single source of truth for build, test, lint, and code-style conventions.
 
 ## 1. Quick Start
 
 ### 1.1. From C++ (header-only)
 
-No build step: point the compiler at the headers and call. Query the UT1 moment of a Jieqi (节气):
+Compile the headers with your application; no separate CelestialCalendar library needs to be built or linked.
+Use a source checkout or source archive. The native release ZIPs do not contain the C++ header tree.
+Query the UT1 moment of a Jieqi (节气):
 
 ```cpp
 #include <iostream>
@@ -50,29 +52,59 @@ The same query across the C ABI (`src/shared_lib/celestial.h`), consumable from 
 
 int main(void) {
   char name[16]; /* index 21 = 冬至 in the to_index order (0 = 立春) */
-  if (!get_jieqi_name(21, name, sizeof name)) return 1;
+  if (!get_jieqi_name(21, name, sizeof name)) {
+    fprintf(stderr, "%s\n", last_error());
+    return 1;
+  }
   const JieqiMomentQuery m = query_jieqi_moment(2026, 21);
-  if (!m.valid) return 1;
+  if (!m.valid) {
+    fprintf(stderr, "%s\n", last_error());
+    return 1;
+  }
   printf("%s (UT1): %d-%02u-%02u, day fraction %.6f\n", name, m.y, m.m, m.d, m.frac);
   return 0;
 }
 ```
 
-Build the shared library first (§4, or download a prebuilt one — §9/§10), then:
+For a prebuilt library, open a chosen version on [Releases](https://github.com/0xf3cd/celestial-calendar/releases)
+and download the native ZIP for your platform. Public release downloads do not require a GitHub token.
+
+| Platform | Release asset | Link-time and runtime files |
+|---|---|---|
+| Linux x86_64 | `linux_amd64.zip` | `lib/libcelestial_calendar.so` and its versioned files |
+| Linux arm64 | `linux_arm64.zip` | `lib/libcelestial_calendar.so` and its versioned files |
+| macOS arm64 | `macos_arm64.zip` | `lib/libcelestial_calendar.dylib` and its versioned files |
+| Windows x86_64 | `windows_x86_64.zip` | `lib/celestial_calendar.lib` to link; `bin/celestial_calendar.dll` to run |
+
+Each ZIP contains `include/celestial.h`. Extract the entire ZIP into a directory such as
+`native/` and keep all library filenames: the versioned name is also used by the runtime loader. Unix uploads
+dereference the installed symlinks, so the downloaded versioned libraries are ordinary files.
+
+On Linux, compile `quickstart.c` against the extracted files and record an absolute runtime search path:
 
 ```sh
-cc quickstart.c -I src/shared_lib -L build/shared_lib -lcelestial_calendar -Wl,-rpath,build/shared_lib -o quickstart_c
+prefix="$PWD/native"
+cc -std=c11 quickstart.c -I "$prefix/include" -L "$prefix/lib" \
+  -lcelestial_calendar -Wl,-rpath,"$prefix/lib" -o quickstart_c
 ./quickstart_c
 # 冬至 (UT1): 2026-12-21, day fraction 0.868205
 ```
 
-With a downloaded prebuilt artifact (§9/§10) instead, point at its packaged layout — headers under `<artifact>/include`, the library under `<artifact>/lib`:
+On macOS, link the `.dylib` from `lib/` and make that directory available to the runtime loader. On Windows,
+use an MSVC-compatible toolchain, link `lib/celestial_calendar.lib`, and put `bin/celestial_calendar.dll`
+beside the executable. Consumers do not define `CELESTIAL_BUILDING_DLL`.
+
+If you built the shared library yourself (§4), the corresponding Linux build-tree command is:
 
 ```sh
-cc quickstart.c -I <artifact>/include -L <artifact>/lib -lcelestial_calendar -Wl,-rpath,<artifact>/lib -o quickstart_c
+cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
+  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o quickstart_c
 ```
 
-(On Windows, link against the import library instead and keep the DLL next to the executable.)
+Check `valid` before reading a returned result structure. Follow the scalar/count contracts in
+[`celestial.h`](src/shared_lib/celestial.h); a zero count can be a legitimate empty result. Every export except
+`last_error()` clears or records the calling thread's error message. Read or copy that library-owned string
+before another recording call on the same thread. Jieqi moments are UT1, not UTC or an east-eight wall date.
 
 ### 1.3. From Python
 
@@ -116,7 +148,7 @@ const lichun = celestial.jieqi.moment(2026, celestial.Jieqi.LICHUN);
 console.log(celestial.jieqi.name(lichun.jieqi), lichun.momentUt1);
 ```
 
-Node 22 or newer is supported; the browser package is tested on Chrome. Jieqi results are `{ jieqi, momentUt1 }`,
+Node 22 or newer is supported; the browser package is tested on Chrome and Firefox. Jieqi results are `{ jieqi, momentUt1 }`,
 with UT1 civil fields nested under `momentUt1`, not an east-eight wall date.
 
 The root APIs read explicit fields without converting `Date` timestamps. `GregorianDate`, `CivilDateTime`, and
@@ -315,7 +347,7 @@ CI builds the module and package on an independent leg (`wasm.yml`). Its
 publishes primary then alias without rebuilding either. Historical 0.6.x archives retain the singleton format.
 The same leg reconciles all 29 signatures and 16 layouts, replays the 389-point native-generated golden dataset,
 installs the same pair in unrelated current/floor Node consumers, compiles installed TypeScript declarations for
-both names and `/date`, and runs an Astro/Vite production smoke in Chrome.
+both names and `/date`, and runs an Astro/Vite production smoke in Chrome and Firefox.
 
 ## 7. Export the Jieqi Table (JSON)
 
@@ -399,7 +431,7 @@ python3 ./checks.py --clang-tidy
 
 ## 9. Download Build Artifacts
 
-There are basically two ways to download:
+These CI artifacts are for contributors and operators. For public release downloads, see §10.
 
 ### 9.1. From GitHub Web UI
 
@@ -432,7 +464,8 @@ There are basically two ways to download:
 
 ## 10. Download Release
 
-There are basically two ways to download:
+Consumers can download a chosen release through the public web page without a token; the optional scripted
+helper below uses GitHub authentication. CI artifact downloads in §9 are a separate contributor/operator path.
 
 Maintainers cutting a release should follow the protected workflow in [`docs/RELEASING.md`](docs/RELEASING.md).
 

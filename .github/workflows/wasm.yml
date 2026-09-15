@@ -116,7 +116,7 @@ jobs:
           node bindings/javascript/test/node/tarball_consumer_test.mjs "$TARBALL" "$ALIAS_TARBALL"
           npm run test:types --prefix bindings/javascript
 
-      - name: Astro production build and Chrome package smoke
+      - name: Astro production build and Chrome/Firefox package smoke
         env:
           TARBALL: ${{ steps.npm-package.outputs.tarball }}
           ALIAS_TARBALL: ${{ steps.npm-package.outputs.alias_tarball }}

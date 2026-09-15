@@ -202,6 +202,33 @@ assert.notStrictEqual(retry, failedInitialization, "failed init can retry");
 assert.equal(await retry, undefined, "init resolves without a namespace");
 assert.strictEqual(celestial.init(), retry, "completed init reuses one promise");
 
+// English aliases and Chinese names follow calendar/jieqi.hpp, starting at Lichun.
+const jieqiNames = [
+  "立春", "雨水", "惊蛰", "春分", "清明", "谷雨", "立夏", "小满", "芒种", "夏至", "小暑", "大暑",
+  "立秋", "处暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至", "小寒", "大寒",
+];
+const golden = JSON.parse(await readFile(new URL("../../../../toolbox/bindings_golden.json", import.meta.url), "utf8"));
+const bitsOf = (hex) => Buffer.from(hex.slice(2), "hex").readDoubleBE(0);
+assert.equal(jieqiNames.length, 24);
+for (const [name, index] of Object.entries(expectedJieqi)) {
+  const jq = celestial.Jieqi[name];
+  assert.equal(celestial.jieqi.name(jq), jieqiNames[index], name);
+  const point = golden.sections.jieqi.entries.find((entry) => entry.idx === index);
+  assert(point, `missing Jieqi reference for ${name}`);
+  const value = celestial.jieqi.moment(point.year, jq);
+  const moment = value.momentUt1;
+  assert.deepEqual([value.jieqi, moment.year, moment.month, moment.day], [point.idx, point.y, point.m, point.d]);
+  // Same native-output reference and WASM/libm moment cap as test/abi/raw_protocol_test.mjs.
+  assert(Math.abs(moment.fraction - bitsOf(point.frac_bits)) <= 1e-8, `${name}: reference UT1 fraction`);
+}
+// Delegated/fitted/extrapolated cases from src/test/astro/delta_t_test.cpp::DefaultDispatch.
+for (const year of [1950, 2020, 2040]) {
+  const expected = celestial.time.deltaT(year, "algo5");
+  assert.equal(celestial.time.deltaT(year), expected, `${year}: omitted model`);
+  assert.equal(celestial.time.deltaT(year, "default"), expected, `${year}: default model`);
+}
+console.log("PASS public Jieqi names/moments 24/24; default/algo5 equivalence");
+
 let happy = 0;
 const check = (label, action) => {
   action();
@@ -407,6 +434,8 @@ const acceptedBoundaries = [
   ["Jieqi year upper", () => assert.equal(celestial.jieqi.moment(32766, 0).momentUt1.year, 32766)],
   ["longitude lower", () => finite(celestial.time.localApparentSiderealTime(2451545.0, -180))],
   ["longitude upper", () => finite(celestial.time.localApparentSiderealTime(2451545.0, 180))],
+  ["solar longitude lower", () => finite(celestial.sun.apparentSolarTime(civil, -180).fraction)],
+  ["solar longitude upper", () => finite(celestial.sun.apparentSolarTime(civil, 180).fraction)],
   ["delta T algo1 lower", () => finite(celestial.time.deltaT(-4000, "algo1"))],
   ["algo1 year lower", () => assert.equal(celestial.lunar.yearInfo("algo1", 1901).firstDay.year, 1901)],
   ["algo1 year upper", () => assert.equal(celestial.lunar.yearInfo("algo1", 2099).firstDay.year, 2099)],
@@ -438,6 +467,7 @@ edge("civil year range", () => celestial.time.ut1ToJd({ year: 0, month: 1, day: 
 edge("number type", () => celestial.time.jdeToUt1("1"), TypeError);
 edge("finite number", () => celestial.time.jdeToUt1(Number.NaN), RangeError);
 edge("geographic longitude", () => celestial.time.localApparentSiderealTime(2451545.0, 181), RangeError);
+edge("solar geographic longitude", () => celestial.sun.apparentSolarTime(civil, 181), RangeError);
 edge("finite delta T year", () => celestial.time.deltaT(Number.POSITIVE_INFINITY), RangeError);
 edge("delta T model type", () => celestial.time.deltaT(2024, 5), TypeError);
 edge("delta T model value", () => celestial.time.deltaT(2024, "future"), RangeError);
@@ -485,10 +515,10 @@ assert.match(lunarError.message, /cannot be represented/);
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 assert.equal(happy, 22, "public method denominator");
-assert.equal(edges, 29, "public edge denominator");
-assert.equal(acceptedBoundaries.length, 16, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/29`);
-console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/16`);
+assert.equal(edges, 30, "public edge denominator");
+assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");
+console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/30`);
+console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/18`);
 
 const fixtureDirectory = await mkdtemp(resolve(tmpdir(), "celestial-js-contract-"));
 try {
@@ -553,6 +583,13 @@ try {
     M.HEAPU8[ptr + 8] = month;
     M.HEAPU8[ptr + 9] = day;
   };
+  for (const [name, value] of [["_delta_t", 12.5], ["_delta_t_algo5", 67.5]]) {
+    M[name] = (ptr, year) => {
+      globalThis.__celestialDeltaTCalls.push([name, year]);
+      M.HEAPU8[ptr] = 1;
+      M.HEAPF64[(ptr + 8) >> 3] = value;
+    };
+  }
   M.ccall = () => lastError;
   return M;
 };
@@ -561,6 +598,7 @@ try {
   );
 
   globalThis.__celestialLunarCalls = [];
+  globalThis.__celestialDeltaTCalls = [];
   globalThis.__celestialLunarRange = { start: 2024, end: 2024 };
   const fixture = await import(pathToFileURL(fixtureEntry));
   assert.deepEqual(globalThis.__celestialLunarCalls, [], "no import-time lunar range query");
@@ -585,6 +623,16 @@ try {
   assert.equal(await initialized, undefined, "mock init resolves without a namespace");
   assert.strictEqual(fixture.init(), initialized, "completed mock init reuses one promise");
   console.log("PASS original Error/object loader rejections; shared promises; retry; undefined resolution");
+  for (const year of [1950, 2020, 2040]) {
+    globalThis.__celestialDeltaTCalls = [];
+    assert.equal(fixture.time.deltaT(year), 12.5, "omitted model calls native default");
+    assert.equal(fixture.time.deltaT(year, "default"), 12.5, "default model calls native default");
+    assert.equal(fixture.time.deltaT(year, "algo5"), 67.5, "algo5 model calls native algo5");
+    assert.deepEqual(globalThis.__celestialDeltaTCalls, [
+      ["_delta_t", year], ["_delta_t", year], ["_delta_t_algo5", year],
+    ], "default and algo5 retain their distinct native entry points");
+  }
+  console.log("PASS default/algo5 native dispatch");
   assert.deepEqual(globalThis.__celestialLunarCalls, [], "no init-time lunar range query");
   assert.equal(fixture.moon.newMoonsAfter(2451545.0, 4096).length, 4096, "count 4096 accepted");
 
@@ -675,6 +723,7 @@ try {
   delete globalThis.__celestialLoad;
   delete globalThis.__celestialFailAllocation;
   delete globalThis.__celestialLunarCalls;
+  delete globalThis.__celestialDeltaTCalls;
   delete globalThis.__celestialLunarRange;
   delete globalThis.__celestialFailRange;
   await rm(fixtureDirectory, { recursive: true, force: true });
