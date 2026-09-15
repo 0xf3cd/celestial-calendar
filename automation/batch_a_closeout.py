@@ -754,7 +754,8 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
   _require(
-    "](README.md#13-license)" in texts["README_EN.md"],
+    re.findall(r"\[License scope and third-party exceptions\]\(([^)\n]+)\)", texts["README_EN.md"])
+    == ["README.md#13-license"],
     "English README canonical license link differs",
   )
 

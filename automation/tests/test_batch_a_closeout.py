@@ -387,6 +387,18 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "English README canonical license link differs",
     ),
     (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "](README.md#license)<!-- decoy ](README.md#13-license) -->",
+      "English README canonical license link differs",
+    ),
+    (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "](README.md#license)<!-- [License scope and third-party exceptions](README.md#13-license) -->",
+      "English README canonical license link differs",
+    ),
+    (
       "AGENTS.md",
       "Project-authored material: MIT;",
       "License: permissive;",

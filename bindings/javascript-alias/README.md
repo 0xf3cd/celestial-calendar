@@ -19,11 +19,11 @@
 [English guide](https://github.com/0xf3cd/celestial-calendar/blob/main/README_EN.md)
 
 本文对应当前 `0.7.0` 源码，不表示此版本或别名包已经发布到 npm。
-注册表可能滞后；以下命令安装已发布版本，使用示例前请核对版本及可用 API。
+发布前请从完整源码[构建主包与别名包](https://github.com/0xf3cd/celestial-calendar#wasm)，安装同版本的两个 tarball。
 
 ## 安装与示例
 
-在应用项目目录中安装：
+确认所需版本已发布到 npm 后，在应用项目目录中安装：
 
 ```sh
 npm install celestial-calendar
