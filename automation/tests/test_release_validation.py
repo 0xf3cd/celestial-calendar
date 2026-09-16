@@ -12,6 +12,7 @@ import gzip
 import hashlib
 import io
 import json
+import re
 import tarfile
 import zipfile
 from itertools import count
@@ -1155,6 +1156,70 @@ def test_native_archive_rejects_wrong_build_version(tmp_path):
 
 def test_readme_runtime_matrix_matches_reference_values():
   assert _runtime_matrix() == {filename.removesuffix(".zip"): floor for filename, floor in RUNTIME_FLOORS.items()}
+
+
+def assert_runtime_navigation(readme, english):
+  anchor = '<a id="native-runtime"></a>'
+  marker = "<!-- native-runtime-matrix -->"
+  assert readme.count(anchor) == 1
+  assert readme.count(marker) == 1
+  assert f"{anchor}\n{marker}\n|" in readme
+  for label in ("native runtime table", "Native runtime requirements"):
+    assert re.findall(rf"\[{re.escape(label)}\]\(([^)\n]+)\)", english) == ["README.md#native-runtime"]
+  assert marker not in english
+  for name in NATIVE_ARCHIVES:
+    row = f"| `{name.removesuffix('.zip')}` |"
+    assert readme.count(row) == 1
+    assert row not in english
+
+
+def test_readme_runtime_navigation():
+  root = Path(__file__).parents[2]
+  assert_runtime_navigation(
+    (root / "README.md").read_text(encoding="utf-8"),
+    (root / "README_EN.md").read_text(encoding="utf-8"),
+  )
+
+
+def test_python_local_wheel_fragment_is_preserved():
+  root = Path(__file__).parents[2]
+  readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
+  assert readme.count('<a id="build-a-local-wheel"></a>') == 1
+  for name in ("README.md", "README_EN.md"):
+    assert "](bindings/python/README.md#build-a-local-wheel)" in (root / name).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+  ("document", "old", "new"),
+  [
+    ("README.md", '<a id="native-runtime"></a>', ""),
+    ("README.md", 'id="native-runtime"', 'id="renamed-runtime"'),
+    ("README.md", "<!-- native-runtime-matrix -->", '\n<a id="native-runtime"></a>\n<!-- native-runtime-matrix -->'),
+    ("README_EN.md", "](README.md#native-runtime)", ""),
+    ("README_EN.md", "](README.md#native-runtime)", "](README_EN.md#native-runtime)"),
+    (
+      "README_EN.md",
+      "[native runtime table](README.md#native-runtime)",
+      "[native runtime table](README_EN.md#native-runtime)<!-- decoy ](README.md#native-runtime) -->",
+    ),
+    (
+      "README_EN.md",
+      "[native runtime table](README.md#native-runtime)",
+      "[native runtime table](README_EN.md#native-runtime)<!-- [native runtime table](README.md#native-runtime) -->",
+    ),
+    ("README_EN.md", "# Celestial Calendar", "# Celestial Calendar\n<!-- native-runtime-matrix -->"),
+    ("README_EN.md", "# Celestial Calendar", "# Celestial Calendar\n| `linux_arm64` | copied | row |"),
+    ("README.md", "# Celestial Calendar", "# Celestial Calendar\n| `linux_arm64` | copied | row |"),
+  ],
+)
+def test_runtime_navigation_rejects_broken_links_and_copies(document, old, new):
+  root = Path(__file__).parents[2]
+  documents = {name: (root / name).read_text(encoding="utf-8") for name in ("README.md", "README_EN.md")}
+  assert old in documents[document]
+  documents[document] = documents[document].replace(old, new)
+
+  with pytest.raises(AssertionError):
+    assert_runtime_navigation(documents["README.md"], documents["README_EN.md"])
 
 
 @pytest.mark.parametrize(

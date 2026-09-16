@@ -45,6 +45,15 @@
 
 ### Added
 
+- The `celestial-calendar` npm alias forwards the root and `/date` entries to the exact same-version
+  `@0xf3cd/celestial`, without bundling another WASM module. Publishing classifies the two package identities
+  separately and permits a targeted npm retry with the same frozen candidate after fresh byte verification.
+- Chinese-first root and package documentation, with `README_EN.md`, runnable date/Jieqi examples, and links
+  to one canonical native runtime table and license section. The Python guide includes a local-wheel recipe;
+  native C/C++ guidance distinguishes source headers from prebuilt C ABI archives.
+- Installed consumer checks for public Jieqi names, logging/default-model routing, longitude endpoints and
+  TypeScript declarations; browser reference checks now run in Chrome and Firefox. Browser-download digests
+  are recorded as non-blocking observations, not compared with expected hashes.
 - JavaScript exports a frozen `Jieqi` object with 24 named constants, using the Python spellings from `LICHUN = 0`
   through `DAHAN = 23`, and a corresponding TypeScript `0`-through-`23` union.
 - `@0xf3cd/celestial/date` exports `dateToCivilUtc()`, `civilUtcToDate()`, `dateToCivilAtOffset()`, and
