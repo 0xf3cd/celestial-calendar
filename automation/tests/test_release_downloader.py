@@ -285,7 +285,7 @@ def assert_registry_job_contract(workflow, job_name):
   }
   python = {
     "name": "Set up Python",
-    "uses": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+    "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
     "with": {"python-version": "3.12"},
   }
   install = {
@@ -294,7 +294,7 @@ def assert_registry_job_contract(workflow, job_name):
   }
   node = {
     "name": "Set up the trusted npm runtime",
-    "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
     "with": {"node-version": "24.19.0"},
   }
   identity = {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"}
