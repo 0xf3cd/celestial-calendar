@@ -170,7 +170,7 @@ After the workflow succeeds, confirm the immutable GitHub Release and its asset 
 - An unambiguous PyPI failure before registry acceptance may use `gh run rerun RUN_ID --failed` after reviewing
   the evidence.
 - For npm publication failure, inspect the evidence and retry only the npm job using
-  `gh run rerun RUN_ID --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes and continues
+  `gh run rerun --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes and continues
   with the remaining package. This also handles a command that failed after npm accepted its exact bytes.
 - The unprivileged `verify_registries` job is idempotent. A transient verification failure after publication may use
   `gh run rerun RUN_ID --failed`; the publication jobs have already succeeded and are not rerun.

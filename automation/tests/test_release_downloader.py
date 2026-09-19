@@ -553,7 +553,7 @@ def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
   ) in recovery
   assert (
     "For npm publication failure, inspect the evidence and retry only the npm job using "
-    "`gh run rerun RUN_ID --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes "
+    "`gh run rerun --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes "
     "and continues with the remaining package."
   ) in recovery
   assert 'After any irreversible job succeeds, never use "Re-run all jobs".' in recovery
