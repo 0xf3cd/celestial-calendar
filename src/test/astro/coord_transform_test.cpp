@@ -224,7 +224,7 @@ TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
 }
 
 TEST(CoordTransform, EclipticToEquatorialPymeeus) {
-  // The following data was collected from running PyMeeus's `ecliptical2equatorial` (see README §References),
+  // The following data was collected from running PyMeeus's `ecliptical2equatorial` (see README.md#references),
   // over random λ ∈ [0°, 360°), β ∈ [−89°, 89°], ε ∈ [22°, 25°] (seed 42).
   const std::vector<std::tuple<double, double, double, double, double>> dataset {
     // λ                     β                       ε                       α (PyMeeus)           δ (PyMeeus)
@@ -298,7 +298,7 @@ TEST(CoordTransform, EclipticToEquatorialPymeeus) {
 }
 
 TEST(CoordTransform, EquatorialToHorizontalPymeeus) {
-  // The following data was collected from running PyMeeus's `equatorial2horizontal` (see README §References),
+  // The following data was collected from running PyMeeus's `equatorial2horizontal` (see README.md#references),
   // over random H ∈ [−170°, 170°], δ ∈ [−80°, 80°], φ ∈ [−80°, 80°] (seed 42). Azimuth from the south, as in Meeus.
   const std::vector<std::tuple<double, double, double, double, double>> dataset {
     // H                     δ                       φ                       A (PyMeeus)           h (PyMeeus)

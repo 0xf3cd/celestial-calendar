@@ -1,7 +1,7 @@
 # Dependencies of the build/test automation (`project.py`, `automation/`, `toolbox/`).
 # Release staging has a separate minimal closure in `Requirements-producer.txt`; each generated
 # lock records its regeneration command in its header.
-# Linters are installed separately (README section 4); the `statistics/` layer has
+# Linters are installed separately (README.md#lint); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
 #
 # Both pinned; see AGENTS.md gotcha 9 (#72). The reasons differ, so they are stated apart.

@@ -226,6 +226,7 @@ A4_SCAN_FILES: Final[tuple[str, ...]] = (
   "Dockerfile",
   "LICENSE",
   "README.md",
+  "README_EN.md",
   "Requirements-producer.in",
   "Requirements-producer.txt",
   "Requirements-statistics.txt",
@@ -752,6 +753,11 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     "inline or adjacent attribution records",
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
+  _require(
+    re.findall(r"\[License scope and third-party exceptions\]\(([^)\n]+)\)", texts["README_EN.md"])
+    == ["README.md#13-license"],
+    "English README canonical license link differs",
+  )
 
   changelog_license = _section(texts["docs/CHANGELOG.md"], "## [v0.7.0]")
   _require("Project-authored material is now licensed under MIT" in changelog_license, "MIT changelog entry differs")

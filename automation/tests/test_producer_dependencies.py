@@ -539,11 +539,11 @@ def test_readme_describes_the_current_npm_and_wasm_members():
   readme = (REPO / "README.md").read_text(encoding="utf-8")
   wasm_section = readme.split("## 6.", maxsplit=1)[1].split("## 7.", maxsplit=1)[0]
 
-  assert f"exact {len(PACK_ALLOWLIST)}-file npm tarball" in wasm_section
-  assert f"contains exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA)} top-level files" in wasm_section
-  assert f"{len(ALIAS_ALLOWLIST)}-file alias tarball" in wasm_section
+  assert f"恰好{len(PACK_ALLOWLIST)}个文件的 npm 主包" in wasm_section
+  assert f"恰好{len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA)}个顶层文件" in wasm_section
+  assert f"恰好{len(ALIAS_ALLOWLIST)}个文件的 npm 别名包" in wasm_section
   assert all(f"`{member}`" in wasm_section for member in WASM_ARTIFACT_ALLOWLIST)
-  assert "the exact npm tarball, `npm-pack.json`, and `npm-pack.sha256`" in wasm_section
+  assert "原样打包的 npm 主包、`npm-pack.json`、`npm-pack.sha256`" in wasm_section
   assert "`npm-alias-pack.json`" in wasm_section and "`npm-alias-pack.sha256`" in wasm_section
 
 

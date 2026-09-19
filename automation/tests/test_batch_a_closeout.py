@@ -375,6 +375,30 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "README third-party exception pointer differs",
     ),
     (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "](README.md#license)",
+      "English README canonical license link differs",
+    ),
+    (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "",
+      "English README canonical license link differs",
+    ),
+    (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "](README.md#license)<!-- decoy ](README.md#13-license) -->",
+      "English README canonical license link differs",
+    ),
+    (
+      "README_EN.md",
+      "](README.md#13-license)",
+      "](README.md#license)<!-- [License scope and third-party exceptions](README.md#13-license) -->",
+      "English README canonical license link differs",
+    ),
+    (
       "AGENTS.md",
       "Project-authored material: MIT;",
       "License: permissive;",
@@ -396,6 +420,15 @@ def test_a4_license_mutation_fails(tmp_path):
   (tmp_path / "LICENSE").write_bytes(MIT_LICENSE_BYTES + b"changed\n")
 
   with pytest.raises(RuntimeError, match="root LICENSE is not canonical MIT text"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+def test_english_readme_is_in_the_residual_scan(tmp_path):
+  materialize_inputs(tmp_path)
+  readme = tmp_path / "README_EN.md"
+  readme.write_text(readme.read_text(encoding="utf-8") + f"\n{GPL_V3}\n", encoding="utf-8")
+
+  with pytest.raises(RuntimeError, match="residual GPL allowlist differs"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
