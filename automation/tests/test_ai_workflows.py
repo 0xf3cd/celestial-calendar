@@ -74,8 +74,9 @@ def test_ai_gate_rejects_startup_and_mode_drift(workflows, name, path, value):
     ("claude.yml", '"Bash,Edit,MultiEdit', '"Edit,MultiEdit'),
     ("claude.yml", "mcp__github_file_ops__commit_files,", ""),
     ("claude.yml", "mcp__github_ci__download_job_log,", ""),
-    ("claude.yml", '--tools "Read,Glob,Grep"', '--tools "Read,Glob,Grep" --tools "Bash"'),
-    ("claude.yml", '--tools "Read,Glob,Grep"', '--tools "Read,Glob,Grep" --mcp-config evil.json'),
+    ("claude.yml", '--tools "Read,Glob,Grep,ToolSearch"', '--tools "Read,Glob,Grep"'),
+    ("claude.yml", '--tools "Read,Glob,Grep,ToolSearch"', '--tools "Read,Glob,Grep,ToolSearch" --tools "Bash"'),
+    ("claude.yml", '--tools "Read,Glob,Grep,ToolSearch"', '--tools "Read,Glob,Grep,ToolSearch" --mcp-config evil.json'),
   ],
 )
 def test_ai_gate_rejects_tool_expansion(workflows, name, old, new):
@@ -200,7 +201,7 @@ def test_manual_preparation_keeps_pr_startup_files_out(tmp_path, fork, old_check
   preparation = 'gh pr checkout --detach "$PR_NUMBER"' if old_checkout else steps[1]["run"]
   subprocess.run(["bash", "-e", "-c", preparation], cwd=workspace, env=env, check=True, capture_output=True)
 
-  # Exercise a command-hook sentinel at the startup boundary, without the real CLI or credentials.
+  # Model command-hook loading with an inert sentinel, not the real CLI.
   startup = (
     "import json, subprocess\n"
     "from pathlib import Path\n"
@@ -229,4 +230,32 @@ def test_manual_preparation_rejects_non_positive_integer_input(tmp_path, number)
     check=False,
   )
   assert result.returncode == 1
-  assert not result.stdout and not result.stderr
+  assert not result.stdout
+  assert result.stderr == "PR number must be a positive integer.\n"
+
+
+@pytest.mark.parametrize("quoted", [True, False], ids=["quoted-heredoc", "unquoted-control"])
+def test_manual_comment_template_preserves_markdown(tmp_path, quoted):
+  workflow = yaml.safe_load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"))
+  prompt = workflow["jobs"]["review"]["steps"][-1]["with"]["prompt"]
+  command = prompt.split("```sh\n")[1].split("```")[0]
+  command = command.replace("${{ inputs.pr_number }}", "283").replace("${{ github.repository }}", "owner/repository")
+  body = 'Don\'t expand `touch "$SIDE_EFFECT"` or $(printf expanded).\n'
+  command = command.replace("<review text>\n", body)
+  if not quoted:
+    command = command.replace("<<'REVIEW'", "<<REVIEW")
+  capture = "import json, sys; print(json.dumps({'args': sys.argv[1:], 'body': sys.stdin.read()}))"
+  shell = f'gh() {{ {shlex.quote(sys.executable)} -c {shlex.quote(capture)} "$@"; }}\n' + command
+  marker = tmp_path / "shell-substitution"
+  result = subprocess.run(
+    ["bash", "-e", "-c", shell],
+    cwd=tmp_path,
+    env={"PATH": os.defpath, "SIDE_EFFECT": str(marker)},
+    capture_output=True,
+    text=True,
+    check=True,
+  )
+  received = json.loads(result.stdout)
+  assert received["args"] == ["pr", "comment", "283", "--repo", "owner/repository", "--body-file", "-"]
+  assert (received["body"] == body) is quoted
+  assert marker.exists() is not quoted

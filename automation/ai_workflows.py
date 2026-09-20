@@ -157,7 +157,7 @@ def check_ai_workflows(workflow_dir: Path | None = None) -> int:
         if set(args) != expected_flags or len(args) * 2 != len(tokens):
           failures.append(f"{name}: Claude tool flags differ or repeat")
           continue
-        tools = {"Read", "Glob", "Grep"} | ({"Bash"} if manual else set())
+        tools = {"Read", "Glob", "Grep"} | ({"Bash"} if manual else {"ToolSearch"})
         denied = {"Edit", "MultiEdit", "Write", "NotebookEdit", "Agent", "Task"}
         if not manual:
           denied |= {
