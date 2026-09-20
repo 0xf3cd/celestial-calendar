@@ -7,7 +7,9 @@
 # SPDX-License-Identifier: MIT
 
 import re
+import shlex
 
+from pathlib import Path
 from typing import Any, Dict, Final, List, Optional, Tuple
 
 from . import paths
@@ -26,6 +28,7 @@ AI_WORKFLOWS: Final[Tuple[str, ...]] = (
 PINNED_ACTION: Final[str] = "anthropics/claude-code-action"
 
 SHA_RE: Final[re.Pattern] = re.compile(r"^[0-9a-f]{40}$")
+DISPATCH_CONDITION: Final[str] = "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
 
 
 def _uses_target(step: Any) -> Optional[str]:
@@ -43,8 +46,8 @@ def _grants_oidc(permissions: Any) -> bool:
   return isinstance(permissions, dict) and permissions.get("id-token") == "write"
 
 
-def check_ai_workflows() -> int:
-  """Hold the AI workflows to two settings whose loss nothing else would report.
+def check_ai_workflows(workflow_dir: Path | None = None) -> int:
+  """Check credentialed AI startup, action pins, permissions and tool restrictions.
 
   Deleting `id-token: write` leaves every check green and only claude[bot] mute (#148);
   swapping the pinned SHA back to a tag changes nothing until the day upstream moves it
@@ -53,8 +56,6 @@ def check_ai_workflows() -> int:
   (`prompt:` blocks quote this repo's own CI) must not be able to satisfy the gate.
   Pure parsing -- no build needed, so any leg that installs Requirements.txt can run it.
   """
-  # This gate is the only part of the automation that parses YAML, so it pays for the import
-  # itself rather than putting PyYAML on every `project.py` invocation.
   try:
     import yaml
   except ModuleNotFoundError:
@@ -62,10 +63,11 @@ def check_ai_workflows() -> int:
     return 1
 
   print("#" * 60)
-  yellow_print("Checking the AI workflows keep their OIDC permission and pinned action...")
+  yellow_print("Checking AI workflow startup, action pins and tools...")
 
-  workflow_dir = paths.proj_root() / ".github" / "workflows"
+  workflow_dir = workflow_dir or paths.proj_root() / ".github" / "workflows"
   failures: List[str] = []
+  action_refs = set()
 
   for name in AI_WORKFLOWS:
     path = workflow_dir / name
@@ -114,12 +116,70 @@ def check_ai_workflows() -> int:
         if uses.split("@")[0] != PINNED_ACTION:
           continue
         ref = uses.partition("@")[2]
+        action_refs.add(ref)
         if not SHA_RE.match(ref):
           failures.append(
             f"{name}: job `{job_id}` calls the action at `{ref}`, not a commit SHA. It is the "
             f"only third-party action here handed a repo secret; a floating tag lets upstream "
             f"rewrite it (#144)"
           )
+
+        manual = name == "claude-review.yml"
+        checkouts = [s for s in job["steps"] if (_uses_target(s) or "").startswith("actions/checkout@")]
+        if len(checkouts) != 1 or job["steps"][0] != checkouts[0]:
+          failures.append(f"{name}: exactly one initial checkout is required")
+          continue
+        checkout = checkouts[0]
+        if not SHA_RE.fullmatch(checkout["uses"].partition("@")[2]):
+          failures.append(f"{name}: the credentialed checkout must use a full commit SHA")
+        if checkout.get("with", {}).get("persist-credentials") is not False:
+          failures.append(f"{name}: checkout must not persist credentials")
+        if manual and (
+          job.get("if") != DISPATCH_CONDITION
+          or checkout.get("with", {}).get("ref") != "${{ github.event.repository.default_branch }}"
+        ):
+          failures.append(f"{name}: dispatch and checkout must use the trusted default branch")
+
+        inputs = step.get("with", {})
+        if bool(inputs.get("prompt")) != manual:
+          failures.append(f"{name}: preserve manual agent mode and mention tag mode")
+        if not manual and inputs.get("include_comments_by_actor") != "0xf3cd, claude":
+          failures.append(f"{name}: preserve mention comment filtering")
+        try:
+          tokens = shlex.split(inputs.get("claude_args", ""))
+          args = dict(zip(tokens[::2], tokens[1::2], strict=True))
+        except (TypeError, ValueError):
+          failures.append(f"{name}: Claude arguments must be flag/value pairs")
+          continue
+        expected_flags = {"--tools", "--disallowedTools"} | (
+          {"--model", "--allowedTools"} if manual else {"--append-system-prompt"}
+        )
+        if set(args) != expected_flags or len(args) * 2 != len(tokens):
+          failures.append(f"{name}: Claude tool flags differ or repeat")
+          continue
+        tools = {"Read", "Glob", "Grep"} | ({"Bash"} if manual else set())
+        denied = {"Edit", "MultiEdit", "Write", "NotebookEdit", "Agent", "Task"}
+        if not manual:
+          denied |= {
+            "Bash",
+            "mcp__github_ci__get_ci_status",
+            "mcp__github_ci__get_workflow_run_details",
+            "mcp__github_ci__download_job_log",
+            "mcp__github_file_ops__commit_files",
+            "mcp__github_file_ops__delete_files",
+          }
+        if set(args["--tools"].split(",")) != tools or set(args["--disallowedTools"].split(",")) != denied:
+          failures.append(f"{name}: available tools or explicit denials differ")
+        if manual:
+          target = "${{ inputs.pr_number }} --repo ${{ github.repository }}"
+          allowed = {f"Bash(gh pr {command} {target}:*)" for command in ("view", "diff", "comment")}
+          if set(args["--allowedTools"].split(",")) != allowed:
+            failures.append(f"{name}: shell commands must be bound to the requested repository and PR")
+        elif not args["--append-system-prompt"].strip():
+          failures.append(f"{name}: mention instructions must be appended without replacing tag mode")
+
+  if len(action_refs) > 1:
+    failures.append("AI workflows must use the same Claude action commit")
 
   print("#" * 60)
   if failures:
@@ -128,5 +188,5 @@ def check_ai_workflows() -> int:
       red_print(f"  - {f}")
     return 1
 
-  green_print(f"AI workflows keep OIDC and a pinned action ({len(AI_WORKFLOWS)} files)")
+  green_print(f"AI workflow startup, pins and tools satisfy policy ({len(AI_WORKFLOWS)} files)")
   return 0
