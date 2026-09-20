@@ -73,6 +73,9 @@ def test_wasm_artifact_inventory_matches_collector():
     matrix = job.get("strategy", {}).get("matrix", {})
     assert set(matrix).isdisjoint({"include", "exclude"})
     assert all(len(values) == 1 for values in matrix.values())
+    for step in job["steps"]:
+      if str(step.get("uses", "")).startswith("actions/upload-artifact@"):
+        assert step["with"]["path"] == "build/npm/artifact/"
 
   uploads = [
     step["with"]["name"]
@@ -286,7 +289,7 @@ def test_platform_consumers_use_current_node_and_the_same_run_artifact():
   assert job["needs"] == "wasm"
   assert job["runs-on"] == "${{ matrix.os }}"
   assert job["strategy"]["matrix"] == {"os": ["windows-latest", "macos-latest"]}
-  assert job["env"] == {"ARTIFACT_DIR": "${{ runner.temp }}/celestial artifact"}
+  assert job["env"] == {"ARTIFACT_DIR": "build/npm artifact"}
   checkout, node, download, consumer = job["steps"]
   assert checkout == {"uses": "actions/checkout@v7", "with": {"persist-credentials": False}}
   assert node["uses"] == "actions/setup-node@v7"
@@ -343,7 +346,7 @@ def test_artifact_consumer_checks_metadata_and_bytes_before_npm(tmp_path, mutati
   ):
     tarball = artifact / filename
     tarball.write_bytes(b"inert pre-install fixture")
-    dependencies[name] = tarball.as_uri()
+    dependencies[name] = f"file:{tarball}"
     pack = {"name": name, "version": "0.7.0", "filename": filename}
     metadata = [pack]
     digest = hashlib.sha256(tarball.read_bytes()).hexdigest()

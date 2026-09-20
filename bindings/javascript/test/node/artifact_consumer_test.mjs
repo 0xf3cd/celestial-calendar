@@ -14,7 +14,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { runPackageConsumer } from "../support/package_consumer.mjs";
 
@@ -48,7 +47,8 @@ for (const [name, stem] of [["@0xf3cd/celestial", "npm-pack"], ["celestial-calen
     `${digest}  ${pack.filename}\n`,
     `${stem}: tarball SHA-256 sidecar mismatch`,
   );
-  dependencies[name] = pathToFileURL(tarball).href;
+  // Keep npm's file: path unescaped; percent-encoding changes the filename it opens.
+  dependencies[name] = `file:${tarball}`;
 }
 
 await runPackageConsumer({

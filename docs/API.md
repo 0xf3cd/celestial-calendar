@@ -1,12 +1,12 @@
 # API Reference
 
-This reference covers the C++ headers and the C interface in `celestial.h`.
+This reference covers C++ declarations and the C interface in `celestial.h`.
+Bulk coefficient data and source listings are omitted.
 Browse **Namespaces**, **Classes**, or **Files**, or search for a function name.
 The lunar headers retain their English and Chinese descriptions; the rest is primarily English.
 
 Read each function's units, time scale and supported range before using it. A civil date is not
-an instant, and UT1 and TT inputs are not interchangeable. External source citations appear under
-**See also**; they name the reference used by the implementation.
+an instant, and UT1 and TT inputs are not interchangeable.
 
 For installation, examples and Python/JavaScript package guides, see the
 [repository README](https://github.com/0xf3cd/celestial-calendar#readme).

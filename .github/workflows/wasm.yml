@@ -157,7 +157,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     env:
-      ARTIFACT_DIR: ${{ runner.temp }}/celestial artifact
+      ARTIFACT_DIR: build/npm artifact
     steps:
       - uses: actions/checkout@v7
         with:
