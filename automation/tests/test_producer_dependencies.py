@@ -182,6 +182,41 @@ def release_candidate_install_lines(path):
   return lines
 
 
+def test_dependabot_version_update_policy():
+  config = yaml.safe_load((REPO / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+
+  assert config == {
+    "version": 2,
+    "updates": [
+      {
+        "package-ecosystem": "github-actions",
+        "directory": "/",
+        "schedule": {"interval": "monthly"},
+        "groups": {"actions": {"patterns": ["*"]}},
+      },
+      {
+        "package-ecosystem": "npm",
+        "directory": "/bindings/javascript",
+        "schedule": {"interval": "monthly"},
+        "groups": {"javascript": {"patterns": ["*"]}},
+      },
+      {
+        "package-ecosystem": "pip",
+        "directory": "/",
+        "schedule": {"interval": "monthly"},
+        "exclude-paths": ["Requirements-statistics.txt"],
+        "groups": {"python": {"patterns": ["*"]}},
+      },
+      {
+        "package-ecosystem": "pip",
+        "directory": "/bindings/python",
+        "schedule": {"interval": "monthly"},
+        "groups": {"python-wheel": {"patterns": ["*"]}},
+      },
+    ],
+  }
+
+
 def test_producer_lock_files_pin_every_requirement_with_hashes():
   for lock, (source, python_version) in LOCK_INPUTS.items():
     assert all(REQUIREMENT_RE.match(line) for line in source_requirements(source))

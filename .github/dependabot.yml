@@ -12,3 +12,29 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: "/bindings/javascript"
+    schedule:
+      interval: monthly
+    groups:
+      javascript:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+    # Version updates only; this does not suppress security alerts. See docs/MAINTAINING.md.
+    exclude-paths: ["Requirements-statistics.txt"]
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: "/bindings/python"
+    schedule:
+      interval: monthly
+    groups:
+      python-wheel:
+        patterns: ["*"]
