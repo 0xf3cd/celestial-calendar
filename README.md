@@ -376,6 +376,13 @@ python project.py --all
 
 分步命令与上面相同；设置随机种子用 `$env:CELESTIAL_TEST_SEED = "123"`。
 
+### 4.3. API 文档
+
+安装 Doxygen 1.15.0 后，在源码根目录运行 `python project.py --docs`，打开
+`build/api-docs/html/index.html`。此入口不编译 C++、不需要 Graphviz，也不包含在 `--all` 中。
+[Core Tests](https://github.com/0xf3cd/celestial-calendar/actions/workflows/core_tests.yml) 上传同样的
+`celestial-api-html` 附件；说明见 [`docs/API.md`](docs/API.md)。界面为英文，阴历子树保留既有双语注释。
+
 ## 5. 数值验证
 
 测试位于 `src/test/`，以外部参考数据和逐列容差检验数值。每组数据记录来源、生成方式与容差理由，
@@ -408,6 +415,8 @@ node toolbox/wasm_check.mjs
 python3 toolbox/build_npm.py
 ```
 
+`bindings/javascript` 开发目录的普通 `npm pack` 会拒绝打包，请使用上述 builder。
+
 生成模块位于 `build/wasm/celestial-jieqi.mjs` 与 `build/wasm/celestial-jieqi.wasm`，包含 `celestial.h` 的全部
 29 个稳定导出。`@0xf3cd/celestial` 将其封装为 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间，
 堆指针、count/fill 协议、sret 布局与 `last_error` 留在包内部。
@@ -430,6 +439,7 @@ CI 的独立 `wasm.yml` 流程构建模块与包。`celestial-wasm` 产物包含
 同一 CI 流程核对 29 个签名与 16 个布局，重放原生生成的 389 点基准数据；
 在独立于源码目录的 Node 最低支持版本与当前版本应用中安装同一对包，编译两个包名及 `/date` 的已安装类型声明，
 并在 Chrome 和 Firefox 中运行 Astro / Vite 生产构建冒烟测试。
+Windows/macOS 的当前 Node 消费者从同一 CI 运行下载这份原始双包，验证安装、API、别名身份及独立日期入口；不重复构建或打包。
 
 <a id="jieqi-table"></a>
 ## 7. 导出节气 JSON 表

@@ -129,7 +129,7 @@ namespace astro::sun::equatorial_coord {
  *          with the true obliquity ε and Meeus (13.3)–(13.4) via `coords::ecliptic_to_equatorial`.
  *          The result is of-date apparent equatorial place of the Sun, suitable as input to
  *          sunrise/sunset hour-angle calculations (Phase 5).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 13 and 25.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 13 and 25.
  */
 [[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
   const auto ecl = astro::sun::geocentric_coord::apparent(jde);

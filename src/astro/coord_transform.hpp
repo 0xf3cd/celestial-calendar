@@ -59,7 +59,7 @@ struct HorizontalCoord {
  *       Here the numerator and denominator are multiplied through by cos β, so the result stays finite.
  * @note Assumes β ∈ [-90°, 90°], as ecliptic latitude is by definition; outside that range cos β < 0
  *       and the cos β-multiplied form silently shifts α by 180°.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
  */
 [[nodiscard]] inline auto ecliptic_to_equatorial(
   const astro::toolbox::AngleDeg& λ,
@@ -110,7 +110,7 @@ struct HorizontalCoord {
  *       definition; outside the former range the cos δ-multiplied form silently shifts A by 180°.
  * @note The resulting altitude is purely geometric: no atmospheric refraction, parallax, or horizon dip
  *       is taken into account (for refraction see Meeus Chapter 16; for parallax, Chapter 40).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
  */
 [[nodiscard]] inline auto equatorial_to_horizontal(
   const astro::toolbox::AngleDeg& H,

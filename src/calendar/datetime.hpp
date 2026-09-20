@@ -62,8 +62,10 @@ concept IsDuration = requires {
  * @brief Returns the number of the given duration in a day.
  * @tparam Duration The duration type.
  * @return The number of the given duration in a day.
- * @example `in_a_day<days>() == 1`
- * @example `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
+ * @par Example
+ * `in_a_day<days>() == 1`
+ * @par Example
+ * `in_a_day<seconds>() == 86400` (There are 86400 seconds in a day.)
  */
 template <IsDuration Duration>
 [[nodiscard]] consteval auto in_a_day() -> uint64_t {
@@ -101,10 +103,14 @@ concept Fractionable = requires (T t) {
  * @brief Returns the nanoseconds of `fraction` days. 
  * @param fraction The fraction.
  * @return The nanoseconds of `fraction` days.
- * @example `from_fraction(0.0) == 00:00:00.000000000`
- * @example `from_fraction(0.5) == 12:00:00.000000000`
- * @example `from_fraction(1.0) == 24:00:00.000000000`
- * @example `from_fraction(2.0) == 48:00:00.000000000`
+ * @par Example
+ * `from_fraction(0.0) == 00:00:00.000000000`
+ * @par Example
+ * `from_fraction(0.5) == 12:00:00.000000000`
+ * @par Example
+ * `from_fraction(1.0) == 24:00:00.000000000`
+ * @par Example
+ * `from_fraction(2.0) == 48:00:00.000000000`
  * @note The precision of the returned value is `std::chrono::nanoseconds`.
  * @throw std::invalid_argument if `fraction` days do not fit an `int64_t` count of nanoseconds
  *        (which includes NaN and either infinity).
@@ -161,7 +167,7 @@ concept Fractionable = requires (T t) {
 
 
 /**
- * @struct Represents a date and a time in the form of `year_month_day` and `hh_mm_ss`.
+ * @brief Represents a date and a time in the form of `year_month_day` and `hh_mm_ss`.
  * @note The precision of the `time_of_day` field is `std::chrono::nanoseconds`.
  * @note The `time_of_day` field (i.e. `hh_mm_ss`) is positive and less than 24:00:00.0 (i.e. 1 day).
  * @note No time zone is assumed.

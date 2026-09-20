@@ -117,10 +117,12 @@ find_coefficients(const int32_t year) -> std::optional<
  * @return The delta T.
  *
  * @throw std::out_of_range if the year is < -4000 or not finite.
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref Xu Jianwei, 寿星万年历2008版(V1.3.2) -
+ * @see Xu Jianwei, 寿星万年历2008版(V1.3.2) -
  *      https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
@@ -190,10 +192,12 @@ namespace algo2 {
  * @param year The year, of double type.
  * @return The delta T.
  * 
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
+ * @see Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
  *      https://ntrs.nasa.gov/citations/20070003587
  * @note `noexcept`: a non-finite year propagates to a non-finite ΔT (#86).
  * @note Frozen model; algorithms 3, 4, and 5 delegate to it for years before 2005.
@@ -309,10 +313,12 @@ namespace algo3 {
  * @return The delta T.
  * 
  * @throw std::out_of_range if the year is >= 3000 or not finite.
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014) -
+ * @see Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014) -
  *      https://www.eclipsewise.com/help/deltatpoly2014.html
  * @note Frozen exhibit, retained for historical comparison.
  */
@@ -362,12 +368,14 @@ namespace algo4 {
  * @return The delta T.
  *
  * @throw std::out_of_range if the year is >= 2035 or not finite.
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
  * 
- * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
- * @ref USNO ΔT predictions (deltat.preds) - https://maia.usno.navy.mil/ser7/deltat.preds
- * @ref Generation record - https://github.com/0xf3cd/AstroTime-Analysis/blob/55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json
+ * @see IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
+ * @see USNO ΔT predictions (deltat.preds) - https://maia.usno.navy.mil/ser7/deltat.preds
+ * @see Generation record - https://github.com/0xf3cd/AstroTime-Analysis/blob/55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json
  * 
  * @note For year < 2005.0, algo2 is used instead.
  * @note For 2005.0 <= year < 2024.0, poly model trained on Bulletin A data is used.
@@ -428,14 +436,16 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @param year The year, of double type.
  * @return The delta T.
  *
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
  *
- * @ref IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
- * @ref Morrison et al. 2021 addendum - https://doi.org/10.1098/rspa.2020.0776
- * @ref Corrected HMNAO combined expression -
+ * @see IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
+ * @see Morrison et al. 2021 addendum - https://doi.org/10.1098/rspa.2020.0776
+ * @see Corrected HMNAO combined expression -
  *      https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/
- * @ref Generation record -
+ * @see Generation record -
  *      https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json
  *
  * @note For year < 2005.0, algo2 is used instead (same delegation as algo4).
@@ -477,9 +487,12 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @details Algo 5 is used for all years — continuous everywhere, with no upper bound
  *          (#64: the previous algo4/algo2 dispatch jumped by ~9.5 s at 2035.0).
  *
- * @example `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
- * @example `compute(1984.0)` returns the delta T for the first moment of year 1984.
- * @example `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
+ * @par Example
+ * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * @par Example
+ * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * @par Example
+ * `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   return algo5::compute(year);

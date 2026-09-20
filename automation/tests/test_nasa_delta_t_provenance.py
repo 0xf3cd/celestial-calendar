@@ -222,7 +222,7 @@ def test_lunar_table_citation_is_pinned(tmp_path):
   lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"
   replace_once(
     lunar_table,
-    " * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398\n",
+    " * @see Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398\n",
     "",
   )
 

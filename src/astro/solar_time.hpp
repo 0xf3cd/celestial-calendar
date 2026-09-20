@@ -39,7 +39,7 @@ namespace detail {
  * @brief Computes the Sun's mean longitude L0, referred to the mean equinox of the date.
  * @param jde_tt The julian ephemeris day number, which is based on TT.
  * @return L0, unnormalized.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.2).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.2).
  */
 [[nodiscard]] constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
@@ -65,7 +65,7 @@ namespace detail {
  *         |E| stays under 5° (20 min of time).
  * @details The wrap matters near the equinoxes, where the apparent right ascension α and
  *          the mean longitude L0 can sit on opposite sides of the 0°/360° seam.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
  */
 [[nodiscard]] inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;

@@ -11,6 +11,7 @@ import json
 import shutil
 
 from . import paths
+from .env import Tool, check_tool
 from .gtest import clear_test_binaries
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
@@ -89,6 +90,51 @@ def build_project(cpu_cores: int = 8) -> int:
 
   print("#" * 60)
   return ret.retcode
+
+
+def build_docs(build_version: str) -> int:
+  """Generate the opt-in API reference without configuring or compiling C++."""
+  if not check_tool(Tool("doxygen"), report=True):
+    red_print("Install Doxygen 1.15.0 before running project.py --docs")
+    return 1
+  root = paths.proj_root()
+  config = root / "docs" / "Doxyfile"
+  if not config.is_file():
+    red_print(f"Doxygen configuration is missing: {config}")
+    return 1
+  output = paths.build_dir() / "api-docs"
+  if output.exists():
+    shutil.rmtree(output)
+  output.mkdir(parents=True)
+  result = run_cmd(["doxygen", str(config)], cwd=root, env={**os.environ, "BUILD_VERSION": build_version})
+  if result.retcode != 0:
+    return result.retcode
+
+  html = output / "html"
+  pages = {
+    "index.html": ("API Reference", build_version),
+    "celestial_8h.html": ("query_jieqi_moment", "last_error"),
+    "structastro_1_1toolbox_1_1SphericalCoordinate.html": ("\u03bb", "\u03b2"),
+    "structcalendar_1_1lunar_1_1converter_1_1Converter.html": ("is_valid_gregorian", "\u516c\u5386", "\u9634\u5386"),
+  }
+  try:
+    for name, required in pages.items():
+      text = (html / name).read_text(encoding="utf-8")
+      if not all(fragment in text for fragment in required):
+        raise ValueError(f"generated page is incomplete: {name}")
+    for name in ("doxygen.css", "navtree.js", "search/search.js"):
+      if not (html / name).is_file() or (html / name).stat().st_size == 0:
+        raise ValueError(f"generated asset is missing or empty: {name}")
+    for name in ("LICENSE", "THIRD_PARTY_NOTICES.txt"):
+      if (html / name).read_bytes() != (root / name).read_bytes():
+        raise ValueError(f"documentation attribution differs: {name}")
+    if any(html.glob("*_source.html")):
+      raise ValueError("API reference must not include source listings")
+  except (OSError, UnicodeError, ValueError) as error:
+    red_print(f"API reference validation failed: {error}")
+    return 1
+  green_print("API reference: build/api-docs/html/index.html")
+  return 0
 
 
 def clean_build() -> int:

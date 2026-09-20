@@ -45,8 +45,8 @@ struct EclipticAngles {
  * @param jde_from The Julian ephemeris day of the initial epoch (pass J2000 for catalogue-to-date).
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return {ζ, z, θ} in degrees; ζ and z nearly coincide for a small Δt, θ is the tilting angle.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.2).
- * @ref ERFA v2.0.1 `prec76.c`.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.2).
+ * @see ERFA v2.0.1 `prec76.c`.
  */
 // Retained material boundary (R27): the exact `prec76.c` angle coefficients remain under the ERFA
 // source terms and outside the project MIT grant; the coordinate application is project-authored.
@@ -86,7 +86,7 @@ struct EclipticAngles {
  * @note This is precession only — proper motion, nutation, and aberration are not applied.
  * @note sin δ = C (Meeus 21.4); C is clamped to [-1, 1] against the roundoff that, when the
  *       precessed position falls near the pole, pushes it just past ±1 and would make asin return NaN.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.4).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.4).
  */
 [[nodiscard]] inline auto equatorial(
   const astro::toolbox::AngleDeg& α0,
@@ -126,7 +126,7 @@ struct EclipticAngles {
  * @param jde_to   The Julian ephemeris day of the final epoch.
  * @return {η, Π, p} in degrees; Π carries the constant 174.876384°, p's linear term is the
  *         ~50.29"/year general precession in longitude.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.5).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.5).
  */
 [[nodiscard]] inline auto ecliptic_angles(const double jde_from, const double jde_to) -> EclipticAngles {
   using astro::toolbox::AngleDeg;
@@ -167,7 +167,7 @@ struct EclipticAngles {
  * @note This is precession only — proper motion, nutation, and aberration are not applied.
  * @note sin β = C (Meeus 21.7); C is clamped to [-1, 1] for the same pole-roundoff reason as δ in
  *       equatorial() above.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).
  */
 [[nodiscard]] inline auto ecliptic(
   const astro::toolbox::AngleDeg& λ0,

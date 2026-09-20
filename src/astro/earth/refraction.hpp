@@ -125,7 +125,7 @@ inline auto validate_params(const Params& params) -> void {
  *       native (10°C/1010 hPa) refraction; `at_horizon(Params)` computes the T/P-corrected
  *       horizon refraction. The formula is valid for apparent altitudes in [0°, 90°] and becomes
  *       numerically unstable below about −2°.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.3).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.3).
  */
 [[nodiscard]] inline auto bennett(const astro::toolbox::AngleDeg& apparent_alt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
@@ -151,7 +151,7 @@ inline auto validate_params(const Params& params) -> void {
  *       horizon refraction. The input is the geometric altitude (before refraction), opposite to
  *       Bennett. The formula is valid for true altitudes in [0°, 90°] and becomes numerically
  *       unstable below about −2°.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.4).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.4).
  */
 [[nodiscard]] inline auto saemundsson(const astro::toolbox::AngleDeg& true_alt) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;

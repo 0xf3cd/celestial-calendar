@@ -93,7 +93,7 @@ inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 /**
  * @brief The mean angular rate of Earth's rotation relative to the stars, in degrees per day.
  *        Used to convert between time offsets and hour angle offsets.
- * @ref Jean Meeus, "Astronomical Algorithms", Ch.12.
+ * @see Jean Meeus, "Astronomical Algorithms", Ch.12.
  */
 inline constexpr double SIDEREAL_RATE_DEG_PER_DAY = 360.98564736629;
 
@@ -136,7 +136,7 @@ inline constexpr uint32_t SEC_PER_DEG = SEC_PER_MIN * MIN_PER_DEG;
 enum class AngleUnit : uint8_t { RAD, DEG };
 
 /** 
- * @struct Represents an angle. 
+ * @brief Represents an angle.
  * @tparam Unit The angle's unit, either degree or radian.
  */
 template <AngleUnit Unit>
@@ -191,7 +191,7 @@ struct Angle {
 
   /**
    * @brief Convert the angle to another unit.
-   * @param As The unit to convert to.
+   * @tparam As The unit to convert to.
    * @return The converted angle.
    */
   template <AngleUnit As>
@@ -277,13 +277,13 @@ namespace literals {
 
 #pragma region Coordinate Definitions
 
-/** @enum The unit of distance, either AU or KM. */
+/** @brief The unit of distance, either AU or KM. */
 enum class DistanceUnit : uint8_t { AU, KM };
 
 /**
  * @brief The scaling factor from AU to KM.
- * @ref NIST SP 330 (2019), Table 8: the astronomical unit is exactly 149'597'870'700 m.
- * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DAU`.
+ * @see NIST SP 330 (2019), Table 8: the astronomical unit is exactly 149'597'870'700 m.
+ * @see ERFA v2.0.1 `erfam.h`, `ERFA_DAU`.
  */
 // Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
 // and outside the project MIT grant; the unit wrapper is project-authored.

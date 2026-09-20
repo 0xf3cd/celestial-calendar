@@ -159,6 +159,9 @@ const verifyManifest = (candidate) => {
     if (entry.return.kind === "sret") {
       assert.equal(bindingEntry.result, `sret:${entry.return.layout}`, `binding result ${entry.name}`);
     }
+    if (bindingEntry.result.endsWith("-fill") || entry.protocol.kind.endsWith("-fill")) {
+      assert.equal(entry.protocol.kind, bindingEntry.result, `fill protocol ${entry.name}`);
+    }
   }
 
   assert.deepEqual(candidate.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
@@ -211,7 +214,20 @@ const runMutationSelfTests = (candidate) => {
   recordingReader.exports.find(({ name }) => name === "last_error").recording = true;
   mutations.push(["recording last_error", recordingReader]);
 
-  assert.equal(mutations.length, 8, "ABI mutation denominator");
+  for (const name of ["moon_phase_moments", "new_moons_in_year", "new_moons_after_jde"]) {
+    const swappedFill = structuredClone(candidate);
+    const entry = swappedFill.exports.find((entry) => entry.name === name);
+    const companion = swappedFill.exports.find(({ name }) => name === "solar_lon_roots");
+    [entry.protocol.kind, companion.protocol.kind] = [companion.protocol.kind, entry.protocol.kind];
+    sameSet(
+      "swapped fill kinds preserve the category set",
+      swappedFill.exports.map(({ protocol }) => protocol.kind),
+      candidate.exports.map(({ protocol }) => protocol.kind),
+    );
+    mutations.push([`swapped fill ownership ${name}`, swappedFill]);
+  }
+
+  assert.equal(mutations.length, 11, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -223,4 +239,4 @@ runMutationSelfTests(manifest);
 console.log("PASS exports header=manifest=bindings=recipe=built 29 (+ malloc/free)");
 console.log("PASS layouts header=manifest 16; HEAPU16 present; memory growth enabled");
 console.log("PASS recording docs=writers=manifest=binding error policy 28");
-console.log("PASS ABI mutations rejected 8/8");
+console.log("PASS per-export fill protocols; ABI mutations rejected 11/11");

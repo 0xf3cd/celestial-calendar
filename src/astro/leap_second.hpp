@@ -32,7 +32,7 @@ namespace astro::leap_second {
 
 /**
  * @brief TT − TAI in seconds. Exact by definition: TT = TAI + 32.184 s.
- * @ref IAU 1991 Resolution A4.
+ * @see IAU 1991 Resolution A4.
  */
 inline constexpr double TT_MINUS_TAI_SEC = 32.184;
 
@@ -48,7 +48,7 @@ struct LeapSecondEntry {
  *        Each new entry is one inserted leap second.
  * @details No leap second has been announced since 2017, and CGPM Resolution 4 (2022) decided
  *          to discontinue them by 2035 — past the last entry, ΔAT is held at its final value.
- * @ref SOFA issue 2023-10-11 `dat.c`; IERS Bulletin C remains the leap-update authority.
+ * @see SOFA issue 2023-10-11 `dat.c`; IERS Bulletin C remains the leap-update authority.
  */
 // These 28 post-1972 rows are unchanged from SOFA's user-replaceable `iauDat` table; the
 // pre-1972 drift rows and routine body are not used. This project is not SOFA software and
