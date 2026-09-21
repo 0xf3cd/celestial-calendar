@@ -120,7 +120,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument(
     "--bench", action="store_true", help="Build and run the benchmarks (opt-in: --all does not include them)"
   )
-  parser.add_argument("--docs", action="store_true", help="Generate API HTML with Doxygen (opt-in; not part of --all)")
+  parser.add_argument(
+    "--docs", action="store_true", help="Generate API HTML with Doxygen (opt-in: --all does not include it)"
+  )
 
   parser.add_argument("-a", "--all", action="store_true", help="Set up, run CMake, build, and test the project")
 

@@ -95,12 +95,12 @@ def build_project(cpu_cores: int = 8) -> int:
 def build_docs(build_version: str) -> int:
   """Generate the opt-in API reference without configuring or compiling C++."""
   if not check_tool(Tool("doxygen"), report=True):
-    red_print("Install Doxygen 1.15.0 before running project.py --docs")
+    red_print("# Install Doxygen as described in docs/API.md before running project.py --docs")
     return 1
   root = paths.proj_root()
   config = root / "docs" / "Doxyfile"
   if not config.is_file():
-    red_print(f"Doxygen configuration is missing: {config}")
+    red_print(f"# Doxygen configuration is missing: {config}")
     return 1
   output = paths.build_dir() / "api-docs"
   if output.exists():
@@ -131,9 +131,9 @@ def build_docs(build_version: str) -> int:
     if any(html.glob("*_source.html")):
       raise ValueError("API reference must not include source listings")
   except (OSError, UnicodeError, ValueError) as error:
-    red_print(f"API reference validation failed: {error}")
+    red_print(f"# API reference validation failed: {error}")
     return 1
-  green_print("API reference: build/api-docs/html/index.html")
+  green_print("# API reference: build/api-docs/html/index.html")
   return 0
 
 

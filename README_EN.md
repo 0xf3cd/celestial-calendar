@@ -350,7 +350,7 @@ python project.py --all
 ```
 
 The virtual environment also avoids PEP 668 restrictions on distro-managed Python. `--all` performs setup,
-configure, build, and test; benchmarks and API documentation are opt-in. Use `--setup`, `--cmake`, `--build`, `--test`, or `--bench`
+configure, build, and test; it does not run benchmarks. Use `--setup`, `--cmake`, `--build`, `--test`, or `--bench`
 separately as needed, and `--clean` to remove build outputs. Randomized tests default to seed 42; set
 `CELESTIAL_TEST_SEED` to replay another seed.
 

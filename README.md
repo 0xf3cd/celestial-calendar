@@ -439,7 +439,8 @@ CI 的独立 `wasm.yml` 流程构建模块与包。`celestial-wasm` 产物包含
 同一 CI 流程核对 29 个签名与 16 个布局，重放原生生成的 389 点基准数据；
 在独立于源码目录的 Node 最低支持版本与当前版本应用中安装同一对包，编译两个包名及 `/date` 的已安装类型声明，
 并在 Chrome 和 Firefox 中运行 Astro / Vite 生产构建冒烟测试。
-Windows/macOS 的当前 Node 消费者从同一 CI 运行下载这份原始双包，验证安装、API、别名身份及独立日期入口；不重复构建或打包。
+Windows/macOS 的当前 Node 消费者从同一 CI 运行下载这份原始双包，
+验证安装、API、别名身份及独立日期入口；不重复构建或打包。
 
 <a id="jieqi-table"></a>
 ## 7. 导出节气 JSON 表
