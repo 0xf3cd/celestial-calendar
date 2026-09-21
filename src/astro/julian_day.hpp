@@ -37,7 +37,7 @@ namespace astro::julian_day {
 
 /**
  * @brief The julian day number of 2000-01-01, 12:00:00.0 (noon).
- * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJ00`.
+ * @see ERFA v2.0.1 `erfam.h`, `ERFA_DJ00`.
  */
 // Retained material boundary (R34): the exact ERFA J2000, Julian-century, and Julian-millennium
 // definitions in this file remain under the ERFA source terms and outside the project MIT grant.
@@ -45,7 +45,7 @@ inline constexpr double J2000 = 2451545.0;
 
 /**
  * @brief The number of days in one Julian century (36525 days).
- * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJC`.
+ * @see ERFA v2.0.1 `erfam.h`, `ERFA_DJC`.
  */
 inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 
@@ -57,7 +57,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @throw std::runtime_error if the gregorian year is < 1.
  * @note Years 1-400 convert forward, but sit below `jd_to_ut1`'s year-401 bound — round-trips
  *       only close from 401-01-01 onwards.
- * @ref ERFA v2.0.1 `src/cal2jd.c`, `eraCal2jd`.
+ * @see ERFA v2.0.1 `src/cal2jd.c`, `eraCal2jd`.
  */
 // Retained material boundary (R11): this conversion is derived from ERFA v2.0.1 `cal2jd.c`; the
 // derived block remains under the ERFA source terms and outside the project MIT grant.
@@ -95,7 +95,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  *        years, or the estimated gregorian year is < 401.
  * @note `ut1_to_jd(32767-12-31, fraction ≈ 1)` rounds up to exactly the upper bound
  *       13689325.5, which this function rejects — a 1-ulp round-trip break callers must expect.
- * @ref ERFA v2.0.1 `src/jd2cal.c`, `eraJd2cal`.
+ * @see ERFA v2.0.1 `src/jd2cal.c`, `eraJd2cal`.
  */
 // Retained material boundary (R11): this conversion is derived from ERFA v2.0.1 `jd2cal.c`; the
 // derived block remains under the ERFA source terms and outside the project MIT grant.
@@ -261,7 +261,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a julian ephemeris day number to julian millennium.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The julian millennium since J2000.
- * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
+ * @see ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
  */
 [[nodiscard]] constexpr auto jde_to_jm(const double jde) -> double {
   return (jde - J2000) / 365250.0;
@@ -271,7 +271,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a julian millennium to julian ephemeris day number.
  * @param jm The julian millennium since J2000.
  * @return The julian ephemeris day number, which is based on TT.
- * @ref ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
+ * @see ERFA v2.0.1 `erfam.h`, `ERFA_DJM`.
  */
 [[nodiscard]] constexpr auto jm_to_jde(const double jm) -> double {
   return (jm * 365250.0) + J2000;

@@ -373,7 +373,14 @@ wheel and does not extend the official platform list.
 For JavaScript source builds, use the [WASM/npm recipe](README.md#wasm). It requires Node ≥ 22, Python build
 dependencies, and an emsdk checkout selected through `EMSDK` or `--emsdk`. The builder packs primary and alias
 once each. `build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json` select the respective tarballs; do not
-select them by glob or rebuild them for each consumer.
+select them by glob or rebuild them for each consumer. Ordinary `npm pack` from `bindings/javascript` is refused;
+use that builder instead. Windows/macOS current-Node consumers download the original pair from the same CI run
+and check installation, API calls, alias identity and the date-only entry without another build.
+
+For the [API reference](docs/API.md), install Doxygen 1.15.0 and run `python project.py --docs`.
+Open `build/api-docs/html/index.html`, or download `celestial-api-html` from **Core Tests**.
+This opt-in task does not compile C++ or require Graphviz. The interface is English; lunar comments retain their
+existing English/Chinese text. The HTML is a CI attachment, not a hosted site or release artifact.
 
 [Static analysis](README.md#lint) uses Ruff and clang-tidy through `checks.py`, with clang-tidy warnings treated
 as errors. [AGENTS.md](AGENTS.md) is the source of truth for build, test, and contribution conventions, including

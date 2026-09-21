@@ -30,8 +30,8 @@ inline constexpr int32_t END_YEAR = 2199;
 
 /**
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t.
- * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
- * @ref Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398
+ * @see https://www.hko.gov.hk/sc/gts/time/conversion.htm
+ * @see Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25); historical source for 398
  *      retained non-HKO entries.
  *      https://ntrs.nasa.gov/citations/20070003587
  * @note Gregorian dates use a baked hybrid basis: 1901–2099 preserves algo1's HKO labels;

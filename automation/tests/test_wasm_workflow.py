@@ -9,6 +9,8 @@
 # SPDX-License-Identifier: MIT
 
 import json
+import hashlib
+import os
 import re
 import shlex
 import subprocess
@@ -71,6 +73,9 @@ def test_wasm_artifact_inventory_matches_collector():
     matrix = job.get("strategy", {}).get("matrix", {})
     assert set(matrix).isdisjoint({"include", "exclude"})
     assert all(len(values) == 1 for values in matrix.values())
+    for step in job["steps"]:
+      if str(step.get("uses", "")).startswith("actions/upload-artifact@"):
+        assert step["with"]["path"] == "build/npm/artifact/"
 
   uploads = [
     step["with"]["name"]
@@ -85,14 +90,13 @@ def test_wasm_artifact_inventory_matches_collector():
 
 def test_wasm_workflow_never_publishes_to_npm():
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-  job = workflow["jobs"]["wasm"]
-  steps = job["steps"]
-  commands = "\n".join(str(step.get("run", "")) for step in steps)
-
-  assert "npm publish" not in commands
   assert "NPM_CONFIG_DRY_RUN" not in workflow.get("env", {})
-  assert "NPM_CONFIG_DRY_RUN" not in job.get("env", {})
-  assert all("NPM_CONFIG_DRY_RUN" not in step.get("env", {}) for step in steps)
+  for job in workflow["jobs"].values():
+    steps = job["steps"]
+    commands = "\n".join(str(step.get("run", "")) for step in steps)
+    assert "npm publish" not in commands
+    assert "NPM_CONFIG_DRY_RUN" not in job.get("env", {})
+    assert all("NPM_CONFIG_DRY_RUN" not in step.get("env", {}) for step in steps)
 
 
 def test_javascript_test_entries_match_their_execution_owners():
@@ -119,7 +123,10 @@ def test_javascript_test_entries_match_their_execution_owners():
   release_workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
   package = json.loads((JAVASCRIPT / "package.json").read_text(encoding="utf-8"))
   tsconfig = json.loads((test_root / "types" / "tsconfig.json").read_text(encoding="utf-8"))
-  workflow_commands = "\n".join(str(step.get("run", "")) for step in workflow["jobs"]["wasm"]["steps"])
+  job_commands = {
+    name: "\n".join(str(step.get("run", "")) for step in job["steps"]) for name, job in workflow["jobs"].items()
+  }
+  workflow_commands = "\n".join(job_commands.values())
   release_commands = "\n".join(
     str(step.get("run", "")) for job in release_workflow["jobs"].values() for step in job["steps"]
   )
@@ -131,13 +138,26 @@ def test_javascript_test_entries_match_their_execution_owners():
       re.MULTILINE,
     )
   )
-  workflow_entries = set(
-    re.findall(
-      r"^\s*node\s+bindings/javascript/test/((?:node|browser)/[a-z0-9_.-]+\.mjs)(?:\s|$)",
-      workflow_commands,
-      re.MULTILINE,
+  job_entries = {
+    name: set(
+      re.findall(
+        r"^\s*node\s+bindings/javascript/test/((?:node|browser)/[a-z0-9_.-]+\.mjs)(?:\s|$)",
+        commands,
+        re.MULTILINE,
+      )
     )
-  )
+    for name, commands in job_commands.items()
+  }
+  assert job_entries == {
+    "wasm": {
+      "node/public_api_test.mjs",
+      "node/date_test.mjs",
+      "node/tarball_consumer_test.mjs",
+      "browser/browser_test.mjs",
+    },
+    "node-consumer": {"node/artifact_consumer_test.mjs"},
+  }
+  workflow_entries = set().union(*job_entries.values())
   registry_entries = set(
     re.findall(
       r"^\s*node\s+bindings/javascript/test/(registry/[a-z0-9_.-]+\.mjs)(?:\s|$)",
@@ -250,3 +270,142 @@ def test_wasm_consumers_receive_the_metadata_pair_through_quoted_environment(tmp
   assert len(pair_calls) == 3
   assert all(args[1:] == [primary, alias] for args in pair_calls)
   assert not (tmp_path / "INJECTED").exists()
+
+
+def test_platform_consumers_use_current_node_and_the_same_run_artifact():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  core = yaml.safe_load((ROOT / ".github/workflows/core_tests.yml").read_text(encoding="utf-8"))
+  core_node = next(
+    step
+    for step in core["jobs"]["linters-and-static-analysis"]["steps"]
+    if step.get("uses", "").startswith("actions/setup-node@")
+  )
+  assert core_node["with"]["node-version"] == workflow["env"]["NODE_CURRENT"]
+  assert workflow["permissions"] == {"contents": "read"}
+  assert workflow["env"]["NODE_CURRENT"] == "24.19.0"
+  assert workflow["env"]["NODE_FLOOR"] == "22.0.0"
+  assert workflow["env"]["NPM_VERSION"] == "11.17.0"
+  job = workflow["jobs"]["node-consumer"]
+  assert job["needs"] == "wasm"
+  assert job["runs-on"] == "${{ matrix.os }}"
+  assert job["strategy"]["matrix"] == {"os": ["windows-latest", "macos-latest"]}
+  assert job["env"] == {"ARTIFACT_DIR": "build/npm artifact"}
+  checkout, node, download, consumer = job["steps"]
+  assert checkout == {"uses": "actions/checkout@v7", "with": {"persist-credentials": False}}
+  assert node["uses"] == "actions/setup-node@v7"
+  assert node["with"] == {"node-version": "${{ env.NODE_CURRENT }}"}
+  assert download["uses"] == "actions/download-artifact@v8"
+  assert download["with"] == {"name": "celestial-wasm", "path": "${{ env.ARTIFACT_DIR }}"}
+  assert "if" not in job and all("if" not in step for step in job["steps"])
+  assert consumer["shell"] == "pwsh"
+  assert consumer["run"].splitlines() == [
+    'npm install --global "npm@$env:NPM_VERSION"',
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    "$npmRoot = npm root --global",
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    '$npmCli = Join-Path $npmRoot.Trim() "npm/bin/npm-cli.js"',
+    "$nodeVersion = node --version",
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    'if ($nodeVersion.Trim() -cne "v$env:NODE_CURRENT") { throw "Unexpected Node version: $nodeVersion" }',
+    "$npmVersion = node $npmCli --version",
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    'if ($npmVersion.Trim() -cne $env:NPM_VERSION) { throw "Unexpected npm version: $npmVersion" }',
+    'node bindings/javascript/test/node/artifact_consumer_test.mjs "$env:ARTIFACT_DIR" "$npmCli"',
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+  ]
+
+
+@pytest.mark.parametrize(
+  "mutation,diagnostic",
+  [
+    (None, "failed (23)"),
+    ("duplicate-metadata", "expected one package"),
+    ("wrong-name", "package name"),
+    ("invalid-version", "package version"),
+    ("wrong-version", "npm pair version drift"),
+    ("../escape.tgz", "unsafe tarball basename"),
+    ("..\\escape.tgz", "unsafe tarball basename"),
+    ("C:\\escape.tgz", "unsafe tarball basename"),
+    ("/escape.tgz", "unsafe tarball basename"),
+    ("alias.tgz\n", "unsafe tarball basename"),
+    ("changed-tarball", "tarball SHA-256 sidecar mismatch"),
+    ("wrong-sidecar-name", "tarball SHA-256 sidecar mismatch"),
+    ("missing-sidecar", "ENOENT"),
+  ],
+)
+def test_artifact_consumer_checks_metadata_and_bytes_before_npm(tmp_path, mutation, diagnostic):
+  node = shutil.which("node")
+  if node is None:
+    pytest.skip("artifact consumer check requires Node")
+  artifact = tmp_path / "download with spaces # and %"
+  artifact.mkdir()
+  dependencies = {}
+  for name, stem, filename in (
+    ("@0xf3cd/celestial", "npm-pack", "primary-selected.tgz"),
+    ("celestial-calendar", "npm-alias-pack", "alias-selected.tgz"),
+  ):
+    tarball = artifact / filename
+    tarball.write_bytes(b"inert pre-install fixture")
+    dependencies[name] = f"file:{tarball}"
+    pack = {"name": name, "version": "0.7.0", "filename": filename}
+    metadata = [pack]
+    digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
+    sidecar = artifact / f"{stem}.sha256"
+    sidecar.write_text(f"{digest}  {filename}\n", encoding="utf-8", newline="")
+    if name == "celestial-calendar":
+      if mutation == "duplicate-metadata":
+        metadata.append(pack.copy())
+      elif mutation == "wrong-name":
+        pack["name"] = "unexpected-package"
+      elif mutation == "invalid-version":
+        pack["version"] = "0.7.0\n"
+      elif mutation == "wrong-version":
+        pack["version"] = "0.7.1"
+      elif mutation and mutation.endswith((".tgz", "\n")):
+        pack["filename"] = mutation
+      elif mutation == "changed-tarball":
+        tarball.write_bytes(b"changed after hashing")
+      elif mutation == "wrong-sidecar-name":
+        sidecar.write_text(f"{digest}  other.tgz\n", encoding="utf-8", newline="")
+      elif mutation == "missing-sidecar":
+        sidecar.unlink()
+    (artifact / f"{stem}.json").write_text(json.dumps(metadata), encoding="utf-8")
+  (artifact / "000-decoy.tgz").write_bytes(b"must not select this tarball")
+  npm_cli = tmp_path / "npm cli fixture.mjs"
+  calls = tmp_path / "calls.json"
+  npm_cli.write_text(
+    'import { readFileSync, writeFileSync } from "node:fs";\n'
+    'const { dependencies } = JSON.parse(readFileSync("package.json", "utf8"));\n'
+    "writeFileSync(process.env.CONSUMER_CALLS, JSON.stringify({\n"
+    "  args: process.argv.slice(2), dependencies, cwd: process.cwd(), execPath: process.execPath,\n"
+    "}));\n"
+    "process.exit(23);\n",
+    encoding="utf-8",
+  )
+  completed = subprocess.run(
+    [node, str(JAVASCRIPT / "test/node/artifact_consumer_test.mjs"), str(artifact), str(npm_cli)],
+    cwd=tmp_path,
+    env={**os.environ, "CONSUMER_CALLS": str(calls)},
+    capture_output=True,
+    text=True,
+    encoding="utf-8",
+  )
+  assert completed.returncode != 0
+  assert diagnostic in completed.stderr
+  if mutation is not None:
+    assert not calls.exists(), "invalid metadata or bytes reached npm install"
+  else:
+    record = json.loads(calls.read_text(encoding="utf-8"))
+    assert record["dependencies"] == dependencies
+    assert record["args"] == [
+      "install",
+      "--offline",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      "--package-lock=false",
+    ]
+    assert Path(record["execPath"]).samefile(node)
+    assert Path(record["cwd"]).name.startswith("celestial artifact consumer ")
+    assert not Path(record["cwd"]).is_relative_to(ROOT)
+    assert not Path(record["cwd"]).exists(), "failed install must clean up its temporary consumer"

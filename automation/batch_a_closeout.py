@@ -32,7 +32,7 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-REGISTRY_SHA256: Final[str] = "51cffcbaf521dc4d23cb9e0c43aef91406b4f667f9cb4b290b5c58ccde04dce1"
+REGISTRY_SHA256: Final[str] = "3f0f18ad1c53aaa0dff4538e715d16e48173d256619ebd814b65bf8c1f40fc97"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -211,7 +211,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "8a59abd6556acc5f9443c8f4ccc3f8b3fda0544b1c6c2f8c967d13e7a5cfa894"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "622f2af50b045102eeb8bf98d3c025e74b73bbfb12af2bd160a53c2d331b7187"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",

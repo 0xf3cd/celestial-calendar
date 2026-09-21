@@ -55,7 +55,7 @@ struct Converter {
   using AlgoMetadata = common::AlgoMetadata<algo>;
 
   /** 
-   * @fn Checks if the input gregorian date is valid and within the supported range. 
+   * @brief Checks if the input gregorian date is valid and within the supported range.
          检查输入的公历日期是否有效，且在支持的范围内。 
    * @param date The date. 公历日期。
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。
@@ -72,7 +72,7 @@ struct Converter {
   }
 
   /** 
-   * @fn Checks if the input lunar date is valid and within the supported range. 
+   * @brief Checks if the input lunar date is valid and within the supported range.
          检查输入的阴历日期是否有效，且在支持的范围内。 
    * @param lunar_date The lunar date. 阴历日期。
    * @return `true` if valid, otherwise `false`. 如果有效，返回 `true`，否则返回 `false`。

@@ -32,7 +32,7 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
 
 - **Name cross-formula physical constants** as `constexpr` (UPPER_CASE), shared between
   implementation and tests. Single-use coefficients of a cited reference polynomial stay
-  **inline in the formula** with the `@ref` alongside (like `obliquity::mean`, the ΔT
+  **inline in the formula** with the `@see` citation alongside (like `obliquity::mean`, the ΔT
   segments): naming each coefficient of a quoted equation adds indirection without audit
   value. Dense coefficient tables (e.g. `MEEUS_NUTATION_COEFFS`) keep raw literals with a
   source comment. `.clang-tidy` disables the magic-number checks for exactly these two cases.
@@ -135,6 +135,10 @@ and across runs only when a round is long enough to amortize its fixed cost; oth
 read the paired ratios inside one run. `src/bench/harness.hpp` explains the
 measurement-bias handling and why (#81).
 
+API HTML is also opt-in: `./project.py --docs` uses Doxygen 1.15.0 without a C++ build or Graphviz.
+Core Tests uploads `celestial-api-html`; it is not a release artifact. `docs/Doxyfile` rejects
+documentation syntax errors but does not require every declaration/parameter to be documented.
+
 Randomized tests draw from a shared, seeded engine (`util/random.hpp`, #69): default seed
 42, override with the `CELESTIAL_TEST_SEED` env var. The PR/push gate pins the default;
 `random_soak.yml` (weekly / dispatch) draws a fresh seed per run. A soak failure is never
@@ -175,7 +179,7 @@ convention lives here:
 
 **Domain notation overrides all of it.** An identifier that stands for a symbol in the
 source keeps the source's spelling: `cos_λ`, `argL`, `A1`, `θCoeffs`, `gen_eval_θ`, and
-`Jieqi`'s 立春/冬至. Same discipline as the `@ref` rule — the code should read next to the book.
+`Jieqi`'s 立春/冬至. Same discipline as the citation rule — the code should read next to the book.
 
 ### Comment language
 
@@ -222,10 +226,10 @@ feel is intentional. Keep it. That buys a discipline:
 - **Multi-line call layout**: when an argument is itself a call, or the call grows long,
   put each argument on its own line and the closing `);` on its own line at the call's
   indentation. Trivial short calls stay on one line.
-- Doxygen `/** @brief / @param / @return / @note / @ref */` on public functions; inline
+- Doxygen `/** @brief / @param / @return / @note / @see */` on public functions; inline
   `//` comments explain the physics with order-of-magnitude arguments ("ΔT ≈ 69 s ≈ 0.29°
-  of rotation"), not bare claims. `@ref` cites the exact formula/table number of the named
-  reference.
+  of rotation"), not bare claims. `@see` cites external sources with exact formula/table numbers;
+  `@ref` links code entities. Use `@par Example` for inline examples; `@example` takes a file name.
 
 ### Modern C++ posture
 
@@ -265,7 +269,7 @@ any other. `optional` never carries an error — it carries a legitimate "none".
 its own translation (`catch` → `valid = false`, see `celestial.h`).
 
 Comments sit in one of three slots (#127): **contract** (time scale, unit, valid range,
-sign convention) · **citation** (`@ref` to the formula or table number) · **numeric
+sign convention) · **citation** (`@see` with the formula or table number) · **numeric
 argument** (why this tolerance, this bracket, this step). Textbook exposition is not a
 slot. What gets cut is the exposition, never the contract: the twin `@note`s on
 `nutation::longitude` and `obliquity` ("fix both or neither") are as load-bearing as the code.
@@ -413,7 +417,7 @@ trigger is for.
 | **Quantified error budgets are not part of the API contract**; model selection uses source, status, hard domain, and role, and a fitted residual is never dressed up as a 1σ | A caller needs a validated quantitative bound that source/status/domain guidance cannot answer |
 | **The tool-existence checks in `automation/` are not merged into one**; the `toolbox/` `sys.path.append` copies cannot be merged either (#166) | A third call site needs the same failure policy as an existing two |
 | **The `using X = Y` aliases in the lunar headers stay** — load-bearing for self-containment (`common.hpp` / `converter.hpp` / `algo2.hpp`) | The style rule narrows what `using X = Y` may do |
-| **External ephemerides are oracles, never dependencies** — ytliu0, Horizons, USNO appear only under `src/test/` and in `@ref` comments | — (a line, not a bet) |
+| **External ephemerides are oracles, never dependencies** — ytliu0, Horizons, USNO appear only under `src/test/` and in source citations | — (a line, not a bet) |
 | **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** (#82) | Any target standard library marks `std::remainder` constexpr — `automation/feature_probe.py` watches it per leg |
 
 **Decided and already done** (kept because the reasoning gets re-proposed): longitude sign
@@ -481,6 +485,7 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 | Configure / build / test | `./project.py --cmake` / `--build` / `--test` |
 | Run tests, verbose / filtered | `./project.py --test -v 1 -k <keyword>` |
 | Run benchmarks | `./project.py --bench` |
+| Generate API HTML | `./project.py --docs` |
 | Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
 | Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
 | Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir wheelhouse` |

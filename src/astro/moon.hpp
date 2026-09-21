@@ -32,7 +32,7 @@ namespace astro::moon::perturbation {
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric longitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- * @ref ERFA v2.0.1 `moon98.c`, Meeus additive longitude terms.
+ * @see ERFA v2.0.1 `moon98.c`, Meeus additive longitude terms.
  */
 // Retained material boundary (R16): these exact ERFA `moon98.c` additive longitude terms remain under the ERFA
 // source terms and outside the project MIT grant.
@@ -50,7 +50,7 @@ namespace astro::moon::perturbation {
  * @param ctx The context.
  * @return The perturbation of the Moon's geocentric latitude. Unit is 0.000001 degrees.
  * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47.
- * @ref ERFA v2.0.1 `moon98.c`, Meeus additive latitude terms.
+ * @see ERFA v2.0.1 `moon98.c`, Meeus additive latitude terms.
  */
 // Retained material boundary (R16): these exact ERFA `moon98.c` additive latitude terms remain under the ERFA
 // source terms and outside the project MIT grant.
@@ -70,7 +70,7 @@ namespace astro::moon::geocentric_coord {
 
 /**
  * @brief Earth's equatorial radius, in kilometers.
- * @ref Astronomical Algorithms, Jean Meeus, 1998, Chapter 47 -- the equatorial horizontal parallax
+ * @see Astronomical Algorithms, Jean Meeus, 1998, Chapter 47 -- the equatorial horizontal parallax
  *      is `asin(6378.14 / r)`, with `r` the Earth-Moon distance in the same unit.
  */
 inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;

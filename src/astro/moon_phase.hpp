@@ -505,7 +505,7 @@ namespace astro::moon_phase::illumination {
  *       as-is — the golden test feeds the book's equatorial worked values directly. Meeus
  *       prints (48.2) with the solar latitude dropped; the sin β sin β₀ term is restored here,
  *       since the library carries the Sun's apparent β.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto phase_angle(
   const astro::toolbox::SphericalCoordinate& sun_pos,
@@ -536,7 +536,7 @@ namespace astro::moon_phase::illumination {
  * @param jde The Julian Ephemeris Day, on the TT scale.
  * @return The phase angle i, in [0°, 180°].
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto phase_angle(const double jde) -> astro::toolbox::AngleDeg {
   return phase_angle(
@@ -552,7 +552,7 @@ namespace astro::moon_phase::illumination {
  * @return χ in [0°, 360°), measured eastward from the north point of the disk.
  * @note The formula uses equatorial coordinates; the spherical geometry is identical to (48.2),
  *       so the ecliptic-to-equatorial conversion must use the true obliquity for apparent places.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto position_angle(
   const astro::coords::EquatorialCoord& sun_eq, // NOLINT(bugprone-easily-swappable-parameters) -- Sun vs Moon, ordered α₀δ₀ vs αδ.
@@ -578,7 +578,7 @@ namespace astro::moon_phase::illumination {
  * @return χ in [0°, 360°), measured eastward from the north point of the disk.
  * @details Sun: VSOP87D apparent equatorial; Moon: truncated ELP2000-82B apparent ecliptic,
  *          converted to equatorial with the true obliquity.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto position_angle(const double jde) -> astro::toolbox::AngleDeg {
   const auto sun_eq = astro::sun::equatorial_coord::apparent(jde);
@@ -590,7 +590,7 @@ namespace astro::moon_phase::illumination {
  * @brief Compute the illuminated fraction k of the Moon's disk from the phase angle, Meeus (48.1).
  * @param i The selenocentric phase angle.
  * @return k in [0, 1].
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& i) -> double {
   return (1.0 + std::cos(i.rad())) / 2.0;

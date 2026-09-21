@@ -1,0 +1,31 @@
+# CelestialCalendar:
+#   A C++23-style library that performs astronomical calculations and date conversions between
+#   Gregorian and Chinese Lunar calendars.
+#
+# Copyright (C) 2026 Ningqi Wang (0xf3cd)
+# Email: nq.maigre@gmail.com
+# Repo : https://github.com/0xf3cd/celestial-calendar
+# SPDX-License-Identifier: MIT
+
+PROJECT_NAME = CelestialCalendar
+PROJECT_NUMBER = $(BUILD_VERSION)
+OUTPUT_DIRECTORY = build/api-docs
+OUTPUT_LANGUAGE = English
+INPUT = docs/API.md src/astro src/calendar src/util src/shared_lib/celestial.h
+USE_MDFILE_AS_MAINPAGE = docs/API.md
+FILE_PATTERNS = *.hpp *.h *.md
+RECURSIVE = YES
+EXCLUDE_PATTERNS = */earth_coeff.hpp
+FULL_PATH_NAMES = NO
+EXTRACT_ALL = YES
+MAX_INITIALIZER_LINES = 0
+GENERATE_HTML = YES
+HTML_EXTRA_FILES = LICENSE THIRD_PARTY_NOTICES.txt
+GENERATE_LATEX = NO
+SOURCE_BROWSER = NO
+VERBATIM_HEADERS = NO
+HAVE_DOT = NO
+QUIET = YES
+WARN_IF_UNDOCUMENTED = NO
+WARN_IF_INCOMPLETE_DOC = NO
+WARN_AS_ERROR = YES

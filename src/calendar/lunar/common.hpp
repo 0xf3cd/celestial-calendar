@@ -212,7 +212,7 @@ requires std::invocable<const Func&, int32_t>
 enum class Algo : uint8_t { ALGO_1, ALGO_2, ALGO_3 };
 
 /**
- * @struct The type trait for the lunar algorithm,
+ * @brief The type trait for the lunar algorithm,
  *         expected specializations in every algorithm implementation.
  * @param get_info_for_year The function to get the lunar year information for the given year.
  *                          用于使用该算法获取给定年份的阴历年信息的函数。

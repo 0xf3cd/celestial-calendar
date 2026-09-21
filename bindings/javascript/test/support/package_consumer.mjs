@@ -16,7 +16,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export async function runPackageConsumer({ dependencies, packageName, expectedVersion, installArgs, prefix, success, typeCompiler }) {
+export async function runPackageConsumer({ dependencies, packageName, expectedVersion, installArgs, prefix, success, typeCompiler, npmCli }) {
   const consumer = await mkdtemp(join(tmpdir(), prefix));
   const cache = join(consumer, "npm-cache");
   const run = (command, args) => {
@@ -44,7 +44,8 @@ export async function runPackageConsumer({ dependencies, packageName, expectedVe
         dependencies,
       }, null, 2),
     );
-    run("npm", ["install", ...installArgs]);
+    if (npmCli === undefined) run("npm", ["install", ...installArgs]);
+    else run(process.execPath, [npmCli, "install", ...installArgs]);
     const installed = JSON.parse(
       await readFile(join(consumer, "node_modules", "@0xf3cd", "celestial", "package.json"), "utf8"),
     );

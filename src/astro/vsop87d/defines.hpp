@@ -23,7 +23,7 @@ namespace astro::vsop87d {
 
 #pragma region Type Defs
 
-/** @struct Representing 3 coefficients in a VSOP87D term. */
+/** @brief Representing 3 coefficients in a VSOP87D term. */
 struct Coefficients {
   double A, B, C;
 };
@@ -52,7 +52,8 @@ inline constexpr double SCALING_FACTOR = 1e8;
  * @param vsop_table The VSOP87D table.
  * @param jm The julian millennium.
  * @return The sum of the terms in the table.
- * @example `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
+ * @par Example
+ * `evaluate_table(astro::vsop87d::earth::L0, 0.0)` means apply the Earth's L0 table on the given julian millennium 0.0.
  */
 [[nodiscard]] inline auto evaluate_table(const Vsop87dTable& vsop_table, const double jm) -> double {
   const auto calc_term = [jm](const auto& term) constexpr -> double {
@@ -71,7 +72,8 @@ inline constexpr double SCALING_FACTOR = 1e8;
  * @param vsop_tables The VSOP87D tables.
  * @param jm The julian millennium.
  * @return The evaluated result. As per the VSOP87D model, the result is in radians.
- * @example `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
+ * @par Example
+ * `evaluate_tables(astro::vsop87d::earth::L, 0.0)` means apply all Earth's L tables on the given julian millennium 0.0.
  */
 [[nodiscard]] inline auto evaluate_tables(const Vsop87dTables& vsop_tables, const double jm) -> double {
   // Evaluate the result for each table in `vsop_tables`.
@@ -89,15 +91,15 @@ inline constexpr double SCALING_FACTOR = 1e8;
   });
 }
 
-/** @enum The planets supported by VSOP87D. */
+/** @brief The planets supported by VSOP87D. */
 enum class Planet : uint8_t { EAR, /* SAT, MAR, ... */ };
 
-/** @struct The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
+/** @brief The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
 template <Planet planet>
 struct PlanetTables;
 
 /**
- * @struct The result of the VSOP87D evaluation.
+ * @brief The result of the VSOP87D evaluation.
  * @note This struct is expected to only hold the untouched results from the VSOP87D model.
  */
 struct Evaluation {
@@ -111,7 +113,8 @@ struct Evaluation {
  * @tparam planet The planet to evaluate.
  * @param jm The julian millennium since J2000, calculated based on JDE (julian ephemeris date).
  * @return The evaluation result. VSOP87D provides the heliocentric ecliptic spherical coordinates for the equinox of the day.
- * @example `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
+ * @par Example
+ * `evaluate<Planet::EAR>(0.0)` means evaluating the Earth's L, B, and R tables on the given julian millennium 0.0.
  */
 template <Planet planet>
 [[nodiscard]] inline auto evaluate(const double jm) -> Evaluation {

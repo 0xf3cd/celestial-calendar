@@ -201,7 +201,7 @@ inline constexpr double LON_LAT_SCALING_FACTOR = 1e6;
 inline constexpr double RADIUS_SCALING_FACTOR = 1e3;
 
 /**
- * @struct The context (arguments) for a given julian century.
+ * @brief The context (arguments) for a given julian century.
  * @note This struct is expected to only hold the arguments from the ELP2000-82B model.
  */
 struct Context {
@@ -258,7 +258,7 @@ struct Context {
 
 
 /**
- * @struct The result of the ELP2000-82B evaluation.
+ * @brief The result of the ELP2000-82B evaluation.
  */
 struct Evaluation {
   double Σl; // Unit is 0.000001 degrees
@@ -272,7 +272,7 @@ struct Evaluation {
 namespace detail {
 
 /**
- * @struct One row's contribution to Σl and Σr.
+ * @brief One row's contribution to Σl and Σr.
  * @details Both sums walk `coeff::LR` and share every step but the last, so one pass yields both.
  *          Adding componentwise is what lets a single fold carry the pair.
  */

@@ -35,7 +35,7 @@ namespace astro::sidereal {
  *       where the constant picks up 180° because J2000.0 falls at noon UT. On the 0h grid this
  *       coincides with (12.3) exactly; `julian_day::jde_to_jc` is not reused since its contract
  *       is TT-based.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12, Formulas (12.2)-(12.4).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12, Formulas (12.2)-(12.4).
  */
 [[nodiscard]] inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::AngleDeg {
   using astro::toolbox::AngleDeg;
@@ -63,7 +63,7 @@ namespace astro::sidereal {
  *       in longitude and ε the TRUE obliquity (ε₀ + Δε), both evaluated at `jde_tt`.
  *       The correction (the equation of the equinoxes) is small: |Δψ·cos ε| < ~17".4
  *       (|Δψ| itself can reach ~19").
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12 (and Chapter 22 for Δψ, ε).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12 (and Chapter 22 for Δψ, ε).
  */
 [[nodiscard]] inline auto greenwich_apparent(
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): the jd_ut1/jde_tt naming is the UT1/TT guard (issue #41).
@@ -92,7 +92,7 @@ namespace astro::sidereal {
  * @return The LAST, normalized to [0°, 360°).
  * @note With the west-positive convention the relation reads θ = θ₀(GAST) − longitude_west,
  *       consistent with Meeus's hour-angle formula H = θ₀ − L − α used from Chapter 13 onward.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12.
  */
 [[nodiscard]] inline auto local_apparent(
   const double jd_ut1,

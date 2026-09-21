@@ -47,6 +47,7 @@
     "access": "public"
   },
   "scripts": {
+    "prepack": "node -e \"console.error('Use toolbox/build_npm.py to build the npm packages.'); process.exit(1)\"",
     "test:types": "tsc --noEmit -p test/types/tsconfig.json"
   },
   "devDependencies": {

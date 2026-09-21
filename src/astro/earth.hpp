@@ -269,7 +269,7 @@ inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 // NOLINTEND(modernize-use-designated-initializers)
 
 
-/** @enum Specify which model to use when calculating Earth's nutation. */
+/** @brief Specify which model to use when calculating Earth's nutation. */
 enum class Model : uint8_t { MEEUS, IAU_1980 };
 
 /** @brief Find the nutation coefficients for the given model. */
@@ -289,7 +289,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
  * @note Handed back as `auto`, not `std::function`: this evaluator runs once per coefficient row
  *       of the nutation table, so type erasure here buys an indirect call on every single term
  *       of every nutation evaluation (#98).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto gen_eval_θ(const double jc) {
   const double jc2 = jc * jc;
@@ -322,7 +322,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
  * @note Twin of `nutation::obliquity`, which sums the same table and differs in exactly two
  *       places: it reads `coeffs.Δε` and it takes the cosine. The duplication is deliberate —
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto longitude(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
@@ -360,7 +360,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
  * @note Twin of `nutation::longitude`, which sums the same table and differs in exactly two
  *       places: it reads `coeffs.Δψ` and it takes the sine. The duplication is deliberate —
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto obliquity(const double jde, const Model model = Model::IAU_1980) -> toolbox::AngleDeg {
   // Get the Julian century since J2000.
@@ -401,8 +401,8 @@ namespace astro::earth::obliquity {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The mean obliquity (ε₀) in degrees.
  * @details Accuracy ~1" over ±2000 years from J2000; the polynomial degrades farther out.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
- * @ref ERFA v2.0.1 `obl80.c`.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22, Formula (22.2).
+ * @see ERFA v2.0.1 `obl80.c`.
  */
 // Retained material boundary (R21): the exact `obl80.c` coefficients remain under the ERFA source
 // terms and outside the project MIT grant; the evaluator is project-authored.
@@ -422,7 +422,7 @@ namespace astro::earth::obliquity {
  * @param jde The julian ephemeris day number, which is based on TT.
  * @param model The nutation model to use. Defaults to `nutation::Model::IAU_1980`.
  * @return The true obliquity (ε = ε₀ + Δε) in degrees.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 22.
  */
 [[nodiscard]] inline auto true_obliquity(
   const double jde,
@@ -439,7 +439,7 @@ namespace astro::earth::aberration {
 /**
  * @brief A term of the Δλ series: `amplitude × τ^tau_power × sin(phase + rate × τ)`,
  *        with τ the Julian millennia since J2000.
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
  */
 struct DailyVariationTerm {
   double amplitude;   // In arcseconds per day
@@ -487,7 +487,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
  * @return Δλ in arcseconds per day.
  * @note The constant term is 3548.330 for the mean equinox of the date;
  *       3548.193 is for the fixed J2000 frame (p. 168 note).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, p. 168.
  */
 [[nodiscard]] inline auto daily_λ_variation(const double jde) -> double {
   using namespace std::ranges;
@@ -502,7 +502,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
 /** @brief The light-time for unit distance, in days per AU (= 499.00478 s ≈ 8.3 min).
  *  @note This stored value is the fixed ten-decimal rounding of
  *        `ERFA_DAU / ERFA_CMPS / ERFA_DAYSEC`, not a digit copy of `ERFA_AULT`.
- *  @ref ERFA v2.0.1 `erfam.h`. */
+ *  @see ERFA v2.0.1 `erfam.h`. */
 // Retained material boundary (R23): this rounded ERFA-derived constant remains under the ERFA source
 // terms and outside the project MIT grant; the surrounding aberration expression is project-authored.
 inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
@@ -518,7 +518,7 @@ inline constexpr double LIGHT_TIME_DAYS_PER_AU = 0.0057755183;
  *       orbit (mainly lunar) that the fixed form (25.10) −20.4898″/R ignores:
  *       error < 0.001″ vs up to 0.01″ for (25.10). The (25.10) numerator is
  *       κ(1−e²), not the bare aberration constant κ = 20.49552″ (#66).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (25.10)-(25.11), p. 167-168.
  */
 [[nodiscard]] inline auto compute(const double jde, const toolbox::DistanceAu r) -> toolbox::AngleDeg {
   const double aberration_arcsec = LIGHT_TIME_DAYS_PER_AU * r.au() * daily_λ_variation(jde);

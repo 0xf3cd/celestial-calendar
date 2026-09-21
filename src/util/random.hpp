@@ -106,7 +106,6 @@ inline void print_random_seed_once() {
 namespace util {
 
 /*!
- * @fn random
  * @brief Generate a random value of type T.
  * @return a random value of type T.
  * @note For floating-point T the semantics are full-domain (#69): a magnitude in
@@ -130,7 +129,6 @@ template <typename T>
 }
 
 /*!
- * @fn random
  * @brief Generate a random value of type T within the specified range [min, max].
  * @param min the lower bound of the range, inclusive.
  * @param max the upper bound of the range, inclusive.

@@ -22,6 +22,7 @@ from typing import List, Callable, Sequence, Final
 from automation import (
   run_cmake,
   build_project,
+  build_docs,
   clean_build,
   run_gtests,
   print_system_info,
@@ -119,6 +120,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument(
     "--bench", action="store_true", help="Build and run the benchmarks (opt-in: --all does not include them)"
   )
+  parser.add_argument(
+    "--docs", action="store_true", help="Generate API HTML with Doxygen (opt-in: --all does not include it)"
+  )
 
   parser.add_argument("-a", "--all", action="store_true", help="Set up, run CMake, build, and test the project")
 
@@ -151,6 +155,8 @@ def print_steps(args: argparse.Namespace) -> None:
       green_print(f"# - Filter tests with keywords: {', '.join(args.keyword)}")
   if args.bench:
     green_print(f"# - Build and run the benchmarks using {args.cores} CPU cores")
+  if args.docs:
+    green_print("# - Generate API HTML")
   print(60 * "#")
 
 
@@ -207,6 +213,8 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
     # built on request, and a build failure should stop before anything claims to have measured.
     tasks.append(Task("Build the benchmarks", lambda: build_benchmarks(args.cores)))
     tasks.append(Task("Run the benchmarks", run_benchmarks))
+  if args.docs:
+    tasks.append(Task("Generate API HTML", lambda: build_docs(BUILD_VERSION)))
   return tasks
 
 

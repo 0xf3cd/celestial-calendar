@@ -10,6 +10,8 @@
 
 import json
 import io
+import shutil
+import subprocess
 import tarfile
 from types import SimpleNamespace
 import re
@@ -481,6 +483,28 @@ def test_package_producers_include_the_canonical_notice():
   assert set(WASM_ARTIFACT_FILES.values()) == WASM_ARTIFACT_ALLOWLIST
 
 
+def test_development_npm_pack_refuses_and_points_to_builder(tmp_path, monkeypatch):
+  npm = shutil.which("npm")
+  if npm is None:
+    pytest.skip("direct npm pack check requires npm")
+  monkeypatch.setenv("npm_config_cache", str(tmp_path / "npm-cache"))
+  result = subprocess.run(
+    [npm, "pack", "--pack-destination", str(tmp_path)],
+    cwd=PACKAGE_SOURCE,
+    capture_output=True,
+    text=True,
+    encoding="utf-8",
+  )
+
+  assert result.returncode != 0
+  assert "Use toolbox/build_npm.py to build the npm packages." in result.stdout + result.stderr
+  assert not list(tmp_path.glob("*.tgz"))
+  for name in NPM_METADATA:
+    manifest = staging_manifest("0.7.0", name)
+    assert "scripts" not in manifest
+    verify_manifest(manifest, "0.7.0", name)
+
+
 def test_npm_date_subpath_inventory_and_exports():
   source = json.loads((PACKAGE_SOURCE / "package.json").read_text(encoding="utf-8"))
   assert source["exports"] == {
@@ -666,6 +690,7 @@ def test_builder_packs_each_identity_once_and_checks_fresh_inventories(tmp_path,
     assert not (out / "stale.tgz").exists()
     stage = Path(command[-1])
     manifest = json.loads((stage / "package.json").read_bytes())
+    assert "scripts" not in manifest
     name = manifest["name"]
     calls.append(name)
     if name == ALIAS_NAME:

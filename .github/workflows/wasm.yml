@@ -149,3 +149,44 @@ jobs:
           path: build/npm/artifact/
           retention-days: 30
           if-no-files-found: error
+
+  node-consumer:
+    needs: wasm
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      ARTIFACT_DIR: build/npm artifact
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up current Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_CURRENT }}
+
+      - name: Download the tested npm pair
+        uses: actions/download-artifact@v8
+        with:
+          name: celestial-wasm
+          path: ${{ env.ARTIFACT_DIR }}
+
+      - name: Install pinned npm and consume the artifact
+        shell: pwsh
+        run: |
+          npm install --global "npm@$env:NPM_VERSION"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $npmRoot = npm root --global
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $npmCli = Join-Path $npmRoot.Trim() "npm/bin/npm-cli.js"
+          $nodeVersion = node --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($nodeVersion.Trim() -cne "v$env:NODE_CURRENT") { throw "Unexpected Node version: $nodeVersion" }
+          $npmVersion = node $npmCli --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($npmVersion.Trim() -cne $env:NPM_VERSION) { throw "Unexpected npm version: $npmVersion" }
+          node bindings/javascript/test/node/artifact_consumer_test.mjs "$env:ARTIFACT_DIR" "$npmCli"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

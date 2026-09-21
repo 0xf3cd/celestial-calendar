@@ -584,7 +584,7 @@ template <BodyProvider P>
  *         observer at a geographic pole or the body at/near a celestial pole.
  * @throw std::invalid_argument If any argument is not finite or lies outside [-90°, 90°]
  *        (outside that domain sin/cos alias and (15.1) returns a physically meaningless H₀).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, Formula (15.1).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, Formula (15.1).
  */
 [[nodiscard]] inline auto hour_angle_at_altitude(
   const astro::toolbox::AngleDeg& δ,
@@ -785,7 +785,7 @@ template <BodyProvider P>
  *       reached 180°/day; the library's own providers stay an order of magnitude below
  *       that, and a custom provider that does not is outside this premise. Near the top of
  *       the representable date range the 1-day sample can itself leave the range and throw
- *       (see @throw).
+ *       (see `@throw`).
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto transit_in_window(
@@ -1148,7 +1148,7 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @throw std::invalid_argument If `p` is invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For `Model::SAEMUNDSSON`, if the horizon iteration does not
  *        converge (see `refraction::at_horizon`).
- * @ref Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15.
  */
 [[nodiscard]] inline auto h0(
   const astro::toolbox::AngleRad& Π,
@@ -1173,8 +1173,8 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *        invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
  *        conversions reject dates outside the representable years), for a refraction
- *        failure at the h₀ stage (see `h0`'s @throw — e.g. SAEMUNDSSON non-convergence),
- *        or numerical failures inside `calculate_day` (see its @throw).
+ *        failure at the h₀ stage (see `h0`'s `@throw` — e.g. SAEMUNDSSON non-convergence),
+ *        or numerical failures inside `calculate_day` (see its `@throw`).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).
  * @note The window is the UT1 calendar day, matching almanac (e.g. USNO rstt/oneday at tz=0)
  *       cell semantics — unlike the solar API, which is transit-centered.

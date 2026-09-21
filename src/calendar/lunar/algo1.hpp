@@ -30,7 +30,7 @@ inline constexpr int32_t END_YEAR = 2099;
 
 /** 
  * @brief The encoded binary data for each lunar year. Info for a year is stored in a uint32_t. 
- * @ref https://www.hko.gov.hk/sc/gts/time/conversion.htm
+ * @see https://www.hko.gov.hk/sc/gts/time/conversion.htm
  * @details All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record in
  *          `src/test/provenance/hko/2026-08-25/`.
  * @note Gregorian dates preserve HKO's published calendar labels, not a uniform historical

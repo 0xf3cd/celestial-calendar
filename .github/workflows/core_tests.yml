@@ -22,6 +22,32 @@ env:
   CELESTIAL_TEST_SEED: "42"
 
 jobs:
+  api-docs:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-26.04
+    env:
+      DOXYGEN_PACKAGE_VERSION: "1.15.0+ds1-1ubuntu3"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned Doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y "doxygen=$DOXYGEN_PACKAGE_VERSION"
+          test "$(doxygen --version)" = "${DOXYGEN_PACKAGE_VERSION%%+*}"
+      - name: Generate API HTML
+        run: python3 project.py --docs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: celestial-api-html
+          path: build/api-docs/html/
+          if-no-files-found: error
+          retention-days: 30
+
   linters-and-static-analysis:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
     # 26.04 for the toolchain, not the OS: clang-tidy 22.1.2 ships in this image, and the
@@ -33,6 +59,11 @@ jobs:
 
     steps:  
       - uses: actions/checkout@v7
+
+      # Automation tests execute the npm lifecycle and artifact reader.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24.19.0"
 
       - name: Set up Python ${{ matrix.python-version }}  
         uses: actions/setup-python@v7 
