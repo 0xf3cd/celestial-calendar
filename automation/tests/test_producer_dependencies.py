@@ -253,8 +253,8 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
   lines = [
     line for line in CIBW_CONSTRAINTS.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
   ]
-  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2"]
-  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2"
+  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2.1"]
+  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2.1"
 
 
 @pytest.mark.parametrize(
