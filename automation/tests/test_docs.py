@@ -159,7 +159,7 @@ def test_doxygen_configuration_has_no_source_listing_or_release_output():
   assert config["INPUT"] == "docs/API.md src/astro src/calendar src/util src/shared_lib/celestial.h"
   assert config["OUTPUT_DIRECTORY"] == "build/api-docs"
   assert config["OUTPUT_LANGUAGE"] == "English"
-  assert config["EXCLUDE_PATTERNS"] == "*/earth_coeff.hpp"
+  assert config["EXCLUDE_PATTERNS"] == "*/vsop87d/*_coeff.hpp */vsop87d_check_data.hpp"
   assert config["MAX_INITIALIZER_LINES"] == "0"
   assert config["USE_MDFILE_AS_MAINPAGE"] == "docs/API.md"
   assert config["HTML_EXTRA_FILES"] == "LICENSE THIRD_PARTY_NOTICES.txt"

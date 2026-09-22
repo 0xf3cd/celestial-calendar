@@ -467,7 +467,9 @@ def parse_check_source(data: bytes, source_sha256: str = CHECK_SOURCE_SHA256) ->
     _require(index + 1 < len(lines), f"vsop87.chk position row is missing after JD{jd}")
     fields = lines[index + 1].split()
     _require(
-      len(fields) == 9 and (fields[0], fields[2], fields[3], fields[5], fields[6], fields[8]) == (
+      len(fields) == 9
+      and (fields[0], fields[2], fields[3], fields[5], fields[6], fields[8])
+      == (
         "l",
         "rad",
         "b",
@@ -495,10 +497,7 @@ def parse_check_source(data: bytes, source_sha256: str = CHECK_SOURCE_SHA256) ->
 
 
 def render_check_header(rows: Sequence[CheckRow]) -> bytes:
-  widths = tuple(
-    max(len(getattr(row, field)) for row in rows)
-    for field in ("planet", "jd", "λ", "β", "r")
-  )
+  widths = tuple(max(len(getattr(row, field)) for row in rows) for field in ("planet", "jd", "λ", "β", "r"))
   lines = [
     *_project_banner(),
     "",
@@ -599,14 +598,9 @@ def main() -> None:
     parser.error("--write requires --source-dir and --check-file")
 
   counts = (
-    verify_repository()
-    if args.source_dir is None
-    else replay(args.source_dir, args.check_file, write=args.write)
+    verify_repository() if args.source_dir is None else replay(args.source_dir, args.check_file, write=args.write)
   )
-  print(
-    f"planets={counts.planets} series={counts.series} terms={counts.terms} "
-    f"check_rows={counts.check_rows}"
-  )
+  print(f"planets={counts.planets} series={counts.series} terms={counts.terms} check_rows={counts.check_rows}")
 
 
 if __name__ == "__main__":

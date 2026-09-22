@@ -66,9 +66,7 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
     assert marking.encode() in notice
   assert "does not itself constitute software provided by or endorsed by SOFA" in sofa.marking[1]
   assert "user-replaceable DAT terms" in sofa.marking[-1]
-  assert sofa.applicability == (
-    "the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11"
-  )
+  assert sofa.applicability == ("the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11")
   assert erfa.title == "ERFA v2.0.1 — LICENSE"
   assert nasa.applicability == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
