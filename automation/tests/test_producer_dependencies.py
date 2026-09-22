@@ -253,8 +253,21 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
   lines = [
     line for line in CIBW_CONSTRAINTS.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
   ]
-  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2"]
-  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2"
+  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2.1"]
+  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2.1"
+
+
+@pytest.mark.parametrize(
+  "lock_name", ["requirements-host.txt", "requirements-build.txt", "requirements-cibuildwheel.txt"]
+)
+def test_windows_wheel_locks_include_colorama(lock_name):
+  lock = REPO / "bindings" / "python" / lock_name
+  colorama = (
+    "colorama==0.4.6 ; os_name == 'nt' \\\n"
+    "    --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \\\n"
+    "    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
+  )
+  assert f"\n{colorama}\n" in lock.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(

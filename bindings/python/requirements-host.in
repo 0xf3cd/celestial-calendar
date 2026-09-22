@@ -10,4 +10,4 @@
 
 # Host-side wheel orchestrator. Build-backend dependencies are locked separately because
 # cibuildwheel installs them in each target Python environment.
-cibuildwheel==4.2.0
+cibuildwheel==4.2.1

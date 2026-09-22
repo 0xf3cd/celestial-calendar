@@ -9,4 +9,4 @@
 # SPDX-License-Identifier: MIT
 
 # Installed only in the clean x86_64 wheel consumer before the artifact upload.
-mypy==2.3.0
+mypy==2.3.1

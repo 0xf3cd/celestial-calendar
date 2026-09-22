@@ -10,4 +10,4 @@
 
 # Linux copies only this file into its container; mount the nested lock before enabling CIBW_TEST_COMMAND.
 -c requirements-cibuildwheel.txt
-pip==26.2
+pip==26.2.1
