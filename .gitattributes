@@ -8,3 +8,11 @@ third_party/emscripten/6.0.6/** text eol=lf whitespace=-blank-at-eof,-trailing-s
 third_party/llvm/llvmorg-22.1.2/LICENSE.TXT text eol=lf whitespace=-blank-at-eof,-trailing-space
 src/test/provenance/** text eol=lf whitespace=-blank-at-eof,-trailing-space
 statistics/usno_data.txt text eol=lf
+src/astro/vsop87d/jupiter_coeff.hpp linguist-generated=true
+src/astro/vsop87d/mars_coeff.hpp linguist-generated=true
+src/astro/vsop87d/mercury_coeff.hpp linguist-generated=true
+src/astro/vsop87d/neptune_coeff.hpp linguist-generated=true
+src/astro/vsop87d/saturn_coeff.hpp linguist-generated=true
+src/astro/vsop87d/uranus_coeff.hpp linguist-generated=true
+src/astro/vsop87d/venus_coeff.hpp linguist-generated=true
+src/test/astro/vsop87d_check_data.hpp linguist-generated=true

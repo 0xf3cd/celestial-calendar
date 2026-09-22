@@ -103,8 +103,8 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-  assert REGISTRY_SHA256 == "3f0f18ad1c53aaa0dff4538e715d16e48173d256619ebd814b65bf8c1f40fc97"
-  assert verify_batch_a_closeout() == CloseoutCounts(57, 90, 47, 2, 14)
+  assert REGISTRY_SHA256 == "ed089c85a9f61431f5b0f38e15949893607e90d53d13453f360c6ab94382e4b1"
+  assert verify_batch_a_closeout() == CloseoutCounts(57, 98, 55, 2, 15)
 
 
 @pytest.mark.parametrize(
@@ -309,7 +309,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 90, 47, 2, 14)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 98, 55, 2, 15)
 
 
 @pytest.mark.parametrize(
@@ -473,7 +473,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 90, 47, 2, 14)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 98, 55, 2, 15)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

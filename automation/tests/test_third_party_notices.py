@@ -22,13 +22,14 @@ from automation.third_party_notices import (
   REPO_ROOT,
   ROOT_NOTICE,
   SEPARATOR,
+  VSOP87D_PLANETARY_ATTRIBUTION_SHA256,
   assemble_notices,
 )
 
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "b966f635ae31c5d4091b33a6ca6c761c8d7bc57cb62f83a25e1c0e0bc18d5384"
+CANONICAL_NOTICE_SHA256 = "b2167e540943a4f01b31f97fb25b4c3c5f4f556fb51248f8e06cbd775400c436"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -54,35 +55,41 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
   assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 14
-  for marking in NOTICE_SOURCES[-8].marking:
+  assert len(NOTICE_SOURCES) == 15
+  by_title = {source.title: source for source in NOTICE_SOURCES}
+  sofa = by_title["IAU SOFA issue 2023-10-11 — SOFA Software License"]
+  erfa = by_title["ERFA v2.0.1 — LICENSE"]
+  nasa = by_title["NASA/TP-2006-214141 — acknowledgment"]
+  delta_t = by_title["Delta T algorithms 1, 3, and 5 — source attribution"]
+  planetary = by_title["VSOP87D — retained planetary coefficients"]
+  for marking in sofa.marking:
     assert marking.encode() in notice
-  assert "does not itself constitute software provided by or endorsed by SOFA" in NOTICE_SOURCES[-8].marking[1]
-  assert "user-replaceable DAT terms" in NOTICE_SOURCES[-8].marking[-1]
-  assert NOTICE_SOURCES[-8].applicability == (
+  assert "does not itself constitute software provided by or endorsed by SOFA" in sofa.marking[1]
+  assert "user-replaceable DAT terms" in sofa.marking[-1]
+  assert sofa.applicability == (
     "the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11"
   )
-  assert NOTICE_SOURCES[-7].title == "ERFA v2.0.1 — LICENSE"
-  assert NOTICE_SOURCES[-6].title == "NASA/TP-2006-214141 — acknowledgment"
-  assert NOTICE_SOURCES[-6].applicability == (
+  assert erfa.title == "ERFA v2.0.1 — LICENSE"
+  assert nasa.applicability == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
     "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
     "NASA-sourced historical Delta-T validation values in src/test"
   )
-  assert NOTICE_SOURCES[-5].title == "Delta T algorithms 1, 3, and 5 — source attribution"
-  assert NOTICE_SOURCES[-5].applicability == (
+  assert delta_t.applicability == (
     "the Delta T algo1 coefficient table, algo3 expressions, and algo5 long-term branch in src/astro/delta_t.hpp"
   )
-  assert NOTICE_SOURCES[-5].sha256 == DELTA_T_ATTRIBUTION_SHA256
-  for marking in NOTICE_SOURCES[-5].marking:
+  assert delta_t.sha256 == DELTA_T_ATTRIBUTION_SHA256
+  for marking in delta_t.marking:
     assert marking.encode() in notice
-  assert [source.title for source in NOTICE_SOURCES[-4:]] == [
+  assert [source.title for source in NOTICE_SOURCES[-5:]] == [
     "Hong Kong Observatory — retained lunar-year words",
     "VSOP87D — retained Earth coefficients",
+    "VSOP87D — retained planetary coefficients",
     "Astronomical Algorithms — retained daily-variation series",
     "Microsoft — statically linked C/C++ runtime portions",
   ]
-  for source in NOTICE_SOURCES[-4:]:
+  assert planetary.sha256 == VSOP87D_PLANETARY_ATTRIBUTION_SHA256
+  for source in NOTICE_SOURCES[-5:]:
     assert source.marking
     assert source.sha256 in notice.decode()
   assert b"NASA/TP-2006-214141 (October 2006)" in notice
@@ -149,7 +156,8 @@ def test_notice_assembly_mutations_change_the_canonical_bytes(tmp_path, mutation
   elif mutation == "applicability":
     sources = (replace(sources[0], applicability="changed"), *sources[1:])
   elif mutation == "marking":
-    sources = (*sources[:-4], replace(sources[-4], marking=()), *sources[-3:])
+    target = next(source for source in sources if source.title == "Hong Kong Observatory — retained lunar-year words")
+    sources = tuple(replace(source, marking=()) if source == target else source for source in sources)
   elif mutation == "order":
     sources = tuple(reversed(sources))
   else:

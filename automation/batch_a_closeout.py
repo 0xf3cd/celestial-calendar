@@ -32,7 +32,7 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-REGISTRY_SHA256: Final[str] = "3f0f18ad1c53aaa0dff4538e715d16e48173d256619ebd814b65bf8c1f40fc97"
+REGISTRY_SHA256: Final[str] = "ed089c85a9f61431f5b0f38e15949893607e90d53d13453f360c6ab94382e4b1"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -140,7 +140,8 @@ SPLIT_ROW_PARTS: Final[dict[str, str]] = {
 
 REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   """
-  r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r13 r14
+  r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r12-check r12-jupiter
+  r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14
   r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
   r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
   v02-cabi v03 v04-test v04-automation v05 v06 v07 v07-refresh v08 v09 v10 v11 v11-refresh
@@ -211,7 +212,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "622f2af50b045102eeb8bf98d3c025e74b73bbfb12af2bd160a53c2d331b7187"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "1754558d5a25cd633846a56b1e674faab96ae43556f908c196215586a775ae6a"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -336,6 +337,18 @@ EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
   "Delta T algorithms 1, 3, and 5 — source attribution": frozenset({"r05", "r07", "r09"}),
   "Hong Kong Observatory — retained lunar-year words": frozenset({"r01-algo1", "r01-algo3"}),
   "VSOP87D — retained Earth coefficients": frozenset({"r12"}),
+  "VSOP87D — retained planetary coefficients": frozenset(
+    {
+      "r12-check",
+      "r12-jupiter",
+      "r12-mars",
+      "r12-mercury",
+      "r12-neptune",
+      "r12-saturn",
+      "r12-uranus",
+      "r12-venus",
+    }
+  ),
   "Astronomical Algorithms — retained daily-variation series": frozenset({"r22"}),
   "Microsoft — statically linked C/C++ runtime portions": frozenset({"t03-native", "t03-wheel"}),
 }

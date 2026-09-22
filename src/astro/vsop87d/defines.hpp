@@ -92,7 +92,7 @@ inline constexpr double SCALING_FACTOR = 1e8;
 }
 
 /** @brief The planets supported by VSOP87D. */
-enum class Planet : uint8_t { EAR, /* SAT, MAR, ... */ };
+enum class Planet : uint8_t { EAR, MER, VEN, MAR, JUP, SAT, URA, NEP };
 
 /** @brief The type trait for the VSOP87D tables. Expected specializations in `*_coeff.hpp`s. */
 template <Planet planet>

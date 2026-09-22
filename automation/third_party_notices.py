@@ -33,6 +33,7 @@ EMSCRIPTEN_REVISION: Final[str] = "ce75e06884093bcefb86a6b8fd56a5d62a4cc245"
 DELTA_T_ATTRIBUTION_SHA256: Final[str] = "4ead1c6c3ec76c0eefe79ec926fbdce769b8ecbdec10142f7dbe373871d853f9"
 HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "1272446f24ddf193d4198da3dea983bdfee48b4c6e0dde7a0fe6725baed4e93a"
 VSOP87D_ATTRIBUTION_SHA256: Final[str] = "ad6357383e646cc2747c147e00c1e721280b437ac7a087d8ceb439b51d102218"
+VSOP87D_PLANETARY_ATTRIBUTION_SHA256: Final[str] = "568de2d41e4843c1d9902c311ab11d467ab0cf4b4f228caf5e122db99038416d"
 MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9"
 WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
@@ -178,6 +179,17 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/batch-a-closeout/VSOP87D_ATTRIBUTION.md"),
     upstream="CDS VI/81, VSOP87D.ear, Bretagnon and Francou January 1996 IMCCE distribution",
     sha256=VSOP87D_ATTRIBUTION_SHA256,
+    marking=("This project-authored attribution record is not upstream licence text or a permission grant.",),
+  ),
+  NoticeSource(
+    title="VSOP87D — retained planetary coefficients",
+    applicability=(
+      "the seven complete Mercury-Neptune coefficient headers, their consumer binaries, and the official "
+      "VSOP87D check rows"
+    ),
+    path=Path("src/test/provenance/vsop87d/ATTRIBUTION.md"),
+    upstream="CDS VI/81, VSOP87D Mercury-Neptune files and vsop87.chk, January 1996 IMCCE distribution",
+    sha256=VSOP87D_PLANETARY_ATTRIBUTION_SHA256,
     marking=("This project-authored attribution record is not upstream licence text or a permission grant.",),
   ),
   NoticeSource(
