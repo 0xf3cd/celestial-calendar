@@ -102,8 +102,8 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
-  assert RECORD_SHA256 == "ccb2a8ac9552a833c13da1886288f0c85d11132a7cca93b07358ec82e62866f4"
-  assert REGISTRY_SHA256 == "42f91aed95e35a8446ee317c7f240dbe885080c3845a0f2f6ed4a538c1813fb9"
+  assert RECORD_SHA256 == "455e2a6df0f96151dd02291c69781525e3b4e4083ab21d8b8b0503ff127a54df"
+  assert REGISTRY_SHA256 == "859a60030471c7a063f493ae8a9324bb326e9e940d2dbaa47c6dc11eea90efe1"
   assert verify_batch_a_closeout() == CloseoutCounts(57, 101, 56, 2, 15)
 
 
@@ -181,6 +181,7 @@ def test_direct_digest_detects_a_retained_value_change(tmp_path):
   ("old", "new", "message"),
   [
     ("267.6792943", "267.6792944", "v06-planets retained data hash differs"),
+    ("2460746.500000, false", "2460746.500000, true", "v06-planets retained data hash differs"),
     ("267.4597670259", "267.4597670260", "v15-planets retained data hash differs"),
     ("41.454 / 3600.0", "41.455 / 3600.0", "v32-planets retained data hash differs"),
   ],
@@ -204,6 +205,23 @@ def test_planet_retained_data_fields_are_required(tmp_path, block_id):
 
   with pytest.raises(RuntimeError, match=f"{block_id} retained data fields differ"):
     verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+
+
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
+    (".lat_deg = 0.00002", ".lat_deg = 0.00001"),
+    (
+      "ASSERT_NEAR(equatorial.δ.deg(), MEEUS_EXAMPLE_33A_DECLINATION_DEG",
+      "EXPECT_NEAR(equatorial.δ.deg(), MEEUS_EXAMPLE_33A_DECLINATION_DEG",
+    ),
+  ],
+)
+def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, new):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
+
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 101, 56, 2, 15)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):

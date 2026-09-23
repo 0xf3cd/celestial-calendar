@@ -50,6 +50,8 @@ struct AberrationCorrection {
 };
 
 inline constexpr std::size_t LIGHT_TIME_MAX_ITERATIONS = 10;
+// One day resolves outer-planet motion without extending the marker beyond a local direction test.
+inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
 
 [[nodiscard]] inline auto name(const Planet planet) -> std::string_view {
   switch (planet) {
@@ -231,6 +233,22 @@ namespace geocentric_coord {
       )
     };
   }
+}
+
+/**
+ * @brief Return whether a planet's apparent geocentric longitude is decreasing.
+ * @param planet The planet to calculate, from Mercury through Neptune.
+ * @param jde_tt The Julian Ephemeris Day based on TT.
+ * @return `true` when the wrap-aware longitude change over the centered one-day interval is negative.
+ * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite, converged result.
+ * @note This marker does not solve for the exact stationary instant, where a boolean direction is not
+ *       physically meaningful.
+ */
+[[nodiscard]] inline auto is_retrograde(const Planet planet, const double jde_tt) -> bool {
+  const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
+  const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
+  return std::remainder(after.λ.deg() - before.λ.deg(), 360.0) < 0.0;
 }
 
 } // namespace geocentric_coord

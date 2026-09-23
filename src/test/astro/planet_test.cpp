@@ -51,6 +51,12 @@ struct EquatorialRow {
   double declination_deg;
 };
 
+struct RetrogradeRow {
+  Planet planet;
+  double jde;
+  bool retrograde;
+};
+
 [[nodiscard]] auto wrapped_diff_deg(const double lhs, const double rhs) -> double {
   return std::fabs(std::remainder(lhs - rhs, 360.0));
 }
@@ -90,7 +96,7 @@ constexpr std::array HORIZONS_ROWS {
   HorizonsRow { Planet::MERCURY, 2448976.500000, 249.9701648,  1.0647727,  1.215797841064,  18.4154 },
   HorizonsRow { Planet::MERCURY, 2451545.000000, 271.8881138, -0.9947466,  1.415466038869,   8.5378 },
   HorizonsRow { Planet::MERCURY, 2461050.500000, 282.6257364, -1.4356425,  1.423626050263,   7.2545 },
-  HorizonsRow { Planet::MERCURY, 2486166.250000, 184.9738312,  1.7885395,  0.998364743709,  18.0240 },
+  HorizonsRow { Planet::MERCURY, 2486166.250000, 184.9738311,  1.7885395,  0.998364743709,  18.0240 },
   HorizonsRow { Planet::VENUS,   2415385.500000, 250.7521091,  1.2743156,  1.398702846186,  29.1824 },
   HorizonsRow { Planet::VENUS,   2433651.500000, 296.3822625, -1.2556521,  1.655459568843,  12.6129 },
   HorizonsRow { Planet::VENUS,   2448976.500000, 313.0813433, -2.0848243,  0.910947737526,  44.7638 },
@@ -102,13 +108,13 @@ constexpr std::array HORIZONS_ROWS {
   HorizonsRow { Planet::MARS,    2448976.500000, 114.5595228,  3.4380850,  0.648327163255, 153.5876 },
   HorizonsRow { Planet::MARS,    2451545.000000, 327.9627159, -1.0677844,  1.849683834398,  47.6037 },
   HorizonsRow { Planet::MARS,    2461050.500000, 289.6110366, -0.9441998,  2.402937645969,   0.9526 },
-  HorizonsRow { Planet::MARS,    2486166.250000, 164.4305612,  1.3220035,  2.320043393461,  38.5004 },
+  HorizonsRow { Planet::MARS,    2486166.250000, 164.4305611,  1.3220035,  2.320043393461,  38.5004 },
   HorizonsRow { Planet::JUPITER, 2415385.500000, 265.9582610,  0.3070135,  6.223068653381,  13.9542 },
   HorizonsRow { Planet::JUPITER, 2433651.500000, 335.4497273, -1.0612613,  5.528430331707,  51.6265 },
   HorizonsRow { Planet::JUPITER, 2448976.500000, 192.2857614,  1.2561848,  5.599110169546,  76.0735 },
   HorizonsRow { Planet::JUPITER, 2451545.000000,  25.2530382, -1.2621907,  4.621163711791, 104.8812 },
   HorizonsRow { Planet::JUPITER, 2461050.500000, 110.1568749,  0.2604282,  4.231754677875, 179.5064 },
-  HorizonsRow { Planet::JUPITER, 2486166.250000,  36.6771567, -1.4930685,  3.989841443065, 166.1554 },
+  HorizonsRow { Planet::JUPITER, 2486166.250000,  36.6771566, -1.4930685,  3.989841443065, 166.1554 },
   HorizonsRow { Planet::SATURN,  2415385.500000, 277.7024090,  0.6001373, 11.049641867050,   2.2868 },
   HorizonsRow { Planet::SATURN,  2433651.500000, 182.3189304,  2.2815110,  9.216601597809, 101.5028 },
   HorizonsRow { Planet::SATURN,  2448976.500000, 315.1488052, -1.0136389, 10.514400202089,  46.8014 },
@@ -120,7 +126,7 @@ constexpr std::array HORIZONS_ROWS {
   HorizonsRow { Planet::URANUS,  2448976.500000, 286.9693359, -0.4111395, 20.500030417201,  18.6179 },
   HorizonsRow { Planet::URANUS,  2451545.000000, 314.8091306, -0.6583242, 20.727163790695,  34.4465 },
   HorizonsRow { Planet::URANUS,  2461050.500000,  57.7301994, -0.1950302, 18.867911516279, 127.9924 },
-  HorizonsRow { Planet::URANUS,  2486166.250000, 358.8705108, -0.7806962, 19.174308071051, 155.9468 },
+  HorizonsRow { Planet::URANUS,  2486166.250000, 358.8705107, -0.7806962, 19.174308071051, 155.9468 },
   HorizonsRow { Planet::NEPTUNE, 2415385.500000,  87.5190099, -1.2490013, 28.916376362683, 167.5481 },
   HorizonsRow { Planet::NEPTUNE, 2433651.500000, 199.4601398,  1.6212547, 30.378899683260,  84.3731 },
   HorizonsRow { Planet::NEPTUNE, 2448976.500000, 287.9114767,  0.6760477, 31.113313922977,  19.5669 },
@@ -139,6 +145,68 @@ constexpr std::array HORIZONS_CONJUNCTION_ROWS {
   HorizonsRow { Planet::URANUS,  2461183.500000,  61.5394414, -0.1606305, 20.477226502891, 0.3937 },
   HorizonsRow { Planet::NEPTUNE, 2461121.500000,   1.8259642, -1.3062454, 30.878786041244, 1.3820 },
 };
+
+// The same Horizons query was replayed over every 0h TT day in 2025-2027. Each expected direction
+// is the sign of the wrap-aware source-longitude difference across the surrounding two days. The
+// station cases sit three days outside the source's daily sign-change brackets, avoiding an exact-
+// station boolean; the clear cases select each planet's largest positive and negative daily change.
+// Mercury's first pair brackets its March 15-April 7, 2025 retrograde interval at day resolution.
+constexpr std::array HORIZONS_RETROGRADE_ROWS {
+  // Planet           JDE             Retrograde
+  RetrogradeRow { Planet::MERCURY, 2460746.500000, false },  // station-before
+  RetrogradeRow { Planet::MERCURY, 2460753.500000, true  },  // station-after
+  RetrogradeRow { Planet::MERCURY, 2460769.500000, true  },  // station-before
+  RetrogradeRow { Planet::MERCURY, 2460776.500000, false },  // station-after
+  RetrogradeRow { Planet::MERCURY, 2460826.500000, false },  // clear-direct
+  RetrogradeRow { Planet::MERCURY, 2460999.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::VENUS,   2460733.500000, false },  // station-before
+  RetrogradeRow { Planet::VENUS,   2460740.500000, true  },  // station-after
+  RetrogradeRow { Planet::VENUS,   2460775.500000, true  },  // station-before
+  RetrogradeRow { Planet::VENUS,   2460782.500000, false },  // station-after
+  RetrogradeRow { Planet::VENUS,   2461030.500000, false },  // clear-direct
+  RetrogradeRow { Planet::VENUS,   2460757.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::MARS,    2461412.500000, false },  // station-before
+  RetrogradeRow { Planet::MARS,    2461419.500000, true  },  // station-after
+  RetrogradeRow { Planet::MARS,    2461493.500000, true  },  // station-before
+  RetrogradeRow { Planet::MARS,    2461500.500000, false },  // station-after
+  RetrogradeRow { Planet::MARS,    2461098.500000, false },  // clear-direct
+  RetrogradeRow { Planet::MARS,    2460690.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::JUPITER, 2460987.500000, false },  // station-before
+  RetrogradeRow { Planet::JUPITER, 2460994.500000, true  },  // station-after
+  RetrogradeRow { Planet::JUPITER, 2461107.500000, true  },  // station-before
+  RetrogradeRow { Planet::JUPITER, 2461114.500000, false },  // station-after
+  RetrogradeRow { Planet::JUPITER, 2460849.500000, false },  // clear-direct
+  RetrogradeRow { Planet::JUPITER, 2461050.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::SATURN,  2460866.500000, false },  // station-before
+  RetrogradeRow { Planet::SATURN,  2460873.500000, true  },  // station-after
+  RetrogradeRow { Planet::SATURN,  2461004.500000, true  },  // station-before
+  RetrogradeRow { Planet::SATURN,  2461011.500000, false },  // station-after
+  RetrogradeRow { Planet::SATURN,  2461504.500000, false },  // clear-direct
+  RetrogradeRow { Planet::SATURN,  2461696.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::URANUS,  2460921.500000, false },  // station-before
+  RetrogradeRow { Planet::URANUS,  2460928.500000, true  },  // station-after
+  RetrogradeRow { Planet::URANUS,  2461072.500000, true  },  // station-before
+  RetrogradeRow { Planet::URANUS,  2461079.500000, false },  // station-after
+  RetrogradeRow { Planet::URANUS,  2461554.500000, false },  // clear-direct
+  RetrogradeRow { Planet::URANUS,  2461740.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::NEPTUNE, 2460857.500000, false },  // station-before
+  RetrogradeRow { Planet::NEPTUNE, 2460864.500000, true  },  // station-after
+  RetrogradeRow { Planet::NEPTUNE, 2461016.500000, true  },  // station-before
+  RetrogradeRow { Planet::NEPTUNE, 2461023.500000, false },  // station-after
+  RetrogradeRow { Planet::NEPTUNE, 2460756.500000, false },  // clear-direct
+  RetrogradeRow { Planet::NEPTUNE, 2461677.500000, true  },  // clear-retrograde
+};
+
+// These source-selected Mercury rows cross 0 degrees in opposite directions across their
+// surrounding Horizons epochs, pinning the signed wrap independently of this implementation.
+constexpr std::array HORIZONS_RETROGRADE_WRAP_ROWS {
+  RetrogradeRow { Planet::MERCURY, 2460737.500000, false },
+  RetrogradeRow { Planet::MERCURY, 2460764.500000, true  },
+};
+
+inline constexpr double MEEUS_EXAMPLE_33A_RIGHT_ASCENSION_DEG =
+  (21.0 + (4.0 / 60.0) + (41.454 / 3600.0)) * 15.0;
+inline constexpr double MEEUS_EXAMPLE_33A_DECLINATION_DEG = -(18.0 + (53.0 / 60.0) + (16.84 / 3600.0));
 
 // PyMeeus 0.5.12 output collected 2026-09-22 by the same script and epochs. The pinned call is
 // `<Planet>.geocentric_position(Epoch(jde))`, returning apparent equatorial coordinates. PyMeeus
@@ -205,11 +273,8 @@ TEST(Planet, MeeusExample33a) {
     coordinate.β,
     astro::earth::obliquity::true_obliquity(2448976.5)
   );
-  constexpr double expected_right_ascension_deg = (21.0 + (4.0 / 60.0) + (41.454 / 3600.0)) * 15.0;
-  constexpr double expected_declination_deg = -(18.0 + (53.0 / 60.0) + (16.84 / 3600.0));
-
-  ASSERT_NEAR(equatorial.α.deg(), expected_right_ascension_deg, 0.0075 / 3600.0);
-  ASSERT_NEAR(equatorial.δ.deg(), expected_declination_deg, 0.005 / 3600.0);
+  ASSERT_NEAR(equatorial.α.deg(), MEEUS_EXAMPLE_33A_RIGHT_ASCENSION_DEG, 0.0075 / 3600.0);
+  ASSERT_NEAR(equatorial.δ.deg(), MEEUS_EXAMPLE_33A_DECLINATION_DEG, 0.005 / 3600.0);
 }
 
 TEST(Planet, PymeeusCrossDataset) {
@@ -255,6 +320,20 @@ TEST(Planet, HorizonsConjunctionDataset) {
       << "latitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
     ASSERT_NEAR(coordinate.r.au(), row.r_au, tolerance.r_au)
       << "range at JDE " << row.jde << ", elongation " << row.elongation_deg;
+  }
+}
+
+TEST(Planet, HorizonsRetrogradeDataset) {
+  for (const auto& row : HORIZONS_RETROGRADE_ROWS) {
+    ASSERT_EQ(geocentric_coord::is_retrograde(row.planet, row.jde), row.retrograde)
+      << "JDE " << row.jde;
+  }
+}
+
+TEST(Planet, RetrogradeAcrossLongitudeWrap) {
+  for (const auto& row : HORIZONS_RETROGRADE_WRAP_ROWS) {
+    ASSERT_EQ(geocentric_coord::is_retrograde(row.planet, row.jde), row.retrograde)
+      << "JDE " << row.jde;
   }
 }
 
@@ -330,6 +409,16 @@ TEST(Planet, RejectsInvalidInput) {
   }
   EXPECT_THROW(
     static_cast<void>(geocentric_coord::apparent(invalid_planet, 2451545.0)),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(
+      geocentric_coord::is_retrograde(Planet::MARS, std::numeric_limits<double>::quiet_NaN())
+    ),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(geocentric_coord::is_retrograde(invalid_planet, 2451545.0)),
     std::invalid_argument
   );
 }

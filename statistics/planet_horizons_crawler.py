@@ -10,6 +10,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import math
 import sys
 import time
 
@@ -35,9 +36,9 @@ EPOCHS: Final[tuple[float, ...]] = (
   2461050.5,
   2486166.25,
 )
-# The earliest daily minimum elongation in 2026 supplies one directed conjunction row per planet.
-# This scan is source-only: selection never consults this library's output.
-NEAR_SUN_SCAN_EPOCHS: Final[tuple[float, ...]] = tuple(2461041.5 + day for day in range(365))
+# This source-only daily scan supplies the 2026 minimum-elongation rows and complete retrograde
+# intervals over 2025-2027. Selection never consults this library's output.
+RETROGRADE_SCAN_EPOCHS: Final[tuple[float, ...]] = tuple(2460676.5 + day for day in range(1095))
 
 
 @dataclass(frozen=True)
@@ -180,16 +181,69 @@ def emit_pymeeus(target: Target) -> None:
     print(f"  {{ Planet::{target.enum_name:<7}, {jde:11.2f}, {right_ascension:14.10f}, {declination:14.10f} }},")
 
 
+def select_retrograde_rows(rows: tuple[HorizonsRow, ...]) -> tuple[tuple[HorizonsRow, bool, str], ...]:
+  rates = tuple(
+    (row, math.remainder(rows[index + 1].lon_deg - rows[index - 1].lon_deg, 360.0) / 2.0)
+    for index, row in enumerate(rows[1:-1], start=1)
+  )
+  transitions = []
+  for (before_row, before_rate), (after_row, after_rate) in zip(rates, rates[1:], strict=False):
+    if (before_rate < 0.0) != (after_rate < 0.0):
+      transitions.append((before_row.jde, after_row.jde, before_rate < 0.0, after_rate < 0.0))
+
+  start_index = next(index for index, transition in enumerate(transitions[:-1]) if transition[3])
+  interval = transitions[start_index : start_index + 2]
+  by_jde = {row.jde: row for row in rows}
+  selected = []
+  for left_jde, right_jde, before_retrograde, after_retrograde in interval:
+    selected.extend(
+      (
+        (by_jde[left_jde - 3.0], before_retrograde, "station-before"),
+        (by_jde[right_jde + 3.0], after_retrograde, "station-after"),
+      )
+    )
+  direct_row, _direct_rate = max(rates, key=lambda item: item[1])
+  retrograde_row, _retrograde_rate = min(rates, key=lambda item: item[1])
+  selected.extend(
+    (
+      (direct_row, False, "clear-direct"),
+      (retrograde_row, True, "clear-retrograde"),
+    )
+  )
+  return tuple(selected)
+
+
+def select_wrap_rows(rows: tuple[HorizonsRow, ...]) -> tuple[tuple[HorizonsRow, bool], ...]:
+  selected = []
+  for index, row in enumerate(rows[1:-1], start=1):
+    before = rows[index - 1].lon_deg
+    after = rows[index + 1].lon_deg
+    if (before > 350.0 and after < 10.0) or (before < 10.0 and after > 350.0):
+      selected.append((row, math.remainder(after - before, 360.0) < 0.0))
+  return tuple(selected)
+
+
+def emit_retrograde(target: Target, rows: tuple[tuple[HorizonsRow, bool, str], ...]) -> None:
+  print(f"\n// {target.horizons_name}")
+  for row, retrograde, label in rows:
+    print(f"  {{ Planet::{target.enum_name:<7}, {row.jde:13.6f}, {str(retrograde).lower():5} }},  // {label}")
+
+
 def main() -> None:
   all_rows = []
   conjunction_rows = []
+  retrograde_rows = []
+  wrap_rows = []
   for target in TARGETS:
     base_rows = fetch_horizons(target, EPOCHS)
     time.sleep(0.15)
-    scan_rows = fetch_horizons_batched(target, NEAR_SUN_SCAN_EPOCHS)
-    directed = min(scan_rows, key=lambda row: (row.elongation_deg, row.jde))
+    scan_rows = fetch_horizons_batched(target, RETROGRADE_SCAN_EPOCHS)
+    near_sun_rows = scan_rows[365:730]
+    directed = min(near_sun_rows, key=lambda row: (row.elongation_deg, row.jde))
     all_rows.append((target, base_rows))
     conjunction_rows.append((target, (directed,)))
+    retrograde_rows.append((target, select_retrograde_rows(scan_rows)))
+    wrap_rows.extend((target, row, expected) for row, expected in select_wrap_rows(scan_rows))
     print(
       f"{target.horizons_name}: 2026 daily minimum JDE {directed.jde:.1f}, "
       f"elongation {directed.elongation_deg:.4f} deg",
@@ -208,6 +262,15 @@ def main() -> None:
   print("\n// Earliest daily minimum elongation in 2026, selected from Horizons output only")
   for target, rows in conjunction_rows:
     emit_horizons(target, rows)
+
+  print("\n// Horizons daily centered-longitude signs, 2025-2027")
+  for target, rows in retrograde_rows:
+    emit_retrograde(target, rows)
+
+  print("\n// First direct and retrograde longitude-wrap rows selected from Horizons output")
+  for expected in (False, True):
+    target, row, _expected = next(item for item in wrap_rows if item[2] == expected)
+    emit_retrograde(target, ((row, expected, "longitude-wrap"),))
 
   print("\n// PyMeeus 0.5.12 geocentric_position, apparent RA/Dec")
   for target in TARGETS:

@@ -6,7 +6,7 @@
 [English Guide](README_EN.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features)
 
-本文对应 **0.7.0 源码与接口**，不表示 0.7.0 已发布。下面的安装命令取得 PyPI / npm 当前可用的版本；
+本文以 **0.7.0** 为当前发布基线，也包含尚未发布的源码与接口。下面的安装命令取得 PyPI / npm 当前可用的版本；
 可用版本可能落后于本文，请同时核对所装版本的文档。若需要尚未发布的接口，可从完整源码构建
 [本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或 [WASM / npm 包](#wasm)。
 
@@ -272,7 +272,7 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - 公历与阴历日期互转。
 - 查询节气的具体时刻。
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
-- 日月地心视黄道坐标、太阳视赤道坐标，以及合朔时刻。
+- C++ 头文件提供日月及水星至海王星的地心视黄道坐标、行星逆行标记，以及太阳视赤道坐标与合朔时刻。
 - 均时差与地方真太阳时。
 - UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
 - [C ABI 共享库](#c-abi)、[Python 原生 wheel](#python) 和 [JavaScript / TypeScript WASM 包](#javascript)。
@@ -389,8 +389,9 @@ python project.py --all
 便于重建和核查；可从 `src/test/jieqi_golden_test.cpp` 看一个完整例子，具体约定见 `AGENTS.md`。
 外部参考包括：
 
-- **JPL Horizons（DE441）**：日月视位置与节气过点，由 `statistics/` 中的 `moon_horizons_crawler.py`、
-  `sun_equatorial_horizons_crawler.py`、`sun_jieqi_golden_crawler.py` 采集或重放。
+- **JPL Horizons**：日月与水星至海王星的视位置及节气过点，由 `statistics/` 中的
+  `moon_horizons_crawler.py`、`planet_horizons_crawler.py`、`sun_equatorial_horizons_crawler.py`、
+  `sun_jieqi_golden_crawler.py` 采集或重放。
 - **香港天文台历书**：2022–2028 年公布的节气钟表时间，整条计算链与其差异须在 60 秒内，
   主要容纳历书自身的分钟舍入。由 `automation/jieqi_table.py` 实现，入口为 `./checks.py --jieqi-table`。
 - **ytliu0's ChineseCalendar**：按 commit 固定的独立阴历年表，用于验证预生成算法，

@@ -7,7 +7,7 @@ JavaScript / TypeScript, and a C ABI.
 [中文文档](README.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi)
 
-This guide describes the **0.7.0 source and APIs**, not a claim that 0.7.0 has been published. The install commands
+This guide uses **0.7.0** as its current release baseline and also covers unreleased source and APIs. The install commands
 below select versions currently available on PyPI or npm, which may lag this guide. Check the documentation shipped
 with your installed version. To use APIs not yet published, build from the full checkout using the
 [local Python wheel recipe (Chinese)](bindings/python/README.md#build-a-local-wheel) or the [WASM/npm recipe](README.md#wasm).
