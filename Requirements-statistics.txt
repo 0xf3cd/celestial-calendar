@@ -10,4 +10,5 @@ matplotlib
 scikit-learn
 skyfield
 pyerfa  # imported as `erfa`
+pymeeus==0.5.12
 jupyter

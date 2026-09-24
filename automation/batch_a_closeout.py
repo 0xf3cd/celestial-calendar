@@ -31,8 +31,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
-RECORD_SHA256: Final[str] = "95e3b6205e5a09ddf15843dba2723dd976b035ad074bbecef19d184469d74833"
-REGISTRY_SHA256: Final[str] = "3f0f18ad1c53aaa0dff4538e715d16e48173d256619ebd814b65bf8c1f40fc97"
+RECORD_SHA256: Final[str] = "455e2a6df0f96151dd02291c69781525e3b4e4083ab21d8b8b0503ff127a54df"
+REGISTRY_SHA256: Final[str] = "859a60030471c7a063f493ae8a9324bb326e9e940d2dbaa47c6dc11eea90efe1"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -140,17 +140,19 @@ SPLIT_ROW_PARTS: Final[dict[str, str]] = {
 
 REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   """
-  r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r13 r14
+  r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r12-check r12-jupiter
+  r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14
   r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
   r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
-  v02-cabi v03 v04-test v04-automation v05 v06 v07 v07-refresh v08 v09 v10 v11 v11-refresh
-  v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
+  v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v07 v07-refresh v08 v09 v10 v11 v11-refresh
+  v12 v13 v14 v15 v15-planets v16 v17 v18 v19 v20 v21 v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
   v32-sidereal v32-precession v32-earth v32-elp v32-phase v32-solar v32-rise-set
-  v32-refraction v32-julian v32-cabi v37-earth-vsop v37-earth-nutation v37-sun-geometric
+  v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
   v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
 )
+REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset({"v06-planets", "v15-planets", "v32-planets"})
 
 IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
   {
@@ -171,6 +173,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/test/astro/julian_day_test.cpp",
     "src/test/astro/moon_phase_test.cpp",
     "src/test/astro/moon_test.cpp",
+    "src/test/astro/planet_test.cpp",
     "src/test/astro/rise_set_golden_test.cpp",
     "src/test/astro/rise_set_moon_golden_test.cpp",
     "src/test/astro/sidereal_time_test.cpp",
@@ -211,7 +214,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "622f2af50b045102eeb8bf98d3c025e74b73bbfb12af2bd160a53c2d331b7187"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "344876a006d51d9cb0564b7a2007cdf5dbaec362b2d566744a67cd935e3f029c"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -336,6 +339,18 @@ EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
   "Delta T algorithms 1, 3, and 5 — source attribution": frozenset({"r05", "r07", "r09"}),
   "Hong Kong Observatory — retained lunar-year words": frozenset({"r01-algo1", "r01-algo3"}),
   "VSOP87D — retained Earth coefficients": frozenset({"r12"}),
+  "VSOP87D — retained planetary coefficients": frozenset(
+    {
+      "r12-check",
+      "r12-jupiter",
+      "r12-mars",
+      "r12-mercury",
+      "r12-neptune",
+      "r12-saturn",
+      "r12-uranus",
+      "r12-venus",
+    }
+  ),
   "Astronomical Algorithms — retained daily-variation series": frozenset({"r22"}),
   "Microsoft — statically linked C/C++ runtime portions": frozenset({"t03-native", "t03-wheel"}),
 }
@@ -826,7 +841,7 @@ def _verify_registry(
     set(registry) == {"schema", "scope", "non_project_spdx_hosts", "blocks"},
     "retained registry top-level fields differ",
   )
-  _require(registry["schema"] == 2, "retained registry schema differs")
+  _require(registry["schema"] == 3, "retained registry schema differs")
   _require(isinstance(registry["scope"], str) and registry["scope"], "retained registry scope is empty")
   _require(
     set(registry["non_project_spdx_hosts"]) == NON_PROJECT_SPDX_HOSTS,
@@ -852,8 +867,12 @@ def _verify_registry(
   base_fields = {"id", "path", "locator", "source_identity", "material_scope", "owner", "marking_mode"}
   for block in blocks:
     mode = block.get("marking_mode")
+    data_fields = {"data_start", "data_end", "data_method", "data_sha256"}
+    if block.get("id") in REQUIRED_DATA_DIGEST_IDS:
+      _require(data_fields <= set(block), f"{block['id']} retained data fields differ")
+    has_data_digest = bool(data_fields & set(block))
     mode_fields = (
-      {"marker", "marking_sha256"}
+      {"marker", "marking_sha256"} | (data_fields if has_data_digest else set())
       if mode == "in_file"
       else {
         "data_sha256",
@@ -900,6 +919,26 @@ def _verify_registry(
         f"{block['id']} retained marking hash differs: {marking_digest}",
       )
       _verify_source_identity(block, host)
+      if has_data_digest:
+        _require(data_fields <= set(block), f"{block['id']} retained data fields differ")
+        start = block["data_start"]
+        end = block["data_end"]
+        _require(
+          isinstance(start, str) and isinstance(end, str) and text.count(start) == 1 and text.count(end) == 1,
+          f"{block['id']} retained data boundary differs",
+        )
+        start_index = text.index(start)
+        end_index = text.index(end, start_index + len(start))
+        data = text[start_index:end_index]
+        if block["data_method"] == "canonical_cpp":
+          data = canonical_cpp(data)
+        elif block["data_method"] != "raw_sha256":
+          raise RuntimeError(f"{block['id']} retained data digest method differs")
+        data_digest = hashlib.sha256(data.encode()).hexdigest()
+        _require(
+          data_digest == block["data_sha256"],
+          f"{block['id']} retained data hash differs: {data_digest}",
+        )
     else:
       _verify_adjacent_record(repo_root, block, adjacent_sections)
     if "notice_title" in block:

@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Apparent geocentric ecliptic positions for Mercury through Neptune (#58), calculated from the complete
+  VSOP87D planetary series with iterative light time, annual aberration, FK5 reduction, and nutation. A
+  wrap-aware centered-longitude marker reports whether each planet is retrograde without claiming an exact
+  stationary instant.
+
 ## [v0.7.0]
 
 ### Changed
