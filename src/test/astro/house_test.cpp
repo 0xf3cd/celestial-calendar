@@ -93,6 +93,7 @@ TEST(House, SwissFormulaLevel) {
     FormulaCase { "high-latitude-north", System::WHOLE_SIGN,  183.0000000000,  89.0000000000, 23.4400000000,   2.514394277895, 183.269275002642, {   0.000000000000,  30.000000000000,  60.000000000000,  90.000000000000, 120.000000000000, 150.000000000000, 180.000000000000, 210.000000000000, 240.000000000000, 270.000000000000, 300.000000000000, 330.000000000000 } },
     FormulaCase { "high-latitude-south", System::EQUAL,         3.0000000000, -89.0000000000, 23.4400000000, 182.514394277895,   3.269275002642, { 182.514394277895, 212.514394277895, 242.514394277895, 272.514394277895, 302.514394277895, 332.514394277895,   2.514394277895,  32.514394277895,  62.514394277895,  92.514394277895, 122.514394277895, 152.514394277895 } },
     FormulaCase { "high-latitude-south", System::WHOLE_SIGN,    3.0000000000, -89.0000000000, 23.4400000000, 182.514394277895,   3.269275002642, { 180.000000000000, 210.000000000000, 240.000000000000, 270.000000000000, 300.000000000000, 330.000000000000,   0.000000000000,  30.000000000000,  60.000000000000,  90.000000000000, 120.000000000000, 150.000000000000 } },
+    FormulaCase { "whole-zero-boundary", System::WHOLE_SIGN,  270.0000000000,  60.0000000000, 23.4400000000,   0.000000000100, 270.000000000000, {   0.000000000000,  30.000000000000,  60.000000000000,  90.000000000000, 120.000000000000, 150.000000000000, 180.000000000000, 210.000000000000, 240.000000000000, 270.000000000000, 300.000000000000, 330.000000000000 } },
   };
   // NOLINTEND(modernize-use-designated-initializers)
 
@@ -224,10 +225,24 @@ TEST(House, CuspsHonorSystemStructure) {
 }
 
 TEST(House, WholeSignBoundaryBelongsToFollowingSign) {
-  ASSERT_NEAR(detail::whole_sign_start(AngleDeg { 29.999999 }).deg(), 0.0, 1e-12);
-  ASSERT_NEAR(detail::whole_sign_start(AngleDeg { 30.0 }).deg(), 30.0, 1e-12);
-  ASSERT_NEAR(detail::whole_sign_start(AngleDeg { 359.999999 }).deg(), 330.0, 1e-12);
+  for (std::size_t index = 0; index < 12; ++index) {
+    const double boundary_deg = 30.0 * static_cast<double>(index);
+    SCOPED_TRACE(boundary_deg);
+    const double preceding_deg = astro::toolbox::normalize_deg(boundary_deg - 30.0);
+    ASSERT_NEAR(detail::whole_sign_start(AngleDeg { boundary_deg - 0.000001 }).deg(), preceding_deg, 1e-12);
+    ASSERT_NEAR(detail::whole_sign_start(AngleDeg { boundary_deg }).deg(), boundary_deg, 1e-12);
+    ASSERT_NEAR(detail::whole_sign_start(AngleDeg { boundary_deg + 0.000001 }).deg(), boundary_deg, 1e-12);
+  }
   ASSERT_NEAR(detail::whole_sign_start(AngleDeg { 360.0 }).deg(), 0.0, 1e-12);
+
+  const auto exact_zero = detail::calculate(
+    AngleDeg { 270.0 },
+    AngleDeg { 60.0 },
+    AngleDeg { 23.44 },
+    System::WHOLE_SIGN
+  );
+  ASSERT_EQ(exact_zero.ascendant.deg(), 0.0);
+  ASSERT_EQ(exact_zero.cusps.front().deg(), 0.0);
 }
 
 TEST(House, PlacidusRootsHandleLongitudeSeam) {

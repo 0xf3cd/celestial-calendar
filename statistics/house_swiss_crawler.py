@@ -57,6 +57,7 @@ FORMULA_CASES: Final[tuple[FormulaCase, ...]] = (
   FormulaCase("near-polar-south", 96.94, -66.50, 23.44, "P"),
   FormulaCase("high-latitude-north", 183.0, 89.0, 23.44, "EW"),
   FormulaCase("high-latitude-south", 3.0, -89.0, 23.44, "EW"),
+  FormulaCase("whole-zero-boundary", 270.0, 60.0, 23.44, "W"),
 )
 
 DATE_CASES: Final[tuple[DateCase, ...]] = (

@@ -44,7 +44,6 @@ struct Result {
 
 namespace detail {
 
-// A 1° scan avoids assuming global monotonicity; 64 bisections then shrink its bracket below 1e-11°.
 inline constexpr std::size_t PLACIDUS_BRACKET_SEGMENTS = 360;
 inline constexpr double PLACIDUS_ROOT_TOLERANCE_DEG = 1e-11;
 inline constexpr std::size_t PLACIDUS_MAX_ITERATIONS = 64;
@@ -64,18 +63,26 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 }
 
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 14, Formula (14.2). */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the formula.
 [[nodiscard]] inline auto ascendant(
   const astro::toolbox::AngleDeg& armc,
   const astro::toolbox::AngleDeg& latitude,
   const astro::toolbox::AngleDeg& obliquity
 ) -> astro::toolbox::AngleDeg {
-  const auto horizon_intersection = astro::toolbox::AngleDeg { astro::toolbox::rad_to_deg(
-    std::atan2(
-      -std::cos(armc.rad()),
-      (std::sin(obliquity.rad()) * std::tan(latitude.rad()))
-        + (std::cos(obliquity.rad()) * std::sin(armc.rad()))
+  const auto normalized_armc = armc.normalize();
+  // Preserve cos θ = 0 at exact quadrature; one-ulp drift can cross a Whole Sign boundary (#59).
+  const double cos_armc = (normalized_armc.deg() == 90.0 or normalized_armc.deg() == 270.0)
+                        ? 0.0
+                        : std::cos(normalized_armc.rad());
+  const auto horizon_intersection = astro::toolbox::AngleDeg {
+    astro::toolbox::rad_to_deg(
+      std::atan2(
+        -cos_armc,
+        (std::sin(obliquity.rad()) * std::tan(latitude.rad()))
+          + (std::cos(obliquity.rad()) * std::sin(normalized_armc.rad()))
+      )
     )
-  ) }.normalize();
+  }.normalize();
   const auto equatorial = astro::coords::ecliptic_to_equatorial(
     horizon_intersection,
     astro::toolbox::AngleDeg { 0.0 },
@@ -89,13 +96,12 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   }
   return (horizon_intersection + astro::toolbox::AngleDeg { 180.0 }).normalize();
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /**
  * @brief Evaluate one Placidus semi-arc equation on its continuous longitude branch.
  * @see Swiss Ephemeris General Documentation, Section 6.2.1, "Placidus" (semi-arc definition) -
  *      https://www.astro.com/swisseph/swisseph.htm#placidus
- * @note Validated against Swiss Ephemeris v2.10.3bfinal `swehouse.c`, which uses an independent
- *       fixed-point formulation.
  */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the equation.
 [[nodiscard]] inline auto placidus_equation(
