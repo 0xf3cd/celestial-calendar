@@ -44,6 +44,7 @@ struct Result {
 
 namespace detail {
 
+// A 1° scan avoids assuming global monotonicity; 64 bisections then shrink its bracket below 1e-11°.
 inline constexpr std::size_t PLACIDUS_BRACKET_SEGMENTS = 360;
 inline constexpr double PLACIDUS_ROOT_TOLERANCE_DEG = 1e-11;
 inline constexpr std::size_t PLACIDUS_MAX_ITERATIONS = 64;
@@ -68,19 +69,33 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const astro::toolbox::AngleDeg& latitude,
   const astro::toolbox::AngleDeg& obliquity
 ) -> astro::toolbox::AngleDeg {
-  const double horizon_intersection = astro::toolbox::rad_to_deg(
+  const auto horizon_intersection = astro::toolbox::AngleDeg { astro::toolbox::rad_to_deg(
     std::atan2(
       -std::cos(armc.rad()),
       (std::sin(obliquity.rad()) * std::tan(latitude.rad()))
         + (std::cos(obliquity.rad()) * std::sin(armc.rad()))
     )
+  ) }.normalize();
+  const auto equatorial = astro::coords::ecliptic_to_equatorial(
+    horizon_intersection,
+    astro::toolbox::AngleDeg { 0.0 },
+    obliquity
   );
-  return astro::toolbox::AngleDeg { horizon_intersection + 180.0 }.normalize();
+  const auto hour_angle = (armc - equatorial.α).normalize();
+
+  // Formula (14.2) gives either antipode inside the polar circles; the rising branch has H >= 180°.
+  if (hour_angle.deg() >= 180.0) {
+    return horizon_intersection;
+  }
+  return (horizon_intersection + astro::toolbox::AngleDeg { 180.0 }).normalize();
 }
 
 /**
  * @brief Evaluate one Placidus semi-arc equation on its continuous longitude branch.
- * @see Swiss Ephemeris v2.10.3bfinal, `swehouse.c`, Placidus branch (independent fixed-point oracle).
+ * @see Swiss Ephemeris General Documentation, Section 6.2.1, "Placidus" (semi-arc definition) -
+ *      https://www.astro.com/swisseph/swisseph.htm#placidus
+ * @note Validated against Swiss Ephemeris v2.10.3bfinal `swehouse.c`, which uses an independent
+ *       fixed-point formulation.
  */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the equation.
 [[nodiscard]] inline auto placidus_equation(
@@ -95,6 +110,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     obliquity
   );
   double right_ascension_deg = equatorial.α.deg();
+  // α wraps at 360° while λ scans one continuous branch; lift α to keep the equation seam-free.
   if (longitude_deg > 180.0 and right_ascension_deg < 180.0) {
     right_ascension_deg += 360.0;
   }
@@ -127,6 +143,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const double start_value = placidus_equation(0.0, latitude, obliquity, cusp);
   const double end_value = placidus_equation(360.0, latitude, obliquity, cusp);
   double target_deg = armc.normalize().deg();
+  // Put the target on the same 360° branch as the endpoint values before sign-bracketing.
   while (target_deg < std::min(start_value, end_value)) {
     target_deg += 360.0;
   }
@@ -195,8 +212,8 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
 [[nodiscard]] inline auto calculate(
   const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& obliquity,
   const astro::toolbox::AngleDeg& latitude,
+  const astro::toolbox::AngleDeg& obliquity,
   const System system
 ) -> Result {
   const auto asc = ascendant(armc, latitude, obliquity);
@@ -291,9 +308,10 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
 ) -> Result {
   detail::validate(jd_ut1, jde_tt, location);
+  // `local_apparent` wants Meeus's west-positive longitude; `GeoLocation` carries east-positive.
   const auto armc = astro::sidereal::local_apparent(jd_ut1, jde_tt, -location.longitude, model);
   const auto obliquity = astro::earth::obliquity::true_obliquity(jde_tt, model);
-  return detail::calculate(armc, obliquity, location.latitude, system);
+  return detail::calculate(armc, location.latitude, obliquity, system);
 }
 
 } // namespace astro::house

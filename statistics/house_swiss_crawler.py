@@ -55,11 +55,14 @@ FORMULA_CASES: Final[tuple[FormulaCase, ...]] = (
   FormulaCase("armc-wrap", 359.9, 0.0, 23.4392911),
   FormulaCase("near-polar-north", 276.94, 66.50, 23.44, "P"),
   FormulaCase("near-polar-south", 96.94, -66.50, 23.44, "P"),
+  FormulaCase("high-latitude-north", 183.0, 89.0, 23.44, "EW"),
+  FormulaCase("high-latitude-south", 3.0, -89.0, 23.44, "EW"),
 )
 
 DATE_CASES: Final[tuple[DateCase, ...]] = (
   DateCase("j2000-greenwich", 2451545.0, 51.5, 0.0),
-  DateCase("meeus-1987-washington", 2446896.30625, 38.9215, -77.0669, "P"),
+  # Date, time, and Washington coordinates from Meeus Example 13.b.
+  DateCase("meeus-13b-washington", 2446896.30625, 38.9213888889, -77.0655555556, "P"),
   DateCase("j2000-sydney", 2451545.0, -33.8688, 151.2093, "P"),
   DateCase("east-date-line", 2461041.5, 35.0, 179.9, "P"),
   DateCase("west-date-line", 2461041.5, 35.0, -179.9, "P"),
