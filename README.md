@@ -272,6 +272,8 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - 公历与阴历日期互转。
 - 查询节气的具体时刻。
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
+- C++ 头文件提供 Ascendant、Midheaven，以及 Equal、Whole Sign、Placidus 十二宫头；地点经度东正，
+  时刻分别传入 UT1 与 TT。Placidus 在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
 - C++ 头文件提供日月及水星至海王星的地心视黄道坐标、行星逆行标记，以及太阳视赤道坐标与合朔时刻。
 - 均时差与地方真太阳时。
 - UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
