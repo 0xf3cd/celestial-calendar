@@ -274,7 +274,7 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
 - C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
   Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。
-  Placidus 在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
+  三种宫制均拒绝地理极点；Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
 - C++ 头文件提供日月及水星至海王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
@@ -405,6 +405,8 @@ python project.py --all
 - **ΔT 观测值**：NASA eclipse ΔT table、USNO observations、Stephenson & Morrison，
   为 UT1 ↔ TT 转换提供不依赖本库拟合模型的基准，见 `src/test/astro/julian_day_test.cpp`。
 - **日出日落参考**：USNO / NOAA / JPL DE，容差为 ±2 分钟。
+- **Swiss Ephemeris 2.10.3bfinal**：Equal、Whole Sign 和 Placidus 的公式级与日期级参考值，
+  由 `statistics/house_swiss_crawler.py` 生成。
 
 `statistics/` 保存数据采集脚本与评估笔记本，依赖可在虚拟环境中用
 `python -m pip install -r Requirements-statistics.txt` 安装。[参考资料](#references)保留原始来源链接。

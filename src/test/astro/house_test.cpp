@@ -67,8 +67,8 @@ struct DateCase {
 static_assert(std::is_same_v<astro::rise_set::GeoLocation, astro::GeoLocation>);
 
 TEST(House, AscendantMeeus14a) {
-  // Meeus Example 14.a prints the eastern ecliptic/horizon intersection as 169°21' and the
-  // antipodal setting point as 349°21'; the printed precision allows half an arcminute.
+  // Meeus Example 14.a prints the two horizon intersections as 169°21' and 349°21'; the former
+  // has H >= 180° and is the rising branch. The printed precision allows half an arcminute.
   const auto ascendant = detail::ascendant(AngleDeg { 75.0 }, AngleDeg { 51.0 }, AngleDeg { 23.44 });
   ASSERT_NEAR(ascendant.deg(), 169.0 + (21.0 / 60.0), 0.5 / 60.0);
 }
@@ -465,6 +465,29 @@ TEST(House, PlacidusUsesTrueObliquityDomain) {
     );
     ASSERT_NO_THROW(
       static_cast<void>(calculate(jd_ut1, jde_tt, location(between_boundaries_deg), System::PLACIDUS))
+    );
+  }
+}
+
+TEST(House, PlacidusRejectsNonPhysicalObliquity) {
+  for (const double obliquity_deg : {
+         -1.0,
+         0.0,
+         90.0,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::quiet_NaN(),
+       }) {
+    SCOPED_TRACE(obliquity_deg);
+    EXPECT_THROW(
+      static_cast<void>(
+        detail::calculate(
+          AngleDeg { 75.0 },
+          AngleDeg { 51.0 },
+          AngleDeg { obliquity_deg },
+          System::PLACIDUS
+        )
+      ),
+      std::invalid_argument
     );
   }
 }

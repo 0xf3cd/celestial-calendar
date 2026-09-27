@@ -45,7 +45,6 @@ class DateCase:
 class HouseResult:
   ascendant_deg: float
   midheaven_deg: float
-  armc_deg: float
   cusps_deg: tuple[float, ...]
 
 
@@ -124,7 +123,6 @@ class SwissEphemeris:
     return HouseResult(
       ascendant_deg=ascmc[0],
       midheaven_deg=ascmc[1],
-      armc_deg=ascmc[2],
       cusps_deg=tuple(cusps[index] for index in range(1, 13)),
     )
 

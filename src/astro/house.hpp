@@ -38,7 +38,8 @@ enum class System : uint8_t { EQUAL, WHOLE_SIGN, PLACIDUS };
  *       `midheaven`. `cusps[0]` through `cusps[11]` are the first through twelfth house cusps.
  *       Placidus places the four angles at cusps 1, 10, 7, and 4 respectively; Equal places the
  *       Ascendant and Descendant at cusps 1 and 7, while Whole Sign cusps follow sign boundaries
- *       independently of the angles.
+ *       independently of the angles. An Ascendant exactly on a sign boundary belongs to the
+ *       following sign.
  */
 struct Result {
   astro::toolbox::AngleDeg ascendant;
@@ -251,7 +252,13 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
         .cusps = uniform_cusps(whole_sign_start(asc)),
       };
     case System::PLACIDUS: {
-      if (std::fabs(latitude.deg()) >= 90.0 - obliquity.deg()) {
+      const double obliquity_deg = obliquity.deg();
+      if (not std::isfinite(obliquity_deg) or obliquity_deg <= 0.0 or obliquity_deg >= 90.0) {
+        throw std::invalid_argument {
+          std::format("Placidus requires obliquity in (0, 90) degrees, got {}", obliquity_deg)
+        };
+      }
+      if (std::fabs(latitude.deg()) >= 90.0 - obliquity_deg) {
         throw std::invalid_argument {
           std::format(
             "Placidus is undefined at latitude {} degrees for obliquity {} degrees",
@@ -317,12 +324,15 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
  * @brief Calculate the four principal angles and house cusps for an observer and instant.
  * @param jd_ut1 The Julian day on the UT1 scale.
  * @param jde_tt The Julian ephemeris day on the TT scale of the same physical instant.
- * @param location The observer's north-positive latitude and east-positive longitude.
+ * @param location The observer's north-positive latitude in (-90°, 90°) and east-positive
+ *        longitude in [-180°, 180°].
  * @param system The house system to calculate.
- * @param model The nutation model used by both apparent sidereal time and true obliquity.
+ * @param model The nutation model used by both apparent sidereal time and true obliquity. Defaults
+ *        to `astro::earth::nutation::Model::IAU_1980`.
  * @return Tropical longitudes in the true ecliptic and equinox of date, normalized to [0°, 360°).
  * @throw std::invalid_argument If an input is non-finite or outside its range, `system` is not a
- *        named enumerator, or Placidus is requested at or beyond its polar domain.
+ *        named enumerator, or Placidus is requested with a non-physical obliquity or at or beyond
+ *        its polar domain.
  * @throw std::runtime_error If a Placidus cusp cannot be bracketed or solved.
  * @note `jd_ut1` and `jde_tt` must represent the same physical instant; their scale suffixes are the guard.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 12-14.
