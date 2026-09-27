@@ -63,8 +63,8 @@ struct Separation {
  * @return The target's observer-facing illumination geometry.
  * @note Distances must share one unit; the library's spherical coordinates carry AU.
  * @note Meeus prints these equations for the Moon; the distance-triangle identities are target-neutral,
- *       with the planetary analogues discussed in Chapter 41. His (48.2) drops the Sun's latitude;
- *       the full spherical separation here keeps both latitudes.
+ *       with the planetary analogues discussed in Chapter 41. His ecliptic form beneath (48.2)
+ *       omits the Sun's latitude; the full spherical separation here keeps both latitudes.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (48.1)-(48.3).
  */
 [[nodiscard]] inline auto geometry(

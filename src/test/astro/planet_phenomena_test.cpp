@@ -321,7 +321,7 @@ TEST(PlanetPhenomena, Pre1972YearBoundaryUsesUt1Substitute) {
   // A year-68 Mercury elongation falls between the same civil midnight expressed as JD(UT1) and
   // JDE(TT). Using the bare UT1 value as TT would move it from year 67 into year 68 (#60).
   // Provenance: flip case from a year 1-1971 scan of this library's Horizons-validated chain,
-  // 2026-09-27; the boundary formula is pinned against pyerfa in `LeapSecond.UtcBoundaryFormula`.
+  // 2026-09-27.
   constexpr double boundary_event_jde_tt = 1745896.511475660838;
   const auto previous = events(Planet::MERCURY, 67);
   const auto current = events(Planet::MERCURY, 68);
