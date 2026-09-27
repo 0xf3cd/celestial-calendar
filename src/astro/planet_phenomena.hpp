@@ -443,15 +443,14 @@ inline auto append_extrema(
  *       to the library's UT1 substitute. The declared year range is a computational input domain,
  *       not an accuracy guarantee for the underlying ephemeris at remote dates.
  * @note Inner planets receive inferior/superior conjunctions, greatest elongations, and stations.
- *       Outer planets receive conjunctions, oppositions, quadratures, and stations. The exhaustive
- *       `Planet` dispatch in this function's implementation is the applicability source of truth.
+ *       Outer planets receive conjunctions, oppositions, quadratures, and stations.
  * @note Conjunction, opposition, and quadrature solve the unwrapped apparent longitude difference
- *       planet minus Sun at 360 deg k, 180 deg + 360 deg k, and +/-90 deg + 360 deg k. Conjunction
+ *       planet minus Sun at 360°·k, 180° + 360°·k, and ±90° + 360°·k. Conjunction
  *       means equal longitude, not minimum separation, distance, or equal right ascension.
  * @note Greatest elongations are local maxima of great-circle Sun-planet separation, east or west by
  *       wrapped longitude difference. `STATION_RETROGRADE` marks the direct-to-retrograde turn and
  *       `STATION_DIRECT` the reverse; latitude may still be changing. Inferior conjunctions have
- *       phase angle at least 90 deg.
+ *       phase angle at least 90°.
  */
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
   if (year < 1 or year > 32766) {

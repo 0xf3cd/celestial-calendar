@@ -503,9 +503,7 @@ namespace astro::moon_phase::illumination {
  * @param moon_pos The Moon's position, same frame as `sun_pos`.
  * @return The phase angle i, in [0°, 180°] — 0° at full moon, 180° at new moon.
  * @note The spherical law of cosines is frame-agnostic, so equatorial (α, δ) plugs into (λ, β)
- *       as-is — the golden test feeds the book's equatorial worked values directly. Meeus
- *       prints (48.2) with the solar latitude dropped; the sin β sin β₀ term is restored here,
- *       since the library carries the Sun's apparent β.
+ *       as-is — the golden test feeds the book's equatorial worked values directly.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto phase_angle(

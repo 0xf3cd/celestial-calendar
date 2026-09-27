@@ -134,7 +134,12 @@ constexpr std::array EVENT_TOLERANCES_DAYS {
   0.0035,
 };
 
-// PyMeeus 0.5.12, collected 2026-09-26 from the named event methods with a nearby Epoch.
+// PyMeeus 0.5.12, collected 2026-09-26 from these calls:
+// `Mercury.superior_conjunction(Epoch(2460716.0))`,
+// `Mercury.eastern_elongation(Epoch(2460742.8))`, `Mercury.station_longitude_1(Epoch(2460749.8))`,
+// `Mercury.inferior_conjunction(Epoch(2460759.3))`, `Mercury.station_longitude_2(Epoch(2460772.9))`,
+// `Mercury.western_elongation(Epoch(2460787.3))`, `Mars.opposition(Epoch(2460691.6))`, and
+// `Mars.conjunction(Epoch(2461049.9))`.
 // This Meeus-derived approximation layer does not provide quadratures.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense reference rows read by column.
 constexpr std::array PYMEEUS_ROWS {
@@ -312,6 +317,22 @@ TEST(PlanetPhenomena, HalfOpenOwnership) {
   EXPECT_FALSE(detail::in_year(end_jde_tt, start_jde_tt, end_jde_tt));
 }
 
+TEST(PlanetPhenomena, Pre1972YearBoundaryUsesUt1Substitute) {
+  // A year-68 Mercury elongation falls between the same civil midnight expressed as JD(UT1) and
+  // JDE(TT). Using the bare UT1 value as TT would move it from year 67 into year 68 (#60).
+  // Provenance: flip case from a year 1-1971 scan of this library's Horizons-validated chain,
+  // 2026-09-27; the boundary formula is pinned against pyerfa in `LeapSecond.UtcBoundaryFormula`.
+  constexpr double boundary_event_jde_tt = 1745896.511475660838;
+  const auto previous = events(Planet::MERCURY, 67);
+  const auto current = events(Planet::MERCURY, 68);
+
+  ASSERT_EQ(previous.size(), 19);
+  ASSERT_EQ(previous.back().kind, Kind::GREATEST_EASTERN_ELONGATION);
+  ASSERT_NEAR(previous.back().jde_tt, boundary_event_jde_tt, 1e-5);
+  ASSERT_EQ(current.size(), 20);
+  ASSERT_GT(current.front().jde_tt, boundary_event_jde_tt);
+}
+
 TEST(PlanetPhenomena, RefinerReportsNonConvergence) {
   const auto grid = detail::samples(
     Planet::MERCURY,
@@ -336,6 +357,33 @@ TEST(PlanetPhenomena, RefinerReportsNonConvergence) {
     }
   }
   ASSERT_TRUE(exercised);
+
+  const auto monotone = [](const double jde_tt) { return jde_tt; };
+  EXPECT_THROW(
+    static_cast<void>(detail::refine_extremum(Planet::MERCURY, 0.0, 1.0, true, monotone)),
+    std::runtime_error
+  );
+}
+
+TEST(PlanetPhenomena, SamplingRejectsInvalidStep) {
+  EXPECT_THROW(
+    static_cast<void>(detail::samples(
+      Planet::MERCURY,
+      {.start_jde_tt = 2460758.5, .end_jde_tt = 2460760.0, .step_days = 0.0}
+    )),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(detail::samples(
+      Planet::MERCURY,
+      {
+        .start_jde_tt = 2460758.5,
+        .end_jde_tt = 2460760.0,
+        .step_days = std::numeric_limits<double>::quiet_NaN(),
+      }
+    )),
+    std::invalid_argument
+  );
 }
 
 TEST(PlanetPhenomena, NearTangentCrossingsAreSubdivided) {

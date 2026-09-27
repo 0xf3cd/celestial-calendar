@@ -35,7 +35,15 @@
 namespace astro::planet {
 
 /** @brief A major planet whose geocentric position can be calculated. */
-enum class Planet : uint8_t { MERCURY, VENUS, MARS, JUPITER, SATURN, URANUS, NEPTUNE };
+enum class Planet : uint8_t {
+  MERCURY = 0,
+  VENUS = 1,
+  MARS = 2,
+  JUPITER = 3,
+  SATURN = 4,
+  URANUS = 5,
+  NEPTUNE = 6,
+};
 
 namespace detail {
 
