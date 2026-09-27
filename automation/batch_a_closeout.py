@@ -226,7 +226,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "4875ea36c10e20935a8b4d4a088865ee1080b9981be6774a143e2873b0c6befe"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "4c605b004c3519a0d0d3d5a28f4f52e5a09a0fa5ba2b6786609ac4d7ec7806f6"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
