@@ -126,8 +126,11 @@ struct CrossingSpec {
       std::format("Planetary event scan step must be positive, got {}", window.step_days)
     };
   }
-  const double scan_start = window.start_jde_tt - window.step_days;
-  const double scan_end = window.end_jde_tt + window.step_days;
+  // A global lattice makes adjacent year searches refine a shared extremum from the same bracket.
+  const double scan_start = std::floor((window.start_jde_tt - window.step_days) / window.step_days)
+                          * window.step_days;
+  const double scan_end = std::ceil((window.end_jde_tt + window.step_days) / window.step_days)
+                        * window.step_days;
   const auto count = static_cast<std::size_t>(std::ceil((scan_end - scan_start) / window.step_days)) + 1;
   std::vector<Sample> result;
   result.reserve(count);
@@ -257,6 +260,35 @@ template <typename Objective>
   };
 }
 
+[[nodiscard]] inline auto crossing_samples(
+  const Planet planet,
+  const std::vector<Sample>& grid
+) -> std::vector<Sample> {
+  // A coarse interval can hide two near-tangent crossings; insert each refined reversal first.
+  auto result = grid;
+  for (std::size_t index = 1; index + 1 < grid.size(); ++index) {
+    const auto& before = grid.at(index - 1);
+    const auto& current = grid.at(index);
+    const auto& after = grid.at(index + 1);
+    const bool maximum = current.difference > before.difference and current.difference > after.difference;
+    const bool minimum = current.difference < before.difference and current.difference < after.difference;
+    if (not maximum and not minimum) {
+      continue;
+    }
+
+    const auto difference = [planet, reference = current.difference](const double jde_tt) {
+      return unwrap_near(raw_difference(planet, jde_tt), reference);
+    };
+    const double jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, maximum, difference);
+    auto extremum = sample(planet, jde_tt);
+    extremum.planet_λ = unwrap_near(extremum.planet_λ, current.planet_λ);
+    extremum.difference = unwrap_near(extremum.difference, current.difference);
+    result.push_back(extremum);
+  }
+  std::ranges::sort(result, {}, &Sample::jde_tt);
+  return result;
+}
+
 [[nodiscard]] inline auto outer_kind(const int64_t level_index) -> Kind {
   const int64_t remainder = ((level_index % 4) + 4) % 4;
   switch (remainder) {
@@ -369,8 +401,9 @@ inline auto append_extrema(
     planet,
     {.start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt, .step_days = step_days}
   );
+  const auto crossing_grid = crossing_samples(planet, grid);
   std::vector<Event> candidates;
-  append_crossings(planet, planet_category, grid, candidates);
+  append_crossings(planet, planet_category, crossing_grid, candidates);
   append_extrema(planet, planet_category, grid, candidates);
 
   std::ranges::sort(candidates, {}, &Event::jde_tt);

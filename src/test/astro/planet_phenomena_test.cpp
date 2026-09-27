@@ -338,6 +338,24 @@ TEST(PlanetPhenomena, RefinerReportsNonConvergence) {
   ASSERT_TRUE(exercised);
 }
 
+TEST(PlanetPhenomena, NearTangentCrossingsAreSubdivided) {
+  // This extrapolated year has two conjunctions inside one coarse day (#60).
+  const auto saturn = events(Planet::SATURN, 29841);
+  ASSERT_EQ(std::ranges::count(saturn, Kind::CONJUNCTION, &Event::kind), 3);
+  ASSERT_EQ(saturn.size(), 5);
+}
+
+TEST(PlanetPhenomena, AdjacentWindowsShareExtremumOwnership) {
+  // Move a shared boundary through a 2025 Jupiter station (#60).
+  constexpr double boundary_jde_tt = 2460710.903609788;
+  const auto earlier = detail::search(Planet::JUPITER, boundary_jde_tt - 10.37, boundary_jde_tt, 1.0);
+  const auto later = detail::search(Planet::JUPITER, boundary_jde_tt, boundary_jde_tt + 10.0, 1.0);
+  const auto owns_station = [](const std::vector<Event>& window) {
+    return std::ranges::count(window, Kind::STATION_DIRECT, &Event::kind);
+  };
+  ASSERT_EQ(owns_station(earlier) + owns_station(later), 1);
+}
+
 TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
   constexpr std::array planets {
     Planet::MERCURY,
@@ -348,7 +366,7 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
     Planet::URANUS,
     Planet::NEPTUNE,
   };
-  constexpr std::array<int32_t, 6> years { 1, 4096, 8192, 16384, 24576, 32766 };
+  constexpr std::array<int32_t, 7> years { 1, 4096, 8192, 16384, 24576, 29841, 32766 };
 
   for (const int32_t year : years) {
     const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
