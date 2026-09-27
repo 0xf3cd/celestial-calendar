@@ -435,14 +435,23 @@ inline auto append_extrema(
  * @param planet The planet to search, from Mercury through Neptune.
  * @param year The Gregorian year, in [1, 32766].
  * @return Events in strictly increasing JDE(TT) order.
+ * @details Searches apparent geocentric ecliptic-of-date positions on a one-day candidate grid,
+ *          then refines each event independently.
  * @throw std::invalid_argument If `year` is outside [1, 32766] or `planet` is not a named enumerator.
- * @throw std::runtime_error If an apparent position is not finite or an event cannot be refined.
+ * @throw std::runtime_error If an event cannot be refined or an internal event-consistency check fails.
  * @note The year is the half-open interval [Jan 1, next Jan 1) in UTC; before 1972, UTC degrades
  *       to the library's UT1 substitute. The declared year range is a computational input domain,
  *       not an accuracy guarantee for the underlying ephemeris at remote dates.
  * @note Inner planets receive inferior/superior conjunctions, greatest elongations, and stations.
  *       Outer planets receive conjunctions, oppositions, quadratures, and stations. The exhaustive
  *       `Planet` dispatch in this function's implementation is the applicability source of truth.
+ * @note Conjunction, opposition, and quadrature solve the unwrapped apparent longitude difference
+ *       planet minus Sun at 360 deg k, 180 deg + 360 deg k, and +/-90 deg + 360 deg k. Conjunction
+ *       means equal longitude, not minimum separation, distance, or equal right ascension.
+ * @note Greatest elongations are local maxima of great-circle Sun-planet separation, east or west by
+ *       wrapped longitude difference. `STATION_RETROGRADE` marks the direct-to-retrograde turn and
+ *       `STATION_DIRECT` the reverse; latitude may still be changing. Inferior conjunctions have
+ *       phase angle at least 90 deg.
  */
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
   if (year < 1 or year > 32766) {

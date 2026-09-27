@@ -31,8 +31,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
-RECORD_SHA256: Final[str] = "455e2a6df0f96151dd02291c69781525e3b4e4083ab21d8b8b0503ff127a54df"
-REGISTRY_SHA256: Final[str] = "859a60030471c7a063f493ae8a9324bb326e9e940d2dbaa47c6dc11eea90efe1"
+RECORD_SHA256: Final[str] = "11050f910f8e599c6d88349e4eb2a615a310e4e8563754cfe5da0fcfc53c3298"
+REGISTRY_SHA256: Final[str] = "cc88527ea67facea0b591b6b7e6d1cf60f65e026b13bbc860e244959653a7278"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -89,7 +89,7 @@ DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
     "retained_under_owner_risk_acceptance",
     "retained_third_party_outside_mit",
     "output_conditional",
-  ): frozenset({"V15", "V16", "V17", "V18", "V19"}),
+  ): frozenset({"V15", "V16", "V17", "V18", "V19", "V44"}),
   (
     "retained_under_owner_risk_acceptance",
     "retained_third_party_outside_mit",
@@ -144,15 +144,27 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14
   r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
   r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
-  v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v07 v07-refresh v08 v09 v10 v11 v11-refresh
-  v12 v13 v14 v15 v15-planets v16 v17 v18 v19 v20 v21 v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
+  v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v06-illumination v06-phenomena v07 v07-refresh
+  v08 v09 v10 v11 v11-refresh v12 v13 v14 v15 v15-planets v15-phenomena v16 v17 v18 v19 v20 v21
+  v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
   v32-sidereal v32-precession v32-earth v32-elp v32-phase v32-solar v32-rise-set
   v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
-  v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian notice-emscripten
+  v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v44-aaplus-phenomena
+  notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
 )
-REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset({"v06-planets", "v15-planets", "v32-planets"})
+REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
+  {
+    "v06-planets",
+    "v06-illumination",
+    "v06-phenomena",
+    "v15-planets",
+    "v15-phenomena",
+    "v32-planets",
+    "v44-aaplus-phenomena",
+  }
+)
 
 IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
   {
@@ -214,7 +226,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "344876a006d51d9cb0564b7a2007cdf5dbaec362b2d566744a67cd935e3f029c"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "4875ea36c10e20935a8b4d4a088865ee1080b9981be6774a143e2873b0c6befe"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -273,7 +285,7 @@ RESIDUAL_GPL_ALLOWLIST: Final[Counter[tuple[str, str]]] = Counter(
   }
 )
 ROW_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
-  r"\b(?:R(?:0[1-9]|[12][0-9]|3[0-7])|V(?:0[1-9]|[1-3][0-9]|4[0-3])|T0[1-3])\b"
+  r"\b(?:R(?:0[1-9]|[12][0-9]|3[0-7])|V(?:0[1-9]|[1-3][0-9]|4[0-4])|T0[1-3])\b"
 )
 MARKING_PHRASES: Final[tuple[str, ...]] = (
   "Retained material boundary",
@@ -296,6 +308,7 @@ SOURCE_FAMILIES: Final[tuple[tuple[str, ...], ...]] = (
   ("jpl horizons", "horizons"),
   ("usno", "us naval observatory"),
   ("pymeeus",),
+  ("aa+", "aaplus"),
   ("skyfield",),
   ("pyerfa",),
   ("nist",),

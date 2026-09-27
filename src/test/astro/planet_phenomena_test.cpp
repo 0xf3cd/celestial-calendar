@@ -22,8 +22,8 @@
 
 #include "planet_phenomena.hpp"
 
-// Retained material boundary: V06 identifies the JPL Horizons rows. They remain under their
-// source terms and outside the project MIT grant.
+// Retained material boundaries: V06 identifies the JPL Horizons rows, V15 the PyMeeus rows, and
+// V44 the AA+ rows. They remain under their source terms and outside the project MIT grant.
 
 namespace astro::planet::phenomena::test {
 
@@ -120,9 +120,9 @@ constexpr std::array WINDOWS {
 };
 
 // Measured 2025 maxima (library-vs-Horizons event epoch / 6h-vs-3h source mesh), in days:
-// Mercury .000376/.000567, Venus .000132/.000288, Mars .000031/.000048,
-// Jupiter .001297/.000087, Saturn .001497/.000066, Uranus .000635/.000105,
-// Neptune .001131/.000360. Tolerances are about 3x the larger value, rounded outward.
+// Mercury .000344/.000567, Venus .000102/.000288, Mars .000031/.000048,
+// Jupiter .001275/.000087, Saturn .001518/.000066, Uranus .000563/.000105,
+// Neptune .001155/.000360. Tolerances span 2.96-4.17x the larger value.
 // Near-Sun conjunction maxima are smaller: .000035 day for Mercury and .000002 for Venus.
 constexpr std::array EVENT_TOLERANCES_DAYS {
   0.0020,
@@ -354,6 +354,10 @@ TEST(PlanetPhenomena, AdjacentWindowsShareExtremumOwnership) {
     return std::ranges::count(window, Kind::STATION_DIRECT, &Event::kind);
   };
   ASSERT_EQ(owns_station(earlier) + owns_station(later), 1);
+}
+
+TEST(PlanetPhenomena, PublicSearchUsesOneDayCandidateGrid) {
+  ASSERT_DOUBLE_EQ(detail::COARSE_STEP_DAYS, 1.0);
 }
 
 TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {

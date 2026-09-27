@@ -102,9 +102,9 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
-  assert RECORD_SHA256 == "455e2a6df0f96151dd02291c69781525e3b4e4083ab21d8b8b0503ff127a54df"
-  assert REGISTRY_SHA256 == "859a60030471c7a063f493ae8a9324bb326e9e940d2dbaa47c6dc11eea90efe1"
-  assert verify_batch_a_closeout() == CloseoutCounts(57, 101, 56, 2, 15)
+  assert RECORD_SHA256 == "11050f910f8e599c6d88349e4eb2a615a310e4e8563754cfe5da0fcfc53c3298"
+  assert REGISTRY_SHA256 == "cc88527ea67facea0b591b6b7e6d1cf60f65e026b13bbc860e244959653a7278"
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 105, 58, 2, 15)
 
 
 @pytest.mark.parametrize(
@@ -130,7 +130,7 @@ def test_closeout_row_mutations_fail(tmp_path, mutation, message):
   if mutation == "missing-row":
     del rows["V18"]
   elif mutation == "unexpected-row":
-    rows["V42"] = dict(rows["V18"])
+    rows["V45"] = dict(rows["V18"])
   elif mutation == "incomplete-split":
     del rows["R17"]["covered_part"]
   elif mutation == "wrong-shape":
@@ -221,7 +221,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 101, 56, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -356,7 +356,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 101, 56, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
 
 
 @pytest.mark.parametrize(
@@ -520,7 +520,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(57, 101, 56, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

@@ -261,9 +261,11 @@ namespace observation {
  * @param planet The planet to calculate, from Mercury through Neptune.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return Great-circle separation from the Sun, target-centered phase angle, and illuminated fraction.
+ * @details Uses the apparent geocentric positions from `sun::geocentric_coord::apparent` and
+ *          `planet::geocentric_coord::apparent`, inheriting their model scope.
  * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite result.
- * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (48.1)-(48.3).
+ * @see astro::illumination::geometry
  */
 [[nodiscard]] inline auto geometry(const Planet planet, const double jde_tt) -> astro::illumination::Geometry {
   const auto source_pos = astro::sun::geocentric_coord::apparent(jde_tt);

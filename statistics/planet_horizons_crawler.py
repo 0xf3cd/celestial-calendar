@@ -207,10 +207,11 @@ def fetch_horizons(
   epochs: tuple[float, ...],
   quantities: str = "20,23,31",
 ) -> tuple[HorizonsRow, ...]:
-  response = requests.get(HORIZONS_URL, params=horizons_params(target, epochs, quantities), timeout=60)
+  requested_epochs = tuple(round(jde, 6) for jde in epochs)
+  response = requests.get(HORIZONS_URL, params=horizons_params(target, requested_epochs, quantities), timeout=60)
   response.raise_for_status()
   required_columns = tuple(column for quantity in quantities.split(",") for column in QUANTITY_COLUMNS[quantity])
-  return parse_horizons_response(target, response.text, required_columns, epochs)
+  return parse_horizons_response(target, response.text, required_columns, requested_epochs)
 
 
 def fetch_horizons_batched(
@@ -576,10 +577,9 @@ def emit_geometry_rows() -> None:
 
 
 def crawl_events() -> None:
-  # UTC year boundaries rendered in TT. Modern TT-UTC is 69.184 seconds throughout both years.
+  # UTC year boundaries rendered in TT. Modern TT-UTC is 69.184 seconds throughout this year.
   year_bounds = {
     2025: (2460676.500800741, 2461041.500800741),
-    2026: (2461041.500800741, 2461406.500800741),
   }
   all_events = []
   for year, (start_jde, end_jde) in year_bounds.items():

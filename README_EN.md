@@ -234,10 +234,11 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
-The C++-only [`planet.hpp`](src/astro/planet.hpp) and [`planet_phenomena.hpp`](src/astro/planet_phenomena.hpp)
-provide planetary illumination geometry and yearly conjunction, opposition, quadrature, greatest-elongation, and
-station searches. Event instants are JDE(TT); Gregorian-year ownership follows UTC boundaries. The `[1, 32766]`
-input domain is a computational limit, not a remote-date ephemeris accuracy guarantee.
+The C++-only [`illumination.hpp`](src/astro/illumination.hpp), [`planet.hpp`](src/astro/planet.hpp), and
+[`planet_phenomena.hpp`](src/astro/planet_phenomena.hpp) provide planetary illumination geometry and yearly
+conjunction, opposition, quadrature, greatest-elongation, and station searches. Event instants are JDE(TT);
+Gregorian-year ownership follows UTC boundaries, degrading to the library's UT1 substitute before 1972. The
+`[1, 32766]` input domain is a computational limit, not a remote-date ephemeris accuracy guarantee.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

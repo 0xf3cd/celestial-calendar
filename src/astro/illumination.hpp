@@ -62,6 +62,8 @@ struct Separation {
  * @param target_pos The target body's position in the same spherical frame as `source_pos`.
  * @return The target's observer-facing illumination geometry.
  * @note Distances must share one unit; the library's spherical coordinates carry AU.
+ * @note Meeus prints these equations for the Moon; the distance-triangle identities are target-neutral,
+ *       with the planetary analogues discussed in Chapter 41.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (48.1)-(48.3).
  */
 [[nodiscard]] inline auto geometry(
