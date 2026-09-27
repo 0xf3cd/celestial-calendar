@@ -20,6 +20,7 @@
 #include <string_view>
 
 #include "earth.hpp"
+#include "illumination.hpp"
 #include "julian_day.hpp"
 #include "sun.hpp"
 #include "toolbox.hpp"
@@ -34,7 +35,15 @@
 namespace astro::planet {
 
 /** @brief A major planet whose geocentric position can be calculated. */
-enum class Planet : uint8_t { MERCURY, VENUS, MARS, JUPITER, SATURN, URANUS, NEPTUNE };
+enum class Planet : uint8_t {
+  MERCURY = 0,
+  VENUS = 1,
+  MARS = 2,
+  JUPITER = 3,
+  SATURN = 4,
+  URANUS = 5,
+  NEPTUNE = 6,
+};
 
 namespace detail {
 
@@ -252,5 +261,26 @@ namespace geocentric_coord {
 }
 
 } // namespace geocentric_coord
+
+namespace observation {
+
+/**
+ * @brief Calculate observer-facing geometry for a major planet.
+ * @param planet The planet to calculate, from Mercury through Neptune.
+ * @param jde_tt The Julian Ephemeris Day based on TT.
+ * @return Great-circle separation from the Sun, target-centered phase angle, and illuminated fraction.
+ * @details Uses the apparent geocentric positions from `sun::geocentric_coord::apparent` and
+ *          `planet::geocentric_coord::apparent`, inheriting their model scope.
+ * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite result.
+ * @see astro::illumination::geometry
+ */
+[[nodiscard]] inline auto geometry(const Planet planet, const double jde_tt) -> astro::illumination::Geometry {
+  const auto source_pos = astro::sun::geocentric_coord::apparent(jde_tt);
+  const auto target_pos = astro::planet::geocentric_coord::apparent(planet, jde_tt);
+  return astro::illumination::geometry(source_pos, target_pos);
+}
+
+} // namespace observation
 
 } // namespace astro::planet
