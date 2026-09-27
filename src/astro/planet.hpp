@@ -20,6 +20,7 @@
 #include <string_view>
 
 #include "earth.hpp"
+#include "illumination.hpp"
 #include "julian_day.hpp"
 #include "sun.hpp"
 #include "toolbox.hpp"
@@ -252,5 +253,24 @@ namespace geocentric_coord {
 }
 
 } // namespace geocentric_coord
+
+namespace observation {
+
+/**
+ * @brief Calculate observer-facing geometry for a major planet.
+ * @param planet The planet to calculate, from Mercury through Neptune.
+ * @param jde_tt The Julian Ephemeris Day based on TT.
+ * @return Great-circle separation from the Sun, target-centered phase angle, and illuminated fraction.
+ * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite result.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (48.1)-(48.3).
+ */
+[[nodiscard]] inline auto geometry(const Planet planet, const double jde_tt) -> astro::illumination::Geometry {
+  const auto source_pos = astro::sun::geocentric_coord::apparent(jde_tt);
+  const auto target_pos = astro::planet::geocentric_coord::apparent(planet, jde_tt);
+  return astro::illumination::geometry(source_pos, target_pos);
+}
+
+} // namespace observation
 
 } // namespace astro::planet

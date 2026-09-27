@@ -8,6 +8,11 @@
   VSOP87D planetary series with iterative light time, annual aberration, FK5 reduction, and nutation. A
   wrap-aware centered-longitude marker reports whether each planet is retrograde without claiming an exact
   stationary instant.
+- Target-neutral illumination geometry and observer-facing planetary separation, phase angle, and illuminated
+  fraction, with the existing Moon illumination API retained as a thin wrapper (#60).
+- Gregorian-year searches for planetary longitude conjunctions, oppositions, quadratures, spherical greatest
+  elongations, and exact longitude stations (#60). Results are ordered JDE(TT) events owned by half-open UTC year
+  boundaries; the `[1, 32766]` input domain is not a remote-date ephemeris accuracy guarantee.
 
 ## [v0.7.0]
 

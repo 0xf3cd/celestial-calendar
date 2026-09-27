@@ -25,6 +25,7 @@
 #include "datetime.hpp"
 #include "julian_day.hpp"
 #include "coord_transform.hpp"
+#include "illumination.hpp"
 
 #include "sun.hpp"
 #include "moon.hpp"
@@ -511,24 +512,7 @@ namespace astro::moon_phase::illumination {
   const astro::toolbox::SphericalCoordinate& sun_pos,
   const astro::toolbox::SphericalCoordinate& moon_pos
 ) -> astro::toolbox::AngleDeg {
-  const double sin_βs = std::sin(sun_pos.β.rad());
-  const double cos_βs = std::cos(sun_pos.β.rad());
-  const double sin_βm = std::sin(moon_pos.β.rad());
-  const double cos_βm = std::cos(moon_pos.β.rad());
-  const double Δλ = (moon_pos.λ - sun_pos.λ).rad();
-
-  // Geocentric elongation ψ, (48.2). ψ ∈ [0°, 180°], so sin ψ ≥ 0 and the root is safe.
-  // The clamp closes the floating-point corner where cos_ψ lands an ulp outside [-1, 1]
-  // (same guard as coord_transform.hpp's asin inputs): sqrt of a hair below zero is NaN.
-  const double cos_ψ = std::clamp((sin_βs * sin_βm) + (cos_βs * cos_βm * std::cos(Δλ)), -1.0, 1.0);
-  const double sin_ψ = std::sqrt(1.0 - (cos_ψ * cos_ψ));
-
-  // (48.3): atan2 keeps i in [0°, 180°] with no quadrant bookkeeping — near conjunction
-  // Δ − R·cos ψ < 0 and i lands above 90°, as a dark disk requires.
-  const double R_km = sun_pos.r.km();
-  const double Δ_km = moon_pos.r.km();
-  const auto i_rad = astro::toolbox::AngleRad { std::atan2(R_km * sin_ψ, Δ_km - (R_km * cos_ψ)) };
-  return astro::toolbox::AngleDeg { i_rad };
+  return astro::illumination::geometry(sun_pos, moon_pos).phase_angle;
 }
 
 /**
@@ -593,7 +577,7 @@ namespace astro::moon_phase::illumination {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& i) -> double {
-  return (1.0 + std::cos(i.rad())) / 2.0;
+  return astro::illumination::detail::fraction(i);
 }
 
 /**
