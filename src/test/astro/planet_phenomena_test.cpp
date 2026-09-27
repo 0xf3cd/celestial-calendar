@@ -122,7 +122,7 @@ constexpr std::array WINDOWS {
 // Measured 2025 maxima (library-vs-Horizons event epoch / 6h-vs-3h source mesh), in days:
 // Mercury .000344/.000567, Venus .000102/.000288, Mars .000031/.000048,
 // Jupiter .001275/.000087, Saturn .001518/.000066, Uranus .000563/.000105,
-// Neptune .001155/.000360. Tolerances span 2.96-4.17x the larger value.
+// Neptune .001155/.000360.
 // Near-Sun conjunction maxima are smaller: .000035 day for Mercury and .000002 for Venus.
 constexpr std::array EVENT_TOLERANCES_DAYS {
   0.0020,
