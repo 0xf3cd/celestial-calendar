@@ -150,6 +150,25 @@ TEST(Illumination, IdenticalDirectionsRemainFinite) {
   ASSERT_DOUBLE_EQ(result.illuminated_fraction, 0.0);
 }
 
+TEST(Illumination, NearCoincidentDirectionsPreserveGeometry) {
+  const astro::toolbox::SphericalCoordinate source_pos {
+    .λ = astro::toolbox::AngleDeg { 0.0 },
+    .β = astro::toolbox::AngleDeg { 0.0 },
+    .r = astro::toolbox::DistanceAu { 1.0 },
+  };
+  const astro::toolbox::SphericalCoordinate target_pos {
+    .λ = astro::toolbox::AngleDeg { 1e-7 },
+    .β = astro::toolbox::AngleDeg { 0.0 },
+    .r = astro::toolbox::DistanceAu { 1.0 },
+  };
+
+  // Equal radii form an isosceles triangle: i = (180° - ψ) / 2 and k = (1 + cos i) / 2.
+  const auto result = geometry(source_pos, target_pos);
+  ASSERT_NEAR(result.angular_separation.deg(), 1e-7, 1e-15);
+  ASSERT_NEAR(result.phase_angle.deg(), 89.99999995, 1e-9);
+  ASSERT_NEAR(result.illuminated_fraction, 0.5000000004363323, 1e-12);
+}
+
 TEST(Illumination, HorizonsPlanetaryGeometry) {
   for (const auto& row : HORIZONS_ROWS) {
     const auto result = astro::planet::observation::geometry(row.planet, row.jde_tt);

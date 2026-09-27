@@ -37,16 +37,31 @@ struct Separation {
   const astro::toolbox::SphericalCoordinate& source_pos,
   const astro::toolbox::SphericalCoordinate& target_pos
 ) -> Separation {
-  const double sin_βs = std::sin(source_pos.β.rad());
-  const double cos_βs = std::cos(source_pos.β.rad());
-  const double sin_βt = std::sin(target_pos.β.rad());
-  const double cos_βt = std::cos(target_pos.β.rad());
+  const double βs = source_pos.β.rad();
+  const double βt = target_pos.β.rad();
   const double Δλ = (target_pos.λ - source_pos.λ).rad();
+  if (Δλ == 0.0 and βs == βt) {
+    return { .cos_ψ = 1.0, .sin_ψ = 0.0 };
+  }
+
+  const double sin_βs = std::sin(βs);
+  const double cos_βs = std::cos(βs);
+  const double sin_βt = std::sin(βt);
+  const double cos_βt = std::cos(βt);
 
   const double cos_ψ = std::clamp((sin_βs * sin_βt) + (cos_βs * cos_βt * std::cos(Δλ)), -1.0, 1.0);
+  // The equivalent cross-product norm preserves separations too small to survive 1 - cos²ψ.
+  const double sin_ψ = std::clamp(
+    std::hypot(
+      cos_βt * std::sin(Δλ),
+      (cos_βs * sin_βt) - (sin_βs * cos_βt * std::cos(Δλ))
+    ),
+    0.0,
+    1.0
+  );
   return {
     .cos_ψ = cos_ψ,
-    .sin_ψ = std::sqrt(1.0 - (cos_ψ * cos_ψ)),
+    .sin_ψ = sin_ψ,
   };
 }
 
@@ -77,8 +92,13 @@ struct Separation {
   };
   const double R_km = source_pos.r.km();
   const double Δ_km = target_pos.r.km();
+  const double one_minus_cos_ψ = ψ.cos_ψ < 0.0
+    ? 1.0 - ψ.cos_ψ
+    : (ψ.sin_ψ * ψ.sin_ψ) / (1.0 + ψ.cos_ψ);
   const auto phase_angle = astro::toolbox::AngleDeg {
-    astro::toolbox::AngleRad { std::atan2(R_km * ψ.sin_ψ, Δ_km - (R_km * ψ.cos_ψ)) }
+    astro::toolbox::AngleRad {
+      std::atan2(R_km * ψ.sin_ψ, (Δ_km - R_km) + (R_km * one_minus_cos_ψ))
+    }
   };
 
   return {
