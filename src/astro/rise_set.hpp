@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "geolocation.hpp"
 #include "toolbox.hpp"
 #include "datetime.hpp"
 #include "julian_day.hpp"
@@ -145,11 +146,9 @@ inline constexpr double EDGE_PROBE_TOLERANCE_DAYS = 1e-6;
 #pragma region Types
 
 /**
- * @brief An observer's location on the Earth.
- * @note `longitude` is **positive east** of Greenwich (the modern/ISO 6709 convention),
- *       in [-180°, 180°]. This is the opposite of Meeus's west-positive convention used by
- *       `sidereal::local_apparent`; the negation happens inside this namespace, so callers
- *       never deal with west-positive longitudes.
+ * @brief Backward-compatible name for the common observer location type.
+ * @note Longitude is positive east. This is the opposite of Meeus's west-positive convention used
+ *       by `sidereal::local_apparent`; the negation happens inside this namespace.
  * @note +180° and -180° name the same meridian but are NOT interchangeable for the
  *       date-anchored solar APIs (`sun::transit_jde`, `sun::calculate`): the date input is a
  *       UT1 date, so they select transit-centered windows one day apart (local mean noon at
@@ -158,10 +157,7 @@ inline constexpr double EDGE_PROBE_TOLERANCE_DAYS = 1e-6;
  *       APIs (`calculate_day`, `moon::calculate`) the window is determined by `ymd_ut1` alone,
  *       and the two signs give identical results.
  */
-struct GeoLocation {
-  astro::toolbox::AngleDeg latitude;  // North-positive, [-90°, 90°].
-  astro::toolbox::AngleDeg longitude; // East-positive, [-180°, 180°].
-};
+using GeoLocation = astro::GeoLocation;
 
 /**
  * @brief The whole-day topology of a date: whether the body crosses h₀ at all, and if not,

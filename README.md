@@ -272,6 +272,9 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - 公历与阴历日期互转。
 - 查询节气的具体时刻。
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
+- C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
+  Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。
+  三种宫制均拒绝地理极点；Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
 - C++ 头文件提供日月及水星至海王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
@@ -402,6 +405,8 @@ python project.py --all
 - **ΔT 观测值**：NASA eclipse ΔT table、USNO observations、Stephenson & Morrison，
   为 UT1 ↔ TT 转换提供不依赖本库拟合模型的基准，见 `src/test/astro/julian_day_test.cpp`。
 - **日出日落参考**：USNO / NOAA / JPL DE，容差为 ±2 分钟。
+- **Swiss Ephemeris 2.10.3bfinal**：Equal、Whole Sign 和 Placidus 的公式级与日期级参考值，
+  由 `statistics/house_swiss_crawler.py` 生成。
 
 `statistics/` 保存数据采集脚本与评估笔记本，依赖可在虚拟环境中用
 `python -m pip install -r Requirements-statistics.txt` 安装。[参考资料](#references)保留原始来源链接。
@@ -554,6 +559,7 @@ CI 产物另见[上一节](#artifacts)。发布新版本的维护者须遵循 [`
 * [Morrison, Stephenson, Hohenkerk & Zawilski, 2021 addendum to "Measurement of the Earth's rotation"](https://doi.org/10.1098/rspa.2020.0776)
 * [vsop87c](https://github.com/hongzhen/vsop87c)
 * [PyMeeus](https://github.com/architest/pymeeus)
+* [Swiss Ephemeris v2.10.3bfinal](https://github.com/aloistr/swisseph/tree/v2.10.3bfinal)
 * [meeus-elp82](https://www.celestialprogramming.com/meeus-elp82.html)
 * [AA+ v2.55 A class framework for Computational Astronomy](http://www.naughter.com/aa.html)
 * [Xu Jianwei, 寿星万年历2008版(V1.3.2)](https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm)
