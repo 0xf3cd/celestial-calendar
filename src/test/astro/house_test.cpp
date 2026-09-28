@@ -494,6 +494,25 @@ TEST(House, PlacidusRejectsNonPhysicalObliquity) {
   }
 }
 
+TEST(House, NonPlacidusDoesNotUsePlacidusObliquityDomain) {
+  for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+    for (const double obliquity_deg : { -1.0, 0.0, 90.0 }) {
+      SCOPED_TRACE(static_cast<uint8_t>(system));
+      SCOPED_TRACE(obliquity_deg);
+      EXPECT_NO_THROW(
+        static_cast<void>(
+          detail::calculate(
+            AngleDeg { 75.0 },
+            AngleDeg { 51.0 },
+            AngleDeg { obliquity_deg },
+            system
+          )
+        )
+      );
+    }
+  }
+}
+
 TEST(House, PlacidusReportsNonConvergence) {
   EXPECT_THROW(
     static_cast<void>(
