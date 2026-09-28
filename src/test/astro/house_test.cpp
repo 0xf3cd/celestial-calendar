@@ -75,7 +75,7 @@ TEST(House, AscendantMeeus14a) {
 
 TEST(House, SwissFormulaLevel) {
   // Generated on 2026-09-25 by statistics/house_swiss_crawler.py from Swiss Ephemeris
-  // v2.10.3bfinal `swe_houses_armc_ex2`. The separate 3e-6° tolerance covers the reference
+  // v2.10.3bfinal `swe_houses_armc_ex2`. The 3e-6° formula-level tolerance covers the reference
   // solver's loss of precision immediately inside the Placidus polar limit.
   // NOLINTBEGIN(modernize-use-designated-initializers): positional columns mirror the crawler output.
   const std::array dataset {
@@ -526,6 +526,22 @@ TEST(House, PlacidusReportsNonConvergence) {
     ),
     std::runtime_error
   );
+}
+
+TEST(House, PlacidusReportsBracketFailure) {
+  try {
+    static_cast<void>(
+      detail::placidus_cusp(
+        AngleDeg { 270.0 },
+        AngleDeg { -90.0 },
+        AngleDeg { 23.44 },
+        detail::PlacidusCusp::TWELVE
+      )
+    );
+    FAIL() << "Expected a Placidus bracket failure";
+  } catch (const std::runtime_error& error) {
+    EXPECT_STREQ(error.what(), "Failed to bracket a Placidus house cusp");
+  }
 }
 
 } // namespace astro::house::test

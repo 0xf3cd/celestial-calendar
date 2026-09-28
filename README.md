@@ -559,6 +559,7 @@ CI 产物另见[上一节](#artifacts)。发布新版本的维护者须遵循 [`
 * [Morrison, Stephenson, Hohenkerk & Zawilski, 2021 addendum to "Measurement of the Earth's rotation"](https://doi.org/10.1098/rspa.2020.0776)
 * [vsop87c](https://github.com/hongzhen/vsop87c)
 * [PyMeeus](https://github.com/architest/pymeeus)
+* [Swiss Ephemeris v2.10.3bfinal](https://github.com/aloistr/swisseph/tree/v2.10.3bfinal)
 * [meeus-elp82](https://www.celestialprogramming.com/meeus-elp82.html)
 * [AA+ v2.55 A class framework for Computational Astronomy](http://www.naughter.com/aa.html)
 * [Xu Jianwei, 寿星万年历2008版(V1.3.2)](https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm)

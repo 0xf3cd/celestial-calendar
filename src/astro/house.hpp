@@ -36,10 +36,10 @@ enum class System : uint8_t { EQUAL, WHOLE_SIGN, PLACIDUS };
  * @brief The four principal angles and twelve cusps of a house calculation.
  * @note `descendant` and `imum_coeli` are the respective antipodes of `ascendant` and
  *       `midheaven`. `cusps[0]` through `cusps[11]` are the first through twelfth house cusps.
- *       Placidus places the four angles at cusps 1, 10, 7, and 4 respectively; Equal places the
- *       Ascendant and Descendant at cusps 1 and 7, while Whole Sign cusps follow sign boundaries
- *       independently of the angles. An Ascendant exactly on a sign boundary belongs to the
- *       following sign.
+ *       Placidus places the four angles at the first, tenth, seventh, and fourth house cusps,
+ *       respectively; Equal places the Ascendant and Descendant at the first and seventh house
+ *       cusps, while Whole Sign cusps follow sign boundaries independently of the angles. An
+ *       Ascendant exactly on a sign boundary belongs to the following sign.
  */
 struct Result {
   astro::toolbox::AngleDeg ascendant;
@@ -108,7 +108,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 /**
  * @brief Evaluate one Placidus semi-arc equation on its continuous longitude branch.
  * @see Swiss Ephemeris General Documentation, Section 6.2.1, "Placidus" (semi-arc definition) -
- *      https://www.astro.com/swisseph/swisseph.htm#placidus
+ *      https://www.astro.com/swisseph/swisseph.htm
  */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the equation.
 [[nodiscard]] inline auto placidus_equation(
