@@ -69,6 +69,10 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   }.normalize();
 }
 
+[[nodiscard]] inline auto antipode(const astro::toolbox::AngleDeg& angle) -> astro::toolbox::AngleDeg {
+  return (angle + astro::toolbox::AngleDeg { 180.0 }).normalize();
+}
+
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 14, Formula (14.2). */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the formula.
 [[nodiscard]] inline auto ascendant(
@@ -101,7 +105,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   if (hour_angle.deg() >= 180.0) {
     return horizon_intersection;
   }
-  return (horizon_intersection + astro::toolbox::AngleDeg { 180.0 }).normalize();
+  return antipode(horizon_intersection);
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
@@ -164,48 +168,92 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     target_deg -= 360.0;
   }
 
+  const auto residual = [&latitude, &obliquity, cusp, target_deg](const double longitude_deg) {
+    return placidus_equation(longitude_deg, latitude, obliquity, cusp) - target_deg;
+  };
+  const auto refine = [&residual, max_iterations](
+    double left_deg,
+    double left_residual,
+    double right_deg
+  ) -> astro::toolbox::AngleDeg {
+    for (std::size_t iteration = 0; iteration < max_iterations; ++iteration) {
+      const double midpoint_deg = std::midpoint(left_deg, right_deg);
+      const double midpoint_residual = residual(midpoint_deg);
+      if (std::fabs(midpoint_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG
+          or (right_deg - left_deg) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
+        return astro::toolbox::AngleDeg { midpoint_deg }.normalize();
+      }
+      if (std::signbit(left_residual) == std::signbit(midpoint_residual)) {
+        left_deg = midpoint_deg;
+        left_residual = midpoint_residual;
+      } else {
+        right_deg = midpoint_deg;
+      }
+    }
+
+    throw std::runtime_error { "Placidus house-cusp solver did not converge" };
+  };
+
   double left_deg = 0.0;
   double left_residual = start_value - target_deg;
   if (std::fabs(left_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
     return astro::toolbox::AngleDeg { 0.0 };
   }
 
-  std::size_t segment = 1;
-  double right_deg = 1.0;
-  double right_residual = 0.0;
-  for (; segment <= PLACIDUS_BRACKET_SEGMENTS; ++segment) {
-    right_deg = 360.0 * static_cast<double>(segment) / static_cast<double>(PLACIDUS_BRACKET_SEGMENTS);
-    right_residual = placidus_equation(right_deg, latitude, obliquity, cusp) - target_deg;
+  for (std::size_t segment = 1; segment <= PLACIDUS_BRACKET_SEGMENTS; ++segment) {
+    const double right_deg = 360.0 * static_cast<double>(segment) / static_cast<double>(PLACIDUS_BRACKET_SEGMENTS);
+    const double right_residual = residual(right_deg);
     if (std::fabs(right_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
       return astro::toolbox::AngleDeg { right_deg }.normalize();
     }
     if (std::signbit(left_residual) != std::signbit(right_residual)) {
-      break;
+      return refine(left_deg, left_residual, right_deg);
     }
     left_deg = right_deg;
     left_residual = right_residual;
   }
 
-  if (segment > PLACIDUS_BRACKET_SEGMENTS) [[unlikely]] {
-    throw std::runtime_error { "Failed to bracket a Placidus house cusp" };
+  throw std::runtime_error { "Failed to bracket a Placidus house cusp" };
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the house frame.
+[[nodiscard]] inline auto placidus_cusps(
+  const astro::toolbox::AngleDeg& armc,
+  const astro::toolbox::AngleDeg& latitude,
+  const astro::toolbox::AngleDeg& obliquity,
+  const astro::toolbox::AngleDeg& ascendant,
+  const astro::toolbox::AngleDeg& midheaven
+) -> std::array<astro::toolbox::AngleDeg, 12> {
+  const double obliquity_deg = obliquity.deg();
+  if (std::fabs(latitude.deg()) >= 90.0 - obliquity_deg) {
+    throw std::invalid_argument {
+      std::format(
+        "Placidus is undefined at latitude {} degrees for obliquity {} degrees",
+        latitude.deg(),
+        obliquity_deg
+      )
+    };
   }
 
-  for (std::size_t iteration = 0; iteration < max_iterations; ++iteration) {
-    const double midpoint_deg = std::midpoint(left_deg, right_deg);
-    const double midpoint_residual = placidus_equation(midpoint_deg, latitude, obliquity, cusp) - target_deg;
-    if (std::fabs(midpoint_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG
-        or (right_deg - left_deg) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
-      return astro::toolbox::AngleDeg { midpoint_deg }.normalize();
-    }
-    if (std::signbit(left_residual) == std::signbit(midpoint_residual)) {
-      left_deg = midpoint_deg;
-      left_residual = midpoint_residual;
-    } else {
-      right_deg = midpoint_deg;
-    }
-  }
-
-  throw std::runtime_error { "Placidus house-cusp solver did not converge" };
+  const auto cusp2 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::TWO);
+  const auto cusp3 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::THREE);
+  const auto cusp11 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::ELEVEN);
+  const auto cusp12 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::TWELVE);
+  return {
+    ascendant,
+    cusp2,
+    cusp3,
+    antipode(midheaven),
+    antipode(cusp11),
+    antipode(cusp12),
+    antipode(ascendant),
+    antipode(cusp2),
+    antipode(cusp3),
+    midheaven,
+    cusp11,
+    cusp12,
+  };
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
@@ -239,8 +287,8 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
   const auto asc = ascendant(armc, latitude, obliquity);
   const auto mc = midheaven(armc, obliquity);
-  const auto desc = (asc + astro::toolbox::AngleDeg { 180.0 }).normalize();
-  const auto ic = (mc + astro::toolbox::AngleDeg { 180.0 }).normalize();
+  const auto desc = antipode(asc);
+  const auto ic = antipode(mc);
 
   switch (system) {
     case System::EQUAL:
@@ -259,41 +307,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
         .imum_coeli = ic,
         .cusps = uniform_cusps(whole_sign_start(asc)),
       };
-    case System::PLACIDUS: {
-      if (std::fabs(latitude.deg()) >= 90.0 - obliquity_deg) {
-        throw std::invalid_argument {
-          std::format(
-            "Placidus is undefined at latitude {} degrees for obliquity {} degrees",
-            latitude.deg(),
-            obliquity.deg()
-          )
-        };
-      }
-      const auto cusp2 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::TWO);
-      const auto cusp3 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::THREE);
-      const auto cusp11 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::ELEVEN);
-      const auto cusp12 = placidus_cusp(armc, latitude, obliquity, PlacidusCusp::TWELVE);
+    case System::PLACIDUS:
       return {
         .ascendant = asc,
         .midheaven = mc,
         .descendant = desc,
         .imum_coeli = ic,
-        .cusps = {
-          asc,
-          cusp2,
-          cusp3,
-          ic,
-          (cusp11 + astro::toolbox::AngleDeg { 180.0 }).normalize(),
-          (cusp12 + astro::toolbox::AngleDeg { 180.0 }).normalize(),
-          desc,
-          (cusp2 + astro::toolbox::AngleDeg { 180.0 }).normalize(),
-          (cusp3 + astro::toolbox::AngleDeg { 180.0 }).normalize(),
-          mc,
-          cusp11,
-          cusp12,
-        },
+        .cusps = placidus_cusps(armc, latitude, obliquity, asc, mc),
       };
-    }
     default: throw std::invalid_argument { std::format("Unknown house system {}", static_cast<uint32_t>(system)) };
   }
 }
