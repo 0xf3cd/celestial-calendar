@@ -478,7 +478,7 @@ TEST(House, PlacidusRejectsNonPhysicalObliquity) {
          std::numeric_limits<double>::quiet_NaN(),
        }) {
     SCOPED_TRACE(obliquity_deg);
-    EXPECT_THROW(
+    try {
       static_cast<void>(
         detail::calculate(
           AngleDeg { 75.0 },
@@ -486,9 +486,11 @@ TEST(House, PlacidusRejectsNonPhysicalObliquity) {
           AngleDeg { obliquity_deg },
           System::PLACIDUS
         )
-      ),
-      std::invalid_argument
-    );
+      );
+      FAIL() << "Expected std::invalid_argument";
+    } catch (const std::invalid_argument& error) {
+      EXPECT_TRUE(std::string_view { error.what() }.starts_with("Placidus requires obliquity"));
+    }
   }
 }
 

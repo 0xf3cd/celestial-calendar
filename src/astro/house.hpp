@@ -229,6 +229,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const astro::toolbox::AngleDeg& obliquity,
   const System system
 ) -> Result {
+  const double obliquity_deg = obliquity.deg();
+  if (system == System::PLACIDUS
+      and (not std::isfinite(obliquity_deg) or obliquity_deg <= 0.0 or obliquity_deg >= 90.0)) {
+    throw std::invalid_argument {
+      std::format("Placidus requires obliquity in (0, 90) degrees, got {}", obliquity_deg)
+    };
+  }
+
   const auto asc = ascendant(armc, latitude, obliquity);
   const auto mc = midheaven(armc, obliquity);
   const auto desc = (asc + astro::toolbox::AngleDeg { 180.0 }).normalize();
@@ -252,12 +260,6 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
         .cusps = uniform_cusps(whole_sign_start(asc)),
       };
     case System::PLACIDUS: {
-      const double obliquity_deg = obliquity.deg();
-      if (not std::isfinite(obliquity_deg) or obliquity_deg <= 0.0 or obliquity_deg >= 90.0) {
-        throw std::invalid_argument {
-          std::format("Placidus requires obliquity in (0, 90) degrees, got {}", obliquity_deg)
-        };
-      }
       if (std::fabs(latitude.deg()) >= 90.0 - obliquity_deg) {
         throw std::invalid_argument {
           std::format(
