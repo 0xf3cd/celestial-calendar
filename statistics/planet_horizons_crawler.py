@@ -150,16 +150,18 @@ def parse_horizons_response(
     raise RuntimeError(f"Horizons response for {target.horizons_name} does not use the Gregorian calendar")
   if "Units conversion: 1 au= 149597870.700 km" not in text:
     raise RuntimeError(f"Horizons response for {target.horizons_name} does not report ranges in AU")
-  if target.command == "999":
-    if "Rel. light bend : Sun" not in text or "{source: plu060_merged}" not in text:
-      raise RuntimeError("Horizons response for Pluto has an unexpected relativistic-light-bend identity")
+  if "ObsEcLon" in required_columns or "ObsEcLat" in required_columns:
+    if "Rel. light bend : Sun" not in text:
+      raise RuntimeError(
+        f"Horizons response for {target.horizons_name} has an unexpected relativistic-light-bend identity"
+      )
     quantity_31_phrases = (
       "Observer-centered IAU76/80 ecliptic-of-date longitude and latitude",
       "with light-time, gravitational deflection of",
       "light, and stellar aberrations.",
     )
     if any(phrase not in text for phrase in quantity_31_phrases):
-      raise RuntimeError("Horizons quantity-31 semantics changed for Pluto")
+      raise RuntimeError(f"Horizons quantity-31 semantics changed for {target.horizons_name}")
 
   lines = text.splitlines()
   if lines.count("$$SOE") != 1 or lines.count("$$EOE") != 1:

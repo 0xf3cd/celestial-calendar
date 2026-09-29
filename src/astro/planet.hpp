@@ -237,8 +237,8 @@ namespace geocentric_coord {
  * @throw std::invalid_argument If `jde_tt` is not finite or outside the selected planet's documented
  *                              domain, or `planet` is not a named enumerator.
  * @throw std::runtime_error If the numerical evaluation cannot produce a finite, converged position.
- * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5); the Mercury-Neptune VSOP87D
- *       behavior is unchanged.
+ * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5); the Mercury-Neptune models have no
+ *       finite JDE(TT) range bound.
  * @note Includes light-time, annual aberration, FK5 reduction, and nutation. It omits relativistic
  *       light deflection and treats TT as the VSOP87D dynamical-time argument without a TT-TDB model.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (23.2), (32.3), and (33.1)-(33.4).

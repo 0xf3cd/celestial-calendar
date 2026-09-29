@@ -47,8 +47,9 @@ struct GeometryTolerance {
 // `statistics/pluto_horizons_crawler.py`. Center is 500@399, epochs are TT, and quantity 31 is
 // IAU76/80 apparent true-ecliptic-of-date longitude/latitude. Separation is independently derived
 // from the Sun and planet quantity-31 vectors, then checked against quantity 23. The epochs are the
-// fixed, source-selected dates used by the planetary-position dataset. Pluto uses the same 11 audit
-// witnesses: domain, book, J2000, and wrap anchors; its 2025 conjunction; and residual maxima.
+// fixed, source-selected dates used by the planetary-position dataset. Pluto reuses its 11
+// position-dataset audit witnesses: domain, book, J2000, and wrap anchors; its 2025 conjunction; and
+// residual maxima.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
 constexpr std::array HORIZONS_ROWS {
   // Planet           JDE             Separation    Phase       Fraction
@@ -225,6 +226,22 @@ TEST(Illumination, PlutoGeometryDomain) {
       astro::planet::Planet::PLUTO,
       astro::planet::detail::pluto::APPARENT_END_JDE_TT
     )),
+    std::invalid_argument
+  );
+}
+
+TEST(Illumination, RejectsInvalidPlanetInput) {
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(
+      astro::planet::Planet::PLUTO,
+      std::numeric_limits<double>::quiet_NaN()
+    )),
+    std::invalid_argument
+  );
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises the invalid-enumerator contract.
+  const auto invalid_planet = static_cast<astro::planet::Planet>(255);
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(invalid_planet, 2451545.0)),
     std::invalid_argument
   );
 }

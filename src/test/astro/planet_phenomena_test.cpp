@@ -440,26 +440,34 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
     Planet::NEPTUNE,
   };
   constexpr std::array<int32_t, 7> years { 1, 4096, 8192, 16384, 24576, 29841, 32766 };
+  constexpr std::array<int32_t, 3> pluto_years { 1886, 2025, 2098 };
 
-  for (const int32_t year : years) {
+  const auto assert_same_events = [](const Planet planet, const int32_t year) {
     const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
     const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
     const double start_jde_tt = astro::julian_day::utc_to_jde(start_utc);
     const double end_jde_tt = astro::julian_day::utc_to_jde(end_utc);
-    for (const Planet planet : planets) {
-      const auto one_day = events(planet, year);
-      const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
-      ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);
-      ASSERT_EQ(one_day.size(), half_day.size()) << year << ", planet " << static_cast<int>(planet);
-      for (std::size_t index = 0; index < one_day.size(); ++index) {
-        ASSERT_EQ(one_day.at(index).kind, half_day.at(index).kind)
-          << year << ", planet " << static_cast<int>(planet) << ", index " << index;
-        // The measured maximum is 0.001887 day; 0.006 day is a 3.2x outward envelope for
-        // identifying the same extrapolated-model event, not a remote-date accuracy claim.
-        ASSERT_NEAR(one_day.at(index).jde_tt, half_day.at(index).jde_tt, 0.006)
-          << year << ", planet " << static_cast<int>(planet) << ", index " << index;
-      }
+    const auto one_day = events(planet, year);
+    const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
+    ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);
+    ASSERT_EQ(one_day.size(), half_day.size()) << year << ", planet " << static_cast<int>(planet);
+    for (std::size_t index = 0; index < one_day.size(); ++index) {
+      ASSERT_EQ(one_day.at(index).kind, half_day.at(index).kind)
+        << year << ", planet " << static_cast<int>(planet) << ", index " << index;
+      // The measured maximum is 0.001887 day; 0.006 day is a 3.2x outward envelope for
+      // identifying the same extrapolated-model event, not a remote-date accuracy claim.
+      ASSERT_NEAR(one_day.at(index).jde_tt, half_day.at(index).jde_tt, 0.006)
+        << year << ", planet " << static_cast<int>(planet) << ", index " << index;
     }
+  };
+
+  for (const int32_t year : years) {
+    for (const Planet planet : planets) {
+      assert_same_events(planet, year);
+    }
+  }
+  for (const int32_t year : pluto_years) {
+    assert_same_events(Planet::PLUTO, year);
   }
 }
 

@@ -102,7 +102,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
-  assert RECORD_SHA256 == "bdfe32a86faf476a30c67572424b2099e95355d60b8be3b6498ae979111f6b8c"
+  assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
   assert REGISTRY_SHA256 == "9161b08fa196f61cb20c2fd1581ba199ac3b06ce212c6158e2bcb3bdb5bcddc9"
   assert verify_batch_a_closeout() == CloseoutCounts(58, 108, 59, 2, 16)
 

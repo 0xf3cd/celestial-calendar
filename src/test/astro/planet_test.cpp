@@ -14,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 
@@ -247,10 +248,11 @@ inline constexpr double MEEUS_EXAMPLE_37A_LONGITUDE_DEG = 232.74071;
 inline constexpr double MEEUS_EXAMPLE_37A_LATITUDE_DEG = 14.58782;
 inline constexpr double MEEUS_EXAMPLE_37A_RADIUS_AU = 29.711111;
 
-// IMCCE PLUTO95 `pluto.sub` official Cartesian test vectors (SHA-256
-// 14d2e84e99c3fd873310ed5381a79d11f9140683830307e2b9ef051916244d24), reproduced by the accepted
-// source-gate evaluator. One arcminute is a gross units/frame tripwire, not a model-error tolerance;
-// the separately pinned retained maximum is 3.566762 arcsec.
+// IMCCE PLUTO95 `pluto.doc` official Cartesian test vectors (SHA-256
+// 98189416f7febbeecc2a1dd9bb61562338bc9fca3eda4dfe964fe32df5c0ba1b), re-derived through the
+// `pluto.sub` evaluator (SHA-256 14d2e84e99c3fd873310ed5381a79d11f9140683830307e2b9ef051916244d24).
+// One arcminute is a gross units/frame tripwire, not a model-error tolerance; the separately pinned
+// retained maximum is 3.566762 arcsec.
 constexpr std::array PLUTO95_ROWS {
   Pluto95Row { 2415023.00, 10.29158303131287,  44.52906466047693, 10.79081191605171 },
   Pluto95Row { 2451548.25, -9.86615874601937, -27.98285304568784, -5.75779357947923 },
@@ -308,6 +310,20 @@ constexpr std::array PYMEEUS_ROWS {
   EquatorialRow { Planet::NEPTUNE, 2486166.25, 157.6078514891,  10.0478070928 },
 };
 // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
+
+inline auto assert_horizons_rows(const std::span<const HorizonsRow> rows) -> void {
+  for (const auto& row : rows) {
+    const auto coordinate = geocentric_coord::apparent(row.planet, row.jde);
+    const auto& tolerance = HORIZONS_TOLERANCES.at(static_cast<std::size_t>(row.planet));
+
+    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), tolerance.lon_deg)
+      << "longitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
+    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, tolerance.lat_deg)
+      << "latitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
+    ASSERT_NEAR(coordinate.r.au(), row.r_au, tolerance.r_au)
+      << "range at JDE " << row.jde << ", elongation " << row.elongation_deg;
+  }
+}
 
 } // namespace
 
@@ -390,17 +406,7 @@ TEST(Planet, PymeeusCrossDataset) {
 }
 
 TEST(Planet, HorizonsGoldenDataset) {
-  for (const auto& row : HORIZONS_ROWS) {
-    const auto coordinate = geocentric_coord::apparent(row.planet, row.jde);
-    const auto& tolerance = HORIZONS_TOLERANCES.at(static_cast<std::size_t>(row.planet));
-
-    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), tolerance.lon_deg)
-      << "longitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
-    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, tolerance.lat_deg)
-      << "latitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
-    ASSERT_NEAR(coordinate.r.au(), row.r_au, tolerance.r_au)
-      << "range at JDE " << row.jde << ", elongation " << row.elongation_deg;
-  }
+  assert_horizons_rows(HORIZONS_ROWS);
 }
 
 TEST(Planet, HorizonsConjunctionDataset) {
@@ -418,17 +424,7 @@ TEST(Planet, HorizonsConjunctionDataset) {
 }
 
 TEST(Planet, PlutoHorizonsGoldenDataset) {
-  const auto& tolerance = HORIZONS_TOLERANCES.at(static_cast<std::size_t>(Planet::PLUTO));
-  for (const auto& row : PLUTO_HORIZONS_ROWS) {
-    const auto coordinate = geocentric_coord::apparent(row.planet, row.jde);
-
-    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), tolerance.lon_deg)
-      << "longitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
-    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, tolerance.lat_deg)
-      << "latitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
-    ASSERT_NEAR(coordinate.r.au(), row.r_au, tolerance.r_au)
-      << "range at JDE " << row.jde << ", elongation " << row.elongation_deg;
-  }
+  assert_horizons_rows(PLUTO_HORIZONS_ROWS);
 }
 
 TEST(Planet, HorizonsRetrogradeDataset) {
