@@ -242,6 +242,9 @@ Mercury through Neptune use VSOP87D over the `[1, 32766]` computational year dom
 uses the lower-precision Meeus Chapter 37 model: apparent position and illumination geometry accept
 `[2409543.5, 2488069.5)` JDE(TT), centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete
 yearly event searches accept Gregorian years `[1886, 2098]`. These hard domains are not accuracy guarantees.
+The C++-only [`lunar_node.hpp`](src/astro/lunar_node.hpp) returns true-ecliptic, true-equinox-of-date longitudes
+for mean or Meeus five-term true ascending and descending nodes from JDE(TT). Latitude is exactly zero by this
+definition, and the longitude-only API has no physical distance.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

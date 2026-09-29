@@ -4,6 +4,10 @@
 
 ### Added
 
+- Four C++ lunar-node longitudes from `lunar_node.hpp`: mean and Meeus five-term true ascending
+  nodes plus their descending antipodes. `position` accepts JDE(TT), returns true-ecliptic and
+  equinox-of-date longitude, and keeps the definition's exact-zero latitude implicit while physical
+  distance is absent.
 - Ascendant, Descendant, Midheaven, Imum Coeli, and twelve house cusps for Equal, Whole Sign, and
   Placidus in the C++ header-only API (#59). The calculation keeps UT1 and TT explicit, accepts
   east-positive longitude, and rejects geographic poles and the Placidus polar domain instead of

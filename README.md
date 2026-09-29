@@ -199,6 +199,8 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 
 节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
+仅 C++ 提供的 [`lunar_node.hpp`](src/astro/lunar_node.hpp) 以 JDE(TT) 查询平均或 Meeus 五项真升降交点的
+真黄道、真春分点经度；该定义的纬度恒为零且不返回物理距离。
 
 <a id="c-abi"></a>
 ### 1.4. C 与其他语言：C ABI
