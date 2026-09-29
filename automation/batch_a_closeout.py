@@ -32,7 +32,7 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-REGISTRY_SHA256: Final[str] = "9161b08fa196f61cb20c2fd1581ba199ac3b06ce212c6158e2bcb3bdb5bcddc9"
+REGISTRY_SHA256: Final[str] = "6681b7025693c9534e8b7630b78cc0cae3d2ed5c3a12d31b39d4dd46ae34546f"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
