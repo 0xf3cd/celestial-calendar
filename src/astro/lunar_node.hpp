@@ -34,8 +34,8 @@ enum class Node : uint8_t {
 
 namespace detail {
 
-inline constexpr double MIN_JDE_TT = 2409542.5;
-inline constexpr double MAX_JDE_TT = 2488069.5;
+inline constexpr double START_JDE_TT = 2409542.5;
+inline constexpr double END_JDE_TT = 2488069.5;
 
 inline auto validate(const Node node, const double jde_tt) -> void {
   switch (node) {
@@ -49,9 +49,14 @@ inline auto validate(const Node node, const double jde_tt) -> void {
       };
   }
 
-  if (not std::isfinite(jde_tt) or jde_tt < MIN_JDE_TT or jde_tt >= MAX_JDE_TT) [[unlikely]] {
+  if (not std::isfinite(jde_tt)) [[unlikely]] {
     throw std::invalid_argument {
-      std::format("Argument `jde_tt` out of range [{}, {}), got {}", MIN_JDE_TT, MAX_JDE_TT, jde_tt)
+      std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
+    };
+  }
+  if (jde_tt < START_JDE_TT or jde_tt >= END_JDE_TT) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Argument `jde_tt` out of range [{}, {}), got {}", START_JDE_TT, END_JDE_TT, jde_tt)
     };
   }
 }
@@ -65,8 +70,8 @@ inline auto validate(const Node node, const double jde_tt) -> void {
     125.0445479
       - (1934.1362891 * jc)
       + (0.0020754 * jc2)
-      + (jc3 / 467441.0)
-      - (jc4 / 60616000.0)
+      + (jc3 / 467441)
+      - (jc4 / 60616000)
   };
 }
 
@@ -94,6 +99,8 @@ inline auto validate(const Node node, const double jde_tt) -> void {
  * @note Mean ascending uses Meeus equation (47.7); true ascending adds exactly the five periodic
  *       terms on printed p. 344. Both then receive the full IAU 1980 nutation in longitude.
  *       Descending nodes are their exact normalized antipodes.
+ * @note The half-open domain is project-selected to match Pluto's raw domain; Meeus gives no
+ *       accuracy interval for these formulas.
  * @note The selected ecliptic-node definition fixes latitude at exactly zero. This longitude-only
  *       API has no latitude field and no physical distance.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Equation (47.7) and printed p. 344.
