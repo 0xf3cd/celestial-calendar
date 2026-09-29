@@ -132,27 +132,35 @@ inline auto validate_retrograde_jde(const double jde_tt) -> void {
 }
 
 /** @brief Evaluate Pluto's geometric heliocentric J2000 ecliptic position. */
-[[nodiscard]] inline auto heliocentric_j2000(const double jde_tt) -> astro::toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto heliocentric_j2000(const double jde_tt)
+  -> astro::toolbox::SphericalCoordinate {
   validate_raw_jde(jde_tt);
   const double T = astro::julian_day::jde_to_jc(jde_tt);
-  const astro::toolbox::AngleDeg J { 34.35 + (3034.9057 * T) };
-  const astro::toolbox::AngleDeg S { 50.08 + (1222.1138 * T) };
-  const astro::toolbox::AngleDeg P { 238.96 + (144.96 * T) };
-  double lon_correction = 0.0;
-  double lat_correction = 0.0;
-  double radius_correction = 0.0;
+
+  const astro::toolbox::AngleDeg J { 34.35 + (3034.9057 * T) }; // Jupiter mean longitude
+  const astro::toolbox::AngleDeg S { 50.08 + (1222.1138 * T) }; // Saturn mean longitude
+  const astro::toolbox::AngleDeg P { 238.96 + (144.96 * T) };   // Pluto mean longitude
+
+  double longitude_correction_deg = 0.0;
+  double latitude_correction_deg = 0.0;
+  double radius_correction_au = 0.0;
   for (const auto& term : TERMS) {
-    const double argument = (term.i * J.rad()) + (term.j * S.rad()) + (term.k * P.rad());
+    const double argument =
+      (term.i * J.rad()) + (term.j * S.rad()) + (term.k * P.rad());
     const double sine = std::sin(argument);
     const double cosine = std::cos(argument);
-    lon_correction += (term.lon_a * sine) + (term.lon_b * cosine);
-    lat_correction += (term.lat_a * sine) + (term.lat_b * cosine);
-    radius_correction += (term.radius_a * sine) + (term.radius_b * cosine);
+
+    longitude_correction_deg += (term.lon_a * sine) + (term.lon_b * cosine);
+    latitude_correction_deg += (term.lat_a * sine) + (term.lat_b * cosine);
+    radius_correction_au += (term.radius_a * sine) + (term.radius_b * cosine);
   }
+
   return {
-    .λ = astro::toolbox::AngleDeg { 238.958116 + (144.96 * T) + lon_correction }.normalize(),
-    .β = astro::toolbox::AngleDeg { -3.908239 + lat_correction },
-    .r = astro::toolbox::DistanceAu { 40.7241346 + radius_correction },
+    .λ = astro::toolbox::AngleDeg {
+      238.958116 + (144.96 * T) + longitude_correction_deg
+    }.normalize(),
+    .β = astro::toolbox::AngleDeg { -3.908239 + latitude_correction_deg },
+    .r = astro::toolbox::DistanceAu { 40.7241346 + radius_correction_au },
   };
 }
 

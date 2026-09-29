@@ -97,14 +97,16 @@ template <astro::vsop87d::Planet planet>
   const double observation_jde_tt
 )
   -> astro::toolbox::SphericalCoordinate {
+  using enum astro::vsop87d::Planet;
+
   switch (planet) {
-    case Planet::MERCURY: return heliocentric<astro::vsop87d::Planet::MER>(retarded_jde_tt);
-    case Planet::VENUS:   return heliocentric<astro::vsop87d::Planet::VEN>(retarded_jde_tt);
-    case Planet::MARS:    return heliocentric<astro::vsop87d::Planet::MAR>(retarded_jde_tt);
-    case Planet::JUPITER: return heliocentric<astro::vsop87d::Planet::JUP>(retarded_jde_tt);
-    case Planet::SATURN:  return heliocentric<astro::vsop87d::Planet::SAT>(retarded_jde_tt);
-    case Planet::URANUS:  return heliocentric<astro::vsop87d::Planet::URA>(retarded_jde_tt);
-    case Planet::NEPTUNE: return heliocentric<astro::vsop87d::Planet::NEP>(retarded_jde_tt);
+    case Planet::MERCURY: return heliocentric<MER>(retarded_jde_tt);
+    case Planet::VENUS:   return heliocentric<VEN>(retarded_jde_tt);
+    case Planet::MARS:    return heliocentric<MAR>(retarded_jde_tt);
+    case Planet::JUPITER: return heliocentric<JUP>(retarded_jde_tt);
+    case Planet::SATURN:  return heliocentric<SAT>(retarded_jde_tt);
+    case Planet::URANUS:  return heliocentric<URA>(retarded_jde_tt);
+    case Planet::NEPTUNE: return heliocentric<NEP>(retarded_jde_tt);
     case Planet::PLUTO:
       return pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
     default:
