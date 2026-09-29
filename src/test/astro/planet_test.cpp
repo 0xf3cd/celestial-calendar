@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -22,8 +23,8 @@
 #include "planet.hpp"
 
 // Retained material boundaries: V06 identifies the JPL Horizons rows, V15 the PyMeeus output rows,
-// and V32 the Meeus worked-example values. They remain under their source terms and outside the
-// project MIT grant.
+// V32 the Meeus worked-example values, and V45/#298 the official PLUTO95 vectors. They remain under
+// their source terms and outside the project MIT grant.
 
 namespace astro::planet::test {
 
@@ -57,26 +58,35 @@ struct RetrogradeRow {
   bool retrograde;
 };
 
+struct Pluto95Row {
+  double jde_tt;
+  double x_au;
+  double y_au;
+  double z_au;
+};
+
 [[nodiscard]] auto wrapped_diff_deg(const double lhs, const double rhs) -> double {
   return std::fabs(std::remainder(lhs - rhs, 360.0));
 }
 
-// JPL Horizons API v1.2 apparent geocentric positions, collected 2026-09-22 by
+// JPL Horizons API v1.2 apparent geocentric positions, collected 2026-09-22 and 2026-09-28 by
 // `statistics/planet_horizons_crawler.py`. Target sources are DE441 (Mercury/Venus), mar099,
-// jup365_merged, sat441l, ura184_merged, and nep098_merged; the Earth center uses DE441 except
-// for Neptune's nep098_merged response. Inputs are echoed JD(TT), center is 500@399, and quantity
-// 31 is IAU76/80 apparent true-ecliptic-of-date longitude/latitude.
+// jup365_merged, sat441l, ura184_merged, nep098_merged, and Pluto's plu060_merged; the Earth center
+// uses DE441 except for Neptune's nep098_merged response. Inputs are echoed JD(TT), center is
+// 500@399, and quantity 31 is IAU76/80 apparent true-ecliptic-of-date longitude/latitude.
 // Quantity 20 supplies apparent range. Quantity 23 supplies elongation, retained here to expose
 // the conjunction rows where Horizons' relativistic light deflection is intentionally absent from
-// this library. Six fixed epochs span 1901-2094 and include Meeus Example 33.a. For each planet, a
-// source-only scan over every 0h TT day in 2026 selects the earliest minimum-elongation row.
+// this library. The Mercury-Neptune block uses six fixed epochs spanning 1901-2094; the Pluto block
+// keeps 11 directed epochs spanning its bounded model, including both longitude-wrap directions.
+// For each Mercury-Neptune planet, a 2026 scan selects the earliest minimum-elongation row.
 //
 // Measured worst fixed-epoch residuals (longitude arcsec, latitude arcsec, range km), by planet:
 // Mercury 0.124 / 0.018 / 18; Venus 0.074 / 0.136 / 7; Mars 0.132 / 0.301 / 48;
 // Jupiter 0.438 / 0.088 / 190; Saturn 0.285 / 0.036 / 364; Uranus 1.179 / 0.063 / 8627;
-// Neptune 2.380 / 0.106 / 10013. The tolerances below are about 3x those measured model gaps,
-// rounded outward. The conjunction set's largest latitude residual is 0.546 arcsec; its 1.8-arcsec
-// latitude tolerance isolates the omitted light-deflection envelope without widening this table.
+// Neptune 2.380 / 0.106 / 10013. Pluto's seed-298 267-point maxima are 3.378 / 0.388 / 51219.
+// The tolerances below are about 3x those measured model gaps, rounded outward. The conjunction set's
+// largest latitude residual is 0.546 arcsec; its 1.8-arcsec latitude tolerance isolates the omitted
+// light-deflection envelope without widening this table.
 constexpr std::array HORIZONS_TOLERANCES {
   Tolerance { .lon_deg = 0.00012, .lat_deg = 0.00002, .r_au = 0.0000004 },
   Tolerance { .lon_deg = 0.00008, .lat_deg = 0.00012, .r_au = 0.0000002 },
@@ -85,6 +95,7 @@ constexpr std::array HORIZONS_TOLERANCES {
   Tolerance { .lon_deg = 0.00030, .lat_deg = 0.00003, .r_au = 0.0000080 },
   Tolerance { .lon_deg = 0.00100, .lat_deg = 0.00006, .r_au = 0.0002000 },
   Tolerance { .lon_deg = 0.00200, .lat_deg = 0.00010, .r_au = 0.0003000 },
+  Tolerance { .lon_deg = 0.00300, .lat_deg = 0.00040, .r_au = 0.0011000 },
 };
 inline constexpr double HORIZONS_CONJUNCTION_LAT_TOLERANCE_DEG = 0.00050;
 
@@ -146,6 +157,21 @@ constexpr std::array HORIZONS_CONJUNCTION_ROWS {
   HorizonsRow { Planet::NEPTUNE, 2461121.500000,   1.8259642, -1.3062454, 30.878786041244, 1.3820 },
 };
 
+constexpr std::array PLUTO_HORIZONS_ROWS {
+  // Planet         JDE             Longitude     Latitude      Range (AU)       Elongation
+  HorizonsRow { Planet::PLUTO, 2409543.500000,  60.4926095, -13.0103766, 47.845265553431, 137.0240 },
+  HorizonsRow { Planet::PLUTO, 2448908.500000, 231.5936103,  14.1904754, 30.528724955163,  34.4155 },
+  HorizonsRow { Planet::PLUTO, 2451545.000000, 251.4547382,  10.8552594, 31.064358652861,  30.7184 },
+  HorizonsRow { Planet::PLUTO, 2460697.020714, 301.7161521,  -3.2964854, 36.167510444428,   3.2964 },
+  HorizonsRow { Planet::PLUTO, 2470066.864649, 339.2464309, -13.3376582, 40.653589839312, 159.7101 },
+  HorizonsRow { Planet::PLUTO, 2475818.500000, 359.9970053, -15.8752852, 44.931022774971,  86.3173 },
+  HorizonsRow { Planet::PLUTO, 2475819.500000,   0.0016165, -15.8814997, 44.915318746319,  87.2315 },
+  HorizonsRow { Planet::PLUTO, 2475842.500000,   0.0040505, -16.0236324, 44.559941461112, 108.2904 },
+  HorizonsRow { Planet::PLUTO, 2475843.500000, 359.9996438, -16.0296280, 44.545191586626, 109.2060 },
+  HorizonsRow { Planet::PLUTO, 2487903.349095,  34.3095740, -16.7726454, 49.028134176318,  82.5919 },
+  HorizonsRow { Planet::PLUTO, 2488068.500000,  32.4086290, -16.9269016, 48.559173648138, 111.7834 },
+};
+
 // The same Horizons query was replayed over every 0h TT day in 2025-2027. Each expected direction
 // is the sign of the wrap-aware source-longitude difference across the surrounding two days. The
 // station cases sit three days outside the source's daily sign-change brackets, avoiding an exact-
@@ -195,18 +221,38 @@ constexpr std::array HORIZONS_RETROGRADE_ROWS {
   RetrogradeRow { Planet::NEPTUNE, 2461023.500000, false },  // station-after
   RetrogradeRow { Planet::NEPTUNE, 2460756.500000, false },  // clear-direct
   RetrogradeRow { Planet::NEPTUNE, 2461677.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::PLUTO,   2475827.500000, false },  // station-before
+  RetrogradeRow { Planet::PLUTO,   2475834.500000, true  },  // station-after
+  RetrogradeRow { Planet::PLUTO,   2475914.500000, true  },  // clear-retrograde
+  RetrogradeRow { Planet::PLUTO,   2475992.500000, true  },  // station-before
+  RetrogradeRow { Planet::PLUTO,   2475999.500000, false },  // station-after
+  RetrogradeRow { Planet::PLUTO,   2476095.500000, false },  // clear-direct
 };
 
-// These source-selected Mercury rows cross 0 degrees in opposite directions across their
+// These source-selected Mercury and Pluto rows cross 0 degrees in opposite directions across their
 // surrounding Horizons epochs, pinning the signed wrap independently of this implementation.
 constexpr std::array HORIZONS_RETROGRADE_WRAP_ROWS {
   RetrogradeRow { Planet::MERCURY, 2460737.500000, false },
   RetrogradeRow { Planet::MERCURY, 2460764.500000, true  },
+  RetrogradeRow { Planet::PLUTO,   2475819.000000, false },
+  RetrogradeRow { Planet::PLUTO,   2475843.000000, true  },
 };
 
 inline constexpr double MEEUS_EXAMPLE_33A_RIGHT_ASCENSION_DEG =
   (21.0 + (4.0 / 60.0) + (41.454 / 3600.0)) * 15.0;
 inline constexpr double MEEUS_EXAMPLE_33A_DECLINATION_DEG = -(18.0 + (53.0 / 60.0) + (16.84 / 3600.0));
+inline constexpr double MEEUS_EXAMPLE_37A_LONGITUDE_DEG = 232.74071;
+inline constexpr double MEEUS_EXAMPLE_37A_LATITUDE_DEG = 14.58782;
+inline constexpr double MEEUS_EXAMPLE_37A_RADIUS_AU = 29.711111;
+
+// IMCCE PLUTO95 `pluto.sub` official Cartesian test vectors (SHA-256
+// 14d2e84e99c3fd873310ed5381a79d11f9140683830307e2b9ef051916244d24), reproduced by the accepted
+// source-gate evaluator. The 60-arcsec ceiling is independent of Chapter 37; the retained maximum
+// is 3.566762 arcsec.
+constexpr std::array PLUTO95_ROWS {
+  Pluto95Row { 2415023.00, 10.29158303131287,  44.52906466047693, 10.79081191605171 },
+  Pluto95Row { 2451548.25, -9.86615874601937, -27.98285304568784, -5.75779357947923 },
+};
 
 // PyMeeus 0.5.12 output collected 2026-09-22 by the same script and epochs. The pinned call is
 // `<Planet>.geocentric_position(Epoch(jde))`, returning apparent equatorial coordinates. PyMeeus
@@ -277,6 +323,52 @@ TEST(Planet, MeeusExample33a) {
   ASSERT_NEAR(equatorial.δ.deg(), MEEUS_EXAMPLE_33A_DECLINATION_DEG, 0.005 / 3600.0);
 }
 
+TEST(Planet, MeeusExample37a) {
+  // Meeus Example 37.a, Pluto at JDE 2448908.5. Tolerances are half a printed unit.
+  const auto coordinate = detail::pluto::heliocentric_j2000(2448908.5);
+  ASSERT_NEAR(coordinate.λ.deg(), MEEUS_EXAMPLE_37A_LONGITUDE_DEG, 0.5e-5);
+  ASSERT_NEAR(coordinate.β.deg(), MEEUS_EXAMPLE_37A_LATITUDE_DEG, 0.5e-5);
+  ASSERT_NEAR(coordinate.r.au(), MEEUS_EXAMPLE_37A_RADIUS_AU, 0.5e-6);
+}
+
+TEST(Planet, Pluto95IndependentDirections) {
+  constexpr double sine_obliquity = 0.397777156;
+  constexpr double cosine_obliquity = 0.917482062;
+  double maximum_separation_arcsec = 0.0;
+
+  for (const auto& row : PLUTO95_ROWS) {
+    const auto coordinate = detail::pluto::heliocentric_j2000(row.jde_tt);
+    const double longitude = coordinate.λ.rad();
+    const double latitude = coordinate.β.rad();
+    const std::array chapter37 {
+      coordinate.r.au() * std::cos(longitude) * std::cos(latitude),
+      coordinate.r.au()
+        * ((std::sin(longitude) * std::cos(latitude) * cosine_obliquity)
+           - (std::sin(latitude) * sine_obliquity)),
+      coordinate.r.au()
+        * ((std::sin(longitude) * std::cos(latitude) * sine_obliquity)
+           + (std::sin(latitude) * cosine_obliquity)),
+    };
+    const std::array official { row.x_au, row.y_au, row.z_au };
+    const double chapter37_norm = std::hypot(chapter37[0], chapter37[1], chapter37[2]);
+    const double official_norm = std::hypot(official[0], official[1], official[2]);
+    const double dot = ((chapter37[0] * official[0]) + (chapter37[1] * official[1])
+                        + (chapter37[2] * official[2]))
+                     / (chapter37_norm * official_norm);
+    const std::array cross {
+      (chapter37[1] * official[2]) - (chapter37[2] * official[1]),
+      (chapter37[2] * official[0]) - (chapter37[0] * official[2]),
+      (chapter37[0] * official[1]) - (chapter37[1] * official[0]),
+    };
+    const double cross_norm = std::hypot(cross[0], cross[1], cross[2]) / (chapter37_norm * official_norm);
+    const double separation_arcsec = astro::toolbox::rad_to_deg(std::atan2(cross_norm, dot)) * 3600.0;
+    maximum_separation_arcsec = std::max(separation_arcsec, maximum_separation_arcsec);
+    ASSERT_LT(separation_arcsec, 60.0) << "JDE " << row.jde_tt;
+  }
+
+  ASSERT_NEAR(maximum_separation_arcsec, 3.566761983698627, 5e-8);
+}
+
 TEST(Planet, PymeeusCrossDataset) {
   // Measured maxima are 0.029" in α and 0.011" in δ. The tolerances are 0.072" and 0.036",
   // leaving 2.5x/3.3x margins while remaining well below the Horizons model-error envelope.
@@ -323,6 +415,20 @@ TEST(Planet, HorizonsConjunctionDataset) {
   }
 }
 
+TEST(Planet, PlutoHorizonsGoldenDataset) {
+  const auto& tolerance = HORIZONS_TOLERANCES.at(static_cast<std::size_t>(Planet::PLUTO));
+  for (const auto& row : PLUTO_HORIZONS_ROWS) {
+    const auto coordinate = geocentric_coord::apparent(row.planet, row.jde);
+
+    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), tolerance.lon_deg)
+      << "longitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
+    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, tolerance.lat_deg)
+      << "latitude at JDE " << row.jde << ", elongation " << row.elongation_deg;
+    ASSERT_NEAR(coordinate.r.au(), row.r_au, tolerance.r_au)
+      << "range at JDE " << row.jde << ", elongation " << row.elongation_deg;
+  }
+}
+
 TEST(Planet, HorizonsRetrogradeDataset) {
   for (const auto& row : HORIZONS_RETROGRADE_ROWS) {
     ASSERT_EQ(geocentric_coord::is_retrograde(row.planet, row.jde), row.retrograde)
@@ -343,7 +449,9 @@ TEST(Planet, LightTimeFixedPoint) {
   const auto coordinate = detail::light_time_corrected(Planet::JUPITER, jde_tt, earth);
   const double retarded_jde_tt = jde_tt
                                - (astro::earth::aberration::LIGHT_TIME_DAYS_PER_AU * coordinate.r.au());
-  const auto target_rect = detail::rectangular(detail::heliocentric(Planet::JUPITER, retarded_jde_tt));
+  const auto target_rect = detail::rectangular(
+    detail::heliocentric(Planet::JUPITER, retarded_jde_tt, jde_tt)
+  );
   const auto earth_rect = detail::rectangular(earth);
   const detail::RectangularCoordinate geocentric {
     .x = target_rect.x - earth_rect.x,
@@ -386,6 +494,97 @@ TEST(Planet, ObservationEpochCorrectionChain) {
   ASSERT_DOUBLE_EQ(coordinate.λ.deg(), expected.λ.deg());
   ASSERT_DOUBLE_EQ(coordinate.β.deg(), expected.β.deg());
   ASSERT_DOUBLE_EQ(coordinate.r.au(), expected.r.au());
+}
+
+TEST(Planet, PlutoFrameJoinInvertsFk5) {
+  constexpr double retarded_jde_tt = 2451544.8;
+  constexpr double observation_jde_tt = 2451545.0;
+  const auto j2000 = detail::pluto::heliocentric_j2000(retarded_jde_tt);
+  const auto precessed = astro::earth::precession::ecliptic(
+    j2000.λ,
+    j2000.β,
+    astro::julian_day::J2000,
+    observation_jde_tt
+  );
+  const auto joined = detail::pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
+  const auto correction = astro::sun::geocentric_coord::fk5_correction(observation_jde_tt, joined);
+
+  ASSERT_LE(
+    wrapped_diff_deg((joined.λ + correction.Δλ).normalize().deg(), precessed.λ.deg()),
+    1e-13
+  );
+  ASSERT_NEAR((joined.β + correction.Δβ).deg(), precessed.β.deg(), 1e-13);
+  ASSERT_DOUBLE_EQ(joined.r.au(), j2000.r.au());
+}
+
+TEST(Planet, PlutoModelAndPublicDomains) {
+  const double raw_before = std::nextafter(
+    detail::pluto::RAW_START_JDE_TT,
+    -std::numeric_limits<double>::infinity()
+  );
+  const double raw_last = std::nextafter(
+    detail::pluto::RAW_END_JDE_TT,
+    detail::pluto::RAW_START_JDE_TT
+  );
+  EXPECT_THROW(static_cast<void>(detail::pluto::heliocentric_j2000(raw_before)), std::invalid_argument);
+  EXPECT_NO_THROW(static_cast<void>(detail::pluto::heliocentric_j2000(detail::pluto::RAW_START_JDE_TT)));
+  EXPECT_NO_THROW(static_cast<void>(detail::pluto::heliocentric_j2000(raw_last)));
+  EXPECT_THROW(
+    static_cast<void>(detail::pluto::heliocentric_j2000(detail::pluto::RAW_END_JDE_TT)),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(detail::pluto::heliocentric_j2000(std::numeric_limits<double>::quiet_NaN())),
+    std::invalid_argument
+  );
+
+  const double apparent_before = std::nextafter(
+    detail::pluto::APPARENT_START_JDE_TT,
+    -std::numeric_limits<double>::infinity()
+  );
+  const double apparent_last = std::nextafter(
+    detail::pluto::APPARENT_END_JDE_TT,
+    detail::pluto::APPARENT_START_JDE_TT
+  );
+  EXPECT_THROW(
+    static_cast<void>(geocentric_coord::apparent(Planet::PLUTO, apparent_before)),
+    std::invalid_argument
+  );
+  EXPECT_NO_THROW(
+    static_cast<void>(geocentric_coord::apparent(Planet::PLUTO, detail::pluto::APPARENT_START_JDE_TT))
+  );
+  EXPECT_NO_THROW(static_cast<void>(geocentric_coord::apparent(Planet::PLUTO, apparent_last)));
+  EXPECT_THROW(
+    static_cast<void>(geocentric_coord::apparent(Planet::PLUTO, detail::pluto::APPARENT_END_JDE_TT)),
+    std::invalid_argument
+  );
+}
+
+TEST(Planet, PlutoCenteredRetrogradeDomain) {
+  const double before = std::nextafter(
+    detail::pluto::RETROGRADE_START_JDE_TT,
+    -std::numeric_limits<double>::infinity()
+  );
+  const double last = std::nextafter(
+    detail::pluto::RETROGRADE_END_JDE_TT,
+    detail::pluto::RETROGRADE_START_JDE_TT
+  );
+  EXPECT_THROW(
+    static_cast<void>(geocentric_coord::is_retrograde(Planet::PLUTO, before)),
+    std::invalid_argument
+  );
+  EXPECT_NO_THROW(
+    static_cast<void>(
+      geocentric_coord::is_retrograde(Planet::PLUTO, detail::pluto::RETROGRADE_START_JDE_TT)
+    )
+  );
+  EXPECT_NO_THROW(static_cast<void>(geocentric_coord::is_retrograde(Planet::PLUTO, last)));
+  EXPECT_THROW(
+    static_cast<void>(
+      geocentric_coord::is_retrograde(Planet::PLUTO, detail::pluto::RETROGRADE_END_JDE_TT)
+    ),
+    std::invalid_argument
+  );
 }
 
 TEST(Planet, RejectsInvalidInput) {

@@ -89,6 +89,7 @@ struct CrossingSpec {
     case Planet::SATURN:
     case Planet::URANUS:
     case Planet::NEPTUNE:
+    case Planet::PLUTO:
       return Category::OUTER;
   }
   throw std::invalid_argument {
@@ -431,14 +432,17 @@ inline auto append_extrema(
 } // namespace detail
 
 /**
- * @brief Find all applicable observer-facing events for a major planet in a Gregorian year.
- * @param planet The planet to search, from Mercury through Neptune.
- * @param year The Gregorian year, in [1, 32766].
+ * @brief Find all applicable observer-facing events for a planet in a Gregorian year.
+ * @param planet The planet to search, from Mercury through Pluto.
+ * @param year The Gregorian year, in the selected planet's documented domain.
  * @return Events in strictly increasing JDE(TT) order.
  * @details Searches apparent geocentric ecliptic-of-date positions on a one-day candidate grid,
  *          then refines each event independently.
- * @throw std::invalid_argument If `year` is outside [1, 32766] or `planet` is not a named enumerator.
+ * @throw std::invalid_argument If `year` is outside the selected planet's documented domain or `planet` is not a
+ *                              named enumerator.
  * @throw std::runtime_error If an event cannot be refined or an internal event-consistency check fails.
+ * @note Pluto supports complete Gregorian years [1886, 2098]; the Mercury-Neptune computational
+ *       year domain remains [1, 32766].
  * @note The year is the half-open interval [Jan 1, next Jan 1) in UTC; before 1972, UTC degrades
  *       to the library's UT1 substitute. The declared year range is a computational input domain,
  *       not an accuracy guarantee for the underlying ephemeris at remote dates.
@@ -455,6 +459,18 @@ inline auto append_extrema(
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
   if (year < 1 or year > 32766) {
     throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
+  }
+  if (planet == Planet::PLUTO
+      and (year < astro::planet::detail::pluto::EVENT_START_YEAR
+           or year > astro::planet::detail::pluto::EVENT_END_YEAR)) {
+    throw std::invalid_argument {
+      std::format(
+        "Pluto event year {} is out of range [{}, {}].",
+        year,
+        astro::planet::detail::pluto::EVENT_START_YEAR,
+        astro::planet::detail::pluto::EVENT_END_YEAR
+      )
+    };
   }
   const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
   const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };

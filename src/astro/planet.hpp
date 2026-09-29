@@ -22,6 +22,7 @@
 #include "earth.hpp"
 #include "illumination.hpp"
 #include "julian_day.hpp"
+#include "pluto.hpp"
 #include "sun.hpp"
 #include "toolbox.hpp"
 #include "vsop87d/jupiter_coeff.hpp"
@@ -34,7 +35,7 @@
 
 namespace astro::planet {
 
-/** @brief A major planet whose geocentric position can be calculated. */
+/** @brief A planetary target whose geocentric position can be calculated. */
 enum class Planet : uint8_t {
   MERCURY = 0,
   VENUS = 1,
@@ -43,6 +44,7 @@ enum class Planet : uint8_t {
   SATURN = 4,
   URANUS = 5,
   NEPTUNE = 6,
+  PLUTO = 7,
 };
 
 namespace detail {
@@ -71,6 +73,7 @@ inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
     case Planet::SATURN:  return "Saturn";
     case Planet::URANUS:  return "Uranus";
     case Planet::NEPTUNE: return "Neptune";
+    case Planet::PLUTO:   return "Pluto";
     default:
       throw std::invalid_argument {
         std::format("Unknown planet {}", static_cast<uint32_t>(planet))
@@ -88,16 +91,22 @@ template <astro::vsop87d::Planet planet>
   };
 }
 
-[[nodiscard]] inline auto heliocentric(const Planet planet, const double jde_tt)
+[[nodiscard]] inline auto heliocentric(
+  const Planet planet,
+  const double retarded_jde_tt,
+  const double observation_jde_tt
+)
   -> astro::toolbox::SphericalCoordinate {
   switch (planet) {
-    case Planet::MERCURY: return heliocentric<astro::vsop87d::Planet::MER>(jde_tt);
-    case Planet::VENUS:   return heliocentric<astro::vsop87d::Planet::VEN>(jde_tt);
-    case Planet::MARS:    return heliocentric<astro::vsop87d::Planet::MAR>(jde_tt);
-    case Planet::JUPITER: return heliocentric<astro::vsop87d::Planet::JUP>(jde_tt);
-    case Planet::SATURN:  return heliocentric<astro::vsop87d::Planet::SAT>(jde_tt);
-    case Planet::URANUS:  return heliocentric<astro::vsop87d::Planet::URA>(jde_tt);
-    case Planet::NEPTUNE: return heliocentric<astro::vsop87d::Planet::NEP>(jde_tt);
+    case Planet::MERCURY: return heliocentric<astro::vsop87d::Planet::MER>(retarded_jde_tt);
+    case Planet::VENUS:   return heliocentric<astro::vsop87d::Planet::VEN>(retarded_jde_tt);
+    case Planet::MARS:    return heliocentric<astro::vsop87d::Planet::MAR>(retarded_jde_tt);
+    case Planet::JUPITER: return heliocentric<astro::vsop87d::Planet::JUP>(retarded_jde_tt);
+    case Planet::SATURN:  return heliocentric<astro::vsop87d::Planet::SAT>(retarded_jde_tt);
+    case Planet::URANUS:  return heliocentric<astro::vsop87d::Planet::URA>(retarded_jde_tt);
+    case Planet::NEPTUNE: return heliocentric<astro::vsop87d::Planet::NEP>(retarded_jde_tt);
+    case Planet::PLUTO:
+      return pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
     default:
       throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
   }
@@ -123,7 +132,7 @@ template <astro::vsop87d::Planet planet>
   double retarded_jde_tt = jde_tt;
 
   for (std::size_t i = 0; i < LIGHT_TIME_MAX_ITERATIONS; ++i) {
-    const auto target = heliocentric(planet, retarded_jde_tt);
+    const auto target = heliocentric(planet, retarded_jde_tt, jde_tt);
     const auto target_rect = rectangular(target);
     const RectangularCoordinate geocentric {
       .x = target_rect.x - earth_rect.x,
@@ -190,30 +199,52 @@ template <astro::vsop87d::Planet planet>
   };
 }
 
+[[nodiscard]] inline auto validate_apparent_input(const Planet planet, const double jde_tt) -> std::string_view {
+  if (not std::isfinite(jde_tt)) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
+    };
+  }
+  const std::string_view planet_name = name(planet);
+  if (planet == Planet::PLUTO) {
+    pluto::validate_apparent_jde(jde_tt);
+  }
+  return planet_name;
+}
+
+inline auto validate_retrograde_input(const Planet planet, const double jde_tt) -> void {
+  if (not std::isfinite(jde_tt)) [[unlikely]] {
+    throw std::invalid_argument {
+      std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
+    };
+  }
+  static_cast<void>(name(planet));
+  if (planet == Planet::PLUTO) {
+    pluto::validate_retrograde_jde(jde_tt);
+  }
+}
+
 } // namespace detail
 
 namespace geocentric_coord {
 
 /**
- * @brief Calculate a major planet's apparent geocentric ecliptic position.
- * @param planet The planet to calculate, from Mercury through Neptune.
+ * @brief Calculate a planet's apparent geocentric ecliptic position.
+ * @param planet The planet to calculate, from Mercury through Pluto.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return Apparent longitude and latitude in the true ecliptic and equinox of date, and the
  *         retarded geocentric distance in AU.
  * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
  * @throw std::runtime_error If the numerical evaluation cannot produce a finite, converged position.
+ * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5); the Mercury-Neptune VSOP87D
+ *       behavior is unchanged.
  * @note Includes light-time, annual aberration, FK5 reduction, and nutation. It omits relativistic
  *       light deflection and treats TT as the VSOP87D dynamical-time argument without a TT-TDB model.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (23.2), (32.3), and (33.1)-(33.4).
  */
 [[nodiscard]] inline auto apparent(const Planet planet, const double jde_tt)
   -> astro::toolbox::SphericalCoordinate {
-  if (not std::isfinite(jde_tt)) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
-    };
-  }
-  const std::string_view planet_name = detail::name(planet);
+  const std::string_view planet_name = detail::validate_apparent_input(planet, jde_tt);
 
   try {
     const auto earth = astro::earth::heliocentric_coord::vsop87d(jde_tt);
@@ -246,17 +277,25 @@ namespace geocentric_coord {
 
 /**
  * @brief Return whether a planet's apparent geocentric longitude is decreasing.
- * @param planet The planet to calculate, from Mercury through Neptune.
+ * @param planet The planet to calculate, from Mercury through Pluto.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return `true` when the wrap-aware longitude change over the centered one-day interval is negative.
  * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite, converged result.
+ * @note Pluto is available for centered JDE(TT) [2409544.0, 2488069.0).
  * @note This marker does not solve for the exact stationary instant, where a boolean direction is not
  *       physically meaningful.
  */
 [[nodiscard]] inline auto is_retrograde(const Planet planet, const double jde_tt) -> bool {
+  detail::validate_retrograde_input(planet, jde_tt);
   const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
-  const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
+  const double after_jde_tt = jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS;
+  // The last valid centered binary64 value can round +0.5 to the apparent domain's exclusive end.
+  const double bounded_after_jde_tt =
+    planet == Planet::PLUTO and after_jde_tt >= detail::pluto::APPARENT_END_JDE_TT
+      ? std::nextafter(detail::pluto::APPARENT_END_JDE_TT, detail::pluto::APPARENT_START_JDE_TT)
+      : after_jde_tt;
+  const auto after = apparent(planet, bounded_after_jde_tt);
   return std::remainder(after.λ.deg() - before.λ.deg(), 360.0) < 0.0;
 }
 
@@ -265,17 +304,19 @@ namespace geocentric_coord {
 namespace observation {
 
 /**
- * @brief Calculate observer-facing geometry for a major planet.
- * @param planet The planet to calculate, from Mercury through Neptune.
+ * @brief Calculate observer-facing geometry for a planet.
+ * @param planet The planet to calculate, from Mercury through Pluto.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return Great-circle separation from the Sun, target-centered phase angle, and illuminated fraction.
  * @details Uses the apparent geocentric positions from `sun::geocentric_coord::apparent` and
  *          `planet::geocentric_coord::apparent`, inheriting their model scope.
  * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite result.
+ * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5).
  * @see astro::illumination::geometry
  */
 [[nodiscard]] inline auto geometry(const Planet planet, const double jde_tt) -> astro::illumination::Geometry {
+  static_cast<void>(detail::validate_apparent_input(planet, jde_tt));
   const auto source_pos = astro::sun::geocentric_coord::apparent(jde_tt);
   const auto target_pos = astro::planet::geocentric_coord::apparent(planet, jde_tt);
   return astro::illumination::geometry(source_pos, target_pos);

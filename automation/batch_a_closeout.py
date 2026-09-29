@@ -31,8 +31,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
-RECORD_SHA256: Final[str] = "5101fe479b96d2267ad4a8f5a4d3826547f7d2d4d50b772a23784f0f030cc944"
-REGISTRY_SHA256: Final[str] = "154c64ef8e2ffbbb652f69a663f3478c183916b1c06be77507f8dcd85d67045f"
+RECORD_SHA256: Final[str] = "bdfe32a86faf476a30c67572424b2099e95355d60b8be3b6498ae979111f6b8c"
+REGISTRY_SHA256: Final[str] = "0c08fd858cce6c2ed41235e9073f80e0ca73ddc6d976ab29d8a9a2648130aa80"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -141,7 +141,7 @@ SPLIT_ROW_PARTS: Final[dict[str, str]] = {
 REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   """
   r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r12-check r12-jupiter
-  r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14
+  r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14 r38-pluto
   r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
   r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
   v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v06-illumination v06-phenomena v07 v07-refresh
@@ -150,6 +150,7 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   v32-sidereal v32-precession v32-earth v32-elp v32-phase v32-solar v32-rise-set
   v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
   v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v44-aaplus-phenomena
+  v45-pluto95
   notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
@@ -159,10 +160,12 @@ REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
     "v06-planets",
     "v06-illumination",
     "v06-phenomena",
+    "r38-pluto",
     "v15-planets",
     "v15-phenomena",
     "v32-planets",
     "v44-aaplus-phenomena",
+    "v45-pluto95",
   }
 )
 
@@ -176,6 +179,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/astro/julian_day.hpp",
     "src/astro/leap_second.hpp",
     "src/astro/moon.hpp",
+    "src/astro/pluto.hpp",
     "src/astro/toolbox.hpp",
     "src/calendar/lunar/algo1.hpp",
     "src/calendar/lunar/algo3.hpp",
@@ -183,9 +187,11 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/test/astro/earth_test.cpp",
     "src/test/astro/elp2000_82b_test.cpp",
     "src/test/astro/julian_day_test.cpp",
+    "src/test/astro/illumination_test.cpp",
     "src/test/astro/moon_phase_test.cpp",
     "src/test/astro/moon_test.cpp",
     "src/test/astro/planet_test.cpp",
+    "src/test/astro/planet_phenomena_test.cpp",
     "src/test/astro/rise_set_golden_test.cpp",
     "src/test/astro/rise_set_moon_golden_test.cpp",
     "src/test/astro/sidereal_time_test.cpp",
@@ -226,7 +232,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "827b3bf265cd44768f90c7b51543b0e41a320f3c6f6dfab88c9498574f7e59a4"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "76ba1bb8cf32d4da53fc067ecd6a1a8101a8ee0aca6de2b1e6fc7e69507f11f2"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -285,7 +291,7 @@ RESIDUAL_GPL_ALLOWLIST: Final[Counter[tuple[str, str]]] = Counter(
   }
 )
 ROW_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
-  r"\b(?:R(?:0[1-9]|[12][0-9]|3[0-7])|V(?:0[1-9]|[1-3][0-9]|4[0-4])|T0[1-3])\b"
+  r"\b(?:R(?:0[1-9]|[12][0-9]|3[0-8])|V(?:0[1-9]|[1-3][0-9]|4[0-5])|T0[1-3])\b"
 )
 MARKING_PHRASES: Final[tuple[str, ...]] = (
   "Retained material boundary",
@@ -304,6 +310,7 @@ SOURCE_FAMILIES: Final[tuple[tuple[str, ...], ...]] = (
   ("morrison-stephenson-hohenkerk-zawilski", "morrison-stephenson", "zawilski"),
   ("jean meeus", "meeus"),
   ("microsoft",),
+  ("sonia keys", "soniakeys"),
   ("ytliu0",),
   ("jpl horizons", "horizons"),
   ("usno", "us naval observatory"),
@@ -311,6 +318,7 @@ SOURCE_FAMILIES: Final[tuple[tuple[str, ...], ...]] = (
   ("aa+", "aaplus"),
   ("skyfield",),
   ("pyerfa",),
+  ("pluto95",),
   ("nist",),
   ("llvm", "llvmorg"),
   ("emscripten",),
@@ -365,6 +373,7 @@ EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
     }
   ),
   "Astronomical Algorithms — retained daily-variation series": frozenset({"r22"}),
+  "Sonia Keys meeus v3 — MIT License": frozenset({"r38-pluto"}),
   "Microsoft — statically linked C/C++ runtime portions": frozenset({"t03-native", "t03-wheel"}),
 }
 

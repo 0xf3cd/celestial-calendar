@@ -38,12 +38,25 @@ Target body name: Mercury (199) {source: DE441}
 Center body name: Earth (399) {source: DE441}
 Center-site name: GEOCENTRIC
 Atmos refraction: NO (AIRLESS)
+Calendar mode   : Gregorian
+Units conversion: 1 au= 149597870.700 km, c= 299792.458 km/s, 1 day= 86400.0 s
 Date__(TT)__HR:MN:SC.fff, Date_________JDTT, , , delta, deldot, S-O-T, ObsEcLon, ObsEcLat, phi, Illu%
 $$SOE
 2025-Jan-01, 2460676.500000000, , , 1.0, .01, 30, 10, 1, 60, 50
 2025-Jan-02, 2460677.500000000, , , 1.1, .02, 31, 11, 2, 61, 51
 $$EOE
 """
+PLUTO_RESPONSE = VALID_RESPONSE.replace(
+  "Target body name: Mercury (199) {source: DE441}",
+  "Target body name: Pluto (999) {source: plu060_merged}",
+).replace(
+  "Date__(TT)__HR:MN:SC.fff, Date_________JDTT, , , delta, deldot, S-O-T, ObsEcLon, ObsEcLat, phi, Illu%",
+  """Rel. light bend : Sun, EARTH
+Observer-centered IAU76/80 ecliptic-of-date longitude and latitude
+with light-time, gravitational deflection of
+light, and stellar aberrations.
+Date__(TT)__HR:MN:SC.fff, Date_________JDTT, , , delta, deldot, S-O-T, ObsEcLon, ObsEcLat, phi, Illu%""",
+)
 
 REQUIRED_COLUMNS = ("delta", "deldot", "S-O-T", "ObsEcLon", "ObsEcLat", "phi", "Illu%")
 EXPECTED_EPOCHS = (2460676.5, 2460677.5)
@@ -99,11 +112,27 @@ def test_parse_horizons_response_accepts_pinned_shape():
   assert rows[0].illuminated_fraction == 0.5
 
 
+def test_parse_horizons_response_pins_pluto_identity_and_quantity_31_semantics():
+  pluto = CRAWLER.Target("PLUTO", "999", "Pluto", "plu060_merged", "DE441", "")
+  rows = CRAWLER.parse_horizons_response(pluto, PLUTO_RESPONSE, REQUIRED_COLUMNS, EXPECTED_EPOCHS)
+
+  assert tuple(row.jde for row in rows) == EXPECTED_EPOCHS
+  with pytest.raises(RuntimeError, match="quantity-31 semantics changed"):
+    CRAWLER.parse_horizons_response(
+      pluto,
+      PLUTO_RESPONSE.replace("and stellar aberrations.", "without stellar aberration."),
+      REQUIRED_COLUMNS,
+      EXPECTED_EPOCHS,
+    )
+
+
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   (
     ("Center-site name: GEOCENTRIC", "Center-site name: TOPOCENTRIC", "geocenter site"),
     ("Atmos refraction: NO (AIRLESS)", "Atmos refraction: YES", "applies atmospheric refraction"),
+    ("Calendar mode   : Gregorian", "Calendar mode   : Mixed", "Gregorian calendar"),
+    ("1 au= 149597870.700 km", "1 km= 1.000 km", "ranges in AU"),
     ("$$SOE", "$$SOE\n$$SOE", "invalid data markers"),
     ("1.0, .01", "n.a., .01", "returned n.a."),
     ("2460677.500000000", "2460676.500000000", "not strictly increasing"),
@@ -113,3 +142,14 @@ def test_parse_horizons_response_accepts_pinned_shape():
 def test_parse_horizons_response_rejects_identity_drift(old, new, message):
   with pytest.raises(RuntimeError, match=message):
     parse_response(VALID_RESPONSE.replace(old, new, 1))
+
+
+def test_horizons_request_pins_observer_conventions():
+  params = CRAWLER.horizons_params(CRAWLER.TARGETS[0], EXPECTED_EPOCHS)
+
+  assert params["APPARENT"] == "'AIRLESS'"
+  assert params["REF_SYSTEM"] == "'ICRF'"
+  assert params["CAL_TYPE"] == "'GREGORIAN'"
+  assert params["RANGE_UNITS"] == "'AU'"
+  assert params["TIME_TYPE"] == "'TT'"
+  assert params["CENTER"] == "'500@399'"

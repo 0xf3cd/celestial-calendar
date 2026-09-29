@@ -238,7 +238,10 @@ The C++-only [`illumination.hpp`](src/astro/illumination.hpp), [`planet.hpp`](sr
 [`planet_phenomena.hpp`](src/astro/planet_phenomena.hpp) provide planetary illumination geometry and yearly
 conjunction, opposition, quadrature, greatest-elongation, and station searches. Event instants are JDE(TT);
 Gregorian-year ownership follows UTC boundaries, degrading to the library's UT1 substitute before 1972. The
-`[1, 32766]` input domain is a computational limit, not a remote-date ephemeris accuracy guarantee.
+Mercury through Neptune use VSOP87D over the `[1, 32766]` computational year domain. `Planet::PLUTO` instead
+uses the lower-precision Meeus Chapter 37 model: apparent position and illumination geometry accept
+`[2409543.5, 2488069.5)` JDE(TT), centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete
+yearly event searches accept Gregorian years `[1886, 2098]`. These hard domains are not accuracy guarantees.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

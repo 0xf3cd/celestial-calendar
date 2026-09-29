@@ -17,6 +17,10 @@
 - Gregorian-year searches for planetary longitude conjunctions, oppositions, quadratures, spherical greatest
   elongations, and exact longitude stations (#60). Results are ordered JDE(TT) events owned by half-open UTC year
   boundaries; the `[1, 32766]` input domain is not a remote-date ephemeris accuracy guarantee.
+- Pluto in the existing C++ position, illumination, retrograde, and outer-planet phenomena APIs (#298), using the
+  lower-precision Meeus Chapter 37 model. Apparent positions and geometry accept `[2409543.5, 2488069.5)` JDE(TT),
+  centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete event searches accept Gregorian years
+  `[1886, 2098]`; these hard domains are not accuracy guarantees.
 
 ## [v0.7.0]
 
