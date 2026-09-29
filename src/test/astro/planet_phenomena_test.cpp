@@ -49,7 +49,8 @@ struct ApproximationRow {
   double jde_tt;
 };
 
-// JPL Horizons API v1.2, collected 2026-09-26 by `statistics/planet_horizons_crawler.py`.
+// JPL Horizons API v1.2, collected 2026-09-26 and 2026-09-28 by
+// `statistics/planet_horizons_crawler.py` and `statistics/pluto_horizons_crawler.py`.
 // The complete 2025 census comes from geocentric TT scans of quantity 31 at independent one-day,
 // six-hour, and three-hour meshes. All meshes produce the same counts and Kind order. Longitude
 // crossings use apparent ecliptic-of-date coordinates; extrema use quantity-31 geometry, with
@@ -106,6 +107,12 @@ constexpr std::array HORIZONS_ROWS {
   GoldenRow { Planet::NEPTUNE, 2025, Kind::OPPOSITION,                     2460942.038016 },
   GoldenRow { Planet::NEPTUNE, 2025, Kind::STATION_DIRECT,                 2461020.016952 },
   GoldenRow { Planet::NEPTUNE, 2025, Kind::EASTERN_QUADRATURE,             2461030.543835 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::CONJUNCTION,                    2460697.020714 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::WESTERN_QUADRATURE,             2460789.216156 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::STATION_RETROGRADE,             2460800.178807 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::OPPOSITION,                     2460881.773494 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::STATION_DIRECT,                 2460962.666341 },
+  GoldenRow { Planet::PLUTO,   2025, Kind::EASTERN_QUADRATURE,             2460973.059414 },
 };
 // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
 
@@ -117,12 +124,13 @@ constexpr std::array WINDOWS {
   Window { .planet = Planet::SATURN,  .year = 2025, .expected_count =  6 },
   Window { .planet = Planet::URANUS,  .year = 2025, .expected_count =  6 },
   Window { .planet = Planet::NEPTUNE, .year = 2025, .expected_count =  6 },
+  Window { .planet = Planet::PLUTO,   .year = 2025, .expected_count =  6 },
 };
 
 // Measured 2025 maxima (library-vs-Horizons event epoch / 6h-vs-3h source mesh), in days:
 // Mercury .000344/.000567, Venus .000102/.000288, Mars .000031/.000048,
 // Jupiter .001275/.000087, Saturn .001518/.000066, Uranus .000563/.000105,
-// Neptune .001155/.000360.
+// Neptune .001155/.000360, Pluto .044977/.000853.
 // Near-Sun conjunction maxima are smaller: .000035 day for Mercury and .000002 for Venus.
 constexpr std::array EVENT_TOLERANCES_DAYS {
   0.0020,
@@ -132,6 +140,7 @@ constexpr std::array EVENT_TOLERANCES_DAYS {
   0.0045,
   0.0020,
   0.0035,
+  0.1400,
 };
 
 // PyMeeus 0.5.12, collected 2026-09-26 from these calls:
@@ -308,6 +317,18 @@ TEST(PlanetPhenomena, StationAcrossLongitudeWrap) {
   ASSERT_FALSE(astro::planet::geocentric_coord::is_retrograde(Planet::NEPTUNE, station->jde_tt + 0.1));
 }
 
+TEST(PlanetPhenomena, PlutoStationsChangeDirection) {
+  const auto pluto = events(Planet::PLUTO, 2025);
+  const auto retrograde = std::ranges::find(pluto, Kind::STATION_RETROGRADE, &Event::kind);
+  const auto direct = std::ranges::find(pluto, Kind::STATION_DIRECT, &Event::kind);
+  ASSERT_NE(retrograde, pluto.end());
+  ASSERT_NE(direct, pluto.end());
+  ASSERT_FALSE(astro::planet::geocentric_coord::is_retrograde(Planet::PLUTO, retrograde->jde_tt - 0.1));
+  ASSERT_TRUE(astro::planet::geocentric_coord::is_retrograde(Planet::PLUTO, retrograde->jde_tt + 0.1));
+  ASSERT_TRUE(astro::planet::geocentric_coord::is_retrograde(Planet::PLUTO, direct->jde_tt - 0.1));
+  ASSERT_FALSE(astro::planet::geocentric_coord::is_retrograde(Planet::PLUTO, direct->jde_tt + 0.1));
+}
+
 TEST(PlanetPhenomena, HalfOpenOwnership) {
   constexpr double start_jde_tt = 100.0;
   constexpr double end_jde_tt = 200.0;
@@ -419,26 +440,34 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
     Planet::NEPTUNE,
   };
   constexpr std::array<int32_t, 7> years { 1, 4096, 8192, 16384, 24576, 29841, 32766 };
+  constexpr std::array<int32_t, 3> pluto_years { 1886, 2025, 2098 };
 
-  for (const int32_t year : years) {
+  const auto assert_same_events = [](const Planet planet, const int32_t year) {
     const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
     const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
     const double start_jde_tt = astro::julian_day::utc_to_jde(start_utc);
     const double end_jde_tt = astro::julian_day::utc_to_jde(end_utc);
-    for (const Planet planet : planets) {
-      const auto one_day = events(planet, year);
-      const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
-      ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);
-      ASSERT_EQ(one_day.size(), half_day.size()) << year << ", planet " << static_cast<int>(planet);
-      for (std::size_t index = 0; index < one_day.size(); ++index) {
-        ASSERT_EQ(one_day.at(index).kind, half_day.at(index).kind)
-          << year << ", planet " << static_cast<int>(planet) << ", index " << index;
-        // The measured maximum is 0.001887 day; 0.006 day is a 3.2x outward envelope for
-        // identifying the same extrapolated-model event, not a remote-date accuracy claim.
-        ASSERT_NEAR(one_day.at(index).jde_tt, half_day.at(index).jde_tt, 0.006)
-          << year << ", planet " << static_cast<int>(planet) << ", index " << index;
-      }
+    const auto one_day = events(planet, year);
+    const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
+    ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);
+    ASSERT_EQ(one_day.size(), half_day.size()) << year << ", planet " << static_cast<int>(planet);
+    for (std::size_t index = 0; index < one_day.size(); ++index) {
+      ASSERT_EQ(one_day.at(index).kind, half_day.at(index).kind)
+        << year << ", planet " << static_cast<int>(planet) << ", index " << index;
+      // The measured maximum is 0.001887 day; 0.006 day is a 3.2x outward envelope for
+      // identifying the same extrapolated-model event, not a remote-date accuracy claim.
+      ASSERT_NEAR(one_day.at(index).jde_tt, half_day.at(index).jde_tt, 0.006)
+        << year << ", planet " << static_cast<int>(planet) << ", index " << index;
     }
+  };
+
+  for (const int32_t year : years) {
+    for (const Planet planet : planets) {
+      assert_same_events(planet, year);
+    }
+  }
+  for (const int32_t year : pluto_years) {
+    assert_same_events(Planet::PLUTO, year);
   }
 }
 
@@ -447,6 +476,12 @@ TEST(PlanetPhenomena, RejectsInvalidInput) {
   const auto invalid_planet = static_cast<Planet>(255);
   EXPECT_THROW(static_cast<void>(events(Planet::MERCURY, 0)), std::invalid_argument);
   EXPECT_THROW(static_cast<void>(events(Planet::MERCURY, 32767)), std::invalid_argument);
+  const auto first_pluto_year = events(Planet::PLUTO, 1886);
+  const auto last_pluto_year = events(Planet::PLUTO, 2098);
+  EXPECT_FALSE(first_pluto_year.empty());
+  EXPECT_FALSE(last_pluto_year.empty());
+  EXPECT_THROW(static_cast<void>(events(Planet::PLUTO, 1885)), std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(events(Planet::PLUTO, 2099)), std::invalid_argument);
   EXPECT_THROW(
     static_cast<void>(events(Planet::MERCURY, std::numeric_limits<int32_t>::max())),
     std::invalid_argument

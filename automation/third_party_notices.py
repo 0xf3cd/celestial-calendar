@@ -35,6 +35,7 @@ HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "1272446f24ddf193d4198da3dea983bdfe
 VSOP87D_ATTRIBUTION_SHA256: Final[str] = "ad6357383e646cc2747c147e00c1e721280b437ac7a087d8ceb439b51d102218"
 VSOP87D_PLANETARY_ATTRIBUTION_SHA256: Final[str] = "568de2d41e4843c1d9902c311ab11d467ab0cf4b4f228caf5e122db99038416d"
 MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9"
+SONIA_KEYS_MEEUS_LICENSE_SHA256: Final[str] = "0d136782ebe29efb707481c26887c4e7cd6b3d5ca3da4fff5247020bbb3d1d99"
 WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
 PREAMBLE: Final[bytes] = b"""Third-Party Notices
@@ -201,6 +202,16 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     upstream="Jean Meeus, Astronomical Algorithms, second edition, p.168, ISBN 978-0943396613",
     sha256=MEEUS_R22_ATTRIBUTION_SHA256,
     marking=("This project-authored attribution record is not the book's licence text or a permission grant.",),
+  ),
+  NoticeSource(
+    title="Sonia Keys meeus v3 — MIT License",
+    applicability=(
+      "the Chapter 37 Pluto evaluator and 43-term coefficient table in src/astro/pluto.hpp and their consumer binaries"
+    ),
+    path=Path("src/test/provenance/soniakeys-meeus/bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE"),
+    upstream="https://github.com/soniakeys/meeus/blob/bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE",
+    sha256=SONIA_KEYS_MEEUS_LICENSE_SHA256,
+    marking=("Source-file copyright: Copyright 2013 Sonia Keys (`v3/pluto/pluto.go` at the pinned commit).",),
   ),
   NoticeSource(
     title="Microsoft — statically linked C/C++ runtime portions",

@@ -12,6 +12,8 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 
@@ -40,11 +42,14 @@ struct GeometryTolerance {
   double illuminated_fraction;
 };
 
-// JPL Horizons API v1.2 observer quantities 23, 31, 43, and 10, collected 2026-09-26 by
-// `statistics/planet_horizons_crawler.py`. Center is 500@399, epochs are TT, and quantity 31 is
+// JPL Horizons API v1.2 observer quantities 23, 31, 43, and 10, collected 2026-09-26 and
+// 2026-09-28 by `statistics/planet_horizons_crawler.py` and
+// `statistics/pluto_horizons_crawler.py`. Center is 500@399, epochs are TT, and quantity 31 is
 // IAU76/80 apparent true-ecliptic-of-date longitude/latitude. Separation is independently derived
 // from the Sun and planet quantity-31 vectors, then checked against quantity 23. The epochs are the
-// six fixed, source-selected dates used by the planetary-position dataset.
+// fixed, source-selected dates used by the planetary-position dataset. Pluto reuses its 11
+// position-dataset audit witnesses: domain, book, J2000, and wrap anchors; its 2025 conjunction; and
+// residual maxima.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
 constexpr std::array HORIZONS_ROWS {
   // Planet           JDE             Separation    Phase       Fraction
@@ -90,13 +95,25 @@ constexpr std::array HORIZONS_ROWS {
   GeometryRow { astro::planet::Planet::NEPTUNE, 2451545.000000,  22.8259649,   0.7246, 0.99996000 },
   GeometryRow { astro::planet::Planet::NEPTUNE, 2461050.500000,  69.9087509,   1.7699, 0.99976150 },
   GeometryRow { astro::planet::Planet::NEPTUNE, 2486166.250000,  47.3449665,   1.3949, 0.99985180 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2409543.500000, 137.0239544,   0.7901, 0.99995250 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2448908.500000,  34.4155197,   1.0864, 0.99991010 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2451545.000000,  30.7183554,   0.9534, 0.99993080 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2460697.020714,   3.2963727,   0.0919, 0.99999940 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2470066.864649, 159.7100810,   0.4798, 0.99998250 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2475818.500000,  86.3172609,   1.2952, 0.99987230 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2475819.500000,  87.2314829,   1.2964, 0.99987200 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2475842.500000, 108.2904379,   1.2328, 0.99988430 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2475843.500000, 109.2059919,   1.2261, 0.99988550 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2487903.349095,  82.5919347,   1.1815, 0.99989370 },
+  GeometryRow { astro::planet::Planet::PLUTO,   2488068.500000, 111.7833940,   1.0686, 0.99991300 },
 };
 // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
 
 // Measured maxima by planet (separation deg / phase deg / fraction): Mercury
 // .000008/.010967/.000095, Venus .000049/.007003/.000049, Mars .000082/.005459/.000025,
 // Jupiter .000095/.002827/.000004, Saturn .000055/.002065/.000002,
-// Uranus .000355/.001343/.000001, Neptune .000637/.001110/.000001.
+// Uranus .000355/.001343/.000001, Neptune .000637/.001110/.000001, and Pluto
+// .000877/.001115/.00000017 over the 267-point seed-298 crawl.
 // Tolerances are about 3x those independent model gaps, rounded outward.
 constexpr std::array HORIZONS_TOLERANCES {
   GeometryTolerance { .angular_separation_deg = 0.00003, .phase_angle_deg = 0.0350, .illuminated_fraction = 0.00030 },
@@ -106,6 +123,7 @@ constexpr std::array HORIZONS_TOLERANCES {
   GeometryTolerance { .angular_separation_deg = 0.00020, .phase_angle_deg = 0.0065, .illuminated_fraction = 0.000006 },
   GeometryTolerance { .angular_separation_deg = 0.00110, .phase_angle_deg = 0.0041, .illuminated_fraction = 0.000002 },
   GeometryTolerance { .angular_separation_deg = 0.00200, .phase_angle_deg = 0.0035, .illuminated_fraction = 0.000002 },
+  GeometryTolerance { .angular_separation_deg = 0.00300, .phase_angle_deg = 0.0040, .illuminated_fraction = 0.0000005 },
 };
 
 } // namespace
@@ -181,6 +199,51 @@ TEST(Illumination, HorizonsPlanetaryGeometry) {
     ASSERT_NEAR(result.phase_angle.deg(), row.phase_angle_deg, tolerance.phase_angle_deg);
     ASSERT_NEAR(result.illuminated_fraction, row.illuminated_fraction, tolerance.illuminated_fraction);
   }
+}
+
+TEST(Illumination, PlutoGeometryDomain) {
+  const double before = std::nextafter(
+    astro::planet::detail::pluto::APPARENT_START_JDE_TT,
+    -std::numeric_limits<double>::infinity()
+  );
+  const double last = std::nextafter(
+    astro::planet::detail::pluto::APPARENT_END_JDE_TT,
+    astro::planet::detail::pluto::APPARENT_START_JDE_TT
+  );
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(astro::planet::Planet::PLUTO, before)),
+    std::invalid_argument
+  );
+  EXPECT_NO_THROW(static_cast<void>(astro::planet::observation::geometry(
+    astro::planet::Planet::PLUTO,
+    astro::planet::detail::pluto::APPARENT_START_JDE_TT
+  )));
+  EXPECT_NO_THROW(static_cast<void>(
+    astro::planet::observation::geometry(astro::planet::Planet::PLUTO, last)
+  ));
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(
+      astro::planet::Planet::PLUTO,
+      astro::planet::detail::pluto::APPARENT_END_JDE_TT
+    )),
+    std::invalid_argument
+  );
+}
+
+TEST(Illumination, RejectsInvalidPlanetInput) {
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(
+      astro::planet::Planet::PLUTO,
+      std::numeric_limits<double>::quiet_NaN()
+    )),
+    std::invalid_argument
+  );
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises the invalid-enumerator contract.
+  const auto invalid_planet = static_cast<astro::planet::Planet>(255);
+  EXPECT_THROW(
+    static_cast<void>(astro::planet::observation::geometry(invalid_planet, 2451545.0)),
+    std::invalid_argument
+  );
 }
 
 } // namespace astro::illumination::test

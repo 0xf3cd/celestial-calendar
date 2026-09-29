@@ -102,9 +102,9 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
-  assert RECORD_SHA256 == "5101fe479b96d2267ad4a8f5a4d3826547f7d2d4d50b772a23784f0f030cc944"
-  assert REGISTRY_SHA256 == "154c64ef8e2ffbbb652f69a663f3478c183916b1c06be77507f8dcd85d67045f"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 105, 58, 2, 15)
+  assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
+  assert REGISTRY_SHA256 == "6681b7025693c9534e8b7630b78cc0cae3d2ed5c3a12d31b39d4dd46ae34546f"
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -177,11 +177,29 @@ def test_direct_digest_detects_a_retained_value_change(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
+def test_pluto_runtime_retained_data_mutation_fails(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/astro/pluto.hpp", "-19.799805", "-19.799804")
+
+  with pytest.raises(RuntimeError, match="r38-pluto retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+def test_pluto_runtime_evaluator_mutation_fails(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/astro/pluto.hpp", "238.958116 +", "238.958117 +")
+
+  with pytest.raises(RuntimeError, match="r38-pluto-evaluator retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [
     ("267.6792943", "267.6792944", "v06-planets retained data hash differs"),
     ("2460746.500000, false", "2460746.500000, true", "v06-planets retained data hash differs"),
+    ("60.4926095", "60.4926096", "v06-planets retained data hash differs"),
+    ("10.29158303131287", "10.29158303131288", "v45-pluto95 retained data hash differs"),
     ("267.4597670259", "267.4597670260", "v15-planets retained data hash differs"),
     ("41.454 / 3600.0", "41.455 / 3600.0", "v32-planets retained data hash differs"),
   ],
@@ -194,7 +212,10 @@ def test_planet_retained_data_mutations_fail(tmp_path, old, new, message):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
-@pytest.mark.parametrize("block_id", ["v06-planets", "v15-planets", "v32-planets"])
+@pytest.mark.parametrize(
+  "block_id",
+  ["r38-pluto", "r38-pluto-evaluator", "v06-planets", "v15-planets", "v32-planets", "v45-pluto95"],
+)
 def test_planet_retained_data_fields_are_required(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -221,7 +242,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -356,7 +377,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -520,7 +541,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 105, 58, 2, 15)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

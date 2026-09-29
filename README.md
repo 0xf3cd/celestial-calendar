@@ -275,10 +275,12 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
   Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。
   三种宫制均拒绝地理极点；Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
-- C++ 头文件提供日月及水星至海王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
+- C++ 头文件提供日月及水星至冥王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
+  水星至海王星使用 VSOP87D；`Planet::PLUTO` 使用精度较低的 Meeus 第 37 章模型，其视位置与照明几何
+  JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
-  不表示 VSOP87D 在远年代仍具有现代星历精度。
+  不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
 - 均时差与地方真太阳时。
 - UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
 - [C ABI 共享库](#c-abi)、[Python 原生 wheel](#python) 和 [JavaScript / TypeScript WASM 包](#javascript)。
@@ -395,9 +397,9 @@ python project.py --all
 便于重建和核查；可从 `src/test/jieqi_golden_test.cpp` 看一个完整例子，具体约定见 `AGENTS.md`。
 外部参考包括：
 
-- **JPL Horizons**：日月与水星至海王星的视位置及节气过点，由 `statistics/` 中的
-  `moon_horizons_crawler.py`、`planet_horizons_crawler.py`、`sun_equatorial_horizons_crawler.py`、
-  `sun_jieqi_golden_crawler.py` 采集或重放。
+- **JPL Horizons**：日月与水星至冥王星的视位置及节气过点，由 `statistics/` 中的
+  `moon_horizons_crawler.py`、`planet_horizons_crawler.py`、`pluto_horizons_crawler.py`、
+  `sun_equatorial_horizons_crawler.py`、`sun_jieqi_golden_crawler.py` 采集或重放。
 - **香港天文台历书**：2022–2028 年公布的节气钟表时间，整条计算链与其差异须在 60 秒内，
   主要容纳历书自身的分钟舍入。由 `automation/jieqi_table.py` 实现，入口为 `./checks.py --jieqi-table`。
 - **ytliu0's ChineseCalendar**：按 commit 固定的独立阴历年表，用于验证预生成算法，
@@ -559,6 +561,7 @@ CI 产物另见[上一节](#artifacts)。发布新版本的维护者须遵循 [`
 * [Morrison, Stephenson, Hohenkerk & Zawilski, 2021 addendum to "Measurement of the Earth's rotation"](https://doi.org/10.1098/rspa.2020.0776)
 * [vsop87c](https://github.com/hongzhen/vsop87c)
 * [PyMeeus](https://github.com/architest/pymeeus)
+* [Sonia Keys / meeus v3 at bfbd9ac](https://github.com/soniakeys/meeus/tree/bfbd9ac2c7f709c94f1dee190c633d24a723f628)
 * [Swiss Ephemeris v2.10.3bfinal](https://github.com/aloistr/swisseph/tree/v2.10.3bfinal)
 * [meeus-elp82](https://www.celestialprogramming.com/meeus-elp82.html)
 * [AA+ v2.55 A class framework for Computational Astronomy](http://www.naughter.com/aa.html)

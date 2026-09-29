@@ -117,6 +117,10 @@ def horizons_params(
     "EXTRA_PREC": "'YES'",
     "CAL_FORMAT": "'BOTH'",
     "CSV_FORMAT": "'YES'",
+    "APPARENT": "'AIRLESS'",
+    "REF_SYSTEM": "'ICRF'",
+    "CAL_TYPE": "'GREGORIAN'",
+    "RANGE_UNITS": "'AU'",
   }
 
 
@@ -142,6 +146,22 @@ def parse_horizons_response(
     raise RuntimeError(f"Horizons response for {target.horizons_name} is not from the geocenter site")
   if "Atmos refraction: NO (AIRLESS)" not in text:
     raise RuntimeError(f"Horizons response for {target.horizons_name} applies atmospheric refraction")
+  if "Calendar mode   : Gregorian" not in text:
+    raise RuntimeError(f"Horizons response for {target.horizons_name} does not use the Gregorian calendar")
+  if "Units conversion: 1 au= 149597870.700 km" not in text:
+    raise RuntimeError(f"Horizons response for {target.horizons_name} does not report ranges in AU")
+  if "ObsEcLon" in required_columns or "ObsEcLat" in required_columns:
+    if "Rel. light bend : Sun" not in text:
+      raise RuntimeError(
+        f"Horizons response for {target.horizons_name} has an unexpected relativistic-light-bend identity"
+      )
+    quantity_31_phrases = (
+      "Observer-centered IAU76/80 ecliptic-of-date longitude and latitude",
+      "with light-time, gravitational deflection of",
+      "light, and stellar aberrations.",
+    )
+    if any(phrase not in text for phrase in quantity_31_phrases):
+      raise RuntimeError(f"Horizons quantity-31 semantics changed for {target.horizons_name}")
 
   lines = text.splitlines()
   if lines.count("$$SOE") != 1 or lines.count("$$EOE") != 1:

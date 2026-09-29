@@ -22,6 +22,7 @@ from automation.third_party_notices import (
   REPO_ROOT,
   ROOT_NOTICE,
   SEPARATOR,
+  SONIA_KEYS_MEEUS_LICENSE_SHA256,
   VSOP87D_PLANETARY_ATTRIBUTION_SHA256,
   assemble_notices,
 )
@@ -29,7 +30,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "b2167e540943a4f01b31f97fb25b4c3c5f4f556fb51248f8e06cbd775400c436"
+CANONICAL_NOTICE_SHA256 = "9c4a3d0dc5b83e4beaac2c5a831fc884ec24184b38871d3b504ceca7890bf12d"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -55,13 +56,14 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
   assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
-  assert len(NOTICE_SOURCES) == 15
+  assert len(NOTICE_SOURCES) == 16
   by_title = {source.title: source for source in NOTICE_SOURCES}
   sofa = by_title["IAU SOFA issue 2023-10-11 — SOFA Software License"]
   erfa = by_title["ERFA v2.0.1 — LICENSE"]
   nasa = by_title["NASA/TP-2006-214141 — acknowledgment"]
   delta_t = by_title["Delta T algorithms 1, 3, and 5 — source attribution"]
   planetary = by_title["VSOP87D — retained planetary coefficients"]
+  sonia_keys = by_title["Sonia Keys meeus v3 — MIT License"]
   for marking in sofa.marking:
     assert marking.encode() in notice
   assert "does not itself constitute software provided by or endorsed by SOFA" in sofa.marking[1]
@@ -79,15 +81,24 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   assert delta_t.sha256 == DELTA_T_ATTRIBUTION_SHA256
   for marking in delta_t.marking:
     assert marking.encode() in notice
-  assert [source.title for source in NOTICE_SOURCES[-5:]] == [
+  assert [source.title for source in NOTICE_SOURCES[-6:]] == [
     "Hong Kong Observatory — retained lunar-year words",
     "VSOP87D — retained Earth coefficients",
     "VSOP87D — retained planetary coefficients",
     "Astronomical Algorithms — retained daily-variation series",
+    "Sonia Keys meeus v3 — MIT License",
     "Microsoft — statically linked C/C++ runtime portions",
   ]
   assert planetary.sha256 == VSOP87D_PLANETARY_ATTRIBUTION_SHA256
-  for source in NOTICE_SOURCES[-5:]:
+  assert sonia_keys.applicability == (
+    "the Chapter 37 Pluto evaluator and 43-term coefficient table in src/astro/pluto.hpp and their consumer binaries"
+  )
+  assert sonia_keys.upstream.endswith("bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE")
+  assert sonia_keys.sha256 == SONIA_KEYS_MEEUS_LICENSE_SHA256
+  assert sonia_keys.marking == (
+    "Source-file copyright: Copyright 2013 Sonia Keys (`v3/pluto/pluto.go` at the pinned commit).",
+  )
+  for source in NOTICE_SOURCES[-6:-2] + NOTICE_SOURCES[-1:]:
     assert source.marking
     assert source.sha256 in notice.decode()
   assert b"NASA/TP-2006-214141 (October 2006)" in notice
