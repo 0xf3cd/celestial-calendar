@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -60,6 +62,13 @@ struct AberrationCorrection {
   astro::toolbox::AngleDeg Δβ;
 };
 
+using HeliocentricEvaluator = astro::toolbox::SphericalCoordinate (*)(double);
+
+struct Vsop87dMapping {
+  Planet target;
+  HeliocentricEvaluator evaluate;
+};
+
 inline constexpr std::size_t LIGHT_TIME_MAX_ITERATIONS = 10;
 // One day resolves outer-planet motion without extending the marker beyond a local direction test.
 inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
@@ -91,27 +100,41 @@ template <astro::vsop87d::Planet planet>
   };
 }
 
+template <Planet target, astro::vsop87d::Planet model>
+[[nodiscard]] consteval auto make_vsop87d_mapping() -> Vsop87dMapping {
+  return {
+    .target = target,
+    .evaluate = heliocentric<model>,
+  };
+}
+
 [[nodiscard]] inline auto heliocentric(
   const Planet planet,
   const double retarded_jde_tt,
   const double observation_jde_tt
-)
-  -> astro::toolbox::SphericalCoordinate {
+) -> astro::toolbox::SphericalCoordinate {
+  using enum Planet;
   using enum astro::vsop87d::Planet;
 
-  switch (planet) {
-    case Planet::MERCURY: return heliocentric<MER>(retarded_jde_tt);
-    case Planet::VENUS:   return heliocentric<VEN>(retarded_jde_tt);
-    case Planet::MARS:    return heliocentric<MAR>(retarded_jde_tt);
-    case Planet::JUPITER: return heliocentric<JUP>(retarded_jde_tt);
-    case Planet::SATURN:  return heliocentric<SAT>(retarded_jde_tt);
-    case Planet::URANUS:  return heliocentric<URA>(retarded_jde_tt);
-    case Planet::NEPTUNE: return heliocentric<NEP>(retarded_jde_tt);
-    case Planet::PLUTO:
-      return pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
-    default:
-      throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
+  static constexpr std::array mappings {
+    make_vsop87d_mapping<MERCURY, MER>(),
+    make_vsop87d_mapping<VENUS, VEN>(),
+    make_vsop87d_mapping<MARS, MAR>(),
+    make_vsop87d_mapping<JUPITER, JUP>(),
+    make_vsop87d_mapping<SATURN, SAT>(),
+    make_vsop87d_mapping<URANUS, URA>(),
+    make_vsop87d_mapping<NEPTUNE, NEP>(),
+  };
+
+  if (planet == PLUTO) {
+    return pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
   }
+
+  const auto* const mapping = std::ranges::find(mappings, planet, &Vsop87dMapping::target);
+  if (mapping == mappings.end()) [[unlikely]] {
+    throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
+  }
+  return mapping->evaluate(retarded_jde_tt);
 }
 
 [[nodiscard]] inline auto rectangular(const astro::toolbox::SphericalCoordinate& spherical)
@@ -201,7 +224,10 @@ template <astro::vsop87d::Planet planet>
   };
 }
 
-[[nodiscard]] inline auto validate_apparent_input(const Planet planet, const double jde_tt) -> std::string_view {
+[[nodiscard]] inline auto validate_apparent_input(
+  const Planet planet,
+  const double jde_tt
+) -> std::string_view {
   if (not std::isfinite(jde_tt)) [[unlikely]] {
     throw std::invalid_argument {
       std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
@@ -214,7 +240,10 @@ template <astro::vsop87d::Planet planet>
   return planet_name;
 }
 
-inline auto validate_retrograde_input(const Planet planet, const double jde_tt) -> void {
+inline auto validate_retrograde_input(
+  const Planet planet,
+  const double jde_tt
+) -> void {
   if (not std::isfinite(jde_tt)) [[unlikely]] {
     throw std::invalid_argument {
       std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
@@ -245,8 +274,10 @@ namespace geocentric_coord {
  *       light deflection and treats TT as the VSOP87D dynamical-time argument without a TT-TDB model.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (23.2), (32.3), and (33.1)-(33.4).
  */
-[[nodiscard]] inline auto apparent(const Planet planet, const double jde_tt)
-  -> astro::toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto apparent(
+  const Planet planet,
+  const double jde_tt
+) -> astro::toolbox::SphericalCoordinate {
   const std::string_view planet_name = detail::validate_apparent_input(planet, jde_tt);
 
   try {
@@ -290,7 +321,10 @@ namespace geocentric_coord {
  * @note This marker does not solve for the exact stationary instant, where a boolean direction is not
  *       physically meaningful.
  */
-[[nodiscard]] inline auto is_retrograde(const Planet planet, const double jde_tt) -> bool {
+[[nodiscard]] inline auto is_retrograde(
+  const Planet planet,
+  const double jde_tt
+) -> bool {
   detail::validate_retrograde_input(planet, jde_tt);
   const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
   const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
@@ -314,7 +348,10 @@ namespace observation {
  * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5).
  * @see astro::illumination::geometry
  */
-[[nodiscard]] inline auto geometry(const Planet planet, const double jde_tt) -> astro::illumination::Geometry {
+[[nodiscard]] inline auto geometry(
+  const Planet planet,
+  const double jde_tt
+) -> astro::illumination::Geometry {
   static_cast<void>(detail::validate_apparent_input(planet, jde_tt));
   const auto source_pos = astro::sun::geocentric_coord::apparent(jde_tt);
   const auto target_pos = astro::planet::geocentric_coord::apparent(planet, jde_tt);
