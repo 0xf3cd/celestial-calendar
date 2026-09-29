@@ -130,7 +130,12 @@ template <Planet target, astro::vsop87d::Planet model>
     return pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
   }
 
-  const auto* const mapping = std::ranges::find(mappings, planet, &Vsop87dMapping::target);
+  // NOLINTNEXTLINE(readability-qualified-auto) -- Iterator representation varies by standard library.
+  const auto mapping = std::ranges::find(
+    mappings,
+    planet,
+    &Vsop87dMapping::target
+  );
   if (mapping == mappings.end()) [[unlikely]] {
     throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
   }
