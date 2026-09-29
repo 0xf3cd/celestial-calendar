@@ -30,7 +30,7 @@ from automation.third_party_notices import (
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "f3e78418066325cdf26898ba8efbab9af629d29121f919e457b7f6502b4aaa47"
+CANONICAL_NOTICE_SHA256 = "9c4a3d0dc5b83e4beaac2c5a831fc884ec24184b38871d3b504ceca7890bf12d"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
 LOCAL_RUN_CLANG_TIDY_BLOCK = (
   "#\n",
@@ -95,7 +95,9 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   )
   assert sonia_keys.upstream.endswith("bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE")
   assert sonia_keys.sha256 == SONIA_KEYS_MEEUS_LICENSE_SHA256
-  assert not sonia_keys.marking
+  assert sonia_keys.marking == (
+    "Source-file copyright: Copyright 2013 Sonia Keys (`v3/pluto/pluto.go` at the pinned commit).",
+  )
   for source in NOTICE_SOURCES[-6:-2] + NOTICE_SOURCES[-1:]:
     assert source.marking
     assert source.sha256 in notice.decode()

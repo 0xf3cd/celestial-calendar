@@ -70,14 +70,16 @@ struct Pluto95Row {
 }
 
 // JPL Horizons API v1.2 apparent geocentric positions, collected 2026-09-22 and 2026-09-28 by
-// `statistics/planet_horizons_crawler.py`. Target sources are DE441 (Mercury/Venus), mar099,
+// `statistics/planet_horizons_crawler.py` and `statistics/pluto_horizons_crawler.py`. Target sources
+// are DE441 (Mercury/Venus), mar099,
 // jup365_merged, sat441l, ura184_merged, nep098_merged, and Pluto's plu060_merged; the Earth center
 // uses DE441 except for Neptune's nep098_merged response. Inputs are echoed JD(TT), center is
 // 500@399, and quantity 31 is IAU76/80 apparent true-ecliptic-of-date longitude/latitude.
 // Quantity 20 supplies apparent range. Quantity 23 supplies elongation, retained here to expose
 // the conjunction rows where Horizons' relativistic light deflection is intentionally absent from
-// this library. The Mercury-Neptune block uses six fixed epochs spanning 1901-2094; the Pluto block
-// keeps 11 directed epochs spanning its bounded model, including both longitude-wrap directions.
+// this library. The Mercury-Neptune block uses six fixed epochs spanning 1901-2094. Pluto keeps 11
+// audit witnesses spanning its bounded model: domain, book, J2000, and wrap anchors; the 2025
+// conjunction; and the seed-298 longitude, latitude, and range residual maxima.
 // For each Mercury-Neptune planet, a 2026 scan selects the earliest minimum-elongation row.
 //
 // Measured worst fixed-epoch residuals (longitude arcsec, latitude arcsec, range km), by planet:
@@ -247,8 +249,8 @@ inline constexpr double MEEUS_EXAMPLE_37A_RADIUS_AU = 29.711111;
 
 // IMCCE PLUTO95 `pluto.sub` official Cartesian test vectors (SHA-256
 // 14d2e84e99c3fd873310ed5381a79d11f9140683830307e2b9ef051916244d24), reproduced by the accepted
-// source-gate evaluator. The 60-arcsec ceiling is independent of Chapter 37; the retained maximum
-// is 3.566762 arcsec.
+// source-gate evaluator. One arcminute is a gross units/frame tripwire, not a model-error tolerance;
+// the separately pinned retained maximum is 3.566762 arcsec.
 constexpr std::array PLUTO95_ROWS {
   Pluto95Row { 2415023.00, 10.29158303131287,  44.52906466047693, 10.79081191605171 },
   Pluto95Row { 2451548.25, -9.86615874601937, -27.98285304568784, -5.75779357947923 },

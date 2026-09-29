@@ -53,6 +53,7 @@ inline constexpr double FK5_INVERSE_ANGLE_TOLERANCE_DEG = 1e-15;
 // Retained material boundary (R38/#298): this evaluator and its 43 Chapter 37 terms were ported
 // from Sonia Keys' `v3/pluto/pluto.go` at bfbd9ac2c7f709c94f1dee190c633d24a723f628. They remain
 // under Sonia Keys' MIT terms and outside the project MIT grant.
+// Copyright 2013 Sonia Keys.
 // @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 37, Table 37.A.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense source table reads by column.
 inline constexpr std::array<Term, 43> TERMS {{
@@ -181,6 +182,7 @@ inline auto validate_retrograde_jde(const double jde_tt) -> void {
   };
 }
 
+/** @brief Return observation-date mean-ecliptic coordinates ready for VSOP87D Earth subtraction. */
 [[nodiscard]] inline auto heliocentric_for_subtraction(
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): epoch names distinguish emission from observation.
   const double retarded_jde_tt,

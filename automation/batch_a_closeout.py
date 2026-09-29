@@ -32,7 +32,7 @@ CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "bdfe32a86faf476a30c67572424b2099e95355d60b8be3b6498ae979111f6b8c"
-REGISTRY_SHA256: Final[str] = "0c08fd858cce6c2ed41235e9073f80e0ca73ddc6d976ab29d8a9a2648130aa80"
+REGISTRY_SHA256: Final[str] = "9161b08fa196f61cb20c2fd1581ba199ac3b06ce212c6158e2bcb3bdb5bcddc9"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -142,6 +142,7 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   """
   r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r12-check r12-jupiter
   r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14 r38-pluto
+  r38-pluto-evaluator
   r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
   r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
   v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v06-illumination v06-phenomena v07 v07-refresh
@@ -161,6 +162,7 @@ REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
     "v06-illumination",
     "v06-phenomena",
     "r38-pluto",
+    "r38-pluto-evaluator",
     "v15-planets",
     "v15-phenomena",
     "v32-planets",
@@ -373,7 +375,7 @@ EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
     }
   ),
   "Astronomical Algorithms — retained daily-variation series": frozenset({"r22"}),
-  "Sonia Keys meeus v3 — MIT License": frozenset({"r38-pluto"}),
+  "Sonia Keys meeus v3 — MIT License": frozenset({"r38-pluto", "r38-pluto-evaluator"}),
   "Microsoft — statically linked C/C++ runtime portions": frozenset({"t03-native", "t03-wheel"}),
 }
 

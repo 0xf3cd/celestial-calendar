@@ -43,12 +43,12 @@ struct GeometryTolerance {
 };
 
 // JPL Horizons API v1.2 observer quantities 23, 31, 43, and 10, collected 2026-09-26 and
-// 2026-09-28 by
-// `statistics/planet_horizons_crawler.py`. Center is 500@399, epochs are TT, and quantity 31 is
+// 2026-09-28 by `statistics/planet_horizons_crawler.py` and
+// `statistics/pluto_horizons_crawler.py`. Center is 500@399, epochs are TT, and quantity 31 is
 // IAU76/80 apparent true-ecliptic-of-date longitude/latitude. Separation is independently derived
 // from the Sun and planet quantity-31 vectors, then checked against quantity 23. The epochs are the
-// fixed, source-selected dates used by the planetary-position dataset. Pluto keeps 11 directed
-// dates spanning its bounded model, including both longitude-wrap directions.
+// fixed, source-selected dates used by the planetary-position dataset. Pluto uses the same 11 audit
+// witnesses: domain, book, J2000, and wrap anchors; its 2025 conjunction; and residual maxima.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
 constexpr std::array HORIZONS_ROWS {
   // Planet           JDE             Separation    Phase       Fraction

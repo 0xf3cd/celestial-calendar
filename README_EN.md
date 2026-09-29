@@ -237,7 +237,7 @@ and `JieqiGenerator`. Other self-contained headers are organized under `src/astr
 The C++-only [`illumination.hpp`](src/astro/illumination.hpp), [`planet.hpp`](src/astro/planet.hpp), and
 [`planet_phenomena.hpp`](src/astro/planet_phenomena.hpp) provide planetary illumination geometry and yearly
 conjunction, opposition, quadrature, greatest-elongation, and station searches. Event instants are JDE(TT);
-Gregorian-year ownership follows UTC boundaries, degrading to the library's UT1 substitute before 1972. The
+Gregorian-year ownership follows UTC boundaries, degrading to the library's UT1 substitute before 1972.
 Mercury through Neptune use VSOP87D over the `[1, 32766]` computational year domain. `Planet::PLUTO` instead
 uses the lower-precision Meeus Chapter 37 model: apparent position and illumination geometry accept
 `[2409543.5, 2488069.5)` JDE(TT), centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete

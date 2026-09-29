@@ -234,7 +234,8 @@ namespace geocentric_coord {
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return Apparent longitude and latitude in the true ecliptic and equinox of date, and the
  *         retarded geocentric distance in AU.
- * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::invalid_argument If `jde_tt` is not finite or outside the selected planet's documented
+ *                              domain, or `planet` is not a named enumerator.
  * @throw std::runtime_error If the numerical evaluation cannot produce a finite, converged position.
  * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5); the Mercury-Neptune VSOP87D
  *       behavior is unchanged.
@@ -280,7 +281,8 @@ namespace geocentric_coord {
  * @param planet The planet to calculate, from Mercury through Pluto.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return `true` when the wrap-aware longitude change over the centered one-day interval is negative.
- * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::invalid_argument If `jde_tt` is not finite or outside the selected planet's documented
+ *                              domain, or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite, converged result.
  * @note Pluto is available for centered JDE(TT) [2409544.0, 2488069.0).
  * @note This marker does not solve for the exact stationary instant, where a boolean direction is not
@@ -289,13 +291,7 @@ namespace geocentric_coord {
 [[nodiscard]] inline auto is_retrograde(const Planet planet, const double jde_tt) -> bool {
   detail::validate_retrograde_input(planet, jde_tt);
   const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
-  const double after_jde_tt = jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS;
-  // The last valid centered binary64 value can round +0.5 to the apparent domain's exclusive end.
-  const double bounded_after_jde_tt =
-    planet == Planet::PLUTO and after_jde_tt >= detail::pluto::APPARENT_END_JDE_TT
-      ? std::nextafter(detail::pluto::APPARENT_END_JDE_TT, detail::pluto::APPARENT_START_JDE_TT)
-      : after_jde_tt;
-  const auto after = apparent(planet, bounded_after_jde_tt);
+  const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
   return std::remainder(after.λ.deg() - before.λ.deg(), 360.0) < 0.0;
 }
 
@@ -310,7 +306,8 @@ namespace observation {
  * @return Great-circle separation from the Sun, target-centered phase angle, and illuminated fraction.
  * @details Uses the apparent geocentric positions from `sun::geocentric_coord::apparent` and
  *          `planet::geocentric_coord::apparent`, inheriting their model scope.
- * @throw std::invalid_argument If `jde_tt` is not finite or `planet` is not a named enumerator.
+ * @throw std::invalid_argument If `jde_tt` is not finite or outside the selected planet's documented
+ *                              domain, or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite result.
  * @note Pluto is available for JDE(TT) [2409543.5, 2488069.5).
  * @see astro::illumination::geometry

@@ -53,6 +53,7 @@ DIRECTED_EPOCHS: Final[tuple[float, ...]] = (
   2475843.5,
   2488068.5,
 )
+# Domain/book/J2000/wrap anchors, the 2025 conjunction, and the seed-298 residual maxima.
 RETAINED_POSITION_EPOCHS: Final[tuple[float, ...]] = (
   2409543.5,
   2448908.5,

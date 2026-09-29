@@ -1955,6 +1955,7 @@ Sonia Keys meeus v3 — MIT License
 Applies to: the Chapter 37 Pluto evaluator and 43-term coefficient table in src/astro/pluto.hpp and their consumer binaries.
 Source: https://github.com/soniakeys/meeus/blob/bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE
 Source-file SHA-256: 0d136782ebe29efb707481c26887c4e7cd6b3d5ca3da4fff5247020bbb3d1d99
+Source-file copyright: Copyright 2013 Sonia Keys (`v3/pluto/pluto.go` at the pinned commit).
 ==============================================================================
 
 Copyright 2018 Sonia Keys

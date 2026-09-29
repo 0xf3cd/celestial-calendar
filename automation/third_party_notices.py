@@ -211,6 +211,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/soniakeys-meeus/bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE"),
     upstream="https://github.com/soniakeys/meeus/blob/bfbd9ac2c7f709c94f1dee190c633d24a723f628/LICENSE",
     sha256=SONIA_KEYS_MEEUS_LICENSE_SHA256,
+    marking=("Source-file copyright: Copyright 2013 Sonia Keys (`v3/pluto/pluto.go` at the pinned commit).",),
   ),
   NoticeSource(
     title="Microsoft — statically linked C/C++ runtime portions",

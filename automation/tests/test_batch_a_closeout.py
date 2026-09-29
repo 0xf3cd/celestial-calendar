@@ -103,8 +103,8 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "bdfe32a86faf476a30c67572424b2099e95355d60b8be3b6498ae979111f6b8c"
-  assert REGISTRY_SHA256 == "0c08fd858cce6c2ed41235e9073f80e0ca73ddc6d976ab29d8a9a2648130aa80"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 107, 59, 2, 16)
+  assert REGISTRY_SHA256 == "9161b08fa196f61cb20c2fd1581ba199ac3b06ce212c6158e2bcb3bdb5bcddc9"
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -185,6 +185,14 @@ def test_pluto_runtime_retained_data_mutation_fails(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
+def test_pluto_runtime_evaluator_mutation_fails(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/astro/pluto.hpp", "238.958116 +", "238.958117 +")
+
+  with pytest.raises(RuntimeError, match="r38-pluto-evaluator retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [
@@ -204,7 +212,10 @@ def test_planet_retained_data_mutations_fail(tmp_path, old, new, message):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
-@pytest.mark.parametrize("block_id", ["r38-pluto", "v06-planets", "v15-planets", "v32-planets", "v45-pluto95"])
+@pytest.mark.parametrize(
+  "block_id",
+  ["r38-pluto", "r38-pluto-evaluator", "v06-planets", "v15-planets", "v32-planets", "v45-pluto95"],
+)
 def test_planet_retained_data_fields_are_required(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -231,7 +242,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 107, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -366,7 +377,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 107, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -530,7 +541,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 107, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):
