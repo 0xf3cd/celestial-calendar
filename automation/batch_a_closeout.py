@@ -29,10 +29,12 @@ else:
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
+LUNAR_NODE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lunar-node/LUNAR_NODE_ORACLE_ATTRIBUTION.md")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
 REGISTRY_SHA256: Final[str] = "9be925ee6402a3558cb89b773b0eb750eda0bdd384846ec2241fa42cf919c315"
+LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -1077,6 +1079,11 @@ def verify_batch_a_closeout(
   notice_sources: Sequence[NoticeSource] = NOTICE_SOURCES,
 ) -> CloseoutCounts:
   _verify_a4_license_surfaces(repo_root)
+  _read_pinned(
+    repo_root / LUNAR_NODE_ATTRIBUTION_RELATIVE,
+    LUNAR_NODE_ATTRIBUTION_SHA256,
+    "lunar-node oracle attribution",
+  )
 
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
   record = _load_json(_read_pinned(closeout_root / RECORD_NAME, record_sha256, "closeout record"), "closeout record")
