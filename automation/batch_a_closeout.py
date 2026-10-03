@@ -30,11 +30,15 @@ else:
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
 LUNAR_NODE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lunar-node/LUNAR_NODE_ORACLE_ATTRIBUTION.md")
+LONGITUDE_RATE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/ATTRIBUTION.md")
+LONGITUDE_RATE_PINS_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/SOURCE_PINS.json")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-REGISTRY_SHA256: Final[str] = "9be925ee6402a3558cb89b773b0eb750eda0bdd384846ec2241fa42cf919c315"
+REGISTRY_SHA256: Final[str] = "cdbc19b6b9a07b0cff6b6c2c55c9002276c8d3802f560cc4dea7300ff2155e92"
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
+LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "c539f5eeddbf05bbf7cbf59864d709f2f4c67cb08ddea912aa85c6f9d483456b"
+LONGITUDE_RATE_PINS_SHA256: Final[str] = "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -154,6 +158,7 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
   v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v20-lunar-node
   v44-lunar-node v44-aaplus-phenomena v45-pluto95
+  v44-longitude-rate v20-longitude-rate v15-longitude-rate r38-longitude-rate
   notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
@@ -172,6 +177,10 @@ REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
     "v45-pluto95",
     "v20-lunar-node",
     "v44-lunar-node",
+    "v44-longitude-rate",
+    "v20-longitude-rate",
+    "v15-longitude-rate",
+    "r38-longitude-rate",
   }
 )
 
@@ -191,6 +200,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/calendar/lunar/algo3.hpp",
     "src/test/astro/delta_t_test_helper.hpp",
     "src/test/astro/earth_test.cpp",
+    "src/test/astro/ephemeris_test.cpp",
     "src/test/astro/elp2000_82b_test.cpp",
     "src/test/astro/julian_day_test.cpp",
     "src/test/astro/illumination_test.cpp",
@@ -239,7 +249,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "2948dad1bac83bc51f803e8a2e4fbb3ca9fa8b7e4997672267abf41399fca86c"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "6266a5d54adb5deda963a8f5fdd6a9447275b0a2d6baeff13b57377ba5125f87"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -1083,6 +1093,16 @@ def verify_batch_a_closeout(
     repo_root / LUNAR_NODE_ATTRIBUTION_RELATIVE,
     LUNAR_NODE_ATTRIBUTION_SHA256,
     "lunar-node oracle attribution",
+  )
+  _read_pinned(
+    repo_root / LONGITUDE_RATE_ATTRIBUTION_RELATIVE,
+    LONGITUDE_RATE_ATTRIBUTION_SHA256,
+    "longitude-rate oracle attribution",
+  )
+  _read_pinned(
+    repo_root / LONGITUDE_RATE_PINS_RELATIVE,
+    LONGITUDE_RATE_PINS_SHA256,
+    "longitude-rate source pins",
   )
 
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE

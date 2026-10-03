@@ -201,6 +201,21 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
 仅 C++ 提供的 [`lunar_node.hpp`](src/astro/lunar_node.hpp) 以 JDE(TT) 查询平均或 Meeus 五项真升降交点的
 真黄道、真春分点经度；纬度按定义恒为零，接口不返回物理距离。
+仅 C++ 提供的 [`ephemeris.hpp`](src/astro/ephemeris.hpp) 统一查询日月、水星至冥王星及四个月交点的
+黄经速率。`Target` 保留现有 `Planet` / `Node` 枚举，日月用 `Sun` / `Moon` 标签选择。
+
+```cpp
+const auto rate = astro::ephemeris::longitude_rate(
+  astro::lunar_node::Node::TRUE_ASCENDING,
+  2451545.0
+);
+const double degrees_per_tt_day = rate.deg_per_tt_day;
+```
+
+输入为 JDE(TT)，返回单位为度/TT 日，负数表示逆行。七点中心差分的步长为 1/8 日，最远采样到
+时刻前后 3/8 日；整个采样窗口须落在所选模型域内。冥王星速率域为 `[2409543.875, 2488069.125)`，
+月交点速率域为 `[2409542.875, 2488069.125)`。接口拒绝无效枚举、非有限时刻和无法表示的采样偏移，
+数值求值失败时抛异常；降交点速率与对应升交点严格相等。
 
 <a id="c-abi"></a>
 ### 1.4. C 与其他语言：C ABI
@@ -282,6 +297,8 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
   JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。
 - C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的真黄道、真春分点经度；
   真交点采用 Meeus 五项修正，纬度按定义恒为零，物理距离不存在。
+- C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
+  在现有视位置模型上做局部解卷绕的七点中心差分，保留各模型的修正与有效域约束。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
