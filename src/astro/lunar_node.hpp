@@ -24,7 +24,10 @@
 
 namespace astro::lunar_node {
 
-/** @brief A mean or Meeus five-term true lunar node. */
+/**
+ * @brief Mean or true lunar nodes.
+ * @note True nodes use Meeus' five-term approximation.
+ */
 enum class Node : uint8_t {
   MEAN_ASCENDING,
   MEAN_DESCENDING,
@@ -68,10 +71,10 @@ inline auto validate(const Node node, const double jde_tt) -> void {
   const double jc4 = jc3 * jc;
   return astro::toolbox::AngleDeg {
     125.0445479
-      - (1934.1362891 * jc)
-      + (0.0020754 * jc2)
-      + (jc3 / 467441)
-      - (jc4 / 60616000)
+    - (1934.1362891 * jc)
+    + (0.0020754 * jc2)
+    + (jc3 / 467441)
+    - (jc4 / 60616000)
   };
 }
 
@@ -90,19 +93,14 @@ inline auto validate(const Node node, const double jde_tt) -> void {
 } // namespace detail
 
 /**
- * @brief Calculate a mean or Meeus five-term true lunar-node longitude.
- * @param node The lunar node to calculate.
- * @param jde_tt The Julian Ephemeris Day on the TT scale, in `[2409542.5, 2488069.5)`.
+ * @brief Calculate a mean or true lunar-node longitude.
+ * @param node The lunar-node variant.
+ * @param jde_tt Julian Ephemeris Day (TT), in `[2409542.5, 2488069.5)`.
  * @return Tropical longitude in the true ecliptic and equinox of date, normalized to `[0°, 360°)`.
- * @throw std::invalid_argument If `node` is not a named enumerator or `jde_tt` is non-finite or
- *        outside `[2409542.5, 2488069.5)`.
- * @note Mean ascending uses Meeus equation (47.7); true ascending adds exactly the five periodic
- *       terms on printed p. 344. Both then receive the full IAU 1980 nutation in longitude.
- *       Descending nodes are their exact normalized antipodes.
- * @note The half-open domain is project-selected to match Pluto's raw domain; Meeus gives no
- *       accuracy interval for these formulas.
- * @note The selected ecliptic-node definition fixes latitude at exactly zero. This longitude-only
- *       API has no latitude field and no physical distance.
+ * @throw std::invalid_argument If `node` is unknown or `jde_tt` is non-finite or outside the domain.
+ * @note Uses Meeus' mean-node formula or five-term true-node approximation, plus full IAU 1980
+ *       longitude nutation. Descending nodes are exact antipodes; latitude is zero, with no physical distance.
+ * @note The project-selected domain matches Pluto's raw domain; Meeus gives no accuracy interval.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Equation (47.7) and printed p. 344.
  * @see astro::earth::nutation::longitude
  */
