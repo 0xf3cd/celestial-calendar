@@ -22,6 +22,8 @@ from automation.batch_a_closeout import (
   A4_SCAN_ROOTS,
   CLOSEOUT_ROOT_RELATIVE,
   GPL_V3,
+  LUNAR_NODE_ATTRIBUTION_RELATIVE,
+  LUNAR_NODE_ATTRIBUTION_SHA256,
   MIT_LICENSE_BYTES,
   MIT_SPDX_MARKER,
   OLD_FULL_HEADER_MARKER,
@@ -103,8 +105,18 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-  assert REGISTRY_SHA256 == "6681b7025693c9534e8b7630b78cc0cae3d2ed5c3a12d31b39d4dd46ae34546f"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 108, 59, 2, 16)
+  assert REGISTRY_SHA256 == "9be925ee6402a3558cb89b773b0eb750eda0bdd384846ec2241fa42cf919c315"
+  assert LUNAR_NODE_ATTRIBUTION_SHA256 == "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 110, 60, 2, 16)
+
+
+def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
+  materialize_inputs(tmp_path)
+  attribution = tmp_path / LUNAR_NODE_ATTRIBUTION_RELATIVE
+  replace_once(attribution, "AA+ v2.63", "AA+ v2.64")
+
+  with pytest.raises(RuntimeError, match="lunar-node oracle attribution hash mismatch"):
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -242,7 +254,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -377,7 +389,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -541,7 +553,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 108, 59, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

@@ -199,6 +199,8 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 
 节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
+仅 C++ 提供的 [`lunar_node.hpp`](src/astro/lunar_node.hpp) 以 JDE(TT) 查询平均或 Meeus 五项真升降交点的
+真黄道、真春分点经度；纬度按定义恒为零，接口不返回物理距离。
 
 <a id="c-abi"></a>
 ### 1.4. C 与其他语言：C ABI
@@ -278,6 +280,8 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ 头文件提供日月及水星至冥王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
   水星至海王星使用 VSOP87D；`Planet::PLUTO` 使用精度较低的 Meeus 第 37 章模型，其视位置与照明几何
   JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。
+- C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的真黄道、真春分点经度；
+  真交点采用 Meeus 五项修正，纬度按定义恒为零，物理距离不存在。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。

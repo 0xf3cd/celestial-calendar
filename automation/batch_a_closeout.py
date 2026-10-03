@@ -29,10 +29,12 @@ else:
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
+LUNAR_NODE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lunar-node/LUNAR_NODE_ORACLE_ATTRIBUTION.md")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
 RECORD_SHA256: Final[str] = "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-REGISTRY_SHA256: Final[str] = "6681b7025693c9534e8b7630b78cc0cae3d2ed5c3a12d31b39d4dd46ae34546f"
+REGISTRY_SHA256: Final[str] = "9be925ee6402a3558cb89b773b0eb750eda0bdd384846ec2241fa42cf919c315"
+LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -150,8 +152,8 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
   v32-sidereal v32-precession v32-earth v32-elp v32-phase v32-solar v32-rise-set
   v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
-  v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v44-aaplus-phenomena
-  v45-pluto95
+  v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v20-lunar-node
+  v44-lunar-node v44-aaplus-phenomena v45-pluto95
   notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
@@ -168,6 +170,8 @@ REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
     "v32-planets",
     "v44-aaplus-phenomena",
     "v45-pluto95",
+    "v20-lunar-node",
+    "v44-lunar-node",
   }
 )
 
@@ -190,6 +194,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/test/astro/elp2000_82b_test.cpp",
     "src/test/astro/julian_day_test.cpp",
     "src/test/astro/illumination_test.cpp",
+    "src/test/astro/lunar_node_test.cpp",
     "src/test/astro/moon_phase_test.cpp",
     "src/test/astro/moon_test.cpp",
     "src/test/astro/planet_test.cpp",
@@ -234,7 +239,7 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "76ba1bb8cf32d4da53fc067ecd6a1a8101a8ee0aca6de2b1e6fc7e69507f11f2"
+PROJECT_SPDX_HOSTS_SHA256: Final[str] = "2948dad1bac83bc51f803e8a2e4fbb3ca9fa8b7e4997672267abf41399fca86c"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -1074,6 +1079,11 @@ def verify_batch_a_closeout(
   notice_sources: Sequence[NoticeSource] = NOTICE_SOURCES,
 ) -> CloseoutCounts:
   _verify_a4_license_surfaces(repo_root)
+  _read_pinned(
+    repo_root / LUNAR_NODE_ATTRIBUTION_RELATIVE,
+    LUNAR_NODE_ATTRIBUTION_SHA256,
+    "lunar-node oracle attribution",
+  )
 
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
   record = _load_json(_read_pinned(closeout_root / RECORD_NAME, record_sha256, "closeout record"), "closeout record")
