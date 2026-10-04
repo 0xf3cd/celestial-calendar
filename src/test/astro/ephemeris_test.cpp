@@ -48,6 +48,11 @@ static_assert(not std::is_convertible_v<LongitudeRate, AngleDeg>);
 static_assert(not std::is_constructible_v<Target, int>);
 static_assert(not std::is_constructible_v<Target, AngleDeg>);
 
+constexpr std::array<Target, 9> WORKING_WINDOW_TARGETS {
+  Sun {}, Moon {}, Planet::MERCURY, Planet::VENUS, Planet::MARS, Planet::JUPITER,
+  Planet::SATURN, Planet::URANUS, Planet::NEPTUNE,
+};
+
 struct GoldenRow {
   Target target;
   double jde_tt;
@@ -374,6 +379,24 @@ TEST(Ephemeris, CompleteNodeStencilBoundaries) {
     check_complete_stencil_bounds(node, 2409542.875, 2488069.125);
     EXPECT_THROW(std::ignore = longitude_rate(node, 2409542.5), std::invalid_argument);
     EXPECT_THROW(std::ignore = longitude_rate(node, 2488069.25), std::invalid_argument);
+  }
+}
+
+TEST(Ephemeris, CompleteWorkingStencilBoundaries) {
+  for (const auto& target : WORKING_WINDOW_TARGETS) {
+    check_complete_stencil_bounds(target, -1200954.625, 6104044.625);
+    EXPECT_THROW(std::ignore = longitude_rate(target, -1200955.0), std::invalid_argument);
+    EXPECT_THROW(std::ignore = longitude_rate(target, 6104045.0), std::invalid_argument);
+    EXPECT_TRUE(std::isfinite(longitude_rate(target, 2409543.25).deg_per_tt_day));
+    EXPECT_TRUE(std::isfinite(longitude_rate(target, 2488069.25).deg_per_tt_day));
+  }
+}
+
+TEST(Ephemeris, AliasedDatesLeaveWorkingDomain) {
+  for (const auto& target : WORKING_WINDOW_TARGETS) {
+    for (const double jde_tt : std::array { -1e8, 1e8, -0x1p30, 0x1p30, 4e9 }) {
+      EXPECT_THROW(std::ignore = longitude_rate(target, jde_tt), std::invalid_argument);
+    }
   }
 }
 

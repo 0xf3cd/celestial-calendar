@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <variant>
 
+#include "julian_day.hpp"
 #include "lunar_node.hpp"
 #include "moon.hpp"
 #include "planet.hpp"
@@ -45,6 +46,8 @@ namespace detail {
 
 inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
 inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
+inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
+inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
 
 [[nodiscard]] inline auto longitude_for_rate([[maybe_unused]] const Sun source, const double jde_tt)
   -> astro::toolbox::AngleDeg {
@@ -98,7 +101,8 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
   }
 }
 
-/** @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference */
+/** @note Each sample pair's continuously lifted change must be within (-180, 180) degrees.
+ *  @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference */
 template <typename LongitudeProvider>
 requires std::invocable<const LongitudeProvider&, double>
      and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, astro::toolbox::AngleDeg>
@@ -128,11 +132,11 @@ requires std::invocable<const LongitudeProvider&, double>
  * @param target The Sun, Moon, a planet, or a lunar node.
  * @param jde_tt Julian Ephemeris Day (TT).
  * @return Signed tropical longitude rate in degrees per TT day, in the true ecliptic and equinox of date.
- * @throw std::invalid_argument For an invalid target/date or a stencil outside the model's domain.
+ * @throw std::invalid_argument For an invalid target/date or a stencil outside the working domain.
  * @throw std::runtime_error If the numerical evaluation fails.
  * @note Uses seven-point centered differentiation at 1/8-day spacing, reaching 3/8 day each way.
  *       Pluto accepts `[2409543.875, 2488069.125)`; nodes accept `[2409542.875, 2488069.125)`.
- *       Other models have no finite date window; all stencil offsets must be representable.
+ *       Other targets accept `[-1200954.625, 6104044.625)`; all stencil offsets must be representable.
  * @note Includes each position model's apparent corrections. Descending-node rates equal ascending-node rates.
  */
 [[nodiscard]] inline auto longitude_rate(const Target& target, const double jde_tt) -> LongitudeRate {
@@ -150,6 +154,8 @@ requires std::invocable<const LongitudeProvider&, double>
           astro::planet::detail::pluto::APPARENT_START_JDE_TT,
           astro::planet::detail::pluto::APPARENT_END_JDE_TT
         );
+      } else {
+        detail::validate_reach(jde_tt, detail::WORKING_START_JDE_TT, detail::WORKING_END_JDE_TT);
       }
     } else if constexpr (std::same_as<Source, astro::lunar_node::Node>) {
       astro::lunar_node::detail::validate(source, jde_tt);
@@ -158,6 +164,8 @@ requires std::invocable<const LongitudeProvider&, double>
         astro::lunar_node::detail::START_JDE_TT,
         astro::lunar_node::detail::END_JDE_TT
       );
+    } else {
+      detail::validate_reach(jde_tt, detail::WORKING_START_JDE_TT, detail::WORKING_END_JDE_TT);
     }
 
     const auto longitude = [source](const double sample_jde_tt) -> astro::toolbox::AngleDeg {

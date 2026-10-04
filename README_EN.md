@@ -259,6 +259,7 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 ```
 
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
+Other rate inputs are `[-1200954.625, 6104044.625)` JDE(TT).
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

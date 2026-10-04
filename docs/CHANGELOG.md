@@ -6,7 +6,8 @@
 
 - A C++ `astro::ephemeris::longitude_rate` API for the Sun, Moon, Mercury through Pluto, and four
   lunar nodes (#306). It returns signed degrees per TT day using seven-point centered differentiation
-  and rejects incomplete or unrepresentable stencils. Descending-node rates equal their ascending-node rates.
+  within finite working domains and rejects incomplete or unrepresentable stencils.
+  Descending-node rates equal their ascending-node rates.
 - Four C++ lunar-node longitudes from `lunar_node.hpp`: mean and Meeus five-term true ascending
   nodes plus their descending antipodes (#305). `position` accepts JDE(TT), returns true-ecliptic and
   equinox-of-date longitude, and keeps the definition's exact-zero latitude implicit while physical

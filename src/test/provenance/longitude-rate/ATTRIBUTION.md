@@ -74,6 +74,52 @@ Diagnostics use the 11-point reference at `h=1/16`, the 9-point reference at `h=
 and an alternate 11-point grid at `h=3/16` with halving to `3/32`. The 9-point positive
 pair coefficients are `4/5, -1/5, 4/105, -1/280`, divided by `h`.
 
+## Computational sampling window
+
+Sun, Moon and Mercury-Neptune rate samples use `-10 <= tau < 10`, where
+`tau = (JDE(TT) - 2451545) / 365250`. The sample window is `[-1200955, 6104045)`;
+the complete-stencil center window is `[-1200954.625, 6104044.625)`. Pluto and nodes
+keep their narrower model windows. This is a computational policy, not a physical
+accuracy guarantee or a maximal safe domain. Exact offset-representability checks still apply.
+
+Whole-window bounds use the actual position-model coefficients on the wider analysis
+interval `|tau| <= 10.01`, including the retarded-time halo. For a VSOP term
+`A*tau^k*cos(B+C*tau)/1e8`, its derivative is bounded by
+`|A|*(k*a^(k-1)+|C|*a^k)/(1e8*365250)`, with `a=10.01` and the first term zero for `k=0`.
+Constant terms plus absolute periodic amplitudes bound radius and latitude.
+
+For planetary geometry, use Cartesian speed `|R'| + Rmax*(|L'|+|beta'|)` and the
+positive lower bound on the **xy-projected** Earth-target separation. With light-time
+constant `c`, contraction `q=c*Vtarget < 1` gives retarded-time speed at most
+`(1+c*Vearth)/(1-q)`. Light-travel time is below two days throughout the analysis
+window, so every iterate remains inside its 3652.5-day halo. The implemented ULP stopping
+residual is controlled by the same contraction; non-convergence remains an explicit failure.
+
+Bound annual-aberration and FK5 longitude by their amplitudes, using the projected
+separation to keep latitude denominators away from zero; include the aberrated latitude
+in the FK5 bound. Add twice each correction amplitude and the default nutation amplitude
+to the geometric 0.75-day change bound. Sun uses the Earth longitude derivative and the
+full variable-aberration series. Moon uses the context-polynomial derivative bounds and
+the derivatives of all `E^|M|*sin(theta)` longitude terms, plus the additive terms and nutation.
+
+The resulting pair-change majorants below are degrees, displayed upward:
+
+| Target | 0.75-day change bound |
+|---|---:|
+| Sun | 0.82 |
+| Moon | 13 |
+| Mercury | 11 |
+| Venus | 8.3 |
+| Mars | 17 |
+| Jupiter | 0.44 |
+| Saturn | 0.35 |
+| Uranus | 0.090 |
+| Neptune | 0.060 |
+
+These bounds leave ample margin to the 180-degree pair-lift limit. They establish
+sampling validity for the selected models; they do not extend the comparison tolerances
+below to every epoch in the working window or certify floating-point/ephemeris accuracy.
+
 ## Epoch selection and validation corpus
 
 The broad validation contains 14 targets at 89 training and 165 holdout epochs
