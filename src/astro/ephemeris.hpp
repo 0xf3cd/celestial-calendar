@@ -17,6 +17,7 @@
 #include <concepts>
 #include <format>
 #include <stdexcept>
+#include <type_traits>
 #include <variant>
 
 #include "lunar_node.hpp"
@@ -45,22 +46,22 @@ namespace detail {
 inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
 inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
 
-[[nodiscard]] inline auto longitude([[maybe_unused]] const Sun source, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate([[maybe_unused]] const Sun source, const double jde_tt)
   -> astro::toolbox::AngleDeg {
   return astro::sun::geocentric_coord::apparent(jde_tt).λ;
 }
 
-[[nodiscard]] inline auto longitude([[maybe_unused]] const Moon source, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate([[maybe_unused]] const Moon source, const double jde_tt)
   -> astro::toolbox::AngleDeg {
   return astro::moon::geocentric_coord::apparent(jde_tt).λ;
 }
 
-[[nodiscard]] inline auto longitude(const astro::planet::Planet planet, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate(const astro::planet::Planet planet, const double jde_tt)
   -> astro::toolbox::AngleDeg {
   return astro::planet::geocentric_coord::apparent(planet, jde_tt).λ;
 }
 
-[[nodiscard]] inline auto longitude(const astro::lunar_node::Node node, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate(const astro::lunar_node::Node node, const double jde_tt)
   -> astro::toolbox::AngleDeg {
   using enum astro::lunar_node::Node;
   if (node == MEAN_DESCENDING) {
@@ -99,6 +100,8 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
 
 /** @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference */
 template <typename LongitudeProvider>
+requires std::invocable<const LongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, astro::toolbox::AngleDeg>
 [[nodiscard]] inline auto differentiate(const LongitudeProvider& longitude, const double jde_tt) -> LongitudeRate {
   const auto change = [&](const double offset) -> double {
     const double before = longitude(jde_tt - offset).deg();
@@ -158,16 +161,10 @@ template <typename LongitudeProvider>
     }
 
     const auto longitude = [source](const double sample_jde_tt) -> astro::toolbox::AngleDeg {
-      return detail::longitude(source, sample_jde_tt);
+      return detail::longitude_for_rate(source, sample_jde_tt);
     };
 
-    try {
-      return detail::differentiate(longitude, jde_tt);
-    } catch (const std::invalid_argument& error) {
-      throw std::runtime_error {
-        std::format("Longitude-rate evaluation failed at JDE(TT) {}: {}", jde_tt, error.what())
-      };
-    }
+    return detail::differentiate(longitude, jde_tt);
   }, target);
 }
 

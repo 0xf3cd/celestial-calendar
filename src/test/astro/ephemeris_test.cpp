@@ -326,6 +326,25 @@ TEST(Ephemeris, UnknownFamilyEnumerators) {
   EXPECT_THROW(std::ignore = longitude_rate(invalid_node, 2451545.0), std::invalid_argument);
 }
 
+TEST(Ephemeris, ThrowingTargetConversion) {
+  struct ThrowingSun {
+    // NOLINTNEXTLINE(google-explicit-constructor) - Implicit argument conversion exercises variant emplacement.
+    operator Sun() const {
+      throw std::runtime_error { "argument conversion" };
+    }
+  };
+  Target target { Moon {} };
+  EXPECT_THROW(std::ignore = target.emplace<Sun>(ThrowingSun {}), std::runtime_error);
+  if (target.valueless_by_exception()) {
+    EXPECT_THROW(std::ignore = longitude_rate(target, 2451545.0), std::invalid_argument);
+  } else {
+    EXPECT_DOUBLE_EQ(
+      longitude_rate(target, 2451545.0).deg_per_tt_day,
+      longitude_rate(Moon {}, 2451545.0).deg_per_tt_day
+    );
+  }
+}
+
 TEST(Ephemeris, NonFiniteDates) {
   for (const auto& target : ALL_TARGETS) {
     for (const double jde_tt : std::array {
@@ -365,6 +384,7 @@ TEST(Ephemeris, RepresentabilityStraddlesTwoToThe22) {
   const double below = std::nextafter(transition_jde_tt, 0.0);
   const double above = std::nextafter(transition_jde_tt, std::numeric_limits<double>::infinity());
   for (const Target target : std::array<Target, 2> { Sun {}, Moon {} }) {
+    EXPECT_THROW(std::ignore = longitude_rate(target, 4194303.6999999997), std::invalid_argument);
     EXPECT_THROW(std::ignore = longitude_rate(target, below), std::invalid_argument);
     EXPECT_TRUE(std::isfinite(longitude_rate(target, transition_jde_tt).deg_per_tt_day));
     EXPECT_TRUE(std::isfinite(longitude_rate(target, above).deg_per_tt_day));
