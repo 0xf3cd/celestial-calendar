@@ -259,7 +259,6 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 ```
 
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
-See the header for the full contract.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>
