@@ -1,6 +1,6 @@
 # Longitude-rate reference attribution
 
-Applies to the 127 `GOLDEN_ROWS` in `src/test/astro/ephemeris_test.cpp`, collected
+The 127 `GOLDEN_ROWS` in `src/test/astro/ephemeris_test.cpp` were collected
 2026-10-03. `SOURCE_PINS.json` identifies the exact upstream versions and entry-point
 bytes. Inputs are the printed binary64 JDE(TT) values; results are signed degrees per
 TT day in the true ecliptic and equinox of date, with apparent corrections.
@@ -78,7 +78,7 @@ pair coefficients are `4/5, -1/5, 4/105, -1/280`, divided by `h`.
 
 Sun, Moon and Mercury-Neptune rate samples use `-10 <= tau < 10`, where
 `tau = (JDE(TT) - 2451545) / 365250`. The sample window is `[-1200955, 6104045)`;
-the complete-stencil center window is `[-1200954.625, 6104044.625)`. Pluto and nodes
+the complete-stencil center domain is `[-1200954.625, 6104044.625)`. Pluto and nodes
 keep their narrower model windows. This is a computational policy, not a physical
 accuracy guarantee or a maximal safe domain. Exact offset-representability checks still apply.
 
@@ -86,23 +86,25 @@ Whole-window bounds use the actual position-model coefficients on the wider anal
 interval `|tau| <= 10.01`, including the retarded-time halo. For a VSOP term
 `A*tau^k*cos(B+C*tau)/1e8`, its derivative is bounded by
 `|A|*(k*a^(k-1)+|C|*a^k)/(1e8*365250)`, with `a=10.01` and the first term zero for `k=0`.
-Constant terms plus absolute periodic amplitudes bound radius and latitude.
+For value bounds, split out only `k=0, C=0` terms as the constant part. Every other
+term, including `C=0` with `k>0`, contributes `|A|*a^k/1e8` to the radius/latitude envelope.
 
 For planetary geometry, use Cartesian speed `|R'| + Rmax*(|L'|+|beta'|)` and the
-positive lower bound on the **xy-projected** Earth-target separation. With light-time
-constant `c`, contraction `q=c*Vtarget < 1` gives retarded-time speed at most
+positive lower bound on the xy-projected Earth-target separation. With light-time
+constant `c`, contraction `q=c*Vtarget < 1` bounds `|dt_ret/dt|` by
 `(1+c*Vearth)/(1-q)`. Light-travel time is below two days throughout the analysis
 window, so every iterate remains inside its 3652.5-day halo. The implemented ULP stopping
 residual is controlled by the same contraction; non-convergence remains an explicit failure.
 
 Bound annual-aberration and FK5 longitude by their amplitudes, using the projected
 separation to keep latitude denominators away from zero; include the aberrated latitude
-in the FK5 bound. Add twice each correction amplitude and the default nutation amplitude
-to the geometric 0.75-day change bound. Sun uses the Earth longitude derivative and the
+in the FK5 bound. Add twice the sum of annual-aberration, FK5 and default-nutation amplitudes
+to the geometric sample-pair change bound. Sun uses the Earth longitude derivative and the
 full variable-aberration series. Moon uses the context-polynomial derivative bounds and
-the derivatives of all `E^|M|*sin(theta)` longitude terms, plus the additive terms and nutation.
+the derivatives of all `E^|M|*sin(theta)` longitude terms, plus twice the sum of additive-longitude
+and nutation amplitudes.
 
-The resulting pair-change majorants below are degrees, displayed upward:
+The resulting sample-pair change bounds are in degrees, rounded up:
 
 | Target | 0.75-day change bound |
 |---|---:|
@@ -116,9 +118,8 @@ The resulting pair-change majorants below are degrees, displayed upward:
 | Uranus | 0.090 |
 | Neptune | 0.060 |
 
-These bounds leave ample margin to the 180-degree pair-lift limit. They establish
-sampling validity for the selected models; they do not extend the comparison tolerances
-below to every epoch in the working window or certify floating-point/ephemeris accuracy.
+The comparison tolerances below remain scoped to the training/holdout corpus;
+the sample-pair change bounds are not floating-point error bounds.
 
 ## Epoch selection and validation corpus
 

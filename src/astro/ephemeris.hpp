@@ -132,7 +132,7 @@ requires std::invocable<const LongitudeProvider&, double>
  * @param target The Sun, Moon, a planet, or a lunar node.
  * @param jde_tt Julian Ephemeris Day (TT).
  * @return Signed tropical longitude rate in degrees per TT day, in the true ecliptic and equinox of date.
- * @throw std::invalid_argument For an invalid target/date or a stencil outside the working domain.
+ * @throw std::invalid_argument For an invalid target/date or a stencil outside the target's domain.
  * @throw std::runtime_error If the numerical evaluation fails.
  * @note Uses seven-point centered differentiation at 1/8-day spacing, reaching 3/8 day each way.
  *       Pluto accepts `[2409543.875, 2488069.125)`; nodes accept `[2409542.875, 2488069.125)`.

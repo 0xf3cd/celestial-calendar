@@ -400,11 +400,14 @@ TEST(Ephemeris, AliasedDatesLeaveWorkingDomain) {
   }
 }
 
-TEST(Ephemeris, RepresentabilityStraddlesTwoToThe22) {
+TEST(Ephemeris, RepresentabilityAcrossBinades) {
   constexpr double transition_jde_tt = 0x1p22;
   const double below = std::nextafter(transition_jde_tt, 0.0);
   const double above = std::nextafter(transition_jde_tt, std::numeric_limits<double>::infinity());
   for (const Target target : std::array<Target, 2> { Sun {}, Moon {} }) {
+    EXPECT_THROW(std::ignore = longitude_rate(target, -524287.7), std::invalid_argument);
+    EXPECT_TRUE(std::isfinite(longitude_rate(target, -0x1p19).deg_per_tt_day));
+    EXPECT_TRUE(std::isfinite(longitude_rate(target, -0x1p19 + 0.5).deg_per_tt_day));
     EXPECT_THROW(std::ignore = longitude_rate(target, 4194303.6999999997), std::invalid_argument);
     EXPECT_THROW(std::ignore = longitude_rate(target, below), std::invalid_argument);
     EXPECT_TRUE(std::isfinite(longitude_rate(target, transition_jde_tt).deg_per_tt_day));
