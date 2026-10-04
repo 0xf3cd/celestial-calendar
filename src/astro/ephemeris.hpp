@@ -33,7 +33,7 @@ struct Sun {};
 /** @brief Select the Moon. */
 struct Moon {};
 
-/** @brief A body or lunar node, retaining its family identity. */
+/** @brief A body or lunar node. */
 using Target = std::variant<Sun, Moon, astro::planet::Planet, astro::lunar_node::Node>;
 
 /** @brief A signed longitude rate; negative values represent retrograde motion. */
@@ -128,11 +128,11 @@ requires std::invocable<const LongitudeProvider&, double>
  * @param target The Sun, Moon, a planet, or a lunar node.
  * @param jde_tt Julian Ephemeris Day (TT).
  * @return Signed tropical longitude rate in degrees per TT day, in the true ecliptic and equinox of date.
- * @throw std::invalid_argument For an invalid target/date or a stencil outside the provider's domain.
+ * @throw std::invalid_argument For an invalid target/date or a stencil outside the model's domain.
  * @throw std::runtime_error If the numerical evaluation fails.
- * @note Uses seven-point central differentiation at 1/8-day spacing, reaching 3/8 day each way.
+ * @note Uses seven-point centered differentiation at 1/8-day spacing, reaching 3/8 day each way.
  *       Pluto accepts `[2409543.875, 2488069.125)`; nodes accept `[2409542.875, 2488069.125)`.
- *       Other providers have no finite date window; all stencil offsets must be representable.
+ *       Other models have no finite date window; all stencil offsets must be representable.
  * @note Includes each position model's apparent corrections. Descending-node rates equal ascending-node rates.
  */
 [[nodiscard]] inline auto longitude_rate(const Target& target, const double jde_tt) -> LongitudeRate {

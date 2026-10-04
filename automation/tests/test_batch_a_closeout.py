@@ -111,7 +111,7 @@ def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
   assert REGISTRY_SHA256 == "cdbc19b6b9a07b0cff6b6c2c55c9002276c8d3802f560cc4dea7300ff2155e92"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
-  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "c539f5eeddbf05bbf7cbf59864d709f2f4c67cb08ddea912aa85c6f9d483456b"
+  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "516013ad2bcb1c5af7868d3466eb2f1c1e144c1db4d6edbe800487715ef7782f"
   assert LONGITUDE_RATE_PINS_SHA256 == "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
   assert verify_batch_a_closeout() == CloseoutCounts(58, 114, 61, 2, 16)
 

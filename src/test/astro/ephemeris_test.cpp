@@ -56,8 +56,7 @@ struct GoldenRow {
 };
 
 // Collected 2026-10-03: independent 11-point reference, h=1/8 TT day; seeds 306/30602.
-// Epochs were selected by reference roles before comparisons. Source pins, regeneration
-// and initial test-only noise margins: src/test/provenance/longitude-rate/ATTRIBUTION.md.
+// Source pins, regeneration and comparison tolerances: src/test/provenance/longitude-rate/ATTRIBUTION.md.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
 constexpr std::array GOLDEN_ROWS {
   // Target, JDE(TT), rate (degrees/TT day), reference role.
@@ -257,7 +256,6 @@ TEST(Ephemeris, IndependentStationNeighborhoods) {
                or row.role == "station 0 offset -0.01" or row.role == "station 1 offset 0.01") {
       EXPECT_LT(longitude_rate(row.target, row.jde_tt).deg_per_tt_day, 0.0);
     } else if (row.role.ends_with("-center")) {
-      // Horizons locates epochs; the retained Meeus/FK5 reference supplies these rates.
       EXPECT_LT(std::abs(longitude_rate(row.target, row.jde_tt).deg_per_tt_day), 3e-5);
     }
   }

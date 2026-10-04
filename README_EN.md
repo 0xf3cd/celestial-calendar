@@ -247,8 +247,8 @@ for mean or Meeus five-term true ascending and descending nodes from JDE(TT). La
 definition, and the longitude-only API has no physical distance.
 The C++-only [`ephemeris.hpp`](src/astro/ephemeris.hpp) provides `astro::ephemeris::longitude_rate`
 for the Sun, Moon, Mercury through Pluto, and all four lunar nodes. It accepts JDE(TT) and returns
-`LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion. `Target` retains the
-existing `Planet` and `Node` enums, with `Sun` and `Moon` tags.
+`LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion. `Target` accepts
+`Planet` and `Node` enums plus `Sun` and `Moon` tags.
 
 ```cpp
 const auto rate = astro::ephemeris::longitude_rate(
@@ -258,11 +258,8 @@ const auto rate = astro::ephemeris::longitude_rate(
 const double degrees_per_tt_day = rate.deg_per_tt_day;
 ```
 
-Rates use a seven-point centered derivative at 1/8-day spacing, with six position evaluations reaching
-3/8 day before and after the input. The complete stencil must fit the selected model's domain:
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
-Invalid enum values, non-finite dates and unrepresentable stencil offsets are rejected; numerical
-failures throw. Descending-node rates equal the corresponding ascending-node rates exactly.
+See the header for the full contract.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

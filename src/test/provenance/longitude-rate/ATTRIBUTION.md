@@ -13,13 +13,12 @@ TT day in the true ecliptic and equinox of date, with apparent corrections.
   permits binary use but restricts source redistribution. No AA+ source is retained here.
 - **V20, SOFA:** unchanged issue 2023-10-11 `iauNut80`, full 106-term IAU 1980
   nutation. Source terms are recorded in `src/test/provenance/sofa/2023-10-11/`
-  and `THIRD_PARTY_NOTICES.txt`. The input hash below identifies the compiled
-  release source, independently of existing retained SOFA snapshot pins.
+  and `THIRD_PARTY_NOTICES.txt`.
 - **V15, corrected PyMeeus:** commit `c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92`,
   [architest/pymeeus](https://github.com/architest/pymeeus/tree/c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92).
   Its Earth VSOP87D positions supply the Pluto geocentric reference; PyMeeus retains
   its Lesser General Public License terms. Corrected mean/true nodes corroborate AA+
-  but supply no retained node rate. The cubic node denominator is `467441`.
+  but supply no retained node rate.
 - **R38, Sonia Keys meeus v3:** `pluto.go` at commit
   `bfbd9ac2c7f709c94f1dee190c633d24a723f628`,
   [Chapter 37 Pluto evaluator](https://github.com/soniakeys/meeus/blob/bfbd9ac2c7f709c94f1dee190c633d24a723f628/v3/pluto/pluto.go).
@@ -28,8 +27,7 @@ TT day in the true ecliptic and equinox of date, with apparent corrections.
 
 The frozen numerical rows remain under their source terms and outside the project MIT
 grant. This record adds no upstream permission claim. The test code and runtime
-`src/astro/ephemeris.hpp` are project-authored; differentiation uses independent
-standard mathematics. Upstream implementations are validation-only sources.
+`src/astro/ephemeris.hpp` are project-authored. Upstream implementations are validation-only sources.
 
 ## Regeneration
 
@@ -65,13 +63,12 @@ epoch change is at most one ULP of `t` (maximum ten iterations). Apply observati
 annual aberration (23.2), forward FK5 correction and full SOFA nutation. Inverse FK5
 uses at most eight fixed-point iterations and a `1e-15`-degree change criterion.
 
-The rate reference is the derivative at the center of the **11-point Lagrange
-interpolant**, with `h = 1/8 TT day` and samples `t + k*h`, `k = -5,...,5`.
+The rate reference is the derivative at the center of the 11-point Lagrange
+interpolant, with `h = 1/8 TT day` and samples `t + k*h`, `k = -5,...,5`.
 Reject a sample grid unless every offset is represented exactly. Starting from the
 center, lift consecutive circular differences into `[-180, 180]` on each side.
 Accumulate the derivative with compensated summation. The positive pair coefficients
-are `5/6, -5/21, 5/84, -5/504, 1/1260`, divided by `h`. These are reference coefficients,
-not the production seven-point coefficients.
+are `5/6, -5/21, 5/84, -5/504, 1/1260`, divided by `h`.
 
 Diagnostics use the 11-point reference at `h=1/16`, the 9-point reference at `h=1/8`,
 and an alternate 11-point grid at `h=3/16` with halving to `3/32`. The 9-point positive
@@ -101,37 +98,34 @@ Selection uses roles and input seeds before reading production comparisons:
 - First two reference five-term true-node stations of 2025, at offsets
   `-0.01, 0, 0.01`, including both orientations (12 rows).
 
-No row is filtered by a production residual. Swiss rates supply no retained golden:
-its osculating true nodes and default frame models have different definitions.
-
-## Initial test tolerances
+## Comparison tolerances
 
 All numbers below are absolute degrees per TT day, measured over the complete
 training plus holdout corpus. P is production seven-point `h=1/8` minus the primary
 11-point reference; A compares the same production result to the alternate `h=3/16`
 reference. H and AH are the respective reference step-halving differences.
 
-| Target/family | Worst P | Worst A | Worst H | Worst AH | Initial test tolerance |
+| Target/family | Worst P | Worst A | Worst H | Worst AH | Test tolerance |
 |---|---:|---:|---:|---:|---:|
-| Sun | 1.1732786964202546e-9 | 8.865370659805194e-10 | 1.2913003999415196e-9 | 1.0008357476110064e-9 | 1e-8 |
-| Moon | 3.2182612130782218e-10 | 1.2443912567050575e-9 | 2.2485995287979677e-9 | 1.547334704810055e-9 | 1e-8 |
-| Mercury | 2.4778393503677165e-9 | 6.0423950287713524e-9 | 1.5115305701529635e-8 | 1.0265327476943753e-8 | 1e-7 |
-| Venus | 4.576588885640831e-9 | 1.1624454954173302e-8 | 2.0158061331265742e-8 | 1.4361974803867028e-8 | 1e-7 |
-| Mars | 1.206494210093112e-9 | 6.4485143891346297e-9 | 8.3710545994986063e-9 | 5.9973476185248842e-9 | 5e-8 |
-| Jupiter | 1.5924597751570957e-10 | 4.2497944052755088e-10 | 8.0425452408938725e-10 | 4.9678416935705627e-10 | 5e-9 |
-| Saturn | 7.9134143248643651e-11 | 1.3596224840428661e-10 | 2.9448625482597635e-10 | 2.0569311531826173e-10 | 2e-9 |
-| Uranus | 6.041407651924402e-11 | 6.0754668657070354e-11 | 1.1147951312073801e-10 | 6.8824036747461292e-11 | 1e-9 |
-| Neptune | 2.9309860094528517e-11 | 3.3969722867954744e-11 | 5.8905304245460144e-11 | 3.8508314592622384e-11 | 5e-10 |
-| Pluto | 5.826637783368227e-12 | 2.2890276479836658e-11 | 4.7717794125767821e-11 | 4.0486291402741514e-11 | 5e-10 |
-| Mean nodes, either orientation | 4.7149437132354421e-12 | 7.4398820437693303e-12 | 1.5890538884733019e-11 | 8.8276053133995447e-12 | 1e-10 |
-| True nodes, either orientation | 2.6784602313867367e-11 | 5.8714796913328371e-11 | 1.0306822062489118e-10 | 9.458990535282652e-11 | 5e-10 |
+| Sun | 1.2e-9 | 8.9e-10 | 1.3e-9 | 1.0e-9 | 1e-8 |
+| Moon | 3.2e-10 | 1.2e-9 | 2.2e-9 | 1.5e-9 | 1e-8 |
+| Mercury | 2.5e-9 | 6.0e-9 | 1.5e-8 | 1.0e-8 | 1e-7 |
+| Venus | 4.6e-9 | 1.2e-8 | 2.0e-8 | 1.4e-8 | 1e-7 |
+| Mars | 1.2e-9 | 6.4e-9 | 8.4e-9 | 6.0e-9 | 5e-8 |
+| Jupiter | 1.6e-10 | 4.2e-10 | 8.0e-10 | 5.0e-10 | 5e-9 |
+| Saturn | 7.9e-11 | 1.4e-10 | 2.9e-10 | 2.1e-10 | 2e-9 |
+| Uranus | 6.0e-11 | 6.1e-11 | 1.1e-10 | 6.9e-11 | 1e-9 |
+| Neptune | 2.9e-11 | 3.4e-11 | 5.9e-11 | 3.9e-11 | 5e-10 |
+| Pluto | 5.8e-12 | 2.3e-11 | 4.8e-11 | 4.0e-11 | 5e-10 |
+| Mean nodes, either orientation | 4.7e-12 | 7.4e-12 | 1.6e-11 | 8.8e-12 | 1e-10 |
+| True nodes, either orientation | 2.7e-11 | 5.9e-11 | 1.0e-10 | 9.5e-11 | 5e-10 |
 
-Each new tolerance exceeds four times the maximum of P, A, H and AH, rounded up
+Each tolerance exceeds four times the maximum of P, A, H and AH, rounded up
 to the shown threshold. This margin accounts for observed reference noise, the
-stated apparent-reduction differences and cross-platform arithmetic. It is an
-initial regression threshold for implementation/reference agreement, not a physical
-accuracy claim or a certified error bound. It changes no existing test tolerance.
+stated apparent-reduction differences and cross-platform arithmetic. It is a
+regression threshold for implementation/reference agreement, not a physical
+accuracy claim or a certified error bound.
 
 The planetary station-center check uses `3e-5`: the Chapter 37 Pluto model has a
-nonzero rate up to `2.078300449320234e-5` at these independently chosen Horizons
-epochs. True-node reference roots use `5e-10`, the tighter same-definition margin.
+nonzero rate up to `2.1e-5` at these epochs. True-node reference stations use `5e-10`,
+the tighter same-definition margin.
