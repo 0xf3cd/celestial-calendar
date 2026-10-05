@@ -109,7 +109,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-  assert REGISTRY_SHA256 == "d6545c3739bc1256ad85b54e8ac55437c10f9eeebdd878f7f5ac4867fc7cfcef"
+  assert REGISTRY_SHA256 == "5ee82857f97ef7d6aaf7daa963e4b2d1f1ee3461bf7446fc3f61017907c3bca4"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
   assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "4e0333c190a8774b3f859e035bfb9bd15531ff4a84e79fe45f95759820fc3014"
   assert LONGITUDE_RATE_PINS_SHA256 == "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
@@ -169,9 +169,9 @@ def test_longitude_rate_source_pin_mutations_fail(tmp_path, mutation):
   [
     ("1.0189947437412421", "1.0189947437412422"),
     ("-8.0933592936759627e-06", "8.0933592936759627e-06"),
-    ("Luminary::SUN        , 2409545", "Luminary::SUN        , 2409546"),
-    ("Luminary::SUN        , 2409545", "Luminary::MOON       , 2409545"),
-    ("Node::MEAN_ASCENDING , 2453905.5", "Node::TRUE_ASCENDING , 2453905.5"),
+    ("Target::SUN            , 2409545", "Target::SUN            , 2409546"),
+    ("Target::SUN            , 2409545", "Target::MOON           , 2409545"),
+    ("Target::MEAN_ASCENDING , 2453905.5", "Target::TRUE_ASCENDING , 2453905.5"),
     (
       '1.064522260996821e-11  , "station 0 offset 0.0"',
       '1.064522260996821e-11  , "station 0 offset 0.01"',

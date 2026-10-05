@@ -19,7 +19,6 @@
 #include <format>
 #include <stdexcept>
 #include <type_traits>
-#include <variant>
 
 #include "julian_day.hpp"
 #include "lunar_node.hpp"
@@ -29,14 +28,23 @@
 
 namespace astro::ephemeris {
 
-/** @brief The Sun or Moon. */
-enum class Luminary : uint8_t {
+/** @brief A body or lunar node. */
+enum class Target : uint8_t {
   SUN = 0,
   MOON = 1,
+  MERCURY = 2,
+  VENUS = 3,
+  MARS = 4,
+  JUPITER = 5,
+  SATURN = 6,
+  URANUS = 7,
+  NEPTUNE = 8,
+  PLUTO = 9,
+  MEAN_ASCENDING = 10,
+  MEAN_DESCENDING = 11,
+  TRUE_ASCENDING = 12,
+  TRUE_DESCENDING = 13,
 };
-
-/** @brief A body or lunar node. */
-using Target = std::variant<Luminary, astro::planet::Planet, astro::lunar_node::Node>;
 
 /** @brief A signed longitude rate; negative values represent retrograde motion. */
 struct LongitudeRate {
@@ -50,31 +58,29 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
 inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
 inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
 
-[[nodiscard]] inline auto longitude_for_rate(const Luminary source, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt)
   -> astro::toolbox::AngleDeg {
-  switch (source) {
-    case Luminary::SUN: return astro::sun::geocentric_coord::apparent(jde_tt).λ;
-    case Luminary::MOON: return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+  using astro::lunar_node::Node;
+  using astro::planet::Planet;
+  using enum Target;
+  switch (target) {
+    case SUN:     return astro::sun::geocentric_coord::apparent(jde_tt).λ;
+    case MOON:    return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+    case MERCURY: return astro::planet::geocentric_coord::apparent(Planet::MERCURY, jde_tt).λ;
+    case VENUS:   return astro::planet::geocentric_coord::apparent(Planet::VENUS, jde_tt).λ;
+    case MARS:    return astro::planet::geocentric_coord::apparent(Planet::MARS, jde_tt).λ;
+    case JUPITER: return astro::planet::geocentric_coord::apparent(Planet::JUPITER, jde_tt).λ;
+    case SATURN:  return astro::planet::geocentric_coord::apparent(Planet::SATURN, jde_tt).λ;
+    case URANUS:  return astro::planet::geocentric_coord::apparent(Planet::URANUS, jde_tt).λ;
+    case NEPTUNE: return astro::planet::geocentric_coord::apparent(Planet::NEPTUNE, jde_tt).λ;
+    case PLUTO:   return astro::planet::geocentric_coord::apparent(Planet::PLUTO, jde_tt).λ;
+    case MEAN_ASCENDING: case MEAN_DESCENDING:
+      return astro::lunar_node::position(Node::MEAN_ASCENDING, jde_tt);
+    case TRUE_ASCENDING: case TRUE_DESCENDING:
+      return astro::lunar_node::position(Node::TRUE_ASCENDING, jde_tt);
     default:
-      throw std::invalid_argument { std::format("Unknown luminary {}", static_cast<uint32_t>(source)) };
+      throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
   }
-}
-
-[[nodiscard]] inline auto longitude_for_rate(const astro::planet::Planet planet, const double jde_tt)
-  -> astro::toolbox::AngleDeg {
-  return astro::planet::geocentric_coord::apparent(planet, jde_tt).λ;
-}
-
-[[nodiscard]] inline auto longitude_for_rate(const astro::lunar_node::Node node, const double jde_tt)
-  -> astro::toolbox::AngleDeg {
-  using enum astro::lunar_node::Node;
-  if (node == MEAN_DESCENDING) {
-    return astro::lunar_node::position(MEAN_ASCENDING, jde_tt);
-  }
-  if (node == TRUE_DESCENDING) {
-    return astro::lunar_node::position(TRUE_ASCENDING, jde_tt);
-  }
-  return astro::lunar_node::position(node, jde_tt);
 }
 
 inline auto validate_stencil(const double jde_tt) -> void {
@@ -99,6 +105,29 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
     throw std::invalid_argument {
       std::format("Longitude-rate stencil at JDE(TT) {} leaves [{}, {})", jde_tt, start_jde_tt, end_jde_tt)
     };
+  }
+}
+
+inline auto validate_rate_input(const Target target, const double jde_tt) -> void {
+  validate_stencil(jde_tt);
+  using enum Target;
+  switch (target) {
+    case SUN: case MOON: case MERCURY: case VENUS: case MARS:
+    case JUPITER: case SATURN: case URANUS: case NEPTUNE:
+      validate_reach(jde_tt, WORKING_START_JDE_TT, WORKING_END_JDE_TT);
+      return;
+    case PLUTO:
+      validate_reach(
+        jde_tt,
+        astro::planet::detail::pluto::APPARENT_START_JDE_TT,
+        astro::planet::detail::pluto::APPARENT_END_JDE_TT
+      );
+      return;
+    case MEAN_ASCENDING: case MEAN_DESCENDING: case TRUE_ASCENDING: case TRUE_DESCENDING:
+      validate_reach(jde_tt, astro::lunar_node::detail::START_JDE_TT, astro::lunar_node::detail::END_JDE_TT);
+      return;
+    default:
+      throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
   }
 }
 
@@ -139,41 +168,13 @@ requires std::invocable<const LongitudeProvider&, double>
  *       others [-1200954.625, 6104044.625).
  * @note Descending-node rates equal ascending-node rates.
  */
-[[nodiscard]] inline auto longitude_rate(const Target& target, const double jde_tt) -> LongitudeRate {
-  detail::validate_stencil(jde_tt);
-  if (target.valueless_by_exception()) [[unlikely]] {
-    throw std::invalid_argument { "Longitude-rate target has no value" };
-  }
+[[nodiscard]] inline auto longitude_rate(const Target target, const double jde_tt) -> LongitudeRate {
+  detail::validate_rate_input(target, jde_tt);
 
-  return std::visit([jde_tt]<typename Source>(const Source source) -> LongitudeRate {
-    if constexpr (std::same_as<Source, astro::planet::Planet>) {
-      static_cast<void>(astro::planet::detail::validate_apparent_input(source, jde_tt));
-      if (source == astro::planet::Planet::PLUTO) {
-        detail::validate_reach(
-          jde_tt,
-          astro::planet::detail::pluto::APPARENT_START_JDE_TT,
-          astro::planet::detail::pluto::APPARENT_END_JDE_TT
-        );
-      } else {
-        detail::validate_reach(jde_tt, detail::WORKING_START_JDE_TT, detail::WORKING_END_JDE_TT);
-      }
-    } else if constexpr (std::same_as<Source, astro::lunar_node::Node>) {
-      astro::lunar_node::detail::validate(source, jde_tt);
-      detail::validate_reach(
-        jde_tt,
-        astro::lunar_node::detail::START_JDE_TT,
-        astro::lunar_node::detail::END_JDE_TT
-      );
-    } else {
-      detail::validate_reach(jde_tt, detail::WORKING_START_JDE_TT, detail::WORKING_END_JDE_TT);
-    }
-
-    const auto longitude = [source](const double sample_jde_tt) -> astro::toolbox::AngleDeg {
-      return detail::longitude_for_rate(source, sample_jde_tt);
-    };
-
-    return detail::differentiate(longitude, jde_tt);
-  }, target);
+  const auto longitude = [target](const double sample_jde_tt) -> astro::toolbox::AngleDeg {
+    return detail::longitude_for_rate(target, sample_jde_tt);
+  };
+  return detail::differentiate(longitude, jde_tt);
 }
 
 } // namespace astro::ephemeris
