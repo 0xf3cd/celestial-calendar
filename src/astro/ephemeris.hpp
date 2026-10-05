@@ -19,7 +19,6 @@
 #include <format>
 #include <stdexcept>
 #include <type_traits>
-#include <utility>
 
 #include "julian_day.hpp"
 #include "lunar_node.hpp"
@@ -67,25 +66,17 @@ inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
   using astro::planet::geocentric_coord::apparent;
   using enum Target;
 
-  static constexpr std::array mappings {
-    std::pair { MERCURY, Planet::MERCURY },
-    std::pair { VENUS,   Planet::VENUS },
-    std::pair { MARS,    Planet::MARS },
-    std::pair { JUPITER, Planet::JUPITER },
-    std::pair { SATURN,  Planet::SATURN },
-    std::pair { URANUS,  Planet::URANUS },
-    std::pair { NEPTUNE, Planet::NEPTUNE },
-    std::pair { PLUTO,   Planet::PLUTO },
-  };
-  for (const auto& [candidate, planet] : mappings) {
-    if (target == candidate) {
-      return apparent(planet, jde_tt).λ;
-    }
-  }
-
   switch (target) {
-    case SUN:  return astro::sun::geocentric_coord::apparent(jde_tt).λ;
-    case MOON: return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+    case SUN:     return astro::sun::geocentric_coord::apparent(jde_tt).λ;
+    case MOON:    return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+    case MERCURY: return apparent(Planet::MERCURY, jde_tt).λ;
+    case VENUS:   return apparent(Planet::VENUS, jde_tt).λ;
+    case MARS:    return apparent(Planet::MARS, jde_tt).λ;
+    case JUPITER: return apparent(Planet::JUPITER, jde_tt).λ;
+    case SATURN:  return apparent(Planet::SATURN, jde_tt).λ;
+    case URANUS:  return apparent(Planet::URANUS, jde_tt).λ;
+    case NEPTUNE: return apparent(Planet::NEPTUNE, jde_tt).λ;
+    case PLUTO:   return apparent(Planet::PLUTO, jde_tt).λ;
     case MEAN_ASCENDING:
     case MEAN_DESCENDING:
       return position(Node::MEAN_ASCENDING, jde_tt);
@@ -148,7 +139,11 @@ inline auto validate_rate_input(const Target target, const double jde_tt) -> voi
     case MEAN_DESCENDING:
     case TRUE_ASCENDING:
     case TRUE_DESCENDING:
-      validate_reach(jde_tt, astro::lunar_node::detail::START_JDE_TT, astro::lunar_node::detail::END_JDE_TT);
+      validate_reach(
+        jde_tt,
+        astro::lunar_node::detail::START_JDE_TT,
+        astro::lunar_node::detail::END_JDE_TT
+      );
       return;
     default:
       throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
