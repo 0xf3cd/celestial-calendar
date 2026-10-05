@@ -202,7 +202,7 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 仅 C++ 提供的 [`lunar_node.hpp`](src/astro/lunar_node.hpp) 以 JDE(TT) 查询平均或 Meeus 五项真升降交点的
 真黄道、真春分点经度；纬度按定义恒为零，接口不返回物理距离。
 仅 C++ 提供的 [`ephemeris.hpp`](src/astro/ephemeris.hpp) 统一查询日月、水星至冥王星及四种月交点的
-黄经速率。统一的 `Target` 枚举选择天体或月交点。
+黄经速率。`Target` 枚举选择天体或月交点。
 
 ```cpp
 const auto rate = astro::ephemeris::longitude_rate(
