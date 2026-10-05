@@ -245,6 +245,21 @@ yearly event searches accept Gregorian years `[1886, 2098]`. These hard domains 
 The C++-only [`lunar_node.hpp`](src/astro/lunar_node.hpp) returns true-ecliptic, true-equinox-of-date longitudes
 for mean or Meeus five-term true ascending and descending nodes from JDE(TT). Latitude is exactly zero by this
 definition, and the longitude-only API has no physical distance.
+The C++-only [`ephemeris.hpp`](src/astro/ephemeris.hpp) provides `astro::ephemeris::longitude_rate`
+for the Sun, Moon, Mercury through Pluto, and all four lunar nodes. It accepts JDE(TT) and returns
+`LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion. The `Target` enum
+selects a body or lunar node.
+
+```cpp
+const auto rate = astro::ephemeris::longitude_rate(
+  astro::ephemeris::Target::MOON,
+  2451545.0
+);
+const double degrees_per_tt_day = rate.deg_per_tt_day;
+```
+
+Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
+Other rate inputs are `[-1200954.625, 6104044.625)`.
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>

@@ -22,6 +22,10 @@ from automation.batch_a_closeout import (
   A4_SCAN_ROOTS,
   CLOSEOUT_ROOT_RELATIVE,
   GPL_V3,
+  LONGITUDE_RATE_ATTRIBUTION_RELATIVE,
+  LONGITUDE_RATE_ATTRIBUTION_SHA256,
+  LONGITUDE_RATE_PINS_RELATIVE,
+  LONGITUDE_RATE_PINS_SHA256,
   LUNAR_NODE_ATTRIBUTION_RELATIVE,
   LUNAR_NODE_ATTRIBUTION_SHA256,
   MIT_LICENSE_BYTES,
@@ -105,9 +109,11 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_records_are_pinned_and_complete():
   assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-  assert REGISTRY_SHA256 == "9be925ee6402a3558cb89b773b0eb750eda0bdd384846ec2241fa42cf919c315"
+  assert REGISTRY_SHA256 == "5ee82857f97ef7d6aaf7daa963e4b2d1f1ee3461bf7446fc3f61017907c3bca4"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 110, 60, 2, 16)
+  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "4e0333c190a8774b3f859e035bfb9bd15531ff4a84e79fe45f95759820fc3014"
+  assert LONGITUDE_RATE_PINS_SHA256 == "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 114, 61, 2, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -117,6 +123,100 @@ def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
 
   with pytest.raises(RuntimeError, match="lunar-node oracle attribution hash mismatch"):
     verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
+    ("**V44, AA+ v2.63:**", "**V44, AA+ v2.64:**"),
+    ("true ecliptic and equinox of date", "mean ecliptic and equinox of date"),
+    ("h = 1/8 TT day", "h = 1/4 TT day"),
+    ("random.Random(30602)", "random.Random(42)"),
+    ("outside the project MIT", "inside the project MIT"),
+  ],
+)
+def test_longitude_rate_attribution_mutations_fail(tmp_path, old, new):
+  materialize_inputs(tmp_path)
+  replace_once(tmp_path / LONGITUDE_RATE_ATTRIBUTION_RELATIVE, old, new)
+
+  with pytest.raises(RuntimeError, match="longitude-rate oracle attribution hash mismatch"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["source-commit", "source-bytes", "rate-unit", "reference-step", "corpus-hash"])
+def test_longitude_rate_source_pin_mutations_fail(tmp_path, mutation):
+  materialize_inputs(tmp_path)
+  path = tmp_path / LONGITUDE_RATE_PINS_RELATIVE
+  pins = json.loads(path.read_text(encoding="utf-8"))
+  if mutation == "source-commit":
+    pins["sources"]["aaplus"]["commit"] = "0" * 40
+  elif mutation == "source-bytes":
+    pins["sources"]["sofa"]["entry_point_sha256"]["nut80.c"] = "0" * 64
+  elif mutation == "rate-unit":
+    pins["rate_unit"] = "radian per UT1 day"
+  elif mutation == "reference-step":
+    pins["reference_step_tt_days"] = 0.25
+  else:
+    pins["validation_corpora"]["holdout"]["output_sha256"] = "0" * 64
+  write_json(path, pins)
+
+  with pytest.raises(RuntimeError, match="longitude-rate source pins hash mismatch"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
+    ("1.0189947437412421", "1.0189947437412422"),
+    ("-8.0933592936759627e-06", "8.0933592936759627e-06"),
+    ("Target::SUN            , 2409545", "Target::SUN            , 2409546"),
+    ("Target::SUN            , 2409545", "Target::MOON           , 2409545"),
+    ("Target::MEAN_ASCENDING , 2453905.5", "Target::TRUE_ASCENDING , 2453905.5"),
+    (
+      '1.064522260996821e-11  , "station 0 offset 0.0"',
+      '1.064522260996821e-11  , "station 0 offset 0.01"',
+    ),
+  ],
+)
+def test_longitude_rate_retained_golden_mutations_fail(tmp_path, old, new):
+  materialize_inputs(tmp_path)
+  source = tmp_path / "src/test/astro/ephemeris_test.cpp"
+  if old.startswith("1.064522"):
+    # Both orientations carry the same independent root; alter just the ascending row.
+    text = source.read_text(encoding="utf-8")
+    assert text.count(old) == 2
+    source.write_text(text.replace(old, new, 1), encoding="utf-8")
+  else:
+    replace_once(source, old, new)
+
+  with pytest.raises(RuntimeError, match="v44-longitude-rate retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  "block_id", ["v44-longitude-rate", "v20-longitude-rate", "v15-longitude-rate", "r38-longitude-rate"]
+)
+def test_longitude_rate_retained_data_fields_are_required(tmp_path, block_id):
+  _record_path, registry_path = materialize_inputs(tmp_path)
+  registry = json.loads(registry_path.read_text(encoding="utf-8"))
+  block = next(item for item in registry["blocks"] if item["id"] == block_id)
+  for field in ("data_start", "data_end", "data_method", "data_sha256"):
+    del block[field]
+  digest = write_json(registry_path, registry)
+
+  with pytest.raises(RuntimeError, match=f"{block_id} retained data fields differ"):
+    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+
+
+def test_longitude_rate_retained_hash_excludes_project_test_code(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/test/astro/ephemeris_test.cpp",
+    "ASSERT_NEAR(actual, row.deg_per_tt_day, tolerance)",
+    "EXPECT_NEAR(actual, row.deg_per_tt_day, tolerance)",
+  )
+
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -254,7 +354,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -389,7 +489,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -553,7 +653,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "This release contains future changes",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 110, 60, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

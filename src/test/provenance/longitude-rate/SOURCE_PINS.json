@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "host": "src/test/astro/ephemeris_test.cpp",
+  "data": "GOLDEN_ROWS",
+  "rows": 127,
+  "collection_date": "2026-10-03",
+  "time_scale": "JDE(TT)",
+  "frame": "true ecliptic and equinox of date; apparent corrections",
+  "rate_unit": "degree per TT day",
+  "reference_method": "11-point centered Lagrange derivative; continuous center-relative circular lift; compensated summation",
+  "reference_step_tt_days": 0.125,
+  "sources": {
+    "aaplus": {
+      "version": "2.63",
+      "repository": "https://github.com/onekiloparsec/SwiftAA",
+      "commit": "e70ab8d0a9a5c949eef00071bacfe3ca5731300b",
+      "tree": "7e0cce18bffb663e86b3fb87dd5d403e66410b1d",
+      "upstream_directory": "Sources/aaplus-v2.63",
+      "entry_point_sha256": {
+        "AAEarth.cpp": "c7705387313579528035105fb1a7f8af46092716c128fff3fe7bcc97d92f99b6",
+        "AAElliptical.cpp": "bc09ae9d33247f0aacdf2f74b806a8bd03b7f800c0103407165002a9611e4f51",
+        "AAMoon.cpp": "f9910f5e4d976fa2190645ccfea707e77d4ad50318c6ebe526b052300fd3d3f0",
+        "AANutation.cpp": "52b4149a8b70845708ad00c1ccd6bdfbb66a0e33fa7b4db88c93a35e4da490e7",
+        "AASun.cpp": "99fd320b126b155cbd51bc1c6b5685b6a5eaf758cda3cc33a6b47d20f26fb00f"
+      }
+    },
+    "sofa": {
+      "version": "2023-10-11",
+      "upstream": "https://www.iausofa.org/2023-10-11c",
+      "entry_point_sha256": {
+        "nut80.c": "ffa68688fbb1405bbf91c6aa953ccd1b2114c213d1fdb3893ba03ef15b5086fa",
+        "anpm.c": "d3e3f1a2531009dd523efbc45dee791db2678e2adf1a74840e5d1d4ba08c8678",
+        "sofa.h": "78765fb63762ca64dbeaf277202d19216d57a406267ac1f64769d11ea42369d2",
+        "sofam.h": "c7510f3b8a9d6fc4a27378e4b06286c8f92c24f5c810e8bc268faaac55d9a297"
+      }
+    },
+    "pymeeus": {
+      "repository": "https://github.com/architest/pymeeus",
+      "commit": "c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92",
+      "tree": "401db5316c640954029524f035fac5c52f83167c",
+      "node_denominator_fix_commit": "2a04b9fbe3d2078f2604d1efed86b53623f02a88",
+      "entry_point_sha256": {
+        "pymeeus/Earth.py": "127b520803cb275e01031aab76f2771faada42d6ff69eee1e35862d9a30110bb",
+        "pymeeus/Moon.py": "e000d21db164146608dc594e7039433548d9ab9971e6623fbed4f696f54c0992",
+        "pymeeus/Coordinates.py": "db3bc06a5c3988ada1df9d785fdc83948b4f5827e28c695234af7e084cdc483b"
+      }
+    },
+    "soniakeys": {
+      "repository": "https://github.com/soniakeys/meeus",
+      "version": "v3",
+      "commit": "bfbd9ac2c7f709c94f1dee190c633d24a723f628",
+      "entry_point_sha256": {
+        "v3/pluto/pluto.go": "36fe0360e04865fd886c94571b5c69fc03ec3c8022d66bc46abdd706c40bb2ee"
+      }
+    }
+  },
+  "validation_corpora": {
+    "training": {"rows": 1246, "epochs": 89, "seed": 306, "output_sha256": "b6e1a69e5a3d15002058a498ca0b34c955876189145486baef23daae4e333d1f", "epochs_sha256": "5fed84b269d767ff0113acf8b530f9183ebd27c274691d0af87e00d5c0487836"},
+    "holdout": {"rows": 2310, "epochs": 165, "random_seed": 30602, "output_sha256": "0d5146d640237d7f54e9bcea7230ad8ed150e0c5225ebad6603cc5772ca90ef0", "epochs_sha256": "9f41c66d93600400207c6b31e2fea44b9ef1b5196414937eb3aab18de3cb28e0"},
+    "alternate_grid": {"rows": 3556, "step_tt_days": 0.1875, "halved_step_tt_days": 0.09375, "output_sha256": "b53551fa3a99f9b18ff6709ba7262656a6526c3802c3682ba34a51129b41b217"}
+  }
+}

@@ -23,6 +23,7 @@
 #include "moon.hpp"
 #include "moon_phase.hpp"
 #include "lunar_node.hpp"
+#include "ephemeris.hpp"
 #include "rise_set.hpp"
 #include "house.hpp"
 #include "solar_time.hpp"
