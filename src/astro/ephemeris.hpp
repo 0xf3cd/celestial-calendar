@@ -131,7 +131,7 @@ requires std::invocable<const LongitudeProvider&, double>
 /**
  * @brief Instantaneous geocentric longitude rate using the target's position model.
  * @param jde_tt JDE(TT).
- * @return Signed longitude rate in degrees/TT day, in the true ecliptic and equinox of date.
+ * @return Longitude rate in the true ecliptic and equinox of date.
  * @throw std::invalid_argument For invalid arguments, out-of-domain samples or inexact sample offsets.
  * @throw std::runtime_error If numerical evaluation fails.
  * @note Seven-point centered difference at 1/8 TT day spacing, sampling up to 3/8 TT day each way.
