@@ -129,13 +129,13 @@ requires std::invocable<const LongitudeProvider&, double>
 } // namespace detail
 
 /**
- * @brief Instantaneous apparent geocentric longitude rate.
+ * @brief Instantaneous geocentric longitude rate using the target's position model.
  * @param jde_tt JDE(TT).
- * @return Signed degrees/TT day in the true ecliptic and equinox of date.
- * @throw std::invalid_argument Invalid target/date or incomplete/unrepresentable stencil.
- * @throw std::runtime_error Numerical evaluation failure.
- * @note Seven-point centered difference: h=1/8 TT day, reach=3/8 day each way.
- * @note Domains: Pluto [2409543.875, 2488069.125); nodes [2409542.875, 2488069.125);
+ * @return Signed longitude rate in degrees/TT day, in the true ecliptic and equinox of date.
+ * @throw std::invalid_argument For invalid arguments, out-of-domain samples or inexact sample offsets.
+ * @throw std::runtime_error If numerical evaluation fails.
+ * @note Seven-point centered difference at 1/8 TT day spacing, sampling up to 3/8 TT day each way.
+ * @note Center domains: Pluto [2409543.875, 2488069.125); nodes [2409542.875, 2488069.125);
  *       others [-1200954.625, 6104044.625).
  * @note Descending-node rates equal ascending-node rates.
  */
