@@ -129,16 +129,15 @@ requires std::invocable<const LongitudeProvider&, double>
 } // namespace detail
 
 /**
- * @brief Calculate a body's or lunar node's instantaneous longitude rate.
- * @param target The Sun, Moon, a planet, or a lunar node.
- * @param jde_tt Julian Ephemeris Day (TT).
- * @return Signed tropical longitude rate in degrees per TT day, in the true ecliptic and equinox of date.
- * @throw std::invalid_argument For an invalid target/date or a stencil outside the target's domain.
- * @throw std::runtime_error If the numerical evaluation fails.
- * @note Uses seven-point centered differentiation at 1/8-day spacing, reaching 3/8 day each way.
- *       Pluto accepts `[2409543.875, 2488069.125)`; nodes accept `[2409542.875, 2488069.125)`.
- *       Other targets accept `[-1200954.625, 6104044.625)`; all stencil offsets must be representable.
- * @note Includes each position model's apparent corrections. Descending-node rates equal ascending-node rates.
+ * @brief Instantaneous apparent geocentric longitude rate.
+ * @param jde_tt JDE(TT).
+ * @return Signed degrees/TT day in the true ecliptic and equinox of date.
+ * @throw std::invalid_argument Invalid target/date or incomplete/unrepresentable stencil.
+ * @throw std::runtime_error Numerical evaluation failure.
+ * @note Seven-point centered difference: h=1/8 TT day, reach=3/8 day each way.
+ * @note Domains: Pluto [2409543.875, 2488069.125); nodes [2409542.875, 2488069.125);
+ *       others [-1200954.625, 6104044.625).
+ * @note Descending-node rates equal ascending-node rates.
  */
 [[nodiscard]] inline auto longitude_rate(const Target& target, const double jde_tt) -> LongitudeRate {
   detail::validate_stencil(jde_tt);
