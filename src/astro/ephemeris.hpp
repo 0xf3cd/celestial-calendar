@@ -15,6 +15,7 @@
 #include <array>
 #include <cmath>
 #include <concepts>
+#include <cstdint>
 #include <format>
 #include <stdexcept>
 #include <type_traits>
@@ -28,14 +29,14 @@
 
 namespace astro::ephemeris {
 
-/** @brief Select the Sun. */
-struct Sun {};
-
-/** @brief Select the Moon. */
-struct Moon {};
+/** @brief The Sun or Moon. */
+enum class Luminary : uint8_t {
+  SUN = 0,
+  MOON = 1,
+};
 
 /** @brief A body or lunar node. */
-using Target = std::variant<Sun, Moon, astro::planet::Planet, astro::lunar_node::Node>;
+using Target = std::variant<Luminary, astro::planet::Planet, astro::lunar_node::Node>;
 
 /** @brief A signed longitude rate; negative values represent retrograde motion. */
 struct LongitudeRate {
@@ -49,14 +50,14 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
 inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
 inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
 
-[[nodiscard]] inline auto longitude_for_rate([[maybe_unused]] const Sun source, const double jde_tt)
+[[nodiscard]] inline auto longitude_for_rate(const Luminary source, const double jde_tt)
   -> astro::toolbox::AngleDeg {
-  return astro::sun::geocentric_coord::apparent(jde_tt).λ;
-}
-
-[[nodiscard]] inline auto longitude_for_rate([[maybe_unused]] const Moon source, const double jde_tt)
-  -> astro::toolbox::AngleDeg {
-  return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+  switch (source) {
+    case Luminary::SUN: return astro::sun::geocentric_coord::apparent(jde_tt).λ;
+    case Luminary::MOON: return astro::moon::geocentric_coord::apparent(jde_tt).λ;
+    default:
+      throw std::invalid_argument { std::format("Unknown luminary {}", static_cast<uint32_t>(source)) };
+  }
 }
 
 [[nodiscard]] inline auto longitude_for_rate(const astro::planet::Planet planet, const double jde_tt)

@@ -248,11 +248,11 @@ definition, and the longitude-only API has no physical distance.
 The C++-only [`ephemeris.hpp`](src/astro/ephemeris.hpp) provides `astro::ephemeris::longitude_rate`
 for the Sun, Moon, Mercury through Pluto, and all four lunar nodes. It accepts JDE(TT) and returns
 `LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion. `Target` accepts
-`Planet` and `Node` enums plus `Sun` and `Moon` tags.
+the `Luminary`, `Planet` and `Node` enums.
 
 ```cpp
 const auto rate = astro::ephemeris::longitude_rate(
-  astro::planet::Planet::MERCURY,
+  astro::ephemeris::Luminary::MOON,
   2451545.0
 );
 const double degrees_per_tt_day = rate.deg_per_tt_day;
