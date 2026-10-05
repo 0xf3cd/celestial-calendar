@@ -38,7 +38,6 @@ using astro::lunar_node::Node;
 using astro::planet::Planet;
 using astro::toolbox::AngleDeg;
 
-static_assert(std::is_enum_v<Luminary>);
 static_assert(std::same_as<std::underlying_type_t<Luminary>, uint8_t>);
 static_assert(not std::is_convertible_v<Luminary, int>);
 static_assert(std::same_as<Target, std::variant<Luminary, Planet, Node>>);
