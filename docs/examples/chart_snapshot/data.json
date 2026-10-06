@@ -1,5 +1,5 @@
 {
-  "role": "Facade replay example, not an independent physical-accuracy oracle",
+  "role": "Chart snapshot replay example, not an independent physical-accuracy oracle",
   "input": {"datetime": "2026-01-01T12:00:00.000000000", "scale": "UTC", "latitude_north_deg": 51.5, "longitude_east_deg": 0, "system": "PLACIDUS", "delta_t_model": "ALGO5"},
   "times": {"jd_ut1": 2461042.0000007683, "jde_tt": 2461042.0008007409},
   "bodies": [

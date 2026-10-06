@@ -50,7 +50,7 @@
 
 namespace astro::delta_t {
 
-/** @brief A Delta T algorithm; Algo5 is the default. */
+/** @brief A Delta T algorithm. */
 enum class Model : uint8_t { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
 
 #pragma region Algorithm 1

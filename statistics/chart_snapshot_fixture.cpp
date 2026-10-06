@@ -32,7 +32,7 @@ auto main() -> int {
   const auto snapshot = astro::chart::calculate(civil_dt, scale, location, system, model);
   const auto datetime = std::format("{}T{}", civil_dt.ymd, civil_dt.time_of_day);
   std::cout << std::setprecision(17)
-    << "{\n  \"role\": \"Facade replay example, not an independent physical-accuracy oracle\",\n"
+    << "{\n  \"role\": \"Chart snapshot replay example, not an independent physical-accuracy oracle\",\n"
     << "  \"input\": {\"datetime\": \"" << datetime
     << "\", \"scale\": \"" << (scale == astro::chart::Scale::UTC ? "UTC" : "UT1") << "\", "
     << "\"latitude_north_deg\": " << location.latitude.deg()
