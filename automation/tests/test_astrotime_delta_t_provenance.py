@@ -660,7 +660,10 @@ def test_algo5_semantic_bindings_survive_repin(tmp_path, old, new, message):
 def test_algo5_default_dispatch_is_pinned(tmp_path):
   materialize_inputs(tmp_path)
   delta_t = tmp_path / "src" / "astro" / "delta_t.hpp"
-  replace_once(delta_t, "return algo5::compute(year);", "return algo4::compute(year);")
+  default = (
+    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n  return algo5::compute(year);\n}"
+  )
+  replace_once(delta_t, default, default.replace("algo5::", "algo4::"))
 
   with pytest.raises(RuntimeError, match="default Delta T function differs"):
     verify_astrotime_delta_t_provenance(repo_root=tmp_path)
@@ -669,7 +672,10 @@ def test_algo5_default_dispatch_is_pinned(tmp_path):
 def test_algo5_default_dispatch_survives_repin(tmp_path):
   materialize_inputs(tmp_path)
   delta_t = tmp_path / "src" / "astro" / "delta_t.hpp"
-  replace_once(delta_t, "return algo5::compute(year);", "return algo4::compute(year);")
+  default = (
+    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n  return algo5::compute(year);\n}"
+  )
+  replace_once(delta_t, default, default.replace("algo5::", "algo4::"))
 
   with pytest.raises(RuntimeError, match="default dispatch differs"):
     verify_astrotime_delta_t_provenance(

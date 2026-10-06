@@ -13,6 +13,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <format>
 #include <ranges>
@@ -21,6 +22,7 @@
 #include <utility>
 #include <optional>
 #include <iterator>
+#include <stdexcept>
 
 #include "ymd.hpp"
 #include "datetime.hpp"
@@ -47,6 +49,9 @@
 
 
 namespace astro::delta_t {
+
+/** @brief A retained Delta T algorithm; Algo5 is the current default. */
+enum class Model : uint8_t { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
 
 #pragma region Algorithm 1
 
@@ -481,6 +486,26 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
+ * @brief Evaluate a selected Delta T model at a decimal Gregorian year.
+ * @return TT minus UT1, in seconds.
+ * @throw std::invalid_argument If the model is unknown.
+ * @throw std::out_of_range If the year leaves the selected model's domain.
+ * @note Model-specific non-finite propagation and year limits are unchanged.
+ */
+[[nodiscard]] constexpr auto compute(const Model model, const double year) -> double {
+  switch (model) {
+    case Model::ALGO1: return algo1::compute(year);
+    case Model::ALGO2: return algo2::compute(year);
+    case Model::ALGO3: return algo3::compute(year);
+    case Model::ALGO4: return algo4::compute(year);
+    case Model::ALGO5: return algo5::compute(year);
+    default:
+      throw std::invalid_argument { std::format("Unknown Delta T model {}", static_cast<uint32_t>(model)) };
+  }
+}
+
+
+/**
  * @brief The function to compute △T of a given gregorian year.
  * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
  * @return The delta T, in seconds.
@@ -526,6 +551,26 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
   const double year_fraction = (day_fraction + past_days) / total_days;
 
   return compute(ut1_year + year_fraction);
+}
+
+
+/**
+ * @brief Evaluate a selected Delta T model at a valid calendar datetime.
+ * @return TT minus UT1, in seconds; the sub-day fraction participates in the decimal year.
+ * @throw std::invalid_argument If the datetime or model is invalid.
+ * @throw std::out_of_range If the year leaves the selected model's domain.
+ * @note As in the default datetime overload, the TT/UT1 distinction in the year argument is ignored.
+ */
+[[nodiscard]] constexpr auto compute(const Model model, const calendar::Datetime& dt) -> double {
+  if (not dt.ok()) {
+    throw std::invalid_argument { "Invalid Delta T datetime" };
+  }
+  const auto year = dt.year();
+  const auto past_days = (std::chrono::sys_days { dt.ymd }
+                         - std::chrono::sys_days { util::to_ymd(year, 1, 1) }).count();
+  const double total_days = dt.ymd.year().is_leap() ? 366.0 : 365.0;
+  const double year_fraction = (dt.fraction() + static_cast<double>(past_days)) / total_days;
+  return compute(model, year + year_fraction);
 }
 
 

@@ -215,6 +215,26 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 输入为 JDE(TT)，返回单位为度/TT 日，负数表示逆行。冥王星速率域为 `[2409543.875, 2488069.125)`，
 月交点速率域为 `[2409542.875, 2488069.125)`；其他对象的速率域为 `[-1200954.625, 6104044.625)`。
 
+[`chart.hpp`](src/astro/chart.hpp) 组合一个固定时刻的地心位置、速率和宫位。调用方显式声明民用
+日期的 UTC/UT1 时标，并选择地点、宫制与 ΔT 模型（默认 Algo5）：
+
+```cpp
+const calendar::Datetime civil_dt { util::to_ymd(2026, 1, 1), 0.5 };
+const astro::GeoLocation location {
+  .latitude = astro::toolbox::AngleDeg { 51.5 },
+  .longitude = astro::toolbox::AngleDeg { 0.0 },
+};
+const auto snapshot = astro::chart::calculate(
+  civil_dt, astro::chart::Scale::UTC, location, astro::house::System::PLACIDUS
+);
+```
+
+UTC 自 1972-01-01 起接受，更早的输入必须标 UT1；时区转换与闰秒本身不进输入。返回具名
+`jd_ut1` / `jde_tt`、十四项位置/速率及四轴/十二宫头；节点纬度为零、距离为 `std::nullopt`。
+地点只影响宫位，Placidus 极区失败不自动替换宫制。共同 JDE(TT) 域为 `[2409543.875, 2488069.125)`；
+Algo4 另要求 `< 2464328.5`，所有偏移约束仍校验。民用年域为 `[1885, 2100)`。
+原始值与生成方式见 [完整 replay 示例](docs/examples/chart_snapshot/README.md)。
+
 <a id="c-abi"></a>
 ### 1.4. C 与其他语言：C ABI
 

@@ -260,6 +260,29 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
 Other rate inputs are `[-1200954.625, 6104044.625)`.
+
+[`chart.hpp`](src/astro/chart.hpp) composes geocentric positions, longitude rates and house geometry
+at one explicitly scaled civil instant:
+
+```cpp
+const calendar::Datetime civil_dt { util::to_ymd(2026, 1, 1), 0.5 };
+const astro::GeoLocation location {
+  .latitude = astro::toolbox::AngleDeg { 51.5 },
+  .longitude = astro::toolbox::AngleDeg { 0.0 },
+};
+const auto snapshot = astro::chart::calculate(
+  civil_dt, astro::chart::Scale::UTC, location, astro::house::System::PLACIDUS
+);
+```
+
+Pass `Scale::UT1` for historical civil input; UTC begins at 1972-01-01. Timezone conversion and
+inserted leap seconds are outside the input domain. A final `delta_t::Model` argument selects a
+retained model, default Algo5. The owned result holds `jd_ut1`/`jde_tt`, fourteen position/rate
+records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
+Location affects houses only, and Placidus polar failure never selects another system.
+Civil years are `[1885, 2100)` and the joint JDE(TT) domain is `[2409543.875, 2488069.125)`;
+Algo4 additionally requires `< 2464328.5`. Exact sample-offset checks remain mandatory.
+See the [complete raw replay example](docs/examples/chart_snapshot/README.md).
 See [core features and algorithms](README.md#features) for the full scope.
 
 <a id="c-abi"></a>
