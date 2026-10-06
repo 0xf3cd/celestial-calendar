@@ -37,8 +37,8 @@ auto main() -> int {
     << "\", \"scale\": \"" << (scale == astro::chart::Scale::UTC ? "UTC" : "UT1") << "\", "
     << "\"latitude_north_deg\": " << location.latitude.deg()
     << ", \"longitude_east_deg\": " << location.longitude.deg()
-    << ", \"system\": \"" << SYSTEM_NAMES.at(static_cast<uint8_t>(system))
-    << "\", \"delta_t_model\": \"" << MODEL_NAMES.at(static_cast<uint8_t>(model)) << "\"},\n"
+    << ", \"system\": \"" << SYSTEM_NAMES.at(static_cast<std::size_t>(system))
+    << "\", \"delta_t_model\": \"" << MODEL_NAMES.at(static_cast<std::size_t>(model)) << "\"},\n"
     << "  \"times\": {\"jd_ut1\": " << snapshot.times.jd_ut1
     << ", \"jde_tt\": " << snapshot.times.jde_tt << "},\n  \"bodies\": [\n";
   bool first = true;
@@ -51,7 +51,7 @@ auto main() -> int {
       std::cout << ",\n";
     }
     first = false;
-    std::cout << "    {\"target\": \"" << TARGET_NAMES.at(static_cast<uint8_t>(body.target))
+    std::cout << "    {\"target\": \"" << TARGET_NAMES.at(static_cast<std::size_t>(body.target))
       << "\", \"longitude_deg\": " << body.longitude.deg()
       << ", \"latitude_deg\": " << body.latitude.deg() << ", \"distance_au\": ";
     if (body.distance) {
