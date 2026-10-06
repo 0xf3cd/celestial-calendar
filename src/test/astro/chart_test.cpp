@@ -47,6 +47,8 @@ static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> == 12);
 static_assert(noexcept(astro::delta_t::compute(2026.0)));
 static_assert(not std::is_default_constructible_v<Snapshot>);
 static_assert(not std::is_default_constructible_v<detail::Position>);
+static_assert(detail::START_JDE_TT == 2409543.875);
+static_assert(detail::END_JDE_TT == 2488069.125);
 
 auto location(const double latitude, const double longitude) -> astro::GeoLocation {
   return { .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude } };
@@ -306,13 +308,21 @@ TEST(Chart, JointTimeDomainAndAlgo4Cap) {
   const auto too_late = civil(2034, 12, 31, 86330815999999);
   EXPECT_THROW(std::ignore = calculate(too_late, Scale::UTC, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
   EXPECT_TRUE(std::isfinite(calculate(after, Scale::UT1, observer, System::EQUAL, Model::ALGO5).times.jde_tt));
+  const Datetime outside_model { util::to_ymd(2035, 6, 1), 0.5 };
+  EXPECT_THROW(std::ignore = calculate(outside_model, Scale::UT1, observer, System::EQUAL, Model::ALGO4),
+               std::invalid_argument);
+  EXPECT_TRUE(std::isfinite(calculate(outside_model, Scale::UT1, observer, System::EQUAL, Model::ALGO5).times.jde_tt));
+  for (const int64_t elapsed : std::array<int64_t, 3> { 86399999996413, 86399999999990, 86399999999999 }) {
+    EXPECT_THROW(std::ignore = calculate(civil(2034, 12, 31, elapsed), Scale::UT1, observer, System::EQUAL,
+                                       Model::ALGO4), std::invalid_argument);
+  }
 }
 
 TEST(Chart, WrapsStationsAndNodeAntipodesReplayUnderlyingApis) {
   const auto observer = location(-33.87, 151.21);
-  // Directed epochs from the retained #306 role fixture; this is a facade wiring test, not a new oracle.
+  // Sun/Moon wraps and station-center epochs from ephemeris_test.cpp; facade wiring, not a new oracle.
   for (const double jde_tt : std::array { 2460754.876816418, 2460681.293070456, 2460749.7828680002,
-                                        2460772.9644720000, 2460681.5899983719 }) {
+                                        2460772.964472, 2460681.5899983719 }) {
     const auto tt = astro::julian_day::jde_to_tt(jde_tt);
     const auto ut1 = astro::delta_t::tt_to_ut1(tt);
     const auto result = calculate(ut1, Scale::UT1, observer, System::PLACIDUS);
@@ -358,9 +368,11 @@ TEST(Chart, RetainedModelSeamsKeepTheirSelectedEvaluationPolicy) {
   for (const auto model : MODELS) {
     for (const auto dt : std::array {
       civil(2004, 12, 31, 86399'999'999'999), civil(2005, 1, 1, 0),
+      civil(2004, 12, 31, 86340'000'000'000),
       civil(2026, 5, 31, 43199'999'999'999), civil(2026, 5, 31, 43200'000'000'000)
     }) {
       const auto ut1_result = calculate(dt, Scale::UT1, observer, System::EQUAL, model);
+      EXPECT_EQ(ut1_result.times.jd_ut1, astro::julian_day::ut1_to_jd(dt));
       const auto past_days = (std::chrono::sys_days { dt.ymd }
                               - std::chrono::sys_days { util::to_ymd(dt.year(), 1, 1) }).count();
       const double year_days = dt.ymd.year().is_leap() ? 366.0 : 365.0;

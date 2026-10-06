@@ -4,10 +4,10 @@
 
 ### Added
 
-- A C++ `astro::chart::calculate` facade for an explicitly scaled UTC/UT1 civil instant (#300).
+- A C++ `astro::chart::calculate` API for an explicitly scaled UTC/UT1 civil instant (#300).
   It returns fourteen geocentric positions and longitude rates, modelled UT1/TT values and house
-  axes/cusps, with explicit node-distance absence and enforced complete-snapshot domains.
-- C++ enum selection of the five retained Delta T models; the existing default remains Algo5.
+  axes/cusps. Nodes have no distance; invalid complete-snapshot inputs throw.
+- C++ enum selection of the five Delta T models, default Algo5 (#300).
 - A C++ `astro::ephemeris::longitude_rate` API for the Sun, Moon, Mercury through Pluto, and four
   lunar nodes (#306). It returns signed degrees per TT day using seven-point centered differentiation
   within finite domains and rejects incomplete or unrepresentable stencils.

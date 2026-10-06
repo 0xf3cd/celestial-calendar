@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -21,9 +22,11 @@
 
 #include "delta_t.hpp"
 #include "ephemeris.hpp"
+#include "geolocation.hpp"
 #include "house.hpp"
 #include "julian_day.hpp"
 #include "leap_second.hpp"
+#include "toolbox.hpp"
 
 namespace astro::chart {
 
@@ -55,10 +58,16 @@ struct Snapshot {
 
 namespace detail {
 
-inline constexpr double START_JDE_TT = astro::planet::detail::pluto::APPARENT_START_JDE_TT
-                                      + astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
-inline constexpr double END_JDE_TT = astro::planet::detail::pluto::APPARENT_END_JDE_TT
-                                    - astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
+inline constexpr double START_JDE_TT = std::max({
+  astro::planet::detail::pluto::APPARENT_START_JDE_TT,
+  astro::lunar_node::detail::START_JDE_TT,
+  astro::ephemeris::detail::WORKING_START_JDE_TT,
+}) + astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
+inline constexpr double END_JDE_TT = std::min({
+  astro::planet::detail::pluto::APPARENT_END_JDE_TT,
+  astro::lunar_node::detail::END_JDE_TT,
+  astro::ephemeris::detail::WORKING_END_JDE_TT,
+}) - astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
 inline constexpr double ALGO4_END_JDE_TT = 2464328.5;
 
 inline auto validate_civil(const calendar::Datetime& civil_dt, const Scale scale) -> void {
@@ -104,14 +113,15 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
 }
 
 [[nodiscard]] inline auto delta_t_seconds(const astro::delta_t::Model model, const calendar::Datetime& dt) -> double {
-  if (model == astro::delta_t::Model::ALGO4 and dt.year() >= 2035) {
-    throw std::invalid_argument { "Chart Algo4 datetime leaves its model-year domain" };
+  try {
+    const double seconds = astro::delta_t::compute(model, dt);
+    if (not std::isfinite(seconds)) {
+      throw std::runtime_error { "Non-finite chart Delta T evaluation" };
+    }
+    return seconds;
+  } catch (const std::out_of_range& error) {
+    throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
   }
-  const double seconds = astro::delta_t::compute(model, dt);
-  if (not std::isfinite(seconds)) {
-    throw std::runtime_error { "Non-finite chart Delta T evaluation" };
-  }
-  return seconds;
 }
 
 [[nodiscard]] inline auto resolve_times(
@@ -126,9 +136,9 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
   const double jde_tt = astro::julian_day::tt_to_jde(tt);
   validate_domain(jde_tt, model);
 
-  const auto ut1 = scale == Scale::UT1
-    ? civil_dt
-    : calendar::add_seconds(tt, -delta_t_seconds(model, tt));
+  const auto ut1 = scale == Scale::UTC
+    ? calendar::add_seconds(tt, -delta_t_seconds(model, tt))
+    : civil_dt;
   return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
 }
 
@@ -148,8 +158,11 @@ struct Position {
     return { .longitude = coordinate.λ, .latitude = coordinate.β, .distance = coordinate.r };
   };
   const auto node_position = [jde_tt](const Node node) -> Position {
-    return { .longitude = astro::lunar_node::position(node, jde_tt),
-             .latitude = astro::toolbox::AngleDeg { 0.0 }, .distance = std::nullopt };
+    return {
+      .longitude = astro::lunar_node::position(node, jde_tt),
+      .latitude = astro::toolbox::AngleDeg { 0.0 },
+      .distance = std::nullopt,
+    };
   };
   switch (target) {
     case SUN:     return with_distance(astro::sun::geocentric_coord::apparent(jde_tt));
@@ -171,12 +184,17 @@ struct Position {
   }
 }
 
-[[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> std::array<BodyState, 14> {
+[[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> decltype(Snapshot::bodies) {
   using enum astro::ephemeris::Target;
   const auto evaluate = [jde_tt](const astro::ephemeris::Target target) -> BodyState {
-    const auto coordinate = position(target, jde_tt);
-    return { .target = target, .longitude = coordinate.longitude, .latitude = coordinate.latitude,
-             .distance = coordinate.distance, .longitude_rate = astro::ephemeris::longitude_rate(target, jde_tt) };
+    const auto [longitude, latitude, distance] = position(target, jde_tt);
+    return {
+      .target = target,
+      .longitude = longitude,
+      .latitude = latitude,
+      .distance = distance,
+      .longitude_rate = astro::ephemeris::longitude_rate(target, jde_tt),
+    };
   };
   return {
     evaluate(SUN), evaluate(MOON), evaluate(MERCURY), evaluate(VENUS), evaluate(MARS), evaluate(JUPITER),
@@ -192,14 +210,14 @@ struct Position {
  * @param civil_dt A valid civil datetime; timezone conversion and inserted leap seconds are outside the input.
  * @param scale UTC from 1972-01-01, or explicitly labelled UT1.
  * @param location North-positive latitude in (-90, 90) degrees; east-positive longitude in [-180, 180].
- * @param system Equal, Whole Sign or Placidus; Placidus's polar failure is preserved.
- * @param model The retained Delta T model used for time conversion, default Algo5.
- * @return Owned time values, all fourteen target states, four axes and twelve cusps.
+ * @param system Equal, Whole Sign or Placidus.
+ * @param model The Delta T model used for time conversion, default Algo5.
+ * @return Time values, all fourteen target states, four axes and twelve cusps.
  * @throw std::invalid_argument If any input or the complete snapshot domain is invalid.
  * @throw std::runtime_error If numerical evaluation fails.
  * @note Civil years are [1885, 2100); JDE(TT) is [2409543.875, 2488069.125).
- *       Algo4 additionally requires JDE(TT) < 2464328.5. Exact sample-offset checks still apply.
- * @note TT-to-UT1 uses one selected Delta T evaluation at TT, as in the existing conversion policy;
+ *       Algo4 additionally requires JDE(TT) < 2464328.5. Exact sample-offset checks apply.
+ * @note TT-to-UT1 uses one selected Delta T evaluation at TT;
  *       this is modelled UT1, not measured DUT1. Location affects houses only.
  */
 [[nodiscard]] inline auto calculate(

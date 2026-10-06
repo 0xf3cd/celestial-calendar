@@ -50,7 +50,7 @@
 
 namespace astro::delta_t {
 
-/** @brief A retained Delta T algorithm; Algo5 is the current default. */
+/** @brief A Delta T algorithm; Algo5 is the default. */
 enum class Model : uint8_t { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
 
 #pragma region Algorithm 1
@@ -490,7 +490,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @return TT minus UT1, in seconds.
  * @throw std::invalid_argument If the model is unknown.
  * @throw std::out_of_range If the year leaves the selected model's domain.
- * @note Model-specific non-finite propagation and year limits are unchanged.
+ * @note Non-finite propagation and year limits depend on the selected model.
  */
 [[nodiscard]] constexpr auto compute(const Model model, const double year) -> double {
   switch (model) {
@@ -559,7 +559,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @return TT minus UT1, in seconds; the sub-day fraction participates in the decimal year.
  * @throw std::invalid_argument If the datetime or model is invalid.
  * @throw std::out_of_range If the year leaves the selected model's domain.
- * @note As in the default datetime overload, the TT/UT1 distinction in the year argument is ignored.
+ * @note The TT/UT1 distinction in the datetime argument is ignored.
  */
 [[nodiscard]] constexpr auto compute(const Model model, const calendar::Datetime& dt) -> double {
   if (not dt.ok()) {

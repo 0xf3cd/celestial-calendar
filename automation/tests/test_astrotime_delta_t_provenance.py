@@ -113,14 +113,24 @@ def algo5_function_digest(path: Path) -> str:
   return hashlib.sha256(canonical_cpp(function_source).encode()).hexdigest()
 
 
-def default_function_digest(path: Path) -> str:
+def default_function_source(path: Path) -> str:
   delta_t = path.read_text(encoding="utf-8")
   algo5_end = delta_t.index("} // namespace algo5")
   function_source = _cpp_block(
     delta_t[algo5_end:],
     "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double",
   )
-  return hashlib.sha256(canonical_cpp(function_source).encode()).hexdigest()
+  return function_source
+
+
+def default_function_digest(path: Path) -> str:
+  return hashlib.sha256(canonical_cpp(default_function_source(path)).encode()).hexdigest()
+
+
+def replace_default_dispatch(path: Path) -> None:
+  function_source = default_function_source(path)
+  assert function_source.count("algo5::") == 1
+  replace_once(path, function_source, function_source.replace("algo5::", "algo4::"))
 
 
 def test_astrotime_record_is_pinned():
@@ -660,10 +670,7 @@ def test_algo5_semantic_bindings_survive_repin(tmp_path, old, new, message):
 def test_algo5_default_dispatch_is_pinned(tmp_path):
   materialize_inputs(tmp_path)
   delta_t = tmp_path / "src" / "astro" / "delta_t.hpp"
-  default = (
-    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n  return algo5::compute(year);\n}"
-  )
-  replace_once(delta_t, default, default.replace("algo5::", "algo4::"))
+  replace_default_dispatch(delta_t)
 
   with pytest.raises(RuntimeError, match="default Delta T function differs"):
     verify_astrotime_delta_t_provenance(repo_root=tmp_path)
@@ -672,10 +679,7 @@ def test_algo5_default_dispatch_is_pinned(tmp_path):
 def test_algo5_default_dispatch_survives_repin(tmp_path):
   materialize_inputs(tmp_path)
   delta_t = tmp_path / "src" / "astro" / "delta_t.hpp"
-  default = (
-    "[[nodiscard]] constexpr auto compute(const double year) noexcept -> double {\n  return algo5::compute(year);\n}"
-  )
-  replace_once(delta_t, default, default.replace("algo5::", "algo4::"))
+  replace_default_dispatch(delta_t)
 
   with pytest.raises(RuntimeError, match="default dispatch differs"):
     verify_astrotime_delta_t_provenance(
