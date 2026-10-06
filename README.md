@@ -215,8 +215,8 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 输入为 JDE(TT)，返回单位为度/TT 日，负数表示逆行。冥王星速率域为 `[2409543.875, 2488069.125)`，
 月交点速率域为 `[2409542.875, 2488069.125)`；其他对象的速率域为 `[-1200954.625, 6104044.625)`。
 
-仅 C++ 提供的 [`chart.hpp`](src/astro/chart.hpp) 组合一个固定时刻的地心位置、速率和宫位。调用方显式声明民用
-时间的 UTC/UT1 时标，并选择地点、宫制与 ΔT 模型（默认 Algo5）：
+仅 C++ 提供的 [`chart.hpp`](src/astro/chart.hpp) 组合一个固定时刻的地心位置、速率和宫位。
+调用方显式声明民用时间的 UTC/UT1 时标，并选择地点、宫制与 ΔT 模型（默认 Algo5）：
 
 ```cpp
 const calendar::Datetime civil_dt { util::to_ymd(2026, 1, 1), 0.5 };

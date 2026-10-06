@@ -6,7 +6,7 @@ It contains UT1 and TT, all fourteen positions and longitude rates, four axes an
 Node distance is `null` and latitude is zero.
 
 This is a chart snapshot replay example, not an independent physical-accuracy oracle.
-This snapshot API leaves sign, house-placement and aspect calculations to the consumer.
+[`astro::chart::calculate`](../../../src/astro/chart.hpp) leaves sign, house-placement and aspect calculations to the consumer.
 
 Generate the values from the repository root:
 
