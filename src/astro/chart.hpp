@@ -15,10 +15,12 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 #include "delta_t.hpp"
 #include "ephemeris.hpp"
@@ -48,11 +50,13 @@ struct BodyState {
   astro::ephemeris::LongitudeRate longitude_rate;
 };
 
+inline constexpr std::size_t BODY_COUNT = 14;
+
 /** @brief An owned fixed-instant chart ephemeris; bodies follow Target declaration order. */
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): This aggregate has no default constructor; all result members are supplied.
 struct Snapshot {
   Times times;
-  std::array<BodyState, 14> bodies;
+  std::array<BodyState, BODY_COUNT> bodies;
   astro::house::Result houses;
 };
 
@@ -101,7 +105,8 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
     case ALGO1:
     case ALGO2:
     case ALGO3:
-    case ALGO5: return;
+    case ALGO5:
+      return;
     case ALGO4:
       if (jde_tt >= ALGO4_END_JDE_TT) {
         throw std::invalid_argument { "Chart Algo4 requires JDE(TT) before 2035-01-01" };
@@ -164,17 +169,27 @@ struct Position {
       .distance = std::nullopt,
     };
   };
+
+  static constexpr std::array PLANET_TARGETS {
+    std::pair { MERCURY, Planet::MERCURY },
+    std::pair { VENUS, Planet::VENUS },
+    std::pair { MARS, Planet::MARS },
+    std::pair { JUPITER, Planet::JUPITER },
+    std::pair { SATURN, Planet::SATURN },
+    std::pair { URANUS, Planet::URANUS },
+    std::pair { NEPTUNE, Planet::NEPTUNE },
+    std::pair { PLUTO, Planet::PLUTO },
+  };
+
+  for (const auto& [planet_target, planet] : PLANET_TARGETS) {
+    if (target == planet_target) {
+      return with_distance(apparent(planet, jde_tt));
+    }
+  }
+
   switch (target) {
     case SUN:     return with_distance(astro::sun::geocentric_coord::apparent(jde_tt));
     case MOON:    return with_distance(astro::moon::geocentric_coord::apparent(jde_tt));
-    case MERCURY: return with_distance(apparent(Planet::MERCURY, jde_tt));
-    case VENUS:   return with_distance(apparent(Planet::VENUS, jde_tt));
-    case MARS:    return with_distance(apparent(Planet::MARS, jde_tt));
-    case JUPITER: return with_distance(apparent(Planet::JUPITER, jde_tt));
-    case SATURN:  return with_distance(apparent(Planet::SATURN, jde_tt));
-    case URANUS:  return with_distance(apparent(Planet::URANUS, jde_tt));
-    case NEPTUNE: return with_distance(apparent(Planet::NEPTUNE, jde_tt));
-    case PLUTO:   return with_distance(apparent(Planet::PLUTO, jde_tt));
     case MEAN_ASCENDING: return node_position(Node::MEAN_ASCENDING);
     case MEAN_DESCENDING: return node_position(Node::MEAN_DESCENDING);
     case TRUE_ASCENDING: return node_position(Node::TRUE_ASCENDING);
