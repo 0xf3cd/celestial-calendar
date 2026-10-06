@@ -188,8 +188,8 @@ struct Position {
   }
 
   switch (target) {
-    case SUN:     return with_distance(astro::sun::geocentric_coord::apparent(jde_tt));
-    case MOON:    return with_distance(astro::moon::geocentric_coord::apparent(jde_tt));
+    case SUN: return with_distance(astro::sun::geocentric_coord::apparent(jde_tt));
+    case MOON: return with_distance(astro::moon::geocentric_coord::apparent(jde_tt));
     case MEAN_ASCENDING: return node_position(Node::MEAN_ASCENDING);
     case MEAN_DESCENDING: return node_position(Node::MEAN_DESCENDING);
     case TRUE_ASCENDING: return node_position(Node::TRUE_ASCENDING);

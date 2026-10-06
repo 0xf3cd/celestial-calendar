@@ -12,6 +12,6 @@ Generate the values from the repository root:
 
 ```sh
 clang++ -std=c++23 -O2 -Isrc/astro -Isrc/calendar -Isrc/util \
-  statistics/chart_snapshot_fixture.cpp -o chart_snapshot_example
+  src/bench/chart_snapshot_fixture.cpp -o chart_snapshot_example
 ./chart_snapshot_example > docs/examples/chart_snapshot/data.json
 ```

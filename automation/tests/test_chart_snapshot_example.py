@@ -35,7 +35,7 @@ def test_published_chart_example_replays_native_facade(tmp_path):
     "-Isrc/astro",
     "-Isrc/calendar",
     "-Isrc/util",
-    "statistics/chart_snapshot_fixture.cpp",
+    "src/bench/chart_snapshot_fixture.cpp",
     "-o",
     str(binary),
   ]
