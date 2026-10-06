@@ -187,12 +187,12 @@ struct Position {
 [[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> decltype(Snapshot::bodies) {
   using enum astro::ephemeris::Target;
   const auto evaluate = [jde_tt](const astro::ephemeris::Target target) -> BodyState {
-    const auto [longitude, latitude, distance] = position(target, jde_tt);
+    const auto coordinate = position(target, jde_tt);
     return {
       .target = target,
-      .longitude = longitude,
-      .latitude = latitude,
-      .distance = distance,
+      .longitude = coordinate.longitude,
+      .latitude = coordinate.latitude,
+      .distance = coordinate.distance,
       .longitude_rate = astro::ephemeris::longitude_rate(target, jde_tt),
     };
   };

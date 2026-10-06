@@ -16,5 +16,3 @@ clang++ -std=c++23 -O2 -Isrc/astro -Isrc/calendar -Isrc/util \
   statistics/chart_snapshot_fixture.cpp -o chart_snapshot_example
 ./chart_snapshot_example > docs/examples/chart_snapshot/data.json
 ```
-
-The JSON names C++ targets. It is not a C ABI layout.

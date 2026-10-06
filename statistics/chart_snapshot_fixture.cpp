@@ -42,17 +42,16 @@ auto main() -> int {
     << "  \"times\": {\"jd_ut1\": " << snapshot.times.jd_ut1
     << ", \"jde_tt\": " << snapshot.times.jde_tt << "},\n  \"bodies\": [\n";
   bool first = true;
-  constexpr std::array<std::string_view, 14> names {
+  constexpr std::array<std::string_view, 14> TARGET_NAMES {
     "SUN", "MOON", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO",
     "MEAN_ASCENDING", "MEAN_DESCENDING", "TRUE_ASCENDING", "TRUE_DESCENDING",
   };
-  std::size_t index = 0;
   for (const auto& body : snapshot.bodies) {
     if (not first) {
       std::cout << ",\n";
     }
     first = false;
-    std::cout << "    {\"target\": \"" << names.at(index++)
+    std::cout << "    {\"target\": \"" << TARGET_NAMES.at(static_cast<uint8_t>(body.target))
       << "\", \"longitude_deg\": " << body.longitude.deg()
       << ", \"latitude_deg\": " << body.latitude.deg() << ", \"distance_au\": ";
     if (body.distance) {

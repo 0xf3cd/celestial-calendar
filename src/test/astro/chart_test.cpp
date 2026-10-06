@@ -192,12 +192,14 @@ TEST(Chart, SameInstantCompositionForEveryModelAndHouseSystem) {
 TEST(Chart, HistoricalUt1AndDefaultModel) {
   const auto observer = location(40.0, -75.0);
   const Datetime dt { util::to_ymd(1900, 6, 1), 0.5 };
-  for (const auto model : MODELS) {
-    const auto result = calculate(dt, Scale::UT1, observer, System::EQUAL, model);
-    EXPECT_EQ(result.times.jd_ut1, astro::julian_day::ut1_to_jd(dt));
-    EXPECT_EQ(result.times.jde_tt, astro::julian_day::tt_to_jde(
-      calendar::add_seconds(dt, astro::delta_t::compute(model, dt))));
-    check_composition(result, observer, System::EQUAL);
+  for (const auto historical : std::array { dt, civil(1899, 12, 31, 86399'999'999'999) }) {
+    for (const auto model : MODELS) {
+      const auto result = calculate(historical, Scale::UT1, observer, System::EQUAL, model);
+      EXPECT_EQ(result.times.jd_ut1, astro::julian_day::ut1_to_jd(historical));
+      EXPECT_EQ(result.times.jde_tt, astro::julian_day::tt_to_jde(
+        calendar::add_seconds(historical, astro::delta_t::compute(model, historical))));
+      check_composition(result, observer, System::EQUAL);
+    }
   }
   EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, System::EQUAL), std::invalid_argument);
   const Datetime modern { util::to_ymd(2026, 1, 1), 0.5 };
@@ -302,6 +304,10 @@ TEST(Chart, JointTimeDomainAndAlgo4Cap) {
   EXPECT_THROW(std::ignore = calculate(after, Scale::UT1, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
   const Datetime exact_utc_cap { util::to_ymd(2034, 12, 31), 0.99919925925925923 };
   EXPECT_THROW(std::ignore = calculate(exact_utc_cap, Scale::UTC, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
+  const auto rounded_utc_cap = civil(2034, 12, 31, 86330815980000);
+  EXPECT_EQ(astro::julian_day::utc_to_jde(rounded_utc_cap), detail::ALGO4_END_JDE_TT);
+  EXPECT_THROW(std::ignore = calculate(rounded_utc_cap, Scale::UTC, observer, System::EQUAL, Model::ALGO4),
+               std::invalid_argument);
   const Datetime pinned_utc { util::to_ymd(2034, 12, 31), 0.99919925902642359 };
   EXPECT_EQ(calculate(pinned_utc, Scale::UTC, observer, System::EQUAL, Model::ALGO4).times.jde_tt,
             std::nextafter(detail::ALGO4_END_JDE_TT, 0.0));
