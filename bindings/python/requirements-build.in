@@ -11,4 +11,4 @@
 # Installed by CIBW_BEFORE_BUILD before the no-isolation PEP 517 build.
 build==1.6.1
 ninja==1.13.2
-scikit-build-core==1.0.3
+scikit-build-core==1.1.0
