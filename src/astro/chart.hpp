@@ -20,7 +20,6 @@
 #include <format>
 #include <optional>
 #include <stdexcept>
-#include <utility>
 
 #include "delta_t.hpp"
 #include "ephemeris.hpp"
@@ -156,12 +155,13 @@ struct Position {
 
 [[nodiscard]] inline auto position(const astro::ephemeris::Target target, const double jde_tt) -> Position {
   using astro::lunar_node::Node;
-  using astro::planet::Planet;
   using astro::planet::geocentric_coord::apparent;
   using enum astro::ephemeris::Target;
+
   const auto with_distance = [](const astro::toolbox::SphericalCoordinate& coordinate) -> Position {
     return { .longitude = coordinate.λ, .latitude = coordinate.β, .distance = coordinate.r };
   };
+
   const auto node_position = [jde_tt](const Node node) -> Position {
     return {
       .longitude = astro::lunar_node::position(node, jde_tt),
@@ -170,21 +170,8 @@ struct Position {
     };
   };
 
-  static constexpr std::array PLANET_TARGETS {
-    std::pair { MERCURY, Planet::MERCURY },
-    std::pair { VENUS, Planet::VENUS },
-    std::pair { MARS, Planet::MARS },
-    std::pair { JUPITER, Planet::JUPITER },
-    std::pair { SATURN, Planet::SATURN },
-    std::pair { URANUS, Planet::URANUS },
-    std::pair { NEPTUNE, Planet::NEPTUNE },
-    std::pair { PLUTO, Planet::PLUTO },
-  };
-
-  for (const auto& [planet_target, planet] : PLANET_TARGETS) {
-    if (target == planet_target) {
-      return with_distance(apparent(planet, jde_tt));
-    }
+  if (const auto planet = astro::ephemeris::detail::planet_for_target(target); planet.has_value()) {
+    return with_distance(apparent(*planet, jde_tt));
   }
 
   switch (target) {
@@ -201,6 +188,7 @@ struct Position {
 
 [[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> decltype(Snapshot::bodies) {
   using enum astro::ephemeris::Target;
+
   const auto evaluate = [jde_tt](const astro::ephemeris::Target target) -> BodyState {
     const auto coordinate = position(target, jde_tt);
     return {
@@ -211,6 +199,7 @@ struct Position {
       .longitude_rate = astro::ephemeris::longitude_rate(target, jde_tt),
     };
   };
+
   return {
     evaluate(SUN), evaluate(MOON), evaluate(MERCURY), evaluate(VENUS), evaluate(MARS), evaluate(JUPITER),
     evaluate(SATURN), evaluate(URANUS), evaluate(NEPTUNE), evaluate(PLUTO),
