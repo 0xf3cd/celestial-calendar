@@ -17,8 +17,10 @@
 #include <concepts>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include "julian_day.hpp"
 #include "lunar_node.hpp"
@@ -58,25 +60,43 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
 inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
 inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
 
+[[nodiscard]] inline auto planet_for_target(const Target target) -> std::optional<astro::planet::Planet> {
+  using astro::planet::Planet;
+  using enum Target;
+
+  static constexpr std::array mappings {
+    std::pair { MERCURY, Planet::MERCURY },
+    std::pair { VENUS, Planet::VENUS },
+    std::pair { MARS, Planet::MARS },
+    std::pair { JUPITER, Planet::JUPITER },
+    std::pair { SATURN, Planet::SATURN },
+    std::pair { URANUS, Planet::URANUS },
+    std::pair { NEPTUNE, Planet::NEPTUNE },
+    std::pair { PLUTO, Planet::PLUTO },
+  };
+
+  for (const auto& [planet_target, planet] : mappings) {
+    if (target == planet_target) {
+      return planet;
+    }
+  }
+  return std::nullopt;
+}
+
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt)
   -> astro::toolbox::AngleDeg {
   using astro::lunar_node::Node;
   using astro::lunar_node::position;
-  using astro::planet::Planet;
   using astro::planet::geocentric_coord::apparent;
   using enum Target;
 
+  if (const auto planet = planet_for_target(target); planet.has_value()) {
+    return apparent(*planet, jde_tt).λ;
+  }
+
   switch (target) {
-    case SUN:     return astro::sun::geocentric_coord::apparent(jde_tt).λ;
-    case MOON:    return astro::moon::geocentric_coord::apparent(jde_tt).λ;
-    case MERCURY: return apparent(Planet::MERCURY, jde_tt).λ;
-    case VENUS:   return apparent(Planet::VENUS, jde_tt).λ;
-    case MARS:    return apparent(Planet::MARS, jde_tt).λ;
-    case JUPITER: return apparent(Planet::JUPITER, jde_tt).λ;
-    case SATURN:  return apparent(Planet::SATURN, jde_tt).λ;
-    case URANUS:  return apparent(Planet::URANUS, jde_tt).λ;
-    case NEPTUNE: return apparent(Planet::NEPTUNE, jde_tt).λ;
-    case PLUTO:   return apparent(Planet::PLUTO, jde_tt).λ;
+    case SUN: return astro::sun::geocentric_coord::apparent(jde_tt).λ;
+    case MOON: return astro::moon::geocentric_coord::apparent(jde_tt).λ;
     case MEAN_ASCENDING:
     case MEAN_DESCENDING:
       return position(Node::MEAN_ASCENDING, jde_tt);

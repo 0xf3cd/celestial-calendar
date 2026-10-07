@@ -1,0 +1,22 @@
+{
+  "role": "Chart snapshot replay example, not an independent physical-accuracy oracle",
+  "input": {"datetime": "2026-01-01T12:00:00.000000000", "scale": "UTC", "latitude_north_deg": 51.5, "longitude_east_deg": 0, "system": "PLACIDUS", "delta_t_model": "ALGO5"},
+  "times": {"jd_ut1": 2461042.0000007683, "jde_tt": 2461042.0008007409},
+  "bodies": [
+    {"target": "SUN", "longitude_deg": 281.07803826283168, "latitude_deg": 0.000193083036419991, "distance_au": 0.9833184818747035, "longitude_rate_deg_per_tt_day": 1.0188644941097134},
+    {"target": "MOON", "longitude_deg": 74.22605297180543, "latitude_deg": 5.054354913897436, "distance_au": 0.0024097162931051939, "longitude_rate_deg_per_tt_day": 15.04375000063923},
+    {"target": "MERCURY", "longitude_deg": 269.41509062959977, "latitude_deg": -0.62479671001197112, "distance_au": 1.3812724675570729, "longitude_rate_deg_per_tt_day": 1.5283755583257743},
+    {"target": "VENUS", "longitude_deg": 279.83568900240812, "latitude_deg": -0.52367936827139372, "distance_au": 1.7100853997688017, "longitude_rate_deg_per_tt_day": 1.258293672608382},
+    {"target": "MARS", "longitude_deg": 283.07140446976456, "latitude_deg": -0.89420436923031699, "distance_au": 2.4103035041008605, "longitude_rate_deg_per_tt_day": 0.76669506388475384},
+    {"target": "JUPITER", "longitude_deg": 111.29227821610934, "latitude_deg": 0.24034616372169082, "distance_au": 4.2413923541098022, "longitude_rate_deg_per_tt_day": -0.13099508154508044},
+    {"target": "SATURN", "longitude_deg": 356.19664535664202, "latitude_deg": -2.2571097093328127, "distance_au": 9.723252622604452, "longitude_rate_deg_per_tt_day": 0.059104505350395208},
+    {"target": "URANUS", "longitude_deg": 57.935289125448996, "latitude_deg": -0.19747329020321466, "distance_au": 18.761130623396408, "longitude_rate_deg_per_tt_day": -0.027100730610470691},
+    {"target": "NEPTUNE", "longitude_deg": 359.51353511489066, "latitude_deg": -1.3320713496676209, "distance_au": 30.066355891041933, "longitude_rate_deg_per_tt_day": 0.012725638673123285},
+    {"target": "PLUTO", "longitude_deg": 302.73385673736487, "latitude_deg": -3.7710921841959348, "distance_au": 36.331536870953357, "longitude_rate_deg_per_tt_day": 0.030229247621787182},
+    {"target": "MEAN_ASCENDING", "longitude_deg": 342.14426677287628, "latitude_deg": 0, "distance_au": null, "longitude_rate_deg_per_tt_day": -0.052894195532591462},
+    {"target": "MEAN_DESCENDING", "longitude_deg": 162.14426677287634, "latitude_deg": 0, "distance_au": null, "longitude_rate_deg_per_tt_day": -0.052894195532591462},
+    {"target": "TRUE_ASCENDING", "longitude_deg": 340.99700502115564, "latitude_deg": 0, "distance_au": null, "longitude_rate_deg_per_tt_day": -0.17001936260620976},
+    {"target": "TRUE_DESCENDING", "longitude_deg": 160.9970050211557, "latitude_deg": 0, "distance_au": null, "longitude_rate_deg_per_tt_day": -0.17001936260620976}
+  ],
+  "houses": {"ascendant_deg": 25.806080393724358, "midheaven_deg": 280.25531615598209, "descendant_deg": 205.80608039372436, "imum_coeli_deg": 100.25531615598209, "cusps_deg": [25.806080393724358, 62.006893732963363, 82.693807018004009, 100.25531615598209, 119.8034060546488, 148.76983170726453, 205.80608039372436, 242.00689373296336, 262.69380701800401, 280.25531615598209, 299.8034060546488, 328.76983170726453]}
+}
