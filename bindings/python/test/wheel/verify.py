@@ -64,6 +64,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     "celestial_calendar/__init__.py",
     "celestial_calendar/_binding.py",
     "celestial_calendar/_version.py",
+    "celestial_calendar/chart.py",
     "celestial_calendar/py.typed",
     native_member,
     f"{dist_info}/METADATA",
@@ -189,7 +190,7 @@ def main() -> None:
   assert filename_match is not None, wheel.name
   platform_tags = filename_match.group(1).split(".")
   exports = {entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]}
-  assert len(exports) == 29
+  assert len(exports) == 30
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
     native_member = verify_metadata(archive, wheel, version, platform_tags)

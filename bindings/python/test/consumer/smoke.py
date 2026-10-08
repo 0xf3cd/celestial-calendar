@@ -612,13 +612,22 @@ def run_value_contract() -> None:
   date = celestial.GregorianDate(2024, 1, 1)
   raises(FrozenInstanceError, lambda: setattr(date, "day", 2))
   assert len(celestial.__all__) == len(set(celestial.__all__))
-  public_names = {name for name in celestial.__dict__ if not name.startswith("_")} | {"__version__"}
+  assert celestial.chart is importlib.import_module("celestial_calendar.chart")
+  public_names = {name for name in celestial.__dict__ if not name.startswith("_") and name != "chart"} | {"__version__"}
   assert set(celestial.__all__) == public_names
   assert set(celestial.__all__) == {
+    "BodyState",
     "CelestialError",
+    "ChartHouses",
+    "ChartSnapshot",
+    "ChartTarget",
+    "ChartTimes",
     "CivilDateTime",
+    "CivilScale",
     "DeltaTModel",
+    "GeoLocation",
     "GregorianDate",
+    "HouseSystem",
     "Jieqi",
     "JieqiMoment",
     "LogVerbosity",
@@ -632,6 +641,7 @@ def run_value_contract() -> None:
     "SunCoordinate",
     "__version__",
     "apparent_solar_time",
+    "chart_snapshot",
     "delta_t",
     "equation_of_time",
     "gregorian_to_lunar",
@@ -658,6 +668,14 @@ def run_value_contract() -> None:
   assert not hasattr(celestial, "last_error")
   assert not hasattr(celestial, "solar_lon_root_discriminant")
   assert not hasattr(celestial, "delta_t_algo1")
+  for name in ("CivilDateTime", "DeltaTModel", "CelestialError"):
+    value_type = getattr(celestial, name)
+    assert value_type.__module__ == "celestial_calendar"
+    assert getattr(importlib.import_module(value_type.__module__), name) is value_type
+  # Chart's tighter raw domain must not narrow the existing civil helpers.
+  assert math.isfinite(celestial.ut1_to_jd(celestial.CivilDateTime(1884, 1, 1, 0.0)))
+  raises(OverflowError, lambda: celestial._finite(10**1000, "old helper"))
+  assert celestial._finite(celestial.Jieqi.YUSHUI, "old helper") == 1.0
   print("PASS frozen values and public surface")
 
 

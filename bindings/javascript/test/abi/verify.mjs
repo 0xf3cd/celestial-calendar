@@ -53,8 +53,8 @@ const headerEntries = declarations.map((signature) => {
 const headerNames = headerEntries.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
-uniqueCount("celestial.h exports", headerNames, 29);
-uniqueCount("internal bindings", bindingNames, 29);
+uniqueCount("celestial.h exports", headerNames, 30);
+uniqueCount("internal bindings", bindingNames, 30);
 sameSet("header = bindings", headerNames, bindingNames);
 
 const expectedWidths = {
@@ -75,24 +75,50 @@ const typeLayout = {
   uint32_t: { size: 4, alignment: 4 },
   double: { size: 8, alignment: 8 },
 };
-const alignTo = (value, alignment) => Math.ceil(value / alignment) * alignment;
-const parsedLayouts = {};
-for (const match of header.matchAll(/typedef struct (\w+)\s*\{([\s\S]*?)\}\s*\1;/g)) {
-  const [, name, rawBody] = match;
-  const body = rawBody.replace(/\/\*[\s\S]*?\*\//g, "");
-  const fields = [...body.matchAll(/\b(bool|uint8_t|uint16_t|int32_t|uint32_t|double)\s+(\w+)\s*;/g)]
-    .map((field) => ({ name: field[2], type: field[1] }));
-  let offset = 0;
-  let alignment = 1;
-  for (const field of fields) {
-    const type = typeLayout[field.type];
-    offset = alignTo(offset, type.alignment);
-    field.offset = offset;
-    offset += type.size;
-    alignment = Math.max(alignment, type.alignment);
+const alignTo = (value, alignment) => {
+  const aligned = Math.ceil(value / alignment) * alignment;
+  assert(Number.isSafeInteger(aligned), `unsafe layout size ${aligned}`);
+  return aligned;
+};
+const parseHeaderLayouts = (source) => {
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const recordPattern = /\btypedef\s+struct\s+([A-Za-z_]\w*)\s*\{([^{}]*)\}\s*([A-Za-z_]\w*)\s*;/g;
+  const layouts = {};
+  for (const [, name, body, alias] of clean.matchAll(recordPattern)) {
+    assert.equal(alias, name, `unsupported record alias ${name} -> ${alias}`);
+    assert(!Object.hasOwn(layouts, name) && !Object.hasOwn(typeLayout, name), `duplicate record ${name}`);
+
+    const declarations = body.split(";");
+    assert.equal(declarations.pop().trim(), "", `unterminated field in ${name}`);
+    assert(declarations.length > 0, `empty record ${name}`);
+    const fields = [];
+    let offset = 0;
+    let alignment = 1;
+    for (const declaration of declarations) {
+      // Closed grammar: scalars, earlier named records, and fixed decimal-literal arrays.
+      const field = declaration.trim().match(/^([A-Za-z_]\w*)\s+([A-Za-z_]\w*)(?:\s*\[\s*([1-9][0-9]*)\s*\])?$/);
+      assert(field, `unsupported C field in ${name}: ${declaration.trim()}`);
+      const [, baseName, fieldName, extent] = field;
+      const base = Object.hasOwn(typeLayout, baseName) ? typeLayout[baseName]
+        : Object.hasOwn(layouts, baseName) ? layouts[baseName] : undefined;
+      assert(base, `unknown or forward C field type ${name}.${fieldName}: ${baseName}`);
+      assert(!fields.some(({ name }) => name === fieldName), `duplicate field ${name}.${fieldName}`);
+
+      const count = extent === undefined ? 1 : Number(extent);
+      const size = base.size * count;
+      assert(Number.isSafeInteger(count) && count > 0 && Number.isSafeInteger(size), `unsafe array extent ${name}.${fieldName}`);
+      offset = alignTo(offset, base.alignment);
+      fields.push({ name: fieldName, type: extent === undefined ? baseName : `${baseName}[${count}]`, offset });
+      offset += size;
+      assert(Number.isSafeInteger(offset), `unsafe field end ${name}.${fieldName}`);
+      alignment = Math.max(alignment, base.alignment);
+    }
+    layouts[name] = { size: alignTo(offset, alignment), alignment, fields };
   }
-  parsedLayouts[name] = { size: alignTo(offset, alignment), alignment, fields };
-}
+  assert(!/\btypedef\s+struct\b/.test(clean.replace(recordPattern, "")), "unsupported C record declaration");
+  return layouts;
+};
+const parsedLayouts = parseHeaderLayouts(header);
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));
@@ -101,20 +127,10 @@ const listValues = (constantName) => {
 };
 const recipeExports = listValues("EXPORTS");
 const runtimeMethods = listValues("RUNTIME_METHODS");
-uniqueCount("build recipe exports", recipeExports, 31);
+uniqueCount("build recipe exports", recipeExports, 32);
 assert(runtimeMethods.includes("HEAPU16"), "build recipe must export HEAPU16");
 assert(buildScript.includes('"-sALLOW_MEMORY_GROWTH=1"'), "build recipe must enable ALLOW_MEMORY_GROWTH");
 assert.equal((buildScript.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1, "one em++ export recipe");
-
-const M = await (await import(pathToFileURL(MODULE_PATH))).default();
-for (const name of recipeExports) {
-  assert.equal(typeof M[`_${name}`], "function", `built module export _${name}`);
-}
-const builtExports = Object.keys(M)
-  .filter((name) => /^_[a-z]/.test(name) && typeof M[name] === "function")
-  .map((name) => name.slice(1));
-sameSet("build recipe = built module", recipeExports, builtExports);
-assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
 
 assert(
   header.includes("Every exported function except `last_error` writes and clears the message"),
@@ -139,13 +155,13 @@ const functionBody = (name) => {
 const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::wrap_export("));
 const bindingErrorPolicy = BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName);
 
-uniqueCount("recording exports", documentedRecording, 28);
+uniqueCount("recording exports", documentedRecording, 29);
 sameSet("recording docs = implementation writers", documentedRecording, implementationWriters);
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
 const verifyManifest = (candidate) => {
   const manifestNames = candidate.exports.map(({ name }) => name);
-  uniqueCount("manifest exports", manifestNames, 29);
+  uniqueCount("manifest exports", manifestNames, 30);
   sameSet("header = manifest", headerNames, manifestNames);
 
   for (const entry of candidate.exports) {
@@ -167,7 +183,7 @@ const verifyManifest = (candidate) => {
   assert.deepEqual(candidate.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
 
   const manifestLayoutNames = Object.keys(candidate.layouts);
-  uniqueCount("manifest layouts", manifestLayoutNames, 16);
+  uniqueCount("manifest layouts", manifestLayoutNames, 19);
   sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifestLayoutNames);
   for (const name of manifestLayoutNames) {
     assert.deepEqual(candidate.layouts[name], parsedLayouts[name], `layout ${name}`);
@@ -187,7 +203,7 @@ const runMutationSelfTests = (candidate) => {
   mutations.push(["missing export", missingExport]);
 
   const wrongSignature = structuredClone(candidate);
-  wrongSignature.exports.at(-1).signature = "DeltaT delta_t(int32_t year)";
+  wrongSignature.exports.find(({ name }) => name === "delta_t").signature = "DeltaT delta_t(int32_t year)";
   mutations.push(["wrong signature", wrongSignature]);
 
   const wrongFieldType = structuredClone(candidate);
@@ -236,7 +252,20 @@ const runMutationSelfTests = (candidate) => {
 verifyManifest(manifest);
 runMutationSelfTests(manifest);
 
-console.log("PASS exports header=manifest=bindings=recipe=built 29 (+ malloc/free)");
-console.log("PASS layouts header=manifest 16; HEAPU16 present; memory growth enabled");
-console.log("PASS recording docs=writers=manifest=binding error policy 28");
+if (process.argv.includes("--static")) {
+  console.log("PASS static exports header=manifest=bindings=recipe 30 (+ malloc/free); built WASM not checked");
+} else {
+  const M = await (await import(pathToFileURL(MODULE_PATH))).default();
+  for (const name of recipeExports) {
+    assert.equal(typeof M[`_${name}`], "function", `built module export _${name}`);
+  }
+  const builtExports = Object.keys(M)
+    .filter((name) => /^_[a-z]/.test(name) && typeof M[name] === "function")
+    .map((name) => name.slice(1));
+  sameSet("build recipe = built module", recipeExports, builtExports);
+  assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
+  console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
+}
+console.log("PASS layouts header=manifest=bindings 19; memory growth enabled in recipe");
+console.log("PASS recording docs=writers=manifest=binding error policy 29");
 console.log("PASS per-export fill protocols; ABI mutations rejected 11/11");

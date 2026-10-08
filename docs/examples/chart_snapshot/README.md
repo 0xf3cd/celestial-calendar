@@ -5,6 +5,10 @@
 It contains UT1 and TT, all fourteen positions and longitude rates, four axes and twelve cusps.
 Node distance is `null` and latitude is zero.
 
+The installed Python `chart_snapshot` consumer and the private C/WASM snapshot checks use this same input.
+The [Python guide](../../../bindings/python/README.md) and [C example](../../API.md#fixed-version-c-chart-snapshot)
+show how to request it; Python represents absent distance as `None`, and C uses `CHART_PRESENT_DISTANCE`.
+
 This is a chart snapshot replay example, not an independent physical-accuracy oracle.
 [`astro::chart::calculate`](../../../src/astro/chart.hpp) leaves sign, house-placement and aspect calculations to the consumer.
 

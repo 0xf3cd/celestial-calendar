@@ -14,54 +14,60 @@ import shutil
 import tempfile
 
 from pathlib import Path
-from typing import Dict, List, Final, Optional, Tuple
+from typing import Dict, List, Optional
 
 from . import paths
+from .c_abi_schema import C_TO_CTYPES, Fields, parse_c_structs, split_field_type
+from .c_abi_schema import STRUCT_RE as STRUCT_RE
 from .utils import run_cmd, green_print, red_print, yellow_print
 
 
-# The closed set of field types the gate understands, mapped to their ctypes mirror.
-# A field type outside it fails the gate loudly: extending the ABI with a new field
-# type is a deliberate act that must extend this table, not something to wave through.
-C_TO_CTYPES: Final[Dict[str, str]] = {
-  "bool": "c_bool",
-  "uint8_t": "c_uint8",
-  "uint16_t": "c_uint16",
-  "uint32_t": "c_uint32",
-  "int32_t": "c_int32",
-  "double": "c_double",
-}
+def mirror_type(node: ast.expr, records: dict[str, str], owner: str) -> str:
+  """Read a ctypes scalar, earlier record, or literal bounded array as a C type."""
+  if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+    if not isinstance(node.right, ast.Constant) or type(node.right.value) is not int or node.right.value <= 0:
+      raise RuntimeError(f"Unsupported array extent in {owner}")
+    base = mirror_type(node.left, records, owner)
+    if split_field_type(base)[1] is not None:
+      raise RuntimeError(f"Multidimensional array in {owner}")
+    return f"{base}[{node.right.value}]"
 
-STRUCT_RE: Final[re.Pattern] = re.compile(r"typedef\s+struct\s+(\w+)\s*\{(.*?)\}\s*\1\s*;", re.DOTALL)
-FIELD_RE: Final[re.Pattern] = re.compile(r"^\s*(\w+)\s+(\w+)\s*;")
-
-# (field name, type name), in declaration order.
-Fields = List[Tuple[str, str]]
-
-
-def parse_c_structs(header: Path) -> Dict[str, Fields]:
-  """Parse every `typedef struct` in `celestial.h`: name -> fields in declaration order."""
-  structs: Dict[str, Fields] = {}
-  for name, body in STRUCT_RE.findall(header.read_text()):
-    fields = [(m.group(2), m.group(1)) for line in body.splitlines() if (m := FIELD_RE.match(line))]
-    if not fields:
-      raise RuntimeError(f"No fields parsed from struct {name} in {header}")
-    structs[name] = fields
-  if not structs:
-    raise RuntimeError(f"No typedef struct found in {header}")
-  return structs
+  if isinstance(node, ast.Name):
+    name = node.id
+    if name in records:
+      return records[name]
+  elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "ctypes":
+    name = node.attr
+  else:
+    raise RuntimeError(f"Unreadable field type in {owner}")
+  primitives = {python: c for c, python in C_TO_CTYPES.items()}
+  if name not in primitives:
+    raise RuntimeError(f"Unknown or not previously declared field type in {owner}: {name}")
+  return primitives[name]
 
 
 def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   """Parse every ctypes `Structure` subclass in `common.py`, statically (no import, no .so).
 
   Class names are normalized by stripping one leading underscore (`_JulianDay` mirrors
-  `JulianDay`; `DeltaT` carries no underscore). Anything the parser cannot read exactly --
-  a missing `_fields_`, a non-tuple entry, a non-simple type name -- raises, because a
-  gate that guesses is no gate.
+  `JulianDay`; `DeltaT` carries no underscore). Fields use the same canonical C strings
+  as the header. Unknown syntax, types and
+  extents raise rather than being omitted from the comparison.
   """
   structs: Dict[str, Fields] = {}
-  for node in ast.parse(mirror.read_text()).body:
+  records: dict[str, str] = {}
+  module = ast.parse(mirror.read_text(encoding="utf-8"))
+  for node in ast.walk(module):
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+      targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+      if any(
+        isinstance(target, ast.Attribute)
+        and target.attr in {"_fields_", "_pack_", "_align_", "_layout_", "_anonymous_"}
+        for target in targets
+      ):
+        raise RuntimeError("Out-of-class layout assignment is outside the mirror grammar")
+
+  for node in module.body:
     if not isinstance(node, ast.ClassDef):
       continue
     is_structure = any(
@@ -70,13 +76,43 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
     )
     if not is_structure:
       continue
+    if len(node.bases) != 1 or not (
+      isinstance(node.bases[0], ast.Name)
+      and node.bases[0].id == "Structure"
+      or isinstance(node.bases[0], ast.Attribute)
+      and isinstance(node.bases[0].value, ast.Name)
+      and node.bases[0].value.id == "ctypes"
+      and node.bases[0].attr == "Structure"
+    ):
+      raise RuntimeError(f"Unsupported Structure base in {node.name}")
+    name = node.name[1:] if node.name.startswith("_") else node.name
+    if name in structs or name in C_TO_CTYPES or node.name in C_TO_CTYPES.values():
+      raise RuntimeError(f"Duplicate or reserved mirror name: {node.name}")
+
+    for child in ast.walk(node):
+      if isinstance(child, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and child not in node.body:
+        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+        if any(isinstance(t, ast.Name) and t.id == "_fields_" for t in targets):
+          raise RuntimeError(f"Conditional or computed _fields_ in {node.name}")
+      if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+        owner = child.func.value
+        if isinstance(owner, ast.Name) and owner.id == "_fields_":
+          raise RuntimeError(f"Computed _fields_ mutation in {node.name}")
 
     fields: Optional[Fields] = None
     for stmt in node.body:
+      if isinstance(stmt, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+        if any(isinstance(t, ast.Name) and t.id in {"_pack_", "_align_", "_layout_", "_anonymous_"} for t in targets):
+          raise RuntimeError(f"Unsupported layout override in {node.name}")
+        if not isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_fields_" for t in targets):
+          raise RuntimeError(f"Nonliteral _fields_ assignment in {node.name}")
       if not (
         isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_fields_" for t in stmt.targets)
       ):
         continue
+      if fields is not None or len(stmt.targets) != 1:
+        raise RuntimeError(f"Duplicate or chained _fields_ assignment in {node.name}")
       if not isinstance(stmt.value, (ast.List, ast.Tuple)):
         raise RuntimeError(f"Unreadable _fields_ on Structure subclass {node.name}: not a literal list/tuple")
       fields = []
@@ -86,17 +122,15 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
         fname_node, type_node = elt.elts
         if not isinstance(fname_node, ast.Constant) or not isinstance(fname_node.value, str):
           raise RuntimeError(f"Unreadable field name in {node.name}._fields_")
-        if isinstance(type_node, ast.Name):
-          tname = type_node.id
-        elif isinstance(type_node, ast.Attribute):
-          tname = type_node.attr
-        else:
-          raise RuntimeError(f"Unreadable field type in {node.name}._fields_")
+        if not re.fullmatch(r"[A-Za-z_]\w*", fname_node.value) or fname_node.value in dict(fields):
+          raise RuntimeError(f"Invalid or duplicate field name in {node.name}: {fname_node.value!r}")
+        tname = mirror_type(type_node, records, f"{node.name}.{fname_node.value}")
         fields.append((fname_node.value, tname))
 
     if not fields:
       raise RuntimeError(f"No readable _fields_ on Structure subclass {node.name}")
-    structs[node.name[1:] if node.name.startswith("_") else node.name] = fields
+    structs[name] = fields
+    records[node.name] = name
 
   if not structs:
     raise RuntimeError(f"No Structure subclass found in {mirror}")
@@ -117,8 +151,18 @@ def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optiona
   lines = ['#include "celestial.h"', "#include <stdio.h>", "#include <stddef.h>", "int main(void) {"]
   for name, fields in structs.items():
     lines.append(f'  printf("{name} %zu\\n", sizeof({name}));')
-    for fname, _ in fields:
+    lines.append(f'  printf("{name}.alignment %zu\\n", _Alignof({name}));')
+    for fname, field_type in fields:
+      base, extent = split_field_type(field_type)
       lines.append(f'  printf("{name}.{fname} %zu\\n", offsetof({name}, {fname}));')
+      lines.append(f'  printf("{name}.{fname}.size %zu\\n", sizeof((({name} *)0)->{fname}));')
+      lines.append(f'  printf("{name}.{fname}.alignment %zu\\n", _Alignof({base}));')
+      if extent is not None:
+        lines.append(f'  printf("{name}.{fname}.stride %zu\\n", sizeof((({name} *)0)->{fname}[0]));')
+        lines.append(
+          f'  printf("{name}.{fname}.extent %zu\\n", '
+          f"sizeof((({name} *)0)->{fname}) / sizeof((({name} *)0)->{fname}[0]));"
+        )
   lines += ["  return 0;", "}"]
 
   src = workdir / "abi_layout_probe.c"
@@ -126,7 +170,7 @@ def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optiona
   src.write_text("\n".join(lines) + "\n")
 
   ret = run_cmd(
-    [cc, "-Wall", "-Werror", f"-I{header.parent}", str(src), "-o", str(exe)],
+    [cc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-pedantic", f"-I{header.parent}", str(src), "-o", str(exe)],
     print_cmd=False,
     print_stdout=False,
     print_stderr=False,
@@ -149,11 +193,49 @@ def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optiona
   return layout
 
 
-def py_layout(fields: Fields) -> Tuple[int, Dict[str, int]]:
-  """Build the mirrored struct with ctypes (stdlib only, no .so) and read its layout."""
-  ctype_fields = [(fname, getattr(ctypes, tname)) for fname, tname in fields]
-  cls = type("_Probe", (ctypes.Structure,), {"_fields_": ctype_fields})
-  return ctypes.sizeof(cls), {fname: getattr(cls, fname).offset for fname, _ in ctype_fields}
+def py_layout(structs: Dict[str, Fields]) -> Dict[str, int]:
+  """Measure ctypes records in declaration order, including nested and array storage."""
+  types = {c: getattr(ctypes, python) for c, python in C_TO_CTYPES.items()}
+  layout: Dict[str, int] = {}
+  for name, fields in structs.items():
+    ctype_fields = []
+    for fname, field_type in fields:
+      base, extent = split_field_type(field_type)
+      element = types[base]
+      field = element if extent is None else element * extent
+      ctype_fields.append((fname, field))
+      layout[f"{name}.{fname}.size"] = ctypes.sizeof(field)
+      layout[f"{name}.{fname}.alignment"] = ctypes.alignment(field)
+      if extent is not None:
+        layout[f"{name}.{fname}.extent"] = field._length_
+        layout[f"{name}.{fname}.stride"] = ctypes.sizeof(element)
+
+    cls = type(name, (ctypes.Structure,), {"_fields_": ctype_fields})
+    types[name] = cls
+    layout[name] = ctypes.sizeof(cls)
+    layout[f"{name}.alignment"] = ctypes.alignment(cls)
+    layout.update({f"{name}.{fname}": getattr(cls, fname).offset for fname, _ in fields})
+  return layout
+
+
+def compare_layouts(
+  c_structs: Dict[str, Fields], py_structs: Dict[str, Fields], ground_truth: Dict[str, int]
+) -> List[str]:
+  """Reconcile record/field sets, order, exact types and independently measured storage."""
+  failures = []
+  for name in sorted(c_structs.keys() - py_structs.keys()):
+    failures.append(f"{name}: no ctypes mirror in common.py")
+  for name in sorted(py_structs.keys() - c_structs.keys()):
+    failures.append(f"{name}: ctypes mirror without a struct in celestial.h")
+  for name in sorted(c_structs.keys() & py_structs.keys()):
+    if c_structs[name] != py_structs[name]:
+      failures.append(f"{name}: field schema/order {c_structs[name]} (C) != {py_structs[name]} (ctypes)")
+
+  measured = py_layout(py_structs)
+  for key in sorted(ground_truth.keys() & measured.keys()):
+    if ground_truth[key] != measured[key]:
+      failures.append(f"{key}: {ground_truth[key]} (C) != {measured[key]} (ctypes)")
+  return failures
 
 
 def check_abi_layout() -> int:
@@ -161,9 +243,9 @@ def check_abi_layout() -> int:
 
   Every struct in `celestial.h` has a ctypes mirror in `common.py`, and a struct read back
   through a drifted mirror is garbage no test prints (#85). Three layers, because
-  each sees what the others cannot: set equality catches a missing or extra mirror,
-  sizeof/offsetof catches layout drift, and the type-name map catches what raw layout
-  cannot -- signedness and same-width swaps (c_int32 vs c_uint32, c_bool vs c_uint8).
+  each sees what the others cannot: set equality catches a missing or extra mirror;
+  size/alignment/offset/extent/stride catch layout drift; exact field types catch what
+  raw layout cannot -- signedness and same-width swaps (c_int32 vs c_uint32, c_bool vs c_uint8).
   """
   print("#" * 60)
   yellow_print("Checking that the ctypes mirror matches the real ABI layout...")
@@ -174,17 +256,9 @@ def check_abi_layout() -> int:
   try:
     c_structs = parse_c_structs(header)
     py_structs = parse_py_structs(mirror)
-  except RuntimeError as e:
+  except (RuntimeError, SyntaxError) as e:
     red_print(f"Parse failed: {e}")
     return 1
-
-  failures: List[str] = []
-
-  # Layer 1: set equality, both directions.
-  for name in sorted(c_structs.keys() - py_structs.keys()):
-    failures.append(f"{name}: no ctypes mirror in common.py")
-  for name in sorted(py_structs.keys() - c_structs.keys()):
-    failures.append(f"{name}: ctypes mirror without a struct in celestial.h")
 
   # Layer 2: compile and run the ground-truth probe once for every struct.
   with tempfile.TemporaryDirectory(prefix="abi_layout_") as tmp:
@@ -192,34 +266,7 @@ def check_abi_layout() -> int:
   if ground_truth is None:
     return 1
 
-  # Layers 2+3: per-struct layout and type-name comparison.
-  for name in sorted(c_structs.keys() & py_structs.keys()):
-    c_fields = c_structs[name]
-    py_fields = py_structs[name]
-    py_size, py_offsets = py_layout(py_fields)
-
-    if ground_truth[name] != py_size:
-      failures.append(f"{name}: sizeof {ground_truth[name]} (C) != {py_size} (ctypes)")
-
-    c_names = [f for f, _ in c_fields]
-    py_names = [f for f, _ in py_fields]
-    for fname in sorted(set(c_names) - set(py_names)):
-      failures.append(f"{name}.{fname}: field missing from the ctypes mirror")
-    for fname in sorted(set(py_names) - set(c_names)):
-      failures.append(f"{name}.{fname}: field without a counterpart in celestial.h")
-
-    py_type_of = dict(py_fields)
-    for fname, ctype in c_fields:
-      if ctype not in C_TO_CTYPES:
-        failures.append(f"{name}.{fname}: C type {ctype} is outside the gate's closed set -- extend C_TO_CTYPES")
-        continue
-      if fname not in py_type_of:
-        continue  # already reported above
-      expected = C_TO_CTYPES[ctype]
-      if py_type_of[fname] != expected:
-        failures.append(f"{name}.{fname}: {ctype} mirrored as {py_type_of[fname]}, expected {expected}")
-      if py_offsets[fname] != ground_truth[f"{name}.{fname}"]:
-        failures.append(f"{name}.{fname}: offset {ground_truth[f'{name}.{fname}']} (C) != {py_offsets[fname]} (ctypes)")
+  failures = compare_layouts(c_structs, py_structs, ground_truth)
 
   print("#" * 60)
   if failures:

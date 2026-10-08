@@ -163,6 +163,40 @@
         {"name": "valid", "type": "bool", "offset": 0},
         {"name": "value", "type": "double", "offset": 8}
       ]
+    },
+    "ChartBodyV1": {
+      "size": 40,
+      "alignment": 8,
+      "fields": [
+        {"name": "target_code", "type": "uint32_t", "offset": 0},
+        {"name": "present_fields", "type": "uint32_t", "offset": 4},
+        {"name": "longitude_deg", "type": "double", "offset": 8},
+        {"name": "latitude_deg", "type": "double", "offset": 16},
+        {"name": "distance_au", "type": "double", "offset": 24},
+        {"name": "longitude_rate_deg_per_tt_day", "type": "double", "offset": 32}
+      ]
+    },
+    "ChartHousesV1": {
+      "size": 128,
+      "alignment": 8,
+      "fields": [
+        {"name": "ascendant_deg", "type": "double", "offset": 0},
+        {"name": "midheaven_deg", "type": "double", "offset": 8},
+        {"name": "descendant_deg", "type": "double", "offset": 16},
+        {"name": "imum_coeli_deg", "type": "double", "offset": 24},
+        {"name": "cusps_deg", "type": "double[12]", "offset": 32}
+      ]
+    },
+    "ChartSnapshotV1": {
+      "size": 712,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "jd_ut1", "type": "double", "offset": 8},
+        {"name": "jde_tt", "type": "double", "offset": 16},
+        {"name": "bodies", "type": "ChartBodyV1[14]", "offset": 24},
+        {"name": "houses", "type": "ChartHousesV1", "offset": 584}
+      ]
     }
   },
   "exports": [
@@ -367,6 +401,13 @@
       "signature": "DeltaT delta_t(double year)",
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
+      "recording": true
+    },
+    {
+      "name": "chart_snapshot_v1",
+      "signature": "ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code)",
+      "return": {"kind": "sret", "layout": "ChartSnapshotV1"},
+      "protocol": {"kind": "sret", "zero": "valid=false is failure; invalid payload is not consumed; absence uses present_fields"},
       "recording": true
     }
   ]

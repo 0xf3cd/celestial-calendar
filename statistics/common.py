@@ -842,3 +842,53 @@ def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, da
 
 
 # endregion
+
+
+# region Fixed-version Chart Snapshot
+
+
+class _ChartBodyV1(Structure):
+  _fields_ = [
+    ("target_code", c_uint32),
+    ("present_fields", c_uint32),
+    ("longitude_deg", c_double),
+    ("latitude_deg", c_double),
+    ("distance_au", c_double),
+    ("longitude_rate_deg_per_tt_day", c_double),
+  ]
+
+
+class _ChartHousesV1(Structure):
+  _fields_ = [
+    ("ascendant_deg", c_double),
+    ("midheaven_deg", c_double),
+    ("descendant_deg", c_double),
+    ("imum_coeli_deg", c_double),
+    ("cusps_deg", c_double * 12),
+  ]
+
+
+class _ChartSnapshotV1(Structure):
+  _fields_ = [
+    ("valid", c_bool),
+    ("jd_ut1", c_double),
+    ("jde_tt", c_double),
+    ("bodies", _ChartBodyV1 * 14),
+    ("houses", _ChartHousesV1),
+  ]
+
+
+LIB.chart_snapshot_v1.argtypes = [
+  c_int32,
+  c_uint32,
+  c_uint32,
+  c_double,
+  c_uint32,
+  c_double,
+  c_double,
+  c_uint32,
+  c_uint32,
+]
+LIB.chart_snapshot_v1.restype = _ChartSnapshotV1
+
+# endregion

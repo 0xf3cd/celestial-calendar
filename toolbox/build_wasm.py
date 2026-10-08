@@ -26,7 +26,7 @@ SRC_DIR: Final[Path] = PROJ_ROOT / "src"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "wasm"
 MODULE_STEM: Final[str] = "celestial-jieqi"
 
-# The JavaScript package exposes the complete celestial.h ABI. malloc/free are internal
+# The private WASM surface mirrors the complete celestial.h ABI. malloc/free are internal
 # protocol exports for caller-owned sret, string, count, and fill storage.
 EXPORTS: Final[list[str]] = [
   "set_log_verbosity",
@@ -58,6 +58,7 @@ EXPORTS: Final[list[str]] = [
   "delta_t_algo4",
   "delta_t_algo5",
   "delta_t",
+  "chart_snapshot_v1",
   "malloc",
   "free",
 ]

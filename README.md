@@ -92,6 +92,26 @@ print(restored, restored == day)
 类型错误抛 `TypeError`，Python 侧的值域检查抛 `ValueError`，原生失败抛 `CelestialError`；
 合法的“没有结果”用 `None` 或空元组表示。
 
+**完整星盘快照（尚未发布）**
+
+从当前源码构建并安装 wheel 后，可用显式 UTC/UT1 时刻查询十四项位置与速率、四轴和十二宫头：
+
+```python
+import celestial_calendar as celestial
+
+snapshot = celestial.chart_snapshot(
+  celestial.CivilDateTime(2026, 1, 1, 0.5),
+  celestial.CivilScale.UTC,
+  celestial.GeoLocation(51.5, 0.0),
+  celestial.HouseSystem.PLACIDUS,
+)
+print(snapshot.times.jd_ut1, snapshot.times.jde_tt)
+print(snapshot.bodies[0].longitude_deg, snapshot.houses.cusps_deg)
+```
+
+结果为自持有的冻结值；节点距离为 `None`，带符号速率为度/TT 日。
+输入时标、支持域、单位和失败边界见 [Python 快照契约](bindings/python/README.md#星盘输入与失败边界)。
+
 <a id="javascript"></a>
 ### 1.2. JavaScript / TypeScript
 
@@ -472,7 +492,8 @@ python3 toolbox/build_npm.py
 `bindings/javascript` 开发目录的普通 `npm pack` 会拒绝打包，请使用上述 builder。
 
 生成模块位于 `build/wasm/celestial-jieqi.mjs` 与 `build/wasm/celestial-jieqi.wasm`，包含 `celestial.h` 的全部
-29 个稳定导出。`@0xf3cd/celestial` 将其封装为 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间，
+30 个稳定导出。`@0xf3cd/celestial` 通过 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间提供既有 API；
+新增 `chart_snapshot_v1` 只在私有 WASM/ABI 层，尚无 JavaScript 快照入口。
 堆指针、count/fill 协议、sret 布局与 `last_error` 留在包内部。
 
 `build_npm.py` 使用生成模块和 `project.py` 的版本号，打出恰好12个文件的 npm 主包。
@@ -490,7 +511,7 @@ CI 的独立 `wasm.yml` 流程构建模块与包。`celestial-wasm` 产物包含
 两个元数据文件各自指定对应 tarball；发行流程先发布主包、再发布别名，不重新构建或打包。
 历史 0.6.x 归档保留原来的单包格式。
 
-同一 CI 流程核对 29 个签名与 16 个布局，重放原生生成的 389 点基准数据；
+同一 CI 流程核对 30 个签名与 19 个布局，重放原生生成的 389 点基准数据；
 在独立于源码目录的 Node 最低支持版本与当前版本应用中安装同一对包，编译两个包名及 `/date` 的已安装类型声明，
 并在 Chrome 和 Firefox 中运行 Astro / Vite 生产构建冒烟测试。
 Windows/macOS 的当前 Node 消费者从同一 CI 运行下载这份原始双包，

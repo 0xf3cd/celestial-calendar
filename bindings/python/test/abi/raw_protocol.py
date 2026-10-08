@@ -174,6 +174,51 @@ def happy_delta_t() -> None:
   _happy_delta_t("delta_t")
 
 
+def happy_chart_snapshot_v1() -> None:
+  # Direct FFI calls exercise the large by-value return without public Python validation.
+  arguments = (2024, 6, 1, 0.5, 1, -33.9, 151.2, 0, 0)
+  result = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)
+  assert result.valid and _binding.last_error_text() == ""
+  assert result.jd_ut1 == 2460463.0 and result.jde_tt > result.jd_ut1
+  assert len(result.bodies) == 14 and len(result.houses.cusps_deg) == 12
+  assert [body.target_code for body in result.bodies] == list(range(14))
+  assert [body.present_fields for body in result.bodies] == [3] * 10 + [1] * 4
+  for body in result.bodies:
+    assert math.isfinite(body.longitude_deg) and 0.0 <= body.longitude_deg < 360.0
+    assert math.isfinite(body.latitude_deg) and -90.0 <= body.latitude_deg <= 90.0
+    assert math.isfinite(body.longitude_rate_deg_per_tt_day)
+    if body.present_fields & 2:
+      assert math.isfinite(body.distance_au) and body.distance_au > 0.0
+    else:
+      assert body.latitude_deg == 0.0
+
+  # Separate legacy exports anchor times, ordering and the Moon's KM-to-AU conversion.
+  sun = call("sun_apparent_geocentric_coord", result.jde_tt)
+  moon = call("moon_apparent_geocentric_coord", result.jde_tt)
+  assert sun.valid and moon.valid
+  assert abs(result.bodies[0].longitude_deg - sun.lon) < 1e-10
+  assert abs(result.bodies[0].distance_au - sun.r) < 1e-12
+  assert abs(result.bodies[1].longitude_deg - moon.lon) < 1e-10
+  assert abs(result.bodies[1].distance_au - moon.r / 149597870.7) < 1e-12
+  for ascending, descending in ((10, 11), (12, 13)):
+    assert abs((result.bodies[descending].longitude_deg - result.bodies[ascending].longitude_deg) % 360 - 180) < 1e-10
+
+  axes = result.houses
+  for angle in (axes.ascendant_deg, axes.midheaven_deg, axes.descendant_deg, axes.imum_coeli_deg, *axes.cusps_deg):
+    assert math.isfinite(angle) and 0.0 <= angle < 360.0
+  assert abs((axes.descendant_deg - axes.ascendant_deg) % 360 - 180) < 1e-10
+  assert abs((axes.imum_coeli_deg - axes.midheaven_deg) % 360 - 180) < 1e-10
+  for index, cusp in enumerate(axes.cusps_deg):
+    assert abs(math.remainder(cusp - axes.ascendant_deg - index * 30, 360.0)) < 1e-10
+
+  explicit = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments[:-1], 5)
+  assert explicit.valid and explicit.jd_ut1 == result.jd_ut1 and explicit.jde_tt == result.jde_tt
+  assert [tuple(getattr(body, name) for name, _ in body._fields_) for body in explicit.bodies] == [
+    tuple(getattr(body, name) for name, _ in body._fields_) for body in result.bodies
+  ]
+  assert tuple(explicit.houses.cusps_deg) == tuple(axes.cusps_deg)
+
+
 def edge_set_log_verbosity() -> None:
   assert call("set_log_verbosity", 0)
   assert not call("set_log_verbosity", 3)
@@ -314,6 +359,96 @@ def edge_delta_t() -> None:
   _edge_delta_t("delta_t")
 
 
+def edge_chart_snapshot_v1() -> None:
+  function = _binding.FUNCTIONS["chart_snapshot_v1"]
+  baseline = (2024, 6, 1, 0.5, 1, 35.0, 120.0, 0, 0)
+  assert not call("sun_apparent_geocentric_coord", NAN).valid
+  old_error = _binding.last_error_text()
+  assert function(*baseline).valid and _binding.last_error_text() == ""
+
+  invalid = (
+    (0, 1884),
+    (0, 2100),
+    (0, -2147483648),
+    (0, 2147483647),
+    (0, 2024 + 65536),
+    (1, 0),
+    (1, 13),
+    (1, 257),
+    (1, 0xFFFFFFFF),
+    (2, 0),
+    (2, 31),
+    (2, 257),
+    (2, 0xFFFFFFFF),
+    (3, -0.1),
+    (3, 1.0),
+    (3, NAN),
+    (3, float("inf")),
+    (4, 2),
+    (4, 256),
+    (4, 0xFFFFFFFF),
+    (5, -90.0),
+    (5, 90.0),
+    (5, NAN),
+    (5, float("inf")),
+    (6, -180.1),
+    (6, 180.1),
+    (6, NAN),
+    (6, float("inf")),
+    (7, 3),
+    (7, 256),
+    (7, 0xFFFFFFFF),
+    (8, 6),
+    (8, 256),
+    (8, 0xFFFFFFFF),
+  )
+  argument_names = (
+    "year",
+    "month",
+    "day",
+    "fraction",
+    "civil_scale",
+    "latitude",
+    "longitude",
+    "house_system",
+    "delta_t_model",
+  )
+  for index, value in invalid:
+    arguments = list(baseline)
+    arguments[index] = value
+    assert not function(*arguments).valid, (index, value)
+    message = _binding.last_error_text()
+    assert argument_names[index] in message.lower() and message != old_error, (index, value, message)
+    assert function(*baseline).valid and _binding.last_error_text() == ""
+
+  for arguments in (
+    (2023, 2, 29, 0.5, 1, 35.0, 120.0, 0, 0),
+    (1971, 12, 31, 0.5, 0, 35.0, 120.0, 0, 0),
+    (1885, 1, 1, 0.0, 1, 35.0, 120.0, 0, 0),
+    (2035, 1, 1, 0.0, 0, 35.0, 120.0, 0, 4),
+    (2024, 6, 1, 0.5, 1, 80.0, 120.0, 2, 0),
+  ):
+    assert not function(*arguments).valid, arguments
+    message = _binding.last_error_text()
+    assert message and message != old_error, (arguments, message)
+    assert function(*baseline).valid and _binding.last_error_text() == ""
+
+  for arguments in (
+    (1900, 6, 1, 0.5, 1, -35.0, -180.0, 1, 0),
+    (1972, 1, 1, 0.0, 0, 35.0, 180.0, 2, 0),
+    (2024, 2, 29, 0.0, 1, 35.0, 120.0, 0, 0),
+    (2024, 6, 1, 0.5, 1, math.nextafter(-90.0, 0.0), 120.0, 0, 0),
+    (2024, 6, 1, 0.5, 1, math.nextafter(90.0, 0.0), 120.0, 0, 0),
+    *((2024, 6, 1, 0.5, 1, 35.0, 120.0, 0, model) for model in range(6)),
+  ):
+    assert function(*arguments).valid, arguments
+    assert _binding.last_error_text() == ""
+
+  # Leave a final recording failure for the inventory runner's boundary-policy check.
+  assert not function(2024, 6, 1, NAN, 1, 35.0, 120.0, 0, 0).valid
+  assert "fraction" in _binding.last_error_text()
+
+
 EXPORT_NAMES = tuple(_binding.BINDING_SPECS)
 HAPPY_TESTS = {name: globals()[f"happy_{name}"] for name in EXPORT_NAMES}
 EDGE_TESTS = {name: globals()[f"edge_{name}"] for name in EXPORT_NAMES}
@@ -342,7 +477,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 29
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 30
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)
   if happy[0] != happy[1] or edge[0] != edge[1]:

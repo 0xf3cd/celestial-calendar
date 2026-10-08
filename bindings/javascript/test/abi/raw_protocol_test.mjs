@@ -35,6 +35,7 @@ assert.deepEqual(
   "golden section counts",
 );
 assert(M.HEAPU16 instanceof Uint16Array);
+for (const { wasmName } of BINDINGS) assert.equal(typeof M[wasmName], "function", `built module export ${wasmName}`);
 
 // WASM uses musl's libm while the native goldens use the host libm. Solver moments can
 // differ by up to the existing sub-millisecond cap; direct lunar values need only 1e-9.
@@ -48,9 +49,12 @@ const initialBuffer = M.HEAPU8.buffer;
 const initialBytes = M.HEAPU8.byteLength;
 const growthPtr = M._malloc(initialBytes);
 assert.notEqual(growthPtr, 0, "growth allocation");
-assert.notStrictEqual(M.HEAPU8.buffer, initialBuffer, "WASM memory must grow and refresh Module.HEAP* views");
-assert(M.HEAPU8.byteLength > initialBytes, "WASM memory grew");
-M._free(growthPtr);
+try {
+  assert.notStrictEqual(M.HEAPU8.buffer, initialBuffer, "WASM memory must grow and refresh Module.HEAP* views");
+  assert(M.HEAPU8.byteLength > initialBytes, "WASM memory grew");
+} finally {
+  M._free(growthPtr);
+}
 
 const decoder = new TextDecoder();
 const happyExports = new Set();
@@ -63,29 +67,71 @@ const layoutByExport = new Map(
 
 // Every read obtains the current Module.HEAP* view after the native call. Memory growth
 // detaches old views, so no view may be retained by a binding helper.
-const readField = (ptr, field) => {
-  const address = ptr + field.offset;
-  switch (field.type) {
-    case "bool": return M.HEAPU8[address] !== 0;
-    case "uint8_t": return M.HEAPU8[address];
-    case "uint16_t": return M.HEAPU16[address >> 1];
-    case "int32_t": return M.HEAP32[address >> 2];
-    case "uint32_t": return M.HEAPU32[address >> 2];
-    case "double": return M.HEAPF64[address >> 3];
-    default: throw new Error(`unknown field type ${field.type}`);
+const scalarLayouts = {
+  bool: { size: 1, alignment: 1, read: "getUint8" },
+  uint8_t: { size: 1, alignment: 1, read: "getUint8" },
+  uint16_t: { size: 2, alignment: 2, read: "getUint16" },
+  int32_t: { size: 4, alignment: 4, read: "getInt32" },
+  uint32_t: { size: 4, alignment: 4, read: "getUint32" },
+  double: { size: 8, alignment: 8, read: "getFloat64" },
+};
+const typeInfo = (type) => {
+  if (Object.hasOwn(scalarLayouts, type)) return scalarLayouts[type];
+  if (Object.hasOwn(manifest.layouts, type)) return { ...manifest.layouts[type], record: type };
+
+  const array = type.match(/^([A-Za-z_]\w*)\[([1-9][0-9]*)\]$/);
+  assert(array, `unknown field type ${type}`);
+  const element = typeInfo(array[1]);
+  const count = Number(array[2]);
+  const size = element.size * count;
+  assert(Number.isSafeInteger(count) && Number.isSafeInteger(size), `unsafe array type ${type}`);
+  return { size, alignment: element.alignment, element: array[1], stride: element.size, count };
+};
+const checkedRange = (ptr, size, alignment) => {
+  assert(Number.isSafeInteger(ptr) && ptr >= 0, `invalid heap address ${ptr}`);
+  assert(Number.isSafeInteger(size) && size > 0, `invalid heap size ${size}`);
+  assert(Number.isSafeInteger(alignment) && alignment > 0 && ptr % alignment === 0, `unaligned heap address ${ptr}`);
+  assert(Number.isSafeInteger(ptr + size) && ptr + size <= M.HEAPU8.byteLength, `heap range ${ptr}+${size}`);
+};
+const readValue = (ptr, type) => {
+  const info = typeInfo(type);
+  checkedRange(ptr, info.size, info.alignment);
+  if (info.element) {
+    return Array.from({ length: info.count }, (_, index) => readValue(ptr + index * info.stride, info.element));
   }
+  if (info.record) return readLayout(ptr, info.record);
+
+  const value = new DataView(M.HEAPU8.buffer)[info.read](ptr, true);
+  return type === "bool" ? value !== 0 : value;
 };
 const readLayout = (ptr, name) => {
   const layout = manifest.layouts[name];
   assert(layout, `unknown layout ${name}`);
+  checkedRange(ptr, layout.size, layout.alignment);
   seenLayouts.add(name);
-  return Object.fromEntries(layout.fields.map((field) => [field.name, readField(ptr, field)]));
+  return Object.fromEntries(layout.fields.map((field) => {
+    const info = typeInfo(field.type);
+    assert(Number.isSafeInteger(field.offset) && field.offset >= 0 && field.offset + info.size <= layout.size,
+      `field outside record ${name}.${field.name}`);
+    return [field.name, readValue(ptr + field.offset, field.type)];
+  }));
 };
 const rawSret = (name, args) => {
   const layoutName = layoutByExport.get(name);
-  const ptr = M._malloc(manifest.layouts[layoutName].size);
+  const layout = manifest.layouts[layoutName];
+  assert(layout, `unknown sret export ${name}`);
+  assert.equal(typeof M[`_${name}`], "function", `built module export _${name}`);
+  const ptr = M._malloc(layout.size + 8);
+  assert.notEqual(ptr, 0, `${name} sret allocation`);
   try {
+    checkedRange(ptr, layout.size + 8, layout.alignment);
+    M.HEAPU8.fill(0xA5, ptr + layout.size, ptr + layout.size + 8);
     M[`_${name}`](ptr, ...args);
+    assert(M.HEAPU8.subarray(ptr + layout.size, ptr + layout.size + 8).every((byte) => byte === 0xA5),
+      `${name} wrote beyond its sret layout`);
+    const valid = layout.fields.find((field) => field.name === "valid");
+    assert(valid && valid.type === "bool", `${name} valid marker`);
+    if (!readValue(ptr + valid.offset, "bool")) return { valid: false };
     return readLayout(ptr, layoutName);
   } finally {
     M._free(ptr);
@@ -98,8 +144,11 @@ const validSret = (name, args) => {
   return value;
 };
 const readCString = (ptr) => {
+  assert(ptr > 0, "borrowed string pointer");
+  checkedRange(ptr, 1, 1);
   let end = ptr;
-  while (M.HEAPU8[end] !== 0) ++end;
+  while (end < M.HEAPU8.byteLength && M.HEAPU8[end] !== 0) ++end;
+  assert(end < M.HEAPU8.byteLength, "unterminated C string");
   return decoder.decode(M.HEAPU8.slice(ptr, end));
 };
 const lastError = () => readCString(M._last_error());
@@ -339,6 +388,165 @@ const close = (actual, expected, tolerance, label) => {
   const difference = Math.abs(actual - expected);
   assert(Number.isFinite(difference) && difference <= tolerance, `${label}: ${difference} > ${tolerance}`);
 };
+
+const chartArgs = (changes = {}) => {
+  const input = {
+    year: 2026, month: 1, day: 1, fraction: 0.5, civil_scale_code: 1,
+    latitude_deg: 40, longitude_deg: -75, house_system_code: 0, delta_t_model_code: 0,
+    ...changes,
+  };
+  return [
+    input.year, input.month, input.day, input.fraction, input.civil_scale_code,
+    input.latitude_deg, input.longitude_deg, input.house_system_code, input.delta_t_model_code,
+  ];
+};
+const validChart = (changes = {}) => {
+  const chart = validSret("chart_snapshot_v1", chartArgs(changes));
+  assert.equal(lastError(), "", "successful chart clears last_error");
+  finite(chart.jd_ut1, chart.jde_tt);
+  assert.equal(chart.bodies.length, 14);
+  assert.deepEqual(chart.bodies.map(({ target_code }) => target_code), Array.from({ length: 14 }, (_, index) => index));
+  for (const [index, body] of chart.bodies.entries()) {
+    finite(body.longitude_deg, body.latitude_deg, body.longitude_rate_deg_per_tt_day);
+    assert(body.longitude_deg >= 0 && body.longitude_deg < 360);
+    assert.equal(body.present_fields, index < 10 ? 3 : 1, `chart presence bits ${index}`);
+    if (index < 10) {
+      finite(body.distance_au);
+      assert(body.distance_au > 0, `chart distance in AU ${index}`);
+    } else {
+      assert.equal(body.latitude_deg, 0, `node latitude is present zero ${index}`);
+      // Node distance storage has no contract; only the presence bit is consumed.
+    }
+  }
+  for (const ascending of [10, 12]) {
+    const a = chart.bodies[ascending];
+    const d = chart.bodies[ascending + 1];
+    close((d.longitude_deg - a.longitude_deg + 360) % 360, 180, 1e-10, "node antipodes");
+    assert.equal(a.longitude_rate_deg_per_tt_day, d.longitude_rate_deg_per_tt_day, "paired node rates");
+  }
+  assert.equal(chart.houses.cusps_deg.length, 12);
+  for (const value of [
+    chart.houses.ascendant_deg, chart.houses.midheaven_deg,
+    chart.houses.descendant_deg, chart.houses.imum_coeli_deg, ...chart.houses.cusps_deg,
+  ]) {
+    finite(value);
+    assert(value >= 0 && value < 360, "chart house angle range");
+  }
+  return chart;
+};
+const usedChartPayload = (chart) => ({
+  ...chart,
+  bodies: chart.bodies.map(({ distance_au, ...body }) =>
+    body.present_fields & 2 ? { ...body, distance_au } : body),
+});
+
+const chart = validChart();
+assert(chart.jde_tt > chart.jd_ut1, "modern chart has positive Delta T");
+assert.equal(chart.jd_ut1, validSret("ut1_to_jd", [2026, 1, 1, 0.5]).value);
+assert.equal(chart.jde_tt, validSret("ut1_to_jde", [2026, 1, 1, 0.5]).value);
+const explicitAlgo5 = validChart({ delta_t_model_code: 5 });
+assert.deepEqual(usedChartPayload(chart), usedChartPayload(explicitAlgo5), "chart DEFAULT is exactly Algo5");
+const explicitAlgo1 = validChart({ delta_t_model_code: 1 });
+assert.notEqual(chart.jde_tt, explicitAlgo1.jde_tt, "DEFAULT must not enum-cast to Algo1");
+assert.notEqual(chart.bodies[0].longitude_deg, explicitAlgo1.bodies[0].longitude_deg);
+
+for (const model of [1, 2, 3, 4, 5]) {
+  const selected = validChart({ delta_t_model_code: model });
+  const delta = validSret(`delta_t_algo${model}`, [2026 + 0.5 / 365]).value;
+  const expectedTt = validSret("ut1_to_jd", [2026, 1, 1, 0.5 + delta / 86400]).value;
+  assert.equal(selected.jd_ut1, chart.jd_ut1, `UT1 ingress unchanged for model ${model}`);
+  assert.equal(selected.jde_tt, expectedTt, `chart model ${model} uses the selected Delta T export`);
+}
+
+const utcChart = validChart({ civil_scale_code: 0 });
+const utcAlgo1 = validChart({ civil_scale_code: 0, delta_t_model_code: 1 });
+// #300's modern UTC replay: frozen Delta AT 37 s plus TT-TAI 32.184 s at this date.
+assert.equal(utcChart.jde_tt, validSret("ut1_to_jd", [2026, 1, 1, 0.5 + 69.184 / 86400]).value);
+assert.equal(utcChart.jde_tt, utcAlgo1.jde_tt, "UTC to TT is independent of Delta T model");
+assert.notEqual(utcChart.jd_ut1, utcAlgo1.jd_ut1, "UTC to modelled UT1 uses the selected model");
+assert.notEqual(utcChart.jd_ut1, chart.jd_ut1, "UTC is not silently interpreted as UT1");
+
+const chartSun = validSret("sun_apparent_geocentric_coord", [chart.jde_tt]);
+const chartMoon = validSret("moon_apparent_geocentric_coord", [chart.jde_tt]);
+assert.deepEqual(
+  [chart.bodies[0].longitude_deg, chart.bodies[0].latitude_deg, chart.bodies[0].distance_au],
+  [chartSun.lon, chartSun.lat, chartSun.r],
+  "chart Sun keeps the existing degree/AU units",
+);
+assert.deepEqual([chart.bodies[1].longitude_deg, chart.bodies[1].latitude_deg], [chartMoon.lon, chartMoon.lat]);
+// The exact AU definition in toolbox.hpp; the old Moon export remains in kilometres.
+assert.equal(chartMoon.r, chart.bodies[1].distance_au * 149597870.700);
+
+for (const system of [0, 1, 2]) {
+  const selected = validChart({ house_system_code: system });
+  assert.deepEqual(usedChartPayload(selected).bodies, usedChartPayload(chart).bodies, "houses do not affect ephemerides");
+  const { cusps_deg: cusps, ...axes } = selected.houses;
+  const { cusps_deg: equalCusps, ...equalAxes } = chart.houses;
+  assert.deepEqual(axes, equalAxes, "all house systems keep the same axes");
+  if (system < 2) {
+    const first = system === 0 ? axes.ascendant_deg : Math.floor(axes.ascendant_deg / 30) * 30;
+    for (const [index, cusp] of cusps.entries()) {
+      close(cusp, (first + index * 30) % 360, 1e-10, `house system ${system} cusp ${index + 1}`);
+    }
+    if (system === 1) assert.notDeepEqual(cusps, equalCusps, "Whole Sign is not Equal fallback");
+  } else {
+    assert.deepEqual([cusps[0], cusps[3], cusps[6], cusps[9]],
+      [axes.ascendant_deg, axes.imum_coeli_deg, axes.descendant_deg, axes.midheaven_deg]);
+    assert.notDeepEqual(cusps, equalCusps, "Placidus is not Equal fallback");
+  }
+}
+const southern = validChart({ latitude_deg: -33.87, longitude_deg: 151.21, house_system_code: 2 });
+assert.notDeepEqual(southern.houses, chart.houses);
+assert.deepEqual(usedChartPayload(southern).bodies, usedChartPayload(chart).bodies, "location affects houses only");
+const retrograde = validChart({ year: 2025, month: 3, day: 25, latitude_deg: -33.87, longitude_deg: 151.21, house_system_code: 2 });
+assert(retrograde.bodies[2].longitude_rate_deg_per_tt_day < 0, "signed Mercury retrograde rate survives the ABI");
+assert(retrograde.bodies[10].longitude_rate_deg_per_tt_day < 0, "signed mean-node rate survives the ABI");
+const historical = validChart({ year: 1900, month: 6, day: 1 });
+assert.equal(historical.jd_ut1, validSret("ut1_to_jd", [1900, 6, 1, 0.5]).value);
+validChart({ year: 2000, month: 2, day: 29 });
+validChart({ year: 1972, fraction: 0, civil_scale_code: 0 });
+for (const longitude_deg of [-180, 180]) validChart({ latitude_deg: 0, longitude_deg });
+
+let chartFailureCount = 0;
+const invalidChart = (changes, expectedError) => {
+  recordedFailure("chart_snapshot_v1", () => !rawSret("chart_snapshot_v1", chartArgs(changes)).valid);
+  const error = lastError();
+  if (expectedError) assert(error.includes(expectedError), `chart error for ${JSON.stringify(changes)}: ${error}`);
+  ++chartFailureCount;
+};
+for (const civil_scale_code of [2, 255, 256, 257, 0x10000001, 0xFFFFFFFF]) {
+  invalidChart({ civil_scale_code }, "civil_scale_code");
+}
+for (const house_system_code of [3, 255, 256, 257, 0x10000002, 0xFFFFFFFF]) {
+  invalidChart({ house_system_code }, "house_system_code");
+}
+for (const delta_t_model_code of [6, 255, 256, 257, 261, 0x10000005, 0xFFFFFFFF]) {
+  invalidChart({ delta_t_model_code }, "delta_t_model_code");
+}
+for (const year of [-2147483648, -63510, 1884, 2100, 67562, 2147483647]) invalidChart({ year }, "year");
+for (const month of [0, 13, 256, 257, 268, 65537, 0xFFFFFFFF]) invalidChart({ month }, "month");
+for (const day of [0, 32, 256, 257, 287, 65537, 0xFFFFFFFF]) invalidChart({ day }, "day");
+invalidChart({ year: 1900, month: 2, day: 29 }, "day");
+invalidChart({ month: 4, day: 31 }, "day");
+for (const fraction of [NaN, Infinity, -Infinity, -0.1, 1, 1e100]) invalidChart({ fraction }, "fraction");
+for (const latitude_deg of [NaN, Infinity, -Infinity, -90, 90]) invalidChart({ latitude_deg }, "location.");
+for (const longitude_deg of [NaN, Infinity, -Infinity, -181, 181]) invalidChart({ longitude_deg }, "location.");
+invalidChart({ year: 1971, civil_scale_code: 0 }, "1972");
+invalidChart({ year: 2035, month: 6, delta_t_model_code: 4 });
+validChart({ year: 2035, month: 6 });
+for (const latitude_deg of [-70, 70]) {
+  invalidChart({ latitude_deg, house_system_code: 2 }, "Placidus");
+  validChart({ latitude_deg, house_system_code: 0 });
+  validChart({ latitude_deg, house_system_code: 1 });
+}
+assert.equal(rawSret("chart_snapshot_v1", chartArgs({ fraction: NaN })).valid, false);
+const chartError = lastError();
+assert(chartError.includes("fraction"));
+assert.equal(rawSret("chart_snapshot_v1", chartArgs({ civil_scale_code: 257 })).valid, false);
+assert(lastError().includes("civil_scale_code") && lastError() !== chartError, "chart failure replaces last_error");
+assert.equal(lastError(), lastError(), "last_error itself preserves the recorded chart failure");
+validChart();
+
 let goldenCount = 0;
 for (const point of golden.sections.jieqi.entries) {
   const value = validSret("query_jieqi_moment", [point.year, point.idx]);
@@ -395,15 +603,16 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 389, "golden replay count");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 29 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 16 layouts decoded");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 30 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 19 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 29/29; layouts 16/16; recording seams 28/28");
+console.log("PASS raw exports 30/30; layouts 19/19; recording seams 29/29");
+console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
 console.log(`PASS shared binding golden replay ${goldenCount}/389`);
