@@ -55,7 +55,7 @@ const bindingNames = BINDINGS.map(({ cName }) => cName);
 
 const parseChartCodes = (source) => {
   const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-  const tokens = new Set(clean.match(/\bCHART_[A-Z0-9_]+\b/g));
+  const tokens = new Set(clean.match(/CHART_\p{ID_Continue}*/gu));
   const codes = {};
   for (const [, declaration] of clean.matchAll(/^\s*#define\s+(CHART_.*)$/gm)) {
     const match = declaration.trim().match(/^(CHART_\w+)\s+UINT32_C\(([0-9]+)\)$/);
@@ -67,8 +67,6 @@ const parseChartCodes = (source) => {
   sameSet("closed chart code tokens", tokens, Object.keys(codes));
   return codes;
 };
-assert.deepEqual(manifest.chart_v1_codes, parseChartCodes(header), "header = manifest chart codes");
-
 uniqueCount("celestial.h exports", headerNames, 30);
 uniqueCount("internal bindings", bindingNames, 30);
 sameSet("header = bindings", headerNames, bindingNames);
@@ -135,6 +133,7 @@ const parseHeaderLayouts = (source) => {
   return layouts;
 };
 const parsedLayouts = parseHeaderLayouts(header);
+const parsedCodes = parseChartCodes(header);
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));
@@ -176,6 +175,7 @@ sameSet("recording docs = implementation writers", documentedRecording, implemen
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
 const verifyManifest = (candidate) => {
+  assert.deepEqual(candidate.chart_v1_codes, parsedCodes, "header = manifest chart codes");
   const manifestNames = candidate.exports.map(({ name }) => name);
   uniqueCount("manifest exports", manifestNames, 30);
   sameSet("header = manifest", headerNames, manifestNames);
@@ -259,7 +259,15 @@ const runMutationSelfTests = (candidate) => {
     mutations.push([`swapped fill ownership ${name}`, swappedFill]);
   }
 
-  assert.equal(mutations.length, 11, "ABI mutation denominator");
+  const wrongIdentityCode = structuredClone(candidate);
+  wrongIdentityCode.chart_v1_codes.CHART_TARGET_PLUTO = 10;
+  mutations.push(["chart identity code", wrongIdentityCode]);
+
+  const wrongPresence = structuredClone(candidate);
+  wrongPresence.chart_v1_codes.CHART_PRESENT_DISTANCE = 4;
+  mutations.push(["chart presence bit", wrongPresence]);
+
+  assert.equal(mutations.length, 13, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -277,7 +285,8 @@ const builtExports = Object.keys(M)
   .map((name) => name.slice(1));
 sameSet("build recipe = built module", recipeExports, builtExports);
 assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
+
 console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
 console.log("PASS layouts header=manifest=bindings 19; memory growth enabled in recipe");
 console.log("PASS recording docs=writers=manifest=binding error policy 29");
-console.log("PASS per-export fill protocols; ABI mutations rejected 11/11");
+console.log("PASS per-export fill protocols; ABI mutations rejected 13/13");

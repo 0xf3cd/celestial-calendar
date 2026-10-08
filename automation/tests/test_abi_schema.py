@@ -174,7 +174,6 @@ def test_mirror_unknown_base_late_fields_and_normalized_name_collisions(tmp_path
   for source in (
     "class Broken(other.Structure):\n  _fields_ = [('x', c_double)]",
     "class Broken(Structure):\n  pass\nBroken._fields_ = [('x', c_double)]",
-    "class Broken(Structure):\n  _fields_ = [('x', c_double)]\nBroken._pack_ = 1",
     "class Broken(Structure):\n  _fields_ = [('x', c_double)]\n  if True:\n    _fields_ = [('y', c_double)]",
     PY_CONTROL + "\nclass Body(Structure):\n  _fields_ = [('x', c_double)]",
   ):
@@ -188,17 +187,10 @@ def test_mirror_unknown_base_late_fields_and_normalized_name_collisions(tmp_path
     lambda source: source.replace("class _Body(Structure):", "@(lambda cls: _Alias)\nclass _Body(Structure):"),
     lambda source: source.replace("class _Body(Structure):", "class _Body(Structure, metaclass=type):"),
     lambda source: source + "\nif True:\n  class _Body(Structure):\n    _fields_ = [('code', c_int32)]\n",
-    lambda source: source + "\n_Body = _Alias\n",
-    lambda source: source + "\nc_uint32 = c_int32\n",
     lambda source: source.replace("class _Alias(ctypes.Structure):", "  del _fields_\nclass _Alias(ctypes.Structure):"),
     lambda source: source.replace(
       "class _Alias(ctypes.Structure):", "  (_fields_ := [('code', c_int32)])\nclass _Alias(ctypes.Structure):"
     ),
-    lambda source: source + "\nexec('_Body = _Alias')\n",
-    lambda source: source + "\nsetattr(_Body, '_fields_', [])\n",
-    lambda source: source + "\nfor _Body in []:\n  pass\n",
-    lambda source: source + "\nfrom other import c_uint32\n",
-    lambda source: source + "\nctypes.c_uint32 = ctypes.c_int32\n",
   ],
 )
 def test_mirror_namespace_and_computed_class_faults_are_loud(tmp_path, mutation):
@@ -233,6 +225,56 @@ def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compile
       if "extent" in field:
         assert field["extent"] == layout[key + ".extent"]
         assert field["stride"] == layout[key + ".stride"]
+
+
+@pytest.mark.parametrize(
+  "mutation",
+  [
+    lambda source: source + "\n_ChartHousesV1 = _SunCoordinate\n",
+    lambda source: source + "\nmatch _SunCoordinate:\n  case _ChartHousesV1:\n    pass\n",
+    lambda source: source + "\nglobals()['_ChartHousesV1'] = _SunCoordinate\n",
+    lambda source: source + "\nexec('_ChartHousesV1 = _SunCoordinate')\n",
+    lambda source: (
+      source + ("\ngetattr(__import__('builtins'), 'ex' 'ec')('_ChartHousesV1 = _SunCoordinate', globals())\n")
+    ),
+    lambda source: source.replace(
+      "class _ChartBodyV1(Structure):", "globals().update(c_uint32=c_int32)\nclass _ChartBodyV1(Structure):"
+    ),
+    lambda source: source.replace(
+      "class _ChartHousesV1(Structure):",
+      '    locals()["_fields_"] = '
+      "[(name, c_int32 if kind is c_uint32 else kind) for name, kind in _fields_]\n\n"
+      "class _ChartHousesV1(Structure):",
+    ),
+  ],
+)
+def test_runtime_mirror_checks_actual_bound_classes_not_declared_schema(compiled_layout, mutation):
+  structs, ground_truth = compiled_layout
+  source = ast.parse(MIRROR.read_text(encoding="utf-8"))
+  definitions = [
+    node for node in source.body if isinstance(node, ast.ClassDef) and abi_layout._structure_name(node) is not None
+  ]
+  declarations = ast.unparse(ast.Module(body=definitions, type_ignores=[]))
+
+  def measure(text):
+    namespace = {"ctypes": ctypes, "Structure": ctypes.Structure}
+    namespace.update({python: getattr(ctypes, python) for python in abi_layout.C_TO_CTYPES.values()})
+    namespace["c_int32"] = ctypes.c_int32
+    exec(compile(text, "runtime-mirror-control", "exec"), namespace)
+    module = ModuleType("runtime_mirror")
+    module.__dict__.update(namespace)
+    return abi_layout.runtime_layout(module)
+
+  runtime_structs, measured = measure(declarations)
+  assert not abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
+  try:
+    runtime_structs, measured = measure(mutation(declarations))
+  except (RuntimeError, AttributeError):
+    pass
+  else:
+    assert abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
+  runtime_structs, measured = measure(declarations)
+  assert not abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
 
 
 @pytest.mark.parametrize(
@@ -345,6 +387,8 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
     "enum { CHART_TARGET_CERES = 14 };",
     "const uint32_t CHART_TARGET_CERES = 14;",
     "#define CHART_TARGET_CERES INT32_C(14)",
+    "enum { CHART_TARGET_Ceres = 14 };",
+    "enum { CHART_TARGET_Çeres = 14 };",
   ],
 )
 def test_chart_code_declarations_cannot_hide_from_inventory(native_verifier, declaration):

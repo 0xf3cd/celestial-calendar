@@ -135,7 +135,7 @@ def ctypes_type_name(field_type: type) -> str:
 def parse_chart_codes(header: str) -> dict[str, int]:
   """Read the complete fixed-width chart selector/identity/presence code set."""
   clean = re.sub(r"/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
-  tokens = set(re.findall(r"\bCHART_[A-Z0-9_]+\b", clean))
+  tokens = set(re.findall(r"\bCHART_\w*", clean))
   codes = {}
   for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", clean, flags=re.MULTILINE):
     match = re.fullmatch(r"(CHART_\w+)\s+UINT32_C\(([0-9]+)\)", declaration.strip())

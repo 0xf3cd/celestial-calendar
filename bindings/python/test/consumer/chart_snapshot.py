@@ -147,6 +147,20 @@ def run_validation_guards() -> None:
   class NumericLatitude(float, Enum):
     LONDON = 51.5
 
+  class LyingInt(int):
+    def __lt__(self, other):
+      return False
+
+    def __gt__(self, other):
+      return False
+
+    def __int__(self):
+      return 6
+
+  for name, value in (("year", 2026), ("month", 1), ("day", 1)):
+    cases.append(({"civil_dt": replace(CIVIL, **{name: LyingInt(value + 2**32)})}, ValueError))
+    cases.append(({"civil_dt": replace(CIVIL, **{name: LyingInt(value - 2**32)})}, ValueError))
+
   for name, value in (("year", 2026), ("month", 1), ("day", 1), ("fraction", 0)):
     cases.append(({"civil_dt": replace(CIVIL, **{name: NumericFlag(value)})}, TypeError))
   cases.append(({"civil_dt": replace(CIVIL, fraction=NumericFraction.HALF)}, TypeError))
@@ -202,10 +216,11 @@ def run_validation_guards() -> None:
 def run_single_read_inputs() -> None:
   class ShiftingCivil(celestial.CivilDateTime):
     def __getattribute__(self, name):
-      if name == "year":
-        count = object.__getattribute__(self, "_reads") + 1
-        object.__setattr__(self, "_reads", count)
-        return 2026 if count == 1 else 1971
+      if name in ("year", "month", "day", "fraction"):
+        counts = object.__getattribute__(self, "_reads")
+        counts[name] = counts.get(name, 0) + 1
+        if counts[name] > 1:
+          return {"year": 1971, "month": 13, "day": 32, "fraction": math.nan}[name]
       return object.__getattribute__(self, name)
 
   class ShiftingLocation(celestial.GeoLocation):
@@ -219,14 +234,15 @@ def run_single_read_inputs() -> None:
 
   civil = ShiftingCivil(2026, 1, 1, 0.5)
   location = ShiftingLocation(51.5, 0.0)
-  object.__setattr__(civil, "_reads", 0)
+  object.__setattr__(civil, "_reads", {})
   object.__setattr__(location, "_reads", {})
   trap = Trap(native_fixture())
   with replaced_binding("chart_snapshot_v1", trap):
     snapshot(civil_dt=civil, location=location)
   assert trap.calls == 1 and trap.args[:4] == (2026, 1, 1, 0.5)
   assert trap.args[5:7] == (51.5, 0.0)
-  assert civil._reads == 1 and location._reads == {"latitude_deg": 1, "longitude_deg": 1}
+  assert civil._reads == {"year": 1, "month": 1, "day": 1, "fraction": 1}
+  assert location._reads == {"latitude_deg": 1, "longitude_deg": 1}
   print("PASS chart validates and dispatches the same single-read civil/location values")
 
 

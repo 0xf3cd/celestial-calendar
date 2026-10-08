@@ -14,7 +14,7 @@ import shutil
 import tempfile
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import paths
 from .c_abi_schema import C_TO_CTYPES, Fields, parse_c_structs, split_field_type
@@ -67,52 +67,6 @@ def _structure_name(node: ast.ClassDef) -> str | None:
     raise RuntimeError(f"Unsupported Structure base in {node.name}")
 
   return node.name[1:] if node.name.startswith("_") else node.name
-
-
-def _reject_mirror_mutations(module: ast.Module, classes: dict[str, ast.ClassDef]) -> None:
-  protected = set(classes) | set(C_TO_CTYPES.values()) | {"Structure", "ctypes"}
-  for node in ast.walk(module):
-    if isinstance(node, ast.ClassDef):
-      if _structure_name(node) is not None and node not in module.body:
-        raise RuntimeError(f"Conditional Structure declaration in {node.name}")
-      if node.name in protected and classes.get(node.name) is not node:
-        raise RuntimeError(f"Duplicate or rebound mirror name: {node.name}")
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in protected:
-      raise RuntimeError(f"Rebound mirror name: {node.name}")
-    if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)) and node.id in protected:
-      raise RuntimeError(f"Rebound mirror or primitive name: {node.id}")
-    if isinstance(node, (ast.Global, ast.Nonlocal)) and protected.intersection(node.names):
-      raise RuntimeError("Mutable mirror namespace is outside the mirror grammar")
-    if isinstance(node, ast.Name) and node.id in {"exec", "eval", "setattr", "delattr"}:
-      raise RuntimeError("Dynamic namespace mutation is outside the mirror grammar")
-    if (
-      isinstance(node, ast.Call)
-      and isinstance(node.func, ast.Attribute)
-      and node.func.attr in {"exec", "eval", "setattr", "delattr"}
-    ):
-      raise RuntimeError("Dynamic namespace mutation is outside the mirror grammar")
-    if isinstance(node, (ast.Import, ast.ImportFrom)):
-      for alias in node.names:
-        if alias.name == "*":
-          raise RuntimeError("Wildcard import is outside the mirror grammar")
-        bound = alias.asname or alias.name.split(".")[0]
-        if bound not in protected:
-          continue
-        if isinstance(node, ast.Import):
-          valid = alias.name == bound == "ctypes"
-        else:
-          valid = node.module == "ctypes" and node.level == 0 and alias.name == bound and bound not in classes
-        if not valid:
-          raise RuntimeError(f"Rebound mirror import: {bound}")
-
-    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-      targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-      if any(
-        isinstance(target, ast.Attribute)
-        and (target.attr in {"_fields_", "_pack_", "_align_", "_layout_", "_anonymous_"} or target.attr in protected)
-        for target in targets
-      ):
-        raise RuntimeError("Out-of-class layout assignment is outside the mirror grammar")
 
 
 def _mirror_fields(node: ast.ClassDef, records: dict[str, str]) -> Fields:
@@ -178,15 +132,14 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   extents raise rather than being omitted from the comparison.
   """
   module = ast.parse(mirror.read_text(encoding="utf-8"))
-  classes = {
-    node.name: node for node in module.body if isinstance(node, ast.ClassDef) and _structure_name(node) is not None
-  }
-  _reject_mirror_mutations(module, classes)
-
   structs: Dict[str, Fields] = {}
   records: dict[str, str] = {}
-  for node in classes.values():
+  for node in ast.walk(module):
+    if not isinstance(node, ast.ClassDef):
+      continue
     name = _structure_name(node)
+    if name is None:
+      continue
     if name in structs or name in C_TO_CTYPES or node.name in C_TO_CTYPES.values():
       raise RuntimeError(f"Duplicate or reserved mirror name: {node.name}")
     fields = _mirror_fields(node, records)
@@ -280,7 +233,11 @@ def py_layout(structs: Dict[str, Fields]) -> Dict[str, int]:
 
 
 def compare_layouts(
-  c_structs: Dict[str, Fields], py_structs: Dict[str, Fields], ground_truth: Dict[str, int]
+  c_structs: Dict[str, Fields],
+  py_structs: Dict[str, Fields],
+  ground_truth: Dict[str, int],
+  *,
+  measured: Dict[str, int] | None = None,
 ) -> List[str]:
   """Reconcile record/field sets, order, exact types and independently measured storage."""
   failures = []
@@ -292,11 +249,57 @@ def compare_layouts(
     if c_structs[name] != py_structs[name]:
       failures.append(f"{name}: field schema/order {c_structs[name]} (C) != {py_structs[name]} (ctypes)")
 
-  measured = py_layout(py_structs)
+  if measured is None:
+    measured = py_layout(py_structs)
   for key in sorted(ground_truth.keys() & measured.keys()):
     if ground_truth[key] != measured[key]:
       failures.append(f"{key}: {ground_truth[key]} (C) != {measured[key]} (ctypes)")
   return failures
+
+
+def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
+  records = {
+    binding[1:] if binding.startswith("_") else binding: value
+    for binding, value in vars(module).items()
+    if isinstance(value, type) and issubclass(value, ctypes.Structure) and value is not ctypes.Structure
+  }
+  names = {value: name for name, value in records.items()}
+  if len(names) != len(records):
+    raise RuntimeError("Multiple mirror names bind the same runtime record")
+  primitives = {getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()}
+
+  def field_type(ctype: type) -> str:
+    if issubclass(ctype, ctypes.Array):
+      if ctype._length_ <= 0:
+        raise RuntimeError("Empty runtime ABI array")
+      return f"{field_type(ctype._type_)}[{ctype._length_}]"
+    if ctype in names:
+      return names[ctype]
+    if ctype not in primitives:
+      raise RuntimeError(f"Unsupported runtime ABI field type: {ctype}")
+    return primitives[ctype]
+
+  structs: Dict[str, Fields] = {}
+  measured: Dict[str, int] = {}
+  for name, record in records.items():
+    actual_name = record.__name__[1:] if record.__name__.startswith("_") else record.__name__
+    if actual_name != name:
+      raise RuntimeError(f"Runtime record identity differs: {name} binds {actual_name}")
+    fields = record._fields_
+    if any(len(field) != 2 for field in fields):
+      raise RuntimeError(f"Unsupported runtime fields in {name}")
+    structs[name] = [(field_name, field_type(ctype)) for field_name, ctype in fields]
+    measured[name] = ctypes.sizeof(record)
+    measured[f"{name}.alignment"] = ctypes.alignment(record)
+    for field_name, ctype in fields:
+      key = f"{name}.{field_name}"
+      measured[key] = getattr(record, field_name).offset
+      measured[key + ".size"] = ctypes.sizeof(ctype)
+      measured[key + ".alignment"] = ctypes.alignment(ctype)
+      if issubclass(ctype, ctypes.Array):
+        measured[key + ".extent"] = ctype._length_
+        measured[key + ".stride"] = ctypes.sizeof(ctype._type_)
+  return structs, measured
 
 
 def check_abi_layout() -> int:

@@ -270,11 +270,17 @@ TEST(ChartCAbi, RejectsUnknownAndWideSelectorAliases) {
   }
 }
 
-TEST(ChartCAbi, RejectsRawYearsBeforeChronoNarrowing) {
-  for (const int32_t year : std::array { INT32_MIN, -63510, 1884, 2100, 67562, INT32_MAX }) {
+TEST(ChartCAbi, RejectsYearsAtRepresentationAndAdmissionBoundaries) {
+  for (const int32_t year : std::array { INT32_MIN, -63510, 67562, INT32_MAX }) {
     EXPECT_FALSE(chart_snapshot_v1(year, 1, 1, 0.5, CHART_CIVIL_SCALE_UT1, 0.0, 0.0,
                                    CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_DEFAULT).valid);
-    EXPECT_NE(std::strstr(last_error(), "year"), nullptr);
+    EXPECT_NE(std::strstr(last_error(), "std::chrono::year"), nullptr);
+  }
+
+  for (const int32_t year : std::array { 1884, 2100 }) {
+    EXPECT_FALSE(chart_snapshot_v1(year, 1, 1, 0.5, CHART_CIVIL_SCALE_UT1, 0.0, 0.0,
+                                   CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_DEFAULT).valid);
+    EXPECT_NE(std::strstr(last_error(), "Chart civil year"), nullptr);
   }
 }
 

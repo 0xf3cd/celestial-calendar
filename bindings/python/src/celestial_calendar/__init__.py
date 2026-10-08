@@ -18,6 +18,7 @@ from datetime import datetime as _datetime
 from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
+from operator import index as _index
 from typing import TypeVar as _TypeVar
 
 from . import _binding, chart as _chart
@@ -695,6 +696,10 @@ def chart_snapshot(
   year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
   if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
     raise TypeError("chart civil fields must be numbers, not enum members")
+  for name, number in (("year", year), ("month", month), ("day", day)):
+    if isinstance(number, bool) or not isinstance(number, int):
+      raise TypeError(f"civil_dt.{name} must be an integer")
+  year, month, day = _index(year), _index(month), _index(day)
   _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
   if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
     raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")

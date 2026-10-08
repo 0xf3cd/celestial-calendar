@@ -37,6 +37,7 @@ def main() -> None:
   }
   discovered = {path.relative_to(test_root).as_posix() for path in test_root.rglob("*.py")} - non_acceptance
   assert discovered == set(scripts), f"acceptance inventory mismatch: {sorted(discovered ^ set(scripts))}"
+
   for script in scripts:
     subprocess.run([sys.executable, str(test_root / script)], check=True)
 

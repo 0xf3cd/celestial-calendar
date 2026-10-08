@@ -93,6 +93,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     payload = archive.read(member)
     expected_digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=").decode()
     assert digest == f"sha256={expected_digest}" and size == str(len(payload)), f"RECORD integrity mismatch: {member}"
+
   for member in ("__init__.py", "_binding.py", "chart.py", "py.typed"):
     assert (
       archive.read(f"celestial_calendar/{member}")
@@ -103,11 +104,15 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert metadata["Name"] == "celestial-calendar"
   assert metadata["Version"] == version
   assert metadata["Requires-Python"] == ">=3.11"
+  assert not metadata.get_all("Requires-Dist") and not metadata.get_all("Provides-Extra"), (
+    "unexpected runtime dependency"
+  )
   assert metadata["License-Expression"] == "MIT"
   project_urls = metadata.get_all("Project-URL") or []
   assert "Repository, https://github.com/0xf3cd/celestial-calendar" in project_urls
 
   wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
+  assert wheel_metadata["Root-Is-Purelib"] == "false", "native wheel cannot be purelib"
   assert set(wheel_metadata.get_all("Tag") or []) == {f"py3-none-{tag}" for tag in platform_tags}
   assert archive.read("celestial_calendar/_version.py").decode() == f'VERSION = "{version}"'
   assert archive.read(f"{dist_info}/licenses/LICENSE") == (REPO / "LICENSE").read_bytes()
