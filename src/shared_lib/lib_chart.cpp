@@ -42,6 +42,7 @@ auto chart_snapshot_v1(
       .latitude = astro::toolbox::AngleDeg { latitude_deg },
       .longitude = astro::toolbox::AngleDeg { longitude_deg },
     };
+
     return lib::chart::snapshot_v1(
       astro::chart::calculate(civil_dt, scale, location, system, model)
     );

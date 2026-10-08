@@ -52,6 +52,16 @@ class HouseSystem(_IntEnum):
   PLACIDUS = 2
 
 
+_NODE_TARGETS = (
+  ChartTarget.MEAN_ASCENDING,
+  ChartTarget.MEAN_DESCENDING,
+  ChartTarget.TRUE_ASCENDING,
+  ChartTarget.TRUE_DESCENDING,
+)
+_PRESENT_LATITUDE = 1
+_PRESENT_DISTANCE = 2
+
+
 @_dataclass(frozen=True)
 class GeoLocation:
   """North-positive latitude (-90, 90) and east-positive longitude [-180, 180], in degrees."""
@@ -121,13 +131,9 @@ def _longitude_native(value: object, name: str) -> float:
 def _body_from_native(body: _ChartBodyV1, expected: ChartTarget) -> BodyState:
   if type(body.target_code) is not int or ChartTarget(body.target_code) is not expected:
     raise ValueError(f"unexpected target code for {expected.name}")
-  is_node = expected in (
-    ChartTarget.MEAN_ASCENDING,
-    ChartTarget.MEAN_DESCENDING,
-    ChartTarget.TRUE_ASCENDING,
-    ChartTarget.TRUE_DESCENDING,
-  )
-  expected_fields = 1 if is_node else 3
+
+  is_node = expected in _NODE_TARGETS
+  expected_fields = _PRESENT_LATITUDE if is_node else _PRESENT_LATITUDE | _PRESENT_DISTANCE
   if type(body.present_fields) is not int or body.present_fields != expected_fields:
     raise ValueError(f"unexpected presence bits for {expected.name}")
 

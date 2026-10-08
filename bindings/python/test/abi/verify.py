@@ -25,6 +25,7 @@ from celestial_calendar import _binding
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
+
 # Import the standalone grammar without automation's build-tool package initialization.
 sys.path.insert(0, str(REPO / "automation"))
 from c_abi_schema import parse_c_structs_text, split_field_type  # noqa: E402
@@ -133,14 +134,17 @@ def ctypes_type_name(field_type: type) -> str:
 
 def parse_chart_codes(header: str) -> dict[str, int]:
   """Read the complete fixed-width chart selector/identity/presence code set."""
+  clean = re.sub(r"/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
+  tokens = set(re.findall(r"\bCHART_[A-Z0-9_]+\b", clean))
   codes = {}
-  for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", header, flags=re.MULTILINE):
+  for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", clean, flags=re.MULTILINE):
     match = re.fullmatch(r"(CHART_\w+)\s+UINT32_C\(([0-9]+)\)", declaration.strip())
     assert match is not None, f"unsupported chart code declaration: {declaration}"
     name, value = match.groups()
     assert name not in codes, f"duplicate chart code: {name}"
     codes[name] = int(value)
   assert codes, "missing chart codes"
+  assert tokens == set(codes), f"unsupported chart code tokens: {sorted(tokens - set(codes))}"
   return codes
 
 

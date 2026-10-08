@@ -53,6 +53,22 @@ const headerEntries = declarations.map((signature) => {
 const headerNames = headerEntries.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
+const parseChartCodes = (source) => {
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const tokens = new Set(clean.match(/\bCHART_[A-Z0-9_]+\b/g));
+  const codes = {};
+  for (const [, declaration] of clean.matchAll(/^\s*#define\s+(CHART_.*)$/gm)) {
+    const match = declaration.trim().match(/^(CHART_\w+)\s+UINT32_C\(([0-9]+)\)$/);
+    assert(match, `unsupported chart code declaration: ${declaration}`);
+    assert(!Object.hasOwn(codes, match[1]), `duplicate chart code: ${match[1]}`);
+    codes[match[1]] = Number(match[2]);
+  }
+  assert(Object.keys(codes).length, "missing chart codes");
+  sameSet("closed chart code tokens", tokens, Object.keys(codes));
+  return codes;
+};
+assert.deepEqual(manifest.chart_v1_codes, parseChartCodes(header), "header = manifest chart codes");
+
 uniqueCount("celestial.h exports", headerNames, 30);
 uniqueCount("internal bindings", bindingNames, 30);
 sameSet("header = bindings", headerNames, bindingNames);
@@ -252,20 +268,16 @@ const runMutationSelfTests = (candidate) => {
 verifyManifest(manifest);
 runMutationSelfTests(manifest);
 
-if (process.argv.includes("--static")) {
-  console.log("PASS static exports header=manifest=bindings=recipe 30 (+ malloc/free); built WASM not checked");
-} else {
-  const M = await (await import(pathToFileURL(MODULE_PATH))).default();
-  for (const name of recipeExports) {
-    assert.equal(typeof M[`_${name}`], "function", `built module export _${name}`);
-  }
-  const builtExports = Object.keys(M)
-    .filter((name) => /^_[a-z]/.test(name) && typeof M[name] === "function")
-    .map((name) => name.slice(1));
-  sameSet("build recipe = built module", recipeExports, builtExports);
-  assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
-  console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
+const M = await (await import(pathToFileURL(MODULE_PATH))).default();
+for (const name of recipeExports) {
+  assert.equal(typeof M[`_${name}`], "function", `built module export _${name}`);
 }
+const builtExports = Object.keys(M)
+  .filter((name) => /^_[a-z]/.test(name) && typeof M[name] === "function")
+  .map((name) => name.slice(1));
+sameSet("build recipe = built module", recipeExports, builtExports);
+assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
+console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
 console.log("PASS layouts header=manifest=bindings 19; memory growth enabled in recipe");
 console.log("PASS recording docs=writers=manifest=binding error policy 29");
 console.log("PASS per-export fill protocols; ABI mutations rejected 11/11");

@@ -495,14 +495,23 @@ for (const system of [0, 1, 2]) {
     assert.notDeepEqual(cusps, equalCusps, "Placidus is not Equal fallback");
   }
 }
+
 const southern = validChart({ latitude_deg: -33.87, longitude_deg: 151.21, house_system_code: 2 });
 assert.notDeepEqual(southern.houses, chart.houses);
 assert.deepEqual(usedChartPayload(southern).bodies, usedChartPayload(chart).bodies, "location affects houses only");
+
+const west = validChart({ latitude_deg: 0, longitude_deg: -1 });
+const east = validChart({ latitude_deg: 0, longitude_deg: 1 });
+const eastwardMidheaven = ((east.houses.midheaven_deg - west.houses.midheaven_deg + 540) % 360) - 180;
+assert(eastwardMidheaven > 0, "east-positive geographic longitude advances the Midheaven");
+
 const retrograde = validChart({ year: 2025, month: 3, day: 25, latitude_deg: -33.87, longitude_deg: 151.21, house_system_code: 2 });
 assert(retrograde.bodies[2].longitude_rate_deg_per_tt_day < 0, "signed Mercury retrograde rate survives the ABI");
 assert(retrograde.bodies[10].longitude_rate_deg_per_tt_day < 0, "signed mean-node rate survives the ABI");
+
 const historical = validChart({ year: 1900, month: 6, day: 1 });
 assert.equal(historical.jd_ut1, validSret("ut1_to_jd", [1900, 6, 1, 0.5]).value);
+
 validChart({ year: 2000, month: 2, day: 29 });
 validChart({ year: 1972, fraction: 0, civil_scale_code: 0 });
 for (const longitude_deg of [-180, 180]) validChart({ latitude_deg: 0, longitude_deg });

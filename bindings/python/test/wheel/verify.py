@@ -12,7 +12,9 @@
 
 from __future__ import annotations
 
+import base64
 import csv
+import hashlib
 import io
 import json
 import os
@@ -79,10 +81,23 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert file_members == expected_members, f"wheel allowlist mismatch: {sorted(file_members ^ expected_members)}"
   assert archive.read("celestial_calendar/py.typed") == b""
 
-  record = csv.reader(io.StringIO(archive.read(f"{dist_info}/RECORD").decode("utf-8")))
-  record_members = [row[0] for row in record if len(row) == 3]
+  record = list(csv.reader(io.StringIO(archive.read(f"{dist_info}/RECORD").decode("utf-8"))))
+  assert all(len(row) == 3 for row in record), "malformed RECORD row"
+  record_members = [row[0] for row in record]
   assert len(record_members) == len(set(record_members)), "duplicate RECORD member"
   assert set(record_members) == file_members, f"RECORD mismatch: {sorted(set(record_members) ^ file_members)}"
+  for member, digest, size in record:
+    if member == f"{dist_info}/RECORD":
+      assert digest == size == "", "RECORD must not hash itself"
+      continue
+    payload = archive.read(member)
+    expected_digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=").decode()
+    assert digest == f"sha256={expected_digest}" and size == str(len(payload)), f"RECORD integrity mismatch: {member}"
+  for member in ("__init__.py", "_binding.py", "chart.py", "py.typed"):
+    assert (
+      archive.read(f"celestial_calendar/{member}")
+      == (REPO / "bindings/python/src/celestial_calendar" / member).read_bytes()
+    ), f"source payload mismatch: {member}"
 
   metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/METADATA"))
   assert metadata["Name"] == "celestial-calendar"

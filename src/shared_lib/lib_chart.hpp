@@ -12,8 +12,7 @@
 
 #pragma once
 
-#include <array>
-#include <cmath>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <format>
@@ -24,6 +23,7 @@
 
 #include "celestial.h"
 #include "chart.hpp"
+#include "datetime.hpp"
 
 namespace lib::chart {
 
@@ -36,26 +36,22 @@ static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> ==
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): year/month/day/fraction is the published civil-date order.
 inline auto validate_civil(const int32_t year, const uint32_t month, const uint32_t day, const double fraction) -> void {
-  if (year < 1885 or year >= 2100) {
-    throw std::invalid_argument { std::format("Chart civil year {} leaves [1885, 2100)", year) };
+  if (year < static_cast<int>(std::chrono::year::min()) or year > static_cast<int>(std::chrono::year::max())) {
+    throw std::invalid_argument { std::format("Argument `year` cannot be represented by std::chrono::year: {}", year) };
   }
   if (month < 1 or month > 12) {
     throw std::invalid_argument { std::format("Argument `month` must be in [1, 12], got {}", month) };
   }
 
-  constexpr std::array<uint32_t, 12> DAYS_IN_MONTH { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-  const bool leap_year = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0);
-  const uint32_t last_day = DAYS_IN_MONTH.at(month - 1) + (month == 2 and leap_year ? 1U : 0U);
+  const auto month_end = std::chrono::year { year } / std::chrono::month { month } / std::chrono::last;
+  const uint32_t last_day = static_cast<unsigned>(month_end.day());
   if (day < 1 or day > last_day) {
     throw std::invalid_argument {
       std::format("Argument `day` must be in [1, {}] for {}-{}, got {}", last_day, year, month, day)
     };
   }
-  if (not std::isfinite(fraction) or fraction < 0.0 or fraction >= 1.0) {
-    throw std::invalid_argument {
-      std::format("Argument `fraction` must be finite and in [0, 1), got {}", fraction)
-    };
-  }
+
+  static_cast<void>(calendar::validate_fraction(fraction));
 }
 
 [[nodiscard]] inline auto civil_scale(const uint32_t code) -> astro::chart::Scale {
@@ -109,6 +105,17 @@ inline auto validate_civil(const int32_t year, const uint32_t month, const uint3
   }
 }
 
+[[nodiscard]] inline auto body_v1(const astro::chart::BodyState& body) -> ChartBodyV1 {
+  return ChartBodyV1 {
+    .target_code = target_code(body.target),
+    .present_fields = CHART_PRESENT_LATITUDE | (body.distance.has_value() ? CHART_PRESENT_DISTANCE : UINT32_C(0)),
+    .longitude_deg = body.longitude.deg(),
+    .latitude_deg = body.latitude.deg(),
+    .distance_au = body.distance.has_value() ? body.distance->au() : 0.0,
+    .longitude_rate_deg_per_tt_day = body.longitude_rate.deg_per_tt_day,
+  };
+}
+
 [[nodiscard]] inline auto snapshot_v1(const astro::chart::Snapshot& snapshot) -> ChartSnapshotV1 {
   ChartSnapshotV1 result {
     .valid = true,
@@ -125,24 +132,11 @@ inline auto validate_civil(const int32_t year, const uint32_t month, const uint3
   };
 
   for (std::size_t index = 0; index < snapshot.bodies.size(); ++index) {
-    const auto& body = snapshot.bodies.at(index);
-    const uint32_t code = target_code(body.target);
-    if (code != index) {
+    const ChartBodyV1 record = body_v1(snapshot.bodies.at(index));
+    if (record.target_code != index) {
       throw std::logic_error { "Chart core target order does not match V1" };
     }
 
-    ChartBodyV1 record {
-      .target_code = code,
-      .present_fields = CHART_PRESENT_LATITUDE,
-      .longitude_deg = body.longitude.deg(),
-      .latitude_deg = body.latitude.deg(),
-      .distance_au = 0.0,
-      .longitude_rate_deg_per_tt_day = body.longitude_rate.deg_per_tt_day,
-    };
-    if (body.distance.has_value()) {
-      record.present_fields |= CHART_PRESENT_DISTANCE;
-      record.distance_au = body.distance->au();
-    }
     std::span { result.bodies }[index] = record;
   }
 

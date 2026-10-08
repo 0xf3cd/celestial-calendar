@@ -18,7 +18,6 @@ from typing import Dict, List, Optional
 
 from . import paths
 from .c_abi_schema import C_TO_CTYPES, Fields, parse_c_structs, split_field_type
-from .c_abi_schema import STRUCT_RE as STRUCT_RE
 from .utils import run_cmd, green_print, red_print, yellow_print
 
 
@@ -46,6 +45,130 @@ def mirror_type(node: ast.expr, records: dict[str, str], owner: str) -> str:
   return primitives[name]
 
 
+def _structure_name(node: ast.ClassDef) -> str | None:
+  is_structure = any(
+    (isinstance(base, ast.Name) and base.id == "Structure")
+    or (isinstance(base, ast.Attribute) and base.attr == "Structure")
+    for base in node.bases
+  )
+  if not is_structure:
+    return None
+
+  if node.decorator_list or node.keywords:
+    raise RuntimeError(f"Computed Structure declaration in {node.name}")
+  if len(node.bases) != 1 or not (
+    isinstance(node.bases[0], ast.Name)
+    and node.bases[0].id == "Structure"
+    or isinstance(node.bases[0], ast.Attribute)
+    and isinstance(node.bases[0].value, ast.Name)
+    and node.bases[0].value.id == "ctypes"
+    and node.bases[0].attr == "Structure"
+  ):
+    raise RuntimeError(f"Unsupported Structure base in {node.name}")
+
+  return node.name[1:] if node.name.startswith("_") else node.name
+
+
+def _reject_mirror_mutations(module: ast.Module, classes: dict[str, ast.ClassDef]) -> None:
+  protected = set(classes) | set(C_TO_CTYPES.values()) | {"Structure", "ctypes"}
+  for node in ast.walk(module):
+    if isinstance(node, ast.ClassDef):
+      if _structure_name(node) is not None and node not in module.body:
+        raise RuntimeError(f"Conditional Structure declaration in {node.name}")
+      if node.name in protected and classes.get(node.name) is not node:
+        raise RuntimeError(f"Duplicate or rebound mirror name: {node.name}")
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in protected:
+      raise RuntimeError(f"Rebound mirror name: {node.name}")
+    if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)) and node.id in protected:
+      raise RuntimeError(f"Rebound mirror or primitive name: {node.id}")
+    if isinstance(node, (ast.Global, ast.Nonlocal)) and protected.intersection(node.names):
+      raise RuntimeError("Mutable mirror namespace is outside the mirror grammar")
+    if isinstance(node, ast.Name) and node.id in {"exec", "eval", "setattr", "delattr"}:
+      raise RuntimeError("Dynamic namespace mutation is outside the mirror grammar")
+    if (
+      isinstance(node, ast.Call)
+      and isinstance(node.func, ast.Attribute)
+      and node.func.attr in {"exec", "eval", "setattr", "delattr"}
+    ):
+      raise RuntimeError("Dynamic namespace mutation is outside the mirror grammar")
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+      for alias in node.names:
+        if alias.name == "*":
+          raise RuntimeError("Wildcard import is outside the mirror grammar")
+        bound = alias.asname or alias.name.split(".")[0]
+        if bound not in protected:
+          continue
+        if isinstance(node, ast.Import):
+          valid = alias.name == bound == "ctypes"
+        else:
+          valid = node.module == "ctypes" and node.level == 0 and alias.name == bound and bound not in classes
+        if not valid:
+          raise RuntimeError(f"Rebound mirror import: {bound}")
+
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+      targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+      if any(
+        isinstance(target, ast.Attribute)
+        and (target.attr in {"_fields_", "_pack_", "_align_", "_layout_", "_anonymous_"} or target.attr in protected)
+        for target in targets
+      ):
+        raise RuntimeError("Out-of-class layout assignment is outside the mirror grammar")
+
+
+def _mirror_fields(node: ast.ClassDef, records: dict[str, str]) -> Fields:
+  for child in ast.walk(node):
+    if isinstance(child, (ast.Delete, ast.NamedExpr)):
+      raise RuntimeError(f"Computed or deleted field declaration in {node.name}")
+    if isinstance(child, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and child not in node.body:
+      targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+      if any(isinstance(target, ast.Name) and target.id == "_fields_" for target in targets):
+        raise RuntimeError(f"Conditional or computed _fields_ in {node.name}")
+    if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+      owner = child.func.value
+      if isinstance(owner, ast.Name) and owner.id == "_fields_":
+        raise RuntimeError(f"Computed _fields_ mutation in {node.name}")
+
+  fields: Optional[Fields] = None
+  for stmt in node.body:
+    if isinstance(stmt, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+      targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+      if any(
+        isinstance(target, ast.Name) and target.id in {"_pack_", "_align_", "_layout_", "_anonymous_"}
+        for target in targets
+      ):
+        raise RuntimeError(f"Unsupported layout override in {node.name}")
+      if not isinstance(stmt, ast.Assign) and any(
+        isinstance(target, ast.Name) and target.id == "_fields_" for target in targets
+      ):
+        raise RuntimeError(f"Nonliteral _fields_ assignment in {node.name}")
+
+    if not (
+      isinstance(stmt, ast.Assign)
+      and any(isinstance(target, ast.Name) and target.id == "_fields_" for target in stmt.targets)
+    ):
+      continue
+    if fields is not None or len(stmt.targets) != 1:
+      raise RuntimeError(f"Duplicate or chained _fields_ assignment in {node.name}")
+    if not isinstance(stmt.value, (ast.List, ast.Tuple)):
+      raise RuntimeError(f"Unreadable _fields_ on Structure subclass {node.name}: not a literal list/tuple")
+
+    fields = []
+    for elt in stmt.value.elts:
+      if not isinstance(elt, ast.Tuple) or len(elt.elts) != 2:
+        raise RuntimeError(f"Unreadable _fields_ entry in {node.name}: not a (name, type) 2-tuple")
+      fname_node, type_node = elt.elts
+      if not isinstance(fname_node, ast.Constant) or not isinstance(fname_node.value, str):
+        raise RuntimeError(f"Unreadable field name in {node.name}._fields_")
+      if not re.fullmatch(r"[A-Za-z_]\w*", fname_node.value) or fname_node.value in dict(fields):
+        raise RuntimeError(f"Invalid or duplicate field name in {node.name}: {fname_node.value!r}")
+      tname = mirror_type(type_node, records, f"{node.name}.{fname_node.value}")
+      fields.append((fname_node.value, tname))
+
+  if not fields:
+    raise RuntimeError(f"No readable _fields_ on Structure subclass {node.name}")
+  return fields
+
+
 def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   """Parse every ctypes `Structure` subclass in `common.py`, statically (no import, no .so).
 
@@ -54,81 +177,19 @@ def parse_py_structs(mirror: Path) -> Dict[str, Fields]:
   as the header. Unknown syntax, types and
   extents raise rather than being omitted from the comparison.
   """
+  module = ast.parse(mirror.read_text(encoding="utf-8"))
+  classes = {
+    node.name: node for node in module.body if isinstance(node, ast.ClassDef) and _structure_name(node) is not None
+  }
+  _reject_mirror_mutations(module, classes)
+
   structs: Dict[str, Fields] = {}
   records: dict[str, str] = {}
-  module = ast.parse(mirror.read_text(encoding="utf-8"))
-  for node in ast.walk(module):
-    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-      targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-      if any(
-        isinstance(target, ast.Attribute)
-        and target.attr in {"_fields_", "_pack_", "_align_", "_layout_", "_anonymous_"}
-        for target in targets
-      ):
-        raise RuntimeError("Out-of-class layout assignment is outside the mirror grammar")
-
-  for node in module.body:
-    if not isinstance(node, ast.ClassDef):
-      continue
-    is_structure = any(
-      (isinstance(b, ast.Name) and b.id == "Structure") or (isinstance(b, ast.Attribute) and b.attr == "Structure")
-      for b in node.bases
-    )
-    if not is_structure:
-      continue
-    if len(node.bases) != 1 or not (
-      isinstance(node.bases[0], ast.Name)
-      and node.bases[0].id == "Structure"
-      or isinstance(node.bases[0], ast.Attribute)
-      and isinstance(node.bases[0].value, ast.Name)
-      and node.bases[0].value.id == "ctypes"
-      and node.bases[0].attr == "Structure"
-    ):
-      raise RuntimeError(f"Unsupported Structure base in {node.name}")
-    name = node.name[1:] if node.name.startswith("_") else node.name
+  for node in classes.values():
+    name = _structure_name(node)
     if name in structs or name in C_TO_CTYPES or node.name in C_TO_CTYPES.values():
       raise RuntimeError(f"Duplicate or reserved mirror name: {node.name}")
-
-    for child in ast.walk(node):
-      if isinstance(child, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and child not in node.body:
-        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
-        if any(isinstance(t, ast.Name) and t.id == "_fields_" for t in targets):
-          raise RuntimeError(f"Conditional or computed _fields_ in {node.name}")
-      if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
-        owner = child.func.value
-        if isinstance(owner, ast.Name) and owner.id == "_fields_":
-          raise RuntimeError(f"Computed _fields_ mutation in {node.name}")
-
-    fields: Optional[Fields] = None
-    for stmt in node.body:
-      if isinstance(stmt, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-        targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
-        if any(isinstance(t, ast.Name) and t.id in {"_pack_", "_align_", "_layout_", "_anonymous_"} for t in targets):
-          raise RuntimeError(f"Unsupported layout override in {node.name}")
-        if not isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_fields_" for t in targets):
-          raise RuntimeError(f"Nonliteral _fields_ assignment in {node.name}")
-      if not (
-        isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_fields_" for t in stmt.targets)
-      ):
-        continue
-      if fields is not None or len(stmt.targets) != 1:
-        raise RuntimeError(f"Duplicate or chained _fields_ assignment in {node.name}")
-      if not isinstance(stmt.value, (ast.List, ast.Tuple)):
-        raise RuntimeError(f"Unreadable _fields_ on Structure subclass {node.name}: not a literal list/tuple")
-      fields = []
-      for elt in stmt.value.elts:
-        if not isinstance(elt, ast.Tuple) or len(elt.elts) != 2:
-          raise RuntimeError(f"Unreadable _fields_ entry in {node.name}: not a (name, type) 2-tuple")
-        fname_node, type_node = elt.elts
-        if not isinstance(fname_node, ast.Constant) or not isinstance(fname_node.value, str):
-          raise RuntimeError(f"Unreadable field name in {node.name}._fields_")
-        if not re.fullmatch(r"[A-Za-z_]\w*", fname_node.value) or fname_node.value in dict(fields):
-          raise RuntimeError(f"Invalid or duplicate field name in {node.name}: {fname_node.value!r}")
-        tname = mirror_type(type_node, records, f"{node.name}.{fname_node.value}")
-        fields.append((fname_node.value, tname))
-
-    if not fields:
-      raise RuntimeError(f"No readable _fields_ on Structure subclass {node.name}")
+    fields = _mirror_fields(node, records)
     structs[name] = fields
     records[node.name] = name
 

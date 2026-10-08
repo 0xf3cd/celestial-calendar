@@ -63,7 +63,7 @@ EXPORTS: Final[list[str]] = [
   "free",
 ]
 
-# HEAP* views decode all 16 C layouts; ccall decodes last_error's borrowed C string.
+# HEAP* views decode the C layouts; ccall decodes last_error's borrowed C string.
 RUNTIME_METHODS: Final[list[str]] = ["ccall", "HEAPU8", "HEAPU16", "HEAP32", "HEAPU32", "HEAPF64"]
 
 # -fwasm-exceptions is not optional: the library throws on bad input and the C ABI turns

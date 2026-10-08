@@ -15,6 +15,7 @@ import math as _math
 from dataclasses import dataclass as _dataclass
 from datetime import date as _date
 from datetime import datetime as _datetime
+from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
 from typing import TypeVar as _TypeVar
@@ -246,6 +247,10 @@ _CHART_DELTA_T_MODEL = {
   DeltaTModel.ALGO4: 4,
   DeltaTModel.ALGO5: 5,
 }
+
+_MIN_CHART_YEAR = 1885
+_MAX_CHART_YEAR = 2099
+_MIN_CHART_UTC_YEAR = 1972
 
 
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
@@ -678,28 +683,36 @@ def chart_snapshot(
   checked_scale = _enum(scale, CivilScale, "scale")
   checked_system = _enum(system, HouseSystem, "system")
   checked_model = _enum(model, DeltaTModel, "model")
-  if checked_scale not in tuple(CivilScale) or checked_system not in tuple(HouseSystem):
+  if not any(checked_scale is member for member in CivilScale) or not any(
+    checked_system is member for member in HouseSystem
+  ):
     raise ValueError("scale and system must be known chart enum members")
-  if checked_model not in _CHART_DELTA_T_MODEL:
+  if not any(checked_model is member for member in _CHART_DELTA_T_MODEL):
     raise ValueError("model must be a known DeltaTModel member")
 
   if not isinstance(civil_dt, CivilDateTime):
     raise TypeError("civil_dt must be a CivilDateTime")
-  _integer(civil_dt.year, "civil_dt.year", 1885, 2099)
-  if checked_scale is CivilScale.UTC and civil_dt.year < 1972:
-    raise ValueError("UTC civil_dt must be on or after 1972-01-01")
+  year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
+  if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
+    raise TypeError("chart civil fields must be numbers, not enum members")
+  _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
+  if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
+    raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
+  try:
+    value = _civil_datetime(CivilDateTime(year, month, day, fraction), "civil_dt")
+  except OverflowError as error:
+    raise ValueError("chart civil fraction must be a finite real number") from error
 
   if not isinstance(location, GeoLocation):
     raise TypeError("location must be a GeoLocation")
-  if any(isinstance(value, _IntEnum) for value in (civil_dt.fraction, location.latitude_deg, location.longitude_deg)):
-    raise TypeError("chart civil fraction and location must be real numbers, not enum members")
-
+  latitude_value, longitude_value = location.latitude_deg, location.longitude_deg
+  if any(isinstance(value, _Enum) for value in (latitude_value, longitude_value)):
+    raise TypeError("chart location must contain real numbers, not enum members")
   try:
-    value = _civil_datetime(civil_dt, "civil_dt")
-    latitude = _finite(location.latitude_deg, "location.latitude_deg")
-    longitude = _ranged_float(location.longitude_deg, "location.longitude_deg", -180.0, 180.0)
+    latitude = _finite(latitude_value, "location.latitude_deg")
+    longitude = _ranged_float(longitude_value, "location.longitude_deg", -180.0, 180.0)
   except OverflowError as error:
-    raise ValueError("chart civil fraction and location must be finite real numbers") from error
+    raise ValueError("chart location must contain finite real numbers") from error
   if not -90.0 < latitude < 90.0:
     raise ValueError("location.latitude_deg must be in (-90, 90)")
 
@@ -712,6 +725,7 @@ def chart_snapshot(
     checked_system.value,
     _CHART_DELTA_T_MODEL[checked_model],
   )
+
   try:
     _valid(result, "chart_snapshot")
     return _chart._from_native(result)

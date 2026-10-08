@@ -25,6 +25,7 @@ C_TO_CTYPES: Final[dict[str, str]] = {
 }
 
 Fields = list[tuple[str, str]]
+
 STRUCT_RE = re.compile(r"typedef\s+struct\s+([A-Za-z_]\w*)\s*\{([^{}]*)\}\s*\1\s*;", re.DOTALL)
 FIELD_RE = re.compile(r"([A-Za-z_]\w*)\s+([A-Za-z_]\w*)\s*(?:\[\s*([1-9][0-9]*)\s*\])?")
 

@@ -182,6 +182,32 @@ def test_mirror_unknown_base_late_fields_and_normalized_name_collisions(tmp_path
       mirror(tmp_path, source)
 
 
+@pytest.mark.parametrize(
+  "mutation",
+  [
+    lambda source: source.replace("class _Body(Structure):", "@(lambda cls: _Alias)\nclass _Body(Structure):"),
+    lambda source: source.replace("class _Body(Structure):", "class _Body(Structure, metaclass=type):"),
+    lambda source: source + "\nif True:\n  class _Body(Structure):\n    _fields_ = [('code', c_int32)]\n",
+    lambda source: source + "\n_Body = _Alias\n",
+    lambda source: source + "\nc_uint32 = c_int32\n",
+    lambda source: source.replace("class _Alias(ctypes.Structure):", "  del _fields_\nclass _Alias(ctypes.Structure):"),
+    lambda source: source.replace(
+      "class _Alias(ctypes.Structure):", "  (_fields_ := [('code', c_int32)])\nclass _Alias(ctypes.Structure):"
+    ),
+    lambda source: source + "\nexec('_Body = _Alias')\n",
+    lambda source: source + "\nsetattr(_Body, '_fields_', [])\n",
+    lambda source: source + "\nfor _Body in []:\n  pass\n",
+    lambda source: source + "\nfrom other import c_uint32\n",
+    lambda source: source + "\nctypes.c_uint32 = ctypes.c_int32\n",
+  ],
+)
+def test_mirror_namespace_and_computed_class_faults_are_loud(tmp_path, mutation):
+  expected = mirror(tmp_path, PY_CONTROL)
+  with pytest.raises(RuntimeError):
+    mirror(tmp_path, mutation(PY_CONTROL))
+  assert mirror(tmp_path, PY_CONTROL) == expected
+
+
 @pytest.fixture(scope="module")
 def compiled_layout(tmp_path_factory):
   work = tmp_path_factory.mktemp("native-layout")
@@ -310,6 +336,23 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
   raw_names = {node.name for node in raw.body if isinstance(node, ast.FunctionDef)}
   for name in exports:
     assert f"happy_{name}" in raw_names and f"edge_{name}" in raw_names
+
+
+@pytest.mark.parametrize(
+  "declaration",
+  [
+    "# define CHART_TARGET_CERES UINT32_C(14)",
+    "enum { CHART_TARGET_CERES = 14 };",
+    "const uint32_t CHART_TARGET_CERES = 14;",
+    "#define CHART_TARGET_CERES INT32_C(14)",
+  ],
+)
+def test_chart_code_declarations_cannot_hide_from_inventory(native_verifier, declaration):
+  header = HEADER.read_text(encoding="utf-8")
+  expected = native_verifier.parse_chart_codes(header)
+  with pytest.raises(AssertionError):
+    native_verifier.parse_chart_codes(header + "\n" + declaration + "\n")
+  assert native_verifier.parse_chart_codes(header) == expected
 
 
 @pytest.mark.parametrize("declaration", ["double lost[];", "double lost[0];", "Unknown lost;", "double *lost;"])
