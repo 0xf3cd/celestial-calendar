@@ -135,7 +135,7 @@ def ctypes_type_name(field_type: type) -> str:
 def parse_chart_codes(header: str) -> dict[str, int]:
   """Read the complete fixed-width chart selector/identity/presence code set."""
   clean = re.sub(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
-  assert clean.isascii() and "\\" not in clean and "##" not in clean, (
+  assert clean.isascii() and "\\" not in clean and "##" not in clean and "%:" not in clean, (
     "non-ASCII, backslash or token paste in chart code text"
   )
   tokens = set(re.findall(r"CHART_\w*", clean))

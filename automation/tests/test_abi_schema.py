@@ -415,6 +415,7 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
     "// open /*\nenum { CHART_TARGET_PLUTOX = 14 };\n/* close */",
     '#define OPEN "/*"\nenum { CHART_TARGET_PLUTOX = 14 };\n#define CLOSE "*/"',
     "#define CAT(a, b) a##b\nenum { CAT(CHART, _TARGET_PLUTOX) = 14 };",
+    "#define CAT(a, b) a %:%: b\nenum { CAT(CHART, _TARGET_PLUTOX) = 14 };",
   ],
 )
 def test_chart_code_declarations_cannot_hide_from_inventory(native_verifier, declaration):
