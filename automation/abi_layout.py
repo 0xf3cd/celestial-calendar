@@ -247,6 +247,13 @@ def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
     raise RuntimeError("Multiple mirror names bind the same runtime record")
   primitives = {getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()}
 
+  library = getattr(module, "LIB", None)
+  if library is not None:
+    for function in vars(library).values():
+      restype = getattr(function, "restype", None)
+      if isinstance(restype, type) and issubclass(restype, ctypes.Structure) and restype not in names:
+        raise RuntimeError("Unmeasured runtime return record")
+
   def field_type(ctype: type) -> str:
     if issubclass(ctype, ctypes.Array):
       if ctype._length_ <= 0:

@@ -120,8 +120,8 @@ const parseHeaderLayouts = (source) => {
 };
 
 const parseChartCodes = (source) => {
-  const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-  assert(!/[^\x00-\x7f]|\\/.test(clean), "non-ASCII or backslash in chart code text");
+  const clean = source.replace(/"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, " ");
+  assert(!/[^\x00-\x7f]|\\|##/.test(clean), "non-ASCII, backslash or token paste in chart code text");
   const tokens = new Set(clean.match(/CHART_\w*/g));
   const codes = {};
   for (const [, declaration] of clean.matchAll(/^\s*#define\s+(CHART_.*)$/gm)) {

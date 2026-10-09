@@ -216,6 +216,9 @@ def run_validation_guards() -> None:
 
 
 def run_single_read_inputs() -> None:
+  class Stored(Enum):
+    HOSTILE = object()
+
   class ShiftingCivil(celestial.CivilDateTime):
     def __getattribute__(self, name):
       if name in ("year", "month", "day", "fraction"):
@@ -234,8 +237,8 @@ def run_single_read_inputs() -> None:
           return {"latitude_deg": 51.5, "longitude_deg": 0.0}[name]
       return object.__getattribute__(self, name)
 
-  civil = ShiftingCivil(1971, 13, 32, math.nan)
-  location = ShiftingLocation(math.nan, math.nan)
+  civil = ShiftingCivil(*[Stored.HOSTILE] * 4)
+  location = ShiftingLocation(Stored.HOSTILE, Stored.HOSTILE)
   object.__setattr__(civil, "_reads", {})
   object.__setattr__(location, "_reads", {})
   trap = Trap(native_fixture())

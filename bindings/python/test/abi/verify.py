@@ -134,8 +134,10 @@ def ctypes_type_name(field_type: type) -> str:
 
 def parse_chart_codes(header: str) -> dict[str, int]:
   """Read the complete fixed-width chart selector/identity/presence code set."""
-  clean = re.sub(r"/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
-  assert clean.isascii() and "\\" not in clean, "non-ASCII or backslash in chart code text"
+  clean = re.sub(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
+  assert clean.isascii() and "\\" not in clean and "##" not in clean, (
+    "non-ASCII, backslash or token paste in chart code text"
+  )
   tokens = set(re.findall(r"CHART_\w*", clean))
   codes = {}
   for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", clean, flags=re.MULTILINE):
@@ -405,6 +407,7 @@ def run_mutation_self_tests(
   extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
   mutations["extra chart code"] = extra_code
 
+  assert len(mutations) == 19, "ABI mutation denominator"
   for label, mutated in mutations.items():
     try:
       verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)

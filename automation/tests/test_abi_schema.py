@@ -255,6 +255,13 @@ def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compile
     lambda source: source.replace(
       "class _ChartSnapshotV1(Structure):", "class _ChartSnapshotV1(Structure):\n    _pack_ = 1"
     ),
+    lambda source: (
+      source + "\nLIB = type('Library', (), {})()\n"
+      "LIB.chart_snapshot_v1 = type('Function', (), {'restype': "
+      "type('_ChartSnapshotV1', (Structure,), {'_fields_': "
+      "[('valid', c_bool), ('jde_tt', c_double), ('jd_ut1', c_double), "
+      "('bodies', _ChartBodyV1 * 14), ('houses', _ChartHousesV1)]})})()\n"
+    ),
   ],
 )
 def test_runtime_mirror_checks_actual_bound_classes_not_declared_schema(compiled_layout, mutation):
@@ -405,6 +412,9 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
     "enum { CHART_TARGET_PLUTO\\u00c7 = 14 };",
     "enum { CHART_TARGET_PLUTO\\\nX = 14 };",
     "enum { MAX_CHART_BODIES = 14 };",
+    "// open /*\nenum { CHART_TARGET_PLUTOX = 14 };\n/* close */",
+    '#define OPEN "/*"\nenum { CHART_TARGET_PLUTOX = 14 };\n#define CLOSE "*/"',
+    "#define CAT(a, b) a##b\nenum { CAT(CHART, _TARGET_PLUTOX) = 14 };",
   ],
 )
 def test_chart_code_declarations_cannot_hide_from_inventory(native_verifier, declaration):
