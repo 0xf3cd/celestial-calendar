@@ -232,37 +232,16 @@ def py_layout(structs: Dict[str, Fields]) -> Dict[str, int]:
   return layout
 
 
-def compare_layouts(
-  c_structs: Dict[str, Fields],
-  py_structs: Dict[str, Fields],
-  ground_truth: Dict[str, int],
-  *,
-  measured: Dict[str, int] | None = None,
-) -> List[str]:
-  """Reconcile record/field sets, order, exact types and independently measured storage."""
-  failures = []
-  for name in sorted(c_structs.keys() - py_structs.keys()):
-    failures.append(f"{name}: no ctypes mirror in common.py")
-  for name in sorted(py_structs.keys() - c_structs.keys()):
-    failures.append(f"{name}: ctypes mirror without a struct in celestial.h")
-  for name in sorted(c_structs.keys() & py_structs.keys()):
-    if c_structs[name] != py_structs[name]:
-      failures.append(f"{name}: field schema/order {c_structs[name]} (C) != {py_structs[name]} (ctypes)")
-
-  if measured is None:
-    measured = py_layout(py_structs)
-  for key in sorted(ground_truth.keys() & measured.keys()):
-    if ground_truth[key] != measured[key]:
-      failures.append(f"{key}: {ground_truth[key]} (C) != {measured[key]} (ctypes)")
-  return failures
-
-
 def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
-  records = {
-    binding[1:] if binding.startswith("_") else binding: value
-    for binding, value in vars(module).items()
-    if isinstance(value, type) and issubclass(value, ctypes.Structure) and value is not ctypes.Structure
-  }
+  records: Dict[str, type] = {}
+  for binding, value in vars(module).items():
+    if not isinstance(value, type) or not issubclass(value, ctypes.Structure) or value is ctypes.Structure:
+      continue
+    name = binding[1:] if binding.startswith("_") else binding
+    if name in records:
+      raise RuntimeError(f"Multiple runtime bindings normalize to {name}")
+    records[name] = value
+
   names = {value: name for name, value in records.items()}
   if len(names) != len(records):
     raise RuntimeError("Multiple mirror names bind the same runtime record")
@@ -289,6 +268,7 @@ def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
     if any(len(field) != 2 for field in fields):
       raise RuntimeError(f"Unsupported runtime fields in {name}")
     structs[name] = [(field_name, field_type(ctype)) for field_name, ctype in fields]
+
     measured[name] = ctypes.sizeof(record)
     measured[f"{name}.alignment"] = ctypes.alignment(record)
     for field_name, ctype in fields:
@@ -300,6 +280,54 @@ def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
         measured[key + ".extent"] = ctype._length_
         measured[key + ".stride"] = ctypes.sizeof(ctype._type_)
   return structs, measured
+
+
+def compare_layouts(
+  c_structs: Dict[str, Fields],
+  py_structs: Dict[str, Fields],
+  ground_truth: Dict[str, int],
+  *,
+  measured: Dict[str, int],
+) -> List[str]:
+  """Reconcile record/field sets, order, exact types and independently measured storage."""
+  failures = []
+  for name in sorted(c_structs.keys() - py_structs.keys()):
+    failures.append(f"{name}: no ctypes mirror in common.py")
+  for name in sorted(py_structs.keys() - c_structs.keys()):
+    failures.append(f"{name}: ctypes mirror without a struct in celestial.h")
+  for name in sorted(c_structs.keys() & py_structs.keys()):
+    if c_structs[name] != py_structs[name]:
+      failures.append(f"{name}: field schema/order {c_structs[name]} (C) != {py_structs[name]} (ctypes)")
+
+  for key in sorted(ground_truth.keys() & measured.keys()):
+    if ground_truth[key] != measured[key]:
+      failures.append(f"{key}: {ground_truth[key]} (C) != {measured[key]} (ctypes)")
+  return failures
+
+
+def check_runtime_layout(module: object) -> int:
+  """Compare loaded ctypes records with compiled C."""
+  header = paths.proj_root() / "src/shared_lib/celestial.h"
+  try:
+    c_structs = parse_c_structs(header)
+    runtime_structs, measured = runtime_layout(module)
+  except (RuntimeError, AttributeError, TypeError, ValueError) as error:
+    red_print(f"Loaded ctypes mirror differs from C: {error}")
+    return 1
+
+  with tempfile.TemporaryDirectory(prefix="ctypes_runtime_") as directory:
+    ground_truth = c_layout(c_structs, header, Path(directory))
+  if ground_truth is None:
+    return 1
+
+  failures = compare_layouts(c_structs, runtime_structs, ground_truth, measured=measured)
+  if failures:
+    for failure in failures:
+      red_print(failure)
+    return 1
+
+  green_print(f"Loaded ctypes records agree with compiled C ({len(c_structs)} structs)")
+  return 0
 
 
 def check_abi_layout() -> int:
@@ -330,7 +358,7 @@ def check_abi_layout() -> int:
   if ground_truth is None:
     return 1
 
-  failures = compare_layouts(c_structs, py_structs, ground_truth)
+  failures = compare_layouts(c_structs, py_structs, ground_truth, measured=py_layout(py_structs))
 
   print("#" * 60)
   if failures:

@@ -135,7 +135,8 @@ def ctypes_type_name(field_type: type) -> str:
 def parse_chart_codes(header: str) -> dict[str, int]:
   """Read the complete fixed-width chart selector/identity/presence code set."""
   clean = re.sub(r"/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
-  tokens = set(re.findall(r"\bCHART_\w*", clean))
+  assert clean.isascii() and "\\" not in clean, "non-ASCII or backslash in chart code text"
+  tokens = set(re.findall(r"CHART_\w*", clean))
   codes = {}
   for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", clean, flags=re.MULTILINE):
     match = re.fullmatch(r"(CHART_\w+)\s+UINT32_C\(([0-9]+)\)", declaration.strip())
@@ -396,6 +397,14 @@ def run_mutation_self_tests(
   wrong_presence["chart_v1_codes"]["CHART_PRESENT_DISTANCE"] = 4
   mutations["chart presence bit"] = wrong_presence
 
+  missing_code = copy.deepcopy(manifest)
+  del missing_code["chart_v1_codes"]["CHART_PRESENT_DISTANCE"]
+  mutations["missing chart code"] = missing_code
+
+  extra_code = copy.deepcopy(manifest)
+  extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
+  mutations["extra chart code"] = extra_code
+
   for label, mutated in mutations.items():
     try:
       verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)
@@ -432,7 +441,7 @@ def main() -> None:
   print("PASS layouts header=manifest=ctypes 19; nested records and array extents/strides")
   print("PASS recording policies 29/29; wrapper exports 29/29; docs=writers=manifest=ctypes=wrappers")
   print("PASS chart selector/identity/presence codes")
-  print("PASS ABI mutations rejected manifest=17/17 wrapper=1/1")
+  print("PASS ABI mutations rejected manifest=19/19 wrapper=1/1")
 
 
 if __name__ == "__main__":

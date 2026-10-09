@@ -213,7 +213,7 @@ def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compile
   structs, layout = compiled_layout
   parsed_mirror = abi_layout.parse_py_structs(MIRROR)
   assert len(structs) == len(parsed_mirror) == 19
-  assert not abi_layout.compare_layouts(structs, parsed_mirror, layout)
+  assert not abi_layout.compare_layouts(structs, parsed_mirror, layout, measured=abi_layout.py_layout(parsed_mirror))
   manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
   for name, record in manifest["layouts"].items():
     assert record["size"] == layout[name]
@@ -245,6 +245,15 @@ def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compile
       '    locals()["_fields_"] = '
       "[(name, c_int32 if kind is c_uint32 else kind) for name, kind in _fields_]\n\n"
       "class _ChartHousesV1(Structure):",
+    ),
+    lambda source: (
+      source + "\nChartSnapshotV1 = _ChartSnapshotV1\n"
+      "_ChartSnapshotV1 = type('_ChartSnapshotV1', (Structure,), {'_fields_': "
+      "[('valid', c_bool), ('jde_tt', c_double), ('jd_ut1', c_double), "
+      "('bodies', _ChartBodyV1 * 14), ('houses', _ChartHousesV1)]})\n"
+    ),
+    lambda source: source.replace(
+      "class _ChartSnapshotV1(Structure):", "class _ChartSnapshotV1(Structure):\n    _pack_ = 1"
     ),
   ],
 )
@@ -297,8 +306,9 @@ def test_statistics_faults_detect_same_width_types_order_arrays_and_nesting(tmp_
   source = MIRROR.read_text(encoding="utf-8")
   assert old in source, "mutation anchor must exist"
   mutated = mirror(tmp_path, source.replace(old, new, 1))
-  assert abi_layout.compare_layouts(structs, mutated, ground_truth)
-  assert not abi_layout.compare_layouts(structs, abi_layout.parse_py_structs(MIRROR), ground_truth)
+  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=abi_layout.py_layout(mutated))
+  pristine = abi_layout.parse_py_structs(MIRROR)
+  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=abi_layout.py_layout(pristine))
 
 
 def test_statistics_record_set_and_array_stride_faults(compiled_layout):
@@ -306,12 +316,15 @@ def test_statistics_record_set_and_array_stride_faults(compiled_layout):
   parsed = abi_layout.parse_py_structs(MIRROR)
   missing = copy.deepcopy(parsed)
   del missing["DeltaT"]
-  assert abi_layout.compare_layouts(structs, missing, ground_truth)
+  assert abi_layout.compare_layouts(structs, missing, ground_truth, measured=abi_layout.py_layout(missing))
   extra = copy.deepcopy(parsed)
   extra["Extra"] = [("value", "double")]
-  assert abi_layout.compare_layouts(structs, extra, ground_truth)
+  assert abi_layout.compare_layouts(structs, extra, ground_truth, measured=abi_layout.py_layout(extra))
   wrong_stride = dict(ground_truth, **{"ChartSnapshotV1.bodies.stride": 32})
-  assert any("bodies.stride" in finding for finding in abi_layout.compare_layouts(structs, parsed, wrong_stride))
+  assert any(
+    "bodies.stride" in finding
+    for finding in abi_layout.compare_layouts(structs, parsed, wrong_stride, measured=abi_layout.py_layout(parsed))
+  )
 
 
 def test_equal_layout_record_substitution_still_breaks_identity(tmp_path):
@@ -323,8 +336,8 @@ def test_equal_layout_record_substitution_still_breaks_identity(tmp_path):
   pristine = mirror(tmp_path, PY_CONTROL)
   mutated = mirror(tmp_path, PY_CONTROL.replace("_Body * 14", "_Alias * 14"))
   assert abi_layout.py_layout(pristine) == abi_layout.py_layout(mutated)
-  assert not abi_layout.compare_layouts(structs, pristine, ground_truth)
-  assert abi_layout.compare_layouts(structs, mutated, ground_truth)
+  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=abi_layout.py_layout(pristine))
+  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=abi_layout.py_layout(mutated))
 
 
 @pytest.fixture
@@ -389,6 +402,9 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
     "#define CHART_TARGET_CERES INT32_C(14)",
     "enum { CHART_TARGET_Ceres = 14 };",
     "enum { CHART_TARGET_Çeres = 14 };",
+    "enum { CHART_TARGET_PLUTO\\u00c7 = 14 };",
+    "enum { CHART_TARGET_PLUTO\\\nX = 14 };",
+    "enum { MAX_CHART_BODIES = 14 };",
   ],
 )
 def test_chart_code_declarations_cannot_hide_from_inventory(native_verifier, declaration):

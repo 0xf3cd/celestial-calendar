@@ -160,6 +160,8 @@ def run_validation_guards() -> None:
   for name, value in (("year", 2026), ("month", 1), ("day", 1)):
     cases.append(({"civil_dt": replace(CIVIL, **{name: LyingInt(value + 2**32)})}, ValueError))
     cases.append(({"civil_dt": replace(CIVIL, **{name: LyingInt(value - 2**32)})}, ValueError))
+  for year in (2100, 1971):
+    cases.append(({"civil_dt": replace(CIVIL, year=LyingInt(year))}, ValueError))
 
   for name, value in (("year", 2026), ("month", 1), ("day", 1), ("fraction", 0)):
     cases.append(({"civil_dt": replace(CIVIL, **{name: NumericFlag(value)})}, TypeError))
@@ -219,8 +221,8 @@ def run_single_read_inputs() -> None:
       if name in ("year", "month", "day", "fraction"):
         counts = object.__getattribute__(self, "_reads")
         counts[name] = counts.get(name, 0) + 1
-        if counts[name] > 1:
-          return {"year": 1971, "month": 13, "day": 32, "fraction": math.nan}[name]
+        if counts[name] == 1:
+          return {"year": 2026, "month": 1, "day": 1, "fraction": 0.5}[name]
       return object.__getattribute__(self, name)
 
   class ShiftingLocation(celestial.GeoLocation):
@@ -228,12 +230,12 @@ def run_single_read_inputs() -> None:
       if name in ("latitude_deg", "longitude_deg"):
         counts = object.__getattribute__(self, "_reads")
         counts[name] = counts.get(name, 0) + 1
-        if counts[name] > 1:
-          return math.nan
+        if counts[name] == 1:
+          return {"latitude_deg": 51.5, "longitude_deg": 0.0}[name]
       return object.__getattribute__(self, name)
 
-  civil = ShiftingCivil(2026, 1, 1, 0.5)
-  location = ShiftingLocation(51.5, 0.0)
+  civil = ShiftingCivil(1971, 13, 32, math.nan)
+  location = ShiftingLocation(math.nan, math.nan)
   object.__setattr__(civil, "_reads", {})
   object.__setattr__(location, "_reads", {})
   trap = Trap(native_fixture())

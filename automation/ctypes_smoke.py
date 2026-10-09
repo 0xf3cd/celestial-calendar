@@ -7,16 +7,13 @@
 # SPDX-License-Identifier: MIT
 
 import importlib.util
-import tempfile
 
 from datetime import date
-from pathlib import Path
 from types import ModuleType
 from typing import Callable, List, Tuple
 
 from . import paths
-from .abi_layout import c_layout, compare_layouts, runtime_layout
-from .c_abi_schema import parse_c_structs
+from .abi_layout import check_runtime_layout
 from .utils import green_print, red_print, yellow_print
 
 
@@ -56,23 +53,8 @@ def check_ctypes_smoke() -> int:
     red_print(f"Importing statistics/common.py failed (run ./project.py --build first): {e}")
     return 1
 
-  header = paths.proj_root() / "src/shared_lib/celestial.h"
-  try:
-    c_structs = parse_c_structs(header)
-    runtime_structs, measured = runtime_layout(common)
-    with tempfile.TemporaryDirectory(prefix="ctypes_runtime_") as directory:
-      ground_truth = c_layout(c_structs, header, Path(directory))
-    if ground_truth is None:
-      return 1
-    layout_failures = compare_layouts(c_structs, runtime_structs, ground_truth, measured=measured)
-    if layout_failures:
-      for failure in layout_failures:
-        red_print(failure)
-      return 1
-  except (RuntimeError, AttributeError, TypeError, ValueError) as error:
-    red_print(f"Loaded ctypes mirror differs from C: {error}")
+  if check_runtime_layout(common):
     return 1
-  green_print(f"Loaded ctypes records agree with compiled C ({len(c_structs)} structs)")
 
   algo1 = common.LunarAlgo.ALGO_1
   algo3 = common.LunarAlgo.ALGO_3

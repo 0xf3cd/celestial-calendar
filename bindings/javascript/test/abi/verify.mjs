@@ -53,20 +53,6 @@ const headerEntries = declarations.map((signature) => {
 const headerNames = headerEntries.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
-const parseChartCodes = (source) => {
-  const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-  const tokens = new Set(clean.match(/CHART_\p{ID_Continue}*/gu));
-  const codes = {};
-  for (const [, declaration] of clean.matchAll(/^\s*#define\s+(CHART_.*)$/gm)) {
-    const match = declaration.trim().match(/^(CHART_\w+)\s+UINT32_C\(([0-9]+)\)$/);
-    assert(match, `unsupported chart code declaration: ${declaration}`);
-    assert(!Object.hasOwn(codes, match[1]), `duplicate chart code: ${match[1]}`);
-    codes[match[1]] = Number(match[2]);
-  }
-  assert(Object.keys(codes).length, "missing chart codes");
-  sameSet("closed chart code tokens", tokens, Object.keys(codes));
-  return codes;
-};
 uniqueCount("celestial.h exports", headerNames, 30);
 uniqueCount("internal bindings", bindingNames, 30);
 sameSet("header = bindings", headerNames, bindingNames);
@@ -132,6 +118,23 @@ const parseHeaderLayouts = (source) => {
   assert(!/\btypedef\s+struct\b/.test(clean.replace(recordPattern, "")), "unsupported C record declaration");
   return layouts;
 };
+
+const parseChartCodes = (source) => {
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  assert(!/[^\x00-\x7f]|\\/.test(clean), "non-ASCII or backslash in chart code text");
+  const tokens = new Set(clean.match(/CHART_\w*/g));
+  const codes = {};
+  for (const [, declaration] of clean.matchAll(/^\s*#define\s+(CHART_.*)$/gm)) {
+    const match = declaration.trim().match(/^(CHART_\w+)\s+UINT32_C\(([0-9]+)\)$/);
+    assert(match, `unsupported chart code declaration: ${declaration}`);
+    assert(!Object.hasOwn(codes, match[1]), `duplicate chart code: ${match[1]}`);
+    codes[match[1]] = Number(match[2]);
+  }
+  assert(Object.keys(codes).length, "missing chart codes");
+  sameSet("closed chart code tokens", tokens, Object.keys(codes));
+  return codes;
+};
+
 const parsedLayouts = parseHeaderLayouts(header);
 const parsedCodes = parseChartCodes(header);
 
@@ -175,7 +178,6 @@ sameSet("recording docs = implementation writers", documentedRecording, implemen
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
 const verifyManifest = (candidate) => {
-  assert.deepEqual(candidate.chart_v1_codes, parsedCodes, "header = manifest chart codes");
   const manifestNames = candidate.exports.map(({ name }) => name);
   uniqueCount("manifest exports", manifestNames, 30);
   sameSet("header = manifest", headerNames, manifestNames);
@@ -205,6 +207,7 @@ const verifyManifest = (candidate) => {
     assert.deepEqual(candidate.layouts[name], parsedLayouts[name], `layout ${name}`);
   }
   assert.deepEqual(LAYOUTS, candidate.layouts, "runtime layouts = manifest layouts");
+  assert.deepEqual(candidate.chart_v1_codes, parsedCodes, "header = manifest chart codes");
 
   sameSet("manifest + malloc/free = build recipe", [...manifestNames, "malloc", "free"], recipeExports);
   const manifestRecording = candidate.exports.filter(({ recording }) => recording).map(({ name }) => name);
@@ -267,7 +270,15 @@ const runMutationSelfTests = (candidate) => {
   wrongPresence.chart_v1_codes.CHART_PRESENT_DISTANCE = 4;
   mutations.push(["chart presence bit", wrongPresence]);
 
-  assert.equal(mutations.length, 13, "ABI mutation denominator");
+  const missingCode = structuredClone(candidate);
+  delete missingCode.chart_v1_codes.CHART_PRESENT_DISTANCE;
+  mutations.push(["missing chart code", missingCode]);
+
+  const extraCode = structuredClone(candidate);
+  extraCode.chart_v1_codes.CHART_TARGET_CERES = 14;
+  mutations.push(["extra chart code", extraCode]);
+
+  assert.equal(mutations.length, 15, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -289,4 +300,4 @@ assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
 console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
 console.log("PASS layouts header=manifest=bindings 19; memory growth enabled in recipe");
 console.log("PASS recording docs=writers=manifest=binding error policy 29");
-console.log("PASS per-export fill protocols; ABI mutations rejected 13/13");
+console.log("PASS per-export fill protocols; ABI mutations rejected 15/15");
