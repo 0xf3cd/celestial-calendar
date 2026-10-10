@@ -541,6 +541,12 @@ for (const fraction of [NaN, Infinity, -Infinity, -0.1, 1, 1e100]) invalidChart(
 for (const latitude_deg of [NaN, Infinity, -Infinity, -90, 90]) invalidChart({ latitude_deg }, "location.");
 for (const longitude_deg of [NaN, Infinity, -Infinity, -181, 181]) invalidChart({ longitude_deg }, "location.");
 invalidChart({ year: 1971, civil_scale_code: 0 }, "1972");
+
+invalidChart({ year: 1885, fraction: 0, civil_scale_code: 1 }, "Chart JDE(TT)");
+validChart({ year: 1885, day: 3, fraction: 0, civil_scale_code: 1 });
+invalidChart({ year: 2099, month: 12, day: 31, fraction: 0.999999, civil_scale_code: 1 }, "Chart JDE(TT)");
+validChart({ year: 2099, month: 12, day: 31, fraction: 0.5, civil_scale_code: 1 });
+
 invalidChart({ year: 2035, month: 6, delta_t_model_code: 4 });
 validChart({ year: 2035, month: 6 });
 for (const latitude_deg of [-70, 70]) {

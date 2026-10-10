@@ -28,7 +28,7 @@ REPO = HERE.parents[3]
 
 # Import the standalone grammar without automation's build-tool package initialization.
 sys.path.insert(0, str(REPO / "automation"))
-from c_abi_schema import parse_c_structs_text, split_field_type  # noqa: E402
+from c_abi_schema import C_TO_CTYPES, parse_c_structs_text, split_field_type  # noqa: E402
 
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
@@ -46,12 +46,7 @@ TYPE_LAYOUT = {
   "double": (8, 8),
 }
 CTYPE_NAMES = {
-  ctypes.c_bool: "bool",
-  ctypes.c_uint8: "uint8_t",
-  ctypes.c_uint16: "uint16_t",
-  ctypes.c_int32: "int32_t",
-  ctypes.c_uint32: "uint32_t",
-  ctypes.c_double: "double",
+  **{getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()},
   ctypes.c_char_p: "const char *",
   _binding.P_U32: "uint32_t *",
   _binding.P_DOUBLE: "double *",
