@@ -527,6 +527,88 @@ CELESTIAL_API DeltaT delta_t_algo5(double year);
 CELESTIAL_API DeltaT delta_t(double year);
 
 
+/* ---------- Fixed-version Chart Snapshot ---------- */
+
+#define CHART_CIVIL_SCALE_UTC UINT32_C(0)
+#define CHART_CIVIL_SCALE_UT1 UINT32_C(1)
+
+#define CHART_HOUSE_SYSTEM_EQUAL      UINT32_C(0)
+#define CHART_HOUSE_SYSTEM_WHOLE_SIGN UINT32_C(1)
+#define CHART_HOUSE_SYSTEM_PLACIDUS   UINT32_C(2)
+
+#define CHART_DELTA_T_MODEL_DEFAULT UINT32_C(0)
+#define CHART_DELTA_T_MODEL_ALGO1   UINT32_C(1)
+#define CHART_DELTA_T_MODEL_ALGO2   UINT32_C(2)
+#define CHART_DELTA_T_MODEL_ALGO3   UINT32_C(3)
+#define CHART_DELTA_T_MODEL_ALGO4   UINT32_C(4)
+#define CHART_DELTA_T_MODEL_ALGO5   UINT32_C(5)
+
+#define CHART_TARGET_SUN             UINT32_C(0)
+#define CHART_TARGET_MOON            UINT32_C(1)
+#define CHART_TARGET_MERCURY         UINT32_C(2)
+#define CHART_TARGET_VENUS           UINT32_C(3)
+#define CHART_TARGET_MARS            UINT32_C(4)
+#define CHART_TARGET_JUPITER         UINT32_C(5)
+#define CHART_TARGET_SATURN          UINT32_C(6)
+#define CHART_TARGET_URANUS          UINT32_C(7)
+#define CHART_TARGET_NEPTUNE         UINT32_C(8)
+#define CHART_TARGET_PLUTO           UINT32_C(9)
+#define CHART_TARGET_MEAN_ASCENDING  UINT32_C(10)
+#define CHART_TARGET_MEAN_DESCENDING UINT32_C(11)
+#define CHART_TARGET_TRUE_ASCENDING  UINT32_C(12)
+#define CHART_TARGET_TRUE_DESCENDING UINT32_C(13)
+
+#define CHART_PRESENT_LATITUDE UINT32_C(1)
+#define CHART_PRESENT_DISTANCE UINT32_C(2)
+
+/** @brief One geocentric target in the true ecliptic and equinox of date. */
+typedef struct ChartBodyV1 {
+  uint32_t target_code; /* A CHART_TARGET_* code; records follow code order 0-13. */
+  uint32_t present_fields; /* CHART_PRESENT_* bits; absent fields are unused storage, not sentinels. */
+  double longitude_deg; /* In [0, 360). */
+  double latitude_deg; /* Present for every target, including the nodes' known zero latitude. */
+  double distance_au; /* Present for Sun, Moon and planets; absent for nodes. */
+  double longitude_rate_deg_per_tt_day; /* Signed rate; negative means retrograde. */
+} ChartBodyV1;
+
+/** @brief Four axes and twelve cusps in degrees, each in [0, 360); cusps are houses 1-12. */
+typedef struct ChartHousesV1 {
+  double ascendant_deg;
+  double midheaven_deg;
+  double descendant_deg;
+  double imum_coeli_deg;
+  double cusps_deg[12];
+} ChartHousesV1;
+
+/** @brief An owned complete V1 snapshot; consume the payload only when valid is true. */
+typedef struct ChartSnapshotV1 {
+  bool valid;
+  double jd_ut1;
+  double jde_tt;
+  ChartBodyV1 bodies[14];
+  ChartHousesV1 houses;
+} ChartSnapshotV1;
+
+/**
+ * @brief Calculate a complete fixed-version chart at an explicitly scaled civil instant.
+ * @param year Gregorian civil year in [1885, 2100).
+ * @param month Gregorian month in [1, 12].
+ * @param day A valid day of the Gregorian month.
+ * @param fraction Finite fraction of the civil day in [0, 1); inserted leap seconds are outside the input.
+ * @param civil_scale_code CHART_CIVIL_SCALE_UTC (from 1972-01-01) or CHART_CIVIL_SCALE_UT1.
+ * @param latitude_deg North-positive latitude in (-90, 90).
+ * @param longitude_deg East-positive longitude in [-180, 180].
+ * @param house_system_code A CHART_HOUSE_SYSTEM_* code; Placidus rejects polar geometry.
+ * @param delta_t_model_code A CHART_DELTA_T_MODEL_* code; DEFAULT selects Algo5.
+ * @returns A ChartSnapshotV1 by value. On failure valid is false and last_error reports the cause;
+ *          invalid payload and padding bytes have no contract. There is no partial result.
+ * @note JDE(TT) must be in [2409543.875, 2488069.125); Algo4 additionally requires JDE(TT) < 2464328.5.
+ *       UT1 derived from UTC is modelled through the selected Delta T, not measured DUT1.
+ *       Location affects houses only; timezone conversion is the caller's responsibility.
+ */
+CELESTIAL_API ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -133,6 +133,37 @@ class DeltaT(ctypes.Structure):
   _fields_ = [("valid", ctypes.c_bool), ("value", ctypes.c_double)]
 
 
+class ChartBodyV1(ctypes.Structure):
+  _fields_ = [
+    ("target_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("longitude_deg", ctypes.c_double),
+    ("latitude_deg", ctypes.c_double),
+    ("distance_au", ctypes.c_double),
+    ("longitude_rate_deg_per_tt_day", ctypes.c_double),
+  ]
+
+
+class ChartHousesV1(ctypes.Structure):
+  _fields_ = [
+    ("ascendant_deg", ctypes.c_double),
+    ("midheaven_deg", ctypes.c_double),
+    ("descendant_deg", ctypes.c_double),
+    ("imum_coeli_deg", ctypes.c_double),
+    ("cusps_deg", ctypes.c_double * 12),
+  ]
+
+
+class ChartSnapshotV1(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("jd_ut1", ctypes.c_double),
+    ("jde_tt", ctypes.c_double),
+    ("bodies", ChartBodyV1 * 14),
+    ("houses", ChartHousesV1),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
@@ -173,6 +204,20 @@ BINDING_SPECS = {
   "delta_t_algo4": ((ctypes.c_double,), DeltaT),
   "delta_t_algo5": ((ctypes.c_double,), DeltaT),
   "delta_t": ((ctypes.c_double,), DeltaT),
+  "chart_snapshot_v1": (
+    (
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+    ),
+    ChartSnapshotV1,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -194,6 +239,9 @@ STRUCT_TYPES = {
     LunarDate,
     GregorianDate,
     DeltaT,
+    ChartBodyV1,
+    ChartHousesV1,
+    ChartSnapshotV1,
   )
 }
 

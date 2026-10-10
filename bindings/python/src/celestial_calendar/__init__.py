@@ -15,12 +15,22 @@ import math as _math
 from dataclasses import dataclass as _dataclass
 from datetime import date as _date
 from datetime import datetime as _datetime
+from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
+from operator import index as _index
 from typing import TypeVar as _TypeVar
 
-from . import _binding
+from . import _binding, chart as _chart
 from ._version import VERSION as __version__
+from .chart import BodyState as BodyState
+from .chart import ChartHouses as ChartHouses
+from .chart import ChartSnapshot as ChartSnapshot
+from .chart import ChartTarget as ChartTarget
+from .chart import ChartTimes as ChartTimes
+from .chart import CivilScale as CivilScale
+from .chart import GeoLocation as GeoLocation
+from .chart import HouseSystem as HouseSystem
 
 
 class LogVerbosity(_StrEnum):
@@ -229,6 +239,19 @@ _DELTA_T_EXPORT = {
   DeltaTModel.ALGO4: "delta_t_algo4",
   DeltaTModel.ALGO5: "delta_t_algo5",
 }
+
+_CHART_DELTA_T_MODEL = {
+  DeltaTModel.DEFAULT: 0,
+  DeltaTModel.ALGO1: 1,
+  DeltaTModel.ALGO2: 2,
+  DeltaTModel.ALGO3: 3,
+  DeltaTModel.ALGO4: 4,
+  DeltaTModel.ALGO5: 5,
+}
+
+_MIN_CHART_YEAR = 1885
+_MAX_CHART_YEAR = 2099
+_MIN_CHART_UTC_YEAR = 1972
 
 
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
@@ -638,11 +661,96 @@ def delta_t(year: float, model: DeltaTModel = DeltaTModel.DEFAULT) -> float:
   return result.value
 
 
+def chart_snapshot(
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  location: GeoLocation,
+  system: HouseSystem,
+  model: DeltaTModel = DeltaTModel.DEFAULT,
+) -> ChartSnapshot:
+  """Calculate an immutable chart from explicit UTC or UT1 civil input.
+
+  Civil years are 1885-2099; UTC starts at 1972-01-01. Latitude is north-positive in (-90, 90),
+  longitude east-positive in [-180, 180], and fraction is in [0, 1). DEFAULT selects Algo5.
+  The native core owns time conversion, joint TT/model domains and Placidus polar limits.
+  The converted JDE(TT) must be in [2409543.875, 2488069.125); Algo4 also requires JDE < 2464328.5.
+  UTC-derived UT1 is modelled, not observed DUT1. Failure never returns a partial chart.
+
+  Raises:
+    TypeError: If an input has the wrong record, enum or scalar type.
+    ValueError: If a raw civil or location value is invalid or non-finite.
+    CelestialError: If native calculation fails or its successful payload is malformed.
+  """
+  checked_scale = _enum(scale, CivilScale, "scale")
+  checked_system = _enum(system, HouseSystem, "system")
+  checked_model = _enum(model, DeltaTModel, "model")
+  if not any(checked_scale is member for member in CivilScale) or not any(
+    checked_system is member for member in HouseSystem
+  ):
+    raise ValueError("scale and system must be known chart enum members")
+  if not any(checked_model is member for member in _CHART_DELTA_T_MODEL):
+    raise ValueError("model must be a known DeltaTModel member")
+
+  if not isinstance(civil_dt, CivilDateTime):
+    raise TypeError("civil_dt must be a CivilDateTime")
+  year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
+  if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
+    raise TypeError("chart civil fields must be numbers, not enum members")
+  for name, number in (("year", year), ("month", month), ("day", day)):
+    if isinstance(number, bool) or not isinstance(number, int):
+      raise TypeError(f"civil_dt.{name} must be an integer")
+  year, month, day = _index(year), _index(month), _index(day)
+  _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
+  if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
+    raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
+  try:
+    value = _civil_datetime(CivilDateTime(year, month, day, fraction), "civil_dt")
+  except OverflowError as error:
+    raise ValueError("chart civil fraction must be a finite real number") from error
+
+  if not isinstance(location, GeoLocation):
+    raise TypeError("location must be a GeoLocation")
+  latitude_value, longitude_value = location.latitude_deg, location.longitude_deg
+  if any(isinstance(value, _Enum) for value in (latitude_value, longitude_value)):
+    raise TypeError("chart location must contain real numbers, not enum members")
+  try:
+    latitude = _finite(latitude_value, "location.latitude_deg")
+    longitude = _ranged_float(longitude_value, "location.longitude_deg", -180.0, 180.0)
+  except OverflowError as error:
+    raise ValueError("chart location must contain finite real numbers") from error
+  if not -90.0 < latitude < 90.0:
+    raise ValueError("location.latitude_deg must be in (-90, 90)")
+
+  result = _binding.call(
+    "chart_snapshot_v1",
+    *value,
+    checked_scale.value,
+    latitude,
+    longitude,
+    checked_system.value,
+    _CHART_DELTA_T_MODEL[checked_model],
+  )
+
+  try:
+    _valid(result, "chart_snapshot")
+    return _chart._from_native(result)
+  except (AttributeError, TypeError, ValueError, OverflowError) as error:
+    raise CelestialError("chart_snapshot", f"Malformed native chart snapshot: {error}", recorded=False) from error
+
+
 __all__ = [
+  "BodyState",
   "CelestialError",
+  "ChartHouses",
+  "ChartSnapshot",
+  "ChartTarget",
+  "ChartTimes",
   "CivilDateTime",
+  "CivilScale",
   "DeltaTModel",
+  "GeoLocation",
   "GregorianDate",
+  "HouseSystem",
   "Jieqi",
   "JieqiMoment",
   "LogVerbosity",
@@ -656,6 +764,7 @@ __all__ = [
   "SunCoordinate",
   "__version__",
   "apparent_solar_time",
+  "chart_snapshot",
   "delta_t",
   "equation_of_time",
   "gregorian_to_lunar",

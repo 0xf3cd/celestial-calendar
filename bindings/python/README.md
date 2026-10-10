@@ -5,7 +5,7 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 
 [English guide](https://github.com/0xf3cd/celestial-calendar/blob/main/README_EN.md)
 
-本文对应当前 `0.7.0` 源码。PyPI 上的版本可能滞后；以下安装命令获取已发布版本，不表示 `0.7.0` 已发布。
+本文以 `0.7.0` 为版本基线，也说明尚未发布的源码 API。PyPI 上的版本可能滞后；以下安装命令获取已发布版本。
 使用示例前请核对安装版本是否提供相应 API；需要当前源码时，可按下文从完整 checkout 构建本地 wheel。
 
 ## 安装
@@ -57,6 +57,32 @@ print(jde)
 print(winter_solstice.moment_ut1)
 ```
 
+### 同一瞬间的完整星盘快照
+
+以下 `chart_snapshot` 是尚未发布的源码 API；先从完整 checkout 构建并安装 wheel。
+这里明确输入 **2026-01-01 12:00 UTC**，不读取主机时区，也不把 UTC 当作 UT1。
+
+```python
+import celestial_calendar as celestial
+
+snapshot = celestial.chart_snapshot(
+  celestial.CivilDateTime(2026, 1, 1, 0.5),
+  celestial.CivilScale.UTC,
+  celestial.GeoLocation(51.5, 0.0),
+  celestial.HouseSystem.PLACIDUS,
+)
+print(snapshot.times.jd_ut1, snapshot.times.jde_tt)
+for body in snapshot.bodies:
+  print(body.target.name, body.longitude_deg, body.longitude_rate_deg_per_tt_day, body.distance_au)
+print(snapshot.houses.cusps_deg)
+```
+
+结果是自持有的冻结 dataclass，天体和宫头集合为元组。十四项顺序为日、月、水星至冥王星、
+平均升/降交点、真升/降交点；每项有视地心黄经、纬度和带符号黄经速率。
+黄经使用真黄道与日期分点，角度单位为度，距离统一为 AU，速率为度/TT 日；负速率表示逆行。
+节点纬度是已知的零，距离为 `None`。四轴与十二宫头均为 `[0, 360)` 度，宫头元组从第一宫开始。
+经度东正西负，纬度北正南负；地点只影响宫位。完整数值见[共享重放示例](../../docs/examples/chart_snapshot/README.md)。
+
 ## 平台与本地构建
 
 正式发布使用下列四种平台的 wheel；PyPI 与对应
@@ -100,7 +126,7 @@ deactivate
 
 扁平的公开 API 使用不可变 dataclass 与枚举。`CivilDateTime` 有四个字段：`year`、`month`、`day`，
 以及 `[0, 1)` 内的有限日小数 `fraction`，没有单独的时、分、秒字段。
-时间尺度由函数名或字段名标明；民用时刻不会隐式转换成 Python 的 `datetime` 类型。
+时间尺度由函数名、字段名或 `CivilScale` 标明；民用时刻不会隐式转换成 Python 的 `datetime` 类型。
 
 错误输入类型（包括错误枚举的成员）抛出 `TypeError`。未通过有限性、范围或定义域校验的值抛出 `ValueError`。
 原生边界报告的失败抛出 `CelestialError`，其 `operation` 属性为公开函数名，`recorded` 属性表明消息是否来自
@@ -125,6 +151,23 @@ deactivate
 
 `new_moons_after(jde, count)` 接受 `[0, 4096]` 内的 `count`，零返回 `()`。
 上限使单个原生输出缓冲区不超过 32 KiB。
+
+### 星盘输入与失败边界
+
+`chart_snapshot(civil_dt, scale, location, system, model=DeltaTModel.DEFAULT)` 接受 `CivilDateTime`、
+`CivilScale.UTC` / `UT1`、`GeoLocation`，以及 `HouseSystem.EQUAL` / `WHOLE_SIGN` / `PLACIDUS`。
+`DEFAULT` 与 `ALGO5` 相同；其他模型用既有 `DeltaTModel` 显式选择。它不接受标准库 `datetime`，
+本地钟表时间须由调用者先转换成声明的输入时标，不能丢弃时区后直接传入。
+
+Python 在原生计算前拒绝错误类型、未知枚举、无效公历日期、非有限数和原始值越界：
+公历年为 `[1885, 2100)`，日小数为 `[0, 1)`，UTC 从 1972-01-01 开始；纬度为 `(-90, 90)`，
+经度为 `[-180, 180]`。原生核心负责转换后 TT 的共同域 `[2409543.875, 2488069.125)` JDE，
+Algo4 额外要求 JDE `< 2464328.5`，以及 Placidus 随日期变化的极区限制；这些失败抛 `CelestialError`，
+不返回部分结果，也不替换宫制。原始民用年份合法不保证转换后的完整快照可计算。
+
+UTC 通过闰秒表到 TT，再用所选 Delta T 模型得到 UT1；该 UT1 是模型值，不是观测 DUT1。
+1972 年前须使用 UT1，未来 Delta AT 保持表内最后值；插入的闰秒不在民用日小数输入内。
+Python 结果复制自固定的 C V1 协议，不保留原生缓冲区；不兼容的字段或天体集合扩展使用新版本协议。
 
 ### 纯日期桥接与阴历往返
 

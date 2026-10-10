@@ -25,12 +25,17 @@ from celestial_calendar import _binding
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
+
+# Import the standalone grammar without automation's build-tool package initialization.
+sys.path.insert(0, str(REPO / "automation"))
+from c_abi_schema import C_TO_CTYPES, parse_c_structs_text, split_field_type  # noqa: E402
+
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
 PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
-EXPECTED_EXPORT_COUNT = 29
-EXPECTED_LAYOUT_COUNT = 16
-EXPECTED_RECORDING_COUNT = 28
+EXPECTED_EXPORT_COUNT = 30
+EXPECTED_LAYOUT_COUNT = 19
+EXPECTED_RECORDING_COUNT = 29
 
 TYPE_LAYOUT = {
   "bool": (1, 1),
@@ -41,12 +46,7 @@ TYPE_LAYOUT = {
   "double": (8, 8),
 }
 CTYPE_NAMES = {
-  ctypes.c_bool: "bool",
-  ctypes.c_uint8: "uint8_t",
-  ctypes.c_uint16: "uint16_t",
-  ctypes.c_int32: "int32_t",
-  ctypes.c_uint32: "uint32_t",
-  ctypes.c_double: "double",
+  **{getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()},
   ctypes.c_char_p: "const char *",
   _binding.P_U32: "uint32_t *",
   _binding.P_DOUBLE: "double *",
@@ -93,23 +93,57 @@ def align_to(value: int, alignment: int) -> int:
 def parse_header_layouts(header: str) -> dict[str, dict[str, object]]:
   """Compute native 64-bit struct layouts from the C field schemas."""
   layouts = {}
-  for match in re.finditer(r"typedef struct (\w+)\s*\{([\s\S]*?)\}\s*\1;", header):
-    name, raw_body = match.groups()
-    body = re.sub(r"/\*[\s\S]*?\*/", "", raw_body)
-    fields = [
-      {"name": field_name, "type": field_type}
-      for field_type, field_name in re.findall(r"\b(bool|uint8_t|uint16_t|int32_t|uint32_t|double)\s+(\w+)\s*;", body)
-    ]
+  for name, schema in parse_c_structs_text(header).items():
+    fields = []
     offset = 0
     alignment = 1
-    for field in fields:
-      size, field_alignment = TYPE_LAYOUT[field["type"]]
+    for field_name, field_type in schema:
+      base, extent = split_field_type(field_type)
+      if base in TYPE_LAYOUT:
+        size, field_alignment = TYPE_LAYOUT[base]
+      else:
+        size, field_alignment = layouts[base]["size"], layouts[base]["alignment"]
       offset = align_to(offset, field_alignment)
-      field["offset"] = offset
-      offset += size
+      field = {"name": field_name, "type": field_type, "offset": offset}
+      if extent is not None:
+        field.update(extent=extent, stride=size)
+      fields.append(field)
+      offset += size * (extent if extent is not None else 1)
       alignment = max(alignment, field_alignment)
     layouts[name] = {"size": align_to(offset, alignment), "alignment": alignment, "fields": fields}
   return layouts
+
+
+def ctypes_type_name(field_type: type) -> str:
+  """Keep record identity and array extents in the normalized ctypes type."""
+  if issubclass(field_type, ctypes.Array):
+    assert field_type._length_ > 0, "unbounded or empty ctypes array"
+    return f"{ctypes_type_name(field_type._type_)}[{field_type._length_}]"
+  if issubclass(field_type, ctypes.Structure):
+    name = field_type.__name__
+    assert _binding.STRUCT_TYPES.get(name) is field_type, f"unregistered ctypes record: {name}"
+    return name
+  assert field_type in CTYPE_NAMES, f"unsupported ctypes type: {field_type}"
+  return CTYPE_NAMES[field_type]
+
+
+def parse_chart_codes(header: str) -> dict[str, int]:
+  """Read the complete fixed-width chart selector/identity/presence code set."""
+  clean = re.sub(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|/\*.*?\*/|//[^\n]*", " ", header, flags=re.DOTALL)
+  assert clean.isascii() and "\\" not in clean and "##" not in clean and "%:" not in clean, (
+    "non-ASCII, backslash or token paste in chart code text"
+  )
+  tokens = set(re.findall(r"CHART_\w*", clean))
+  codes = {}
+  for declaration in re.findall(r"^\s*#define\s+(CHART_.*)$", clean, flags=re.MULTILINE):
+    match = re.fullmatch(r"(CHART_\w+)\s+UINT32_C\(([0-9]+)\)", declaration.strip())
+    assert match is not None, f"unsupported chart code declaration: {declaration}"
+    name, value = match.groups()
+    assert name not in codes, f"duplicate chart code: {name}"
+    codes[name] = int(value)
+  assert codes, "missing chart codes"
+  assert tokens == set(codes), f"unsupported chart code tokens: {sorted(tokens - set(codes))}"
+  return codes
 
 
 def signature_types(signature: str) -> tuple[str, list[str]]:
@@ -131,8 +165,7 @@ def signature_types(signature: str) -> tuple[str, list[str]]:
 def ctypes_types(name: str) -> tuple[str, list[str]]:
   """Return normalized C types from one ctypes declaration."""
   argtypes, restype = _binding.BINDING_SPECS[name]
-  return_type = restype.__name__ if issubclass(restype, ctypes.Structure) else CTYPE_NAMES[restype]
-  return return_type, [CTYPE_NAMES[argtype] for argtype in argtypes]
+  return ctypes_type_name(restype), [ctypes_type_name(argtype) for argtype in argtypes]
 
 
 def function_body(sources: str, name: str) -> str:
@@ -231,11 +264,38 @@ def run_wrapper_mutation_self_test(source: str, expected_exports: set[str], expe
   raise AssertionError("wrapper gate accepted recording mutation")
 
 
+def verify_record_layouts(manifest_layouts: dict[str, object], header_layouts: dict[str, object]) -> None:
+  """Compare the frozen manifest with the header schema and actual ctypes storage."""
+  layout_names = unique(list(manifest_layouts), EXPECTED_LAYOUT_COUNT, "manifest layouts")
+  assert layout_names == set(header_layouts) == set(_binding.STRUCT_TYPES)
+  assert header_layouts == manifest_layouts, "header/manifest field layouts"
+  for name, layout in manifest_layouts.items():
+    structure = _binding.STRUCT_TYPES[name]
+    ctypes_fields = [
+      {"name": field_name, "type": ctypes_type_name(field_type)} for field_name, field_type in structure._fields_
+    ]
+    manifest_fields = [{"name": field["name"], "type": field["type"]} for field in layout["fields"]]
+    assert ctypes_fields == manifest_fields, f"ctypes field schema: {name}"
+    assert ctypes.sizeof(structure) == layout["size"], f"ctypes size: {name}"
+    assert ctypes.alignment(structure) == layout["alignment"], f"ctypes alignment: {name}"
+    for field in layout["fields"]:
+      assert getattr(structure, field["name"]).offset == field["offset"], f"ctypes offset: {name}.{field['name']}"
+      field_type = dict(structure._fields_)[field["name"]]
+      if "extent" in field:
+        assert issubclass(field_type, ctypes.Array), f"ctypes array: {name}.{field['name']}"
+        assert field_type._length_ == field["extent"], f"ctypes extent: {name}.{field['name']}"
+        assert ctypes.sizeof(field_type._type_) == field["stride"], f"ctypes stride: {name}.{field['name']}"
+        assert ctypes.sizeof(field_type) == field["extent"] * field["stride"], (
+          f"ctypes array size: {name}.{field['name']}"
+        )
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
   header_layouts: dict[str, dict[str, object]],
   documented_recording: set[str],
+  header_codes: dict[str, int],
 ) -> None:
   """Require one manifest to agree with the header and loaded ctypes binding."""
   manifest_exports = {entry["name"]: entry for entry in manifest["exports"]}
@@ -261,21 +321,8 @@ def verify_manifest(
   }
   assert manifest["native_width_bits"] == expected_widths
 
-  manifest_layouts = manifest["layouts"]
-  layout_names = unique(list(manifest_layouts), EXPECTED_LAYOUT_COUNT, "manifest layouts")
-  assert layout_names == set(header_layouts) == set(_binding.STRUCT_TYPES)
-  assert header_layouts == manifest_layouts
-  for name, layout in manifest_layouts.items():
-    structure = _binding.STRUCT_TYPES[name]
-    ctypes_fields = [
-      {"name": field_name, "type": CTYPE_NAMES[field_type]} for field_name, field_type in structure._fields_
-    ]
-    manifest_fields = [{"name": field["name"], "type": field["type"]} for field in layout["fields"]]
-    assert ctypes_fields == manifest_fields, f"ctypes field schema: {name}"
-    assert ctypes.sizeof(structure) == layout["size"], f"ctypes size: {name}"
-    assert ctypes.alignment(structure) == layout["alignment"], f"ctypes alignment: {name}"
-    for field in layout["fields"]:
-      assert getattr(structure, field["name"]).offset == field["offset"], f"ctypes offset: {name}.{field['name']}"
+  verify_record_layouts(manifest["layouts"], header_layouts)
+  assert manifest["chart_v1_codes"] == header_codes, "chart selector/identity/presence codes"
 
   manifest_recording = {entry["name"] for entry in manifest["exports"] if entry["recording"]}
   assert manifest_recording == documented_recording
@@ -286,6 +333,7 @@ def run_mutation_self_tests(
   header_exports: dict[str, str],
   header_layouts: dict[str, dict[str, object]],
   documented_recording: set[str],
+  header_codes: dict[str, int],
 ) -> None:
   """Prove each ABI identity dimension rejects one directed defect."""
   mutations = {}
@@ -316,9 +364,48 @@ def run_mutation_self_tests(
   last_error_entry["recording"] = True
   mutations["recording last_error"] = recording_reader
 
+  for label, record, index, key, value in (
+    ("missing field", "ChartBodyV1", 0, None, None),
+    ("unknown field", "ChartBodyV1", 0, "name", "unknown"),
+    ("identity signedness", "ChartBodyV1", 0, "type", "int32_t"),
+    ("presence signedness", "ChartBodyV1", 1, "type", "int32_t"),
+    ("array type extent", "ChartHousesV1", 4, "type", "double[11]"),
+    ("array extent", "ChartSnapshotV1", 3, "extent", 13),
+    ("array stride", "ChartSnapshotV1", 3, "stride", 32),
+    ("nested type", "ChartSnapshotV1", 4, "type", "ChartBodyV1"),
+  ):
+    mutated = copy.deepcopy(manifest)
+    fields = mutated["layouts"][record]["fields"]
+    if key is None:
+      fields.pop(index)
+    else:
+      fields[index][key] = value
+    mutations[label] = mutated
+
+  wrong_chart_recording = copy.deepcopy(manifest)
+  next(entry for entry in wrong_chart_recording["exports"] if entry["name"] == "chart_snapshot_v1")["recording"] = False
+  mutations["chart recording policy"] = wrong_chart_recording
+
+  wrong_identity = copy.deepcopy(manifest)
+  wrong_identity["chart_v1_codes"]["CHART_TARGET_PLUTO"] = 10
+  mutations["chart identity code"] = wrong_identity
+
+  wrong_presence = copy.deepcopy(manifest)
+  wrong_presence["chart_v1_codes"]["CHART_PRESENT_DISTANCE"] = 4
+  mutations["chart presence bit"] = wrong_presence
+
+  missing_code = copy.deepcopy(manifest)
+  del missing_code["chart_v1_codes"]["CHART_PRESENT_DISTANCE"]
+  mutations["missing chart code"] = missing_code
+
+  extra_code = copy.deepcopy(manifest)
+  extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
+  mutations["extra chart code"] = extra_code
+
+  assert len(mutations) == 19, "ABI mutation denominator"
   for label, mutated in mutations.items():
     try:
-      verify_manifest(mutated, header_exports, header_layouts, documented_recording)
+      verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)
     except AssertionError:
       continue
     raise AssertionError(f"ABI gate accepted mutation: {label}")
@@ -332,6 +419,7 @@ def main() -> None:
   header_exports = parse_header_exports(header)
   header_names = set(header_exports)
   header_layouts = parse_header_layouts(header)
+  header_codes = parse_chart_codes(header)
 
   assert "Every exported function except `last_error` writes and clears the message" in header
   documented_recording = header_names - {"last_error"}
@@ -343,14 +431,15 @@ def main() -> None:
   expected_wrapper_exports = header_names - {"last_error"}
   verify_wrapper_recording(wrapper_source, expected_wrapper_exports, documented_recording)
 
-  verify_manifest(manifest, header_exports, header_layouts, documented_recording)
-  run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording)
+  verify_manifest(manifest, header_exports, header_layouts, documented_recording, header_codes)
+  run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
-  print("PASS exports header=manifest=ctypes=loaded 29")
-  print("PASS layouts header=manifest=ctypes 16")
-  print("PASS recording policies 28/28; wrapper exports 28/28; docs=writers=manifest=ctypes=wrappers")
-  print("PASS ABI mutations rejected manifest=6/6 wrapper=1/1")
+  print("PASS exports header=manifest=ctypes=loaded 30")
+  print("PASS layouts header=manifest=ctypes 19; nested records and array extents/strides")
+  print("PASS recording policies 29/29; wrapper exports 29/29; docs=writers=manifest=ctypes=wrappers")
+  print("PASS chart selector/identity/presence codes")
+  print("PASS ABI mutations rejected manifest=19/19 wrapper=1/1")
 
 
 if __name__ == "__main__":

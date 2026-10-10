@@ -4,6 +4,13 @@
 
 ### Added
 
+- Fixed-version `chart_snapshot_v1` C ABI and Python `chart_snapshot` (#299), returning owned fourteen-body
+  states, modelled UT1/TT times, four axes and twelve cusps. Explicit UTC/UT1 input and house/model selectors
+  retain the C++ complete-snapshot domains; nodes have zero latitude and absent distance.
+  Python copies the result into frozen dataclasses and tuples, with installed typing and wheel payload checks.
+- Private native/WASM ABI checks for nested records and bounded arrays, preserving all earlier layouts and exports.
+  The complete snapshot increases the raw-WASM budget to 1,300,000 bytes and compressed npm budget to 800,000 bytes;
+  the public JavaScript API remains unchanged.
 - A C++ `astro::chart::calculate` API for an explicitly scaled UTC/UT1 civil instant (#300).
   It returns fourteen geocentric positions and longitude rates, modelled UT1/TT values and house
   axes/cusps. Nodes have no distance; invalid complete-snapshot inputs throw.

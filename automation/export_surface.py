@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Final, List, Optional, Tuple
 
 from . import paths
-from .abi_layout import STRUCT_RE
+from .c_abi_schema import STRUCT_RE
 from .utils import run_cmd, green_print, red_print, yellow_print
 
 

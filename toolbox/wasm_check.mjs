@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { statSync } from "node:fs";
 
-const MAX_WASM_BYTES = 465_000;
+const MAX_WASM_BYTES = 1_300_000;
 const WASM_URL = new URL("../build/wasm/celestial-jieqi.wasm", import.meta.url);
 
 await import("../bindings/javascript/test/abi/verify.mjs");

@@ -104,6 +104,38 @@ raise `TypeError`, Python value guards raise `ValueError`, and native failures r
 A legitimate absence remains `None` or `()`. The [Python API docstrings](bindings/python/src/celestial_calendar/__init__.py)
 provide the per-function contracts in English.
 
+### Complete Chart Snapshot (Unreleased)
+
+Build and install a wheel from the current checkout before using this API:
+
+```python
+import celestial_calendar as celestial
+
+snapshot = celestial.chart_snapshot(
+  celestial.CivilDateTime(2026, 1, 1, 0.5),
+  celestial.CivilScale.UTC,
+  celestial.GeoLocation(51.5, 0.0),
+  celestial.HouseSystem.PLACIDUS,
+)
+print(snapshot.times.jd_ut1, snapshot.times.jde_tt)
+for body in snapshot.bodies:
+  print(body.target.name, body.longitude_deg, body.longitude_rate_deg_per_tt_day, body.distance_au)
+print(snapshot.houses.cusps_deg)
+```
+
+This supplies 2026-01-01 12:00 UTC explicitly. The frozen result owns fourteen body records, four axes and twelve
+cusps; collections are tuples. Positions use the true ecliptic and equinox of date, angles are degrees, distances
+are AU, and longitude rates are signed degrees per TT day. Nodes have zero latitude and `None` distance.
+Negative rate means retrograde. Location affects houses only.
+
+Civil years are `[1885, 2100)`, UTC starts at 1972-01-01, and `DEFAULT` selects Algo5. Raw Python input checks run
+before the native snapshot call; the core owns the converted TT domain `[2409543.875, 2488069.125)`, Algo4's
+additional JDE `< 2464328.5` limit, and date-dependent Placidus polar failures. Those native failures raise
+`CelestialError`, with no partial result or substitute house system. UT1 derived from UTC is modelled using the
+selected Delta T, not observed DUT1. Use explicit UT1 for earlier dates; no `datetime` or implicit timezone
+conversion is accepted. See the [Python contract (Chinese)](bindings/python/README.md#星盘输入与失败边界) and
+[shared replay example](docs/examples/chart_snapshot/README.md).
+
 <a id="javascript"></a>
 ## 2. JavaScript / TypeScript
 

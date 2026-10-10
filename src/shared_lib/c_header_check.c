@@ -75,3 +75,66 @@ _Static_assert(offsetof(GregorianDate, year) == 4 && offsetof(GregorianDate, mon
                offsetof(GregorianDate, day) == 9 && sizeof(GregorianDate) == 12,
                "GregorianDate layout drifted");
 
+_Static_assert(offsetof(ChartBodyV1, target_code) == 0 && offsetof(ChartBodyV1, present_fields) == 4 &&
+               offsetof(ChartBodyV1, longitude_deg) == 8 && offsetof(ChartBodyV1, latitude_deg) == 16 &&
+               offsetof(ChartBodyV1, distance_au) == 24 &&
+               offsetof(ChartBodyV1, longitude_rate_deg_per_tt_day) == 32 &&
+               sizeof(ChartBodyV1) == 40 && _Alignof(ChartBodyV1) == 8, "ChartBodyV1 layout drifted");
+
+_Static_assert(offsetof(ChartHousesV1, ascendant_deg) == 0 && offsetof(ChartHousesV1, midheaven_deg) == 8 &&
+               offsetof(ChartHousesV1, descendant_deg) == 16 && offsetof(ChartHousesV1, imum_coeli_deg) == 24 &&
+               offsetof(ChartHousesV1, cusps_deg) == 32 && sizeof(ChartHousesV1) == 128 &&
+               _Alignof(ChartHousesV1) == 8, "ChartHousesV1 layout drifted");
+
+_Static_assert(offsetof(ChartSnapshotV1, valid) == 0 && offsetof(ChartSnapshotV1, jd_ut1) == 8 &&
+               offsetof(ChartSnapshotV1, jde_tt) == 16 && offsetof(ChartSnapshotV1, bodies) == 24 &&
+               offsetof(ChartSnapshotV1, houses) == 584 && sizeof(ChartSnapshotV1) == 712 &&
+               _Alignof(ChartSnapshotV1) == 8, "ChartSnapshotV1 layout drifted");
+
+_Static_assert((sizeof(((ChartSnapshotV1*)0)->bodies) / sizeof(ChartBodyV1) == 14 &&
+               offsetof(ChartSnapshotV1, bodies[1]) - offsetof(ChartSnapshotV1, bodies[0]) == 40 &&
+               offsetof(ChartSnapshotV1, bodies[13]) == 544) != 0, "ChartSnapshotV1 body array drifted");
+
+_Static_assert((sizeof(((ChartHousesV1*)0)->cusps_deg) / sizeof(double) == 12 &&
+               offsetof(ChartHousesV1, cusps_deg[1]) - offsetof(ChartHousesV1, cusps_deg[0]) == 8 &&
+               offsetof(ChartHousesV1, cusps_deg[11]) == 120 &&
+               offsetof(ChartSnapshotV1, houses.cusps_deg) == 616) != 0, "ChartHousesV1 cusp array drifted");
+
+_Static_assert((_Generic(((ChartBodyV1*)0)->target_code, uint32_t: 1, default: 0) &&
+               _Generic(((ChartBodyV1*)0)->present_fields, uint32_t: 1, default: 0) &&
+               _Generic(((ChartBodyV1*)0)->longitude_deg, double: 1, default: 0) &&
+               _Generic(((ChartBodyV1*)0)->latitude_deg, double: 1, default: 0) &&
+               _Generic(((ChartBodyV1*)0)->distance_au, double: 1, default: 0) &&
+               _Generic(((ChartBodyV1*)0)->longitude_rate_deg_per_tt_day, double: 1, default: 0)) != 0,
+               "ChartBodyV1 field types drifted");
+
+_Static_assert((_Generic(((ChartHousesV1*)0)->ascendant_deg, double: 1, default: 0) &&
+               _Generic(((ChartHousesV1*)0)->midheaven_deg, double: 1, default: 0) &&
+               _Generic(((ChartHousesV1*)0)->descendant_deg, double: 1, default: 0) &&
+               _Generic(((ChartHousesV1*)0)->imum_coeli_deg, double: 1, default: 0) &&
+               _Generic(((ChartHousesV1*)0)->cusps_deg, double*: 1, default: 0) &&
+               _Generic(((ChartSnapshotV1*)0)->valid, bool: 1, default: 0) &&
+               _Generic(((ChartSnapshotV1*)0)->jd_ut1, double: 1, default: 0) &&
+               _Generic(((ChartSnapshotV1*)0)->jde_tt, double: 1, default: 0) &&
+               _Generic(((ChartSnapshotV1*)0)->bodies, ChartBodyV1*: 1, default: 0) &&
+               _Generic(((ChartSnapshotV1*)0)->houses, ChartHousesV1: 1, default: 0)) != 0,
+               "ChartSnapshotV1 or ChartHousesV1 field types drifted");
+
+_Static_assert(_Generic(&chart_snapshot_v1,
+               ChartSnapshotV1 (*)(int32_t, uint32_t, uint32_t, double, uint32_t, double, double, uint32_t, uint32_t): 1,
+               default: 0) != 0, "chart_snapshot_v1 signature drifted");
+
+_Static_assert(CHART_CIVIL_SCALE_UTC == 0 && CHART_CIVIL_SCALE_UT1 == 1 &&
+               CHART_HOUSE_SYSTEM_EQUAL == 0 && CHART_HOUSE_SYSTEM_WHOLE_SIGN == 1 &&
+               CHART_HOUSE_SYSTEM_PLACIDUS == 2 && CHART_DELTA_T_MODEL_DEFAULT == 0 &&
+               CHART_DELTA_T_MODEL_ALGO1 == 1 && CHART_DELTA_T_MODEL_ALGO2 == 2 &&
+               CHART_DELTA_T_MODEL_ALGO3 == 3 && CHART_DELTA_T_MODEL_ALGO4 == 4 &&
+               CHART_DELTA_T_MODEL_ALGO5 == 5, "Chart V1 selector codes drifted");
+
+_Static_assert(CHART_TARGET_SUN == 0 && CHART_TARGET_MOON == 1 && CHART_TARGET_MERCURY == 2 &&
+               CHART_TARGET_VENUS == 3 && CHART_TARGET_MARS == 4 && CHART_TARGET_JUPITER == 5 &&
+               CHART_TARGET_SATURN == 6 && CHART_TARGET_URANUS == 7 && CHART_TARGET_NEPTUNE == 8 &&
+               CHART_TARGET_PLUTO == 9 && CHART_TARGET_MEAN_ASCENDING == 10 &&
+               CHART_TARGET_MEAN_DESCENDING == 11 && CHART_TARGET_TRUE_ASCENDING == 12 &&
+               CHART_TARGET_TRUE_DESCENDING == 13 && CHART_PRESENT_LATITUDE == 1 &&
+               CHART_PRESENT_DISTANCE == 2, "Chart V1 identity or presence codes drifted");
