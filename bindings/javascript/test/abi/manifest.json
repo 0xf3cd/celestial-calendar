@@ -163,7 +163,70 @@
         {"name": "valid", "type": "bool", "offset": 0},
         {"name": "value", "type": "double", "offset": 8}
       ]
+    },
+    "ChartBodyV1": {
+      "size": 40,
+      "alignment": 8,
+      "fields": [
+        {"name": "target_code", "type": "uint32_t", "offset": 0},
+        {"name": "present_fields", "type": "uint32_t", "offset": 4},
+        {"name": "longitude_deg", "type": "double", "offset": 8},
+        {"name": "latitude_deg", "type": "double", "offset": 16},
+        {"name": "distance_au", "type": "double", "offset": 24},
+        {"name": "longitude_rate_deg_per_tt_day", "type": "double", "offset": 32}
+      ]
+    },
+    "ChartHousesV1": {
+      "size": 128,
+      "alignment": 8,
+      "fields": [
+        {"name": "ascendant_deg", "type": "double", "offset": 0},
+        {"name": "midheaven_deg", "type": "double", "offset": 8},
+        {"name": "descendant_deg", "type": "double", "offset": 16},
+        {"name": "imum_coeli_deg", "type": "double", "offset": 24},
+        {"name": "cusps_deg", "type": "double[12]", "offset": 32}
+      ]
+    },
+    "ChartSnapshotV1": {
+      "size": 712,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "jd_ut1", "type": "double", "offset": 8},
+        {"name": "jde_tt", "type": "double", "offset": 16},
+        {"name": "bodies", "type": "ChartBodyV1[14]", "offset": 24},
+        {"name": "houses", "type": "ChartHousesV1", "offset": 584}
+      ]
     }
+  },
+  "chart_v1_codes": {
+    "CHART_CIVIL_SCALE_UTC": 0,
+    "CHART_CIVIL_SCALE_UT1": 1,
+    "CHART_HOUSE_SYSTEM_EQUAL": 0,
+    "CHART_HOUSE_SYSTEM_WHOLE_SIGN": 1,
+    "CHART_HOUSE_SYSTEM_PLACIDUS": 2,
+    "CHART_DELTA_T_MODEL_DEFAULT": 0,
+    "CHART_DELTA_T_MODEL_ALGO1": 1,
+    "CHART_DELTA_T_MODEL_ALGO2": 2,
+    "CHART_DELTA_T_MODEL_ALGO3": 3,
+    "CHART_DELTA_T_MODEL_ALGO4": 4,
+    "CHART_DELTA_T_MODEL_ALGO5": 5,
+    "CHART_TARGET_SUN": 0,
+    "CHART_TARGET_MOON": 1,
+    "CHART_TARGET_MERCURY": 2,
+    "CHART_TARGET_VENUS": 3,
+    "CHART_TARGET_MARS": 4,
+    "CHART_TARGET_JUPITER": 5,
+    "CHART_TARGET_SATURN": 6,
+    "CHART_TARGET_URANUS": 7,
+    "CHART_TARGET_NEPTUNE": 8,
+    "CHART_TARGET_PLUTO": 9,
+    "CHART_TARGET_MEAN_ASCENDING": 10,
+    "CHART_TARGET_MEAN_DESCENDING": 11,
+    "CHART_TARGET_TRUE_ASCENDING": 12,
+    "CHART_TARGET_TRUE_DESCENDING": 13,
+    "CHART_PRESENT_LATITUDE": 1,
+    "CHART_PRESENT_DISTANCE": 2
   },
   "exports": [
     {
@@ -367,6 +430,13 @@
       "signature": "DeltaT delta_t(double year)",
       "return": {"kind": "sret", "layout": "DeltaT"},
       "protocol": {"kind": "sret", "zero": "value=0 is legal when valid=true"},
+      "recording": true
+    },
+    {
+      "name": "chart_snapshot_v1",
+      "signature": "ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code)",
+      "return": {"kind": "sret", "layout": "ChartSnapshotV1"},
+      "protocol": {"kind": "sret", "zero": "valid=false is failure; invalid payload is not consumed; absence uses present_fields"},
       "recording": true
     }
   ]

@@ -180,6 +180,40 @@ export const LAYOUTS = deepFreeze({
       { name: "value", type: "double", offset: 8 },
     ],
   },
+  ChartBodyV1: {
+    size: 40,
+    alignment: 8,
+    fields: [
+      { name: "target_code", type: "uint32_t", offset: 0 },
+      { name: "present_fields", type: "uint32_t", offset: 4 },
+      { name: "longitude_deg", type: "double", offset: 8 },
+      { name: "latitude_deg", type: "double", offset: 16 },
+      { name: "distance_au", type: "double", offset: 24 },
+      { name: "longitude_rate_deg_per_tt_day", type: "double", offset: 32 },
+    ],
+  },
+  ChartHousesV1: {
+    size: 128,
+    alignment: 8,
+    fields: [
+      { name: "ascendant_deg", type: "double", offset: 0 },
+      { name: "midheaven_deg", type: "double", offset: 8 },
+      { name: "descendant_deg", type: "double", offset: 16 },
+      { name: "imum_coeli_deg", type: "double", offset: 24 },
+      { name: "cusps_deg", type: "double[12]", offset: 32 },
+    ],
+  },
+  ChartSnapshotV1: {
+    size: 712,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "jd_ut1", type: "double", offset: 8 },
+      { name: "jde_tt", type: "double", offset: 16 },
+      { name: "bodies", type: "ChartBodyV1[14]", offset: 24 },
+      { name: "houses", type: "ChartHousesV1", offset: 584 },
+    ],
+  },
 });
 
 // Internal metadata for the complete celestial.h surface. Package entry points consume
@@ -214,4 +248,5 @@ export const BINDINGS = Object.freeze([
   binding("delta_t_algo4", "sret:DeltaT", true),
   binding("delta_t_algo5", "sret:DeltaT", true),
   binding("delta_t", "sret:DeltaT", true),
+  binding("chart_snapshot_v1", "sret:ChartSnapshotV1", true),
 ]);

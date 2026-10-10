@@ -13,6 +13,7 @@ from types import ModuleType
 from typing import Callable, List, Tuple
 
 from . import paths
+from .abi_layout import check_runtime_layout
 from .utils import green_print, red_print, yellow_print
 
 
@@ -50,6 +51,9 @@ def check_ctypes_smoke() -> int:
     common = load_common()
   except Exception as e:
     red_print(f"Importing statistics/common.py failed (run ./project.py --build first): {e}")
+    return 1
+
+  if check_runtime_layout(common):
     return 1
 
   algo1 = common.LunarAlgo.ALGO_1
