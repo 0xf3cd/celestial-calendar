@@ -120,6 +120,7 @@ void check_band(const std::span<const HorizonsRow> rows, const Tolerance& tol,
 // 1900–2100 + the Meeus Example 47.a anchor (row 2448724.50). 32 epochs stepped 2283.25 days —
 // incommensurate with the anomalistic/synodic months, scanning all phases and radial velocities.
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: moon_horizons_golden-0.
 const std::vector<HorizonsRow> CORE_ROWS {
   {  2415385.50,   48.3163870,   1.1700667,  370415.286 },  // 1901-Jan-01 00:00 TT, rdot +0.010 km/s
   {  2417668.75,  250.7492890,   3.7936814,  368501.225 },  // 1907-Apr-03 06:00 TT, rdot +0.000 km/s
@@ -157,6 +158,7 @@ const std::vector<HorizonsRow> CORE_ROWS {
 };
 
 // ~501 / ~999 / ~1599 / ~2500 / ~3000 CE: truncation degradation away from the fitted era.
+// Retained data: moon_horizons_golden-1.
 const std::vector<HorizonsRow> EXTENDED_ROWS {
   {  1904000.50,  319.4163685,  -0.0387457,  372646.267 },  // 0500-Nov-14 00:00 TT, rdot +0.043 km/s
   {  2086000.50,  103.8756791,   4.5422788,  380002.831 },  // 0999-Feb-28 00:00 TT, rdot +0.039 km/s
@@ -168,6 +170,7 @@ const std::vector<HorizonsRow> EXTENDED_ROWS {
 // JD 2^22 = 4194304 straddle (~6771 CE; double-precision cliff regression guard, #76 context)
 // and ~9420 CE. Gross-breakage guards only: at |T| ≈ 48–74 centuries the mean-argument
 // extrapolation dominates every residual.
+// Retained data: moon_horizons_golden-2.
 const std::vector<HorizonsRow> FAR_ROWS {
   {  4194303.50,  173.7236957,   0.8425104,  367532.707 },  // 6771-Jul-07 00:00 TT, rdot +0.022 km/s
   {  4194304.50,  187.9429346,  -0.4108899,  369790.010 },  // 6771-Jul-08 00:00 TT, rdot +0.029 km/s

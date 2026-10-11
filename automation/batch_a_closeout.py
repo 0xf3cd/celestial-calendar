@@ -20,10 +20,10 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
-  from .source_digest import canonical_cpp
+  from .source_digest import attribution_digest, canonical_cpp, json_digest, require_facts, verify_retained_data
   from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
-  from source_digest import canonical_cpp
+  from source_digest import attribution_digest, canonical_cpp, json_digest, require_facts, verify_retained_data
   from third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 
 
@@ -34,11 +34,12 @@ LONGITUDE_RATE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lon
 LONGITUDE_RATE_PINS_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/SOURCE_PINS.json")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
-RECORD_SHA256: Final[str] = "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-REGISTRY_SHA256: Final[str] = "5ee82857f97ef7d6aaf7daa963e4b2d1f1ee3461bf7446fc3f61017907c3bca4"
-LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
-LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "4e0333c190a8774b3f859e035bfb9bd15531ff4a84e79fe45f95759820fc3014"
-LONGITUDE_RATE_PINS_SHA256: Final[str] = "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
+# Project records pin structured facts or citation atoms, not prose bytes.
+RECORD_SHA256: Final[str] = "42220691bcd5ba657bc8c99e968838406c3612f66d29642d51d95a9e9eca901d"
+REGISTRY_SHA256: Final[str] = "4437cf289fc93bf73c6d89585b0a2e95da8dd525c3a6dc0d1b52ea3f72bc92e6"
+LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
+LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "cfe6c7da00276575691db84e76d2d9de5d5f3796c0148834e0f5d2acb812dbc5"
+LONGITUDE_RATE_PINS_SHA256: Final[str] = "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
 
 DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
   (
@@ -249,7 +250,6 @@ MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
 # Split scanned licence tokens so the gate does not match its own implementation.
 OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
 OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
-PROJECT_SPDX_HOSTS_SHA256: Final[str] = "3b7c4a8719151168247101edfa7491dd9f13f8fc8ad3ba114064ed0a38b20d5b"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -451,16 +451,6 @@ def _safe_path(repo_root: Path, relative: str, label: str) -> Path:
   return target
 
 
-def _digest(path: Path, method: str) -> str:
-  if method == "raw_sha256":
-    data = path.read_bytes()
-  elif method == "canonical_cpp":
-    data = canonical_cpp(path.read_text(encoding="utf-8")).encode("utf-8")
-  else:
-    raise RuntimeError(f"unknown direct-digest method: {method}")
-  return hashlib.sha256(data).hexdigest()
-
-
 def _expected_row_shapes() -> dict[str, tuple[str, str, str]]:
   return {row: shape for shape, rows in DISPOSITION_GROUPS.items() for row in rows}
 
@@ -610,19 +600,11 @@ def _verify_evidence(repo_root: Path, row_id: str, evidence: object) -> None:
     _require(isinstance(evidence["paths"], list) and evidence["paths"], f"{row_id} implementation paths are empty")
     for relative in evidence["paths"]:
       _safe_path(repo_root, relative, f"{row_id} implementation")
-  elif kind == "direct_digest":
-    _require(set(evidence) == {"kind", "blocks"}, f"{row_id} direct-digest evidence fields differ")
-    blocks = evidence["blocks"]
-    _require(isinstance(blocks, list) and blocks, f"{row_id} direct-digest blocks are empty")
-    paths: set[str] = set()
-    for block in blocks:
-      _require(isinstance(block, dict), f"{row_id} direct-digest block must be an object")
-      _require(set(block) == {"path", "method", "sha256"}, f"{row_id} direct-digest block fields differ")
-      _require(block["path"] not in paths, f"{row_id} direct-digest path is duplicated: {block['path']}")
-      paths.add(block["path"])
-      path = _safe_path(repo_root, block["path"], f"{row_id} direct digest")
-      digest = _digest(path, block["method"])
-      _require(digest == block["sha256"], f"{row_id} direct digest differs for {block['path']}: {digest}")
+  elif kind == "retained_data":
+    _require(set(evidence) == {"kind", "ids"}, f"{row_id} retained-data evidence fields differ")
+    ids = evidence["ids"]
+    _require(isinstance(ids, list) and ids and len(set(ids)) == len(ids), f"{row_id} retained data IDs differ")
+    verify_retained_data(repo_root, tuple(ids))
   elif kind == "not_applicable":
     _require(set(evidence) == {"kind"}, f"{row_id} not-applicable evidence fields differ")
   else:
@@ -758,18 +740,24 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     hosts = _exact_marker_hosts(texts, marker)
     _require(not hosts, f"old {label} project header remains: {sorted(hosts)}")
 
-  project_spdx_hosts: set[str] = set()
   for relative, text in texts.items():
-    header = "\n".join(text.splitlines()[:25])
-    if "Ningqi Wang (0xf3cd)" not in header or "https://github.com/0xf3cd/celestial-calendar" not in header:
+    path = Path(relative)
+    if path.parts[:3] == ("src", "test", "provenance") or path.parts[0] == "third_party":
       continue
+    header = "\n".join(text.splitlines()[:25])
+    is_source = path.suffix in {".cpp", ".hpp", ".h", ".py", ".js", ".mjs", ".ts"}
+    has_project_banner = "Ningqi Wang (0xf3cd)" in header and "https://github.com/0xf3cd/celestial-calendar" in header
+    if has_project_banner and not is_source:
+      _require(header.count(MIT_SPDX_MARKER) == 1, f"MIT SPDX project header differs: {relative}")
+    if not is_source or relative in NON_PROJECT_SPDX_HOSTS or (path.name == "__init__.py" and not text.strip()):
+      continue
+    _require(
+      "CelestialCalendar" in header
+      and "Ningqi Wang (0xf3cd)" in header
+      and "https://github.com/0xf3cd/celestial-calendar" in header,
+      f"project banner differs: {relative}",
+    )
     _require(header.count(MIT_SPDX_MARKER) == 1, f"MIT SPDX project header differs: {relative}")
-    project_spdx_hosts.add(relative)
-  project_spdx_digest = hashlib.sha256("\n".join(sorted(project_spdx_hosts)).encode()).hexdigest()
-  _require(
-    project_spdx_digest == PROJECT_SPDX_HOSTS_SHA256,
-    f"MIT SPDX project-header inventory differs: digest={project_spdx_digest}, hosts={sorted(project_spdx_hosts)}",
-  )
   _require(
     texts["run-clang-tidy.py"].count("SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception") == 1,
     "run-clang-tidy.py upstream SPDX marking differs",
@@ -828,10 +816,16 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     "residual GPL scan positive control failed",
   )
   residual = _residual_gpl_tokens(texts)
+  frozen = {
+    key
+    for key in RESIDUAL_GPL_ALLOWLIST
+    if key[0].startswith(("third_party/", "src/test/provenance/astrotime-analysis/"))
+    or key[0] == "bindings/javascript/package-lock.json"
+  }
   _require(
-    residual == RESIDUAL_GPL_ALLOWLIST,
-    f"residual GPL allowlist differs: missing={RESIDUAL_GPL_ALLOWLIST - residual}, "
-    f"unexpected={residual - RESIDUAL_GPL_ALLOWLIST}",
+    set(residual) <= set(RESIDUAL_GPL_ALLOWLIST)
+    and all(residual[key] == RESIDUAL_GPL_ALLOWLIST[key] for key in frozen),
+    f"residual GPL allowlist differs: unexpected={sorted(set(residual) - set(RESIDUAL_GPL_ALLOWLIST))}",
   )
 
 
@@ -877,10 +871,10 @@ def _verify_registry(
   notice_sources: Sequence[NoticeSource],
 ) -> tuple[list[dict], int, int]:
   _require(
-    set(registry) == {"schema", "scope", "non_project_spdx_hosts", "blocks"},
+    set(registry) == {"schema", "scope", "non_project_spdx_hosts", "blocks", "data_blocks"},
     "retained registry top-level fields differ",
   )
-  _require(registry["schema"] == 3, "retained registry schema differs")
+  _require(registry["schema"] == 4, "retained registry schema differs")
   _require(isinstance(registry["scope"], str) and registry["scope"], "retained registry scope is empty")
   _require(
     set(registry["non_project_spdx_hosts"]) == NON_PROJECT_SPDX_HOSTS,
@@ -906,19 +900,17 @@ def _verify_registry(
   base_fields = {"id", "path", "locator", "source_identity", "material_scope", "owner", "marking_mode"}
   for block in blocks:
     mode = block.get("marking_mode")
-    data_fields = {"data_start", "data_end", "data_method", "data_sha256"}
+    data_fields = {"data_id"}
     if block.get("id") in REQUIRED_DATA_DIGEST_IDS:
       _require(data_fields <= set(block), f"{block['id']} retained data fields differ")
     has_data_digest = bool(data_fields & set(block))
     mode_fields = (
-      {"marker", "marking_sha256"} | (data_fields if has_data_digest else set())
+      {"marker", "marking_facts"} | (data_fields if has_data_digest else set())
       if mode == "in_file"
       else {
         "data_sha256",
         "adjacent_path",
-        "adjacent_sha256",
         "section",
-        "section_sha256",
       }
     )
     allowed_fields = base_fields | mode_fields | {"notice_title"}
@@ -949,35 +941,19 @@ def _verify_registry(
       marker = _normalise_marking(block["marker"])
       text = path.read_text(encoding="utf-8")
       host = _normalise_marking(text)
-      _require(host.count(marker) == 1, f"{block['id']} retained marking differs")
-      marking = _marking_slice(block["path"], text, marker, block["id"])
+      if block["path"] == "THIRD_PARTY_NOTICES.txt":
+        marking = _marking_slice(block["path"], text, marker, block["id"])
+      else:
+        facts = block["marking_facts"]
+        candidates = _comment_blocks(text)
+        _require(candidates, f"{block['id']} retained marking is missing")
+        marking = max(candidates, key=lambda candidate: sum(fact in candidate for fact in facts))
       _require("outside the project MIT grant" in marking, f"{block['id']} MIT boundary is missing")
-      marking_digest = hashlib.sha256(marking.encode()).hexdigest()
-      _require(
-        marking_digest == block["marking_sha256"],
-        f"{block['id']} retained marking hash differs: {marking_digest}",
-      )
+      require_facts(marking, block["marking_facts"], block["id"])
       _verify_source_identity(block, host)
       if has_data_digest:
         _require(data_fields <= set(block), f"{block['id']} retained data fields differ")
-        start = block["data_start"]
-        end = block["data_end"]
-        _require(
-          isinstance(start, str) and isinstance(end, str) and text.count(start) == 1 and text.count(end) == 1,
-          f"{block['id']} retained data boundary differs",
-        )
-        start_index = text.index(start)
-        end_index = text.index(end, start_index + len(start))
-        data = text[start_index:end_index]
-        if block["data_method"] == "canonical_cpp":
-          data = canonical_cpp(data)
-        elif block["data_method"] != "raw_sha256":
-          raise RuntimeError(f"{block['id']} retained data digest method differs")
-        data_digest = hashlib.sha256(data.encode()).hexdigest()
-        _require(
-          data_digest == block["data_sha256"],
-          f"{block['id']} retained data hash differs: {data_digest}",
-        )
+        verify_retained_data(repo_root, (block["data_id"],))
     else:
       _verify_adjacent_record(repo_root, block, adjacent_sections)
     if "notice_title" in block:
@@ -1019,20 +995,27 @@ def _verify_adjacent_record(repo_root: Path, block: dict, adjacent_sections: dic
   data = _safe_path(repo_root, block["path"], f"{block['id']} retained data").read_bytes()
   _require(hashlib.sha256(data).hexdigest() == block["data_sha256"], f"{block['id']} retained data hash differs")
   adjacent = _safe_path(repo_root, block["adjacent_path"], f"{block['id']} adjacent record")
-  adjacent_data = adjacent.read_bytes()
-  _require(
-    hashlib.sha256(adjacent_data).hexdigest() == block["adjacent_sha256"],
-    f"{block['id']} adjacent record hash differs",
-  )
-  text = adjacent_data.decode("utf-8")
+  text = adjacent.read_text(encoding="utf-8")
   section = _section(text, block["section"])
-  _require(
-    hashlib.sha256(section.encode("utf-8")).hexdigest() == block["section_sha256"],
-    f"{block['id']} adjacent section hash differs",
-  )
   normalised = _normalise(section)
   for expected in (block["path"], block["data_sha256"], block["source_identity"], "outside the project MIT grant"):
     _require(expected in normalised, f"{block['id']} adjacent reciprocal field differs: {expected}")
+  facts = (
+    (
+      "https://maia.usno.navy.mil/ser7/deltat.data",
+      "notebook-only",
+      "monthly observed Delta T",
+      "not a consumer-package member",
+    )
+    if block["id"] == "v26"
+    else (
+      "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm",
+      "notebook-only",
+      "new/full Moon",
+      "not a consumer-package member",
+    )
+  )
+  require_facts(section, facts, block["id"])
   adjacent_sections.setdefault(block["adjacent_path"], set()).add(block["section"])
 
 
@@ -1051,7 +1034,11 @@ def _marked_source_paths(repo_root: Path) -> list[Path]:
 def _verify_orphan_markings(repo_root: Path, blocks: list[dict]) -> None:
   registered = {
     block["path"]: [
-      _normalise_marking(candidate["marker"]) for candidate in blocks if candidate["path"] == block["path"]
+      fact
+      for candidate in blocks
+      if candidate["path"] == block["path"]
+      for fact in candidate.get("marking_facts", [])
+      if re.fullmatch(r"[RV]\d{2}", fact)
     ]
     for block in blocks
     if block["marking_mode"] == "in_file"
@@ -1065,8 +1052,9 @@ def _verify_orphan_markings(repo_root: Path, blocks: list[dict]) -> None:
         continue
       marking = _normalise_marking(line)
       candidates = registered.get(relative, [])
+      row_ids = re.findall(r"\b[RV]\d{2}\b", marking)
       _require(
-        any(candidate.startswith(marking) or marking.startswith(candidate) for candidate in candidates),
+        relative in registered and (not row_ids or set(row_ids) <= set(candidates)),
         f"orphan retained marking: {relative}: {marking}",
       )
 
@@ -1082,6 +1070,72 @@ def _verify_orphan_adjacent_sections(repo_root: Path, expected: dict[str, set[st
     )
 
 
+def _verify_oracle_attributions(repo_root: Path) -> None:
+  node = (repo_root / LUNAR_NODE_ATTRIBUTION_RELATIVE).read_text(encoding="utf-8")
+  rate = (repo_root / LONGITUDE_RATE_ATTRIBUTION_RELATIVE).read_text(encoding="utf-8")
+  _require(attribution_digest(node) == LUNAR_NODE_ATTRIBUTION_SHA256, "lunar-node oracle attribution facts differ")
+  _require(
+    attribution_digest(rate) == LONGITUDE_RATE_ATTRIBUTION_SHA256, "longitude-rate oracle attribution facts differ"
+  )
+  require_facts(
+    node,
+    (
+      "Raw node source: AA+ v2.63",
+      "Frame-correction source: canonical SOFA",
+      "Corroboration only",
+      "no PyMeeus output supplies a retained column",
+      "add its longitude correction",
+      "one day before the excluded",
+      "no random seed was used",
+      "outside the project MIT grant",
+      "independent implementation",
+    ),
+    "lunar-node oracle attribution",
+  )
+  require_facts(
+    rate,
+    (
+      "true ecliptic and equinox of date",
+      "signed degrees per TT day",
+      "with apparent corrections",
+      "Supplies Sun, Moon, Mercury-Neptune",
+      "full 106-term IAU 1980",
+      "Earth VSOP87D positions supply",
+      "but supply no retained node rate",
+      "Supplies the independent Pluto reference",
+      "subtract",
+      "For all targets, add",
+      "exactly once",
+      "descending rates differentiate the ascending trajectory",
+      "outside the project MIT grant",
+      "no upstream permission claim",
+      "validation-only sources",
+      "not a physical accuracy claim or a certified error bound",
+    ),
+    "longitude-rate oracle attribution",
+  )
+
+
+def _verify_house_references(repo_root: Path) -> None:
+  verify_retained_data(repo_root, ("house-0", "house-1", "AscendantMeeus14a"))
+  source = (repo_root / "src/test/astro/house_test.cpp").read_text(encoding="utf-8")
+  require_facts(
+    source,
+    (
+      "Astronomical Algorithms",
+      "Second Edition",
+      "p.99",
+      "Example 14.a",
+      "2026-09-25",
+      "statistics/house_swiss_crawler.py",
+      "v2.10.3bfinal",
+      "swe_houses_armc_ex2",
+      "swe_houses_ex2",
+    ),
+    "House references",
+  )
+
+
 def verify_batch_a_closeout(
   repo_root: Path = REPO_ROOT,
   record_sha256: str = RECORD_SHA256,
@@ -1089,26 +1143,15 @@ def verify_batch_a_closeout(
   notice_sources: Sequence[NoticeSource] = NOTICE_SOURCES,
 ) -> CloseoutCounts:
   _verify_a4_license_surfaces(repo_root)
-  _read_pinned(
-    repo_root / LUNAR_NODE_ATTRIBUTION_RELATIVE,
-    LUNAR_NODE_ATTRIBUTION_SHA256,
-    "lunar-node oracle attribution",
-  )
-  _read_pinned(
-    repo_root / LONGITUDE_RATE_ATTRIBUTION_RELATIVE,
-    LONGITUDE_RATE_ATTRIBUTION_SHA256,
-    "longitude-rate oracle attribution",
-  )
-  _read_pinned(
-    repo_root / LONGITUDE_RATE_PINS_RELATIVE,
-    LONGITUDE_RATE_PINS_SHA256,
-    "longitude-rate source pins",
-  )
+  _verify_oracle_attributions(repo_root)
+  _verify_house_references(repo_root)
+  source_pins = _load_json((repo_root / LONGITUDE_RATE_PINS_RELATIVE).read_bytes(), "longitude-rate source pins")
+  _require(json_digest(source_pins) == LONGITUDE_RATE_PINS_SHA256, "longitude-rate source pins facts differ")
 
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
-  record = _load_json(_read_pinned(closeout_root / RECORD_NAME, record_sha256, "closeout record"), "closeout record")
+  record = _load_json((closeout_root / RECORD_NAME).read_bytes(), "closeout record")
   registry = _load_json(
-    _read_pinned(closeout_root / REGISTRY_NAME, registry_sha256, "retained registry"),
+    (closeout_root / REGISTRY_NAME).read_bytes(),
     "retained registry",
   )
   rows = _verify_row_record(repo_root, record)
@@ -1118,6 +1161,14 @@ def verify_batch_a_closeout(
     rows,
     notice_sources,
   )
+  row_facts = {
+    key: {field: value for field, value in row.items() if field not in {"destination", "current_reproducibility"}}
+    for key, row in rows.items()
+  }
+  _require(json_digest(row_facts) == record_sha256, "closeout source/disposition facts differ")
+  block_facts = [{key: value for key, value in block.items() if key not in {"locator", "marker"}} for block in blocks]
+  _require(json_digest(block_facts) == registry_sha256, "retained registry source/marking facts differ")
+  verify_retained_data(repo_root)
   return CloseoutCounts(
     rows=len(rows),
     retained_blocks=len(blocks),

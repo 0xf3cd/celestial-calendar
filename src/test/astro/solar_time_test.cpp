@@ -49,6 +49,7 @@ struct EotRow {
 // an unwrapped E would come out ±357°). Seed 42, generated 2026-07-29. Measured worst
 // residual 3.0e-6° (0.0007 s of time) — tolerance 1e-5° ≈ 3× that.
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: solar_time-0.
 constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
   { 2415495.227896,  +0.261331808 },
   { 2416847.510658,  -0.943318947 },
@@ -136,6 +137,7 @@ constexpr std::array<EotRow, 78> PYMEEUS_ROWS {{
 // systematic gap between the UT1-based mean sun and Meeus's (28.2) mean sun (it grows
 // ∝ ΔT, ~0.0027·ΔT) plus IAU model differences: measured mean 0.17 s, worst 0.21 s of
 // time — tolerance 2e-3° (0.48 s) ≈ 2.3× the worst case.
+// Retained data: solar_time-1.
 constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
   { 2416419.907584,  +4.071353845 },
   { 2417836.673312,  +1.354031150 },
@@ -185,6 +187,7 @@ constexpr std::array<EotRow, 41> SKYFIELD_ROWS {{
 // generated 2026-07-29. Different formula family — catches structural errors (wrap, L0,
 // missing terms) rather than precision. Measured worst gap 2.66 s of time — tolerance
 // 2.5e-2° (6 s) ≈ 2.3× that.
+// Retained data: solar_time-2.
 constexpr std::array<EotRow, 20> NOAA_ROWS {{
   { 2433604.125486,  +3.714276729 },
   { 2434345.277176,  +2.962950714 },
@@ -226,6 +229,7 @@ struct ApparentRow {
 // 0.20 s — tolerance 0.5 s ≈ 2.5× that. New rows must stick to low-|DUT1| epochs
 // (≲ 0.3 s): the documented 0.9 s steering gap would otherwise eat the tolerance.
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: solar_time-3.
 constexpr std::array<ApparentRow, 6> APPARENT_ROWS {{
   { 1992, 10, 13, 0.500000000,   +0.0000, +0.509604750, +0 }, // Greenwich noon
   { 2024,  2, 11, 0.166666667, +120.0000, +0.490145643, +0 }, // 120°E, near the EoT minimum
@@ -244,6 +248,7 @@ struct TransitCase {
 };
 
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: solar_time-4.
 const std::array<TransitCase, 4> TRANSIT_CASES {{
   { 2024,  2, 11, { .latitude = AngleDeg { 39.9042 }, .longitude = AngleDeg { 116.4074 } } },
   { 2024, 11,  3, { .latitude = AngleDeg { 40.7128 }, .longitude = AngleDeg { -74.0060 } } },
@@ -256,6 +261,7 @@ const std::array<TransitCase, 4> TRANSIT_CASES {{
 
 
 TEST(SolarTime, MeeusExample28a) {
+  // Retained reference inputs/values: MeeusExample28a.
   // Meeus Example 28.a: 1992 October 13.0 TD. Book values: L0 = 201°.807200 (via 28.2),
   // apparent α = 198°.378178 (full VSOP87), E = +3°.427351 = 13m42.6s. Our VSOP87D α sits
   // 0.21″ (5.7e-5°) from the book's α and E inherits that gap — tolerance 1.5e-4° ≈ 2.6×.
@@ -271,6 +277,7 @@ TEST(SolarTime, MeeusExample28a) {
 }
 
 TEST(SolarTime, MeanLongitudeAnchorsAtTauPmOne) {
+  // Retained reference inputs/values: MeanLongitudeAnchorsAtTauPmOne.
   // At τ = ±1 (JDE = J2000 ± 365250) every (28.2) coefficient appears at face value, so a
   // high-order transcription error is visible: a τ⁴-term sign flip moves L0 by 1.3e-4° here
   // but only 7e-7° inside 1900–2100 — below every golden tolerance, which is why this anchor

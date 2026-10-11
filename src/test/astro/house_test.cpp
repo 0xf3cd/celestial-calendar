@@ -67,7 +67,9 @@ struct DateCase {
 static_assert(std::is_same_v<astro::rise_set::GeoLocation, astro::GeoLocation>);
 
 TEST(House, AscendantMeeus14a) {
-  // Meeus Example 14.a prints the two horizon intersections as 169°21' and 349°21'; the former
+  // Retained reference inputs/values: AscendantMeeus14a.
+  // Meeus, Astronomical Algorithms, Second Edition, p.99, Example 14.a.
+  // The two printed horizon intersections are 169°21' and 349°21'; the former
   // has H >= 180° and is the rising branch. The printed precision allows half an arcminute.
   const auto ascendant = detail::ascendant(AngleDeg { 75.0 }, AngleDeg { 51.0 }, AngleDeg { 23.44 });
   ASSERT_NEAR(ascendant.deg(), 169.0 + (21.0 / 60.0), 0.5 / 60.0);
@@ -78,6 +80,7 @@ TEST(House, SwissFormulaLevel) {
   // v2.10.3bfinal `swe_houses_armc_ex2`. The 3e-6° formula-level tolerance covers the reference
   // solver's loss of precision immediately inside the Placidus polar limit.
   // NOLINTBEGIN(modernize-use-designated-initializers): positional columns mirror the crawler output.
+  // Retained data: house-0.
   const std::array dataset {
     FormulaCase { "meeus-14",            System::EQUAL,        75.0000000000,  51.0000000000, 23.4400000000, 169.358304802347,  76.188453109242, { 169.358304802347, 199.358304802347, 229.358304802347, 259.358304802347, 289.358304802347, 319.358304802347, 349.358304802347,  19.358304802347,  49.358304802347,  79.358304802347, 109.358304802347, 139.358304802347 } },
     FormulaCase { "meeus-14",            System::WHOLE_SIGN,   75.0000000000,  51.0000000000, 23.4400000000, 169.358304802347,  76.188453109242, { 150.000000000000, 180.000000000000, 210.000000000000, 240.000000000000, 270.000000000000, 300.000000000000, 330.000000000000,   0.000000000000,  30.000000000000,  60.000000000000,  90.000000000000, 120.000000000000 } },
@@ -133,6 +136,7 @@ TEST(House, SwissDateLevel) {
   // v2.10.3bfinal `swe_houses_ex2`. The 1e-4° tolerance covers the different apparent sidereal-time
   // and nutation models while remaining far below the errors from a UT1/TT or longitude-sign swap.
   // NOLINTBEGIN(modernize-use-designated-initializers): positional columns mirror the crawler output.
+  // Retained data: house-1.
   const std::array dataset {
     DateCase { "j2000-greenwich",      System::EQUAL,       2451545.0000000000, 2451545.0007387605,  51.5000000000,    0.0000000000,  24.287305086198, 279.611087800285, {  24.287305086198,  54.287305086198,  84.287305086198, 114.287305086198, 144.287305086198, 174.287305086198, 204.287305086198, 234.287305086198, 264.287305086198, 294.287305086198, 324.287305086198, 354.287305086198 } },
     DateCase { "j2000-greenwich",      System::WHOLE_SIGN,  2451545.0000000000, 2451545.0007387605,  51.5000000000,    0.0000000000,  24.287305086198, 279.611087800285, {   0.000000000000,  30.000000000000,  60.000000000000,  90.000000000000, 120.000000000000, 150.000000000000, 180.000000000000, 210.000000000000, 240.000000000000, 270.000000000000, 300.000000000000, 330.000000000000 } },

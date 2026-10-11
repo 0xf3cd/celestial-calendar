@@ -78,6 +78,7 @@ TEST(Precession, EclipticAnglesAtOneCentury) {
 // ---- Meeus worked examples (the absolute-correctness anchor) -----------------------------------
 
 TEST(Precession, MeeusExample21bEcliptic) {
+  // Retained reference inputs/values: MeeusExample21bEcliptic.
   // Example 21.b: J2000 → epoch −214/6/30 (JDE 1643074.5), λ₀ = 149.48194°, β₀ = 1.76549°.
   // Book prints λ = 118.704°, β = 1.615°.
   const auto result = ecliptic(AngleDeg { 149.48194 }, AngleDeg { 1.76549 }, J2000, 1643074.5);
@@ -90,6 +91,7 @@ TEST(Precession, MeeusExample21bEcliptic) {
 }
 
 TEST(Precession, MeeusExample21aEquatorialNoProperMotion) {
+  // Retained reference inputs/values: MeeusExample21aEquatorialNoProperMotion.
   // Example 21.a inputs, proper motion zeroed to isolate precession. J2000 → 2028/11/13.19
   // (JDE 2462088.69), α₀ = 2h44m11.986s = 41.0499417°, δ₀ = 49°13'42.48" = 49.2284667°.
   // Reference: pymeeus with proper motion = 0 → α = 41.5430861°, δ = 49.3492074°.
@@ -104,6 +106,7 @@ TEST(Precession, MeeusExample21aEquatorialNoProperMotion) {
 
 TEST(Precession, PymeeusEquatorialCross) {
   // Columns: jde_from, jde_to, α₀ (deg), δ₀ (deg), α_pymeeus (deg), δ_pymeeus (deg). Seed 42.
+  // Retained data: precession-0.
   const std::vector<std::array<double, 6>> data {
     { 2655247.552547, 1757585.713380, 99.0105546129, -49.2684886095, 83.2849581510, -49.0090898136 },
     { 2797029.443894, 2709702.951125, 321.1846443737, -73.5248877920, 315.0126001295, -74.5123958885 },
@@ -145,6 +148,7 @@ TEST(Precession, PymeeusEquatorialCross) {
 
 TEST(Precession, PymeeusEclipticCross) {
   // Columns: jde_from, jde_to, λ₀ (deg), β₀ (deg), λ_pymeeus (deg), β_pymeeus (deg). Seed 42.
+  // Retained data: precession-1.
   const std::vector<std::array<double, 6>> data {
     { 2835073.278910, 2509077.763005, 280.3055323070, 5.4029536507, 267.8046254876, 5.5182993662 },
     { 1721880.540243, 2194636.999284, 7.0116272589, 76.3795536951, 24.3866184306, 76.4738086480 },
@@ -189,6 +193,7 @@ TEST(Precession, PymeeusEclipticCross) {
 
 TEST(Precession, ErfaPmat76Cross) {
   // Columns: jde_to (from = J2000), α₀ (deg), δ₀ (deg), α_erfa (deg), δ_erfa (deg). Seed 42.
+  // Retained data: precession-2.
   const std::vector<std::array<double, 5>> data {
     { 2333532.601306, 210.1220241448, 4.0553233647, 206.0579641786, 5.6430956107 },
     { 3086650.842553, 73.5333117925, 38.4821405405, 103.6547378542, 38.7239953518 },

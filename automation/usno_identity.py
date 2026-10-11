@@ -11,6 +11,7 @@
 # SPDX-License-Identifier: MIT
 
 import hashlib
+import importlib.util
 import json
 import re
 
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Final, Mapping
 
 
@@ -25,7 +27,6 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2026-08-26"
 API_VERSION: Final[str] = "4.0.1"
 NUMBER: Final[str] = r"[+-]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)"
-USNO_VALIDATION_REPRO_SHA256: Final[str] = "66ec73d6c5fc8e000606952ae11dc947be1905b573a4f53822dac64f0e439ac1"
 USNO_RECORD_SHA256: Final[dict[str, str]] = {
   "v12-rstt-oneday.json": "4eb0687ca55f0be00a8ee265e3b05dc586e093f7e19e0ba0536f705106b26d77",
   "v13-siderealtime.json": "129dc55146f8f103cda3691d2ec3a14570413b8d07f4719ef8090b6f8409d658",
@@ -147,8 +148,8 @@ def _verify_v12(record: dict, repo_root: Path) -> int:
 
 def _v13_source_rows(repo_root: Path) -> tuple[list[tuple[str, ...]], list[tuple[str, ...]]]:
   source = (repo_root / "src/test/astro/sidereal_time_test.cpp").read_text(encoding="utf-8")
-  greenwich = _block(source, "TEST(SiderealTime, GreenwichUsno)", "TEST(SiderealTime, LocalApparentUsno)")
-  local = _block(source, "TEST(SiderealTime, LocalApparentUsno)", "} // namespace astro::sidereal::test")
+  greenwich = _block(source, "// Retained USNO Greenwich input/output rows.", "};")
+  local = _block(source, "// Retained USNO local input/output rows.", "};")
   pattern = re.compile(rf"\{{\s*({NUMBER}),\s*({NUMBER}),\s*({NUMBER}),\s*({NUMBER})\s*\}}")
   return (
     [match.groups() for match in pattern.finditer(greenwich)],
@@ -275,7 +276,7 @@ def _civil_jd(year: int, month: int, day: int, time_text: str) -> str:
 
 def _hko_new_moons(repo_root: Path) -> list[str]:
   source = (repo_root / "src/test/astro/moon_phase_test.cpp").read_text(encoding="utf-8")
-  diff_test = _block(source, "TEST(NewMoon, DiffTest2)", "TEST(NewMoon, MomentsYearBoundaryIsUtc)")
+  diff_test = _block(source, "const std::vector<calendar::Datetime> datetimes {", "};")
   rows = re.findall(
     r"to_ymd\((\d+),\s*(\d+),\s*(\d+)\),\s*hms\s*\{\s*(\d+)h\s*\+\s*(\d+)min\s*\}",
     diff_test,
@@ -492,9 +493,6 @@ def verify_usno_identities(
   usno_root: Path = USNO_ROOT,
   record_hashes: Mapping[str, str] = USNO_RECORD_SHA256,
 ) -> IdentityCounts:
-  generator = repo_root / "statistics" / "usno_validation_repro.py"
-  digest = hashlib.sha256(generator.read_bytes()).hexdigest()
-  _require(digest == USNO_VALIDATION_REPRO_SHA256, f"USNO validation generator hash mismatch: {digest}")
   _require(set(record_hashes) == set(USNO_RECORD_SHA256), "USNO record inventory differs")
   _require(
     {path.name for path in usno_root.iterdir() if path.is_file()} == set(record_hashes),
@@ -506,7 +504,67 @@ def verify_usno_identities(
   v14, matches, mismatches = _verify_v14(records["v14-moon-phases-year-2024.json"], repo_root)
   v26, relations = _verify_v26(records["v26-deltat.json"], repo_root)
   v29 = _verify_v29(records["v29-juliandate.json"], repo_root)
+  _verify_generator(repo_root, records)
   return IdentityCounts(v12, v13, v14, matches, mismatches, v26, relations, v29)
+
+
+def _verify_generator(repo_root: Path, records: dict[str, dict]) -> None:
+  path = repo_root / "statistics/usno_validation_repro.py"
+  spec = importlib.util.spec_from_file_location("_usno_validation_repro", path)
+  _require(spec is not None and spec.loader is not None, "USNO generator cannot be loaded")
+  generator = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(generator)
+  _require(generator.API_VERSION == API_VERSION, "USNO generator API version differs")
+  _require(generator.jd_request_time("2451545.0") == ("2000-01-01", "12:00:00"), "USNO generator JD input differs")
+  _require(generator.hms_degrees("12:00:00.0") == "180.000000000000", "USNO generator angular units differ")
+  _require(generator.civil_jd(2024, 1, 1, "00:00") == "2460310.500000", "USNO generator civil input differs")
+  record = records["v29-juliandate.json"]
+  with TemporaryDirectory(prefix="celestial-usno-") as temporary:
+    evidence = Path(temporary)
+    response = evidence / "v29-jd-api.json"
+    payload = record["current_recapture"]["response"]
+    response.write_text(json.dumps(payload), encoding="utf-8")
+    generated = generator.build_v29(evidence)
+    for field in ("row", "service_url", "endpoint", "request", "repository_relation"):
+      _require(generated[field] == record[field], f"USNO generator V29 {field} differs")
+    _require(generated["current_recapture"]["response"] == payload, "USNO generator V29 values differ")
+    response.write_text(json.dumps({**payload, "apiversion": "9.9"}), encoding="utf-8")
+    try:
+      generator.build_v29(evidence)
+    except RuntimeError:
+      pass
+    else:
+      raise RuntimeError("USNO generator accepts an unexpected API version")
+    phases = records["v14-moon-phases-year-2024.json"]
+    response = {
+      "apiversion": API_VERSION,
+      "numphases": 50,
+      "phasedata": [
+        {key: value for key, value in event.items() if key not in {"utc", "civil_jd"}} for event in phases["events"]
+      ],
+    }
+    (evidence / "v14-year-2024.json").write_text(json.dumps(response), encoding="utf-8")
+    # The historical parser's TEST labels are presentation, not retained input identity.
+    source = (repo_root / "src/test/astro/moon_phase_test.cpp").read_text(encoding="utf-8")
+    table_at = source.index("const std::vector<calendar::Datetime> datetimes {")
+    before = source.rfind("TEST(", 0, table_at)
+    after = source.index("\nTEST(", table_at) + 1
+    for start, replacement in (
+      (after, "TEST(NewMoon, MomentsYearBoundaryIsUtc)"),
+      (before, "TEST(NewMoon, DiffTest2)"),
+    ):
+      end = source.index("{", start)
+      source = source[:start] + replacement + " " + source[end:]
+    host = evidence / "src/test/astro/moon_phase_test.cpp"
+    host.parent.mkdir(parents=True)
+    host.write_text(source, encoding="utf-8")
+    generated = generator.build_v14(evidence, evidence)
+    for field in ("row", "endpoint", "request", "conversion", "events", "v03_hko_boundary"):
+      _require(generated[field] == phases[field], f"USNO generator V14 {field} differs")
+    (evidence / "v26-current-deltat.data").write_bytes((repo_root / "statistics/usno_data.txt").read_bytes())
+    generated = generator.build_v26(repo_root, evidence)
+    for field in ("source", "tracked_copy", "revision", "citation_relations"):
+      _require(generated[field] == records["v26-deltat.json"][field], f"USNO generator V26 {field} differs")
 
 
 if __name__ == "__main__":

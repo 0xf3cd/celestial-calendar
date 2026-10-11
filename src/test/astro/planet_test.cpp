@@ -103,6 +103,7 @@ constexpr std::array HORIZONS_TOLERANCES {
 inline constexpr double HORIZONS_CONJUNCTION_LAT_TOLERANCE_DEG = 0.00050;
 
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+// Retained data: v06-planets.
 constexpr std::array HORIZONS_ROWS {
   // Planet           JDE             Longitude     Latitude     Range (AU)       Elongation
   HorizonsRow { Planet::MERCURY, 2415385.500000, 267.6792943, -0.5633804,  1.373869763054,  12.2426 },
@@ -241,6 +242,7 @@ constexpr std::array HORIZONS_RETROGRADE_WRAP_ROWS {
   RetrogradeRow { Planet::PLUTO,   2475843.000000, true  },
 };
 
+// Retained data: v32-planets.
 inline constexpr double MEEUS_EXAMPLE_33A_RIGHT_ASCENSION_DEG =
   (21.0 + (4.0 / 60.0) + (41.454 / 3600.0)) * 15.0;
 inline constexpr double MEEUS_EXAMPLE_33A_DECLINATION_DEG = -(18.0 + (53.0 / 60.0) + (16.84 / 3600.0));
@@ -253,6 +255,7 @@ inline constexpr double MEEUS_EXAMPLE_37A_RADIUS_AU = 29.711111;
 // `pluto.sub` evaluator (SHA-256 14d2e84e99c3fd873310ed5381a79d11f9140683830307e2b9ef051916244d24).
 // One arcminute is a gross units/frame tripwire, not a model-error tolerance; the separately pinned
 // retained maximum is 3.566762 arcsec.
+// Retained data: v45-pluto95.
 constexpr std::array PLUTO95_ROWS {
   Pluto95Row { 2415023.00, 10.29158303131287,  44.52906466047693, 10.79081191605171 },
   Pluto95Row { 2451548.25, -9.86615874601937, -27.98285304568784, -5.75779357947923 },
@@ -264,6 +267,7 @@ constexpr std::array PLUTO95_ROWS {
 // retarded epoch and uses the target's heliocentric latitude in the FK5 longitude term. This layer
 // therefore diagnoses coarse formula/coefficient wiring rather than observation-epoch semantics or
 // absolute physical accuracy.
+// Retained data: v15-planets.
 constexpr std::array PYMEEUS_ROWS {
   // Planet           JDE          Right ascension  Declination
   EquatorialRow { Planet::MERCURY, 2415385.50, 267.4597670259, -23.9936396660 },

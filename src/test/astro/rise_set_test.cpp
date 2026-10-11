@@ -151,6 +151,7 @@ TEST(RiseSet, TransitNearLocalMeanNoon) {
 }
 
 TEST(RiseSet, TransitAnchoredToMeeusEquationOfTime) {
+  // Retained reference inputs/values: TransitAnchoredToMeeusEquationOfTime.
   // Meeus Example 28.a: 1992 October 13, 0h TD — E = +3°.427351 = +13.70940 min. E > 0 means
   // the true Sun crosses the meridian before the mean sun, so at Greenwich the transit falls
   // at ≈ 12h − E of mean time (= UT). This is the one assertion in this file tied to a value

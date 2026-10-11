@@ -89,7 +89,7 @@ def _synthetic_check_source(omit_last: bool = False) -> bytes:
   return "\n".join(lines).encode("ascii")
 
 
-def test_repository_headers_are_pinned():
+def test_repository_coefficient_and_check_values_are_pinned():
   assert verify_repository() == ImportCounts(planets=7, series=123, terms=29152, check_rows=80)
 
 
@@ -147,7 +147,9 @@ def test_generated_header_mutation_fails(tmp_path):
   check_data = tmp_path / CHECK_GENERATED_PATH
   check_data.parent.mkdir(parents=True)
   copy2(REPO_ROOT / CHECK_GENERATED_PATH, check_data)
-  coefficient.write_bytes(coefficient.read_bytes() + b"changed")
+  text = coefficient.read_text(encoding="utf-8")
+  coefficient.write_text(text.replace("440250710.144", "440250710.145", 1), encoding="utf-8")
+  assert coefficient.read_text(encoding="utf-8") != text
 
-  with pytest.raises(RuntimeError, match="generated hash mismatch"):
+  with pytest.raises(RuntimeError, match="generated data hash mismatch"):
     verify_repository(repo_root=tmp_path, specs=(spec,))

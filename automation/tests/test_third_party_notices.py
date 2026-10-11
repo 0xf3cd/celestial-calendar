@@ -26,36 +26,54 @@ from automation.third_party_notices import (
   VSOP87D_PLANETARY_ATTRIBUTION_SHA256,
   assemble_notices,
 )
+from automation.source_digest import require_facts
 
 
 LLVM_LICENSE = REPO_ROOT / "third_party" / "llvm" / "llvmorg-22.1.2" / "LICENSE.TXT"
 LLVM_LICENSE_SHA256 = "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
-CANONICAL_NOTICE_SHA256 = "9c4a3d0dc5b83e4beaac2c5a831fc884ec24184b38871d3b504ceca7890bf12d"
 UPSTREAM_RUN_CLANG_TIDY_SHA256 = "a651a6529eefbd12b7845afe6719773ba6578ecca222603d1262b4d2d48e1422"
-LOCAL_RUN_CLANG_TIDY_BLOCK = (
-  "#\n",
-  "# Vendored from llvm-project at tag llvmorg-22.1.2; this comment is the only local edit. Its\n",
-  "# major has to match the clang-tidy CI runs (AGENTS.md gotcha 9), so re-vendor rather than patch:\n",
-  "# raw.githubusercontent.com/llvm/llvm-project/llvmorg-<tag>/clang-tools-extra/clang-tidy/tool/\n",
-  "# Companion license: third_party/llvm/llvmorg-22.1.2/LICENSE.TXT (upstream LICENSE.TXT at the same tag);\n",
-  "# retained material boundary (R37/T01): this vendored script remains under its source terms and outside the "
-  "project MIT grant.\n",
-)
+
+
+def verify_clang_tidy_source(text: str) -> None:
+  start = text.index("\n#\n# Vendored") + 1
+  end = text.index("# FIXME: Integrate with clang-tidy-diff.py", start)
+  local = text[start:end]
+  assert all(line.startswith("#") for line in local.splitlines())
+  require_facts(
+    local,
+    ("llvmorg-22.1.2", "third_party/llvm/llvmorg-22.1.2/LICENSE.TXT", "source terms", "outside the project MIT grant"),
+    "LLVM source attribution",
+  )
+  upstream_bytes = (text[:start] + text[end:]).encode()
+  assert hashlib.sha256(upstream_bytes).hexdigest() == UPSTREAM_RUN_CLANG_TIDY_SHA256
 
 
 def test_run_clang_tidy_matches_llvmorg_22_1_2_outside_the_local_pin():
-  script = (REPO_ROOT / "run-clang-tidy.py").read_text(encoding="utf-8").splitlines(keepends=True)
-
-  assert tuple(script[9:15]) == LOCAL_RUN_CLANG_TIDY_BLOCK
-  upstream_bytes = "".join([*script[:9], *script[15:]]).encode()
-  assert hashlib.sha256(upstream_bytes).hexdigest() == UPSTREAM_RUN_CLANG_TIDY_SHA256
+  verify_clang_tidy_source((REPO_ROOT / "run-clang-tidy.py").read_text(encoding="utf-8"))
   assert hashlib.sha256(LLVM_LICENSE.read_bytes()).hexdigest() == LLVM_LICENSE_SHA256
 
 
-def test_canonical_notice_is_the_pinned_deterministic_assembly():
+def test_llvm_project_pin_prose_can_change(tmp_path):
+  path = tmp_path / "run-clang-tidy.py"
+  text = (REPO_ROOT / path.name).read_text(encoding="utf-8")
+  path.write_text(text.replace("this comment is the only local edit", "this is a project-local pin"), encoding="utf-8")
+  verify_clang_tidy_source(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+  "old", ["Parallel clang-tidy runner", "SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception"]
+)
+def test_llvm_upstream_source_and_licence_text_remain_immutable(tmp_path, old):
+  path = tmp_path / "run-clang-tidy.py"
+  text = (REPO_ROOT / path.name).read_text(encoding="utf-8")
+  path.write_text(text.replace(old, "Changed upstream material"), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    verify_clang_tidy_source(path.read_text(encoding="utf-8"))
+
+
+def test_canonical_notice_is_the_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
-  assert hashlib.sha256(notice).hexdigest() == CANONICAL_NOTICE_SHA256
   assert len(NOTICE_SOURCES) == 16
   by_title = {source.title: source for source in NOTICE_SOURCES}
   sofa = by_title["IAU SOFA issue 2023-10-11 — SOFA Software License"]
@@ -100,7 +118,7 @@ def test_canonical_notice_is_the_pinned_deterministic_assembly():
   )
   for source in NOTICE_SOURCES[-6:-2] + NOTICE_SOURCES[-1:]:
     assert source.marking
-    assert source.sha256 in notice.decode()
+    assert hashlib.sha256((REPO_ROOT / source.path).read_bytes()).hexdigest() in notice.decode()
   assert b"NASA/TP-2006-214141 (October 2006)" in notice
   assert b"not an upstream-byte identity claim" in notice
   assert b"generated lunar-year values remain project-authored material" in notice

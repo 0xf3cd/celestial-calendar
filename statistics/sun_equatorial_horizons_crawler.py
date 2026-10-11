@@ -23,7 +23,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Final
 
-import requests
+import horizons_common
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
@@ -92,7 +92,7 @@ def horizons_params() -> dict[str, str]:
     "MAKE_EPHEM": "'YES'",
     "EPHEM_TYPE": "'OBSERVER'",
     "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(JDES) + "'",
+    "TLIST": horizons_common.tlist(JDES),
     "TLIST_TYPE": "'JD'",
     "TIME_TYPE": "'TT'",
     "QUANTITIES": "'2'",
@@ -126,20 +126,25 @@ def _validate_response_identity(text: str) -> str:
 
 
 def parse_horizons_response(text: str) -> dict[str, tuple[str, str]]:
-  remainder = _validate_response_identity(text)
-  data, marker, _trailer = remainder.partition("$$EOE")
-  if not marker:
-    raise RuntimeError("Horizons response has no end marker")
+  _validate_response_identity(text)
+  header, data = horizons_common.parse_csv_block(text)
+  jd_i, columns = horizons_common.column_indices(header, ("R.A.__(a-app)", "DEC___(a-app)"), "TT")
+  horizons_common.require_epochs(
+    tuple(horizons_common.finite_number(cells[jd_i], "JDTT") for cells in data),
+    None,
+    "Sun equatorial",
+  )
 
   fixed_jdes = set(JDES)
   rows: dict[str, tuple[str, str]] = {}
-  for line in data.splitlines():
-    if not line.strip():
-      continue
-    numeric_cells = [cell.strip() for cell in line.split(",") if DECIMAL_CELL.fullmatch(cell.strip())]
-    if len(numeric_cells) != 3:
-      raise RuntimeError(f"unexpected Horizons quantity-2 row: {line.strip()}")
-    jde_cell, ra, dec = numeric_cells
+  for cells in data:
+    if sum(bool(DECIMAL_CELL.fullmatch(cell)) for cell in cells) != 3:
+      raise RuntimeError(f"unexpected Horizons quantity-2 row: {cells!r}")
+    jde_cell, ra, dec = cells[jd_i], cells[columns["R.A.__(a-app)"]], cells[columns["DEC___(a-app)"]]
+    if not all(DECIMAL_CELL.fullmatch(cell) for cell in (jde_cell, ra, dec)):
+      raise RuntimeError(f"unexpected Horizons quantity-2 row: {cells!r}")
+    horizons_common.finite_number(ra, "RA", jde_cell)
+    horizons_common.finite_number(dec, "Dec", jde_cell)
     jde = format(Decimal(jde_cell).quantize(Decimal("0.000001")), "f")
     if jde not in fixed_jdes:
       raise RuntimeError(f"unexpected JDE in Horizons response: {jde_cell}")
@@ -168,9 +173,7 @@ def format_rows(rows: dict[str, tuple[str, str]]) -> str:
 
 
 def fetch_horizons() -> str:
-  response = requests.get(HORIZONS_URL, params=horizons_params(), timeout=60)
-  response.raise_for_status()
-  return response.text
+  return horizons_common.get_text(horizons_params(), url=HORIZONS_URL, timeout=60)
 
 
 def main() -> None:

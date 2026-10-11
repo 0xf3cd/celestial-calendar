@@ -37,6 +37,7 @@ TEST(Sun, GeocentricPosition) {
   // JDEs this table shares with earth_test.cpp's Vsop87dEvaluate dataset match exactly under
   // that relation; all other rows are independent samples. Independent accuracy anchor:
   // sun_horizons_golden_test.cpp (JPL DE441) via apparent().
+  // Retained data: sun-0.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     // JDE                  Longitude            Latitude                Radius
     { 2422498.7094451743, {  91.40761280128208, -0.00010445464204317034,  1.016482372497581 } },
@@ -114,6 +115,7 @@ TEST(Sun, FK5Correction) {
   // sun_horizons_golden_test.cpp) — an independent transcription check of `fk5_correction`.
   // Tolerances are 1e-15 deg: ~1e5 margin over the measured mpmath-vs-C++ double-rounding
   // gaps (Δλ 5.3e-21, Δβ 8.6e-21 deg).
+  // Retained data: sun-1.
   const std::unordered_map<double, std::tuple<double, double>> dataset {
     // JDE                  Longitude Delta          Latitude Delta
     { 2421614.0856030583, { -2.5091672396119975e-05,  1.4918431407582684e-05 } },
@@ -269,6 +271,7 @@ TEST(Sun, CorrectedPosition) {
   // Introduced by f4b0980 (#11, 2024-07-15) from PyMeeus-derived apparent-geocentric calculations
   // using the then-current bare-κ/R aberration. The λ column shifted in da22c87 (#66 / PR #100,
   // 2026-07-26) by <= 4.2e-6 deg for the move to Meeus (25.11); β and r did not shift.
+  // Retained data: sun-2.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
   //{ jde,                { expected longitude,  expected latitude,      expected distance  } }
     {   2421971.26320986, { 291.51569666171963,  -9.920119287353568e-07, 0.9834987939042306 } },
@@ -875,6 +878,7 @@ TEST(Sun, EquatorialApparentVsJplHorizons) {
   constexpr double α_TOL_DEG = 0.4 / 3600.0;
   constexpr double δ_TOL_DEG = 0.2 / 3600.0;
 
+  // Retained data: sun-3.
   const std::unordered_map<double, std::pair<double, double>> dataset {
     // JDE                { α (JPL),          δ (JPL) }
     { 2432253.451627, { 348.530377588,  -4.929047136 } },

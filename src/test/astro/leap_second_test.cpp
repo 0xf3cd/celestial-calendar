@@ -98,6 +98,7 @@ TEST(LeapSecond, TaiMinusUtcLookup) {
 // 34 random modern-UTC instants plus both sides of the 2015/2017 leap steps and the table start.
 struct UtcGoldenRow { int32_t y; uint32_t m; uint32_t d; double frac; double tt_jd; };
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: leap_second-0.
 const std::vector<UtcGoldenRow> UTC_GOLDEN_ROWS {
   { 2012,  2,  1,    0.9703089467592593, 2455959.4710749653 },
   { 1980, 12,  4,     0.908258449074074, 2444578.4088508566 },

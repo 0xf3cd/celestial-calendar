@@ -51,6 +51,7 @@ struct GeometryTolerance {
 // position-dataset audit witnesses: domain, book, J2000, and wrap anchors; its 2025 conjunction; and
 // residual maxima.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+// Retained data: v06-illumination.
 constexpr std::array HORIZONS_ROWS {
   // Planet           JDE             Separation    Phase       Fraction
   GeometryRow { astro::planet::Planet::MERCURY, 2415385.500000,  12.2425872,  26.7915, 0.94632630 },

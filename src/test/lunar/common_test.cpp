@@ -31,11 +31,13 @@ namespace calendar::lunar::common::test {
 // (https://www.hko.gov.hk/sc/gts/time/conversion.htm, published for 1901-2100) baked into
 // algo1's table (1901-2099); algo3's baked entry for 2023 must agree.
 TEST(LunarCommon, Leap2023DataAgreement) {
+  // Retained reference inputs/values: Leap2023DataAgreement.
   EXPECT_EQ(algo1::calc_lunar_year(2023).leap_month, 2);
   EXPECT_EQ(algo3::calc_lunar_year(2023).leap_month, 2);
 }
 
 TEST(LunarCommon, MonthPositionLeapYear) {
+  // Retained reference inputs/values: MonthPositionLeapYear.
   const auto info2023 = algo1::calc_lunar_year(2023);
   ASSERT_EQ(info2023.leap_month, 2);
   ASSERT_EQ(info2023.month_lengths.size(), 13);
@@ -48,6 +50,7 @@ TEST(LunarCommon, MonthPositionLeapYear) {
 }
 
 TEST(LunarCommon, MonthPositionRejectsBadInput) {
+  // Retained reference inputs/values: MonthPositionRejectsBadInput.
   const auto info2023 = algo1::calc_lunar_year(2023);
 
   const auto info2024 = algo1::calc_lunar_year(2024);
@@ -61,6 +64,7 @@ TEST(LunarCommon, MonthPositionRejectsBadInput) {
 }
 
 TEST(LunarCommon, MonthAtPosition) {
+  // Retained reference inputs/values: MonthAtPosition.
   const auto info2023 = algo1::calc_lunar_year(2023);
 
   EXPECT_EQ(month_at_position(info2023, 1), (TraditionalMonth { 1, false }));
@@ -112,6 +116,7 @@ TEST(LunarCommon, ParseLunarYear) {
     std::vector<uint32_t> month_lengths;
   };
 
+  // Retained data: cases.
   const std::vector<ParseCase> cases {
     { .year = 1901, .encoded = 0x620752, .first_day = std::chrono::year { 1901 } / 2 / 19, .leap_month = 0, .month_lengths = { 29, 30, 29, 29, 30, 29, 30, 29, 30, 30, 30, 29 } },              // START_YEAR (table start)
     { .year = 2023, .encoded = 0x2a55b2, .first_day = std::chrono::year { 2023 } / 1 / 22, .leap_month = 2, .month_lengths = { 29, 30, 29, 29, 30, 30, 29, 30, 30, 29, 30, 29, 30 } },  // leap 2nd month (闰二月)
@@ -128,6 +133,7 @@ TEST(LunarCommon, ParseLunarYear) {
 }
 
 TEST(LunarCommon, CalcBounds) {
+  // Retained reference inputs/values: CalcBounds.
   // calc_bounds threads the algo through its declared window (#87): the lunar dates come
   // from the window arguments, the Gregorian dates from `algo_f` at the two ends.
   const auto b = calc_bounds(algo1::START_YEAR, algo1::END_YEAR, algo1::calc_lunar_year);

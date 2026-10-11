@@ -42,6 +42,7 @@ struct GoldenRow {
 // c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92 independently corroborates the raw node columns.
 // See `src/test/provenance/lunar-node/LUNAR_NODE_ORACLE_ATTRIBUTION.md`.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+// Retained data: lunar-node.
 constexpr std::array GOLDEN_ROWS {
   // JDE(TT)     Mean ascending (deg)  True ascending (deg)
   GoldenRow { 2409542.5,       189.238772146437,       189.224926163870 },

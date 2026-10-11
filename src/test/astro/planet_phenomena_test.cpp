@@ -56,6 +56,7 @@ struct ApproximationRow {
 // crossings use apparent ecliptic-of-date coordinates; extrema use quantity-31 geometry, with
 // quantities 23, 43, and 10 checking separation, true phase angle, and illuminated fraction.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+// Retained data: v06-phenomena.
 constexpr std::array HORIZONS_ROWS {
   // Planet           Year  Kind                                  JDE(TT)
   GoldenRow { Planet::MERCURY, 2025, Kind::SUPERIOR_CONJUNCTION,           2460716.006423 },
@@ -151,6 +152,7 @@ constexpr std::array EVENT_TOLERANCES_DAYS {
 // `Mars.conjunction(Epoch(2461049.9))`.
 // This Meeus-derived approximation layer does not provide quadratures.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense reference rows read by column.
+// Retained data: v15-phenomena.
 constexpr std::array PYMEEUS_ROWS {
   ApproximationRow { Planet::MERCURY, 2025, Kind::SUPERIOR_CONJUNCTION,           2460715.998770695 },
   ApproximationRow { Planet::MERCURY, 2025, Kind::GREATEST_EASTERN_ELONGATION,    2460742.750095003 },
@@ -166,6 +168,7 @@ constexpr std::array PYMEEUS_ROWS {
 // Source archive: web.archive.org snapshot 20240702184835, SHA-256
 // 7a2d026d131e30d4b02e7c5efd41fce1bc84eda60f599a22abdef2f6439907de. Greatest-elongation
 // directions are reclassified by wrapped planet-Sun longitude because v2.55 compares raw longitudes.
+// Retained data: v44-aaplus-phenomena.
 constexpr std::array AAPLUS_ROWS {
   ApproximationRow { Planet::MERCURY, 2025, Kind::SUPERIOR_CONJUNCTION,           2460715.999392680 },
   ApproximationRow { Planet::MERCURY, 2025, Kind::GREATEST_EASTERN_ELONGATION,    2460742.757156140 },

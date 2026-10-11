@@ -93,6 +93,7 @@ struct GoldenRow {
 
 // USNO rows, local standard time (see file header for provenance).
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: rise_set_golden-0.
 const std::vector<GoldenRow> USNO_ROWS {
   {  3, 20,   -0.22,   -78.51,  -5, "05:57", "06:18", "12:21", "18:25", "18:45", false, false },  // Quito
   {  6, 21,   -0.22,   -78.51,  -5, "05:50", "06:13", "12:16", "18:19", "18:42", false, false },  // Quito
@@ -139,6 +140,7 @@ struct TwilightRow {
 
 // Skyfield rows, local standard time (see file header for provenance).
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: rise_set_golden-1.
 const std::vector<TwilightRow> TWILIGHT_ROWS {
   {  6, 21,   51.50,    -0.13,   0, "01:40:47", "22:23:51", "        ", "        " },  // London
   { 12, 21,   51.50,    -0.13,   0, "06:40:11", "17:16:58", "05:59:22", "17:57:46" },  // London

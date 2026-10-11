@@ -90,6 +90,7 @@ TEST(LunarAlgoDiff, Consistency) {
 // Absolute pins on both sides. Equal fields are pinned too so a future "agreement
 // regression" (one side drifting toward the other) also fails loudly.
 TEST(LunarAlgoDiff, KnownDivergences) {
+  // Retained reference inputs/values: KnownDivergences.
   using std::chrono::year;
   using std::vector;
   using uint = uint32_t;

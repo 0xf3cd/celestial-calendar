@@ -10,8 +10,9 @@
   `THIRD_PARTY_NOTICES.txt`.
 - Corroboration only: corrected PyMeeus commit
   `c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92`; no PyMeeus output supplies a retained column.
-- Collection date: 2026-09-28. The 11 directed epochs cover both domain ends, the Chapter 47
-  example, J2000, 1950/2050, and both mean/true wrap pairs; no random seed was used.
+- Collection date: 2026-09-28. The 11 directed epochs include 1885-01-01 and 1900-01-01 TT,
+  the Chapter 47 example, J2000, 1950/2050, and both mean/true wrap pairs. The last epoch is
+  2099-12-31 TT, one day before the excluded 2100-01-01 upper bound; no random seed was used.
 - Reproduction: evaluate AA+ mean and five-term true node at each recorded JDE(TT), call unchanged
   SOFA `iauNut80(2451545.0, jde_tt - 2451545.0, ...)`, add its longitude correction, and normalize
   to `[0 deg, 360 deg)`.

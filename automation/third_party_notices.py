@@ -19,24 +19,27 @@ from typing import Final, Sequence
 
 if __package__:
   from .erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
-  from .nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
+  from .nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_FACTS, NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
   from .sofa_identity import SOFA_ARCHIVE_URL
+  from .source_digest import attribution_digest, require_facts
 else:
   from erfa_identity import ERFA_RAW_BASE, ERFA_VERSION
-  from nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
+  from nasa_delta_t_provenance import NASA_ACKNOWLEDGMENT_FACTS, NASA_ACKNOWLEDGMENT_SHA256, NASA_NOTICE_APPLICABILITY
   from sofa_identity import SOFA_ARCHIVE_URL
+  from source_digest import attribution_digest, require_facts
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ROOT_NOTICE: Final[Path] = REPO_ROOT / "THIRD_PARTY_NOTICES.txt"
 EMSCRIPTEN_REVISION: Final[str] = "ce75e06884093bcefb86a6b8fd56a5d62a4cc245"
-DELTA_T_ATTRIBUTION_SHA256: Final[str] = "4ead1c6c3ec76c0eefe79ec926fbdce769b8ecbdec10142f7dbe373871d853f9"
-HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "1272446f24ddf193d4198da3dea983bdfee48b4c6e0dde7a0fe6725baed4e93a"
-VSOP87D_ATTRIBUTION_SHA256: Final[str] = "ad6357383e646cc2747c147e00c1e721280b437ac7a087d8ceb439b51d102218"
-VSOP87D_PLANETARY_ATTRIBUTION_SHA256: Final[str] = "568de2d41e4843c1d9902c311ab11d467ab0cf4b4f228caf5e122db99038416d"
-MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "d88cf784f30d32eed71672ae2acbdaa9941b615fc28b3453fdf00d03335f8eb9"
+# These identify citation atoms; original upstream licences below retain raw-byte hashes.
+DELTA_T_ATTRIBUTION_SHA256: Final[str] = "6368c12daca94dc167f320826416d3c5413433b7b79be0b9c23a491d9cf2a7f7"
+HKO_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "08b807537928a8970b11ec993588d45a4eeb3b8df7d077dd08bd11317ae14400"
+VSOP87D_ATTRIBUTION_SHA256: Final[str] = "4837279dfa709ac4f7c223e6806bf5e7189eb14d3260c2d629ede907f1126ca6"
+VSOP87D_PLANETARY_ATTRIBUTION_SHA256: Final[str] = "20456d6d6e9e66031e66005ba40771f4fbceb07cbaa51afaadd8cf32572a1734"
+MEEUS_R22_ATTRIBUTION_SHA256: Final[str] = "97419b04b590b32d611ef990cc99d6223ec564acf4dfa99c48ce5a6954587f3b"
 SONIA_KEYS_MEEUS_LICENSE_SHA256: Final[str] = "0d136782ebe29efb707481c26887c4e7cd6b3d5ca3da4fff5247020bbb3d1d99"
-WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "a3a60fba1d440f76d0164c2928b11148e81bd637909fcbd425c906ba8d248c3e"
+WINDOWS_RUNTIME_ATTRIBUTION_SHA256: Final[str] = "09504810e416444d526a094a2fbbe75411a5e2e33fd4d005a70a6d6689a8984b"
 SEPARATOR: Final[bytes] = ("=" * 78 + "\n").encode()
 PREAMBLE: Final[bytes] = b"""Third-Party Notices
 
@@ -58,6 +61,7 @@ class NoticeSource:
   upstream: str
   sha256: str
   marking: tuple[str, ...] = ()
+  facts: tuple[str, ...] = ()
 
 
 NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
@@ -143,6 +147,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/nasa/tp-2006-214141/ACKNOWLEDGMENT.txt"),
     upstream="https://eclipse.gsfc.nasa.gov/SEpubs/5MCSE.html",
     sha256=NASA_ACKNOWLEDGMENT_SHA256,
+    facts=NASA_ACKNOWLEDGMENT_FACTS,
     marking=(
       "The NASA publication bytes are not included in this repository; the checked provenance relation is a "
       "transcription record, not an upstream-byte identity claim.",
@@ -159,6 +164,21 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/delta-t-sources/ATTRIBUTION.md"),
     upstream="multiple sources; exact authors, works, and URLs are listed in the attribution record",
     sha256=DELTA_T_ATTRIBUTION_SHA256,
+    facts=(
+      "Xu Jianwei",
+      "Fred Espenak",
+      "Marc van der Sluys",
+      "L. V. Morrison",
+      "F. R. Stephenson",
+      "C. Y. Hohenkerk",
+      "M. Zawilski",
+      "It records attribution only",
+      "does not assert",
+      "project locally moves",
+      "does not claim that EclipseWise's permission",
+      "analytic integral",
+      "does not describe the corrected expression as MIT, CC BY, OGL, permission-granted, or relicensed",
+    ),
     marking=(
       "This project-authored record identifies sources; it is not an upstream licence or permission grant.",
       "No upstream source bytes are included; the Source-file SHA-256 covers this attribution record only.",
@@ -170,6 +190,21 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/batch-a-closeout/HKO_RUNTIME_ATTRIBUTION.md"),
     upstream="https://www.hko.gov.hk/en/gts/time/calendar/text/files/T{year}e.txt",
     sha256=HKO_RUNTIME_ATTRIBUTION_SHA256,
+    facts=(
+      "Hong Kong Observatory",
+      "199 HKO-derived",
+      "identical 1901-2099 slice",
+      "consumer binaries",
+      "prior written authorization for commercial use",
+      "sale or exchange",
+      "prohibited",
+      "only rights owned by the Government",
+      "do not allocate rights by source",
+      "owner risk acceptance",
+      "Upstream permission was not obtained",
+      "not claimed",
+      "outside the project MIT grant",
+    ),
     marking=("This project-authored attribution record is not HKO licence text or a permission grant.",),
   ),
   NoticeSource(
@@ -180,6 +215,20 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/batch-a-closeout/VSOP87D_ATTRIBUTION.md"),
     upstream="CDS VI/81, VSOP87D.ear, Bretagnon and Francou January 1996 IMCCE distribution",
     sha256=VSOP87D_ATTRIBUTION_SHA256,
+    facts=(
+      "Bretagnon and Francou",
+      "January 1996 IMCCE",
+      "CDS VI/81",
+      "binary64-identical",
+      "Amplitude and phase spellings are decimal-identical",
+      "frequency spellings differ",
+      "source bytes and comparison program are not retained",
+      "no redistribution grant was located",
+      "does not establish package redistribution permission",
+      "owner risk acceptance",
+      "outside the project MIT grant",
+      "Permission is not claimed",
+    ),
     marking=("This project-authored attribution record is not upstream licence text or a permission grant.",),
   ),
   NoticeSource(
@@ -191,6 +240,22 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/vsop87d/ATTRIBUTION.md"),
     upstream="CDS VI/81, VSOP87D Mercury-Neptune files and vsop87.chk, January 1996 IMCCE distribution",
     sha256=VSOP87D_PLANETARY_ATTRIBUTION_SHA256,
+    facts=(
+      "Bretagnon and Francou",
+      "January 1996 IMCCE",
+      "CDS VI/81",
+      "seven complete Mercury-Neptune",
+      "80 official VSOP87D position rows",
+      "preserves the published phase and frequency spellings",
+      "shifts the amplitude decimal point by eight places",
+      "without a binary floating-point conversion",
+      "raw upstream files are not retained",
+      "no redistribution grant was located",
+      "not establish package redistribution permission",
+      "owner risk acceptance",
+      "outside the project MIT grant",
+      "not claimed",
+    ),
     marking=("This project-authored attribution record is not upstream licence text or a permission grant.",),
   ),
   NoticeSource(
@@ -201,6 +266,17 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/batch-a-closeout/MEEUS_R22_ATTRIBUTION.md"),
     upstream="Jean Meeus, Astronomical Algorithms, second edition, p.168, ISBN 978-0943396613",
     sha256=MEEUS_R22_ATTRIBUTION_SHA256,
+    facts=(
+      "Jean Meeus",
+      "second edition",
+      "written reservation against reproduction without publisher permission",
+      "AAS Sky Publishing",
+      "no assignment record from Willmann-Bell, Inc. was located",
+      "does not identify the current legal rights holder",
+      "owner risk acceptance",
+      "Written permission was not obtained or claimed",
+      "outside the project MIT grant",
+    ),
     marking=("This project-authored attribution record is not the book's licence text or a permission grant.",),
   ),
   NoticeSource(
@@ -219,6 +295,20 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     path=Path("src/test/provenance/batch-a-closeout/WINDOWS_RUNTIME_ATTRIBUTION.md"),
     upstream="Visual Studio Enterprise 2026 terms captured by both approved Windows evidence profiles",
     sha256=WINDOWS_RUNTIME_ATTRIBUTION_SHA256,
+    facts=(
+      "Microsoft C/C++ static runtime",
+      "Windows native DLL",
+      "wheel's native DLL",
+      "debug",
+      "artifacts are not publication inputs",
+      "25 Visual Studio Enterprise",
+      "terms documents",
+      "no conclusion about application-local notice or redistribution obligations",
+      "not a substantive compatibility or legal conclusion",
+      "owner risk acceptance",
+      "outside the project MIT grant",
+      "Permission is not claimed",
+    ),
     marking=(
       "No conclusion about application-local notice or redistribution obligations is drawn from the captured text.",
       "This project-authored attribution record does not copy or interpret Microsoft licence text.",
@@ -233,7 +323,7 @@ def assemble_notices(
   preamble: bytes = PREAMBLE,
   separator: bytes = SEPARATOR,
 ) -> bytes:
-  """Assemble the canonical notice from immutable, independently pinned inputs."""
+  """Preserve original licence bytes and verify source facts in project-authored records."""
   paths = [source.path for source in sources]
   if len(paths) != len(set(paths)):
     raise RuntimeError("third-party notice inputs must be unique")
@@ -242,14 +332,16 @@ def assemble_notices(
   for source in sources:
     body = (repo_root / source.path).read_bytes()
     digest = hashlib.sha256(body).hexdigest()
-    if digest != source.sha256:
+    identity = attribution_digest(body.decode("utf-8")) if source.facts else digest
+    if identity != source.sha256:
       raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {digest}")
+    require_facts(body.decode("utf-8"), source.facts, str(source.path))
 
     heading_lines = (
       source.title,
       f"Applies to: {source.applicability}.",
       f"Source: {source.upstream}",
-      f"Source-file SHA-256: {source.sha256}",
+      f"Source-file SHA-256: {digest}",
       *source.marking,
     )
     heading = ("\n".join(heading_lines) + "\n").encode()

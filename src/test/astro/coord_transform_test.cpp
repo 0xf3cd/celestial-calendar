@@ -32,6 +32,7 @@ using namespace astro::toolbox::literals;
 using astro::toolbox::AngleUnit::DEG;
 
 TEST(CoordTransform, EclipticToEquatorialMeeus13a) {
+  // Retained reference inputs/values: EclipticToEquatorialMeeus13a.
   // Meeus Example 13.a: λ = 113.21563°, β = 6.68417°, ε = 23.4392911°.
   const auto [α, δ] = ecliptic_to_equatorial(113.21563_deg, 6.68417_deg, 23.4392911_deg);
 
@@ -210,6 +211,7 @@ TEST(CoordTransform, HorizontalRoundTrip) {
 }
 
 TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
+  // Retained reference inputs/values: EquatorialToHorizontalMeeus13b.
   // Meeus Example 13.b: Venus on 1987 April 10 at 19h21m UT, observed from Washington (USNO).
   // The example's hour angle H = +64°.352133, declination δ = −6°43'11".61, latitude φ = +38°55'17".
   const double H = 64.352133;
@@ -226,6 +228,7 @@ TEST(CoordTransform, EquatorialToHorizontalMeeus13b) {
 TEST(CoordTransform, EclipticToEquatorialPymeeus) {
   // The following data was collected from running PyMeeus's `ecliptical2equatorial` (see README.md#references),
   // over random λ ∈ [0°, 360°), β ∈ [−89°, 89°], ε ∈ [22°, 25°] (seed 42).
+  // Retained data: coord_transform-0.
   const std::vector<std::tuple<double, double, double, double, double>> dataset {
     // λ                     β                       ε                       α (PyMeeus)           δ (PyMeeus)
     { 230.19364744483815, -84.54808557036529, 22.825087955107357, 100.79883559927244, -71.05618945563006 },
@@ -300,6 +303,7 @@ TEST(CoordTransform, EclipticToEquatorialPymeeus) {
 TEST(CoordTransform, EquatorialToHorizontalPymeeus) {
   // The following data was collected from running PyMeeus's `equatorial2horizontal` (see README.md#references),
   // over random H ∈ [−170°, 170°], δ ∈ [−80°, 80°], φ ∈ [−80°, 80°] (seed 42). Azimuth from the south, as in Meeus.
+  // Retained data: coord_transform-1.
   const std::vector<std::tuple<double, double, double, double, double>> dataset {
     // H                     δ                       φ                       A (PyMeeus)           h (PyMeeus)
     { 77.88578881634919, 27.73832756692825, 77.46643381855458, 84.69769590666547, 29.6467489564507 },

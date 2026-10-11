@@ -33,7 +33,15 @@
 
 import sys
 
-import requests
+from horizons_common import (
+  batches,
+  column_indices,
+  finite_number,
+  get_text,
+  parse_csv_block,
+  require_epochs,
+  tlist,
+)
 
 
 # Horizons' own units-conversion constant (echoed in every response header).
@@ -61,7 +69,13 @@ DE421_SPAN = (2414993.5, 2471183.5)
 
 
 def fetch_horizons(jds: list[float]) -> dict[float, dict]:
-  url = "https://ssd.jpl.nasa.gov/api/horizons.api"
+  out = {}
+  for chunk in batches(jds):
+    out.update(fetch_horizons_chunk(list(chunk)))
+  return out
+
+
+def fetch_horizons_chunk(jds: list[float]) -> dict[float, dict]:
   params = {
     "format": "text",
     "COMMAND": "'301'",
@@ -69,7 +83,7 @@ def fetch_horizons(jds: list[float]) -> dict[float, dict]:
     "MAKE_EPHEM": "'YES'",
     "EPHEM_TYPE": "'OBSERVER'",
     "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(f"{jd:.6f}" for jd in jds) + "'",
+    "TLIST": tlist(tuple(f"{jd:.6f}" for jd in jds)),
     "TLIST_TYPE": "'JD'",
     "TIME_TYPE": "'TT'",
     "QUANTITIES": "'31,20'",
@@ -78,9 +92,7 @@ def fetch_horizons(jds: list[float]) -> dict[float, dict]:
     "CAL_FORMAT": "'BOTH'",
     "CSV_FORMAT": "'YES'",
   }
-  resp = requests.get(url, params=params, timeout=60)
-  resp.raise_for_status()
-  text = resp.text
+  text = get_text(params, timeout=60)
 
   # Audit prints + hard gates (plain raises — `assert` dies under -O): a re-run must fail
   # loudly if Horizons ever swaps the ephemeris or time scale, because the provenance pins
@@ -91,34 +103,22 @@ def fetch_horizons(jds: list[float]) -> dict[float, dict]:
   if "Moon (301)" not in text or "{source: DE441}" not in text:
     raise RuntimeError("Horizons response is not Moon (301) on DE441")
 
-  lines = text.splitlines()
-  soe, eoe = lines.index("$$SOE"), lines.index("$$EOE")
-  header = None
-  for line in reversed(lines[:soe]):
-    if "ObsEcLon" in line:
-      header = [c.strip() for c in line.split(",")]
-      break
-  if header is None:
-    raise RuntimeError("column header line not found")
-  jd_i = next(i for i, name in enumerate(header) if "JD" in name)
-  if "JDTT" not in header[jd_i]:
-    raise RuntimeError(f"JD column is not on the TT scale: {header[jd_i]!r}")
-  col = {name: header.index(name) for name in ["ObsEcLon", "ObsEcLat", "delta", "deldot"]}
+  header, rows = parse_csv_block(text)
+  required = ("ObsEcLon", "ObsEcLat", "delta", "deldot")
+  jd_i, col = column_indices(header, required, "TT")
+  epochs = tuple(finite_number(cells[jd_i], "JDTT") for cells in rows)
+  require_epochs(epochs, tuple(sorted(float(f"{jd:.6f}") for jd in jds)), "Moon")
 
   out = {}
-  for line in lines[soe + 1 : eoe]:
-    cells = [c.strip() for c in line.split(",")]
-    jd = float(cells[jd_i])
+  for jd, cells in zip(sorted(jds), rows, strict=True):
+    values = {name: finite_number(cells[col[name]], name, cells[jd_i]) for name in required}
     out[jd] = {
       "date": cells[0],
-      "lon": float(cells[col["ObsEcLon"]]),
-      "lat": float(cells[col["ObsEcLat"]]),
-      "r_km": float(cells[col["delta"]]) * AU_KM,
-      "deldot": float(cells[col["deldot"]]),
+      "lon": values["ObsEcLon"],
+      "lat": values["ObsEcLat"],
+      "r_km": values["delta"] * AU_KM,
+      "deldot": values["deldot"],
     }
-  missing = [jd for jd in jds if jd not in out]
-  if missing:
-    raise RuntimeError(f"epochs missing from Horizons response: {missing}")
   return out
 
 

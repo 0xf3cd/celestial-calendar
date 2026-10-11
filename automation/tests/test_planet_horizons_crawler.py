@@ -19,6 +19,9 @@ import pytest
 
 MODULE_NAME = "planet_horizons_crawler_test_subject"
 MODULE_PATH = Path(__file__).resolve().parents[2] / "statistics" / "planet_horizons_crawler.py"
+sys.path.insert(0, str(MODULE_PATH.parent))
+SHARED = importlib.import_module("horizons_common")
+
 SPEC = importlib.util.spec_from_file_location(MODULE_NAME, MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 CRAWLER = importlib.util.module_from_spec(SPEC)
@@ -94,7 +97,7 @@ def test_fetch_horizons_quantizes_requested_and_expected_epochs(monkeypatch):
     captured["expected_epochs"] = expected_epochs
     return ()
 
-  monkeypatch.setattr(CRAWLER.requests, "get", get)
+  monkeypatch.setattr(SHARED.requests, "get", get)
   monkeypatch.setattr(CRAWLER, "parse_horizons_response", parse)
 
   target = CRAWLER.TARGETS[0]
