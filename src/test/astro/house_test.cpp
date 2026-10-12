@@ -421,7 +421,7 @@ TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
 }
 
 TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
-  // Meeus (14.3): a longitude-only perturbation leaves the east projection quadratic in the offset.
+  // A longitude-only perturbation leaves the east projection quadratic in the offset.
   for (const double obliquity_deg : { 23.44, 23.438143769036159 }) {
     const AngleDeg obliquity { obliquity_deg };
     for (const double sign : { -1.0, 1.0 }) {

@@ -97,7 +97,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const double east_first = std::cos(latitude.rad()) * std::cos(obliquity.rad());
   const double east_second = std::sin(latitude.rad()) * std::sin(obliquity.rad()) * std::sin(normalized_armc.rad());
   const double east_scale = 1.0 + std::abs(east_first) + std::abs(east_second);
-  // E = -(horizon normal × ecliptic normal) · local east, from (14.3).
+  // E = -(horizon normal × ecliptic normal) · local east.
   if (std::hypot(atan2_x, atan2_y) <= ASCENDANT_ROUNDOFF_FACTOR * arithmetic_scale
       or std::abs(east_first + east_second) <= ASCENDANT_ROUNDOFF_FACTOR * east_scale) {
     throw std::invalid_argument {

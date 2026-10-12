@@ -4,7 +4,7 @@
 `statistics/planet_frame_reference.py`. `SOURCE_PINS.json` identifies the inputs,
 generated values, source counts and comparison thresholds. These coefficient-derived
 values remain under their source terms and outside the project MIT grant;
-`THIRD_PARTY_NOTICES.txt` records the AA+ / VSOP87 source terms. No external implementation or coefficient
+`THIRD_PARTY_NOTICES.txt` records the VSOP87 source terms. No external implementation or coefficient
 table is copied into this generator or added to production.
 
 ## Sources and regeneration
