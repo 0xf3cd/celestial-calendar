@@ -672,7 +672,7 @@ def chart_snapshot(
 
   Civil years are 1885-2099; UTC starts at 1972-01-01. Latitude is north-positive in (-90, 90),
   longitude east-positive in [-180, 180], and fraction is in [0, 1). DEFAULT selects Algo5.
-  The native core owns time conversion, joint TT/model domains, unresolved Ascendant directions
+  The native core owns time conversion, joint TT/model domains, Ascendant directions unresolved
   at round-off for all house systems, and Placidus polar limits.
   The converted JDE(TT) must be in [2409543.875, 2488069.125); Algo4 also requires JDE < 2464328.5.
   UTC-derived UT1 is modelled, not observed DUT1. Failure never returns a partial chart.
