@@ -525,36 +525,6 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief The function to compute △T of a given calendar datetime (UT1).
- * @param ut1_dt The calendar datetime (UT1).
- * @return The delta T, in seconds.
- * @overload This is a overload function of `compute(const double year)`.
- * @note Some caller are passing `calendar::Datetime` in UT1, and some are passing `calendar::Datetime` in TT.
- *       Considering the longness of a year, the difference between `UT1` and `TT` is ignored.
- */
-[[nodiscard]] constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
-  using namespace std::chrono;
-  using namespace util::ymd_operator;
-
-  // Get the gregorian year.
-  const auto& ut1_ymd = ut1_dt.ymd;
-  const auto [ut1_year, _, __] = util::from_ymd(ut1_ymd);
-  
-  // Calculate how many days have already passed since in this year.
-  const int32_t past_days = ut1_ymd - util::to_ymd(ut1_year, 1, 1);
-
-  // Calculate how many days are in this year.
-  const int32_t total_days = util::to_ymd(ut1_year + 1, 1, 1) - util::to_ymd(ut1_year, 1, 1);
-
-  // Convert to a double, representing the fraction/percentage of the past time in the year.
-  const double day_fraction = ut1_dt.fraction();
-  const double year_fraction = (day_fraction + past_days) / total_days;
-
-  return compute(ut1_year + year_fraction);
-}
-
-
-/**
  * @brief Evaluate a selected Delta T model at a valid calendar datetime.
  * @return TT minus UT1, in seconds; the sub-day fraction participates in the decimal year.
  * @throw std::invalid_argument If the datetime or model is invalid.
@@ -571,6 +541,18 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
   const double total_days = dt.ymd.year().is_leap() ? 366.0 : 365.0;
   const double year_fraction = (dt.fraction() + static_cast<double>(past_days)) / total_days;
   return compute(model, year + year_fraction);
+}
+
+
+/**
+ * @brief Evaluate Algo 5 at a valid calendar datetime.
+ * @param ut1_dt The calendar datetime (UT1).
+ * @return TT minus UT1, in seconds.
+ * @throw std::invalid_argument If the datetime is invalid.
+ * @note The TT/UT1 distinction in the datetime argument is ignored.
+ */
+[[nodiscard]] constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
+  return compute(Model::ALGO5, ut1_dt);
 }
 
 

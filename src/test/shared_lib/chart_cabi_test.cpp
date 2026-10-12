@@ -12,6 +12,7 @@
 
 #include <array>
 #include <bit>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -389,6 +390,40 @@ TEST(ChartCAbi, PolarPlacidusFailsWithoutPartialResultOrFallback) {
     EXPECT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_EQUAL).valid);
     EXPECT_STREQ(last_error(), "");
     EXPECT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_WHOLE_SIGN).valid);
+  }
+}
+
+TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
+  // #321: the payload is unspecified on failure; inspect only valid and last_error.
+  const Datetime dt { util::to_ymd(2026, 1, 1),
+                      std::chrono::hh_mm_ss { std::chrono::seconds { 43205 } } };
+  for (const auto observer : std::array {
+    location(66.561856230963841, -11.176256364511062),
+    location(-66.561856230963841, 168.82374363548894)
+  }) {
+    for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
+      for (const uint32_t model : { CHART_DELTA_T_MODEL_DEFAULT, CHART_DELTA_T_MODEL_ALGO5 }) {
+        ASSERT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, system, model).valid);
+        EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
+        for (const double offset : { -0.000001, 0.000001 }) {
+          for (const auto control : std::array {
+            location(observer.latitude.deg() + offset, observer.longitude.deg()),
+            location(observer.latitude.deg(), observer.longitude.deg() + offset)
+          }) {
+            const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, model);
+            ASSERT_TRUE(result.valid) << last_error();
+            EXPECT_STREQ(last_error(), "");
+            EXPECT_TRUE(std::isfinite(result.houses.ascendant_deg));
+          }
+        }
+      }
+    }
+  }
+  for (const double latitude : { -89.0, 89.0 }) {
+    for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
+      ASSERT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, location(latitude, 0.0), system).valid) << last_error();
+      EXPECT_STREQ(last_error(), "");
+    }
   }
 }
 

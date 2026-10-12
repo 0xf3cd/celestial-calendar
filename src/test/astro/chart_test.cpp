@@ -286,6 +286,36 @@ TEST(Chart, SiteAndPlacidusFailuresNeverFallback) {
   }
 }
 
+TEST(Chart, UnresolvedAscendantStopsSnapshotAndAllowsNearbyControls) {
+  // #321 public UTC witness and its antipodal southern site.
+  const auto dt = civil(2026, 1, 1, 43205'000'000'000);
+  for (const auto observer : std::array {
+    location(66.561856230963841, -11.176256364511062),
+    location(-66.561856230963841, 168.82374363548894)
+  }) {
+    for (const auto system : std::array { System::EQUAL, System::WHOLE_SIGN }) {
+      EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, system), std::invalid_argument);
+      EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, system, Model::ALGO5), std::invalid_argument);
+      for (const double offset : { -0.000001, 0.000001 }) {
+        for (const auto control : std::array {
+          location(observer.latitude.deg() + offset, observer.longitude.deg()),
+          location(observer.latitude.deg(), observer.longitude.deg() + offset)
+        }) {
+          const auto result = calculate(dt, Scale::UTC, control, system);
+          EXPECT_TRUE(std::isfinite(result.houses.ascendant.deg()));
+          EXPECT_EQ(result.times.jde_tt, astro::julian_day::utc_to_jde(dt));
+          check_composition(result, control, system);
+        }
+      }
+    }
+  }
+  for (const double latitude : { -89.0, 89.0 }) {
+    for (const auto system : std::array { System::EQUAL, System::WHOLE_SIGN }) {
+      EXPECT_TRUE(std::isfinite(calculate(dt, Scale::UTC, location(latitude, 0.0), system).houses.ascendant.deg()));
+    }
+  }
+}
+
 TEST(Chart, JointTimeDomainAndAlgo4Cap) {
   const auto observer = location(0.0, 0.0);
   for (const double edge : std::array { detail::START_JDE_TT, detail::END_JDE_TT }) {
