@@ -70,7 +70,7 @@ def mutate_record(path: Path, mutation) -> str:
 
 def test_nasa_record_is_pinned():
   assert NASA_RECORD_SHA256 == "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
-  assert NASA_ACKNOWLEDGMENT_SHA256 == "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
+  assert NASA_ACKNOWLEDGMENT_SHA256 == "735321e0ac09f73fd6f6262100a723227c00286b2a6bc7c4a7b0c598b4edfb5b"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
     "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
@@ -322,3 +322,21 @@ def test_lunar_regeneration_body_is_pinned(tmp_path):
 
   with pytest.raises(RuntimeError, match="canonical regeneration test differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_acknowledgment_author_credit_is_required_at_its_own_gate(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(nasa_root / "ACKNOWLEDGMENT.txt", "Fred Espenak", "Uncredited author")
+  with pytest.raises(RuntimeError, match="NASA acknowledgment required fact"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_acknowledgment_prose_and_regeneration_test_name_can_change(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(nasa_root / "ACKNOWLEDGMENT.txt", "acknowledges", "credits")
+  replace_once(
+    tmp_path / "src/test/lunar/algo3_test.cpp",
+    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2)",
+    "TEST(LunarAlgo3, RenamedRegeneration)",
+  )
+  assert verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root) == ProvenanceCounts(15, 11, 2, 12, 2)

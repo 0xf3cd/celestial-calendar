@@ -82,6 +82,7 @@ struct Ytliu0Row {
 // 115 rows: frozen 114 + W-A2 2099. `js@N` = byte offset into calendarData.js at the
 // pinned commit (provenance for the pre-work package / the 2099 decode).
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: YTLIU0_ROWS.
 const std::vector<Ytliu0Row> YTLIU0_ROWS {
   { 1603, std::chrono::year { 1603 } / 2 / 11, 0, { 30, 29, 30, 29, 30, 29, 29, 30, 29, 30, 29, 30 } },  // js@103230 total=354
   { 1607, std::chrono::year { 1607 } / 1 / 28, 6, { 29, 30, 29, 30, 29, 30, 29, 30, 30, 29, 30, 29, 30 } },  // js@103474 total=384

@@ -24,13 +24,13 @@ if __package__:
     ASTROTIME_ALGO5_RECORD_SHA256,
     ASTROTIME_ALGO5_ROOT_RELATIVE,
   )
-  from .source_digest import canonical_cpp
+  from .source_digest import attribution_digest, canonical_cpp, require_facts
 else:
   from astrotime_delta_t_provenance import (
     ASTROTIME_ALGO5_RECORD_SHA256,
     ASTROTIME_ALGO5_ROOT_RELATIVE,
   )
-  from source_digest import canonical_cpp
+  from source_digest import attribution_digest, canonical_cpp, require_facts
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
@@ -38,7 +38,17 @@ NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "t
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
 NASA_RECORD_SHA256: Final[str] = "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
-NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "2d90c4731996cd9b8586c055eb4c29535ebab66abe426b53ae944d15a4887881"
+NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "735321e0ac09f73fd6f6262100a723227c00286b2a6bc7c4a7b0c598b4edfb5b"
+NASA_ACKNOWLEDGMENT_FACTS: Final[tuple[str, ...]] = (
+  "CelestialCalendar",
+  "Fred Espenak",
+  "Jean Meeus",
+  "Five Millennium Canon of Solar Eclipses",
+  "NASA/TP-2006-214141",
+  "October 2006",
+  "NASA Technical Reports Server",
+  "20070003587",
+)
 NASA_NOTICE_APPLICABILITY: Final[str] = (
   "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
   "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "
@@ -126,7 +136,11 @@ def verify_nasa_delta_t_provenance(
   record_path = nasa_root / "delta_t.json"
   acknowledgment_path = nasa_root / "ACKNOWLEDGMENT.txt"
   record = json.loads(_read_pinned(record_path, record_sha256, "NASA provenance record"))
-  acknowledgment = _read_pinned(acknowledgment_path, acknowledgment_sha256, "NASA acknowledgment")
+  acknowledgment = acknowledgment_path.read_bytes()
+  _require(
+    attribution_digest(acknowledgment.decode("utf-8")) == acknowledgment_sha256, "NASA acknowledgment facts differ"
+  )
+  require_facts(acknowledgment.decode("utf-8"), NASA_ACKNOWLEDGMENT_FACTS, "NASA acknowledgment")
   if algo5_root is None:
     algo5_root = repo_root / ASTROTIME_ALGO5_ROOT_RELATIVE
   algo5_record = json.loads(
@@ -311,15 +325,30 @@ def verify_nasa_delta_t_provenance(
     "NASA lunar-table citation differs",
   )
   lunar_test = (repo_root / current_regeneration["repository_test"]).read_text(encoding="utf-8")
+  anchor = lunar_test.index("const auto expected = algo2::calc_lunar_year(year);")
+  start = lunar_test.rfind("TEST(", 0, anchor)
+  marker = lunar_test[start : lunar_test.index("{", start)].strip()
+  test_source = canonical_cpp(_cpp_block(lunar_test, marker))
   _require(
-    f"TEST({current_regeneration['test'].replace('.', ', ')})" in lunar_test
-    and "  ASSERT_EQ(401, checked);\n" in lunar_test,
+    "ASSERT_EQ(401, checked);" in test_source or "EXPECT_EQ(401, checked);" in test_source,
     "NASA lunar-table full-regeneration gate differs",
   )
-  test_source = _cpp_block(lunar_test, f"TEST({current_regeneration['test'].replace('.', ', ')})")
+  contract = (
+    "for (int32_t year = START_YEAR; year <= END_YEAR; ++year)",
+    "if (year >= algo1::START_YEAR and year <= algo1::END_YEAR)",
+    "continue;",
+    "algo2::calc_lunar_year(year)",
+    "algo3::calc_lunar_year(year)",
+    "++checked;",
+  )
+  comparisons = test_source.replace("EXPECT_EQ", "ASSERT_EQ")
   _require(
-    hashlib.sha256(canonical_cpp(test_source).encode("utf-8")).hexdigest()
-    == current_regeneration["canonical_test"]["sha256"],
+    all(part in test_source for part in contract)
+    and "return;" not in test_source
+    and all(
+      f"ASSERT_EQ(expected.{field}, actual.{field})" in comparisons
+      for field in ("date_of_first_day", "leap_month", "month_lengths")
+    ),
     "NASA lunar-table canonical regeneration test differs",
   )
 

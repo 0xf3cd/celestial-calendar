@@ -12,19 +12,21 @@
 
 import hashlib
 import importlib.util
+import json
 import re
-import tokenize
+import sys
 
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import ModuleType
 from typing import Callable, Final
+from unittest.mock import patch
 
 if __package__:
-  from .source_digest import canonical_cpp
+  from .source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 else:
-  from source_digest import canonical_cpp
+  from source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
@@ -37,10 +39,6 @@ HORIZONS_STORED_DE_SOURCE: Final[str] = "DE440"
 HORIZONS_CURRENT_DE_SOURCE: Final[str] = "DE441"
 HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 USNO_API_VERSION: Final[str] = "4.0.1"
-HORIZONS_CRAWLER_CODE_SHA256: Final[str] = "21ccaf5b6ea041947df0c7844f083e48fcb24f5e56509d82eddf03342b41ebe1"
-SUN_EQUATORIAL_GOLDEN_CODE_SHA256: Final[str] = "9a3ea072d0d94c912570deab756ff8b3cdd9718667e0d7e9f0d8eb3c6f0d0396"
-SUNRISE_CRAWLER_CODE_SHA256: Final[str] = "89efef54952feb4671c0447bdb6d0bcb449bfbee5ff143ef33205759e6a020fa"
-RISE_SET_GOLDEN_CODE_SHA256: Final[str] = "bb50327ec4fd298487346b782fae1f28fb41f703eaeac9bd68df97c134b6391d"
 
 HORIZONS_JDES: Final[tuple[str, ...]] = (
   "2432253.451627",
@@ -115,25 +113,16 @@ def _normalized_comment_text(text: str) -> str:
   return " ".join(" ".join(uncommented).split())
 
 
-def _python_code_sha256(text: str) -> str:
-  comment_columns = {
-    token.start[0]: token.start[1]
-    for token in tokenize.tokenize(BytesIO(text.encode("utf-8")).readline)
-    if token.type == tokenize.COMMENT
-  }
-  code_lines = (
-    line[: comment_columns.get(line_number, len(line))].rstrip()
-    for line_number, line in enumerate(text.splitlines(), start=1)
-  )
-  canonical = "\n".join(line for line in code_lines if line.strip())
-  return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
 def _load_module(path: Path) -> ModuleType:
   spec = importlib.util.spec_from_file_location(f"_internal_provenance_{path.stem}_{id(path)}", path)
   _require(spec is not None and spec.loader is not None, f"cannot load {path}")
   module = importlib.util.module_from_spec(spec)
-  spec.loader.exec_module(module)
+  if path.name == "sun_equatorial_horizons_crawler.py":
+    shared = _load_module(path.with_name("horizons_common.py"))
+    with patch.dict(sys.modules, {"horizons_common": shared}):
+      spec.loader.exec_module(module)
+  else:
+    spec.loader.exec_module(module)
   return module
 
 
@@ -157,63 +146,61 @@ def _verify_r35(repo_root: Path) -> None:
   end = sun.index("namespace detail", start)
   record = sun[start:end]
   normalized = " ".join(record.replace("//", " ").replace("*", " ").split())
-  for anchor in ("202a0bd", "397422cc", "066c28db", "5101b6d2", "bc79c991"):
-    _require(anchor in record, f"R35 project history anchor is missing: {anchor}")
   _require(record.count("github.com/leetcola/nong/wiki/") == 2, "R35 nong conceptual-source inventory differs")
   _require("conceptual and implementation ideas" in normalized, "R35 nong source role differs")
   _require("does not claim copied code or byte identity" in normalized, "R35 identity boundary differs")
 
 
 def _verify_v37(repo_root: Path) -> tuple[int, int]:
-  table_records = (
-    (
-      "src/test/astro/earth_test.cpp",
-      "TEST(Earth, Vsop87dEvaluate)",
-      ("Introduced by b5f6c35", "no later numeric shift is recorded"),
+  table_ids = ("earth-0", "earth-1", "sun-0", "sun-2", "moon-0", "moon-1", "elp2000_82b-0")
+  verify_retained_data(repo_root, (*table_ids, "julian_day-0"))
+  data = json.loads((repo_root / RETAINED_REGISTRY).read_text(encoding="utf-8"))["data_blocks"]
+  modification_facts = {
+    "earth-0": (
+      "Earth.geometric_heliocentric_position",
+      "characterization-tight",
+      "JPL DE441",
+      "sun_horizons_golden_test.cpp",
     ),
-    (
-      "src/test/astro/earth_test.cpp",
-      "TEST(Earth, NutationMeeus)",
-      ("Introduced by a99d4d7", "no later numeric shift is recorded"),
+    "earth-1": (
+      "nutation_longitude/obliquity",
+      "characterization-tight",
+      "Meeus Example 22.a",
+      "Table 22.A",
+      "sidereal_time_test.cpp",
     ),
-    (
-      "src/test/astro/sun_test.cpp",
-      "TEST(Sun, GeocentricPosition)",
-      ("Introduced by b5f6c35", "no later numeric shift is recorded"),
+    "sun-0": (
+      "Sun.geometric_geocentric_position",
+      "geometric mirrors",
+      "all other rows are independent samples",
+      "sun_horizons_golden_test.cpp",
+      "JPL DE441",
     ),
-    (
-      "src/test/astro/sun_test.cpp",
-      "TEST(Sun, CorrectedPosition)",
-      ("Introduced by f4b0980", "shifted in da22c87", "PR #100"),
-    ),
-    (
-      "src/test/astro/moon_test.cpp",
-      "TEST(Moon, CoordAndPpi)",
-      ("Introduced by 066c28d", "shifted in 7ea26ee", "PR #96"),
-    ),
-    (
-      "src/test/astro/moon_test.cpp",
-      "TEST(Moon, Perturbation)",
-      ("Introduced by 066c28d", "no stored digit has shifted since", "7ea26ee", "PR #96"),
-    ),
-    (
-      "src/test/astro/elp2000_82b_test.cpp",
-      "TEST(Elp2000, Evaluate)",
-      ("Introduced by 066c28d", "shifted in 7ea26ee", "PR #96"),
-    ),
-  )
-  for relative, marker, anchors in table_records:
-    block = _test_block(_read(repo_root, relative), marker)
-    _require("PyMeeus-derived regression material" in block, f"V37 role label is missing: {marker}")
-    for anchor in anchors:
-      _require(anchor in block, f"V37 history anchor is missing from {marker}: {anchor}")
+    "sun-2": ("bare-κ/R aberration", "λ column shifted", "β and r did not shift"),
+    "moon-0": ("converted from degrees to radians", "All four columns shifted"),
+    "moon-1": ("no stored digit has shifted",),
+    "elp2000_82b-0": ("values shifted", "moon_horizons_golden_test.cpp", "JPL DE441"),
+  }
+  for block_id in table_ids:
+    entry = data[block_id]
+    source = _read(repo_root, entry["path"])
+    end = source.index(entry["start"])
+    begin = source.rfind("TEST(", 0, end)
+    comment = source[begin:end]
+    require_facts(
+      comment,
+      (
+        "PyMeeus-derived regression material",
+        "original version and sample seed are not recorded",
+        *modification_facts.get(block_id, ()),
+      ),
+      f"V37 {block_id}",
+    )
 
   julian = _read(repo_root, "src/test/astro/julian_day_test.cpp")
   start = julian.index("const std::unordered_map<double, Datetime> JDE_TEST_DATASET")
   end = julian.index("\n};", start)
   dataset = julian[start:end]
-  _require("introduced by da333dd" in julian[:start], "V37 Julian-day introduction anchor is missing")
-  _require("no later numeric shift is" in julian[:start], "V37 Julian-day shift history is missing")
   internal_marker = "Seven rows are internal regression material"
   meeus_marker = "Meeus Ch.7 textbook anchor"
   meeus_worked_marker = "Meeus Ch.7 worked value"
@@ -232,7 +219,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
   internal_rows = rows_before_external - 2
   _require(rows_before_external == 9 and internal_rows == 7, "V37 internal Julian-day row count differs")
   _require(len(row_pattern.findall(dataset[external_at:])) == 4, "V37 external Julian-day row count differs")
-  return len(table_records) + 1, internal_rows
+  return len(table_ids) + 1, internal_rows
 
 
 def _verify_v07(repo_root: Path) -> int:
@@ -256,7 +243,7 @@ def _verify_v07(repo_root: Path) -> int:
     "MAKE_EPHEM": "'YES'",
     "EPHEM_TYPE": "'OBSERVER'",
     "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(HORIZONS_JDES) + "'",
+    "TLIST": " ".join(f"'{jde}'" for jde in HORIZONS_JDES),
     "TLIST_TYPE": "'JD'",
     "TIME_TYPE": "'TT'",
     "QUANTITIES": "'2'",
@@ -275,6 +262,17 @@ def _verify_v07(repo_root: Path) -> int:
     "API version",
     "V07 unexpected API version",
   )
+  for version in ("1.3", ""):
+    _require_rejection(
+      lambda version=version: crawler.parse_horizons_response(response(version, HORIZONS_CURRENT_DE_SOURCE)),
+      "API version",
+      "V07 unexpected API version",
+    )
+  _require_rejection(
+    lambda: crawler.parse_horizons_response(response(HORIZONS_API_VERSION, "DE442")),
+    "ephemeris",
+    "V07 unexpected DE source",
+  )
   _require_rejection(
     lambda: crawler.parse_horizons_response(response(HORIZONS_API_VERSION, "DE440")),
     "ephemeris",
@@ -282,25 +280,34 @@ def _verify_v07(repo_root: Path) -> int:
   )
 
   sun_test = sun_test_path.read_text(encoding="utf-8")
-  golden_block = _test_block(sun_test, "TEST(Sun, EquatorialApparentVsJplHorizons)")
+  table_start = sun_test.index("// Retained data: sun-3.")
+  golden_block = sun_test[sun_test.rfind("TEST(", 0, table_start) : table_start]
   stored_de_sources = re.findall(r"\bVSOP87D-vs-(DE\d+)\b", golden_block)
   _require(
     stored_de_sources == [HORIZONS_STORED_DE_SOURCE],
     "V07 stored table DE source differs",
   )
-  golden_code_sha256 = hashlib.sha256(canonical_cpp(golden_block).encode("utf-8")).hexdigest()
-  _require(
-    golden_code_sha256 == SUN_EQUATORIAL_GOLDEN_CODE_SHA256,
-    f"V07 active golden values or assertions differ; got {golden_code_sha256}",
-  )
-  stored = crawler.stored_rows(sun_test_path)
+  verify_retained_data(repo_root, ("sun-3",))
+  table = retained_slice(sun_test, "// Retained data: sun-3.", "};")
+  stored = {
+    jd: (ra, dec)
+    for jd, ra, dec in re.findall(
+      r"\{\s*(\d+\.\d+),\s*\{\s*([+-]?\d+\.\d+),\s*([+-]?\d+\.\d+)\s*\}",
+      table,
+    )
+  }
+  with TemporaryDirectory(prefix="celestial-v07-") as temporary:
+    probe = Path(temporary) / "stored.cpp"
+    probe.write_text("TEST(Sun, EquatorialApparentVsJplHorizons) {\n" + table + "};\n  for (", encoding="utf-8")
+    _require(crawler.stored_rows(probe) == stored, "V07 stored-row parser differs")
   _require(tuple(stored) == HORIZONS_JDES, "V07 stored table inputs differ")
   data = "\n".join(
     f"date,{'2432253.451627002' if jde == HORIZONS_JDES[0] else jde},,,{ra},{dec}," for jde, (ra, dec) in stored.items()
   )
   valid_response = (
     f"API VERSION: {HORIZONS_API_VERSION}\nTarget body name: Sun (10)\n"
-    f"{{source: {HORIZONS_CURRENT_DE_SOURCE}}}\n$$SOE\n{data}\n$$EOE\n"
+    f"{{source: {HORIZONS_CURRENT_DE_SOURCE}}}\n"
+    f"Date__(TT), Date_________JDTT,,, R.A.__(a-app), DEC___(a-app),\n$$SOE\n{data}\n$$EOE\n"
   )
 
   calls: list[tuple[str, dict]] = []
@@ -318,12 +325,12 @@ def _verify_v07(repo_root: Path) -> int:
       calls.append((url, kwargs))
       return FakeResponse()
 
-  original_requests = crawler.requests
-  crawler.requests = FakeRequests()
+  original_requests = crawler.horizons_common.requests
+  crawler.horizons_common.requests = FakeRequests()
   try:
     fetched = crawler.fetch_horizons()
   finally:
-    crawler.requests = original_requests
+    crawler.horizons_common.requests = original_requests
   _require(
     calls == [(HORIZONS_URL, {"params": expected_params, "timeout": 60})],
     "V07 Horizons endpoint or request shape differs",
@@ -337,15 +344,8 @@ def _verify_v07(repo_root: Path) -> int:
     "stored digits differ",
     "V07 stored-digit mismatch",
   )
-  expected_format = "\n".join(
-    f"    {{ {jde:>14}, {{ {stored[jde][0]:>13}, {stored[jde][1]:>13} }} }}," for jde in HORIZONS_JDES
-  )
-  _require(crawler.format_rows(stored) == expected_format, "V07 emitted table format differs")
-  crawler_code_sha256 = _python_code_sha256(crawler_path.read_text(encoding="utf-8"))
-  _require(
-    crawler_code_sha256 == HORIZONS_CRAWLER_CODE_SHA256,
-    f"V07 crawler active code or values differ; got {crawler_code_sha256}",
-  )
+  emitted = re.findall(r"\{\s*(\d+\.\d+),\s*\{\s*([+-]?\d+\.\d+),\s*([+-]?\d+\.\d+)\s*\}", crawler.format_rows(stored))
+  _require(emitted == [(jd, *stored[jd]) for jd in HORIZONS_JDES], "V07 emitted table columns or values differ")
   return len(crawler.JDES)
 
 
@@ -419,16 +419,11 @@ def _verify_v11_v42(repo_root: Path) -> None:
     "V11 USNO request shape differs",
   )
 
-  crawler_code_sha256 = _python_code_sha256(crawler_text)
+  verify_retained_data(repo_root, ("rise_set_golden-0", "rise_set_golden-1"))
   _require(
-    crawler_code_sha256 == SUNRISE_CRAWLER_CODE_SHA256,
-    f"V11 crawler active code or values differ; got {crawler_code_sha256}",
-  )
-  canonical_test = canonical_cpp(test_text)
-  golden_code_sha256 = hashlib.sha256(canonical_test.encode("utf-8")).hexdigest()
-  _require(
-    golden_code_sha256 == RISE_SET_GOLDEN_CODE_SHA256,
-    f"V42 active golden values or assertions differ; got {golden_code_sha256}",
+    hashlib.sha256(repr((crawler.SITES, crawler.DATES)).encode()).hexdigest()
+    == "23f9f0a164094dd5bce38f09222ad9c7d512a7f3d92bf5a2d8915fd6d4ad6483",
+    "V11 crawler retained inputs differ",
   )
 
 

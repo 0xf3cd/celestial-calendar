@@ -21,6 +21,7 @@ from automation.internal_provenance import (
 
 
 TARGET_FILES = (
+  Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json"),
   Path("src/astro/sun.hpp"),
   Path("src/test/astro/earth_test.cpp"),
   Path("src/test/astro/sun_test.cpp"),
@@ -29,6 +30,7 @@ TARGET_FILES = (
   Path("src/test/astro/julian_day_test.cpp"),
   Path("src/test/astro/rise_set_golden_test.cpp"),
   Path("statistics/sun_equatorial_horizons_crawler.py"),
+  Path("statistics/horizons_common.py"),
   Path("statistics/sunrise_golden_crawler.py"),
 )
 
@@ -133,12 +135,11 @@ def test_internal_provenance_is_complete():
     "julian-day",
   ],
 )
-def test_missing_v37_history_anchor_fails(tmp_path, relative, old, new):
+def test_v37_development_history_wording_is_optional(tmp_path, relative, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / relative, old, new)
 
-  with pytest.raises(RuntimeError, match="history anchor|introduction anchor"):
-    verify_internal_provenance(tmp_path)
+  assert verify_internal_provenance(tmp_path) == InternalProvenanceCounts(8, 42, 7)
 
 
 @pytest.mark.parametrize(
@@ -198,7 +199,7 @@ def test_noaa_acknowledgment_is_required(tmp_path, relative):
     verify_internal_provenance(tmp_path)
 
 
-def test_r35_history_and_source_role_are_required(tmp_path):
+def test_r35_source_role_is_required(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/astro/sun.hpp",
@@ -230,7 +231,7 @@ def test_v07_active_goldens_are_immutable(tmp_path):
     "62.035999383,  20.945745250",
   )
 
-  with pytest.raises(RuntimeError, match="V07 active golden values or assertions differ"):
+  with pytest.raises(RuntimeError, match="sun-3 retained data hash differs"):
     verify_internal_provenance(tmp_path)
 
 
@@ -299,24 +300,46 @@ def test_v07_identity_whitelists_cannot_be_broadened(tmp_path, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
 
-  with pytest.raises(RuntimeError, match="V07 crawler active code or values differ"):
+  with pytest.raises(RuntimeError, match="unexpected API version|unexpected DE source"):
     verify_internal_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
-  ("old", "new"),
+  ("relative", "old", "new"),
   [
-    ("https://ssd.jpl.nasa.gov/api/horizons.api", "https://example.invalid/horizons"),
-    ("params=horizons_params(), timeout=60", "params=horizons_params(), timeout=30"),
+    ("statistics/horizons_common.py", "https://ssd.jpl.nasa.gov/api/horizons.api", "https://example.invalid/horizons"),
+    ("statistics/sun_equatorial_horizons_crawler.py", "timeout=60", "timeout=30"),
   ],
   ids=["endpoint", "timeout"],
 )
-def test_v07_request_target_is_complete(tmp_path, old, new):
+def test_v07_request_target_is_complete(tmp_path, relative, old, new):
   materialize_inputs(tmp_path)
-  replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
+  replace_once(tmp_path / relative, old, new)
 
   with pytest.raises(RuntimeError, match="endpoint or request shape differs"):
     verify_internal_provenance(tmp_path)
+
+
+def test_v07_fixture_executes_its_own_shared_dependency(tmp_path):
+  materialize_inputs(tmp_path)
+  assert verify_internal_provenance(tmp_path) == InternalProvenanceCounts(8, 42, 7)
+  replace_once(tmp_path / "statistics/horizons_common.py", "params=params", "params={}")
+
+  with pytest.raises(RuntimeError, match="endpoint or request shape differs"):
+    verify_internal_provenance(tmp_path)
+
+
+@pytest.mark.parametrize("marker", ["// Retained data: sun-3.", "// Retained data: earth-0."])
+def test_data_marker_removal_rejects_internal_provenance(tmp_path, marker):
+  materialize_inputs(tmp_path)
+  path = tmp_path / ("src/test/astro/sun_test.cpp" if "sun-3" in marker else "src/test/astro/earth_test.cpp")
+  replace_once(path, marker, "// Removed data marker.")
+  if "sun-3" in marker:
+    with pytest.raises(ValueError, match="substring not found"):
+      verify_internal_provenance(tmp_path)
+  else:
+    with pytest.raises(RuntimeError, match="retained data start is missing or ambiguous"):
+      verify_internal_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -331,8 +354,11 @@ def test_v07_emitted_table_format_is_exact(tmp_path, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
 
-  with pytest.raises(RuntimeError, match="emitted table format differs"):
-    verify_internal_provenance(tmp_path)
+  if "[1]" in old:
+    with pytest.raises(RuntimeError, match="emitted table columns or values differ"):
+      verify_internal_provenance(tmp_path)
+  else:
+    assert verify_internal_provenance(tmp_path) == InternalProvenanceCounts(8, 42, 7)
 
 
 def test_v11_usno_version_check_cannot_be_weakened(tmp_path):
@@ -374,8 +400,11 @@ def test_v42_active_goldens_are_immutable(tmp_path, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/rise_set_golden_test.cpp", old, new)
 
-  with pytest.raises(RuntimeError, match="active golden values or assertions differ"):
-    verify_internal_provenance(tmp_path)
+  if old.lstrip().startswith("ASSERT"):
+    assert verify_internal_provenance(tmp_path) == InternalProvenanceCounts(8, 42, 7)
+  else:
+    with pytest.raises(RuntimeError, match="rise_set_golden-0 retained data hash differs"):
+      verify_internal_provenance(tmp_path)
 
 
 def test_v11_crawler_active_values_are_immutable(tmp_path):
@@ -386,5 +415,5 @@ def test_v11_crawler_active_values_are_immutable(tmp_path):
     "",
   )
 
-  with pytest.raises(RuntimeError, match="crawler active code or values differ"):
+  with pytest.raises(RuntimeError, match="crawler retained inputs differ"):
     verify_internal_provenance(tmp_path)

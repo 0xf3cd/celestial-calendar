@@ -201,6 +201,7 @@ TEST(Refraction, DefaultParamsDoNotShiftSunriseSunset) {
 
 
 TEST(Refraction, BennettMatchesMeeusNativeValues) {
+  // Retained reference inputs/values: BennettMatchesMeeusNativeValues.
   // Golden anchors for the native (10°C/1010 hPa) Bennett formula.
   // Values are computed from Meeus (16.3). The 0.5° value cross-checks Meeus Example 16.a
   // (h0 = 0°.5, R = 28.754′); the others are formula outputs pinned at six decimals to catch
@@ -216,6 +217,7 @@ TEST(Refraction, BennettMatchesMeeusNativeValues) {
 
 
 TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
+  // Retained reference inputs/values: SaemundssonMatchesMeeusNativeValues.
   // Golden anchors for the native (10°C/1010 hPa) Saemundsson formula.
   // Values are computed from Meeus (16.4). The h = 0.5541 value cross-checks Meeus Example 16.a
   // (the true altitude of the Sun's upper limb in the flattening calculation); the others are
@@ -233,6 +235,7 @@ TEST(Refraction, SaemundssonMatchesMeeusNativeValues) {
 
 
 TEST(Refraction, SaemundssonAtHorizonMatchesGoldenValue) {
+  // Retained reference inputs/values: SaemundssonAtHorizonMatchesGoldenValue.
   // Tight golden anchor for the Saemundsson horizon iteration. Value is the converged output of
   // `at_horizon({.model = SAEMUNDSSON})` at default Params (15°C/1013.25 hPa); it is independent
   // of the Bennett seed and is sensitive to whether the fixed-point iteration actually converges.

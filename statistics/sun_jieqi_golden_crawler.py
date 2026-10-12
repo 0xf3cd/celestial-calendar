@@ -41,7 +41,16 @@ import time
 
 import requests
 
-HORIZONS = "https://ssd.jpl.nasa.gov/api/horizons.api"
+from horizons_common import (
+  TLIST_BATCH_SIZE,
+  batches,
+  column_indices,
+  finite_number,
+  get_text,
+  parse_csv_block,
+  require_epochs,
+  tlist,
+)
 
 # Mean motion of the Sun in apparent longitude, deg/day — only used to seed/steer the
 # crossing solver; the converged instants do not depend on it.
@@ -73,18 +82,13 @@ TT_MINUS_UTC = 69.184 / 86400.0  # days; 32.184 + 37 (TAI-UTC), constant over 20
 BOOK_25B = (2448908.5, 199.9060606)
 
 
-# Batch size per request: ~170-epoch TLISTs have hit 502s (URL ~3 KB); 80 stays well clear.
-TLIST_CHUNK = 80
-
-
 def horizons_get(params: dict) -> str:
   last_error: Exception | None = None
   for attempt in range(4):
     if attempt:
       time.sleep(5.0 * attempt)
     try:
-      resp = requests.get(HORIZONS, params=params, timeout=120)
-      resp.raise_for_status()
+      text = get_text(params, timeout=120)
     except requests.HTTPError as exc:
       if exc.response is not None and 400 <= exc.response.status_code < 500:
         raise  # client error — retrying identical parameters cannot succeed
@@ -95,33 +99,18 @@ def horizons_get(params: dict) -> str:
       last_error = exc
       print(f"horizons_get retry {attempt + 1}: {exc}", file=sys.stderr)
       continue
-    text = resp.text
     if "{source: DE441}" not in text:
       raise RuntimeError("Horizons response is not on DE441")
     return text
   raise RuntimeError(f"Horizons request failed after retries: {last_error}")
 
 
-def parse_csv_block(text: str) -> tuple[list[str], list[list[str]]]:
-  lines = text.splitlines()
-  soe, eoe = lines.index("$$SOE"), lines.index("$$EOE")
-  header = None
-  for line in reversed(lines[:soe]):
-    if "," in line and not line.startswith("**"):
-      header = [c.strip() for c in line.split(",")]
-      break
-  if header is None:
-    raise RuntimeError("column header line not found")
-  rows = [[c.strip() for c in line.split(",")] for line in lines[soe + 1 : eoe]]
-  return header, rows
-
-
 def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
   """Quantity 31 (+20 for the range-rate audit column) at the given TT JDs."""
-  if len(jds) > TLIST_CHUNK:
+  if len(jds) > TLIST_BATCH_SIZE:
     out = {}
-    for i in range(0, len(jds), TLIST_CHUNK):
-      out.update(fetch_observer(command, jds[i : i + TLIST_CHUNK]))
+    for chunk in batches(jds, TLIST_BATCH_SIZE):
+      out.update(fetch_observer(command, list(chunk)))
     return out
   text = horizons_get(
     {
@@ -131,7 +120,7 @@ def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
       "MAKE_EPHEM": "'YES'",
       "EPHEM_TYPE": "'OBSERVER'",
       "CENTER": "'500@399'",
-      "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
+      "TLIST": tlist(tuple(f"{jd:.9f}" for jd in jds)),
       "TLIST_TYPE": "'JD'",
       "TIME_TYPE": "'TT'",
       "QUANTITIES": "'31,20'",
@@ -144,27 +133,32 @@ def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
   if f"({command})" not in text:
     raise RuntimeError(f"observer response is not for body {command}")
   header, rows = parse_csv_block(text)
-  jd_i = next(i for i, name in enumerate(header) if "JD" in name)
-  if "JDTT" not in header[jd_i]:
-    raise RuntimeError(f"JD column is not on the TT scale: {header[jd_i]!r}")
-  col = {name: header.index(name) for name in ["ObsEcLon", "ObsEcLat", "deldot"]}
+  required = ("ObsEcLon", "ObsEcLat", "delta", "deldot")
+  jd_i, col = column_indices(header, required, "TT")
+  require_epochs(
+    tuple(finite_number(cells[jd_i], "JDTT") for cells in rows),
+    tuple(sorted(float(f"{jd:.9f}") for jd in jds)),
+    "observer",
+    2e-6,
+  )
   parsed = {}
   for cells in rows:
+    values = {name: finite_number(cells[col[name]], name, cells[jd_i]) for name in required}
     parsed[float(cells[jd_i])] = {
       "date": cells[0],
-      "lon": float(cells[col["ObsEcLon"]]),
-      "lat": float(cells[col["ObsEcLat"]]),
-      "deldot": float(cells[col["deldot"]]),
+      "lon": values["ObsEcLon"],
+      "lat": values["ObsEcLat"],
+      "deldot": values["deldot"],
     }
   return match_to_requested(jds, parsed, "observer")
 
 
 def fetch_vectors_r(command: str, jds: list[float]) -> dict[float, float]:
   """Geometric distance |r| in AU from a VECTORS query (times interpreted as TDB)."""
-  if len(jds) > TLIST_CHUNK:
+  if len(jds) > TLIST_BATCH_SIZE:
     out = {}
-    for i in range(0, len(jds), TLIST_CHUNK):
-      out.update(fetch_vectors_r(command, jds[i : i + TLIST_CHUNK]))
+    for chunk in batches(jds, TLIST_BATCH_SIZE):
+      out.update(fetch_vectors_r(command, list(chunk)))
     return out
   text = horizons_get(
     {
@@ -174,7 +168,7 @@ def fetch_vectors_r(command: str, jds: list[float]) -> dict[float, float]:
       "MAKE_EPHEM": "'YES'",
       "EPHEM_TYPE": "'VECTORS'",
       "CENTER": "'500@399'",
-      "TLIST": "'" + " ".join(f"{jd:.9f}" for jd in jds) + "'",
+      "TLIST": tlist(tuple(f"{jd:.9f}" for jd in jds)),
       "TLIST_TYPE": "'JD'",
       "VEC_TABLE": "'1'",
       "OUT_UNITS": "'AU-D'",
@@ -184,11 +178,16 @@ def fetch_vectors_r(command: str, jds: list[float]) -> dict[float, float]:
   if f"({command})" not in text:
     raise RuntimeError(f"vectors response is not for body {command}")
   header, rows = parse_csv_block(text)
-  jd_i = next(i for i, name in enumerate(header) if "JDTDB" in name)
-  cols = {name: header.index(name) for name in ["X", "Y", "Z"]}
+  jd_i, cols = column_indices(header, ("X", "Y", "Z"), "TDB")
+  require_epochs(
+    tuple(finite_number(cells[jd_i], "JDTDB") for cells in rows),
+    tuple(sorted(float(f"{jd:.9f}") for jd in jds)),
+    "vectors",
+    2e-6,
+  )
   parsed = {}
   for cells in rows:
-    x, y, z = (float(cells[cols[k]]) for k in ("X", "Y", "Z"))
+    x, y, z = (finite_number(cells[cols[k]], k, cells[jd_i]) for k in ("X", "Y", "Z"))
     parsed[float(cells[jd_i])] = math.sqrt(x * x + y * y + z * z)
   return match_to_requested(jds, parsed, "vectors")
 
@@ -199,6 +198,7 @@ def match_to_requested(jds: list[float], parsed: dict[float, object], what: str)
   reals, so exact float keys fail; nearest-match within 2e-6 d (~0.17 s) is unambiguous
   because no two requested epochs are ever that close."""
   out = {}
+  require_epochs(tuple(parsed), tuple(sorted(jds)), what, 2e-6)
   for pjd, payload in parsed.items():
     nearest = min(jds, key=lambda j: abs(j - pjd))
     if abs(nearest - pjd) > 2e-6:

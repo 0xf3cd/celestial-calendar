@@ -18,15 +18,24 @@ import time
 from dataclasses import dataclass
 from typing import Final
 
-import requests
+from horizons_common import (
+  HORIZONS_URL,
+  TLIST_BATCH_SIZE,
+  angular_separation_deg,
+  batches,
+  checked_separation,
+  column_indices,
+  finite_number,
+  get_text,
+  parse_csv_block,
+  range_epochs,
+  require_epochs,
+  require_illumination,
+  tlist,
+)
 
 
-HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 HORIZONS_API_VERSION: Final[str] = "1.2"
-# The API silently truncates explicit TLIST responses after 80 epochs. Forty also leaves URL margin.
-HORIZONS_BATCH_SIZE: Final[int] = 40
-# Horizons can quantize a six-decimal TLIST token by a few binary64 ulps when echoing JDTT.
-EPOCH_ECHO_TOLERANCE_DAYS: Final[float] = 1e-8
 QUANTITY_COLUMNS: Final[dict[str, tuple[str, ...]]] = {
   "10": ("Illu%",),
   "20": ("delta", "deldot"),
@@ -109,7 +118,7 @@ def horizons_params(
     "MAKE_EPHEM": "'YES'",
     "EPHEM_TYPE": "'OBSERVER'",
     "CENTER": "'500@399'",
-    "TLIST": "'" + " ".join(f"{jde:.6f}" for jde in epochs) + "'",
+    "TLIST": tlist(tuple(f"{jde:.6f}" for jde in epochs)),
     "TLIST_TYPE": "'JD'",
     "TIME_TYPE": "'TT'",
     "QUANTITIES": f"'{quantities}'",
@@ -163,40 +172,24 @@ def parse_horizons_response(
     if any(phrase not in text for phrase in quantity_31_phrases):
       raise RuntimeError(f"Horizons quantity-31 semantics changed for {target.horizons_name}")
 
-  lines = text.splitlines()
-  if lines.count("$$SOE") != 1 or lines.count("$$EOE") != 1:
-    raise RuntimeError(f"Horizons response for {target.horizons_name} has invalid data markers")
-  soe, eoe = lines.index("$$SOE"), lines.index("$$EOE")
-  header = next(
-    ([cell.strip() for cell in line.split(",")] for line in reversed(lines[:soe]) if "ObsEcLon" in line),
-    None,
-  )
-  if header is None:
-    raise RuntimeError("Horizons column header line not found")
-  jd_i = next(i for i, name in enumerate(header) if "JD" in name)
-  if "JDTT" not in header[jd_i]:
-    raise RuntimeError(f"Horizons JD column is not TT: {header[jd_i]!r}")
-  if any(header.count(name) != 1 for name in required_columns):
-    raise RuntimeError(f"Horizons columns differ for {target.horizons_name}: {header!r}")
-  columns = {name: header.index(name) for name in header if name}
+  header, data = parse_csv_block(text)
+  jd_i, columns = column_indices(header, required_columns, "TT")
 
   def optional(cells: list[str], name: str) -> float:
     if name not in columns:
       return math.nan
-    value = cells[columns[name]]
-    if value == "n.a.":
-      raise RuntimeError(f"Horizons returned n.a. for {name} at {cells[jd_i]}")
-    return float(value)
+    return finite_number(cells[columns[name]], name, cells[jd_i])
 
   rows = []
-  for line in lines[soe + 1 : eoe]:
-    cells = [cell.strip() for cell in line.split(",")]
+  for cells in data:
+    for name in required_columns:
+      finite_number(cells[columns[name]], name, cells[jd_i])
     rows.append(
       HorizonsRow(
-        jde=float(cells[jd_i]),
+        jde=finite_number(cells[jd_i], "JDTT"),
         date=cells[0],
-        lon_deg=float(cells[columns["ObsEcLon"]]),
-        lat_deg=float(cells[columns["ObsEcLat"]]),
+        lon_deg=optional(cells, "ObsEcLon"),
+        lat_deg=optional(cells, "ObsEcLat"),
         range_au=optional(cells, "delta"),
         range_rate_km_s=optional(cells, "deldot"),
         elongation_deg=optional(cells, "S-O-T"),
@@ -205,20 +198,7 @@ def parse_horizons_response(
       )
     )
   returned_epochs = tuple(row.jde for row in rows)
-  if not rows:
-    raise RuntimeError(f"Horizons returned no rows for {target.horizons_name}")
-  if any(not math.isfinite(value) for row in rows for value in (row.jde, row.lon_deg, row.lat_deg)):
-    raise RuntimeError(f"Horizons returned a non-finite coordinate for {target.horizons_name}")
-  if any(right <= left for left, right in zip(returned_epochs, returned_epochs[1:], strict=False)):
-    raise RuntimeError(f"Horizons epochs are not strictly increasing for {target.horizons_name}")
-  if expected_epochs is not None:
-    if len(returned_epochs) != len(expected_epochs) or any(
-      abs(returned - expected) > EPOCH_ECHO_TOLERANCE_DAYS
-      for returned, expected in zip(returned_epochs, expected_epochs, strict=False)
-    ):
-      raise RuntimeError(
-        f"Horizons epochs differ for {target.horizons_name}: expected {expected_epochs!r}, got {returned_epochs!r}"
-      )
+  require_epochs(returned_epochs, expected_epochs, target.horizons_name)
   return tuple(rows)
 
 
@@ -228,10 +208,9 @@ def fetch_horizons(
   quantities: str = "20,23,31",
 ) -> tuple[HorizonsRow, ...]:
   requested_epochs = tuple(round(jde, 6) for jde in epochs)
-  response = requests.get(HORIZONS_URL, params=horizons_params(target, requested_epochs, quantities), timeout=60)
-  response.raise_for_status()
+  text = get_text(horizons_params(target, requested_epochs, quantities), timeout=60, url=HORIZONS_URL)
   required_columns = tuple(column for quantity in quantities.split(",") for column in QUANTITY_COLUMNS[quantity])
-  return parse_horizons_response(target, response.text, required_columns, requested_epochs)
+  return parse_horizons_response(target, text, required_columns, requested_epochs)
 
 
 def fetch_horizons_batched(
@@ -240,9 +219,11 @@ def fetch_horizons_batched(
   quantities: str = "20,23,31",
 ) -> tuple[HorizonsRow, ...]:
   rows = []
-  for offset in range(0, len(epochs), HORIZONS_BATCH_SIZE):
-    rows.extend(fetch_horizons(target, epochs[offset : offset + HORIZONS_BATCH_SIZE], quantities))
+  for chunk in batches(epochs, TLIST_BATCH_SIZE):
+    rows.extend(fetch_horizons(target, chunk, quantities))
     time.sleep(0.15)
+  if epochs:
+    require_epochs(tuple(row.jde for row in rows), tuple(round(jde, 6) for jde in epochs), target.horizons_name)
   return tuple(rows)
 
 
@@ -273,14 +254,11 @@ def fetch_horizons_range(
   step_minutes: int,
   quantities: str,
 ) -> tuple[HorizonsRow, ...]:
-  response = requests.get(
-    HORIZONS_URL,
-    params=horizons_range_params(target, start_jde, end_jde, step_minutes, quantities),
-    timeout=120,
-  )
-  response.raise_for_status()
+  params = horizons_range_params(target, start_jde, end_jde, step_minutes, quantities)
+  expected_epochs = range_epochs(params["START_TIME"][3:-1], params["STOP_TIME"][3:-1], step_minutes)
+  text = get_text(params, timeout=120, url=HORIZONS_URL)
   required_columns = tuple(column for quantity in quantities.split(",") for column in QUANTITY_COLUMNS[quantity])
-  return parse_horizons_response(target, response.text, required_columns)
+  return parse_horizons_response(target, text, required_columns, expected_epochs)
 
 
 def pymeeus_position(target: Target, jde: float) -> tuple[float, float]:
@@ -359,30 +337,6 @@ def emit_retrograde(target: Target, rows: tuple[tuple[HorizonsRow, bool, str], .
     print(f"  {{ Planet::{target.enum_name:<7}, {row.jde:13.6f}, {str(retrograde).lower():5} }},  // {label}")
 
 
-def angular_separation_deg(source: HorizonsRow, target: HorizonsRow) -> float:
-  source_lon = math.radians(source.lon_deg)
-  source_lat = math.radians(source.lat_deg)
-  target_lon = math.radians(target.lon_deg)
-  target_lat = math.radians(target.lat_deg)
-  source_vector = (
-    math.cos(source_lat) * math.cos(source_lon),
-    math.cos(source_lat) * math.sin(source_lon),
-    math.sin(source_lat),
-  )
-  target_vector = (
-    math.cos(target_lat) * math.cos(target_lon),
-    math.cos(target_lat) * math.sin(target_lon),
-    math.sin(target_lat),
-  )
-  dot = sum(lhs * rhs for lhs, rhs in zip(source_vector, target_vector, strict=True))
-  cross = (
-    (source_vector[1] * target_vector[2]) - (source_vector[2] * target_vector[1]),
-    (source_vector[2] * target_vector[0]) - (source_vector[0] * target_vector[2]),
-    (source_vector[0] * target_vector[1]) - (source_vector[1] * target_vector[0]),
-  )
-  return math.degrees(math.atan2(math.sqrt(sum(value * value for value in cross)), dot))
-
-
 def unwrap(values: tuple[float, ...]) -> tuple[float, ...]:
   result = [values[0]]
   for value in values[1:]:
@@ -440,7 +394,10 @@ def derive_events(
   planet_lon = unwrap(tuple(row.lon_deg for row in planet_rows))
   sun_lon = unwrap(tuple(row.lon_deg for row in sun_rows))
   difference = tuple(planet - sun for planet, sun in zip(planet_lon, sun_lon, strict=True))
-  separation = tuple(angular_separation_deg(sun, planet) for planet, sun in zip(planet_rows, sun_rows, strict=True))
+  separation = tuple(
+    angular_separation_deg((sun.lon_deg, sun.lat_deg), (planet.lon_deg, planet.lat_deg))
+    for planet, sun in zip(planet_rows, sun_rows, strict=True)
+  )
   inner = target.enum_name in {"MERCURY", "VENUS"}
   spacing = 360.0 if inner else 90.0
   events = []
@@ -548,12 +505,14 @@ def annotate_events(target: Target, rows: tuple[EventRow, ...]) -> tuple[EventRo
     raise RuntimeError(f"Sun and {target.horizons_name} refined epochs differ")
   annotated = []
   for event, planet, sun in zip(rows, planet_rows, sun_rows, strict=True):
-    derived_separation = angular_separation_deg(sun, planet)
-    if abs(derived_separation - planet.elongation_deg) > 0.0002:
-      raise RuntimeError(f"quantity 23 differs from quantity 31 separation for {target.horizons_name} at {planet.jde}")
-    expected_fraction = (1.0 + math.cos(math.radians(planet.phase_angle_deg))) / 2.0
-    if abs(expected_fraction - planet.illuminated_fraction) > 0.000002:
-      raise RuntimeError(f"quantity 10 differs from quantity 43 phase angle for {target.horizons_name} at {planet.jde}")
+    label = f"{target.horizons_name} at {planet.jde}"
+    derived_separation = checked_separation(
+      (sun.lon_deg, sun.lat_deg),
+      (planet.lon_deg, planet.lat_deg),
+      planet.elongation_deg,
+      label,
+    )
+    require_illumination(planet.phase_angle_deg, planet.illuminated_fraction, label)
     annotated.append(
       EventRow(
         planet=event.planet,
@@ -585,11 +544,15 @@ def emit_geometry_rows() -> None:
     planet_rows = fetch_horizons(target, EPOCHS, "10,20,23,31,43")
     print(f"\n// {target.horizons_name}")
     for planet, sun in zip(planet_rows, sun_rows, strict=True):
-      derived_separation = angular_separation_deg(sun, planet)
-      if abs(derived_separation - planet.elongation_deg) > 0.0002:
-        raise RuntimeError(
-          f"quantity 23 differs from quantity 31 separation for {target.horizons_name} at {planet.jde}"
-        )
+      derived_separation = checked_separation(
+        (sun.lon_deg, sun.lat_deg),
+        (planet.lon_deg, planet.lat_deg),
+        planet.elongation_deg,
+        f"{target.horizons_name} at {planet.jde}",
+      )
+      require_illumination(
+        planet.phase_angle_deg, planet.illuminated_fraction, f"{target.horizons_name} at {planet.jde}"
+      )
       print(
         f"  {{ Planet::{target.enum_name:<7}, {planet.jde:13.6f}, {derived_separation:12.7f}, "
         f"{planet.phase_angle_deg:10.4f}, {planet.illuminated_fraction:11.8f} }},"
@@ -598,47 +561,45 @@ def emit_geometry_rows() -> None:
 
 def crawl_events() -> None:
   # UTC year boundaries rendered in TT. Modern TT-UTC is 69.184 seconds throughout this year.
-  year_bounds = {
-    2025: (2460676.500800741, 2461041.500800741),
-  }
+  year = 2025
+  start_jde, end_jde = 2460676.500800741, 2461041.500800741
   all_events = []
-  for year, (start_jde, end_jde) in year_bounds.items():
-    meshes = {}
-    for step_minutes in (1440, 360, 180):
-      scan_start = start_jde - 1.0
-      scan_end = end_jde + 1.0
-      sun_rows = fetch_horizons_range(SUN, scan_start, scan_end, step_minutes, "31")
-      time.sleep(0.15)
-      meshes[step_minutes] = (sun_rows, {})
-      for target in TARGETS:
-        planet_rows = fetch_horizons_range(target, scan_start, scan_end, step_minutes, "10,23,31,43")
-        meshes[step_minutes][1][target.enum_name] = planet_rows
-        time.sleep(0.15)
-
+  meshes = {}
+  for step_minutes in (1440, 360, 180):
+    scan_start = start_jde - 1.0
+    scan_end = end_jde + 1.0
+    sun_rows = fetch_horizons_range(SUN, scan_start, scan_end, step_minutes, "31")
+    time.sleep(0.15)
+    meshes[step_minutes] = (sun_rows, {})
     for target in TARGETS:
-      derived = {
-        step_minutes: derive_events(
-          target,
-          year,
-          start_jde,
-          end_jde,
-          planet_rows[target.enum_name],
-          sun_rows,
-        )
-        for step_minutes, (sun_rows, planet_rows) in meshes.items()
-      }
-      require_same_census(target, year, derived[1440], derived[180], "1-day")
-      require_same_census(target, year, derived[360], derived[180], "6-hour")
-      max_spread = max(
-        (abs(coarse.jde - fine.jde) for coarse, fine in zip(derived[360], derived[180], strict=True)),
-        default=0.0,
-      )
-      print(
-        f"{target.horizons_name} {year}: {len(derived[180])} events, 6h/3h max epoch spread {max_spread:.8f} d",
-        file=sys.stderr,
-      )
-      all_events.extend(annotate_events(target, derived[180]))
+      planet_rows = fetch_horizons_range(target, scan_start, scan_end, step_minutes, "10,23,31,43")
+      meshes[step_minutes][1][target.enum_name] = planet_rows
       time.sleep(0.15)
+
+  for target in TARGETS:
+    derived = {
+      step_minutes: derive_events(
+        target,
+        year,
+        start_jde,
+        end_jde,
+        planet_rows[target.enum_name],
+        sun_rows,
+      )
+      for step_minutes, (sun_rows, planet_rows) in meshes.items()
+    }
+    require_same_census(target, year, derived[1440], derived[180], "1-day")
+    require_same_census(target, year, derived[360], derived[180], "6-hour")
+    max_spread = max(
+      (abs(coarse.jde - fine.jde) for coarse, fine in zip(derived[360], derived[180], strict=True)),
+      default=0.0,
+    )
+    print(
+      f"{target.horizons_name} {year}: {len(derived[180])} events, 6h/3h max epoch spread {max_spread:.8f} d",
+      file=sys.stderr,
+    )
+    all_events.extend(annotate_events(target, derived[180]))
+    time.sleep(0.15)
   emit_event_rows(tuple(all_events))
 
 
@@ -654,7 +615,7 @@ def crawl_positions() -> None:
     near_sun_rows = scan_rows[365:730]
     directed = min(near_sun_rows, key=lambda row: (row.elongation_deg, row.jde))
     all_rows.append((target, base_rows))
-    conjunction_rows.append((target, (directed,)))
+    conjunction_rows.append((target, directed))
     retrograde_rows.append((target, select_retrograde_rows(scan_rows)))
     wrap_rows.extend((target, row, expected) for row, expected in select_wrap_rows(scan_rows))
     print(
@@ -673,8 +634,8 @@ def crawl_positions() -> None:
     emit_horizons(target, rows)
 
   print("\n// Earliest daily minimum elongation in 2026, selected from Horizons output only")
-  for target, rows in conjunction_rows:
-    emit_horizons(target, rows)
+  for target, row in conjunction_rows:
+    emit_horizons(target, (row,))
 
   print("\n// Horizons daily centered-longitude signs, 2025-2027")
   for target, rows in retrograde_rows:

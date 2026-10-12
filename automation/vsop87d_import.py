@@ -20,12 +20,27 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Final, Sequence
 
+if __package__:
+  from .source_digest import canonical_cpp, require_facts
+else:
+  from source_digest import canonical_cpp, require_facts
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 UPSTREAM_ROOT: Final[str] = "https://ftp.imcce.fr/pub/ephem/planets/vsop87"
 CHECK_SOURCE_SHA256: Final[str] = "f8fa52449262be05a22a96840c1acbad0b35c8999e00b5c0477ba8a91a67a51a"
 CHECK_GENERATED_PATH: Final[Path] = Path("src/test/astro/vsop87d_check_data.hpp")
 CHECK_GENERATED_SHA256: Final[str] = "8bdedcccb48e6d0dcbd2d3e18430738d6ef4a45295e9149be53c72b93017308f"
+CHECK_DATA_SHA256: Final[str] = "baaa7bb6bdc9ee4ca5cb48afa692d0369b666788db10cf0539552166ba158a78"
+GENERATED_DATA_SHA256: Final[dict[str, str]] = {
+  "mercury": "8760419d9b6ff7f55f43266f71b77dd31cf881f42470e1d360711c2fc891661b",
+  "venus": "e86c9a4478bbd4250398b318e889fff7bd87e4ed9505207241270e61c16d05c5",
+  "mars": "70406e670066fcfb815e78a9443262774b950e57ec37407971d74b01531da4e6",
+  "jupiter": "53c078e73b184f38c42352352c26ff1104b7aef964de57a182a73ae7427a14cf",
+  "saturn": "4d6c7a43cee00ca381d4283316256f6eaa1f555099d4401bd342978d841023ed",
+  "uranus": "08c19574363a2b5596cba0a1179729c1059e93e8e5340bf3f8fb2e5ef2c7cf6c",
+  "neptune": "eb340003c63a4ea910ae1ba265b281194ea4ed364cd99a30664f9550b481561e",
+}
 HEADER_PATTERN: Final[re.Pattern[str]] = re.compile(
   r"^ VSOP87 VERSION D4\s+([A-Z]+)\s+VARIABLE ([123]) \(LBR\)\s+\*T\*\*(\d)\s+(\d+) TERMS?\s+"
   r"HELIOCENTRIC DYNAMICAL ECLIPTIC AND EQUINOX OF THE DATE$"
@@ -557,14 +572,28 @@ def _counts() -> ImportCounts:
 def verify_repository(repo_root: Path = REPO_ROOT, specs: Sequence[PlanetSpec] = PLANETS) -> ImportCounts:
   for spec in specs:
     path = repo_root / spec.generated_path
-    digest = _sha256(path.read_bytes())
-    _require(digest == spec.generated_sha256, f"{spec.generated_path} generated hash mismatch: {digest}")
-  check_digest = _sha256((repo_root / CHECK_GENERATED_PATH).read_bytes())
+    text = path.read_text(encoding="utf-8")
+    digest = _generated_data_digest(text)
+    _require(digest == GENERATED_DATA_SHA256[spec.key], f"{spec.generated_path} generated data hash mismatch: {digest}")
+    require_facts(text, (spec.source_name, "outside the project MIT grant", "source terms"), str(spec.generated_path))
+  check_text = (repo_root / CHECK_GENERATED_PATH).read_text(encoding="utf-8")
+  check_digest = _generated_data_digest(check_text)
   _require(
-    check_digest == CHECK_GENERATED_SHA256,
-    f"{CHECK_GENERATED_PATH} generated hash mismatch: {check_digest}",
+    check_digest == CHECK_DATA_SHA256,
+    f"{CHECK_GENERATED_PATH} generated data hash mismatch: {check_digest}",
   )
+  require_facts(check_text, ("vsop87.chk", "outside the project MIT grant", "source terms"), str(CHECK_GENERATED_PATH))
   return _counts()
+
+
+def _generated_data_digest(text: str) -> str:
+  tables = re.findall(
+    r"inline constexpr std::array<(?:Coefficients|OfficialCheckRow), \d+> \w+ \{\{.*?\}\};",
+    text,
+    re.DOTALL,
+  )
+  _require(bool(tables), "generated coefficient/check tables are missing")
+  return _sha256("\n".join(canonical_cpp(table) for table in tables).encode())
 
 
 def replay(source_dir: Path, check_file: Path, repo_root: Path = REPO_ROOT, write: bool = False) -> ImportCounts:
@@ -580,7 +609,11 @@ def replay(source_dir: Path, check_file: Path, repo_root: Path = REPO_ROOT, writ
     if write:
       destination.write_bytes(expected)
     else:
-      _require(destination.read_bytes() == expected, f"{relative} differs from the deterministic replay")
+      _require(
+        _generated_data_digest(destination.read_text(encoding="utf-8"))
+        == _generated_data_digest(expected.decode("utf-8")),
+        f"{relative} data differ from the deterministic replay",
+      )
     print(f"{_sha256(expected)}  {relative}")
   return _counts()
 

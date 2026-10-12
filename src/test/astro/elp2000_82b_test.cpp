@@ -31,6 +31,7 @@ TEST(Elp2000, Evaluate) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
   // Introduced by 066c28d (#34, 2024-08-06); values shifted in 7ea26ee (#65 / PR #96, 2026-07-26).
   // Independent references: the two tests below and moon_horizons_golden_test.cpp (JPL DE441).
+  // Retained data: elp2000_82b-0.
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {
     //JDE                   L expected            B expected          R expected           L perturbation       B perturbation
     { 2455157.8937397725, { -166691.76694626233,  961656.21785964631,  19612316.117669303, 832.45418051691058,  2363.0903304329381 } },
@@ -88,6 +89,7 @@ TEST(Elp2000, Evaluate) {
 
 
 TEST(Elp2000, CreateContextExample47a) {
+  // Retained reference inputs/values: CreateContextExample47a.
   // Meeus Example 47.a (p. 342): T = -0.077221081451 (1992 April 12, 0h TD); values as printed in the book.
   const auto ctx = create_context(-0.077221081451);
   ASSERT_NEAR(ctx.Lp.as<DEG>(), 134.290182, 5e-7);
@@ -105,6 +107,7 @@ TEST(Elp2000, MeanArgumentsGolden) {
   // Regression for #65 (M's T^3 sign, Mp's T^4 denominator). Reference: Meeus (47.3)/(47.4)
   // evaluated with Python Decimal (40 digits), 2026-07-26. Tolerance 1e-8 deg: ~20x the double-rounding
   // floor (~5e-10 at jc=30), while the pre-fix code deviates >= 2.2e-6 on every sample below.
+  // Retained data: elp2000_82b-1.
   const std::unordered_map<double, std::pair<double, double>> dataset {
     //jc                   M expected            Mp expected
     { -30.0, {  25.881039709187423, 296.363054283952616 } },

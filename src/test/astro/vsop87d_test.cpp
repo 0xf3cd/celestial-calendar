@@ -27,6 +27,7 @@ using namespace astro::vsop87d;
 // and outside the project MIT grant; no permission conclusion is claimed.
 //
 // The values are directly returned by VSOP87D models, no adjustment or correction.
+// Retained data: vsop87d-0.
 const std::unordered_map<double, std::tuple<double, double, double>> EARTH_DATASET {
   //    JDE          L-tables expected   B-tables expected        R-tables expected
   {     2445701.1, { -98.77924318611353, -2.4184395622860954e-07, 0.9832889892830442 } },

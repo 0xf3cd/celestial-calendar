@@ -70,6 +70,20 @@ def test_usno_relations_reproduce_offline():
   assert verify_usno_identities() == IdentityCounts(181, 60, 50, 12, 1, 639, 3, 1)
 
 
+@pytest.mark.parametrize(
+  ("relative", "marker"),
+  [
+    ("src/test/astro/sidereal_time_test.cpp", "// Retained USNO Greenwich input/output rows."),
+    ("src/test/astro/moon_phase_test.cpp", "const std::vector<calendar::Datetime> datetimes {"),
+  ],
+)
+def test_usno_input_anchor_removal_fails(tmp_path, relative, marker):
+  usno_root = materialize_inputs(tmp_path)
+  replace_once(tmp_path / relative, marker, "Removed input anchor")
+  with pytest.raises(ValueError, match="substring not found"):
+    verify_usno_identities(repo_root=tmp_path, usno_root=usno_root)
+
+
 def test_usno_inventory_is_exact(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   (usno_root / "extra.json").write_text("{}\n", encoding="utf-8")

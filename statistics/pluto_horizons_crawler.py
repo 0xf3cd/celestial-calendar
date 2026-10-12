@@ -20,13 +20,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Final
 
+from horizons_common import checked_separation, require_illumination
 from planet_horizons_crawler import (
   HORIZONS_API_VERSION,
   SUN,
   EventRow,
   HorizonsRow,
   Target,
-  angular_separation_deg,
   annotate_events,
   derive_events,
   fetch_horizons,
@@ -97,12 +97,13 @@ def retained_geometry() -> list[dict[str, float | str]]:
   sun_rows = fetch_horizons(SUN, RETAINED_POSITION_EPOCHS, "31")
   result = []
   for planet, sun in zip(planet_rows, sun_rows, strict=True):
-    separation = angular_separation_deg(sun, planet)
-    if abs(separation - planet.elongation_deg) > 0.0002:
-      raise RuntimeError(f"Pluto quantity 23 differs from quantity 31 at JDE {planet.jde}")
-    expected_fraction = (1.0 + math.cos(math.radians(planet.phase_angle_deg))) / 2.0
-    if abs(expected_fraction - planet.illuminated_fraction) > 0.000002:
-      raise RuntimeError(f"Pluto quantity 10 differs from quantity 43 at JDE {planet.jde}")
+    separation = checked_separation(
+      (sun.lon_deg, sun.lat_deg),
+      (planet.lon_deg, planet.lat_deg),
+      planet.elongation_deg,
+      f"Pluto at JDE {planet.jde}",
+    )
+    require_illumination(planet.phase_angle_deg, planet.illuminated_fraction, f"Pluto at JDE {planet.jde}")
     result.append({**row_dict(planet), "derived_separation_deg": separation})
   return result
 

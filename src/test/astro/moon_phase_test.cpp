@@ -281,6 +281,7 @@ TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
 }
 
 TEST(Illumination, Example48aFormulaLayer) {
+  // Retained reference inputs/values: Example48aFormulaLayer.
   // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), mirrored value-by-value. The inputs
   // are the book's own printed (rounded) positions from Example 47.a, so this layer pins the
   // formula transcription exactly — no position-model error is absorbed. Tolerances are the
@@ -302,6 +303,7 @@ TEST(Illumination, Example48aFormulaLayer) {
 }
 
 TEST(Illumination, Example48aEndToEnd) {
+  // Retained reference inputs/values: Example48aEndToEnd.
   // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
   // Measured gap vs the book's 0.6786: 3.3e-5 — below the print digit.
   ASSERT_NEAR(illumination::fraction(2448724.5), 0.6786, 5e-5);
@@ -314,6 +316,7 @@ TEST(Illumination, HorizonsGoldenDataset) {
   // collected 2026-08-10. Regenerable: statistics/moon_illumination_horizons_crawler.py
   // prints this exact block. Measured max gap 4.33e-5 — the VSOP87D + truncated-ELP position
   // gap to DE441 in fraction units; tolerance 1e-4 ≈ 2.3x the measured max.
+  // Retained data: moon_phase-0.
   const std::vector<std::pair<double, double>> dataset {
     { 2415495.221397, 0.0499048 },
     { 2415859.165691, 0.9064972 },
@@ -444,6 +447,7 @@ TEST(Illumination, HorizonsGoldenDataset) {
 }
 
 TEST(Illumination, Example48aPositionAngleFormulaLayer) {
+  // Retained reference inputs/values: Example48aPositionAngleFormulaLayer.
   // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), printed equatorial positions.
   // The book rounds χ to 285°.0; the inputs are rounded to 4 decimals, so the formula-layer
   // tolerance is half a print digit. Measured recomputation from the rounded inputs: 285.0000.
@@ -461,6 +465,7 @@ TEST(Illumination, Example48aPositionAngleFormulaLayer) {
 }
 
 TEST(Illumination, Example48aPositionAngleEndToEnd) {
+  // Retained reference inputs/values: Example48aPositionAngleEndToEnd.
   // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
   // The book rounds the result to 285°.0; the tolerance keeps the print-digit anchor
   // and the model-to-model spread to pure-Python Meeus well inside.

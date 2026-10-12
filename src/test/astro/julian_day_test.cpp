@@ -39,6 +39,7 @@ using namespace std::chrono_literals;
 // This spot-check family was introduced by da333dd (#5, 2024-06-30); no later numeric shift is
 // recorded. The real correctness gate is the Consistency round-trip suite (5000 random points
 // each direction) plus the InvalidInput boundary tests.
+// Retained data: julian_day-0.
 const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   // Meeus Ch.7 textbook anchor: 2299160.5 = 1582-10-15, the Gregorian adoption.
   { 2299160.5,         Datetime { to_ymd(1582, 10, 15), 0.0, } },
@@ -145,6 +146,7 @@ TEST(JulianDay, JdeUt1Anchors) {
   };
 
   // NOLINTBEGIN(modernize-use-designated-initializers)
+  // Retained data: julian_day-1.
   const std::vector<Anchor> anchors {
     //                  tt                              ut1 (= tt − observed ΔT)                                     tol_sec
     { Datetime { to_ymd(2000, 1, 1), 0.0 }, Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } }, 0.2 },

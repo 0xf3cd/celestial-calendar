@@ -39,6 +39,7 @@ inline auto ang_diff(const double a, const double b) -> double {
 }
 
 TEST(SiderealTime, GreenwichMeanMeeus12a) {
+  // Retained reference inputs/values: GreenwichMeanMeeus12a.
   // Meeus Example 12.a: 1987 April 10, 0h UT, JD = 2446895.5 → GMST = 197.693195°.
   // This is a 0h UT case, where the completed (12.4) form coincides with the bare (12.3) polynomial.
   ASSERT_NEAR(greenwich_mean(2446895.5).deg(), 197.693195, 5e-7);
@@ -51,6 +52,7 @@ TEST(SiderealTime, GreenwichMeanJ2000) {
 }
 
 TEST(SiderealTime, GreenwichMeanArbitraryInstant) {
+  // Retained reference inputs/values: GreenwichMeanArbitraryInstant.
   // PyMeeus doctest value: 1987 April 10, 19h21m UT → mean sidereal time 0.357605204 d = 128.73787344°.
   // An arbitrary (non-0h) instant: the bare (12.3) polynomial would be off by ~360°×0.80625 ≈ 290°.
   constexpr double jd_ut1 = 2446895.5 + ((19.0 + (21.0 / 60.0)) / 24.0);
@@ -68,6 +70,7 @@ TEST(SiderealTime, GreenwichMeanDailyRate) {
 }
 
 TEST(SiderealTime, GreenwichApparentMeeus12a) {
+  // Retained reference inputs/values: GreenwichApparentMeeus12a.
   // Same instant as Example 12.a (1987 April 10, 0h). The book takes Δψ = −3".788 and
   // ε = 23°26'36".85 from Example 22.a (evaluated at 0h TD):
   //   GAST = 197.693195° + (−3.788/3600)°·cos(23.443569°) ≈ 197.6922296°.
@@ -103,6 +106,7 @@ TEST(SiderealTime, GreenwichApparentComposition) {
 }
 
 TEST(SiderealTime, LocalApparentMeeus13b) {
+  // Retained reference inputs/values: LocalApparentMeeus13b.
   // Meeus Example 13.b (Washington USNO, 1987 April 10, 19h21m UT): with α = 23h09m16.641s
   // (apparent RA of Venus) and H = +64°.352133, the local apparent sidereal time is
   // θ = H + α (mod 360°). Meeus's longitude is west-positive: lon = +77°03'56".
@@ -136,6 +140,7 @@ TEST(SiderealTime, GreenwichMeanPymeeus) {
   // over random jd_ut1 ∈ ~[1800, 2100] including fractional-day instants
   // (seed 42). PyMeeus uses the (12.2) 0h polynomial + the 1.00273790935 ratio; agreement with
   // our (12.4) form is ≲ 3e-7° on this dataset.
+  // Retained data: sidereal_time-0.
   const std::vector<std::tuple<double, double>> dataset {
     {  2448560.052014224, 237.07962100837617 },
     { 2381236.0284927683, 110.86686023100371 },
@@ -209,6 +214,7 @@ TEST(SiderealTime, GreenwichApparentPymeeus) {
   // from PyMeeus's `true_obliquity` / `nutation_longitude` (Meeus Table 22.A) evaluated at
   // jde_tt; jd_ut1 random in ~[1800, 2100], jde_tt = jd_ut1 + ΔT with ΔT ∈ [30, 100] s
   // (seed 42). Our Model::MEEUS uses the same 22.A table, hence the tight tolerance.
+  // Retained data: sidereal_time-1.
   const std::vector<std::tuple<double, double, double>> dataset {
     { 2486921.5316226543,  2486921.532488395, 60.626669081473125 },
     {  2439522.711224363,   2439522.71212625, 206.76161033564242 },
@@ -279,6 +285,7 @@ TEST(SiderealTime, GreenwichApparentPymeeus) {
 }
 
 TEST(SiderealTime, GreenwichUsno) {
+  // Retained USNO Greenwich input/output rows.
   // Data collected from the USNO Sidereal Time API (aa.usno.navy.mil/api/siderealtime) on
   // 2026-07-19: 40 random UT1 instants in 2025–2027 (the API's allowed window), at lon = 0.
   // The 60 reconstructed requests and current API 4.0.1 response hashes are pinned in
@@ -291,6 +298,7 @@ TEST(SiderealTime, GreenwichUsno) {
   // UT1/TT mixup would produce.
   constexpr double TOL_GMST = 5.56e-5; // 0.2" in degrees
   constexpr double TOL_GAST = 6.94e-5; // 0.25" in degrees
+  // Retained data: sidereal_time-2.
 
   const std::vector<std::tuple<double, double, double, double>> dataset {
     {    2461428.1534375,  2461428.154238241,       357.00228625, 357.00534999999996 },
@@ -342,6 +350,7 @@ TEST(SiderealTime, GreenwichUsno) {
 }
 
 TEST(SiderealTime, LocalApparentUsno) {
+  // Retained USNO local input/output rows.
   // Same source and date as above: 20 random instants at random longitudes. USNO's longitude
   // is east-positive (LAST = GAST + lon_east); the dataset stores west-positive values
   // (lon_west = −lon_east), matching `local_apparent`'s convention. USNO evaluated LAST at
@@ -349,6 +358,7 @@ TEST(SiderealTime, LocalApparentUsno) {
   // with full-precision longitudes the residuals reach 0.22" (89% of tolerance); quantized,
   // they stay ≤ 0.07", leaving ~4× margin against the IAU-model gap.
   constexpr double TOL_LAST = 6.94e-5; // 0.25" in degrees
+  // Retained data: sidereal_time-3.
 
   const std::vector<std::tuple<double, double, double, double>> dataset {
     { 2461123.9418287035, 2461123.9426294444,  -74.0403,         55.0196375 },

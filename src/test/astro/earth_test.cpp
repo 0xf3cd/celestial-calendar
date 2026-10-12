@@ -38,6 +38,7 @@ TEST(Earth, Vsop87dEvaluate) {
   // remain characterization-tight: 1e-11 deg λ, 1e-16 deg β, and 1e-14 AU r.
   // Independent accuracy anchor: the geocentric-Sun pipeline built on this evaluation is
   // validated against JPL DE441 in sun_horizons_golden_test.cpp.
+  // Retained data: earth-0.
   const std::unordered_map<double, std::tuple<double, double, double>> dataset {
     // JDE                   Longitude            Latitude                 Radius
     { 2422823.3699241388, { 232.52621477445064,  0.00023073808290912477,   1.01083930897031 } },
@@ -116,6 +117,7 @@ TEST(Earth, NutationMeeus) {
   // characterization-tight: 1e-14 deg Δψ and 1e-15 deg Δε.
   // Independent anchors: Meeus Example 22.a (Earth.ObliquityMeeus22a below) and the PyMeeus
   // Table 22.A cross-dataset in sidereal_time_test.cpp.
+  // Retained data: earth-1.
   const std::unordered_map<double, std::tuple<double, double>> dataset {
     // JDE                   Longtitude nutation       Obliquity nutation
     {  2422340.375810433, {   0.0040657677880880485,  -0.0017067131109079594 } },
@@ -304,6 +306,7 @@ TEST(Earth, NutationIau1980) {
   // Characterization output introduced on 2024-07-15 from SOFA 2021-05-12 `iauNut80`.
   // Its generator and exact source snapshot were not retained; the 2023-10-11 coefficient
   // pin does not re-source it.
+  // Retained data: earth-2.
   const std::unordered_map<double, std::pair<double, double>> dataset = {
     // JDE                   Δlongitude [rad]         Δobliquity [rad]
     { 2421984.2444770792, {   8.446894530911212e-05,  -1.580994865478172e-05 } },
@@ -505,6 +508,7 @@ TEST(Earth, NutationIau1980) {
 }
 
 TEST(Earth, ObliquityMeeus22a) {
+  // Retained reference inputs/values: ObliquityMeeus22a.
   using namespace obliquity;
 
   // Meeus Example 22.a: 1987-04-10, 0h TD, JDE = 2446895.5.
@@ -542,6 +546,7 @@ TEST(Earth, ObliquityJ2000) {
 TEST(Earth, AberrationDailyVariationGolden) {
   // Reference: Meeus p. 168 series evaluated with mpmath (50 digits), 2026-07-26.
   // Tolerance 1e-6 arcsec/day: ~2e3x the double-rounding floor (~5e-10, measured).
+  // Retained data: earth-3.
   const std::unordered_map<double, double> dataset {
     // JDE       Δλ (arcsec/day)
     { 2448908.5, 3563.366449914 },
@@ -566,6 +571,7 @@ TEST(Earth, AberrationGolden) {
   // mpmath 50 digits, 2026-07-26. R != 1 rows discriminate R- vs 1/R-handling (the old bug's shape);
   // the first row is the epoch of Meeus Example 25.b. Tolerance 1e-6": ~2e5x the double-rounding
   // floor (~5e-12, measured), while the pre-fix code deviates >= 0.0013" on every row below.
+  // Retained data: earth-4.
   const std::vector<std::tuple<double, double, double>> dataset {
     // JDE            R (AU)      aberration (arcsec)
     { 2448908.5,        1.0, 20.58028814109 }, // same JDE as Meeus Example 25.b
@@ -590,6 +596,7 @@ TEST(Earth, AberrationGolden) {
 }
 
 TEST(Earth, AberrationMeeus25b) {
+  // Retained reference inputs/values: AberrationMeeus25b.
   // Meeus Example 25.b (p. 169): JDE 2448908.5, R = 0.99760775, aberration correction -20.539"
   // by (25.10) — signed; compute returns the magnitude to subtract. Our (25.11) differs from
   // (25.10) by up to 0.01" per Meeus; the measured gap here is 0.008".

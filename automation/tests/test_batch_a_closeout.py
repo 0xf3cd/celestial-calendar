@@ -41,6 +41,7 @@ from automation.batch_a_closeout import (
   verify_batch_a_closeout,
 )
 from automation.third_party_notices import SEPARATOR
+from automation.source_digest import json_digest
 
 
 def _source_payloads() -> tuple[dict, dict]:
@@ -53,6 +54,7 @@ def _source_payloads() -> tuple[dict, dict]:
 
 def _referenced_paths(record: dict, registry: dict) -> set[Path]:
   paths = {Path("src/astro/vsop87d/defines.hpp")}
+  paths.update(Path(block["path"]) for block in registry["data_blocks"].values())
   for row in record["rows"].values():
     evidence = row["evidence"]
     if evidence["kind"] == "existing_gate":
@@ -98,6 +100,17 @@ def materialize_inputs(destination: Path) -> tuple[Path, Path]:
 
 def write_json(path: Path, payload: dict) -> str:
   path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+  if path.name == RECORD_NAME:
+    return json_digest(
+      {
+        key: {k: v for k, v in row.items() if k not in {"destination", "current_reproducibility"}}
+        for key, row in payload["rows"].items()
+      }
+    )
+  if path.name == REGISTRY_NAME:
+    return json_digest(
+      [{key: value for key, value in block.items() if key != "locator"} for block in payload["blocks"]]
+    )
   return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -107,12 +120,12 @@ def replace_once(path: Path, old: str, new: str) -> None:
   path.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def test_batch_a_closeout_records_are_pinned_and_complete():
-  assert RECORD_SHA256 == "23a569ca89a75d7c47ac8d1a36692bb47bf76ccac49fbaaa408583269c24ed5c"
-  assert REGISTRY_SHA256 == "5ee82857f97ef7d6aaf7daa963e4b2d1f1ee3461bf7446fc3f61017907c3bca4"
-  assert LUNAR_NODE_ATTRIBUTION_SHA256 == "7375c4ef06127bb91a6e3941bf477d1759d48edc1789757a0c642f2e0cdf1f3e"
-  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "4e0333c190a8774b3f859e035bfb9bd15531ff4a84e79fe45f95759820fc3014"
-  assert LONGITUDE_RATE_PINS_SHA256 == "57bc3859b98e054069e0639da8bbc44c931aac045f3591bf092a7309d16b6f93"
+def test_batch_a_closeout_facts_and_values_are_complete():
+  assert RECORD_SHA256 == "42220691bcd5ba657bc8c99e968838406c3612f66d29642d51d95a9e9eca901d"
+  assert REGISTRY_SHA256 == "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
+  assert LUNAR_NODE_ATTRIBUTION_SHA256 == "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
+  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "cfe6c7da00276575691db84e76d2d9de5d5f3796c0148834e0f5d2acb812dbc5"
+  assert LONGITUDE_RATE_PINS_SHA256 == "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
   assert verify_batch_a_closeout() == CloseoutCounts(58, 114, 61, 2, 16)
 
 
@@ -121,7 +134,7 @@ def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
   attribution = tmp_path / LUNAR_NODE_ATTRIBUTION_RELATIVE
   replace_once(attribution, "AA+ v2.63", "AA+ v2.64")
 
-  with pytest.raises(RuntimeError, match="lunar-node oracle attribution hash mismatch"):
+  with pytest.raises(RuntimeError, match="lunar-node oracle attribution facts differ"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -139,7 +152,7 @@ def test_longitude_rate_attribution_mutations_fail(tmp_path, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / LONGITUDE_RATE_ATTRIBUTION_RELATIVE, old, new)
 
-  with pytest.raises(RuntimeError, match="longitude-rate oracle attribution hash mismatch"):
+  with pytest.raises(RuntimeError, match="longitude-rate oracle attribution.*(facts differ|required fact)"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -160,7 +173,7 @@ def test_longitude_rate_source_pin_mutations_fail(tmp_path, mutation):
     pins["validation_corpora"]["holdout"]["output_sha256"] = "0" * 64
   write_json(path, pins)
 
-  with pytest.raises(RuntimeError, match="longitude-rate source pins hash mismatch"):
+  with pytest.raises(RuntimeError, match="longitude-rate source pins facts differ"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -189,7 +202,7 @@ def test_longitude_rate_retained_golden_mutations_fail(tmp_path, old, new):
   else:
     replace_once(source, old, new)
 
-  with pytest.raises(RuntimeError, match="v44-longitude-rate retained data hash differs"):
+  with pytest.raises(RuntimeError, match="longitude-rate retained data hash differs"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -200,7 +213,7 @@ def test_longitude_rate_retained_data_fields_are_required(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   block = next(item for item in registry["blocks"] if item["id"] == block_id)
-  for field in ("data_start", "data_end", "data_method", "data_sha256"):
+  for field in ("data_id",):
     del block[field]
   digest = write_json(registry_path, registry)
 
@@ -285,7 +298,7 @@ def test_direct_digest_detects_a_retained_value_change(tmp_path):
   source = tmp_path / "src/astro/vsop87d/earth_coeff.hpp"
   replace_once(source, "175347045.673", "175347045.674")
 
-  with pytest.raises(RuntimeError, match="R12 direct digest differs"):
+  with pytest.raises(RuntimeError, match="earth_coeff-runtime-0 retained data hash differs"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
@@ -332,7 +345,7 @@ def test_planet_retained_data_fields_are_required(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   block = next(item for item in registry["blocks"] if item["id"] == block_id)
-  for field in ("data_start", "data_end", "data_method", "data_sha256"):
+  for field in ("data_id",):
     del block[field]
   digest = write_json(registry_path, registry)
 
@@ -374,8 +387,7 @@ def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
     ("duplicate-locator", "duplicate retained locator"),
     ("wrong-scope", "r12 scope differs"),
     ("wrong-source", "r12 source identity is not recognised"),
-    ("changed-marker", "r12 retained marking differs"),
-    ("changed-marking-hash", "r12 retained marking hash differs"),
+    ("changed-marking-facts", "r12 MIT boundary|r12 required fact"),
     ("unknown-mode", "r12 marking mode differs"),
     ("notice-map", "notice applicability mapping differs"),
   ],
@@ -391,15 +403,13 @@ def test_registry_mutations_fail(tmp_path, mutation, message):
     by_id["r13"]["path"] = by_id["r14"]["path"]
     by_id["r13"]["locator"] = by_id["r14"]["locator"]
     by_id["r13"]["marker"] = by_id["r14"]["marker"]
-    by_id["r13"]["marking_sha256"] = by_id["r14"]["marking_sha256"]
+    by_id["r13"]["marking_facts"] = by_id["r14"]["marking_facts"]
   elif mutation == "wrong-scope":
     by_id["r12"]["material_scope"] = "project_authored_mit"
   elif mutation == "wrong-source":
     by_id["r12"]["source_identity"] = "unidentified source"
-  elif mutation == "changed-marker":
-    by_id["r12"]["marker"] = "Retained material boundary (R12): changed"
-  elif mutation == "changed-marking-hash":
-    by_id["r12"]["marking_sha256"] = "0" * 64
+  elif mutation == "changed-marking-facts":
+    by_id["r12"]["marking_facts"] = ["invented fact"]
   elif mutation == "unknown-mode":
     by_id["r12"]["marking_mode"] = "notice_only"
   else:
@@ -422,15 +432,11 @@ def test_registry_source_must_match_its_owning_row(tmp_path):
 
 
 def test_adjacent_data_hash_mutation_fails(tmp_path):
-  record_path, _registry_path = materialize_inputs(tmp_path)
+  materialize_inputs(tmp_path)
   data = tmp_path / "statistics/moon_phases.csv"
   data.write_bytes(data.read_bytes() + b"\n")
-  record = json.loads(record_path.read_text(encoding="utf-8"))
-  record["rows"]["V30"]["evidence"]["blocks"][0]["sha256"] = hashlib.sha256(data.read_bytes()).hexdigest()
-  digest = write_json(record_path, record)
-
-  with pytest.raises(RuntimeError, match="v30 retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path, record_sha256=digest)
+  with pytest.raises(RuntimeError, match="retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_adjacent_record_mutation_fails(tmp_path):
@@ -438,23 +444,16 @@ def test_adjacent_record_mutation_fails(tmp_path):
   attribution = tmp_path / CLOSEOUT_ROOT_RELATIVE / "ATTRIBUTION.md"
   replace_once(attribution, "notebook-only new/full Moon", "changed new/full Moon")
 
-  with pytest.raises(RuntimeError, match="v26 adjacent record hash differs"):
+  with pytest.raises(RuntimeError, match="v30 required fact"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_orphan_adjacent_section_fails(tmp_path):
-  _record_path, registry_path = materialize_inputs(tmp_path)
+  materialize_inputs(tmp_path)
   attribution = tmp_path / CLOSEOUT_ROOT_RELATIVE / "ATTRIBUTION.md"
   attribution.write_text(attribution.read_text(encoding="utf-8") + "\n## V99: orphan\n", encoding="utf-8")
-  adjacent_sha256 = hashlib.sha256(attribution.read_bytes()).hexdigest()
-  registry = json.loads(registry_path.read_text(encoding="utf-8"))
-  for block in registry["blocks"]:
-    if block["marking_mode"] == "adjacent_record":
-      block["adjacent_sha256"] = adjacent_sha256
-  digest = write_json(registry_path, registry)
-
   with pytest.raises(RuntimeError, match="orphan or missing adjacent section"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_orphan_in_file_marking_fails(tmp_path):
@@ -478,7 +477,7 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
   entry["path"] = "src/test/astro/sun_test.cpp"
   entry["locator"] = "V07 refresh relation"
   entry["marker"] = "Retained material boundaries: the V07 JPL Horizons DE440 table"
-  entry["marking_sha256"] = v07["marking_sha256"]
+  entry["marking_facts"] = v07["marking_facts"]
   digest = write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match="identity-gate hosts lack registry entries"):
@@ -734,18 +733,19 @@ def test_mit_spdx_host_identity_swap_fails(tmp_path):
   replace_once(tmp_path / "checks.py", "Ningqi Wang (0xf3cd)", "Anonymous")
   extra = tmp_path / "automation/a4_probe_extra.py"
   extra.write_text(
-    f"# Ningqi Wang (0xf3cd)\n# https://github.com/0xf3cd/celestial-calendar\n# {MIT_SPDX_MARKER}\n",
+    "# CelestialCalendar:\n# Ningqi Wang (0xf3cd)\n# https://github.com/0xf3cd/celestial-calendar\n"
+    f"# {MIT_SPDX_MARKER}\n",
     encoding="utf-8",
   )
 
-  with pytest.raises(RuntimeError, match="MIT SPDX project-header inventory differs"):
+  with pytest.raises(RuntimeError, match="project banner differs"):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
   ("old", "new", "message"),
   [
-    ("under its source", "under changed source", "r22 retained marking hash differs"),
+    ("under its source\n// terms", "under project\n// terms", "r22 required fact"),
     (
       "// terms and outside the project MIT grant; written permission",
       "// terms; written permission",

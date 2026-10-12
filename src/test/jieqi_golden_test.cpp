@@ -101,6 +101,7 @@ auto jieqi_from_entry(const int32_t entry) -> Jieqi {
 }
 
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: DE441_ROWS.
 const std::vector<CrossingRow> DE441_ROWS {
   {  2026, 285.0,  2461045.850228372 },  // 2026-Jan-05 08:24:19.731 TT
   {  2026, 300.0,  2461060.573684652 },  // 2026-Jan-20 01:46:06.354 TT
@@ -181,6 +182,7 @@ const std::vector<CrossingRow> DE441_ROWS {
 };
 
 // 2022–2028 × 24 = 168 rows.
+// Retained data: HKO_ROWS.
 const std::vector<HkoRow> HKO_ROWS {
   { 2022,  0,  1,  5, 17, 14 },
   { 2022,  1,  1, 20, 10, 39 },

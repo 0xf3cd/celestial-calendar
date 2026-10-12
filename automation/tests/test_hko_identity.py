@@ -129,3 +129,21 @@ def test_hko_artifact_inventory_is_exact(tmp_path):
 
   with pytest.raises(RuntimeError, match="HKO artifact inventory differs"):
     verify_hko_identity(repo_root=tmp_path, hko_root=hko_root)
+
+
+@pytest.mark.parametrize("table", ["algo1", "algo3"])
+@pytest.mark.parametrize("fact", ["no permission is claimed", "outside the project MIT grant"])
+def test_hko_required_marking_facts_cannot_be_removed(tmp_path, table, fact):
+  hko_root = materialize_inputs(tmp_path)
+  path = tmp_path / f"src/calendar/lunar/{table}.hpp"
+  replace_once(path, fact, "removed boundary fact")
+  with pytest.raises(RuntimeError, match=f"{table} HKO permission boundary required fact"):
+    verify_hko_identity(repo_root=tmp_path, hko_root=hko_root)
+
+
+@pytest.mark.parametrize("table", ["algo1", "algo3"])
+def test_hko_equivalent_marking_prose_is_allowed(tmp_path, table):
+  hko_root = materialize_inputs(tmp_path)
+  path = tmp_path / f"src/calendar/lunar/{table}.hpp"
+  replace_once(path, "Retained under owner risk acceptance;", "Kept under owner risk acceptance;")
+  assert verify_hko_identity(repo_root=tmp_path, hko_root=hko_root) == IdentityCounts(200, 199, 199, 199, 1)

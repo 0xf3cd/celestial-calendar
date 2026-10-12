@@ -195,6 +195,7 @@ TEST(CAbiSmoke, SunMoonCoords) {
 
 
 TEST(CAbiSmoke, MoonIllumination) {
+  // Retained reference inputs/values: MoonIllumination.
   // Meeus Example 48.a's instant (1992-04-12 0h TT): k = 0.6786 by the book.
   const MoonIllumination mi = moon_illumination(2448724.5);
   ASSERT_TRUE(mi.valid);
@@ -209,6 +210,7 @@ TEST(CAbiSmoke, MoonIllumination) {
 
 
 TEST(CAbiSmoke, MoonPositionAngle) {
+  // Retained reference inputs/values: MoonPositionAngle.
   // Meeus Example 48.a's instant (1992-04-12 0h TT): χ = 285°.0 by the book.
   const MoonPositionAngle pa = moon_position_angle(2448724.5);
   ASSERT_TRUE(pa.valid);
@@ -389,6 +391,7 @@ TEST(CAbiSmoke, Jieqi) {
 
 
 TEST(CAbiSmoke, Lunar) {
+  // Retained reference inputs/values: Lunar.
   const SupportedLunarYearRange range1 = get_supported_lunar_year_range(1);
   ASSERT_TRUE(range1.valid);
   EXPECT_LT(range1.start, range1.end);

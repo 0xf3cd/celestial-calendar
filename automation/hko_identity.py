@@ -31,6 +31,11 @@ from datetime import date
 from pathlib import Path
 from typing import Final
 
+if __package__:
+  from .source_digest import require_facts
+else:
+  from source_digest import require_facts
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 HKO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "hko" / "2026-08-25"
@@ -173,22 +178,18 @@ def _verify_summary(summary_text: str) -> None:
 def _verify_source_markings(repo_root: Path) -> None:
   algo1 = (repo_root / "src/calendar/lunar/algo1.hpp").read_text(encoding="utf-8")
   algo3 = (repo_root / "src/calendar/lunar/algo3.hpp").read_text(encoding="utf-8")
-  _require(
-    "All 199 words for 1901-2099 reproduce exactly from the retained HKO identity record" in algo1,
-    "algo1 HKO identity marking differs",
-  )
-  _require(
-    "Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed." in algo1,
-    "algo1 HKO permission boundary differs",
-  )
-  _require(
-    "Their retained HKO identity record is `src/test/provenance/hko/2026-08-25/`" in algo3,
-    "algo3 HKO identity marking differs",
-  )
-  _require(
-    "Retained under owner risk acceptance; upstream permission was not obtained and no permission is claimed." in algo3,
-    "algo3 HKO permission boundary differs",
-  )
+  for label, source in (("algo1", algo1), ("algo3", algo3)):
+    require_facts(source, ("src/test/provenance/hko/2026-08-25/",), f"{label} HKO identity marking")
+    require_facts(
+      source,
+      (
+        "owner risk acceptance",
+        "upstream permission was not obtained",
+        "no permission is claimed",
+        "outside the project MIT grant",
+      ),
+      f"{label} HKO permission boundary",
+    )
 
 
 def verify_hko_identity(

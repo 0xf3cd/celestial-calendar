@@ -63,6 +63,7 @@ struct GoldenRow {
 // Collected 2026-10-03: independent 11-point reference, h=1/8 TT day; seeds 306/30602.
 // Source pins, regeneration and comparison tolerances: src/test/provenance/longitude-rate/ATTRIBUTION.md.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+// Retained data: longitude-rate.
 constexpr std::array GOLDEN_ROWS {
   // Target, JDE(TT), rate (degrees/TT day), reference role.
   GoldenRow { Target::SUN            , 2409545           , 1.0189947437412421     , "early"                     },
