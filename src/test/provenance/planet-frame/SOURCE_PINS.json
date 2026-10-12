@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "host": "src/test/astro/planet_test.cpp",
+  "data": "FRAME_ROWS",
+  "rows": 41,
+  "generation_date": "2026-10-12",
+  "time_scale": "numerical JDE(TT), VSOP dynamical time approximately TT",
+  "frame": "geometric mean observation-date ecliptic axes under Meeus (21.5)/(21.7)",
+  "columns": ["Planet", "observation_jde_tt", "longitude_deg", "latitude_deg", "range_au"],
+  "reference_method": "independently parsed complete D series; Cartesian direct transport and fixed-J2000 reconstruction; Earth fixed at observation time; independent light-time iteration",
+  "generator": "statistics/planet_frame_reference.py",
+  "generator_sha256": "01c22f838b97ad9af07ebc35fc4a03444a1aaac1579f10b26422f484258a7a1a",
+  "initial_generation_source_sha256": "72725b19f544db1d0953b13e4ed7a2bb831121591d56f28980a42ef89fbde73b",
+  "reference_rows_identity_sha256": "3019bf538a195d548ff58648b33bc11432dffa0443c5f79d405762c490f842bf",
+  "canonical_cpp_sha256": "1009cd8df38fb29989b8ff9b8fb78d638a7180c1af6957b885547421ea5983ab",
+  "identity_normalization": "reference_rows_identity: compact JSON arrays [body, observation_jde_tt, longitude_deg, latitude_deg, range_au], in generation order; canonical_cpp: FRAME_ROWS declaration including braces and semicolon, with comments removed and whitespace collapsed",
+  "source_version": "AA+ v2.55, 29 April 2024",
+  "source_archive": "https://web.archive.org/web/20240702184835/https://www.naughter.com/download/aaplus.zip",
+  "source_archive_sha256": "7a2d026d131e30d4b02e7c5efd41fce1bc84eda60f599a22abdef2f6439907de",
+  "documentation_sha256": "9ecdc0367fe974720b0671166190edb9f1c7cd5776508141c97f6f8e70a54cdd",
+  "source_files": {
+    "AAVSOP87D_EAR.cpp": "0026326c9c5bfe472456794c0b86f292bcbe4bda00036f912f9150968464b606",
+    "AAVSOP87D_MER.cpp": "a13179d751d38e7ec8255210c524d0671de90cba087283fb8b019ef87b046a6c",
+    "AAVSOP87D_VEN.cpp": "106435c32d9876394f8eb159e775a41f22c63c3755cb2cdfb4c7dbb0eaec0e3e",
+    "AAVSOP87D_MAR.cpp": "16c069e99aa6f107158f5d8615effc1d1c13be0afe7ed13c119981f34ea85a9f",
+    "AAVSOP87D_JUP.cpp": "4e4f295e916f1a5027b27d730ef2759d9ef3b1f563fe3947d8668207b87129f5",
+    "AAVSOP87D_SAT.cpp": "e96ded23b7e4d6e5c50fbfc464d396f2ae311fa634bc597b92b2f24cf329b1f1",
+    "AAVSOP87D_URA.cpp": "ccaa0d3e47adfb28cd8f3d43aa84344866f122575e7e18e2ab487f37bf725c08",
+    "AAVSOP87D_NEP.cpp": "d7fed18dae8188d5f4ab08bc8c435f946e5e972fa0551032e84cc1ef032ce1f2"
+  },
+  "terms_per_body": {"EARTH": 2425, "MERCURY": 6827, "VENUS": 1682, "MARS": 5483, "JUPITER": 3483, "SATURN": 5759, "URANUS": 3989, "NEPTUNE": 1929},
+  "primary_check": {
+    "url": "https://ftp.imcce.fr/pub/ephem/planets/vsop87/vsop87.chk",
+    "sha256": "f8fa52449262be05a22a96840c1acbad0b35c8999e00b5c0477ba8a91a67a51a",
+    "anchor": "all eight VSOP87D J2000 longitude/latitude/radius rows, within half the printed last digit"
+  },
+  "new_tolerances_deg_deg_au": [1e-9, 2e-11, 5e-12],
+  "measured_subject_max_gap_deg_deg_au": [2.2924950826563872e-10, 3.093081346605686e-12, 1.010858063921205e-12],
+  "measured_direct_fixed_max_vector_gap_au": 1.4469149549115527e-14,
+  "independence_limit": "Shared Meeus mean-frame model and VSOP87 theory. No production precession, heliocentric or light-time calls. A/SOFA is corroboration only, not an exact-D authority. No physical accuracy bound."
+}

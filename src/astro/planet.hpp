@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include "earth.hpp"
+#include "earth/precession.hpp"
 #include "illumination.hpp"
 #include "julian_day.hpp"
 #include "pluto.hpp"
@@ -108,6 +109,12 @@ template <Planet target, astro::vsop87d::Planet model>
   };
 }
 
+/**
+ * @brief Evaluate at emission time and express the direction in mean observation-date ecliptic axes.
+ * @note VSOP87D uses the existing Meeus mean-frame transport; Pluto keeps its J2000/FK5 inversion
+ *       join. Both return the unmodified heliocentric radius for subtraction from observation-time Earth.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (21.5), (21.7), and (32.3).
+ */
 [[nodiscard]] inline auto heliocentric(
   const Planet planet,
   const double retarded_jde_tt,
@@ -139,7 +146,14 @@ template <Planet target, astro::vsop87d::Planet model>
   if (mapping == mappings.end()) [[unlikely]] {
     throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
   }
-  return mapping->evaluate(retarded_jde_tt);
+  const auto evaluated = mapping->evaluate(retarded_jde_tt);
+  const auto precessed = astro::earth::precession::ecliptic(
+    evaluated.λ,
+    evaluated.β,
+    retarded_jde_tt,
+    observation_jde_tt
+  );
+  return { .λ = precessed.λ, .β = precessed.β, .r = evaluated.r };
 }
 
 [[nodiscard]] inline auto rectangular(const astro::toolbox::SphericalCoordinate& spherical)
