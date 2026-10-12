@@ -9,8 +9,7 @@
   "columns": ["Planet", "observation_jde_tt", "longitude_deg", "latitude_deg", "range_au"],
   "reference_method": "independently parsed complete D series; Cartesian direct transport and fixed-J2000 reconstruction; Earth fixed at observation time; independent light-time iteration",
   "generator": "statistics/planet_frame_reference.py",
-  "generator_sha256": "01c22f838b97ad9af07ebc35fc4a03444a1aaac1579f10b26422f484258a7a1a",
-  "initial_generation_source_sha256": "72725b19f544db1d0953b13e4ed7a2bb831121591d56f28980a42ef89fbde73b",
+  "generator_sha256": "38fcfcde06b3b70fe4982558fd68db84b668eacdd18dfbef9e0c77ca778d0f1f",
   "reference_rows_identity_sha256": "3019bf538a195d548ff58648b33bc11432dffa0443c5f79d405762c490f842bf",
   "canonical_cpp_sha256": "1009cd8df38fb29989b8ff9b8fb78d638a7180c1af6957b885547421ea5983ab",
   "identity_normalization": "reference_rows_identity: compact JSON arrays [body, observation_jde_tt, longitude_deg, latitude_deg, range_au], in generation order; canonical_cpp: FRAME_ROWS declaration including braces and semicolon, with comments removed and whitespace collapsed",
@@ -34,8 +33,8 @@
     "sha256": "f8fa52449262be05a22a96840c1acbad0b35c8999e00b5c0477ba8a91a67a51a",
     "anchor": "all eight VSOP87D J2000 longitude/latitude/radius rows, within half the printed last digit"
   },
-  "new_tolerances_deg_deg_au": [1e-9, 2e-11, 5e-12],
-  "measured_subject_max_gap_deg_deg_au": [2.2924950826563872e-10, 3.093081346605686e-12, 1.010858063921205e-12],
+  "tolerances_deg_deg_au": [1e-9, 2e-11, 5e-12],
+  "measured_production_max_gap_deg_deg_au": [2.2924950826563872e-10, 3.093081346605686e-12, 1.010858063921205e-12],
   "measured_direct_fixed_max_vector_gap_au": 1.4469149549115527e-14,
-  "independence_limit": "Shared Meeus mean-frame model and VSOP87 theory. No production precession, heliocentric or light-time calls. A/SOFA is corroboration only, not an exact-D authority. No physical accuracy bound."
+  "independence_limit": "Shared Meeus mean-frame model and VSOP87 theory. No production precession, heliocentric or light-time calls. No physical accuracy bound."
 }

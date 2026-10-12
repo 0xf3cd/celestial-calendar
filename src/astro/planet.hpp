@@ -111,8 +111,9 @@ template <Planet target, astro::vsop87d::Planet model>
 
 /**
  * @brief Evaluate at emission time and express the direction in mean observation-date ecliptic axes.
- * @note VSOP87D uses the existing Meeus mean-frame transport; Pluto keeps its J2000/FK5 inversion
- *       join. Both return the unmodified heliocentric radius for subtraction from observation-time Earth.
+ * @note VSOP87D uses @ref astro::earth::precession::ecliptic; Pluto uses
+ *       @ref pluto::heliocentric_for_subtraction. Both return the unmodified heliocentric radius
+ *       for subtraction from observation-time Earth.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (21.5), (21.7), and (32.3).
  */
 [[nodiscard]] inline auto heliocentric(
@@ -146,6 +147,7 @@ template <Planet target, astro::vsop87d::Planet model>
   if (mapping == mappings.end()) [[unlikely]] {
     throw std::invalid_argument { std::format("Unknown planet {}", static_cast<uint32_t>(planet)) };
   }
+
   const auto evaluated = mapping->evaluate(retarded_jde_tt);
   const auto precessed = astro::earth::precession::ecliptic(
     evaluated.λ,

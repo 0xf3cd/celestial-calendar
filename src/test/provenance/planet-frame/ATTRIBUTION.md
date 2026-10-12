@@ -3,8 +3,8 @@
 `FRAME_ROWS` in `src/test/astro/planet_test.cpp` was generated on 2026-10-12 by
 `statistics/planet_frame_reference.py`. `SOURCE_PINS.json` identifies the inputs,
 generated values, source counts and comparison thresholds. These coefficient-derived
-values remain under their source terms and outside the project MIT grant; the existing
-AA+ / VSOP87 source attribution applies. No external implementation or coefficient
+values remain under their source terms and outside the project MIT grant;
+`THIRD_PARTY_NOTICES.txt` records the AA+ / VSOP87 source terms. No external implementation or coefficient
 table is copied into this generator or added to production.
 
 ## Sources and regeneration
@@ -38,7 +38,8 @@ plus a binary64 `±0.1` day offset, not a newly rounded decimal epoch.
 ## Selection and constructions
 
 No random seed is used. Every body receives January 1 at noon TT in 1885, 2000 and
-2099, followed by the first station in the existing 2025 Horizons census at `±0.1` day.
+2099, followed by the first station in the 2025 Horizons census in
+`src/test/astro/planet_phenomena_test.cpp` at `±0.1` day.
 Horizons selects those inputs; it does not supply the geometric expectations.
 Mercury receives `2460737/2460738` and `2460764/2460765` for direct/retrograde wraps;
 Neptune receives `2460764/2460765` for its direct wrap. There are 41 rows.
@@ -48,24 +49,30 @@ The direct construction rotates the emission-time target using active column-vec
 construction rotates each operand back to fixed J2000 axes, subtracts there, and
 rotates the result to observation axes. Each construction independently iterates the
 emission epoch with `0.0057755183` day/AU, a ten-iteration cap and one observation-JD
-ULP stopping criterion. Neither calls production code.
+ULP stopping criterion. Both start at the binary64 observation epoch, evaluate the vector
+at the current binary64 emission epoch, and form the next epoch by binary64 subtraction
+of the computed light time from the observation epoch. At the first step whose successive
+epoch difference is at most one observation-JD ULP, they return the current epoch and
+its vector, not the proposed next epoch. Neither calls production code.
+
+Both returned vectors use observation-date axes; the fixed construction's intermediate
+light-time vector uses J2000 axes. The rows pin this discrete iteration and emission selection.
+They do not admit every neighbouring binary64 epoch satisfying the stopping inequality.
 
 The two constructions share the Meeus model and VSOP87D theory. They test arithmetic,
 transcription and composition, not a shared physical-model error. Chapter 21's
 mean-frame transport is not asserted to be the exact dynamical precession law that
-generated every VSOP87D date-series coefficient. Fixed-axis A/SOFA comparisons are
-corroboration only; their A/D residuals do not define these expectations or tolerances.
+generated every VSOP87D date-series coefficient.
 
 ## Tolerances
 
-The reference was generated before selecting the new thresholds. Over these 41 rows,
-the largest current-minus-independent gaps were `2.29250e-10°` longitude,
+The reference was generated before selecting the thresholds. Over these 41 rows,
+the largest production-minus-reference gaps were `2.29250e-10°` longitude,
 `3.09309e-12°` latitude and `1.01086e-12 AU` range. Direct versus fixed-axis independent
 vectors differed by at most `1.44692e-14 AU`. The test thresholds are `1e-9°`, `2e-11°`
 and `5e-12 AU`, leaving at least four times the measured arithmetic gap plus the
-stored-value rounding. The successfully compiled old mixed-frame implementation fails
-the directed regression; equal-epoch, radius, apparent-chain and Pluto controls pass.
+stored-value rounding for the specified discrete emission selection, not the entire
+set of epochs within the ULP stop criterion.
 
 These are implementation/reference regression thresholds, not physical uncertainty
-estimates or whole-domain accuracy guarantees. Existing goldens and tolerances keep
-their original identities.
+estimates or whole-domain accuracy guarantees.

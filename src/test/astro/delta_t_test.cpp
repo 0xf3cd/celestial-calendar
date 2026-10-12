@@ -296,27 +296,30 @@ TEST(DeltaT, Ut1TtConversion) {
 }
 
 TEST(DeltaT, DefaultDatetimeUsesAlgo5AcrossChronoYears) {
-  // #321: forming January 1 of the following year wraps at chrono::year::max().
+  // #321: the default datetime overload equals Algo 5 at every representable year.
   for (const int32_t year : { -32767, -32766, -1, 0, 1900, 2000, 2024, 2026, 32766, 32767 }) {
     for (const auto ymd : std::array {
       util::to_ymd(year, 1, 1), util::to_ymd(year, 2, 28), util::to_ymd(year, 3, 1), util::to_ymd(year, 12, 31)
     }) {
       for (const int64_t elapsed_ns : { 0LL, 1LL, 43200'000'000'000LL, 86399'999'999'999LL }) {
         const calendar::Datetime dt { ymd, std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } } };
-        SCOPED_TRACE(year);
         const auto past_days = (std::chrono::sys_days { ymd }
                                - std::chrono::sys_days { util::to_ymd(year, 1, 1) }).count();
         const double year_days = ymd.year().is_leap() ? 366.0 : 365.0;
         const double expected = algo5::compute(year + ((static_cast<double>(past_days) + dt.fraction()) / year_days));
-        EXPECT_EQ(compute(dt), expected);
-        EXPECT_EQ(compute(dt), compute(Model::ALGO5, dt));
+
+        ASSERT_EQ(compute(dt), expected)
+          << "at " << year << '-' << dt.month() << '-' << dt.day() << ", elapsed ns " << elapsed_ns;
+        ASSERT_EQ(compute(dt), compute(Model::ALGO5, dt))
+          << "at " << year << '-' << dt.month() << '-' << dt.day() << ", elapsed ns " << elapsed_ns;
       }
     }
   }
+
   for (const int32_t year : { 0, 2000, 2024 }) {
     const calendar::Datetime leap_day { util::to_ymd(year, 2, 29), 0.123456789 };
-    EXPECT_EQ(compute(leap_day), algo5::compute(year + ((59.0 + leap_day.fraction()) / 366.0)));
-    EXPECT_EQ(compute(leap_day), compute(Model::ALGO5, leap_day));
+    ASSERT_EQ(compute(leap_day), algo5::compute(year + ((59.0 + leap_day.fraction()) / 366.0))) << "at year " << year;
+    ASSERT_EQ(compute(leap_day), compute(Model::ALGO5, leap_day)) << "at year " << year;
   }
 }
 
@@ -329,21 +332,23 @@ TEST(DeltaT, DefaultDatetimeRejectsMutatedInvalidFields) {
     auto invalid = valid;
     invalid.ymd = ymd;
     ASSERT_FALSE(invalid.ok());
-    EXPECT_THROW(std::ignore = compute(invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = compute(Model::ALGO5, invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = ut1_to_tt(invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = tt_to_ut1(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = compute(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = compute(Model::ALGO5, invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = ut1_to_tt(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = tt_to_ut1(invalid), std::invalid_argument);
   }
+
   for (const int64_t elapsed_ns : { -1LL, -43200'000'000'000LL, 86400'000'000'000LL, 86400'000'000'001LL }) {
     auto invalid = valid;
     invalid.time_of_day = std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } };
     ASSERT_FALSE(invalid.ok());
-    EXPECT_THROW(std::ignore = compute(invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = compute(Model::ALGO5, invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = ut1_to_tt(invalid), std::invalid_argument);
-    EXPECT_THROW(std::ignore = tt_to_ut1(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = compute(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = compute(Model::ALGO5, invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = ut1_to_tt(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = tt_to_ut1(invalid), std::invalid_argument);
   }
-  EXPECT_EQ(compute(valid), compute(Model::ALGO5, valid));
+
+  ASSERT_EQ(compute(valid), compute(Model::ALGO5, valid));
 }
 
 } // namespace astro::delta_t_test

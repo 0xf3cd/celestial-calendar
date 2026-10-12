@@ -12,7 +12,7 @@
 
 // Provenance: three oracles, applied per-path. Tolerances track what each reference supports — the
 //  book's printed digits for the worked examples, and 1e-6° for the random cross-tables.
-//  (1) Meeus Ch.21 worked examples — Example 21.b (ecliptic, no proper motion; book prints
+//  (1) Meeus Ch.21 worked examples — Example 21.c (ecliptic, no proper motion; book prints
 //      λ=118.704°, β=1.615°, held at the book's 1e-3° digit precision) and Example 21.a inputs
 //      (equatorial, proper motion zeroed to isolate precession; expected values from pymeeus at
 //      PM=0, since the book's printed answer includes proper motion).
@@ -79,7 +79,7 @@ TEST(Precession, EclipticAnglesAtOneCentury) {
 
 TEST(Precession, MeeusExample21bEcliptic) {
   // Retained reference inputs/values: MeeusExample21bEcliptic.
-  // Example 21.b: J2000 → epoch −214/6/30 (JDE 1643074.5), λ₀ = 149.48194°, β₀ = 1.76549°.
+  // Example 21.c: J2000 → epoch −214/6/30 (JDE 1643074.5), λ₀ = 149.48194°, β₀ = 1.76549°.
   // Book prints λ = 118.704°, β = 1.615°.
   const auto result = ecliptic(AngleDeg { 149.48194 }, AngleDeg { 1.76549 }, J2000, 1643074.5);
   // Book values at printed precision (3 decimals).

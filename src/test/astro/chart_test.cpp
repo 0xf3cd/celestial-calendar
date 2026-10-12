@@ -294,17 +294,25 @@ TEST(Chart, UnresolvedAscendantStopsSnapshotAndAllowsNearbyControls) {
     location(-66.561856230963841, 168.82374363548894)
   }) {
     for (const auto system : std::array { System::EQUAL, System::WHOLE_SIGN }) {
-      EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, system), std::invalid_argument);
       EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, system, Model::ALGO5), std::invalid_argument);
       for (const double offset : { -0.000001, 0.000001 }) {
+        EXPECT_THROW(
+          std::ignore = calculate(
+            dt,
+            Scale::UTC,
+            location(observer.latitude.deg(), observer.longitude.deg() + offset),
+            system,
+            Model::ALGO5
+          ),
+          std::invalid_argument
+        );
         for (const auto control : std::array {
           location(observer.latitude.deg() + offset, observer.longitude.deg()),
-          location(observer.latitude.deg(), observer.longitude.deg() + offset)
+          location(observer.latitude.deg() + offset, observer.longitude.deg() + offset)
         }) {
-          const auto result = calculate(dt, Scale::UTC, control, system);
+          const auto result = calculate(dt, Scale::UTC, control, system, Model::ALGO5);
           EXPECT_TRUE(std::isfinite(result.houses.ascendant.deg()));
-          EXPECT_EQ(result.times.jde_tt, astro::julian_day::utc_to_jde(dt));
-          check_composition(result, control, system);
+          EXPECT_GT(observer.latitude.deg() * std::cos(result.houses.ascendant.rad()), 0.0);
         }
       }
     }

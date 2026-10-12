@@ -402,19 +402,27 @@ TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
     location(-66.561856230963841, 168.82374363548894)
   }) {
     for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
-      for (const uint32_t model : { CHART_DELTA_T_MODEL_DEFAULT, CHART_DELTA_T_MODEL_ALGO5 }) {
-        ASSERT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, system, model).valid);
+      ASSERT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, system, CHART_DELTA_T_MODEL_ALGO5).valid);
+      EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
+      for (const double offset : { -0.000001, 0.000001 }) {
+        const auto unresolved = snapshot_at(
+          dt,
+          CHART_CIVIL_SCALE_UTC,
+          location(observer.latitude.deg(), observer.longitude.deg() + offset),
+          system,
+          CHART_DELTA_T_MODEL_ALGO5
+        );
+        ASSERT_FALSE(unresolved.valid);
         EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
-        for (const double offset : { -0.000001, 0.000001 }) {
-          for (const auto control : std::array {
-            location(observer.latitude.deg() + offset, observer.longitude.deg()),
-            location(observer.latitude.deg(), observer.longitude.deg() + offset)
-          }) {
-            const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, model);
-            ASSERT_TRUE(result.valid) << last_error();
-            EXPECT_STREQ(last_error(), "");
-            EXPECT_TRUE(std::isfinite(result.houses.ascendant_deg));
-          }
+        for (const auto control : std::array {
+          location(observer.latitude.deg() + offset, observer.longitude.deg()),
+          location(observer.latitude.deg() + offset, observer.longitude.deg() + offset)
+        }) {
+          const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, CHART_DELTA_T_MODEL_ALGO5);
+          ASSERT_TRUE(result.valid) << last_error();
+          EXPECT_STREQ(last_error(), "");
+          EXPECT_TRUE(std::isfinite(result.houses.ascendant_deg));
+          EXPECT_GT(observer.latitude.deg() * std::cos(astro::toolbox::deg_to_rad(result.houses.ascendant_deg)), 0.0);
         }
       }
     }

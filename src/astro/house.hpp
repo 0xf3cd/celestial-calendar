@@ -91,18 +91,25 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const double armc_term = std::cos(obliquity.rad()) * std::sin(normalized_armc.rad());
   const double atan2_y = -cos_armc;
   const double atan2_x = latitude_term + armc_term;
+
+  // Both the intersection line and its rising antipode must be resolved above round-off (#321).
   const double arithmetic_scale = 1.0 + std::abs(latitude_term) + std::abs(armc_term);
-  // Coincident horizon/ecliptic planes leave no intersection direction above round-off (#321).
-  if (std::hypot(atan2_x, atan2_y) <= ASCENDANT_ROUNDOFF_FACTOR * arithmetic_scale) {
+  const double east_first = std::cos(latitude.rad()) * std::cos(obliquity.rad());
+  const double east_second = std::sin(latitude.rad()) * std::sin(obliquity.rad()) * std::sin(normalized_armc.rad());
+  const double east_scale = 1.0 + std::abs(east_first) + std::abs(east_second);
+  // E = -(horizon normal × ecliptic normal) · local east, from (14.3).
+  if (std::hypot(atan2_x, atan2_y) <= ASCENDANT_ROUNDOFF_FACTOR * arithmetic_scale
+      or std::abs(east_first + east_second) <= ASCENDANT_ROUNDOFF_FACTOR * east_scale) {
     throw std::invalid_argument {
       std::format(
-        "Ascendant is undefined at ARMC {}°, latitude {}°, obliquity {}°",
+        "Ascendant direction is unresolved at ARMC {} degrees, latitude {} degrees, obliquity {} degrees",
         normalized_armc.deg(),
         latitude.deg(),
         obliquity.deg()
       )
     };
   }
+
   const auto horizon_intersection = astro::toolbox::AngleDeg {
     astro::toolbox::rad_to_deg(
       std::atan2(atan2_y, atan2_x)

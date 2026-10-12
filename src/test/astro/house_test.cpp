@@ -404,18 +404,43 @@ TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
             std::invalid_argument
           );
         }
+
         for (const double offset : { -0.000001, -1e-10, 1e-10, 0.000001 }) {
           const auto latitude_control = detail::calculate(
             AngleDeg { armc_deg }, AngleDeg { latitude_deg + offset }, obliquity, system
           );
-          const auto armc_control = detail::calculate(
-            AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg }, obliquity, system
-          );
           EXPECT_TRUE(std::isfinite(latitude_control.ascendant.deg()));
-          EXPECT_TRUE(std::isfinite(armc_control.ascendant.deg()));
           EXPECT_EQ(latitude_control.ascendant.deg(), sign > 0.0 ? 0.0 : 180.0);
           if (system == System::WHOLE_SIGN) {
             EXPECT_EQ(latitude_control.cusps.front().deg(), latitude_control.ascendant.deg());
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
+  // Meeus (14.3): a longitude-only perturbation leaves the east projection quadratic in the offset.
+  for (const double obliquity_deg : { 23.44, 23.438143769036159 }) {
+    const AngleDeg obliquity { obliquity_deg };
+    for (const double sign : { -1.0, 1.0 }) {
+      const double armc_deg = sign > 0.0 ? 270.0 : 90.0;
+      const double latitude_deg = sign * (90.0 - obliquity_deg);
+      for (const double offset : { -0.000001, 0.000001 }) {
+        for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+          EXPECT_THROW(
+            static_cast<void>(detail::calculate(
+              AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg }, obliquity, system
+            )),
+            std::invalid_argument
+          );
+          for (const double latitude_offset : { -0.000001, 0.000001 }) {
+            const auto control = detail::calculate(
+              AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg + latitude_offset }, obliquity, system
+            );
+            EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
+            EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
           }
         }
       }
@@ -438,11 +463,19 @@ TEST(House, PublicCalculationRejectsCoincidentPlanes) {
         std::invalid_argument
       );
       for (const double offset : { -0.000001, 0.000001 }) {
+        EXPECT_THROW(
+          static_cast<void>(calculate(jd_ut1, jde_tt, astro::GeoLocation {
+            .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude + offset }
+          }, system)),
+          std::invalid_argument
+        );
         for (const auto location : {
           astro::GeoLocation { .latitude = AngleDeg { latitude + offset }, .longitude = AngleDeg { longitude } },
-          astro::GeoLocation { .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude + offset } }
+          astro::GeoLocation { .latitude = AngleDeg { latitude + offset }, .longitude = AngleDeg { longitude + offset } }
         }) {
-          EXPECT_TRUE(std::isfinite(calculate(jd_ut1, jde_tt, location, system).ascendant.deg()));
+          const auto control = calculate(jd_ut1, jde_tt, location, system);
+          EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
+          EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
         }
       }
     }

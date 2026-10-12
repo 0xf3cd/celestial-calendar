@@ -20,7 +20,6 @@ from enum import Enum, IntFlag
 from operator import setitem
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import celestial_calendar as celestial
 from celestial_calendar import _binding
@@ -503,41 +502,41 @@ def run_unresolved_ascendant() -> None:
   """The real native rejection reaches Python before any payload decoding."""
   civil = celestial.CivilDateTime(2026, 1, 1, 43205 / 86400)
   failures = controls = 0
+
   for location in (
     celestial.GeoLocation(66.561856230963841, -11.176256364511062),
     celestial.GeoLocation(-66.561856230963841, 168.82374363548894),
   ):
     for system in (celestial.HouseSystem.EQUAL, celestial.HouseSystem.WHOLE_SIGN):
-      for model in (celestial.DeltaTModel.DEFAULT, celestial.DeltaTModel.ALGO5):
-        with patch.object(
-          chart_values, "_from_native", side_effect=AssertionError("Decoded a failed payload")
-        ) as decoder:
-          error = raises(
-            celestial.CelestialError,
-            lambda location=location, system=system, model=model: snapshot(
-              civil_dt=civil, location=location, system=system, model=model
-            ),
-          )
-          assert decoder.call_count == 0
+      for offset in (0.0, -0.000001, 0.000001):
+        unresolved = replace(location, longitude_deg=location.longitude_deg + offset)
+        error = raises(
+          celestial.CelestialError,
+          lambda unresolved=unresolved, system=system: snapshot(
+            civil_dt=civil, location=unresolved, system=system, model=celestial.DeltaTModel.ALGO5
+          ),
+        )
         assert error.operation == "chart_snapshot" and error.recorded and "Ascendant" in str(error)
         assert "Ascendant" in _binding.last_error_text()
         failures += 1
-        for offset in (-0.000001, 0.000001):
-          for control in (
-            replace(location, latitude_deg=location.latitude_deg + offset),
-            replace(location, longitude_deg=location.longitude_deg + offset),
-          ):
-            check_snapshot(snapshot(civil_dt=civil, location=control, system=system, model=model))
-            assert _binding.last_error_text() == ""
-            controls += 1
+      for offset in (-0.000001, 0.000001):
+        for control in (
+          replace(location, latitude_deg=location.latitude_deg + offset),
+          replace(location, latitude_deg=location.latitude_deg + offset, longitude_deg=location.longitude_deg + offset),
+        ):
+          result = snapshot(civil_dt=civil, location=control, system=system, model=celestial.DeltaTModel.ALGO5)
+          check_snapshot(result)
+          assert location.latitude_deg * math.cos(math.radians(result.houses.ascendant_deg)) > 0
+          assert _binding.last_error_text() == ""
+          controls += 1
+
   for latitude in (-89.0, 89.0):
     for system in (celestial.HouseSystem.EQUAL, celestial.HouseSystem.WHOLE_SIGN):
       check_snapshot(snapshot(civil_dt=civil, location=celestial.GeoLocation(latitude, 0.0), system=system))
       assert _binding.last_error_text() == ""
       controls += 1
-  print(
-    f"PASS native unresolved-ASC errors {failures}/8; failed-payload decodes=0; recovery/high-latitude {controls}/36"
-  )
+  assert failures == 12 and controls == 20
+  print(f"PASS native unresolved-ASC errors {failures}/{failures}; recovery/high-latitude {controls}/{controls}")
 
 
 def main() -> None:

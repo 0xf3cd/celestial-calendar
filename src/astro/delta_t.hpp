@@ -546,13 +546,13 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 /**
  * @brief Evaluate Algo 5 at a valid calendar datetime.
- * @param ut1_dt The calendar datetime (UT1).
+ * @param dt The calendar datetime.
  * @return TT minus UT1, in seconds.
  * @throw std::invalid_argument If the datetime is invalid.
  * @note The TT/UT1 distinction in the datetime argument is ignored.
  */
-[[nodiscard]] constexpr auto compute(const calendar::Datetime& ut1_dt) -> double {
-  return compute(Model::ALGO5, ut1_dt);
+[[nodiscard]] constexpr auto compute(const calendar::Datetime& dt) -> double {
+  return compute(Model::ALGO5, dt);
 }
 
 
@@ -560,6 +560,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @brief Convert a `calendar::Datetime` in UT1 to a new `calendar::Datetime` in TT.
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
+ * @throw std::invalid_argument If the datetime is invalid.
  */
 [[nodiscard]] constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
   // As per the formula, TT = UT1 + ΔT.
@@ -571,6 +572,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @brief Convert a `calendar::Datetime` in TT to a new `calendar::Datetime` in UT1.
  * @param tt_dt The datetime in TT.
  * @return The datetime in UT1.
+ * @throw std::invalid_argument If the datetime is invalid.
  */
 [[nodiscard]] constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
   // As per the formula, UT1 = TT - ΔT.

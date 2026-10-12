@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <format>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -77,6 +76,20 @@ struct FrameRow {
 
 [[nodiscard]] auto wrapped_diff_deg(const double lhs, const double rhs) -> double {
   return std::fabs(std::remainder(lhs - rhs, 360.0));
+}
+
+[[nodiscard]] auto raw_heliocentric(const Planet planet, const double jde_tt) -> astro::toolbox::SphericalCoordinate {
+  using enum astro::vsop87d::Planet;
+  switch (planet) {
+    case Planet::MERCURY: return detail::heliocentric<MER>(jde_tt);
+    case Planet::VENUS:   return detail::heliocentric<VEN>(jde_tt);
+    case Planet::MARS:    return detail::heliocentric<MAR>(jde_tt);
+    case Planet::JUPITER: return detail::heliocentric<JUP>(jde_tt);
+    case Planet::SATURN:  return detail::heliocentric<SAT>(jde_tt);
+    case Planet::URANUS:  return detail::heliocentric<URA>(jde_tt);
+    case Planet::NEPTUNE: return detail::heliocentric<NEP>(jde_tt);
+    default: throw std::logic_error { "Unexpected frame-test planet" };
+  }
 }
 
 // JPL Horizons API v1.2 apparent geocentric positions, collected 2026-09-22 and 2026-09-28 by
@@ -327,12 +340,14 @@ constexpr std::array PYMEEUS_ROWS {
 // Generated 2026-10-12 by statistics/planet_frame_reference.py: complete AA+ v2.55 D tables,
 // independently parsed, with Cartesian Meeus (21.5)/(21.7) transport before Earth subtraction.
 // Fixed-J2000 reconstruction checks the same model, not an independent physical ephemeris.
-// Inputs: January 1 noon TT in 1885/2000/2099, first 2025 Horizons stations +/-0.1 day,
+// Inputs: January 1 noon TT in 1885/2000/2099, first 2025 Horizons stations ±0.1 day,
 // and directed Mercury/Neptune wraps. No random draws. Source hashes and regeneration:
 // src/test/provenance/planet-frame/SOURCE_PINS.json and ATTRIBUTION.md.
-// Tolerances cover evaluator arithmetic, not model error: measured lambda/beta/r gaps
+// Tolerances pin the generator's discrete emission selection, not all epochs within its ULP stop criterion.
+// They cover evaluator arithmetic, not model error: measured longitude/latitude/range gaps
 // are 2.30e-10 deg / 3.10e-12 deg / 1.02e-12 AU; thresholds leave at least a 4x margin.
 // These coefficient-derived reference values remain under their source terms, outside the project MIT grant.
+constexpr Tolerance FRAME_TOLERANCE { .lon_deg = 1e-9, .lat_deg = 2e-11, .r_au = 5e-12 };
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
 constexpr std::array FRAME_ROWS {
   // Planet           Observation JDE(TT) Longitude (deg) Latitude (deg)   Range (AU)
@@ -691,12 +706,15 @@ TEST(Planet, RejectsInvalidInput) {
 
 TEST(Planet, IndependentObservationFrameGeometricDataset) {
   for (const auto& row : FRAME_ROWS) {
-    SCOPED_TRACE(std::format("{} at JDE(TT) {}", detail::name(row.planet), row.observation_jde_tt));
     const auto earth = astro::earth::heliocentric_coord::vsop87d(row.observation_jde_tt);
     const auto coordinate = detail::light_time_corrected(row.planet, row.observation_jde_tt, earth);
-    EXPECT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), 1e-9);
-    EXPECT_NEAR(coordinate.β.deg(), row.lat_deg, 2e-11);
-    EXPECT_NEAR(coordinate.r.au(), row.r_au, 5e-12);
+
+    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), FRAME_TOLERANCE.lon_deg)
+      << detail::name(row.planet) << " longitude at JDE(TT) " << row.observation_jde_tt;
+    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, FRAME_TOLERANCE.lat_deg)
+      << detail::name(row.planet) << " latitude at JDE(TT) " << row.observation_jde_tt;
+    ASSERT_NEAR(coordinate.r.au(), row.r_au, FRAME_TOLERANCE.r_au)
+      << detail::name(row.planet) << " range at JDE(TT) " << row.observation_jde_tt;
   }
 }
 
@@ -705,27 +723,19 @@ TEST(Planet, ObservationFrameProducerPreservesRadiusAndEqualEpoch) {
     Planet::MERCURY, Planet::VENUS, Planet::MARS, Planet::JUPITER,
     Planet::SATURN, Planet::URANUS, Planet::NEPTUNE,
   };
+
   for (const Planet planet : planets) {
     for (const double jde_tt : std::array { 2409543.0, 2451545.0, 2487705.0 }) {
       const auto equal = detail::heliocentric(planet, jde_tt, jde_tt);
       const auto transported = detail::heliocentric(planet, jde_tt, jde_tt + 0.2);
-      const auto raw = [&]() {
-        using enum astro::vsop87d::Planet;
-        switch (planet) {
-          case Planet::MERCURY: return detail::heliocentric<MER>(jde_tt);
-          case Planet::VENUS:   return detail::heliocentric<VEN>(jde_tt);
-          case Planet::MARS:    return detail::heliocentric<MAR>(jde_tt);
-          case Planet::JUPITER: return detail::heliocentric<JUP>(jde_tt);
-          case Planet::SATURN:  return detail::heliocentric<SAT>(jde_tt);
-          case Planet::URANUS:  return detail::heliocentric<URA>(jde_tt);
-          case Planet::NEPTUNE: return detail::heliocentric<NEP>(jde_tt);
-          default: throw std::logic_error { "Unexpected frame-test planet" };
-        }
-      }();
-      EXPECT_LE(wrapped_diff_deg(equal.λ.deg(), raw.λ.deg()), 1e-13);
-      EXPECT_NEAR(equal.β.deg(), raw.β.deg(), 1e-13);
-      EXPECT_DOUBLE_EQ(equal.r.au(), raw.r.au());
-      EXPECT_DOUBLE_EQ(transported.r.au(), raw.r.au());
+      const auto raw = raw_heliocentric(planet, jde_tt);
+
+      ASSERT_LE(wrapped_diff_deg(equal.λ.deg(), raw.λ.deg()), 1e-13)
+        << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_NEAR(equal.β.deg(), raw.β.deg(), 1e-13)
+        << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(equal.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(transported.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
     }
   }
 }
@@ -735,9 +745,10 @@ TEST(Planet, ObservationFrameProducerKeepsPlutoJoin) {
     const double retarded_jde_tt = observation_jde_tt - 0.2;
     const auto expected = detail::pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
     const auto actual = detail::heliocentric(Planet::PLUTO, retarded_jde_tt, observation_jde_tt);
-    EXPECT_DOUBLE_EQ(actual.λ.deg(), expected.λ.deg());
-    EXPECT_DOUBLE_EQ(actual.β.deg(), expected.β.deg());
-    EXPECT_DOUBLE_EQ(actual.r.au(), expected.r.au());
+
+    ASSERT_DOUBLE_EQ(actual.λ.deg(), expected.λ.deg()) << "longitude at JDE(TT) " << observation_jde_tt;
+    ASSERT_DOUBLE_EQ(actual.β.deg(), expected.β.deg()) << "latitude at JDE(TT) " << observation_jde_tt;
+    ASSERT_DOUBLE_EQ(actual.r.au(), expected.r.au()) << "range at JDE(TT) " << observation_jde_tt;
   }
 }
 

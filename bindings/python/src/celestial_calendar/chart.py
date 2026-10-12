@@ -45,7 +45,10 @@ class ChartTarget(_IntEnum):
 
 
 class HouseSystem(_IntEnum):
-  """House geometry; Placidus can fail outside its date-dependent polar domain."""
+  """House geometry; all systems reject an Ascendant direction unresolved at round-off.
+
+  Placidus also rejects its date-dependent polar domain.
+  """
 
   EQUAL = 0
   WHOLE_SIGN = 1
