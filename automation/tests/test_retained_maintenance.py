@@ -470,3 +470,65 @@ def test_frozen_licence_count_error_names_the_changed_count(tmp_path):
     verify_batch_a_closeout(tmp_path)
   assert "bindings/javascript/package-lock.json" in str(error.value)
   assert token in str(error.value) and "(14, 0)" in str(error.value)
+
+
+@pytest.mark.parametrize(
+  "clause",
+  [
+    "source terms and not outside the project MIT grant.",
+    "source terms and NOT\n// outside the project MIT grant.",
+  ],
+)
+def test_bound_mit_boundary_cannot_be_directly_negated(tmp_path, clause):
+  materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/astro/moon.hpp",
+    "additive latitude terms remain under the ERFA\n// source terms and outside the project MIT grant.",
+    "additive latitude terms remain under the ERFA\n// " + clause,
+  )
+  with pytest.raises(RuntimeError, match="r16-latitude MIT boundary is negated"):
+    verify_batch_a_closeout(tmp_path)
+
+
+def test_boundary_prose_with_separate_negation_still_passes(tmp_path):
+  materialize_inputs(tmp_path)
+  replace_once(
+    tmp_path / "src/astro/moon.hpp",
+    "additive latitude terms remain under the ERFA\n// source terms and outside the project MIT grant.",
+    "additive latitude terms remain under the ERFA\n// source terms; they are outside the project MIT grant. "
+    "Permission is not claimed.",
+  )
+  assert verify_batch_a_closeout(tmp_path).rows == 58
+
+
+@pytest.mark.parametrize(
+  ("key", "old", "new"),
+  [
+    ("AscendantMeeus14a", ".deg()", ".renamed()"),
+    ("CreateContextExample47a", ".Mp.", ".M."),
+    ("CreateContextExample47a", ".A1.", ".A2."),
+    ("hko-info", ".leap_month", ".renamed_label"),
+    ("MoonPositionAngle", ".angle_deg", ".renamed_angle"),
+  ],
+)
+def test_supplemental_retained_value_labels_are_captured(tmp_path, key, old, new):
+  path = materialize_block(tmp_path, key)
+  text = path.read_text(encoding="utf-8")
+  block = DATA_BLOCKS[key]
+  start = text.index(block["start"])
+  end = text.index(block["end"], start + len(block["start"]))
+  reference = text[start:end]
+  assert old in reference
+  path.write_text(text[:start] + reference.replace(old, new, 1) + text[end:], encoding="utf-8")
+  with pytest.raises(RuntimeError, match="retained data hash differs"):
+    verify_retained_data(tmp_path, (key,))
+
+
+def test_reference_implementation_and_macro_names_stay_free(tmp_path):
+  key = "AscendantMeeus14a"
+  path = materialize_block(tmp_path, key)
+  text = path.read_text(encoding="utf-8")
+  assert "const auto ascendant =" in text and "ascendant.deg()" in text
+  revised = text.replace("const auto ascendant =", "const auto renamed =").replace("ascendant.deg()", "renamed.deg()")
+  path.write_text(revised.replace("ASSERT_NEAR", "EXPECT_NEAR"), encoding="utf-8")
+  assert verify_retained_data(tmp_path, (key,)) == 1

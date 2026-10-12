@@ -19,13 +19,14 @@ from pathlib import Path
 
 
 RETAINED_REGISTRY = Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json")
-RETAINED_DATA_SHA256 = "aaa502597dcec726a98f2ab883470cafcd2de34b30a1a70d7ed4ffb980ba2823"
+RETAINED_DATA_SHA256 = "c426a965fa12b18508c63ae93bcd769e9097b10e9d64713f2ee4014cbbf06e64"
 # Add new value-bearing type/member spellings here; implementation names and test macros stay free.
 REFERENCE_VALUE_PATTERN = re.compile(
   r'"(?:\\.|[^"\\])*"|(?<![\w.])(?:0x[0-9a-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)'
   r"(?:[a-zA-Z_]\w*)?|\b(?:true|false)\b|[+*/-]|\b[A-Za-z_]\w*(?:::\w+)+"
   r"|\b(?:Angle|AngleDeg|AngleRad|DistanceKm|DistanceAu|GeoLocation|Datetime|Params|TraditionalMonth|RAD|DEG|AU|KM)\b"
-  r"|\.(?:latitude|longitude|lat_deg|lon_deg|λ|β|α|δ|r|model|jd_ut1|jde_tt|ymd|fraction)\b"
+  r"|\.(?:latitude|longitude|lat_deg|lon_deg|λ|β|α|δ|r|model|deg|Mp|A1|leap_month|angle_deg|"
+  r"jd_ut1|jde_tt|ymd|fraction)\b"
 )
 
 

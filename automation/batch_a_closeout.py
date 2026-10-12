@@ -965,6 +965,10 @@ def _verify_registry(
       host = _normalise_marking(text)
       marking = _marking_slice(block["path"], text, marker, block["id"])
       _require("outside the project MIT grant" in marking, f"{block['id']} MIT boundary is missing")
+      _require(
+        re.search(r"\bnot\s+outside the project MIT grant\b", marking, re.IGNORECASE) is None,
+        f"{block['id']} MIT boundary is negated",
+      )
       require_facts(marking, block["marking_facts"], block["id"])
       _verify_source_identity(block, host)
       if has_data_digest:
