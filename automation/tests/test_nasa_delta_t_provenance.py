@@ -322,3 +322,21 @@ def test_lunar_regeneration_body_is_pinned(tmp_path):
 
   with pytest.raises(RuntimeError, match="canonical regeneration test differs"):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_acknowledgment_author_credit_is_required_at_its_own_gate(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(nasa_root / "ACKNOWLEDGMENT.txt", "Fred Espenak", "Uncredited author")
+  with pytest.raises(RuntimeError, match="NASA acknowledgment required fact"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
+def test_nasa_acknowledgment_prose_and_regeneration_test_name_can_change(tmp_path):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(nasa_root / "ACKNOWLEDGMENT.txt", "acknowledges", "credits")
+  replace_once(
+    tmp_path / "src/test/lunar/algo3_test.cpp",
+    "TEST(LunarAlgo3, BakedMatchesLiveAlgo2)",
+    "TEST(LunarAlgo3, RenamedRegeneration)",
+  )
+  assert verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root) == ProvenanceCounts(15, 11, 2, 12, 2)

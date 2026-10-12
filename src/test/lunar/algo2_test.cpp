@@ -349,6 +349,7 @@ TEST(LunarAlgo2, GetLunarInfo) {
     ASSERT_EQ(info.leap_month, 0);
   }
 
+  // End retained reference inputs/values: hko-info.
   // Test that the cached values are correct
   for (auto _ = 0; _ < 8; ++_) {
     const int32_t year = util::random(1000, 2500);

@@ -134,10 +134,7 @@ def test_new_unmarked_source_is_rejected(tmp_path, replacement):
   "source", [source for source in NOTICE_SOURCES if source.facts], ids=lambda source: str(source.path)
 )
 def test_project_notice_prose_can_change_but_required_facts_cannot(tmp_path, source):
-  for item in NOTICE_SOURCES:
-    target = tmp_path / item.path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    copy2(REPO_ROOT / item.path, target)
+  materialize_notices(tmp_path)
   target = tmp_path / source.path
   text = target.read_text(encoding="utf-8")
   # Change the project heading while keeping source facts, then actually assemble the notices.
@@ -160,10 +157,7 @@ def test_project_notice_prose_can_change_but_required_facts_cannot(tmp_path, sou
   "source", [source for source in NOTICE_SOURCES if not source.facts], ids=lambda source: str(source.path)
 )
 def test_original_notice_inputs_keep_raw_byte_identity(tmp_path, source):
-  for item in NOTICE_SOURCES:
-    target = tmp_path / item.path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    copy2(REPO_ROOT / item.path, target)
+  materialize_notices(tmp_path)
   target = tmp_path / source.path
   target.write_bytes(target.read_bytes() + b"changed")
   with pytest.raises(RuntimeError, match="input hash mismatch"):
@@ -401,6 +395,11 @@ def test_bound_marking_prose_after_stable_marker_can_change(tmp_path):
     ("Example48aFormulaLayer", ".r =", ".other_radius ="),
     ("SaemundssonAtHorizonMatchesGoldenValue", "Params", "OtherParams"),
     ("SaemundssonAtHorizonMatchesGoldenValue", ".model =", ".other_model ="),
+    ("AscendantMeeus14a", ".deg()", ".renamed()"),
+    ("CreateContextExample47a", ".Mp.", ".M."),
+    ("CreateContextExample47a", ".A1.", ".A2."),
+    ("hko-info", ".leap_month", ".renamed_label"),
+    ("MoonPositionAngle", ".angle_deg", ".renamed_angle"),
   ],
 )
 def test_retained_value_labels_are_captured(tmp_path, key, old, new):
@@ -502,29 +501,6 @@ def test_boundary_prose_with_separate_negation_still_passes(tmp_path):
   assert verify_batch_a_closeout(tmp_path).rows == 58
 
 
-@pytest.mark.parametrize(
-  ("key", "old", "new"),
-  [
-    ("AscendantMeeus14a", ".deg()", ".renamed()"),
-    ("CreateContextExample47a", ".Mp.", ".M."),
-    ("CreateContextExample47a", ".A1.", ".A2."),
-    ("hko-info", ".leap_month", ".renamed_label"),
-    ("MoonPositionAngle", ".angle_deg", ".renamed_angle"),
-  ],
-)
-def test_supplemental_retained_value_labels_are_captured(tmp_path, key, old, new):
-  path = materialize_block(tmp_path, key)
-  text = path.read_text(encoding="utf-8")
-  block = DATA_BLOCKS[key]
-  start = text.index(block["start"])
-  end = text.index(block["end"], start + len(block["start"]))
-  reference = text[start:end]
-  assert old in reference
-  path.write_text(text[:start] + reference.replace(old, new, 1) + text[end:], encoding="utf-8")
-  with pytest.raises(RuntimeError, match="retained data hash differs"):
-    verify_retained_data(tmp_path, (key,))
-
-
 def test_reference_implementation_and_macro_names_stay_free(tmp_path):
   key = "AscendantMeeus14a"
   path = materialize_block(tmp_path, key)
@@ -533,3 +509,15 @@ def test_reference_implementation_and_macro_names_stay_free(tmp_path):
   revised = text.replace("const auto ascendant =", "const auto renamed =").replace("ascendant.deg()", "renamed.deg()")
   path.write_text(revised.replace("ASSERT_NEAR", "EXPECT_NEAR"), encoding="utf-8")
   assert verify_retained_data(tmp_path, (key,)) == 1
+
+
+def test_hko_reference_end_marker_frees_cache_comment_prose(tmp_path):
+  key = "hko-info"
+  path = materialize_block(tmp_path, key)
+  replace_once(
+    path, "// Test that the cached values are correct", "// Compare the cached wrapper with the live result."
+  )
+  assert verify_retained_data(tmp_path, (key,)) == 1
+  replace_once(path, DATA_BLOCKS[key]["end"], "// Removed retained end marker.")
+  with pytest.raises(RuntimeError, match="retained data end is missing"):
+    verify_retained_data(tmp_path, (key,))

@@ -28,7 +28,6 @@ import horizons_common
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 SUN_TEST: Final[Path] = REPO_ROOT / "src" / "test" / "astro" / "sun_test.cpp"
-HORIZONS_URL: Final[str] = "https://ssd.jpl.nasa.gov/api/horizons.api"
 HORIZONS_API_VERSION: Final[str] = "1.2"
 STORED_TABLE_DE_SOURCE: Final[str] = "DE440"
 CURRENT_HORIZONS_DE_SOURCE: Final[str] = "DE441"
@@ -173,7 +172,7 @@ def format_rows(rows: dict[str, tuple[str, str]]) -> str:
 
 
 def fetch_horizons() -> str:
-  return horizons_common.get_text(horizons_params(), url=HORIZONS_URL, timeout=60)
+  return horizons_common.get_text(horizons_params(), timeout=60)
 
 
 def main() -> None:

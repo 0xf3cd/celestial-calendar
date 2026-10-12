@@ -298,7 +298,7 @@ TEST(SiderealTime, GreenwichUsno) {
   // UT1/TT mixup would produce.
   constexpr double TOL_GMST = 5.56e-5; // 0.2" in degrees
   constexpr double TOL_GAST = 6.94e-5; // 0.25" in degrees
-// Retained data: sidereal_time-2.
+  // Retained data: sidereal_time-2.
 
   const std::vector<std::tuple<double, double, double, double>> dataset {
     {    2461428.1534375,  2461428.154238241,       357.00228625, 357.00534999999996 },
@@ -358,7 +358,7 @@ TEST(SiderealTime, LocalApparentUsno) {
   // with full-precision longitudes the residuals reach 0.22" (89% of tolerance); quantized,
   // they stay ≤ 0.07", leaving ~4× margin against the IAU-model gap.
   constexpr double TOL_LAST = 6.94e-5; // 0.25" in degrees
-// Retained data: sidereal_time-3.
+  // Retained data: sidereal_time-3.
 
   const std::vector<std::tuple<double, double, double, double>> dataset {
     { 2461123.9418287035, 2461123.9426294444,  -74.0403,         55.0196375 },

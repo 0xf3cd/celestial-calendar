@@ -215,6 +215,44 @@ def test_invalid_range_cadence_fails_before_transport(step):
     PLANET.fetch_horizons_range(PLANET.SUN, 2451545.0, 2451546.0, step, "31")
 
 
+@pytest.mark.parametrize(
+  ("start", "stop"),
+  [
+    (math.nan, 2451546.0),
+    (2451545.0, math.inf),
+    (2451546.0, 2451545.0),
+  ],
+)
+def test_invalid_range_endpoints_fail_before_transport(start, stop):
+  with pytest.raises(RuntimeError, match="endpoints must be finite and ordered"):
+    PLANET.fetch_horizons_range(PLANET.SUN, start, stop, 720, "31")
+
+
+def test_empty_grid_is_rejected_after_transport(monkeypatch):
+  calls = install_transport(monkeypatch, table("10", (), ("ObsEcLon", "ObsEcLat")))
+  with pytest.raises(RuntimeError, match="returned no rows"):
+    PLANET.fetch_horizons_range(PLANET.SUN, 2451545.0, 2451546.0, 720, "31")
+  assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+  ("text", "message"),
+  [
+    ("JDTT, value\n$$SOE\n2451545, 1, extra\n$$EOE", "row width differs"),
+    ("no column line\n$$SOE\n2451545, 1\n$$EOE", "column header line not found"),
+    ("JDTT, value\n$$EOE\n2451545, 1\n$$SOE", "invalid data markers"),
+  ],
+)
+def test_csv_envelope_rejects_structural_damage(text, message):
+  with pytest.raises(RuntimeError, match=message):
+    SHARED.parse_csv_block(text)
+
+
+def test_multiple_jd_columns_are_rejected():
+  with pytest.raises(RuntimeError, match="JD column is not TT"):
+    SHARED.column_indices(["JDTT", "anotherJDTT", "ObsEcLon"], ("ObsEcLon",), "TT")
+
+
 CASES = {
   "planet": ("199", "20,23,31", "TT", 6, ("delta", "deldot", "S-O-T", "ObsEcLon", "ObsEcLat")),
   "pluto": ("999", "20,23,31", "TT", 6, ("delta", "deldot", "S-O-T", "ObsEcLon", "ObsEcLat")),
@@ -559,16 +597,18 @@ def test_required_finite_columns_in_other_callers(monkeypatch, case, column):
     fetch_case(case)
 
 
-@pytest.mark.parametrize("caller", ["planet", "pluto"])
+@pytest.mark.parametrize("caller", ["planet", "pluto", "emit-geometry"])
 @pytest.mark.parametrize("drift", [None, "separation", "fraction"])
-def test_geometry_callers_use_the_shared_checks_through_transport(monkeypatch, caller, drift):
+def test_geometry_callers_use_the_shared_checks_through_transport(monkeypatch, capsys, caller, drift):
   calls = []
 
   def get(url, *, params, timeout):
     calls.append(params)
     command = params["COMMAND"].strip("'")
     if command == "10":
-      return Response(table(command, SIX_ECHOES, ("ObsEcLon", "ObsEcLat"), values=[["0.0", "0.0"]] * 2))
+      columns = ("delta", "deldot", "ObsEcLon", "ObsEcLat") if caller == "emit-geometry" else ("ObsEcLon", "ObsEcLat")
+      values = [[VALUES[name] if name in {"delta", "deldot"} else "0.0" for name in columns]] * 2
+      return Response(table(command, SIX_ECHOES, columns, values=values))
     columns = ("delta", "deldot", "S-O-T", "ObsEcLon", "ObsEcLat", "Illu%", "phi")
     text = table(command, SIX_ECHOES, columns)
     if drift == "separation":
@@ -579,9 +619,13 @@ def test_geometry_callers_use_the_shared_checks_through_transport(monkeypatch, c
 
   monkeypatch.setattr(SHARED.requests, "get", get)
   monkeypatch.setattr(PLUTO, "RETAINED_POSITION_EPOCHS", EPOCHS)
+  monkeypatch.setattr(PLANET, "EPOCHS", EPOCHS)
+  monkeypatch.setattr(PLANET, "TARGETS", (PLANET.TARGETS[0],))
   events = tuple(PLANET.EventRow("MERCURY", 2000, "INFERIOR_CONJUNCTION", epoch) for epoch in EPOCHS)
 
   def run():
+    if caller == "emit-geometry":
+      return PLANET.emit_geometry_rows()
     return PLUTO.retained_geometry() if caller == "pluto" else PLANET.annotate_events(PLANET.TARGETS[0], events)
 
   if drift:
@@ -589,14 +633,28 @@ def test_geometry_callers_use_the_shared_checks_through_transport(monkeypatch, c
       run()
   else:
     result = run()
-    assert len(result) == 2
-    if caller == "pluto":
+    if caller == "emit-geometry":
+      output = capsys.readouterr().out
+      assert output.count("Planet::MERCURY") == 2
+      assert "10.0000000" in output and "120.0000" in output and "0.25000000" in output
+    elif caller == "pluto":
+      assert len(result) == 2
       assert result[0]["derived_separation_deg"] == pytest.approx(10.0, abs=1e-12)
       assert result[0]["illuminated_fraction"] == 0.25
     else:
+      assert len(result) == 2
       assert result[0].elongation_deg == pytest.approx(10.0, abs=1e-12)
       assert result[0].illuminated_fraction == 0.25
   assert len(calls) == 2
+
+
+@pytest.mark.parametrize("slot", range(4))
+@pytest.mark.parametrize("value", [math.nan, math.inf])
+def test_separation_rejects_nonfinite_coordinate_components(slot, value):
+  coordinates = [0.0, 0.0, 10.0, 0.0]
+  coordinates[slot] = value
+  with pytest.raises(RuntimeError, match="requires finite coordinates"):
+    SHARED.angular_separation_deg(tuple(coordinates[:2]), tuple(coordinates[2:]))
 
 
 @pytest.mark.parametrize("kind", ["elongation", "phase", "illumination"])

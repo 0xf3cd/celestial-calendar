@@ -26,6 +26,7 @@ from automation.vsop87d_import import (
   render_header,
   verify_repository,
 )
+from automation import vsop87d_import
 
 
 PLANET_NAMES = ("MERCURY", "VENUS", "EARTH", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE")
@@ -153,3 +154,36 @@ def test_generated_header_mutation_fails(tmp_path):
 
   with pytest.raises(RuntimeError, match="generated data hash mismatch"):
     verify_repository(repo_root=tmp_path, specs=(spec,))
+
+
+def test_replay_accepts_header_prose_but_rejects_changed_coefficients(tmp_path, monkeypatch):
+  data = _synthetic_source()
+  spec = _synthetic_spec(data)
+  check = _synthetic_check_source()
+  sources = tmp_path / "sources"
+  sources.mkdir()
+  (sources / spec.source_name).write_bytes(data)
+  check_file = sources / "vsop87.chk"
+  check_file.write_bytes(check)
+  output = tmp_path / "output"
+  (output / spec.generated_path).parent.mkdir(parents=True)
+  (output / CHECK_GENERATED_PATH).parent.mkdir(parents=True)
+  original_planets = vsop87d_import.PLANETS
+  monkeypatch.setattr(vsop87d_import, "PLANETS", (spec,))
+
+  def parse_checks(raw):
+    with monkeypatch.context() as checker:
+      checker.setattr(vsop87d_import, "PLANETS", original_planets)
+      return parse_check_source(raw, source_sha256=_sha256(check))
+
+  monkeypatch.setattr(vsop87d_import, "parse_check_source", parse_checks)
+  expected = ImportCounts(1, 3, 3, 80)
+  assert vsop87d_import.replay(sources, check_file, output, write=True) == expected
+  header = output / spec.generated_path
+  header.write_text(header.read_text(encoding="utf-8") + "\n// Equivalent project header note.\n", encoding="utf-8")
+  assert vsop87d_import.replay(sources, check_file, output) == expected
+  text = header.read_text(encoding="utf-8")
+  assert "0.001" in text
+  header.write_text(text.replace("0.001", "0.002", 1), encoding="utf-8")
+  with pytest.raises(RuntimeError, match="data differ from the deterministic replay"):
+    vsop87d_import.replay(sources, check_file, output)

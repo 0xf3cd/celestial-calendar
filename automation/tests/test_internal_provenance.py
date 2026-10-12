@@ -305,16 +305,16 @@ def test_v07_identity_whitelists_cannot_be_broadened(tmp_path, old, new):
 
 
 @pytest.mark.parametrize(
-  ("old", "new"),
+  ("relative", "old", "new"),
   [
-    ("https://ssd.jpl.nasa.gov/api/horizons.api", "https://example.invalid/horizons"),
-    ("url=HORIZONS_URL, timeout=60", "url=HORIZONS_URL, timeout=30"),
+    ("statistics/horizons_common.py", "https://ssd.jpl.nasa.gov/api/horizons.api", "https://example.invalid/horizons"),
+    ("statistics/sun_equatorial_horizons_crawler.py", "timeout=60", "timeout=30"),
   ],
   ids=["endpoint", "timeout"],
 )
-def test_v07_request_target_is_complete(tmp_path, old, new):
+def test_v07_request_target_is_complete(tmp_path, relative, old, new):
   materialize_inputs(tmp_path)
-  replace_once(tmp_path / "statistics/sun_equatorial_horizons_crawler.py", old, new)
+  replace_once(tmp_path / relative, old, new)
 
   with pytest.raises(RuntimeError, match="endpoint or request shape differs"):
     verify_internal_provenance(tmp_path)
@@ -327,6 +327,19 @@ def test_v07_fixture_executes_its_own_shared_dependency(tmp_path):
 
   with pytest.raises(RuntimeError, match="endpoint or request shape differs"):
     verify_internal_provenance(tmp_path)
+
+
+@pytest.mark.parametrize("marker", ["// Retained data: sun-3.", "// Retained data: earth-0."])
+def test_data_marker_removal_rejects_internal_provenance(tmp_path, marker):
+  materialize_inputs(tmp_path)
+  path = tmp_path / ("src/test/astro/sun_test.cpp" if "sun-3" in marker else "src/test/astro/earth_test.cpp")
+  replace_once(path, marker, "// Removed data marker.")
+  if "sun-3" in marker:
+    with pytest.raises(ValueError, match="substring not found"):
+      verify_internal_provenance(tmp_path)
+  else:
+    with pytest.raises(RuntimeError, match="retained data start is missing or ambiguous"):
+      verify_internal_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
