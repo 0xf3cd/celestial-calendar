@@ -109,7 +109,7 @@ def write_json(path: Path, payload: dict) -> str:
     )
   if path.name == REGISTRY_NAME:
     return json_digest(
-      [{key: value for key, value in block.items() if key not in {"locator", "marker"}} for block in payload["blocks"]]
+      [{key: value for key, value in block.items() if key != "locator"} for block in payload["blocks"]]
     )
   return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -122,7 +122,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_facts_and_values_are_complete():
   assert RECORD_SHA256 == "42220691bcd5ba657bc8c99e968838406c3612f66d29642d51d95a9e9eca901d"
-  assert REGISTRY_SHA256 == "4437cf289fc93bf73c6d89585b0a2e95da8dd525c3a6dc0d1b52ea3f72bc92e6"
+  assert REGISTRY_SHA256 == "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
   assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "cfe6c7da00276575691db84e76d2d9de5d5f3796c0148834e0f5d2acb812dbc5"
   assert LONGITUDE_RATE_PINS_SHA256 == "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
@@ -432,15 +432,11 @@ def test_registry_source_must_match_its_owning_row(tmp_path):
 
 
 def test_adjacent_data_hash_mutation_fails(tmp_path):
-  record_path, _registry_path = materialize_inputs(tmp_path)
+  materialize_inputs(tmp_path)
   data = tmp_path / "statistics/moon_phases.csv"
   data.write_bytes(data.read_bytes() + b"\n")
-  record = json.loads(record_path.read_text(encoding="utf-8"))
-  # The independent retained-data registry must reject the changed bytes.
-  digest = write_json(record_path, record)
-
   with pytest.raises(RuntimeError, match="retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path, record_sha256=digest)
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_adjacent_record_mutation_fails(tmp_path):
@@ -453,14 +449,11 @@ def test_adjacent_record_mutation_fails(tmp_path):
 
 
 def test_orphan_adjacent_section_fails(tmp_path):
-  _record_path, registry_path = materialize_inputs(tmp_path)
+  materialize_inputs(tmp_path)
   attribution = tmp_path / CLOSEOUT_ROOT_RELATIVE / "ATTRIBUTION.md"
   attribution.write_text(attribution.read_text(encoding="utf-8") + "\n## V99: orphan\n", encoding="utf-8")
-  registry = json.loads(registry_path.read_text(encoding="utf-8"))
-  digest = write_json(registry_path, registry)
-
   with pytest.raises(RuntimeError, match="orphan or missing adjacent section"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_orphan_in_file_marking_fails(tmp_path):

@@ -334,7 +334,7 @@ def assemble_notices(
     digest = hashlib.sha256(body).hexdigest()
     identity = attribution_digest(body.decode("utf-8")) if source.facts else digest
     if identity != source.sha256:
-      raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {digest}")
+      raise RuntimeError(f"third-party notice input hash mismatch for {source.path}: {identity}")
     require_facts(body.decode("utf-8"), source.facts, str(source.path))
 
     heading_lines = (

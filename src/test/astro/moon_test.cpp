@@ -126,7 +126,6 @@ TEST(Moon, CoordAndPpi) {
 TEST(Moon, Perturbation) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.
   // Introduced by 066c28d (#34, 2024-08-06); no stored digit has shifted since.
-  // The paired ELP regeneration in 7ea26ee (#65 / PR #96) shifted only B perturbation.
   // Independent accuracy anchor: moon_horizons_golden_test.cpp (JPL DE441).
   // Retained data: moon-1.
   const std::unordered_map<double, std::tuple<double, double, double, double, double>> dataset {

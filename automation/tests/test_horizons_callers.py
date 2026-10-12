@@ -365,6 +365,60 @@ def test_batched_callers_have_complete_chunk_boundaries(monkeypatch, case):
   assert len(calls) == 3
 
 
+@pytest.mark.parametrize(
+  ("count", "expected"),
+  [
+    (0, []),
+    (1, [("request", 1)]),
+    (40, [("request", 40)]),
+    (41, [("request", 40), ("sleep", 0.15), ("request", 1)]),
+    (81, [("request", 40), ("sleep", 0.15), ("request", 40), ("sleep", 0.15), ("request", 1)]),
+  ],
+)
+def test_moon_batches_only_pace_between_requests(monkeypatch, count, expected):
+  epochs = [2451545.5 + day for day in range(count)]
+  events = []
+  requested = 0
+
+  def get(url, *, params, timeout):
+    nonlocal requested
+    chunk = epochs[requested : requested + 40]
+    requested += len(chunk)
+    events.append(("request", len(chunk)))
+    assert params["TLIST"] == " ".join(f"'{epoch:.6f}'" for epoch in chunk)
+    assert timeout == 60
+    return Response(table("301", tuple(f"{epoch:.9f}" for epoch in chunk), ("ObsEcLon", "ObsEcLat", "delta", "deldot")))
+
+  monkeypatch.setattr(SHARED.requests, "get", get)
+  monkeypatch.setattr(MOON.time, "sleep", lambda seconds: events.append(("sleep", seconds)))
+  rows = MOON.fetch_horizons(epochs)
+  assert tuple(rows) == tuple(epochs)
+  assert events == expected
+
+
+@pytest.mark.parametrize("failure_at", [1, 2])
+def test_moon_batch_failure_stops_without_retry_or_trailing_pacing(monkeypatch, failure_at):
+  epochs = [2451545.5 + day for day in range(81)]
+  events = []
+  calls = 0
+
+  def get(url, *, params, timeout):
+    nonlocal calls
+    calls += 1
+    events.append(("request", calls))
+    if calls == failure_at:
+      raise requests.ConnectionError("Moon batch transport control")
+    chunk = epochs[(calls - 1) * 40 : calls * 40]
+    return Response(table("301", tuple(f"{epoch:.9f}" for epoch in chunk), ("ObsEcLon", "ObsEcLat", "delta", "deldot")))
+
+  monkeypatch.setattr(SHARED.requests, "get", get)
+  monkeypatch.setattr(MOON.time, "sleep", lambda seconds: events.append(("sleep", seconds)))
+  with pytest.raises(requests.ConnectionError, match="Moon batch transport control"):
+    MOON.fetch_horizons(epochs)
+  assert calls == failure_at
+  assert events == ([("request", 1)] if failure_at == 1 else [("request", 1), ("sleep", 0.15), ("request", 2)])
+
+
 def equatorial_response():
   expected = EQUATORIAL.stored_rows()
   columns = ("R.A.__(a-app)", "DEC___(a-app)")

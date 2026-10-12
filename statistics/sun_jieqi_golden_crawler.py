@@ -82,9 +82,6 @@ TT_MINUS_UTC = 69.184 / 86400.0  # days; 32.184 + 37 (TAI-UTC), constant over 20
 BOOK_25B = (2448908.5, 199.9060606)
 
 
-TLIST_CHUNK = TLIST_BATCH_SIZE
-
-
 def horizons_get(params: dict) -> str:
   last_error: Exception | None = None
   for attempt in range(4):
@@ -110,9 +107,9 @@ def horizons_get(params: dict) -> str:
 
 def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
   """Quantity 31 (+20 for the range-rate audit column) at the given TT JDs."""
-  if len(jds) > TLIST_CHUNK:
+  if len(jds) > TLIST_BATCH_SIZE:
     out = {}
-    for chunk in batches(jds, TLIST_CHUNK):
+    for chunk in batches(jds, TLIST_BATCH_SIZE):
       out.update(fetch_observer(command, list(chunk)))
     return out
   text = horizons_get(
@@ -158,9 +155,9 @@ def fetch_observer(command: str, jds: list[float]) -> dict[float, dict]:
 
 def fetch_vectors_r(command: str, jds: list[float]) -> dict[float, float]:
   """Geometric distance |r| in AU from a VECTORS query (times interpreted as TDB)."""
-  if len(jds) > TLIST_CHUNK:
+  if len(jds) > TLIST_BATCH_SIZE:
     out = {}
-    for chunk in batches(jds, TLIST_CHUNK):
+    for chunk in batches(jds, TLIST_BATCH_SIZE):
       out.update(fetch_vectors_r(command, list(chunk)))
     return out
   text = horizons_get(

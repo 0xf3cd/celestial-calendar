@@ -34,19 +34,17 @@ from horizons_common import (
 # plus the Meeus Example 48.a anchor. Quantity 10 is the disk's illuminated fraction in
 # percent, geocenter observer, TT scale. Horizons sorts TLIST internally (2026-08-10:
 # pairing rows to epochs by input order manufactures phantom gaps), so the epochs go out
-# sorted and the row count is asserted. TLIST travels in the query string, so it goes in
-# chunks: the full set in one GET got the API answering 502.
+# sorted and the row count is asserted.
 SEED: Final[int] = 42
 RANDOM_POINTS: Final[int] = 120
 JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)
 EXAMPLE_48A_JDE: Final[float] = 2448724.5  # 1992-04-12 0h TT
-CHUNK: Final[int] = TLIST_BATCH_SIZE
 
 
 def fetch_illumination(jdes: list[float]) -> list[float]:
   """Horizons observer quantity 10 (Illu%) for the Moon, as a fraction in [0, 1]."""
   out: list[float] = []
-  for chunk in batches(jdes, CHUNK):
+  for chunk in batches(jdes, TLIST_BATCH_SIZE):
     params = {
       "format": "text",
       "COMMAND": "'301'",

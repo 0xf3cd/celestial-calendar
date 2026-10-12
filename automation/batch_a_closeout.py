@@ -20,10 +20,24 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
-  from .source_digest import attribution_digest, canonical_cpp, json_digest, require_facts, verify_retained_data
+  from .source_digest import (
+    RETAINED_REGISTRY,
+    attribution_digest,
+    canonical_cpp,
+    json_digest,
+    require_facts,
+    verify_retained_data,
+  )
   from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
-  from source_digest import attribution_digest, canonical_cpp, json_digest, require_facts, verify_retained_data
+  from source_digest import (
+    RETAINED_REGISTRY,
+    attribution_digest,
+    canonical_cpp,
+    json_digest,
+    require_facts,
+    verify_retained_data,
+  )
   from third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 
 
@@ -33,10 +47,10 @@ LUNAR_NODE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lunar-n
 LONGITUDE_RATE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/ATTRIBUTION.md")
 LONGITUDE_RATE_PINS_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/SOURCE_PINS.json")
 RECORD_NAME: Final[str] = "record.json"
-REGISTRY_NAME: Final[str] = "retained_host_blocks.json"
+REGISTRY_NAME: Final[str] = RETAINED_REGISTRY.name
 # Project records pin structured facts or citation atoms, not prose bytes.
 RECORD_SHA256: Final[str] = "42220691bcd5ba657bc8c99e968838406c3612f66d29642d51d95a9e9eca901d"
-REGISTRY_SHA256: Final[str] = "4437cf289fc93bf73c6d89585b0a2e95da8dd525c3a6dc0d1b52ea3f72bc92e6"
+REGISTRY_SHA256: Final[str] = "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
 LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "cfe6c7da00276575691db84e76d2d9de5d5f3796c0148834e0f5d2acb812dbc5"
 LONGITUDE_RATE_PINS_SHA256: Final[str] = "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
@@ -695,9 +709,12 @@ def _marking_slice(relative: str, text: str, marker: str, block_id: str) -> str:
     _require(marker in marking, f"{block_id} retained marking is outside the notice preamble")
     return marking
 
-  marking = next((candidate for candidate in _comment_blocks(text) if marker in candidate), None)
-  _require(marking is not None, f"{block_id} retained marking is outside a comment block")
-  return marking
+  candidates = [candidate for candidate in _comment_blocks(text) if marker in candidate]
+  _require(
+    len(candidates) == 1 and _normalise_marking(text).count(marker) == 1,
+    f"{block_id} retained marking is missing or ambiguous",
+  )
+  return candidates[0]
 
 
 def _a4_scan_texts(repo_root: Path) -> dict[str, str]:
@@ -822,10 +839,15 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     if key[0].startswith(("third_party/", "src/test/provenance/astrotime-analysis/"))
     or key[0] == "bindings/javascript/package-lock.json"
   }
+  changed = {
+    key: (RESIDUAL_GPL_ALLOWLIST[key], residual[key])
+    for key in sorted(frozen)
+    if residual[key] != RESIDUAL_GPL_ALLOWLIST[key]
+  }
+  unexpected = sorted(set(residual) - set(RESIDUAL_GPL_ALLOWLIST))
   _require(
-    set(residual) <= set(RESIDUAL_GPL_ALLOWLIST)
-    and all(residual[key] == RESIDUAL_GPL_ALLOWLIST[key] for key in frozen),
-    f"residual GPL allowlist differs: unexpected={sorted(set(residual) - set(RESIDUAL_GPL_ALLOWLIST))}",
+    not unexpected and not changed,
+    f"residual GPL allowlist differs: unexpected={unexpected}, frozen expected/actual={changed}",
   )
 
 
@@ -941,13 +963,7 @@ def _verify_registry(
       marker = _normalise_marking(block["marker"])
       text = path.read_text(encoding="utf-8")
       host = _normalise_marking(text)
-      if block["path"] == "THIRD_PARTY_NOTICES.txt":
-        marking = _marking_slice(block["path"], text, marker, block["id"])
-      else:
-        facts = block["marking_facts"]
-        candidates = _comment_blocks(text)
-        _require(candidates, f"{block['id']} retained marking is missing")
-        marking = max(candidates, key=lambda candidate: sum(fact in candidate for fact in facts))
+      marking = _marking_slice(block["path"], text, marker, block["id"])
       _require("outside the project MIT grant" in marking, f"{block['id']} MIT boundary is missing")
       require_facts(marking, block["marking_facts"], block["id"])
       _verify_source_identity(block, host)
@@ -1034,11 +1050,9 @@ def _marked_source_paths(repo_root: Path) -> list[Path]:
 def _verify_orphan_markings(repo_root: Path, blocks: list[dict]) -> None:
   registered = {
     block["path"]: [
-      fact
+      _normalise_marking(candidate["marker"])
       for candidate in blocks
-      if candidate["path"] == block["path"]
-      for fact in candidate.get("marking_facts", [])
-      if re.fullmatch(r"[RV]\d{2}", fact)
+      if candidate["path"] == block["path"] and candidate["marking_mode"] == "in_file"
     ]
     for block in blocks
     if block["marking_mode"] == "in_file"
@@ -1048,13 +1062,17 @@ def _verify_orphan_markings(repo_root: Path, blocks: list[dict]) -> None:
     for line in path.read_text(encoding="utf-8").splitlines():
       if relative != "THIRD_PARTY_NOTICES.txt" and not line.lstrip().startswith(("#", "//", "*")):
         continue
-      if not any(phrase in line for phrase in MARKING_PHRASES):
+      if not any(phrase.casefold() in line.casefold() for phrase in MARKING_PHRASES):
         continue
       marking = _normalise_marking(line)
       candidates = registered.get(relative, [])
-      row_ids = re.findall(r"\b[RV]\d{2}\b", marking)
+      row_ids = re.findall(r"\b[RVT]\d{2}\b", marking)
       _require(
-        relative in registered and (not row_ids or set(row_ids) <= set(candidates)),
+        any(
+          (candidate.startswith(marking) or marking.startswith(candidate))
+          and (row_ids or not re.search(r"\b[RVT]\d{2}\b", candidate))
+          for candidate in candidates
+        ),
         f"orphan retained marking: {relative}: {marking}",
       )
 
@@ -1151,7 +1169,7 @@ def verify_batch_a_closeout(
   closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
   record = _load_json((closeout_root / RECORD_NAME).read_bytes(), "closeout record")
   registry = _load_json(
-    (closeout_root / REGISTRY_NAME).read_bytes(),
+    (repo_root / RETAINED_REGISTRY).read_bytes(),
     "retained registry",
   )
   rows = _verify_row_record(repo_root, record)
@@ -1166,7 +1184,7 @@ def verify_batch_a_closeout(
     for key, row in rows.items()
   }
   _require(json_digest(row_facts) == record_sha256, "closeout source/disposition facts differ")
-  block_facts = [{key: value for key, value in block.items() if key not in {"locator", "marker"}} for block in blocks]
+  block_facts = [{key: value for key, value in block.items() if key != "locator"} for block in blocks]
   _require(json_digest(block_facts) == registry_sha256, "retained registry source/marking facts differ")
   verify_retained_data(repo_root)
   return CloseoutCounts(

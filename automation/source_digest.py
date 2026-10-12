@@ -19,12 +19,13 @@ from pathlib import Path
 
 
 RETAINED_REGISTRY = Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json")
-RETAINED_DATA_SHA256 = "0954e93e5f4a125b99b1f4da83c7fdebd609592f6089ef33ba13ed7c08692ac5"
+RETAINED_DATA_SHA256 = "aaa502597dcec726a98f2ab883470cafcd2de34b30a1a70d7ed4ffb980ba2823"
+# Add new value-bearing type/member spellings here; implementation names and test macros stay free.
 REFERENCE_VALUE_PATTERN = re.compile(
   r'"(?:\\.|[^"\\])*"|(?<![\w.])(?:0x[0-9a-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)'
   r"(?:[a-zA-Z_]\w*)?|\b(?:true|false)\b|[+*/-]|\b[A-Za-z_]\w*(?:::\w+)+"
-  r"|\b(?:Angle|AngleDeg|AngleRad|DistanceKm|DistanceAu|GeoLocation|Datetime|RAD|DEG|AU|KM)\b"
-  r"|\.(?:latitude|longitude|lat_deg|lon_deg|λ|β|α|δ|jd_ut1|jde_tt|ymd|fraction)\b"
+  r"|\b(?:Angle|AngleDeg|AngleRad|DistanceKm|DistanceAu|GeoLocation|Datetime|Params|TraditionalMonth|RAD|DEG|AU|KM)\b"
+  r"|\.(?:latitude|longitude|lat_deg|lon_deg|λ|β|α|δ|r|model|jd_ut1|jde_tt|ymd|fraction)\b"
 )
 
 
@@ -34,6 +35,7 @@ def canonical_cpp(text: str) -> str:
 
 
 def retained_slice(text: str, start: str, end: str) -> str:
+  """Retained data markers bind whole blocks; reference inputs/values markers bind value atoms."""
   if text.count(start) != 1:
     raise RuntimeError(f"retained data start is missing or ambiguous: {start}")
   begin = text.index(start)
@@ -43,7 +45,7 @@ def retained_slice(text: str, start: str, end: str) -> str:
   return text[begin:finish]
 
 
-def retained_digest(path: Path, method: str, start: str = "", end: str = "") -> str:
+def retained_digest(path: Path, method: str, start: str = "", end: str = "", input_facts: tuple[str, ...] = ()) -> str:
   if method == "raw_sha256":
     data = path.read_bytes()
   elif method == "notebook_values":
@@ -58,10 +60,12 @@ def retained_digest(path: Path, method: str, start: str = "", end: str = "") -> 
     for cell in notebook["cells"]:
       if cell["cell_type"] != "code":
         continue
+      source = "".join(cell["source"])
       try:
-        tree = ast.parse("".join(cell["source"]))
-      except SyntaxError:
-        # IPython commands are not Python; removing a retained table still changes the input identity.
+        tree = ast.parse(source)
+      except SyntaxError as error:
+        if re.search(r"\bJieqi\s*\.", source):
+          raise RuntimeError("retained notebook input-bearing cell cannot be parsed") from error
         continue
       for node in ast.walk(tree):
         if not isinstance(node, ast.List) or not node.elts:
@@ -78,11 +82,7 @@ def retained_digest(path: Path, method: str, start: str = "", end: str = "") -> 
           and item.args[1].value.id == "Jieqi"
         ]
         if len(pairs) == len(node.elts):
-          require_facts(
-            "".join(cell["source"]),
-            ("https://ytliu0.github.io/ChineseCalendar/computation_simp.html",),
-            "notebook directed Jieqi input source",
-          )
+          require_facts(source, input_facts, "notebook retained input source")
           inputs.append([(item.args[0].value, item.args[1].attr) for item in pairs])
     data = json.dumps(
       {"outputs": values, "directed_jieqi_inputs": inputs}, sort_keys=True, separators=(",", ":")
@@ -113,7 +113,13 @@ def verify_retained_data(repo_root: Path, ids: tuple[str, ...] | None = None) ->
     path = Path(block["path"])
     if path.is_absolute() or ".." in path.parts:
       raise RuntimeError(f"{block_id} retained path must be repository-relative")
-    digest = retained_digest(repo_root / path, block["method"], block.get("start", ""), block.get("end", ""))
+    digest = retained_digest(
+      repo_root / path,
+      block["method"],
+      block.get("start", ""),
+      block.get("end", ""),
+      tuple(block.get("input_facts", ())),
+    )
     if digest != block["sha256"]:
       raise RuntimeError(f"{block_id} retained data hash differs: {digest}")
   return len(selected)

@@ -178,7 +178,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
     ),
     "sun-2": ("bare-κ/R aberration", "λ column shifted", "β and r did not shift"),
     "moon-0": ("converted from degrees to radians", "All four columns shifted"),
-    "moon-1": ("no stored digit has shifted", "shifted only B perturbation"),
+    "moon-1": ("no stored digit has shifted",),
     "elp2000_82b-0": ("values shifted", "moon_horizons_golden_test.cpp", "JPL DE441"),
   }
   for block_id in table_ids:

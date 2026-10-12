@@ -32,6 +32,7 @@
 
 
 import sys
+import time
 
 from horizons_common import (
   batches,
@@ -70,7 +71,9 @@ DE421_SPAN = (2414993.5, 2471183.5)
 
 def fetch_horizons(jds: list[float]) -> dict[float, dict]:
   out = {}
-  for chunk in batches(jds):
+  for index, chunk in enumerate(batches(jds)):
+    if index:
+      time.sleep(0.15)
     out.update(fetch_horizons_chunk(list(chunk)))
   return out
 

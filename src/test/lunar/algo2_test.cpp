@@ -285,6 +285,7 @@ TEST(LunarAlgo2, LunarContext) {
     }
   }
 
+  // Retained reference inputs/values: hko-context.
   // Checks for year 2024
   // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2024.pdf
   {
@@ -331,6 +332,7 @@ TEST(LunarAlgo2, GetLunarInfo) {
   // This test simply tests the function can compile.
   // Sophisticated tests are in `diff_test.cpp`.
 
+  // Retained reference inputs/values: hko-info.
   { // Test for year 2020
     // Data source: https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2020.pdf
     const auto info = get_info_for_year(2020);

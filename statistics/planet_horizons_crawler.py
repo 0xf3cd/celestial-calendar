@@ -21,7 +21,7 @@ from typing import Final
 from horizons_common import (
   HORIZONS_URL,
   TLIST_BATCH_SIZE,
-  angular_separation_deg as coordinate_separation_deg,
+  angular_separation_deg,
   batches,
   checked_separation,
   column_indices,
@@ -36,7 +36,6 @@ from horizons_common import (
 
 
 HORIZONS_API_VERSION: Final[str] = "1.2"
-HORIZONS_BATCH_SIZE: Final[int] = TLIST_BATCH_SIZE
 QUANTITY_COLUMNS: Final[dict[str, tuple[str, ...]]] = {
   "10": ("Illu%",),
   "20": ("delta", "deldot"),
@@ -220,7 +219,7 @@ def fetch_horizons_batched(
   quantities: str = "20,23,31",
 ) -> tuple[HorizonsRow, ...]:
   rows = []
-  for chunk in batches(epochs, HORIZONS_BATCH_SIZE):
+  for chunk in batches(epochs, TLIST_BATCH_SIZE):
     rows.extend(fetch_horizons(target, chunk, quantities))
     time.sleep(0.15)
   if epochs:
@@ -338,10 +337,6 @@ def emit_retrograde(target: Target, rows: tuple[tuple[HorizonsRow, bool, str], .
     print(f"  {{ Planet::{target.enum_name:<7}, {row.jde:13.6f}, {str(retrograde).lower():5} }},  // {label}")
 
 
-def angular_separation_deg(source: HorizonsRow, target: HorizonsRow) -> float:
-  return coordinate_separation_deg((source.lon_deg, source.lat_deg), (target.lon_deg, target.lat_deg))
-
-
 def unwrap(values: tuple[float, ...]) -> tuple[float, ...]:
   result = [values[0]]
   for value in values[1:]:
@@ -399,7 +394,10 @@ def derive_events(
   planet_lon = unwrap(tuple(row.lon_deg for row in planet_rows))
   sun_lon = unwrap(tuple(row.lon_deg for row in sun_rows))
   difference = tuple(planet - sun for planet, sun in zip(planet_lon, sun_lon, strict=True))
-  separation = tuple(angular_separation_deg(sun, planet) for planet, sun in zip(planet_rows, sun_rows, strict=True))
+  separation = tuple(
+    angular_separation_deg((sun.lon_deg, sun.lat_deg), (planet.lon_deg, planet.lat_deg))
+    for planet, sun in zip(planet_rows, sun_rows, strict=True)
+  )
   inner = target.enum_name in {"MERCURY", "VENUS"}
   spacing = 360.0 if inner else 90.0
   events = []
