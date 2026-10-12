@@ -477,6 +477,7 @@ def test_frozen_licence_count_error_names_the_changed_count(tmp_path):
   [
     "source terms and not outside the project MIT grant.",
     "source terms and NOT\n// outside the project MIT grant.",
+    "source terms and not outside the project MIT grants.",
   ],
 )
 def test_bound_mit_boundary_cannot_be_directly_negated(tmp_path, clause):
