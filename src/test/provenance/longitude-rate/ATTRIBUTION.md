@@ -48,11 +48,12 @@ radians to degrees, then normalize to `[0, 360)`. Descending positions are ascen
 plus 180 degrees; descending rates differentiate the ascending trajectory.
 
 AA+ retains its variable Sun aberration coefficient `0.005775518` days/AU; the
-project uses `0.0057755183`. The historical AA+ reference for Mercury-Neptune holds Earth at observation time and
-evaluate only the target at retarded time, using its retarded-date VSOP87D frame
+project uses `0.0057755183`. The AA+ reference for Mercury-Neptune holds Earth at
+observation time and evaluates only the target at retarded time, using its retarded-date VSOP87D frame
 directly in subtraction. Aberration, FK5 and nutation use observation time. AA+
 stops on successive target changes of `1e-5` degrees in L/B and `1e-6` AU in R;
-the project's light-time residual stopping rule differs.
+the project's light-time residual stopping rule differs. The project's observation-frame
+transport and its sampling-window accounting are described below.
 
 For Pluto, use the independent Chapter 37 evaluator and
 `Earth.geometric_heliocentric_position(Epoch(t), tofk5=False)`. At each light-time

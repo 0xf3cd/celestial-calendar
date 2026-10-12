@@ -421,7 +421,6 @@ TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
           const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, CHART_DELTA_T_MODEL_ALGO5);
           ASSERT_TRUE(result.valid) << last_error();
           EXPECT_STREQ(last_error(), "");
-          EXPECT_TRUE(std::isfinite(result.houses.ascendant_deg));
           EXPECT_GT(observer.latitude.deg() * std::cos(astro::toolbox::deg_to_rad(result.houses.ascendant_deg)), 0.0);
         }
       }

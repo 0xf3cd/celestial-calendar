@@ -311,7 +311,6 @@ TEST(Chart, UnresolvedAscendantStopsSnapshotAndAllowsNearbyControls) {
           location(observer.latitude.deg() + offset, observer.longitude.deg() + offset)
         }) {
           const auto result = calculate(dt, Scale::UTC, control, system, Model::ALGO5);
-          EXPECT_TRUE(std::isfinite(result.houses.ascendant.deg()));
           EXPECT_GT(observer.latitude.deg() * std::cos(result.houses.ascendant.rad()), 0.0);
         }
       }

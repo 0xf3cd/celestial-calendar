@@ -409,7 +409,6 @@ TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
           const auto latitude_control = detail::calculate(
             AngleDeg { armc_deg }, AngleDeg { latitude_deg + offset }, obliquity, system
           );
-          EXPECT_TRUE(std::isfinite(latitude_control.ascendant.deg()));
           EXPECT_EQ(latitude_control.ascendant.deg(), sign > 0.0 ? 0.0 : 180.0);
           if (system == System::WHOLE_SIGN) {
             EXPECT_EQ(latitude_control.cusps.front().deg(), latitude_control.ascendant.deg());
@@ -421,7 +420,7 @@ TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
 }
 
 TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
-  // A longitude-only perturbation leaves the east projection quadratic in the offset.
+  // A longitude-only perturbation leaves E quadratic in the offset.
   for (const double obliquity_deg : { 23.44, 23.438143769036159 }) {
     const AngleDeg obliquity { obliquity_deg };
     for (const double sign : { -1.0, 1.0 }) {
@@ -439,7 +438,6 @@ TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
             const auto control = detail::calculate(
               AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg + latitude_offset }, obliquity, system
             );
-            EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
             EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
           }
         }
@@ -474,7 +472,6 @@ TEST(House, PublicCalculationRejectsCoincidentPlanes) {
           astro::GeoLocation { .latitude = AngleDeg { latitude + offset }, .longitude = AngleDeg { longitude + offset } }
         }) {
           const auto control = calculate(jd_ut1, jde_tt, location, system);
-          EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
           EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
         }
       }

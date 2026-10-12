@@ -33,9 +33,9 @@ from pathlib import Path
 from typing import Any, Final
 
 
-Vector = tuple[float, float, float]
-Matrix = tuple[Vector, Vector, Vector]
-Tables = dict[tuple[str, int], tuple[Vector, ...]]
+Triple = tuple[float, float, float]
+Matrix = tuple[Triple, Triple, Triple]
+Tables = dict[tuple[str, int], tuple[Triple, ...]]
 
 NAMES: Final = ("EARTH", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE")
 CODES: Final = ("EAR", "MER", "VEN", "MAR", "JUP", "SAT", "URA", "NEP")
@@ -56,7 +56,7 @@ STATIONS: Final = (
 )
 
 
-def mv(matrix: Matrix, vector: Vector) -> Vector:
+def mv(matrix: Matrix, vector: Triple) -> Triple:
   return tuple(math.fsum(a * b for a, b in zip(row, vector, strict=True)) for row in matrix)
 
 
@@ -90,17 +90,17 @@ def ecliptic_matrix(initial: float, final: float) -> Matrix:
   return mm(rz(Pi + p), mm(rx(-eta), rz(-Pi)))
 
 
-def rectangular(coordinate: Vector) -> Vector:
+def rectangular(coordinate: Triple) -> Triple:
   lon, lat, radius = coordinate
   return (radius * math.cos(lat) * math.cos(lon), radius * math.cos(lat) * math.sin(lon), radius * math.sin(lat))
 
 
-def spherical(vector: Vector) -> Vector:
+def spherical(vector: Triple) -> Triple:
   x, y, z = vector
   return (math.degrees(math.atan2(y, x)) % 360, math.degrees(math.atan2(z, math.hypot(x, y))), math.hypot(x, y, z))
 
 
-def difference(lhs: Vector, rhs: Vector) -> Vector:
+def difference(lhs: Triple, rhs: Triple) -> Triple:
   return tuple(a - b for a, b in zip(lhs, rhs, strict=True))
 
 
@@ -156,7 +156,7 @@ def parse_tables(root: Path, body: int) -> tuple[Tables, dict[str, Any]]:
   }
 
 
-def evaluate(tables: Tables, jd: float) -> Vector:
+def evaluate(tables: Tables, jd: float) -> Triple:
   t = (jd - J2000) / DAYS_PER_MILLENNIUM
   result = []
   for axis in "LBR":
@@ -168,7 +168,7 @@ def evaluate(tables: Tables, jd: float) -> Vector:
   return tuple(result)
 
 
-def light_time(target_at: Callable[[float], Vector], observer: Vector, observation: float) -> dict[str, Any]:
+def light_time(target_at: Callable[[float], Triple], observer: Triple, observation: float) -> dict[str, Any]:
   emission = observation
   for count in range(1, 11):
     vector = difference(target_at(emission), observer)
@@ -214,7 +214,7 @@ def primary_checks(tables: tuple[Tables, ...], check_file: Path) -> list[dict[st
   return anchors
 
 
-def book_example() -> Vector:
+def book_example() -> Triple:
   example = spherical(
     mv(ecliptic_matrix(J2000, 1643074.5), rectangular((math.radians(149.48194), math.radians(1.76549), 1)))
   )
@@ -227,7 +227,7 @@ def reference_row(tables: tuple[Tables, ...], body: int, observation: float, rol
   earth = rectangular(evaluate(tables[0], observation))
   R_observation = ecliptic_matrix(J2000, observation)
 
-  def target(emission: float) -> Vector:
+  def target(emission: float) -> Triple:
     return rectangular(evaluate(tables[body], emission))
 
   direct = light_time(lambda e: mv(ecliptic_matrix(e, observation), target(e)), earth, observation)
