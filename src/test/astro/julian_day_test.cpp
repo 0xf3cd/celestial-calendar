@@ -13,6 +13,9 @@
 #include <gtest/gtest.h>
 
 #include <tuple>
+#include <array>
+#include <cmath>
+#include <stdexcept>
 #include <limits>
 #include <vector>
 #include <unordered_map>
@@ -229,6 +232,23 @@ TEST(JulianDay, InvalidInput) {
   const auto y401 = jd_to_ut1(1867522.5);
   ASSERT_EQ(y401.ymd, to_ymd(401, 1, 1));
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(401, 1, 1), 0.0 }), 1867522.5, EPSILON);
+}
+
+TEST(JulianDay, Ut1ToJdeRejectsMutatedInvalidDatetime) {
+  const Datetime valid { to_ymd(2026, 2, 28), 0.5 };
+  ASSERT_TRUE(std::isfinite(ut1_to_jde(valid)));
+  for (const auto ymd : std::array { to_ymd(2026, 2, 30), to_ymd(1900, 2, 29) }) {
+    auto invalid = valid;
+    invalid.ymd = ymd;
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = ut1_to_jde(invalid), std::invalid_argument);
+  }
+  for (const int64_t elapsed_ns : { -1LL, 86400'000'000'000LL }) {
+    auto invalid = valid;
+    invalid.time_of_day = std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } };
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = ut1_to_jde(invalid), std::invalid_argument);
+  }
 }
 
 TEST(JulianDay, JulianMillennium) {

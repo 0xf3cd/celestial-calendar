@@ -599,6 +599,7 @@ typedef struct ChartSnapshotV1 {
  * @param latitude_deg North-positive latitude in (-90, 90).
  * @param longitude_deg East-positive longitude in [-180, 180].
  * @param house_system_code A CHART_HOUSE_SYSTEM_* code; Placidus rejects polar geometry.
+ *                          All systems reject an Ascendant direction unresolved at round-off.
  * @param delta_t_model_code A CHART_DELTA_T_MODEL_* code; DEFAULT selects Algo5.
  * @returns A ChartSnapshotV1 by value. On failure valid is false and last_error reports the cause;
  *          invalid payload and padding bytes have no contract. There is no partial result.

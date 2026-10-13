@@ -25,8 +25,8 @@
   distance is absent.
 - Ascendant, Descendant, Midheaven, Imum Coeli, and twelve house cusps for Equal, Whole Sign, and
   Placidus in the C++ header-only API (#59). The calculation keeps UT1 and TT explicit, accepts
-  east-positive longitude, and rejects geographic poles and the Placidus polar domain instead of
-  silently substituting another house system.
+  east-positive longitude, and rejects geographic poles, an Ascendant direction unresolved at round-off,
+  and the Placidus polar domain instead of silently substituting another house system.
 - Apparent geocentric ecliptic positions for Mercury through Neptune (#58), calculated from the complete
   VSOP87D planetary series with iterative light time, annual aberration, FK5 reduction, and nutation. A
   wrap-aware centered-longitude marker reports whether each planet is retrograde without claiming an exact
@@ -40,6 +40,12 @@
   lower-precision Meeus Chapter 37 model. Apparent positions and geometry accept `[2409543.5, 2488069.5)` JDE(TT),
   centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete event searches accept Gregorian years
   `[1886, 2098]`; these hard domains are not accuracy guarantees.
+
+### Fixed
+
+- Default C++ Delta T datetime evaluation delegates to Algo5 (#321), avoiding the out-of-range
+  next-year construction at year 32767. It now rejects invalid datetimes; UT1/TT and pre-1972 UTC
+  conversions inherit that rejection.
 
 ## [v0.7.0]
 

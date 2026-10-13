@@ -66,8 +66,30 @@ struct Pluto95Row {
   double z_au;
 };
 
+struct FrameRow {
+  Planet planet;
+  double observation_jde_tt;
+  double lon_deg;
+  double lat_deg;
+  double r_au;
+};
+
 [[nodiscard]] auto wrapped_diff_deg(const double lhs, const double rhs) -> double {
   return std::fabs(std::remainder(lhs - rhs, 360.0));
+}
+
+[[nodiscard]] auto raw_heliocentric(const Planet planet, const double jde_tt) -> astro::toolbox::SphericalCoordinate {
+  using enum astro::vsop87d::Planet;
+  switch (planet) {
+    case Planet::MERCURY: return detail::heliocentric<MER>(jde_tt);
+    case Planet::VENUS:   return detail::heliocentric<VEN>(jde_tt);
+    case Planet::MARS:    return detail::heliocentric<MAR>(jde_tt);
+    case Planet::JUPITER: return detail::heliocentric<JUP>(jde_tt);
+    case Planet::SATURN:  return detail::heliocentric<SAT>(jde_tt);
+    case Planet::URANUS:  return detail::heliocentric<URA>(jde_tt);
+    case Planet::NEPTUNE: return detail::heliocentric<NEP>(jde_tt);
+    default: throw std::logic_error { "Unexpected frame-test planet" };
+  }
 }
 
 // JPL Horizons API v1.2 apparent geocentric positions, collected 2026-09-22 and 2026-09-28 by
@@ -312,6 +334,64 @@ constexpr std::array PYMEEUS_ROWS {
   EquatorialRow { Planet::NEPTUNE, 2451545.00, 305.4329851057, -19.2131991442 },
   EquatorialRow { Planet::NEPTUNE, 2461050.50,   0.1985387754,  -1.3601094287 },
   EquatorialRow { Planet::NEPTUNE, 2486166.25, 157.6078514891,  10.0478070928 },
+};
+// NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
+
+// Generated 2026-10-12 by statistics/planet_frame_reference.py: complete AA+ v2.55 D tables,
+// independently parsed, with Cartesian Meeus (21.5)/(21.7) transport before Earth subtraction.
+// Fixed-J2000 reconstruction checks the same model, not an independent physical ephemeris.
+// Inputs: January 1 noon TT in 1885/2000/2099, first 2025 Horizons stations ±0.1 day,
+// and directed Mercury/Neptune wraps. No random draws. Source hashes and regeneration:
+// src/test/provenance/planet-frame/SOURCE_PINS.json and ATTRIBUTION.md.
+// Tolerances pin the generator's discrete emission selection, not all epochs within its ULP stop criterion.
+// They cover evaluator arithmetic, not model error: measured longitude/latitude/range gaps
+// are 2.30e-10 deg / 3.10e-12 deg / 1.02e-12 AU; thresholds leave at least a 4x margin.
+// These coefficient-derived reference values remain under their source terms, outside the project MIT grant.
+constexpr Tolerance FRAME_TOLERANCE { .lon_deg = 1e-9, .lat_deg = 2e-11, .r_au = 5e-12 };
+// NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+constexpr std::array FRAME_ROWS {
+  // Planet           Observation JDE(TT) Longitude (deg) Latitude (deg)   Range (AU)
+  FrameRow { Planet::MERCURY, 2409543.0000000000, 286.955716888680,  2.099756498773,  0.68659085874107 },
+  FrameRow { Planet::MERCURY, 2451545.0000000000, 271.897748784375, -0.994771415570,  1.41546611511363 },
+  FrameRow { Planet::MERCURY, 2487705.0000000000, 277.076294544108, -1.411235046273,  1.43897329257462 },
+  FrameRow { Planet::MERCURY, 2460749.6828680001,   9.593475575409,  3.194679469858,  0.74132266990249 },
+  FrameRow { Planet::MERCURY, 2460749.8828680003,   9.593488522732,  3.220740207583,  0.73696545423393 },
+  FrameRow { Planet::VENUS,   2409543.0000000000, 251.362279956734,  1.301467327141,  1.38108383620354 },
+  FrameRow { Planet::VENUS,   2451545.0000000000, 241.573298632070,  2.066502828315,  1.13757447626924 },
+  FrameRow { Planet::VENUS,   2487705.0000000000, 235.620835589211,  2.905705739582,  0.82491893029578 },
+  FrameRow { Planet::VENUS,   2460736.4258499998,  10.840202712413,  6.863712849184,  0.33769482562650 },
+  FrameRow { Planet::VENUS,   2460736.6258500000,  10.840220529391,  6.897128082234,  0.33670295622526 },
+  FrameRow { Planet::MARS,    2409543.0000000000, 290.762283266672, -1.024007458606,  2.36530774834023 },
+  FrameRow { Planet::MARS,    2451545.0000000000, 327.970527156504, -1.067714631912,  1.84968388376187 },
+  FrameRow { Planet::MARS,    2487705.0000000000, 240.352224395821,  0.322764229863,  2.19307427241787 },
+  FrameRow { Planet::MARS,    2460730.4840589999, 107.010998224697,  3.695497738160,  0.82293428638369 },
+  FrameRow { Planet::MARS,    2460730.6840590001, 107.011008174703,  3.689514863060,  0.82445203509061 },
+  FrameRow { Planet::JUPITER, 2409543.0000000000, 155.636572655049,  1.100238240247,  4.74044271993939 },
+  FrameRow { Planet::JUPITER, 2451545.0000000000,  25.255510235986, -1.262050295701,  4.62116318887566 },
+  FrameRow { Planet::JUPITER, 2487705.0000000000, 173.195706539704,  1.232724750493,  5.02123190222427 },
+  FrameRow { Planet::JUPITER, 2460710.8024189998,  71.275567734380, -0.480161377339,  4.59052232076517 },
+  FrameRow { Planet::JUPITER, 2460711.0024190000,  71.275586232856, -0.479447650344,  4.59345769064073 },
+  FrameRow { Planet::SATURN,  2409543.0000000000,  79.142907455066, -1.435770338982,  8.11652821777649 },
+  FrameRow { Planet::SATURN,  2451545.0000000000,  40.396668988570, -2.444649223276,  8.65278650187802 },
+  FrameRow { Planet::SATURN,  2487705.0000000000, 193.850207661249,  2.381541994510,  9.54765509115704 },
+  FrameRow { Planet::SATURN,  2460869.5708479998,   1.931652624055, -2.291400040951,  9.19226492868109 },
+  FrameRow { Planet::SATURN,  2460869.7708480000,   1.931633730116, -2.292308075125,  9.18912350328812 },
+  FrameRow { Planet::URANUS,  2409543.0000000000, 182.920733619594,  0.748139129760, 18.13223734668615 },
+  FrameRow { Planet::URANUS,  2451545.0000000000, 314.817876912522, -0.658287508703, 20.72718681440723 },
+  FrameRow { Planet::URANUS,  2487705.0000000000,  13.782377744711, -0.656830107630, 19.93597404112344 },
+  FrameRow { Planet::URANUS,  2460706.0827859999,  53.259498367732, -0.242515857171, 19.31433246336679 },
+  FrameRow { Planet::URANUS,  2460706.2827860001,  53.259519012289, -0.242443763218, 19.31766889704254 },
+  FrameRow { Planet::NEPTUNE, 2409543.0000000000,  50.758780156765, -1.781467215446, 29.18444354943705 },
+  FrameRow { Planet::NEPTUNE, 2451545.0000000000, 303.202387180926,  0.234987111041, 31.02444616631808 },
+  FrameRow { Planet::NEPTUNE, 2487705.0000000000, 165.067236475996,  0.907952213485, 29.75118605220414 },
+  FrameRow { Planet::NEPTUNE, 2460861.2996100001,   2.174134724427, -1.327061660039, 29.68074087614835 },
+  FrameRow { Planet::NEPTUNE, 2460861.4996100003,   2.174115928829, -1.327234450025, 29.67743672426809 },
+  FrameRow { Planet::MERCURY, 2460737.0000000000, 358.678179698851,  0.555622226304,  1.07627758794121 },
+  FrameRow { Planet::MERCURY, 2460738.0000000000,   0.184290040067,  0.780952211534,  1.04978393994182 },
+  FrameRow { Planet::MERCURY, 2460764.0000000000,   0.450288335727,  2.248388122759,  0.59799227683132 },
+  FrameRow { Planet::MERCURY, 2460765.0000000000, 359.717897759175,  2.001590225193,  0.60052672382706 },
+  FrameRow { Planet::NEPTUNE, 2460764.0000000000, 359.968430531977, -1.263931511892, 30.87727120286948 },
+  FrameRow { Planet::NEPTUNE, 2460765.0000000000,   0.005960786517, -1.264157096769, 30.87468364946210 },
 };
 // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
 
@@ -622,6 +702,54 @@ TEST(Planet, RejectsInvalidInput) {
     static_cast<void>(geocentric_coord::is_retrograde(invalid_planet, 2451545.0)),
     std::invalid_argument
   );
+}
+
+TEST(Planet, IndependentObservationFrameGeometricDataset) {
+  for (const auto& row : FRAME_ROWS) {
+    const auto earth = astro::earth::heliocentric_coord::vsop87d(row.observation_jde_tt);
+    const auto coordinate = detail::light_time_corrected(row.planet, row.observation_jde_tt, earth);
+
+    ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), FRAME_TOLERANCE.lon_deg)
+      << detail::name(row.planet) << " longitude at JDE(TT) " << row.observation_jde_tt;
+    ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, FRAME_TOLERANCE.lat_deg)
+      << detail::name(row.planet) << " latitude at JDE(TT) " << row.observation_jde_tt;
+    ASSERT_NEAR(coordinate.r.au(), row.r_au, FRAME_TOLERANCE.r_au)
+      << detail::name(row.planet) << " range at JDE(TT) " << row.observation_jde_tt;
+  }
+}
+
+TEST(Planet, ObservationFrameProducerPreservesRadiusAndEqualEpoch) {
+  constexpr std::array planets {
+    Planet::MERCURY, Planet::VENUS, Planet::MARS, Planet::JUPITER,
+    Planet::SATURN, Planet::URANUS, Planet::NEPTUNE,
+  };
+
+  for (const Planet planet : planets) {
+    for (const double jde_tt : std::array { 2409543.0, 2451545.0, 2487705.0 }) {
+      const auto equal = detail::heliocentric(planet, jde_tt, jde_tt);
+      const auto transported = detail::heliocentric(planet, jde_tt, jde_tt + 0.2);
+      const auto raw = raw_heliocentric(planet, jde_tt);
+
+      ASSERT_LE(wrapped_diff_deg(equal.λ.deg(), raw.λ.deg()), 1e-13)
+        << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_NEAR(equal.β.deg(), raw.β.deg(), 1e-13)
+        << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(equal.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(transported.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
+    }
+  }
+}
+
+TEST(Planet, ObservationFrameProducerKeepsPlutoJoin) {
+  for (const double observation_jde_tt : std::array { 2409543.5, 2451545.0, 2488069.0 }) {
+    const double retarded_jde_tt = observation_jde_tt - 0.2;
+    const auto expected = detail::pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
+    const auto actual = detail::heliocentric(Planet::PLUTO, retarded_jde_tt, observation_jde_tt);
+
+    ASSERT_DOUBLE_EQ(actual.λ.deg(), expected.λ.deg()) << "longitude at JDE(TT) " << observation_jde_tt;
+    ASSERT_DOUBLE_EQ(actual.β.deg(), expected.β.deg()) << "latitude at JDE(TT) " << observation_jde_tt;
+    ASSERT_DOUBLE_EQ(actual.r.au(), expected.r.au()) << "range at JDE(TT) " << observation_jde_tt;
+  }
 }
 
 } // namespace astro::planet::test

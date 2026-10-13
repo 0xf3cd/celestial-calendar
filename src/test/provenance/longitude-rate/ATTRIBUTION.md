@@ -48,11 +48,12 @@ radians to degrees, then normalize to `[0, 360)`. Descending positions are ascen
 plus 180 degrees; descending rates differentiate the ascending trajectory.
 
 AA+ retains its variable Sun aberration coefficient `0.005775518` days/AU; the
-project uses `0.0057755183`. Mercury-Neptune hold Earth at observation time and
-evaluate only the target at retarded time, using its retarded-date VSOP87D frame
-directly in subtraction. Aberration, FK5 and nutation use observation time. AA+
-stops on successive target changes of `1e-5` degrees in L/B and `1e-6` AU in R;
-the project's light-time residual stopping rule differs.
+project uses `0.0057755183`. The AA+ reference for Mercury-Neptune holds Earth at
+observation time and evaluates only the target at retarded time, using its
+retarded-date VSOP87D frame directly in subtraction. Aberration, FK5 and nutation use
+observation time. AA+ stops on successive target changes of `1e-5` degrees in L/B and
+`1e-6` AU in R; the project's light-time residual stopping rule differs. The project's
+observation-frame transport and its sampling-window accounting are described below.
 
 For Pluto, use the independent Chapter 37 evaluator and
 `Earth.geometric_heliocentric_position(Epoch(t), tofk5=False)`. At each light-time
@@ -89,12 +90,28 @@ interval `|tau| <= 10.01`, including the retarded-time halo. For a VSOP term
 For value bounds, split out only `k=0, C=0` terms as the constant part. Every other
 term, including `C=0` with `k>0`, contributes `|A|*a^k/1e8` to the radius/latitude envelope.
 
-For planetary geometry, use Cartesian speed `|R'| + Rmax*(|L'|+|beta'|)` and the
-positive lower bound on the xy-projected Earth-target separation. With light-time
-constant `c`, contraction `q=c*Vtarget < 1` bounds `|dt_ret/dt|` by
-`(1+c*Vearth)/(1-q)`. Light-travel time is below two days throughout the analysis
-window, so every iterate remains inside its 3652.5-day halo. The implemented ULP stopping
-residual is controlled by the same contraction; non-convergence remains an explicit failure.
+For planetary geometry, the raw target Cartesian speed bound is
+`V = |R'| + Rmax*(|L'|+|beta'|)`. The observation-frame target is
+`H(e,o) = M(e,o) h(e)`, where `e` and `o` are emission and observation TT epochs and
+`M = Rz(Pi+p) Rx(-eta) Rz(-Pi)` is Meeus (21.5)/(21.7). With radius bound `R`,
+partial operator-norm bounds `Omega_e`, `Omega_o` give `Ve = V + R*Omega_e` and
+`Vo = R*Omega_o`. For light-time constant `c`, `q = c*Ve < 1` and implicit
+differentiation of the retarded epoch give `|de/do| <= (1+c*(Vearth+Vo))/(1-q)`.
+Divide `Ve*|de/do| + Vo + Vearth` by the positive lower bound on the xy-projected
+Earth-target separation to bound the geometric longitude rate in radians per TT day.
+
+The frame-join coefficient accounting of 2026-10-12 uses `|T| <= 100.1` centuries
+and `|t| <= 2/36525` centuries in (21.5). For either partial, the rotation product gives
+`||partial M|| <= |partial p| + |partial eta| + 2*|partial Pi|`;
+`partial_o = partial_t/36525` and `partial_e = (partial_T-partial_t)/36525`.
+Absolute polynomial-term envelopes give `Omega_e = 1.854830050897803e-6` and
+`Omega_o = 9.493549239318184e-7` radians per day. Allow the rotation envelope
+`|p|+|eta| <= 0.290846` arcseconds in the projected-separation/latitude bounds.
+These are finite-window model envelopes, not certified floating-point intervals.
+
+Light-travel time is below two days throughout the analysis window, so every iterate
+remains inside its 3652.5-day halo. The implemented ULP stopping residual is controlled
+by the same contraction; non-convergence remains an explicit failure.
 
 Bound annual-aberration and FK5 longitude by their amplitudes, using the projected
 separation to keep latitude denominators away from zero; include the aberrated latitude
@@ -148,9 +165,10 @@ Selection uses roles and input seeds before reading production comparisons:
 ## Comparison tolerances
 
 All numbers below are absolute degrees per TT day, measured over the complete
-training plus holdout corpus. P is production seven-point `h=1/8` minus the primary
-11-point reference; A compares the same production result to the alternate `h=3/16`
-reference. H and AH are the respective reference step-halving differences.
+training plus holdout corpus before the observation-frame join. P is the production
+seven-point `h=1/8` minus the primary 11-point reference; A compares that same result
+to the alternate `h=3/16` reference. H and AH are the respective reference
+step-halving differences.
 
 | Target/family | Worst P | Worst A | Worst H | Worst AH | Test tolerance |
 |---|---:|---:|---:|---:|---:|
@@ -167,11 +185,14 @@ reference. H and AH are the respective reference step-halving differences.
 | Mean nodes, either orientation | 4.7e-12 | 7.4e-12 | 1.6e-11 | 8.8e-12 | 1e-10 |
 | True nodes, either orientation | 2.7e-11 | 5.9e-11 | 1.0e-10 | 9.5e-11 | 5e-10 |
 
-Each tolerance exceeds four times the maximum of P, A, H and AH, rounded up
-to the shown threshold. This margin accounts for observed reference noise, the
-stated apparent-reduction differences and cross-platform arithmetic. It is a
-regression threshold for implementation/reference agreement, not a physical
-accuracy claim or a certified error bound.
+Each tolerance was selected to exceed four times the historical maximum of P, A,
+H and AH, rounded up to the shown threshold. This margin accounts for observed
+reference noise, the stated apparent-reduction differences and cross-platform
+arithmetic. It is a regression threshold for implementation/reference agreement,
+not a physical accuracy claim or a certified error bound.
+
+The full corpus has not been remeasured with the observation-frame join. The
+compact regression uses the same frozen reference values and thresholds.
 
 The planetary station-center check uses `3e-5`: the Chapter 37 Pluto model has a
 nonzero rate up to `2.1e-5` at these epochs. True-node reference stations use `5e-10`,

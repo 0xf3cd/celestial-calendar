@@ -12,6 +12,7 @@
 
 #include <array>
 #include <bit>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -389,6 +390,57 @@ TEST(ChartCAbi, PolarPlacidusFailsWithoutPartialResultOrFallback) {
     EXPECT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_EQUAL).valid);
     EXPECT_STREQ(last_error(), "");
     EXPECT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_WHOLE_SIGN).valid);
+  }
+}
+
+TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
+  // #321: the payload is unspecified on failure; inspect only valid and last_error.
+  // The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
+  const Datetime dt { util::to_ymd(2026, 1, 1),
+                      std::chrono::hh_mm_ss { std::chrono::seconds { 43205 } } };
+  const auto placidus = snapshot_at(
+    dt,
+    CHART_CIVIL_SCALE_UTC,
+    location(66.561856230963841, -11.176256364511062),
+    CHART_HOUSE_SYSTEM_PLACIDUS,
+    CHART_DELTA_T_MODEL_ALGO5
+  );
+  ASSERT_FALSE(placidus.valid);
+  EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
+  for (const auto observer : std::array {
+    location(66.561856230963841, -11.176256364511062),
+    location(-66.561856230963841, 168.82374363548894)
+  }) {
+    for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
+      ASSERT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, system, CHART_DELTA_T_MODEL_ALGO5).valid);
+      EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
+      for (const double offset : { -0.000001, 0.000001 }) {
+        const auto unresolved = snapshot_at(
+          dt,
+          CHART_CIVIL_SCALE_UTC,
+          location(observer.latitude.deg(), observer.longitude.deg() + offset),
+          system,
+          CHART_DELTA_T_MODEL_ALGO5
+        );
+        ASSERT_FALSE(unresolved.valid);
+        EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
+        for (const auto control : std::array {
+          location(observer.latitude.deg() + offset, observer.longitude.deg()),
+          location(observer.latitude.deg() + offset, observer.longitude.deg() + offset)
+        }) {
+          const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, CHART_DELTA_T_MODEL_ALGO5);
+          ASSERT_TRUE(result.valid) << last_error();
+          EXPECT_STREQ(last_error(), "");
+          EXPECT_GT(observer.latitude.deg() * std::cos(astro::toolbox::deg_to_rad(result.houses.ascendant_deg)), 0.0);
+        }
+      }
+    }
+  }
+  for (const double latitude : { -89.0, 89.0 }) {
+    for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
+      ASSERT_TRUE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, location(latitude, 0.0), system).valid) << last_error();
+      EXPECT_STREQ(last_error(), "");
+    }
   }
 }
 

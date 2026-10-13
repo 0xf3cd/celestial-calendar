@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <limits>
 #include <numeric>
 #include <stdexcept>
 
@@ -54,6 +55,7 @@ namespace detail {
 inline constexpr std::size_t PLACIDUS_BRACKET_SEGMENTS = 360;
 inline constexpr double PLACIDUS_ROOT_TOLERANCE_DEG = 1e-11;
 inline constexpr std::size_t PLACIDUS_MAX_ITERATIONS = 64;
+inline constexpr double ASCENDANT_ROUNDOFF_FACTOR = 32.0 * std::numeric_limits<double>::epsilon();
 
 enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
@@ -73,7 +75,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   return (angle + astro::toolbox::AngleDeg { 180.0 }).normalize();
 }
 
-/** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 14, Formula (14.2). */
+/** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 14, Formulas (14.2)-(14.3). */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the formula.
 [[nodiscard]] inline auto ascendant(
   const astro::toolbox::AngleDeg& armc,
@@ -85,13 +87,33 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const double cos_armc = (normalized_armc.deg() == 90.0 or normalized_armc.deg() == 270.0)
                         ? 0.0
                         : std::cos(normalized_armc.rad());
+  const double latitude_term = std::sin(obliquity.rad()) * std::tan(latitude.rad());
+  const double armc_term = std::cos(obliquity.rad()) * std::sin(normalized_armc.rad());
+  const double atan2_y = -cos_armc;
+  const double atan2_x = latitude_term + armc_term;
+
+  // Both the intersection line and its rising antipode must be resolved above round-off (#321).
+  const double intersection_scale = 1.0 + std::abs(latitude_term) + std::abs(armc_term);
+  const double east_first = std::cos(latitude.rad()) * std::cos(obliquity.rad());
+  const double east_second = std::sin(latitude.rad()) * std::sin(obliquity.rad()) * std::sin(normalized_armc.rad());
+  // E = -(horizon normal × ecliptic normal) · local east.
+  const double E = east_first + east_second;
+  const double rising_scale = 1.0 + std::abs(east_first) + std::abs(east_second);
+  if (std::hypot(atan2_x, atan2_y) <= ASCENDANT_ROUNDOFF_FACTOR * intersection_scale
+      or std::abs(E) <= ASCENDANT_ROUNDOFF_FACTOR * rising_scale) {
+    throw std::invalid_argument {
+      std::format(
+        "Ascendant direction is unresolved at ARMC {} degrees, latitude {} degrees, obliquity {} degrees",
+        normalized_armc.deg(),
+        latitude.deg(),
+        obliquity.deg()
+      )
+    };
+  }
+
   const auto horizon_intersection = astro::toolbox::AngleDeg {
     astro::toolbox::rad_to_deg(
-      std::atan2(
-        -cos_armc,
-        (std::sin(obliquity.rad()) * std::tan(latitude.rad()))
-          + (std::cos(obliquity.rad()) * std::sin(normalized_armc.rad()))
-      )
+      std::atan2(atan2_y, atan2_x)
     )
   }.normalize();
   const auto equatorial = astro::coords::ecliptic_to_equatorial(
@@ -354,8 +376,8 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
  *        to `astro::earth::nutation::Model::IAU_1980`.
  * @return Tropical longitudes in the true ecliptic and equinox of date, normalized to [0°, 360°).
  * @throw std::invalid_argument If an input is non-finite or outside its range, `system` is not a
- *        named enumerator, or Placidus is requested with a non-physical obliquity or at or beyond
- *        its polar domain.
+ *        named enumerator, the Ascendant direction is unresolved at round-off, or Placidus is
+ *        requested with a non-physical obliquity or at or beyond its polar domain.
  * @throw std::runtime_error If a Placidus cusp cannot be bracketed or solved.
  * @note `jd_ut1` and `jde_tt` must represent the same physical instant; their scale suffixes are the guard.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 12-14.

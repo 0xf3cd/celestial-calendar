@@ -132,6 +132,7 @@ inline constexpr std::chrono::year_month_day MODERN_UTC_START = LEAP_SECOND_TABL
  * @brief Convert a `calendar::Datetime` in UTC to a new `calendar::Datetime` in TT.
  * @param utc_dt The datetime in UTC.
  * @return The datetime in TT.
+ * @throw std::invalid_argument If a pre-1972 datetime is invalid or the shift leaves the representable years.
  * @details TT = UTC + ΔAT + 32.184 s. Before modern UTC (1972-01-01) the input is treated
  *          as UT1 and converted through ΔT instead — the rubber-second UTC of 1960-1971 is
  *          not modelled. The seam at 1972-01-01 is ΔT(1972.0) − 42.184 s, well under a second.
@@ -154,6 +155,7 @@ inline constexpr std::chrono::year_month_day MODERN_UTC_START = LEAP_SECOND_TABL
  * @brief Convert a `calendar::Datetime` in TT to a new `calendar::Datetime` in UTC.
  * @param tt_dt The datetime in TT.
  * @return The datetime in UTC.
+ * @throw std::invalid_argument If a pre-1972 datetime is invalid or the shift leaves the representable years.
  * @details ΔAT steps on the UTC date, which is only known once the conversion is done — so
  *          guess with the TT date, then refine once with the resulting UTC date. One
  *          refinement settles any step crossing: consecutive steps are at least half a year

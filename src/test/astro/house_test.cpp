@@ -13,6 +13,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 
@@ -375,6 +376,121 @@ TEST(House, PlacidusRootsHandleLongitudeSeam) {
       row.cusp
     );
     ASSERT_NEAR(cusp.deg(), 0.0, 1e-12);
+  }
+}
+
+TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
+  // Meeus (14.3): the planes coincide at θ = 270°/90°, φ = ±(90° - ε).
+  for (const double obliquity_deg : { 23.44, 23.438143769036159 }) {
+    const AngleDeg obliquity { obliquity_deg };
+    for (const double sign : { -1.0, 1.0 }) {
+      const double armc_deg = sign > 0.0 ? 270.0 : 90.0;
+      const double latitude_deg = sign * (90.0 - obliquity_deg);
+      SCOPED_TRACE(sign);
+      EXPECT_THROW(
+        static_cast<void>(detail::ascendant(AngleDeg { armc_deg }, AngleDeg { latitude_deg }, obliquity)),
+        std::invalid_argument
+      );
+      const auto expect_ascendant_error = [&](const double armc, const double latitude, const System system) {
+        try {
+          static_cast<void>(detail::calculate(AngleDeg { armc }, AngleDeg { latitude }, obliquity, system));
+          FAIL() << "Expected an unresolved Ascendant";
+        } catch (const std::invalid_argument& error) {
+          EXPECT_NE(std::string_view { error.what() }.find("Ascendant"), std::string_view::npos) << error.what();
+        }
+      };
+      for (const System system : { System::EQUAL, System::WHOLE_SIGN, System::PLACIDUS }) {
+        for (const double latitude : { latitude_deg, std::nextafter(latitude_deg, -90.0),
+                                       std::nextafter(latitude_deg, 90.0) }) {
+          expect_ascendant_error(armc_deg, latitude, system);
+        }
+        for (const double armc : { std::nextafter(armc_deg, 0.0), std::nextafter(armc_deg, 360.0) }) {
+          expect_ascendant_error(armc, latitude_deg, system);
+        }
+      }
+      for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+        for (const double offset : { -0.000001, -1e-10, 1e-10, 0.000001 }) {
+          const auto latitude_control = detail::calculate(
+            AngleDeg { armc_deg }, AngleDeg { latitude_deg + offset }, obliquity, system
+          );
+          EXPECT_EQ(latitude_control.ascendant.deg(), sign > 0.0 ? 0.0 : 180.0);
+          if (system == System::WHOLE_SIGN) {
+            EXPECT_EQ(latitude_control.cusps.front().deg(), latitude_control.ascendant.deg());
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
+  // A longitude-only perturbation leaves E quadratic in the offset.
+  for (const double obliquity_deg : { 23.44, 23.438143769036159 }) {
+    const AngleDeg obliquity { obliquity_deg };
+    for (const double sign : { -1.0, 1.0 }) {
+      const double armc_deg = sign > 0.0 ? 270.0 : 90.0;
+      const double latitude_deg = sign * (90.0 - obliquity_deg);
+      for (const double offset : { -0.000001, 0.000001 }) {
+        for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+          EXPECT_THROW(
+            static_cast<void>(detail::calculate(
+              AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg }, obliquity, system
+            )),
+            std::invalid_argument
+          );
+          for (const double latitude_offset : { -0.000001, 0.000001 }) {
+            const auto control = detail::calculate(
+              AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg + latitude_offset }, obliquity, system
+            );
+            EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
+          }
+        }
+      }
+      // Longitude-only controls clear the quadratic E rejection band.
+      for (const double offset : { -0.0001, 0.0001 }) {
+        for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+          const auto control = detail::calculate(
+            AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg }, obliquity, system
+          );
+          EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
+          EXPECT_GE(control.ascendant.deg(), 0.0);
+          EXPECT_LT(control.ascendant.deg(), 360.0);
+        }
+      }
+    }
+  }
+}
+
+TEST(House, PublicCalculationRejectsCoincidentPlanes) {
+  // #321 UTC witness: 2026-01-01 12:00:05, resolved once with Algo 5 at TT.
+  constexpr double jd_ut1 = 2461042.0000586384;
+  constexpr double jde_tt = 2461042.000858611;
+  for (const double sign : { -1.0, 1.0 }) {
+    const double latitude = sign * 66.561856230963841;
+    const double longitude = sign > 0.0 ? -11.176256364511062 : 168.82374363548894;
+    for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+      EXPECT_THROW(
+        static_cast<void>(calculate(jd_ut1, jde_tt, astro::GeoLocation {
+          .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude }
+        }, system)),
+        std::invalid_argument
+      );
+      for (const double offset : { -0.000001, 0.000001 }) {
+        EXPECT_THROW(
+          static_cast<void>(calculate(jd_ut1, jde_tt, astro::GeoLocation {
+            .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude + offset }
+          }, system)),
+          std::invalid_argument
+        );
+        for (const auto location : {
+          astro::GeoLocation { .latitude = AngleDeg { latitude + offset }, .longitude = AngleDeg { longitude } },
+          astro::GeoLocation { .latitude = AngleDeg { latitude + offset }, .longitude = AngleDeg { longitude + offset } }
+        }) {
+          const auto control = calculate(jd_ut1, jde_tt, location, system);
+          EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
+        }
+      }
+    }
   }
 }
 

@@ -17,6 +17,7 @@ import json
 import math
 from dataclasses import FrozenInstanceError, fields, replace
 from enum import Enum, IntFlag
+from itertools import product
 from operator import setitem
 from pathlib import Path
 from types import SimpleNamespace
@@ -498,6 +499,48 @@ def run_core_aligned_cases() -> None:
   print("PASS installed historical/model/southern/wrap/station/polar/joint-domain chart cases")
 
 
+def run_unresolved_ascendant() -> None:
+  """The real native rejection reaches Python before any payload decoding."""
+  # The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
+  civil = celestial.CivilDateTime(2026, 1, 1, 43205 / 86400)
+  failures = controls = 0
+
+  locations = (
+    celestial.GeoLocation(66.561856230963841, -11.176256364511062),
+    celestial.GeoLocation(-66.561856230963841, 168.82374363548894),
+  )
+  systems = (celestial.HouseSystem.EQUAL, celestial.HouseSystem.WHOLE_SIGN)
+  for location, system in product(locations, systems):
+    for offset in (0.0, -0.000001, 0.000001):
+      unresolved = replace(location, longitude_deg=location.longitude_deg + offset)
+      error = raises(
+        celestial.CelestialError,
+        lambda unresolved=unresolved, system=system: snapshot(
+          civil_dt=civil, location=unresolved, system=system, model=celestial.DeltaTModel.ALGO5
+        ),
+      )
+      assert error.operation == "chart_snapshot" and error.recorded and "Ascendant" in str(error)
+      assert "Ascendant" in _binding.last_error_text()
+      failures += 1
+    for offset in (-0.000001, 0.000001):
+      for control in (
+        replace(location, latitude_deg=location.latitude_deg + offset),
+        replace(location, latitude_deg=location.latitude_deg + offset, longitude_deg=location.longitude_deg + offset),
+      ):
+        result = snapshot(civil_dt=civil, location=control, system=system, model=celestial.DeltaTModel.ALGO5)
+        check_snapshot(result)
+        assert location.latitude_deg * math.cos(math.radians(result.houses.ascendant_deg)) > 0
+        assert _binding.last_error_text() == ""
+        controls += 1
+
+  for latitude, system in product((-89.0, 89.0), systems):
+    check_snapshot(snapshot(civil_dt=civil, location=celestial.GeoLocation(latitude, 0.0), system=system))
+    assert _binding.last_error_text() == ""
+    controls += 1
+  assert failures == 12 and controls == 20
+  print(f"PASS native unresolved-ASC errors {failures}/{failures}; recovery/high-latitude {controls}/{controls}")
+
+
 def main() -> None:
   run_validation_guards()
   run_single_read_inputs()
@@ -505,6 +548,7 @@ def main() -> None:
   run_error_translation()
   run_documented_replay()
   run_core_aligned_cases()
+  run_unresolved_ascendant()
 
 
 if __name__ == "__main__":

@@ -251,7 +251,7 @@ const auto snapshot = astro::chart::calculate(
 
 UTC 自 1972-01-01 起接受，更早的输入必须标 UT1；时区转换与闰秒本身不进输入。返回
 `jd_ut1` / `jde_tt`、十四项位置/速率及四轴/十二宫头；月交点纬度为零、距离为 `std::nullopt`。
-地点只影响宫位，Placidus 极区失败不自动替换宫制。
+地点只影响宫位；上升点方向在浮点舍入精度下无法确定时，所有宫制均拒绝计算。Placidus 极区失败不自动替换宫制。
 
 共同 JDE(TT) 域为 `[2409543.875, 2488069.125)`；Algo4 另要求 `< 2464328.5`。
 民用年域为 `[1885, 2100)`。
@@ -331,7 +331,8 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
 - C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
   Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。
-  三种宫制均拒绝地理极点；Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
+  三种宫制均拒绝地理极点和浮点舍入精度下无法确定的上升点方向；
+  Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
 - C++ 头文件提供日月及水星至冥王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
   水星至海王星使用 VSOP87D；`Planet::PLUTO` 使用精度较低的 Meeus 第 37 章模型，其视位置与照明几何
   JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。

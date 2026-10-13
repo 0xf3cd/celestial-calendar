@@ -352,6 +352,24 @@ TEST(SolarTime, ApparentSolarTimeGolden) {
   }
 }
 
+TEST(SolarTime, ApparentRejectsMutatedPre1972Datetime) {
+  const calendar::Datetime valid { util::to_ymd(1900, 2, 28), 0.5 };
+  const AngleDeg longitude { 0.0 };
+  ASSERT_TRUE(apparent(valid, longitude).ok());
+  for (const auto ymd : std::array { util::to_ymd(1900, 2, 29), util::to_ymd(1950, 2, 30) }) {
+    auto invalid = valid;
+    invalid.ymd = ymd;
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = apparent(invalid, longitude), std::invalid_argument);
+  }
+  for (const int64_t elapsed_ns : { -1LL, 86400'000'000'000LL }) {
+    auto invalid = valid;
+    invalid.time_of_day = std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } };
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = apparent(invalid, longitude), std::invalid_argument);
+  }
+}
+
 TEST(SolarTime, ApparentRejectsBadLongitude) {
   const auto utc = calendar::Datetime { util::to_ymd(2024, 6, 1), 0.5 };
   ASSERT_THROW({ std::ignore = apparent(utc, AngleDeg { 180.5 }); },  std::invalid_argument);
