@@ -554,7 +554,7 @@ for (const latitude_deg of [-70, 70]) {
   validChart({ latitude_deg, house_system_code: 0 });
   validChart({ latitude_deg, house_system_code: 1 });
 }
-// The UTC witness depends on Algo 5's UT1 bits; rederive the location after a refit.
+// The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
 const unresolvedAscendant = {
   year: 2026, month: 1, day: 1, fraction: 43205 / 86400, civil_scale_code: 0,
   latitude_deg: 66.561856230963841, longitude_deg: -11.176256364511062,

@@ -81,6 +81,7 @@ def test_parse_complete_synthetic_tables(reference, synthetic):
   [
     ("term-count", "Incomplete coefficient array"),
     ("term-syntax", "Incomplete coefficient array"),
+    ("stray-text", "Incomplete coefficient array"),
     ("duplicate-array", "Duplicate array"),
     ("missing-array", "Missing coefficient arrays"),
     ("aggregate-count", "Incomplete aggregate"),
@@ -101,6 +102,8 @@ def test_parser_rejects_incomplete_source(reference, synthetic, mutation, messag
     changed = text.replace("VSOP87Coefficient, 1>", "VSOP87Coefficient, 2>", 1)
   elif mutation == "term-syntax":
     changed = text.replace("1.000000000000, 0.0, 0.0", "1.000000000000, 0.0, invalid", 1)
+  elif mutation == "stray-text":
+    changed = text.replace("{ 1.000000000000, 0.0, 0.0 }", "{ 1.000000000000, 0.0, 0.0 }, STRAY_TEXT", 1)
   elif mutation == "duplicate-array":
     changed = text + _array(lrefs[0], "1.0")
   elif mutation == "missing-array":
@@ -158,6 +161,13 @@ def test_cli_emits_json_for_complete_synthetic_root(synthetic):
   assert result.stderr == ""
   assert len(output["rows"]) == 41 and len(output["primary_J2000_D_anchors"]) == 8
   assert len(output["sources"]) == 8
+  source_files = [f"AAVSOP87D_{code}.cpp" for code in ("EAR", "MER", "VEN", "MAR", "JUP", "SAT", "URA", "NEP")]
+  assert [source["file"] for source in output["sources"]] == source_files
+  assert [source["sha256"] for source in output["sources"]] == [
+    hashlib.sha256((root / name).read_bytes()).hexdigest() for name in source_files
+  ]
+  assert output["documentation_sha256"] == hashlib.sha256((root / "AA+.htm").read_bytes()).hexdigest()
+  assert output["check_sha256"] == hashlib.sha256(check_file.read_bytes()).hexdigest()
   assert all(source["counts"] == {axis: [1, 1] for axis in "LBR"} for source in output["sources"])
   assert output["generator_sha256"] == hashlib.sha256(GENERATOR.read_bytes()).hexdigest()
 
@@ -199,6 +209,20 @@ def test_book_example_rejects_wrong_transport(reference, monkeypatch):
   assert lat == pytest.approx(1.615, abs=0.0005)
   assert radius == pytest.approx(1.0)
   monkeypatch.setattr(reference, "ecliptic_matrix", lambda initial, final: ((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+  with pytest.raises(ValueError, match="Meeus Example 21.c failed"):
+    reference.book_example()
+
+
+@pytest.mark.parametrize(
+  "substitution",
+  [(118.705, 1.615, 1.0), (118.704, 1.616, 1.0)],
+  ids=["longitude-only", "latitude-only"],
+)
+def test_book_example_rejects_each_component(reference, monkeypatch, substitution):
+  assert len(reference.book_example()) == 3
+  monkeypatch.setattr(reference, "spherical", lambda vector: (118.704, 1.615, 1.0))
+  assert reference.book_example() == (118.704, 1.615, 1.0)
+  monkeypatch.setattr(reference, "spherical", lambda vector: substitution)
   with pytest.raises(ValueError, match="Meeus Example 21.c failed"):
     reference.book_example()
 

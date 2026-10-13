@@ -500,7 +500,7 @@ def run_core_aligned_cases() -> None:
 
 def run_unresolved_ascendant() -> None:
   """The real native rejection reaches Python before any payload decoding."""
-  # The UTC witness depends on Algo 5's UT1 bits; rederive the location after a refit.
+  # The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
   civil = celestial.CivilDateTime(2026, 1, 1, 43205 / 86400)
   failures = controls = 0
 

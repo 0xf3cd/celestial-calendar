@@ -446,7 +446,7 @@ TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
           }
         }
       }
-      // Pure ARMC controls clear the quadratic E rejection band without moving latitude.
+      // Longitude-only controls clear the quadratic E rejection band.
       for (const double offset : { -0.0001, 0.0001 }) {
         for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
           const auto control = detail::calculate(

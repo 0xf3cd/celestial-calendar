@@ -266,6 +266,23 @@ TEST(LeapSecond, Pre1972RejectsMutatedInvalidDatetime) {
   }
 }
 
+TEST(LeapSecond, UtcToJdeRejectsMutatedPre1972Datetime) {
+  const Datetime valid { to_ymd(1900, 2, 28), 0.5 };
+  ASSERT_EQ(astro::julian_day::utc_to_jde(valid), astro::julian_day::tt_to_jde(utc_to_tt(valid)));
+  for (const auto ymd : std::array { to_ymd(1900, 2, 29), to_ymd(1950, 2, 30) }) {
+    auto invalid = valid;
+    invalid.ymd = ymd;
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = astro::julian_day::utc_to_jde(invalid), std::invalid_argument);
+  }
+  for (const int64_t elapsed_ns : { -1LL, 86400'000'000'000LL }) {
+    auto invalid = valid;
+    invalid.time_of_day = std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } };
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = astro::julian_day::utc_to_jde(invalid), std::invalid_argument);
+  }
+}
+
 TEST(LeapSecond, UtcBoundaryFormula) {
   // New-year midnight UTC in JDE is the calendar julian date plus TT − UTC — nothing else (#84:
   // the moments() year bound used to add model ΔT here instead, which drifts away from
