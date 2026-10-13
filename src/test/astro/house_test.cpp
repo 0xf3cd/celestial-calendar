@@ -13,6 +13,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 
@@ -390,21 +391,24 @@ TEST(House, RejectsUnresolvedAscendantInBothHemispheres) {
         static_cast<void>(detail::ascendant(AngleDeg { armc_deg }, AngleDeg { latitude_deg }, obliquity)),
         std::invalid_argument
       );
-      for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+      const auto expect_ascendant_error = [&](const double armc, const double latitude, const System system) {
+        try {
+          static_cast<void>(detail::calculate(AngleDeg { armc }, AngleDeg { latitude }, obliquity, system));
+          FAIL() << "Expected an unresolved Ascendant";
+        } catch (const std::invalid_argument& error) {
+          EXPECT_NE(std::string_view { error.what() }.find("Ascendant"), std::string_view::npos) << error.what();
+        }
+      };
+      for (const System system : { System::EQUAL, System::WHOLE_SIGN, System::PLACIDUS }) {
         for (const double latitude : { latitude_deg, std::nextafter(latitude_deg, -90.0),
                                        std::nextafter(latitude_deg, 90.0) }) {
-          EXPECT_THROW(
-            static_cast<void>(detail::calculate(AngleDeg { armc_deg }, AngleDeg { latitude }, obliquity, system)),
-            std::invalid_argument
-          );
+          expect_ascendant_error(armc_deg, latitude, system);
         }
         for (const double armc : { std::nextafter(armc_deg, 0.0), std::nextafter(armc_deg, 360.0) }) {
-          EXPECT_THROW(
-            static_cast<void>(detail::calculate(AngleDeg { armc }, AngleDeg { latitude_deg }, obliquity, system)),
-            std::invalid_argument
-          );
+          expect_ascendant_error(armc, latitude_deg, system);
         }
-
+      }
+      for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
         for (const double offset : { -0.000001, -1e-10, 1e-10, 0.000001 }) {
           const auto latitude_control = detail::calculate(
             AngleDeg { armc_deg }, AngleDeg { latitude_deg + offset }, obliquity, system
@@ -440,6 +444,17 @@ TEST(House, RejectsUnresolvedRisingAntipodeWithResolvedIntersection) {
             );
             EXPECT_GT(sign * std::cos(control.ascendant.rad()), 0.0);
           }
+        }
+      }
+      // Pure ARMC controls clear the quadratic E rejection band without moving latitude.
+      for (const double offset : { -0.0001, 0.0001 }) {
+        for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
+          const auto control = detail::calculate(
+            AngleDeg { armc_deg + offset }, AngleDeg { latitude_deg }, obliquity, system
+          );
+          EXPECT_TRUE(std::isfinite(control.ascendant.deg()));
+          EXPECT_GE(control.ascendant.deg(), 0.0);
+          EXPECT_LT(control.ascendant.deg(), 360.0);
         }
       }
     }

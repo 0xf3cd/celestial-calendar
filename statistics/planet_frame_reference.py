@@ -15,7 +15,7 @@ counts, printed substitution checks and both Cartesian constructions.
 No coefficients or external implementation source are emitted.
 
 Meeus, Astronomical Algorithms, second edition, (21.5)/(21.7), pp.136-137,
-and (33.1)-(33.4). The matrix and fixed-J2000 reconstruction share this model
+and (33.1)-(33.4). The direct and fixed-J2000 constructions share this model
 and VSOP87D theory; they do not establish the exact dynamical precession law
 used to generate VSOP87D, or a physical accuracy bound. Numerical JD is used
 as VSOP dynamical time approximately equal to TT; no TT/TDB model is applied.

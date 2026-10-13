@@ -228,6 +228,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a UT1 datetime to julian ephemeris day number.
  * @param ut1_dt The date and time, in UT1.
  * @return The julian ephemeris day number, which is based on TT.
+ * @throw std::invalid_argument If the datetime is invalid or the TT shift leaves the representable years.
  */
 [[nodiscard]] inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);

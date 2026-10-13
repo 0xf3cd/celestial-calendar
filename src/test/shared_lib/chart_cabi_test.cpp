@@ -395,8 +395,18 @@ TEST(ChartCAbi, PolarPlacidusFailsWithoutPartialResultOrFallback) {
 
 TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
   // #321: the payload is unspecified on failure; inspect only valid and last_error.
+  // The UTC witness depends on Algo 5's UT1 bits; rederive the location after a refit.
   const Datetime dt { util::to_ymd(2026, 1, 1),
                       std::chrono::hh_mm_ss { std::chrono::seconds { 43205 } } };
+  const auto placidus = snapshot_at(
+    dt,
+    CHART_CIVIL_SCALE_UTC,
+    location(66.561856230963841, -11.176256364511062),
+    CHART_HOUSE_SYSTEM_PLACIDUS,
+    CHART_DELTA_T_MODEL_ALGO5
+  );
+  ASSERT_FALSE(placidus.valid);
+  EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
   for (const auto observer : std::array {
     location(66.561856230963841, -11.176256364511062),
     location(-66.561856230963841, 168.82374363548894)

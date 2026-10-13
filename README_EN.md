@@ -131,10 +131,10 @@ Negative rate means retrograde. Location affects houses only.
 Civil years are `[1885, 2100)`, UTC starts at 1972-01-01, and `DEFAULT` selects Algo5. Raw Python input checks run
 before the native snapshot call; the core owns the converted TT domain `[2409543.875, 2488069.125)`, Algo4's
 additional JDE `< 2464328.5` limit, Ascendant directions unresolved at round-off, and date-dependent
-Placidus polar failures. Those native failures raise
-`CelestialError`, with no partial result or substitute house system. UT1 derived from UTC is modelled using the
-selected Delta T, not observed DUT1. Use explicit UT1 for earlier dates; no `datetime` or implicit timezone
-conversion is accepted. See the [Python contract (Chinese)](bindings/python/README.md#星盘输入与失败边界) and
+Placidus polar failures. Those native failures raise `CelestialError`, with no partial result or substitute
+house system. UT1 derived from UTC is modelled using the selected Delta T, not observed DUT1. Use explicit UT1
+for earlier dates; no `datetime` or implicit timezone conversion is accepted. See the
+[Python contract (Chinese)](bindings/python/README.md#星盘输入与失败边界) and
 [shared replay example](docs/examples/chart_snapshot/README.md).
 
 <a id="javascript"></a>

@@ -15,6 +15,8 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
+#include <string_view>
 
 #include <tuple>
 #include <numeric>
@@ -320,6 +322,40 @@ TEST(DeltaT, DefaultDatetimeUsesAlgo5AcrossChronoYears) {
     const calendar::Datetime leap_day { util::to_ymd(year, 2, 29), 0.123456789 };
     ASSERT_EQ(compute(leap_day), algo5::compute(year + ((59.0 + leap_day.fraction()) / 366.0))) << "at year " << year;
     ASSERT_EQ(compute(leap_day), compute(Model::ALGO5, leap_day)) << "at year " << year;
+  }
+}
+
+TEST(DeltaT, ConversionsAtChronoYearEdges) {
+  const calendar::Datetime upper_early { util::to_ymd(32767, 1, 1), 0.5 };
+  const calendar::Datetime lower_early { util::to_ymd(-32767, 1, 1), 0.5 };
+  const calendar::Datetime upper_late { util::to_ymd(32767, 12, 31), 0.5 };
+  const calendar::Datetime lower_late { util::to_ymd(-32767, 12, 31), 0.5 };
+
+  for (const auto& dt : { upper_early, lower_early, lower_late }) {
+    const auto tt = ut1_to_tt(dt);
+    ASSERT_TRUE(tt.ok());
+    ASSERT_EQ(tt, calendar::add_seconds(dt, compute(Model::ALGO5, dt)));
+    EXPECT_EQ(tt.year(), dt == lower_late ? -32766 : dt.year());
+  }
+  for (const auto& dt : { upper_early, upper_late, lower_late }) {
+    const auto ut1 = tt_to_ut1(dt);
+    ASSERT_TRUE(ut1.ok());
+    ASSERT_EQ(ut1, calendar::add_seconds(dt, -compute(Model::ALGO5, dt)));
+    EXPECT_EQ(ut1.year(), dt == upper_early ? 32766 : dt.year());
+  }
+  ASSERT_GT(compute(upper_late), 0.0);
+  ASSERT_GT(compute(lower_early), 0.0);
+  try {
+    std::ignore = ut1_to_tt(upper_late);
+    FAIL() << "Expected a shift beyond the upper chrono year";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_NE(std::string_view { error.what() }.find("beyond the representable years"), std::string_view::npos);
+  }
+  try {
+    std::ignore = tt_to_ut1(lower_early);
+    FAIL() << "Expected a shift beyond the lower chrono year";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_NE(std::string_view { error.what() }.find("beyond the representable years"), std::string_view::npos);
   }
 }
 

@@ -9,7 +9,7 @@
   "columns": ["Planet", "observation_jde_tt", "longitude_deg", "latitude_deg", "range_au"],
   "reference_method": "independently parsed complete D series; Cartesian direct transport and fixed-J2000 reconstruction; Earth fixed at observation time; independent light-time iteration",
   "generator": "statistics/planet_frame_reference.py",
-  "generator_sha256": "2c5bbfc09aaefb20f6b38fa933981ee4022cff0e176ba2652e9462b941769ef7",
+  "generator_sha256": "f8f0ffc48e2ac71aa9b6e3e7786a5a0fe757ae9c3da046fad7c4f201a9ec62e5",
   "reference_rows_identity_sha256": "3019bf538a195d548ff58648b33bc11432dffa0443c5f79d405762c490f842bf",
   "canonical_cpp_sha256": "1009cd8df38fb29989b8ff9b8fb78d638a7180c1af6957b885547421ea5983ab",
   "identity_normalization": "reference_rows_identity: compact JSON arrays [body, observation_jde_tt, longitude_deg, latitude_deg, range_au], in generation order; canonical_cpp: FRAME_ROWS declaration including braces and semicolon, with comments removed and whitespace collapsed",

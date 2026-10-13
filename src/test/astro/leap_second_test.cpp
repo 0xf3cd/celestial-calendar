@@ -13,6 +13,8 @@
 #include <gtest/gtest.h>
 
 #include <tuple>
+#include <array>
+#include <stdexcept>
 #include <chrono>
 #include <cstdlib>
 #include <random>
@@ -243,6 +245,26 @@ TEST(LeapSecond, Pre1972FallsBackToUt1) {
   ASSERT_LT(std::abs(diff_ns(utc_to_tt(seam), delta_t::ut1_to_tt(seam))), 500'000'000);
 }
 
+
+TEST(LeapSecond, Pre1972RejectsMutatedInvalidDatetime) {
+  const Datetime valid { to_ymd(1900, 2, 28), 0.5 };
+  ASSERT_EQ(utc_to_tt(valid), delta_t::ut1_to_tt(valid));
+  ASSERT_EQ(tt_to_utc(valid), delta_t::tt_to_ut1(valid));
+  for (const auto ymd : std::array { to_ymd(1900, 2, 29), to_ymd(1950, 2, 30) }) {
+    auto invalid = valid;
+    invalid.ymd = ymd;
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = utc_to_tt(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = tt_to_utc(invalid), std::invalid_argument);
+  }
+  for (const int64_t elapsed_ns : { -1LL, 86400'000'000'000LL }) {
+    auto invalid = valid;
+    invalid.time_of_day = std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } };
+    ASSERT_FALSE(invalid.ok());
+    ASSERT_THROW(std::ignore = utc_to_tt(invalid), std::invalid_argument);
+    ASSERT_THROW(std::ignore = tt_to_utc(invalid), std::invalid_argument);
+  }
+}
 
 TEST(LeapSecond, UtcBoundaryFormula) {
   // New-year midnight UTC in JDE is the calendar julian date plus TT − UTC — nothing else (#84:

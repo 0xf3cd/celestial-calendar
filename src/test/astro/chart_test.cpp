@@ -288,6 +288,7 @@ TEST(Chart, SiteAndPlacidusFailuresNeverFallback) {
 
 TEST(Chart, UnresolvedAscendantStopsSnapshotAndAllowsNearbyControls) {
   // #321 public UTC witness and its antipodal southern site.
+  // The UTC witness depends on Algo 5's UT1 bits; rederive the location after a refit.
   const auto dt = civil(2026, 1, 1, 43205'000'000'000);
   for (const auto observer : std::array {
     location(66.561856230963841, -11.176256364511062),
