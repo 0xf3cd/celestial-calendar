@@ -56,9 +56,7 @@ epoch difference is at most one observation-JD ULP, they return the current epoc
 its vector, not the proposed next epoch. Neither calls production code.
 
 Both returned vectors use observation-date axes; the fixed-J2000 construction's
-intermediate light-time vector uses J2000 axes. The rows pin this discrete iteration
-and emission selection. They do not admit every neighbouring binary64 epoch satisfying
-the stopping inequality.
+intermediate light-time vector uses J2000 axes.
 
 The two constructions share the Meeus model and VSOP87D theory. They test arithmetic,
 transcription and composition, not a shared physical-model error. Chapter 21's

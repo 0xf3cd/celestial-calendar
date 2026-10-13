@@ -41,6 +41,12 @@
   centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete event searches accept Gregorian years
   `[1886, 2098]`; these hard domains are not accuracy guarantees.
 
+### Fixed
+
+- Default C++ Delta T datetime evaluation delegates to Algo5 (#321), avoiding the out-of-range
+  next-year construction at year 32767. It now rejects invalid datetimes; UT1/TT and pre-1972 UTC
+  conversions inherit that rejection.
+
 ## [v0.7.0]
 
 ### Changed
