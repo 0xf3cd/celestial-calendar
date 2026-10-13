@@ -29,6 +29,7 @@ def main() -> None:
   )
   non_acceptance = {
     "run_all.py",
+    "consumer/chart_replay.py",
     "types/consumer.py",
     "wheel/prepare.py",
     "wheel/verify.py",

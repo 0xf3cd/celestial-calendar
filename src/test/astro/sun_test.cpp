@@ -259,7 +259,7 @@ TEST(Sun, FK5Correction) {
 
   for (const auto& [jde, expected] : dataset) {
     const auto vsop_result = vsop87d(jde); // Sun's geocentric position.
-    const auto& [Δλ, Δβ] = fk5_correction(jde, vsop_result);
+    const auto& [Δλ, Δβ] = astro::coords::fk5_correction(jde, vsop_result);
     ASSERT_NEAR(Δλ.as<DEG>(), std::get<0>(expected), 1e-15);
     ASSERT_NEAR(Δβ.as<DEG>(), std::get<1>(expected), 1e-15);
   }

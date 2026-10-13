@@ -58,6 +58,8 @@ inline constexpr double ANGLE_RESIDUAL_TOLERANCE_DEG = 1e-6;
 inline constexpr double WITNESS_HALF_WIDTH_DAYS = 0.01;
 inline constexpr double DEDUPLICATION_TOLERANCE_DAYS = 1e-6;
 inline constexpr std::size_t MAX_REFINEMENT_ITERATIONS = 96;
+inline constexpr int32_t PLUTO_EVENT_START_YEAR = 1886;
+inline constexpr int32_t PLUTO_EVENT_END_YEAR = 2098;
 
 enum class Category : uint8_t { INNER, OUTER };
 
@@ -101,10 +103,17 @@ struct CrossingSpec {
   return wrapped + (360.0 * std::round((reference - wrapped) / 360.0));
 }
 
+[[nodiscard]] inline auto raw_difference(
+  const astro::toolbox::SphericalCoordinate& source,
+  const astro::toolbox::SphericalCoordinate& target
+) -> double {
+  return std::remainder(target.λ.deg() - source.λ.deg(), 360.0);
+}
+
 [[nodiscard]] inline auto raw_difference(const Planet planet, const double jde_tt) -> double {
   const auto source = astro::sun::geocentric_coord::apparent(jde_tt);
   const auto target = astro::planet::geocentric_coord::apparent(planet, jde_tt);
-  return std::remainder(target.λ.deg() - source.λ.deg(), 360.0);
+  return raw_difference(source, target);
 }
 
 [[nodiscard]] inline auto sample(const Planet planet, const double jde_tt) -> Sample {
@@ -113,7 +122,7 @@ struct CrossingSpec {
   return {
     .jde_tt = jde_tt,
     .planet_λ = target.λ.deg(),
-    .difference = std::remainder(target.λ.deg() - source.λ.deg(), 360.0),
+    .difference = raw_difference(source, target),
     .separation = astro::illumination::geometry(source, target).angular_separation.deg(),
   };
 }
@@ -170,7 +179,7 @@ struct CrossingSpec {
     throw std::runtime_error {
       std::format(
         "Planetary event bracket does not straddle its target for {} between JDE(TT) {} and {}",
-        astro::planet::detail::name(planet),
+        astro::planet::name(planet),
         left,
         right
       )
@@ -196,7 +205,7 @@ struct CrossingSpec {
   throw std::runtime_error {
     std::format(
       "Planetary longitude event did not converge for {} between JDE(TT) {} and {}",
-      astro::planet::detail::name(planet),
+      astro::planet::name(planet),
       left_sample.jde_tt,
       right_sample.jde_tt
     )
@@ -254,7 +263,7 @@ template <typename Objective>
   throw std::runtime_error {
     std::format(
       "Planetary event extremum did not converge for {} between JDE(TT) {} and {}",
-      astro::planet::detail::name(planet),
+      astro::planet::name(planet),
       left_jde_tt,
       right_jde_tt
     )
@@ -360,24 +369,16 @@ inline auto append_extrema(
       result.push_back({ .kind = kind, .jde_tt = jde_tt });
     }
 
-    if (current.planet_λ > before.planet_λ and current.planet_λ > after.planet_λ) {
+    const bool retrograde = current.planet_λ > before.planet_λ and current.planet_λ > after.planet_λ;
+    const bool direct = current.planet_λ < before.planet_λ and current.planet_λ < after.planet_λ;
+    if (retrograde or direct) {
       const auto longitude = [planet, reference = current.planet_λ](const double jde_tt) {
         const double wrapped = astro::planet::geocentric_coord::apparent(planet, jde_tt).λ.deg();
         return unwrap_near(wrapped, reference);
       };
       result.push_back({
-        .kind = Kind::STATION_RETROGRADE,
-        .jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, true, longitude),
-      });
-    }
-    if (current.planet_λ < before.planet_λ and current.planet_λ < after.planet_λ) {
-      const auto longitude = [planet, reference = current.planet_λ](const double jde_tt) {
-        const double wrapped = astro::planet::geocentric_coord::apparent(planet, jde_tt).λ.deg();
-        return unwrap_near(wrapped, reference);
-      };
-      result.push_back({
-        .kind = Kind::STATION_DIRECT,
-        .jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, false, longitude),
+        .kind = retrograde ? Kind::STATION_RETROGRADE : Kind::STATION_DIRECT,
+        .jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, retrograde, longitude),
       });
     }
   }
@@ -421,7 +422,7 @@ inline auto append_extrema(
     }
     if (not result.empty() and candidate.jde_tt <= result.back().jde_tt) {
       throw std::runtime_error {
-        std::format("Planetary events are not strictly ordered for {}", astro::planet::detail::name(planet))
+        std::format("Planetary events are not strictly ordered for {}", astro::planet::name(planet))
       };
     }
     result.push_back(candidate);
@@ -461,21 +462,17 @@ inline auto append_extrema(
     throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
   }
   if (planet == Planet::PLUTO
-      and (year < astro::planet::detail::pluto::EVENT_START_YEAR
-           or year > astro::planet::detail::pluto::EVENT_END_YEAR)) {
+      and (year < detail::PLUTO_EVENT_START_YEAR or year > detail::PLUTO_EVENT_END_YEAR)) {
     throw std::invalid_argument {
       std::format(
         "Pluto event year {} is out of range [{}, {}].",
         year,
-        astro::planet::detail::pluto::EVENT_START_YEAR,
-        astro::planet::detail::pluto::EVENT_END_YEAR
+        detail::PLUTO_EVENT_START_YEAR,
+        detail::PLUTO_EVENT_END_YEAR
       )
     };
   }
-  const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
-  const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
-  const double start_jde_tt = astro::julian_day::utc_to_jde(start_utc);
-  const double end_jde_tt = astro::julian_day::utc_to_jde(end_utc);
+  const auto [start_jde_tt, end_jde_tt] = astro::julian_day::utc_year_jde_window(year);
   return detail::search(planet, start_jde_tt, end_jde_tt, detail::COARSE_STEP_DAYS);
 }
 

@@ -556,16 +556,39 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
+ * @brief Convert UT1 to TT with one Delta T evaluation at the UT1 datetime.
+ * @param model The Delta T model.
+ * @param ut1_dt The datetime in UT1.
+ * @return The datetime in TT.
+ * @throw std::invalid_argument If the datetime or model is invalid, or the shift leaves the representable years.
+ * @throw std::out_of_range If the datetime leaves the selected model's domain.
+ */
+[[nodiscard]] constexpr auto ut1_to_tt(const Model model, const calendar::Datetime& ut1_dt) -> calendar::Datetime {
+  return calendar::add_seconds(ut1_dt, compute(model, ut1_dt));
+}
+
+/**
  * @brief Convert a `calendar::Datetime` in UT1 to a new `calendar::Datetime` in TT.
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
  * @throw std::invalid_argument If the datetime is invalid or the shift leaves the representable years.
  */
 [[nodiscard]] constexpr auto ut1_to_tt(const calendar::Datetime& ut1_dt) -> calendar::Datetime {
-  // As per the formula, TT = UT1 + ΔT.
-  return calendar::add_seconds(ut1_dt, compute(ut1_dt));
+  return ut1_to_tt(Model::ALGO5, ut1_dt);
 }
 
+
+/**
+ * @brief Convert TT to modelled UT1 with one Delta T evaluation at the TT datetime.
+ * @param model The Delta T model.
+ * @param tt_dt The datetime in TT.
+ * @return The datetime in UT1; this is a single shift, not an iterative inverse.
+ * @throw std::invalid_argument If the datetime or model is invalid, or the shift leaves the representable years.
+ * @throw std::out_of_range If the datetime leaves the selected model's domain.
+ */
+[[nodiscard]] constexpr auto tt_to_ut1(const Model model, const calendar::Datetime& tt_dt) -> calendar::Datetime {
+  return calendar::add_seconds(tt_dt, -compute(model, tt_dt));
+}
 
 /**
  * @brief Convert a `calendar::Datetime` in TT to a new `calendar::Datetime` in UT1.
@@ -574,8 +597,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @throw std::invalid_argument If the datetime is invalid or the shift leaves the representable years.
  */
 [[nodiscard]] constexpr auto tt_to_ut1(const calendar::Datetime& tt_dt) -> calendar::Datetime {
-  // As per the formula, UT1 = TT - ΔT.
-  return calendar::add_seconds(tt_dt, -compute(tt_dt));
+  return tt_to_ut1(Model::ALGO5, tt_dt);
 }
 
 } // namespace astro::delta_t

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cmath>
+#include <chrono>
 #include <vector>
 #include <cstdint>
 #include <functional>
@@ -53,34 +54,18 @@ namespace astro::sun::geocentric_coord {
 }
 
 
-/** @brief The FK5 correction for the coordinate calculated using VSOP87D. */
-struct Fk5Correction {
-  toolbox::AngleDeg Δλ;
-  toolbox::AngleDeg Δβ;
-};
+using Fk5Correction = astro::coords::Fk5Correction;
 
 
 /**
- * @brief Calculate the correction for the VSOP87D coordinate, in order to convert it to FK5 system.
+ * @brief Forward the VSOP87D-to-FK5 correction to its coordinate-transformation owner.
  * @param jde The julian ephemeris day number, which is based on TT.
+ * @param vsop87d_coord Dynamical ecliptic coordinates at the same epoch.
  * @return The correction (i.e. Δlongitude and Δlatitude).
- * @details As per Jean Meeus's Astronomical Algorithms, this correction is applied for accuracy.
+ * @see astro::coords::fk5_correction
  */
 [[nodiscard]] inline auto fk5_correction(const double jde, const toolbox::SphericalCoordinate& vsop87d_coord) -> Fk5Correction {
-  const double jc = astro::julian_day::jde_to_jc(jde);
-  const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
-
-  // Calculate the deltas for longitude and latitude, in arcsec.
-  const toolbox::AngleDeg λ_dash = vsop_λ - toolbox::AngleDeg { (1.397 + (0.00031 * jc)) * jc };
-  const double λ_dash_rad = λ_dash.rad();
-
-  const double delta_λ_arcsec = -0.09033 + (0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad()));
-  const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
-
-  return {
-    .Δλ = toolbox::AngleDeg::from_arcsec(delta_λ_arcsec),
-    .Δβ = toolbox::AngleDeg::from_arcsec(delta_β_arcsec),
-  };
+  return astro::coords::fk5_correction(jde, vsop87d_coord);
 }
 
 
@@ -187,12 +172,12 @@ namespace detail {
 // ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
 // between any jieqi and New Year — no year's attribution can move.
 [[nodiscard]] inline auto get_start_jde(const int32_t year) -> double {
-  return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
+  return astro::julian_day::utc_year_start_jde(std::chrono::year { year });
 }
 
 /** @brief Return the JDE of the end of the year. */
 [[nodiscard]] inline auto get_end_jde(const int32_t year) -> double {
-  return astro::julian_day::utc_to_jde(calendar::Datetime { util::to_ymd(year + 1, 1, 1), 0.0 });
+  return astro::julian_day::utc_year_start_jde(std::chrono::year { year + 1 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */

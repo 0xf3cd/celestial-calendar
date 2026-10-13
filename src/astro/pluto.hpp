@@ -20,6 +20,7 @@
 #include <stdexcept>
 
 #include "earth/precession.hpp"
+#include "coord_transform.hpp"
 #include "julian_day.hpp"
 #include "sun.hpp"
 #include "toolbox.hpp"
@@ -42,10 +43,6 @@ inline constexpr double RAW_START_JDE_TT = 2409542.5;
 inline constexpr double RAW_END_JDE_TT = 2488069.5;
 inline constexpr double APPARENT_START_JDE_TT = 2409543.5;
 inline constexpr double APPARENT_END_JDE_TT = 2488069.5;
-inline constexpr double RETROGRADE_START_JDE_TT = 2409544.0;
-inline constexpr double RETROGRADE_END_JDE_TT = 2488069.0;
-inline constexpr int32_t EVENT_START_YEAR = 1886;
-inline constexpr int32_t EVENT_END_YEAR = 2098;
 inline constexpr std::size_t FK5_INVERSE_MAX_ITERATIONS = 8;
 // Below binary64 angular resolution at Pluto's longitudes; convergence is exact fixed-point stability.
 inline constexpr double FK5_INVERSE_ANGLE_TOLERANCE_DEG = 1e-15;
@@ -127,10 +124,6 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
   validate_jde(jde_tt, APPARENT_START_JDE_TT, APPARENT_END_JDE_TT, "apparent-position");
 }
 
-inline auto validate_retrograde_jde(const double jde_tt) -> void {
-  validate_jde(jde_tt, RETROGRADE_START_JDE_TT, RETROGRADE_END_JDE_TT, "centered-retrograde");
-}
-
 /** @brief Evaluate Pluto's geometric heliocentric J2000 ecliptic position. */
 [[nodiscard]] inline auto heliocentric_j2000(const double jde_tt)
   -> astro::toolbox::SphericalCoordinate {
@@ -171,7 +164,7 @@ inline auto validate_retrograde_jde(const double jde_tt) -> void {
 ) -> astro::toolbox::SphericalCoordinate {
   auto dynamic = fk5_coordinate;
   for (std::size_t iteration = 0; iteration < FK5_INVERSE_MAX_ITERATIONS; ++iteration) {
-    const auto correction = astro::sun::geocentric_coord::fk5_correction(observation_jde_tt, dynamic);
+    const auto correction = astro::coords::fk5_correction(observation_jde_tt, dynamic);
     const astro::toolbox::SphericalCoordinate updated {
       .λ = (fk5_coordinate.λ - correction.Δλ).normalize(),
       .β = fk5_coordinate.β - correction.Δβ,
@@ -214,3 +207,12 @@ inline auto validate_retrograde_jde(const double jde_tt) -> void {
 }
 
 } // namespace astro::planet::detail::pluto
+
+namespace astro::planet::geocentric_coord {
+
+/** @brief Inclusive start of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_START_JDE_TT = astro::planet::detail::pluto::APPARENT_START_JDE_TT;
+/** @brief Exclusive end of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPARENT_END_JDE_TT;
+
+} // namespace astro::planet::geocentric_coord

@@ -15,7 +15,7 @@ from __future__ import annotations
 import datetime
 import json
 import math
-from dataclasses import FrozenInstanceError, fields, replace
+from dataclasses import FrozenInstanceError, asdict, fields, replace
 from enum import Enum, IntFlag
 from itertools import product
 from operator import setitem
@@ -26,6 +26,7 @@ import celestial_calendar as celestial
 from celestial_calendar import _binding
 from celestial_calendar import chart as chart_values
 from smoke import Trap, raises, replaced_binding
+from chart_replay import assert_chart_replay
 
 
 REPO = Path(__file__).resolve().parents[4]
@@ -385,7 +386,7 @@ def check_legacy_positions(value: celestial.ChartSnapshot) -> None:
 
 
 def run_documented_replay() -> None:
-  """Run the documented civil example through the installed binary and report replay residuals."""
+  """Assert the documented civil example's numeric replay through the installed binary."""
   example = json.loads(EXAMPLE.read_text(encoding="utf-8"))
   inputs = example["input"]
   assert "not an independent physical-accuracy oracle" in example["role"]
@@ -408,20 +409,37 @@ def run_documented_replay() -> None:
   assert value == snapshot() == snapshot(model=celestial.DeltaTModel.DEFAULT)
   check_snapshot(value)
   check_legacy_positions(value)
-  for index, expected in enumerate(example["bodies"]):
-    assert value.bodies[index].target.name == expected["target"]
-    assert (value.bodies[index].distance_au is None) == (expected["distance_au"] is None)
-  # Report example drift without inventing a cross-platform physical or replay tolerance.
-  differences = [abs(getattr(value.times, name) - expected) for name, expected in example["times"].items()]
-  print(f"REPLAY chart example time max_abs_days={max(differences):.17g}")
-  for name in ("longitude_deg", "latitude_deg", "distance_au", "longitude_rate_deg_per_tt_day"):
-    differences = [
-      abs(getattr(body, name) - expected[name])
-      for body, expected in zip(value.bodies, example["bodies"], strict=True)
-      if expected[name] is not None
-    ]
-    print(f"REPLAY chart example {name} max_abs={max(differences):.17g}")
+  actual = asdict(value)
+  for body in actual["bodies"]:
+    body["target"] = body["target"].name
+  for name, difference in assert_chart_replay(actual, example).items():
+    print(f"REPLAY chart example {name} max_abs={difference:.17g}")
   print("PASS installed chart documented example, DEFAULT/ALGO5 and unchanged Sun/Moon composition")
+
+
+def run_replay_corruption_controls() -> None:
+  """Reject valid-range changes to real native outputs, then replay the clean result."""
+  original = _binding.FUNCTIONS["chart_snapshot_v1"]
+
+  for role in ("mercury-longitude", "cusp7", "pluto-rate"):
+
+    def corrupted(*arguments, role=role):
+      result = original(*arguments)
+      assert result.valid
+      if role == "mercury-longitude":
+        result.bodies[2].longitude_deg = (result.bodies[2].longitude_deg + 90.0) % 360.0
+      elif role == "cusp7":
+        result.houses.cusps_deg[6] = (result.houses.cusps_deg[6] + 90.0) % 360.0
+      else:
+        result.bodies[9].longitude_rate_deg_per_tt_day += 1.0
+      return result
+
+    with replaced_binding("chart_snapshot_v1", corrupted):
+      error = raises(AssertionError, run_documented_replay)
+      assert "replay residual" in str(error), f"wrong corruption detector for {role}: {error}"
+    run_documented_replay()
+    assert _binding.last_error_text() == ""
+  print("PASS installed native-return Mercury/cusp/rate corruptions and clean recovery")
 
 
 def run_core_aligned_cases() -> None:
@@ -547,6 +565,7 @@ def main() -> None:
   run_owned_values()
   run_error_translation()
   run_documented_replay()
+  run_replay_corruption_controls()
   run_core_aligned_cases()
   run_unresolved_ascendant()
 

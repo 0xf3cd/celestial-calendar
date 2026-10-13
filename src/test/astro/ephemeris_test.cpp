@@ -220,6 +220,7 @@ auto comparison_tolerance(const Target target) -> double {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) - Names distinguish the two domain bounds.
 auto check_complete_stencil_bounds(const Target target, const double lower_jde_tt, const double upper_jde_tt) -> void {
+  EXPECT_EQ(longitude_rate_domain(target), (std::array { lower_jde_tt, upper_jde_tt }));
   const double infinity = std::numeric_limits<double>::infinity();
   EXPECT_THROW(std::ignore = longitude_rate(target, std::nextafter(lower_jde_tt, -infinity)), std::invalid_argument);
   EXPECT_TRUE(std::isfinite(longitude_rate(target, lower_jde_tt).deg_per_tt_day));
@@ -382,6 +383,8 @@ TEST(Ephemeris, RepresentabilityAcrossBinades) {
   const double below = std::nextafter(transition_jde_tt, 0.0);
   const double above = std::nextafter(transition_jde_tt, std::numeric_limits<double>::infinity());
   for (const Target target : std::array { Target::SUN, Target::MOON }) {
+    EXPECT_THROW(std::ignore = longitude_rate(target, 2097151.9999999998), std::invalid_argument);
+    EXPECT_TRUE(std::isfinite(longitude_rate(target, 2097152.0).deg_per_tt_day));
     EXPECT_THROW(std::ignore = longitude_rate(target, -524287.7), std::invalid_argument);
     EXPECT_TRUE(std::isfinite(longitude_rate(target, -0x1p19).deg_per_tt_day));
     EXPECT_TRUE(std::isfinite(longitude_rate(target, -0x1p19 + 0.5).deg_per_tt_day));

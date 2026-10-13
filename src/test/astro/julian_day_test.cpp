@@ -39,6 +39,28 @@ using namespace util::ymd_operator;
 using namespace calendar;
 using namespace std::chrono_literals;
 
+TEST(JulianDay, UtcYearWindows) {
+  for (const int32_t year : { 1, 1900, 1971, 1972, 2016, 2026, 32766 }) {
+    const auto [start_jde_tt, end_jde_tt] = utc_year_jde_window(year);
+    const Datetime start_utc { to_ymd(year, 1, 1), 0.0 };
+    const Datetime end_utc { to_ymd(year + 1, 1, 1), 0.0 };
+    EXPECT_EQ(start_jde_tt, utc_to_jde(start_utc));
+    EXPECT_EQ(end_jde_tt, utc_to_jde(end_utc));
+    EXPECT_LT(start_jde_tt, end_jde_tt);
+    if (year < 1972) {
+      EXPECT_EQ(start_jde_tt, ut1_to_jde(start_utc));
+    }
+    if (year < 32766) {
+      EXPECT_EQ(end_jde_tt, utc_year_jde_window(year + 1).front());
+    }
+  }
+  const Datetime modern { to_ymd(2026, 1, 1), 0.0 };
+  EXPECT_NE(utc_year_jde_window(2026).front(), ut1_to_jde(modern));
+  for (const int32_t year : { -32768, 0, 32767, std::numeric_limits<int32_t>::max() }) {
+    EXPECT_THROW(std::ignore = utc_year_jde_window(year), std::invalid_argument);
+  }
+}
+
 // This spot-check family was introduced by da333dd (#5, 2024-06-30); no later numeric shift is
 // recorded. The real correctness gate is the Consistency round-trip suite (5000 random points
 // each direction) plus the InvalidInput boundary tests.

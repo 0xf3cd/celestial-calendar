@@ -35,10 +35,12 @@ enum class Node : uint8_t {
   TRUE_DESCENDING,
 };
 
-namespace detail {
-
+/** @brief Inclusive start of the lunar-node position models, in JDE(TT). */
 inline constexpr double START_JDE_TT = 2409542.5;
+/** @brief Exclusive end of the lunar-node position models, in JDE(TT). */
 inline constexpr double END_JDE_TT = 2488069.5;
+
+namespace detail {
 
 inline auto validate(const Node node, const double jde_tt) -> void {
   switch (node) {
