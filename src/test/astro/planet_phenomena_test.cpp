@@ -502,10 +502,7 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
   };
 
   const auto assert_same_events = [](const Planet planet, const int32_t year) {
-    const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
-    const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
-    const double start_jde_tt = astro::julian_day::utc_to_jde(start_utc);
-    const double end_jde_tt = astro::julian_day::utc_to_jde(end_utc);
+    const auto [start_jde_tt, end_jde_tt] = astro::julian_day::utc_year_jde_window(year);
     const auto one_day = events(planet, year);
     const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
     ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);

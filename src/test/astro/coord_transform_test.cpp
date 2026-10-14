@@ -33,8 +33,9 @@ using namespace astro::toolbox::literals;
 using astro::toolbox::AngleUnit::DEG;
 
 TEST(CoordTransform, Fk5CorrectionAtNonzeroLatitudes) {
-  // Meeus (32.3), evaluated by statistics/fk5_correction_dataset.py at 50 digits
-  // (mpmath 1.3.0, 2026-10-13). The 1e-15 deg margin matches Sun.FK5Correction.
+  // Meeus (32.3), via fk5_meeus_32_3(str(jde_tt), str(λ), str(β)) in
+  // statistics/fk5_correction_dataset.py (50 digits; mpmath 1.3.0, 2026-10-13).
+  // The 1e-15 deg margin matches Sun.FK5Correction.
   constexpr std::array dataset {
     // JDE(TT)         λ (deg)  β (deg)                   Δλ (deg)                 Δβ (deg)
     std::array { 2415020.5,    5.0, -60.0, -4.5914317718603964e-05,  9.5981508542974192e-06 },

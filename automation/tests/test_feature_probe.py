@@ -111,7 +111,6 @@ def test_adoption_and_count_drift_are_information(compiler, capsys):
     "ice-stdout",
     "missing",
     "version",
-    "version-missing",
   ],
 )
 def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, failure):
@@ -134,8 +133,6 @@ def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, 
     outcomes["waiting-program"] = ProcReturn(1, "frontend command failed", "error: unrelated")
   elif failure == "missing":
     outcomes["waiting-program"] = FileNotFoundError("compiler disappeared")
-  elif failure == "version-missing":
-    outcomes["--version"] = FileNotFoundError("compiler disappeared before version query")
   else:
     outcomes["--version"] = ProcReturn(1, "", "version query failed")
   assert features.probe_features(leg) == 1

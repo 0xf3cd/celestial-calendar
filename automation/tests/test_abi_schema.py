@@ -322,6 +322,26 @@ def test_legacy_binding_names_alias_the_real_owner_not_a_matching_copy(native_ve
     native_verifier.verify_binding_compatibility()
 
 
+def test_every_legacy_binding_name_is_checked_individually(native_verifier, monkeypatch):
+  owner = native_verifier._abi
+  expected = set(json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))["layouts"]) | {
+    "BINDING_SPECS",
+    "RECORDING_EXPORTS",
+    "STRUCT_TYPES",
+    "P_U32",
+    "P_DOUBLE",
+    "P_CHAR",
+  }
+  assert set(native_verifier.LEGACY_BINDING_NAMES) == expected
+  for missing in sorted(expected):
+    binding = ModuleType("legacy_binding_fixture")
+    for name in expected - {missing}:
+      setattr(binding, name, getattr(owner, name))
+    monkeypatch.setattr(native_verifier, "_binding", binding)
+    with pytest.raises(AssertionError, match=f"compatibility declaration identity: {missing}$"):
+      native_verifier.verify_binding_compatibility()
+
+
 def test_future_declarations_do_not_expand_the_legacy_binding_names(native_verifier, monkeypatch):
   owner = native_verifier._abi
   binding = ModuleType("legacy_binding_fixture")
