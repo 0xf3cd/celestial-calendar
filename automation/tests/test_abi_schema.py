@@ -324,13 +324,32 @@ def test_legacy_binding_names_alias_the_real_owner_not_a_matching_copy(native_ve
 
 def test_every_legacy_binding_name_is_checked_individually(native_verifier, monkeypatch):
   owner = native_verifier._abi
-  expected = set(json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))["layouts"]) | {
+  expected = {
     "BINDING_SPECS",
     "RECORDING_EXPORTS",
     "STRUCT_TYPES",
     "P_U32",
     "P_DOUBLE",
     "P_CHAR",
+    "JulianDay",
+    "UT1Time",
+    "SunCoordinate",
+    "MoonCoordinate",
+    "MoonIllumination",
+    "MoonPositionAngle",
+    "Discriminant",
+    "EquationOfTime",
+    "ApparentSolarTime",
+    "SiderealTime",
+    "JieqiMomentQuery",
+    "SupportedLunarYearRange",
+    "LunarYearInfo",
+    "LunarDate",
+    "GregorianDate",
+    "DeltaT",
+    "ChartBodyV1",
+    "ChartHousesV1",
+    "ChartSnapshotV1",
   }
   assert set(native_verifier.LEGACY_BINDING_NAMES) == expected
   for missing in sorted(expected):
@@ -338,6 +357,15 @@ def test_every_legacy_binding_name_is_checked_individually(native_verifier, monk
     for name in expected - {missing}:
       setattr(binding, name, getattr(owner, name))
     monkeypatch.setattr(native_verifier, "_binding", binding)
+    with pytest.raises(AssertionError, match=f"compatibility declaration identity: {missing}$"):
+      native_verifier.verify_binding_compatibility()
+    declaration = getattr(owner, missing)
+    replacement = (
+      type(missing, (ctypes.Structure,), {"_fields_": declaration._fields_})
+      if isinstance(declaration, type) and issubclass(declaration, ctypes.Structure)
+      else object()
+    )
+    setattr(binding, missing, replacement)
     with pytest.raises(AssertionError, match=f"compatibility declaration identity: {missing}$"):
       native_verifier.verify_binding_compatibility()
 

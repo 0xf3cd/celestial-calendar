@@ -7,8 +7,8 @@
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # SPDX-License-Identifier: MIT
 
-# The jdes/gen commands regenerate the FK5-correction dataset in src/test/astro/sun_test.cpp (#68):
-# it evaluates Meeus (32.3) with mpmath at 50-digit precision,
+# The gen command regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68)
+# by evaluating Meeus (32.3) with mpmath at 50-digit precision:
 #   λ' = λ − (1.397 + 0.00031·T)·T                          [deg; T = Julian century from J2000.0]
 #   Δλ = −0.09033 + 0.03916·(cos λ' + sin λ')·tan β         [arcsec]
 #   Δβ = +0.03916·(cos λ' − sin λ')                         [arcsec]
@@ -17,7 +17,7 @@
 # downstream apparent() pipeline is validated against JPL DE441 (sun_horizons_golden_test.cpp).
 # The 137 epochs live in fk5_correction_epochs.txt (next to this script), so the flow is
 # one-way regenerable: epochs -> probe -> dataset rows.
-# The coordinate-owner rows in src/test/astro/coord_transform_test.cpp call
+# Recompute the rows in src/test/astro/coord_transform_test.cpp with
 # fk5_meeus_32_3(str(jde_tt), str(λ), str(β)) directly; angular inputs and results are degrees.
 #
 # Regeneration flow (run from the repo root):
