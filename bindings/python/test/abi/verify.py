@@ -20,7 +20,7 @@ import re
 import sys
 from pathlib import Path
 
-from celestial_calendar import _binding
+from celestial_calendar import _abi, _binding
 
 
 HERE = Path(__file__).resolve().parent
@@ -37,6 +37,35 @@ EXPECTED_EXPORT_COUNT = 30
 EXPECTED_LAYOUT_COUNT = 19
 EXPECTED_RECORDING_COUNT = 29
 
+# Compatibility names of the legacy private binding module.
+LEGACY_BINDING_NAMES = (
+  "BINDING_SPECS",
+  "RECORDING_EXPORTS",
+  "STRUCT_TYPES",
+  "P_U32",
+  "P_DOUBLE",
+  "P_CHAR",
+  "JulianDay",
+  "UT1Time",
+  "SunCoordinate",
+  "MoonCoordinate",
+  "MoonIllumination",
+  "MoonPositionAngle",
+  "Discriminant",
+  "EquationOfTime",
+  "ApparentSolarTime",
+  "SiderealTime",
+  "JieqiMomentQuery",
+  "SupportedLunarYearRange",
+  "LunarYearInfo",
+  "LunarDate",
+  "GregorianDate",
+  "DeltaT",
+  "ChartBodyV1",
+  "ChartHousesV1",
+  "ChartSnapshotV1",
+)
+
 TYPE_LAYOUT = {
   "bool": (1, 1),
   "uint8_t": (1, 1),
@@ -48,9 +77,9 @@ TYPE_LAYOUT = {
 CTYPE_NAMES = {
   **{getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()},
   ctypes.c_char_p: "const char *",
-  _binding.P_U32: "uint32_t *",
-  _binding.P_DOUBLE: "double *",
-  _binding.P_CHAR: "char *",
+  ctypes.POINTER(ctypes.c_uint32): "uint32_t *",
+  ctypes.POINTER(ctypes.c_double): "double *",
+  ctypes.POINTER(ctypes.c_char): "char *",
 }
 
 
@@ -290,6 +319,14 @@ def verify_record_layouts(manifest_layouts: dict[str, object], header_layouts: d
         )
 
 
+def verify_binding_compatibility() -> None:
+  """Require retained private names to alias the actual declaration owner."""
+  for name in LEGACY_BINDING_NAMES:
+    assert getattr(_binding, name, None) is getattr(_abi, name), f"compatibility declaration identity: {name}"
+  for name, primitive in (("P_U32", ctypes.c_uint32), ("P_DOUBLE", ctypes.c_double), ("P_CHAR", ctypes.c_char)):
+    assert getattr(_binding, name, None) is ctypes.POINTER(primitive), f"compatibility pointer identity: {name}"
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -304,11 +341,15 @@ def verify_manifest(
   binding_names = unique(list(_binding.BINDING_SPECS), EXPECTED_EXPORT_COUNT, "ctypes bindings")
   function_names = unique(list(_binding.FUNCTIONS), EXPECTED_EXPORT_COUNT, "loaded functions")
   assert header_names == manifest_names == binding_names == function_names
+  verify_binding_compatibility()
 
   for name, entry in manifest_exports.items():
     assert canonical(entry["signature"]) == header_exports[name], f"header signature: {name}"
     assert signature_types(entry["signature"]) == ctypes_types(name), f"ctypes signature: {name}"
-    assert getattr(_binding.LIB, name) is not None, f"loaded symbol: {name}"
+    function = getattr(_binding.LIB, name)
+    argtypes, restype = _binding.BINDING_SPECS[name]
+    assert function.restype is restype, f"loaded return-record identity: {name}"
+    assert tuple(function.argtypes) == argtypes, f"loaded argument types: {name}"
 
   expected_widths = {
     "bool": 8,
@@ -334,7 +375,7 @@ def run_mutation_self_tests(
   header_layouts: dict[str, dict[str, object]],
   documented_recording: set[str],
   header_codes: dict[str, int],
-) -> None:
+) -> int:
   """Prove each ABI identity dimension rejects one directed defect."""
   mutations = {}
 
@@ -402,13 +443,14 @@ def run_mutation_self_tests(
   extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
   mutations["extra chart code"] = extra_code
 
-  assert len(mutations) == 19, "ABI mutation denominator"
+  assert len(mutations) == 19, "independent ABI defect-case count"
   for label, mutated in mutations.items():
     try:
       verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)
     except AssertionError:
       continue
     raise AssertionError(f"ABI gate accepted mutation: {label}")
+  return len(mutations)
 
 
 def main() -> None:
@@ -432,14 +474,18 @@ def main() -> None:
   verify_wrapper_recording(wrapper_source, expected_wrapper_exports, documented_recording)
 
   verify_manifest(manifest, header_exports, header_layouts, documented_recording, header_codes)
-  run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
+  mutation_count = run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
-  print("PASS exports header=manifest=ctypes=loaded 30")
-  print("PASS layouts header=manifest=ctypes 19; nested records and array extents/strides")
-  print("PASS recording policies 29/29; wrapper exports 29/29; docs=writers=manifest=ctypes=wrappers")
+  print(f"PASS exports header=manifest=ctypes=loaded {len(header_exports)}")
+  print(f"PASS layouts header=manifest=ctypes {len(header_layouts)}; nested records and array extents/strides")
+  recording_count, wrapper_count = len(documented_recording), len(expected_wrapper_exports)
+  print(
+    f"PASS recording policies {recording_count}/{recording_count}; wrapper exports {wrapper_count}/{wrapper_count}; "
+    "docs=writers=manifest=ctypes=wrappers"
+  )
   print("PASS chart selector/identity/presence codes")
-  print("PASS ABI mutations rejected manifest=19/19 wrapper=1/1")
+  print(f"PASS ABI mutations rejected manifest={mutation_count}/{mutation_count} wrapper=1/1")
 
 
 if __name__ == "__main__":

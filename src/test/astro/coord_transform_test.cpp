@@ -11,6 +11,7 @@
  */
 
 #include <cmath>
+#include <array>
 #include <tuple>
 #include <vector>
 
@@ -30,6 +31,29 @@ using namespace astro::coords;
 using namespace astro::toolbox;
 using namespace astro::toolbox::literals;
 using astro::toolbox::AngleUnit::DEG;
+
+TEST(CoordTransform, Fk5CorrectionAtNonzeroLatitudes) {
+  // Meeus (32.3), via fk5_meeus_32_3(str(jde_tt), str(λ), str(β)) in
+  // statistics/fk5_correction_dataset.py (50 digits; mpmath 1.3.0, 2026-10-13).
+  // The 1e-15 deg margin matches Sun.FK5Correction.
+  constexpr std::array dataset {
+    // JDE(TT)         λ (deg)  β (deg)                   Δλ (deg)                 Δβ (deg)
+    std::array { 2415020.5,    5.0, -60.0, -4.5914317718603964e-05,  9.5981508542974192e-06 },
+    std::array { 2451545.0,  120.0,  60.0, -1.8195431892277395e-05, -1.4859320781166283e-05 },
+    std::array { 2469807.5,  245.0, -45.0, -1.0572830152747083e-05,  5.0848289103476766e-06 },
+    std::array { 2488069.0, 359.75,  62.0, -5.2300931867299821e-06,  1.1185978867455072e-05 },
+  };
+  for (const auto& [jde_tt, λ, β, Δλ, Δβ] : dataset) {
+    const SphericalCoordinate coordinate {
+      .λ = AngleDeg { λ },
+      .β = AngleDeg { β },
+      .r = DistanceAu { 1.0 },
+    };
+    const auto correction = fk5_correction(jde_tt, coordinate);
+    ASSERT_NEAR(correction.Δλ.deg(), Δλ, 1e-15);
+    ASSERT_NEAR(correction.Δβ.deg(), Δβ, 1e-15);
+  }
+}
 
 TEST(CoordTransform, EclipticToEquatorialMeeus13a) {
   // Retained reference inputs/values: EclipticToEquatorialMeeus13a.

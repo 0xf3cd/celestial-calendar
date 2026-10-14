@@ -53,13 +53,11 @@ struct LongitudeRate {
   double deg_per_tt_day;
 };
 
-namespace detail {
-
-inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
-inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
-inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
-inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
-
+/**
+ * @brief Map an ephemeris target to its planetary identity.
+ * @param target The ephemeris target.
+ * @return The planet, or no value when the target does not name a planet.
+ */
 [[nodiscard]] inline auto planet_for_target(const Target target) -> std::optional<astro::planet::Planet> {
   using astro::planet::Planet;
   using enum Target;
@@ -81,6 +79,41 @@ inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
     }
   }
   return std::nullopt;
+}
+
+namespace detail {
+
+inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
+inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
+inline constexpr double WORKING_START_JDE_TT = astro::julian_day::jm_to_jde(-10.0);
+inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
+
+[[nodiscard]] constexpr auto position_window_for_rate(const Target target) -> std::array<double, 2> {
+  using enum Target;
+  switch (target) {
+    case SUN:
+    case MOON:
+    case MERCURY:
+    case VENUS:
+    case MARS:
+    case JUPITER:
+    case SATURN:
+    case URANUS:
+    case NEPTUNE:
+      return { WORKING_START_JDE_TT, WORKING_END_JDE_TT };
+    case PLUTO:
+      return {
+        astro::planet::geocentric_coord::PLUTO_START_JDE_TT,
+        astro::planet::geocentric_coord::PLUTO_END_JDE_TT,
+      };
+    case MEAN_ASCENDING:
+    case MEAN_DESCENDING:
+    case TRUE_ASCENDING:
+    case TRUE_DESCENDING:
+      return { astro::lunar_node::START_JDE_TT, astro::lunar_node::END_JDE_TT };
+    default:
+      throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
+  }
 }
 
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt)
@@ -135,39 +168,8 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
 
 inline auto validate_rate_input(const Target target, const double jde_tt) -> void {
   validate_stencil(jde_tt);
-  using enum Target;
-  switch (target) {
-    case SUN:
-    case MOON:
-    case MERCURY:
-    case VENUS:
-    case MARS:
-    case JUPITER:
-    case SATURN:
-    case URANUS:
-    case NEPTUNE:
-      validate_reach(jde_tt, WORKING_START_JDE_TT, WORKING_END_JDE_TT);
-      return;
-    case PLUTO:
-      validate_reach(
-        jde_tt,
-        astro::planet::detail::pluto::APPARENT_START_JDE_TT,
-        astro::planet::detail::pluto::APPARENT_END_JDE_TT
-      );
-      return;
-    case MEAN_ASCENDING:
-    case MEAN_DESCENDING:
-    case TRUE_ASCENDING:
-    case TRUE_DESCENDING:
-      validate_reach(
-        jde_tt,
-        astro::lunar_node::detail::START_JDE_TT,
-        astro::lunar_node::detail::END_JDE_TT
-      );
-      return;
-    default:
-      throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
-  }
+  const auto [start_jde_tt, end_jde_tt] = position_window_for_rate(target);
+  validate_reach(jde_tt, start_jde_tt, end_jde_tt);
 }
 
 /** @note Each sample pair's continuously lifted change must be within (-180, 180) degrees.
@@ -195,6 +197,22 @@ requires std::invocable<const LongitudeProvider&, double>
 }
 
 } // namespace detail
+
+/**
+ * @brief Return the half-open center domain of a target's longitude-rate operation.
+ * @param target A named ephemeris target.
+ * @return Inclusive start and exclusive end in JDE(TT), allowing the full sampled reach.
+ * @throw std::invalid_argument If the target is unknown.
+ * @note This window bounds the rate operation, not the target's position model.
+ *       Exact sample-offset representability is checked separately by @ref longitude_rate.
+ */
+[[nodiscard]] constexpr auto longitude_rate_domain(const Target target) -> std::array<double, 2> {
+  const auto [start_jde_tt, end_jde_tt] = detail::position_window_for_rate(target);
+  return {
+    start_jde_tt + detail::DIFFERENCE_REACH_TT_DAYS,
+    end_jde_tt - detail::DIFFERENCE_REACH_TT_DAYS,
+  };
+}
 
 /**
  * @brief Instantaneous geocentric longitude rate using the target's position model.

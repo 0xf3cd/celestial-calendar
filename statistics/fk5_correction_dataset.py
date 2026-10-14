@@ -7,16 +7,18 @@
 # Repo   : https://github.com/0xf3cd/celestial-calendar
 # SPDX-License-Identifier: MIT
 
-# This file regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68):
-# it evaluates Meeus (25.9) with mpmath at 50-digit precision,
+# The gen command regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68)
+# by evaluating Meeus (32.3) with mpmath at 50-digit precision:
 #   λ' = λ − (1.397 + 0.00031·T)·T                          [deg; T = Julian century from J2000.0]
 #   Δλ = −0.09033 + 0.03916·(cos λ' + sin λ')·tan β         [arcsec]
 #   Δβ = +0.03916·(cos λ' − sin λ')                         [arcsec]
-# so the dataset is an independent transcription check of `fk5_correction` (sun.hpp).
+# so the dataset is an independent transcription check of `coords::fk5_correction` (coord_transform.hpp).
 # The λ/β inputs come from the library's own `sun::geocentric_coord::vsop87d`, whose
 # downstream apparent() pipeline is validated against JPL DE441 (sun_horizons_golden_test.cpp).
 # The 137 epochs live in fk5_correction_epochs.txt (next to this script), so the flow is
 # one-way regenerable: epochs -> probe -> dataset rows.
+# Recompute the rows in src/test/astro/coord_transform_test.cpp with
+# fk5_meeus_32_3(str(jde_tt), str(λ), str(β)) directly; angular inputs and results are degrees.
 #
 # Regeneration flow (run from the repo root):
 #   1. `python3 statistics/fk5_correction_dataset.py jdes > jdes.txt`
@@ -25,12 +27,13 @@
 #        // probe.cpp
 #        #include <cstdio>
 #        #include "sun.hpp"
+#        #include "coord_transform.hpp"
 #        int main() {
 #          namespace sg = astro::sun::geocentric_coord;
 #          double jde;
 #          while (std::scanf("%lf", &jde) == 1) {
 #            const auto coord = sg::vsop87d(jde);
-#            const auto corr = sg::fk5_correction(jde, coord);
+#            const auto corr = astro::coords::fk5_correction(jde, coord);
 #            std::printf("%.17g %.17g %.17g %.17g %.17g\n",
 #                        jde, coord.λ.deg(), coord.β.deg(), corr.Δλ.deg(), corr.Δβ.deg());
 #          }
@@ -69,8 +72,8 @@ def load_epochs() -> list[str]:
   return [stripped for line in lines if (stripped := line.strip()) and not stripped.startswith("#")]
 
 
-def fk5_meeus_25_9(jde: str, lam_deg: str, beta_deg: str) -> tuple[mpf, mpf]:
-  """Evaluate Meeus (25.9) at 50-digit precision (self-contained via `workdps`).
+def fk5_meeus_32_3(jde: str, lam_deg: str, beta_deg: str) -> tuple[mpf, mpf]:
+  """Evaluate Meeus (32.3) at 50-digit precision (self-contained via `workdps`).
   String inputs preserve the probe's %.17g double round-trip; the residual
   decimal-vs-binary gap is ~1e-17 relative, far below the test tolerance.
   Angles are in degrees, returned corrections in degrees."""
@@ -95,7 +98,7 @@ def emit_rows(probe_tsv: str) -> None:
   with open(probe_tsv, encoding="utf-8") as fh:
     for line in fh:
       jde, lam, beta, cpp_lam, cpp_beta = line.split()
-      d_lam, d_beta = fk5_meeus_25_9(jde, lam, beta)
+      d_lam, d_beta = fk5_meeus_32_3(jde, lam, beta)
       # Parsed at the default 53-bit precision on purpose: mpf() then lands exactly on the
       # C++ double, so the gap measures the formula's double-rounding, not print residue.
       max_gap_lam = max(max_gap_lam, abs(d_lam - mpf(cpp_lam)))

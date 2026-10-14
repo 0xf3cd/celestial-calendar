@@ -29,6 +29,7 @@ def main() -> None:
   )
   non_acceptance = {
     "run_all.py",
+    "consumer/chart_replay.py",
     "types/consumer.py",
     "wheel/prepare.py",
     "wheel/verify.py",
@@ -39,7 +40,12 @@ def main() -> None:
   assert discovered == set(scripts), f"acceptance inventory mismatch: {sorted(discovered ^ set(scripts))}"
 
   for script in scripts:
-    subprocess.run([sys.executable, str(test_root / script)], check=True)
+    result = subprocess.run(
+      [sys.executable, str(test_root / script)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
+    print(result.stdout, end="", flush=True)
+    result.check_returncode()
+    assert any(line.startswith("PASS ") for line in result.stdout.splitlines()), f"no PASS evidence: {script}"
 
 
 if __name__ == "__main__":

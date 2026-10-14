@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "julian_day.hpp"
 #include "toolbox.hpp"
 
 
@@ -47,6 +48,40 @@ struct HorizontalCoord {
   astro::toolbox::AngleDeg A; // Azimuth, from the south, positive westward
   astro::toolbox::AngleDeg h; // Altitude
 };
+
+
+/** @brief Ecliptic longitude and latitude corrections from VSOP87D to FK5. */
+struct Fk5Correction {
+  astro::toolbox::AngleDeg Δλ;
+  astro::toolbox::AngleDeg Δβ;
+};
+
+/**
+ * @brief Calculate the FK5 correction for dynamical ecliptic coordinates of date.
+ * @param jde_tt Julian Ephemeris Day in TT.
+ * @param vsop87d_coord Dynamical ecliptic coordinates at the same epoch; radius is unused.
+ * @return Additive longitude and latitude corrections.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (32.3);
+ *      Chapter 33, page 225 for geocentric coordinates.
+ */
+[[nodiscard]] inline auto fk5_correction(
+  const double jde_tt,
+  const astro::toolbox::SphericalCoordinate& vsop87d_coord
+) -> Fk5Correction {
+  const double jc = astro::julian_day::jde_to_jc(jde_tt);
+  const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
+
+  const astro::toolbox::AngleDeg λ_dash = vsop_λ - astro::toolbox::AngleDeg { (1.397 + (0.00031 * jc)) * jc };
+  const double λ_dash_rad = λ_dash.rad();
+
+  const double delta_λ_arcsec = -0.09033 + (0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad()));
+  const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
+
+  return {
+    .Δλ = astro::toolbox::AngleDeg::from_arcsec(delta_λ_arcsec),
+    .Δβ = astro::toolbox::AngleDeg::from_arcsec(delta_β_arcsec),
+  };
+}
 
 
 /**

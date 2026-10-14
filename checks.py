@@ -90,7 +90,7 @@ def parse_args() -> argparse.Namespace:
     "--self-contained", action="store_true", help="Compile every header alone to prove it is self-contained"
   )
   gate.add_argument(
-    "--abi-layout", action="store_true", help="Hold the ctypes mirror in statistics/common.py to the real ABI layout"
+    "--abi-layout", action="store_true", help="Hold the package's real ctypes declarations to the compiled C ABI"
   )
   gate.add_argument(
     "--ctypes-smoke", action="store_true", help="Run the ctypes wrappers against the built library (needs a build)"

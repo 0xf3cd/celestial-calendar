@@ -564,7 +564,7 @@ TEST(Planet, ObservationEpochCorrectionChain) {
     .β = geometric.β + aberration.Δβ,
     .r = geometric.r,
   };
-  const auto fk5 = astro::sun::geocentric_coord::fk5_correction(jde_tt, aberrated);
+  const auto fk5 = astro::coords::fk5_correction(jde_tt, aberrated);
   const auto nutation = astro::earth::nutation::longitude(jde_tt);
   const astro::toolbox::SphericalCoordinate expected {
     .λ = (aberrated.λ + fk5.Δλ + nutation).normalize(),
@@ -589,7 +589,7 @@ TEST(Planet, PlutoFrameJoinInvertsFk5) {
     observation_jde_tt
   );
   const auto joined = detail::pluto::heliocentric_for_subtraction(retarded_jde_tt, observation_jde_tt);
-  const auto correction = astro::sun::geocentric_coord::fk5_correction(observation_jde_tt, joined);
+  const auto correction = astro::coords::fk5_correction(observation_jde_tt, joined);
 
   ASSERT_LE(
     wrapped_diff_deg((joined.λ + correction.Δλ).normalize().deg(), precessed.λ.deg()),
@@ -643,13 +643,15 @@ TEST(Planet, PlutoModelAndPublicDomains) {
 }
 
 TEST(Planet, PlutoCenteredRetrogradeDomain) {
+  constexpr double start_jde_tt = 2409544.0;
+  constexpr double end_jde_tt = 2488069.0;
   const double before = std::nextafter(
-    detail::pluto::RETROGRADE_START_JDE_TT,
+    start_jde_tt,
     -std::numeric_limits<double>::infinity()
   );
   const double last = std::nextafter(
-    detail::pluto::RETROGRADE_END_JDE_TT,
-    detail::pluto::RETROGRADE_START_JDE_TT
+    end_jde_tt,
+    start_jde_tt
   );
   EXPECT_THROW(
     static_cast<void>(geocentric_coord::is_retrograde(Planet::PLUTO, before)),
@@ -657,13 +659,13 @@ TEST(Planet, PlutoCenteredRetrogradeDomain) {
   );
   EXPECT_NO_THROW(
     static_cast<void>(
-      geocentric_coord::is_retrograde(Planet::PLUTO, detail::pluto::RETROGRADE_START_JDE_TT)
+      geocentric_coord::is_retrograde(Planet::PLUTO, start_jde_tt)
     )
   );
   EXPECT_NO_THROW(static_cast<void>(geocentric_coord::is_retrograde(Planet::PLUTO, last)));
   EXPECT_THROW(
     static_cast<void>(
-      geocentric_coord::is_retrograde(Planet::PLUTO, detail::pluto::RETROGRADE_END_JDE_TT)
+      geocentric_coord::is_retrograde(Planet::PLUTO, end_jde_tt)
     ),
     std::invalid_argument
   );
@@ -710,11 +712,11 @@ TEST(Planet, IndependentObservationFrameGeometricDataset) {
     const auto coordinate = detail::light_time_corrected(row.planet, row.observation_jde_tt, earth);
 
     ASSERT_LE(wrapped_diff_deg(coordinate.λ.deg(), row.lon_deg), FRAME_TOLERANCE.lon_deg)
-      << detail::name(row.planet) << " longitude at JDE(TT) " << row.observation_jde_tt;
+      << name(row.planet) << " longitude at JDE(TT) " << row.observation_jde_tt;
     ASSERT_NEAR(coordinate.β.deg(), row.lat_deg, FRAME_TOLERANCE.lat_deg)
-      << detail::name(row.planet) << " latitude at JDE(TT) " << row.observation_jde_tt;
+      << name(row.planet) << " latitude at JDE(TT) " << row.observation_jde_tt;
     ASSERT_NEAR(coordinate.r.au(), row.r_au, FRAME_TOLERANCE.r_au)
-      << detail::name(row.planet) << " range at JDE(TT) " << row.observation_jde_tt;
+      << name(row.planet) << " range at JDE(TT) " << row.observation_jde_tt;
   }
 }
 
@@ -731,11 +733,11 @@ TEST(Planet, ObservationFrameProducerPreservesRadiusAndEqualEpoch) {
       const auto raw = raw_heliocentric(planet, jde_tt);
 
       ASSERT_LE(wrapped_diff_deg(equal.λ.deg(), raw.λ.deg()), 1e-13)
-        << detail::name(planet) << " at JDE(TT) " << jde_tt;
+        << name(planet) << " at JDE(TT) " << jde_tt;
       ASSERT_NEAR(equal.β.deg(), raw.β.deg(), 1e-13)
-        << detail::name(planet) << " at JDE(TT) " << jde_tt;
-      ASSERT_DOUBLE_EQ(equal.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
-      ASSERT_DOUBLE_EQ(transported.r.au(), raw.r.au()) << detail::name(planet) << " at JDE(TT) " << jde_tt;
+        << name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(equal.r.au(), raw.r.au()) << name(planet) << " at JDE(TT) " << jde_tt;
+      ASSERT_DOUBLE_EQ(transported.r.au(), raw.r.au()) << name(planet) << " at JDE(TT) " << jde_tt;
     }
   }
 }

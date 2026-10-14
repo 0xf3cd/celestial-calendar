@@ -359,6 +359,23 @@ TEST(DeltaT, ConversionsAtChronoYearEdges) {
   }
 }
 
+TEST(DeltaT, SelectedModelConversionsUseOneEvaluationAtTheirInput) {
+  for (const auto model : { Model::ALGO1, Model::ALGO2, Model::ALGO3, Model::ALGO4, Model::ALGO5 }) {
+    for (const int32_t year : { 1900, 2004, 2005, 2015, 2024, 2026, 2034 }) {
+      const calendar::Datetime dt { util::to_ymd(year, 1, 1), 0.0 };
+      EXPECT_EQ(ut1_to_tt(model, dt), calendar::add_seconds(dt, compute(model, dt)));
+      EXPECT_EQ(tt_to_ut1(model, dt), calendar::add_seconds(dt, -compute(model, dt)));
+    }
+  }
+  const calendar::Datetime outside_algo4 { util::to_ymd(2035, 1, 1), 0.0 };
+  EXPECT_THROW(std::ignore = ut1_to_tt(Model::ALGO4, outside_algo4), std::out_of_range);
+  EXPECT_THROW(std::ignore = tt_to_ut1(Model::ALGO4, outside_algo4), std::out_of_range);
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Exercises the invalid-model contract.
+  const auto unknown = static_cast<Model>(255);
+  EXPECT_THROW(std::ignore = ut1_to_tt(unknown, outside_algo4), std::invalid_argument);
+  EXPECT_THROW(std::ignore = tt_to_ut1(unknown, outside_algo4), std::invalid_argument);
+}
+
 TEST(DeltaT, DefaultDatetimeRejectsMutatedInvalidFields) {
   const calendar::Datetime valid { util::to_ymd(2026, 1, 1), 0.5 };
   for (const auto ymd : std::array {

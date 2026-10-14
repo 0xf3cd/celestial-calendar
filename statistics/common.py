@@ -8,13 +8,14 @@
 # SPDX-License-Identifier: MIT
 
 import sys
+import importlib.util
 from enum import Enum
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from dataclasses import dataclass
 
 import ctypes
-from ctypes import c_int32, c_uint32, c_uint16, c_uint8, c_double, c_bool, c_char, c_char_p, POINTER, Structure
+from ctypes import c_uint32, c_double
 
 from typing import Optional, List
 
@@ -67,48 +68,22 @@ assert LIB_PATH is not None, f"Shared library not found in {BINDINGS_PATH}"
 assert LIB_PATH.exists(), f"Shared library not found: {LIB_PATH}"
 
 
-# Define the argument and return types of the C functions.
-#
-# Every export in `src/shared_lib/celestial.h` needs its `argtypes`/`restype` here: without them
-# ctypes assumes `restype = c_int`, which reads a struct return as garbage (#85).
+_ABI_SPEC = importlib.util.spec_from_file_location(
+  "_celestial_abi_declarations", PROJ_PATH / "bindings/python/src/celestial_calendar/_abi.py"
+)
+if _ABI_SPEC is None or _ABI_SPEC.loader is None:
+  raise ImportError("Cannot load the CelestialCalendar ABI declarations")
+_ABI = importlib.util.module_from_spec(_ABI_SPEC)
+_ABI_SPEC.loader.exec_module(_ABI)
+
 LIB = ctypes.CDLL(str(LIB_PATH))
-
-
-# region Library-level
-
-LIB.set_log_verbosity.argtypes = [c_uint8]
-LIB.set_log_verbosity.restype = c_bool
-
-LIB.last_error.argtypes = []
-LIB.last_error.restype = c_char_p
-
-# endregion
+for _name, (_argtypes, _restype) in _ABI.BINDING_SPECS.items():
+  _function = getattr(LIB, _name)
+  _function.argtypes = _argtypes
+  _function.restype = _restype
 
 
 # region Delta T functions
-
-
-class DeltaT(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("value", c_double),
-  ]
-
-
-LIB.delta_t_algo1.argtypes = [c_double]
-LIB.delta_t_algo1.restype = DeltaT
-
-LIB.delta_t_algo2.argtypes = [c_double]
-LIB.delta_t_algo2.restype = DeltaT
-
-LIB.delta_t_algo3.argtypes = [c_double]
-LIB.delta_t_algo3.restype = DeltaT
-
-LIB.delta_t_algo4.argtypes = [c_double]
-LIB.delta_t_algo4.restype = DeltaT
-
-LIB.delta_t_algo5.argtypes = [c_double]
-LIB.delta_t_algo5.restype = DeltaT
 
 
 # Wrap C functions with Python functions, so that they can be called from Python.
@@ -147,10 +122,6 @@ def delta_t_algo5(year: float) -> float:
   return result.value
 
 
-LIB.delta_t.argtypes = [c_double]
-LIB.delta_t.restype = DeltaT
-
-
 def delta_t(year: float) -> float:
   """The library's default ΔT, currently algo5."""
   result = LIB.delta_t(year)
@@ -163,36 +134,6 @@ def delta_t(year: float) -> float:
 
 
 # region Delta T and Julian Day
-
-
-# Define the JulianDay struct
-class _JulianDay(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("value", c_double),
-  ]
-
-
-# Define the UT1Time struct
-class _UT1Time(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint32),
-    ("day", c_uint32),
-    ("fraction", c_double),
-  ]
-
-
-# Define the function signatures
-LIB.ut1_to_jd.argtypes = [c_int32, c_uint32, c_uint32, c_double]
-LIB.ut1_to_jd.restype = _JulianDay
-
-LIB.ut1_to_jde.argtypes = [c_int32, c_uint32, c_uint32, c_double]
-LIB.ut1_to_jde.restype = _JulianDay
-
-LIB.jde_to_ut1.argtypes = [c_double]
-LIB.jde_to_ut1.restype = _UT1Time
 
 
 # Wrap C functions with Python functions, so that they can be called from Python.
@@ -250,56 +191,6 @@ def jde_to_ut1(jde: float) -> datetime:
 
 
 # region Sun and Moon Coordinates
-
-
-# Define the SunCoordinate struct
-class _SunCoordinate(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("lon", c_double),
-    ("lat", c_double),
-    ("r", c_double),
-  ]
-
-
-# Define the MoonCoordinate struct
-class _MoonCoordinate(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("lon", c_double),
-    ("lat", c_double),
-    ("r", c_double),
-  ]
-
-
-# Define the MoonIllumination struct
-class _MoonIllumination(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("illumination", c_double),
-    ("elongation_deg", c_double),
-  ]
-
-
-LIB.sun_apparent_geocentric_coord.argtypes = [c_double]
-LIB.sun_apparent_geocentric_coord.restype = _SunCoordinate
-
-LIB.moon_apparent_geocentric_coord.argtypes = [c_double]
-LIB.moon_apparent_geocentric_coord.restype = _MoonCoordinate
-
-LIB.moon_illumination.argtypes = [c_double]
-LIB.moon_illumination.restype = _MoonIllumination
-
-
-class _MoonPositionAngle(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("angle_deg", c_double),
-  ]
-
-
-LIB.moon_position_angle.argtypes = [c_double]
-LIB.moon_position_angle.restype = _MoonPositionAngle
 
 
 @dataclass
@@ -394,10 +285,6 @@ def moon_position_angle(jde: float) -> MoonPositionAngle:
   return MoonPositionAngle(angle_deg=result.angle_deg)
 
 
-LIB.moon_phase_moments.argtypes = [c_int32, c_uint8, POINTER(c_uint32), POINTER(c_double), c_uint32]
-LIB.moon_phase_moments.restype = c_uint32
-
-
 class MoonPhaseKind(Enum):
   NEW_MOON = 0
   FIRST_QUARTER = 1
@@ -446,17 +333,6 @@ def moon_phase_moments(year: int, phase: MoonPhaseKind) -> MoonPhaseMoments:
 # region Sidereal Time
 
 
-class _SiderealTime(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("value", c_double),
-  ]
-
-
-LIB.local_apparent_sidereal_time.argtypes = [c_double, c_double]
-LIB.local_apparent_sidereal_time.restype = _SiderealTime
-
-
 def local_apparent_sidereal_time(jd_ut1: float, longitude: float) -> float:
   """
   @brief Compute the Local Apparent Sidereal Time (LAST).
@@ -471,36 +347,6 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude: float) -> float:
 
   return result.value
 
-
-# endregion
-
-
-# region Solar Time
-
-
-class _EquationOfTime(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("value", c_double),
-  ]
-
-
-LIB.equation_of_time.argtypes = [c_double]
-LIB.equation_of_time.restype = _EquationOfTime
-
-
-class _ApparentSolarTime(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint32),
-    ("day", c_uint32),
-    ("fraction", c_double),
-  ]
-
-
-LIB.apparent_solar_time.argtypes = [c_int32, c_uint32, c_uint32, c_double, c_double]
-LIB.apparent_solar_time.restype = _ApparentSolarTime
 
 # endregion
 
@@ -535,40 +381,6 @@ class Jieqi(Enum):
   大寒 = 23
 
 
-class _JieqiMomentQuery(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("jq_idx", c_uint8),
-    ("y", c_int32),
-    ("m", c_uint32),
-    ("d", c_uint32),
-    ("frac", c_double),
-  ]
-
-
-LIB.query_jieqi_moment.argtypes = [c_int32, c_uint8]
-LIB.query_jieqi_moment.restype = _JieqiMomentQuery
-
-# `buf` is an output buffer, so it is typed as a pointer rather than `c_char_p` - the latter
-# reads as "takes a string" and invites passing a `bytes`, which the C side would write into.
-LIB.get_jieqi_name.argtypes = [c_uint8, POINTER(c_char), c_uint32]
-LIB.get_jieqi_name.restype = c_bool
-
-
-class _Discriminant(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("count", c_uint32),
-  ]
-
-
-LIB.solar_lon_root_discriminant.argtypes = [c_int32, c_double]
-LIB.solar_lon_root_discriminant.restype = _Discriminant
-
-LIB.solar_lon_roots.argtypes = [c_int32, c_double, POINTER(c_double), c_uint32]
-LIB.solar_lon_roots.restype = c_uint32
-
-
 @dataclass
 class JieqiMoment:
   jq: Jieqi
@@ -600,12 +412,6 @@ def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
 # endregion
 
 # region New Moon
-
-LIB.new_moons_in_year.argtypes = [c_int32, POINTER(c_uint32), POINTER(c_double), c_uint32]
-LIB.new_moons_in_year.restype = c_uint32
-
-LIB.new_moons_after_jde.argtypes = [c_double, POINTER(c_double), c_uint32]
-LIB.new_moons_after_jde.restype = c_uint32
 
 
 @dataclass
@@ -667,7 +473,6 @@ def new_moons_in_year(year: int) -> NewMoons:
 
 # endregion
 
-
 # region Lunar Year
 
 
@@ -675,18 +480,6 @@ class LunarAlgo(Enum):
   ALGO_1 = 1
   ALGO_2 = 2
   ALGO_3 = 3
-
-
-class _SupportedLunarYearRange(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("start", c_int32),
-    ("end", c_int32),
-  ]
-
-
-LIB.get_supported_lunar_year_range.argtypes = [c_uint8]
-LIB.get_supported_lunar_year_range.restype = _SupportedLunarYearRange
 
 
 @dataclass
@@ -711,21 +504,6 @@ def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
     start=result.start,
     end=result.end,
   )
-
-
-class _LunarYearInfo(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint8),
-    ("day", c_uint8),
-    ("leap_month", c_uint8),
-    ("month_len", c_uint16),
-  ]
-
-
-LIB.get_lunar_year_info.argtypes = [c_uint8, c_int32]
-LIB.get_lunar_year_info.restype = _LunarYearInfo
 
 
 @dataclass
@@ -761,20 +539,6 @@ def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
   )
 
 
-class _LunarDate(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint8),
-    ("is_leap", c_bool),
-    ("day", c_uint8),
-  ]
-
-
-LIB.gregorian_to_lunar.argtypes = [c_uint8, c_int32, c_uint8, c_uint8]
-LIB.gregorian_to_lunar.restype = _LunarDate
-
-
 @dataclass
 class LunarDate:
   year: int
@@ -808,19 +572,6 @@ def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> Luna
   )
 
 
-class _GregorianDate(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("year", c_int32),
-    ("month", c_uint8),
-    ("day", c_uint8),
-  ]
-
-
-LIB.lunar_to_gregorian.argtypes = [c_uint8, c_int32, c_uint8, c_bool, c_uint8]
-LIB.lunar_to_gregorian.restype = _GregorianDate
-
-
 def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, day: int) -> date:
   """
   Convert a lunar date to a Gregorian date.
@@ -840,55 +591,5 @@ def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, da
 
   return date(result.year, result.month, result.day)
 
-
-# endregion
-
-
-# region Fixed-version Chart Snapshot
-
-
-class _ChartBodyV1(Structure):
-  _fields_ = [
-    ("target_code", c_uint32),
-    ("present_fields", c_uint32),
-    ("longitude_deg", c_double),
-    ("latitude_deg", c_double),
-    ("distance_au", c_double),
-    ("longitude_rate_deg_per_tt_day", c_double),
-  ]
-
-
-class _ChartHousesV1(Structure):
-  _fields_ = [
-    ("ascendant_deg", c_double),
-    ("midheaven_deg", c_double),
-    ("descendant_deg", c_double),
-    ("imum_coeli_deg", c_double),
-    ("cusps_deg", c_double * 12),
-  ]
-
-
-class _ChartSnapshotV1(Structure):
-  _fields_ = [
-    ("valid", c_bool),
-    ("jd_ut1", c_double),
-    ("jde_tt", c_double),
-    ("bodies", _ChartBodyV1 * 14),
-    ("houses", _ChartHousesV1),
-  ]
-
-
-LIB.chart_snapshot_v1.argtypes = [
-  c_int32,
-  c_uint32,
-  c_uint32,
-  c_double,
-  c_uint32,
-  c_double,
-  c_double,
-  c_uint32,
-  c_uint32,
-]
-LIB.chart_snapshot_v1.restype = _ChartSnapshotV1
 
 # endregion

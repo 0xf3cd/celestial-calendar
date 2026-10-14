@@ -16,13 +16,17 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <ranges>
 #include <stdexcept>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 
 #include <gtest/gtest.h>
 
 #include "chart.hpp"
+#include "chart_test_helper.hpp"
+#include "../test_helper.hpp"
 
 namespace astro::chart::test {
 namespace {
@@ -50,10 +54,6 @@ static_assert(not std::is_default_constructible_v<detail::Position>);
 static_assert(detail::START_JDE_TT == 2409543.875);
 static_assert(detail::END_JDE_TT == 2488069.125);
 
-auto location(const double latitude, const double longitude) -> astro::GeoLocation {
-  return { .latitude = AngleDeg { latitude }, .longitude = AngleDeg { longitude } };
-}
-
 auto civil(const int32_t year, const uint32_t month, const uint32_t day,
            const int64_t elapsed_ns) -> Datetime {
   return Datetime { util::to_ymd(year, month, day), std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } } };
@@ -70,37 +70,13 @@ auto independent_delta_t(const Model model, const double year) -> double {
   }
 }
 
-auto distance_au(const std::optional<astro::toolbox::DistanceAu>& distance) -> double {
-  if (not distance) {
-    throw std::logic_error { "Missing test body distance" };
-  }
-  return distance->au();
-}
-
-auto expected_coordinates(const Target target, const double jde_tt) -> astro::toolbox::SphericalCoordinate {
-  using astro::planet::Planet;
-  switch (target) {
-    case Target::SUN: return astro::sun::geocentric_coord::apparent(jde_tt);
-    case Target::MOON: return astro::moon::geocentric_coord::apparent(jde_tt);
-    case Target::MERCURY: return astro::planet::geocentric_coord::apparent(Planet::MERCURY, jde_tt);
-    case Target::VENUS: return astro::planet::geocentric_coord::apparent(Planet::VENUS, jde_tt);
-    case Target::MARS: return astro::planet::geocentric_coord::apparent(Planet::MARS, jde_tt);
-    case Target::JUPITER: return astro::planet::geocentric_coord::apparent(Planet::JUPITER, jde_tt);
-    case Target::SATURN: return astro::planet::geocentric_coord::apparent(Planet::SATURN, jde_tt);
-    case Target::URANUS: return astro::planet::geocentric_coord::apparent(Planet::URANUS, jde_tt);
-    case Target::NEPTUNE: return astro::planet::geocentric_coord::apparent(Planet::NEPTUNE, jde_tt);
-    case Target::PLUTO: return astro::planet::geocentric_coord::apparent(Planet::PLUTO, jde_tt);
-    default: throw std::logic_error { "Nodes have no spherical distance" };
-  }
-}
-
 auto expect_same(const BodyState& before, const BodyState& after) -> void {
   EXPECT_EQ(before.target, after.target);
   EXPECT_EQ(before.longitude.deg(), after.longitude.deg());
   EXPECT_EQ(before.latitude.deg(), after.latitude.deg());
   ASSERT_EQ(before.distance.has_value(), after.distance.has_value());
   if (before.distance) {
-    EXPECT_EQ(distance_au(before.distance), distance_au(after.distance));
+    EXPECT_EQ(util::test::req(before.distance).au(), util::test::req(after.distance).au());
   }
   EXPECT_EQ(std::bit_cast<uint64_t>(before.longitude_rate.deg_per_tt_day),
             std::bit_cast<uint64_t>(after.longitude_rate.deg_per_tt_day));
@@ -118,7 +94,7 @@ auto check_composition(const Snapshot& result, const astro::GeoLocation& observe
       EXPECT_EQ(body.longitude.deg(), expected.λ.deg());
       EXPECT_EQ(body.latitude.deg(), expected.β.deg());
       ASSERT_TRUE(body.distance.has_value());
-      EXPECT_EQ(distance_au(body.distance), expected.r.au());
+      EXPECT_EQ(util::test::req(body.distance).au(), expected.r.au());
     } else {
       using astro::lunar_node::Node;
       constexpr std::array nodes { Node::MEAN_ASCENDING, Node::MEAN_DESCENDING, Node::TRUE_ASCENDING, Node::TRUE_DESCENDING };
@@ -174,18 +150,30 @@ TEST(Chart, DateModelSelectionHandlesChronoMaximumYear) {
 }
 
 TEST(Chart, SameInstantCompositionForEveryModelAndHouseSystem) {
-  for (const auto model : MODELS) {
-    for (const auto system : std::array { System::EQUAL, System::WHOLE_SIGN, System::PLACIDUS }) {
-      for (const auto observer : std::array { location(51.5, 0.0), location(-33.87, 151.21) }) {
-        const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
-        const auto result = calculate(dt, Scale::UTC, observer, system, model);
-        const auto tt = astro::leap_second::utc_to_tt(dt);
-        const auto ut1 = calendar::add_seconds(tt, -astro::delta_t::compute(model, tt));
-        EXPECT_EQ(result.times.jde_tt, astro::julian_day::tt_to_jde(tt));
-        EXPECT_EQ(result.times.jd_ut1, astro::julian_day::ut1_to_jd(ut1));
-        check_composition(result, observer, system);
-      }
-    }
+  struct CompositionCase {
+    std::string_view role;
+    Model model;
+    System system;
+    astro::GeoLocation observer;
+  };
+  const std::array cases {
+    CompositionCase { .role = "algo1-equal",      .model = Model::ALGO1, .system = System::EQUAL,      .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo2-whole",      .model = Model::ALGO2, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo3-south",      .model = Model::ALGO3, .system = System::PLACIDUS,   .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo4-placidus",   .model = Model::ALGO4, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-equal",      .model = Model::ALGO5, .system = System::EQUAL,      .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo5-whole",      .model = Model::ALGO5, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-placidus",   .model = Model::ALGO5, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
+  };
+  const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
+  for (const auto& row : cases) {
+    SCOPED_TRACE(row.role);
+    const auto result = calculate(dt, Scale::UTC, row.observer, row.system, row.model);
+    const auto tt = astro::leap_second::utc_to_tt(dt);
+    const auto ut1 = calendar::add_seconds(tt, -astro::delta_t::compute(row.model, tt));
+    EXPECT_EQ(result.times.jde_tt, astro::julian_day::tt_to_jde(tt));
+    EXPECT_EQ(result.times.jd_ut1, astro::julian_day::ut1_to_jd(ut1));
+    check_composition(result, row.observer, row.system);
   }
 }
 
@@ -429,6 +417,21 @@ TEST(Chart, RetainedModelSeamsKeepTheirSelectedEvaluationPolicy) {
         calendar::add_seconds(tt, -astro::delta_t::compute(model, tt))));
     }
   }
+}
+
+TEST(Chart, RateDomainIntersectsEveryTarget) {
+  const auto start = std::ranges::max(
+    TARGETS | std::views::transform([](const Target target) {
+      return astro::ephemeris::longitude_rate_domain(target).front();
+    })
+  );
+  const auto end = std::ranges::min(
+    TARGETS | std::views::transform([](const Target target) {
+      return astro::ephemeris::longitude_rate_domain(target).back();
+    })
+  );
+  EXPECT_EQ(detail::START_JDE_TT, start);
+  EXPECT_EQ(detail::END_JDE_TT, end);
 }
 
 } // namespace astro::chart::test

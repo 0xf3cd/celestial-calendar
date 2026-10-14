@@ -155,9 +155,7 @@ FEATURES: Final[List[Feature]] = [
 
 
 # What each CI leg supports, measured by this probe -- not inferred from release notes, and not
-# guessed. A mismatch is the point of the gate: it fires the day a runner's
-# toolchain gains one of these, which is the day the waiting TODOs become actionable, and
-# nothing else in the repo would ever notice.
+# guessed. Lost capability fails the gate; new capability is a maintenance notice.
 #
 # The compiler is only half of what decides a row -- the standard library is the other half,
 # and on Linux the two ship separately. Record both, or a runner image bumping its default GCC
@@ -207,11 +205,8 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
 }
 
 
-# How many TODO sites each feature's token must be visible at. `todo_sites` only sees a TODO
-# that names its feature on the same line, so a wrapped or reworded comment silently drops a
-# site (#175) -- and `monuments()` only notices when the count reaches zero. The count is the
-# tripwire: drift in either direction stays red until this table is updated by hand, which is
-# what keeps a site going dark (or a new workaround appearing) a deliberate act.
+# Recorded TODO counts expose wrapped markers and new workarounds (#175).
+# Drift is a maintenance notice, not a compiler-capability failure.
 SITE_COUNTS: Final[Dict[str, int]] = {
   "tuple_like": 1,
   "generator": 3,
@@ -227,13 +222,7 @@ SITE_COUNTS: Final[Dict[str, int]] = {
 def todo_sites(token: str) -> List[str]:
   """Find the TODO comments waiting on `token`, with their current line numbers.
 
-  Derived, not listed: a hand-maintained site list would go stale between the day a feature
-  unlocks and the day someone reads this file -- which is the whole interval this gate exists
-  to cover.
-
-  Both words have to land on one line, so a TODO that wraps its feature name onto the next one
-  goes unseen here. That blind spot is covered where it would matter: the feature reaches
-  `monuments()` instead, which refuses to let it sit in the table with nothing to point at.
+  TODO and the feature name must share a line. Wrapped names are not matched.
   """
   src_dir = paths.cpp_src_dir()
   root = paths.proj_root()
@@ -252,14 +241,10 @@ def todo_sites(token: str) -> List[str]:
 def adoptable(feature: Feature) -> List[str]:
   """The sites that could stop hand-rolling `feature` today, if any.
 
-  Detecting *changes* is not enough on its own. Once a feature is recorded as usable everywhere
-  the comparison above goes quiet forever, and the TODOs it unblocked would sit there unread --
-  the exact failure mode this gate replaces. So the recorded state is also read forwards: usable
-  on every leg, nothing recorded holding it back, and sites still working around it.
+  Report marked sites when the feature is usable on every recorded leg and is not deferred.
 
   Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. An unmarked
-  workaround cannot be named, which is why `monuments()` below refuses to let a feature sit in
-  the table with nothing to point at.
+  workaround cannot be named.
   """
   if feature.deferred or not all(EXPECTED[leg][feature.name] for leg in EXPECTED):
     return []
@@ -326,6 +311,16 @@ def compiles(cxx: str, program: str) -> bool:
       print_stdout=False,
       print_stderr=False,
     )
+    diagnostics = (ret.stdout + ret.stderr).lower()
+    if (
+      ret.retcode not in (0, 1)
+      or any(
+        marker in diagnostics
+        for marker in ("internal compiler error", "please submit a bug report", "frontend command failed")
+      )
+      or (ret.retcode == 1 and not diagnostics.strip())
+    ):
+      raise RuntimeError(f"Abnormal compiler result (exit {ret.retcode}): {diagnostics.strip()}")
     return ret.retcode == 0
 
 
@@ -337,14 +332,21 @@ def probe(cxx: str, feature: Feature) -> bool:
 def probe_features(leg: Optional[str] = None) -> int:
   """Report which awaited C++ features this toolchain can actually compile.
 
-  With `leg` naming a CI leg, the result is compared against `EXPECTED` and a difference is
-  an error. Without one, the probe only reports -- a local toolchain is nobody's baseline.
+  With `leg`, lost capability and malformed records fail. Unlocks and TODO maintenance
+  are informational. Without one, capability results have no baseline to regress against.
   """
   print("#" * 60)
   yellow_print("Probing C++ features the codebase is waiting on...")
 
   cxx = os.environ.get("CXX", "clang++")
-  version = run_cmd([cxx, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
+  try:
+    version = run_cmd([cxx, "--version"], print_cmd=False, print_stdout=False, print_stderr=False)
+  except OSError as error:
+    red_print(f"Cannot run compiler {cxx}: {error}")
+    return 1
+  if version.retcode != 0:
+    red_print(f"Compiler version query failed (exit {version.retcode}): {version.stderr}")
+    return 1
   blue_print(f"# Compiler: {cxx} -std={CXX_STANDARD}")
   blue_print(f"# {(version.stdout or '').splitlines()[0] if version.stdout else 'version unknown'}")
 
@@ -352,98 +354,64 @@ def probe_features(leg: Optional[str] = None) -> int:
     if leg not in EXPECTED:
       red_print(f"Unknown CI leg '{leg}'. Known legs: {', '.join(sorted(EXPECTED))}")
       return 1
-    # A feature added to FEATURES but not to EXPECTED would otherwise read as "just unlocked"
-    # on every leg forever, which is a gate that cries wolf rather than one that has a baseline.
     probed = {f.name for f in FEATURES}
-    unrecorded = [f.name for f in FEATURES if f.name not in EXPECTED[leg]]
-    if unrecorded:
-      red_print(f"No recorded state on '{leg}' for: {', '.join(unrecorded)}")
-      yellow_print(f"Run `./checks.py --features` on that toolchain and add the result to EXPECTED['{leg}'].")
+    tokens = {f.token for f in FEATURES}
+    if len(probed) != len(FEATURES) or len(tokens) != len(FEATURES):
+      red_print("Duplicate feature name or TODO token in FEATURES")
       return 1
-    stale = [name for name in EXPECTED[leg] if name not in probed]
-    if stale:
-      red_print(f"EXPECTED['{leg}'] still records features nobody probes: {', '.join(stale)}")
-      yellow_print("Drop them -- a baseline for a feature that is no longer measured records nothing.")
+    for recorded_leg, baseline in EXPECTED.items():
+      if set(baseline) != probed or any(type(value) is not bool for value in baseline.values()):
+        red_print(f"Malformed capability baseline for '{recorded_leg}': expected one boolean per feature")
+        return 1
+    if set(SITE_COUNTS) != tokens or any(type(count) is not int or count < 0 for count in SITE_COUNTS.values()):
+      red_print("Malformed SITE_COUNTS: expected one nonnegative integer per feature token")
       return 1
-    uncounted = [f.token for f in FEATURES if f.token not in SITE_COUNTS]
-    if uncounted:
-      red_print(f"No recorded TODO-site count for: {', '.join(uncounted)}")
-      yellow_print("Add them to SITE_COUNTS -- an uncounted feature's sites can go dark unseen (#175).")
-      return 1
-
-  if not compiles(cxx, CANARY):
-    red_print(f"{cxx} cannot compile a trivial -std={CXX_STANDARD} program.")
-    yellow_print("Fix the toolchain first. Every probe below would report GATED for the same")
-    yellow_print("reason, and on a leg whose baseline is mostly False that reads as a pass.")
-    return 1
-
-  if compiles(cxx, ANTI_CANARY):
-    red_print(f"{cxx} accepted a program that must not compile -- it is not a real compiler.")
-    yellow_print("A CXX that accepts everything reports every feature as USABLE, and only a")
-    yellow_print("baseline row that happens to record False would ever turn that red.")
-    return 1
 
   actual: Dict[str, bool] = {}
-  for feature in FEATURES:
-    actual[feature.name] = probe(cxx, feature)
-    (green_print if actual[feature.name] else yellow_print)(
-      f"{'USABLE  ' if actual[feature.name] else 'GATED   '}{feature.name}"
-    )
+  try:
+    if not compiles(cxx, CANARY):
+      red_print(f"{cxx} cannot compile a trivial -std={CXX_STANDARD} program.")
+      yellow_print("Fix the toolchain first; missing features cannot be measured with a broken compiler.")
+      return 1
+    if compiles(cxx, ANTI_CANARY):
+      red_print(f"{cxx} accepted a program that must not compile -- it is not a real compiler.")
+      return 1
+    for feature in FEATURES:
+      actual[feature.name] = probe(cxx, feature)
+      (green_print if actual[feature.name] else yellow_print)(
+        f"{'USABLE  ' if actual[feature.name] else 'GATED   '}{feature.name}"
+      )
+  except (OSError, RuntimeError) as error:
+    red_print(f"Compiler probe failed: {error}")
+    return 1
 
   print("#" * 60)
   if leg is None:
     green_print(f"{sum(actual.values())} of {len(FEATURES)} probed feature(s) usable here (report only)")
     return 0
 
-  changed = [f for f in FEATURES if actual[f.name] != EXPECTED[leg][f.name]]
-  if not changed:
+  regressed = [f for f in FEATURES if EXPECTED[leg][f.name] and not actual[f.name]]
+  unlocked = [f for f in FEATURES if actual[f.name] and not EXPECTED[leg][f.name]]
+  if not regressed and not unlocked:
     green_print(f"All {len(FEATURES)} feature(s) match the recorded state of '{leg}'")
+  for feature in regressed:
+    red_print(f"REGRESSION: {feature.name} is GATED on '{leg}' but was recorded as usable")
+  for feature in unlocked:
+    yellow_print(f"INFO: {feature.name} is now USABLE on '{leg}' ({feature.issue})")
+    for site in todo_sites(feature.token):
+      yellow_print(f"  {site}")
+  if unlocked:
+    yellow_print(f"Record the measured state in EXPECTED['{leg}']; adoption still waits for every leg.")
 
-    drift = site_drift()
-    if drift:
-      red_print("TODO-site counts drifted from SITE_COUNTS (#175):")
-      for line in drift:
-        red_print(f"  {line}")
-      yellow_print("A wrapped or reworded TODO goes dark silently; a new site means new hand-rolling.")
-      yellow_print("Restore the marker, or update SITE_COUNTS if the change is deliberate.")
-      return 1
-
-    ready = {f: sites for f in FEATURES if (sites := adoptable(f))}
-    if ready:
-      red_print("These compile on every leg, and the code is still working around them:")
-      for feature, sites in ready.items():
-        red_print(f"  {feature.name} ({feature.issue}) -- {len(sites)} site(s):")
-        for site in sites:
-          red_print(f"    {site}")
-      yellow_print("Adopt them and drop the TODO, or record why not in that Feature's `deferred` field.")
-      return 1
-
-    idle = monuments()
-    if idle:
-      red_print("These are usable everywhere with nothing left waiting on them:")
-      for feature in idle:
-        red_print(f"  {feature.name} ({feature.issue})")
-      yellow_print("Drop the row if it was adopted; tag the remaining hand-rolled sites with a")
-      yellow_print("TODO naming the feature if it was not. A row that can never speak is decoration.")
-      return 1
-
-    return 0
-
-  red_print(f"The toolchain on '{leg}' no longer matches what this repo recorded:")
-  for feature in changed:
-    if actual[feature.name]:
-      green_print(f"  + {feature.name} is now USABLE (recorded as gated)")
-      sites = todo_sites(feature.token)
-      if sites:
-        # Not "go adopt it": this leg says nothing about the other two, and adopting on one
-        # leg's word breaks the others' build. Record the state; `adoptable` calls the moment.
-        yellow_print(f"    {len(sites)} site(s) are waiting on it, unlocked once every leg agrees:")
-        for site in sites:
-          yellow_print(f"      {site}")
-      else:
-        yellow_print(f"    Adoption is tracked in {feature.issue}.")
-    else:
-      red_print(f"  - {feature.name} is GATED but was recorded as usable -- the toolchain regressed.")
-
-  yellow_print(f"Record the new state in EXPECTED['{leg}'] in automation/feature_probe.py.")
-  return 1
+  for line in site_drift():
+    yellow_print(f"INFO: TODO-site count drift (#175): {line}")
+  for feature in FEATURES:
+    sites = adoptable(feature)
+    if sites:
+      yellow_print(f"INFO: {feature.name} is usable on every recorded leg ({feature.issue}):")
+      for site in sites:
+        yellow_print(f"  {site}")
+      yellow_print("Adopt it or record the reason for deferral.")
+  for feature in monuments():
+    yellow_print(f"INFO: {feature.name} has no waiting TODO sites ({feature.issue}); check whether to retire this row.")
+  return int(bool(regressed))

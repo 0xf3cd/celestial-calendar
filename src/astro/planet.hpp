@@ -23,6 +23,7 @@
 
 #include "earth.hpp"
 #include "earth/precession.hpp"
+#include "coord_transform.hpp"
 #include "illumination.hpp"
 #include "julian_day.hpp"
 #include "pluto.hpp"
@@ -50,6 +51,29 @@ enum class Planet : uint8_t {
   PLUTO = 7,
 };
 
+/**
+ * @brief Return the canonical English name of a planetary target.
+ * @param planet A named planetary enumerator.
+ * @return The target name.
+ * @throw std::invalid_argument If the target is unknown.
+ */
+[[nodiscard]] inline auto name(const Planet planet) -> std::string_view {
+  switch (planet) {
+    case Planet::MERCURY: return "Mercury";
+    case Planet::VENUS:   return "Venus";
+    case Planet::MARS:    return "Mars";
+    case Planet::JUPITER: return "Jupiter";
+    case Planet::SATURN:  return "Saturn";
+    case Planet::URANUS:  return "Uranus";
+    case Planet::NEPTUNE: return "Neptune";
+    case Planet::PLUTO:   return "Pluto";
+    default:
+      throw std::invalid_argument {
+        std::format("Unknown planet {}", static_cast<uint32_t>(planet))
+      };
+  }
+}
+
 namespace detail {
 
 struct RectangularCoordinate {
@@ -73,23 +97,6 @@ struct Vsop87dMapping {
 inline constexpr std::size_t LIGHT_TIME_MAX_ITERATIONS = 10;
 // One day resolves outer-planet motion without extending the marker beyond a local direction test.
 inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
-
-[[nodiscard]] inline auto name(const Planet planet) -> std::string_view {
-  switch (planet) {
-    case Planet::MERCURY: return "Mercury";
-    case Planet::VENUS:   return "Venus";
-    case Planet::MARS:    return "Mars";
-    case Planet::JUPITER: return "Jupiter";
-    case Planet::SATURN:  return "Saturn";
-    case Planet::URANUS:  return "Uranus";
-    case Planet::NEPTUNE: return "Neptune";
-    case Planet::PLUTO:   return "Pluto";
-    default:
-      throw std::invalid_argument {
-        std::format("Unknown planet {}", static_cast<uint32_t>(planet))
-      };
-  }
-}
 
 template <astro::vsop87d::Planet planet>
 [[nodiscard]] inline auto heliocentric(const double jde_tt) -> astro::toolbox::SphericalCoordinate {
@@ -245,7 +252,7 @@ template <Planet target, astro::vsop87d::Planet model>
   };
 }
 
-[[nodiscard]] inline auto validate_apparent_input(
+[[nodiscard]] inline auto validate_input(
   const Planet planet,
   const double jde_tt
 ) -> std::string_view {
@@ -254,7 +261,14 @@ template <Planet target, astro::vsop87d::Planet model>
       std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
     };
   }
-  const std::string_view planet_name = name(planet);
+  return name(planet);
+}
+
+[[nodiscard]] inline auto validate_apparent_input(
+  const Planet planet,
+  const double jde_tt
+) -> std::string_view {
+  const std::string_view planet_name = validate_input(planet, jde_tt);
   if (planet == Planet::PLUTO) {
     pluto::validate_apparent_jde(jde_tt);
   }
@@ -265,20 +279,25 @@ inline auto validate_retrograde_input(
   const Planet planet,
   const double jde_tt
 ) -> void {
-  if (not std::isfinite(jde_tt)) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format("Argument `jde_tt` is not finite, got {}", jde_tt)
-    };
-  }
-  static_cast<void>(name(planet));
+  static_cast<void>(validate_input(planet, jde_tt));
   if (planet == Planet::PLUTO) {
-    pluto::validate_retrograde_jde(jde_tt);
+    pluto::validate_jde(
+      jde_tt,
+      pluto::APPARENT_START_JDE_TT + RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS,
+      pluto::APPARENT_END_JDE_TT - RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS,
+      "centered-retrograde"
+    );
   }
 }
 
 } // namespace detail
 
 namespace geocentric_coord {
+
+/** @brief Inclusive start of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_START_JDE_TT = astro::planet::detail::pluto::APPARENT_START_JDE_TT;
+/** @brief Exclusive end of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPARENT_END_JDE_TT;
 
 /**
  * @brief Calculate a planet's apparent geocentric ecliptic position.
@@ -310,7 +329,7 @@ namespace geocentric_coord {
       .β = geometric.β + aberration.Δβ,
       .r = geometric.r,
     };
-    const auto fk5 = astro::sun::geocentric_coord::fk5_correction(jde_tt, aberrated);
+    const auto fk5 = astro::coords::fk5_correction(jde_tt, aberrated);
     const auto nutation = astro::earth::nutation::longitude(jde_tt);
 
     return {

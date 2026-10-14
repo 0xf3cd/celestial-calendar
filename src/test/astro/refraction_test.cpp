@@ -23,6 +23,7 @@
 
 #include "util.hpp"
 #include "astro.hpp"
+#include "../test_helper.hpp"
 
 
 namespace astro::earth::refraction::test {
@@ -38,17 +39,7 @@ using astro::earth::refraction::at_horizon;
 using astro::earth::refraction::bennett;
 using astro::earth::refraction::saemundsson;
 
-/**
- * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
- *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper.
- */
-template <typename T>
-auto req(const std::optional<T>& opt) -> const T& {
-  if (not opt.has_value()) {
-    throw std::logic_error { "expected optional to hold a value" };
-  }
-  return *opt;
-}
+using util::test::req;
 
 
 TEST(Refraction, BennettAtHorizonMatchesStandardRefraction) {

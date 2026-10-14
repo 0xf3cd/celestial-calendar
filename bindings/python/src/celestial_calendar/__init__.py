@@ -704,8 +704,10 @@ def chart_snapshot(
   _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
   if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
     raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
+  month = _integer(month, "civil_dt.month", 1, 12)
+  day = _integer(day, "civil_dt.day", 1, _gregorian_month_length(year, month))
   try:
-    value = _civil_datetime(CivilDateTime(year, month, day, fraction), "civil_dt")
+    fraction = _ranged_float(fraction, "civil_dt.fraction", 0.0, 1.0, include_maximum=False)
   except OverflowError as error:
     raise ValueError("chart civil fraction must be a finite real number") from error
 
@@ -724,7 +726,10 @@ def chart_snapshot(
 
   result = _binding.call(
     "chart_snapshot_v1",
-    *value,
+    year,
+    month,
+    day,
+    fraction,
     checked_scale.value,
     latitude,
     longitude,

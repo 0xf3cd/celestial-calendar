@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <format>
@@ -259,6 +260,37 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  */
 [[nodiscard]] inline auto utc_to_jde(const calendar::Datetime& utc_dt) -> double {
   return tt_to_jde(astro::leap_second::utc_to_tt(utc_dt));
+}
+
+
+/**
+ * @brief Return the JDE(TT) of January 1 at 00:00 UTC in a calendar year.
+ * @param year Gregorian year in [1, 32767].
+ * @return The UTC year boundary expressed in TT.
+ * @throw std::invalid_argument If the calendar year is invalid.
+ * @throw std::runtime_error If the year is below 1; see @ref ut1_to_jd.
+ * @note Before 1972 this uses the UT1 substitute from @ref utc_to_jde.
+ * @see utc_to_jde
+ */
+[[nodiscard]] inline auto utc_year_start_jde(const std::chrono::year year) -> double {
+  return utc_to_jde(calendar::Datetime { util::to_ymd(static_cast<int32_t>(year), 1, 1), 0.0 });
+}
+
+/**
+ * @brief Return the half-open UTC year window expressed as JDE(TT) bounds.
+ * @param year Gregorian year in [1, 32766], leaving the next January 1 representable.
+ * @return Inclusive start and exclusive end, in that order.
+ * @throw std::invalid_argument If the year leaves [1, 32766].
+ * @note Before 1972 the UTC conversion uses UT1; see @ref utc_to_jde.
+ */
+[[nodiscard]] inline auto utc_year_jde_window(const int32_t year) -> std::array<double, 2> {
+  if (year < 1 or year > 32766) {
+    throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
+  }
+  return {
+    utc_year_start_jde(std::chrono::year { year }),
+    utc_year_start_jde(std::chrono::year { year + 1 }),
+  };
 }
 
 

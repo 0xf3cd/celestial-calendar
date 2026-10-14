@@ -221,28 +221,9 @@ public:
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
 [[nodiscard]] inline auto moments(const int32_t year) -> std::vector<double> {
-  if (year < 1 or year > 32766) {
-    throw std::invalid_argument {
-      std::format("Year {} is out of range [1, 32766].", year)
-    };
-  }
-
-  // The first moment of the year, inclusive.
-  const calendar::Datetime start_moment_utc {
-    util::to_ymd(year, 1, 1),
-    0.0,
-  };
-
-  // The last moment of the year, exclusive.
-  const calendar::Datetime end_moment_utc {
-    util::to_ymd(year + 1, 1, 1),
-    0.0,
-  };
-
   // #84: the bounds are UTC, not UT1 — a conjunction between the two midnights used to be
   // attributed to the neighbouring year.
-  const auto start_jde = astro::julian_day::utc_to_jde(start_moment_utc);
-  const auto end_jde = astro::julian_day::utc_to_jde(end_moment_utc);
+  const auto [start_jde, end_jde] = astro::julian_day::utc_year_jde_window(year);
 
   RootGenerator gen(start_jde);
   std::vector<double> roots;
@@ -460,17 +441,7 @@ public:
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
  */
 [[nodiscard]] inline auto moments(const int32_t year, const PhaseKind kind) -> std::vector<double> {
-  if (year < 1 or year > 32766) {
-    throw std::invalid_argument {
-      std::format("Year {} is out of range [1, 32766].", year)
-    };
-  }
-
-  const calendar::Datetime start_moment_utc { util::to_ymd(year, 1, 1), 0.0 };
-  const calendar::Datetime end_moment_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
-
-  const auto start_jde = astro::julian_day::utc_to_jde(start_moment_utc);
-  const auto end_jde = astro::julian_day::utc_to_jde(end_moment_utc);
+  const auto [start_jde, end_jde] = astro::julian_day::utc_year_jde_window(year);
 
   RootGenerator gen(start_jde, kind);
   std::vector<double> roots;
@@ -575,7 +546,7 @@ namespace astro::moon_phase::illumination {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& i) -> double {
-  return astro::illumination::detail::fraction(i);
+  return astro::illumination::fraction(i);
 }
 
 /**

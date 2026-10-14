@@ -198,7 +198,7 @@ def run_happy_paths() -> None:
   checks.append("delta_t")
 
   assert len(checks) == len(set(checks)) == 22
-  print("PASS public functions 22/22")
+  print(f"PASS public functions {len(checks)}/{len(checks)}")
 
 
 def run_validation_guards() -> None:
@@ -517,7 +517,7 @@ def run_acceptance_boundaries() -> None:
       assert celestial.lunar_year_info(algorithm, year).first_day.year == year, (algorithm, year)
       boundaries.append(f"{algorithm.value} year {year}")
   assert len(boundaries) == len(set(boundaries)) == 18
-  print("PASS inclusive public boundaries 18/18")
+  print(f"PASS inclusive public boundaries {len(boundaries)}/{len(boundaries)}")
 
 
 def run_protocol_seams() -> None:

@@ -62,15 +62,15 @@ struct Snapshot {
 namespace detail {
 
 inline constexpr double START_JDE_TT = std::max({
-  astro::planet::detail::pluto::APPARENT_START_JDE_TT,
-  astro::lunar_node::detail::START_JDE_TT,
-  astro::ephemeris::detail::WORKING_START_JDE_TT,
-}) + astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::PLUTO).front(),
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::TRUE_ASCENDING).front(),
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::SUN).front(),
+});
 inline constexpr double END_JDE_TT = std::min({
-  astro::planet::detail::pluto::APPARENT_END_JDE_TT,
-  astro::lunar_node::detail::END_JDE_TT,
-  astro::ephemeris::detail::WORKING_END_JDE_TT,
-}) - astro::ephemeris::detail::DIFFERENCE_REACH_TT_DAYS;
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::PLUTO).back(),
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::TRUE_ASCENDING).back(),
+  astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::SUN).back(),
+});
 inline constexpr double ALGO4_END_JDE_TT = 2464328.5;
 
 inline auto validate_civil(const calendar::Datetime& civil_dt, const Scale scale) -> void {
@@ -93,7 +93,6 @@ inline auto validate_civil(const calendar::Datetime& civil_dt, const Scale scale
 }
 
 inline auto validate_domain(const double jde_tt, const astro::delta_t::Model model) -> void {
-  astro::ephemeris::detail::validate_stencil(jde_tt);
   if (jde_tt < START_JDE_TT or jde_tt >= END_JDE_TT) {
     throw std::invalid_argument {
       std::format("Chart JDE(TT) {} leaves [{}, {})", jde_tt, START_JDE_TT, END_JDE_TT)
@@ -116,34 +115,26 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
   }
 }
 
-[[nodiscard]] inline auto delta_t_seconds(const astro::delta_t::Model model, const calendar::Datetime& dt) -> double {
-  try {
-    const double seconds = astro::delta_t::compute(model, dt);
-    if (not std::isfinite(seconds)) {
-      throw std::runtime_error { "Non-finite chart Delta T evaluation" };
-    }
-    return seconds;
-  } catch (const std::out_of_range& error) {
-    throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
-  }
-}
-
 [[nodiscard]] inline auto resolve_times(
   const calendar::Datetime& civil_dt,
   const Scale scale,
   const astro::delta_t::Model model
 ) -> Times {
   validate_civil(civil_dt, scale);
-  const auto tt = scale == Scale::UTC
-    ? astro::leap_second::utc_to_tt(civil_dt)
-    : calendar::add_seconds(civil_dt, delta_t_seconds(model, civil_dt));
-  const double jde_tt = astro::julian_day::tt_to_jde(tt);
-  validate_domain(jde_tt, model);
+  try {
+    const auto tt = scale == Scale::UTC
+      ? astro::leap_second::utc_to_tt(civil_dt)
+      : astro::delta_t::ut1_to_tt(model, civil_dt);
+    const double jde_tt = astro::julian_day::tt_to_jde(tt);
+    validate_domain(jde_tt, model);
 
-  const auto ut1 = scale == Scale::UTC
-    ? calendar::add_seconds(tt, -delta_t_seconds(model, tt))
-    : civil_dt;
-  return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
+    const auto ut1 = scale == Scale::UTC
+      ? astro::delta_t::tt_to_ut1(model, tt)
+      : civil_dt;
+    return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
+  } catch (const std::out_of_range& error) {
+    throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
+  }
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): Angle members require values; every aggregate construction supplies them.
@@ -170,7 +161,7 @@ struct Position {
     };
   };
 
-  if (const auto planet = astro::ephemeris::detail::planet_for_target(target); planet.has_value()) {
+  if (const auto planet = astro::ephemeris::planet_for_target(target); planet.has_value()) {
     return with_distance(apparent(*planet, jde_tt));
   }
 

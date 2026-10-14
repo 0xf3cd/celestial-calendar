@@ -15,7 +15,7 @@ from __future__ import annotations
 import datetime
 import json
 import math
-from dataclasses import FrozenInstanceError, fields, replace
+from dataclasses import FrozenInstanceError, asdict, fields, replace
 from enum import Enum, IntFlag
 from itertools import product
 from operator import setitem
@@ -26,6 +26,7 @@ import celestial_calendar as celestial
 from celestial_calendar import _binding
 from celestial_calendar import chart as chart_values
 from smoke import Trap, raises, replaced_binding
+from chart_replay import assert_chart_replay
 
 
 REPO = Path(__file__).resolve().parents[4]
@@ -208,6 +209,7 @@ def run_validation_guards() -> None:
   for longitude in (-180.0001, 180.0001):
     cases.append(({"location": celestial.GeoLocation(0.0, longitude)}, ValueError))
 
+  assert len(cases) == 108, "independent chart raw-input guard inventory"
   trap = Trap(fail=True)
   with replaced_binding("chart_snapshot_v1", trap):
     for changes, error_type in cases:
@@ -330,6 +332,16 @@ def run_error_translation() -> None:
     assert native.calls == reader.calls == 1
 
   malformed = [SimpleNamespace(valid=True), SimpleNamespace()]
+  fixture = native_fixture()
+  malformed.append(
+    SimpleNamespace(
+      valid=True,
+      jd_ut1=fixture.jd_ut1,
+      jde_tt=fixture.jde_tt,
+      bodies=fixture.bodies,
+      houses=fixture.houses,
+    )
+  )
   for path, bad in (
     (("jd_ut1",), math.nan),
     (("jde_tt",), math.inf),
@@ -356,13 +368,7 @@ def run_error_translation() -> None:
     else:
       setattr(owner, path[-1], bad)
     malformed.append(native)
-  fixture = native_fixture()
-  malformed.extend(
-    (
-      SimpleNamespace(valid=True, bodies=tuple(fixture.bodies)[:-1], houses=fixture.houses),
-      SimpleNamespace(valid=True, bodies=fixture.bodies, houses=SimpleNamespace(cusps_deg=(0.0,) * 11)),
-    )
-  )
+  assert len(malformed) == 18, "independent chart malformed-payload inventory"
   reader = Trap(fail=True)
   with replaced_binding("last_error", reader):
     for payload in malformed:
@@ -385,7 +391,7 @@ def check_legacy_positions(value: celestial.ChartSnapshot) -> None:
 
 
 def run_documented_replay() -> None:
-  """Run the documented civil example through the installed binary and report replay residuals."""
+  """Assert the documented civil example's numeric replay through the installed binary."""
   example = json.loads(EXAMPLE.read_text(encoding="utf-8"))
   inputs = example["input"]
   assert "not an independent physical-accuracy oracle" in example["role"]
@@ -408,20 +414,88 @@ def run_documented_replay() -> None:
   assert value == snapshot() == snapshot(model=celestial.DeltaTModel.DEFAULT)
   check_snapshot(value)
   check_legacy_positions(value)
-  for index, expected in enumerate(example["bodies"]):
-    assert value.bodies[index].target.name == expected["target"]
-    assert (value.bodies[index].distance_au is None) == (expected["distance_au"] is None)
-  # Report example drift without inventing a cross-platform physical or replay tolerance.
-  differences = [abs(getattr(value.times, name) - expected) for name, expected in example["times"].items()]
-  print(f"REPLAY chart example time max_abs_days={max(differences):.17g}")
-  for name in ("longitude_deg", "latitude_deg", "distance_au", "longitude_rate_deg_per_tt_day"):
-    differences = [
-      abs(getattr(body, name) - expected[name])
-      for body, expected in zip(value.bodies, example["bodies"], strict=True)
-      if expected[name] is not None
-    ]
-    print(f"REPLAY chart example {name} max_abs={max(differences):.17g}")
+  actual = asdict(value)
+  for body in actual["bodies"]:
+    body["target"] = body["target"].name
+  for name, difference in assert_chart_replay(actual, example).items():
+    print(f"REPLAY chart example {name} max_abs={difference:.17g}")
   print("PASS installed chart documented example, DEFAULT/ALGO5 and unchanged Sun/Moon composition")
+
+
+def run_replay_corruption_controls() -> None:
+  """Reject valid-range changes to real native outputs, then replay the clean result."""
+  original = _binding.FUNCTIONS["chart_snapshot_v1"]
+
+  for role in ("mercury-longitude", "cusp7", "pluto-rate"):
+
+    def corrupted(*arguments, role=role):
+      result = original(*arguments)
+      assert result.valid
+      if role == "mercury-longitude":
+        result.bodies[2].longitude_deg = (result.bodies[2].longitude_deg + 90.0) % 360.0
+      elif role == "cusp7":
+        result.houses.cusps_deg[6] = (result.houses.cusps_deg[6] + 90.0) % 360.0
+      else:
+        result.bodies[9].longitude_rate_deg_per_tt_day += 1.0
+      return result
+
+    with replaced_binding("chart_snapshot_v1", corrupted):
+      error = raises(AssertionError, run_documented_replay)
+      assert "replay residual" in str(error), f"wrong corruption detector for {role}: {error}"
+    run_documented_replay()
+    assert _binding.last_error_text() == ""
+  print("PASS installed native-return Mercury/cusp/rate corruptions and clean recovery")
+
+
+def run_ingress_native_boundaries() -> None:
+  """Pair public ingress outcomes with direct native results at the same raw inputs."""
+  utc, ut1 = celestial.CivilScale.UTC, celestial.CivilScale.UT1
+  algo4, algo5 = celestial.DeltaTModel.ALGO4, celestial.DeltaTModel.ALGO5
+  native_failure = celestial.CelestialError
+  cases = (
+    ("civil-below", (1884, 12, 31, 0.5), ut1, 51.5, 0.0, algo5, ValueError),
+    ("civil-above", (2100, 1, 1, 0.0), ut1, 51.5, 0.0, algo5, ValueError),
+    ("chrono-alias", (2026 + 65536, 1, 1, 0.5), ut1, 51.5, 0.0, algo5, ValueError),
+    ("utc-below", (1971, 12, 31, 0.99999), utc, 51.5, 0.0, algo5, ValueError),
+    ("utc-first", (1972, 1, 1, 0.0), utc, 51.5, 0.0, algo5, None),
+    ("fraction-outside", (2026, 1, 1, 1.0), utc, 51.5, 0.0, algo5, ValueError),
+    ("fraction-inside", (2026, 1, 1, math.nextafter(1.0, 0.0)), utc, 51.5, 0.0, algo5, None),
+    ("latitude-outside", (2026, 1, 1, 0.5), utc, 90.0, 0.0, algo5, ValueError),
+    ("latitude-inside", (2026, 1, 1, 0.5), utc, 90.0 - 1e-6, 0.0, algo5, None),
+    ("longitude-outside", (2026, 1, 1, 0.5), utc, 51.5, math.nextafter(180.0, math.inf), algo5, ValueError),
+    ("longitude-edge", (2026, 1, 1, 0.5), utc, 51.5, 180.0, algo5, None),
+    ("joint-start-outside", (1885, 1, 1, 0.0), ut1, 51.5, 0.0, algo5, native_failure),
+    ("joint-start-inside", (1885, 1, 2, 0.376), ut1, 51.5, 0.0, algo5, None),
+    ("joint-end-inside", (2099, 12, 31, 0.624), utc, 51.5, 0.0, algo5, None),
+    ("joint-end-outside", (2099, 12, 31, 0.625), utc, 51.5, 0.0, algo5, native_failure),
+    ("algo4-inside", (2034, 12, 31, 0.99919), utc, 51.5, 0.0, algo4, None),
+    ("algo4-outside", (2034, 12, 31, 0.99919925925925923), utc, 51.5, 0.0, algo4, native_failure),
+  )
+  model_codes = {celestial.DeltaTModel.ALGO4: 4, celestial.DeltaTModel.ALGO5: 5}
+  assert len(cases) == 17, "independent chart public/native boundary inventory"
+  for role, civil, scale, latitude, longitude, model, error_type in cases:
+    arguments = (*civil, scale.value, latitude, longitude, celestial.HouseSystem.EQUAL.value, model_codes[model])
+    native = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)
+    assert native.valid is (error_type is None), f"native outcome: {role}"
+    native_error = _binding.last_error_text()
+    public_arguments = {
+      "civil_dt": celestial.CivilDateTime(*civil),
+      "scale": scale,
+      "location": celestial.GeoLocation(latitude, longitude),
+      "system": celestial.HouseSystem.EQUAL,
+      "model": model,
+    }
+    if error_type is None:
+      check_snapshot(snapshot(**public_arguments))
+      assert native_error == _binding.last_error_text() == "", role
+    else:
+      assert native_error, role
+      error = raises(error_type, lambda arguments=public_arguments: snapshot(**arguments))
+      if error_type is celestial.CelestialError:
+        assert error.operation == "chart_snapshot" and error.recorded and str(error) == native_error, role
+      check_snapshot(snapshot())
+      assert _binding.last_error_text() == "", role
+  print(f"PASS paired public/native ingress and joint-domain boundaries {len(cases)}/{len(cases)}")
 
 
 def run_core_aligned_cases() -> None:
@@ -547,6 +621,8 @@ def main() -> None:
   run_owned_values()
   run_error_translation()
   run_documented_replay()
+  run_replay_corruption_controls()
+  run_ingress_native_boundaries()
   run_core_aligned_cases()
   run_unresolved_ascendant()
 

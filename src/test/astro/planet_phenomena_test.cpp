@@ -16,6 +16,8 @@
 #include <limits>
 #include <ranges>
 #include <stdexcept>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -410,11 +412,56 @@ TEST(PlanetPhenomena, SamplingRejectsInvalidStep) {
   );
 }
 
+TEST(PlanetPhenomena, CoarseGridReversalsExposeHiddenCrossingPairs) {
+  const auto public_events = events(Planet::MERCURY, 2025);
+  const auto hidden_pair = [](const std::array<double, 3> jde_tt) {
+    std::vector<detail::Sample> grid;
+    grid.reserve(jde_tt.size());
+    for (const double sample_jde_tt : jde_tt) {
+      grid.push_back(detail::sample(Planet::MERCURY, sample_jde_tt));
+    }
+    std::vector<Event> found;
+    detail::append_crossings(
+      Planet::MERCURY,
+      detail::Category::INNER,
+      detail::crossing_samples(Planet::MERCURY, grid),
+      found
+    );
+    return std::pair { grid, found };
+  };
+  const auto expect_public = [&public_events](const Event& event) {
+    const auto match = std::ranges::find_if(public_events, [&event](const Event& candidate) {
+      return candidate.kind == event.kind and std::fabs(candidate.jde_tt - event.jde_tt) <= 1e-6;
+    });
+    EXPECT_NE(match, public_events.end()) << static_cast<int>(event.kind) << " at " << event.jde_tt;
+  };
+
+  // Positive samples hide the morning apparition's negative minimum.
+  const auto [morning_grid, morning] = hidden_pair({ 2460759.0, 2460826.0, 2460836.0 });
+  ASSERT_TRUE(std::ranges::all_of(morning_grid, [](const detail::Sample& sample) { return sample.difference > 0.0; }));
+  ASSERT_EQ(morning.size(), 2);
+  EXPECT_EQ(morning.front().kind, Kind::INFERIOR_CONJUNCTION);
+  EXPECT_EQ(morning.back().kind, Kind::SUPERIOR_CONJUNCTION);
+  std::ranges::for_each(morning, expect_public);
+
+  // Negative samples hide the evening apparition's positive maximum.
+  const auto [evening_grid, evening] = hidden_pair({ 2460715.0, 2460759.5, 2460769.5 });
+  ASSERT_TRUE(std::ranges::all_of(evening_grid, [](const detail::Sample& sample) { return sample.difference < 0.0; }));
+  ASSERT_EQ(evening.size(), 2);
+  EXPECT_EQ(evening.front().kind, Kind::SUPERIOR_CONJUNCTION);
+  EXPECT_EQ(evening.back().kind, Kind::INFERIOR_CONJUNCTION);
+  std::ranges::for_each(evening, expect_public);
+}
+
 TEST(PlanetPhenomena, NearTangentCrossingsAreSubdivided) {
-  // This extrapolated year has two conjunctions inside one coarse day (#60).
+  // The close pair straddles an integer day but fits inside one 1.5-day lattice interval (#60).
   const auto saturn = events(Planet::SATURN, 29841);
   ASSERT_EQ(std::ranges::count(saturn, Kind::CONJUNCTION, &Event::kind), 3);
   ASSERT_EQ(saturn.size(), 5);
+  const auto [start_jde_tt, end_jde_tt] = astro::julian_day::utc_year_jde_window(29841);
+  const auto wider_grid = detail::search(Planet::SATURN, start_jde_tt, end_jde_tt, 1.5);
+  ASSERT_EQ(std::ranges::count(wider_grid, Kind::CONJUNCTION, &Event::kind), 3);
+  ASSERT_EQ(wider_grid.size(), 5);
 }
 
 TEST(PlanetPhenomena, AdjacentWindowsShareExtremumOwnership) {
@@ -433,23 +480,29 @@ TEST(PlanetPhenomena, PublicSearchUsesOneDayCandidateGrid) {
 }
 
 TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
-  constexpr std::array planets {
-    Planet::MERCURY,
-    Planet::VENUS,
-    Planet::MARS,
-    Planet::JUPITER,
-    Planet::SATURN,
-    Planet::URANUS,
-    Planet::NEPTUNE,
+  struct ScanCase {
+    std::string_view role;
+    Planet planet;
+    int32_t year;
   };
-  constexpr std::array<int32_t, 7> years { 1, 4096, 8192, 16384, 24576, 29841, 32766 };
-  constexpr std::array<int32_t, 3> pluto_years { 1886, 2025, 2098 };
+  constexpr std::array cases {
+    ScanCase { .role = "first-year-inner", .planet = Planet::MERCURY, .year = 1 },
+    ScanCase { .role = "last-year-inner",  .planet = Planet::MERCURY, .year = 32766 },
+    ScanCase { .role = "remote-inner",     .planet = Planet::VENUS,   .year = 4096 },
+    ScanCase { .role = "remote-mars",      .planet = Planet::MARS,    .year = 8192 },
+    ScanCase { .role = "remote-jupiter",   .planet = Planet::JUPITER, .year = 16384 },
+    ScanCase { .role = "remote-saturn",    .planet = Planet::SATURN,  .year = 24576 },
+    ScanCase { .role = "close-crossings",  .planet = Planet::SATURN,  .year = 29841 },
+    ScanCase { .role = "uranus-stations",  .planet = Planet::URANUS,  .year = 2025 },
+    ScanCase { .role = "neptune-wrap",     .planet = Planet::NEPTUNE, .year = 2025 },
+    ScanCase { .role = "last-year-outer",  .planet = Planet::NEPTUNE, .year = 32766 },
+    ScanCase { .role = "pluto-first-year", .planet = Planet::PLUTO,   .year = 1886 },
+    ScanCase { .role = "pluto-reference",  .planet = Planet::PLUTO,   .year = 2025 },
+    ScanCase { .role = "pluto-last-year",  .planet = Planet::PLUTO,   .year = 2098 },
+  };
 
   const auto assert_same_events = [](const Planet planet, const int32_t year) {
-    const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
-    const calendar::Datetime end_utc { util::to_ymd(year + 1, 1, 1), 0.0 };
-    const double start_jde_tt = astro::julian_day::utc_to_jde(start_utc);
-    const double end_jde_tt = astro::julian_day::utc_to_jde(end_utc);
+    const auto [start_jde_tt, end_jde_tt] = astro::julian_day::utc_year_jde_window(year);
     const auto one_day = events(planet, year);
     const auto half_day = detail::search(planet, start_jde_tt, end_jde_tt, 0.5);
     ASSERT_FALSE(one_day.empty()) << year << ", planet " << static_cast<int>(planet);
@@ -464,13 +517,9 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
     }
   };
 
-  for (const int32_t year : years) {
-    for (const Planet planet : planets) {
-      assert_same_events(planet, year);
-    }
-  }
-  for (const int32_t year : pluto_years) {
-    assert_same_events(Planet::PLUTO, year);
+  for (const auto& row : cases) {
+    SCOPED_TRACE(row.role);
+    assert_same_events(row.planet, row.year);
   }
 }
 
