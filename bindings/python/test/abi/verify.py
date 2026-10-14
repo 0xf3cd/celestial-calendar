@@ -20,7 +20,7 @@ import re
 import sys
 from pathlib import Path
 
-from celestial_calendar import _binding
+from celestial_calendar import _abi, _binding
 
 
 HERE = Path(__file__).resolve().parent
@@ -36,6 +36,35 @@ PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
 EXPECTED_EXPORT_COUNT = 30
 EXPECTED_LAYOUT_COUNT = 19
 EXPECTED_RECORDING_COUNT = 29
+
+# Compatibility names of the legacy private binding module.
+LEGACY_BINDING_NAMES = (
+  "BINDING_SPECS",
+  "RECORDING_EXPORTS",
+  "STRUCT_TYPES",
+  "P_U32",
+  "P_DOUBLE",
+  "P_CHAR",
+  "JulianDay",
+  "UT1Time",
+  "SunCoordinate",
+  "MoonCoordinate",
+  "MoonIllumination",
+  "MoonPositionAngle",
+  "Discriminant",
+  "EquationOfTime",
+  "ApparentSolarTime",
+  "SiderealTime",
+  "JieqiMomentQuery",
+  "SupportedLunarYearRange",
+  "LunarYearInfo",
+  "LunarDate",
+  "GregorianDate",
+  "DeltaT",
+  "ChartBodyV1",
+  "ChartHousesV1",
+  "ChartSnapshotV1",
+)
 
 TYPE_LAYOUT = {
   "bool": (1, 1),
@@ -290,6 +319,14 @@ def verify_record_layouts(manifest_layouts: dict[str, object], header_layouts: d
         )
 
 
+def verify_binding_compatibility() -> None:
+  """Require retained private names to alias the actual declaration owner."""
+  for name in LEGACY_BINDING_NAMES:
+    assert getattr(_binding, name, None) is getattr(_abi, name), f"compatibility declaration identity: {name}"
+  for name, primitive in (("P_U32", ctypes.c_uint32), ("P_DOUBLE", ctypes.c_double), ("P_CHAR", ctypes.c_char)):
+    assert getattr(_binding, name, None) is ctypes.POINTER(primitive), f"compatibility pointer identity: {name}"
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -304,10 +341,7 @@ def verify_manifest(
   binding_names = unique(list(_binding.BINDING_SPECS), EXPECTED_EXPORT_COUNT, "ctypes bindings")
   function_names = unique(list(_binding.FUNCTIONS), EXPECTED_EXPORT_COUNT, "loaded functions")
   assert header_names == manifest_names == binding_names == function_names
-  for name, record in _binding.STRUCT_TYPES.items():
-    assert getattr(_binding, name, None) is record, f"compatibility record identity: {name}"
-  for name, primitive in (("P_U32", ctypes.c_uint32), ("P_DOUBLE", ctypes.c_double), ("P_CHAR", ctypes.c_char)):
-    assert getattr(_binding, name, None) is ctypes.POINTER(primitive), f"compatibility pointer identity: {name}"
+  verify_binding_compatibility()
 
   for name, entry in manifest_exports.items():
     assert canonical(entry["signature"]) == header_exports[name], f"header signature: {name}"

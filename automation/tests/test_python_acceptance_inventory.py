@@ -27,8 +27,8 @@ SCRIPTS = {
 }
 
 
-@pytest.mark.parametrize("fault", [None, "missing", "unregistered", "silent", "failed"])
-def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_path, monkeypatch, fault):
+@pytest.mark.parametrize("fault", [None, "missing", "unregistered", "silent", "misleading", "failed"])
+def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_path, monkeypatch, capsys, fault):
   source = Path(__file__).resolve().parents[2] / "bindings/python/test/run_all.py"
   spec = importlib.util.spec_from_file_location("acceptance_inventory_control", source)
   module = importlib.util.module_from_spec(spec)
@@ -43,19 +43,18 @@ def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_pat
   elif fault == "unregistered":
     (tmp_path / "consumer/unregistered.py").touch()
   calls = []
+  stdout = "" if fault == "silent" else "NOPASS here\n" if fault == "misleading" else "child diagnostic\nPASS control\n"
 
   def run(arguments, **keywords):
     calls.append((arguments, keywords))
-    return subprocess.CompletedProcess(
-      arguments, 1 if fault == "failed" else 0, "" if fault == "silent" else "PASS control\n"
-    )
+    return subprocess.CompletedProcess(arguments, 1 if fault == "failed" else 0, stdout)
 
   monkeypatch.setattr(module.subprocess, "run", run)
   if fault in {"missing", "unregistered"}:
     with pytest.raises(AssertionError, match="acceptance inventory mismatch"):
       module.main()
     assert not calls
-  elif fault == "silent":
+  elif fault in {"silent", "misleading"}:
     with pytest.raises(AssertionError, match="no PASS evidence"):
       module.main()
     assert len(calls) == 1
@@ -72,3 +71,4 @@ def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_pat
       and keywords == {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}
       for arguments, keywords in calls
     )
+  assert capsys.readouterr().out == stdout * len(calls)

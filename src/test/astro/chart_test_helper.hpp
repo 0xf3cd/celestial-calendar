@@ -31,7 +31,10 @@ namespace astro::chart::test {
   };
 }
 
-/** @brief Test-only target mapping to lower-level position APIs; nodes have no spherical distance. */
+/**
+ * @brief Replay lower-level positions without reusing @ref astro::ephemeris::planet_for_target.
+ * @note Nodes have no spherical distance.
+ */
 [[nodiscard]] inline auto expected_coordinates(const astro::ephemeris::Target target, const double jde_tt)
   -> astro::toolbox::SphericalCoordinate {
   using astro::planet::Planet;

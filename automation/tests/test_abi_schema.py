@@ -300,6 +300,7 @@ def test_equal_layout_record_substitution_still_breaks_identity(tmp_path):
 def native_verifier(monkeypatch):
   binding = abi_layout.load_abi()
   package = ModuleType("celestial_calendar")
+  package._abi = binding
   package._binding = binding
   monkeypatch.setitem(sys.modules, "celestial_calendar", package)
   old_path = list(sys.path)
@@ -310,6 +311,28 @@ def native_verifier(monkeypatch):
   finally:
     sys.path[:] = old_path
   return verifier
+
+
+def test_legacy_binding_names_alias_the_real_owner_not_a_matching_copy(native_verifier, monkeypatch):
+  native_verifier.verify_binding_compatibility()
+  copied = abi_layout.load_abi()
+  assert copied.JulianDay is not native_verifier._abi.JulianDay
+  monkeypatch.setattr(native_verifier, "_binding", copied)
+  with pytest.raises(AssertionError, match="compatibility declaration identity"):
+    native_verifier.verify_binding_compatibility()
+
+
+def test_future_declarations_do_not_expand_the_legacy_binding_names(native_verifier, monkeypatch):
+  owner = native_verifier._abi
+  binding = ModuleType("legacy_binding_fixture")
+  for name in native_verifier.LEGACY_BINDING_NAMES:
+    setattr(binding, name, getattr(owner, name))
+  future = type("ChartSnapshotV2", (ctypes.Structure,), {"_fields_": [("value", ctypes.c_double)]})
+  monkeypatch.setattr(owner, "ChartSnapshotV2", future, raising=False)
+  monkeypatch.setitem(owner.STRUCT_TYPES, "ChartSnapshotV2", future)
+  monkeypatch.setattr(native_verifier, "_binding", binding)
+  assert not hasattr(binding, "ChartSnapshotV2")
+  native_verifier.verify_binding_compatibility()
 
 
 def test_native_static_witnesses_and_raw_inventory(native_verifier):

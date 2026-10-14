@@ -222,8 +222,7 @@ SITE_COUNTS: Final[Dict[str, int]] = {
 def todo_sites(token: str) -> List[str]:
   """Find the TODO comments waiting on `token`, with their current line numbers.
 
-  TODO and the feature name must share a line. Wrapped names are not matched;
-  `monuments()` reports features with no matching sites.
+  TODO and the feature name must share a line. Wrapped names are not matched.
   """
   src_dir = paths.cpp_src_dir()
   root = paths.proj_root()
@@ -245,7 +244,7 @@ def adoptable(feature: Feature) -> List[str]:
   Report marked sites when the feature is usable on every recorded leg and is not deferred.
 
   Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. An unmarked
-  workaround cannot be named; `monuments()` reports features with no marked sites.
+  workaround cannot be named.
   """
   if feature.deferred or not all(EXPECTED[leg][feature.name] for leg in EXPECTED):
     return []

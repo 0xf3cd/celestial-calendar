@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 
 
-# Margins compare native replay with the stored snapshot; they are not ephemeris accuracy bounds.
+# Margins bound native replay against the stored snapshot; they are not ephemeris accuracy bounds.
 TIME_MARGIN_DAYS = 1e-9
 POSITION_MARGIN_DEG = 1e-8
 DISTANCE_MARGIN_AU = 1e-10

@@ -161,9 +161,9 @@ TEST(Chart, SameInstantCompositionForEveryModelAndHouseSystem) {
     CompositionCase { .role = "algo2-whole",      .model = Model::ALGO2, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
     CompositionCase { .role = "algo3-south",      .model = Model::ALGO3, .system = System::PLACIDUS,   .observer = location(-33.87, 151.21) },
     CompositionCase { .role = "algo4-placidus",   .model = Model::ALGO4, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "default-equal",    .model = Model::ALGO5, .system = System::EQUAL,      .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "default-whole",    .model = Model::ALGO5, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "default-placidus", .model = Model::ALGO5, .system = System::PLACIDUS, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-equal",      .model = Model::ALGO5, .system = System::EQUAL,      .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo5-whole",      .model = Model::ALGO5, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-placidus",   .model = Model::ALGO5, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
   };
   const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
   for (const auto& row : cases) {

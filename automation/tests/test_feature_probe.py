@@ -47,10 +47,11 @@ def compiler(monkeypatch):
     calls.append(arguments)
     assert arguments[0] == "controlled-cxx"
     if arguments[1:] == ["--version"]:
-      return outcomes["--version"]
-    assert arguments[1:3] == ["-std=c++23", "-fsyntax-only"]
-    source = Path(arguments[3]).read_text(encoding="utf-8")
-    result = outcomes[source]
+      result = outcomes["--version"]
+    else:
+      assert arguments[1:3] == ["-std=c++23", "-fsyntax-only"]
+      source = Path(arguments[3]).read_text(encoding="utf-8")
+      result = outcomes[source]
     if isinstance(result, Exception):
       raise result
     return result
@@ -110,6 +111,7 @@ def test_adoption_and_count_drift_are_information(compiler, capsys):
     "ice-stdout",
     "missing",
     "version",
+    "version-missing",
   ],
 )
 def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, failure):
@@ -132,6 +134,8 @@ def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, 
     outcomes["waiting-program"] = ProcReturn(1, "frontend command failed", "error: unrelated")
   elif failure == "missing":
     outcomes["waiting-program"] = FileNotFoundError("compiler disappeared")
+  elif failure == "version-missing":
+    outcomes["--version"] = FileNotFoundError("compiler disappeared before version query")
   else:
     outcomes["--version"] = ProcReturn(1, "", "version query failed")
   assert features.probe_features(leg) == 1

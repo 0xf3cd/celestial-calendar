@@ -274,6 +274,14 @@ def test_ai_startup_sources_and_action_configuration_cannot_expand(manual, fault
     assert_ai_credential_policy(workflow, manual)
 
 
+@pytest.mark.parametrize("field", ["shell", "working-directory"])
+def test_manual_preparation_cannot_acquire_an_extra_execution_context(field):
+  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  workflow["jobs"]["review"]["steps"][1][field] = "untrusted"
+  with pytest.raises(AssertionError, match="preparation context"):
+    assert_ai_credential_policy(workflow, True)
+
+
 @pytest.mark.parametrize("fork", [False, True], ids=["same-repository", "fork-main"])
 @pytest.mark.parametrize("old_checkout", [False, True], ids=["trusted-startup", "old-checkout-control"])
 def test_manual_preparation_keeps_pr_startup_files_out(tmp_path, fork, old_checkout):

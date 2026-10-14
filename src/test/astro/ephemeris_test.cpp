@@ -252,7 +252,7 @@ TEST(Ephemeris, IndependentLongitudeRates) {
 TEST(Ephemeris, IndependentStationNeighborhoods) {
   for (const auto& row : GOLDEN_ROWS) {
     if (row.target == Target::MEAN_DESCENDING or row.target == Target::TRUE_DESCENDING) {
-      continue;
+      continue; // DescendingRatesAreBitExactAscendingRates covers the paired rates.
     }
     SCOPED_TRACE(::testing::Message() << row.role << " JDE(TT)=" << row.jde_tt);
     if (row.role == "station 0 offset 0.0" or row.role == "station 1 offset 0.0") {
