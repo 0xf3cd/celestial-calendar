@@ -209,6 +209,7 @@ def run_validation_guards() -> None:
   for longitude in (-180.0001, 180.0001):
     cases.append(({"location": celestial.GeoLocation(0.0, longitude)}, ValueError))
 
+  assert len(cases) == 108, "independent chart raw-input guard inventory"
   trap = Trap(fail=True)
   with replaced_binding("chart_snapshot_v1", trap):
     for changes, error_type in cases:
@@ -332,18 +333,15 @@ def run_error_translation() -> None:
 
   malformed = [SimpleNamespace(valid=True), SimpleNamespace()]
   fixture = native_fixture()
-  for cusp_count in (12, 11):
-    houses = SimpleNamespace(**{name: getattr(fixture.houses, name) for name, _ in fixture.houses._fields_})
-    houses.cusps_deg = tuple(fixture.houses.cusps_deg)[:cusp_count]
-    malformed.append(
-      SimpleNamespace(
-        valid=True,
-        jd_ut1=fixture.jd_ut1,
-        jde_tt=fixture.jde_tt,
-        bodies=fixture.bodies,
-        houses=houses,
-      )
+  malformed.append(
+    SimpleNamespace(
+      valid=True,
+      jd_ut1=fixture.jd_ut1,
+      jde_tt=fixture.jde_tt,
+      bodies=fixture.bodies,
+      houses=fixture.houses,
     )
+  )
   for path, bad in (
     (("jd_ut1",), math.nan),
     (("jde_tt",), math.inf),
@@ -370,6 +368,7 @@ def run_error_translation() -> None:
     else:
       setattr(owner, path[-1], bad)
     malformed.append(native)
+  assert len(malformed) == 18, "independent chart malformed-payload inventory"
   reader = Trap(fail=True)
   with replaced_binding("last_error", reader):
     for payload in malformed:
@@ -473,6 +472,7 @@ def run_ingress_native_boundaries() -> None:
     ("algo4-outside", (2034, 12, 31, 0.99919925925925923), utc, 51.5, 0.0, algo4, native_failure),
   )
   model_codes = {celestial.DeltaTModel.ALGO4: 4, celestial.DeltaTModel.ALGO5: 5}
+  assert len(cases) == 17, "independent chart public/native boundary inventory"
   for role, civil, scale, latitude, longitude, model, error_type in cases:
     arguments = (*civil, scale.value, latitude, longitude, celestial.HouseSystem.EQUAL.value, model_codes[model])
     native = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)

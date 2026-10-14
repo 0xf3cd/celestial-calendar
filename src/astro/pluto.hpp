@@ -22,7 +22,6 @@
 #include "earth/precession.hpp"
 #include "coord_transform.hpp"
 #include "julian_day.hpp"
-#include "sun.hpp"
 #include "toolbox.hpp"
 
 namespace astro::planet::detail::pluto {
@@ -207,12 +206,3 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
 }
 
 } // namespace astro::planet::detail::pluto
-
-namespace astro::planet::geocentric_coord {
-
-/** @brief Inclusive start of Pluto's apparent-position model, in JDE(TT). */
-inline constexpr double PLUTO_START_JDE_TT = astro::planet::detail::pluto::APPARENT_START_JDE_TT;
-/** @brief Exclusive end of Pluto's apparent-position model, in JDE(TT). */
-inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPARENT_END_JDE_TT;
-
-} // namespace astro::planet::geocentric_coord

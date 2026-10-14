@@ -61,7 +61,8 @@ struct Fk5Correction {
  * @param jde_tt Julian Ephemeris Day in TT.
  * @param vsop87d_coord Dynamical ecliptic coordinates at the same epoch; radius is unused.
  * @return Additive longitude and latitude corrections.
- * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 32, Formula (32.3).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (32.3);
+ *      Chapter 33, page 225 for geocentric coordinates.
  */
 [[nodiscard]] inline auto fk5_correction(
   const double jde_tt,

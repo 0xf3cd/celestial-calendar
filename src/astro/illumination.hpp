@@ -71,7 +71,7 @@ struct Separation {
  * @brief Calculate the illuminated disk fraction from the target-centered phase angle.
  * @param phase_angle The angle between source and observer as seen from the target.
  * @return Illuminated fraction in [0, 1] for a finite phase angle.
- * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (48.1).
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formulas (41.1) and (48.1).
  */
 [[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& phase_angle) -> double {
   return (1.0 + std::cos(phase_angle.rad())) / 2.0;

@@ -294,6 +294,11 @@ inline auto validate_retrograde_input(
 
 namespace geocentric_coord {
 
+/** @brief Inclusive start of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_START_JDE_TT = astro::planet::detail::pluto::APPARENT_START_JDE_TT;
+/** @brief Exclusive end of Pluto's apparent-position model, in JDE(TT). */
+inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPARENT_END_JDE_TT;
+
 /**
  * @brief Calculate a planet's apparent geocentric ecliptic position.
  * @param planet The planet to calculate, from Mercury through Pluto.

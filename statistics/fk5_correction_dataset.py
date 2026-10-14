@@ -70,8 +70,8 @@ def load_epochs() -> list[str]:
   return [stripped for line in lines if (stripped := line.strip()) and not stripped.startswith("#")]
 
 
-def fk5_meeus_25_9(jde: str, lam_deg: str, beta_deg: str) -> tuple[mpf, mpf]:
-  """Evaluate Meeus (25.9) at 50-digit precision (self-contained via `workdps`).
+def fk5_meeus_32_3(jde: str, lam_deg: str, beta_deg: str) -> tuple[mpf, mpf]:
+  """Evaluate Meeus (32.3) at 50-digit precision (self-contained via `workdps`).
   String inputs preserve the probe's %.17g double round-trip; the residual
   decimal-vs-binary gap is ~1e-17 relative, far below the test tolerance.
   Angles are in degrees, returned corrections in degrees."""
@@ -96,7 +96,7 @@ def emit_rows(probe_tsv: str) -> None:
   with open(probe_tsv, encoding="utf-8") as fh:
     for line in fh:
       jde, lam, beta, cpp_lam, cpp_beta = line.split()
-      d_lam, d_beta = fk5_meeus_25_9(jde, lam, beta)
+      d_lam, d_beta = fk5_meeus_32_3(jde, lam, beta)
       # Parsed at the default 53-bit precision on purpose: mpf() then lands exactly on the
       # C++ double, so the gap measures the formula's double-rounding, not print residue.
       max_gap_lam = max(max_gap_lam, abs(d_lam - mpf(cpp_lam)))

@@ -304,6 +304,10 @@ def verify_manifest(
   binding_names = unique(list(_binding.BINDING_SPECS), EXPECTED_EXPORT_COUNT, "ctypes bindings")
   function_names = unique(list(_binding.FUNCTIONS), EXPECTED_EXPORT_COUNT, "loaded functions")
   assert header_names == manifest_names == binding_names == function_names
+  for name, record in _binding.STRUCT_TYPES.items():
+    assert getattr(_binding, name, None) is record, f"compatibility record identity: {name}"
+  for name, primitive in (("P_U32", ctypes.c_uint32), ("P_DOUBLE", ctypes.c_double), ("P_CHAR", ctypes.c_char)):
+    assert getattr(_binding, name, None) is ctypes.POINTER(primitive), f"compatibility pointer identity: {name}"
 
   for name, entry in manifest_exports.items():
     assert canonical(entry["signature"]) == header_exports[name], f"header signature: {name}"

@@ -79,7 +79,11 @@ def archive(members, version, fault=None):
       elif fault == "record-duplicate":
         writer.writerow((name, "sha256=" + digest, size))
     writer.writerow((name, "sha256=" + digest, size))
-  writer.writerow((record_name, "", ""))
+  if fault == "record-phantom":
+    writer.writerow(("celestial_calendar/ghost.py", "sha256=invalid", "1"))
+  elif fault == "record-malformed":
+    writer.writerow(("celestial_calendar/_abi.py", "", "", "extra"))
+  writer.writerow((record_name, "sha256=invalid" if fault == "record-self-hash" else "", ""))
   result = io.BytesIO()
   with zipfile.ZipFile(result, "w") as output:
     for name, data in members.items():
@@ -129,6 +133,9 @@ def test_wheel_source_bytes_are_checked_even_with_a_valid_record(verifier, name)
     ("record-size", "RECORD integrity mismatch"),
     ("record-duplicate", "duplicate RECORD member"),
     ("zip-duplicate", "duplicate wheel member"),
+    ("record-phantom", "RECORD mismatch"),
+    ("record-malformed", "malformed RECORD row"),
+    ("record-self-hash", "RECORD must not hash itself"),
   ],
 )
 def test_wheel_record_and_archive_integrity_are_independent_requirements(verifier, fault, message):

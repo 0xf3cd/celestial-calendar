@@ -17,6 +17,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -409,6 +410,47 @@ TEST(PlanetPhenomena, SamplingRejectsInvalidStep) {
     )),
     std::invalid_argument
   );
+}
+
+TEST(PlanetPhenomena, CoarseGridReversalsExposeHiddenCrossingPairs) {
+  const auto public_events = events(Planet::MERCURY, 2025);
+  const auto hidden_pair = [](const std::array<double, 3> jde_tt) {
+    std::vector<detail::Sample> grid;
+    grid.reserve(jde_tt.size());
+    for (const double sample_jde_tt : jde_tt) {
+      grid.push_back(detail::sample(Planet::MERCURY, sample_jde_tt));
+    }
+    std::vector<Event> found;
+    detail::append_crossings(
+      Planet::MERCURY,
+      detail::Category::INNER,
+      detail::crossing_samples(Planet::MERCURY, grid),
+      found
+    );
+    return std::pair { grid, found };
+  };
+  const auto expect_public = [&public_events](const Event& event) {
+    const auto match = std::ranges::find_if(public_events, [&event](const Event& candidate) {
+      return candidate.kind == event.kind and std::fabs(candidate.jde_tt - event.jde_tt) <= 1e-6;
+    });
+    EXPECT_NE(match, public_events.end()) << static_cast<int>(event.kind) << " at " << event.jde_tt;
+  };
+
+  // Positive samples hide the morning apparition's negative minimum.
+  const auto [morning_grid, morning] = hidden_pair({ 2460759.0, 2460826.0, 2460836.0 });
+  ASSERT_TRUE(std::ranges::all_of(morning_grid, [](const detail::Sample& sample) { return sample.difference > 0.0; }));
+  ASSERT_EQ(morning.size(), 2);
+  EXPECT_EQ(morning.front().kind, Kind::INFERIOR_CONJUNCTION);
+  EXPECT_EQ(morning.back().kind, Kind::SUPERIOR_CONJUNCTION);
+  std::ranges::for_each(morning, expect_public);
+
+  // Negative samples hide the evening apparition's positive maximum.
+  const auto [evening_grid, evening] = hidden_pair({ 2460715.0, 2460759.5, 2460769.5 });
+  ASSERT_TRUE(std::ranges::all_of(evening_grid, [](const detail::Sample& sample) { return sample.difference < 0.0; }));
+  ASSERT_EQ(evening.size(), 2);
+  EXPECT_EQ(evening.front().kind, Kind::SUPERIOR_CONJUNCTION);
+  EXPECT_EQ(evening.back().kind, Kind::INFERIOR_CONJUNCTION);
+  std::ranges::for_each(evening, expect_public);
 }
 
 TEST(PlanetPhenomena, NearTangentCrossingsAreSubdivided) {

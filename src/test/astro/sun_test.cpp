@@ -12,6 +12,9 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <bit>
+#include <cstdint>
+#include <type_traits>
 #include "util.hpp"
 #include "astro.hpp"
 
@@ -27,6 +30,23 @@ using namespace std::literals;
 using namespace astro::sun::geocentric_coord;
 using namespace astro::sun::geocentric_coord::math;
 using astro::toolbox::AngleUnit::DEG;
+
+TEST(Sun, Fk5CompatibilityEntry) {
+  static_assert(std::is_same_v<Fk5Correction, astro::coords::Fk5Correction>);
+  for (const double jde_tt : { 2409543.5, 2451545.0, 2488069.0 }) {
+    for (const double latitude : { -45.0, 0.0, 45.0 }) {
+      const astro::toolbox::SphericalCoordinate coordinate {
+        .λ = astro::toolbox::AngleDeg { 359.75 },
+        .β = astro::toolbox::AngleDeg { latitude },
+        .r = astro::toolbox::DistanceAu { 1.0 },
+      };
+      const auto shared = astro::coords::fk5_correction(jde_tt, coordinate);
+      const auto legacy = fk5_correction(jde_tt, coordinate);
+      EXPECT_EQ(std::bit_cast<uint64_t>(shared.Δλ.deg()), std::bit_cast<uint64_t>(legacy.Δλ.deg()));
+      EXPECT_EQ(std::bit_cast<uint64_t>(shared.Δβ.deg()), std::bit_cast<uint64_t>(legacy.Δβ.deg()));
+    }
+  }
+}
 
 TEST(Sun, GeocentricPosition) {
   // PyMeeus-derived regression material; the original version and sample seed are not recorded.

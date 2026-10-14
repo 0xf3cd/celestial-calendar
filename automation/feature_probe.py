@@ -222,13 +222,8 @@ SITE_COUNTS: Final[Dict[str, int]] = {
 def todo_sites(token: str) -> List[str]:
   """Find the TODO comments waiting on `token`, with their current line numbers.
 
-  Derived, not listed: a hand-maintained site list would go stale between the day a feature
-  unlocks and the day someone reads this file -- which is the whole interval this gate exists
-  to cover.
-
-  Both words have to land on one line, so a TODO that wraps its feature name onto the next one
-  goes unseen here. That blind spot is covered where it would matter: the feature reaches
-  `monuments()` instead, which reports rows with nothing left to point at.
+  TODO and the feature name must share a line. Wrapped names are not matched;
+  `monuments()` reports features with no matching sites.
   """
   src_dir = paths.cpp_src_dir()
   root = paths.proj_root()
@@ -247,10 +242,7 @@ def todo_sites(token: str) -> List[str]:
 def adoptable(feature: Feature) -> List[str]:
   """The sites that could stop hand-rolling `feature` today, if any.
 
-  Detecting *changes* is not enough on its own. Once a feature is recorded as usable everywhere
-  the comparison above goes quiet forever, and the TODOs it unblocked would sit there unread --
-  the reason for this notice. So the recorded state is also read forwards: usable
-  on every leg, nothing recorded holding it back, and sites still working around it.
+  Report marked sites when the feature is usable on every recorded leg and is not deferred.
 
   Reach: only hand-rolling that carries a `TODO` naming the feature is visible here. An unmarked
   workaround cannot be named; `monuments()` reports features with no marked sites.

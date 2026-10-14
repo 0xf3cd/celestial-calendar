@@ -183,8 +183,7 @@ def test_loaded_function_metadata_cannot_drift_from_its_declarations(defect):
     function = ModuleType(name)
     function.argtypes, function.restype = arguments, result
     setattr(library, name, function)
-  module.LIB = library
-  abi_layout.runtime_layout(module)
+  abi_layout.runtime_layout(module, library=library)
   function = library.delta_t
   if defect == "restype":
     function.restype = module.JulianDay
@@ -193,7 +192,7 @@ def test_loaded_function_metadata_cannot_drift_from_its_declarations(defect):
   else:
     function.restype = type("DeltaT", (ctypes.Structure,), {"_fields_": module.DeltaT._fields_})
   with pytest.raises(RuntimeError, match="Loaded signature differs"):
-    abi_layout.runtime_layout(module)
+    abi_layout.runtime_layout(module, library=library)
 
 
 def test_independent_jieqi_exporter_declaration_against_compiled_c(compiled_layout):

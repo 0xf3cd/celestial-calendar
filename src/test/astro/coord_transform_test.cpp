@@ -11,10 +11,8 @@
  */
 
 #include <cmath>
-#include <bit>
-#include <cstdint>
+#include <array>
 #include <tuple>
-#include <type_traits>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -22,7 +20,6 @@
 #include "random.hpp"
 #include "toolbox.hpp"
 #include "coord_transform.hpp"
-#include "sun.hpp"
 
 
 namespace astro::coords::test {
@@ -35,20 +32,25 @@ using namespace astro::toolbox;
 using namespace astro::toolbox::literals;
 using astro::toolbox::AngleUnit::DEG;
 
-TEST(CoordTransform, Fk5SunCompatibilityEntry) {
-  static_assert(std::is_same_v<Fk5Correction, astro::sun::geocentric_coord::Fk5Correction>);
-  for (const double jde_tt : { 2409543.5, 2451545.0, 2488069.0 }) {
-    for (const double latitude : { -45.0, 0.0, 45.0 }) {
-      const SphericalCoordinate coordinate {
-        .λ = 359.75_deg,
-        .β = AngleDeg { latitude },
-        .r = DistanceAu { 1.0 },
-      };
-      const auto shared = fk5_correction(jde_tt, coordinate);
-      const auto legacy = astro::sun::geocentric_coord::fk5_correction(jde_tt, coordinate);
-      EXPECT_EQ(std::bit_cast<uint64_t>(shared.Δλ.deg()), std::bit_cast<uint64_t>(legacy.Δλ.deg()));
-      EXPECT_EQ(std::bit_cast<uint64_t>(shared.Δβ.deg()), std::bit_cast<uint64_t>(legacy.Δβ.deg()));
-    }
+TEST(CoordTransform, Fk5CorrectionAtNonzeroLatitudes) {
+  // Meeus (32.3), evaluated by statistics/fk5_correction_dataset.py at 50 digits
+  // (mpmath 1.3.0, 2026-10-13). The 1e-15 deg margin matches Sun.FK5Correction.
+  constexpr std::array dataset {
+    // JDE(TT)         λ (deg)  β (deg)                   Δλ (deg)                 Δβ (deg)
+    std::array { 2415020.5,    5.0, -60.0, -4.5914317718603964e-05,  9.5981508542974192e-06 },
+    std::array { 2451545.0,  120.0,  60.0, -1.8195431892277395e-05, -1.4859320781166283e-05 },
+    std::array { 2469807.5,  245.0, -45.0, -1.0572830152747083e-05,  5.0848289103476766e-06 },
+    std::array { 2488069.0, 359.75,  62.0, -5.2300931867299821e-06,  1.1185978867455072e-05 },
+  };
+  for (const auto& [jde_tt, λ, β, Δλ, Δβ] : dataset) {
+    const SphericalCoordinate coordinate {
+      .λ = AngleDeg { λ },
+      .β = AngleDeg { β },
+      .r = DistanceAu { 1.0 },
+    };
+    const auto correction = fk5_correction(jde_tt, coordinate);
+    ASSERT_NEAR(correction.Δλ.deg(), Δλ, 1e-15);
+    ASSERT_NEAR(correction.Δβ.deg(), Δβ, 1e-15);
   }
 }
 

@@ -53,7 +53,7 @@ def check_ctypes_smoke() -> int:
     red_print(f"Importing statistics/common.py failed (run ./project.py --build first): {e}")
     return 1
 
-  if check_runtime_layout(common):
+  if check_runtime_layout(common._ABI, library=common.LIB):
     return 1
 
   algo1 = common.LunarAlgo.ALGO_1

@@ -58,7 +58,7 @@ using Fk5Correction = astro::coords::Fk5Correction;
 
 
 /**
- * @brief Forward the VSOP87D-to-FK5 correction to its coordinate-transformation owner.
+ * @brief Compatibility entry for the VSOP87D-to-FK5 correction.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @param vsop87d_coord Dynamical ecliptic coordinates at the same epoch.
  * @return The correction (i.e. Δlongitude and Δlatitude).
@@ -80,7 +80,7 @@ using Fk5Correction = astro::coords::Fk5Correction;
   const auto vsop_coord = vsop87d(jde);
 
   // Calculate the correction for the VSOP87D result, in order to convert it to FK5 system.
-  const auto correction = fk5_correction(jde, vsop_coord);
+  const auto correction = astro::coords::fk5_correction(jde, vsop_coord);
 
   // Calculate the Earth's nutation in longitude.
   const auto nutation = astro::earth::nutation::longitude(jde);

@@ -17,7 +17,7 @@
 
 namespace util::test {
 
-/** @brief Unwrap an expected value with a guard visible to clang-tidy, unlike a gtest assertion. */
+/** @brief Unwrap a required std::optional with a guard visible to clang-tidy, unlike a gtest assertion. */
 template <typename T>
 [[nodiscard]] inline auto req(const std::optional<T>& value) -> const T& {
   if (not value.has_value()) {

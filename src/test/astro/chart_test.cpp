@@ -16,6 +16,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <ranges>
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
@@ -416,6 +417,21 @@ TEST(Chart, RetainedModelSeamsKeepTheirSelectedEvaluationPolicy) {
         calendar::add_seconds(tt, -astro::delta_t::compute(model, tt))));
     }
   }
+}
+
+TEST(Chart, RateDomainIntersectsEveryTarget) {
+  const auto start = std::ranges::max(
+    TARGETS | std::views::transform([](const Target target) {
+      return astro::ephemeris::longitude_rate_domain(target).front();
+    })
+  );
+  const auto end = std::ranges::min(
+    TARGETS | std::views::transform([](const Target target) {
+      return astro::ephemeris::longitude_rate_domain(target).back();
+    })
+  );
+  EXPECT_EQ(detail::START_JDE_TT, start);
+  EXPECT_EQ(detail::END_JDE_TT, end);
 }
 
 } // namespace astro::chart::test

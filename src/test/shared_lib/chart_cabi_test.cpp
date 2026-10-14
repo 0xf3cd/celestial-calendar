@@ -170,9 +170,9 @@ TEST(ChartCAbi, EveryModelSystemAndTargetMatchesCore) {
     CompositionCase { .role = "algo2-whole",      .model_index = 1, .system_index = 1, .observer = location(51.5, 0.0) },
     CompositionCase { .role = "algo3-south",      .model_index = 2, .system_index = 2, .observer = location(-33.87, 151.21) },
     CompositionCase { .role = "algo4-placidus",   .model_index = 3, .system_index = 2, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "default-equal",    .model_index = 4, .system_index = 0, .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "default-whole",    .model_index = 4, .system_index = 1, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "default-placidus", .model_index = 4, .system_index = 2, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-equal",      .model_index = 4, .system_index = 0, .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo5-whole",      .model_index = 4, .system_index = 1, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-placidus",   .model_index = 4, .system_index = 2, .observer = location(51.5, 0.0) },
   };
   const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
   for (const auto& row : cases) {

@@ -98,7 +98,19 @@ def test_adoption_and_count_drift_are_information(compiler, capsys):
 
 @pytest.mark.parametrize("leg", [None, "tested-leg"])
 @pytest.mark.parametrize(
-  "failure", ["canary", "anti-canary", "signal", "silent", "ice", "ice-success", "ice-stdout", "missing", "version"]
+  "failure",
+  [
+    "canary",
+    "anti-canary",
+    "signal",
+    "abnormal-exit",
+    "silent",
+    "ice",
+    "ice-success",
+    "ice-stdout",
+    "missing",
+    "version",
+  ],
 )
 def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, failure):
   outcomes, _ = compiler
@@ -108,6 +120,8 @@ def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, 
     outcomes[features.ANTI_CANARY] = ProcReturn(0, "", "")
   elif failure == "signal":
     outcomes["waiting-program"] = ProcReturn(-9, "", "killed")
+  elif failure == "abnormal-exit":
+    outcomes["waiting-program"] = ProcReturn(2, "error: regular diagnostic", "")
   elif failure == "silent":
     outcomes["waiting-program"] = ProcReturn(1, "", "")
   elif failure == "ice":
@@ -115,12 +129,18 @@ def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, 
   elif failure == "ice-success":
     outcomes["waiting-program"] = ProcReturn(0, "", "Internal Compiler Error")
   elif failure == "ice-stdout":
-    outcomes["waiting-program"] = ProcReturn(1, "frontend command failed", "")
+    outcomes["waiting-program"] = ProcReturn(1, "frontend command failed", "error: unrelated")
   elif failure == "missing":
     outcomes["waiting-program"] = FileNotFoundError("compiler disappeared")
   else:
     outcomes["--version"] = ProcReturn(1, "", "version query failed")
   assert features.probe_features(leg) == 1
+
+
+def test_expected_rejection_can_report_diagnostics_on_stdout(compiler):
+  outcomes, _ = compiler
+  outcomes["waiting-program"] = ProcReturn(1, "error: unsupported feature", "")
+  assert features.probe_features("tested-leg") == 0
 
 
 def test_report_only_has_no_baseline_regression(compiler):

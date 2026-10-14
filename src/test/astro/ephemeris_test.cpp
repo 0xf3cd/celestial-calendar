@@ -235,7 +235,7 @@ auto check_complete_stencil_bounds(const Target target, const double lower_jde_t
 TEST(Ephemeris, IndependentLongitudeRates) {
   for (const auto& row : GOLDEN_ROWS) {
     if (row.target == Target::MEAN_DESCENDING or row.target == Target::TRUE_DESCENDING) {
-      continue; // Retained rows; paired-rate bit identity is checked separately below.
+      continue; // DescendingRatesAreBitExactAscendingRates covers the paired rates.
     }
     SCOPED_TRACE(::testing::Message() << row.role << " target=" << static_cast<uint32_t>(row.target) << " JDE(TT)=" << row.jde_tt);
     const double actual = longitude_rate(row.target, row.jde_tt).deg_per_tt_day;

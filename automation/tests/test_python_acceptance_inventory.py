@@ -11,6 +11,7 @@
 """The installed-wheel runner must not accept an omitted or unregistered script."""
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -26,7 +27,7 @@ SCRIPTS = {
 }
 
 
-@pytest.mark.parametrize("fault", [None, "missing", "unregistered"])
+@pytest.mark.parametrize("fault", [None, "missing", "unregistered", "silent", "failed"])
 def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_path, monkeypatch, fault):
   source = Path(__file__).resolve().parents[2] / "bindings/python/test/run_all.py"
   spec = importlib.util.spec_from_file_location("acceptance_inventory_control", source)
@@ -42,13 +43,32 @@ def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_pat
   elif fault == "unregistered":
     (tmp_path / "consumer/unregistered.py").touch()
   calls = []
-  monkeypatch.setattr(module.subprocess, "run", lambda arguments, **keywords: calls.append((arguments, keywords)))
-  if fault:
+
+  def run(arguments, **keywords):
+    calls.append((arguments, keywords))
+    return subprocess.CompletedProcess(
+      arguments, 1 if fault == "failed" else 0, "" if fault == "silent" else "PASS control\n"
+    )
+
+  monkeypatch.setattr(module.subprocess, "run", run)
+  if fault in {"missing", "unregistered"}:
     with pytest.raises(AssertionError, match="acceptance inventory mismatch"):
       module.main()
     assert not calls
+  elif fault == "silent":
+    with pytest.raises(AssertionError, match="no PASS evidence"):
+      module.main()
+    assert len(calls) == 1
+  elif fault == "failed":
+    with pytest.raises(subprocess.CalledProcessError):
+      module.main()
+    assert len(calls) == 1
   else:
     module.main()
     assert len(calls) == len(SCRIPTS)
     assert {Path(arguments[1]).relative_to(tmp_path).as_posix() for arguments, _ in calls} == SCRIPTS
-    assert all(arguments[0] == sys.executable and keywords == {"check": True} for arguments, keywords in calls)
+    assert all(
+      arguments[0] == sys.executable
+      and keywords == {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}
+      for arguments, keywords in calls
+    )

@@ -88,11 +88,10 @@ def c_layout(structs: Dict[str, Fields], header: Path, workdir: Path) -> Optiona
   return layout
 
 
-def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
+def runtime_layout(module: object, *, library: Optional[object] = None) -> Tuple[Dict[str, Fields], Dict[str, int]]:
   """Measure actual records and check declared and loaded return-record identity."""
-  owner = getattr(module, "_ABI", module)
   records: Dict[str, type] = {}
-  for binding, value in vars(owner).items():
+  for binding, value in vars(module).items():
     if not isinstance(value, type) or not issubclass(value, ctypes.Structure) or value is ctypes.Structure:
       continue
     name = binding[1:] if binding.startswith("_") else binding
@@ -103,13 +102,12 @@ def runtime_layout(module: object) -> Tuple[Dict[str, Fields], Dict[str, int]]:
   names = {value: name for name, value in records.items()}
   if len(names) != len(records):
     raise RuntimeError("Multiple mirror names bind the same runtime record")
-  registry = getattr(owner, "STRUCT_TYPES", None)
+  registry = getattr(module, "STRUCT_TYPES", None)
   if registry is not None and registry != records:
     raise RuntimeError("Runtime record registry differs from its bound classes")
   primitives = {getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()}
 
-  library = getattr(module, "LIB", None)
-  for name, (argtypes, restype) in getattr(owner, "BINDING_SPECS", {}).items():
+  for name, (argtypes, restype) in getattr(module, "BINDING_SPECS", {}).items():
     if isinstance(restype, type) and issubclass(restype, ctypes.Structure) and restype not in names:
       raise RuntimeError(f"Unmeasured declared return record: {name}")
     if library is not None:
@@ -180,12 +178,12 @@ def compare_layouts(
   return failures
 
 
-def check_runtime_layout(module: object) -> int:
+def check_runtime_layout(module: object, *, library: Optional[object] = None) -> int:
   """Compare loaded ctypes records with compiled C."""
   header = paths.proj_root() / "src/shared_lib/celestial.h"
   try:
     c_structs = parse_c_structs(header)
-    runtime_structs, measured = runtime_layout(module)
+    runtime_structs, measured = runtime_layout(module, library=library)
   except (RuntimeError, AttributeError, TypeError, ValueError) as error:
     red_print(f"Loaded ctypes mirror differs from C: {error}")
     return 1
@@ -218,7 +216,7 @@ def check_abi_layout() -> int:
     red_print(f"Parse failed: {e}")
     return 1
 
-  # Layer 2: compile and run the ground-truth probe once for every struct.
+  # Compile and run the ground-truth probe once for every struct.
   with tempfile.TemporaryDirectory(prefix="abi_layout_") as tmp:
     ground_truth = c_layout(c_structs, header, Path(tmp))
   if ground_truth is None:

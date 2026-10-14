@@ -203,7 +203,7 @@ requires std::invocable<const LongitudeProvider&, double>
  * @param target A named ephemeris target.
  * @return Inclusive start and exclusive end in JDE(TT), allowing the full sampled reach.
  * @throw std::invalid_argument If the target is unknown.
- * @note This is the rate operation's window, not a new bound on unbounded position models.
+ * @note This window bounds the rate operation, not the target's position model.
  *       Exact sample-offset representability is checked separately by @ref longitude_rate.
  */
 [[nodiscard]] constexpr auto longitude_rate_domain(const Target target) -> std::array<double, 2> {
