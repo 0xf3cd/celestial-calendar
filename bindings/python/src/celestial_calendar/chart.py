@@ -14,8 +14,8 @@ import math as _math
 from dataclasses import dataclass as _dataclass
 from enum import IntEnum as _IntEnum
 
-from ._binding import ChartBodyV1 as _ChartBodyV1
-from ._binding import ChartSnapshotV1 as _ChartSnapshotV1
+from ._abi import ChartBodyV1 as _ChartBodyV1
+from ._abi import ChartSnapshotV1 as _ChartSnapshotV1
 
 
 class CivilScale(_IntEnum):
@@ -115,13 +115,10 @@ class ChartSnapshot:
   houses: ChartHouses
 
 
-def _finite_native(value: object, name: str) -> float:
-  if isinstance(value, bool) or not isinstance(value, (int, float)):
-    raise TypeError(f"{name} is not a native real number")
-  result = float(value)
-  if not _math.isfinite(result):
+def _finite_native(value: float, name: str) -> float:
+  if not _math.isfinite(value):
     raise ValueError(f"{name} is not finite")
-  return result
+  return value
 
 
 def _longitude_native(value: object, name: str) -> float:
@@ -132,12 +129,12 @@ def _longitude_native(value: object, name: str) -> float:
 
 
 def _body_from_native(body: _ChartBodyV1, expected: ChartTarget) -> BodyState:
-  if type(body.target_code) is not int or ChartTarget(body.target_code) is not expected:
+  if ChartTarget(body.target_code) is not expected:
     raise ValueError(f"unexpected target code for {expected.name}")
 
   is_node = expected in _NODE_TARGETS
   expected_fields = _PRESENT_LATITUDE if is_node else _PRESENT_LATITUDE | _PRESENT_DISTANCE
-  if type(body.present_fields) is not int or body.present_fields != expected_fields:
+  if body.present_fields != expected_fields:
     raise ValueError(f"unexpected presence bits for {expected.name}")
 
   latitude = _finite_native(body.latitude_deg, f"{expected.name}.latitude_deg")
@@ -159,8 +156,8 @@ def _body_from_native(body: _ChartBodyV1, expected: ChartTarget) -> BodyState:
 
 def _from_native(result: _ChartSnapshotV1) -> ChartSnapshot:
   """Copy a successful V1 payload; malformed protocol fields raise decoding errors."""
-  if len(result.bodies) != 14 or len(result.houses.cusps_deg) != 12:
-    raise ValueError("unexpected V1 body or cusp count")
+  if not isinstance(result, _ChartSnapshotV1):
+    raise TypeError("unexpected V1 snapshot record")
 
   times = ChartTimes(_finite_native(result.jd_ut1, "jd_ut1"), _finite_native(result.jde_tt, "jde_tt"))
   bodies = tuple(_body_from_native(body, target) for body, target in zip(result.bodies, ChartTarget, strict=True))

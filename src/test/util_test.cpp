@@ -18,15 +18,26 @@
 #include <bit>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <ranges>
+#include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <functional>
 #include <unordered_set>
 #include "util.hpp"
+#include "test_helper.hpp"
 
 namespace util::test {
 
 using namespace util;
+
+TEST(Util, CheckedOptional) {
+  const std::optional<int> value { 42 };
+  EXPECT_EQ(req(value), 42);
+  const std::optional<int> missing;
+  EXPECT_THROW(std::ignore = req(missing), std::logic_error);
+}
 
 TEST(Util, ToYmd) {
   using namespace std::literals;

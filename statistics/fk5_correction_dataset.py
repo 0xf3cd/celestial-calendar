@@ -8,7 +8,7 @@
 # SPDX-License-Identifier: MIT
 
 # This file regenerates the FK5-correction dataset in src/test/astro/sun_test.cpp (#68):
-# it evaluates Meeus (25.9) with mpmath at 50-digit precision,
+# it evaluates Meeus (32.3) with mpmath at 50-digit precision,
 #   λ' = λ − (1.397 + 0.00031·T)·T                          [deg; T = Julian century from J2000.0]
 #   Δλ = −0.09033 + 0.03916·(cos λ' + sin λ')·tan β         [arcsec]
 #   Δβ = +0.03916·(cos λ' − sin λ')                         [arcsec]

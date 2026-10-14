@@ -357,13 +357,6 @@ def run_error_translation() -> None:
     else:
       setattr(owner, path[-1], bad)
     malformed.append(native)
-  fixture = native_fixture()
-  malformed.extend(
-    (
-      SimpleNamespace(valid=True, bodies=tuple(fixture.bodies)[:-1], houses=fixture.houses),
-      SimpleNamespace(valid=True, bodies=fixture.bodies, houses=SimpleNamespace(cusps_deg=(0.0,) * 11)),
-    )
-  )
   reader = Trap(fail=True)
   with replaced_binding("last_error", reader):
     for payload in malformed:
@@ -440,6 +433,56 @@ def run_replay_corruption_controls() -> None:
     run_documented_replay()
     assert _binding.last_error_text() == ""
   print("PASS installed native-return Mercury/cusp/rate corruptions and clean recovery")
+
+
+def run_ingress_native_boundaries() -> None:
+  """Pair public ingress outcomes with direct native results at the same raw inputs."""
+  utc, ut1 = celestial.CivilScale.UTC, celestial.CivilScale.UT1
+  algo4, algo5 = celestial.DeltaTModel.ALGO4, celestial.DeltaTModel.ALGO5
+  native_failure = celestial.CelestialError
+  cases = (
+    ("civil-below", (1884, 12, 31, 0.5), ut1, 51.5, 0.0, algo5, ValueError),
+    ("civil-above", (2100, 1, 1, 0.0), ut1, 51.5, 0.0, algo5, ValueError),
+    ("chrono-alias", (2026 + 65536, 1, 1, 0.5), ut1, 51.5, 0.0, algo5, ValueError),
+    ("utc-below", (1971, 12, 31, 0.99999), utc, 51.5, 0.0, algo5, ValueError),
+    ("utc-first", (1972, 1, 1, 0.0), utc, 51.5, 0.0, algo5, None),
+    ("fraction-outside", (2026, 1, 1, 1.0), utc, 51.5, 0.0, algo5, ValueError),
+    ("fraction-inside", (2026, 1, 1, math.nextafter(1.0, 0.0)), utc, 51.5, 0.0, algo5, None),
+    ("latitude-outside", (2026, 1, 1, 0.5), utc, 90.0, 0.0, algo5, ValueError),
+    ("latitude-inside", (2026, 1, 1, 0.5), utc, 90.0 - 1e-6, 0.0, algo5, None),
+    ("longitude-outside", (2026, 1, 1, 0.5), utc, 51.5, math.nextafter(180.0, math.inf), algo5, ValueError),
+    ("longitude-edge", (2026, 1, 1, 0.5), utc, 51.5, 180.0, algo5, None),
+    ("joint-start-outside", (1885, 1, 1, 0.0), ut1, 51.5, 0.0, algo5, native_failure),
+    ("joint-start-inside", (1885, 1, 2, 0.376), ut1, 51.5, 0.0, algo5, None),
+    ("joint-end-inside", (2099, 12, 31, 0.624), utc, 51.5, 0.0, algo5, None),
+    ("joint-end-outside", (2099, 12, 31, 0.625), utc, 51.5, 0.0, algo5, native_failure),
+    ("algo4-inside", (2034, 12, 31, 0.99919), utc, 51.5, 0.0, algo4, None),
+    ("algo4-outside", (2034, 12, 31, 0.99919925925925923), utc, 51.5, 0.0, algo4, native_failure),
+  )
+  model_codes = {celestial.DeltaTModel.ALGO4: 4, celestial.DeltaTModel.ALGO5: 5}
+  for role, civil, scale, latitude, longitude, model, error_type in cases:
+    arguments = (*civil, scale.value, latitude, longitude, celestial.HouseSystem.EQUAL.value, model_codes[model])
+    native = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)
+    assert native.valid is (error_type is None), f"native outcome: {role}"
+    native_error = _binding.last_error_text()
+    public_arguments = {
+      "civil_dt": celestial.CivilDateTime(*civil),
+      "scale": scale,
+      "location": celestial.GeoLocation(latitude, longitude),
+      "system": celestial.HouseSystem.EQUAL,
+      "model": model,
+    }
+    if error_type is None:
+      check_snapshot(snapshot(**public_arguments))
+      assert native_error == _binding.last_error_text() == "", role
+    else:
+      assert native_error, role
+      error = raises(error_type, lambda arguments=public_arguments: snapshot(**arguments))
+      if error_type is celestial.CelestialError:
+        assert error.operation == "chart_snapshot" and error.recorded and str(error) == native_error, role
+      check_snapshot(snapshot())
+      assert _binding.last_error_text() == "", role
+  print(f"PASS paired public/native ingress and joint-domain boundaries {len(cases)}/{len(cases)}")
 
 
 def run_core_aligned_cases() -> None:
@@ -566,6 +609,7 @@ def main() -> None:
   run_error_translation()
   run_documented_replay()
   run_replay_corruption_controls()
+  run_ingress_native_boundaries()
   run_core_aligned_cases()
   run_unresolved_ascendant()
 

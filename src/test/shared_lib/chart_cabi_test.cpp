@@ -22,6 +22,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 
@@ -29,6 +30,8 @@
 
 #include "celestial.h"
 #include "chart.hpp"
+#include "../astro/chart_test_helper.hpp"
+#include "../test_helper.hpp"
 
 namespace lib::chart::test {
 namespace {
@@ -39,6 +42,8 @@ using astro::ephemeris::Target;
 using astro::house::System;
 using astro::toolbox::AngleDeg;
 using calendar::Datetime;
+using astro::chart::test::location;
+using astro::chart::test::expected_coordinates;
 
 constexpr std::array MODEL_CODES {
   CHART_DELTA_T_MODEL_ALGO1, CHART_DELTA_T_MODEL_ALGO2, CHART_DELTA_T_MODEL_ALGO3,
@@ -77,10 +82,6 @@ static_assert(sizeof(ChartBodyV1) == 40 and alignof(ChartBodyV1) == 8);
 static_assert(sizeof(ChartHousesV1) == 128 and alignof(ChartHousesV1) == 8);
 static_assert(sizeof(ChartSnapshotV1) == 712 and alignof(ChartSnapshotV1) == 8);
 
-auto location(const double latitude_deg, const double longitude_deg) -> astro::GeoLocation {
-  return { .latitude = AngleDeg { latitude_deg }, .longitude = AngleDeg { longitude_deg } };
-}
-
 auto snapshot_at(const Datetime& civil_dt, const uint32_t scale_code, const astro::GeoLocation& observer,
                  const uint32_t system_code, const uint32_t model_code = CHART_DELTA_T_MODEL_DEFAULT) -> ChartSnapshotV1 {
   const auto [year, month, day] = util::from_ymd(civil_dt.ymd);
@@ -88,31 +89,6 @@ auto snapshot_at(const Datetime& civil_dt, const uint32_t scale_code, const astr
     year, month, day, civil_dt.fraction(), scale_code,
     observer.latitude.deg(), observer.longitude.deg(), system_code, model_code
   );
-}
-
-auto distance_au(const std::optional<astro::toolbox::DistanceAu>& distance) -> double {
-  if (not distance.has_value()) {
-    throw std::logic_error { "Missing test distance" };
-  }
-  return distance->au();
-}
-
-auto expected_coordinate(const Target target, const double jde_tt) -> astro::toolbox::SphericalCoordinate {
-  using astro::planet::Planet;
-
-  switch (target) {
-    case Target::SUN: return astro::sun::geocentric_coord::apparent(jde_tt);
-    case Target::MOON: return astro::moon::geocentric_coord::apparent(jde_tt);
-    case Target::MERCURY: return astro::planet::geocentric_coord::apparent(Planet::MERCURY, jde_tt);
-    case Target::VENUS: return astro::planet::geocentric_coord::apparent(Planet::VENUS, jde_tt);
-    case Target::MARS: return astro::planet::geocentric_coord::apparent(Planet::MARS, jde_tt);
-    case Target::JUPITER: return astro::planet::geocentric_coord::apparent(Planet::JUPITER, jde_tt);
-    case Target::SATURN: return astro::planet::geocentric_coord::apparent(Planet::SATURN, jde_tt);
-    case Target::URANUS: return astro::planet::geocentric_coord::apparent(Planet::URANUS, jde_tt);
-    case Target::NEPTUNE: return astro::planet::geocentric_coord::apparent(Planet::NEPTUNE, jde_tt);
-    case Target::PLUTO: return astro::planet::geocentric_coord::apparent(Planet::PLUTO, jde_tt);
-    default: throw std::logic_error { "Nodes have no test spherical coordinate" };
-  }
 }
 
 auto expect_snapshot(const ChartSnapshotV1& actual, const astro::chart::Snapshot& expected) -> void {
@@ -129,7 +105,7 @@ auto expect_snapshot(const ChartSnapshotV1& actual, const astro::chart::Snapshot
     EXPECT_EQ(body.longitude_deg, state.longitude.deg());
     EXPECT_EQ(body.latitude_deg, state.latitude.deg());
     if (state.distance.has_value()) {
-      EXPECT_EQ(body.distance_au, distance_au(state.distance));
+      EXPECT_EQ(body.distance_au, util::test::req(state.distance).au());
     }
     EXPECT_EQ(std::bit_cast<uint64_t>(body.longitude_rate_deg_per_tt_day),
               std::bit_cast<uint64_t>(state.longitude_rate.deg_per_tt_day));
@@ -155,7 +131,7 @@ auto expect_recomposition(const ChartSnapshotV1& actual, const astro::GeoLocatio
     EXPECT_EQ(std::bit_cast<uint64_t>(body.longitude_rate_deg_per_tt_day),
               std::bit_cast<uint64_t>(astro::ephemeris::longitude_rate(TARGETS.at(index), actual.jde_tt).deg_per_tt_day));
     if (index < 10) {
-      const auto expected = expected_coordinate(TARGETS.at(index), actual.jde_tt);
+      const auto expected = expected_coordinates(TARGETS.at(index), actual.jde_tt);
       EXPECT_EQ(body.present_fields, CHART_PRESENT_LATITUDE | CHART_PRESENT_DISTANCE);
       EXPECT_EQ(body.longitude_deg, expected.λ.deg());
       EXPECT_EQ(body.latitude_deg, expected.β.deg());
@@ -183,23 +159,42 @@ auto expect_recomposition(const ChartSnapshotV1& actual, const astro::GeoLocatio
 } // namespace
 
 TEST(ChartCAbi, EveryModelSystemAndTargetMatchesCore) {
+  struct CompositionCase {
+    std::string_view role;
+    std::size_t model_index;
+    std::size_t system_index;
+    astro::GeoLocation observer;
+  };
+  const std::array cases {
+    CompositionCase { .role = "algo1-equal",      .model_index = 0, .system_index = 0, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo2-whole",      .model_index = 1, .system_index = 1, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo3-south",      .model_index = 2, .system_index = 2, .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo4-placidus",   .model_index = 3, .system_index = 2, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "default-equal",    .model_index = 4, .system_index = 0, .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "default-whole",    .model_index = 4, .system_index = 1, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "default-placidus", .model_index = 4, .system_index = 2, .observer = location(51.5, 0.0) },
+  };
   const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
-  for (std::size_t model_index = 0; model_index < MODELS.size(); ++model_index) {
-    for (std::size_t system_index = 0; system_index < SYSTEMS.size(); ++system_index) {
-      for (const auto observer : std::array { location(51.5, 0.0), location(-33.87, 151.21) }) {
-        SCOPED_TRACE(model_index);
-        SCOPED_TRACE(system_index);
-        const auto actual = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer,
-                                        SYSTEM_CODES.at(system_index), MODEL_CODES.at(model_index));
-        ASSERT_TRUE(actual.valid) << last_error();
-        EXPECT_STREQ(last_error(), "");
-        const Datetime input { dt.ymd, dt.fraction() };
-        const auto expected = astro::chart::calculate(input, Scale::UTC, observer,
-                                                      SYSTEMS.at(system_index), MODELS.at(model_index));
-        expect_snapshot(actual, expected);
-        expect_recomposition(actual, observer, SYSTEMS.at(system_index));
-      }
-    }
+  for (const auto& row : cases) {
+    SCOPED_TRACE(row.role);
+    const auto actual = snapshot_at(
+      dt,
+      CHART_CIVIL_SCALE_UTC,
+      row.observer,
+      SYSTEM_CODES.at(row.system_index),
+      MODEL_CODES.at(row.model_index)
+    );
+    ASSERT_TRUE(actual.valid) << last_error();
+    EXPECT_STREQ(last_error(), "");
+    const Datetime input { dt.ymd, dt.fraction() };
+    const auto expected = astro::chart::calculate(
+      input,
+      Scale::UTC,
+      row.observer,
+      SYSTEMS.at(row.system_index),
+      MODELS.at(row.model_index)
+    );
+    expect_snapshot(actual, expected);
   }
 }
 

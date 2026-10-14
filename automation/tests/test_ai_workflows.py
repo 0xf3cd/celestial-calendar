@@ -10,6 +10,7 @@
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -100,61 +101,73 @@ def test_ai_gate_rejects_missing_action_and_divergent_pins(workflows):
   assert check_ai_workflows(workflows) == 1
 
 
+def assert_ai_credential_policy(workflow, manual):
+  assert len(workflow["jobs"]) == 1
+  job = next(iter(workflow["jobs"].values()))
+  assert job["permissions"] == (
+    {"contents": "read", "pull-requests": "write", "id-token": "write"}
+    if manual
+    else {"contents": "read", "pull-requests": "read", "issues": "read", "id-token": "write"}
+  )
+  steps = job["steps"]
+  assert len(steps) == (3 if manual else 2), "no extra credentialed steps"
+  assert steps[-1]["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+  expressions = re.findall(r"\$\{\{.*?\}\}", json.dumps(workflow))
+  secrets = sorted(expression for expression in expressions if "secrets" in expression)
+  assert secrets == sorted(
+    ["${{ secrets.ANTHROPIC_API_KEY }}"] + (["${{ secrets.GITHUB_TOKEN }}"] if manual else [])
+  ), "secrets must remain at their required consumers"
+  if manual:
+    assert set(workflow["on"]) == {"workflow_dispatch"}
+    number = workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]
+    assert number["required"] == "true" and number["type"] == "number"
+    assert steps[1]["env"]["PR_NUMBER"] == "${{ inputs.pr_number }}"
+    assert steps[1]["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
+  else:
+    assert set(workflow["on"]) == {"issue_comment", "issues", "pull_request_review"}
+    for event, kind in (("issue_comment", "created"), ("issues", "opened"), ("pull_request_review", "submitted")):
+      assert workflow["on"][event]["types"] == [kind]
+    # This is an authorization contract, not a copy of the action's execution recipe.
+    assert " ".join(job["if"].split()) == (
+      "(github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') "
+      "&& github.event.comment.author_association == 'OWNER') || "
+      "(github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') "
+      "&& github.event.review.author_association == 'OWNER') || "
+      "(github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') "
+      "|| contains(github.event.issue.title, '@claude')) && github.event.issue.author_association == 'OWNER')"
+    )
+
+
 def test_ai_execution_recipes_preserve_triggers_permissions_and_credential_scope():
   for name in AI_WORKFLOWS:
     workflow = yaml.load((WORKFLOWS / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
-    manual = name == "claude-review.yml"
-    assert set(workflow) == {"name", "on", "jobs"}
-    assert set(workflow["jobs"]) == {"review" if manual else "claude"}
-    job = next(iter(workflow["jobs"].values()))
-    assert set(job) == {"if", "runs-on", "permissions", "steps"}
-    assert job["runs-on"] == "ubuntu-latest"
-    assert job["permissions"] == (
-      {"contents": "read", "pull-requests": "write", "id-token": "write"}
-      if manual
-      else {"contents": "read", "pull-requests": "read", "issues": "read", "id-token": "write"}
-    )
-    steps = job["steps"]
-    assert len(steps) == (3 if manual else 2)
-    assert set(steps[0]) == {"uses", "with"}
-    assert steps[0]["with"] == (
-      {"ref": "${{ github.event.repository.default_branch }}", "fetch-depth": "1", "persist-credentials": "false"}
-      if manual
-      else {"fetch-depth": "1", "persist-credentials": "false"}
-    )
-    action = steps[-1]
-    assert set(action) == {"uses", "with"}
-    assert set(action["with"]) == (
-      {"anthropic_api_key", "prompt", "claude_args"}
-      if manual
-      else {"anthropic_api_key", "include_comments_by_actor", "claude_args"}
-    )
-    assert action["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
-    if manual:
-      assert workflow["on"] == {
-        "workflow_dispatch": {
-          "inputs": {"pr_number": {"description": "PR number to review", "required": "true", "type": "number"}}
-        }
-      }
-      assert set(steps[1]) == {"name", "run", "env"}
-      assert steps[1]["env"] == {
-        "PR_NUMBER": "${{ inputs.pr_number }}",
-        "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
-      }
-    else:
-      assert workflow["on"] == {
-        "issue_comment": {"types": ["created"]},
-        "issues": {"types": ["opened"]},
-        "pull_request_review": {"types": ["submitted"]},
-      }
-      assert " ".join(job["if"].split()) == (
-        "(github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') "
-        "&& github.event.comment.author_association == 'OWNER') || "
-        "(github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') "
-        "&& github.event.review.author_association == 'OWNER') || "
-        "(github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') "
-        "|| contains(github.event.issue.title, '@claude')) && github.event.issue.author_association == 'OWNER')"
-      )
+    assert_ai_credential_policy(workflow, name == "claude-review.yml")
+
+
+@pytest.mark.parametrize("fault", ["permissions", "global-secret", "extra-input", "key", "input-type"])
+def test_ai_credential_policy_rejects_scope_and_trigger_faults(fault):
+  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  job = workflow["jobs"]["review"]
+  if fault == "permissions":
+    job["permissions"]["contents"] = "write"
+  elif fault == "global-secret":
+    workflow["env"] = {"GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"}
+  elif fault == "extra-input":
+    job["steps"][-1]["with"]["other_token"] = "${{ secrets.GITHUB_TOKEN }}"
+  elif fault == "key":
+    job["steps"][-1]["with"]["anthropic_api_key"] = "inert-wrong-key"
+  else:
+    workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["type"] = "string"
+  with pytest.raises(AssertionError):
+    assert_ai_credential_policy(workflow, True)
+
+
+def test_ai_recipe_labels_and_input_descriptions_are_not_policy():
+  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  workflow["name"] = "A different display name"
+  workflow["jobs"]["review"]["steps"][-1]["name"] = "Run the reviewer"
+  workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["description"] = "Select a pull request"
+  assert_ai_credential_policy(workflow, True)
 
 
 @pytest.mark.parametrize("fork", [False, True], ids=["same-repository", "fork-main"])

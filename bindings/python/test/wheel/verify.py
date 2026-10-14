@@ -65,6 +65,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   expected_members = {
     "celestial_calendar/__init__.py",
     "celestial_calendar/_binding.py",
+    "celestial_calendar/_abi.py",
     "celestial_calendar/_version.py",
     "celestial_calendar/chart.py",
     "celestial_calendar/py.typed",
@@ -94,7 +95,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     expected_digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=").decode()
     assert digest == f"sha256={expected_digest}" and size == str(len(payload)), f"RECORD integrity mismatch: {member}"
 
-  for member in ("__init__.py", "_binding.py", "chart.py", "py.typed"):
+  for member in ("__init__.py", "_binding.py", "_abi.py", "chart.py", "py.typed"):
     assert (
       archive.read(f"celestial_calendar/{member}")
       == (REPO / "bindings/python/src/celestial_calendar" / member).read_bytes()

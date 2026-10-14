@@ -59,6 +59,8 @@ TEST(JulianDay, UtcYearWindows) {
   for (const int32_t year : { -32768, 0, 32767, std::numeric_limits<int32_t>::max() }) {
     EXPECT_THROW(std::ignore = utc_year_jde_window(year), std::invalid_argument);
   }
+  EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { -32768 }), std::invalid_argument);
+  EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { 0 }), std::runtime_error);
 }
 
 // This spot-check family was introduced by da333dd (#5, 2024-06-30); no later numeric shift is

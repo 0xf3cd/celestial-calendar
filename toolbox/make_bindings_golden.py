@@ -20,7 +20,7 @@ import platform
 import struct
 import argparse
 
-from ctypes import c_int32, c_uint32, c_uint8, c_double, c_bool, Structure
+from ctypes import c_uint32, c_double
 from datetime import date
 from pathlib import Path
 from typing import Final
@@ -29,6 +29,7 @@ from typing import Final
 sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import paths, run_cmd
+from automation.abi_layout import load_abi
 
 
 OUT_PATH: Final[Path] = Path(__file__).parent / "bindings_golden.json"
@@ -55,47 +56,6 @@ J2000_JD: Final[float] = 2451545.0  # 2000-01-01 12:00
 # window (jd_to_ut1's floor guard at one end, ut1_to_jd(32766-12-31 0h) at the other).
 MOON_JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)
 SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13688959.5)
-
-
-class _JieqiMomentQuery(Structure):
-  """Minimal mirror of `JieqiMomentQuery` in `celestial.h`."""
-
-  _fields_ = [
-    ("valid", c_bool),
-    ("jq_idx", c_uint8),
-    ("y", c_int32),
-    ("m", c_uint32),
-    ("d", c_uint32),
-    ("frac", c_double),
-  ]
-
-
-class _MoonIllumination(Structure):
-  """Minimal mirror of `MoonIllumination` in `celestial.h`."""
-
-  _fields_ = [
-    ("valid", c_bool),
-    ("illumination", c_double),
-    ("elongation_deg", c_double),
-  ]
-
-
-class _MoonPositionAngle(Structure):
-  """Minimal mirror of `MoonPositionAngle` in `celestial.h`."""
-
-  _fields_ = [
-    ("valid", c_bool),
-    ("angle_deg", c_double),
-  ]
-
-
-class _SiderealTime(Structure):
-  """Minimal mirror of `SiderealTime` in `celestial.h`."""
-
-  _fields_ = [
-    ("valid", c_bool),
-    ("value", c_double),
-  ]
 
 
 def find_native_lib() -> Path:
@@ -132,16 +92,16 @@ def f64_bits(value: float) -> str:
 
 def generate() -> dict:
   lib = ctypes.CDLL(str(find_native_lib()))
-  lib.query_jieqi_moment.argtypes = [c_int32, c_uint8]
-  lib.query_jieqi_moment.restype = _JieqiMomentQuery
-  lib.moon_illumination.argtypes = [c_double]
-  lib.moon_illumination.restype = _MoonIllumination
-  lib.moon_position_angle.argtypes = [c_double]
-  lib.moon_position_angle.restype = _MoonPositionAngle
-  lib.moon_phase_moments.argtypes = [c_int32, c_uint8, ctypes.POINTER(c_uint32), ctypes.POINTER(c_double), c_uint32]
-  lib.moon_phase_moments.restype = c_uint32
-  lib.local_apparent_sidereal_time.argtypes = [c_double, c_double]
-  lib.local_apparent_sidereal_time.restype = _SiderealTime
+  abi = load_abi()
+  for name in (
+    "query_jieqi_moment",
+    "moon_illumination",
+    "moon_position_angle",
+    "moon_phase_moments",
+    "local_apparent_sidereal_time",
+  ):
+    function = getattr(lib, name)
+    function.argtypes, function.restype = abi.BINDING_SPECS[name]
 
   random.seed(SEED)
   points = [(y, i) for y in EDGE_YEARS for i in range(24)]

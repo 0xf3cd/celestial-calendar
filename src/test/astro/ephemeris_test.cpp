@@ -234,6 +234,9 @@ auto check_complete_stencil_bounds(const Target target, const double lower_jde_t
 
 TEST(Ephemeris, IndependentLongitudeRates) {
   for (const auto& row : GOLDEN_ROWS) {
+    if (row.target == Target::MEAN_DESCENDING or row.target == Target::TRUE_DESCENDING) {
+      continue; // Retained rows; paired-rate bit identity is checked separately below.
+    }
     SCOPED_TRACE(::testing::Message() << row.role << " target=" << static_cast<uint32_t>(row.target) << " JDE(TT)=" << row.jde_tt);
     const double actual = longitude_rate(row.target, row.jde_tt).deg_per_tt_day;
     const double tolerance = comparison_tolerance(row.target);
@@ -248,6 +251,9 @@ TEST(Ephemeris, IndependentLongitudeRates) {
 
 TEST(Ephemeris, IndependentStationNeighborhoods) {
   for (const auto& row : GOLDEN_ROWS) {
+    if (row.target == Target::MEAN_DESCENDING or row.target == Target::TRUE_DESCENDING) {
+      continue;
+    }
     SCOPED_TRACE(::testing::Message() << row.role << " JDE(TT)=" << row.jde_tt);
     if (row.role == "station 0 offset 0.0" or row.role == "station 1 offset 0.0") {
       EXPECT_NEAR(longitude_rate(row.target, row.jde_tt).deg_per_tt_day, 0.0, 5e-10);

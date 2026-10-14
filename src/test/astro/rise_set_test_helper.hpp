@@ -23,6 +23,7 @@
 #include <string_view>
 
 #include "rise_set.hpp"
+#include "../test_helper.hpp"
 
 namespace astro::rise_set::test {
 
@@ -32,18 +33,7 @@ constexpr auto loc(const double lat_deg, const double lon_deg) -> GeoLocation {
            .longitude = astro::toolbox::AngleDeg { lon_deg } };
 }
 
-/**
- * @brief Checked unwrap for assertions. clang-tidy's bugprone-unchecked-optional-access cannot
- *        see through gtest's ASSERT_TRUE, so tests unwrap through this provably-guarded helper
- *        rather than NOLINT-ing every access.
- */
-template <typename T>
-inline auto req(const std::optional<T>& opt) -> const T& {
-  if (not opt.has_value()) {
-    throw std::logic_error { "expected optional to hold a value" };
-  }
-  return *opt;
-}
+using util::test::req;
 
 /** @brief Parse "HH:MM" / "HH:MM:SS" into minutes-of-day; blank cell → `nullopt`. */
 inline auto cell_minutes(const std::string_view cell) -> std::optional<double> {

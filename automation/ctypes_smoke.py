@@ -35,7 +35,7 @@ def load_common() -> ModuleType:
 def check_ctypes_smoke() -> int:
   """Run the `statistics/common.py` wrappers against the real built library.
 
-  The ABI layout gate parses `Structure._fields_` without executing anything, and the
+  The ABI layout gate imports only the declarations without a native library, and the
   C ABI tests stop at the C boundary -- so neither can see a wrapper body that fills a
   dataclass field from the wrong struct member. The goldens below are the HKO-sourced
   2023 leap-2nd-month pins from `cabi_smoke_test.cpp`, re-read through the Python

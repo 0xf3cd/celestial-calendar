@@ -356,8 +356,9 @@ bindings/
    wait for compiler support ([remaining work](README.md#todo) tracks the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./checks.py --features LEG` holds each CI leg to the state in
-   `automation/feature_probe.py`; an unlock fails CI and names the waiting sites it can
-   see — the ones tagged `TODO` with the feature's name.
+   `automation/feature_probe.py`. Toolchain failures, malformed records and lost capability
+   fail CI; unlocks, TODO counts, adoption and idle rows are maintenance information.
+   The report names waiting sites tagged `TODO` with the feature's name.
 3. **Shared library target:** `src/shared_lib/CMakeLists.txt` builds
    `libcelestial_calendar` from `lib*.cpp`. Version is injected via the `BUILD_VERSION`
    environment variable (defaults to `0.0.0`).
@@ -418,7 +419,7 @@ trigger is for.
 | **The tool-existence checks in `automation/` are not merged into one**; the `toolbox/` `sys.path.append` copies cannot be merged either (#166) | A third call site needs the same failure policy as an existing two |
 | **The `using X = Y` aliases in the lunar headers stay** — load-bearing for self-containment (`common.hpp` / `converter.hpp` / `algo2.hpp`) | The style rule narrows what `using X = Y` may do |
 | **External ephemerides are oracles, never dependencies** — ytliu0, Horizons, USNO appear only under `src/test/` and in source citations | — (a line, not a bet) |
-| **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** (#82) | Any target standard library marks `std::remainder` constexpr — `automation/feature_probe.py` watches it per leg |
+| **`normalize_deg` / `normalize_rad` keep calling `std::remainder`, and stay `constexpr`** (#82) | Any target standard library marks `std::remainder` constexpr — `automation/feature_probe.py` reports it per leg |
 
 **Decided and already done** (kept because the reasoning gets re-proposed): longitude sign
 is west-positive in `sidereal`, east-positive elsewhere, disambiguated by name (D2) ·

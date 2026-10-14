@@ -16,6 +16,7 @@
 #include <limits>
 #include <ranges>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -411,10 +412,14 @@ TEST(PlanetPhenomena, SamplingRejectsInvalidStep) {
 }
 
 TEST(PlanetPhenomena, NearTangentCrossingsAreSubdivided) {
-  // This extrapolated year has two conjunctions inside one coarse day (#60).
+  // The close pair straddles an integer day but fits inside one 1.5-day lattice interval (#60).
   const auto saturn = events(Planet::SATURN, 29841);
   ASSERT_EQ(std::ranges::count(saturn, Kind::CONJUNCTION, &Event::kind), 3);
   ASSERT_EQ(saturn.size(), 5);
+  const auto [start_jde_tt, end_jde_tt] = astro::julian_day::utc_year_jde_window(29841);
+  const auto wider_grid = detail::search(Planet::SATURN, start_jde_tt, end_jde_tt, 1.5);
+  ASSERT_EQ(std::ranges::count(wider_grid, Kind::CONJUNCTION, &Event::kind), 3);
+  ASSERT_EQ(wider_grid.size(), 5);
 }
 
 TEST(PlanetPhenomena, AdjacentWindowsShareExtremumOwnership) {
@@ -433,17 +438,26 @@ TEST(PlanetPhenomena, PublicSearchUsesOneDayCandidateGrid) {
 }
 
 TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
-  constexpr std::array planets {
-    Planet::MERCURY,
-    Planet::VENUS,
-    Planet::MARS,
-    Planet::JUPITER,
-    Planet::SATURN,
-    Planet::URANUS,
-    Planet::NEPTUNE,
+  struct ScanCase {
+    std::string_view role;
+    Planet planet;
+    int32_t year;
   };
-  constexpr std::array<int32_t, 7> years { 1, 4096, 8192, 16384, 24576, 29841, 32766 };
-  constexpr std::array<int32_t, 3> pluto_years { 1886, 2025, 2098 };
+  constexpr std::array cases {
+    ScanCase { .role = "first-year-inner", .planet = Planet::MERCURY, .year = 1 },
+    ScanCase { .role = "last-year-inner",  .planet = Planet::MERCURY, .year = 32766 },
+    ScanCase { .role = "remote-inner",     .planet = Planet::VENUS,   .year = 4096 },
+    ScanCase { .role = "remote-mars",      .planet = Planet::MARS,    .year = 8192 },
+    ScanCase { .role = "remote-jupiter",   .planet = Planet::JUPITER, .year = 16384 },
+    ScanCase { .role = "remote-saturn",    .planet = Planet::SATURN,  .year = 24576 },
+    ScanCase { .role = "close-crossings",  .planet = Planet::SATURN,  .year = 29841 },
+    ScanCase { .role = "uranus-stations",  .planet = Planet::URANUS,  .year = 2025 },
+    ScanCase { .role = "neptune-wrap",     .planet = Planet::NEPTUNE, .year = 2025 },
+    ScanCase { .role = "last-year-outer",  .planet = Planet::NEPTUNE, .year = 32766 },
+    ScanCase { .role = "pluto-first-year", .planet = Planet::PLUTO,   .year = 1886 },
+    ScanCase { .role = "pluto-reference",  .planet = Planet::PLUTO,   .year = 2025 },
+    ScanCase { .role = "pluto-last-year",  .planet = Planet::PLUTO,   .year = 2098 },
+  };
 
   const auto assert_same_events = [](const Planet planet, const int32_t year) {
     const calendar::Datetime start_utc { util::to_ymd(year, 1, 1), 0.0 };
@@ -464,13 +478,9 @@ TEST(PlanetPhenomena, OneDayScanMatchesHalfDayAcrossComputationalDomain) {
     }
   };
 
-  for (const int32_t year : years) {
-    for (const Planet planet : planets) {
-      assert_same_events(planet, year);
-    }
-  }
-  for (const int32_t year : pluto_years) {
-    assert_same_events(Planet::PLUTO, year);
+  for (const auto& row : cases) {
+    SCOPED_TRACE(row.role);
+    assert_same_events(row.planet, row.year);
   }
 }
 

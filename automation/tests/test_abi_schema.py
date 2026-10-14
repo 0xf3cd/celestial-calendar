@@ -8,7 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Fault controls for closed ABI grammars, with compiled C as the layout witness."""
+"""Fault controls for the C grammar and real ctypes records, measured against compiled C."""
 
 import ast
 import copy
@@ -27,9 +27,8 @@ from automation.c_abi_schema import parse_c_structs_text
 
 ROOT = Path(__file__).resolve().parents[2]
 HEADER = ROOT / "src/shared_lib/celestial.h"
-MIRROR = ROOT / "statistics/common.py"
 ABI = ROOT / "bindings/python/test/abi"
-BINDING = ROOT / "bindings/python/src/celestial_calendar/_binding.py"
+DECLARATIONS = ROOT / "bindings/python/src/celestial_calendar/_abi.py"
 
 C_CONTROL = """
 typedef struct Body { uint32_t code; double longitude; } Body;
@@ -40,6 +39,8 @@ typedef struct Snapshot {
 } Snapshot;
 """
 PY_CONTROL = """
+import ctypes
+from ctypes import Structure, c_bool, c_uint32, c_double
 class _Body(Structure):
   _fields_ = [("code", c_uint32), ("longitude", c_double)]
 class _Alias(ctypes.Structure):
@@ -52,7 +53,10 @@ class _Snapshot(Structure):
 def mirror(tmp_path, source):
   path = tmp_path / "mirror.py"
   path.write_text(source, encoding="utf-8")
-  return abi_layout.parse_py_structs(path)
+  spec = importlib.util.spec_from_file_location("abi_fixture", path)
+  module = importlib.util.module_from_spec(spec)
+  exec(compile(source, str(path), "exec"), module.__dict__)
+  return abi_layout.runtime_layout(module)
 
 
 def test_closed_grammars_accept_comments_inline_fields_and_earlier_records(tmp_path):
@@ -62,7 +66,8 @@ def test_closed_grammars_accept_comments_inline_fields_and_earlier_records(tmp_p
     "Snapshot": [("valid", "bool"), ("bodies", "Body[14]"), ("cusps", "double[12]"), ("nested", "Alias")],
   }
   assert parse_c_structs_text(C_CONTROL) == expected
-  assert mirror(tmp_path, PY_CONTROL) == expected
+  schema, _ = mirror(tmp_path, PY_CONTROL)
+  assert schema == expected
 
 
 @pytest.mark.parametrize(
@@ -118,88 +123,6 @@ def test_c_record_faults_are_loud(header):
     parse_c_structs_text(header)
 
 
-@pytest.mark.parametrize(
-  "field_type",
-  [
-    "c_float",
-    "Unknown",
-    "_Future",
-    "POINTER(c_double)",
-    "ctypes.c_void_p",
-    "other.c_double",
-    "c_double * 0",
-    "c_double * -1",
-    "c_double * count",
-    "c_double * True",
-    "c_double * 12.0",
-    "c_double * (6 + 6)",
-    "12 * c_double",
-    "(c_double * 12) * 2",
-    "_Body * 0",
-  ],
-)
-def test_mirror_type_and_extent_faults_are_loud(tmp_path, field_type):
-  source = PY_CONTROL.replace("_Body * 14", field_type)
-  with pytest.raises(RuntimeError):
-    mirror(tmp_path, source)
-
-
-@pytest.mark.parametrize(
-  "body",
-  [
-    "pass",
-    "_fields_ = fields",
-    "_fields_ = []",
-    "_fields_ = [('x', c_double, 1)]",
-    "_fields_ = [(1, c_double)]",
-    "_fields_ = [('x', c_double), ('x', c_double)]",
-    "_fields_ = [('bad.name', c_double)]",
-    "_fields_ = [('x', c_double)]; _fields_ = [('y', c_double)]",
-    "_fields_ = [('x', c_double)]; _pack_ = 1",
-    "_fields_ = [('x', c_double)]; _align_ = 16",
-    "_fields_ = [('x', c_double)]; _layout_ = 'ms'",
-    "_fields_ = [('x', c_double)]; _anonymous_ = ('x',)",
-    "_fields_ = [('x', c_double)]; _fields_ += [('y', c_double)]",
-    "_fields_ = [('x', c_double)]; _fields_.append(('y', c_double))",
-    "_fields_: list = [('x', c_double)]",
-    "_fields_ = other = [('x', c_double)]",
-  ],
-)
-def test_mirror_declaration_faults_are_loud(tmp_path, body):
-  with pytest.raises(RuntimeError):
-    mirror(tmp_path, f"class Broken(Structure):\n  {body}\n")
-
-
-def test_mirror_unknown_base_late_fields_and_normalized_name_collisions(tmp_path):
-  for source in (
-    "class Broken(other.Structure):\n  _fields_ = [('x', c_double)]",
-    "class Broken(Structure):\n  pass\nBroken._fields_ = [('x', c_double)]",
-    "class Broken(Structure):\n  _fields_ = [('x', c_double)]\n  if True:\n    _fields_ = [('y', c_double)]",
-    PY_CONTROL + "\nclass Body(Structure):\n  _fields_ = [('x', c_double)]",
-  ):
-    with pytest.raises(RuntimeError):
-      mirror(tmp_path, source)
-
-
-@pytest.mark.parametrize(
-  "mutation",
-  [
-    lambda source: source.replace("class _Body(Structure):", "@(lambda cls: _Alias)\nclass _Body(Structure):"),
-    lambda source: source.replace("class _Body(Structure):", "class _Body(Structure, metaclass=type):"),
-    lambda source: source + "\nif True:\n  class _Body(Structure):\n    _fields_ = [('code', c_int32)]\n",
-    lambda source: source.replace("class _Alias(ctypes.Structure):", "  del _fields_\nclass _Alias(ctypes.Structure):"),
-    lambda source: source.replace(
-      "class _Alias(ctypes.Structure):", "  (_fields_ := [('code', c_int32)])\nclass _Alias(ctypes.Structure):"
-    ),
-  ],
-)
-def test_mirror_namespace_and_computed_class_faults_are_loud(tmp_path, mutation):
-  expected = mirror(tmp_path, PY_CONTROL)
-  with pytest.raises(RuntimeError):
-    mirror(tmp_path, mutation(PY_CONTROL))
-  assert mirror(tmp_path, PY_CONTROL) == expected
-
-
 @pytest.fixture(scope="module")
 def compiled_layout(tmp_path_factory):
   work = tmp_path_factory.mktemp("native-layout")
@@ -209,11 +132,11 @@ def compiled_layout(tmp_path_factory):
   return structs, layout
 
 
-def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compiled_layout):
+def test_actual_header_manifest_and_declarations_against_compiled_c(compiled_layout):
   structs, layout = compiled_layout
-  parsed_mirror = abi_layout.parse_py_structs(MIRROR)
-  assert len(structs) == len(parsed_mirror) == 19
-  assert not abi_layout.compare_layouts(structs, parsed_mirror, layout, measured=abi_layout.py_layout(parsed_mirror))
+  schema, measured = abi_layout.runtime_layout(abi_layout.load_abi())
+  assert len(structs) == len(schema) == 19
+  assert not abi_layout.compare_layouts(structs, schema, layout, measured=measured)
   manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
   for name, record in manifest["layouts"].items():
     assert record["size"] == layout[name]
@@ -227,110 +150,137 @@ def test_actual_header_manifest_and_statistics_mirror_against_compiled_c(compile
         assert field["stride"] == layout[key + ".stride"]
 
 
+def test_real_declarations_import_without_a_native_library(monkeypatch):
+  def reject_load(*arguments, **keywords):
+    pytest.fail("declaration checks must not load a native library")
+
+  monkeypatch.setattr(ctypes, "CDLL", reject_load)
+  before = {name for name in sys.modules if name.startswith("celestial_calendar")}
+  module = abi_layout.load_abi()
+  assert len(module.STRUCT_TYPES) == 19 and len(module.BINDING_SPECS) == 30
+  assert {name for name in sys.modules if name.startswith("celestial_calendar")} == before
+  abi_layout.runtime_layout(module)
+
+
+def test_declared_return_identity_is_checked_without_lib():
+  module = abi_layout.load_abi()
+  foreign = abi_layout.load_abi()
+  assert module.DeltaT is not foreign.DeltaT
+  arguments, original = module.BINDING_SPECS["delta_t"]
+  assert ctypes.sizeof(original) == ctypes.sizeof(foreign.DeltaT)
+  module.BINDING_SPECS["delta_t"] = (arguments, foreign.DeltaT)
+  with pytest.raises(RuntimeError, match="Unmeasured declared return record"):
+    abi_layout.runtime_layout(module)
+  module.BINDING_SPECS["delta_t"] = (arguments, original)
+  abi_layout.runtime_layout(module)
+
+
+@pytest.mark.parametrize("defect", ["restype", "argtypes", "foreign-return"])
+def test_loaded_function_metadata_cannot_drift_from_its_declarations(defect):
+  module = abi_layout.load_abi()
+  library = ModuleType("library_fixture")
+  for name, (arguments, result) in module.BINDING_SPECS.items():
+    function = ModuleType(name)
+    function.argtypes, function.restype = arguments, result
+    setattr(library, name, function)
+  module.LIB = library
+  abi_layout.runtime_layout(module)
+  function = library.delta_t
+  if defect == "restype":
+    function.restype = module.JulianDay
+  elif defect == "argtypes":
+    function.argtypes = (ctypes.c_int32,)
+  else:
+    function.restype = type("DeltaT", (ctypes.Structure,), {"_fields_": module.DeltaT._fields_})
+  with pytest.raises(RuntimeError, match="Loaded signature differs"):
+    abi_layout.runtime_layout(module)
+
+
+def test_independent_jieqi_exporter_declaration_against_compiled_c(compiled_layout):
+  from toolbox import jieqi_table
+
+  structs, layout = compiled_layout
+  schema, measured = abi_layout.runtime_layout(jieqi_table)
+  name = "JieqiMomentQuery"
+  relevant = {key: value for key, value in layout.items() if key == name or key.startswith(name + ".")}
+  assert not abi_layout.compare_layouts({name: structs[name]}, schema, relevant, measured=measured)
+
+
 @pytest.mark.parametrize(
   "mutation",
   [
-    lambda source: source + "\n_ChartHousesV1 = _SunCoordinate\n",
-    lambda source: source + "\nmatch _SunCoordinate:\n  case _ChartHousesV1:\n    pass\n",
-    lambda source: source + "\nglobals()['_ChartHousesV1'] = _SunCoordinate\n",
-    lambda source: source + "\nexec('_ChartHousesV1 = _SunCoordinate')\n",
-    lambda source: (
-      source + ("\ngetattr(__import__('builtins'), 'ex' 'ec')('_ChartHousesV1 = _SunCoordinate', globals())\n")
+    lambda source: source + "\nChartHousesV1 = SunCoordinate\n",
+    lambda source: source + "\nmatch SunCoordinate:\n  case ChartHousesV1:\n    pass\n",
+    lambda source: source + "\nglobals()['ChartHousesV1'] = SunCoordinate\n",
+    lambda source: source + "\nexec('ChartHousesV1 = SunCoordinate')\n",
+    lambda source: source.replace(
+      "class ChartBodyV1(ctypes.Structure):", "class ChartBodyV1(ctypes.Structure):\n  _pack_ = 1"
     ),
     lambda source: source.replace(
-      "class _ChartBodyV1(Structure):", "globals().update(c_uint32=c_int32)\nclass _ChartBodyV1(Structure):"
-    ),
-    lambda source: source.replace(
-      "class _ChartHousesV1(Structure):",
-      '    locals()["_fields_"] = '
-      "[(name, c_int32 if kind is c_uint32 else kind) for name, kind in _fields_]\n\n"
-      "class _ChartHousesV1(Structure):",
+      "class ChartSnapshotV1(ctypes.Structure):", "class ChartSnapshotV1(ctypes.Structure):\n  _pack_ = 1"
     ),
     lambda source: (
-      source + "\nChartSnapshotV1 = _ChartSnapshotV1\n"
-      "_ChartSnapshotV1 = type('_ChartSnapshotV1', (Structure,), {'_fields_': "
-      "[('valid', c_bool), ('jde_tt', c_double), ('jd_ut1', c_double), "
-      "('bodies', _ChartBodyV1 * 14), ('houses', _ChartHousesV1)]})\n"
-    ),
-    lambda source: source.replace(
-      "class _ChartSnapshotV1(Structure):", "class _ChartSnapshotV1(Structure):\n    _pack_ = 1"
-    ),
-    lambda source: (
-      source + "\nLIB = type('Library', (), {})()\n"
-      "LIB.chart_snapshot_v1 = type('Function', (), {'restype': "
-      "type('_ChartSnapshotV1', (Structure,), {'_fields_': "
-      "[('valid', c_bool), ('jde_tt', c_double), ('jd_ut1', c_double), "
-      "('bodies', _ChartBodyV1 * 14), ('houses', _ChartHousesV1)]})})()\n"
+      source + "\nBINDING_SPECS['delta_t'] = ((ctypes.c_double,), "
+      "type('DeltaT', (ctypes.Structure,), {'_fields_': DeltaT._fields_}))\n"
     ),
   ],
 )
-def test_runtime_mirror_checks_actual_bound_classes_not_declared_schema(compiled_layout, mutation):
+def test_runtime_mirror_checks_actual_bound_classes_not_declared_schema(tmp_path, compiled_layout, mutation):
   structs, ground_truth = compiled_layout
-  source = ast.parse(MIRROR.read_text(encoding="utf-8"))
-  definitions = [
-    node for node in source.body if isinstance(node, ast.ClassDef) and abi_layout._structure_name(node) is not None
-  ]
-  declarations = ast.unparse(ast.Module(body=definitions, type_ignores=[]))
-
-  def measure(text):
-    namespace = {"ctypes": ctypes, "Structure": ctypes.Structure}
-    namespace.update({python: getattr(ctypes, python) for python in abi_layout.C_TO_CTYPES.values()})
-    namespace["c_int32"] = ctypes.c_int32
-    exec(compile(text, "runtime-mirror-control", "exec"), namespace)
-    module = ModuleType("runtime_mirror")
-    module.__dict__.update(namespace)
-    return abi_layout.runtime_layout(module)
-
-  runtime_structs, measured = measure(declarations)
+  source = DECLARATIONS.read_text(encoding="utf-8")
+  runtime_structs, measured = mirror(tmp_path, source)
   assert not abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
   try:
-    runtime_structs, measured = measure(mutation(declarations))
+    runtime_structs, measured = mirror(tmp_path, mutation(source))
   except (RuntimeError, AttributeError):
     pass
   else:
     assert abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
-  runtime_structs, measured = measure(declarations)
+  runtime_structs, measured = mirror(tmp_path, source)
   assert not abi_layout.compare_layouts(structs, runtime_structs, ground_truth, measured=measured)
 
 
 @pytest.mark.parametrize(
   "old,new",
   [
-    ('("target_code", c_uint32)', '("target_code", c_int32)'),
-    ('("present_fields", c_uint32)', '("present_fields", c_int32)'),
-    ('("valid", c_bool)', '("valid", c_uint8)'),
-    ('("distance_au", c_double),', ""),
-    ('("distance_au", c_double)', '("unknown", c_double)'),
-    ("c_double * 12", "c_double * 11"),
-    ("_ChartBodyV1 * 14", "_ChartBodyV1 * 13"),
-    ('("houses", _ChartHousesV1)', '("houses", _ChartBodyV1)'),
-    ('("houses", _ChartHousesV1)', '("houses", _SunCoordinate)'),
-    ('("lon", c_double),\n    ("lat", c_double)', '("lat", c_double),\n    ("lon", c_double)'),
+    ('("target_code", ctypes.c_uint32)', '("target_code", ctypes.c_int32)'),
+    ('("present_fields", ctypes.c_uint32)', '("present_fields", ctypes.c_int32)'),
+    ('("valid", ctypes.c_bool)', '("valid", ctypes.c_uint8)'),
+    ('("distance_au", ctypes.c_double),', ""),
+    ('("distance_au", ctypes.c_double)', '("unknown", ctypes.c_double)'),
+    ("ctypes.c_double * 12", "ctypes.c_double * 11"),
+    ("ChartBodyV1 * 14", "ChartBodyV1 * 13"),
+    ('("houses", ChartHousesV1)', '("houses", ChartBodyV1)'),
+    ('("houses", ChartHousesV1)', '("houses", SunCoordinate)'),
+    (
+      '("lon", ctypes.c_double),\n    ("lat", ctypes.c_double)',
+      '("lat", ctypes.c_double),\n    ("lon", ctypes.c_double)',
+    ),
   ],
 )
-def test_statistics_faults_detect_same_width_types_order_arrays_and_nesting(tmp_path, compiled_layout, old, new):
+def test_declaration_faults_detect_same_width_types_order_arrays_and_nesting(tmp_path, compiled_layout, old, new):
   structs, ground_truth = compiled_layout
-  source = MIRROR.read_text(encoding="utf-8")
+  source = DECLARATIONS.read_text(encoding="utf-8")
   assert old in source, "mutation anchor must exist"
-  mutated = mirror(tmp_path, source.replace(old, new, 1))
-  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=abi_layout.py_layout(mutated))
-  pristine = abi_layout.parse_py_structs(MIRROR)
-  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=abi_layout.py_layout(pristine))
+  mutated, measured = mirror(tmp_path, source.replace(old, new, 1))
+  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=measured)
+  pristine, measured = abi_layout.runtime_layout(abi_layout.load_abi())
+  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=measured)
 
 
 def test_statistics_record_set_and_array_stride_faults(compiled_layout):
   structs, ground_truth = compiled_layout
-  parsed = abi_layout.parse_py_structs(MIRROR)
+  parsed, measured = abi_layout.runtime_layout(abi_layout.load_abi())
   missing = copy.deepcopy(parsed)
   del missing["DeltaT"]
-  assert abi_layout.compare_layouts(structs, missing, ground_truth, measured=abi_layout.py_layout(missing))
+  assert abi_layout.compare_layouts(structs, missing, ground_truth, measured=measured)
   extra = copy.deepcopy(parsed)
   extra["Extra"] = [("value", "double")]
-  assert abi_layout.compare_layouts(structs, extra, ground_truth, measured=abi_layout.py_layout(extra))
+  assert abi_layout.compare_layouts(structs, extra, ground_truth, measured=measured)
   wrong_stride = dict(ground_truth, **{"ChartSnapshotV1.bodies.stride": 32})
   assert any(
     "bodies.stride" in finding
-    for finding in abi_layout.compare_layouts(structs, parsed, wrong_stride, measured=abi_layout.py_layout(parsed))
+    for finding in abi_layout.compare_layouts(structs, parsed, wrong_stride, measured=measured)
   )
 
 
@@ -340,29 +290,16 @@ def test_equal_layout_record_substitution_still_breaks_identity(tmp_path):
   structs = abi_layout.parse_c_structs(header)
   ground_truth = abi_layout.c_layout(structs, header, tmp_path)
   assert ground_truth is not None
-  pristine = mirror(tmp_path, PY_CONTROL)
-  mutated = mirror(tmp_path, PY_CONTROL.replace("_Body * 14", "_Alias * 14"))
-  assert abi_layout.py_layout(pristine) == abi_layout.py_layout(mutated)
-  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=abi_layout.py_layout(pristine))
-  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=abi_layout.py_layout(mutated))
+  pristine, measured = mirror(tmp_path, PY_CONTROL)
+  mutated, altered = mirror(tmp_path, PY_CONTROL.replace("_Body * 14", "_Alias * 14"))
+  assert measured == altered
+  assert not abi_layout.compare_layouts(structs, pristine, ground_truth, measured=measured)
+  assert abi_layout.compare_layouts(structs, mutated, ground_truth, measured=altered)
 
 
 @pytest.fixture
 def native_verifier(monkeypatch):
-  # Execute only source declarations, never the loader or a source-tree package import.
-  source = ast.parse(BINDING.read_text(encoding="utf-8"))
-  names = {"P_U32", "P_DOUBLE", "P_CHAR", "BINDING_SPECS", "STRUCT_TYPES", "RECORDING_EXPORTS"}
-  declarations = [
-    node
-    for node in source.body
-    if isinstance(node, ast.ClassDef)
-    or isinstance(node, ast.Assign)
-    and any(isinstance(t, ast.Name) and t.id in names for t in node.targets)
-  ]
-  binding = ModuleType("source_declarations_only")
-  binding.__file__ = str(BINDING)
-  binding.ctypes = ctypes
-  exec(compile(ast.Module(body=declarations, type_ignores=[]), str(BINDING), "exec"), binding.__dict__)
+  binding = abi_layout.load_abi()
   package = ModuleType("celestial_calendar")
   package._binding = binding
   monkeypatch.setitem(sys.modules, "celestial_calendar", package)
@@ -470,3 +407,28 @@ def test_ctypes_type_identity_and_array_extent_are_not_erased(native_verifier):
     native_verifier.ctypes_type_name(ctypes.c_double * 0)
   with pytest.raises(AssertionError):
     native_verifier.ctypes_type_name(type("ChartBodyV1", (ctypes.Structure,), {"_fields_": body._fields_}))
+
+
+def test_manifest_mutation_total_counts_the_cases_actually_checked(native_verifier, monkeypatch):
+  manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
+  checked = []
+
+  def rejects(record, *arguments):
+    checked.append(record)
+    raise AssertionError("controlled defect rejection")
+
+  monkeypatch.setattr(native_verifier, "verify_manifest", rejects)
+  total = native_verifier.run_mutation_self_tests(manifest, {}, {}, set(), {})
+  assert total == len(checked) == 19
+
+
+def test_manifest_mutation_case_omission_cannot_lower_the_accepted_denominator(native_verifier):
+  source = (ABI / "verify.py").read_text(encoding="utf-8")
+  removed = '  mutations["missing export"] = missing_export'
+  assert source.count(removed) == 1
+  module = ModuleType("mutation_inventory_control")
+  module.__file__ = str(ABI / "verify.py")
+  exec(compile(source.replace(removed, ""), module.__file__, "exec"), module.__dict__)
+  manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
+  with pytest.raises(AssertionError, match="independent ABI defect-case count"):
+    module.run_mutation_self_tests(manifest, {}, {}, set(), {})

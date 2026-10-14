@@ -265,8 +265,10 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 
 /**
  * @brief Return the JDE(TT) of January 1 at 00:00 UTC in a calendar year.
- * @param year A representable Gregorian year.
+ * @param year Gregorian year in [1, 32767].
  * @return The UTC year boundary expressed in TT.
+ * @throw std::invalid_argument If the calendar year is invalid.
+ * @throw std::runtime_error If the year is below 1; see @ref ut1_to_jd.
  * @note Before 1972 this uses the UT1 substitute from @ref utc_to_jde.
  * @see utc_to_jde
  */

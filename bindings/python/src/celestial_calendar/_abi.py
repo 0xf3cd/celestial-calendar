@@ -1,0 +1,245 @@
+# CelestialCalendar:
+#   A C++23-style library that performs astronomical calculations and date conversions between
+#   Gregorian and Chinese Lunar calendars.
+#
+# Copyright (C) 2026 Ningqi Wang (0xf3cd)
+# Email: nq.maigre@gmail.com
+# Repo : https://github.com/0xf3cd/celestial-calendar
+#
+# SPDX-License-Identifier: MIT
+
+"""Private C ABI declarations, importable without loading a native library."""
+
+from __future__ import annotations
+
+import ctypes
+
+
+class JulianDay(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("value", ctypes.c_double)]
+
+
+class UT1Time(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint32),
+    ("day", ctypes.c_uint32),
+    ("fraction", ctypes.c_double),
+  ]
+
+
+class SunCoordinate(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("lon", ctypes.c_double),
+    ("lat", ctypes.c_double),
+    ("r", ctypes.c_double),
+  ]
+
+
+class MoonCoordinate(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("lon", ctypes.c_double),
+    ("lat", ctypes.c_double),
+    ("r", ctypes.c_double),
+  ]
+
+
+class MoonIllumination(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("illumination", ctypes.c_double),
+    ("elongation_deg", ctypes.c_double),
+  ]
+
+
+class MoonPositionAngle(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("angle_deg", ctypes.c_double)]
+
+
+class Discriminant(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("count", ctypes.c_uint32)]
+
+
+class EquationOfTime(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("value", ctypes.c_double)]
+
+
+class ApparentSolarTime(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint32),
+    ("day", ctypes.c_uint32),
+    ("fraction", ctypes.c_double),
+  ]
+
+
+class SiderealTime(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("value", ctypes.c_double)]
+
+
+class JieqiMomentQuery(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("jq_idx", ctypes.c_uint8),
+    ("y", ctypes.c_int32),
+    ("m", ctypes.c_uint32),
+    ("d", ctypes.c_uint32),
+    ("frac", ctypes.c_double),
+  ]
+
+
+class SupportedLunarYearRange(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("start", ctypes.c_int32), ("end", ctypes.c_int32)]
+
+
+class LunarYearInfo(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint8),
+    ("day", ctypes.c_uint8),
+    ("leap_month", ctypes.c_uint8),
+    ("month_len", ctypes.c_uint16),
+  ]
+
+
+class LunarDate(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint8),
+    ("is_leap", ctypes.c_bool),
+    ("day", ctypes.c_uint8),
+  ]
+
+
+class GregorianDate(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint8),
+    ("day", ctypes.c_uint8),
+  ]
+
+
+class DeltaT(ctypes.Structure):
+  _fields_ = [("valid", ctypes.c_bool), ("value", ctypes.c_double)]
+
+
+class ChartBodyV1(ctypes.Structure):
+  _fields_ = [
+    ("target_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("longitude_deg", ctypes.c_double),
+    ("latitude_deg", ctypes.c_double),
+    ("distance_au", ctypes.c_double),
+    ("longitude_rate_deg_per_tt_day", ctypes.c_double),
+  ]
+
+
+class ChartHousesV1(ctypes.Structure):
+  _fields_ = [
+    ("ascendant_deg", ctypes.c_double),
+    ("midheaven_deg", ctypes.c_double),
+    ("descendant_deg", ctypes.c_double),
+    ("imum_coeli_deg", ctypes.c_double),
+    ("cusps_deg", ctypes.c_double * 12),
+  ]
+
+
+class ChartSnapshotV1(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("jd_ut1", ctypes.c_double),
+    ("jde_tt", ctypes.c_double),
+    ("bodies", ChartBodyV1 * 14),
+    ("houses", ChartHousesV1),
+  ]
+
+
+P_U32 = ctypes.POINTER(ctypes.c_uint32)
+P_DOUBLE = ctypes.POINTER(ctypes.c_double)
+P_CHAR = ctypes.POINTER(ctypes.c_char)
+
+BINDING_SPECS = {
+  "set_log_verbosity": ((ctypes.c_uint8,), ctypes.c_bool),
+  "last_error": ((), ctypes.c_char_p),
+  "ut1_to_jd": ((ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double), JulianDay),
+  "ut1_to_jde": ((ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double), JulianDay),
+  "jde_to_ut1": ((ctypes.c_double,), UT1Time),
+  "sun_apparent_geocentric_coord": ((ctypes.c_double,), SunCoordinate),
+  "moon_apparent_geocentric_coord": ((ctypes.c_double,), MoonCoordinate),
+  "moon_illumination": ((ctypes.c_double,), MoonIllumination),
+  "moon_position_angle": ((ctypes.c_double,), MoonPositionAngle),
+  "moon_phase_moments": ((ctypes.c_int32, ctypes.c_uint8, P_U32, P_DOUBLE, ctypes.c_uint32), ctypes.c_uint32),
+  "solar_lon_root_discriminant": ((ctypes.c_int32, ctypes.c_double), Discriminant),
+  "solar_lon_roots": ((ctypes.c_int32, ctypes.c_double, P_DOUBLE, ctypes.c_uint32), ctypes.c_uint32),
+  "new_moons_after_jde": ((ctypes.c_double, P_DOUBLE, ctypes.c_uint32), ctypes.c_uint32),
+  "new_moons_in_year": ((ctypes.c_int32, P_U32, P_DOUBLE, ctypes.c_uint32), ctypes.c_uint32),
+  "equation_of_time": ((ctypes.c_double,), EquationOfTime),
+  "apparent_solar_time": (
+    (ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double, ctypes.c_double),
+    ApparentSolarTime,
+  ),
+  "local_apparent_sidereal_time": ((ctypes.c_double, ctypes.c_double), SiderealTime),
+  "query_jieqi_moment": ((ctypes.c_int32, ctypes.c_uint8), JieqiMomentQuery),
+  "get_jieqi_name": ((ctypes.c_uint8, P_CHAR, ctypes.c_uint32), ctypes.c_bool),
+  "get_supported_lunar_year_range": ((ctypes.c_uint8,), SupportedLunarYearRange),
+  "get_lunar_year_info": ((ctypes.c_uint8, ctypes.c_int32), LunarYearInfo),
+  "gregorian_to_lunar": ((ctypes.c_uint8, ctypes.c_int32, ctypes.c_uint8, ctypes.c_uint8), LunarDate),
+  "lunar_to_gregorian": (
+    (ctypes.c_uint8, ctypes.c_int32, ctypes.c_uint8, ctypes.c_bool, ctypes.c_uint8),
+    GregorianDate,
+  ),
+  "delta_t_algo1": ((ctypes.c_double,), DeltaT),
+  "delta_t_algo2": ((ctypes.c_double,), DeltaT),
+  "delta_t_algo3": ((ctypes.c_double,), DeltaT),
+  "delta_t_algo4": ((ctypes.c_double,), DeltaT),
+  "delta_t_algo5": ((ctypes.c_double,), DeltaT),
+  "delta_t": ((ctypes.c_double,), DeltaT),
+  "chart_snapshot_v1": (
+    (
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+    ),
+    ChartSnapshotV1,
+  ),
+}
+
+STRUCT_TYPES = {
+  structure.__name__: structure
+  for structure in (
+    JulianDay,
+    UT1Time,
+    SunCoordinate,
+    MoonCoordinate,
+    MoonIllumination,
+    MoonPositionAngle,
+    Discriminant,
+    EquationOfTime,
+    ApparentSolarTime,
+    SiderealTime,
+    JieqiMomentQuery,
+    SupportedLunarYearRange,
+    LunarYearInfo,
+    LunarDate,
+    GregorianDate,
+    DeltaT,
+    ChartBodyV1,
+    ChartHousesV1,
+    ChartSnapshotV1,
+  )
+}
+
+RECORDING_EXPORTS = frozenset(BINDING_SPECS) - {"last_error"}

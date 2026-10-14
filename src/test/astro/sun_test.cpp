@@ -109,7 +109,7 @@ TEST(Sun, GeocentricPosition) {
 
 
 TEST(Sun, FK5Correction) {
-  // Provenance (#68): expected Δλ/Δβ recomputed 2026-07-31 from Meeus (25.9) at 50-digit
+  // Provenance (#68): expected Δλ/Δβ recomputed 2026-07-31 from Meeus (32.3) at 50-digit
   // precision by statistics/fk5_correction_dataset.py, with λ/β inputs from this library's
   // vsop87d (validated against JPL DE441 via the apparent() pipeline in
   // sun_horizons_golden_test.cpp) — an independent transcription check of `fk5_correction`.
