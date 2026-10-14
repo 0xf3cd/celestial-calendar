@@ -97,7 +97,9 @@ def test_adoption_and_count_drift_are_information(compiler, capsys):
 
 
 @pytest.mark.parametrize("leg", [None, "tested-leg"])
-@pytest.mark.parametrize("failure", ["canary", "anti-canary", "signal", "silent", "ice", "missing", "version"])
+@pytest.mark.parametrize(
+  "failure", ["canary", "anti-canary", "signal", "silent", "ice", "ice-success", "ice-stdout", "missing", "version"]
+)
 def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, failure):
   outcomes, _ = compiler
   if failure == "canary":
@@ -110,6 +112,10 @@ def test_compiler_failures_do_not_become_maintenance_information(compiler, leg, 
     outcomes["waiting-program"] = ProcReturn(1, "", "")
   elif failure == "ice":
     outcomes["waiting-program"] = ProcReturn(1, "", "PLEASE submit a bug report")
+  elif failure == "ice-success":
+    outcomes["waiting-program"] = ProcReturn(0, "", "Internal Compiler Error")
+  elif failure == "ice-stdout":
+    outcomes["waiting-program"] = ProcReturn(1, "frontend command failed", "")
   elif failure == "missing":
     outcomes["waiting-program"] = FileNotFoundError("compiler disappeared")
   else:

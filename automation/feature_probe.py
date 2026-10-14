@@ -228,7 +228,7 @@ def todo_sites(token: str) -> List[str]:
 
   Both words have to land on one line, so a TODO that wraps its feature name onto the next one
   goes unseen here. That blind spot is covered where it would matter: the feature reaches
-   `monuments()` instead, which reports rows with nothing left to point at.
+  `monuments()` instead, which reports rows with nothing left to point at.
   """
   src_dir = paths.cpp_src_dir()
   root = paths.proj_root()

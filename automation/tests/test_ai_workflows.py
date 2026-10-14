@@ -104,6 +104,8 @@ def test_ai_gate_rejects_missing_action_and_divergent_pins(workflows):
 def assert_ai_credential_policy(workflow, manual):
   assert len(workflow["jobs"]) == 1
   job = next(iter(workflow["jobs"].values()))
+  assert job["runs-on"] == "ubuntu-latest", "credentialed jobs use the hosted runner"
+  assert "env" not in workflow and "env" not in job, "credentials must not acquire workflow/job scope"
   assert job["permissions"] == (
     {"contents": "read", "pull-requests": "write", "id-token": "write"}
     if manual
@@ -111,12 +113,21 @@ def assert_ai_credential_policy(workflow, manual):
   )
   steps = job["steps"]
   assert len(steps) == (3 if manual else 2), "no extra credentialed steps"
+  for index, step in enumerate(steps):
+    if manual and index == 1:
+      assert set(step["env"]) == {"PR_NUMBER", "GH_TOKEN"}
+    else:
+      assert "env" not in step, "only manual preparation receives credential env"
   assert steps[-1]["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
   expressions = re.findall(r"\$\{\{.*?\}\}", json.dumps(workflow))
-  secrets = sorted(expression for expression in expressions if "secrets" in expression)
-  assert secrets == sorted(
+  credentials = sorted(
+    expression
+    for expression in expressions
+    if re.search(r"\bsecrets\b|\bgithub\s*(?:\.\s*token|\[\s*'token'\s*\])", expression, re.IGNORECASE)
+  )
+  assert credentials == sorted(
     ["${{ secrets.ANTHROPIC_API_KEY }}"] + (["${{ secrets.GITHUB_TOKEN }}"] if manual else [])
-  ), "secrets must remain at their required consumers"
+  ), "credentials must remain at their required consumers"
   if manual:
     assert set(workflow["on"]) == {"workflow_dispatch"}
     number = workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]
@@ -168,6 +179,44 @@ def test_ai_recipe_labels_and_input_descriptions_are_not_policy():
   workflow["jobs"]["review"]["steps"][-1]["name"] = "Run the reviewer"
   workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["description"] = "Select a pull request"
   assert_ai_credential_policy(workflow, True)
+
+
+@pytest.mark.parametrize("manual", [False, True], ids=["mention", "manual"])
+@pytest.mark.parametrize(
+  "fault",
+  [
+    "workflow-env",
+    "job-env",
+    "checkout-env",
+    "action-env",
+    "self-hosted",
+    "runner-list",
+    "token-input",
+    "bracket-input",
+  ],
+)
+def test_ai_credentials_cannot_expand_scope_or_move_to_a_self_hosted_runner(manual, fault):
+  name = "claude-review.yml" if manual else "claude.yml"
+  workflow = yaml.load((WORKFLOWS / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  job = next(iter(workflow["jobs"].values()))
+  if fault in {"workflow-env", "job-env", "checkout-env", "action-env"}:
+    target = {
+      "workflow-env": workflow,
+      "job-env": job,
+      "checkout-env": job["steps"][0],
+      "action-env": job["steps"][-1],
+    }[fault]
+    target["env"] = {"GH_TOKEN": "${{ github.token }}"}
+  elif fault == "self-hosted":
+    job["runs-on"] = "self-hosted"
+  elif fault == "runner-list":
+    job["runs-on"] = ["self-hosted", "linux"]
+  else:
+    job["steps"][-1]["with"]["other_token"] = (
+      "${{ github.token }}" if fault == "token-input" else "${{ github['token'] }}"
+    )
+  with pytest.raises(AssertionError):
+    assert_ai_credential_policy(workflow, manual)
 
 
 @pytest.mark.parametrize("fork", [False, True], ids=["same-repository", "fork-main"])

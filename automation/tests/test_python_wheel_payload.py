@@ -62,25 +62,38 @@ def wheel_payload(version):
   return members
 
 
-def archive(members, version):
+def archive(members, version, fault=None):
   record_name = f"celestial_calendar-{version}.dist-info/RECORD"
   rows = io.StringIO()
   writer = csv.writer(rows)
   for name, data in members.items():
+    if fault == "record-missing" and name == "celestial_calendar/_abi.py":
+      continue
     digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
-    writer.writerow((name, "sha256=" + digest, str(len(data))))
+    size = str(len(data))
+    if name == "celestial_calendar/_abi.py":
+      if fault == "record-hash":
+        digest = "invalid-digest"
+      elif fault == "record-size":
+        size = str(len(data) + 1)
+      elif fault == "record-duplicate":
+        writer.writerow((name, "sha256=" + digest, size))
+    writer.writerow((name, "sha256=" + digest, size))
   writer.writerow((record_name, "", ""))
   result = io.BytesIO()
   with zipfile.ZipFile(result, "w") as output:
     for name, data in members.items():
       output.writestr(name, data)
+    if fault == "zip-duplicate":
+      with pytest.warns(UserWarning, match="Duplicate name"):
+        output.writestr("celestial_calendar/_abi.py", members["celestial_calendar/_abi.py"])
     output.writestr(record_name, rows.getvalue())
   result.seek(0)
   return zipfile.ZipFile(result)
 
 
-def check(verifier, members, version):
-  with archive(members, version) as payload:
+def check(verifier, members, version, fault=None):
+  with archive(members, version, fault) as payload:
     return verifier.verify_metadata(
       payload, Path(f"celestial_calendar-{version}-py3-none-win_amd64.whl"), version, ["win_amd64"]
     )
@@ -106,3 +119,21 @@ def test_wheel_source_bytes_are_checked_even_with_a_valid_record(verifier, name)
   members[f"celestial_calendar/{name}"] += b"\n"
   with pytest.raises(AssertionError, match="source payload mismatch|^$"):
     check(verifier, members, version)
+
+
+@pytest.mark.parametrize(
+  "fault,message",
+  [
+    ("record-missing", "RECORD mismatch"),
+    ("record-hash", "RECORD integrity mismatch"),
+    ("record-size", "RECORD integrity mismatch"),
+    ("record-duplicate", "duplicate RECORD member"),
+    ("zip-duplicate", "duplicate wheel member"),
+  ],
+)
+def test_wheel_record_and_archive_integrity_are_independent_requirements(verifier, fault, message):
+  version = verifier.project_version()
+  members = wheel_payload(version)
+  with pytest.raises(AssertionError, match=message):
+    check(verifier, members, version, fault)
+  check(verifier, members, version)
