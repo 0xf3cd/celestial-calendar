@@ -48,9 +48,9 @@ TYPE_LAYOUT = {
 CTYPE_NAMES = {
   **{getattr(ctypes, python): c for c, python in C_TO_CTYPES.items()},
   ctypes.c_char_p: "const char *",
-  _binding.P_U32: "uint32_t *",
-  _binding.P_DOUBLE: "double *",
-  _binding.P_CHAR: "char *",
+  ctypes.POINTER(ctypes.c_uint32): "uint32_t *",
+  ctypes.POINTER(ctypes.c_double): "double *",
+  ctypes.POINTER(ctypes.c_char): "char *",
 }
 
 

@@ -331,6 +331,19 @@ def run_error_translation() -> None:
     assert native.calls == reader.calls == 1
 
   malformed = [SimpleNamespace(valid=True), SimpleNamespace()]
+  fixture = native_fixture()
+  for cusp_count in (12, 11):
+    houses = SimpleNamespace(**{name: getattr(fixture.houses, name) for name, _ in fixture.houses._fields_})
+    houses.cusps_deg = tuple(fixture.houses.cusps_deg)[:cusp_count]
+    malformed.append(
+      SimpleNamespace(
+        valid=True,
+        jd_ut1=fixture.jd_ut1,
+        jde_tt=fixture.jde_tt,
+        bodies=fixture.bodies,
+        houses=houses,
+      )
+    )
   for path, bad in (
     (("jd_ut1",), math.nan),
     (("jde_tt",), math.inf),

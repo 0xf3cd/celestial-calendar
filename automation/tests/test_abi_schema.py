@@ -409,6 +409,44 @@ def test_ctypes_type_identity_and_array_extent_are_not_erased(native_verifier):
     native_verifier.ctypes_type_name(type("ChartBodyV1", (ctypes.Structure,), {"_fields_": body._fields_}))
 
 
+@pytest.mark.parametrize(
+  "alias,primitive,export",
+  [
+    ("P_U32", ctypes.c_int32, "new_moons_in_year"),
+    ("P_DOUBLE", ctypes.c_float, "new_moons_after_jde"),
+    ("P_CHAR", ctypes.c_uint8, "get_jieqi_name"),
+  ],
+)
+def test_pointer_pointees_cannot_define_their_own_expected_signature(
+  native_verifier, monkeypatch, alias, primitive, export
+):
+  binding = native_verifier._binding
+  original = getattr(binding, alias)
+  wrong = ctypes.POINTER(primitive)
+  assert wrong is not original
+  expected = native_verifier.ctypes_types(export)
+  pristine = dict(binding.BINDING_SPECS)
+  monkeypatch.setattr(binding, alias, wrong)
+  for name, (arguments, result) in tuple(binding.BINDING_SPECS.items()):
+    if original in arguments:
+      monkeypatch.setitem(
+        binding.BINDING_SPECS, name, (tuple(wrong if kind is original else kind for kind in arguments), result)
+      )
+  spec = importlib.util.spec_from_file_location("pointer_identity_control", ABI / "verify.py")
+  checker = importlib.util.module_from_spec(spec)
+  old_path = list(sys.path)
+  try:
+    spec.loader.exec_module(checker)
+  finally:
+    sys.path[:] = old_path
+  with pytest.raises(AssertionError, match="unsupported ctypes type"):
+    checker.ctypes_types(export)
+  assert wrong not in checker.CTYPE_NAMES and original in checker.CTYPE_NAMES
+  binding.BINDING_SPECS.update(pristine)
+  monkeypatch.setattr(binding, alias, original)
+  assert checker.ctypes_types(export) == expected
+
+
 def test_manifest_mutation_total_counts_the_cases_actually_checked(native_verifier, monkeypatch):
   manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
   checked = []
