@@ -537,8 +537,7 @@ assert.match(lunarError.message, /cannot be represented/);
 ++edges;
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
-await testChartApi(celestial, entryUrl);
-++happy;
+happy += await testChartApi(celestial, entryUrl);
 assert.equal(happy, 23, "public method denominator");
 assert.equal(edges, 30, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");

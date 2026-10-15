@@ -226,4 +226,5 @@ export default async (options) => {
     delete globalThis.__chartNativeMutation;
     await rm(directory, { recursive: true, force: true });
   }
+  return 1;
 }
