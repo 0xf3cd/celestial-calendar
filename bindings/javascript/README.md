@@ -69,8 +69,9 @@ console.log(snapshot.houses.cuspsDeg); // 按宫位顺序排列的十二个宫�
 结果包含 `times: { jdUt1, jdeTt }`，以及固定顺序的十四个 `bodies`，其 `target` 为 `sun`、`moon`、
 `mercury`、`venus`、`mars`、`jupiter`、`saturn`、`uranus`、`neptune`、`pluto`、`meanAscending`、
 `meanDescending`、`trueAscending`、`trueDescending`。每个成员包含 `longitudeDeg`、`latitudeDeg`、
-`distanceAu` 和 `longitudeRateDegPerTtDay`。太阳、月球与行星采用日期真黄道／真春分点的视地心坐标；
-交点提供平均／真交点黄经，纬度为零、`distanceAu` 为 `null`。距离统一用 AU（包括 Moon），速率以 TT 日为单位。
+`distanceAu` 和 `longitudeRateDegPerTtDay`。所有成员均以日期真黄道／真春分点为基准：太阳、月球与行星
+提供视地心坐标；交点提供平均／真交点黄经，纬度为零、`distanceAu` 为 `null`。
+距离统一用 AU（包括 Moon），速率以 TT 日为单位。
 `houses` 包含 `ascendantDeg`、`midheavenDeg`、`descendantDeg`、`imumCoeliDeg` 和 `cuspsDeg`，
 角度均在 `[0, 360)` 度。结果是独立的普通对象和数组，后续调用或 WASM 内存增长不改变既有结果。
 

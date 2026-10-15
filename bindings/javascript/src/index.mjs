@@ -502,7 +502,7 @@ const snapshot = (civil, options) => {
   rangedInteger(value.year, "civil.year", 1885, 2099);
   requiredRecord(options, "options", ["scale", "location", "system"], []);
   if (Reflect.ownKeys(options).some((key) => !["scale", "location", "system", "model"].includes(key))) {
-    throw new TypeError("options accepts only scale, location, system and model.");
+    throw new TypeError("options must contain only: scale, location, system, model.");
   }
   const hasModel = Object.hasOwn(options, "model");
   if (!hasModel && "model" in options) {

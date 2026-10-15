@@ -606,12 +606,12 @@ try {
   M._free(diagnosticCount);
 }
 finite(validSret("ut1_to_jd", [32767, 1, 1, 0.5]).value);
-assert.equal(lastError(), "", "valid scalar32767 recovers and clears errors");
+assert.equal(lastError(), "", "valid scalar 32767 recovers and clears errors");
 validSret("ut1_to_jde", [32767, 1, 1, 0.5]);
 assert.equal(validSret("apparent_solar_time", [32767, 1, 1, 0.5, 0]).year, 32767);
 validSret("gregorian_to_lunar", [3, 2026, 6, 1]);
 assert.equal(lastError(), "");
-console.log("PASS raw original-year rejection/context; annual windows; untouched slots; scalar32767/recovery");
+console.log("PASS raw original-year rejection/context; annual windows; untouched slots; scalar 32767/recovery");
 
 for (const point of golden.sections.jieqi.entries) {
   const value = validSret("query_jieqi_moment", [point.year, point.idx]);

@@ -458,9 +458,7 @@ inline auto append_extrema(
  *       phase angle at least 90°.
  */
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
-  if (year < 1 or year > 32766) {
-    throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
-  }
+  astro::julian_day::validate_annual_year(year);
   if (planet == Planet::PLUTO
       and (year < detail::PLUTO_EVENT_START_YEAR or year > detail::PLUTO_EVENT_END_YEAR)) {
     throw std::invalid_argument {

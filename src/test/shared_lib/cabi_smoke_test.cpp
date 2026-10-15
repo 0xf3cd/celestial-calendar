@@ -168,7 +168,6 @@ TEST(CAbiSmoke, RawDateExportsRejectUnrepresentableYears) {
 }
 
 TEST(CAbiSmoke, ScalarDateExportsKeepYear32767) {
-  // The raw-date bound is chrono representability (±32767), not the annual [1, 32766] window.
   EXPECT_TRUE(ut1_to_jd(32767, 12, 31, 0.5).valid);
   EXPECT_STREQ(last_error(), "");
   EXPECT_TRUE(ut1_to_jde(32767, 6, 1, 0.5).valid);

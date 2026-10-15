@@ -126,6 +126,14 @@ export function runChartAcceptance(celestial, example) {
   for (const year of [1884, 2100]) {
     expectFailure(() => celestial.chart.snapshot({ ...civil, year }, { ...options, scale: "ut1" }), RangeError);
   }
+  for (const location of [
+    { latitudeDeg: 0, longitudeDeg: -180.0001 },
+    { latitudeDeg: 0, longitudeDeg: 180.0001 },
+    { latitudeDeg: -90.0001, longitudeDeg: 0 },
+    { latitudeDeg: 90.0001, longitudeDeg: 0 },
+  ]) {
+    expectFailure(() => celestial.chart.snapshot(civil, { ...options, location }), RangeError);
+  }
   expectFailure(() => celestial.chart.snapshot({ year: 1971, month: 12, day: 31, fraction: 0.5 }, options), RangeError);
   expectFailure(() => celestial.chart.snapshot(civil, { ...options, modle: "algo1" }), TypeError);
   expectFailure(() => celestial.chart.snapshot({ ...civil, year: 2035 }, { ...options, model: "algo4" }), celestial.CelestialError, true);

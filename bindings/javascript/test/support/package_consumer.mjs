@@ -112,7 +112,7 @@ console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumina
     const executed = run(process.execPath, ["consumer.mjs"]);
     const result = JSON.parse(executed.stdout);
     assert.equal(result.operation, "moon.illumination");
-    assert.equal(typeof result.chart.jdUt1, "number", "chart replay returned residuals");
+    assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
 
     if (typeCompiler !== undefined) {
       const typeRoot = new URL("../types/", import.meta.url);

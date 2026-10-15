@@ -115,8 +115,8 @@ def test_javascript_test_entries_match_their_execution_owners():
     "support/package_consumer.mjs",
   }
   public_api = (test_root / "node/public_api_test.mjs").read_text(encoding="utf-8")
-  assert 'import { testChartApi } from "../support/chart_api.mjs";' in public_api
-  assert "await testChartApi(celestial, entryUrl);" in public_api
+  assert re.search(r'^import \{ testChartApi \} from "\.\./support/chart_api\.mjs";$', public_api, re.MULTILINE)
+  assert re.search(r"^await testChartApi\(celestial, entryUrl\);$", public_api, re.MULTILINE)
   entries = {
     path.relative_to(test_root).as_posix()
     for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "registry/*.mjs", "types/*.ts")
@@ -180,6 +180,36 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
+
+
+@pytest.mark.parametrize("change", ["comment-import", "remove-import", "comment-call", "remove-call", "extra-entry"])
+def test_javascript_test_owners_reject_inactive_chart_suite(tmp_path, monkeypatch, change):
+  isolated = tmp_path / "javascript"
+  shutil.copytree(JAVASCRIPT / "test", isolated / "test")
+  shutil.copyfile(JAVASCRIPT / "package.json", isolated / "package.json")
+  monkeypatch.setattr(sys.modules[__name__], "JAVASCRIPT", isolated)
+  test_javascript_test_entries_match_their_execution_owners()
+
+  path = isolated / "test/node/public_api_test.mjs"
+  original = path.read_text(encoding="utf-8")
+  if change == "extra-entry":
+    extra = isolated / "test/node/unused_test.mjs"
+    extra.write_text("export const unused = true;\n", encoding="utf-8")
+  else:
+    needle = (
+      'import { testChartApi } from "../support/chart_api.mjs";'
+      if change.endswith("import")
+      else "await testChartApi(celestial, entryUrl);"
+    )
+    assert original.count(needle) == 1
+    path.write_text(original.replace(needle, "// " + needle if change.startswith("comment") else ""), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_javascript_test_entries_match_their_execution_owners()
+
+  path.write_text(original, encoding="utf-8")
+  if change == "extra-entry":
+    extra.unlink()
+  test_javascript_test_entries_match_their_execution_owners()
 
 
 def test_date_bridge_runs_on_current_and_floor_node():
