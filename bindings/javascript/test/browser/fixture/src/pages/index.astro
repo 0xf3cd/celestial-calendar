@@ -29,6 +29,8 @@
       import * as primaryDate from "@0xf3cd/celestial/date";
       import * as aliasDate from "celestial-calendar/date";
       import { dateToCivilAtOffset, civilAtOffsetToDate } from "celestial-calendar/date";
+      import { runChartAcceptance } from "../chart_replay.mjs";
+      import chartExample from "../chart_example.json";
 
       const output = document.querySelector("#result");
       const civil = dateToCivilAtOffset(new Date("2024-02-03T16:00:00.000Z"), 480);
@@ -62,6 +64,7 @@
             lichunMatches: lichun.jieqi === celestial.Jieqi.LICHUN,
             jdUt1: celestial.time.ut1ToJd(lichun.momentUt1),
             illumination: celestial.moon.illumination(jdeTt).fraction,
+            chart: runChartAcceptance(alias, chartExample),
           };
         } catch (error) {
           window.__CELESTIAL_RESULT__ = { fatal: String(error?.stack || error) };

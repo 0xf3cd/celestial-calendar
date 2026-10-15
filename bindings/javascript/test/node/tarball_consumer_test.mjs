@@ -20,6 +20,14 @@ if (process.argv.length !== 4) throw new Error("usage: node tarball_consumer_tes
 const tarball = resolve(process.argv[2]);
 const alias = resolve(process.argv[3]);
 await runPackageConsumer({
+  dependencies: { "@0xf3cd/celestial": `file:${tarball}` },
+  packageName: "@0xf3cd/celestial",
+  installArgs: ["--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"],
+  prefix: "celestial-npm-primary-consumer-",
+  typeCompiler: fileURLToPath(new URL("../../node_modules/typescript/bin/tsc", import.meta.url)),
+  success: `PASS unrelated offline primary, chart replay, installed types: ${basename(tarball)}`,
+});
+await runPackageConsumer({
   dependencies: { "@0xf3cd/celestial": `file:${tarball}`, "celestial-calendar": `file:${alias}` },
   packageName: "celestial-calendar",
   installArgs: ["--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"],

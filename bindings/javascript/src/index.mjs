@@ -12,7 +12,7 @@
 
 import createWasmModule from "./celestial-jieqi.mjs";
 
-import { BINDINGS, LAYOUTS } from "./bindings.mjs";
+import { BINDINGS, CHART_CODES, LAYOUTS } from "./bindings.mjs";
 import {
   booleanValue,
   civilDateTime,
@@ -424,6 +424,104 @@ const toGregorian = (algorithm, date) => {
   return { year: value.year, month: value.month, day: value.day };
 };
 
+const malformedChart = (field) => {
+  throw new CelestialError("chart.snapshot", `Invalid native chart field: ${field}.`, false);
+};
+
+const chartFinite = (value, field) => {
+  if (!Number.isFinite(value)) malformedChart(field);
+  return value;
+};
+
+const chartLongitude = (value, field) => {
+  chartFinite(value, field);
+  if (value < 0 || value >= 360) malformedChart(field);
+  return value;
+};
+
+const chartField = (layout, name) => LAYOUTS[layout].fields.find((field) => field.name === name);
+const readChartField = (M, ptr, layout, name) => readField(M, ptr, chartField(layout, name));
+
+const readChartSnapshot = (M, ptr) => {
+  const readSnapshot = (name) => readChartField(M, ptr, "ChartSnapshotV1", name);
+  const bodiesPtr = ptr + chartField("ChartSnapshotV1", "bodies").offset;
+  const bodies = Object.entries(CHART_CODES.targets).map(([target, code], index) => {
+    const bodyPtr = bodiesPtr + index * LAYOUTS.ChartBodyV1.size;
+    const readBody = (name) => readChartField(M, bodyPtr, "ChartBodyV1", name);
+    const isNode = code >= CHART_CODES.targets.meanAscending;
+    if (readBody("target_code") !== code) malformedChart(`bodies[${index}].target_code`);
+    if (readBody("present_fields") !== (isNode ? 1 : 3)) malformedChart(`${target}.present_fields`);
+    const latitudeDeg = chartFinite(readBody("latitude_deg"), `${target}.latitude_deg`);
+    if (latitudeDeg < -90 || latitudeDeg > 90 || (isNode && latitudeDeg !== 0)) {
+      malformedChart(`${target}.latitude_deg`);
+    }
+    // V1 node distance storage is absent, not a numeric sentinel.
+    const distanceAu = isNode ? null : chartFinite(readBody("distance_au"), `${target}.distance_au`);
+    if (!isNode && distanceAu <= 0) malformedChart(`${target}.distance_au`);
+    return {
+      target,
+      longitudeDeg: chartLongitude(readBody("longitude_deg"), `${target}.longitude_deg`),
+      latitudeDeg,
+      distanceAu,
+      longitudeRateDegPerTtDay: chartFinite(readBody("longitude_rate_deg_per_tt_day"), `${target}.longitude_rate_deg_per_tt_day`),
+    };
+  });
+  const housesPtr = ptr + chartField("ChartSnapshotV1", "houses").offset;
+  const houseAngle = (name) => chartLongitude(readChartField(M, housesPtr, "ChartHousesV1", name), `houses.${name}`);
+  const cuspField = chartField("ChartHousesV1", "cusps_deg");
+  const cuspCount = Number(cuspField.type.match(/\[(\d+)\]$/)[1]);
+  return {
+    times: {
+      jdUt1: chartFinite(readSnapshot("jd_ut1"), "jd_ut1"),
+      jdeTt: chartFinite(readSnapshot("jde_tt"), "jde_tt"),
+    },
+    bodies,
+    houses: {
+      ascendantDeg: houseAngle("ascendant_deg"),
+      midheavenDeg: houseAngle("midheaven_deg"),
+      descendantDeg: houseAngle("descendant_deg"),
+      imumCoeliDeg: houseAngle("imum_coeli_deg"),
+      cuspsDeg: readDoubles(M, housesPtr + cuspField.offset, cuspCount)
+        .map((value, index) => chartLongitude(value, `houses.cusps_deg[${index}]`)),
+    },
+  };
+};
+
+const snapshot = (civil, options) => {
+  const operation = "chart.snapshot";
+  const M = requireModule(operation);
+  const value = civilDateTime(civil, "civil");
+  rangedInteger(value.year, "civil.year", 1885, 2099);
+  requiredRecord(options, "options", ["scale", "location", "system"], []);
+  const hasModel = Object.hasOwn(options, "model");
+  if (!hasModel && "model" in options) {
+    throw new TypeError("options.model must be an own property.");
+  }
+  const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
+  if (scale === CHART_CODES.scales.utc && value.year < 1972) {
+    throw new RangeError("UTC chart input must be on or after 1972-01-01.");
+  }
+  const location = requiredRecord(options.location, "options.location", ["latitudeDeg", "longitudeDeg"], []);
+  const latitude = finiteNumber(location.latitudeDeg, "options.location.latitudeDeg");
+  if (latitude <= -90 || latitude >= 90) throw new RangeError("options.location.latitudeDeg must be in (-90, 90).");
+  const longitude = rangedNumber(location.longitudeDeg, "options.location.longitudeDeg", -180, 180);
+  const system = enumValue(options.system, "options.system", CHART_CODES.systems);
+  const model = hasModel ? options.model : undefined;
+  const modelCode = enumValue(model === undefined ? "default" : model, "options.model", CHART_CODES.models);
+  const binding = bindingOf("chart_snapshot_v1");
+  const ptr = M._malloc(LAYOUTS.ChartSnapshotV1.size);
+  if (ptr === 0) throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
+  try {
+    M[binding.wasmName](ptr, value.year, value.month, value.day, value.fraction, scale, latitude, longitude, system, modelCode);
+    const valid = M.HEAPU8[ptr + chartField("ChartSnapshotV1", "valid").offset];
+    if (valid === 0) fail(M, binding, operation);
+    if (valid !== 1) malformedChart("valid");
+    return readChartSnapshot(M, ptr);
+  } finally {
+    M._free(ptr);
+  }
+};
+
 export const config = Object.freeze({ setLogVerbosity });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
@@ -442,3 +540,4 @@ export const moon = Object.freeze({
 });
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
+export const chart = Object.freeze({ snapshot });

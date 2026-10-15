@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { API, SymbolFlags } from "typescript/unstable/sync";
 import { isLiteralTypeNode, isNumericLiteral, isTypeLiteralNode, isTypeReferenceNode } from "typescript/unstable/ast";
+import { testChartApi } from "./chart_api_test.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -26,7 +27,7 @@ const heldWasmPath = `${wasmPath}.init-failure-probe`;
 const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
-const namespaces = ["config", "time", "sun", "moon", "jieqi", "lunar"];
+const namespaces = ["config", "time", "sun", "moon", "jieqi", "lunar", "chart"];
 
 const declaredSurface = (text) => {
   const api = new API({ fs: { readFile: (path) => resolve(path) === declarationPath ? text : undefined } });
@@ -100,7 +101,7 @@ assert(Object.isFrozen(celestial.Jieqi), "Jieqi is frozen");
 
 assert.deepEqual(
   Object.keys(celestial).sort(),
-  ["CelestialError", "Jieqi", "config", "init", "jieqi", "lunar", "moon", "sun", "time"],
+  ["CelestialError", "Jieqi", "chart", "config", "init", "jieqi", "lunar", "moon", "sun", "time"],
   "public module exports",
 );
 assert.deepEqual(Object.keys(celestial.config), ["setLogVerbosity"]);
@@ -125,6 +126,7 @@ assert.deepEqual(
 );
 assert.deepEqual(Object.keys(celestial.jieqi), ["moment", "name"]);
 assert.deepEqual(Object.keys(celestial.lunar), ["supportedYearRange", "yearInfo", "fromGregorian", "toGregorian"]);
+assert.deepEqual(Object.keys(celestial.chart), ["snapshot"]);
 
 let edges = 0;
 const edge = (label, action, ErrorType) => {
@@ -133,6 +135,7 @@ const edge = (label, action, ErrorType) => {
 };
 
 const uninitializedCalls = [
+  ["chart.snapshot", [{ year: 2026, month: 1, day: 1, fraction: 0.5 }, { scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus" }]],
   ["config.setLogVerbosity", ["none"]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
@@ -514,10 +517,12 @@ assert.match(lunarError.message, /cannot be represented/);
 ++edges;
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
-assert.equal(happy, 22, "public method denominator");
+await testChartApi(celestial, entryUrl);
+++happy;
+assert.equal(happy, 23, "public method denominator");
 assert.equal(edges, 30, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/30`);
+console.log(`PASS public methods ${happy}/23; legacy edge/error cases ${edges}/30`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/18`);
 
 const fixtureDirectory = await mkdtemp(resolve(tmpdir(), "celestial-js-contract-"));

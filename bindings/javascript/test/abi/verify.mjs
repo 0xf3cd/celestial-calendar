@@ -15,7 +15,8 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { BINDINGS, LAYOUTS } from "../../src/bindings.mjs";
+import { BINDINGS, CHART_CODES, LAYOUTS } from "../../src/bindings.mjs";
+import { chartLabel } from "../support/chart_replay.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../../../..");
@@ -137,6 +138,28 @@ const parseChartCodes = (source) => {
 
 const parsedLayouts = parseHeaderLayouts(header);
 const parsedCodes = parseChartCodes(header);
+
+const verifyChartNames = (candidate) => {
+  for (const [group, prefix] of [
+    ["scales", "CHART_CIVIL_SCALE_"], ["models", "CHART_DELTA_T_MODEL_"],
+    ["systems", "CHART_HOUSE_SYSTEM_"], ["targets", "CHART_TARGET_"],
+  ]) {
+    const expected = Object.fromEntries(Object.entries(parsedCodes)
+      .filter(([name]) => name.startsWith(prefix))
+      .map(([name, value]) => [chartLabel(name.slice(prefix.length)), value]));
+    assert.deepEqual(candidate[group], expected, `header-derived chart ${group} identities`);
+  }
+  assert.deepEqual(Object.values(candidate.targets), Array.from({ length: 14 }, (_, index) => index), "fixed target order");
+};
+verifyChartNames(CHART_CODES);
+for (const [group, first, second] of [
+  ["targets", "mercury", "venus"], ["models", "algo1", "algo5"], ["systems", "equal", "wholeSign"],
+]) {
+  const changed = structuredClone(CHART_CODES);
+  [changed[group][first], changed[group][second]] = [changed[group][second], changed[group][first]];
+  assert.throws(() => verifyChartNames(changed), assert.AssertionError);
+}
+console.log("PASS header-derived chart labels/identities; target/model/system swaps rejected 3/3");
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));
