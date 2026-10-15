@@ -166,18 +166,23 @@ namespace detail {
   return astro::sun::geocentric_coord::apparent(jde).λ.deg();
 }
 
-/** @brief Return the JDE of the start of the year. */
+/** @brief Return the JDE of the start of the year; `year` must be representable (scalar bound: ±32767). */
 // #115: year boundaries are civil moments — resolve them via the UTC (leap-second-aware)
 // path, matching `moments()` (#84). The UT1/UTC model gap (DUT1 ≤ 0.9 s in the leap era;
 // ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
 // between any jieqi and New Year — no year's attribution can move.
 [[nodiscard]] inline auto get_start_jde(const int32_t year) -> double {
-  return astro::julian_day::utc_year_start_jde(std::chrono::year { year });
+  return astro::julian_day::utc_year_start_jde(
+    util::checked_year(year)
+  );
 }
 
-/** @brief Return the JDE of the end of the year. */
+/** @brief Return the JDE of the end of the year; `year` must be in [1, 32766] so `year + 1` stays representable. */
 [[nodiscard]] inline auto get_end_jde(const int32_t year) -> double {
-  return astro::julian_day::utc_year_start_jde(std::chrono::year { year + 1 });
+  astro::julian_day::validate_annual_year(year);
+  return astro::julian_day::utc_year_start_jde(
+    util::checked_year(year + 1)
+  );
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */
@@ -226,7 +231,9 @@ namespace detail {
 
 /** @brief Return a `f` that we can apply Newton's method to. */
 [[nodiscard]] inline auto make_f(const int32_t year, const double expected_lon) {
-  const double apr_1st_jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 4, 1), 0.0 });
+  const double apr_1st_jde = astro::julian_day::ut1_to_jde(
+    calendar::Datetime { util::to_ymd(util::checked_year(year), 4, 1), 0.0 }
+  );
 
   const auto modified_solar_longitude = [=](const double jde) -> double {
     const double raw_value = solar_longitude(jde);
@@ -259,8 +266,15 @@ namespace detail {
 // The `year` / `lon` names carry the contract at the call site.
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 
-/** @brief Return the count of the roots for the given `year` and `lon`. */
+/**
+ * @brief Return the count of the roots for the given `year` and `lon`.
+ * @param year The Gregorian year, in [1, 32766]; see @ref astro::julian_day::validate_annual_year.
+ * @param lon The expected solar longitude, in degrees.
+ * @throw std::invalid_argument If `year` leaves [1, 32766].
+ */
 [[nodiscard]] inline auto discriminant(const int32_t year, const double lon) -> uint32_t {
+  astro::julian_day::validate_annual_year(year);
+
   uint32_t count = 0;
 
   if (detail::has_root_before_spring_equinox(year, lon)) {
@@ -275,11 +289,14 @@ namespace detail {
 
 /**
  * @brief Find the roots (i.e. JDEs) for the given `year` and `expected_lon`.
- * @param year The year, in gregorian calendar.
+ * @param year The Gregorian year, in [1, 32766]; see @ref astro::julian_day::validate_annual_year.
  * @param expected_lon The expected solar longitude, in degrees.
  * @return The roots (i.e. JDEs). There can be 0, 1 or 2 roots.
+ * @throw std::invalid_argument If `year` leaves [1, 32766].
  */
 [[nodiscard]] inline auto find_roots(const int32_t year, const double expected_lon) -> std::vector<double> {
+  astro::julian_day::validate_annual_year(year);
+
   // Each predicate costs a full apparent-position evaluation at a year boundary. Going through
   // `discriminant` first would put the very same two questions a second time (#81).
   const bool root_before_equinox = detail::has_root_before_spring_equinox(year, expected_lon);

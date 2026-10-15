@@ -29,7 +29,11 @@ extern "C" {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
   return lib::wrap_export("ut1_to_jd", [=]() -> JulianDay {
-    const auto ymd = util::to_ymd(y, m, d);
+    const auto ymd = util::to_ymd(
+      util::checked_year(y),
+      m,
+      d
+    );
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
     const auto jd = astro::julian_day::ut1_to_jd(ut1_dt);
 
@@ -44,7 +48,11 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
   return lib::wrap_export("ut1_to_jde", [=]() -> JulianDay {
-    const auto ymd = util::to_ymd(y, m, d);
+    const auto ymd = util::to_ymd(
+      util::checked_year(y),
+      m,
+      d
+    );
     const auto ut1_dt = calendar::Datetime(ymd, fraction);
     const auto jde = astro::julian_day::ut1_to_jde(ut1_dt);
 
@@ -361,7 +369,11 @@ auto apparent_solar_time(
   const double longitude
 ) -> ApparentSolarTime {
   return lib::wrap_export("apparent_solar_time", [=]() -> ApparentSolarTime {
-    const auto ymd = util::to_ymd(y, m, d);
+    const auto ymd = util::to_ymd(
+      util::checked_year(y),
+      m,
+      d
+    );
     const auto utc_dt = calendar::Datetime(ymd, fraction);
     const auto lon = astro::toolbox::AngleDeg { longitude };
     const auto apparent_dt = astro::solar_time::apparent(utc_dt, lon);

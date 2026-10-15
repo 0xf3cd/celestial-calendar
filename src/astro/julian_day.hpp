@@ -277,6 +277,20 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 }
 
 /**
+ * @brief Validate a Gregorian year for an annual (whole-year) query.
+ * @param year The original integer year.
+ * @throw std::invalid_argument If `year` leaves [1, 32766].
+ * @note The ceiling sits one below `std::chrono::year::max()` so the next January 1 stays
+ *       representable.
+ */
+inline auto validate_annual_year(const int32_t year) -> void {
+  if (year < 1 or year > 32766) {
+    throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
+  }
+}
+
+
+/**
  * @brief Return the half-open UTC year window expressed as JDE(TT) bounds.
  * @param year Gregorian year in [1, 32766], leaving the next January 1 representable.
  * @return Inclusive start and exclusive end, in that order.
@@ -284,9 +298,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @note Before 1972 the UTC conversion uses UT1; see @ref utc_to_jde.
  */
 [[nodiscard]] inline auto utc_year_jde_window(const int32_t year) -> std::array<double, 2> {
-  if (year < 1 or year > 32766) {
-    throw std::invalid_argument { std::format("Year {} is out of range [1, 32766].", year) };
-  }
+  validate_annual_year(year);
   return {
     utc_year_start_jde(std::chrono::year { year }),
     utc_year_start_jde(std::chrono::year { year + 1 }),

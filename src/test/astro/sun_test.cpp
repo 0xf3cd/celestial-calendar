@@ -14,6 +14,9 @@
 #include <chrono>
 #include <bit>
 #include <cstdint>
+#include <limits>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include "util.hpp"
 #include "astro.hpp"
@@ -1014,6 +1017,51 @@ TEST(Sun, FindRootsAcrossTheUlpStep) {
       }
     }
   }
+}
+
+TEST(Sun, AnnualQueriesRejectUnrepresentableAndWideYears) {
+  // The diagnostic must name the original integer year, not just throw the right type.
+  const auto expect_rejection = [](const int32_t year, const std::string_view range,
+                                   const auto& query) {
+    try {
+      std::ignore = query(year);
+      FAIL() << "year " << year << " must not be admitted";
+    } catch (const std::invalid_argument& e) {
+      const std::string_view message { e.what() };
+      EXPECT_NE(message.find(std::to_string(year)), std::string_view::npos);
+      EXPECT_NE(message.find(range), std::string_view::npos);
+    }
+  };
+
+  // Annual queries form the `year + 1` boundary, so their window is [1, 32766].
+  const std::string_view annual { "[1, 32766]" };
+  for (const int32_t year : { -1, 0, 32767, 65537, 67562, 67421, -63510,
+                              std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {
+    expect_rejection(year, annual, [](const int32_t y) { return discriminant(y, 0.0); });
+    expect_rejection(year, annual, [](const int32_t y) { return find_roots(y, 0.0); });
+    // `get_end_jde` must throw before forming `year + 1`; INT32_MAX is the overflow control.
+    expect_rejection(year, annual, [](const int32_t y) { return detail::get_end_jde(y); });
+  }
+
+  // Scalar helpers never form `year + 1`; their bound is chrono representability (±32767).
+  const std::string_view scalar { "std::chrono::year" };
+  for (const int32_t year : { 32768, -32768, 65537, 67562, 67421, -63510,
+                              std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {
+    expect_rejection(year, scalar, [](const int32_t y) { return detail::get_start_jde(y); });
+    expect_rejection(year, scalar, [](const int32_t y) { return detail::make_f(y, 0.0); });
+  }
+}
+
+TEST(Sun, ScalarStartKeeps32767WhileAnnualQueriesStopAt32766) {
+  // The annual window's ceiling exists only because of the `year + 1` end boundary.
+  EXPECT_TRUE(std::isfinite(detail::get_start_jde(32766)));
+  EXPECT_TRUE(std::isfinite(detail::get_end_jde(32766)));
+  EXPECT_EQ(discriminant(32766, 0.0), 1U);
+
+  EXPECT_TRUE(std::isfinite(detail::get_start_jde(32767)));
+  EXPECT_EQ(detail::get_start_jde(32767),
+            astro::julian_day::utc_year_start_jde(std::chrono::year { 32767 }));
+  EXPECT_NO_THROW(std::ignore = detail::make_f(32767, 0.0)); // April 1 of 32767 is representable.
 }
 
 
