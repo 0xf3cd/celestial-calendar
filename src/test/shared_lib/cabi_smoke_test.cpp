@@ -175,6 +175,22 @@ TEST(CAbiSmoke, ScalarDateExportsKeepYear32767) {
   EXPECT_TRUE(apparent_solar_time(32767, 6, 1, 0.5, 116.4).valid);
 }
 
+TEST(CAbiSmoke, LunarConverterGregorianCoverageDomain) {
+  // These years pass the chrono representation guard, so the rejection must come from the
+  // selected algorithm's Gregorian coverage — not the `std::chrono::year` message.
+  for (const int32_t year : { -32767, 0, 32767 }) {
+    EXPECT_FALSE(gregorian_to_lunar(1, year, 1, 1).valid);
+    EXPECT_NE(std::strstr(last_error(), "cannot be represented by the selected algorithm"), nullptr);
+    EXPECT_EQ(std::strstr(last_error(), "std::chrono::year"), nullptr);
+  }
+
+  // Algorithm 1's Gregorian span closes on lunar 2099's last day, so 2100-01-01 still converts.
+  const LunarDate date = gregorian_to_lunar(1, 2100, 1, 1);
+  ASSERT_TRUE(date.valid);
+  EXPECT_EQ(date.year, 2099);
+  EXPECT_STREQ(last_error(), ""); // a valid call clears the recorded error
+}
+
 
 TEST(CAbiSmoke, Ut1ToJde) {
   const JulianDay jde = ut1_to_jde(2024, 6, 1, 0.5);

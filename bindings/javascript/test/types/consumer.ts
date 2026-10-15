@@ -48,6 +48,8 @@ celestial.chart.snapshot(new Date(), chartOptions);
 celestial.chart.snapshot(civil, { ...chartOptions, model: "algo6" });
 // @ts-expect-error Numeric C codes are not public JS selectors.
 celestial.chart.snapshot(civil, { ...chartOptions, system: 2 });
+// @ts-expect-error Unknown option keys are rejected.
+celestial.chart.snapshot(civil, { ...chartOptions, modle: "algo1" });
 // @ts-expect-error Missing longitude.
 celestial.chart.snapshot(civil, { ...chartOptions, location: { latitudeDeg: 0 } });
 // @ts-expect-error Node distance can be absent.

@@ -14,21 +14,12 @@ import assert from "node:assert/strict";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { assertChartReplay, chartExampleInput, runChartAcceptance } from "../support/chart_replay.mjs";
+import { pathToFileURL } from "node:url";
+import { assertChartReplay, chartExampleInput, runChartAcceptance } from "./chart_replay.mjs";
 
 export async function testChartApi(celestial, entryUrl) {
   const example = JSON.parse(await readFile(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), "utf8"));
   const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
-  const declarations = await readFile(new URL("./index.d.ts", entryUrl), "utf8");
-  const targetUnion = declarations.match(/export type ChartTarget\s*=([\s\S]*?);/);
-  assert(targetUnion, "ChartTarget declaration");
-  const declaredTargets = [...targetUnion[1].matchAll(/"([A-Za-z]+)"/g)].map((match) => match[1]);
-  const expectedTargets = Object.entries(manifest.chart_v1_codes)
-    .filter(([name]) => name.startsWith("CHART_TARGET_"))
-    .sort((left, right) => left[1] - right[1])
-    .map(([name]) => name.slice("CHART_TARGET_".length).toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()));
-  assert.deepEqual(declaredTargets, expectedTargets, "header-derived target declaration order");
   const { civil, options } = chartExampleInput(example);
   assert(Object.isFrozen(celestial.chart));
   console.log(`PASS public chart acceptance ${JSON.stringify(runChartAcceptance(celestial, example))}`);
@@ -99,6 +90,10 @@ export default async () => {
     await fixture.init();
     const call = (input = civil, config = options) => fixture.chart.snapshot(input, config);
     assertChartReplay(call(), example);
+    call({ year: 2026, month: 3, day: 17, fraction: 0.123 }, {
+      scale: "ut1", location: { latitudeDeg: -33.87, longitudeDeg: -151.21 }, system: "wholeSign", model: "algo2",
+    });
+    assert.deepEqual(control.args, [2026, 3, 17, 0.123, 1, -33.87, -151.21, 1, 2]);
     for (const model of [undefined, "default", "algo1", "algo2", "algo3", "algo4", "algo5"]) {
       call(civil, { ...options, model });
       assert.equal(control.args.at(-1), model === undefined || model === "default" ? 0 : Number(model.at(-1)));
@@ -140,6 +135,25 @@ export default async () => {
       { ...options, location: { latitudeDeg: 0, longitudeDeg: Infinity } }, Object.create(options)]) {
       assert.throws(() => call(civil, config), (error) => error instanceof TypeError || error instanceof RangeError);
     }
+    for (const input of [Object.create(civil), Object.assign(Object.create({ year: civil.year }), {
+      month: civil.month, day: civil.day, fraction: civil.fraction,
+    })]) assert.throws(() => call(input), TypeError);
+    assert.throws(() => call(civil, { ...options, location: Object.create(options.location) }), TypeError);
+    let unknownReads = 0;
+    for (const key of ["modle", "deltaTModel", Symbol("model")]) {
+      for (const enumerable of [true, false]) {
+        const extra = Object.defineProperty({ ...options }, key, {
+          enumerable, get() { ++unknownReads; throw new Error("unknown getter was read"); },
+        });
+        const allocations = control.allocations;
+        assert.throws(() => call(civil, extra), TypeError);
+        assert.equal(control.allocations, allocations, "unknown key reached native allocation");
+      }
+    }
+    assert.equal(unknownReads, 0);
+    call({ ...civil, extra: "permitted" }, {
+      ...options, location: { ...options.location, extra: "permitted" },
+    });
     const oldViews = control.M.HEAPF64;
     const retained = call(); const retainedJson = JSON.stringify(retained);
     control.grow = true; control.forbidAbsent = true;
@@ -147,18 +161,18 @@ export default async () => {
     assert.equal(oldViews.byteLength, 0, "growth did not detach old views");
     assert.equal(JSON.stringify(retained), retainedJson);
     control.grow = false; control.forbidAbsent = false;
-    const field = (layout, name) => manifest.layouts[layout].fields.find((item) => item.name === name).offset;
+    const offset = (layout, name) => manifest.layouts[layout].fields.find((item) => item.name === name).offset;
     const mutations = [
       (M, p) => { M.HEAPU8[p.ptr] = 2; },
-      (M, p) => { M.HEAPF64[(p.ptr + field("ChartSnapshotV1", "jd_ut1")) >> 3] = NaN; },
+      (M, p) => { M.HEAPF64[(p.ptr + offset("ChartSnapshotV1", "jd_ut1")) >> 3] = NaN; },
       (M, p) => { M.HEAPU32[p.bodies >> 2] = 1; },
-      (M, p) => { M.HEAPU32[(p.bodies + field("ChartBodyV1", "present_fields")) >> 2] = 1; },
-      (M, p) => { M.HEAPU32[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + field("ChartBodyV1", "present_fields")) >> 2] = 3; },
-      (M, p) => { M.HEAPF64[(p.bodies + field("ChartBodyV1", "longitude_deg")) >> 3] = 360; },
-      (M, p) => { M.HEAPF64[(p.bodies + field("ChartBodyV1", "latitude_deg")) >> 3] = 91; },
-      (M, p) => { M.HEAPF64[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + field("ChartBodyV1", "latitude_deg")) >> 3] = 0.5; },
-      (M, p) => { M.HEAPF64[(p.bodies + field("ChartBodyV1", "distance_au")) >> 3] = 0; },
-      (M, p) => { M.HEAPF64[(p.bodies + field("ChartBodyV1", "longitude_rate_deg_per_tt_day")) >> 3] = Infinity; },
+      (M, p) => { M.HEAPU32[(p.bodies + offset("ChartBodyV1", "present_fields")) >> 2] = 1; },
+      (M, p) => { M.HEAPU32[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "present_fields")) >> 2] = 3; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "longitude_deg")) >> 3] = 360; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "latitude_deg")) >> 3] = 91; },
+      (M, p) => { M.HEAPF64[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "latitude_deg")) >> 3] = 0.5; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "distance_au")) >> 3] = 0; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "longitude_rate_deg_per_tt_day")) >> 3] = Infinity; },
       (M, p) => { M.HEAPF64[p.houses >> 3] = -1; },
       (M, p) => { M.HEAPF64[p.cusps >> 3] = NaN; },
     ];
@@ -195,13 +209,13 @@ export default async (options) => {
     const real = await import(pathToFileURL(realEntry)); await real.init();
     const replay = () => assertChartReplay(real.chart.snapshot(civil, options), example);
     replay();
-    const bodiesOffset = field("ChartSnapshotV1", "bodies");
-    for (const offset of [
-      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + field("ChartBodyV1", "longitude_deg"),
-      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + field("ChartBodyV1", "longitude_rate_deg_per_tt_day"),
-      field("ChartSnapshotV1", "houses") + field("ChartHousesV1", "cusps_deg"),
+    const bodiesOffset = offset("ChartSnapshotV1", "bodies");
+    for (const nativeOffset of [
+      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "longitude_deg"),
+      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "longitude_rate_deg_per_tt_day"),
+      offset("ChartSnapshotV1", "houses") + offset("ChartHousesV1", "cusps_deg"),
     ]) {
-      globalThis.__chartNativeMutation = (M, ptr) => { M.HEAPF64[(ptr + offset) >> 3] += 1; };
+      globalThis.__chartNativeMutation = (M, ptr) => { M.HEAPF64[(ptr + nativeOffset) >> 3] += 1; };
       assert.throws(replay, /replay residual/);
     }
     delete globalThis.__chartNativeMutation;

@@ -143,6 +143,7 @@ const verifyChartNames = (candidate) => {
   for (const [group, prefix] of [
     ["scales", "CHART_CIVIL_SCALE_"], ["models", "CHART_DELTA_T_MODEL_"],
     ["systems", "CHART_HOUSE_SYSTEM_"], ["targets", "CHART_TARGET_"],
+    ["present", "CHART_PRESENT_"],
   ]) {
     const expected = Object.fromEntries(Object.entries(parsedCodes)
       .filter(([name]) => name.startsWith(prefix))
@@ -154,12 +155,13 @@ const verifyChartNames = (candidate) => {
 verifyChartNames(CHART_CODES);
 for (const [group, first, second] of [
   ["targets", "mercury", "venus"], ["models", "algo1", "algo5"], ["systems", "equal", "wholeSign"],
+  ["present", "latitude", "distance"],
 ]) {
   const changed = structuredClone(CHART_CODES);
   [changed[group][first], changed[group][second]] = [changed[group][second], changed[group][first]];
   assert.throws(() => verifyChartNames(changed), assert.AssertionError);
 }
-console.log("PASS header-derived chart labels/identities; target/model/system swaps rejected 3/3");
+console.log("PASS header-derived chart labels/identities; target/model/system/presence swaps rejected 4/4");
 
 const listValues = (constantName) => {
   const block = buildScript.match(new RegExp(`${constantName}: Final\\[list\\[str\\]\\] = \\[([\\s\\S]*?)\\n\\]`));

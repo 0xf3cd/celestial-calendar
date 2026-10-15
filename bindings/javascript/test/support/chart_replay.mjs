@@ -101,6 +101,19 @@ export function runChartAcceptance(celestial, example) {
   const historical = { year: 1900, month: 6, day: 1, fraction: 0.5 };
   const past = celestial.chart.snapshot(historical, { ...options, scale: "ut1", system: "equal" });
   check(past.times.jdUt1 === celestial.time.ut1ToJd(historical), "historical UT1");
+  for (const input of [
+    { year: 1885, month: 1, day: 10, fraction: 0.5 },
+    { year: 2099, month: 6, day: 1, fraction: 0.5 },
+  ]) {
+    const result = celestial.chart.snapshot(input, { ...options, scale: "ut1", system: "equal" });
+    check(result.times.jdUt1 === celestial.time.ut1ToJd(input), `civil year boundary ${input.year}`);
+  }
+  celestial.chart.snapshot({ year: 1972, month: 1, day: 1, fraction: 0 }, options);
+  for (const latitudeDeg of [-89.9, 89.9]) {
+    for (const longitudeDeg of [-180, 180]) {
+      celestial.chart.snapshot(civil, { ...options, system: "equal", location: { latitudeDeg, longitudeDeg } });
+    }
+  }
   const expectFailure = (action, ErrorType, recorded) => {
     try { action(); } catch (error) {
       check(error instanceof ErrorType, `chart error type: ${error}`);
@@ -110,6 +123,11 @@ export function runChartAcceptance(celestial, example) {
     throw new Error("missing chart failure");
   };
   expectFailure(() => celestial.chart.snapshot(historical, options), RangeError);
+  for (const year of [1884, 2100]) {
+    expectFailure(() => celestial.chart.snapshot({ ...civil, year }, { ...options, scale: "ut1" }), RangeError);
+  }
+  expectFailure(() => celestial.chart.snapshot({ year: 1971, month: 12, day: 31, fraction: 0.5 }, options), RangeError);
+  expectFailure(() => celestial.chart.snapshot(civil, { ...options, modle: "algo1" }), TypeError);
   expectFailure(() => celestial.chart.snapshot({ ...civil, year: 2035 }, { ...options, model: "algo4" }), celestial.CelestialError, true);
   expectFailure(() => celestial.chart.snapshot({ year: 1885, month: 1, day: 1, fraction: 0 }, { ...options, scale: "ut1" }), celestial.CelestialError, true);
   expectFailure(() => celestial.chart.snapshot(civil, { ...options, location: { latitudeDeg: 89, longitudeDeg: 0 } }), celestial.CelestialError, true);
@@ -122,5 +140,5 @@ export function runChartAcceptance(celestial, example) {
   first.bodies[2].longitudeDeg += 1;
   first.houses.cuspsDeg[0] += 1;
   assertChartReplay(recovered, example);
-  return { residuals, bodies: 14, cusps: 12, models: 5, historicalUt1: true, owned: true, errors: 4 };
+  return residuals;
 }

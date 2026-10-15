@@ -1043,7 +1043,6 @@ TEST(Sun, AnnualQueriesRejectUnrepresentableAndWideYears) {
     expect_rejection(year, annual, [](const int32_t y) { return detail::get_end_jde(y); });
   }
 
-  // Scalar helpers never form `year + 1`; their bound is chrono representability (±32767).
   const std::string_view scalar { "std::chrono::year" };
   for (const int32_t year : { 32768, -32768, 65537, 67562, 67421, -63510,
                               std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {

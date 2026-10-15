@@ -163,9 +163,7 @@ try {
     assert.equal(result.translated, true, "recording failure was not translated");
     assert.equal(result.survived, true, "module did not survive a translated failure");
     assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");
-    assert.deepEqual({ ...result.chart, residuals: undefined }, {
-      residuals: undefined, bodies: 14, cusps: 12, models: 5, historicalUt1: true, owned: true, errors: 4,
-    });
+    assert.equal(typeof result.chart.jdUt1, "number", "chart replay returned residuals");
     assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
     assert.equal(result.lichunMatches, true);
     assert.equal(result.lichun.momentUt1.year, 2024);

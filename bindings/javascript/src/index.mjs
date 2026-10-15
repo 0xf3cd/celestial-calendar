@@ -449,8 +449,9 @@ const readChartSnapshot = (M, ptr) => {
     const bodyPtr = bodiesPtr + index * LAYOUTS.ChartBodyV1.size;
     const readBody = (name) => readChartField(M, bodyPtr, "ChartBodyV1", name);
     const isNode = code >= CHART_CODES.targets.meanAscending;
+    const present = CHART_CODES.present.latitude | (isNode ? 0 : CHART_CODES.present.distance);
     if (readBody("target_code") !== code) malformedChart(`bodies[${index}].target_code`);
-    if (readBody("present_fields") !== (isNode ? 1 : 3)) malformedChart(`${target}.present_fields`);
+    if (readBody("present_fields") !== present) malformedChart(`${target}.present_fields`);
     const latitudeDeg = chartFinite(readBody("latitude_deg"), `${target}.latitude_deg`);
     if (latitudeDeg < -90 || latitudeDeg > 90 || (isNode && latitudeDeg !== 0)) {
       malformedChart(`${target}.latitude_deg`);
@@ -463,11 +464,18 @@ const readChartSnapshot = (M, ptr) => {
       longitudeDeg: chartLongitude(readBody("longitude_deg"), `${target}.longitude_deg`),
       latitudeDeg,
       distanceAu,
-      longitudeRateDegPerTtDay: chartFinite(readBody("longitude_rate_deg_per_tt_day"), `${target}.longitude_rate_deg_per_tt_day`),
+      longitudeRateDegPerTtDay: chartFinite(
+        readBody("longitude_rate_deg_per_tt_day"),
+        `${target}.longitude_rate_deg_per_tt_day`,
+      ),
     };
   });
+
   const housesPtr = ptr + chartField("ChartSnapshotV1", "houses").offset;
-  const houseAngle = (name) => chartLongitude(readChartField(M, housesPtr, "ChartHousesV1", name), `houses.${name}`);
+  const houseAngle = (name) => chartLongitude(
+    readChartField(M, housesPtr, "ChartHousesV1", name),
+    `houses.${name}`,
+  );
   const cuspField = chartField("ChartHousesV1", "cusps_deg");
   const cuspCount = Number(cuspField.type.match(/\[(\d+)\]$/)[1]);
   return {
@@ -493,6 +501,9 @@ const snapshot = (civil, options) => {
   const value = civilDateTime(civil, "civil");
   rangedInteger(value.year, "civil.year", 1885, 2099);
   requiredRecord(options, "options", ["scale", "location", "system"], []);
+  if (Reflect.ownKeys(options).some((key) => !["scale", "location", "system", "model"].includes(key))) {
+    throw new TypeError("options accepts only scale, location, system and model.");
+  }
   const hasModel = Object.hasOwn(options, "model");
   if (!hasModel && "model" in options) {
     throw new TypeError("options.model must be an own property.");
@@ -501,18 +512,39 @@ const snapshot = (civil, options) => {
   if (scale === CHART_CODES.scales.utc && value.year < 1972) {
     throw new RangeError("UTC chart input must be on or after 1972-01-01.");
   }
-  const location = requiredRecord(options.location, "options.location", ["latitudeDeg", "longitudeDeg"], []);
+  const location = requiredRecord(
+    options.location,
+    "options.location",
+    ["latitudeDeg", "longitudeDeg"],
+    [],
+  );
   const latitude = finiteNumber(location.latitudeDeg, "options.location.latitudeDeg");
-  if (latitude <= -90 || latitude >= 90) throw new RangeError("options.location.latitudeDeg must be in (-90, 90).");
+  if (latitude <= -90 || latitude >= 90) {
+    throw new RangeError("options.location.latitudeDeg must be in (-90, 90).");
+  }
   const longitude = rangedNumber(location.longitudeDeg, "options.location.longitudeDeg", -180, 180);
   const system = enumValue(options.system, "options.system", CHART_CODES.systems);
   const model = hasModel ? options.model : undefined;
   const modelCode = enumValue(model === undefined ? "default" : model, "options.model", CHART_CODES.models);
+
   const binding = bindingOf("chart_snapshot_v1");
   const ptr = M._malloc(LAYOUTS.ChartSnapshotV1.size);
-  if (ptr === 0) throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
+  if (ptr === 0) {
+    throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
+  }
   try {
-    M[binding.wasmName](ptr, value.year, value.month, value.day, value.fraction, scale, latitude, longitude, system, modelCode);
+    M[binding.wasmName](
+      ptr,
+      value.year,
+      value.month,
+      value.day,
+      value.fraction,
+      scale,
+      latitude,
+      longitude,
+      system,
+      modelCode,
+    );
     const valid = M.HEAPU8[ptr + chartField("ChartSnapshotV1", "valid").offset];
     if (valid === 0) fail(M, binding, operation);
     if (valid !== 1) malformedChart("valid");

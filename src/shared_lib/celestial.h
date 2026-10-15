@@ -129,7 +129,7 @@ CELESTIAL_API JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double frac
 
 /**
  * @brief Convert UT1 datetime to Julian Ephemeris Day Number (JDE).
- * @param y The year, in [1, 32767].
+ * @param y The year, in [1, 32767]; the ΔT-shifted TT instant must also stay representable.
  * @param m The month.
  * @param d The day.
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
@@ -311,7 +311,7 @@ typedef struct ApparentSolarTime {
 
 /**
  * @brief Convert a civil UTC moment to local apparent (true) solar time.
- * @param y The year (UTC), in [1, 32767].
+ * @param y The year (UTC), in [1, 32767]; the shifted TT instant must also stay representable.
  * @param m The month (UTC).
  * @param d The day (UTC).
  * @param fraction The fraction of the day (UTC). Must be in the range [0.0, 1.0).

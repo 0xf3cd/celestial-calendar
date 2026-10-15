@@ -28,6 +28,7 @@ export const CHART_CODES = deepFreeze({
   scales: { utc: 0, ut1: 1 },
   models: { default: 0, algo1: 1, algo2: 2, algo3: 3, algo4: 4, algo5: 5 },
   systems: { equal: 0, wholeSign: 1, placidus: 2 },
+  present: { latitude: 1, distance: 2 },
   targets: {
     sun: 0, moon: 1, mercury: 2, venus: 3, mars: 4,
     jupiter: 5, saturn: 6, uranus: 7, neptune: 8, pluto: 9,

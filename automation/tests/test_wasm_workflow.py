@@ -110,8 +110,13 @@ def test_javascript_test_entries_match_their_execution_owners():
     "types",
   }
   assert {path.relative_to(test_root).as_posix() for path in test_root.glob("support/*.mjs")} == {
-    "support/package_consumer.mjs"
+    "support/chart_api.mjs",
+    "support/chart_replay.mjs",
+    "support/package_consumer.mjs",
   }
+  public_api = (test_root / "node/public_api_test.mjs").read_text(encoding="utf-8")
+  assert 'import { testChartApi } from "../support/chart_api.mjs";' in public_api
+  assert "await testChartApi(celestial, entryUrl);" in public_api
   entries = {
     path.relative_to(test_root).as_posix()
     for pattern in ("abi/*.mjs", "node/*.mjs", "browser/*.mjs", "registry/*.mjs", "types/*.ts")

@@ -16,8 +16,11 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { API, SymbolFlags } from "typescript/unstable/sync";
-import { isLiteralTypeNode, isNumericLiteral, isTypeLiteralNode, isTypeReferenceNode } from "typescript/unstable/ast";
-import { testChartApi } from "./chart_api_test.mjs";
+import {
+  isLiteralTypeNode, isNumericLiteral, isStringLiteral, isTypeLiteralNode, isTypeReferenceNode, isUnionTypeNode,
+} from "typescript/unstable/ast";
+import { testChartApi } from "../support/chart_api.mjs";
+import { chartLabel } from "../support/chart_replay.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -28,6 +31,11 @@ const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
 const namespaces = ["config", "time", "sun", "moon", "jieqi", "lunar", "chart"];
+const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
+const expectedChartTargets = Object.entries(manifest.chart_v1_codes)
+  .filter(([name]) => name.startsWith("CHART_TARGET_"))
+  .sort((left, right) => left[1] - right[1])
+  .map(([name]) => chartLabel(name.slice("CHART_TARGET_".length)));
 
 const declaredSurface = (text) => {
   const api = new API({ fs: { readFile: (path) => resolve(path) === declarationPath ? text : undefined } });
@@ -57,7 +65,15 @@ const declaredSurface = (text) => {
         }));
       }
     }
-    return { values: values.map((symbol) => symbol.name).sort(), members, jieqi };
+    const chartTarget = exports.find((symbol) => symbol.name === "ChartTarget");
+    assert(chartTarget, "ChartTarget declaration");
+    const targetUnion = chartTarget.declarations[0].resolve().type;
+    assert(isUnionTypeNode(targetUnion), "ChartTarget union");
+    const chartTargets = Array.from(targetUnion.types, (type) => {
+      assert(isLiteralTypeNode(type) && isStringLiteral(type.literal), "ChartTarget string literals");
+      return type.literal.text;
+    });
+    return { values: values.map((symbol) => symbol.name).sort(), members, jieqi, chartTargets };
   } finally {
     api.close();
   }
@@ -67,6 +83,7 @@ const assertSurface = (runtime, declared) => {
   for (const name of namespaces) {
     assert.deepEqual(Object.keys(runtime[name]).sort(), declared.members[name], `${name} runtime/declaration members`);
   }
+  assert.deepEqual(declared.chartTargets, expectedChartTargets, "header-derived target declaration order");
 };
 const declared = declaredSurface(declarationText);
 assertSurface(celestial, declared);
@@ -86,7 +103,10 @@ assert.throws(
   () => assertSurface(celestial, declaredSurface(extraMember)),
   { code: "ERR_ASSERTION", message: /^sun runtime\/declaration members/ },
 );
-console.log("PASS staged runtime/declaration surface; drift mutations 4/4");
+const swappedTargets = declarationText.replace('"mercury" | "venus"', '"venus" | "mercury"');
+assert.notEqual(swappedTargets, declarationText, "target order mutation applied");
+assert.throws(() => assertSurface(celestial, declaredSurface(swappedTargets)), assert.AssertionError);
+console.log("PASS staged runtime/declaration surface; drift mutations 5/5");
 
 const expectedJieqi = {
   LICHUN: 0, YUSHUI: 1, JINGZHE: 2, CHUNFEN: 3, QINGMING: 4, GUYU: 5,

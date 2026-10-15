@@ -166,7 +166,10 @@ namespace detail {
   return astro::sun::geocentric_coord::apparent(jde).λ.deg();
 }
 
-/** @brief Return the JDE of the start of the year; `year` must be representable (scalar bound: ±32767). */
+/**
+ * @brief Return the JDE of the start of the year.
+ * @param year The Gregorian year, in [1, 32767]; see @ref astro::julian_day::utc_year_start_jde.
+ */
 // #115: year boundaries are civil moments — resolve them via the UTC (leap-second-aware)
 // path, matching `moments()` (#84). The UT1/UTC model gap (DUT1 ≤ 0.9 s in the leap era;
 // ≤ ~21 h at year 6772 with the ΔAT table frozen) stays well under the ~4-day clearance
@@ -177,12 +180,13 @@ namespace detail {
   );
 }
 
-/** @brief Return the JDE of the end of the year; `year` must be in [1, 32766] so `year + 1` stays representable. */
+/**
+ * @brief Return the JDE of the end of the year.
+ * @param year The Gregorian year, in [1, 32766]; see @ref astro::julian_day::validate_annual_year.
+ */
 [[nodiscard]] inline auto get_end_jde(const int32_t year) -> double {
   astro::julian_day::validate_annual_year(year);
-  return astro::julian_day::utc_year_start_jde(
-    util::checked_year(year + 1)
-  );
+  return astro::julian_day::utc_year_start_jde(std::chrono::year { year + 1 });
 }
 
 /** @brief Return the apparent geocentric longitude of the Sun at the start of the year. */

@@ -276,6 +276,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   return utc_to_jde(calendar::Datetime { util::to_ymd(static_cast<int32_t>(year), 1, 1), 0.0 });
 }
 
+
 /**
  * @brief Validate a Gregorian year for an annual (whole-year) query.
  * @param year The original integer year.
