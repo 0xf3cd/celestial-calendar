@@ -29,6 +29,32 @@ const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
 const lunarAlgorithm: LunarAlgorithm = "algo3";
 const civil: CivilDateTime = { year: 2024, month: 6, day: 1, fraction: 0.5 };
+const chartOptions: celestial.ChartSnapshotOptions = {
+  scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus", model: undefined,
+};
+const snapshot: celestial.ChartSnapshot = celestial.chart.snapshot(civil, chartOptions);
+const target: celestial.ChartTarget = snapshot.bodies[0].target;
+const distance: number | null = snapshot.bodies[0].distanceAu;
+const rate: number = snapshot.bodies[0].longitudeRateDegPerTtDay;
+const times: celestial.ChartTimes = snapshot.times;
+const cusps: number[] = snapshot.houses.cuspsDeg;
+void [target, distance, rate, times.jdUt1, times.jdeTt, cusps];
+celestial.chart.snapshot(civil, { ...chartOptions, model: "algo1", scale: "ut1", system: "wholeSign" });
+// @ts-expect-error Civil scale is explicit.
+celestial.chart.snapshot(civil, { location: chartOptions.location, system: "equal" });
+// @ts-expect-error No timestamp conversion.
+celestial.chart.snapshot(new Date(), chartOptions);
+// @ts-expect-error Unknown model.
+celestial.chart.snapshot(civil, { ...chartOptions, model: "algo6" });
+// @ts-expect-error Numeric C codes are not public JS selectors.
+celestial.chart.snapshot(civil, { ...chartOptions, system: 2 });
+// @ts-expect-error Unknown option keys are rejected.
+celestial.chart.snapshot(civil, { ...chartOptions, modle: "algo1" });
+// @ts-expect-error Missing longitude.
+celestial.chart.snapshot(civil, { ...chartOptions, location: { latitudeDeg: 0 } });
+// @ts-expect-error Node distance can be absent.
+const nodeDistance: number = snapshot.bodies[10].distanceAu;
+void nodeDistance;
 const gregorian: GregorianDate = { year: 2024, month: 2, day: 10 };
 const lunar: LunarDate = { year: 2024, month: 1, day: 1, isLeap: false };
 const jieqiValues: readonly [

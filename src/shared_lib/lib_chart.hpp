@@ -24,6 +24,7 @@
 #include "celestial.h"
 #include "chart.hpp"
 #include "datetime.hpp"
+#include "ymd.hpp"
 
 namespace lib::chart {
 
@@ -36,14 +37,12 @@ static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> ==
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): year/month/day/fraction is the published civil-date order.
 inline auto validate_civil(const int32_t year, const uint32_t month, const uint32_t day, const double fraction) -> void {
-  if (year < static_cast<int>(std::chrono::year::min()) or year > static_cast<int>(std::chrono::year::max())) {
-    throw std::invalid_argument { std::format("Argument `year` cannot be represented by std::chrono::year: {}", year) };
-  }
+  const auto civil_year = util::checked_year(year);
   if (month < 1 or month > 12) {
     throw std::invalid_argument { std::format("Argument `month` must be in [1, 12], got {}", month) };
   }
 
-  const auto month_end = std::chrono::year { year } / std::chrono::month { month } / std::chrono::last;
+  const auto month_end = civil_year / std::chrono::month { month } / std::chrono::last;
   const uint32_t last_day = static_cast<unsigned>(month_end.day());
   if (day < 1 or day > last_day) {
     throw std::invalid_argument {

@@ -29,7 +29,13 @@ namespace {
 
 template <calendar::lunar::common::Algo algo>
 auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day) -> std::optional<LunarDate> {
-  const auto converted = calendar::lunar::converter::Converter<algo>::gregorian_to_lunar(util::to_ymd(year, month, day));
+  const auto converted = calendar::lunar::converter::Converter<algo>::gregorian_to_lunar(
+    util::to_ymd(
+      util::checked_year(year),
+      month,
+      day
+    )
+  );
   if (not converted) {
     return std::nullopt;
   }

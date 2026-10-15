@@ -16,6 +16,8 @@
 #include <chrono>
 #include <cstdint>
 #include <concepts>
+#include <format>
+#include <stdexcept>
 
 namespace util {
 
@@ -24,6 +26,25 @@ template <typename T>
 concept YearConvertible = requires (T t) {
   { std::chrono::year { static_cast<int32_t>(t) } } -> std::same_as<std::chrono::year>;
 };
+
+/*!
+ * @brief Converts an integer year to `std::chrono::year`, rejecting what narrowing would alias.
+ * @param year The original integer year.
+ * @return The same year as a `std::chrono::year`.
+ * @throw std::invalid_argument If `year` is outside [`std::chrono::year::min()`,
+ *        `std::chrono::year::max()`]; the diagnostic names the original integer.
+ * @note `std::chrono::year` holds an unspecified value outside ±32767; the check precedes the
+ *       narrowing conversion.
+ */
+[[nodiscard]] constexpr auto checked_year(const int32_t year) -> std::chrono::year {
+  if (year < static_cast<int32_t>(std::chrono::year::min()) or
+      year > static_cast<int32_t>(std::chrono::year::max())) {
+    throw std::invalid_argument {
+      std::format("Argument `year` cannot be represented by std::chrono::year: {}", year)
+    };
+  }
+  return std::chrono::year { year };
+}
 
 /*! @brief A type `std::chrono::days` can be built from — what the operators below shift by. */
 template <typename T>

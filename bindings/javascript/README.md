@@ -17,7 +17,7 @@
 
 [English guide](https://github.com/0xf3cd/celestial-calendar/blob/main/README_EN.md)
 
-本文对应当前 `0.7.0` 源码。npm 上的版本可能滞后；以下安装命令获取已发布版本，不表示 `0.7.0` 已发布。
+本文覆盖当前开发源码。npm 上的版本可能滞后；以下安装命令获取已发布版本，不表示本文所有接口均已发布。
 使用示例前请核对安装版本是否提供相应 API。
 
 ## 安装
@@ -37,6 +37,49 @@ npm install @0xf3cd/celestial
 以下每个 JavaScript 代码块均可独立作为应用项目中的 `example.mjs`，从该目录用 `node example.mjs` 运行。
 
 ## 示例
+
+### 固定时刻的 chart snapshot（尚未发布）
+
+```js
+import { init, chart } from "@0xf3cd/celestial";
+
+await init();
+const snapshot = chart.snapshot(
+  { year: 2026, month: 1, day: 1, fraction: 0.5 },
+  {
+    scale: "utc",
+    location: { latitudeDeg: 51.5, longitudeDeg: 0 },
+    system: "placidus",
+    model: "default",
+  },
+);
+console.log(snapshot.times); // { jdUt1, jdeTt }
+console.log(snapshot.bodies[2]); // Mercury 的位置、距离和黄经速率
+console.log(snapshot.houses.cuspsDeg); // 按宫位顺序排列的十二个宫头
+```
+
+`civil` 使用公历日期与 `[0, 1)` 的日内比例，不自动转换 JavaScript `Date`。`scale` 必填，
+可选 `"utc"`、`"ut1"`；1972-01-01 之前的输入必须显式选择 `scale: "ut1"`。民用年份限 1885–2099。
+纬度以北为正，单位为度，范围 `(-90, 90)`；经度以东为正，范围 `[-180, 180]`。
+`system` 必填，可选 `"equal"`、`"wholeSign"`、`"placidus"`。
+`model` 可省略，或设为自身属性 `undefined`、`"default"`，均选 Algo5；也可显式选 `"algo1"` 至
+`"algo5"`。使用的输入字段须为对象自身属性；继承来的 `model` 会报错，不会静默换成默认模型。
+`options` 只接受 `scale`、`location`、`system`、`model` 四个键；拼错或多余的键抛 `TypeError`。
+
+结果包含 `times: { jdUt1, jdeTt }`，以及固定顺序的十四个 `bodies`，其 `target` 为 `sun`、`moon`、
+`mercury`、`venus`、`mars`、`jupiter`、`saturn`、`uranus`、`neptune`、`pluto`、`meanAscending`、
+`meanDescending`、`trueAscending`、`trueDescending`。每个成员包含 `longitudeDeg`、`latitudeDeg`、
+`distanceAu` 和 `longitudeRateDegPerTtDay`。所有成员均以日期真黄道／真春分点为基准：太阳、月球与行星
+提供视地心坐标；交点提供平均／真交点黄经，纬度为零、`distanceAu` 为 `null`。
+距离统一用 AU（包括 Moon），速率以 TT 日为单位。
+`houses` 包含 `ascendantDeg`、`midheavenDeg`、`descendantDeg`、`imumCoeliDeg` 和 `cuspsDeg`，
+角度均在 `[0, 360)` 度。结果是独立的普通对象和数组，后续调用或 WASM 内存增长不改变既有结果。
+
+核心统一检查换算后 JDE(TT) 的共同范围 `[2409543.875, 2488069.125)`；Algo4 还要求
+`JDE < 2464328.5`。UTC 换出的 UT1 使用模型，不是实测 DUT1。Ascendant 在舍入尺度上的退化方向、
+以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日内比例、地点或
+选项字符串抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
+`"chart.snapshot"`。`recorded` 仅在错误消息来自原生错误通道时为 `true`。失败不返回半张 snapshot。
 
 ### 今天的阴历日期
 

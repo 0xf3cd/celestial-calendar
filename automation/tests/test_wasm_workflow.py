@@ -110,7 +110,9 @@ def test_javascript_test_entries_match_their_execution_owners():
     "types",
   }
   assert {path.relative_to(test_root).as_posix() for path in test_root.glob("support/*.mjs")} == {
-    "support/package_consumer.mjs"
+    "support/chart_api.mjs",
+    "support/chart_replay.mjs",
+    "support/package_consumer.mjs",
   }
   entries = {
     path.relative_to(test_root).as_posix()
@@ -175,6 +177,23 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
+
+
+@pytest.mark.parametrize("entry", ["node/unused_test.mjs", "abi/unused_test.mjs", "support/unused.mjs"])
+def test_javascript_test_inventory_rejects_unowned_modules(tmp_path, monkeypatch, entry):
+  isolated = tmp_path / "javascript"
+  shutil.copytree(JAVASCRIPT / "test", isolated / "test")
+  shutil.copyfile(JAVASCRIPT / "package.json", isolated / "package.json")
+  monkeypatch.setattr(sys.modules[__name__], "JAVASCRIPT", isolated)
+  test_javascript_test_entries_match_their_execution_owners()
+
+  extra = isolated / "test" / entry
+  extra.write_text("export const unused = true;\n", encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_javascript_test_entries_match_their_execution_owners()
+
+  extra.unlink()
+  test_javascript_test_entries_match_their_execution_owners()
 
 
 def test_date_bridge_runs_on_current_and_floor_node():

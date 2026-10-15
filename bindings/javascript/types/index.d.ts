@@ -14,6 +14,12 @@ export type LogVerbosity = "none" | "info" | "debug";
 export type MoonPhase = "new" | "firstQuarter" | "full" | "lastQuarter";
 export type DeltaTModel = "default" | "algo1" | "algo2" | "algo3" | "algo4" | "algo5";
 export type LunarAlgorithm = "algo1" | "algo2" | "algo3";
+export type CivilScale = "utc" | "ut1";
+export type HouseSystem = "equal" | "wholeSign" | "placidus";
+export type ChartTarget =
+  | "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn"
+  | "uranus" | "neptune" | "pluto"
+  | "meanAscending" | "meanDescending" | "trueAscending" | "trueDescending";
 
 /** The frozen 24-term Jieqi object, indexed from Lichun. */
 export const Jieqi: Readonly<{
@@ -124,6 +130,53 @@ export interface LunarDate {
   day: number;
   isLeap: boolean;
   fraction?: never;
+}
+
+export interface GeoLocation {
+  /** Finite, north-positive degrees in (-90, 90). */
+  latitudeDeg: number;
+  /** Finite, east-positive degrees in [-180, 180]. */
+  longitudeDeg: number;
+}
+
+export interface ChartTimes {
+  jdUt1: number;
+  jdeTt: number;
+}
+
+export interface BodyState {
+  target: ChartTarget;
+  longitudeDeg: number;
+  latitudeDeg: number;
+  /** AU for all bodies, including Moon; null for nodes. */
+  distanceAu: number | null;
+  longitudeRateDegPerTtDay: number;
+}
+
+export interface ChartHouses {
+  ascendantDeg: number;
+  midheavenDeg: number;
+  descendantDeg: number;
+  imumCoeliDeg: number;
+  /** Twelve longitudes in [0, 360) degrees, in house order. */
+  cuspsDeg: number[];
+}
+
+/** Fresh owned values, independent of later calls and WASM memory growth. */
+export interface ChartSnapshot {
+  times: ChartTimes;
+  /** Fourteen targets in ChartTarget declaration order. */
+  bodies: BodyState[];
+  houses: ChartHouses;
+}
+
+/** Only these four own keys are accepted; inherited model is rejected. Location fields must also be own. */
+export interface ChartSnapshotOptions {
+  scale: CivilScale;
+  location: GeoLocation;
+  system: HouseSystem;
+  /** Omitted or own undefined selects Algo5. */
+  model?: DeltaTModel | undefined;
 }
 
 /** A namespace-method failure; recorded is true only when the message came from the native error channel. */
@@ -251,4 +304,18 @@ export const lunar: Readonly<{
    * or native conversion fails.
    */
   toGregorian(algorithm: LunarAlgorithm, date: LunarDate): GregorianDate;
+}>;
+
+export const chart: Readonly<{
+  /**
+   * Fixed-instant geocentric chart on the true ecliptic and equinox of date: apparent body positions
+   * and mean/true node longitudes. Civil years 1885-2099; pre-1972 input requires scale="ut1".
+   * Core requires JDE(TT) in [2409543.875, 2488069.125); Algo4 also requires JDE < 2464328.5.
+   * UTC-derived UT1 is modelled, not observed DUT1. Ascendant round-off singularities and
+   * Placidus polar limits are rejected. No failure returns a partial snapshot.
+   * @throws {TypeError} For wrong types, missing own fields, inherited model or unknown option keys.
+   * @throws {RangeError} For invalid civil dates, fractions, locations or unknown string selections.
+   * @throws {CelestialError} Before init, on allocation/native failure or malformed native success.
+   */
+  snapshot(civil: CivilDateTime, options: ChartSnapshotOptions): ChartSnapshot;
 }>;

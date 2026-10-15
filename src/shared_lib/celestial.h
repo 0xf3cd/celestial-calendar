@@ -119,7 +119,7 @@ typedef struct JulianDay {
 
 /**
  * @brief Convert UT1 datetime to Julian Day Number (JD).
- * @param y The year.
+ * @param y The year, in [1, 32767].
  * @param m The month.
  * @param d The day.
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
@@ -129,7 +129,7 @@ CELESTIAL_API JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double frac
 
 /**
  * @brief Convert UT1 datetime to Julian Ephemeris Day Number (JDE).
- * @param y The year.
+ * @param y The year, in [1, 32767]; the ΔT-shifted TT instant must also stay representable.
  * @param m The month.
  * @param d The day.
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
@@ -240,7 +240,7 @@ typedef struct Discriminant {
 /**
  * @brief Calculate the JDE discriminant — count how many times the Sun reaches the given
  *        geocentric `longitude` in the given `year`.
- * @param year The year.
+ * @param year The Gregorian year, in [1, 32766].
  * @param longitude The geocentric longitude.
  * @returns A `Discriminant` struct; `count` is 0, 1, or 2: the Sun won't reach the longitude
  *          in the year, reaches it once, or reaches it twice.
@@ -249,7 +249,7 @@ CELESTIAL_API Discriminant solar_lon_root_discriminant(int32_t year, double long
 
 /**
  * @brief Find the JDE(s) at which the Sun reaches `longitude` in `year`, written to `slots`.
- * @param year The year.
+ * @param year The Gregorian year, in [1, 32766].
  * @param longitude The geocentric longitude.
  * @param slots The output slots, allocated and freed by the caller; may be null only when
  *              `slot_count` is 0.
@@ -311,7 +311,7 @@ typedef struct ApparentSolarTime {
 
 /**
  * @brief Convert a civil UTC moment to local apparent (true) solar time.
- * @param y The year (UTC).
+ * @param y The year (UTC), in [1, 32767]; the shifted TT instant must also stay representable.
  * @param m The month (UTC).
  * @param d The day (UTC).
  * @param fraction The fraction of the day (UTC). Must be in the range [0.0, 1.0).
@@ -439,7 +439,8 @@ typedef struct GregorianDate {
 /**
  * @brief Convert a Gregorian date to a lunar date.
  * @param algo The algorithm profile described by `get_supported_lunar_year_range`.
- * @param year The Gregorian year.
+ * @param year The Gregorian year, in [-32767, 32767]; an unrepresentable integer is rejected,
+ *             never narrowed to an aliased year.
  * @param month The Gregorian month.
  * @param day The Gregorian day of the month.
  * @returns A `LunarDate` struct; `valid = false` when `algo` is unknown, the input is not a

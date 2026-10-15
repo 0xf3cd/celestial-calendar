@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -136,6 +137,57 @@ TEST(CAbiSmoke, Ut1ToJdRejectsBadInput) {
   EXPECT_FALSE(ut1_to_jd(2024, 6, 1, NAN_VALUE).valid);  // NaN slips past `<`-style checks
   EXPECT_FALSE(ut1_to_jd(2024, 13, 1, 0.5).valid);       // invalid month
   EXPECT_FALSE(ut1_to_jd(0, 6, 1, 0.5).valid);           // year < 1
+}
+
+TEST(CAbiSmoke, RawDateExportsRejectUnrepresentableYears) {
+  // The recorded error must name the original integer year, not just flag `valid = false`.
+  for (const int32_t year : { 65537, 67562, 67421, -63510, INT32_MIN, INT32_MAX }) {
+    const std::string original = std::to_string(year);
+
+    EXPECT_FALSE(ut1_to_jd(year, 1, 1, 0.0).valid);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+    EXPECT_NE(std::strstr(last_error(), "std::chrono::year"), nullptr);
+
+    EXPECT_FALSE(ut1_to_jde(year, 1, 1, 0.5).valid);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+
+    EXPECT_FALSE(apparent_solar_time(year, 6, 1, 0.5, 116.4).valid);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+
+    EXPECT_FALSE(gregorian_to_lunar(1, year, 2, 17).valid);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+  }
+
+  // Unrelated precedence is preserved: the algorithm is still checked before the year.
+  EXPECT_FALSE(gregorian_to_lunar(9, 67562, 2, 17).valid);
+  EXPECT_NE(std::strstr(last_error(), "Unsupported algorithm"), nullptr);
+
+  // Recovery: a valid call succeeds and clears the recorded error.
+  ASSERT_TRUE(ut1_to_jd(2024, 6, 1, 0.5).valid);
+  EXPECT_STREQ(last_error(), "");
+}
+
+TEST(CAbiSmoke, ScalarDateExportsKeepYear32767) {
+  EXPECT_TRUE(ut1_to_jd(32767, 12, 31, 0.5).valid);
+  EXPECT_STREQ(last_error(), "");
+  EXPECT_TRUE(ut1_to_jde(32767, 6, 1, 0.5).valid);
+  EXPECT_TRUE(apparent_solar_time(32767, 6, 1, 0.5, 116.4).valid);
+}
+
+TEST(CAbiSmoke, LunarConverterGregorianCoverageDomain) {
+  // These years pass the chrono representation guard, so the rejection must come from the
+  // selected algorithm's Gregorian coverage — not the `std::chrono::year` message.
+  for (const int32_t year : { -32767, 0, 32767 }) {
+    EXPECT_FALSE(gregorian_to_lunar(1, year, 1, 1).valid);
+    EXPECT_NE(std::strstr(last_error(), "cannot be represented by the selected algorithm"), nullptr);
+    EXPECT_EQ(std::strstr(last_error(), "std::chrono::year"), nullptr);
+  }
+
+  // Algorithm 1's Gregorian span closes on lunar 2099's last day, so 2100-01-01 still converts.
+  const LunarDate date = gregorian_to_lunar(1, 2100, 1, 1);
+  ASSERT_TRUE(date.valid);
+  EXPECT_EQ(date.year, 2099);
+  EXPECT_STREQ(last_error(), ""); // a valid call clears the recorded error
 }
 
 
@@ -271,6 +323,11 @@ TEST(CAbiSmoke, MoonPhaseMoments) {
   ); // would overflow year + 1
   EXPECT_EQ(sentinel, 0U);
   EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(moon_phase_moments(65537, 0, &sentinel, slots.data(), slots.size()), 0U); // would alias year 1
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_NE(std::strstr(last_error(), "65537"), nullptr); // the diagnostic names the original year
 }
 
 
@@ -312,6 +369,29 @@ TEST(CAbiSmoke, SolarLonRoots) {
   EXPECT_STRNE(last_error(), "");
 }
 
+TEST(CAbiSmoke, SolarLonRootsRejectOutOfWindowYears) {
+  // The recorded error must name the original year and the [1, 32766] window.
+  for (const int32_t year : { 0, 32767, 65537, 67562, INT32_MIN, INT32_MAX }) {
+    const std::string original = std::to_string(year);
+
+    EXPECT_FALSE(solar_lon_root_discriminant(year, 0.0).valid);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+    EXPECT_NE(std::strstr(last_error(), "[1, 32766]"), nullptr);
+
+    std::array<double, 2> slots { -777.0, -777.0 };
+    EXPECT_EQ(solar_lon_roots(year, 0.0, slots.data(), slots.size()), 0U);
+    EXPECT_EQ(slots.at(0), -777.0); // a rejected query leaves the caller's slots untouched
+    EXPECT_EQ(slots.at(1), -777.0);
+    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+  }
+
+  // The window ceiling itself still computes, and clears the recorded error.
+  const Discriminant edge = solar_lon_root_discriminant(32766, 0.0);
+  ASSERT_TRUE(edge.valid);
+  EXPECT_EQ(edge.count, 1U);
+  EXPECT_STREQ(last_error(), "");
+}
+
 
 TEST(CAbiSmoke, NewMoons) {
   std::array<double, 3> after {};
@@ -342,6 +422,11 @@ TEST(CAbiSmoke, NewMoons) {
   EXPECT_EQ(new_moons_in_year(32767, &sentinel, slots.data(), slots.size()), 0U); // year above range
   EXPECT_EQ(sentinel, 0U);
   EXPECT_STRNE(last_error(), "");
+
+  sentinel = 0xDEADBEEFU;
+  EXPECT_EQ(new_moons_in_year(67562, &sentinel, slots.data(), slots.size()), 0U); // would alias year 2026
+  EXPECT_EQ(sentinel, 0U);
+  EXPECT_NE(std::strstr(last_error(), "67562"), nullptr); // the diagnostic names the original year
 }
 
 

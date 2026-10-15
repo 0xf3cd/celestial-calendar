@@ -16,6 +16,8 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <limits>
 #include <vector>
 #include <unordered_map>
@@ -56,11 +58,42 @@ TEST(JulianDay, UtcYearWindows) {
   }
   const Datetime modern { to_ymd(2026, 1, 1), 0.0 };
   EXPECT_NE(utc_year_jde_window(2026).front(), ut1_to_jde(modern));
+
+  // Assert the diagnostic names the original year and the window, not just the exception type.
   for (const int32_t year : { -32768, 0, 32767, std::numeric_limits<int32_t>::max() }) {
-    EXPECT_THROW(std::ignore = utc_year_jde_window(year), std::invalid_argument);
+    try {
+      std::ignore = utc_year_jde_window(year);
+      FAIL() << "utc_year_jde_window(" << year << ") must be rejected";
+    } catch (const std::invalid_argument& e) {
+      const std::string_view message { e.what() };
+      EXPECT_NE(message.find(std::to_string(year)), std::string_view::npos);
+      EXPECT_NE(message.find("[1, 32766]"), std::string_view::npos);
+    }
   }
   EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { -32768 }), std::invalid_argument);
   EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { 0 }), std::runtime_error);
+}
+
+TEST(JulianDay, AnnualYearValidation) {
+  // The owner-level guard behind `utc_year_jde_window` and Sun's annual queries.
+  for (const int32_t year : { 1, 1900, 2026, 32766 }) {
+    EXPECT_NO_THROW(validate_annual_year(year));
+  }
+  for (const int32_t year : { -1, 0, 32767, 65537,
+                              std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {
+    try {
+      validate_annual_year(year);
+      FAIL() << "validate_annual_year(" << year << ") must be rejected";
+    } catch (const std::invalid_argument& e) {
+      const std::string_view message { e.what() };
+      EXPECT_NE(message.find(std::to_string(year)), std::string_view::npos);
+      EXPECT_NE(message.find("[1, 32766]"), std::string_view::npos);
+    }
+  }
+
+  // Scalar year-start conversion never forms `year + 1`, so 32767 stays valid there even
+  // though the annual window rejects it above.
+  EXPECT_TRUE(std::isfinite(utc_year_start_jde(std::chrono::year { 32767 })));
 }
 
 // This spot-check family was introduced by da333dd (#5, 2024-06-30); no later numeric shift is

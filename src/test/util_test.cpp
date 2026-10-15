@@ -21,6 +21,8 @@
 #include <optional>
 #include <ranges>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <tuple>
 #include <functional>
@@ -50,6 +52,35 @@ TEST(Util, ToYmd) {
   ASSERT_EQ(to_ymd(2024LLU, 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int32_t>(2024), 3, 15), 2024y / 3 / 15);
   ASSERT_EQ(to_ymd(static_cast<int16_t>(2024), 3, 15), 2024y / 3 / 15);
+}
+
+TEST(Util, CheckedYear) {
+  using namespace std::literals;
+
+  // Valid inputs constant-evaluate, and the result composes with the unchanged `to_ymd`.
+  static_assert(checked_year(2024) == 2024y);
+  static_assert(checked_year(0) == 0y);
+  static_assert(checked_year(-32767) == std::chrono::year { -32767 });
+  static_assert(checked_year(32767) == std::chrono::year { 32767 });
+  static_assert(YearConvertible<std::chrono::year>);
+  static_assert(to_ymd(checked_year(2024), 3, 15) == 2024y / 3 / 15);
+
+  // Negative years inside the chrono range stay valid utility years.
+  ASSERT_EQ(static_cast<int32_t>(checked_year(-1)), -1);
+}
+
+TEST(Util, CheckedYearRejectsUnrepresentable) {
+  for (const int32_t year : { 32768, -32768, 65537, 67562, 67421, -63510,
+                              std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {
+    try {
+      std::ignore = checked_year(year);
+      FAIL() << "checked_year(" << year << ") narrowed instead of throwing";
+    } catch (const std::invalid_argument& e) {
+      const std::string_view message { e.what() };
+      EXPECT_NE(message.find("std::chrono::year"), std::string_view::npos);
+      EXPECT_NE(message.find(std::to_string(year)), std::string_view::npos);
+    }
+  }
 }
 
 /*! @brief Whether `to_ymd(y, m, d)` is a viable call. A concept rather than a bare

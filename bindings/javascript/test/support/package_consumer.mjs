@@ -61,9 +61,13 @@ export async function runPackageConsumer({ dependencies, packageName, expectedVe
     };
     if (aliasInstalled) await verifyAlias();
 
+    await writeFile(join(consumer, "chart_replay.mjs"), await readFile(new URL("./chart_replay.mjs", import.meta.url), "utf8"));
+    const chartExample = JSON.parse(await readFile(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), "utf8"));
+
     await writeFile(
       join(consumer, "consumer.mjs"),
       `import assert from "node:assert/strict";
+import { runChartAcceptance } from "./chart_replay.mjs";
 import * as celestial from "${packageName}";
 import {
   dateToCivilUtc, civilUtcToDate, dateToCivilAtOffset, civilAtOffsetToDate,
@@ -101,12 +105,14 @@ assert.equal(lichun.momentUt1.year, 2024);
 assert(Number.isFinite(celestial.time.ut1ToJd(lichun.momentUt1)));
 const value = celestial.moon.illumination(2448724.5);
 assert(Math.abs(value.fraction - 0.6786) < 5e-5);
-console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumination" }));
+const chart = runChartAcceptance(celestial, ${JSON.stringify(chartExample)});
+console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumination", chart }));
 `,
     );
     const executed = run(process.execPath, ["consumer.mjs"]);
     const result = JSON.parse(executed.stdout);
     assert.equal(result.operation, "moon.illumination");
+    assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
 
     if (typeCompiler !== undefined) {
       const typeRoot = new URL("../types/", import.meta.url);
