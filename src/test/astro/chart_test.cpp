@@ -149,7 +149,7 @@ TEST(Chart, DateModelSelectionHandlesChronoMaximumYear) {
   EXPECT_THROW(std::ignore = astro::delta_t::compute(Model::ALGO5, invalid), std::invalid_argument);
 }
 
-TEST(Chart, SameInstantCompositionForEveryModelAndHouseSystem) {
+TEST(Chart, SelectedRolesCoverEveryModelAndHouseSystem) {
   struct CompositionCase {
     std::string_view role;
     Model model;
@@ -157,13 +157,13 @@ TEST(Chart, SameInstantCompositionForEveryModelAndHouseSystem) {
     astro::GeoLocation observer;
   };
   const std::array cases {
-    CompositionCase { .role = "algo1-equal",      .model = Model::ALGO1, .system = System::EQUAL,      .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo2-whole",      .model = Model::ALGO2, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo3-south",      .model = Model::ALGO3, .system = System::PLACIDUS,   .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "algo4-placidus",   .model = Model::ALGO4, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo5-equal",      .model = Model::ALGO5, .system = System::EQUAL,      .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "algo5-whole",      .model = Model::ALGO5, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo5-placidus",   .model = Model::ALGO5, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo1-equal",       .model = Model::ALGO1, .system = System::EQUAL,      .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo2-whole",       .model = Model::ALGO2, .system = System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo3-south",       .model = Model::ALGO3, .system = System::PLACIDUS,   .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo4-placidus",    .model = Model::ALGO4, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
+    CompositionCase { .role = "algo5-equal",       .model = Model::ALGO5, .system = System::EQUAL,      .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo5-whole-south", .model = Model::ALGO5, .system = System::WHOLE_SIGN, .observer = location(-33.87, 151.21) },
+    CompositionCase { .role = "algo5-placidus",    .model = Model::ALGO5, .system = System::PLACIDUS,   .observer = location(51.5, 0.0) },
   };
   const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
   for (const auto& row : cases) {
