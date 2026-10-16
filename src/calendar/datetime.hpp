@@ -22,7 +22,6 @@
 #include <functional>
 
 #include "ymd.hpp"
-#include "hash.hpp"
 
 namespace calendar {
 
@@ -352,19 +351,3 @@ struct Datetime {
 }
 
 } // namespace calendar
-
-
-namespace std {
-
-// Define hash function for Datetime.
-// This function may be an overkill though.
-template <>
-struct hash<calendar::Datetime> {
-  [[nodiscard]] auto operator()(const calendar::Datetime& dt) const -> std::size_t {
-    const auto [y, m, d] = util::from_ymd(dt.ymd);
-    const double fraction = dt.fraction();
-    return util::hash::hash(y, m, d, fraction);
-  }
-};
-
-} // namespace std

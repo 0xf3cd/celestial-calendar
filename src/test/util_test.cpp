@@ -326,16 +326,6 @@ TEST(Util, TupleHash) {
     s.insert(hash::hash(0LL, 0.1F, "b"));
     ASSERT_EQ(s.size(), 4);
   }
-
-  { // Test tuple
-    std::unordered_set<std::size_t> s;
-    s.insert(hash::hash(std::make_tuple(0, 0.0F, "")));
-    s.insert(hash::hash(std::make_tuple(0, 0.1F, "")));
-    s.insert(hash::hash(std::make_tuple(0, 0.1F, "a")));
-    s.insert(hash::hash(std::make_tuple(0, 0.1F, "b")));
-    s.insert(hash::hash(std::make_tuple(5, 0.1F, "b")));
-    ASSERT_EQ(s.size(), 5);
-  }
 }
 
 

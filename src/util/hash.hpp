@@ -55,18 +55,6 @@ template <typename T, typename... Rest>
   return seed;
 }
 
-/** @brief A concept which ensures the type is tuple-like. */
-template <typename T>
-// TODO: Use `std::tuple_like` once every CI leg has it (./checks.py --features). (#81)
-concept IsTuple = requires {
-  typename std::tuple_size<T>::type;
-};
-
-template <IsTuple T>
-[[nodiscard]] inline auto hash(T&& t) -> std::size_t {
-  return std::apply([](auto&&... args) { return hash(std::forward<decltype(args)>(args)...); }, std::forward<T>(t));
-}
-
 
 template <typename... Args>
 struct TupleHash {

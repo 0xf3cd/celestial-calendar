@@ -208,7 +208,7 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
 # Recorded TODO counts expose wrapped markers and new workarounds (#175).
 # Drift is a maintenance notice, not a compiler-capability failure.
 SITE_COUNTS: Final[Dict[str, int]] = {
-  "tuple_like": 1,
+  "tuple_like": 0,
   "generator": 3,
   "enumerate": 2,
   "pairwise": 4,
