@@ -16,10 +16,8 @@
 #include <chrono>
 #include <format>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <concepts>
-#include <functional>
 
 #include "ymd.hpp"
 

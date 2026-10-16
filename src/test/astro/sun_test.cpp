@@ -14,6 +14,7 @@
 #include <chrono>
 #include <bit>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <string>
 #include <string_view>

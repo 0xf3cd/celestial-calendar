@@ -11,6 +11,7 @@
  */
 
 #include <cassert>
+#include <functional>
 
 #include "lib.hpp"
 #include "celestial.h"
