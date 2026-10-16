@@ -26,8 +26,8 @@ namespace astro::coords {
  * @note α is the right ascension, normalized to [0°, 360°). δ is the declination, in [-90°, 90°].
  */
 struct EquatorialCoord {
-  astro::toolbox::AngleDeg α; // Right ascension
-  astro::toolbox::AngleDeg δ; // Declination
+  toolbox::AngleDeg α; // Right ascension
+  toolbox::AngleDeg δ; // Declination
 };
 
 /**
@@ -35,8 +35,8 @@ struct EquatorialCoord {
  * @note λ is the ecliptic longitude, normalized to [0°, 360°). β is the ecliptic latitude, in [-90°, 90°].
  */
 struct EclipticCoord {
-  astro::toolbox::AngleDeg λ; // Ecliptic longitude
-  astro::toolbox::AngleDeg β; // Ecliptic latitude
+  toolbox::AngleDeg λ; // Ecliptic longitude
+  toolbox::AngleDeg β; // Ecliptic latitude
 };
 
 /**
@@ -45,15 +45,15 @@ struct EclipticCoord {
  *       normalized to [0°, 360°). h is the altitude, in [-90°, 90°].
  */
 struct HorizontalCoord {
-  astro::toolbox::AngleDeg A; // Azimuth, from the south, positive westward
-  astro::toolbox::AngleDeg h; // Altitude
+  toolbox::AngleDeg A; // Azimuth, from the south, positive westward
+  toolbox::AngleDeg h; // Altitude
 };
 
 
 /** @brief Ecliptic longitude and latitude corrections from VSOP87D to FK5. */
 struct Fk5Correction {
-  astro::toolbox::AngleDeg Δλ;
-  astro::toolbox::AngleDeg Δβ;
+  toolbox::AngleDeg Δλ;
+  toolbox::AngleDeg Δβ;
 };
 
 /**
@@ -66,20 +66,20 @@ struct Fk5Correction {
  */
 [[nodiscard]] inline auto fk5_correction(
   const double jde_tt,
-  const astro::toolbox::SphericalCoordinate& vsop87d_coord
+  const toolbox::SphericalCoordinate& vsop87d_coord
 ) -> Fk5Correction {
   const double jc = astro::julian_day::jde_to_jc(jde_tt);
   const auto& [vsop_λ, vsop_β, vsop_r] = vsop87d_coord;
 
-  const astro::toolbox::AngleDeg λ_dash = vsop_λ - astro::toolbox::AngleDeg { (1.397 + (0.00031 * jc)) * jc };
+  const toolbox::AngleDeg λ_dash = vsop_λ - toolbox::AngleDeg { (1.397 + (0.00031 * jc)) * jc };
   const double λ_dash_rad = λ_dash.rad();
 
   const double delta_λ_arcsec = -0.09033 + (0.03916 * (std::cos(λ_dash_rad) + std::sin(λ_dash_rad)) * std::tan(vsop_β.rad()));
   const double delta_β_arcsec = 0.03916 * (std::cos(λ_dash_rad) - std::sin(λ_dash_rad));
 
   return {
-    .Δλ = astro::toolbox::AngleDeg::from_arcsec(delta_λ_arcsec),
-    .Δβ = astro::toolbox::AngleDeg::from_arcsec(delta_β_arcsec),
+    .Δλ = toolbox::AngleDeg::from_arcsec(delta_λ_arcsec),
+    .Δβ = toolbox::AngleDeg::from_arcsec(delta_β_arcsec),
   };
 }
 
@@ -97,12 +97,12 @@ struct Fk5Correction {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.3) and (13.4).
  */
 [[nodiscard]] inline auto ecliptic_to_equatorial(
-  const astro::toolbox::AngleDeg& λ,
-  const astro::toolbox::AngleDeg& β,
-  const astro::toolbox::AngleDeg& ε
+  const toolbox::AngleDeg& λ,
+  const toolbox::AngleDeg& β,
+  const toolbox::AngleDeg& ε
 ) -> EquatorialCoord {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::rad_to_deg;
+  using toolbox::AngleDeg;
+  using toolbox::rad_to_deg;
 
   const double λ_rad = λ.rad();
   const double β_rad = β.rad();
@@ -148,12 +148,12 @@ struct Fk5Correction {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formulas (13.5) and (13.6).
  */
 [[nodiscard]] inline auto equatorial_to_horizontal(
-  const astro::toolbox::AngleDeg& H,
-  const astro::toolbox::AngleDeg& δ,
-  const astro::toolbox::AngleDeg& φ
+  const toolbox::AngleDeg& H,
+  const toolbox::AngleDeg& δ,
+  const toolbox::AngleDeg& φ
 ) -> HorizontalCoord {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::rad_to_deg;
+  using toolbox::AngleDeg;
+  using toolbox::rad_to_deg;
 
   const double H_rad = H.rad();
   const double δ_rad = δ.rad();

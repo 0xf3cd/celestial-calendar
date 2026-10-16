@@ -104,8 +104,8 @@ struct CrossingSpec {
 }
 
 [[nodiscard]] inline auto raw_difference(
-  const astro::toolbox::SphericalCoordinate& source,
-  const astro::toolbox::SphericalCoordinate& target
+  const toolbox::SphericalCoordinate& source,
+  const toolbox::SphericalCoordinate& target
 ) -> double {
   return std::remainder(target.λ.deg() - source.λ.deg(), 360.0);
 }

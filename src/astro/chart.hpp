@@ -43,9 +43,9 @@ struct Times {
 /** @brief Geocentric position and longitude rate in the true ecliptic and equinox of date. */
 struct BodyState {
   astro::ephemeris::Target target;
-  astro::toolbox::AngleDeg longitude;
-  astro::toolbox::AngleDeg latitude;
-  std::optional<astro::toolbox::DistanceAu> distance;
+  toolbox::AngleDeg longitude;
+  toolbox::AngleDeg latitude;
+  std::optional<toolbox::DistanceAu> distance;
   astro::ephemeris::LongitudeRate longitude_rate;
 };
 
@@ -139,9 +139,9 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): Angle members require values; every aggregate construction supplies them.
 struct Position {
-  astro::toolbox::AngleDeg longitude;
-  astro::toolbox::AngleDeg latitude;
-  std::optional<astro::toolbox::DistanceAu> distance;
+  toolbox::AngleDeg longitude;
+  toolbox::AngleDeg latitude;
+  std::optional<toolbox::DistanceAu> distance;
 };
 
 [[nodiscard]] inline auto position(const astro::ephemeris::Target target, const double jde_tt) -> Position {
@@ -149,14 +149,14 @@ struct Position {
   using astro::planet::geocentric_coord::apparent;
   using enum astro::ephemeris::Target;
 
-  const auto with_distance = [](const astro::toolbox::SphericalCoordinate& coordinate) -> Position {
+  const auto with_distance = [](const toolbox::SphericalCoordinate& coordinate) -> Position {
     return { .longitude = coordinate.λ, .latitude = coordinate.β, .distance = coordinate.r };
   };
 
   const auto node_position = [jde_tt](const Node node) -> Position {
     return {
       .longitude = astro::lunar_node::position(node, jde_tt),
-      .latitude = astro::toolbox::AngleDeg { 0.0 },
+      .latitude = toolbox::AngleDeg { 0.0 },
       .distance = std::nullopt,
     };
   };

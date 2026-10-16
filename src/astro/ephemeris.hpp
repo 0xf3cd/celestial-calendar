@@ -117,7 +117,7 @@ inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
 }
 
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt)
-  -> astro::toolbox::AngleDeg {
+  -> toolbox::AngleDeg {
   using astro::lunar_node::Node;
   using astro::lunar_node::position;
   using astro::planet::geocentric_coord::apparent;
@@ -176,7 +176,7 @@ inline auto validate_rate_input(const Target target, const double jde_tt) -> voi
  *  @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference */
 template <typename LongitudeProvider>
 requires std::invocable<const LongitudeProvider&, double>
-     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, astro::toolbox::AngleDeg>
+     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, toolbox::AngleDeg>
 [[nodiscard]] inline auto differentiate(const LongitudeProvider& longitude, const double jde_tt) -> LongitudeRate {
   const auto change = [&](const double offset) -> double {
     const double before = longitude(jde_tt - offset).deg();
@@ -228,7 +228,7 @@ requires std::invocable<const LongitudeProvider&, double>
 [[nodiscard]] inline auto longitude_rate(const Target target, const double jde_tt) -> LongitudeRate {
   detail::validate_rate_input(target, jde_tt);
 
-  const auto longitude = [target](const double sample_jde_tt) -> astro::toolbox::AngleDeg {
+  const auto longitude = [target](const double sample_jde_tt) -> toolbox::AngleDeg {
     return detail::longitude_for_rate(target, sample_jde_tt);
   };
   return detail::differentiate(longitude, jde_tt);

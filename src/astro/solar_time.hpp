@@ -41,8 +41,8 @@ namespace detail {
  * @return L0, unnormalized.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.2).
  */
-[[nodiscard]] constexpr auto sun_mean_longitude(const double jde_tt) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+[[nodiscard]] constexpr auto sun_mean_longitude(const double jde_tt) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   const double τ = astro::julian_day::jde_to_jm(jde_tt);
   const double L0 = 280.4664567
@@ -67,9 +67,9 @@ namespace detail {
  *          the mean longitude L0 can sit on opposite sides of the 0°/360° seam.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formula (28.1).
  */
-[[nodiscard]] inline auto equation_of_time(const double jde_tt) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::normalize_pm180;
+[[nodiscard]] inline auto equation_of_time(const double jde_tt) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
+  using toolbox::normalize_pm180;
 
   const auto L0 = detail::sun_mean_longitude(jde_tt);
   const auto α  = astro::sun::equatorial_coord::apparent(jde_tt).α;
@@ -100,7 +100,7 @@ namespace detail {
  */
 [[nodiscard]] inline auto apparent(
   const calendar::Datetime& utc_dt,
-  const astro::toolbox::AngleDeg& longitude
+  const toolbox::AngleDeg& longitude
 ) -> calendar::Datetime {
   const double lon = longitude.deg();
   if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {

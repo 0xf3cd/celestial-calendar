@@ -83,11 +83,11 @@ struct RectangularCoordinate {
 };
 
 struct AberrationCorrection {
-  astro::toolbox::AngleDeg Δλ;
-  astro::toolbox::AngleDeg Δβ;
+  toolbox::AngleDeg Δλ;
+  toolbox::AngleDeg Δβ;
 };
 
-using HeliocentricEvaluator = astro::toolbox::SphericalCoordinate (*)(double);
+using HeliocentricEvaluator = toolbox::SphericalCoordinate (*)(double);
 
 struct Vsop87dMapping {
   Planet target;
@@ -99,12 +99,12 @@ inline constexpr std::size_t LIGHT_TIME_MAX_ITERATIONS = 10;
 inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
 
 template <astro::vsop87d::Planet planet>
-[[nodiscard]] inline auto heliocentric(const double jde_tt) -> astro::toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto heliocentric(const double jde_tt) -> toolbox::SphericalCoordinate {
   const auto evaluated = astro::vsop87d::evaluate<planet>(astro::julian_day::jde_to_jm(jde_tt));
   return {
-    .λ = astro::toolbox::AngleDeg { astro::toolbox::AngleRad { evaluated.λ }.normalize() },
-    .β = astro::toolbox::AngleDeg { astro::toolbox::AngleRad { evaluated.β } },
-    .r = astro::toolbox::DistanceAu { evaluated.r },
+    .λ = toolbox::AngleDeg { toolbox::AngleRad { evaluated.λ }.normalize() },
+    .β = toolbox::AngleDeg { toolbox::AngleRad { evaluated.β } },
+    .r = toolbox::DistanceAu { evaluated.r },
   };
 }
 
@@ -127,7 +127,7 @@ template <Planet target, astro::vsop87d::Planet model>
   const Planet planet,
   const double retarded_jde_tt,
   const double observation_jde_tt
-) -> astro::toolbox::SphericalCoordinate {
+) -> toolbox::SphericalCoordinate {
   using enum Planet;
   using enum astro::vsop87d::Planet;
 
@@ -165,7 +165,7 @@ template <Planet target, astro::vsop87d::Planet model>
   return { .λ = precessed.λ, .β = precessed.β, .r = evaluated.r };
 }
 
-[[nodiscard]] inline auto rectangular(const astro::toolbox::SphericalCoordinate& spherical)
+[[nodiscard]] inline auto rectangular(const toolbox::SphericalCoordinate& spherical)
   -> RectangularCoordinate {
   const double cos_β = std::cos(spherical.β.rad());
   return {
@@ -179,8 +179,8 @@ template <Planet target, astro::vsop87d::Planet model>
 [[nodiscard]] inline auto light_time_corrected(
   const Planet planet,
   const double jde_tt,
-  const astro::toolbox::SphericalCoordinate& earth
-) -> astro::toolbox::SphericalCoordinate {
+  const toolbox::SphericalCoordinate& earth
+) -> toolbox::SphericalCoordinate {
   const auto earth_rect = rectangular(earth);
   double retarded_jde_tt = jde_tt;
 
@@ -205,15 +205,15 @@ template <Planet target, astro::vsop87d::Planet model>
 
     const double next_retarded_jde_tt = jde_tt
                                       - (astro::earth::aberration::LIGHT_TIME_DAYS_PER_AU * distance_au);
-    if (std::fabs(next_retarded_jde_tt - retarded_jde_tt) <= astro::toolbox::ulp(jde_tt)) {
+    if (std::fabs(next_retarded_jde_tt - retarded_jde_tt) <= toolbox::ulp(jde_tt)) {
       return {
-        .λ = astro::toolbox::AngleDeg {
-          astro::toolbox::rad_to_deg(std::atan2(geocentric.y, geocentric.x))
+        .λ = toolbox::AngleDeg {
+          toolbox::rad_to_deg(std::atan2(geocentric.y, geocentric.x))
         }.normalize(),
-        .β = astro::toolbox::AngleDeg {
-          astro::toolbox::rad_to_deg(std::atan2(geocentric.z, std::hypot(geocentric.x, geocentric.y)))
+        .β = toolbox::AngleDeg {
+          toolbox::rad_to_deg(std::atan2(geocentric.z, std::hypot(geocentric.x, geocentric.y)))
         },
-        .r = astro::toolbox::DistanceAu { distance_au },
+        .r = toolbox::DistanceAu { distance_au },
       };
     }
     retarded_jde_tt = next_retarded_jde_tt;
@@ -231,13 +231,13 @@ template <Planet target, astro::vsop87d::Planet model>
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, (23.2). */
 [[nodiscard]] inline auto aberration(
   const double jde_tt,
-  const astro::toolbox::SphericalCoordinate& coordinate,
-  const astro::toolbox::SphericalCoordinate& earth
+  const toolbox::SphericalCoordinate& coordinate,
+  const toolbox::SphericalCoordinate& earth
 ) -> AberrationCorrection {
   const double jc = astro::julian_day::jde_to_jc(jde_tt);
   const double e = 0.016708634 + (jc * (-0.000042037 - (0.0000001267 * jc)));
-  const astro::toolbox::AngleDeg π { 102.93735 + (jc * (1.71946 + (0.00046 * jc))) };
-  const auto sun_λ = (earth.λ + astro::toolbox::AngleDeg { 180.0 }).normalize();
+  const toolbox::AngleDeg π { 102.93735 + (jc * (1.71946 + (0.00046 * jc))) };
+  const auto sun_λ = (earth.λ + toolbox::AngleDeg { 180.0 }).normalize();
   const double λ = coordinate.λ.rad();
   const double β = coordinate.β.rad();
 
@@ -247,8 +247,8 @@ template <Planet target, astro::vsop87d::Planet model>
   const double Δβ_arcsec = -20.49552 * std::sin(β)
                          * (std::sin(sun_λ.rad() - λ) - (e * std::sin(π.rad() - λ)));
   return {
-    .Δλ = astro::toolbox::AngleDeg::from_arcsec(Δλ_arcsec),
-    .Δβ = astro::toolbox::AngleDeg::from_arcsec(Δβ_arcsec),
+    .Δλ = toolbox::AngleDeg::from_arcsec(Δλ_arcsec),
+    .Δβ = toolbox::AngleDeg::from_arcsec(Δβ_arcsec),
   };
 }
 
@@ -317,14 +317,14 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
 [[nodiscard]] inline auto apparent(
   const Planet planet,
   const double jde_tt
-) -> astro::toolbox::SphericalCoordinate {
+) -> toolbox::SphericalCoordinate {
   const std::string_view planet_name = detail::validate_apparent_input(planet, jde_tt);
 
   try {
     const auto earth = astro::earth::heliocentric_coord::vsop87d(jde_tt);
     const auto geometric = detail::light_time_corrected(planet, jde_tt, earth);
     const auto aberration = detail::aberration(jde_tt, geometric, earth);
-    const astro::toolbox::SphericalCoordinate aberrated {
+    const toolbox::SphericalCoordinate aberrated {
       .λ = geometric.λ + aberration.Δλ,
       .β = geometric.β + aberration.Δβ,
       .r = geometric.r,

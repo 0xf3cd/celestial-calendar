@@ -255,7 +255,7 @@ template <BodyProvider P>
   const auto θ = astro::sidereal::local_apparent(jd_ut1, jde_tt, -location.longitude);
 
   return {
-    .hour_angle_deg = astro::toolbox::normalize_pm180((θ - eq.α).deg()),
+    .hour_angle_deg = toolbox::normalize_pm180((θ - eq.α).deg()),
     .eq = eq,
   };
 }
@@ -273,8 +273,8 @@ template <BodyProvider P>
   const double jde_tt,
   const GeoLocation& location,
   const P& provider
-) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   const auto local = body_local(jde_tt, location, provider);
   const auto horizontal = astro::coords::equatorial_to_horizontal(
@@ -476,7 +476,7 @@ template <BodyProvider P>
 inline void validate_rise_set_inputs(
   const double transit_jde_tt,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0
+  const toolbox::AngleDeg& h0
 ) {
   validate(location);
 
@@ -528,8 +528,8 @@ requires std::invocable<const Func&, double>
     return std::nullopt;
   }
 
-  const double root = astro::toolbox::newton_method(
-    f, lo_jde, hi_jde, astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY
+  const double root = toolbox::newton_method(
+    f, lo_jde, hi_jde, toolbox::SIDEREAL_RATE_DEG_PER_DAY
   );
   return Solved { .root_jde = root, .residual_deg = std::fabs(f(root)) };
 }
@@ -557,11 +557,11 @@ template <BodyProvider P>
     return body_local(jde, location, provider).hour_angle_deg;
   };
 
-  return astro::toolbox::newton_method(
+  return toolbox::newton_method(
     f,
     estimate_jde - TRANSIT_BRACKET_HALF_WIDTH_DAYS,
     estimate_jde + TRANSIT_BRACKET_HALF_WIDTH_DAYS,
-    astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY
+    toolbox::SIDEREAL_RATE_DEG_PER_DAY
   );
 }
 
@@ -583,12 +583,12 @@ template <BodyProvider P>
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, Formula (15.1).
  */
 [[nodiscard]] inline auto hour_angle_at_altitude(
-  const astro::toolbox::AngleDeg& δ,
-  const astro::toolbox::AngleDeg& φ,
-  const astro::toolbox::AngleDeg& h0
-) -> std::optional<astro::toolbox::AngleDeg> {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::rad_to_deg;
+  const toolbox::AngleDeg& δ,
+  const toolbox::AngleDeg& φ,
+  const toolbox::AngleDeg& h0
+) -> std::optional<toolbox::AngleDeg> {
+  using toolbox::AngleDeg;
+  using toolbox::rad_to_deg;
 
   const auto reject_outside_pm90 = [](const char* name, const double deg) {
     if (not std::isfinite(deg) or deg < -90.0 or deg > 90.0) {
@@ -655,7 +655,7 @@ template <BodyProvider P>
   const double transit_jde_tt,
   const bool is_rise,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0,
+  const toolbox::AngleDeg& h0,
   const P& provider
 ) -> std::optional<double> {
   detail::validate_rise_set_inputs(transit_jde_tt, location, h0);
@@ -673,7 +673,7 @@ template <BodyProvider P>
 
   if (H0.has_value()) {
     const double sign = is_rise ? -1.0 : 1.0;
-    const double estimate = transit_jde_tt + (sign * (H0->deg() / astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY));
+    const double estimate = transit_jde_tt + (sign * (H0->deg() / toolbox::SIDEREAL_RATE_DEG_PER_DAY));
     const auto solved = detail::crossing_in_bracket(
       f,
       estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS,
@@ -733,7 +733,7 @@ template <BodyProvider P>
 [[nodiscard]] inline auto calculate_around_transit(
   const double transit_jde_tt,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0,
+  const toolbox::AngleDeg& h0,
   const P& provider
 ) -> Result {
   Result result {
@@ -803,8 +803,8 @@ template <BodyProvider P>
   // window spans more than half a turn of α, which for the Moon happens past ~13.6 days).
   const auto local0 = detail::body_local(t0_jde_tt, location, provider);
   const auto local1 = detail::body_local(t0_jde_tt + 1.0, location, provider);
-  const double dα = astro::toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg());
-  const double sweep_rate = astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY - dα;
+  const double dα = toolbox::normalize_pm180(local1.eq.α.deg() - local0.eq.α.deg());
+  const double sweep_rate = toolbox::SIDEREAL_RATE_DEG_PER_DAY - dα;
 
   // Hour angle from here to the next transit, in degrees, in (0°, 360°].
   const double H0 = local0.hour_angle_deg; // ∈ [-180°, 180°)
@@ -815,7 +815,7 @@ template <BodyProvider P>
   const auto f = [&location, &provider](const double jde) -> double {
     return detail::body_local(jde, location, provider).hour_angle_deg;
   };
-  const double root = astro::toolbox::newton_method(
+  const double root = toolbox::newton_method(
     f,
     estimate - RISE_SET_BRACKET_HALF_WIDTH_DAYS,
     estimate + RISE_SET_BRACKET_HALF_WIDTH_DAYS,
@@ -883,7 +883,7 @@ template <BodyProvider P>
 [[nodiscard]] inline auto calculate_day(
   const std::chrono::year_month_day& ymd_ut1,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0,
+  const toolbox::AngleDeg& h0,
   const P& provider
 ) -> Result {
   detail::validate(location);
@@ -999,7 +999,7 @@ namespace sun {
  * @note Meeus Chapter 15: -34' of standard atmospheric refraction at the horizon,
  *       plus -16' so that the event refers to the Sun's upper limb, not its center.
  */
-inline constexpr auto STANDARD_ALTITUDE = astro::toolbox::AngleDeg::from_arcmin(-50.0);
+inline constexpr auto STANDARD_ALTITUDE = toolbox::AngleDeg::from_arcmin(-50.0);
 
 /**
  * @brief Convert atmospheric conditions to the sunrise/sunset altitude convention.
@@ -1011,20 +1011,20 @@ inline constexpr auto STANDARD_ALTITUDE = astro::toolbox::AngleDeg::from_arcmin(
  *         horizon iteration does not converge.
  * @note The default parameters reproduce `STANDARD_ALTITUDE` to within 0.02′.
  */
-[[nodiscard]] inline auto h0_from(const astro::earth::refraction::Params& p = {}) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto h0_from(const astro::earth::refraction::Params& p = {}) -> toolbox::AngleDeg {
   const auto horizon_refraction = astro::earth::refraction::at_horizon(p);
-  const auto upper_limb = astro::toolbox::AngleDeg::from_arcmin(16.0);
+  const auto upper_limb = toolbox::AngleDeg::from_arcmin(16.0);
   return -(horizon_refraction + upper_limb);
 }
 
 /** @brief The Sun's altitude at civil twilight: -6°. */
-inline constexpr astro::toolbox::AngleDeg CIVIL_TWILIGHT { -6.0 };
+inline constexpr toolbox::AngleDeg CIVIL_TWILIGHT { -6.0 };
 
 /** @brief The Sun's altitude at nautical twilight: -12°. */
-inline constexpr astro::toolbox::AngleDeg NAUTICAL_TWILIGHT { -12.0 };
+inline constexpr toolbox::AngleDeg NAUTICAL_TWILIGHT { -12.0 };
 
 /** @brief The Sun's altitude at astronomical twilight: -18°. */
-inline constexpr astro::toolbox::AngleDeg ASTRONOMICAL_TWILIGHT { -18.0 };
+inline constexpr toolbox::AngleDeg ASTRONOMICAL_TWILIGHT { -18.0 };
 
 /** @brief The Sun's position provider: apparent equatorial coordinates at one instant (TT). */
 inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
@@ -1070,7 +1070,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
   const double transit_jde_tt,
   const bool is_rise,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
+  const toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
 ) -> std::optional<double> {
   return astro::rise_set::rise_set_jde(transit_jde_tt, is_rise, location, h0, provider);
 }
@@ -1095,7 +1095,7 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
 [[nodiscard]] inline auto calculate(
   const std::chrono::year_month_day& ymd_ut1,
   const GeoLocation& location,
-  const astro::toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
+  const toolbox::AngleDeg& h0 = STANDARD_ALTITUDE
 ) -> Result {
   const double transit_jde_tt = transit_jde(ymd_ut1, location);
   return calculate_around_transit(transit_jde_tt, location, h0, provider);
@@ -1123,10 +1123,10 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @note Geocentric distance from the ELP2000-82B ephemeris; see
  *       `moon::geocentric_coord::equatorial_horizontal_parallax`.
  */
-[[nodiscard]] inline auto horizontal_parallax(const double jde_tt) -> astro::toolbox::AngleRad {
+[[nodiscard]] inline auto horizontal_parallax(const double jde_tt) -> toolbox::AngleRad {
   const auto ecl = astro::moon::geocentric_coord::apparent(jde_tt);
   return astro::moon::geocentric_coord::equatorial_horizontal_parallax(
-    astro::toolbox::DistanceKm { ecl.r.km() }
+    toolbox::DistanceKm { ecl.r.km() }
   );
 }
 
@@ -1147,10 +1147,10 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15.
  */
 [[nodiscard]] inline auto h0(
-  const astro::toolbox::AngleRad& Π,
+  const toolbox::AngleRad& Π,
   const astro::earth::refraction::Params& p = {}
-) -> astro::toolbox::AngleDeg {
-  const auto parallax_term = astro::toolbox::AngleDeg { 0.7275 * Π.deg() };
+) -> toolbox::AngleDeg {
+  const auto parallax_term = toolbox::AngleDeg { 0.7275 * Π.deg() };
   return parallax_term - astro::earth::refraction::at_horizon(p);
 }
 

@@ -37,15 +37,15 @@ namespace astro::sidereal {
  *       is TT-based.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 12, Formulas (12.2)-(12.4).
  */
-[[nodiscard]] inline auto greenwich_mean(const double jd_ut1) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+[[nodiscard]] inline auto greenwich_mean(const double jd_ut1) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   // Days and julian centuries of *universal* time since J2000.0 UT.
   const double d_ut1 = jd_ut1 - astro::julian_day::J2000;
   const double t_ut1 = d_ut1 / 36525.0;
 
   const double θ0 = 280.46061837
-                  + (astro::toolbox::SIDEREAL_RATE_DEG_PER_DAY * d_ut1)
+                  + (toolbox::SIDEREAL_RATE_DEG_PER_DAY * d_ut1)
                   + (0.000387933 * t_ut1 * t_ut1)
                   - ((t_ut1 * t_ut1 * t_ut1) / 38710000.0);
 
@@ -70,8 +70,8 @@ namespace astro::sidereal {
   const double jd_ut1,
   const double jde_tt,
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
-) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   // The nutation correction in right ascension: Δψ·cos ε. Nutation is computed on the TT scale.
   const auto Δψ = astro::earth::nutation::longitude(jde_tt, model);
@@ -97,9 +97,9 @@ namespace astro::sidereal {
 [[nodiscard]] inline auto local_apparent(
   const double jd_ut1,
   const double jde_tt,
-  const astro::toolbox::AngleDeg& longitude_west,
+  const toolbox::AngleDeg& longitude_west,
   const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
-) -> astro::toolbox::AngleDeg {
+) -> toolbox::AngleDeg {
   return (greenwich_apparent(jd_ut1, jde_tt, model) - longitude_west).normalize();
 }
 
