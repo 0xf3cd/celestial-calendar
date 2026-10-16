@@ -26,17 +26,17 @@ delocate==0.13.0 \
     --hash=sha256:11f7596f88984c33f76b27fe2eea7637d1ce369a9e0b6737bbc706b6426e862c \
     --hash=sha256:a93e67a9f56ee01a3f7096a042231d4ac37fecac873cd5ea34ea2b4f43a8fa13
     # via -r bindings/python/requirements-cibuildwheel.in
-delvewheel==1.13.1 \
-    --hash=sha256:1b3bc696193a57e322b8bfd644de240be6e003066aae44cc3d5aef8cbee22ca3 \
-    --hash=sha256:ae445f35f411c367f5b350431ac5f1435af8128bff31ccf34035a409704da8c6
+delvewheel==1.13.2 \
+    --hash=sha256:acdb03e1d7040982db65e525065f08163e9dedad54eeb8c7038be61f76c08816 \
+    --hash=sha256:e04b40d8186d80d3ef74dc8571b5d15026b7a8858e89312692a2b09fbcc67b0e
     # via -r bindings/python/requirements-cibuildwheel.in
 distlib==0.4.3 \
     --hash=sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b \
     --hash=sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed
     # via virtualenv
-filelock==3.32.7 \
-    --hash=sha256:37b8a3d9811b0f9aef7e5ec5c71bb320de52df51e6ca9bcd6f5ad81187660da7 \
-    --hash=sha256:65ff0d0190ea42038b32bda4b77834fb05be2cad4c5b9b01aa4dfb3614536e52
+filelock==4.1.1 \
+    --hash=sha256:3f4a557945a7b0f95efeb1f432267affe5d45ac8ddde2aed1b97ebb62382c089 \
+    --hash=sha256:7ba0927482c5a814b0a7f391d029ccdb8010f576f0a74c0dcde1811e8bc4c1b6
     # via
     #   -r bindings/python/requirements-cibuildwheel.in
     #   python-discovery
@@ -60,9 +60,9 @@ pip==26.2.1 \
     --hash=sha256:71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e \
     --hash=sha256:f6ad667e89a1fe78046c8f13232b247200f5258d7828f3f7883d660878e0813f
     # via -r bindings/python/requirements-cibuildwheel.in
-platformdirs==4.12.0 \
-    --hash=sha256:095be5c143382b1bee917c4f3e9987a0d8d6a582261f1d061ad0c403b7695b5b \
-    --hash=sha256:f6fb2960f2f2eb0870f820f7e49e49e6c0f0589c637f34d33b260b07591327c9
+platformdirs==4.13.0 \
+    --hash=sha256:1aa0b0d3f224c1f07c295121e312a5a24a180d6ae5a8425ea1784b3e3863e9c0 \
+    --hash=sha256:3dbcf4cd708f21cf876c4eaa90e58412bc4f033d87143f41b1493ff77c25b7e1
     # via
     #   -r bindings/python/requirements-cibuildwheel.in
     #   virtualenv
@@ -70,9 +70,9 @@ pyproject-hooks==1.2.0 \
     --hash=sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8 \
     --hash=sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913
     # via build
-python-discovery==1.6.1 \
-    --hash=sha256:cf87d3627dfb4412437fdd5b13eae402607722998d21567993aedbc59b23c15e \
-    --hash=sha256:d43fcdef879fe795352bd13ccf8d185ba5a9f86f36cfcd00529f596e737442b3
+python-discovery==1.6.2 \
+    --hash=sha256:cd1738ca1d37c86ef9d0b654dd46fcee1e41c97c6add12575e8501ced39afdb4 \
+    --hash=sha256:f0c697f95a3aaec4174a6e5e58f5885e25768684bafc76f1afde384709ebdcf2
     # via
     #   -r bindings/python/requirements-cibuildwheel.in
     #   virtualenv
