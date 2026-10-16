@@ -16,6 +16,8 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
+#include <functional>
 #include <limits>
 #include <ranges>
 #include <stdexcept>

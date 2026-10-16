@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cmath>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <optional>
