@@ -15,4 +15,4 @@ filelock==4.1.1
 pip==26.2.1
 platformdirs==4.13.0
 python-discovery==1.6.2
-virtualenv==21.14.6
+virtualenv==21.14.7
