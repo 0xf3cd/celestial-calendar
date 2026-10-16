@@ -18,13 +18,13 @@ version of the primary package. The alias copies no implementation and contains 
 
 [中文说明（@0xf3cd/celestial）](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide matches the current `0.7.0` source and does not mean that this version or the alias has been published to
-npm. Until then, [build the primary and alias packages](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/BUILDING.md#wasm)
-from the full source and install both tarballs of the same version.
+This guide describes version `0.8.0`; an older installed version may lack some APIs of the primary package. To use
+the current source, [build the primary and alias packages](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/BUILDING.md#wasm)
+from a full checkout and install both tarballs of the same version.
 
 ## Install and Examples
 
-Once the version you need is on npm, install it in your application directory:
+Install it from npm in your application directory:
 
 ```sh
 npm install celestial-calendar

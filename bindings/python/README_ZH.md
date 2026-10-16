@@ -5,8 +5,8 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 
 [English](README.md)
 
-本文以 `0.7.0` 为版本基线，也说明尚未发布的源码 API。PyPI 上的版本可能滞后；以下安装命令获取已发布版本。
-使用示例前请核对安装版本是否提供相应 API；需要当前源码时，可按下文从完整 checkout 构建本地 wheel。
+本文对应 `0.8.0` 版。以下安装命令取得 PyPI 上的最新版本；更早的版本可能缺少本文的部分 API，运行示例前请核对所装版本。
+需要当前源码时，可按下文从完整 checkout 构建本地 wheel。
 
 <a id="install"></a>
 ## 安装
@@ -74,7 +74,7 @@ print("Remaining UT1 days:", remaining_days)
 <a id="chart-snapshot-example"></a>
 ### 同一瞬间的完整星盘快照
 
-以下 `chart_snapshot` 是尚未发布的源码 API；先从完整 checkout 构建并安装 wheel。
+`chart_snapshot` 自 0.8.0 起提供。
 这里明确输入 **2026-01-01 12:00 UTC**，不读取主机时区，也不把 UTC 当作 UT1。
 
 ```python

@@ -10,6 +10,7 @@
 
 import hashlib
 import json
+import re
 
 from pathlib import Path
 from shutil import copy2, copytree, ignore_patterns
@@ -644,13 +645,15 @@ def test_alias_metadata_license_controls(tmp_path, replacement):
 
 def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
   materialize_inputs(tmp_path)
-  replace_once(tmp_path / "project.py", 'BUILD_VERSION: Final[str] = "0.7.0"', 'BUILD_VERSION: Final[str] = "0.8.0"')
-  release_notes = tmp_path / "docs/RELEASE_NOTES.md"
-  replace_once(release_notes, "## [v0.7.0]", "## [v0.8.0]")
-  replace_once(
-    release_notes,
-    "Project-authored material is now licensed under MIT",
-    "This release contains future changes",
+  project = tmp_path / "project.py"
+  version_line = re.compile(r'BUILD_VERSION: Final\[str\] = "[^"]+"')
+  assert len(version_line.findall(project.read_text(encoding="utf-8"))) == 1
+  project.write_text(
+    version_line.sub('BUILD_VERSION: Final[str] = "99.0.0"', project.read_text(encoding="utf-8")),
+    encoding="utf-8",
+  )
+  (tmp_path / "docs/RELEASE_NOTES.md").write_text(
+    "## [v99.0.0]\n\nThis release contains future changes.\n", encoding="utf-8"
   )
 
   assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)

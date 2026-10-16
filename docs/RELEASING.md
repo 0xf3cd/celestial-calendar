@@ -36,7 +36,17 @@ run IDs, filenames, sizes, and hashes shown in the workflow summary before appro
 
 ## Release
 
-1. Confirm `project.py`, `docs/RELEASE_NOTES.md`, and the first `docs/CHANGELOG.md` entry all name the same version.
+1. Prepare the version in a pull request merged before the tag:
+   - set `BUILD_VERSION` in `project.py`; the Python and npm package versions derive from it, so do not edit
+     `pyproject.toml` or the `package.json` files;
+   - replace `docs/RELEASE_NOTES.md` with the notes of this release only;
+   - rename `## [Unreleased]` in `docs/CHANGELOG.md` to `## [vMAJOR.MINOR.PATCH]`;
+   - update the version in the status paragraph near the top of `README.md`, `README_ZH.md`,
+     `bindings/python/README.md`, `bindings/python/README_ZH.md`, `bindings/javascript/README.md`,
+     `bindings/javascript/README_ZH.md` and `bindings/javascript-alias/README.md`, and check every "new in" note.
+
+   Then confirm `project.py`, `docs/RELEASE_NOTES.md`, and the first `docs/CHANGELOG.md` entry all name the same
+   version.
 2. Create and push the protected `vMAJOR.MINOR.PATCH` tag from a commit already contained in `main`.
 3. Dispatch `build_and_test.yml`, `wasm.yml`, and `python-wheel.yml` on that tag. Wait for all three to succeed and
    record their run IDs. Each must be a `workflow_dispatch` run at the tagged commit.

@@ -17,8 +17,7 @@
 
 [English](README.md)
 
-本文覆盖当前开发源码。npm 上的版本可能滞后；以下安装命令获取已发布版本，不表示本文所有接口均已发布。
-使用示例前请核对安装版本是否提供相应 API。
+本文对应 `0.8.0` 版。以下安装命令取得 npm 上的最新版本；更早的版本可能缺少本文的部分 API，使用示例前请核对所装版本。
 
 <a id="install"></a>
 ## 安装
@@ -41,7 +40,9 @@ npm install @0xf3cd/celestial
 ## 示例
 
 <a id="chart-snapshot"></a>
-### 固定时刻的 chart snapshot（尚未发布）
+### 固定时刻的 chart snapshot
+
+`chart.snapshot()` 自 0.8.0 起提供。
 
 ```js
 import { init, chart } from "@0xf3cd/celestial";

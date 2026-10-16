@@ -112,7 +112,8 @@ int main(void) {
 }
 ```
 
-Compile this as C and link the native library built from the matching checkout. On failure read only `valid`
+Compile this as C and link a native library of the same version, from a release archive or built from the same
+checkout. On failure read only `valid`
 and `last_error`: invalid payload and padding bytes have no contract. Presence bits identify available fields;
 absent storage is not a zero or NaN sentinel. Node latitude is present and zero, while node distance is absent.
 Every distance here is in AU, the Moon's included; the standalone `MoonCoordinate` result gives kilometres.

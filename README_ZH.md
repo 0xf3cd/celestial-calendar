@@ -7,9 +7,9 @@
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
-本文以 **0.7.0** 为当前发布基线，也包含尚未发布的源码与接口。下面的安装命令取得 PyPI / npm 当前可用的版本；
-可用版本可能落后于本文，请同时核对所装版本的文档。若需要尚未发布的接口，可从完整源码构建
-[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或 [WASM / npm 包](docs/BUILDING.md#wasm)。
+本文对应 **0.8.0** 版。下面的安装命令取得 PyPI / npm 上的最新版本；更早的版本可能缺少本文的部分接口，请以所装版本附带的文档为准。
+要自行构建当前源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
+[WASM / npm 包](docs/BUILDING.md#wasm)的步骤。
 
 干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。
 

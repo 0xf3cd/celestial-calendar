@@ -18,9 +18,8 @@ WebAssembly module.
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide covers the current development source. The version on npm may lag behind it: the install command below
-fetches the published version and does not mean that every API described here has been published. Before using an
-example, check that your installed version provides the API it uses.
+This guide describes version `0.8.0`. The install command below gets the latest version on npm; an older installed
+version may lack some APIs shown here, so check its version before using an example.
 
 <a id="install"></a>
 ## Install
@@ -45,7 +44,9 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 ## Examples
 
 <a id="chart-snapshot"></a>
-### Chart Snapshot at a Fixed Instant (Unreleased)
+### Chart Snapshot at a Fixed Instant
+
+`chart.snapshot()` is new in 0.8.0.
 
 ```js
 import { init, chart } from "@0xf3cd/celestial";

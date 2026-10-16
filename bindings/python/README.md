@@ -6,9 +6,9 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide uses `0.7.0` as its version baseline and also covers unreleased source APIs. The version on PyPI may lag;
-the install command below gets the published version. Before running an example, check that your installed version
-provides its API. To use the current source, build a local wheel from a full checkout as described below.
+This guide describes version `0.8.0`. The install command below gets the latest version on PyPI; an older installed
+version may lack some APIs shown here, so check its version before running an example. To use the current source,
+build a local wheel from a full checkout as described below.
 
 <a id="install"></a>
 ## Install
@@ -79,7 +79,7 @@ Establish the time-scale conversion before displaying either.
 <a id="chart-snapshot-example"></a>
 ### Complete chart snapshot of one instant
 
-`chart_snapshot` below is an unreleased source API; build and install a wheel from a full checkout first.
+`chart_snapshot` is new in 0.8.0.
 The input is explicitly **2026-01-01 12:00 UTC**: the host timezone is not read, and UTC is not treated as UT1.
 
 ```python

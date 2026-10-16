@@ -8,10 +8,10 @@ JavaScript / TypeScript, and a C ABI.
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide uses **0.7.0** as its current release baseline and also covers unreleased source and APIs. The install commands
-below select versions currently available on PyPI or npm, which may lag this guide. Check the documentation shipped
-with your installed version. To use APIs not yet published, build from the full checkout using the
-[local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the [WASM/npm recipe](docs/BUILDING.md#wasm).
+This guide describes version **0.8.0**. The install commands below get the latest version on PyPI or npm; an older
+installed version may lack some APIs shown here, so check the documentation shipped with it. To build the current
+source yourself, use the [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
+[WASM/npm recipe](docs/BUILDING.md#wasm).
 
 For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); this library has no Ganzhi API.
 
