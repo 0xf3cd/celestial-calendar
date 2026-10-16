@@ -31,6 +31,10 @@ from chart_replay import assert_chart_replay
 
 REPO = Path(__file__).resolve().parents[4]
 EXAMPLE = REPO / "docs/examples/chart_snapshot/data.json"
+# Native codes come from the checkout manifest, independent of the package's own tables.
+NATIVE_CODES = json.loads((REPO / "bindings/python/test/abi/manifest.json").read_text(encoding="utf-8"))[
+  "chart_v1_codes"
+]
 CIVIL = celestial.CivilDateTime(2026, 1, 1, 0.5)
 LOCATION = celestial.GeoLocation(51.5, 0.0)
 
@@ -55,7 +59,7 @@ def native_fixture() -> _binding.ChartSnapshotV1:
   result.jd_ut1 = example["times"]["jd_ut1"]
   result.jde_tt = example["times"]["jde_tt"]
   for native, body in zip(result.bodies, example["bodies"], strict=True):
-    native.target_code = celestial.ChartTarget[body["target"]].value
+    native.target_code = NATIVE_CODES[f"CHART_TARGET_{body['target']}"]
     native.present_fields = 1 if body["distance_au"] is None else 3
     for name in ("longitude_deg", "latitude_deg", "longitude_rate_deg_per_tt_day"):
       setattr(native, name, body[name])
@@ -117,18 +121,19 @@ def run_validation_guards() -> None:
       ),
     ),
     ("location", (None, {}, (51.5, 0.0))),
-    ("scale", (None, 0, True, "UTC", celestial.HouseSystem.EQUAL)),
-    ("system", (None, 0, True, "PLACIDUS", celestial.CivilScale.UTC)),
+    ("scale", (None, 0, True, "UTC", "utc", celestial.HouseSystem.EQUAL)),
+    ("system", (None, 0, True, "PLACIDUS", "placidus", celestial.CivilScale.UTC)),
     ("model", (None, 0, True, "algo5", celestial.LunarAlgorithm.ALGO1)),
   ):
     cases.extend(({name: value}, TypeError) for value in values)
   for name, enum_type in (("scale", celestial.CivilScale), ("system", celestial.HouseSystem)):
-    unknown = int.__new__(enum_type, 99)
-    unknown._value_ = 99
+    unknown = str.__new__(enum_type, "unknown")
+    unknown._value_ = "unknown"
     unknown._name_ = "UNKNOWN"
     cases.append(({name: unknown}, ValueError))
-    lookalike = int.__new__(enum_type, 0)
-    lookalike._value_ = 2**32 + 1
+    member = next(iter(enum_type))
+    lookalike = str.__new__(enum_type, member.value)
+    lookalike._value_ = member.value
     lookalike._name_ = "LOOKALIKE"
     cases.append(({name: lookalike}, ValueError))
   unknown_model = str.__new__(celestial.DeltaTModel, "unknown")
@@ -209,7 +214,7 @@ def run_validation_guards() -> None:
   for longitude in (-180.0001, 180.0001):
     cases.append(({"location": celestial.GeoLocation(0.0, longitude)}, ValueError))
 
-  assert len(cases) == 108, "independent chart raw-input guard inventory"
+  assert len(cases) == 110, "independent chart raw-input guard inventory"
   trap = Trap(fail=True)
   with replaced_binding("chart_snapshot_v1", trap):
     for changes, error_type in cases:
@@ -474,7 +479,8 @@ def run_ingress_native_boundaries() -> None:
   model_codes = {celestial.DeltaTModel.ALGO4: 4, celestial.DeltaTModel.ALGO5: 5}
   assert len(cases) == 17, "independent chart public/native boundary inventory"
   for role, civil, scale, latitude, longitude, model, error_type in cases:
-    arguments = (*civil, scale.value, latitude, longitude, celestial.HouseSystem.EQUAL.value, model_codes[model])
+    scale_code = NATIVE_CODES[f"CHART_CIVIL_SCALE_{scale.name}"]
+    arguments = (*civil, scale_code, latitude, longitude, NATIVE_CODES["CHART_HOUSE_SYSTEM_EQUAL"], model_codes[model])
     native = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)
     assert native.valid is (error_type is None), f"native outcome: {role}"
     native_error = _binding.last_error_text()
@@ -536,9 +542,11 @@ def run_core_aligned_cases() -> None:
       snapshot(civil_dt=celestial.jde_to_ut1(jde_tt + offset), scale=celestial.CivilScale.UT1, location=south)
       for offset in (-0.02, 0.02)
     )
-    assert before.bodies[target.value].longitude_deg > after.bodies[target.value].longitude_deg
-    assert before.bodies[target.value].longitude_rate_deg_per_tt_day > 0.0
-    assert after.bodies[target.value].longitude_rate_deg_per_tt_day > 0.0
+    # V1 records follow code order.
+    index = NATIVE_CODES[f"CHART_TARGET_{target.name}"]
+    assert before.bodies[index].longitude_deg > after.bodies[index].longitude_deg
+    assert before.bodies[index].longitude_rate_deg_per_tt_day > 0.0
+    assert after.bodies[index].longitude_rate_deg_per_tt_day > 0.0
     check_legacy_positions(before)
     check_legacy_positions(after)
   for jde_tt, before_sign, after_sign in ((2460749.7828680002, 1, -1), (2460772.964472, -1, 1)):
