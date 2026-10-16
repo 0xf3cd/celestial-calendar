@@ -31,6 +31,7 @@
 #include "celestial.h"
 #include "chart.hpp"
 #include "../astro/chart_test_helper.hpp"
+#include "../astro/house_test_helper.hpp"
 #include "../test_helper.hpp"
 
 namespace lib::chart::test {
@@ -40,6 +41,9 @@ using astro::chart::Scale;
 using astro::delta_t::Model;
 using astro::ephemeris::Target;
 using astro::house::System;
+using astro::house::test::WITNESS_LATITUDE_DEG;
+using astro::house::test::WITNESS_NORTH_LONGITUDE_DEG;
+using astro::house::test::WITNESS_SOUTH_LONGITUDE_DEG;
 using astro::toolbox::AngleDeg;
 using calendar::Datetime;
 using astro::chart::test::location;
@@ -390,21 +394,20 @@ TEST(ChartCAbi, PolarPlacidusFailsWithoutPartialResultOrFallback) {
 
 TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
   // #321: the payload is unspecified on failure; inspect only valid and last_error.
-  // The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
   const Datetime dt { util::to_ymd(2026, 1, 1),
                       std::chrono::hh_mm_ss { std::chrono::seconds { 43205 } } };
   const auto placidus = snapshot_at(
     dt,
     CHART_CIVIL_SCALE_UTC,
-    location(66.561856230963841, -11.176256364511062),
+    location(WITNESS_LATITUDE_DEG, WITNESS_NORTH_LONGITUDE_DEG),
     CHART_HOUSE_SYSTEM_PLACIDUS,
     CHART_DELTA_T_MODEL_ALGO5
   );
   ASSERT_FALSE(placidus.valid);
   EXPECT_NE(std::strstr(last_error(), "Ascendant"), nullptr);
   for (const auto observer : std::array {
-    location(66.561856230963841, -11.176256364511062),
-    location(-66.561856230963841, 168.82374363548894)
+    location(WITNESS_LATITUDE_DEG, WITNESS_NORTH_LONGITUDE_DEG),
+    location(-WITNESS_LATITUDE_DEG, WITNESS_SOUTH_LONGITUDE_DEG)
   }) {
     for (const uint32_t system : { CHART_HOUSE_SYSTEM_EQUAL, CHART_HOUSE_SYSTEM_WHOLE_SIGN }) {
       ASSERT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, system, CHART_DELTA_T_MODEL_ALGO5).valid);
