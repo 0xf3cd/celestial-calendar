@@ -10,9 +10,9 @@
 
 build==1.6.1
 delocate==0.13.0
-delvewheel==1.13.1
-filelock==3.32.7
+delvewheel==1.13.2
+filelock==4.1.1
 pip==26.2.1
-platformdirs==4.12.0
-python-discovery==1.6.1
-virtualenv==21.14.6
+platformdirs==4.13.0
+python-discovery==1.6.2
+virtualenv==21.14.7
