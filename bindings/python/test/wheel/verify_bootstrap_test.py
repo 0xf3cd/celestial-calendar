@@ -70,7 +70,9 @@ def main():
     pyz_digest = hashlib.sha256(pyz.read_bytes()).hexdigest()
     wheel_digest = hashlib.sha256(wheel_bytes).hexdigest()
     resource.write_text(f'[default]\nversion = "21.7.1"\nsha256 = "{pyz_digest}"\n', encoding="utf-8")
-    lock.write_text(f"pip==26.2 \\\n    --hash=sha256:{wheel_digest}\n", encoding="utf-8")
+    pip_requirement = f"pip==26.2 \\\n    --hash=sha256:{wheel_digest}\n"
+    virtualenv_requirement = "virtualenv==21.7.1 \\\n    --hash=sha256:" + "0" * 64 + "\n"
+    lock.write_text(pip_requirement + virtualenv_requirement, encoding="utf-8")
 
     assert invoke(selector, resource, pyz, "26.2") == (
       "PASS cibuildwheel bootstrap uses hash-locked embedded pip 26.2 from virtualenv-21.7.1.pyz"
@@ -86,6 +88,15 @@ def main():
     expect_error("pip 26.2 is not pinned", selector, resource, pyz, "26.2")
     lock.write_text("pip==26.2 \\\n    --hash=sha256:" + "0" * 64 + "\n", encoding="utf-8")
     expect_error("embedded pip 26.2 wheel is not hash-locked", selector, resource, pyz, "26.2")
+
+    for invalid_virtualenv in (
+      "",
+      virtualenv_requirement.replace("21.7.1", "21.7.0"),
+      virtualenv_requirement.replace("virtualenv==", "virtualenv-clone=="),
+      virtualenv_requirement + virtualenv_requirement,
+    ):
+      lock.write_text(pip_requirement + invalid_virtualenv, encoding="utf-8")
+      expect_error("bootstrap virtualenv 21.7.1 does not match the pin", selector, resource, pyz, "26.2")
 
   print("PASS cibuildwheel bootstrap verifier accepted a valid fixture and rejected invalid fixtures")
 
