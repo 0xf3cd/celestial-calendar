@@ -26,9 +26,9 @@ certifi==2026.7.22 \
     --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
     --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
     # via cibuildwheel
-cibuildwheel==4.2.1 \
-    --hash=sha256:22af6eb3a601bc9efdd42ab5522839ed99c8d61cad6dbd0cec5278bfef74ae4f \
-    --hash=sha256:6d67f04c0d1277a3b5301ed2ef82b115efd2ac1fe58b998bbc6ba1d59c918983
+cibuildwheel==4.3.1 \
+    --hash=sha256:69ee4cc0b9dd04ff3e32b3675fe429383ad3d5d98b20ac4ff217d83d2cf350af \
+    --hash=sha256:ef9e9645b29b5adfe1a4a5f70d6f57c227bf05321bf25dbd19e138d88bea9011
     # via -r bindings/python/requirements-host.in
 colorama==0.4.6 ; os_name == 'nt' \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
@@ -53,9 +53,9 @@ packaging==26.3 \
     #   build
     #   cibuildwheel
     #   dependency-groups
-platformdirs==4.11.4 \
-    --hash=sha256:e34ff91a24bcddc6d939b878bdf3f5c437c9c46fe9e212b1bf455fdf1ee57586 \
-    --hash=sha256:f3373be828247211d0febabea97e238c3dfde8a60b3c90c32756fb52cb21556d
+platformdirs==4.12.0 \
+    --hash=sha256:095be5c143382b1bee917c4f3e9987a0d8d6a582261f1d061ad0c403b7695b5b \
+    --hash=sha256:f6fb2960f2f2eb0870f820f7e49e49e6c0f0589c637f34d33b260b07591327c9
     # via cibuildwheel
 pyproject-hooks==1.2.0 \
     --hash=sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8 \

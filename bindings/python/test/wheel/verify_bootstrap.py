@@ -60,6 +60,10 @@ def main():
   if embedded_pip[selected_pip] not in lock_hashes:
     raise RuntimeError(f"the embedded pip {selected_pip} wheel is not hash-locked in {lock}")
 
+  locked_virtualenvs = re.findall(r"(?m)^virtualenv==(\S+) \\$", lock_text)
+  if locked_virtualenvs != [str(version)]:
+    raise RuntimeError(f"bootstrap virtualenv {version} does not match the pin in {lock}: {locked_virtualenvs}")
+
   print(f"PASS cibuildwheel bootstrap uses hash-locked embedded pip {selected_pip} from {pyz.name}")
 
 
