@@ -35,6 +35,10 @@
  * breaks neither the ABI nor the contract; narrowing it keeps the ABI but breaks
  * the contract, and needs a new major version just the same.
  *
+ * The chart snapshot carries `_v1` from its first release (`chart_snapshot_v1`,
+ * `ChartSnapshotV1`): an incompatible change to its fields or body roster takes the
+ * second route above, a separately named version beside V1.
+ *
  * Error contract: every function is `noexcept` at the boundary. Struct-returning
  * functions signal failure with `valid = false`; the rest return `0` / `false`.
  * On failure every function except `last_error` also records a thread-local
@@ -345,7 +349,7 @@ CELESTIAL_API SiderealTime local_apparent_sidereal_time(double jd_ut1, double lo
 
 typedef struct JieqiMomentQuery {
   bool     valid;  /* Indicates if the result is valid. */
-  uint8_t  jq_idx; /* The index of the Jieqi, in the range [0, 24). */
+  uint8_t  jq_idx; /* The Jieqi index in [0, 24), in ecliptic order: 0 = 立春 (Lichun) … 23 = 大寒. */
   int32_t  y;      /* The year. */
   uint32_t m;      /* The month. */
   uint32_t d;      /* The day. */
@@ -355,7 +359,7 @@ typedef struct JieqiMomentQuery {
 /**
  * @brief Query the accurate UT1 moment of the Jieqi in the given `year`.
  * @param year The Gregorian year, in [401, 32766].
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24).
+ * @param jq_idx The Jieqi index in [0, 24), in ecliptic order: 0 = 立春 (Lichun) … 23 = 大寒.
  * @returns A `JieqiMomentQuery` struct.
  * @note The returned civil moment is UT1; while leap seconds are applied it matches UTC
  *       to within DUT1 (±0.9 s), so modern-era civil consumers may treat it as UTC.
@@ -367,7 +371,7 @@ CELESTIAL_API JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx);
 
 /**
  * @brief Write the Chinese name of the Jieqi to `buf`.
- * @param jq_idx The index of the Jieqi. Expected to be in the range [0, 24).
+ * @param jq_idx The Jieqi index in [0, 24), in ecliptic order: 0 = 立春 (Lichun) … 23 = 大寒.
  * @param buf The name memory, allocated and freed by the caller.
  * @param buf_size Maximum bytes that can be written to `buf`.
  * @returns `true` if the name is successfully written to `buf`.

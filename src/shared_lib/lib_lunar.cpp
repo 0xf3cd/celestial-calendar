@@ -122,7 +122,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
     using namespace std::views;
 
     if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::format("Unsupported algorithm: {}", algo)
       };
     }
@@ -162,7 +162,7 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
 auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t month, const uint8_t day) -> LunarDate {
   return lib::wrap_export("gregorian_to_lunar", [=]() -> LunarDate {
     if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::format("Unsupported algorithm: {}", algo)
       };
     }
@@ -188,7 +188,7 @@ auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t mo
 auto lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> GregorianDate {
   return lib::wrap_export("lunar_to_gregorian", [=]() -> GregorianDate {
     if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::runtime_error {
+      throw std::invalid_argument {
         std::format("Unsupported algorithm: {}", algo)
       };
     }
