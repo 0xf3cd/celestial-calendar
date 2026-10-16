@@ -54,8 +54,9 @@
   headers it uses. `src/util/util.hpp`, which `jieqi.hpp` and the algo1/algo3 lunar headers included, is removed:
   include `ymd.hpp`, `hash.hpp` or `cache.hpp` directly. `src/util/random.hpp`, used only by the tests, moves to
   `src/test/`.
-- `std::hash<calendar::Datetime>` and the single-tuple `util::hash::hash` overload are removed (#344). The library
-  never called them; code that hashes a `Datetime` needs its own hasher.
+- `std::hash<calendar::Datetime>`, the `util::hash::IsTuple` concept and the single-tuple `util::hash::hash` overload
+  are removed (#344). The library never called them; hash a tuple with `util::hash::TupleHash`, and give a `Datetime`
+  its own hasher.
 
 ### Fixed
 

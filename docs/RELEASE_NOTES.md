@@ -22,7 +22,8 @@
 
 - C++ headers include what they use. `jieqi.hpp` no longer brings in `astro.hpp`, `datetime.hpp` no longer brings
   in `<functional>` or `<cstddef>`, and `src/util/util.hpp` is removed; include the headers your code uses.
-  `std::hash<calendar::Datetime>` is removed as well. The C ABI keeps every 0.7.0 export and record layout.
+  `std::hash<calendar::Datetime>`, `util::hash::IsTuple` and the single-tuple `util::hash::hash` overload are removed
+  as well; hash a tuple with `util::hash::TupleHash`. The C ABI keeps every 0.7.0 export and record layout.
 
 ### Fixes
 
@@ -33,7 +34,7 @@
 
 ### Documentation
 
-- The root README and both package guides are now English-first. Chinese translations are in the repository's
+- The root README and the package guides are now English-first. Chinese translations are in the repository's
   `README_ZH.md` files; the package pages on PyPI and npm show the English guide.
 - Building, validation and design material lives in `docs/BUILDING.md`, `docs/VALIDATION.md` and the new
   `docs/DESIGN.md`, which explains the source layers, time scales and failure handling.

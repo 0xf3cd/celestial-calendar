@@ -150,9 +150,9 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
-The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described,
-with examples, in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is
-also available from C, Python and JavaScript.
+The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
+in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is also available
+from C, Python and JavaScript.
 
 <a id="c-abi"></a>
 ### C and FFI
@@ -333,6 +333,7 @@ in AU, the Moon's included. The equation of time is degrees of hour angle, so mu
 * [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
 * [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm)
 
+<a id="license"></a>
 ## License
 
 Project-authored material is licensed under the MIT License; see `LICENSE`.

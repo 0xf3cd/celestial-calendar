@@ -110,9 +110,8 @@ export CXX=clang++
 Windows PowerShell: `$env:CXX = "clang++"; $env:CC = "clang"`, then the same commands.
 Individual steps: `--setup` / `--cmake` / `--build` / `--test` / `--bench` / `--clean`.
 
-The WASM/npm exception has its own shared manual/CI path: `npm ci --ignore-scripts --prefix
-bindings/javascript`, `python3 toolbox/build_wasm.py`, `node toolbox/wasm_check.mjs`, then
-`python3 toolbox/build_npm.py`. Consumer tests take the exact tarball named by
+The WASM/npm exception has its own shared manual/CI path, the four commands in
+[WebAssembly and npm packages](docs/BUILDING.md#wasm). Consumer tests take the exact tarball named by
 `build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json`; do not select either with a glob or
 rebuild per consumer. The builder packs primary and alias once each in separate staging directories.
 The release workflow freshly classifies and publishes those exact tested bytes, primary before alias;

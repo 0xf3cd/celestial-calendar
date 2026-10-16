@@ -258,12 +258,11 @@ Choose the source and compatibility role you need, not an assumed accuracy ranki
 | `LunarAlgorithm.ALGO2` | Computed from VSOP87D and truncated ELP2000-82B | `[410, 2500]` | Astronomical construction over the wider computed window |
 | `LunarAlgorithm.ALGO3` | Baked hybrid: algo1/HKO in 1901-2099, algo2-generated dates elsewhere | `[1600, 2199]` | Table lookup with HKO compatibility in the overlapping years |
 
-Algo2 assigns dates by rendering TT moments in the library's modelled UTC and then applying a fixed eight-hour
-eastward offset. That modelled UTC is UT1 before 1972 and adds no leap seconds after the table's last entry (2017);
-see [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales). Algo1
-preserves HKO's published labels rather than imposing this rule on their history; algo3 inherits the basis of each
-source slice. The 2500 ceiling is the computed algorithm's enforced civil-date domain, not a physical limit of
-VSOP87D or ELP2000-82B.
+Algo2 assigns dates by rendering TT moments in the library's modelled UTC
+([time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)) and then applying
+a fixed eight-hour eastward offset. Algo1 preserves HKO's published labels rather than imposing this rule on their
+history; algo3 inherits the basis of each source slice. The 2500 ceiling is the computed algorithm's enforced
+civil-date domain, not a physical limit of VSOP87D or ELP2000-82B.
 
 `supported_lunar_year_range(algorithm)` queries the native algorithm's inclusive **Lunar-year** range and returns
 `LunarYearRange(start, end)`. Gregorian coverage runs from the first day of Lunar year `start` to the last day of

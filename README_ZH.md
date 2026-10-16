@@ -36,7 +36,7 @@ wheel 自带对应平台的原生库，使用时不需要编译器，也不需�
 **下一个节气，还剩多少天**
 
 以明确给定的 **2026-12-31 00:00 UT1** 为起点，不读取当前时钟。查询 2026 和 2027 的全部节气，
-按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，不是公历年内的时间顺序。
+按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，而不是从公历年内的第一个节气开始。
 
 ```python
 import celestial_calendar as celestial
@@ -136,7 +136,7 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 
 节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
-月交点、黄经速率、星盘、行星照明与行星事件头文件的说明与示例见
+月交点、黄经速率、星盘、行星照明与行星事件头文件的说明见
 [API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。其中只有星盘快照也能从 C、Python 和 JavaScript 调用。
 
 <a id="c-abi"></a>
@@ -225,7 +225,7 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
   在现有视位置模型上做局部解卷绕的七点中心差分。留站附近，速率的正负号可能与一天跨度的逆行标记不一致，
   见 [`planet.hpp`](src/astro/planet.hpp) 的 `is_retrograde`。
-- 固定时刻排盘快照：以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，一次取得十四个天体/点的位置与速率、
+- 固定时刻星盘快照：以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，一次取得十四个天体/点的位置与速率、
   四轴和十二宫头。C++ 为 [`chart.hpp`](src/astro/chart.hpp)，C 为 [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot)，
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。

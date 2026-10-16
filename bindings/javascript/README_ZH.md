@@ -40,7 +40,7 @@ npm install @0xf3cd/celestial
 ## 示例
 
 <a id="chart-snapshot"></a>
-### 固定时刻的 chart snapshot
+### 固定时刻的星盘快照
 
 `chart.snapshot()` 自 0.8.0 起提供。
 
@@ -62,7 +62,7 @@ console.log(snapshot.bodies[2]); // Mercury: position, distance and longitude ra
 console.log(snapshot.houses.cuspsDeg); // twelve house cusps in house order
 ```
 
-`civil` 使用公历日期与 `[0, 1)` 的日内比例，不自动转换 JavaScript `Date`。`scale` 必填，
+`civil` 使用公历日期与 `[0, 1)` 的日小数，不自动转换 JavaScript `Date`。`scale` 必填，
 可选 `"utc"`、`"ut1"`；1972-01-01 之前的输入必须显式选择 `scale: "ut1"`。民用年份限 1885–2099。
 纬度以北为正，单位为度，范围 `(-90, 90)`；经度以东为正，范围 `[-180, 180]`。
 `system` 必填，可选 `"equal"`、`"wholeSign"`、`"placidus"`。
@@ -82,8 +82,8 @@ console.log(snapshot.houses.cuspsDeg); // twelve house cusps in house order
 
 核心统一检查换算后 JDE(TT) 的共同范围 `[2409543.875, 2488069.125)`；Algo4 还要求
 `JDE < 2464328.5`。由 UTC 换算出的 UT1 是模型值，不是观测 DUT1，见
-[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)。
-Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日内比例、地点或
+[Time scales](../../docs/DESIGN.md#time-scales)。
+Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日小数、地点或
 选项字符串抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
 `"chart.snapshot"`。`recorded` 仅在错误消息来自原生错误通道时为 `true`。失败不返回半张 snapshot。
 
@@ -284,7 +284,7 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 
 此桥接不转换时间尺度，也不处理闰秒；既不提供 Date 到 JDE 的转换，也不提供 UTC 到 UT1 的转换。
 不要把 `momentUt1` 当成 UTC 传给 `civilUtcToDate()`：UT1 不是 UTC，本库也不建模观测 DUT1。
-两者可能相差多少，见 [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)。
+两者可能相差多少，见 [Time scales](../../docs/DESIGN.md#time-scales)。
 
 <a id="lunar-algorithms"></a>
 ### 阴历算法

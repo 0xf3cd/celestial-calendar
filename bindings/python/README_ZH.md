@@ -48,7 +48,7 @@ print(today, lunar)
 ### 下一个节气，还剩多少天
 
 以明确给定的 **2026-12-31 00:00 UT1** 为起点，不读取当前时钟。查询 2026 和 2027 的全部节气，
-按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，不是公历年内的时间顺序。
+按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，而不是从公历年内的第一个节气开始。
 
 ```python
 import celestial_calendar as celestial
@@ -92,7 +92,7 @@ for body in snapshot.bodies:
 print(snapshot.houses.cusps_deg)
 ```
 
-结果是自持有的冻结 dataclass，天体和宫头集合为元组。十四项顺序为日、月、水星至冥王星、
+结果是持有自身数据的冻结 dataclass，天体和宫头集合为元组。十四项顺序为日、月、水星至冥王星、
 平均升/降交点、真升/降交点；每项有视地心黄经、纬度和带符号黄经速率。
 黄经使用真黄道与日期分点，角度单位为度。所有天体的距离都用 AU，月球也一样；
 独立的 `moon_apparent_geocentric_coordinate()` 则以千米给出月地距离，即 `MoonCoordinate.distance_km`。
@@ -188,7 +188,7 @@ Algo4 的额外限制 JDE `< 2464328.5`、所有宫制在浮点舍入精度下�
 不返回部分结果，也不替换宫制。原始民用年份合法不保证转换后的完整快照可计算。
 
 输入为 UTC 时，结果里的 UT1 是模型值，不是观测 DUT1；UTC 如何换算到 TT 与 UT1，见
-[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)。
+[Time scales](../../docs/DESIGN.md#time-scales)。
 插入的闰秒不在民用日小数输入内。Python 结果复制自固定的 C V1 协议，不保留原生缓冲区；
 不兼容的字段或天体集合扩展使用新版本协议。
 

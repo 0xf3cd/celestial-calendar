@@ -101,7 +101,7 @@ observed DUT1" means in the API documentation.
 | Lunar Algo2 | assigns date labels by rendering TT moments through the library's UTC, then a fixed +8 h offset |
 | Lunar Algo1 and Algo3 | calendar-date labels in and out; no instant |
 | Rise and set | take a UT1 date (`ymd_ut1`); return JDE(TT) |
-| Sidereal time, houses | take JD(UT1); houses also take the JDE(TT) of the same instant |
+| Sidereal time, houses | take JD(UT1); apparent sidereal time and houses also take the JDE(TT) of the same instant |
 | `apparent_solar_time` | takes civil UTC in place of UT1, so the result keeps the UT1 − UTC gap (under 0.9 s while leap seconds are applied) |
 | Chart snapshot | takes civil UTC (from 1972-01-01) or UT1, chosen explicitly; returns JD(UT1) and JDE(TT), with UT1 from UTC modelled |
 | `delta_t(year)` | takes a decimal year; TT and UT1 are not distinguished |
@@ -130,9 +130,8 @@ guarantees by construction and is checked only without `NDEBUG`: in debug builds
 the Release library. A `runtime_error` check guards a result that depends on numerics or data, runs in every build,
 and stops a wrong answer from reaching the caller.
 
-Older code does not use these two types consistently yet. Some headers still throw `std::out_of_range` for a year
-outside its window (`jieqi_jde` outside [1, 32766] (#154), `algo2` outside [410, 2500]), and `julian_day.hpp`
-rejects some inputs with `std::runtime_error`. #345 tracks the conversion.
+Older headers do not use these two types consistently yet: some throw `std::out_of_range` for a year outside its
+window, and some reject input with `std::runtime_error`. #345 lists the sites and tracks the conversion.
 
 `optional` never carries an error; it carries a legitimate "none". `std::expected` was evaluated for the core and
 declined (#97). The C ABI keeps its own translation: every export catches any exception and returns `valid = false`
