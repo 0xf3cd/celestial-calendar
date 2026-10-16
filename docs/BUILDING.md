@@ -23,13 +23,8 @@ shown in [Building from Source](#build). `--setup` installs nothing once the dep
 This section is for users and contributors who need to build the core library. Run every command from the root
 of a full source checkout; outputs go to `build/`. [`AGENTS.md`](../AGENTS.md) is the source of truth for build,
 test, code-style and contribution conventions, including direct test-binary execution and reconciliation against
-the test macros rather than accepting ctest counts alone.
-
-Python wheels have their own [local wheel recipe](../bindings/python/README.md#build-a-local-wheel); do not build
-from a copy of the `bindings/python/` directory alone. The recipe uses the full checkout, hash-locked Python build
-requirements, system CMake, and an installed C/C++23 toolchain. It builds only a wheel, not an sdist. That
-host-local wheel uses the host's native libraries; it is not an official repaired portable wheel and does not
-extend the official platform list.
+the test macros rather than accepting ctest counts alone. Python wheels have their own recipes; see
+[Python Wheels](#python-wheels).
 
 ### macOS / Linux
 
@@ -74,6 +69,21 @@ python project.py --all
 
 The step-by-step commands are the same as above; set the random seed with `$env:CELESTIAL_TEST_SEED = "123"`.
 
+<a id="python-wheels"></a>
+### Python Wheels
+
+There are two wheel recipes, for different purposes:
+
+- To use a source build in your own Python environment, follow the
+  [local wheel recipe](../bindings/python/README.md#build-a-local-wheel) in the Python package guide. It needs the
+  full checkout, not a copy of `bindings/python/` alone, and builds one wheel for the host. That wheel is not a
+  repaired, portable release wheel and does not extend the supported platforms.
+- Release wheels come only from [`python-wheel.yml`](../.github/workflows/python-wheel.yml). It runs `cibuildwheel`
+  with the `CIBW_*` settings and pinned manylinux images declared in that workflow, inspects each repaired wheel,
+  and runs the installed-wheel tests on it. The release publishes those tested wheels and builds no others. The
+  `cibuildwheel` settings live only in the workflow, not in `bindings/python/pyproject.toml`, so a local
+  `cibuildwheel` run without them does not reproduce the release build.
+
 <a id="api-docs"></a>
 ### API Documentation
 
@@ -100,11 +110,13 @@ python3 toolbox/build_npm.py
 
 Ordinary `npm pack` in the `bindings/javascript` development directory refuses to pack; use the builder above.
 
-The generated module is `build/wasm/celestial-jieqi.mjs` with `build/wasm/celestial-jieqi.wasm`, and it carries
-all 30 stable exports of `celestial.h`. `@0xf3cd/celestial` provides the existing API through the `config`,
-`time`, `sun`, `moon`, `jieqi` and `lunar` namespaces; the new `chart_snapshot_v1` exists only in the private
-WASM/ABI layer, and there is no JavaScript snapshot entry yet. Heap pointers, the count/fill protocol, sret layout
-and `last_error` stay inside the package.
+The generated module is `build/wasm/celestial-jieqi.mjs` with `build/wasm/celestial-jieqi.wasm`. It carries every
+function exported by `src/shared_lib/celestial.h`, including `chart_snapshot_v1`;
+`bindings/javascript/test/abi/manifest.json` is the checked list. The public JavaScript API of
+`@0xf3cd/celestial` is the set of namespaces declared in `bindings/javascript/types/index.d.ts`, where
+`chart.snapshot` wraps `chart_snapshot_v1` (#334). What stays private is the WASM glue, which keeps heap pointers,
+the count/fill protocol, sret layout and `last_error` inside the package, and the ABI checks
+(`toolbox/wasm_check.mjs` and `bindings/javascript/test/abi/`), which are not shipped.
 
 `build_npm.py` uses the generated module and the version from `project.py` to pack
 an npm primary package of exactly 12 files. `@0xf3cd/celestial/date` imports only pure validation functions, not
@@ -129,12 +141,30 @@ tarball, `npm-alias-pack.json`, `npm-alias-pack.sha256`. Each metadata file name
 workflow publishes the primary package first and the alias second, without rebuilding or repacking. Historical
 0.6.x archives keep the original single-package format.
 
-The same workflow checks 30 signatures and 19 layouts and replays the 389-point golden data generated natively.
-It installs the same pair of packages into applications outside the source directory on the minimum supported and
-the current Node version, compiles the installed type declarations for both package names and `/date`, and runs
-Astro / Vite production-build smoke tests in Chrome and Firefox. Windows/macOS current-Node consumers download the
-original pair from the same CI run and check installation, API calls, alias identity and the separate date-only
-entry, without another build or pack.
+The same workflow checks every signature and layout in `bindings/javascript/test/abi/manifest.json` against
+`celestial.h`, and replays the golden data in `toolbox/bindings_golden.json`, which
+`toolbox/make_bindings_golden.py` generates from the native library. It installs the same pair of packages into
+applications outside the source directory on the minimum supported and the current Node version, compiles the
+installed type declarations for both package names and `/date`, and runs Astro / Vite production-build smoke tests
+in Chrome and Firefox. Windows/macOS current-Node consumers download the original pair from the same CI run and
+check installation, API calls, alias identity and the separate date-only entry, without another build or pack.
+
+To run the package tests locally after the four build commands above, select the two tarballs through their
+metadata files and run, from the source root:
+
+```sh
+primary="build/npm/$(node -p 'require("./build/npm/npm-pack.json")[0].filename')"
+alias_tgz="build/npm/$(node -p 'require("./build/npm/npm-alias-pack.json")[0].filename')"
+node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs --exhaustive
+node bindings/javascript/test/node/tarball_consumer_test.mjs "$primary" "$alias_tgz"
+npm run test:types --prefix bindings/javascript
+node bindings/javascript/test/browser/browser_test.mjs "$primary" "$alias_tgz"
+```
+
+`tarball_consumer_test.mjs` installs into temporary directories. The browser test builds its application under
+`bindings/javascript/build/` and downloads the Chrome and Firefox builds pinned by `puppeteer-core` there. CI
+repeats the first three `node` commands, without `--exhaustive`, on the minimum supported Node version.
 
 <a id="lint"></a>
 ## Static Checks
@@ -158,6 +188,30 @@ Run from the source root; these commands also work on Windows:
 python checks.py --ruff
 python checks.py --clang-tidy
 ```
+
+<a id="ci-jobs"></a>
+## CI Jobs and Local Commands
+
+`core_tests.yml` runs on every push and on pull requests from forks. `build_and_test.yml`, `python-wheel.yml` and
+`wasm.yml` run on pull requests to `main` and on manual dispatch; `random_soak.yml` runs weekly. Run the local
+commands from the source root in the build virtual environment. The workflow files pin the exact tool versions.
+
+| Workflow · job | What CI runs | Local command |
+|---|---|---|
+| `core_tests.yml` · `api-docs` | `project.py --docs`; uploads `celestial-api-html` | `python project.py --docs` ([API Documentation](#api-docs)) |
+| `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--seed-reconcile`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](#lint)); the workflow pins the Ruff version |
+| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | `project.py --setup --clean --cmake --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table`, `--export-surface` and `--log-names` | `python project.py --all` with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
+| `core_tests.yml` · `sanitizers` | An ASan + UBSan build, then every binary in `build/test/` run directly, with the test count reconciled against the `TEST` / `TEST_F` macros | Build with the job's `CXXFLAGS` and `python project.py --clean --cmake --build`, then run the reconciliation in [`AGENTS.md`](../AGENTS.md) ("Acceptance: run the binaries, and reconcile the count") |
+| `core_tests.yml` · `self-contained-headers` (libstdc++, libc++, MSVC STL) | `checks.py --self-contained` | `python checks.py --self-contained`, for the local standard library only |
+| `core_tests.yml` · `cxx-feature-probe` (same three) | `checks.py --features <leg>` | `python checks.py --features` ([Toolchain Feature Tracking](#todo)) |
+| `build_and_test.yml` · `linux-docker` (amd64, arm64) | The `Dockerfile` build and test in a pinned manylinux image, then install-layout checks | CI only |
+| `build_and_test.yml` · `macos`, `windows` | `project.py --clean --cmake --cores all --build --test -v 1`, then `cmake --install` with library-name and SOVERSION checks; Windows also enforces its link evidence | Build and test: `python project.py --all`. Install and link-evidence checks: CI only |
+| `python-wheel.yml` · `manylinux` (x86_64, aarch64), `macos-arm64`, `windows-amd64` | `cibuildwheel` with the workflow's settings, an inspection of the repaired wheel, then `bindings/python/test/run_all.py` against the installed wheel from an unrelated directory; the manylinux jobs also run `bindings/python/test/types/consumer.py` | Release wheels: CI only ([Python Wheels](#python-wheels)). To rerun the tests, install a wheel from [CI artifacts](#artifacts), then run `run_all.py`, and `types/consumer.py` with `bindings/python/requirements-mypy.txt` installed, from a directory outside the checkout |
+| `python-wheel.yml` · `macos-14-floor` | The macOS arm64 wheel from the same run, installed and tested on macOS 14 | CI only |
+| `wasm.yml` · `wasm` | The four build commands, Node package and type tests, Chrome and Firefox smoke tests, then Node consumers on the minimum supported version | The build and test commands in [WebAssembly and npm Packages](#wasm) |
+| `wasm.yml` · `node-consumer` (Windows, macOS) | The pair of packages from the same run, installed and tested without another build | CI only |
+| `random_soak.yml` (three jobs) | `project.py --setup --clean --cmake --build --test -v 1` with the run ID as `CELESTIAL_TEST_SEED` | `CELESTIAL_TEST_SEED=<run ID> python project.py --test` replays a failure |
+| `release.yml`, `release-rehearsal.yml`, `claude.yml`, `claude-review.yml` | Release and review automation | CI only; releases follow [`RELEASING.md`](RELEASING.md) |
 
 <a id="artifacts"></a>
 ## CI Artifact Downloads

@@ -15,7 +15,10 @@ from __future__ import annotations
 import math
 
 
-# Margins bound native replay against the stored snapshot; they are not ephemeris accuracy bounds.
+# Replay acceptance margins for the stored chart snapshot, not ephemeris accuracy bounds. They are the thresholds
+# the snapshot test used when the example was added for #300 (9a7a692); #331 moved them here unchanged and made the
+# longitude, axis and cusp comparisons circular. The measured wheel-golden margins in golden_replay.py (#217) are
+# separate; see docs/VALIDATION.md#replay-margins.
 TIME_MARGIN_DAYS = 1e-9
 POSITION_MARGIN_DEG = 1e-8
 DISTANCE_MARGIN_AU = 1e-10

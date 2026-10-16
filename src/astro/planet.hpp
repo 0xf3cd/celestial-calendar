@@ -350,7 +350,7 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
 }
 
 /**
- * @brief Return whether a planet's apparent geocentric longitude is decreasing.
+ * @brief Return whether a planet's apparent geocentric longitude decreases across one day centered on `jde_tt`.
  * @param planet The planet to calculate, from Mercury through Pluto.
  * @param jde_tt The Julian Ephemeris Day based on TT.
  * @return `true` when the wrap-aware longitude change over the centered one-day interval is negative.
@@ -358,8 +358,11 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
  *                              domain, or `planet` is not a named enumerator.
  * @throw std::runtime_error If either apparent-position evaluation cannot produce a finite, converged result.
  * @note Pluto is available for centered JDE(TT) [2409544.0, 2488069.0).
- * @note This marker does not solve for the exact stationary instant, where a boolean direction is not
- *       physically meaningful.
+ * @note This is a finite-interval test, not the sign of the instantaneous rate from
+ *       `astro::ephemeris::longitude_rate` (ephemeris.hpp); near a station the two can disagree.
+ * @note It does not locate stations. `astro::planet::phenomena::events` (planet_phenomena.hpp) finds them as
+ *       longitude extrema on a one-day grid and refines each extremum, without solving for a zero rate.
+ *       At the stationary instant itself a boolean direction is not physically meaningful.
  */
 [[nodiscard]] inline auto is_retrograde(
   const Planet planet,

@@ -74,13 +74,15 @@ console.log(snapshot.houses.cuspsDeg); // twelve house cusps in house order
 `meanDescending`、`trueAscending`、`trueDescending`。每个成员包含 `longitudeDeg`、`latitudeDeg`、
 `distanceAu` 和 `longitudeRateDegPerTtDay`。所有成员均以日期真黄道／真春分点为基准：太阳、月球与行星
 提供视地心坐标；交点提供平均／真交点黄经，纬度为零、`distanceAu` 为 `null`。
-距离统一用 AU（包括 Moon），速率以 TT 日为单位。
+所有距离都用 AU，月球也一样；独立的 `moon.apparentGeocentricCoordinate()` 则以千米给出月地距离。
+`longitudeRateDegPerTtDay` 是瞬时黄经速率，单位为度/TT 日；负值表示该瞬间黄经在减小（逆行）。
 `houses` 包含 `ascendantDeg`、`midheavenDeg`、`descendantDeg`、`imumCoeliDeg` 和 `cuspsDeg`，
 角度均在 `[0, 360)` 度。结果是独立的普通对象和数组，后续调用或 WASM 内存增长不改变既有结果。
 
 核心统一检查换算后 JDE(TT) 的共同范围 `[2409543.875, 2488069.125)`；Algo4 还要求
-`JDE < 2464328.5`。UTC 换出的 UT1 使用模型，不是实测 DUT1。Ascendant 在舍入尺度上的退化方向、
-以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日内比例、地点或
+`JDE < 2464328.5`。由 UTC 换算出的 UT1 是模型值，不是观测 DUT1，见
+[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)。
+Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日内比例、地点或
 选项字符串抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
 `"chart.snapshot"`。`recorded` 仅在错误消息来自原生错误通道时为 `true`。失败不返回半张 snapshot。
 
@@ -171,7 +173,7 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间，并随包提供 TypeScript 声明。
+根入口提供 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
 包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。
 模型、月相和日志选项使用字符串联合类型，如 `"full"`、`"algo3"`、`"debug"`。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
@@ -185,7 +187,8 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
   同一瞬间显示为 UTC+8 时，日期可能改变。显示为 UTC 或固定偏移时间前，须先确定时标转换。
   返回的 UT1 年份可能与请求年份不同。
 - `sun.apparentSolarTime()` 接受 UTC 民用时刻，以及 `[-180, 180]` 度范围内、东正西负的地理经度。
-- 角度结果以度为单位；日地距离使用 AU，月地距离使用千米。
+- 角度结果以度为单位。日地距离使用 AU。`moon.apparentGeocentricCoordinate()` 的月地距离用千米；
+  `chart.snapshot()` 里所有天体（含月球）的距离都用 AU。
 - `time.deltaT()` 返回秒数。
 - 均时差以时角度数表示，乘以 240 可换算为时间秒数。
 - `sun.apparentGeocentricCoordinate(jde)` 和 `moon.apparentGeocentricCoordinate(jde)`
@@ -279,7 +282,8 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 无效 `Date`、无效公历日期、非有限数或非安全数、越界的日小数或偏移，以及超出年域的本地年份，均抛出 `RangeError`。
 
 此桥接不转换时间尺度，也不处理闰秒；既不提供 Date 到 JDE 的转换，也不提供 UTC 到 UT1 的转换。
-不要把 `momentUt1` 当成 UTC 传给 `civilUtcToDate()`：本库没有 DUT1 模型，也不承诺全域适用的 `UTC == UT1` 近似。
+不要把 `momentUt1` 当成 UTC 传给 `civilUtcToDate()`：UT1 不是 UTC，本库也不建模观测 DUT1。
+两者可能相差多少，见 [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)。
 
 <a id="lunar-algorithms"></a>
 ### 阴历算法

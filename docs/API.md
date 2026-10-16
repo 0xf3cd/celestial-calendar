@@ -17,9 +17,10 @@ Project-authored material uses MIT. The generated directory includes `LICENSE` a
 ## C++ Guide
 
 The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
-headers. This section covers the C++-only headers beyond the Jieqi API.
+headers. This section covers the headers beyond the Jieqi API. Of these, only the chart snapshot is also available
+from C (described below), Python and JavaScript.
 
-The C++-only [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
+The [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
 [`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
 [`planet_phenomena.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet_phenomena.hpp)
 provide planetary illumination geometry and yearly conjunction, opposition, quadrature, greatest-elongation, and
@@ -29,14 +30,15 @@ domain. `Planet::PLUTO` instead uses the lower-precision Meeus Chapter 37 model:
 geometry accept `[2409543.5, 2488069.5)` JDE(TT), centered retrograde checks accept `[2409544.0, 2488069.0)`, and
 complete yearly event searches accept Gregorian years `[1886, 2098]`. These hard domains are not accuracy guarantees.
 
-The C++-only [`lunar_node.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
+The [`lunar_node.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
 returns true-ecliptic, true-equinox-of-date longitudes for mean or Meeus five-term true ascending and descending
 nodes from JDE(TT). Latitude is exactly zero by this definition, and the longitude-only API has no physical distance.
 
-The C++-only [`ephemeris.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris.hpp)
+The [`ephemeris.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris.hpp)
 provides `astro::ephemeris::longitude_rate` for the Sun, Moon, Mercury through Pluto, and all four lunar nodes.
-It accepts JDE(TT) and returns `LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion.
-The `Target` enum selects a body or lunar node.
+It accepts JDE(TT) and returns `LongitudeRate::deg_per_tt_day`, the instantaneous rate; a negative value means the
+longitude is decreasing at that instant. Near a station its sign can differ from the one-day retrograde marker
+`is_retrograde` in `planet.hpp`. The `Target` enum selects a body or lunar node.
 
 ```cpp
 const auto rate = astro::ephemeris::longitude_rate(
@@ -49,7 +51,7 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
 Other rate inputs are `[-1200954.625, 6104044.625)`.
 
-The C++-only [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
+The [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
 geocentric positions, longitude rates and house geometry at one explicitly scaled civil instant:
 
 ```cpp
@@ -76,6 +78,7 @@ See the [complete raw replay example](https://github.com/0xf3cd/celestial-calend
 
 See [core features and algorithms](https://github.com/0xf3cd/celestial-calendar#features) for the full scope.
 
+<a id="c-chart-snapshot"></a>
 ## Fixed-Version C Chart Snapshot
 
 `chart_snapshot_v1` returns an owned `ChartSnapshotV1` by value. Its fourteen `ChartBodyV1` records follow
@@ -112,14 +115,11 @@ int main(void) {
 Compile this as C and link the native library built from the matching checkout. On failure read only `valid`
 and `last_error`: invalid payload and padding bytes have no contract. Presence bits identify available fields;
 absent storage is not a zero or NaN sentinel. Node latitude is present and zero, while node distance is absent.
-Moon distance uses AU here, unlike the kilometre field in the older `MoonCoordinate` result.
+Every distance here is in AU, the Moon's included; the standalone `MoonCoordinate` result gives kilometres.
 
 ## Build This Reference
 
-Install Doxygen 1.15.0, then run `python project.py --docs` from the source root.
-Open `build/api-docs/html/index.html`. No compiler, Graphviz or package build is required.
-The same command runs in **Core Tests**, which uploads the `celestial-api-html` artifact.
-Documentation is opt-in, is not part of `--all`, and is not a release artifact or hosted site.
-
-The build rejects documentation syntax errors and checks representative generated pages.
-It does not require every declaration or parameter to have a description.
+To build this reference locally, follow
+[API documentation](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/BUILDING.md#api-docs)
+in the build guide. The build rejects documentation syntax errors but does not require every declaration or
+parameter to have a description.

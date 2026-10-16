@@ -79,18 +79,22 @@ The result contains `times: { jdUt1, jdeTt }` and fourteen `bodies` in a fixed o
 `meanDescending`, `trueAscending`, and `trueDescending`. Each member has `longitudeDeg`, `latitudeDeg`,
 `distanceAu`, and `longitudeRateDegPerTtDay`. All members use the true ecliptic and equinox of date: the Sun, Moon,
 and planets give apparent geocentric coordinates; the nodes give mean / true node longitudes with zero latitude and
-`null` for `distanceAu`. All distances are in AU, including the Moon, and rates are per TT day.
+`null` for `distanceAu`. All distances are in AU, including the Moon's; the standalone
+`moon.apparentGeocentricCoordinate()` gives the Moon's distance in kilometres. `longitudeRateDegPerTtDay` is the
+instantaneous longitude rate in degrees per TT day: a negative value means the longitude is decreasing at that
+instant (retrograde motion).
 `houses` contains `ascendantDeg`, `midheavenDeg`, `descendantDeg`, `imumCoeliDeg`, and `cuspsDeg`, with every angle
 in `[0, 360)` degrees. The result is made of independent plain objects and arrays; later calls or WASM memory growth
 do not change an earlier result.
 
 The core checks the converted JDE(TT) against the shared range `[2409543.875, 2488069.125)`; Algo4 also requires
-`JDE < 2464328.5`. UT1 derived from UTC is modelled, not observed DUT1. Ascendant directions that degenerate at
-round-off scale, and Placidus polar cases, fail. Type or record-shape errors throw `TypeError`; invalid dates, day
-fractions, locations, or option strings throw `RangeError`; calling before initialization, allocation failure,
-native calculation failure, or a malformed native success record throws `CelestialError`, with `operation` set to
-`"chart.snapshot"`. `recorded` is `true` only when the message came from the native error channel. A failure never
-returns a partial snapshot.
+`JDE < 2464328.5`. UT1 derived from UTC is modelled, not observed DUT1; see
+[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales). Ascendant
+directions that degenerate at round-off scale, and Placidus polar cases, fail. Type or record-shape errors throw
+`TypeError`; invalid dates, day fractions, locations, or option strings throw `RangeError`; calling before
+initialization, allocation failure, native calculation failure, or a malformed native success record throws
+`CelestialError`, with `operation` set to `"chart.snapshot"`. `recorded` is `true` only when the message came from
+the native error channel. A failure never returns a partial snapshot.
 
 <a id="todays-lunar-date"></a>
 ### Today's Lunar Date
@@ -183,13 +187,13 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `config`, `time`, `sun`, `moon`, `jieqi`, and `lunar` namespaces, and the package ships
-TypeScript declarations. The package uses only the `jieqi` / `lunar` names, with no `solarTerms` / `lunarCalendar`
-aliases. Model, Moon phase, and logging options are string-literal unions such as `"full"`, `"algo3"`, and
-`"debug"`. `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to `Jieqi.DAHAN = 23`, spelled
-as in the Python package. The TypeScript type `Jieqi` is the matching `0 | 1 | ... | 23` union; a plain `number`
-variable must be narrowed before it is passed to `jieqi.moment()` or `jieqi.name()`. `jieqi.name()` returns the
-Chinese name, for example `"立春"` for `Jieqi.LICHUN`.
+The root entry provides the `config`, `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
+package ships TypeScript declarations. The package uses only the `jieqi` / `lunar` names, with no `solarTerms` /
+`lunarCalendar` aliases. Model, Moon phase, and logging options are string-literal unions such as `"full"`,
+`"algo3"`, and `"debug"`. `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
+`Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
+`0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
+`jieqi.name()`. `jieqi.name()` returns the Chinese name, for example `"立春"` for `Jieqi.LICHUN`.
 
 Keep time scales and units distinct:
 
@@ -199,7 +203,8 @@ Keep time scales and units distinct:
   UTC or a fixed-offset time. The returned UT1 year can differ from the requested year.
 - `sun.apparentSolarTime()` takes a UTC civil moment and an east-positive geographic longitude in `[-180, 180]`
   degrees.
-- Angle results are in degrees; Sun distance is in AU and Moon distance is in kilometres.
+- Angle results are in degrees. Sun distance is in AU. Moon distance from `moon.apparentGeocentricCoordinate()` is
+  in kilometres; `chart.snapshot()` gives every distance, the Moon's included, in AU.
 - `time.deltaT()` returns seconds.
 - The equation of time is in degrees of hour angle; multiply by 240 for seconds of time.
 - `sun.apparentGeocentricCoordinate(jde)` and `moon.apparentGeocentricCoordinate(jde)`
@@ -299,8 +304,10 @@ An invalid `Date`, an invalid Gregorian date, non-finite or unsafe numbers, an o
 and a local year outside the domain throw `RangeError`.
 
 The bridge converts no time scales and does not handle leap seconds; it provides neither `Date` to JDE nor UTC to UT1
-conversion. Do not pass `momentUt1` to `civilUtcToDate()` as though it were UTC: the library has no DUT1 model and
-does not promise a `UTC == UT1` approximation over its whole domain.
+conversion. Do not pass `momentUt1` to `civilUtcToDate()` as though it were UTC: UT1 is not UTC, and the library
+does not model observed DUT1.
+[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales) explains how far
+apart the two can be.
 
 <a id="lunar-algorithms"></a>
 ### Lunar Algorithms
@@ -314,9 +321,9 @@ Choose the source and compatibility role you need, not an assumed accuracy ranki
 | `"algo2"` | Computed from VSOP87D and truncated ELP2000-82B | `[410, 2500]` | Astronomical construction over the wider computed window |
 | `"algo3"` | Baked hybrid: algo1/HKO in 1901-2099, algo2-generated dates elsewhere | `[1600, 2199]` | Table lookup with HKO compatibility in the overlapping years |
 
-Algo2 assigns dates by rendering TT moments through the library's UTC model and then applying a fixed eight-hour
-eastward offset. Before 1972, that model deliberately uses UT1 as a proxy because historical UTC is not modelled.
-From 1972 it uses the leap-second table; after the final entry (2017) it holds Delta AT at 37 seconds. Algo1
+Algo2 assigns dates by rendering TT moments in the library's modelled UTC and then applying a fixed eight-hour
+eastward offset. That modelled UTC is UT1 before 1972 and adds no leap seconds after the table's last entry (2017);
+see [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales). Algo1
 preserves HKO's published labels rather than imposing this rule on their history; algo3 inherits the basis of each
 source slice. The 2500 ceiling is the computed algorithm's enforced civil-date domain, not a physical limit of
 VSOP87D or ELP2000-82B.

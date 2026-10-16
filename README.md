@@ -6,7 +6,7 @@ JavaScript / TypeScript, and a C ABI.
 
 [中文](README_ZH.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
-[Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md)
+[Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
 This guide uses **0.7.0** as its current release baseline and also covers unreleased source and APIs. The install commands
 below select versions currently available on PyPI or npm, which may lag this guide. Check the documentation shipped
@@ -112,7 +112,7 @@ This enumerates all terms in both years and orders them by moment, not enum valu
 UT1 days. `momentUt1` is UT1; the example scope, query-year domain and failure conditions are the same as
 in the Python example.
 
-Today's lunar date and the fixed-offset date round trip are in the
+Today's lunar date, the fixed-offset date round trip and the chart snapshot are in the
 [JavaScript package guide](bindings/javascript/README.md).
 
 <a id="cpp"></a>
@@ -138,19 +138,21 @@ int main() {
 }
 ```
 
-Run from the source root with a C++23-capable clang++ installation:
+Save it as `build/quickstart.cpp` (create `build/` if needed; Git ignores it) and run from the source root with a
+C++23-capable clang++ installation:
 
 ```sh
 # Headers include each other by basename; all three directories are needed.
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
-  quickstart.cpp -o quickstart
-./quickstart
+  build/quickstart.cpp -o build/quickstart
+./build/quickstart
 ```
 
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
-The C++-only headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are
-described, with examples, in the [C++ guide of the API reference](docs/API.md#cpp-guide).
+The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described,
+with examples, in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is
+also available from C, Python and JavaScript.
 
 <a id="c-abi"></a>
 ### C and FFI
@@ -207,13 +209,13 @@ On macOS, link the `.dylib` from `lib/` and make that directory available to the
 an MSVC-compatible toolchain, link `lib/celestial_calendar.lib`, and put `bin/celestial_calendar.dll` beside the
 executable. Consumers do not define `CELESTIAL_BUILDING_DLL`.
 
-If you [built the shared library yourself](docs/BUILDING.md#build), the corresponding Linux command from the
-source root is:
+If you [built the shared library yourself](docs/BUILDING.md#build), save `quickstart.c` as `build/quickstart.c`; the
+corresponding Linux command from the source root is:
 
 ```sh
-cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
-  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o quickstart_c
-./quickstart_c
+cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
+  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o build/quickstart_c
+./build/quickstart_c
 ```
 
 Check `valid` before reading a returned result structure. Follow each scalar/count contract in `celestial.h`;
@@ -260,10 +262,14 @@ OS version floor is declared.
   and no physical distance exists.
 - C++ `ephemeris.hpp` provides one instantaneous ecliptic longitude rate for the Sun, Moon, planets and lunar
   nodes, in degrees per TT day, by a locally unwrapped seven-point central difference over the existing apparent
-  position models.
-- C++ `chart.hpp` provides a chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT
-  model and a site/house system, it returns positions and rates of fourteen bodies/points, the four axes and the
-  twelve cusps.
+  position models. Near a station its sign can differ from the one-day retrograde marker; see `is_retrograde` in
+  [`planet.hpp`](src/astro/planet.hpp).
+- A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
+  system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
+  available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot),
+  Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
+  [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages expose planets,
+  lunar nodes, longitude rates and houses only through this snapshot; the standalone functions are C++-only.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
   return events ordered by JDE(TT). Year ownership uses `[Jan 1, next Jan 1)` UTC, with the library's UT1
   substitute before 1972. The `[1, 32766]` input year domain only guarantees that the computation runs, not that
@@ -277,41 +283,30 @@ OS version floor is declared.
 <a id="choosing-inputs"></a>
 ### Choosing inputs
 
-Gregorian / lunar conversions operate on calendar-date labels, not instants. The supported year domain and date
-basis depend on the selected algorithm; choose by source and compatibility role, not by treating the number as an
-accuracy ranking:
+Gregorian / lunar conversions operate on calendar-date labels, not instants, and each algorithm has its own
+lunar-year domain and date basis. Choose by source and compatibility role, not by treating the algorithm number as
+an accuracy ranking: Algo1 keeps Hong Kong Observatory labels, Algo2 computes dates astronomically over a wider
+window, and Algo3 combines the two. Read a domain from the library rather than copying it:
+`get_supported_lunar_year_range` in C, `supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in
+JavaScript, and `START_YEAR` / `END_YEAR` of each `calendar::lunar::algoN` in C++. Each algorithm's source, domain
+and date basis are described in the [Python](bindings/python/README.md#lunar-algorithms) and
+[JavaScript](bindings/javascript/README.md#lunar-algorithms) package guides and in
+[`algo1.hpp`](src/calendar/lunar/algo1.hpp), [`algo2.hpp`](src/calendar/lunar/algo2.hpp) and
+[`algo3.hpp`](src/calendar/lunar/algo3.hpp).
 
-- Algo1 preserves Hong Kong Observatory labels for lunar years 1901–2099.
-- Algo2 computes from VSOP87D / truncated ELP2000-82B for lunar years 410–2500. It renders TT through the library's
-  UTC model, then applies a fixed eight-hour eastward offset. Before 1972 the model uses UT1 as a proxy; from 1972
-  it uses the leap-second table, holding ΔAT at 37 seconds after the final entry.
-- Algo3 is a baked hybrid for lunar years 1600–2199, using Algo1 / HKO for 1901–2099 and Algo2-generated dates elsewhere.
-
-These are lunar-year bounds, not Gregorian January-to-December bounds; out-of-coverage input is rejected. The
-Algo2 ceiling of 2500 comes from the civil-date error budget of #139, not a limit of the computational method.
-In C++, each `calendar::lunar::algoN` gives its bounds as `START_YEAR` / `END_YEAR`; the C ABI and both language
-packages provide all three algorithms and report their domains through `get_supported_lunar_year_range` and its
-wrappers (`supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in JavaScript). Gregorian
-coverage runs from the first day of the first supported lunar year through the last day of the last supported
-lunar year.
+For ΔT (TT minus UT1, in seconds), use the default, Algo5 (the current project model); select one of the frozen
+Algo1 to Algo4 only to compare with that earlier model. Sources and hard year domains are listed in the
+[Python](bindings/python/README.md#delta-t-models) and [JavaScript](bindings/javascript/README.md#delta-t-models)
+package guides and in [`delta_t.hpp`](src/astro/delta_t.hpp).
 
 Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
 `apparent_solar_time()` / `sun.apparentSolarTime()` take civil UTC. The pure `/date` bridge supplies no UTC-to-UT1
-or Date-to-JDE conversion. Geographic longitude in these binding APIs is east-positive. Solar and lunar angular
-results are degrees; solar distance is AU, lunar distance is kilometres. The equation of time is degrees of hour
-angle, so multiply by 240 for seconds of time.
+or Date-to-JDE conversion. The library does not use observed DUT1 (UT1 − UTC), so a UT1 result is not a UTC time;
+[Time scales](docs/DESIGN.md#time-scales) describes the library's UTC model and how large the gap is in each era.
 
-DUT1 (UT1 − UTC) is not modelled. The leap-second-aware `utc_to_tt` / `tt_to_utc` added in v0.4.0 do not make UT1
-output usable as UTC. While leap seconds are applied the two differ by at most 0.9 seconds; for the modelled gap
-after the leap-second table freezes, see the time-scale note in [`jieqi.hpp`](src/calendar/jieqi.hpp).
-
-For ΔT (TT minus UT1, in seconds), default / Algo5 is the current project model: Algo2 before 2005, an IERS
-Bulletin A fit through about 2026.41, then anchored long-term extrapolation. Algo1 (Xu Jianwei 2008), Algo2
-(Espenak and Meeus, NASA/TP-2006-214141), Algo3 (Fred Espenak's 2014 eclipse canon) and Algo4 (IERS Bulletin A
-with USNO predictions) are frozen and kept for historical comparison. Frozen does not mean unused: Algo2 is still
-the pre-2005 branch of Algo3, Algo4 and the current default / Algo5. Hard year domains are `year >= -4000` for
-Algo1, `year < 3000` for Algo3 and `year < 2035` for Algo4; Algo2 and Algo5 have no model-specific bound. A hard
-domain is not an accuracy guarantee, and fitted residuals or test tolerances are not statistical error bounds.
+In the C ABI and both packages, geographic longitude is east-positive and solar and lunar angles are degrees.
+Solar distance is AU. The standalone Moon coordinate gives kilometres, while a chart snapshot gives every distance
+in AU, the Moon's included. The equation of time is degrees of hour angle, so multiply by 240 for seconds of time.
 
 <a id="references"></a>
 ## References

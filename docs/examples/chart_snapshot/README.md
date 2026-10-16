@@ -9,13 +9,14 @@ The installed Python `chart_snapshot` consumer uses this same input.
 The [Python guide](../../../bindings/python/README.md) and [C example](../../API.md#fixed-version-c-chart-snapshot)
 show how to request it; Python represents absent distance as `None`, and C uses `CHART_PRESENT_DISTANCE`.
 
-This is a chart snapshot replay example, not an independent physical-accuracy oracle.
+This is a chart snapshot replay example, not an independent physical-accuracy oracle; its replay margins are
+acceptance thresholds, explained in [Validation](../../VALIDATION.md#replay-margins).
 [`astro::chart::calculate`](../../../src/astro/chart.hpp) leaves sign, house-placement and aspect calculations to the consumer.
 
-Generate the values from the repository root:
+Generate the values from the repository root; the binary goes to the ignored `build/` directory, which must exist:
 
 ```sh
 clang++ -std=c++23 -O2 -Isrc/astro -Isrc/calendar -Isrc/util \
-  docs/examples/chart_snapshot/chart_snapshot_fixture.cpp -o chart_snapshot_example
-./chart_snapshot_example > docs/examples/chart_snapshot/data.json
+  docs/examples/chart_snapshot/chart_snapshot_fixture.cpp -o build/chart_snapshot_example
+./build/chart_snapshot_example > docs/examples/chart_snapshot/data.json
 ```

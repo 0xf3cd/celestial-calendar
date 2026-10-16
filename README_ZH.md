@@ -5,7 +5,7 @@
 
 [English](README.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
-[构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md)
+[构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
 本文以 **0.7.0** 为当前发布基线，也包含尚未发布的源码与接口。下面的安装命令取得 PyPI / npm 当前可用的版本；
 可用版本可能落后于本文，请同时核对所装版本的文档。若需要尚未发布的接口，可从完整源码构建
@@ -101,7 +101,7 @@ console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
 `momentUt1` 是 UT1；示例范围、查询年域与失败条件同上。
 
-今天的阴历与固定偏移日期往返见 [JavaScript 包文档](bindings/javascript/README_ZH.md)。
+今天的阴历、固定偏移日期往返和星盘快照见 [JavaScript 包文档](bindings/javascript/README_ZH.md)。
 
 <a id="cpp"></a>
 ### C++
@@ -125,19 +125,19 @@ int main() {
 }
 ```
 
-在源码根目录用支持 C++23 的 clang++ 编译运行：
+把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行：
 
 ```sh
 # Headers include each other by basename; all three directories are needed.
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
-  quickstart.cpp -o quickstart
-./quickstart
+  build/quickstart.cpp -o build/quickstart
+./build/quickstart
 ```
 
 节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
-仅 C++ 提供的月交点、黄经速率、星盘、行星照明与行星事件头文件，说明与示例见
-[API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。
+月交点、黄经速率、星盘、行星照明与行星事件头文件的说明与示例见
+[API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。其中只有星盘快照也能从 C、Python 和 JavaScript 调用。
 
 <a id="c-abi"></a>
 ### C 与其他语言：C ABI
@@ -193,12 +193,12 @@ macOS 上链接 `lib/` 中的 `.dylib`，并确保加载器能找到该目录。
 链接 `lib/celestial_calendar.lib`，把 `bin/celestial_calendar.dll` 放在可执行文件旁。
 使用者不要定义 `CELESTIAL_BUILDING_DLL`。
 
-若已[自行构建共享库](docs/BUILDING.md#build)，可在源码根目录中用以下 Linux 命令编译同一份 `quickstart.c`：
+若已[自行构建共享库](docs/BUILDING.md#build)，把同一份 `quickstart.c` 存为 `build/quickstart.c`，在源码根目录中用以下 Linux 命令编译：
 
 ```sh
-cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
-  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o quickstart_c
-./quickstart_c
+cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
+  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o build/quickstart_c
+./build/quickstart_c
 ```
 
 读取返回结构体前先检查 `valid`。标量与计数返回值须遵循 `celestial.h` 的各自契约，零计数可能是合法的空结果。
@@ -223,9 +223,13 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的真黄道、真春分点经度；
   真交点采用 Meeus 五项修正，纬度按定义恒为零，物理距离不存在。
 - C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
-  在现有视位置模型上做局部解卷绕的七点中心差分。
-- C++ `chart.hpp` 提供固定时刻排盘快照，以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，
-  一次取得十四个天体/点的位置与速率、四轴和十二宫头。
+  在现有视位置模型上做局部解卷绕的七点中心差分。留站附近，速率的正负号可能与一天跨度的逆行标记不一致，
+  见 [`planet.hpp`](src/astro/planet.hpp) 的 `is_retrograde`。
+- 固定时刻排盘快照：以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，一次取得十四个天体/点的位置与速率、
+  四轴和十二宫头。C++ 为 [`chart.hpp`](src/astro/chart.hpp)，C 为 [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot)，
+  Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
+  JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
+  C ABI 和两个语言包只通过这份快照提供行星、月交点、黄经速率和宫位，这些量的独立函数仅 C++ 提供。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
@@ -236,34 +240,25 @@ cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
 <a id="choosing-inputs"></a>
 ### 选择输入
 
-公历与阴历互转处理的是日期标签，不是时刻。支持年域与日期基准取决于所选算法；按来源与兼容用途选择，
-不要把编号当作精度排名：
+公历与阴历互转处理的是日期标签，不是时刻；每种算法有各自的阴历年域与日期基准。按来源与兼容用途选择，
+不要把编号当作精度排名：Algo1 保留香港天文台的日期标签，Algo2 用天文方法在更宽的年域内计算，Algo3 把两者合在一起。
+年域从库里读取，不要照抄：C 用 `get_supported_lunar_year_range`，Python 用 `supported_lunar_year_range()`，
+JavaScript 用 `lunar.supportedYearRange()`，C++ 用各 `calendar::lunar::algoN` 的 `START_YEAR` / `END_YEAR`。
+各算法的来源、年域与日期基准见 [Python](bindings/python/README.md#lunar-algorithms) 与
+[JavaScript](bindings/javascript/README.md#lunar-algorithms) 包文档（英文），以及
+[`algo1.hpp`](src/calendar/lunar/algo1.hpp)、[`algo2.hpp`](src/calendar/lunar/algo2.hpp)、
+[`algo3.hpp`](src/calendar/lunar/algo3.hpp)。
 
-- Algo1 保留香港天文台公布的日期标签，支持阴历年 1901–2099。
-- Algo2 用 VSOP87D / 截断的 ELP2000-82B 计算，支持阴历年 410–2500。TT 时刻先经过本库的 UTC 模型，
-  再加固定的八小时偏移；1972 年前该模型明确以 UT1 代替，闰秒表最后一项之后保持 ΔAT 为 37 秒。
-- Algo3 是预先生成的混合表，支持阴历年 1600–2199：1901–2099 使用 Algo1 / HKO，其余年份由 Algo2 生成。
-
-年域指阴历年，并非对应公历年的 1 月 1 日到 12 月 31 日，超出覆盖范围会被拒绝。Algo2 的 2500 年上限来自
-#139 的民用日期误差预算，不是计算方法的极限。C++ 中各 `calendar::lunar::algoN` 的 `START_YEAR` / `END_YEAR`
-给出边界；C ABI 和两个语言包均提供三种算法，可通过 `get_supported_lunar_year_range` 及其封装查询年域
-（Python 为 `supported_lunar_year_range()`，JavaScript 为 `lunar.supportedYearRange()`）。公历覆盖范围从
-首个支持阴历年的第一天到最后一个支持阴历年的最后一天。
+ΔT（TT 减 UT1，单位秒）用 default，即当前项目模型 Algo5；已冻结的 Algo1 至 Algo4 只在需要与对应的早期模型比较时选用。
+各模型的来源与硬年域见 [Python](bindings/python/README.md#delta-t-models) 与
+[JavaScript](bindings/javascript/README.md#delta-t-models) 包文档（英文），以及 [`delta_t.hpp`](src/astro/delta_t.hpp)。
 
 时标要分开。JD UT1 与 JDE TT 不能互换；节气结果是 UT1，而 `apparent_solar_time()` / `sun.apparentSolarTime()`
-接受民用 UTC。纯 `/date` 桥接不提供 UTC 到 UT1、或 Date 到 JDE 的转换。这些绑定 API 中的地理经度东正。
-太阳与月亮的角度结果单位为度；太阳距离为 AU，月亮距离为千米。均时差是时角的度数，乘以 240 得到时间秒。
+接受民用 UTC。纯 `/date` 桥接不提供 UTC 到 UT1、或 Date 到 JDE 的转换。本库不使用观测 DUT1（UT1 − UTC），
+所以 UT1 结果不是 UTC 时间；本库的 UTC 模型以及两者在各年代相差多少，见[时标（英文）](docs/DESIGN.md#time-scales)。
 
-DUT1（UT1 − UTC）尚未建模。v0.4.0 已加入支持闰秒的 `utc_to_tt` / `tt_to_utc`，
-但不能据此把 UT1 输出直接当 UTC。闰秒实施期间两者相差不超过 0.9 秒；闰秒表冻结后的模型差异另见
-[`jieqi.hpp`](src/calendar/jieqi.hpp) 的时标说明。
-
-ΔT（TT 减 UT1，单位秒）的 `default` 与 Algo5 使用当前项目模型：2005 年前沿用 Algo2，其后使用截至 2026.41 的
-IERS Bulletin A 拟合，再向后接锚定的长期外推。Algo1（Xu Jianwei 2008）、Algo2（Espenak and Meeus,
-NASA/TP-2006-214141）、Algo3（Fred Espenak's 2014 eclipse canon）和 Algo4（IERS Bulletin A 加 USNO 预测）
-均已冻结，保留用于历史比较。冻结不等于停用：Algo2 仍是 Algo3、Algo4、当前 default / Algo5 在 2005 年前的分支。
-硬年域分别是 Algo1 的 `year >= -4000`、Algo3 的 `year < 3000`、Algo4 的 `year < 2035`；Algo2 / Algo5 没有模型专属年界。
-硬年域不是精度保证，拟合残差和测试容差也不是统计意义上的误差界。
+C ABI 和两个语言包中，地理经度东正，太阳与月亮的角度单位为度。太阳距离为 AU；独立的月亮坐标接口给出千米，
+星盘快照中所有天体的距离（含月亮）都是 AU。均时差是时角的度数，乘以 240 得到时间秒。
 
 <a id="references-and-license"></a>
 ## 参考文献与许可证

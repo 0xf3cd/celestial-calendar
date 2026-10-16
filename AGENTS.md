@@ -119,9 +119,10 @@ The release workflow freshly classifies and publishes those exact tested bytes, 
 it never repacks from source. Registry acceptance covers each name alone and the same-version pair.
 
 Python wheels likewise use their independent package path: install the exact host pins from
-`bindings/python/requirements-host.txt`; the before-build hook installs `requirements-build.txt`,
+`bindings/python/requirements-host.txt`; with the `CIBW_*` settings of `python-wheel.yml` (see
+[Python wheels](docs/BUILDING.md#python-wheels)), the before-build hook installs `requirements-build.txt`,
 and `constraints-cibuildwheel.txt` selects the bootstrap pins. Then run `python -m cibuildwheel
---only <identifier> bindings/python --output-dir wheelhouse`. The wheel is `py3` but native per platform;
+--only <identifier> bindings/python --output-dir build/wheelhouse`. The wheel is `py3` but native per platform;
 floor and current interpreters must install the same repaired wheel from an unrelated cwd. Do not
 build an sdist. The release workflow publishes the same four CI-tested wheels to PyPI and GitHub
 Release; it never builds another distribution.
@@ -255,18 +256,11 @@ context-rich messages (`std::vformat("Year {} is not supported …", …)`), nev
 clamp, swallow, or return a sentinel. Three similar lines beat a premature abstraction;
 generalize when a second or third real caller demands it.
 
-Which failure gets which mechanism (#97) — sort by *what happened to the answer*:
-
-| The answer | Mechanism | Examples |
-|---|---|---|
-| **Cannot be produced correctly** — bad input, outside a declared window, no convergence | `throw` | `rise_set::detail::validate`; `algo2` outside [410, 2500]; `jieqi_jde` outside [1, 32766] (#154) |
-| **Was produced, and it is "none"** | `std::optional` | no sunrise on a polar night; no leap month in a common year |
-| **Is beside the point — the library's own bookkeeping is broken** | `assert` | internal invariants only |
-
-A declared model window *is* the contract's domain, so leaving it is a bad argument like
-any other. `optional` never carries an error — it carries a legitimate "none".
-`std::expected` was evaluated for the core and declined (#97); the C-ABI boundary keeps
-its own translation (`catch` → `valid = false`, see `celestial.h`).
+Sort each failure by *what happened to the answer* (#97): `throw` when it cannot be produced
+correctly (`std::invalid_argument` for malformed or out-of-window input, `std::runtime_error`
+for failed convergence or a failed consistency check), `std::optional` for a legitimate
+"none", `assert` only for the library's own invariants. The table, examples and the C-ABI
+translation live in [`docs/DESIGN.md`](docs/DESIGN.md#failures).
 
 Comments sit in one of three slots (#127): **contract** (time scale, unit, valid range,
 sign convention) · **citation** (`@see` with the formula or table number) · **numeric
@@ -380,7 +374,7 @@ bindings/
 8. **Assertions:** the default build is `Release`, so `assert` is dead code in production.
    Test targets strip `NDEBUG` (#89), so asserts ARE live inside test binaries —
    `build_integrity_test.cpp` guards this. An input guard is never an `assert`; the
-   mechanism table under "honest errors" says which failure gets what.
+   [failure table](docs/DESIGN.md#failures) says which failure gets what.
 9. **CI toolchains are pinned — every one that can emit a diagnostic.** A self-updating
    tool turns "the code changed" and "the tool changed" into the same red X; a stale pin
    instead fails loudly with "no such version", which says what to do. Pinned: clang on
@@ -489,7 +483,7 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
 | Generate API HTML | `./project.py --docs` |
 | Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
 | Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
-| Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir wheelhouse` |
+| Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir build/wheelhouse` |
 | Clean | `./project.py --clean` |
 | Python lint/format · C++ lint | `./checks.py --ruff` · `./checks.py --clang-tidy` |
 | Show version | `./project.py --version` |

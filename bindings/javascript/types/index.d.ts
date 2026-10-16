@@ -150,6 +150,7 @@ export interface BodyState {
   latitudeDeg: number;
   /** AU for all bodies, including Moon; null for nodes. */
   distanceAu: number | null;
+  /** Instantaneous rate; negative means the longitude is decreasing at that instant. */
   longitudeRateDegPerTtDay: number;
 }
 

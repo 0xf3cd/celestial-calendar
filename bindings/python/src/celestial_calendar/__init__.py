@@ -678,8 +678,9 @@ def chart_snapshot(
   UTC-derived UT1 is modelled, not observed DUT1. Failure never returns a partial chart.
 
   Raises:
-    TypeError: If an input has the wrong record, enum or scalar type.
-    ValueError: If a raw civil or location value is invalid or non-finite.
+    TypeError: If an input has the wrong record, enum or scalar type, including another enum's member.
+    ValueError: If scale, system or model is not a declared member of its enum,
+      or a raw civil or location value is invalid or non-finite.
     CelestialError: If native calculation fails or its successful payload is malformed.
   """
   checked_scale = _enum(scale, CivilScale, "scale")

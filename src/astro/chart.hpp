@@ -213,7 +213,7 @@ struct Position {
  * @note Civil years are [1885, 2100); JDE(TT) is [2409543.875, 2488069.125).
  *       Algo4 additionally requires JDE(TT) < 2464328.5. Exact sample-offset checks apply.
  * @note TT-to-UT1 uses one selected Delta T evaluation at TT;
- *       this is modelled UT1, not measured DUT1. Location affects houses only.
+ *       this is modelled UT1, not observed DUT1. Location affects houses only.
  */
 [[nodiscard]] inline auto calculate(
   const calendar::Datetime& civil_dt,

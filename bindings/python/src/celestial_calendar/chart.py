@@ -103,9 +103,10 @@ class ChartTimes:
 
 @_dataclass(frozen=True)
 class BodyState:
-  """Apparent geocentric ecliptic state; negative longitude rate means retrograde.
+  """Apparent geocentric ecliptic state with an instantaneous longitude rate in degrees per TT day.
 
-  Nodes have known-zero latitude and no distance. Rates are degrees per TT day.
+  A negative rate means the longitude is decreasing at that instant. Distances are AU for every body,
+  including the Moon; nodes have known-zero latitude and no distance.
   """
 
   target: ChartTarget

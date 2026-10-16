@@ -95,7 +95,7 @@ def build_project(cpu_cores: int = 8) -> int:
 def build_docs(build_version: str) -> int:
   """Generate the opt-in API reference without configuring or compiling C++."""
   if not check_tool(Tool("doxygen"), report=True):
-    red_print("# Install Doxygen as described in docs/API.md before running project.py --docs")
+    red_print("# Install Doxygen as described in docs/BUILDING.md before running project.py --docs")
     return 1
   root = paths.proj_root()
   config = root / "docs" / "Doxyfile"

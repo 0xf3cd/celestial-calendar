@@ -100,10 +100,12 @@ print(snapshot.houses.cusps_deg)
 The result is an owned, frozen dataclass; the body and cusp collections are tuples. The fourteen bodies are, in
 order, the Sun, the Moon, Mercury through Pluto, the mean ascending/descending nodes, and the true
 ascending/descending nodes; each has apparent geocentric longitude, latitude, and a signed longitude rate.
-Positions use the true ecliptic and equinox of date, angles are degrees, distances are AU, and longitude rates are
-degrees per TT day. Negative rate means retrograde. Nodes have known-zero latitude and `None` distance. The four
-axes and twelve cusps are all in `[0, 360)` degrees, and the cusp tuple starts at house 1. Longitude is east-positive
-and latitude north-positive; location affects houses only. See the
+Positions use the true ecliptic and equinox of date, and angles are degrees. Distances are AU for every body,
+including the Moon; the standalone `moon_apparent_geocentric_coordinate()` gives the Moon's distance in kilometres,
+as `MoonCoordinate.distance_km`. The longitude rate is instantaneous, in degrees per TT day: a negative value means
+the longitude is decreasing at that instant (retrograde motion). Nodes have known-zero latitude and `None` distance.
+The four axes and twelve cusps are all in `[0, 360)` degrees, and the cusp tuple starts at house 1. Longitude is
+east-positive and latitude north-positive; location affects houses only. See the
 [shared replay example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/examples/chart_snapshot/README.md)
 for full values.
 
@@ -195,18 +197,21 @@ The cap keeps a single native output buffer within 32 KiB.
 a standard-library `datetime`: the caller must first convert local wall-clock time to the declared input scale,
 not drop the timezone and pass the rest.
 
-Before the native calculation, Python rejects wrong types, unknown enum members, invalid Gregorian dates,
+Python checks every input before the native calculation. Wrong types raise `TypeError`, including a plain string
+or another enum's member for `scale`, `system`, or `model`, and an enum member in a numeric field. `ValueError`
+covers an object of the expected enum class that is not one of its declared members, invalid Gregorian dates,
 non-finite numbers, and raw values out of range: civil years `[1885, 2100)`, day fraction `[0, 1)`, UTC from
-1972-01-01, latitude `(-90, 90)`, and longitude `[-180, 180]`. The native core owns the shared converted-TT domain
-JDE `[2409543.875, 2488069.125)`, Algo4's additional JDE `< 2464328.5` limit, Ascendant directions unresolved at
-round-off in every house system, and date-dependent Placidus polar limits. Those failures raise `CelestialError`,
-with no partial result or substitute house system. A valid raw civil year does not guarantee that the converted
-snapshot can be calculated.
+1972-01-01 (select `CivilScale.UT1` for earlier input), latitude `(-90, 90)`, and longitude `[-180, 180]`.
+The native core owns the shared converted-TT domain JDE `[2409543.875, 2488069.125)`, Algo4's additional
+JDE `< 2464328.5` limit, Ascendant directions unresolved at round-off in every house system, and date-dependent
+Placidus polar limits. Those failures raise `CelestialError`, with no partial result or substitute house system.
+A valid raw civil year does not guarantee that the converted snapshot can be calculated.
 
-UTC reaches TT through the leap-second table, and the selected Delta T model then gives UT1; that UT1 is a
-modelled value, not observed DUT1. Use UT1 before 1972; future Delta AT holds the table's last value. An inserted
-leap second is outside the civil day-fraction input. The Python result is copied from the fixed C V1 protocol and
-keeps no native buffer; incompatible extensions of the fields or body set use a new protocol version.
+For UTC input, the reported UT1 is modelled UT1, not observed DUT1;
+[Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales) explains how UTC
+reaches TT and UT1. An inserted leap second is outside the civil day-fraction input. The Python result is copied
+from the fixed C V1 protocol and keeps no native buffer; incompatible extensions of the fields or body set use a new
+protocol version.
 
 <a id="date-bridges-and-lunar-round-trip"></a>
 ### Date-only bridges and Lunar round trip
@@ -253,11 +258,11 @@ Choose the source and compatibility role you need, not an assumed accuracy ranki
 | `LunarAlgorithm.ALGO2` | Computed from VSOP87D and truncated ELP2000-82B | `[410, 2500]` | Astronomical construction over the wider computed window |
 | `LunarAlgorithm.ALGO3` | Baked hybrid: algo1/HKO in 1901-2099, algo2-generated dates elsewhere | `[1600, 2199]` | Table lookup with HKO compatibility in the overlapping years |
 
-Algo2 assigns dates by rendering TT moments through the library's UTC model and then applying a fixed eight-hour
-eastward offset. Before 1972, that model deliberately uses UT1 as a proxy because historical UTC is not modelled.
-From 1972 it uses the leap-second table; after the final entry (2017) it holds Delta AT (TAI minus UTC) at 37 seconds.
-Algo1 preserves HKO's published labels rather than imposing this rule on their history; algo3 inherits the basis of
-each source slice. The 2500 ceiling is the computed algorithm's enforced civil-date domain, not a physical limit of
+Algo2 assigns dates by rendering TT moments in the library's modelled UTC and then applying a fixed eight-hour
+eastward offset. That modelled UTC is UT1 before 1972 and adds no leap seconds after the table's last entry (2017);
+see [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales). Algo1
+preserves HKO's published labels rather than imposing this rule on their history; algo3 inherits the basis of each
+source slice. The 2500 ceiling is the computed algorithm's enforced civil-date domain, not a physical limit of
 VSOP87D or ELP2000-82B.
 
 `supported_lunar_year_range(algorithm)` queries the native algorithm's inclusive **Lunar-year** range and returns
