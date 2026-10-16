@@ -53,7 +53,7 @@ pyproject-hooks==1.2.0 \
     --hash=sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8 \
     --hash=sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913
     # via build
-scikit-build-core==1.1.0 \
-    --hash=sha256:d421f837a0f645e51b99fc0d8b00c976917845d954d609ce6b06b11b2c94621b \
-    --hash=sha256:ef439fc8b352913ef6e76257e3115a7910c9f294a2cf27781b6f571cf6cd0033
+scikit-build-core==1.1.1 \
+    --hash=sha256:6f6d6cf600e2e9639fd258ecd11cfc19bd189354b968916a519c6793e7e26237 \
+    --hash=sha256:e347a59193c878ac56a363e57506938652a6dd8c965790cb1cbc6bc7e8d5abad
     # via -r bindings/python/requirements-build.in
