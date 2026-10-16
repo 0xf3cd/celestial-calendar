@@ -13,6 +13,69 @@ For installation, examples and Python/JavaScript package guides, see the
 Project-authored material uses MIT. The generated directory includes `LICENSE` and
 `THIRD_PARTY_NOTICES.txt`; retained material keeps the source terms stated there.
 
+<a id="cpp-guide"></a>
+## C++ Guide
+
+The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
+headers. This section covers the C++-only headers beyond the Jieqi API.
+
+The C++-only [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
+[`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
+[`planet_phenomena.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet_phenomena.hpp)
+provide planetary illumination geometry and yearly conjunction, opposition, quadrature, greatest-elongation, and
+station searches. Event instants are JDE(TT); Gregorian-year ownership follows UTC boundaries, degrading to the
+library's UT1 substitute before 1972. Mercury through Neptune use VSOP87D over the `[1, 32766]` computational year
+domain. `Planet::PLUTO` instead uses the lower-precision Meeus Chapter 37 model: apparent position and illumination
+geometry accept `[2409543.5, 2488069.5)` JDE(TT), centered retrograde checks accept `[2409544.0, 2488069.0)`, and
+complete yearly event searches accept Gregorian years `[1886, 2098]`. These hard domains are not accuracy guarantees.
+
+The C++-only [`lunar_node.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
+returns true-ecliptic, true-equinox-of-date longitudes for mean or Meeus five-term true ascending and descending
+nodes from JDE(TT). Latitude is exactly zero by this definition, and the longitude-only API has no physical distance.
+
+The C++-only [`ephemeris.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris.hpp)
+provides `astro::ephemeris::longitude_rate` for the Sun, Moon, Mercury through Pluto, and all four lunar nodes.
+It accepts JDE(TT) and returns `LongitudeRate::deg_per_tt_day`; a negative value indicates retrograde motion.
+The `Target` enum selects a body or lunar node.
+
+```cpp
+const auto rate = astro::ephemeris::longitude_rate(
+  astro::ephemeris::Target::MOON,
+  2451545.0
+);
+const double degrees_per_tt_day = rate.deg_per_tt_day;
+```
+
+Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
+Other rate inputs are `[-1200954.625, 6104044.625)`.
+
+The C++-only [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
+geocentric positions, longitude rates and house geometry at one explicitly scaled civil instant:
+
+```cpp
+const calendar::Datetime civil_dt { util::to_ymd(2026, 1, 1), 0.5 };
+const astro::GeoLocation location {
+  .latitude = astro::toolbox::AngleDeg { 51.5 },
+  .longitude = astro::toolbox::AngleDeg { 0.0 },
+};
+const auto snapshot = astro::chart::calculate(
+  civil_dt, astro::chart::Scale::UTC, location, astro::house::System::PLACIDUS
+);
+```
+
+Pass `Scale::UT1` for historical civil input; UTC begins at 1972-01-01. Timezone conversion and
+inserted leap seconds are outside the input domain. A final `delta_t::Model` argument selects a
+model, default Algo5. The result holds `jd_ut1`/`jde_tt`, fourteen position/rate
+records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
+Location affects houses only. All systems reject an Ascendant direction unresolved at round-off;
+Placidus also rejects its polar geometry. Failure never selects another system.
+
+Civil years are `[1885, 2100)` and the joint JDE(TT) domain is `[2409543.875, 2488069.125)`;
+Algo4 additionally requires `< 2464328.5`.
+See the [complete raw replay example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/examples/chart_snapshot/README.md).
+
+See [core features and algorithms](https://github.com/0xf3cd/celestial-calendar#features) for the full scope.
+
 ## Fixed-Version C Chart Snapshot
 
 `chart_snapshot_v1` returns an owned `ChartSnapshotV1` by value. Its fourteen `ChartBodyV1` records follow

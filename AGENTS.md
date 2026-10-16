@@ -353,7 +353,7 @@ bindings/
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active
    use. Features the weakest CI toolchain doesn't support yet — **modules**,
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
-   wait for compiler support ([remaining work](README.md#todo) tracks the wishlist). **Availability is settled by
+   wait for compiler support ([toolchain feature tracking](docs/BUILDING.md#todo) keeps the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./checks.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`. Toolchain failures, malformed records and lost capability
@@ -366,7 +366,7 @@ bindings/
    two Linux architectures (x86_64 and arm64); Linux builds in Docker on native runners.
    Do not change compiler or Docker base images without checking matrix impact. The optional
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
-   `python-wheel.yml` legs. The former uploads `celestial-wasm` ([WASM/npm](README.md#wasm) records its exact
+   `python-wheel.yml` legs. The former uploads `celestial-wasm` ([WASM/npm](docs/BUILDING.md#wasm) records its exact
    members); the latter uploads four exact wheels and sidecars;
    the release downloader pulls all three build legs' artifacts for the tagged commit. Cutting a
    release is the protected-tag, explicit-run ritual in `docs/RELEASING.md`; it freezes one candidate,

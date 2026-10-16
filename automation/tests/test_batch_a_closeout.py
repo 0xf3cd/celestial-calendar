@@ -553,29 +553,30 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "Other files",
       "README third-party exception pointer differs",
     ),
+    ("README.md", "\n## License\n", "\n## Licence\n", "section differs: ## License"),
     (
-      "README_EN.md",
-      "](README.md#13-license)",
+      "README_ZH.md",
       "](README.md#license)",
-      "English README canonical license link differs",
+      "](README.md#broken-license)",
+      "Chinese README canonical license link differs",
     ),
     (
-      "README_EN.md",
-      "](README.md#13-license)",
+      "README_ZH.md",
+      "](README.md#license)",
       "",
-      "English README canonical license link differs",
+      "Chinese README canonical license link differs",
     ),
     (
-      "README_EN.md",
-      "](README.md#13-license)",
-      "](README.md#license)<!-- decoy ](README.md#13-license) -->",
-      "English README canonical license link differs",
+      "README_ZH.md",
+      "](README.md#license)",
+      "](README.md#broken-license)<!-- decoy ](README.md#license) -->",
+      "Chinese README canonical license link differs",
     ),
     (
-      "README_EN.md",
-      "](README.md#13-license)",
-      "](README.md#license)<!-- [License scope and third-party exceptions](README.md#13-license) -->",
-      "English README canonical license link differs",
+      "README_ZH.md",
+      "](README.md#license)",
+      "](README.md#broken-license)<!-- [许可证范围与第三方例外](README.md#license) -->",
+      "Chinese README canonical license link differs",
     ),
     (
       "AGENTS.md",
@@ -602,9 +603,9 @@ def test_a4_license_mutation_fails(tmp_path):
     verify_batch_a_closeout(repo_root=tmp_path)
 
 
-def test_english_readme_is_in_the_residual_scan(tmp_path):
+def test_chinese_readme_is_in_the_residual_scan(tmp_path):
   materialize_inputs(tmp_path)
-  readme = tmp_path / "README_EN.md"
+  readme = tmp_path / "README_ZH.md"
   readme.write_text(readme.read_text(encoding="utf-8") + f"\n{GPL_V3}\n", encoding="utf-8")
 
   with pytest.raises(RuntimeError, match="residual GPL allowlist differs"):
