@@ -92,7 +92,10 @@ def main():
     for invalid_virtualenv in (
       "",
       virtualenv_requirement.replace("21.7.1", "21.7.0"),
+      virtualenv_requirement.replace("21.7.1", "21.7.10"),
       virtualenv_requirement.replace("virtualenv==", "virtualenv-clone=="),
+      virtualenv_requirement.replace("virtualenv==", "py-virtualenv=="),
+      virtualenv_requirement.replace(" \\\n", "\n"),
       virtualenv_requirement + virtualenv_requirement,
     ):
       lock.write_text(pip_requirement + invalid_virtualenv, encoding="utf-8")
