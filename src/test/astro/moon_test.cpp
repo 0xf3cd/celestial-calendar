@@ -15,7 +15,7 @@
 #include <limits>
 #include <tuple>
 #include <unordered_map>
-#include "util.hpp"
+#include "../random.hpp"
 #include "julian_day.hpp"
 #include "moon.hpp"
 

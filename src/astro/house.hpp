@@ -43,11 +43,11 @@ enum class System : uint8_t { EQUAL, WHOLE_SIGN, PLACIDUS };
  *       Ascendant exactly on a sign boundary belongs to the following sign.
  */
 struct Result {
-  astro::toolbox::AngleDeg ascendant;
-  astro::toolbox::AngleDeg midheaven;
-  astro::toolbox::AngleDeg descendant;
-  astro::toolbox::AngleDeg imum_coeli;
-  std::array<astro::toolbox::AngleDeg, 12> cusps;
+  toolbox::AngleDeg ascendant;
+  toolbox::AngleDeg midheaven;
+  toolbox::AngleDeg descendant;
+  toolbox::AngleDeg imum_coeli;
+  std::array<toolbox::AngleDeg, 12> cusps;
 };
 
 namespace detail {
@@ -61,27 +61,27 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 13, Formula (13.3), with β = 0. */
 [[nodiscard]] inline auto midheaven(
-  const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& obliquity
-) -> astro::toolbox::AngleDeg {
-  return astro::toolbox::AngleDeg {
-    astro::toolbox::rad_to_deg(
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& obliquity
+) -> toolbox::AngleDeg {
+  return toolbox::AngleDeg {
+    toolbox::rad_to_deg(
       std::atan2(std::sin(armc.rad()), std::cos(armc.rad()) * std::cos(obliquity.rad()))
     )
   }.normalize();
 }
 
-[[nodiscard]] inline auto antipode(const astro::toolbox::AngleDeg& angle) -> astro::toolbox::AngleDeg {
-  return (angle + astro::toolbox::AngleDeg { 180.0 }).normalize();
+[[nodiscard]] inline auto antipode(const toolbox::AngleDeg& angle) -> toolbox::AngleDeg {
+  return (angle + toolbox::AngleDeg { 180.0 }).normalize();
 }
 
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 14, Formulas (14.2)-(14.3). */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the formula.
 [[nodiscard]] inline auto ascendant(
-  const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& latitude,
-  const astro::toolbox::AngleDeg& obliquity
-) -> astro::toolbox::AngleDeg {
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity
+) -> toolbox::AngleDeg {
   const auto normalized_armc = armc.normalize();
   // Preserve cos θ = 0 at exact quadrature; one-ulp drift can cross a Whole Sign boundary (#59).
   const double cos_armc = (normalized_armc.deg() == 90.0 or normalized_armc.deg() == 270.0)
@@ -111,14 +111,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     };
   }
 
-  const auto horizon_intersection = astro::toolbox::AngleDeg {
-    astro::toolbox::rad_to_deg(
+  const auto horizon_intersection = toolbox::AngleDeg {
+    toolbox::rad_to_deg(
       std::atan2(atan2_y, atan2_x)
     )
   }.normalize();
   const auto equatorial = astro::coords::ecliptic_to_equatorial(
     horizon_intersection,
-    astro::toolbox::AngleDeg { 0.0 },
+    toolbox::AngleDeg { 0.0 },
     obliquity
   );
   const auto hour_angle = (armc - equatorial.α).normalize();
@@ -139,13 +139,13 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the equation.
 [[nodiscard]] inline auto placidus_equation(
   const double longitude_deg,
-  const astro::toolbox::AngleDeg& latitude,
-  const astro::toolbox::AngleDeg& obliquity,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity,
   const PlacidusCusp cusp
 ) -> double {
   const auto equatorial = astro::coords::ecliptic_to_equatorial(
-    astro::toolbox::AngleDeg { longitude_deg },
-    astro::toolbox::AngleDeg { 0.0 },
+    toolbox::AngleDeg { longitude_deg },
+    toolbox::AngleDeg { 0.0 },
     obliquity
   );
   double right_ascension_deg = equatorial.α.deg();
@@ -154,7 +154,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     right_ascension_deg += 360.0;
   }
 
-  const double semidiurnal_arc_deg = astro::toolbox::rad_to_deg(
+  const double semidiurnal_arc_deg = toolbox::rad_to_deg(
     std::acos(std::clamp(-std::tan(latitude.rad()) * std::tan(equatorial.δ.rad()), -1.0, 1.0))
   );
   const double nocturnal_arc_deg = 180.0 - semidiurnal_arc_deg;
@@ -173,12 +173,12 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the solver.
 [[nodiscard]] inline auto placidus_cusp(
-  const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& latitude,
-  const astro::toolbox::AngleDeg& obliquity,
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity,
   const PlacidusCusp cusp,
   const std::size_t max_iterations = PLACIDUS_MAX_ITERATIONS
-) -> astro::toolbox::AngleDeg {
+) -> toolbox::AngleDeg {
   const double start_value = placidus_equation(0.0, latitude, obliquity, cusp);
   const double end_value = placidus_equation(360.0, latitude, obliquity, cusp);
   double target_deg = armc.normalize().deg();
@@ -197,13 +197,13 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     double left_deg,
     double left_residual,
     double right_deg
-  ) -> astro::toolbox::AngleDeg {
+  ) -> toolbox::AngleDeg {
     for (std::size_t iteration = 0; iteration < max_iterations; ++iteration) {
       const double midpoint_deg = std::midpoint(left_deg, right_deg);
       const double midpoint_residual = residual(midpoint_deg);
       if (std::fabs(midpoint_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG
           or (right_deg - left_deg) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
-        return astro::toolbox::AngleDeg { midpoint_deg }.normalize();
+        return toolbox::AngleDeg { midpoint_deg }.normalize();
       }
       if (std::signbit(left_residual) == std::signbit(midpoint_residual)) {
         left_deg = midpoint_deg;
@@ -219,14 +219,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   double left_deg = 0.0;
   double left_residual = start_value - target_deg;
   if (std::fabs(left_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
-    return astro::toolbox::AngleDeg { 0.0 };
+    return toolbox::AngleDeg { 0.0 };
   }
 
   for (std::size_t segment = 1; segment <= PLACIDUS_BRACKET_SEGMENTS; ++segment) {
     const double right_deg = 360.0 * static_cast<double>(segment) / static_cast<double>(PLACIDUS_BRACKET_SEGMENTS);
     const double right_residual = residual(right_deg);
     if (std::fabs(right_residual) <= PLACIDUS_ROOT_TOLERANCE_DEG) {
-      return astro::toolbox::AngleDeg { right_deg }.normalize();
+      return toolbox::AngleDeg { right_deg }.normalize();
     }
     if (std::signbit(left_residual) != std::signbit(right_residual)) {
       return refine(left_deg, left_residual, right_deg);
@@ -241,12 +241,12 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the house frame.
 [[nodiscard]] inline auto placidus_cusps(
-  const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& latitude,
-  const astro::toolbox::AngleDeg& obliquity,
-  const astro::toolbox::AngleDeg& ascendant,
-  const astro::toolbox::AngleDeg& midheaven
-) -> std::array<astro::toolbox::AngleDeg, 12> {
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity,
+  const toolbox::AngleDeg& ascendant,
+  const toolbox::AngleDeg& midheaven
+) -> std::array<toolbox::AngleDeg, 12> {
   const double obliquity_deg = obliquity.deg();
   if (std::fabs(latitude.deg()) >= 90.0 - obliquity_deg) {
     throw std::invalid_argument {
@@ -279,9 +279,9 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-[[nodiscard]] inline auto uniform_cusps(const astro::toolbox::AngleDeg& first) -> std::array<astro::toolbox::AngleDeg, 12> {
+[[nodiscard]] inline auto uniform_cusps(const toolbox::AngleDeg& first) -> std::array<toolbox::AngleDeg, 12> {
   const auto cusp = [&first](const double offset_deg) {
-    return (first + astro::toolbox::AngleDeg { offset_deg }).normalize();
+    return (first + toolbox::AngleDeg { offset_deg }).normalize();
   };
   return {
     cusp(0.0),   cusp(30.0),  cusp(60.0),  cusp(90.0),  cusp(120.0), cusp(150.0),
@@ -289,14 +289,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   };
 }
 
-[[nodiscard]] inline auto whole_sign_start(const astro::toolbox::AngleDeg& ascendant) -> astro::toolbox::AngleDeg {
-  return astro::toolbox::AngleDeg { std::floor(ascendant.normalize().deg() / 30.0) * 30.0 };
+[[nodiscard]] inline auto whole_sign_start(const toolbox::AngleDeg& ascendant) -> toolbox::AngleDeg {
+  return toolbox::AngleDeg { std::floor(ascendant.normalize().deg() / 30.0) * 30.0 };
 }
 
 [[nodiscard]] inline auto calculate(
-  const astro::toolbox::AngleDeg& armc,
-  const astro::toolbox::AngleDeg& latitude,
-  const astro::toolbox::AngleDeg& obliquity,
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity,
   const System system
 ) -> Result {
   const double obliquity_deg = obliquity.deg();

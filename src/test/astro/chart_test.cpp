@@ -26,6 +26,7 @@
 
 #include "chart.hpp"
 #include "chart_test_helper.hpp"
+#include "house_test_helper.hpp"
 #include "../test_helper.hpp"
 
 namespace astro::chart::test {
@@ -34,6 +35,9 @@ namespace {
 using astro::delta_t::Model;
 using astro::ephemeris::Target;
 using astro::house::System;
+using astro::house::test::WITNESS_LATITUDE_DEG;
+using astro::house::test::WITNESS_NORTH_LONGITUDE_DEG;
+using astro::house::test::WITNESS_SOUTH_LONGITUDE_DEG;
 using astro::toolbox::AngleDeg;
 using calendar::Datetime;
 
@@ -276,11 +280,10 @@ TEST(Chart, SiteAndPlacidusFailuresNeverFallback) {
 
 TEST(Chart, UnresolvedAscendantStopsSnapshotAndAllowsNearbyControls) {
   // #321 public UTC witness and its antipodal southern site.
-  // The UTC witness depends on Algo 5's UT1; rederive the location after a refit.
   const auto dt = civil(2026, 1, 1, 43205'000'000'000);
   for (const auto observer : std::array {
-    location(66.561856230963841, -11.176256364511062),
-    location(-66.561856230963841, 168.82374363548894)
+    location(WITNESS_LATITUDE_DEG, WITNESS_NORTH_LONGITUDE_DEG),
+    location(-WITNESS_LATITUDE_DEG, WITNESS_SOUTH_LONGITUDE_DEG)
   }) {
     for (const auto system : std::array { System::EQUAL, System::WHOLE_SIGN }) {
       EXPECT_THROW(std::ignore = calculate(dt, Scale::UTC, observer, system, Model::ALGO5), std::invalid_argument);

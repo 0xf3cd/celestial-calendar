@@ -67,11 +67,11 @@ inline auto validate(const Node node, const double jde_tt) -> void {
 }
 
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, Equation (47.7). */
-[[nodiscard]] inline auto mean_ascending(const double jc) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto mean_ascending(const double jc) -> toolbox::AngleDeg {
   const double jc2 = jc * jc;
   const double jc3 = jc2 * jc;
   const double jc4 = jc3 * jc;
-  return astro::toolbox::AngleDeg {
+  return toolbox::AngleDeg {
     125.0445479
     - (1934.1362891 * jc)
     + (0.0020754 * jc2)
@@ -81,7 +81,7 @@ inline auto validate(const Node node, const double jde_tt) -> void {
 }
 
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, printed p. 344. */
-[[nodiscard]] inline auto true_ascending(const double jc) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto true_ascending(const double jc) -> toolbox::AngleDeg {
   const auto ctx = astro::elp2000_82b::create_context(jc);
   const double correction_deg =
     (-1.4979 * std::sin(((ctx.D - ctx.F) * 2.0).rad()))
@@ -89,7 +89,7 @@ inline auto validate(const Node node, const double jde_tt) -> void {
     - (0.1226 * std::sin((ctx.D * 2.0).rad()))
     + (0.1176 * std::sin((ctx.F * 2.0).rad()))
     - (0.0801 * std::sin(((ctx.Mp - ctx.F) * 2.0).rad()));
-  return mean_ascending(jc) + astro::toolbox::AngleDeg { correction_deg };
+  return mean_ascending(jc) + toolbox::AngleDeg { correction_deg };
 }
 
 } // namespace detail
@@ -106,7 +106,7 @@ inline auto validate(const Node node, const double jde_tt) -> void {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Equation (47.7) and printed p. 344.
  * @see astro::earth::nutation::longitude
  */
-[[nodiscard]] inline auto position(const Node node, const double jde_tt) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto position(const Node node, const double jde_tt) -> toolbox::AngleDeg {
   detail::validate(node, jde_tt);
 
   const double jc = astro::julian_day::jde_to_jc(jde_tt);
@@ -119,7 +119,7 @@ inline auto validate(const Node node, const double jde_tt) -> void {
   ).normalize();
 
   if (is_descending) {
-    return (ascending + astro::toolbox::AngleDeg { 180.0 }).normalize();
+    return (ascending + toolbox::AngleDeg { 180.0 }).normalize();
   }
   return ascending;
 }

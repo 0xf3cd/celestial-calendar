@@ -12,49 +12,69 @@
 
 import math as _math
 from dataclasses import dataclass as _dataclass
-from enum import IntEnum as _IntEnum
+from enum import StrEnum as _StrEnum
 
 from ._abi import ChartBodyV1 as _ChartBodyV1
 from ._abi import ChartSnapshotV1 as _ChartSnapshotV1
 
 
-class CivilScale(_IntEnum):
+class CivilScale(_StrEnum):
   """The explicitly selected time scale of a civil input."""
 
-  UTC = 0
-  UT1 = 1
+  UTC = "utc"
+  UT1 = "ut1"
 
 
-class ChartTarget(_IntEnum):
+class ChartTarget(_StrEnum):
   """The fixed V1 body roster, including both directions of each lunar node."""
 
-  SUN = 0
-  MOON = 1
-  MERCURY = 2
-  VENUS = 3
-  MARS = 4
-  JUPITER = 5
-  SATURN = 6
-  URANUS = 7
-  NEPTUNE = 8
-  PLUTO = 9
-  MEAN_ASCENDING = 10
-  MEAN_DESCENDING = 11
-  TRUE_ASCENDING = 12
-  TRUE_DESCENDING = 13
+  SUN = "sun"
+  MOON = "moon"
+  MERCURY = "mercury"
+  VENUS = "venus"
+  MARS = "mars"
+  JUPITER = "jupiter"
+  SATURN = "saturn"
+  URANUS = "uranus"
+  NEPTUNE = "neptune"
+  PLUTO = "pluto"
+  MEAN_ASCENDING = "mean_ascending"
+  MEAN_DESCENDING = "mean_descending"
+  TRUE_ASCENDING = "true_ascending"
+  TRUE_DESCENDING = "true_descending"
 
 
-class HouseSystem(_IntEnum):
+class HouseSystem(_StrEnum):
   """House geometry; all systems reject an Ascendant direction unresolved at round-off.
 
   Placidus also rejects its date-dependent polar domain.
   """
 
-  EQUAL = 0
-  WHOLE_SIGN = 1
-  PLACIDUS = 2
+  EQUAL = "equal"
+  WHOLE_SIGN = "whole_sign"
+  PLACIDUS = "placidus"
 
 
+# Native V1 codes, the CHART_* values in celestial.h.
+_CIVIL_SCALE_CODE = {CivilScale.UTC: 0, CivilScale.UT1: 1}
+_HOUSE_SYSTEM_CODE = {HouseSystem.EQUAL: 0, HouseSystem.WHOLE_SIGN: 1, HouseSystem.PLACIDUS: 2}
+_CHART_TARGET_CODE = {
+  ChartTarget.SUN: 0,
+  ChartTarget.MOON: 1,
+  ChartTarget.MERCURY: 2,
+  ChartTarget.VENUS: 3,
+  ChartTarget.MARS: 4,
+  ChartTarget.JUPITER: 5,
+  ChartTarget.SATURN: 6,
+  ChartTarget.URANUS: 7,
+  ChartTarget.NEPTUNE: 8,
+  ChartTarget.PLUTO: 9,
+  ChartTarget.MEAN_ASCENDING: 10,
+  ChartTarget.MEAN_DESCENDING: 11,
+  ChartTarget.TRUE_ASCENDING: 12,
+  ChartTarget.TRUE_DESCENDING: 13,
+}
+_TARGET_BY_CODE = {code: target for target, code in _CHART_TARGET_CODE.items()}
 _NODE_TARGETS = (
   ChartTarget.MEAN_ASCENDING,
   ChartTarget.MEAN_DESCENDING,
@@ -129,7 +149,7 @@ def _longitude_native(value: object, name: str) -> float:
 
 
 def _body_from_native(body: _ChartBodyV1, expected: ChartTarget) -> BodyState:
-  if ChartTarget(body.target_code) is not expected:
+  if _TARGET_BY_CODE.get(body.target_code) is not expected:
     raise ValueError(f"unexpected target code for {expected.name}")
 
   is_node = expected in _NODE_TARGETS

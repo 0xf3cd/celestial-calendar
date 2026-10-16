@@ -139,7 +139,7 @@ API HTML is also opt-in: `./project.py --docs` uses Doxygen 1.15.0 without a C++
 Core Tests uploads `celestial-api-html`; it is not a release artifact. `docs/Doxyfile` rejects
 documentation syntax errors but does not require every declaration/parameter to be documented.
 
-Randomized tests draw from a shared, seeded engine (`util/random.hpp`, #69): default seed
+Randomized tests draw from a shared, seeded engine (`test/random.hpp`, #69): default seed
 42, override with the `CELESTIAL_TEST_SEED` env var. The PR/push gate pins the default;
 `random_soak.yml` (weekly / dispatch) draws a fresh seed per run. A soak failure is never
 a flake: replay the failing ctest entry with the same seed, then bake the find into a
@@ -280,7 +280,7 @@ Frozen provenance snapshots under `src/test/provenance/**` are outside the proje
 For a new project-authored source file elsewhere, copy the neighbouring project banner, its copyright
 line, and a language-appropriate `SPDX-License-Identifier: MIT`; use the current year. For an existing
 project-authored source file, keep its year unless a user-directed wholesale rewrite warrants a
-`<original>-<current>` range (for example, `util/random.hpp` 2024-2026). Retained third-party hosts
+`<original>-<current>` range (for example, `test/random.hpp` 2024-2026). Retained third-party hosts
 follow `src/test/provenance/batch-a-closeout/retained_host_blocks.json`: `in_file` hosts carry the
 boundary pinned by `marker` and `marking_sha256`; `adjacent_record` data use the named attribution file.
 
@@ -337,7 +337,7 @@ src/
   calendar/     Calendar logic: datetime, lunar conversion algorithms, Jieqi
   shared_lib/   C++ shared-library wrapper over core algorithms
   test/         GoogleTest-based tests (auto-discovered by CMake)
-  util/         Utility headers (hash, cache, random, YMD, ...)
+  util/         Utility headers (hash, cache, YMD, ...)
 automation/     Python modules used by project.py and checks.py
 toolbox/        Helper scripts for artifacts, releases, build info
 bindings/

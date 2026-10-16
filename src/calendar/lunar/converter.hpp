@@ -142,7 +142,7 @@ struct Converter {
     // Example: a gregorian_date date in gregorian_date year 2024 can be in lunar year 2023 or 2024.
 
     // First, check if lunar date and gregorian_date date are in the same year.
-    const auto& [g_year, _, __] = util::from_ymd(gregorian_date);
+    const auto g_year = static_cast<int32_t>(gregorian_date.year());
     if (g_year <= AlgoMetadata::bounds().end_lunar_year) {
       using namespace util::ymd_operator;
       const auto& info = AlgoMetadata::get_info_for_year(g_year);

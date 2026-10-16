@@ -19,6 +19,7 @@
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
 #include "lunar/algo3.hpp"
+#include "../random.hpp"
 
 namespace calendar::lunar::converter::test {
 

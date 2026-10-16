@@ -23,7 +23,6 @@
 #include "datetime.hpp"
 #include "jieqi.hpp"
 #include "julian_day.hpp"
-#include "util.hpp"
 #include "ymd.hpp"
 
 // Retained material boundaries (V04/V10): the HKO and JPL Horizons DE441 output blocks below remain

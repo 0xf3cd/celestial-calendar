@@ -15,14 +15,11 @@
 #include <cmath>
 #include <vector>
 #include <format>
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
 
 #include "toolbox.hpp"
-#include "ymd.hpp"
-#include "datetime.hpp"
 #include "julian_day.hpp"
 #include "coord_transform.hpp"
 #include "illumination.hpp"
@@ -71,7 +68,7 @@ inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
 [[nodiscard]] inline auto newton_method(
   const double left_jde,
   const double right_jde,            // NOLINT(bugprone-easily-swappable-parameters)
-  const std::size_t iterations = astro::toolbox::NEWTON_MAX_ITERATIONS
+  const std::size_t iterations = toolbox::NEWTON_MAX_ITERATIONS
 ) -> double {
 
   // Make sure the root exists in the range of [left_jde, right_jde).
@@ -99,8 +96,8 @@ inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
     return diff;
   };
 
-  return astro::toolbox::newton_method(
-    f, left_jde, right_jde, astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
+  return toolbox::newton_method(
+    f, left_jde, right_jde, toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
   );
 }
 
@@ -134,7 +131,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
   const double cur_diff = longitude_diff(jde);
   const double gap = 360.0 - cur_diff;
 
-  constexpr double deg_per_day = astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
+  constexpr double deg_per_day = toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
   const double est_jde = jde + (gap / deg_per_day); // Estimate the next root jde.
 
   // Extrapolating at the mean rate lands near the root but not on it: the Moon's true rate runs
@@ -285,7 +282,7 @@ enum class PhaseKind : uint8_t {
  * @note Folding keeps `f` smooth across the root for any target, not just 0°.
  */
 [[nodiscard]] inline auto phase_diff(const double jde, const double target_deg) -> double {
-  return astro::toolbox::normalize_pm180(longitude_diff(jde) - target_deg);
+  return toolbox::normalize_pm180(longitude_diff(jde) - target_deg);
 }
 
 /**
@@ -323,7 +320,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
   const double left_jde,
   const double right_jde,
   const double target_deg,
-  const std::size_t iterations = astro::toolbox::NEWTON_MAX_ITERATIONS
+  const std::size_t iterations = toolbox::NEWTON_MAX_ITERATIONS
 ) -> double {
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
@@ -348,8 +345,8 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
     return phase_diff(jde, target_deg);
   };
 
-  return astro::toolbox::newton_method(
-    f, left_jde, right_jde, astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
+  return toolbox::newton_method(
+    f, left_jde, right_jde, toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
   );
 }
 
@@ -368,7 +365,7 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
                    ? (target_deg - cur_diff)
                    : (360.0 - cur_diff + target_deg);
 
-  constexpr double deg_per_day = astro::toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
+  constexpr double deg_per_day = toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
   const double est_jde = jde + (gap / deg_per_day);
 
   const double est_jde_diff = phase_diff(est_jde, target_deg);
@@ -478,9 +475,9 @@ namespace astro::moon_phase::illumination {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
 [[nodiscard]] inline auto phase_angle(
-  const astro::toolbox::SphericalCoordinate& sun_pos,
-  const astro::toolbox::SphericalCoordinate& moon_pos
-) -> astro::toolbox::AngleDeg {
+  const toolbox::SphericalCoordinate& sun_pos,
+  const toolbox::SphericalCoordinate& moon_pos
+) -> toolbox::AngleDeg {
   return astro::illumination::geometry(sun_pos, moon_pos).phase_angle;
 }
 
@@ -491,7 +488,7 @@ namespace astro::moon_phase::illumination {
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
-[[nodiscard]] inline auto phase_angle(const double jde) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto phase_angle(const double jde) -> toolbox::AngleDeg {
   return phase_angle(
     astro::sun::geocentric_coord::apparent(jde),
     astro::moon::geocentric_coord::apparent(jde)
@@ -510,7 +507,7 @@ namespace astro::moon_phase::illumination {
 [[nodiscard]] inline auto position_angle(
   const astro::coords::EquatorialCoord& sun_eq, // NOLINT(bugprone-easily-swappable-parameters) -- Sun vs Moon, ordered α₀δ₀ vs αδ.
   const astro::coords::EquatorialCoord& moon_eq
-) -> astro::toolbox::AngleDeg {
+) -> toolbox::AngleDeg {
   const double α0 = sun_eq.α.rad();
   const double δ0 = sun_eq.δ.rad();
   const double α  = moon_eq.α.rad();
@@ -521,8 +518,8 @@ namespace astro::moon_phase::illumination {
   const double y = std::cos(δ0) * std::sin(Δα);
   const double x = (std::sin(δ0) * std::cos(δ)) - (std::cos(δ0) * std::sin(δ) * std::cos(Δα));
 
-  const auto χ_rad = astro::toolbox::AngleRad { std::atan2(y, x) }.normalize();
-  return astro::toolbox::AngleDeg { χ_rad.deg() };
+  const auto χ_rad = toolbox::AngleRad { std::atan2(y, x) }.normalize();
+  return toolbox::AngleDeg { χ_rad.deg() };
 }
 
 /**
@@ -533,7 +530,7 @@ namespace astro::moon_phase::illumination {
  *          converted to equatorial with the true obliquity.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
-[[nodiscard]] inline auto position_angle(const double jde) -> astro::toolbox::AngleDeg {
+[[nodiscard]] inline auto position_angle(const double jde) -> toolbox::AngleDeg {
   const auto sun_eq = astro::sun::equatorial_coord::apparent(jde);
   const auto moon_eq = astro::moon::equatorial_coord::apparent(jde);
   return position_angle(sun_eq, moon_eq);
@@ -545,7 +542,7 @@ namespace astro::moon_phase::illumination {
  * @return k in [0, 1].
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 48.
  */
-[[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& i) -> double {
+[[nodiscard]] inline auto fraction(const toolbox::AngleDeg& i) -> double {
   return astro::illumination::fraction(i);
 }
 

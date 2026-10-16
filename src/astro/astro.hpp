@@ -24,6 +24,7 @@
 #include "moon_phase.hpp"
 #include "lunar_node.hpp"
 #include "ephemeris.hpp"
+#include "planet_phenomena.hpp"
 #include "chart.hpp"
 #include "rise_set.hpp"
 #include "house.hpp"

@@ -34,7 +34,7 @@ TEXT_COPIES: Final[Tuple[Tuple[str, str, re.Pattern], ...]] = (
   ("Dockerfile ARG", "Dockerfile", re.compile(r"^\s*ARG\s+CELESTIAL_TEST_SEED=(\d+)", re.MULTILINE)),
   (
     "random.hpp DEFAULT_SEED",
-    "src/util/random.hpp",
+    "src/test/random.hpp",
     re.compile(r"^\s*inline\s+constexpr\s+uint64_t\s+DEFAULT_SEED\s*=\s*(\d+)", re.MULTILINE),
   ),
 )

@@ -23,6 +23,7 @@
 #include "coord_transform.hpp"
 #include "earth.hpp"
 #include "geolocation.hpp"
+#include "house_test_helper.hpp"
 #include "rise_set.hpp"
 #include "sidereal_time.hpp"
 #include "toolbox.hpp"
@@ -466,8 +467,8 @@ TEST(House, PublicCalculationRejectsCoincidentPlanes) {
   constexpr double jd_ut1 = 2461042.0000586384;
   constexpr double jde_tt = 2461042.000858611;
   for (const double sign : { -1.0, 1.0 }) {
-    const double latitude = sign * 66.561856230963841;
-    const double longitude = sign > 0.0 ? -11.176256364511062 : 168.82374363548894;
+    const double latitude = sign * WITNESS_LATITUDE_DEG;
+    const double longitude = sign > 0.0 ? WITNESS_NORTH_LONGITUDE_DEG : WITNESS_SOUTH_LONGITUDE_DEG;
     for (const System system : { System::EQUAL, System::WHOLE_SIGN }) {
       EXPECT_THROW(
         static_cast<void>(calculate(jd_ut1, jde_tt, astro::GeoLocation {

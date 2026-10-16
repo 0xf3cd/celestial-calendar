@@ -14,7 +14,7 @@
 
 #include <tuple>
 #include <vector>
-#include "random.hpp"
+#include "../random.hpp"
 #include "lunar/algo1.hpp"
 
 namespace calendar::lunar::algo1::test {

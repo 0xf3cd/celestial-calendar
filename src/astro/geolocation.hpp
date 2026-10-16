@@ -22,8 +22,8 @@ namespace astro {
  *       in [-180°, 180°], following the modern/ISO 6709 convention.
  */
 struct GeoLocation {
-  astro::toolbox::AngleDeg latitude;
-  astro::toolbox::AngleDeg longitude;
+  toolbox::AngleDeg latitude;
+  toolbox::AngleDeg longitude;
 };
 
 } // namespace astro

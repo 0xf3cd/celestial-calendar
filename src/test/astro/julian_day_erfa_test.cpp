@@ -23,7 +23,7 @@
 
 #include "datetime.hpp"
 #include "julian_day.hpp"
-#include "random.hpp"
+#include "../random.hpp"
 #include "ymd.hpp"
 
 extern "C" {

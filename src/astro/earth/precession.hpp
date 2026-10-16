@@ -27,16 +27,16 @@ namespace astro::earth::precession {
 
 /// The three equatorial precession angles of Meeus (21.2): ζ (zeta), z, θ (theta), in degrees.
 struct EquatorialAngles {
-  astro::toolbox::AngleDeg ζ; // Meeus zeta
-  astro::toolbox::AngleDeg z; // Meeus z
-  astro::toolbox::AngleDeg θ; // Meeus theta
+  toolbox::AngleDeg ζ; // Meeus zeta
+  toolbox::AngleDeg z; // Meeus z
+  toolbox::AngleDeg θ; // Meeus theta
 };
 
 /// The three ecliptic precession quantities of Meeus (21.5): η (eta), Π (Pi), p, in degrees.
 struct EclipticAngles {
-  astro::toolbox::AngleDeg η; // Meeus eta
-  astro::toolbox::AngleDeg Π; // Meeus Pi — longitude of the ascending node of the moving ecliptic
-  astro::toolbox::AngleDeg p; // Meeus p — general precession in longitude from the initial epoch
+  toolbox::AngleDeg η; // Meeus eta
+  toolbox::AngleDeg Π; // Meeus Pi — longitude of the ascending node of the moving ecliptic
+  toolbox::AngleDeg p; // Meeus p — general precession in longitude from the initial epoch
 };
 
 
@@ -51,7 +51,7 @@ struct EclipticAngles {
 // Retained material boundary (R27): the exact `prec76.c` angle coefficients remain under the ERFA
 // source terms and outside the project MIT grant; the coordinate application is project-authored.
 [[nodiscard]] inline auto equatorial_angles(const double jde_from, const double jde_to) -> EquatorialAngles {
-  using astro::toolbox::AngleDeg;
+  using toolbox::AngleDeg;
   using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
   using astro::julian_day::jde_to_jc;
 
@@ -89,13 +89,13 @@ struct EclipticAngles {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.4).
  */
 [[nodiscard]] inline auto equatorial(
-  const astro::toolbox::AngleDeg& α0,
-  const astro::toolbox::AngleDeg& δ0,
+  const toolbox::AngleDeg& α0,
+  const toolbox::AngleDeg& δ0,
   const double jde_from,
   const double jde_to
 ) -> astro::coords::EquatorialCoord {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::rad_to_deg;
+  using toolbox::AngleDeg;
+  using toolbox::rad_to_deg;
 
   const auto [ζ, z, θ] = equatorial_angles(jde_from, jde_to);
 
@@ -129,8 +129,8 @@ struct EclipticAngles {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.5).
  */
 [[nodiscard]] inline auto ecliptic_angles(const double jde_from, const double jde_to) -> EclipticAngles {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::arcsec_to_deg;
+  using toolbox::AngleDeg;
+  using toolbox::arcsec_to_deg;
   using astro::julian_day::DAYS_PER_JULIAN_CENTURY;
   using astro::julian_day::jde_to_jc;
 
@@ -170,13 +170,13 @@ struct EclipticAngles {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 21, Formula (21.7).
  */
 [[nodiscard]] inline auto ecliptic(
-  const astro::toolbox::AngleDeg& λ0,
-  const astro::toolbox::AngleDeg& β0,
+  const toolbox::AngleDeg& λ0,
+  const toolbox::AngleDeg& β0,
   const double jde_from,
   const double jde_to
 ) -> astro::coords::EclipticCoord {
-  using astro::toolbox::AngleDeg;
-  using astro::toolbox::rad_to_deg;
+  using toolbox::AngleDeg;
+  using toolbox::rad_to_deg;
 
   const auto [η, Π, p] = ecliptic_angles(jde_from, jde_to);
 

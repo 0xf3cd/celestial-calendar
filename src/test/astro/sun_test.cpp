@@ -18,7 +18,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include "util.hpp"
+#include "ymd.hpp"
+#include "../random.hpp"
 #include "astro.hpp"
 
 namespace astro::sun::test {

@@ -39,7 +39,7 @@ namespace astro::sun::geocentric_coord {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
     .λ = std::invoke([&] {
-      using namespace astro::toolbox::literals;
+      using namespace toolbox::literals;
       const auto sum = λ_helio + 180.0_deg;
       return sum.normalize();
     }),
@@ -310,8 +310,8 @@ namespace detail {
   const auto apply_nm = [&](const auto& f) {
     const double start_jde = detail::get_start_jde(year);
     const double end_jde   = detail::get_end_jde(year);
-    return astro::toolbox::newton_method(
-      f, start_jde, end_jde, astro::toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY
+    return toolbox::newton_method(
+      f, start_jde, end_jde, toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY
     );
   };
 

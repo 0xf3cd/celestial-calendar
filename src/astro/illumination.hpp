@@ -21,8 +21,8 @@ namespace astro::illumination {
 
 /** @brief Observer-facing illumination geometry for a target body. */
 struct Geometry {
-  astro::toolbox::AngleDeg angular_separation;
-  astro::toolbox::AngleDeg phase_angle;
+  toolbox::AngleDeg angular_separation;
+  toolbox::AngleDeg phase_angle;
   double illuminated_fraction;
 };
 
@@ -34,8 +34,8 @@ struct Separation {
 };
 
 [[nodiscard]] inline auto separation(
-  const astro::toolbox::SphericalCoordinate& source_pos,
-  const astro::toolbox::SphericalCoordinate& target_pos
+  const toolbox::SphericalCoordinate& source_pos,
+  const toolbox::SphericalCoordinate& target_pos
 ) -> Separation {
   const double βs = source_pos.β.rad();
   const double βt = target_pos.β.rad();
@@ -73,7 +73,7 @@ struct Separation {
  * @return Illuminated fraction in [0, 1] for a finite phase angle.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Formulas (41.1) and (48.1).
  */
-[[nodiscard]] inline auto fraction(const astro::toolbox::AngleDeg& phase_angle) -> double {
+[[nodiscard]] inline auto fraction(const toolbox::AngleDeg& phase_angle) -> double {
   return (1.0 + std::cos(phase_angle.rad())) / 2.0;
 }
 
@@ -89,20 +89,20 @@ struct Separation {
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, (48.1)-(48.3).
  */
 [[nodiscard]] inline auto geometry(
-  const astro::toolbox::SphericalCoordinate& source_pos,
-  const astro::toolbox::SphericalCoordinate& target_pos
+  const toolbox::SphericalCoordinate& source_pos,
+  const toolbox::SphericalCoordinate& target_pos
 ) -> Geometry {
   const auto ψ = detail::separation(source_pos, target_pos);
-  const auto angular_separation = astro::toolbox::AngleDeg {
-    astro::toolbox::AngleRad { std::atan2(ψ.sin_ψ, ψ.cos_ψ) }
+  const auto angular_separation = toolbox::AngleDeg {
+    toolbox::AngleRad { std::atan2(ψ.sin_ψ, ψ.cos_ψ) }
   };
   const double R_km = source_pos.r.km();
   const double Δ_km = target_pos.r.km();
   const double one_minus_cos_ψ = ψ.cos_ψ < 0.0
     ? 1.0 - ψ.cos_ψ
     : (ψ.sin_ψ * ψ.sin_ψ) / (1.0 + ψ.cos_ψ);
-  const auto phase_angle = astro::toolbox::AngleDeg {
-    astro::toolbox::AngleRad {
+  const auto phase_angle = toolbox::AngleDeg {
+    toolbox::AngleRad {
       std::atan2(R_km * ψ.sin_ψ, (Δ_km - R_km) + (R_km * one_minus_cos_ψ))
     }
   };

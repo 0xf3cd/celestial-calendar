@@ -20,7 +20,6 @@
 #include <random>
 #include <vector>
 
-#include "util.hpp"
 #include "ymd.hpp"
 #include "datetime.hpp"
 #include "leap_second.hpp"

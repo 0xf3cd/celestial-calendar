@@ -81,9 +81,9 @@ namespace detail {
  * @note Meeus scales refraction by `(P/1010) * (283/(273+T_c))`.
  */
 [[nodiscard]] inline auto apply_tp_correction(
-  const astro::toolbox::AngleDeg& r_native,
+  const toolbox::AngleDeg& r_native,
   const Params& params
-) -> astro::toolbox::AngleDeg {
+) -> toolbox::AngleDeg {
   const double factor = (params.pressure_hpa / NATIVE_PRESSURE_HPA)
                       * (NATIVE_TEMPERATURE_K / (273.0 + params.temperature_c));
   return r_native * factor;
@@ -127,8 +127,8 @@ inline auto validate_params(const Params& params) -> void {
  *       numerically unstable below about −2°.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.3).
  */
-[[nodiscard]] inline auto bennett(const astro::toolbox::AngleDeg& apparent_alt) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+[[nodiscard]] inline auto bennett(const toolbox::AngleDeg& apparent_alt) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   const double h_deg = apparent_alt.deg();
   const double denominator = h_deg + 4.4;
@@ -153,8 +153,8 @@ inline auto validate_params(const Params& params) -> void {
  *       unstable below about −2°.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 16, Formula (16.4).
  */
-[[nodiscard]] inline auto saemundsson(const astro::toolbox::AngleDeg& true_alt) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+[[nodiscard]] inline auto saemundsson(const toolbox::AngleDeg& true_alt) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   const double h_deg = true_alt.deg();
   const double denominator = h_deg + 5.11;
@@ -176,8 +176,8 @@ inline auto validate_params(const Params& params) -> void {
  *       −R; this function iterates `R = apply_tp_correction(saemundsson(−R), params)` to
  *       convergence.
  */
-[[nodiscard]] inline auto at_horizon(const Params& params = {}) -> astro::toolbox::AngleDeg {
-  using astro::toolbox::AngleDeg;
+[[nodiscard]] inline auto at_horizon(const Params& params = {}) -> toolbox::AngleDeg {
+  using toolbox::AngleDeg;
 
   detail::validate_params(params);
 

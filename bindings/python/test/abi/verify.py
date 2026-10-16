@@ -20,6 +20,7 @@ import re
 import sys
 from pathlib import Path
 
+import celestial_calendar
 from celestial_calendar import _abi, _binding
 
 
@@ -369,6 +370,43 @@ def verify_manifest(
   assert manifest_recording == documented_recording
 
 
+def installed_chart_codes() -> dict[str, int]:
+  """Name the installed package's native chart codes as celestial.h does."""
+  chart = celestial_calendar.chart
+  tables = (
+    ("CHART_CIVIL_SCALE", chart.CivilScale, chart._CIVIL_SCALE_CODE),
+    ("CHART_HOUSE_SYSTEM", chart.HouseSystem, chart._HOUSE_SYSTEM_CODE),
+    ("CHART_DELTA_T_MODEL", celestial_calendar.DeltaTModel, celestial_calendar._CHART_DELTA_T_MODEL),
+    ("CHART_TARGET", chart.ChartTarget, chart._CHART_TARGET_CODE),
+  )
+  codes = {}
+  for prefix, enum_type, table in tables:
+    assert set(table) == set(enum_type), f"{prefix} table covers {enum_type.__name__}"
+    codes.update({f"{prefix}_{member.name}": code for member, code in table.items()})
+  codes["CHART_PRESENT_LATITUDE"] = chart._PRESENT_LATITUDE
+  codes["CHART_PRESENT_DISTANCE"] = chart._PRESENT_DISTANCE
+  return codes
+
+
+def verify_python_codes(manifest: dict[str, object], python_codes: dict[str, int]) -> None:
+  """Require the installed package to send and decode the manifest's chart codes."""
+  assert python_codes == manifest["chart_v1_codes"], "installed chart code tables"
+
+
+def run_python_code_self_test(manifest: dict[str, object], python_codes: dict[str, int]) -> int:
+  """Prove that swapping two selector codes is rejected."""
+  swapped = dict(python_codes)
+  swapped["CHART_CIVIL_SCALE_UTC"], swapped["CHART_CIVIL_SCALE_UT1"] = (
+    python_codes["CHART_CIVIL_SCALE_UT1"],
+    python_codes["CHART_CIVIL_SCALE_UTC"],
+  )
+  try:
+    verify_python_codes(manifest, swapped)
+  except AssertionError:
+    return 1
+  raise AssertionError("chart code gate accepted swapped selector codes")
+
+
 def run_mutation_self_tests(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -474,6 +512,10 @@ def main() -> None:
   verify_wrapper_recording(wrapper_source, expected_wrapper_exports, documented_recording)
 
   verify_manifest(manifest, header_exports, header_layouts, documented_recording, header_codes)
+  python_codes = installed_chart_codes()
+  verify_python_codes(manifest, python_codes)
+  code_mutation_count = run_python_code_self_test(manifest, python_codes)
+  assert code_mutation_count == 1, "chart code self-test ran"
   mutation_count = run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
@@ -484,7 +526,10 @@ def main() -> None:
     f"PASS recording policies {recording_count}/{recording_count}; wrapper exports {wrapper_count}/{wrapper_count}; "
     "docs=writers=manifest=ctypes=wrappers"
   )
-  print("PASS chart selector/identity/presence codes")
+  print(
+    "PASS chart selector/identity/presence codes; installed tables=manifest, "
+    f"swapped selectors rejected {code_mutation_count}/1"
+  )
   print(f"PASS ABI mutations rejected manifest={mutation_count}/{mutation_count} wrapper=1/1")
 
 

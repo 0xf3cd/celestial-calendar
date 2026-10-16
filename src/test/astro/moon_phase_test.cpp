@@ -20,7 +20,7 @@
 #include <ranges>
 #include <stdexcept>
 #include "julian_day.hpp"
-#include "util.hpp"
+#include "../random.hpp"
 #include "astro.hpp"
 #include "ymd.hpp"
 

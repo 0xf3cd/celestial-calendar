@@ -730,10 +730,10 @@ def chart_snapshot(
     month,
     day,
     fraction,
-    checked_scale.value,
+    _chart._CIVIL_SCALE_CODE[checked_scale],
     latitude,
     longitude,
-    checked_system.value,
+    _chart._HOUSE_SYSTEM_CODE[checked_system],
     _CHART_DELTA_T_MODEL[checked_model],
   )
 

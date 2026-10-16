@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#include "util.hpp"
+#include "ymd.hpp"
 #include "rise_set.hpp"
 #include "rise_set_test_helper.hpp"
 

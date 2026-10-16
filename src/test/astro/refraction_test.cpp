@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-#include "util.hpp"
+#include "ymd.hpp"
 #include "astro.hpp"
 #include "../test_helper.hpp"
 

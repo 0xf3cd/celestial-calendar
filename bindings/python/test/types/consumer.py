@@ -125,8 +125,10 @@ def main() -> None:
       "bad_chart: str = chart\n"
       "chart_snapshot(datetime(2026, 1, 1), CivilScale.UTC, location, HouseSystem.EQUAL)\n"
       "chart_snapshot(civil, 0, location, HouseSystem.EQUAL)\n"
+      "chart_snapshot(civil, 'utc', location, HouseSystem.EQUAL)\n"
       "chart_snapshot(civil, CivilScale.UTC, (51.5, 0.0), HouseSystem.EQUAL)\n"
       "chart_snapshot(civil, CivilScale.UTC, location, 0)\n"
+      "chart_snapshot(civil, CivilScale.UTC, location, 'placidus')\n"
       "chart_snapshot(civil, CivilScale.UTC, location, HouseSystem.EQUAL, 'algo5')\n"
       "bad_bodies: list[BodyState] = chart.bodies\n"
       "bad_cusps: list[float] = chart.houses.cusps_deg\n"
@@ -153,8 +155,10 @@ def main() -> None:
       'expression has type "ChartSnapshot", variable has type "str"',
       'Argument 1 to "chart_snapshot" has incompatible type "datetime"',
       'Argument 2 to "chart_snapshot" has incompatible type "int"',
+      'Argument 2 to "chart_snapshot" has incompatible type "str"',
       'Argument 3 to "chart_snapshot" has incompatible type "tuple[float, float]"',
       'Argument 4 to "chart_snapshot" has incompatible type "int"',
+      'Argument 4 to "chart_snapshot" has incompatible type "str"',
       'Argument 5 to "chart_snapshot" has incompatible type "str"',
       'expression has type "tuple[BodyState, ...]", variable has type "list[BodyState]"',
       'Property "jd_ut1" defined in "ChartTimes" is read-only',
