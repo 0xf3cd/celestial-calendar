@@ -308,6 +308,16 @@ def run_owned_values() -> None:
   ):
     assert getattr(celestial, name) is getattr(chart_values, name)
     assert getattr(celestial, name).__module__ == "celestial_calendar.chart"
+  for enum_type, values in (
+    (celestial.CivilScale, "utc ut1"),
+    (celestial.HouseSystem, "equal whole_sign placidus"),
+    (
+      celestial.ChartTarget,
+      "sun moon mercury venus mars jupiter saturn uranus neptune pluto "
+      "mean_ascending mean_descending true_ascending true_descending",
+    ),
+  ):
+    assert [member.value for member in enum_type] == values.split(), f"{enum_type.__name__} values"
   for record in (LOCATION, value, value.times, value.houses, *value.bodies):
     field_name = fields(record)[0].name
     raises(FrozenInstanceError, lambda record=record, field_name=field_name: setattr(record, field_name, None))
@@ -322,7 +332,7 @@ def run_owned_values() -> None:
   assert hash(value) == before and value.times.jd_ut1 == example["times"]["jd_ut1"]
   assert value.bodies[0].longitude_deg == example["bodies"][0]["longitude_deg"]
   assert value.houses.cusps_deg[0] == example["houses"]["cusps_deg"][0]
-  print("PASS chart selector order, copied fields, frozen records and deeply immutable results")
+  print("PASS chart selector order and values, copied fields, frozen records and deeply immutable results")
 
 
 def run_error_translation() -> None:

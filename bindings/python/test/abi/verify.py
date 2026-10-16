@@ -393,8 +393,8 @@ def verify_python_codes(manifest: dict[str, object], python_codes: dict[str, int
   assert python_codes == manifest["chart_v1_codes"], "installed chart code tables"
 
 
-def run_python_code_self_test(manifest: dict[str, object], python_codes: dict[str, int]) -> None:
-  """Prove that swapping two selector codes in the installed tables is rejected."""
+def run_python_code_self_test(manifest: dict[str, object], python_codes: dict[str, int]) -> int:
+  """Prove that swapping two selector codes is rejected."""
   swapped = dict(python_codes)
   swapped["CHART_CIVIL_SCALE_UTC"], swapped["CHART_CIVIL_SCALE_UT1"] = (
     python_codes["CHART_CIVIL_SCALE_UT1"],
@@ -403,7 +403,7 @@ def run_python_code_self_test(manifest: dict[str, object], python_codes: dict[st
   try:
     verify_python_codes(manifest, swapped)
   except AssertionError:
-    return
+    return 1
   raise AssertionError("chart code gate accepted swapped selector codes")
 
 
@@ -514,7 +514,8 @@ def main() -> None:
   verify_manifest(manifest, header_exports, header_layouts, documented_recording, header_codes)
   python_codes = installed_chart_codes()
   verify_python_codes(manifest, python_codes)
-  run_python_code_self_test(manifest, python_codes)
+  code_mutation_count = run_python_code_self_test(manifest, python_codes)
+  assert code_mutation_count == 1, "chart code self-test ran"
   mutation_count = run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
@@ -525,7 +526,10 @@ def main() -> None:
     f"PASS recording policies {recording_count}/{recording_count}; wrapper exports {wrapper_count}/{wrapper_count}; "
     "docs=writers=manifest=ctypes=wrappers"
   )
-  print("PASS chart selector/identity/presence codes; installed tables=manifest, swapped selector rejected")
+  print(
+    "PASS chart selector/identity/presence codes; installed tables=manifest, "
+    f"swapped selectors rejected {code_mutation_count}/1"
+  )
   print(f"PASS ABI mutations rejected manifest={mutation_count}/{mutation_count} wrapper=1/1")
 
 
