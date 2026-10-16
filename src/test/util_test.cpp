@@ -27,7 +27,10 @@
 #include <tuple>
 #include <functional>
 #include <unordered_set>
-#include "util.hpp"
+#include "ymd.hpp"
+#include "hash.hpp"
+#include "cache.hpp"
+#include "random.hpp"
 #include "test_helper.hpp"
 
 namespace util::test {

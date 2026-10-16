@@ -21,7 +21,8 @@
 #include <limits>
 #include <vector>
 #include <unordered_map>
-#include "util.hpp"
+#include "ymd.hpp"
+#include "../random.hpp"
 #include "datetime.hpp"
 #include "julian_day.hpp"
 

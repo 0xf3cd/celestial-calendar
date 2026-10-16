@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "random.hpp"
+#include "../random.hpp"
 #include "toolbox.hpp"
 #include "coord_transform.hpp"
 

@@ -16,7 +16,7 @@
 #include "celestial.h"
 
 #include "astro.hpp"
-#include "util.hpp"
+#include "ymd.hpp"
 #include "datetime.hpp"
 
 

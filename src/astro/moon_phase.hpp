@@ -15,14 +15,11 @@
 #include <cmath>
 #include <vector>
 #include <format>
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
 
 #include "toolbox.hpp"
-#include "ymd.hpp"
-#include "datetime.hpp"
 #include "julian_day.hpp"
 #include "coord_transform.hpp"
 #include "illumination.hpp"

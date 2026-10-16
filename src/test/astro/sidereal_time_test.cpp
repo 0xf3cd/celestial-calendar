@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "random.hpp"
+#include "../random.hpp"
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"

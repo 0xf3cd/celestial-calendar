@@ -22,8 +22,6 @@
 #include <string_view>
 
 #include "sun.hpp"
-#include "util.hpp"
-#include "astro.hpp"
 #include "cache.hpp"
 #include "datetime.hpp"
 #include "julian_day.hpp"

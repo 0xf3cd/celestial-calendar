@@ -19,7 +19,7 @@
 #include <tuple>
 #include <type_traits>
 #include "toolbox.hpp"
-#include "util.hpp"
+#include "../random.hpp"
 
 namespace astro::toolbox::test {
 

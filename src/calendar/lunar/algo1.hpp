@@ -16,7 +16,6 @@
 #include <format>
 #include <cstdint>
 
-#include "util.hpp"
 #include "common.hpp"
 
 

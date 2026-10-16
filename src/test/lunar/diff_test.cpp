@@ -17,7 +17,7 @@
 #include <print>
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
-#include "random.hpp"
+#include "../random.hpp"
 
 // In this file, we test that algo1 and algo2 generate the same lunar month data —
 // and, for the four known divergence years, that each side still matches its own

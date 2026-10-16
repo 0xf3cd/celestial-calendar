@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <vector>
 #include "lunar/algo2.hpp"
+#include "../random.hpp"
 
 
 namespace calendar::lunar::algo2::test {

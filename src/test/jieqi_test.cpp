@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "util.hpp"
+#include "random.hpp"
 #include "jieqi.hpp"
 
 // gcc 14.2 (the pinned CI leg) mis-fires -Wfree-nonheap-object on the pre-existing ranges
