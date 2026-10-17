@@ -70,6 +70,9 @@
   result. These calls now fail, and the error names the original year. Annual searches accept `[1, 32766]`, and
   the C++ searches throw `std::invalid_argument` outside it; single dates still accept year 32767. The Python and
   JavaScript packages already rejected such years before calling native code.
+- Every Python function that takes an enum raises `ValueError` before any native call for an object of that enum
+  class that is not one of its declared members (#352), as `chart_snapshot()` already did. Such an object, built by
+  bypassing the enum constructor, raised `KeyError` or `CelestialError`, or ran as the member whose value it carried.
 
 ### Errata
 

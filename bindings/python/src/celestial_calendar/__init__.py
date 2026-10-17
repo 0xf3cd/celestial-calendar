@@ -257,6 +257,8 @@ _MIN_CHART_UTC_YEAR = 1972
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
   if not isinstance(value, enum_type):
     raise TypeError(f"{name} must be a {enum_type.__name__} member")
+  if not any(value is member for member in enum_type):
+    raise ValueError(f"{name} must be a declared {enum_type.__name__} member")
   return value
 
 
@@ -345,7 +347,11 @@ def _civil_result(result: object) -> CivilDateTime:
 
 
 def set_log_verbosity(level: LogVerbosity) -> None:
-  """Set process-wide native log verbosity."""
+  """Set process-wide native log verbosity.
+
+  Raises:
+    ValueError: If level is a LogVerbosity object that is not a declared member.
+  """
   checked = _enum(level, LogVerbosity, "level")
   if not _binding.call("set_log_verbosity", _LOG_VERBOSITY[checked]):
     raise _failure("set_log_verbosity", recording=True)
@@ -413,7 +419,7 @@ def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
   """Return the JDE moments of a principal Moon phase in a Gregorian year.
 
   Raises:
-    ValueError: If year is outside [1, 32766].
+    ValueError: If year is outside [1, 32766], or phase is a MoonPhase object that is not a declared member.
     CelestialError: If the native calculation cannot produce the phase moments.
   """
   checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
@@ -549,7 +555,7 @@ def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
   The returned UT1 year can differ from the requested year.
 
   Raises:
-    ValueError: If year is outside [401, 32766].
+    ValueError: If year is outside [401, 32766], or jieqi is a Jieqi object that is not a declared member.
     CelestialError: If the native calculation cannot produce the moment.
   """
   checked_year = _integer(year, "year", _MIN_JIEQI_YEAR, _MAX_CALENDAR_YEAR)
@@ -559,7 +565,11 @@ def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
 
 
 def jieqi_name(jieqi: Jieqi) -> str:
-  """Return the Chinese name of a Jieqi."""
+  """Return the Chinese name of a Jieqi.
+
+  Raises:
+    ValueError: If jieqi is a Jieqi object that is not a declared member.
+  """
   checked_jieqi = _enum(jieqi, Jieqi, "jieqi")
   buffer = _ctypes.create_string_buffer(_JIEQI_NAME_BYTES)
   if not _binding.call("get_jieqi_name", checked_jieqi.value, buffer, len(buffer)):
@@ -572,6 +582,7 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
 
   Raises:
     TypeError: If algorithm is not a LunarAlgorithm member.
+    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member.
     CelestialError: If the native range query fails.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
@@ -586,7 +597,8 @@ def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
   """Return a Lunar year's month lengths and first date on the selected algorithm's basis.
 
   Raises:
-    ValueError: If year is outside the selected algorithm's supported range.
+    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
+      or year is outside the selected algorithm's supported range.
     CelestialError: If the native range query or year calculation fails.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
@@ -607,7 +619,8 @@ def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate | _date) -
 
   Raises:
     TypeError: If date has the wrong type, is a datetime, or has non-integer fields.
-    ValueError: If a Gregorian date field is outside its valid range.
+    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
+      or a Gregorian date field is outside its valid range.
     CelestialError: If date cannot be represented by the selected algorithm.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
@@ -622,7 +635,8 @@ def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianD
   """Convert a Lunar date to a Gregorian date label on the selected LunarAlgorithm's basis.
 
   Raises:
-    ValueError: If date.year is outside the selected algorithm's supported range.
+    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
+      or date.year is outside the selected algorithm's supported range.
     CelestialError: If the native range query fails or date does not exist in the selected algorithm.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
@@ -646,7 +660,8 @@ def delta_t(year: float, model: DeltaTModel = DeltaTModel.DEFAULT) -> float:
   model-specific year bound. These domains and fitted residuals are not statistical accuracy guarantees.
 
   Raises:
-    ValueError: If year is outside the selected model's bounds above.
+    ValueError: If model is a DeltaTModel object that is not a declared member,
+      or year is outside the selected model's bounds above.
     CelestialError: If the native calculation fails.
   """
   decimal_year = _finite(year, "year")
@@ -686,12 +701,6 @@ def chart_snapshot(
   checked_scale = _enum(scale, CivilScale, "scale")
   checked_system = _enum(system, HouseSystem, "system")
   checked_model = _enum(model, DeltaTModel, "model")
-  if not any(checked_scale is member for member in CivilScale) or not any(
-    checked_system is member for member in HouseSystem
-  ):
-    raise ValueError("scale and system must be known chart enum members")
-  if not any(checked_model is member for member in _CHART_DELTA_T_MODEL):
-    raise ValueError("model must be a known DeltaTModel member")
 
   if not isinstance(civil_dt, CivilDateTime):
     raise TypeError("civil_dt must be a CivilDateTime")

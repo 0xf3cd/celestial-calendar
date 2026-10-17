@@ -146,7 +146,8 @@ deactivate
 时间尺度由函数名、字段名或 `CivilScale` 标明；民用时刻不会隐式转换成 Python 的 `datetime` 类型。
 各函数的契约见 [`__init__.py`](src/celestial_calendar/__init__.py) 中的英文 docstring。
 
-错误输入类型（包括错误枚举的成员）抛出 `TypeError`。未通过有限性、范围或定义域校验的值抛出 `ValueError`。
+错误输入类型（包括错误枚举的成员）抛出 `TypeError`。未通过有限性、范围或定义域校验的值抛出 `ValueError`；
+属于对应枚举类、却不是其已声明成员的对象同样抛出 `ValueError`。
 原生边界报告的失败抛出 `CelestialError`，其 `operation` 属性为公开函数名，`recorded` 属性表明消息是否来自
 原生错误通道。合法的“无结果”仍以 `None` 或 `()` 表示。
 

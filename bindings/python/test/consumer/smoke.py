@@ -16,7 +16,7 @@ import datetime
 import importlib
 import math
 import sys
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import FrozenInstanceError
 from importlib import resources
 from types import SimpleNamespace
@@ -255,6 +255,45 @@ def run_validation_guards() -> None:
       raises(error_type, action)
     assert trap.calls == 0, binding_name
   print(f"PASS hostile inputs pre-native {len(cases)}/{len(cases)}")
+
+
+def run_undeclared_enum_members() -> None:
+  """Reject an object of an enum class that is not one of its declared members before any native call."""
+
+  def forged(enum_type: type, value: object, name: str) -> object:
+    candidate = (int if issubclass(enum_type, int) else str).__new__(enum_type, value)
+    candidate._value_ = value
+    candidate._name_ = name
+    return candidate
+
+  date = celestial.GregorianDate(2026, 1, 1)
+  lunar = celestial.LunarDate(2026, 1, 1, False)
+  calls = (
+    (celestial.LogVerbosity, celestial.set_log_verbosity),
+    (celestial.MoonPhase, lambda value: celestial.moon_phase_moments(2026, value)),
+    (celestial.Jieqi, lambda value: celestial.jieqi_moment(2026, value)),
+    (celestial.Jieqi, celestial.jieqi_name),
+    (celestial.LunarAlgorithm, celestial.supported_lunar_year_range),
+    (celestial.LunarAlgorithm, lambda value: celestial.lunar_year_info(value, 2026)),
+    (celestial.LunarAlgorithm, lambda value: celestial.gregorian_to_lunar(value, date)),
+    (celestial.LunarAlgorithm, lambda value: celestial.lunar_to_gregorian(value, lunar)),
+    (celestial.DeltaTModel, lambda value: celestial.delta_t(2000.0, value)),
+  )
+  traps = {name: Trap(fail=True) for name in _binding.FUNCTIONS}
+  checked = 0
+  with ExitStack() as stack:
+    for binding_name, trap in traps.items():
+      stack.enter_context(replaced_binding(binding_name, trap))
+    for enum_type, call in calls:
+      declared = next(iter(enum_type))
+      unknown = 99 if issubclass(enum_type, int) else "unknown"
+      for value, name in ((unknown, "UNKNOWN"), (declared.value, "LOOKALIKE")):
+        candidate = forged(enum_type, value, name)
+        assert isinstance(candidate, enum_type) and candidate is not declared
+        raises(ValueError, lambda call=call, candidate=candidate: call(candidate))
+        checked += 1
+  assert checked == 2 * len(calls) and all(trap.calls == 0 for trap in traps.values())
+  print(f"PASS undeclared enum members pre-native {checked}/{checked}")
 
 
 def run_date_bridge() -> None:
@@ -683,6 +722,7 @@ def main() -> None:
   """Run the installed-wheel consumer suite."""
   run_happy_paths()
   run_validation_guards()
+  run_undeclared_enum_members()
   run_date_bridge()
   run_lunar_range_queries()
   run_native_failures()

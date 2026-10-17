@@ -162,9 +162,9 @@ states the time scale; civil moments are never implicitly converted to Python `d
 give the per-function contracts.
 
 Wrong input types, including members of the wrong enum, raise `TypeError`. Values that fail finiteness, range, or
-domain checks raise `ValueError`. Failures reported by the native boundary raise `CelestialError`; its `operation`
-names the public call, and `recorded` says whether the message came from the native error channel. A legitimate
-absence remains `None` or `()`.
+domain checks raise `ValueError`, and so does an object of the expected enum class that is not one of its declared
+members. Failures reported by the native boundary raise `CelestialError`; its `operation` names the public call, and
+`recorded` says whether the message came from the native error channel. A legitimate absence remains `None` or `()`.
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` accepts a finite JD on UT1 whose Gregorian year is in
 `[401, 32766]`, and a finite, east-positive geographic longitude in `[-180, 180]` degrees. The result is in
