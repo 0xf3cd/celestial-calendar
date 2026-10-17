@@ -1,10 +1,10 @@
 # Dependencies of the build/test automation (`project.py`, `automation/`, `toolbox/`).
 # Release staging has a separate minimal closure in `Requirements-producer.txt`; each generated
 # lock records its regeneration command in its header.
-# Linters are installed separately (README.md#lint); the `statistics/` layer has
+# Linters are installed separately (docs/BUILDING.md#lint); the `statistics/` layer has
 # its own `Requirements-statistics.txt`.
 #
-# Both pinned; see AGENTS.md gotcha 9 (#72). The reasons differ, so they are stated apart.
+# All pinned; see AGENTS.md gotcha 9 (#72). The reasons differ, so they are stated apart.
 #
 # `requests` reaches CI through `automation/github.py`, which only `toolbox/*_downloader.py`
 # import -- that is `release.yml` collecting the artifacts, not the build and test legs. A break
@@ -16,6 +16,10 @@ requests==2.34.2
 # That makes this parser part of a gate, not a convenience -- a silent major would change what
 # the gate accepts on a day nobody touched the repository.
 pyyaml==6.0.3
+# The documentation tests (`automation/tests/test_markdown.py`) read links, anchors and code
+# blocks from a CommonMark parse: a link in a code span or a comment, or a fence that opens a list
+# item, cannot be told from what a reader sees by matching lines (#328). Pinned like pyyaml.
+markdown-it-py==4.2.0
 # The automation layer's own unit tests (#87): pytest runs `automation/tests/` via
 # `checks.py --pytest`. It is a gate like any other here -- a silent major would change
 # what the gate accepts on a day nobody touched the repository.

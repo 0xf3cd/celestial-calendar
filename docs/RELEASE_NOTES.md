@@ -2,43 +2,40 @@
      dispatched on a v*.*.* tag. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
-## [v0.7.0]
+## [v0.8.0]
 
-### Calendar APIs
+### Charts and Ephemerides
 
-- Python now bridges standard-library dates with `GregorianDate.from_date()` and `.to_date()`.
-  `gregorian_to_lunar()` also accepts date-only values; it rejects `datetime` rather than discarding its time or zone.
-- JavaScript's pure `/date` entry converts `Date` values to and from civil records in UTC or at a fixed offset.
-  It works without initialization or WASM, preserves milliseconds on a same-offset round trip, and does not
-  convert UTC to UT1/TT or implement IANA zones and daylight-saving rules.
-- JavaScript exports the 24 named `Jieqi` constants. Jieqi results identify their UT1 time scale explicitly;
-  lunar documentation describes each algorithm's date basis and supported lunar-year window.
+- A chart snapshot of one instant is available in every language: C++ `astro::chart::calculate`, the C ABI's
+  `chart_snapshot_v1`, Python `chart_snapshot()` and JavaScript `chart.snapshot()`. From a civil time declared as
+  UTC or UT1, a location, a house system and an optional ΔT model, it returns UT1/TT times, positions and
+  instantaneous longitude rates for the Sun, Moon, Mercury through Pluto and four lunar nodes, plus the four axes
+  and twelve house cusps. Distances are in AU, the Moon's included; the nodes have none. Inputs outside the
+  documented domains fail rather than return a partial result or another house system.
+- C++ adds the parts behind the snapshot: apparent positions for Mercury through Neptune from the complete VSOP87D
+  series, Pluto from the Meeus Chapter 37 model, mean and true lunar nodes, Equal, Whole Sign and Placidus houses,
+  longitude rates, planetary illumination, and yearly searches for conjunctions, oppositions, quadratures,
+  greatest elongations and stations. C++ also selects among the five ΔT models with an enum; the default is
+  Algo5.
 
 ### Breaking Changes
 
-- JavaScript `CivilDate` becomes `GregorianDate`; Gregorian, civil-moment and lunar records are distinct kinds.
-  `JieqiMoment` changes from a flat record to `{ jieqi, momentUt1 }`. Derived clock fields accompany civil results,
-  while inputs still use `fraction`. Use the `Jieqi` constants for typed queries.
-- JavaScript Sun/Moon `apparentGeocentricCoordinates()` methods become singular `apparentGeocentricCoordinate()`.
-  Python `solar_longitude_roots()` becomes `sun_longitude_crossings()`. Old names have no compatibility aliases.
-- JavaScript calls before initialization now throw `CelestialError` with the public operation and `recorded = false`.
-  `init()` still shares its promise, resolves to `undefined`, and preserves loader rejections and explicit retry.
-- C++ rise/set parameters and result members carry UT1/TT suffixes; use `rise_jde_tt`, `transit_jde_tt` and `set_jde_tt`
-  rather than the old unsuffixed members. The C ABI is unchanged.
+- C++ headers include what they use. `jieqi.hpp` no longer brings in `astro.hpp`, `datetime.hpp` no longer brings
+  in `<functional>` or `<cstddef>`, and `src/util/util.hpp` is removed; include the headers your code uses.
+  `std::hash<calendar::Datetime>`, `util::hash::IsTuple` and the single-tuple `util::hash::hash` overload are removed
+  as well; hash a tuple with `util::hash::TupleHash`. The C ABI keeps every 0.7.0 export and record layout.
 
-### Packages and Documentation
+### Fixes
 
-- The npm alias `celestial-calendar` forwards the root and `/date` entries to the exact same-version
-  `@0xf3cd/celestial`, without another WASM copy. Both names share state when they resolve to the same primary
-  installation. The primary package keeps zero runtime dependencies.
-- README and package guides are Chinese-first, with an English root guide. Examples cover today's lunar date,
-  the next Jieqi after an explicit UT1 instant, and date round trips. Native C/C++ guidance distinguishes source
-  headers from prebuilt C ABI archives; the Python guide includes a full-checkout local-wheel recipe.
-- Installed consumers check enum names, default-model routing, numerical references and TypeScript declarations.
-  Browser checks now cover Chrome and Firefox.
+- C and C++ calls that take an integer year check it before narrowing it. An unrepresentable year used to alias to
+  another year and return that year's result; it now fails, and the message names the original year. Python and
+  JavaScript already rejected such years.
+- The default C++ ΔT evaluation of a datetime no longer fails at year 32767.
 
-### License
+### Documentation
 
-- Project-authored material is now licensed under MIT. Retained third-party material keeps its source terms and remains
-  outside the project MIT grant; `THIRD_PARTY_NOTICES.txt` and the source-tree attribution boundaries identify the
-  applicable exceptions.
+- The root README and the package guides are now English-first. Chinese translations are in the repository's
+  `README_ZH.md` files; the package pages on PyPI and npm show the English guide.
+- Building, validation and design material lives in `docs/BUILDING.md`, `docs/VALIDATION.md` and the new
+  `docs/DESIGN.md`, which explains the source layers, time scales and failure handling.
+- The CHANGELOG gains an errata section for counts and wording that changed after earlier releases.

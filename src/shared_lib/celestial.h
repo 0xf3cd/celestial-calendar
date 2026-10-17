@@ -361,9 +361,10 @@ typedef struct JieqiMomentQuery {
  * @param year The Gregorian year, in [401, 32766].
  * @param jq_idx The Jieqi index in [0, 24), in ecliptic order: 0 = 立春 (Lichun) … 23 = 大寒.
  * @returns A `JieqiMomentQuery` struct.
- * @note The returned civil moment is UT1; while leap seconds are applied it matches UTC
- *       to within DUT1 (±0.9 s), so modern-era civil consumers may treat it as UTC.
- *       Past the ΔAT table freeze the modelled gap follows ΔT−(ΔAT+32.184) (#115).
+ * @note The returned civil moment is UT1 (from TT through ΔT algo5), not UTC. While leap
+ *       seconds are applied, |UT1 − UTC| < 0.9 s; past the last ΔAT table step the modelled
+ *       UT1 − UTC is (ΔAT + 32.184 s) − ΔT, no longer bounded by 0.9 s (#115). The gap by
+ *       era: `docs/DESIGN.md#time-scales`.
  * @note The returned date is not an east-eight wall date; rendering the same instant at a
  *       fixed UTC+8 offset can change its calendar date.
  */
@@ -573,7 +574,7 @@ typedef struct ChartBodyV1 {
   double longitude_deg; /* In [0, 360). */
   double latitude_deg; /* Present for every target, including the nodes' known zero latitude. */
   double distance_au; /* Present for Sun, Moon and planets; absent for nodes. */
-  double longitude_rate_deg_per_tt_day; /* Signed rate; negative means retrograde. */
+  double longitude_rate_deg_per_tt_day; /* Instantaneous signed rate; negative means retrograde at this instant. */
 } ChartBodyV1;
 
 /** @brief Four axes and twelve cusps in degrees, each in [0, 360); cusps are houses 1-12. */
@@ -609,7 +610,7 @@ typedef struct ChartSnapshotV1 {
  * @returns A ChartSnapshotV1 by value. On failure valid is false and last_error reports the cause;
  *          invalid payload and padding bytes have no contract. There is no partial result.
  * @note JDE(TT) must be in [2409543.875, 2488069.125); Algo4 additionally requires JDE(TT) < 2464328.5.
- *       UT1 derived from UTC is modelled through the selected Delta T, not measured DUT1.
+ *       UT1 derived from UTC is modelled through the selected Delta T, not observed DUT1.
  *       Location affects houses only; timezone conversion is the caller's responsibility.
  */
 CELESTIAL_API ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code);

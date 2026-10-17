@@ -1,20 +1,25 @@
 # Changelog
 
-## [Unreleased]
+## [v0.8.0]
 
 ### Added
 
-- Fixed-version `chart_snapshot_v1` C ABI and Python `chart_snapshot` (#299), returning owned fourteen-body
-  states, modelled UT1/TT times, four axes and twelve cusps. Explicit UTC/UT1 input and house/model selectors
-  retain the C++ complete-snapshot domains; nodes have zero latitude and absent distance.
-  Python copies the result into frozen dataclasses and tuples, with installed typing and wheel payload checks.
-- Private native/WASM ABI checks for nested records and bounded arrays, preserving all earlier layouts and exports.
-  The complete snapshot increases the raw-WASM budget to 1,300,000 bytes and compressed npm budget to 800,000 bytes;
-  the public JavaScript API remains unchanged.
+- Fixed-version `chart_snapshot_v1` C ABI and Python `chart_snapshot` (#299), returning owned states for fourteen
+  targets (ten bodies and four lunar nodes), modelled UT1/TT times, four axes and twelve cusps. Explicit UTC/UT1
+  input and house/model selectors retain the C++ complete-snapshot domains; nodes have zero latitude and absent
+  distance. Python copies the result into frozen dataclasses and tuples, with installed typing and wheel payload
+  checks. Its `CivilScale`, `HouseSystem` and `ChartTarget` selectors are string enums, as `DeltaTModel` already
+  is (#344); bare strings are rejected.
+- Private native/WASM ABI checks for nested records and bounded arrays, preserving all earlier layouts and exports
+  (#299). The complete snapshot raises the raw-WASM cap to 1,300,000 bytes and the npm tarball cap to 800,000 bytes.
+- JavaScript `chart.snapshot(civil, options)` returns the same snapshot (#327). `options` takes an explicit `scale`
+  (`"utc"` or `"ut1"`), `location` and house `system`, and an optional ΔT `model`; omitting `model` selects the
+  default model. The result owns its values, independent of later calls and WASM memory growth; node distance is
+  `null`. Unknown option keys and an inherited `model` throw instead of falling back to a default.
 - A C++ `astro::chart::calculate` API for an explicitly scaled UTC/UT1 civil instant (#300).
-  It returns fourteen geocentric positions and longitude rates, modelled UT1/TT values and house
-  axes/cusps. Nodes have no distance; invalid complete-snapshot inputs throw.
-- C++ enum selection of the five Delta T models, default Algo5 (#300).
+  It returns geocentric positions and longitude rates for the same fourteen targets, modelled UT1/TT values and
+  house axes/cusps. Nodes have no distance; invalid complete-snapshot inputs throw.
+- C++ enum selection of the five ΔT models, defaulting to `Model::ALGO5` (#300).
 - A C++ `astro::ephemeris::longitude_rate` API for the Sun, Moon, Mercury through Pluto, and four
   lunar nodes (#306). It returns signed degrees per TT day using seven-point centered differentiation
   within finite domains and rejects incomplete or unrepresentable stencils.
@@ -28,9 +33,10 @@
   east-positive longitude, and rejects geographic poles, an Ascendant direction unresolved at round-off,
   and the Placidus polar domain instead of silently substituting another house system.
 - Apparent geocentric ecliptic positions for Mercury through Neptune (#58), calculated from the complete
-  VSOP87D planetary series with iterative light time, annual aberration, FK5 reduction, and nutation. A
-  wrap-aware centered-longitude marker reports whether each planet is retrograde without claiming an exact
-  stationary instant.
+  VSOP87D planetary series with iterative light time, annual aberration, FK5 reduction, and nutation. Light time
+  evaluates each planet at emission time and carries it onto the observation date's mean ecliptic axes before
+  subtracting Earth, so both positions share one frame (#322). A wrap-aware centered-longitude marker reports
+  whether each planet is retrograde without claiming an exact stationary instant.
 - Target-neutral illumination geometry and observer-facing planetary separation, phase angle, and illuminated
   fraction, with the existing Moon illumination API retained as a thin wrapper (#60).
 - Gregorian-year searches for planetary longitude conjunctions, oppositions, quadratures, spherical greatest
@@ -41,11 +47,51 @@
   centered retrograde checks accept `[2409544.0, 2488069.0)`, and complete event searches accept Gregorian years
   `[1886, 2098]`; these hard domains are not accuracy guarantees.
 
+### Changed
+
+- C++ headers include what they use (#344, #349). `jieqi.hpp` no longer includes `astro.hpp`, and `datetime.hpp`
+  no longer includes `<functional>` or `<cstddef>`; code that relied on these transitive includes must include the
+  headers it uses. `src/util/util.hpp`, which `jieqi.hpp` and the algo1/algo3 lunar headers included, is removed:
+  include `ymd.hpp`, `hash.hpp` or `cache.hpp` directly. `src/util/random.hpp`, used only by the tests, moves to
+  `src/test/`.
+- `std::hash<calendar::Datetime>`, the `util::hash::IsTuple` concept and the single-tuple `util::hash::hash` overload
+  are removed (#344). The library never called them; hash a tuple with `util::hash::TupleHash`, and give a `Datetime`
+  its own hasher.
+
 ### Fixed
 
-- Default C++ Delta T datetime evaluation delegates to Algo5 (#321), avoiding the out-of-range
+- Default C++ ΔT datetime evaluation delegates to `Model::ALGO5` (#321), avoiding the out-of-range
   next-year construction at year 32767. It now rejects invalid datetimes; UT1/TT and pre-1972 UTC
   conversions inherit that rejection.
+- C and C++ entry points that take an integer year check it before converting it to `std::chrono::year` (#332).
+  An unrepresentable year passed to `ut1_to_jd`, `ut1_to_jde`, `apparent_solar_time`, `gregorian_to_lunar`,
+  `solar_lon_root_discriminant` or `solar_lon_roots`, or to the C++ Sun longitude searches
+  `astro::sun::geocentric_coord::math::{discriminant,find_roots}`, could alias to another year and return that year's
+  result. These calls now fail, and the error names the original year. Annual searches accept `[1, 32766]`, and
+  the C++ searches throw `std::invalid_argument` outside it; single dates still accept year 32767. The Python and
+  JavaScript packages already rejected such years before calling native code.
+
+### Errata
+
+These notes correct entries of earlier releases. Where an entry was edited after its release, the CHANGELOG at
+that release's tag and its GitHub Release notes still show the earlier text.
+
+- v0.7.0: "The npm tarball grows from nine to twelve members" should say eight to twelve. The v0.6.1 tarball had
+  eight members; `THIRD_PARTY_NOTICES.txt` was added after v0.6.1 (#257) and first shipped in v0.7.0, together
+  with `date.mjs`, `validation.mjs` and `date.d.ts`. The entry also omits that v0.7.0 raised the npm tarball cap
+  from 250,000 to 300,000 bytes (#267).
+- v0.6.0: after the v0.7.0 release, #288 changed four counts in that section without a note. "seven" recording
+  exports became 28 in three places, and "31 edge/error cases" became 30. The new numbers match the v0.6.0 tag:
+  its ABI manifest marks 28 of the 29 exports as recording, and `public_api_test.mjs` asserts 30 edge cases.
+- v0.5.0: two entries were rewritten after the v0.5.0 tag and before v0.6.0. The WASM golden file was
+  `toolbox/wasm_golden.json` in v0.5.0; #221 renamed it to `toolbox/bindings_golden.json` and changed the entry
+  to the new name. The "Release downloads now fail loud" entry now describes the v0.6.0 release process (rewritten
+  by #218 and #235). In v0.5.0, artifacts had to come from "a successful `build_and_test` run of the exact tagged
+  commit", and a single failed artifact download failed the whole download.
+- v0.0.0: #120 reworded the lunar-conversion note in the past tense; the 1901–2099 range is unchanged.
+- Heading dates: v0.6.0 is dated 2026-08-17, but its tag commit is dated 2026-08-23 and the GitHub Release was
+  published on 2026-08-24 (UTC). v0.0.0 is dated 2024-08-01, but its tag commit is dated 2024-08-03. The v0.7.0
+  heading has no date; its tag commit is dated 2026-09-16.
 
 ## [v0.7.0]
 

@@ -48,7 +48,11 @@ enum class Target : uint8_t {
   TRUE_DESCENDING = 13,
 };
 
-/** @brief A signed longitude rate; negative values represent retrograde motion. */
+/**
+ * @brief A signed instantaneous longitude rate; a negative value means longitude is decreasing at that instant.
+ * @note Near a station its sign can differ from `astro::planet::geocentric_coord::is_retrograde` (planet.hpp),
+ *       which tests the longitude change across one day.
+ */
 struct LongitudeRate {
   double deg_per_tt_day;
 };

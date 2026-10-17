@@ -278,7 +278,7 @@ A4_SCAN_FILES: Final[tuple[str, ...]] = (
   "Dockerfile",
   "LICENSE",
   "README.md",
-  "README_EN.md",
+  "README_ZH.md",
   "Requirements-producer.in",
   "Requirements-producer.txt",
   "Requirements-statistics.txt",
@@ -802,7 +802,7 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     "@0xf3cd/celestial/THIRD_PARTY_NOTICES.txt" in alias_license and "not bundled in this alias" in alias_license,
     "alias README dependency-notice pointer differs",
   )
-  readme_license = _section(texts["README.md"], "## 13. License")
+  readme_license = _section(texts["README.md"], "## License")
   _require("Project-authored material is licensed under the MIT License" in readme_license, "README MIT scope differs")
   for pointer in (
     "Standalone third-party files and data",
@@ -813,9 +813,8 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
   _require(
-    re.findall(r"\[License scope and third-party exceptions\]\(([^)\n]+)\)", texts["README_EN.md"])
-    == ["README.md#13-license"],
-    "English README canonical license link differs",
+    re.findall(r"\[许可证范围与第三方例外\]\(([^)\n]+)\)", texts["README_ZH.md"]) == ["README.md#license"],
+    "Chinese README canonical license link differs",
   )
 
   changelog_license = _section(texts["docs/CHANGELOG.md"], "## [v0.7.0]")

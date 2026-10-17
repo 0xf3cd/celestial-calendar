@@ -253,8 +253,9 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
  *       leap-second-aware path instead (#84). Remaining consumers: the C-ABI
  *       `query_jieqi_moment` (contract: `celestial.h`) and the HKO golden axis; UT1 stays
- *       for contract stability. The UT1/UTC gap is DUT1 (≤ 0.9 s while leap seconds are
- *       applied); past the ΔAT table freeze it follows ΔT−(ΔAT+32.184) (#115).
+ *       for contract stability. While leap seconds are applied, |UT1 − UTC| < 0.9 s; past
+ *       the last ΔAT table step the modelled UT1 − UTC is (ΔAT + 32.184 s) − ΔT, no longer
+ *       bounded by 0.9 s (#115). The gap by era: `docs/DESIGN.md#time-scales`.
  * @note The returned date is not an east-eight wall date; rendering the same instant at a
  *       fixed UTC+8 offset can change its calendar date.
  */

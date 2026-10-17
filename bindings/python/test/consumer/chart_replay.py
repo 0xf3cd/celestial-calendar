@@ -15,7 +15,8 @@ from __future__ import annotations
 import math
 
 
-# Margins bound native replay against the stored snapshot; they are not ephemeris accuracy bounds.
+# Replay acceptance margins for the stored chart snapshot, not ephemeris accuracy bounds. Their source is in
+# docs/VALIDATION.md#replay-margins.
 TIME_MARGIN_DAYS = 1e-9
 POSITION_MARGIN_DEG = 1e-8
 DISTANCE_MARGIN_AU = 1e-10

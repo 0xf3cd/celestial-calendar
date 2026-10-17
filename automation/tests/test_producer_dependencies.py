@@ -607,15 +607,15 @@ def test_producers_verify_notice_bytes():
   ) in " ".join(npm.split())
 
 
-def test_readme_describes_the_current_npm_and_wasm_members():
-  readme = (REPO / "README.md").read_text(encoding="utf-8")
-  wasm_section = readme.split("## 6.", maxsplit=1)[1].split("## 7.", maxsplit=1)[0]
+def test_building_guide_describes_the_current_npm_and_wasm_members():
+  guide = (REPO / "docs/BUILDING.md").read_text(encoding="utf-8")
+  wasm_section = guide.split("\n## WebAssembly and npm Packages\n", maxsplit=1)[1].split("\n## ", maxsplit=1)[0]
 
-  assert f"恰好{len(PACK_ALLOWLIST)}个文件的 npm 主包" in wasm_section
-  assert f"恰好{len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA)}个顶层文件" in wasm_section
-  assert f"恰好{len(ALIAS_ALLOWLIST)}个文件的 npm 别名包" in wasm_section
+  assert f"an npm primary package of exactly {len(PACK_ALLOWLIST)} files" in wasm_section
+  assert f"exactly {len(WASM_ARTIFACT_ALLOWLIST) + 3 * len(NPM_METADATA)} top-level files" in wasm_section
+  assert f"an npm alias package of exactly {len(ALIAS_ALLOWLIST)} files" in wasm_section
   assert all(f"`{member}`" in wasm_section for member in WASM_ARTIFACT_ALLOWLIST)
-  assert "原样打包的 npm 主包、`npm-pack.json`、`npm-pack.sha256`" in wasm_section
+  assert "the npm primary package tarball exactly as packed, `npm-pack.json`, `npm-pack.sha256`" in wasm_section
   assert "`npm-alias-pack.json`" in wasm_section and "`npm-alias-pack.sha256`" in wasm_section
 
 

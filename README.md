@@ -1,57 +1,47 @@
 # Celestial Calendar
 
-天文计算与公历、阴历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
-也可通过 Python、JavaScript / TypeScript 或 C ABI 使用。
+Astronomical calculations and Gregorian / Chinese Lunar date conversion, with Jieqi (节气, the 24 solar terms),
+Sun/Moon positions, and sunrise/sunset. The core is a C++23 header-only library, also available through Python,
+JavaScript / TypeScript, and a C ABI.
 
-[English Guide](README_EN.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
-[C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features)
+[中文](README_ZH.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
+[C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
+[Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-本文以 **0.7.0** 为当前发布基线，也包含尚未发布的源码与接口。下面的安装命令取得 PyPI / npm 当前可用的版本；
-可用版本可能落后于本文，请同时核对所装版本的文档。若需要尚未发布的接口，可从完整源码构建
-[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或 [WASM / npm 包](#wasm)。
+This guide describes version **0.8.0**. The install commands below get the latest version on PyPI or npm; an older
+installed version may lack some APIs shown here, so check the documentation shipped with it. To build the current
+source yourself, use the [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
+[WASM/npm recipe](docs/BUILDING.md#wasm).
 
-## 1. 安装与示例
+For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); this library has no Ganzhi API.
 
-先选一种语言。下面分别给出三个独立示例：今天的阴历、指定 UT1 时刻之后的下一个节气、日期往返转换。
-干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。
+<a id="install"></a>
+## Install and examples
+
+Pick a language. Each section installs the package and runs one standalone example: the next Jieqi after a
+supplied UT1 instant. The package guides carry more examples and the full contracts.
 
 <a id="python"></a>
-### 1.1. Python
+### Python
 
-需要 Python 3.11 或更新版本。在应用的虚拟环境中安装：
+Python 3.11 or newer is supported. Install in your application's virtual environment:
 
 ```sh
 python -m pip install celestial-calendar
 ```
 
-wheel 自带对应平台的原生库，使用时不需要编译器；导入时既不搜索系统库，也不下载备用库。
-支持平台及完整契约见 [Python 包文档](bindings/python/README.md)。
-下面每个 Python 代码块都是独立程序，可作为应用目录中的 `example.py`，用该环境的 `python example.py` 运行。
+Each wheel contains its platform's native library, so using it requires no compiler or separate CelestialCalendar
+installation. Importing neither searches system libraries nor downloads a fallback. See the
+[Python package guide](bindings/python/README.md) for available wheel targets and the full contract.
 
-**今天的阴历**
+Each Python block is a standalone program for `example.py` in your application directory. Run it with
+`python example.py` in the environment where the package is installed.
 
-先取固定 UTC+8 下的今天，再把年月日交给阴历转换。这里选用 `ALGO3`；日期基准与年域见
-[算法说明](#features)。这一步不涉及 UT1。
+**Next Jieqi and remaining days**
 
-```python
-from datetime import datetime, timedelta, timezone
-
-import celestial_calendar as celestial
-
-east_eight = timezone(timedelta(hours=8))
-today = datetime.now(east_eight).date()
-gregorian = celestial.GregorianDate.from_date(today)
-lunar = celestial.gregorian_to_lunar(celestial.LunarAlgorithm.ALGO3, gregorian)
-print(today, lunar)
-```
-
-`GregorianDate.from_date()` 只接受日期，不接受 `datetime`；示例先选时区、再显式取 `.date()`，
-而不是让库丢弃时间或偏移。
-
-**下一个节气，还剩多少天**
-
-以明确给定的 **2026-12-31 00:00 UT1** 为起点，不读取当前时钟。查询 2026 和 2027 的全部节气，
-按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，不是公历年内的时间顺序。
+The reference instant is explicitly supplied as **2026-12-31 00:00 UT1**, not taken from the current clock.
+Query every Jieqi in both 2026 and 2027, sort by actual UT1 moment, and select the first strictly later event.
+The enum starts at Lichun (立春), not the first event in a Gregorian year.
 
 ```python
 import celestial_calendar as celestial
@@ -67,83 +57,37 @@ print("UT1:", upcoming.moment_ut1)
 print("Remaining UT1 days:", remaining_days)
 ```
 
-剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。此例只演示这次跨年查询，
-不是覆盖整个 API 年域的通用搜索。节气查询的输入年域为 `[401, 32766]`，返回时刻的年份可能与查询年份不同；
-即使输入在年域内，原生计算无法得到唯一时刻时仍会报错。`moment_ut1` 不是 UTC 或东八区时间，不能直接当作它们显示。
+The difference between two UT1 Julian Days retains fractional days; subtracting calendar dates would lose the
+time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
+API domain. Jieqi queries accept years in `[401, 32766]`, but an in-range calculation can still fail if it cannot
+produce a unique moment. A returned UT1 year can differ from the query year.
 
-**公历与阴历往返**
+`moment_ut1` is not UTC or a UTC+8 wall clock. Establish the time-scale conversion before displaying either.
 
-```python
-from datetime import date
-
-import celestial_calendar as celestial
-
-day = date(2024, 2, 10)
-gregorian = celestial.GregorianDate.from_date(day)
-algorithm = celestial.LunarAlgorithm.ALGO3
-lunar = celestial.gregorian_to_lunar(algorithm, gregorian)
-restored = celestial.lunar_to_gregorian(algorithm, lunar).to_date()
-print(lunar)
-print(restored, restored == day)
-```
-
-往返保留日期标签，不转换时区或时标。`LunarDate` 使用传统月份编号和独立的 `is_leap` 闰月标记。
-公开 API 使用枚举、不可变 dataclass、普通标量与元组，不暴露 ctypes 协议。
-类型错误抛 `TypeError`，Python 侧的值域检查抛 `ValueError`，原生失败抛 `CelestialError`；
-合法的“没有结果”用 `None` 或空元组表示。
-
-**完整星盘快照（尚未发布）**
-
-从当前源码构建并安装 wheel 后，可用显式 UTC/UT1 时刻查询十四项位置与速率、四轴和十二宫头：
-
-```python
-import celestial_calendar as celestial
-
-snapshot = celestial.chart_snapshot(
-  celestial.CivilDateTime(2026, 1, 1, 0.5),
-  celestial.CivilScale.UTC,
-  celestial.GeoLocation(51.5, 0.0),
-  celestial.HouseSystem.PLACIDUS,
-)
-print(snapshot.times.jd_ut1, snapshot.times.jde_tt)
-print(snapshot.bodies[0].longitude_deg, snapshot.houses.cusps_deg)
-```
-
-结果为自持有的冻结值；节点距离为 `None`，带符号速率为度/TT 日。
-输入时标、支持域、单位和失败边界见 [Python 快照契约](bindings/python/README.md#星盘输入与失败边界)。
+Today's lunar date, Gregorian / lunar round trips and the complete chart snapshot are in the
+[Python package guide](bindings/python/README.md).
 
 <a id="javascript"></a>
-### 1.2. JavaScript / TypeScript
+### JavaScript / TypeScript
 
-支持 Node 22 或更新版本；浏览器端在 Chrome 和 Firefox 上测试。在应用目录中安装：
+Node 22 or newer is supported. Browser consumers are tested on Chrome and Firefox. Install in your application
+directory:
 
 ```sh
 npm install @0xf3cd/celestial
 ```
 
-下面每个 JavaScript 代码块都是独立的 ES 模块，可作为该目录中的 `example.mjs`，用 `node example.mjs` 运行。
-TypeScript 声明随包提供。计算 API 在 `await celestial.init()` 完成后同步调用；
-浏览器部署还需保留构建工具输出的 `.wasm` 地址，并以 `Content-Type: application/wasm` 提供该文件。
+Each JavaScript block is a standalone ES module for `example.mjs` in that directory; run it with
+`node example.mjs`. TypeScript declarations ship with the package. For browser deployment, keep the emitted `.wasm`
+URL available and serve the asset with `Content-Type: application/wasm`.
 
-**今天的阴历**
+Call and await `init()` before using calculation methods, which then run synchronously. Concurrent and repeated
+calls share one initialization promise, resolving to `undefined`. A failed load preserves the loader's original
+rejection, and a later explicit call may retry.
 
-`/date` 子路径先把当前时间戳转换为固定 UTC+8 的民用时间。只取年月日构造公历日期，
-不要把含有 `fraction` 的整个民用时间对象传给 `lunar.fromGregorian()`。
+**Next Jieqi and remaining days**
 
-```js
-import * as celestial from "@0xf3cd/celestial";
-import { dateToCivilAtOffset } from "@0xf3cd/celestial/date";
-
-await celestial.init();
-const { year, month, day } = dateToCivilAtOffset(new Date(), 480);
-const gregorian = { year, month, day };
-const lunar = celestial.lunar.fromGregorian("algo3", gregorian);
-console.log(gregorian, lunar);
-```
-
-**下一个节气，还剩多少天**
-
-与 Python 例子相同，起点是明确给定的 **2026-12-31 00:00 UT1**，不是把 `Date` 时间戳当作 UT1。
+As in the Python example, the supplied cutoff is **2026-12-31 00:00 UT1**. No `Date` timestamp is treated as UT1.
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
@@ -164,37 +108,21 @@ console.log("UT1:", upcoming.momentUt1);
 console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 ```
 
-这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
-`momentUt1` 是 UT1；示例范围、查询年域与失败条件同上。
+This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
+UT1 days. `momentUt1` is UT1; the example scope, query-year domain and failure conditions are the same as
+in the Python example.
 
-**固定偏移下的日期往返**
-
-`/date` 是纯日期桥接，不导入根入口、不加载 WASM，也不需要 `init()`。
-偏移量以分钟为单位，向东为正；`480` 表示固定 UTC+8。
-
-```js
-import { civilAtOffsetToDate, dateToCivilAtOffset } from "@0xf3cd/celestial/date";
-
-const date = new Date("2024-02-09T16:00:00.123Z");
-const eastEight = dateToCivilAtOffset(date, 480);
-const restored = civilAtOffsetToDate(eastEight, 480);
-console.log(eastEight);
-console.log(restored.toISOString(), restored.getTime() === date.getTime());
-```
-
-同一偏移下往返保留 `Date` 的毫秒时间戳。子路径还提供 `dateToCivilUtc()` 与 `civilUtcToDate()`，
-但不处理 UT1 / TT 转换、闰秒、IANA 时区或夏令时。不要把 `momentUt1` 当作 UTC 传给 `civilUtcToDate()`。
-
-根 API 读取显式字段，不隐式转换 `Date`。`GregorianDate`、`CivilDateTime`、`LunarDate` 是互斥的日期类型。
-初始化前调用计算方法会抛 `CelestialError`，其 `recorded` 为 `false`；初始化后的形状或类型错误抛
-`TypeError`，JavaScript 值域检查抛 `RangeError`，原生失败抛 `CelestialError`。合法的空结果用 `null` 或 `[]` 表示。
-完整日期、模型与错误契约见 [JavaScript 包文档](bindings/javascript/README.md)。
+Today's lunar date, the fixed-offset date round trip and the chart snapshot are in the
+[JavaScript package guide](bindings/javascript/README.md).
 
 <a id="cpp"></a>
-### 1.3. C++：直接包含头文件
+### C++
 
-使用源码检出或源码归档，把头文件与应用一起编译，不需要另行构建或链接 CelestialCalendar 库。
-原生发行 ZIP 不含 C++ 头文件树。下面的 `quickstart.cpp` 查询冬至的 UT1 时刻；编译命令在源码根目录运行。
+Use a source checkout or source archive. The library is header-only: compile its headers with your application,
+without building or linking a separate CelestialCalendar library. Native release ZIPs do not contain the C++
+header tree.
+
+This complete `quickstart.cpp` queries the UT1 moment of winter solstice, Dongzhi (冬至):
 
 ```cpp
 #include <iostream>
@@ -210,58 +138,27 @@ int main() {
 }
 ```
 
+Save it as `build/quickstart.cpp` (create `build/` if needed; Git ignores it) and run from the source root with a
+C++23-capable clang++ installation:
+
 ```sh
 # Headers include each other by basename; all three directories are needed.
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
-  quickstart.cpp -o quickstart
-./quickstart
+  build/quickstart.cpp -o build/quickstart
+./build/quickstart
 ```
 
-节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
-`JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
-仅 C++ 提供的 [`lunar_node.hpp`](src/astro/lunar_node.hpp) 以 JDE(TT) 查询平均或 Meeus 五项真升降交点的
-真黄道、真春分点经度；纬度按定义恒为零，接口不返回物理距离。
-仅 C++ 提供的 [`ephemeris.hpp`](src/astro/ephemeris.hpp) 统一查询日月、水星至冥王星及四种月交点的
-黄经速率。`Target` 枚举选择天体或月交点。
-
-```cpp
-const auto rate = astro::ephemeris::longitude_rate(
-  astro::ephemeris::Target::MOON,
-  2451545.0
-);
-const double degrees_per_tt_day = rate.deg_per_tt_day;
-```
-
-输入为 JDE(TT)，返回单位为度/TT 日，负数表示逆行。冥王星速率域为 `[2409543.875, 2488069.125)`，
-月交点速率域为 `[2409542.875, 2488069.125)`；其他对象的速率域为 `[-1200954.625, 6104044.625)`。
-
-仅 C++ 提供的 [`chart.hpp`](src/astro/chart.hpp) 组合一个固定时刻的地心位置、速率和宫位。
-调用方显式声明民用时间的 UTC/UT1 时标，并选择地点、宫制与 ΔT 模型（默认 Algo5）：
-
-```cpp
-const calendar::Datetime civil_dt { util::to_ymd(2026, 1, 1), 0.5 };
-const astro::GeoLocation location {
-  .latitude = astro::toolbox::AngleDeg { 51.5 },
-  .longitude = astro::toolbox::AngleDeg { 0.0 },
-};
-const auto snapshot = astro::chart::calculate(
-  civil_dt, astro::chart::Scale::UTC, location, astro::house::System::PLACIDUS
-);
-```
-
-UTC 自 1972-01-01 起接受，更早的输入必须标 UT1；时区转换与闰秒本身不进输入。返回
-`jd_ut1` / `jde_tt`、十四项位置/速率及四轴/十二宫头；月交点纬度为零、距离为 `std::nullopt`。
-地点只影响宫位；上升点方向在浮点舍入精度下无法确定时，所有宫制均拒绝计算。Placidus 极区失败不自动替换宫制。
-
-共同 JDE(TT) 域为 `[2409543.875, 2488069.125)`；Algo4 另要求 `< 2464328.5`。
-民用年域为 `[1885, 2100)`。
-原始值与生成方式见 [完整 replay 示例](docs/examples/chart_snapshot/README.md)。
+The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
+and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
+The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
+in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is also available
+from C, Python and JavaScript.
 
 <a id="c-abi"></a>
-### 1.4. C 与其他语言：C ABI
+### C and FFI
 
-同一个查询可通过 [`celestial.h`](src/shared_lib/celestial.h) 提供的 C ABI 调用，适用于 C、ctypes 或其他 FFI。
-下面是完整的 `quickstart.c`：
+The C ABI in [`celestial.h`](src/shared_lib/celestial.h) supports C, ctypes, and other FFIs. This is a complete
+`quickstart.c` for the same query:
 
 ```c
 #include <stdio.h>
@@ -284,21 +181,22 @@ int main(void) {
 }
 ```
 
-预编译库可从 [Releases](https://github.com/0xf3cd/celestial-calendar/releases) 选择版本后下载。
-公开发行文件不需要 GitHub token；下载前请核对[原生运行环境](#native-runtime)。
+Open a chosen version on [Releases](https://github.com/0xf3cd/celestial-calendar/releases) and download the native
+ZIP for your platform. Public downloads need no GitHub token. Check the [native runtime table](#native-runtime)
+before downloading.
 
-| 平台 | 发行文件 | 链接与运行所需文件 |
+| Platform | Release file | Files needed to link and run |
 |---|---|---|
-| Linux x86_64 | `linux_amd64.zip` | `lib/libcelestial_calendar.so` 及其带版本号的文件 |
-| Linux arm64 | `linux_arm64.zip` | `lib/libcelestial_calendar.so` 及其带版本号的文件 |
-| macOS arm64 | `macos_arm64.zip` | `lib/libcelestial_calendar.dylib` 及其带版本号的文件 |
-| Windows x86_64 | `windows_x86_64.zip` | 链接用 `lib/celestial_calendar.lib`；运行用 `bin/celestial_calendar.dll` |
+| Linux x86_64 | `linux_amd64.zip` | `lib/libcelestial_calendar.so` and its versioned files |
+| Linux arm64 | `linux_arm64.zip` | `lib/libcelestial_calendar.so` and its versioned files |
+| macOS arm64 | `macos_arm64.zip` | `lib/libcelestial_calendar.dylib` and its versioned files |
+| Windows x86_64 | `windows_x86_64.zip` | link-time `lib/celestial_calendar.lib`; runtime `bin/celestial_calendar.dll` |
 
-每个 ZIP 都包含 `include/celestial.h`。将整个 ZIP 解压到应用目录的 `native/` 下，保留所有库文件名，
-因为运行时加载器也会使用带版本号的名字。Unix 上传时会解引用安装目录中的符号链接，
-因此下载到的各个版本名对应的是普通文件。
+Every ZIP includes `include/celestial.h`. Extract the entire ZIP into `native/` in the application directory,
+preserving all library filenames: the runtime loader also uses the versioned name. Unix uploads dereference
+installed symlinks, so the downloaded versioned libraries are ordinary files.
 
-Linux 上，在含有 `quickstart.c` 和 `native/` 的应用目录中编译，并记录绝对运行时搜索路径：
+On Linux, run from the directory containing `quickstart.c` and `native/`, recording an absolute runtime search path:
 
 ```sh
 prefix="$PWD/native"
@@ -307,88 +205,32 @@ cc -std=c11 quickstart.c -I "$prefix/include" -L "$prefix/lib" \
 ./quickstart_c
 ```
 
-macOS 上链接 `lib/` 中的 `.dylib`，并确保加载器能找到该目录。Windows 上使用兼容 MSVC 的工具链，
-链接 `lib/celestial_calendar.lib`，把 `bin/celestial_calendar.dll` 放在可执行文件旁。
-使用者不要定义 `CELESTIAL_BUILDING_DLL`。
+On macOS, link the `.dylib` from `lib/` and make that directory available to the runtime loader. On Windows, use
+an MSVC-compatible toolchain, link `lib/celestial_calendar.lib`, and put `bin/celestial_calendar.dll` beside the
+executable. Consumers do not define `CELESTIAL_BUILDING_DLL`.
 
-若已[自行构建共享库](#build)，可在源码根目录中用以下 Linux 命令编译同一份 `quickstart.c`：
+If you [built the shared library yourself](docs/BUILDING.md#build), save `quickstart.c` as `build/quickstart.c`; the
+corresponding Linux command from the source root is:
 
 ```sh
-cc -std=c11 quickstart.c -I src/shared_lib -L build/shared_lib \
-  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o quickstart_c
-./quickstart_c
+cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
+  -lcelestial_calendar -Wl,-rpath,"$PWD/build/shared_lib" -o build/quickstart_c
+./build/quickstart_c
 ```
 
-读取返回结构体前先检查 `valid`。标量与计数返回值须遵循 `celestial.h` 的各自契约，零计数可能是合法的空结果。
-除 `last_error()` 外，每个导出函数都会清除或记录调用线程的错误信息；在同一线程的下一次记录调用之前，
-读取或复制这个由库持有的字符串。节气时刻是 UT1，不是 UTC 或东八区日期。
+Check `valid` before reading a returned result structure. Follow each scalar/count contract in `celestial.h`;
+a zero count can be a legitimate empty result. Every export except `last_error()` clears or records the calling
+thread's error message. Read or copy the library-owned string before another recording call on the same thread.
+Jieqi moments are UT1, not UTC or a UTC+8 wall date.
 
-<a id="features"></a>
-## 2. 功能与算法
+#### Native runtime
 
-- 公历与阴历日期互转。
-- 查询节气的具体时刻。
-- 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
-- C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
-  Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。
-  三种宫制均拒绝地理极点和浮点舍入精度下无法确定的上升点方向；
-  Placidus 还会在 `abs(latitude) >= 90° - true_obliquity` 时拒绝计算，不切换宫制。
-- C++ 头文件提供日月及水星至冥王星的地心视黄道坐标、行星照明几何与逆行标记，以及太阳视赤道坐标与合朔时刻。
-  水星至海王星使用 VSOP87D；`Planet::PLUTO` 使用精度较低的 Meeus 第 37 章模型，其视位置与照明几何
-  JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。
-- C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的真黄道、真春分点经度；
-  真交点采用 Meeus 五项修正，纬度按定义恒为零，物理距离不存在。
-- C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
-  在现有视位置模型上做局部解卷绕的七点中心差分。
-- C++ `chart.hpp` 提供固定时刻排盘快照，以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，
-  一次取得十四个天体/点的位置与速率、四轴和十二宫头。
-- C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
-  `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
-  不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
-- 均时差与地方真太阳时。
-- UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
-- [C ABI 共享库](#c-abi)、[Python 原生 wheel](#python) 和 [JavaScript / TypeScript WASM 包](#javascript)。
-
-阴历转换的支持年域与日期基准取决于所选算法，不应把编号当作精度排名：
-
-- Algo1 保留香港天文台公布的日期标签，支持阴历年 1901–2099。
-- Algo2 用 VSOP87D / 截断的 ELP2000-82B 计算，支持阴历年 410–2500。TT 时刻先经过本库的 UTC 模型，
-  再加固定的八小时偏移；1972 年前该模型明确以 UT1 代替，闰秒表最后一项之后保持 ΔAT 为 37 秒。
-- Algo3 是预先生成的混合表，支持阴历年 1600–2199：1901–2099 使用 Algo1 / HKO，其余年份由 Algo2 生成。
-
-公历输入输出是所选基准下的日期标签，不是时刻。年域指阴历年，并非对应公历年的 1 月 1 日到 12 月 31 日，
-超出覆盖范围会被拒绝。Algo2 的 2500 年上限来自 #139 的民用日期误差预算，不是计算方法的极限。
-C++ 中各 `calendar::lunar::algoN` 的 `START_YEAR` / `END_YEAR` 给出边界；
-C ABI 和两个语言包均提供三种算法，可通过 `get_supported_lunar_year_range` 及其对应封装查询年域。
-
-ΔT 的 `default` 与 Algo5 使用当前项目模型：2005 年前沿用 Algo2，其后使用截至 2026.41 的
-IERS Bulletin A 拟合，再向后接锚定的长期外推。Algo1（Xu Jianwei 2008）、Algo2（Espenak and Meeus,
-NASA/TP-2006-214141）、Algo3（Fred Espenak's 2014 eclipse canon）和 Algo4（IERS Bulletin A 加 USNO 预测）
-均已冻结，保留用于历史比较。冻结不等于停用：Algo2 仍是 Algo3、Algo4、当前 default / Algo5 在 2005 年前的分支。
-
-ΔT 的硬年域分别是 Algo1 的 year ≥ -4000、Algo3 的 year < 3000、Algo4 的 year < 2035；
-Algo2 / Algo5 没有模型专属年界。拟合残差和测试容差不是统计意义上的误差保证。
-
-## 3. 环境要求
-
-使用已安装的包只需满足各自的 [Python](#python)、[JavaScript](#javascript) 或[原生运行环境](#native-runtime)要求。
-从源码构建核心库才需要以下工具：
-
-- 支持 C++23 的编译器。CI 在 Linux 和 Windows 上用 clang++ 22，在 macOS 上用 Xcode 26 的 Apple clang，
-  另在 Linux 上用 g++ 14；更早的编译器可能可用，但未验证。
-- CMake ≥ 3.22 和 make。
-- Python 3，用于构建与测试自动化；依赖在 `Requirements.txt`。
-
-Debian、Ubuntu 等发行版的系统 Python 受 PEP 668 保护，应使用虚拟环境，见[构建步骤](#build)。
-`--setup` 在依赖已齐全时不会再安装。`Requirements.txt` 不含[静态检查工具](#lint)；
-`statistics/` 的笔记本和数据采集脚本另用 `Requirements-statistics.txt`。
-
-### 3.1. 原生发行包的运行环境
-
-Supported 列是兼容性承诺，Measured 列只记录产物测量值，不能据此降低支持下限。
-Linux 记录最大的 GLIBC / GLIBCXX 要求，macOS 记录 Mach-O deployment target，Windows 记录 Visual C++ 运行库链接方式。
-CI 把同样的值写入 `build_info.json`，拒绝测量要求高于承诺的产物，并据此核对发行文件。
-Linux 假定系统已提供标准的 `libstdc++.so.6` 和 `libgcc_s.so.1`；不声明 Windows 操作系统版本下限。
+The Supported column is the compatibility promise; the Measured column only records properties of the built
+artifact and never lowers that promise. Linux records the highest GLIBC / GLIBCXX requirement, macOS the Mach-O
+deployment target, and Windows how the Visual C++ runtime is linked. CI writes the same values to
+`build_info.json`, rejects an artifact whose measured requirement exceeds the promise, and checks release files
+against them. Linux assumes the system provides the standard `libstdc++.so.6` and `libgcc_s.so.1`; no Windows
+OS version floor is declared.
 
 <a id="native-runtime"></a>
 <!-- native-runtime-matrix -->
@@ -399,225 +241,75 @@ Linux 假定系统已提供标准的 `libstdc++.so.6` 和 `libgcc_s.so.1`；不�
 | `macos_arm64` | `macos=14.0` | `macos=14.0` |
 | `windows_x86_64` | `windows=not_declared` | `msvc_runtime=static` |
 
-<a id="build"></a>
-## 4. 从源码构建
+<a id="features"></a>
+## Features and algorithms
 
-本节面向需要构建核心库的使用者与贡献者。命令均在完整源码根目录运行，产物位于 `build/`。
-构建、测试与代码风格约定以 [`AGENTS.md`](AGENTS.md) 为准。Python wheel 另走
-[本机 wheel 配方](bindings/python/README.md#build-a-local-wheel)，不要仅复制 `bindings/python/` 目录构建。
-本机 wheel 使用宿主库，不等同于官方修复后的可移植发行 wheel，也不扩大官方支持平台。
+- Gregorian / lunar date conversion.
+- Exact Jieqi moments.
+- Sunrise, sunset, transit, twilight, polar day and polar night; differences from the USNO / NOAA / JPL DE
+  external references are within ±2 minutes.
+- C++ headers provide the Ascendant, Descendant, Midheaven and Imum Coeli, and Equal, Whole Sign and Placidus
+  house cusps; site longitude is east-positive, and the instant is passed as both UT1 and TT. All three systems
+  reject the geographic poles and an Ascendant direction unresolved at floating-point round-off; Placidus also
+  rejects `abs(latitude) >= 90° - true_obliquity` and never switches system.
+- C++ headers provide apparent geocentric ecliptic coordinates of the Sun, Moon and Mercury through Pluto,
+  planetary illumination geometry and retrograde markers, the Sun's apparent equatorial coordinates, and new-moon
+  moments. Mercury through Neptune use VSOP87D; `Planet::PLUTO` uses the lower-precision Meeus Chapter 37 model,
+  whose apparent position and illumination geometry accept `[2409543.5, 2488069.5)` JDE(TT) and whose centred
+  retrograde check accepts `[2409544.0, 2488069.0)`.
+- C++ headers return true-ecliptic, true-equinox-of-date longitudes of the mean and true ascending and descending
+  lunar nodes from JDE(TT); true nodes use the Meeus five-term correction, latitude is exactly zero by definition,
+  and no physical distance exists.
+- C++ `ephemeris.hpp` provides one instantaneous ecliptic longitude rate for the Sun, Moon, planets and lunar
+  nodes, in degrees per TT day, by a locally unwrapped seven-point central difference over the existing apparent
+  position models. Near a station its sign can differ from the one-day retrograde marker; see `is_retrograde` in
+  [`planet.hpp`](src/astro/planet.hpp).
+- A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
+  system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
+  available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot),
+  Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
+  [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages expose planets,
+  lunar nodes, longitude rates and houses only through this snapshot; the standalone functions are C++-only.
+- C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
+  return events ordered by JDE(TT). Year ownership uses `[Jan 1, next Jan 1)` UTC, with the library's UT1
+  substitute before 1972. The `[1, 32766]` input year domain only guarantees that the computation runs, not that
+  VSOP87D keeps modern ephemeris precision in remote eras; Pluto provides outer-planet events only, over complete
+  Gregorian years `[1886, 2098]`.
+- Equation of time and local apparent solar time.
+- UT1 / UTC / TT conversion, leap seconds and ΔT, Julian Days, sidereal time, obliquity, nutation.
+- A [C ABI shared library](#c-abi), a [native Python wheel](#python) and a
+  [JavaScript / TypeScript WASM package](#javascript).
 
-### 4.1. macOS / Linux
+<a id="choosing-inputs"></a>
+### Choosing inputs
 
-已安装 C++23 编译器、CMake、make 和 Python 3 后，创建并启用虚拟环境，再运行统一入口：
+Gregorian / lunar conversions operate on calendar-date labels, not instants, and each algorithm has its own
+lunar-year domain and date basis. Choose by source and compatibility role, not by treating the algorithm number as
+an accuracy ranking: Algo1 keeps Hong Kong Observatory labels, Algo2 computes dates astronomically over a wider
+window, and Algo3 combines the two. Read a domain from the library rather than copying it:
+`get_supported_lunar_year_range` in C, `supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in
+JavaScript, and `START_YEAR` / `END_YEAR` of each `calendar::lunar::algoN` in C++. Each algorithm's source, domain
+and date basis are described in the [Python](bindings/python/README.md#lunar-algorithms) and
+[JavaScript](bindings/javascript/README.md#lunar-algorithms) package guides and in
+[`algo1.hpp`](src/calendar/lunar/algo1.hpp), [`algo2.hpp`](src/calendar/lunar/algo2.hpp) and
+[`algo3.hpp`](src/calendar/lunar/algo3.hpp).
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-export CXX=clang++
-python project.py --all
-```
+For ΔT (TT minus UT1, in seconds), use the default, Algo5 (the current project model); select one of the frozen
+Algo1 to Algo4 only to compare with that earlier model. Sources and hard year domains are listed in the
+[Python](bindings/python/README.md#delta-t-models) and [JavaScript](bindings/javascript/README.md#delta-t-models)
+package guides and in [`delta_t.hpp`](src/astro/delta_t.hpp).
 
-`--all` 依次完成 setup、configure、build、test。也可分步运行或只执行指定任务：
+Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
+`apparent_solar_time()` / `sun.apparentSolarTime()` take civil UTC. The pure `/date` bridge supplies no UTC-to-UT1
+or Date-to-JDE conversion. The library does not use observed DUT1 (UT1 − UTC), so a UT1 result is not a UTC time;
+[Time scales](docs/DESIGN.md#time-scales) describes the library's UTC model and how large the gap is in each era.
 
-```sh
-python project.py --setup
-python project.py --cmake --build
-python project.py --test
-CELESTIAL_TEST_SEED=123 python project.py --test
-python project.py --bench
-python project.py --help
-```
-
-随机测试默认种子为 42；`CELESTIAL_TEST_SEED` 用于重放或探索其他种子。
-基准测试是可选项，不在 `--all` 内；`python project.py --clean` 清理构建产物。
-
-### 4.2. Windows
-
-除 Python 3 和 CMake 外，还需要 LLVM 与 make；构建使用 CMake 的 `Unix Makefiles` 生成器。
-若已安装 Chocolatey，可用 `choco install -y make llvm` 安装后两者。
-在源码根目录的 PowerShell 中，同时指定 LLVM 的 C / C++ 编译器，避免混用工具链：
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-$env:CXX = "clang++"
-$env:CC = "clang"
-python project.py --all
-```
-
-分步命令与上面相同；设置随机种子用 `$env:CELESTIAL_TEST_SEED = "123"`。
-
-### 4.3. API 文档
-
-安装 Doxygen 1.15.0 后，在源码根目录运行 `python project.py --docs`，打开
-`build/api-docs/html/index.html`。此入口不编译 C++、不需要 Graphviz，也不包含在 `--all` 中。
-[Core Tests](https://github.com/0xf3cd/celestial-calendar/actions/workflows/core_tests.yml) 上传同样的
-`celestial-api-html` 附件；说明见 [`docs/API.md`](docs/API.md)。界面为英文，阴历子树保留既有双语注释。
-
-## 5. 数值验证
-
-测试位于 `src/test/`，以外部参考数据和逐列容差检验数值。每组数据记录来源、生成方式与容差理由，
-便于重建和核查；可从 `src/test/jieqi_golden_test.cpp` 看一个完整例子，具体约定见 `AGENTS.md`。
-外部参考包括：
-
-- **JPL Horizons**：日月与水星至冥王星的视位置及节气过点，由 `statistics/` 中的
-  `moon_horizons_crawler.py`、`planet_horizons_crawler.py`、`pluto_horizons_crawler.py`、
-  `sun_equatorial_horizons_crawler.py`、`sun_jieqi_golden_crawler.py` 采集或重放。
-- **香港天文台历书**：2022–2028 年公布的节气钟表时间，整条计算链与其差异须在 60 秒内，
-  主要容纳历书自身的分钟舍入。由 `automation/jieqi_table.py` 实现，入口为 `./checks.py --jieqi-table`。
-- **ytliu0's ChineseCalendar**：按 commit 固定的独立阴历年表，用于验证预生成算法，
-  见 `src/test/lunar/algo3_ytliu0_golden_test.cpp`。
-- **ΔT 观测值**：NASA eclipse ΔT table、USNO observations、Stephenson & Morrison，
-  为 UT1 ↔ TT 转换提供不依赖本库拟合模型的基准，见 `src/test/astro/julian_day_test.cpp`。
-- **日出日落参考**：USNO / NOAA / JPL DE，容差为 ±2 分钟。
-- **Swiss Ephemeris 2.10.3bfinal**：Equal、Whole Sign 和 Placidus 的公式级与日期级参考值，
-  由 `statistics/house_swiss_crawler.py` 生成。
-
-`statistics/` 保存数据采集脚本与评估笔记本，依赖可在虚拟环境中用
-`python -m pip install -r Requirements-statistics.txt` 安装。[参考资料](#references)保留原始来源链接。
-
-<a id="wasm"></a>
-## 6. 构建 WebAssembly 与 npm 包
-
-使用已发布 npm 包不需要本节的构建工具。本节面向源码构建与产物维护，需要 Node ≥ 22、Python 构建依赖和
-emsdk 源码目录；通过 `EMSDK` 环境变量或 `build_wasm.py --emsdk` 指定 emsdk 路径。在完整源码根目录运行：
-
-```sh
-npm ci --ignore-scripts --prefix bindings/javascript
-python3 toolbox/build_wasm.py
-node toolbox/wasm_check.mjs
-python3 toolbox/build_npm.py
-```
-
-`bindings/javascript` 开发目录的普通 `npm pack` 会拒绝打包，请使用上述 builder。
-
-生成模块位于 `build/wasm/celestial-jieqi.mjs` 与 `build/wasm/celestial-jieqi.wasm`，包含 `celestial.h` 的全部
-30 个稳定导出。`@0xf3cd/celestial` 通过 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar` 命名空间提供既有 API；
-新增 `chart_snapshot_v1` 只在私有 WASM/ABI 层，尚无 JavaScript 快照入口。
-堆指针、count/fill 协议、sret 布局与 `last_error` 留在包内部。
-
-`build_npm.py` 使用生成模块和 `project.py` 的版本号，打出恰好12个文件的 npm 主包。
-`@0xf3cd/celestial/date` 只导入纯校验函数，不导入根入口或 Emscripten glue。
-同一个构建脚本还打出恰好7个文件的 npm 别名包 `celestial-calendar`，转发根入口、`/date` 的 ESM 与类型声明。
-别名唯一的运行时依赖是精确同版本的 `@0xf3cd/celestial`，不含 WASM 副本。
-只有两个名字解析到同一个主包安装时，才共享导出引用与初始化状态；这不是跨任意混合版本依赖图的单例保证。
-
-The alias's MIT `LICENSE` covers its own material;
-retained-component notices remain in the primary dependency.
-
-CI 的独立 `wasm.yml` 流程构建模块与包。`celestial-wasm` 产物包含恰好10个顶层文件：
-`celestial-jieqi.mjs`、`celestial-jieqi.wasm`、`LICENSE`、`THIRD_PARTY_NOTICES.txt`、
-原样打包的 npm 主包、`npm-pack.json`、`npm-pack.sha256`，以及别名包、`npm-alias-pack.json`、`npm-alias-pack.sha256`。
-两个元数据文件各自指定对应 tarball；发行流程先发布主包、再发布别名，不重新构建或打包。
-历史 0.6.x 归档保留原来的单包格式。
-
-同一 CI 流程核对 30 个签名与 19 个布局，重放原生生成的 389 点基准数据；
-在独立于源码目录的 Node 最低支持版本与当前版本应用中安装同一对包，编译两个包名及 `/date` 的已安装类型声明，
-并在 Chrome 和 Firefox 中运行 Astro / Vite 生产构建冒烟测试。
-Windows/macOS 的当前 Node 消费者从同一 CI 运行下载这份原始双包，
-验证安装、API、别名身份及独立日期入口；不重复构建或打包。
-
-<a id="jieqi-table"></a>
-## 7. 导出节气 JSON 表
-
-只需查询节气顺序和间隔、不想链接库的应用，可用 `toolbox/jieqi_table.py` 将 `query_jieqi_moment`
-导出为静态 JSON 表（#164）。先按[构建步骤](#build)生成共享库，再在源码根目录运行：
-
-```sh
-python3 toolbox/jieqi_table.py
-python3 toolbox/jieqi_table.py -o jieqi.json --start-year 2000 --end-year 2031
-```
-
-第一条向标准输出写默认的 1950–2051 年表，共 24 × 102 = 2448 项。第二条指定文件与年窗，
-可选年份在 `[401, 9999]` 内。输出契约如下：
-
-- 每项为 `{year, idx, name_zh, unix_ms, iso_utc}`。`idx` 从立春 = 0 起，遵循 ABI 的 `to_index` 顺序；
-  `name_zh` 来自 ABI 的 `get_jieqi_name`，便于核对映射。
-- 按时刻严格递增排序。公历年内的编号顺序为 22、23、0、…、21，先小寒、大寒，不按编号排序。
-- `year` 是传入查询的归属年。默认年窗中，每年的 24 个过点均落在同一公历年，检查会验证这一点；
-  但高年份并不总成立，例如 9999 年的小寒落在 9998-12-31，此时 `year` 与 `iso_utc` 内的年份不同。
-- 默认表多保留 2051 这一尾年，让 1950–2050 中每个时刻的后继仍在表内。
-- 时标是 **UT1**，不是东八区钟表时间；同一时刻显示为 UTC+8 时，日期可能改变。
-  不同时代的 UT1 / UTC 差异由表内 `timescale_note` 分别说明，不要仅凭 `iso_utc` 字段名判断时标。
-- 毫秒以下截断、不四舍五入；`iso_utc` 与 `unix_ms` 表示同一毫秒。输出不含生成时间戳，
-  同一 commit 的两次运行应得到相同字节。
-
-`./checks.py --jieqi-table` 核对以上契约、HKO 历书基准，以及 `statistics/common.py` 的独立重算结果。
-
-<a id="lint"></a>
-## 8. 静态检查
-
-C++ 使用 `clang-tidy`，Python 使用 Ruff，两者都不在 `Requirements.txt` 中。
-在构建所用的虚拟环境中单独安装：
-
-```sh
-python -m pip install ruff
-python -m pip install clang-tidy==22.1.8
-```
-
-CI 使用 runner 自带的 clang-tidy 22.1.2，pip 不提供该补丁版本；本地可用 22.1.x 或发行版的 `clang-tidy-22`。
-检查配置在 `.clang-tidy`，启用 `WarningsAsErrors: '*'`。若 `PATH` 中的主版本不同，
-用 `CLANG_TIDY` 指定所需可执行文件；它必须与仓库中的 `run-clang-tidy.py` 匹配，否则与 CI 的检查标准不同。
-
-在源码根目录运行，以下命令也适用于 Windows：
-
-```sh
-python checks.py --ruff
-python checks.py --clang-tidy
-```
-
-<a id="artifacts"></a>
-## 9. 下载 CI 构建产物
-
-本节面向贡献者与运行 CI 的维护者。普通使用者请走[公开发行下载](#releases)，无需 token。
-在 GitHub 中打开所需的原生、[WASM](https://github.com/0xf3cd/celestial-calendar/actions/workflows/wasm.yml) 或
-[Python wheel](https://github.com/0xf3cd/celestial-calendar/actions/workflows/python-wheel.yml) 流程，
-从构建目标 commit 的已完成运行中下载产物。
-
-自动下载可用 `toolbox/artifact_downloader.py`。在源码根目录、已安装 `Requirements.txt` 依赖的环境中，
-通过环境变量 `GITHUB_TOKEN` 提供所需的 GitHub 认证，再运行：
-
-```sh
-python3 toolbox/artifact_downloader.py -s build/artifacts --unzip
-python3 toolbox/artifact_downloader.py --help
-```
-
-默认下载从 HEAD 构建的完整原生、WASM、Python 产物；`-id` 可指定运行 ID，`-s` 指定目标目录，
-省略 `--unzip` 则不解压。也可用 `python3 -m toolbox.artifact_downloader` 调用。
-
-<a id="releases"></a>
-## 10. 下载发行版本
-
-使用者直接打开 [Releases](https://github.com/0xf3cd/celestial-calendar/releases)，选定版本，
-下载原生 / WASM 归档、带 SHA-256 附件的 Python wheel 或源码。网页下载不需要 token。
-发行版本与本文所述源码版本可能不同，应使用该发行版本随附的文档。
-
-需要脚本批量下载的维护者可用 `toolbox/release_downloader.py`；这个可选工具使用 GitHub 认证，
-并非公开下载的必要条件。在源码根目录、已安装 `Requirements.txt` 依赖且已配置 `GITHUB_TOKEN` 的环境中运行：
-
-```sh
-python3 toolbox/release_downloader.py -s build/releases
-python3 toolbox/release_downloader.py --help
-```
-
-默认下载最新发行版的文件，`-s` 指定目标目录；也可用 `python3 -m toolbox.release_downloader` 调用。
-CI 产物另见[上一节](#artifacts)。发布新版本的维护者须遵循 [`docs/RELEASING.md`](docs/RELEASING.md)，
-下载或构建成功不等于完成发布。
-
-<a id="todo"></a>
-## 11. 后续工作
-
-- 等工具链完整支持后再使用 modules、`std::views::enumerate` / `pairwise` 等 ranges 扩展，
-  以及 moon_phase / jieqi 牛顿迭代中的 `std::generator`。
-- `./checks.py --features` 通过实际编译检查特性；CI 分别检查 libstdc++ / libc++ / MSVC STL，
-  当工具链已支持而代码仍保留手写替代时报告，避免清单过时。
-- DUT1（UT1 − UTC）尚未建模。v0.4.0 已加入支持闰秒的 `utc_to_tt` / `tt_to_utc`，
-  但不能据此把 UT1 输出直接当 UTC。闰秒实施期间两者相差不超过 0.9 秒；闰秒表冻结后的模型差异另见
-  [`jieqi.hpp`](src/calendar/jieqi.hpp) 的时标说明。
+In the C ABI and both packages, geographic longitude is east-positive and solar and lunar angles are degrees.
+Solar distance is AU. The standalone Moon coordinate gives kilometres, while a chart snapshot gives every distance
+in AU, the Moon's included. The equation of time is degrees of hour angle, so multiply by 240 for seconds of time.
 
 <a id="references"></a>
-## 12. References
+## References
 
 * [ERFA v2.0.1](https://github.com/liberfa/erfa/tree/9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3)
 * [Definitions of Systems of Time](https://www.cnmoc.usff.navy.mil/Our-Commands/United-States-Naval-Observatory/Precise-Time-Department/The-USNO-Master-Clock/Definitions-of-Systems-of-Time/)
@@ -641,7 +333,8 @@ CI 产物另见[上一节](#artifacts)。发布新版本的维护者须遵循 [`
 * [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
 * [Hong Kong Observatory — 24 Solar Terms](https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm)
 
-## 13. License
+<a id="license"></a>
+## License
 
 Project-authored material is licensed under the MIT License; see `LICENSE`.
 

@@ -38,7 +38,7 @@ from automation import (
 )
 
 
-BUILD_VERSION: Final[str] = "0.7.0"
+BUILD_VERSION: Final[str] = "0.8.0"
 
 
 def parse_args() -> argparse.Namespace:

@@ -31,7 +31,8 @@ export const chartExampleInput = (example) => {
   };
 };
 
-// Composition replay margins: bindings/python/test/consumer/chart_replay.py, not accuracy bounds.
+// Replay acceptance margins, the same values as bindings/python/test/consumer/chart_replay.py; they are not accuracy
+// bounds. Their source is in docs/VALIDATION.md#replay-margins.
 export function assertChartReplay(actual, expected) {
   const residuals = {};
   const keys = (value, expectedKeys, label) => check(
