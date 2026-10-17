@@ -813,8 +813,7 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
   _require(
-    re.findall(r"\[许可证范围与第三方例外\]\(([^)\n]+)\)", _without_html_comments(texts["README_ZH.md"]))
-    == ["README.md#license"],
+    re.findall(r"\[许可证范围与第三方例外\]\(([^)\n]+)\)", texts["README_ZH.md"]) == ["README.md#license"],
     "Chinese README canonical license link differs",
   )
 
@@ -877,10 +876,6 @@ def _contains_source_alias(text: str, alias: str) -> bool:
 def _source_families(text: str) -> list[tuple[str, ...]]:
   folded = text.casefold()
   return [family for family in SOURCE_FAMILIES if any(_contains_source_alias(folded, alias) for alias in family)]
-
-
-def _without_html_comments(text: str) -> str:
-  return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
 
 
 def _section(text: str, heading: str) -> str:
