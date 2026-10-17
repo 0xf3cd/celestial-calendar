@@ -37,10 +37,15 @@ GUIDE_PAIRS = (
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
 STATUS_VERSION = re.compile(r"(?:describes version|本文对应) (\d+\.\d+\.\d+)")
-# A link to this repository takes one spelling, so that a dead one cannot hide behind another: any other scheme,
-# host, port, case or percent-escape is reported rather than recognised, and so is a blob or tree off `main`.
+# A link to this repository takes one of these spellings, so that a dead one cannot hide behind another: any other
+# scheme, host, port, case, percent-escape or route is reported rather than recognised. Each names a path to check
+# except the releases page; the home page shows README.md.
 REPO_HOME = "https://github.com/0xf3cd/celestial-calendar"
-REPO_URL = re.compile(re.escape(REPO_HOME) + r"/(?:blob|tree)/main/([^#]*)(?:#(.*))?")
+REPO_ROUTES = {"blob/main": REPO, "tree/main": REPO, "actions/workflows": REPO / ".github/workflows"}
+REPO_URL = re.compile(
+  rf"{re.escape(REPO_HOME)}(?:/(?P<route>{'|'.join(REPO_ROUTES)})/(?P<path>[^#?]*)|(?P<releases>/releases))?"
+  r"(?:#(?P<fragment>.*))?"
+)
 # markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
 # Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
 # something the parse can say.
@@ -97,24 +102,43 @@ def names_this_repository(text: str) -> bool:
 
 
 def misspelt_repo_url(target: str) -> bool:
-  if not names_this_repository(target):
-    return False
-  rest = target.removeprefix(REPO_HOME)
-  if rest == target or rest[:1] not in ("", "/", "#", "?"):
-    return True
-  return rest.startswith(("/blob/", "/tree/")) and not REPO_URL.fullmatch(target)
+  return names_this_repository(target) and not REPO_URL.fullmatch(target)
 
 
 def resolve(name: str, target: str) -> tuple[Path, str] | None:
-  """The path and fragment that a link in document `name` names, or None for a link off the repository."""
+  """The path and fragment that a link in document `name` names, or None off the repository and for its releases."""
   # Split, then decode: an escaped `%23` belongs to the file name.
   repo_url = REPO_URL.fullmatch(target)
   if repo_url:
-    return REPO / unquote(repo_url.group(1)), unquote(repo_url.group(2) or "")
+    if repo_url["releases"]:
+      return None
+    fragment = unquote(repo_url["fragment"] or "")
+    if not repo_url["route"]:
+      return REPO / "README.md", fragment
+    return REPO_ROUTES[repo_url["route"]] / unquote(repo_url["path"]), fragment
   if re.match(r"[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
     return None
   file, _, fragment = target.partition("#")
   return ((REPO / name).parent / unquote(file) if file else REPO / name), unquote(fragment)
+
+
+def link_problem(name: str, target: str) -> str | None:
+  """What is wrong with a link in document `name`, or None for a link that resolves or is off the repository."""
+  if misspelt_repo_url(target):
+    return f"{target} names this repository in a spelling REPO_URL does not accept"
+  resolved = resolve(name, target)
+  if resolved is None:
+    return None
+  path, fragment = resolved
+  if not path.resolve().is_relative_to(REPO):
+    return f"{target} resolves outside the repository; write the path relative to {name}"
+  if not path.exists():
+    return f"{target} names no file or directory"
+  if fragment and path.is_dir():
+    return f"{target} puts a fragment on a directory"
+  if fragment and fragment not in anchors(path):
+    return f'{target} names no <a id="{fragment}"></a> in {path.name}'
+  return None
 
 
 def visible_text(parsed: list[Token]) -> str:
@@ -193,23 +217,11 @@ def test_links_name_existing_paths_and_explicit_anchors():
   failures = []
   for name in documents():
     parsed = document(REPO / name)
-    failures += [f"{name}: write {url} as a [text](url) link" for url in bare_repo_urls(parsed)]
-    for target in link_targets(parsed):
-      if misspelt_repo_url(target):
-        failures.append(f"{name}: spell {target} as {REPO_HOME}/..., with blob/main/ or tree/main/ for a path")
-        continue
-      resolved = resolve(name, target)
-      if resolved is None:
-        continue
-      path, fragment = resolved
-      if not path.resolve().is_relative_to(REPO):
-        failures.append(f"{name}: {target} leaves the repository")
-      elif not path.exists():
-        failures.append(f"{name}: {target} names no file or directory")
-      elif fragment and path.is_dir():
-        failures.append(f"{name}: {target} puts a fragment on a directory")
-      elif fragment and fragment not in anchors(path):
-        failures.append(f'{name}: {target} names no <a id="{fragment}"></a> in {path.name}')
+    failures += [
+      f"{name}: {url} names this repository outside a link; link it or put it in a code span"
+      for url in bare_repo_urls(parsed)
+    ]
+    failures += [f"{name}: {problem}" for target in link_targets(parsed) if (problem := link_problem(name, target))]
   assert not failures, "\n".join(failures)
 
 
@@ -250,8 +262,10 @@ def test_link_targets_are_the_rendered_links(text, targets):
     ("../w%20x.md#%E8%AE%B8%E5%8F%AF%E8%AF%81", "w x.md", "许可证"),
     ("#license", "DESIGN.md", "license"),
     ("https://github.com/0xf3cd/celestial-calendar/blob/main/docs/API.md#c-abi", "API.md", "c-abi"),
-    ("https://github.com/0xf3cd/celestial-calendar/blob/main/README_ZH.md#%E8%AE%B8%E5%8F%AF", "README_ZH.md", "许可"),
+    ("https://github.com/0xf3cd/celestial-calendar/blob/main/w%20x.md#%E8%AE%B8%E5%8F%AF", "w x.md", "许可"),
     ("https://github.com/0xf3cd/celestial-calendar/tree/main/docs", "docs", ""),
+    ("https://github.com/0xf3cd/celestial-calendar#cpp", "README.md", "cpp"),
+    ("https://github.com/0xf3cd/celestial-calendar/actions/workflows/core_tests.yml", "core_tests.yml", ""),
   ],
 )
 def test_targets_resolve_to_a_file_and_fragment(target, file, fragment):
@@ -281,15 +295,45 @@ def test_repository_root_url_resolves_to_the_root():
     ("https://github.com/0xf3cd/celestial-calendar/blob/MAIN/x.md", True),
     ("https://raw.githubusercontent.com/0xf3cd/celestial-calendar/main/x.md", True),
     ("https://github.com/0xf3cd/celestial-calendar-fork", True),
+    ("https://github.com/0xf3cd/celestial-calendar/raw/main/x.md", True),
+    ("https://github.com/0xf3cd/celestial-calendar//blob/main/x.md", True),
+    ("https://github.com/0xf3cd/celestial-calendar/blob/main/x.md?raw=1", True),
+    ("https://github.com/0xf3cd/celestial-calendar/tree/main", True),
     ("https://github.com/0xf3cd/celestial-calendar", False),
     ("https://github.com/0xf3cd/celestial-calendar#cpp", False),
     ("https://github.com/0xf3cd/celestial-calendar/releases", False),
+    ("https://github.com/0xf3cd/celestial-calendar/actions/workflows/core_tests.yml", False),
     ("https://github.com/0xf3cd/celestial-calendar/tree/main/bindings/javascript", False),
     ("../README.md#license", False),
   ],
 )
 def test_repository_links_take_one_spelling(target, misspelt):
   assert misspelt_repo_url(target) is misspelt
+
+
+@pytest.mark.parametrize(
+  ("target", "problem"),
+  [
+    ("http://github.com/0xf3cd/celestial-calendar/blob/main/README.md", "names this repository"),
+    ("//github.com/0xf3cd/celestial-calendar/blob/main/README.md", "names this repository"),
+    ("/usr", "resolves outside the repository"),
+    ("../../../../../../../../../../usr", "resolves outside the repository"),
+    (f"{REPO_HOME}/tree/main/../../../../../../../../../../usr", "resolves outside the repository"),
+    ("../nonexistent.md", "names no file or directory"),
+    ("../src#layers", "puts a fragment on a directory"),
+    ("../README.md#nonexistent", 'names no <a id="nonexistent"></a> in README.md'),
+    (f"{REPO_HOME}#readme", 'names no <a id="readme"></a> in README.md'),
+    (f"{REPO_HOME}/raw/main/README.md", "names this repository"),
+    (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory"),
+    ("../README.md#license", None),
+    ("../src", None),
+    (f"{REPO_HOME}/blob/main/README.md#license", None),
+    ("https://example.org/a#b", None),
+  ],
+)
+def test_link_problems_are_named(target, problem):
+  found = link_problem("docs/DESIGN.md", target)
+  assert found is None if problem is None else problem in (found or "")
 
 
 def test_anchors_are_the_empty_anchor_tags(tmp_path):

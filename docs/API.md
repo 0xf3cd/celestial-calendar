@@ -9,7 +9,7 @@ Read each function's units, time scale and supported range before using it. A ci
 an instant, and UT1 and TT inputs are not interchangeable.
 
 For installation, examples and Python/JavaScript package guides, see the
-[repository README](https://github.com/0xf3cd/celestial-calendar#readme).
+[repository README](https://github.com/0xf3cd/celestial-calendar/blob/main/README.md).
 Project-authored material uses MIT. The generated directory includes `LICENSE` and
 `THIRD_PARTY_NOTICES.txt`; retained material keeps the source terms stated there.
 
