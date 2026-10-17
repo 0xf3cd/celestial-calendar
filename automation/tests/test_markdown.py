@@ -14,15 +14,14 @@ import shlex
 import shutil
 import subprocess
 
-from collections import Counter
 from functools import cache
-from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
 
 from markdown_it import MarkdownIt
+from markdown_it.token import Token
 
 from toolbox.artifact_downloader import project_version
 
@@ -37,57 +36,96 @@ GUIDE_PAIRS = (
 # The Chinese root guide links to the English native-runtime matrix, references and license instead of copying them.
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
-STATUS_VERSION = re.compile(r"(?:describes\s+version|本文对应)\s+(\d+\.\d+\.\d+)")
-REPO_URL = re.compile(r"https://github\.com/0xf3cd/celestial-calendar/(?:blob|tree)/main/([^#]*)(?:#(.*))?")
-# GitHub renders CommonMark plus GFM tables. The checks below read the HTML this renders, never the source text.
+STATUS_VERSION = re.compile(r"(?:describes version|本文对应) (\d+\.\d+\.\d+)")
+REPO_URL = re.compile(
+  r"(?i:https?://(?:www\.)?github\.com/0xf3cd/celestial-calendar)/(?:blob|tree)/main/([^#]*)(?:#(.*))?"
+)
+# GFM links a URL written as plain text; markdown-it does not, so such URLs to this repository are reported instead.
+BARE_REPO_URL = re.compile(r"(?i)(?:https?://|www\.)github\.com/0xf3cd/celestial-calendar/(?:blob|tree)/")
+# markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
+# Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
+# something the parse can say.
 MARKDOWN = MarkdownIt("commonmark").enable("table")
+COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
+ANCHOR = re.compile(r'<a id="([^"<>]+)">')
 
 
-class Page(HTMLParser):
-  """A Markdown text as its reader gets it: the links, ids, code blocks and text of the rendered HTML."""
-
-  def __init__(self, markdown: str):
-    super().__init__()
-    self.targets: list[str] = []
-    self.ids: set[str] = set()
-    self.blocks: list[tuple[str, str]] = []
-    self.bare_urls: list[str] = []
-    self._text: list[str] = []
-    self._inside: Counter[str] = Counter()
-    self._block: tuple[str, list[str]] | None = None
-    self.feed(MARKDOWN.render(markdown))
-    self.close()
-    self.text = "".join(self._text)
-
-  def handle_starttag(self, tag, attrs):
-    self._inside[tag] += 1
-    attributes = dict(attrs)
-    if attributes.get("id"):
-      self.ids.add(attributes["id"])
-    target = {"a": "href", "img": "src"}.get(tag)
-    if target and attributes.get(target):
-      self.targets.append(unquote(attributes[target]))
-    if tag == "code" and self._inside["pre"]:
-      self._block = ((attributes.get("class") or "").removeprefix("language-"), [])
-
-  def handle_endtag(self, tag):
-    self._inside[tag] -= 1
-    if tag == "code" and self._block:
-      self.blocks.append((self._block[0], "".join(self._block[1])))
-      self._block = None
-
-  def handle_data(self, data):
-    self._text.append(data)
-    if self._block:
-      self._block[1].append(data)
-    # GitHub links a repository URL written as plain text; this parser does not, so it must be a link here.
-    if not (self._inside["a"] or self._inside["code"]):
-      self.bare_urls += [word for word in data.split() if REPO_URL.search(word)]
+def tokens(text: str) -> list[Token]:
+  """The block tokens and, after each inline one, its children."""
+  return [part for token in MARKDOWN.parse(text) for part in (token, *(token.children or ()))]
 
 
 @cache
-def page(path: Path) -> Page:
-  return Page(path.read_text(encoding="utf-8"))
+def document(path: Path) -> list[Token]:
+  return tokens(path.read_text(encoding="utf-8"))
+
+
+def unsupported_html(parsed: list[Token]) -> list[str]:
+  """Raw HTML other than comments and empty `<a id="..."></a>` anchors."""
+  found, index = [], 0
+  while index < len(parsed):
+    token, following = parsed[index], parsed[index + 1] if index + 1 < len(parsed) else None
+    if token.type == "html_inline" and ANCHOR.fullmatch(token.content) and following and following.content == "</a>":
+      index += 2
+      continue
+    if token.type in ("html_block", "html_inline") and not COMMENTS.fullmatch(token.content):
+      found.append(token.content.strip())
+    index += 1
+  return found
+
+
+def anchors(path: Path) -> set[str]:
+  return {
+    match[1] for token in document(path) if token.type == "html_inline" and (match := ANCHOR.fullmatch(token.content))
+  }
+
+
+def code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
+  return [(token.info, token.content) for token in parsed if token.type in ("fence", "code_block")]
+
+
+def link_targets(parsed: list[Token]) -> list[str]:
+  """Where the links and images point, percent-escaped as rendered."""
+  return [
+    token.attrs["href" if token.type == "link_open" else "src"]
+    for token in parsed
+    if token.type in ("link_open", "image")
+  ]
+
+
+def resolve(name: str, target: str) -> tuple[Path, str] | None:
+  """The file and fragment that a link in document `name` names, or None for a link off the repository."""
+  repo_url = REPO_URL.fullmatch(target)
+  if repo_url:
+    base, file, fragment = REPO, repo_url.group(1), repo_url.group(2) or ""
+  elif re.match(r"[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
+    return None
+  else:
+    base, (file, _, fragment) = (REPO / name).parent, target.partition("#")
+  # Split, then decode: an escaped `%23` belongs to the file name.
+  return (base / unquote(file) if file else REPO / name), unquote(fragment)
+
+
+def visible_text(parsed: list[Token]) -> str:
+  """The text of paragraphs, headings and table cells, code spans included; link titles and comments are not text."""
+  parts = []
+  for token in parsed:
+    if token.type == "inline":
+      parts.append("\n")
+    elif token.type in ("text", "code_inline"):
+      parts.append(token.content)
+    elif token.type in ("softbreak", "hardbreak"):
+      parts.append(" ")
+  return "".join(parts)
+
+
+def bare_repo_urls(parsed: list[Token]) -> list[str]:
+  found, depth = [], 0
+  for token in parsed:
+    depth += {"link_open": 1, "link_close": -1}.get(token.type, 0)
+    if token.type == "text" and not depth:
+      found += [word for word in token.content.split() if BARE_REPO_URL.search(word)]
+  return found
 
 
 def documents() -> list[str]:
@@ -98,7 +136,7 @@ def documents() -> list[str]:
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_code_blocks(english, chinese):
-  english_blocks, chinese_blocks = page(REPO / english).blocks, page(REPO / chinese).blocks
+  english_blocks, chinese_blocks = code_blocks(document(REPO / english)), code_blocks(document(REPO / chinese))
 
   assert english_blocks
   assert chinese_blocks == english_blocks
@@ -106,7 +144,7 @@ def test_translated_guides_share_code_blocks(english, chinese):
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_anchors(english, chinese):
-  english_anchors, chinese_anchors = page(REPO / english).ids, page(REPO / chinese).ids
+  english_anchors, chinese_anchors = anchors(REPO / english), anchors(REPO / chinese)
 
   assert english_anchors
   assert english_anchors - chinese_anchors == ANCHORS_ONLY_IN.get(english, set())
@@ -114,45 +152,53 @@ def test_translated_guides_share_anchors(english, chinese):
 
 
 def test_chinese_root_guide_links_what_it_does_not_copy():
-  targets = set(page(REPO / "README_ZH.md").targets)
+  targets = set(link_targets(document(REPO / "README_ZH.md")))
   assert {f"README.md#{anchor}" for anchor in ANCHORS_ONLY_IN["README.md"]} <= targets
 
 
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
 def test_guide_states_the_project_version(guide):
   # docs/RELEASING.md, step 1: every guide names the version being released.
-  assert STATUS_VERSION.findall(page(guide).text) == [project_version()]
+  assert STATUS_VERSION.findall(visible_text(document(guide))) == [project_version()]
 
 
 def test_old_english_readme_points_to_the_guides():
   # Pages published with 0.7.0 and earlier link README_EN.md.
-  assert {"README.md", "README_ZH.md"} <= set(page(REPO / "README_EN.md").targets)
+  assert {"README.md", "README_ZH.md"} <= set(link_targets(document(REPO / "README_EN.md")))
 
 
-def test_links_name_existing_files_and_explicit_anchors():
+def test_markdown_holds_no_raw_html_beyond_comments_and_anchors():
+  failures = [
+    f'{name}: {html!r} is neither a comment nor an empty <a id="..."></a>; write it in Markdown'
+    for name in documents()
+    for html in unsupported_html(document(REPO / name))
+  ]
+  assert not failures, "\n".join(failures)
+
+
+def test_links_name_existing_paths_and_explicit_anchors():
   assert "README.md" in documents()
   failures = []
   for name in documents():
-    failures += [f"{name}: write {url} as a [text](url) link" for url in page(REPO / name).bare_urls]
-    for target in page(REPO / name).targets:
-      repo_url = REPO_URL.fullmatch(target)
-      if repo_url:
-        path, fragment = REPO / repo_url.group(1), repo_url.group(2)
-      elif re.match(r"[a-z]+:", target):
+    parsed = document(REPO / name)
+    failures += [f"{name}: write {url} as a [text](url) link" for url in bare_repo_urls(parsed)]
+    for target in link_targets(parsed):
+      resolved = resolve(name, target)
+      if resolved is None:
         continue
-      else:
-        file, _, fragment = target.partition("#")
-        path = (REPO / name).parent / file if file else REPO / name
+      path, fragment = resolved
       if not path.exists():
-        failures.append(f"{name}: {target} names no file")
-      elif fragment and fragment not in page(path).ids:
+        failures.append(f"{name}: {target} names no file or directory")
+      elif fragment and path.is_dir():
+        failures.append(f"{name}: {target} puts a fragment on a directory")
+      elif fragment and fragment not in anchors(path):
         failures.append(f'{name}: {target} names no <a id="{fragment}"></a> in {path.name}')
   assert not failures, "\n".join(failures)
 
 
 def test_cpp_quickstart_compiles_and_runs(tmp_path):
   # README.md's C++ example is a whole program that needs only the headers.
-  block = next(code for language, code in page(REPO / "README.md").blocks if language == "cpp")
+  block = next(code for info, code in code_blocks(document(REPO / "README.md")) if info.split()[:1] == ["cpp"])
   source = tmp_path / "quickstart.cpp"
   source.write_text(block, encoding="utf-8")
   compiler = shlex.split(os.environ.get("CXX", ""))
@@ -171,35 +217,85 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path):
   ("text", "targets"),
   [
     ("[a](x.md) ![i](y.png#f) <https://e.org/>\n", ["x.md", "y.png#f", "https://e.org/"]),
-    ("[a](<../w x.md>) [b](z.md#许可证)\n", ["../w x.md", "z.md#许可证"]),
     ("[a][r]\n\n[r]:\n  z.md\n", ["z.md"]),
-    ("<a href='s.md'>s</a> <a href=u.md>u</a>\n\n<p><img src=\"i.png\"></p>\n", ["s.md", "u.md", "i.png"]),
     ("`[c](code.md)`\n\n```md\n[f](fence.md)\n```\n\n<!-- [h](hidden.md) -->\n\n[unused]: unused.md\n", []),
-    ("<!--\nh\n--> v <!--\nh\n-->\n\n[x](swallowed.md)\n", []),
     ("| `a | [t](t.md) | b` |\n|---|---|---|\n", ["t.md"]),
   ],
 )
-def test_targets_are_the_rendered_links(text, targets):
-  assert Page(text).targets == targets
+def test_link_targets_are_the_rendered_links(text, targets):
+  assert link_targets(tokens(text)) == targets
 
 
-def test_ids_are_those_of_rendered_tags():
-  text = '<a id="a"></a>\n\n`<a id="code"></a>`\n\n<!-- <a id="hidden"></a> -->\n<p id="p">p</p>\n'
-  assert Page(text).ids == {"a", "p"}
+@pytest.mark.parametrize(
+  ("target", "file", "fragment"),
+  [
+    ("../README.md%23license", "README.md#license", ""),
+    ("../w%20x.md#%E8%AE%B8%E5%8F%AF%E8%AF%81", "w x.md", "许可证"),
+    ("#license", "DESIGN.md", "license"),
+    ("https://GitHub.com/0xF3CD/celestial-calendar/blob/main/docs/API.md#c-abi", "API.md", "c-abi"),
+    ("http://www.github.com/0xf3cd/celestial-calendar/tree/main/docs", "docs", ""),
+  ],
+)
+def test_targets_resolve_to_a_file_and_fragment(target, file, fragment):
+  path, anchor = resolve("docs/DESIGN.md", target)
+  assert (path.name, anchor) == (file, fragment)
 
 
-def test_blocks_are_the_rendered_code_blocks():
-  text = "~~~sh\nls\n~~~\n\n- ```python\n  print(1)\n  ```\n\n<pre>\n```sh\nraw\n```\n</pre>\n\n    indented\n"
-  assert Page(text).blocks == [("sh", "ls\n"), ("python", "print(1)\n"), ("", "indented\n")]
+@pytest.mark.parametrize(
+  "target",
+  ["https://example.org/a#b", "mailto:a@example.org", "https://github.com/0xf3cd/celestial-calendar/blob/v0.7.0/x"],
+)
+def test_targets_off_the_repository_resolve_to_nothing(target):
+  assert resolve("README.md", target) is None
+
+
+def test_anchors_are_the_empty_anchor_tags(tmp_path):
+  page = tmp_path / "page.md"
+  page.write_text('<a id="a"></a>\n\n`<a id="code">`\n\n<!-- <a id="hidden"></a> -->\n', encoding="utf-8")
+  assert anchors(page) == {"a"}
+
+
+def test_code_blocks_are_the_rendered_blocks():
+  text = "~~~sh\nls\n~~~\n\n- ```python\n  print(1)\n  ```\n\nInline `x`.\n\n    indented\n"
+  assert code_blocks(tokens(text)) == [("sh", "ls\n"), ("python", "print(1)\n"), ("", "indented\n")]
 
 
 def test_version_sentence_is_read_from_the_text_alone():
   text = '[status](https://e.org "describes version 9.9.9.") <!-- 本文对应 9.9.9 -->\n\n'
   text += "See `x`. This guide describes\nversion **0.8.0**.\n"
-  assert Page(text).text == "status \nSee x. This guide describes\nversion 0.8.0.\n"
-  assert STATUS_VERSION.findall(Page(text).text) == ["0.8.0"]
+  assert visible_text(tokens(text)) == "\nstatus \nSee x. This guide describes version 0.8.0."
+  assert STATUS_VERSION.findall(visible_text(tokens(text))) == ["0.8.0"]
 
 
 def test_bare_repo_urls_are_found_outside_links_and_code():
-  url = "https://github.com/0xf3cd/celestial-calendar/blob/main/x.md"
-  assert Page(f"<{url}> [{url}]({url}) `{url}`\n\nsee {url}\n").bare_urls == [url]
+  url, www = (
+    "https://github.com/0xf3cd/celestial-calendar/blob/main/x.md",
+    "www.github.com/0xf3cd/celestial-calendar/tree/main/y",
+  )
+  assert bare_repo_urls(tokens(f"<{url}> [{url}]({url}) `{url}`\n\nsee {url} and {www}\n")) == [url, www]
+
+
+@pytest.mark.parametrize(
+  "text",
+  [
+    '<script>\n<a href="gone.md">x</a>\n</script>\n',
+    "<a href='gone.md'>x</a>\n",
+    "<pre><code>only here\n</pre>\n",
+    '<p id="p">p</p>\n',
+    "</a>\n\nhttps://github.com/0xf3cd/celestial-calendar/blob/main/gone.md\n",
+    'Open <a id="x">anchor\n',
+    "<!--\nh\n--> v <!--\nh\n-->\n",
+    "a\n\n<!--\nunclosed\n",
+    '<!-- a --!> <a href="gone.md">x</a> -->\n',
+    "<!-->\n",
+  ],
+)
+def test_other_raw_html_is_reported(text):
+  assert unsupported_html(tokens(text))
+
+
+def test_comments_and_empty_anchors_are_not_reported():
+  text = (
+    '<!--\n  Header.\n-->\n# T\n<!-- marker -->\n| a |\n|---|\n\n<a id="x"></a><a id="y"></a>\n## H <!-- note -->\n'
+  )
+  assert unsupported_html(tokens(text)) == []
