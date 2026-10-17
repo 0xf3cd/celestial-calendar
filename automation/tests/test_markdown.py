@@ -334,9 +334,12 @@ def test_repository_links_take_one_spelling(target, misspelt):
   [
     ("http://github.com/0xf3cd/celestial-calendar/blob/main/README.md", "names this repository"),
     ("//github.com/0xf3cd/celestial-calendar/blob/main/README.md", "names this repository"),
-    ("/usr", "resolves outside the repository"),
-    ("../../../../../../../../../../usr", "resolves outside the repository"),
-    (f"{REPO_HOME}/tree/main/../../../../../../../../../../usr", "resolves outside the repository"),
+    ("/usr", "resolves outside the repository; write the path relative to docs/DESIGN.md"),
+    ("../../../../../../../../../../usr", "resolves outside the repository; write the path relative to docs/DESIGN.md"),
+    (
+      f"{REPO_HOME}/tree/main/../../../../../../../../../../usr",
+      "resolves outside the repository; write the path relative to docs/DESIGN.md",
+    ),
     ("../nonexistent.md", "names no file or directory that git tracks"),
     ("../.git", "names no file or directory that git tracks"),
     ("../src#layers", "puts a fragment on a directory"),
@@ -348,6 +351,7 @@ def test_repository_links_take_one_spelling(target, misspelt):
     (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory that git tracks"),
     ("../README.md#license", None),
     ("../src", None),
+    ("../bindings", None),
     (f"{REPO_HOME}/tree/main/", None),
     (f"{REPO_HOME}/blob/main/README.md#license", None),
     ("https://example.org/a#b", None),
