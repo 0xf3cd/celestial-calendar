@@ -89,30 +89,26 @@ commit to a temporary directory, compile the probe against both trees with one c
 and compare the outputs:
 
 ```sh
-(
-  set -euo pipefail
-  base=main                                     # the commit or branch to compare against
-  probe=/path/to/probe.cpp
-  compile() { clang++ -std=c++23 -O2 "$@"; }    # the same compiler and options for both sides
-  work=$(mktemp -d)
-  mkdir "$work/base"
-  git archive "$base" | tar -x -C "$work/base"
-  compile -I"$work/base/src/astro" -I"$work/base/src/calendar" -I"$work/base/src/util" "$probe" -o "$work/probe-base"
-  compile -Isrc/astro -Isrc/calendar -Isrc/util "$probe" -o "$work/probe-head"
-  "$work/probe-base" > "$work/base.txt"
-  "$work/probe-head" > "$work/head.txt"
-  test -s "$work/head.txt"
-  diff "$work/base.txt" "$work/head.txt"
-  wc -l < "$work/head.txt"
-)
+base=main                                     # the commit or branch to compare against
+probe=/path/to/probe.cpp
+compile() { clang++ -std=c++23 -O2 "$@"; }    # the same compiler and options for both sides
+work=$(mktemp -d) &&
+mkdir "$work/base" &&
+git archive -o "$work/base.tar" "$base" &&
+tar -x -f "$work/base.tar" -C "$work/base" &&
+compile -I"$work/base/src/astro" -I"$work/base/src/calendar" -I"$work/base/src/util" "$probe" -o "$work/probe-base" &&
+compile -Isrc/astro -Isrc/calendar -Isrc/util "$probe" -o "$work/probe-head" &&
+"$work/probe-base" > "$work/base.txt" &&
+"$work/probe-head" > "$work/head.txt" &&
+test -s "$work/head.txt" &&
+diff "$work/base.txt" "$work/head.txt" &&
+wc -l < "$work/head.txt"
 ```
 
-The commands run in a subshell, so `set -euo pipefail` stops them at the first failed step without closing an
-interactive shell. A failed archive or build, a probe that exits non-zero, an empty output and any difference each
-stop the run before the row count. The second build uses the working tree, uncommitted edits included.
-`git archive` does not touch the checkout, and every output goes to the temporary directory. If a header moved
-between the two commits, change the include paths for that side only. A row count as the last line means every
-sampled call returned the same value or threw the same exception type with the same message.
+The second build uses the working tree, uncommitted edits included. `git archive` does not touch the checkout,
+and every output goes to the temporary directory. If a header moved between the two commits, change the include
+paths for that side only. A row count as the last line means every sampled call returned the same value or threw
+the same exception type with the same message.
 
 The result has two limits, and a report of it should state both:
 
