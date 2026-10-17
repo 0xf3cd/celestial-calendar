@@ -43,8 +43,8 @@ STATUS_VERSION = re.compile(r"(?:describes version|本文对应) (\d+\.\d+\.\d+)
 REPO_HOME = "https://github.com/0xf3cd/celestial-calendar"
 REPO_ROUTES = {"blob/main": REPO, "tree/main": REPO, "actions/workflows": REPO / ".github/workflows"}
 REPO_URL = re.compile(
-  rf"{re.escape(REPO_HOME)}(?:/(?P<route>{'|'.join(REPO_ROUTES)})/(?P<path>[^#?]*)|(?P<releases>/releases))?"
-  r"(?:#(?P<fragment>.*))?"
+  rf"{re.escape(REPO_HOME)}(?:(?P<releases>/releases)|(?:/(?P<route>{'|'.join(REPO_ROUTES)})/(?P<path>[^#?]*))?"
+  r"(?:#(?P<fragment>.*))?)"
 )
 # markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
 # Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
@@ -116,7 +116,7 @@ def resolve(name: str, target: str) -> tuple[Path, str] | None:
     if not repo_url["route"]:
       return REPO / "README.md", fragment
     return REPO_ROUTES[repo_url["route"]] / unquote(repo_url["path"]), fragment
-  if re.match(r"[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
+  if re.match(r"[a-z][a-z0-9+.-]*:|//", target, re.IGNORECASE):
     return None
   file, _, fragment = target.partition("#")
   return ((REPO / name).parent / unquote(file) if file else REPO / name), unquote(fragment)
@@ -125,7 +125,11 @@ def resolve(name: str, target: str) -> tuple[Path, str] | None:
 def link_problem(name: str, target: str) -> str | None:
   """What is wrong with a link in document `name`, or None for a link that resolves or is off the repository."""
   if misspelt_repo_url(target):
-    return f"{target} names this repository in a spelling REPO_URL does not accept"
+    routes = ", ".join(f"/{route}/<path>" for route in REPO_ROUTES)
+    return (
+      f"{target} names this repository; write a link to it as {REPO_HOME}/releases, or as {REPO_HOME} alone or "
+      f"followed by one of {routes}, with an optional #fragment; a URL on another site that names it is not supported"
+    )
   resolved = resolve(name, target)
   if resolved is None:
     return None
@@ -275,7 +279,12 @@ def test_targets_resolve_to_a_file_and_fragment(target, file, fragment):
 
 @pytest.mark.parametrize(
   "target",
-  ["https://example.org/a#b", "mailto:a@example.org", "https://github.com/0xf3cd/celestial-calendar/releases"],
+  [
+    "https://example.org/a#b",
+    "//example.org/a",
+    "mailto:a@example.org",
+    "https://github.com/0xf3cd/celestial-calendar/releases",
+  ],
 )
 def test_targets_off_the_repository_resolve_to_nothing(target):
   assert resolve("README.md", target) is None
@@ -299,6 +308,7 @@ def test_repository_root_url_resolves_to_the_root():
     ("https://github.com/0xf3cd/celestial-calendar//blob/main/x.md", True),
     ("https://github.com/0xf3cd/celestial-calendar/blob/main/x.md?raw=1", True),
     ("https://github.com/0xf3cd/celestial-calendar/tree/main", True),
+    ("https://github.com/0xf3cd/celestial-calendar/releases#v0.7.0", True),
     ("https://github.com/0xf3cd/celestial-calendar", False),
     ("https://github.com/0xf3cd/celestial-calendar#cpp", False),
     ("https://github.com/0xf3cd/celestial-calendar/releases", False),
@@ -324,6 +334,7 @@ def test_repository_links_take_one_spelling(target, misspelt):
     ("../README.md#nonexistent", 'names no <a id="nonexistent"></a> in README.md'),
     (f"{REPO_HOME}#readme", 'names no <a id="readme"></a> in README.md'),
     (f"{REPO_HOME}/raw/main/README.md", "names this repository"),
+    ("https://img.shields.io/github/stars/0xf3cd/celestial-calendar", "another site that names it is not supported"),
     (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory"),
     ("../README.md#license", None),
     ("../src", None),
