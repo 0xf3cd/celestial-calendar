@@ -46,6 +46,7 @@ REPO_URL = re.compile(
   rf"{re.escape(REPO_HOME)}(?:(?P<releases>/releases)|(?:/(?P<route>{'|'.join(REPO_ROUTES)})/(?P<path>[^#?]*))?"
   r"(?:#(?P<fragment>.*))?)"
 )
+REPO_SUFFIXES = ("[#<fragment>]", "/releases", *(f"/{route}/<path>[#<fragment>]" for route in REPO_ROUTES))
 # markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
 # Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
 # something the parse can say.
@@ -125,19 +126,16 @@ def resolve(name: str, target: str) -> tuple[Path, str] | None:
 def link_problem(name: str, target: str) -> str | None:
   """What is wrong with a link in document `name`, or None for a link that resolves or is off the repository."""
   if misspelt_repo_url(target):
-    routes = ", ".join(f"/{route}/<path>" for route in REPO_ROUTES)
-    return (
-      f"{target} names this repository; write a link to it as {REPO_HOME}/releases, or as {REPO_HOME} alone or "
-      f"followed by one of {routes}, with an optional #fragment; a URL on another site that names it is not supported"
-    )
+    suffixes = ", ".join(REPO_SUFFIXES)
+    return f"{target} names this repository, which only {REPO_HOME} followed by one of these may do: {suffixes}"
   resolved = resolve(name, target)
   if resolved is None:
     return None
   path, fragment = resolved
   if not path.resolve().is_relative_to(REPO):
     return f"{target} resolves outside the repository; write the path relative to {name}"
-  if not path.exists():
-    return f"{target} names no file or directory"
+  if path.resolve() not in tracked():
+    return f"{target} names no file or directory that git tracks"
   if fragment and path.is_dir():
     return f"{target} puts a fragment on a directory"
   if fragment and fragment not in anchors(path):
@@ -172,6 +170,14 @@ def documents() -> list[str]:
   return subprocess.run(
     ["git", "ls-files", "*.md"], cwd=REPO, capture_output=True, text=True, check=True
   ).stdout.split()
+
+
+@cache
+def tracked() -> set[Path]:
+  """The files git tracks and the directories above them, which GitHub shows; a checkout holds more."""
+  listing = subprocess.run(["git", "ls-files", "-z"], cwd=REPO, capture_output=True, text=True, check=True).stdout
+  files = [Path(file) for file in listing.split("\0") if file]
+  return {REPO / path for file in files for path in (file, *file.parents)}
 
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
@@ -265,6 +271,7 @@ def test_link_targets_are_the_rendered_links(text, targets):
     ("../README.md%23license", "README.md#license", ""),
     ("../w%20x.md#%E8%AE%B8%E5%8F%AF%E8%AF%81", "w x.md", "许可证"),
     ("#license", "DESIGN.md", "license"),
+    ("../README.md#a:b", "README.md", "a:b"),
     ("https://github.com/0xf3cd/celestial-calendar/blob/main/docs/API.md#c-abi", "API.md", "c-abi"),
     ("https://github.com/0xf3cd/celestial-calendar/blob/main/w%20x.md#%E8%AE%B8%E5%8F%AF", "w x.md", "许可"),
     ("https://github.com/0xf3cd/celestial-calendar/tree/main/docs", "docs", ""),
@@ -330,11 +337,12 @@ def test_repository_links_take_one_spelling(target, misspelt):
     ("../../../../../../../../../../usr", "resolves outside the repository"),
     (f"{REPO_HOME}/tree/main/../../../../../../../../../../usr", "resolves outside the repository"),
     ("../nonexistent.md", "names no file or directory"),
+    ("../.git", "names no file or directory"),
     ("../src#layers", "puts a fragment on a directory"),
     ("../README.md#nonexistent", 'names no <a id="nonexistent"></a> in README.md'),
     (f"{REPO_HOME}#readme", 'names no <a id="readme"></a> in README.md'),
     (f"{REPO_HOME}/raw/main/README.md", "names this repository"),
-    ("https://img.shields.io/github/stars/0xf3cd/celestial-calendar", "another site that names it is not supported"),
+    ("https://img.shields.io/github/stars/0xf3cd/celestial-calendar", "names this repository"),
     (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory"),
     ("../README.md#license", None),
     ("../src", None),
@@ -345,6 +353,20 @@ def test_repository_links_take_one_spelling(target, misspelt):
 def test_link_problems_are_named(target, problem):
   found = link_problem("docs/DESIGN.md", target)
   assert found is None if problem is None else problem in (found or "")
+
+
+@pytest.mark.parametrize("suffix", REPO_SUFFIXES)
+def test_listed_suffixes_are_the_ones_accepted(suffix):
+  link = REPO_HOME + suffix.replace("<path>", "README.md").removesuffix("[#<fragment>]")
+  assert not misspelt_repo_url(link)
+  assert misspelt_repo_url(f"{link}#a") is not suffix.endswith("[#<fragment>]")
+
+
+def test_a_misspelt_link_is_shown_every_suffix():
+  problem = link_problem("README.md", f"{REPO_HOME}/raw/main/README.md")
+  assert problem.endswith(f"{REPO_HOME} followed by one of these may do: {', '.join(REPO_SUFFIXES)}")
+  listed = {suffix.removesuffix("[#<fragment>]").removesuffix("/<path>") for suffix in REPO_SUFFIXES}
+  assert listed == {"", "/releases", *(f"/{route}" for route in REPO_ROUTES)}
 
 
 def test_anchors_are_the_empty_anchor_tags(tmp_path):
