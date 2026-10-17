@@ -37,17 +37,16 @@ GUIDE_PAIRS = (
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
 STATUS_VERSION = re.compile(r"(?:describes version|本文对应) (\d+\.\d+\.\d+)")
-REPO_URL = re.compile(
-  r"(?i:https?://(?:www\.)?github\.com/0xf3cd/celestial-calendar)/(?:blob|tree)/main/([^#]*)(?:#(.*))?"
-)
-# GFM links a URL written as plain text; markdown-it does not, so such URLs to this repository are reported instead.
-BARE_REPO_URL = re.compile(r"(?i)(?:https?://|www\.)github\.com/0xf3cd/celestial-calendar/(?:blob|tree)/")
+# A link to this repository takes one spelling, so that a dead one cannot hide behind another: any other scheme,
+# host, port, case or percent-escape is reported rather than recognised, and so is a blob or tree off `main`.
+REPO_HOME = "https://github.com/0xf3cd/celestial-calendar"
+REPO_URL = re.compile(re.escape(REPO_HOME) + r"/(?:blob|tree)/main/([^#]*)(?:#(.*))?")
 # markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
 # Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
 # something the parse can say.
 MARKDOWN = MarkdownIt("commonmark").enable("table")
 COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
-ANCHOR = re.compile(r'<a id="([^"<>]+)">')
+ANCHOR = re.compile(r'<a id="([a-z0-9-]+)">')
 
 
 def tokens(text: str) -> list[Token]:
@@ -93,17 +92,29 @@ def link_targets(parsed: list[Token]) -> list[str]:
   ]
 
 
+def names_this_repository(text: str) -> bool:
+  return "0xf3cd/celestial-calendar" in unquote(text).lower()
+
+
+def misspelt_repo_url(target: str) -> bool:
+  if not names_this_repository(target):
+    return False
+  rest = target.removeprefix(REPO_HOME)
+  if rest == target or rest[:1] not in ("", "/", "#", "?"):
+    return True
+  return rest.startswith(("/blob/", "/tree/")) and not REPO_URL.fullmatch(target)
+
+
 def resolve(name: str, target: str) -> tuple[Path, str] | None:
-  """The file and fragment that a link in document `name` names, or None for a link off the repository."""
+  """The path and fragment that a link in document `name` names, or None for a link off the repository."""
+  # Split, then decode: an escaped `%23` belongs to the file name.
   repo_url = REPO_URL.fullmatch(target)
   if repo_url:
-    base, file, fragment = REPO, repo_url.group(1), repo_url.group(2) or ""
-  elif re.match(r"[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
+    return REPO / unquote(repo_url.group(1)), unquote(repo_url.group(2) or "")
+  if re.match(r"[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
     return None
-  else:
-    base, (file, _, fragment) = (REPO / name).parent, target.partition("#")
-  # Split, then decode: an escaped `%23` belongs to the file name.
-  return (base / unquote(file) if file else REPO / name), unquote(fragment)
+  file, _, fragment = target.partition("#")
+  return ((REPO / name).parent / unquote(file) if file else REPO / name), unquote(fragment)
 
 
 def visible_text(parsed: list[Token]) -> str:
@@ -120,11 +131,12 @@ def visible_text(parsed: list[Token]) -> str:
 
 
 def bare_repo_urls(parsed: list[Token]) -> list[str]:
+  """Words outside links that name this repository; GFM links a URL written as plain text, markdown-it does not."""
   found, depth = [], 0
   for token in parsed:
     depth += {"link_open": 1, "link_close": -1}.get(token.type, 0)
     if token.type == "text" and not depth:
-      found += [word for word in token.content.split() if BARE_REPO_URL.search(word)]
+      found += [word for word in token.content.split() if names_this_repository(word)]
   return found
 
 
@@ -183,11 +195,16 @@ def test_links_name_existing_paths_and_explicit_anchors():
     parsed = document(REPO / name)
     failures += [f"{name}: write {url} as a [text](url) link" for url in bare_repo_urls(parsed)]
     for target in link_targets(parsed):
+      if misspelt_repo_url(target):
+        failures.append(f"{name}: spell {target} as {REPO_HOME}/..., with blob/main/ or tree/main/ for a path")
+        continue
       resolved = resolve(name, target)
       if resolved is None:
         continue
       path, fragment = resolved
-      if not path.exists():
+      if not path.resolve().is_relative_to(REPO):
+        failures.append(f"{name}: {target} leaves the repository")
+      elif not path.exists():
         failures.append(f"{name}: {target} names no file or directory")
       elif fragment and path.is_dir():
         failures.append(f"{name}: {target} puts a fragment on a directory")
@@ -232,8 +249,9 @@ def test_link_targets_are_the_rendered_links(text, targets):
     ("../README.md%23license", "README.md#license", ""),
     ("../w%20x.md#%E8%AE%B8%E5%8F%AF%E8%AF%81", "w x.md", "许可证"),
     ("#license", "DESIGN.md", "license"),
-    ("https://GitHub.com/0xF3CD/celestial-calendar/blob/main/docs/API.md#c-abi", "API.md", "c-abi"),
-    ("http://www.github.com/0xf3cd/celestial-calendar/tree/main/docs", "docs", ""),
+    ("https://github.com/0xf3cd/celestial-calendar/blob/main/docs/API.md#c-abi", "API.md", "c-abi"),
+    ("https://github.com/0xf3cd/celestial-calendar/blob/main/README_ZH.md#%E8%AE%B8%E5%8F%AF", "README_ZH.md", "许可"),
+    ("https://github.com/0xf3cd/celestial-calendar/tree/main/docs", "docs", ""),
   ],
 )
 def test_targets_resolve_to_a_file_and_fragment(target, file, fragment):
@@ -243,10 +261,35 @@ def test_targets_resolve_to_a_file_and_fragment(target, file, fragment):
 
 @pytest.mark.parametrize(
   "target",
-  ["https://example.org/a#b", "mailto:a@example.org", "https://github.com/0xf3cd/celestial-calendar/blob/v0.7.0/x"],
+  ["https://example.org/a#b", "mailto:a@example.org", "https://github.com/0xf3cd/celestial-calendar/releases"],
 )
 def test_targets_off_the_repository_resolve_to_nothing(target):
   assert resolve("README.md", target) is None
+
+
+def test_repository_root_url_resolves_to_the_root():
+  assert resolve("docs/DESIGN.md", f"{REPO_HOME}/tree/main/#time-scales") == (REPO, "time-scales")
+
+
+@pytest.mark.parametrize(
+  ("target", "misspelt"),
+  [
+    ("https://github.com:443/0xf3cd/celestial-calendar/blob/main/x.md", True),
+    ("https://github.com/0xf3c%64/celestial-calendar/blob/main/x.md", True),
+    ("http://www.github.com/0xf3cd/celestial-calendar/blob/main/x.md", True),
+    ("https://GitHub.com/0xF3CD/celestial-calendar", True),
+    ("https://github.com/0xf3cd/celestial-calendar/blob/MAIN/x.md", True),
+    ("https://raw.githubusercontent.com/0xf3cd/celestial-calendar/main/x.md", True),
+    ("https://github.com/0xf3cd/celestial-calendar-fork", True),
+    ("https://github.com/0xf3cd/celestial-calendar", False),
+    ("https://github.com/0xf3cd/celestial-calendar#cpp", False),
+    ("https://github.com/0xf3cd/celestial-calendar/releases", False),
+    ("https://github.com/0xf3cd/celestial-calendar/tree/main/bindings/javascript", False),
+    ("../README.md#license", False),
+  ],
+)
+def test_repository_links_take_one_spelling(target, misspelt):
+  assert misspelt_repo_url(target) is misspelt
 
 
 def test_anchors_are_the_empty_anchor_tags(tmp_path):
@@ -268,11 +311,13 @@ def test_version_sentence_is_read_from_the_text_alone():
 
 
 def test_bare_repo_urls_are_found_outside_links_and_code():
-  url, www = (
+  url, www, port = (
     "https://github.com/0xf3cd/celestial-calendar/blob/main/x.md",
     "www.github.com/0xf3cd/celestial-calendar/tree/main/y",
+    "https://github.com:443/0xf3c%64/celestial-calendar",
   )
-  assert bare_repo_urls(tokens(f"<{url}> [{url}]({url}) `{url}`\n\nsee {url} and {www}\n")) == [url, www]
+  text = f"<{url}> [{url}]({url}) `{url}`\n\nsee {url} and {www} or {port}\n"
+  assert bare_repo_urls(tokens(text)) == [url, www, port]
 
 
 @pytest.mark.parametrize(
@@ -288,6 +333,8 @@ def test_bare_repo_urls_are_found_outside_links_and_code():
     "a\n\n<!--\nunclosed\n",
     '<!-- a --!> <a href="gone.md">x</a> -->\n',
     "<!-->\n",
+    '<a id="r5&amp;x"></a>\n',
+    '<a id="Upper"></a>\n',
   ],
 )
 def test_other_raw_html_is_reported(text):
