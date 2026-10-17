@@ -167,9 +167,10 @@ def bare_repo_urls(parsed: list[Token]) -> list[str]:
 
 
 def documents() -> list[str]:
-  return subprocess.run(
-    ["git", "ls-files", "*.md"], cwd=REPO, capture_output=True, text=True, check=True
-  ).stdout.split()
+  listing = subprocess.run(
+    ["git", "ls-files", "-z", "*.md"], cwd=REPO, capture_output=True, text=True, check=True
+  ).stdout
+  return [file for file in listing.split("\0") if file]
 
 
 @cache
@@ -336,23 +337,25 @@ def test_repository_links_take_one_spelling(target, misspelt):
     ("/usr", "resolves outside the repository"),
     ("../../../../../../../../../../usr", "resolves outside the repository"),
     (f"{REPO_HOME}/tree/main/../../../../../../../../../../usr", "resolves outside the repository"),
-    ("../nonexistent.md", "names no file or directory"),
-    ("../.git", "names no file or directory"),
+    ("../nonexistent.md", "names no file or directory that git tracks"),
+    ("../.git", "names no file or directory that git tracks"),
     ("../src#layers", "puts a fragment on a directory"),
+    (f"{REPO_HOME}/tree/main/docs#a", "puts a fragment on a directory"),
     ("../README.md#nonexistent", 'names no <a id="nonexistent"></a> in README.md'),
     (f"{REPO_HOME}#readme", 'names no <a id="readme"></a> in README.md'),
     (f"{REPO_HOME}/raw/main/README.md", "names this repository"),
     ("https://img.shields.io/github/stars/0xf3cd/celestial-calendar", "names this repository"),
-    (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory"),
+    (f"{REPO_HOME}/actions/workflows/nonexistent.yml", "names no file or directory that git tracks"),
     ("../README.md#license", None),
     ("../src", None),
+    (f"{REPO_HOME}/tree/main/", None),
     (f"{REPO_HOME}/blob/main/README.md#license", None),
     ("https://example.org/a#b", None),
   ],
 )
 def test_link_problems_are_named(target, problem):
   found = link_problem("docs/DESIGN.md", target)
-  assert found is None if problem is None else problem in (found or "")
+  assert found is None if problem is None else (found or "").startswith(f"{target} {problem}")
 
 
 @pytest.mark.parametrize("suffix", REPO_SUFFIXES)
@@ -362,7 +365,7 @@ def test_listed_suffixes_are_the_ones_accepted(suffix):
   assert misspelt_repo_url(f"{link}#a") is not suffix.endswith("[#<fragment>]")
 
 
-def test_a_misspelt_link_is_shown_every_suffix():
+def test_misspelt_links_are_reported_with_every_suffix():
   problem = link_problem("README.md", f"{REPO_HOME}/raw/main/README.md")
   assert problem.endswith(f"{REPO_HOME} followed by one of these may do: {', '.join(REPO_SUFFIXES)}")
   listed = {suffix.removesuffix("[#<fragment>]").removesuffix("/<path>") for suffix in REPO_SUFFIXES}
