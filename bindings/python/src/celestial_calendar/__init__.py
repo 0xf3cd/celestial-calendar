@@ -257,6 +257,8 @@ _MIN_CHART_UTC_YEAR = 1972
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
   if not isinstance(value, enum_type):
     raise TypeError(f"{name} must be a {enum_type.__name__} member")
+  if not any(value is member for member in enum_type):
+    raise ValueError(f"{name} must be a declared {enum_type.__name__} member")
   return value
 
 
@@ -572,6 +574,7 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
 
   Raises:
     TypeError: If algorithm is not a LunarAlgorithm member.
+    ValueError: If algorithm is a LunarAlgorithm object that is not one of its declared members.
     CelestialError: If the native range query fails.
   """
   checked = _enum(algorithm, LunarAlgorithm, "algorithm")
@@ -686,12 +689,6 @@ def chart_snapshot(
   checked_scale = _enum(scale, CivilScale, "scale")
   checked_system = _enum(system, HouseSystem, "system")
   checked_model = _enum(model, DeltaTModel, "model")
-  if not any(checked_scale is member for member in CivilScale) or not any(
-    checked_system is member for member in HouseSystem
-  ):
-    raise ValueError("scale and system must be known chart enum members")
-  if not any(checked_model is member for member in _CHART_DELTA_T_MODEL):
-    raise ValueError("model must be a known DeltaTModel member")
 
   if not isinstance(civil_dt, CivilDateTime):
     raise TypeError("civil_dt must be a CivilDateTime")
