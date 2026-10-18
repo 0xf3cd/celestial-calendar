@@ -767,12 +767,10 @@ template <BodyProvider P>
  *         transit period — the solar day dips below 24 h around the equinoxes, so even a 1-day
  *         window can contain two solar transits), the FIRST one is returned.
  * @throw std::invalid_argument If `location` is out of range, or the window is not finite and
- *        positive.
+ *        positive, or a time conversion leaves its supported years.
  * @throw std::runtime_error If the polished root fails the hour-angle residual guard — the
  *        estimate's bracket held no root, which is a numerical failure and must not read as
- *        an eventless window. The date-range guard of the UT1/JD conversions also propagates
- *        as `std::runtime_error` (reachable near the representable-range top, where the
- *        1-day α sample overshoots).
+ *        an eventless window.
  * @note The estimate is Meeus Ch.15's m₀ in secant form: the hour angle sweeps at
  *       (sidereal rate − dα/dt), and dα/dt is *measured* from the provider over a fixed
  *       1-day span from `t0_jde_tt` — the rate is a property of the body, not of the window, so the

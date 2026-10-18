@@ -176,7 +176,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 // 小寒 -- and a subscript cannot tell them apart, so indexing the wrong one yields a plausible
 // wrong answer in silence. Taking a `Jieqi` makes that a compile error again.
 //
-// A fixed underlying type permits unnamed enum values, so validate the index before the lookup.
+// The fixed underlying type permits unnamed values; Jieqi::COUNT is not a lookup value either.
 
 /**
  * @brief Get the name of the given `jq`.
