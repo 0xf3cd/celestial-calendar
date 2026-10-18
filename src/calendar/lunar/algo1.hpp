@@ -72,7 +72,7 @@ inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = 
  */
 [[nodiscard]] inline auto calc_lunar_year(int32_t year) -> common::LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
     };
   }

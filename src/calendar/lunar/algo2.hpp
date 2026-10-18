@@ -398,7 +398,7 @@ struct LunarYearContext {
  */
 [[nodiscard]] inline auto calc_lunar_year(int32_t year) -> LunarYear {
   if (year < START_YEAR or year > END_YEAR) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::format("year {} is out of range [{}, {}]", year, START_YEAR, END_YEAR)
     };
   }

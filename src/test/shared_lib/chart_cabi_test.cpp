@@ -353,14 +353,15 @@ TEST(ChartCAbi, Algo4CapIsStrictInDerivedTtAndHasNoDefaultFallback) {
     } else {
       EXPECT_EQ(astro::julian_day::utc_to_jde(dt), astro::chart::detail::ALGO4_END_JDE_TT);
       EXPECT_FALSE(actual.valid);
-      EXPECT_NE(std::strstr(last_error(), "Algo4"), nullptr);
+      EXPECT_NE(std::strstr(last_error(), "Chart Algo4 requires JDE(TT) before 2035-01-01"), nullptr);
+      EXPECT_EQ(std::strstr(last_error(), "Chart Delta T datetime leaves its model domain"), nullptr);
       EXPECT_TRUE(chart_snapshot_v1(2034, 12, 31, fraction, CHART_CIVIL_SCALE_UTC, 0.0, 0.0,
                                     CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_ALGO5).valid);
     }
   }
   EXPECT_FALSE(chart_snapshot_v1(2035, 6, 1, 0.5, CHART_CIVIL_SCALE_UT1, 0.0, 0.0,
                                  CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_ALGO4).valid);
-  EXPECT_STRNE(last_error(), "");
+  EXPECT_NE(std::strstr(last_error(), "Chart Delta T datetime leaves its model domain: The year 2035."), nullptr);
   EXPECT_TRUE(chart_snapshot_v1(2035, 6, 1, 0.5, CHART_CIVIL_SCALE_UT1, 0.0, 0.0,
                                 CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_DEFAULT).valid);
 }

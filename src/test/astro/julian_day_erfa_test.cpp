@@ -78,13 +78,13 @@ constexpr std::int64_t NS_PER_DAY = 86'400'000'000'000;
 }
 
 template <typename Callable>
-[[nodiscard]] auto runtime_error_message(Callable call) -> std::string {
+[[nodiscard]] auto invalid_argument_message(Callable call) -> std::string {
   try {
     call();
-  } catch (const std::runtime_error& error) {
+  } catch (const std::invalid_argument& error) {
     return error.what();
   }
-  throw std::logic_error { "expected std::runtime_error" };
+  throw std::logic_error { "expected std::invalid_argument" };
 }
 
 } // namespace
@@ -184,30 +184,30 @@ TEST(JulianDayErfaOracle, BoundaryAndMessageContracts) {
   EXPECT_TRUE(inverse_matches(std::nextafter(UPPER_JD, -std::numeric_limits<double>::infinity())));
 
   EXPECT_EQ(
-    runtime_error_message([] {
+    invalid_argument_message([] {
       static_cast<void>(jd_to_ut1(std::nextafter(LOWER_JD, -std::numeric_limits<double>::infinity())));
     }),
     "The julian day number 1867522.4999999998 is below JD 1867522.5 (401-01-01), "
     "where the estimated gregorian year drops under 401."
   );
   EXPECT_EQ(
-    runtime_error_message([] { static_cast<void>(jd_to_ut1(UPPER_JD)); }),
+    invalid_argument_message([] { static_cast<void>(jd_to_ut1(UPPER_JD)); }),
     "The julian day number 13689325.5 is beyond the representable years."
   );
   EXPECT_EQ(
-    runtime_error_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::quiet_NaN())); }),
+    invalid_argument_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::quiet_NaN())); }),
     "The julian day number nan is not finite."
   );
   EXPECT_EQ(
-    runtime_error_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::infinity())); }),
+    invalid_argument_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::infinity())); }),
     "The julian day number inf is not finite."
   );
   EXPECT_EQ(
-    runtime_error_message([] { static_cast<void>(jd_to_ut1(-std::numeric_limits<double>::infinity())); }),
+    invalid_argument_message([] { static_cast<void>(jd_to_ut1(-std::numeric_limits<double>::infinity())); }),
     "The julian day number -inf is not finite."
   );
   EXPECT_EQ(
-    runtime_error_message([] {
+    invalid_argument_message([] {
       static_cast<void>(ut1_to_jd(Datetime { util::to_ymd(0, 1, 1), 0.0 }));
     }),
     "The year 0 is < 1, not supported by this algorithm."

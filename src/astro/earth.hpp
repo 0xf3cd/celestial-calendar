@@ -277,7 +277,7 @@ enum class Model : uint8_t { MEEUS, IAU_1980 };
   switch (model) {
     case Model::MEEUS:    return { MEEUS_NUTATION_COEFFS };
     case Model::IAU_1980: return { IAU1980_NUTATION_COEFFS };
-    default:              throw std::runtime_error { "Unknown nutation model" };
+    default:              throw std::invalid_argument { "Unknown nutation model" };
   }
 }
 

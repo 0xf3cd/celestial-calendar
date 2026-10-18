@@ -130,9 +130,6 @@ guarantees by construction and is checked only without `NDEBUG`: in debug builds
 the Release library. A `runtime_error` check guards a result that depends on numerics or data, runs in every build,
 and stops a wrong answer from reaching the caller.
 
-Older headers do not use these two types consistently yet: some throw `std::out_of_range` for a year outside its
-window, and some reject input with `std::runtime_error`. #345 lists the sites and tracks the conversion.
-
 `optional` never carries an error; it carries a legitimate "none". `std::expected` was evaluated for the core and
 declined (#97). The C ABI keeps its own translation: every export catches any exception and returns `valid = false`
 (or `0` / `false`), with a thread-local message readable through `last_error` (see `celestial.h`).

@@ -414,7 +414,7 @@ auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -
     const auto ut1_dt = astro::julian_day::jd_to_ut1(jd_ut1);
     const auto year = static_cast<int32_t>(ut1_dt.ymd.year());
     if (year > 32766) {
-      throw std::out_of_range {
+      throw std::invalid_argument {
         std::format("Year {} is outside the declared domain [401, 32766].", year)
       };
     }

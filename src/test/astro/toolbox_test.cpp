@@ -301,8 +301,8 @@ TEST(AstroMath, AngleDivisionByZeroThrows) {
 
   // The contract (#48): a zero divisor is a caller mistake, not a state to hand on as ±inf.
   const auto angle = 30.0_deg;
-  ASSERT_THROW(std::ignore = (angle / 0.0), std::runtime_error);
-  ASSERT_THROW(std::ignore = (angle / -0.0), std::runtime_error); // IEEE says -0.0 == 0.0; so does the guard.
+  ASSERT_THROW(std::ignore = (angle / 0.0), std::invalid_argument);
+  ASSERT_THROW(std::ignore = (angle / -0.0), std::invalid_argument); // IEEE says -0.0 == 0.0; so does the guard.
 
   // The guard tests for zero, not for smallness — a denormal divisor still divides.
   ASSERT_NO_THROW(std::ignore = (angle / std::numeric_limits<double>::denorm_min()));

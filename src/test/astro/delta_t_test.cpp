@@ -31,7 +31,7 @@ namespace astro::delta_t_test {
 using namespace astro::delta_t;
 
 TEST(DeltaT, Algo1) {
-  ASSERT_THROW(std::ignore = algo1::compute(-4001), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(-4001), std::invalid_argument);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
@@ -56,7 +56,7 @@ TEST(DeltaT, Algo2) {
 }
 
 TEST(DeltaT, Algo3) {
-  ASSERT_THROW(std::ignore = algo3::compute(3000.1), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo3::compute(3000.1), std::invalid_argument);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
@@ -66,7 +66,7 @@ TEST(DeltaT, Algo3) {
 }
 
 TEST(DeltaT, Algo4) {
-  ASSERT_THROW(std::ignore = algo4::compute(2035.1), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo4::compute(2035.1), std::invalid_argument);
 
   // Following data points are not very accurate.
   // Use them just to ensure the function is invokable.
@@ -106,15 +106,15 @@ TEST(DeltaT, NonFiniteYears) {
   // the dispatcher) propagate it — IEEE, not UB.
   const double nan = std::numeric_limits<double>::quiet_NaN();
   const double inf = std::numeric_limits<double>::infinity();
-  ASSERT_THROW(std::ignore = algo1::compute(nan), std::out_of_range);
-  ASSERT_THROW(std::ignore = algo3::compute(nan), std::out_of_range);
-  ASSERT_THROW(std::ignore = algo4::compute(nan), std::out_of_range);
-  ASSERT_THROW(std::ignore = algo1::compute(inf),  std::out_of_range);
-  ASSERT_THROW(std::ignore = algo1::compute(-inf), std::out_of_range);
-  ASSERT_THROW(std::ignore = algo3::compute(inf),  std::out_of_range);
-  ASSERT_THROW(std::ignore = algo3::compute(-inf), std::out_of_range);
-  ASSERT_THROW(std::ignore = algo4::compute(inf),  std::out_of_range);
-  ASSERT_THROW(std::ignore = algo4::compute(-inf), std::out_of_range);
+  ASSERT_THROW(std::ignore = algo1::compute(nan), std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo3::compute(nan), std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo4::compute(nan), std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo1::compute(inf),  std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo1::compute(-inf), std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo3::compute(inf),  std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo3::compute(-inf), std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo4::compute(inf),  std::invalid_argument);
+  ASSERT_THROW(std::ignore = algo4::compute(-inf), std::invalid_argument);
   // The noexcept ones propagate: non-finite in, non-finite out.
   ASSERT_TRUE(std::isnan(algo2::compute(nan)));
   ASSERT_TRUE(std::isnan(algo5::compute(nan)));
@@ -369,8 +369,8 @@ TEST(DeltaT, SelectedModelConversionsUseOneEvaluationAtTheirInput) {
     }
   }
   const calendar::Datetime outside_algo4 { util::to_ymd(2035, 1, 1), 0.0 };
-  EXPECT_THROW(std::ignore = ut1_to_tt(Model::ALGO4, outside_algo4), std::out_of_range);
-  EXPECT_THROW(std::ignore = tt_to_ut1(Model::ALGO4, outside_algo4), std::out_of_range);
+  EXPECT_THROW(std::ignore = ut1_to_tt(Model::ALGO4, outside_algo4), std::invalid_argument);
+  EXPECT_THROW(std::ignore = tt_to_ut1(Model::ALGO4, outside_algo4), std::invalid_argument);
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Exercises the invalid-model contract.
   const auto unknown = static_cast<Model>(255);
   EXPECT_THROW(std::ignore = ut1_to_tt(unknown, outside_algo4), std::invalid_argument);

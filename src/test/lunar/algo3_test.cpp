@@ -11,6 +11,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include "lunar/algo1.hpp"
 #include "lunar/algo2.hpp"
 #include "lunar/algo3.hpp"
@@ -22,8 +23,13 @@ namespace calendar::lunar::algo3::test {
 
 using namespace calendar::lunar::common;
 
+TEST(LunarAlgo3, YearGuard) {
+  ASSERT_THROW(std::ignore = calc_lunar_year(START_YEAR - 1), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::invalid_argument);
+}
+
 // External oracle for algo3 is the ytliu0 golden (algo3_ytliu0_golden_test.cpp);
-// neither test below is one.
+// the table comparisons below are drift checks.
 
 // [1901, 2099]: algo3's baked slice is a byte-for-byte copy of algo1's HKO table.
 // Both sides decode via the shared `parse_lunar_year`, so this is a dual-table

@@ -82,17 +82,26 @@ static_assert(24U == JIEQI_COUNT);
 }
 
 
+namespace detail {
+
+[[nodiscard]] constexpr auto checked_index(const uint8_t index) -> uint8_t {
+  if (index >= JIEQI_COUNT) {
+    throw std::invalid_argument { std::format("Jieqi index {} is outside [0, {}).", index, JIEQI_COUNT) };
+  }
+  return index;
+}
+
+} // namespace detail
+
+
 /**
  * @brief Get the Jieqi at a 0-based index counted from 立春.
  * @param index The index, in `[0, JIEQI_COUNT)`.
  * @return The jieqi.
- * @throw std::out_of_range if `index` is not a valid index.
+ * @throw std::invalid_argument if `index` is not a valid index.
  */
 [[nodiscard]] constexpr auto from_index(const uint8_t index) -> Jieqi {
-  if (index >= JIEQI_COUNT) {
-    throw std::out_of_range { "index must be less than 24" };
-  }
-  return static_cast<Jieqi>(index);
+  return static_cast<Jieqi>(detail::checked_index(index));
 }
 
 
@@ -167,18 +176,16 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 // 小寒 -- and a subscript cannot tell them apart, so indexing the wrong one yields a plausible
 // wrong answer in silence. Taking a `Jieqi` makes that a compile error again.
 //
-// `.at()` stays on the read path: it throws `std::out_of_range` for a `Jieqi` outside `[0, 24)`,
-// which the enum's fixed underlying type makes reachable from outside the library
-// (`static_cast<Jieqi>(25)`, or `Jieqi::COUNT` itself).
+// The fixed underlying type permits unnamed values; Jieqi::COUNT is not a lookup value either.
 
 /**
  * @brief Get the name of the given `jq`.
  * @param jq The jieqi.
  * @return The name.
- * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ * @throw std::invalid_argument if `jq` is not a valid Jieqi.
  */
 [[nodiscard]] constexpr auto name_of(const Jieqi jq) -> std::string_view {
-  return JIEQI_NAME.at(to_index(jq));
+  return JIEQI_NAME.at(detail::checked_index(to_index(jq)));
 }
 
 
@@ -186,10 +193,10 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @brief Get the solar longitude (in degrees) at which the given `jq` begins.
  * @param jq The jieqi.
  * @return The solar longitude.
- * @throw std::out_of_range if `jq` is not a valid Jieqi.
+ * @throw std::invalid_argument if `jq` is not a valid Jieqi.
  */
 [[nodiscard]] constexpr auto longitude_of(const Jieqi jq) -> double {
-  return JIEQI_SOLAR_LONGITUDE.at(to_index(jq));
+  return JIEQI_SOLAR_LONGITUDE.at(detail::checked_index(to_index(jq)));
 }
 
 
@@ -198,7 +205,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @param year The gregorian year, in [1, 32766].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
+ * @throw std::invalid_argument if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 [[nodiscard]] inline auto calc_jieqi_jde(const int32_t year, const Jieqi jq) -> double {
@@ -208,7 +215,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
   // with `year + 1`, so the usable ceiling is one below `year::max()`.
   constexpr int32_t MAX_YEAR = static_cast<int32_t>(std::chrono::year::max()) - 1;
   if (year < 1 or year > MAX_YEAR) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::vformat("The year {} is outside [1, {}].", std::make_format_args(year, MAX_YEAR))
     };
   }
@@ -233,7 +240,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @param year The gregorian year, in [1, 32766].
  * @param jq The jieqi.
  * @return The JDE (Julian Ephemeris Day).
- * @throw std::out_of_range if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
+ * @throw std::invalid_argument if `year` is outside [1, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
  */
 // Function-local static: a namespace-scope wrapper would initialize at image load (#67).
@@ -248,7 +255,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  * @param year The gregorian year, in [401, 32766].
  * @param jq The jieqi.
  * @return The UT1 (Universal Time 1).
- * @throw std::out_of_range if `year` is outside [401, 32766], or `jq` is not a valid Jieqi.
+ * @throw std::invalid_argument if `year` is outside [401, 32766], or `jq` is not a valid Jieqi.
  * @throw std::runtime_error if the root search does not yield exactly one root.
  * @note UT1, not UTC — the lunar-calendar rules render civil moments through the
  *       leap-second-aware path instead (#84). Remaining consumers: the C-ABI
@@ -261,7 +268,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
  */
 [[nodiscard]] inline auto jieqi_ut1_moment(const int32_t year, const Jieqi jq) -> calendar::Datetime {
   if (year < 401) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::vformat("The year {} is outside [401, 32766].", std::make_format_args(year))
     };
   }

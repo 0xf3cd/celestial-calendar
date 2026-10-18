@@ -32,7 +32,7 @@ ASTROTIME_GRANT_NORMALIZED_SHA256: Final[str] = "f00038723177475993d52bf4ec5bdd4
 ASTROTIME_RECORD_URL: Final[str] = (
   f"https://github.com/0xf3cd/AstroTime-Analysis/blob/{ASTROTIME_RECORD_COMMIT}/DeltaT/algo4/record.json"
 )
-ALGO4_FUNCTION_SHA256: Final[str] = "0b6065a66073f45c3cd510be87f31a22e65625665f569a91e7802c29fc17539e"
+ALGO4_FUNCTION_SHA256: Final[str] = "3954c8f2dd6179e8be08515ee3dfb184d48c459c2ed7e30238e47b8a25d5ddbb"
 ASTROTIME_ALGO5_RECORD_COMMIT: Final[str] = "ed1cdc2fd6c5122b391a82289aa2cc060340552d"
 ASTROTIME_ALGO5_GENERATION_COMMIT: Final[str] = "a1e95811b47c084f44b4b4bb7444560dd5b863bc"
 ASTROTIME_ALGO5_DATA_COMMIT: Final[str] = "ddf3be1972e405ed02233837394cd3377226b65c"
@@ -725,7 +725,7 @@ def verify_astrotime_delta_t_provenance(
   )
   for required_source in (
     "if (not std::isfinite(year) or year >= 2035)",
-    "throw std::out_of_range",
+    "throw std::invalid_argument",
     "if (year < 2005)",
     "return algo2::compute(year);",
     "if (year >= 2005 and year < 2024)",
