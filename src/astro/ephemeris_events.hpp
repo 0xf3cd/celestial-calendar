@@ -26,6 +26,7 @@
 
 namespace astro::ephemeris::detail::event_search {
 
+/** @brief A scalar observation with an absolute error allowance at the requested abscissa. */
 struct Value {
   double value;
   double error;
@@ -36,6 +37,7 @@ struct Sample {
   Value evaluated;
 };
 
+/** @brief Uniform absolute first- and second-derivative bounds on a closed cell. */
 struct Bounds {
   double first_derivative;
   double second_derivative;
@@ -47,7 +49,9 @@ struct Budget {
 };
 
 enum class Isolation : uint8_t { UNIQUE, UNRESOLVED };
+
 enum class EndpointOwnership : uint8_t { LEFT, BOTH };
+
 enum class CellDecision : uint8_t { DISCARD, UNIQUE, SPLIT };
 
 struct Cell {
@@ -79,6 +83,7 @@ struct Root {
   return evaluated.value == 0.0 and evaluated.error == 0.0;
 }
 
+/** @brief Return a robust sign, or zero when the allowance includes zero. */
 [[nodiscard]] inline auto sign(const Value evaluated) -> int {
   if (evaluated.value > evaluated.error) {
     return 1;
@@ -86,7 +91,7 @@ struct Root {
   return evaluated.value < -evaluated.error ? -1 : 0;
 }
 
-/** @brief Account for evaluation at a different abscissa from the requested one. */
+/** @brief Adjust a provider's error allowance when it evaluates at a different abscissa. */
 [[nodiscard]] inline auto shifted(const Value evaluated, const double offset, const double first_derivative)
   -> Value {
   if (not std::isfinite(offset) or offset < 0.0
@@ -102,6 +107,7 @@ struct Root {
   };
 }
 
+/** @brief Charge an evaluation even if the provider fails. */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
@@ -136,6 +142,7 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
   }
 }
 
+/** @brief Test sufficient endpoint conditions for a cell to contain no root. */
 [[nodiscard]] inline auto endpoint_exclusion(const Cell& cell, const Bounds bounds) -> bool {
   const int left_sign = sign(cell.left.evaluated);
   if (left_sign == 0 or left_sign != sign(cell.right.evaluated)) {
@@ -247,6 +254,10 @@ requires std::invocable<const Provider&, double>
   return candidates;
 }
 
+/**
+ * @brief Decide whether an observation ends refinement.
+ * @throw std::runtime_error If its error allowance prevents the requested time resolution.
+ */
 [[nodiscard]] inline auto resolves_sample(
   const double minimum_slope,
   const Sample observed,

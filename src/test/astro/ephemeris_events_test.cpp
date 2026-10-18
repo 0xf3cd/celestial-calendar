@@ -59,24 +59,31 @@ auto roots(
   return result;
 }
 
-template <typename Provider>
-auto partitioned_roots(const Provider& provider, const double query_start, const double query_end)
+auto reported_times(const std::vector<search::Root>& found, const double query_start, const double query_end)
   -> std::vector<double> {
   std::vector<double> result;
+  for (const auto root : found) {
+    if (query_start <= root.jde_tt and root.jde_tt < query_end) {
+      result.push_back(root.jde_tt);
+    }
+  }
+  return result;
+}
+
+template <typename Provider>
+auto two_cell_times(const Provider& provider, const double query_start, const double query_end)
+  -> std::vector<double> {
+  std::vector<search::Root> found;
   for (const int cell : std::array { 0, 1 }) {
-    const auto found = roots(
+    const auto current = roots(
       provider,
       static_cast<double>(cell),
       static_cast<double>(cell + 1),
       LINEAR_BOUNDS
     );
-    for (const auto root : found) {
-      if (query_start <= root.jde_tt and root.jde_tt < query_end) {
-        result.push_back(root.jde_tt);
-      }
-    }
+    found.insert(found.end(), current.begin(), current.end());
   }
-  return result;
+  return reported_times(found, query_start, query_end);
 }
 
 } // namespace
@@ -125,7 +132,7 @@ TEST(EphemerisEventsKernel, ExactSharedNodesBelongToTheRightCell) {
   const auto right = roots(linear, 1, 2, LINEAR_BOUNDS);
   ASSERT_EQ(right.size(), 1);
   ASSERT_EQ(right.at(0).jde_tt, 1);
-  const auto full = partitioned_roots(linear, 0, 2);
+  const auto full = two_cell_times(linear, 0, 2);
   ASSERT_EQ(full, (std::vector<double> { 1 }));
   const auto negative = [](const double time) -> search::Value { return sum_value(time, 0.5); };
   const auto before_zero = roots(negative, -1, 0, LINEAR_BOUNDS);
@@ -136,10 +143,10 @@ TEST(EphemerisEventsKernel, ExactSharedNodesBelongToTheRightCell) {
 TEST(EphemerisEventsKernel, RoundedInteriorRootsKeepTheirReportedTimeOwnership) {
   for (const double offset : std::array { 0x1p-55, -0x1p-55 }) {
     const auto linear = [offset](const double time) -> search::Value { return sum_value(time - 1, offset); };
-    const auto full = partitioned_roots(linear, 0, 2);
+    const auto full = two_cell_times(linear, 0, 2);
     ASSERT_EQ(full, (std::vector<double> { 1 }));
-    ASSERT_TRUE(partitioned_roots(linear, 0, 1).empty());
-    ASSERT_EQ(partitioned_roots(linear, 1, 2), full);
+    ASSERT_TRUE(two_cell_times(linear, 0, 1).empty());
+    ASSERT_EQ(two_cell_times(linear, 1, 2), full);
   }
 }
 
@@ -261,12 +268,7 @@ TEST(EphemerisEventsKernel, NarrowQueriesRetainWholeCellBounds) {
   };
   const search::Bounds bounds { .first_derivative = 2, .second_derivative = 2 };
   const auto found = roots(pair, 0, 1, bounds, 1e-8);
-  std::vector<double> narrow;
-  for (const auto root : found) {
-    if (0 <= root.jde_tt and root.jde_tt < 0.01) {
-      narrow.push_back(root.jde_tt);
-    }
-  }
+  const auto narrow = reported_times(found, 0, 0.01);
   ASSERT_EQ(narrow.size(), 2);
   ASSERT_NEAR(narrow.at(0), 0.001, 1e-8);
   ASSERT_NEAR(narrow.at(1), 0.002, 1e-8);
@@ -309,7 +311,7 @@ TEST(EphemerisEventsKernel, RefinementHonorsItsErrorAndResolution) {
                std::runtime_error);
 }
 
-TEST(EphemerisEventsKernel, EvaluationCandidateAndRefinementBudgetsAreReal) {
+TEST(EphemerisEventsKernel, EachBudgetStopsWorkIndependently) {
   const auto linear = [](const double time) -> search::Value { return sum_value(time, -0.4); };
   search::Budget no_evaluations { .evaluations_remaining = 1, .candidates_remaining = 100 };
   ASSERT_THROW(static_cast<void>(search::isolate_cell(linear, 0, 1, LINEAR_BOUNDS, no_evaluations)),
