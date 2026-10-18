@@ -72,7 +72,7 @@ TEST(JulianDay, UtcYearWindows) {
     }
   }
   EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { -32768 }), std::invalid_argument);
-  EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { 0 }), std::runtime_error);
+  EXPECT_THROW(std::ignore = utc_year_start_jde(std::chrono::year { 0 }), std::invalid_argument);
 }
 
 TEST(JulianDay, AnnualYearValidation) {
@@ -254,34 +254,34 @@ TEST(JulianDay, JdeUt1Consistency) {
 
 TEST(JulianDay, InvalidInput) {
   // #77: year 1 is the lower bound of the public forward domain.
-  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
-  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 2, 29), 0.5 }), std::runtime_error);
-  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-1, 12, 31), 0.99 }), std::runtime_error);
-  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-4712, 1, 1), 0.0 }), std::runtime_error);
+  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 1, 1), 0.0 }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(0, 2, 29), 0.5 }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-1, 12, 31), 0.99 }), std::invalid_argument);
+  ASSERT_THROW(std::ignore = ut1_to_jd(Datetime { to_ymd(-4712, 1, 1), 0.0 }), std::invalid_argument);
 
   // The wrappers propagate the same domain error.
-  ASSERT_THROW(std::ignore = tt_to_jde(Datetime { to_ymd(0, 1, 1), 0.0 }), std::runtime_error);
+  ASSERT_THROW(std::ignore = tt_to_jde(Datetime { to_ymd(0, 1, 1), 0.0 }), std::invalid_argument);
 
   // `jde_to_ut1` still runs `jd_to_ut1`'s domain gates: the JD of 1-01-01 sits below the
   // 401-01-01 bound pinned below.
-  ASSERT_THROW(std::ignore = jde_to_ut1(1721425.5), std::runtime_error);
+  ASSERT_THROW(std::ignore = jde_to_ut1(1721425.5), std::invalid_argument);
 
   // Both directions throw the same exception type on out-of-domain input. Their domains differ:
   // `ut1_to_jd` accepts years 1-400 that sit below `jd_to_ut1`'s bound, so round-trips only
   // close from 401-01-01 onwards.
-  ASSERT_THROW(std::ignore = jd_to_ut1(-5.0), std::runtime_error); // Negative finite values throw, not abort.
-  ASSERT_THROW(std::ignore = jd_to_ut1(1.0), std::runtime_error);
-  ASSERT_THROW(std::ignore = jd_to_ut1(1867522.4999), std::runtime_error); // 400-12-31, just below the bound.
+  ASSERT_THROW(std::ignore = jd_to_ut1(-5.0), std::invalid_argument); // Negative finite values throw, not abort.
+  ASSERT_THROW(std::ignore = jd_to_ut1(1.0), std::invalid_argument);
+  ASSERT_THROW(std::ignore = jd_to_ut1(1867522.4999), std::invalid_argument); // 400-12-31, just below the bound.
 
   // Non-finite JDs bypass ordinary range checks (NaN comparisons are false) — rejected first.
-  ASSERT_THROW(std::ignore = jd_to_ut1(std::numeric_limits<double>::quiet_NaN()), std::runtime_error);
-  ASSERT_THROW(std::ignore = jd_to_ut1(std::numeric_limits<double>::infinity()), std::runtime_error);
-  ASSERT_THROW(std::ignore = jd_to_ut1(-std::numeric_limits<double>::infinity()), std::runtime_error);
+  ASSERT_THROW(std::ignore = jd_to_ut1(std::numeric_limits<double>::quiet_NaN()), std::invalid_argument);
+  ASSERT_THROW(std::ignore = jd_to_ut1(std::numeric_limits<double>::infinity()), std::invalid_argument);
+  ASSERT_THROW(std::ignore = jd_to_ut1(-std::numeric_limits<double>::infinity()), std::invalid_argument);
 
   // #67: JD 13689325.5 is conceptually 32768-01-01, beyond `std::chrono::year`.
   ASSERT_NO_THROW(std::ignore = jd_to_ut1(13689325.499999));
-  ASSERT_THROW(std::ignore = jd_to_ut1(13689325.5), std::runtime_error);
-  ASSERT_THROW(std::ignore = jd_to_ut1(4.0e9), std::runtime_error);
+  ASSERT_THROW(std::ignore = jd_to_ut1(13689325.5), std::invalid_argument);
+  ASSERT_THROW(std::ignore = jd_to_ut1(4.0e9), std::invalid_argument);
 
   // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);

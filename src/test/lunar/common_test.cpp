@@ -148,9 +148,9 @@ TEST(LunarCommon, CalcBounds) {
   EXPECT_EQ(b.first_gregorian_date, std::chrono::year { 1901 } / 2 / 19);
   EXPECT_EQ(b.last_gregorian_date, std::chrono::year { 2100 } / 2 / 8);
 
-  // No guard of its own: an out-of-window year falls through to the algo's out_of_range.
-  ASSERT_THROW(std::ignore = calc_bounds(1900, 2099, algo1::calc_lunar_year), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_bounds(1901, 2100, algo1::calc_lunar_year), std::out_of_range);
+  // The selected algorithm rejects years outside its window.
+  ASSERT_THROW(std::ignore = calc_bounds(1900, 2099, algo1::calc_lunar_year), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_bounds(1901, 2100, algo1::calc_lunar_year), std::invalid_argument);
 }
 
 } // namespace calendar::lunar::common::test

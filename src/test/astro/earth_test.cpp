@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 #include <functional>
+#include <stdexcept>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +30,14 @@ using namespace astro::earth;
 using astro::toolbox::DistanceAu;
 using astro::toolbox::AngleUnit::DEG;
 using astro::toolbox::AngleUnit::RAD;
+
+TEST(Earth, UnknownNutationModelIsInputError) {
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises an unknown model.
+  const auto unknown = static_cast<nutation::Model>(255);
+  EXPECT_THROW(std::ignore = nutation::find_model(unknown), std::invalid_argument);
+  EXPECT_THROW(std::ignore = nutation::longitude(astro::julian_day::J2000, unknown), std::invalid_argument);
+  EXPECT_THROW(std::ignore = nutation::obliquity(astro::julian_day::J2000, unknown), std::invalid_argument);
+}
 
 TEST(Earth, Vsop87dEvaluate) {
   using namespace heliocentric_coord;

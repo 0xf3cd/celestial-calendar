@@ -180,11 +180,11 @@ struct Angle {
 
   /**
    * @brief Divide the angle by a bare (dimensionless) factor.
-   * @throws std::runtime_error if the divisor is zero — an infinite angle is never the intent (#48).
+   * @throws std::invalid_argument if the divisor is zero — an infinite angle is never the intent (#48).
    */
   [[nodiscard]] constexpr auto operator/(const double other) const -> Angle<Unit> {
     if (other == 0.0) {
-      throw std::runtime_error { "Division by zero." };
+      throw std::invalid_argument { "Division by zero." };
     }
     return Angle<Unit> { _value / other };
   }

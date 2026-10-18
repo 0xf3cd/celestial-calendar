@@ -121,20 +121,28 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
   const astro::delta_t::Model model
 ) -> Times {
   validate_civil(civil_dt, scale);
-  try {
-    const auto tt = scale == Scale::UTC
-      ? astro::leap_second::utc_to_tt(civil_dt)
-      : astro::delta_t::ut1_to_tt(model, civil_dt);
-    const double jde_tt = astro::julian_day::tt_to_jde(tt);
-    validate_domain(jde_tt, model);
+  const auto delta_t_datetime = [model](const auto& convert) -> calendar::Datetime {
+    try {
+      return convert();
+    } catch (const std::invalid_argument& error) {
+      // Only Algo4's Delta T domain cuts the chart's civil window.
+      if (model != astro::delta_t::Model::ALGO4) {
+        throw;
+      }
+      throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
+    }
+  };
 
-    const auto ut1 = scale == Scale::UTC
-      ? astro::delta_t::tt_to_ut1(model, tt)
-      : civil_dt;
-    return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
-  } catch (const std::out_of_range& error) {
-    throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
-  }
+  const auto tt = scale == Scale::UTC
+    ? astro::leap_second::utc_to_tt(civil_dt)
+    : delta_t_datetime([&] { return astro::delta_t::ut1_to_tt(model, civil_dt); });
+  const double jde_tt = astro::julian_day::tt_to_jde(tt);
+  validate_domain(jde_tt, model);
+
+  const auto ut1 = scale == Scale::UTC
+    ? delta_t_datetime([&] { return astro::delta_t::tt_to_ut1(model, tt); })
+    : civil_dt;
+  return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): Angle members require values; every aggregate construction supplies them.

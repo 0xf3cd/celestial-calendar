@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 RETAINED_REGISTRY = Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json")
-RETAINED_DATA_SHA256 = "07782553edbc70d9de2bb382c18291ed8adf0d0d052be4d35081fbf8a2ae76a8"
+RETAINED_DATA_SHA256 = "27d6c9b9a7122d52c59afe3059685005e15f0e91d53030675e6fae0eda0fe4fe"
 # Add new value-bearing type/member spellings here; implementation names and test macros stay free.
 REFERENCE_VALUE_PATTERN = re.compile(
   r'"(?:\\.|[^"\\])*"|(?<![\w.])(?:0x[0-9a-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)'

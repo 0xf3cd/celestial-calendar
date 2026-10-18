@@ -143,7 +143,7 @@ def test_astrotime_record_is_pinned():
   assert ASTROTIME_GRANT_SHA256 == "075b3e670fbe4b32156d9f41386f444d65a0a7bbdc1e87dca2c0318ffd7c586f"
   assert ASTROTIME_RECORD_SHA256 == "ac3f00a8fe69af51c0e0fea8f945e5cf48cb81bfa0bac3a0471950e6558fd022"
   assert ASTROTIME_GRANT_NORMALIZED_SHA256 == "f00038723177475993d52bf4ec5bdd45f123cfad5201a7a9a478ba3fb3df4132"
-  assert ALGO4_FUNCTION_SHA256 == "0b6065a66073f45c3cd510be87f31a22e65625665f569a91e7802c29fc17539e"
+  assert ALGO4_FUNCTION_SHA256 == "3954c8f2dd6179e8be08515ee3dfb184d48c459c2ed7e30238e47b8a25d5ddbb"
   assert ASTROTIME_ALGO5_RECORD_COMMIT == "ed1cdc2fd6c5122b391a82289aa2cc060340552d"
   assert ASTROTIME_ALGO5_GENERATION_COMMIT == "a1e95811b47c084f44b4b4bb7444560dd5b863bc"
   assert ASTROTIME_ALGO5_DATA_COMMIT == "ddf3be1972e405ed02233837394cd3377226b65c"
@@ -371,7 +371,8 @@ def test_algo4_function_is_pinned(tmp_path, old, new):
   [
     ("year >= 2005 and year < 2024", "year >= 2005 and year < 2025", "consumer contract differs"),
     ("return algo2::compute(year);", "return algo3::compute(year);", "consumer contract differs"),
-    ("    throw std::out_of_range {", "    throw std::runtime_error {", "consumer contract differs"),
+    ("    throw std::invalid_argument {", "    throw std::runtime_error {", "consumer contract differs"),
+    ("    throw std::invalid_argument {", "    throw std::out_of_range {", "consumer contract differs"),
     (
       "+ (116.17205714035308 * u) \n         - (1.1279910329686536 * std::pow(u, 2))",
       "- (1.1279910329686536 * std::pow(u, 2))\n         + (116.17205714035308 * u)",
@@ -394,6 +395,7 @@ def test_algo4_function_is_pinned(tmp_path, old, new):
     "boundary",
     "delegation",
     "exception",
+    "retired-exception",
     "observed-expression-order",
     "prediction-expression-order",
     "observed-basis",

@@ -55,7 +55,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Convert UT1 datetime to julian day number.
  * @param ut1_dt The datetime in UT1.
  * @return The julian day number.
- * @throw std::runtime_error if the gregorian year is < 1.
+ * @throw std::invalid_argument if the gregorian year is < 1.
  * @note Years 1-400 convert forward, but sit below `jd_to_ut1`'s year-401 bound — round-trips
  *       only close from 401-01-01 onwards.
  * @see ERFA v2.0.1 `src/cal2jd.c`, `eraCal2jd`.
@@ -69,7 +69,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 
   // #77: preserve the forward conversion's public year domain.
   if (g_y < 1) {
-    throw std::runtime_error {
+    throw std::invalid_argument {
       std::format("The year {} is < 1, not supported by this algorithm.", g_y)
     };
   }
@@ -92,7 +92,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Convert julian day number to UT1 datetime.
  * @param jd The julian day number.
  * @return The datetime in UT1.
- * @throw std::runtime_error if `jd` is not finite, beyond the `year_month_day`-representable
+ * @throw std::invalid_argument if `jd` is not finite, beyond the `year_month_day`-representable
  *        years, or the estimated gregorian year is < 401.
  * @note `ut1_to_jd(32767-12-31, fraction ≈ 1)` rounds up to exactly the upper bound
  *       13689325.5, which this function rejects — a 1-ulp round-trip break callers must expect.
@@ -104,14 +104,14 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   // #77: NaN/Inf would slip past the range check below (NaN comparisons are false) and reach
   // undefined float→int conversions. Reject them first.
   if (not std::isfinite(jd)) {
-    throw std::runtime_error {
+    throw std::invalid_argument {
       std::format("The julian day number {} is not finite.", jd)
     };
   }
 
   // #77: the public inverse domain starts at 401-01-01 (JD 1867522.5).
   if (jd < 1867522.5) {
-    throw std::runtime_error {
+    throw std::invalid_argument {
       std::format("The julian day number {} is below JD 1867522.5 (401-01-01), "
                   "where the estimated gregorian year drops under 401.", jd)
     };
@@ -119,7 +119,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 
   // #67: JD 13689325.5 is conceptually 32768-01-01, beyond `std::chrono::year`.
   if (jd >= 13689325.5) {
-    throw std::runtime_error {
+    throw std::invalid_argument {
       std::format("The julian day number {} is beyond the representable years.", jd)
     };
   }
@@ -229,8 +229,8 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a UT1 datetime to julian ephemeris day number.
  * @param ut1_dt The date and time, in UT1.
  * @return The julian ephemeris day number, which is based on TT.
- * @throw std::invalid_argument If the datetime is invalid or the TT shift leaves the representable years.
- * @throw std::runtime_error If the converted TT year is below 1; see @ref ut1_to_jd.
+ * @throw std::invalid_argument If the datetime is invalid, the TT shift leaves the representable years,
+ *        or the converted TT year is below 1; see @ref ut1_to_jd.
  */
 [[nodiscard]] inline auto ut1_to_jde(const calendar::Datetime& ut1_dt) -> double {
   const auto tt_dt = astro::delta_t::ut1_to_tt(ut1_dt);
@@ -253,9 +253,9 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Converts a UTC datetime to julian ephemeris day number.
  * @param utc_dt The date and time, in UTC.
  * @return The julian ephemeris day number, which is based on TT.
- * @throw std::invalid_argument If a pre-1972 datetime is invalid, or the UTC-to-TT shift leaves
- *        the representable years; see @ref astro::leap_second::utc_to_tt.
- * @throw std::runtime_error If the converted TT year is below 1; see @ref ut1_to_jd.
+ * @throw std::invalid_argument If a pre-1972 datetime is invalid, the UTC-to-TT shift leaves
+ *        the representable years, or the converted TT year is below 1;
+ *        see @ref astro::leap_second::utc_to_tt and @ref ut1_to_jd.
  * @note Before modern UTC (1972-01-01) this degrades to UT1; see `astro::leap_second::utc_to_tt`.
  */
 [[nodiscard]] inline auto utc_to_jde(const calendar::Datetime& utc_dt) -> double {
@@ -267,8 +267,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
  * @brief Return the JDE(TT) of January 1 at 00:00 UTC in a calendar year.
  * @param year Gregorian year in [1, 32767].
  * @return The UTC year boundary expressed in TT.
- * @throw std::invalid_argument If the calendar year is invalid.
- * @throw std::runtime_error If the year is below 1; see @ref ut1_to_jd.
+ * @throw std::invalid_argument If the calendar year is invalid or below 1; see @ref ut1_to_jd.
  * @note Before 1972 this uses the UT1 substitute from @ref utc_to_jde.
  * @see utc_to_jde
  */

@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- C++ input rejections consistently throw `std::invalid_argument` (#345), including unsupported dates or years,
+  unknown models, invalid Jieqi indices and angle division by zero. Callers that caught `std::out_of_range` or
+  `std::runtime_error` for these inputs must update their handlers. Numerical convergence and consistency failures
+  remain `std::runtime_error`; numerical results, C ABI layouts and binding error behavior are unchanged.
+
 ## [v0.8.0]
 
 ### Added

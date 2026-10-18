@@ -641,11 +641,9 @@ template <BodyProvider P>
  * @return The crossing instant (JDE, TT scale), or `nullopt` when the body does not cross h₀
  *         between the transit and the adjacent altitude minimum (polar day/night).
  * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or
- *        `h0` is not finite or outside [-90°, 90°].
+ *        `h0` is not finite or outside [-90°, 90°], or a time conversion leaves its supported years.
  * @throw std::runtime_error If a directed sign change proved a crossing exists but the solve
  *        failed the residual guard — a numerical failure must not read as a polar verdict.
- *        The UT1/JD conversions also propagate `std::runtime_error` when `transit_jde_tt` lies
- *        outside the representable years.
  * @note Solves (altitude − h₀) = 0 directly: no hand-written dh/dH derivative, no hour-angle
  *       sign convention — the bracket side selects the event. Existence is decided by the
  *       directed sign check at the *true* altitude minimum (`detail::min_altitude_jde`,
@@ -873,9 +871,8 @@ template <BodyProvider P>
  *         exact landing practically unreachable for real ephemerides), accepted deliberately
  *         rather than given a fake-precision rounding rule.
  * @throw std::invalid_argument If `ymd_ut1` is invalid, `location` is out of range, or `h0` is
- *        not finite or outside [-90°, 90°].
- * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject dates outside the representable years), if the altitude straddles h₀ inside the day
+ *        not finite or outside [-90°, 90°], or a time conversion leaves its supported years.
+ * @throw std::runtime_error If the altitude straddles h₀ inside the day
  *        but no crossing solve converged, if a bracketed crossing failed the residual
  *        guard, or if the transit solve failed its own residual guard (see
  *        `transit_in_window`) — a numerical failure must not read as "no event".
@@ -1036,9 +1033,9 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  *        time zones). The returned transit is the one nearest 12h local mean time on this date.
  * @param location The observer's location.
  * @return The transit instant, as a julian ephemeris day on the **TT** scale.
- * @throw std::invalid_argument If `ymd_ut1` is invalid or `location` is out of range.
- * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject dates outside the representable years with `std::runtime_error`).
+ * @throw std::invalid_argument If `ymd_ut1` is invalid, `location` is out of range, or a time
+ *        conversion leaves its supported years.
+ * @throw std::runtime_error If the transit solve fails its residual guard.
  * @note The estimate is local mean noon; the bracket around it is one the equation of time can
  *       never escape (see `TRANSIT_BRACKET_HALF_WIDTH_DAYS`).
  */
@@ -1085,9 +1082,8 @@ inline constexpr auto provider = &astro::sun::equatorial_coord::apparent;
  * @return The three instants (JDE, TT scale) and the polar topology; see `Result`'s notes
  *         for the exact semantics.
  * @throw std::invalid_argument If `ymd_ut1` is invalid, `location` is out of range, or `h0` is
- *        not finite or outside [-90°, 90°].
- * @throw std::runtime_error For dates outside the representable years (see `transit_jde`) or a
- *        residual-guard failure inside `rise_set_jde`.
+ *        not finite or outside [-90°, 90°], or a time conversion leaves its supported years.
+ * @throw std::runtime_error For a transit or rise/set residual-guard failure.
  * @note Consumer trap (deliberate semantics): because `ymd_ut1` is a UT1 date, for eastern
  *       longitudes the returned sunrise can fall on the *previous* UT1 calendar day (e.g.
  *       Beijing's sunrise is ~21-22h UT of `ymd_ut1 - 1`); callers building a local calendar day
@@ -1167,9 +1163,8 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *         one UT day at high latitudes near a standstill) the LATER event is reported; see
  *         `calculate_day`'s note.
  * @throw std::invalid_argument If `ymd_ut1` is invalid, `location` is out of range, or `p` is
- *        invalid (see `refraction::at_horizon`).
- * @throw std::runtime_error For chronologically valid but unsupported dates (the UT1/JD
- *        conversions reject dates outside the representable years), for a refraction
+ *        invalid (see `refraction::at_horizon`), or a time conversion leaves its supported years.
+ * @throw std::runtime_error For a refraction
  *        failure at the h₀ stage (see `h0`'s `@throw` — e.g. SAEMUNDSSON non-convergence),
  *        or numerical failures inside `calculate_day` (see its `@throw`).
  * @note h₀ is evaluated with Π taken at mid-day (see `h0`'s note for the error budget).

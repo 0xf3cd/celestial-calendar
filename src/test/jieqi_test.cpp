@@ -49,15 +49,15 @@ TEST(JieQi, YearGuard) {
   // Without the guard the conversion chain wraps out-of-range years: 65537 wraps to year 1
   // and would be cached under the *unwrapped* key; negative wraps hit the Julian-day layer's
   // lower gate with a misleading message.
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(0, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(-5, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(32767, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(65537, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_jieqi_jde(100000, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(0, Jieqi::春分), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(-5, Jieqi::春分), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(32767, Jieqi::春分), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(65537, Jieqi::春分), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_jieqi_jde(100000, Jieqi::春分), std::invalid_argument);
 
   // The cached wrapper goes through the same guard — a poisoned entry never forms.
-  ASSERT_THROW(std::ignore = jieqi_jde(65537, Jieqi::春分), std::out_of_range);
-  ASSERT_THROW(std::ignore = jieqi_jde(100000, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = jieqi_jde(65537, Jieqi::春分), std::invalid_argument);
+  ASSERT_THROW(std::ignore = jieqi_jde(100000, Jieqi::春分), std::invalid_argument);
 
   // Boundary years stay computable — the ceiling is 32766 because the root search brackets
   // with `year + 1`.
@@ -66,18 +66,40 @@ TEST(JieQi, YearGuard) {
 }
 
 TEST(JieQi, Ut1MomentYearGuard) {
-  ASSERT_THROW(std::ignore = jieqi_ut1_moment(400, Jieqi::春分), std::out_of_range);
+  ASSERT_THROW(std::ignore = jieqi_ut1_moment(400, Jieqi::春分), std::invalid_argument);
   ASSERT_NO_THROW(std::ignore = jieqi_ut1_moment(401, Jieqi::春分));
 }
 
 TEST(JieQi, FromIndexBounds) {
+  static_assert(from_index(0) == Jieqi::立春);
+  static_assert(from_index(JIEQI_COUNT - 1) == Jieqi::大寒);
+
   // 255 is the largest value the uint8_t parameter can carry — the input a checkless
   // `static_cast` implementation would happily accept.
-  ASSERT_THROW(std::ignore = from_index(JIEQI_COUNT), std::out_of_range);
-  ASSERT_THROW(std::ignore = from_index(std::numeric_limits<uint8_t>::max()), std::out_of_range);
+  ASSERT_THROW(std::ignore = from_index(JIEQI_COUNT), std::invalid_argument);
+  ASSERT_THROW(std::ignore = from_index(std::numeric_limits<uint8_t>::max()), std::invalid_argument);
 
   ASSERT_EQ(from_index(0), Jieqi::立春);
   ASSERT_EQ(from_index(JIEQI_COUNT - 1), Jieqi::大寒);
+}
+
+TEST(JieQi, InvalidEnumLookupsAreInputErrors) {
+  for (const uint8_t index : std::array { JIEQI_COUNT, std::numeric_limits<uint8_t>::max() }) {
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises invalid fixed-underlying enum values.
+    const auto jq = static_cast<Jieqi>(index);
+    EXPECT_THROW(std::ignore = name_of(jq), std::invalid_argument);
+    EXPECT_THROW(std::ignore = longitude_of(jq), std::invalid_argument);
+    EXPECT_THROW(std::ignore = calc_jieqi_jde(2025, jq), std::invalid_argument);
+    EXPECT_THROW(std::ignore = jieqi_jde(2025, jq), std::invalid_argument);
+    EXPECT_THROW(std::ignore = jieqi_ut1_moment(2025, jq), std::invalid_argument);
+  }
+
+  try {
+    std::ignore = from_index(std::numeric_limits<uint8_t>::max());
+    FAIL() << "expected invalid_argument";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_STREQ(error.what(), "Jieqi index 255 is outside [0, 24).");
+  }
 }
 
 TEST(JieQi, GeneratorExclusiveStart) {
@@ -147,7 +169,7 @@ TEST(JieQi, JDE) {
 
       const auto jde = jieqi_jde(year, jq); // Use Newton's method to find the root.
 
-      const auto jde_lon = detail::solar_longitude(jde);
+      const auto jde_lon = astro::sun::geocentric_coord::math::detail::solar_longitude(jde);
       const auto expected_lon = longitude_of(jq);
 
       const auto lon_diff = std::fabs(std::fmod(jde_lon - expected_lon, 360.0));

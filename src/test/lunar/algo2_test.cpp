@@ -364,12 +364,12 @@ TEST(LunarAlgo2, GetLunarInfo) {
 
 
 TEST(LunarAlgo2, YearOutOfRange) {
-  ASSERT_THROW(std::ignore = calc_lunar_year(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = calc_lunar_year(START_YEAR - 1), std::invalid_argument);
+  ASSERT_THROW(std::ignore = calc_lunar_year(END_YEAR + 1), std::invalid_argument);
 
   // The C ABI reaches algo2 only through the cached wrapper, so the guard has to survive it.
-  ASSERT_THROW(std::ignore = get_info_for_year(START_YEAR - 1), std::out_of_range);
-  ASSERT_THROW(std::ignore = get_info_for_year(END_YEAR + 1), std::out_of_range);
+  ASSERT_THROW(std::ignore = get_info_for_year(START_YEAR - 1), std::invalid_argument);
+  ASSERT_THROW(std::ignore = get_info_for_year(END_YEAR + 1), std::invalid_argument);
 
   // Both ends are inclusive — an off-by-one in the guard shows up here and nowhere else.
   ASSERT_NO_THROW(std::ignore = get_info_for_year(START_YEAR));

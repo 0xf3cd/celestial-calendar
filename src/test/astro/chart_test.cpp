@@ -139,7 +139,7 @@ TEST(Chart, ModelSelectorsPreserveRetainedAlgorithms) {
   const double nan = std::numeric_limits<double>::quiet_NaN();
   EXPECT_TRUE(std::isnan(astro::delta_t::compute(Model::ALGO2, nan)));
   EXPECT_TRUE(std::isnan(astro::delta_t::compute(Model::ALGO5, nan)));
-  EXPECT_THROW(std::ignore = astro::delta_t::compute(Model::ALGO4, 2035.0), std::out_of_range);
+  EXPECT_THROW(std::ignore = astro::delta_t::compute(Model::ALGO4, 2035.0), std::invalid_argument);
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Exercises the invalid-enumerator contract.
   const auto unknown_model = static_cast<Model>(255);
   EXPECT_THROW(std::ignore = astro::delta_t::compute(unknown_model, 2026.0), std::invalid_argument);
@@ -352,6 +352,41 @@ TEST(Chart, JointTimeDomainAndAlgo4Cap) {
     EXPECT_THROW(std::ignore = calculate(civil(2034, 12, 31, elapsed), Scale::UT1, observer, System::EQUAL,
                                        Model::ALGO4), std::invalid_argument);
   }
+}
+
+TEST(Chart, DomainErrorsKeepTheirContext) {
+  const auto observer = location(0.0, 0.0);
+  const Datetime outside_model { util::to_ymd(2035, 6, 1), 0.5 };
+  const auto expect_prefix = [](const auto& call, const std::string_view prefix) {
+    try {
+      call();
+      FAIL() << "expected invalid_argument";
+    } catch (const std::invalid_argument& error) {
+      EXPECT_TRUE(std::string_view { error.what() }.starts_with(prefix)) << error.what();
+    }
+  };
+  expect_prefix([&] {
+    std::ignore = calculate(outside_model, Scale::UT1, observer, System::EQUAL, Model::ALGO4);
+  }, "Chart Delta T datetime leaves its model domain: The year 2035.");
+  expect_prefix([&] {
+    std::ignore = calculate(outside_model, Scale::UTC, observer, System::EQUAL, Model::ALGO4);
+  }, "Chart Algo4 requires JDE(TT) before 2035-01-01");
+
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises an unknown model.
+  const auto unknown = static_cast<Model>(255);
+  for (const Scale scale : std::array { Scale::UTC, Scale::UT1 }) {
+    expect_prefix([&] {
+      std::ignore = calculate(outside_model, scale, observer, System::EQUAL, unknown);
+    }, "Unknown Delta T model 255");
+  }
+
+  const auto before_joint = astro::delta_t::tt_to_ut1(
+    Model::ALGO4,
+    astro::julian_day::jde_to_tt(detail::START_JDE_TT - 1.0)
+  );
+  expect_prefix([&] {
+    std::ignore = calculate(before_joint, Scale::UT1, observer, System::EQUAL, Model::ALGO4);
+  }, "Chart JDE(TT) ");
 }
 
 TEST(Chart, WrapsStationsAndNodeAntipodesReplayUnderlyingApis) {

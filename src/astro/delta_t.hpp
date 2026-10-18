@@ -121,7 +121,7 @@ find_coefficients(const int32_t year) -> std::optional<
  * @param year The year, of double type.
  * @return The delta T.
  *
- * @throw std::out_of_range if the year is < -4000 or not finite.
+ * @throw std::invalid_argument if the year is < -4000 or not finite.
  * @par Example
  * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @par Example
@@ -135,7 +135,7 @@ find_coefficients(const int32_t year) -> std::optional<
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year < -4000) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
     };
   }
@@ -317,7 +317,7 @@ namespace algo3 {
  * @param year The year, of double type.
  * @return The delta T.
  * 
- * @throw std::out_of_range if the year is >= 3000 or not finite.
+ * @throw std::invalid_argument if the year is >= 3000 or not finite.
  * @par Example
  * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @par Example
@@ -329,7 +329,7 @@ namespace algo3 {
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= 3000) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
     };
   }
@@ -372,7 +372,7 @@ namespace algo4 {
  * @param year The year, of double type.
  * @return The delta T.
  *
- * @throw std::out_of_range if the year is >= 2035 or not finite.
+ * @throw std::invalid_argument if the year is >= 2035 or not finite.
  * @par Example
  * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
  * @par Example
@@ -389,7 +389,7 @@ namespace algo4 {
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= 2035) {
-    throw std::out_of_range {
+    throw std::invalid_argument {
       std::format("The year {} is out of range for algorithm 4.", year)
     };
   }
@@ -488,8 +488,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 /**
  * @brief Evaluate a selected Delta T model at a decimal Gregorian year.
  * @return TT minus UT1, in seconds.
- * @throw std::invalid_argument If the model is unknown.
- * @throw std::out_of_range If the year leaves the selected model's domain.
+ * @throw std::invalid_argument If the model is unknown or the year leaves its domain.
  * @note Non-finite propagation and year limits depend on the selected model.
  */
 [[nodiscard]] constexpr auto compute(const Model model, const double year) -> double {
@@ -527,8 +526,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 /**
  * @brief Evaluate a selected Delta T model at a valid calendar datetime.
  * @return TT minus UT1, in seconds; the sub-day fraction participates in the decimal year.
- * @throw std::invalid_argument If the datetime or model is invalid.
- * @throw std::out_of_range If the year leaves the selected model's domain.
+ * @throw std::invalid_argument If the datetime or model is invalid, or the year leaves the model's domain.
  * @note The TT/UT1 distinction in the datetime argument is ignored.
  */
 [[nodiscard]] constexpr auto compute(const Model model, const calendar::Datetime& dt) -> double {
@@ -560,8 +558,8 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @param model The Delta T model.
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
- * @throw std::invalid_argument If the datetime or model is invalid, or the shift leaves the representable years.
- * @throw std::out_of_range If the datetime leaves the selected model's domain.
+ * @throw std::invalid_argument If the datetime or model is invalid, the shift leaves the representable years,
+ *        or the datetime leaves the model's domain.
  */
 [[nodiscard]] constexpr auto ut1_to_tt(const Model model, const calendar::Datetime& ut1_dt) -> calendar::Datetime {
   return calendar::add_seconds(ut1_dt, compute(model, ut1_dt));
@@ -583,8 +581,8 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @param model The Delta T model.
  * @param tt_dt The datetime in TT.
  * @return The datetime in UT1; this is a single shift, not an iterative inverse.
- * @throw std::invalid_argument If the datetime or model is invalid, or the shift leaves the representable years.
- * @throw std::out_of_range If the datetime leaves the selected model's domain.
+ * @throw std::invalid_argument If the datetime or model is invalid, the shift leaves the representable years,
+ *        or the datetime leaves the model's domain.
  */
 [[nodiscard]] constexpr auto tt_to_ut1(const Model model, const calendar::Datetime& tt_dt) -> calendar::Datetime {
   return calendar::add_seconds(tt_dt, -compute(model, tt_dt));
