@@ -311,6 +311,27 @@ TEST(EphemerisEventsKernel, RefinementHonorsItsErrorAndResolution) {
                std::runtime_error);
 }
 
+TEST(EphemerisEventsKernel, RefinementAccountsForRoundedMidpoint) {
+  for (const double start_jde_tt : std::array { 1.0, 2451545.0 }) {
+    const double unit = std::nextafter(start_jde_tt, std::numeric_limits<double>::infinity()) - start_jde_tt;
+    for (const double offset : std::array { 0.25, 2.75 }) {
+      for (const double direction : std::array { -1.0, 1.0 }) {
+        const auto linear = [start_jde_tt, unit, offset, direction](const double jde_tt) -> search::Value {
+          return { .value = direction * (((jde_tt - start_jde_tt) / unit) - offset), .error = 0.0 };
+        };
+        const search::Bounds bounds { .first_derivative = 1.0 / unit, .second_derivative = 0.0 };
+        const double resolution = search::upper(1.5 * unit);
+        const auto found = roots(linear, start_jde_tt, start_jde_tt + (3.0 * unit), bounds, resolution);
+        ASSERT_EQ(found.size(), 1);
+        // Quarter-ULP roots are exact in these scaled coordinates, not in JDE(TT).
+        const double error_units = std::fabs(((found.at(0).jde_tt - start_jde_tt) / unit) - offset);
+        ASSERT_LE(error_units, resolution / unit);
+        ASSERT_EQ(found.at(0).increasing, direction > 0.0);
+      }
+    }
+  }
+}
+
 TEST(EphemerisEventsKernel, EachBudgetStopsWorkIndependently) {
   const auto linear = [](const double time) -> search::Value { return sum_value(time, -0.4); };
   search::Budget no_evaluations { .evaluations_remaining = 1, .candidates_remaining = 100 };

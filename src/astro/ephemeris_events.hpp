@@ -295,8 +295,12 @@ requires std::invocable<const Provider&, double>
   auto right = candidate.right;
   for (uint32_t iteration = 0; iteration < maximum_iterations; ++iteration) {
     const double middle_jde_tt = std::midpoint(left.jde_tt, right.jde_tt);
+    const double radius = std::max(
+      upper(middle_jde_tt - left.jde_tt),
+      upper(right.jde_tt - middle_jde_tt)
+    );
     if (middle_jde_tt == left.jde_tt or middle_jde_tt == right.jde_tt
-      or upper((right.jde_tt - left.jde_tt) / 2.0) <= time_resolution) {
+      or radius <= time_resolution) {
       return { .jde_tt = middle_jde_tt, .increasing = increasing };
     }
 
