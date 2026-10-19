@@ -211,7 +211,6 @@ inline auto validate_event_environment() -> void {
   if (query.end_jde_tt - query.start_jde_tt > EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS) {
     throw std::invalid_argument { "Event query exceeds 3660 TT days" };
   }
-  validate_event_environment();
   return {
     .domain = { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
     .cell_width_tt_days = EVENT_CELL_WIDTH_TT_DAYS,
@@ -375,6 +374,7 @@ namespace astro::ephemeris {
   const auto level = toolbox::canonical_longitude_difference(target_longitude);
   const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(target, std::nullopt, query);
+  detail::validate_event_environment();
   const auto roots = detail::search_longitudes(target, std::nullopt, level, grid, query);
   std::vector<LongitudeEvent> events;
   events.reserve(roots.size());
@@ -406,6 +406,7 @@ namespace astro::ephemeris {
 ) -> std::vector<StationEvent> {
   const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(target, std::nullopt, query);
+  detail::validate_event_environment();
   detail::event_search::validate_reporting_grid(grid, detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
   detail::event_search::Budget budget { .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
                                        .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES };
@@ -464,10 +465,11 @@ namespace astro::ephemeris {
     throw std::invalid_argument { "Longitude-difference events require distinct targets" };
   }
   const auto constant = detail::constant_longitude_difference(first, second);
+  if (constant.has_value() and constant->deg() == level.deg()) {
+    throw std::invalid_argument { "Longitude relation holds throughout the interval" };
+  }
+  detail::validate_event_environment();
   if (constant.has_value()) {
-    if (constant->deg() == level.deg()) {
-      throw std::invalid_argument { "Longitude relation holds throughout the interval" };
-    }
     return {};
   }
   const auto roots = detail::search_longitudes(first, second, level, grid, query);

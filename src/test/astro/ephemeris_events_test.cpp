@@ -1670,6 +1670,28 @@ TEST(EphemerisEvents, DirectedRoundingIsRejectedBeforeProviderWork) {
     GTEST_SKIP() << "The platform cannot select downward rounding";
   }
   EXPECT_THROW(static_cast<void>(stations(Target::SUN, 2460676.5, 2460707.5)), std::runtime_error);
+  EXPECT_THROW(
+    static_cast<void>(longitude_events(Target::SUN, toolbox::AngleDeg { 0.0 }, 2460676.5, 2460707.5)),
+    std::runtime_error
+  );
+  EXPECT_THROW(
+    static_cast<void>(longitude_difference_events(
+      Target::SUN, Target::SUN, toolbox::AngleDeg { 0.0 }, 2460676.5, 2460707.5
+    )),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(longitude_difference_events(
+      Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, toolbox::AngleDeg { 180.0 }, 2460676.5, 2460707.5
+    )),
+    std::invalid_argument
+  );
+  EXPECT_THROW(
+    static_cast<void>(longitude_difference_events(
+      Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, toolbox::AngleDeg { 0.0 }, 2460676.5, 2460707.5
+    )),
+    std::runtime_error
+  );
   ASSERT_EQ(std::fesetround(original), 0);
 }
 
