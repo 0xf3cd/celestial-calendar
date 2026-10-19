@@ -12,7 +12,9 @@
 
 #include <array>
 #include <cmath>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -26,6 +28,8 @@ namespace astro::ephemeris::test {
 namespace {
 
 namespace search = detail::event_search;
+
+static_assert(std::same_as<decltype(search::sign(search::Value {})), int32_t>);
 
 constexpr search::Bounds LINEAR_BOUNDS { .first_derivative = 1, .second_derivative = 0 };
 constexpr search::Bounds QUADRATIC_BOUNDS { .first_derivative = 1, .second_derivative = 2 };
@@ -80,7 +84,7 @@ auto two_cell_times(
   const double query_end
 ) -> std::vector<double> {
   std::vector<search::Root> found;
-  for (const int cell : std::array { 0, 1 }) {
+  for (const int32_t cell : std::array<int32_t, 2> { 0, 1 }) {
     const auto current = roots(
       provider,
       static_cast<double>(cell),
@@ -308,7 +312,7 @@ TEST(EphemerisEventsKernel, NarrowQueriesRetainWholeCellBounds) {
 }
 
 TEST(EphemerisEventsKernel, DoubleAndTripleRootsRemainExplicitlyUnresolved) {
-  for (const int order : std::array { 2, 3 }) {
+  for (const int32_t order : std::array<int32_t, 2> { 2, 3 }) {
     const auto stationary = [order](const double time) -> search::Value {
       const double offset = time - 0.5;
       const double value = order == 2 ? offset * offset : offset * offset * offset;

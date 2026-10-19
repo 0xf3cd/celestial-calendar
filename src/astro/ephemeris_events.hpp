@@ -105,7 +105,7 @@ struct Root {
 }
 
 /** @brief Return a robust sign, or zero when the allowance includes zero. */
-[[nodiscard]] inline auto sign(const Value evaluated) -> int {
+[[nodiscard]] inline auto sign(const Value evaluated) -> int32_t {
   if (evaluated.value > evaluated.error) {
     return 1;
   }
@@ -176,7 +176,7 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
 
 /** @brief Test sufficient endpoint conditions for a cell to contain no root. */
 [[nodiscard]] inline auto endpoint_exclusion(const Cell& cell, const Bounds bounds) -> bool {
-  const int left_sign = sign(cell.left.evaluated);
+  const int32_t left_sign = sign(cell.left.evaluated);
   if (left_sign == 0 or left_sign != sign(cell.right.evaluated)) {
     return false;
   }
@@ -203,8 +203,8 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
     return CellDecision::SPLIT;
   }
 
-  const int left_sign = sign(cell.left.evaluated);
-  const int right_sign = sign(cell.right.evaluated);
+  const int32_t left_sign = sign(cell.left.evaluated);
+  const int32_t right_sign = sign(cell.right.evaluated);
   if (left_sign != 0 and left_sign == right_sign) {
     return CellDecision::DISCARD;
   }
@@ -389,7 +389,7 @@ requires std::invocable<const Provider&, double>
   if (exact_zero(candidate.right.evaluated)) {
     return { .jde_tt = candidate.right.jde_tt, .increasing = increasing };
   }
-  const int left_sign = sign(candidate.left.evaluated);
+  const int32_t left_sign = sign(candidate.left.evaluated);
   const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
   if (not robustly_bracketed) {
     throw std::runtime_error { "Event-search root is not bracketed by robust signs" };
