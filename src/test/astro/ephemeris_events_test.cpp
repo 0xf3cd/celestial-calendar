@@ -113,6 +113,33 @@ auto range_roots(
   return search::roots_in_interval(provider, TWO_CELL_GRID, query, bounds, budget);
 }
 
+/** @brief Carry the exact addition residual as a circular longitude allowance. */
+auto longitude_sum(const double first, const double second) -> search::LongitudeValue {
+  const auto evaluated = sum_value(first, second);
+  return { .longitude = toolbox::AngleDeg { evaluated.value }, .error_deg = evaluated.error };
+}
+
+/** @brief Refine synthetic longitude crossings, rejecting unresolved contacts rather than classifying them. */
+template <typename Provider>
+auto longitude_roots(
+  const Provider& provider,
+  const toolbox::AngleDeg target,
+  const search::Interval cell,
+  const search::Bounds bounds
+) -> std::vector<search::Root> {
+  search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  const auto candidates = search::isolate_longitude_cell(provider, target, cell, bounds, budget);
+  const auto scalar = [&](const double jde_tt) { return search::longitude_residual(provider(jde_tt), target); };
+  std::vector<search::Root> result;
+  for (const auto& candidate : candidates) {
+    if (candidate.isolation != search::Isolation::UNIQUE) {
+      throw std::runtime_error { "Unresolved synthetic longitude contact" };
+    }
+    result.push_back(search::refine(scalar, candidate, bounds, budget));
+  }
+  return result;
+}
+
 } // namespace
 
 TEST(EphemerisEventsKernel, FiniteNonnegativeKeepsBoundaryAdmission) {
@@ -624,6 +651,162 @@ TEST(EphemerisEventsKernel, EventRateAdmissionAndBadObservationsCannotBeHiddenBy
     static_cast<void>(detail::event_rate_value(invalid, Target::SUN, std::nextafter(2097152.0, 0.0), 1e12)),
     std::runtime_error
   );
+}
+
+TEST(EphemerisEventsKernel, LongitudeDifferencesPreserveOrientationAndCanonicalOpposition) {
+  const search::LongitudeValue longitude_100 { .longitude = toolbox::AngleDeg { 100.0 }, .error_deg = 0.0 };
+  const search::LongitudeValue longitude_40 { .longitude = toolbox::AngleDeg { 40.0 }, .error_deg = 0.0 };
+  ASSERT_EQ(search::project_longitude_difference(longitude_100, longitude_40).value, 60.0);
+  ASSERT_EQ(search::project_longitude_difference(longitude_40, longitude_100).value, -60.0);
+  ASSERT_TRUE(search::exact_zero(search::project_longitude_difference(longitude_100, longitude_100)));
+  ASSERT_EQ(search::canonical_longitude_difference(toolbox::AngleDeg { -180.0 }).deg(), 180.0);
+  ASSERT_EQ(search::canonical_longitude_difference(toolbox::AngleDeg { 540.0 }).deg(), 180.0);
+  ASSERT_FALSE(std::signbit(search::canonical_longitude_difference(toolbox::AngleDeg { -0.0 }).deg()));
+
+  // Exact degree identities modulo 360, independent of any ephemeris.
+  const search::LongitudeValue before { .longitude = toolbox::AngleDeg { 359.0 }, .error_deg = 0.0 };
+  const search::LongitudeValue after { .longitude = toolbox::AngleDeg { 1.0 }, .error_deg = 0.0 };
+  ASSERT_EQ(search::project_longitude_difference(after, before).value, 2.0);
+  ASSERT_EQ(search::project_longitude_difference(before, after).value, -2.0);
+}
+
+TEST(EphemerisEventsKernel, LongitudeDifferenceAllowancesIncludeBothInputsAndSubtractionRoundoff) {
+  const search::LongitudeValue first { .longitude = toolbox::AngleDeg { 1.0 }, .error_deg = 0.0 };
+  const search::LongitudeValue second { .longitude = toolbox::AngleDeg { 0x1p-54 }, .error_deg = 0.0 };
+  const auto rounded = search::project_longitude_difference(first, second);
+  ASSERT_EQ(rounded.value, 1.0);
+  ASSERT_GE(rounded.error, 0x1p-54);
+  const auto noisy = search::project_longitude_difference(
+    { .longitude = first.longitude, .error_deg = 0.125 },
+    { .longitude = second.longitude, .error_deg = 0.25 }
+  );
+  ASSERT_GE(noisy.error, 0.375);
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_residual(
+      { .longitude = toolbox::AngleDeg { 180.0 }, .error_deg = 0.0 },
+      toolbox::AngleDeg { 0.0 }
+    )),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, LongitudeCellsCrossZeroInBothDirectionsWithoutAntipodalRoots) {
+  const search::Bounds bounds { .first_derivative = 16.0, .second_derivative = 0.0 };
+  const auto increasing = [](const double time) { return longitude_sum(344.0, 16.0 * time); };
+  const auto decreasing = [](const double time) { return longitude_sum(16.0, -16.0 * time); };
+  const auto forward = longitude_roots(increasing, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, bounds);
+  const auto backward = longitude_roots(decreasing, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, bounds);
+  ASSERT_EQ(forward.size(), 1);
+  ASSERT_EQ(backward.size(), 1);
+  ASSERT_EQ(forward.at(0).jde_tt, 1.0);
+  ASSERT_EQ(backward.at(0).jde_tt, 1.0);
+  ASSERT_TRUE(forward.at(0).increasing);
+  ASSERT_FALSE(backward.at(0).increasing);
+  const auto antipodal = [](const double time) { return longitude_sum(164.0, 16.0 * time); };
+  ASSERT_TRUE(longitude_roots(antipodal, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, bounds).empty());
+  ASSERT_TRUE(longitude_roots(increasing, toolbox::AngleDeg { 180.0 }, TWO_CELL_GRID.domain, bounds).empty());
+}
+
+TEST(EphemerisEventsKernel, LongitudeCellsKeepHalfOpenOwnershipAndTargetBranchInvariance) {
+  const search::Bounds bounds { .first_derivative = 16.0, .second_derivative = 0.0 };
+  const auto longitude = [](const double time) { return longitude_sum(344.0, 16.0 * time); };
+  for (const int32_t branch : std::array<int32_t, 5> { -2, -1, 0, 1, 2 }) {
+    const toolbox::AngleDeg target { 360.0 * static_cast<double>(branch) };
+    const auto whole = longitude_roots(longitude, target, TWO_CELL_GRID.domain, bounds);
+    ASSERT_TRUE(longitude_roots(longitude, target, FIRST_CELL_INTERVAL, bounds).empty());
+    const auto right = longitude_roots(longitude, target, SECOND_CELL_INTERVAL, bounds);
+    ASSERT_EQ(whole.size(), 1);
+    ASSERT_EQ(right.size(), 1);
+    ASSERT_EQ(whole.at(0).jde_tt, 1.0);
+    ASSERT_EQ(right.at(0).jde_tt, whole.at(0).jde_tt);
+  }
+}
+
+TEST(EphemerisEventsKernel, RelativeLongitudeCellsPreserveTheSignOfTheRequestedDifference) {
+  const search::Bounds bounds { .first_derivative = 16.0, .second_derivative = 0.0 };
+  const auto relative = [](const double time) -> search::LongitudeValue {
+    const auto difference = search::project_longitude_difference(
+      longitude_sum(344.0, 16.0 * time),
+      longitude_sum(300.0, 0.0)
+    );
+    return { .longitude = toolbox::AngleDeg { difference.value }, .error_deg = difference.error };
+  };
+  const auto reversed = [](const double time) -> search::LongitudeValue {
+    const auto difference = search::project_longitude_difference(
+      longitude_sum(300.0, 0.0),
+      longitude_sum(344.0, 16.0 * time)
+    );
+    return { .longitude = toolbox::AngleDeg { difference.value }, .error_deg = difference.error };
+  };
+  const auto positive = longitude_roots(relative, toolbox::AngleDeg { 60.0 }, TWO_CELL_GRID.domain, bounds);
+  const auto negative = longitude_roots(reversed, toolbox::AngleDeg { -60.0 }, TWO_CELL_GRID.domain, bounds);
+  ASSERT_EQ(positive.size(), 1);
+  ASSERT_EQ(negative.size(), 1);
+  ASSERT_EQ(positive.at(0).jde_tt, 1.0);
+  ASSERT_EQ(negative.at(0).jde_tt, 1.0);
+  ASSERT_TRUE(positive.at(0).increasing);
+  ASSERT_FALSE(negative.at(0).increasing);
+  ASSERT_TRUE(longitude_roots(relative, toolbox::AngleDeg { -60.0 }, TWO_CELL_GRID.domain, bounds).empty());
+}
+
+TEST(EphemerisEventsKernel, LongitudeCellsLeaveContactsUnresolvedAndRejectUncertifiedLifts) {
+  const auto tangent = [](const double time) -> search::LongitudeValue {
+    const double offset = time - 1.0;
+    const double value = offset * offset;
+    return {
+      .longitude = toolbox::AngleDeg { value },
+      .error_deg = 2.0 * std::numeric_limits<double>::epsilon() * value,
+    };
+  };
+  const search::Bounds tangent_bounds { .first_derivative = 2.0, .second_derivative = 2.0 };
+  search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  const auto candidates = search::isolate_longitude_cell(
+    tangent, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, tangent_bounds, budget
+  );
+  ASSERT_FALSE(candidates.empty());
+  for (const auto& candidate : candidates) {
+    ASSERT_EQ(candidate.isolation, search::Isolation::UNRESOLVED);
+  }
+  const auto fast = [](const double time) { return longitude_sum(0.0, 360.0 * time); };
+  const search::Bounds fast_bounds { .first_derivative = 360.0, .second_derivative = 0.0 };
+  search::Budget limited { .evaluations_remaining = 10, .candidates_remaining = 10 };
+  ASSERT_THROW(
+    static_cast<void>(search::isolate_longitude_cell(
+      fast, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, fast_bounds, limited
+    )),
+    std::runtime_error
+  );
+  ASSERT_EQ(limited.evaluations_remaining, 9);
+}
+
+TEST(EphemerisEventsKernel, LongitudeCellAdmissionAndObservationFailuresAreExplicit) {
+  std::size_t calls = 0;
+  const auto counted = [&calls](const double time) {
+    ++calls;
+    return longitude_sum(344.0, 16.0 * time);
+  };
+  const search::Bounds bounds { .first_derivative = 16.0, .second_derivative = 0.0 };
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
+  ASSERT_THROW(
+    static_cast<void>(search::isolate_longitude_cell(
+      counted, toolbox::AngleDeg { std::numeric_limits<double>::quiet_NaN() }, TWO_CELL_GRID.domain, bounds, budget
+    )),
+    std::invalid_argument
+  );
+  ASSERT_EQ(calls, 0);
+  ASSERT_EQ(budget.evaluations_remaining, 100);
+  for (const search::LongitudeValue invalid : std::array {
+         search::LongitudeValue { .longitude = toolbox::AngleDeg { 0.0 }, .error_deg = -1.0 },
+         search::LongitudeValue { .longitude = toolbox::AngleDeg { 0.0 }, .error_deg = std::numeric_limits<double>::infinity() },
+         search::LongitudeValue { .longitude = toolbox::AngleDeg { std::numeric_limits<double>::infinity() }, .error_deg = 0.0 },
+       }) {
+    const auto bad = [invalid](const double) { return invalid; };
+    ASSERT_THROW(
+      static_cast<void>(search::isolate_longitude_cell(bad, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain, bounds, budget)),
+      std::runtime_error
+    );
+  }
+  ASSERT_EQ(budget.evaluations_remaining, 97);
 }
 
 } // namespace astro::ephemeris::test

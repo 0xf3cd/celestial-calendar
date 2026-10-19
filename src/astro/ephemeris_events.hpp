@@ -29,10 +29,18 @@
 
 namespace astro::ephemeris::detail::event_search {
 
+inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
+
 /** @brief A scalar observation with an absolute error allowance at the requested abscissa. */
 struct Value {
   double value;
   double error;
+};
+
+/** @brief A longitude observation with an absolute circular error allowance in degrees. */
+struct LongitudeValue {
+  toolbox::AngleDeg longitude;
+  double error_deg;
 };
 
 /** @brief A scalar observation whose allowance applies at the requested TT time. */
@@ -306,6 +314,98 @@ requires std::invocable<const Provider&, double>
   std::vector<Candidate> candidates;
   visit_cell(provider, cell, bounds, budget, maximum_depth, candidates);
   return candidates;
+}
+
+/** @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees. */
+[[nodiscard]] inline auto canonical_longitude_difference(
+  const toolbox::AngleDeg difference
+) -> toolbox::AngleDeg {
+  if (not std::isfinite(difference.deg())) {
+    throw std::invalid_argument { "Event-search longitude target must be finite" };
+  }
+  const double remainder = std::remainder(difference.deg(), LONGITUDE_PERIOD_DEG);
+  if (remainder == -LONGITUDE_PERIOD_DEG / 2.0) {
+    return toolbox::AngleDeg { LONGITUDE_PERIOD_DEG / 2.0 };
+  }
+  return toolbox::AngleDeg { remainder == 0.0 ? 0.0 : remainder };
+}
+
+/**
+ * @brief Observe first minus second modulo 360 degrees, including subtraction roundoff.
+ * @note The allowance is circular; scalar isolation requires a certified continuous lift over its cell.
+ * @see Knuth, The Art of Computer Programming, Vol. 2, Section 4.2.2 (error-free addition/subtraction).
+ */
+[[nodiscard]] inline auto project_longitude_difference(
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names preserve the oriented first-minus-second order.
+  const LongitudeValue first,
+  const LongitudeValue second
+) -> Value {
+  const auto valid_observation = [](const LongitudeValue observed) {
+    return std::isfinite(observed.longitude.deg()) and finite_nonnegative(observed.error_deg);
+  };
+  if (not valid_observation(first) or not valid_observation(second)) {
+    throw std::runtime_error { "Invalid event-search longitude observation" };
+  }
+  const double first_deg = canonical_longitude_difference(first.longitude).deg();
+  const double second_deg = canonical_longitude_difference(second.longitude).deg();
+  const double difference = first_deg - second_deg;
+  const double recovered_second = first_deg - difference;
+  const double recovered_first = difference + recovered_second;
+  const double roundoff = (first_deg - recovered_first) + (recovered_second - second_deg);
+  const bool exact_inputs = first.error_deg == 0.0 and second.error_deg == 0.0;
+  const double input_error = exact_inputs ? 0.0 : upper(first.error_deg + second.error_deg);
+  return {
+    .value = canonical_longitude_difference(toolbox::AngleDeg { difference }).deg(),
+    .error = roundoff == 0.0 ? input_error : upper(input_error + std::fabs(roundoff)),
+  };
+}
+
+/** @brief Return a scalar level residual only when its observation cannot straddle the antipodal cut. */
+[[nodiscard]] inline auto longitude_residual(const LongitudeValue observed, const toolbox::AngleDeg target) -> Value {
+  const auto evaluated = project_longitude_difference(observed, { .longitude = target, .error_deg = 0.0 });
+  const double extent = upper(std::fabs(evaluated.value) + evaluated.error);
+  if (extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+    throw std::runtime_error { "Event-search longitude observation crosses the antipodal cut" };
+  }
+  return evaluated;
+}
+
+/**
+ * @brief Isolate longitude-level roots after excluding distant cells or certifying a continuous scalar lift.
+ * @note Bounds cover the smooth angular lift on the whole closed cell. Unresolved contacts remain candidates.
+ */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, LongitudeValue>
+[[nodiscard]] inline auto isolate_longitude_cell(
+  const Provider& provider,
+  const toolbox::AngleDeg target,
+  const Interval cell,
+  const Bounds bounds,
+  Budget& budget,
+  const EndpointOwnership ownership = EndpointOwnership::LEFT
+) -> std::vector<Candidate> {
+  validate_cell(cell.start_jde_tt, cell.end_jde_tt, bounds);
+  const auto canonical_target = canonical_longitude_difference(target);
+  const auto projected = [&](const double jde_tt) {
+    return project_longitude_difference(provider(jde_tt), { .longitude = canonical_target, .error_deg = 0.0 });
+  };
+  const double middle_jde_tt = std::midpoint(cell.start_jde_tt, cell.end_jde_tt);
+  const auto middle = sample(projected, middle_jde_tt, budget);
+  const double left_radius = upper(middle_jde_tt - cell.start_jde_tt);
+  const double right_radius = upper(cell.end_jde_tt - middle_jde_tt);
+  const double radius = std::max(left_radius, right_radius);
+  const double excursion = upper(bounds.first_derivative * radius);
+  if (magnitude_floor(middle.evaluated) > excursion) {
+    return {};
+  }
+  const double middle_extent = upper(std::fabs(middle.evaluated.value) + middle.evaluated.error);
+  const double cell_extent = upper(middle_extent + excursion);
+  if (cell_extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+    throw std::runtime_error { "Event-search longitude cell has no continuous-lift certificate" };
+  }
+  const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
+  return isolate_cell(lifted, cell.start_jde_tt, cell.end_jde_tt, bounds, budget, ownership);
 }
 
 /**
