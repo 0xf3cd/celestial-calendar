@@ -11,6 +11,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <array>
+#include <cmath>
 #include <chrono>
 #include <bit>
 #include <cstdint>
@@ -1021,6 +1023,27 @@ TEST(Sun, FindRootsAcrossTheUlpStep) {
   }
 }
 
+TEST(Sun, FindRootsAtTheLegacyYearLimitUseTheRequestedLongitudeBranch) {
+  // Self-consistency regression: a calendar month does not locate the angular cut at the year limit.
+  for (const int32_t year : std::array<int32_t, 2> { 32765, 32766 }) {
+    const double start_jde_tt = math::detail::get_start_jde(year);
+    const double end_jde_tt = math::detail::get_end_jde(year);
+    // Target longitude and its two-day TT bracket, not an independent physical reference.
+    const std::array cases {
+      std::array { math::detail::solar_longitude(start_jde_tt) + 1.0, start_jde_tt, start_jde_tt + 2.0 },
+      std::array { math::detail::solar_longitude(end_jde_tt) - 1.0, end_jde_tt - 2.0, end_jde_tt },
+    };
+    for (const auto& [target, lower_jde_tt, upper_jde_tt] : cases) {
+      const auto roots = find_roots(year, target);
+      ASSERT_EQ(roots.size(), 1);
+      ASSERT_GE(roots.at(0), lower_jde_tt);
+      ASSERT_LT(roots.at(0), upper_jde_tt);
+      const double residual = std::remainder(math::detail::solar_longitude(roots.at(0)) - target, 360.0);
+      ASSERT_NEAR(residual, 0.0, 1e-8);
+    }
+  }
+}
+
 TEST(Sun, AnnualQueriesRejectUnrepresentableAndWideYears) {
   // The diagnostic must name the original integer year, not just throw the right type.
   const auto expect_rejection = [](const int32_t year, const std::string_view range,
@@ -1062,7 +1085,7 @@ TEST(Sun, ScalarStartKeeps32767WhileAnnualQueriesStopAt32766) {
   EXPECT_TRUE(std::isfinite(detail::get_start_jde(32767)));
   EXPECT_EQ(detail::get_start_jde(32767),
             astro::julian_day::utc_year_start_jde(std::chrono::year { 32767 }));
-  EXPECT_NO_THROW(std::ignore = detail::make_f(32767, 0.0)); // April 1 of 32767 is representable.
+  EXPECT_NO_THROW(std::ignore = detail::make_f(32767, 0.0));
 }
 
 

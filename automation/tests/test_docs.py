@@ -156,7 +156,9 @@ def test_doxygen_configuration_has_no_source_listing_or_release_output():
     if line.strip() and not line.startswith("#"):
       key, value = line.split("=", 1)
       config[key.strip()] = value.strip()
-  assert config["INPUT"] == "docs/API.md src/astro src/calendar src/util src/shared_lib/celestial.h"
+  assert config["INPUT"] == (
+    "docs/API.md docs/EPHEMERIS_EVENTS.md src/astro src/calendar src/util src/shared_lib/celestial.h"
+  )
   assert config["OUTPUT_DIRECTORY"] == "build/api-docs"
   assert config["OUTPUT_LANGUAGE"] == "English"
   assert config["EXCLUDE_PATTERNS"] == "*/vsop87d/*_coeff.hpp */vsop87d_check_data.hpp"

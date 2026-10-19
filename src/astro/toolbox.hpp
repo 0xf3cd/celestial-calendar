@@ -80,6 +80,9 @@ namespace astro::toolbox {
 /** @brief The number of degrees in a radian. */
 inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 
+/** @brief The angular period of an ecliptic longitude, in degrees. */
+inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
+
 /** @brief Convert degree to radian. */
 [[nodiscard]] constexpr auto deg_to_rad(const double deg) -> double {
   return deg / DEG_PER_RAD;
@@ -245,6 +248,21 @@ struct Angle {
  *       anything: `toolbox::AngleDeg`.
  */
 using AngleDeg = Angle<AngleUnit::DEG>;
+
+/**
+ * @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees.
+ * @throw std::invalid_argument If the angle is not finite.
+ */
+[[nodiscard]] inline auto canonical_longitude_difference(const AngleDeg difference) -> AngleDeg {
+  if (not std::isfinite(difference.deg())) {
+    throw std::invalid_argument { "Longitude difference must be finite" };
+  }
+  const double remainder = std::remainder(difference.deg(), LONGITUDE_PERIOD_DEG);
+  if (remainder == -LONGITUDE_PERIOD_DEG / 2.0) {
+    return AngleDeg { LONGITUDE_PERIOD_DEG / 2.0 };
+  }
+  return AngleDeg { remainder == 0.0 ? 0.0 : remainder };
+}
 using AngleRad = Angle<AngleUnit::RAD>;
 
 #pragma endregion

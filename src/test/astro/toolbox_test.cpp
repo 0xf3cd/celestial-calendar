@@ -94,6 +94,17 @@ TEST(AstroMath, NormalizedPm180) {
   }
 }
 
+TEST(AstroMath, DirectedLongitudeKeepsTinySignedResidualAndPositiveOpposition) {
+  constexpr double small = -0x1p-60;
+  ASSERT_EQ(normalize_pm180(small), 0.0);
+  ASSERT_EQ(canonical_longitude_difference(AngleDeg { small }).deg(), small);
+  ASSERT_EQ(canonical_longitude_difference(AngleDeg { -180.0 }).deg(), 180.0);
+  ASSERT_EQ(canonical_longitude_difference(AngleDeg { 180.0 }).deg(), 180.0);
+  const double zero = canonical_longitude_difference(AngleDeg { -0.0 }).deg();
+  ASSERT_EQ(zero, 0.0);
+  ASSERT_FALSE(std::signbit(zero));
+}
+
 TEST(AstroMath, NormalizedDegHalfOpenNearZero) {
   // The wrap `rem + 360.0` rounds up to exactly 360.0 for any `rem` within ulp(360)/2 = 2^-45 of
   // zero, so all of [-2^-45, 0) used to land on the end the range excludes (#88). The last two

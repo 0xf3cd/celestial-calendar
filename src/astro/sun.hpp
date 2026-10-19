@@ -215,50 +215,20 @@ namespace detail {
 }
 
 
-// In Newton's method, we will approximate the root with the previous root, iteratively.
-// The formula is: Xn+1 = Xn - f(Xn) / f'(Xn).
-// Where we can use the following formula to approximate f'(x):
-// f'(x) = (f(x+h) - f(x-h)) / (2*h), where h is the central-difference half-width picked by `toolbox::newton_method`.
-//
-// As mentioned before, our goal is to find the root (JDE) at which the Sun reaches the expected longitude in a given year.
-// In our context, f is defined as:
-// f(jde) = solar_longitude(jde) - expected_lon,
-// and f is defined on a half-open interval [start_jde(year), end_jde(year)).
-//
-// Newton's method requires f to be differentiable (smooth).
-// So we need to modify the function of `solar_longitude`.
-// Because the beginning position of Sun in a year is roughly 280.0 degrees, and we need to make it negative.
-// Actually, for any JDE before Spring Equinox this year, we need to subtract 360 from `solar_longitude`'s result to make f smooth.
-// 
-// So the actual f is defined as:
-// f(jde) = modified_solar_longitude(jde) - expected_lon
-
-/** @brief Return a `f` that we can apply Newton's method to. */
+/**
+ * @brief Lift solar longitude from the year's start for Newton refinement.
+ * @note The mean-motion predictor must stay within 180 degrees of the continuous lift over the search span.
+ */
 [[nodiscard]] inline auto make_f(const int32_t year, const double expected_lon) {
-  const double apr_1st_jde = astro::julian_day::ut1_to_jde(
-    calendar::Datetime { util::to_ymd(util::checked_year(year), 4, 1), 0.0 }
-  );
-
-  const auto modified_solar_longitude = [=](const double jde) -> double {
-    const double raw_value = solar_longitude(jde);
-
-    // We mostly want to subtract 360.0 from those JDEs before Spring Equinox.
-    //
-    // We are here using the fact that the beginning of the year is roughly 280.0 degrees,
-    // and it continues growing to 360 degrees (which is also 0 degrees) until Spring Equinox.
-    // 
-    // After Spring Equinox, it grows from 0 to ~280.0 degrees again (the last day of the year), 
-    // and then next year comes.
-
-    if (jde < apr_1st_jde and raw_value >= 250.0) {
-      return raw_value - 360.0;
-    }
-
-    return raw_value; 
-  };
-
+  const double start_jde = get_start_jde(year);
+  const double start_longitude = solar_longitude(start_jde) - toolbox::LONGITUDE_PERIOD_DEG;
   return [=](const double jde) -> double {
-    return modified_solar_longitude(jde) - expected_lon;
+    const double raw = toolbox::canonical_longitude_difference(
+      toolbox::AngleDeg { solar_longitude(jde) }
+    ).deg();
+    const double predicted = std::fma(toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY, jde - start_jde, start_longitude);
+    const double turns = std::round((predicted - raw) / toolbox::LONGITUDE_PERIOD_DEG);
+    return (raw + (toolbox::LONGITUDE_PERIOD_DEG * turns)) - expected_lon;
   };
 }
 

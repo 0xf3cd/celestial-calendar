@@ -216,6 +216,10 @@ feel is intentional. Keep it. That buys a discipline:
 - **Nested `lower_case` namespaces** by domain (`astro::earth::nutation`, `lib::`,
   `calendar::`); close with a `} // namespace …` comment.
 - **Trailing return types**: `inline auto f(const double jde) -> SphericalCoordinate`.
+- **Fixed-width integers**: use `intN_t` / `uintN_t` from `<cstdint>` for numeric values,
+  including helper returns, locals and test data. Do not introduce plain `int`, `short`
+  or `long` through explicit declarations or type deduction. Keep `std::size_t` for
+  container sizes/indices and externally required types at ABI/entry-point boundaries.
 - **Unicode math identifiers are deliberate** (`λ`, `β`, `Δψ`, `Ω`, `Mp`). Name symbols as
   the papers do; do NOT ASCII-ise them.
 - **Strong physical types** over bare doubles (`Angle<RAD>`, `Distance<AU>`,

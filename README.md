@@ -154,6 +154,10 @@ The headers for lunar nodes, longitude rates, charts, planetary illumination and
 in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is also available
 from C, Python and JavaScript.
 
+[`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) adds C++ interval searches for a supplied longitude,
+stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)
+for half-open ownership, numerical contacts and the floating-point premises.
+
 <a id="c-abi"></a>
 ### C and FFI
 
