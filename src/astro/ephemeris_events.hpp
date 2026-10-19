@@ -360,7 +360,8 @@ namespace astro::ephemeris {
  * @param start_jde_tt Inclusive start, within @ref longitude_rate_domain.
  * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.
  * @return Chronologically ordered events, with no partial result on numerical or work-limit failure.
- * @note Completeness is conditional on the floating-point and elementary-function contract in docs/EPHEMERIS_EVENTS.md.
+ * @note Completeness is conditional on the floating-point and elementary-function contract in
+ *       @ref docs/EPHEMERIS_EVENTS.md.
  *       A tangent requires exact equality with the query-independent stationary output, not angular proximity.
  */
 [[nodiscard]] inline auto longitude_events(

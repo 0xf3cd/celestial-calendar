@@ -147,7 +147,7 @@ def write_pins(output: Path, row_count: int) -> None:
   if f"std::array<Row, {row_count}>" not in header.read_text():
     raise RuntimeError("Reference row count differs from the completed collection")
   package = Path(mp.__file__).parent
-  source_files = ("ctx_mp_python.py", "libmp/libmpf.py", "libmp/libelefun.py", "functions/functions.py")
+  source_files = ("ctx_mp.py", "ctx_mp_python.py", "libmp/libmpf.py", "libmp/libelefun.py", "functions/functions.py")
   pins = {name: hashlib.sha256((package / name).read_bytes()).hexdigest() for name in source_files}
   (output / "LIBM_REFERENCE_PINS.json").write_text(
     json.dumps(

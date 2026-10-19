@@ -63,6 +63,8 @@ validation-only [mpmath 1.3.0](https://github.com/mpmath/mpmath/tree/1.3.0)
 Python backend. `LIBM_REFERENCE_PINS.json` records the module identities,
 generator, seed `20261019` and output digest. No oracle implementation is
 retained, and no Python package is needed to build or run the C++ tests.
+`statistics/ephemeris_event_bounds.py --check` verifies the collector and
+output digests without importing mpmath.
 
 `statistics/ephemeris_event_math_reference.py --output <directory>`
 regenerates the rows with an explicitly installed mpmath 1.3.0. Actual

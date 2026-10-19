@@ -1,8 +1,11 @@
 # Longitude events
 
-Include `astro/ephemeris_events.hpp` for interval queries over the 14
-`astro::ephemeris::Target` values. Times are JDE(TT), longitudes are apparent,
-geocentric and tropical, and rates are degrees per TT day.
+Include `ephemeris_events.hpp` with `-I src/astro -I src/calendar -I src/util`
+for interval queries over the 14 `astro::ephemeris::Target` values. Times are
+JDE(TT), and rates are degrees per TT day. Body longitudes are apparent,
+geocentric and tropical; node longitudes follow
+[`lunar_node::position`](../src/astro/lunar_node.hpp) in the true ecliptic and
+equinox of date.
 
 ```cpp
 using namespace astro::ephemeris;
@@ -37,10 +40,12 @@ refinement and reporting do not depend on the caller's endpoints. Splitting
 a successful query at a reported event assigns it to the right-hand query.
 Unresolvable reported-time collisions throw rather than merge nearby events.
 
-Stations are zeros of the published seven-point rate with `h=1/8` TT day,
+Stations are zeros of `ephemeris::longitude_rate`, the published seven-point rate with `h=1/8` TT day,
 not an analytic derivative or a minimum angular separation. The reported
 rate need not be bitwise zero. Descending nodes use their actual antipodal
 positions, while their rates retain the ascending model's trajectory.
+Near a station, its sign can differ from the one-day
+`planet::geocentric_coord::is_retrograde` marker; see `LongitudeRate`'s contract.
 
 ### Numerical contacts
 
@@ -122,10 +127,15 @@ majorants through order seven. A fixed J2000 `±100`-year analysis band
 uses tighter bounds where an entire canonical cell and its sampling halo
 fit; the remaining domain uses the full-window bounds. Band selection is
 cell-based, so widening a query cannot change a station's definition.
+`EVENT_BOUNDS_CENTURY` and `EVENT_BOUNDS_WIDE` hold these allowances;
+[`statistics/ephemeris_event_bounds.py`](../statistics/ephemeris_event_bounds.py)
+checks their transcription from the
+[exact records](https://github.com/0xf3cd/celestial-calendar/blob/main/src/test/provenance/ephemeris-events/ATTRIBUTION.md).
 
 The rate derivative bounds use the exact `23/15` integral-kernel norm.
 The distinction between the smooth longitude derivative and the published
-rate is bounded by `M7*h^6/140`, using a one-sign Peano kernel. This
+rate is bounded by `M7*h^6/140`, using a nonnegative Peano kernel; the
+[derivation below](#seven-point-operator-and-remainder) gives both constants. This
 truncation remainder is **not** the floating-point error of evaluating the
 six-sample rate. Both terms are retained for contact classification.
 
@@ -134,3 +144,45 @@ reports on a nearest-even `2^-30`-day lattice. The fine lattice makes
 half-open ownership deterministic; it does not claim microsecond physical
 accuracy. A certified secant observation usually gives a substantially
 better representative than the stopping criterion alone.
+
+<a id="seven-point-operator-and-remainder"></a>
+## Seven-point operator and remainder
+
+For a continuous angular lift `g` whose sample-pair changes fit in
+`(-180°,180°)`, `ephemeris::detail::differentiate` evaluates
+
+```text
+D_h g(t) = Σ[j=1..3] c_j [g(t+jh) − g(t−jh)] / h
+(c_1,c_2,c_3) = (3/4, −3/20, 1/60),  h = 1/8 TT day.
+```
+
+The fundamental theorem of calculus rewrites this as
+`D_h g(t) = ∫[-3,3] w(s) g′(t+hs) ds`. The even, piecewise-constant
+weight is `37/60` for `|s|≤1`, `−2/15` for `1<|s|≤2`, and
+`1/60` for `2<|s|≤3`. Its absolute integral is
+`2(37/60 + 2/15 + 1/60) = 23/15`. Differentiating the integral bounds
+the first and second derivatives of `D_h g` by `23/15` times the
+suprema of `|g″|` and `|g‴|` over the full sample halo.
+
+The functional `D_1 g(0)−g′(0)` vanishes on polynomials through degree
+six. Its seventh-order [Peano kernel](https://en.wikipedia.org/wiki/Peano_kernel_theorem)
+is even; for `x≥0`, it is
+
+```text
+K(x) = [45(1−x)_+^6 − 9(2−x)_+^6 + (3−x)_+^6] / 43200,
+y_+ = max(y,0).
+```
+
+It vanishes outside `[-3,3]` and is nonnegative inside. On `[2,3]`
+only the last term remains. On `[1,2]`, `(3−x)/(2−x)≥2` makes the
+last term exceed the negative term. On `[0,1]`, set `u=1−x`. The
+numerator is
+`55+138u+105u²−20u³−75u⁴−42u⁵+37u⁶`, which is at least
+`55+106u+37u⁶>0` because `0≤u≤1`.
+
+Consequently `∫K = 2Σ c_j j⁷/7! = 1/140`, and scaling gives
+`|D_h g−g′| ≤ (h⁶/140) sup|g⁽⁷⁾|`. This truncation term is separate
+from the floating-point allowance for evaluating the six samples.
+The exact record fields `position_seventh_derivative`,
+`rate_to_position_derivative_remainder` and `rate_error` retain that
+distinction.

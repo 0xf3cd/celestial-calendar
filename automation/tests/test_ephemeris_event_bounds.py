@@ -40,6 +40,17 @@ class EventBoundRecordsTest(unittest.TestCase):
     solar = solar.split("} // namespace astro::sun::geocentric_coord", 1)[0]
     GENERATOR["check_sources"](self.record, actual, hashlib.sha256(solar.encode("utf-8")).hexdigest())
 
+  def test_math_reference_artifacts_and_collector_are_pinned(self) -> None:
+    references = ROOT / "src/test/provenance/ephemeris-events"
+    record = json.loads((references / "LIBM_REFERENCE_PINS.json").read_text())
+    collector = hashlib.sha256((ROOT / "statistics/ephemeris_event_math_reference.py").read_bytes()).hexdigest()
+    header = hashlib.sha256((references / "libm_reference.hpp").read_bytes()).hexdigest()
+    GENERATOR["check_math_references"](record, collector, header)
+    with self.assertRaisesRegex(ValueError, "math-reference identity"):
+      GENERATOR["check_math_references"](record, "0" * 64, header)
+    with self.assertRaisesRegex(ValueError, "math-reference identity"):
+      GENERATOR["check_math_references"](record, collector, "0" * 64)
+
   def test_understated_rate_error_is_rejected(self) -> None:
     self.record["tables"]["EVENT_BOUNDS_WIDE"]["MARS"]["rate_error"]["hex"] = "0x0p+0"
     with self.assertRaisesRegex(ValueError, "rounding direction"):
@@ -67,6 +78,8 @@ class EventBoundRecordsTest(unittest.TestCase):
     actual["src/astro/ephemeris.hpp"] = "0" * 64
     with self.assertRaisesRegex(ValueError, "source identity"):
       GENERATOR["check_sources"](self.record, actual, solar)
+    with self.assertRaisesRegex(ValueError, "source identity"):
+      GENERATOR["check_sources"](self.record, self.record["source_sha256"], "0" * 64)
 
 
 if __name__ == "__main__":

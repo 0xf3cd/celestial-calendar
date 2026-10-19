@@ -96,6 +96,7 @@ observed DUT1" means in the API documentation.
 | API | Time scale |
 |---|---|
 | Positions and rates (`sun`, `moon`, `planet`, `ephemeris`, `lunar_node`) | take JDE(TT) |
+| Interval longitude events and stations (`ephemeris_events`) | take JDE(TT) endpoints; return JDE(TT) |
 | Searches by year: `jieqi_jde`, `moon_phase` moments, planetary events | bound the year by `[Jan 1, next Jan 1)` in UTC, UT1 before 1972; return JDE(TT) |
 | `jieqi_ut1_moment`, C `query_jieqi_moment` and the package Jieqi moments | the same Jieqi converted to UT1 through Algo5, not UTC |
 | Lunar Algo2 | assigns date labels by rendering TT moments through the library's UTC, then a fixed +8 h offset |
