@@ -590,6 +590,32 @@ requires std::invocable<const Provider&, double>
   return index;
 }
 
+/** @brief Visit whole canonical cells touching a query, including its preceding cell for rounded roots. */
+template <typename Visitor>
+requires std::invocable<const Visitor&, Interval>
+inline auto visit_query_cells(const Grid grid, const Interval query, const Visitor& visitor) -> void {
+  validate_cell(query.start_jde_tt, query.end_jde_tt, {});
+  const bool outside_domain = query.start_jde_tt < grid.domain.start_jde_tt
+                             or query.end_jde_tt > grid.domain.end_jde_tt;
+  if (outside_domain) {
+    throw std::invalid_argument { "Event-search query leaves the grid domain" };
+  }
+  const uint32_t cell_count = grid_cell_count(grid);
+  const uint32_t containing = containing_cell(grid, cell_count, query.start_jde_tt);
+  // An interior root in the preceding cell can round to this cell's start.
+  const uint32_t first = containing == 0 ? 0 : containing - 1;
+  for (uint32_t index = first; index < cell_count; ++index) {
+    const double start_jde_tt = grid_time(grid, index, cell_count);
+    if (start_jde_tt >= query.end_jde_tt) {
+      break;
+    }
+    visitor(Interval {
+      .start_jde_tt = start_jde_tt,
+      .end_jde_tt = grid_time(grid, index + 1, cell_count),
+    });
+  }
+}
+
 /** @brief Append only query-owned roots; intersecting unresolved regions and aliased root times fail. */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
@@ -641,30 +667,50 @@ requires std::invocable<const Provider&, double>
   const double time_resolution = 0.0
 ) -> std::vector<Root> {
   validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
-  const bool outside_domain = query.start_jde_tt < grid.domain.start_jde_tt
-                             or query.end_jde_tt > grid.domain.end_jde_tt;
-  if (outside_domain or not finite_nonnegative(time_resolution)) {
+  if (not finite_nonnegative(time_resolution)) {
     throw std::invalid_argument { "Invalid event-search interval request" };
   }
-  const uint32_t cell_count = grid_cell_count(grid);
-  const uint32_t containing = containing_cell(grid, cell_count, query.start_jde_tt);
-  // An interior root in the preceding cell can round to this cell's start.
-  const uint32_t first = containing == 0 ? 0 : containing - 1;
   std::vector<Root> roots;
-  for (uint32_t index = first; index < cell_count; ++index) {
-    const double start_jde_tt = grid_time(grid, index, cell_count);
-    if (start_jde_tt >= query.end_jde_tt) {
-      break;
-    }
+  visit_query_cells(grid, query, [&](const Interval cell) {
     const auto candidates = isolate_cell(
       provider,
-      start_jde_tt,
-      grid_time(grid, index + 1, cell_count),
+      cell.start_jde_tt,
+      cell.end_jde_tt,
       bounds,
       budget
     );
     append_interval_roots(provider, candidates, query, bounds, budget, time_resolution, roots);
+  });
+  return roots;
+}
+
+/**
+ * @brief Find longitude-level crossings on whole canonical cells with half-open reported-time ownership.
+ * @note The provider covers the closed grid domain; unresolved contacts or uncertified angular lifts throw.
+ */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, LongitudeValue>
+[[nodiscard]] inline auto longitude_roots_in_interval(
+  const Provider& provider,
+  const toolbox::AngleDeg target,
+  const Grid grid,
+  const Interval query,
+  const Bounds bounds,
+  Budget& budget,
+  const double time_resolution = 0.0
+) -> std::vector<Root> {
+  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
+  const auto canonical_target = canonical_longitude_difference(target);
+  if (not finite_nonnegative(time_resolution)) {
+    throw std::invalid_argument { "Invalid event-search longitude resolution" };
   }
+  const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
+  std::vector<Root> roots;
+  visit_query_cells(grid, query, [&](const Interval cell) {
+    const auto candidates = isolate_longitude_cell(provider, canonical_target, cell, bounds, budget);
+    append_interval_roots(lifted, candidates, query, bounds, budget, time_resolution, roots);
+  });
   return roots;
 }
 

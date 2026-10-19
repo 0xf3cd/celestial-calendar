@@ -140,6 +140,18 @@ auto longitude_roots(
   return result;
 }
 
+/** @brief Search a synthetic longitude on the shared two-cell canonical grid. */
+template <typename Provider>
+auto longitude_range_roots(
+  const Provider& provider,
+  const toolbox::AngleDeg target,
+  const search::Interval query,
+  const search::Bounds bounds = LINEAR_BOUNDS
+) -> std::vector<search::Root> {
+  search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  return search::longitude_roots_in_interval(provider, target, TWO_CELL_GRID, query, bounds, budget);
+}
+
 } // namespace
 
 TEST(EphemerisEventsKernel, FiniteNonnegativeKeepsBoundaryAdmission) {
@@ -807,6 +819,137 @@ TEST(EphemerisEventsKernel, LongitudeCellAdmissionAndObservationFailuresAreExpli
     );
   }
   ASSERT_EQ(budget.evaluations_remaining, 97);
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangesKeepRoundedBoundaryOwnershipAcrossTargetBranches) {
+  // The roots are 1 +/- 2^-55; both report the binary64 time 1.
+  for (const double offset : std::array { 0x1p-55, -0x1p-55 }) {
+    const auto linear = [offset](const double time) { return longitude_sum(time - 1.0, offset); };
+    for (const double degrees : std::array { -360.0, 0.0, 360.0 }) {
+      const toolbox::AngleDeg target { degrees };
+      const auto full = longitude_range_roots(linear, target, TWO_CELL_GRID.domain);
+      const auto right = longitude_range_roots(linear, target, SECOND_CELL_INTERVAL);
+      ASSERT_EQ(full.size(), 1);
+      ASSERT_EQ(right.size(), 1);
+      ASSERT_EQ(full.at(0).jde_tt, 1.0);
+      ASSERT_EQ(right.at(0).jde_tt, full.at(0).jde_tt);
+      ASSERT_TRUE(longitude_range_roots(linear, target, FIRST_CELL_INTERVAL).empty());
+    }
+  }
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangesOwnExactStartsAndExcludeTheFinalEnd) {
+  for (const double root : std::array { 0.0, 1.0, 2.0 }) {
+    const auto linear = [root](const double time) { return longitude_sum(time, -root); };
+    const auto found = longitude_range_roots(linear, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain);
+    if (root == TWO_CELL_GRID.domain.end_jde_tt) {
+      ASSERT_TRUE(found.empty());
+    } else {
+      ASSERT_EQ(found.size(), 1);
+      ASSERT_EQ(found.at(0).jde_tt, root);
+    }
+  }
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangesRejectOnlyQueryRelevantUnresolvedContacts) {
+  const auto tangent = [](const double time) -> search::LongitudeValue {
+    const double offset = time - 0.25;
+    const double value = offset * offset;
+    return {
+      .longitude = toolbox::AngleDeg { value },
+      .error_deg = 2.0 * std::numeric_limits<double>::epsilon() * value,
+    };
+  };
+  const search::Bounds bounds { .first_derivative = 3.5, .second_derivative = 2.0 };
+  ASSERT_TRUE(longitude_range_roots(tangent, toolbox::AngleDeg { 0.0 }, SECOND_CELL_INTERVAL, bounds).empty());
+  ASSERT_THROW(
+    static_cast<void>(longitude_range_roots(tangent, toolbox::AngleDeg { 0.0 }, FIRST_CELL_INTERVAL, bounds)),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangeFailureCannotReturnCompletedEarlierCells) {
+  bool visited_root = false;
+  const auto fails_later = [&visited_root](const double time) -> search::LongitudeValue {
+    if (time > 1.0) {
+      throw std::runtime_error { "Synthetic longitude provider failed in the second cell" };
+    }
+    visited_root = visited_root or time == 0.25;
+    return longitude_sum(time, -0.25);
+  };
+  ASSERT_THROW(
+    static_cast<void>(longitude_range_roots(fails_later, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID.domain)),
+    std::runtime_error
+  );
+  ASSERT_TRUE(visited_root);
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangesUseTheProvidersVirtualFinalEndpoint) {
+  const double last = std::nextafter(1.0, 0.0);
+  std::size_t forbidden_calls = 0;
+  const auto physical = [last, &forbidden_calls](const double time) -> search::LongitudeValue {
+    if (time > last) {
+      ++forbidden_calls;
+      throw std::runtime_error { "Outside synthetic longitude domain" };
+    }
+    return longitude_sum(time, -0.75);
+  };
+  const auto extended = [&physical, last](const double time) -> search::LongitudeValue {
+    if (time > last) {
+      const auto evaluated = physical(last);
+      return {
+        .longitude = evaluated.longitude,
+        .error_deg = search::upper(evaluated.error_deg + search::upper(time - last)),
+      };
+    }
+    return physical(time);
+  };
+  const search::Grid grid { .domain = FIRST_CELL_INTERVAL, .cell_width_tt_days = 1.0 };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  const auto found = search::longitude_roots_in_interval(
+    extended, toolbox::AngleDeg { 0.0 }, grid, grid.domain, LINEAR_BOUNDS, budget
+  );
+  ASSERT_EQ(found.size(), 1);
+  ASSERT_EQ(found.at(0).jde_tt, 0.75);
+  ASSERT_EQ(forbidden_calls, 0);
+}
+
+TEST(EphemerisEventsKernel, LongitudeRangeAdmissionPrecedesProviderWork) {
+  std::size_t calls = 0;
+  const auto counted = [&calls](const double time) {
+    ++calls;
+    return longitude_sum(time, 0.0);
+  };
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
+  const search::Interval outside { .start_jde_tt = -1.0, .end_jde_tt = 1.0 };
+  const search::Grid invalid { .domain = TWO_CELL_GRID.domain, .cell_width_tt_days = 0.0 };
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_roots_in_interval(
+      counted, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, outside, LINEAR_BOUNDS, budget
+    )),
+    std::invalid_argument
+  );
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_roots_in_interval(
+      counted, toolbox::AngleDeg { 0.0 }, invalid, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget
+    )),
+    std::invalid_argument
+  );
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_roots_in_interval(
+      counted, toolbox::AngleDeg { std::numeric_limits<double>::infinity() },
+      TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget
+    )),
+    std::invalid_argument
+  );
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_roots_in_interval(
+      counted, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget, -1.0
+    )),
+    std::invalid_argument
+  );
+  ASSERT_EQ(calls, 0);
+  ASSERT_EQ(budget.evaluations_remaining, 100);
 }
 
 } // namespace astro::ephemeris::test
