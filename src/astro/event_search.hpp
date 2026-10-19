@@ -1101,14 +1101,16 @@ requires std::invocable<const Contacts&, Interval, Interval, bool>
   visit_query_cells(grid, query, [&](const Interval cell) {
     visited.push_back(containing_cell(grid, cell_count, cell.start_jde_tt));
   });
-  const uint32_t lookahead_first = visited.front() == 0 ? 0 : visited.front() - 1;
-  const uint32_t lookahead_last = std::min(visited.back() + 1, cell_count - 1);
+  const uint32_t first_cell = visited.at(0);
+  const uint32_t last_cell = visited.at(visited.size() - 1);
+  const uint32_t lookahead_first = first_cell == 0 ? 0 : first_cell - 1;
+  const uint32_t lookahead_last = std::min(last_cell + 1, cell_count - 1);
   const auto cell_at = [&](const uint32_t index) -> Interval {
     return { .start_jde_tt = grid_time(grid, index, cell_count), .end_jde_tt = grid_time(grid, index + 1, cell_count) };
   };
   std::vector<std::vector<NumericalContact>> owned;
   for (uint32_t index = lookahead_first; index <= lookahead_last; ++index) {
-    const bool visited_cell = visited.front() <= index and index <= visited.back();
+    const bool visited_cell = first_cell <= index and index <= last_cell;
     owned.push_back(contacts(cell_at(index), contact_window(grid, index, cell_count), visited_cell));
   }
   std::vector<LongitudeRoot> results;
