@@ -587,7 +587,24 @@ requires std::invocable<const Provider&, double>
       upper(right.jde_tt - middle_jde_tt)
     );
     const bool precision_limit = middle_jde_tt == left.jde_tt or middle_jde_tt == right.jde_tt;
-    if (precision_limit or radius <= time_resolution) {
+    if (precision_limit) {
+      return { .jde_tt = middle_jde_tt, .increasing = increasing };
+    }
+    if (radius <= time_resolution) {
+      const double left_magnitude = std::fabs(left.evaluated.value);
+      const double magnitude_sum = left_magnitude + std::fabs(right.evaluated.value);
+      if (std::isfinite(magnitude_sum) and magnitude_sum > 0.0) {
+        const double trial_jde_tt = std::lerp(left.jde_tt, right.jde_tt, left_magnitude / magnitude_sum);
+        if (left.jde_tt < trial_jde_tt and trial_jde_tt < right.jde_tt) {
+          const auto trial = sample(provider, trial_jde_tt, budget);
+          const double magnitude = upper(std::fabs(trial.evaluated.value) + trial.evaluated.error);
+          const double trial_radius = upper(magnitude / minimum_slope);
+          // A secant trial improves the representative only when its value allowance certifies the same time bound.
+          if (trial_radius <= time_resolution) {
+            return { .jde_tt = trial_jde_tt, .increasing = increasing };
+          }
+        }
+      }
       return { .jde_tt = middle_jde_tt, .increasing = increasing };
     }
 

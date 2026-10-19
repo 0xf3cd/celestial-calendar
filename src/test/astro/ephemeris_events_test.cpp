@@ -1326,4 +1326,36 @@ TEST(EphemerisEventsKernel, NoisySubdivisionMidpointsStayInsideCertifiedBrackets
   ASSERT_TRUE(second.increasing);
 }
 
+TEST(EphemerisEventsKernel, AResolvedBracketCanImproveItsRepresentativeWithoutRelaxingTheTimeCertificate) {
+  const auto quadratic = [](const double time) -> search::Value {
+    return { .value = (time * time) - 2.0, .error = 0.0 };
+  };
+  const search::Bounds bounds { .first_derivative = 4.0, .second_derivative = 2.0 };
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 10 };
+  const auto candidates = search::isolate_cell(quadratic, 1.0, 2.0, bounds, budget);
+  ASSERT_EQ(candidates.size(), 1);
+  const auto root = search::refine(quadratic, candidates.at(0), bounds, budget, 0.5);
+  ASSERT_LT(std::fabs(root.jde_tt - std::sqrt(2.0)), std::fabs(1.25 - std::sqrt(2.0)));
+  ASSERT_LE(std::fabs(root.jde_tt - std::sqrt(2.0)), 0.5);
+  ASSERT_TRUE(root.increasing);
+}
+
+TEST(EphemerisEventsKernel, SecantPolishingCannotTrustAnUncertainZeroOrChangeIdentityWithTheBudget) {
+  const search::Sample left { .jde_tt = 1.0, .evaluated = { .value = -1.0, .error = 0.0 } };
+  const search::Sample right { .jde_tt = 2.0, .evaluated = { .value = 2.0, .error = 0.0 } };
+  const search::Candidate candidate { .left = left, .right = right, .isolation = search::Isolation::UNIQUE };
+  const search::Bounds bounds { .first_derivative = 4.0, .second_derivative = 2.0 };
+  std::size_t calls = 0;
+  const auto uncertain = [&calls](const double time) -> search::Value {
+    ++calls;
+    return { .value = 0.0, .error = 100.0 + (time * time) };
+  };
+  search::Budget budget { .evaluations_remaining = 10, .candidates_remaining = 10 };
+  ASSERT_EQ(search::refine(uncertain, candidate, bounds, budget, 0.6).jde_tt, 1.5);
+  ASSERT_EQ(calls, 1);
+  search::Budget empty { .evaluations_remaining = 0, .candidates_remaining = 0 };
+  ASSERT_THROW(static_cast<void>(search::refine(uncertain, candidate, bounds, empty, 0.6)), std::runtime_error);
+  ASSERT_EQ(calls, 1);
+}
+
 } // namespace astro::ephemeris::test
