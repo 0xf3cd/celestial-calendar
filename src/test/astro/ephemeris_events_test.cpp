@@ -29,6 +29,12 @@ namespace {
 
 namespace search = detail::event_search;
 
+constexpr std::array EVENT_TARGETS {
+  Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
+  Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
+  Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
+};
+
 static_assert(std::same_as<decltype(search::sign(search::Value {})), int32_t>);
 
 constexpr search::Bounds LINEAR_BOUNDS { .first_derivative = 1, .second_derivative = 0 };
@@ -587,12 +593,7 @@ TEST(EphemerisEventsKernel, RangeProviderOwnsItsVirtualDomainEndpoint) {
 }
 
 TEST(EphemerisEventsKernel, EventRateCentersKeepEveryExistingTargetDomain) {
-  constexpr std::array targets {
-    Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
-    Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
-    Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
-  };
-  for (const auto target : targets) {
+  for (const auto target : EVENT_TARGETS) {
     const auto [first, end] = longitude_rate_domain(target);
     for (const double requested : std::array { first, std::nextafter(first, end), std::nextafter(end, first), end }) {
       const double center = detail::event_rate_center(target, requested);
@@ -950,6 +951,61 @@ TEST(EphemerisEventsKernel, LongitudeRangeAdmissionPrecedesProviderWork) {
   );
   ASSERT_EQ(calls, 0);
   ASSERT_EQ(budget.evaluations_remaining, 100);
+}
+
+TEST(EphemerisEventsKernel, EventLongitudesUseActualDescendingPositionsWithoutChangingPairedRates) {
+  constexpr double JDE_TT = 2451545.0;
+  for (const auto target : EVENT_TARGETS) {
+    const auto expected = [target]() -> toolbox::AngleDeg {
+      using astro::lunar_node::Node;
+      if (target == Target::MEAN_DESCENDING) {
+        return astro::lunar_node::position(Node::MEAN_DESCENDING, JDE_TT);
+      }
+      if (target == Target::TRUE_DESCENDING) {
+        return astro::lunar_node::position(Node::TRUE_DESCENDING, JDE_TT);
+      }
+      return detail::longitude_for_rate(target, JDE_TT);
+    };
+    ASSERT_EQ(detail::event_longitude(target, JDE_TT).deg(), expected().deg());
+  }
+  for (const auto node : std::array { Target::MEAN_DESCENDING, Target::TRUE_DESCENDING }) {
+    ASSERT_NE(detail::event_longitude(node, JDE_TT).deg(), detail::longitude_for_rate(node, JDE_TT).deg());
+  }
+  ASSERT_THROW(
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately exercise unknown-target rejection.
+    static_cast<void>(detail::event_longitude(static_cast<Target>(uint32_t { 100 }), JDE_TT)),
+    std::invalid_argument
+  );
+}
+
+TEST(EphemerisEventsKernel, ConstantLongitudeRelationsUseAllTargetIdentitiesAndRejectUnknownValues) {
+  uint32_t constant_relations = 0;
+  uint32_t variable_relations = 0;
+  for (const auto target_a : EVENT_TARGETS) {
+    for (const auto target_b : EVENT_TARGETS) {
+      const auto relation = detail::constant_longitude_difference(target_a, target_b);
+      using enum Target;
+      const bool mean_pair = (target_a == MEAN_ASCENDING and target_b == MEAN_DESCENDING)
+                             or (target_a == MEAN_DESCENDING and target_b == MEAN_ASCENDING);
+      const bool true_pair = (target_a == TRUE_ASCENDING and target_b == TRUE_DESCENDING)
+                             or (target_a == TRUE_DESCENDING and target_b == TRUE_ASCENDING);
+      const bool constant = target_a == target_b or mean_pair or true_pair;
+      ASSERT_EQ(relation.has_value(), constant);
+      if (relation.has_value()) {
+        ++constant_relations;
+        ASSERT_EQ(relation->deg(), target_a == target_b ? 0.0 : 180.0);
+      } else {
+        ++variable_relations;
+      }
+    }
+  }
+  ASSERT_EQ(constant_relations, 18);
+  ASSERT_EQ(variable_relations, 178);
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately test validation before identity shortcuts.
+  const auto unknown = static_cast<Target>(uint32_t { 100 });
+  ASSERT_THROW(static_cast<void>(detail::constant_longitude_difference(unknown, unknown)), std::invalid_argument);
+  ASSERT_THROW(static_cast<void>(detail::constant_longitude_difference(Target::SUN, unknown)), std::invalid_argument);
+  ASSERT_THROW(static_cast<void>(detail::constant_longitude_difference(unknown, Target::SUN)), std::invalid_argument);
 }
 
 } // namespace astro::ephemeris::test

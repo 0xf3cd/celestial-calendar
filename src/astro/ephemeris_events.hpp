@@ -20,6 +20,7 @@
 #include <format>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <type_traits>
@@ -717,6 +718,40 @@ requires std::invocable<const Provider&, double>
 } // namespace astro::ephemeris::detail::event_search
 
 namespace astro::ephemeris::detail {
+
+/** @brief Evaluate the actual target longitude; descending-node rates alone use the ascending trajectory. */
+[[nodiscard]] inline auto event_longitude(const Target target, const double jde_tt) -> toolbox::AngleDeg {
+  switch (target) {
+    case Target::MEAN_DESCENDING:
+      return astro::lunar_node::position(astro::lunar_node::Node::MEAN_DESCENDING, jde_tt);
+    case Target::TRUE_DESCENDING:
+      return astro::lunar_node::position(astro::lunar_node::Node::TRUE_DESCENDING, jde_tt);
+    default:
+      return longitude_for_rate(target, jde_tt);
+  }
+}
+
+/** @brief Recognize constant real-model first-minus-second relations by target identity, not sampled positions. */
+[[nodiscard]] inline auto constant_longitude_difference(
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names preserve the directed pair's order.
+  const Target first,
+  const Target second
+) -> std::optional<toolbox::AngleDeg> {
+  static_cast<void>(position_window_for_rate(first));
+  static_cast<void>(position_window_for_rate(second));
+  if (first == second) {
+    return toolbox::AngleDeg { 0.0 };
+  }
+  using enum Target;
+  const bool mean_antipodes = (first == MEAN_ASCENDING and second == MEAN_DESCENDING)
+                             or (first == MEAN_DESCENDING and second == MEAN_ASCENDING);
+  const bool true_antipodes = (first == TRUE_ASCENDING and second == TRUE_DESCENDING)
+                             or (first == TRUE_DESCENDING and second == TRUE_ASCENDING);
+  if (mean_antipodes or true_antipodes) {
+    return toolbox::AngleDeg { 180.0 };
+  }
+  return std::nullopt;
+}
 
 // Centers and their 3/8-day stencils fit binary64 throughout the current domains (|JDE| < 2^23).
 inline constexpr double EVENT_RATE_CENTER_QUANTUM_TT_DAYS = 0x1p-30;
