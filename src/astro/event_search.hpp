@@ -989,7 +989,7 @@ requires std::invocable<const LongitudeProvider&, double>
 }
 
 /**
- * @brief Certify one canonical cell's isolated stations; a lookahead cell leaves an uncertified one to the scan.
+ * @brief Certify one canonical cell's isolated stations; cells outside the query leave uncertified ones to the scan.
  * @note Providers and bounds cover the cell; the window providers and bounds cover its @ref contact_window.
  */
 template <typename LongitudeProvider, typename RateProvider, typename WindowLongitudeProvider, typename WindowRateProvider>
@@ -1014,7 +1014,7 @@ requires std::invocable<const LongitudeProvider&, double>
   Budget& budget,
   const double time_resolution,
   const double report_quantum_tt_days,
-  const bool visited
+  const bool requires_certificate
 ) -> std::vector<NumericalContact> {
   const auto stations = isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.rate, budget);
   std::vector<NumericalContact> contacts;
@@ -1037,7 +1037,7 @@ requires std::invocable<const LongitudeProvider&, double>
       time_resolution,
       report_quantum_tt_days
     );
-    if (visited and not outcome.certified) {
+    if (requires_certificate and not outcome.certified) {
       throw std::runtime_error { "Event-search numerical contact has no certified two-sided extremum region" };
     }
     if (outcome.contact.has_value()) {
@@ -1110,8 +1110,9 @@ requires std::invocable<const Contacts&, Interval, Interval, bool>
   };
   std::vector<std::vector<NumericalContact>> owned;
   for (uint32_t index = lookahead_first; index <= lookahead_last; ++index) {
-    const bool visited_cell = first_cell <= index and index <= last_cell;
-    owned.push_back(contacts(cell_at(index), contact_window(grid, index, cell_count), visited_cell));
+    const auto cell = cell_at(index);
+    const bool query_intersects_cell = cell.start_jde_tt < query.end_jde_tt and query.start_jde_tt < cell.end_jde_tt;
+    owned.push_back(contacts(cell, contact_window(grid, index, cell_count), query_intersects_cell));
   }
   std::vector<LongitudeRoot> results;
   for (const auto& found : owned) {

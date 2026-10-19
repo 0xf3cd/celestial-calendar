@@ -147,6 +147,32 @@ TEST(EventSearchContacts, AnUncertifiedLookaheadEndpointDoesNotInvalidateDistant
   ASSERT_TRUE(quadratic_contacts(0.0, 0.0, { .start_jde_tt = 0.5, .end_jde_tt = 0.75 }).empty());
 }
 
+TEST(EventSearchContacts, AnUncertifiedRoundingPredecessorDoesNotInvalidateTheQuery) {
+  ASSERT_TRUE(quadratic_contacts(0.0, 0.0, { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }).empty());
+}
+
+TEST(EventSearchContacts, ARoundingPredecessorStillSuppliesItsReportedCrossing) {
+  constexpr double ROOT = 0.25 - 3e-10;
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    return { .longitude = toolbox::AngleDeg { time - ROOT }, .error_deg = 1e-15 };
+  };
+  const auto rate = [](const double) -> search::Value { return { .value = 1.0, .error = 0.0 }; };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 1.0, .second_derivative = 0.0 },
+    .rate = { .first_derivative = 0.0, .second_derivative = 0.0 },
+    .third_derivative = 0.0,
+    .rate_remainder = 0.0,
+  };
+  search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
+  const auto found = range_test::longitude_contacts_in_interval(
+    longitude, rate, toolbox::AngleDeg { 0.0 }, GRID, { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }, bounds,
+    budget, RESOLUTION, QUANTUM
+  );
+  ASSERT_EQ(found.size(), 1U);
+  ASSERT_EQ(found.front().jde_tt, 0.25);
+  ASSERT_EQ(found.front().direction, search::ContactDirection::INCREASING);
+}
+
 TEST(EventSearchContacts, AnInteriorRepresentativeAndRegionStayUnchanged) {
   const auto found = quadratic_contacts(0.375, 0.0, GRID.domain);
   ASSERT_EQ(found.size(), 1U);

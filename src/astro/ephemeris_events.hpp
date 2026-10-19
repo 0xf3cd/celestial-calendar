@@ -329,7 +329,11 @@ inline auto validate_event_environment() -> void {
     const bool needs_contact_scan = second.has_value() or not has_no_station(first_bounds);
     return std::tuple { longitude, rate, bounds, needs_contact_scan };
   };
-  const auto contacts = [&](const event_search::Interval cell, const event_search::Interval window, const bool visited) {
+  const auto contacts = [&](
+    const event_search::Interval cell,
+    const event_search::Interval window,
+    const bool requires_certificate
+  ) {
     const auto [longitude, rate, bounds, needs_contact_scan] = model(cell);
     if (not needs_contact_scan) {
       return std::vector<event_search::NumericalContact> {};
@@ -337,7 +341,7 @@ inline auto validate_event_environment() -> void {
     const auto [window_longitude, window_rate, window_bounds, window_needs_contact_scan] = model(window);
     return event_search::cell_contacts(
       longitude, rate, window_longitude, window_rate, target, cell, window, bounds, window_bounds, budget,
-      EVENT_TIME_RESOLUTION_TT_DAYS, EVENT_RATE_CENTER_QUANTUM_TT_DAYS, visited
+      EVENT_TIME_RESOLUTION_TT_DAYS, EVENT_RATE_CENTER_QUANTUM_TT_DAYS, requires_certificate
     );
   };
   const auto crossings = [&](const event_search::Interval cell, const std::span<const event_search::Interval> exclusions) {

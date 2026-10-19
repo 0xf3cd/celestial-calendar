@@ -172,10 +172,10 @@ requires std::invocable<const LongitudeProvider&, double>
   }
   const auto canonical_target = toolbox::canonical_longitude_difference(target);
   validate_reporting_grid(grid, report_quantum_tt_days);
-  const auto contacts = [&](const Interval cell, const Interval window, const bool visited) {
+  const auto contacts = [&](const Interval cell, const Interval window, const bool requires_certificate) {
     return cell_contacts(
       longitude, rate, longitude, rate, canonical_target, cell, window, bounds, bounds, budget,
-      time_resolution, report_quantum_tt_days, visited
+      time_resolution, report_quantum_tt_days, requires_certificate
     );
   };
   const auto crossings = [&](const Interval cell, const std::span<const Interval> exclusions) {
