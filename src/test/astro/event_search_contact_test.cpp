@@ -173,6 +173,60 @@ TEST(EventSearchContacts, ARoundingPredecessorStillSuppliesItsReportedCrossing) 
   ASSERT_EQ(found.front().direction, search::ContactDirection::INCREASING);
 }
 
+TEST(EventSearchContacts, ACertifiedPredecessorContactKeepsItsRoundedOwnership) {
+  constexpr double VERTEX = 0.25 - 3e-10;
+  constexpr double OFFSET = 0.25 - VERTEX;
+  const auto found = quadratic_contacts(
+    VERTEX, OFFSET * OFFSET, { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }
+  );
+  ASSERT_EQ(found.size(), 1U);
+  ASSERT_EQ(found.front().jde_tt, 0.25);
+  ASSERT_EQ(found.front().direction, search::ContactDirection::TANGENT);
+  ASSERT_TRUE(quadratic_contacts(
+    VERTEX, OFFSET * OFFSET, { .start_jde_tt = 0.0, .end_jde_tt = 0.25 }
+  ).empty());
+}
+
+TEST(EventSearchContacts, AnUncertifiedPredecessorContactCannotHideAQueryRelevantRegion) {
+  constexpr double VERTEX = 0.25 - 3e-10;
+  constexpr double OFFSET = 0.25 - VERTEX;
+  const auto [longitude, rate] = quadratic(VERTEX);
+  // A loose valid third-derivative bound withholds the contact certificate.
+  const search::TrajectoryBounds bounds {
+    .longitude = BOUNDS.longitude, .rate = BOUNDS.rate, .third_derivative = 1e12, .rate_remainder = 0.0,
+  };
+  search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
+  try {
+    static_cast<void>(range_test::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { OFFSET * OFFSET }, GRID,
+      { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }, bounds, budget, RESOLUTION, QUANTUM
+    ));
+    FAIL() << "A query-relevant unresolved predecessor contact was hidden";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(std::string { error.what() }, "Unresolved event-search region intersects the query");
+  }
+}
+
+TEST(EventSearchContacts, RoundingPredecessorProviderFailuresAreNeverSwallowed) {
+  const auto [longitude, exact_rate] = quadratic(0.0);
+  const auto rate = [&](const double time) -> search::Value {
+    if (time == 0.0) {
+      throw std::runtime_error { "Predecessor provider failure" };
+    }
+    return exact_rate(time);
+  };
+  search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
+  try {
+    static_cast<void>(range_test::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { 0.0 }, GRID, { .start_jde_tt = 0.25, .end_jde_tt = 0.5 },
+      BOUNDS, budget, RESOLUTION, QUANTUM
+    ));
+    FAIL() << "The predecessor provider failure was swallowed";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(std::string { error.what() }, "Predecessor provider failure");
+  }
+}
+
 TEST(EventSearchContacts, AnInteriorRepresentativeAndRegionStayUnchanged) {
   const auto found = quadratic_contacts(0.375, 0.0, GRID.domain);
   ASSERT_EQ(found.size(), 1U);
