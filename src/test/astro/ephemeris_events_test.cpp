@@ -33,6 +33,12 @@ static_assert(std::same_as<decltype(search::sign(search::Value {})), int32_t>);
 
 constexpr search::Bounds LINEAR_BOUNDS { .first_derivative = 1, .second_derivative = 0 };
 constexpr search::Bounds QUADRATIC_BOUNDS { .first_derivative = 1, .second_derivative = 2 };
+constexpr search::Grid TWO_CELL_GRID {
+  .domain = { .start_jde_tt = 0.0, .end_jde_tt = 2.0 },
+  .cell_width_tt_days = 1.0,
+};
+constexpr search::Interval FIRST_CELL_INTERVAL { .start_jde_tt = 0.0, .end_jde_tt = 1.0 };
+constexpr search::Interval SECOND_CELL_INTERVAL { .start_jde_tt = 1.0, .end_jde_tt = 2.0 };
 
 // Knuth, TAOCP Vol. 2, Section 4.2.2: TwoSum gives the exact addition residual.
 auto sum_value(const double left, const double right) -> search::Value {
@@ -94,6 +100,17 @@ auto two_cell_times(
     found.insert(found.end(), current.begin(), current.end());
   }
   return reported_times(found, query_start, query_end);
+}
+
+/** @brief Exercise whole-grid traversal with a fresh shared work budget. */
+template <typename Provider>
+auto range_roots(
+  const Provider& provider,
+  const search::Interval query,
+  const search::Bounds bounds = LINEAR_BOUNDS
+) -> std::vector<search::Root> {
+  search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  return search::roots_in_interval(provider, TWO_CELL_GRID, query, bounds, budget);
 }
 
 } // namespace
@@ -403,6 +420,131 @@ TEST(EphemerisEventsKernel, InvalidInputsAndProviderFailuresCannotReturnAPrefix)
   }
   const auto failure = [](const double) -> search::Value { throw std::runtime_error { "Provider failed" }; };
   ASSERT_THROW(static_cast<void>(search::isolate_cell(failure, 0, 1, LINEAR_BOUNDS, budget)), std::runtime_error);
+}
+
+TEST(EphemerisEventsKernel, CanonicalRangesKeepRoundedBoundaryOwnership) {
+  for (const double offset : std::array { 0x1p-55, -0x1p-55 }) {
+    const auto linear = [offset](const double time) -> search::Value { return sum_value(time - 1, offset); };
+    const auto full = range_roots(linear, TWO_CELL_GRID.domain);
+    ASSERT_EQ(full.size(), 1);
+    ASSERT_EQ(full.at(0).jde_tt, 1.0);
+    ASSERT_TRUE(range_roots(linear, FIRST_CELL_INTERVAL).empty());
+    const auto right = range_roots(linear, SECOND_CELL_INTERVAL);
+    ASSERT_EQ(right.size(), 1);
+    ASSERT_EQ(right.at(0).jde_tt, full.at(0).jde_tt);
+    ASSERT_EQ(reported_times(full, 1.0, 2.0), two_cell_times(linear, 1.0, 2.0));
+  }
+}
+
+TEST(EphemerisEventsKernel, CanonicalRangesOwnExactStartsButNotFinalEnds) {
+  for (const double root : std::array { 0.0, 1.0 }) {
+    const auto linear = [root](const double time) -> search::Value { return sum_value(time, -root); };
+    const auto full = range_roots(linear, TWO_CELL_GRID.domain);
+    ASSERT_EQ(full.size(), 1);
+    ASSERT_EQ(full.at(0).jde_tt, root);
+    const search::Interval query { .start_jde_tt = root, .end_jde_tt = 2.0 };
+    const auto clipped = range_roots(linear, query);
+    ASSERT_EQ(clipped.size(), 1);
+    ASSERT_EQ(clipped.at(0).jde_tt, root);
+  }
+  const auto final = [](const double time) -> search::Value { return sum_value(time, -2.0); };
+  ASSERT_TRUE(range_roots(final, TWO_CELL_GRID.domain).empty());
+}
+
+TEST(EphemerisEventsKernel, CanonicalGridHandlesShiftedAndPartialCells) {
+  const search::Grid shifted {
+    .domain = { .start_jde_tt = -1.25, .end_jde_tt = 1.25 },
+    .cell_width_tt_days = 0.75,
+  };
+  ASSERT_EQ(search::grid_cell_count(shifted), 4);
+  const auto linear = [](const double time) -> search::Value { return sum_value(time, -1.125); };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  const search::Interval query { .start_jde_tt = 1.0, .end_jde_tt = 1.25 };
+  const auto found = search::roots_in_interval(linear, shifted, query, LINEAR_BOUNDS, budget);
+  ASSERT_EQ(found.size(), 1);
+  ASSERT_EQ(found.at(0).jde_tt, 1.125);
+
+  const search::Grid rounded_tail {
+    .domain = { .start_jde_tt = 0.0, .end_jde_tt = std::nextafter(0.3, 1.0) },
+    .cell_width_tt_days = 0.1,
+  };
+  ASSERT_EQ(search::grid_cell_count(rounded_tail), 3);
+
+  const search::Grid rounded_quotient { .domain = SECOND_CELL_INTERVAL, .cell_width_tt_days = 0.1 };
+  const uint32_t count = search::grid_cell_count(rounded_quotient);
+  ASSERT_EQ(search::containing_cell(rounded_quotient, count, 1.2), 2);
+  ASSERT_EQ(search::containing_cell(rounded_quotient, count, std::nextafter(1.2, 1.0)), 1);
+}
+
+TEST(EphemerisEventsKernel, UnresolvedRangeRegionsAreRelevantOnlyToTheirQuery) {
+  const auto tangent = [](const double time) -> search::Value {
+    const double offset = time - 0.25;
+    const double value = offset * offset;
+    return { .value = value, .error = 2 * std::numeric_limits<double>::epsilon() * std::fabs(value) };
+  };
+  const search::Bounds bounds { .first_derivative = 3.5, .second_derivative = 2.0 };
+  ASSERT_TRUE(range_roots(tangent, SECOND_CELL_INTERVAL, bounds).empty());
+  ASSERT_THROW(static_cast<void>(range_roots(tangent, FIRST_CELL_INTERVAL, bounds)), std::runtime_error);
+}
+
+TEST(EphemerisEventsKernel, ARangeFailureCannotReturnCompletedEarlierCells) {
+  const auto linear = [](const double time) -> search::Value { return sum_value(time, -0.25); };
+  search::Budget budget { .evaluations_remaining = 4, .candidates_remaining = 100 };
+  ASSERT_THROW(
+    static_cast<void>(search::roots_in_interval(linear, TWO_CELL_GRID, TWO_CELL_GRID.domain, LINEAR_BOUNDS, budget)),
+    std::runtime_error
+  );
+  ASSERT_EQ(budget.evaluations_remaining, 0);
+}
+
+TEST(EphemerisEventsKernel, RangeAdmissionPrecedesProviderWork) {
+  std::size_t calls = 0;
+  const auto counted = [&calls](const double time) -> search::Value {
+    ++calls;
+    return { .value = time, .error = 0.0 };
+  };
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
+  for (const double width : std::array {
+         0.0, -1.0, std::numeric_limits<double>::denorm_min(),
+         std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(),
+       }) {
+    const search::Grid invalid { .domain = TWO_CELL_GRID.domain, .cell_width_tt_days = width };
+    ASSERT_THROW(
+      static_cast<void>(search::roots_in_interval(counted, invalid, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget)),
+      std::invalid_argument
+    );
+  }
+  const search::Interval outside_domain { .start_jde_tt = -1.0, .end_jde_tt = 1.0 };
+  ASSERT_THROW(
+    static_cast<void>(search::roots_in_interval(counted, TWO_CELL_GRID, outside_domain, LINEAR_BOUNDS, budget)),
+    std::invalid_argument
+  );
+  ASSERT_EQ(calls, 0);
+  ASSERT_EQ(budget.evaluations_remaining, 100);
+}
+
+TEST(EphemerisEventsKernel, RangeProviderOwnsItsVirtualDomainEndpoint) {
+  const double last = std::nextafter(1.0, 0.0);
+  std::size_t forbidden_calls = 0;
+  const auto physical = [last, &forbidden_calls](const double time) -> search::Value {
+    if (time > last) {
+      ++forbidden_calls;
+      throw std::runtime_error { "Outside synthetic position domain" };
+    }
+    return sum_value(time, -0.75);
+  };
+  const auto endpoint = [&physical, last](const double time) -> search::Value {
+    if (time > last) {
+      return search::shifted(physical(last), time - last, 1.0);
+    }
+    return physical(time);
+  };
+  const search::Grid grid { .domain = FIRST_CELL_INTERVAL, .cell_width_tt_days = 1.0 };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  const auto found = search::roots_in_interval(endpoint, grid, grid.domain, LINEAR_BOUNDS, budget);
+  ASSERT_EQ(found.size(), 1);
+  ASSERT_EQ(found.at(0).jde_tt, 0.75);
+  ASSERT_EQ(forbidden_calls, 0);
 }
 
 } // namespace astro::ephemeris::test

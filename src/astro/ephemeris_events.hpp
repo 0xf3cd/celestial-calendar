@@ -20,6 +20,7 @@
 #include <format>
 #include <limits>
 #include <numeric>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -77,6 +78,18 @@ struct Candidate {
 struct Root {
   double jde_tt;
   bool increasing;
+};
+
+/** @brief A nonempty half-open interval in JDE(TT). */
+struct Interval {
+  double start_jde_tt;
+  double end_jde_tt;
+};
+
+/** @brief A query-independent cell partition; the provider must cover its closed domain. */
+struct Grid {
+  Interval domain;
+  double cell_width_tt_days;
 };
 
 /** @brief Enclose a nearest-rounded result on its lower side. */
@@ -395,6 +408,162 @@ requires std::invocable<const Provider&, double>
     throw std::runtime_error { "Event-search root is not bracketed by robust signs" };
   }
   return refine_bracket(provider, candidate, floor, budget, time_resolution, maximum_iterations);
+}
+
+/**
+ * @brief Return a stored grid boundary, with the first and final boundaries kept exact.
+ * @note The grid is validated and index is in [0, cell_count].
+ */
+[[nodiscard]] inline auto grid_time(
+  const Grid grid,
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish a boundary index from the cell count.
+  const uint32_t index,
+  const uint32_t cell_count
+) -> double {
+  if (index == 0) {
+    return grid.domain.start_jde_tt;
+  }
+  if (index == cell_count) {
+    return grid.domain.end_jde_tt;
+  }
+  return std::fma(static_cast<double>(index), grid.cell_width_tt_days, grid.domain.start_jde_tt);
+}
+
+/** @brief Validate distinct representable cell boundaries and a bounded index range. */
+[[nodiscard]] inline auto grid_cell_count(const Grid grid) -> uint32_t {
+  validate_cell(grid.domain.start_jde_tt, grid.domain.end_jde_tt, {});
+  const double magnitude = std::max(
+    std::fabs(grid.domain.start_jde_tt),
+    std::fabs(grid.domain.end_jde_tt)
+  );
+  const double spacing = upper(magnitude) - magnitude;
+  const bool invalid_width = not finite_nonnegative(grid.cell_width_tt_days) or grid.cell_width_tt_days < spacing;
+  if (invalid_width) {
+    throw std::invalid_argument { "Event-search grid width cannot represent distinct cells" };
+  }
+  const double span = grid.domain.end_jde_tt - grid.domain.start_jde_tt;
+  const double approximate_count = std::ceil(span / grid.cell_width_tt_days);
+  const double count = std::max(1.0, approximate_count);
+  const bool invalid_count = not std::isfinite(count) or count >= std::numeric_limits<uint32_t>::max();
+  if (invalid_count) {
+    throw std::invalid_argument { "Event-search grid exceeds the cell-index range" };
+  }
+
+  auto cell_count = static_cast<uint32_t>(count);
+  const auto empty_tail = [&grid, &cell_count] {
+    return cell_count > 1 and grid_time(grid, cell_count - 1, cell_count) >= grid.domain.end_jde_tt;
+  };
+  if (empty_tail()) {
+    --cell_count;
+  }
+  if (empty_tail()) {
+    throw std::invalid_argument { "Event-search grid has indistinguishable terminal cells" };
+  }
+  return cell_count;
+}
+
+/** @brief Locate the canonical cell containing an admitted time, correcting quotient rounding. */
+[[nodiscard]] inline auto containing_cell(
+  const Grid grid,
+  const uint32_t cell_count,
+  const double jde_tt
+) -> uint32_t {
+  const double approximate = std::clamp(
+    std::floor((jde_tt - grid.domain.start_jde_tt) / grid.cell_width_tt_days),
+    0.0,
+    static_cast<double>(cell_count - 1)
+  );
+  auto index = static_cast<uint32_t>(approximate);
+  if (index > 0 and grid_time(grid, index, cell_count) > jde_tt) {
+    --index;
+  }
+  if (index + 1 < cell_count and grid_time(grid, index + 1, cell_count) <= jde_tt) {
+    ++index;
+  }
+  const bool contains_time = grid_time(grid, index, cell_count) <= jde_tt
+                            and jde_tt < grid_time(grid, index + 1, cell_count);
+  if (not contains_time) {
+    throw std::runtime_error { "Event-search time cannot be assigned to a canonical cell" };
+  }
+  return index;
+}
+
+/** @brief Append only query-owned roots; intersecting unresolved regions and aliased root times fail. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+inline auto append_interval_roots(
+  const Provider& provider,
+  const std::span<const Candidate> candidates,
+  const Interval query,
+  const Bounds bounds,
+  Budget& budget,
+  const double time_resolution,
+  std::vector<Root>& roots
+) -> void {
+  for (const auto& candidate : candidates) {
+    const bool outside_query = candidate.right.jde_tt < query.start_jde_tt
+                               or candidate.left.jde_tt >= query.end_jde_tt;
+    if (outside_query) {
+      continue;
+    }
+    if (candidate.isolation != Isolation::UNIQUE) {
+      throw std::runtime_error { "Unresolved event-search region intersects the query" };
+    }
+    const auto root = refine(provider, candidate, bounds, budget, time_resolution);
+    const bool query_owned = query.start_jde_tt <= root.jde_tt and root.jde_tt < query.end_jde_tt;
+    if (not query_owned) {
+      continue;
+    }
+    if (not roots.empty() and root.jde_tt <= roots.back().jde_tt) {
+      throw std::runtime_error { "Event-search roots cannot be separated at the reported time precision" };
+    }
+    roots.push_back(root);
+  }
+}
+
+/**
+ * @brief Find isolated scalar roots using whole canonical cells and half-open reported-time ownership.
+ * @note Derivative bounds and provider allowances cover the grid's closed domain, including its final boundary.
+ *       Unresolved regions touching the query throw; no partial list escapes. Contact classification is separate.
+ */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+[[nodiscard]] inline auto roots_in_interval(
+  const Provider& provider,
+  const Grid grid,
+  const Interval query,
+  const Bounds bounds,
+  Budget& budget,
+  const double time_resolution = 0.0
+) -> std::vector<Root> {
+  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
+  const bool outside_domain = query.start_jde_tt < grid.domain.start_jde_tt
+                             or query.end_jde_tt > grid.domain.end_jde_tt;
+  if (outside_domain or not finite_nonnegative(time_resolution)) {
+    throw std::invalid_argument { "Invalid event-search interval request" };
+  }
+  const uint32_t cell_count = grid_cell_count(grid);
+  const uint32_t containing = containing_cell(grid, cell_count, query.start_jde_tt);
+  // An interior root in the preceding cell can round to this cell's start.
+  const uint32_t first = containing == 0 ? 0 : containing - 1;
+  std::vector<Root> roots;
+  for (uint32_t index = first; index < cell_count; ++index) {
+    const double start_jde_tt = grid_time(grid, index, cell_count);
+    if (start_jde_tt >= query.end_jde_tt) {
+      break;
+    }
+    const auto candidates = isolate_cell(
+      provider,
+      start_jde_tt,
+      grid_time(grid, index + 1, cell_count),
+      bounds,
+      budget
+    );
+    append_interval_roots(provider, candidates, query, bounds, budget, time_resolution, roots);
+  }
+  return roots;
 }
 
 } // namespace astro::ephemeris::detail::event_search
