@@ -177,6 +177,35 @@ TEST(EventSearchContacts, OrdinaryCrossingsBesideTheSeamAreKept) {
   ASSERT_NEAR(found.back().jde_tt, 0.375, RESOLUTION);
 }
 
+TEST(EventSearchContacts, ANeighborContactExclusionKeepsTheSeparateCrossing) {
+  // g=(t-1/4)^2(t-3/8) on [0,1]: |g'|<=3/2, |g''|<=17/4, g'''=6.
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    const double x = time - 0.25;
+    const bool exact_zero = time == 0.25 or time == 0.375;
+    return {
+      .longitude = toolbox::AngleDeg { x * x * (time - 0.375) }, .error_deg = exact_zero ? 0.0 : 1e-14,
+    };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = (time - 0.25) * ((3.0 * time) - 1.0), .error = time == 0.25 ? 0.0 : 1e-14 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 1.5, .second_derivative = 4.25 },
+    .rate = { .first_derivative = 4.25, .second_derivative = 6.0 },
+    .third_derivative = 6.0,
+    .rate_remainder = 0.0,
+  };
+  search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
+  const auto found = range_test::longitude_contacts_in_interval(
+    longitude, rate, toolbox::AngleDeg { 0.0 }, GRID, GRID.domain, bounds, budget, RESOLUTION, QUANTUM
+  );
+  ASSERT_EQ(found.size(), 2U);
+  ASSERT_EQ(found.front().jde_tt, 0.25);
+  ASSERT_EQ(found.front().direction, search::ContactDirection::TANGENT);
+  ASSERT_NEAR(found.back().jde_tt, 0.375, RESOLUTION);
+  ASSERT_EQ(found.back().direction, search::ContactDirection::INCREASING);
+}
+
 TEST(EventSearchContacts, FixedWindowsCrossingEitherCenturyEdgeUseWideBounds) {
   const double halo = detail::DIFFERENCE_REACH_TT_DAYS + detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS;
   const std::array edges { detail::EVENT_CENTURY_START_JDE_TT + halo, detail::EVENT_CENTURY_END_JDE_TT - halo };
@@ -214,7 +243,34 @@ TEST(EventSearchContacts, OverlappingNeighborExclusionsCannotEraseADistinctRoot)
   const auto crossings = [](const search::Interval, const std::span<const search::Interval>) {
     return std::vector<search::Root> {};
   };
-  ASSERT_THROW(static_cast<void>(search::contact_traversal(GRID, GRID.domain, contacts, crossings)), std::runtime_error);
+  try {
+    static_cast<void>(search::contact_traversal(GRID, GRID.domain, contacts, crossings));
+    FAIL() << "Overlapping contact regions were accepted";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(std::string { error.what() }, "Event-search numerical contact brackets overlap");
+  }
+}
+
+TEST(EventSearchContacts, DistinctContactsCannotAliasAtTheReportedTime) {
+  const auto contacts = [](const search::Interval cell, const search::Interval, const bool) {
+    return std::vector<search::NumericalContact> {
+      {
+        .root = { .jde_tt = 0.5, .direction = search::ContactDirection::TANGENT },
+        .region = { .start_jde_tt = cell.start_jde_tt + 0.0625, .end_jde_tt = cell.end_jde_tt - 0.0625 },
+      },
+    };
+  };
+  const auto crossings = [](const search::Interval, const std::span<const search::Interval>) {
+    return std::vector<search::Root> {};
+  };
+  try {
+    static_cast<void>(search::contact_traversal(GRID, GRID.domain, contacts, crossings));
+    FAIL() << "Aliased contact times were accepted";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(
+      std::string { error.what() }, "Event-search contacts cannot be separated at the reported time precision"
+    );
+  }
 }
 
 TEST(EventSearchContacts, LookaheadProviderFailuresAreNeverSwallowed) {
