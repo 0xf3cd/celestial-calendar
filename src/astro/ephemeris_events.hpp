@@ -318,9 +318,7 @@ requires std::invocable<const Provider&, double>
 }
 
 /** @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees. */
-[[nodiscard]] inline auto canonical_longitude_difference(
-  const toolbox::AngleDeg difference
-) -> toolbox::AngleDeg {
+[[nodiscard]] inline auto canonical_longitude_difference(const toolbox::AngleDeg difference) -> toolbox::AngleDeg {
   if (not std::isfinite(difference.deg())) {
     throw std::invalid_argument { "Event-search longitude target must be finite" };
   }
@@ -617,6 +615,37 @@ inline auto visit_query_cells(const Grid grid, const Interval query, const Visit
   }
 }
 
+/**
+ * @brief Round a reported TT time to a binary lattice; zero quantum preserves the refined double.
+ * @note Requires a validated reporting quantum and nearest-even rounding.
+ */
+[[nodiscard]] inline auto reported_time(const double jde_tt, const double quantum_tt_days) -> double {
+  return quantum_tt_days == 0.0 ? jde_tt : std::nearbyint(jde_tt / quantum_tt_days) * quantum_tt_days;
+}
+
+/** @brief Require a power-of-two reporting lattice that fixes every canonical cell boundary. */
+inline auto validate_reporting_grid(const Grid grid, const double quantum_tt_days) -> void {
+  if (quantum_tt_days == 0.0) {
+    return;
+  }
+  if (not finite_nonnegative(quantum_tt_days)) {
+    throw std::invalid_argument { "Invalid event-search reporting quantum" };
+  }
+  int32_t exponent = 0;
+  const double fraction = std::frexp(quantum_tt_days, &exponent);
+  const double magnitude = std::max(std::fabs(grid.domain.start_jde_tt), std::fabs(grid.domain.end_jde_tt));
+  const bool exact_indices = fraction == 0.5 and magnitude / quantum_tt_days <= 0x1p53;
+  if (not exact_indices) {
+    throw std::invalid_argument { "Event-search reporting lattice cannot represent exact indices" };
+  }
+  const bool fixed_boundaries = std::remainder(grid.domain.start_jde_tt, quantum_tt_days) == 0.0
+                                and std::remainder(grid.domain.end_jde_tt, quantum_tt_days) == 0.0
+                                and std::remainder(grid.cell_width_tt_days, quantum_tt_days) == 0.0;
+  if (not fixed_boundaries) {
+    throw std::invalid_argument { "Event-search reporting lattice must preserve canonical cell boundaries" };
+  }
+}
+
 /** @brief Append only query-owned roots; intersecting unresolved regions and aliased root times fail. */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
@@ -628,18 +657,23 @@ inline auto append_interval_roots(
   const Bounds bounds,
   Budget& budget,
   const double time_resolution,
-  std::vector<Root>& roots
+  std::vector<Root>& roots,
+  const double report_quantum_tt_days = 0.0
 ) -> void {
   for (const auto& candidate : candidates) {
-    const bool outside_query = candidate.right.jde_tt < query.start_jde_tt
-                               or candidate.left.jde_tt >= query.end_jde_tt;
+    const bool outside_query = reported_time(candidate.right.jde_tt, report_quantum_tt_days) < query.start_jde_tt
+                               or reported_time(candidate.left.jde_tt, report_quantum_tt_days) >= query.end_jde_tt;
     if (outside_query) {
       continue;
     }
     if (candidate.isolation != Isolation::UNIQUE) {
       throw std::runtime_error { "Unresolved event-search region intersects the query" };
     }
-    const auto root = refine(provider, candidate, bounds, budget, time_resolution);
+    const auto refined = refine(provider, candidate, bounds, budget, time_resolution);
+    const Root root {
+      .jde_tt = reported_time(refined.jde_tt, report_quantum_tt_days),
+      .increasing = refined.increasing,
+    };
     const bool query_owned = query.start_jde_tt <= root.jde_tt and root.jde_tt < query.end_jde_tt;
     if (not query_owned) {
       continue;
@@ -655,6 +689,7 @@ inline auto append_interval_roots(
  * @brief Find isolated scalar roots using whole canonical cells and half-open reported-time ownership.
  * @note Derivative bounds and provider allowances cover the grid's closed domain, including its final boundary.
  *       Unresolved regions touching the query throw; no partial list escapes. Contact classification is separate.
+ *       A nonzero reporting quantum requires nearest-even rounding and preserves canonical cell boundaries.
  */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
@@ -665,12 +700,14 @@ requires std::invocable<const Provider&, double>
   const Interval query,
   const Bounds bounds,
   Budget& budget,
-  const double time_resolution = 0.0
+  const double time_resolution = 0.0,
+  const double report_quantum_tt_days = 0.0
 ) -> std::vector<Root> {
   validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
   if (not finite_nonnegative(time_resolution)) {
     throw std::invalid_argument { "Invalid event-search interval request" };
   }
+  validate_reporting_grid(grid, report_quantum_tt_days);
   std::vector<Root> roots;
   visit_query_cells(grid, query, [&](const Interval cell) {
     const auto candidates = isolate_cell(
@@ -680,7 +717,16 @@ requires std::invocable<const Provider&, double>
       bounds,
       budget
     );
-    append_interval_roots(provider, candidates, query, bounds, budget, time_resolution, roots);
+    append_interval_roots(
+      provider,
+      candidates,
+      query,
+      bounds,
+      budget,
+      time_resolution,
+      roots,
+      report_quantum_tt_days
+    );
   });
   return roots;
 }
@@ -688,6 +734,7 @@ requires std::invocable<const Provider&, double>
 /**
  * @brief Find longitude-level crossings on whole canonical cells with half-open reported-time ownership.
  * @note The provider covers the closed grid domain; unresolved contacts or uncertified angular lifts throw.
+ *       A nonzero reporting quantum requires nearest-even rounding and preserves canonical cell boundaries.
  */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
@@ -699,18 +746,29 @@ requires std::invocable<const Provider&, double>
   const Interval query,
   const Bounds bounds,
   Budget& budget,
-  const double time_resolution = 0.0
+  const double time_resolution = 0.0,
+  const double report_quantum_tt_days = 0.0
 ) -> std::vector<Root> {
   validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
   const auto canonical_target = canonical_longitude_difference(target);
   if (not finite_nonnegative(time_resolution)) {
     throw std::invalid_argument { "Invalid event-search longitude resolution" };
   }
+  validate_reporting_grid(grid, report_quantum_tt_days);
   const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
   std::vector<Root> roots;
   visit_query_cells(grid, query, [&](const Interval cell) {
     const auto candidates = isolate_longitude_cell(provider, canonical_target, cell, bounds, budget);
-    append_interval_roots(lifted, candidates, query, bounds, budget, time_resolution, roots);
+    append_interval_roots(
+      lifted,
+      candidates,
+      query,
+      bounds,
+      budget,
+      time_resolution,
+      roots,
+      report_quantum_tt_days
+    );
   });
   return roots;
 }

@@ -1008,4 +1008,101 @@ TEST(EphemerisEventsKernel, ConstantLongitudeRelationsUseAllTargetIdentitiesAndR
   ASSERT_THROW(static_cast<void>(detail::constant_longitude_difference(unknown, Target::SUN)), std::invalid_argument);
 }
 
+TEST(EphemerisEventsKernel, ReportingLatticesDetermineScalarAndLongitudeQueryOwnership) {
+  constexpr double QUANTUM_TT_DAYS = 0.125;
+  for (const double root : std::array { 1.0 - 0.015625, 1.0 + 0.015625 }) {
+    const auto scalar = [root](const double time) { return sum_value(time, -root); };
+    const auto longitude = [root](const double time) { return longitude_sum(time, -root); };
+    for (const auto query : std::array { TWO_CELL_GRID.domain, FIRST_CELL_INTERVAL, SECOND_CELL_INTERVAL }) {
+      search::Budget scalar_budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+      search::Budget longitude_budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+      const auto scalar_found = search::roots_in_interval(
+        scalar, TWO_CELL_GRID, query, LINEAR_BOUNDS, scalar_budget, 0.0, QUANTUM_TT_DAYS
+      );
+      const auto longitude_found = search::longitude_roots_in_interval(
+        longitude, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, query, LINEAR_BOUNDS,
+        longitude_budget, 0.0, QUANTUM_TT_DAYS
+      );
+      ASSERT_EQ(scalar_found.size(), query.end_jde_tt == 1.0 ? 0 : 1);
+      ASSERT_EQ(longitude_found.size(), scalar_found.size());
+      if (not scalar_found.empty()) {
+        ASSERT_EQ(scalar_found.at(0).jde_tt, 1.0);
+        ASSERT_EQ(longitude_found.at(0).jde_tt, scalar_found.at(0).jde_tt);
+      }
+    }
+  }
+}
+
+TEST(EphemerisEventsKernel, ReportingLatticesDoNotClampExcludedEndsToLegalRateCenters) {
+  const auto near_end = [](const double time) { return sum_value(time, -(2.0 - 0.015625)); };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  ASSERT_TRUE(search::roots_in_interval(
+    near_end, TWO_CELL_GRID, TWO_CELL_GRID.domain, LINEAR_BOUNDS, budget, 0.0, 0.125
+  ).empty());
+  ASSERT_EQ(search::reported_time(0.0625, 0.125), 0.0);
+  ASSERT_EQ(search::reported_time(-0.0625, 0.125), 0.0);
+  ASSERT_EQ(search::reported_time(0.1875, 0.125), 0.25);
+}
+
+TEST(EphemerisEventsKernel, ReportingLatticesKeepMappedUnresolvedRegionsAndDistinctRootsExplicit) {
+  const auto tangent = [](const double time) -> search::Value {
+    const double offset = time - (1.0 - 0.015625);
+    const double value = offset * offset;
+    return { .value = value, .error = 2.0 * std::numeric_limits<double>::epsilon() * value };
+  };
+  const search::Bounds tangent_bounds { .first_derivative = 3.0, .second_derivative = 2.0 };
+  search::Budget tangent_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  ASSERT_THROW(
+    static_cast<void>(search::roots_in_interval(
+      tangent, TWO_CELL_GRID, SECOND_CELL_INTERVAL, tangent_bounds, tangent_budget, 0.0, 0.125
+    )),
+    std::runtime_error
+  );
+
+  // Exact dyadic roots 1 +/- 1/64 collide on the 1/8-day reporting lattice.
+  const auto close_pair = [](const double time) -> search::Value {
+    const double offset = time - 1.0;
+    const double value = (offset * offset) - 0x1p-12;
+    const bool exact_root = offset == 0.015625 or offset == -0.015625;
+    return { .value = value, .error = exact_root ? 0.0 : 1e-15 };
+  };
+  const search::Bounds pair_bounds { .first_derivative = 2.0, .second_derivative = 2.0 };
+  search::Budget distinct_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  const auto distinct = search::roots_in_interval(
+    close_pair, TWO_CELL_GRID, TWO_CELL_GRID.domain, pair_bounds, distinct_budget, 1e-8
+  );
+  ASSERT_EQ(distinct.size(), 2);
+  ASSERT_EQ(distinct.at(0).jde_tt, 1.0 - 0.015625);
+  ASSERT_EQ(distinct.at(1).jde_tt, 1.0 + 0.015625);
+  search::Budget pair_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  ASSERT_THROW(
+    static_cast<void>(search::roots_in_interval(
+      close_pair, TWO_CELL_GRID, TWO_CELL_GRID.domain, pair_bounds, pair_budget, 1e-8, 0.125
+    )),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, ReportingLatticeAdmissionPrecedesProviderWork) {
+  std::size_t calls = 0;
+  const auto counted = [&calls](const double time) {
+    ++calls;
+    return sum_value(time, -1.0);
+  };
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
+  for (const double quantum : std::array {
+         -0.125, 0.1, 0.75, std::numeric_limits<double>::denorm_min(),
+         std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(),
+       }) {
+    ASSERT_THROW(
+      static_cast<void>(search::roots_in_interval(
+        counted, TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget, 0.0, quantum
+      )),
+      std::invalid_argument
+    );
+  }
+  ASSERT_EQ(calls, 0);
+  ASSERT_EQ(budget.evaluations_remaining, 100);
+}
+
 } // namespace astro::ephemeris::test
