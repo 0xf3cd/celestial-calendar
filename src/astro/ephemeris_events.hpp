@@ -89,6 +89,16 @@ struct Root {
   return std::nextafter(value, std::numeric_limits<double>::infinity());
 }
 
+/** @brief Test whether a scalar is finite and nonnegative. */
+[[nodiscard]] inline auto finite_nonnegative(const double value) -> bool {
+  return std::isfinite(value) and value >= 0.0;
+}
+
+/** @brief Bound an observation's absolute magnitude from below; the bound may be negative. */
+[[nodiscard]] inline auto magnitude_floor(const Value evaluated) -> double {
+  return lower(std::fabs(evaluated.value) - evaluated.error);
+}
+
 /** @brief Recognize a certified zero, not merely a zero-valued observation. */
 [[nodiscard]] inline auto exact_zero(const Value evaluated) -> bool {
   return evaluated.value == 0.0 and evaluated.error == 0.0;
@@ -104,16 +114,17 @@ struct Root {
 
 /** @brief Adjust a provider's error allowance when it evaluates at a different abscissa. */
 [[nodiscard]] inline auto shifted(const Value evaluated, const double offset, const double first_derivative) -> Value {
-  if (not std::isfinite(offset) or offset < 0.0
-      or not std::isfinite(first_derivative) or first_derivative < 0.0) {
+  const bool invalid_allowance = not finite_nonnegative(offset) or not finite_nonnegative(first_derivative);
+  if (invalid_allowance) {
     throw std::invalid_argument { "Invalid event-search abscissa allowance" };
   }
   if (offset == 0.0) {
     return evaluated;
   }
+  const double shift_error = upper(first_derivative * offset);
   return {
     .value = evaluated.value,
-    .error = upper(evaluated.error + upper(first_derivative * offset)),
+    .error = upper(evaluated.error + shift_error),
   };
 }
 
@@ -127,7 +138,8 @@ requires std::invocable<const Provider&, double>
   }
   --budget.evaluations_remaining;
   const auto evaluated = provider(jde_tt);
-  if (not std::isfinite(evaluated.value) or not std::isfinite(evaluated.error) or evaluated.error < 0.0) {
+  const bool invalid_observation = not std::isfinite(evaluated.value) or not finite_nonnegative(evaluated.error);
+  if (invalid_observation) {
     throw std::runtime_error { std::format("Invalid event-search evaluation at JDE(TT) {}", jde_tt) };
   }
   return { .jde_tt = jde_tt, .evaluated = evaluated };
@@ -137,21 +149,27 @@ requires std::invocable<const Provider&, double>
  * @brief Bound |f'| from below using the noisy secant and the curvature bound.
  * @note IEEE binary64 nearest rounding, without reassociation; bounds cover the complete bracket.
  */
-[[nodiscard]] inline auto derivative_floor(const Sample left, const Sample right, const Bounds bounds)
-  -> double {
+[[nodiscard]] inline auto derivative_floor(const Sample left, const Sample right, const Bounds bounds) -> double {
   const double width = upper(right.jde_tt - left.jde_tt);
-  const double change = lower(lower(lower(std::fabs(right.evaluated.value - left.evaluated.value))
-                                    - left.evaluated.error) - right.evaluated.error);
+  const double observed_change = lower(std::fabs(right.evaluated.value - left.evaluated.value));
+  const double left_adjusted_change = lower(observed_change - left.evaluated.error);
+  const double change = lower(left_adjusted_change - right.evaluated.error);
+  const double secant_floor = lower(change / width);
+
   // Integrating |f'(x)-f'(t)| bounds its distance from the secant by M2*w/2.
-  return lower(lower(change / width) - upper(upper(bounds.second_derivative * width) / 2.0));
+  const double curvature_span = upper(bounds.second_derivative * width);
+  const double slope_error = upper(curvature_span / 2.0);
+  return lower(secant_floor - slope_error);
 }
 
 /** @brief Require a finite positive time span and finite nonnegative derivative bounds. */
 inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, const Bounds bounds) -> void {
-  if (not std::isfinite(start_jde_tt) or not std::isfinite(end_jde_tt) or start_jde_tt >= end_jde_tt
-      or not std::isfinite(end_jde_tt - start_jde_tt)
-      or not std::isfinite(bounds.first_derivative) or bounds.first_derivative < 0.0
-      or not std::isfinite(bounds.second_derivative) or bounds.second_derivative < 0.0) {
+  const bool valid_time_span = std::isfinite(start_jde_tt) and std::isfinite(end_jde_tt)
+                              and start_jde_tt < end_jde_tt and std::isfinite(end_jde_tt - start_jde_tt);
+  const auto finite_derivatives = [bounds] {
+    return finite_nonnegative(bounds.first_derivative) and finite_nonnegative(bounds.second_derivative);
+  };
+  if (not valid_time_span or not finite_derivatives()) {
     throw std::invalid_argument { "Invalid event-search cell or derivative bounds" };
   }
 }
@@ -164,12 +182,14 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
   }
 
   const double width = upper(cell.right.jde_tt - cell.left.jde_tt);
-  const double left_margin = lower(std::fabs(cell.left.evaluated.value) - cell.left.evaluated.error);
-  const double right_margin = lower(std::fabs(cell.right.evaluated.value) - cell.right.evaluated.error);
+  const double left_margin = magnitude_floor(cell.left.evaluated);
+  const double right_margin = magnitude_floor(cell.right.evaluated);
   const double slope_change = upper(bounds.first_derivative * width);
 
-  // The linear-interpolation remainder is at most M2*w^2/8.
-  const double chord_error = upper(upper(bounds.second_derivative * upper(width * width)) / 8.0);
+  // Linear-interpolation remainder: |f-L| <= M2*(t-a)*(b-t)/2 <= M2*w^2/8.
+  const double squared_width = upper(width * width);
+  const double curvature_remainder = upper(bounds.second_derivative * squared_width);
+  const double chord_error = upper(curvature_remainder / 8.0);
   return lower(left_margin + right_margin) > slope_change
          or std::min(left_margin, right_margin) > chord_error;
 }
@@ -191,7 +211,8 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
   if (exact_zero(cell.right.evaluated)) {
     return cell.ownership == EndpointOwnership::BOTH ? CellDecision::UNIQUE : CellDecision::DISCARD;
   }
-  if (exact_zero(cell.left.evaluated) or (left_sign != 0 and right_sign == -left_sign)) {
+  const bool sign_change = left_sign != 0 and right_sign == -left_sign;
+  if (exact_zero(cell.left.evaluated) or sign_change) {
     return CellDecision::UNIQUE;
   }
   return CellDecision::SPLIT;
@@ -232,7 +253,8 @@ inline auto visit_cell(
   }
 
   const double middle_jde_tt = std::midpoint(cell.left.jde_tt, cell.right.jde_tt);
-  if (depth == 0 or middle_jde_tt == cell.left.jde_tt or middle_jde_tt == cell.right.jde_tt) {
+  const bool cannot_subdivide = depth == 0 or middle_jde_tt == cell.left.jde_tt or middle_jde_tt == cell.right.jde_tt;
+  if (cannot_subdivide) {
     append_candidate(cell, Isolation::UNRESOLVED, budget, candidates);
     return;
   }
@@ -287,7 +309,8 @@ requires std::invocable<const Provider&, double>
     return false;
   }
 
-  const double radius = upper(upper(std::fabs(observed.evaluated.value) + observed.evaluated.error) / minimum_slope);
+  const double magnitude_ceiling = upper(std::fabs(observed.evaluated.value) + observed.evaluated.error);
+  const double radius = upper(magnitude_ceiling / minimum_slope);
   if (radius <= time_resolution) {
     return true;
   }
@@ -319,8 +342,8 @@ requires std::invocable<const Provider&, double>
       upper(middle_jde_tt - left.jde_tt),
       upper(right.jde_tt - middle_jde_tt)
     );
-    if (middle_jde_tt == left.jde_tt or middle_jde_tt == right.jde_tt
-      or radius <= time_resolution) {
+    const bool precision_limit = middle_jde_tt == left.jde_tt or middle_jde_tt == right.jde_tt;
+    if (precision_limit or radius <= time_resolution) {
       return { .jde_tt = middle_jde_tt, .increasing = increasing };
     }
 
@@ -351,7 +374,8 @@ requires std::invocable<const Provider&, double>
   const double time_resolution = 0.0,
   const uint32_t maximum_iterations = 96
 ) -> Root {
-  if (candidate.isolation != Isolation::UNIQUE or not std::isfinite(time_resolution) or time_resolution < 0.0) {
+  const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
+  if (invalid_request) {
     throw std::invalid_argument { "Invalid event-search refinement request" };
   }
   const double floor = derivative_floor(candidate.left, candidate.right, bounds);
@@ -365,7 +389,9 @@ requires std::invocable<const Provider&, double>
   if (exact_zero(candidate.right.evaluated)) {
     return { .jde_tt = candidate.right.jde_tt, .increasing = increasing };
   }
-  if (sign(candidate.left.evaluated) == 0 or sign(candidate.right.evaluated) != -sign(candidate.left.evaluated)) {
+  const int left_sign = sign(candidate.left.evaluated);
+  const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
+  if (not robustly_bracketed) {
     throw std::runtime_error { "Event-search root is not bracketed by robust signs" };
   }
   return refine_bracket(provider, candidate, floor, budget, time_resolution, maximum_iterations);

@@ -59,8 +59,11 @@ auto roots(
   return result;
 }
 
-auto reported_times(const std::vector<search::Root>& found, const double query_start, const double query_end)
-  -> std::vector<double> {
+auto reported_times(
+  const std::vector<search::Root>& found,
+  const double query_start,
+  const double query_end
+) -> std::vector<double> {
   std::vector<double> result;
   for (const auto root : found) {
     if (query_start <= root.jde_tt and root.jde_tt < query_end) {
@@ -71,8 +74,11 @@ auto reported_times(const std::vector<search::Root>& found, const double query_s
 }
 
 template <typename Provider>
-auto two_cell_times(const Provider& provider, const double query_start, const double query_end)
-  -> std::vector<double> {
+auto two_cell_times(
+  const Provider& provider,
+  const double query_start,
+  const double query_end
+) -> std::vector<double> {
   std::vector<search::Root> found;
   for (const int cell : std::array { 0, 1 }) {
     const auto current = roots(
@@ -87,6 +93,33 @@ auto two_cell_times(const Provider& provider, const double query_start, const do
 }
 
 } // namespace
+
+TEST(EphemerisEventsKernel, FiniteNonnegativeKeepsBoundaryAdmission) {
+  for (const double value : std::array { 0.0, -0.0, std::numeric_limits<double>::denorm_min(), 1.0 }) {
+    ASSERT_TRUE(search::finite_nonnegative(value));
+  }
+  for (const double value : std::array {
+         -std::numeric_limits<double>::denorm_min(),
+         -1.0,
+         std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::quiet_NaN(),
+       }) {
+    ASSERT_FALSE(search::finite_nonnegative(value));
+  }
+}
+
+TEST(EphemerisEventsKernel, MagnitudeFloorPreservesOutwardSubtraction) {
+  for (const search::Value observed : std::array {
+         search::Value { .value = 1.0, .error = 0.25 },
+         search::Value { .value = -1.0, .error = 0.25 },
+         search::Value { .value = 0.0, .error = 0.25 },
+         search::Value { .value = 1.0, .error = 1.0 },
+         search::Value { .value = std::numeric_limits<double>::denorm_min(), .error = 0.0 },
+       }) {
+    ASSERT_EQ(search::magnitude_floor(observed), search::lower(std::fabs(observed.value) - observed.error));
+  }
+}
 
 TEST(EphemerisEventsKernel, AnalyticPolynomialsHaveCompleteCounts) {
   // Constructed polynomials, not ephemeris goldens. Product factors give the
