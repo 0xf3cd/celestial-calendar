@@ -4,7 +4,7 @@ Include `ephemeris_events.hpp` with `-I src/astro -I src/calendar -I src/util`
 for interval queries over the 14 `astro::ephemeris::Target` values. Times are
 JDE(TT), and rates are degrees per TT day. Body longitudes are apparent,
 geocentric and tropical; node longitudes follow
-[`lunar_node::position`](../src/astro/lunar_node.hpp) in the true ecliptic and
+[`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp) in the true ecliptic and
 equinox of date.
 
 ```cpp
@@ -40,12 +40,14 @@ refinement and reporting do not depend on the caller's endpoints. Splitting
 a successful query at a reported event assigns it to the right-hand query.
 Unresolvable reported-time collisions throw rather than merge nearby events.
 
-Stations are zeros of `ephemeris::longitude_rate`, the published seven-point rate with `h=1/8` TT day,
-not an analytic derivative or a minimum angular separation. The reported
-rate need not be bitwise zero. Descending nodes use their actual antipodal
-positions, while their rates retain the ascending model's trajectory.
+Stations are zeros of `ephemeris::longitude_rate`, the published seven-point
+rate with `h=1/8` TT day, not an analytic derivative or a minimum angular
+separation. The reported rate need not be bitwise zero. Descending nodes use
+their actual antipodal positions, while their rates retain the ascending
+model's trajectory.
 Near a station, its sign can differ from the one-day
-`planet::geocentric_coord::is_retrograde` marker; see `LongitudeRate`'s contract.
+`planet::geocentric_coord::is_retrograde` marker; see `LongitudeRate`'s
+contract.
 
 ### Numerical contacts
 
@@ -132,15 +134,15 @@ fit; a contact window must also fit before using that band. The remaining
 domain uses the full-window bounds. Band selection is
 cell-based, so widening a query cannot change a station's definition.
 `EVENT_BOUNDS_CENTURY` and `EVENT_BOUNDS_WIDE` hold these allowances;
-[`statistics/ephemeris_event_bounds.py`](../statistics/ephemeris_event_bounds.py)
+[`statistics/ephemeris_event_bounds.py`](https://github.com/0xf3cd/celestial-calendar/blob/main/statistics/ephemeris_event_bounds.py)
 checks their transcription from the
-[exact records](https://github.com/0xf3cd/celestial-calendar/blob/main/src/test/provenance/ephemeris-events/ATTRIBUTION.md).
+[exact records](https://github.com/0xf3cd/celestial-calendar/blob/main/src/test/provenance/ephemeris-events/BOUND_RECORDS.json).
 
 The rate derivative bounds use the exact `23/15` integral-kernel norm.
 The distinction between the smooth longitude derivative and the published
 rate is bounded by `M7*h^6/140`, using a nonnegative Peano kernel; the
-[derivation below](#seven-point-operator-and-remainder) gives both constants. This
-truncation remainder is **not** the floating-point error of evaluating the
+[derivation below](#seven-point-operator-and-remainder) gives both constants.
+This truncation remainder is **not** the floating-point error of evaluating the
 six-sample rate. Both terms are retained for contact classification.
 
 Refinement requests a `2^-10`-day time certificate (84.375 seconds), then
@@ -152,14 +154,16 @@ better representative than the stopping criterion alone.
 <a id="seven-point-operator-and-remainder"></a>
 ## Seven-point operator and remainder
 
-For a seven-times continuously differentiable angular lift `g` whose sample-pair changes fit in
-`(-180°,180°)`, `ephemeris::detail::differentiate` evaluates
+For a seven-times continuously differentiable angular lift `g` whose
+sample-pair changes fit in `(-180°,180°)`,
+`ephemeris::detail::differentiate` evaluates
 
 ```text
 D_h g(t) = Σ[j=1..3] c_j [g(t+jh) − g(t−jh)] / h
 (c_1,c_2,c_3) = (3/4, −3/20, 1/60),  h = 1/8 TT day.
 ```
 
+The coefficients are the [central finite-difference stencil](https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference).
 The fundamental theorem of calculus rewrites this as
 `D_h g(t) = ∫[-3,3] w(s) g′(t+hs) ds`. The even, piecewise-constant
 weight is `37/60` for `|s|≤1`, `−2/15` for `1<|s|≤2`, and
@@ -169,8 +173,9 @@ the first and second derivatives of `D_h g` by `23/15` times the
 suprema of `|g″|` and `|g‴|` over the full sample halo.
 
 The functional `D_1 g(0)−g′(0)` vanishes on polynomials through degree
-six. Its seventh-order [Peano kernel](https://en.wikipedia.org/wiki/Peano_kernel_theorem)
-is even; for `x≥0`, it is
+six. Its seventh-order
+[Peano kernel](https://en.wikipedia.org/wiki/Peano_kernel_theorem) is even;
+for `x≥0`, it is
 
 ```text
 K(x) = [45(1−x)_+^6 − 9(2−x)_+^6 + (3−x)_+^6] / 43200,
