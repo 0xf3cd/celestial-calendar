@@ -13,6 +13,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -56,6 +57,9 @@ struct Bounds {
   double second_derivative;
 };
 
+/** @brief The level's direction across a canonical stationary contact, not the sign of its rate at that time. */
+enum class ContactDirection : uint8_t { INCREASING, DECREASING, TANGENT };
+
 /** @brief Shared limits on scalar-evaluation attempts and candidate slots. */
 struct Budget {
   std::size_t evaluations_remaining;
@@ -89,6 +93,20 @@ struct Candidate {
 struct Root {
   double jde_tt;
   bool increasing;
+};
+
+/** @brief A longitude-level event, including a contact at a canonical numerical station. */
+struct LongitudeRoot {
+  double jde_tt;
+  ContactDirection direction;
+};
+
+/** @brief Uniform smooth-longitude and D_h derivative bounds, with their absolute rate discrepancy. */
+struct TrajectoryBounds {
+  Bounds longitude;
+  Bounds rate;
+  double third_derivative;
+  double rate_remainder;
 };
 
 /** @brief A nonempty half-open interval in JDE(TT). */
@@ -283,6 +301,30 @@ inline auto visit_cell(
     return;
   }
   const auto middle = sample(provider, middle_jde_tt, budget);
+  const bool uncertain_middle = sign(middle.evaluated) == 0 and not exact_zero(middle.evaluated);
+  if (uncertain_middle) {
+    const double inner_left_jde_tt = std::midpoint(cell.left.jde_tt, middle_jde_tt);
+    const double inner_right_jde_tt = std::midpoint(middle_jde_tt, cell.right.jde_tt);
+    const bool distinct_inner_times = cell.left.jde_tt < inner_left_jde_tt
+                                      and inner_left_jde_tt < inner_right_jde_tt
+                                      and inner_right_jde_tt < cell.right.jde_tt;
+    if (distinct_inner_times) {
+      const auto inner_left = sample(provider, inner_left_jde_tt, budget);
+      const auto inner_right = sample(provider, inner_right_jde_tt, budget);
+      const Cell bridge { .left = inner_left, .right = inner_right, .ownership = EndpointOwnership::LEFT };
+      const int32_t inner_sign = sign(inner_left.evaluated);
+      const bool brackets_uncertain_middle = inner_sign != 0 and sign(inner_right.evaluated) == -inner_sign;
+      if (brackets_uncertain_middle and classify_cell(bridge, bounds) == CellDecision::UNIQUE) {
+        // Keep a noisy midpoint inside one certified bracket instead of making it an undecidable endpoint twice.
+        const Cell left { .left = cell.left, .right = inner_left, .ownership = EndpointOwnership::LEFT };
+        const Cell right { .left = inner_right, .right = cell.right, .ownership = cell.ownership };
+        visit_cell(provider, left, bounds, budget, depth - 1, candidates);
+        append_candidate(bridge, Isolation::UNIQUE, budget, candidates);
+        visit_cell(provider, right, bounds, budget, depth - 1, candidates);
+        return;
+      }
+    }
+  }
   const Cell left { .left = cell.left, .right = middle, .ownership = EndpointOwnership::LEFT };
   const Cell right { .left = middle, .right = cell.right, .ownership = cell.ownership };
   visit_cell(provider, left, bounds, budget, depth - 1, candidates);
@@ -367,6 +409,94 @@ requires std::invocable<const Provider&, double>
     throw std::runtime_error { "Event-search longitude observation crosses the antipodal cut" };
   }
   return evaluated;
+}
+
+/**
+ * @brief Certify one sign of f'' throughout three observations' span; zero means unresolved.
+ * @note The samples bound one C3 scalar, and third_derivative bounds |f'''| throughout their closed span.
+ * @see https://en.wikipedia.org/wiki/Mean_value_theorem_for_divided_differences (n=2).
+ */
+[[nodiscard]] inline auto curvature_sign(
+  const Sample left,
+  const Sample middle,
+  const Sample right,
+  const double third_derivative
+) -> int32_t {
+  validate_cell(left.jde_tt, right.jde_tt, {});
+  validate_cell(left.jde_tt, middle.jde_tt, {});
+  validate_cell(middle.jde_tt, right.jde_tt, {});
+  if (not finite_nonnegative(third_derivative)) {
+    throw std::invalid_argument { "Invalid event-search third-derivative bound" };
+  }
+  for (const auto observed : std::array { left.evaluated, middle.evaluated, right.evaluated }) {
+    if (not std::isfinite(observed.value) or not finite_nonnegative(observed.error)) {
+      throw std::runtime_error { "Invalid event-search curvature observation" };
+    }
+  }
+  const double left_width_lower = lower(middle.jde_tt - left.jde_tt);
+  const double right_width_lower = lower(right.jde_tt - middle.jde_tt);
+  if (left_width_lower <= 0.0 or right_width_lower <= 0.0) {
+    return 0;
+  }
+  const double left_width_upper = upper(middle.jde_tt - left.jde_tt);
+  const double right_width_upper = upper(right.jde_tt - middle.jde_tt);
+  const double width = upper(right.jde_tt - left.jde_tt);
+  const auto convex = [&](const double orientation) {
+    const double left_error = upper(left.evaluated.error + middle.evaluated.error);
+    const double right_error = upper(middle.evaluated.error + right.evaluated.error);
+    const double left_change = upper(upper((orientation * middle.evaluated.value) - (orientation * left.evaluated.value))
+                                     + left_error);
+    const double right_change = lower(lower((orientation * right.evaluated.value) - (orientation * middle.evaluated.value))
+                                      - right_error);
+    const double left_slope = upper(left_change / (left_change >= 0.0 ? left_width_lower : left_width_upper));
+    const double right_slope = lower(right_change / (right_change >= 0.0 ? right_width_upper : right_width_lower));
+    const double slope_increase = lower(right_slope - left_slope);
+    if (not (slope_increase > 0.0)) {
+      return false;
+    }
+    // Twice the divided difference equals f'' somewhere in the span; |f'''| carries that sign across it.
+    const double point_curvature = lower(lower(2.0 * slope_increase) / width);
+    return point_curvature > upper(third_derivative * width);
+  };
+  if (convex(1.0)) {
+    return 1;
+  }
+  return convex(-1.0) ? -1 : 0;
+}
+
+/**
+ * @brief Classify an exact numerical contact from certified observations on both sides.
+ * @note The caller supplies one query-independent stationary reference and excludes other turning points in its region.
+ *       Equal-side contacts also require a matching curvature certificate; angular proximity is never equality.
+ */
+[[nodiscard]] inline auto contact_direction(
+  const LongitudeValue at_station,
+  const toolbox::AngleDeg target,
+  const Value before,
+  const Value after,
+  const int32_t curvature
+) -> ContactDirection {
+  const auto residual = project_longitude_difference(at_station, { .longitude = target, .error_deg = 0.0 });
+  if (residual.value != 0.0) {
+    throw std::runtime_error { "Event-search level is not the canonical stationary longitude" };
+  }
+  for (const auto observed : std::array { before, after }) {
+    if (not std::isfinite(observed.value) or not finite_nonnegative(observed.error)) {
+      throw std::runtime_error { "Invalid event-search contact-side observation" };
+    }
+  }
+  const int32_t before_sign = sign(before);
+  const int32_t after_sign = sign(after);
+  if (before_sign == 0 or after_sign == 0) {
+    throw std::runtime_error { "Event-search contact has unresolved side observations" };
+  }
+  if (before_sign != after_sign) {
+    return before_sign < after_sign ? ContactDirection::INCREASING : ContactDirection::DECREASING;
+  }
+  if (curvature != before_sign) {
+    throw std::runtime_error { "Event-search contact has no matching curvature certificate" };
+  }
+  return ContactDirection::TANGENT;
 }
 
 /**
@@ -771,6 +901,171 @@ requires std::invocable<const Provider&, double>
     );
   });
   return roots;
+}
+
+/** @brief Resolve one exact-level numerical contact; a nonmatching level remains an ordinary crossing query. */
+template <typename LongitudeProvider, typename RateProvider>
+requires std::invocable<const LongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
+     and std::invocable<const RateProvider&, double>
+     and std::same_as<std::invoke_result_t<const RateProvider&, double>, Value>
+[[nodiscard]] inline auto numerical_contact(
+  const LongitudeProvider& longitude,
+  const RateProvider& rate,
+  const Candidate& candidate,
+  const toolbox::AngleDeg target,
+  const TrajectoryBounds bounds,
+  Budget& budget,
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish refinement accuracy from reporting precision.
+  const double time_resolution,
+  const double report_quantum_tt_days
+) -> std::optional<LongitudeRoot> {
+  const auto stationary = refine(rate, candidate, bounds.rate, budget, time_resolution);
+  const double jde_tt = reported_time(stationary.jde_tt, report_quantum_tt_days);
+  const auto projected = [&](const double time) {
+    return project_longitude_difference(longitude(time), { .longitude = target, .error_deg = 0.0 });
+  };
+  const auto at_station = sample(projected, jde_tt, budget);
+  if (at_station.evaluated.value != 0.0) {
+    return std::nullopt;
+  }
+  const double left_jde_tt = candidate.left.jde_tt;
+  const double right_jde_tt = candidate.right.jde_tt;
+  const bool interior_reference = left_jde_tt < jde_tt and jde_tt < right_jde_tt;
+  const bool contains_extremum = magnitude_floor(candidate.left.evaluated) > bounds.rate_remainder
+                                 and magnitude_floor(candidate.right.evaluated) > bounds.rate_remainder;
+  if (not interior_reference or not contains_extremum) {
+    throw std::runtime_error { "Event-search numerical contact has no two-sided extremum bracket" };
+  }
+  const double radius = std::max(upper(jde_tt - left_jde_tt), upper(right_jde_tt - jde_tt));
+  const double extent = upper(at_station.evaluated.error + upper(bounds.longitude.first_derivative * radius));
+  if (extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+    throw std::runtime_error { "Event-search contact has no continuous-lift certificate" };
+  }
+  const auto lifted = [&](const double time) { return longitude_residual(longitude(time), target); };
+  const auto before = sample(lifted, left_jde_tt, budget);
+  const auto after = sample(lifted, right_jde_tt, budget);
+  if (sign(before.evaluated) != 0 and sign(before.evaluated) == -sign(after.evaluated)) {
+    return std::nullopt;
+  }
+  const int32_t curvature = curvature_sign(before, at_station, after, bounds.third_derivative);
+  const int32_t expected_curvature = stationary.increasing ? 1 : -1;
+  if (curvature != expected_curvature) {
+    throw std::runtime_error { "Event-search numerical contact has unresolved curvature" };
+  }
+  const auto direction = contact_direction(
+    { .longitude = toolbox::AngleDeg { at_station.evaluated.value }, .error_deg = at_station.evaluated.error },
+    toolbox::AngleDeg { 0.0 },
+    before.evaluated,
+    after.evaluated,
+    curvature
+  );
+  return LongitudeRoot { .jde_tt = jde_tt, .direction = direction };
+}
+
+/**
+ * @brief Find longitude crossings and exact canonical-station contacts, or fail without a partial list.
+ * @note Providers bound one smooth longitude and its D_h on the closed grid domain. Reporting is query-independent.
+ *       A numerical contact replaces the unresolved level near one strict extremum, not an angular proximity band.
+ */
+template <typename LongitudeProvider, typename RateProvider>
+requires std::invocable<const LongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
+     and std::invocable<const RateProvider&, double>
+     and std::same_as<std::invoke_result_t<const RateProvider&, double>, Value>
+[[nodiscard]] inline auto longitude_contacts_in_interval(
+  const LongitudeProvider& longitude,
+  const RateProvider& rate,
+  const toolbox::AngleDeg target,
+  const Grid grid,
+  const Interval query,
+  const TrajectoryBounds bounds,
+  Budget& budget,
+  const double time_resolution,
+  const double report_quantum_tt_days = 0.0
+) -> std::vector<LongitudeRoot> {
+  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.longitude);
+  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.rate);
+  const bool invalid_refinement = not finite_nonnegative(time_resolution)
+                                  or not finite_nonnegative(bounds.third_derivative)
+                                  or not finite_nonnegative(bounds.rate_remainder);
+  if (invalid_refinement) {
+    throw std::invalid_argument { "Invalid event-search contact bounds or refinement" };
+  }
+  const auto canonical_target = canonical_longitude_difference(target);
+  validate_reporting_grid(grid, report_quantum_tt_days);
+  const auto lifted = [&](const double jde_tt) { return longitude_residual(longitude(jde_tt), canonical_target); };
+  std::vector<LongitudeRoot> results;
+  visit_query_cells(grid, query, [&](const Interval cell) {
+    const auto stations = isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.rate, budget);
+    std::vector<Interval> contact_regions;
+    std::vector<LongitudeRoot> cell_roots;
+    for (const auto& candidate : stations) {
+      if (candidate.isolation != Isolation::UNIQUE) {
+        continue;
+      }
+      const auto contact = numerical_contact(
+        longitude,
+        rate,
+        candidate,
+        canonical_target,
+        bounds,
+        budget,
+        time_resolution,
+        report_quantum_tt_days
+      );
+      if (contact.has_value()) {
+        contact_regions.push_back({
+          .start_jde_tt = candidate.left.jde_tt,
+          .end_jde_tt = candidate.right.jde_tt,
+        });
+        if (query.start_jde_tt <= contact->jde_tt and contact->jde_tt < query.end_jde_tt) {
+          cell_roots.push_back(*contact);
+        }
+      }
+    }
+
+    std::vector<Root> crossings;
+    const auto search_segment = [&](const Interval segment) {
+      if (segment.start_jde_tt == segment.end_jde_tt) {
+        return;
+      }
+      const auto candidates = isolate_longitude_cell(longitude, canonical_target, segment, bounds.longitude, budget);
+      append_interval_roots(
+        lifted,
+        candidates,
+        query,
+        bounds.longitude,
+        budget,
+        time_resolution,
+        crossings,
+        report_quantum_tt_days
+      );
+    };
+    double start_jde_tt = cell.start_jde_tt;
+    for (const auto region : contact_regions) {
+      if (region.start_jde_tt < start_jde_tt) {
+        throw std::runtime_error { "Event-search numerical contact brackets overlap" };
+      }
+      search_segment({ .start_jde_tt = start_jde_tt, .end_jde_tt = region.start_jde_tt });
+      start_jde_tt = region.end_jde_tt;
+    }
+    search_segment({ .start_jde_tt = start_jde_tt, .end_jde_tt = cell.end_jde_tt });
+    for (const auto crossing : crossings) {
+      cell_roots.push_back({
+        .jde_tt = crossing.jde_tt,
+        .direction = crossing.increasing ? ContactDirection::INCREASING : ContactDirection::DECREASING,
+      });
+    }
+    std::ranges::sort(cell_roots, {}, &LongitudeRoot::jde_tt);
+    for (const auto root : cell_roots) {
+      if (not results.empty() and root.jde_tt <= results.back().jde_tt) {
+        throw std::runtime_error { "Event-search contacts cannot be separated at the reported time precision" };
+      }
+      results.push_back(root);
+    }
+  });
+  return results;
 }
 
 } // namespace astro::ephemeris::detail::event_search

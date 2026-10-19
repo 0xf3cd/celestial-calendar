@@ -1105,4 +1105,225 @@ TEST(EphemerisEventsKernel, ReportingLatticeAdmissionPrecedesProviderWork) {
   ASSERT_EQ(budget.evaluations_remaining, 100);
 }
 
+TEST(EphemerisEventsKernel, CurvatureCertificatesCoverUnequalSpansAndEitherSecantSign) {
+  for (const double orientation : std::array { -1.0, 1.0 }) {
+    for (const double slope : std::array { -100.0, 0.0, 100.0 }) {
+      const auto observed = [orientation, slope](const double time) -> search::Sample {
+        return {
+          .jde_tt = time,
+          .evaluated = { .value = (orientation * time * time) + (slope * time), .error = 1e-10 },
+        };
+      };
+      const auto curvature = search::curvature_sign(observed(-0.75), observed(-0.5), observed(1.0), 0.0);
+      ASSERT_EQ(curvature, static_cast<int32_t>(orientation));
+    }
+  }
+  const search::Sample left { .jde_tt = 0.0, .evaluated = { .value = 1.0, .error = 2.0 } };
+  const search::Sample middle { .jde_tt = 0.5, .evaluated = { .value = 0.0, .error = 2.0 } };
+  const search::Sample right { .jde_tt = 1.0, .evaluated = { .value = 1.0, .error = 2.0 } };
+  ASSERT_EQ(search::curvature_sign(left, middle, right, 0.0), 0);
+}
+
+TEST(EphemerisEventsKernel, PositiveDividedDifferenceDoesNotProveTheWholeSpanIsConvex) {
+  // f(t)=t^3 has a positive divided difference here, but f'' changes sign inside the span.
+  const auto cubic = [](const double time) -> search::Sample {
+    return { .jde_tt = time, .evaluated = { .value = time * time * time, .error = 1e-15 } };
+  };
+  ASSERT_EQ(search::curvature_sign(cubic(-0.25), cubic(0.5), cubic(1.0), 6.0), 0);
+  ASSERT_EQ(search::curvature_sign(cubic(1.0), cubic(1.0625), cubic(1.125), 6.0), 1);
+}
+
+TEST(EphemerisEventsKernel, NumericalContactsUseExactCanonicalLevelsAndCertifiedSides) {
+  const search::LongitudeValue at_station { .longitude = toolbox::AngleDeg { 359.0 }, .error_deg = 1e-9 };
+  const search::Value positive { .value = 0.01, .error = 1e-9 };
+  const search::Value negative { .value = -0.01, .error = 1e-9 };
+  for (const double target : std::array { -1.0, 359.0, 719.0 }) {
+    ASSERT_EQ(
+      search::contact_direction(at_station, toolbox::AngleDeg { target }, positive, positive, 1),
+      search::ContactDirection::TANGENT
+    );
+    ASSERT_EQ(
+      search::contact_direction(at_station, toolbox::AngleDeg { target }, negative, negative, -1),
+      search::ContactDirection::TANGENT
+    );
+    ASSERT_EQ(
+      search::contact_direction(at_station, toolbox::AngleDeg { target }, negative, positive, 0),
+      search::ContactDirection::INCREASING
+    );
+    ASSERT_EQ(
+      search::contact_direction(at_station, toolbox::AngleDeg { target }, positive, negative, 0),
+      search::ContactDirection::DECREASING
+    );
+  }
+  for (const double nearby : std::array { std::nextafter(359.0, 0.0), std::nextafter(359.0, 360.0) }) {
+    ASSERT_THROW(
+      static_cast<void>(search::contact_direction(at_station, toolbox::AngleDeg { nearby }, positive, positive, 1)),
+      std::runtime_error
+    );
+  }
+  ASSERT_THROW(
+    static_cast<void>(search::contact_direction(at_station, toolbox::AngleDeg { 359.0 }, positive, positive, 0)),
+    std::runtime_error
+  );
+  ASSERT_THROW(
+    static_cast<void>(search::contact_direction(at_station, toolbox::AngleDeg { 359.0 }, positive, positive, -1)),
+    std::runtime_error
+  );
+  ASSERT_THROW(
+    static_cast<void>(search::contact_direction(at_station, toolbox::AngleDeg { 359.0 }, positive, { 0.0, 1e-9 }, 1)),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, CurvatureAndContactRejectInvalidObservationsAndBounds) {
+  const search::Sample left { .jde_tt = 0.0, .evaluated = { .value = 1.0, .error = 0.0 } };
+  const search::Sample middle { .jde_tt = 0.5, .evaluated = { .value = 0.0, .error = 0.0 } };
+  const search::Sample right { .jde_tt = 1.0, .evaluated = { .value = 1.0, .error = 0.0 } };
+  ASSERT_THROW(static_cast<void>(search::curvature_sign(left, left, right, 0.0)), std::invalid_argument);
+  ASSERT_THROW(static_cast<void>(search::curvature_sign(left, middle, right, -1.0)), std::invalid_argument);
+  const search::Sample invalid { .jde_tt = 0.5, .evaluated = { .value = 0.0, .error = -1.0 } };
+  ASSERT_THROW(static_cast<void>(search::curvature_sign(left, invalid, right, 0.0)), std::runtime_error);
+  const search::LongitudeValue at_station { .longitude = toolbox::AngleDeg { 0.0 }, .error_deg = 1e-9 };
+  ASSERT_THROW(
+    static_cast<void>(search::contact_direction(at_station, toolbox::AngleDeg { 0.0 }, { 1.0, -1.0 }, { 1.0, 0.0 }, 1)),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, CompleteContactSearchUsesTheSameStationForFullAndSplitQueries) {
+  constexpr double STATION_JDE_TT = 0.5;
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    const double offset = time - STATION_JDE_TT;
+    return { .longitude = toolbox::AngleDeg { 359.0 + (offset * offset) }, .error_deg = 1e-12 };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = 2.0 * (time - STATION_JDE_TT), .error = 1e-12 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 3.0, .second_derivative = 2.0 },
+    .rate = { .first_derivative = 2.0, .second_derivative = 0.0 },
+    .third_derivative = 0.0,
+    .rate_remainder = 0.0,
+  };
+  const search::Interval left { .start_jde_tt = 0.0, .end_jde_tt = STATION_JDE_TT };
+  const search::Interval right { .start_jde_tt = STATION_JDE_TT, .end_jde_tt = 2.0 };
+  for (const auto query : std::array { TWO_CELL_GRID.domain, left, right }) {
+    search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+    const auto found = search::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { -1.0 }, TWO_CELL_GRID, query, bounds, budget, 1e-8, 0.125
+    );
+    ASSERT_EQ(found.size(), query.end_jde_tt == STATION_JDE_TT ? 0 : 1);
+    if (not found.empty()) {
+      ASSERT_EQ(found.at(0).jde_tt, STATION_JDE_TT);
+      ASSERT_EQ(found.at(0).direction, search::ContactDirection::TANGENT);
+    }
+  }
+}
+
+TEST(EphemerisEventsKernel, ContactSearchKeepsResolvablePairsAndThrowsForBothUnresolvedNeighborLevels) {
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    const double offset = time - 0.5;
+    return { .longitude = toolbox::AngleDeg { 359.0 + (offset * offset) }, .error_deg = 1e-12 };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = 2.0 * (time - 0.5), .error = 1e-12 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 3.0, .second_derivative = 2.0 },
+    .rate = { .first_derivative = 2.0, .second_derivative = 0.0 },
+    .third_derivative = 0.0,
+    .rate_remainder = 0.0,
+  };
+  search::Budget pair_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  const auto pair = search::longitude_contacts_in_interval(
+    longitude, rate, toolbox::AngleDeg { 359.0625 }, TWO_CELL_GRID, TWO_CELL_GRID.domain,
+    bounds, pair_budget, 1e-8
+  );
+  ASSERT_EQ(pair.size(), 2);
+  ASSERT_NEAR(pair.at(0).jde_tt, 0.25, 1e-8);
+  ASSERT_NEAR(pair.at(1).jde_tt, 0.75, 1e-8);
+  ASSERT_EQ(pair.at(0).direction, search::ContactDirection::DECREASING);
+  ASSERT_EQ(pair.at(1).direction, search::ContactDirection::INCREASING);
+  for (const double target : std::array { std::nextafter(359.0, 0.0), std::nextafter(359.0, 360.0) }) {
+    search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+    ASSERT_THROW(
+      static_cast<void>(search::longitude_contacts_in_interval(
+        longitude, rate, toolbox::AngleDeg { target }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
+      )),
+      std::runtime_error
+    );
+  }
+}
+
+TEST(EphemerisEventsKernel, CanonicalRateZerosAloneCannotManufactureLongitudeContacts) {
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    return { .longitude = toolbox::AngleDeg { time }, .error_deg = 1e-12 };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = time - 0.5, .error = 1e-12 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = LINEAR_BOUNDS,
+    .rate = LINEAR_BOUNDS,
+    .third_derivative = 0.0,
+    .rate_remainder = 2.0,
+  };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { 0.5 }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
+    )),
+    std::runtime_error
+  );
+}
+
+TEST(EphemerisEventsKernel, ContactSearchCannotReturnAnEarlierTangentWhenALaterCellFails) {
+  bool visited_contact = false;
+  const auto longitude = [&visited_contact](const double time) -> search::LongitudeValue {
+    if (time > 1.0) {
+      throw std::runtime_error { "Synthetic longitude failed after the contact cell" };
+    }
+    visited_contact = visited_contact or time == 0.5;
+    const double offset = time - 0.5;
+    return { .longitude = toolbox::AngleDeg { offset * offset }, .error_deg = 1e-12 };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = 2.0 * (time - 0.5), .error = 1e-12 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 3.0, .second_derivative = 2.0 },
+    .rate = { .first_derivative = 2.0, .second_derivative = 0.0 },
+    .third_derivative = 0.0,
+    .rate_remainder = 0.0,
+  };
+  search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
+    )),
+    std::runtime_error
+  );
+  ASSERT_TRUE(visited_contact);
+}
+
+TEST(EphemerisEventsKernel, NoisySubdivisionMidpointsStayInsideCertifiedBrackets) {
+  // Two exact dyadic roots would each be shared, uncertain endpoints without the inner bridge.
+  const auto pair = [](const double time) -> search::Value {
+    const double offset = time - 0.5;
+    return { .value = (offset * offset) - 0.0625, .error = 1e-12 };
+  };
+  search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
+  const search::Bounds bounds { .first_derivative = 1.0, .second_derivative = 2.0 };
+  const auto candidates = search::isolate_cell(pair, 0.0, 1.0, bounds, budget);
+  ASSERT_EQ(candidates.size(), 2);
+  ASSERT_EQ(candidates.at(0).isolation, search::Isolation::UNIQUE);
+  ASSERT_EQ(candidates.at(1).isolation, search::Isolation::UNIQUE);
+  const auto first = search::refine(pair, candidates.at(0), bounds, budget, 1e-8);
+  const auto second = search::refine(pair, candidates.at(1), bounds, budget, 1e-8);
+  ASSERT_EQ(first.jde_tt, 0.25);
+  ASSERT_EQ(second.jde_tt, 0.75);
+  ASSERT_FALSE(first.increasing);
+  ASSERT_TRUE(second.increasing);
+}
+
 } // namespace astro::ephemeris::test
