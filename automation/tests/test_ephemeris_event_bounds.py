@@ -41,7 +41,7 @@ class EventBoundRecordsTest(unittest.TestCase):
     GENERATOR["check_sources"](self.record, actual, hashlib.sha256(solar.encode("utf-8")).hexdigest())
 
   def test_math_reference_artifacts_and_collector_are_pinned(self) -> None:
-    references = ROOT / "src/test/provenance/ephemeris-events"
+    references = (ROOT / GENERATOR["RECORD_PATH"]).parent
     record = json.loads((references / "LIBM_REFERENCE_PINS.json").read_text())
     collector = hashlib.sha256((ROOT / "statistics/ephemeris_event_math_reference.py").read_bytes()).hexdigest()
     header = hashlib.sha256((references / "libm_reference.hpp").read_bytes()).hexdigest()

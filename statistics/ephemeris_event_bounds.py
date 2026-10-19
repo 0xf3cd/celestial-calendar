@@ -175,7 +175,7 @@ def main() -> None:
     check_sources(record, actual, hashlib.sha256(solar.encode()).hexdigest())
     if rendered != (root / HEADER_PATH).read_text(encoding="utf-8"):
       raise ValueError("C++ event bounds do not match the exact records")
-    references = root / "src/test/provenance/ephemeris-events"
+    references = (root / RECORD_PATH).parent
     check_math_references(
       json.loads((references / "LIBM_REFERENCE_PINS.json").read_text(encoding="utf-8")),
       hashlib.sha256((root / "statistics/ephemeris_event_math_reference.py").read_bytes()).hexdigest(),

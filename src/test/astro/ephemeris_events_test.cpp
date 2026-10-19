@@ -24,12 +24,14 @@
 #include <gtest/gtest.h>
 
 #include "ephemeris_events.hpp"
+#include "event_search_test_support.hpp"
 
 namespace astro::ephemeris::test {
 
 namespace {
 
 namespace search = detail::event_search;
+namespace range_test = astro::detail::event_search::test;
 
 constexpr std::array EVENT_TARGETS {
   Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
@@ -118,7 +120,7 @@ auto range_roots(
   const search::Bounds bounds = LINEAR_BOUNDS
 ) -> std::vector<search::Root> {
   search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
-  return search::roots_in_interval(provider, TWO_CELL_GRID, query, bounds, budget);
+  return range_test::roots_in_interval(provider, TWO_CELL_GRID, query, bounds, budget);
 }
 
 /** @brief Carry the exact addition residual as a circular longitude allowance. */
@@ -157,7 +159,7 @@ auto longitude_range_roots(
   const search::Bounds bounds = LINEAR_BOUNDS
 ) -> std::vector<search::Root> {
   search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
-  return search::longitude_roots_in_interval(provider, target, TWO_CELL_GRID, query, bounds, budget);
+  return range_test::longitude_roots_in_interval(provider, target, TWO_CELL_GRID, query, bounds, budget);
 }
 
 } // namespace
@@ -507,7 +509,7 @@ TEST(EphemerisEventsKernel, CanonicalGridHandlesShiftedAndPartialCells) {
   const auto linear = [](const double time) -> search::Value { return sum_value(time, -1.125); };
   search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
   const search::Interval query { .start_jde_tt = 1.0, .end_jde_tt = 1.25 };
-  const auto found = search::roots_in_interval(linear, shifted, query, LINEAR_BOUNDS, budget);
+  const auto found = range_test::roots_in_interval(linear, shifted, query, LINEAR_BOUNDS, budget);
   ASSERT_EQ(found.size(), 1);
   ASSERT_EQ(found.at(0).jde_tt, 1.125);
 
@@ -538,7 +540,7 @@ TEST(EphemerisEventsKernel, ARangeFailureCannotReturnCompletedEarlierCells) {
   const auto linear = [](const double time) -> search::Value { return sum_value(time, -0.25); };
   search::Budget budget { .evaluations_remaining = 4, .candidates_remaining = 100 };
   ASSERT_THROW(
-    static_cast<void>(search::roots_in_interval(linear, TWO_CELL_GRID, TWO_CELL_GRID.domain, LINEAR_BOUNDS, budget)),
+    static_cast<void>(range_test::roots_in_interval(linear, TWO_CELL_GRID, TWO_CELL_GRID.domain, LINEAR_BOUNDS, budget)),
     std::runtime_error
   );
   ASSERT_EQ(budget.evaluations_remaining, 0);
@@ -557,13 +559,13 @@ TEST(EphemerisEventsKernel, RangeAdmissionPrecedesProviderWork) {
        }) {
     const search::Grid invalid { .domain = TWO_CELL_GRID.domain, .cell_width_tt_days = width };
     ASSERT_THROW(
-      static_cast<void>(search::roots_in_interval(counted, invalid, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget)),
+      static_cast<void>(range_test::roots_in_interval(counted, invalid, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget)),
       std::invalid_argument
     );
   }
   const search::Interval outside_domain { .start_jde_tt = -1.0, .end_jde_tt = 1.0 };
   ASSERT_THROW(
-    static_cast<void>(search::roots_in_interval(counted, TWO_CELL_GRID, outside_domain, LINEAR_BOUNDS, budget)),
+    static_cast<void>(range_test::roots_in_interval(counted, TWO_CELL_GRID, outside_domain, LINEAR_BOUNDS, budget)),
     std::invalid_argument
   );
   ASSERT_EQ(calls, 0);
@@ -588,7 +590,7 @@ TEST(EphemerisEventsKernel, RangeProviderOwnsItsVirtualDomainEndpoint) {
   };
   const search::Grid grid { .domain = FIRST_CELL_INTERVAL, .cell_width_tt_days = 1.0 };
   search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
-  const auto found = search::roots_in_interval(endpoint, grid, grid.domain, LINEAR_BOUNDS, budget);
+  const auto found = range_test::roots_in_interval(endpoint, grid, grid.domain, LINEAR_BOUNDS, budget);
   ASSERT_EQ(found.size(), 1);
   ASSERT_EQ(found.at(0).jde_tt, 0.75);
   ASSERT_EQ(forbidden_calls, 0);
@@ -909,7 +911,7 @@ TEST(EphemerisEventsKernel, LongitudeRangesUseTheProvidersVirtualFinalEndpoint) 
   };
   const search::Grid grid { .domain = FIRST_CELL_INTERVAL, .cell_width_tt_days = 1.0 };
   search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
-  const auto found = search::longitude_roots_in_interval(
+  const auto found = range_test::longitude_roots_in_interval(
     extended, toolbox::AngleDeg { 0.0 }, grid, grid.domain, LINEAR_BOUNDS, budget
   );
   ASSERT_EQ(found.size(), 1);
@@ -927,26 +929,26 @@ TEST(EphemerisEventsKernel, LongitudeRangeAdmissionPrecedesProviderWork) {
   const search::Interval outside { .start_jde_tt = -1.0, .end_jde_tt = 1.0 };
   const search::Grid invalid { .domain = TWO_CELL_GRID.domain, .cell_width_tt_days = 0.0 };
   ASSERT_THROW(
-    static_cast<void>(search::longitude_roots_in_interval(
+    static_cast<void>(range_test::longitude_roots_in_interval(
       counted, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, outside, LINEAR_BOUNDS, budget
     )),
     std::invalid_argument
   );
   ASSERT_THROW(
-    static_cast<void>(search::longitude_roots_in_interval(
+    static_cast<void>(range_test::longitude_roots_in_interval(
       counted, toolbox::AngleDeg { 0.0 }, invalid, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget
     )),
     std::invalid_argument
   );
   ASSERT_THROW(
-    static_cast<void>(search::longitude_roots_in_interval(
+    static_cast<void>(range_test::longitude_roots_in_interval(
       counted, toolbox::AngleDeg { std::numeric_limits<double>::infinity() },
       TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget
     )),
     std::invalid_argument
   );
   ASSERT_THROW(
-    static_cast<void>(search::longitude_roots_in_interval(
+    static_cast<void>(range_test::longitude_roots_in_interval(
       counted, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget, -1.0
     )),
     std::invalid_argument
@@ -1018,10 +1020,10 @@ TEST(EphemerisEventsKernel, ReportingLatticesDetermineScalarAndLongitudeQueryOwn
     for (const auto query : std::array { TWO_CELL_GRID.domain, FIRST_CELL_INTERVAL, SECOND_CELL_INTERVAL }) {
       search::Budget scalar_budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
       search::Budget longitude_budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
-      const auto scalar_found = search::roots_in_interval(
+      const auto scalar_found = range_test::roots_in_interval(
         scalar, TWO_CELL_GRID, query, LINEAR_BOUNDS, scalar_budget, 0.0, QUANTUM_TT_DAYS
       );
-      const auto longitude_found = search::longitude_roots_in_interval(
+      const auto longitude_found = range_test::longitude_roots_in_interval(
         longitude, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, query, LINEAR_BOUNDS,
         longitude_budget, 0.0, QUANTUM_TT_DAYS
       );
@@ -1038,7 +1040,7 @@ TEST(EphemerisEventsKernel, ReportingLatticesDetermineScalarAndLongitudeQueryOwn
 TEST(EphemerisEventsKernel, ReportingLatticesDoNotClampExcludedEndsToLegalRateCenters) {
   const auto near_end = [](const double time) { return sum_value(time, -(2.0 - 0.015625)); };
   search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
-  ASSERT_TRUE(search::roots_in_interval(
+  ASSERT_TRUE(range_test::roots_in_interval(
     near_end, TWO_CELL_GRID, TWO_CELL_GRID.domain, LINEAR_BOUNDS, budget, 0.0, 0.125
   ).empty());
   ASSERT_EQ(search::reported_time(0.0625, 0.125), 0.0);
@@ -1055,7 +1057,7 @@ TEST(EphemerisEventsKernel, ReportingLatticesKeepMappedUnresolvedRegionsAndDisti
   const search::Bounds tangent_bounds { .first_derivative = 3.0, .second_derivative = 2.0 };
   search::Budget tangent_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
   ASSERT_THROW(
-    static_cast<void>(search::roots_in_interval(
+    static_cast<void>(range_test::roots_in_interval(
       tangent, TWO_CELL_GRID, SECOND_CELL_INTERVAL, tangent_bounds, tangent_budget, 0.0, 0.125
     )),
     std::runtime_error
@@ -1070,7 +1072,7 @@ TEST(EphemerisEventsKernel, ReportingLatticesKeepMappedUnresolvedRegionsAndDisti
   };
   const search::Bounds pair_bounds { .first_derivative = 2.0, .second_derivative = 2.0 };
   search::Budget distinct_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
-  const auto distinct = search::roots_in_interval(
+  const auto distinct = range_test::roots_in_interval(
     close_pair, TWO_CELL_GRID, TWO_CELL_GRID.domain, pair_bounds, distinct_budget, 1e-8
   );
   ASSERT_EQ(distinct.size(), 2);
@@ -1078,7 +1080,7 @@ TEST(EphemerisEventsKernel, ReportingLatticesKeepMappedUnresolvedRegionsAndDisti
   ASSERT_EQ(distinct.at(1).jde_tt, 1.0 + 0.015625);
   search::Budget pair_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
   ASSERT_THROW(
-    static_cast<void>(search::roots_in_interval(
+    static_cast<void>(range_test::roots_in_interval(
       close_pair, TWO_CELL_GRID, TWO_CELL_GRID.domain, pair_bounds, pair_budget, 1e-8, 0.125
     )),
     std::runtime_error
@@ -1097,7 +1099,7 @@ TEST(EphemerisEventsKernel, ReportingLatticeAdmissionPrecedesProviderWork) {
          std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(),
        }) {
     ASSERT_THROW(
-      static_cast<void>(search::roots_in_interval(
+      static_cast<void>(range_test::roots_in_interval(
         counted, TWO_CELL_GRID, FIRST_CELL_INTERVAL, LINEAR_BOUNDS, budget, 0.0, quantum
       )),
       std::invalid_argument
@@ -1211,7 +1213,7 @@ TEST(EphemerisEventsKernel, CompleteContactSearchUsesTheSameStationForFullAndSpl
   const search::Interval right { .start_jde_tt = STATION_JDE_TT, .end_jde_tt = 2.0 };
   for (const auto query : std::array { TWO_CELL_GRID.domain, left, right }) {
     search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
-    const auto found = search::longitude_contacts_in_interval(
+    const auto found = range_test::longitude_contacts_in_interval(
       longitude, rate, toolbox::AngleDeg { -1.0 }, TWO_CELL_GRID, query, bounds, budget, 1e-8, 0.125
     );
     ASSERT_EQ(found.size(), query.end_jde_tt == STATION_JDE_TT ? 0 : 1);
@@ -1237,7 +1239,7 @@ TEST(EphemerisEventsKernel, ContactSearchKeepsResolvablePairsAndThrowsForBothUnr
     .rate_remainder = 0.0,
   };
   search::Budget pair_budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
-  const auto pair = search::longitude_contacts_in_interval(
+  const auto pair = range_test::longitude_contacts_in_interval(
     longitude, rate, toolbox::AngleDeg { 359.0625 }, TWO_CELL_GRID, TWO_CELL_GRID.domain,
     bounds, pair_budget, 1e-8
   );
@@ -1249,7 +1251,7 @@ TEST(EphemerisEventsKernel, ContactSearchKeepsResolvablePairsAndThrowsForBothUnr
   for (const double target : std::array { std::nextafter(359.0, 0.0), std::nextafter(359.0, 360.0) }) {
     search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
     ASSERT_THROW(
-      static_cast<void>(search::longitude_contacts_in_interval(
+      static_cast<void>(range_test::longitude_contacts_in_interval(
         longitude, rate, toolbox::AngleDeg { target }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
       )),
       std::runtime_error
@@ -1272,7 +1274,7 @@ TEST(EphemerisEventsKernel, CanonicalRateZerosAloneCannotManufactureLongitudeCon
   };
   search::Budget budget { .evaluations_remaining = 1000, .candidates_remaining = 100 };
   ASSERT_THROW(
-    static_cast<void>(search::longitude_contacts_in_interval(
+    static_cast<void>(range_test::longitude_contacts_in_interval(
       longitude, rate, toolbox::AngleDeg { 0.5 }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
     )),
     std::runtime_error
@@ -1300,7 +1302,7 @@ TEST(EphemerisEventsKernel, ContactSearchCannotReturnAnEarlierTangentWhenALaterC
   };
   search::Budget budget { .evaluations_remaining = 20000, .candidates_remaining = 1000 };
   ASSERT_THROW(
-    static_cast<void>(search::longitude_contacts_in_interval(
+    static_cast<void>(range_test::longitude_contacts_in_interval(
       longitude, rate, toolbox::AngleDeg { 0.0 }, TWO_CELL_GRID, TWO_CELL_GRID.domain, bounds, budget, 1e-8
     )),
     std::runtime_error
@@ -1381,7 +1383,7 @@ TEST(EphemerisEventsKernel, ContactRegionsMayExceedRateBracketsWithoutReducingTh
   };
   const search::Interval cell { .start_jde_tt = 0.0, .end_jde_tt = 1.0 };
   search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 10 };
-  const auto contact = search::numerical_contact(
+  const auto contact = range_test::numerical_contact(
     longitude, rate, candidate, cell, toolbox::AngleDeg { 0.0 }, bounds, budget, 1e-8, 0.0
   );
   if (not contact.has_value()) {
@@ -1399,7 +1401,7 @@ TEST(EphemerisEventsKernel, ContactRegionsMayExceedRateBracketsWithoutReducingTh
     .rate_remainder = bounds.rate_remainder,
   };
   ASSERT_THROW(
-    static_cast<void>(search::numerical_contact(
+    static_cast<void>(range_test::numerical_contact(
       longitude, rate, candidate, cell, toolbox::AngleDeg { 0.0 }, unresolved, budget, 1e-8, 0.0
     )),
     std::runtime_error
@@ -1426,7 +1428,7 @@ TEST(EphemerisEventsKernel, LooseThirdDerivativeBoundsCanRequireANarrowerContact
     .rate_remainder = 0.0,
   };
   search::Budget budget { .evaluations_remaining = 200, .candidates_remaining = 10 };
-  const auto contact = search::numerical_contact(
+  const auto contact = range_test::numerical_contact(
     longitude, rate, candidate, { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, toolbox::AngleDeg { 0.0 }, bounds, budget, 1e-8, 0.0
   );
   if (not contact.has_value()) {
@@ -1786,7 +1788,7 @@ TEST(EphemerisEvents, PublicWorkLimitsAndNonfiniteTimesRemainExplicit) {
   }
 }
 
-TEST(EphemerisEventsKernel, ACellBoundaryContactCannotReturnAPartialListWithoutTwoSidedEvidence) {
+TEST(EphemerisEventsKernel, ACellBoundaryContactUsesItsFixedTwoSidedWindow) {
   const auto longitude = [](const double time) -> search::LongitudeValue {
     const double x = time - 0.25;
     return { .longitude = toolbox::AngleDeg { x * x }, .error_deg = 1e-15 };
@@ -1804,12 +1806,12 @@ TEST(EphemerisEventsKernel, ACellBoundaryContactCannotReturnAPartialListWithoutT
   const search::Grid grid {
     .domain = { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, .cell_width_tt_days = 0.25,
   };
-  ASSERT_THROW(
-    static_cast<void>(search::longitude_contacts_in_interval(
-      longitude, rate, toolbox::AngleDeg { 0.0 }, grid, grid.domain, bounds, budget, 0x1p-10, 0x1p-30
-    )),
-    std::runtime_error
+  const auto found = range_test::longitude_contacts_in_interval(
+    longitude, rate, toolbox::AngleDeg { 0.0 }, grid, grid.domain, bounds, budget, 0x1p-10, 0x1p-30
   );
+  ASSERT_EQ(found.size(), 1U);
+  ASSERT_EQ(found.front().jde_tt, 0.25);
+  ASSERT_EQ(found.front().direction, search::ContactDirection::TANGENT);
 }
 
 } // namespace astro::ephemeris::test

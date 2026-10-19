@@ -21,7 +21,9 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <span>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -294,7 +296,7 @@ inline auto validate_event_environment() -> void {
   throw std::runtime_error { "Unsupported event-search direction" };
 }
 
-/** @brief Search whole absolute cells with one provider-specific allowance selection per cell. */
+/** @brief Search whole absolute cells; station refinement uses the cell's allowances, contact regions the window's. */
 [[nodiscard]] inline auto search_longitudes(
   const Target first,
   const std::optional<Target> second,
@@ -304,12 +306,12 @@ inline auto validate_event_environment() -> void {
 ) -> std::vector<event_search::LongitudeRoot> {
   event_search::Budget budget { .evaluations_remaining = EVENT_MAXIMUM_EVALUATIONS,
                                .candidates_remaining = EVENT_MAXIMUM_CANDIDATES };
-  std::vector<event_search::LongitudeRoot> roots;
   event_search::validate_reporting_grid(grid, EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
-  event_search::visit_query_cells(grid, query, [&](const event_search::Interval cell) {
-    const auto first_bounds = event_bounds(first, cell);
-    const auto second_bounds = second.has_value() ? event_bounds(*second, cell) : first_bounds;
-    const auto longitude = [&](const double jde_tt) -> event_search::LongitudeValue {
+  // One allowance selection per span; a window crossing a century edge selects WIDE.
+  const auto model = [first, second](const event_search::Interval span) {
+    const auto first_bounds = event_bounds(first, span);
+    const auto second_bounds = second.has_value() ? event_bounds(*second, span) : first_bounds;
+    const auto longitude = [first, second, first_bounds, second_bounds](const double jde_tt) -> event_search::LongitudeValue {
       const auto a = event_position_value(first, jde_tt, first_bounds);
       if (second.has_value()) {
         const auto b = event_position_value(*second, jde_tt, second_bounds);
@@ -318,35 +320,34 @@ inline auto validate_event_environment() -> void {
       }
       return a;
     };
-    const auto rate = [&](const double jde_tt) {
+    const auto rate = [first, second, first_bounds, second_bounds](const double jde_tt) {
       const auto a = event_rate_observation(first, jde_tt, first_bounds);
       return second.has_value() ? subtract_event_rates(a, event_rate_observation(*second, jde_tt, second_bounds)) : a;
     };
     const auto bounds = second.has_value() ? difference_bounds(first_bounds, second_bounds) : first_bounds.trajectory;
-    if (not second.has_value() and has_no_station(first_bounds)) {
-      const auto candidates = event_search::isolate_longitude_cell(longitude, target, cell, bounds.longitude, budget);
-      const auto scalar = [&](const double jde_tt) { return event_search::longitude_residual(longitude(jde_tt), target); };
-      std::vector<event_search::Root> crossings;
-      event_search::append_interval_roots(
-        scalar, candidates, query, bounds.longitude, budget, EVENT_TIME_RESOLUTION_TT_DAYS,
-        crossings, EVENT_RATE_CENTER_QUANTUM_TT_DAYS
-      );
-      for (const auto crossing : crossings) {
-        if (not roots.empty() and crossing.jde_tt <= roots.back().jde_tt) {
-          throw std::runtime_error { "Event-search crossings cannot be separated at reported precision" };
-        }
-        roots.push_back({ .jde_tt = crossing.jde_tt,
-                          .direction = crossing.increasing ? event_search::ContactDirection::INCREASING
-                                                           : event_search::ContactDirection::DECREASING });
-      }
-    } else {
-      event_search::append_longitude_contacts_in_cell(
-        longitude, rate, target, cell, query, bounds, budget, EVENT_TIME_RESOLUTION_TT_DAYS,
-        EVENT_RATE_CENTER_QUANTUM_TT_DAYS, roots
-      );
+    // Pairs store no signed relative-rate range, so only a single target can exclude a station.
+    const bool needs_contact_scan = second.has_value() or not has_no_station(first_bounds);
+    return std::tuple { longitude, rate, bounds, needs_contact_scan };
+  };
+  const auto contacts = [&](const event_search::Interval cell, const event_search::Interval window, const bool visited) {
+    const auto [longitude, rate, bounds, needs_contact_scan] = model(cell);
+    if (not needs_contact_scan) {
+      return std::vector<event_search::NumericalContact> {};
     }
-  });
-  return roots;
+    const auto [window_longitude, window_rate, window_bounds, window_needs_contact_scan] = model(window);
+    return event_search::cell_contacts(
+      longitude, rate, window_longitude, window_rate, target, cell, window, bounds, window_bounds, budget,
+      EVENT_TIME_RESOLUTION_TT_DAYS, EVENT_RATE_CENTER_QUANTUM_TT_DAYS, visited
+    );
+  };
+  const auto crossings = [&](const event_search::Interval cell, const std::span<const event_search::Interval> exclusions) {
+    const auto [longitude, rate, bounds, needs_contact_scan] = model(cell);
+    return event_search::cell_crossings(
+      longitude, target, cell, exclusions, query, bounds.longitude, budget, EVENT_TIME_RESOLUTION_TT_DAYS,
+      EVENT_RATE_CENTER_QUANTUM_TT_DAYS
+    );
+  };
+  return event_search::contact_traversal(grid, query, contacts, crossings);
 }
 
 } // namespace astro::ephemeris::detail

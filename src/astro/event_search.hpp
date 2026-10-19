@@ -826,112 +826,65 @@ inline auto append_interval_roots(
   }
 }
 
+/** @brief A station's contact outcome; an uncertified station has no two-sided region in its fixed window. */
+struct StationContact {
+  bool certified {};
+  std::optional<NumericalContact> contact;
+};
+
+/** @brief A contact region's certified direction, if any; crosses_level marks a level sign change across it. */
+struct RegionDirection {
+  std::optional<ContactDirection> direction;
+  bool crosses_level {};
+};
+
 /**
- * @brief Find isolated scalar roots using whole canonical cells and half-open reported-time ownership.
- * @note Derivative bounds and provider allowances cover the grid's closed domain, including its final boundary.
- *       Unresolved regions touching the query throw; no partial list escapes. Contact classification is separate.
- *       A nonzero reporting quantum requires nearest-even rounding and preserves canonical cell boundaries.
+ * @brief Return the fixed neighbour window of a canonical cell, clipped to the grid domain.
+ * @note Depends only on the cell index, never on the query, budget or target.
  */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
-[[nodiscard]] inline auto roots_in_interval(
-  const Provider& provider,
+[[nodiscard]] inline auto contact_window(
   const Grid grid,
-  const Interval query,
-  const Bounds bounds,
-  Budget& budget,
-  const double time_resolution = 0.0,
-  const double report_quantum_tt_days = 0.0
-) -> std::vector<Root> {
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
-  if (not finite_nonnegative(time_resolution)) {
-    throw std::invalid_argument { "Invalid event-search interval request" };
-  }
-  validate_reporting_grid(grid, report_quantum_tt_days);
-  std::vector<Root> roots;
-  visit_query_cells(grid, query, [&](const Interval cell) {
-    const auto candidates = isolate_cell(
-      provider,
-      cell.start_jde_tt,
-      cell.end_jde_tt,
-      bounds,
-      budget
-    );
-    append_interval_roots(
-      provider,
-      candidates,
-      query,
-      bounds,
-      budget,
-      time_resolution,
-      roots,
-      report_quantum_tt_days
-    );
-  });
-  return roots;
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish a cell index from the cell count.
+  const uint32_t index,
+  const uint32_t cell_count
+) -> Interval {
+  return {
+    .start_jde_tt = grid_time(grid, index == 0 ? 0 : index - 1, cell_count),
+    .end_jde_tt = grid_time(grid, std::min(index + 2, cell_count), cell_count),
+  };
 }
 
 /**
- * @brief Find longitude-level crossings on whole canonical cells with half-open reported-time ownership.
- * @note The provider covers the closed grid domain; unresolved contacts or uncertified angular lifts throw.
- *       A nonzero reporting quantum requires nearest-even rounding and preserves canonical cell boundaries.
+ * @brief Certify one exact-level numerical contact, trying its cell before its fixed neighbour window.
+ * @note The stationary instant uses the cell's rate provider and bounds, as stations() does. Window samples use
+ *       providers and bounds covering the whole window, which never extends past a grid-domain endpoint.
  */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, LongitudeValue>
-[[nodiscard]] inline auto longitude_roots_in_interval(
-  const Provider& provider,
-  const toolbox::AngleDeg target,
-  const Grid grid,
-  const Interval query,
-  const Bounds bounds,
-  Budget& budget,
-  const double time_resolution = 0.0,
-  const double report_quantum_tt_days = 0.0
-) -> std::vector<Root> {
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
-  const auto canonical_target = toolbox::canonical_longitude_difference(target);
-  if (not finite_nonnegative(time_resolution)) {
-    throw std::invalid_argument { "Invalid event-search longitude resolution" };
-  }
-  validate_reporting_grid(grid, report_quantum_tt_days);
-  const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
-  std::vector<Root> roots;
-  visit_query_cells(grid, query, [&](const Interval cell) {
-    const auto candidates = isolate_longitude_cell(provider, canonical_target, cell, bounds, budget);
-    append_interval_roots(
-      lifted,
-      candidates,
-      query,
-      bounds,
-      budget,
-      time_resolution,
-      roots,
-      report_quantum_tt_days
-    );
-  });
-  return roots;
-}
-
-/** @brief Resolve one exact-level numerical contact; a nonmatching level remains an ordinary crossing query. */
-template <typename LongitudeProvider, typename RateProvider>
+template <typename LongitudeProvider, typename RateProvider, typename WindowLongitudeProvider, typename WindowRateProvider>
 requires std::invocable<const LongitudeProvider&, double>
      and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
      and std::invocable<const RateProvider&, double>
      and std::same_as<std::invoke_result_t<const RateProvider&, double>, Value>
-[[nodiscard]] inline auto numerical_contact(
+     and std::invocable<const WindowLongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const WindowLongitudeProvider&, double>, LongitudeValue>
+     and std::invocable<const WindowRateProvider&, double>
+     and std::same_as<std::invoke_result_t<const WindowRateProvider&, double>, Value>
+[[nodiscard]] inline auto certify_contact(
   const LongitudeProvider& longitude,
   const RateProvider& rate,
+  const WindowLongitudeProvider& window_longitude,
+  const WindowRateProvider& window_rate,
   const Candidate& candidate,
   const Interval cell,
+  const Interval window,
   const toolbox::AngleDeg target,
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish owning-cell from window allowances.
   const TrajectoryBounds bounds,
+  const TrajectoryBounds window_bounds,
   Budget& budget,
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish refinement accuracy from reporting precision.
   const double time_resolution,
   const double report_quantum_tt_days
-) -> std::optional<NumericalContact> {
+) -> StationContact {
   const auto stationary = refine(rate, candidate, bounds.rate, budget, time_resolution);
   const double jde_tt = reported_time(stationary.jde_tt, report_quantum_tt_days);
   const auto projected = [&](const double time) {
@@ -939,213 +892,268 @@ requires std::invocable<const LongitudeProvider&, double>
   };
   const auto at_station = sample(projected, jde_tt, budget);
   if (at_station.evaluated.value != 0.0) {
-    return std::nullopt;
+    return { .certified = true, .contact = std::nullopt };
   }
-  const auto lifted = [&](const double time) { return longitude_residual(longitude(time), target); };
   const int32_t expected_curvature = stationary.increasing ? 1 : -1;
-  const Interval isolated { .start_jde_tt = candidate.left.jde_tt, .end_jde_tt = candidate.right.jde_tt };
-  const double available_radius = std::min(jde_tt - cell.start_jde_tt, cell.end_jde_tt - jde_tt);
-  for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
-    const double radius = std::ldexp(available_radius, -static_cast<int32_t>(attempt));
-    const Interval centered { .start_jde_tt = std::max(cell.start_jde_tt, jde_tt - radius),
-                              .end_jde_tt = std::min(cell.end_jde_tt, jde_tt + radius) };
-    const Interval region = [&] {
-      if (attempt == 0) {
-        return isolated;
-      }
-      return attempt == 1 ? cell : centered;
-    }();
+  const auto region_direction = [&](const Interval region,
+    const auto& region_rate,
+    const auto& region_longitude,
+    const TrajectoryBounds region_bounds
+  ) -> RegionDirection {
     const double left_jde_tt = region.start_jde_tt;
     const double right_jde_tt = region.end_jde_tt;
     const bool interior_reference = left_jde_tt < jde_tt and jde_tt < right_jde_tt;
     if (not interior_reference) {
-      continue;
+      return { .direction = std::nullopt, .crosses_level = false };
     }
-    const auto left_rate = left_jde_tt == candidate.left.jde_tt ? candidate.left : sample(rate, left_jde_tt, budget);
-    const auto right_rate = right_jde_tt == candidate.right.jde_tt ? candidate.right : sample(rate, right_jde_tt, budget);
-    const bool contains_extremum = magnitude_floor(left_rate.evaluated) > bounds.rate_remainder
-                                   and magnitude_floor(right_rate.evaluated) > bounds.rate_remainder
+    const auto left_rate = left_jde_tt == candidate.left.jde_tt ? candidate.left : sample(region_rate, left_jde_tt, budget);
+    const auto right_rate = right_jde_tt == candidate.right.jde_tt ? candidate.right : sample(region_rate, right_jde_tt, budget);
+    const bool contains_extremum = magnitude_floor(left_rate.evaluated) > region_bounds.rate_remainder
+                                   and magnitude_floor(right_rate.evaluated) > region_bounds.rate_remainder
                                    and sign(left_rate.evaluated) == -expected_curvature
                                    and sign(right_rate.evaluated) == expected_curvature;
     if (not contains_extremum) {
-      continue;
+      return { .direction = std::nullopt, .crosses_level = false };
     }
     const double region_radius = std::max(upper(jde_tt - left_jde_tt), upper(right_jde_tt - jde_tt));
-    const double extent = upper(at_station.evaluated.error + upper(bounds.longitude.first_derivative * region_radius));
+    const double extent = upper(at_station.evaluated.error + upper(region_bounds.longitude.first_derivative * region_radius));
     if (extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
-      continue;
+      return { .direction = std::nullopt, .crosses_level = false };
     }
+    const auto lifted = [&](const double time) { return longitude_residual(region_longitude(time), target); };
     const auto before = sample(lifted, left_jde_tt, budget);
     const auto after = sample(lifted, right_jde_tt, budget);
     const int32_t before_sign = sign(before.evaluated);
     const int32_t after_sign = sign(after.evaluated);
-    if (before_sign != 0 and after_sign == -before_sign) {
-      if (attempt == 0) {
-        return std::nullopt;
-      }
-      continue;
+    const bool crosses_level = before_sign != 0 and after_sign == -before_sign;
+    if (crosses_level) {
+      return { .direction = std::nullopt, .crosses_level = true };
     }
-    const int32_t curvature = curvature_sign(before, at_station, after, bounds.third_derivative);
+    const int32_t curvature = curvature_sign(before, at_station, after, region_bounds.third_derivative);
     const bool unresolved_sides = before_sign == 0 or after_sign == 0 or curvature != expected_curvature;
     if (unresolved_sides) {
-      continue;
+      return { .direction = std::nullopt, .crosses_level = false };
     }
-    const auto direction = contact_direction(
-      { .longitude = toolbox::AngleDeg { at_station.evaluated.value }, .error_deg = at_station.evaluated.error },
-      toolbox::AngleDeg { 0.0 },
-      before.evaluated,
-      after.evaluated,
-      curvature
-    );
-    return NumericalContact { .root = { .jde_tt = jde_tt, .direction = direction }, .region = region };
+    return {
+      .direction = contact_direction(
+        { .longitude = toolbox::AngleDeg { at_station.evaluated.value }, .error_deg = at_station.evaluated.error },
+        toolbox::AngleDeg { 0.0 },
+        before.evaluated,
+        after.evaluated,
+        curvature
+      ),
+      .crosses_level = false,
+    };
+  };
+  const auto centered = [jde_tt](const Interval span, const double radius) -> Interval {
+    return { .start_jde_tt = std::max(span.start_jde_tt, jde_tt - radius),
+             .end_jde_tt = std::min(span.end_jde_tt, jde_tt + radius) };
+  };
+  const auto certified = [jde_tt](const ContactDirection direction, const Interval region) -> StationContact {
+    return { .certified = true, .contact = NumericalContact { .root = { .jde_tt = jde_tt, .direction = direction },
+                                                              .region = region } };
+  };
+  const Interval isolated { .start_jde_tt = candidate.left.jde_tt, .end_jde_tt = candidate.right.jde_tt };
+  const double available_radius = std::min(jde_tt - cell.start_jde_tt, cell.end_jde_tt - jde_tt);
+  for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
+    const Interval region = [&] {
+      if (attempt == 0) {
+        return isolated;
+      }
+      return attempt == 1 ? cell : centered(cell, std::ldexp(available_radius, -static_cast<int32_t>(attempt)));
+    }();
+    const auto outcome = region_direction(region, rate, longitude, bounds);
+    if (outcome.direction.has_value()) {
+      return certified(*outcome.direction, region);
+    }
+    if (outcome.crosses_level and attempt == 0) {
+      return { .certified = true, .contact = std::nullopt };
+    }
   }
-  throw std::runtime_error { "Event-search numerical contact has no certified two-sided extremum region" };
+  const bool has_neighbour = window.start_jde_tt < cell.start_jde_tt or cell.end_jde_tt < window.end_jde_tt;
+  if (not has_neighbour) {
+    return { .certified = false, .contact = std::nullopt };
+  }
+  // Tried only after every in-cell region failed, so in-cell successes keep their regions; a seam station needs this.
+  const double window_radius = std::min(jde_tt - window.start_jde_tt, window.end_jde_tt - jde_tt);
+  for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
+    const Interval region = attempt == 0
+                              ? window
+                              : centered(window, std::ldexp(window_radius, 1 - static_cast<int32_t>(attempt)));
+    const auto outcome = region_direction(region, window_rate, window_longitude, window_bounds);
+    if (outcome.direction.has_value()) {
+      return certified(*outcome.direction, region);
+    }
+  }
+  return { .certified = false, .contact = std::nullopt };
 }
 
 /**
- * @brief Append one canonical cell's crossings and exact stationary contacts with query-owned reported times.
- * @note The providers and bounds cover the entire cell; the caller validates its grid and reporting lattice.
+ * @brief Certify one canonical cell's isolated stations; a lookahead cell leaves an uncertified one to the scan.
+ * @note Providers and bounds cover the cell; the window providers and bounds cover its @ref contact_window.
  */
-template <typename LongitudeProvider, typename RateProvider>
+template <typename LongitudeProvider, typename RateProvider, typename WindowLongitudeProvider, typename WindowRateProvider>
 requires std::invocable<const LongitudeProvider&, double>
      and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
      and std::invocable<const RateProvider&, double>
      and std::same_as<std::invoke_result_t<const RateProvider&, double>, Value>
-inline auto append_longitude_contacts_in_cell(
+     and std::invocable<const WindowLongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const WindowLongitudeProvider&, double>, LongitudeValue>
+     and std::invocable<const WindowRateProvider&, double>
+     and std::same_as<std::invoke_result_t<const WindowRateProvider&, double>, Value>
+[[nodiscard]] inline auto cell_contacts(
   const LongitudeProvider& longitude,
   const RateProvider& rate,
+  const WindowLongitudeProvider& window_longitude,
+  const WindowRateProvider& window_rate,
   const toolbox::AngleDeg target,
   const Interval cell,
-  const Interval query,
+  const Interval window,
   const TrajectoryBounds bounds,
+  const TrajectoryBounds window_bounds,
   Budget& budget,
   const double time_resolution,
   const double report_quantum_tt_days,
-  std::vector<LongitudeRoot>& results
-) -> void {
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.longitude);
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.rate);
-  const bool invalid_refinement = not finite_nonnegative(time_resolution)
-                                  or not finite_nonnegative(bounds.third_derivative)
-                                  or not finite_nonnegative(bounds.rate_remainder);
-  if (invalid_refinement) {
-    throw std::invalid_argument { "Invalid event-search contact bounds or refinement" };
-  }
-  const auto canonical_target = toolbox::canonical_longitude_difference(target);
-  const auto lifted = [&](const double jde_tt) { return longitude_residual(longitude(jde_tt), canonical_target); };
+  const bool visited
+) -> std::vector<NumericalContact> {
   const auto stations = isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.rate, budget);
-  std::vector<Interval> contact_regions;
-  std::vector<LongitudeRoot> cell_roots;
+  std::vector<NumericalContact> contacts;
   for (const auto& candidate : stations) {
     if (candidate.isolation != Isolation::UNIQUE) {
       continue;
     }
-    const auto contact = numerical_contact(
+    const auto outcome = certify_contact(
       longitude,
       rate,
+      window_longitude,
+      window_rate,
       candidate,
       cell,
-      canonical_target,
+      window,
+      target,
       bounds,
+      window_bounds,
       budget,
       time_resolution,
       report_quantum_tt_days
     );
-    if (contact.has_value()) {
-      contact_regions.push_back(contact->region);
-      if (query.start_jde_tt <= contact->root.jde_tt and contact->root.jde_tt < query.end_jde_tt) {
-        cell_roots.push_back(contact->root);
-      }
+    if (visited and not outcome.certified) {
+      throw std::runtime_error { "Event-search numerical contact has no certified two-sided extremum region" };
+    }
+    if (outcome.contact.has_value()) {
+      contacts.push_back(*outcome.contact);
     }
   }
+  return contacts;
+}
 
+/** @brief Scan one visited cell for crossings outside its sorted, disjoint contact exclusions. */
+template <typename LongitudeProvider>
+requires std::invocable<const LongitudeProvider&, double>
+     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
+[[nodiscard]] inline auto cell_crossings(
+  const LongitudeProvider& longitude,
+  const toolbox::AngleDeg target,
+  const Interval cell,
+  const std::span<const Interval> exclusions,
+  const Interval query,
+  const Bounds bounds,
+  Budget& budget,
+  const double time_resolution,
+  const double report_quantum_tt_days
+) -> std::vector<Root> {
+  const auto lifted = [&](const double jde_tt) { return longitude_residual(longitude(jde_tt), target); };
   std::vector<Root> crossings;
   const auto search_segment = [&](const Interval segment) {
     if (segment.start_jde_tt == segment.end_jde_tt) {
       return;
     }
-    const auto candidates = isolate_longitude_cell(longitude, canonical_target, segment, bounds.longitude, budget);
-    append_interval_roots(
-      lifted,
-      candidates,
-      query,
-      bounds.longitude,
-      budget,
-      time_resolution,
-      crossings,
-      report_quantum_tt_days
-    );
+    const auto candidates = isolate_longitude_cell(longitude, target, segment, bounds, budget);
+    append_interval_roots(lifted, candidates, query, bounds, budget, time_resolution, crossings, report_quantum_tt_days);
   };
   double start_jde_tt = cell.start_jde_tt;
-  for (const auto region : contact_regions) {
-    if (region.start_jde_tt < start_jde_tt) {
-      throw std::runtime_error { "Event-search numerical contact brackets overlap" };
-    }
+  for (const auto region : exclusions) {
     search_segment({ .start_jde_tt = start_jde_tt, .end_jde_tt = region.start_jde_tt });
     start_jde_tt = region.end_jde_tt;
   }
   search_segment({ .start_jde_tt = start_jde_tt, .end_jde_tt = cell.end_jde_tt });
-  for (const auto crossing : crossings) {
-    cell_roots.push_back({
-      .jde_tt = crossing.jde_tt,
-      .direction = crossing.increasing ? ContactDirection::INCREASING : ContactDirection::DECREASING,
-    });
-  }
-  std::ranges::sort(cell_roots, {}, &LongitudeRoot::jde_tt);
-  for (const auto root : cell_roots) {
-    if (not results.empty() and root.jde_tt <= results.back().jde_tt) {
-      throw std::runtime_error { "Event-search contacts cannot be separated at the reported time precision" };
-    }
-    results.push_back(root);
-  }
+  return crossings;
 }
 
 /**
- * @brief Find longitude crossings and exact canonical-station contacts, or fail without a partial list.
- * @note Providers bound one smooth longitude and its D_h on the closed grid domain. Reporting is query-independent.
- *       A numerical contact replaces the unresolved level near one strict extremum, not an angular proximity band.
+ * @brief Find crossings and exact contacts on the visited cells, each contact reported once by its owning cell.
+ * @note Visited cells are those of @ref visit_query_cells; one lookahead cell per side supplies contact regions
+ *       that reach them. Every output is filtered by its reported time, and overlapping exclusions throw.
  */
-template <typename LongitudeProvider, typename RateProvider>
-requires std::invocable<const LongitudeProvider&, double>
-     and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, LongitudeValue>
-     and std::invocable<const RateProvider&, double>
-     and std::same_as<std::invoke_result_t<const RateProvider&, double>, Value>
-[[nodiscard]] inline auto longitude_contacts_in_interval(
-  const LongitudeProvider& longitude,
-  const RateProvider& rate,
-  const toolbox::AngleDeg target,
+template <typename Contacts, typename Crossings>
+requires std::invocable<const Contacts&, Interval, Interval, bool>
+     and std::same_as<std::invoke_result_t<const Contacts&, Interval, Interval, bool>, std::vector<NumericalContact>>
+     and std::invocable<const Crossings&, Interval, std::span<const Interval>>
+     and std::same_as<std::invoke_result_t<const Crossings&, Interval, std::span<const Interval>>, std::vector<Root>>
+[[nodiscard]] inline auto contact_traversal(
   const Grid grid,
   const Interval query,
-  const TrajectoryBounds bounds,
-  Budget& budget,
-  const double time_resolution,
-  const double report_quantum_tt_days = 0.0
+  const Contacts& contacts,
+  const Crossings& crossings
 ) -> std::vector<LongitudeRoot> {
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.longitude);
-  validate_cell(query.start_jde_tt, query.end_jde_tt, bounds.rate);
-  const bool invalid_refinement = not finite_nonnegative(time_resolution)
-                                  or not finite_nonnegative(bounds.third_derivative)
-                                  or not finite_nonnegative(bounds.rate_remainder);
-  if (invalid_refinement) {
-    throw std::invalid_argument { "Invalid event-search contact bounds or refinement" };
-  }
-  const auto canonical_target = toolbox::canonical_longitude_difference(target);
-  validate_reporting_grid(grid, report_quantum_tt_days);
-  std::vector<LongitudeRoot> results;
+  std::vector<uint32_t> visited;
+  const uint32_t cell_count = grid_cell_count(grid);
   visit_query_cells(grid, query, [&](const Interval cell) {
-    append_longitude_contacts_in_cell(
-      longitude,
-      rate,
-      canonical_target,
-      cell,
-      query,
-      bounds,
-      budget,
-      time_resolution,
-      report_quantum_tt_days,
-      results
-    );
+    visited.push_back(containing_cell(grid, cell_count, cell.start_jde_tt));
   });
+  const uint32_t lookahead_first = visited.front() == 0 ? 0 : visited.front() - 1;
+  const uint32_t lookahead_last = std::min(visited.back() + 1, cell_count - 1);
+  const auto cell_at = [&](const uint32_t index) -> Interval {
+    return { .start_jde_tt = grid_time(grid, index, cell_count), .end_jde_tt = grid_time(grid, index + 1, cell_count) };
+  };
+  std::vector<std::vector<NumericalContact>> owned;
+  for (uint32_t index = lookahead_first; index <= lookahead_last; ++index) {
+    const bool visited_cell = visited.front() <= index and index <= visited.back();
+    owned.push_back(contacts(cell_at(index), contact_window(grid, index, cell_count), visited_cell));
+  }
+  std::vector<LongitudeRoot> results;
+  for (const auto& found : owned) {
+    for (const auto contact : found) {
+      if (query.start_jde_tt <= contact.root.jde_tt and contact.root.jde_tt < query.end_jde_tt) {
+        results.push_back(contact.root);
+      }
+    }
+  }
+  for (const uint32_t index : visited) {
+    const auto cell = cell_at(index);
+    std::vector<Interval> exclusions;
+    const uint32_t owner_first = std::max(index == 0 ? 0 : index - 1, lookahead_first);
+    const uint32_t owner_last = std::min(index + 1, lookahead_last);
+    for (uint32_t owner = owner_first; owner <= owner_last; ++owner) {
+      for (const auto contact : owned.at(owner - lookahead_first)) {
+        const Interval clipped {
+          .start_jde_tt = std::max(contact.region.start_jde_tt, cell.start_jde_tt),
+          .end_jde_tt = std::min(contact.region.end_jde_tt, cell.end_jde_tt),
+        };
+        if (clipped.start_jde_tt < clipped.end_jde_tt) {
+          exclusions.push_back(clipped);
+        }
+      }
+    }
+    std::ranges::sort(exclusions, {}, &Interval::start_jde_tt);
+    for (std::size_t position = 1; position < exclusions.size(); ++position) {
+      if (exclusions.at(position).start_jde_tt < exclusions.at(position - 1).end_jde_tt) {
+        throw std::runtime_error { "Event-search numerical contact brackets overlap" };
+      }
+    }
+    for (const auto crossing : crossings(cell, std::span<const Interval> { exclusions })) {
+      results.push_back({
+        .jde_tt = crossing.jde_tt,
+        .direction = crossing.increasing ? ContactDirection::INCREASING : ContactDirection::DECREASING,
+      });
+    }
+  }
+  std::ranges::sort(results, {}, &LongitudeRoot::jde_tt);
+  for (std::size_t position = 1; position < results.size(); ++position) {
+    if (results.at(position).jde_tt <= results.at(position - 1).jde_tt) {
+      throw std::runtime_error { "Event-search contacts cannot be separated at the reported time precision" };
+    }
+  }
   return results;
 }
 

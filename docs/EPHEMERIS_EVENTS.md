@@ -59,10 +59,13 @@ For example, use a returned station's `longitude` as the target of
 `longitude_events`. There is no angular proximity window: an adjacent
 binary64 target is not that same contact. If the available error allowances
 cannot distinguish a near miss from two crossings, the query throws.
-The constructed query can also throw when a two-sided contact region cannot
-be certified, including a stationary time exactly on a canonical cell or
-provider-domain boundary. Reusing a station's longitude does not bypass
-the completeness checks.
+Certification first tries the station's owning cell, then a fixed window
+covering that cell and its immediate neighbors. The window is independent
+of the query and uses allowances covering its full span. Certified contact
+regions are excluded from every touched cell before the crossing search.
+The constructed query can still throw when two-sided evidence cannot be
+certified, including at a true provider-domain endpoint. Reusing a station's
+longitude does not bypass the completeness checks.
 Contact certification checks a continuous angular lift, derivative-side
 margins larger than the rate's truncation remainder, and signed curvature
 throughout the chosen region. The region may be wider or narrower than the
@@ -125,7 +128,8 @@ facts; deployments with a different math contract need new allowances.
 Derivative bounds come from source coefficient sums and outward rational
 majorants through order seven. A fixed J2000 `±100`-year analysis band
 uses tighter bounds where an entire canonical cell and its sampling halo
-fit; the remaining domain uses the full-window bounds. Band selection is
+fit; a contact window must also fit before using that band. The remaining
+domain uses the full-window bounds. Band selection is
 cell-based, so widening a query cannot change a station's definition.
 `EVENT_BOUNDS_CENTURY` and `EVENT_BOUNDS_WIDE` hold these allowances;
 [`statistics/ephemeris_event_bounds.py`](../statistics/ephemeris_event_bounds.py)
@@ -148,7 +152,7 @@ better representative than the stopping criterion alone.
 <a id="seven-point-operator-and-remainder"></a>
 ## Seven-point operator and remainder
 
-For a continuous angular lift `g` whose sample-pair changes fit in
+For a seven-times continuously differentiable angular lift `g` whose sample-pair changes fit in
 `(-180°,180°)`, `ephemeris::detail::differentiate` evaluates
 
 ```text
@@ -174,7 +178,7 @@ y_+ = max(y,0).
 ```
 
 It vanishes outside `[-3,3]` and is nonnegative inside. On `[2,3]`
-only the last term remains. On `[1,2]`, `(3−x)/(2−x)≥2` makes the
+only the last term remains. On `[1,2)`, `(3−x)/(2−x)≥2` makes the
 last term exceed the negative term. On `[0,1]`, set `u=1−x`. The
 numerator is
 `55+138u+105u²−20u³−75u⁴−42u⁵+37u⁶`, which is at least
