@@ -32,6 +32,7 @@ struct Value {
   double error;
 };
 
+/** @brief A scalar observation whose allowance applies at the requested TT time. */
 struct Sample {
   double jde_tt;
   Value evaluated;
@@ -43,42 +44,52 @@ struct Bounds {
   double second_derivative;
 };
 
+/** @brief Shared limits on scalar-evaluation attempts and candidate slots. */
 struct Budget {
   std::size_t evaluations_remaining;
   std::size_t candidates_remaining;
 };
 
+/** @brief Whether a retained bracket has a unique-root certificate or remains unresolved. */
 enum class Isolation : uint8_t { UNIQUE, UNRESOLVED };
 
+/** @brief Exact endpoint roots belong to [left,right) for LEFT, or [left,right] for BOTH. */
 enum class EndpointOwnership : uint8_t { LEFT, BOTH };
 
+/** @brief A sufficient cell verdict: exclude, certify one root, or subdivide. */
 enum class CellDecision : uint8_t { DISCARD, UNIQUE, SPLIT };
 
+/** @brief A sampled bracket with explicit ownership of exact endpoint roots. */
 struct Cell {
   Sample left;
   Sample right;
   EndpointOwnership ownership;
 };
 
+/** @brief A retained bracket, either certified to contain one root or left unresolved. */
 struct Candidate {
   Sample left;
   Sample right;
   Isolation isolation;
 };
 
+/** @brief A reported TT root time and its certified local crossing direction. */
 struct Root {
   double jde_tt;
   bool increasing;
 };
 
+/** @brief Enclose a nearest-rounded result on its lower side. */
 [[nodiscard]] inline auto lower(const double value) -> double {
   return std::nextafter(value, -std::numeric_limits<double>::infinity());
 }
 
+/** @brief Enclose a nearest-rounded result on its upper side. */
 [[nodiscard]] inline auto upper(const double value) -> double {
   return std::nextafter(value, std::numeric_limits<double>::infinity());
 }
 
+/** @brief Recognize a certified zero, not merely a zero-valued observation. */
 [[nodiscard]] inline auto exact_zero(const Value evaluated) -> bool {
   return evaluated.value == 0.0 and evaluated.error == 0.0;
 }
@@ -92,8 +103,7 @@ struct Root {
 }
 
 /** @brief Adjust a provider's error allowance when it evaluates at a different abscissa. */
-[[nodiscard]] inline auto shifted(const Value evaluated, const double offset, const double first_derivative)
-  -> Value {
+[[nodiscard]] inline auto shifted(const Value evaluated, const double offset, const double first_derivative) -> Value {
   if (not std::isfinite(offset) or offset < 0.0
       or not std::isfinite(first_derivative) or first_derivative < 0.0) {
     throw std::invalid_argument { "Invalid event-search abscissa allowance" };
@@ -123,7 +133,10 @@ requires std::invocable<const Provider&, double>
   return { .jde_tt = jde_tt, .evaluated = evaluated };
 }
 
-/** @note IEEE binary64 nearest rounding, without reassociation; bounds cover the complete bracket. */
+/**
+ * @brief Bound |f'| from below using the noisy secant and the curvature bound.
+ * @note IEEE binary64 nearest rounding, without reassociation; bounds cover the complete bracket.
+ */
 [[nodiscard]] inline auto derivative_floor(const Sample left, const Sample right, const Bounds bounds)
   -> double {
   const double width = upper(right.jde_tt - left.jde_tt);
@@ -133,6 +146,7 @@ requires std::invocable<const Provider&, double>
   return lower(lower(change / width) - upper(upper(bounds.second_derivative * width) / 2.0));
 }
 
+/** @brief Require a finite positive time span and finite nonnegative derivative bounds. */
 inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, const Bounds bounds) -> void {
   if (not std::isfinite(start_jde_tt) or not std::isfinite(end_jde_tt) or start_jde_tt >= end_jde_tt
       or not std::isfinite(end_jde_tt - start_jde_tt)
@@ -160,6 +174,7 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
          or std::min(left_margin, right_margin) > chord_error;
 }
 
+/** @brief Certify exclusion or uniqueness; otherwise request subdivision. */
 [[nodiscard]] inline auto classify_cell(const Cell& cell, const Bounds bounds) -> CellDecision {
   if (endpoint_exclusion(cell, bounds)) {
     return CellDecision::DISCARD;
@@ -182,6 +197,7 @@ inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, co
   return CellDecision::SPLIT;
 }
 
+/** @brief Consume one candidate slot before retaining a bracket. */
 inline auto append_candidate(
   const Cell& cell,
   const Isolation isolation,
@@ -195,6 +211,7 @@ inline auto append_candidate(
   candidates.push_back({ .left = cell.left, .right = cell.right, .isolation = isolation });
 }
 
+/** @brief Traverse a sampled cell, retaining unresolved brackets when subdivision stops. */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
@@ -277,7 +294,10 @@ requires std::invocable<const Provider&, double>
   throw std::runtime_error { "Event-search evaluation error prevents time refinement" };
 }
 
-/** @note The caller has established uniqueness and handled exact endpoint roots. */
+/**
+ * @brief Bisect a unique-root bracket with robust signs and bounded work.
+ * @note The caller has established uniqueness and handled exact endpoint roots.
+ */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
