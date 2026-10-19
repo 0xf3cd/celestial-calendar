@@ -547,4 +547,83 @@ TEST(EphemerisEventsKernel, RangeProviderOwnsItsVirtualDomainEndpoint) {
   ASSERT_EQ(forbidden_calls, 0);
 }
 
+TEST(EphemerisEventsKernel, EventRateCentersKeepEveryExistingTargetDomain) {
+  constexpr std::array targets {
+    Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
+    Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
+    Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
+  };
+  for (const auto target : targets) {
+    const auto [first, end] = longitude_rate_domain(target);
+    for (const double requested : std::array { first, std::nextafter(first, end), std::nextafter(end, first), end }) {
+      const double center = detail::event_rate_center(target, requested);
+      ASSERT_GE(center, first);
+      ASSERT_LT(center, end);
+      ASSERT_LE(std::fabs(center - requested), detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
+      ASSERT_NO_THROW(detail::validate_rate_input(target, center));
+    }
+    ASSERT_EQ(detail::event_rate_center(target, first), first);
+    ASSERT_EQ(detail::event_rate_center(target, end), end - detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
+  }
+}
+
+TEST(EphemerisEventsKernel, EventRateCentersRepairInexactStencilsWithoutChangingTheRateApi) {
+  const double requested = std::nextafter(2097152.0, 0.0);
+  ASSERT_THROW(detail::validate_rate_input(Target::SUN, requested), std::invalid_argument);
+  ASSERT_EQ(detail::event_rate_center(Target::SUN, requested), 2097152.0);
+  const double half_quantum = detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS / 2.0;
+  ASSERT_EQ(detail::event_rate_center(Target::SUN, half_quantum), 0.0);
+  ASSERT_EQ(detail::event_rate_center(Target::SUN, -half_quantum), 0.0);
+  ASSERT_EQ(detail::event_rate_center(Target::SUN, 3.0 * half_quantum), 4.0 * half_quantum);
+}
+
+TEST(EphemerisEventsKernel, EventRateValuesChargeTheActualCenterDisplacement) {
+  std::size_t calls = 0;
+  const auto linear = [&calls](const double center) -> search::Value {
+    ++calls;
+    detail::validate_rate_input(Target::SUN, center);
+    return { .value = center, .error = 0.0 };
+  };
+  const double requested = std::nextafter(2097152.0, 0.0);
+  const auto shifted = detail::event_rate_value(linear, Target::SUN, requested, 1.0);
+  ASSERT_EQ(shifted.value, 2097152.0);
+  ASSERT_GE(shifted.error, std::fabs(shifted.value - requested));
+  const auto unchanged = detail::event_rate_value(linear, Target::SUN, 2097152.0, 1.0);
+  ASSERT_EQ(unchanged.value, 2097152.0);
+  ASSERT_EQ(unchanged.error, 0.0);
+  const auto [first, end] = longitude_rate_domain(Target::SUN);
+  const auto virtual_endpoint = detail::event_rate_value(linear, Target::SUN, end, 1.0);
+  ASSERT_GE(virtual_endpoint.error, end - virtual_endpoint.value);
+  ASSERT_EQ(calls, 3);
+  ASSERT_GE(virtual_endpoint.value, first);
+  ASSERT_LT(virtual_endpoint.value, end);
+}
+
+TEST(EphemerisEventsKernel, EventRateAdmissionAndBadObservationsCannotBeHiddenByDisplacement) {
+  std::size_t calls = 0;
+  const auto counted = [&calls](const double center) -> search::Value {
+    ++calls;
+    return { .value = center, .error = 0.0 };
+  };
+  const auto [first, end] = longitude_rate_domain(Target::SUN);
+  for (const double time : std::array {
+         std::nextafter(first, -std::numeric_limits<double>::infinity()),
+         std::nextafter(end, std::numeric_limits<double>::infinity()),
+         std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(),
+       }) {
+    ASSERT_THROW(static_cast<void>(detail::event_rate_value(counted, Target::SUN, time, 1.0)), std::invalid_argument);
+  }
+  ASSERT_THROW(static_cast<void>(detail::event_rate_value(counted, Target::SUN, 2451545.0, -1.0)), std::invalid_argument);
+  ASSERT_THROW(
+    static_cast<void>(detail::event_rate_value(counted, static_cast<Target>(uint32_t { 100 }), 2451545.0, 1.0)),
+    std::invalid_argument
+  );
+  ASSERT_EQ(calls, 0);
+  const auto invalid = [](const double) -> search::Value { return { .value = 0.0, .error = -1.0 }; };
+  ASSERT_THROW(
+    static_cast<void>(detail::event_rate_value(invalid, Target::SUN, std::nextafter(2097152.0, 0.0), 1e12)),
+    std::runtime_error
+  );
+}
+
 } // namespace astro::ephemeris::test

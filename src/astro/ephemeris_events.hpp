@@ -25,6 +25,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "ephemeris.hpp"
+
 namespace astro::ephemeris::detail::event_search {
 
 /** @brief A scalar observation with an absolute error allowance at the requested abscissa. */
@@ -567,3 +569,62 @@ requires std::invocable<const Provider&, double>
 }
 
 } // namespace astro::ephemeris::detail::event_search
+
+namespace astro::ephemeris::detail {
+
+// Centers and their 3/8-day stencils fit binary64 throughout the current domains (|JDE| < 2^23).
+inline constexpr double EVENT_RATE_CENTER_QUANTUM_TT_DAYS = 0x1p-30;
+
+/**
+ * @brief Choose a query-independent legal rate center for a time in the closed rate domain.
+ * @note Requires round-to-nearest-even. The final domain endpoint is virtual and selects the preceding grid center.
+ */
+[[nodiscard]] inline auto event_rate_center(const Target target, const double jde_tt) -> double {
+  if (not std::isfinite(jde_tt)) {
+    throw std::invalid_argument { "Event-search rate time must be finite" };
+  }
+  const auto [start_jde_tt, end_jde_tt] = longitude_rate_domain(target);
+  const bool outside_domain = jde_tt < start_jde_tt or jde_tt > end_jde_tt;
+  if (outside_domain) {
+    throw std::invalid_argument { "Event-search rate time leaves its closed domain" };
+  }
+  const double nearest = std::nearbyint(jde_tt / EVENT_RATE_CENTER_QUANTUM_TT_DAYS)
+                         * EVENT_RATE_CENTER_QUANTUM_TT_DAYS;
+  const double center_jde_tt = std::clamp(
+    nearest,
+    start_jde_tt,
+    end_jde_tt - EVENT_RATE_CENTER_QUANTUM_TT_DAYS
+  );
+  validate_rate_input(target, center_jde_tt);
+  return center_jde_tt;
+}
+
+/**
+ * @brief Evaluate a rate at a legal center and charge its displacement from the requested TT time.
+ * @note The provider's Value bounds D_h g at the selected center; first_derivative bounds |(D_h g)'| over the domain.
+ */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, event_search::Value>
+[[nodiscard]] inline auto event_rate_value(
+  const Provider& provider,
+  const Target target,
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish the TT abscissa from its rate-slope bound.
+  const double jde_tt,
+  const double first_derivative
+) -> event_search::Value {
+  if (not event_search::finite_nonnegative(first_derivative)) {
+    throw std::invalid_argument { "Invalid event-search rate derivative bound" };
+  }
+  const double center_jde_tt = event_rate_center(target, jde_tt);
+  const auto evaluated = provider(center_jde_tt);
+  const bool invalid_observation = not std::isfinite(evaluated.value)
+                                   or not event_search::finite_nonnegative(evaluated.error);
+  if (invalid_observation) {
+    throw std::runtime_error { "Invalid event-search rate observation" };
+  }
+  const double offset = center_jde_tt == jde_tt ? 0.0 : event_search::upper(std::fabs(jde_tt - center_jde_tt));
+  return event_search::shifted(evaluated, offset, first_derivative);
+}
+
+} // namespace astro::ephemeris::detail
