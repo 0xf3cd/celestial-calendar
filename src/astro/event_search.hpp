@@ -826,8 +826,9 @@ inline auto append_interval_roots(
   }
 }
 
-/** @brief A station's contact outcome; an uncertified station has no two-sided region in its fixed window. */
+/** @brief A station's reported TT instant and contact outcome; an uncertified one has no two-sided region. */
 struct StationContact {
+  double station_jde_tt {};
   bool certified {};
   std::optional<NumericalContact> contact;
 };
@@ -892,7 +893,7 @@ requires std::invocable<const LongitudeProvider&, double>
   };
   const auto at_station = sample(projected, jde_tt, budget);
   if (at_station.evaluated.value != 0.0) {
-    return { .certified = true, .contact = std::nullopt };
+    return { .station_jde_tt = jde_tt, .certified = true, .contact = std::nullopt };
   }
   const int32_t expected_curvature = stationary.increasing ? 1 : -1;
   const auto region_direction = [&](const Interval region,
@@ -950,8 +951,11 @@ requires std::invocable<const LongitudeProvider&, double>
              .end_jde_tt = std::min(span.end_jde_tt, jde_tt + radius) };
   };
   const auto certified = [jde_tt](const ContactDirection direction, const Interval region) -> StationContact {
-    return { .certified = true, .contact = NumericalContact { .root = { .jde_tt = jde_tt, .direction = direction },
-                                                              .region = region } };
+    return {
+      .station_jde_tt = jde_tt,
+      .certified = true,
+      .contact = NumericalContact { .root = { .jde_tt = jde_tt, .direction = direction }, .region = region },
+    };
   };
   const Interval isolated { .start_jde_tt = candidate.left.jde_tt, .end_jde_tt = candidate.right.jde_tt };
   const double available_radius = std::min(jde_tt - cell.start_jde_tt, cell.end_jde_tt - jde_tt);
@@ -967,12 +971,12 @@ requires std::invocable<const LongitudeProvider&, double>
       return certified(*outcome.direction, region);
     }
     if (outcome.crosses_level and attempt == 0) {
-      return { .certified = true, .contact = std::nullopt };
+      return { .station_jde_tt = jde_tt, .certified = true, .contact = std::nullopt };
     }
   }
   const bool has_neighbour = window.start_jde_tt < cell.start_jde_tt or cell.end_jde_tt < window.end_jde_tt;
   if (not has_neighbour) {
-    return { .certified = false, .contact = std::nullopt };
+    return { .station_jde_tt = jde_tt, .certified = false, .contact = std::nullopt };
   }
   // Tried only after every in-cell region failed, so in-cell successes keep their regions; a seam station needs this.
   const double window_radius = std::min(jde_tt - window.start_jde_tt, window.end_jde_tt - jde_tt);
@@ -985,11 +989,11 @@ requires std::invocable<const LongitudeProvider&, double>
       return certified(*outcome.direction, region);
     }
   }
-  return { .certified = false, .contact = std::nullopt };
+  return { .station_jde_tt = jde_tt, .certified = false, .contact = std::nullopt };
 }
 
 /**
- * @brief Certify one canonical cell's isolated stations; cells outside the query leave uncertified ones to the scan.
+ * @brief Certify one canonical cell's isolated stations; query-owned reported instants require two-sided evidence.
  * @note Providers and bounds cover the cell; the window providers and bounds cover its @ref contact_window.
  */
 template <typename LongitudeProvider, typename RateProvider, typename WindowLongitudeProvider, typename WindowRateProvider>
@@ -1014,7 +1018,7 @@ requires std::invocable<const LongitudeProvider&, double>
   Budget& budget,
   const double time_resolution,
   const double report_quantum_tt_days,
-  const bool requires_certificate
+  const Interval query
 ) -> std::vector<NumericalContact> {
   const auto stations = isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.rate, budget);
   std::vector<NumericalContact> contacts;
@@ -1037,7 +1041,8 @@ requires std::invocable<const LongitudeProvider&, double>
       time_resolution,
       report_quantum_tt_days
     );
-    if (requires_certificate and not outcome.certified) {
+    const bool query_owned = query.start_jde_tt <= outcome.station_jde_tt and outcome.station_jde_tt < query.end_jde_tt;
+    if (query_owned and not outcome.certified) {
       throw std::runtime_error { "Event-search numerical contact has no certified two-sided extremum region" };
     }
     if (outcome.contact.has_value()) {
@@ -1086,8 +1091,8 @@ requires std::invocable<const LongitudeProvider&, double>
  *       that reach them. Every output is filtered by its reported time, and overlapping exclusions throw.
  */
 template <typename Contacts, typename Crossings>
-requires std::invocable<const Contacts&, Interval, Interval, bool>
-     and std::same_as<std::invoke_result_t<const Contacts&, Interval, Interval, bool>, std::vector<NumericalContact>>
+requires std::invocable<const Contacts&, Interval, Interval>
+     and std::same_as<std::invoke_result_t<const Contacts&, Interval, Interval>, std::vector<NumericalContact>>
      and std::invocable<const Crossings&, Interval, std::span<const Interval>>
      and std::same_as<std::invoke_result_t<const Crossings&, Interval, std::span<const Interval>>, std::vector<Root>>
 [[nodiscard]] inline auto contact_traversal(
@@ -1110,9 +1115,7 @@ requires std::invocable<const Contacts&, Interval, Interval, bool>
   };
   std::vector<std::vector<NumericalContact>> owned;
   for (uint32_t index = lookahead_first; index <= lookahead_last; ++index) {
-    const auto cell = cell_at(index);
-    const bool query_intersects_cell = cell.start_jde_tt < query.end_jde_tt and query.start_jde_tt < cell.end_jde_tt;
-    owned.push_back(contacts(cell, contact_window(grid, index, cell_count), query_intersects_cell));
+    owned.push_back(contacts(cell_at(index), contact_window(grid, index, cell_count)));
   }
   std::vector<LongitudeRoot> results;
   for (const auto& found : owned) {

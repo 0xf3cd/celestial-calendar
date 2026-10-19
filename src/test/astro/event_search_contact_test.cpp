@@ -42,6 +42,10 @@ constexpr search::TrajectoryBounds BOUNDS {
   .third_derivative = 0.0,
   .rate_remainder = 0.0,
 };
+// A loose valid third-derivative bound withholds the contact certificate.
+constexpr search::TrajectoryBounds LOOSE_BOUNDS {
+  .longitude = BOUNDS.longitude, .rate = BOUNDS.rate, .third_derivative = 1e12, .rate_remainder = 0.0,
+};
 
 /** @brief Use known quadratic/linear references; the vertex's exact rate zero needs no rounding allowance. */
 auto quadratic(const double vertex, const double level = 0.0) {
@@ -187,21 +191,51 @@ TEST(EventSearchContacts, ACertifiedPredecessorContactKeepsItsRoundedOwnership) 
   ).empty());
 }
 
-TEST(EventSearchContacts, AnUncertifiedPredecessorContactCannotHideAQueryRelevantRegion) {
+TEST(EventSearchContacts, AnUncertifiedPredecessorContactStillRequiresTwoSidedEvidence) {
   constexpr double VERTEX = 0.25 - 3e-10;
   constexpr double OFFSET = 0.25 - VERTEX;
   const auto [longitude, rate] = quadratic(VERTEX);
-  // A loose valid third-derivative bound withholds the contact certificate.
-  const search::TrajectoryBounds bounds {
-    .longitude = BOUNDS.longitude, .rate = BOUNDS.rate, .third_derivative = 1e12, .rate_remainder = 0.0,
-  };
   search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
   try {
     static_cast<void>(range_test::longitude_contacts_in_interval(
       longitude, rate, toolbox::AngleDeg { OFFSET * OFFSET }, GRID,
-      { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }, bounds, budget, RESOLUTION, QUANTUM
+      { .start_jde_tt = 0.25, .end_jde_tt = 0.5 }, LOOSE_BOUNDS, budget, RESOLUTION, QUANTUM
     ));
-    FAIL() << "A query-relevant unresolved predecessor contact was hidden";
+    FAIL() << "A query-owned predecessor contact lost its certificate requirement";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(std::string { error.what() }, "Event-search numerical contact has no certified two-sided extremum region");
+  }
+}
+
+TEST(EventSearchContacts, UncertifiedCandidatesOutsideEitherQueryEndpointDoNotInvalidateIt) {
+  constexpr double VERTEX = 0.26;
+  const auto [longitude, rate] = quadratic(VERTEX);
+  const double station_jde_tt = search::reported_time(VERTEX, QUANTUM);
+  const double offset = station_jde_tt - VERTEX;
+  for (const auto query : std::array {
+         search::Interval { .start_jde_tt = 0.49, .end_jde_tt = 0.5 },
+         search::Interval { .start_jde_tt = 0.25, .end_jde_tt = 0.255 },
+       }) {
+    search::Budget budget { .evaluations_remaining = 40000, .candidates_remaining = 4000 };
+    ASSERT_TRUE(range_test::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { offset * offset }, GRID, query, LOOSE_BOUNDS,
+      budget, RESOLUTION, QUANTUM
+    ).empty());
+  }
+}
+
+TEST(EventSearchContacts, AnExcludedUncertifiedContactStillCannotHideBoundaryAmbiguity) {
+  constexpr double VERTEX = 0.26;
+  const auto [longitude, rate] = quadratic(VERTEX);
+  const double station_jde_tt = search::reported_time(VERTEX, QUANTUM);
+  const double offset = station_jde_tt - VERTEX;
+  search::Budget budget { .evaluations_remaining = 40000, .candidates_remaining = 4000 };
+  try {
+    static_cast<void>(range_test::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { offset * offset }, GRID,
+      { .start_jde_tt = 0.0, .end_jde_tt = station_jde_tt }, LOOSE_BOUNDS, budget, RESOLUTION, QUANTUM
+    ));
+    FAIL() << "Excluding the canonical contact hid query-relevant uncertainty";
   } catch (const std::runtime_error& error) {
     ASSERT_EQ(std::string { error.what() }, "Unresolved event-search region intersects the query");
   }
@@ -310,7 +344,7 @@ TEST(EventSearchContacts, FixedWindowsCrossingEitherCenturyEdgeUseWideBounds) {
 }
 
 TEST(EventSearchContacts, OverlappingNeighborExclusionsCannotEraseADistinctRoot) {
-  const auto contacts = [](const search::Interval cell, const search::Interval, const bool) {
+  const auto contacts = [](const search::Interval cell, const search::Interval) {
     std::vector<search::NumericalContact> found;
     if (cell.start_jde_tt == 0.0 or cell.start_jde_tt == 0.25) {
       found.push_back({
@@ -332,7 +366,7 @@ TEST(EventSearchContacts, OverlappingNeighborExclusionsCannotEraseADistinctRoot)
 }
 
 TEST(EventSearchContacts, DistinctContactsCannotAliasAtTheReportedTime) {
-  const auto contacts = [](const search::Interval cell, const search::Interval, const bool) {
+  const auto contacts = [](const search::Interval cell, const search::Interval) {
     return std::vector<search::NumericalContact> {
       {
         .root = { .jde_tt = 0.5, .direction = search::ContactDirection::TANGENT },
