@@ -71,7 +71,7 @@ TEST(EphemerisEventMath, ElementaryFunctionPremisesHaveIndependentHighPrecisionW
     ASSERT_LE(std::fabs(got - row.expected), allowance(row));
     ++checked;
   }
-  ASSERT_EQ(checked, 512);
+  ASSERT_EQ(checked, 516);
 }
 
 TEST(EphemerisEventMath, ARelativeZeroPremiseRequiresAnExactZero) {
@@ -80,6 +80,14 @@ TEST(EphemerisEventMath, ARelativeZeroPremiseRequiresAnExactZero) {
     const bool relative = row.function == TAN or row.function == HYPOT2 or row.function == HYPOT3 or row.function == POW;
     if (relative and row.expected == 0.0) {
       ASSERT_EQ(evaluate(row), 0.0);
+    }
+  }
+}
+
+TEST(EphemerisEventMath, FrozenZeroReferencesPreserveTheIeeeSign) {
+  for (const auto& row : libm_reference::ROWS) {
+    if (row.expected == 0.0) {
+      ASSERT_EQ(std::signbit(evaluate(row)), std::signbit(row.expected));
     }
   }
 }

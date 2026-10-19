@@ -21,7 +21,6 @@
 #include "toolbox.hpp"
 #include "julian_day.hpp"
 #include "earth.hpp"
-#include "event_search.hpp"
 #include "coord_transform.hpp"
 #include "ymd.hpp"
 
@@ -222,14 +221,14 @@ namespace detail {
  */
 [[nodiscard]] inline auto make_f(const int32_t year, const double expected_lon) {
   const double start_jde = get_start_jde(year);
-  const double start_longitude = solar_longitude(start_jde) - astro::detail::event_search::LONGITUDE_PERIOD_DEG;
+  const double start_longitude = solar_longitude(start_jde) - toolbox::LONGITUDE_PERIOD_DEG;
   return [=](const double jde) -> double {
-    const double raw = astro::detail::event_search::canonical_longitude_difference(
+    const double raw = toolbox::canonical_longitude_difference(
       toolbox::AngleDeg { solar_longitude(jde) }
     ).deg();
     const double predicted = std::fma(toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY, jde - start_jde, start_longitude);
-    const double turns = std::round((predicted - raw) / astro::detail::event_search::LONGITUDE_PERIOD_DEG);
-    return (raw + (astro::detail::event_search::LONGITUDE_PERIOD_DEG * turns)) - expected_lon;
+    const double turns = std::round((predicted - raw) / toolbox::LONGITUDE_PERIOD_DEG);
+    return (raw + (toolbox::LONGITUDE_PERIOD_DEG * turns)) - expected_lon;
   };
 }
 

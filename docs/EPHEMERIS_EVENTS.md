@@ -54,6 +54,10 @@ For example, use a returned station's `longitude` as the target of
 `longitude_events`. There is no angular proximity window: an adjacent
 binary64 target is not that same contact. If the available error allowances
 cannot distinguish a near miss from two crossings, the query throws.
+The constructed query can also throw when a two-sided contact region cannot
+be certified, including a stationary time exactly on a canonical cell or
+provider-domain boundary. Reusing a station's longitude does not bypass
+the completeness checks.
 Contact certification checks a continuous angular lift, derivative-side
 margins larger than the rate's truncation remainder, and signed curvature
 throughout the chosen region. The region may be wider or narrower than the
@@ -88,7 +92,7 @@ Completeness is conditional on an explicit evaluation-error model. It is
 not an unconditional statement about every C++ implementation or libm,
 and it is not a bound on the astronomical model's physical accuracy.
 
-The execution premises are IEEE-754 binary64, round-to-nearest-even,
+The execution premises are IEEE-754 binary64 with `FLT_EVAL_METHOD == 0`, round-to-nearest-even,
 gradual underflow, no unsafe algebraic reassociation or fast-math, and the
 source's nearest-binary64 constants. `fabs`, `remainder`, `nextafter` and
 power-of-two lattice operations must have their stated IEEE meanings.
@@ -104,7 +108,7 @@ The budgets use `2^-48` for each named elementary-function error channel:
 | `atan2`, `asin` | absolute angular error at most `2^-48` radians |
 | `tan` | relative error at most `2^-48` on the certified finite latitude domains |
 | two-/three-argument `hypot` | relative error at most `2^-48` |
-| `pow` with exponents 0, 1 or 2 | relative error at most `2^-48` on the source's admitted arguments |
+| `pow` with exponents 0, 1, 2 or 3 | relative error at most `2^-48` on the source's admitted arguments; exponent 0 returns 1 exactly |
 
 Zero results in relative channels must be exact. The domain-specific
 evaluation budgets account separately for arithmetic, argument formation,

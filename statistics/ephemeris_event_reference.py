@@ -66,6 +66,7 @@ def main() -> None:
   from pymeeus.Mercury import Mercury
   from pymeeus.Moon import Moon
   from pymeeus.Sun import Sun
+  from pymeeus.Uranus import Uranus
 
   anchor = Mercury.geocentric_position(Epoch(1992, 12, 20.0))
   ra_hours, dec_deg = float(anchor[0]) / 15, float(anchor[1])
@@ -85,8 +86,9 @@ def main() -> None:
       return float(Sun.apparent_geocentric_position(epoch)[0])
     if body == "MOON":
       return float(Moon.apparent_ecliptical_pos(epoch)[0])
-    if body == "MERCURY":
-      ra, dec, _ = Mercury.geocentric_position(epoch)
+    if body in ("MERCURY", "URANUS"):
+      planet = Mercury if body == "MERCURY" else Uranus
+      ra, dec, _ = planet.geocentric_position(epoch)
       return float(equatorial2ecliptical(ra, dec, true_obliquity(Epoch(time)))[0])
     raise ValueError(body)
 
@@ -124,6 +126,7 @@ def main() -> None:
     crossings("MOON", "SUN", 60.0, 2460676.5, 2460707.5),
     crossings("MOON", "SUN", -60.0, 2460676.5, 2460707.5),
     crossings("MERCURY", "SUN", 0.0, 2460755.5, 2460763.5),
+    crossings("MERCURY", "URANUS", -55.0, 2460735.5, 2460785.5),
   ]
   stationary = [bisect(rate, 2460748.5, 2460751.5), bisect(rate, 2460771.5, 2460774.5)]
   print(

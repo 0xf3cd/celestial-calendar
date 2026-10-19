@@ -24,12 +24,13 @@ At each JDE(TT), call `Sun.apparent_geocentric_position` or
 `Moon.apparent_ecliptical_pos`. For Mercury, call `geocentric_position`
 and convert its apparent equatorial result back to ecliptic coordinates
 with `equatorial2ecliptical` and `true_obliquity` at observation time.
+The Mercury-minus-Uranus reference applies the same conversion to Uranus.
 Meeus Example 33.a supplies an equatorial anchor before event collection.
 
 The directed windows and target angles are the printed inputs in the test.
 Lift consecutive one-day angular observations, enumerate the intervening
 whole-turn levels and bisect each crossing to a bracket narrower than
-`2e-8` day. The retained seven crossings comprise one solar level, three
+`2e-8` day. The initial seven crossings comprise one solar level, three
 Mercury passes, two oppositely oriented Moon-minus-Sun levels and one
 Mercury-minus-Sun level. The station reference differentiates Mercury's
 positions with an independent 11-point centered stencil, `h=1/16` day,
@@ -44,6 +45,10 @@ emission vector to observation axes. The observed crossing/station gaps
 are below `9e-7` day; the new `5e-6`-day regression tolerance leaves room for
 those model/evaluation differences without confusing separate branches.
 It does not loosen any existing test tolerance.
+The additional Mercury-minus-Uranus target at -55 degrees has three
+passes, collected with 258 source-position evaluations. Its maximum
+observed library/reference gap is below `9.1e-6` day; that new dataset uses
+`3e-5` day without changing the initial reference tolerance.
 
 The all-target dispatch, constructed contacts and hidden true-node station
 tests are explicitly model-self-consistency regressions. Their inputs and
@@ -51,9 +56,9 @@ expectations are not independent physical reference columns.
 
 ## Elementary-function witnesses
 
-`libm_reference.hpp` holds 512 mathematical reference rows: 64 each for
+`libm_reference.hpp` holds 516 mathematical reference rows: 64 each for
 `sin`, `cos`, `tan`, `atan2`, `asin`, two-/three-argument `hypot`, and
-integer-exponent `pow`. They were generated on 2026-10-19 with the
+integer-exponent `pow`, with four additional cubic-power witnesses. They were generated on 2026-10-19 with the
 validation-only [mpmath 1.3.0](https://github.com/mpmath/mpmath/tree/1.3.0)
 Python backend. `LIBM_REFERENCE_PINS.json` records the module identities,
 generator, seed `20261019` and output digest. No oracle implementation is
@@ -61,11 +66,13 @@ retained, and no Python package is needed to build or run the C++ tests.
 
 `statistics/ephemeris_event_math_reference.py --output <directory>`
 regenerates the rows with an explicitly installed mpmath 1.3.0. Actual
-binary64 inputs are converted exactly. Every rounded result agrees at
+binary64 inputs are converted exactly; signed-zero results use the IEEE
+function rules explicitly because mpmath does not retain the zero sign.
+Every rounded result agrees at
 80 and 112 decimal digits. The inputs include signed-zero branches,
 trigonometric arguments through `±2^40`, latitude functions on `[-1,1]`,
 norm coordinates across disparate magnitudes, and source-relevant powers
-0, 1 and 2. Rows are column-aligned over the entire table.
+0, 1, 2 and 3. Rows are column-aligned over the entire table.
 
 The C++ check allows the named `2^-48` absolute/relative premise plus the
 stored reference's rounding. Its runtime inputs prevent constant-folding

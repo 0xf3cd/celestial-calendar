@@ -1085,7 +1085,7 @@ TEST(Sun, ScalarStartKeeps32767WhileAnnualQueriesStopAt32766) {
   EXPECT_TRUE(std::isfinite(detail::get_start_jde(32767)));
   EXPECT_EQ(detail::get_start_jde(32767),
             astro::julian_day::utc_year_start_jde(std::chrono::year { 32767 }));
-  EXPECT_NO_THROW(std::ignore = detail::make_f(32767, 0.0)); // April 1 of 32767 is representable.
+  EXPECT_NO_THROW(std::ignore = detail::make_f(32767, 0.0));
 }
 
 

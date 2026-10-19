@@ -14,9 +14,9 @@ struct Row {
 };
 
 // Function, three actual binary64 inputs, rounded high-precision reference.
-inline constexpr std::array<Row, 512> ROWS {{
+inline constexpr std::array<Row, 516> ROWS {{
   { .function =    Function::SIN, .inputs = {               0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
-  { .function =    Function::SIN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
+  { .function =    Function::SIN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =              -0x0.0p+0 },
   { .function =    Function::SIN, .inputs = {   0x1.999999999999ap-4,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.98eaecb8bcb2cp-4 },
   { .function =    Function::SIN, .inputs = {  -0x1.999999999999ap-4,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.98eaecb8bcb2cp-4 },
   { .function =    Function::SIN, .inputs = {   0x1.921fb54442d18p+1,               0x0.0p+0,               0x0.0p+0 }, .expected =  0x1.1a62633145c07p-53 },
@@ -144,7 +144,7 @@ inline constexpr std::array<Row, 512> ROWS {{
   { .function =    Function::COS, .inputs = { -0x1.fa0a6c24eeb88p-36,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.0000000000000p+0 },
   { .function =    Function::COS, .inputs = { -0x1.692ab2f52bee8p+29,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.7feb564e0809cp-1 },
   { .function =    Function::TAN, .inputs = {               0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
-  { .function =    Function::TAN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
+  { .function =    Function::TAN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =              -0x0.0p+0 },
   { .function =    Function::TAN, .inputs = {  -0x1.0000000000000p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.8eb245cbee3a6p+0 },
   { .function =    Function::TAN, .inputs = {   0x1.0000000000000p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.8eb245cbee3a6p+0 },
   { .function =    Function::TAN, .inputs = {   0x1.fffffffffffffp-1,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.8eb245cbee3a4p+0 },
@@ -208,7 +208,7 @@ inline constexpr std::array<Row, 512> ROWS {{
   { .function =    Function::TAN, .inputs = {  -0x1.5693ecc7b4480p-1,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.94e1e6354e16ep-1 },
   { .function =    Function::TAN, .inputs = {  -0x1.29632051b2730p-1,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.500ea2bc66acbp-1 },
   { .function =   Function::ASIN, .inputs = {               0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
-  { .function =   Function::ASIN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =               0x0.0p+0 },
+  { .function =   Function::ASIN, .inputs = {              -0x0.0p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =              -0x0.0p+0 },
   { .function =   Function::ASIN, .inputs = {  -0x1.0000000000000p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =  -0x1.921fb54442d18p+0 },
   { .function =   Function::ASIN, .inputs = {   0x1.0000000000000p+0,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.921fb54442d18p+0 },
   { .function =   Function::ASIN, .inputs = {   0x1.fffffffffffffp-1,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.921fb50442d18p+0 },
@@ -527,6 +527,10 @@ inline constexpr std::array<Row, 512> ROWS {{
   { .function =    Function::POW, .inputs = {  0x1.fd81f7b49b9b0p-33,               0x0.0p+0,               0x0.0p+0 }, .expected =   0x1.0000000000000p+0 },
   { .function =    Function::POW, .inputs = { -0x1.060f509ac874bp-37,   0x1.0000000000000p+0,               0x0.0p+0 }, .expected = -0x1.060f509ac874bp-37 },
   { .function =    Function::POW, .inputs = {  0x1.c53d05e5790a2p-32,   0x1.0000000000000p+1,               0x0.0p+0 }, .expected =  0x1.913882b4f6ee2p-63 },
+  { .function =    Function::POW, .inputs = {              -0x0.0p+0,   0x1.8000000000000p+1,               0x0.0p+0 }, .expected =              -0x0.0p+0 },
+  { .function =    Function::POW, .inputs = {  -0x1.4000000000000p+0,   0x1.8000000000000p+1,               0x0.0p+0 }, .expected =  -0x1.f400000000000p+0 },
+  { .function =    Function::POW, .inputs = {   0x1.0000000000000p-3,   0x1.8000000000000p+1,               0x0.0p+0 }, .expected =   0x1.0000000000000p-9 },
+  { .function =    Function::POW, .inputs = {   0x1.0000000000000p+5,   0x1.8000000000000p+1,               0x0.0p+0 }, .expected =  0x1.0000000000000p+15 },
 }};
 
 } // namespace astro::ephemeris::test::libm_reference

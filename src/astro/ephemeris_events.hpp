@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cfloat>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -82,7 +83,10 @@ namespace event_search = astro::detail::event_search;
   }
 }
 
-/** @brief Recognize constant real-model first-minus-second relations by target identity, not sampled positions. */
+/**
+ * @brief Recognize constant real-model first-minus-second relations by target identity, not sampled positions.
+ * @throw std::invalid_argument If either target is unknown.
+ */
 [[nodiscard]] inline auto constant_longitude_difference(
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names preserve the directed pair's order.
   const Target first,
@@ -171,7 +175,8 @@ inline auto validate_event_environment() -> void {
 #ifdef __FAST_MATH__
   throw std::runtime_error { "Event search does not support fast-math" };
 #else
-  const bool binary64 = std::numeric_limits<double>::is_iec559 and std::numeric_limits<double>::digits == 53;
+  const bool binary64 = std::numeric_limits<double>::is_iec559 and std::numeric_limits<double>::digits == 53
+                        and FLT_EVAL_METHOD == 0;
   if (not binary64 or std::fegetround() != FE_TONEAREST) {
     throw std::runtime_error { "Event search requires IEEE binary64 round-to-nearest-even" };
   }
@@ -365,7 +370,7 @@ namespace astro::ephemeris {
   const double start_jde_tt,
   const double end_jde_tt
 ) -> std::vector<LongitudeEvent> {
-  const auto level = detail::event_search::canonical_longitude_difference(target_longitude);
+  const auto level = toolbox::canonical_longitude_difference(target_longitude);
   const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(target, std::nullopt, query);
   const auto roots = detail::search_longitudes(target, std::nullopt, level, grid, query);
@@ -450,7 +455,7 @@ namespace astro::ephemeris {
   const double start_jde_tt,
   const double end_jde_tt
 ) -> std::vector<LongitudeDifferenceEvent> {
-  const auto level = detail::event_search::canonical_longitude_difference(target_difference);
+  const auto level = toolbox::canonical_longitude_difference(target_difference);
   const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(first, second, query);
   if (first == second) {

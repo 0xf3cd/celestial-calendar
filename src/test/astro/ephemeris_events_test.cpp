@@ -674,9 +674,9 @@ TEST(EphemerisEventsKernel, LongitudeDifferencesPreserveOrientationAndCanonicalO
   ASSERT_EQ(search::project_longitude_difference(longitude_100, longitude_40).value, 60.0);
   ASSERT_EQ(search::project_longitude_difference(longitude_40, longitude_100).value, -60.0);
   ASSERT_TRUE(search::exact_zero(search::project_longitude_difference(longitude_100, longitude_100)));
-  ASSERT_EQ(search::canonical_longitude_difference(toolbox::AngleDeg { -180.0 }).deg(), 180.0);
-  ASSERT_EQ(search::canonical_longitude_difference(toolbox::AngleDeg { 540.0 }).deg(), 180.0);
-  ASSERT_FALSE(std::signbit(search::canonical_longitude_difference(toolbox::AngleDeg { -0.0 }).deg()));
+  ASSERT_EQ(toolbox::canonical_longitude_difference(toolbox::AngleDeg { -180.0 }).deg(), 180.0);
+  ASSERT_EQ(toolbox::canonical_longitude_difference(toolbox::AngleDeg { 540.0 }).deg(), 180.0);
+  ASSERT_FALSE(std::signbit(toolbox::canonical_longitude_difference(toolbox::AngleDeg { -0.0 }).deg()));
 
   // Exact degree identities modulo 360, independent of any ephemeris.
   const search::LongitudeValue before { .longitude = toolbox::AngleDeg { 359.0 }, .error_deg = 0.0 };
@@ -1643,6 +1643,15 @@ TEST(EphemerisEvents, ACanonicalRelativeStationConstructsARepeatablePairTangent)
   ASSERT_EQ(found.size(), 1);
   ASSERT_EQ(found.at(0).jde_tt, stationary_jde_tt);
   ASSERT_EQ(found.at(0).direction, EventDirection::TANGENT);
+  const double nearby_level = level.value + (relative_stations.at(0).increasing ? 1e-5 : -1e-5);
+  const auto two_crossings = longitude_difference_events(
+    Target::MERCURY, Target::SUN, toolbox::AngleDeg { nearby_level }, stationary_jde_tt - 0.1, stationary_jde_tt + 0.1
+  );
+  ASSERT_EQ(two_crossings.size(), 2);
+  ASSERT_LT(two_crossings.at(0).jde_tt, stationary_jde_tt);
+  ASSERT_GT(two_crossings.at(1).jde_tt, stationary_jde_tt);
+  ASSERT_LT(two_crossings.at(1).jde_tt - two_crossings.at(0).jde_tt, detail::EVENT_CELL_WIDTH_TT_DAYS);
+  ASSERT_NE(two_crossings.at(0).direction, two_crossings.at(1).direction);
   for (const double nearby : std::array { std::nextafter(level.value, 0.0), std::nextafter(level.value, 180.0) }) {
     ASSERT_THROW(
       static_cast<void>(longitude_difference_events(
@@ -1660,6 +1669,147 @@ TEST(EphemerisEvents, DirectedRoundingIsRejectedBeforeProviderWork) {
   }
   EXPECT_THROW(static_cast<void>(stations(Target::SUN, 2460676.5, 2460707.5)), std::runtime_error);
   ASSERT_EQ(std::fesetround(original), 0);
+}
+
+TEST(EphemerisEvents, FixedAnalysisBandsCoverWholeCellsAndTheirSamplingHalo) {
+  const double first = detail::EVENT_CENTURY_START_JDE_TT;
+  const double last = detail::EVENT_CENTURY_END_JDE_TT;
+  for (const auto target : EVENT_TARGETS) {
+    const auto index = static_cast<std::size_t>(target);
+    const auto tight = detail::EVENT_BOUNDS_CENTURY.at(index);
+    const auto wide = detail::EVENT_BOUNDS_WIDE.at(index);
+    for (const auto cell : std::array {
+           search::Interval { .start_jde_tt = first + 0.625, .end_jde_tt = first + 0.875 },
+           search::Interval { .start_jde_tt = last - 0.875, .end_jde_tt = last - 0.625 } }) {
+      ASSERT_EQ(detail::event_bounds(target, cell).position_error_deg, tight.position_error_deg);
+    }
+    for (const auto cell : std::array {
+           search::Interval { .start_jde_tt = first + 0.375, .end_jde_tt = first + 0.625 },
+           search::Interval { .start_jde_tt = last - 0.625, .end_jde_tt = last - 0.375 } }) {
+      ASSERT_EQ(detail::event_bounds(target, cell).position_error_deg, wide.position_error_deg);
+    }
+    const bool expected_station_free = target == Target::SUN or target == Target::MOON
+                                      or target == Target::MEAN_ASCENDING or target == Target::MEAN_DESCENDING;
+    ASSERT_EQ(detail::has_no_station(tight), expected_station_free);
+    ASSERT_EQ(detail::has_no_station(wide), expected_station_free);
+  }
+}
+
+TEST(EphemerisEvents, WideBandPhysicalQueriesAndAStraddlingQueryKeepTheirCanonicalRoots) {
+  // Model-self-consistency checks of wide-band composition, not independent physical reference epochs.
+  for (const double time : std::array { 2415000.12345678, 2488090.12345678 }) {
+    for (const auto target : std::array { Target::SUN, Target::MOON, Target::MARS, Target::JUPITER }) {
+      const auto level = detail::event_longitude(target, time);
+      const auto found = longitude_events(target, level, time - 0.2, time + 0.2);
+      ASSERT_EQ(found.size(), 1);
+      ASSERT_NEAR(found.at(0).jde_tt, time, detail::EVENT_TIME_RESOLUTION_TT_DAYS);
+    }
+    const auto level = search::project_longitude_difference(
+      { .longitude = detail::event_longitude(Target::MOON, time), .error_deg = 0.0 },
+      { .longitude = detail::event_longitude(Target::SUN, time), .error_deg = 0.0 }
+    );
+    const auto found = longitude_difference_events(
+      Target::MOON, Target::SUN, toolbox::AngleDeg { level.value }, time - 0.2, time + 0.2
+    );
+    ASSERT_EQ(found.size(), 1);
+    ASSERT_NEAR(found.at(0).jde_tt, time, detail::EVENT_TIME_RESOLUTION_TT_DAYS);
+  }
+  const double time = detail::EVENT_CENTURY_START_JDE_TT + 0.7;
+  const auto level = detail::event_longitude(Target::SUN, time);
+  const auto short_query = longitude_events(Target::SUN, level, time - 0.1, time + 0.1);
+  const auto straddling = longitude_events(Target::SUN, level, time - 2.0, time + 2.0);
+  ASSERT_EQ(short_query.size(), 1);
+  ASSERT_EQ(straddling.size(), 1);
+  ASSERT_EQ(short_query.at(0).jde_tt, straddling.at(0).jde_tt);
+}
+
+TEST(EphemerisEvents, DirectedPairsRetainEveryPassAndSignedAngle) {
+  // PyMeeus source/date/generation and the separate 3e-5-day tolerance: provenance/ephemeris-events/ATTRIBUTION.md.
+  const auto retrograde = longitude_difference_events(
+    Target::MERCURY, Target::URANUS, toolbox::AngleDeg { -55.0 }, 2460735.5, 2460785.5
+  );
+  const std::array expected { 2460737.000839077, 2460765.032595448, 2460782.5520821437 };
+  ASSERT_EQ(retrograde.size(), expected.size());
+  for (std::size_t index = 0; index < expected.size(); ++index) {
+    ASSERT_NEAR(retrograde.at(index).jde_tt, expected.at(index), 3e-5);
+    ASSERT_EQ(retrograde.at(index).direction, index == 1 ? EventDirection::DECREASING : EventDirection::INCREASING);
+    if (index > 0) {
+      ASSERT_LT(retrograde.at(index - 1).jde_tt, retrograde.at(index).jde_tt);
+    }
+  }
+  for (const double angle : std::array { 0.0, 90.0, 120.0 }) {
+    const auto passes = longitude_difference_events(
+      Target::MOON, Target::SUN, toolbox::AngleDeg { angle }, 2460676.5, 2460796.5
+    );
+    ASSERT_EQ(passes.size(), 4);
+    for (std::size_t index = 1; index < passes.size(); ++index) {
+      ASSERT_LT(passes.at(index - 1).jde_tt, passes.at(index).jde_tt);
+      ASSERT_EQ(passes.at(index).direction, EventDirection::INCREASING);
+    }
+  }
+}
+
+TEST(EphemerisEvents, PublicWorkLimitsAndNonfiniteTimesRemainExplicit) {
+  ASSERT_EQ(detail::EVENT_MAXIMUM_EVALUATIONS, std::size_t { 65536 });
+  ASSERT_EQ(detail::EVENT_MAXIMUM_CANDIDATES, std::size_t { 4096 });
+  ASSERT_EQ(detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS, 3660.0);
+  constexpr double START = 2460676.5;
+  ASSERT_TRUE(stations(Target::SUN, START, START + detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS).empty());
+  search::Budget budget { .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
+                          .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES };
+  std::size_t calls = 0;
+  const auto provider = [&](const double) -> search::Value { ++calls; return { .value = 1.0, .error = 0.0 }; };
+  for (std::size_t index = 0; index < detail::EVENT_MAXIMUM_EVALUATIONS; ++index) {
+    static_cast<void>(search::sample(provider, START, budget));
+  }
+  ASSERT_THROW(static_cast<void>(search::sample(provider, START, budget)), std::runtime_error);
+  ASSERT_EQ(calls, detail::EVENT_MAXIMUM_EVALUATIONS);
+  ASSERT_EQ(budget.evaluations_remaining, 0);
+  for (const double invalid : std::array {
+         std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity() }) {
+    for (const auto interval : std::array {
+           search::Interval { .start_jde_tt = invalid, .end_jde_tt = START + 1.0 },
+           search::Interval { .start_jde_tt = START, .end_jde_tt = invalid } }) {
+      ASSERT_THROW(static_cast<void>(stations(Target::SUN, interval.start_jde_tt, interval.end_jde_tt)), std::invalid_argument);
+      ASSERT_THROW(
+        static_cast<void>(longitude_events(Target::SUN, toolbox::AngleDeg { 0.0 }, interval.start_jde_tt, interval.end_jde_tt)),
+        std::invalid_argument
+      );
+      ASSERT_THROW(
+        static_cast<void>(longitude_difference_events(
+          Target::MOON, Target::SUN, toolbox::AngleDeg { 0.0 }, interval.start_jde_tt, interval.end_jde_tt
+        )),
+        std::invalid_argument
+      );
+    }
+  }
+}
+
+TEST(EphemerisEventsKernel, ACellBoundaryContactCannotReturnAPartialListWithoutTwoSidedEvidence) {
+  const auto longitude = [](const double time) -> search::LongitudeValue {
+    const double x = time - 0.25;
+    return { .longitude = toolbox::AngleDeg { x * x }, .error_deg = 1e-15 };
+  };
+  const auto rate = [](const double time) -> search::Value {
+    return { .value = 2.0 * (time - 0.25), .error = 0.0 };
+  };
+  const search::TrajectoryBounds bounds {
+    .longitude = { .first_derivative = 1.5, .second_derivative = 2.0 },
+    .rate = { .first_derivative = 2.0, .second_derivative = 0.0 },
+    .third_derivative = 0.0,
+    .rate_remainder = 0.0,
+  };
+  search::Budget budget { .evaluations_remaining = 10000, .candidates_remaining = 1000 };
+  const search::Grid grid {
+    .domain = { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, .cell_width_tt_days = 0.25,
+  };
+  ASSERT_THROW(
+    static_cast<void>(search::longitude_contacts_in_interval(
+      longitude, rate, toolbox::AngleDeg { 0.0 }, grid, grid.domain, bounds, budget, 0x1p-10, 0x1p-30
+    )),
+    std::runtime_error
+  );
 }
 
 } // namespace astro::ephemeris::test

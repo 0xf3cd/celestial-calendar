@@ -18,7 +18,6 @@ import hashlib
 import json
 import math
 import random
-import re
 
 from pathlib import Path
 
@@ -60,8 +59,9 @@ def inputs() -> dict[str, list[tuple[float, float, float]]]:
   for index in range(60):
     value = rng.uniform(1.0, 2.0) * 2 ** rng.randrange(-64, 6)
     powers.append((value if index % 2 else -value, float(index % 3), 0.0))
+  powers.extend((value, 3.0, 0.0) for value in (-0.0, -1.25, 0.125, 32.0))
   result["POW"] = powers
-  assert all(len(result[name]) == 64 for name in FUNCTIONS)
+  assert all(len(result[name]) == (68 if name == "POW" else 64) for name in FUNCTIONS)
   return result
 
 
@@ -69,8 +69,12 @@ def evaluate(name: str, args: tuple[float, float, float], digits: int) -> float:
   """Convert the actual binary64 inputs exactly, including atan2's signed-zero branch."""
   with mp.workdps(digits):
     x, y, z = (mp.mpf(v) for v in args)
-    if name == "ATAN2" and args[0] == 0.0 and args[1] < 0.0:
-      return float(-mp.pi if math.copysign(1.0, args[0]) < 0 else mp.pi)
+    if name in ("SIN", "TAN", "ASIN") and args[0] == 0.0:
+      return args[0]
+    if name == "ATAN2" and args[0] == 0.0:
+      if math.copysign(1.0, args[1]) < 0:
+        return float(-mp.pi if math.copysign(1.0, args[0]) < 0 else mp.pi)
+      return args[0]
     if name in ("SIN", "COS", "TAN", "ASIN"):
       return float(getattr(mp, name.lower())(x))
     if name == "ATAN2":
@@ -80,6 +84,8 @@ def evaluate(name: str, args: tuple[float, float, float], digits: int) -> float:
     if name == "HYPOT3":
       return float(mp.sqrt(x * x + y * y + z * z))
     if name == "POW":
+      if args[0] == 0.0 and args[1] > 0.0:
+        return args[0] if int(args[1]) % 2 else 0.0
       return float(x ** int(args[1]))
     raise ValueError(name)
 
@@ -87,26 +93,11 @@ def evaluate(name: str, args: tuple[float, float, float], digits: int) -> float:
 def main() -> None:
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("--output", type=Path, required=True)
-  parser.add_argument("--pins-only", action="store_true", help="Write metadata for an already generated header")
-  parser.add_argument(
-    "--format-only", action="store_true", help="Add member designators without reevaluating references"
-  )
   args = parser.parse_args()
   if mp.__version__ != "1.3.0" or BACKEND != "python":
     raise RuntimeError("Reference collection requires mpmath 1.3.0's Python backend")
-  if args.pins_only:
-    write_pins(args.output)
-    return
-  if args.format_only:
-    header = args.output / "libm_reference.hpp"
-    original = header.read_text()
-    pattern = re.compile(r"^  \{ (\s*Function::\w+), \{ (.+) \}, (.+) \},$", re.M)
-    formatted, count = pattern.subn(r"  { .function = \1, .inputs = { \2 }, .expected = \3 },", original)
-    if count != 512:
-      raise RuntimeError("Expected exactly 512 undesignated rows")
-    header.write_text(formatted)
-    write_pins(args.output)
-    return
+  if (args.output / "libm_reference.hpp").exists():
+    raise RuntimeError("Refusing to overwrite an existing reference dataset")
   rows = []
   for name, cases in inputs().items():
     for values in cases:
@@ -147,14 +138,14 @@ def main() -> None:
   if header.exists():
     raise RuntimeError("Refusing to overwrite an existing reference dataset")
   header.write_text("\n".join(lines))
-  write_pins(args.output)
+  write_pins(args.output, len(rows))
 
 
-def write_pins(output: Path) -> None:
+def write_pins(output: Path, row_count: int) -> None:
   """Record source identities without replaying completed high-precision evaluations."""
   header = output / "libm_reference.hpp"
-  if "std::array<Row, 512>" not in header.read_text():
-    raise RuntimeError("Expected the complete 512-row dataset")
+  if f"std::array<Row, {row_count}>" not in header.read_text():
+    raise RuntimeError("Reference row count differs from the completed collection")
   package = Path(mp.__file__).parent
   source_files = ("ctx_mp_python.py", "libmp/libmpf.py", "libmp/libelefun.py", "functions/functions.py")
   pins = {name: hashlib.sha256((package / name).read_bytes()).hexdigest() for name in source_files}
@@ -167,7 +158,7 @@ def write_pins(output: Path) -> None:
         "collection_date": "2026-10-19",
         "precision_decimal_digits": [80, 112],
         "rounded_results_identical": True,
-        "rows": 512,
+        "rows": row_count,
         "source_module_sha256": pins,
         "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "header_sha256": hashlib.sha256(header.read_bytes()).hexdigest(),

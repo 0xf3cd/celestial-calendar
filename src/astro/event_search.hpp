@@ -31,7 +31,7 @@
 
 namespace astro::detail::event_search {
 
-inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
+inline constexpr uint32_t MAXIMUM_CONTACT_REGION_ATTEMPTS = 24;
 
 /** @brief A scalar observation with an absolute error allowance at the requested abscissa. */
 struct Value {
@@ -365,18 +365,6 @@ requires std::invocable<const Provider&, double>
   return candidates;
 }
 
-/** @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees. */
-[[nodiscard]] inline auto canonical_longitude_difference(const toolbox::AngleDeg difference) -> toolbox::AngleDeg {
-  if (not std::isfinite(difference.deg())) {
-    throw std::invalid_argument { "Event-search longitude target must be finite" };
-  }
-  const double remainder = std::remainder(difference.deg(), LONGITUDE_PERIOD_DEG);
-  if (remainder == -LONGITUDE_PERIOD_DEG / 2.0) {
-    return toolbox::AngleDeg { LONGITUDE_PERIOD_DEG / 2.0 };
-  }
-  return toolbox::AngleDeg { remainder == 0.0 ? 0.0 : remainder };
-}
-
 /**
  * @brief Observe first minus second modulo 360 degrees, including subtraction roundoff.
  * @note The allowance is circular; scalar isolation requires a certified continuous lift over its cell.
@@ -393,8 +381,8 @@ requires std::invocable<const Provider&, double>
   if (not valid_observation(first) or not valid_observation(second)) {
     throw std::runtime_error { "Invalid event-search longitude observation" };
   }
-  const double first_deg = canonical_longitude_difference(first.longitude).deg();
-  const double second_deg = canonical_longitude_difference(second.longitude).deg();
+  const double first_deg = toolbox::canonical_longitude_difference(first.longitude).deg();
+  const double second_deg = toolbox::canonical_longitude_difference(second.longitude).deg();
   const double difference = first_deg - second_deg;
   const double recovered_second = first_deg - difference;
   const double recovered_first = difference + recovered_second;
@@ -402,7 +390,7 @@ requires std::invocable<const Provider&, double>
   const bool exact_inputs = first.error_deg == 0.0 and second.error_deg == 0.0;
   const double input_error = exact_inputs ? 0.0 : upper(first.error_deg + second.error_deg);
   return {
-    .value = canonical_longitude_difference(toolbox::AngleDeg { difference }).deg(),
+    .value = toolbox::canonical_longitude_difference(toolbox::AngleDeg { difference }).deg(),
     .error = roundoff == 0.0 ? input_error : upper(input_error + std::fabs(roundoff)),
   };
 }
@@ -411,7 +399,7 @@ requires std::invocable<const Provider&, double>
 [[nodiscard]] inline auto longitude_residual(const LongitudeValue observed, const toolbox::AngleDeg target) -> Value {
   const auto evaluated = project_longitude_difference(observed, { .longitude = target, .error_deg = 0.0 });
   const double extent = upper(std::fabs(evaluated.value) + evaluated.error);
-  if (extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+  if (extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
     throw std::runtime_error { "Event-search longitude observation crosses the antipodal cut" };
   }
   return evaluated;
@@ -521,7 +509,7 @@ requires std::invocable<const Provider&, double>
   const EndpointOwnership ownership = EndpointOwnership::LEFT
 ) -> std::vector<Candidate> {
   validate_cell(cell.start_jde_tt, cell.end_jde_tt, bounds);
-  const auto canonical_target = canonical_longitude_difference(target);
+  const auto canonical_target = toolbox::canonical_longitude_difference(target);
   const auto projected = [&](const double jde_tt) {
     return project_longitude_difference(provider(jde_tt), { .longitude = canonical_target, .error_deg = 0.0 });
   };
@@ -536,7 +524,7 @@ requires std::invocable<const Provider&, double>
   }
   const double middle_extent = upper(std::fabs(middle.evaluated.value) + middle.evaluated.error);
   const double cell_extent = upper(middle_extent + excursion);
-  if (cell_extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+  if (cell_extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
     throw std::runtime_error { "Event-search longitude cell has no continuous-lift certificate" };
   }
   const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
@@ -903,7 +891,7 @@ requires std::invocable<const Provider&, double>
   const double report_quantum_tt_days = 0.0
 ) -> std::vector<Root> {
   validate_cell(query.start_jde_tt, query.end_jde_tt, bounds);
-  const auto canonical_target = canonical_longitude_difference(target);
+  const auto canonical_target = toolbox::canonical_longitude_difference(target);
   if (not finite_nonnegative(time_resolution)) {
     throw std::invalid_argument { "Invalid event-search longitude resolution" };
   }
@@ -957,7 +945,7 @@ requires std::invocable<const LongitudeProvider&, double>
   const int32_t expected_curvature = stationary.increasing ? 1 : -1;
   const Interval isolated { .start_jde_tt = candidate.left.jde_tt, .end_jde_tt = candidate.right.jde_tt };
   const double available_radius = std::min(jde_tt - cell.start_jde_tt, cell.end_jde_tt - jde_tt);
-  for (uint32_t attempt = 0; attempt < 24; ++attempt) {
+  for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
     const double radius = std::ldexp(available_radius, -static_cast<int32_t>(attempt));
     const Interval centered { .start_jde_tt = std::max(cell.start_jde_tt, jde_tt - radius),
                               .end_jde_tt = std::min(cell.end_jde_tt, jde_tt + radius) };
@@ -984,7 +972,7 @@ requires std::invocable<const LongitudeProvider&, double>
     }
     const double region_radius = std::max(upper(jde_tt - left_jde_tt), upper(right_jde_tt - jde_tt));
     const double extent = upper(at_station.evaluated.error + upper(bounds.longitude.first_derivative * region_radius));
-    if (extent >= LONGITUDE_PERIOD_DEG / 2.0) {
+    if (extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
       continue;
     }
     const auto before = sample(lifted, left_jde_tt, budget);
@@ -1043,7 +1031,7 @@ inline auto append_longitude_contacts_in_cell(
   if (invalid_refinement) {
     throw std::invalid_argument { "Invalid event-search contact bounds or refinement" };
   }
-  const auto canonical_target = canonical_longitude_difference(target);
+  const auto canonical_target = toolbox::canonical_longitude_difference(target);
   const auto lifted = [&](const double jde_tt) { return longitude_residual(longitude(jde_tt), canonical_target); };
   const auto stations = isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.rate, budget);
   std::vector<Interval> contact_regions;
@@ -1141,7 +1129,7 @@ requires std::invocable<const LongitudeProvider&, double>
   if (invalid_refinement) {
     throw std::invalid_argument { "Invalid event-search contact bounds or refinement" };
   }
-  const auto canonical_target = canonical_longitude_difference(target);
+  const auto canonical_target = toolbox::canonical_longitude_difference(target);
   validate_reporting_grid(grid, report_quantum_tt_days);
   std::vector<LongitudeRoot> results;
   visit_query_cells(grid, query, [&](const Interval cell) {
