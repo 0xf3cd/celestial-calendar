@@ -2,12 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- C++ half-open interval searches for supplied longitudes, stations and directed longitude differences across all
+  fourteen ephemeris targets (#301, #304). Queries preserve signed-angle orientation, recognize exact numerical
+  stationary contacts, and throw on unresolved isolation, refinement or work limits rather than return partial
+  lists. [The event guide](EPHEMERIS_EVENTS.md) specifies domains, limits and the conditional floating-point contract.
+
 ### Changed
 
 - C++ input rejections consistently throw `std::invalid_argument` (#345), including unsupported dates or years,
   unknown models, invalid Jieqi indices and angle division by zero. Callers that caught `std::out_of_range` or
   `std::runtime_error` for these inputs must update their handlers. Numerical convergence and consistency failures
   remain `std::runtime_error`; numerical results, C ABI layouts and binding error behavior are unchanged.
+- Legacy solar-longitude root searches select their angular branch from the year's actual initial longitude,
+  fixing wrong-branch roots near the upper supported year without changing its input domain or existing tolerances.
 
 ## [v0.8.0]
 

@@ -51,6 +51,11 @@ const double degrees_per_tt_day = rate.deg_per_tt_day;
 Pluto rate inputs are `[2409543.875, 2488069.125)` and node inputs are `[2409542.875, 2488069.125)`.
 Other rate inputs are `[-1200954.625, 6104044.625)`.
 
+The optional [`ephemeris_events.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris_events.hpp)
+adds `longitude_events`, `stations` and `longitude_difference_events` for explicit half-open TT intervals inside
+those domains. The [event guide](EPHEMERIS_EVENTS.md) covers signed target orientation, exact numerical contacts,
+bounded work and the conditional floating-point contract. These interval functions are C++-only.
+
 The [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
 geocentric positions, longitude rates and house geometry at one explicitly scaled civil instant:
 
