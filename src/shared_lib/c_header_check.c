@@ -138,3 +138,71 @@ _Static_assert(CHART_TARGET_SUN == 0 && CHART_TARGET_MOON == 1 && CHART_TARGET_M
                CHART_TARGET_MEAN_DESCENDING == 11 && CHART_TARGET_TRUE_ASCENDING == 12 &&
                CHART_TARGET_TRUE_DESCENDING == 13 && CHART_PRESENT_LATITUDE == 1 &&
                CHART_PRESENT_DISTANCE == 2, "Chart V1 identity or presence codes drifted");
+
+/* #303: the event targets mirror the chart identities — one target order for the whole ABI. */
+_Static_assert(EVENT_TARGET_SUN == CHART_TARGET_SUN && EVENT_TARGET_MOON == CHART_TARGET_MOON &&
+               EVENT_TARGET_MERCURY == CHART_TARGET_MERCURY && EVENT_TARGET_VENUS == CHART_TARGET_VENUS &&
+               EVENT_TARGET_MARS == CHART_TARGET_MARS && EVENT_TARGET_JUPITER == CHART_TARGET_JUPITER &&
+               EVENT_TARGET_SATURN == CHART_TARGET_SATURN && EVENT_TARGET_URANUS == CHART_TARGET_URANUS &&
+               EVENT_TARGET_NEPTUNE == CHART_TARGET_NEPTUNE && EVENT_TARGET_PLUTO == CHART_TARGET_PLUTO &&
+               EVENT_TARGET_MEAN_ASCENDING == CHART_TARGET_MEAN_ASCENDING &&
+               EVENT_TARGET_MEAN_DESCENDING == CHART_TARGET_MEAN_DESCENDING &&
+               EVENT_TARGET_TRUE_ASCENDING == CHART_TARGET_TRUE_ASCENDING &&
+               EVENT_TARGET_TRUE_DESCENDING == CHART_TARGET_TRUE_DESCENDING,
+               "Event target identities drifted from the chart targets");
+
+_Static_assert(EVENT_DIRECTION_INCREASING == 0 && EVENT_DIRECTION_DECREASING == 1 &&
+               EVENT_DIRECTION_TANGENT == 2, "Event direction codes drifted");
+
+_Static_assert(EVENT_MOTION_DIRECT == 0 && EVENT_MOTION_RETROGRADE == 1, "Event motion codes drifted");
+
+_Static_assert(offsetof(LongitudeEventRecord, jde_tt) == 0 &&
+               offsetof(LongitudeEventRecord, longitude_deg) == 8 &&
+               offsetof(LongitudeEventRecord, longitude_rate_deg_per_tt_day) == 16 &&
+               offsetof(LongitudeEventRecord, direction_code) == 24 &&
+               sizeof(LongitudeEventRecord) == 32 && _Alignof(LongitudeEventRecord) == 8,
+               "LongitudeEventRecord layout drifted");
+
+_Static_assert(offsetof(StationEventRecord, jde_tt) == 0 &&
+               offsetof(StationEventRecord, longitude_deg) == 8 &&
+               offsetof(StationEventRecord, longitude_rate_deg_per_tt_day) == 16 &&
+               offsetof(StationEventRecord, motion_before_code) == 24 &&
+               offsetof(StationEventRecord, motion_after_code) == 28 &&
+               sizeof(StationEventRecord) == 32 && _Alignof(StationEventRecord) == 8,
+               "StationEventRecord layout drifted");
+
+_Static_assert(offsetof(LongitudeDifferenceEventRecord, jde_tt) == 0 &&
+               offsetof(LongitudeDifferenceEventRecord, longitude_a_deg) == 8 &&
+               offsetof(LongitudeDifferenceEventRecord, longitude_b_deg) == 16 &&
+               offsetof(LongitudeDifferenceEventRecord, longitude_rate_a_deg_per_tt_day) == 24 &&
+               offsetof(LongitudeDifferenceEventRecord, longitude_rate_b_deg_per_tt_day) == 32 &&
+               offsetof(LongitudeDifferenceEventRecord, signed_difference_deg) == 40 &&
+               offsetof(LongitudeDifferenceEventRecord, direction_code) == 48 &&
+               sizeof(LongitudeDifferenceEventRecord) == 56 && _Alignof(LongitudeDifferenceEventRecord) == 8,
+               "LongitudeDifferenceEventRecord layout drifted");
+
+_Static_assert((_Generic(((LongitudeEventRecord*)0)->jde_tt, double: 1, default: 0) &&
+                _Generic(((LongitudeEventRecord*)0)->longitude_deg, double: 1, default: 0) &&
+                _Generic(((LongitudeEventRecord*)0)->longitude_rate_deg_per_tt_day, double: 1, default: 0) &&
+                _Generic(((LongitudeEventRecord*)0)->direction_code, uint32_t: 1, default: 0) &&
+                _Generic(((StationEventRecord*)0)->motion_before_code, uint32_t: 1, default: 0) &&
+                _Generic(((StationEventRecord*)0)->motion_after_code, uint32_t: 1, default: 0) &&
+                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_a_deg, double: 1, default: 0) &&
+                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_b_deg, double: 1, default: 0) &&
+                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_a_deg_per_tt_day, double: 1, default: 0) &&
+                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_b_deg_per_tt_day, double: 1, default: 0) &&
+                _Generic(((LongitudeDifferenceEventRecord*)0)->signed_difference_deg, double: 1, default: 0)) != 0,
+               "Event record field types drifted");
+
+_Static_assert(_Generic(&longitude_events,
+               uint32_t (*)(uint32_t, double, double, double, uint32_t *, LongitudeEventRecord *, uint32_t): 1,
+               default: 0) != 0, "longitude_events signature drifted");
+
+_Static_assert(_Generic(&longitude_stations,
+               uint32_t (*)(uint32_t, double, double, uint32_t *, StationEventRecord *, uint32_t): 1,
+               default: 0) != 0, "longitude_stations signature drifted");
+
+_Static_assert(_Generic(&longitude_difference_events,
+               uint32_t (*)(uint32_t, uint32_t, double, double, double, uint32_t *,
+                            LongitudeDifferenceEventRecord *, uint32_t): 1,
+               default: 0) != 0, "longitude_difference_events signature drifted");
