@@ -34,15 +34,13 @@ namespace astro::sun::geocentric_coord {
  *          transforms the heliocentric coordinates to geocentric coordinates.
  */
 [[nodiscard]] inline auto vsop87d(const double jde) -> toolbox::SphericalCoordinate {
+  using namespace toolbox::literals;
+
   const auto& [λ_helio, β_helio, r_helio] = astro::earth::heliocentric_coord::vsop87d(jde);
   return {
     // Convert the heliocentric ecliptic longitude of Earth to geocentric ecliptic longitude of Sun.
     // The formula is: λ_sun_geocentric_deg = λ_earth_heliocentric_deg + 180∘
-    .λ = std::invoke([&] {
-      using namespace toolbox::literals;
-      const auto sum = λ_helio + 180.0_deg;
-      return sum.normalize();
-    }),
+    .λ = (λ_helio + 180.0_deg).normalize(),
 
     // Convert the heliocentric ecliptic latitude of Earth to geocentric ecliptic latitude of Sun.
     // The formula is: β_sun_geocentric_deg = -β_earth_heliocentric_deg

@@ -22,6 +22,7 @@
 #include <utility>
 #include <optional>
 #include <iterator>
+#include <algorithm>
 #include <stdexcept>
 
 #include "ymd.hpp"
@@ -79,25 +80,17 @@ inline constexpr std::array<Algo1Coefficients, 20> ALGO1_COEFFICIENTS = {{
 
 
 /** @brief Get the coefficients of algorithm 1. Returns `std::nullopt` if not found. */
-constexpr auto 
+constexpr auto
 find_coefficients(const int32_t year) -> std::optional<
   std::pair<Algo1Coefficients, Algo1Coefficients>
 > {
-  // TODO: Use `std::views::pairwise` once every CI leg has it (./checks.py --features).
-  const auto pairwise = [](const auto& range) {
-    using namespace std::ranges;
-    return views::iota(0, distance(range) - 1) | views::transform([&range](auto i) {
-      return std::pair { *(begin(range) + i), *(begin(range) + i + 1) }; // NOLINT
-    });
-  };
-
-  for (const auto& [start, end] : pairwise(ALGO1_COEFFICIENTS)) {
-    if (year >= start.year and year < end.year) {
-      return std::pair { start, end };
-    }
+  // The pair of adjacent rows bracketing `year`: the last row whose start is on or before it,
+  // paired with the next row. The same question leap_second.hpp asks with upper_bound/prev.
+  const auto *const end = std::ranges::upper_bound(ALGO1_COEFFICIENTS, year, {}, &Algo1Coefficients::year);
+  if (end == std::ranges::begin(ALGO1_COEFFICIENTS) or end == std::ranges::end(ALGO1_COEFFICIENTS)) {
+    return std::nullopt;
   }
-
-  return std::nullopt;
+  return std::pair { *std::prev(end), *end };
 }
 
 

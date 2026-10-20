@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <functional>
+#include <utility>
 
 #include "lib.hpp"
 #include "celestial.h"
@@ -82,6 +83,34 @@ auto convert_to_gregorian(const int32_t year, const uint8_t month, const bool is
   };
 }
 
+// The single validation point for the `algo` byte: every export rejects the same values
+// with the same message.
+[[nodiscard]] auto to_algo(const uint8_t algo) -> calendar::lunar::common::Algo {
+  using enum calendar::lunar::common::Algo;
+  switch (algo) {
+    case 1: return ALGO_1;
+    case 2: return ALGO_2;
+    case 3: return ALGO_3;
+    default:
+      throw std::invalid_argument {
+        std::format("Unsupported algorithm: {}", algo)
+      };
+  }
+}
+
+// Dispatches on the validated algorithm; `function` is a template lambda that receives it
+// as a compile-time constant.
+template <typename Function>
+constexpr auto dispatch(const calendar::lunar::common::Algo algo, Function&& function) -> decltype(auto) {
+  using enum calendar::lunar::common::Algo;
+  switch (algo) {
+    case ALGO_1: return std::forward<Function>(function).template operator()<ALGO_1>();
+    case ALGO_2: return std::forward<Function>(function).template operator()<ALGO_2>();
+    case ALGO_3: return std::forward<Function>(function).template operator()<ALGO_3>();
+  }
+  std::unreachable();
+}
+
 } // namespace
 
 
@@ -90,52 +119,45 @@ extern "C" {
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
-  return lib::wrap_export("get_supported_lunar_year_range", [=]() -> SupportedLunarYearRange {
-    if (algo == 1) {
-      return {
-        .valid = true,
-        .start = calendar::lunar::algo1::START_YEAR,
-        .end   = calendar::lunar::algo1::END_YEAR,
-      };
-    }
-    if (algo == 2) {
-      return {
-        .valid = true,
-        .start = calendar::lunar::algo2::START_YEAR,
-        .end   = calendar::lunar::algo2::END_YEAR,
-      };
-    }
-    if (algo == 3) {
-      return {
-        .valid = true,
-        .start = calendar::lunar::algo3::START_YEAR,
-        .end   = calendar::lunar::algo3::END_YEAR,
-      };
-    }
-    throw std::invalid_argument {
-      std::format("Unsupported algorithm: {}", algo)
-    };
+  return lib::wrap_export(__func__, [=]() -> SupportedLunarYearRange {
+    return dispatch(to_algo(algo), []<calendar::lunar::common::Algo algorithm> {
+      using enum calendar::lunar::common::Algo;
+      if constexpr (algorithm == ALGO_1) {
+        return SupportedLunarYearRange {
+          .valid = true,
+          .start = calendar::lunar::algo1::START_YEAR,
+          .end   = calendar::lunar::algo1::END_YEAR,
+        };
+      } else if constexpr (algorithm == ALGO_2) {
+        return SupportedLunarYearRange {
+          .valid = true,
+          .start = calendar::lunar::algo2::START_YEAR,
+          .end   = calendar::lunar::algo2::END_YEAR,
+        };
+      } else {
+        return SupportedLunarYearRange {
+          .valid = true,
+          .start = calendar::lunar::algo3::START_YEAR,
+          .end   = calendar::lunar::algo3::END_YEAR,
+        };
+      }
+    });
   });
 }
 
 auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters)
-  return lib::wrap_export("get_lunar_year_info", [=]() -> LunarYearInfo {
+  return lib::wrap_export(__func__, [=]() -> LunarYearInfo {
     using namespace std::views;
 
-    if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::invalid_argument {
-        std::format("Unsupported algorithm: {}", algo)
-      };
-    }
-
-    const auto raw = std::invoke([=] {
-      if (algo == 1) {
+    const auto raw = dispatch(to_algo(algo), [year]<calendar::lunar::common::Algo algorithm> {
+      using enum calendar::lunar::common::Algo;
+      if constexpr (algorithm == ALGO_1) {
         return calendar::lunar::algo1::calc_lunar_year(year);
-      }
-      if (algo == 2) {
+      } else if constexpr (algorithm == ALGO_2) {
         return calendar::lunar::algo2::get_info_for_year(year);
+      } else {
+        return calendar::lunar::algo3::calc_lunar_year(year);
       }
-      return calendar::lunar::algo3::calc_lunar_year(year);
     });
 
     const auto [y, m, d] = util::from_ymd(raw.date_of_first_day);
@@ -161,21 +183,9 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
 auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t month, const uint8_t day) -> LunarDate {
-  return lib::wrap_export("gregorian_to_lunar", [=]() -> LunarDate {
-    if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::invalid_argument {
-        std::format("Unsupported algorithm: {}", algo)
-      };
-    }
-
-    const auto converted = std::invoke([=]() -> std::optional<LunarDate> {
-      if (algo == 1) {
-        return convert_to_lunar<calendar::lunar::common::Algo::ALGO_1>(year, month, day);
-      }
-      if (algo == 2) {
-        return convert_to_lunar<calendar::lunar::common::Algo::ALGO_2>(year, month, day);
-      }
-      return convert_to_lunar<calendar::lunar::common::Algo::ALGO_3>(year, month, day);
+  return lib::wrap_export(__func__, [=]() -> LunarDate {
+    const auto converted = dispatch(to_algo(algo), [=]<calendar::lunar::common::Algo algorithm> {
+      return convert_to_lunar<algorithm>(year, month, day);
     });
 
     if (not converted) {
@@ -187,21 +197,9 @@ auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t mo
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
 auto lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> GregorianDate {
-  return lib::wrap_export("lunar_to_gregorian", [=]() -> GregorianDate {
-    if (algo != 1 and algo != 2 and algo != 3) {
-      throw std::invalid_argument {
-        std::format("Unsupported algorithm: {}", algo)
-      };
-    }
-
-    const auto converted = std::invoke([=]() -> std::optional<GregorianDate> {
-      if (algo == 1) {
-        return convert_to_gregorian<calendar::lunar::common::Algo::ALGO_1>(year, month, is_leap, day);
-      }
-      if (algo == 2) {
-        return convert_to_gregorian<calendar::lunar::common::Algo::ALGO_2>(year, month, is_leap, day);
-      }
-      return convert_to_gregorian<calendar::lunar::common::Algo::ALGO_3>(year, month, is_leap, day);
+  return lib::wrap_export(__func__, [=]() -> GregorianDate {
+    const auto converted = dispatch(to_algo(algo), [=]<calendar::lunar::common::Algo algorithm> {
+      return convert_to_gregorian<algorithm>(year, month, is_leap, day);
     });
 
     if (not converted) {

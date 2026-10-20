@@ -26,7 +26,7 @@
     "src/astro/vsop87d/uranus_coeff.hpp": "e5a67f411b593a1e139e1f3b35bff4608d1ead90e7f52f8ac1e8a875e1ba7c20",
     "src/astro/vsop87d/neptune_coeff.hpp": "ec12eadf6b0dbe0bf906d67ca766d8a6daafd17fb2976fa1ed577b5c825df28b"
   },
-  "solar_geocentric_namespace_body_sha256": "d89a4bae88deedad8587c735c79f6f4ecfc9443fcb25a2765172d4f4f0b29c89",
+  "solar_geocentric_namespace_body_sha256": "efd36963b6ae7a25e062ae3880ff425d7bdb238ada527bf0c2f35a2765e06539",
   "target_order": [
     "SUN",
     "MOON",

@@ -114,7 +114,7 @@ auto longitude_events(
   LongitudeEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("longitude_events", [=] {
+  return lib::wrap_export(__func__, [=] {
     check_event_count_ptr(event_count);
     check_event_slots(slots, slot_count);
     check_target_code(target_code, "target_code");
@@ -159,7 +159,7 @@ auto longitude_stations(
   StationEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("longitude_stations", [=] {
+  return lib::wrap_export(__func__, [=] {
     check_event_count_ptr(event_count);
     check_event_slots(slots, slot_count);
     check_target_code(target_code, "target_code");
@@ -206,7 +206,7 @@ auto longitude_difference_events(
   LongitudeDifferenceEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("longitude_difference_events", [=] {
+  return lib::wrap_export(__func__, [=] {
     check_event_count_ptr(event_count);
     check_event_slots(slots, slot_count);
     check_target_code(first_target_code, "first_target_code");

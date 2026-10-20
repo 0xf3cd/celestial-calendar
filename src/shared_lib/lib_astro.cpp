@@ -28,7 +28,7 @@ extern "C" {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  return lib::wrap_export("ut1_to_jd", [=]() -> JulianDay {
+  return lib::wrap_export(__func__, [=]() -> JulianDay {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -47,7 +47,7 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  return lib::wrap_export("ut1_to_jde", [=]() -> JulianDay {
+  return lib::wrap_export(__func__, [=]() -> JulianDay {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -65,7 +65,7 @@ auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const doubl
 
 
 auto jde_to_ut1(const double jde) -> UT1Time {
-  return lib::wrap_export("jde_to_ut1", [=]() -> UT1Time {
+  return lib::wrap_export(__func__, [=]() -> UT1Time {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
     const auto [y, m, d] = util::from_ymd(ut1_dt.ymd);
@@ -88,7 +88,7 @@ auto jde_to_ut1(const double jde) -> UT1Time {
 #pragma region Solar Apparent Geocentric Position
 
 auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
-  return lib::wrap_export("sun_apparent_geocentric_coord", [=]() -> SunCoordinate {
+  return lib::wrap_export(__func__, [=]() -> SunCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -112,7 +112,7 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
 #pragma region Moon Apparent Geocentric Position
 
 auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
-  return lib::wrap_export("moon_apparent_geocentric_coord", [=]() -> MoonCoordinate {
+  return lib::wrap_export(__func__, [=]() -> MoonCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -136,7 +136,7 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 #pragma region Moon Illumination
 
 auto moon_illumination(const double jde) -> MoonIllumination {
-  return lib::wrap_export("moon_illumination", [=]() -> MoonIllumination {
+  return lib::wrap_export(__func__, [=]() -> MoonIllumination {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -163,7 +163,7 @@ auto moon_illumination(const double jde) -> MoonIllumination {
 #pragma region Moon Position Angle
 
 auto moon_position_angle(const double jde) -> MoonPositionAngle {
-  return lib::wrap_export("moon_position_angle", [=]() -> MoonPositionAngle {
+  return lib::wrap_export(__func__, [=]() -> MoonPositionAngle {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -191,7 +191,7 @@ auto moon_phase_moments(
   double * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("moon_phase_moments", [=] {
+  return lib::wrap_export(__func__, [=] {
     if (root_count == nullptr) {
       throw std::invalid_argument { "Argument `root_count` is null." };
     }
@@ -227,7 +227,7 @@ auto moon_phase_moments(
 #pragma region Solar Longitude Roots
 
 auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
-  return lib::wrap_export("solar_lon_root_discriminant", [=]() -> Discriminant {
+  return lib::wrap_export(__func__, [=]() -> Discriminant {
     if (not std::isfinite(longitude)) {
       throw std::invalid_argument {
         std::format("Argument `longitude` is not finite, got {}", longitude)
@@ -248,7 +248,7 @@ auto solar_lon_roots(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("solar_lon_roots", [=] {
+  return lib::wrap_export(__func__, [=] {
     using namespace astro::sun::geocentric_coord::math;
 
     if (slots == nullptr and slot_count > 0) {
@@ -288,7 +288,7 @@ auto new_moons_after_jde(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("new_moons_after_jde", [=] {
+  return lib::wrap_export(__func__, [=] {
     if (slots == nullptr and slot_count > 0) {
       throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
     }
@@ -317,7 +317,7 @@ auto new_moons_in_year(
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
-  return lib::wrap_export("new_moons_in_year", [=] {
+  return lib::wrap_export(__func__, [=] {
     if (root_count == nullptr) {
       throw std::invalid_argument { "Argument `root_count` is null." };
     }
@@ -346,7 +346,7 @@ auto new_moons_in_year(
 #pragma region Solar Time
 
 auto equation_of_time(const double jde) -> EquationOfTime {
-  return lib::wrap_export("equation_of_time", [=]() -> EquationOfTime {
+  return lib::wrap_export(__func__, [=]() -> EquationOfTime {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -368,7 +368,7 @@ auto apparent_solar_time(
   const double fraction,
   const double longitude
 ) -> ApparentSolarTime {
-  return lib::wrap_export("apparent_solar_time", [=]() -> ApparentSolarTime {
+  return lib::wrap_export(__func__, [=]() -> ApparentSolarTime {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -396,7 +396,7 @@ auto apparent_solar_time(
 #pragma region Sidereal Time
 
 auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> SiderealTime {
-  return lib::wrap_export("local_apparent_sidereal_time", [=]() -> SiderealTime {
+  return lib::wrap_export(__func__, [=]() -> SiderealTime {
     if (not std::isfinite(jd_ut1)) {
       throw std::invalid_argument {
         std::format("Argument `jd_ut1` is not finite, got {}", jd_ut1)

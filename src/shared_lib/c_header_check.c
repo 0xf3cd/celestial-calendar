@@ -194,15 +194,133 @@ _Static_assert((_Generic(((LongitudeEventRecord*)0)->jde_tt, double: 1, default:
                 _Generic(((LongitudeDifferenceEventRecord*)0)->signed_difference_deg, double: 1, default: 0)) != 0,
                "Event record field types drifted");
 
+/* Signature pins: every export's function type, so a signature drift fails this TU. */
+
+_Static_assert(_Generic(&set_log_verbosity,
+               bool (*)(uint8_t new_value): 1,
+               default: 0) != 0, "set_log_verbosity signature drifted");
+
+_Static_assert(_Generic(&last_error,
+               const char * (*)(void): 1,
+               default: 0) != 0, "last_error signature drifted");
+
+_Static_assert(_Generic(&ut1_to_jd,
+               JulianDay (*)(int32_t y, uint32_t m, uint32_t d, double fraction): 1,
+               default: 0) != 0, "ut1_to_jd signature drifted");
+
+_Static_assert(_Generic(&ut1_to_jde,
+               JulianDay (*)(int32_t y, uint32_t m, uint32_t d, double fraction): 1,
+               default: 0) != 0, "ut1_to_jde signature drifted");
+
+_Static_assert(_Generic(&jde_to_ut1,
+               UT1Time (*)(double jde): 1,
+               default: 0) != 0, "jde_to_ut1 signature drifted");
+
+_Static_assert(_Generic(&sun_apparent_geocentric_coord,
+               SunCoordinate (*)(double jde): 1,
+               default: 0) != 0, "sun_apparent_geocentric_coord signature drifted");
+
+_Static_assert(_Generic(&moon_apparent_geocentric_coord,
+               MoonCoordinate (*)(double jde): 1,
+               default: 0) != 0, "moon_apparent_geocentric_coord signature drifted");
+
+_Static_assert(_Generic(&moon_illumination,
+               MoonIllumination (*)(double jde): 1,
+               default: 0) != 0, "moon_illumination signature drifted");
+
+_Static_assert(_Generic(&moon_position_angle,
+               MoonPositionAngle (*)(double jde): 1,
+               default: 0) != 0, "moon_position_angle signature drifted");
+
+_Static_assert(_Generic(&moon_phase_moments,
+               uint32_t (*)(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "moon_phase_moments signature drifted");
+
+_Static_assert(_Generic(&solar_lon_root_discriminant,
+               Discriminant (*)(int32_t year, double longitude): 1,
+               default: 0) != 0, "solar_lon_root_discriminant signature drifted");
+
+_Static_assert(_Generic(&solar_lon_roots,
+               uint32_t (*)(int32_t year, double longitude, double *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "solar_lon_roots signature drifted");
+
+_Static_assert(_Generic(&new_moons_after_jde,
+               uint32_t (*)(double jde, double *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "new_moons_after_jde signature drifted");
+
+_Static_assert(_Generic(&new_moons_in_year,
+               uint32_t (*)(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "new_moons_in_year signature drifted");
+
+_Static_assert(_Generic(&equation_of_time,
+               EquationOfTime (*)(double jde): 1,
+               default: 0) != 0, "equation_of_time signature drifted");
+
+_Static_assert(_Generic(&apparent_solar_time,
+               ApparentSolarTime (*)(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude): 1,
+               default: 0) != 0, "apparent_solar_time signature drifted");
+
+_Static_assert(_Generic(&local_apparent_sidereal_time,
+               SiderealTime (*)(double jd_ut1, double longitude): 1,
+               default: 0) != 0, "local_apparent_sidereal_time signature drifted");
+
+_Static_assert(_Generic(&query_jieqi_moment,
+               JieqiMomentQuery (*)(int32_t year, uint8_t jq_idx): 1,
+               default: 0) != 0, "query_jieqi_moment signature drifted");
+
+_Static_assert(_Generic(&get_jieqi_name,
+               bool (*)(uint8_t jq_idx, char *buf, uint32_t buf_size): 1,
+               default: 0) != 0, "get_jieqi_name signature drifted");
+
+_Static_assert(_Generic(&get_supported_lunar_year_range,
+               SupportedLunarYearRange (*)(uint8_t algo): 1,
+               default: 0) != 0, "get_supported_lunar_year_range signature drifted");
+
+_Static_assert(_Generic(&get_lunar_year_info,
+               LunarYearInfo (*)(uint8_t algo, int32_t year): 1,
+               default: 0) != 0, "get_lunar_year_info signature drifted");
+
+_Static_assert(_Generic(&gregorian_to_lunar,
+               LunarDate (*)(uint8_t algo, int32_t year, uint8_t month, uint8_t day): 1,
+               default: 0) != 0, "gregorian_to_lunar signature drifted");
+
+_Static_assert(_Generic(&lunar_to_gregorian,
+               GregorianDate (*)(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day): 1,
+               default: 0) != 0, "lunar_to_gregorian signature drifted");
+
+_Static_assert(_Generic(&delta_t_algo1,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t_algo1 signature drifted");
+
+_Static_assert(_Generic(&delta_t_algo2,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t_algo2 signature drifted");
+
+_Static_assert(_Generic(&delta_t_algo3,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t_algo3 signature drifted");
+
+_Static_assert(_Generic(&delta_t_algo4,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t_algo4 signature drifted");
+
+_Static_assert(_Generic(&delta_t_algo5,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t_algo5 signature drifted");
+
+_Static_assert(_Generic(&delta_t,
+               DeltaT (*)(double year): 1,
+               default: 0) != 0, "delta_t signature drifted");
+
+
 _Static_assert(_Generic(&longitude_events,
-               uint32_t (*)(uint32_t, double, double, double, uint32_t *, LongitudeEventRecord *, uint32_t): 1,
+               uint32_t (*)(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeEventRecord *slots, uint32_t slot_count): 1,
                default: 0) != 0, "longitude_events signature drifted");
 
 _Static_assert(_Generic(&longitude_stations,
-               uint32_t (*)(uint32_t, double, double, uint32_t *, StationEventRecord *, uint32_t): 1,
+               uint32_t (*)(uint32_t target_code, double start_jde_tt, double end_jde_tt, uint32_t *event_count, StationEventRecord *slots, uint32_t slot_count): 1,
                default: 0) != 0, "longitude_stations signature drifted");
 
 _Static_assert(_Generic(&longitude_difference_events,
-               uint32_t (*)(uint32_t, uint32_t, double, double, double, uint32_t *,
-                            LongitudeDifferenceEventRecord *, uint32_t): 1,
+               uint32_t (*)(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count): 1,
                default: 0) != 0, "longitude_difference_events signature drifted");
