@@ -23,6 +23,7 @@ SCRIPTS = {
   "abi/raw_protocol.py",
   "consumer/smoke.py",
   "consumer/golden_replay.py",
+  "consumer/events_replay.py",
   "consumer/chart_snapshot.py",
 }
 

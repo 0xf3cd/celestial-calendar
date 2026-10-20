@@ -34,9 +34,7 @@ const uint32_t written =
 ```python
 import celestial_calendar as celestial
 
-events = celestial.longitude_events(
-  celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5
-)
+events = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
 ```
 
 Python mirrors the enums (`EventTarget`, `EventDirection`, `StationMotion`), units,

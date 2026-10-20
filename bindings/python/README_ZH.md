@@ -109,9 +109,7 @@ print(snapshot.houses.cusps_deg)
 ```python
 import celestial_calendar as celestial
 
-crossings = celestial.longitude_events(
-  celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5
-)
+crossings = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
 for event in crossings:
   print(event.jde_tt, event.longitude_deg, event.direction)
 

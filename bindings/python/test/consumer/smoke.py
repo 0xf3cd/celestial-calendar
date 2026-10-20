@@ -652,7 +652,7 @@ def run_value_contract() -> None:
   raises(FrozenInstanceError, lambda: setattr(date, "day", 2))
   assert len(celestial.__all__) == len(set(celestial.__all__))
   assert celestial.chart is importlib.import_module("celestial_calendar.chart")
-  public_names = {name for name in celestial.__dict__ if not name.startswith("_") and name != "chart"} | {"__version__"}
+  public_names = {name for name in celestial.__dict__ if not name.startswith("_") and name not in {"chart", "events"}} | {"__version__"}
   assert set(celestial.__all__) == public_names
   assert set(celestial.__all__) == {
     "BodyState",
@@ -664,6 +664,8 @@ def run_value_contract() -> None:
     "CivilDateTime",
     "CivilScale",
     "DeltaTModel",
+    "EventDirection",
+    "EventTarget",
     "GeoLocation",
     "GregorianDate",
     "HouseSystem",
@@ -674,9 +676,13 @@ def run_value_contract() -> None:
     "LunarDate",
     "LunarYearInfo",
     "LunarYearRange",
+    "LongitudeDifferenceEvent",
+    "LongitudeEvent",
     "MoonCoordinate",
     "MoonIllumination",
     "MoonPhase",
+    "StationEvent",
+    "StationMotion",
     "SunCoordinate",
     "__version__",
     "apparent_solar_time",
@@ -688,6 +694,9 @@ def run_value_contract() -> None:
     "jieqi_moment",
     "jieqi_name",
     "local_apparent_sidereal_time",
+    "longitude_difference_events",
+    "longitude_events",
+    "longitude_stations",
     "lunar_to_gregorian",
     "lunar_year_info",
     "moon_apparent_geocentric_coordinate",
