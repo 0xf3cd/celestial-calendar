@@ -11,9 +11,9 @@
 """The prose a Markdown guide renders, read from a CommonMark parse and never from the source text.
 
 A link or a sentence moved into an HTML comment still satisfies a substring match on the source, and it is gone from
-what a reader sees (#328, #350). The checks that name guide content read it through here; the surfaces that stay on
-source text, the CHANGELOG licensing statement and the adjacent retained-attribution records, are byte-oriented
-provenance checks and do not.
+what a reader sees (#328, #350). The checks that name guide content read it through here; the
+surfaces that stay on source text, like the adjacent retained-attribution records, are
+byte-oriented provenance checks and do not.
 """
 
 from markdown_it import MarkdownIt
@@ -70,7 +70,7 @@ def visible_text(parsed: list[Token]) -> str:
 def section_text(text: str, title: str) -> str | None:
   """The visible text of the one `## title` section, including its subsections.
 
-  None unless exactly one heading has that title.
+  None unless exactly one `##` heading has that title.
   """
   parsed = tokens(text)
   starts = [

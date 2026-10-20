@@ -293,7 +293,11 @@ A4_SCAN_FILES: Final[tuple[str, ...]] = (
 A4_SCAN_EXCLUDED_PARTS: Final[frozenset[str]] = frozenset(
   {".git", ".review", ".venv", "__pycache__", "build", "node_modules", "wheelhouse"}
 )
-MIT_SCOPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"licensed under MIT\b(?!-)")
+# A qualifier glued to MIT ("MIT-like", "MIT\u2013like") must not satisfy the scope check.
+MIT_SCOPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"licensed under MIT(?=$|[\s.,;:])")
+CHANGELOG_MIT_PATTERN: Final[re.Pattern[str]] = re.compile(
+  r"Project-authored material is now licensed under MIT(?=$|[\s.,;:])"
+)
 GPL_3_OR_LATER: Final[str] = "GPL" + "-3.0-or-later"
 GPL_V2: Final[str] = "GPL" + "v2"
 GPL_V3: Final[str] = "GPL" + "v3"
@@ -823,7 +827,7 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
 
   changelog_license = _rendered_section(texts["docs/CHANGELOG.md"], "[v0.7.0]")
   _require(
-    MIT_SCOPE_PATTERN.search(changelog_license),
+    CHANGELOG_MIT_PATTERN.search(changelog_license),
     "MIT changelog entry differs",
   )
   _require(
