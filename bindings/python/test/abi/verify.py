@@ -34,9 +34,9 @@ from c_abi_schema import C_TO_CTYPES, parse_c_structs_text, split_field_type  # 
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
 PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
-EXPECTED_EXPORT_COUNT = 30
-EXPECTED_LAYOUT_COUNT = 19
-EXPECTED_RECORDING_COUNT = 29
+EXPECTED_EXPORT_COUNT = 33
+EXPECTED_LAYOUT_COUNT = 22
+EXPECTED_RECORDING_COUNT = 32
 
 # Compatibility names of the legacy private binding module.
 LEGACY_BINDING_NAMES = (
@@ -65,6 +65,9 @@ LEGACY_BINDING_NAMES = (
   "ChartBodyV1",
   "ChartHousesV1",
   "ChartSnapshotV1",
+  "LongitudeEventRecord",
+  "StationEventRecord",
+  "LongitudeDifferenceEventRecord",
 )
 
 TYPE_LAYOUT = {
@@ -81,6 +84,9 @@ CTYPE_NAMES = {
   ctypes.POINTER(ctypes.c_uint32): "uint32_t *",
   ctypes.POINTER(ctypes.c_double): "double *",
   ctypes.POINTER(ctypes.c_char): "char *",
+  ctypes.POINTER(_abi.LongitudeEventRecord): "LongitudeEventRecord *",
+  ctypes.POINTER(_abi.StationEventRecord): "StationEventRecord *",
+  ctypes.POINTER(_abi.LongitudeDifferenceEventRecord): "LongitudeDifferenceEventRecord *",
 }
 
 
@@ -393,6 +399,33 @@ def verify_python_codes(manifest: dict[str, object], python_codes: dict[str, int
   assert python_codes == manifest["chart_v1_codes"], "installed chart code tables"
 
 
+def installed_event_codes() -> dict[str, int]:
+  """Name the installed EventTarget enum as celestial.h's EVENT_TARGET_* codes."""
+  return {f"EVENT_TARGET_{member.name}": member.value for member in celestial_calendar.EventTarget}
+
+
+def verify_event_codes(manifest: dict[str, object], event_codes: dict[str, int]) -> None:
+  """Require the event targets to keep the chart identities (#303 pins them equal in C)."""
+  chart_targets = {name: code for name, code in manifest["chart_v1_codes"].items() if name.startswith("CHART_TARGET_")}
+  expected = {name.replace("CHART_TARGET_", "EVENT_TARGET_", 1): code for name, code in chart_targets.items()}
+  assert set(event_codes) == set(expected), "event target names"
+  assert event_codes == expected, "installed event target codes"
+
+
+def run_event_code_self_test(manifest: dict[str, object], event_codes: dict[str, int]) -> int:
+  """Prove that swapping two event target identities is rejected."""
+  swapped = dict(event_codes)
+  swapped["EVENT_TARGET_MERCURY"], swapped["EVENT_TARGET_VENUS"] = (
+    event_codes["EVENT_TARGET_VENUS"],
+    event_codes["EVENT_TARGET_MERCURY"],
+  )
+  try:
+    verify_event_codes(manifest, swapped)
+  except AssertionError:
+    return 1
+  raise AssertionError("event code gate accepted swapped target identities")
+
+
 def run_python_code_self_test(manifest: dict[str, object], python_codes: dict[str, int]) -> int:
   """Prove that swapping two selector codes is rejected."""
   swapped = dict(python_codes)
@@ -428,6 +461,10 @@ def run_mutation_self_tests(
   wrong_field_type = copy.deepcopy(manifest)
   wrong_field_type["layouts"]["LunarDate"]["fields"][3]["type"] = "uint8_t"
   mutations["same-width field type"] = wrong_field_type
+
+  wrong_event_field_type = copy.deepcopy(manifest)
+  wrong_event_field_type["layouts"]["StationEventRecord"]["fields"][3]["type"] = "int32_t"
+  mutations["same-width event field type"] = wrong_event_field_type
 
   wrong_offset = copy.deepcopy(manifest)
   wrong_offset["layouts"]["JieqiMomentQuery"]["fields"][1]["offset"] = 2
@@ -481,7 +518,7 @@ def run_mutation_self_tests(
   extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
   mutations["extra chart code"] = extra_code
 
-  assert len(mutations) == 19, "independent ABI defect-case count"
+  assert len(mutations) == 20, "independent ABI defect-case count"
   for label, mutated in mutations.items():
     try:
       verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)
@@ -516,6 +553,10 @@ def main() -> None:
   verify_python_codes(manifest, python_codes)
   code_mutation_count = run_python_code_self_test(manifest, python_codes)
   assert code_mutation_count == 1, "chart code self-test ran"
+  event_codes = installed_event_codes()
+  verify_event_codes(manifest, event_codes)
+  event_code_mutation_count = run_event_code_self_test(manifest, event_codes)
+  assert event_code_mutation_count == 1, "event code self-test ran"
   mutation_count = run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
@@ -529,6 +570,10 @@ def main() -> None:
   print(
     "PASS chart selector/identity/presence codes; installed tables=manifest, "
     f"swapped selectors rejected {code_mutation_count}/1"
+  )
+  print(
+    "PASS event target identities = chart identities; installed enum=manifest, "
+    f"swapped targets rejected {event_code_mutation_count}/1"
   )
   print(f"PASS ABI mutations rejected manifest={mutation_count}/{mutation_count} wrapper=1/1")
 

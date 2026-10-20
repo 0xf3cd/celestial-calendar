@@ -451,6 +451,83 @@ def edge_chart_snapshot_v1() -> None:
   assert "fraction" in _binding.last_error_text()
 
 
+def happy_longitude_events() -> None:
+  total = ctypes.c_uint32()
+  record = _binding.LongitudeEventRecord
+  assert call("longitude_events", 0, 0.0, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 1
+  slots = (record * total.value)()
+  assert call("longitude_events", 0, 0.0, 2460735.5, 2460785.5, ctypes.byref(total), slots, total.value) == 1
+  assert slots[0].direction_code == 0 and 0.0 <= slots[0].longitude_deg < 360.0
+
+
+def happy_longitude_stations() -> None:
+  total = ctypes.c_uint32()
+  record = _binding.StationEventRecord
+  assert call("longitude_stations", 2, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 2
+  slots = (record * total.value)()
+  assert call("longitude_stations", 2, 2460735.5, 2460785.5, ctypes.byref(total), slots, total.value) == 2
+  motions = {
+    (slots[0].motion_before_code, slots[0].motion_after_code),
+    (slots[1].motion_before_code, slots[1].motion_after_code),
+  }
+  assert motions == {(0, 1), (1, 0)}
+
+
+def happy_longitude_difference_events() -> None:
+  total = ctypes.c_uint32()
+  record = _binding.LongitudeDifferenceEventRecord
+  assert call("longitude_difference_events", 1, 0, -60.0, 2460676.5, 2460707.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 1
+  slots = (record * total.value)()
+  assert (
+    call("longitude_difference_events", 1, 0, -60.0, 2460676.5, 2460707.5, ctypes.byref(total), slots, total.value) == 1
+  )
+  assert abs(slots[0].signed_difference_deg + 60.0) < 1e-6
+
+
+def edge_longitude_events() -> None:
+  total = ctypes.c_uint32()
+  # An empty result is legal and clears the recorded error.
+  assert call("longitude_events", 3, 137.5, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and _binding.last_error_text() == ""
+  # Truncation keeps the full total observable.
+  assert call("longitude_events", 2, 0.0, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 3
+  one = (_binding.LongitudeEventRecord * 1)()
+  written = call("longitude_events", 2, 0.0, 2460735.5, 2460785.5, ctypes.byref(total), one, 1)
+  assert written == 1 and total.value == 3
+  # A rejected query resets the out-parameter and records why.
+  sentinel = ctypes.c_uint32(0xDEADBEEF)
+  assert call("longitude_events", 2, NAN, 2460735.5, 2460785.5, ctypes.byref(sentinel), None, 0) == 0
+  assert sentinel.value == 0 and "target_longitude_deg" in _binding.last_error_text()
+
+
+def edge_longitude_stations() -> None:
+  total = ctypes.c_uint32()
+  # The Sun's certified rate bounds exclude a station: a legal empty result.
+  assert call("longitude_stations", 0, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and _binding.last_error_text() == ""
+  sentinel = ctypes.c_uint32(0xDEADBEEF)
+  assert call("longitude_stations", 0, 2460785.5, 2460735.5, ctypes.byref(sentinel), None, 0) == 0
+  assert sentinel.value == 0 and "nonempty" in _binding.last_error_text()
+
+
+def edge_longitude_difference_events() -> None:
+  total = ctypes.c_uint32()
+  # The antipodal node relation holds throughout at the opposition level.
+  sentinel = ctypes.c_uint32(0xDEADBEEF)
+  assert call("longitude_difference_events", 10, 11, 180.0, 2460676.5, 2460707.5, ctypes.byref(sentinel), None, 0) == 0
+  assert sentinel.value == 0 and "throughout" in _binding.last_error_text()
+  # A constant mismatch is a legal empty result and clears the recorded error.
+  assert call("longitude_difference_events", 10, 11, 0.0, 2460676.5, 2460707.5, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and _binding.last_error_text() == ""
+  # Self-pairs are rejected before any provider work.
+  assert call("longitude_difference_events", 0, 0, 1.0, 2460676.5, 2460707.5, ctypes.byref(sentinel), None, 0) == 0
+  assert sentinel.value == 0 and "distinct" in _binding.last_error_text()
+
+
 EXPORT_NAMES = tuple(_binding.BINDING_SPECS)
 HAPPY_TESTS = {name: globals()[f"happy_{name}"] for name in EXPORT_NAMES}
 EDGE_TESTS = {name: globals()[f"edge_{name}"] for name in EXPORT_NAMES}
@@ -479,7 +556,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 30
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 33
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)
   if happy[0] != happy[1] or edge[0] != edge[1]:

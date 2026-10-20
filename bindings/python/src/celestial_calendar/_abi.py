@@ -161,9 +161,43 @@ class ChartSnapshotV1(ctypes.Structure):
   ]
 
 
+class LongitudeEventRecord(ctypes.Structure):
+  _fields_ = [
+    ("jde_tt", ctypes.c_double),
+    ("longitude_deg", ctypes.c_double),
+    ("longitude_rate_deg_per_tt_day", ctypes.c_double),
+    ("direction_code", ctypes.c_uint32),
+  ]
+
+
+class StationEventRecord(ctypes.Structure):
+  _fields_ = [
+    ("jde_tt", ctypes.c_double),
+    ("longitude_deg", ctypes.c_double),
+    ("longitude_rate_deg_per_tt_day", ctypes.c_double),
+    ("motion_before_code", ctypes.c_uint32),
+    ("motion_after_code", ctypes.c_uint32),
+  ]
+
+
+class LongitudeDifferenceEventRecord(ctypes.Structure):
+  _fields_ = [
+    ("jde_tt", ctypes.c_double),
+    ("longitude_a_deg", ctypes.c_double),
+    ("longitude_b_deg", ctypes.c_double),
+    ("longitude_rate_a_deg_per_tt_day", ctypes.c_double),
+    ("longitude_rate_b_deg_per_tt_day", ctypes.c_double),
+    ("signed_difference_deg", ctypes.c_double),
+    ("direction_code", ctypes.c_uint32),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
+P_LONGITUDE_EVENT = ctypes.POINTER(LongitudeEventRecord)
+P_STATION_EVENT = ctypes.POINTER(StationEventRecord)
+P_LONGITUDE_DIFFERENCE_EVENT = ctypes.POINTER(LongitudeDifferenceEventRecord)
 
 BINDING_SPECS = {
   "set_log_verbosity": ((ctypes.c_uint8,), ctypes.c_bool),
@@ -215,6 +249,35 @@ BINDING_SPECS = {
     ),
     ChartSnapshotV1,
   ),
+  "longitude_events": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      P_U32,
+      P_LONGITUDE_EVENT,
+      ctypes.c_uint32,
+    ),
+    ctypes.c_uint32,
+  ),
+  "longitude_stations": (
+    (ctypes.c_uint32, ctypes.c_double, ctypes.c_double, P_U32, P_STATION_EVENT, ctypes.c_uint32),
+    ctypes.c_uint32,
+  ),
+  "longitude_difference_events": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      P_U32,
+      P_LONGITUDE_DIFFERENCE_EVENT,
+      ctypes.c_uint32,
+    ),
+    ctypes.c_uint32,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -239,6 +302,9 @@ STRUCT_TYPES = {
     ChartBodyV1,
     ChartHousesV1,
     ChartSnapshotV1,
+    LongitudeEventRecord,
+    StationEventRecord,
+    LongitudeDifferenceEventRecord,
   )
 }
 
