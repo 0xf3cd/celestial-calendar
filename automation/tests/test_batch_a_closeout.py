@@ -568,6 +568,18 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
     ),
     ("README.md", "\n## License\n", "\n## Licence\n", "section differs: ## License"),
     (
+      "bindings/python/README.md",
+      "licensed under MIT.",
+      "licensed under MIT-like.",
+      "package README MIT scope differs",
+    ),
+    (
+      "docs/CHANGELOG.md",
+      "- Project-authored material is now licensed under MIT.",
+      "<!-- - Project-authored material is now licensed under MIT. -->",
+      "MIT changelog entry differs",
+    ),
+    (
       "README_ZH.md",
       "](README.md#license)",
       "](README.md#broken-license)",

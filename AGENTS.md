@@ -402,9 +402,9 @@ trigger is for.
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
 | **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
-| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes. Re-checked at #350: `chart::calculate` and `chart_snapshot_v1` take one civil datetime plus an explicit `Scale` tag and resolve both scales themselves (#300, #299), so the tag says how to read one value and never carries a second | A second #41-class mix-up reaches a test, or one public entry point must accept civil datetimes of two scales in the same call |
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes. Re-checked at #350: `chart::calculate` and `chart_snapshot_v1` take one civil datetime plus an explicit `Scale` tag and resolve both scales themselves (#300, #299), so the tag says how to read one value and never carries a second time value | A second #41-class mix-up reaches a test, or one public entry point must accept civil datetimes of two scales in the same call |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
-| **Header-only is the identity, and its compile cost is accepted**; measured in #344 on a TU holding only `jieqi.hpp`, and #348 removed the avoidable weight (umbrella includes, test seeding), so what remains is the identity | A measurement shows the cost growing again without a new feature behind it |
+| **Header-only is the identity, and its compile cost is accepted**; #344 measured the cost on a TU holding only `jieqi.hpp`, and #348 removed the avoidable weight (umbrella includes, test seeding) — what remains is accepted as the identity's own cost | A measurement shows the cost growing again without the new feature's own code behind it |
 | **The cache never evicts** — the mechanism has no eviction by design; each caller's key space is bounded by its declared window (`jieqi` [1, 32766], `algo2` by year range) | A caller with an unbounded key space appears |
 | **`algo1` / `algo3` stay near-duplicates — and tests whose columns mean different things don't merge either** (#167) | A third algorithm of the same shape; for tests, a group whose rows differ only in data |
 | **`moon_phase`'s year-boundary hole is `wontfix`** | A caller needs total coverage of the boundary |
@@ -429,16 +429,19 @@ it as existing): the `cpp26-lab` experiment branch.
 **Two conventions that look like drift and are not.** Time scales are spelled in the
 parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
 boundary (`jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
-scale per call: named by the function, or, for the chart family, one civil scale chosen by
-`civil_scale_code` with both resolved scales returned (`chart_snapshot_v1`, #299); reopen if a
-C entry point ever needs to accept time values of two scales from the caller. And every C export except the
-`last_error` reader records failures through `wrap_export`; the boundary lives in
-`celestial.h` and is mechanically reconciled with both bindings.
+scale per call — in the function name, in a parameter name (`local_apparent_sidereal_time`
+takes `jd_ut1`), or, for the chart family, as one civil scale chosen by
+`civil_scale_code` with both resolved scales returned (`chart_snapshot_v1`, #299; the
+solar-time entry takes civil UTC per its docs, `apparent_solar_time`); reopen if a
+C entry point ever needs to accept time values of two scales from the caller. And every C
+export except the `last_error` reader records failures through `wrap_export`; the boundary
+lives in `celestial.h` and is mechanically reconciled with both bindings.
 
 ## Phase and PR workflow
 
-- A PR is the delivery and review unit, and one PR may close several issues. Work that needs staged
-  handover uses `phaseN-<topic>` branches from `main`, where `N` counts PRs, not issues; a normal
+- A PR is the delivery and review unit, and one PR may deliver several issues, one of them closed by
+  `Closes #N`. Work that needs staged handover uses `phaseN-<topic>` branches from `main`, where `N`
+  is the PR's stage number inside a release program, not an issue number; a normal
   patch uses a descriptive branch, and its documentation stays proportional to the change. PR bodies
   use four blocks: Summary / Tests / Validation / Scope.
 - PR titles, headings and prose use one language throughout. Default to English; when the

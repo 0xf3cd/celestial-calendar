@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from automation.markdown_source import link_targets, links, tokens
+from automation.markdown_source import links, tokens
 from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
@@ -1184,7 +1184,7 @@ def test_readme_runtime_navigation():
 
 def assert_local_wheel_fragment(python_readme, guide):
   assert python_readme.count('<a id="build-a-local-wheel"></a>') == 1
-  assert "bindings/python/README.md#build-a-local-wheel" in link_targets(tokens(guide))
+  assert "bindings/python/README.md#build-a-local-wheel" in (target for _, target in links(tokens(guide)))
 
 
 def test_python_local_wheel_fragment_is_preserved():
@@ -1192,6 +1192,19 @@ def test_python_local_wheel_fragment_is_preserved():
   readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
   for name in ("README.md", "README_ZH.md"):
     assert_local_wheel_fragment(readme, (root / name).read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("name", ["README.md", "README_ZH.md"])
+def test_local_wheel_fragment_target_must_be_a_link_not_an_image(name):
+  root = Path(__file__).parents[2]
+  readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
+  guide = (root / name).read_text(encoding="utf-8")
+  link = "](bindings/python/README.md#build-a-local-wheel)"
+  assert guide.count(link) == 1
+  label_start = guide.rindex("[", 0, guide.index(link))
+  whole = guide[label_start : guide.index(link) + len(link)]
+  with pytest.raises(AssertionError):
+    assert_local_wheel_fragment(readme, guide.replace(whole, "!" + whole))
 
 
 @pytest.mark.parametrize("name", ["README.md", "README_ZH.md"])

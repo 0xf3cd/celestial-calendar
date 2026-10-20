@@ -8,10 +8,12 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""What a Markdown guide renders, read from a CommonMark parse and never from the source text.
+"""The prose a Markdown guide renders, read from a CommonMark parse and never from the source text.
 
 A link or a sentence moved into an HTML comment still satisfies a substring match on the source, and it is gone from
-what a reader sees (#328, #350). The checks that name guide content read it through here.
+what a reader sees (#328, #350). The checks that name guide content read it through here; the surfaces that stay on
+source text, the CHANGELOG licensing statement and the adjacent retained-attribution records, are byte-oriented
+provenance checks and do not.
 """
 
 from markdown_it import MarkdownIt
@@ -50,7 +52,10 @@ def links(parsed: list[Token]) -> list[tuple[str, str]]:
 
 
 def visible_text(parsed: list[Token]) -> str:
-  """The text of paragraphs, headings and table cells, code spans included; link titles and comments are not text."""
+  """The text of paragraphs, headings and table cells, inline code included.
+
+  Fences, link titles and comments are not text.
+  """
   parts = []
   for token in parsed:
     if token.type == "inline":
@@ -62,24 +67,22 @@ def visible_text(parsed: list[Token]) -> str:
   return "".join(parts)
 
 
-def section_text(text: str, title: str, level: int = 2) -> str | None:
-  """The visible text of the one `level` section headed `title`, or None unless exactly one heading has that title."""
+def section_text(text: str, title: str) -> str | None:
+  """The visible text of the one `## title` section, including its subsections.
+
+  None unless exactly one heading has that title.
+  """
   parsed = tokens(text)
-  heading = f"h{level}"
   starts = [
     index
     for index, token in enumerate(parsed[:-1])
-    if token.type == "heading_open" and token.tag == heading and parsed[index + 1].content == title
+    if token.type == "heading_open" and token.tag == "h2" and parsed[index + 1].content == title
   ]
   if len(starts) != 1:
     return None
   body = next(index for index in range(starts[0], len(parsed)) if parsed[index].type == "heading_close") + 1
   end = next(
-    (
-      index
-      for index in range(body, len(parsed))
-      if parsed[index].type == "heading_open" and int(parsed[index].tag[1:]) <= level
-    ),
+    (index for index in range(body, len(parsed)) if parsed[index].type == "heading_open" and parsed[index].tag == "h2"),
     len(parsed),
   )
   return visible_text(parsed[body:end])

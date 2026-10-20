@@ -28,7 +28,7 @@
 #include "datetime.hpp"
 
 /**
- * This file contains the functions to compute the dynamical time.
+ * This file computes ΔT (TT − UT1) and converts between the UT1 and TT time scales.
  * The time scales (UT1, UTC, TT) and ΔT = TT − UT1 are defined in docs/DESIGN.md#time-scales.
  */
 

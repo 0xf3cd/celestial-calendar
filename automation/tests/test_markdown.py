@@ -377,9 +377,10 @@ def test_section_text_is_the_rendered_prose_of_one_section():
   text = "# T\n\n## Rules\n\nUnder MIT. <!-- not here -->\n\n```\nfenced\n```\n\n### Sub\n\nkept\n\n## Next\n\nother\n"
   assert section_text(text, "Rules") == "\nUnder MIT. \nSub\nkept"
   assert section_text(text, "Next") == "\nother"
-  assert section_text(text, "Sub") is None  # not a level-2 heading
+  assert section_text(text, "Sub") is None  # only ## headings address a section
   assert section_text(text, "Missing") is None
   assert section_text("## A\n\none\n\n## A\n\ntwo\n", "A") is None
+  assert section_text("# A\n\ntop\n", "A") is None  # not a level-2 heading
 
 
 def test_bare_repo_urls_are_found_outside_links_and_code():
