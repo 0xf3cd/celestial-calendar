@@ -36,7 +36,9 @@ _EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\s*CELESTIAL_API [\w *]+
 _OFFSETOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"offsetof\((\w+),")
 _ALIGNOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Alignof\((\w+)\)")
 _SIZEOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"sizeof\((\w+)\)")
-_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(&\(?(\w+)\)?,")
+# `_Generic(&name,` is the idiom, but `&((name))` compiles too; the name is what matters,
+# so allow any depth of parentheses after the ampersand.
+_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(\s*&\s*(?:\(\s*)*(\w+)")
 
 _COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
 

@@ -139,9 +139,23 @@ def test_parenthesized_generic_pin_counts(tmp_path):
   layout = Layout(tmp_path)
   sets = collect_pin_sets(tmp_path)
   export = sorted(sets.exports)[0]
-  mutated = layout.pins.replace(f"_Generic(&{export},", f"_Generic(&({export}),", 1)
-  layout.pins_path.write_text(mutated, encoding="utf-8")
-  verify_c_header_pins(tmp_path)
+  original = layout.pins
+  # Any parenthesization depth around the pinned name must keep working in both directions:
+  # the existing pin is still recognized, and a same-shaped pin naming a non-export is stale.
+  for depth in range(5):
+    parens = "(" * depth + export + ")" * depth
+    mutated = original.replace(f"_Generic(&{export},", f"_Generic(&{parens},", 1)
+    layout.pins_path.write_text(mutated, encoding="utf-8")
+    verify_c_header_pins(tmp_path)
+    fake = (
+      "_Static_assert(_Generic(&" + parens.replace(export, "not_an_export") + ",\n"
+      "               uint32_t (*)(void): 1,\n"
+      '               default: 0) != 0, "not_an_export signature drifted");\n'
+    )
+    layout.pins_path.write_text(mutated + fake, encoding="utf-8")
+    with pytest.raises(RuntimeError, match="pins name no celestial.h export"):
+      verify_c_header_pins(tmp_path)
+  layout.pins_path.write_text(original, encoding="utf-8")
 
 
 def test_stale_export_pin_fails(tmp_path):
