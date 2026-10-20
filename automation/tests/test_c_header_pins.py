@@ -158,6 +158,16 @@ def test_parenthesized_generic_pin_counts(tmp_path):
   layout.pins_path.write_text(original, encoding="utf-8")
 
 
+def test_field_address_generic_is_not_a_signature_pin(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  field_address_pin = (
+    '_Static_assert(_Generic(&((ChartBodyV1*)0)->target_code,\n    uint32_t*: 1, default: 0), "field address type");\n'
+  )
+  layout.pins_path.write_text(layout.pins + field_address_pin, encoding="utf-8")
+  verify_c_header_pins(tmp_path)
+
+
 def test_stale_export_pin_fails(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)

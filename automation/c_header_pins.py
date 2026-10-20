@@ -36,9 +36,11 @@ _EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\s*CELESTIAL_API [\w *]+
 _OFFSETOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"offsetof\((\w+),")
 _ALIGNOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Alignof\((\w+)\)")
 _SIZEOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"sizeof\((\w+)\)")
-# `_Generic(&name,` is the idiom, but `&((name))` compiles too; the name is what matters,
-# so allow any depth of parentheses after the ampersand.
-_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(\s*&\s*(?:\(\s*)*(\w+)")
+# `_Generic(&name,` is the idiom, but `&((name))` compiles too. The name must be
+# followed by nothing but closing parentheses and the comma — `&((Record*)0)->field`
+# is a field-address type check, not a signature pin, and its type name must not
+# be collected.
+_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(\s*&\s*(?:\(\s*)*(\w+)\s*(?:\)\s*)*,")
 
 _COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
 
