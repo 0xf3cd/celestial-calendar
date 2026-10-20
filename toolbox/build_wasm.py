@@ -59,6 +59,9 @@ EXPORTS: Final[list[str]] = [
   "delta_t_algo5",
   "delta_t",
   "chart_snapshot_v1",
+  "longitude_events",
+  "longitude_stations",
+  "longitude_difference_events",
   "malloc",
   "free",
 ]
