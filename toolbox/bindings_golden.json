@@ -1,8 +1,8 @@
 {
   "schema": "celestial-calendar/bindings-golden@2",
   "provenance": {
-    "source_commit": "1f5542971f59a3daab6b96d751aa9299b31f6e7b",
-    "generated_on": "Linux x86_64, 2026-08-17",
+    "source_commit": "9472a09d472d53997e7b211d60265744b573954a",
+    "generated_on": "Linux x86_64, 2026-10-19",
     "seed": 42
   },
   "sections": {
@@ -1681,7 +1681,7 @@
         },
         {
           "jde_bits": "0x4142d7203a42ceed",
-          "illumination_bits": "0x3fd54af13d5ad0f8",
+          "illumination_bits": "0x3fd54af13d5ad0f6",
           "elongation_deg_bits": "0x40721bcb486993e6"
         },
         {
@@ -1691,17 +1691,17 @@
         },
         {
           "jde_bits": "0x4142d76a2eb57ced",
-          "illumination_bits": "0x3fcbd10f278d3e78",
+          "illumination_bits": "0x3fcbd10f278d3e72",
           "elongation_deg_bits": "0x40730aba2bc6c3d4"
         },
         {
           "jde_bits": "0x4142a9f65dfacc03",
-          "illumination_bits": "0x3fdb9b70b731f95a",
+          "illumination_bits": "0x3fdb9b70b731f958",
           "elongation_deg_bits": "0x407160e19a420e64"
         },
         {
           "jde_bits": "0x4142c01734e081f7",
-          "illumination_bits": "0x3fee7d5eb9743dcd",
+          "illumination_bits": "0x3fee7d5eb9743dce",
           "elongation_deg_bits": "0x40635c37558a0107"
         },
         {
@@ -1751,7 +1751,7 @@
         },
         {
           "jde_bits": "0x4142c1ed7e51fb89",
-          "illumination_bits": "0x3fe289000b93a399",
+          "illumination_bits": "0x3fe289000b93a39a",
           "elongation_deg_bits": "0x4058be9a9833790d"
         },
         {
@@ -1761,22 +1761,22 @@
         },
         {
           "jde_bits": "0x4142c1da7a9cf4cb",
-          "illumination_bits": "0x3f589ec3b1448900",
+          "illumination_bits": "0x3f589ec3b1448700",
           "elongation_deg_bits": "0x40765add3ac99820"
         },
         {
           "jde_bits": "0x4142af9d4dd997ac",
-          "illumination_bits": "0x3fdd23d7facae3ba",
+          "illumination_bits": "0x3fdd23d7facae3b8",
           "elongation_deg_bits": "0x4071347418750520"
         },
         {
           "jde_bits": "0x414290b4e639b7f5",
-          "illumination_bits": "0x3fb56eb91431354c",
+          "illumination_bits": "0x3fb56eb914313540",
           "elongation_deg_bits": "0x407467ab2b43733b"
         },
         {
           "jde_bits": "0x4142bbc445cb4ce4",
-          "illumination_bits": "0x3fefd7f13b4dcece",
+          "illumination_bits": "0x3fefd7f13b4dcecf",
           "elongation_deg_bits": "0x40659797e3e08e16"
         },
         {
@@ -1801,12 +1801,12 @@
         },
         {
           "jde_bits": "0x4142d7f74f8d7631",
-          "illumination_bits": "0x3fec85750efd9940",
+          "illumination_bits": "0x3fec85750efd993f",
           "elongation_deg_bits": "0x4061b4ea8bb20859"
         },
         {
           "jde_bits": "0x4142da7e8cd41cd0",
-          "illumination_bits": "0x3fde45eb098b05d6",
+          "illumination_bits": "0x3fde45eb098b05d4",
           "elongation_deg_bits": "0x4055af589b96e9a0"
         },
         {
@@ -1816,7 +1816,7 @@
         },
         {
           "jde_bits": "0x414296b60c7784ec",
-          "illumination_bits": "0x3f4692ebf86a0a00",
+          "illumination_bits": "0x3f4692ebf86a0c00",
           "elongation_deg_bits": "0x3ff564a83311ba00"
         },
         {
@@ -2599,6 +2599,141 @@
           "phase_kind": 3,
           "index": 0,
           "jde_bits": "0x4142cbc29ed896e4"
+        }
+      ]
+    },
+    "longitude_events": {
+      "entries": [
+        {
+          "name": "sun-zero",
+          "target_code": 0,
+          "target_longitude_deg": 0.0,
+          "start_jde_tt": 2460735.5,
+          "end_jde_tt": 2460785.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c629703b8710",
+              "longitude_deg_bits": "0x40767fffffffe72c",
+              "longitude_rate_deg_per_tt_day_bits": "0x3fefcad2c64ed6ef",
+              "direction_code": 0
+            }
+          ]
+        },
+        {
+          "name": "moon-fixed",
+          "target_code": 1,
+          "target_longitude_deg": 137.5,
+          "start_jde_tt": 2460735.5,
+          "end_jde_tt": 2460785.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c624ea56e72c",
+              "longitude_deg_bits": "0x40613000000e9cfa",
+              "longitude_rate_deg_per_tt_day_bits": "0x4029326d2a791c9c",
+              "direction_code": 0
+            },
+            {
+              "jde_tt_bits": "0x4142c63288292dc4",
+              "longitude_deg_bits": "0x40613000000f23b1",
+              "longitude_rate_deg_per_tt_day_bits": "0x402917a4bff7e4d7",
+              "direction_code": 0
+            }
+          ]
+        },
+        {
+          "name": "mercury-triple",
+          "target_code": 2,
+          "target_longitude_deg": 0.0,
+          "start_jde_tt": 2460735.5,
+          "end_jde_tt": 2460785.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c620f06d3844",
+              "longitude_deg_bits": "0x3e43a9754e1e0000",
+              "longitude_rate_deg_per_tt_day_bits": "0x3ff7a222eb3a8cab",
+              "direction_code": 0
+            },
+            {
+              "jde_tt_bits": "0x4142c62e4c5ed170",
+              "longitude_deg_bits": "0x40767fffffffd8ef",
+              "longitude_rate_deg_per_tt_day_bits": "0xbfe7401b1015499a",
+              "direction_code": 1
+            },
+            {
+              "jde_tt_bits": "0x4142c636e255d938",
+              "longitude_deg_bits": "0x40767ffffffe1c3a",
+              "longitude_rate_deg_per_tt_day_bits": "0x3fe5baf9540c3b77",
+              "direction_code": 0
+            }
+          ]
+        }
+      ]
+    },
+    "longitude_stations": {
+      "entries": [
+        {
+          "name": "mercury-stations",
+          "target_code": 2,
+          "start_jde_tt": 2460735.5,
+          "end_jde_tt": 2460785.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c626e4332608",
+              "longitude_deg_bits": "0x40232d88fcf0d4d2",
+              "longitude_rate_deg_per_tt_day_bits": "0xbdc6fd7777777777",
+              "motion_before_code": 0,
+              "motion_after_code": 1
+            },
+            {
+              "jde_tt_bits": "0x4142c6327b725494",
+              "longitude_deg_bits": "0x40764d38c9b40060",
+              "longitude_rate_deg_per_tt_day_bits": "0xbdebe2eeeeeeeeef",
+              "motion_before_code": 1,
+              "motion_after_code": 0
+            }
+          ]
+        }
+      ]
+    },
+    "longitude_difference_events": {
+      "entries": [
+        {
+          "name": "pair-minus-60",
+          "first_target_code": 1,
+          "second_target_code": 0,
+          "target_difference_deg": -60.0,
+          "start_jde_tt": 2460676.5,
+          "end_jde_tt": 2460707.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c60e0a625844",
+              "longitude_a_deg_bits": "0x406e9a8c68ce091a",
+              "longitude_b_deg_bits": "0x40730d46346840f1",
+              "longitude_rate_a_deg_per_tt_day_bits": "0x4028a6480f38ff51",
+              "longitude_rate_b_deg_per_tt_day_bits": "0x3ff04636a79aa2ab",
+              "signed_difference_deg_bits": "0xc04e00000009e320",
+              "direction_code": 0
+            }
+          ]
+        },
+        {
+          "name": "pair-plus-60",
+          "first_target_code": 1,
+          "second_target_code": 0,
+          "target_difference_deg": 60.0,
+          "start_jde_tt": 2460676.5,
+          "end_jde_tt": 2460707.5,
+          "events": [
+            {
+              "jde_tt_bits": "0x4142c604183dd7fc",
+              "longitude_a_deg_bits": "0x40758930c209679a",
+              "longitude_b_deg_bits": "0x4071c930c209c41c",
+              "longitude_rate_a_deg_per_tt_day_bits": "0x402be0670478fb80",
+              "longitude_rate_b_deg_per_tt_day_bits": "0x3ff04f99b340ec89",
+              "signed_difference_deg_bits": "0x404dfffffffd1bf0",
+              "direction_code": 0
+            }
+          ]
         }
       ]
     }

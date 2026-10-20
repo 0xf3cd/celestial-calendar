@@ -31,7 +31,10 @@ assert(golden.provenance.generated_on.length > 0);
 assert.equal(golden.provenance.seed, 42);
 assert.deepEqual(
   Object.fromEntries(Object.entries(golden.sections).map(([name, section]) => [name, section.entries.length])),
-  { jieqi: 204, moon: 41, sidereal: 43, moon_position_angle: 41, phases: 60 },
+  {
+    jieqi: 204, moon: 41, sidereal: 43, moon_position_angle: 41, phases: 60,
+    longitude_events: 3, longitude_stations: 1, longitude_difference_events: 2,
+  },
   "golden section counts",
 );
 assert(M.HEAPU16 instanceof Uint16Array);
@@ -235,6 +238,45 @@ try {
   assert.equal(M.HEAPU32[countPtr >> 2], newMoonCount);
   finite(M.HEAPF64[oneSlot >> 3]);
   happyExports.add("new_moons_in_year");
+
+  // Event count+fill: one count pass, one fill pass, records decoded from the manifest layout.
+  const eventFill = (exportName, recordLayout, args) => {
+    const recordSize = manifest.layouts[recordLayout].size;
+    const fillCount = M._malloc(4);
+    try {
+      M.HEAPU32[countPtr >> 2] = 0xDEADBEEF;
+      assert.equal(M[`_${exportName}`](...args, countPtr, 0, 0), 0);
+      const count = M.HEAPU32[countPtr >> 2];
+      assert(count > 0, `${exportName} fixture window must hold events`);
+      const slots = M._malloc(count * recordSize);
+      try {
+        assert.equal(M[`_${exportName}`](...args, fillCount, slots, count), count);
+        assert.equal(M.HEAPU32[fillCount >> 2], count);
+        return Array.from({ length: count }, (_, index) => readLayout(slots + index * recordSize, recordLayout));
+      } finally {
+        M._free(slots);
+      }
+    } finally {
+      M._free(fillCount);
+    }
+  };
+  const mercuryCrossings = eventFill("longitude_events", "LongitudeEventRecord", [2, 0.0, 2460735.5, 2460785.5]);
+  assert.equal(mercuryCrossings.length, 3);
+  assert.deepEqual(mercuryCrossings.map((event) => event.direction_code), [0, 1, 0]);
+  happyExports.add("longitude_events");
+  const mercuryStations = eventFill("longitude_stations", "StationEventRecord", [2, 2460735.5, 2460785.5]);
+  assert.equal(mercuryStations.length, 2);
+  assert.deepEqual(
+    mercuryStations.map((station) => [station.motion_before_code, station.motion_after_code]).sort(),
+    [[0, 1], [1, 0]],
+  );
+  happyExports.add("longitude_stations");
+  const moonSunSixty = eventFill(
+    "longitude_difference_events", "LongitudeDifferenceEventRecord", [1, 0, -60.0, 2460676.5, 2460707.5],
+  );
+  assert.equal(moonSunSixty.length, 1);
+  assert(Math.abs(moonSunSixty[0].signed_difference_deg + 60.0) < 1e-6);
+  happyExports.add("longitude_difference_events");
 } finally {
   M._free(oneSlot);
   M._free(countPtr);
@@ -361,6 +403,25 @@ recordedFailure("gregorian_to_lunar", () => !rawSret("gregorian_to_lunar", [1, 2
 recordedFailure("lunar_to_gregorian", () => !rawSret("lunar_to_gregorian", [1, 2024, 2, true, 1]).valid);
 for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_algo4", "delta_t_algo5", "delta_t"]) {
   recordedFailure(name, () => !rawSret(name, [Number.NaN]).valid);
+}
+{
+  const eventCount = M._malloc(4);
+  try {
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("longitude_events", () => M._longitude_events(2, Number.NaN, 2460735.5, 2460785.5, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("longitude_stations", () => M._longitude_stations(2, 2460785.5, 2460735.5, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure(
+      "longitude_difference_events",
+      () => M._longitude_difference_events(0, 0, 1.0, 2460676.5, 2460707.5, eventCount, 0, 0) === 0,
+    );
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+  } finally {
+    M._free(eventCount);
+  }
 }
 
 const tinyName = M._malloc(2);
@@ -661,22 +722,110 @@ for (const point of golden.sections.phases.entries) {
   ++goldenCount;
 }
 
+// Event fixtures (#303): the same six queries the C ABI and Python consumers replay.
+// WASM runs musl's libm against the native goldens: times take the existing moment
+// margin; codes stay exact; angles scale by the Moon's ~15.5 deg/day through 1e-8 days
+// (<= 1.6e-7 deg, so 2e-7), and the seven-point rate divides that by its 0.75-day stencil
+// (<= 2.7e-7 deg/day, so 1e-5 leaves ~40x headroom).
+const MAX_EVENT_ANGLE_DIFF_DEG = 2e-7;
+const MAX_EVENT_RATE_DIFF_DEG_PER_TT_DAY = 1e-5;
+const eventQuery = (exportName, recordLayout, entry, args) => {
+  const recordSize = manifest.layouts[recordLayout].size;
+  const countPtr = M._malloc(4);
+  try {
+    assert.equal(M[`_${exportName}`](...args, countPtr, 0, 0), 0);
+    const count = M.HEAPU32[countPtr >> 2];
+    assert.equal(count, entry.events.length, `${entry.name} count`);
+    const slots = M._malloc(Math.max(count * recordSize, 1));
+    try {
+      const fillCount = M._malloc(4);
+      try {
+        assert.equal(M[`_${exportName}`](...args, fillCount, slots, count), count);
+        assert.equal(M.HEAPU32[fillCount >> 2], count);
+        return Array.from({ length: count }, (_, index) => readLayout(slots + index * recordSize, recordLayout));
+      } finally {
+        M._free(fillCount);
+      }
+    } finally {
+      M._free(slots);
+    }
+  } finally {
+    M._free(countPtr);
+  }
+};
+for (const entry of golden.sections.longitude_events.entries) {
+  const events = eventQuery(
+    "longitude_events", "LongitudeEventRecord", entry,
+    [entry.target_code, entry.target_longitude_deg, entry.start_jde_tt, entry.end_jde_tt],
+  );
+  events.forEach((event, index) => {
+    const recorded = entry.events[index];
+    assert.equal(event.direction_code, recorded.direction_code, `${entry.name}[${index}] direction`);
+    close(event.jde_tt, bitsOf(recorded.jde_tt_bits), MAX_MOMENT_DIFF_DAYS, `${entry.name}[${index}] jde_tt`);
+    close(event.longitude_deg, bitsOf(recorded.longitude_deg_bits), MAX_EVENT_ANGLE_DIFF_DEG, `${entry.name}[${index}] longitude`);
+    close(
+      event.longitude_rate_deg_per_tt_day,
+      bitsOf(recorded.longitude_rate_deg_per_tt_day_bits),
+      MAX_EVENT_RATE_DIFF_DEG_PER_TT_DAY,
+      `${entry.name}[${index}] rate`,
+    );
+  });
+  ++goldenCount;
+}
+for (const entry of golden.sections.longitude_stations.entries) {
+  const stations = eventQuery(
+    "longitude_stations", "StationEventRecord", entry, [entry.target_code, entry.start_jde_tt, entry.end_jde_tt],
+  );
+  stations.forEach((station, index) => {
+    const recorded = entry.events[index];
+    assert.equal(station.motion_before_code, recorded.motion_before_code, `${entry.name}[${index}] motion_before`);
+    assert.equal(station.motion_after_code, recorded.motion_after_code, `${entry.name}[${index}] motion_after`);
+    close(station.jde_tt, bitsOf(recorded.jde_tt_bits), MAX_MOMENT_DIFF_DAYS, `${entry.name}[${index}] jde_tt`);
+    close(station.longitude_deg, bitsOf(recorded.longitude_deg_bits), MAX_EVENT_ANGLE_DIFF_DEG, `${entry.name}[${index}] longitude`);
+    close(
+      station.longitude_rate_deg_per_tt_day,
+      bitsOf(recorded.longitude_rate_deg_per_tt_day_bits),
+      MAX_EVENT_RATE_DIFF_DEG_PER_TT_DAY,
+      `${entry.name}[${index}] rate`,
+    );
+  });
+  ++goldenCount;
+}
+for (const entry of golden.sections.longitude_difference_events.entries) {
+  const differences = eventQuery(
+    "longitude_difference_events", "LongitudeDifferenceEventRecord", entry,
+    [entry.first_target_code, entry.second_target_code, entry.target_difference_deg, entry.start_jde_tt, entry.end_jde_tt],
+  );
+  differences.forEach((difference, index) => {
+    const recorded = entry.events[index];
+    assert.equal(difference.direction_code, recorded.direction_code, `${entry.name}[${index}] direction`);
+    close(difference.jde_tt, bitsOf(recorded.jde_tt_bits), MAX_MOMENT_DIFF_DAYS, `${entry.name}[${index}] jde_tt`);
+    close(difference.longitude_a_deg, bitsOf(recorded.longitude_a_deg_bits), MAX_EVENT_ANGLE_DIFF_DEG, `${entry.name}[${index}] longitude_a`);
+    close(difference.longitude_b_deg, bitsOf(recorded.longitude_b_deg_bits), MAX_EVENT_ANGLE_DIFF_DEG, `${entry.name}[${index}] longitude_b`);
+    close(
+      difference.signed_difference_deg, bitsOf(recorded.signed_difference_deg_bits), MAX_EVENT_ANGLE_DIFF_DEG,
+      `${entry.name}[${index}] signed_difference`,
+    );
+  });
+  ++goldenCount;
+}
+
 const expectedExports = BINDINGS.map(({ cName }) => cName);
 assert.deepEqual(
   [...recordedNames].sort(),
   BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName).sort(),
   "all recording exports exercised a failure",
 );
-assert.equal(goldenCount, 389, "golden replay count");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 30 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 19 layouts decoded");
+assert.equal(goldenCount, 395, "golden replay count");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 33 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 22 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 30/30; layouts 19/19; recording seams 29/29");
+console.log("PASS raw exports 33/33; layouts 22/22; recording seams 32/32");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
