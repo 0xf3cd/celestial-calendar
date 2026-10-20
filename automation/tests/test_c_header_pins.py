@@ -189,6 +189,31 @@ def test_generic_keyword_may_be_spaced_from_its_paren(tmp_path):
   layout.pins_path.write_text(original, encoding="utf-8")
 
 
+def test_grouped_address_and_line_splice_pins_round_trip(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  sets = collect_pin_sets(tmp_path)
+  export = sorted(sets.exports)[0]
+  original = layout.pins
+  variants = [
+    ("grouped_address", f"(&{export})", "(&not_an_export)"),
+    ("line_splice", "&\\\n" + export, "&\\\nnot_an_export"),
+  ]
+  for _name, existing, stale in variants:
+    spaced = original.replace(f"_Generic(&{export},", f"_Generic({existing},", 1)
+    layout.pins_path.write_text(spaced, encoding="utf-8")
+    verify_c_header_pins(tmp_path)
+    fake = (
+      f"_Static_assert(_Generic({stale},\n"
+      "               uint32_t (*)(void): 1,\n"
+      '               default: 0) != 0, "not_an_export signature drifted");\n'
+    )
+    layout.pins_path.write_text(spaced + fake, encoding="utf-8")
+    with pytest.raises(RuntimeError, match="pins name no celestial.h export"):
+      verify_c_header_pins(tmp_path)
+  layout.pins_path.write_text(original, encoding="utf-8")
+
+
 def test_stale_export_pin_fails(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)

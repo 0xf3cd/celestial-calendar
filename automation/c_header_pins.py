@@ -19,7 +19,11 @@ C comments so a commented-out pin does not count:
 - stale layout pins: every offsetof/_Alignof name is a celestial.h struct (stale sizeof
   names are left to the C compiler, which rejects the undeclared identifier);
 - signature coverage and stale pins: every celestial.h export carries an active _Generic
-  pin, and every _Generic pin names a celestial.h export.
+  pin, and every _Generic pin names a celestial.h export. "Active" means the
+  address-of-function-name idiom (`&name`, optionally parenthesized, with whitespace,
+  comments, or line splices between tokens); a pin written in any other shape is not
+  recognized, so its export fails coverage loudly instead of passing silently, and the
+  C compile backstops anything the idiom does not cover.
 """
 
 import re
@@ -36,18 +40,22 @@ _EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\s*CELESTIAL_API [\w *]+
 _OFFSETOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"offsetof\((\w+),")
 _ALIGNOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Alignof\((\w+)\)")
 _SIZEOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"sizeof\((\w+)\)")
-# `_Generic(&name,` is the idiom, but `&((name))` compiles too. The name must be
-# followed by nothing but closing parentheses and the comma — `&((Record*)0)->field`
-# is a field-address type check, not a signature pin, and its type name must not
-# be collected.
-_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\s*\(\s*&\s*(?:\(\s*)*(\w+)\s*(?:\)\s*)*,")
+# The pin idiom is address-of-function-name: `_Generic(&name,`, with optional
+# parentheses around the address and any whitespace, comments, or line splices
+# between tokens. A field-address type check such as `&((Record*)0)->field` is
+# not a signature pin; its type name must not be collected. The C compile is
+# the backstop for pin styles outside this idiom.
+_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(
+  r"_Generic\s*\(\s*(?:\(\s*)*&\s*(?:\(\s*)*(\w+)\s*(?:\)\s*)*,"
+)
 
 _COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
+_SPLICE_PATTERN: Final[re.Pattern[str]] = re.compile(r"\\\r?\n")
 
 
 def _strip_comments(text: str) -> str:
-  """Drop C comments so commented-out pins and declarations do not count."""
-  return _COMMENT_PATTERN.sub("", text)
+  """Drop C comments and line splices so neither hides nor fakes a pin."""
+  return _COMMENT_PATTERN.sub("", _SPLICE_PATTERN.sub("", text))
 
 
 @dataclass(frozen=True)
