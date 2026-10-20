@@ -2,40 +2,37 @@
      dispatched on a v*.*.* tag. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
-## [v0.8.0]
+## [v0.9.0]
 
-### Charts and Ephemerides
+### Longitude Events
 
-- A chart snapshot of one instant is available in every language: C++ `astro::chart::calculate`, the C ABI's
-  `chart_snapshot_v1`, Python `chart_snapshot()` and JavaScript `chart.snapshot()`. From a civil time declared as
-  UTC or UT1, a location, a house system and an optional ΔT model, it returns UT1/TT times, positions and
-  instantaneous longitude rates for the Sun, Moon, Mercury through Pluto and four lunar nodes, plus the four axes
-  and twelve house cusps. Distances are in AU, the Moon's included; the nodes have none. Inputs outside the
-  documented domains fail rather than return a partial result or another house system.
-- C++ adds the parts behind the snapshot: apparent positions for Mercury through Neptune from the complete VSOP87D
-  series, Pluto from the Meeus Chapter 37 model, mean and true lunar nodes, Equal, Whole Sign and Placidus houses,
-  longitude rates, planetary illumination, and yearly searches for conjunctions, oppositions, quadratures,
-  greatest elongations and stations. C++ also selects among the five ΔT models with an enum; the default is
-  Algo5.
+- Interval longitude-event searches are available from C++ (`ephemeris_events.hpp`), the C ABI and
+  the Python package. `longitude_events` finds every crossing or exact numerical contact of a
+  target's apparent geocentric longitude with a supplied level; `longitude_stations` finds the
+  stationary instants of the published seven-point rate with certified motion on both sides;
+  `longitude_difference_events` searches the directed, canonical difference of two targets.
+  All fourteen targets — the Sun, Moon, planets, Pluto and the four lunar nodes — speak the same
+  codes across the C ABI, Python and the chart snapshot. Times are JDE(TT) on the published
+  2^-30-day reporting lattice; rates are degrees per TT day.
+- The C ABI owns results through one count+fill call: an explicit total count, caller-allocated
+  slots in deterministic chronological order, defined truncation behavior, and a thread-local
+  error channel that separates a legal empty result from a failed query. Python mirrors the enums,
+  fields, units and failures in frozen dataclasses and validates every input before native
+  execution. Angles carry no aspect names or orb policy anywhere in the API.
+- The private WASM ABI mirrors the expanded C surface — export list, binding metadata, layouts,
+  manifests and ABI oracles — while JavaScript intentionally exposes no event API.
+- Six shared fixtures (recorded with exact bit patterns in `toolbox/bindings_golden.json`) certify
+  that the C++ core, the C ABI and Python agree on counts, ordering, timestamps, directions,
+  longitudes and rates; the Python wheel suite and the WASM raw-protocol suite replay them on
+  every build.
 
 ### Breaking Changes
 
-- C++ headers include what they use. `jieqi.hpp` no longer brings in `astro.hpp`, `datetime.hpp` no longer brings
-  in `<functional>` or `<cstddef>`, and `src/util/util.hpp` is removed; include the headers your code uses.
-  `std::hash<calendar::Datetime>`, `util::hash::IsTuple` and the single-tuple `util::hash::hash` overload are removed
-  as well; hash a tuple with `util::hash::TupleHash`. The C ABI keeps every 0.7.0 export and record layout.
-
-### Fixes
-
-- C and C++ calls that take an integer year check it before narrowing it. An unrepresentable year used to alias to
-  another year and return that year's result; it now fails, and the message names the original year. Python and
-  JavaScript already rejected such years.
-- The default C++ ΔT evaluation of a datetime no longer fails at year 32767.
+- None. Every 0.8.0 C ABI export and record layout is unchanged; the three event exports and
+  their record types are additive.
 
 ### Documentation
 
-- The root README and the package guides are now English-first. Chinese translations are in the repository's
-  `README_ZH.md` files; the package pages on PyPI and npm show the English guide.
-- Building, validation and design material lives in `docs/BUILDING.md`, `docs/VALIDATION.md` and the new
-  `docs/DESIGN.md`, which explains the source layers, time scales and failure handling.
-- The CHANGELOG gains an errata section for counts and wording that changed after earlier releases.
+- [Longitude events](EPHEMERIS_EVENTS.md) now covers the C ABI and Python surfaces alongside
+  the C++ searches: the count+fill ownership protocol, empty-result disambiguation, and the
+  per-query cost of the two-pass Python protocol.

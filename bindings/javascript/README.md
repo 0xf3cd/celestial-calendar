@@ -18,7 +18,7 @@ WebAssembly module.
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide describes version `0.8.0`. The install command below gets the latest version on npm; an older installed
+This guide describes version `0.9.0`. The install command below gets the latest version on npm; an older installed
 version may lack some APIs shown here, so check its version before using an example.
 
 <a id="install"></a>
