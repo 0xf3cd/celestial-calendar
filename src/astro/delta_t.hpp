@@ -29,7 +29,7 @@
 
 /**
  * This file computes ΔT (TT − UT1) and converts between the UT1 and TT time scales.
- * The time scales (UT1, UTC, TT) and ΔT = TT − UT1 are defined in docs/DESIGN.md#time-scales.
+ * The time scales (UT1, UTC, TT) and ΔT = TT − UT1 are defined in the Time Scales section of docs/DESIGN.md.
  */
 
 
