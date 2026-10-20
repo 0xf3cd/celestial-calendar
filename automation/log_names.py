@@ -22,13 +22,19 @@ from .utils import green_print, red_print, yellow_print
 # user greps a name that does not exist).
 ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "buf_size",
+  "event_count",  # the events exports' out-parameter, quoted by their guard messages (#303)
+  "first_target_code",  # longitude_difference_events's parameter, quoted by its guard messages
   "is_leap",
   "jd_ut1",  # local_apparent_sidereal_time's parameter, quoted by its guard messages
   "jq_idx",
   "new_value",
   "phase_kind",  # moon_phase_moments's parameter, quoted by its guard messages
   "root_count",
+  "second_target_code",  # longitude_difference_events's parameter, quoted by its guard messages
   "slot_count",
+  "target_code",  # longitude_events / longitude_stations's parameter, quoted by their guard messages
+  "target_longitude_deg",  # longitude_events's parameter, quoted by its guard message
+  "target_difference_deg",  # longitude_difference_events's parameter, quoted by its guard message
 }
 
 # Only multi-word snake tokens are held: every entry point — and every function name a

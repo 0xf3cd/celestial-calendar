@@ -54,10 +54,10 @@ auto check_target_code(const uint32_t target_code, const char * const name) -> v
   }
 }
 
-auto check_target_angle(const double angle_deg) -> void {
+auto check_target_angle(const double angle_deg, const char * const name) -> void {
   if (not std::isfinite(angle_deg)) {
     throw std::invalid_argument {
-      std::format("Argument `target_longitude_deg` is not finite, got {}", angle_deg)
+      std::format("Argument `{}` is not finite, got {}", name, angle_deg)
     };
   }
 }
@@ -118,7 +118,7 @@ auto longitude_events(
     check_event_count_ptr(event_count);
     check_event_slots(slots, slot_count);
     check_target_code(target_code, "target_code");
-    check_target_angle(target_longitude_deg);
+    check_target_angle(target_longitude_deg, "target_longitude_deg");
     check_interval(start_jde_tt, end_jde_tt);
 
     const auto events = astro::ephemeris::longitude_events(
@@ -214,7 +214,7 @@ auto longitude_difference_events(
     if (first_target_code == second_target_code) {
       throw std::invalid_argument { "Longitude-difference events require distinct targets" };
     }
-    check_target_angle(target_difference_deg);
+    check_target_angle(target_difference_deg, "target_difference_deg");
     check_interval(start_jde_tt, end_jde_tt);
 
     const auto events = astro::ephemeris::longitude_difference_events(
