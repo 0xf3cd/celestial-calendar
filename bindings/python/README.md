@@ -6,7 +6,7 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide describes version `0.8.0`. The install command below gets the latest version on PyPI; an older installed
+This guide describes version `0.9.0`. The install command below gets the latest version on PyPI; an older installed
 version may lack some APIs shown here, so check its version before running an example. To use the current source,
 build a local wheel from a full checkout as described below.
 
@@ -108,6 +108,37 @@ The four axes and twelve cusps are all in `[0, 360)` degrees, and the cusp tuple
 east-positive and latitude north-positive; location affects houses only. See the
 [shared replay example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/examples/chart_snapshot/README.md)
 for full values.
+
+<a id="interval-longitude-events"></a>
+### Interval longitude events
+
+`longitude_events()`, `longitude_stations()` and `longitude_difference_events()` are new in 0.9.0.
+They expose the [C++ interval searches](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md)
+for supplied longitudes, stationary instants and directed two-body longitude differences. Angles carry no
+names or interpretations — map exact target angles to your own terminology.
+
+```python
+import celestial_calendar as celestial
+
+crossings = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+for event in crossings:
+  print(event.jde_tt, event.longitude_deg, event.direction)
+
+stations = celestial.longitude_stations(celestial.EventTarget.MERCURY, 2460735.5, 2460785.5)
+for station in stations:
+  print(station.jde_tt, station.motion_before.value, "->", station.motion_after.value)
+
+differences = celestial.longitude_difference_events(
+  celestial.EventTarget.MOON, celestial.EventTarget.SUN, -60.0, 2460676.5, 2460707.5
+)
+```
+
+Times are JDE(TT) on the published 2^-30-day reporting lattice; rates are degrees per TT day from the published
+seven-point operator. The interval `[start, end)` must be nonempty, at most 3660 TT days, and inside the
+target's longitude-rate domain; an empty tuple is a legal no-event outcome, while numerical ambiguity or
+work-limit exhaustion raises `CelestialError` rather than returning a partial list. Each query runs the native
+search twice (a count pass, then a fill pass): a 50-day Mercury window costs milliseconds, and the documented
+worst case (a full 3660-day span) stays well under a second.
 
 <a id="platforms-and-local-builds"></a>
 ## Platforms and local builds

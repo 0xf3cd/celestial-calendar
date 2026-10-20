@@ -1,9 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [v0.9.0]
 
 ### Added
 
+- C ABI interval longitude events (#303): `longitude_events`, `longitude_stations` and
+  `longitude_difference_events` over the `EVENT_TARGET_*` codes (fourteen identities, pinned
+  equal to the chart targets in `c_header_check.c`). One count+fill call owns the results:
+  `event_count` always reports the total, caller-allocated slots receive the chronological
+  prefix, truncation is observable, and a zero total is a legal no-event outcome told apart
+  from failure by `last_error`. No existing struct layout or export changed.
+- Python interval longitude events (#303): `longitude_events()`, `longitude_stations()` and
+  `longitude_difference_events()` mirror the enums, event fields, units, time scales and
+  failures in frozen dataclasses, validate intervals, target angles, body pairs and capacities
+  before native execution, and raise `CelestialError` on native failure. Angles carry no
+  aspect names or orb policy. Each query runs a native count pass and fill pass; a 50-day
+  Mercury window costs milliseconds.
 - C++ half-open interval searches for supplied longitudes, stations and directed longitude differences across all
   fourteen ephemeris targets (#301, #304). Queries preserve signed-angle orientation, recognize exact numerical
   stationary contacts, and throw on unresolved isolation, refinement or work limits rather than return partial
@@ -11,6 +23,9 @@
 
 ### Changed
 
+- The private WASM ABI mirrors the expanded C surface (#303): the export list, binding metadata,
+  layouts, manifests and both ABI oracles carry the three event exports and their record layouts.
+  No public JavaScript event API is added; JavaScript remains outside the event surface.
 - C++ input rejections consistently throw `std::invalid_argument` (#345), including unsupported dates or years,
   unknown models, invalid Jieqi indices and angle division by zero. Callers that caught `std::out_of_range` or
   `std::runtime_error` for these inputs must update their handlers. Numerical convergence and consistency failures

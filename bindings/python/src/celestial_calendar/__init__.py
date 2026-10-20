@@ -22,6 +22,7 @@ from operator import index as _index
 from typing import TypeVar as _TypeVar
 
 from . import _binding, chart as _chart
+from . import events as _events
 from ._version import VERSION as __version__
 from .chart import BodyState as BodyState
 from .chart import ChartHouses as ChartHouses
@@ -31,6 +32,12 @@ from .chart import ChartTimes as ChartTimes
 from .chart import CivilScale as CivilScale
 from .chart import GeoLocation as GeoLocation
 from .chart import HouseSystem as HouseSystem
+from .events import EventDirection as EventDirection
+from .events import EventTarget as EventTarget
+from .events import LongitudeDifferenceEvent as LongitudeDifferenceEvent
+from .events import LongitudeEvent as LongitudeEvent
+from .events import StationEvent as StationEvent
+from .events import StationMotion as StationMotion
 
 
 class LogVerbosity(_StrEnum):
@@ -252,6 +259,7 @@ _CHART_DELTA_T_MODEL = {
 _MIN_CHART_YEAR = 1885
 _MAX_CHART_YEAR = 2099
 _MIN_CHART_UTC_YEAR = 1972
+_MAX_EVENT_QUERY_SPAN_TT_DAYS = 3660.0
 
 
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
@@ -754,6 +762,174 @@ def chart_snapshot(
     raise CelestialError("chart_snapshot", f"Malformed native chart snapshot: {error}", recorded=False) from error
 
 
+def _event_interval(start_jde_tt: object, end_jde_tt: object) -> tuple[float, float]:
+  """Validate a half-open TT interval exactly as the native boundary re-checks it."""
+  start = _finite(start_jde_tt, "start_jde_tt")
+  end = _finite(end_jde_tt, "end_jde_tt")
+  if not start < end:
+    raise ValueError("the event query interval must be nonempty")
+  if end - start > _MAX_EVENT_QUERY_SPAN_TT_DAYS:
+    raise ValueError("the event query interval must not exceed 3660 TT days")
+  return start, end
+
+
+def longitude_events(
+  target: EventTarget,
+  longitude_deg: float,
+  start_jde_tt: float,
+  end_jde_tt: float,
+) -> tuple[LongitudeEvent, ...]:
+  """Return every crossing or exact numerical contact of a target's apparent longitude.
+
+  `target` selects one of the fourteen EventTarget bodies or nodes. `longitude_deg` is a
+  finite angle; whole-turn shifts denote the same level. The half-open interval
+  [start_jde_tt, end_jde_tt) speaks JDE(TT), must be nonempty and at most 3660 TT days,
+  and must lie inside the target's longitude-rate domain (see
+  docs/EPHEMERIS_EVENTS.md). Results are chronologically ordered. An empty tuple is a
+  legal no-event outcome; numerical ambiguity or work-limit exhaustion raises instead of
+  returning a partial list.
+
+  Raises:
+    TypeError: If target is not an EventTarget member or an argument is not a real number.
+    ValueError: If target is an undeclared enum object, the angle is non-finite, or the
+      interval is empty or too wide.
+    CelestialError: If the native search cannot produce the events, including a query
+      outside the target's longitude-rate domain.
+    CelestialError: If the native search cannot produce the events.
+  """
+  checked_target = _enum(target, EventTarget, "target")
+  level = _finite(longitude_deg, "longitude_deg")
+  start, end = _event_interval(start_jde_tt, end_jde_tt)
+
+  # The native protocol is one count+fill call per pass. Each export clears the recorded
+  # error on entry, so both passes re-check the channel: a failed fill pass must not be
+  # mistaken for an empty count, and a truncated fill must not be mistaken for the total.
+  total = _ctypes.c_uint32()
+  written = _binding.call("longitude_events", checked_target.value, level, start, end, _ctypes.byref(total), None, 0)
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("longitude_events", recording=True)
+  if total.value == 0:
+    return ()
+  expected = total.value
+  records = (_binding.LongitudeEventRecord * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call(
+    "longitude_events", checked_target.value, level, start, end, _ctypes.byref(fill_total), records, expected
+  )
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("longitude_events", recording=True)
+  return _events.decode_longitude_events(records)
+
+
+def longitude_stations(
+  target: EventTarget,
+  start_jde_tt: float,
+  end_jde_tt: float,
+) -> tuple[StationEvent, ...]:
+  """Return every stationary instant of a target's published seven-point longitude rate.
+
+  The interval contract is the same as for `longitude_events`. Targets whose certified
+  rate bounds exclude a station return a legal empty tuple. The reported rate need not be
+  bitwise zero; `motion_before` and `motion_after` carry the certified sign on each side.
+
+  Raises:
+    TypeError: If target is not an EventTarget member or an argument is not a real number.
+    ValueError: If target is an undeclared enum object, or the interval is empty or too wide.
+    CelestialError: If the native search cannot produce the stations, including a query
+      outside the target's longitude-rate domain.
+    CelestialError: If the native search cannot produce the stations.
+  """
+  checked_target = _enum(target, EventTarget, "target")
+  start, end = _event_interval(start_jde_tt, end_jde_tt)
+
+  total = _ctypes.c_uint32()
+  written = _binding.call("longitude_stations", checked_target.value, start, end, _ctypes.byref(total), None, 0)
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("longitude_stations", recording=True)
+  if total.value == 0:
+    return ()
+  expected = total.value
+  records = (_binding.StationEventRecord * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call(
+    "longitude_stations", checked_target.value, start, end, _ctypes.byref(fill_total), records, expected
+  )
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("longitude_stations", recording=True)
+  return _events.decode_station_events(records)
+
+
+def longitude_difference_events(
+  first: EventTarget,
+  second: EventTarget,
+  difference_deg: float,
+  start_jde_tt: float,
+  end_jde_tt: float,
+) -> tuple[LongitudeDifferenceEvent, ...]:
+  """Return every event of the directed longitude difference first minus second.
+
+  `difference_deg` is a finite signed angle, canonicalized to (-180, 180]. Reversing the
+  two targets reverses the requested angle and crossing direction. Self-pairs and
+  continuously satisfied relations (the antipodal node pairs at ±180°) raise; a constant
+  mismatch is a legal empty tuple. The interval must lie inside the intersection of the
+  two targets' longitude-rate domains.
+
+  Raises:
+    TypeError: If a target is not an EventTarget member or an argument is not a real number.
+    ValueError: If a target is an undeclared enum object, the targets coincide, the angle
+      is non-finite, or the interval is empty or too wide.
+    CelestialError: If the native search cannot produce the events, including a query
+      outside the joint longitude-rate domain of the two targets.
+    CelestialError: If the native search cannot produce the events.
+  """
+  checked_first = _enum(first, EventTarget, "first")
+  checked_second = _enum(second, EventTarget, "second")
+  if checked_first is checked_second:
+    raise ValueError("first and second must be distinct targets")
+  level = _finite(difference_deg, "difference_deg")
+  start, end = _event_interval(start_jde_tt, end_jde_tt)
+
+  total = _ctypes.c_uint32()
+  written = _binding.call(
+    "longitude_difference_events",
+    checked_first.value,
+    checked_second.value,
+    level,
+    start,
+    end,
+    _ctypes.byref(total),
+    None,
+    0,
+  )
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("longitude_difference_events", recording=True)
+  if total.value == 0:
+    return ()
+  expected = total.value
+  records = (_binding.LongitudeDifferenceEventRecord * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call(
+    "longitude_difference_events",
+    checked_first.value,
+    checked_second.value,
+    level,
+    start,
+    end,
+    _ctypes.byref(fill_total),
+    records,
+    expected,
+  )
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("longitude_difference_events", recording=True)
+  return _events.decode_difference_events(records)
+
+
 __all__ = [
   "BodyState",
   "CelestialError",
@@ -764,6 +940,8 @@ __all__ = [
   "CivilDateTime",
   "CivilScale",
   "DeltaTModel",
+  "EventDirection",
+  "EventTarget",
   "GeoLocation",
   "GregorianDate",
   "HouseSystem",
@@ -774,9 +952,13 @@ __all__ = [
   "LunarDate",
   "LunarYearInfo",
   "LunarYearRange",
+  "LongitudeDifferenceEvent",
+  "LongitudeEvent",
   "MoonCoordinate",
   "MoonIllumination",
   "MoonPhase",
+  "StationEvent",
+  "StationMotion",
   "SunCoordinate",
   "__version__",
   "apparent_solar_time",
@@ -788,6 +970,9 @@ __all__ = [
   "jieqi_moment",
   "jieqi_name",
   "local_apparent_sidereal_time",
+  "longitude_difference_events",
+  "longitude_events",
+  "longitude_stations",
   "lunar_to_gregorian",
   "lunar_year_info",
   "moon_apparent_geocentric_coordinate",

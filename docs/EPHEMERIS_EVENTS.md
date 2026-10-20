@@ -1,11 +1,48 @@
 # Longitude events
 
-Include `ephemeris_events.hpp` with `-I src/astro -I src/calendar -I src/util`
-for interval queries over the 14 `astro::ephemeris::Target` values. Times are
-JDE(TT), and rates are degrees per TT day. Body longitudes are apparent,
-geocentric and tropical; node longitudes follow
-[`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp) in the true ecliptic and
-equinox of date.
+The interval searches are available from C++ (`ephemeris_events.hpp`), the C ABI
+(`celestial.h`) and Python (`celestial_calendar`); JavaScript exposes no event API.
+All three surfaces share this page's contracts: half-open ownership, deterministic
+ordering, exact numerical contacts, domains, limits and the conditional
+floating-point contract below. Include `ephemeris_events.hpp` with
+`-I src/astro -I src/calendar -I src/util` for interval queries over the 14
+`astro::ephemeris::Target` values. Times are JDE(TT), and rates are degrees per TT
+day. Body longitudes are apparent, geocentric and tropical; node longitudes follow
+[`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
+in the true ecliptic and equinox of date.
+
+## C ABI and Python
+
+The C exports `longitude_events`, `longitude_stations` and
+`longitude_difference_events` mirror the three C++ searches over the `EVENT_TARGET_*`
+codes (the same fourteen identities as the chart, pinned equal in
+`c_header_check.c`). Each call owns its results through one count+fill protocol:
+`event_count` always receives the full total, caller-allocated `slots` receive the
+first `min(total, slot_count)` records in chronological order, and the return value
+is how many records were written. A truncated fill is therefore observable by
+comparing the return value against `*event_count`. A zero total is a legal
+no-event outcome; every failure also leaves `*event_count` at 0 and is told apart
+from the empty success only by `last_error`, which stays empty on success.
+
+```c
+uint32_t total = 0;
+LongitudeEventRecord slots[8];
+const uint32_t written =
+  longitude_events(EVENT_TARGET_MERCURY, 0.0, 2460735.5, 2460785.5, &total, slots, 8);
+```
+
+```python
+import celestial_calendar as celestial
+
+events = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+```
+
+Python mirrors the enums (`EventTarget`, `EventDirection`, `StationMotion`), units,
+time scales and failures in frozen dataclasses, validates intervals, target angles,
+body pairs and capacities before calling native code, and raises `CelestialError`
+on native failure. Each Python query runs the native search twice — a count pass,
+then a fill pass; a 50-day Mercury window costs milliseconds, and the widest
+allowed span (3660 TT days) stays well under a second.
 
 ```cpp
 using namespace astro::ephemeris;

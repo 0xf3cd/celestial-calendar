@@ -123,6 +123,44 @@ and `last_error`: invalid payload and padding bytes have no contract. Presence b
 absent storage is not a zero or NaN sentinel. Node latitude is present and zero, while node distance is absent.
 Every distance here is in AU, the Moon's included; the standalone `MoonCoordinate` result gives kilometres.
 
+<a id="c-longitude-events"></a>
+## C Interval Longitude Events
+
+`longitude_events`, `longitude_stations` and `longitude_difference_events` search half-open JDE(TT)
+intervals over the `EVENT_TARGET_*` codes — the same fourteen identities as `CHART_TARGET_*`, pinned
+equal in `c_header_check.c`. Each call owns its results through one count+fill protocol: `event_count`
+always receives the full total, caller-allocated `slots` receive the first `min(total, slot_count)`
+records in chronological order, and the return value is how many records were written, so a truncated
+fill is observable by comparing the two. A zero total is a legal no-event outcome; every failure also
+leaves `*event_count` at 0 and is told apart from the empty success only by `last_error`.
+
+```c
+#include <stdio.h>
+#include "celestial.h"
+
+int main(void) {
+  uint32_t total = 0;
+  LongitudeEventRecord slots[8];
+  const uint32_t written = longitude_events(
+    EVENT_TARGET_MERCURY, 0.0, 2460735.5, 2460785.5, &total, slots, 8
+  );
+  if (written == 0 && total == 0 && last_error()[0] != '\0') {
+    fprintf(stderr, "%s\n", last_error());
+    return 1;
+  }
+  for (uint32_t i = 0; i < written; ++i) {
+    printf("%.10f %.9f %u\n", slots[i].jde_tt, slots[i].longitude_deg, slots[i].direction_code);
+  }
+  return 0;
+}
+```
+
+Station records carry `motion_before_code`/`motion_after_code` (`EVENT_MOTION_*`); difference records
+carry both longitudes, both rates and the canonical `signed_difference_deg`. Times are JDE(TT) and rates
+are degrees per TT day. The interval must be nonempty, at most 3660 TT days, and inside the target's
+longitude-rate domain. See [Longitude events](EPHEMERIS_EVENTS.md) for ownership at the endpoints,
+numerical contacts and the floating-point premises.
+
 ## Build This Reference
 
 To build this reference locally, follow

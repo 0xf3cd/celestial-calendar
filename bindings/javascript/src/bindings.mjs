@@ -226,6 +226,40 @@ export const LAYOUTS = deepFreeze({
       { name: "houses", type: "ChartHousesV1", offset: 584 },
     ],
   },
+  LongitudeEventRecord: {
+    size: 32,
+    alignment: 8,
+    fields: [
+      { name: "jde_tt", type: "double", offset: 0 },
+      { name: "longitude_deg", type: "double", offset: 8 },
+      { name: "longitude_rate_deg_per_tt_day", type: "double", offset: 16 },
+      { name: "direction_code", type: "uint32_t", offset: 24 },
+    ],
+  },
+  StationEventRecord: {
+    size: 32,
+    alignment: 8,
+    fields: [
+      { name: "jde_tt", type: "double", offset: 0 },
+      { name: "longitude_deg", type: "double", offset: 8 },
+      { name: "longitude_rate_deg_per_tt_day", type: "double", offset: 16 },
+      { name: "motion_before_code", type: "uint32_t", offset: 24 },
+      { name: "motion_after_code", type: "uint32_t", offset: 28 },
+    ],
+  },
+  LongitudeDifferenceEventRecord: {
+    size: 56,
+    alignment: 8,
+    fields: [
+      { name: "jde_tt", type: "double", offset: 0 },
+      { name: "longitude_a_deg", type: "double", offset: 8 },
+      { name: "longitude_b_deg", type: "double", offset: 16 },
+      { name: "longitude_rate_a_deg_per_tt_day", type: "double", offset: 24 },
+      { name: "longitude_rate_b_deg_per_tt_day", type: "double", offset: 32 },
+      { name: "signed_difference_deg", type: "double", offset: 40 },
+      { name: "direction_code", type: "uint32_t", offset: 48 },
+    ],
+  },
 });
 
 // Internal metadata for the complete celestial.h surface. Package entry points consume
@@ -261,4 +295,7 @@ export const BINDINGS = Object.freeze([
   binding("delta_t_algo5", "sret:DeltaT", true),
   binding("delta_t", "sret:DeltaT", true),
   binding("chart_snapshot_v1", "sret:ChartSnapshotV1", true),
+  binding("longitude_events", "count-fill", true),
+  binding("longitude_stations", "count-fill", true),
+  binding("longitude_difference_events", "count-fill", true),
 ]);

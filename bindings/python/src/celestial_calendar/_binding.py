@@ -42,6 +42,9 @@ from ._abi import DeltaT as DeltaT
 from ._abi import ChartBodyV1 as ChartBodyV1
 from ._abi import ChartHousesV1 as ChartHousesV1
 from ._abi import ChartSnapshotV1 as ChartSnapshotV1
+from ._abi import LongitudeDifferenceEventRecord as LongitudeDifferenceEventRecord
+from ._abi import LongitudeEventRecord as LongitudeEventRecord
+from ._abi import StationEventRecord as StationEventRecord
 
 
 def _native_filename() -> str:

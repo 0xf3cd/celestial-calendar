@@ -8,7 +8,7 @@ JavaScript / TypeScript, and a C ABI.
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes version **0.8.0**. The install commands below get the latest version on PyPI or npm; an older
+This guide describes version **0.9.0**. The install commands below get the latest version on PyPI or npm; an older
 installed version may lack some APIs shown here, so check the documentation shipped with it. To build the current
 source yourself, use the [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
 [WASM/npm recipe](docs/BUILDING.md#wasm).
@@ -151,8 +151,8 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
 The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
-in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, only the chart snapshot is also available
-from C, Python and JavaScript.
+in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, the chart snapshot is also available
+from C, Python and JavaScript, and the interval longitude events from C and Python.
 
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) adds C++ interval searches for a supplied longitude,
 stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)

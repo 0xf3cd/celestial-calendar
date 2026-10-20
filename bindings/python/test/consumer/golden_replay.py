@@ -25,7 +25,18 @@ import celestial_calendar as celestial
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 GOLDEN = REPO / "toolbox" / "bindings_golden.json"
-SECTION_COUNTS = {"jieqi": 204, "moon": 41, "sidereal": 43, "moon_position_angle": 41, "phases": 60}
+SECTION_COUNTS = {
+  "jieqi": 204,
+  "moon": 41,
+  "sidereal": 43,
+  "moon_position_angle": 41,
+  "phases": 60,
+  "longitude_events": 3,
+  "longitude_stations": 1,
+  "longitude_difference_events": 2,
+}
+# The event sections are replayed by consumer/events_replay.py; this script replays the five above.
+REPLAYED_SECTIONS = ("jieqi", "moon", "sidereal", "moon_position_angle", "phases")
 PHASES = (
   celestial.MoonPhase.NEW,
   celestial.MoonPhase.FIRST_QUARTER,
@@ -164,12 +175,12 @@ def main() -> None:
     residual.report(name, TOLERANCES[name])
   print(f"EXACT_FIELDS mismatches={len(exact_failures)}")
 
-  assert replayed == sum(SECTION_COUNTS.values()) == 389
+  assert replayed == sum(SECTION_COUNTS[name] for name in REPLAYED_SECTIONS) == 389
   assert not exact_failures, "; ".join(exact_failures)
   assert all(residual.maximum <= TOLERANCES[name] for name, residual in residuals.items()), (
     "wheel residual exceeded its measured bound"
   )
-  print(f"PASS installed-wheel golden replay {replayed}/389")
+  print(f"PASS installed-wheel golden replay {replayed}/389; event sections certified by events_replay.py")
 
 
 if __name__ == "__main__":

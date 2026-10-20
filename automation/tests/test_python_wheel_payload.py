@@ -43,7 +43,7 @@ def wheel_payload(version):
   dist_info = f"celestial_calendar-{version}.dist-info"
   members = {
     f"celestial_calendar/{name}": (SOURCE / name).read_bytes()
-    for name in ("__init__.py", "_binding.py", "_abi.py", "chart.py", "py.typed")
+    for name in ("__init__.py", "_binding.py", "_abi.py", "chart.py", "events.py", "py.typed")
   }
   members.update(
     {

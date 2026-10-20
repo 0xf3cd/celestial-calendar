@@ -218,7 +218,7 @@
     "earth_coeff-runtime-15": {"path":"src/astro/vsop87d/earth_coeff.hpp","method":"canonical_cpp","start":"inline constexpr std::array<Coefficients, 10> R4 {{","end":"}};","sha256":"a83090c6f320570e477d6d5825ffdb9b6877ee46c11e683714eb7946980dcb4c"},
     "earth_coeff-runtime-16": {"path":"src/astro/vsop87d/earth_coeff.hpp","method":"canonical_cpp","start":"inline constexpr std::array<Coefficients, 3> R5 {{","end":"}};","sha256":"c08bfe198e1ff268edcc090c11b7e66141a7b2d68593d9f83ae83ce1c65384e4"},
     "statistics/moon_phases.csv": {"path":"statistics/moon_phases.csv","method":"raw_sha256","sha256":"d896145c29777723e5935541af98e4208ac2245118760f3ace83de5817df3e42"},
-    "toolbox/bindings_golden.json": {"path":"toolbox/bindings_golden.json","method":"raw_sha256","sha256":"ded308689878eb6c21a54d844ab0ca0e4ca610d5818ca01e69acd3276577641b"},
+    "toolbox/bindings_golden.json": {"path":"toolbox/bindings_golden.json","method":"raw_sha256","sha256":"14c7a0b8492caec70038e933208a60425c07c0f445f07d8aff2ad5196053bf92"},
     "statistics/new_moon.ipynb": {"path":"statistics/new_moon.ipynb","method":"notebook_values","sha256":"39dfdc39ab2c7e41395f408eba4f89b361bf27b58e0f27b8bd30bd89d6e58ab2"},
     "statistics/lunar_calendar.ipynb": {"path":"statistics/lunar_calendar.ipynb","method":"notebook_values","sha256":"3c403bc8d5b5e29b66f792218d4bf89a431fdcea681e4c5ffbe2d6d89264e511","input_facts":["https://ytliu0.github.io/ChineseCalendar/computation_simp.html"]},
     "statistics/sun_longitude.ipynb": {"path":"statistics/sun_longitude.ipynb","method":"notebook_values","sha256":"096183c070fd4c03154b05d74c380fd7d2e9b80018be654158c8ca4c11ccddab"},

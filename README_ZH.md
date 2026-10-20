@@ -7,7 +7,7 @@
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
-本文对应 **0.8.0** 版。下面的安装命令取得 PyPI / npm 上的最新版本；更早的版本可能缺少本文的部分接口，请以所装版本附带的文档为准。
+本文对应 **0.9.0** 版。下面的安装命令取得 PyPI / npm 上的最新版本；更早的版本可能缺少本文的部分接口，请以所装版本附带的文档为准。
 要自行构建当前源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
 [WASM / npm 包](docs/BUILDING.md#wasm)的步骤。
 
@@ -230,6 +230,11 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
   C ABI 和两个语言包只通过这份快照提供行星、月交点、黄经速率和宫位，这些量的独立函数仅 C++ 提供。
+- 区间黄经事件（供定黄经过宫、留站、带方向的两体黄经差）：C++ 见
+  [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 与
+  [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为
+  `longitude_events`／`longitude_stations`／`longitude_difference_events`，在 Python 为
+  [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。JavaScript 不暴露事件 API。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。

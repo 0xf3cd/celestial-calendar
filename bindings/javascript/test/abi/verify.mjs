@@ -54,8 +54,8 @@ const headerEntries = declarations.map((signature) => {
 const headerNames = headerEntries.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
-uniqueCount("celestial.h exports", headerNames, 30);
-uniqueCount("internal bindings", bindingNames, 30);
+uniqueCount("celestial.h exports", headerNames, 33);
+uniqueCount("internal bindings", bindingNames, 33);
 sameSet("header = bindings", headerNames, bindingNames);
 
 const expectedWidths = {
@@ -170,7 +170,7 @@ const listValues = (constantName) => {
 };
 const recipeExports = listValues("EXPORTS");
 const runtimeMethods = listValues("RUNTIME_METHODS");
-uniqueCount("build recipe exports", recipeExports, 32);
+uniqueCount("build recipe exports", recipeExports, 35);
 assert(runtimeMethods.includes("HEAPU16"), "build recipe must export HEAPU16");
 assert(buildScript.includes('"-sALLOW_MEMORY_GROWTH=1"'), "build recipe must enable ALLOW_MEMORY_GROWTH");
 assert.equal((buildScript.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1, "one em++ export recipe");
@@ -198,13 +198,13 @@ const functionBody = (name) => {
 const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::wrap_export("));
 const bindingErrorPolicy = BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName);
 
-uniqueCount("recording exports", documentedRecording, 29);
+uniqueCount("recording exports", documentedRecording, 32);
 sameSet("recording docs = implementation writers", documentedRecording, implementationWriters);
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
 const verifyManifest = (candidate) => {
   const manifestNames = candidate.exports.map(({ name }) => name);
-  uniqueCount("manifest exports", manifestNames, 30);
+  uniqueCount("manifest exports", manifestNames, 33);
   sameSet("header = manifest", headerNames, manifestNames);
 
   for (const entry of candidate.exports) {
@@ -226,7 +226,7 @@ const verifyManifest = (candidate) => {
   assert.deepEqual(candidate.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
 
   const manifestLayoutNames = Object.keys(candidate.layouts);
-  uniqueCount("manifest layouts", manifestLayoutNames, 19);
+  uniqueCount("manifest layouts", manifestLayoutNames, 22);
   sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifestLayoutNames);
   for (const name of manifestLayoutNames) {
     assert.deepEqual(candidate.layouts[name], parsedLayouts[name], `layout ${name}`);
@@ -254,6 +254,10 @@ const runMutationSelfTests = (candidate) => {
   wrongFieldType.layouts.LunarDate.fields[3].type = "uint8_t";
   mutations.push(["same-width field type", wrongFieldType]);
 
+  const wrongEventFieldType = structuredClone(candidate);
+  wrongEventFieldType.layouts.StationEventRecord.fields[3].type = "int32_t";
+  mutations.push(["same-width event field type", wrongEventFieldType]);
+
   const wrongOffset = structuredClone(candidate);
   wrongOffset.layouts.JieqiMomentQuery.fields[1].offset = 2;
   mutations.push(["wrong offset", wrongOffset]);
@@ -274,7 +278,10 @@ const runMutationSelfTests = (candidate) => {
   recordingReader.exports.find(({ name }) => name === "last_error").recording = true;
   mutations.push(["recording last_error", recordingReader]);
 
-  for (const name of ["moon_phase_moments", "new_moons_in_year", "new_moons_after_jde"]) {
+  for (const name of [
+    "moon_phase_moments", "new_moons_in_year", "new_moons_after_jde",
+    "longitude_events", "longitude_stations", "longitude_difference_events",
+  ]) {
     const swappedFill = structuredClone(candidate);
     const entry = swappedFill.exports.find((entry) => entry.name === name);
     const companion = swappedFill.exports.find(({ name }) => name === "solar_lon_roots");
@@ -303,7 +310,7 @@ const runMutationSelfTests = (candidate) => {
   extraCode.chart_v1_codes.CHART_TARGET_CERES = 14;
   mutations.push(["extra chart code", extraCode]);
 
-  assert.equal(mutations.length, 15, "ABI mutation denominator");
+  assert.equal(mutations.length, 19, "ABI mutation denominator");
   for (const [label, mutated] of mutations) {
     assert.throws(() => verifyManifest(mutated), assert.AssertionError, `ABI gate accepted mutation: ${label}`);
   }
@@ -322,7 +329,7 @@ const builtExports = Object.keys(M)
 sameSet("build recipe = built module", recipeExports, builtExports);
 assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
 
-console.log("PASS exports header=manifest=bindings=recipe=built 30 (+ malloc/free); HEAPU16 present");
-console.log("PASS layouts header=manifest=bindings 19; memory growth enabled in recipe");
-console.log("PASS recording docs=writers=manifest=binding error policy 29");
-console.log("PASS per-export fill protocols; ABI mutations rejected 15/15");
+console.log("PASS exports header=manifest=bindings=recipe=built 33 (+ malloc/free); HEAPU16 present");
+console.log("PASS layouts header=manifest=bindings 22; memory growth enabled in recipe");
+console.log("PASS recording docs=writers=manifest=binding error policy 32");
+console.log("PASS per-export fill protocols; ABI mutations rejected 19/19");

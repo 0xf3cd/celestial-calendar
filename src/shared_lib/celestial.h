@@ -616,6 +616,144 @@ typedef struct ChartSnapshotV1 {
 CELESTIAL_API ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code);
 
 
+/* ---------- Ephemeris Events ---------- */
+
+/*
+ * #303: interval longitude events over the same fourteen targets the chart speaks
+ * (CHART_TARGET_* order, duplicated as EVENT_TARGET_* so event consumers need no chart
+ * vocabulary; c_header_check.c pins the two identities equal). Times are JDE(TT) and
+ * rates are degrees per TT day, mirroring docs/EPHEMERIS_EVENTS.md. Angles carry no
+ * names or interpretations — the API never speaks aspects or orbs.
+ *
+ * Ownership protocol: one call reports the total through `event_count` and writes up to
+ * `slot_count` records into caller-owned `slots` (NULL only when `slot_count` is 0).
+ * The return value is how many records were written; when the total exceeds the
+ * capacity the fill is truncated and `event_count` still reports the full total, so the
+ * overflow is observable, never silent. Records are in strict chronological order.
+ * A zero total is a legal outcome; every failure also leaves `*event_count` at 0, and
+ * is told apart from the empty success only through `last_error` (empty on success).
+ */
+
+#define EVENT_TARGET_SUN             UINT32_C(0)
+#define EVENT_TARGET_MOON            UINT32_C(1)
+#define EVENT_TARGET_MERCURY         UINT32_C(2)
+#define EVENT_TARGET_VENUS           UINT32_C(3)
+#define EVENT_TARGET_MARS            UINT32_C(4)
+#define EVENT_TARGET_JUPITER         UINT32_C(5)
+#define EVENT_TARGET_SATURN          UINT32_C(6)
+#define EVENT_TARGET_URANUS          UINT32_C(7)
+#define EVENT_TARGET_NEPTUNE         UINT32_C(8)
+#define EVENT_TARGET_PLUTO           UINT32_C(9)
+#define EVENT_TARGET_MEAN_ASCENDING  UINT32_C(10)
+#define EVENT_TARGET_MEAN_DESCENDING UINT32_C(11)
+#define EVENT_TARGET_TRUE_ASCENDING  UINT32_C(12)
+#define EVENT_TARGET_TRUE_DESCENDING UINT32_C(13)
+
+#define EVENT_DIRECTION_INCREASING UINT32_C(0)
+#define EVENT_DIRECTION_DECREASING UINT32_C(1)
+#define EVENT_DIRECTION_TANGENT    UINT32_C(2)
+
+#define EVENT_MOTION_DIRECT    UINT32_C(0)
+#define EVENT_MOTION_RETROGRADE UINT32_C(1)
+
+/** @brief One longitude crossing or exact numerical contact at the supplied level. */
+typedef struct LongitudeEventRecord {
+  double   jde_tt;                        /* JDE(TT) of the event, on the reported 2^-30-day lattice. */
+  double   longitude_deg;                 /* Apparent geocentric longitude at the event, in degrees; not
+                                             normalized — values on either side of a branch cut stay raw. */
+  double   longitude_rate_deg_per_tt_day; /* The published seven-point rate at the event. */
+  uint32_t direction_code;                /* An EVENT_DIRECTION_* code. */
+} LongitudeEventRecord;
+
+/** @brief One stationary instant of the published seven-point longitude rate. */
+typedef struct StationEventRecord {
+  double   jde_tt;                        /* JDE(TT) of the stationary instant. */
+  double   longitude_deg;                 /* Apparent geocentric longitude at the event, in degrees; not
+                                             normalized — values on either side of a branch cut stay raw. */
+  double   longitude_rate_deg_per_tt_day; /* The published rate at the event; need not be bitwise zero. */
+  uint32_t motion_before_code;            /* An EVENT_MOTION_* code: certified motion before the instant. */
+  uint32_t motion_after_code;             /* An EVENT_MOTION_* code: certified motion after the instant. */
+} StationEventRecord;
+
+/** @brief One event of the directed, canonical longitude difference first minus second. */
+typedef struct LongitudeDifferenceEventRecord {
+  double   jde_tt;                              /* JDE(TT) of the event. */
+  double   longitude_a_deg;                     /* First target's longitude at the event, in degrees; not normalized. */
+  double   longitude_b_deg;                     /* Second target's longitude at the event, in degrees; not normalized. */
+  double   longitude_rate_a_deg_per_tt_day;     /* First target's published rate at the event. */
+  double   longitude_rate_b_deg_per_tt_day;     /* Second target's published rate at the event. */
+  double   signed_difference_deg;               /* Canonical (first - second) difference, in (-180, 180]. */
+  uint32_t direction_code;                      /* An EVENT_DIRECTION_* code. */
+} LongitudeDifferenceEventRecord;
+
+/**
+ * @brief Find the JDE(TT)s where `target`'s apparent geocentric longitude reaches
+ *        `target_longitude_deg` in the half-open interval [start, end), written to `slots`.
+ * @param target_code An EVENT_TARGET_* code.
+ * @param target_longitude_deg A finite angle in degrees; whole-turn shifts denote the same level.
+ * @param start_jde_tt Inclusive start, finite, within the target's longitude-rate domain.
+ * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.
+ * @param event_count Where the total count of events is written. Must not be null.
+ *                    On every failure `*event_count` is set to 0; a zero total is also
+ *                    the legal no-event outcome, disambiguated by `last_error`.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, in chronological order, at most min(total, slot_count).
+ * @note Longitudes are apparent, geocentric and tropical; node longitudes follow
+ *       lunar_node::position. Exact numerical contacts are reported for a target equal
+ *       to the query-independent stationary output, never within an angular window.
+ *       Numerical ambiguity or work-limit exhaustion fails the whole query — no partial
+ *       list is ever returned. See docs/EPHEMERIS_EVENTS.md for domains and the
+ *       conditional floating-point contract.
+ */
+CELESTIAL_API uint32_t longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeEventRecord *slots, uint32_t slot_count);
+
+/**
+ * @brief Find the JDE(TT)s where `target`'s published seven-point longitude rate is
+ *        stationary in the half-open interval [start, end), written to `slots`.
+ * @param target_code An EVENT_TARGET_* code.
+ * @param start_jde_tt Inclusive start, finite, within the target's longitude-rate domain.
+ * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.
+ * @param event_count Where the total count of events is written. Must not be null.
+ *                    On every failure `*event_count` is set to 0.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, in chronological order, at most min(total, slot_count).
+ * @note Targets whose certified rate bounds exclude a station return a legal empty list.
+ *       The motion codes describe the certified sign on each side; the reported rate
+ *       need not be bitwise zero. The floating-point premises are the same as for
+ *       `longitude_events`.
+ */
+CELESTIAL_API uint32_t longitude_stations(uint32_t target_code, double start_jde_tt, double end_jde_tt, uint32_t *event_count, StationEventRecord *slots, uint32_t slot_count);
+
+/**
+ * @brief Find the JDE(TT)s where the directed difference (first - second) of the two
+ *        targets' apparent geocentric longitudes reaches `target_difference_deg` in the
+ *        half-open interval [start, end), written to `slots`.
+ * @param first_target_code An EVENT_TARGET_* code.
+ * @param second_target_code An EVENT_TARGET_* code, distinct from the first.
+ * @param target_difference_deg A finite signed angle in degrees, canonicalized to (-180, 180].
+ * @param start_jde_tt Inclusive start, finite, within the intersection of the two targets'
+ *                     longitude-rate domains.
+ * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.
+ * @param event_count Where the total count of events is written. Must not be null.
+ *                    On every failure `*event_count` is set to 0.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, in chronological order, at most min(total, slot_count).
+ * @note A constant mismatch (antipodal node pairs whose opposition angle is not the
+ *       target) is a legal empty list; a continuously satisfied relation throws.
+ * @note Reversing the two targets reverses the requested angle and crossing direction.
+ *       Self-pairs and continuously satisfied relations are invalid; numerical ambiguity
+ *       or work-limit exhaustion fails the whole query. The floating-point premises are
+ *       the same as for `longitude_events`.
+ */
+CELESTIAL_API uint32_t longitude_difference_events(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -5,7 +5,7 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 
 [English](README.md)
 
-本文对应 `0.8.0` 版。以下安装命令取得 PyPI 上的最新版本；更早的版本可能缺少本文的部分 API，运行示例前请核对所装版本。
+本文对应 `0.9.0` 版。以下安装命令取得 PyPI 上的最新版本；更早的版本可能缺少本文的部分 API，运行示例前请核对所装版本。
 需要当前源码时，可按下文从完整 checkout 构建本地 wheel。
 
 <a id="install"></a>
@@ -98,6 +98,35 @@ print(snapshot.houses.cusps_deg)
 独立的 `moon_apparent_geocentric_coordinate()` 则以千米给出月地距离，即 `MoonCoordinate.distance_km`。
 黄经速率是瞬时值，单位为度/TT 日；负值表示该瞬间黄经在减小（逆行）。节点纬度是已知的零，距离为 `None`。
 四轴与十二宫头均为 `[0, 360)` 度，宫头元组从第一宫开始。经度东正西负，纬度北正南负；地点只影响宫位。完整数值见[共享重放示例](../../docs/examples/chart_snapshot/README.md)。
+
+<a id="interval-longitude-events"></a>
+### 区间黄经事件
+
+`longitude_events()`、`longitude_stations()` 与 `longitude_difference_events()` 是 0.9.0 新增。
+它们开放 [C++ 区间搜索](../../docs/EPHEMERIS_EVENTS.md)（黄经事件指南）：供定黄经的过宫与精确切触、留站、
+以及带方向的两体黄经差。角度不带任何名称与解释；把精确的目标角度映射到你自己的术语即可。
+
+```python
+import celestial_calendar as celestial
+
+crossings = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+for event in crossings:
+  print(event.jde_tt, event.longitude_deg, event.direction)
+
+stations = celestial.longitude_stations(celestial.EventTarget.MERCURY, 2460735.5, 2460785.5)
+for station in stations:
+  print(station.jde_tt, station.motion_before.value, "->", station.motion_after.value)
+
+differences = celestial.longitude_difference_events(
+  celestial.EventTarget.MOON, celestial.EventTarget.SUN, -60.0, 2460676.5, 2460707.5
+)
+```
+
+时间为 JDE(TT)，落在公开的 2^-30 日报告格点上；速率为公开七点算子的度/TT 日。
+区间 `[start, end)` 必须非空、不超过 3660 TT 日，且落在目标黄经速率域内；空元组是合法的
+「无事件」结果，数值歧义或工作量超限则抛 `CelestialError`，绝不返回部分列表。
+每次查询原生侧跑两遍搜索（先计数、再填充）：50 天水星窗口耗时毫秒级，文档最坏情形
+（满 3660 天跨度）也远在一秒以内。
 
 <a id="platforms-and-local-builds"></a>
 ## 平台与本地构建
