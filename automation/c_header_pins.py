@@ -11,8 +11,15 @@
 """The C ABI layout pins in c_header_check.c must name every celestial.h struct and export.
 
 c_header_check.c compiles only what it mentions, so a new struct or export without a pin
-would turn no gate red (the observation-pool #16 shape). This module reconciles the sets in
-both directions: unpinned header entities and stale pins both fail.
+would turn no gate red. This module reconciles the sets in both directions, after stripping
+C comments so a commented-out pin does not count:
+
+- layout coverage: every celestial.h struct carries an offsetof pin (a sizeof pin alone
+  does not pin field order, and _Alignof pins alignment only);
+- stale layout pins: every offsetof/_Alignof name is a celestial.h struct (stale sizeof
+  names are left to the C compiler, which rejects the undeclared identifier);
+- signature coverage and stale pins: every celestial.h export carries an active _Generic
+  pin, and every _Generic pin names a celestial.h export.
 """
 
 import re
@@ -24,33 +31,38 @@ from typing import Final
 HEADER_RELATIVE: Final[Path] = Path("src/shared_lib/celestial.h")
 PINS_RELATIVE: Final[Path] = Path("src/shared_lib/c_header_check.c")
 
-_STRUCT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^typedef struct (\w+) \{", re.M)
-_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^CELESTIAL_API [\w *]+?(\w+)\(", re.M)
+_STRUCT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\s*typedef struct (\w+) \{", re.M)
+_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\s*CELESTIAL_API [\w *]+?(\w+)\(", re.M)
 _OFFSETOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"offsetof\((\w+),")
 _ALIGNOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Alignof\((\w+)\)")
 _SIZEOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"sizeof\((\w+)\)")
-_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(&(\w+),")
+_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(&\(?(\w+)\)?,")
+
+_COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
+
+
+def _strip_comments(text: str) -> str:
+  """Drop C comments so commented-out pins and declarations do not count."""
+  return _COMMENT_PATTERN.sub("", text)
 
 
 @dataclass(frozen=True)
 class PinSets:
   structs: frozenset[str]
   exports: frozenset[str]
-  pinned_structs: frozenset[str]
+  layout_pins: frozenset[str]
   pinned_exports: frozenset[str]
   struct_only_pins: frozenset[str]
 
 
 def collect_pin_sets(repo_root: Path) -> PinSets:
-  header = (repo_root / HEADER_RELATIVE).read_text(encoding="utf-8")
-  pins = (repo_root / PINS_RELATIVE).read_text(encoding="utf-8")
-  # offsetof and _Alignof name structs by C semantics; sizeof also names builtins (e.g.
-  # sizeof(double) sanity asserts), so it evidences a pin but never a stale one.
+  header = _strip_comments((repo_root / HEADER_RELATIVE).read_text(encoding="utf-8"))
+  pins = _strip_comments((repo_root / PINS_RELATIVE).read_text(encoding="utf-8"))
   struct_pins = _OFFSETOF_PATTERN.findall(pins) + _ALIGNOF_PATTERN.findall(pins)
   return PinSets(
     structs=frozenset(_STRUCT_PATTERN.findall(header)),
     exports=frozenset(_EXPORT_PATTERN.findall(header)),
-    pinned_structs=frozenset(struct_pins) | frozenset(_SIZEOF_PATTERN.findall(pins)),
+    layout_pins=frozenset(_OFFSETOF_PATTERN.findall(pins)),
     pinned_exports=frozenset(_PINNED_EXPORT_PATTERN.findall(pins)),
     struct_only_pins=frozenset(struct_pins),
   )
@@ -64,7 +76,7 @@ def _require(condition: bool, message: str) -> None:
 def verify_c_header_pins(repo_root: Path) -> PinSets:
   sets = collect_pin_sets(repo_root)
 
-  unpinned_structs = sets.structs - sets.pinned_structs
+  unpinned_structs = sets.structs - sets.layout_pins
   _require(not unpinned_structs, f"celestial.h structs without a layout pin: {sorted(unpinned_structs)}")
   stale_structs = sets.struct_only_pins - sets.structs
   _require(not stale_structs, f"c_header_check.c pins name no celestial.h struct: {sorted(stale_structs)}")

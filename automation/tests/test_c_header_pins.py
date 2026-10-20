@@ -19,7 +19,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 def test_live_tree_pins_cover_every_struct_and_export():
   sets = verify_c_header_pins(REPO)
-  assert sets.structs <= sets.pinned_structs
+  assert sets.structs <= sets.layout_pins
   assert sets.struct_only_pins <= sets.structs
   assert sets.exports == sets.pinned_exports
 
@@ -91,6 +91,57 @@ def test_unpinned_export_fails(tmp_path):
   layout.drop_first_export_pin()
   with pytest.raises(RuntimeError, match="exports without a signature pin"):
     verify_c_header_pins(tmp_path)
+
+
+def test_commented_out_pin_does_not_count(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  sets = collect_pin_sets(tmp_path)
+  export = sorted(sets.exports)[0]
+  needle = f"_Static_assert(_Generic(&{export},"
+  assert needle in layout.pins
+  commented = layout.pins.replace(needle, f"/* commented out: {needle}", 1).replace(
+    f'"{export} signature drifted");', f'"{export} signature drifted"); */', 1
+  )
+  layout.pins_path.write_text(commented, encoding="utf-8")
+  with pytest.raises(RuntimeError, match="exports without a signature pin"):
+    verify_c_header_pins(tmp_path)
+
+
+def test_indented_declaration_is_still_an_export(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  indented = layout.header.replace(
+    "typedef struct JulianDay {", "  CELESTIAL_API double probe_export(double year);\n\ntypedef struct JulianDay {", 1
+  )
+  layout.header_path.write_text(indented, encoding="utf-8")
+  with pytest.raises(RuntimeError, match="exports without a signature pin"):
+    verify_c_header_pins(tmp_path)
+
+
+def test_sizeof_only_new_struct_is_unpinned(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  header = layout.header.replace(
+    "typedef struct JulianDay {",
+    "typedef struct ProbeOnly { int32_t x; int32_t y; } ProbeOnly;\n\ntypedef struct JulianDay {",
+    1,
+  )
+  layout.header_path.write_text(header, encoding="utf-8")
+  pins = layout.pins + '_Static_assert(sizeof(ProbeOnly) == 8, "probe");\n'
+  layout.pins_path.write_text(pins, encoding="utf-8")
+  with pytest.raises(RuntimeError, match="structs without a layout pin"):
+    verify_c_header_pins(tmp_path)
+
+
+def test_parenthesized_generic_pin_counts(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  sets = collect_pin_sets(tmp_path)
+  export = sorted(sets.exports)[0]
+  mutated = layout.pins.replace(f"_Generic(&{export},", f"_Generic(&({export}),", 1)
+  layout.pins_path.write_text(mutated, encoding="utf-8")
+  verify_c_header_pins(tmp_path)
 
 
 def test_stale_export_pin_fails(tmp_path):
