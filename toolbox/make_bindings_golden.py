@@ -50,6 +50,34 @@ SIDEREAL_RANDOM_POINTS: Final[int] = 40
 PHASE_NEW_MOON_YEARS: Final[range] = range(2024, 2054)
 PHASE_OTHER_YEARS: Final[range] = range(2024, 2034)
 
+# Event fixtures (#303): the same six queries src/test/shared_lib/events_cabi_test.cpp
+# drives across the C ABI. The Mercury/Sun windows and the Moon-Sun pair replay the core
+# suite's PyMeeus anchors (src/test/astro/ephemeris_events_test.cpp); the expected counts
+# are pinned here so the dataset cannot silently drift from the fixtures it certifies.
+EVENT_TARGET_SUN: Final[int] = 0
+EVENT_TARGET_MOON: Final[int] = 1
+EVENT_TARGET_MERCURY: Final[int] = 2
+EVENT_WINDOW: Final[tuple[float, float]] = (2460735.5, 2460785.5)
+PAIR_WINDOW: Final[tuple[float, float]] = (2460676.5, 2460707.5)
+LONGITUDE_EVENT_FIXTURES: Final[tuple[tuple[str, int, float], ...]] = (
+  ("sun-zero", EVENT_TARGET_SUN, 0.0),
+  ("moon-fixed", EVENT_TARGET_MOON, 137.5),
+  ("mercury-triple", EVENT_TARGET_MERCURY, 0.0),
+)
+STATION_EVENT_FIXTURES: Final[tuple[tuple[str, int], ...]] = (("mercury-stations", EVENT_TARGET_MERCURY),)
+DIFFERENCE_EVENT_FIXTURES: Final[tuple[tuple[str, int, int, float], ...]] = (
+  ("pair-minus-60", EVENT_TARGET_MOON, EVENT_TARGET_SUN, -60.0),
+  ("pair-plus-60", EVENT_TARGET_MOON, EVENT_TARGET_SUN, 60.0),
+)
+EXPECTED_EVENT_COUNTS: Final[dict[str, int]] = {
+  "sun-zero": 1,
+  "moon-fixed": 2,
+  "mercury-triple": 3,
+  "mercury-stations": 2,
+  "pair-minus-60": 1,
+  "pair-plus-60": 1,
+}
+
 EXAMPLE_48A_JDE: Final[float] = 2448724.5  # 1992-04-12 0h TT
 J2000_JD: Final[float] = 2451545.0  # 2000-01-01 12:00
 # JDE bounds for [1900, 2100], and JD bounds for the sidereal export's declared [401, 32766]
@@ -99,6 +127,9 @@ def generate() -> dict:
     "moon_position_angle",
     "moon_phase_moments",
     "local_apparent_sidereal_time",
+    "longitude_events",
+    "longitude_stations",
+    "longitude_difference_events",
   ):
     function = getattr(lib, name)
     function.argtypes, function.restype = abi.BINDING_SPECS[name]
@@ -168,6 +199,102 @@ def generate() -> dict:
       }
     )
 
+  def search_events(export: str, record_type: type, args: tuple) -> list:
+    """One count pass plus one fill pass through the raw count+fill protocol."""
+    total = ctypes.c_uint32(0)
+    written = getattr(lib, export)(*args, ctypes.byref(total), None, 0)
+    if written != 0:
+      raise RuntimeError(f"{export}{args} count pass wrote {written}")
+    if total.value == 0:
+      return []
+    slots = (record_type * total.value)()
+    fill_total = ctypes.c_uint32(0)
+    written = getattr(lib, export)(*args, ctypes.byref(fill_total), slots, total.value)
+    if written != total.value or fill_total.value != total.value:
+      raise RuntimeError(f"{export}{args} fill pass wrote {written} of {total.value}")
+    return [dict((field, getattr(slot, field)) for field, _ in record_type._fields_) for slot in slots]
+
+  def check_fixture_count(name: str, events: list) -> None:
+    if len(events) != EXPECTED_EVENT_COUNTS[name]:
+      raise RuntimeError(f"{name}: recorded {len(events)} events, expected {EXPECTED_EVENT_COUNTS[name]}")
+
+  longitude_event_entries = []
+  for name, target_code, level in LONGITUDE_EVENT_FIXTURES:
+    events = search_events("longitude_events", abi.LongitudeEventRecord, (target_code, level, *EVENT_WINDOW))
+    check_fixture_count(name, events)
+    longitude_event_entries.append(
+      {
+        "name": name,
+        "target_code": target_code,
+        "target_longitude_deg": level,
+        "start_jde_tt": EVENT_WINDOW[0],
+        "end_jde_tt": EVENT_WINDOW[1],
+        "events": [
+          {
+            "jde_tt_bits": f64_bits(event["jde_tt"]),
+            "longitude_deg_bits": f64_bits(event["longitude_deg"]),
+            "longitude_rate_deg_per_tt_day_bits": f64_bits(event["longitude_rate_deg_per_tt_day"]),
+            "direction_code": event["direction_code"],
+          }
+          for event in events
+        ],
+      }
+    )
+
+  station_event_entries = []
+  for name, target_code in STATION_EVENT_FIXTURES:
+    events = search_events("longitude_stations", abi.StationEventRecord, (target_code, *EVENT_WINDOW))
+    check_fixture_count(name, events)
+    station_event_entries.append(
+      {
+        "name": name,
+        "target_code": target_code,
+        "start_jde_tt": EVENT_WINDOW[0],
+        "end_jde_tt": EVENT_WINDOW[1],
+        "events": [
+          {
+            "jde_tt_bits": f64_bits(event["jde_tt"]),
+            "longitude_deg_bits": f64_bits(event["longitude_deg"]),
+            "longitude_rate_deg_per_tt_day_bits": f64_bits(event["longitude_rate_deg_per_tt_day"]),
+            "motion_before_code": event["motion_before_code"],
+            "motion_after_code": event["motion_after_code"],
+          }
+          for event in events
+        ],
+      }
+    )
+
+  difference_event_entries = []
+  for name, first_code, second_code, level in DIFFERENCE_EVENT_FIXTURES:
+    events = search_events(
+      "longitude_difference_events",
+      abi.LongitudeDifferenceEventRecord,
+      (first_code, second_code, level, *PAIR_WINDOW),
+    )
+    check_fixture_count(name, events)
+    difference_event_entries.append(
+      {
+        "name": name,
+        "first_target_code": first_code,
+        "second_target_code": second_code,
+        "target_difference_deg": level,
+        "start_jde_tt": PAIR_WINDOW[0],
+        "end_jde_tt": PAIR_WINDOW[1],
+        "events": [
+          {
+            "jde_tt_bits": f64_bits(event["jde_tt"]),
+            "longitude_a_deg_bits": f64_bits(event["longitude_a_deg"]),
+            "longitude_b_deg_bits": f64_bits(event["longitude_b_deg"]),
+            "longitude_rate_a_deg_per_tt_day_bits": f64_bits(event["longitude_rate_a_deg_per_tt_day"]),
+            "longitude_rate_b_deg_per_tt_day_bits": f64_bits(event["longitude_rate_b_deg_per_tt_day"]),
+            "signed_difference_deg_bits": f64_bits(event["signed_difference_deg"]),
+            "direction_code": event["direction_code"],
+          }
+          for event in events
+        ],
+      }
+    )
+
   return {
     "schema": "celestial-calendar/bindings-golden@2",
     "provenance": {
@@ -181,6 +308,9 @@ def generate() -> dict:
       "sidereal": {"entries": sidereal_entries},
       "moon_position_angle": {"entries": moon_position_angle_entries},
       "phases": {"entries": phase_entries},
+      "longitude_events": {"entries": longitude_event_entries},
+      "longitude_stations": {"entries": station_event_entries},
+      "longitude_difference_events": {"entries": difference_event_entries},
     },
   }
 
