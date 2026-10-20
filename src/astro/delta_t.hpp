@@ -86,7 +86,7 @@ find_coefficients(const int32_t year) -> std::optional<
 > {
   // The pair of adjacent rows bracketing `year`: the last row whose start is on or before it,
   // paired with the next row. The same question leap_second.hpp asks with upper_bound/prev.
-  const auto *const end = std::ranges::upper_bound(ALGO1_COEFFICIENTS, year, {}, &Algo1Coefficients::year);
+  const auto end = std::ranges::upper_bound(ALGO1_COEFFICIENTS, year, {}, &Algo1Coefficients::year); // NOLINT(readability-qualified-auto) -- std::array iterators are class types on MSVC and emscripten libc++, so `auto *` cannot compile there
   if (end == std::ranges::begin(ALGO1_COEFFICIENTS) or end == std::ranges::end(ALGO1_COEFFICIENTS)) {
     return std::nullopt;
   }
