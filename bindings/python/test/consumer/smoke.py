@@ -652,7 +652,9 @@ def run_value_contract() -> None:
   raises(FrozenInstanceError, lambda: setattr(date, "day", 2))
   assert len(celestial.__all__) == len(set(celestial.__all__))
   assert celestial.chart is importlib.import_module("celestial_calendar.chart")
-  public_names = {name for name in celestial.__dict__ if not name.startswith("_") and name not in {"chart", "events"}} | {"__version__"}
+  public_names = {
+    name for name in celestial.__dict__ if not name.startswith("_") and name not in {"chart", "events"}
+  } | {"__version__"}
   assert set(celestial.__all__) == public_names
   assert set(celestial.__all__) == {
     "BodyState",
@@ -727,6 +729,32 @@ def run_value_contract() -> None:
   print("PASS frozen values and public surface")
 
 
+def run_event_wrappers() -> None:
+  """Exercise the event wrappers' success, legal-empty and exception channels."""
+  crossings = celestial.longitude_events(celestial.EventTarget.SUN, 0.0, 2460735.5, 2460785.5)
+  assert len(crossings) == 1 and crossings[0].direction is celestial.EventDirection.INCREASING
+  assert celestial.longitude_stations(celestial.EventTarget.SUN, 2460735.5, 2460785.5) == ()
+  differences = celestial.longitude_difference_events(
+    celestial.EventTarget.MOON, celestial.EventTarget.SUN, 60.0, 2460676.5, 2460707.5
+  )
+  assert len(differences) == 1
+  raises(TypeError, lambda: celestial.longitude_events(0, 0.0, 1.0, 2.0))
+  raises(ValueError, lambda: celestial.longitude_events(celestial.EventTarget.SUN, float("nan"), 1.0, 2.0))
+  raises(ValueError, lambda: celestial.longitude_events(celestial.EventTarget.SUN, 0.0, 2.0, 1.0))
+  raises(
+    ValueError,
+    lambda: celestial.longitude_difference_events(
+      celestial.EventTarget.SUN, celestial.EventTarget.SUN, 1.0, 2460676.5, 2460707.5
+    ),
+  )
+  error = raises(
+    celestial.CelestialError,
+    lambda: celestial.longitude_events(celestial.EventTarget.SUN, 0.0, 1.0e7, 1.0e7 + 10.0),
+  )
+  assert error.recorded
+  print("PASS event wrappers: success, legal empty, TypeError/ValueError/CelestialError channels")
+
+
 def main() -> None:
   """Run the installed-wheel consumer suite."""
   run_happy_paths()
@@ -739,6 +767,7 @@ def main() -> None:
   run_protocol_seams()
   run_sun_crossing_failures()
   run_value_contract()
+  run_event_wrappers()
 
 
 if __name__ == "__main__":

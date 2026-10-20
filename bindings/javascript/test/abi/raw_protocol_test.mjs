@@ -829,4 +829,4 @@ console.log("PASS raw exports 33/33; layouts 22/22; recording seams 32/32");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
-console.log(`PASS shared binding golden replay ${goldenCount}/389`);
+console.log(`PASS shared binding golden replay ${goldenCount}/395`);

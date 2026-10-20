@@ -530,7 +530,7 @@ def test_manifest_mutation_total_counts_the_cases_actually_checked(native_verifi
 
   monkeypatch.setattr(native_verifier, "verify_manifest", rejects)
   total = native_verifier.run_mutation_self_tests(manifest, {}, {}, set(), {})
-  assert total == len(checked) == 20
+  assert total == len(checked) == 21
 
 
 def test_manifest_mutation_case_omission_cannot_lower_the_accepted_denominator(native_verifier):

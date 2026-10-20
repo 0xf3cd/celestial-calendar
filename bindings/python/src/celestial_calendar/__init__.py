@@ -792,7 +792,9 @@ def longitude_events(
   Raises:
     TypeError: If target is not an EventTarget member or an argument is not a real number.
     ValueError: If target is an undeclared enum object, the angle is non-finite, or the
-      interval is empty, too wide, or leaves the target's domain.
+      interval is empty or too wide.
+    CelestialError: If the native search cannot produce the events, including a query
+      outside the target's longitude-rate domain.
     CelestialError: If the native search cannot produce the events.
   """
   checked_target = _enum(target, EventTarget, "target")
@@ -834,8 +836,9 @@ def longitude_stations(
 
   Raises:
     TypeError: If target is not an EventTarget member or an argument is not a real number.
-    ValueError: If target is an undeclared enum object, or the interval is empty, too
-      wide, or leaves the target's domain.
+    ValueError: If target is an undeclared enum object, or the interval is empty or too wide.
+    CelestialError: If the native search cannot produce the stations, including a query
+      outside the target's longitude-rate domain.
     CelestialError: If the native search cannot produce the stations.
   """
   checked_target = _enum(target, EventTarget, "target")
@@ -878,7 +881,9 @@ def longitude_difference_events(
   Raises:
     TypeError: If a target is not an EventTarget member or an argument is not a real number.
     ValueError: If a target is an undeclared enum object, the targets coincide, the angle
-      is non-finite, or the interval is empty, too wide, or leaves the joint domain.
+      is non-finite, or the interval is empty or too wide.
+    CelestialError: If the native search cannot produce the events, including a query
+      outside the joint longitude-rate domain of the two targets.
     CelestialError: If the native search cannot produce the events.
   """
   checked_first = _enum(first, EventTarget, "first")

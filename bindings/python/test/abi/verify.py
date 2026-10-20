@@ -334,6 +334,32 @@ def verify_binding_compatibility() -> None:
     assert getattr(_binding, name, None) is ctypes.POINTER(primitive), f"compatibility pointer identity: {name}"
 
 
+# ctypes shapes alone cannot tell a fixed-capacity companion array from a requested count,
+# nor a companion-only count from a plain struct, so those three stay explicit.
+AMBIGUOUS_PROTOCOL_KINDS = {
+  "solar_lon_root_discriminant": "companion-count",
+  "solar_lon_roots": "companion-fill",
+  "new_moons_after_jde": "requested-fill",
+}
+
+
+def expected_protocol_kind(name: str) -> str:
+  """Derive the manifest protocol kind from the ctypes binding shape."""
+  if name in AMBIGUOUS_PROTOCOL_KINDS:
+    return AMBIGUOUS_PROTOCOL_KINDS[name]
+  argtypes, restype = _binding.BINDING_SPECS[name]
+  if isinstance(restype, type) and issubclass(restype, ctypes.Structure):
+    return "struct"
+  if restype is ctypes.c_char_p:
+    return "borrowed-string"
+  if restype is ctypes.c_bool:
+    return "caller-string" if ctypes.POINTER(ctypes.c_char) in argtypes else "primitive"
+  if restype is ctypes.c_uint32:
+    assert ctypes.POINTER(ctypes.c_uint32) in argtypes, f"{name} has an unclassified fill shape"
+    return "count-fill"
+  raise AssertionError(f"{name} has no protocol-kind derivation")
+
+
 def verify_manifest(
   manifest: dict[str, object],
   header_exports: dict[str, str],
@@ -353,6 +379,7 @@ def verify_manifest(
   for name, entry in manifest_exports.items():
     assert canonical(entry["signature"]) == header_exports[name], f"header signature: {name}"
     assert signature_types(entry["signature"]) == ctypes_types(name), f"ctypes signature: {name}"
+    assert entry["protocol"]["kind"] == expected_protocol_kind(name), f"fill protocol {name}"
     function = getattr(_binding.LIB, name)
     argtypes, restype = _binding.BINDING_SPECS[name]
     assert function.restype is restype, f"loaded return-record identity: {name}"
@@ -412,6 +439,49 @@ def verify_event_codes(manifest: dict[str, object], event_codes: dict[str, int])
   assert event_codes == expected, "installed event target codes"
 
 
+def parse_event_wire_codes(header_text: str) -> dict[str, int]:
+  """Read the EVENT_DIRECTION_* / EVENT_MOTION_* integer codes from celestial.h."""
+  codes = {}
+  for match in re.finditer(r"^#define\s+(EVENT_(?:DIRECTION|MOTION)_\w+)\s+UINT32_C\((\d+)\)\s*$", header_text, re.M):
+    codes[match.group(1)] = int(match.group(2))
+  return codes
+
+
+def verify_event_wire_codes(header_text: str) -> None:
+  """Require the installed direction/motion decode tables to keep the header's codes and names."""
+  codes = parse_event_wire_codes(header_text)
+  directions = {name: code for name, code in codes.items() if name.startswith("EVENT_DIRECTION_")}
+  motions = {name: code for name, code in codes.items() if name.startswith("EVENT_MOTION_")}
+  assert len(directions) == 3 and set(directions.values()) == set(range(3)), "event direction codes"
+  assert len(motions) == 2 and set(motions.values()) == set(range(2)), "station motion codes"
+  decode = celestial_calendar.events
+  for name, code in directions.items():
+    assert decode.decode_direction(code) is getattr(
+      celestial_calendar.EventDirection, name.removeprefix("EVENT_DIRECTION_")
+    ), f"direction code {name}"
+  for name, code in motions.items():
+    assert decode.decode_motion(code) is getattr(
+      celestial_calendar.StationMotion, name.removeprefix("EVENT_MOTION_")
+    ), f"motion code {name}"
+
+
+def run_event_wire_code_self_test(header_text: str) -> int:
+  """Prove that rewriting one direction code in the header text is rejected."""
+  swapped = re.sub(
+    r"(#define\s+EVENT_DIRECTION_INCREASING\s+UINT32_C\()0(\))",
+    r"\g<1>1\g<2>",
+    header_text,
+    count=1,
+  )
+  if swapped == header_text:
+    raise AssertionError("direction code swap injection did not apply")
+  try:
+    verify_event_wire_codes(swapped)
+  except AssertionError:
+    return 1
+  raise AssertionError("event wire code gate accepted a rewritten direction code")
+
+
 def run_event_code_self_test(manifest: dict[str, object], event_codes: dict[str, int]) -> int:
   """Prove that swapping two event target identities is rejected."""
   swapped = dict(event_codes)
@@ -466,6 +536,12 @@ def run_mutation_self_tests(
   wrong_event_field_type["layouts"]["StationEventRecord"]["fields"][3]["type"] = "int32_t"
   mutations["same-width event field type"] = wrong_event_field_type
 
+  swapped_event_fill = copy.deepcopy(manifest)
+  event_entry = next(e for e in swapped_event_fill["exports"] if e["name"] == "longitude_events")
+  companion = next(e for e in swapped_event_fill["exports"] if e["name"] == "solar_lon_roots")
+  [event_entry["protocol"], companion["protocol"]] = [companion["protocol"], event_entry["protocol"]]
+  mutations["swapped event fill protocol"] = swapped_event_fill
+
   wrong_offset = copy.deepcopy(manifest)
   wrong_offset["layouts"]["JieqiMomentQuery"]["fields"][1]["offset"] = 2
   mutations["wrong offset"] = wrong_offset
@@ -518,7 +594,7 @@ def run_mutation_self_tests(
   extra_code["chart_v1_codes"]["CHART_TARGET_CERES"] = 14
   mutations["extra chart code"] = extra_code
 
-  assert len(mutations) == 20, "independent ABI defect-case count"
+  assert len(mutations) == 21, "independent ABI defect-case count"
   for label, mutated in mutations.items():
     try:
       verify_manifest(mutated, header_exports, header_layouts, documented_recording, header_codes)
@@ -557,6 +633,10 @@ def main() -> None:
   verify_event_codes(manifest, event_codes)
   event_code_mutation_count = run_event_code_self_test(manifest, event_codes)
   assert event_code_mutation_count == 1, "event code self-test ran"
+  header_text = HEADER.read_text(encoding="utf-8")
+  verify_event_wire_codes(header_text)
+  wire_code_mutation_count = run_event_wire_code_self_test(header_text)
+  assert wire_code_mutation_count == 1, "event wire code self-test ran"
   mutation_count = run_mutation_self_tests(manifest, header_exports, header_layouts, documented_recording, header_codes)
   run_wrapper_mutation_self_test(wrapper_source, expected_wrapper_exports, documented_recording)
 
@@ -574,6 +654,10 @@ def main() -> None:
   print(
     "PASS event target identities = chart identities; installed enum=manifest, "
     f"swapped targets rejected {event_code_mutation_count}/1"
+  )
+  print(
+    "PASS event direction/motion wire codes = header codes, installed tables decode them, "
+    f"rewritten codes rejected {wire_code_mutation_count}/1"
   )
   print(f"PASS ABI mutations rejected manifest={mutation_count}/{mutation_count} wrapper=1/1")
 
