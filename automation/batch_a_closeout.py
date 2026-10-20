@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
+  from .markdown_source import links, section_text, tokens
   from .source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
@@ -30,6 +31,7 @@ if __package__:
   )
   from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
+  from markdown_source import links, section_text, tokens
   from source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
@@ -794,15 +796,15 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   )
 
   for relative in ("bindings/javascript/README.md", "bindings/python/README.md", "bindings/javascript-alias/README.md"):
-    section = _section(texts[relative], "## License")
+    section = _rendered_section(texts[relative], "License")
     _require("licensed under MIT" in section, f"package README MIT scope differs: {relative}")
     _require("THIRD_PARTY_NOTICES.txt" in section, f"package README third-party exception differs: {relative}")
-  alias_license = _section(texts["bindings/javascript-alias/README.md"], "## License")
+  alias_license = _rendered_section(texts["bindings/javascript-alias/README.md"], "License")
   _require(
     "@0xf3cd/celestial/THIRD_PARTY_NOTICES.txt" in alias_license and "not bundled in this alias" in alias_license,
     "alias README dependency-notice pointer differs",
   )
-  readme_license = _section(texts["README.md"], "## License")
+  readme_license = _rendered_section(texts["README.md"], "License")
   _require("Project-authored material is licensed under the MIT License" in readme_license, "README MIT scope differs")
   for pointer in (
     "Standalone third-party files and data",
@@ -813,7 +815,8 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
   _require(
-    re.findall(r"\[许可证范围与第三方例外\]\(([^)\n]+)\)", texts["README_ZH.md"]) == ["README.md#license"],
+    [target for label, target in links(tokens(texts["README_ZH.md"])) if label == "许可证范围与第三方例外"]
+    == ["README.md#license"],
     "Chinese README canonical license link differs",
   )
 
@@ -876,6 +879,14 @@ def _contains_source_alias(text: str, alias: str) -> bool:
 def _source_families(text: str) -> list[tuple[str, ...]]:
   folded = text.casefold()
   return [family for family in SOURCE_FAMILIES if any(_contains_source_alias(folded, alias) for alias in family)]
+
+
+def _rendered_section(text: str, title: str) -> str:
+  """The visible text of the one `## title` section: a sentence inside a comment or a fence is not in it."""
+  section = section_text(text, title)
+  _require(section is not None, f"section differs: ## {title}")
+  assert section is not None
+  return section
 
 
 def _section(text: str, heading: str) -> str:

@@ -12,7 +12,6 @@ import gzip
 import hashlib
 import io
 import json
-import re
 import tarfile
 import zipfile
 from itertools import count
@@ -21,6 +20,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from automation.markdown_source import link_targets, links, tokens
 from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
@@ -1164,8 +1164,9 @@ def assert_runtime_navigation(readme, chinese):
   assert readme.count(anchor) == 1
   assert readme.count(marker) == 1
   assert f"{anchor}\n{marker}\n|" in readme
+  chinese_links = links(tokens(chinese))
   for label in ("原生运行环境", "原生运行环境表"):
-    assert re.findall(rf"\[{re.escape(label)}\]\(([^)\n]+)\)", chinese) == ["README.md#native-runtime"]
+    assert [target for text, target in chinese_links if text == label] == ["README.md#native-runtime"]
   assert marker not in chinese
   for name in NATIVE_ARCHIVES:
     row = f"| `{name.removesuffix('.zip')}` |"
@@ -1181,12 +1182,29 @@ def test_readme_runtime_navigation():
   )
 
 
+def assert_local_wheel_fragment(python_readme, guide):
+  assert python_readme.count('<a id="build-a-local-wheel"></a>') == 1
+  assert "bindings/python/README.md#build-a-local-wheel" in link_targets(tokens(guide))
+
+
 def test_python_local_wheel_fragment_is_preserved():
   root = Path(__file__).parents[2]
   readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
-  assert readme.count('<a id="build-a-local-wheel"></a>') == 1
   for name in ("README.md", "README_ZH.md"):
-    assert "](bindings/python/README.md#build-a-local-wheel)" in (root / name).read_text(encoding="utf-8")
+    assert_local_wheel_fragment(readme, (root / name).read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("name", ["README.md", "README_ZH.md"])
+def test_local_wheel_fragment_link_must_be_a_rendered_link(name):
+  root = Path(__file__).parents[2]
+  readme = (root / "bindings/python/README.md").read_text(encoding="utf-8")
+  guide = (root / name).read_text(encoding="utf-8")
+  link = "](bindings/python/README.md#build-a-local-wheel)"
+  assert guide.count(link) == 1
+  label_start = guide.rindex("[", 0, guide.index(link))
+  whole = guide[label_start : guide.index(link) + len(link)]
+  with pytest.raises(AssertionError):
+    assert_local_wheel_fragment(readme, guide.replace(whole, f"<!-- {whole} -->"))
 
 
 @pytest.mark.parametrize(
@@ -1206,6 +1224,11 @@ def test_python_local_wheel_fragment_is_preserved():
       "README_ZH.md",
       "[原生运行环境表](README.md#native-runtime)",
       "[原生运行环境表](README_ZH.md#native-runtime)<!-- [原生运行环境表](README.md#native-runtime) -->",
+    ),
+    (
+      "README_ZH.md",
+      "[原生运行环境](README.md#native-runtime)",
+      "<!-- [原生运行环境](README.md#native-runtime) -->",
     ),
     ("README_ZH.md", "# Celestial Calendar", "# Celestial Calendar\n<!-- native-runtime-matrix -->"),
     ("README_ZH.md", "# Celestial Calendar", "# Celestial Calendar\n| `linux_arm64` | copied | row |"),

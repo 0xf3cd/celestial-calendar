@@ -544,6 +544,18 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
     ),
     (
       "bindings/python/README.md",
+      "licensed under MIT",
+      "<!-- licensed under MIT -->",
+      "package README MIT scope differs",
+    ),
+    (
+      "bindings/javascript/README.md",
+      "Project-authored package material is licensed under MIT.",
+      "```\nProject-authored package material is licensed under MIT.\n```",
+      "package README MIT scope differs",
+    ),
+    (
+      "bindings/python/README.md",
       "THIRD_PARTY_NOTICES.txt",
       "NOTICE.txt",
       "package README third-party exception differs",
@@ -565,6 +577,12 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "README_ZH.md",
       "](README.md#license)",
       "",
+      "Chinese README canonical license link differs",
+    ),
+    (
+      "README_ZH.md",
+      "[许可证范围与第三方例外](README.md#license)",
+      "<!-- [许可证范围与第三方例外](README.md#license) -->",
       "Chinese README canonical license link differs",
     ),
     (
