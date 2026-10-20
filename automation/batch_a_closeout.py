@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
+  from .markdown_source import links, section_text, tokens
   from .source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
@@ -30,6 +31,7 @@ if __package__:
   )
   from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
+  from markdown_source import links, section_text, tokens
   from source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
@@ -290,6 +292,11 @@ A4_SCAN_FILES: Final[tuple[str, ...]] = (
 )
 A4_SCAN_EXCLUDED_PARTS: Final[frozenset[str]] = frozenset(
   {".git", ".review", ".venv", "__pycache__", "build", "node_modules", "wheelhouse"}
+)
+# A qualifier glued to MIT ("MIT-like", "MIT\u2013like") must not satisfy the scope check.
+MIT_SCOPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"licensed under MIT(?=$|[\s.,;:])")
+CHANGELOG_MIT_PATTERN: Final[re.Pattern[str]] = re.compile(
+  r"Project-authored material is now licensed under MIT(?=$|[\s.,;:])"
 )
 GPL_3_OR_LATER: Final[str] = "GPL" + "-3.0-or-later"
 GPL_V2: Final[str] = "GPL" + "v2"
@@ -794,15 +801,15 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   )
 
   for relative in ("bindings/javascript/README.md", "bindings/python/README.md", "bindings/javascript-alias/README.md"):
-    section = _section(texts[relative], "## License")
-    _require("licensed under MIT" in section, f"package README MIT scope differs: {relative}")
+    section = _rendered_section(texts[relative], "License")
+    _require(MIT_SCOPE_PATTERN.search(section), f"package README MIT scope differs: {relative}")
     _require("THIRD_PARTY_NOTICES.txt" in section, f"package README third-party exception differs: {relative}")
-  alias_license = _section(texts["bindings/javascript-alias/README.md"], "## License")
+  alias_license = _rendered_section(texts["bindings/javascript-alias/README.md"], "License")
   _require(
     "@0xf3cd/celestial/THIRD_PARTY_NOTICES.txt" in alias_license and "not bundled in this alias" in alias_license,
     "alias README dependency-notice pointer differs",
   )
-  readme_license = _section(texts["README.md"], "## License")
+  readme_license = _rendered_section(texts["README.md"], "License")
   _require("Project-authored material is licensed under the MIT License" in readme_license, "README MIT scope differs")
   for pointer in (
     "Standalone third-party files and data",
@@ -813,12 +820,16 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
   ):
     _require(pointer in readme_license, f"README third-party exception pointer differs: {pointer}")
   _require(
-    re.findall(r"\[许可证范围与第三方例外\]\(([^)\n]+)\)", texts["README_ZH.md"]) == ["README.md#license"],
+    [target for label, target in links(tokens(texts["README_ZH.md"])) if label == "许可证范围与第三方例外"]
+    == ["README.md#license"],
     "Chinese README canonical license link differs",
   )
 
-  changelog_license = _section(texts["docs/CHANGELOG.md"], "## [v0.7.0]")
-  _require("Project-authored material is now licensed under MIT" in changelog_license, "MIT changelog entry differs")
+  changelog_license = _rendered_section(texts["docs/CHANGELOG.md"], "[v0.7.0]")
+  _require(
+    CHANGELOG_MIT_PATTERN.search(changelog_license),
+    "MIT changelog entry differs",
+  )
   _require(
     "Project-authored material: MIT;" in texts["AGENTS.md"]
     and "retained third-party material keeps its source terms" in texts["AGENTS.md"],
@@ -878,7 +889,16 @@ def _source_families(text: str) -> list[tuple[str, ...]]:
   return [family for family in SOURCE_FAMILIES if any(_contains_source_alias(folded, alias) for alias in family)]
 
 
-def _section(text: str, heading: str) -> str:
+def _rendered_section(text: str, title: str) -> str:
+  """The visible text of the one `## title` section: a sentence inside a comment or a fence is not in it."""
+  section = section_text(text, title)
+  if section is None:
+    raise RuntimeError(f"section differs: ## {title}")
+  return section
+
+
+def _source_section(text: str, heading: str) -> str:
+  """A source-text slice between headings, for byte-oriented provenance records."""
   _require(text.count(heading) == 1, f"section differs: {heading}")
   start = text.index(heading)
   end = text.find("\n## ", start + len(heading))
@@ -1015,7 +1035,7 @@ def _verify_adjacent_record(repo_root: Path, block: dict, adjacent_sections: dic
   _require(hashlib.sha256(data).hexdigest() == block["data_sha256"], f"{block['id']} retained data hash differs")
   adjacent = _safe_path(repo_root, block["adjacent_path"], f"{block['id']} adjacent record")
   text = adjacent.read_text(encoding="utf-8")
-  section = _section(text, block["section"])
+  section = _source_section(text, block["section"])
   normalised = _normalise(section)
   for expected in (block["path"], block["data_sha256"], block["source_identity"], "outside the project MIT grant"):
     _require(expected in normalised, f"{block['id']} adjacent reciprocal field differs: {expected}")

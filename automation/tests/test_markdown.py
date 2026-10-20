@@ -20,9 +20,9 @@ from urllib.parse import unquote
 
 import pytest
 
-from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
+from automation.markdown_source import link_targets, links, section_text, tokens, visible_text
 from toolbox.artifact_downloader import project_version
 
 REPO = Path(__file__).resolve().parents[2]
@@ -47,17 +47,10 @@ REPO_URL = re.compile(
   r"(?:#(?P<fragment>.*))?)"
 )
 REPO_SUFFIXES = ("[#<fragment>]", "/releases", *(f"/{route}/<path>[#<fragment>]" for route in REPO_ROUTES))
-# markdown-it with tables stands in for GitHub's GFM renderer, and the checks read its parse, never the source text.
-# Raw HTML is held to what the guides use, comments and empty anchors: how a browser reads any other HTML is not
-# something the parse can say.
-MARKDOWN = MarkdownIt("commonmark").enable("table")
+# The checks read the parse in `automation.markdown_source`, never the source text. Raw HTML is held to what the
+# guides use, comments and empty anchors: how a browser reads any other HTML is not something the parse can say.
 COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
 ANCHOR = re.compile(r'<a id="([a-z0-9-]+)">')
-
-
-def tokens(text: str) -> list[Token]:
-  """The block tokens and, after each inline one, its children."""
-  return [part for token in MARKDOWN.parse(text) for part in (token, *(token.children or ()))]
 
 
 @cache
@@ -87,15 +80,6 @@ def anchors(path: Path) -> set[str]:
 
 def code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
   return [(token.info, token.content) for token in parsed if token.type in ("fence", "code_block")]
-
-
-def link_targets(parsed: list[Token]) -> list[str]:
-  """Where the links and images point, percent-escaped as rendered."""
-  return [
-    token.attrs["href" if token.type == "link_open" else "src"]
-    for token in parsed
-    if token.type in ("link_open", "image")
-  ]
 
 
 def names_this_repository(text: str) -> bool:
@@ -141,19 +125,6 @@ def link_problem(name: str, target: str) -> str | None:
   if fragment and fragment not in anchors(path):
     return f'{target} names no <a id="{fragment}"></a> in {path.name}'
   return None
-
-
-def visible_text(parsed: list[Token]) -> str:
-  """The text of paragraphs, headings and table cells, code spans included; link titles and comments are not text."""
-  parts = []
-  for token in parsed:
-    if token.type == "inline":
-      parts.append("\n")
-    elif token.type in ("text", "code_inline"):
-      parts.append(token.content)
-    elif token.type in ("softbreak", "hardbreak"):
-      parts.append(" ")
-  return "".join(parts)
 
 
 def bare_repo_urls(parsed: list[Token]) -> list[str]:
@@ -395,6 +366,21 @@ def test_version_sentence_is_read_from_the_text_alone():
   text += "See `x`. This guide describes\nversion **0.8.0**.\n"
   assert visible_text(tokens(text)) == "\nstatus \nSee x. This guide describes version 0.8.0."
   assert STATUS_VERSION.findall(visible_text(tokens(text))) == ["0.8.0"]
+
+
+def test_links_are_the_rendered_links():
+  text = "[a](x.md#1) and `[b](y.md)` and <!-- [c](z.md) --> and [`d`](w.md)\n"
+  assert links(tokens(text)) == [("a", "x.md#1"), ("d", "w.md")]
+
+
+def test_section_text_is_the_rendered_prose_of_one_section():
+  text = "# T\n\n## Rules\n\nUnder MIT. <!-- not here -->\n\n```\nfenced\n```\n\n### Sub\n\nkept\n\n## Next\n\nother\n"
+  assert section_text(text, "Rules") == "\nUnder MIT. \nSub\nkept"
+  assert section_text(text, "Next") == "\nother"
+  assert section_text(text, "Sub") is None  # only ## headings address a section
+  assert section_text(text, "Missing") is None
+  assert section_text("## A\n\none\n\n## A\n\ntwo\n", "A") is None
+  assert section_text("# A\n\ntop\n", "A") is None  # not a level-2 heading
 
 
 def test_bare_repo_urls_are_found_outside_links_and_code():

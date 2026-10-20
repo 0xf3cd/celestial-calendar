@@ -402,15 +402,15 @@ trigger is for.
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
 | **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
-| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes | A second #41-class mix-up reaches a test, or one public entry point must accept two civil scales |
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes. Re-checked at #350: `chart::calculate` and `chart_snapshot_v1` take one civil datetime plus an explicit `Scale` tag and resolve both scales themselves (#300, #299), so the tag says how to read one value and never carries a second time value | A second #41-class mix-up reaches a test, or one public entry point must accept civil datetimes of two scales in the same call |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
-| **Header-only is the identity, and its compile cost is accepted** | Someone produces a compile-time measurement |
+| **Header-only is the identity, and its compile cost is accepted**; #344 measured the cost on a TU holding only `jieqi.hpp`, and #348 removed the avoidable weight (umbrella includes, test seeding) — what remains is its own cost | A measurement shows the cost growing again — without the new feature's own code behind it, or with a new feature reaching consumers through a route other than exact includes (#348's route) |
 | **The cache never evicts** — the mechanism has no eviction by design; each caller's key space is bounded by its declared window (`jieqi` [1, 32766], `algo2` by year range) | A caller with an unbounded key space appears |
 | **`algo1` / `algo3` stay near-duplicates — and tests whose columns mean different things don't merge either** (#167) | A third algorithm of the same shape; for tests, a group whose rows differ only in data |
 | **`moon_phase`'s year-boundary hole is `wontfix`** | A caller needs total coverage of the boundary |
 | **No one-off namespace rename**; new code lands in the intended shape, old names stay | — (incidentally or not at all) |
 | **No policy/context object for model selection**; the model stays a function parameter (`nutation::Model`) | A third real *ephemeris/nutation/EOP* backend appears (lunar `Algo` and frozen ΔT exhibits don't count) |
-| **Coordinate frames stay untagged**; names disambiguate (D2) | Another mix-up survives naming and reaches a result |
+| **Coordinate frames stay untagged**; names disambiguate (D2). Re-checked after #322 and #330, the one mix-up that reached results (planet light time subtracted vectors in different mean-ecliptic dates): the fix made the local producer own the transport to observation-date axes, backed by a 41-row reference and directed mutations, rather than tagging frames | Another mix-up survives naming and reaches a result |
 | **Transcription runs on a single track**; equivalence is proved once during a migration, not maintained as a parallel implementation | A transcription lands that cannot be diffed against its predecessor in one run |
 | **Quantified error budgets are not part of the API contract**; model selection uses source, status, hard domain, and role, and a fitted residual is never dressed up as a 1σ | A caller needs a validated quantitative bound that source/status/domain guidance cannot answer |
 | **The tool-existence checks in `automation/` are not merged into one**; the `toolbox/` `sys.path.append` copies cannot be merged either (#166) | A third call site needs the same failure policy as an existing two |
@@ -429,14 +429,22 @@ it as existing): the `cpp26-lab` experiment branch.
 **Two conventions that look like drift and are not.** Time scales are spelled in the
 parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
 boundary (`jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
-scale; reopen if a C entry point ever needs to accept two. And every C export except the
-`last_error` reader records failures through `wrap_export`; the boundary lives in
-`celestial.h` and is mechanically reconciled with both bindings.
+scale per call — in the function name, in a parameter name (`local_apparent_sidereal_time`
+takes `jd_ut1`), or, for the chart family, as one civil scale chosen by
+`civil_scale_code` with both resolved scales returned (`chart_snapshot_v1`, #299); the one
+entry that spells its scale only in its docs is `apparent_solar_time` (civil UTC); reopen if
+a C entry point ever needs to accept time values of two scales from the caller. And every C
+export except the `last_error` reader records failures through `wrap_export`; the boundary
+lives in `celestial.h` and is mechanically reconciled with both bindings.
 
 ## Phase and PR workflow
 
-- One issue per phase; branch `phaseN-<topic>` from `main`; PR bodies use four blocks:
-  Summary / Tests / Validation / Scope.
+- A PR is the delivery and review unit, and one PR may deliver several issues, one of them closed by
+  a `Closes` reference. Work that needs staged handover uses `phaseN-<program>-<topic>` branches
+  from `main`, where `N` is the PR's stage number inside that release program (in the current
+  programs, not the issue number); a normal
+  patch uses a descriptive branch, and its documentation stays proportional to the change. PR bodies
+  use four blocks: Summary / Tests / Validation / Scope.
 - PR titles, headings and prose use one language throughout. Default to English; when the
   author requests Chinese, use Chinese throughout, including headings. Do not mix Chinese
   headings with English prose.
@@ -456,9 +464,9 @@ scale; reopen if a C entry point ever needs to accept two. And every C export ex
   the first commit.
 - Every PR is preceded by local review rounds (adversarial correctness + style/design)
   before it is opened; CI and PR bots are later gates, not substitutes.
-- Post-merge queue: delete the remote branch → update the phase tracking doc → record the
-  phase's validation chain, decisions, environment notes and next-phase prep (that record is
-  kept outside this repo) → open the next phase.
+- Post-merge queue: delete the remote branch. For staged work, also update the phase tracking doc,
+  record the phase's validation chain, decisions, environment notes and next-phase prep (that record
+  is kept outside this repo), and open the next phase.
 
 ## AI do / don't
 
