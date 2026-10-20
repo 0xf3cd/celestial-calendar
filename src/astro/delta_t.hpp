@@ -29,22 +29,7 @@
 
 /**
  * This file contains the functions to compute the dynamical time.
- * 
- * Here are some concepts:
- *  1. Universal Time (UT) is a time standard based on Earth's rotation, derived from astronomical observations. 
- *     UT relies on the Earth's rotational period and cannot be kept by atomic clocks.
- *  2. Coordinated Universal Time (UTC) is the most common time standard used globally.
- *     UTC is based on International Atomic Time (TAI), and can be kept by atomic clocks.
- *     It is required that |UT1 - UTC| < 0.9 seconds, so leap seconds are introduced to adjust UTC (UT1 is a version of UT).
- *  3. Dynamical Time (TD) is a time scale used in astronomy, representing the time experienced by an observer on Earth's surface,
- *     accounting for relativistic effects and other factors. It is based on TAI as well.
- *     Terrestrial Dynamical Time (TDT) and Terrestrial Time (TT) are equivalent to TD.
- *     In this project, TT is used.
- *  4. Delta T (△T) is the difference between Dynamical Time and Universal Time, i.e., △T = TT - UT1.
- * 
- * References for above concepts:
- * - https://eclipse.gsfc.nasa.gov/LEcat5/time.html
- * - https://en.wikipedia.org/wiki/Coordinated_Universal_Time
+ * The time scales (UT1, UTC, TT) and ΔT = TT − UT1 are defined in docs/DESIGN.md#time-scales.
  */
 
 
