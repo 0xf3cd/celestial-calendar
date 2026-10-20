@@ -40,7 +40,7 @@ _SIZEOF_PATTERN: Final[re.Pattern[str]] = re.compile(r"sizeof\((\w+)\)")
 # followed by nothing but closing parentheses and the comma — `&((Record*)0)->field`
 # is a field-address type check, not a signature pin, and its type name must not
 # be collected.
-_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\(\s*&\s*(?:\(\s*)*(\w+)\s*(?:\)\s*)*,")
+_PINNED_EXPORT_PATTERN: Final[re.Pattern[str]] = re.compile(r"_Generic\s*\(\s*&\s*(?:\(\s*)*(\w+)\s*(?:\)\s*)*,")
 
 _COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
 

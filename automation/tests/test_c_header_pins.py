@@ -168,6 +168,27 @@ def test_field_address_generic_is_not_a_signature_pin(tmp_path):
   verify_c_header_pins(tmp_path)
 
 
+def test_generic_keyword_may_be_spaced_from_its_paren(tmp_path):
+  materialize(tmp_path)
+  layout = Layout(tmp_path)
+  sets = collect_pin_sets(tmp_path)
+  export = sorted(sets.exports)[0]
+  original = layout.pins
+  for separator in (" ", "\n"):
+    spaced = original.replace(f"_Generic(&{export},", f"_Generic{separator}(&{export},", 1)
+    layout.pins_path.write_text(spaced, encoding="utf-8")
+    verify_c_header_pins(tmp_path)
+    stale = spaced + (
+      f"_Static_assert(_Generic{separator}(&not_an_export,\n"
+      "               uint32_t (*)(void): 1,\n"
+      '               default: 0) != 0, "not_an_export signature drifted");\n'
+    )
+    layout.pins_path.write_text(stale, encoding="utf-8")
+    with pytest.raises(RuntimeError, match="pins name no celestial.h export"):
+      verify_c_header_pins(tmp_path)
+  layout.pins_path.write_text(original, encoding="utf-8")
+
+
 def test_stale_export_pin_fails(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)
