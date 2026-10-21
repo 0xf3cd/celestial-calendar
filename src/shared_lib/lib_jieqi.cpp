@@ -22,7 +22,7 @@ extern "C" {
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
 auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMomentQuery { // NOLINT(bugprone-easily-swappable-parameters)
-  return lib::wrap_export("query_jieqi_moment", [=]() -> JieqiMomentQuery {
+  return lib::wrap_export(__func__, [=]() -> JieqiMomentQuery {
     if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
       throw std::invalid_argument {
         std::format("Argument `jq_idx` must be in [0, 23], got {}", jq_idx)
@@ -50,7 +50,7 @@ auto query_jieqi_moment(const int32_t year, const uint8_t jq_idx) -> JieqiMoment
 
 
 auto get_jieqi_name(const uint8_t jq_idx, char * const buf, const uint32_t buf_size) -> bool {
-  return lib::wrap_export("get_jieqi_name", [=] {
+  return lib::wrap_export(__func__, [=] {
     if (jq_idx >= calendar::jieqi::JIEQI_COUNT) [[unlikely]] {
       throw std::invalid_argument {
         std::format("Argument `jq_idx` must be in [0, 23], got {}", jq_idx)

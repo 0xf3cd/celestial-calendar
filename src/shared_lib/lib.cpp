@@ -55,7 +55,7 @@ auto last_error_message() noexcept -> const char* {
 extern "C" {
 
 auto set_log_verbosity(const uint8_t new_value) -> bool {
-  return lib::wrap_export("set_log_verbosity", [=] {
+  return lib::wrap_export(__func__, [=] {
     if (not lib::set_verbosity(static_cast<lib::Verbosity>(new_value))) {
       throw std::invalid_argument {
         std::format("Argument `new_value` must be in [0, 2], got {}", new_value)

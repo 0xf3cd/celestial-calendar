@@ -31,7 +31,7 @@ auto chart_snapshot_v1(
   const uint32_t house_system_code,
   const uint32_t delta_t_model_code
 ) -> ChartSnapshotV1 {
-  return lib::wrap_export("chart_snapshot_v1", [=]() -> ChartSnapshotV1 {
+  return lib::wrap_export(__func__, [=]() -> ChartSnapshotV1 {
     lib::chart::validate_civil(year, month, day, fraction);
     const auto scale = lib::chart::civil_scale(civil_scale_code);
     const auto system = lib::chart::house_system(house_system_code);
