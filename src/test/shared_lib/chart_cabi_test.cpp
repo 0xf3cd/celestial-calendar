@@ -47,7 +47,6 @@ using astro::house::test::WITNESS_SOUTH_LONGITUDE_DEG;
 using astro::toolbox::AngleDeg;
 using calendar::Datetime;
 using astro::chart::test::location;
-using astro::chart::test::expected_coordinates;
 
 constexpr std::array MODEL_CODES {
   CHART_DELTA_T_MODEL_ALGO1, CHART_DELTA_T_MODEL_ALGO2, CHART_DELTA_T_MODEL_ALGO3,
@@ -71,6 +70,26 @@ constexpr std::array TARGETS {
 };
 constexpr double NAN_VALUE = std::numeric_limits<double>::quiet_NaN();
 constexpr double INFINITY_VALUE = std::numeric_limits<double>::infinity();
+
+// The C ABI contract under test throughout this file: the returned struct equals what
+// astro::chart::calculate returns for the same civil input. Domain rules, message wording,
+// and physical rates are pinned in the C++ suites (chart_test, ephemeris_test, the house
+// tests) — re-deriving them here would only duplicate those pins (#347).
+
+auto code_index(const auto& enums, const decltype(enums.front()) value) -> std::size_t {
+  return static_cast<std::size_t>(std::ranges::find(enums, value) - enums.begin());
+}
+
+// The core call's rejection is a thrown invalid_argument; the C boundary's is `valid = false`.
+// Both faces of one contract, bridged here for the domain-parity tests.
+[[nodiscard]] auto try_calculate(const Datetime& civil_dt, const Scale scale, const astro::GeoLocation& observer,
+                                 const System system, const Model model) -> std::optional<astro::chart::Snapshot> {
+  try {
+    return astro::chart::calculate(civil_dt, scale, observer, system, model);
+  } catch (const std::invalid_argument&) {
+    return std::nullopt;
+  }
+}
 
 static_assert(std::is_standard_layout_v<ChartBodyV1> and std::is_trivially_copyable_v<ChartBodyV1>);
 static_assert(std::is_standard_layout_v<ChartHousesV1> and std::is_trivially_copyable_v<ChartHousesV1>);
@@ -123,82 +142,23 @@ auto expect_snapshot(const ChartSnapshotV1& actual, const astro::chart::Snapshot
   }
 }
 
-auto expect_recomposition(const ChartSnapshotV1& actual, const astro::GeoLocation& observer, const System system) -> void {
-  ASSERT_TRUE(actual.valid) << last_error();
-  for (std::size_t index = 0; index < TARGETS.size(); ++index) {
-    SCOPED_TRACE(index);
-    const auto& body = std::span { actual.bodies }[index];
-    EXPECT_EQ(body.target_code, TARGET_CODES.at(index));
-    EXPECT_TRUE(std::isfinite(body.longitude_deg));
-    EXPECT_GE(body.longitude_deg, 0.0);
-    EXPECT_LT(body.longitude_deg, 360.0);
-    EXPECT_EQ(std::bit_cast<uint64_t>(body.longitude_rate_deg_per_tt_day),
-              std::bit_cast<uint64_t>(astro::ephemeris::longitude_rate(TARGETS.at(index), actual.jde_tt).deg_per_tt_day));
-    if (index < 10) {
-      const auto expected = expected_coordinates(TARGETS.at(index), actual.jde_tt);
-      EXPECT_EQ(body.present_fields, CHART_PRESENT_LATITUDE | CHART_PRESENT_DISTANCE);
-      EXPECT_EQ(body.longitude_deg, expected.λ.deg());
-      EXPECT_EQ(body.latitude_deg, expected.β.deg());
-      EXPECT_EQ(body.distance_au, expected.r.au());
-      EXPECT_GT(body.distance_au, 0.0);
-    } else {
-      using astro::lunar_node::Node;
-      constexpr std::array NODES { Node::MEAN_ASCENDING, Node::MEAN_DESCENDING, Node::TRUE_ASCENDING, Node::TRUE_DESCENDING };
-
-      EXPECT_EQ(body.present_fields, CHART_PRESENT_LATITUDE);
-      EXPECT_EQ(body.latitude_deg, 0.0);
-      EXPECT_EQ(body.longitude_deg, astro::lunar_node::position(NODES.at(index - 10), actual.jde_tt).deg());
-    }
-  }
-  const auto expected = astro::house::calculate(actual.jd_ut1, actual.jde_tt, observer, system);
-  EXPECT_EQ(actual.houses.ascendant_deg, expected.ascendant.deg());
-  EXPECT_EQ(actual.houses.midheaven_deg, expected.midheaven.deg());
-  EXPECT_EQ(actual.houses.descendant_deg, expected.descendant.deg());
-  EXPECT_EQ(actual.houses.imum_coeli_deg, expected.imum_coeli.deg());
-  for (std::size_t index = 0; index < expected.cusps.size(); ++index) {
-    EXPECT_EQ(std::span { actual.houses.cusps_deg }[index], expected.cusps.at(index).deg());
-  }
-}
 
 } // namespace
 
 TEST(ChartCAbi, SelectedRolesMatchCoreAcrossEveryTarget) {
-  struct CompositionCase {
-    std::string_view role;
-    std::size_t model_index;
-    std::size_t system_index;
-    astro::GeoLocation observer;
-  };
-  const std::array cases {
-    CompositionCase { .role = "algo1-equal",       .model_index = 0, .system_index = 0, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo2-whole",       .model_index = 1, .system_index = 1, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo3-south",       .model_index = 2, .system_index = 2, .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "algo4-placidus",    .model_index = 3, .system_index = 2, .observer = location(51.5, 0.0) },
-    CompositionCase { .role = "algo5-equal",       .model_index = 4, .system_index = 0, .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "algo5-whole-south", .model_index = 4, .system_index = 1, .observer = location(-33.87, 151.21) },
-    CompositionCase { .role = "algo5-placidus",    .model_index = 4, .system_index = 2, .observer = location(51.5, 0.0) },
-  };
   const Datetime dt { util::to_ymd(2026, 1, 1), 0.5123456789 };
-  for (const auto& row : cases) {
+  for (const auto& row : astro::chart::test::COMPOSITION_ROLES) {
     SCOPED_TRACE(row.role);
     const auto actual = snapshot_at(
       dt,
       CHART_CIVIL_SCALE_UTC,
       row.observer,
-      SYSTEM_CODES.at(row.system_index),
-      MODEL_CODES.at(row.model_index)
+      SYSTEM_CODES.at(code_index(SYSTEMS, row.system)),
+      MODEL_CODES.at(code_index(MODELS, row.model))
     );
     ASSERT_TRUE(actual.valid) << last_error();
     EXPECT_STREQ(last_error(), "");
-    const Datetime input { dt.ymd, dt.fraction() };
-    const auto expected = astro::chart::calculate(
-      input,
-      Scale::UTC,
-      row.observer,
-      SYSTEMS.at(row.system_index),
-      MODELS.at(row.model_index)
-    );
-    expect_snapshot(actual, expected);
+    expect_snapshot(actual, astro::chart::calculate(dt, Scale::UTC, row.observer, row.system, row.model));
   }
 }
 
@@ -224,10 +184,7 @@ TEST(ChartCAbi, HistoricalUt1UsesSelectedModel) {
   for (std::size_t index = 0; index < MODELS.size(); ++index) {
     const auto actual = snapshot_at(dt, CHART_CIVIL_SCALE_UT1, observer, CHART_HOUSE_SYSTEM_EQUAL, MODEL_CODES.at(index));
     ASSERT_TRUE(actual.valid) << last_error();
-    EXPECT_EQ(actual.jd_ut1, astro::julian_day::ut1_to_jd(dt));
-    EXPECT_EQ(actual.jde_tt, astro::julian_day::tt_to_jde(
-      calendar::add_seconds(dt, astro::delta_t::compute(MODELS.at(index), dt))));
-    expect_recomposition(actual, observer, System::EQUAL);
+    expect_snapshot(actual, astro::chart::calculate(dt, Scale::UT1, observer, System::EQUAL, MODELS.at(index)));
   }
   EXPECT_FALSE(snapshot_at(dt, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_EQUAL).valid);
   EXPECT_NE(std::strstr(last_error(), "1972"), nullptr);
@@ -241,15 +198,11 @@ TEST(ChartCAbi, UtcBeginsAt1972AndUsesLeapTable) {
   EXPECT_NE(std::strstr(last_error(), "1972"), nullptr);
   const auto historical = snapshot_at(before, CHART_CIVIL_SCALE_UT1, observer, CHART_HOUSE_SYSTEM_EQUAL);
   ASSERT_TRUE(historical.valid) << last_error();
-  expect_recomposition(historical, observer, System::EQUAL);
+  expect_snapshot(historical, astro::chart::calculate(before, Scale::UT1, observer, System::EQUAL, Model::ALGO5));
 
   const auto utc = snapshot_at(first, CHART_CIVIL_SCALE_UTC, observer, CHART_HOUSE_SYSTEM_EQUAL);
   ASSERT_TRUE(utc.valid) << last_error();
-  const auto tt = astro::leap_second::utc_to_tt(first);
-  EXPECT_EQ(utc.jde_tt, astro::julian_day::tt_to_jde(tt));
-  EXPECT_EQ(utc.jd_ut1, astro::julian_day::ut1_to_jd(
-    calendar::add_seconds(tt, -astro::delta_t::compute(Model::ALGO5, tt))));
-  expect_recomposition(utc, observer, System::EQUAL);
+  expect_snapshot(utc, astro::chart::calculate(first, Scale::UTC, observer, System::EQUAL, Model::ALGO5));
 }
 
 TEST(ChartCAbi, RejectsUnknownAndWideSelectorAliases) {
@@ -323,15 +276,15 @@ TEST(ChartCAbi, StrictJointDomainIsCheckedAfterTimeResolution) {
       const auto tt = astro::julian_day::jde_to_tt(edge + (seconds / 86400.0));
       const auto ut1 = astro::delta_t::tt_to_ut1(tt);
       const Datetime input { ut1.ymd, ut1.fraction() };
-      const double recomposed = astro::julian_day::tt_to_jde(
-        calendar::add_seconds(input, astro::delta_t::compute(Model::ALGO5, input)));
-      const bool admitted = recomposed >= astro::chart::detail::START_JDE_TT and
-                            recomposed < astro::chart::detail::END_JDE_TT;
-      const auto actual = snapshot_at(ut1, CHART_CIVIL_SCALE_UT1, observer, CHART_HOUSE_SYSTEM_EQUAL);
-      ASSERT_EQ(actual.valid, admitted) << last_error();
-      if (admitted) {
-        EXPECT_EQ(actual.jde_tt, recomposed);
-        expect_recomposition(actual, observer, System::EQUAL);
+      const auto actual = snapshot_at(input, CHART_CIVIL_SCALE_UT1, observer, CHART_HOUSE_SYSTEM_EQUAL);
+
+      // The admission rule itself is chart_test's pin; here the C layer must agree with the
+      // core call on whether the recomposed instant is admitted, and pass its result through
+      // unchanged when it is.
+      const auto expected = try_calculate(input, Scale::UT1, observer, System::EQUAL, Model::ALGO5);
+      ASSERT_EQ(actual.valid, expected.has_value()) << last_error();
+      if (expected.has_value()) {
+        expect_snapshot(actual, *expected);
       } else {
         EXPECT_NE(std::strstr(last_error(), "Chart JDE(TT)"), nullptr);
       }
@@ -341,17 +294,15 @@ TEST(ChartCAbi, StrictJointDomainIsCheckedAfterTimeResolution) {
 
 TEST(ChartCAbi, Algo4CapIsStrictInDerivedTtAndHasNoDefaultFallback) {
   const auto observer = location(0.0, 0.0);
-  // Boundary replays from chart_test.cpp; conversion wiring, not new physical goldens.
+  // Boundary inputs replayed from chart_test.cpp; conversion wiring, not new physical goldens.
   for (const double fraction : std::array { 0.99919925902642359, 0.99919925925925923 }) {
     const Datetime dt { util::to_ymd(2034, 12, 31), fraction };
     const auto actual = chart_snapshot_v1(2034, 12, 31, fraction, CHART_CIVIL_SCALE_UTC, 0.0, 0.0,
                                           CHART_HOUSE_SYSTEM_EQUAL, CHART_DELTA_T_MODEL_ALGO4);
     if (fraction == 0.99919925902642359) {
       ASSERT_TRUE(actual.valid) << last_error();
-      EXPECT_EQ(actual.jde_tt, std::nextafter(astro::chart::detail::ALGO4_END_JDE_TT, 0.0));
-      expect_recomposition(actual, observer, System::EQUAL);
+      expect_snapshot(actual, astro::chart::calculate(dt, Scale::UTC, observer, System::EQUAL, Model::ALGO4));
     } else {
-      EXPECT_EQ(astro::julian_day::utc_to_jde(dt), astro::chart::detail::ALGO4_END_JDE_TT);
       EXPECT_FALSE(actual.valid);
       EXPECT_NE(std::strstr(last_error(), "Chart Algo4 requires JDE(TT) before 2035-01-01"), nullptr);
       EXPECT_EQ(std::strstr(last_error(), "Chart Delta T datetime leaves its model domain"), nullptr);
@@ -430,7 +381,9 @@ TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
           const auto result = snapshot_at(dt, CHART_CIVIL_SCALE_UTC, control, system, CHART_DELTA_T_MODEL_ALGO5);
           ASSERT_TRUE(result.valid) << last_error();
           EXPECT_STREQ(last_error(), "");
-          EXPECT_GT(observer.latitude.deg() * std::cos(astro::toolbox::deg_to_rad(result.houses.ascendant_deg)), 0.0);
+          expect_snapshot(result, astro::chart::calculate(
+            dt, Scale::UTC, control, system == CHART_HOUSE_SYSTEM_EQUAL ? System::EQUAL : System::WHOLE_SIGN, Model::ALGO5
+          ));
         }
       }
     }
@@ -443,25 +396,22 @@ TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
   }
 }
 
-TEST(ChartCAbi, WrapsStationsAndNodeAntipodesPreserveSignedRates) {
+TEST(ChartCAbi, WrapsStationsAndNodeAntipodesMatchCore) {
   const auto observer = location(-33.87, 151.21);
-  // Wrap/station epochs replay ephemeris_test.cpp through the C civil ingress.
+  // Wrap/station epochs replay ephemeris_test.cpp's station cases through the C civil ingress;
+  // the signed-rate physics they exercise is pinned there, not re-derived here.
   for (const double jde_tt : std::array { 2460754.876816418, 2460681.293070456, 2460749.7828680002,
                                         2460772.964472, 2460681.5899983719 }) {
     const auto dt = astro::delta_t::tt_to_ut1(astro::julian_day::jde_to_tt(jde_tt));
     const auto actual = snapshot_at(dt, CHART_CIVIL_SCALE_UT1, observer, CHART_HOUSE_SYSTEM_PLACIDUS);
     ASSERT_TRUE(actual.valid) << last_error();
-    expect_recomposition(actual, observer, System::PLACIDUS);
-    EXPECT_EQ(std::bit_cast<uint64_t>(actual.bodies[10].longitude_rate_deg_per_tt_day),
-              std::bit_cast<uint64_t>(actual.bodies[11].longitude_rate_deg_per_tt_day));
-    EXPECT_EQ(std::bit_cast<uint64_t>(actual.bodies[12].longitude_rate_deg_per_tt_day),
-              std::bit_cast<uint64_t>(actual.bodies[13].longitude_rate_deg_per_tt_day));
+    expect_snapshot(actual, astro::chart::calculate(dt, Scale::UT1, observer, System::PLACIDUS, Model::ALGO5));
   }
+  const Datetime dt { util::to_ymd(2025, 3, 25), 0.5 };
   const auto retrograde = chart_snapshot_v1(2025, 3, 25, 0.5, CHART_CIVIL_SCALE_UT1, -33.87, 151.21,
                                            CHART_HOUSE_SYSTEM_PLACIDUS, CHART_DELTA_T_MODEL_DEFAULT);
   ASSERT_TRUE(retrograde.valid);
-  EXPECT_LT(retrograde.bodies[2].longitude_rate_deg_per_tt_day, 0.0);
-  EXPECT_LT(retrograde.bodies[10].longitude_rate_deg_per_tt_day, 0.0);
+  expect_snapshot(retrograde, astro::chart::calculate(dt, Scale::UT1, observer, System::PLACIDUS, Model::ALGO5));
 }
 
 TEST(ChartCAbi, OldExportsKeepUnitsAndShareLastErrorChannel) {

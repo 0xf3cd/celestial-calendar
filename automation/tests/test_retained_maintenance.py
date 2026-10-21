@@ -399,7 +399,6 @@ def test_bound_marking_prose_after_stable_marker_can_change(tmp_path):
     ("CreateContextExample47a", ".Mp.", ".M."),
     ("CreateContextExample47a", ".A1.", ".A2."),
     ("hko-info", ".leap_month", ".renamed_label"),
-    ("MoonPositionAngle", ".angle_deg", ".renamed_angle"),
   ],
 )
 def test_retained_value_labels_are_captured(tmp_path, key, old, new):
