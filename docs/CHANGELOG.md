@@ -9,9 +9,12 @@
   POSITION, LONGITUDE_RATE, EVENTS and HOUSES accept, and enumerate the stable model
   identity codes (five Delta T models with algo1–algo4 frozen and algo5 current, two
   nutation models, six position sources). Every bound derives from the operation's own
-  defining constants; NaN domain ends mean unbounded, and the text layer labels measured
-  validation coverage as measured. `chart_snapshot_v1` and every existing layout are
-  unchanged.
+  defining constants — the Delta T models now own their applicability in `delta_t.hpp`
+  (algo1 from JDE(TT) 260089.5, algo3 to 2816787.5, algo4 to 2464328.5) — and the
+  kind-internal identity ordinals are pinned by `MODEL_IDENTITY_*` macros, a separate
+  code space from the `CHART_*` boundary selection codes. NaN domain ends mean
+  unbounded, and the text layer labels measured validation coverage as measured.
+  `chart_snapshot_v1` and every existing layout are unchanged.
 - Python capabilities (#357): `capabilities()`, `model_identities()` and
   `capability_text()` mirror the enums, domains, identity codes and failures in frozen
   dataclasses, with the Delta T DEFAULT alias reconciled against the C header and ABI

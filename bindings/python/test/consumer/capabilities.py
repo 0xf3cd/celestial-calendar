@@ -46,13 +46,15 @@ def main() -> None:
   delta_t = [identity for identity in identities if identity.kind is celestial.ModelKind.DELTA_T]
   assert len(delta_t) == 5
   assert delta_t[4].status is celestial.ModelStatus.CURRENT
+  # Kind-internal ordinal, not the CHART_DELTA_T_MODEL_* boundary code (where ALGO5 is 5).
+  assert (delta_t[4].kind, delta_t[4].identity_code) == (celestial.ModelKind.DELTA_T, 4)
   assert delta_t[4].default_alias_code == 0
   assert delta_t[3].status is celestial.ModelStatus.FROZEN
   assert delta_t[3].default_alias_code is None
   assert delta_t[3].domain_end_jde_tt == 2464328.5
 
   text = celestial.capability_text(celestial.CapabilityOperation.POSITION, celestial.CapabilitySubject.PLUTO)
-  assert "PLUTO95" in text and "Role:" in text and "Validation:" in text
+  assert "PLUTO95" in text and "Role:" in text and "Position coverage:" in text
   identity_text = celestial.capability_text(celestial.CapabilityOperation.MODEL_IDENTITY, 4)
   assert "algo5" in identity_text and "DEFAULT" in identity_text
 

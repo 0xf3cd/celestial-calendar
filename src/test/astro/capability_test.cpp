@@ -53,12 +53,17 @@ TEST(Capability, PositionDomainPerTarget) {
 TEST(Capability, RateAndEventsDomainsTrackTheRateFunction) {
   for (const auto target : detail::all_targets()) {
     const auto rate = domain_record(Operation::LONGITUDE_RATE, target);
+    // The center domain is always the root window shrunk by the stencil reach, so it is an
+    // implementation window for every target including Pluto (the root window's own nature is
+    // stated on the POSITION record).
+    EXPECT_EQ(rate.status, Status::IMPLEMENTATION_WINDOW);
     const auto expected = ephemeris::longitude_rate_domain(target);
     EXPECT_DOUBLE_EQ(rate.domain_start_jde_tt, expected.front());
     EXPECT_DOUBLE_EQ(rate.domain_end_jde_tt, expected.back());
     EXPECT_EQ(rate.maximum_span_tt_days, 0);
 
     const auto events = domain_record(Operation::EVENTS, target);
+    EXPECT_EQ(events.status, Status::IMPLEMENTATION_WINDOW);
     EXPECT_DOUBLE_EQ(events.domain_start_jde_tt, expected.front());
     EXPECT_DOUBLE_EQ(events.domain_end_jde_tt, expected.back());
     EXPECT_EQ(events.maximum_span_tt_days,
@@ -111,7 +116,11 @@ TEST(Capability, ModelIdentityRegistry) {
   EXPECT_EQ(identities[4].default_alias_code, DEFAULT_DELTA_T_CODE);
   EXPECT_EQ(identities[3].default_alias_code, std::numeric_limits<uint32_t>::max());
   EXPECT_TRUE(std::isnan(identities[4].domain_end_jde_tt));
-  EXPECT_DOUBLE_EQ(identities[3].domain_end_jde_tt, astro::chart::detail::ALGO4_END_JDE_TT);
+  EXPECT_DOUBLE_EQ(identities[3].domain_end_jde_tt, astro::delta_t::ALGO4_END_JDE_TT);
+  EXPECT_DOUBLE_EQ(identities[0].domain_start_jde_tt, astro::delta_t::ALGO1_START_JDE_TT);
+  EXPECT_TRUE(std::isnan(identities[0].domain_end_jde_tt));
+  EXPECT_TRUE(std::isnan(identities[2].domain_start_jde_tt));
+  EXPECT_DOUBLE_EQ(identities[2].domain_end_jde_tt, astro::delta_t::ALGO3_END_JDE_TT);
 
   // Nutation: Meeus and IAU 1980, both current.
   EXPECT_EQ(identities[5].kind, ModelKind::NUTATION);
@@ -149,7 +158,10 @@ TEST(Capability, DescribeCoversEveryRecord) {
       const auto text = describe(operation, static_cast<uint8_t>(target));
       EXPECT_FALSE(text.empty());
       EXPECT_NE(text.find("Role:"), std::string::npos);
-      EXPECT_NE(text.find("Validation:"), std::string::npos);
+      // POSITION names its measured coverage "Validation:"; rate and events hang the same
+      // coverage prose on an explicit "Position coverage:" slot so residuals are not misread
+      // as rate validation.
+      EXPECT_TRUE(text.contains("Validation:") or text.contains("Position coverage:"));
     }
   }
   EXPECT_NE(describe(Operation::HOUSES, 0).find("No JDE window"), std::string::npos);

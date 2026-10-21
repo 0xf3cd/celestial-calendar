@@ -783,6 +783,26 @@ CELESTIAL_API uint32_t longitude_difference_events(uint32_t first_target_code, u
 #define MODEL_STATUS_CURRENT UINT32_C(0)
 #define MODEL_STATUS_FROZEN  UINT32_C(1)
 
+/* Kind-internal identity ordinals, pinned for the identity registry. These are NOT the
+ * CHART_* boundary selection codes: within MODEL_KIND_DELTA_T, ALGO5 is ordinal 4 while
+ * CHART_DELTA_T_MODEL_ALGO5 is 5 and CHART_DELTA_T_MODEL_DEFAULT is 0. Compare the
+ * (kind_code, identity_code) pair, never a bare identity_code against a CHART_* code. */
+#define MODEL_IDENTITY_DELTA_T_ALGO1 UINT32_C(0)
+#define MODEL_IDENTITY_DELTA_T_ALGO2 UINT32_C(1)
+#define MODEL_IDENTITY_DELTA_T_ALGO3 UINT32_C(2)
+#define MODEL_IDENTITY_DELTA_T_ALGO4 UINT32_C(3)
+#define MODEL_IDENTITY_DELTA_T_ALGO5 UINT32_C(4)
+
+#define MODEL_IDENTITY_NUTATION_MEEUS   UINT32_C(0)
+#define MODEL_IDENTITY_NUTATION_IAU1980 UINT32_C(1)
+
+#define MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D UINT32_C(0)
+#define MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC UINT32_C(1)
+#define MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D UINT32_C(2)
+#define MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT UINT32_C(3)
+#define MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN UINT32_C(4)
+#define MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(5)
+
 /**
  * @brief One operation's accepted-input description for one subject.
  * @note domain ends are NaN where no explicit JDE(TT) bound exists (Status
@@ -804,7 +824,8 @@ typedef struct CapabilityRecordV1 {
 /** @brief One registered model identity with its applicability (#357). */
 typedef struct ModelIdentityRecordV1 {
   uint32_t kind_code;           /* A MODEL_KIND_* code. */
-  uint32_t identity_code;       /* Code within the kind; stable across releases. */
+  uint32_t identity_code;       /* Kind-internal ordinal, pinned by the MODEL_IDENTITY_* macros;
+                                   stable across releases. Not a CHART_* boundary selection code. */
   uint32_t status_code;         /* MODEL_STATUS_CURRENT or MODEL_STATUS_FROZEN. */
   uint32_t default_alias_code;  /* Boundary code this identity answers to as the default; UINT32_MAX when none. */
   double domain_start_jde_tt;   /* Published applicability in JDE(TT); NaN = unbounded. */
@@ -815,6 +836,8 @@ typedef struct ModelIdentityRecordV1 {
  * @brief Describe what an operation accepts and why.
  * @param operation_code A CAPABILITY_OPERATION_* code (POSITION, LONGITUDE_RATE, EVENTS or HOUSES).
  * @param subject_code A CHART_TARGET_* code, or CAPABILITY_TARGET_ALL for every subject.
+ *                      HOUSES carries one record and ignores the subject: any valid target code
+ *                      returns the same single record.
  * @param record_count Where the total count of records is written. Must not be null.
  *                     On every failure `*record_count` is set to 0; a zero total is also a
  *                     legal outcome for an operation with no subjects, disambiguated by `last_error`.
@@ -849,8 +872,10 @@ CELESTIAL_API uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *
  * @param operation_code A CAPABILITY_OPERATION_* code; CAPABILITY_OPERATION_MODEL_IDENTITY
  *                       addresses the identity registry (subject_code is the ordinal in
  *                       celestial_model_identities).
- * @param subject_code A CHART_TARGET_* code (a domain operation) or an identity ordinal
- *                     (CAPABILITY_OPERATION_MODEL_IDENTITY).
+ * @param subject_code A CHART_TARGET_* code (a domain operation; ignored for HOUSES) or an
+ *                     identity ordinal (CAPABILITY_OPERATION_MODEL_IDENTITY, 0-12). Codes
+ *                     outside the operation's subject range are rejected; the text export
+ *                     never truncates an out-of-range code into another subject.
  * @param buffer Caller-owned text buffer; may be null to size the request first.
  * @param capacity The buffer size in bytes, including space for a null terminator.
  * @returns The required byte count excluding the null terminator. When `buffer` is not null

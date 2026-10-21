@@ -71,7 +71,6 @@ inline constexpr double END_JDE_TT = std::min({
   astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::TRUE_ASCENDING).back(),
   astro::ephemeris::longitude_rate_domain(astro::ephemeris::Target::SUN).back(),
 });
-inline constexpr double ALGO4_END_JDE_TT = 2464328.5;
 
 inline auto validate_civil(const calendar::Datetime& civil_dt, const Scale scale) -> void {
   if (not civil_dt.ok()) {
@@ -106,7 +105,8 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
     case ALGO5:
       return;
     case ALGO4:
-      if (jde_tt >= ALGO4_END_JDE_TT) {
+      // The bound is owned by delta_t.hpp (astro::delta_t::ALGO4_END_JDE_TT).
+      if (jde_tt >= astro::delta_t::ALGO4_END_JDE_TT) {
         throw std::invalid_argument { "Chart Algo4 requires JDE(TT) before 2035-01-01" };
       }
       return;

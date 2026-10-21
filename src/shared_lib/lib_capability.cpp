@@ -165,6 +165,7 @@ auto celestial_model_identities(
   });
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): operation/subject is the published text-lookup pair.
 auto celestial_capability_text(
   const uint32_t operation_code,
   const uint32_t subject_code,
@@ -178,9 +179,19 @@ auto celestial_capability_text(
 
     std::string text;
     if (operation_code == CAPABILITY_OPERATION_MODEL_IDENTITY) {
+      // Validate before narrowing: a truncated code must not silently return another subject's text.
+      if (subject_code >= astro::capability::model_identities().size()) {
+        throw std::invalid_argument { std::format("Unknown model identity {}", subject_code) };
+      }
       text = astro::capability::describe_identity(static_cast<uint8_t>(subject_code));
     } else {
-      text = astro::capability::describe(operation_of(operation_code), static_cast<uint8_t>(subject_code));
+      const auto operation = operation_of(operation_code);
+      // HOUSES ignores the subject; every other domain operation names a target. Validate before
+      // narrowing so an out-of-range code fails instead of returning a wrapped subject's text.
+      if (operation != Operation::HOUSES and subject_code >= astro::capability::detail::target_count()) {
+        throw std::invalid_argument { std::format("Unknown ephemeris target {}", subject_code) };
+      }
+      text = astro::capability::describe(operation, static_cast<uint8_t>(subject_code));
     }
 
     const auto required = static_cast<uint32_t>(text.size());
@@ -192,5 +203,6 @@ auto celestial_capability_text(
     return required;
   });
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 } // extern "C"

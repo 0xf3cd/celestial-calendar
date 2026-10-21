@@ -124,6 +124,19 @@ _Static_assert(MODEL_KIND_DELTA_T == 0 && MODEL_KIND_NUTATION == 1 && MODEL_KIND
                MODEL_STATUS_CURRENT == 0 && MODEL_STATUS_FROZEN == 1 &&
                CHART_DELTA_T_MODEL_DEFAULT == 0, "Model identity codes drifted");
 
+/* The kind-internal identity ordinals are a separate code space from the CHART_* boundary codes:
+   Delta T algo5 is ordinal 4 here but CHART_DELTA_T_MODEL_ALGO5 is 5. */
+_Static_assert(MODEL_IDENTITY_DELTA_T_ALGO1 == 0 && MODEL_IDENTITY_DELTA_T_ALGO2 == 1 &&
+               MODEL_IDENTITY_DELTA_T_ALGO3 == 2 && MODEL_IDENTITY_DELTA_T_ALGO4 == 3 &&
+               MODEL_IDENTITY_DELTA_T_ALGO5 == 4 && MODEL_IDENTITY_NUTATION_MEEUS == 0 &&
+               MODEL_IDENTITY_NUTATION_IAU1980 == 1 && MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D == 0 &&
+               MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC == 1 &&
+               MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D == 2 &&
+               MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT == 3 &&
+               MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN == 4 &&
+               MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM == 5,
+               "Model identity ordinals drifted");
+
 _Static_assert((sizeof(((ChartHousesV1*)0)->cusps_deg) / sizeof(double) == 12 &&
                offsetof(ChartHousesV1, cusps_deg[1]) - offsetof(ChartHousesV1, cusps_deg[0]) == 8 &&
                offsetof(ChartHousesV1, cusps_deg[11]) == 120 &&

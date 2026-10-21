@@ -538,7 +538,9 @@ def happy_celestial_capabilities() -> None:
   sun = next(slot for slot in slots if slot.subject_code == 0)
   assert sun.operation_code == 2 and sun.maximum_span_tt_days == 3660
   pluto = next(slot for slot in slots if slot.subject_code == 9)
-  assert pluto.status_code == 0 and pluto.domain_start_jde_tt == 2409543.875
+  # The center domain is the root window shrunk by the stencil reach, so the status is an
+  # implementation window even though Pluto's position root window is source-published.
+  assert pluto.status_code == 1 and pluto.domain_start_jde_tt == 2409543.875
 
 
 def edge_celestial_capabilities() -> None:
@@ -597,6 +599,13 @@ def edge_celestial_capability_text() -> None:
   # A null buffer with positive capacity is an argument error, not a crash.
   assert call("celestial_capability_text", 0, 0, None, 8) == 0
   assert "buffer" in _binding.last_error_text()
+  # Out-of-range subjects are rejected before narrowing, never truncated into another subject.
+  assert call("celestial_capability_text", 0, 256, None, 0) == 0
+  assert "ephemeris target" in _binding.last_error_text()
+  assert call("celestial_capability_text", 4, 256, None, 0) == 0
+  assert "model identity" in _binding.last_error_text()
+  assert call("celestial_capability_text", 0, 14, None, 0) == 0
+  assert "ephemeris target" in _binding.last_error_text()
 
 
 EXPORT_NAMES = tuple(_binding.BINDING_SPECS)

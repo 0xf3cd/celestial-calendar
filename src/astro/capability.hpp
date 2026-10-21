@@ -18,15 +18,16 @@
 #include <format>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "chart.hpp"
 #include "delta_t.hpp"
 #include "earth.hpp"
 #include "ephemeris.hpp"
 #include "ephemeris_events.hpp"
 #include "lunar_node.hpp"
+#include "planet.hpp"
 
 /**
  * @file capability.hpp
@@ -96,7 +97,8 @@ struct Record {
 /** @brief One registered model identity with its applicability. */
 struct ModelIdentity {
   ModelKind kind;
-  uint8_t identity_code;       ///< Code within the kind; matches the C ABI code space.
+  uint8_t identity_code;       ///< Ordinal within the kind; pinned by the C ABI MODEL_IDENTITY_* macros and
+                               ///< stable across releases. Not a CHART_* boundary selection code.
   ModelStatus status;
   uint32_t default_alias_code; ///< Boundary code this identity answers to as the default; UINT32_MAX when none.
   double domain_start_jde_tt;  ///< Published applicability in JDE(TT); NaN = unbounded.
@@ -173,12 +175,11 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
            MEAN_ASCENDING, MEAN_DESCENDING, TRUE_ASCENDING, TRUE_DESCENDING };
 }
 
-// The ±10 Jm rate working window is a finite-difference working range with no stated model
-// reason (ephemeris.hpp), so it is an implementation window; Pluto's and the nodes' roots are
-// published/selected windows carried into the rate domain.
-[[nodiscard]] constexpr auto rate_status(const ephemeris::Target target) -> Status {
-  using enum ephemeris::Target;
-  return target == PLUTO ? Status::SOURCE_WINDOW : Status::IMPLEMENTATION_WINDOW;
+// Every rate/events center domain is the root window shrunk by the stencil reach
+// (ephemeris.hpp), an implementation derivation no matter what the root window's own nature is;
+// the root window's status is stated on the POSITION record.
+[[nodiscard]] constexpr auto rate_status() -> Status {
+  return Status::IMPLEMENTATION_WINDOW;
 }
 
 [[nodiscard]] constexpr auto position_status(const ephemeris::Target target, const double domain_start) -> Status {
@@ -208,7 +209,7 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
       const auto [start, end] = ephemeris::longitude_rate_domain(target);
       return { .operation = operation,
                .subject_code = static_cast<uint8_t>(target),
-               .status = detail::rate_status(target),
+               .status = detail::rate_status(),
                .source = position_source_of(target),
                .domain_start_jde_tt = start,
                .domain_end_jde_tt = end,
@@ -218,7 +219,7 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
       const auto [start, end] = ephemeris::longitude_rate_domain(target);
       return { .operation = operation,
                .subject_code = static_cast<uint8_t>(target),
-               .status = detail::rate_status(target),
+               .status = detail::rate_status(),
                .source = position_source_of(target),
                .domain_start_jde_tt = start,
                .domain_end_jde_tt = end,
@@ -264,17 +265,23 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
 
   using enum astro::delta_t::Model;
   // algo1–algo4 are frozen exhibits; algo5 is the trained default refreshed by the grant ritual.
+  // Each model's applicability is owned by delta_t.hpp; algo2 and algo5 publish no finite bound.
   const std::array models = { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
   for (const auto model : models) {
     const auto code = static_cast<uint8_t>(model);
+    const double start = model == ALGO1 ? astro::delta_t::ALGO1_START_JDE_TT : unbounded;
+    const double end = [&] {
+      if (model == ALGO3) {
+        return astro::delta_t::ALGO3_END_JDE_TT;
+      }
+      return model == ALGO4 ? astro::delta_t::ALGO4_END_JDE_TT : unbounded;
+    }();
     identities.push_back({ .kind = DELTA_T,
                            .identity_code = code,
                            .status = model == ALGO5 ? CURRENT : FROZEN,
                            .default_alias_code = model == ALGO5 ? DEFAULT_DELTA_T_CODE : NO_ALIAS,
-                           // Algo4's USNO prediction blend ends at 2035 (delta_t.hpp, #64);
-                           // the chart states the same bound as a JDE(TT) cut.
-                           .domain_start_jde_tt = unbounded,
-                           .domain_end_jde_tt = model == ALGO4 ? astro::chart::detail::ALGO4_END_JDE_TT : unbounded });
+                           .domain_start_jde_tt = start,
+                           .domain_end_jde_tt = end });
   }
 
   using enum astro::earth::nutation::Model;
@@ -329,8 +336,8 @@ inline constexpr std::array<const char*, 6> SOURCE_PROSE = {
 };
 
 inline constexpr std::array<const char*, 14> TARGET_NAMES = {
-  "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-  "mean ascending node", "mean descending node", "true ascending node", "true descending node",
+  "the Sun", "the Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+  "the mean ascending node", "the mean descending node", "the true ascending node", "the true descending node",
 };
 
 // Measured validation coverage; every line names its reference so the text stays auditable.
@@ -403,21 +410,25 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
   switch (operation) {
     case POSITION:
       return std::format(
-        "Position of the {}: {}. Accepted input {}; the bound is {}. Role: direct position "
-        "query input boundary. Validation: {}.",
+        "Position of {}: {}. Accepted input {}; the bound is {}. Role: direct position query "
+        "input boundary{}. Position coverage: {}.",
         detail::TARGET_NAMES.at(subject_code), detail::SOURCE_PROSE.at(static_cast<uint8_t>(record.source)),
         detail::domain_phrase(record), detail::status_phrase(record.status),
+        record.status == Status::UNBOUNDED_FINITE
+          ? "; accuracy degrades far from J2000 (the mean-obliquity polynomial warns at +/- 2000 years)"
+          : "",
         detail::COVERAGE_PROSE.at(subject_code));
     case LONGITUDE_RATE:
       return std::format(
-        "Longitude rate of the {}: seven-point centered difference of the apparent geocentric "
+        "Longitude rate of {}: seven-point centered difference of the apparent geocentric "
         "longitude, certified derivative and floating-point bounds (ephemeris_event_bounds). "
-        "Center domain {}; the bound is {}. Role: rate-stencil acceptance boundary. Validation: {}.",
+        "Center domain {}; the bound is {}. Role: rate-stencil acceptance boundary. Position "
+        "coverage: {}.",
         detail::TARGET_NAMES.at(subject_code), detail::domain_phrase(record),
         detail::status_phrase(record.status), detail::COVERAGE_PROSE.at(subject_code));
     case EVENTS:
       return std::format(
-        "Longitude events of the {}: crossing, station and difference queries accept a nonempty "
+        "Longitude events of {}: crossing, station and difference queries accept a nonempty "
         "half-open [start, end) with span at most {} TT days inside {}; the bound is {}. The "
         "J2000 +/- 100-year analysis band selects only the certified error-bound table, never the "
         "accepted domain. Role: event-query acceptance boundary. Validation: event goldens and "
@@ -428,9 +439,11 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
       return "Houses: ascendant, midheaven, descendant, imum coeli and twelve cusps in the "
              "ecliptic of date. Accepted input: any finite UT1/TT pair (both scales are inputs) "
              "with latitude in (-90, 90) and longitude in [-180, 180]; Placidus additionally "
-             "rejects polar geometry. No JDE window; the snapshot joint window is not a house "
-             "bound. Role: house-query acceptance boundary. Validation: Swiss Ephemeris formula "
-             "and date levels (1e-4 degrees) plus Meeus 14.a.";
+             "rejects polar geometry, and every system rejects an Ascendant direction "
+             "unresolved at round-off. No JDE window; the snapshot joint window is not a house "
+             "bound. Role: house-query acceptance boundary. Validation: agreement with Swiss "
+             "Ephemeris formula-level and date-level references within a 1e-4-degree comparison "
+             "tolerance (a comparison tolerance, not a validated error bound) plus Meeus 14.a.";
   }
   throw std::invalid_argument { std::format("Unknown capability operation {}", static_cast<uint32_t>(operation)) };
 }
@@ -447,9 +460,21 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
   const auto& identity = identities[ordinal];
   const auto *const status = identity.status == ModelStatus::CURRENT ? "current" : "frozen exhibit";
 
-  const auto domain = std::isnan(identity.domain_end_jde_tt)
-    ? std::string { "no published JDE(TT) bound" }
-    : std::format("applicability ends at JDE(TT) {}", identity.domain_end_jde_tt);
+  const auto domain = [&] {
+    const bool start_bounded = not std::isnan(identity.domain_start_jde_tt);
+    const bool end_bounded = not std::isnan(identity.domain_end_jde_tt);
+    if (start_bounded and end_bounded) {
+      return std::format("applicability [{}, {}) in JDE(TT)", identity.domain_start_jde_tt,
+                         identity.domain_end_jde_tt);
+    }
+    if (start_bounded) {
+      return std::format("applicability starts at JDE(TT) {}", identity.domain_start_jde_tt);
+    }
+    if (end_bounded) {
+      return std::format("applicability ends at JDE(TT) {}", identity.domain_end_jde_tt);
+    }
+    return std::string { "no published JDE(TT) bound" };
+  }();
 
   using enum ModelKind;
   switch (identity.kind) {

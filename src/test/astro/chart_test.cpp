@@ -315,17 +315,17 @@ TEST(Chart, JointTimeDomainAndAlgo4Cap) {
   }
   const auto before = civil(2034, 12, 31, (23LL*3600'000'000'000) + (58LL*60'000'000'000) + (47LL*1'000'000'000));
   const auto after = civil(2034, 12, 31, (23LL*3600'000'000'000) + (58LL*60'000'000'000) + (49LL*1'000'000'000));
-  EXPECT_LT(calculate(before, Scale::UT1, observer, System::EQUAL, Model::ALGO4).times.jde_tt, detail::ALGO4_END_JDE_TT);
+  EXPECT_LT(calculate(before, Scale::UT1, observer, System::EQUAL, Model::ALGO4).times.jde_tt, astro::delta_t::ALGO4_END_JDE_TT);
   EXPECT_THROW(std::ignore = calculate(after, Scale::UT1, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
   const Datetime exact_utc_cap { util::to_ymd(2034, 12, 31), 0.99919925925925923 };
   EXPECT_THROW(std::ignore = calculate(exact_utc_cap, Scale::UTC, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
   const auto rounded_utc_cap = civil(2034, 12, 31, 86330815980000);
-  EXPECT_EQ(astro::julian_day::utc_to_jde(rounded_utc_cap), detail::ALGO4_END_JDE_TT);
+  EXPECT_EQ(astro::julian_day::utc_to_jde(rounded_utc_cap), astro::delta_t::ALGO4_END_JDE_TT);
   EXPECT_THROW(std::ignore = calculate(rounded_utc_cap, Scale::UTC, observer, System::EQUAL, Model::ALGO4),
                std::invalid_argument);
   const Datetime pinned_utc { util::to_ymd(2034, 12, 31), 0.99919925902642359 };
   EXPECT_EQ(calculate(pinned_utc, Scale::UTC, observer, System::EQUAL, Model::ALGO4).times.jde_tt,
-            std::nextafter(detail::ALGO4_END_JDE_TT, 0.0));
+            std::nextafter(astro::delta_t::ALGO4_END_JDE_TT, 0.0));
   const auto too_late = civil(2034, 12, 31, 86330815999999);
   EXPECT_THROW(std::ignore = calculate(too_late, Scale::UTC, observer, System::EQUAL, Model::ALGO4), std::invalid_argument);
   EXPECT_TRUE(std::isfinite(calculate(after, Scale::UT1, observer, System::EQUAL, Model::ALGO5).times.jde_tt));

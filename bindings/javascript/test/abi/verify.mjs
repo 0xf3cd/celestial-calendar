@@ -54,8 +54,8 @@ const headerEntries = declarations.map((signature) => {
 const headerNames = headerEntries.map(({ name }) => name);
 const bindingNames = BINDINGS.map(({ cName }) => cName);
 
-uniqueCount("celestial.h exports", headerNames, 33);
-uniqueCount("internal bindings", bindingNames, 33);
+uniqueCount("celestial.h exports", headerNames, 36);
+uniqueCount("internal bindings", bindingNames, 36);
 sameSet("header = bindings", headerNames, bindingNames);
 
 const expectedWidths = {
@@ -170,7 +170,7 @@ const listValues = (constantName) => {
 };
 const recipeExports = listValues("EXPORTS");
 const runtimeMethods = listValues("RUNTIME_METHODS");
-uniqueCount("build recipe exports", recipeExports, 35);
+uniqueCount("build recipe exports", recipeExports, 38);
 assert(runtimeMethods.includes("HEAPU16"), "build recipe must export HEAPU16");
 assert(buildScript.includes('"-sALLOW_MEMORY_GROWTH=1"'), "build recipe must enable ALLOW_MEMORY_GROWTH");
 assert.equal((buildScript.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1, "one em++ export recipe");
@@ -198,13 +198,13 @@ const functionBody = (name) => {
 const implementationWriters = headerNames.filter((name) => functionBody(name).includes("lib::wrap_export("));
 const bindingErrorPolicy = BINDINGS.filter(({ readsLastError }) => readsLastError).map(({ cName }) => cName);
 
-uniqueCount("recording exports", documentedRecording, 32);
+uniqueCount("recording exports", documentedRecording, 35);
 sameSet("recording docs = implementation writers", documentedRecording, implementationWriters);
 sameSet("recording docs = binding error policy", documentedRecording, bindingErrorPolicy);
 
 const verifyManifest = (candidate) => {
   const manifestNames = candidate.exports.map(({ name }) => name);
-  uniqueCount("manifest exports", manifestNames, 33);
+  uniqueCount("manifest exports", manifestNames, 36);
   sameSet("header = manifest", headerNames, manifestNames);
 
   for (const entry of candidate.exports) {
@@ -226,7 +226,7 @@ const verifyManifest = (candidate) => {
   assert.deepEqual(candidate.wasm_width_bits, expectedWidths, "WASM integer/pointer widths");
 
   const manifestLayoutNames = Object.keys(candidate.layouts);
-  uniqueCount("manifest layouts", manifestLayoutNames, 22);
+  uniqueCount("manifest layouts", manifestLayoutNames, 24);
   sameSet("header layouts = manifest layouts", Object.keys(parsedLayouts), manifestLayoutNames);
   for (const name of manifestLayoutNames) {
     assert.deepEqual(candidate.layouts[name], parsedLayouts[name], `layout ${name}`);

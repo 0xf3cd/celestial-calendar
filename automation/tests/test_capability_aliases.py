@@ -157,3 +157,31 @@ def test_capability_status_source_and_model_codes_match_python() -> None:
     "NUTATION": "1",
     "POSITION_SOURCE": "2",
   }
+
+
+def test_kind_internal_identity_ordinals_are_pinned() -> None:
+  """The registry's kind-internal ordinals: a separate code space from the CHART_* boundary codes.
+
+  Delta T algo5 is ordinal 4 here but CHART_DELTA_T_MODEL_ALGO5 is 5; comparing a bare
+  identity_code against a CHART_* code is always wrong, so the values are pinned by name.
+  """
+  codes = _capability_codes()
+  identity = {k: v for k, v in codes.items() if k.startswith("MODEL_IDENTITY_")}
+  assert identity == {
+    "MODEL_IDENTITY_DELTA_T_ALGO1": 0,
+    "MODEL_IDENTITY_DELTA_T_ALGO2": 1,
+    "MODEL_IDENTITY_DELTA_T_ALGO3": 2,
+    "MODEL_IDENTITY_DELTA_T_ALGO4": 3,
+    "MODEL_IDENTITY_DELTA_T_ALGO5": 4,
+    "MODEL_IDENTITY_NUTATION_MEEUS": 0,
+    "MODEL_IDENTITY_NUTATION_IAU1980": 1,
+    "MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D": 0,
+    "MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC": 1,
+    "MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D": 2,
+    "MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT": 3,
+    "MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN": 4,
+    "MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM": 5,
+  }
+  # The cross-language consumer asserts the pair, not a bare code: algo5 is (DELTA_T, 4).
+  consumer = (REPO_ROOT / "bindings/python/test/consumer/capabilities.py").read_text(encoding="utf-8")
+  assert "identity_code) == (celestial.ModelKind.DELTA_T, 4)" in consumer

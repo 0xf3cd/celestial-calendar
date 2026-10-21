@@ -162,24 +162,40 @@ TEST(CapabilityCAbi, FailuresLeaveDeterministicState) {
   EXPECT_EQ(event_count, 1);
   EXPECT_STREQ(last_error(), "");
 
-  // The computation/capability agreement probe (#357): a query inside the declared domain must be
-  // accepted, and a query outside must be rejected as leaving the domain — for every target.
-  // Acceptance uses an interior window near J2000 (the certified century band); runtime
-  // evaluation limits are a separate failure taxonomy, not a domain statement.
+  // The computation/capability agreement probe (#357): a query just inside the declared domain
+  // — at both edges — must not be rejected as leaving the domain, and a query at or past the
+  // declared end must be. Runtime evaluation failures are a separate failure taxonomy (legal
+  // anywhere, including deep inside a domain), so the inside-edge assertions compare the error
+  // message instead of requiring success; a too-wide declared domain would surface the domain
+  // rejection there and turn them red.
   for (uint32_t target = 0; target < 14; ++target) {
     CapabilityRecordV1 record {};
     uint32_t record_count = 0;
     ASSERT_EQ(celestial_capabilities(CAPABILITY_OPERATION_EVENTS, target, &record_count, &record, 1), 1);
 
+    constexpr auto DOMAIN_REJECTION = "Event query leaves its longitude-rate domain";
     uint32_t event_count = 0;
-    EXPECT_EQ(longitude_events(target, 0.0, 2451545.0, 2451575.0, &event_count, nullptr, 0), 0);
-    EXPECT_STREQ(last_error(), "") << "target " << target;
+    EXPECT_EQ(longitude_events(target, 0.0, record.domain_start_jde_tt, record.domain_start_jde_tt + 30.0,
+                               &event_count, nullptr, 0),
+              0);
+    EXPECT_STRNE(last_error(), DOMAIN_REJECTION) << "lower edge, target " << target;
+
+    EXPECT_EQ(longitude_events(target, 0.0, record.domain_end_jde_tt - 30.0, record.domain_end_jde_tt,
+                               &event_count, nullptr, 0),
+              0);
+    EXPECT_STRNE(last_error(), DOMAIN_REJECTION) << "upper edge, target " << target;
 
     EXPECT_EQ(longitude_events(target, 0.0, record.domain_end_jde_tt, record.domain_end_jde_tt + 30.0,
                                &event_count, nullptr, 0),
               0);
-    EXPECT_STREQ(last_error(), "Event query leaves its longitude-rate domain") << "target " << target;
+    EXPECT_STREQ(last_error(), DOMAIN_REJECTION) << "outside upper edge, target " << target;
   }
+
+  // The text export validates its subject before narrowing: an out-of-range code must fail,
+  // never return a wrapped subject's text.
+  EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_POSITION, 256, nullptr, 0), 0);
+  EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_MODEL_IDENTITY, 256, nullptr, 0), 0);
+  EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_POSITION, 14, nullptr, 0), 0);
 }
 
 } // namespace test

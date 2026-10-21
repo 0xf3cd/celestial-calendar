@@ -171,6 +171,10 @@ bounds are finite times and geographic range; `maximum_span_tt_days` carries the
 `celestial_model_identities` enumerates the stable identity codes: five Delta T models (algo1–algo4
 frozen exhibits, algo5 current and answering to boundary code 0), two nutation models, and six
 position sources, with the true node named `NODE_TRUE_MEEUS_FIVE_TERM`, never an osculating node.
+`identity_code` is a kind-internal ordinal pinned by the `MODEL_IDENTITY_*` macros — a separate code
+space from the `CHART_*` boundary selection codes (Delta T algo5 is ordinal 4, while
+`CHART_DELTA_T_MODEL_ALGO5` is 5) — and each record carries the model's published applicability:
+algo1 from JDE(TT) 260089.5, algo3 to 2816787.5, algo4 to 2464328.5.
 `celestial_capability_text` turns either record stream into prose naming origin, frame, units,
 corrections, source/version, status and role; measured validation coverage is labelled as measured.
 
