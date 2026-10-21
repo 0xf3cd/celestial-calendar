@@ -33,9 +33,10 @@
  * @file capability.hpp
  * @brief Machine-readable operation domains and model identities (#357).
  * @note Every bound here is computed from the defining constants in the operation's own header
- *       (@ref ephemeris::longitude_rate_domain, the Pluto and node windows, the event-search span);
- *       this header adds no second table of numbers. Measured validation coverage is prose in
- *       @ref describe, clearly labelled as measured — a capability record never implies accuracy.
+ *       (@ref astro::ephemeris::longitude_rate_domain, the Pluto and node windows, the
+ *       event-search span); this header adds no second table of numbers. Measured validation
+ *       coverage is prose in @ref astro::capability::describe, clearly labelled as measured —
+ *       a capability record never implies accuracy.
  */
 
 namespace astro::capability {
