@@ -445,6 +445,13 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
       () => M._longitude_difference_events(0, 0, 1.0, 2460676.5, 2460707.5, eventCount, 0, 0) === 0,
     );
     assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("celestial_capabilities", () => M._celestial_capabilities(9, 0xFFFFFFFF, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("celestial_model_identities", () => M._celestial_model_identities(9, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    recordedFailure("celestial_capability_text", () => M._celestial_capability_text(0, 256, 0, 0) === 0);
   } finally {
     M._free(eventCount);
   }
