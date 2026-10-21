@@ -536,8 +536,9 @@ namespace {
 
 // Parity helpers for LunarConverter below. The C structs speak traditional numbering + leap
 // flag (celestial.h); the converter core speaks positional month indices (#128). The
-// translation rules are pinned in lunar/common_test (MonthPosition*); the 2023 rows'
-// value correctness is pinned in LunarCommon.Leap2023DataAgreement and the algo suites —
+// translation rules are pinned in lunar/common_test (MonthPosition*/MonthAtPosition); the
+// 2023 rows' value correctness lives in the registered `cases` blocks (the encoded year
+// rows), the algo suites' HKO agreement checks, and converter_test's per-day enumeration —
 // so here the dates are inputs only, and the C result must equal the C++ call.
 // The C boundary turns every core throw into `valid = false` (wrap_export contract), so a
 // throwing core call is the C++ face of the same rejection and maps to std::nullopt here.
@@ -659,8 +660,10 @@ TEST(CAbiSmoke, LunarConverter) {
   expect_lunar_parity(gregorian_to_lunar(1, 2101, 1, 1), core_gregorian_to_lunar_for(1, 2101, 1, 1));
   expect_lunar_parity(gregorian_to_lunar(1, 2023, 13, 1), core_gregorian_to_lunar_for(1, 2023, 13, 1));
   for (const uint8_t algo : { 1U, 3U }) {
+    // lunar year 2100 is outside algo 1's window ([1901, 2099]) but inside algo 3's
+    // ([1600, 2199]) — the two layers must agree on which one rejects it.
     expect_gregorian_parity(lunar_to_gregorian(algo, 2100, 1, false, 1),
-                            core_lunar_to_gregorian_for(algo, 2100, 1, false, 1)); // outside the lunar window
+                            core_lunar_to_gregorian_for(algo, 2100, 1, false, 1));
     expect_gregorian_parity(lunar_to_gregorian(algo, 2024, 2, true, 1),
                             core_lunar_to_gregorian_for(algo, 2024, 2, true, 1)); // 2024 has no leap month
     expect_gregorian_parity(lunar_to_gregorian(algo, 2023, 5, true, 1),
