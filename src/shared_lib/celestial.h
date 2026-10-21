@@ -872,10 +872,11 @@ CELESTIAL_API uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *
  * @param operation_code A CAPABILITY_OPERATION_* code; CAPABILITY_OPERATION_MODEL_IDENTITY
  *                       addresses the identity registry (subject_code is the ordinal in
  *                       celestial_model_identities).
- * @param subject_code A CHART_TARGET_* code (a domain operation; ignored for HOUSES) or an
- *                     identity ordinal (CAPABILITY_OPERATION_MODEL_IDENTITY, 0-12). Codes
- *                     outside the operation's subject range are rejected; the text export
- *                     never truncates an out-of-range code into another subject.
+ * @param subject_code A CHART_TARGET_* code (a domain operation; ignored for HOUSES, which
+ *                     accepts any valid target code or CAPABILITY_TARGET_ALL) or an identity
+ *                     ordinal (CAPABILITY_OPERATION_MODEL_IDENTITY, 0-12). Codes outside the
+ *                     operation's subject range are rejected; the text export never truncates
+ *                     an out-of-range code into another subject.
  * @param buffer Caller-owned text buffer; may be null to size the request first.
  * @param capacity The buffer size in bytes, including space for a null terminator.
  * @returns The required byte count excluding the null terminator. When `buffer` is not null

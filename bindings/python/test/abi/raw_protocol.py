@@ -587,7 +587,7 @@ def happy_celestial_capability_text() -> None:
   assert required > 0 and _binding.last_error_text() == ""
   buffer = (ctypes.c_char * (required + 1))()
   assert call("celestial_capability_text", 0, 9, buffer, required + 1) == required
-  assert buffer.value.decode("utf-8").startswith("Position of the Pluto")
+  assert buffer.value.decode("utf-8").startswith("Position of Pluto")
 
 
 def edge_celestial_capability_text() -> None:

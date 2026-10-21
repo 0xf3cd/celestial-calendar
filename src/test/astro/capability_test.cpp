@@ -158,10 +158,15 @@ TEST(Capability, DescribeCoversEveryRecord) {
       const auto text = describe(operation, static_cast<uint8_t>(target));
       EXPECT_FALSE(text.empty());
       EXPECT_NE(text.find("Role:"), std::string::npos);
-      // POSITION names its measured coverage "Validation:"; rate and events hang the same
-      // coverage prose on an explicit "Position coverage:" slot so residuals are not misread
-      // as rate validation.
-      EXPECT_TRUE(text.contains("Validation:") or text.contains("Position coverage:"));
+      // POSITION and LONGITUDE_RATE hang their measured coverage on the explicit "Position
+      // coverage:" slot, so position residuals are never misread as rate validation; EVENTS
+      // keeps its own "Validation:" slot for the event goldens and names position coverage in
+      // lowercase.
+      if (operation == Operation::LONGITUDE_RATE or operation == Operation::POSITION) {
+        EXPECT_TRUE(text.contains("Position coverage:"));
+      } else {
+        EXPECT_TRUE(text.contains("Validation:") and text.contains("position coverage:"));
+      }
     }
   }
   EXPECT_NE(describe(Operation::HOUSES, 0).find("No JDE window"), std::string::npos);

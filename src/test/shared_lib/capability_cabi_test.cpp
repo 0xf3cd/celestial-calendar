@@ -192,10 +192,13 @@ TEST(CapabilityCAbi, FailuresLeaveDeterministicState) {
   }
 
   // The text export validates its subject before narrowing: an out-of-range code must fail,
-  // never return a wrapped subject's text.
+  // never return a wrapped subject's text. HOUSES ignores the subject but accepts only a valid
+  // target code or CAPABILITY_TARGET_ALL, mirroring celestial_capabilities.
   EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_POSITION, 256, nullptr, 0), 0);
   EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_MODEL_IDENTITY, 256, nullptr, 0), 0);
   EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_POSITION, 14, nullptr, 0), 0);
+  EXPECT_EQ(celestial_capability_text(CAPABILITY_OPERATION_HOUSES, 256, nullptr, 0), 0);
+  EXPECT_GT(celestial_capability_text(CAPABILITY_OPERATION_HOUSES, CAPABILITY_TARGET_ALL, nullptr, 0), 0);
 }
 
 } // namespace test

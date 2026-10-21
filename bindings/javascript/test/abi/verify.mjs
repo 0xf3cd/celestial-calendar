@@ -329,7 +329,7 @@ const builtExports = Object.keys(M)
 sameSet("build recipe = built module", recipeExports, builtExports);
 assert(M.HEAPU16 instanceof Uint16Array, "built module runtime HEAPU16");
 
-console.log("PASS exports header=manifest=bindings=recipe=built 33 (+ malloc/free); HEAPU16 present");
-console.log("PASS layouts header=manifest=bindings 22; memory growth enabled in recipe");
-console.log("PASS recording docs=writers=manifest=binding error policy 32");
+console.log("PASS exports header=manifest=bindings=recipe=built 36 (+ malloc/free); HEAPU16 present");
+console.log("PASS layouts header=manifest=bindings 24; memory growth enabled in recipe");
+console.log("PASS recording docs=writers=manifest=binding error policy 35");
 console.log("PASS per-export fill protocols; ABI mutations rejected 19/19");

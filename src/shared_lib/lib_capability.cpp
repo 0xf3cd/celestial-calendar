@@ -186,9 +186,16 @@ auto celestial_capability_text(
       text = astro::capability::describe_identity(static_cast<uint8_t>(subject_code));
     } else {
       const auto operation = operation_of(operation_code);
-      // HOUSES ignores the subject; every other domain operation names a target. Validate before
-      // narrowing so an out-of-range code fails instead of returning a wrapped subject's text.
-      if (operation != Operation::HOUSES and subject_code >= astro::capability::detail::target_count()) {
+      // Validate before narrowing so an out-of-range code fails instead of returning a wrapped
+      // subject's text. The predicate mirrors celestial_capabilities: HOUSES ignores the subject
+      // but accepts only a valid target code or CAPABILITY_TARGET_ALL; every other domain
+      // operation names a target and rejects >= 14 (CAPABILITY_TARGET_ALL included).
+      const bool houses_ok = operation == Operation::HOUSES
+                             and (subject_code == CAPABILITY_TARGET_ALL
+                                  or subject_code < astro::capability::detail::target_count());
+      if (not houses_ok
+          and (operation != Operation::HOUSES or subject_code != CAPABILITY_TARGET_ALL)
+          and subject_code >= astro::capability::detail::target_count()) {
         throw std::invalid_argument { std::format("Unknown ephemeris target {}", subject_code) };
       }
       text = astro::capability::describe(operation, static_cast<uint8_t>(subject_code));

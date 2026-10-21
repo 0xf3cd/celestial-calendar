@@ -405,7 +405,11 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
   if (operation != Operation::HOUSES and subject_code >= detail::target_count()) {
     throw std::invalid_argument { std::format("Unknown ephemeris target {}", subject_code) };
   }
-  const auto record = domain_record(operation, static_cast<ephemeris::Target>(subject_code));
+  // HOUSES names no target; pass a placeholder so the cast below only sees validated codes.
+  const auto target = operation == Operation::HOUSES
+    ? ephemeris::Target::SUN
+    : static_cast<ephemeris::Target>(subject_code);
+  const auto record = domain_record(operation, target);
   using enum Operation;
   switch (operation) {
     case POSITION:
@@ -415,7 +419,8 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
         detail::TARGET_NAMES.at(subject_code), detail::SOURCE_PROSE.at(static_cast<uint8_t>(record.source)),
         detail::domain_phrase(record), detail::status_phrase(record.status),
         record.status == Status::UNBOUNDED_FINITE
-          ? "; accuracy degrades far from J2000 (the mean-obliquity polynomial warns at +/- 2000 years)"
+          ? "; accuracy degrades with distance from J2000 (about 1 arcsecond over +/- 2000 years, "
+            "worse farther out, per the mean-obliquity polynomial)"
           : "",
         detail::COVERAGE_PROSE.at(subject_code));
     case LONGITUDE_RATE:
