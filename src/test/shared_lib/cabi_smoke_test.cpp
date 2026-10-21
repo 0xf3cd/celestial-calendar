@@ -537,8 +537,10 @@ namespace {
 // Parity helpers for LunarConverter below. The C structs speak traditional numbering + leap
 // flag (celestial.h); the converter core speaks positional month indices (#128). The
 // translation rules are pinned in lunar/common_test (MonthPosition*/MonthAtPosition); the
-// 2023 rows' value correctness lives in the registered `cases` blocks (the encoded year
-// rows), the algo suites' HKO agreement checks, and converter_test's per-day enumeration —
+// 2023 rows' value correctness lives in the registered year-row blocks (the retained HKO
+// encoding), verified against the HKO reconstruction by automation/hko_identity.py and
+// cross-checked between the two algorithms in LunarAlgo3.HkoTableCopiesAgree —
+// converter_test's per-day enumeration covers converter/table consistency, not the values —
 // so here the dates are inputs only, and the C result must equal the C++ call.
 // The C boundary turns every core throw into `valid = false` (wrap_export contract), so a
 // throwing core call is the C++ face of the same rejection and maps to std::nullopt here.
@@ -649,8 +651,8 @@ TEST(CAbiSmoke, LunarConverter) {
   EXPECT_FALSE(gregorian_to_lunar(9, 2023, 3, 22).valid);
   // The accepted Gregorian window does not line up with Gregorian years 1901-2099: it opens on
   // lunar 1901's first day (1901-02-19) and closes on lunar 2099's last day (2100-02-08).
-  // (These edges are algo 1's; algo 3's own window differs and the parity rows above already
-  // exercise it.)
+  // (These edges are algo 1's; algo 3's window is [1600, 2199] and is exercised by the
+  // definition-side constants and the C++ suites, not repeated here.)
   expect_lunar_parity(gregorian_to_lunar(1, 1901, 1, 1), core_gregorian_to_lunar_for(1, 1901, 1, 1));
   expect_lunar_parity(gregorian_to_lunar(1, 1901, 2, 18), core_gregorian_to_lunar_for(1, 1901, 2, 18));
   expect_lunar_parity(gregorian_to_lunar(1, 1901, 2, 19), core_gregorian_to_lunar_for(1, 1901, 2, 19));
