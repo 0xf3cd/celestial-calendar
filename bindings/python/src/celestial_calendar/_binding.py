@@ -44,6 +44,8 @@ from ._abi import ChartHousesV1 as ChartHousesV1
 from ._abi import ChartSnapshotV1 as ChartSnapshotV1
 from ._abi import LongitudeDifferenceEventRecord as LongitudeDifferenceEventRecord
 from ._abi import LongitudeEventRecord as LongitudeEventRecord
+from ._abi import CapabilityRecordV1 as CapabilityRecordV1
+from ._abi import ModelIdentityRecordV1 as ModelIdentityRecordV1
 from ._abi import StationEventRecord as StationEventRecord
 
 

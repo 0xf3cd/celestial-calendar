@@ -298,4 +298,7 @@ export const BINDINGS = Object.freeze([
   binding("longitude_events", "count-fill", true),
   binding("longitude_stations", "count-fill", true),
   binding("longitude_difference_events", "count-fill", true),
+  binding("celestial_capabilities", "count-fill", true),
+  binding("celestial_model_identities", "count-fill", true),
+  binding("celestial_capability_text", "caller-string", true),
 ]);

@@ -34,9 +34,9 @@ from c_abi_schema import C_TO_CTYPES, parse_c_structs_text, split_field_type  # 
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
 PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
-EXPECTED_EXPORT_COUNT = 33
-EXPECTED_LAYOUT_COUNT = 22
-EXPECTED_RECORDING_COUNT = 32
+EXPECTED_EXPORT_COUNT = 36
+EXPECTED_LAYOUT_COUNT = 24
+EXPECTED_RECORDING_COUNT = 35
 
 # Compatibility names of the legacy private binding module.
 LEGACY_BINDING_NAMES = (
@@ -87,6 +87,8 @@ CTYPE_NAMES = {
   ctypes.POINTER(_abi.LongitudeEventRecord): "LongitudeEventRecord *",
   ctypes.POINTER(_abi.StationEventRecord): "StationEventRecord *",
   ctypes.POINTER(_abi.LongitudeDifferenceEventRecord): "LongitudeDifferenceEventRecord *",
+  ctypes.POINTER(_abi.CapabilityRecordV1): "CapabilityRecordV1 *",
+  ctypes.POINTER(_abi.ModelIdentityRecordV1): "ModelIdentityRecordV1 *",
 }
 
 
@@ -340,6 +342,7 @@ AMBIGUOUS_PROTOCOL_KINDS = {
   "solar_lon_root_discriminant": "companion-count",
   "solar_lon_roots": "companion-fill",
   "new_moons_after_jde": "requested-fill",
+  "celestial_capability_text": "caller-string",
 }
 
 

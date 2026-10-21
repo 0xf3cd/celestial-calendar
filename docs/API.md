@@ -161,6 +161,23 @@ are degrees per TT day. The interval must be nonempty, at most 3660 TT days, and
 longitude-rate domain. See [Longitude events](EPHEMERIS_EVENTS.md) for ownership at the endpoints,
 numerical contacts and the floating-point premises.
 
+## C Capabilities and Model Identities
+
+`celestial_capabilities`, `celestial_model_identities` and `celestial_capability_text` describe what
+the public operations accept and which models stand behind a result (#357). Both record queries use
+the count+fill protocol. `celestial_capabilities` answers per target for POSITION, LONGITUDE_RATE and
+EVENTS — NaN domain ends mean "unbounded", never a hidden sentinel — and once for HOUSES, whose only
+bounds are finite times and geographic range; `maximum_span_tt_days` carries the 3660-day event limit.
+`celestial_model_identities` enumerates the stable identity codes: five Delta T models (algo1–algo4
+frozen exhibits, algo5 current and answering to boundary code 0), two nutation models, and six
+position sources, with the true node named `NODE_TRUE_MEEUS_FIVE_TERM`, never an osculating node.
+`celestial_capability_text` turns either record stream into prose naming origin, frame, units,
+corrections, source/version, status and role; measured validation coverage is labelled as measured.
+
+Every bound derives from the operation's own defining constants, so these queries accept and reject
+exactly what the computations they describe accept and reject — and a domain is an acceptance
+boundary, not an accuracy promise.
+
 ## Build This Reference
 
 To build this reference locally, follow

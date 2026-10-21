@@ -21,9 +21,17 @@ from enum import StrEnum as _StrEnum
 from operator import index as _index
 from typing import TypeVar as _TypeVar
 
-from . import _binding, chart as _chart
+from . import _binding, capability as _capability, chart as _chart
 from . import events as _events
 from ._version import VERSION as __version__
+from .capability import CapabilityOperation as CapabilityOperation
+from .capability import CapabilityRecord as CapabilityRecord
+from .capability import CapabilityStatus as CapabilityStatus
+from .capability import CapabilitySubject as CapabilitySubject
+from .capability import ModelIdentity as ModelIdentity
+from .capability import ModelKind as ModelKind
+from .capability import ModelStatus as ModelStatus
+from .capability import PositionSource as PositionSource
 from .chart import BodyState as BodyState
 from .chart import ChartHouses as ChartHouses
 from .chart import ChartSnapshot as ChartSnapshot
@@ -930,8 +938,111 @@ def longitude_difference_events(
   return _events.decode_difference_events(records)
 
 
+def capabilities(
+  operation: CapabilityOperation,
+  subject: CapabilitySubject | None = None,
+) -> tuple[CapabilityRecord, ...]:
+  """Return what an operation accepts and why, for one subject or all fourteen (#357).
+
+  `operation` selects POSITION, LONGITUDE_RATE, EVENTS or HOUSES. A record's domain ends
+  are the half-open accepted range in JDE(TT); NaN means "unbounded", not a sentinel, and
+  `maximum_span_tt_days` limits EVENTS queries (0 = no span limit). Every bound is computed
+  by the native layer from the operation's own defining constants, so a record accepts and
+  rejects exactly what the computation does; it implies no accuracy. For measured
+  validation coverage read `capability_text` of the same record.
+  """
+  checked = _enum(operation, CapabilityOperation, "operation")
+  subject_code = 0xFFFFFFFF if subject is None else _enum(subject, CapabilitySubject, "subject").value
+
+  total = _ctypes.c_uint32()
+  written = _binding.call(
+    "celestial_capabilities", _capability.operation_code(checked), subject_code, _ctypes.byref(total), None, 0
+  )
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("capabilities", recording=True)
+  if total.value == 0:
+    return ()
+  expected = total.value
+  records = (_binding.CapabilityRecordV1 * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call(
+    "celestial_capabilities",
+    _capability.operation_code(checked),
+    subject_code,
+    _ctypes.byref(fill_total),
+    records,
+    expected,
+  )
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("capabilities", recording=True)
+  return _capability.decode_capability_records(checked, records)
+
+
+def model_identities(kind: ModelKind | None = None) -> tuple[ModelIdentity, ...]:
+  """Return the registered model identities: Delta T, nutation and position sources (#357).
+
+  `identity_code` values are stable across releases. `default_alias_code` records what a
+  DEFAULT selection resolves to (Delta T algo5 answers to boundary code 0); None means the
+  identity has no default alias.
+  """
+  kind_code = 0xFFFFFFFF if kind is None else _capability.kind_code(_enum(kind, ModelKind, "kind"))
+
+  total = _ctypes.c_uint32()
+  written = _binding.call("celestial_model_identities", kind_code, _ctypes.byref(total), None, 0)
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("model_identities", recording=True)
+  if total.value == 0:
+    return ()
+  expected = total.value
+  records = (_binding.ModelIdentityRecordV1 * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call("celestial_model_identities", kind_code, _ctypes.byref(fill_total), records, expected)
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("model_identities", recording=True)
+  return _capability.decode_model_identities(records)
+
+
+def capability_text(operation: CapabilityOperation, subject: int | CapabilitySubject) -> str:
+  """Return the human-readable description behind one capability record or model identity.
+
+  With a domain `operation`, `subject` is a CapabilitySubject (ignored for HOUSES). With
+  `CapabilityOperation.MODEL_IDENTITY` — text lookup only — `subject` is the ordinal in
+  `model_identities()`. The text names origin, frame, units, corrections, source/version,
+  status and role, and labels measured validation coverage as measured.
+  """
+  checked = _enum(operation, CapabilityOperation, "operation")
+  if not isinstance(subject, int):
+    raise TypeError(f"subject must be an int or CapabilitySubject, got {type(subject).__name__}")
+  subject_code = subject.value if isinstance(subject, CapabilitySubject) else subject
+  if subject_code < 0 or subject_code > 0xFFFFFFFF:
+    raise ValueError(f"subject must be in [0, 2**32), got {subject_code}")
+
+  required = _binding.call("celestial_capability_text", _capability.operation_code(checked), subject_code, None, 0)
+  detail = _binding.last_error_text()
+  if detail:
+    raise _failure("capability_text", recording=True)
+  if required == 0:
+    return ""
+  buffer = (_ctypes.c_char * (required + 1))()
+  written = _binding.call(
+    "celestial_capability_text", _capability.operation_code(checked), subject_code, buffer, required + 1
+  )
+  detail = _binding.last_error_text()
+  if detail or written != required:
+    raise _failure("capability_text", recording=True)
+  return buffer.value.decode("utf-8")
+
+
 __all__ = [
   "BodyState",
+  "CapabilityOperation",
+  "CapabilityRecord",
+  "CapabilityStatus",
+  "CapabilitySubject",
   "CelestialError",
   "ChartHouses",
   "ChartSnapshot",
@@ -954,14 +1065,20 @@ __all__ = [
   "LunarYearRange",
   "LongitudeDifferenceEvent",
   "LongitudeEvent",
+  "ModelIdentity",
+  "ModelKind",
+  "ModelStatus",
   "MoonCoordinate",
   "MoonIllumination",
   "MoonPhase",
+  "PositionSource",
   "StationEvent",
   "StationMotion",
   "SunCoordinate",
   "__version__",
   "apparent_solar_time",
+  "capabilities",
+  "capability_text",
   "chart_snapshot",
   "delta_t",
   "equation_of_time",
@@ -979,6 +1096,7 @@ __all__ = [
   "moon_bright_limb_position_angle",
   "moon_illumination",
   "moon_phase_moments",
+  "model_identities",
   "new_moons_after",
   "new_moons_in_year",
   "set_log_verbosity",

@@ -192,12 +192,38 @@ class LongitudeDifferenceEventRecord(ctypes.Structure):
   ]
 
 
+class CapabilityRecordV1(ctypes.Structure):
+  _fields_ = [
+    ("operation_code", ctypes.c_uint32),
+    ("subject_code", ctypes.c_uint32),
+    ("status_code", ctypes.c_uint32),
+    ("source_code", ctypes.c_uint32),
+    ("domain_start_jde_tt", ctypes.c_double),
+    ("domain_end_jde_tt", ctypes.c_double),
+    ("maximum_span_tt_days", ctypes.c_uint32),
+    ("flags", ctypes.c_uint32),
+  ]
+
+
+class ModelIdentityRecordV1(ctypes.Structure):
+  _fields_ = [
+    ("kind_code", ctypes.c_uint32),
+    ("identity_code", ctypes.c_uint32),
+    ("status_code", ctypes.c_uint32),
+    ("default_alias_code", ctypes.c_uint32),
+    ("domain_start_jde_tt", ctypes.c_double),
+    ("domain_end_jde_tt", ctypes.c_double),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
 P_LONGITUDE_EVENT = ctypes.POINTER(LongitudeEventRecord)
 P_STATION_EVENT = ctypes.POINTER(StationEventRecord)
 P_LONGITUDE_DIFFERENCE_EVENT = ctypes.POINTER(LongitudeDifferenceEventRecord)
+P_CAPABILITY = ctypes.POINTER(CapabilityRecordV1)
+P_MODEL_IDENTITY = ctypes.POINTER(ModelIdentityRecordV1)
 
 BINDING_SPECS = {
   "set_log_verbosity": ((ctypes.c_uint8,), ctypes.c_bool),
@@ -278,6 +304,18 @@ BINDING_SPECS = {
     ),
     ctypes.c_uint32,
   ),
+  "celestial_capabilities": (
+    (ctypes.c_uint32, ctypes.c_uint32, P_U32, P_CAPABILITY, ctypes.c_uint32),
+    ctypes.c_uint32,
+  ),
+  "celestial_model_identities": (
+    (ctypes.c_uint32, P_U32, P_MODEL_IDENTITY, ctypes.c_uint32),
+    ctypes.c_uint32,
+  ),
+  "celestial_capability_text": (
+    (ctypes.c_uint32, ctypes.c_uint32, P_CHAR, ctypes.c_uint32),
+    ctypes.c_uint32,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -305,6 +343,8 @@ STRUCT_TYPES = {
     LongitudeEventRecord,
     StationEventRecord,
     LongitudeDifferenceEventRecord,
+    CapabilityRecordV1,
+    ModelIdentityRecordV1,
   )
 }
 

@@ -1,0 +1,159 @@
+# CelestialCalendar Automation:
+#   Python automation scripts for building and testing the CelestialCalendar C++ project.
+#
+# Copyright (C) 2026 Ningqi Wang (0xf3cd)
+# Email: nq.maigre@gmail.com
+# Repo : https://github.com/0xf3cd/celestial-calendar
+#
+# SPDX-License-Identifier: MIT
+
+"""The Delta T DEFAULT alias has one meaning across every boundary (#357).
+
+Three surfaces carry the code table today: the `celestial.h` defines, the manifest
+generator's CHART_V1_CODES, and the Python package's two hand-copied tables. The C++
+canonical resolver (astro::capability::resolve_delta_t_code) is exercised by the C++
+tests; this gate reconciles the three tabular surfaces so a drift in any one turns red.
+"""
+
+import re
+
+from toolbox.make_abi_manifest import CHART_V1_CODES, REPO_ROOT
+
+HEADER = REPO_ROOT / "src/shared_lib/celestial.h"
+INIT = REPO_ROOT / "bindings/python/src/celestial_calendar/__init__.py"
+
+EXPECTED = {
+  "DEFAULT": 0,
+  "ALGO1": 1,
+  "ALGO2": 2,
+  "ALGO3": 3,
+  "ALGO4": 4,
+  "ALGO5": 5,
+}
+
+
+def _header_codes() -> dict[str, int]:
+  text = HEADER.read_text(encoding="utf-8")
+  found = {}
+  for name, value in re.findall(r"#define CHART_DELTA_T_MODEL_(\w+)\s+UINT32_C\((\d+)\)", text):
+    found[name] = int(value)
+  return found
+
+
+def _python_chart_codes() -> dict[str, int]:
+  """The _CHART_DELTA_T_MODEL table maps DeltaTModel members to codes; mirror it textually."""
+  text = INIT.read_text(encoding="utf-8")
+  block = re.search(r"_CHART_DELTA_T_MODEL = \{(.*?)\n\}", text, re.DOTALL)
+  assert block is not None, "_CHART_DELTA_T_MODEL table not found"
+  found = {}
+  for member, code in re.findall(r"DeltaTModel\.(\w+): (\d+)", block.group(1)):
+    found[member] = int(code)
+  return found
+
+
+def test_header_codes_match_the_expected_table() -> None:
+  assert _header_codes() == EXPECTED
+
+
+def test_manifest_generator_codes_match_the_header() -> None:
+  manifest = {name: CHART_V1_CODES[f"CHART_DELTA_T_MODEL_{name}"] for name in EXPECTED}
+  assert manifest == EXPECTED
+
+
+def test_python_chart_mapping_matches_the_header() -> None:
+  assert _python_chart_codes() == EXPECTED
+
+
+def test_python_default_resolves_to_algo5_semantics() -> None:
+  """DEFAULT's export name differs from ALGO5's by #303 design, but names the same model."""
+  text = INIT.read_text(encoding="utf-8")
+  block = re.search(r"_DELTA_T_EXPORT = \{(.*?)\n\}", text, re.DOTALL)
+  assert block is not None, "_DELTA_T_EXPORT table not found"
+  exports = dict(re.findall(r"DeltaTModel\.(\w+): \"(\w+)\"", block.group(1)))
+  assert exports == {
+    "DEFAULT": "delta_t",
+    "ALGO1": "delta_t_algo1",
+    "ALGO2": "delta_t_algo2",
+    "ALGO3": "delta_t_algo3",
+    "ALGO4": "delta_t_algo4",
+    "ALGO5": "delta_t_algo5",
+  }
+  # The plain delta_t export is Algo5 (delta_t.hpp computes Model::ALGO5); the header
+  # states the same in prose next to CHART_DELTA_T_MODEL_DEFAULT.
+  header = HEADER.read_text(encoding="utf-8")
+  assert re.search(r"CHART_DELTA_T_MODEL_DEFAULT.*?DEFAULT selects Algo5", header, re.DOTALL)
+
+
+def _capability_codes() -> dict[str, int]:
+  """All CAPABILITY_* and MODEL_KIND_*/MODEL_STATUS_* defines in celestial.h."""
+  text = HEADER.read_text(encoding="utf-8")
+  found = {}
+  for name, value in re.findall(r"#define ((?:CAPABILITY|MODEL)_[A-Z0-9_]+)\s+UINT32_C\((\d+)\)", text):
+    found[name] = int(value)
+  return found
+
+
+def test_capability_operation_codes_match_python() -> None:
+  codes = _capability_codes()
+  assert {k: v for k, v in codes.items() if k.startswith("CAPABILITY_OPERATION_")} == {
+    "CAPABILITY_OPERATION_POSITION": 0,
+    "CAPABILITY_OPERATION_LONGITUDE_RATE": 1,
+    "CAPABILITY_OPERATION_EVENTS": 2,
+    "CAPABILITY_OPERATION_HOUSES": 3,
+    "CAPABILITY_OPERATION_MODEL_IDENTITY": 4,
+  }
+  capability = (REPO_ROOT / "bindings/python/src/celestial_calendar/capability.py").read_text(encoding="utf-8")
+  block = re.search(r"_OPERATION_CODE = \{(.*?)\n\}", capability, re.DOTALL)
+  assert block is not None
+  python_table = {name: int(code) for name, code in re.findall(r"CapabilityOperation\.(\w+): (\d+)", block.group(1))}
+  assert python_table == {"POSITION": 0, "LONGITUDE_RATE": 1, "EVENTS": 2, "HOUSES": 3, "MODEL_IDENTITY": 4}
+
+
+def test_capability_status_source_and_model_codes_match_python() -> None:
+  codes = _capability_codes()
+  assert {k: v for k, v in codes.items() if k.startswith("CAPABILITY_STATUS_")} == {
+    "CAPABILITY_STATUS_SOURCE_WINDOW": 0,
+    "CAPABILITY_STATUS_IMPLEMENTATION_WINDOW": 1,
+    "CAPABILITY_STATUS_UNBOUNDED_FINITE": 2,
+  }
+  assert {k: v for k, v in codes.items() if k.startswith("CAPABILITY_SOURCE_")} == {
+    "CAPABILITY_SOURCE_SUN_VSOP87D": 0,
+    "CAPABILITY_SOURCE_MOON_ELP2000_82B_TRUNC": 1,
+    "CAPABILITY_SOURCE_PLANET_VSOP87D": 2,
+    "CAPABILITY_SOURCE_PLUTO_PLUTO95_APPARENT": 3,
+    "CAPABILITY_SOURCE_NODE_MEAN": 4,
+    "CAPABILITY_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM": 5,
+  }
+  assert {k: v for k, v in codes.items() if k.startswith("MODEL_KIND_") and k != "MODEL_KIND_ALL"} == {
+    "MODEL_KIND_DELTA_T": 0,
+    "MODEL_KIND_NUTATION": 1,
+    "MODEL_KIND_POSITION_SOURCE": 2,
+  }
+  assert {k: v for k, v in codes.items() if k.startswith("MODEL_STATUS_")} == {
+    "MODEL_STATUS_CURRENT": 0,
+    "MODEL_STATUS_FROZEN": 1,
+  }
+
+  capability = (REPO_ROOT / "bindings/python/src/celestial_calendar/capability.py").read_text(encoding="utf-8")
+  status_block = re.search(r"_STATUS = \{(.*?)\n\}", capability, re.DOTALL)
+  source_block = re.search(r"_SOURCE = \{(.*?)\n\}", capability, re.DOTALL)
+  kind_block = re.search(r"_KIND_CODE = \{(.*?)\n\}", capability, re.DOTALL)
+  assert status_block and source_block and kind_block
+  assert dict(re.findall(r"(\d+): CapabilityStatus\.(\w+)", status_block.group(1))) == {
+    "0": "SOURCE_WINDOW",
+    "1": "IMPLEMENTATION_WINDOW",
+    "2": "UNBOUNDED_FINITE",
+  }
+  assert dict(re.findall(r"(\d+): PositionSource\.(\w+)", source_block.group(1))) == {
+    "0": "SUN_VSOP87D",
+    "1": "MOON_ELP2000_82B_TRUNC",
+    "2": "PLANET_VSOP87D",
+    "3": "PLUTO_PLUTO95_APPARENT",
+    "4": "NODE_MEAN",
+    "5": "NODE_TRUE_MEEUS_FIVE_TERM",
+  }
+  assert dict(re.findall(r"ModelKind\.(\w+): (\d+)", kind_block.group(1))) == {
+    "DELTA_T": "0",
+    "NUTATION": "1",
+    "POSITION_SOURCE": "2",
+  }

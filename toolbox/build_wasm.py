@@ -62,6 +62,9 @@ EXPORTS: Final[list[str]] = [
   "longitude_events",
   "longitude_stations",
   "longitude_difference_events",
+  "celestial_capabilities",
+  "celestial_model_identities",
+  "celestial_capability_text",
   "malloc",
   "free",
 ]

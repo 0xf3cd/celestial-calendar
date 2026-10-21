@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- C ABI capabilities and model identities (#357): `celestial_capabilities`,
+  `celestial_model_identities` and `celestial_capability_text` describe per target what
+  POSITION, LONGITUDE_RATE, EVENTS and HOUSES accept, and enumerate the stable model
+  identity codes (five Delta T models with algo1–algo4 frozen and algo5 current, two
+  nutation models, six position sources). Every bound derives from the operation's own
+  defining constants; NaN domain ends mean unbounded, and the text layer labels measured
+  validation coverage as measured. `chart_snapshot_v1` and every existing layout are
+  unchanged.
+- Python capabilities (#357): `capabilities()`, `model_identities()` and
+  `capability_text()` mirror the enums, domains, identity codes and failures in frozen
+  dataclasses, with the Delta T DEFAULT alias reconciled against the C header and ABI
+  manifest by a mechanical gate. The new `capability.py` module ships in the wheel.
+
+### Changed
+
+- The Delta T code table is single-sourced: `astro::capability::resolve_delta_t_code`
+  resolves the boundary codes (DEFAULT selects Algo5) for the C ABI switch, and the new
+  gate test reconciles `celestial.h`, the manifest generator and both Python tables.
+- The private WASM ABI mirrors the expanded C surface (#357): the export list, binding
+  metadata, layouts and both ABI manifests carry the three capability exports and their
+  two record layouts. No public JavaScript capability API is added.
+
 ## [v0.9.0]
 
 ### Added

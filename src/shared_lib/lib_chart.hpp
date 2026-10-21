@@ -22,6 +22,7 @@
 #include <type_traits>
 
 #include "celestial.h"
+#include "capability.hpp"
 #include "chart.hpp"
 #include "datetime.hpp"
 #include "ymd.hpp"
@@ -71,15 +72,13 @@ inline auto validate_civil(const int32_t year, const uint32_t month, const uint3
 }
 
 [[nodiscard]] inline auto delta_t_model(const uint32_t code) -> astro::delta_t::Model {
-  switch (code) {
-    case CHART_DELTA_T_MODEL_DEFAULT:
-    case CHART_DELTA_T_MODEL_ALGO5: return astro::delta_t::Model::ALGO5;
-    case CHART_DELTA_T_MODEL_ALGO1: return astro::delta_t::Model::ALGO1;
-    case CHART_DELTA_T_MODEL_ALGO2: return astro::delta_t::Model::ALGO2;
-    case CHART_DELTA_T_MODEL_ALGO3: return astro::delta_t::Model::ALGO3;
-    case CHART_DELTA_T_MODEL_ALGO4: return astro::delta_t::Model::ALGO4;
-    default: throw std::invalid_argument { std::format("Unknown chart `delta_t_model_code` {}", code) };
+  // The canonical code table lives in capability.hpp (#357): DEFAULT(0) resolves to Algo5 there,
+  // and a gate test reconciles this switch with celestial.h's defines and the Python mapping.
+  const auto model = astro::capability::resolve_delta_t_code(code);
+  if (not model.has_value()) {
+    throw std::invalid_argument { std::format("Unknown chart `delta_t_model_code` {}", code) };
   }
+  return *model;
 }
 
 [[nodiscard]] inline auto target_code(const astro::ephemeris::Target target) -> uint32_t {
