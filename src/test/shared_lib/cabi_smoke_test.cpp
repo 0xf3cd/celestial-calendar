@@ -22,12 +22,25 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <optional>
+#include <stdexcept>
 #include <string>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
 #include "celestial.h"
 #include "lib.hpp" // the logging-swallow test drives `lib::info` directly
+
+#include "moon.hpp"
+#include "moon_phase.hpp"
+#include "sun.hpp"
+#include "ymd.hpp"
+
+#include "lunar/algo1.hpp"
+#include "lunar/algo3.hpp"
+#include "lunar/common.hpp"
+#include "lunar/converter.hpp"
 
 #ifdef _WIN32
   #include <io.h>
@@ -247,13 +260,16 @@ TEST(CAbiSmoke, SunMoonCoords) {
 
 
 TEST(CAbiSmoke, MoonIllumination) {
-  // Retained reference inputs/values: MoonIllumination.
-  // Meeus Example 48.a's instant (1992-04-12 0h TT): k = 0.6786 by the book.
+  // Meeus Example 48.a's book values are pinned in moon_phase_test; the C struct must
+  // equal the C++ call chain at the same instant (1992-04-12 0h TT).
   const MoonIllumination mi = moon_illumination(2448724.5);
   ASSERT_TRUE(mi.valid);
-  EXPECT_NEAR(mi.illumination, 0.6786, 5e-5);
-  EXPECT_GE(mi.elongation_deg, 0.0);
-  EXPECT_LT(mi.elongation_deg, 360.0);
+  const auto sun_pos = astro::sun::geocentric_coord::apparent(2448724.5);
+  const auto moon_pos = astro::moon::geocentric_coord::apparent(2448724.5);
+  EXPECT_EQ(mi.illumination, astro::moon_phase::illumination::fraction(
+    astro::moon_phase::illumination::phase_angle(sun_pos, moon_pos)
+  ));
+  EXPECT_EQ(mi.elongation_deg, (moon_pos.λ - sun_pos.λ).normalize().deg());
 
   EXPECT_FALSE(moon_illumination(NAN_VALUE).valid);  // non-finite JDE
   EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
@@ -262,13 +278,11 @@ TEST(CAbiSmoke, MoonIllumination) {
 
 
 TEST(CAbiSmoke, MoonPositionAngle) {
-  // Retained reference inputs/values: MoonPositionAngle.
-  // Meeus Example 48.a's instant (1992-04-12 0h TT): χ = 285°.0 by the book.
+  // Meeus Example 48.a's χ = 285°.0 is pinned in moon_phase_test; here the C struct must
+  // equal the C++ call at the same instant (1992-04-12 0h TT).
   const MoonPositionAngle pa = moon_position_angle(2448724.5);
   ASSERT_TRUE(pa.valid);
-  EXPECT_NEAR(pa.angle_deg, 285.0, 0.05);
-  EXPECT_GE(pa.angle_deg, 0.0);
-  EXPECT_LT(pa.angle_deg, 360.0);
+  EXPECT_EQ(pa.angle_deg, astro::moon_phase::illumination::position_angle(2448724.5).deg());
 
   EXPECT_FALSE(moon_position_angle(NAN_VALUE).valid);  // non-finite JDE
   EXPECT_NE(std::strstr(last_error(), "not finite"), nullptr);
@@ -370,25 +384,27 @@ TEST(CAbiSmoke, SolarLonRoots) {
 }
 
 TEST(CAbiSmoke, SolarLonRootsRejectOutOfWindowYears) {
-  // The recorded error must name the original year and the [1, 32766] window.
+  // The window rule and the message wording are pinned in sun_test.cpp; here the C layer
+  // must agree with the core calls on rejection, and leave the caller's slots untouched.
+  using astro::sun::geocentric_coord::math::discriminant;
+  using astro::sun::geocentric_coord::math::find_roots;
   for (const int32_t year : { 0, 32767, 65537, 67562, INT32_MIN, INT32_MAX }) {
-    const std::string original = std::to_string(year);
-
     EXPECT_FALSE(solar_lon_root_discriminant(year, 0.0).valid);
-    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
-    EXPECT_NE(std::strstr(last_error(), "[1, 32766]"), nullptr);
+    EXPECT_STRNE(last_error(), "");
+    EXPECT_ANY_THROW(std::ignore = discriminant(year, 0.0));
 
     std::array<double, 2> slots { -777.0, -777.0 };
     EXPECT_EQ(solar_lon_roots(year, 0.0, slots.data(), slots.size()), 0U);
     EXPECT_EQ(slots.at(0), -777.0); // a rejected query leaves the caller's slots untouched
     EXPECT_EQ(slots.at(1), -777.0);
-    EXPECT_NE(std::strstr(last_error(), original.c_str()), nullptr);
+    EXPECT_ANY_THROW(std::ignore = find_roots(year, 0.0));
   }
 
   // The window ceiling itself still computes, and clears the recorded error.
   const Discriminant edge = solar_lon_root_discriminant(32766, 0.0);
   ASSERT_TRUE(edge.valid);
   EXPECT_EQ(edge.count, 1U);
+  EXPECT_EQ(edge.count, discriminant(32766, 0.0));
   EXPECT_STREQ(last_error(), "");
 }
 
@@ -476,7 +492,6 @@ TEST(CAbiSmoke, Jieqi) {
 
 
 TEST(CAbiSmoke, Lunar) {
-  // Retained reference inputs/values: Lunar.
   const SupportedLunarYearRange range1 = get_supported_lunar_year_range(1);
   ASSERT_TRUE(range1.valid);
   EXPECT_LT(range1.start, range1.end);
@@ -485,11 +500,11 @@ TEST(CAbiSmoke, Lunar) {
   ASSERT_TRUE(range2.valid);
   EXPECT_LT(range2.start, range2.end);
 
-  // #128: algo=3 is now exported (1600-2199); the pin that held it "unsupported" flips here.
+  // #128: algo=3 is now exported; its window comes from the C++ constants, not re-spelled here.
   const SupportedLunarYearRange range3 = get_supported_lunar_year_range(3);
   ASSERT_TRUE(range3.valid);
-  EXPECT_EQ(range3.start, 1600);
-  EXPECT_EQ(range3.end, 2199);
+  EXPECT_EQ(range3.start, calendar::lunar::algo3::START_YEAR);
+  EXPECT_EQ(range3.end, calendar::lunar::algo3::END_YEAR);
 
   EXPECT_FALSE(get_supported_lunar_year_range(0).valid);
   EXPECT_FALSE(get_supported_lunar_year_range(4).valid);
@@ -517,54 +532,148 @@ TEST(CAbiSmoke, Lunar) {
 }
 
 
-// Golden: lunar 2023 has a leap 2nd month (闰二月), and 闰二月初一 (its 1st day) = 2023-03-22 /
-// 三月初一 = 2023-04-20 — HKO data, algo1's and algo3's baked tables agree
-// (pinned in `LunarCommon.Leap2023DataAgreement`).
+namespace {
+
+// Parity helpers for LunarConverter below. The C structs speak traditional numbering + leap
+// flag (celestial.h); the converter core speaks positional month indices (#128). The
+// translation rules are pinned in lunar/common_test (MonthPosition*/MonthAtPosition); the
+// 2023 rows' value correctness lives in the registered year-row blocks (the retained HKO
+// encoding), verified against the HKO reconstruction by automation/hko_identity.py and
+// cross-checked between the two algorithms in LunarAlgo3.HkoTableCopiesAgree —
+// converter_test's per-day enumeration covers converter/table consistency, not the values —
+// so here the dates are inputs only, and the C result must equal the C++ call.
+// The C boundary turns every core throw into `valid = false` (wrap_export contract), so a
+// throwing core call is the C++ face of the same rejection and maps to std::nullopt here.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
+template <calendar::lunar::common::Algo algo>
+auto core_gregorian_to_lunar(const int32_t year, const uint32_t month, const uint32_t day) -> std::optional<LunarDate> {
+  try {
+    const auto converted = calendar::lunar::converter::Converter<algo>::gregorian_to_lunar(
+      util::to_ymd(util::checked_year(year), month, day)
+    );
+    if (not converted) {
+      return std::nullopt;
+    }
+    const auto [y, m, d] = util::from_ymd(*converted);
+    const auto& info = calendar::lunar::common::AlgoMetadata<algo>::get_info_for_year(y);
+    const auto traditional = calendar::lunar::common::month_at_position(info, static_cast<uint8_t>(m));
+    if (not traditional) {
+      return std::nullopt;
+    }
+    return LunarDate {
+      .valid   = true,
+      .year    = y,
+      .month   = traditional->month,
+      .is_leap = traditional->is_leap,
+      .day     = static_cast<uint8_t>(d),
+    };
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+// The y/m/d(+leap) parameter order mirrors the library; NOLINT is trailing because the
+// diagnostic lands on the parameter line, not the declaration line.
+template <calendar::lunar::common::Algo algo>
+auto core_lunar_to_gregorian(const int32_t year, const uint32_t month, const bool is_leap, const uint32_t day) // NOLINT(bugprone-easily-swappable-parameters)
+  -> std::optional<GregorianDate> {
+  try {
+    const auto& info = calendar::lunar::common::AlgoMetadata<algo>::get_info_for_year(year);
+    const auto position = calendar::lunar::common::month_position(info, static_cast<uint8_t>(month), is_leap);
+    if (not position) {
+      return std::nullopt;
+    }
+    const auto converted = calendar::lunar::converter::Converter<algo>::lunar_to_gregorian(util::to_ymd(year, *position, day));
+    if (not converted) {
+      return std::nullopt;
+    }
+    const auto [y, m, d] = util::from_ymd(*converted);
+    return GregorianDate { .valid = true, .year = y, .month = static_cast<uint8_t>(m), .day = static_cast<uint8_t>(d) };
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
+auto core_gregorian_to_lunar_for(const uint8_t algo, const int32_t year, const uint32_t month, const uint32_t day)
+  -> std::optional<LunarDate> {
+  switch (algo) {
+    case 1: return core_gregorian_to_lunar<calendar::lunar::common::Algo::ALGO_1>(year, month, day);
+    case 3: return core_gregorian_to_lunar<calendar::lunar::common::Algo::ALGO_3>(year, month, day);
+    default: throw std::logic_error { "test dispatch covers algo 1 and 3 only" };
+  }
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d(+leap) is the natural date order, as in the library.
+auto core_lunar_to_gregorian_for(const uint8_t algo, const int32_t year, const uint32_t month, const bool is_leap,
+                                 const uint32_t day) -> std::optional<GregorianDate> {
+  switch (algo) {
+    case 1: return core_lunar_to_gregorian<calendar::lunar::common::Algo::ALGO_1>(year, month, is_leap, day);
+    case 3: return core_lunar_to_gregorian<calendar::lunar::common::Algo::ALGO_3>(year, month, is_leap, day);
+    default: throw std::logic_error { "test dispatch covers algo 1 and 3 only" };
+  }
+}
+
+auto expect_lunar_parity(const LunarDate& actual, const std::optional<LunarDate>& expected) -> void {
+  ASSERT_EQ(actual.valid, expected.has_value());
+  if (expected.has_value()) {
+    EXPECT_EQ(actual.year, expected->year);
+    EXPECT_EQ(actual.month, expected->month);
+    EXPECT_EQ(actual.is_leap, expected->is_leap);
+    EXPECT_EQ(actual.day, expected->day);
+  }
+}
+
+auto expect_gregorian_parity(const GregorianDate& actual, const std::optional<GregorianDate>& expected) -> void {
+  ASSERT_EQ(actual.valid, expected.has_value());
+  if (expected.has_value()) {
+    EXPECT_EQ(actual.year, expected->year);
+    EXPECT_EQ(actual.month, expected->month);
+    EXPECT_EQ(actual.day, expected->day);
+  }
+}
+
+} // namespace
+
+// 2023's leap 2nd month (闰二月): 闰二月初一 = 2023-03-22, 三月初一 = 2023-04-20 — the HKO rows
+// are pinned in the C++ suites; these dates are inputs only, and the C structs must equal
+// the C++ converter calls.
 TEST(CAbiSmoke, LunarConverter) {
-  const LunarDate leap2 = gregorian_to_lunar(1, 2023, 3, 22);
-  ASSERT_TRUE(leap2.valid);
-  EXPECT_EQ(leap2.year, 2023);
-  EXPECT_EQ(leap2.month, 2U);
-  EXPECT_TRUE(leap2.is_leap);
-  EXPECT_EQ(leap2.day, 1U);
-
-  const LunarDate trad3 = gregorian_to_lunar(1, 2023, 4, 20);
-  ASSERT_TRUE(trad3.valid);
-  EXPECT_EQ(trad3.month, 3U);
-  EXPECT_FALSE(trad3.is_leap);
-
-  const LunarDate via_algo3 = gregorian_to_lunar(3, 2023, 3, 22);
-  ASSERT_TRUE(via_algo3.valid);
-  EXPECT_EQ(via_algo3.month, 2U);
-  EXPECT_TRUE(via_algo3.is_leap);
-
-  const GregorianDate back1 = lunar_to_gregorian(1, 2023, 2, true, 1);
-  ASSERT_TRUE(back1.valid);
-  EXPECT_EQ(back1.year, 2023);
-  EXPECT_EQ(back1.month, 3U);
-  EXPECT_EQ(back1.day, 22U);
-
-  const GregorianDate back2 = lunar_to_gregorian(1, 2023, 3, false, 1);
-  ASSERT_TRUE(back2.valid);
-  EXPECT_EQ(back2.month, 4U);
-  EXPECT_EQ(back2.day, 20U);
+  for (const uint8_t algo : { 1U, 3U }) {
+    expect_lunar_parity(gregorian_to_lunar(algo, 2023, 3, 22), core_gregorian_to_lunar_for(algo, 2023, 3, 22));
+    expect_lunar_parity(gregorian_to_lunar(algo, 2023, 4, 20), core_gregorian_to_lunar_for(algo, 2023, 4, 20));
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2023, 2, true, 1),
+                            core_lunar_to_gregorian_for(algo, 2023, 2, true, 1));
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2023, 3, false, 1),
+                            core_lunar_to_gregorian_for(algo, 2023, 3, false, 1));
+  }
 
   EXPECT_FALSE(gregorian_to_lunar(9, 2023, 3, 22).valid);
   // The accepted Gregorian window does not line up with Gregorian years 1901-2099: it opens on
   // lunar 1901's first day (1901-02-19) and closes on lunar 2099's last day (2100-02-08).
-  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 1, 1).valid);
-  EXPECT_FALSE(gregorian_to_lunar(1, 1901, 2, 18).valid);
-  EXPECT_TRUE(gregorian_to_lunar(1, 1901, 2, 19).valid);
-  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 1, 25).valid);
-  EXPECT_TRUE(gregorian_to_lunar(1, 2100, 2, 8).valid);
-  EXPECT_FALSE(gregorian_to_lunar(1, 2100, 2, 9).valid);
-  EXPECT_FALSE(gregorian_to_lunar(1, 2101, 1, 1).valid);
-  EXPECT_FALSE(gregorian_to_lunar(1, 2023, 13, 1).valid);
+  // (These edges are algo 1's; algo 3's window is [1600, 2199] and is exercised by the
+  // definition-side constants and the C++ suites, not repeated here.)
+  expect_lunar_parity(gregorian_to_lunar(1, 1901, 1, 1), core_gregorian_to_lunar_for(1, 1901, 1, 1));
+  expect_lunar_parity(gregorian_to_lunar(1, 1901, 2, 18), core_gregorian_to_lunar_for(1, 1901, 2, 18));
+  expect_lunar_parity(gregorian_to_lunar(1, 1901, 2, 19), core_gregorian_to_lunar_for(1, 1901, 2, 19));
+  expect_lunar_parity(gregorian_to_lunar(1, 2100, 1, 25), core_gregorian_to_lunar_for(1, 2100, 1, 25));
+  expect_lunar_parity(gregorian_to_lunar(1, 2100, 2, 8), core_gregorian_to_lunar_for(1, 2100, 2, 8));
+  expect_lunar_parity(gregorian_to_lunar(1, 2100, 2, 9), core_gregorian_to_lunar_for(1, 2100, 2, 9));
+  expect_lunar_parity(gregorian_to_lunar(1, 2101, 1, 1), core_gregorian_to_lunar_for(1, 2101, 1, 1));
+  expect_lunar_parity(gregorian_to_lunar(1, 2023, 13, 1), core_gregorian_to_lunar_for(1, 2023, 13, 1));
+  for (const uint8_t algo : { 1U, 3U }) {
+    // lunar year 2100 is outside algo 1's window ([1901, 2099]) but inside algo 3's
+    // ([1600, 2199]) — the two layers must agree on which one rejects it.
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2100, 1, false, 1),
+                            core_lunar_to_gregorian_for(algo, 2100, 1, false, 1));
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2024, 2, true, 1),
+                            core_lunar_to_gregorian_for(algo, 2024, 2, true, 1)); // 2024 has no leap month
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2023, 5, true, 1),
+                            core_lunar_to_gregorian_for(algo, 2023, 5, true, 1)); // 2023's leap month is the 2nd
+    expect_gregorian_parity(lunar_to_gregorian(algo, 2023, 2, true, 30),
+                            core_lunar_to_gregorian_for(algo, 2023, 2, true, 30)); // 闰二月 has 29 days
+  }
   EXPECT_FALSE(lunar_to_gregorian(9, 2023, 2, true, 1).valid);
-  EXPECT_FALSE(lunar_to_gregorian(1, 2100, 1, false, 1).valid);
-  EXPECT_FALSE(lunar_to_gregorian(1, 2024, 2, true, 1).valid); // 2024 has no leap month
-  EXPECT_FALSE(lunar_to_gregorian(1, 2023, 5, true, 1).valid); // 2023's leap month is the 2nd
-  EXPECT_FALSE(lunar_to_gregorian(1, 2023, 2, true, 30).valid); // 闰二月 has 29 days
   EXPECT_STRNE(last_error(), "");
 }
 

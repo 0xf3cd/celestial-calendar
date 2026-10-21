@@ -122,7 +122,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_batch_a_closeout_facts_and_values_are_complete():
-  assert RECORD_SHA256 == "42220691bcd5ba657bc8c99e968838406c3612f66d29642d51d95a9e9eca901d"
+  assert RECORD_SHA256 == "6e778138b2d3e693da518ae75ac7bbec94fbd0c052fc0072216affeb8656351b"
   assert REGISTRY_SHA256 == "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
   assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"

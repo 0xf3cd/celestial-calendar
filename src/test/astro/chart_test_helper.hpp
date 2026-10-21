@@ -12,14 +12,18 @@
 
 #pragma once
 
-#include <stdexcept>
+#include <array>
+#include <string_view>
 
 #include "ephemeris.hpp"
 #include "geolocation.hpp"
+#include "house.hpp"
 #include "moon.hpp"
 #include "planet.hpp"
 #include "sun.hpp"
 #include "toolbox.hpp"
+
+#include "delta_t.hpp"
 
 namespace astro::chart::test {
 
@@ -30,6 +34,25 @@ namespace astro::chart::test {
     .longitude = astro::toolbox::AngleDeg { longitude_deg },
   };
 }
+
+// The seven composition roles exercised by both chart_test.cpp (core semantics) and
+// chart_cabi_test.cpp (C ABI parity): one table, so the two layers never drift apart.
+struct CompositionRole {
+  std::string_view role;
+  astro::delta_t::Model model;
+  astro::house::System system;
+  astro::GeoLocation observer;
+};
+
+inline const std::array COMPOSITION_ROLES {
+  CompositionRole { .role = "algo1-equal",       .model = astro::delta_t::Model::ALGO1, .system = astro::house::System::EQUAL,      .observer = location(51.5, 0.0) },
+  CompositionRole { .role = "algo2-whole",       .model = astro::delta_t::Model::ALGO2, .system = astro::house::System::WHOLE_SIGN, .observer = location(51.5, 0.0) },
+  CompositionRole { .role = "algo3-south",       .model = astro::delta_t::Model::ALGO3, .system = astro::house::System::PLACIDUS,   .observer = location(-33.87, 151.21) },
+  CompositionRole { .role = "algo4-placidus",    .model = astro::delta_t::Model::ALGO4, .system = astro::house::System::PLACIDUS,   .observer = location(51.5, 0.0) },
+  CompositionRole { .role = "algo5-equal",       .model = astro::delta_t::Model::ALGO5, .system = astro::house::System::EQUAL,      .observer = location(-33.87, 151.21) },
+  CompositionRole { .role = "algo5-whole-south", .model = astro::delta_t::Model::ALGO5, .system = astro::house::System::WHOLE_SIGN, .observer = location(-33.87, 151.21) },
+  CompositionRole { .role = "algo5-placidus",    .model = astro::delta_t::Model::ALGO5, .system = astro::house::System::PLACIDUS,   .observer = location(51.5, 0.0) },
+};
 
 /**
  * @brief Replay lower-level positions without reusing @ref astro::ephemeris::planet_for_target.
