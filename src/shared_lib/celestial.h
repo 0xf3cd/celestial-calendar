@@ -754,6 +754,139 @@ CELESTIAL_API uint32_t longitude_stations(uint32_t target_code, double start_jde
 CELESTIAL_API uint32_t longitude_difference_events(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count);
 
 
+/* ---------- Capabilities and Model Identities ---------- */
+
+#define CAPABILITY_OPERATION_POSITION       UINT32_C(0)
+#define CAPABILITY_OPERATION_LONGITUDE_RATE UINT32_C(1)
+#define CAPABILITY_OPERATION_EVENTS         UINT32_C(2)
+#define CAPABILITY_OPERATION_HOUSES         UINT32_C(3)
+#define CAPABILITY_OPERATION_MODEL_IDENTITY UINT32_C(4) /* Text lookup only; see celestial_capability_text. */
+
+#define CAPABILITY_STATUS_SOURCE_WINDOW         UINT32_C(0)
+#define CAPABILITY_STATUS_IMPLEMENTATION_WINDOW UINT32_C(1)
+#define CAPABILITY_STATUS_UNBOUNDED_FINITE      UINT32_C(2)
+
+#define CAPABILITY_SOURCE_SUN_VSOP87D               UINT32_C(0)
+#define CAPABILITY_SOURCE_MOON_ELP2000_82B_TRUNC    UINT32_C(1)
+#define CAPABILITY_SOURCE_PLANET_VSOP87D            UINT32_C(2)
+#define CAPABILITY_SOURCE_PLUTO_PLUTO95_APPARENT    UINT32_C(3)
+#define CAPABILITY_SOURCE_NODE_MEAN                 UINT32_C(4)
+#define CAPABILITY_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(5)
+
+#define CAPABILITY_TARGET_ALL UINT32_C(0xFFFFFFFF)
+
+#define MODEL_KIND_DELTA_T         UINT32_C(0)
+#define MODEL_KIND_NUTATION        UINT32_C(1)
+#define MODEL_KIND_POSITION_SOURCE UINT32_C(2)
+#define MODEL_KIND_ALL             UINT32_C(0xFFFFFFFF)
+
+#define MODEL_STATUS_CURRENT UINT32_C(0)
+#define MODEL_STATUS_FROZEN  UINT32_C(1)
+
+/* Kind-internal identity ordinals, pinned for the identity registry. These are NOT the
+ * CHART_* boundary selection codes: within MODEL_KIND_DELTA_T, ALGO5 is ordinal 4 while
+ * CHART_DELTA_T_MODEL_ALGO5 is 5 and CHART_DELTA_T_MODEL_DEFAULT is 0. Compare the
+ * (kind_code, identity_code) pair, never a bare identity_code against a CHART_* code. */
+#define MODEL_IDENTITY_DELTA_T_ALGO1 UINT32_C(0)
+#define MODEL_IDENTITY_DELTA_T_ALGO2 UINT32_C(1)
+#define MODEL_IDENTITY_DELTA_T_ALGO3 UINT32_C(2)
+#define MODEL_IDENTITY_DELTA_T_ALGO4 UINT32_C(3)
+#define MODEL_IDENTITY_DELTA_T_ALGO5 UINT32_C(4)
+
+#define MODEL_IDENTITY_NUTATION_MEEUS   UINT32_C(0)
+#define MODEL_IDENTITY_NUTATION_IAU1980 UINT32_C(1)
+
+#define MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D UINT32_C(0)
+#define MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC UINT32_C(1)
+#define MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D UINT32_C(2)
+#define MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT UINT32_C(3)
+#define MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN UINT32_C(4)
+#define MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(5)
+
+/**
+ * @brief One operation's accepted-input description for one subject.
+ * @note domain ends are NaN where no explicit JDE(TT) bound exists (Status
+ *       CAPABILITY_STATUS_UNBOUNDED_FINITE); NaN is "unbounded", not a sentinel for
+ *       a hidden value. The record never implies accuracy; measured validation coverage
+ *       lives only in the prose of celestial_capability_text.
+ */
+typedef struct CapabilityRecordV1 {
+  uint32_t operation_code;        /* A CAPABILITY_OPERATION_* code, MODEL_IDENTITY excluded. */
+  uint32_t subject_code;          /* A CHART_TARGET_* code for target operations; unused (0) for HOUSES. */
+  uint32_t status_code;           /* A CAPABILITY_STATUS_* code naming what kind of bound the domain is. */
+  uint32_t source_code;           /* A CAPABILITY_SOURCE_* code; unused (0) for HOUSES. */
+  double domain_start_jde_tt;     /* Inclusive; NaN = no lower bound. */
+  double domain_end_jde_tt;       /* Exclusive; NaN = no upper bound. */
+  uint32_t maximum_span_tt_days;  /* EVENTS: 3660; 0 = no span limit. */
+  uint32_t flags;                 /* Reserved; written 0, ignored on read. */
+} CapabilityRecordV1;
+
+/** @brief One registered model identity with its applicability (#357). */
+typedef struct ModelIdentityRecordV1 {
+  uint32_t kind_code;           /* A MODEL_KIND_* code. */
+  uint32_t identity_code;       /* Kind-internal ordinal, pinned by the MODEL_IDENTITY_* macros;
+                                   stable across releases. Not a CHART_* boundary selection code. */
+  uint32_t status_code;         /* MODEL_STATUS_CURRENT or MODEL_STATUS_FROZEN. */
+  uint32_t default_alias_code;  /* Boundary code this identity answers to as the default; UINT32_MAX when none. */
+  double domain_start_jde_tt;   /* Published applicability in JDE(TT); NaN = unbounded. */
+  double domain_end_jde_tt;
+} ModelIdentityRecordV1;
+
+/**
+ * @brief Describe what an operation accepts and why.
+ * @param operation_code A CAPABILITY_OPERATION_* code (POSITION, LONGITUDE_RATE, EVENTS or HOUSES).
+ * @param subject_code A CHART_TARGET_* code, or CAPABILITY_TARGET_ALL for every subject.
+ *                      HOUSES carries one record and ignores the subject: any valid target code
+ *                      returns the same single record.
+ * @param record_count Where the total count of records is written. Must not be null.
+ *                     On every failure `*record_count` is set to 0; a zero total is also a
+ *                     legal outcome for an operation with no subjects, disambiguated by `last_error`.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, at most min(total, slot_count); records follow
+ *          CHART_TARGET_* code order for target operations.
+ * @note Every bound is derived from the operation's own defining constants, so this query
+ *       and the computation it describes accept and reject the same inputs by construction.
+ *       The reported domain is an acceptance boundary, not an accuracy promise.
+ */
+CELESTIAL_API uint32_t celestial_capabilities(uint32_t operation_code, uint32_t subject_code, uint32_t *record_count, CapabilityRecordV1 *slots, uint32_t slot_count);
+
+/**
+ * @brief Enumerate the registered model identities (Delta T, nutation, position sources).
+ * @param kind_code A MODEL_KIND_* code, or MODEL_KIND_ALL for every kind.
+ * @param record_count Where the total count of records is written. Must not be null.
+ *                     On every failure `*record_count` is set to 0.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0.
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, at most min(total, slot_count); records follow the
+ *          registry order (Delta T algo1-5, nutation, position sources).
+ * @note identity_code values are stable across releases; default_alias_code resolves the
+ *       concrete meaning of a DEFAULT selection without recording an unresolved code 0.
+ */
+CELESTIAL_API uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *record_count, ModelIdentityRecordV1 *slots, uint32_t slot_count);
+
+/**
+ * @brief Human-readable description behind one capability record or model identity.
+ * @param operation_code A CAPABILITY_OPERATION_* code; CAPABILITY_OPERATION_MODEL_IDENTITY
+ *                       addresses the identity registry (subject_code is the ordinal in
+ *                       celestial_model_identities).
+ * @param subject_code A CHART_TARGET_* code (a domain operation; ignored for HOUSES, which
+ *                     accepts any valid target code or CAPABILITY_TARGET_ALL) or an identity
+ *                     ordinal (CAPABILITY_OPERATION_MODEL_IDENTITY, 0-12). Codes outside the
+ *                     operation's subject range are rejected; the text export never truncates
+ *                     an out-of-range code into another subject.
+ * @param buffer Caller-owned text buffer; may be null to size the request first.
+ * @param capacity The buffer size in bytes, including space for a null terminator.
+ * @returns The required byte count excluding the null terminator. When `buffer` is not null
+ *          and `capacity` is positive, the text is written truncated and null-terminated.
+ * @note The text names origin, frame, units, corrections, source/version, status and role,
+ *       and labels measured validation coverage as measured; it implies no unmeasured accuracy.
+ */
+CELESTIAL_API uint32_t celestial_capability_text(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity);
+
+
 #ifdef __cplusplus
 }
 #endif

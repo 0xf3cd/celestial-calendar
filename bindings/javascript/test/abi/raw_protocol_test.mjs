@@ -277,6 +277,32 @@ try {
   assert.equal(moonSunSixty.length, 1);
   assert(Math.abs(moonSunSixty[0].signed_difference_deg + 60.0) < 1e-6);
   happyExports.add("longitude_difference_events");
+
+  // Capability count+fill: the same protocol over the two capability record layouts.
+  const eventCapabilities = eventFill("celestial_capabilities", "CapabilityRecordV1", [2, 0xFFFFFFFF]);
+  assert.equal(eventCapabilities.length, 14);
+  const plutoCapability = eventCapabilities.find((record) => record.subject_code === 9);
+  assert.equal(plutoCapability.status_code, 1); // implementation window: center domain shrunk by the stencil reach
+  assert.equal(plutoCapability.domain_start_jde_tt, 2409543.875);
+  assert.equal(plutoCapability.maximum_span_tt_days, 3660);
+  happyExports.add("celestial_capabilities");
+  const identities = eventFill("celestial_model_identities", "ModelIdentityRecordV1", [0xFFFFFFFF]);
+  assert.equal(identities.length, 13);
+  assert.deepEqual(
+    [identities[4].kind_code, identities[4].identity_code, identities[4].default_alias_code],
+    [0, 4, 0], // Delta T algo5: kind-internal ordinal 4 (not CHART_DELTA_T_MODEL_ALGO5 = 5), answering to code 0
+  );
+  happyExports.add("celestial_model_identities");
+  const requiredText = M._celestial_capability_text(0, 9, 0, 0);
+  assert(requiredText > 0);
+  const textPtr = M._malloc(requiredText + 1);
+  try {
+    assert.equal(M._celestial_capability_text(0, 9, textPtr, requiredText + 1), requiredText);
+    assert(decoder.decode(M.HEAPU8.subarray(textPtr, textPtr + requiredText)).startsWith("Position of Pluto"));
+  } finally {
+    M._free(textPtr);
+  }
+  happyExports.add("celestial_capability_text");
 } finally {
   M._free(oneSlot);
   M._free(countPtr);
@@ -419,6 +445,13 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
       () => M._longitude_difference_events(0, 0, 1.0, 2460676.5, 2460707.5, eventCount, 0, 0) === 0,
     );
     assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("celestial_capabilities", () => M._celestial_capabilities(9, 0xFFFFFFFF, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("celestial_model_identities", () => M._celestial_model_identities(9, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    recordedFailure("celestial_capability_text", () => M._celestial_capability_text(0, 256, 0, 0) === 0);
   } finally {
     M._free(eventCount);
   }
@@ -817,15 +850,15 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 33 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 22 layouts decoded");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 36 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 24 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 33/33; layouts 22/22; recording seams 32/32");
+console.log("PASS raw exports 36/36; layouts 24/24; recording seams 35/35");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

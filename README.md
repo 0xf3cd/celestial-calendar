@@ -152,7 +152,8 @@ The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), includin
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
 The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
 in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, the chart snapshot is also available
-from C, Python and JavaScript, and the interval longitude events from C and Python.
+from C, Python and JavaScript, the interval longitude events from C and Python, and the operation capabilities
+and model identities from C and Python ([`capabilities`](bindings/python/README.md#capabilities)).
 
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) adds C++ interval searches for a supplied longitude,
 stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)

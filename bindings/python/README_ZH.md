@@ -99,6 +99,24 @@ print(snapshot.houses.cusps_deg)
 黄经速率是瞬时值，单位为度/TT 日；负值表示该瞬间黄经在减小（逆行）。节点纬度是已知的零，距离为 `None`。
 四轴与十二宫头均为 `[0, 360)` 度，宫头元组从第一宫开始。经度东正西负，纬度北正南负；地点只影响宫位。完整数值见[共享重放示例](../../docs/examples/chart_snapshot/README.md)。
 
+<a id="capabilities"></a>
+### 能力与模型身份
+
+`capabilities()`、`model_identities()` 与 `capability_text()` 描述公开操作接受什么输入、结果背后站着哪些
+模型。每个定义域边界都由该操作自身的定义常量算出，所以能力记录接受与拒绝的输入和计算本身完全一致；
+NaN 边界意为「无显式界」，文字层把已验证带标注为 measured——定义域是接受边界，不是精度承诺。
+
+```python
+import celestial_calendar as celestial
+
+records = celestial.capabilities(celestial.CapabilityOperation.EVENTS)
+pluto = next(r for r in records if r.subject is celestial.CapabilitySubject.PLUTO)
+print(pluto.domain_start_jde_tt, pluto.domain_end_jde_tt, pluto.maximum_span_tt_days)
+print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.CapabilitySubject.PLUTO))
+identities = celestial.model_identities()
+algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
+```
+
 <a id="interval-longitude-events"></a>
 ### 区间黄经事件
 

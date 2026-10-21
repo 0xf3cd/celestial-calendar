@@ -25,6 +25,7 @@ SCRIPTS = {
   "consumer/golden_replay.py",
   "consumer/events_replay.py",
   "consumer/chart_snapshot.py",
+  "consumer/capabilities.py",
 }
 
 

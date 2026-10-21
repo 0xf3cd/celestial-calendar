@@ -109,6 +109,26 @@ east-positive and latitude north-positive; location affects houses only. See the
 [shared replay example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/examples/chart_snapshot/README.md)
 for full values.
 
+<a id="capabilities"></a>
+### Capabilities and model identities
+
+`capabilities()`, `model_identities()` and `capability_text()` describe what the public operations
+accept and which models stand behind a result. Every domain bound is computed from the operation's
+own defining constants, so a capability record accepts and rejects exactly what the computation
+does; NaN domain ends mean unbounded, and the text layer labels measured validation coverage as
+measured — a domain is an acceptance boundary, not an accuracy promise.
+
+```python
+import celestial_calendar as celestial
+
+records = celestial.capabilities(celestial.CapabilityOperation.EVENTS)
+pluto = next(r for r in records if r.subject is celestial.CapabilitySubject.PLUTO)
+print(pluto.domain_start_jde_tt, pluto.domain_end_jde_tt, pluto.maximum_span_tt_days)
+print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.CapabilitySubject.PLUTO))
+identities = celestial.model_identities()
+algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
+```
+
 <a id="interval-longitude-events"></a>
 ### Interval longitude events
 

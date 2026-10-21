@@ -528,6 +528,86 @@ def edge_longitude_difference_events() -> None:
   assert sentinel.value == 0 and "distinct" in _binding.last_error_text()
 
 
+def happy_celestial_capabilities() -> None:
+  total = ctypes.c_uint32()
+  record = _binding.CapabilityRecordV1
+  assert call("celestial_capabilities", 2, 0xFFFFFFFF, ctypes.byref(total), None, 0) == 0
+  assert total.value == 14
+  slots = (record * total.value)()
+  assert call("celestial_capabilities", 2, 0xFFFFFFFF, ctypes.byref(total), slots, total.value) == 14
+  sun = next(slot for slot in slots if slot.subject_code == 0)
+  assert sun.operation_code == 2 and sun.maximum_span_tt_days == 3660
+  pluto = next(slot for slot in slots if slot.subject_code == 9)
+  # The center domain is the root window shrunk by the stencil reach, so the status is an
+  # implementation window even though Pluto's position root window is source-published.
+  assert pluto.status_code == 1 and pluto.domain_start_jde_tt == 2409543.875
+
+
+def edge_celestial_capabilities() -> None:
+  total = ctypes.c_uint32()
+  # Unknown operations and subjects are rejected before any record is built.
+  assert call("celestial_capabilities", 9, 0xFFFFFFFF, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "CAPABILITY_OPERATION" in _binding.last_error_text()
+  assert call("celestial_capabilities", 0, 14, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "subject_code" in _binding.last_error_text()
+  # HOUSES carries a single record and ignores the subject filter.
+  assert call("celestial_capabilities", 3, 7, ctypes.byref(total), None, 0) == 0
+  assert total.value == 1
+  # The group runner expects a recorded failure at exit.
+  assert call("celestial_capabilities", 5, 0xFFFFFFFF, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "CAPABILITY_OPERATION" in _binding.last_error_text()
+
+
+def happy_celestial_model_identities() -> None:
+  total = ctypes.c_uint32()
+  record = _binding.ModelIdentityRecordV1
+  assert call("celestial_model_identities", 0xFFFFFFFF, ctypes.byref(total), None, 0) == 0
+  assert total.value == 13
+  slots = (record * total.value)()
+  assert call("celestial_model_identities", 0xFFFFFFFF, ctypes.byref(total), slots, total.value) == 13
+  assert slots[4].kind_code == 0 and slots[4].default_alias_code == 0
+  assert slots[3].kind_code == 0 and slots[3].status_code == 1
+  assert all(slot.kind_code == 1 for slot in slots[5:7])
+
+
+def edge_celestial_model_identities() -> None:
+  total = ctypes.c_uint32()
+  # Unknown kinds are rejected; a kind filter keeps the registry counts.
+  assert call("celestial_model_identities", 9, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "MODEL_KIND" in _binding.last_error_text()
+  assert call("celestial_model_identities", 0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 5
+  # The group runner expects a recorded failure at exit.
+  assert call("celestial_model_identities", 7, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "MODEL_KIND" in _binding.last_error_text()
+
+
+def happy_celestial_capability_text() -> None:
+  required = call("celestial_capability_text", 0, 9, None, 0)
+  assert required > 0 and _binding.last_error_text() == ""
+  buffer = (ctypes.c_char * (required + 1))()
+  assert call("celestial_capability_text", 0, 9, buffer, required + 1) == required
+  assert buffer.value.decode("utf-8").startswith("Position of Pluto")
+
+
+def edge_celestial_capability_text() -> None:
+  # The identity registry is addressable for text but not through the domain query.
+  total = ctypes.c_uint32()
+  assert call("celestial_capability_text", 4, 4, None, 0) > 0
+  assert call("celestial_capabilities", 4, 0xFFFFFFFF, ctypes.byref(total), None, 0) == 0
+  assert "CAPABILITY_OPERATION" in _binding.last_error_text()
+  # A null buffer with positive capacity is an argument error, not a crash.
+  assert call("celestial_capability_text", 0, 0, None, 8) == 0
+  assert "buffer" in _binding.last_error_text()
+  # Out-of-range subjects are rejected before narrowing, never truncated into another subject.
+  assert call("celestial_capability_text", 0, 256, None, 0) == 0
+  assert "ephemeris target" in _binding.last_error_text()
+  assert call("celestial_capability_text", 4, 256, None, 0) == 0
+  assert "model identity" in _binding.last_error_text()
+  assert call("celestial_capability_text", 0, 14, None, 0) == 0
+  assert "ephemeris target" in _binding.last_error_text()
+
+
 EXPORT_NAMES = tuple(_binding.BINDING_SPECS)
 HAPPY_TESTS = {name: globals()[f"happy_{name}"] for name in EXPORT_NAMES}
 EDGE_TESTS = {name: globals()[f"edge_{name}"] for name in EXPORT_NAMES}
@@ -556,7 +636,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 33
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 36
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)
   if happy[0] != happy[1] or edge[0] != edge[1]:

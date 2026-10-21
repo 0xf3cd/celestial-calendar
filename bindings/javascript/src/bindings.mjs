@@ -260,6 +260,32 @@ export const LAYOUTS = deepFreeze({
       { name: "direction_code", type: "uint32_t", offset: 48 },
     ],
   },
+  CapabilityRecordV1: {
+    size: 40,
+    alignment: 8,
+    fields: [
+      { name: "operation_code", type: "uint32_t", offset: 0 },
+      { name: "subject_code", type: "uint32_t", offset: 4 },
+      { name: "status_code", type: "uint32_t", offset: 8 },
+      { name: "source_code", type: "uint32_t", offset: 12 },
+      { name: "domain_start_jde_tt", type: "double", offset: 16 },
+      { name: "domain_end_jde_tt", type: "double", offset: 24 },
+      { name: "maximum_span_tt_days", type: "uint32_t", offset: 32 },
+      { name: "flags", type: "uint32_t", offset: 36 },
+    ],
+  },
+  ModelIdentityRecordV1: {
+    size: 32,
+    alignment: 8,
+    fields: [
+      { name: "kind_code", type: "uint32_t", offset: 0 },
+      { name: "identity_code", type: "uint32_t", offset: 4 },
+      { name: "status_code", type: "uint32_t", offset: 8 },
+      { name: "default_alias_code", type: "uint32_t", offset: 12 },
+      { name: "domain_start_jde_tt", type: "double", offset: 16 },
+      { name: "domain_end_jde_tt", type: "double", offset: 24 },
+    ],
+  },
 });
 
 // Internal metadata for the complete celestial.h surface. Package entry points consume
@@ -298,4 +324,7 @@ export const BINDINGS = Object.freeze([
   binding("longitude_events", "count-fill", true),
   binding("longitude_stations", "count-fill", true),
   binding("longitude_difference_events", "count-fill", true),
+  binding("celestial_capabilities", "count-fill", true),
+  binding("celestial_model_identities", "count-fill", true),
+  binding("celestial_capability_text", "caller-string", true),
 ]);

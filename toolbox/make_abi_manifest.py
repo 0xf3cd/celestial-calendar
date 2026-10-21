@@ -258,6 +258,32 @@ LAYOUTS = {
       {"name": "direction_code", "type": "uint32_t", "offset": 48},
     ],
   },
+  "CapabilityRecordV1": {
+    "size": 40,
+    "alignment": 8,
+    "fields": [
+      {"name": "operation_code", "type": "uint32_t", "offset": 0},
+      {"name": "subject_code", "type": "uint32_t", "offset": 4},
+      {"name": "status_code", "type": "uint32_t", "offset": 8},
+      {"name": "source_code", "type": "uint32_t", "offset": 12},
+      {"name": "domain_start_jde_tt", "type": "double", "offset": 16},
+      {"name": "domain_end_jde_tt", "type": "double", "offset": 24},
+      {"name": "maximum_span_tt_days", "type": "uint32_t", "offset": 32},
+      {"name": "flags", "type": "uint32_t", "offset": 36},
+    ],
+  },
+  "ModelIdentityRecordV1": {
+    "size": 32,
+    "alignment": 8,
+    "fields": [
+      {"name": "kind_code", "type": "uint32_t", "offset": 0},
+      {"name": "identity_code", "type": "uint32_t", "offset": 4},
+      {"name": "status_code", "type": "uint32_t", "offset": 8},
+      {"name": "default_alias_code", "type": "uint32_t", "offset": 12},
+      {"name": "domain_start_jde_tt", "type": "double", "offset": 16},
+      {"name": "domain_end_jde_tt", "type": "double", "offset": 24},
+    ],
+  },
 }
 
 CHART_V1_CODES = {
@@ -599,6 +625,46 @@ EXPORTS = [
       "count": "event_count is non-null and always reports the total",
       "fill": "slots may be null only when slot_count=0; writes min(event_count, slot_count)",
       "zero": "zero written is legal for a count query or an empty result; failure is told apart by last_error",
+    },
+    "recording": True,
+  },
+  {
+    "name": "celestial_capabilities",
+    "signature": "uint32_t celestial_capabilities(uint32_t operation_code, uint32_t subject_code, uint32_t "
+    "*record_count, CapabilityRecordV1 *slots, uint32_t slot_count)",
+    "return": {"kind": "primitive", "type": "uint32_t"},
+    "protocol": {
+      "kind": "count-fill",
+      "count": "record_count is non-null and always reports the total",
+      "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)",
+      "zero": "zero written is legal for a count query; failure is told apart by last_error",
+      "provenance": "every bound derives from the operation's own defining constants (#357)",
+    },
+    "recording": True,
+  },
+  {
+    "name": "celestial_model_identities",
+    "signature": "uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *record_count, "
+    "ModelIdentityRecordV1 *slots, uint32_t slot_count)",
+    "return": {"kind": "primitive", "type": "uint32_t"},
+    "protocol": {
+      "kind": "count-fill",
+      "count": "record_count is non-null and always reports the total",
+      "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)",
+      "zero": "zero written is legal for a count query; failure is told apart by last_error",
+    },
+    "recording": True,
+  },
+  {
+    "name": "celestial_capability_text",
+    "signature": "uint32_t celestial_capability_text(uint32_t operation_code, uint32_t subject_code, char *buffer, "
+    "uint32_t capacity)",
+    "return": {"kind": "primitive", "type": "uint32_t"},
+    "protocol": {
+      "kind": "caller-string",
+      "size": "returns the required byte count excluding the null terminator; buffer may be null to size first",
+      "fill": "writes the text truncated and null-terminated when buffer is non-null and capacity is positive",
+      "lifetime": "the buffer is caller-owned; the text is produced on every call",
     },
     "recording": True,
   },

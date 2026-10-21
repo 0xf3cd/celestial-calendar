@@ -135,7 +135,7 @@ def compiled_layout(tmp_path_factory):
 def test_actual_header_manifest_and_declarations_against_compiled_c(compiled_layout):
   structs, layout = compiled_layout
   schema, measured = abi_layout.runtime_layout(abi_layout.load_abi())
-  assert len(structs) == len(schema) == 22
+  assert len(structs) == len(schema) == 24
   assert not abi_layout.compare_layouts(structs, schema, layout, measured=measured)
   manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
   for name, record in manifest["layouts"].items():
@@ -157,7 +157,7 @@ def test_real_declarations_import_without_a_native_library(monkeypatch):
   monkeypatch.setattr(ctypes, "CDLL", reject_load)
   before = {name for name in sys.modules if name.startswith("celestial_calendar")}
   module = abi_layout.load_abi()
-  assert len(module.STRUCT_TYPES) == 22 and len(module.BINDING_SPECS) == 33
+  assert len(module.STRUCT_TYPES) == 24 and len(module.BINDING_SPECS) == 36
   assert {name for name in sys.modules if name.startswith("celestial_calendar")} == before
   abi_layout.runtime_layout(module)
 
@@ -392,7 +392,7 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
   manifest = json.loads((ABI / "manifest.json").read_text(encoding="utf-8"))
   verifier.verify_record_layouts(manifest["layouts"], verifier.parse_header_layouts(header))
   exports = verifier.parse_header_exports(header)
-  assert len(exports) == 33 and len(manifest["exports"]) == 33
+  assert len(exports) == 36 and len(manifest["exports"]) == 36
   assert not export_surface.self_test_parser()
   assert export_surface.parse_declarations(header) == [(name, True) for name in exports]
   for entry in manifest["exports"]:
@@ -401,7 +401,7 @@ def test_native_static_witnesses_and_raw_inventory(native_verifier):
   assert manifest["chart_v1_codes"] == verifier.parse_chart_codes(header)
   source = (ROOT / "bindings/python/src/celestial_calendar/__init__.py").read_text(encoding="utf-8")
   writers = set(exports) - {"last_error"}
-  assert len(writers) == 32
+  assert len(writers) == 35
   verifier.verify_wrapper_recording(source, writers, writers)
   verifier.run_wrapper_mutation_self_test(source, writers, writers)
   raw = ast.parse((ABI / "raw_protocol.py").read_text(encoding="utf-8"))

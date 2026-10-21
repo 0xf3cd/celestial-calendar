@@ -27,6 +27,7 @@ def main() -> None:
     "consumer/golden_replay.py",
     "consumer/events_replay.py",
     "consumer/chart_snapshot.py",
+    "consumer/capabilities.py",
   )
   non_acceptance = {
     "run_all.py",

@@ -27,11 +27,15 @@ ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "is_leap",
   "jd_ut1",  # local_apparent_sidereal_time's parameter, quoted by its guard messages
   "jq_idx",
+  "kind_code",  # celestial_model_identities's parameter, quoted by its guard messages (#357)
   "new_value",
+  "operation_code",  # the capability exports' parameter, quoted by their guard messages (#357)
   "phase_kind",  # moon_phase_moments's parameter, quoted by its guard messages
+  "record_count",  # the capability exports' out-parameter, quoted by their guard messages (#357)
   "root_count",
   "second_target_code",  # longitude_difference_events's parameter, quoted by its guard messages
   "slot_count",
+  "subject_code",  # celestial_capabilities's parameter, quoted by its guard messages (#357)
   "target_code",  # longitude_events / longitude_stations's parameter, quoted by their guard messages
   "target_longitude_deg",  # longitude_events's parameter, quoted by its guard message
   "target_difference_deg",  # longitude_difference_events's parameter, quoted by its guard message

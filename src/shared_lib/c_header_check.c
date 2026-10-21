@@ -95,6 +95,48 @@ _Static_assert((sizeof(((ChartSnapshotV1*)0)->bodies) / sizeof(ChartBodyV1) == 1
                offsetof(ChartSnapshotV1, bodies[1]) - offsetof(ChartSnapshotV1, bodies[0]) == 40 &&
                offsetof(ChartSnapshotV1, bodies[13]) == 544) != 0, "ChartSnapshotV1 body array drifted");
 
+/* #357: the capability records; the selectors mirror the chart target order and Delta T codes. */
+_Static_assert(offsetof(CapabilityRecordV1, operation_code) == 0 && offsetof(CapabilityRecordV1, subject_code) == 4 &&
+               offsetof(CapabilityRecordV1, status_code) == 8 && offsetof(CapabilityRecordV1, source_code) == 12 &&
+               offsetof(CapabilityRecordV1, domain_start_jde_tt) == 16 && offsetof(CapabilityRecordV1, domain_end_jde_tt) == 24 &&
+               offsetof(CapabilityRecordV1, maximum_span_tt_days) == 32 && offsetof(CapabilityRecordV1, flags) == 36 &&
+               sizeof(CapabilityRecordV1) == 40 && _Alignof(CapabilityRecordV1) == 8, "CapabilityRecordV1 layout drifted");
+
+_Static_assert(offsetof(ModelIdentityRecordV1, kind_code) == 0 && offsetof(ModelIdentityRecordV1, identity_code) == 4 &&
+               offsetof(ModelIdentityRecordV1, status_code) == 8 && offsetof(ModelIdentityRecordV1, default_alias_code) == 12 &&
+               offsetof(ModelIdentityRecordV1, domain_start_jde_tt) == 16 && offsetof(ModelIdentityRecordV1, domain_end_jde_tt) == 24 &&
+               sizeof(ModelIdentityRecordV1) == 32 && _Alignof(ModelIdentityRecordV1) == 8,
+               "ModelIdentityRecordV1 layout drifted");
+
+_Static_assert(CAPABILITY_OPERATION_POSITION == 0 && CAPABILITY_OPERATION_LONGITUDE_RATE == 1 &&
+               CAPABILITY_OPERATION_EVENTS == 2 && CAPABILITY_OPERATION_HOUSES == 3 &&
+               CAPABILITY_OPERATION_MODEL_IDENTITY == 4, "Capability operation codes drifted");
+
+_Static_assert(CAPABILITY_STATUS_SOURCE_WINDOW == 0 && CAPABILITY_STATUS_IMPLEMENTATION_WINDOW == 1 &&
+               CAPABILITY_STATUS_UNBOUNDED_FINITE == 2, "Capability status codes drifted");
+
+_Static_assert(CAPABILITY_SOURCE_SUN_VSOP87D == 0 && CAPABILITY_SOURCE_MOON_ELP2000_82B_TRUNC == 1 &&
+               CAPABILITY_SOURCE_PLANET_VSOP87D == 2 && CAPABILITY_SOURCE_PLUTO_PLUTO95_APPARENT == 3 &&
+               CAPABILITY_SOURCE_NODE_MEAN == 4 && CAPABILITY_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM == 5,
+               "Capability source codes drifted");
+
+_Static_assert(MODEL_KIND_DELTA_T == 0 && MODEL_KIND_NUTATION == 1 && MODEL_KIND_POSITION_SOURCE == 2 &&
+               MODEL_STATUS_CURRENT == 0 && MODEL_STATUS_FROZEN == 1 &&
+               CHART_DELTA_T_MODEL_DEFAULT == 0, "Model identity codes drifted");
+
+/* The kind-internal identity ordinals are a separate code space from the CHART_* boundary codes:
+   Delta T algo5 is ordinal 4 here but CHART_DELTA_T_MODEL_ALGO5 is 5. */
+_Static_assert(MODEL_IDENTITY_DELTA_T_ALGO1 == 0 && MODEL_IDENTITY_DELTA_T_ALGO2 == 1 &&
+               MODEL_IDENTITY_DELTA_T_ALGO3 == 2 && MODEL_IDENTITY_DELTA_T_ALGO4 == 3 &&
+               MODEL_IDENTITY_DELTA_T_ALGO5 == 4 && MODEL_IDENTITY_NUTATION_MEEUS == 0 &&
+               MODEL_IDENTITY_NUTATION_IAU1980 == 1 && MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D == 0 &&
+               MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC == 1 &&
+               MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D == 2 &&
+               MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT == 3 &&
+               MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN == 4 &&
+               MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM == 5,
+               "Model identity ordinals drifted");
+
 _Static_assert((sizeof(((ChartHousesV1*)0)->cusps_deg) / sizeof(double) == 12 &&
                offsetof(ChartHousesV1, cusps_deg[1]) - offsetof(ChartHousesV1, cusps_deg[0]) == 8 &&
                offsetof(ChartHousesV1, cusps_deg[11]) == 120 &&
@@ -191,7 +233,21 @@ _Static_assert((_Generic(((LongitudeEventRecord*)0)->jde_tt, double: 1, default:
                 _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_b_deg, double: 1, default: 0) &&
                 _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_a_deg_per_tt_day, double: 1, default: 0) &&
                 _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_b_deg_per_tt_day, double: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->signed_difference_deg, double: 1, default: 0)) != 0,
+                _Generic(((LongitudeDifferenceEventRecord*)0)->signed_difference_deg, double: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->operation_code, uint32_t: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->subject_code, uint32_t: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->status_code, uint32_t: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->source_code, uint32_t: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->domain_start_jde_tt, double: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->maximum_span_tt_days, uint32_t: 1, default: 0) &&
+                _Generic(((CapabilityRecordV1*)0)->flags, uint32_t: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->kind_code, uint32_t: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->identity_code, uint32_t: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->status_code, uint32_t: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->default_alias_code, uint32_t: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->domain_start_jde_tt, double: 1, default: 0) &&
+                _Generic(((ModelIdentityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0)) != 0,
                "Event record field types drifted");
 
 /* Signature pins: every export's function type, so a signature drift fails this TU. */
@@ -324,3 +380,15 @@ _Static_assert(_Generic(&longitude_stations,
 _Static_assert(_Generic(&longitude_difference_events,
                uint32_t (*)(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count): 1,
                default: 0) != 0, "longitude_difference_events signature drifted");
+
+_Static_assert(_Generic(&celestial_capabilities,
+               uint32_t (*)(uint32_t operation_code, uint32_t subject_code, uint32_t *record_count, CapabilityRecordV1 *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "celestial_capabilities signature drifted");
+
+_Static_assert(_Generic(&celestial_model_identities,
+               uint32_t (*)(uint32_t kind_code, uint32_t *record_count, ModelIdentityRecordV1 *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "celestial_model_identities signature drifted");
+
+_Static_assert(_Generic(&celestial_capability_text,
+               uint32_t (*)(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity): 1,
+               default: 0) != 0, "celestial_capability_text signature drifted");

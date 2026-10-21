@@ -39,9 +39,23 @@ namespace astro::delta_t {
 /** @brief A Delta T algorithm. */
 enum class Model : uint8_t { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
 
+// Applicability boundaries in JDE(TT) for the capability identity registry (#357). The
+// decimal-year guards in each algo namespace are authoritative; these constants are the same
+// bounds translated to the JDE(TT) of the Gregorian year's first day (proleptic calendar,
+// astronomical year numbering, TT midnight). Algo2 and Algo5 publish no finite bound. Algo4's
+// guard stays on its frozen-exhibit literal 2035 (the provenance gate hashes that function).
+inline constexpr double ALGO1_START_JDE_TT = 260089.5;   // -4000-01-01, the JDE of algo1::MINIMUM_YEAR
+inline constexpr double ALGO3_END_JDE_TT = 2816787.5;    // 3000-01-01, the JDE of algo3::MAXIMUM_YEAR_EXCLUSIVE
+inline constexpr double ALGO4_END_JDE_TT = 2464328.5;    // 2035-01-01, the JDE of algo4's 2035 guard
+
 #pragma region Algorithm 1
 
 namespace algo1 {
+
+// The published table starts at year -4000; the guard below and the capability identity
+// registry (ALGO1_START_JDE_TT) both read this constant.
+inline constexpr double MINIMUM_YEAR = -4000.0;
+
 // Algo1 source: Xu Jianwei, 寿星万年历2008版(V1.3.2), dated 2008-08-31.
 // https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
 // Retained material boundary (R05): the source-derived coefficient block remains under its source
@@ -112,7 +126,7 @@ find_coefficients(const int32_t year) -> std::optional<
  * @note Frozen exhibit, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (not std::isfinite(year) or year < -4000) {
+  if (not std::isfinite(year) or year < MINIMUM_YEAR) {
     throw std::invalid_argument {
       std::vformat("Year {} is not supported by algorithm 1.", std::make_format_args(year))
     };
@@ -284,6 +298,10 @@ namespace algo2 {
 #pragma region Algorithm 3
 
 namespace algo3 {
+
+// The Eclipsewise polynomial is published below year 3000; the guard below and the capability
+// identity registry (ALGO3_END_JDE_TT) both read this constant.
+inline constexpr double MAXIMUM_YEAR_EXCLUSIVE = 3000.0;
 // Algo3 source: Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014).
 // The source credits the quadratic trend to Marc van der Sluys.
 // https://www.eclipsewise.com/help/deltatpoly2014.html
@@ -306,7 +324,7 @@ namespace algo3 {
  * @note Frozen exhibit, retained for historical comparison.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
-  if (not std::isfinite(year) or year >= 3000) {
+  if (not std::isfinite(year) or year >= MAXIMUM_YEAR_EXCLUSIVE) {
     throw std::invalid_argument {
       std::vformat("Year {} is not supported by algorithm 3.", std::make_format_args(year))
     };

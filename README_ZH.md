@@ -235,6 +235,10 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为
   `longitude_events`／`longitude_stations`／`longitude_difference_events`，在 Python 为
   [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。JavaScript 不暴露事件 API。
+- 操作能力与模型身份（每个公开操作接受什么输入、结果背后站着哪些模型）：C ABI 为
+  `celestial_capabilities`／`celestial_model_identities`／`celestial_capability_text`，Python 为
+  [`capabilities` 等](bindings/python/README_ZH.md#capabilities)，C++ 为
+  [`capability.hpp`](src/astro/capability.hpp)。JavaScript 不暴露能力 API。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
