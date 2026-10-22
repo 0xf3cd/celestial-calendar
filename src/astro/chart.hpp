@@ -117,8 +117,10 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
 
 // Wraps a Delta T conversion failure with the model-domain context; only Algo4's domain can cut
 // the accepted civil range, so the wrapper rethrows any other failure untouched.
-inline auto with_delta_t_domain_context(const astro::delta_t::Model model, const auto& convert)
-  -> decltype(convert()) {
+inline auto with_delta_t_domain_context(
+  const astro::delta_t::Model model,
+  const auto& convert
+) -> decltype(convert()) {
   try {
     return convert();
   } catch (const std::invalid_argument& error) {

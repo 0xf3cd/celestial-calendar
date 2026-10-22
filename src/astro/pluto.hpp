@@ -124,8 +124,7 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
 }
 
 /** @brief Evaluate Pluto's geometric heliocentric J2000 ecliptic position. */
-[[nodiscard]] inline auto heliocentric_j2000(const double jde_tt)
-  -> astro::toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto heliocentric_j2000(const double jde_tt) -> astro::toolbox::SphericalCoordinate {
   validate_raw_jde(jde_tt);
   const double T = astro::julian_day::jde_to_jc(jde_tt);
 

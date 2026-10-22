@@ -17,6 +17,72 @@ from .env import Tool, check_tool
 from .utils import run_cmd, yellow_print, red_print, green_print
 
 
+def trailing_return_breaks(source: str) -> list[int]:
+  """Find named auto signatures whose trailing return is split from the closing parenthesis."""
+  literals_and_comments = re.compile(
+    r'(?:(?:u8|u|U|L)?R"(?P<delimiter>[^\s()\\]{0,16})\(.*?\)(?P=delimiter)")'
+    r'|"(?:\\.|[^"\\])*"'
+    r"|(?<![\w'])(?:u8|u|U|L)?'(?:\\.|[^'\\\n])+'"
+    r"|/\*.*?\*/|//[^\n]*",
+    re.DOTALL,
+  )
+  code = literals_and_comments.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), source)
+  declarations = re.compile(r"\bauto\s+(?:\w+::)*(?:operator\s*(?:\(\)|\[\]|[+*/%<>=!&|^~\-]+)|\w+)\s*\(")
+  suffixes = re.compile(r"\s*(const\b|volatile\b|&&?|noexcept\b|->)")
+
+  def closing_parenthesis(start: int) -> int | None:
+    depth = 0
+    for index in range(start, len(code)):
+      if code[index] == "(":
+        depth += 1
+      elif code[index] == ")":
+        depth -= 1
+        if depth == 0:
+          return index + 1
+    return None
+
+  broken: set[int] = set()
+  for declaration in declarations.finditer(code):
+    end = closing_parenthesis(declaration.end() - 1)
+    if end is None:
+      continue
+    cursor = end
+    while suffix := suffixes.match(code, cursor):
+      token = suffix.group(1)
+      if token == "->":
+        arrow = suffix.start(1)
+        if "\n" in code[end:arrow]:
+          broken.add(code.count("\n", 0, arrow) + 1)
+        break
+      cursor = suffix.end()
+      if token == "noexcept":
+        while cursor < len(code) and code[cursor].isspace():
+          cursor += 1
+        if code[cursor : cursor + 1] == "(":
+          close = closing_parenthesis(cursor)
+          if close is None:
+            break
+          cursor = close
+  return sorted(broken)
+
+
+def check_cpp_signature_layout() -> int:
+  """Check project-authored C++ signatures without formatting unrelated code."""
+  root = paths.proj_root()
+  failures = []
+  for source in sorted((root / "src").rglob("*")):
+    if source.suffix not in (".hpp", ".h", ".cpp") or source.is_relative_to(root / "src/test/provenance"):
+      continue
+    for line in trailing_return_breaks(source.read_text(encoding="utf-8")):
+      failures.append(f"{source.relative_to(root)}:{line}: keep the trailing return type with the closing parenthesis")
+  if failures:
+    for failure in failures:
+      red_print(failure)
+    return 1
+  green_print("C++ signature layout passed")
+  return 0
+
+
 def run_ruff() -> int:
   """Run ruff on the project source code."""
   print("#" * 60)
@@ -42,8 +108,11 @@ def run_ruff() -> int:
 
 
 def run_clang_tidy() -> int:
-  """Run clang-tidy on the project CPP source code."""
+  """Check C++ signature layout, then run clang-tidy."""
   print("#" * 60)
+
+  if check_cpp_signature_layout() != 0:
+    return 1
 
   # `CLANG_TIDY` names the binary, never the version: the version is pinned in the workflow
   # (gotcha 9) and a copy here would be a second one with no gate reconciling them. The default

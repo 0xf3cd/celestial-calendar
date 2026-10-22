@@ -269,8 +269,8 @@ inline constexpr std::array<NutationCoeffs, 106> IAU1980_NUTATION_COEFFS {{
 // NOLINTEND(modernize-use-designated-initializers)
 
 
-/** @brief Specify which model to use when calculating Earth's nutation. */
-enum class Model : uint8_t { MEEUS, IAU_1980 };
+/** @brief Specify Earth's nutation model; values are stable model identity codes. */
+enum class Model : uint8_t { MEEUS = 0, IAU_1980 = 1 };
 
 /** @brief Find the nutation coefficients for the given model. */
 [[nodiscard]] inline auto find_model(const Model model) -> std::span<const NutationCoeffs> {

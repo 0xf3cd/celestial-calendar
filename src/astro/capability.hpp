@@ -20,6 +20,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "delta_t.hpp"
@@ -43,10 +44,10 @@ namespace astro::capability {
 
 /** @brief A describable operation. */
 enum class Operation : uint8_t {
-  POSITION,
-  LONGITUDE_RATE,
-  EVENTS,
-  HOUSES,
+  POSITION = 0,
+  LONGITUDE_RATE = 1,
+  EVENTS = 2,
+  HOUSES = 3,
 };
 
 /**
@@ -56,32 +57,32 @@ enum class Operation : uint8_t {
  *       capability layer does not turn domains into precision promises.
  */
 enum class Status : uint8_t {
-  SOURCE_WINDOW,         ///< The source data/method publishes this window.
-  IMPLEMENTATION_WINDOW, ///< The project selected this window (rate working range, node domain).
-  UNBOUNDED_FINITE,      ///< No explicit JDE bound; only finiteness is checked.
+  SOURCE_WINDOW = 0,         ///< The source data/method publishes this window.
+  IMPLEMENTATION_WINDOW = 1, ///< The project selected this window (rate working range, node domain).
+  UNBOUNDED_FINITE = 2,      ///< No explicit JDE bound; only finiteness is checked.
 };
 
 /** @brief Stable identity of a position computation, per target (#357). */
 enum class PositionSource : uint8_t {
-  SUN_VSOP87D,
-  MOON_ELP2000_82B_TRUNC,
-  PLANET_VSOP87D,
-  PLUTO_PLUTO95_APPARENT,
-  NODE_MEAN,
-  NODE_TRUE_MEEUS_FIVE_TERM, ///< The Meeus five-term approximation; not an osculating node.
+  SUN_VSOP87D = 0,
+  MOON_ELP2000_82B_TRUNC = 1,
+  PLANET_VSOP87D = 2,
+  PLUTO_PLUTO95_APPARENT = 3,
+  NODE_MEAN = 4,
+  NODE_TRUE_MEEUS_FIVE_TERM = 5, ///< The Meeus five-term approximation; not an osculating node.
 };
 
 /** @brief Model family for the identity registry. */
 enum class ModelKind : uint8_t {
-  DELTA_T,
-  NUTATION,
-  POSITION_SOURCE,
+  DELTA_T = 0,
+  NUTATION = 1,
+  POSITION_SOURCE = 2,
 };
 
 /** @brief Lifecycle status of a registered model. */
 enum class ModelStatus : uint8_t {
-  CURRENT,
-  FROZEN,
+  CURRENT = 0,
+  FROZEN = 1,
 };
 
 /** @brief One operation's accepted-input description for one subject. */
@@ -106,19 +107,36 @@ struct ModelIdentity {
   double domain_end_jde_tt;
 };
 
+/** @brief Delta T input selectors, distinct from the resolved model's identity code. */
+enum class DeltaTSelector : uint32_t { // NOLINT(performance-enum-size) -- preserve unknown uint32_t input codes during validation.
+  DEFAULT = 0,
+  ALGO1 = 1,
+  ALGO2 = 2,
+  ALGO3 = 3,
+  ALGO4 = 4,
+  ALGO5 = 5,
+};
+
+/** @brief Nutation input selectors, distinct from the resolved model's identity code. */
+enum class NutationSelector : uint32_t { // NOLINT(performance-enum-size) -- preserve unknown uint32_t input codes during validation.
+  DEFAULT = 0,
+  MEEUS = 1,
+  IAU_1980 = 2,
+};
+
 /** @brief The C-boundary Delta T default: code 0 resolves to Algo5 (celestial.h CHART_DELTA_T_MODEL_*). */
-inline constexpr uint32_t DEFAULT_DELTA_T_CODE = 0;
+inline constexpr uint32_t DEFAULT_DELTA_T_CODE = std::to_underlying(DeltaTSelector::DEFAULT);
 
 /** @brief The C-boundary nutation default: code 0 resolves to IAU 1980, matching house::calculate. */
-inline constexpr uint32_t DEFAULT_NUTATION_CODE = 0;
+inline constexpr uint32_t DEFAULT_NUTATION_CODE = std::to_underlying(NutationSelector::DEFAULT);
 
 /** @brief Resolve a boundary nutation code to a model; DEFAULT (0) selects IAU 1980. */
 [[nodiscard]] constexpr auto resolve_nutation_code(const uint32_t code) -> std::optional<astro::earth::nutation::Model> {
   using enum astro::earth::nutation::Model;
-  switch (code) {
-    case DEFAULT_NUTATION_CODE: return IAU_1980;
-    case 1: return MEEUS;
-    case 2: return IAU_1980;
+  switch (static_cast<NutationSelector>(code)) {
+    case NutationSelector::DEFAULT: return IAU_1980;
+    case NutationSelector::MEEUS: return MEEUS;
+    case NutationSelector::IAU_1980: return IAU_1980;
     default: return std::nullopt;
   }
 }
@@ -126,13 +144,13 @@ inline constexpr uint32_t DEFAULT_NUTATION_CODE = 0;
 /** @brief Resolve a boundary Delta T code to a model; DEFAULT (0) selects Algo5. */
 [[nodiscard]] constexpr auto resolve_delta_t_code(const uint32_t code) -> std::optional<astro::delta_t::Model> {
   using enum astro::delta_t::Model;
-  switch (code) {
-    case DEFAULT_DELTA_T_CODE: return ALGO5;
-    case 1: return ALGO1;
-    case 2: return ALGO2;
-    case 3: return ALGO3;
-    case 4: return ALGO4;
-    case 5: return ALGO5;
+  switch (static_cast<DeltaTSelector>(code)) {
+    case DeltaTSelector::DEFAULT: return ALGO5;
+    case DeltaTSelector::ALGO1: return ALGO1;
+    case DeltaTSelector::ALGO2: return ALGO2;
+    case DeltaTSelector::ALGO3: return ALGO3;
+    case DeltaTSelector::ALGO4: return ALGO4;
+    case DeltaTSelector::ALGO5: return ALGO5;
     default: return std::nullopt;
   }
 }
@@ -283,7 +301,7 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
   // Each model's applicability is owned by delta_t.hpp; algo2 and algo5 publish no finite bound.
   const std::array models = { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
   for (const auto model : models) {
-    const auto code = static_cast<uint8_t>(model);
+    const auto code = std::to_underlying(model);
     const double start = model == ALGO1 ? astro::delta_t::ALGO1_START_JDE_TT : unbounded;
     const double end = [&] {
       if (model == ALGO3) {
@@ -303,7 +321,7 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
   const std::array nutations = { MEEUS, IAU_1980 };
   for (const auto model : nutations) {
     identities.push_back({ .kind = NUTATION,
-                           .identity_code = static_cast<uint8_t>(model),
+                           .identity_code = std::to_underlying(model),
                            .status = CURRENT,
                            .default_alias_code = NO_ALIAS,
                            .domain_start_jde_tt = unbounded,
@@ -324,7 +342,7 @@ inline constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
       end = lunar_node::END_JDE_TT;
     }
     identities.push_back({ .kind = POSITION_SOURCE,
-                           .identity_code = static_cast<uint8_t>(source),
+                           .identity_code = std::to_underlying(source),
                            .status = CURRENT,
                            .default_alias_code = NO_ALIAS,
                            .domain_start_jde_tt = start,
@@ -402,8 +420,9 @@ inline constexpr std::array<const char*, 14> COVERAGE_PROSE = {
 
 [[nodiscard]] constexpr auto delta_t_provenance(const uint8_t identity_code) -> const char* {
   switch (identity_code) {
-    case 4: return "trained in AstroTime-Analysis (algo5.py) and refreshed by the grant/record ritual";
-    case 3: return "USNO-prediction linear blend (#64)";
+    case std::to_underlying(astro::delta_t::Model::ALGO5):
+      return "trained in AstroTime-Analysis (algo5.py) and refreshed by the grant/record ritual";
+    case std::to_underlying(astro::delta_t::Model::ALGO4): return "USNO-prediction linear blend (#64)";
     default: return "frozen exhibit coefficients";
   }
 }

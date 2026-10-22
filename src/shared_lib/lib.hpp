@@ -123,8 +123,10 @@ auto set_unknown_error(std::string_view operation) noexcept -> void;
 
 /** @brief Translate all exceptions from a C export to its zero-initialized failure sentinel. */
 template <typename Function>
-[[nodiscard]] inline auto wrap_export(const std::string_view operation, Function&& function) noexcept
-  -> std::invoke_result_t<Function> {
+[[nodiscard]] inline auto wrap_export(
+  const std::string_view operation,
+  Function&& function
+) noexcept -> std::invoke_result_t<Function> {
   using Result = std::invoke_result_t<Function>;
 
   clear_last_error();

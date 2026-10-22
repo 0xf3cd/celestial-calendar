@@ -116,6 +116,33 @@ def main() -> None:
   assert meeus.nutation_identity is celestial.NutationModel.MEEUS
   assert meeus.houses.ascendant_deg != houses.houses.ascendant_deg
 
+  # Input selectors and resolved identities use different code spaces.
+  delta_t_cases = (
+    (celestial.DeltaTModel.DEFAULT, "algo5"),
+    (celestial.DeltaTModel.ALGO1, "algo1"),
+    (celestial.DeltaTModel.ALGO2, "algo2"),
+    (celestial.DeltaTModel.ALGO3, "algo3"),
+    (celestial.DeltaTModel.ALGO4, "algo4"),
+    (celestial.DeltaTModel.ALGO5, "algo5"),
+  )
+  nutation_cases = (
+    (celestial.NutationModel.DEFAULT, celestial.NutationModel.IAU_1980),
+    (celestial.NutationModel.MEEUS, celestial.NutationModel.MEEUS),
+    (celestial.NutationModel.IAU_1980, celestial.NutationModel.IAU_1980),
+  )
+  for delta_t_model, delta_t_identity in delta_t_cases:
+    for nutation_model, nutation_identity in nutation_cases:
+      result = celestial.house_query(
+        civil,
+        celestial.CivilScale.UT1,
+        location,
+        celestial.HouseSystem.EQUAL,
+        delta_t_model=delta_t_model,
+        nutation_model=nutation_model,
+      )
+      assert result.delta_t_identity == delta_t_identity
+      assert result.nutation_identity is nutation_identity
+
   # A polar Placidus failure leaves positions untouched.
   raises(
     celestial.CelestialError,

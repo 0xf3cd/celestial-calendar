@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <format>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "lib.hpp"
@@ -101,7 +102,7 @@ auto position_query_v1(
         .longitude_deg = coordinate.longitude.deg(),
         .latitude_deg = coordinate.latitude.deg(),
         .distance_au = coordinate.distance.has_value() ? coordinate.distance->au() : 0.0,
-        .source_code = static_cast<uint32_t>(astro::capability::position_source_of(target)),
+        .source_code = std::to_underlying(astro::capability::position_source_of(target)),
         .flags = 0,
       });
     }
@@ -155,8 +156,8 @@ auto house_query_v1(
     auto result = HouseQueryResultV1 {
       .valid = true,
       .house_system_code = house_system_code,
-      .delta_t_identity_code = static_cast<uint32_t>(*delta_t_model),
-      .nutation_identity_code = static_cast<uint32_t>(*nutation_model),
+      .delta_t_identity_code = std::to_underlying(*delta_t_model),
+      .nutation_identity_code = std::to_underlying(*nutation_model),
       .flags = 0,
       .jd_ut1 = times.jd_ut1,
       .jde_tt = times.jde_tt,
