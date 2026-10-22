@@ -155,6 +155,10 @@ TEST(Capability, DefaultAliasResolvesLikeTheBoundarySwitch) {
   }};
   for (const auto& [selector, model] : cases) {
     EXPECT_EQ(resolve_delta_t_code(std::to_underlying(selector)), model);
+    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
+      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
+      EXPECT_EQ(resolve_delta_t_code(code), std::nullopt);
+    }
   }
   EXPECT_EQ(DEFAULT_DELTA_T_CODE, std::to_underlying(DeltaTSelector::DEFAULT));
   for (const uint32_t code : { uint32_t { 6 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {
@@ -171,6 +175,10 @@ TEST(Capability, NutationSelectorsResolveToModelIdentities) {
   }};
   for (const auto& [selector, model] : cases) {
     EXPECT_EQ(resolve_nutation_code(std::to_underlying(selector)), model);
+    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
+      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
+      EXPECT_EQ(resolve_nutation_code(code), std::nullopt);
+    }
   }
   EXPECT_EQ(DEFAULT_NUTATION_CODE, std::to_underlying(NutationSelector::DEFAULT));
   for (const uint32_t code : { uint32_t { 3 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {

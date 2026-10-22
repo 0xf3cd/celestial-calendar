@@ -23,6 +23,11 @@ from automation.utils import ProcReturn
     "auto Type::f() const volatile && -> Result;",
     "auto operator()(const A& a) -> Result;",
     "auto operator<=>(const A& a) const -> Result;",
+    "auto operator co_await() -> Result;",
+    "auto operator,(const A& a) -> Result;",
+    'constexpr auto operator""_deg(long double x) -> Angle;',
+    'constexpr auto operator "" _deg(long double x) -> Angle;',
+    "#define PROBE_DECL auto probe_fn() -> int\nPROBE_DECL { return 0; }",
     "auto f() /* explanation */ -> Result;",
     "// auto f()\n//   -> Result {}\n",
     "/* auto f()\n  -> Result {} */",
@@ -52,6 +57,11 @@ def test_cpp_signature_layout_accepts_allowed_forms_and_unrelated_arrows(source)
     ("auto Type::f() const volatile &&\n  -> Result;", [2]),
     ("auto operator()(const A& a)\n  -> Result;", [2]),
     ("auto operator<=>(const A& a) const\n  -> Result;", [2]),
+    ("auto operator co_await()\n  -> Result;", [2]),
+    ("auto operator,(const A& a)\n  -> Result;", [2]),
+    ('constexpr auto operator""_deg(long double x)\n  -> Angle;', [2]),
+    ('constexpr auto operator "" _deg(long double x)\n  -> Angle;', [2]),
+    ("#define PROBE_DECL auto probe_fn() \\\n  -> int\nPROBE_DECL { return 0; }", [2]),
     ("auto f() // explanation\n  -> Result;", [2]),
     ("auto f() /* explanation\n */ -> Result;", [2]),
     ("auto f()\n  -> Result;\nauto g()\n  -> Other;", [2, 4]),
@@ -65,6 +75,7 @@ def test_cpp_signature_layout_rejects_detached_trailing_returns(source, lines):
 def test_cpp_signature_layout_gate_reports_source_and_skips_frozen_provenance(monkeypatch, tmp_path, capsys):
   source = tmp_path / "src"
   source.mkdir()
+  (source / "directory.hpp").mkdir()
   (source / "example.hpp").write_text("auto f()\n  -> Result;", encoding="utf-8")
   frozen = source / "test/provenance/example.hpp"
   frozen.parent.mkdir(parents=True)
@@ -77,6 +88,24 @@ def test_cpp_signature_layout_gate_reports_source_and_skips_frozen_provenance(mo
   assert "retained" not in output and "provenance" not in output
 
   (source / "example.hpp").write_text("auto f() -> Result;", encoding="utf-8")
+  assert linter.check_cpp_signature_layout() == 0
+
+
+def test_cpp_signature_layout_checks_documentation_examples_but_not_build_outputs(monkeypatch, tmp_path, capsys):
+  example = tmp_path / "docs/examples/chart_snapshot/fixture.cpp"
+  example.parent.mkdir(parents=True)
+  example.write_text("auto fixture()\n  -> Result;", encoding="utf-8")
+  generated = tmp_path / "build/generated.hpp"
+  generated.parent.mkdir()
+  generated.write_text("auto generated()\n  -> Result;", encoding="utf-8")
+  monkeypatch.setattr(linter.paths, "proj_root", lambda: tmp_path)
+
+  assert linter.check_cpp_signature_layout() == 1
+  output = capsys.readouterr().out
+  assert "docs/examples/chart_snapshot/fixture.cpp:2:" in output
+  assert "generated.hpp" not in output
+
+  example.write_text("auto fixture() -> Result;", encoding="utf-8")
   assert linter.check_cpp_signature_layout() == 0
 
 

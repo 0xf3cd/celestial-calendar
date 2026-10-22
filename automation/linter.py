@@ -27,7 +27,10 @@ def trailing_return_breaks(source: str) -> list[int]:
     re.DOTALL,
   )
   code = literals_and_comments.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), source)
-  declarations = re.compile(r"\bauto\s+(?:\w+::)*(?:operator\s*(?:\(\)|\[\]|[+*/%<>=!&|^~\-]+)|\w+)\s*\(")
+  code = re.sub(r"\\(?=\r?\n)", " ", code)
+  declarations = re.compile(
+    r"\bauto\s+(?:\w+::)*(?:operator\s*(?:co_await\b|_\w+|\(\)|\[\]|[,+*/%<>=!&|^~\-]+)|\w+)\s*\("
+  )
   suffixes = re.compile(r"\s*(const\b|volatile\b|&&?|noexcept\b|->)")
 
   def closing_parenthesis(start: int) -> int | None:
@@ -70,11 +73,18 @@ def check_cpp_signature_layout() -> int:
   """Check project-authored C++ signatures without formatting unrelated code."""
   root = paths.proj_root()
   failures = []
-  for source in sorted((root / "src").rglob("*")):
-    if source.suffix not in (".hpp", ".h", ".cpp") or source.is_relative_to(root / "src/test/provenance"):
+  sources = (source for directory in (root / "src", root / "docs/examples") for source in directory.rglob("*"))
+  for source in sorted(sources):
+    if (
+      not source.is_file()
+      or source.suffix not in (".hpp", ".h", ".cpp")
+      or source.is_relative_to(root / "src/test/provenance")
+    ):
       continue
     for line in trailing_return_breaks(source.read_text(encoding="utf-8")):
-      failures.append(f"{source.relative_to(root)}:{line}: keep the trailing return type with the closing parenthesis")
+      failures.append(
+        f"{source.relative_to(root).as_posix()}:{line}: keep the trailing return type with the closing parenthesis"
+      )
   if failures:
     for failure in failures:
       red_print(failure)

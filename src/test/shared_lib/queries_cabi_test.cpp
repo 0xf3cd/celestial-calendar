@@ -13,7 +13,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <span>
+#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -190,13 +192,23 @@ TEST(QueriesCAbi, PositionSucceedsWhenHouseQueryFails) {
 }
 
 TEST(QueriesCAbi, HouseQueryRejectsUnknownCodes) {
-  const auto bad_delta_t = house_query_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, 9,
-                                          HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_EQUAL);
-  EXPECT_FALSE(bad_delta_t.valid);
-  EXPECT_STRNE(last_error(), "");
-  const auto bad_nutation = house_query_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, CHART_DELTA_T_MODEL_DEFAULT,
-                                           9, 51.5, 0.0, CHART_HOUSE_SYSTEM_EQUAL);
-  EXPECT_FALSE(bad_nutation.valid);
+  for (const uint32_t code : {
+    uint32_t { 9 }, uint32_t { 256 }, uint32_t { 257 }, uint32_t { 65536 }, uint32_t { 65537 },
+    uint32_t { 16777216 }, uint32_t { 16777217 }, uint32_t { 0x10000001 }, std::numeric_limits<uint32_t>::max()
+  }) {
+    const auto bad_delta_t = house_query_v1(
+      2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, code,
+      HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_EQUAL
+    );
+    EXPECT_FALSE(bad_delta_t.valid);
+    EXPECT_NE(std::string { last_error() }.find("delta_t_model_code"), std::string::npos);
+    const auto bad_nutation = house_query_v1(
+      2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, CHART_DELTA_T_MODEL_DEFAULT,
+      code, 51.5, 0.0, CHART_HOUSE_SYSTEM_EQUAL
+    );
+    EXPECT_FALSE(bad_nutation.valid);
+    EXPECT_NE(std::string { last_error() }.find("nutation_model_code"), std::string::npos);
+  }
 }
 
 } // namespace test
