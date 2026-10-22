@@ -29,7 +29,8 @@ def trailing_return_breaks(source: str) -> list[int]:
   code = literals_and_comments.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), source)
   code = re.sub(r"\\(?=\r?\n)", " ", code)
   declarations = re.compile(
-    r"\bauto\s+(?:\w+::)*(?:operator\s*(?:co_await\b|_\w+|\(\)|\[\]|[,+*/%<>=!&|^~\-]+)|\w+)\s*\("
+    r"\bauto\s+(?:\w+::)*(?:operator\s*"
+    r"(?:co_await\b|(?:new|delete)\b(?:\s*\[\s*\])?|_\w+|\(\)|\[\]|[,+*/%<>=!&|^~\-]+)|\w+)\s*\("
   )
   suffixes = re.compile(r"\s*(const\b|volatile\b|&&?|noexcept\b|->)")
 
