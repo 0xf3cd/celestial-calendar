@@ -347,7 +347,7 @@ try {
     assert(angle >= 0.0 && angle < 360.0);
   }
   // The snapshot joint window does not apply: 1885 resolves.
-  const earlyHouse = M._house_query_v1(1885, 1, 1, 0.0, 1, 5, 1, 51.5, 0.0, 0);
+  const earlyHouse = rawSret("house_query_v1", [1885, 1, 1, 0.0, 1, 5, 1, 51.5, 0.0, 0]);
   assert.equal(earlyHouse.valid, true);
   assert(earlyHouse.jde_tt < 2409543.875);
   assert.equal(earlyHouse.nutation_identity_code, 0); // MEEUS
