@@ -185,3 +185,34 @@ def test_kind_internal_identity_ordinals_are_pinned() -> None:
   # The cross-language consumer asserts the pair, not a bare code: algo5 is (DELTA_T, 4).
   consumer = (REPO_ROOT / "bindings/python/test/consumer/capabilities.py").read_text(encoding="utf-8")
   assert "identity_code) == (celestial.ModelKind.DELTA_T, 4)" in consumer
+
+
+def test_house_nutation_model_codes_match_python() -> None:
+  """The house query's nutation selector: C macros, C++ resolver and Python table are one table.
+
+  DEFAULT (0) follows the C++ house operation's default IAU 1980; the selector values are
+  pinned here so a drift breaks loudly instead of silently selecting another model (#355).
+  """
+  header = (REPO_ROOT / "src/shared_lib/celestial.h").read_text(encoding="utf-8")
+  found = {
+    name: int(value)
+    for name, value in re.findall(r"#define (HOUSE_NUTATION_MODEL_[A-Z0-9_]+)\s+UINT32_C\((\d+)\)", header)
+  }
+  assert found == {
+    "HOUSE_NUTATION_MODEL_DEFAULT": 0,
+    "HOUSE_NUTATION_MODEL_MEEUS": 1,
+    "HOUSE_NUTATION_MODEL_IAU_1980": 2,
+  }
+
+  core = (REPO_ROOT / "src/astro/capability.hpp").read_text(encoding="utf-8")
+  assert "DEFAULT_NUTATION_CODE" in core and "return IAU_1980;" in core
+
+  query = (REPO_ROOT / "bindings/python/src/celestial_calendar/query.py").read_text(encoding="utf-8")
+  table = re.search(r"_NUTATION_MODEL_CODE = \{(.*?)\}", query, re.DOTALL)
+  assert table is not None
+  assert "NutationModel.DEFAULT: 0" in table.group(1)
+  assert "NutationModel.MEEUS: 1" in table.group(1)
+  assert "NutationModel.IAU_1980: 2" in table.group(1)
+  # DEFAULT resolves to IAU 1980, matching the C++ house operation's default.
+  resolved = re.search(r"_NUTATION_MODEL_BY_CODE = \{(.*?)\}", query, re.DOTALL)
+  assert resolved is not None and "0: NutationModel.IAU_1980" in resolved.group(1)

@@ -34,9 +34,9 @@ from c_abi_schema import C_TO_CTYPES, parse_c_structs_text, split_field_type  # 
 HEADER = REPO / "src" / "shared_lib" / "celestial.h"
 SOURCE_DIR = REPO / "src" / "shared_lib"
 PYTHON_WRAPPERS = Path(_binding.__file__).with_name("__init__.py")
-EXPECTED_EXPORT_COUNT = 36
-EXPECTED_LAYOUT_COUNT = 24
-EXPECTED_RECORDING_COUNT = 35
+EXPECTED_EXPORT_COUNT = 38
+EXPECTED_LAYOUT_COUNT = 26
+EXPECTED_RECORDING_COUNT = 37
 
 # Compatibility names of the legacy private binding module.
 LEGACY_BINDING_NAMES = (
@@ -89,6 +89,13 @@ CTYPE_NAMES = {
   ctypes.POINTER(_abi.LongitudeDifferenceEventRecord): "LongitudeDifferenceEventRecord *",
   ctypes.POINTER(_abi.CapabilityRecordV1): "CapabilityRecordV1 *",
   ctypes.POINTER(_abi.ModelIdentityRecordV1): "ModelIdentityRecordV1 *",
+  ctypes.POINTER(_abi.PositionRecordV1): "PositionRecordV1 *",
+  ctypes.POINTER(_abi.HouseQueryResultV1): "HouseQueryResultV1 *",
+}
+
+# ctypes cannot spell pointer constness; these parameter positions are const in the C header.
+CONST_POINTER_PARAMETERS = {
+  "position_query_v1": {0},
 }
 
 
@@ -203,7 +210,11 @@ def signature_types(signature: str) -> tuple[str, list[str]]:
 def ctypes_types(name: str) -> tuple[str, list[str]]:
   """Return normalized C types from one ctypes declaration."""
   argtypes, restype = _binding.BINDING_SPECS[name]
-  return ctypes_type_name(restype), [ctypes_type_name(argtype) for argtype in argtypes]
+  const_positions = CONST_POINTER_PARAMETERS.get(name, set())
+  return ctypes_type_name(restype), [
+    f"const {ctypes_type_name(argtype)}" if index in const_positions else ctypes_type_name(argtype)
+    for index, argtype in enumerate(argtypes)
+  ]
 
 
 def function_body(sources: str, name: str) -> str:

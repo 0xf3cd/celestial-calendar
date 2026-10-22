@@ -182,6 +182,28 @@ Every bound derives from the operation's own defining constants, so these querie
 exactly what the computations they describe accept and reject — and a domain is an acceptance
 boundary, not an accuracy promise.
 
+## C Independent Position and House Queries
+
+`position_query_v1` evaluates the caller's selected targets at one finite JDE(TT) under the
+count+fill protocol (#355). Output records follow the caller's target order; duplicates, an empty
+selection and unknown codes are rejected before any position is computed, and one failed target
+fails the whole query — no partial list is ever returned. The query evaluates no rate stencil and
+applies no snapshot joint window: each target's provider window stands alone (see the POSITION
+capability records), so a subset succeeds where a complete snapshot rejects an excluded target's
+window. `PositionRecordV1` mirrors the chart body's field order; `source_code` carries the
+resolved position-source identity (`CAPABILITY_SOURCE_*`), and `POSITION_PRESENT_DISTANCE` marks
+the AU distance the nodes never carry.
+
+`house_query_v1` returns `HouseQueryResultV1` by value: house geometry at a civil instant with
+the snapshot's civil + scale + Delta T conversion but without the snapshot joint window, since
+the house operation carries no JDE window. `HOUSE_NUTATION_MODEL_*` selects the nutation model
+(DEFAULT follows the C++ house operation's default, IAU 1980), and the result records the
+resolved Delta T and nutation identity ordinals — never an unresolved DEFAULT code — so a later
+default change cannot rewrite what this result used (#357).
+
+The C++ entry points are `astro::chart::position` (the same dispatch the snapshot composes,
+now public) and `astro::chart::detail::resolve_times_for_houses` for the house conversion.
+
 ## Build This Reference
 
 To build this reference locally, follow

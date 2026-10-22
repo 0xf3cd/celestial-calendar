@@ -150,6 +150,12 @@ _SOURCE = {
   5: PositionSource.NODE_TRUE_MEEUS_FIVE_TERM,
 }
 
+
+def position_source(code: int) -> PositionSource | None:
+  """Resolve a CAPABILITY_SOURCE_* code; unknown codes return None."""
+  return _SOURCE.get(code)
+
+
 _KIND_CODE = {
   ModelKind.DELTA_T: 0,
   ModelKind.NUTATION: 1,

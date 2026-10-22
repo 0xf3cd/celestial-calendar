@@ -159,6 +159,11 @@ and model identities from C and Python ([`capabilities`](bindings/python/README.
 stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)
 for half-open ownership, numerical contacts and the floating-point premises.
 
+Selected-target apparent positions at one JDE(TT) instant and house geometry at a civil
+instant are available without a full snapshot, from C, Python and C++
+([`positions` / `house_query`](bindings/python/README.md#independent-queries)); neither
+carries the snapshot joint window, and both record the models they resolved (#355).
+
 <a id="c-abi"></a>
 ### C and FFI
 

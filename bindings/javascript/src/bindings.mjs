@@ -286,6 +286,33 @@ export const LAYOUTS = deepFreeze({
       { name: "domain_end_jde_tt", type: "double", offset: 24 },
     ],
   },
+  PositionRecordV1: {
+    size: 40,
+    alignment: 8,
+    fields: [
+      { name: "target_code", type: "uint32_t", offset: 0 },
+      { name: "present_fields", type: "uint32_t", offset: 4 },
+      { name: "longitude_deg", type: "double", offset: 8 },
+      { name: "latitude_deg", type: "double", offset: 16 },
+      { name: "distance_au", type: "double", offset: 24 },
+      { name: "source_code", type: "uint32_t", offset: 32 },
+      { name: "flags", type: "uint32_t", offset: 36 },
+    ],
+  },
+  HouseQueryResultV1: {
+    size: 168,
+    alignment: 8,
+    fields: [
+      { name: "valid", type: "bool", offset: 0 },
+      { name: "house_system_code", type: "uint32_t", offset: 4 },
+      { name: "delta_t_identity_code", type: "uint32_t", offset: 8 },
+      { name: "nutation_identity_code", type: "uint32_t", offset: 12 },
+      { name: "flags", type: "uint32_t", offset: 16 },
+      { name: "jd_ut1", type: "double", offset: 24 },
+      { name: "jde_tt", type: "double", offset: 32 },
+      { name: "houses", type: "ChartHousesV1", offset: 40 },
+    ],
+  },
 });
 
 // Internal metadata for the complete celestial.h surface. Package entry points consume
@@ -327,4 +354,6 @@ export const BINDINGS = Object.freeze([
   binding("celestial_capabilities", "count-fill", true),
   binding("celestial_model_identities", "count-fill", true),
   binding("celestial_capability_text", "caller-string", true),
+  binding("position_query_v1", "count-fill", true),
+  binding("house_query_v1", "sret:HouseQueryResultV1", true),
 ]);

@@ -12,6 +12,7 @@
 
 import ctypes as _ctypes
 import math as _math
+from collections.abc import Iterable as _Iterable
 from dataclasses import dataclass as _dataclass
 from datetime import date as _date
 from datetime import datetime as _datetime
@@ -23,6 +24,7 @@ from typing import TypeVar as _TypeVar
 
 from . import _binding, capability as _capability, chart as _chart
 from . import events as _events
+from . import query as _query
 from ._version import VERSION as __version__
 from .capability import CapabilityOperation as CapabilityOperation
 from .capability import CapabilityRecord as CapabilityRecord
@@ -40,6 +42,9 @@ from .chart import ChartTimes as ChartTimes
 from .chart import CivilScale as CivilScale
 from .chart import GeoLocation as GeoLocation
 from .chart import HouseSystem as HouseSystem
+from .query import HouseQueryResult as HouseQueryResult
+from .query import NutationModel as NutationModel
+from .query import Position as Position
 from .events import EventDirection as EventDirection
 from .events import EventTarget as EventTarget
 from .events import LongitudeDifferenceEvent as LongitudeDifferenceEvent
@@ -1037,6 +1042,142 @@ def capability_text(operation: CapabilityOperation, subject: int | CapabilitySub
   return buffer.value.decode("utf-8")
 
 
+def positions(
+  targets: _Iterable[ChartTarget],
+  jde_tt: float,
+) -> tuple[Position, ...]:
+  """Apparent geocentric positions of selected targets at one JDE(TT) instant (#355).
+
+  Only the selected targets are evaluated: no rate stencil and no snapshot joint window, so
+  a subset succeeds where a complete snapshot rejects an excluded target's window (Pluto and
+  the nodes publish provider windows — see `capabilities`). Output order follows `targets`.
+  Duplicates and an empty selection are rejected. Distances are AU where present.
+
+  Raises:
+    TypeError: If a target is not a declared ChartTarget member.
+    ValueError: If `targets` is empty or duplicated, or `jde_tt` is not a finite real.
+    CelestialError: If any target fails — the whole query fails with no partial result.
+  """
+  if isinstance(jde_tt, bool) or not isinstance(jde_tt, (int, float)):
+    raise TypeError("jde_tt must be a real number")
+  try:
+    jde_tt_value = _finite(float(jde_tt), "jde_tt")
+  except OverflowError as error:
+    raise ValueError("jde_tt must be a finite real number") from error
+
+  checked = tuple(_enum(target, ChartTarget, f"targets[{index}]") for index, target in enumerate(targets))
+  if not checked:
+    raise ValueError("targets must not be empty")
+  if len(set(checked)) != len(checked):
+    raise ValueError("targets must not contain duplicates")
+
+  selection = (_ctypes.c_uint32 * len(checked))(*(_chart._CHART_TARGET_CODE[target] for target in checked))
+
+  total = _ctypes.c_uint32()
+  written = _binding.call("position_query_v1", selection, len(checked), jde_tt_value, _ctypes.byref(total), None, 0)
+  detail = _binding.last_error_text()
+  if detail or written != 0:
+    raise _failure("positions", recording=True)
+  if total.value != len(checked):
+    raise CelestialError("positions", "Malformed native position count", recorded=False)
+
+  expected = total.value
+  records = (_binding.PositionRecordV1 * expected)()
+  fill_total = _ctypes.c_uint32()
+  written = _binding.call(
+    "position_query_v1", selection, len(checked), jde_tt_value, _ctypes.byref(fill_total), records, expected
+  )
+  detail = _binding.last_error_text()
+  if detail or written != expected or fill_total.value != expected:
+    raise _failure("positions", recording=True)
+  try:
+    return _query.decode_positions(records, checked)
+  except (AttributeError, TypeError, ValueError, OverflowError) as error:
+    raise CelestialError("positions", f"Malformed native position record: {error}", recorded=False) from error
+
+
+def house_query(
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  location: GeoLocation,
+  system: HouseSystem,
+  *,
+  delta_t_model: DeltaTModel = DeltaTModel.DEFAULT,
+  nutation_model: NutationModel = NutationModel.DEFAULT,
+) -> HouseQueryResult:
+  """House geometry at a civil instant, independent of any body evaluation (#355).
+
+  The conversion is the snapshot's civil + scale + Delta T path without the snapshot joint
+  window, so any civil instant the conversion resolves is accepted (civil years 1885-2099,
+  UTC from 1972-01-01). DEFAULT selects Algo5; the nutation DEFAULT follows the C++ house
+  operation's default (IAU 1980). The result records the resolved Delta T and nutation
+  identities, so a later DEFAULT change cannot rewrite what this result used (#357).
+  Placidus rejects polar geometry; every system rejects an Ascendant direction unresolved
+  at round-off.
+
+  Raises:
+    TypeError: If an input has the wrong record, enum or scalar type.
+    ValueError: If a raw civil or location value is invalid or non-finite.
+    CelestialError: If native calculation fails. There is no partial result.
+  """
+  checked_scale = _enum(scale, CivilScale, "scale")
+  checked_system = _enum(system, HouseSystem, "system")
+  checked_model = _enum(delta_t_model, DeltaTModel, "delta_t_model")
+  checked_nutation = _enum(nutation_model, NutationModel, "nutation_model")
+
+  if not isinstance(civil_dt, CivilDateTime):
+    raise TypeError("civil_dt must be a CivilDateTime")
+  year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
+  if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
+    raise TypeError("house query civil fields must be numbers, not enum members")
+  for name, number in (("year", year), ("month", month), ("day", day)):
+    if isinstance(number, bool) or not isinstance(number, int):
+      raise TypeError(f"civil_dt.{name} must be an integer")
+  year, month, day = _index(year), _index(month), _index(day)
+  _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
+  if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
+    raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
+  month = _integer(month, "civil_dt.month", 1, 12)
+  day = _integer(day, "civil_dt.day", 1, _gregorian_month_length(year, month))
+  try:
+    fraction = _ranged_float(fraction, "civil_dt.fraction", 0.0, 1.0, include_maximum=False)
+  except OverflowError as error:
+    raise ValueError("house query civil fraction must be a finite real number") from error
+
+  if not isinstance(location, GeoLocation):
+    raise TypeError("location must be a GeoLocation")
+  latitude_value, longitude_value = location.latitude_deg, location.longitude_deg
+  if any(isinstance(value, _Enum) for value in (latitude_value, longitude_value)):
+    raise TypeError("house query location must contain real numbers, not enum members")
+  try:
+    latitude = _finite(latitude_value, "location.latitude_deg")
+    longitude = _ranged_float(longitude_value, "location.longitude_deg", -180.0, 180.0)
+  except OverflowError as error:
+    raise ValueError("house query location must contain finite real numbers") from error
+  if not -90.0 < latitude < 90.0:
+    raise ValueError("location.latitude_deg must be in (-90, 90)")
+
+  result = _binding.call(
+    "house_query_v1",
+    year,
+    month,
+    day,
+    fraction,
+    _chart._CIVIL_SCALE_CODE[checked_scale],
+    _CHART_DELTA_T_MODEL[checked_model],
+    _query.nutation_model_code(checked_nutation),
+    latitude,
+    longitude,
+    _chart._HOUSE_SYSTEM_CODE[checked_system],
+  )
+
+  try:
+    _valid(result, "house_query")
+    return _query.decode_house_query(result, checked_system)
+  except (AttributeError, TypeError, ValueError, OverflowError) as error:
+    raise CelestialError("house_query", f"Malformed native house query record: {error}", recorded=False) from error
+
+
 __all__ = [
   "BodyState",
   "CapabilityOperation",
@@ -1055,6 +1196,7 @@ __all__ = [
   "EventTarget",
   "GeoLocation",
   "GregorianDate",
+  "HouseQueryResult",
   "HouseSystem",
   "Jieqi",
   "JieqiMoment",
@@ -1071,6 +1213,8 @@ __all__ = [
   "MoonCoordinate",
   "MoonIllumination",
   "MoonPhase",
+  "NutationModel",
+  "Position",
   "PositionSource",
   "StationEvent",
   "StationMotion",
@@ -1083,6 +1227,7 @@ __all__ = [
   "delta_t",
   "equation_of_time",
   "gregorian_to_lunar",
+  "house_query",
   "jde_to_ut1",
   "jieqi_moment",
   "jieqi_name",
@@ -1099,6 +1244,7 @@ __all__ = [
   "model_identities",
   "new_moons_after",
   "new_moons_in_year",
+  "positions",
   "set_log_verbosity",
   "sun_apparent_geocentric_coordinate",
   "sun_longitude_crossings",

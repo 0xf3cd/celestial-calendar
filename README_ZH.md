@@ -239,6 +239,12 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   `celestial_capabilities`／`celestial_model_identities`／`celestial_capability_text`，Python 为
   [`capabilities` 等](bindings/python/README_ZH.md#capabilities)，C++ 为
   [`capability.hpp`](src/astro/capability.hpp)。JavaScript 不暴露能力 API。
+- 独立位置与宫位查询：按调用方选择的任意目标子集在单一 JDE(TT) 取视地心黄道位置（不算
+  速率、不套快照联合窗口），以及民用时刻的宫位几何；C ABI 为
+  `position_query_v1`／`house_query_v1`，Python 为
+  [`positions`／`house_query`](bindings/python/README_ZH.md#independent-queries)，C++ 为
+  [`chart.hpp`](src/astro/chart.hpp) 的 `position` 与宫位换算。结果带解析后的模型身份（#355）。
+  JavaScript 不暴露这两个查询。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 只保证计算链可用，
   不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。

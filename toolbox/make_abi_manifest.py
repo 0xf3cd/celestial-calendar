@@ -284,6 +284,33 @@ LAYOUTS = {
       {"name": "domain_end_jde_tt", "type": "double", "offset": 24},
     ],
   },
+  "PositionRecordV1": {
+    "size": 40,
+    "alignment": 8,
+    "fields": [
+      {"name": "target_code", "type": "uint32_t", "offset": 0},
+      {"name": "present_fields", "type": "uint32_t", "offset": 4},
+      {"name": "longitude_deg", "type": "double", "offset": 8},
+      {"name": "latitude_deg", "type": "double", "offset": 16},
+      {"name": "distance_au", "type": "double", "offset": 24},
+      {"name": "source_code", "type": "uint32_t", "offset": 32},
+      {"name": "flags", "type": "uint32_t", "offset": 36},
+    ],
+  },
+  "HouseQueryResultV1": {
+    "size": 168,
+    "alignment": 8,
+    "fields": [
+      {"name": "valid", "type": "bool", "offset": 0},
+      {"name": "house_system_code", "type": "uint32_t", "offset": 4},
+      {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 8},
+      {"name": "nutation_identity_code", "type": "uint32_t", "offset": 12},
+      {"name": "flags", "type": "uint32_t", "offset": 16},
+      {"name": "jd_ut1", "type": "double", "offset": 24},
+      {"name": "jde_tt", "type": "double", "offset": 32},
+      {"name": "houses", "type": "ChartHousesV1", "offset": 40},
+    ],
+  },
 }
 
 CHART_V1_CODES = {
@@ -665,6 +692,39 @@ EXPORTS = [
       "size": "returns the required byte count excluding the null terminator; buffer may be null to size first",
       "fill": "writes the text truncated and null-terminated when buffer is non-null and capacity is positive",
       "lifetime": "the buffer is caller-owned; the text is produced on every call",
+    },
+    "recording": True,
+  },
+  {
+    "name": "position_query_v1",
+    "signature": "uint32_t position_query_v1(const uint32_t *target_codes, uint32_t target_count, double jde_tt, "
+    "uint32_t *record_count, PositionRecordV1 *slots, uint32_t slot_count)",
+    "return": {"kind": "primitive", "type": "uint32_t"},
+    "protocol": {
+      "kind": "count-fill",
+      "count": "record_count is non-null and always reports the total",
+      "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)",
+      "zero": "zero written is legal for a count query; failure is told apart by last_error",
+      "selection": "output records follow the caller's target order; duplicates, empty selections and unknown "
+      "codes are rejected, and one failed target fails the whole query (#355)",
+    },
+    "recording": True,
+  },
+  {
+    "name": "house_query_v1",
+    "signature": "HouseQueryResultV1 house_query_v1(int32_t year, uint32_t month, uint32_t day, double fraction, "
+    "uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, "
+    "double longitude_deg, uint32_t house_system_code)",
+    "return": {"kind": "struct", "layout": "HouseQueryResultV1"},
+    "protocol": {
+      "kind": "struct",
+      "zero": {
+        "python": "valid=false is failure; invalid payload and padding are not consumed",
+        "javascript": "valid=false is failure; invalid payload is not consumed",
+      },
+      "ownership": "by-value house geometry at one civil instant; the snapshot joint window does not apply",
+      "identity": "delta_t_identity_code and nutation_identity_code carry the resolved model ordinals, never "
+      "an unresolved DEFAULT code (#357)",
     },
     "recording": True,
   },

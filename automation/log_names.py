@@ -39,6 +39,11 @@ ALLOWED_NON_ENTRY_TOKENS: Final[Set[str]] = {
   "target_code",  # longitude_events / longitude_stations's parameter, quoted by their guard messages
   "target_longitude_deg",  # longitude_events's parameter, quoted by its guard message
   "target_difference_deg",  # longitude_difference_events's parameter, quoted by its guard message
+  "target_codes",  # position_query_v1's selection parameter, quoted by its guard messages (#355)
+  "target_count",  # position_query_v1's selection size, quoted by its guard messages (#355)
+  "jde_tt",  # position_query_v1's time parameter, quoted by its guard messages (#355)
+  "delta_t_model_code",  # house_query_v1's selector, quoted by its guard messages (#355)
+  "nutation_model_code",  # house_query_v1's selector, quoted by its guard messages (#355)
 }
 
 # Only multi-word snake tokens are held: every entry point — and every function name a

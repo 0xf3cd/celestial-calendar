@@ -117,6 +117,29 @@ identities = celestial.model_identities()
 algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
 ```
 
+<a id="independent-queries"></a>
+### 独立位置与宫位查询
+
+`positions()` 只计算你选择的目标在单一 JDE(TT) 的视地心位置——不评估速率、不套快照联合窗口——所以
+目标子集能在完整快照拒绝被排除目标窗口的地方成功。`house_query()` 走快照的民用换算但不受联合窗口
+限制，并记录它实际解析出的模型身份。两者任一错误即整体失败，不存在半份结果。
+
+```python
+import celestial_calendar as celestial
+
+selected = celestial.positions(
+  [celestial.ChartTarget.PLUTO, celestial.ChartTarget.SUN],
+  2409543.5,  # Pluto's window start
+)
+for position in selected:
+  print(position.target, position.longitude_deg, position.latitude_deg, position.distance_au, position.source)
+
+location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
+civil = celestial.CivilDateTime(year=1885, month=1, day=1, fraction=0.0)  # before the snapshot window
+houses = celestial.house_query(civil, celestial.CivilScale.UT1, location, celestial.HouseSystem.PLACIDUS)
+print(houses.times, houses.houses.ascendant_deg, houses.delta_t_identity, houses.nutation_identity)
+```
+
 <a id="interval-longitude-events"></a>
 ### 区间黄经事件
 

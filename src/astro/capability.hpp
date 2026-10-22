@@ -109,6 +109,20 @@ struct ModelIdentity {
 /** @brief The C-boundary Delta T default: code 0 resolves to Algo5 (celestial.h CHART_DELTA_T_MODEL_*). */
 inline constexpr uint32_t DEFAULT_DELTA_T_CODE = 0;
 
+/** @brief The C-boundary nutation default: code 0 resolves to IAU 1980, matching house::calculate. */
+inline constexpr uint32_t DEFAULT_NUTATION_CODE = 0;
+
+/** @brief Resolve a boundary nutation code to a model; DEFAULT (0) selects IAU 1980. */
+[[nodiscard]] constexpr auto resolve_nutation_code(const uint32_t code) -> std::optional<astro::earth::nutation::Model> {
+  using enum astro::earth::nutation::Model;
+  switch (code) {
+    case DEFAULT_NUTATION_CODE: return IAU_1980;
+    case 1: return MEEUS;
+    case 2: return IAU_1980;
+    default: return std::nullopt;
+  }
+}
+
 /** @brief Resolve a boundary Delta T code to a model; DEFAULT (0) selects Algo5. */
 [[nodiscard]] constexpr auto resolve_delta_t_code(const uint32_t code) -> std::optional<astro::delta_t::Model> {
   using enum astro::delta_t::Model;

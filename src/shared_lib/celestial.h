@@ -783,6 +783,10 @@ CELESTIAL_API uint32_t longitude_difference_events(uint32_t first_target_code, u
 #define MODEL_STATUS_CURRENT UINT32_C(0)
 #define MODEL_STATUS_FROZEN  UINT32_C(1)
 
+#define HOUSE_NUTATION_MODEL_DEFAULT  UINT32_C(0)
+#define HOUSE_NUTATION_MODEL_MEEUS    UINT32_C(1)
+#define HOUSE_NUTATION_MODEL_IAU_1980 UINT32_C(2)
+
 /* Kind-internal identity ordinals, pinned for the identity registry. These are NOT the
  * CHART_* boundary selection codes: within MODEL_KIND_DELTA_T, ALGO5 is ordinal 4 while
  * CHART_DELTA_T_MODEL_ALGO5 is 5 and CHART_DELTA_T_MODEL_DEFAULT is 0. Compare the
@@ -885,6 +889,77 @@ CELESTIAL_API uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *
  *       and labels measured validation coverage as measured; it implies no unmeasured accuracy.
  */
 CELESTIAL_API uint32_t celestial_capability_text(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity);
+
+
+/* ---------- Independent Position and House Queries ---------- */
+
+#define POSITION_PRESENT_DISTANCE UINT32_C(2)
+
+/** @brief One selected target's apparent geocentric position in the true ecliptic of date. */
+typedef struct PositionRecordV1 {
+  uint32_t target_code;      /* A CHART_TARGET_* code; records follow the caller's target order. */
+  uint32_t present_fields;   /* POSITION_PRESENT_DISTANCE marks distance_au; latitude is always present. */
+  double longitude_deg;      /* In [0, 360). */
+  double latitude_deg;
+  double distance_au;        /* Present for Sun, Moon, planets and Pluto; absent (unused storage) for nodes. */
+  uint32_t source_code;      /* A CAPABILITY_SOURCE_* code: the resolved position-source identity. */
+  uint32_t flags;            /* Reserved; written 0, ignored on read. */
+} PositionRecordV1;
+
+/** @brief Independent house geometry with the resolved model identities (#357, #355). */
+typedef struct HouseQueryResultV1 {
+  bool valid;                       /* false on failure; the payload and padding then have no contract. */
+  uint32_t house_system_code;
+  uint32_t delta_t_identity_code;   /* A MODEL_IDENTITY_DELTA_T_* ordinal, never an unresolved DEFAULT code. */
+  uint32_t nutation_identity_code;  /* A MODEL_IDENTITY_NUTATION_* ordinal. */
+  uint32_t flags;                   /* Reserved; written 0, ignored on read. */
+  double jd_ut1;
+  double jde_tt;
+  ChartHousesV1 houses;
+} HouseQueryResultV1;
+
+/**
+ * @brief Selected-target apparent geocentric positions at one JDE(TT) instant.
+ * @param target_codes The caller's selection: an array of CHART_TARGET_* codes, allocated and
+ *                     freed by the caller; must not be null. Output records follow this order.
+ * @param target_count The selection size; must be positive, with no duplicated target.
+ * @param jde_tt A finite JDE(TT). Each target's provider window applies (Pluto and the nodes
+ *               publish one; see celestial_capabilities); no rate stencil is evaluated, so the
+ *               snapshot joint window and the rate reach do not constrain this query.
+ * @param record_count Where the total count of records is written. Must not be null.
+ *                     On every failure `*record_count` is set to 0.
+ * @param slots The output slots, allocated and freed by the caller; may be null only when
+ *              `slot_count` is 0 (a count-only pass).
+ * @param slot_count The count of slots.
+ * @returns How many slots are written, at most min(total, slot_count).
+ * @note One failed target fails the whole query: no partial list is ever returned, and the
+ *       legal empty outcome never occurs (target_count is positive). A subset query succeeds
+ *       where a complete snapshot would reject an excluded target's window.
+ */
+CELESTIAL_API uint32_t position_query_v1(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, PositionRecordV1 *slots, uint32_t slot_count);
+
+/**
+ * @brief House geometry at a civil instant, independent of any body evaluation.
+ * @param year Gregorian civil year in [1885, 2100) — the same civil contract as the snapshot.
+ * @param month Gregorian month in [1, 12].
+ * @param day A valid day of the Gregorian month.
+ * @param fraction Finite fraction of the civil day in [0, 1); inserted leap seconds are outside the input.
+ * @param civil_scale_code CHART_CIVIL_SCALE_UTC (from 1972-01-01) or CHART_CIVIL_SCALE_UT1.
+ * @param delta_t_model_code A CHART_DELTA_T_MODEL_* code; DEFAULT selects Algo5.
+ * @param nutation_model_code A HOUSE_NUTATION_MODEL_* code; DEFAULT selects IAU 1980, matching
+ *                            the C++ house operation's default.
+ * @param latitude_deg North-positive latitude in (-90, 90).
+ * @param longitude_deg East-positive longitude in [-180, 180].
+ * @param house_system_code A CHART_HOUSE_SYSTEM_* code; Placidus rejects polar geometry, and
+ *                          every system rejects an Ascendant direction unresolved at round-off.
+ * @returns A HouseQueryResultV1 by value. On failure valid is false and last_error reports the
+ *          cause; invalid payload and padding bytes have no contract. There is no partial result.
+ * @note The conversion is the snapshot's civil + scale + Delta T path without the snapshot
+ *       joint window: the house operation carries no JDE window, so this query accepts any
+ *       civil instant the conversion resolves. The result records the resolved Delta T and
+ *       nutation identities, so a later default change cannot rewrite what this result used.
+ */
+CELESTIAL_API HouseQueryResultV1 house_query_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, double longitude_deg, uint32_t house_system_code);
 
 
 #ifdef __cplusplus

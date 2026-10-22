@@ -129,6 +129,30 @@ identities = celestial.model_identities()
 algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
 ```
 
+<a id="independent-queries"></a>
+### Independent position and house queries
+
+`positions()` evaluates only the targets you select at one JDE(TT) instant — no rate stencil,
+no snapshot joint window — so a subset succeeds where a complete snapshot rejects an excluded
+target's window. `house_query()` runs the snapshot's civil conversion without the joint window
+and records which models it resolved. Both fail whole on any error; there is no partial result.
+
+```python
+import celestial_calendar as celestial
+
+selected = celestial.positions(
+  [celestial.ChartTarget.PLUTO, celestial.ChartTarget.SUN],
+  2409543.5,  # Pluto's window start
+)
+for position in selected:
+  print(position.target, position.longitude_deg, position.latitude_deg, position.distance_au, position.source)
+
+location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
+civil = celestial.CivilDateTime(year=1885, month=1, day=1, fraction=0.0)  # before the snapshot window
+houses = celestial.house_query(civil, celestial.CivilScale.UT1, location, celestial.HouseSystem.PLACIDUS)
+print(houses.times, houses.houses.ascendant_deg, houses.delta_t_identity, houses.nutation_identity)
+```
+
 <a id="interval-longitude-events"></a>
 ### Interval longitude events
 
