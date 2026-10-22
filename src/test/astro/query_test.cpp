@@ -55,19 +55,20 @@ TEST(Query, PositionMatchesSnapshotBodiesOnTheJointWindow) {
 }
 
 TEST(Query, PositionAtProviderBoundaryNeedsNoRateStencil) {
-  // Pluto's apparent window starts at 2409543.5, inside which the rate stencil cannot reach
-  // (its center domain starts at 2409543.875 and the snapshot window later still). A pure
-  // position call must succeed here — this is the "boundary position without a rate template"
-  // case (#355).
+  // Pluto's apparent window starts at 2409543.5 (1885-01-02 0h TT), below the rate center
+  // domain and the snapshot joint window, which both start at 2409543.875 (1885-01-02 09:00
+  // TT). A pure position call must succeed here — the "boundary position without a rate
+  // template" case (#355).
   const auto pluto = astro::chart::position(Target::PLUTO, 2409543.5);
   EXPECT_GE(pluto.longitude.deg(), 0.0);
   // Nodes likewise: the node provider accepts 2409542.5, below any rate center.
   const auto node = astro::chart::position(Target::MEAN_ASCENDING, 2409542.5);
   EXPECT_FALSE(node.distance.has_value());
-  // The snapshot joint window starts later; a complete snapshot rejects this instant.
+  // At the same instant (1885-01-02 0h, its JDE(TT) just below 2409543.875) a complete
+  // snapshot rejects the query through the joint window.
   EXPECT_THROW(
     (void)astro::chart::calculate(
-      calendar::Datetime { util::to_ymd(1885, 1, 1), 0.0 },
+      calendar::Datetime { util::to_ymd(1885, 1, 2), 0.0 },
       Scale::UT1,
       astro::GeoLocation { .latitude = astro::toolbox::AngleDeg { 51.5 }, .longitude = astro::toolbox::AngleDeg { 0.0 } },
       astro::house::System::WHOLE_SIGN
@@ -77,8 +78,8 @@ TEST(Query, PositionAtProviderBoundaryNeedsNoRateStencil) {
 }
 
 TEST(Query, HouseConversionCarriesNoJointWindow) {
-  // The snapshot joint window starts at 2409543.875 (1885-02-01); this civil instant resolves
-  // below it while still passing the civil validation.
+  // The snapshot joint window starts at 2409543.875 (1885-01-02 09:00 TT); this civil instant
+  // resolves below it while still passing the civil validation.
   const auto civil = calendar::Datetime { util::to_ymd(1885, 1, 1), 0.25 };
 
   // The house conversion resolves any civil instant the civil validation admits.

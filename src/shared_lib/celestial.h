@@ -906,7 +906,14 @@ typedef struct PositionRecordV1 {
   uint32_t flags;            /* Reserved; written 0, ignored on read. */
 } PositionRecordV1;
 
-/** @brief Independent house geometry with the resolved model identities (#357, #355). */
+/** @brief Independent house geometry with the resolved model identities (#357, #355).
+ *
+ * @note The identity ordinals are kind-internal codes, not the selection codes this call
+ *       accepts: IAU 1980 is selector HOUSE_NUTATION_MODEL_IAU_1980 (2) but identity
+ *       MODEL_IDENTITY_NUTATION_IAU1980 (1), and Algo5 is selector
+ *       CHART_DELTA_T_MODEL_ALGO5 (5) but identity MODEL_IDENTITY_DELTA_T_ALGO5 (4).
+ *       Comparing one against the other succeeds silently on colliding values.
+ */
 typedef struct HouseQueryResultV1 {
   bool valid;                       /* false on failure; the payload and padding then have no contract. */
   uint32_t house_system_code;

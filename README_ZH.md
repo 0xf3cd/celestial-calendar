@@ -229,7 +229,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   四轴和十二宫头。C++ 为 [`chart.hpp`](src/astro/chart.hpp)，C 为 [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot)，
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
-  C ABI 和两个语言包只通过这份快照提供行星、月交点、黄经速率和宫位，这些量的独立函数仅 C++ 提供。
+  C ABI 和两个语言包仍只通过这份快照提供黄经速率；行星、月交点的独立位置与宫位查询见下条，
+  JavaScript 对速率与独立查询都不暴露。
 - 区间黄经事件（供定黄经过宫、留站、带方向的两体黄经差）：C++ 见
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 与
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为

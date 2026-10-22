@@ -17,8 +17,9 @@ Project-authored material uses MIT. The generated directory includes `LICENSE` a
 ## C++ Guide
 
 The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
-headers. This section covers the headers beyond the Jieqi API. Of these, only the chart snapshot is also available
-from C (described below), Python and JavaScript.
+headers. This section covers the headers beyond the Jieqi API. The chart snapshot is also available from C
+(described below), Python and JavaScript; the interval longitude events, the capabilities and model identities,
+and the independent position and house queries are also available from C and Python (see the sections below).
 
 The [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
 [`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
@@ -201,8 +202,9 @@ the house operation carries no JDE window. `HOUSE_NUTATION_MODEL_*` selects the 
 resolved Delta T and nutation identity ordinals — never an unresolved DEFAULT code — so a later
 default change cannot rewrite what this result used (#357).
 
-The C++ entry points are `astro::chart::position` (the same dispatch the snapshot composes,
-now public) and `astro::chart::detail::resolve_times_for_houses` for the house conversion.
+The public C++ entry point is `astro::chart::position`; the house geometry itself reuses
+`astro::house::calculate`, and the C ABI's time conversion lives in `astro::chart::detail`
+alongside the snapshot's — an internal sharing point, not a promised entry.
 
 ## Build This Reference
 

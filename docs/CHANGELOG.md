@@ -18,7 +18,7 @@
 - Python capabilities (#357): `capabilities()`, `model_identities()` and
   `capability_text()` mirror the enums, domains, identity codes and failures in frozen
   dataclasses, with the Delta T DEFAULT alias reconciled against the C header and ABI
-  manifest by a mechanical gate.
+  manifest by a mechanical gate. The new `capability.py` module ships in the wheel.
 - C ABI independent queries (#355): `position_query_v1` evaluates a caller-selected
   target subset at one JDE(TT) under the count+fill protocol — caller order, duplicates
   and empty selections rejected, whole-failure with no partial list — with no rate
@@ -33,7 +33,6 @@
 - Python independent queries (#355): `positions()` and `house_query()` expose the
   selected-target position and civil house paths with frozen dataclasses, resolved
   model identities, and the same failure taxonomy as the C ABI.
-  manifest by a mechanical gate. The new `capability.py` module ships in the wheel.
 
 ### Changed
 

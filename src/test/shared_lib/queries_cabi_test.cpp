@@ -58,14 +58,27 @@ TEST(QueriesCAbi, PositionQueryParityWithTheCore) {
 }
 
 TEST(QueriesCAbi, PositionQueryAtProviderBoundaryAndSubsetSuccess) {
-  // Pluto at its apparent window start: below the snapshot joint window and any rate center,
-  // a pure position query succeeds (#355 acceptance: a subset succeeds where the complete
-  // snapshot rejects an excluded target's window, with no rate stencil).
+  // Pluto at its apparent window start (1885-01-02 0h TT, 2409543.5): below the snapshot
+  // joint window and any rate center, a pure position query succeeds (#355 acceptance: a
+  // subset succeeds where the complete snapshot rejects an excluded target's window, with no
+  // rate stencil).
   const std::array<uint32_t, 2> selection { CHART_TARGET_PLUTO, CHART_TARGET_SUN };
   uint32_t count = 0;
   std::array<PositionRecordV1, 2> records {};
   EXPECT_EQ(position_query_v1(selection.data(), selection.size(), 2409543.5, &count, records.data(), records.size()), 2);
   EXPECT_EQ(count, 2);
+
+  // Nodes are symmetric: the node provider window starts at 2409542.5, below the node rate
+  // center, and a node-only query succeeds there.
+  const std::array<uint32_t, 1> node { CHART_TARGET_MEAN_ASCENDING };
+  EXPECT_EQ(position_query_v1(node.data(), 1, 2409542.5, &count, records.data(), 1), 1);
+  EXPECT_EQ(count, 1);
+  EXPECT_FALSE((records[0].present_fields & POSITION_PRESENT_DISTANCE) != 0);
+
+  // At the same instant, a complete snapshot rejects the query through the joint window.
+  const auto snapshot = chart_snapshot_v1(1885, 1, 2, 0.0, CHART_CIVIL_SCALE_UT1, 51.5, 0.0,
+                                          CHART_HOUSE_SYSTEM_WHOLE_SIGN, CHART_DELTA_T_MODEL_DEFAULT);
+  EXPECT_FALSE(snapshot.valid);
 
   // Out of the provider window the whole query fails with no partial list.
   count = 99;
@@ -97,27 +110,42 @@ TEST(QueriesCAbi, PositionQuerySelectionRules) {
 }
 
 TEST(QueriesCAbi, HouseQueryMatchesSnapshotHouses) {
-  const auto snapshot = chart_snapshot_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, 51.5, 0.0,
-                                          CHART_HOUSE_SYSTEM_PLACIDUS, CHART_DELTA_T_MODEL_DEFAULT);
-  ASSERT_TRUE(snapshot.valid);
+  for (const uint32_t scale : { CHART_CIVIL_SCALE_UTC, CHART_CIVIL_SCALE_UT1 }) {
+    const auto snapshot = chart_snapshot_v1(2024, 6, 1, 0.5, scale, 51.5, 0.0,
+                                            CHART_HOUSE_SYSTEM_PLACIDUS, CHART_DELTA_T_MODEL_DEFAULT);
+    ASSERT_TRUE(snapshot.valid);
 
-  const auto query = house_query_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, CHART_DELTA_T_MODEL_DEFAULT,
-                                    HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_PLACIDUS);
-  ASSERT_TRUE(query.valid);
-  EXPECT_DOUBLE_EQ(query.jd_ut1, snapshot.jd_ut1);
-  EXPECT_DOUBLE_EQ(query.jde_tt, snapshot.jde_tt);
-  EXPECT_DOUBLE_EQ(query.houses.ascendant_deg, snapshot.houses.ascendant_deg);
-  EXPECT_DOUBLE_EQ(query.houses.midheaven_deg, snapshot.houses.midheaven_deg);
-  EXPECT_DOUBLE_EQ(query.houses.descendant_deg, snapshot.houses.descendant_deg);
-  EXPECT_DOUBLE_EQ(query.houses.imum_coeli_deg, snapshot.houses.imum_coeli_deg);
-  for (std::size_t index = 0; index < 12; ++index) {
-    EXPECT_DOUBLE_EQ(std::span { query.houses.cusps_deg }[index], std::span { snapshot.houses.cusps_deg }[index]);
+    const auto query = house_query_v1(2024, 6, 1, 0.5, scale, CHART_DELTA_T_MODEL_DEFAULT,
+                                      HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_PLACIDUS);
+    ASSERT_TRUE(query.valid);
+    EXPECT_DOUBLE_EQ(query.jd_ut1, snapshot.jd_ut1);
+    EXPECT_DOUBLE_EQ(query.jde_tt, snapshot.jde_tt);
+    EXPECT_DOUBLE_EQ(query.houses.ascendant_deg, snapshot.houses.ascendant_deg);
+    EXPECT_DOUBLE_EQ(query.houses.midheaven_deg, snapshot.houses.midheaven_deg);
+    EXPECT_DOUBLE_EQ(query.houses.descendant_deg, snapshot.houses.descendant_deg);
+    EXPECT_DOUBLE_EQ(query.houses.imum_coeli_deg, snapshot.houses.imum_coeli_deg);
+    for (std::size_t index = 0; index < 12; ++index) {
+      EXPECT_DOUBLE_EQ(std::span { query.houses.cusps_deg }[index], std::span { snapshot.houses.cusps_deg }[index]);
+    }
   }
 
   // Resolved identities: DEFAULT is never recorded unresolved (#357).
+  const auto query = house_query_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, CHART_DELTA_T_MODEL_DEFAULT,
+                                    HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_PLACIDUS);
+  ASSERT_TRUE(query.valid);
   EXPECT_EQ(query.delta_t_identity_code, MODEL_IDENTITY_DELTA_T_ALGO5);
   EXPECT_EQ(query.nutation_identity_code, MODEL_IDENTITY_NUTATION_IAU1980);
   EXPECT_EQ(query.house_system_code, CHART_HOUSE_SYSTEM_PLACIDUS);
+}
+
+TEST(QueriesCAbi, HouseQueryProjectsNonDefaultDeltaTIdentity) {
+  // The resolved-identity fields project the selected model, not a hardcoded default: Algo3's
+  // kind-internal ordinal is 2, distinct from the CHART_DELTA_T_MODEL_ALGO3 selector (3).
+  const auto query = house_query_v1(2024, 6, 1, 0.5, CHART_CIVIL_SCALE_UTC, CHART_DELTA_T_MODEL_ALGO3,
+                                    HOUSE_NUTATION_MODEL_MEEUS, 51.5, 0.0, CHART_HOUSE_SYSTEM_EQUAL);
+  ASSERT_TRUE(query.valid);
+  EXPECT_EQ(query.delta_t_identity_code, MODEL_IDENTITY_DELTA_T_ALGO3);
+  EXPECT_EQ(query.nutation_identity_code, MODEL_IDENTITY_NUTATION_MEEUS);
 }
 
 TEST(QueriesCAbi, HouseQuerySkipsTheSnapshotWindow) {
