@@ -7,12 +7,10 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""The Delta T DEFAULT alias has one meaning across every boundary (#357).
+"""Model selectors and resolved identities agree across language boundaries (#357).
 
-Three surfaces carry the code table today: the `celestial.h` defines, the manifest
-generator's CHART_V1_CODES, and the Python package's two hand-copied tables. The C++
-canonical resolver (astro::capability::resolve_delta_t_code) is exercised by the C++
-tests; this gate reconciles the three tabular surfaces so a drift in any one turns red.
+These checks reconcile the C defines, ABI manifest codes and Python tables. The compiled
+C++ and C ABI tests check the canonical resolvers and the identities returned by queries.
 """
 
 import re
@@ -185,3 +183,53 @@ def test_kind_internal_identity_ordinals_are_pinned() -> None:
   # The cross-language consumer asserts the pair, not a bare code: algo5 is (DELTA_T, 4).
   consumer = (REPO_ROOT / "bindings/python/test/consumer/capabilities.py").read_text(encoding="utf-8")
   assert "identity_code) == (celestial.ModelKind.DELTA_T, 4)" in consumer
+
+
+def test_house_nutation_model_codes_match_python() -> None:
+  """The house query's C and Python selectors agree; compiled C ABI tests check the C++ resolver.
+
+  DEFAULT (0) follows the C++ house operation's default IAU 1980; the selector values are
+  pinned here so a drift breaks loudly instead of silently selecting another model (#355).
+  """
+  header = (REPO_ROOT / "src/shared_lib/celestial.h").read_text(encoding="utf-8")
+  found = {
+    name: int(value)
+    for name, value in re.findall(r"#define (HOUSE_NUTATION_MODEL_[A-Z0-9_]+)\s+UINT32_C\((\d+)\)", header)
+  }
+  assert found == {
+    "HOUSE_NUTATION_MODEL_DEFAULT": 0,
+    "HOUSE_NUTATION_MODEL_MEEUS": 1,
+    "HOUSE_NUTATION_MODEL_IAU_1980": 2,
+  }
+
+  query = (REPO_ROOT / "bindings/python/src/celestial_calendar/query.py").read_text(encoding="utf-8")
+  table = re.search(r"_NUTATION_MODEL_CODE = \{(.*?)\}", query, re.DOTALL)
+  assert table is not None
+  assert dict(re.findall(r"NutationModel\.(\w+): (\d+)", table.group(1))) == {
+    "DEFAULT": "0",
+    "MEEUS": "1",
+    "IAU_1980": "2",
+  }
+  # DEFAULT resolves to IAU 1980, matching the C++ house operation's default.
+  resolved = re.search(r"_NUTATION_MODEL_BY_CODE = \{(.*?)\}", query, re.DOTALL)
+  assert resolved is not None
+  assert dict(re.findall(r"(\d+): NutationModel\.(\w+)", resolved.group(1))) == {
+    "0": "IAU_1980",
+    "1": "MEEUS",
+    "2": "IAU_1980",
+  }
+
+
+def test_query_identity_decoders_match_the_header() -> None:
+  query = (REPO_ROOT / "bindings/python/src/celestial_calendar/query.py").read_text(encoding="utf-8")
+  codes = _capability_codes()
+  delta_t = re.search(r"_DELTA_T_IDENTITY_BY_CODE = \{(.*?)\}", query, re.DOTALL)
+  nutation = re.search(r"_NUTATION_IDENTITY_BY_CODE = \{(.*?)\}", query, re.DOTALL)
+  assert delta_t is not None and nutation is not None
+  assert {int(code): name for code, name in re.findall(r'(\d+): "(\w+)"', delta_t.group(1))} == {
+    codes[f"MODEL_IDENTITY_DELTA_T_ALGO{index}"]: f"algo{index}" for index in range(1, 6)
+  }
+  assert {int(code): name for code, name in re.findall(r"(\d+): NutationModel\.(\w+)", nutation.group(1))} == {
+    codes["MODEL_IDENTITY_NUTATION_MEEUS"]: "MEEUS",
+    codes["MODEL_IDENTITY_NUTATION_IAU1980"]: "IAU_1980",
+  }

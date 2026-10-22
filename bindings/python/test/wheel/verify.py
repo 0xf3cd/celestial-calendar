@@ -70,6 +70,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     "celestial_calendar/capability.py",
     "celestial_calendar/chart.py",
     "celestial_calendar/events.py",
+    "celestial_calendar/query.py",
     "celestial_calendar/py.typed",
     native_member,
     f"{dist_info}/METADATA",
@@ -97,7 +98,16 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     expected_digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=").decode()
     assert digest == f"sha256={expected_digest}" and size == str(len(payload)), f"RECORD integrity mismatch: {member}"
 
-  for member in ("__init__.py", "_binding.py", "_abi.py", "capability.py", "chart.py", "py.typed"):
+  for member in (
+    "__init__.py",
+    "_binding.py",
+    "_abi.py",
+    "capability.py",
+    "chart.py",
+    "events.py",
+    "query.py",
+    "py.typed",
+  ):
     assert (
       archive.read(f"celestial_calendar/{member}")
       == (REPO / "bindings/python/src/celestial_calendar" / member).read_bytes()
@@ -213,7 +223,7 @@ def main() -> None:
   assert filename_match is not None, wheel.name
   platform_tags = filename_match.group(1).split(".")
   exports = {entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]}
-  assert len(exports) == 36
+  assert len(exports) == 38
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
     native_member = verify_metadata(archive, wheel, version, platform_tags)

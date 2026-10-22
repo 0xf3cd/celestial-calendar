@@ -43,7 +43,16 @@ def wheel_payload(version):
   dist_info = f"celestial_calendar-{version}.dist-info"
   members = {
     f"celestial_calendar/{name}": (SOURCE / name).read_bytes()
-    for name in ("__init__.py", "_binding.py", "_abi.py", "capability.py", "chart.py", "events.py", "py.typed")
+    for name in (
+      "__init__.py",
+      "_binding.py",
+      "_abi.py",
+      "capability.py",
+      "chart.py",
+      "events.py",
+      "query.py",
+      "py.typed",
+    )
   }
   members.update(
     {
@@ -116,7 +125,9 @@ def test_wheel_allowlist_requires_the_real_declaration_module(verifier):
     check(verifier, members, version)
 
 
-@pytest.mark.parametrize("name", ["__init__.py", "_binding.py", "_abi.py", "capability.py", "chart.py", "py.typed"])
+@pytest.mark.parametrize(
+  "name", ["__init__.py", "_binding.py", "_abi.py", "capability.py", "chart.py", "events.py", "query.py", "py.typed"]
+)
 def test_wheel_source_bytes_are_checked_even_with_a_valid_record(verifier, name):
   version = verifier.project_version()
   members = wheel_payload(version)

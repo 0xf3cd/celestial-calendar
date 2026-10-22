@@ -609,6 +609,96 @@ def edge_celestial_capability_text() -> None:
 
 
 EXPORT_NAMES = tuple(_binding.BINDING_SPECS)
+
+
+def happy_position_query_v1() -> None:
+  # Direct FFI calls exercise the caller-ordered count+fill selection without public validation.
+  record = _binding.PositionRecordV1
+  selection = (ctypes.c_uint32 * 3)(9, 0, 10)
+  total = ctypes.c_uint32()
+  assert call("position_query_v1", selection, 3, 2451545.0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 3
+  slots = (record * total.value)()
+  assert call("position_query_v1", selection, 3, 2451545.0, ctypes.byref(total), slots, total.value) == 3
+  assert [slot.target_code for slot in slots] == [9, 0, 10]
+  assert (slots[0].present_fields & 2) and not (slots[2].present_fields & 2)
+  assert slots[2].source_code == 4  # CAPABILITY_SOURCE_NODE_MEAN
+  assert not (slots[0].present_fields & 2) or math.isfinite(slots[0].distance_au)
+  for slot in slots:
+    assert math.isfinite(slot.longitude_deg) and 0.0 <= slot.longitude_deg < 360.0
+    assert math.isfinite(slot.latitude_deg)
+
+  # A subset succeeds at Pluto's provider window start, below the snapshot joint window.
+  solo = (ctypes.c_uint32 * 1)(9)
+  assert call("position_query_v1", solo, 1, 2409543.5, ctypes.byref(total), slots, 1) == 1
+  assert total.value == 1
+
+
+def edge_position_query_v1() -> None:
+  record = _binding.PositionRecordV1
+  selection = (ctypes.c_uint32 * 1)(0)
+  total = ctypes.c_uint32()
+  slots = (record * 1)()
+  # Empty selections, duplicates, unknown codes and non-finite times are rejected up front.
+  assert call("position_query_v1", selection, 0, 2451545.0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "target_count" in _binding.last_error_text()
+  duplicated = (ctypes.c_uint32 * 2)(0, 0)
+  assert call("position_query_v1", duplicated, 2, 2451545.0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "duplicates" in _binding.last_error_text()
+  unknown = (ctypes.c_uint32 * 1)(14)
+  assert call("position_query_v1", unknown, 1, 2451545.0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "target_codes" in _binding.last_error_text()
+  assert call("position_query_v1", selection, 1, NAN, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "jde_tt" in _binding.last_error_text()
+  # A failing target fails the whole query with no partial list.
+  pluto = (ctypes.c_uint32 * 1)(9)
+  assert call("position_query_v1", pluto, 1, 2409543.4, ctypes.byref(total), slots, 1) == 0
+  assert total.value == 0 and _binding.last_error_text() != ""
+  # The group runner expects a recorded failure at exit.
+  assert call("position_query_v1", None, 1, 2451545.0, ctypes.byref(total), None, 0) == 0
+  assert total.value == 0 and "target_codes" in _binding.last_error_text()
+
+
+def happy_house_query_v1() -> None:
+  # Direct FFI calls exercise the by-value result with resolved identities.
+  result = _binding.FUNCTIONS["house_query_v1"](2024, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2)
+  assert result.valid and _binding.last_error_text() == ""
+  assert result.house_system_code == 2 and result.delta_t_identity_code == 4  # Algo5, never unresolved DEFAULT
+  assert result.nutation_identity_code == 1  # IAU 1980
+  assert result.jde_tt > result.jd_ut1
+  assert len(result.houses.cusps_deg) == 12
+  for angle in (
+    result.houses.ascendant_deg,
+    result.houses.midheaven_deg,
+    result.houses.descendant_deg,
+    result.houses.imum_coeli_deg,
+    *result.houses.cusps_deg,
+  ):
+    assert math.isfinite(angle) and 0.0 <= angle < 360.0
+
+  # The snapshot joint window does not apply: a pre-window civil instant resolves.
+  early = _binding.FUNCTIONS["house_query_v1"](1885, 1, 1, 0.0, 1, 5, 1, 51.5, 0.0, 0)
+  assert early.valid and early.jde_tt < 2409543.875 and early.nutation_identity_code == 0  # MEEUS
+
+
+def edge_house_query_v1() -> None:
+  function = _binding.FUNCTIONS["house_query_v1"]
+  baseline = (2024, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2)
+  assert function(*baseline).valid and _binding.last_error_text() == ""
+  # Unknown model codes are rejected before any house geometry is attempted.
+  for position in (5, 6):
+    arguments = list(baseline)
+    arguments[position] = 9
+    assert not function(*arguments).valid
+    assert _binding.last_error_text() != ""
+  # Polar Placidus fails by-value; a position query at the same instant still succeeds.
+  assert not function(2024, 6, 1, 0.5, 1, 0, 0, 89.9, 0.0, 2).valid
+  assert function(*baseline).valid
+  # The group runner expects a recorded failure at exit.
+  assert not function(1884, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2).valid
+  assert "year" in _binding.last_error_text()
+
+
 HAPPY_TESTS = {name: globals()[f"happy_{name}"] for name in EXPORT_NAMES}
 EDGE_TESTS = {name: globals()[f"edge_{name}"] for name in EXPORT_NAMES}
 
@@ -636,7 +726,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 36
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 38
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)
   if happy[0] != happy[1] or edge[0] != edge[1]:

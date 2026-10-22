@@ -17,8 +17,9 @@ Project-authored material uses MIT. The generated directory includes `LICENSE` a
 ## C++ Guide
 
 The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
-headers. This section covers the headers beyond the Jieqi API. Of these, only the chart snapshot is also available
-from C (described below), Python and JavaScript.
+headers. This section covers the headers beyond the Jieqi API. The chart snapshot is also available from C
+(described below), Python and JavaScript; the interval longitude events, the capabilities and model identities,
+and the independent position and house queries are also available from C and Python (see the sections below).
 
 The [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
 [`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
@@ -181,6 +182,29 @@ corrections, source/version, status and role; measured validation coverage is la
 Every bound derives from the operation's own defining constants, so these queries accept and reject
 exactly what the computations they describe accept and reject — and a domain is an acceptance
 boundary, not an accuracy promise.
+
+## C Independent Position and House Queries
+
+`position_query_v1` evaluates the caller's selected targets at one finite JDE(TT) under the
+count+fill protocol (#355). Output records follow the caller's target order; duplicates, an empty
+selection and unknown codes are rejected before any position is computed, and one failed target
+fails the whole query — no partial list is ever returned. The query evaluates no rate stencil and
+applies no snapshot joint window: each target's provider window stands alone (see the POSITION
+capability records), so a subset succeeds where a complete snapshot rejects an excluded target's
+window. `PositionRecordV1` mirrors the chart body's field order; `source_code` carries the
+resolved position-source identity (`CAPABILITY_SOURCE_*`), and `POSITION_PRESENT_DISTANCE` marks
+the AU distance the nodes never carry.
+
+`house_query_v1` returns `HouseQueryResultV1` by value: house geometry at a civil instant with
+the snapshot's civil + scale + Delta T conversion but without the snapshot joint window, since
+the house operation carries no JDE window. `HOUSE_NUTATION_MODEL_*` selects the nutation model
+(DEFAULT follows the C++ house operation's default, IAU 1980), and the result records the
+resolved Delta T and nutation identity ordinals — never an unresolved DEFAULT code — so a later
+default change cannot rewrite what this result used (#357).
+
+The public C++ entry point is `astro::chart::position`; the house geometry itself reuses
+`astro::house::calculate`, and the C ABI's time conversion lives in `astro::chart::detail`
+alongside the snapshot's — an internal sharing point, not a promised entry.
 
 ## Build This Reference
 

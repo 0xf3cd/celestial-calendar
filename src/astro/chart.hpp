@@ -115,35 +115,73 @@ inline auto validate_domain(const double jde_tt, const astro::delta_t::Model mod
   }
 }
 
+// Wraps a Delta T conversion failure with the model-domain context; only Algo4's domain can cut
+// the accepted civil range, so the wrapper rethrows any other failure untouched.
+inline auto with_delta_t_domain_context(
+  const astro::delta_t::Model model,
+  const auto& convert
+) -> decltype(convert()) {
+  try {
+    return convert();
+  } catch (const std::invalid_argument& error) {
+    if (model != astro::delta_t::Model::ALGO4) {
+      throw;
+    }
+    throw std::invalid_argument {
+      std::format("Chart Delta T datetime leaves its model domain: {}", error.what())
+    };
+  }
+}
+
+// Reverse conversion: the civil TT instant to JD(UT1). UTC derives UT1 through the Delta T
+// model; a UT1 input already is UT1.
+[[nodiscard]] inline auto convert_to_jd_ut1(
+  const calendar::Datetime& civil_dt,
+  const Scale scale,
+  const astro::delta_t::Model model,
+  const calendar::Datetime& tt
+) -> double {
+  const auto ut1 = scale == Scale::UTC
+    ? with_delta_t_domain_context(model, [&] { return astro::delta_t::tt_to_ut1(model, tt); })
+    : civil_dt;
+  return astro::julian_day::ut1_to_jd(ut1);
+}
+
+// The civil-to-both-scales conversion for the independent house query (#355): the snapshot's
+// conversion with the joint-domain check removed, since the house operation carries no JDE
+// window. The Delta T model's own domain still applies through the conversions above.
+[[nodiscard]] inline auto resolve_times_for_houses(
+  const calendar::Datetime& civil_dt,
+  const Scale scale,
+  const astro::delta_t::Model model
+) -> Times {
+  validate_civil(civil_dt, scale);
+  const auto tt = scale == Scale::UTC
+    ? astro::leap_second::utc_to_tt(civil_dt)
+    : with_delta_t_domain_context(model, [&] { return astro::delta_t::ut1_to_tt(model, civil_dt); });
+  return {
+    .jd_ut1 = convert_to_jd_ut1(civil_dt, scale, model, tt),
+    .jde_tt = astro::julian_day::tt_to_jde(tt),
+  };
+}
+
 [[nodiscard]] inline auto resolve_times(
   const calendar::Datetime& civil_dt,
   const Scale scale,
   const astro::delta_t::Model model
 ) -> Times {
   validate_civil(civil_dt, scale);
-  const auto delta_t_datetime = [model](const auto& convert) -> calendar::Datetime {
-    try {
-      return convert();
-    } catch (const std::invalid_argument& error) {
-      // Only Algo4's Delta T domain cuts the chart's civil window.
-      if (model != astro::delta_t::Model::ALGO4) {
-        throw;
-      }
-      throw std::invalid_argument { std::format("Chart Delta T datetime leaves its model domain: {}", error.what()) };
-    }
-  };
-
   const auto tt = scale == Scale::UTC
     ? astro::leap_second::utc_to_tt(civil_dt)
-    : delta_t_datetime([&] { return astro::delta_t::ut1_to_tt(model, civil_dt); });
+    : with_delta_t_domain_context(model, [&] { return astro::delta_t::ut1_to_tt(model, civil_dt); });
   const double jde_tt = astro::julian_day::tt_to_jde(tt);
+  // The joint domain is checked on the derived JDE(TT) before the reverse conversion, so a UTC
+  // input past the Algo4 cap reports the chart domain, not a Delta T conversion failure.
   validate_domain(jde_tt, model);
-
-  const auto ut1 = scale == Scale::UTC
-    ? delta_t_datetime([&] { return astro::delta_t::tt_to_ut1(model, tt); })
-    : civil_dt;
-  return { .jd_ut1 = astro::julian_day::ut1_to_jd(ut1), .jde_tt = jde_tt };
+  return { .jd_ut1 = convert_to_jd_ut1(civil_dt, scale, model, tt), .jde_tt = jde_tt };
 }
+
+} // namespace detail
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): Angle members require values; every aggregate construction supplies them.
 struct Position {
@@ -152,6 +190,17 @@ struct Position {
   std::optional<toolbox::DistanceAu> distance;
 };
 
+/**
+ * @brief The apparent geocentric position of one ephemeris target at a JDE(TT) instant.
+ * @param target A named ephemeris target.
+ * @param jde_tt JDE(TT), finite.
+ * @return Ecliptic longitude and latitude of date; the distance for Sun, Moon, planets and
+ *         Pluto, none for the nodes.
+ * @throw std::invalid_argument For an unknown target, a non-finite JDE(TT), or a JDE(TT)
+ *        outside the target's provider window (Pluto and the nodes).
+ * @note This is the position operation the snapshot composes; it performs no rate evaluation,
+ *       so a position query inherits no finite-difference reach (#355).
+ */
 [[nodiscard]] inline auto position(const astro::ephemeris::Target target, const double jde_tt) -> Position {
   using astro::lunar_node::Node;
   using astro::planet::geocentric_coord::apparent;
@@ -184,6 +233,8 @@ struct Position {
       throw std::invalid_argument { std::format("Unknown chart target {}", static_cast<uint32_t>(target)) };
   }
 }
+
+namespace detail {
 
 [[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> decltype(Snapshot::bodies) {
   using enum astro::ephemeris::Target;

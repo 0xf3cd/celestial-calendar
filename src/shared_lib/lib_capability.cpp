@@ -15,6 +15,7 @@
 #include <format>
 #include <ranges>
 #include <string>
+#include <utility>
 
 #include "lib.hpp"
 #include "celestial.h"
@@ -60,11 +61,11 @@ auto status_code_of(const astro::capability::Status status) -> uint32_t {
 }
 
 auto source_code_of(const astro::capability::PositionSource source) -> uint32_t {
-  return static_cast<uint32_t>(source); // The C CAPABILITY_SOURCE_* codes mirror the C++ enum order.
+  return std::to_underlying(source);
 }
 
 auto to_c_record(const astro::capability::Record& record) -> CapabilityRecordV1 {
-  return { .operation_code = static_cast<uint32_t>(record.operation),
+  return { .operation_code = std::to_underlying(record.operation),
            .subject_code = record.subject_code,
            .status_code = status_code_of(record.status),
            .source_code = source_code_of(record.source),
@@ -152,7 +153,7 @@ auto celestial_model_identities(
       identities.cbegin(), identities.cbegin() + num_written, slots,
       [](const auto& identity) {
         return ModelIdentityRecordV1 {
-          .kind_code = static_cast<uint32_t>(identity.kind),
+          .kind_code = std::to_underlying(identity.kind),
           .identity_code = identity.identity_code,
           .status_code = identity.status == astro::capability::ModelStatus::CURRENT ? MODEL_STATUS_CURRENT : MODEL_STATUS_FROZEN,
           .default_alias_code = identity.default_alias_code,

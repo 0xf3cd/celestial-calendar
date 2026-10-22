@@ -19,6 +19,20 @@
   `capability_text()` mirror the enums, domains, identity codes and failures in frozen
   dataclasses, with the Delta T DEFAULT alias reconciled against the C header and ABI
   manifest by a mechanical gate. The new `capability.py` module ships in the wheel.
+- C ABI independent queries (#355): `position_query_v1` evaluates a caller-selected
+  target subset at one JDE(TT) under the count+fill protocol — caller order, duplicates
+  and empty selections rejected, whole-failure with no partial list — with no rate
+  stencil and no snapshot joint window, so a subset succeeds where a complete snapshot
+  rejects an excluded target's window. `house_query_v1` returns house geometry by value
+  at a civil instant, using the snapshot's civil + scale + Delta T conversion without
+  the snapshot joint window, and records the resolved Delta T and nutation identity
+  ordinals (`HOUSE_NUTATION_MODEL_*` selects the nutation model; DEFAULT is IAU 1980).
+  `astro::chart::position` is promoted from the snapshot's internal dispatch to the
+  public C++ surface. `PositionRecordV1` and `HouseQueryResultV1` join the layout-pin
+  and signature-pin gates; every existing layout is unchanged.
+- Python independent queries (#355): `positions()` and `house_query()` expose the
+  selected-target position and civil house paths with frozen dataclasses, resolved
+  model identities, and the same failure taxonomy as the C ABI.
 
 ### Changed
 

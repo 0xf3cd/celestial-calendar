@@ -653,7 +653,9 @@ def run_value_contract() -> None:
   assert len(celestial.__all__) == len(set(celestial.__all__))
   assert celestial.chart is importlib.import_module("celestial_calendar.chart")
   public_names = {
-    name for name in celestial.__dict__ if not name.startswith("_") and name not in {"chart", "events", "capability"}
+    name
+    for name in celestial.__dict__
+    if not name.startswith("_") and name not in {"chart", "events", "capability", "query"}
   } | {"__version__"}
   assert set(celestial.__all__) == public_names
   assert set(celestial.__all__) == {
@@ -674,6 +676,7 @@ def run_value_contract() -> None:
     "EventTarget",
     "GeoLocation",
     "GregorianDate",
+    "HouseQueryResult",
     "HouseSystem",
     "Jieqi",
     "JieqiMoment",
@@ -690,6 +693,8 @@ def run_value_contract() -> None:
     "MoonCoordinate",
     "MoonIllumination",
     "MoonPhase",
+    "NutationModel",
+    "Position",
     "PositionSource",
     "StationEvent",
     "StationMotion",
@@ -702,6 +707,7 @@ def run_value_contract() -> None:
     "delta_t",
     "equation_of_time",
     "gregorian_to_lunar",
+    "house_query",
     "jde_to_ut1",
     "jieqi_moment",
     "jieqi_name",
@@ -718,6 +724,7 @@ def run_value_contract() -> None:
     "model_identities",
     "new_moons_after",
     "new_moons_in_year",
+    "positions",
     "set_log_verbosity",
     "sun_apparent_geocentric_coordinate",
     "sun_longitude_crossings",

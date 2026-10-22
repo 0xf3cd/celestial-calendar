@@ -165,8 +165,7 @@ template <Planet target, astro::vsop87d::Planet model>
   return { .λ = precessed.λ, .β = precessed.β, .r = evaluated.r };
 }
 
-[[nodiscard]] inline auto rectangular(const toolbox::SphericalCoordinate& spherical)
-  -> RectangularCoordinate {
+[[nodiscard]] inline auto rectangular(const toolbox::SphericalCoordinate& spherical) -> RectangularCoordinate {
   const double cos_β = std::cos(spherical.β.rad());
   return {
     .x = spherical.r.au() * cos_β * std::cos(spherical.λ.rad()),

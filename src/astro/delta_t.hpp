@@ -36,8 +36,8 @@
 
 namespace astro::delta_t {
 
-/** @brief A Delta T algorithm. */
-enum class Model : uint8_t { ALGO1, ALGO2, ALGO3, ALGO4, ALGO5 };
+/** @brief A Delta T algorithm; values are stable model identity codes. */
+enum class Model : uint8_t { ALGO1 = 0, ALGO2 = 1, ALGO3 = 2, ALGO4 = 3, ALGO5 = 4 };
 
 // Applicability boundaries in JDE(TT) for the capability identity registry (#357). The
 // decimal-year guards in each algo namespace are authoritative; these constants are the same

@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
 
   lint = parser.add_argument_group("lint")
   lint.add_argument("--ruff", action="store_true", help="Run ruff")
-  lint.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
+  lint.add_argument("--clang-tidy", action="store_true", help="Check C++ signature layout and run clang-tidy")
 
   gate = parser.add_argument_group(
     "gate", "repo invariants; ctypes-smoke, export-surface and jieqi-table need ./project.py --build first"

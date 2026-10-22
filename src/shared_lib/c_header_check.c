@@ -247,7 +247,21 @@ _Static_assert((_Generic(((LongitudeEventRecord*)0)->jde_tt, double: 1, default:
                 _Generic(((ModelIdentityRecordV1*)0)->status_code, uint32_t: 1, default: 0) &&
                 _Generic(((ModelIdentityRecordV1*)0)->default_alias_code, uint32_t: 1, default: 0) &&
                 _Generic(((ModelIdentityRecordV1*)0)->domain_start_jde_tt, double: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0)) != 0,
+                _Generic(((ModelIdentityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->target_code, uint32_t: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->present_fields, uint32_t: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->longitude_deg, double: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->latitude_deg, double: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->distance_au, double: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->source_code, uint32_t: 1, default: 0) &&
+                _Generic(((PositionRecordV1*)0)->flags, uint32_t: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->valid, bool: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->house_system_code, uint32_t: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->delta_t_identity_code, uint32_t: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->nutation_identity_code, uint32_t: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->flags, uint32_t: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->jd_ut1, double: 1, default: 0) &&
+                _Generic(((HouseQueryResultV1*)0)->jde_tt, double: 1, default: 0)) != 0,
                "Event record field types drifted");
 
 /* Signature pins: every export's function type, so a signature drift fails this TU. */
@@ -392,3 +406,29 @@ _Static_assert(_Generic(&celestial_model_identities,
 _Static_assert(_Generic(&celestial_capability_text,
                uint32_t (*)(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity): 1,
                default: 0) != 0, "celestial_capability_text signature drifted");
+
+_Static_assert(_Generic(&position_query_v1,
+               uint32_t (*)(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, PositionRecordV1 *slots, uint32_t slot_count): 1,
+               default: 0) != 0, "position_query_v1 signature drifted");
+
+_Static_assert(_Generic(&house_query_v1,
+               HouseQueryResultV1 (*)(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, double longitude_deg, uint32_t house_system_code): 1,
+               default: 0) != 0, "house_query_v1 signature drifted");
+
+/* #355: the independent query records; PositionRecordV1 mirrors the chart body's field order. */
+_Static_assert(offsetof(PositionRecordV1, target_code) == 0 && offsetof(PositionRecordV1, present_fields) == 4 &&
+               offsetof(PositionRecordV1, longitude_deg) == 8 && offsetof(PositionRecordV1, latitude_deg) == 16 &&
+               offsetof(PositionRecordV1, distance_au) == 24 && offsetof(PositionRecordV1, source_code) == 32 &&
+               offsetof(PositionRecordV1, flags) == 36 && sizeof(PositionRecordV1) == 40 &&
+               _Alignof(PositionRecordV1) == 8, "PositionRecordV1 layout drifted");
+
+_Static_assert(offsetof(HouseQueryResultV1, valid) == 0 && offsetof(HouseQueryResultV1, house_system_code) == 4 &&
+               offsetof(HouseQueryResultV1, delta_t_identity_code) == 8 &&
+               offsetof(HouseQueryResultV1, nutation_identity_code) == 12 && offsetof(HouseQueryResultV1, flags) == 16 &&
+               offsetof(HouseQueryResultV1, jd_ut1) == 24 && offsetof(HouseQueryResultV1, jde_tt) == 32 &&
+               offsetof(HouseQueryResultV1, houses) == 40 && sizeof(HouseQueryResultV1) == 168 &&
+               _Alignof(HouseQueryResultV1) == 8, "HouseQueryResultV1 layout drifted");
+
+_Static_assert(POSITION_PRESENT_DISTANCE == CHART_PRESENT_DISTANCE, "Position presence codes drifted from the chart");
+_Static_assert(HOUSE_NUTATION_MODEL_DEFAULT == 0 && HOUSE_NUTATION_MODEL_MEEUS == 1 &&
+               HOUSE_NUTATION_MODEL_IAU_1980 == 2, "House nutation model codes drifted");

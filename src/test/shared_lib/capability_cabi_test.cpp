@@ -15,6 +15,8 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -99,6 +101,67 @@ TEST(CapabilityCAbi, IdentitiesMirrorTheCore) {
   EXPECT_EQ(count, 2);
   EXPECT_EQ(slots[0].kind_code, MODEL_KIND_NUTATION);
   EXPECT_EQ(slots[1].kind_code, MODEL_KIND_NUTATION);
+}
+
+TEST(CapabilityCAbi, SelectorsAndResolvedIdentitiesMatchTheHeader) {
+  using astro::capability::DeltaTSelector;
+  using astro::capability::NutationSelector;
+  using DeltaT = astro::delta_t::Model;
+  using Nutation = astro::earth::nutation::Model;
+
+  const std::array<std::tuple<uint32_t, DeltaTSelector, DeltaT, uint32_t>, 6> delta_t_cases {{
+    { CHART_DELTA_T_MODEL_DEFAULT, DeltaTSelector::DEFAULT, DeltaT::ALGO5, MODEL_IDENTITY_DELTA_T_ALGO5 },
+    { CHART_DELTA_T_MODEL_ALGO1,   DeltaTSelector::ALGO1,   DeltaT::ALGO1, MODEL_IDENTITY_DELTA_T_ALGO1 },
+    { CHART_DELTA_T_MODEL_ALGO2,   DeltaTSelector::ALGO2,   DeltaT::ALGO2, MODEL_IDENTITY_DELTA_T_ALGO2 },
+    { CHART_DELTA_T_MODEL_ALGO3,   DeltaTSelector::ALGO3,   DeltaT::ALGO3, MODEL_IDENTITY_DELTA_T_ALGO3 },
+    { CHART_DELTA_T_MODEL_ALGO4,   DeltaTSelector::ALGO4,   DeltaT::ALGO4, MODEL_IDENTITY_DELTA_T_ALGO4 },
+    { CHART_DELTA_T_MODEL_ALGO5,   DeltaTSelector::ALGO5,   DeltaT::ALGO5, MODEL_IDENTITY_DELTA_T_ALGO5 },
+  }};
+  const std::array<std::tuple<uint32_t, NutationSelector, Nutation, uint32_t>, 3> nutation_cases {{
+    { HOUSE_NUTATION_MODEL_DEFAULT,  NutationSelector::DEFAULT,  Nutation::IAU_1980, MODEL_IDENTITY_NUTATION_IAU1980 },
+    { HOUSE_NUTATION_MODEL_MEEUS,    NutationSelector::MEEUS,    Nutation::MEEUS,    MODEL_IDENTITY_NUTATION_MEEUS   },
+    { HOUSE_NUTATION_MODEL_IAU_1980, NutationSelector::IAU_1980, Nutation::IAU_1980, MODEL_IDENTITY_NUTATION_IAU1980 },
+  }};
+
+  for (const auto& [delta_t_code, delta_t_selector, delta_t_model, delta_t_identity] : delta_t_cases) {
+    EXPECT_EQ(std::to_underlying(delta_t_selector), delta_t_code);
+    EXPECT_EQ(astro::capability::resolve_delta_t_code(delta_t_code), delta_t_model);
+    EXPECT_EQ(std::to_underlying(delta_t_model), delta_t_identity);
+    for (const auto& [nutation_code, nutation_selector, nutation_model, nutation_identity] : nutation_cases) {
+      EXPECT_EQ(std::to_underlying(nutation_selector), nutation_code);
+      EXPECT_EQ(astro::capability::resolve_nutation_code(nutation_code), nutation_model);
+      EXPECT_EQ(std::to_underlying(nutation_model), nutation_identity);
+      const auto result = house_query_v1(
+        2024, 3, 20, 0.5, CHART_CIVIL_SCALE_UT1, delta_t_code, nutation_code,
+        51.5, -0.1, CHART_HOUSE_SYSTEM_EQUAL
+      );
+      ASSERT_TRUE(result.valid) << last_error();
+      EXPECT_EQ(result.delta_t_identity_code, delta_t_identity);
+      EXPECT_EQ(result.nutation_identity_code, nutation_identity);
+    }
+  }
+}
+
+TEST(CapabilityCAbi, CapabilityEnumValuesMatchTheHeader) {
+  using namespace astro::capability;
+  EXPECT_EQ(std::to_underlying(Operation::POSITION), CAPABILITY_OPERATION_POSITION);
+  EXPECT_EQ(std::to_underlying(Operation::LONGITUDE_RATE), CAPABILITY_OPERATION_LONGITUDE_RATE);
+  EXPECT_EQ(std::to_underlying(Operation::EVENTS), CAPABILITY_OPERATION_EVENTS);
+  EXPECT_EQ(std::to_underlying(Operation::HOUSES), CAPABILITY_OPERATION_HOUSES);
+  EXPECT_EQ(std::to_underlying(Status::SOURCE_WINDOW), CAPABILITY_STATUS_SOURCE_WINDOW);
+  EXPECT_EQ(std::to_underlying(Status::IMPLEMENTATION_WINDOW), CAPABILITY_STATUS_IMPLEMENTATION_WINDOW);
+  EXPECT_EQ(std::to_underlying(Status::UNBOUNDED_FINITE), CAPABILITY_STATUS_UNBOUNDED_FINITE);
+  EXPECT_EQ(std::to_underlying(ModelKind::DELTA_T), MODEL_KIND_DELTA_T);
+  EXPECT_EQ(std::to_underlying(ModelKind::NUTATION), MODEL_KIND_NUTATION);
+  EXPECT_EQ(std::to_underlying(ModelKind::POSITION_SOURCE), MODEL_KIND_POSITION_SOURCE);
+  EXPECT_EQ(std::to_underlying(ModelStatus::CURRENT), MODEL_STATUS_CURRENT);
+  EXPECT_EQ(std::to_underlying(ModelStatus::FROZEN), MODEL_STATUS_FROZEN);
+  EXPECT_EQ(std::to_underlying(PositionSource::SUN_VSOP87D), CAPABILITY_SOURCE_SUN_VSOP87D);
+  EXPECT_EQ(std::to_underlying(PositionSource::MOON_ELP2000_82B_TRUNC), CAPABILITY_SOURCE_MOON_ELP2000_82B_TRUNC);
+  EXPECT_EQ(std::to_underlying(PositionSource::PLANET_VSOP87D), CAPABILITY_SOURCE_PLANET_VSOP87D);
+  EXPECT_EQ(std::to_underlying(PositionSource::PLUTO_PLUTO95_APPARENT), CAPABILITY_SOURCE_PLUTO_PLUTO95_APPARENT);
+  EXPECT_EQ(std::to_underlying(PositionSource::NODE_MEAN), CAPABILITY_SOURCE_NODE_MEAN);
+  EXPECT_EQ(std::to_underlying(PositionSource::NODE_TRUE_MEEUS_FIVE_TERM), CAPABILITY_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM);
 }
 
 TEST(CapabilityCAbi, TextExportSizersThenFills) {

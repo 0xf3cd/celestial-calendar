@@ -26,6 +26,7 @@ SCRIPTS = {
   "consumer/events_replay.py",
   "consumer/chart_snapshot.py",
   "consumer/capabilities.py",
+  "consumer/queries.py",
 }
 
 

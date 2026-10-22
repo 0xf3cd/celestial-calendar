@@ -216,6 +216,31 @@ class ModelIdentityRecordV1(ctypes.Structure):
   ]
 
 
+class PositionRecordV1(ctypes.Structure):
+  _fields_ = [
+    ("target_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("longitude_deg", ctypes.c_double),
+    ("latitude_deg", ctypes.c_double),
+    ("distance_au", ctypes.c_double),
+    ("source_code", ctypes.c_uint32),
+    ("flags", ctypes.c_uint32),
+  ]
+
+
+class HouseQueryResultV1(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("house_system_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("nutation_identity_code", ctypes.c_uint32),
+    ("flags", ctypes.c_uint32),
+    ("jd_ut1", ctypes.c_double),
+    ("jde_tt", ctypes.c_double),
+    ("houses", ChartHousesV1),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
@@ -224,6 +249,7 @@ P_STATION_EVENT = ctypes.POINTER(StationEventRecord)
 P_LONGITUDE_DIFFERENCE_EVENT = ctypes.POINTER(LongitudeDifferenceEventRecord)
 P_CAPABILITY = ctypes.POINTER(CapabilityRecordV1)
 P_MODEL_IDENTITY = ctypes.POINTER(ModelIdentityRecordV1)
+P_POSITION = ctypes.POINTER(PositionRecordV1)
 
 BINDING_SPECS = {
   "set_log_verbosity": ((ctypes.c_uint8,), ctypes.c_bool),
@@ -316,6 +342,25 @@ BINDING_SPECS = {
     (ctypes.c_uint32, ctypes.c_uint32, P_CHAR, ctypes.c_uint32),
     ctypes.c_uint32,
   ),
+  "position_query_v1": (
+    (P_U32, ctypes.c_uint32, ctypes.c_double, P_U32, P_POSITION, ctypes.c_uint32),
+    ctypes.c_uint32,
+  ),
+  "house_query_v1": (
+    (
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_uint32,
+    ),
+    HouseQueryResultV1,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -345,6 +390,8 @@ STRUCT_TYPES = {
     LongitudeDifferenceEventRecord,
     CapabilityRecordV1,
     ModelIdentityRecordV1,
+    PositionRecordV1,
+    HouseQueryResultV1,
   )
 }
 

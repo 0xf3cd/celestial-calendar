@@ -215,7 +215,11 @@ feel is intentional. Keep it. That buys a discipline:
   file-local usings.
 - **Nested `lower_case` namespaces** by domain (`astro::earth::nutation`, `lib::`,
   `calendar::`); close with a `} // namespace …` comment.
-- **Trailing return types**: `inline auto f(const double jde) -> SphericalCoordinate`.
+- **Trailing return types**: short signatures stay on one line, as in
+  `inline auto f(const double jde) -> SphericalCoordinate`. For a long signature, expand the
+  parameters and keep `) -> ReturnType {` together; `noexcept` stays between `)` and `->`.
+  Never put the trailing-return arrow on its own line. The `checks.py --clang-tidy` preflight
+  checks this closing-parenthesis rule for named `auto` function signatures, not lambdas.
 - **Fixed-width integers**: use `intN_t` / `uintN_t` from `<cstdint>` for numeric values,
   including helper returns, locals and test data. Do not introduce plain `int`, `short`
   or `long` through explicit declarations or type deduction. Keep `std::size_t` for

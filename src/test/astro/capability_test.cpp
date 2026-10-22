@@ -10,11 +10,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -142,14 +144,46 @@ TEST(Capability, ModelIdentityRegistry) {
 }
 
 TEST(Capability, DefaultAliasResolvesLikeTheBoundarySwitch) {
-  // The C ABI switch maps DEFAULT(0) and ALGO5(5) to Algo5; the canonical table must agree.
-  EXPECT_EQ(resolve_delta_t_code(DEFAULT_DELTA_T_CODE), astro::delta_t::Model::ALGO5);
-  EXPECT_EQ(resolve_delta_t_code(5), astro::delta_t::Model::ALGO5);
-  for (uint32_t code = 1; code <= 4; ++code) {
-    EXPECT_EQ(resolve_delta_t_code(code), static_cast<astro::delta_t::Model>(code - 1));
+  using astro::delta_t::Model;
+  const std::array<std::pair<DeltaTSelector, Model>, 6> cases {{
+    { DeltaTSelector::DEFAULT, Model::ALGO5 },
+    { DeltaTSelector::ALGO1,   Model::ALGO1 },
+    { DeltaTSelector::ALGO2,   Model::ALGO2 },
+    { DeltaTSelector::ALGO3,   Model::ALGO3 },
+    { DeltaTSelector::ALGO4,   Model::ALGO4 },
+    { DeltaTSelector::ALGO5,   Model::ALGO5 },
+  }};
+  for (const auto& [selector, model] : cases) {
+    EXPECT_EQ(resolve_delta_t_code(std::to_underlying(selector)), model);
+    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
+      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
+      EXPECT_EQ(resolve_delta_t_code(code), std::nullopt);
+    }
   }
-  EXPECT_EQ(resolve_delta_t_code(6), std::nullopt);
-  EXPECT_EQ(resolve_delta_t_code(std::numeric_limits<uint32_t>::max()), std::nullopt);
+  EXPECT_EQ(DEFAULT_DELTA_T_CODE, std::to_underlying(DeltaTSelector::DEFAULT));
+  for (const uint32_t code : { uint32_t { 6 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {
+    EXPECT_EQ(resolve_delta_t_code(code), std::nullopt);
+  }
+}
+
+TEST(Capability, NutationSelectorsResolveToModelIdentities) {
+  using astro::earth::nutation::Model;
+  const std::array<std::pair<NutationSelector, Model>, 3> cases {{
+    { NutationSelector::DEFAULT,  Model::IAU_1980 },
+    { NutationSelector::MEEUS,    Model::MEEUS    },
+    { NutationSelector::IAU_1980, Model::IAU_1980 },
+  }};
+  for (const auto& [selector, model] : cases) {
+    EXPECT_EQ(resolve_nutation_code(std::to_underlying(selector)), model);
+    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
+      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
+      EXPECT_EQ(resolve_nutation_code(code), std::nullopt);
+    }
+  }
+  EXPECT_EQ(DEFAULT_NUTATION_CODE, std::to_underlying(NutationSelector::DEFAULT));
+  for (const uint32_t code : { uint32_t { 3 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {
+    EXPECT_EQ(resolve_nutation_code(code), std::nullopt);
+  }
 }
 
 TEST(Capability, DescribeCoversEveryRecord) {

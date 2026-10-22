@@ -303,6 +303,54 @@ try {
     M._free(textPtr);
   }
   happyExports.add("celestial_capability_text");
+
+  // #355: independent queries. Position count+fill follows the caller's target order with a
+  // subset succeeding below the snapshot joint window; houses return by value with the
+  // resolved model identities.
+  const positionSelection = M._malloc(3 * 4);
+  try {
+    M.HEAPU32[positionSelection >> 2] = 9; // Pluto
+    M.HEAPU32[(positionSelection >> 2) + 1] = 0; // Sun
+    M.HEAPU32[(positionSelection >> 2) + 2] = 10; // mean ascending node
+    const positionFill = eventFill("position_query_v1", "PositionRecordV1", [positionSelection, 3, 2451545.0]);
+    assert.equal(positionFill.length, 3);
+    assert.deepEqual(
+      positionFill.map((position) => [position.target_code, position.present_fields & 2 ? 1 : 0]),
+      [[9, 1], [0, 1], [10, 0]],
+    );
+    assert.equal(positionFill[2].source_code, 4); // CAPABILITY_SOURCE_NODE_MEAN
+    for (const position of positionFill) {
+      assert(position.longitude_deg >= 0.0 && position.longitude_deg < 360.0);
+      assert(Number.isFinite(position.latitude_deg));
+    }
+    happyExports.add("position_query_v1");
+  } finally {
+    M._free(positionSelection);
+  }
+
+  const houseQuery = validSret(
+    "house_query_v1",
+    [2024, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2],
+  );
+  assert.equal(houseQuery.house_system_code, 2);
+  assert.equal(houseQuery.delta_t_identity_code, 4); // Algo5, never an unresolved DEFAULT
+  assert.equal(houseQuery.nutation_identity_code, 1); // IAU 1980
+  assert(houseQuery.jde_tt > houseQuery.jd_ut1);
+  assert.equal(houseQuery.houses.cusps_deg.length, 12);
+  for (const angle of [
+    houseQuery.houses.ascendant_deg,
+    houseQuery.houses.midheaven_deg,
+    houseQuery.houses.descendant_deg,
+    houseQuery.houses.imum_coeli_deg,
+    ...houseQuery.houses.cusps_deg,
+  ]) {
+    assert(angle >= 0.0 && angle < 360.0);
+  }
+  // The snapshot joint window does not apply: 1885 resolves.
+  const earlyHouse = rawSret("house_query_v1", [1885, 1, 1, 0.0, 1, 5, 1, 51.5, 0.0, 0]);
+  assert.equal(earlyHouse.valid, true);
+  assert(earlyHouse.jde_tt < 2409543.875);
+  assert.equal(earlyHouse.nutation_identity_code, 0); // MEEUS
 } finally {
   M._free(oneSlot);
   M._free(countPtr);
@@ -452,6 +500,10 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
     recordedFailure("celestial_model_identities", () => M._celestial_model_identities(9, eventCount, 0, 0) === 0);
     assert.equal(M.HEAPU32[eventCount >> 2], 0);
     recordedFailure("celestial_capability_text", () => M._celestial_capability_text(0, 256, 0, 0) === 0);
+    M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
+    recordedFailure("position_query_v1", () => M._position_query_v1(0, 1, 2451545.0, eventCount, 0, 0) === 0);
+    assert.equal(M.HEAPU32[eventCount >> 2], 0);
+    recordedFailure("house_query_v1", () => !rawSret("house_query_v1", [2024, 6, 1, 0.5, 1, 0, 0, 89.9, 0.0, 2]).valid);
   } finally {
     M._free(eventCount);
   }
@@ -850,15 +902,15 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 36 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 24 layouts decoded");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 38 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 26 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 36/36; layouts 24/24; recording seams 35/35");
+console.log("PASS raw exports 38/38; layouts 26/26; recording seams 37/37");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

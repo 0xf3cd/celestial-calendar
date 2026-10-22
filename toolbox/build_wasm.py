@@ -65,6 +65,8 @@ EXPORTS: Final[list[str]] = [
   "celestial_capabilities",
   "celestial_model_identities",
   "celestial_capability_text",
+  "position_query_v1",
+  "house_query_v1",
   "malloc",
   "free",
 ]

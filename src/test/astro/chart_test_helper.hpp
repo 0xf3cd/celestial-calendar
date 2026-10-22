@@ -58,8 +58,10 @@ inline const std::array COMPOSITION_ROLES {
  * @brief Replay lower-level positions without reusing @ref astro::ephemeris::planet_for_target.
  * @note Nodes have no spherical distance.
  */
-[[nodiscard]] inline auto expected_coordinates(const astro::ephemeris::Target target, const double jde_tt)
-  -> astro::toolbox::SphericalCoordinate {
+[[nodiscard]] inline auto expected_coordinates(
+  const astro::ephemeris::Target target,
+  const double jde_tt
+) -> astro::toolbox::SphericalCoordinate {
   using astro::planet::Planet;
   using enum astro::ephemeris::Target;
   switch (target) {

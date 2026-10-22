@@ -572,11 +572,13 @@ auto core_gregorian_to_lunar(const int32_t year, const uint32_t month, const uin
   }
 }
 
-// The y/m/d(+leap) parameter order mirrors the library; NOLINT is trailing because the
-// diagnostic lands on the parameter line, not the declaration line.
 template <calendar::lunar::common::Algo algo>
-auto core_lunar_to_gregorian(const int32_t year, const uint32_t month, const bool is_leap, const uint32_t day) // NOLINT(bugprone-easily-swappable-parameters)
-  -> std::optional<GregorianDate> {
+auto core_lunar_to_gregorian(
+  const int32_t year, // NOLINT(bugprone-easily-swappable-parameters) -- y/m/d(+leap) is the library's date order.
+  const uint32_t month,
+  const bool is_leap,
+  const uint32_t day
+) -> std::optional<GregorianDate> {
   try {
     const auto& info = calendar::lunar::common::AlgoMetadata<algo>::get_info_for_year(year);
     const auto position = calendar::lunar::common::month_position(info, static_cast<uint8_t>(month), is_leap);
@@ -594,9 +596,12 @@ auto core_lunar_to_gregorian(const int32_t year, const uint32_t month, const boo
   }
 }
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
-auto core_gregorian_to_lunar_for(const uint8_t algo, const int32_t year, const uint32_t month, const uint32_t day)
-  -> std::optional<LunarDate> {
+auto core_gregorian_to_lunar_for(
+  const uint8_t algo, // NOLINT(bugprone-easily-swappable-parameters) -- algo/y/m/d follows the C entry point.
+  const int32_t year,
+  const uint32_t month,
+  const uint32_t day
+) -> std::optional<LunarDate> {
   switch (algo) {
     case 1: return core_gregorian_to_lunar<calendar::lunar::common::Algo::ALGO_1>(year, month, day);
     case 3: return core_gregorian_to_lunar<calendar::lunar::common::Algo::ALGO_3>(year, month, day);

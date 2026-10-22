@@ -120,8 +120,7 @@ inline constexpr double WORKING_END_JDE_TT = astro::julian_day::jm_to_jde(10.0);
   }
 }
 
-[[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt)
-  -> toolbox::AngleDeg {
+[[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt) -> toolbox::AngleDeg {
   using astro::lunar_node::Node;
   using astro::lunar_node::position;
   using astro::planet::geocentric_coord::apparent;

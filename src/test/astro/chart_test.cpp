@@ -55,7 +55,7 @@ static_assert(std::tuple_size_v<decltype(Snapshot::bodies)> == 14);
 static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> == 12);
 static_assert(noexcept(astro::delta_t::compute(2026.0)));
 static_assert(not std::is_default_constructible_v<Snapshot>);
-static_assert(not std::is_default_constructible_v<detail::Position>);
+static_assert(not std::is_default_constructible_v<astro::chart::Position>);
 static_assert(detail::START_JDE_TT == 2409543.875);
 static_assert(detail::END_JDE_TT == 2488069.125);
 
