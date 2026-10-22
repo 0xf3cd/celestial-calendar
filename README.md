@@ -278,8 +278,9 @@ OS version floor is declared.
   system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot),
   Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
-  [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages expose planets,
-  lunar nodes, longitude rates and houses only through this snapshot; the standalone functions are C++-only.
+  [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
+  longitude rates only through this snapshot; planets, lunar nodes and houses also have independent queries
+  (next bullet), which JavaScript does not expose.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
   return events ordered by JDE(TT). Year ownership uses `[Jan 1, next Jan 1)` UTC, with the library's UT1
   substitute before 1972. The `[1, 32766]` input year domain only guarantees that the computation runs, not that

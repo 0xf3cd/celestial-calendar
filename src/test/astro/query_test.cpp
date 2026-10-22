@@ -61,18 +61,37 @@ TEST(Query, PositionAtProviderBoundaryNeedsNoRateStencil) {
   // template" case (#355).
   const auto pluto = astro::chart::position(Target::PLUTO, 2409543.5);
   EXPECT_GE(pluto.longitude.deg(), 0.0);
-  // Nodes likewise: the node provider accepts 2409542.5, below any rate center.
+  // Nodes likewise: the node provider window starts at 2409542.5 (1885-01-01 0h TT), below
+  // any rate center.
   const auto node = astro::chart::position(Target::MEAN_ASCENDING, 2409542.5);
   EXPECT_FALSE(node.distance.has_value());
-  // At the same instant (1885-01-02 0h, its JDE(TT) just below 2409543.875) a complete
-  // snapshot rejects the query through the joint window.
+}
+
+TEST(Query, SubsetSucceedsWhereTheSnapshotRejectsAtTheSameInstant) {
+  // #355 acceptance: a supported subset succeeds where an excluded object's domain would
+  // reject a complete snapshot. Resolve one civil instant below the snapshot joint window,
+  // then evaluate both halves at exactly that instant.
+  const auto civil = calendar::Datetime { util::to_ymd(1885, 1, 2), 0.0 };
+  const auto times = detail::resolve_times_for_houses(civil, Scale::UT1, astro::delta_t::Model::ALGO5);
+  ASSERT_LT(times.jde_tt, detail::START_JDE_TT);
+
+  // A subset without Pluto evaluates fine below the joint window.
+  for (const auto target : { Target::SUN, Target::MOON }) {
+    const auto coordinate = astro::chart::position(target, times.jde_tt);
+    EXPECT_GE(coordinate.longitude.deg(), 0.0);
+  }
+  // The excluded object is outside its own position window at this exact instant: UT1
+  // midnight resolves 5.6 s of Delta T before Pluto's window start (2409543.5 TT), so any
+  // complete evaluation touching Pluto must fail here while the subset without it succeeds.
+  EXPECT_THROW((void)astro::chart::position(Target::PLUTO, times.jde_tt), std::invalid_argument);
+
+  // The complete snapshot at the same instant rejects through the joint window.
+  const auto location = astro::GeoLocation {
+    .latitude = astro::toolbox::AngleDeg { 51.5 },
+    .longitude = astro::toolbox::AngleDeg { 0.0 },
+  };
   EXPECT_THROW(
-    (void)astro::chart::calculate(
-      calendar::Datetime { util::to_ymd(1885, 1, 2), 0.0 },
-      Scale::UT1,
-      astro::GeoLocation { .latitude = astro::toolbox::AngleDeg { 51.5 }, .longitude = astro::toolbox::AngleDeg { 0.0 } },
-      astro::house::System::WHOLE_SIGN
-    ),
+    (void)astro::chart::calculate(civil, Scale::UT1, location, astro::house::System::WHOLE_SIGN),
     std::invalid_argument
   );
 }

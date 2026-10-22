@@ -68,14 +68,25 @@ TEST(QueriesCAbi, PositionQueryAtProviderBoundaryAndSubsetSuccess) {
   EXPECT_EQ(position_query_v1(selection.data(), selection.size(), 2409543.5, &count, records.data(), records.size()), 2);
   EXPECT_EQ(count, 2);
 
-  // Nodes are symmetric: the node provider window starts at 2409542.5, below the node rate
-  // center, and a node-only query succeeds there.
+  // Nodes are symmetric: the node provider window starts at 2409542.5 (1885-01-01 0h TT),
+  // below the node rate center, and a node-only query succeeds there.
   const std::array<uint32_t, 1> node { CHART_TARGET_MEAN_ASCENDING };
   EXPECT_EQ(position_query_v1(node.data(), 1, 2409542.5, &count, records.data(), 1), 1);
   EXPECT_EQ(count, 1);
   EXPECT_FALSE((records[0].present_fields & POSITION_PRESENT_DISTANCE) != 0);
 
-  // At the same instant, a complete snapshot rejects the query through the joint window.
+  // At one resolved instant below the snapshot joint window, a subset without Pluto succeeds
+  // while a complete snapshot at the same civil instant rejects the query through the joint
+  // window.
+  const auto early_house = house_query_v1(1885, 1, 2, 0.0, CHART_CIVIL_SCALE_UT1, CHART_DELTA_T_MODEL_DEFAULT,
+                                          HOUSE_NUTATION_MODEL_DEFAULT, 51.5, 0.0, CHART_HOUSE_SYSTEM_WHOLE_SIGN);
+  ASSERT_TRUE(early_house.valid);
+  ASSERT_LT(early_house.jde_tt, 2409543.875);
+  const std::array<uint32_t, 2> without_pluto { CHART_TARGET_SUN, CHART_TARGET_MOON };
+  EXPECT_EQ(position_query_v1(without_pluto.data(), without_pluto.size(), early_house.jde_tt, &count,
+                              records.data(), records.size()),
+            2);
+  EXPECT_EQ(count, 2);
   const auto snapshot = chart_snapshot_v1(1885, 1, 2, 0.0, CHART_CIVIL_SCALE_UT1, 51.5, 0.0,
                                           CHART_HOUSE_SYSTEM_WHOLE_SIGN, CHART_DELTA_T_MODEL_DEFAULT);
   EXPECT_FALSE(snapshot.valid);

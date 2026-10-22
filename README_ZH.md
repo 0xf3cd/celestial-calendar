@@ -230,7 +230,7 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
   C ABI 和两个语言包仍只通过这份快照提供黄经速率；行星、月交点的独立位置与宫位查询见下条，
-  JavaScript 对速率与独立查询都不暴露。
+  JavaScript 则不暴露这两个独立查询。
 - 区间黄经事件（供定黄经过宫、留站、带方向的两体黄经差）：C++ 见
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 与
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为

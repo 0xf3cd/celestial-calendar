@@ -45,10 +45,22 @@ def main() -> None:
   assert positions[2].source is celestial.PositionSource.NODE_TRUE_MEEUS_FIVE_TERM
 
   # No rate stencil and no snapshot joint window: a Pluto-only query succeeds at the provider
-  # window start (1885-01-02 0h, JDE(TT) 2409543.5), where a complete snapshot at the same
-  # instant rejects the query through the joint window.
+  # window start (1885-01-02 0h TT, JDE(TT) 2409543.5).
   boundary = celestial.positions([celestial.ChartTarget.PLUTO], 2409543.5)
   assert len(boundary) == 1 and 0.0 <= boundary[0].longitude_deg < 360.0
+
+  # At one resolved instant below the snapshot joint window: a position subset without Pluto
+  # succeeds at exactly that instant while a complete snapshot at the same civil instant
+  # rejects the query through the joint window.
+  early = celestial.house_query(
+    celestial.CivilDateTime(year=1885, month=1, day=2, fraction=0.0),
+    celestial.CivilScale.UT1,
+    location,
+    celestial.HouseSystem.EQUAL,
+  )
+  assert early.times.jde_tt < 2409543.875
+  subset = celestial.positions([celestial.ChartTarget.SUN, celestial.ChartTarget.MOON], early.times.jde_tt)
+  assert len(subset) == 2
   raises(
     celestial.CelestialError,
     lambda: celestial.chart_snapshot(
@@ -75,16 +87,16 @@ def main() -> None:
   assert houses.delta_t_identity == "algo5"
   assert houses.nutation_identity is celestial.NutationModel.IAU_1980
 
-  # The snapshot joint window does not apply: 1885 resolves, and the nutation selector is
+  # The snapshot joint window does not apply to houses, and the nutation selector is
   # honoured. Algo3's resolved identity lands on the result, not a hardcoded default.
-  early = celestial.house_query(
+  old_houses = celestial.house_query(
     celestial.CivilDateTime(year=1885, month=1, day=1, fraction=0.0),
     celestial.CivilScale.UT1,
     location,
     celestial.HouseSystem.EQUAL,
   )
-  assert early.times.jde_tt < 2409543.875
-  assert early.delta_t_identity == "algo5"
+  assert old_houses.times.jde_tt < 2409543.875
+  assert old_houses.delta_t_identity == "algo5"
   algo3 = celestial.house_query(
     civil,
     celestial.CivilScale.UTC,
@@ -93,7 +105,7 @@ def main() -> None:
     delta_t_model=celestial.DeltaTModel.ALGO3,
   )
   assert algo3.delta_t_identity == "algo3"
-  assert early.delta_t_identity == "algo5"
+  assert old_houses.delta_t_identity == "algo5"
   meeus = celestial.house_query(
     civil,
     celestial.CivilScale.UTC,
