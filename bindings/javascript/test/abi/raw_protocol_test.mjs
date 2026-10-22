@@ -503,7 +503,7 @@ for (const name of ["delta_t_algo1", "delta_t_algo2", "delta_t_algo3", "delta_t_
     M.HEAPU32[eventCount >> 2] = 0xDEADBEEF;
     recordedFailure("position_query_v1", () => M._position_query_v1(0, 1, 2451545.0, eventCount, 0, 0) === 0);
     assert.equal(M.HEAPU32[eventCount >> 2], 0);
-    recordedFailure("house_query_v1", () => !M._house_query_v1(2024, 6, 1, 0.5, 1, 0, 0, 89.9, 0.0, 2).valid);
+    recordedFailure("house_query_v1", () => !rawSret("house_query_v1", [2024, 6, 1, 0.5, 1, 0, 0, 89.9, 0.0, 2]).valid);
   } finally {
     M._free(eventCount);
   }
