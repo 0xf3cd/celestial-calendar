@@ -122,8 +122,8 @@ A pull request that cites such a comparison should also name the base commit.
 ## Jieqi JSON Table Export
 
 An application that only needs Jieqi order and spacing, and does not want to link the library, can use
-`toolbox/jieqi_table.py` to export `query_jieqi_moment` as a static JSON table (#164). Build the shared library
-first as described in [Building from Source](BUILDING.md#build), then run from the source root:
+`toolbox/jieqi_table.py` to export `query_jieqi_moment` as a static JSON table (#164). Build with
+`python3 project.py --cmake --build` first, then run from the source root:
 
 ```sh
 python3 toolbox/jieqi_table.py
@@ -133,21 +133,36 @@ python3 toolbox/jieqi_table.py -o build/jieqi.json --start-year 2000 --end-year 
 The first command writes the default 1950–2051 table to standard output, 24 × 102 = 2448 entries. The second
 chooses an output file and a year window; the years must lie within `[401, 9999]`. The output contract:
 
-- Each entry is `{year, idx, name_zh, unix_ms, iso_utc}`. `idx` counts from Lichun (立春) = 0 and follows the ABI's
+- Schema `celestial-calendar/jieqi-table@2` replaces `@1`. Each entry is
+  `{year, idx, name_zh, jd_ut1, iso_ut1}`. `idx` counts from Lichun (立春) = 0 and follows the ABI's
   `to_index` order; `name_zh` comes from the ABI's `get_jieqi_name`, so the mapping can be checked.
 - Entries are sorted by actual moment, strictly increasing. Within a Gregorian year the index order is 22, 23, 0,
   …, 21: Xiaohan (小寒) and Dahan (大寒) come first, and entries are not sorted by index.
 - `year` is the owning year passed to the query. In the default window all 24 crossings of each year fall in the
   same Gregorian year, and the check verifies this. That does not always hold for high years: Xiaohan of 9999
-  falls on 9998-12-31, so `year` differs from the year inside `iso_utc`.
+  falls on 9998-12-31, so `year` differs from the year inside `iso_ut1`.
 - The default table keeps 2051 as a trailing year, so every moment in 1950–2050 still has its successor in the
   table.
-- The time scale is **UT1**, not UTC+8 clock time; shown in UTC+8, the same moment may fall on a different date.
-  The table's `timescale_note` describes the UT1 / UTC difference for each era. Do not infer the time scale from
-  the `iso_utc` field name; read `timescale_note` before interpreting the timestamp fields.
-  [Time scales](DESIGN.md#time-scales) explains how UT1 relates to UTC in this library.
-- Sub-millisecond parts are truncated, not rounded; `iso_utc` and `unix_ms` denote the same millisecond. The
-  output has no generation timestamp, so two runs at the same commit should produce identical bytes.
+- `jd_ut1` is a floating-point Julian day on **model UT1**, used for ordering and time intervals.
+  `iso_ut1` displays that civil moment as `YYYY-MM-DDTHH:MM:SS.sss`, truncating sub-millisecond parts.
+  It has no `Z` or offset and must not be passed to a UTC parser. The misleading `unix_ms` and `iso_utc`
+  fields are removed, without compatibility aliases.
+- No UT1-to-UTC conversion or leap-second table participates in this export. This also applies before 1972,
+  near leap seconds and for future dates; the output does not predict future UTC or observed DUT1.
+  `models.delta_t` records the resolved default model identity and description from the loaded library;
+  `models.leap_seconds` is null. [Time scales](DESIGN.md#time-scales) explains the distinction.
+- The local build writes a `.provenance.json` receipt beside the resolved library. It records production
+  source-file digests, their combined snapshot digest, the CMake configuration digest and the artifact digest.
+  Missing or stale receipts force a clean rebuild through `project.py --build` before new provenance is recorded;
+  a failed build or a source/configuration change during the build leaves no valid receipt.
+- Export verifies the receipt, current production source snapshot and exact artifact bytes before loading a
+  private copy. Missing metadata, stale sources or a different binary fail the command rather than produce a
+  table with guessed provenance. Raw `cmake --build` does not establish this receipt; rebuild through
+  `project.py --build` before exporting. The receipt is a record of a locally trusted build, not a signed attestation.
+- `source.commit` comes from the build receipt, not the export-time HEAD. It is null for a dirty build;
+  `source.snapshot_sha256` still identifies its source bytes, and `source.artifact_sha256` identifies its library.
+  Packaging-time `build_info.json` cannot substitute for this evidence. The output has no generation timestamp;
+  repeated exports of the same verified artifact and source snapshot are byte-identical.
 
 `./checks.py --jieqi-table` checks this contract, the HKO almanac baseline, and an independent recomputation by
 `statistics/common.py`.

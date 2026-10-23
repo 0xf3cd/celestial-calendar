@@ -36,12 +36,28 @@
 
 ### Changed
 
+- `calendar::Datetime` now takes a raw `std::chrono::duration` as its date-plus-time argument (#379),
+  validating it before nanosecond conversion. Replace `Datetime{day, hh_mm_ss{elapsed}}` with
+  `Datetime{day, elapsed}`; an existing valid `hh_mm_ss` can supply `.to_duration()`. The fraction and
+  time-point constructors remain. `to_fraction` retains negative and multi-day inputs but rejects unsafe conversions.
+- Jieqi JSON export uses schema `celestial-calendar/jieqi-table@2` (#380): replace `unix_ms`/`iso_utc`
+  with `jd_ut1`/`iso_ut1`. It keeps model UT1 without a UTC suffix or a UTC accuracy promise. Export now
+  requires a verified build receipt; dirty-source builds record a snapshot digest and no source commit.
 - The Delta T code table is single-sourced: `astro::capability::resolve_delta_t_code`
   resolves the boundary codes (DEFAULT selects Algo5) for the C ABI switch, and the new
   gate test reconciles `celestial.h`, the manifest generator and both Python tables.
 - The private WASM ABI mirrors the expanded C surface (#357): the export list, binding
   metadata, layouts and both ABI manifests carry the three capability exports and their
   two record layouts. No public JavaScript capability API is added.
+
+### Fixed
+
+- Model identity filtering no longer assigns a vector from its own filtered iterators (#378).
+  Each kind retains the order and count of the corresponding subset of ALL.
+- Original year, month and day values are checked before chrono narrowing (#379), including floating-point
+  years, leap days and full-width C month/day inputs. Invalid durations and time points fail before unsafe conversion.
+- Test discovery and execution reject missing directories, incomplete or empty registrations, command failures
+  and zero actual GoogleTest executions, including under `python -O` (#381). A run reuses one discovery snapshot.
 
 ## [v0.9.0]
 

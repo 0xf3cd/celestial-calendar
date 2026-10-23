@@ -61,7 +61,7 @@ static_assert(detail::END_JDE_TT == 2488069.125);
 
 auto civil(const int32_t year, const uint32_t month, const uint32_t day,
            const int64_t elapsed_ns) -> Datetime {
-  return Datetime { util::to_ymd(year, month, day), std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } } };
+  return Datetime { util::to_ymd(year, month, day), std::chrono::nanoseconds { elapsed_ns } };
 }
 
 auto independent_delta_t(const Model model, const double year) -> double {

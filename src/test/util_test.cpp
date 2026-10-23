@@ -72,6 +72,30 @@ TEST(Util, CheckedYear) {
   ASSERT_EQ(static_cast<int32_t>(checked_year(-1)), -1);
 }
 
+TEST(Util, ToYmdRejectsOriginalInvalidInputs) {
+  for (const int64_t year : { int64_t { -32768 }, int64_t { 32768 }, int64_t { 67560 },
+                               std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max() }) {
+    EXPECT_THROW(std::ignore = to_ymd(year, 1, 1), std::invalid_argument);
+  }
+  EXPECT_THROW(std::ignore = to_ymd(std::numeric_limits<uint64_t>::max(), 1, 1), std::invalid_argument);
+  for (const double year : { 2024.5, 40000.7, 1e18, std::numeric_limits<double>::quiet_NaN(),
+                              std::numeric_limits<double>::infinity() }) {
+    EXPECT_THROW(std::ignore = to_ymd(year, 1, 1), std::invalid_argument);
+  }
+  for (const uint32_t value : { uint32_t { 256 }, uint32_t { 257 }, std::numeric_limits<uint32_t>::max() }) {
+    EXPECT_THROW(std::ignore = to_ymd(2024, value, 1), std::invalid_argument);
+    EXPECT_THROW(std::ignore = to_ymd(2024, 1, value), std::invalid_argument);
+  }
+  EXPECT_FALSE(to_ymd(2023, 2, 29).ok());
+  EXPECT_FALSE(to_ymd(2024, 4, 31).ok());
+  EXPECT_FALSE(to_ymd(2024, 0, 0).ok());
+  EXPECT_EQ(static_cast<uint32_t>(to_ymd(2023, 13, 30).month()), 13);
+  EXPECT_TRUE(to_ymd(true, 1, 1).ok());
+  EXPECT_TRUE(to_ymd(2024.0, 2, 29).ok());
+  EXPECT_TRUE(to_ymd(-32767, 1, 1).ok());
+  EXPECT_TRUE(to_ymd(32767, 12, 31).ok());
+}
+
 TEST(Util, CheckedYearRejectsUnrepresentable) {
   for (const int32_t year : { 32768, -32768, 65537, 67562, 67421, -63510,
                               std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() }) {

@@ -137,7 +137,7 @@ TEST(JulianDayErfaOracle, ExhaustiveDomainAndFractions) {
         for (const std::int64_t nanoseconds : FRACTION_NS) {
           const Datetime input {
             ymd,
-            std::chrono::hh_mm_ss { std::chrono::nanoseconds { nanoseconds } },
+            std::chrono::nanoseconds { nanoseconds },
           };
           if (!forward_matches(input)) {
             FAIL() << "fractional forward mismatch at " << year << '-' << month << '-' << day;
@@ -166,9 +166,7 @@ TEST(JulianDayErfaOracle, ExhaustiveDomainAndFractions) {
     const Datetime current = jd_to_ut1(jd);
     const Datetime independent_forward {
       current.ymd,
-      std::chrono::hh_mm_ss {
-        std::chrono::nanoseconds { util::random<std::int64_t>(0, NS_PER_DAY - 1) },
-      },
+      std::chrono::nanoseconds { util::random<std::int64_t>(0, NS_PER_DAY - 1) },
     };
     if (!forward_matches(independent_forward)) {
       FAIL() << "random forward mismatch at row " << index;

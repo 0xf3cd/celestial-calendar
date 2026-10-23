@@ -274,6 +274,10 @@ JavaScript 用 `lunar.supportedYearRange()`，C++ 用各 `calendar::lunar::algoN
 接受民用 UTC。纯 `/date` 桥接不提供 UTC 到 UT1、或 Date 到 JDE 的转换。本库不使用观测 DUT1（UT1 − UTC），
 所以 UT1 结果不是 UTC 时间；本库的 UTC 模型以及两者在各年代相差多少，见[时标（英文）](docs/DESIGN.md#time-scales)。
 
+开发中版本的[离线节气 JSON 表](docs/VALIDATION.md#jieqi-table)使用 `@2` schema：`jd_ut1` 用于计算，
+`iso_ut1` 用于显示，不带 `Z` 或时区偏移；原 `unix_ms`／`iso_utc` 字段已移除。导出前须通过
+`project.py --build` 生成可核验的构建来源记录，来源缺失或不符时拒绝导出，不把当前 checkout 的提交冒充计算来源。
+
 C ABI 和两个语言包中，地理经度东正，太阳与月亮的角度单位为度。太阳距离为 AU；独立的月亮坐标接口给出千米，
 星盘快照中所有天体的距离（含月亮）都是 AU。均时差是时角的度数，乘以 240 得到时间秒。
 

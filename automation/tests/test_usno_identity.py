@@ -205,8 +205,8 @@ def test_v03_minute_difference_is_pinned(tmp_path):
   usno_root = materialize_inputs(tmp_path)
   replace_once(
     tmp_path / "src/test/astro/moon_phase_test.cpp",
-    "to_ymd(2024,  9,  3), hms {  9h + 56min }",
-    "to_ymd(2024,  9,  3), hms {  9h + 55min }",
+    "to_ymd(2024,  9,  3),  9h + 56min",
+    "to_ymd(2024,  9,  3),  9h + 55min",
   )
 
   with pytest.raises(RuntimeError, match="V03 HKO/USNO minute relation differs"):

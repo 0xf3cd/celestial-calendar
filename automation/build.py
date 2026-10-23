@@ -13,6 +13,7 @@ import shutil
 from . import paths
 from .env import Tool, check_tool
 from .gtest import clear_test_binaries
+from .library_provenance import build_library_project
 from .utils import run_cmd, yellow_print, red_print, green_print, ProcReturn
 
 
@@ -84,12 +85,15 @@ def build_project(cpu_cores: int = 8) -> int:
   clear_test_binaries()
 
   yellow_print("# Building the C++ projects...")
-  ret: ProcReturn = run_cmd(
-    ["cmake", "--build", ".", "--parallel", str(cpu_cores)], cwd=BUILD_DIR, env=os.environ.copy()
+  retcode = build_library_project(
+    paths.proj_root(),
+    BUILD_DIR,
+    cpu_cores,
+    lambda command, **kwargs: run_cmd(command, env=os.environ.copy(), **kwargs),
   )
 
   print("#" * 60)
-  return ret.retcode
+  return retcode
 
 
 def build_docs(build_version: str) -> int:

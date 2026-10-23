@@ -8,6 +8,7 @@
 
 import importlib.util
 import json
+import math
 
 from datetime import datetime
 from types import ModuleType
@@ -117,9 +118,8 @@ HKO_ANCHORS: Final[List[Tuple[int, int, int, int, int, int]]] = [
   (2028, 23, 12, 21, 16, 20),
 ]
 
-# Same budget as the C++ golden test: HKO's own ±0.5 min rounding + UT1/UTC conflation
-# (±0.9 s) + full-chain error (seconds). The export's millisecond truncation (< 1 ms)
-# fits inside it; a ΔT-class 69 s slip does not.
+# The existing C++ budget includes minute-rounded HKO reference times and the difference
+# between model UT1 and the HKT reference. It is not a bound on future UT1 minus UTC.
 HKO_TOLERANCE_MS: Final[int] = 60_000
 
 # `jieqi_moment` (statistics/common.py) truncates to microseconds, the export to
@@ -138,8 +138,8 @@ def check_jieqi_table() -> int:
   """Hold the exported jieqi table (`toolbox/jieqi_table.py`) to its invariants.
 
   Checked here: entry count, strict time order, calendar-year containment, per-year
-  completeness, the idx ↔ name_zh mapping against an independent transcription, unix_ms ↔
-  iso_utc self-consistency, byte-level determinism, an independent re-derivation through the
+  completeness, the idx ↔ name_zh mapping against an independent transcription, jd_ut1 ↔
+  iso_ut1 consistency, byte-level determinism, an independent re-derivation through the
   `statistics/common.py` binding, and HKO almanac anchors. Needs the built library
   (`./project.py --build`): a missing build turns the gate red, never a silent skip.
   """
@@ -156,6 +156,10 @@ def check_jieqi_table() -> int:
     return 1
 
   doc = json.loads(first)
+  if doc["schema"] != "celestial-calendar/jieqi-table@2" or doc["timescale"] != "UT1":
+    failures.append("export must use schema @2 with an explicit UT1 scale")
+  if doc["models"]["leap_seconds"] is not None:
+    failures.append("UT1 export must not claim a UTC/leap-second conversion")
   entries = doc["entries"]
 
   start_year = doc["parameters"]["start_year"]
@@ -174,23 +178,27 @@ def check_jieqi_table() -> int:
 
   # Strictly increasing in time -- the table's ordering contract (#164).
   for prev, cur in zip(entries, entries[1:], strict=False):
-    if cur["unix_ms"] <= prev["unix_ms"]:
-      failures.append(f"not strictly increasing: {prev['iso_utc']} -> {cur['iso_utc']}")
+    if cur["jd_ut1"] <= prev["jd_ut1"]:
+      failures.append(f"not strictly increasing: {prev['iso_ut1']} -> {cur['iso_ut1']}")
 
   for entry in entries:
     label = f"year {entry['year']} idx {entry['idx']}"
 
     # Containment: a year's 24 crossings all land inside that calendar year.
-    if int(entry["iso_utc"][0:4]) != entry["year"]:
-      failures.append(f"{label}: iso_utc {entry['iso_utc']} escapes its year")
+    if int(entry["iso_ut1"][0:4]) != entry["year"]:
+      failures.append(f"{label}: iso_ut1 {entry['iso_ut1']} escapes its year")
 
     # The idx ↔ name mapping, pinned against the independent transcription.
     if entry["name_zh"] != JIEQI_NAMES_ZH[entry["idx"]]:
       failures.append(f"{label}: name_zh {entry['name_zh']}, expected {JIEQI_NAMES_ZH[entry['idx']]}")
 
-    # unix_ms and iso_utc describe the same millisecond.
-    if to_ms(datetime.strptime(entry["iso_utc"], "%Y-%m-%dT%H:%M:%S.%fZ")) != entry["unix_ms"]:
-      failures.append(f"{label}: iso_utc and unix_ms disagree")
+    if "unix_ms" in entry or "iso_utc" in entry:
+      failures.append(f"{label}: misleading UTC/Unix aliases are present")
+    display_ms = to_ms(datetime.strptime(entry["iso_ut1"], "%Y-%m-%dT%H:%M:%S.%f"))
+    jd_ms = (entry["jd_ut1"] - 2440587.5) * 86_400_000
+    # The display truncates <1 ms; the separate JD double adds at most one ULP here.
+    if abs(display_ms - jd_ms) > 1.0 + math.ulp(entry["jd_ut1"]) * 86_400_000:
+      failures.append(f"{label}: iso_ut1 and jd_ut1 disagree")
 
   # Every year carries each of the 24 indices exactly once.
   for year in years:
@@ -203,9 +211,10 @@ def check_jieqi_table() -> int:
     common = load_common()
     for entry in entries:
       moment = common.jieqi_moment(entry["year"], common.Jieqi(entry["idx"])).moment
-      if abs(to_ms(moment) - entry["unix_ms"]) > IDENTITY_TOLERANCE_MS:
+      display_ms = to_ms(datetime.strptime(entry["iso_ut1"], "%Y-%m-%dT%H:%M:%S.%f"))
+      if abs(to_ms(moment) - display_ms) > IDENTITY_TOLERANCE_MS:
         failures.append(
-          f"year {entry['year']} idx {entry['idx']}: export {entry['iso_utc']} vs common.py {moment.isoformat()}"
+          f"year {entry['year']} idx {entry['idx']}: export {entry['iso_ut1']} vs common.py {moment.isoformat()}"
         )
   except Exception as e:
     failures.append(f"identity re-derivation via statistics/common.py failed: {type(e).__name__}: {e}")
@@ -218,9 +227,10 @@ def check_jieqi_table() -> int:
       failures.append(f"HKO anchor year {year} entry {hko_entry}: {len(matches)} matching rows")
       continue
     hko_ms = to_ms(datetime(year, month, day, hour, minute)) - 8 * 3_600_000
-    if abs(matches[0]["unix_ms"] - hko_ms) > HKO_TOLERANCE_MS:
+    display_ms = to_ms(datetime.strptime(matches[0]["iso_ut1"], "%Y-%m-%dT%H:%M:%S.%f"))
+    if abs(display_ms - hko_ms) > HKO_TOLERANCE_MS:
       failures.append(
-        f"HKO anchor year {year} entry {hko_entry}: export {matches[0]['iso_utc']} vs "
+        f"HKO anchor year {year} entry {hko_entry}: export {matches[0]['iso_ut1']} vs "
         f"almanac {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} HKT"
       )
 

@@ -18,6 +18,8 @@
 #include <concepts>
 #include <format>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 namespace util {
 
@@ -56,18 +58,38 @@ concept DaysConvertible = requires (const T& t) {
 
 /*!
  * @brief Converts the input year, month, and date to a `std::chrono::year_month_day`.
- * @note Month and day are plain `uint32_t` while `year` keeps a concept — a deliberate asymmetry,
- *       not an oversight. Both are counts that become `std::chrono::month` / `day`, whose
- *       constructors take `unsigned`; the parameter type is that contract, so a constraint there
- *       could only restate it (#83).
+ * @throw std::invalid_argument if the original year is not a representable whole year,
+ *        or month/day cannot be represented unchanged by their chrono fields.
+ * @note Calendar validity is checked by the consumer: lunar labels also use positional month 13.
  */
 [[nodiscard]] constexpr auto to_ymd(
   const YearConvertible auto year,
   const uint32_t month,
   const uint32_t day
 ) -> std::chrono::year_month_day {
-  const std::chrono::year _year { static_cast<int32_t>(year) };
-  return std::chrono::year_month_day { _year / std::chrono::month { month } / std::chrono::day { day } };
+  using Year = decltype(year);
+  constexpr auto FIRST_YEAR = static_cast<int32_t>(std::chrono::year::min());
+  constexpr auto LAST_YEAR = static_cast<int32_t>(std::chrono::year::max());
+  if constexpr (std::is_floating_point_v<Year>) {
+    const bool within_years = year >= FIRST_YEAR and year <= LAST_YEAR;
+    if (not within_years) {
+      throw std::invalid_argument { std::format("Argument `year` must be a representable whole year, got {}", year) };
+    }
+    if (static_cast<std::remove_cv_t<Year>>(static_cast<int32_t>(year)) != year) {
+      throw std::invalid_argument { std::format("Argument `year` must be a representable whole year, got {}", year) };
+    }
+  } else if constexpr (std::is_integral_v<Year>) {
+    using Wide = std::conditional_t<std::is_signed_v<Year>, int64_t, uint64_t>;
+    const auto original = static_cast<Wide>(year);
+    if (std::cmp_less(original, FIRST_YEAR) or std::cmp_greater(original, LAST_YEAR)) {
+      throw std::invalid_argument { std::format("Argument `year` is outside [-32767, 32767], got {}", year) };
+    }
+  }
+  const auto checked = checked_year(static_cast<int32_t>(year));
+  if (month > 255 or day > 255) {
+    throw std::invalid_argument { std::format("Month/day cannot be represented unchanged: {}-{}", month, day) };
+  }
+  return std::chrono::year_month_day { checked / std::chrono::month { month } / std::chrono::day { day } };
 }
 
 

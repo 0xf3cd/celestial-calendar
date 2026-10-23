@@ -346,8 +346,7 @@ TEST(ChartCAbi, PolarPlacidusFailsWithoutPartialResultOrFallback) {
 
 TEST(ChartCAbi, UnresolvedAscendantRecordsFailureAndRecovers) {
   // #321: the payload is unspecified on failure; inspect only valid and last_error.
-  const Datetime dt { util::to_ymd(2026, 1, 1),
-                      std::chrono::hh_mm_ss { std::chrono::seconds { 43205 } } };
+  const Datetime dt { util::to_ymd(2026, 1, 1), std::chrono::seconds { 43205 } };
   const auto placidus = snapshot_at(
     dt,
     CHART_CIVIL_SCALE_UTC,

@@ -43,6 +43,24 @@ def main() -> None:
 
   identities = celestial.model_identities()
   assert len(identities) == 13
+  for kind in celestial.ModelKind:
+    expected = tuple(identity for identity in identities if identity.kind is kind)
+    assert expected
+    for _ in range(2):
+      actual = celestial.model_identities(kind)
+      assert len(actual) == len(expected)
+      for record, reference in zip(actual, expected, strict=True):
+        assert (record.kind, record.identity_code, record.status, record.default_alias_code) == (
+          reference.kind,
+          reference.identity_code,
+          reference.status,
+          reference.default_alias_code,
+        )
+        for value, target in (
+          (record.domain_start_jde_tt, reference.domain_start_jde_tt),
+          (record.domain_end_jde_tt, reference.domain_end_jde_tt),
+        ):
+          assert value == target or (math.isnan(value) and math.isnan(target))
   delta_t = [identity for identity in identities if identity.kind is celestial.ModelKind.DELTA_T]
   assert len(delta_t) == 5
   assert delta_t[4].status is celestial.ModelStatus.CURRENT

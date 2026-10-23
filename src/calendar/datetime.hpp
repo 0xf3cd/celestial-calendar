@@ -18,6 +18,10 @@
 #include <cassert>
 #include <cstdint>
 #include <concepts>
+#include <limits>
+#include <ratio>
+#include <stdexcept>
+#include <type_traits>
 
 #include "ymd.hpp"
 
@@ -80,17 +84,104 @@ concept Fractionable = requires (T t) {
   { duration_cast<nanoseconds>(t) } -> std::same_as<nanoseconds>;
 };
 
+namespace detail {
+
+/** @brief Cast an arithmetic duration to a signed integral duration without overflowing intermediates. */
+template <IsDuration To, IsDuration From>
+[[nodiscard]] constexpr auto checked_duration_cast(const From elapsed) -> To {
+  using Rep = From::rep;
+  using Out = To::rep;
+  static_assert(std::is_integral_v<Out> and std::is_signed_v<Out>);
+  if constexpr (std::is_floating_point_v<Rep>) {
+    const auto count = std::chrono::duration<long double, typename To::period> { elapsed }.count();
+    constexpr auto LOWER = static_cast<long double>(std::numeric_limits<Out>::min());
+    const bool representable = count >= LOWER and count < -LOWER;
+    if (not representable) {
+      throw std::invalid_argument { "Duration does not fit the requested integral representation" };
+    }
+    const auto native_count = std::chrono::duration<Rep, typename To::period> { elapsed }.count();
+    const bool native_representable = native_count >= LOWER and native_count < -LOWER;
+    if (not native_representable) {
+      throw std::invalid_argument { "Rounded duration does not fit the requested integral representation" };
+    }
+    return To { static_cast<Out>(native_count) };
+  } else {
+    static_assert(std::is_integral_v<Rep> and std::numeric_limits<Rep>::digits <= 64);
+    using Scale = std::ratio_divide<typename From::period, typename To::period>;
+    constexpr auto NUM = static_cast<uint64_t>(Scale::num);
+    constexpr auto DEN = static_cast<uint64_t>(Scale::den);
+    const bool negative = std::is_signed_v<Rep> and elapsed.count() < 0;
+    const auto magnitude = negative ? uint64_t { 0 } - static_cast<uint64_t>(elapsed.count())
+                                    : static_cast<uint64_t>(elapsed.count());
+    const auto limit = negative ? uint64_t { 0 } - static_cast<uint64_t>(std::numeric_limits<Out>::min())
+                                : static_cast<uint64_t>(std::numeric_limits<Out>::max());
+    const auto quotient = magnitude / DEN;
+    const auto remainder = magnitude % DEN;
+    // Divide first: even a representable result need not have a representable count * NUM.
+    if (quotient > limit / NUM) {
+      throw std::invalid_argument { "Duration conversion exceeds its integral representation" };
+    }
+    const auto whole = quotient * NUM;
+    const auto part = [remainder] {
+      if (remainder <= std::numeric_limits<uint64_t>::max() / NUM) {
+        return remainder * NUM / DEN;
+      }
+      // Each reduced remainder is < DEN <= INTMAX_MAX, so doubling and adding fit uint64_t.
+      uint64_t value = 0;
+      uint64_t rest = 0;
+      for (uint64_t mask = uint64_t { 1 } << 63; mask != 0; mask >>= 1) {
+        value *= 2;
+        rest *= 2;
+        if (rest >= DEN) {
+          rest -= DEN;
+          ++value;
+        }
+        if ((NUM & mask) != 0) {
+          rest += remainder;
+          if (rest >= DEN) {
+            rest -= DEN;
+            ++value;
+          }
+        }
+      }
+      return value;
+    }();
+    if (part > limit - whole) {
+      throw std::invalid_argument { "Duration does not fit the requested integral representation" };
+    }
+    const auto result = whole + part;
+    if (negative and result == limit) {
+      return To { std::numeric_limits<Out>::min() };
+    }
+    const auto positive = static_cast<Out>(result);
+    return To { negative ? -positive : positive };
+  }
+}
+
+/** @brief Validate the original day duration before converting or constructing hh_mm_ss. */
+template <IsDuration Duration>
+[[nodiscard]] constexpr auto checked_time_of_day(const Duration elapsed) -> nanoseconds {
+  const auto seconds_elapsed = std::chrono::duration<long double> { elapsed }.count();
+  const bool in_day = seconds_elapsed >= 0.0L and seconds_elapsed < 86400.0L;
+  if (not in_day) {
+    throw std::invalid_argument { "Time of day must be finite and in [0, 24h)" };
+  }
+  return checked_duration_cast<nanoseconds>(elapsed);
+}
+
+} // namespace detail
+
 /** 
  * @brief Returns the fraction of a day. 
  * @param elapsed The elapsed time.
  * @tparam Fractionable The type of input `elapsed`.
  * @return The fraction of a day, of type `double`.
  * @note The type of input `elapsed` should be convertible to `std::chrono::nanoseconds`.
- * @warning No check on the input `elapsed`, so it can be negative or greater than `in_a_day<nanoseconds>()`.
- *          Thus, the returned result may be < 0.0 or >= 1.0.
+ * @note Negative and multi-day durations are allowed; the result may be < 0.0 or >= 1.0.
+ * @throw std::invalid_argument if the nanosecond count is not representable or the input is not finite.
  */
 [[nodiscard]] constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
-  const auto& ns_duration = duration_cast<nanoseconds>(elapsed);
+  const auto ns_duration = detail::checked_duration_cast<nanoseconds>(elapsed);
   const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
 }
@@ -182,43 +273,61 @@ struct Datetime {
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const time_point<system_clock, Duration>& tp) 
-    : ymd         { floor<days>(tp) }, 
-      time_of_day { tp - floor<days>(tp) }
+    : ymd {}
   {
-    if (not ok()) {
-      const double ns = static_cast<double>(
-        time_of_day.to_duration().count()
-      );
-      throw std::invalid_argument {
-        std::vformat(
-          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
-          "(the date must be valid and the time of day within [0, 24h))",
-          std::make_format_args(ymd, ns)
-        )
-      };
+    const auto elapsed = tp.time_since_epoch();
+    const auto day_value = std::chrono::duration<long double, days::period> { elapsed }.count();
+    constexpr auto FIRST = sys_days { std::chrono::year::min() / 1 / 1 }.time_since_epoch().count();
+    constexpr auto END = sys_days { std::chrono::year::max() / 12 / 31 }.time_since_epoch().count() + 1;
+    const bool within_years = day_value >= FIRST and day_value < END;
+    if (not within_years) {
+      throw std::invalid_argument { "Time point is non-finite or outside the representable Gregorian years" };
+    }
+    if constexpr (std::is_integral_v<typename Duration::rep>) {
+      using Scale = std::ratio_divide<typename Duration::period, days::period>;
+      auto day_count = detail::checked_duration_cast<days>(elapsed).count();
+      const auto remainder = elapsed.count() % Scale::den;
+      if (elapsed.count() < 0 and remainder != 0) {
+        --day_count;
+      }
+      ymd = year_month_day { sys_days { days { day_count } } };
+      if constexpr (Scale::num == 1) {
+        // A floored whole day can overflow the input duration at its negative limit (#379).
+        const auto ticks = static_cast<int64_t>(remainder);
+        const auto positive_ticks = ticks < 0 ? ticks + Scale::den : ticks;
+        time_of_day = hh_mm_ss { detail::checked_time_of_day(
+          std::chrono::duration<int64_t, typename Duration::period> { positive_ticks }
+        ) };
+      } else {
+        using Common = std::common_type_t<Duration, days>;
+        using Integral = std::chrono::duration<int64_t, typename Common::period>;
+        const auto input = detail::checked_duration_cast<Integral>(elapsed);
+        const auto start = detail::checked_duration_cast<Integral>(days { day_count });
+        if (start.count() < 0 and input.count() > std::numeric_limits<int64_t>::max() + start.count()) {
+          throw std::invalid_argument { "Time-point day remainder is not representable" };
+        }
+        time_of_day = hh_mm_ss { detail::checked_time_of_day(input - start) };
+      }
+    } else {
+      const auto day = floor<days>(tp);
+      ymd = year_month_day { day };
+      time_of_day = hh_mm_ss { detail::checked_time_of_day(tp - day) };
     }
   }
 
   /**
-   * @brief Constructs a `Datetime` from a `year_month_day` and `hh_mm_ss`.
+   * @brief Constructs a `Datetime` from a date and a raw duration since the start of that day.
    * @param ymd The year, month, and day.
-   * @param time_of_day The time of day.
+   * @param elapsed The finite time of day in [0, 24h), validated before conversion to nanoseconds.
    */
   template <IsDuration Duration>
-  constexpr explicit Datetime(const year_month_day& ymd, const hh_mm_ss<Duration>& time_of_day)
+  constexpr explicit Datetime(const year_month_day& ymd, const Duration elapsed)
     : ymd         { ymd },
-      time_of_day { duration_cast<nanoseconds>(time_of_day.to_duration()) }
+      time_of_day { detail::checked_time_of_day(elapsed) }
   {
-    if (not ok()) {
-      const double ns = static_cast<double>(
-        this->time_of_day.to_duration().count()
-      );
+    if (not ymd.ok()) {
       throw std::invalid_argument {
-        std::vformat(
-          "Arguments do not form a valid datetime: `ymd` is {} and `time_of_day` is {}ns "
-          "(the date must be valid and the time of day within [0, 24h))",
-          std::make_format_args(this->ymd, ns)
-        )
+        std::format("Argument Gregorian date `ymd` is invalid, got `{}`", ymd)
       };
     }
   }
@@ -289,7 +398,7 @@ struct Datetime {
    */
   [[nodiscard]] constexpr auto fraction() const noexcept -> double {
     const auto elapsed = time_of_day.to_duration();
-    return to_fraction(elapsed);
+    return static_cast<double>(elapsed.count()) / in_a_day<nanoseconds>();
   }
 
   // Define some operators as well in order to use `Datetime` in some STL containers.

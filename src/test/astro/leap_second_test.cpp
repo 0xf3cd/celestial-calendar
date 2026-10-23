@@ -198,14 +198,14 @@ TEST(LeapSecond, RoundTrip) {
 
 TEST(LeapSecond, LeapStepBehavior) {
   // Across an inserted leap second, one elapsed UTC second spans two TT seconds.
-  const Datetime before_2017 { to_ymd(2016, 12, 31), std::chrono::hh_mm_ss { 23h + 59min + 59s } };
+  const Datetime before_2017 { to_ymd(2016, 12, 31), 23h + 59min + 59s };
   const Datetime start_2017  { to_ymd(2017,  1,  1), 0.0 };
   const double leap_gap_s = (astro::julian_day::utc_to_jde(start_2017)
                            - astro::julian_day::utc_to_jde(before_2017)) * 86400.0;
   ASSERT_NEAR(leap_gap_s, 2.0, 1e-4);
 
   // The same wall-clock pair across an ordinary New Year spans exactly one second.
-  const Datetime before_2018 { to_ymd(2017, 12, 31), std::chrono::hh_mm_ss { 23h + 59min + 59s } };
+  const Datetime before_2018 { to_ymd(2017, 12, 31), 23h + 59min + 59s };
   const Datetime start_2018  { to_ymd(2018,  1,  1), 0.0 };
   const double plain_gap_s = (astro::julian_day::utc_to_jde(start_2018)
                             - astro::julian_day::utc_to_jde(before_2018)) * 86400.0;
@@ -217,7 +217,7 @@ TEST(LeapSecond, InsertedSecondMapsForward) {
   // The inserted second 2016-12-31 23:59:60.5 (UTC) is TT 2017-01-01 00:01:08.684. A `Datetime`
   // cannot carry 23:59:60, so `tt_to_utc` lands it in the first second of the next day —
   // documented duplication.
-  const Datetime tt_dt { to_ymd(2017, 1, 1), std::chrono::hh_mm_ss { 1min + 8s + 684ms } };
+  const Datetime tt_dt { to_ymd(2017, 1, 1), 1min + 8s + 684ms };
   const auto utc_dt = tt_to_utc(tt_dt);
   ASSERT_EQ(utc_dt.ymd, to_ymd(2017, 1, 1));
   ASSERT_NEAR(utc_dt.fraction() * 86400.0, 0.5, 1e-4);
@@ -237,7 +237,7 @@ TEST(LeapSecond, Pre1972FallsBackToUt1) {
 
   // A TT instant inside the first 42.184 s of 1972-01-01 still maps below the table start —
   // that band belongs to the fallback as well.
-  const Datetime tt_band { to_ymd(1972, 1, 1), std::chrono::hh_mm_ss { 30s } };
+  const Datetime tt_band { to_ymd(1972, 1, 1), 30s };
   ASSERT_EQ(tt_to_utc(tt_band), delta_t::tt_to_ut1(tt_band));
 
   // The seam at 1972-01-01 is ΔT(1972.0) − 42.184 s — the two paths agree to well under a second.

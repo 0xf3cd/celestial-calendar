@@ -152,6 +152,26 @@ TEST(CAbiSmoke, Ut1ToJdRejectsBadInput) {
   EXPECT_FALSE(ut1_to_jd(0, 6, 1, 0.5).valid);           // year < 1
 }
 
+TEST(CAbiSmoke, RawDateExportsRejectOriginalMonthAndDay) {
+  for (const uint32_t value : { uint32_t { 0 }, uint32_t { 257 }, UINT32_MAX }) {
+    EXPECT_FALSE(ut1_to_jd(2024, value, 1, 0.0).valid);
+    EXPECT_STRNE(last_error(), "");
+    EXPECT_FALSE(ut1_to_jd(2024, 1, value, 0.0).valid);
+    EXPECT_STRNE(last_error(), "");
+    EXPECT_FALSE(ut1_to_jde(2024, value, 1, 0.0).valid);
+    EXPECT_FALSE(ut1_to_jde(2024, 1, value, 0.0).valid);
+    EXPECT_FALSE(apparent_solar_time(2024, value, 1, 0.0, 0.0).valid);
+    EXPECT_FALSE(apparent_solar_time(2024, 1, value, 0.0, 0.0).valid);
+    ASSERT_TRUE(ut1_to_jd(2024, 2, 29, 0.0).valid);
+    EXPECT_STREQ(last_error(), "");
+  }
+  EXPECT_FALSE(ut1_to_jd(2023, 2, 29, 0.0).valid);
+  EXPECT_FALSE(ut1_to_jd(2024, 4, 31, 0.0).valid);
+  EXPECT_FALSE(ut1_to_jd(2024, 257, 257, 0.0).valid);
+  ASSERT_TRUE(ut1_to_jd(2024, 2, 29, 0.0).valid);
+  EXPECT_STREQ(last_error(), "");
+}
+
 TEST(CAbiSmoke, RawDateExportsRejectUnrepresentableYears) {
   // The recorded error must name the original integer year, not just flag `valid = false`.
   for (const int32_t year : { 65537, 67562, 67421, -63510, INT32_MIN, INT32_MAX }) {

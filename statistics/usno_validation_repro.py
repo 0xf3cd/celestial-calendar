@@ -291,7 +291,7 @@ def hko_new_moons(repo_root: Path) -> list[str]:
   source = (repo_root / "src/test/astro/moon_phase_test.cpp").read_text(encoding="utf-8")
   diff_test = block(source, "TEST(NewMoon, DiffTest2)", "TEST(NewMoon, MomentsYearBoundaryIsUtc)")
   rows = re.findall(
-    r"to_ymd\((\d+),\s*(\d+),\s*(\d+)\),\s*hms\s*\{\s*(\d+)h\s*\+\s*(\d+)min\s*\}",
+    r"to_ymd\((\d+),\s*(\d+),\s*(\d+)\),\s*(\d+)h\s*\+\s*(\d+)min\s*\}",
     diff_test,
   )
   require(len(rows) == 13, f"V03 HKO rows={len(rows)}, expected 13")

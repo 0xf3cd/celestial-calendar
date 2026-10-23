@@ -144,26 +144,25 @@ TEST(NewMoon, Moments) {
 TEST(NewMoon, DiffTest2) {
   using namespace std::ranges;
   using namespace std::chrono_literals;
-  using hms = std::chrono::hh_mm_ss<std::chrono::nanoseconds>;
 
   // Datetimes in UTC+8. Twelve minutes match the re-sourced USNO 2024 phase response; September keeps
   // the HKO 09:56 boundary against USNO 09:55 without changing the retained value.
   // Sources: https://aa.usno.navy.mil/api/moon/phases/year?year=2024 and
   // https://www.hko.gov.hk/tc/gts/astronomy/Moon_Phase.htm
   const std::vector<calendar::Datetime> datetimes {
-    calendar::Datetime { util::to_ymd(2024,  1, 11), hms { 19h + 57min } },
-    calendar::Datetime { util::to_ymd(2024,  2, 10), hms {  6h + 59min } },
-    calendar::Datetime { util::to_ymd(2024,  3, 10), hms { 17h +  0min } },
-    calendar::Datetime { util::to_ymd(2024,  4,  9), hms {  2h + 21min } },
-    calendar::Datetime { util::to_ymd(2024,  5,  8), hms { 11h + 22min } },
-    calendar::Datetime { util::to_ymd(2024,  6,  6), hms { 20h + 38min } },
-    calendar::Datetime { util::to_ymd(2024,  7,  6), hms {  6h + 57min } },
-    calendar::Datetime { util::to_ymd(2024,  8,  4), hms { 19h + 13min } },
-    calendar::Datetime { util::to_ymd(2024,  9,  3), hms {  9h + 56min } },
-    calendar::Datetime { util::to_ymd(2024, 10,  3), hms {  2h + 49min } },
-    calendar::Datetime { util::to_ymd(2024, 11,  1), hms { 20h + 47min } },
-    calendar::Datetime { util::to_ymd(2024, 12,  1), hms { 14h + 21min } },
-    calendar::Datetime { util::to_ymd(2024, 12, 31), hms {  6h + 27min } },
+    calendar::Datetime { util::to_ymd(2024,  1, 11), 19h + 57min },
+    calendar::Datetime { util::to_ymd(2024,  2, 10),  6h + 59min },
+    calendar::Datetime { util::to_ymd(2024,  3, 10), 17h +  0min },
+    calendar::Datetime { util::to_ymd(2024,  4,  9),  2h + 21min },
+    calendar::Datetime { util::to_ymd(2024,  5,  8), 11h + 22min },
+    calendar::Datetime { util::to_ymd(2024,  6,  6), 20h + 38min },
+    calendar::Datetime { util::to_ymd(2024,  7,  6),  6h + 57min },
+    calendar::Datetime { util::to_ymd(2024,  8,  4), 19h + 13min },
+    calendar::Datetime { util::to_ymd(2024,  9,  3),  9h + 56min },
+    calendar::Datetime { util::to_ymd(2024, 10,  3),  2h + 49min },
+    calendar::Datetime { util::to_ymd(2024, 11,  1), 20h + 47min },
+    calendar::Datetime { util::to_ymd(2024, 12,  1), 14h + 21min },
+    calendar::Datetime { util::to_ymd(2024, 12, 31),  6h + 27min },
   };
 
   const auto jdes = datetimes
