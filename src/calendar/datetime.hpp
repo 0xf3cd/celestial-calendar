@@ -173,7 +173,7 @@ template <IsDuration From, IsDuration To>
   }
 }
 
-/** @brief Validate the original day duration and return its nanosecond count. */
+/** @brief Validate the original and converted day durations and return the nanosecond count. */
 template <IsDuration Duration>
 [[nodiscard]] constexpr auto checked_time_of_day(const Duration elapsed) -> nanoseconds {
   const bool in_day = std::invoke([elapsed] {
@@ -189,7 +189,12 @@ template <IsDuration Duration>
     throw std::invalid_argument { "Time of day must be finite and in [0, 24h)" };
   }
 
-  return checked_duration_cast<Duration, nanoseconds>(elapsed);
+  const auto converted = checked_duration_cast<Duration, nanoseconds>(elapsed);
+  if (converted >= days { 1 }) {
+    throw std::invalid_argument { "Rounded time of day must be in [0, 24h)" };
+  }
+
+  return converted;
 }
 
 
@@ -404,8 +409,9 @@ struct Datetime {
   /**
    * @brief Constructs a `Datetime` from a date and a raw duration since the start of that day.
    * @param ymd The year, month, and day.
-   * @param elapsed The finite time of day in [0, 24h), validated before conversion to nanoseconds.
-   * @throw std::invalid_argument If the date is invalid or the duration is non-finite or outside [0, 24h).
+   * @param elapsed The finite time of day in [0, 24h), checked before and after conversion to nanoseconds.
+   * @throw std::invalid_argument If the date is invalid, the duration is non-finite,
+   *        or the original or converted duration is outside [0, 24h).
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const year_month_day& ymd, const Duration elapsed)

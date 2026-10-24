@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <tuple>
 #include <print>
 #include <limits>
@@ -431,6 +432,33 @@ TEST(Datetime, RawDurationValidation) {
     EXPECT_THROW((Datetime { day, std::chrono::duration<double> { count } }), std::invalid_argument);
   }
   EXPECT_THROW((Datetime { std::chrono::year { 2024 } / 2 / 30, 1s }), std::invalid_argument);
+}
+
+TEST(Datetime, RoundedDurationMustStayWithinDay) {
+  using RationalSeconds = std::chrono::duration<double, std::ratio<13, 7>>;
+  constexpr RationalSeconds ELAPSED { 46523.076923076922 };
+  const auto day = util::to_ymd(2024, 2, 29);
+
+  ASSERT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(ELAPSED)),
+            std::chrono::hours { 24 });
+  EXPECT_THROW(std::ignore = calendar::detail::checked_time_of_day(ELAPSED), std::invalid_argument);
+  EXPECT_THROW((Datetime { day, ELAPSED }), std::invalid_argument);
+
+  const RationalSeconds preceding { std::nextafter(ELAPSED.count(), 0.0) };
+  const auto expected = std::chrono::duration_cast<nanoseconds>(preceding);
+  ASSERT_LT(expected, std::chrono::hours { 24 });
+  EXPECT_EQ(calendar::detail::checked_time_of_day(preceding), expected);
+  const Datetime valid { day, preceding };
+  EXPECT_TRUE(valid.ok());
+  EXPECT_EQ(valid.time_of_day.to_duration(), expected);
+
+  for (const auto elapsed : { preceding, ELAPSED }) {
+    const sys_time<RationalSeconds> point { elapsed };
+    const Datetime dt { point };
+    EXPECT_TRUE(dt.ok());
+    EXPECT_EQ(dt.ymd, year_month_day { floor<days>(point) });
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(point - floor<days>(point)));
+  }
 }
 
 TEST(Datetime, FractionConversionChecksOriginalDuration) {
