@@ -90,4 +90,26 @@ for (const mutate of mutations) {
   mutate(candidate);
   assert.throws(() => assertView(candidate), assert.AssertionError);
 }
+
+const assertRawDecoders = (source) => {
+  const records = [...source.matchAll(/"(Celestial[A-Z][A-Za-z0-9]*)"/g)].map((match) => match[1]);
+  assert(records.length > 0, "raw decoder record names must be visible to the check");
+  for (const record of records) assert(Object.hasOwn(LAYOUTS, record), `unknown raw decoder record: ${record}`);
+  const calls = [...source.matchAll(/eventFill\(\s*"(celestial_\w+)",\s*"(Celestial\w+)"/g)];
+  assert(calls.length > 0, "literal count/fill decoders must be visible to the check");
+  for (const [, name, record] of calls) {
+    const protocol = PROTOCOLS[name];
+    assert.equal(protocol?.kind, "count-fill", `${name} decoder protocol`);
+    const slots = C_DECLARATIONS.functions[name].parameters.find(({ name }) => name === protocol.slots_parameter);
+    assert.equal(slots?.type, `${record} *`, `${name} raw decoder pointee`);
+  }
+};
+const rawSource = await readFile(new URL("./raw_protocol_test.mjs", import.meta.url), "utf8");
+assertRawDecoders(rawSource);
+for (const replacement of ["CelestialEquatorialPosition", "CelestialPositionRecord"]) {
+  const changed = rawSource.replace('"CelestialEquatorialPositionRecord"', `"${replacement}"`);
+  assert.notEqual(changed, rawSource);
+  assert.throws(() => assertRawDecoders(changed), assert.AssertionError);
+}
 console.log(`PASS generated JavaScript schema@2: ${names.length} exports, ${Object.keys(LAYOUTS).length} layouts, ${Object.keys(manifest.codes).length} named codes, 9 counted protocols; ${mutations.length}/${mutations.length} drift controls`);
+console.log("PASS literal raw decoder record/pointee names; 2/2 corruption controls");

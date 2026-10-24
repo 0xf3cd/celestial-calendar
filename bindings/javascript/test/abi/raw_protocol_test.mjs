@@ -350,7 +350,7 @@ try {
       assert(Number.isFinite(position.latitude_deg));
     }
     happyExports.add("celestial_positions");
-    const equatorial = eventFill("celestial_equatorial_positions", "CelestialEquatorialPosition", [positionSelection, 3, 2451545.0]);
+    const equatorial = eventFill("celestial_equatorial_positions", "CelestialEquatorialPositionRecord", [positionSelection, 3, 2451545.0]);
     assert.deepEqual(equatorial.map(({ target_code }) => target_code), [9, 0, 10]);
     assert.deepEqual(equatorial.map(({ source_code }) => source_code), positionFill.map(({ source_code }) => source_code));
     for (const point of equatorial) {
