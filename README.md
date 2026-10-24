@@ -255,7 +255,7 @@ OS version floor is declared.
 ## Features and algorithms
 
 - Gregorian / lunar date conversion.
-- Exact Jieqi moments.
+- Exact Jieqi moments, with [offline JSON export](docs/VALIDATION.md#jieqi-table).
 - Sunrise, sunset, transit, twilight, polar day and polar night; differences from the USNO / NOAA / JPL DE
   external references are within ±2 minutes.
 - C++ headers provide the Ascendant, Descendant, Midheaven and Imum Coeli, and Equal, Whole Sign and Placidus

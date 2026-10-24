@@ -143,8 +143,7 @@ auto celestial_model_identities(
     auto identities = astro::capability::model_identities();
     if (kind_code != MODEL_KIND_ALL) {
       const auto kind = static_cast<astro::capability::ModelKind>(kind_code);
-      auto kept = identities | std::views::filter([kind](const auto& identity) { return identity.kind == kind; });
-      identities.assign(kept.begin(), kept.end());
+      std::erase_if(identities, [kind](const auto& identity) { return identity.kind != kind; });
     }
 
     *record_count = static_cast<uint32_t>(identities.size());

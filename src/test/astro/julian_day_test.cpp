@@ -111,17 +111,17 @@ const std::unordered_map<double, Datetime> JDE_TEST_DATASET {
   // generator, or seed.
   { 2451544.5,         Datetime { to_ymd(2000, 1, 1),   0.0, } },
   { 2450084.0,         Datetime { to_ymd(1996, 1, 1),   0.5, } },
-  { 2456293.520833,    Datetime { to_ymd(2013, 1, 1),   hh_mm_ss { 30min } } },
-  { 2460491.1846759,   Datetime { to_ymd(2024, 6, 29),  hh_mm_ss { 16h + 25min + 56s } } },
-  { 2451545.041666667, Datetime { to_ymd(2000, 1, 1),   hh_mm_ss { 13h } } },
+  { 2456293.520833,    Datetime { to_ymd(2013, 1, 1),   30min } },
+  { 2460491.1846759,   Datetime { to_ymd(2024, 6, 29),  16h + 25min + 56s } },
+  { 2451545.041666667, Datetime { to_ymd(2000, 1, 1),   13h } },
   { 2500000.0,         Datetime { to_ymd(2132, 8, 31),  0.5, } },
-  { 2305993.3852315,   Datetime { to_ymd(1601, 6, 29),  hh_mm_ss { 21h + 14min + 44s } } },
+  { 2305993.3852315,   Datetime { to_ymd(1601, 6, 29),  21h + 14min + 44s } },
 
   // Four rows from http://www.stevegs.com/utils/jd_calc/.
-  { 2458908.7084259,   Datetime { to_ymd(2020, 2, 29),  hh_mm_ss { 5h + 8s } } },
-  { 2461436.1508698,   Datetime { to_ymd(2027, 1, 30),  hh_mm_ss { 15h + 37min + 15s + 150ms } } },
-  { 2473063.7966088,   Datetime { to_ymd(2058, 12, 1),  hh_mm_ss { 7h + 7min + 7s } } },
-  { 2459048.7966177,   Datetime { to_ymd(2020, 7, 18),  hh_mm_ss { 7h + 7min + 7s + 770ms } } }
+  { 2458908.7084259,   Datetime { to_ymd(2020, 2, 29),  5h + 8s } },
+  { 2461436.1508698,   Datetime { to_ymd(2027, 1, 30),  15h + 37min + 15s + 150ms } },
+  { 2473063.7966088,   Datetime { to_ymd(2058, 12, 1),  7h + 7min + 7s } },
+  { 2459048.7966177,   Datetime { to_ymd(2020, 7, 18),  7h + 7min + 7s + 770ms } }
 };
 
 constexpr double EPSILON = 1e-6;
@@ -160,7 +160,7 @@ TEST(JulianDay, Consistency) {
   for (auto i = 0; i < 5000; ++i) {
     const auto ymd = random_ymd();
     const auto hms = random_hms();
-    const Datetime tt { ymd, hms };
+    const Datetime tt { ymd, hms.to_duration() };
 
     const double jde = tt_to_jde(tt);
     const auto recovered_tt = jde_to_tt(jde);
@@ -210,9 +210,9 @@ TEST(JulianDay, JdeUt1Anchors) {
   // Retained data: julian_day-1.
   const std::vector<Anchor> anchors {
     //                  tt                              ut1 (= tt − observed ΔT)                                     tol_sec
-    { Datetime { to_ymd(2000, 1, 1), 0.0 }, Datetime { to_ymd(1999, 12, 31), hh_mm_ss { 23h + 58min + 56s + 170ms } }, 0.2 },
-    { Datetime { to_ymd(2020, 1, 1), 0.0 }, Datetime { to_ymd(2019, 12, 31), hh_mm_ss { 23h + 58min + 50s + 640ms } }, 0.2 },
-    { Datetime { to_ymd( 500, 1, 1), 0.0 }, Datetime { to_ymd( 499, 12, 31), hh_mm_ss { 22h + 24min + 50s } },         2.0 },
+    { Datetime { to_ymd(2000, 1, 1), 0.0 }, Datetime { to_ymd(1999, 12, 31), 23h + 58min + 56s + 170ms }, 0.2 },
+    { Datetime { to_ymd(2020, 1, 1), 0.0 }, Datetime { to_ymd(2019, 12, 31), 23h + 58min + 50s + 640ms }, 0.2 },
+    { Datetime { to_ymd( 500, 1, 1), 0.0 }, Datetime { to_ymd( 499, 12, 31), 22h + 24min + 50s },         2.0 },
   };
   // NOLINTEND(modernize-use-designated-initializers)
 

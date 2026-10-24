@@ -211,7 +211,7 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 ## 功能与算法
 
 - 公历与阴历日期互转。
-- 查询节气的具体时刻。
+- 查询节气的具体时刻，支持[导出离线 JSON 表](docs/VALIDATION.md#jieqi-table)。
 - 日出日落、中天、曙暮光、极昼极夜；与 USNO / NOAA / JPL DE 外部参考的差异在 ±2 分钟内。
 - C++ 头文件提供 Ascendant、Descendant、Midheaven、Imum Coeli，以及 Equal、Whole Sign、
   Placidus 十二宫头；地点经度东正，时刻分别传入 UT1 与 TT。

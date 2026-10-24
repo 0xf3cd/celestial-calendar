@@ -305,7 +305,7 @@ TEST(DeltaT, DefaultDatetimeUsesAlgo5AcrossChronoYears) {
       util::to_ymd(year, 1, 1), util::to_ymd(year, 2, 28), util::to_ymd(year, 3, 1), util::to_ymd(year, 12, 31)
     }) {
       for (const int64_t elapsed_ns : { 0LL, 1LL, 43200'000'000'000LL, 86399'999'999'999LL }) {
-        const calendar::Datetime dt { ymd, std::chrono::hh_mm_ss { std::chrono::nanoseconds { elapsed_ns } } };
+        const calendar::Datetime dt { ymd, std::chrono::nanoseconds { elapsed_ns } };
         const auto past_days = (std::chrono::sys_days { ymd }
                                - std::chrono::sys_days { util::to_ymd(year, 1, 1) }).count();
         const double year_days = ymd.year().is_leap() ? 366.0 : 365.0;
@@ -381,7 +381,8 @@ TEST(DeltaT, DefaultDatetimeRejectsMutatedInvalidFields) {
   const calendar::Datetime valid { util::to_ymd(2026, 1, 1), 0.5 };
   for (const auto ymd : std::array {
     util::to_ymd(2026, 2, 30), util::to_ymd(1900, 2, 29), util::to_ymd(2026, 0, 1),
-    util::to_ymd(2026, 13, 1), util::to_ymd(2026, 1, 0), util::to_ymd(2026, 1, 32), util::to_ymd(-32768, 1, 1)
+    util::to_ymd(2026, 13, 1), util::to_ymd(2026, 1, 0), util::to_ymd(2026, 1, 32),
+    std::chrono::year_month_day { std::chrono::year { -32768 } / 1 / 1 }
   }) {
     auto invalid = valid;
     invalid.ymd = ymd;

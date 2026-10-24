@@ -401,7 +401,7 @@ TEST(JieqiGolden, HkoAlmanac) {
     // HKO: HKT wall clock → the same continuous JD scale (HKT = UTC+8; UT1 ≈ UTC ± 0.9 s).
     const calendar::Datetime hko_hkt {
       util::to_ymd(row.year, static_cast<int32_t>(row.month), static_cast<int32_t>(row.day)),
-      hh_mm_ss<nanoseconds> { hours { row.hour } + minutes { row.minute } },
+      hours { row.hour } + minutes { row.minute },
     };
     const double hko_jd = astro::julian_day::ut1_to_jd(hko_hkt) - (8.0 / 24.0);
 

@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -101,6 +102,46 @@ TEST(CapabilityCAbi, IdentitiesMirrorTheCore) {
   EXPECT_EQ(count, 2);
   EXPECT_EQ(slots[0].kind_code, MODEL_KIND_NUTATION);
   EXPECT_EQ(slots[1].kind_code, MODEL_KIND_NUTATION);
+}
+
+TEST(CapabilityCAbi, EveryIdentityKindIsAStableSubsetOfAll) {
+  uint32_t all_count = 0;
+  std::array<ModelIdentityRecordV1, 13> all {};
+  ASSERT_EQ(celestial_model_identities(MODEL_KIND_ALL, &all_count, all.data(), all.size()), all.size());
+  ASSERT_EQ(all_count, all.size());
+  for (const uint32_t kind : { MODEL_KIND_DELTA_T, MODEL_KIND_NUTATION, MODEL_KIND_POSITION_SOURCE }) {
+    std::vector<ModelIdentityRecordV1> expected;
+    for (const auto& identity : all) {
+      if (identity.kind_code == kind) {
+        expected.push_back(identity);
+      }
+    }
+    ASSERT_FALSE(expected.empty());
+    for (const uint32_t capacity : { uint32_t { 0 }, uint32_t { 1 }, static_cast<uint32_t>(expected.size()),
+                                      static_cast<uint32_t>(all.size()) }) {
+      for (const uint32_t repeat : { uint32_t { 0 }, uint32_t { 1 } }) {
+        SCOPED_TRACE(::testing::Message() << "kind=" << kind << " capacity=" << capacity << " repeat=" << repeat);
+        uint32_t count = 99;
+        EXPECT_EQ(celestial_model_identities(99, &count, nullptr, 0), 0);
+        EXPECT_STRNE(last_error(), "");
+        std::array<ModelIdentityRecordV1, 13> slots {};
+        const auto written = celestial_model_identities(kind, &count, capacity == 0 ? nullptr : slots.data(), capacity);
+        EXPECT_EQ(count, expected.size());
+        ASSERT_EQ(written, std::min(capacity, static_cast<uint32_t>(expected.size())));
+        EXPECT_STREQ(last_error(), "");
+        for (uint32_t index = 0; index < written; ++index) {
+          const auto& actual = slots.at(index);
+          const auto& reference = expected.at(index);
+          EXPECT_EQ(actual.kind_code, reference.kind_code);
+          EXPECT_EQ(actual.identity_code, reference.identity_code);
+          EXPECT_EQ(actual.status_code, reference.status_code);
+          EXPECT_EQ(actual.default_alias_code, reference.default_alias_code);
+          EXPECT_TRUE(same_double(actual.domain_start_jde_tt, reference.domain_start_jde_tt));
+          EXPECT_TRUE(same_double(actual.domain_end_jde_tt, reference.domain_end_jde_tt));
+        }
+      }
+    }
+  }
 }
 
 TEST(CapabilityCAbi, SelectorsAndResolvedIdentitiesMatchTheHeader) {

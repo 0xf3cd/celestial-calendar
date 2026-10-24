@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <tuple>
 #include <print>
 #include <limits>
@@ -147,14 +148,14 @@ TEST(Datetime, FromTimepoint) {
   }
 }
 
-TEST(Datetime, FromYmdHms) {
+TEST(Datetime, FromYmdDuration) {
   const auto now = system_clock::now();
 
   { // Test now.
     const year_month_day ymd { floor<days>(now) };
     const hh_mm_ss<nanoseconds> hms { now - floor<days>(now) };
 
-    const Datetime dt { ymd, hms };
+    const Datetime dt { ymd, hms.to_duration() };
     ASSERT_EQ(dt.ymd, ymd);
     ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
   }
@@ -193,7 +194,7 @@ TEST(Datetime, FromYmdHms) {
       });
 
       for (hh_mm_ss<nanoseconds> hms : random_hms_views) {
-        const Datetime dt { ymd, hms };
+        const Datetime dt { ymd, hms.to_duration() };
         ASSERT_EQ(dt.ymd, ymd);
         ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
@@ -216,7 +217,7 @@ TEST(Datetime, FromYmdHms) {
       });
 
       for (hh_mm_ss<microseconds> hms : random_hms_views) {
-        const Datetime dt { ymd, hms };
+        const Datetime dt { ymd, hms.to_duration() };
         ASSERT_EQ(dt.ymd, ymd);
         ASSERT_EQ(dt.time_of_day.to_duration(), hms.to_duration());
       }
@@ -267,7 +268,7 @@ TEST(Datetime, Consistency) {
     ASSERT_NEAR(dt.fraction(), fraction, 1e-10);
 
     { // Test from ymd and hms.
-      const Datetime dt2 { ymd, hms };
+      const Datetime dt2 { ymd, hms.to_duration() };
 
       ASSERT_TRUE(dt2.ok());
       ASSERT_EQ(dt2.ymd, ymd);
@@ -378,28 +379,178 @@ TEST(Datetime, EdgeCases) {
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { 0 } };
-      const Datetime dt { today_tp, hms };
+      const Datetime dt { today_tp, hms.to_duration() };
       ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       // #86: a time of day outside [0, 24h) is a bad argument, not an internal sanity failure.
       const hh_mm_ss<nanoseconds> hms { nanoseconds { -1 } };
-      ASSERT_THROW((Datetime { today_tp, hms }),
+      ASSERT_THROW((Datetime { today_tp, hms.to_duration() }),
                    std::invalid_argument);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() - 1 } };
-      const Datetime dt { today_tp, hms };
+      const Datetime dt { today_tp, hms.to_duration() };
       ASSERT_EQ(dt.ymd, ymd);
     }
 
     {
       const hh_mm_ss<nanoseconds> hms { nanoseconds { in_a_day<nanoseconds>() } };
-      ASSERT_THROW((Datetime { today_tp, hms }),
+      ASSERT_THROW((Datetime { today_tp, hms.to_duration() }),
                    std::invalid_argument);
     }
+  }
+}
+
+TEST(Datetime, RawDurationValidation) {
+  using namespace std::chrono_literals;
+  const auto day = util::to_ymd(2024, 2, 29);
+  static_assert(not std::is_constructible_v<Datetime, year_month_day, hh_mm_ss<seconds>>);
+  constexpr Datetime six_hours { util::to_ymd(2024, 1, 1), 6h };
+  static_assert(six_hours.fraction() == 0.25);
+  EXPECT_EQ((Datetime { day, 1ns }).time_of_day.to_duration(), 1ns);
+  EXPECT_EQ((Datetime { day, 24h - 1ns }).time_of_day.to_duration(), 24h - 1ns);
+  EXPECT_EQ((Datetime { day, std::chrono::duration<double> { 0.5 } }).time_of_day.to_duration(), 500ms);
+  for (const double value : { 0.3, 0.7, 19.123456789 }) {
+    const std::chrono::duration<double> elapsed { value };
+    EXPECT_EQ((Datetime { day, elapsed }).time_of_day.to_duration(), duration_cast<nanoseconds>(elapsed));
+  }
+  using Picoseconds = std::chrono::duration<int64_t, std::pico>;
+  constexpr Picoseconds DAY_LENGTH { 86400'000'000'000'000 };
+  for (int64_t back = 1; back <= 20; ++back) {
+    const auto elapsed = DAY_LENGTH - Picoseconds { back };
+    EXPECT_EQ((Datetime { day, elapsed }).time_of_day.to_duration(), duration_cast<nanoseconds>(elapsed));
+  }
+  for (const int64_t count : { int64_t { -1 }, int64_t { 86400 }, int64_t { 9223372037 },
+                                std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max() }) {
+    EXPECT_THROW((Datetime { day, seconds { count } }), std::invalid_argument);
+  }
+  for (const double count : { -1e-12, 86400.0, 1e30, std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity() }) {
+    EXPECT_THROW((Datetime { day, std::chrono::duration<double> { count } }), std::invalid_argument);
+  }
+  EXPECT_THROW((Datetime { std::chrono::year { 2024 } / 2 / 30, 1s }), std::invalid_argument);
+}
+
+TEST(Datetime, RoundedDurationMustStayWithinDay) {
+  using RationalSeconds = std::chrono::duration<double, std::ratio<13, 7>>;
+  constexpr RationalSeconds ELAPSED { 46523.076923076922 };
+  const auto day = util::to_ymd(2024, 2, 29);
+
+  ASSERT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(ELAPSED)),
+            std::chrono::hours { 24 });
+  EXPECT_THROW(std::ignore = calendar::detail::checked_time_of_day(ELAPSED), std::invalid_argument);
+  EXPECT_THROW((Datetime { day, ELAPSED }), std::invalid_argument);
+
+  const RationalSeconds preceding { std::nextafter(ELAPSED.count(), 0.0) };
+  const auto expected = std::chrono::duration_cast<nanoseconds>(preceding);
+  ASSERT_LT(expected, std::chrono::hours { 24 });
+  EXPECT_EQ(calendar::detail::checked_time_of_day(preceding), expected);
+  const Datetime valid { day, preceding };
+  EXPECT_TRUE(valid.ok());
+  EXPECT_EQ(valid.time_of_day.to_duration(), expected);
+
+  for (const auto elapsed : { preceding, ELAPSED }) {
+    const sys_time<RationalSeconds> point { elapsed };
+    const Datetime dt { point };
+    EXPECT_TRUE(dt.ok());
+    EXPECT_EQ(dt.ymd, year_month_day { floor<days>(point) });
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(point - floor<days>(point)));
+  }
+}
+
+TEST(Datetime, FractionConversionChecksOriginalDuration) {
+  using namespace std::chrono_literals;
+  EXPECT_DOUBLE_EQ(to_fraction(48h), 2.0);
+  EXPECT_DOUBLE_EQ(to_fraction(-36h), -1.5);
+  EXPECT_EQ(to_fraction(nanoseconds { std::numeric_limits<int64_t>::min() }),
+            static_cast<double>(std::numeric_limits<int64_t>::min()) / in_a_day<nanoseconds>());
+  EXPECT_THROW(std::ignore = to_fraction(seconds { 9223372037 }), std::invalid_argument);
+  EXPECT_THROW(std::ignore = to_fraction(std::chrono::duration<double> { 1e30 }), std::invalid_argument);
+  EXPECT_THROW(std::ignore = to_fraction(std::chrono::duration<double> { std::numeric_limits<double>::quiet_NaN() }),
+               std::invalid_argument);
+  using ThirdSeconds = std::chrono::duration<int64_t, std::ratio<1, 3>>;
+  EXPECT_EQ((calendar::detail::checked_duration_cast<ThirdSeconds, nanoseconds>(ThirdSeconds { 27000000000 })),
+            nanoseconds { 9000000000000000000 });
+  using RationalSeconds = std::chrono::duration<int64_t, std::ratio<2147483647, 2147483646>>;
+  EXPECT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(RationalSeconds { 19 })),
+            nanoseconds { 19000000008 });
+  EXPECT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(RationalSeconds { -19 })),
+            nanoseconds { -19000000008 });
+  EXPECT_NO_THROW(std::ignore = to_fraction(RationalSeconds { 9223372032 }));
+  EXPECT_THROW(std::ignore = to_fraction(RationalSeconds { 9223372033 }), std::invalid_argument);
+  using UnsignedPicoseconds = std::chrono::duration<uint64_t, std::pico>;
+  constexpr auto MAX_UNSIGNED = std::numeric_limits<uint64_t>::max();
+  const auto unsigned_ns = calendar::detail::checked_duration_cast<UnsignedPicoseconds, nanoseconds>(
+    UnsignedPicoseconds { MAX_UNSIGNED }
+  );
+  EXPECT_EQ(unsigned_ns.count(), static_cast<int64_t>(MAX_UNSIGNED / 1000));
+}
+
+TEST(Datetime, TimePointValidationPrecedesCalendarConversion) {
+  using FloatTime = time_point<system_clock, std::chrono::duration<double>>;
+
+  constexpr Datetime before_epoch { sys_time<seconds> { seconds { -1 } } };
+  static_assert(before_epoch.ymd == util::to_ymd(1969, 12, 31));
+  static_assert(before_epoch.time_of_day.to_duration() == std::chrono::hours { 24 } - seconds { 1 });
+
+  constexpr Datetime after_epoch { FloatTime { std::chrono::duration<double> { 0.5 } } };
+  static_assert(after_epoch.ymd == util::to_ymd(1970, 1, 1));
+  static_assert(after_epoch.time_of_day.to_duration() == nanoseconds { 500'000'000 });
+
+  for (const double count : { 1e30, -1e30, std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::infinity() }) {
+    EXPECT_THROW((Datetime { FloatTime { std::chrono::duration<double> { count } } }), std::invalid_argument);
+  }
+  try {
+    std::ignore = Datetime { FloatTime { std::chrono::duration<double> { -1e-12 } } };
+    FAIL() << "An unrepresentable floating day remainder must be rejected";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_STREQ(error.what(), "Floating time-point day remainder is not representable");
+  }
+  constexpr auto MIN_COUNT = std::numeric_limits<int64_t>::min();
+  const Datetime earliest_ns { sys_time<nanoseconds> { nanoseconds { MIN_COUNT } } };
+  const auto expected_day = (MIN_COUNT / static_cast<int64_t>(in_a_day<nanoseconds>())) - 1;
+  const auto expected_remainder = (MIN_COUNT % static_cast<int64_t>(in_a_day<nanoseconds>()))
+                                  + static_cast<int64_t>(in_a_day<nanoseconds>());
+  EXPECT_EQ(earliest_ns.ymd, year_month_day { sys_days { days { expected_day } } });
+  EXPECT_EQ(earliest_ns.time_of_day.to_duration().count(), expected_remainder);
+  EXPECT_THROW((Datetime { sys_time<seconds> { seconds { std::numeric_limits<int64_t>::max() } } }),
+               std::invalid_argument);
+  const sys_time<microseconds> first { sys_days { std::chrono::year::min() / 1 / 1 } };
+  const sys_time<microseconds> end { sys_days { std::chrono::year::max() / 12 / 31 } + days { 1 } };
+  EXPECT_THROW((Datetime { first - microseconds { 1 } }), std::invalid_argument);
+  EXPECT_TRUE((Datetime { first }).ok());
+  const Datetime last { end - microseconds { 1 } };
+  EXPECT_EQ(last.ymd, std::chrono::year::max() / 12 / 31);
+  EXPECT_EQ(last.time_of_day.to_duration(), std::chrono::hours { 24 } - microseconds { 1 });
+  EXPECT_THROW((Datetime { end }), std::invalid_argument);
+  using FloatingPicoseconds = std::chrono::duration<double, std::pico>;
+  const sys_time<FloatingPicoseconds> rounded_end { sys_days { std::chrono::year::max() / 12 / 31 } + days { 1 } };
+  EXPECT_THROW((Datetime { rounded_end }), std::invalid_argument);
+  using Picoseconds = std::chrono::duration<int64_t, std::pico>;
+  constexpr Picoseconds DAY_LENGTH { 86400'000'000'000'000 };
+  const sys_time<Picoseconds> midnight { DAY_LENGTH * 10 };
+  for (int64_t back = 1; back <= 20; ++back) {
+    const Datetime dt { midnight - Picoseconds { back } };
+    EXPECT_EQ(dt.ymd, util::to_ymd(1970, 1, 10));
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(DAY_LENGTH - Picoseconds { back }));
+  }
+  for (const int64_t count : { int64_t { -1 }, int64_t { 1 } }) {
+    const sys_time<std::chrono::weeks> point { std::chrono::weeks { count } };
+    const Datetime dt { point };
+    EXPECT_EQ(dt.ymd, year_month_day { floor<days>(point) });
+    EXPECT_EQ(dt.time_of_day.to_duration(), nanoseconds { 0 });
+  }
+  using ThreeHalfSeconds = std::chrono::duration<int64_t, std::ratio<3, 2>>;
+  for (const int64_t count : { int64_t { -1 }, int64_t { 1 } }) {
+    const sys_time<ThreeHalfSeconds> point { ThreeHalfSeconds { count } };
+    const auto day = floor<days>(point);
+    const Datetime dt { point };
+    EXPECT_EQ(dt.ymd, year_month_day { day });
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(point - day));
   }
 }
 
@@ -454,7 +605,7 @@ TEST(Datetime, AddSeconds) {
   using namespace std::chrono_literals;
 
   const Datetime noon { util::to_ymd(2024, 6, 15), 0.5 };
-  ASSERT_EQ(add_seconds(noon, 3600.0),   (Datetime { util::to_ymd(2024, 6, 15), std::chrono::hh_mm_ss { 13h } }));
+  ASSERT_EQ(add_seconds(noon, 3600.0),   (Datetime { util::to_ymd(2024, 6, 15), 13h }));
   ASSERT_EQ(add_seconds(noon, 43200.0),  (Datetime { util::to_ymd(2024, 6, 16), 0.0 }));
   ASSERT_EQ(add_seconds(noon, -43200.0), (Datetime { util::to_ymd(2024, 6, 15), 0.0 }));
   ASSERT_EQ(add_seconds(noon, -86400.0 * 2.5), (Datetime { util::to_ymd(2024, 6, 13), 0.0 }));
@@ -462,7 +613,7 @@ TEST(Datetime, AddSeconds) {
   // #84 review: a shift landing exactly on midnight can leave the fractional sum a half-ulp
   // below zero, which floor/carry used to round into fraction == 1.0 — a constructor throw on
   // a perfectly valid shift. Shift one nanosecond back to midnight, the smallest such case.
-  const Datetime just_past_midnight { util::to_ymd(2024, 6, 15), std::chrono::hh_mm_ss { 1ns } };
+  const Datetime just_past_midnight { util::to_ymd(2024, 6, 15), 1ns };
   const auto back = add_seconds(just_past_midnight, -1e-9);
   ASSERT_EQ(back, (Datetime { util::to_ymd(2024, 6, 15), 0.0 }));
 
