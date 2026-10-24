@@ -416,6 +416,12 @@ TEST(Datetime, RawDurationValidation) {
     const std::chrono::duration<double> elapsed { value };
     EXPECT_EQ((Datetime { day, elapsed }).time_of_day.to_duration(), duration_cast<nanoseconds>(elapsed));
   }
+  using Picoseconds = std::chrono::duration<int64_t, std::pico>;
+  constexpr Picoseconds DAY_LENGTH { 86400'000'000'000'000 };
+  for (int64_t back = 1; back <= 20; ++back) {
+    const auto elapsed = DAY_LENGTH - Picoseconds { back };
+    EXPECT_EQ((Datetime { day, elapsed }).time_of_day.to_duration(), duration_cast<nanoseconds>(elapsed));
+  }
   for (const int64_t count : { int64_t { -1 }, int64_t { 86400 }, int64_t { 9223372037 },
                                 std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max() }) {
     EXPECT_THROW((Datetime { day, seconds { count } }), std::invalid_argument);
@@ -443,6 +449,8 @@ TEST(Datetime, FractionConversionChecksOriginalDuration) {
   using RationalSeconds = std::chrono::duration<int64_t, std::ratio<2147483647, 2147483646>>;
   EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(RationalSeconds { 19 }), nanoseconds { 19000000008 });
   EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(RationalSeconds { -19 }), nanoseconds { -19000000008 });
+  EXPECT_NO_THROW(std::ignore = to_fraction(RationalSeconds { 9223372032 }));
+  EXPECT_THROW(std::ignore = to_fraction(RationalSeconds { 9223372033 }), std::invalid_argument);
   using UnsignedPicoseconds = std::chrono::duration<uint64_t, std::pico>;
   constexpr auto MAX_UNSIGNED = std::numeric_limits<uint64_t>::max();
   EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(UnsignedPicoseconds { MAX_UNSIGNED }).count(),
@@ -464,6 +472,39 @@ TEST(Datetime, TimePointValidationPrecedesCalendarConversion) {
   EXPECT_EQ(earliest_ns.time_of_day.to_duration().count(), expected_remainder);
   EXPECT_THROW((Datetime { sys_time<seconds> { seconds { std::numeric_limits<int64_t>::max() } } }),
                std::invalid_argument);
+  const sys_time<microseconds> first { sys_days { std::chrono::year::min() / 1 / 1 } };
+  const sys_time<microseconds> end { sys_days { std::chrono::year::max() / 12 / 31 } + days { 1 } };
+  EXPECT_THROW((Datetime { first - microseconds { 1 } }), std::invalid_argument);
+  EXPECT_TRUE((Datetime { first }).ok());
+  const Datetime last { end - microseconds { 1 } };
+  EXPECT_EQ(last.ymd, std::chrono::year::max() / 12 / 31);
+  EXPECT_EQ(last.time_of_day.to_duration(), std::chrono::hours { 24 } - microseconds { 1 });
+  EXPECT_THROW((Datetime { end }), std::invalid_argument);
+  using FloatingPicoseconds = std::chrono::duration<double, std::pico>;
+  const sys_time<FloatingPicoseconds> rounded_end { sys_days { std::chrono::year::max() / 12 / 31 } + days { 1 } };
+  EXPECT_THROW((Datetime { rounded_end }), std::invalid_argument);
+  using Picoseconds = std::chrono::duration<int64_t, std::pico>;
+  constexpr Picoseconds DAY_LENGTH { 86400'000'000'000'000 };
+  const sys_time<Picoseconds> midnight { DAY_LENGTH * 10 };
+  for (int64_t back = 1; back <= 20; ++back) {
+    const Datetime dt { midnight - Picoseconds { back } };
+    EXPECT_EQ(dt.ymd, util::to_ymd(1970, 1, 10));
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(DAY_LENGTH - Picoseconds { back }));
+  }
+  for (const int64_t count : { int64_t { -1 }, int64_t { 1 } }) {
+    const sys_time<std::chrono::weeks> point { std::chrono::weeks { count } };
+    const Datetime dt { point };
+    EXPECT_EQ(dt.ymd, year_month_day { floor<days>(point) });
+    EXPECT_EQ(dt.time_of_day.to_duration(), nanoseconds { 0 });
+  }
+  using ThreeHalfSeconds = std::chrono::duration<int64_t, std::ratio<3, 2>>;
+  for (const int64_t count : { int64_t { -1 }, int64_t { 1 } }) {
+    const sys_time<ThreeHalfSeconds> point { ThreeHalfSeconds { count } };
+    const auto day = floor<days>(point);
+    const Datetime dt { point };
+    EXPECT_EQ(dt.ymd, year_month_day { day });
+    EXPECT_EQ(dt.time_of_day.to_duration(), duration_cast<nanoseconds>(point - day));
+  }
 }
 
 TEST(Datetime, OperatorsEqualNonequal) {

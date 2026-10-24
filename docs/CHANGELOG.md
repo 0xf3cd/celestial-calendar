@@ -39,7 +39,8 @@
 - `calendar::Datetime` now takes a raw `std::chrono::duration` as its date-plus-time argument (#379),
   validating it before nanosecond conversion. Replace `Datetime{day, hh_mm_ss{elapsed}}` with
   `Datetime{day, elapsed}`; an existing valid `hh_mm_ss` can supply `.to_duration()`. The fraction and
-  time-point constructors remain. `to_fraction` retains negative and multi-day inputs but rejects unsafe conversions.
+  time-point constructors remain. `to_fraction` retains negative and multi-day inputs but rejects non-finite inputs
+  and nanosecond counts outside `int64_t`.
 - Jieqi JSON export uses schema `celestial-calendar/jieqi-table@2` (#380): replace `unix_ms`/`iso_utc`
   with `jd_ut1`/`iso_ut1`. It keeps model UT1 without a UTC suffix or a UTC accuracy promise. Export now
   requires a verified build receipt; dirty-source builds record a snapshot digest and no source commit.
@@ -55,9 +56,10 @@
 - Model identity filtering no longer assigns a vector from its own filtered iterators (#378).
   Each kind retains the order and count of the corresponding subset of ALL.
 - Original year, month and day values are checked before chrono narrowing (#379), including floating-point
-  years, leap days and full-width C month/day inputs. Invalid durations and time points fail before unsafe conversion.
+  years, leap days and `uint32_t` month/day values from C. Years accept chrono years, floating-point values
+  and integral types with at most 64 value bits. Invalid durations and time points fail before unsafe conversion.
 - Test discovery and execution reject missing directories, incomplete or empty registrations, command failures
-  and zero actual GoogleTest executions, including under `python -O` (#381). A run reuses one discovery snapshot.
+  and zero actual GoogleTest executions, including under `python -O` (#381).
 
 ## [v0.9.0]
 

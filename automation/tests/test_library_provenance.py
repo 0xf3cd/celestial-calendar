@@ -48,6 +48,40 @@ def build_fixture(root, build, library, *, mutate=None, retcode=0):
   return result, calls
 
 
+def import_revision(root):
+  """Import a fixture revision without depending on the caller's Git identity or hooks."""
+  parent = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=root, capture_output=True, check=False)
+  stream = b"commit refs/heads/main\ncommitter Fixture <fixture@example.invalid> 0 +0000\ndata 8\nfixture\n\n"
+  if parent.returncode == 0:
+    stream += b"from " + parent.stdout.strip() + b"\n"
+  stream += b"deleteall\n"
+  files = [root / ".gitignore", *sorted((root / "src").rglob("*"))]
+  if (root / "README.md").exists():
+    files.append(root / "README.md")
+  for path in files:
+    if path.is_file():
+      data = path.read_bytes()
+      stream += f"M 100644 inline {path.relative_to(root).as_posix()}\ndata {len(data)}\n".encode()
+      stream += data + b"\n"
+  subprocess.run(["git", "fast-import", "--quiet"], cwd=root, input=stream, check=True, capture_output=True)
+  subprocess.run(["git", "symbolic-ref", "HEAD", "refs/heads/main"], cwd=root, check=True)
+  subprocess.run(["git", "read-tree", "HEAD"], cwd=root, check=True)
+  return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+
+
+@pytest.fixture
+def committed_source_tree(source_tree):
+  root, build, library = source_tree
+  subprocess.run(["git", "config", "core.autocrlf", "false"], cwd=root, check=True)
+  (root / ".gitignore").write_bytes(b"build/\n")
+  for path in (root / "src").rglob("*"):
+    if path.is_file():
+      path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
+  commit = import_revision(root)
+  assert subprocess.check_output(["git", "status", "--porcelain"], cwd=root) == b""
+  return root, build, library, commit
+
+
 def test_first_receipt_requires_fresh_build(source_tree):
   root, build, library = source_tree
   result, calls = build_fixture(root, build, library)
@@ -136,3 +170,75 @@ def test_new_production_input_invalidates_snapshot(source_tree):
   (root / "src/calendar/new_coefficients.inc").write_text("new include dependency\n", encoding="utf-8")
   with pytest.raises(RuntimeError, match="snapshot"):
     provenance.verify_library(library, root)
+
+
+def test_unstaged_production_deletion_is_part_of_the_snapshot(source_tree):
+  root, build, library = source_tree
+  subprocess.run(["git", "add", "src"], cwd=root, check=True)
+  build_fixture(root, build, library)
+  (root / "src/shared_lib/lib_jieqi.cpp").unlink()
+  assert "src/shared_lib/lib_jieqi.cpp" not in provenance.source_snapshot(root)["files"]
+  with pytest.raises(RuntimeError, match="snapshot"):
+    provenance.verify_library(library, root)
+  result, calls = build_fixture(root, build, library)
+  assert result == 0
+  assert "--clean-first" in calls[0]
+  provenance.verify_library(library, root)
+
+
+def test_clean_receipt_keeps_its_build_commit_after_head_moves(committed_source_tree):
+  root, build, library, commit = committed_source_tree
+  build_fixture(root, build, library)
+  assert provenance.verify_library(library, root)["source"]["commit"] == commit
+  (root / "README.md").write_text("non-production update\n", encoding="utf-8")
+  assert import_revision(root) != commit
+  assert provenance.verify_library(library, root)["source"]["commit"] == commit
+  _, calls = build_fixture(root, build, library)
+  assert "--clean-first" not in calls[0]
+  assert provenance.verify_library(library, root)["source"]["commit"] == commit
+
+
+def test_valid_commit_with_different_source_bytes_is_rejected(committed_source_tree):
+  root, build, library, old_commit = committed_source_tree
+  (root / "src/calendar/jieqi.hpp").write_text("new production source\n", encoding="utf-8")
+  new_commit = import_revision(root)
+  build_fixture(root, build, library)
+  path = provenance.receipt_path(library)
+  receipt = json.loads(path.read_text(encoding="utf-8"))
+  assert receipt["source"]["commit"] == new_commit
+  receipt["source"]["commit"] = old_commit
+  path.write_text(json.dumps(receipt), encoding="utf-8")
+  with pytest.raises(RuntimeError, match="source commit does not contain"):
+    provenance.verify_library(library, root)
+
+
+@pytest.mark.parametrize("converted", [False, True])
+def test_only_byte_identical_commit_sources_receive_a_commit(committed_source_tree, converted):
+  root, build, library, commit = committed_source_tree
+  if converted:
+    subprocess.run(["git", "config", "core.autocrlf", "true"], cwd=root, check=True)
+    path = root / "src/calendar/jieqi.hpp"
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    subprocess.run(["git", "add", "--renormalize", "src"], cwd=root, check=True)
+  assert subprocess.check_output(["git", "status", "--porcelain"], cwd=root) == b""
+  snapshot = provenance.source_snapshot(root)
+  assert snapshot["commit"] == (None if converted else commit)
+  assert snapshot["files"]["src/calendar/jieqi.hpp"] == provenance.file_sha256(root / "src/calendar/jieqi.hpp")
+  build_fixture(root, build, library)
+  assert provenance.verify_library(library, root)["source"]["commit"] == (None if converted else commit)
+
+
+def test_missing_cmake_cache_has_a_recovery_message(source_tree):
+  root, build, library = source_tree
+  (build / "CMakeCache.txt").unlink()
+  with pytest.raises(RuntimeError, match="project.py --cmake"):
+    build_fixture(root, build, library)
+
+
+def test_unversioned_library_is_preferred_to_accumulated_versions(tmp_path):
+  extension = {"linux": ".so", "darwin": ".dylib", "win32": ".dll"}[sys.platform]
+  unversioned = tmp_path / ("libcelestial_calendar" + extension)
+  unversioned.write_bytes(b"current")
+  for name in ("libcelestial_calendar.0.8.0" + extension, unversioned.name + ".bak"):
+    (tmp_path / name).write_bytes(b"not selected")
+  assert provenance.find_shared_lib(tmp_path) == unversioned

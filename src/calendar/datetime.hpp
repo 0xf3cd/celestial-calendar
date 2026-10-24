@@ -158,11 +158,17 @@ template <IsDuration To, IsDuration From>
   }
 }
 
-/** @brief Validate the original day duration before converting or constructing hh_mm_ss. */
+/** @brief Validate the original day duration and return its nanosecond count. */
 template <IsDuration Duration>
 [[nodiscard]] constexpr auto checked_time_of_day(const Duration elapsed) -> nanoseconds {
-  const auto seconds_elapsed = std::chrono::duration<long double> { elapsed }.count();
-  const bool in_day = seconds_elapsed >= 0.0L and seconds_elapsed < 86400.0L;
+  const bool in_day = [elapsed] {
+    if constexpr (std::is_integral_v<typename Duration::rep>) {
+      return elapsed.count() >= 0 and checked_duration_cast<seconds>(elapsed).count() < 86400;
+    } else {
+      const auto seconds_elapsed = std::chrono::duration<long double> { elapsed }.count();
+      return seconds_elapsed >= 0.0L and seconds_elapsed < 86400.0L;
+    }
+  }();
   if (not in_day) {
     throw std::invalid_argument { "Time of day must be finite and in [0, 24h)" };
   }
@@ -270,20 +276,24 @@ struct Datetime {
   /**
    * @brief Constructs a `Datetime` from a `time_point`.
    * @param tp The time point. The expected clock is `system_clock`.
+   * @throw std::invalid_argument If the input is non-finite, outside the Gregorian year range,
+   *        or cannot be represented during conversion.
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const time_point<system_clock, Duration>& tp) 
     : ymd {}
   {
     const auto elapsed = tp.time_since_epoch();
-    const auto day_value = std::chrono::duration<long double, days::period> { elapsed }.count();
     constexpr auto FIRST = sys_days { std::chrono::year::min() / 1 / 1 }.time_since_epoch().count();
     constexpr auto END = sys_days { std::chrono::year::max() / 12 / 31 }.time_since_epoch().count() + 1;
-    const bool within_years = day_value >= FIRST and day_value < END;
-    if (not within_years) {
-      throw std::invalid_argument { "Time point is non-finite or outside the representable Gregorian years" };
-    }
     if constexpr (std::is_integral_v<typename Duration::rep>) {
+      constexpr auto SECONDS_PER_DAY = static_cast<int64_t>(in_a_day<seconds>());
+      const auto count = detail::checked_duration_cast<seconds>(elapsed).count();
+      const bool below_first = count < FIRST * SECONDS_PER_DAY or
+        (count == FIRST * SECONDS_PER_DAY and elapsed.count() % Duration::period::den != 0);
+      if (below_first or count >= END * SECONDS_PER_DAY) {
+        throw std::invalid_argument { "Time point is outside the representable Gregorian years" };
+      }
       using Scale = std::ratio_divide<typename Duration::period, days::period>;
       auto day_count = detail::checked_duration_cast<days>(elapsed).count();
       const auto remainder = elapsed.count() % Scale::den;
@@ -292,7 +302,7 @@ struct Datetime {
       }
       ymd = year_month_day { sys_days { days { day_count } } };
       if constexpr (Scale::num == 1) {
-        // A floored whole day can overflow the input duration at its negative limit (#379).
+        // At the minimum tick count, floor<days> can put the day start below the input range (#379).
         const auto ticks = static_cast<int64_t>(remainder);
         const auto positive_ticks = ticks < 0 ? ticks + Scale::den : ticks;
         time_of_day = hh_mm_ss { detail::checked_time_of_day(
@@ -309,7 +319,16 @@ struct Datetime {
         time_of_day = hh_mm_ss { detail::checked_time_of_day(input - start) };
       }
     } else {
+      const auto day_value = std::chrono::duration<long double, days::period> { elapsed }.count();
+      const bool within_years = day_value >= FIRST and day_value < END;
+      if (not within_years) {
+        throw std::invalid_argument { "Time point is non-finite or outside the representable Gregorian years" };
+      }
       const auto day = floor<days>(tp);
+      const auto day_count = day.time_since_epoch().count();
+      if (day_count < FIRST or day_count >= END) {
+        throw std::invalid_argument { "Time-point day cannot be represented within the Gregorian year range" };
+      }
       ymd = year_month_day { day };
       time_of_day = hh_mm_ss { detail::checked_time_of_day(tp - day) };
     }
@@ -319,6 +338,7 @@ struct Datetime {
    * @brief Constructs a `Datetime` from a date and a raw duration since the start of that day.
    * @param ymd The year, month, and day.
    * @param elapsed The finite time of day in [0, 24h), validated before conversion to nanoseconds.
+   * @throw std::invalid_argument If the date is invalid or the duration is non-finite or outside [0, 24h).
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const year_month_day& ymd, const Duration elapsed)

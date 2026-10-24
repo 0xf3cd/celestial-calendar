@@ -20,14 +20,15 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <limits>
 
 namespace util {
 
-/*! @brief A type that can be converted to `std::chrono::year`. */
+/*! @brief An arithmetic year with at most 64 integer value bits, or a chrono year. */
 template <typename T>
-concept YearConvertible = requires (T t) {
-  { std::chrono::year { static_cast<int32_t>(t) } } -> std::same_as<std::chrono::year>;
-};
+concept YearConvertible = std::same_as<std::remove_cv_t<T>, std::chrono::year>
+  or std::floating_point<T>
+  or (std::integral<T> and std::numeric_limits<T>::digits <= 64);
 
 /*!
  * @brief Converts an integer year to `std::chrono::year`, rejecting what narrowing would alias.
@@ -72,17 +73,15 @@ concept DaysConvertible = requires (const T& t) {
   constexpr auto LAST_YEAR = static_cast<int32_t>(std::chrono::year::max());
   if constexpr (std::is_floating_point_v<Year>) {
     const bool within_years = year >= FIRST_YEAR and year <= LAST_YEAR;
-    if (not within_years) {
-      throw std::invalid_argument { std::format("Argument `year` must be a representable whole year, got {}", year) };
-    }
-    if (static_cast<std::remove_cv_t<Year>>(static_cast<int32_t>(year)) != year) {
+    const bool whole_year = within_years and static_cast<std::remove_cv_t<Year>>(static_cast<int32_t>(year)) == year;
+    if (not whole_year) {
       throw std::invalid_argument { std::format("Argument `year` must be a representable whole year, got {}", year) };
     }
   } else if constexpr (std::is_integral_v<Year>) {
     using Wide = std::conditional_t<std::is_signed_v<Year>, int64_t, uint64_t>;
     const auto original = static_cast<Wide>(year);
     if (std::cmp_less(original, FIRST_YEAR) or std::cmp_greater(original, LAST_YEAR)) {
-      throw std::invalid_argument { std::format("Argument `year` is outside [-32767, 32767], got {}", year) };
+      throw std::invalid_argument { std::format("Argument `year` is outside [{}, {}], got {}", FIRST_YEAR, LAST_YEAR, year) };
     }
   }
   const auto checked = checked_year(static_cast<int32_t>(year));

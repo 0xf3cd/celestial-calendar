@@ -153,13 +153,16 @@ chooses an output file and a year window; the years must lie within `[401, 9999]
   `models.leap_seconds` is null. [Time scales](DESIGN.md#time-scales) explains the distinction.
 - The local build writes a `.provenance.json` receipt beside the resolved library. It records production
   source-file digests, their combined snapshot digest, the CMake configuration digest and the artifact digest.
-  Missing or stale receipts force a clean rebuild through `project.py --build` before new provenance is recorded;
-  a failed build or a source/configuration change during the build leaves no valid receipt.
+  When the receipt is missing or stale, `project.py --build` rebuilds from scratch before recording a new one.
+  A failed build or a source/configuration change during the build leaves no valid receipt.
 - Export verifies the receipt, current production source snapshot and exact artifact bytes before loading a
-  private copy. Missing metadata, stale sources or a different binary fail the command rather than produce a
+  private copy so the loader uses those verified bytes, not a cached earlier library. Missing metadata, stale
+  sources or a different binary fail the command rather than produce a
   table with guessed provenance. Raw `cmake --build` does not establish this receipt; rebuild through
   `project.py --build` before exporting. The receipt is a record of a locally trusted build, not a signed attestation.
-- `source.commit` comes from the build receipt, not the export-time HEAD. It is null for a dirty build;
+- `source.commit` comes from the build receipt, not the export-time HEAD. It is recorded only when the source
+  files match the commit's exact bytes. Dirty builds and clean checkouts with converted bytes (such as CRLF)
+  record null instead;
   `source.snapshot_sha256` still identifies its source bytes, and `source.artifact_sha256` identifies its library.
   Packaging-time `build_info.json` cannot substitute for this evidence. The output has no generation timestamp;
   repeated exports of the same verified artifact and source snapshot are byte-identical.

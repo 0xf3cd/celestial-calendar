@@ -50,19 +50,32 @@ def source_snapshot(root: Path) -> dict:
     ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "src"], cwd=root
   )
   names = sorted({name.decode("utf-8") for name in tracked.split(b"\0") if name})
-  files = {name: file_sha256(root / name) for name in names if not name.startswith(("src/test/", "src/bench/"))}
+  files = {
+    name: file_sha256(root / name)
+    for name in names
+    if not name.startswith(("src/test/", "src/bench/")) and (root / name).is_file()
+  }
   if "src/shared_lib/CMakeLists.txt" not in files or "src/calendar/jieqi.hpp" not in files:
     raise RuntimeError("Cannot identify a complete shared-library source snapshot")
   serialized = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
   dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root)
   commit = None if dirty else subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+  if commit is not None:
+    for name, digest in files.items():
+      data = subprocess.check_output(["git", "show", f"{commit}:{name}"], cwd=root)
+      if hashlib.sha256(data).hexdigest() != digest:
+        commit = None
+        break
   return {"commit": commit, "snapshot_sha256": hashlib.sha256(serialized).hexdigest(), "files": files}
 
 
 def configuration_sha256(root: Path, build_dir: Path) -> str:
   """Require this build directory to belong to the source root and identify its CMake configuration."""
   cache = build_dir / "CMakeCache.txt"
-  text = cache.read_text(encoding="utf-8")
+  try:
+    text = cache.read_text(encoding="utf-8")
+  except OSError as error:
+    raise RuntimeError("Cannot read CMake configuration; run project.py --cmake before building") from error
   home = re.search(r"^CMAKE_HOME_DIRECTORY:INTERNAL=(.+)$", text, re.MULTILINE)
   if home is None or Path(home[1]).resolve() != (root / "src").resolve():
     raise RuntimeError("CMake build directory does not belong to this source tree; run project.py --cmake")
@@ -107,19 +120,19 @@ def verify_library(library: Path, root: Path) -> dict:
 
 
 def build_library_project(root: Path, build_dir: Path, cpu_cores: int, run) -> int:
-  """Build from a stable snapshot; only a fresh build may establish a new provenance receipt."""
+  """Keep source capture, receipt invalidation, build and receipt creation in one transaction."""
   snapshot = source_snapshot(root)
   configuration = configuration_sha256(root, build_dir)
+  directory = build_dir / "shared_lib"
   reusable = None
   try:
-    library = find_shared_lib(build_dir / "shared_lib")
+    library = find_shared_lib(directory)
     prior = verify_library(library, root)
     if prior["configuration_sha256"] == configuration:
       reusable = prior
     receipt_path(library).unlink(missing_ok=True)
   except (OSError, RuntimeError):
     # A stale receipt cannot survive a failed attempt to rebuild its artifact.
-    directory = build_dir / "shared_lib"
     if directory.is_dir():
       for stale in directory.glob("*celestial_calendar*.provenance.json"):
         stale.unlink()
@@ -133,8 +146,9 @@ def build_library_project(root: Path, build_dir: Path, cpu_cores: int, run) -> i
   after = source_snapshot(root)
   if after != snapshot or configuration_sha256(root, build_dir) != configuration:
     raise RuntimeError("Sources or CMake configuration changed during the build; provenance was not recorded")
-  library = find_shared_lib(build_dir / "shared_lib")
+  library = find_shared_lib(directory)
   artifact = {"name": library.resolve(strict=True).name, "sha256": file_sha256(library)}
+  # An unchanged artifact keeps its original build identity, even if HEAD moved.
   receipt = {
     "schema": SCHEMA,
     "source": reusable["source"] if reusable is not None and reusable["artifact"] == artifact else snapshot,

@@ -55,7 +55,14 @@ def test_directory(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-  "listing", ["", "Total Tests: 0\n", "Total Tests: 3\n", CANONICAL.replace("Total Tests: 3", "")]
+  "listing",
+  [
+    "",
+    "Total Tests: 0\n",
+    "Total Tests: 3\n",
+    CANONICAL.replace("Total Tests: 3", ""),
+    CANONICAL.replace("Total Tests: 3", "Total Tests: 4"),
+  ],
 )
 def test_discovery_rejects_empty_or_incomplete_listing(test_directory, monkeypatch, listing):
   monkeypatch.setattr(gtest, "run_cmd", lambda *args, **kwargs: ProcReturn(0, listing, ""))

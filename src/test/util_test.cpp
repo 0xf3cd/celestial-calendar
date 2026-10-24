@@ -129,6 +129,9 @@ TEST(Util, ToYmdInputTypes) {
   static_assert(ToYmdCallable<unsigned, unsigned, unsigned>);
   static_assert(ToYmdCallable<int, std::size_t, uint32_t>);
   static_assert(ToYmdCallable<float, int, int>);
+  enum class YearAlias : uint64_t { WRAPPED = 0x100000000 + 2024 };
+  static_assert(not YearConvertible<YearAlias>);
+  static_assert(not ToYmdCallable<YearAlias, uint32_t, uint32_t>);
 }
 
 TEST(Util, FromYmd) {
