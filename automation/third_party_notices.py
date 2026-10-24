@@ -119,7 +119,9 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   ),
   NoticeSource(
     title="IAU SOFA issue 2023-10-11 — SOFA Software License",
-    applicability="the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11",
+    applicability=(
+      "the lunar, nutation, equatorial-reference, and leap-second data derived from IAU SOFA issue 2023-10-11"
+    ),
     path=Path("src/test/provenance/sofa/2023-10-11/doc/copyr.lis"),
     upstream=f"{SOFA_ARCHIVE_URL} (member sofa/20231011/c/doc/copyr.lis)",
     sha256="ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994",
