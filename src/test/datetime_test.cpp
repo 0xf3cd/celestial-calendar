@@ -444,21 +444,34 @@ TEST(Datetime, FractionConversionChecksOriginalDuration) {
   EXPECT_THROW(std::ignore = to_fraction(std::chrono::duration<double> { std::numeric_limits<double>::quiet_NaN() }),
                std::invalid_argument);
   using ThirdSeconds = std::chrono::duration<int64_t, std::ratio<1, 3>>;
-  EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(ThirdSeconds { 27000000000 }),
+  EXPECT_EQ((calendar::detail::checked_duration_cast<ThirdSeconds, nanoseconds>(ThirdSeconds { 27000000000 })),
             nanoseconds { 9000000000000000000 });
   using RationalSeconds = std::chrono::duration<int64_t, std::ratio<2147483647, 2147483646>>;
-  EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(RationalSeconds { 19 }), nanoseconds { 19000000008 });
-  EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(RationalSeconds { -19 }), nanoseconds { -19000000008 });
+  EXPECT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(RationalSeconds { 19 })),
+            nanoseconds { 19000000008 });
+  EXPECT_EQ((calendar::detail::checked_duration_cast<RationalSeconds, nanoseconds>(RationalSeconds { -19 })),
+            nanoseconds { -19000000008 });
   EXPECT_NO_THROW(std::ignore = to_fraction(RationalSeconds { 9223372032 }));
   EXPECT_THROW(std::ignore = to_fraction(RationalSeconds { 9223372033 }), std::invalid_argument);
   using UnsignedPicoseconds = std::chrono::duration<uint64_t, std::pico>;
   constexpr auto MAX_UNSIGNED = std::numeric_limits<uint64_t>::max();
-  EXPECT_EQ(calendar::detail::checked_duration_cast<nanoseconds>(UnsignedPicoseconds { MAX_UNSIGNED }).count(),
-            static_cast<int64_t>(MAX_UNSIGNED / 1000));
+  const auto unsigned_ns = calendar::detail::checked_duration_cast<UnsignedPicoseconds, nanoseconds>(
+    UnsignedPicoseconds { MAX_UNSIGNED }
+  );
+  EXPECT_EQ(unsigned_ns.count(), static_cast<int64_t>(MAX_UNSIGNED / 1000));
 }
 
 TEST(Datetime, TimePointValidationPrecedesCalendarConversion) {
   using FloatTime = time_point<system_clock, std::chrono::duration<double>>;
+
+  constexpr Datetime before_epoch { sys_time<seconds> { seconds { -1 } } };
+  static_assert(before_epoch.ymd == util::to_ymd(1969, 12, 31));
+  static_assert(before_epoch.time_of_day.to_duration() == std::chrono::hours { 24 } - seconds { 1 });
+
+  constexpr Datetime after_epoch { FloatTime { std::chrono::duration<double> { 0.5 } } };
+  static_assert(after_epoch.ymd == util::to_ymd(1970, 1, 1));
+  static_assert(after_epoch.time_of_day.to_duration() == nanoseconds { 500'000'000 });
+
   for (const double count : { 1e30, -1e30, std::numeric_limits<double>::quiet_NaN(),
                                std::numeric_limits<double>::infinity() }) {
     EXPECT_THROW((Datetime { FloatTime { std::chrono::duration<double> { count } } }), std::invalid_argument);

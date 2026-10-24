@@ -71,6 +71,7 @@ concept DaysConvertible = requires (const T& t) {
   using Year = decltype(year);
   constexpr auto FIRST_YEAR = static_cast<int32_t>(std::chrono::year::min());
   constexpr auto LAST_YEAR = static_cast<int32_t>(std::chrono::year::max());
+
   if constexpr (std::is_floating_point_v<Year>) {
     const bool within_years = year >= FIRST_YEAR and year <= LAST_YEAR;
     const bool whole_year = within_years and static_cast<std::remove_cv_t<Year>>(static_cast<int32_t>(year)) == year;
@@ -84,10 +85,12 @@ concept DaysConvertible = requires (const T& t) {
       throw std::invalid_argument { std::format("Argument `year` is outside [{}, {}], got {}", FIRST_YEAR, LAST_YEAR, original) };
     }
   }
+
   const auto checked = checked_year(static_cast<int32_t>(year));
   if (month > 255 or day > 255) {
     throw std::invalid_argument { std::format("Month/day cannot be represented unchanged: {}-{}", month, day) };
   }
+
   return std::chrono::year_month_day { checked / std::chrono::month { month } / std::chrono::day { day } };
 }
 

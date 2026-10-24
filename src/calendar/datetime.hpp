@@ -22,6 +22,7 @@
 #include <ratio>
 #include <stdexcept>
 #include <type_traits>
+#include <functional>
 
 #include "ymd.hpp"
 
@@ -87,11 +88,13 @@ concept Fractionable = requires (T t) {
 namespace detail {
 
 /** @brief Cast an arithmetic duration to a signed integral duration without overflowing intermediates. */
-template <IsDuration To, IsDuration From>
+template <IsDuration From, IsDuration To>
 [[nodiscard]] constexpr auto checked_duration_cast(const From elapsed) -> To {
   using Rep = From::rep;
   using Out = To::rep;
+
   static_assert(std::is_integral_v<Out> and std::is_signed_v<Out>);
+
   if constexpr (std::is_floating_point_v<Rep>) {
     const auto count = std::chrono::duration<long double, typename To::period> { elapsed }.count();
     constexpr auto LOWER = static_cast<long double>(std::numeric_limits<Out>::min());
@@ -99,17 +102,21 @@ template <IsDuration To, IsDuration From>
     if (not representable) {
       throw std::invalid_argument { "Duration does not fit the requested integral representation" };
     }
+
     const auto native_count = std::chrono::duration<Rep, typename To::period> { elapsed }.count();
     const bool native_representable = native_count >= LOWER and native_count < -LOWER;
     if (not native_representable) {
       throw std::invalid_argument { "Rounded duration does not fit the requested integral representation" };
     }
+
     return To { static_cast<Out>(native_count) };
   } else {
     static_assert(std::is_integral_v<Rep> and std::numeric_limits<Rep>::digits <= 64);
+
     using Scale = std::ratio_divide<typename From::period, typename To::period>;
     constexpr auto NUM = static_cast<uint64_t>(Scale::num);
     constexpr auto DEN = static_cast<uint64_t>(Scale::den);
+
     const bool negative = std::is_signed_v<Rep> and elapsed.count() < 0;
     const auto magnitude = negative ? uint64_t { 0 } - static_cast<uint64_t>(elapsed.count())
                                     : static_cast<uint64_t>(elapsed.count());
@@ -117,15 +124,18 @@ template <IsDuration To, IsDuration From>
                                 : static_cast<uint64_t>(std::numeric_limits<Out>::max());
     const auto quotient = magnitude / DEN;
     const auto remainder = magnitude % DEN;
+
     // Divide first: even a representable result need not have a representable count * NUM.
     if (quotient > limit / NUM) {
       throw std::invalid_argument { "Duration conversion exceeds its integral representation" };
     }
+
     const auto whole = quotient * NUM;
-    const auto part = [remainder] {
+    const auto part = std::invoke([remainder] {
       if (remainder <= std::numeric_limits<uint64_t>::max() / NUM) {
         return remainder * NUM / DEN;
       }
+
       // Each reduced remainder is < DEN <= INTMAX_MAX, so doubling and adding fit uint64_t.
       uint64_t value = 0;
       uint64_t rest = 0;
@@ -136,7 +146,8 @@ template <IsDuration To, IsDuration From>
           rest -= DEN;
           ++value;
         }
-        if ((NUM & mask) != 0) {
+
+        if (NUM & mask) {
           rest += remainder;
           if (rest >= DEN) {
             rest -= DEN;
@@ -144,15 +155,19 @@ template <IsDuration To, IsDuration From>
           }
         }
       }
+
       return value;
-    }();
+    });
+
     if (part > limit - whole) {
       throw std::invalid_argument { "Duration does not fit the requested integral representation" };
     }
+
     const auto result = whole + part;
     if (negative and result == limit) {
       return To { std::numeric_limits<Out>::min() };
     }
+
     const auto positive = static_cast<Out>(result);
     return To { negative ? -positive : positive };
   }
@@ -161,18 +176,111 @@ template <IsDuration To, IsDuration From>
 /** @brief Validate the original day duration and return its nanosecond count. */
 template <IsDuration Duration>
 [[nodiscard]] constexpr auto checked_time_of_day(const Duration elapsed) -> nanoseconds {
-  const bool in_day = [elapsed] {
+  const bool in_day = std::invoke([elapsed] {
     if constexpr (std::is_integral_v<typename Duration::rep>) {
-      return elapsed.count() >= 0 and checked_duration_cast<seconds>(elapsed).count() < 86400;
+      return elapsed.count() >= 0 and checked_duration_cast<Duration, seconds>(elapsed).count() < 86400;
     } else {
       const auto seconds_elapsed = std::chrono::duration<long double> { elapsed }.count();
       return seconds_elapsed >= 0.0L and seconds_elapsed < 86400.0L;
     }
-  }();
+  });
+
   if (not in_day) {
     throw std::invalid_argument { "Time of day must be finite and in [0, 24h)" };
   }
-  return checked_duration_cast<nanoseconds>(elapsed);
+
+  return checked_duration_cast<Duration, nanoseconds>(elapsed);
+}
+
+
+inline constexpr auto FIRST_GREGORIAN_DAY = sys_days { std::chrono::year::min() / 1 / 1 }.time_since_epoch();
+inline constexpr auto END_GREGORIAN_DAY = sys_days { std::chrono::year::max() / 12 / 31 }.time_since_epoch() + days { 1 };
+
+
+/** @brief Floor an integral epoch duration to a day within the Gregorian year range. */
+template <IsDuration Duration>
+requires std::integral<typename Duration::rep>
+[[nodiscard]] constexpr auto checked_day(const Duration elapsed) -> days {
+  constexpr auto SECONDS_PER_DAY = static_cast<int64_t>(in_a_day<seconds>());
+  const auto count = checked_duration_cast<Duration, seconds>(elapsed).count();
+  const bool below_first = count < FIRST_GREGORIAN_DAY.count() * SECONDS_PER_DAY or
+    (count == FIRST_GREGORIAN_DAY.count() * SECONDS_PER_DAY and elapsed.count() % Duration::period::den != 0);
+
+  if (below_first or count >= END_GREGORIAN_DAY.count() * SECONDS_PER_DAY) {
+    throw std::invalid_argument { "Time point is outside the representable Gregorian years" };
+  }
+
+  using Scale = std::ratio_divide<typename Duration::period, days::period>;
+  auto day_count = checked_duration_cast<Duration, days>(elapsed).count();
+  const auto remainder = elapsed.count() % Scale::den;
+
+  if (elapsed.count() < 0 and remainder != 0) {
+    --day_count;
+  }
+
+  return days { day_count };
+}
+
+
+/** @brief Floor a floating epoch duration, checking the original and rounded day ranges. */
+template <IsDuration Duration>
+requires std::floating_point<typename Duration::rep>
+[[nodiscard]] constexpr auto checked_day(const Duration elapsed) -> days {
+  const auto day_value = std::chrono::duration<long double, days::period> { elapsed }.count();
+  const bool within_years = day_value >= FIRST_GREGORIAN_DAY.count() and day_value < END_GREGORIAN_DAY.count();
+
+  if (not within_years) {
+    throw std::invalid_argument { "Time point is non-finite or outside the representable Gregorian years" };
+  }
+
+  const auto day = floor<days>(elapsed);
+
+  if (day < FIRST_GREGORIAN_DAY or day >= END_GREGORIAN_DAY) {
+    throw std::invalid_argument { "Time-point day cannot be represented within the Gregorian year range" };
+  }
+
+  return day;
+}
+
+
+/** @brief Return the checked day remainder without overflowing integral intermediates. */
+template <IsDuration Duration>
+requires std::integral<typename Duration::rep>
+[[nodiscard]] constexpr auto time_of_day(const Duration elapsed, const days day) -> nanoseconds {
+  using Scale = std::ratio_divide<typename Duration::period, days::period>;
+
+  if constexpr (Scale::num == 1) {
+    // At the minimum tick count, floor<days> can put the day start below the input range (#379).
+    const auto remainder = elapsed.count() % Scale::den;
+    const auto ticks = static_cast<int64_t>(remainder);
+    const auto positive_ticks = ticks < 0 ? ticks + Scale::den : ticks;
+
+    return checked_time_of_day(std::chrono::duration<int64_t, typename Duration::period> { positive_ticks });
+  } else {
+    using Common = std::common_type_t<Duration, days>;
+    using Integral = std::chrono::duration<int64_t, typename Common::period>;
+
+    const auto input = checked_duration_cast<Duration, Integral>(elapsed);
+    const auto start = checked_duration_cast<days, Integral>(day);
+
+    if (start.count() < 0 and input.count() > std::numeric_limits<int64_t>::max() + start.count()) {
+      throw std::invalid_argument { "Time-point day remainder is not representable" };
+    }
+
+    return checked_time_of_day(input - start);
+  }
+}
+
+
+/** @brief Reject unrepresentable floating remainders of an epoch duration. */
+template <IsDuration Duration>
+requires std::floating_point<typename Duration::rep>
+[[nodiscard]] constexpr auto time_of_day(const Duration elapsed, const days day) -> nanoseconds {
+  try {
+    return checked_time_of_day(elapsed - day);
+  } catch (const std::invalid_argument&) {
+    throw std::invalid_argument { "Floating time-point day remainder is not representable" };
+  }
 }
 
 } // namespace detail
@@ -180,14 +288,15 @@ template <IsDuration Duration>
 /** 
  * @brief Returns the fraction of a day. 
  * @param elapsed The elapsed time.
- * @tparam Fractionable The type of input `elapsed`.
+ * @tparam Duration The type of input `elapsed`.
  * @return The fraction of a day, of type `double`.
  * @note The type of input `elapsed` should be convertible to `std::chrono::nanoseconds`.
  * @note Negative and multi-day durations are allowed; the result may be < 0.0 or >= 1.0.
  * @throw std::invalid_argument if the nanosecond count is not representable or the input is not finite.
  */
-[[nodiscard]] constexpr auto to_fraction(const Fractionable auto& elapsed) -> double {
-  const auto ns_duration = detail::checked_duration_cast<nanoseconds>(elapsed);
+template <Fractionable Duration>
+[[nodiscard]] constexpr auto to_fraction(const Duration& elapsed) -> double {
+  const auto ns_duration = detail::checked_duration_cast<Duration, nanoseconds>(elapsed);
   const double ns_elapsed = ns_duration.count();
   return ns_elapsed / in_a_day<nanoseconds>();
 }
@@ -286,58 +395,10 @@ struct Datetime {
     : ymd {}
   {
     const auto elapsed = tp.time_since_epoch();
-    constexpr auto FIRST = sys_days { std::chrono::year::min() / 1 / 1 }.time_since_epoch().count();
-    constexpr auto END = sys_days { std::chrono::year::max() / 12 / 31 }.time_since_epoch().count() + 1;
-    if constexpr (std::is_integral_v<typename Duration::rep>) {
-      constexpr auto SECONDS_PER_DAY = static_cast<int64_t>(in_a_day<seconds>());
-      const auto count = detail::checked_duration_cast<seconds>(elapsed).count();
-      const bool below_first = count < FIRST * SECONDS_PER_DAY or
-        (count == FIRST * SECONDS_PER_DAY and elapsed.count() % Duration::period::den != 0);
-      if (below_first or count >= END * SECONDS_PER_DAY) {
-        throw std::invalid_argument { "Time point is outside the representable Gregorian years" };
-      }
-      using Scale = std::ratio_divide<typename Duration::period, days::period>;
-      auto day_count = detail::checked_duration_cast<days>(elapsed).count();
-      const auto remainder = elapsed.count() % Scale::den;
-      if (elapsed.count() < 0 and remainder != 0) {
-        --day_count;
-      }
-      ymd = year_month_day { sys_days { days { day_count } } };
-      if constexpr (Scale::num == 1) {
-        // At the minimum tick count, floor<days> can put the day start below the input range (#379).
-        const auto ticks = static_cast<int64_t>(remainder);
-        const auto positive_ticks = ticks < 0 ? ticks + Scale::den : ticks;
-        time_of_day = hh_mm_ss { detail::checked_time_of_day(
-          std::chrono::duration<int64_t, typename Duration::period> { positive_ticks }
-        ) };
-      } else {
-        using Common = std::common_type_t<Duration, days>;
-        using Integral = std::chrono::duration<int64_t, typename Common::period>;
-        const auto input = detail::checked_duration_cast<Integral>(elapsed);
-        const auto start = detail::checked_duration_cast<Integral>(days { day_count });
-        if (start.count() < 0 and input.count() > std::numeric_limits<int64_t>::max() + start.count()) {
-          throw std::invalid_argument { "Time-point day remainder is not representable" };
-        }
-        time_of_day = hh_mm_ss { detail::checked_time_of_day(input - start) };
-      }
-    } else {
-      const auto day_value = std::chrono::duration<long double, days::period> { elapsed }.count();
-      const bool within_years = day_value >= FIRST and day_value < END;
-      if (not within_years) {
-        throw std::invalid_argument { "Time point is non-finite or outside the representable Gregorian years" };
-      }
-      const auto day = floor<days>(tp);
-      const auto day_count = day.time_since_epoch().count();
-      if (day_count < FIRST or day_count >= END) {
-        throw std::invalid_argument { "Time-point day cannot be represented within the Gregorian year range" };
-      }
-      ymd = year_month_day { day };
-      try {
-        time_of_day = hh_mm_ss { detail::checked_time_of_day(tp - day) };
-      } catch (const std::invalid_argument&) {
-        throw std::invalid_argument { "Floating time-point day remainder is not representable" };
-      }
-    }
+    const auto day = detail::checked_day(elapsed);
+
+    ymd = year_month_day { sys_days { day } };
+    time_of_day = hh_mm_ss { detail::time_of_day(elapsed, day) };
   }
 
   /**
