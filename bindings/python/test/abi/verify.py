@@ -29,7 +29,7 @@ HEADER = REPO / "src/shared_lib/celestial.h"
 EXPECTED_EXPORT_COUNT = 36
 EXPECTED_LAYOUT_COUNT = 28
 EXPECTED_RECORDING_COUNT = 34
-DECLARATION_SEAMS = ("BINDING_SPECS", "RECORDING_EXPORTS", "STRUCT_TYPES", "P_U32", "P_DOUBLE", "P_CHAR")
+DECLARATION_SEAMS = ("BINDING_SPECS", "RECORDING_EXPORTS", "STRUCT_TYPES")
 READERS = {"celestial_last_error", "celestial_last_error_kind"}
 POINTEE_TYPES = {
   **{c: getattr(ctypes, python) for c, python in C_TO_CTYPES.items()},
@@ -101,7 +101,7 @@ def ctypes_types(name: str) -> tuple[str, list[str]]:
 
 
 def verify_binding_compatibility() -> None:
-  """Retain the private declaration seams, without retaining old C record aliases."""
+  """Check shared declaration objects and generated primitive pointer types."""
   for name in DECLARATION_SEAMS:
     assert getattr(_binding, name, None) is getattr(_abi, name), f"declaration owner identity: {name}"
   for name, primitive in (("P_U32", ctypes.c_uint32), ("P_DOUBLE", ctypes.c_double), ("P_CHAR", ctypes.c_char)):

@@ -10,7 +10,7 @@ Unreleased draft. The 1.0 API and release notes are not yet frozen.
 
 - The C ABI uses `celestial_` exports, `Celestial` records and one `CELESTIAL_TARGET_*` code family.
   Existing 0.x binaries and source callers must migrate; no compatibility forwarders are provided.
-- Independent ecliptic/equatorial positions and civil houses are available from C++ and C, with frozen Python
+- Independent ecliptic/equatorial positions and civil houses are available from C++ and C, with immutable Python
   result values. Positions retain caller order and provider windows without computing rates or houses.
 - Model keys distinguish Delta T, nutation and position sources. Selected-model results record their resolved
   identities; capability queries describe TT target domains and the separate civil-house policy.

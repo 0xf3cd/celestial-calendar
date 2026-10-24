@@ -141,6 +141,13 @@ def test_javascript_test_entries_match_their_execution_owners():
       re.MULTILINE,
     )
   )
+  raw_protocol = (test_root / "abi/raw_protocol_test.mjs").read_text(encoding="utf-8")
+  nested_abi_entries = {
+    f"abi/{path}" for path in re.findall(r'^import "\./([a-z0-9_.-]+\.mjs)";$', raw_protocol, re.MULTILINE)
+  }
+  assert nested_abi_entries == {"abi/generated_view_test.mjs"}
+  assert "abi/raw_protocol_test.mjs" in abi_entries
+  abi_entries |= nested_abi_entries
   job_entries = {
     name: set(
       re.findall(

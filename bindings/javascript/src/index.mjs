@@ -12,7 +12,7 @@
 
 import createWasmModule from "./celestial-jieqi.mjs";
 
-import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS } from "./bindings.mjs";
+import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS, PROTOCOLS } from "./bindings.mjs";
 import {
   booleanValue,
   civilDateTime,
@@ -203,7 +203,20 @@ const readDoubles = (M, ptr, count) => Array.from(
 const countThenFill = (cName, operation, args) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
-  if (typeof binding.protocol?.allowsEmpty !== "boolean") malformed(operation, "missing empty-result protocol");
+  const protocol = PROTOCOLS?.[cName];
+  const roles = ["count_parameter", "slots_parameter", "capacity_parameter"];
+  const parameters = C_DECLARATIONS.functions?.[cName]?.parameters;
+  if (protocol === null || typeof protocol !== "object" || Array.isArray(protocol)
+    || ![...roles, "kind", "legal_empty", "total_must_match", "written_policy", "null_slots_requires_zero_capacity", "error_channel"]
+      .every((name) => Object.hasOwn(protocol, name))
+    || protocol.kind !== "count-fill" || binding.result !== protocol.kind
+    || typeof protocol.legal_empty !== "boolean" || protocol.total_must_match !== true
+    || protocol.written_policy !== "min-total-capacity" || protocol.error_channel !== "kind"
+    || protocol.null_slots_requires_zero_capacity !== true || !Array.isArray(parameters)
+    || !roles.every((role, index) => typeof protocol[role] === "string" && protocol[role].length > 0
+      && protocol[role] === parameters.at(index - roles.length)?.name)) {
+    malformed(operation, "count/fill protocol");
+  }
   const countPtr = allocate(M, 4, operation);
 
   try {
@@ -213,7 +226,7 @@ const countThenFill = (cName, operation, args) => {
     const count = M.HEAPU32[countPtr >> 2];
     if (queried !== 0) malformed(operation, "count query wrote records");
     if (count === 0) {
-      if (binding.protocol?.allowsEmpty !== true) malformed(operation, "unexpected empty result");
+      if (!protocol.legal_empty) malformed(operation, "unexpected empty result");
       return [];
     }
 

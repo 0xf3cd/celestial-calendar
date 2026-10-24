@@ -19,6 +19,7 @@ import {
   isLiteralTypeNode, isNumericLiteral, isStringLiteral, isTypeLiteralNode, isTypeReferenceNode, isUnionTypeNode,
 } from "typescript/unstable/ast";
 import { testChartApi } from "../support/chart_api.mjs";
+import { chartLabel } from "../support/chart_replay.mjs";
 import { testFakeNative } from "../support/fake_native.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
@@ -30,8 +31,16 @@ const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
 const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart"];
-const { CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
-const expectedChartTargets = Object.keys(CHART_CODES.targets);
+const { C_DECLARATIONS, CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
+const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
+assert.equal(manifest.schema, "celestial-calendar/javascript-wasm-abi@2");
+assert.deepEqual(manifest.codes, C_DECLARATIONS.constants, "staged declarations contain every named code");
+const expectedTargetCodes = Object.entries(manifest.codes)
+  .filter(([name]) => name.startsWith("CELESTIAL_TARGET_") && name !== "CELESTIAL_TARGET_ALL")
+  .sort((left, right) => left[1] - right[1])
+  .map(([name, value]) => [chartLabel(name.slice("CELESTIAL_TARGET_".length)), value]);
+assert.deepEqual(Object.entries(CHART_CODES.targets), expectedTargetCodes, "staged target labels and full-width codes");
+const expectedChartTargets = expectedTargetCodes.map(([name]) => name);
 
 const declaredSurface = (text) => {
   const api = new API({ fs: { readFile: (path) => resolve(path) === declarationPath ? text : undefined } });

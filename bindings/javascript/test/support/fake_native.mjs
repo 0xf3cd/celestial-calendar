@@ -17,7 +17,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export async function testFakeNative(entryUrl) {
-  const { BINDINGS, C_DECLARATIONS, LAYOUTS } = await import(new URL("./bindings.mjs", entryUrl));
+  const { BINDINGS, C_DECLARATIONS, LAYOUTS, PROTOCOLS } = await import(new URL("./bindings.mjs", entryUrl));
   assert(C_DECLARATIONS?.constants, "generated C_DECLARATIONS is required before integration acceptance");
   const codes = C_DECLARATIONS.constants;
   const bindings = Object.fromEntries(BINDINGS.map((binding) => [binding.cName, binding]));
@@ -205,14 +205,40 @@ export async function testFakeNative(entryUrl) {
       reset(changes); libraryError(phase);
     }
     reset({ count: 0 });
-    assert.equal(bindings.celestial_moon_phase_moments.protocol?.allowsEmpty, false, "annual phases require a nonempty native result");
+    assert.equal(PROTOCOLS.celestial_moon_phase_moments.legal_empty, false, "annual phases require a nonempty native result");
+    assert.equal(PROTOCOLS.celestial_new_moons_in_year.legal_empty, false, "annual new moons require a nonempty native result");
     libraryError(phase);
-    for (const [variant, allowsEmpty] of [["empty", true], ["missing", undefined]]) {
+    reset();
+    assert.deepEqual(fixture.moon.newMoonsInYear(2024), [2451545, 2451546]);
+    reset({ count: 0 }); libraryError(() => fixture.moon.newMoonsInYear(2024));
+    const protocol = PROTOCOLS.celestial_moon_phase_moments;
+    const protocolVariants = [
+      ["empty", { ...protocol, legal_empty: true }],
+      ["missing", undefined], ["null", null], ["array", []],
+      ["empty-string", { ...protocol, legal_empty: "false" }],
+      ["empty-number", { ...protocol, legal_empty: 0 }],
+      ["empty-missing", { ...protocol, legal_empty: undefined }],
+      ["total-false", { ...protocol, total_must_match: false }],
+      ["total-string", { ...protocol, total_must_match: "true" }],
+      ["total-missing", { ...protocol, total_must_match: undefined }],
+      ["written-policy", { ...protocol, written_policy: "exact-requested-count" }],
+      ["written-missing", { ...protocol, written_policy: undefined }],
+      ["error-reader", { ...protocol, error_channel: "preserve" }],
+      ["error-missing", { ...protocol, error_channel: undefined }],
+      ["kind", { ...protocol, kind: "sret" }],
+      ["null-slots", { ...protocol, null_slots_requires_zero_capacity: false }],
+      ["count-type", { ...protocol, count_parameter: 1 }],
+      ["count-role", { ...protocol, count_parameter: "slots" }],
+      ["slots-empty", { ...protocol, slots_parameter: "" }],
+      ["capacity-missing", { ...protocol, capacity_parameter: undefined }],
+      ["missing-map", undefined],
+    ];
+    for (const [variant, candidate] of protocolVariants) {
       await writeFile(resolve(directory, `${variant}-bindings.mjs`), `
 export * from "./bindings.mjs";
-import { BINDINGS as bindings } from "./bindings.mjs";
-export const BINDINGS = bindings.map((binding) => binding.cName === "celestial_moon_phase_moments"
-  ? { ...binding, protocol: { allowsEmpty: ${String(allowsEmpty)} } } : binding);
+import { PROTOCOLS as protocols } from "./bindings.mjs";
+export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
+    : `{ ...protocols, celestial_moon_phase_moments: ${JSON.stringify(candidate) ?? "undefined"} }`};
 `);
       await writeFile(resolve(directory, `${variant}-index.mjs`), source
         .replace("./celestial-jieqi.mjs", "./mock-module.mjs")
@@ -220,15 +246,21 @@ export const BINDINGS = bindings.map((binding) => binding.cName === "celestial_m
       const alternate = await import(pathToFileURL(resolve(directory, `${variant}-index.mjs`)));
       await alternate.init();
       reset({ count: 0 });
-      if (allowsEmpty) {
+      if (variant === "empty") {
         assert.deepEqual(alternate.moon.phaseMoments(2024, "new"), [], "declared legal empty result");
         assert.equal(control.calls.length, 1, "empty success must not fill");
-      } else {
+        reset({ count: 0, failPass: "count", errorKind: 3, message: "" });
         assert.throws(() => alternate.moon.phaseMoments(2024, "new"), alternate.CelestialError);
-        assert.equal(control.calls.length, 0, "missing protocol must fail before the native call");
+      } else {
+        assert.throws(() => alternate.moon.phaseMoments(2024, "new"), (error) =>
+          error instanceof alternate.CelestialError && error.operation === "moon.phaseMoments"
+          && error.recorded === false && error.message === "Invalid native result: count/fill protocol.");
+        assert.equal(control.calls.length, 0, "invalid protocol must fail before the native call");
+        assert.equal(control.allocations, 0, "invalid protocol must fail before allocation");
       }
       assert.equal(control.live.size, 0);
     }
+    console.log(`PASS generated count/fill policies: legal empty control and ${protocolVariants.length - 1} malformed-metadata controls`);
     reset({ count: 0 });
     assert.deepEqual(fixture.sun.longitudeCrossings(2024, 0), [], "legal empty solar result");
     reset({ count: 0xFFFFFFFF }); libraryError(phase);

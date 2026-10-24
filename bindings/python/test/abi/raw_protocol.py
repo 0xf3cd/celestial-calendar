@@ -27,47 +27,47 @@ def call(name: str, *args: object) -> object:
   return _binding.call(name if name.startswith("celestial_") else f"celestial_{name}", *args)
 
 
-def happy_last_error() -> None:
+def happy_celestial_last_error() -> None:
   assert call("ut1_to_jd", 2024, 6, 1, 0.5).valid
   assert _binding.last_error_text() == ""
 
 
-def happy_ut1_to_jd() -> None:
+def happy_celestial_ut1_to_jd() -> None:
   result = call("ut1_to_jd", 2024, 6, 1, 0.5)
   assert result.valid and abs(result.value - 2460463.0) < 1e-6
 
 
-def happy_ut1_to_jde() -> None:
+def happy_celestial_ut1_to_jde() -> None:
   result = call("ut1_to_jde", 2024, 6, 1, 0.5)
   assert result.valid and result.value > 2460463.0
 
 
-def happy_jde_to_ut1() -> None:
+def happy_celestial_jde_to_ut1() -> None:
   result = call("jde_to_ut1", 2460463.0)
   assert result.valid and (result.year, result.month, result.day) == (2024, 6, 1)
 
 
-def happy_sun_apparent_geocentric_coord() -> None:
+def happy_celestial_sun_apparent_geocentric_coord() -> None:
   result = call("sun_apparent_geocentric_coord", 2460463.0)
   assert result.valid and 0.0 <= result.lon < 360.0 and result.r > 0.0
 
 
-def happy_moon_apparent_geocentric_coord() -> None:
+def happy_celestial_moon_apparent_geocentric_coord() -> None:
   result = call("moon_apparent_geocentric_coord", 2460463.0)
   assert result.valid and 0.0 <= result.lon < 360.0 and result.r > 0.0
 
 
-def happy_moon_illumination() -> None:
+def happy_celestial_moon_illumination() -> None:
   result = call("moon_illumination", 2448724.5)
   assert result.valid and abs(result.illumination - 0.6786) < 5e-5
 
 
-def happy_moon_position_angle() -> None:
+def happy_celestial_moon_position_angle() -> None:
   result = call("moon_position_angle", 2448724.5)
   assert result.valid and abs(result.angle_deg - 285.0) < 0.05
 
 
-def happy_moon_phase_moments() -> None:
+def happy_celestial_moon_phase_moments() -> None:
   total = ctypes.c_uint32()
   assert call("moon_phase_moments", 2024, 0, ctypes.byref(total), None, 0) == 0
   assert total.value in (12, 13)
@@ -75,48 +75,48 @@ def happy_moon_phase_moments() -> None:
   assert call("moon_phase_moments", 2024, 0, ctypes.byref(total), slots, total.value) == total.value
 
 
-def happy_solar_lon_root_discriminant() -> None:
+def happy_celestial_solar_lon_root_discriminant() -> None:
   result = call("solar_lon_root_discriminant", 2024, 0.0)
   assert result.valid and result.count == 1
 
 
-def happy_solar_lon_roots() -> None:
+def happy_celestial_solar_lon_roots() -> None:
   slots = (ctypes.c_double * 1)()
   assert call("solar_lon_roots", 2024, 0.0, slots, 1) == 1 and math.isfinite(slots[0])
 
 
-def happy_new_moons_after_jde() -> None:
+def happy_celestial_new_moons_after_jde() -> None:
   slots = (ctypes.c_double * 3)()
   assert call("new_moons_after_jde", 2460463.0, slots, 3) == 3 and slots[0] < slots[1] < slots[2]
 
 
-def happy_new_moons_in_year() -> None:
+def happy_celestial_new_moons_in_year() -> None:
   total = ctypes.c_uint32()
   assert call("new_moons_in_year", 2024, ctypes.byref(total), None, 0) == 0
   assert total.value in (12, 13)
 
 
-def happy_equation_of_time() -> None:
+def happy_celestial_equation_of_time() -> None:
   result = call("equation_of_time", 2460463.0)
   assert result.valid and abs(result.value) < 5.0
 
 
-def happy_apparent_solar_time() -> None:
+def happy_celestial_apparent_solar_time() -> None:
   result = call("apparent_solar_time", 2024, 6, 1, 0.5, 116.4)
   assert result.valid and (result.year, result.month, result.day) == (2024, 6, 1)
 
 
-def happy_local_apparent_sidereal_time() -> None:
+def happy_celestial_local_apparent_sidereal_time() -> None:
   result = call("local_apparent_sidereal_time", 2460463.0, 120.0)
   assert result.valid and 0.0 <= result.value < 360.0
 
 
-def happy_query_jieqi_moment() -> None:
+def happy_celestial_query_jieqi_moment() -> None:
   result = call("query_jieqi_moment", 2024, 0)
   assert result.valid and (result.jq_idx, result.y, result.m) == (0, 2024, 2)
 
 
-def happy_get_jieqi_name() -> None:
+def happy_celestial_get_jieqi_name() -> None:
   required = call("get_jieqi_name", 0, None, 0)
   assert required == 7
   buffer = ctypes.create_string_buffer(required)
@@ -124,34 +124,34 @@ def happy_get_jieqi_name() -> None:
   assert buffer.value == "立春".encode()
 
 
-def happy_get_supported_lunar_year_range() -> None:
+def happy_celestial_get_supported_lunar_year_range() -> None:
   result = call("get_supported_lunar_year_range", 3)
   assert result.valid and (result.start, result.end) == (1600, 2199)
 
 
-def happy_get_lunar_year_info() -> None:
+def happy_celestial_get_lunar_year_info() -> None:
   result = call("get_lunar_year_info", 2, 2024)
   assert result.valid and (result.year, result.month, result.day) == (2024, 2, 10)
 
 
-def happy_gregorian_to_lunar() -> None:
+def happy_celestial_gregorian_to_lunar() -> None:
   result = call("gregorian_to_lunar", 1, 2023, 3, 22)
   assert result.valid and (result.year, result.month, result.is_leap, result.day) == (2023, 2, True, 1)
 
 
-def happy_lunar_to_gregorian() -> None:
+def happy_celestial_lunar_to_gregorian() -> None:
   result = call("lunar_to_gregorian", 1, 2023, 2, True, 1)
   assert result.valid and (result.year, result.month, result.day) == (2023, 3, 22)
 
 
-def happy_delta_t() -> None:
+def happy_celestial_delta_t() -> None:
   for code in range(6):
     result = call("delta_t", 2024.5, code)
     assert result.valid and math.isfinite(result.value)
     assert result.model_identity_code == (code or 5)
 
 
-def happy_chart_snapshot() -> None:
+def happy_celestial_chart_snapshot() -> None:
   # Direct FFI calls exercise the large by-value return without public Python validation.
   arguments = (2024, 6, 1, 0.5, 1, -33.9, 151.2, 0, 0)
   result = call("chart_snapshot", *arguments)
@@ -198,7 +198,7 @@ def happy_chart_snapshot() -> None:
   assert tuple(explicit.houses.cusps_deg) == tuple(axes.cusps_deg)
 
 
-def edge_last_error() -> None:
+def edge_celestial_last_error() -> None:
   assert not call("ut1_to_jd", 2024, 6, 1, NAN).valid
   recorded = _binding.last_error_text()
   assert recorded
@@ -208,35 +208,35 @@ def edge_last_error() -> None:
   assert _binding.last_error_text() == ""
 
 
-def edge_ut1_to_jd() -> None:
+def edge_celestial_ut1_to_jd() -> None:
   assert not call("ut1_to_jd", 2024, 6, 1, NAN).valid and _binding.last_error_text()
 
 
-def edge_ut1_to_jde() -> None:
+def edge_celestial_ut1_to_jde() -> None:
   assert not call("ut1_to_jde", 2024, 13, 1, 0.5).valid and _binding.last_error_text()
 
 
-def edge_jde_to_ut1() -> None:
+def edge_celestial_jde_to_ut1() -> None:
   assert not call("jde_to_ut1", NAN).valid and _binding.last_error_text()
 
 
-def edge_sun_apparent_geocentric_coord() -> None:
+def edge_celestial_sun_apparent_geocentric_coord() -> None:
   assert not call("sun_apparent_geocentric_coord", NAN).valid
 
 
-def edge_moon_apparent_geocentric_coord() -> None:
+def edge_celestial_moon_apparent_geocentric_coord() -> None:
   assert not call("moon_apparent_geocentric_coord", NAN).valid
 
 
-def edge_moon_illumination() -> None:
+def edge_celestial_moon_illumination() -> None:
   assert not call("moon_illumination", NAN).valid and _binding.last_error_text()
 
 
-def edge_moon_position_angle() -> None:
+def edge_celestial_moon_position_angle() -> None:
   assert not call("moon_position_angle", NAN).valid and _binding.last_error_text()
 
 
-def edge_moon_phase_moments() -> None:
+def edge_celestial_moon_phase_moments() -> None:
   total = ctypes.c_uint32()
   assert call("moon_phase_moments", 2024, 0, ctypes.byref(total), None, 0) == 0 and total.value in (12, 13)
   one = (ctypes.c_double * 1)()
@@ -244,68 +244,68 @@ def edge_moon_phase_moments() -> None:
   assert call("moon_phase_moments", 2024, 0, None, None, 0) == 0 and _binding.last_error_text()
 
 
-def edge_solar_lon_root_discriminant() -> None:
+def edge_celestial_solar_lon_root_discriminant() -> None:
   assert not call("solar_lon_root_discriminant", 2024, NAN).valid
 
 
-def edge_solar_lon_roots() -> None:
+def edge_celestial_solar_lon_roots() -> None:
   assert call("solar_lon_roots", 2024, 0.0, None, 0) == 0
   assert _binding.last_error_text() == ""
   assert call("solar_lon_roots", 2024, 0.0, None, 2) == 0
 
 
-def edge_new_moons_after_jde() -> None:
+def edge_celestial_new_moons_after_jde() -> None:
   assert call("new_moons_after_jde", 2460463.0, None, 0) == 0
   assert _binding.last_error_text() == ""
   assert call("new_moons_after_jde", 2460463.0, None, 3) == 0
 
 
-def edge_new_moons_in_year() -> None:
+def edge_celestial_new_moons_in_year() -> None:
   total = ctypes.c_uint32()
   assert call("new_moons_in_year", 2024, ctypes.byref(total), None, 0) == 0 and total.value in (12, 13)
   sentinel = ctypes.c_uint32(0xDEADBEEF)
   assert call("new_moons_in_year", 0, ctypes.byref(sentinel), None, 0) == 0 and sentinel.value == 0
 
 
-def edge_equation_of_time() -> None:
+def edge_celestial_equation_of_time() -> None:
   assert not call("equation_of_time", NAN).valid
 
 
-def edge_apparent_solar_time() -> None:
+def edge_celestial_apparent_solar_time() -> None:
   assert not call("apparent_solar_time", 2024, 6, 1, 0.5, 200.0).valid
 
 
-def edge_local_apparent_sidereal_time() -> None:
+def edge_celestial_local_apparent_sidereal_time() -> None:
   assert not call("local_apparent_sidereal_time", 1000000.0, 0.0).valid and _binding.last_error_text()
 
 
-def edge_query_jieqi_moment() -> None:
+def edge_celestial_query_jieqi_moment() -> None:
   assert not call("query_jieqi_moment", 2024, 24).valid
 
 
-def edge_get_jieqi_name() -> None:
+def edge_celestial_get_jieqi_name() -> None:
   small = ctypes.create_string_buffer(2)
   assert call("get_jieqi_name", 0, small, len(small)) == 7 and small.raw[-1:] == b"\0"
   assert call("get_jieqi_name", 0, None, 16) == 0
 
 
-def edge_get_supported_lunar_year_range() -> None:
+def edge_celestial_get_supported_lunar_year_range() -> None:
   assert not call("get_supported_lunar_year_range", 0).valid
 
 
-def edge_get_lunar_year_info() -> None:
+def edge_celestial_get_lunar_year_info() -> None:
   assert not call("get_lunar_year_info", 9, 2024).valid
 
 
-def edge_gregorian_to_lunar() -> None:
+def edge_celestial_gregorian_to_lunar() -> None:
   assert not call("gregorian_to_lunar", 1, 2023, 13, 1).valid
 
 
-def edge_lunar_to_gregorian() -> None:
+def edge_celestial_lunar_to_gregorian() -> None:
   assert not call("lunar_to_gregorian", 1, 2024, 2, True, 1).valid
 
 
-def edge_delta_t() -> None:
+def edge_celestial_delta_t() -> None:
   for code in range(6):
     assert not call("delta_t", NAN, code).valid
     assert call("last_error_kind") == 1
@@ -314,7 +314,7 @@ def edge_delta_t() -> None:
     assert call("last_error_kind") == 1
 
 
-def edge_chart_snapshot() -> None:
+def edge_celestial_chart_snapshot() -> None:
   function = _binding.FUNCTIONS["celestial_chart_snapshot"]
   baseline = (2024, 6, 1, 0.5, 1, 35.0, 120.0, 0, 0)
   assert not call("sun_apparent_geocentric_coord", NAN).valid
@@ -410,7 +410,7 @@ def edge_chart_snapshot() -> None:
   assert "fraction" in _binding.last_error_text()
 
 
-def happy_longitude_events() -> None:
+def happy_celestial_longitude_events() -> None:
   total = ctypes.c_uint32()
   record = _abi.CelestialLongitudeEventRecord
   assert call("longitude_events", 0, 0.0, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
@@ -420,7 +420,7 @@ def happy_longitude_events() -> None:
   assert slots[0].direction_code == 0 and 0.0 <= slots[0].longitude_deg < 360.0
 
 
-def happy_longitude_stations() -> None:
+def happy_celestial_longitude_stations() -> None:
   total = ctypes.c_uint32()
   record = _abi.CelestialStationEventRecord
   assert call("longitude_stations", 2, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
@@ -434,7 +434,7 @@ def happy_longitude_stations() -> None:
   assert motions == {(0, 1), (1, 0)}
 
 
-def happy_longitude_difference_events() -> None:
+def happy_celestial_longitude_difference_events() -> None:
   total = ctypes.c_uint32()
   record = _abi.CelestialLongitudeDifferenceEventRecord
   assert call("longitude_difference_events", 1, 0, -60.0, 2460676.5, 2460707.5, ctypes.byref(total), None, 0) == 0
@@ -446,7 +446,7 @@ def happy_longitude_difference_events() -> None:
   assert abs(slots[0].signed_difference_deg + 60.0) < 1e-6
 
 
-def edge_longitude_events() -> None:
+def edge_celestial_longitude_events() -> None:
   total = ctypes.c_uint32()
   # An empty result is legal and clears the recorded error.
   assert call("longitude_events", 3, 137.5, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
@@ -463,7 +463,7 @@ def edge_longitude_events() -> None:
   assert sentinel.value == 0 and "target_longitude_deg" in _binding.last_error_text()
 
 
-def edge_longitude_stations() -> None:
+def edge_celestial_longitude_stations() -> None:
   total = ctypes.c_uint32()
   # The Sun's certified rate bounds exclude a station: a legal empty result.
   assert call("longitude_stations", 0, 2460735.5, 2460785.5, ctypes.byref(total), None, 0) == 0
@@ -473,7 +473,7 @@ def edge_longitude_stations() -> None:
   assert sentinel.value == 0 and "nonempty" in _binding.last_error_text()
 
 
-def edge_longitude_difference_events() -> None:
+def edge_celestial_longitude_difference_events() -> None:
   total = ctypes.c_uint32()
   # The antipodal node relation holds throughout at the opposition level.
   sentinel = ctypes.c_uint32(0xDEADBEEF)
@@ -613,7 +613,7 @@ EXPORT_LABELS = (
 )
 
 
-def happy_positions() -> None:
+def happy_celestial_positions() -> None:
   # Direct FFI calls exercise the caller-ordered count+fill selection without public validation.
   record = _abi.CelestialPositionRecord
   selection = (ctypes.c_uint32 * 3)(9, 0, 10)
@@ -636,7 +636,7 @@ def happy_positions() -> None:
   assert total.value == 1
 
 
-def edge_positions() -> None:
+def edge_celestial_positions() -> None:
   record = _abi.CelestialPositionRecord
   selection = (ctypes.c_uint32 * 1)(0)
   total = ctypes.c_uint32()
@@ -662,7 +662,7 @@ def edge_positions() -> None:
   assert total.value == 0 and "target_codes" in _binding.last_error_text()
 
 
-def happy_house_query() -> None:
+def happy_celestial_house_query() -> None:
   # Direct FFI calls exercise the by-value result with resolved identities.
   result = call("house_query", 2024, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2)
   assert result.valid and _binding.last_error_text() == ""
@@ -684,7 +684,7 @@ def happy_house_query() -> None:
   assert early.valid and early.jde_tt < 2409543.875 and early.nutation_identity_code == 1  # MEEUS
 
 
-def edge_house_query() -> None:
+def edge_celestial_house_query() -> None:
   function = _binding.FUNCTIONS["celestial_house_query"]
   baseline = (2024, 6, 1, 0.5, 1, 0, 0, 51.5, 0.0, 2)
   assert function(*baseline).valid and _binding.last_error_text() == ""
@@ -702,12 +702,12 @@ def edge_house_query() -> None:
   assert "year" in _binding.last_error_text()
 
 
-def happy_last_error_kind() -> None:
-  happy_last_error()
+def happy_celestial_last_error_kind() -> None:
+  happy_celestial_last_error()
   assert call("last_error_kind") == 0
 
 
-def edge_last_error_kind() -> None:
+def edge_celestial_last_error_kind() -> None:
   assert not call("ut1_to_jd", 2000, 1, 1, NAN).valid
   for _ in range(2):
     assert call("last_error_kind") == 1
@@ -715,7 +715,7 @@ def edge_last_error_kind() -> None:
     assert message and call("last_error_kind") == 1 and _binding.last_error_text() == message
 
 
-def happy_model_identity_text() -> None:
+def happy_celestial_model_identity_text() -> None:
   names = (
     (("algo1",), ("algo2",), ("algo3",), ("algo4",), ("algo5",)),
     (("meeus",), ("iau1980",)),
@@ -739,7 +739,7 @@ def happy_model_identity_text() -> None:
       assert all(name in text for name in names[kind][identity - 1]), (kind, identity, text)
 
 
-def edge_model_identity_text() -> None:
+def edge_celestial_model_identity_text() -> None:
   for kind, identity in ((0, 0), (0, 6), (1, 3), (2, 7), (3, 1), (0xFFFFFFFF, 1), (256, 1)):
     assert call("model_identity_text", kind, identity, None, 0) == 0
     assert call("last_error_kind") == 1
@@ -748,7 +748,7 @@ def edge_model_identity_text() -> None:
   assert call("model_identity_text", 0, 5, None, 1) == 0 and call("last_error_kind") == 1
 
 
-def happy_equatorial_positions() -> None:
+def happy_celestial_equatorial_positions() -> None:
   selection = (ctypes.c_uint32 * 14)(*reversed(range(14)))
   total = ctypes.c_uint32()
   assert call("equatorial_positions", selection, 14, 2451545.0, ctypes.byref(total), None, 0) == 0
@@ -764,7 +764,7 @@ def happy_equatorial_positions() -> None:
       assert math.isfinite(slot.distance_au) and slot.distance_au > 0.0
 
 
-def edge_equatorial_positions() -> None:
+def edge_celestial_equatorial_positions() -> None:
   total = ctypes.c_uint32(123)
   sun = (ctypes.c_uint32 * 1)(0)
   for selection, count, jde in (
@@ -778,7 +778,7 @@ def edge_equatorial_positions() -> None:
     assert total.value == 0 and call("last_error_kind") == 1
 
 
-def happy_house_capability() -> None:
+def happy_celestial_house_capability() -> None:
   for model in range(6):
     result = call("house_capability", model)
     assert result.valid and result.status_code == 1
@@ -791,16 +791,13 @@ def happy_house_capability() -> None:
       assert result.derived_tt_end_jde_tt == 2464328.5
 
 
-def edge_house_capability() -> None:
+def edge_celestial_house_capability() -> None:
   for model in (6, 256, 0xFFFFFFFF):
     assert not call("house_capability", model).valid and call("last_error_kind") == 1
 
 
 def protocol_test(prefix: str, label: str):
-  suffix = label
-  if label in {"capabilities", "model_identities", "capability_text"}:
-    suffix = f"celestial_{label}"
-  return globals()[f"{prefix}_{suffix}"]
+  return globals()[f"{prefix}_celestial_{label}"]
 
 
 HAPPY_TESTS = {f"celestial_{label}": protocol_test("happy", label) for label in EXPORT_LABELS}

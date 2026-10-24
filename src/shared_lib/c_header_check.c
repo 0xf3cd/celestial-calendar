@@ -15,14 +15,16 @@
 #include <stddef.h>
 
 #define ABI_RECORD(T, S, A) \
-  _Static_assert(sizeof(T) == S && _Alignof(T) == A, #T " layout drifted")
+  _Static_assert(sizeof(T) == (S) && _Alignof(T) == (A), #T " layout drifted")
+// NOLINTBEGIN(bugprone-macro-parentheses): Type names and offsetof member designators cannot be parenthesized.
 #define ABI_FIELD(T, F, K, O) \
-  _Static_assert(offsetof(T, F) == O && _Generic(&((T*)0)->F, K*: 1, default: 0), #T "." #F " drifted")
+  _Static_assert(offsetof(T, F) == (O) && _Generic(&((T*)0)->F, K*: 1, default: 0), #T "." #F " drifted")
 #define ABI_ARRAY(T, F, K, N, O, S) \
-  _Static_assert(offsetof(T, F) == O && _Generic(&((T*)0)->F, K (*)[N]: 1, default: 0) && \
-                 sizeof(((T*)0)->F[0]) == S && \
-                 offsetof(T, F[1]) - offsetof(T, F[0]) == S, #T "." #F " array drifted")
-#define ABI_CODE(N, V) _Static_assert(N == UINT32_C(V), #N " code drifted")
+  _Static_assert(offsetof(T, F) == (O) && _Generic(&((T*)0)->F, K (*)[N]: 1, default: 0) && \
+                 sizeof(((T*)0)->F[0]) == (S) && \
+                 offsetof(T, F[1]) - offsetof(T, F[0]) == (S), #T "." #F " array drifted")
+// NOLINTEND(bugprone-macro-parentheses)
+#define ABI_CODE(N, V) _Static_assert((N) == UINT32_C(V), #N " code drifted")
 
 ABI_RECORD(CelestialJulianDay, 16, 8);
 ABI_FIELD(CelestialJulianDay, valid, bool, 0);

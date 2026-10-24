@@ -24,7 +24,7 @@
 
 // Private error storage is not a DSO export; compile its real TU into this helper-only test.
 #define CELESTIAL_BUILDING_DLL
-#include "../../shared_lib/lib.cpp"
+#include "../../shared_lib/lib.cpp" // NOLINT(bugprone-suspicious-include): Test the real hidden thread-local storage in this executable.
 
 namespace lib::test {
 
