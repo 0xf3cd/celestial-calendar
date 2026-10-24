@@ -83,6 +83,26 @@ export const civilDateTime = (value, name) => {
   return { ...date, fraction };
 };
 
+// Native calls own calendar/model domains; these checks only prevent FFI narrowing.
+export const nativeGregorianDate = (value, name) => {
+  requiredRecord(value, name, ["year", "month", "day"], ["fraction", "isLeap"]);
+  return {
+    year: rangedInteger(value.year, `${name}.year`, -(2 ** 31), 2 ** 31 - 1),
+    month: rangedInteger(value.month, `${name}.month`, 0, 255),
+    day: rangedInteger(value.day, `${name}.day`, 0, 255),
+  };
+};
+
+export const nativeCivilDateTime = (value, name) => {
+  requiredRecord(value, name, ["year", "month", "day", "fraction"], ["isLeap"]);
+  return {
+    year: rangedInteger(value.year, `${name}.year`, -(2 ** 31), 2 ** 31 - 1),
+    month: rangedInteger(value.month, `${name}.month`, 0, 2 ** 32 - 1),
+    day: rangedInteger(value.day, `${name}.day`, 0, 2 ** 32 - 1),
+    fraction: finiteNumber(value.fraction, `${name}.fraction`),
+  };
+};
+
 // Date callers supply their exact millisecond-derived seconds; native callers retain the day fraction.
 export const civilDateTimeResult = (
   { year, month, day, fraction },

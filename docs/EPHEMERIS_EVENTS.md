@@ -13,36 +13,40 @@ in the true ecliptic and equinox of date.
 
 ## C ABI and Python
 
-The C exports `longitude_events`, `longitude_stations` and
-`longitude_difference_events` mirror the three C++ searches over the `EVENT_TARGET_*`
-codes (the same fourteen identities as the chart, pinned equal in
-`c_header_check.c`). Each call owns its results through one count+fill protocol:
+The C exports `celestial_longitude_events`, `celestial_longitude_stations` and
+`celestial_longitude_difference_events` mirror the three C++ searches over the single `CELESTIAL_TARGET_*`
+code family shared with charts, positions and capabilities. Each call owns its results through one count+fill protocol:
 `event_count` always receives the full total, caller-allocated `slots` receive the
 first `min(total, slot_count)` records in chronological order, and the return value
 is how many records were written. A truncated fill is therefore observable by
 comparing the return value against `*event_count`. A zero total is a legal
 no-event outcome; every failure also leaves `*event_count` at 0 and is told apart
-from the empty success only by `last_error`, which stays empty on success.
+from the empty success by `celestial_last_error_kind()`. A nonzero error kind means failure even with an empty
+message. Both error readers preserve state; every other export clears or records the thread's kind/message.
 
 ```c
 uint32_t total = 0;
-LongitudeEventRecord slots[8];
+CelestialLongitudeEventRecord slots[8];
 const uint32_t written =
-  longitude_events(EVENT_TARGET_MERCURY, 0.0, 2460735.5, 2460785.5, &total, slots, 8);
+  celestial_longitude_events(CELESTIAL_TARGET_MERCURY, 0.0, 2460735.5, 2460785.5, &total, slots, 8);
+if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE) {
+  fprintf(stderr, "%s\n", celestial_last_error());
+  return 1;
+}
+/* Consume slots[0..written); total > written reports truncation. */
 ```
 
 ```python
 import celestial_calendar as celestial
 
-events = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+events = celestial.longitude_events(celestial.Target.MERCURY, 0.0, 2460735.5, 2460785.5)
 ```
 
-Python mirrors the enums (`EventTarget`, `EventDirection`, `StationMotion`), units,
-time scales and failures in frozen dataclasses, validates intervals, target angles,
-body pairs and capacities before calling native code, and raises `CelestialError`
-on native failure. Each Python query runs the native search twice — a count pass,
-then a fill pass; a 50-day Mercury window costs milliseconds, and the widest
-allowed span (3660 TT days) stays well under a second.
+Python uses the shared `Target` enum with `EventDirection` and `StationMotion`, and returns frozen dataclasses.
+Wrong types/shapes raise `TypeError`; invalid values, body pairs, intervals or provider-domain rejections raise
+`ValueError`, including rejections found in native code. Computation/resource/internal failures and malformed
+native success payloads raise `CelestialError`. A nonempty result uses a native count pass and fill pass, with
+errors and totals checked after both. A legal empty result returns an empty tuple after the count pass.
 
 ```cpp
 using namespace astro::ephemeris;

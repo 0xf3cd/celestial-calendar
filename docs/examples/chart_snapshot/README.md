@@ -7,7 +7,10 @@ Node distance is `null` and latitude is zero.
 
 The installed Python `chart_snapshot` consumer uses this same input.
 The [Python guide](../../../bindings/python/README.md) and [C example](../../API.md#c-chart-snapshot)
-show how to request it; Python represents absent distance as `None`, and C uses `CHART_PRESENT_DISTANCE`.
+show how to request it; Python represents absent distance as `None`, and C uses `CELESTIAL_PRESENT_DISTANCE`.
+The C/Python results also record resolved Delta T and house-nutation keys and each body's position-source key;
+the stored numerical replay is not a model-identity registry. The house key does not describe body corrections,
+which remain fixed IAU 1980.
 
 This is a chart snapshot replay example, not an independent physical-accuracy oracle; its replay margins are
 acceptance thresholds, explained in [Validation](../../VALIDATION.md#replay-margins).

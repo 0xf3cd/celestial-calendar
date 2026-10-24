@@ -22,19 +22,18 @@
 #include <type_traits>
 
 #include "celestial.h"
-#include "capability.hpp"
+#include "lib_codes.hpp"
 #include "chart.hpp"
 #include "datetime.hpp"
 #include "ymd.hpp"
 
 namespace lib::chart {
 
-// A larger core roster needs a separately published V2, never a wider V1 copy.
-static_assert(astro::chart::BODY_COUNT == 14);
+// A larger core roster requires a new published shape or major, not a wider ABI array.
 static_assert(std::tuple_size_v<decltype(astro::chart::Snapshot::bodies)> ==
-              std::extent_v<decltype(ChartSnapshotV1::bodies)>);
+              std::extent_v<decltype(CelestialChartSnapshot::bodies)>);
 static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> ==
-              std::extent_v<decltype(ChartHousesV1::cusps_deg)>);
+              std::extent_v<decltype(CelestialChartHouses::cusps_deg)>);
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): year/month/day/fraction is the published civil-date order.
 inline auto validate_civil(const int32_t year, const uint32_t month, const uint32_t day, const double fraction) -> void {
@@ -54,59 +53,31 @@ inline auto validate_civil(const int32_t year, const uint32_t month, const uint3
   static_cast<void>(calendar::validate_fraction(fraction));
 }
 
-[[nodiscard]] inline auto civil_scale(const uint32_t code) -> astro::chart::Scale {
+/** @brief Decode the civil input scale before passing it to the time layer. */
+[[nodiscard]] inline auto civil_scale(const uint32_t code) -> astro::julian_day::Scale {
   switch (code) {
-    case CHART_CIVIL_SCALE_UTC: return astro::chart::Scale::UTC;
-    case CHART_CIVIL_SCALE_UT1: return astro::chart::Scale::UT1;
-    default: throw std::invalid_argument { std::format("Unknown chart `civil_scale_code` {}", code) };
+    case CELESTIAL_CIVIL_SCALE_UTC: return astro::julian_day::Scale::UTC;
+    case CELESTIAL_CIVIL_SCALE_UT1: return astro::julian_day::Scale::UT1;
+    default: throw std::invalid_argument { std::format("Unknown `civil_scale_code` {}", code) };
   }
 }
 
+/** @brief Decode the requested house geometry. */
 [[nodiscard]] inline auto house_system(const uint32_t code) -> astro::house::System {
   switch (code) {
-    case CHART_HOUSE_SYSTEM_EQUAL: return astro::house::System::EQUAL;
-    case CHART_HOUSE_SYSTEM_WHOLE_SIGN: return astro::house::System::WHOLE_SIGN;
-    case CHART_HOUSE_SYSTEM_PLACIDUS: return astro::house::System::PLACIDUS;
+    case CELESTIAL_HOUSE_SYSTEM_EQUAL: return astro::house::System::EQUAL;
+    case CELESTIAL_HOUSE_SYSTEM_WHOLE_SIGN: return astro::house::System::WHOLE_SIGN;
+    case CELESTIAL_HOUSE_SYSTEM_PLACIDUS: return astro::house::System::PLACIDUS;
     default: throw std::invalid_argument { std::format("Unknown chart `house_system_code` {}", code) };
   }
 }
 
-[[nodiscard]] inline auto delta_t_model(const uint32_t code) -> astro::delta_t::Model {
-  // The canonical code table lives in capability.hpp (#357): DEFAULT(0) resolves to Algo5 there,
-  // and a gate test reconciles this switch with celestial.h's defines and the Python mapping.
-  const auto model = astro::capability::resolve_delta_t_code(code);
-  if (not model.has_value()) {
-    throw std::invalid_argument { std::format("Unknown chart `delta_t_model_code` {}", code) };
-  }
-  return *model;
-}
-
-[[nodiscard]] inline auto target_code(const astro::ephemeris::Target target) -> uint32_t {
-  using enum astro::ephemeris::Target;
-
-  switch (target) {
-    case SUN: return CHART_TARGET_SUN;
-    case MOON: return CHART_TARGET_MOON;
-    case MERCURY: return CHART_TARGET_MERCURY;
-    case VENUS: return CHART_TARGET_VENUS;
-    case MARS: return CHART_TARGET_MARS;
-    case JUPITER: return CHART_TARGET_JUPITER;
-    case SATURN: return CHART_TARGET_SATURN;
-    case URANUS: return CHART_TARGET_URANUS;
-    case NEPTUNE: return CHART_TARGET_NEPTUNE;
-    case PLUTO: return CHART_TARGET_PLUTO;
-    case MEAN_ASCENDING: return CHART_TARGET_MEAN_ASCENDING;
-    case MEAN_DESCENDING: return CHART_TARGET_MEAN_DESCENDING;
-    case TRUE_ASCENDING: return CHART_TARGET_TRUE_ASCENDING;
-    case TRUE_DESCENDING: return CHART_TARGET_TRUE_DESCENDING;
-    default: throw std::logic_error { "Chart core target has no V1 identity" };
-  }
-}
-
-[[nodiscard]] inline auto body_v1(const astro::chart::BodyState& body) -> ChartBodyV1 {
-  return ChartBodyV1 {
-    .target_code = target_code(body.target),
-    .present_fields = CHART_PRESENT_LATITUDE | (body.distance.has_value() ? CHART_PRESENT_DISTANCE : UINT32_C(0)),
+/** @brief Copy a body and its provider identity into the fixed C record. */
+[[nodiscard]] inline auto body_record(const astro::chart::BodyState& body) -> CelestialChartBody {
+  return CelestialChartBody {
+    .target_code = codes::code_of(body.target),
+    .source_code = codes::code_of(astro::ephemeris::source_of(body.target)),
+    .present_fields = CELESTIAL_PRESENT_LATITUDE | (body.distance.has_value() ? CELESTIAL_PRESENT_DISTANCE : UINT32_C(0)),
     .longitude_deg = body.longitude.deg(),
     .latitude_deg = body.latitude.deg(),
     .distance_au = body.distance.has_value() ? body.distance->au() : 0.0,
@@ -114,33 +85,46 @@ inline auto validate_civil(const int32_t year, const uint32_t month, const uint3
   };
 }
 
-[[nodiscard]] inline auto snapshot_v1(const astro::chart::Snapshot& snapshot) -> ChartSnapshotV1 {
-  ChartSnapshotV1 result {
+/** @brief Copy computed axes and cusps without changing their values. */
+[[nodiscard]] inline auto house_record(const astro::house::Result& houses) -> CelestialChartHouses {
+  CelestialChartHouses result {
+    .ascendant_deg = houses.ascendant.deg(),
+    .midheaven_deg = houses.midheaven.deg(),
+    .descendant_deg = houses.descendant.deg(),
+    .imum_coeli_deg = houses.imum_coeli.deg(),
+    .cusps_deg = {},
+  };
+  for (std::size_t index = 0; index < houses.cusps.size(); ++index) {
+    std::span { result.cusps_deg }[index] = houses.cusps.at(index).deg();
+  }
+  return result;
+}
+
+/** @brief Copy a snapshot together with the models resolved for this call. */
+[[nodiscard]] inline auto snapshot_record(
+  const astro::chart::Snapshot& snapshot,
+  const astro::delta_t::Model delta_t_model,
+  const astro::earth::nutation::Model nutation_model
+) -> CelestialChartSnapshot {
+  CelestialChartSnapshot result {
     .valid = true,
+    .delta_t_identity_code = codes::code_of(delta_t_model),
+    .nutation_identity_code = codes::code_of(nutation_model),
     .jd_ut1 = snapshot.times.jd_ut1,
     .jde_tt = snapshot.times.jde_tt,
     .bodies = {},
-    .houses = {
-      .ascendant_deg = snapshot.houses.ascendant.deg(),
-      .midheaven_deg = snapshot.houses.midheaven.deg(),
-      .descendant_deg = snapshot.houses.descendant.deg(),
-      .imum_coeli_deg = snapshot.houses.imum_coeli.deg(),
-      .cusps_deg = {},
-    },
+    .houses = house_record(snapshot.houses),
   };
 
   for (std::size_t index = 0; index < snapshot.bodies.size(); ++index) {
-    const ChartBodyV1 record = body_v1(snapshot.bodies.at(index));
+    const CelestialChartBody record = body_record(snapshot.bodies.at(index));
     if (record.target_code != index) {
-      throw std::logic_error { "Chart core target order does not match V1" };
+      throw std::logic_error { "Chart core target order does not match the C snapshot" };
     }
 
     std::span { result.bodies }[index] = record;
   }
 
-  for (std::size_t index = 0; index < snapshot.houses.cusps.size(); ++index) {
-    std::span { result.houses.cusps_deg }[index] = snapshot.houses.cusps.at(index).deg();
-  }
   return result;
 }
 

@@ -135,7 +135,7 @@ chooses an output file and a year window; the years must lie within `[401, 9999]
 
 - Schema `celestial-calendar/jieqi-table@2` replaces `@1`. Each entry is
   `{year, idx, name_zh, jd_ut1, iso_ut1}`. `idx` counts from Lichun (立春) = 0 and follows the ABI's
-  `to_index` order; `name_zh` comes from the ABI's `get_jieqi_name`, so the mapping can be checked.
+  `to_index` order; `name_zh` comes from the ABI's `celestial_get_jieqi_name`, so the mapping can be checked.
 - Entries are sorted by actual moment, strictly increasing. Within a Gregorian year the index order is 22, 23, 0,
   …, 21: Xiaohan (小寒) and Dahan (大寒) come first, and entries are not sorted by index.
 - `year` is the owning year passed to the query. In the default window all 24 crossings of each year fall in the
@@ -149,7 +149,8 @@ chooses an output file and a year window; the years must lie within `[401, 9999]
   fields are removed, without compatibility aliases.
 - No UT1-to-UTC conversion or leap-second table participates in this export. This also applies before 1972,
   near leap seconds and for future dates; the output does not predict future UTC or observed DUT1.
-  `models.delta_t` records the resolved default model identity and description from the loaded library;
+  `models.delta_t` records the fixed Algo5 model identity and description from the loaded library, using its
+  kind/identity pair rather than a registry index; a selectable-model default change does not change Jieqi UT1.
   `models.leap_seconds` is null. [Time scales](DESIGN.md#time-scales) explains the distinction.
 - The local build writes a `.provenance.json` receipt beside the resolved library. It records production
   source-file digests, their combined snapshot digest, the CMake configuration digest and the artifact digest.

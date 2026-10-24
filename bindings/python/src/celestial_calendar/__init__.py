@@ -22,43 +22,38 @@ from enum import StrEnum as _StrEnum
 from operator import index as _index
 from typing import TypeVar as _TypeVar
 
-from . import _binding, capability as _capability, chart as _chart
-from . import events as _events
-from . import query as _query
+from . import _abi, _binding, _protocol
+from . import capability as _capability, chart as _chart, events as _events, query as _query
+from ._codes import constant as _constant, enum_code as _enum_code
+from ._models import DeltaTModel as DeltaTModel
+from ._models import ModelKey as ModelKey
+from ._models import ModelKind as ModelKind
+from ._models import NutationModel as NutationModel
+from ._models import Target as Target
+from ._models import selector_code as _selector_code
+from ._protocol import CelestialError as CelestialError
 from ._version import VERSION as __version__
 from .capability import CapabilityOperation as CapabilityOperation
 from .capability import CapabilityRecord as CapabilityRecord
 from .capability import CapabilityStatus as CapabilityStatus
-from .capability import CapabilitySubject as CapabilitySubject
+from .capability import CivilHouseCapability as CivilHouseCapability
 from .capability import ModelIdentity as ModelIdentity
-from .capability import ModelKind as ModelKind
 from .capability import ModelStatus as ModelStatus
-from .capability import PositionSource as PositionSource
 from .chart import BodyState as BodyState
 from .chart import ChartHouses as ChartHouses
 from .chart import ChartSnapshot as ChartSnapshot
-from .chart import ChartTarget as ChartTarget
 from .chart import ChartTimes as ChartTimes
 from .chart import CivilScale as CivilScale
 from .chart import GeoLocation as GeoLocation
 from .chart import HouseSystem as HouseSystem
-from .query import HouseQueryResult as HouseQueryResult
-from .query import NutationModel as NutationModel
-from .query import Position as Position
 from .events import EventDirection as EventDirection
-from .events import EventTarget as EventTarget
 from .events import LongitudeDifferenceEvent as LongitudeDifferenceEvent
 from .events import LongitudeEvent as LongitudeEvent
 from .events import StationEvent as StationEvent
 from .events import StationMotion as StationMotion
-
-
-class LogVerbosity(_StrEnum):
-  """Native logging verbosity."""
-
-  NONE = "none"
-  INFO = "info"
-  DEBUG = "debug"
+from .query import EquatorialPosition as EquatorialPosition
+from .query import HouseQueryResult as HouseQueryResult
+from .query import Position as Position
 
 
 class MoonPhase(_StrEnum):
@@ -70,25 +65,14 @@ class MoonPhase(_StrEnum):
   LAST_QUARTER = "last_quarter"
 
 
-class DeltaTModel(_StrEnum):
-  """A selectable ΔT model."""
-
-  DEFAULT = "default"
-  ALGO1 = "algo1"
-  ALGO2 = "algo2"
-  ALGO3 = "algo3"
-  ALGO4 = "algo4"
-  ALGO5 = "algo5"
-
-
 class LunarAlgorithm(_StrEnum):
-  """A Chinese Lunar calendar algorithm with its own Gregorian date-label basis.
+  """Chinese Lunar algorithms with different Gregorian date-label bases.
 
-  ALGO1 preserves HKO labels for Lunar years 1901-2099. ALGO2 computes from VSOP87D / truncated ELP2000-82B
-  for 410-2500. ALGO3 is a baked hybrid for 1600-2199, using HKO for 1901-2099 and ALGO2 elsewhere.
-  ALGO2 renders TT through the library's UTC model, then adds 8 hours: a UT1 proxy before 1972,
-  the leap-second table from 1972, and frozen Delta AT = 37 s after its last entry.
-  Select table compatibility or computation, not an assumed accuracy ranking.
+  ALGO1 preserves HKO labels for Lunar years 1901-2099. ALGO2 computes from VSOP87D /
+  truncated ELP2000-82B for 410-2500. ALGO3 combines HKO for 1901-2099 with ALGO2 for
+  the remaining years of 1600-2199. ALGO2 renders TT through the library's UTC model,
+  then adds 8 hours: a UT1 proxy before 1972, the leap-second table from 1972, and
+  frozen Delta AT = 37 s after its last entry. This is not an accuracy ranking.
   """
 
   ALGO1 = "algo1"
@@ -127,7 +111,7 @@ class Jieqi(_IntEnum):
 
 @_dataclass(frozen=True)
 class CivilDateTime:
-  """A civil date and fraction of its day; the function names identify its time scale."""
+  """Civil date and fraction of its day; the operation identifies the time scale."""
 
   year: int
   month: int
@@ -137,7 +121,7 @@ class CivilDateTime:
 
 @_dataclass(frozen=True)
 class GregorianDate:
-  """A proleptic Gregorian date label; Lunar conversion uses the selected algorithm's basis."""
+  """Proleptic Gregorian date label on the selected Lunar algorithm's basis."""
 
   year: int
   month: int
@@ -145,31 +129,25 @@ class GregorianDate:
 
   @staticmethod
   def from_date(value: _date) -> "GregorianDate":
-    """Copy a standard-library date's fields into a GregorianDate.
+    """Copy a date label, accepting date subclasses but rejecting datetime.
 
-    Date subclasses are accepted; datetime instances are rejected without discarding their time.
-    This always returns GregorianDate and does not convert a time scale or timezone.
-
-    Raises:
-      TypeError: If value is not a datetime.date, or is a datetime.datetime.
+    No time scale or timezone conversion is performed. Always returns GregorianDate.
     """
     if not isinstance(value, _date) or isinstance(value, _datetime):
       raise TypeError("value must be a datetime.date")
     return GregorianDate(value.year, value.month, value.day)
 
   def to_date(self) -> _date:
-    """Return the same date label in the standard library's year range [1, 9999].
+    """Return this label as datetime.date, whose valid year range is [1, 9999].
 
-    Raises:
-      TypeError: If a date field has the wrong type.
-      ValueError: If the date is invalid or outside the standard-library range.
+    Wrong field types raise TypeError; invalid dates or years raise ValueError.
     """
     return _date(*_civil_date(self, "date"))
 
 
 @_dataclass(frozen=True)
 class LunarDate:
-  """A Chinese Lunar date using traditional month numbering."""
+  """Chinese Lunar date in traditional month numbering, with a separate leap flag."""
 
   year: int
   month: int
@@ -179,16 +157,16 @@ class LunarDate:
 
 @_dataclass(frozen=True)
 class SunCoordinate:
-  """Apparent geocentric ecliptic coordinates of the Sun."""
+  """Apparent geocentric ecliptic longitude/latitude in degrees and distance in AU."""
 
   longitude_deg: float
   latitude_deg: float
-  radius_au: float
+  distance_au: float
 
 
 @_dataclass(frozen=True)
 class MoonCoordinate:
-  """Apparent geocentric ecliptic coordinates of the Moon."""
+  """Apparent geocentric ecliptic longitude/latitude in degrees and distance in km."""
 
   longitude_deg: float
   latitude_deg: float
@@ -197,7 +175,7 @@ class MoonCoordinate:
 
 @_dataclass(frozen=True)
 class MoonIllumination:
-  """The illuminated fraction and Moon-Sun elongation."""
+  """Illuminated fraction [0, 1] and Moon-Sun longitude elongation [0, 360) degrees."""
 
   fraction: float
   elongation_deg: float
@@ -205,7 +183,7 @@ class MoonIllumination:
 
 @_dataclass(frozen=True)
 class JieqiMoment:
-  """The UT1 civil moment of a Jieqi, not a UTC or east-eight wall date."""
+  """UT1 civil moment of a Jieqi, not a UTC or east-eight wall date."""
 
   jieqi: Jieqi
   moment_ut1: CivilDateTime
@@ -221,58 +199,23 @@ class LunarYearRange:
 
 @_dataclass(frozen=True)
 class LunarYearInfo:
-  """A Lunar year's month structure and first Gregorian date on the selected algorithm's basis."""
+  """Month lengths in days and first Gregorian date on the selected algorithm's basis."""
 
   first_day: GregorianDate
   leap_month: int | None
   month_lengths: tuple[int, ...]
 
 
-class CelestialError(RuntimeError):
-  """A failure reported by the native CelestialCalendar boundary.
-
-  Attributes:
-    operation: The public function that failed.
-    recorded: Whether the message came from the native error channel.
-  """
-
-  def __init__(self, operation: str, message: str, *, recorded: bool) -> None:
-    super().__init__(message)
-    self.operation = operation
-    self.recorded = recorded
-
-
 _EnumT = _TypeVar("_EnumT", bound=_IntEnum | _StrEnum)
-_MAX_CIVIL_YEAR = 32_767
-_MAX_CALENDAR_YEAR = 32_766
-_MIN_JIEQI_YEAR = 401
-_MAX_NEW_MOON_COUNT = 4_096
-_JIEQI_NAME_BYTES = 16
-_LOG_VERBOSITY = {LogVerbosity.NONE: 0, LogVerbosity.INFO: 1, LogVerbosity.DEBUG: 2}
 _MOON_PHASE = {MoonPhase.NEW: 0, MoonPhase.FIRST_QUARTER: 1, MoonPhase.FULL: 2, MoonPhase.LAST_QUARTER: 3}
 _LUNAR_ALGORITHM = {LunarAlgorithm.ALGO1: 1, LunarAlgorithm.ALGO2: 2, LunarAlgorithm.ALGO3: 3}
-_DELTA_T_EXPORT = {
-  DeltaTModel.DEFAULT: "delta_t",
-  DeltaTModel.ALGO1: "delta_t_algo1",
-  DeltaTModel.ALGO2: "delta_t_algo2",
-  DeltaTModel.ALGO3: "delta_t_algo3",
-  DeltaTModel.ALGO4: "delta_t_algo4",
-  DeltaTModel.ALGO5: "delta_t_algo5",
-}
-
-_CHART_DELTA_T_MODEL = {
-  DeltaTModel.DEFAULT: 0,
-  DeltaTModel.ALGO1: 1,
-  DeltaTModel.ALGO2: 2,
-  DeltaTModel.ALGO3: 3,
-  DeltaTModel.ALGO4: 4,
-  DeltaTModel.ALGO5: 5,
-}
-
-_MIN_CHART_YEAR = 1885
-_MAX_CHART_YEAR = 2099
-_MIN_CHART_UTC_YEAR = 1972
-_MAX_EVENT_QUERY_SPAN_TT_DAYS = 3660.0
+_MAX_NEW_MOON_COUNT = 4096
+_TARGET_OPERATIONS = (
+  CapabilityOperation.POSITION,
+  CapabilityOperation.LONGITUDE_RATE,
+  CapabilityOperation.EVENTS,
+  CapabilityOperation.EQUATORIAL,
+)
 
 
 def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
@@ -284,417 +227,299 @@ def _enum(value: object, enum_type: type[_EnumT], name: str) -> _EnumT:
 
 
 def _integer(value: object, name: str, minimum: int, maximum: int) -> int:
-  if not isinstance(value, int) or isinstance(value, (bool, _IntEnum)):
+  if not isinstance(value, int) or isinstance(value, (bool, _Enum)):
     raise TypeError(f"{name} must be an integer")
-  if value < minimum or value > maximum:
-    raise ValueError(f"{name} must be in [{minimum}, {maximum}]")
+  value = _index(value)
+  if not minimum <= value <= maximum:
+    raise ValueError(f"{name} must fit [{minimum}, {maximum}]")
   return value
 
 
+def _year(value: object, name: str = "year") -> int:
+  return _integer(value, name, -(2**31), 2**31 - 1)
+
+
 def _finite(value: object, name: str) -> float:
-  if isinstance(value, bool) or not isinstance(value, (int, float)):
+  if isinstance(value, (bool, _Enum)) or not isinstance(value, (int, float)):
     raise TypeError(f"{name} must be a real number")
-  result = float(value)
+  try:
+    result = float(value)
+  except OverflowError as error:
+    raise ValueError(f"{name} must fit a finite native double") from error
   if not _math.isfinite(result):
     raise ValueError(f"{name} must be finite")
   return result
 
 
-def _ranged_float(value: object, name: str, minimum: float, maximum: float, *, include_maximum: bool = True) -> float:
-  result = _finite(value, name)
-  outside = result < minimum or (result > maximum if include_maximum else result >= maximum)
-  if outside:
-    closing = "]" if include_maximum else ")"
-    raise ValueError(f"{name} must be in [{minimum}, {maximum}{closing}")
-  return result
-
-
-def _gregorian_month_length(year: int, month: int) -> int:
-  if month == 2:
-    return 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28
-  return 30 if month in (4, 6, 9, 11) else 31
-
-
 def _civil_date(value: object, name: str) -> tuple[int, int, int]:
   if not isinstance(value, GregorianDate):
     raise TypeError(f"{name} must be a GregorianDate")
-  year = _integer(value.year, f"{name}.year", 1, _MAX_CIVIL_YEAR)
-  month = _integer(value.month, f"{name}.month", 1, 12)
-  day = _integer(value.day, f"{name}.day", 1, _gregorian_month_length(year, month))
-  return year, month, day
+  return (
+    _year(value.year, f"{name}.year"),
+    _integer(value.month, f"{name}.month", 0, 255),
+    _integer(value.day, f"{name}.day", 0, 255),
+  )
 
 
 def _civil_datetime(value: object, name: str) -> tuple[int, int, int, float]:
   if not isinstance(value, CivilDateTime):
     raise TypeError(f"{name} must be a CivilDateTime")
-  year = _integer(value.year, f"{name}.year", 1, _MAX_CIVIL_YEAR)
-  month = _integer(value.month, f"{name}.month", 1, 12)
-  day = _integer(value.day, f"{name}.day", 1, _gregorian_month_length(year, month))
-  fraction = _ranged_float(value.fraction, f"{name}.fraction", 0.0, 1.0, include_maximum=False)
-  return year, month, day, fraction
+  return (
+    _year(value.year, f"{name}.year"),
+    _integer(value.month, f"{name}.month", 0, 2**32 - 1),
+    _integer(value.day, f"{name}.day", 0, 2**32 - 1),
+    _finite(value.fraction, f"{name}.fraction"),
+  )
 
 
-def _lunar_date(value: object, algorithm: LunarAlgorithm, name: str, *, operation: str) -> tuple[int, int, bool, int]:
-  if not isinstance(value, LunarDate):
-    raise TypeError(f"{name} must be a LunarDate")
-  start, end = _lunar_range(algorithm, operation)
-  year = _integer(value.year, f"{name}.year", start, end)
-  month = _integer(value.month, f"{name}.month", 1, 12)
-  day = _integer(value.day, f"{name}.day", 1, 30)
-  if not isinstance(value.is_leap, bool):
-    raise TypeError(f"{name}.is_leap must be a bool")
-  return year, month, value.is_leap, day
+def _location(value: object) -> tuple[float, float]:
+  if not isinstance(value, GeoLocation):
+    raise TypeError("location must be a GeoLocation")
+  return _finite(value.latitude_deg, "location.latitude_deg"), _finite(value.longitude_deg, "location.longitude_deg")
 
 
-def _failure(operation: str, *, recording: bool) -> CelestialError:
-  detail = _binding.last_error_text() if recording else ""
-  message = detail or f"{operation} failed"
-  return CelestialError(operation, message, recorded=bool(detail))
+def _result(export: str, operation: str, *args: object) -> object:
+  return _protocol.valid(_binding.call(export, *args), operation)
 
 
-def _valid(result: object, operation: str, *, recording: bool = True) -> object:
-  if not result.valid:
-    raise _failure(operation, recording=recording)
-  return result
-
-
-def _lunar_range(algorithm: LunarAlgorithm, operation: str) -> tuple[int, int]:
-  result = _valid(_binding.call("get_supported_lunar_year_range", _LUNAR_ALGORITHM[algorithm]), operation)
-  return result.start, result.end
+def _number(value: float, operation: str) -> float:
+  return _protocol.decode(operation, _protocol.finite, value, "value")
 
 
 def _civil_result(result: object) -> CivilDateTime:
   return CivilDateTime(result.year, result.month, result.day, result.fraction)
 
 
-def set_log_verbosity(level: LogVerbosity) -> None:
-  """Set process-wide native log verbosity.
-
-  Raises:
-    ValueError: If level is a LogVerbosity object that is not a declared member.
-  """
-  checked = _enum(level, LogVerbosity, "level")
-  if not _binding.call("set_log_verbosity", _LOG_VERBOSITY[checked]):
-    raise _failure("set_log_verbosity", recording=True)
+def _coordinate_values(result: object) -> tuple[float, float, float]:
+  longitude = _protocol.longitude(result.lon, "longitude_deg")
+  latitude = _protocol.finite(result.lat, "latitude_deg")
+  distance = _protocol.finite(result.r, "distance")
+  if not -90.0 <= latitude <= 90.0 or distance <= 0.0:
+    raise ValueError("invalid computed coordinate")
+  return longitude, latitude, distance
 
 
 def ut1_to_jd(ut1: CivilDateTime) -> float:
   """Convert a UT1 civil moment to Julian Day."""
-  value = _civil_datetime(ut1, "ut1")
-  result = _valid(_binding.call("ut1_to_jd", *value), "ut1_to_jd", recording=True)
-  return result.value
+  return _number(_result("celestial_ut1_to_jd", "ut1_to_jd", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jd")
 
 
 def ut1_to_jde(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day."""
-  value = _civil_datetime(ut1, "ut1")
-  result = _valid(_binding.call("ut1_to_jde", *value), "ut1_to_jde", recording=True)
-  return result.value
+  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using fixed Algo5."""
+  return _number(_result("celestial_ut1_to_jde", "ut1_to_jde", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jde")
 
 
 def jde_to_ut1(jde: float) -> CivilDateTime:
-  """Convert TT-based Julian Ephemeris Day to a UT1 civil moment."""
-  result = _valid(_binding.call("jde_to_ut1", _finite(jde, "jde")), "jde_to_ut1", recording=True)
-  return _civil_result(result)
+  """Convert TT-based Julian Ephemeris Day to a UT1 civil moment using fixed Algo5."""
+  return _civil_result(_result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde")))
 
 
 def sun_apparent_geocentric_coordinate(jde: float) -> SunCoordinate:
-  """Return the Sun's apparent geocentric ecliptic coordinate at JDE."""
-  result = _valid(
-    _binding.call("sun_apparent_geocentric_coord", _finite(jde, "jde")),
-    "sun_apparent_geocentric_coordinate",
-  )
-  return SunCoordinate(result.lon, result.lat, result.r)
+  """Return the Sun's apparent ecliptic position at JDE(TT), in degrees and AU."""
+  operation = "sun_apparent_geocentric_coordinate"
+  result = _result("celestial_sun_apparent_geocentric_coord", operation, _finite(jde, "jde"))
+  return SunCoordinate(*_protocol.decode(operation, _coordinate_values, result))
 
 
 def moon_apparent_geocentric_coordinate(jde: float) -> MoonCoordinate:
-  """Return the Moon's apparent geocentric ecliptic coordinate at JDE."""
-  result = _valid(
-    _binding.call("moon_apparent_geocentric_coord", _finite(jde, "jde")),
-    "moon_apparent_geocentric_coordinate",
-  )
-  return MoonCoordinate(result.lon, result.lat, result.r)
+  """Return the Moon's apparent ecliptic position at JDE(TT), in degrees and km."""
+  operation = "moon_apparent_geocentric_coordinate"
+  result = _result("celestial_moon_apparent_geocentric_coord", operation, _finite(jde, "jde"))
+  return MoonCoordinate(*_protocol.decode(operation, _coordinate_values, result))
 
 
 def moon_illumination(jde: float) -> MoonIllumination:
-  """Return the Moon's illuminated fraction and elongation at JDE."""
-  result = _valid(
-    _binding.call("moon_illumination", _finite(jde, "jde")),
-    "moon_illumination",
-    recording=True,
-  )
+  """Return the Moon's illuminated fraction and elongation in degrees at JDE(TT)."""
+  result = _result("celestial_moon_illumination", "moon_illumination", _finite(jde, "jde"))
   return MoonIllumination(result.illumination, result.elongation_deg)
 
 
 def moon_bright_limb_position_angle(jde: float) -> float:
-  """Return the Moon's bright-limb position angle in degrees."""
-  result = _valid(
-    _binding.call("moon_position_angle", _finite(jde, "jde")),
-    "moon_bright_limb_position_angle",
-    recording=True,
-  )
-  return result.angle_deg
+  """Return bright-limb position angle in degrees east of the disk's north at JDE(TT)."""
+  operation = "moon_bright_limb_position_angle"
+  return _number(_result("celestial_moon_position_angle", operation, _finite(jde, "jde")).angle_deg, operation)
 
 
 def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
-  """Return the JDE moments of a principal Moon phase in a Gregorian year.
-
-  Raises:
-    ValueError: If year is outside [1, 32766], or phase is a MoonPhase object that is not a declared member.
-    CelestialError: If the native calculation cannot produce the phase moments.
-  """
-  checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
-  checked_phase = _enum(phase, MoonPhase, "phase")
-  total = _ctypes.c_uint32()
-  written = _binding.call(
+  """Return principal-phase JDE(TT) moments in a Gregorian year [1, 32766]."""
+  records = _protocol.count_fill(
+    "celestial_moon_phase_moments",
+    (_year(year), _MOON_PHASE[_enum(phase, MoonPhase, "phase")]),
+    _ctypes.c_double,
     "moon_phase_moments",
-    checked_year,
-    _MOON_PHASE[checked_phase],
-    _ctypes.byref(total),
-    None,
-    0,
   )
-  if written != 0 or total.value == 0:
-    raise _failure("moon_phase_moments", recording=True)
-  expected = total.value
-  slots = (_ctypes.c_double * expected)()
-  written = _binding.call(
-    "moon_phase_moments",
-    checked_year,
-    _MOON_PHASE[checked_phase],
-    _ctypes.byref(total),
-    slots,
-    expected,
-  )
-  if written != expected:
-    raise _failure("moon_phase_moments", recording=True)
-  return tuple(slots[:written])
+  return tuple(_number(value, "moon_phase_moments") for value in records)
 
 
 def sun_longitude_crossings(year: int, longitude_deg: float) -> tuple[float, ...]:
-  """Return TT-based JDEs when the Sun reaches an apparent geocentric longitude.
+  """Return JDE(TT) crossings of a longitude [0, 360) degrees in year [1, 32766].
 
-  Longitude is finite and in [0, 360) degrees. An empty tuple means no crossing in the Gregorian year.
-
-  Raises:
-    TypeError: If year is not an integer or longitude_deg is not a real number.
-    ValueError: If year is outside [1, 32766], or longitude_deg is non-finite or outside [0, 360).
-    CelestialError: If the native calculation cannot produce the crossings.
+  An empty tuple means no crossing. Invalid values raise ValueError; native
+  computation failures and corrupt payloads raise CelestialError.
   """
-  checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
-  longitude = _ranged_float(longitude_deg, "longitude_deg", 0.0, 360.0, include_maximum=False)
-  discriminant = _valid(
-    _binding.call("solar_lon_root_discriminant", checked_year, longitude),
-    "sun_longitude_crossings",
-  )
+  operation = "sun_longitude_crossings"
+  args = (_year(year), _finite(longitude_deg, "longitude_deg"))
+  discriminant = _result("celestial_solar_lon_root_discriminant", operation, *args)
+  if discriminant.count not in (0, 1, 2):
+    raise _protocol.malformed(operation, "invalid root count")
   if discriminant.count == 0:
     return ()
   slots = (_ctypes.c_double * discriminant.count)()
-  written = _binding.call("solar_lon_roots", checked_year, longitude, slots, discriminant.count)
-  if written != discriminant.count:
-    raise _failure("sun_longitude_crossings", recording=True)
-  return tuple(slots[:written])
+  written = _binding.call("celestial_solar_lon_roots", *args, slots, len(slots))
+  _protocol.check_error(operation)
+  if written != len(slots):
+    raise _protocol.malformed(operation, "incomplete root fill")
+  return tuple(_number(value, operation) for value in slots)
 
 
 def new_moons_after(jde: float, count: int) -> tuple[float, ...]:
-  """Return the requested number of new-moon JDEs after a starting JDE.
+  """Return count new-moon JDE(TT)s after jde; the binding resource cap is 4096.
 
-  Raises:
-    ValueError: If count is outside [0, 4096].
-    CelestialError: If the native calculation cannot produce the requested moments.
+  count must be an integer in [0, 4096]; zero returns an empty tuple without a call.
   """
   start = _finite(jde, "jde")
-  checked_count = _integer(count, "count", 0, _MAX_NEW_MOON_COUNT)
-  if checked_count == 0:
+  checked = _integer(count, "count", 0, _MAX_NEW_MOON_COUNT)
+  if checked == 0:
     return ()
-  slots = (_ctypes.c_double * checked_count)()
-  written = _binding.call("new_moons_after_jde", start, slots, checked_count)
-  if written != checked_count:
-    raise _failure("new_moons_after", recording=True)
-  return tuple(slots[:written])
+  slots = (_ctypes.c_double * checked)()
+  written = _binding.call("celestial_new_moons_after_jde", start, slots, checked)
+  _protocol.check_error("new_moons_after")
+  if written != checked:
+    raise _protocol.malformed("new_moons_after", "incomplete fill")
+  return tuple(_number(value, "new_moons_after") for value in slots)
 
 
 def new_moons_in_year(year: int) -> tuple[float, ...]:
-  """Return all new-moon JDEs in a Gregorian year.
-
-  Raises:
-    ValueError: If year is outside [1, 32766].
-    CelestialError: If the native calculation cannot produce the moments.
-  """
-  checked_year = _integer(year, "year", 1, _MAX_CALENDAR_YEAR)
-  total = _ctypes.c_uint32()
-  written = _binding.call("new_moons_in_year", checked_year, _ctypes.byref(total), None, 0)
-  if written != 0 or total.value == 0:
-    raise _failure("new_moons_in_year", recording=True)
-  expected = total.value
-  slots = (_ctypes.c_double * expected)()
-  written = _binding.call("new_moons_in_year", checked_year, _ctypes.byref(total), slots, expected)
-  if written != expected:
-    raise _failure("new_moons_in_year", recording=True)
-  return tuple(slots[:written])
+  """Return all new-moon JDE(TT)s in a Gregorian year [1, 32766]."""
+  records = _protocol.count_fill("celestial_new_moons_in_year", (_year(year),), _ctypes.c_double, "new_moons_in_year")
+  return tuple(_number(value, "new_moons_in_year") for value in records)
 
 
 def equation_of_time(jde: float) -> float:
-  """Return apparent minus mean solar time in degrees of hour angle."""
-  result = _valid(_binding.call("equation_of_time", _finite(jde, "jde")), "equation_of_time")
-  return result.value
+  """Return apparent minus mean solar time in degrees of hour angle at JDE(TT)."""
+  result = _result("celestial_equation_of_time", "equation_of_time", _finite(jde, "jde"))
+  return _number(result.value, "equation_of_time")
 
 
 def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTime:
-  """Convert civil UTC to local apparent solar time at an east-positive longitude in [-180, 180] degrees."""
-  value = _civil_datetime(utc, "utc")
-  longitude = _ranged_float(longitude_deg, "longitude_deg", -180.0, 180.0)
-  result = _valid(_binding.call("apparent_solar_time", *value, longitude), "apparent_solar_time")
-  return _civil_result(result)
+  """Convert civil UTC to local apparent solar time; longitude is east-positive degrees."""
+  return _civil_result(
+    _result(
+      "celestial_apparent_solar_time",
+      "apparent_solar_time",
+      *_civil_datetime(utc, "utc"),
+      _finite(longitude_deg, "longitude_deg"),
+    )
+  )
 
 
 def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
-  """Return local apparent sidereal time in [0, 360) degrees at a UT1-based Julian Day.
+  """Return LAST [0, 360) degrees at JD(UT1) and an east-positive longitude in degrees.
 
-  The JD must be finite and fall in Gregorian years [401, 32766]. Geographic longitude is finite,
-  east-positive, in [-180, 180] degrees. The native boundary enforces the JD's year window.
-
-  Raises:
-    TypeError: If either argument is not a real number.
-    ValueError: If either argument is non-finite, or longitude_deg is outside [-180, 180].
-    CelestialError: If the native boundary rejects the JD's year or cannot produce sidereal time.
+  The native year window is [401, 32766]; longitude is in [-180, 180]. This fixed
+  operation uses Algo5 and IAU1980, independently of the house nutation default.
   """
-  jd = _finite(jd_ut1, "jd_ut1")
-  longitude = _ranged_float(longitude_deg, "longitude_deg", -180.0, 180.0)
-  result = _valid(
-    _binding.call("local_apparent_sidereal_time", jd, longitude),
-    "local_apparent_sidereal_time",
-    recording=True,
+  operation = "local_apparent_sidereal_time"
+  result = _result(
+    "celestial_local_apparent_sidereal_time",
+    operation,
+    _finite(jd_ut1, "jd_ut1"),
+    _finite(longitude_deg, "longitude_deg"),
   )
-  return result.value
+  return _protocol.decode(operation, _protocol.longitude, result.value, "value")
 
 
 def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
-  """Return the UT1 civil moment of a Jieqi in a Gregorian year.
+  """Return a Jieqi's UT1 civil moment in year [401, 32766], not a UTC+8 wall date.
 
-  Establish the time-scale conversion before displaying UTC or an east-eight wall date.
-  The returned UT1 year can differ from the requested year.
-
-  Raises:
-    ValueError: If year is outside [401, 32766], or jieqi is a Jieqi object that is not a declared member.
-    CelestialError: If the native calculation cannot produce the moment.
+  Establish a time-scale conversion before displaying UTC or an east-eight date.
+  The returned UT1 year may differ from the requested year.
   """
-  checked_year = _integer(year, "year", _MIN_JIEQI_YEAR, _MAX_CALENDAR_YEAR)
-  checked_jieqi = _enum(jieqi, Jieqi, "jieqi")
-  result = _valid(_binding.call("query_jieqi_moment", checked_year, checked_jieqi.value), "jieqi_moment")
+  result = _result("celestial_query_jieqi_moment", "jieqi_moment", _year(year), _enum(jieqi, Jieqi, "jieqi").value)
+  return _protocol.decode("jieqi_moment", _jieqi_result, result)
+
+
+def _jieqi_result(result: object) -> JieqiMoment:
   return JieqiMoment(Jieqi(result.jq_idx), CivilDateTime(result.y, result.m, result.d, result.frac))
 
 
 def jieqi_name(jieqi: Jieqi) -> str:
-  """Return the Chinese name of a Jieqi.
-
-  Raises:
-    ValueError: If jieqi is a Jieqi object that is not a declared member.
-  """
-  checked_jieqi = _enum(jieqi, Jieqi, "jieqi")
-  buffer = _ctypes.create_string_buffer(_JIEQI_NAME_BYTES)
-  if not _binding.call("get_jieqi_name", checked_jieqi.value, buffer, len(buffer)):
-    raise _failure("jieqi_name", recording=True)
-  return buffer.value.decode("utf-8")
+  """Return the Chinese UTF-8 name of a declared Jieqi."""
+  return _protocol.sized_string("celestial_get_jieqi_name", (_enum(jieqi, Jieqi, "jieqi").value,), "jieqi_name")
 
 
 def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
-  """Query the native algorithm's inclusive Lunar-year bounds, not Gregorian-year bounds.
-
-  Raises:
-    TypeError: If algorithm is not a LunarAlgorithm member.
-    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member.
-    CelestialError: If the native range query fails.
-  """
-  checked = _enum(algorithm, LunarAlgorithm, "algorithm")
-  result = _valid(
-    _binding.call("get_supported_lunar_year_range", _LUNAR_ALGORITHM[checked]),
-    "supported_lunar_year_range",
-  )
+  """Query inclusive Lunar-year bounds, not Gregorian-year bounds, from native."""
+  code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
+  result = _result("celestial_get_supported_lunar_year_range", "supported_lunar_year_range", code)
   return LunarYearRange(result.start, result.end)
 
 
 def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
-  """Return a Lunar year's month lengths and first date on the selected algorithm's basis.
+  """Return month lengths and first Gregorian date on the selected algorithm's basis.
 
-  Raises:
-    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
-      or year is outside the selected algorithm's supported range.
-    CelestialError: If the native range query or year calculation fails.
+  Native owns the algorithm's Lunar-year admission range.
   """
-  checked = _enum(algorithm, LunarAlgorithm, "algorithm")
-  start, end = _lunar_range(checked, "lunar_year_info")
-  checked_year = _integer(year, "year", start, end)
-  result = _valid(_binding.call("get_lunar_year_info", _LUNAR_ALGORITHM[checked], checked_year), "lunar_year_info")
-  month_count = 12 if result.leap_month == 0 else 13
-  month_lengths = tuple(30 if result.month_len & (1 << index) else 29 for index in range(month_count))
-  leap_month = None if result.leap_month == 0 else result.leap_month
-  return LunarYearInfo(GregorianDate(result.year, result.month, result.day), leap_month, month_lengths)
+  code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
+  result = _result("celestial_get_lunar_year_info", "lunar_year_info", code, _year(year))
+  count = 12 if result.leap_month == 0 else 13
+  return LunarYearInfo(
+    GregorianDate(result.year, result.month, result.day),
+    None if result.leap_month == 0 else result.leap_month,
+    tuple(30 if result.month_len & (1 << index) else 29 for index in range(count)),
+  )
 
 
 def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate | _date) -> LunarDate:
-  """Convert a Gregorian date label on the selected LunarAlgorithm's basis to a Lunar date.
+  """Convert a Gregorian date label on the selected algorithm's basis to a Lunar date.
 
-  Standard-library date subclasses are accepted. Datetime instances are rejected without dropping
-  a time or timezone; this operation does not convert an instant into the algorithm's date basis.
-
-  Raises:
-    TypeError: If date has the wrong type, is a datetime, or has non-integer fields.
-    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
-      or a Gregorian date field is outside its valid range.
-    CelestialError: If date cannot be represented by the selected algorithm.
+  date subclasses are accepted; datetime is rejected without dropping time or timezone.
+  This does not convert an instant. Native rejects invalid dates and uncovered labels.
   """
-  checked = _enum(algorithm, LunarAlgorithm, "algorithm")
+  code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
   if isinstance(date, _date):
     date = GregorianDate.from_date(date)
-  value = _civil_date(date, "date")
-  result = _valid(_binding.call("gregorian_to_lunar", _LUNAR_ALGORITHM[checked], *value), "gregorian_to_lunar")
+  result = _result("celestial_gregorian_to_lunar", "gregorian_to_lunar", code, *_civil_date(date, "date"))
   return LunarDate(result.year, result.month, result.day, result.is_leap)
 
 
 def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianDate:
-  """Convert a Lunar date to a Gregorian date label on the selected LunarAlgorithm's basis.
-
-  Raises:
-    ValueError: If algorithm is a LunarAlgorithm object that is not a declared member,
-      or date.year is outside the selected algorithm's supported range.
-    CelestialError: If the native range query fails or date does not exist in the selected algorithm.
-  """
-  checked = _enum(algorithm, LunarAlgorithm, "algorithm")
-  year, month, is_leap, day = _lunar_date(date, checked, "date", operation="lunar_to_gregorian")
-  result = _valid(
-    _binding.call("lunar_to_gregorian", _LUNAR_ALGORITHM[checked], year, month, is_leap, day),
-    "lunar_to_gregorian",
-  )
+  """Convert a traditional Lunar month plus leap flag to a Gregorian date label."""
+  code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
+  if not isinstance(date, LunarDate):
+    raise TypeError("date must be a LunarDate")
+  year = _year(date.year, "date.year")
+  month = _integer(date.month, "date.month", 0, 255)
+  day = _integer(date.day, "date.day", 0, 255)
+  if not isinstance(date.is_leap, bool):
+    raise TypeError("date.is_leap must be a bool")
+  result = _result("celestial_lunar_to_gregorian", "lunar_to_gregorian", code, year, month, date.is_leap, day)
   return GregorianDate(result.year, result.month, result.day)
 
 
-def delta_t(year: float, model: DeltaTModel = DeltaTModel.DEFAULT) -> float:
-  """Return ΔT in seconds for a decimal Gregorian year.
+def delta_t(year: float, model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT) -> float:
+  """Return TT - UT1 in seconds at a decimal Gregorian year.
 
-  DEFAULT/ALGO5 is the current model: ALGO2 before 2005, an IERS Bulletin A fit through about 2026.41,
-  then an anchored Morrison et al. (2021) long-term relation. ALGO1 (Xu Jianwei 2008), ALGO2 (Espenak
-  and Meeus 2006), ALGO3 (Espenak 2014), and ALGO4 (IERS Bulletin A / USNO predictions) are frozen
-  comparison models. ALGO2 remains the live pre-2005 branch of ALGO3, ALGO4, and ALGO5.
-
-  ALGO1 requires year >= -4000, ALGO3 requires year < 3000, and ALGO4 requires year < 2035. The other models have no
-  model-specific year bound. These domains and fitted residuals are not statistical accuracy guarantees.
-
-  Raises:
-    ValueError: If model is a DeltaTModel object that is not a declared member,
-      or year is outside the selected model's bounds above.
-    CelestialError: If the native calculation fails.
+  DEFAULT is resolved by native. Model guards apply at the evaluation instant:
+  Algo1 requires year >= -4000, Algo3 year < 3000, and Algo4 year < 2035.
+  The scalar convenience validates the resolved key; model_identity_text() supplies
+  source/branch descriptions. These domains are not statistical accuracy guarantees.
   """
-  decimal_year = _finite(year, "year")
-  checked_model = _enum(model, DeltaTModel, "model")
-  if checked_model is DeltaTModel.ALGO1 and decimal_year < -4000.0:
-    raise ValueError("year must be at least -4000 for DeltaTModel.ALGO1")
-  if checked_model is DeltaTModel.ALGO3 and decimal_year >= 3000.0:
-    raise ValueError("year must be less than 3000 for DeltaTModel.ALGO3")
-  if checked_model is DeltaTModel.ALGO4 and decimal_year >= 2035.0:
-    raise ValueError("year must be less than 2035 for DeltaTModel.ALGO4")
-  result = _valid(_binding.call(_DELTA_T_EXPORT[checked_model], decimal_year), "delta_t")
-  return result.value
+  code = _selector_code(model, ModelKind.DELTA_T, "model")
+  result = _result("celestial_delta_t", "delta_t", _finite(year, "year"), code)
+  return _protocol.decode("delta_t", _delta_t_value, result, code)
+
+
+def _delta_t_value(result: object, code: int) -> float:
+  key = ModelKey(ModelKind.DELTA_T, result.model_identity_code)
+  if code and key.identity != code:
+    raise ValueError("resolved model differs from explicit selection")
+  return _protocol.finite(result.value, "value")
+
+
+def _selected_key(key: ModelKey, code: int, operation: str) -> None:
+  if code and key.identity != code:
+    raise _protocol.malformed(operation, "resolved model differs from explicit selection")
 
 
 def chart_snapshot(
@@ -702,398 +527,218 @@ def chart_snapshot(
   scale: CivilScale,
   location: GeoLocation,
   system: HouseSystem,
-  model: DeltaTModel = DeltaTModel.DEFAULT,
+  model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
 ) -> ChartSnapshot:
-  """Calculate an immutable chart from explicit UTC or UT1 civil input.
+  """Return an immutable chart with resolved Delta T and house-nutation keys.
 
-  Civil years are 1885-2099; UTC starts at 1972-01-01. Latitude is north-positive in (-90, 90),
-  longitude east-positive in [-180, 180], and fraction is in [0, 1). DEFAULT selects Algo5.
-  The native core owns time conversion, joint TT/model domains, Ascendant directions unresolved
-  at round-off for all house systems, and Placidus polar limits.
-  The converted JDE(TT) must be in [2409543.875, 2488069.125); Algo4 also requires JDE < 2464328.5.
-  UTC-derived UT1 is modelled, not observed DUT1. Failure never returns a partial chart.
-
-  Raises:
-    TypeError: If an input has the wrong record, enum or scalar type, including another enum's member.
-    ValueError: If scale, system or model is not a declared member of its enum,
-      or a raw civil or location value is invalid or non-finite.
-    CelestialError: If native calculation fails or its successful payload is malformed.
+  Civil years are [1885, 2100); strict UTC starts at 1972-01-01. Native owns civil,
+  geographic, joint-target/rate and derived-TT model limits. Algo4 additionally requires
+  derived JDE(TT) < 2464328.5. Future UTC uses the held leap table; derived UT1 is modelled,
+  not observed DUT1. Location affects houses only; timezone conversion is the caller's job.
   """
-  checked_scale = _enum(scale, CivilScale, "scale")
-  checked_system = _enum(system, HouseSystem, "system")
-  checked_model = _enum(model, DeltaTModel, "model")
-
-  if not isinstance(civil_dt, CivilDateTime):
-    raise TypeError("civil_dt must be a CivilDateTime")
-  year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
-  if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
-    raise TypeError("chart civil fields must be numbers, not enum members")
-  for name, number in (("year", year), ("month", month), ("day", day)):
-    if isinstance(number, bool) or not isinstance(number, int):
-      raise TypeError(f"civil_dt.{name} must be an integer")
-  year, month, day = _index(year), _index(month), _index(day)
-  _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
-  if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
-    raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
-  month = _integer(month, "civil_dt.month", 1, 12)
-  day = _integer(day, "civil_dt.day", 1, _gregorian_month_length(year, month))
-  try:
-    fraction = _ranged_float(fraction, "civil_dt.fraction", 0.0, 1.0, include_maximum=False)
-  except OverflowError as error:
-    raise ValueError("chart civil fraction must be a finite real number") from error
-
-  if not isinstance(location, GeoLocation):
-    raise TypeError("location must be a GeoLocation")
-  latitude_value, longitude_value = location.latitude_deg, location.longitude_deg
-  if any(isinstance(value, _Enum) for value in (latitude_value, longitude_value)):
-    raise TypeError("chart location must contain real numbers, not enum members")
-  try:
-    latitude = _finite(latitude_value, "location.latitude_deg")
-    longitude = _ranged_float(longitude_value, "location.longitude_deg", -180.0, 180.0)
-  except OverflowError as error:
-    raise ValueError("chart location must contain finite real numbers") from error
-  if not -90.0 < latitude < 90.0:
-    raise ValueError("location.latitude_deg must be in (-90, 90)")
-
-  result = _binding.call(
-    "chart_snapshot_v1",
-    year,
-    month,
-    day,
-    fraction,
-    _chart._CIVIL_SCALE_CODE[checked_scale],
-    latitude,
-    longitude,
-    _chart._HOUSE_SYSTEM_CODE[checked_system],
-    _CHART_DELTA_T_MODEL[checked_model],
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  latitude, longitude = _location(location)
+  system_code = _enum_code("HOUSE_SYSTEM", _enum(system, HouseSystem, "system"))
+  model_code = _selector_code(model, ModelKind.DELTA_T, "model")
+  result = _result(
+    "celestial_chart_snapshot", "chart_snapshot", *civil, scale_code, latitude, longitude, system_code, model_code
   )
-
-  try:
-    _valid(result, "chart_snapshot")
-    return _chart._from_native(result)
-  except (AttributeError, TypeError, ValueError, OverflowError) as error:
-    raise CelestialError("chart_snapshot", f"Malformed native chart snapshot: {error}", recorded=False) from error
+  decoded = _protocol.decode("chart_snapshot", _chart.decode_snapshot, result)
+  _selected_key(decoded.delta_t_model, model_code, "chart_snapshot")
+  return decoded
 
 
-def _event_interval(start_jde_tt: object, end_jde_tt: object) -> tuple[float, float]:
-  """Validate a half-open TT interval exactly as the native boundary re-checks it."""
-  start = _finite(start_jde_tt, "start_jde_tt")
-  end = _finite(end_jde_tt, "end_jde_tt")
-  if not start < end:
-    raise ValueError("the event query interval must be nonempty")
-  if end - start > _MAX_EVENT_QUERY_SPAN_TT_DAYS:
-    raise ValueError("the event query interval must not exceed 3660 TT days")
-  return start, end
+def _event_records(export: str, args: tuple[object, ...], record_type, decoder, start: float, end: float):
+  operation = export.removeprefix("celestial_")
+  records = _protocol.count_fill(export, args, record_type, operation)
+  decoded = _protocol.decode(operation, decoder, records)
+  if any(not start <= event.jde_tt < end for event in decoded):
+    raise _protocol.malformed(operation, "event outside requested interval")
+  if any(first.jde_tt >= second.jde_tt for first, second in zip(decoded, decoded[1:], strict=False)):
+    raise _protocol.malformed(operation, "events not in strict time order")
+  return decoded
 
 
 def longitude_events(
-  target: EventTarget,
-  longitude_deg: float,
-  start_jde_tt: float,
-  end_jde_tt: float,
+  target: Target, longitude_deg: float, start_jde_tt: float, end_jde_tt: float
 ) -> tuple[LongitudeEvent, ...]:
-  """Return every crossing or exact numerical contact of a target's apparent longitude.
+  """Return longitude crossings or exact contacts in [start_jde_tt, end_jde_tt).
 
-  `target` selects one of the fourteen EventTarget bodies or nodes. `longitude_deg` is a
-  finite angle; whole-turn shifts denote the same level. The half-open interval
-  [start_jde_tt, end_jde_tt) speaks JDE(TT), must be nonempty and at most 3660 TT days,
-  and must lie inside the target's longitude-rate domain (see
-  docs/EPHEMERIS_EVENTS.md). Results are chronologically ordered. An empty tuple is a
-  legal no-event outcome; numerical ambiguity or work-limit exhaustion raises instead of
-  returning a partial list.
-
-  Raises:
-    TypeError: If target is not an EventTarget member or an argument is not a real number.
-    ValueError: If target is an undeclared enum object, the angle is non-finite, or the
-      interval is empty or too wide.
-    CelestialError: If the native search cannot produce the events, including a query
-      outside the target's longitude-rate domain.
-    CelestialError: If the native search cannot produce the events.
+  Angles are apparent geocentric degrees; whole-turn shifts denote the same level.
+  Times are JDE(TT), rates are degrees per TT day. Native owns the target's rate domain
+  and nonempty span limit of 3660 TT days. Empty success is legal; no partial list is returned.
   """
-  checked_target = _enum(target, EventTarget, "target")
-  level = _finite(longitude_deg, "longitude_deg")
-  start, end = _event_interval(start_jde_tt, end_jde_tt)
-
-  # The native protocol is one count+fill call per pass. Each export clears the recorded
-  # error on entry, so both passes re-check the channel: a failed fill pass must not be
-  # mistaken for an empty count, and a truncated fill must not be mistaken for the total.
-  total = _ctypes.c_uint32()
-  written = _binding.call("longitude_events", checked_target.value, level, start, end, _ctypes.byref(total), None, 0)
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("longitude_events", recording=True)
-  if total.value == 0:
-    return ()
-  expected = total.value
-  records = (_binding.LongitudeEventRecord * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call(
-    "longitude_events", checked_target.value, level, start, end, _ctypes.byref(fill_total), records, expected
+  code = _enum_code("TARGET", _enum(target, Target, "target"))
+  start, end = _finite(start_jde_tt, "start_jde_tt"), _finite(end_jde_tt, "end_jde_tt")
+  return _event_records(
+    "celestial_longitude_events",
+    (code, _finite(longitude_deg, "longitude_deg"), start, end),
+    _abi.CelestialLongitudeEventRecord,
+    _events.decode_longitude_events,
+    start,
+    end,
   )
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("longitude_events", recording=True)
-  return _events.decode_longitude_events(records)
 
 
-def longitude_stations(
-  target: EventTarget,
-  start_jde_tt: float,
-  end_jde_tt: float,
-) -> tuple[StationEvent, ...]:
-  """Return every stationary instant of a target's published seven-point longitude rate.
+def longitude_stations(target: Target, start_jde_tt: float, end_jde_tt: float) -> tuple[StationEvent, ...]:
+  """Return stationary instants of the published seven-point rate, in JDE(TT).
 
-  The interval contract is the same as for `longitude_events`. Targets whose certified
-  rate bounds exclude a station return a legal empty tuple. The reported rate need not be
-  bitwise zero; `motion_before` and `motion_after` carry the certified sign on each side.
-
-  Raises:
-    TypeError: If target is not an EventTarget member or an argument is not a real number.
-    ValueError: If target is an undeclared enum object, or the interval is empty or too wide.
-    CelestialError: If the native search cannot produce the stations, including a query
-      outside the target's longitude-rate domain.
-    CelestialError: If the native search cannot produce the stations.
+  The interval/domain contract is longitude_events()'s. Certified nonstationary targets
+  return an empty tuple. The reported rate in degrees per TT day need not be bitwise zero.
   """
-  checked_target = _enum(target, EventTarget, "target")
-  start, end = _event_interval(start_jde_tt, end_jde_tt)
-
-  total = _ctypes.c_uint32()
-  written = _binding.call("longitude_stations", checked_target.value, start, end, _ctypes.byref(total), None, 0)
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("longitude_stations", recording=True)
-  if total.value == 0:
-    return ()
-  expected = total.value
-  records = (_binding.StationEventRecord * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call(
-    "longitude_stations", checked_target.value, start, end, _ctypes.byref(fill_total), records, expected
+  code = _enum_code("TARGET", _enum(target, Target, "target"))
+  start, end = _finite(start_jde_tt, "start_jde_tt"), _finite(end_jde_tt, "end_jde_tt")
+  return _event_records(
+    "celestial_longitude_stations",
+    (code, start, end),
+    _abi.CelestialStationEventRecord,
+    _events.decode_station_events,
+    start,
+    end,
   )
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("longitude_stations", recording=True)
-  return _events.decode_station_events(records)
 
 
 def longitude_difference_events(
-  first: EventTarget,
-  second: EventTarget,
-  difference_deg: float,
-  start_jde_tt: float,
-  end_jde_tt: float,
+  first: Target, second: Target, difference_deg: float, start_jde_tt: float, end_jde_tt: float
 ) -> tuple[LongitudeDifferenceEvent, ...]:
-  """Return every event of the directed longitude difference first minus second.
+  """Return directed (first - second) longitude events, canonicalized to (-180, 180] degrees.
 
-  `difference_deg` is a finite signed angle, canonicalized to (-180, 180]. Reversing the
-  two targets reverses the requested angle and crossing direction. Self-pairs and
-  continuously satisfied relations (the antipodal node pairs at ±180°) raise; a constant
-  mismatch is a legal empty tuple. The interval must lie inside the intersection of the
-  two targets' longitude-rate domains.
-
-  Raises:
-    TypeError: If a target is not an EventTarget member or an argument is not a real number.
-    ValueError: If a target is an undeclared enum object, the targets coincide, the angle
-      is non-finite, or the interval is empty or too wide.
-    CelestialError: If the native search cannot produce the events, including a query
-      outside the joint longitude-rate domain of the two targets.
-    CelestialError: If the native search cannot produce the events.
+  Reversing targets reverses the angle and direction. Self-pairs and continuously satisfied
+  relations are invalid; constant mismatch is legal empty success. Both rate domains apply.
+  Times and interval limits follow longitude_events(); failed searches return no partial list.
   """
-  checked_first = _enum(first, EventTarget, "first")
-  checked_second = _enum(second, EventTarget, "second")
-  if checked_first is checked_second:
-    raise ValueError("first and second must be distinct targets")
-  level = _finite(difference_deg, "difference_deg")
-  start, end = _event_interval(start_jde_tt, end_jde_tt)
-
-  total = _ctypes.c_uint32()
-  written = _binding.call(
-    "longitude_difference_events",
-    checked_first.value,
-    checked_second.value,
-    level,
+  a = _enum_code("TARGET", _enum(first, Target, "first"))
+  b = _enum_code("TARGET", _enum(second, Target, "second"))
+  start, end = _finite(start_jde_tt, "start_jde_tt"), _finite(end_jde_tt, "end_jde_tt")
+  return _event_records(
+    "celestial_longitude_difference_events",
+    (a, b, _finite(difference_deg, "difference_deg"), start, end),
+    _abi.CelestialLongitudeDifferenceEventRecord,
+    _events.decode_difference_events,
     start,
     end,
-    _ctypes.byref(total),
-    None,
-    0,
   )
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("longitude_difference_events", recording=True)
-  if total.value == 0:
-    return ()
-  expected = total.value
-  records = (_binding.LongitudeDifferenceEventRecord * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call(
-    "longitude_difference_events",
-    checked_first.value,
-    checked_second.value,
-    level,
-    start,
-    end,
-    _ctypes.byref(fill_total),
-    records,
-    expected,
-  )
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("longitude_difference_events", recording=True)
-  return _events.decode_difference_events(records)
 
 
-def capabilities(
-  operation: CapabilityOperation,
-  subject: CapabilitySubject | None = None,
-) -> tuple[CapabilityRecord, ...]:
-  """Return what an operation accepts and why, for one subject or all fourteen (#357).
+def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
+  """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  `operation` selects POSITION, LONGITUDE_RATE, EVENTS or HOUSES. A record's domain ends
-  are the half-open accepted range in JDE(TT); NaN means "unbounded", not a sentinel, and
-  `maximum_span_tt_days` limits EVENTS queries (0 = no span limit). Every bound is computed
-  by the native layer from the operation's own defining constants, so a record accepts and
-  rejects exactly what the computation does; it implies no accuracy. For measured
-  validation coverage read `capability_text` of the same record.
+  subject selects a Target; None selects every target. HOUSES, CHART and DELTA_T
+  raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
+  and capability_text() for operation-wide descriptions.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
-  subject_code = 0xFFFFFFFF if subject is None else _enum(subject, CapabilitySubject, "subject").value
-
-  total = _ctypes.c_uint32()
-  written = _binding.call(
-    "celestial_capabilities", _capability.operation_code(checked), subject_code, _ctypes.byref(total), None, 0
-  )
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("capabilities", recording=True)
-  if total.value == 0:
-    return ()
-  expected = total.value
-  records = (_binding.CapabilityRecordV1 * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call(
+  if checked not in _TARGET_OPERATIONS:
+    if checked is CapabilityOperation.HOUSES:
+      raise ValueError("use house_capability(delta_t_model=...) for civil-house policy")
+    raise ValueError("use capability_text() for CHART or DELTA_T descriptions")
+  targets = tuple(Target) if subject is None else (_enum(subject, Target, "subject"),)
+  subject_code = _constant("TARGET_ALL") if subject is None else _enum_code("TARGET", targets[0])
+  records = _protocol.count_fill(
     "celestial_capabilities",
-    _capability.operation_code(checked),
-    subject_code,
-    _ctypes.byref(fill_total),
-    records,
-    expected,
+    (_enum_code("OPERATION", checked), subject_code),
+    _abi.CelestialCapabilityRecord,
+    "capabilities",
+    expected_count=len(targets),
   )
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("capabilities", recording=True)
-  return _capability.decode_capability_records(checked, records)
+  return _protocol.decode("capabilities", _capability.decode_capability_records, checked, records, targets)
+
+
+def house_capability(*, delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT) -> CivilHouseCapability:
+  """Return the civil-house admission policy and resolved Delta T key, without computing houses."""
+  code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  result = _result("celestial_house_capability", "house_capability", code)
+  decoded = _protocol.decode("house_capability", _capability.decode_house_capability, result)
+  _selected_key(decoded.delta_t_model, code, "house_capability")
+  return decoded
 
 
 def model_identities(kind: ModelKind | None = None) -> tuple[ModelIdentity, ...]:
-  """Return the registered model identities: Delta T, nutation and position sources (#357).
-
-  `identity_code` values are stable across releases. `default_alias_code` records what a
-  DEFAULT selection resolves to (Delta T algo5 answers to boundary code 0); None means the
-  identity has no default alias.
-  """
-  kind_code = 0xFFFFFFFF if kind is None else _capability.kind_code(_enum(kind, ModelKind, "kind"))
-
-  total = _ctypes.c_uint32()
-  written = _binding.call("celestial_model_identities", kind_code, _ctypes.byref(total), None, 0)
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("model_identities", recording=True)
-  if total.value == 0:
-    return ()
-  expected = total.value
-  records = (_binding.ModelIdentityRecordV1 * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call("celestial_model_identities", kind_code, _ctypes.byref(fill_total), records, expected)
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("model_identities", recording=True)
-  return _capability.decode_model_identities(records)
+  """Return registered keys and applicability; DEFAULT is not a registered identity."""
+  code = _constant("MODEL_KIND_ALL") if kind is None else _enum_code("MODEL_KIND", _enum(kind, ModelKind, "kind"))
+  records = _protocol.count_fill(
+    "celestial_model_identities", (code,), _abi.CelestialModelIdentityRecord, "model_identities"
+  )
+  return _protocol.decode("model_identities", _capability.decode_model_identities, records, kind)
 
 
-def capability_text(operation: CapabilityOperation, subject: int | CapabilitySubject) -> str:
-  """Return the human-readable description behind one capability record or model identity.
+def model_identity_text(key: ModelKey) -> str:
+  """Describe the exact registered (kind, identity) key, independently of registry order."""
+  if not isinstance(key, ModelKey):
+    raise TypeError("key must be a ModelKey")
+  ModelKey(key.kind, key.identity)
+  return _protocol.sized_string(
+    "celestial_model_identity_text", (_enum_code("MODEL_KIND", key.kind), key.identity), "model_identity_text"
+  )
 
-  With a domain `operation`, `subject` is a CapabilitySubject (ignored for HOUSES). With
-  `CapabilityOperation.MODEL_IDENTITY` — text lookup only — `subject` is the ordinal in
-  `model_identities()`. The text names origin, frame, units, corrections, source/version,
-  status and role, and labels measured validation coverage as measured.
+
+def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
+  """Describe an operation's sources, corrections, defaults and domains.
+
+  Target operations require a concrete Target subject. HOUSES, CHART and DELTA_T
+  require subject=None for operation-wide text; a Target there raises ValueError.
+  Use model_identity_text() for a model key, not a registry ordinal.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
-  if not isinstance(subject, int):
-    raise TypeError(f"subject must be an int or CapabilitySubject, got {type(subject).__name__}")
-  subject_code = subject.value if isinstance(subject, CapabilitySubject) else subject
-  if subject_code < 0 or subject_code > 0xFFFFFFFF:
-    raise ValueError(f"subject must be in [0, 2**32), got {subject_code}")
-
-  required = _binding.call("celestial_capability_text", _capability.operation_code(checked), subject_code, None, 0)
-  detail = _binding.last_error_text()
-  if detail:
-    raise _failure("capability_text", recording=True)
-  if required == 0:
-    return ""
-  buffer = (_ctypes.c_char * (required + 1))()
-  written = _binding.call(
-    "celestial_capability_text", _capability.operation_code(checked), subject_code, buffer, required + 1
+  if checked in _TARGET_OPERATIONS:
+    code = _enum_code("TARGET", _enum(subject, Target, "subject"))
+  else:
+    if subject is not None:
+      _enum(subject, Target, "subject")
+      raise ValueError("subject must be None for HOUSES, CHART and DELTA_T text")
+    code = _constant("TARGET_ALL")
+  return _protocol.sized_string(
+    "celestial_capability_text", (_enum_code("OPERATION", checked), code), "capability_text"
   )
-  detail = _binding.last_error_text()
-  if detail or written != required:
-    raise _failure("capability_text", recording=True)
-  return buffer.value.decode("utf-8")
 
 
-def positions(
-  targets: _Iterable[ChartTarget],
-  jde_tt: float,
-) -> tuple[Position, ...]:
-  """Apparent geocentric positions of selected targets at one JDE(TT) instant (#355).
-
-  Only the selected targets are evaluated: no rate stencil and no snapshot joint window, so
-  a subset succeeds where a complete snapshot rejects an excluded target's window (Pluto and
-  the nodes publish provider windows — see `capabilities`). Output order follows `targets`.
-  Duplicates and an empty selection are rejected. Distances are AU where present.
-
-  Raises:
-    TypeError: If a target is not a declared ChartTarget member.
-    ValueError: If `targets` is empty or duplicated, or `jde_tt` is not a finite real.
-    CelestialError: If any target fails — the whole query fails with no partial result.
-  """
-  if isinstance(jde_tt, bool) or not isinstance(jde_tt, (int, float)):
-    raise TypeError("jde_tt must be a real number")
-  try:
-    jde_tt_value = _finite(float(jde_tt), "jde_tt")
-  except OverflowError as error:
-    raise ValueError("jde_tt must be a finite real number") from error
-
-  checked = tuple(_enum(target, ChartTarget, f"targets[{index}]") for index, target in enumerate(targets))
+def _selection(targets: _Iterable[Target]) -> tuple[tuple[Target, ...], object]:
+  checked = tuple(_enum(target, Target, f"targets[{index}]") for index, target in enumerate(targets))
   if not checked:
     raise ValueError("targets must not be empty")
   if len(set(checked)) != len(checked):
     raise ValueError("targets must not contain duplicates")
+  selection = (_ctypes.c_uint32 * len(checked))(*(_enum_code("TARGET", target) for target in checked))
+  return checked, selection
 
-  selection = (_ctypes.c_uint32 * len(checked))(*(_chart._CHART_TARGET_CODE[target] for target in checked))
 
-  total = _ctypes.c_uint32()
-  written = _binding.call("position_query_v1", selection, len(checked), jde_tt_value, _ctypes.byref(total), None, 0)
-  detail = _binding.last_error_text()
-  if detail or written != 0:
-    raise _failure("positions", recording=True)
-  if total.value != len(checked):
-    raise CelestialError("positions", "Malformed native position count", recorded=False)
+def positions(targets: _Iterable[Target], jde_tt: float) -> tuple[Position, ...]:
+  """Return selected apparent ecliptic positions of date, in caller order at JDE(TT).
 
-  expected = total.value
-  records = (_binding.PositionRecordV1 * expected)()
-  fill_total = _ctypes.c_uint32()
-  written = _binding.call(
-    "position_query_v1", selection, len(checked), jde_tt_value, _ctypes.byref(fill_total), records, expected
+  Longitude/latitude are degrees and physical distance is AU; nodes have no distance.
+  Empty, duplicate and unknown selections are rejected. Only selected providers run:
+  no rates, civil conversion, houses or snapshot joint window. A failed target fails all.
+  """
+  checked, selection = _selection(targets)
+  records = _protocol.count_fill(
+    "celestial_positions",
+    (selection, len(checked), _finite(jde_tt, "jde_tt")),
+    _abi.CelestialPositionRecord,
+    "positions",
+    expected_count=len(checked),
   )
-  detail = _binding.last_error_text()
-  if detail or written != expected or fill_total.value != expected:
-    raise _failure("positions", recording=True)
-  try:
-    return _query.decode_positions(records, checked)
-  except (AttributeError, TypeError, ValueError, OverflowError) as error:
-    raise CelestialError("positions", f"Malformed native position record: {error}", recorded=False) from error
+  return _protocol.decode("positions", _query.decode_positions, records, checked)
+
+
+def equatorial_positions(targets: _Iterable[Target], jde_tt: float) -> tuple[EquatorialPosition, ...]:
+  """Return selected apparent geocentric RA/Dec of date at JDE(TT), in caller order.
+
+  RA is [0, 360) degrees, declination [-90, 90] degrees, and physical distance is AU.
+  All fourteen targets are supported; mathematical nodes have no distance. Selection
+  and provider-window rules follow positions(). No rate, civil or house operation runs.
+  Fixed IAU1980 longitude nutation and true obliquity define the projection. Finite-input
+  evaluation may fail and does not establish accuracy or physical plausibility remotely.
+  """
+  checked, selection = _selection(targets)
+  records = _protocol.count_fill(
+    "celestial_equatorial_positions",
+    (selection, len(checked), _finite(jde_tt, "jde_tt")),
+    _abi.CelestialEquatorialPositionRecord,
+    "equatorial_positions",
+    expected_count=len(checked),
+  )
+  return _protocol.decode("equatorial_positions", _query.decode_equatorial_positions, records, checked)
 
 
 def house_query(
@@ -1102,80 +747,41 @@ def house_query(
   location: GeoLocation,
   system: HouseSystem,
   *,
-  delta_t_model: DeltaTModel = DeltaTModel.DEFAULT,
-  nutation_model: NutationModel = NutationModel.DEFAULT,
+  delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
+  nutation_model: NutationModel | ModelKey = NutationModel.DEFAULT,
 ) -> HouseQueryResult:
-  """House geometry at a civil instant, independent of any body evaluation (#355).
+  """Return independent house geometry and both resolved model keys at a civil instant.
 
-  The conversion is the snapshot's civil + scale + Delta T path without the snapshot joint
-  window, so any civil instant the conversion resolves is accepted (civil years 1885-2099,
-  UTC from 1972-01-01). DEFAULT selects Algo5; the nutation DEFAULT follows the C++ house
-  operation's default (IAU 1980). The result records the resolved Delta T and nutation
-  identities, so a later DEFAULT change cannot rewrite what this result used (#357).
-  Placidus rejects polar geometry; every system rejects an Ascendant direction unresolved
-  at round-off.
-
-  Raises:
-    TypeError: If an input has the wrong record, enum or scalar type.
-    ValueError: If a raw civil or location value is invalid or non-finite.
-    CelestialError: If native calculation fails. There is no partial result.
+  Civil policy follows house_capability(): [1885, 2100), strict UTC from 1972-01-01,
+  and the selected model's derived-TT cutoff (Algo4: JDE(TT) < 2464328.5). No chart
+  target/rate window applies. Latitude is north-positive (-90, 90) degrees; longitude
+  east-positive [-180, 180] degrees. Native owns these domain checks and geometry.
+  Placidus rejects polar geometry; every system rejects an unresolved Ascendant.
+  DEFAULT is resolved by native. Reusing result keys preserves model selection, while
+  exact coefficients also depend on the library/source version. Future UTC-derived UT1
+  is modelled from the held leap table, not observed DUT1. There is no partial result.
   """
-  checked_scale = _enum(scale, CivilScale, "scale")
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  latitude, longitude = _location(location)
   checked_system = _enum(system, HouseSystem, "system")
-  checked_model = _enum(delta_t_model, DeltaTModel, "delta_t_model")
-  checked_nutation = _enum(nutation_model, NutationModel, "nutation_model")
-
-  if not isinstance(civil_dt, CivilDateTime):
-    raise TypeError("civil_dt must be a CivilDateTime")
-  year, month, day, fraction = civil_dt.year, civil_dt.month, civil_dt.day, civil_dt.fraction
-  if any(isinstance(value, _Enum) for value in (year, month, day, fraction)):
-    raise TypeError("house query civil fields must be numbers, not enum members")
-  for name, number in (("year", year), ("month", month), ("day", day)):
-    if isinstance(number, bool) or not isinstance(number, int):
-      raise TypeError(f"civil_dt.{name} must be an integer")
-  year, month, day = _index(year), _index(month), _index(day)
-  _integer(year, "civil_dt.year", _MIN_CHART_YEAR, _MAX_CHART_YEAR)
-  if checked_scale is CivilScale.UTC and year < _MIN_CHART_UTC_YEAR:
-    raise ValueError(f"UTC civil_dt must be on or after {_MIN_CHART_UTC_YEAR}-01-01")
-  month = _integer(month, "civil_dt.month", 1, 12)
-  day = _integer(day, "civil_dt.day", 1, _gregorian_month_length(year, month))
-  try:
-    fraction = _ranged_float(fraction, "civil_dt.fraction", 0.0, 1.0, include_maximum=False)
-  except OverflowError as error:
-    raise ValueError("house query civil fraction must be a finite real number") from error
-
-  if not isinstance(location, GeoLocation):
-    raise TypeError("location must be a GeoLocation")
-  latitude_value, longitude_value = location.latitude_deg, location.longitude_deg
-  if any(isinstance(value, _Enum) for value in (latitude_value, longitude_value)):
-    raise TypeError("house query location must contain real numbers, not enum members")
-  try:
-    latitude = _finite(latitude_value, "location.latitude_deg")
-    longitude = _ranged_float(longitude_value, "location.longitude_deg", -180.0, 180.0)
-  except OverflowError as error:
-    raise ValueError("house query location must contain finite real numbers") from error
-  if not -90.0 < latitude < 90.0:
-    raise ValueError("location.latitude_deg must be in (-90, 90)")
-
-  result = _binding.call(
-    "house_query_v1",
-    year,
-    month,
-    day,
-    fraction,
-    _chart._CIVIL_SCALE_CODE[checked_scale],
-    _CHART_DELTA_T_MODEL[checked_model],
-    _query.nutation_model_code(checked_nutation),
+  delta_code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  nutation_code = _selector_code(nutation_model, ModelKind.NUTATION, "nutation_model")
+  result = _result(
+    "celestial_house_query",
+    "house_query",
+    *civil,
+    scale_code,
+    delta_code,
+    nutation_code,
     latitude,
     longitude,
-    _chart._HOUSE_SYSTEM_CODE[checked_system],
+    _enum_code("HOUSE_SYSTEM", checked_system),
   )
-
-  try:
-    _valid(result, "house_query")
-    return _query.decode_house_query(result, checked_system)
-  except (AttributeError, TypeError, ValueError, OverflowError) as error:
-    raise CelestialError("house_query", f"Malformed native house query record: {error}", recorded=False) from error
+  decoded = _protocol.decode("house_query", _query.decode_house_query, result, checked_system)
+  _selected_key(decoded.delta_t_model, delta_code, "house_query")
+  _selected_key(decoded.nutation_model, nutation_code, "house_query")
+  return decoded
 
 
 __all__ = [
@@ -1183,24 +789,22 @@ __all__ = [
   "CapabilityOperation",
   "CapabilityRecord",
   "CapabilityStatus",
-  "CapabilitySubject",
   "CelestialError",
   "ChartHouses",
   "ChartSnapshot",
-  "ChartTarget",
   "ChartTimes",
   "CivilDateTime",
+  "CivilHouseCapability",
   "CivilScale",
   "DeltaTModel",
+  "EquatorialPosition",
   "EventDirection",
-  "EventTarget",
   "GeoLocation",
   "GregorianDate",
   "HouseQueryResult",
   "HouseSystem",
   "Jieqi",
   "JieqiMoment",
-  "LogVerbosity",
   "LunarAlgorithm",
   "LunarDate",
   "LunarYearInfo",
@@ -1208,6 +812,7 @@ __all__ = [
   "LongitudeDifferenceEvent",
   "LongitudeEvent",
   "ModelIdentity",
+  "ModelKey",
   "ModelKind",
   "ModelStatus",
   "MoonCoordinate",
@@ -1215,10 +820,10 @@ __all__ = [
   "MoonPhase",
   "NutationModel",
   "Position",
-  "PositionSource",
   "StationEvent",
   "StationMotion",
   "SunCoordinate",
+  "Target",
   "__version__",
   "apparent_solar_time",
   "capabilities",
@@ -1226,7 +831,9 @@ __all__ = [
   "chart_snapshot",
   "delta_t",
   "equation_of_time",
+  "equatorial_positions",
   "gregorian_to_lunar",
+  "house_capability",
   "house_query",
   "jde_to_ut1",
   "jieqi_moment",
@@ -1237,15 +844,15 @@ __all__ = [
   "longitude_stations",
   "lunar_to_gregorian",
   "lunar_year_info",
+  "model_identities",
+  "model_identity_text",
   "moon_apparent_geocentric_coordinate",
   "moon_bright_limb_position_angle",
   "moon_illumination",
   "moon_phase_moments",
-  "model_identities",
   "new_moons_after",
   "new_moons_in_year",
   "positions",
-  "set_log_verbosity",
   "sun_apparent_geocentric_coordinate",
   "sun_longitude_crossings",
   "supported_lunar_year_range",

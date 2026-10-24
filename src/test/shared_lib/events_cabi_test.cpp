@@ -50,45 +50,45 @@ constexpr double PAIR_WINDOW_START = 2460676.5;
 constexpr double PAIR_WINDOW_END = 2460707.5;
 constexpr double MOON_FIXED_LEVEL = 137.5;
 
-static_assert(std::is_standard_layout_v<LongitudeEventRecord> and std::is_trivially_copyable_v<LongitudeEventRecord>);
-static_assert(std::is_standard_layout_v<StationEventRecord> and std::is_trivially_copyable_v<StationEventRecord>);
-static_assert(std::is_standard_layout_v<LongitudeDifferenceEventRecord>
-              and std::is_trivially_copyable_v<LongitudeDifferenceEventRecord>);
-static_assert(sizeof(LongitudeEventRecord) == 32 and alignof(LongitudeEventRecord) == 8);
-static_assert(sizeof(StationEventRecord) == 32 and alignof(StationEventRecord) == 8);
-static_assert(sizeof(LongitudeDifferenceEventRecord) == 56 and alignof(LongitudeDifferenceEventRecord) == 8);
+static_assert(std::is_standard_layout_v<CelestialLongitudeEventRecord> and std::is_trivially_copyable_v<CelestialLongitudeEventRecord>);
+static_assert(std::is_standard_layout_v<CelestialStationEventRecord> and std::is_trivially_copyable_v<CelestialStationEventRecord>);
+static_assert(std::is_standard_layout_v<CelestialLongitudeDifferenceEventRecord>
+              and std::is_trivially_copyable_v<CelestialLongitudeDifferenceEventRecord>);
+static_assert(sizeof(CelestialLongitudeEventRecord) == 32 and alignof(CelestialLongitudeEventRecord) == 8);
+static_assert(sizeof(CelestialStationEventRecord) == 32 and alignof(CelestialStationEventRecord) == 8);
+static_assert(sizeof(CelestialLongitudeDifferenceEventRecord) == 56 and alignof(CelestialLongitudeDifferenceEventRecord) == 8);
 
 // The exported identities pin directly to the core targets — not only through the chart mirror.
-static_assert(EVENT_TARGET_SUN == static_cast<uint32_t>(Target::SUN));
-static_assert(EVENT_TARGET_MOON == static_cast<uint32_t>(Target::MOON));
-static_assert(EVENT_TARGET_MERCURY == static_cast<uint32_t>(Target::MERCURY));
-static_assert(EVENT_TARGET_VENUS == static_cast<uint32_t>(Target::VENUS));
-static_assert(EVENT_TARGET_MARS == static_cast<uint32_t>(Target::MARS));
-static_assert(EVENT_TARGET_JUPITER == static_cast<uint32_t>(Target::JUPITER));
-static_assert(EVENT_TARGET_SATURN == static_cast<uint32_t>(Target::SATURN));
-static_assert(EVENT_TARGET_URANUS == static_cast<uint32_t>(Target::URANUS));
-static_assert(EVENT_TARGET_NEPTUNE == static_cast<uint32_t>(Target::NEPTUNE));
-static_assert(EVENT_TARGET_PLUTO == static_cast<uint32_t>(Target::PLUTO));
-static_assert(EVENT_TARGET_MEAN_ASCENDING == static_cast<uint32_t>(Target::MEAN_ASCENDING));
-static_assert(EVENT_TARGET_MEAN_DESCENDING == static_cast<uint32_t>(Target::MEAN_DESCENDING));
-static_assert(EVENT_TARGET_TRUE_ASCENDING == static_cast<uint32_t>(Target::TRUE_ASCENDING));
-static_assert(EVENT_TARGET_TRUE_DESCENDING == static_cast<uint32_t>(Target::TRUE_DESCENDING));
+static_assert(CELESTIAL_TARGET_SUN == static_cast<uint32_t>(Target::SUN));
+static_assert(CELESTIAL_TARGET_MOON == static_cast<uint32_t>(Target::MOON));
+static_assert(CELESTIAL_TARGET_MERCURY == static_cast<uint32_t>(Target::MERCURY));
+static_assert(CELESTIAL_TARGET_VENUS == static_cast<uint32_t>(Target::VENUS));
+static_assert(CELESTIAL_TARGET_MARS == static_cast<uint32_t>(Target::MARS));
+static_assert(CELESTIAL_TARGET_JUPITER == static_cast<uint32_t>(Target::JUPITER));
+static_assert(CELESTIAL_TARGET_SATURN == static_cast<uint32_t>(Target::SATURN));
+static_assert(CELESTIAL_TARGET_URANUS == static_cast<uint32_t>(Target::URANUS));
+static_assert(CELESTIAL_TARGET_NEPTUNE == static_cast<uint32_t>(Target::NEPTUNE));
+static_assert(CELESTIAL_TARGET_PLUTO == static_cast<uint32_t>(Target::PLUTO));
+static_assert(CELESTIAL_TARGET_MEAN_ASCENDING == static_cast<uint32_t>(Target::MEAN_ASCENDING));
+static_assert(CELESTIAL_TARGET_MEAN_DESCENDING == static_cast<uint32_t>(Target::MEAN_DESCENDING));
+static_assert(CELESTIAL_TARGET_TRUE_ASCENDING == static_cast<uint32_t>(Target::TRUE_ASCENDING));
+static_assert(CELESTIAL_TARGET_TRUE_DESCENDING == static_cast<uint32_t>(Target::TRUE_DESCENDING));
 
-static_assert(EVENT_DIRECTION_INCREASING == static_cast<uint32_t>(EventDirection::INCREASING));
-static_assert(EVENT_DIRECTION_DECREASING == static_cast<uint32_t>(EventDirection::DECREASING));
-static_assert(EVENT_DIRECTION_TANGENT == static_cast<uint32_t>(EventDirection::TANGENT));
-static_assert(EVENT_MOTION_DIRECT == static_cast<uint32_t>(Motion::DIRECT));
-static_assert(EVENT_MOTION_RETROGRADE == static_cast<uint32_t>(Motion::RETROGRADE));
+static_assert(CELESTIAL_EVENT_DIRECTION_INCREASING == static_cast<uint32_t>(EventDirection::INCREASING));
+static_assert(CELESTIAL_EVENT_DIRECTION_DECREASING == static_cast<uint32_t>(EventDirection::DECREASING));
+static_assert(CELESTIAL_EVENT_DIRECTION_TANGENT == static_cast<uint32_t>(EventDirection::TANGENT));
+static_assert(CELESTIAL_EVENT_MOTION_DIRECT == static_cast<uint32_t>(Motion::DIRECT));
+static_assert(CELESTIAL_EVENT_MOTION_RETROGRADE == static_cast<uint32_t>(Motion::RETROGRADE));
 
-static_assert(std::is_same_v<decltype(&longitude_events),
+static_assert(std::is_same_v<decltype(&celestial_longitude_events),
                              uint32_t (*)(uint32_t, double, double, double, uint32_t *,
-                                          LongitudeEventRecord *, uint32_t)>);
-static_assert(std::is_same_v<decltype(&longitude_stations),
+                                          CelestialLongitudeEventRecord *, uint32_t)>);
+static_assert(std::is_same_v<decltype(&celestial_longitude_stations),
                              uint32_t (*)(uint32_t, double, double, uint32_t *,
-                                          StationEventRecord *, uint32_t)>);
-static_assert(std::is_same_v<decltype(&longitude_difference_events),
+                                          CelestialStationEventRecord *, uint32_t)>);
+static_assert(std::is_same_v<decltype(&celestial_longitude_difference_events),
                              uint32_t (*)(uint32_t, uint32_t, double, double, double, uint32_t *,
-                                          LongitudeDifferenceEventRecord *, uint32_t)>);
+                                          CelestialLongitudeDifferenceEventRecord *, uint32_t)>);
 
 auto expect_same_bits(const char * const label, const double actual, const double expected) -> void {
   EXPECT_EQ(std::bit_cast<uint64_t>(actual), std::bit_cast<uint64_t>(expected)) << label;
@@ -97,13 +97,13 @@ auto expect_same_bits(const char * const label, const double actual, const doubl
 auto query_longitude_events(
   const uint32_t target_code, const double level,
   const double start_jde_tt, const double end_jde_tt
-) -> std::pair<uint32_t, std::vector<LongitudeEventRecord>> {
+) -> std::pair<uint32_t, std::vector<CelestialLongitudeEventRecord>> {
   uint32_t total = 0;
-  EXPECT_EQ(longitude_events(target_code, level, start_jde_tt, end_jde_tt, &total, nullptr, 0), 0U);
-  EXPECT_STREQ(last_error(), ""); // a count-only pass is a legal success and clears the channel
-  std::vector<LongitudeEventRecord> slots(total);
-  EXPECT_EQ(longitude_events(target_code, level, start_jde_tt, end_jde_tt, &total, slots.data(), total), total);
-  EXPECT_STREQ(last_error(), "");
+  EXPECT_EQ(celestial_longitude_events(target_code, level, start_jde_tt, end_jde_tt, &total, nullptr, 0), 0U);
+  EXPECT_STREQ(celestial_last_error(), ""); // a count-only pass is a legal success and clears the channel
+  std::vector<CelestialLongitudeEventRecord> slots(total);
+  EXPECT_EQ(celestial_longitude_events(target_code, level, start_jde_tt, end_jde_tt, &total, slots.data(), total), total);
+  EXPECT_STREQ(celestial_last_error(), "");
   return { total, std::move(slots) };
 }
 
@@ -133,22 +133,22 @@ auto expect_longitude_events_match_core(
 } // namespace
 
 TEST(EventCAbi, LongitudeEventsMatchCoreAcrossTargets) {
-  expect_longitude_events_match_core(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
-  expect_longitude_events_match_core(EVENT_TARGET_MOON, MOON_FIXED_LEVEL, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
-  expect_longitude_events_match_core(EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
+  expect_longitude_events_match_core(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
+  expect_longitude_events_match_core(CELESTIAL_TARGET_MOON, MOON_FIXED_LEVEL, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
+  expect_longitude_events_match_core(CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END);
 }
 
 TEST(EventCAbi, StationsMatchCoreWithBothMotionDirections) {
   const auto [total, slots] = [] {
     uint32_t count = 0;
-    EXPECT_EQ(longitude_stations(EVENT_TARGET_MERCURY, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &count, nullptr, 0), 0U);
-    EXPECT_STREQ(last_error(), "");
-    std::vector<StationEventRecord> records(count);
+    EXPECT_EQ(celestial_longitude_stations(CELESTIAL_TARGET_MERCURY, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &count, nullptr, 0), 0U);
+    EXPECT_STREQ(celestial_last_error(), "");
+    std::vector<CelestialStationEventRecord> records(count);
     EXPECT_EQ(
-      longitude_stations(EVENT_TARGET_MERCURY, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &count, records.data(), count),
+      celestial_longitude_stations(CELESTIAL_TARGET_MERCURY, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &count, records.data(), count),
       count
     );
-    EXPECT_STREQ(last_error(), "");
+    EXPECT_STREQ(celestial_last_error(), "");
     return std::pair { count, std::move(records) };
   }();
 
@@ -167,11 +167,11 @@ TEST(EventCAbi, StationsMatchCoreWithBothMotionDirections) {
     EXPECT_EQ(record.motion_before_code, static_cast<uint32_t>(event.motion_before));
     EXPECT_EQ(record.motion_after_code, static_cast<uint32_t>(event.motion_after));
     saw_direct_to_retrograde = saw_direct_to_retrograde
-                               or (record.motion_before_code == EVENT_MOTION_DIRECT
-                                   and record.motion_after_code == EVENT_MOTION_RETROGRADE);
+                               or (record.motion_before_code == CELESTIAL_EVENT_MOTION_DIRECT
+                                   and record.motion_after_code == CELESTIAL_EVENT_MOTION_RETROGRADE);
     saw_retrograde_to_direct = saw_retrograde_to_direct
-                               or (record.motion_before_code == EVENT_MOTION_RETROGRADE
-                                   and record.motion_after_code == EVENT_MOTION_DIRECT);
+                               or (record.motion_before_code == CELESTIAL_EVENT_MOTION_RETROGRADE
+                                   and record.motion_after_code == CELESTIAL_EVENT_MOTION_DIRECT);
   }
   EXPECT_TRUE(saw_direct_to_retrograde);
   EXPECT_TRUE(saw_retrograde_to_direct);
@@ -181,23 +181,23 @@ TEST(EventCAbi, DifferenceEventsMatchCoreForBothOrientations) {
   const auto query = [](const uint32_t first, const uint32_t second, const double level) {
     uint32_t count = 0;
     EXPECT_EQ(
-      longitude_difference_events(first, second, level, PAIR_WINDOW_START, PAIR_WINDOW_END, &count, nullptr, 0), 0U
+      celestial_longitude_difference_events(first, second, level, PAIR_WINDOW_START, PAIR_WINDOW_END, &count, nullptr, 0), 0U
     );
-    EXPECT_STREQ(last_error(), "");
-    std::vector<LongitudeDifferenceEventRecord> records(count);
+    EXPECT_STREQ(celestial_last_error(), "");
+    std::vector<CelestialLongitudeDifferenceEventRecord> records(count);
     EXPECT_EQ(
-      longitude_difference_events(
+      celestial_longitude_difference_events(
         first, second, level, PAIR_WINDOW_START, PAIR_WINDOW_END, &count, records.data(), count
       ),
       count
     );
-    EXPECT_STREQ(last_error(), "");
+    EXPECT_STREQ(celestial_last_error(), "");
     return std::pair { count, std::move(records) };
   };
 
   for (const double level : { -60.0, 60.0 }) {
     SCOPED_TRACE(level);
-    const auto [total, slots] = query(EVENT_TARGET_MOON, EVENT_TARGET_SUN, level);
+    const auto [total, slots] = query(CELESTIAL_TARGET_MOON, CELESTIAL_TARGET_SUN, level);
     const auto expected = astro::ephemeris::longitude_difference_events(
       Target::MOON, Target::SUN, astro::toolbox::AngleDeg { level }, PAIR_WINDOW_START, PAIR_WINDOW_END
     );
@@ -216,38 +216,38 @@ TEST(EventCAbi, DifferenceEventsMatchCoreForBothOrientations) {
   }
 
   // Reversing the pair reverses the level and direction: the two requests select the same instants.
-  const auto [forward_total, forward] = query(EVENT_TARGET_SUN, EVENT_TARGET_MOON, 60.0);
-  const auto [backward_total, backward] = query(EVENT_TARGET_MOON, EVENT_TARGET_SUN, -60.0);
+  const auto [forward_total, forward] = query(CELESTIAL_TARGET_SUN, CELESTIAL_TARGET_MOON, 60.0);
+  const auto [backward_total, backward] = query(CELESTIAL_TARGET_MOON, CELESTIAL_TARGET_SUN, -60.0);
   ASSERT_EQ(forward_total, backward_total);
   for (std::size_t index = 0; index < backward.size(); ++index) {
     SCOPED_TRACE(index);
     expect_same_bits("reversed pair jde_tt", forward.at(index).jde_tt, backward.at(index).jde_tt);
-    EXPECT_NE(forward.at(index).direction_code, EVENT_DIRECTION_TANGENT);
-    EXPECT_NE(backward.at(index).direction_code, EVENT_DIRECTION_TANGENT);
+    EXPECT_NE(forward.at(index).direction_code, CELESTIAL_EVENT_DIRECTION_TANGENT);
+    EXPECT_NE(backward.at(index).direction_code, CELESTIAL_EVENT_DIRECTION_TANGENT);
     EXPECT_NE(forward.at(index).direction_code, backward.at(index).direction_code);
   }
 }
 
 TEST(EventCAbi, HalfOpenOwnershipAtReportedTimes) {
   const auto [total, slots] = query_longitude_events(
-    EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END
+    CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END
   );
   ASSERT_EQ(total, 3U);
   const double first = slots.at(0).jde_tt;
 
   // An event at `end` does not belong to the query; the next representable end admits it.
   const auto [excluded_total, excluded] = query_longitude_events(
-    EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, first
+    CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, first
   );
   EXPECT_EQ(excluded_total, 0U);
   const auto [included_total, included] = query_longitude_events(
-    EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, std::nextafter(first, INFINITY_VALUE)
+    CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, std::nextafter(first, INFINITY_VALUE)
   );
   ASSERT_EQ(included_total, 1U);
   EXPECT_EQ(std::bit_cast<uint64_t>(included.at(0).jde_tt), std::bit_cast<uint64_t>(first));
 
   // An event at `start` belongs to the query.
-  const auto [right_total, right] = query_longitude_events(EVENT_TARGET_MERCURY, 0.0, first, MERCURY_WINDOW_END);
+  const auto [right_total, right] = query_longitude_events(CELESTIAL_TARGET_MERCURY, 0.0, first, MERCURY_WINDOW_END);
   EXPECT_EQ(right_total, 3U);
   EXPECT_EQ(std::bit_cast<uint64_t>(right.at(0).jde_tt), std::bit_cast<uint64_t>(first));
 }
@@ -255,19 +255,19 @@ TEST(EventCAbi, HalfOpenOwnershipAtReportedTimes) {
 TEST(EventCAbi, CapacityTruncationReportsFullTotal) {
   uint32_t total = 0;
   ASSERT_EQ(
-    longitude_events(EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U
+    celestial_longitude_events(CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U
   );
   ASSERT_EQ(total, 3U);
 
   // Two slots for three events: the fill truncates, the total stays observable, the tail is untouched.
-  std::array<LongitudeEventRecord, 3> slots {};
+  std::array<CelestialLongitudeEventRecord, 3> slots {};
   for (auto& slot : slots) {
     slot.jde_tt = -777.0;
   }
   uint32_t truncated_total = 0;
   EXPECT_EQ(
-    longitude_events(
-      EVENT_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &truncated_total, slots.data(), 2
+    celestial_longitude_events(
+      CELESTIAL_TARGET_MERCURY, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &truncated_total, slots.data(), 2
     ),
     2U
   );
@@ -279,34 +279,37 @@ TEST(EventCAbi, ConstantRelationsAreEmptyOrInvalid) {
   uint32_t total = 0;
   // The antipodal node relation is constantly 180°: a 0° target misses throughout (legal empty)…
   EXPECT_EQ(
-    longitude_difference_events(
-      EVENT_TARGET_MEAN_ASCENDING, EVENT_TARGET_MEAN_DESCENDING, 0.0,
+    celestial_longitude_difference_events(
+      CELESTIAL_TARGET_MEAN_ASCENDING, CELESTIAL_TARGET_MEAN_DESCENDING, 0.0,
       PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
     ),
     0U
   );
   EXPECT_EQ(total, 0U);
-  EXPECT_STREQ(last_error(), "");
+  EXPECT_STREQ(celestial_last_error(), "");
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
 
   // …while ±180° selects the level itself and throws.
   for (const double level : { 180.0, -180.0 }) {
     total = 0xDEADBEEFU;
     EXPECT_EQ(
-      longitude_difference_events(
-        EVENT_TARGET_MEAN_ASCENDING, EVENT_TARGET_MEAN_DESCENDING, level,
+      celestial_longitude_difference_events(
+        CELESTIAL_TARGET_MEAN_ASCENDING, CELESTIAL_TARGET_MEAN_DESCENDING, level,
         PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
       ),
       0U
     );
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "throughout"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "throughout"), nullptr);
+    EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
   }
 
   // Targets whose certified rate bounds exclude a station return a legal empty list.
   total = 0xDEADBEEFU;
-  EXPECT_EQ(longitude_stations(EVENT_TARGET_SUN, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
+  EXPECT_EQ(celestial_longitude_stations(CELESTIAL_TARGET_SUN, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
   EXPECT_EQ(total, 0U);
-  EXPECT_STREQ(last_error(), "");
+  EXPECT_STREQ(celestial_last_error(), "");
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
 }
 
 TEST(EventCAbi, RejectsMalformedQueriesDeterministically) {
@@ -314,83 +317,83 @@ TEST(EventCAbi, RejectsMalformedQueriesDeterministically) {
   for (const int32_t run : { INT32_C(1), INT32_C(2) }) {
     SCOPED_TRACE(run);
 
-    EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, nullptr, nullptr, 0), 0U);
-    EXPECT_NE(std::strstr(last_error(), "event_count"), nullptr);
+    EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, nullptr, nullptr, 0), 0U);
+    EXPECT_NE(std::strstr(celestial_last_error(), "event_count"), nullptr);
 
     uint32_t total = 0xDEADBEEFU;
-    EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 1), 0U);
+    EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 1), 0U);
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "slots"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "slots"), nullptr);
 
-    for (const uint32_t code : { 14U, UINT32_MAX }) {
+    for (const uint32_t code : { 14U, 256U, 257U, 65536U, UINT32_C(0x10000001), UINT32_MAX }) {
       total = 0xDEADBEEFU;
-      EXPECT_EQ(longitude_events(code, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
+      EXPECT_EQ(celestial_longitude_events(code, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
       EXPECT_EQ(total, 0U);
-      EXPECT_NE(std::strstr(last_error(), "EVENT_TARGET"), nullptr);
+      EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
     }
 
     total = 0xDEADBEEFU;
     EXPECT_EQ(
-      longitude_difference_events(
-        EVENT_TARGET_SUN, EVENT_TARGET_SUN, 1.0, PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
+      celestial_longitude_difference_events(
+        CELESTIAL_TARGET_SUN, CELESTIAL_TARGET_SUN, 1.0, PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
       ),
       0U
     );
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "distinct"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "distinct"), nullptr);
 
     // The recorded error names the export's own parameter (#303 FFI diagnostics).
     total = 0xDEADBEEFU;
     EXPECT_EQ(
-      longitude_difference_events(
-        EVENT_TARGET_MOON, EVENT_TARGET_SUN, NAN_VALUE, PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
+      celestial_longitude_difference_events(
+        CELESTIAL_TARGET_MOON, CELESTIAL_TARGET_SUN, NAN_VALUE, PAIR_WINDOW_START, PAIR_WINDOW_END, &total, nullptr, 0
       ),
       0U
     );
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "target_difference_deg"), nullptr);
-    EXPECT_EQ(std::strstr(last_error(), "target_longitude_deg"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "target_difference_deg"), nullptr);
+    EXPECT_EQ(std::strstr(celestial_last_error(), "target_longitude_deg"), nullptr);
 
     for (const double bad : { NAN_VALUE, INFINITY_VALUE }) {
       total = 0xDEADBEEFU;
-      EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, bad, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
+      EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, bad, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
       EXPECT_EQ(total, 0U);
       total = 0xDEADBEEFU;
-      EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, 0.0, bad, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
+      EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, bad, MERCURY_WINDOW_END, &total, nullptr, 0), 0U);
       EXPECT_EQ(total, 0U);
     }
 
     // Nonempty, ordered, span-limited interval.
     total = 0xDEADBEEFU;
-    EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_END, MERCURY_WINDOW_START, &total, nullptr, 0), 0U);
+    EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_END, MERCURY_WINDOW_START, &total, nullptr, 0), 0U);
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "nonempty"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "nonempty"), nullptr);
     total = 0xDEADBEEFU;
-    EXPECT_EQ(longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_START, &total, nullptr, 0), 0U);
+    EXPECT_EQ(celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_START, &total, nullptr, 0), 0U);
     EXPECT_EQ(total, 0U);
     total = 0xDEADBEEFU;
     EXPECT_EQ(
-      longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_START + 3660.1, &total, nullptr, 0),
+      celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_START + 3660.1, &total, nullptr, 0),
       0U
     );
     EXPECT_EQ(total, 0U);
-    EXPECT_NE(std::strstr(last_error(), "3660"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "3660"), nullptr);
   }
 
   // A rejected query leaves caller storage untouched, and a valid call recovers and clears the channel.
-  std::array<LongitudeEventRecord, 3> slots {};
+  std::array<CelestialLongitudeEventRecord, 3> slots {};
   for (auto& slot : slots) {
     slot.jde_tt = -777.0;
   }
   uint32_t total = 0;
-  EXPECT_EQ(longitude_events(14U, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, slots.data(), 3), 0U);
+  EXPECT_EQ(celestial_longitude_events(14U, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, slots.data(), 3), 0U);
   for (const auto& slot : slots) {
     EXPECT_EQ(slot.jde_tt, -777.0);
   }
   ASSERT_EQ(
-    longitude_events(EVENT_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, slots.data(), 3), 1U
+    celestial_longitude_events(CELESTIAL_TARGET_SUN, 0.0, MERCURY_WINDOW_START, MERCURY_WINDOW_END, &total, slots.data(), 3), 1U
   );
-  EXPECT_STREQ(last_error(), "");
+  EXPECT_STREQ(celestial_last_error(), "");
 }
 
 } // namespace lib::events::test

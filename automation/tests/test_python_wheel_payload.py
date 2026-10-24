@@ -47,6 +47,9 @@ def wheel_payload(version):
       "__init__.py",
       "_binding.py",
       "_abi.py",
+      "_codes.py",
+      "_models.py",
+      "_protocol.py",
       "capability.py",
       "chart.py",
       "events.py",
@@ -126,7 +129,20 @@ def test_wheel_allowlist_requires_the_real_declaration_module(verifier):
 
 
 @pytest.mark.parametrize(
-  "name", ["__init__.py", "_binding.py", "_abi.py", "capability.py", "chart.py", "events.py", "query.py", "py.typed"]
+  "name",
+  [
+    "__init__.py",
+    "_binding.py",
+    "_abi.py",
+    "_codes.py",
+    "_models.py",
+    "_protocol.py",
+    "capability.py",
+    "chart.py",
+    "events.py",
+    "query.py",
+    "py.typed",
+  ],
 )
 def test_wheel_source_bytes_are_checked_even_with_a_valid_record(verifier, name):
   version = verifier.project_version()

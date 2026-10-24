@@ -18,8 +18,9 @@ WebAssembly module.
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide describes version `0.9.0`. The install command below gets the latest version on npm; an older installed
-version may lack some APIs shown here, so check its version before using an example.
+This guide describes version **1.0.0**, currently unreleased. The install command below gets the latest published
+version on npm; use its matching documentation. See [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md)
+for the removed logging API, Sun distance rename and changed error classes.
 
 <a id="install"></a>
 ## Install
@@ -45,8 +46,6 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 
 <a id="chart-snapshot"></a>
 ### Chart Snapshot at a Fixed Instant
-
-`chart.snapshot()` is new in 0.8.0.
 
 ```js
 import { init, chart } from "@0xf3cd/celestial";
@@ -88,11 +87,14 @@ instant (retrograde motion).
 in `[0, 360)` degrees. The result is made of independent plain objects and arrays; later calls or WASM memory growth
 do not change an earlier result.
 
-The core checks the converted JDE(TT) against the shared range `[2409543.875, 2488069.125)`; Algo4 also requires
-`JDE < 2464328.5`. UT1 derived from UTC is modelled, not observed DUT1; see
+The core checks the converted JDE(TT) against the chart range `[2409543.875, 2488069.125)`; Algo4 also requires
+derived `JDE < 2464328.5`, checked before reverse conversion. This deliberately excludes the final roughly 71.5
+UT1 seconds of 2034 under Algo4. Common civil/model errors may precede a chart joint-window error.
+UT1 derived from UTC is modelled, not observed DUT1; future UTC holds the last known leap-table offset. See
 [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales). Ascendant
-directions that degenerate at round-off scale, and Placidus polar cases, fail. Type or record-shape errors throw
-`TypeError`; invalid dates, day fractions, locations, or option strings throw `RangeError`; calling before
+directions that degenerate at round-off scale, and Placidus polar cases, fail. Houses follow the house operation's
+nutation default, currently IAU 1980; body corrections remain fixed IAU 1980. Type or record-shape errors throw
+`TypeError`; invalid dates, day fractions, locations, option strings or native-domain rejections throw `RangeError`; calling before
 initialization, allocation failure, native calculation failure, or a malformed native success record throws
 `CelestialError`, with `operation` set to `"chart.snapshot"`. `recorded` is `true` only when the message came from
 the native error channel. A failure never returns a partial snapshot.
@@ -188,10 +190,12 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `config`, `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
 package ships TypeScript declarations. The package uses only the `jieqi` / `lunar` names, with no `solarTerms` /
-`lunarCalendar` aliases. Model, Moon phase, and logging options are string-literal unions such as `"full"`,
-`"algo3"`, and `"debug"`. `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
+`lunarCalendar` aliases. Model and Moon phase options are string-literal unions such as `"full"` and
+`"algo3"`. There is no logging configuration or `init` configuration argument. Independent position, equatorial,
+house, event, capability and model-text queries are not public JavaScript APIs.
+`Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
 `jieqi.name()`. `jieqi.name()` returns the Chinese name, for example `"立春"` for `Jieqi.LICHUN`.
@@ -199,12 +203,13 @@ package ships TypeScript declarations. The package uses only the `jieqi` / `luna
 Keep time scales and units distinct:
 
 - Operation names for JD inputs and outputs distinguish UT1 from JDE (TT).
-- `jieqi.moment()` returns `{ jieqi, momentUt1 }`. Its civil moment is UT1, not UTC or a UTC+8 wall clock; the same
+- `jieqi.moment()` returns `{ jieqi, momentUt1 }`, using fixed Algo5 for TT-to-UT1 even if a selectable-model default
+  changes. Its civil moment is UT1, not UTC or a UTC+8 wall clock; the same
   instant shown in UTC+8 can fall on a different date. Establish the time-scale conversion before displaying it as
   UTC or a fixed-offset time. The returned UT1 year can differ from the requested year.
 - `sun.apparentSolarTime()` takes a UTC civil moment and an east-positive geographic longitude in `[-180, 180]`
   degrees.
-- Angle results are in degrees. Sun distance is in AU. Moon distance from `moon.apparentGeocentricCoordinate()` is
+- Angle results are in degrees. Sun distance is `distanceAu` in AU. Moon distance from `moon.apparentGeocentricCoordinate()` is
   in kilometres; `chart.snapshot()` gives every distance, the Moon's included, in AU.
 - `time.deltaT()` returns seconds.
 - The equation of time is in degrees of hour angle; multiply by 240 for seconds of time.
@@ -218,15 +223,21 @@ accept Gregorian years in `[1, 32766]`.
 
 `time.localApparentSiderealTime(jdUt1, longitudeDeg)` accepts a finite JD on UT1 whose Gregorian year is in
 `[401, 32766]`, and a finite, east-positive geographic longitude in `[-180, 180]` degrees. It returns degrees in
-`[0, 360)`. The native boundary checks the year range, so a JD outside it throws `CelestialError`, not the
-`RangeError` used by the JavaScript finiteness and longitude checks.
+`[0, 360)`. The native boundary checks the year range; leaving it throws `RangeError`, just as the JavaScript
+finiteness and longitude checks do. This operation retains fixed Algo5 ΔT and fixed IAU 1980 nutation.
 
 `sun.longitudeCrossings(year, longitudeDeg)` accepts a finite apparent geocentric solar longitude in `[0, 360)`
 degrees. It returns an array of TT-based JDEs, or `[]` when the Sun does not reach that longitude in the year.
 
-After initialization, wrong shapes and types throw `TypeError`, and JavaScript range checks throw `RangeError`.
-Native failures throw `CelestialError`, whose `operation` is the public method name and whose `recorded` says whether
-the message came from the native error channel. A legitimate absence remains `null` or `[]`.
+After initialization, wrong shapes and types throw `TypeError`. Invalid input or a declared-domain rejection
+throws `RangeError`, whether found in JavaScript or native code. Computation/resource/internal failures and
+malformed native success records throw `CelestialError`, whose `operation` is the public method name and whose
+`recorded` says whether the message came from the native error channel. The native error kind determines failure
+even when its message is empty. A legitimate absence remains `null` or `[]`.
+
+Finite position inputs can still fail computation; coordinate validity promises neither physical plausibility
+nor accuracy at remote epochs. There is no new universal position-year or obliquity cutoff. Caller-owned WASM
+output buffers are limited to 16 MiB by the binding.
 
 `moon.newMoonsAfter(jde, count)` accepts `count` in `[0, 4096]`; zero returns `[]`.
 The cap keeps the WASM output buffer within 32 KiB.
@@ -332,8 +343,8 @@ civil-date domain, not a physical limit of VSOP87D or ELP2000-82B.
 January-to-December bounds. `lunar.yearInfo(algorithm, year)` returns the Gregorian `firstDay`, the traditional
 `leapMonth` number or `null`, and `monthLengths` in calendar order, with a leap month directly after its ordinary
 namesake. `lunar.toGregorian()` takes a traditional month number in `[1, 12]` and an explicit `isLeap` boolean, not a
-positional month index. Each call to `yearInfo()` and `toGregorian()` first queries the native range once, then
-validates the lunar year; the JavaScript package keeps no separate range table or cache.
+positional month index. The native operation validates the selected algorithm's lunar year and date;
+the JavaScript package keeps no separate range table or cache.
 
 All four lunar methods require `await init()` first; a call before initialization completes throws `CelestialError`
 with `recorded === false`, before argument validation. After initialization:
@@ -342,13 +353,13 @@ with `recorded === false`, before argument validation. After initialization:
   a non-boolean `isLeap`.
 - `RangeError` means an unknown algorithm, a non-finite or unsafe number, an invalid Gregorian date (including a year
   outside `[1, 32767]`), a lunar year outside the native range, or a lunar month/day outside `[1, 12]` / `[1, 30]`.
-- `CelestialError` means a native failure, including a Gregorian date label outside the selected algorithm's coverage
-  or a lunar leap-month/day combination that does not exist. A failed native range query also uses this class, with
-  `operation` naming the caller, such as `"lunar.yearInfo"`, rather than the internal query.
+- `RangeError` also covers native invalid-input rejections, including a Gregorian date label outside the selected
+  algorithm's coverage or a lunar leap-month/day combination that does not exist.
+- `CelestialError` means computation/resource/internal failure or a malformed native success record, with
+  `operation` naming the caller, such as `"lunar.yearInfo"`, rather than an internal range query.
 
 For example, `lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 })` passes Gregorian validation, but algo1
-cannot represent that date, so it throws `CelestialError`; `lunar.yearInfo("algo1", 1900)` throws `RangeError`
-instead.
+cannot represent that date, so it throws `RangeError`; `lunar.yearInfo("algo1", 1900)` also throws `RangeError`.
 
 <a id="delta-t-models"></a>
 ### Delta T Models
@@ -358,7 +369,7 @@ The default is the current project model; the named older models allow historica
 
 | Model | Source and status | Hard year domain | Selection role |
 |---|---|---|---|
-| `"default"`, `"algo5"` | Current project model: algo2 before 2005, IERS Bulletin A fit through about 2026.41, then anchored Morrison et al. (2021) long-term extrapolation | No model-specific bound | Current project calculations |
+| `"default"`, `"algo5"` | Current project model: algo2 before 2005; IERS Bulletin A fit from 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.41); then anchored, corrected Morrison et al. (2021) integrated-LOD extrapolation | No model-specific bound | Current project calculations |
 | `"algo1"` | Xu Jianwei's 2008 model, frozen | `year >= -4000` | Comparison with that historical model |
 | `"algo2"` | Espenak and Meeus, NASA/TP-2006-214141, frozen | No model-specific bound | NASA polynomial comparison; live pre-2005 branch of algo3, algo4, and algo5 |
 | `"algo3"` | Fred Espenak's 2014 eclipse canon, frozen | `year < 3000` | Comparison with that later polynomial model |

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Final, List, Optional, Tuple
 
 from . import paths
-from .c_abi_schema import STRUCT_RE
+from .c_abi_schema import parse_header_text
 from .utils import run_cmd, green_print, red_print, yellow_print
 
 
@@ -117,38 +117,13 @@ PARSER_SELF_TEST: Final[List[Tuple[str, List[Tuple[str, bool]]]]] = [
   ("double delta(double jde);", [("delta", False)]),
 ]
 
-FUNC_NAME_RE: Final[re.Pattern] = re.compile(r"(\w+)\s*\(")
 SONAME_RE: Final[re.Pattern] = re.compile(r"Library soname: \[([^\]]+)\]")
 REAL_SO_RE: Final[re.Pattern] = re.compile(r"^libcelestial_calendar\.so\.(\d+)\.(\d+)\.(\d+)$")
 
 
-def strip_comments(text: str) -> str:
-  """Remove /* */ and // comments so they cannot fake or hide declarations."""
-  text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-  return re.sub(r"//[^\n]*", "", text)
-
-
 def parse_declarations(text: str) -> List[Tuple[str, bool]]:
-  """Parse file-scope function declarations in `celestial.h` -> (name, has_macro) pairs.
-
-  Preprocessor lines and `typedef struct` bodies are removed first; what remains at
-  file scope is split into `;`-terminated statements, and every statement containing
-  `(` is a function declaration. Declarations WITHOUT the macro are returned too --
-  flagging them is exactly what the static half of the gate is for.
-  """
-  text = strip_comments(text)
-  text = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
-  text = STRUCT_RE.sub("", text)
-
-  decls: List[Tuple[str, bool]] = []
-  for stmt in text.split(";"):
-    if "(" not in stmt:
-      continue
-    m = FUNC_NAME_RE.search(stmt)
-    if m is None:
-      continue
-    decls.append((m.group(1), "CELESTIAL_API" in stmt))
-  return decls
+  """Use the shared grammar, retaining missing export markers for the static gate."""
+  return [(name, function.exported) for name, function in parse_header_text(text).functions.items()]
 
 
 def entry_point_names(header: Path) -> List[str]:

@@ -41,6 +41,7 @@ using astro::house::test::WITNESS_NORTH_LONGITUDE_DEG;
 using astro::house::test::WITNESS_SOUTH_LONGITUDE_DEG;
 using astro::toolbox::AngleDeg;
 using calendar::Datetime;
+using astro::julian_day::Scale;
 
 constexpr std::array MODELS { Model::ALGO1, Model::ALGO2, Model::ALGO3, Model::ALGO4, Model::ALGO5 };
 constexpr std::array TARGETS {
@@ -55,7 +56,7 @@ static_assert(std::tuple_size_v<decltype(Snapshot::bodies)> == 14);
 static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> == 12);
 static_assert(noexcept(astro::delta_t::compute(2026.0)));
 static_assert(not std::is_default_constructible_v<Snapshot>);
-static_assert(not std::is_default_constructible_v<astro::chart::Position>);
+static_assert(not std::is_default_constructible_v<astro::ephemeris::Position>);
 static_assert(detail::START_JDE_TT == 2409543.875);
 static_assert(detail::END_JDE_TT == 2488069.125);
 
@@ -352,10 +353,10 @@ TEST(Chart, DomainErrorsKeepTheirContext) {
   };
   expect_prefix([&] {
     std::ignore = calculate(outside_model, Scale::UT1, observer, System::EQUAL, Model::ALGO4);
-  }, "Chart Delta T datetime leaves its model domain: The year 2035.");
+  }, "Civil Delta T datetime leaves its model domain: The year 2035.");
   expect_prefix([&] {
     std::ignore = calculate(outside_model, Scale::UTC, observer, System::EQUAL, Model::ALGO4);
-  }, "Chart Algo4 requires JDE(TT) before 2035-01-01");
+  }, "Civil Algo4 requires JDE(TT) before 2035-01-01");
 
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises an unknown model.
   const auto unknown = static_cast<Model>(255);

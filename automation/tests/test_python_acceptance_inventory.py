@@ -27,6 +27,7 @@ SCRIPTS = {
   "consumer/chart_snapshot.py",
   "consumer/capabilities.py",
   "consumer/queries.py",
+  "consumer/protocol_seams.py",
 }
 
 
@@ -75,3 +76,18 @@ def test_installed_acceptance_runner_reconciles_scripts_before_execution(tmp_pat
       for arguments, keywords in calls
     )
   assert capsys.readouterr().out == stdout * len(calls)
+
+
+def test_final_generated_surface_keeps_the_existing_installed_acceptance_entrypoints():
+  from automation.abi_layout import load_abi
+
+  declarations = load_abi()
+  assert {"abi/verify.py", "abi/raw_protocol.py", "consumer/queries.py", "consumer/capabilities.py"} <= SCRIPTS
+  assert {
+    "celestial_positions",
+    "celestial_equatorial_positions",
+    "celestial_house_capability",
+    "celestial_model_identity_text",
+    "celestial_last_error_kind",
+  } <= declarations.BINDING_SPECS.keys()
+  assert declarations.PROTOCOLS["celestial_equatorial_positions"]["legal_empty"] is False

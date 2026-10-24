@@ -20,7 +20,7 @@ import hashlib
 import math
 import tempfile
 
-from ctypes import c_int32, c_uint32, c_uint8, c_double, c_bool, c_char, POINTER, Structure
+from ctypes import c_char
 from datetime import date
 from pathlib import Path
 from typing import Final
@@ -35,11 +35,6 @@ from automation.library_provenance import find_shared_lib, verify_library
 
 
 JIEQI_PER_YEAR: Final[int] = 24
-MODEL_KIND_ALL: Final[int] = 0xFFFFFFFF
-MODEL_KIND_DELTA_T: Final[int] = 0
-MODEL_DEFAULT_ALIAS: Final[int] = 0
-CAPABILITY_OPERATION_MODEL_IDENTITY: Final[int] = 4
-
 # The default table window (#164): 2051 is the tail-margin year, so every moment of 1950–2050
 # has its successor inside the table.
 DEFAULT_START_YEAR: Final[int] = 1950
@@ -55,24 +50,36 @@ MS_PER_DAY: Final[int] = 86_400_000
 JD_AT_ORDINAL_ZERO: Final[float] = 1721424.5
 
 TIMESCALE_NOTE: Final[str] = (
-  "Moments are modelled UT1 from query_jieqi_moment, using the library's resolved default ΔT model. "
+  "Moments are modelled UT1 from celestial_query_jieqi_moment, using its fixed Algo5 ΔT convention. "
   "jd_ut1 is a Julian day on that scale; iso_ut1 renders the same civil moment, truncated to milliseconds, "
   "without Z or a time-zone offset. No UTC conversion or leap-second table is used, including before 1972, "
   "near leap seconds and for future dates. These values do not predict future UTC or DUT1."
 )
 
 
-class _JieqiMomentQuery(Structure):
-  """Minimal mirror of `JieqiMomentQuery` in `celestial.h`."""
+def _check_error(lib: ctypes.CDLL, operation: str) -> None:
+  """Check the preserving error kind even when no message could be allocated."""
+  if lib.celestial_last_error_kind():
+    message = lib.celestial_last_error()
+    detail = message.decode("utf-8", errors="replace") if message else "native failure without a message"
+    raise RuntimeError(f"{operation}: {detail}")
 
-  _fields_ = [
-    ("valid", c_bool),
-    ("jq_idx", c_uint8),
-    ("y", c_int32),
-    ("m", c_uint32),
-    ("d", c_uint32),
-    ("frac", c_double),
-  ]
+
+def _sized_text(lib: ctypes.CDLL, function_name: str, *arguments: int) -> str:
+  """Size and fill caller-owned text, checking the including-NUL byte count on both calls."""
+  function = getattr(lib, function_name)
+  required = function(*arguments, None, 0)
+  _check_error(lib, function_name)
+  if required < 2:
+    raise RuntimeError(f"{function_name} returned an empty or invalid text size")
+
+  buffer = (c_char * required)()
+  ctypes.memset(buffer, 0xFF, required)
+  filled = function(*arguments, buffer, required)
+  _check_error(lib, function_name)
+  if filled != required or buffer.raw[-1:] != b"\0" or b"\0" in buffer.raw[:-1]:
+    raise RuntimeError(f"{function_name} returned inconsistent text")
+  return buffer.raw[:-1].decode("utf-8")
 
 
 def load_lib(artifact: Path) -> tuple[ctypes.CDLL, dict]:
@@ -80,58 +87,39 @@ def load_lib(artifact: Path) -> tuple[ctypes.CDLL, dict]:
   lib = ctypes.CDLL(str(artifact))
   abi = load_abi()
 
-  lib.query_jieqi_moment.argtypes = [c_int32, c_uint8]
-  lib.query_jieqi_moment.restype = _JieqiMomentQuery
-
-  # `buf` is an output buffer, so it is typed as a pointer rather than `c_char_p` - the latter
-  # reads as "takes a string" and invites passing a `bytes`, which the C side would write into.
-  lib.get_jieqi_name.argtypes = [c_uint8, POINTER(c_char), c_uint32]
-  lib.get_jieqi_name.restype = c_bool
-
-  for name in ("celestial_model_identities", "celestial_capability_text", "last_error"):
+  for name in (
+    "celestial_query_jieqi_moment",
+    "celestial_get_jieqi_name",
+    "celestial_delta_t",
+    "celestial_model_identity_text",
+    "celestial_last_error",
+    "celestial_last_error_kind",
+  ):
     arguments, result = abi.BINDING_SPECS[name]
     function = getattr(lib, name)
     function.argtypes, function.restype = arguments, result
 
-  count = c_uint32()
-  lib.celestial_model_identities(MODEL_KIND_ALL, ctypes.byref(count), None, 0)
-  if not count.value or lib.last_error():
-    raise RuntimeError("Cannot resolve the calculation model registry")
-  identities = (abi.ModelIdentityRecordV1 * count.value)()
-  written = lib.celestial_model_identities(MODEL_KIND_ALL, ctypes.byref(count), identities, len(identities))
-  if written != len(identities) or count.value != len(identities):
-    raise RuntimeError("Model registry changed during export")
-  defaults = [
-    (index, identity)
-    for index, identity in enumerate(identities)
-    if identity.kind_code == MODEL_KIND_DELTA_T and identity.default_alias_code == MODEL_DEFAULT_ALIAS
-  ]
-  if len(defaults) != 1:
-    raise RuntimeError("Cannot identify the default ΔT model")
-  ordinal, identity = defaults[0]
-  required = lib.celestial_capability_text(CAPABILITY_OPERATION_MODEL_IDENTITY, ordinal, None, 0)
-  if not required:
-    raise RuntimeError("Cannot read the default ΔT model description")
-  description = (c_char * (required + 1))()
-  written = lib.celestial_capability_text(CAPABILITY_OPERATION_MODEL_IDENTITY, ordinal, description, len(description))
-  if written != required:
-    raise RuntimeError("Default ΔT model description changed during export")
+  codes = abi.C_CODES
+  model = codes["CELESTIAL_DELTA_T_MODEL_ALGO5"]
+  identity = lib.celestial_delta_t(2000.0, model)
+  _check_error(lib, "celestial_delta_t")
+  if not identity.valid or identity.model_identity_code != model:
+    raise RuntimeError("Cannot resolve the fixed Jieqi UT1 conversion model")
+  kind = codes["CELESTIAL_MODEL_KIND_DELTA_T"]
+  description = _sized_text(lib, "celestial_model_identity_text", kind, identity.model_identity_code)
   return lib, {
     "delta_t": {
-      "kind_code": identity.kind_code,
-      "identity_code": identity.identity_code,
-      "description": description.value.decode("utf-8"),
+      "kind_code": kind,
+      "identity_code": identity.model_identity_code,
+      "description": description,
     },
     "leap_seconds": None,
   }
 
 
 def jieqi_name_zh(lib: ctypes.CDLL, jq_idx: int) -> str:
-  """Echo the ABI's own canonical name (`get_jieqi_name`), not a new translation (#164)."""
-  buf = (c_char * 16)()  # 2-3 UTF-8 bytes per Han character, three characters plus NUL fit.
-  if not lib.get_jieqi_name(jq_idx, buf, len(buf)):
-    raise RuntimeError(f"get_jieqi_name failed for jq_idx {jq_idx}")
-  return buf.value.decode("utf-8")
+  """Read the library's canonical name without assuming a fixed UTF-8 buffer size."""
+  return _sized_text(lib, "celestial_get_jieqi_name", jq_idx)
 
 
 def ut1_fields(y: int, m: int, d: int, fraction: float) -> tuple[float, str]:
@@ -190,11 +178,12 @@ def generate_entries(lib: ctypes.CDLL, start_year: int, end_year: int) -> list[d
   entries = []
   for year in range(start_year, end_year + 1):
     for idx in range(JIEQI_PER_YEAR):
-      query = lib.query_jieqi_moment(year, idx)
+      query = lib.celestial_query_jieqi_moment(year, idx)
+      _check_error(lib, "celestial_query_jieqi_moment")
       if not query.valid:
-        raise RuntimeError(f"query_jieqi_moment({year}, {idx}) returned invalid")
+        raise RuntimeError(f"celestial_query_jieqi_moment({year}, {idx}) returned invalid")
       if query.jq_idx != idx:
-        raise RuntimeError(f"query_jieqi_moment({year}, {idx}) echoed jq_idx {query.jq_idx}")
+        raise RuntimeError(f"celestial_query_jieqi_moment({year}, {idx}) echoed jq_idx {query.jq_idx}")
 
       jd_ut1, iso_ut1 = ut1_fields(query.y, query.m, query.d, query.frac)
       entries.append(

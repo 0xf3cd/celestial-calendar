@@ -112,6 +112,7 @@ jobs:
           ALIAS_TARBALL: ${{ steps.npm-package.outputs.alias_tarball }}
         run: |
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/fake_native_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs --exhaustive
           node bindings/javascript/test/node/tarball_consumer_test.mjs "$TARBALL" "$ALIAS_TARBALL"
           npm run test:types --prefix bindings/javascript
@@ -135,6 +136,7 @@ jobs:
           node --version
           npm --version
           node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+          node bindings/javascript/test/node/fake_native_test.mjs build/npm/package/index.mjs
           node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs
           node bindings/javascript/test/node/tarball_consumer_test.mjs "$TARBALL" "$ALIAS_TARBALL"
 

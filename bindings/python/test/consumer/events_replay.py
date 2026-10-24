@@ -60,7 +60,7 @@ def replay_longitude_events(section: dict) -> int:
   replayed = 0
   for entry in section["entries"]:
     events = celestial.longitude_events(
-      celestial.EventTarget(entry["target_code"]),
+      tuple(celestial.Target)[entry["target_code"]],
       entry["target_longitude_deg"],
       entry["start_jde_tt"],
       entry["end_jde_tt"],
@@ -90,7 +90,7 @@ def replay_station_events(section: dict) -> int:
   replayed = 0
   for entry in section["entries"]:
     events = celestial.longitude_stations(
-      celestial.EventTarget(entry["target_code"]),
+      tuple(celestial.Target)[entry["target_code"]],
       entry["start_jde_tt"],
       entry["end_jde_tt"],
     )
@@ -124,8 +124,8 @@ def replay_difference_events(section: dict) -> int:
   replayed = 0
   for entry in section["entries"]:
     events = celestial.longitude_difference_events(
-      celestial.EventTarget(entry["first_target_code"]),
-      celestial.EventTarget(entry["second_target_code"]),
+      tuple(celestial.Target)[entry["first_target_code"]],
+      tuple(celestial.Target)[entry["second_target_code"]],
       entry["target_difference_deg"],
       entry["start_jde_tt"],
       entry["end_jde_tt"],

@@ -1,38 +1,23 @@
 # Changelog
 
-## [Unreleased]
+## [v1.0.0]
+
+Unreleased. These entries describe current development changes; the 1.0 API and release notes are not yet frozen.
 
 ### Added
 
-- C ABI capabilities and model identities (#357): `celestial_capabilities`,
-  `celestial_model_identities` and `celestial_capability_text` describe per target what
-  POSITION, LONGITUDE_RATE, EVENTS and HOUSES accept, and enumerate the stable model
-  identity codes (five Delta T models with algo1–algo4 frozen and algo5 current, two
-  nutation models, six position sources). Every bound derives from the operation's own
-  defining constants — the Delta T models now own their applicability in `delta_t.hpp`
-  (algo1 from JDE(TT) 260089.5, algo3 to 2816787.5, algo4 to 2464328.5) — and the
-  kind-internal identity ordinals are pinned by `MODEL_IDENTITY_*` macros, a separate
-  code space from the `CHART_*` boundary selection codes. NaN domain ends mean
-  unbounded, and the text layer labels measured validation coverage as measured.
-  `chart_snapshot_v1` and every existing layout are unchanged.
-- Python capabilities (#357): `capabilities()`, `model_identities()` and
-  `capability_text()` mirror the enums, domains, identity codes and failures in frozen
-  dataclasses, with the Delta T DEFAULT alias reconciled against the C header and ABI
-  manifest by a mechanical gate. The new `capability.py` module ships in the wheel.
-- C ABI independent queries (#355): `position_query_v1` evaluates a caller-selected
-  target subset at one JDE(TT) under the count+fill protocol — caller order, duplicates
-  and empty selections rejected, whole-failure with no partial list — with no rate
-  stencil and no snapshot joint window, so a subset succeeds where a complete snapshot
-  rejects an excluded target's window. `house_query_v1` returns house geometry by value
-  at a civil instant, using the snapshot's civil + scale + Delta T conversion without
-  the snapshot joint window, and records the resolved Delta T and nutation identity
-  ordinals (`HOUSE_NUTATION_MODEL_*` selects the nutation model; DEFAULT is IAU 1980).
-  `astro::chart::position` is promoted from the snapshot's internal dispatch to the
-  public C++ surface. `PositionRecordV1` and `HouseQueryResultV1` join the layout-pin
-  and signature-pin gates; every existing layout is unchanged.
-- Python independent queries (#355): `positions()` and `house_query()` expose the
-  selected-target position and civil house paths with frozen dataclasses, resolved
-  model identities, and the same failure taxonomy as the C ABI.
+- Capabilities and model identities (#357): TT target-operation records, separate civil-house admission facts,
+  and separate operation/model text lookups. Python uses `Target` and kind-qualified `ModelKey` values;
+  `house_capability(delta_t_model=...)` is the canonical civil-house policy query. DEFAULT is input-only;
+  explicit selectable-model identities and selectors share their codes.
+- Independent ecliptic and equatorial selected-target queries in C++ (`ephemeris::position` /
+  `equatorial_position`), C (`celestial_positions` / `celestial_equatorial_positions`) and Python (`positions` /
+  `equatorial_positions`). Caller order and all-or-nothing results are preserved; no rates, civil conversion,
+  houses or chart joint window run. Each provider's declared window still applies.
+- Independent civil houses through `celestial_house_query` / Python `house_query`, with resolved Delta T and
+  nutation keys. C++ `house::axes` provides the four principal angles without cusps; no separate C axes export.
+- Public `julian_day::Scale`, `Times`, `civil_to_tt` and `resolve_times` for physical conversion, and
+  `chart::resolve_civil_times` for the shared chart/civil-house admission policy.
 
 ### Changed
 
@@ -44,12 +29,23 @@
 - Jieqi JSON export uses schema `celestial-calendar/jieqi-table@2` (#380): replace `unix_ms`/`iso_utc`
   with `jd_ut1`/`iso_ut1`. It keeps model UT1 without a UTC suffix or a claim of accuracy relative to UTC. Export now
   requires a verified build receipt; dirty-source builds record a snapshot digest and no source commit.
-- The Delta T code table is single-sourced: `astro::capability::resolve_delta_t_code`
-  resolves the boundary codes (DEFAULT selects Algo5) for the C ABI switch, and the new
-  gate test reconciles `celestial.h`, the manifest generator and both Python tables.
-- The private WASM ABI mirrors the expanded C surface (#357): the export list, binding
-  metadata, layouts and both ABI manifests carry the three capability exports and their
-  two record layouts. No public JavaScript capability API is added.
+- The 1.0 C ABI uses `celestial_` exports, `Celestial` records and one `CELESTIAL_TARGET_*` family, without 0.x
+  forwarders or universal V1 suffixes. Six Delta T exports become one model-selecting `celestial_delta_t`.
+  Layouts/signatures are frozen within a major; incompatible changes need a parallel shape or new major.
+- Error kind is authoritative even with an empty message. Both error readers preserve state; other exports
+  clear or record it. Native invalid input maps to Python `ValueError` / JavaScript `RangeError`;
+  computation/resource/internal and malformed-success failures use library errors.
+- Automatic error logging and its C/Python/JavaScript configuration APIs are removed. JavaScript Sun distance is
+  `distanceAu`. Sized UTF-8 strings count NUL and support zero-capacity sizing, truncation and termination.
+- Chart/civil-house admission shares `[1885, 2100)`, strict UTC from 1972 and Algo4 derived-TT `< 2464328.5` before
+  reverse conversion. House does not inherit the chart's joint target/rate window. The Algo4 policy excludes the
+  final roughly 71.5 UT1 seconds of 2034; common time/model errors may now precede a chart joint-window error.
+- Finite-input position evaluation checks computed coordinates without promising physical plausibility or accuracy;
+  computed failures use computation errors. Pluto/node hard windows are unchanged. No accepted numerical value
+  changes; invalid-input acceptance/messages and error classes intentionally change as described in
+  [Migrating to 1.0](MIGRATING_1_0.md). New external equatorial tolerances remain unselected.
+- The private WASM ABI follows the C migration; no public JavaScript position, equatorial, house, event or
+  capability query is added.
 
 ### Fixed
 

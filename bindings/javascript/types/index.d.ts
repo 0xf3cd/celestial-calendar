@@ -10,7 +10,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-export type LogVerbosity = "none" | "info" | "debug";
 export type MoonPhase = "new" | "firstQuarter" | "full" | "lastQuarter";
 export type DeltaTModel = "default" | "algo1" | "algo2" | "algo3" | "algo4" | "algo5";
 export type LunarAlgorithm = "algo1" | "algo2" | "algo3";
@@ -87,7 +86,7 @@ export interface CivilDateTimeResult extends CivilDateTime {
 export interface EclipticCoordinateAu {
   longitudeDeg: number;
   latitudeDeg: number;
-  radiusAu: number;
+  distanceAu: number;
 }
 
 export interface EclipticCoordinateKm {
@@ -180,7 +179,10 @@ export interface ChartSnapshotOptions {
   model?: DeltaTModel | undefined;
 }
 
-/** A namespace-method failure; recorded is true only when the message came from the native error channel. */
+/** An unavailable module, computation, resource or protocol failure; invalid native input throws RangeError.
+ * recorded is true only when the message came from the native error channel.
+ * Caller-owned WASM output buffers are limited to 16 MiB by this binding.
+ */
 export class CelestialError extends Error {
   constructor(operation: string, message: string, recorded: boolean);
   operation: string;
@@ -195,10 +197,6 @@ export class CelestialError extends Error {
  */
 export function init(): Promise<void>;
 
-export const config: Readonly<{
-  setLogVerbosity(level: LogVerbosity): void;
-}>;
-
 export const time: Readonly<{
   /** Convert a UT1 civil moment to JD (UT1). */
   ut1ToJd(ut1: CivilDateTime): number;
@@ -209,8 +207,8 @@ export const time: Readonly<{
   /**
    * Local apparent sidereal time in [0, 360) degrees, at a finite JD on UT1 in Gregorian years [401, 32766].
    * Geographic longitude is finite, east-positive, in [-180, 180] degrees.
-   * @throws {RangeError} For non-finite numbers or longitude outside its range.
-   * @throws {CelestialError} If the native boundary rejects the JD's year or cannot produce sidereal time.
+    * @throws {RangeError} For non-finite numbers, invalid longitude or a JD outside the native domain.
+    * @throws {CelestialError} If the calculation fails or native success is malformed.
    */
   localApparentSiderealTime(jdUt1: number, longitudeDeg: number): number;
   /**
@@ -248,7 +246,7 @@ export const moon: Readonly<{
   brightLimbPositionAngle(jde: number): number;
   /** TT-based JDEs of the selected phase in a Gregorian year in [1, 32766]. */
   phaseMoments(year: number, phase: MoonPhase): number[];
-  /** The next count New Moon JDEs; count is in [0, 4096]. */
+  /** The next count New Moon JDEs; the binding caps synchronous work at 4096 results. */
   newMoonsAfter(jde: number, count: number): number[];
   /** New Moon JDEs in a Gregorian year in [1, 32766]. */
   newMoonsInYear(year: number): number[];
@@ -259,7 +257,8 @@ export const jieqi: Readonly<{
    * UT1 civil moment for a Gregorian year in [401, 32766].
    * Not an east-eight wall date or UTC: establish the time-scale conversion before displaying either.
    * The returned UT1 year can differ from the requested year.
-   * @throws {CelestialError} If the native calculation cannot produce the moment.
+    * @throws {RangeError} For inputs outside the native domain.
+    * @throws {CelestialError} If the calculation fails or native success is malformed.
    */
   moment(year: number, index: Jieqi): JieqiMoment;
   /** Return the Chinese name of a Jieqi. */
@@ -286,23 +285,23 @@ export const lunar: Readonly<{
    * Metadata for a lunar year; firstDay uses the selected algorithm's Gregorian date basis.
    * @throws {TypeError} For a non-string algorithm or a non-integer year.
    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe year, or year outside its native range.
-   * @throws {CelestialError} If the native range query or year computation fails.
+    * @throws {CelestialError} If computation fails or native success is malformed.
    */
   yearInfo(algorithm: LunarAlgorithm, year: number): LunarYearInfo;
   /**
    * Convert Gregorian date fields on the selected algorithm's basis, not a civil moment.
    * @throws {TypeError} For wrong types, missing own fields, fraction/isLeap tags, or non-integer date fields.
-   * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, or an invalid Gregorian date.
-   * @throws {CelestialError} If the date is outside native Gregorian coverage or native conversion fails.
+    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, an invalid Gregorian date,
+    * or a date outside native Gregorian coverage.
+    * @throws {CelestialError} If computation fails or native success is malformed.
    */
   fromGregorian(algorithm: LunarAlgorithm, date: GregorianDate): LunarDate;
   /**
    * Convert a traditional lunar month/day, with an explicit leap flag, to a Gregorian date label.
    * @throws {TypeError} For wrong types, missing own fields, a fraction tag, or non-integer date fields.
    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, a year outside its native range,
-   * or month/day outside [1, 12]/[1, 30].
-   * @throws {CelestialError} If the native range query fails, the leap month/day does not exist,
-   * or native conversion fails.
+    * month/day outside [1, 12]/[1, 30], or a nonexistent leap month/day.
+    * @throws {CelestialError} If computation fails or native success is malformed.
    */
   toGregorian(algorithm: LunarAlgorithm, date: LunarDate): GregorianDate;
 }>;
@@ -315,8 +314,8 @@ export const chart: Readonly<{
    * UTC-derived UT1 is modelled, not observed DUT1. Ascendant round-off singularities and
    * Placidus polar limits are rejected. No failure returns a partial snapshot.
    * @throws {TypeError} For wrong types, missing own fields, inherited model or unknown option keys.
-   * @throws {RangeError} For invalid civil dates, fractions, locations or unknown string selections.
-   * @throws {CelestialError} Before init, on allocation/native failure or malformed native success.
+    * @throws {RangeError} For invalid civil dates, fractions, locations, selections or native domain rejection.
+    * @throws {CelestialError} Before init, on allocation/computation failure or malformed native success.
    */
   snapshot(civil: CivilDateTime, options: ChartSnapshotOptions): ChartSnapshot;
 }>;

@@ -23,7 +23,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import celestial_calendar as celestial
-from celestial_calendar import _binding
+from celestial_calendar import _abi, _binding
 from celestial_calendar import chart as chart_values
 from smoke import Trap, raises, replaced_binding
 from chart_replay import assert_chart_replay
@@ -31,10 +31,8 @@ from chart_replay import assert_chart_replay
 
 REPO = Path(__file__).resolve().parents[4]
 EXAMPLE = REPO / "docs/examples/chart_snapshot/data.json"
-# Native codes come from the checkout manifest, independent of the package's own tables.
-NATIVE_CODES = json.loads((REPO / "bindings/python/test/abi/manifest.json").read_text(encoding="utf-8"))[
-  "chart_v1_codes"
-]
+# Raw-protocol tests pin numeric meanings separately from these generated selectors.
+NATIVE_CODES = _abi.C_CODES
 CIVIL = celestial.CivilDateTime(2026, 1, 1, 0.5)
 LOCATION = celestial.GeoLocation(51.5, 0.0)
 
@@ -51,15 +49,19 @@ def snapshot(**changes: object) -> celestial.ChartSnapshot:
   return celestial.chart_snapshot(**arguments)
 
 
-def native_fixture() -> _binding.ChartSnapshotV1:
+def native_fixture() -> _abi.CelestialChartSnapshot:
   """Encode the documented replay as a decoding fixture, not a physical oracle."""
   example = json.loads(EXAMPLE.read_text(encoding="utf-8"))
-  result = _binding.ChartSnapshotV1()
+  result = _abi.CelestialChartSnapshot()
   result.valid = True
+  result.delta_t_identity_code = 5
+  result.nutation_identity_code = 2
   result.jd_ut1 = example["times"]["jd_ut1"]
   result.jde_tt = example["times"]["jde_tt"]
-  for native, body in zip(result.bodies, example["bodies"], strict=True):
-    native.target_code = NATIVE_CODES[f"CHART_TARGET_{body['target']}"]
+  sources = (1, 2, 3, 3, 3, 3, 3, 3, 3, 4, 5, 5, 6, 6)
+  for native, body, source in zip(result.bodies, example["bodies"], sources, strict=True):
+    native.target_code = NATIVE_CODES[f"CELESTIAL_TARGET_{body['target']}"]
+    native.source_code = source
     native.present_fields = 1 if body["distance_au"] is None else 3
     for name in ("longitude_deg", "latitude_deg", "longitude_rate_deg_per_tt_day"):
       setattr(native, name, body[name])
@@ -78,10 +80,13 @@ def check_snapshot(value: celestial.ChartSnapshot) -> None:
   assert type(value.times) is celestial.ChartTimes and type(value.houses) is celestial.ChartHouses
   assert type(value.bodies) is tuple and type(value.houses.cusps_deg) is tuple
   assert len(value.bodies) == 14 and len(value.houses.cusps_deg) == 12
-  assert tuple(body.target for body in value.bodies) == tuple(celestial.ChartTarget)
+  assert tuple(body.target for body in value.bodies) == tuple(celestial.Target)
+  assert value.delta_t_model.kind is celestial.ModelKind.DELTA_T
+  assert value.nutation_model.kind is celestial.ModelKind.NUTATION
   assert all(math.isfinite(time) for time in (value.times.jd_ut1, value.times.jde_tt))
   for index, body in enumerate(value.bodies):
     assert type(body) is celestial.BodyState
+    assert body.source.kind is celestial.ModelKind.POSITION_SOURCE
     assert 0.0 <= body.longitude_deg < 360.0
     assert math.isfinite(body.latitude_deg) and math.isfinite(body.longitude_rate_deg_per_tt_day)
     if index < 10:
@@ -107,7 +112,7 @@ def check_snapshot(value: celestial.ChartSnapshot) -> None:
 
 
 def run_validation_guards() -> None:
-  """Every rejected raw input leaves the snapshot binding's call count at zero."""
+  """Binding shape/width checks precede native; native owns civil/geographic domains."""
   cases = []
   for name, values in (
     (
@@ -215,12 +220,23 @@ def run_validation_guards() -> None:
     cases.append(({"location": celestial.GeoLocation(0.0, longitude)}, ValueError))
 
   assert len(cases) == 110, "independent chart raw-input guard inventory"
-  trap = Trap(fail=True)
-  with replaced_binding("chart_snapshot_v1", trap):
+  original = _binding.FUNCTIONS["celestial_chart_snapshot"]
+  calls = []
+
+  def counted(*args):
+    calls.append(args)
+    return original(*args)
+
+  with replaced_binding("celestial_chart_snapshot", counted):
     for changes, error_type in cases:
+      before = len(calls)
       raises(error_type, lambda changes=changes: snapshot(**changes))
-  assert trap.calls == 0
-  print(f"PASS chart raw-input guards {len(cases)}/{len(cases)}; snapshot calls=0")
+      if error_type is TypeError:
+        assert len(calls) == before
+      elif len(calls) != before:
+        assert len(calls) == before + 1 and _binding.last_error_kind() == 1
+  celestial.ut1_to_jd(celestial.CivilDateTime(2000, 1, 1, 0.5))
+  print(f"PASS chart binding/native raw-input guards {len(cases)}/{len(cases)}")
 
 
 def run_single_read_inputs() -> None:
@@ -250,7 +266,7 @@ def run_single_read_inputs() -> None:
   object.__setattr__(civil, "_reads", {})
   object.__setattr__(location, "_reads", {})
   trap = Trap(native_fixture())
-  with replaced_binding("chart_snapshot_v1", trap):
+  with replaced_binding("celestial_chart_snapshot", trap):
     snapshot(civil_dt=civil, location=location)
   assert trap.calls == 1 and trap.args[:4] == (2026, 1, 1, 0.5)
   assert trap.args[5:7] == (51.5, 0.0)
@@ -263,10 +279,11 @@ def run_owned_values() -> None:
   """One scalar call copies all payload fields without retaining a native buffer."""
   native = native_fixture()
   trap = Trap(native)
-  with replaced_binding("chart_snapshot_v1", trap):
+  with replaced_binding("celestial_chart_snapshot", trap):
     value = snapshot()
     assert trap.calls == 1 and trap.args == (2026, 1, 1, 0.5, 0, 51.5, 0.0, 2, 0)
     for model, code in zip(celestial.DeltaTModel, (0, 1, 2, 3, 4, 5), strict=True):
+      native.delta_t_identity_code = code or 5
       snapshot(model=model)
       assert trap.args[-1] == code
     for scale, code in zip(celestial.CivilScale, (0, 1), strict=True):
@@ -295,10 +312,12 @@ def run_owned_values() -> None:
     **{**example["houses"], "cusps_deg": tuple(example["houses"]["cusps_deg"])}
   )
   for body, expected in zip(value.bodies, example["bodies"], strict=True):
-    assert body == celestial.BodyState(**{**expected, "target": celestial.ChartTarget[expected["target"]]})
+    assert body == celestial.BodyState(
+      **{**expected, "target": celestial.Target[expected["target"]], "source": body.source}
+    )
   for name in (
     "CivilScale",
-    "ChartTarget",
+    "Target",
     "HouseSystem",
     "GeoLocation",
     "ChartTimes",
@@ -307,12 +326,14 @@ def run_owned_values() -> None:
     "ChartSnapshot",
   ):
     assert getattr(celestial, name) is getattr(chart_values, name)
-    assert getattr(celestial, name).__module__ == "celestial_calendar.chart"
+    assert getattr(celestial, name).__module__ == (
+      "celestial_calendar._models" if name == "Target" else "celestial_calendar.chart"
+    )
   for enum_type, values in (
     (celestial.CivilScale, "utc ut1"),
     (celestial.HouseSystem, "equal whole_sign placidus"),
     (
-      celestial.ChartTarget,
+      celestial.Target,
       "sun moon mercury venus mars jupiter saturn uranus neptune pluto "
       "mean_ascending mean_descending true_ascending true_descending",
     ),
@@ -340,10 +361,14 @@ def run_error_translation() -> None:
   for detail in (b"core joint domain rejected", b"", None):
     native = Trap(SimpleNamespace(valid=False))
     reader = Trap(detail)
-    with replaced_binding("chart_snapshot_v1", native), replaced_binding("last_error", reader):
+    with (
+      replaced_binding("celestial_chart_snapshot", native),
+      replaced_binding("last_error", reader),
+      replaced_binding("last_error_kind", Trap(2)),
+    ):
       error = raises(celestial.CelestialError, snapshot)
-    assert error.operation == "chart_snapshot" and error.recorded is bool(detail)
-    assert str(error) == (detail.decode() if detail else "chart_snapshot failed")
+    assert error.operation == "chart_snapshot" and error.recorded
+    assert str(error) == (detail.decode() if detail else "chart_snapshot failed (native error kind 2)")
     assert native.calls == reader.calls == 1
 
   malformed = [SimpleNamespace(valid=True), SimpleNamespace()]
@@ -360,6 +385,10 @@ def run_error_translation() -> None:
   for path, bad in (
     (("jd_ut1",), math.nan),
     (("jde_tt",), math.inf),
+    (("delta_t_identity_code",), 0),
+    (("nutation_identity_code",), 0),
+    (("bodies", 0, "source_code"), 0),
+    (("bodies", 0, "source_code"), 7),
     (("bodies", 0, "target_code"), 99),
     (("bodies", 1, "target_code"), 0),
     (("bodies", 0, "present_fields"), 7),
@@ -383,15 +412,15 @@ def run_error_translation() -> None:
     else:
       setattr(owner, path[-1], bad)
     malformed.append(native)
-  assert len(malformed) == 18, "independent chart malformed-payload inventory"
+  assert len(malformed) == 22, "independent chart malformed-payload inventory"
   reader = Trap(fail=True)
   with replaced_binding("last_error", reader):
     for payload in malformed:
       native = Trap(payload)
-      with replaced_binding("chart_snapshot_v1", native):
+      with replaced_binding("celestial_chart_snapshot", native):
         error = raises(celestial.CelestialError, snapshot)
       assert error.operation == "chart_snapshot" and not error.recorded
-      assert "Malformed native chart snapshot" in str(error) and native.calls == 1
+      assert "Malformed native chart_snapshot" in str(error) and native.calls == 1
   assert reader.calls == 0
   print(f"PASS chart native failure/empty text and malformed-output translation {len(malformed)}/{len(malformed)}")
 
@@ -401,7 +430,7 @@ def check_legacy_positions(value: celestial.ChartSnapshot) -> None:
   sun = celestial.sun_apparent_geocentric_coordinate(value.times.jde_tt)
   moon = celestial.moon_apparent_geocentric_coordinate(value.times.jde_tt)
   assert value.bodies[0].longitude_deg == sun.longitude_deg
-  assert value.bodies[0].latitude_deg == sun.latitude_deg and value.bodies[0].distance_au == sun.radius_au
+  assert value.bodies[0].latitude_deg == sun.latitude_deg and value.bodies[0].distance_au == sun.distance_au
   assert value.bodies[1].longitude_deg == moon.longitude_deg and value.bodies[1].latitude_deg == moon.latitude_deg
 
 
@@ -430,7 +459,10 @@ def run_documented_replay() -> None:
   check_snapshot(value)
   check_legacy_positions(value)
   actual = asdict(value)
-  for body in actual["bodies"]:
+  for index, body in enumerate(actual["bodies"]):
+    source = body.pop("source")
+    assert source["kind"] == "position_source"
+    assert source["identity"] == (1, 2, 3, 3, 3, 3, 3, 3, 3, 4, 5, 5, 6, 6)[index]
     body["target"] = body["target"].name
   for name, difference in assert_chart_replay(actual, example).items():
     print(f"REPLAY chart example {name} max_abs={difference:.17g}")
@@ -439,7 +471,7 @@ def run_documented_replay() -> None:
 
 def run_replay_corruption_controls() -> None:
   """Reject valid-range changes to real native outputs, then replay the clean result."""
-  original = _binding.FUNCTIONS["chart_snapshot_v1"]
+  original = _binding.FUNCTIONS["celestial_chart_snapshot"]
 
   for role in ("mercury-longitude", "cusp7", "pluto-rate"):
 
@@ -454,7 +486,7 @@ def run_replay_corruption_controls() -> None:
         result.bodies[9].longitude_rate_deg_per_tt_day += 1.0
       return result
 
-    with replaced_binding("chart_snapshot_v1", corrupted):
+    with replaced_binding("celestial_chart_snapshot", corrupted):
       error = raises(AssertionError, run_documented_replay)
       assert "replay residual" in str(error), f"wrong corruption detector for {role}: {error}"
     run_documented_replay()
@@ -466,7 +498,7 @@ def run_ingress_native_boundaries() -> None:
   """Pair public ingress outcomes with direct native results at the same raw inputs."""
   utc, ut1 = celestial.CivilScale.UTC, celestial.CivilScale.UT1
   algo4, algo5 = celestial.DeltaTModel.ALGO4, celestial.DeltaTModel.ALGO5
-  native_failure = celestial.CelestialError
+  native_failure = ValueError
   cases = (
     ("civil-below", (1884, 12, 31, 0.5), ut1, 51.5, 0.0, algo5, ValueError),
     ("civil-above", (2100, 1, 1, 0.0), ut1, 51.5, 0.0, algo5, ValueError),
@@ -489,9 +521,16 @@ def run_ingress_native_boundaries() -> None:
   model_codes = {celestial.DeltaTModel.ALGO4: 4, celestial.DeltaTModel.ALGO5: 5}
   assert len(cases) == 17, "independent chart public/native boundary inventory"
   for role, civil, scale, latitude, longitude, model, error_type in cases:
-    scale_code = NATIVE_CODES[f"CHART_CIVIL_SCALE_{scale.name}"]
-    arguments = (*civil, scale_code, latitude, longitude, NATIVE_CODES["CHART_HOUSE_SYSTEM_EQUAL"], model_codes[model])
-    native = _binding.FUNCTIONS["chart_snapshot_v1"](*arguments)
+    scale_code = NATIVE_CODES[f"CELESTIAL_CIVIL_SCALE_{scale.name}"]
+    arguments = (
+      *civil,
+      scale_code,
+      latitude,
+      longitude,
+      NATIVE_CODES["CELESTIAL_HOUSE_SYSTEM_EQUAL"],
+      model_codes[model],
+    )
+    native = _binding.FUNCTIONS["celestial_chart_snapshot"](*arguments)
     assert native.valid is (error_type is None), f"native outcome: {role}"
     native_error = _binding.last_error_text()
     public_arguments = {
@@ -545,15 +584,15 @@ def run_core_aligned_cases() -> None:
 
   # Same epochs as Chart.WrapsStationsAndNodeAntipodesReplayUnderlyingApis, converted by native helpers.
   for target, jde_tt in (
-    (celestial.ChartTarget.SUN, 2460754.876816418),
-    (celestial.ChartTarget.MOON, 2460681.293070456),
+    (celestial.Target.SUN, 2460754.876816418),
+    (celestial.Target.MOON, 2460681.293070456),
   ):
     before, after = (
       snapshot(civil_dt=celestial.jde_to_ut1(jde_tt + offset), scale=celestial.CivilScale.UT1, location=south)
       for offset in (-0.02, 0.02)
     )
     # V1 records follow code order.
-    index = NATIVE_CODES[f"CHART_TARGET_{target.name}"]
+    index = NATIVE_CODES[f"CELESTIAL_TARGET_{target.name}"]
     assert before.bodies[index].longitude_deg > after.bodies[index].longitude_deg
     assert before.bodies[index].longitude_rate_deg_per_tt_day > 0.0
     assert after.bodies[index].longitude_rate_deg_per_tt_day > 0.0
@@ -584,8 +623,8 @@ def run_core_aligned_cases() -> None:
     for system in (celestial.HouseSystem.EQUAL, celestial.HouseSystem.WHOLE_SIGN):
       check_snapshot(snapshot(location=celestial.GeoLocation(latitude, 0.0), system=system))
   for changes in failures:
-    error = raises(celestial.CelestialError, lambda changes=changes: snapshot(**changes))
-    assert error.operation == "chart_snapshot" and error.recorded
+    error = raises(ValueError, lambda changes=changes: snapshot(**changes))
+    assert str(error) and _binding.last_error_kind() == 1
     check_snapshot(snapshot())
     assert _binding.last_error_text() == ""
   print("PASS installed historical/model/southern/wrap/station/polar/joint-domain chart cases")
@@ -606,12 +645,12 @@ def run_unresolved_ascendant() -> None:
     for offset in (0.0, -0.000001, 0.000001):
       unresolved = replace(location, longitude_deg=location.longitude_deg + offset)
       error = raises(
-        celestial.CelestialError,
+        ValueError,
         lambda unresolved=unresolved, system=system: snapshot(
           civil_dt=civil, location=unresolved, system=system, model=celestial.DeltaTModel.ALGO5
         ),
       )
-      assert error.operation == "chart_snapshot" and error.recorded and "Ascendant" in str(error)
+      assert "Ascendant" in str(error) and _binding.last_error_kind() == 1
       assert "Ascendant" in _binding.last_error_text()
       failures += 1
     for offset in (-0.000001, 0.000001):

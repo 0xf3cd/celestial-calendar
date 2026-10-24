@@ -6,9 +6,8 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide describes version `0.9.0`. The install command below gets the latest version on PyPI; an older installed
-version may lack some APIs shown here, so check its version before running an example. To use the current source,
-build a local wheel from a full checkout as described below.
+This guide describes version **1.0.0**, currently unreleased. Released 0.x wheels use the older target and model vocabulary.
+To run these examples against current source, build a local wheel from a full checkout as described below.
 
 <a id="install"></a>
 ## Install
@@ -112,21 +111,26 @@ for full values.
 <a id="capabilities"></a>
 ### Capabilities and model identities
 
-`capabilities()`, `model_identities()` and `capability_text()` describe what the public operations
-accept and which models stand behind a result. Every domain bound is computed from the operation's
-own defining constants, so a capability record accepts and rejects exactly what the computation
-does; NaN domain ends mean unbounded, and the text layer labels measured validation coverage as
-measured — a domain is an acceptance boundary, not an accuracy promise.
+`capabilities()` describes native-owned TT target domains for POSITION, LONGITUDE_RATE, EVENTS and EQUATORIAL.
+It rejects HOUSES, CHART and DELTA_T with `ValueError`. NaN endpoints mean no declared hard bound;
+`FINITE_INPUT_EVALUATION` permits evaluation at finite epochs, which may still fail. Neither finite
+evaluation nor coordinate-validity checks establish accuracy or physical plausibility at remote epochs.
+`house_capability(delta_t_model=...)` instead returns a `CivilHouseCapability`: civil years, allowed scales,
+UTC start date, resolved Delta T key and an optional exclusive derived-TT cutoff. It does not promise
+geometric solvability. Civil-house policy is queried only through `house_capability()`, not `capabilities()`.
+`capability_text()` requires a concrete `Target` for target operations, and `subject=None` for HOUSES,
+CHART and DELTA_T descriptions. An inapplicable Target is rejected rather than ignored.
 
 ```python
 import celestial_calendar as celestial
 
 records = celestial.capabilities(celestial.CapabilityOperation.EVENTS)
-pluto = next(r for r in records if r.subject is celestial.CapabilitySubject.PLUTO)
+pluto = next(r for r in records if r.subject is celestial.Target.PLUTO)
 print(pluto.domain_start_jde_tt, pluto.domain_end_jde_tt, pluto.maximum_span_tt_days)
-print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.CapabilitySubject.PLUTO))
+print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.Target.PLUTO))
 identities = celestial.model_identities()
-algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
+algo5 = next(i for i in identities if i.key == celestial.ModelKey(celestial.ModelKind.DELTA_T, 5))
+print(celestial.model_identity_text(algo5.key))
 ```
 
 <a id="independent-queries"></a>
@@ -141,7 +145,7 @@ and records which models it resolved. Both fail whole on any error; there is no 
 import celestial_calendar as celestial
 
 selected = celestial.positions(
-  [celestial.ChartTarget.PLUTO, celestial.ChartTarget.SUN],
+  [celestial.Target.PLUTO, celestial.Target.SUN],
   2409543.5,  # Pluto's window start
 )
 for position in selected:
@@ -150,8 +154,33 @@ for position in selected:
 location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
 civil = celestial.CivilDateTime(year=1885, month=1, day=1, fraction=0.0)  # before the snapshot window
 houses = celestial.house_query(civil, celestial.CivilScale.UT1, location, celestial.HouseSystem.PLACIDUS)
-print(houses.times, houses.houses.ascendant_deg, houses.delta_t_identity, houses.nutation_identity)
+print(houses.times, houses.houses.ascendant_deg, houses.delta_t_model, houses.nutation_model)
+again = celestial.house_query(
+  civil,
+  celestial.CivilScale.UT1,
+  location,
+  celestial.HouseSystem.PLACIDUS,
+  delta_t_model=houses.delta_t_model,
+  nutation_model=houses.nutation_model,
+)
+equatorial = celestial.equatorial_positions([celestial.Target.SUN, celestial.Target.TRUE_ASCENDING], 2451545.0)
+for position in equatorial:
+  print(position.right_ascension_deg, position.declination_deg, position.distance_au, position.source)
 ```
+
+`Target` is shared by positions, events, capabilities and chart bodies; the old `ChartTarget`, `EventTarget`
+and `CapabilitySubject` classes are removed. Ecliptic and equatorial results are distinct frozen values,
+preserve selection order, and reject empty or duplicate selections. RA is `[0, 360)` degrees and declination
+`[-90, 90]` degrees, geocentric and of date; the projection uses fixed IAU1980 longitude nutation and true obliquity.
+Neither query computes rates, civil times or houses. Physical distances are AU; mathematical nodes have no distance.
+
+`ModelKey(kind, identity)` is immutable and kind-qualified; zero is never a resolved identity. Registry entries
+expose `.key`, position/chart bodies expose `.source`, and house/chart results expose `.delta_t_model` and
+`.nutation_model`. Matching keys can replace selector enums without converting registry ordinals. DEFAULT is
+input-only and native-resolved; use operation text to inspect defaults. Reusing keys preserves model selection,
+while exact coefficients also require the library/source version. `delta_t(..., model=...)` still returns a float
+and validates the native resolved key. Source fields use `ModelKey`; the old `PositionSource` enum is removed.
+`SunCoordinate.distance_au` replaces `radius_au`; Moon distance remains km.
 
 <a id="interval-longitude-events"></a>
 ### Interval longitude events
@@ -164,16 +193,16 @@ names or interpretations — map exact target angles to your own terminology.
 ```python
 import celestial_calendar as celestial
 
-crossings = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+crossings = celestial.longitude_events(celestial.Target.MERCURY, 0.0, 2460735.5, 2460785.5)
 for event in crossings:
   print(event.jde_tt, event.longitude_deg, event.direction)
 
-stations = celestial.longitude_stations(celestial.EventTarget.MERCURY, 2460735.5, 2460785.5)
+stations = celestial.longitude_stations(celestial.Target.MERCURY, 2460735.5, 2460785.5)
 for station in stations:
   print(station.jde_tt, station.motion_before.value, "->", station.motion_after.value)
 
 differences = celestial.longitude_difference_events(
-  celestial.EventTarget.MOON, celestial.EventTarget.SUN, -60.0, 2460676.5, 2460707.5
+  celestial.Target.MOON, celestial.Target.SUN, -60.0, 2460676.5, 2460707.5
 )
 ```
 
@@ -238,13 +267,14 @@ give the per-function contracts.
 
 Wrong input types, including members of the wrong enum, raise `TypeError`. Values that fail finiteness, range, or
 domain checks raise `ValueError`, and so does an object of the expected enum class that is not one of its declared
-members. Failures reported by the native boundary raise `CelestialError`; its `operation` names the public call, and
-`recorded` says whether the message came from the native error channel. A legitimate absence remains `None` or `()`.
+members. Native invalid-input errors also raise `ValueError`. Computation, resource and internal failures raise
+`CelestialError`, as do corrupt successful payloads. Its `operation` names the public call; `recorded` is true when
+native reported an error kind, even if it could not allocate a message. A legitimate absence remains `None` or `()`.
+The native logging setter and `LogVerbosity` are removed. Errors are not automatically printed.
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` accepts a finite JD on UT1 whose Gregorian year is in
 `[401, 32766]`, and a finite, east-positive geographic longitude in `[-180, 180]` degrees. The result is in
-`[0, 360)` degrees. The native boundary checks the year range, so a JD outside it raises `CelestialError`, not the
-`ValueError` used by the Python finiteness and longitude checks. `apparent_solar_time()` also accepts an
+`[0, 360)` degrees. A JD outside the native year range raises `ValueError`. `apparent_solar_time()` also accepts an
 east-positive geographic longitude in `[-180, 180]` degrees, but its civil input is UTC.
 
 `jieqi_moment(year, jieqi)` returns `JieqiMoment(jieqi, moment_ut1)`. Its `CivilDateTime` is UT1, not UTC or a
@@ -262,31 +292,34 @@ longitude. `longitude_deg` must be finite and in `[0, 360)` degrees. Native fail
 
 `new_moons_after(jde, count)` accepts `count` in `[0, 4096]`; zero returns `()`.
 The cap keeps a single native output buffer within 32 KiB.
+Count/fill and sized-text output buffers have a separate binding resource cap of 64 MiB per buffer; exceeding it
+raises `CelestialError` before allocation. Both protocol passes check error kind, totals and string termination.
 
 <a id="chart-inputs-and-failure-boundaries"></a>
 ### Chart inputs and failure boundaries
 
 `chart_snapshot(civil_dt, scale, location, system, model=DeltaTModel.DEFAULT)` accepts a `CivilDateTime`,
 `CivilScale.UTC` / `UT1`, a `GeoLocation`, and `HouseSystem.EQUAL` / `WHOLE_SIGN` / `PLACIDUS`.
-`DEFAULT` is the same as `ALGO5`; select other models explicitly with the existing `DeltaTModel`. It does not accept
+Native resolves `DEFAULT` (currently `ALGO5`); select models explicitly with `DeltaTModel` or a matching `ModelKey`. It does not accept
 a standard-library `datetime`: the caller must first convert local wall-clock time to the declared input scale,
 not drop the timezone and pass the rest.
 
-Python checks every input before the native calculation. Wrong types raise `TypeError`, including a plain string
+Python checks record/enum/scalar types, finiteness and ABI integer width before native. Wrong types raise `TypeError`, including a plain string
 or another enum's member for `scale`, `system`, or `model`, and an enum member in a numeric field. `ValueError`
 covers an object of the expected enum class that is not one of its declared members, invalid Gregorian dates,
 non-finite numbers, and raw values out of range: civil years `[1885, 2100)`, day fraction `[0, 1)`, UTC from
 1972-01-01 (select `CivilScale.UT1` for earlier input), latitude `(-90, 90)`, and longitude `[-180, 180]`.
 The native core owns the shared converted-TT domain JDE `[2409543.875, 2488069.125)`, Algo4's additional
 JDE `< 2464328.5` limit, Ascendant directions unresolved at round-off in every house system, and date-dependent
-Placidus polar limits. Those failures raise `CelestialError`, with no partial result or substitute house system.
+Placidus polar limits. Native domain/geometry rejection raises `ValueError`; computation failures raise
+`CelestialError`, with no partial result or substitute house system. Civil-house queries share the same exclusive
+derived-TT Algo4 cutoff; this also rejects UT1 inputs near the end of 2034 whose derived TT crosses the cutoff.
 A valid raw civil year does not guarantee that the converted snapshot can be calculated.
 
 For UTC input, the reported UT1 is modelled UT1, not observed DUT1;
 [Time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales) explains how UTC
 reaches TT and UT1. An inserted leap second is outside the civil day-fraction input. The Python result is copied
-from the fixed C V1 protocol and keeps no native buffer; incompatible extensions of the fields or body set use a new
-protocol version.
+from the C protocol and keeps no native buffer; incompatible extensions require an explicitly different shape or major.
 
 <a id="date-bridges-and-lunar-round-trip"></a>
 ### Date-only bridges and Lunar round trip
@@ -346,15 +379,11 @@ the Gregorian `first_day`, the traditional `leap_month` number or `None`, and `m
 with a leap month directly after the regular month of the same name. `lunar_to_gregorian()` accepts a `LunarDate`
 with a traditional month number in `[1, 12]` and an explicit `is_leap` boolean, not a positional month index.
 
-`lunar_year_info()` and `lunar_to_gregorian()` query the native range once per call before checking the Lunar year.
-The Python package keeps no separate range table or cache and does not query ranges at import. A Lunar year out
-of range raises `ValueError`; a failed native range query raises `CelestialError` whose public operation is the
-caller, `"lunar_year_info"` or `"lunar_to_gregorian"`, not the internal query.
+`lunar_year_info()` and `lunar_to_gregorian()` leave date/year admission to their native calculation.
+The Python package keeps no separate range table or cache and makes no range query at import or before those calls.
 
 A valid Gregorian label outside the selected algorithm's coverage, or a Lunar leap-month/day combination that does
-not exist, raises `CelestialError`. For example, `gregorian_to_lunar(LunarAlgorithm.ALGO1, GregorianDate(1900, 1, 1))`
-passes Gregorian validation but raises `CelestialError`, whereas `lunar_year_info(LunarAlgorithm.ALGO1, 1900)`
-raises `ValueError`.
+not exist, raises `ValueError`, as does a Lunar year outside the selected algorithm's domain.
 
 <a id="delta-t-models"></a>
 ### Delta T models

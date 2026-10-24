@@ -113,6 +113,7 @@ def test_javascript_test_entries_match_their_execution_owners():
     "support/chart_api.mjs",
     "support/chart_replay.mjs",
     "support/package_consumer.mjs",
+    "support/fake_native.mjs",
   }
   entries = {
     path.relative_to(test_root).as_posix()
@@ -153,6 +154,7 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert job_entries == {
     "wasm": {
       "node/public_api_test.mjs",
+      "node/fake_native_test.mjs",
       "node/date_test.mjs",
       "node/tarball_consumer_test.mjs",
       "browser/browser_test.mjs",

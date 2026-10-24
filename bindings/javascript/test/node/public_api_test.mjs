@@ -11,8 +11,7 @@
  */
 
 import assert from "node:assert/strict";
-import { copyFile, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { API, SymbolFlags } from "typescript/unstable/sync";
@@ -20,7 +19,7 @@ import {
   isLiteralTypeNode, isNumericLiteral, isStringLiteral, isTypeLiteralNode, isTypeReferenceNode, isUnionTypeNode,
 } from "typescript/unstable/ast";
 import { testChartApi } from "../support/chart_api.mjs";
-import { chartLabel } from "../support/chart_replay.mjs";
+import { testFakeNative } from "../support/fake_native.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -30,12 +29,9 @@ const heldWasmPath = `${wasmPath}.init-failure-probe`;
 const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
-const namespaces = ["config", "time", "sun", "moon", "jieqi", "lunar", "chart"];
-const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
-const expectedChartTargets = Object.entries(manifest.chart_v1_codes)
-  .filter(([name]) => name.startsWith("CHART_TARGET_"))
-  .sort((left, right) => left[1] - right[1])
-  .map(([name]) => chartLabel(name.slice("CHART_TARGET_".length)));
+const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart"];
+const { CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
+const expectedChartTargets = Object.keys(CHART_CODES.targets);
 
 const declaredSurface = (text) => {
   const api = new API({ fs: { readFile: (path) => resolve(path) === declarationPath ? text : undefined } });
@@ -121,10 +117,10 @@ assert(Object.isFrozen(celestial.Jieqi), "Jieqi is frozen");
 
 assert.deepEqual(
   Object.keys(celestial).sort(),
-  ["CelestialError", "Jieqi", "chart", "config", "init", "jieqi", "lunar", "moon", "sun", "time"],
+  ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"],
   "public module exports",
 );
-assert.deepEqual(Object.keys(celestial.config), ["setLogVerbosity"]);
+assert.equal("config" in celestial, false);
 assert.deepEqual(
   Object.keys(celestial.time),
   ["ut1ToJd", "ut1ToJde", "jdeToUt1", "localApparentSiderealTime", "deltaT"],
@@ -156,7 +152,6 @@ const edge = (label, action, ErrorType) => {
 
 const uninitializedCalls = [
   ["chart.snapshot", [{ year: 2026, month: 1, day: 1, fraction: 0.5 }, { scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus" }]],
-  ["config.setLogVerbosity", ["none"]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.jdeToUt1", [2451545.0]],
@@ -270,7 +265,6 @@ const civilResult = (value) => {
   assert.equal(value.second, seconds - value.hour * 3600 - value.minute * 60, "second retains the remainder");
 };
 
-check("config.setLogVerbosity", () => assert.equal(celestial.config.setLogVerbosity("none"), undefined));
 check("time.ut1ToJd", () => assert.equal(
   celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0.5 }),
   2451545.0,
@@ -296,7 +290,8 @@ check("time.deltaT", () => {
 });
 check("sun.apparentGeocentricCoordinate", () => {
   const value = celestial.sun.apparentGeocentricCoordinate(2451545.0);
-  finite(value.longitudeDeg, value.latitudeDeg, value.radiusAu);
+  finite(value.longitudeDeg, value.latitudeDeg, value.distanceAu);
+  assert.equal("radiusAu" in value, false);
 });
 check("sun.longitudeCrossings", () => {
   assert.equal(celestial.sun.longitudeCrossings(2024, 0).length, 1);
@@ -472,8 +467,6 @@ for (const [label, action] of acceptedBoundaries) assert.doesNotThrow(action, la
 assert.deepEqual(celestial.sun.longitudeCrossings(1, 281.3), [], "valid no-root result");
 assert.deepEqual(celestial.moon.newMoonsAfter(2451545.0, 0), [], "zero requested count");
 
-edge("log level type", () => celestial.config.setLogVerbosity(true), TypeError);
-edge("log level value", () => celestial.config.setLogVerbosity("trace"), RangeError);
 edge("date object", () => celestial.time.ut1ToJd(null), TypeError);
 edge("missing date field", () => celestial.time.ut1ToJd({ year: 2024, month: 1, day: 1 }), TypeError);
 assert.doesNotThrow(
@@ -519,9 +512,7 @@ try {
 } catch (error) {
   recordingError = error;
 }
-assert(recordingError instanceof celestial.CelestialError);
-assert.equal(recordingError.operation, "time.localApparentSiderealTime");
-assert.equal(recordingError.recorded, true);
+assert(recordingError instanceof RangeError);
 ++edges;
 
 let lunarError;
@@ -530,225 +521,16 @@ try {
 } catch (error) {
   lunarError = error;
 }
-assert(lunarError instanceof celestial.CelestialError);
-assert.equal(lunarError.operation, "lunar.fromGregorian");
-assert.equal(lunarError.recorded, true);
+assert(lunarError instanceof RangeError);
 assert.match(lunarError.message, /cannot be represented/);
 ++edges;
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 happy += await testChartApi(celestial, entryUrl);
-assert.equal(happy, 23, "public method denominator");
-assert.equal(edges, 30, "public edge denominator");
+assert.equal(happy, 22, "public method denominator");
+assert.equal(edges, 28, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/23; legacy edge/error cases ${edges}/30`);
+console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/28`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/18`);
 
-const fixtureDirectory = await mkdtemp(resolve(tmpdir(), "celestial-js-contract-"));
-try {
-  const fixtureEntry = resolve(fixtureDirectory, "index.mjs");
-  const source = await readFile(fileURLToPath(entryUrl), "utf8");
-  await writeFile(fixtureEntry, source.replace("./celestial-jieqi.mjs", "./mock-module.mjs"), "utf8");
-  await copyFile(fileURLToPath(new URL("./bindings.mjs", entryUrl)), resolve(fixtureDirectory, "bindings.mjs"));
-  await copyFile(fileURLToPath(new URL("./validation.mjs", entryUrl)), resolve(fixtureDirectory, "validation.mjs"));
-  await writeFile(
-    resolve(fixtureDirectory, "mock-module.mjs"),
-    `export default async () => {
-  await globalThis.__celestialLoad;
-  const buffer = new ArrayBuffer(65_536);
-  const M = {
-    HEAPU8: new Uint8Array(buffer),
-    HEAPU16: new Uint16Array(buffer),
-    HEAP32: new Int32Array(buffer),
-    HEAPU32: new Uint32Array(buffer),
-    HEAPF64: new Float64Array(buffer),
-  };
-  let next = 8;
-  let lastError = "";
-  M._malloc = (bytes) => {
-    if (globalThis.__celestialFailAllocation === bytes) return 0;
-    const ptr = next;
-    next += Math.ceil(bytes / 8) * 8;
-    return ptr;
-  };
-  M._free = () => {};
-  M._new_moons_after_jde = (_jde, _slots, count) => count;
-  M._moon_phase_moments = (_year, _phase, countPtr, slots) => {
-    if (slots === 0) {
-      M.HEAPU32[countPtr >> 2] = 2;
-      return 0;
-    }
-    lastError = "native phase fill failed";
-    M.HEAPU32[countPtr >> 2] = 0;
-    return 0;
-  };
-  M._sun_apparent_geocentric_coord = M._moon_apparent_geocentric_coord = (ptr) => {
-    M.HEAPU8[ptr] = 0;
-    lastError = "native coordinate failed";
-  };
-  M._get_supported_lunar_year_range = (ptr, algorithm) => {
-    globalThis.__celestialLunarCalls.push(["range", algorithm]);
-    M.HEAPU8[ptr] = globalThis.__celestialFailRange ? 0 : 1;
-    M.HEAP32[(ptr + 4) >> 2] = globalThis.__celestialLunarRange.start;
-    M.HEAP32[(ptr + 8) >> 2] = globalThis.__celestialLunarRange.end;
-    lastError = globalThis.__celestialFailRange ? "native lunar range query failed" : "";
-  };
-  M._get_lunar_year_info = (ptr, algorithm, year) => {
-    globalThis.__celestialLunarCalls.push(["yearInfo", algorithm, year]);
-    M.HEAPU8[ptr] = 1;
-    M.HEAP32[(ptr + 4) >> 2] = year;
-    M.HEAPU8[ptr + 8] = 1;
-    M.HEAPU8[ptr + 9] = 1;
-  };
-  M._lunar_to_gregorian = (ptr, algorithm, year, month, isLeap, day) => {
-    globalThis.__celestialLunarCalls.push(["toGregorian", algorithm, year, month, isLeap, day]);
-    M.HEAPU8[ptr] = 1;
-    M.HEAP32[(ptr + 4) >> 2] = year;
-    M.HEAPU8[ptr + 8] = month;
-    M.HEAPU8[ptr + 9] = day;
-  };
-  for (const [name, value] of [["_delta_t", 12.5], ["_delta_t_algo5", 67.5]]) {
-    M[name] = (ptr, year) => {
-      globalThis.__celestialDeltaTCalls.push([name, year]);
-      M.HEAPU8[ptr] = 1;
-      M.HEAPF64[(ptr + 8) >> 3] = value;
-    };
-  }
-  M.ccall = () => lastError;
-  return M;
-};
-`,
-    "utf8",
-  );
-
-  globalThis.__celestialLunarCalls = [];
-  globalThis.__celestialDeltaTCalls = [];
-  globalThis.__celestialLunarRange = { start: 2024, end: 2024 };
-  const fixture = await import(pathToFileURL(fixtureEntry));
-  assert.deepEqual(globalThis.__celestialLunarCalls, [], "no import-time lunar range query");
-  let previousInitialization;
-  for (const rejection of [new Error("original loader failure"), { loaderFailure: true }]) {
-    let rejectLoad;
-    globalThis.__celestialLoad = new Promise((_resolve, reject) => { rejectLoad = reject; });
-    const pending = fixture.init();
-    assert.notStrictEqual(pending, previousInitialization, "retry creates a new promise");
-    assert.strictEqual(fixture.init(), pending, "pending mock load shares one promise");
-    rejectLoad(rejection);
-    await assert.rejects(pending, (error) => {
-      assert.strictEqual(error, rejection, "loader rejection identity is preserved");
-      return true;
-    });
-    previousInitialization = pending;
-  }
-  delete globalThis.__celestialLoad;
-  const initialized = fixture.init();
-  assert.notStrictEqual(initialized, previousInitialization, "mock load retries after rejection");
-  assert.strictEqual(fixture.init(), initialized, "successful pending retry shares one promise");
-  assert.equal(await initialized, undefined, "mock init resolves without a namespace");
-  assert.strictEqual(fixture.init(), initialized, "completed mock init reuses one promise");
-  console.log("PASS original Error/object loader rejections; shared promises; retry; undefined resolution");
-  for (const year of [1950, 2020, 2040]) {
-    globalThis.__celestialDeltaTCalls = [];
-    assert.equal(fixture.time.deltaT(year), 12.5, "omitted model calls native default");
-    assert.equal(fixture.time.deltaT(year, "default"), 12.5, "default model calls native default");
-    assert.equal(fixture.time.deltaT(year, "algo5"), 67.5, "algo5 model calls native algo5");
-    assert.deepEqual(globalThis.__celestialDeltaTCalls, [
-      ["_delta_t", year], ["_delta_t", year], ["_delta_t_algo5", year],
-    ], "default and algo5 retain their distinct native entry points");
-  }
-  console.log("PASS default/algo5 native dispatch");
-  assert.deepEqual(globalThis.__celestialLunarCalls, [], "no init-time lunar range query");
-  assert.equal(fixture.moon.newMoonsAfter(2451545.0, 4096).length, 4096, "count 4096 accepted");
-
-  globalThis.__celestialFailAllocation = 4096 * 8;
-  assert.throws(
-    () => fixture.moon.newMoonsAfter(2451545.0, 4096),
-    {
-      name: "CelestialError",
-      message: "moon.newMoonsAfter failed to allocate the WASM output buffer.",
-      operation: "moon.newMoonsAfter",
-      recorded: false,
-    },
-    "allocation failure",
-  );
-  delete globalThis.__celestialFailAllocation;
-
-  assert.throws(
-    () => fixture.moon.phaseMoments(2024, "new"),
-    {
-      name: "CelestialError",
-      message: "native phase fill failed",
-      operation: "moon.phaseMoments",
-      recorded: true,
-    },
-    "recording fill failure",
-  );
-  console.log("PASS count boundary 4096/4097; allocation failure; recording fill reason");
-
-  for (const namespace of ["sun", "moon"]) {
-    const operation = `${namespace}.apparentGeocentricCoordinate`;
-    assert.throws(
-      () => fixture[namespace].apparentGeocentricCoordinate(2451545.0),
-      { name: "CelestialError", operation, message: "native coordinate failed", recorded: true },
-      "singular coordinate error operation",
-    );
-  }
-
-  for (const algorithm of ["algo1", "algo2", "algo3"]) {
-    const nativeAlgorithm = Number(algorithm.slice(-1));
-    for (const method of ["yearInfo", "toGregorian"]) {
-      const call = (year) => method === "yearInfo"
-        ? fixture.lunar.yearInfo(algorithm, year)
-        : fixture.lunar.toGregorian(algorithm, { year, month: 1, day: 1, isLeap: false });
-      for (const year of [2024, 2025]) {
-        globalThis.__celestialLunarRange = { start: year, end: year };
-        globalThis.__celestialLunarCalls = [];
-        call(year);
-        assert.deepEqual(
-          globalThis.__celestialLunarCalls,
-          [
-            ["range", nativeAlgorithm],
-            method === "yearInfo" ? [method, nativeAlgorithm, year] : [method, nativeAlgorithm, year, 1, false, 1],
-          ],
-          `${algorithm} ${method}: one fresh native range query before use`,
-        );
-      }
-      for (const year of [2024, 2026]) {
-        globalThis.__celestialLunarCalls = [];
-        assert.throws(() => call(year), RangeError, `${method}: actual native range rejects year ${year}`);
-        assert.deepEqual(globalThis.__celestialLunarCalls, [["range", nativeAlgorithm]], "no native conversion after invalid year");
-      }
-      globalThis.__celestialLunarCalls = [];
-      assert.throws(() => call("2025"), TypeError, `${method}: invalid year type`);
-      assert.deepEqual(globalThis.__celestialLunarCalls, [["range", nativeAlgorithm]], "range query precedes year validation");
-      globalThis.__celestialFailRange = true;
-      try {
-        for (const year of [2025, "invalid"]) {
-          globalThis.__celestialLunarCalls = [];
-          assert.throws(
-            () => call(year),
-            {
-              name: "CelestialError",
-              operation: `lunar.${method}`,
-              message: "native lunar range query failed",
-              recorded: true,
-            },
-            `${method}: range-query error retains caller and native details before year validation`,
-          );
-          assert.deepEqual(globalThis.__celestialLunarCalls, [["range", nativeAlgorithm]]);
-        }
-      } finally {
-        delete globalThis.__celestialFailRange;
-      }
-    }
-  }
-  console.log("PASS singular error operations; per-call native lunar ranges, validation order and recorded failures");
-} finally {
-  delete globalThis.__celestialLoad;
-  delete globalThis.__celestialFailAllocation;
-  delete globalThis.__celestialLunarCalls;
-  delete globalThis.__celestialDeltaTCalls;
-  delete globalThis.__celestialLunarRange;
-  delete globalThis.__celestialFailRange;
-  await rm(fixtureDirectory, { recursive: true, force: true });
-}
+await testFakeNative(entryUrl);

@@ -12,7 +12,7 @@
 
 import createWasmModule from "./celestial-jieqi.mjs";
 
-import { BINDINGS, CHART_CODES, LAYOUTS } from "./bindings.mjs";
+import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS } from "./bindings.mjs";
 import {
   booleanValue,
   civilDateTime,
@@ -20,27 +20,20 @@ import {
   enumValue,
   finiteNumber,
   gregorianDate,
+  nativeCivilDateTime,
+  nativeGregorianDate,
   rangedInteger,
-  rangedNumber,
   requiredRecord,
 } from "./validation.mjs";
 
 const WASM_URL = new URL("./celestial-jieqi.wasm", import.meta.url);
-const UTF8 = new TextDecoder();
-const MAX_CALENDAR_YEAR = 32_766;
+const UTF8 = new TextDecoder("utf-8", { fatal: true });
+// Bound synchronous work and caller-owned WASM memory independently of native domains.
 const MAX_NEW_MOON_COUNT = 4_096;
-const JIEQI_NAME_BYTES = 16;
+const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+const CODES = C_DECLARATIONS.constants;
 
-const LOG_VERBOSITY = Object.freeze({ none: 0, info: 1, debug: 2 });
 const MOON_PHASE = Object.freeze({ new: 0, firstQuarter: 1, full: 2, lastQuarter: 3 });
-const DELTA_T_MODEL = Object.freeze({
-  default: "delta_t",
-  algo1: "delta_t_algo1",
-  algo2: "delta_t_algo2",
-  algo3: "delta_t_algo3",
-  algo4: "delta_t_algo4",
-  algo5: "delta_t_algo5",
-});
 const LUNAR_ALGORITHM = Object.freeze({ algo1: 1, algo2: 2, algo3: 3 });
 const BINDING_BY_NAME = Object.freeze(Object.fromEntries(BINDINGS.map((entry) => [entry.cName, entry])));
 
@@ -112,15 +105,42 @@ const bindingOf = (cName) => {
   return entry;
 };
 
-const lunarYear = (nativeAlgorithm, year, name, operation) => {
-  const range = callSret("get_supported_lunar_year_range", operation, [nativeAlgorithm]);
-  return rangedInteger(year, name, range.start, range.end);
+const nativeInteger = (value, name, type = "int32_t") => {
+  const unsigned = type.startsWith("uint");
+  const width = Number(type.match(/\d+/)[0]);
+  return rangedInteger(value, name, unsigned ? 0 : -(2 ** (width - 1)), 2 ** (unsigned ? width : width - 1) - 1);
+};
+
+const malformed = (operation, field) => {
+  throw new CelestialError(operation, `Invalid native result: ${field}.`, false);
+};
+
+const nativeFinite = (value, operation, field) => {
+  if (!Number.isFinite(value)) malformed(operation, field);
+  return value;
+};
+
+const nativeCode = (value, prefix, operation, field) => {
+  if (!Object.entries(CODES).some(([name, code]) => name.startsWith(prefix)
+    && !name.endsWith("_DEFAULT") && code === value)) malformed(operation, field);
+  return value;
+};
+
+const allocate = (M, bytes, operation) => {
+  if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_OUTPUT_BYTES) {
+    throw new CelestialError(operation, `${operation} exceeds the binding's 16 MiB output limit.`, false);
+  }
+  const ptr = M._malloc(bytes);
+  if (ptr === 0) {
+    throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
+  }
+  return ptr;
 };
 
 const readField = (M, ptr, field) => {
   const address = ptr + field.offset;
   switch (field.type) {
-    case "bool": return M.HEAPU8[address] !== 0;
+    case "bool": return M.HEAPU8[address];
     case "uint8_t": return M.HEAPU8[address];
     case "uint16_t": return M.HEAPU16[address >> 1];
     case "int32_t": return M.HEAP32[address >> 2];
@@ -134,15 +154,21 @@ const readLayout = (M, ptr, layoutName) => Object.fromEntries(
   LAYOUTS[layoutName].fields.map((field) => [field.name, readField(M, ptr, field)]),
 );
 
-const readCString = (M, ptr) => {
-  let end = ptr;
-  while (M.HEAPU8[end] !== 0) ++end;
-  return UTF8.decode(M.HEAPU8.slice(ptr, end));
+const checkError = (M, operation) => {
+  const kind = M._celestial_last_error_kind() >>> 0;
+  if (kind === CODES.CELESTIAL_ERROR_NONE) return;
+  const message = M.ccall("celestial_last_error", "string", [], []);
+  if (kind === CODES.CELESTIAL_ERROR_INVALID_INPUT) throw new RangeError(message || `${operation} rejected its input.`);
+  nativeCode(kind, "CELESTIAL_ERROR_", operation, "error kind");
+  throw new CelestialError(operation, message || `${operation} failed.`, message.length > 0);
 };
 
-const fail = (M, binding, operation, fallback = `${operation} failed.`) => {
-  const message = binding.readsLastError ? M.ccall("last_error", "string", [], []) : "";
-  throw new CelestialError(operation, message || fallback, message.length > 0);
+const readCivilResult = (value, operation) => {
+  try {
+    return civilDateTimeResult(civilDateTime(value, "native civil result"));
+  } catch {
+    malformed(operation, "civil date/time");
+  }
 };
 
 const callSret = (cName, operation, args) => {
@@ -150,12 +176,19 @@ const callSret = (cName, operation, args) => {
   const binding = bindingOf(cName);
   const layoutName = binding.result.slice("sret:".length);
   const layout = LAYOUTS[layoutName];
-  const ptr = M._malloc(layout.size);
+  const ptr = allocate(M, layout.size, operation);
 
   try {
     M[binding.wasmName](ptr, ...args);
+    checkError(M, operation);
+    if (readField(M, ptr, layout.fields.find((field) => field.name === "valid")) !== 1) {
+      malformed(operation, "valid");
+    }
     const value = readLayout(M, ptr, layoutName);
-    if (!value.valid) fail(M, binding, operation);
+    for (const field of layout.fields) {
+      if (field.type === "double") nativeFinite(value[field.name], operation, field.name);
+      if (field.type === "bool" && value[field.name] !== 0 && value[field.name] !== 1) malformed(operation, field.name);
+    }
     return value;
   } finally {
     M._free(ptr);
@@ -170,24 +203,29 @@ const readDoubles = (M, ptr, count) => Array.from(
 const countThenFill = (cName, operation, args) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
-  const countPtr = M._malloc(4);
+  if (typeof binding.protocol?.allowsEmpty !== "boolean") malformed(operation, "missing empty-result protocol");
+  const countPtr = allocate(M, 4, operation);
 
   try {
     M.HEAPU32[countPtr >> 2] = 0;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
+    checkError(M, operation);
     const count = M.HEAPU32[countPtr >> 2];
-    if (queried !== 0) {
-      fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
+    if (queried !== 0) malformed(operation, "count query wrote records");
+    if (count === 0) {
+      if (binding.protocol?.allowsEmpty !== true) malformed(operation, "unexpected empty result");
+      return [];
     }
-    if (count === 0) fail(M, binding, operation);
 
-    const slots = M._malloc(count * 8);
+    const slots = allocate(M, count * 8, operation);
     try {
+      M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
       const written = M[binding.wasmName](...args, countPtr, slots, count);
+      checkError(M, operation);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
-        fail(M, binding, operation, `${operation} returned an inconsistent native result.`);
+        malformed(operation, "changed fill total");
       }
-      return readDoubles(M, slots, count);
+      return readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"));
     } finally {
       M._free(slots);
     }
@@ -196,75 +234,82 @@ const countThenFill = (cName, operation, args) => {
   }
 };
 
-const setLogVerbosity = (level) => {
-  const operation = "config.setLogVerbosity";
-  const M = requireModule(operation);
-  const nativeLevel = enumValue(level, "level", LOG_VERBOSITY);
-  if (!M._set_log_verbosity(nativeLevel)) fail(M, bindingOf("set_log_verbosity"), operation);
-};
-
 const ut1ToJd = (ut1) => {
   const operation = "time.ut1ToJd";
   requireModule(operation);
-  const value = civilDateTime(ut1, "ut1");
-  return callSret("ut1_to_jd", operation, [value.year, value.month, value.day, value.fraction]).value;
+  const value = nativeCivilDateTime(ut1, "ut1");
+  return callSret("celestial_ut1_to_jd", operation, [value.year, value.month, value.day, value.fraction]).value;
 };
 
 const ut1ToJde = (ut1) => {
   const operation = "time.ut1ToJde";
   requireModule(operation);
-  const value = civilDateTime(ut1, "ut1");
-  return callSret("ut1_to_jde", operation, [value.year, value.month, value.day, value.fraction]).value;
+  const value = nativeCivilDateTime(ut1, "ut1");
+  return callSret("celestial_ut1_to_jde", operation, [value.year, value.month, value.day, value.fraction]).value;
 };
 
 const jdeToUt1 = (jde) => {
   const operation = "time.jdeToUt1";
   requireModule(operation);
-  const value = callSret("jde_to_ut1", operation, [finiteNumber(jde, "jde")]);
-  return civilDateTimeResult(value);
+  const value = callSret("celestial_jde_to_ut1", operation, [finiteNumber(jde, "jde")]);
+  return readCivilResult(value, operation);
 };
 
 const localApparentSiderealTime = (jdUt1, longitudeDeg) => {
   const operation = "time.localApparentSiderealTime";
   requireModule(operation);
   const jd = finiteNumber(jdUt1, "jdUt1");
-  const longitude = rangedNumber(longitudeDeg, "longitudeDeg", -180, 180);
-  return callSret("local_apparent_sidereal_time", operation, [jd, longitude]).value;
+  const longitude = finiteNumber(longitudeDeg, "longitudeDeg");
+  const value = callSret("celestial_local_apparent_sidereal_time", operation, [jd, longitude]).value;
+  if (value < 0 || value >= 360) malformed(operation, "sidereal angle");
+  return value;
 };
 
 const deltaT = (year, model = "default") => {
   const operation = "time.deltaT";
   requireModule(operation);
   const decimalYear = finiteNumber(year, "year");
-  const cName = enumValue(model, "model", DELTA_T_MODEL);
-  if (model === "algo1" && decimalYear < -4000) throw new RangeError("year must be at least -4000 for algo1.");
-  if (model === "algo3" && decimalYear >= 3000) throw new RangeError("year must be less than 3000 for algo3.");
-  if (model === "algo4" && decimalYear >= 2035) throw new RangeError("year must be less than 2035 for algo4.");
-  return callSret(cName, operation, [decimalYear]).value;
+  const modelCode = enumValue(model, "model", CHART_CODES.models);
+  const value = callSret("celestial_delta_t", operation, [decimalYear, modelCode]);
+  nativeCode(value.model_identity_code, "CELESTIAL_DELTA_T_MODEL_", operation, "model_identity_code");
+  if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT && value.model_identity_code !== modelCode) {
+    malformed(operation, "model_identity_code does not match selection");
+  }
+  return value.value;
+};
+
+const coordinate = (value, operation, distanceName) => {
+  if (value.lon < 0 || value.lon >= 360 || value.lat < -90 || value.lat > 90 || value.r <= 0) {
+    malformed(operation, "coordinate");
+  }
+  return { longitudeDeg: value.lon, latitudeDeg: value.lat, [distanceName]: value.r };
 };
 
 const sunApparentGeocentricCoordinate = (jde) => {
   const operation = "sun.apparentGeocentricCoordinate";
   requireModule(operation);
-  const value = callSret("sun_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
-  return { longitudeDeg: value.lon, latitudeDeg: value.lat, radiusAu: value.r };
+  const value = callSret("celestial_sun_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
+  return coordinate(value, operation, "distanceAu");
 };
 
 const longitudeCrossings = (year, longitudeDeg) => {
   const operation = "sun.longitudeCrossings";
   const M = requireModule(operation);
-  const checkedYear = rangedInteger(year, "year", 1, MAX_CALENDAR_YEAR);
-  const longitude = rangedNumber(longitudeDeg, "longitudeDeg", 0, 360, false);
-  const discriminant = callSret("solar_lon_root_discriminant", operation, [checkedYear, longitude]);
+  const checkedYear = nativeInteger(year, "year");
+  const longitude = finiteNumber(longitudeDeg, "longitudeDeg");
+  const discriminant = callSret("celestial_solar_lon_root_discriminant", operation, [checkedYear, longitude]);
+  if (discriminant.count > 2) malformed(operation, "root count");
   if (discriminant.count === 0) return [];
 
-  const slots = M._malloc(discriminant.count * 8);
+  const slots = allocate(M, discriminant.count * 8, operation);
   try {
-    const written = M._solar_lon_roots(checkedYear, longitude, slots, discriminant.count);
+    M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + discriminant.count);
+    const written = M._celestial_solar_lon_roots(checkedYear, longitude, slots, discriminant.count);
+    checkError(M, operation);
     if (written !== discriminant.count) {
-      fail(M, bindingOf("solar_lon_roots"), operation, `${operation} returned an inconsistent native result.`);
+      malformed(operation, "root fill count");
     }
-    return readDoubles(M, slots, written);
+    return readDoubles(M, slots, written).map((value) => nativeFinite(value, operation, "root"));
   } finally {
     M._free(slots);
   }
@@ -273,48 +318,53 @@ const longitudeCrossings = (year, longitudeDeg) => {
 const equationOfTime = (jde) => {
   const operation = "sun.equationOfTime";
   requireModule(operation);
-  return callSret("equation_of_time", operation, [finiteNumber(jde, "jde")]).value;
+  return callSret("celestial_equation_of_time", operation, [finiteNumber(jde, "jde")]).value;
 };
 
 const apparentSolarTime = (utc, longitudeDeg) => {
   const operation = "sun.apparentSolarTime";
   requireModule(operation);
-  const value = civilDateTime(utc, "utc");
-  const longitude = rangedNumber(longitudeDeg, "longitudeDeg", -180, 180);
+  const value = nativeCivilDateTime(utc, "utc");
+  const longitude = finiteNumber(longitudeDeg, "longitudeDeg");
   const result = callSret(
-    "apparent_solar_time",
+    "celestial_apparent_solar_time",
     operation,
     [value.year, value.month, value.day, value.fraction, longitude],
   );
-  return civilDateTimeResult(result);
+  return readCivilResult(result, operation);
 };
 
 const moonApparentGeocentricCoordinate = (jde) => {
   const operation = "moon.apparentGeocentricCoordinate";
   requireModule(operation);
-  const value = callSret("moon_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
-  return { longitudeDeg: value.lon, latitudeDeg: value.lat, distanceKm: value.r };
+  const value = callSret("celestial_moon_apparent_geocentric_coord", operation, [finiteNumber(jde, "jde")]);
+  return coordinate(value, operation, "distanceKm");
 };
 
 const illumination = (jde) => {
   const operation = "moon.illumination";
   requireModule(operation);
-  const value = callSret("moon_illumination", operation, [finiteNumber(jde, "jde")]);
+  const value = callSret("celestial_moon_illumination", operation, [finiteNumber(jde, "jde")]);
+  if (value.illumination < 0 || value.illumination > 1 || value.elongation_deg < 0 || value.elongation_deg >= 360) {
+    malformed(operation, "illumination");
+  }
   return { fraction: value.illumination, elongationDeg: value.elongation_deg };
 };
 
 const brightLimbPositionAngle = (jde) => {
   const operation = "moon.brightLimbPositionAngle";
   requireModule(operation);
-  return callSret("moon_position_angle", operation, [finiteNumber(jde, "jde")]).angle_deg;
+  const value = callSret("celestial_moon_position_angle", operation, [finiteNumber(jde, "jde")]).angle_deg;
+  if (value < 0 || value >= 360) malformed(operation, "position angle");
+  return value;
 };
 
 const phaseMoments = (year, phase) => {
   const operation = "moon.phaseMoments";
   requireModule(operation);
-  const checkedYear = rangedInteger(year, "year", 1, MAX_CALENDAR_YEAR);
+  const checkedYear = nativeInteger(year, "year");
   const phaseKind = enumValue(phase, "phase", MOON_PHASE);
-  return countThenFill("moon_phase_moments", operation, [checkedYear, phaseKind]);
+  return countThenFill("celestial_moon_phase_moments", operation, [checkedYear, phaseKind]);
 };
 
 const newMoonsAfter = (jde, count) => {
@@ -324,14 +374,13 @@ const newMoonsAfter = (jde, count) => {
   const checkedCount = rangedInteger(count, "count", 0, MAX_NEW_MOON_COUNT);
   if (checkedCount === 0) return [];
 
-  const slots = M._malloc(checkedCount * 8);
-  if (slots === 0) {
-    throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
-  }
+  const slots = allocate(M, checkedCount * 8, operation);
   try {
-    const written = M._new_moons_after_jde(start, slots, checkedCount);
-    if (written !== checkedCount) fail(M, bindingOf("new_moons_after_jde"), operation);
-    return readDoubles(M, slots, written);
+    M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + checkedCount);
+    const written = M._celestial_new_moons_after_jde(start, slots, checkedCount);
+    checkError(M, operation);
+    if (written !== checkedCount) malformed(operation, "requested fill count");
+    return readDoubles(M, slots, written).map((value) => nativeFinite(value, operation, "new moon"));
   } finally {
     M._free(slots);
   }
@@ -340,33 +389,43 @@ const newMoonsAfter = (jde, count) => {
 const newMoonsInYear = (year) => {
   const operation = "moon.newMoonsInYear";
   requireModule(operation);
-  const checkedYear = rangedInteger(year, "year", 1, MAX_CALENDAR_YEAR);
-  return countThenFill("new_moons_in_year", operation, [checkedYear]);
+  const checkedYear = nativeInteger(year, "year");
+  return countThenFill("celestial_new_moons_in_year", operation, [checkedYear]);
 };
 
 const jieqiMoment = (year, index) => {
   const operation = "jieqi.moment";
   requireModule(operation);
-  const checkedYear = rangedInteger(year, "year", 401, MAX_CALENDAR_YEAR);
-  const checkedIndex = rangedInteger(index, "index", 0, 23);
-  const value = callSret("query_jieqi_moment", operation, [checkedYear, checkedIndex]);
+  const checkedYear = nativeInteger(year, "year");
+  const checkedIndex = nativeInteger(index, "index", "uint8_t");
+  const value = callSret("celestial_query_jieqi_moment", operation, [checkedYear, checkedIndex]);
+  if (value.jq_idx !== checkedIndex || !Object.values(Jieqi).includes(value.jq_idx)) malformed(operation, "jq_idx");
   return {
     jieqi: value.jq_idx,
-    momentUt1: civilDateTimeResult({ year: value.y, month: value.m, day: value.d, fraction: value.frac }),
+    momentUt1: readCivilResult({ year: value.y, month: value.m, day: value.d, fraction: value.frac }, operation),
   };
 };
 
 const jieqiName = (index) => {
   const operation = "jieqi.name";
   const M = requireModule(operation);
-  const checkedIndex = rangedInteger(index, "index", 0, 23);
-  const ptr = M._malloc(JIEQI_NAME_BYTES);
+  const checkedIndex = nativeInteger(index, "index", "uint8_t");
+  const required = M._celestial_get_jieqi_name(checkedIndex, 0, 0) >>> 0;
+  checkError(M, operation);
+  if (required <= 1) malformed(operation, "required string size");
+  const ptr = allocate(M, required, operation);
 
   try {
-    if (!M._get_jieqi_name(checkedIndex, ptr, JIEQI_NAME_BYTES)) {
-      fail(M, bindingOf("get_jieqi_name"), operation);
+    M.HEAPU8.fill(0xFF, ptr, ptr + required);
+    const writtenSize = M._celestial_get_jieqi_name(checkedIndex, ptr, required) >>> 0;
+    checkError(M, operation);
+    if (writtenSize !== required || M.HEAPU8[ptr + required - 1] !== 0
+      || M.HEAPU8.subarray(ptr, ptr + required - 1).includes(0)) malformed(operation, "string fill/termination");
+    try {
+      return UTF8.decode(M.HEAPU8.slice(ptr, ptr + required - 1));
+    } catch {
+      malformed(operation, "UTF-8 string");
     }
-    return readCString(M, ptr);
   } finally {
     M._free(ptr);
   }
@@ -376,7 +435,8 @@ const supportedYearRange = (algorithm) => {
   const operation = "lunar.supportedYearRange";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  const value = callSret("get_supported_lunar_year_range", operation, [nativeAlgorithm]);
+  const value = callSret("celestial_get_supported_lunar_year_range", operation, [nativeAlgorithm]);
+  if (value.start > value.end) malformed(operation, "lunar year range");
   return { start: value.start, end: value.end };
 };
 
@@ -384,8 +444,11 @@ const yearInfo = (algorithm, year) => {
   const operation = "lunar.yearInfo";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  const checkedYear = lunarYear(nativeAlgorithm, year, "year", operation);
-  const value = callSret("get_lunar_year_info", operation, [nativeAlgorithm, checkedYear]);
+  const checkedYear = nativeInteger(year, "year");
+  const value = callSret("celestial_get_lunar_year_info", operation, [nativeAlgorithm, checkedYear]);
+  if (value.leap_month > 12) malformed(operation, "leap_month");
+  try { gregorianDate({ year: value.year, month: value.month, day: value.day }, "native first day"); }
+  catch { malformed(operation, "lunar first day"); }
   const monthCount = value.leap_month === 0 ? 12 : 13;
   const monthLengths = Array.from(
     { length: monthCount },
@@ -402,13 +465,14 @@ const fromGregorian = (algorithm, date) => {
   const operation = "lunar.fromGregorian";
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
-  const value = gregorianDate(date, "date");
+  const value = nativeGregorianDate(date, "date");
   const result = callSret(
-    "gregorian_to_lunar",
+    "celestial_gregorian_to_lunar",
     operation,
     [nativeAlgorithm, value.year, value.month, value.day],
   );
-  return { year: result.year, month: result.month, day: result.day, isLeap: result.is_leap };
+  if (result.month < 1 || result.month > 12 || result.day < 1 || result.day > 30) malformed(operation, "lunar date");
+  return { year: result.year, month: result.month, day: result.day, isLeap: result.is_leap === 1 };
 };
 
 const toGregorian = (algorithm, date) => {
@@ -416,12 +480,13 @@ const toGregorian = (algorithm, date) => {
   requireModule(operation);
   const nativeAlgorithm = enumValue(algorithm, "algorithm", LUNAR_ALGORITHM);
   requiredRecord(date, "date", ["year", "month", "day", "isLeap"], ["fraction"]);
-  const year = lunarYear(nativeAlgorithm, date.year, "date.year", operation);
-  const month = rangedInteger(date.month, "date.month", 1, 12);
-  const day = rangedInteger(date.day, "date.day", 1, 30);
+  const year = nativeInteger(date.year, "date.year");
+  const month = nativeInteger(date.month, "date.month", "uint8_t");
+  const day = nativeInteger(date.day, "date.day", "uint8_t");
   const isLeap = booleanValue(date.isLeap, "date.isLeap");
-  const value = callSret("lunar_to_gregorian", operation, [nativeAlgorithm, year, month, isLeap, day]);
-  return { year: value.year, month: value.month, day: value.day };
+  const value = callSret("celestial_lunar_to_gregorian", operation, [nativeAlgorithm, year, month, isLeap, day]);
+  try { return gregorianDate({ year: value.year, month: value.month, day: value.day }, "native date"); }
+  catch { malformed(operation, "Gregorian date"); }
 };
 
 const malformedChart = (field) => {
@@ -443,20 +508,26 @@ const chartField = (layout, name) => LAYOUTS[layout].fields.find((field) => fiel
 const readChartField = (M, ptr, layout, name) => readField(M, ptr, chartField(layout, name));
 
 const readChartSnapshot = (M, ptr) => {
-  const readSnapshot = (name) => readChartField(M, ptr, "ChartSnapshotV1", name);
-  const bodiesPtr = ptr + chartField("ChartSnapshotV1", "bodies").offset;
+  const readSnapshot = (name) => readChartField(M, ptr, "CelestialChartSnapshot", name);
+  nativeCode(readSnapshot("delta_t_identity_code"), "CELESTIAL_DELTA_T_MODEL_", "chart.snapshot", "delta_t_identity_code");
+  nativeCode(readSnapshot("nutation_identity_code"), "CELESTIAL_NUTATION_MODEL_", "chart.snapshot", "nutation_identity_code");
+  const bodyField = chartField("CelestialChartSnapshot", "bodies");
+  const targetCount = Object.keys(CHART_CODES.targets).length;
+  if (Number(bodyField.type.match(/\[(\d+)\]$/)[1]) !== targetCount) malformedChart("body count");
+  const bodiesPtr = ptr + bodyField.offset;
   const bodies = Object.entries(CHART_CODES.targets).map(([target, code], index) => {
-    const bodyPtr = bodiesPtr + index * LAYOUTS.ChartBodyV1.size;
-    const readBody = (name) => readChartField(M, bodyPtr, "ChartBodyV1", name);
+    const bodyPtr = bodiesPtr + index * LAYOUTS.CelestialChartBody.size;
+    const readBody = (name) => readChartField(M, bodyPtr, "CelestialChartBody", name);
     const isNode = code >= CHART_CODES.targets.meanAscending;
     const present = CHART_CODES.present.latitude | (isNode ? 0 : CHART_CODES.present.distance);
     if (readBody("target_code") !== code) malformedChart(`bodies[${index}].target_code`);
+    nativeCode(readBody("source_code"), "CELESTIAL_POSITION_SOURCE_", "chart.snapshot", `${target}.source_code`);
     if (readBody("present_fields") !== present) malformedChart(`${target}.present_fields`);
     const latitudeDeg = chartFinite(readBody("latitude_deg"), `${target}.latitude_deg`);
     if (latitudeDeg < -90 || latitudeDeg > 90 || (isNode && latitudeDeg !== 0)) {
       malformedChart(`${target}.latitude_deg`);
     }
-    // V1 node distance storage is absent, not a numeric sentinel.
+    // Node distance storage is absent, not a numeric sentinel.
     const distanceAu = isNode ? null : chartFinite(readBody("distance_au"), `${target}.distance_au`);
     if (!isNode && distanceAu <= 0) malformedChart(`${target}.distance_au`);
     return {
@@ -471,12 +542,12 @@ const readChartSnapshot = (M, ptr) => {
     };
   });
 
-  const housesPtr = ptr + chartField("ChartSnapshotV1", "houses").offset;
+  const housesPtr = ptr + chartField("CelestialChartSnapshot", "houses").offset;
   const houseAngle = (name) => chartLongitude(
-    readChartField(M, housesPtr, "ChartHousesV1", name),
+    readChartField(M, housesPtr, "CelestialChartHouses", name),
     `houses.${name}`,
   );
-  const cuspField = chartField("ChartHousesV1", "cusps_deg");
+  const cuspField = chartField("CelestialChartHouses", "cusps_deg");
   const cuspCount = Number(cuspField.type.match(/\[(\d+)\]$/)[1]);
   return {
     times: {
@@ -498,8 +569,7 @@ const readChartSnapshot = (M, ptr) => {
 const snapshot = (civil, options) => {
   const operation = "chart.snapshot";
   const M = requireModule(operation);
-  const value = civilDateTime(civil, "civil");
-  rangedInteger(value.year, "civil.year", 1885, 2099);
+  const value = nativeCivilDateTime(civil, "civil");
   requiredRecord(options, "options", ["scale", "location", "system"], []);
   if (Reflect.ownKeys(options).some((key) => !["scale", "location", "system", "model"].includes(key))) {
     throw new TypeError("options must contain only: scale, location, system, model.");
@@ -509,9 +579,6 @@ const snapshot = (civil, options) => {
     throw new TypeError("options.model must be an own property.");
   }
   const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
-  if (scale === CHART_CODES.scales.utc && value.year < 1972) {
-    throw new RangeError("UTC chart input must be on or after 1972-01-01.");
-  }
   const location = requiredRecord(
     options.location,
     "options.location",
@@ -519,19 +586,13 @@ const snapshot = (civil, options) => {
     [],
   );
   const latitude = finiteNumber(location.latitudeDeg, "options.location.latitudeDeg");
-  if (latitude <= -90 || latitude >= 90) {
-    throw new RangeError("options.location.latitudeDeg must be in (-90, 90).");
-  }
-  const longitude = rangedNumber(location.longitudeDeg, "options.location.longitudeDeg", -180, 180);
+  const longitude = finiteNumber(location.longitudeDeg, "options.location.longitudeDeg");
   const system = enumValue(options.system, "options.system", CHART_CODES.systems);
   const model = hasModel ? options.model : undefined;
   const modelCode = enumValue(model === undefined ? "default" : model, "options.model", CHART_CODES.models);
 
-  const binding = bindingOf("chart_snapshot_v1");
-  const ptr = M._malloc(LAYOUTS.ChartSnapshotV1.size);
-  if (ptr === 0) {
-    throw new CelestialError(operation, `${operation} failed to allocate the WASM output buffer.`, false);
-  }
+  const binding = bindingOf("celestial_chart_snapshot");
+  const ptr = allocate(M, LAYOUTS.CelestialChartSnapshot.size, operation);
   try {
     M[binding.wasmName](
       ptr,
@@ -545,16 +606,19 @@ const snapshot = (civil, options) => {
       system,
       modelCode,
     );
-    const valid = M.HEAPU8[ptr + chartField("ChartSnapshotV1", "valid").offset];
-    if (valid === 0) fail(M, binding, operation);
+    checkError(M, operation);
+    const valid = M.HEAPU8[ptr + chartField("CelestialChartSnapshot", "valid").offset];
     if (valid !== 1) malformedChart("valid");
+    if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT
+      && readChartField(M, ptr, "CelestialChartSnapshot", "delta_t_identity_code") !== modelCode) {
+      malformedChart("delta_t_identity_code does not match selection");
+    }
     return readChartSnapshot(M, ptr);
   } finally {
     M._free(ptr);
   }
 };
 
-export const config = Object.freeze({ setLogVerbosity });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
   apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,

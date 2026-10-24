@@ -19,8 +19,8 @@
 
 extern "C" {
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters): Parameter order is the published V1 civil/location/selector contract.
-auto chart_snapshot_v1(
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Parameter order is the published civil/location/selector contract.
+auto celestial_chart_snapshot(
   const int32_t year,
   const uint32_t month,
   const uint32_t day,
@@ -30,12 +30,12 @@ auto chart_snapshot_v1(
   const double longitude_deg,
   const uint32_t house_system_code,
   const uint32_t delta_t_model_code
-) -> ChartSnapshotV1 {
-  return lib::wrap_export(__func__, [=]() -> ChartSnapshotV1 {
+) -> CelestialChartSnapshot {
+  return lib::wrap_export(__func__, [=]() -> CelestialChartSnapshot {
     lib::chart::validate_civil(year, month, day, fraction);
     const auto scale = lib::chart::civil_scale(civil_scale_code);
     const auto system = lib::chart::house_system(house_system_code);
-    const auto model = lib::chart::delta_t_model(delta_t_model_code);
+    const auto model = lib::codes::delta_t_model(delta_t_model_code);
 
     const calendar::Datetime civil_dt { util::to_ymd(year, month, day), fraction };
     const astro::GeoLocation location {
@@ -43,8 +43,10 @@ auto chart_snapshot_v1(
       .longitude = astro::toolbox::AngleDeg { longitude_deg },
     };
 
-    return lib::chart::snapshot_v1(
-      astro::chart::calculate(civil_dt, scale, location, system, model)
+    return lib::chart::snapshot_record(
+      astro::chart::calculate(civil_dt, scale, location, system, model),
+      model,
+      astro::house::DEFAULT_NUTATION_MODEL
     );
   });
 }

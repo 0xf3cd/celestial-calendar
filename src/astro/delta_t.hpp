@@ -36,8 +36,11 @@
 
 namespace astro::delta_t {
 
-/** @brief A Delta T algorithm; values are stable model identity codes. */
+/** @brief A selectable Delta T algorithm. */
 enum class Model : uint8_t { ALGO1 = 0, ALGO2 = 1, ALGO3 = 2, ALGO4 = 3, ALGO5 = 4 };
+
+/** @brief Default for operations with a selectable Delta T model; fixed-Algo5 shortcuts stay fixed. */
+inline constexpr Model DEFAULT_MODEL = Model::ALGO5;
 
 // Applicability boundaries in JDE(TT) for the capability identity registry (#357). The
 // decimal-year guards in each algo namespace are authoritative; these constants are the same
@@ -410,6 +413,16 @@ namespace algo4 {
 
 } // namespace algo4
 #pragma endregion
+
+static_assert(ALGO1_START_JDE_TT == 2440587.5 + static_cast<double>(
+  std::chrono::sys_days { std::chrono::year { static_cast<int32_t>(algo1::MINIMUM_YEAR) } / 1 / 1 }
+    .time_since_epoch().count()));
+static_assert(ALGO3_END_JDE_TT == 2440587.5 + static_cast<double>(
+  std::chrono::sys_days { std::chrono::year { static_cast<int32_t>(algo3::MAXIMUM_YEAR_EXCLUSIVE) } / 1 / 1 }
+    .time_since_epoch().count()));
+// Algo4's authoritative guard remains the frozen literal 2035 above.
+static_assert(ALGO4_END_JDE_TT == 2440587.5 + static_cast<double>(
+  std::chrono::sys_days { std::chrono::year { 2035 } / 1 / 1 }.time_since_epoch().count()));
 
 
 #pragma region Algorithm 5

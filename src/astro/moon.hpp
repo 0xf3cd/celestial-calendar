@@ -79,30 +79,34 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
  * @brief Calculate the apparent geocentric position of the Moon, using truncated ELP2000-82B.
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Moon, calculated using truncated ELP2000-82B.
+ * @throw std::invalid_argument If JDE(TT) is non-finite.
+ * @throw std::runtime_error If an internal angle cannot be evaluated.
  */
 [[nodiscard]] inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
-  const double jc = astro::julian_day::jde_to_jc(jde);
+  if (not std::isfinite(jde)) {
+    throw std::invalid_argument { std::format("Argument `jde` is not finite, got {}", jde) };
+  }
 
-  const auto evaluated = elp2000_82b::evaluate(jc);
+  try {
+    const double jc = astro::julian_day::jde_to_jc(jde);
+    const auto evaluated = elp2000_82b::evaluate(jc);
 
-  // Longitude, considering the perturbation and nutation.
-  const auto Σl = evaluated.Σl + perturbation::longitude(evaluated.ctx);
-  const auto lon_nutation = astro::earth::nutation::longitude(jde);
-  const toolbox::AngleDeg lon = evaluated.ctx.Lp + toolbox::AngleDeg { Σl / elp2000_82b::LON_LAT_SCALING_FACTOR } + lon_nutation;
+    const auto Σl = evaluated.Σl + perturbation::longitude(evaluated.ctx);
+    const auto lon_nutation = astro::earth::nutation::longitude(jde, astro::earth::nutation::Model::IAU_1980);
+    const toolbox::AngleDeg lon = evaluated.ctx.Lp + toolbox::AngleDeg { Σl / elp2000_82b::LON_LAT_SCALING_FACTOR } + lon_nutation;
 
-  // Latitude, considering the perturbation.
-  const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
-  const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
+    const auto Σb = evaluated.Σb + perturbation::latitude(evaluated.ctx);
+    const toolbox::AngleDeg lat { Σb / elp2000_82b::LON_LAT_SCALING_FACTOR };
 
-  // Retained material boundary (R17): ERFA v2.0.1 `moon98.c` r0, converted from meters to kilometers,
-  // remains under the ERFA source terms and outside the project MIT grant.
-  const toolbox::DistanceKm r { 385000.56 + (evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR) };
-
-  return {
-    .λ = lon.normalize(),
-    .β = lat,
-    .r = toolbox::DistanceAu { r }
-  };
+    // Retained material boundary (R17): ERFA v2.0.1 `moon98.c` r0, converted from meters to kilometers,
+    // remains under the ERFA source terms and outside the project MIT grant.
+    const toolbox::DistanceKm r { 385000.56 + (evaluated.Σr / elp2000_82b::RADIUS_SCALING_FACTOR) };
+    return { .λ = lon.normalize(), .β = lat, .r = toolbox::DistanceAu { r } };
+  } catch (const std::invalid_argument& error) {
+    throw std::runtime_error {
+      std::format("Lunar apparent-position evaluation failed at JDE(TT) {}: {}", jde, error.what())
+    };
+  }
 }
 
 
@@ -148,8 +152,14 @@ namespace astro::moon::equatorial_coord {
  */
 [[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
   const auto ecl = geocentric_coord::apparent(jde);
-  const auto ε = astro::earth::obliquity::true_obliquity(jde);
-  return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+  try {
+    const auto ε = astro::earth::obliquity::true_obliquity(jde, astro::earth::nutation::Model::IAU_1980);
+    return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+  } catch (const std::invalid_argument& error) {
+    throw std::runtime_error {
+      std::format("Lunar equatorial-position evaluation failed at JDE(TT) {}: {}", jde, error.what())
+    };
+  }
 }
 
 } // namespace astro::moon::equatorial_coord

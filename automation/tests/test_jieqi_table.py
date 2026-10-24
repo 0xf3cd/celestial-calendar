@@ -7,7 +7,6 @@
 # SPDX-License-Identifier: MIT
 
 import copy
-import ctypes
 import hashlib
 import json
 import math
@@ -79,39 +78,32 @@ def test_invalid_year_window_precedes_loading(years):
 @pytest.fixture
 def model_library(monkeypatch):
   def install(defect=None):
-    records = [(1, 0, 0xFFFFFFFF), (2, 5, 0xFFFFFFFF), (0, 17, 0)]
-    if defect == "no-default":
-      records[-1] = (0, 17, 0xFFFFFFFF)
-    elif defect == "duplicate-default":
-      records[0] = (0, 9, 0)
+    state = {"kind": 0}
 
-    def identities(kind, count, slots, capacity):
-      assert kind == jieqi_table.MODEL_KIND_ALL
-      ctypes.cast(count, ctypes.POINTER(ctypes.c_uint32)).contents.value = 0 if defect == "empty" else len(records)
-      if capacity == 0:
-        return 0
-      for index, (model_kind, code, alias) in enumerate(records):
-        slots[index].kind_code = model_kind
-        slots[index].identity_code = code
-        slots[index].default_alias_code = alias
-      return len(records) - (defect == "short-fill")
+    def delta_t(year, selector):
+      assert year == 2000.0 and selector == 5
+      state["kind"] = 1 if defect == "native-error" else 0
+      return SimpleNamespace(valid=defect != "invalid-model", model_identity_code=4 if defect == "wrong-model" else 5)
 
-    def text(operation, ordinal, output, capacity):
-      assert operation == jieqi_table.CAPABILITY_OPERATION_MODEL_IDENTITY
-      assert ordinal == 2
-      value = b"fixture model 17"
+    def text(kind, identity, output, capacity):
+      assert (kind, identity) == (0, 5)
+      value = b"fixture model Algo5"
       if defect == "missing-description":
         return 0
       if capacity:
-        output.value = value
-      return len(value) - (capacity > 0 and defect == "short-text")
+        output.raw = value + (b"x" if defect == "unterminated" else b"\0")
+        if defect == "embedded-nul":
+          output[2] = b"\0"
+        state["kind"] = 2 if defect == "fill-error" else 0
+      return len(value) + 1 - (capacity > 0 and defect == "short-text")
 
     lib = SimpleNamespace(
-      query_jieqi_moment=lambda *args: None,
-      get_jieqi_name=lambda *args: True,
-      celestial_model_identities=identities,
-      celestial_capability_text=text,
-      last_error=lambda: b"",
+      celestial_query_jieqi_moment=lambda *args: None,
+      celestial_get_jieqi_name=lambda *args: 7,
+      celestial_delta_t=delta_t,
+      celestial_model_identity_text=text,
+      celestial_last_error=lambda: b"",
+      celestial_last_error_kind=lambda: state["kind"],
     )
     monkeypatch.setattr(jieqi_table.ctypes, "CDLL", lambda path: lib)
     return lib
@@ -119,20 +111,30 @@ def model_library(monkeypatch):
   return install
 
 
-def test_model_metadata_uses_the_loaded_registry_and_ordinal(model_library, tmp_path):
+def test_model_metadata_uses_the_loaded_fixed_model_key(model_library, tmp_path):
   expected = model_library()
   lib, models = jieqi_table.load_lib(tmp_path / "fixture")
   assert lib is expected
   assert models == {
-    "delta_t": {"kind_code": 0, "identity_code": 17, "description": "fixture model 17"},
+    "delta_t": {"kind_code": 0, "identity_code": 5, "description": "fixture model Algo5"},
     "leap_seconds": None,
   }
 
 
 @pytest.mark.parametrize(
-  "defect", ["empty", "short-fill", "no-default", "duplicate-default", "missing-description", "short-text"]
+  "defect",
+  [
+    "invalid-model",
+    "wrong-model",
+    "native-error",
+    "fill-error",
+    "missing-description",
+    "short-text",
+    "embedded-nul",
+    "unterminated",
+  ],
 )
-def test_model_registry_failures_reject_export(model_library, tmp_path, defect):
+def test_model_key_and_text_failures_reject_export(model_library, tmp_path, defect):
   model_library(defect)
   with pytest.raises(RuntimeError):
     jieqi_table.load_lib(tmp_path / "fixture")

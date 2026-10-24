@@ -55,7 +55,7 @@ inline const std::array COMPOSITION_ROLES {
 };
 
 /**
- * @brief Replay lower-level positions without reusing @ref astro::ephemeris::planet_for_target.
+ * @brief Replay lower-level positions independently of @ref astro::ephemeris::target_facts.
  * @note Nodes have no spherical distance.
  */
 [[nodiscard]] inline auto expected_coordinates(

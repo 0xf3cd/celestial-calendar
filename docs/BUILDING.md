@@ -111,11 +111,12 @@ python3 toolbox/build_npm.py
 Ordinary `npm pack` in the `bindings/javascript` development directory refuses to pack; use the builder above.
 
 The generated module is `build/wasm/celestial-jieqi.mjs` with `build/wasm/celestial-jieqi.wasm`. It carries every
-function exported by `src/shared_lib/celestial.h`, including `chart_snapshot_v1`;
+function exported by `src/shared_lib/celestial.h`, including `celestial_chart_snapshot`;
 `bindings/javascript/test/abi/manifest.json` is the checked list. The public JavaScript API of
 `@0xf3cd/celestial` is the set of namespaces declared in `bindings/javascript/types/index.d.ts`, where
-`chart.snapshot` wraps `chart_snapshot_v1` (#334). What stays private is the WASM glue, which keeps heap pointers,
-the count/fill protocol, sret layout and `last_error` inside the package, and the ABI checks
+`chart.snapshot` wraps `celestial_chart_snapshot`. The public API does not expose the independent position,
+equatorial, house, event or capability queries. What stays private is the WASM glue, which keeps heap pointers,
+the count/fill protocol, sret layout and both error readers inside the package, and the ABI checks
 (`toolbox/wasm_check.mjs` and `bindings/javascript/test/abi/`), which are not shipped.
 
 `build_npm.py` uses the generated module and the version from `project.py` to pack
@@ -200,7 +201,7 @@ commands from the source root in the build virtual environment. The workflow fil
 |---|---|---|
 | `core_tests.yml` · `api-docs` | `project.py --docs`; uploads `celestial-api-html` | `python project.py --docs` ([API Documentation](#api-docs)) |
 | `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--seed-reconcile`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](#lint)); the workflow pins the Ruff version |
-| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | `project.py --setup --clean --cmake --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table`, `--export-surface` and `--log-names` | `python project.py --all` with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
+| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | `project.py --setup --clean --cmake --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table` and `--export-surface` | `python project.py --all` with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
 | `core_tests.yml` · `sanitizers` | An ASan + UBSan build, then every binary in `build/test/` run directly, with the test count reconciled against the `TEST` / `TEST_F` macros | Build with the job's `CXXFLAGS` and `python project.py --clean --cmake --build`, then run the reconciliation in [`AGENTS.md`](../AGENTS.md) ("Acceptance: run the binaries, and reconcile the count") |
 | `core_tests.yml` · `self-contained-headers` (libstdc++, libc++, MSVC STL) | `checks.py --self-contained` | `python checks.py --self-contained`, for the local standard library only |
 | `core_tests.yml` · `cxx-feature-probe` (same three) | `checks.py --features <leg>` | `python checks.py --features` ([Toolchain Feature Tracking](#todo)) |

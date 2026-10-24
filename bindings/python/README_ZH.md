@@ -5,8 +5,8 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 
 [English](README.md)
 
-本文对应 `0.9.0` 版。以下安装命令取得 PyPI 上的最新版本；更早的版本可能缺少本文的部分 API，运行示例前请核对所装版本。
-需要当前源码时，可按下文从完整 checkout 构建本地 wheel。
+本文对应 **1.0.0** 的开发接口，尚未发布；已发布的 0.x wheel 仍使用旧名称。
+运行这些源码示例前，请按下文从完整 checkout 构建本地 wheel。
 
 <a id="install"></a>
 ## 安装
@@ -102,19 +102,21 @@ print(snapshot.houses.cusps_deg)
 <a id="capabilities"></a>
 ### 能力与模型身份
 
-`capabilities()`、`model_identities()` 与 `capability_text()` 描述公开操作接受什么输入、结果背后站着哪些
-模型。每个定义域边界都由该操作自身的定义常量算出，所以能力记录接受与拒绝的输入和计算本身完全一致；
+`capabilities()` 查询 POSITION、LONGITUDE_RATE、EVENTS 和 EQUATORIAL 四类 TT 目标定义域；
+HOUSES、CHART 和 DELTA_T 会抛出 `ValueError`。`model_identities()` 与 `capability_text()` 提供模型与操作说明。
+每个定义域边界都由该操作自身的定义常量算出，所以能力记录接受与拒绝的输入和计算本身完全一致；
 NaN 边界意为「无显式界」，文字层把已验证带标注为 measured——定义域是接受边界，不是精度承诺。
 
 ```python
 import celestial_calendar as celestial
 
 records = celestial.capabilities(celestial.CapabilityOperation.EVENTS)
-pluto = next(r for r in records if r.subject is celestial.CapabilitySubject.PLUTO)
+pluto = next(r for r in records if r.subject is celestial.Target.PLUTO)
 print(pluto.domain_start_jde_tt, pluto.domain_end_jde_tt, pluto.maximum_span_tt_days)
-print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.CapabilitySubject.PLUTO))
+print(celestial.capability_text(celestial.CapabilityOperation.EVENTS, celestial.Target.PLUTO))
 identities = celestial.model_identities()
-algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and i.default_alias_code == 0)
+algo5 = next(i for i in identities if i.key == celestial.ModelKey(celestial.ModelKind.DELTA_T, 5))
+print(celestial.model_identity_text(algo5.key))
 ```
 
 <a id="independent-queries"></a>
@@ -128,7 +130,7 @@ algo5 = next(i for i in identities if i.kind is celestial.ModelKind.DELTA_T and 
 import celestial_calendar as celestial
 
 selected = celestial.positions(
-  [celestial.ChartTarget.PLUTO, celestial.ChartTarget.SUN],
+  [celestial.Target.PLUTO, celestial.Target.SUN],
   2409543.5,  # Pluto's window start
 )
 for position in selected:
@@ -137,8 +139,35 @@ for position in selected:
 location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
 civil = celestial.CivilDateTime(year=1885, month=1, day=1, fraction=0.0)  # before the snapshot window
 houses = celestial.house_query(civil, celestial.CivilScale.UT1, location, celestial.HouseSystem.PLACIDUS)
-print(houses.times, houses.houses.ascendant_deg, houses.delta_t_identity, houses.nutation_identity)
+print(houses.times, houses.houses.ascendant_deg, houses.delta_t_model, houses.nutation_model)
+again = celestial.house_query(
+  civil,
+  celestial.CivilScale.UT1,
+  location,
+  celestial.HouseSystem.PLACIDUS,
+  delta_t_model=houses.delta_t_model,
+  nutation_model=houses.nutation_model,
+)
+equatorial = celestial.equatorial_positions([celestial.Target.SUN, celestial.Target.TRUE_ASCENDING], 2451545.0)
+for position in equatorial:
+  print(position.right_ascension_deg, position.declination_deg, position.distance_au, position.source)
 ```
+
+位置、事件、能力查询和快照统一使用 `Target`，不再提供 `ChartTarget`、`EventTarget` 或 `CapabilitySubject`。
+`equatorial_positions(targets, jde_tt)` 单独返回不可变的赤道坐标：赤经 `[0, 360)` 度、赤纬 `[-90, 90]` 度，
+地心、当日坐标系，使用固定 IAU1980 黄经章动与真黄赤交角；物理距离为 AU，数学交点无距离。
+它保持选择顺序，拒绝空选择和重复目标，不计算速率、民用时刻或宫位。
+
+不可变 `ModelKey(kind, identity)` 标明模型种类和非零身份码。注册记录用 `.key`，位置和快照天体用 `.source`，
+宫位与快照用 `.delta_t_model`、`.nutation_model`。模型键可传回相应种类的选择参数；`DEFAULT` 只用于输入，
+由原生侧解析。`model_identity_text(key)` 按模型键查询文字，不按注册表位置查询。`delta_t()` 仍返回秒数标量，
+但会校验原生结果的模型键。太阳距离字段改为 `distance_au`，独立月球坐标仍使用 `distance_km`。
+
+`house_capability(delta_t_model=...)` 返回独立的 `CivilHouseCapability`，包含民用年域、允许时标、UTC 起始日期、
+已解析的 Delta T 键和可选的 TT 上界，不伪造 TT 区间，也不保证几何求解成功。民用宫位政策只通过 `house_capability()` 查询。
+`capability_text()` 的目标操作必须提供具体 `Target`；HOUSES、CHART 和 DELTA_T 必须使用 `subject=None`，
+不能传入一个会被忽略的目标。
+`FINITE_INPUT_EVALUATION` 表示没有声明硬输入区间；有限时刻仍可能计算失败，坐标有效性不证明远年代精度或物理合理性。
 
 <a id="interval-longitude-events"></a>
 ### 区间黄经事件
@@ -150,16 +179,16 @@ print(houses.times, houses.houses.ascendant_deg, houses.delta_t_identity, houses
 ```python
 import celestial_calendar as celestial
 
-crossings = celestial.longitude_events(celestial.EventTarget.MERCURY, 0.0, 2460735.5, 2460785.5)
+crossings = celestial.longitude_events(celestial.Target.MERCURY, 0.0, 2460735.5, 2460785.5)
 for event in crossings:
   print(event.jde_tt, event.longitude_deg, event.direction)
 
-stations = celestial.longitude_stations(celestial.EventTarget.MERCURY, 2460735.5, 2460785.5)
+stations = celestial.longitude_stations(celestial.Target.MERCURY, 2460735.5, 2460785.5)
 for station in stations:
   print(station.jde_tt, station.motion_before.value, "->", station.motion_after.value)
 
 differences = celestial.longitude_difference_events(
-  celestial.EventTarget.MOON, celestial.EventTarget.SUN, -60.0, 2460676.5, 2460707.5
+  celestial.Target.MOON, celestial.Target.SUN, -60.0, 2460676.5, 2460707.5
 )
 ```
 
@@ -218,12 +247,13 @@ deactivate
 
 错误输入类型（包括错误枚举的成员）抛出 `TypeError`。未通过有限性、范围或定义域校验的值抛出 `ValueError`；
 属于对应枚举类、却不是其已声明成员的对象同样抛出 `ValueError`。
-原生边界报告的失败抛出 `CelestialError`，其 `operation` 属性为公开函数名，`recorded` 属性表明消息是否来自
-原生错误通道。合法的“无结果”仍以 `None` 或 `()` 表示。
+原生无效输入同样抛出 `ValueError`；计算、资源或内部失败以及损坏的成功载荷抛出 `CelestialError`。
+其 `operation` 属性为公开函数名；`recorded` 表示原生侧报告了非零错误种类，即使消息分配失败而为空也为真。
+合法的“无结果”仍以 `None` 或 `()` 表示。日志设置函数与 `LogVerbosity` 已移除，错误不会自动打印。
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` 接受有限的 UT1 下 JD，其公历年份须在 `[401, 32766]` 内；
 地理经度须有限、东正西负，范围为 `[-180, 180]` 度。结果为 `[0, 360)` 度。
-年份范围由原生边界校验，因此超出年域的 JD 抛出 `CelestialError`，而非 Python 有限性与经度校验使用的 `ValueError`。
+年份范围由原生边界校验，超出年域的 JD 抛出 `ValueError`。
 `apparent_solar_time()` 同样接受 `[-180, 180]` 度范围内、东正西负的地理经度，但其民用时刻输入是 UTC。
 
 `jieqi_moment(year, jieqi)` 返回 `JieqiMoment(jieqi, moment_ut1)`。其中的 `CivilDateTime` 是 UT1，
@@ -240,28 +270,30 @@ deactivate
 
 `new_moons_after(jde, count)` 接受 `[0, 4096]` 内的 `count`，零返回 `()`。
 上限使单个原生输出缓冲区不超过 32 KiB。
+计数/填充及按字节定长的文字协议另有单缓冲区 64 MiB 的绑定层资源上限，超限会在分配前抛出 `CelestialError`。
 
 <a id="chart-inputs-and-failure-boundaries"></a>
 ### 星盘输入与失败边界
 
 `chart_snapshot(civil_dt, scale, location, system, model=DeltaTModel.DEFAULT)` 接受 `CivilDateTime`、
 `CivilScale.UTC` / `UT1`、`GeoLocation`，以及 `HouseSystem.EQUAL` / `WHOLE_SIGN` / `PLACIDUS`。
-`DEFAULT` 与 `ALGO5` 相同；其他模型用既有 `DeltaTModel` 显式选择。它不接受标准库 `datetime`，
+`DEFAULT` 由原生侧解析，目前为 `ALGO5`；其他模型用 `DeltaTModel` 或相应种类的 `ModelKey` 显式选择。它不接受标准库 `datetime`，
 本地钟表时间须由调用者先转换成声明的输入时标，不能丢弃时区后直接传入。
 
-Python 在原生计算前检查全部输入。类型错误抛 `TypeError`，包括给 `scale`、`system` 或 `model`
+Python 在原生计算前检查类型、有限性和 ABI 整数宽度，日期、年份和地理定义域由原生侧检查。类型错误抛 `TypeError`，包括给 `scale`、`system` 或 `model`
 传普通字符串或其他枚举的成员，以及在数值字段里放枚举成员。属于对应枚举类、却不是其已声明成员的对象，
 与无效公历日期、非有限数和原始值越界一样抛 `ValueError`。原始值的范围是：公历年 `[1885, 2100)`，
 日小数 `[0, 1)`，UTC 从 1972-01-01 开始（更早的输入请选 `CivilScale.UT1`），纬度 `(-90, 90)`，
 经度 `[-180, 180]`。原生核心负责转换后 TT 的共同域 `[2409543.875, 2488069.125)` JDE、
 Algo4 的额外限制 JDE `< 2464328.5`、所有宫制在浮点舍入精度下无法确定的上升点方向，
-以及 Placidus 随日期变化的极区限制；这些失败抛 `CelestialError`，
-不返回部分结果，也不替换宫制。原始民用年份合法不保证转换后的完整快照可计算。
+以及 Placidus 随日期变化的极区限制。原生定义域和几何拒绝抛 `ValueError`；计算失败抛 `CelestialError`。
+不返回部分结果，也不替换宫制。民用宫位查询共用转换后 TT 的 Algo4 严格上界，2034 年末部分 UT1 输入因此被拒绝。
+原始民用年份合法不保证转换后的完整快照可计算。
 
 输入为 UTC 时，结果里的 UT1 是模型值，不是观测 DUT1；UTC 如何换算到 TT 与 UT1，见
 [Time scales](../../docs/DESIGN.md#time-scales)。
-插入的闰秒不在民用日小数输入内。Python 结果复制自固定的 C V1 协议，不保留原生缓冲区；
-不兼容的字段或天体集合扩展使用新版本协议。
+插入的闰秒不在民用日小数输入内。Python 结果复制自 C 协议，不保留原生缓冲区；
+不兼容的字段或天体集合扩展需要显式新形状或新主版本。
 
 <a id="date-bridges-and-lunar-round-trip"></a>
 ### 纯日期桥接与阴历往返
@@ -308,13 +340,10 @@ print(celestial.lunar_to_gregorian(algorithm, lunar).to_date())
 `lunar_to_gregorian()` 接受 `LunarDate`，使用 `[1, 12]` 内的传统月号和显式 `is_leap` 布尔值，
 而非月份的位置索引。
 
-`lunar_year_info()` 和 `lunar_to_gregorian()` 每次调用都先查询一次原生范围，再校验阴历年。
-Python 包不另存范围表或缓存，也不在导入时查询范围。阴历年越界抛出 `ValueError`；原生范围查询失败抛出 `CelestialError`，
-其公开操作名为调用者 `"lunar_year_info"` 或 `"lunar_to_gregorian"`，而非内部查询。
+`lunar_year_info()` 和 `lunar_to_gregorian()` 直接由原生计算检查日期与阴历年范围。
+Python 包不另存范围表或缓存，不在导入或计算前查询范围。
 
-有效公历标签超出所选算法覆盖范围，或阴历闰月/日组合不存在，均抛出 `CelestialError`。
-例如，`gregorian_to_lunar(LunarAlgorithm.ALGO1, GregorianDate(1900, 1, 1))` 能通过公历校验，
-但抛出 `CelestialError`；`lunar_year_info(LunarAlgorithm.ALGO1, 1900)` 则抛出 `ValueError`。
+有效公历标签超出所选算法覆盖范围、阴历年越界，或阴历闰月/日组合不存在，均抛出 `ValueError`。
 
 <a id="delta-t-models"></a>
 ### Delta T 模型

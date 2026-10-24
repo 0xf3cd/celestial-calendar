@@ -19,6 +19,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <span>
@@ -28,6 +29,7 @@
 #include <vector>
 
 #include "ephemeris.hpp"
+#include "ephemeris_event_facts.hpp"
 #include "ephemeris_event_bounds.hpp"
 #include "event_search.hpp"
 
@@ -73,16 +75,24 @@ namespace astro::ephemeris::detail {
 
 namespace event_search = astro::detail::event_search;
 
+static_assert(EVENT_BOUNDS_WIDE.size() == TARGETS.size());
+static_assert(EVENT_BOUNDS_CENTURY.size() == TARGETS.size());
+static_assert(std::invoke([] {
+  for (std::size_t index = 0; index < TARGETS.size(); ++index) {
+    if (static_cast<std::size_t>(TARGETS.at(index)) != index) {
+      return false;
+    }
+  }
+  return true;
+}), "Generated bounds are indexed by the target roster's underlying values");
+
 /** @brief Evaluate the actual target longitude; descending-node rates alone use the ascending trajectory. */
 [[nodiscard]] inline auto event_longitude(const Target target, const double jde_tt) -> toolbox::AngleDeg {
-  switch (target) {
-    case Target::MEAN_DESCENDING:
-      return astro::lunar_node::position(astro::lunar_node::Node::MEAN_DESCENDING, jde_tt);
-    case Target::TRUE_DESCENDING:
-      return astro::lunar_node::position(astro::lunar_node::Node::TRUE_DESCENDING, jde_tt);
-    default:
-      return longitude_for_rate(target, jde_tt);
+  const auto& facts = target_facts(target);
+  if (facts.node.has_value()) {
+    return astro::lunar_node::position(*facts.node, jde_tt);
   }
+  return longitude_for_rate(target, jde_tt);
 }
 
 /**
@@ -114,7 +124,6 @@ namespace event_search = astro::detail::event_search;
 inline constexpr double EVENT_RATE_CENTER_QUANTUM_TT_DAYS = 0x1p-30;
 inline constexpr double EVENT_CELL_WIDTH_TT_DAYS = 0.25;
 inline constexpr double EVENT_TIME_RESOLUTION_TT_DAYS = 0x1p-10;
-inline constexpr double EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS = 3660.0;
 inline constexpr std::size_t EVENT_MAXIMUM_EVALUATIONS = 65536;
 inline constexpr std::size_t EVENT_MAXIMUM_CANDIDATES = 4096;
 inline constexpr double EVENT_CENTURY_START_JDE_TT = astro::julian_day::J2000 - 36525.0;

@@ -47,12 +47,13 @@
           try {
             celestial.lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 });
           } catch (error) {
-            translated = error instanceof celestial.CelestialError
-              && error.operation === "lunar.fromGregorian"
-              && error.recorded
+            translated = error instanceof RangeError
               && error.message.includes("cannot be represented");
           }
           const lichun = alias.jieqi.moment(2024, alias.Jieqi.LICHUN);
+          if ("config" in celestial || !(celestial.sun.apparentGeocentricCoordinate(jdeTt).distanceAu > 0)) {
+            throw new Error("public logging/distance migration");
+          }
           window.__CELESTIAL_RESULT__ = {
             translated,
             sharedExports: Object.keys(celestial).join() === Object.keys(alias).join()

@@ -117,7 +117,7 @@ def build_docs(build_version: str) -> int:
   html = output / "html"
   pages = {
     "index.html": ("API Reference", build_version),
-    "celestial_8h.html": ("query_jieqi_moment", "last_error"),
+    "celestial_8h.html": ("celestial_query_jieqi_moment", "celestial_last_error", "celestial_last_error_kind"),
     "structastro_1_1toolbox_1_1SphericalCoordinate.html": ("\u03bb", "\u03b2"),
     "structcalendar_1_1lunar_1_1converter_1_1Converter.html": ("is_valid_gregorian", "\u516c\u5386", "\u9634\u5386"),
   }

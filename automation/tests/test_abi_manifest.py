@@ -39,10 +39,12 @@ def test_struct_kind_relabels_to_sret_in_the_javascript_view():
 
 
 def test_python_only_prose_stays_out_of_the_javascript_view():
-  chart = next(export for export in build_manifest("javascript")["exports"] if export["name"] == "chart_snapshot_v1")
+  chart = next(
+    export for export in build_manifest("javascript")["exports"] if export["name"] == "celestial_chart_snapshot"
+  )
   assert "ownership" not in chart["protocol"]
   assert "presence" not in chart["protocol"]
-  cusps = build_manifest("javascript")["layouts"]["ChartHousesV1"]["fields"][-1]
+  cusps = build_manifest("javascript")["layouts"]["CelestialChartHouses"]["fields"][-1]
   assert cusps["name"] == "cusps_deg"
   assert "extent" not in cusps
   assert "stride" not in cusps
@@ -51,11 +53,12 @@ def test_python_only_prose_stays_out_of_the_javascript_view():
 def test_a_source_edit_drifts_from_the_committed_manifest():
   from toolbox import make_abi_manifest
 
-  original = make_abi_manifest.EXPORTS[0]["protocol"]["zero"]
+  protocol = make_abi_manifest.EXPORT_SEMANTICS["celestial_positions"]["protocol"]
+  original = protocol["legal_empty"]
   try:
-    make_abi_manifest.EXPORTS[0]["protocol"]["zero"] = original + " (edited)"
+    protocol["legal_empty"] = not original
     with pytest.raises(AssertionError):
       assert render("python") == COMMITTED["python"]
   finally:
-    make_abi_manifest.EXPORTS[0]["protocol"]["zero"] = original
+    protocol["legal_empty"] = original
   assert render("python") == COMMITTED["python"]

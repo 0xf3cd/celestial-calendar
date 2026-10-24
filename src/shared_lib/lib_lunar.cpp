@@ -11,6 +11,7 @@
  */
 
 #include <cassert>
+#include <format>
 #include <functional>
 #include <utility>
 
@@ -30,7 +31,7 @@ namespace {
 // of the boundary — the positional semantics stay out of the published ABI.
 
 template <calendar::lunar::common::Algo algo>
-auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day) -> std::optional<LunarDate> {
+auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day) -> std::optional<CelestialLunarDate> {
   const auto converted = calendar::lunar::converter::Converter<algo>::gregorian_to_lunar(
     util::to_ymd(
       util::checked_year(year),
@@ -49,7 +50,7 @@ auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day
     return std::nullopt;
   }
 
-  return LunarDate {
+  return CelestialLunarDate {
     .valid   = true,
     .year    = y,
     .month   = traditional->month,
@@ -60,7 +61,7 @@ auto convert_to_lunar(const int32_t year, const uint8_t month, const uint8_t day
 
 template <calendar::lunar::common::Algo algo>
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d(+leap) is the natural date order, as in every neighbour.
-auto convert_to_gregorian(const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> std::optional<GregorianDate> {
+auto convert_to_gregorian(const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> std::optional<CelestialGregorianDate> {
   // An out-of-window year throws here; the export's catch turns that into `valid = false`.
   const auto& info = calendar::lunar::common::AlgoMetadata<algo>::get_info_for_year(year);
 
@@ -75,7 +76,7 @@ auto convert_to_gregorian(const int32_t year, const uint8_t month, const bool is
   }
 
   const auto [y, m, d] = util::from_ymd(*converted);
-  return GregorianDate {
+  return CelestialGregorianDate {
     .valid = true,
     .year  = y,
     .month = static_cast<uint8_t>(m),
@@ -118,24 +119,24 @@ extern "C" {
 
 // #67: every export catches all exceptions and degrades to `valid = false` / `0`; contract: see celestial.h.
 
-auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRange {
-  return lib::wrap_export(__func__, [=]() -> SupportedLunarYearRange {
+auto celestial_get_supported_lunar_year_range(const uint8_t algo) -> CelestialSupportedLunarYearRange {
+  return lib::wrap_export(__func__, [=]() -> CelestialSupportedLunarYearRange {
     return dispatch(to_algo(algo), []<calendar::lunar::common::Algo algorithm> {
       using enum calendar::lunar::common::Algo;
       if constexpr (algorithm == ALGO_1) {
-        return SupportedLunarYearRange {
+        return CelestialSupportedLunarYearRange {
           .valid = true,
           .start = calendar::lunar::algo1::START_YEAR,
           .end   = calendar::lunar::algo1::END_YEAR,
         };
       } else if constexpr (algorithm == ALGO_2) {
-        return SupportedLunarYearRange {
+        return CelestialSupportedLunarYearRange {
           .valid = true,
           .start = calendar::lunar::algo2::START_YEAR,
           .end   = calendar::lunar::algo2::END_YEAR,
         };
       } else {
-        return SupportedLunarYearRange {
+        return CelestialSupportedLunarYearRange {
           .valid = true,
           .start = calendar::lunar::algo3::START_YEAR,
           .end   = calendar::lunar::algo3::END_YEAR,
@@ -145,8 +146,8 @@ auto get_supported_lunar_year_range(const uint8_t algo) -> SupportedLunarYearRan
   });
 }
 
-auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters)
-  return lib::wrap_export(__func__, [=]() -> LunarYearInfo {
+auto celestial_get_lunar_year_info(const uint8_t algo, const int32_t year) -> CelestialLunarYearInfo { // NOLINT(bugprone-easily-swappable-parameters): algorithm/year is the published query order.
+  return lib::wrap_export(__func__, [=]() -> CelestialLunarYearInfo {
     using namespace std::views;
 
     const auto raw = dispatch(to_algo(algo), [year]<calendar::lunar::common::Algo algorithm> {
@@ -182,8 +183,8 @@ auto get_lunar_year_info(const uint8_t algo, const int32_t year) -> LunarYearInf
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
-auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t month, const uint8_t day) -> LunarDate {
-  return lib::wrap_export(__func__, [=]() -> LunarDate {
+auto celestial_gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t month, const uint8_t day) -> CelestialLunarDate {
+  return lib::wrap_export(__func__, [=]() -> CelestialLunarDate {
     const auto converted = dispatch(to_algo(algo), [=]<calendar::lunar::common::Algo algorithm> {
       return convert_to_lunar<algorithm>(year, month, day);
     });
@@ -196,8 +197,8 @@ auto gregorian_to_lunar(const uint8_t algo, const int32_t year, const uint8_t mo
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d is the natural date order, as in every neighbour.
-auto lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> GregorianDate {
-  return lib::wrap_export(__func__, [=]() -> GregorianDate {
+auto celestial_lunar_to_gregorian(const uint8_t algo, const int32_t year, const uint8_t month, const bool is_leap, const uint8_t day) -> CelestialGregorianDate {
+  return lib::wrap_export(__func__, [=]() -> CelestialGregorianDate {
     const auto converted = dispatch(to_algo(algo), [=]<calendar::lunar::common::Algo algorithm> {
       return convert_to_gregorian<algorithm>(year, month, is_leap, day);
     });

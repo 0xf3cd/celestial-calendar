@@ -253,7 +253,12 @@ template <BodyProvider P>
   const auto eq = provider(jde_tt);
 
   // `local_apparent` wants Meeus's west-positive longitude; `GeoLocation` carries east-positive.
-  const auto θ = astro::sidereal::local_apparent(jd_ut1, jde_tt, -location.longitude);
+  const auto θ = astro::sidereal::local_apparent(
+    jd_ut1,
+    jde_tt,
+    -location.longitude,
+    astro::earth::nutation::Model::IAU_1980
+  );
 
   return {
     .hour_angle_deg = toolbox::normalize_pm180((θ - eq.α).deg()),

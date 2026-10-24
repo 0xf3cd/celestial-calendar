@@ -1776,9 +1776,9 @@ TEST(EphemerisEvents, DirectedPairsRetainEveryPassAndSignedAngle) {
 TEST(EphemerisEvents, PublicWorkLimitsAndNonfiniteTimesRemainExplicit) {
   ASSERT_EQ(detail::EVENT_MAXIMUM_EVALUATIONS, std::size_t { 65536 });
   ASSERT_EQ(detail::EVENT_MAXIMUM_CANDIDATES, std::size_t { 4096 });
-  ASSERT_EQ(detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS, 3660.0);
+  ASSERT_EQ(EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS, 3660.0);
   constexpr double START = 2460676.5;
-  ASSERT_TRUE(stations(Target::SUN, START, START + detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS).empty());
+  ASSERT_TRUE(stations(Target::SUN, START, START + EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS).empty());
   search::Budget budget { .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
                           .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES };
   std::size_t calls = 0;
