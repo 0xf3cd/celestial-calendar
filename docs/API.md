@@ -20,7 +20,8 @@ The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) 
 headers. This section covers the headers beyond the Jieqi API. The chart snapshot is also available from C
 (described below), Python and JavaScript; the interval longitude events, the capabilities and model identities,
 and the independent ecliptic/equatorial position and house queries are also available from C and Python.
-For changes from 0.x, see [Migrating to 1.0](MIGRATING_1_0.md).
+For changes from 0.x, see
+[Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md).
 
 The [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
 [`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
