@@ -15,6 +15,7 @@ import csv
 import hashlib
 import importlib.util
 import io
+import json
 import sys
 import zipfile
 from pathlib import Path
@@ -171,3 +172,27 @@ def test_wheel_record_and_archive_integrity_are_independent_requirements(verifie
   with pytest.raises(AssertionError, match=message):
     check(verifier, members, version, fault)
   check(verifier, members, version)
+
+
+@pytest.mark.parametrize("fault", [None, "missing", "extra", "duplicate"])
+def test_wheel_entrypoint_reconciles_exports_before_inspection(verifier, tmp_path, monkeypatch, fault):
+  manifest = json.loads(verifier.MANIFEST.read_text(encoding="utf-8"))
+  if fault == "missing":
+    manifest["exports"].pop()
+  elif fault == "extra":
+    manifest["exports"].append({"name": "unexpected_export"})
+  elif fault == "duplicate":
+    manifest["exports"].append(manifest["exports"][0])
+  source = tmp_path / "manifest.json"
+  source.write_text(json.dumps(manifest), encoding="utf-8")
+  monkeypatch.setattr(verifier, "MANIFEST", source)
+  version = verifier.project_version()
+  wheel = tmp_path / f"celestial_calendar-{version}-py3-none-manylinux_2_28_x86_64.whl"
+  wheel.touch()
+  monkeypatch.setattr(sys, "argv", ["verify.py", str(wheel)])
+  if fault is None:
+    with pytest.raises(zipfile.BadZipFile):
+      verifier.main()
+  else:
+    with pytest.raises(AssertionError, match="C ABI export inventory"):
+      verifier.main()

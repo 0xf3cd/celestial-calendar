@@ -300,7 +300,9 @@ try {
   try {
     assert.equal(M._celestial_capability_text(0, 9, textPtr, requiredText), requiredText);
     assert.equal(M.HEAPU8[textPtr + requiredText - 1], 0);
-    assert(readCString(textPtr).startsWith("Position of Pluto"));
+    const text = readCString(textPtr);
+    assert(text.includes("Pluto") && text.includes("Meeus Chapter 37"));
+    assert(text.includes("PLUTO95 supplies independent references, not the runtime evaluator"));
   } finally {
     M._free(textPtr);
   }
@@ -748,7 +750,8 @@ for (const house_system_code of [3, 255, 256, 257, 0x10000002, 0xFFFFFFFF]) {
   invalidChart({ house_system_code }, "house_system_code");
 }
 for (const delta_t_model_code of [6, 255, 256, 257, 261, 0x10000005, 0xFFFFFFFF]) {
-  invalidChart({ delta_t_model_code }, "delta_t_model_code");
+  invalidChart({ delta_t_model_code }, `code ${delta_t_model_code}`);
+  assert.equal(M._celestial_last_error_kind(), 1);
 }
 for (const year of [-2147483648, -63510, 1884, 2100, 67562, 2147483647]) invalidChart({ year }, "year");
 for (const month of [0, 13, 256, 257, 268, 65537, 0xFFFFFFFF]) invalidChart({ month }, "month");

@@ -123,6 +123,8 @@ TEST(CAbiSmoke, LibraryCallsAreSilent) {
 
 TEST(CAbiSmoke, DeltaT) {
   using astro::delta_t::Model;
+  // Compare runtime evaluation on both sides of the ABI, not a compiler-folded polynomial.
+  const volatile double year = 2024.5;
   const std::array cases {
     std::pair { CELESTIAL_DELTA_T_MODEL_DEFAULT, Model::ALGO5 },
     std::pair { CELESTIAL_DELTA_T_MODEL_ALGO1, Model::ALGO1 },
@@ -132,9 +134,9 @@ TEST(CAbiSmoke, DeltaT) {
     std::pair { CELESTIAL_DELTA_T_MODEL_ALGO5, Model::ALGO5 },
   };
   for (const auto& [selector, model] : cases) {
-    const auto result = celestial_delta_t(2024.5, selector);
+    const auto result = celestial_delta_t(year, selector);
     ASSERT_TRUE(result.valid) << celestial_last_error();
-    EXPECT_EQ(result.value, astro::delta_t::compute(model, 2024.5));
+    EXPECT_EQ(result.value, astro::delta_t::compute(model, year));
     EXPECT_EQ(result.model_identity_code, selector == CELESTIAL_DELTA_T_MODEL_DEFAULT
                 ? CELESTIAL_DELTA_T_MODEL_ALGO5 : selector);
   }

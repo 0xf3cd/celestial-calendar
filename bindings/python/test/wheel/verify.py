@@ -228,8 +228,9 @@ def main() -> None:
   filename_match = re.fullmatch(rf"celestial_calendar-{re.escape(version)}-py3-none-(.+)\.whl", wheel.name)
   assert filename_match is not None, wheel.name
   platform_tags = filename_match.group(1).split(".")
-  exports = {entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]}
-  assert len(exports) == 38
+  export_names = [entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]]
+  exports = set(export_names)
+  assert len(export_names) == len(exports) == 36, "C ABI export inventory"
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
     native_member = verify_metadata(archive, wheel, version, platform_tags)

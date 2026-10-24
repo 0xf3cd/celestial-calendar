@@ -166,10 +166,13 @@ TEST(CoreOwnership, CivilComposerHasNoJointWindowAndKeepsPolicyEdges) {
 }
 
 TEST(CoreOwnership, FourAxesMatchEveryHouseSystemAndSelectedModel) {
+  // Both compositions must evaluate at runtime; constant-folded sidereal polynomials can round differently.
+  const volatile double jd_ut1 = 2461042.0;
+  const volatile double jde_tt = 2461042.0008;
   for (const auto model : { earth::nutation::Model::MEEUS, earth::nutation::Model::IAU_1980 }) {
-    const auto axes = house::axes(2461042.0, 2461042.0008, SITE, model);
+    const auto axes = house::axes(jd_ut1, jde_tt, SITE, model);
     for (const auto system : { house::System::EQUAL, house::System::WHOLE_SIGN, house::System::PLACIDUS }) {
-      expect_axes(axes, house::calculate(2461042.0, 2461042.0008, SITE, system, model));
+      expect_axes(axes, house::calculate(jd_ut1, jde_tt, SITE, system, model));
     }
   }
   const GeoLocation polar { .latitude = AngleDeg { 89.0 }, .longitude = AngleDeg { 0.0 } };
