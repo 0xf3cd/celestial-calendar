@@ -1595,7 +1595,7 @@ THE SOFTWARE.
 
 ==============================================================================
 IAU SOFA issue 2023-10-11 — SOFA Software License
-Applies to: the lunar, nutation, and leap-second data derived from IAU SOFA issue 2023-10-11.
+Applies to: the lunar, nutation, equatorial-reference, and leap-second data derived from IAU SOFA issue 2023-10-11.
 Source: https://www.iausofa.org/s/sofa_c-20231011tar.gz (member sofa/20231011/c/doc/copyr.lis)
 Source-file SHA-256: ffe5460c057a4765e6ca7cf30b50e9f1306e84640e8ec9c05566bbad2c96c994
 Derived-work statement: this project uses data derived from software provided by SOFA under license.
