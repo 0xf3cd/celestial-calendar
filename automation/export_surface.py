@@ -142,11 +142,14 @@ def self_test_parser() -> List[str]:
 
 
 def find_real_so(shared_lib_dir: Path) -> Optional[Path]:
-  """Locate the real built library (not a symlink); None means the build is missing."""
-  for candidate in sorted(shared_lib_dir.iterdir()) if shared_lib_dir.is_dir() else []:
-    if REAL_SO_RE.match(candidate.name) and not candidate.is_symlink():
-      return candidate
-  return None
+  """Follow CMake's current link without selecting an accumulated old version."""
+  link = shared_lib_dir / "libcelestial_calendar.so"
+  if not link.is_file():
+    return None
+  candidate = link.resolve()
+  if candidate.parent != shared_lib_dir.resolve() or not REAL_SO_RE.fullmatch(candidate.name):
+    return None
+  return candidate
 
 
 def nm_defined(so: Path) -> Dict[str, str]:
