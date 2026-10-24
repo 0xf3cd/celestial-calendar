@@ -463,6 +463,12 @@ TEST(Datetime, TimePointValidationPrecedesCalendarConversion) {
                                std::numeric_limits<double>::infinity() }) {
     EXPECT_THROW((Datetime { FloatTime { std::chrono::duration<double> { count } } }), std::invalid_argument);
   }
+  try {
+    std::ignore = Datetime { FloatTime { std::chrono::duration<double> { -1e-12 } } };
+    FAIL() << "An unrepresentable floating day remainder must be rejected";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_STREQ(error.what(), "Floating time-point day remainder is not representable");
+  }
   constexpr auto MIN_COUNT = std::numeric_limits<int64_t>::min();
   const Datetime earliest_ns { sys_time<nanoseconds> { nanoseconds { MIN_COUNT } } };
   const auto expected_day = (MIN_COUNT / static_cast<int64_t>(in_a_day<nanoseconds>())) - 1;

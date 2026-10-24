@@ -24,7 +24,7 @@
 
 namespace util {
 
-/*! @brief An arithmetic year with at most 64 integer value bits, or a chrono year. */
+/*! @brief An integral year of at most 64 value bits, a floating-point year, or a chrono year. */
 template <typename T>
 concept YearConvertible = std::same_as<std::remove_cv_t<T>, std::chrono::year>
   or std::floating_point<T>
@@ -81,7 +81,7 @@ concept DaysConvertible = requires (const T& t) {
     using Wide = std::conditional_t<std::is_signed_v<Year>, int64_t, uint64_t>;
     const auto original = static_cast<Wide>(year);
     if (std::cmp_less(original, FIRST_YEAR) or std::cmp_greater(original, LAST_YEAR)) {
-      throw std::invalid_argument { std::format("Argument `year` is outside [{}, {}], got {}", FIRST_YEAR, LAST_YEAR, year) };
+      throw std::invalid_argument { std::format("Argument `year` is outside [{}, {}], got {}", FIRST_YEAR, LAST_YEAR, original) };
     }
   }
   const auto checked = checked_year(static_cast<int32_t>(year));

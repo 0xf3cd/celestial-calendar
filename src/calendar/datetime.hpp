@@ -278,6 +278,8 @@ struct Datetime {
    * @param tp The time point. The expected clock is `system_clock`.
    * @throw std::invalid_argument If the input is non-finite, outside the Gregorian year range,
    *        or cannot be represented during conversion.
+   * @note Floating-point rounding can make the day remainder unrepresentable near midnight;
+   *       such inputs are rejected.
    */
   template <IsDuration Duration>
   constexpr explicit Datetime(const time_point<system_clock, Duration>& tp) 
@@ -330,7 +332,11 @@ struct Datetime {
         throw std::invalid_argument { "Time-point day cannot be represented within the Gregorian year range" };
       }
       ymd = year_month_day { day };
-      time_of_day = hh_mm_ss { detail::checked_time_of_day(tp - day) };
+      try {
+        time_of_day = hh_mm_ss { detail::checked_time_of_day(tp - day) };
+      } catch (const std::invalid_argument&) {
+        throw std::invalid_argument { "Floating time-point day remainder is not representable" };
+      }
     }
   }
 

@@ -42,7 +42,7 @@
   time-point constructors remain. `to_fraction` retains negative and multi-day inputs but rejects non-finite inputs
   and nanosecond counts outside `int64_t`.
 - Jieqi JSON export uses schema `celestial-calendar/jieqi-table@2` (#380): replace `unix_ms`/`iso_utc`
-  with `jd_ut1`/`iso_ut1`. It keeps model UT1 without a UTC suffix or a UTC accuracy promise. Export now
+  with `jd_ut1`/`iso_ut1`. It keeps model UT1 without a UTC suffix or a claim of accuracy relative to UTC. Export now
   requires a verified build receipt; dirty-source builds record a snapshot digest and no source commit.
 - The Delta T code table is single-sourced: `astro::capability::resolve_delta_t_code`
   resolves the boundary codes (DEFAULT selects Algo5) for the C ABI switch, and the new

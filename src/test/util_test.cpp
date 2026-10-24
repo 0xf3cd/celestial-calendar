@@ -132,6 +132,8 @@ TEST(Util, ToYmdInputTypes) {
   enum class YearAlias : uint64_t { WRAPPED = 0x100000000 + 2024 };
   static_assert(not YearConvertible<YearAlias>);
   static_assert(not ToYmdCallable<YearAlias, uint32_t, uint32_t>);
+  EXPECT_EQ(to_ymd(char16_t { 2024 }, 1, 1), to_ymd(2024, 1, 1));
+  EXPECT_THROW(std::ignore = to_ymd(char32_t { 70000 }, 1, 1), std::invalid_argument);
 }
 
 TEST(Util, FromYmd) {
