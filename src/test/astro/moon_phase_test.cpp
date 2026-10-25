@@ -33,6 +33,7 @@ namespace astro::moon_phase::test {
 // Each block remains under its respective source terms and outside the project MIT grant.
 
 using namespace astro::moon_phase::new_moon;
+using detail::NumericPolicy;
 
 TEST(NewMoon, RootGenerator) {
   using namespace std::ranges;
@@ -80,15 +81,21 @@ TEST(NewMoon, InvalidArgument) {
 
   // Three days past conjunction, the left endpoint already leads by tens of degrees:
   // not a bracket at all.
-  ASSERT_THROW(std::ignore = newton_method(root + 3.0, root + 4.0), std::invalid_argument);
+  ASSERT_THROW(
+    std::ignore = detail::newton_method<NumericPolicy::CONJUNCTION>(root + 3.0, root + 4.0, 0.0),
+    std::invalid_argument
+  );
 
   // Half a day before conjunction the left endpoint is fine, but two days after, the right
   // endpoint has left the tolerance window.
-  ASSERT_THROW(std::ignore = newton_method(root - 0.5, root + 2.0), std::invalid_argument);
+  ASSERT_THROW(
+    std::ignore = detail::newton_method<NumericPolicy::CONJUNCTION>(root - 0.5, root + 2.0, 0.0),
+    std::invalid_argument
+  );
 
   // `next_root` insists its seed is a root: ten days past conjunction the elongation is
   // ~120 deg away.
-  ASSERT_THROW(std::ignore = next_root(root + 10.0), std::invalid_argument);
+  ASSERT_THROW(std::ignore = detail::next_root<NumericPolicy::CONJUNCTION>(root + 10.0, 0.0), std::invalid_argument);
 }
 
 
@@ -261,18 +268,18 @@ TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
     double jde = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(year, 1, 1), 0.0 });
 
     for (int i = 0; i < 15; ++i) {
-      const auto [left, right] = first_root_range_after(jde);
+      const auto [left, right] = detail::first_root_range_after<NumericPolicy::CONJUNCTION>(jde, 0.0);
 
       // Laying the bracket out around the refined estimate is what decouples it from the miss:
       // its width is now BRACKET_HALF_WIDTH_DAYS either side, where it used to be twice however
       // far the mean-rate extrapolation had landed from conjunction.
-      ASSERT_NEAR(right - left, 2.0 * BRACKET_HALF_WIDTH_DAYS, 1e-9);
+      ASSERT_NEAR(right - left, 2.0 * detail::BRACKET_HALF_WIDTH_DAYS, 1e-9);
 
-      ASSERT_GT(longitude_diff(left),  360.0 - BRACKET_TOLERANCE_DEG + REQUIRED_MARGIN_DEG);
-      ASSERT_LT(longitude_diff(right), BRACKET_TOLERANCE_DEG - REQUIRED_MARGIN_DEG);
+      ASSERT_GT(longitude_diff(left),  360.0 - detail::BRACKET_TOLERANCE_DEG + REQUIRED_MARGIN_DEG);
+      ASSERT_LT(longitude_diff(right), detail::BRACKET_TOLERANCE_DEG - REQUIRED_MARGIN_DEG);
 
       // The bracket must still contain the root it was built for.
-      const double root = newton_method(left, right);
+      const double root = detail::newton_method<NumericPolicy::CONJUNCTION>(left, right, 0.0);
       ASSERT_GT(root, left);
       ASSERT_LT(root, right);
 
@@ -570,21 +577,25 @@ TEST(PhaseMoments, RootGeneratorOrderAndSpacing) {
 
 TEST(PhaseMoments, InvalidArgument) {
   using astro::moon_phase::phase_moments::moments;
-  using astro::moon_phase::phase_moments::newton_method;
-  using astro::moon_phase::phase_moments::next_root;
   using astro::moon_phase::phase_moments::PhaseKind;
 
   const auto roots = moments(2024, PhaseKind::NEW_MOON);
   const double root = roots.front();
 
   // Both endpoints lead the target: not a bracket at all.
-  ASSERT_THROW(std::ignore = newton_method(root + 3.0, root + 4.0, 0.0), std::invalid_argument);
+  ASSERT_THROW(
+    std::ignore = detail::newton_method<NumericPolicy::PHASE>(root + 3.0, root + 4.0, 0.0),
+    std::invalid_argument
+  );
 
   // Left endpoint trails, but the right endpoint has left the tolerance window.
-  ASSERT_THROW(std::ignore = newton_method(root - 0.5, root + 2.0, 0.0), std::invalid_argument);
+  ASSERT_THROW(
+    std::ignore = detail::newton_method<NumericPolicy::PHASE>(root - 0.5, root + 2.0, 0.0),
+    std::invalid_argument
+  );
 
   // next_root insists its seed is a root.
-  ASSERT_THROW(std::ignore = next_root(root + 10.0, 0.0), std::invalid_argument);
+  ASSERT_THROW(std::ignore = detail::next_root<NumericPolicy::PHASE>(root + 10.0, 0.0), std::invalid_argument);
 }
 
 

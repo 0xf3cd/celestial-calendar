@@ -17,6 +17,7 @@
 #include <format>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <utility>
 
 #include "toolbox.hpp"
@@ -28,16 +29,12 @@
 #include "moon.hpp"
 
 
-namespace astro::moon_phase::new_moon {
-
-// In our context, the conjunction is the moment when the Sun and the Moon are at the same apparent longitude,
-// which is also called "New Moon". In Chinese, this is called "朔", "合朔", or "新月".
-
+namespace astro::moon_phase {
 
 /**
  * @brief Calculate the difference between the apparent longitudes of the Moon and the Sun.
- * @param jde The Julian Ephemeris Day.
- * @return The normalized difference between the apparent longitudes of the Moon and the Sun, in degrees.
+ * @param jde The Julian Ephemeris Day on the TT scale.
+ * @return Moon minus Sun apparent longitude, in [0°, 360°).
  * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
  */
 [[nodiscard]] inline auto longitude_diff(const double jde) -> double {
@@ -47,197 +44,7 @@ namespace astro::moon_phase::new_moon {
   return diff.normalize().deg();
 }
 
-
-/**
- * @brief How near conjunction a JDE must sit before it can serve as a bracket endpoint,
- *        measured in degrees of Moon-Sun elongation.
- * @note The same figure sets where `f` is unwrapped below, so the bracket that Newton's method
- *       accepts and the interval on which `f` is smooth are one and the same by construction.
- */
-inline constexpr double BRACKET_TOLERANCE_DEG = 15.0;
-
-/**
- * @brief Apply Newton's method to find the jde, when the Sun and Moon are at the same apparent longitude.
- * @param left_jde The left bound of the search, inclusive.
- * @param right_jde The right bound of the search, exclusive.
- * @param iterations The maximum number of iterations.
- * @return The jde of the conjunction.
- * @note It is the caller's responsibility to ensure the root exists in the range of [left_jde, right_jde).
- * @throw std::invalid_argument If no root exists in the range of [left_jde, right_jde).
- */
-[[nodiscard]] inline auto newton_method(
-  const double left_jde,
-  const double right_jde,            // NOLINT(bugprone-easily-swappable-parameters)
-  const std::size_t iterations = toolbox::NEWTON_MAX_ITERATIONS
-) -> double {
-
-  // Make sure the root exists in the range of [left_jde, right_jde).
-  const double left_diff = longitude_diff(left_jde);
-  const double right_diff = longitude_diff(right_jde);
-
-  if (left_diff <= 360.0 - BRACKET_TOLERANCE_DEG or right_diff >= BRACKET_TOLERANCE_DEG) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format(
-        "No root between jde {} (elongation {} deg) and jde {} (elongation {} deg).",
-        left_jde, left_diff, right_jde, right_diff
-      )
-    };
-  }
-
-  // Define the function `f` which is differentiable.
-  // We are going to find the root where `f` evaluates to 0.
-  // Just before conjunction the Moon still trails the Sun by nearly a full turn, so the raw
-  // difference jumps from 360 back to 0 across the root; unwrapping it keeps `f` smooth there.
-  const auto f = [](const double jde) -> double {
-    const double diff = longitude_diff(jde);
-    if (diff > 360.0 - BRACKET_TOLERANCE_DEG) {
-      return diff - 360.0;
-    }
-    return diff;
-  };
-
-  return toolbox::newton_method(
-    f, left_jde, right_jde, toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
-  );
-}
-
-
-/**
- * @brief How far the mean-rate extrapolation may miss conjunction and still be worth refining,
- *        in degrees of Moon-Sun elongation.
- * @note Refining divides the miss by the mean rate, so a miss of this size leaves the estimate
- *       about `30 / 12.19 * 0.19` = 0.47 day short of the root — which is what makes
- *       `BRACKET_HALF_WIDTH_DAYS` the binding constraint on how large this may be.
- */
-inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
-
-/**
- * @brief Half the width of the bracket handed to Newton's method, in days.
- * @note Chosen between two bounds. Too narrow and the bracket stops containing the root, since
- *       refining leaves an error of up to 0.47 day at the tolerance above. Too wide and the
- *       endpoints drift past `BRACKET_TOLERANCE_DEG`: at the Moon's fastest, 14.5 deg/day, an
- *       endpoint 0.67 day out already sits 9.7 deg from conjunction.
- */
-inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
-
-/**
- * @brief Approximate the range of the first root after the given jde, when the Sun and Moon are at the same apparent longitude.
- * @param jde The jde.
- * @return The range of the first root after the given `jde`.
- * @throw std::invalid_argument If the extrapolation lands further than `ESTIMATE_TOLERANCE_DEG`
- *        from conjunction, i.e. too far off to be worth refining.
- */
-[[nodiscard]] inline auto first_root_range_after(const double jde) -> std::pair<double, double> {
-  const double cur_diff = longitude_diff(jde);
-  const double gap = 360.0 - cur_diff;
-
-  constexpr double deg_per_day = toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
-  const double est_jde = jde + (gap / deg_per_day); // Estimate the next root jde.
-
-  // Extrapolating at the mean rate lands near the root but not on it: the Moon's true rate runs
-  // between about 10.5 and 14.5 deg/day, so a month of it can miss by several degrees either way.
-  // Signed, so that overshooting the conjunction reads positive and falling short reads negative.
-  const double est_jde_diff = longitude_diff(est_jde);
-  const double signed_miss_deg = (est_jde_diff > 180.0) ? est_jde_diff - 360.0 : est_jde_diff;
-
-  if (std::fabs(signed_miss_deg) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format(
-        "Cannot find the first root after jde {}: the estimate at jde {} misses conjunction "
-        "by {} deg (elongation {} deg).",
-        jde, est_jde, signed_miss_deg, est_jde_diff
-      )
-    };
-  }
-
-  // Step the estimate onto the root before bracketing it. Bracketing the estimate directly would
-  // leave the endpoints however far out the extrapolation happened to miss, plus whatever the
-  // rate varied over the bracket -- measured, that put an endpoint within 0.67 deg of the
-  // tolerance Newton's method demands. Refining first makes the endpoints' distance from
-  // conjunction a property of `BRACKET_HALF_WIDTH_DAYS` instead, so the bracket the solver
-  // accepts is one this function builds by construction rather than by luck.
-  const double root_est = est_jde - (signed_miss_deg / deg_per_day);
-  return { root_est - BRACKET_HALF_WIDTH_DAYS, root_est + BRACKET_HALF_WIDTH_DAYS };
-}
-
-
-/**
- * @brief Find the next root jde.
- * @param jde The jde. This is expected to be a root.
- * @return The next root jde.
- */
-[[nodiscard]] inline auto next_root(const double jde) -> double {
-  const double jde_lon_diff = longitude_diff(jde);
-  if (1.0 < jde_lon_diff and jde_lon_diff < 359.0) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format("The jde {} is not a root.", jde)
-    };
-  }
-
-  const auto next_root_range = first_root_range_after(jde + 1.0); // Add 1.0 in case `jde_lon_diff` falls into [359.0, 360.0).
-  const auto [left, right] = next_root_range;
-  return newton_method(left, right);
-}
-
-/**
- * @brief Generator for finding the roots (i.e. conjunction moments of the Sun and Moon).
- */
-// TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
-struct RootGenerator {
-private:
-  double _root;
-
-public:
-  explicit RootGenerator(const double start_jde) {
-    const auto [left, right] = first_root_range_after(start_jde);
-    const double first_root = newton_method(left, right);
-    _root = first_root;
-  }
-
-  [[nodiscard]] auto next() -> double {
-    const double root = _root;
-    _root = next_root(_root);
-    return root;
-  }
-};
-
-
-/**
- * @brief Calculate conjunctions moments of the Sun and Moon in a given Gregorian year.
-          计算某一个公历年中日月合朔的时刻。
- * @param year The Gregorian year, in [1, 32766].
- * @return The vector of the conjunction moments, in JDE (Julian Ephemeris Day).
- * @throw std::invalid_argument if `year` is outside [1, 32766].
- * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
- * @note A conjunction falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
- *       generator seeded at that instant returns it or skips to the next moon turns on
- *       floating-point noise in the longitude difference. Left as is on purpose (#127) —
- *       the set of such instants has measure zero, and no test can pin one.
- * @details The Sun's position is calculated using VSOP87D,
- * @details The Moon's position is calculated using truncated ELP2000-82B.
- * @see VSOP87D, ELP2000-82B, and Astronomical Algorithms, Jean Meeus, 1998.
- */
-[[nodiscard]] inline auto moments(const int32_t year) -> std::vector<double> {
-  // #84: the bounds are UTC, not UT1 — a conjunction between the two midnights used to be
-  // attributed to the neighbouring year.
-  const auto [start_jde, end_jde] = astro::julian_day::utc_year_jde_window(year);
-
-  RootGenerator gen(start_jde);
-  std::vector<double> roots;
-
-  while (true) {
-    const auto root = gen.next();
-    if (root >= end_jde) {
-      break;
-    }
-
-    roots.push_back(root);
-  }
-
-  return roots;
-}
-
-} // namespace astro::moon_phase::new_moon
+} // namespace astro::moon_phase
 
 
 namespace astro::moon_phase::phase_moments {
@@ -265,25 +72,13 @@ enum class PhaseKind : uint8_t {
   std::unreachable();
 }
 
-/**
- * @brief Moon-Sun apparent longitude difference normalized to [0°, 360°).
- * @param jde The Julian Ephemeris Day.
- * @return The normalized difference, in degrees.
- */
-[[nodiscard]] inline auto longitude_diff(const double jde) -> double {
-  return astro::moon_phase::new_moon::longitude_diff(jde);
-}
+} // namespace astro::moon_phase::phase_moments
 
-/**
- * @brief Signed difference from the target elongation, folded to [-180°, 180°).
- * @param jde The Julian Ephemeris Day.
- * @param target_deg The target elongation, in degrees.
- * @return The signed, folded difference.
- * @note Folding keeps `f` smooth across the root for any target, not just 0°.
- */
-[[nodiscard]] inline auto phase_diff(const double jde, const double target_deg) -> double {
-  return toolbox::normalize_pm180(longitude_diff(jde) - target_deg);
-}
+
+namespace astro::moon_phase::detail {
+
+/** @brief The existing conjunction and principal-phase numerical conventions. */
+enum class NumericPolicy : uint8_t { CONJUNCTION, PHASE };
 
 /**
  * @brief How near the target elongation a bracket endpoint must sit before Newton's method
@@ -299,68 +94,169 @@ inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
 
 /**
  * @brief Half the width of the bracket handed to Newton's method, in days.
- * @note Same value as `new_moon::BRACKET_HALF_WIDTH_DAYS`; the mean-rate miss dominates
- *       the bracket choice, and that rate is the same for all four phases.
+ * @note At a 19% rate offset, correcting a 30° miss leaves about `30 / 12.19 * 0.19` = 0.47 day.
+ *       The bracket must also keep endpoints within 15° even at 14.5°/day.
  */
 inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 
 /**
- * @brief Apply Newton's method to find the JDE at which the Moon-Sun elongation equals
- *        the target value.
- * @param left_jde The left bound of the search, inclusive.
- * @param right_jde The right bound of the search, exclusive.
- * @param target_deg The target elongation, in degrees.
- * @param iterations The maximum number of iterations.
- * @return The JDE of the phase moment.
- * @throw std::invalid_argument If no root exists in the range for the given target.
+ * @brief Map elongation to the Newton objective; conjunction uses its local near-360° unwrap.
+ * @note Subtracting 360° only above 345° keeps the conjunction branch continuous near the root.
+ *       It is not the principal phase's global [-180°, 180°) fold.
+ * @pre diff is in [0°, 360°); target_deg is 0° for conjunction, a principal elongation otherwise.
  */
-// The `_jde` / `_deg` / `_iterations` suffixes carry the contract at the call site.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+template <NumericPolicy POLICY>
+[[nodiscard]] inline auto objective_at(const double diff, const double target_deg) -> double {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    return diff > 360.0 - BRACKET_TOLERANCE_DEG ? diff - 360.0 : diff;
+  } else {
+    return toolbox::normalize_pm180(diff - target_deg);
+  }
+}
+
+/** @brief Signed mean-rate miss; conjunction keeps +180°, principal phases fold it to -180°. */
+template <NumericPolicy POLICY>
+[[nodiscard]] inline auto miss_at(const double diff, const double target_deg) -> double {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    return diff > 180.0 ? diff - 360.0 : diff;
+  } else {
+    return toolbox::normalize_pm180(diff - target_deg);
+  }
+}
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- JDE bounds and elongations are named at each call.
+
+/** @brief Reject endpoints outside the policy's local branch; only conjunction accepts right +0. */
+template <NumericPolicy POLICY>
+[[nodiscard]] inline auto bracket_rejected(
+  const double left_diff,
+  const double right_diff,
+  const double target_deg
+) -> bool {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    return left_diff <= 360.0 - BRACKET_TOLERANCE_DEG or right_diff >= BRACKET_TOLERANCE_DEG;
+  } else {
+    const double left = toolbox::normalize_pm180(left_diff - target_deg);
+    const double right = toolbox::normalize_pm180(right_diff - target_deg);
+    const bool misses_target = left >= 0.0 or right <= 0.0;
+    const bool endpoints_too_far = std::fabs(left) >= BRACKET_TOLERANCE_DEG
+                               or std::fabs(right) >= BRACKET_TOLERANCE_DEG;
+    return misses_target or endpoints_too_far;
+  }
+}
+
+/** @brief Report rejected endpoints using the policy's raw or folded elongations. */
+template <NumericPolicy POLICY>
+[[noreturn]] inline auto reject_bracket(
+  const double left_jde,
+  const double left_diff,
+  const double right_jde,
+  const double right_diff,
+  const double target_deg
+) -> void {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    throw std::invalid_argument {
+      std::format(
+        "No root between jde {} (elongation {} deg) and jde {} (elongation {} deg).",
+        left_jde, left_diff, right_jde, right_diff
+      )
+    };
+  } else {
+    throw std::invalid_argument {
+      std::format(
+        "No root between jde {} (elongation {} deg) and jde {} (elongation {} deg) for target {} deg.",
+        left_jde,
+        objective_at<POLICY>(left_diff, target_deg),
+        right_jde,
+        objective_at<POLICY>(right_diff, target_deg),
+        target_deg
+      )
+    };
+  }
+}
+
+/** @brief Report an estimate outside the refinement allowance without reevaluating positions. */
+template <NumericPolicy POLICY>
+[[noreturn]] inline auto reject_estimate(
+  const double jde,
+  const double est_jde,
+  const double miss_deg,
+  const double elongation_deg,
+  const double target_deg
+) -> void {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    throw std::invalid_argument {
+      std::format(
+        "Cannot find the first root after jde {}: the estimate at jde {} misses conjunction "
+        "by {} deg (elongation {} deg).",
+        jde, est_jde, miss_deg, elongation_deg
+      )
+    };
+  } else {
+    throw std::invalid_argument {
+      std::format(
+        "Cannot find the first root after jde {} for target {} deg: the estimate at jde {} "
+        "misses the target by {} deg (elongation {} deg).",
+        jde, target_deg, est_jde, miss_deg, elongation_deg
+      )
+    };
+  }
+}
+
+/** @brief Report a seed more than one degree from the requested root. */
+template <NumericPolicy POLICY>
+[[noreturn]] inline auto reject_seed(const double jde, const double target_deg) -> void {
+  if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
+    throw std::invalid_argument { std::format("The jde {} is not a root.", jde) };
+  } else {
+    throw std::invalid_argument { std::format("The jde {} is not a root for target {} deg.", jde, target_deg) };
+  }
+}
+
+
+/**
+ * @brief Refine a root in [left_jde, right_jde), on the TT scale.
+ * @pre The endpoints bracket a root on the policy's continuous branch; conjunction has target 0°.
+ * @param iterations The Newton iteration cap; zero retains the bracket midpoint.
+ * @throw std::invalid_argument If the endpoints fail the policy's bracket check.
+ */
+template <NumericPolicy POLICY>
 [[nodiscard]] inline auto newton_method(
   const double left_jde,
   const double right_jde,
   const double target_deg,
   const std::size_t iterations = toolbox::NEWTON_MAX_ITERATIONS
 ) -> double {
-// NOLINTEND(bugprone-easily-swappable-parameters)
-
-  // The root is between left and right when left trails the target (negative signed diff)
-  // and right leads it (positive signed diff). A margin of BRACKET_TOLERANCE_DEG keeps the
-  // endpoints safely inside the smooth branch of `phase_diff`.
-  const double left_diff = phase_diff(left_jde, target_deg);
-  const double right_diff = phase_diff(right_jde, target_deg);
-
-  if (left_diff >= 0.0 or right_diff <= 0.0
-      or std::fabs(left_diff) >= BRACKET_TOLERANCE_DEG
-      or std::fabs(right_diff) >= BRACKET_TOLERANCE_DEG) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format(
-        "No root between jde {} (elongation {} deg) and jde {} (elongation {} deg) for target {} deg.",
-        left_jde, left_diff, right_jde, right_diff, target_deg
-      )
-    };
+  const double left_diff = longitude_diff(left_jde);
+  const double right_diff = longitude_diff(right_jde);
+  if (bracket_rejected<POLICY>(left_diff, right_diff, target_deg)) [[unlikely]] {
+    reject_bracket<POLICY>(left_jde, left_diff, right_jde, right_diff, target_deg);
   }
 
   const auto f = [target_deg](const double jde) -> double {
-    return phase_diff(jde, target_deg);
+    return objective_at<POLICY>(longitude_diff(jde), target_deg);
   };
 
   return toolbox::newton_method(
-    f, left_jde, right_jde, toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY, iterations
+    f,
+    left_jde,
+    right_jde,
+    toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY,
+    iterations
   );
 }
 
 /**
  * @brief Approximate the range of the first root after the given JDE for a target elongation.
- * @param jde The JDE.
- * @param target_deg The target elongation, in degrees.
+ * @param jde The JDE on the TT scale.
+ * @param target_deg Zero for conjunction, a principal elongation otherwise.
  * @return The bracket [left, right) containing the first root after `jde`.
  * @throw std::invalid_argument If the mean-rate estimate lands too far from the target.
  */
+template <NumericPolicy POLICY>
 [[nodiscard]] inline auto first_root_range_after(const double jde, const double target_deg) -> std::pair<double, double> {
   const double cur_diff = longitude_diff(jde);
 
-  // The signed distance to the next target, measured along the increasing elongation.
   const double gap = (target_deg > cur_diff)
                    ? (target_deg - cur_diff)
                    : (360.0 - cur_diff + target_deg);
@@ -368,18 +264,14 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
   constexpr double deg_per_day = toolbox::MOON_ELONGATION_RATE_DEG_PER_DAY;
   const double est_jde = jde + (gap / deg_per_day);
 
-  const double est_jde_diff = phase_diff(est_jde, target_deg);
-  if (std::fabs(est_jde_diff) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format(
-        "Cannot find the first root after jde {} for target {} deg: the estimate at jde {} "
-        "misses the target by {} deg (elongation {} deg).",
-        jde, target_deg, est_jde, est_jde_diff, longitude_diff(est_jde)
-      )
-    };
+  const double est_jde_diff = longitude_diff(est_jde);
+  const double signed_miss_deg = miss_at<POLICY>(est_jde_diff, target_deg);
+  if (std::fabs(signed_miss_deg) > ESTIMATE_TOLERANCE_DEG) [[unlikely]] {
+    reject_estimate<POLICY>(jde, est_jde, signed_miss_deg, est_jde_diff, target_deg);
   }
 
-  const double root_est = est_jde - (est_jde_diff / deg_per_day);
+  // Refine before bracketing so the half-width need not absorb the whole mean-rate miss.
+  const double root_est = est_jde - (signed_miss_deg / deg_per_day);
   return { root_est - BRACKET_HALF_WIDTH_DAYS, root_est + BRACKET_HALF_WIDTH_DAYS };
 }
 
@@ -390,39 +282,102 @@ inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
  * @return The next root JDE.
  * @throw std::invalid_argument If `jde` is not a root for the target.
  */
+template <NumericPolicy POLICY>
 [[nodiscard]] inline auto next_root(const double jde, const double target_deg) -> double {
-  if (std::fabs(phase_diff(jde, target_deg)) > 1.0) [[unlikely]] {
-    throw std::invalid_argument {
-      std::format("The jde {} is not a root for target {} deg.", jde, target_deg)
-    };
+  if (std::fabs(toolbox::normalize_pm180(longitude_diff(jde) - target_deg)) > 1.0) [[unlikely]] {
+    reject_seed<POLICY>(jde, target_deg);
   }
 
-  const auto [left, right] = first_root_range_after(jde + 1.0, target_deg);
-  return newton_method(left, right, target_deg);
+  // A one-day step prevents a just-before-root seed from finding the same root again.
+  const auto [left, right] = first_root_range_after<POLICY>(jde + 1.0, target_deg);
+  return newton_method<POLICY>(left, right, target_deg);
 }
 
+/** @brief Estimate, bracket and refine the first root after a JDE(TT). */
+template <NumericPolicy POLICY>
+[[nodiscard]] inline auto first_root_after(const double jde, const double target_deg) -> double {
+  const auto [left, right] = first_root_range_after<POLICY>(jde, target_deg);
+  return newton_method<POLICY>(left, right, target_deg);
+}
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+
 /**
- * @brief Generator for finding phase moments of a given kind.
+ * @brief Eager-by-one Moon-phase roots in JDE(TT); next refines the following root before returning.
  */
 // TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
+template <NumericPolicy POLICY>
 struct RootGenerator {
 private:
-  double _root;
   double _target;
+  double _root;
 
 public:
-  explicit RootGenerator(const double start_jde, const PhaseKind kind)
-    : _target { target_angle_deg(kind) } {
-    const auto [left, right] = first_root_range_after(start_jde, _target);
-    _root = newton_method(left, right, _target);
-  }
+  explicit RootGenerator(const double start_jde) requires (POLICY == NumericPolicy::CONJUNCTION)
+    : _target { 0.0 }, _root { first_root_after<POLICY>(start_jde, _target) } {}
 
+  explicit RootGenerator(
+    const double start_jde,
+    const phase_moments::PhaseKind kind
+  ) requires (POLICY == NumericPolicy::PHASE)
+    : _target { phase_moments::target_angle_deg(kind) }, _root { first_root_after<POLICY>(start_jde, _target) } {}
+
+  /** @brief Inspect the pending root without computing another one. */
+  [[nodiscard]] auto peek() const -> double { return _root; }
+
+  /** @brief Return the pending root after successfully computing its successor. */
   [[nodiscard]] auto next() -> double {
     const double root = _root;
-    _root = next_root(_root, _target);
+    _root = next_root<POLICY>(_root, _target);
     return root;
   }
 };
+
+/** @brief Collect roots strictly before end_jde, retaining the generator's eager advance. */
+template <NumericPolicy POLICY>
+[[nodiscard]] inline auto roots_before(RootGenerator<POLICY> gen, const double end_jde) -> std::vector<double> {
+  std::vector<double> roots;
+  while (true) {
+    const double root = gen.next();
+    if (root >= end_jde) {
+      return roots;
+    }
+    roots.push_back(root);
+  }
+}
+
+} // namespace astro::moon_phase::detail
+
+
+namespace astro::moon_phase::new_moon {
+
+/**
+ * @brief Conjunction (朔) roots: equal Moon-Sun apparent longitude.
+ * @note The numerical convention differs from phase_moments::NEW_MOON at bracket +0 and the 180°/345° folds.
+ */
+using RootGenerator = detail::RootGenerator<detail::NumericPolicy::CONJUNCTION>;
+
+/**
+ * @brief Calculate conjunctions of the Sun and Moon in a Gregorian year.
+ * @param year The Gregorian year, in [1, 32766].
+ * @return Conjunction moments in JDE(TT), using VSOP87D and truncated ELP2000-82B positions.
+ * @throw std::invalid_argument If year is outside [1, 32766].
+ * @note Year boundaries are UTC, degrading to UT1 before 1972 (#84).
+ * @note A conjunction exactly at Jan 1 UTC has no defined owner; rounding may retain or skip it (#127).
+ */
+[[nodiscard]] inline auto moments(const int32_t year) -> std::vector<double> {
+  const auto [start_jde, end_jde] = astro::julian_day::utc_year_jde_window(year);
+  return detail::roots_before(RootGenerator { start_jde }, end_jde);
+}
+
+} // namespace astro::moon_phase::new_moon
+
+
+namespace astro::moon_phase::phase_moments {
+
+/** @brief A generator for one principal phase, using its signed-fold numerical convention. */
+using RootGenerator = detail::RootGenerator<detail::NumericPolicy::PHASE>;
 
 /**
  * @brief Calculate the moments of a given Moon phase in a Gregorian year.
@@ -431,27 +386,12 @@ public:
  * @return The phase moments in the year, in JDE (TT-scale ephemeris time).
  * @throw std::invalid_argument if `year` is outside [1, 32766].
  * @note The year runs from Jan 1 to Jan 1 in UTC; before 1972 the bounds degrade to UT1.
- * @note A phase falling exactly on Jan 1 00:00:00 UTC has no defined owner: whether the
- *       generator seeded at that instant returns it or skips to the next moon turns on
- *       floating-point noise in the longitude difference. Left as is on purpose (#127) —
- *       the set of such instants has measure zero, and no test can pin one.
+ * @note A phase exactly at Jan 1 UTC has no defined owner; rounding may retain or skip it (#127).
  * @details Positions: VSOP87D (Sun) and truncated ELP2000-82B (Moon), both apparent geocentric.
  */
 [[nodiscard]] inline auto moments(const int32_t year, const PhaseKind kind) -> std::vector<double> {
   const auto [start_jde, end_jde] = astro::julian_day::utc_year_jde_window(year);
-
-  RootGenerator gen(start_jde, kind);
-  std::vector<double> roots;
-
-  while (true) {
-    const auto root = gen.next();
-    if (root >= end_jde) {
-      break;
-    }
-    roots.push_back(root);
-  }
-
-  return roots;
+  return detail::roots_before(RootGenerator { start_jde, kind }, end_jde);
 }
 
 } // namespace astro::moon_phase::phase_moments
