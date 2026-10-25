@@ -255,7 +255,7 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
 
 /**
  * @brief Return an apparent geocentric ecliptic position, including AU distance.
- * @throws std::logic_error If the source is nonphysical or a required planet operand is missing.
+ * @throw std::logic_error If the source is nonphysical or a required planet operand is missing.
  */
 [[nodiscard]] inline auto physical_apparent(const TargetFacts& facts, const double jde_tt) -> toolbox::SphericalCoordinate {
   using enum PositionSource;

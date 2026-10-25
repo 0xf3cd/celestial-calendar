@@ -244,7 +244,7 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 `CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
 `time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
 这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
-结果符合所调用操作的输入窗口时，仍可作为民用时刻输入：函数读取 `fraction`，而非派生的时分秒字段。
+结果符合所调用操作的输入窗口时，仍可作为民用时刻输入。函数读取 `fraction`，而非派生的时分秒字段。
 时间尺度由操作命名区分，不编码在这个共用记录类型中。
 
 记录输入按结构识别：显式自有字段与排除标签决定种类，而非构造函数；不会读取 `Date` 方法或时间戳。
@@ -312,7 +312,7 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 `recorded === false` 的 `CelestialError`。初始化完成后：
 
 - `TypeError` 表示输入类型错误、缺少自有字段、带有排除的日期种类标签、日期字段非整数，或 `isLeap` 非布尔值。
-- `RangeError` 表示未知算法、非有限数或非安全数、无效公历日期（包括年份超出 `[1, 32767]`）、
+- `RangeError` 表示未知算法、非有限数或非安全数、无效公历日期、
   阴历年超出原生范围，或阴历月/日超出 `[1, 12]` / `[1, 30]`。
 - `RangeError` 也包括原生无效输入拒绝，如公历日期标签超出所选算法覆盖范围，或阴历闰月/日组合不存在。
 - `CelestialError` 表示计算／资源／内部失败或原生成功记录畸形，`operation` 指向调用者，

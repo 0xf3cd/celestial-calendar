@@ -264,8 +264,8 @@ Native `GregorianDate` and `CivilDateTimeResult` results use astronomical years 
 denoting 1 BCE. `CivilDateTimeResult` adds an integer `hour` and `minute` and a possibly fractional `second` to `CivilDateTime`.
 `time.jdeToUt1()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
 These fields are derived from the day fraction and are not rounded to milliseconds; `second` counts seconds, not
-milliseconds. A result can be reused as a civil-moment input when it fits that operation's input window: functions
-read `fraction`, not the derived clock fields. The operation name, not this shared record type, says which time scale applies.
+milliseconds. A result can be reused as a civil-moment input when it fits the receiving operation's input window.
+Functions read `fraction`, not the derived clock fields. The operation name, not this shared record type, says which time scale applies.
 
 Record inputs are recognized by shape: explicit own fields and excluded tags decide the kind, not the constructor,
 and `Date` methods or timestamps are never read. A plain `Date` lacks the required fields; use the date bridge below
@@ -353,8 +353,8 @@ with `recorded === false`, before argument validation. After initialization:
 
 - `TypeError` means a wrong input type, a missing own field, an excluded date-kind tag, a non-integer date field, or
   a non-boolean `isLeap`.
-- `RangeError` means an unknown algorithm, a non-finite or unsafe number, an invalid Gregorian date (including a year
-  outside `[1, 32767]`), a lunar year outside the native range, or a lunar month/day outside `[1, 12]` / `[1, 30]`.
+- `RangeError` means an unknown algorithm, a non-finite or unsafe number, an invalid Gregorian date,
+  a lunar year outside the native range, or a lunar month/day outside `[1, 12]` / `[1, 30]`.
 - `RangeError` also covers native invalid-input rejections, including a Gregorian date label outside the selected
   algorithm's coverage or a lunar leap-month/day combination that does not exist.
 - `CelestialError` means computation/resource/internal failure or a malformed native success record, with
