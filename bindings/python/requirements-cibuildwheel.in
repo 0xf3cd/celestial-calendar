@@ -11,7 +11,7 @@
 build==1.6.1
 delocate==0.13.0
 delvewheel==1.13.2
-filelock==4.1.1
+filelock==4.2.1
 pip==26.2.1
 platformdirs==4.13.0
 python-discovery==1.6.2
