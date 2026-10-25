@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import json
 import math
+import runpy
 
 from fractions import Fraction
 from pathlib import Path
@@ -40,6 +41,63 @@ TARGETS = (
 )
 RECORD_PATH = "src/test/provenance/ephemeris-events/BOUND_RECORDS.json"
 HEADER_PATH = "src/astro/ephemeris_event_bounds.hpp"
+SOURCE_DIGEST = runpy.run_path(str(Path(__file__).resolve().parents[1] / "automation/source_digest.py"))
+SOURCE_PATHS = (
+  "src/astro/ephemeris.hpp",
+  "src/astro/lunar_node.hpp",
+  "src/astro/moon.hpp",
+  "src/astro/elp2000_82b.hpp",
+  "src/astro/planet.hpp",
+  "src/astro/pluto.hpp",
+  "src/astro/earth.hpp",
+  "src/astro/julian_day.hpp",
+  "src/astro/toolbox.hpp",
+  "src/astro/coord_transform.hpp",
+  "src/astro/earth/precession.hpp",
+  "src/astro/vsop87d/defines.hpp",
+  "src/astro/vsop87d/earth_coeff.hpp",
+  "src/astro/vsop87d/mercury_coeff.hpp",
+  "src/astro/vsop87d/venus_coeff.hpp",
+  "src/astro/vsop87d/mars_coeff.hpp",
+  "src/astro/vsop87d/jupiter_coeff.hpp",
+  "src/astro/vsop87d/saturn_coeff.hpp",
+  "src/astro/vsop87d/uranus_coeff.hpp",
+  "src/astro/vsop87d/neptune_coeff.hpp",
+  "src/astro/sun.hpp",
+)
+
+
+def source_identity(root: Path) -> dict:
+  """Identify complete numerical headers without depending on their comments or layout."""
+  hashes = {}
+  for name in SOURCE_PATHS:
+    try:
+      hashes[name] = SOURCE_DIGEST["cpp_token_digest"]((root / name).read_text(encoding="utf-8"))
+    except ValueError as error:
+      raise ValueError(f"Cannot identify event-bound source {name}: {error}") from error
+  return {
+    "algorithm": SOURCE_DIGEST["CPP_TOKEN_ALGORITHM"],
+    "version": SOURCE_DIGEST["CPP_TOKEN_VERSION"],
+    "sha256": hashes,
+  }
+
+
+def validate_source_identity(record: dict) -> None:
+  identity = record.get("source_identity", {})
+  if not isinstance(identity, dict):
+    raise ValueError("Unsupported event-bound source identity")
+  SOURCE_DIGEST["validate_cpp_token_algorithm"](identity.get("algorithm"), identity.get("version"))
+  hashes = identity.get("sha256")
+  if (
+    set(identity) != {"algorithm", "version", "sha256"}
+    or not isinstance(hashes, dict)
+    or set(hashes) != set(SOURCE_PATHS)
+    or any(
+      not isinstance(value, str) or len(value) != 64 or set(value) - set("0123456789abcdef")
+      for value in hashes.values()
+    )
+  ):
+    raise ValueError("Unsupported event-bound source coverage")
 
 
 def directed(record: dict, lower: bool = False) -> str:
@@ -57,11 +115,12 @@ def directed(record: dict, lower: bool = False) -> str:
 def emit(record: dict) -> str:
   """Render all fourteen records in their fixed Target order without changing mathematical values."""
   if (
-    record["schema"] != 1
+    record["schema"] != 2
     or tuple(record["target_order"]) != TARGETS
     or record["epsilon_hex"] != "0x1.0000000000000p-48"
   ):
     raise ValueError("Unsupported event-bound schema, target order or elementary-function premise")
+  validate_source_identity(record)
   lines = [
     "/*",
     " * CelestialCalendar:",
@@ -144,9 +203,10 @@ def emit(record: dict) -> str:
   return "\n".join(lines)
 
 
-def check_sources(record: dict, actual: dict[str, str], solar_body: str) -> None:
+def check_sources(record: dict, actual: dict) -> None:
   """Invalidate bound evidence when a pinned numerical source changes."""
-  if record["source_sha256"] != actual or record["solar_geocentric_namespace_body_sha256"] != solar_body:
+  validate_source_identity(record)
+  if record["source_identity"] != actual:
     raise ValueError("Event-bound source identity changed; recheck the affected numerical evidence")
 
 
@@ -164,15 +224,7 @@ def main() -> None:
   record = json.loads((root / RECORD_PATH).read_text(encoding="utf-8"))
   rendered = emit(record)
   if args.check:
-    actual = {
-      name: hashlib.sha256((root / name).read_text(encoding="utf-8").encode("utf-8")).hexdigest()
-      for name in record["source_sha256"]
-    }
-    solar = (
-      (root / "src/astro/sun.hpp").read_text(encoding="utf-8").split("namespace astro::sun::geocentric_coord {", 1)[1]
-    )
-    solar = solar.split("} // namespace astro::sun::geocentric_coord", 1)[0]
-    check_sources(record, actual, hashlib.sha256(solar.encode()).hexdigest())
+    check_sources(record, source_identity(root))
     if rendered != (root / HEADER_PATH).read_text(encoding="utf-8"):
       raise ValueError("C++ event bounds do not match the exact records")
     references = (root / RECORD_PATH).parent

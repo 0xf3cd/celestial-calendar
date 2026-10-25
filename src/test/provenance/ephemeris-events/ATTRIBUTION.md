@@ -91,6 +91,13 @@ mode checks source pins and every emitted literal. The automation tests
 reject understated errors, raised signed lower bounds, target reordering,
 changed elementary-function premises and changed source identities.
 
+Schema 2 uses the versioned `cpp-preprocessing-tokens` digest from
+`automation/source_digest.py` for 21 complete headers, including `sun.hpp`.
+It ignores comments and layout while retaining literal spellings, token
+boundaries, directive endings and function-macro adjacency. Unsupported
+preprocessing forms fail explicitly. Coverage is the recorded file list,
+not its transitive includes; the 117 retained-data identities are separate.
+
 This emitter checks transcription, not the coefficient-majorant derivation
 or platform libm accuracy. The [event guide](../../../../docs/EPHEMERIS_EVENTS.md)
 states those separate premises and the distinction between rate evaluation
