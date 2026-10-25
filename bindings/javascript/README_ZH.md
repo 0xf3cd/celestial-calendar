@@ -87,7 +87,7 @@ console.log(snapshot.houses.cuspsDeg); // twelve house cusps in house order
 Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。宫位遵循宫位操作的章动默认模型，当前为 IAU 1980；
 天体位置修正仍固定为 IAU 1980。类型／记录结构错误抛 `TypeError`；无效的日期、日小数、地点、
 选项字符串或原生域拒绝抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
-`"chart.snapshot"`。`recorded` 仅在错误消息来自原生错误通道时为 `true`。失败不返回半张 snapshot。
+`"chart.snapshot"`。原生侧报告已知错误种类时，`recorded` 为 `true`，即使消息为空也一样。失败不返回半张 snapshot。
 
 <a id="todays-lunar-date"></a>
 ### 今天的阴历日期
@@ -214,7 +214,7 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 
 初始化完成后，错误的结构和类型抛出 `TypeError`；无效输入或声明域之外的输入，无论在哪一层发现，都抛出 `RangeError`。
 计算／资源／内部失败或原生成功记录畸形抛出 `CelestialError`，其 `operation` 为公开方法名，
-`recorded` 表明消息是否来自原生错误通道。原生错误种类决定是否失败，即使消息为空也一样。
+原生侧报告已知错误种类时，`recorded` 为 `true`，即使消息为空也一样；绑定本地发现的失败为 `false`。
 合法的“无结果”仍以 `null` 或 `[]` 表示。
 
 有限的位置输入仍可能计算失败；坐标合法不保证远年代的物理合理性或精度，不设新的统一位置年域或黄赤交角阈值。

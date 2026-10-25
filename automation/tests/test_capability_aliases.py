@@ -10,6 +10,8 @@
 
 """Independent model, target and operation identities for the approved C vocabulary."""
 
+import re
+
 from automation.abi_layout import load_abi
 from automation.c_abi_schema import parse_header
 from toolbox.make_abi_manifest import REPO_ROOT, build_manifest
@@ -104,3 +106,10 @@ def test_all_generated_code_views_preserve_exact_names_and_values():
   assert family("CELESTIAL_CIVIL_SCALE_") == {"UTC": 0, "UT1": 1}
   assert family("CELESTIAL_HOUSE_SYSTEM_") == {"EQUAL": 0, "WHOLE_SIGN": 1, "PLACIDUS": 2}
   assert family("CELESTIAL_PRESENT_") == {"LATITUDE": 1, "DISTANCE": 2}
+
+
+def test_capability_validation_owner_names_resolve_to_tests():
+  source = (REPO_ROOT / "src/shared_lib/lib_capability.cpp").read_text()
+  names = set(re.findall(r"\b\w+_test\.cpp\b", source))
+  test_names = {path.name for path in (REPO_ROOT / "src/test").rglob("*_test.cpp")}
+  assert names and not names - test_names

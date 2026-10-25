@@ -252,7 +252,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 }
 
 /**
- * @brief Resolve UT1 and TT without chart/house civil-year or derived-TT admission policy.
+ * @brief Resolve UT1 and TT without additional civil-year or derived-TT admission policy.
  * @param civil_dt A valid civil datetime on the declared scale.
  * @param scale UTC from 1972-01-01, or explicitly labelled UT1.
  * @param model The selected Delta T model.

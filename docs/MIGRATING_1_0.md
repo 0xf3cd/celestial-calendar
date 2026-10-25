@@ -116,8 +116,8 @@ The `celestial-calendar` npm alias forwards the same API; use matching primary/a
 
 Wrong types/shapes use `TypeError`; invalid input found by JavaScript or native code uses `RangeError`.
 Computation/resource/internal failures and corrupt native success records use `CelestialError`. Initialization
-and loader retry behavior are unchanged. `CelestialError.recorded` describes message provenance, not whether
-an empty native error message means success.
+and loader retry behavior are unchanged. In both bindings, `CelestialError.recorded` is true when a recognized
+native error kind was reported, even if its message is empty; binding-local failures set it to false.
 
 ## C++ ownership, time and model conventions
 
@@ -161,5 +161,6 @@ despite the stable source code name containing `PLUTO95`.
 Algo1–Algo4 Delta T models are frozen comparison models. Algo5 uses Algo2 before 2005, the Bulletin A fitted
 segment through the inclusive `algo5::LAST_OBSERVATION_YEAR`, then the anchored corrected integrated-LOD
 extrapolation; the whole model is not a trained polynomial. See the [model sources](../bindings/javascript/README.md#delta-t-models).
-No new external equatorial tolerance is selected by this migration. Existing goldens/tolerances are unchanged;
-new reference calibration and full release-candidate/platform validation are separate work.
+Existing goldens and tolerances are unchanged. The new equatorial tests separate same-input projection/node
+conformance from physical Horizons regression checks; their thresholds and sample limits are in
+[Validation](VALIDATION.md#equatorial-reference-layers). Final release-candidate/platform validation remains separate.

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <limits>
 #include <new>
@@ -52,6 +53,21 @@ auto set_unknown_error(std::string_view operation) noexcept -> void;
 
 /** @brief Read the calling thread's error kind without clearing it. */
 [[nodiscard]] auto last_error_kind() noexcept -> ErrorKind;
+
+/** @brief Initialize a caller-owned count before any query validation or evaluation. */
+inline auto check_count(uint32_t* const count, const std::string_view name) -> void {
+  if (count == nullptr) {
+    throw std::invalid_argument { std::format("Argument `{}` is null.", name) };
+  }
+  *count = 0;
+}
+
+/** @brief A null slot pointer is permitted only for a count-only call. */
+inline auto check_slots(const auto* const slots, const uint32_t capacity) -> void {
+  if (slots == nullptr and capacity > 0) {
+    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+  }
+}
 
 /** @brief Size or copy UTF-8 text, counting the NUL and terminating any positive-capacity output. */
 [[nodiscard]] inline auto copy_text(const std::string_view text, char* const buffer, const uint32_t capacity) -> uint32_t {

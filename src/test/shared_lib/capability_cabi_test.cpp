@@ -230,6 +230,19 @@ TEST(CapabilityCAbi, TextExportSizersThenFills) {
       return celestial_capability_text(operation, CELESTIAL_TARGET_SUN, buffer, capacity);
     });
     EXPECT_NE(text.find("VSOP87D"), std::string::npos);
+    if (operation == CELESTIAL_OPERATION_EQUATORIAL) {
+      EXPECT_NE(text.find("RA/Dec of date"), std::string::npos);
+      EXPECT_NE(text.find("fixed IAU1980"), std::string::npos);
+    } else if (operation == CELESTIAL_OPERATION_POSITION) {
+      EXPECT_NE(text.find("true ecliptic and equinox of date"), std::string::npos);
+      EXPECT_NE(text.find("no rate stencil"), std::string::npos);
+    } else if (operation == CELESTIAL_OPERATION_LONGITUDE_RATE) {
+      EXPECT_NE(text.find("Seven-point centered longitude rate"), std::string::npos);
+      EXPECT_NE(text.find("degrees per TT day"), std::string::npos);
+    } else if (operation == CELESTIAL_OPERATION_EVENTS) {
+      EXPECT_NE(text.find("Event query, maximum span 3660 TT days"), std::string::npos);
+      EXPECT_NE(text.find("true-ecliptic longitude"), std::string::npos);
+    }
   }
   for (const uint32_t operation : { CELESTIAL_OPERATION_HOUSES, CELESTIAL_OPERATION_CHART, CELESTIAL_OPERATION_DELTA_T }) {
     EXPECT_FALSE(expect_sized_text([operation](char* buffer, const uint32_t capacity) {

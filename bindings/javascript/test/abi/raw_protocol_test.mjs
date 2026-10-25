@@ -356,7 +356,7 @@ try {
     for (const point of equatorial) {
       assert(point.right_ascension_deg >= 0 && point.right_ascension_deg < 360);
       assert(point.declination_deg >= -90 && point.declination_deg <= 90);
-      assert.equal(point.present_fields, point.target_code < 10 ? 2 : 0);
+      assert.equal(point.present_fields, point.target_code < 10 ? 3 : 1);
     }
     happyExports.add("celestial_equatorial_positions");
     for (const code of [14, 256, 257, 0x10000000, 0xFFFFFFFF]) {

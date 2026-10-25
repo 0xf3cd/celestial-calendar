@@ -38,21 +38,6 @@ using astro::ephemeris::PositionSource;
 
 constexpr double UNBOUNDED = std::numeric_limits<double>::quiet_NaN();
 
-/** @brief Validate the caller-owned count and establish its failure value. */
-auto check_record_count_ptr(uint32_t* const count) -> void {
-  if (count == nullptr) {
-    throw std::invalid_argument { "Argument `record_count` is null." };
-  }
-  *count = 0;
-}
-
-/** @brief A null output pointer is permitted only for a count-only call. */
-auto check_slots(const auto* const slots, const uint32_t capacity) -> void {
-  if (slots == nullptr and capacity > 0) {
-    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-  }
-}
-
 /** @brief Decode only operations with numeric TT target records. */
 auto operation_of(const uint32_t code) -> Operation {
   switch (code) {
@@ -101,23 +86,29 @@ auto delta_t_domain(const astro::delta_t::Model model) -> std::array<double, 2> 
   throw std::logic_error { "Unknown core Delta T identity" };
 }
 
-/** @brief A source's declared provider interval must agree across every target using it. */
+/** @brief Classify each concrete model explicitly; a new model needs a status decision. */
+auto delta_t_status(const astro::delta_t::Model model) -> uint32_t {
+  using enum astro::delta_t::Model;
+  switch (model) {
+    case ALGO1:
+    case ALGO2:
+    case ALGO3:
+    case ALGO4:
+      return CELESTIAL_MODEL_STATUS_FROZEN;
+    case ALGO5:
+      return CELESTIAL_MODEL_STATUS_CURRENT;
+  }
+  throw std::logic_error { "Unknown core Delta T identity" };
+}
+
+/** @brief Encode the source interval whose target consistency is checked in the core roster. */
 auto source_domain(const PositionSource source) -> std::array<double, 2> {
-  std::optional<std::array<double, 2>> domain;
-  bool found = false;
   for (const auto& facts : astro::ephemeris::TARGET_FACTS) {
     if (facts.source == source) {
-      if (found and facts.position_domain != domain) {
-        throw std::logic_error { "Position source has inconsistent provider domains" };
-      }
-      domain = facts.position_domain;
-      found = true;
+      return facts.position_domain.value_or(std::array { UNBOUNDED, UNBOUNDED });
     }
   }
-  if (not found) {
-    throw std::logic_error { "Position source has no provider" };
-  }
-  return domain.value_or(std::array { UNBOUNDED, UNBOUNDED });
+  throw std::logic_error { "Position source has no provider" };
 }
 
 /** @brief Enumerate explicit model keys; DEFAULT resolution belongs to operations, not this registry. */
@@ -135,8 +126,7 @@ auto model_identities(const uint32_t kind) -> std::vector<CelestialModelIdentity
       result.push_back({
         .kind_code = CELESTIAL_MODEL_KIND_DELTA_T,
         .identity_code = entry.code,
-        .status_code = entry.value == astro::delta_t::Model::ALGO5
-          ? CELESTIAL_MODEL_STATUS_CURRENT : CELESTIAL_MODEL_STATUS_FROZEN,
+        .status_code = delta_t_status(entry.value),
         .domain_start_jde_tt = domain.front(),
         .domain_end_jde_tt = domain.back(),
       });
@@ -193,7 +183,7 @@ auto reference_tests(const PositionSource source) -> std::string_view {
     case PositionSource::SUN_VSOP87D: return "sun_test.cpp and ephemeris_test.cpp";
     case PositionSource::MOON_ELP2000_82B_TRUNC: return "moon_test.cpp and ephemeris_test.cpp";
     case PositionSource::PLANET_VSOP87D: return "planet_test.cpp";
-    case PositionSource::PLUTO_PLUTO95_APPARENT: return "pluto_test.cpp and planet_test.cpp";
+    case PositionSource::PLUTO_PLUTO95_APPARENT: return "planet_test.cpp";
     case PositionSource::NODE_MEAN:
     case PositionSource::NODE_TRUE_MEEUS_FIVE_TERM: return "lunar_node_test.cpp";
   }
@@ -258,7 +248,7 @@ auto operation_model_text(const uint32_t operation) -> std::string {
           ? "Chart additionally intersects every target's rate domain; bodies keep fixed IAU1980 corrections and each records its source."
           : "No chart target/rate window applies; celestial_house_capability reports the civil policy."
       );
-    default: throw std::invalid_argument { "Operation has no non-target model-use description" };
+    default: throw std::invalid_argument { std::format("Operation {} has no non-target model-use description", operation) };
   }
 }
 
@@ -277,13 +267,26 @@ auto capability_text(const uint32_t operation_code, const uint32_t subject) -> s
   const auto operation = operation_of(operation_code);
   const auto target = lib::codes::target(subject);
   const auto record = astro::capability::domain_record(operation, target);
-  const auto& facts = astro::ephemeris::target_facts(target);
+  const auto name = lib::codes::detail::from_value(lib::codes::TARGETS, target).name;
   const auto domain = record.domain.has_value()
     ? std::format("JDE(TT) in [{}, {})", record.domain->front(), record.domain->back())
     : std::string { "no declared hard input interval; finite-input evaluation can still fail" };
-  const std::string_view geometry = operation == Operation::EQUATORIAL
-    ? "Apparent geocentric RA/Dec of date; fixed IAU1980 mean-obliquity cubic plus IAU1980 obliquity nutation projects the apparent ecliptic longitude/latitude."
-    : "Apparent geocentric true ecliptic and equinox of date; longitude/latitude in degrees.";
+
+  const auto geometry = std::invoke([&]() -> std::string_view {
+    switch (operation) {
+      case Operation::POSITION:
+        return "Apparent geocentric true ecliptic and equinox of date; longitude/latitude in degrees.";
+      case Operation::EQUATORIAL:
+        return "Apparent geocentric RA/Dec of date; fixed IAU1980 mean-obliquity cubic plus IAU1980 "
+          "obliquity nutation projects the apparent ecliptic longitude/latitude. "
+          "Obliquity accuracy degrades over millennia; no extra epsilon cutoff is imposed.";
+      case Operation::LONGITUDE_RATE:
+        return "Apparent geocentric true-ecliptic longitude rate, in degrees per TT day.";
+      case Operation::EVENTS:
+        return "Events of apparent geocentric true-ecliptic longitude.";
+    }
+    throw std::logic_error { "Unknown core capability operation" };
+  });
   const auto role = std::invoke([&]() -> std::string {
     switch (operation) {
       case Operation::EVENTS:
@@ -296,12 +299,22 @@ auto capability_text(const uint32_t operation_code, const uint32_t subject) -> s
     }
     throw std::logic_error { "Unknown core capability operation" };
   });
-  const std::string_view bounded_status = record.status == Status::SOURCE_WINDOW
-    ? "The interval is source-published." : "The interval is implementation-selected.";
+  const auto status = std::invoke([&]() -> std::string_view {
+    switch (record.status) {
+      case Status::SOURCE_WINDOW: return "The interval is source-published.";
+      case Status::IMPLEMENTATION_WINDOW: return "The interval is implementation-selected.";
+      case Status::FINITE_INPUT_EVALUATION: return "";
+    }
+    throw std::logic_error { "Unknown core capability status" };
+  });
+  const std::string_view distance = operation == Operation::POSITION or operation == Operation::EQUATORIAL
+    ? "Distance in AU for physical bodies, absent for nodes. " : "";
+
   return std::format(
-    "{}: {} {}. {} Input policy: {}. {} Distance in AU for physical bodies, absent for nodes. Coordinate validity establishes neither accuracy nor physical plausibility. Obliquity accuracy degrades over millennia; no extra epsilon cutoff is imposed. Position references: {}. Fixed conventions and source coefficients are tied to the library version.",
-    facts.name, source_text(record.source), geometry, role, domain,
-    record.status == Status::FINITE_INPUT_EVALUATION ? "" : bounded_status,
+    "{}: {}. {} {} Input policy: {}. {} {}Coordinate validity establishes neither accuracy nor physical "
+    "plausibility. Position references: {}. Fixed conventions and source coefficients are tied to the library version.",
+    name, source_text(record.source), geometry, role, domain,
+    status, distance,
     reference_tests(record.source)
   );
 }
@@ -319,8 +332,8 @@ auto celestial_capabilities(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_record_count_ptr(record_count);
-    check_slots(slots, slot_count);
+    lib::check_count(record_count, "record_count");
+    lib::check_slots(slots, slot_count);
     const auto operation = operation_of(operation_code);
     const auto records = subject_code == CELESTIAL_TARGET_ALL
       ? astro::capability::domain_records(operation)
@@ -342,8 +355,8 @@ auto celestial_model_identities(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_record_count_ptr(record_count);
-    check_slots(slots, slot_count);
+    lib::check_count(record_count, "record_count");
+    lib::check_slots(slots, slot_count);
     const auto records = model_identities(kind_code);
 
     *record_count = static_cast<uint32_t>(records.size());

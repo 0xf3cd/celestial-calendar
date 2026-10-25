@@ -33,7 +33,7 @@ namespace astro::house {
 /** @brief A supported system for dividing the ecliptic into twelve houses. */
 enum class System : uint8_t { EQUAL, WHOLE_SIGN, PLACIDUS };
 
-/** @brief Default nutation for house geometry; unrelated position and sidereal defaults stay fixed. */
+/** @brief Default nutation model for house geometry. */
 inline constexpr astro::earth::nutation::Model DEFAULT_NUTATION_MODEL = astro::earth::nutation::Model::IAU_1980;
 
 /** @brief The four principal tropical angles, independent of a house division system. */

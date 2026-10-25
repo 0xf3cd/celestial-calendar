@@ -69,7 +69,8 @@ def _position_fields(record: object, expected: Target) -> tuple[float | None, Mo
   if record.target_code != enum_code("TARGET", expected):
     raise ValueError(f"unexpected target code for {expected.name}")
   node = is_node(expected)
-  if record.present_fields != (0 if node else constant("PRESENT_DISTANCE")):
+  expected_fields = constant("PRESENT_LATITUDE") | (0 if node else constant("PRESENT_DISTANCE"))
+  if record.present_fields != expected_fields:
     raise ValueError(f"unexpected presence bits for {expected.name}")
   # Absent storage has no value semantics and is deliberately not read.
   distance = None if node else finite(record.distance_au, "distance_au")

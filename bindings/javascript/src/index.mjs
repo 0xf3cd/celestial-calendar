@@ -160,7 +160,7 @@ const checkError = (M, operation) => {
   const message = M.ccall("celestial_last_error", "string", [], []);
   if (kind === CODES.CELESTIAL_ERROR_INVALID_INPUT) throw new RangeError(message || `${operation} rejected its input.`);
   nativeCode(kind, "CELESTIAL_ERROR_", operation, "error kind");
-  throw new CelestialError(operation, message || `${operation} failed.`, message.length > 0);
+  throw new CelestialError(operation, message || `${operation} failed.`, true);
 };
 
 const readCivilResult = (value, operation) => {
@@ -200,21 +200,26 @@ const readDoubles = (M, ptr, count) => Array.from(
   (_, index) => M.HEAPF64[(ptr >> 3) + index],
 );
 
+const isCountFillProtocol = (protocol, binding, parameters, argumentCount) => {
+  const roles = ["count_parameter", "slots_parameter", "capacity_parameter"];
+  return protocol !== null && typeof protocol === "object" && !Array.isArray(protocol)
+    && [...roles, "kind", "legal_empty", "total_must_match", "written_policy", "null_slots_requires_zero_capacity", "error_channel"]
+      .every((name) => Object.hasOwn(protocol, name))
+    && protocol.kind === "count-fill" && binding.result === protocol.kind
+    && typeof protocol.legal_empty === "boolean" && protocol.total_must_match === true
+    && protocol.written_policy === "min-total-capacity" && protocol.error_channel === "kind"
+    && protocol.null_slots_requires_zero_capacity === true && Array.isArray(parameters)
+    && parameters.length === argumentCount + roles.length
+    && roles.every((role, index) => typeof protocol[role] === "string" && protocol[role].length > 0
+      && protocol[role] === parameters.at(index - roles.length)?.name);
+};
+
 const countThenFill = (cName, operation, args) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
   const protocol = PROTOCOLS?.[cName];
-  const roles = ["count_parameter", "slots_parameter", "capacity_parameter"];
   const parameters = C_DECLARATIONS.functions?.[cName]?.parameters;
-  if (protocol === null || typeof protocol !== "object" || Array.isArray(protocol)
-    || ![...roles, "kind", "legal_empty", "total_must_match", "written_policy", "null_slots_requires_zero_capacity", "error_channel"]
-      .every((name) => Object.hasOwn(protocol, name))
-    || protocol.kind !== "count-fill" || binding.result !== protocol.kind
-    || typeof protocol.legal_empty !== "boolean" || protocol.total_must_match !== true
-    || protocol.written_policy !== "min-total-capacity" || protocol.error_channel !== "kind"
-    || protocol.null_slots_requires_zero_capacity !== true || !Array.isArray(parameters)
-    || !roles.every((role, index) => typeof protocol[role] === "string" && protocol[role].length > 0
-      && protocol[role] === parameters.at(index - roles.length)?.name)) {
+  if (!isCountFillProtocol(protocol, binding, parameters, args.length)) {
     malformed(operation, "count/fill protocol");
   }
   const countPtr = allocate(M, 4, operation);

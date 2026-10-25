@@ -180,7 +180,7 @@ export interface ChartSnapshotOptions {
 }
 
 /** An unavailable module, computation, resource or protocol failure; invalid native input throws RangeError.
- * recorded is true only when the message came from the native error channel.
+ * recorded is true when native reported a recognized error kind, even with an empty message.
  * Caller-owned WASM output buffers are limited to 16 MiB by this binding.
  */
 export class CelestialError extends Error {
@@ -207,8 +207,8 @@ export const time: Readonly<{
   /**
    * Local apparent sidereal time in [0, 360) degrees, at a finite JD on UT1 in Gregorian years [401, 32766].
    * Geographic longitude is finite, east-positive, in [-180, 180] degrees.
-    * @throws {RangeError} For non-finite numbers, invalid longitude or a JD outside the native domain.
-    * @throws {CelestialError} If the calculation fails or native success is malformed.
+   * @throws {RangeError} For non-finite numbers, invalid longitude or a JD outside the native domain.
+   * @throws {CelestialError} If the calculation fails or native success is malformed.
    */
   localApparentSiderealTime(jdUt1: number, longitudeDeg: number): number;
   /**
@@ -257,8 +257,8 @@ export const jieqi: Readonly<{
    * UT1 civil moment for a Gregorian year in [401, 32766].
    * Not an east-eight wall date or UTC: establish the time-scale conversion before displaying either.
    * The returned UT1 year can differ from the requested year.
-    * @throws {RangeError} For inputs outside the native domain.
-    * @throws {CelestialError} If the calculation fails or native success is malformed.
+   * @throws {RangeError} For inputs outside the native domain.
+   * @throws {CelestialError} If the calculation fails or native success is malformed.
    */
   moment(year: number, index: Jieqi): JieqiMoment;
   /** Return the Chinese name of a Jieqi. */
@@ -285,23 +285,23 @@ export const lunar: Readonly<{
    * Metadata for a lunar year; firstDay uses the selected algorithm's Gregorian date basis.
    * @throws {TypeError} For a non-string algorithm or a non-integer year.
    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe year, or year outside its native range.
-    * @throws {CelestialError} If computation fails or native success is malformed.
+   * @throws {CelestialError} If computation fails or native success is malformed.
    */
   yearInfo(algorithm: LunarAlgorithm, year: number): LunarYearInfo;
   /**
    * Convert Gregorian date fields on the selected algorithm's basis, not a civil moment.
    * @throws {TypeError} For wrong types, missing own fields, fraction/isLeap tags, or non-integer date fields.
-    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, an invalid Gregorian date,
-    * or a date outside native Gregorian coverage.
-    * @throws {CelestialError} If computation fails or native success is malformed.
+   * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, an invalid Gregorian date,
+   * or a date outside native Gregorian coverage.
+   * @throws {CelestialError} If computation fails or native success is malformed.
    */
   fromGregorian(algorithm: LunarAlgorithm, date: GregorianDate): LunarDate;
   /**
    * Convert a traditional lunar month/day, with an explicit leap flag, to a Gregorian date label.
    * @throws {TypeError} For wrong types, missing own fields, a fraction tag, or non-integer date fields.
    * @throws {RangeError} For an unknown algorithm, non-finite/unsafe fields, a year outside its native range,
-    * month/day outside [1, 12]/[1, 30], or a nonexistent leap month/day.
-    * @throws {CelestialError} If computation fails or native success is malformed.
+   * month/day outside [1, 12]/[1, 30], or a nonexistent leap month/day.
+   * @throws {CelestialError} If computation fails or native success is malformed.
    */
   toGregorian(algorithm: LunarAlgorithm, date: LunarDate): GregorianDate;
 }>;
@@ -314,8 +314,8 @@ export const chart: Readonly<{
    * UTC-derived UT1 is modelled, not observed DUT1. Ascendant round-off singularities and
    * Placidus polar limits are rejected. No failure returns a partial snapshot.
    * @throws {TypeError} For wrong types, missing own fields, inherited model or unknown option keys.
-    * @throws {RangeError} For invalid civil dates, fractions, locations, selections or native domain rejection.
-    * @throws {CelestialError} Before init, on allocation/computation failure or malformed native success.
+   * @throws {RangeError} For invalid civil dates, fractions, locations, selections or native domain rejection.
+   * @throws {CelestialError} Before init, on allocation/computation failure or malformed native success.
    */
   snapshot(civil: CivilDateTime, options: ChartSnapshotOptions): ChartSnapshot;
 }>;

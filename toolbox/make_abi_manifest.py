@@ -11,16 +11,15 @@
 
 """Render native64 and wasm32 ABI manifests from celestial.h and its protocol contracts."""
 
-import argparse
 import json
 import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "automation"))
-from c_abi_schema import Header, parse_header, record_layouts, split_field_type  # noqa: E402
-from c_abi_semantics import EXPORT_SEMANTICS  # noqa: E402
+sys.path.insert(0, str(REPO_ROOT))
+from automation.c_abi_schema import Header, parse_header, record_layouts, split_field_type  # noqa: E402
+from automation.c_abi_semantics import EXPORT_SEMANTICS  # noqa: E402
 
 VIEWS = {
   "python": {"schema": "celestial-calendar/python-native-abi@2", "width_key": "native_width_bits", "pointer": 64},
@@ -242,7 +241,7 @@ def _inline(node: dict) -> str:
   )
 
 
-def _dump(node: object, level: int, parent_key: str | None = None) -> str:
+def dump(node: object, level: int, parent_key: str | None = None) -> str:
   indent, child = "  " * level, "  " * (level + 1)
   if isinstance(node, dict):
     if not node:
@@ -251,38 +250,16 @@ def _dump(node: object, level: int, parent_key: str | None = None) -> str:
       parent_key in {"return", "protocol"} or "offset" in node
     ):
       return _inline(node)
-    items = [f"{child}{json.dumps(key)}: {_dump(value, level + 1, key)}" for key, value in node.items()]
+    items = [f"{child}{json.dumps(key)}: {dump(value, level + 1, key)}" for key, value in node.items()]
     return "{\n" + ",\n".join(items) + f"\n{indent}}}"
   if isinstance(node, list):
     if not node:
       return "[]"
     if all(isinstance(item, dict) and "name" in item and "offset" in item for item in node):
       return "[\n" + ",\n".join(f"{child}{_inline(item)}" for item in node) + f"\n{indent}]"
-    return "[\n" + ",\n".join(f"{child}{_dump(item, level + 1, parent_key)}" for item in node) + f"\n{indent}]"
+    return "[\n" + ",\n".join(f"{child}{dump(item, level + 1, parent_key)}" for item in node) + f"\n{indent}]"
   return json.dumps(node, ensure_ascii=False)
 
 
 def render(view: str) -> str:
-  return _dump(build_manifest(view), 0) + "\n"
-
-
-def main(argv: list[str] | None = None) -> int:
-  parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument("--check", action="store_true", help="fail on drift instead of writing")
-  args = parser.parse_args(argv)
-  ok = True
-  for view, relative in MANIFEST_PATHS.items():
-    path = REPO_ROOT / relative
-    rendered = render(view)
-    if args.check:
-      if not path.is_file() or path.read_text(encoding="utf-8") != rendered:
-        print(f"{relative} is stale; run python3 toolbox/make_bindings.py", file=sys.stderr)
-        ok = False
-    else:
-      path.write_text(rendered, encoding="utf-8")
-      print(f"wrote {relative}")
-  return 0 if ok else 1
-
-
-if __name__ == "__main__":
-  sys.exit(main())
+  return dump(build_manifest(view), 0) + "\n"

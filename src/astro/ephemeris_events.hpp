@@ -104,17 +104,14 @@ static_assert(std::invoke([] {
   const Target first,
   const Target second
 ) -> std::optional<toolbox::AngleDeg> {
-  static_cast<void>(position_window_for_rate(first));
-  static_cast<void>(position_window_for_rate(second));
+  const auto& first_facts = target_facts(first);
+  const auto& second_facts = target_facts(second);
   if (first == second) {
     return toolbox::AngleDeg { 0.0 };
   }
-  using enum Target;
-  const bool mean_antipodes = (first == MEAN_ASCENDING and second == MEAN_DESCENDING)
-                             or (first == MEAN_DESCENDING and second == MEAN_ASCENDING);
-  const bool true_antipodes = (first == TRUE_ASCENDING and second == TRUE_DESCENDING)
-                             or (first == TRUE_DESCENDING and second == TRUE_ASCENDING);
-  if (mean_antipodes or true_antipodes) {
+  const bool antipodes = first_facts.node.has_value() and second_facts.node.has_value()
+    and first_facts.rate_node == second_facts.rate_node and first_facts.node != second_facts.node;
+  if (antipodes) {
     return toolbox::AngleDeg { 180.0 };
   }
   return std::nullopt;

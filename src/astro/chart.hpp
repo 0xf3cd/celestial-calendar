@@ -83,7 +83,7 @@ inline constexpr auto JOINT_DOMAIN = std::invoke([] {
 inline constexpr double START_JDE_TT = JOINT_DOMAIN.front();
 inline constexpr double END_JDE_TT = JOINT_DOMAIN.back();
 
-/** @brief Add time/model context only to the model that can truncate the adopted civil window. */
+/** @brief Add model-domain context to the Algo4 forward conversion from civil UT1. */
 inline auto with_delta_t_domain_context(
   const astro::delta_t::Model model,
   const astro::julian_day::Scale scale,
@@ -92,7 +92,8 @@ inline auto with_delta_t_domain_context(
   try {
     return convert();
   } catch (const std::invalid_argument& error) {
-    if (model != astro::delta_t::Model::ALGO4 or scale != astro::julian_day::Scale::UT1) {
+    const bool algo4_ut1_forward = model == astro::delta_t::Model::ALGO4 and scale == astro::julian_day::Scale::UT1;
+    if (not algo4_ut1_forward) {
       throw;
     }
     throw std::invalid_argument {
@@ -149,7 +150,9 @@ inline auto with_delta_t_domain_context(
   });
   const double jde_tt = astro::julian_day::tt_to_jde(tt);
   if (const auto cutoff = civil_derived_tt_cutoff(model); cutoff.has_value() and jde_tt >= *cutoff) {
-    throw std::invalid_argument { "Civil Algo4 requires JDE(TT) before 2035-01-01" };
+    throw std::invalid_argument {
+      std::format("Civil Delta T requires JDE(TT) before {}", *cutoff)
+    };
   }
 
   const double jd_ut1 = scale == astro::julian_day::Scale::UT1

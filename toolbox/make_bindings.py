@@ -21,13 +21,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from toolbox.make_abi_manifest import (  # noqa: E402
   MANIFEST_PATHS,
-  _dump,
+  dump,
   build_manifest,
   declaration_source,
   export_entries,
 )
-from c_abi_schema import C_TO_CTYPES, CType, Header, split_field_type  # noqa: E402
-from c_abi_semantics import EXPORT_SEMANTICS  # noqa: E402
+from automation.c_abi_schema import C_TO_CTYPES, CType, Header, split_field_type  # noqa: E402
+from automation.c_abi_semantics import EXPORT_SEMANTICS  # noqa: E402
 
 # Private compatibility names used by existing consumers; these specify spelling only.
 POINTER_NAMES = {
@@ -141,6 +141,8 @@ def render_python(header: Header) -> str:
     lines.append("  ),")
   lines += ["}", "", "C_CODES = {", *[f'  "{name}": {value},' for name, value in header.constants.items()], "}"]
   protocols = {entry["name"]: entry["protocol"] for entry in export_entries(header)}
+  parameters = {name: [p.name for p in function.parameters] for name, function in header.functions.items()}
+  lines += ["", "C_PARAMETERS = " + _python_literal(parameters)]
   lines += ["", "PROTOCOLS = " + _python_literal(protocols)]
   return "\n".join(lines) + "\n"
 
@@ -160,6 +162,17 @@ def _chart_codes(header: Header) -> dict:
         first, *rest = name[len(prefix) :].lower().split("_")
         groups[group][first + "".join(word.title() for word in rest)] = value
   return groups
+
+
+def lowered(kind: CType) -> str:
+  """Lower one supported C value or pointer to its WebAssembly value type."""
+  if kind.pointer:
+    return "i32"
+  if kind.base in {"double", "void"}:
+    return "f64" if kind.base == "double" else "void"
+  if kind.base not in C_TO_CTYPES:
+    raise RuntimeError(f"Unsupported WASM value parameter: {kind.spelling()}")
+  return "i32"
 
 
 def render_javascript(header: Header) -> str:
@@ -198,15 +211,6 @@ def render_javascript(header: Header) -> str:
       "parameters": [{"name": p.name, "type": p.type.spelling()} for p in function.parameters],
     }
 
-    def lowered(kind: CType) -> str:
-      if kind.pointer:
-        return "i32"
-      if kind.base in {"double", "void"}:
-        return "f64" if kind.base == "double" else "void"
-      if kind.base not in C_TO_CTYPES:
-        raise RuntimeError(f"Unsupported WASM value parameter: {kind.spelling()}")
-      return "i32"
-
     wasm[name] = {
       "result": "void" if is_record else lowered(function.result),
       "parameters": (["i32"] if is_record else []) + [lowered(p.type) for p in function.parameters],
@@ -238,7 +242,7 @@ def generated_outputs() -> dict[Path, str]:
     JAVASCRIPT_PATH: render_javascript(header),
     EXPORT_PATH: json.dumps([*header.functions, "malloc", "free"], indent=2) + "\n",
   }
-  outputs.update({path: _dump(build_manifest(view, header), 0) + "\n" for view, path in MANIFEST_PATHS.items()})
+  outputs.update({path: dump(build_manifest(view, header), 0) + "\n" for view, path in MANIFEST_PATHS.items()})
   return outputs
 
 

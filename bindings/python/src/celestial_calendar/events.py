@@ -17,7 +17,7 @@ from enum import StrEnum as _StrEnum
 from typing import Iterable as _Iterable
 
 from . import _abi
-from ._codes import enum_code
+from ._codes import enum_member
 from ._protocol import finite
 
 
@@ -87,17 +87,11 @@ class LongitudeDifferenceEvent:
 
 
 def decode_direction(code: int) -> EventDirection:
-  for member in EventDirection:
-    if enum_code("EVENT_DIRECTION", member) == code:
-      return member
-  raise ValueError(f"Unsupported event direction code: {code}")
+  return enum_member(EventDirection, "EVENT_DIRECTION", code)
 
 
 def decode_motion(code: int) -> StationMotion:
-  for member in StationMotion:
-    if enum_code("EVENT_MOTION", member) == code:
-      return member
-  raise ValueError(f"Unsupported station motion code: {code}")
+  return enum_member(StationMotion, "EVENT_MOTION", code)
 
 
 def decode_longitude_events(records: _Iterable[_abi.CelestialLongitudeEventRecord]) -> tuple[LongitudeEvent, ...]:

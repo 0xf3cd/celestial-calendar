@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -51,7 +52,8 @@ struct Record {
     case POSITION:
     case EQUATORIAL: {
       const auto domain = ephemeris::position_domain(target);
-      const auto bounded_status = target == ephemeris::Target::PLUTO ? Status::SOURCE_WINDOW : Status::IMPLEMENTATION_WINDOW;
+      const auto bounded_status = ephemeris::target_facts(target).position_domain_origin == ephemeris::DomainOrigin::SOURCE
+        ? Status::SOURCE_WINDOW : Status::IMPLEMENTATION_WINDOW;
       return {
         .operation = operation,
         .target = target,
@@ -73,7 +75,7 @@ struct Record {
           ? std::optional { ephemeris::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS } : std::nullopt,
       };
   }
-  throw std::invalid_argument { "Unknown TT capability operation" };
+  throw std::invalid_argument { std::format("Unknown TT capability operation {}", static_cast<uint32_t>(operation)) };
 }
 
 /** @brief Return one typed domain record for each target in the core roster. */

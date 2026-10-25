@@ -52,7 +52,7 @@ TEST(CoreOwnership, TargetFactsOwnTheRosterAndSeparateNodeTrajectories) {
   EXPECT_EQ(chart::BODY_COUNT, ephemeris::TARGETS.size());
   for (const auto& facts : ephemeris::TARGET_FACTS) {
     EXPECT_TRUE(ephemeris::is_target(facts.target));
-    EXPECT_FALSE(facts.name.empty());
+    EXPECT_TRUE(ephemeris::detail::consistent_provider(facts));
     EXPECT_EQ(ephemeris::source_of(facts.target), facts.source);
     EXPECT_EQ(ephemeris::position_domain(facts.target), facts.position_domain);
   }
@@ -91,6 +91,37 @@ TEST(CoreOwnership, ComputedCoordinateValidityChecksEachClauseIndependently) {
   EXPECT_THROW(check(30.0, 10.0, infinity), std::runtime_error);
   EXPECT_THROW(check(30.0, 10.0, 0.0), std::runtime_error);
   EXPECT_THROW(check(30.0, 10.0, -1.0), std::runtime_error);
+}
+
+TEST(CoreOwnership, ProviderOperandsCannotDisagreeWithTheirSource) {
+  auto physical = ephemeris::target_facts(Target::SUN);
+  physical.source = ephemeris::PositionSource::PLANET_VSOP87D;
+  EXPECT_FALSE(ephemeris::detail::consistent_provider(physical));
+  physical.planet = planet::Planet::PLUTO;
+  EXPECT_FALSE(ephemeris::detail::consistent_provider(physical));
+  physical.source = ephemeris::PositionSource::PLUTO_PLUTO95_APPARENT;
+  EXPECT_TRUE(ephemeris::detail::consistent_provider(physical));
+
+  auto node = ephemeris::target_facts(Target::MEAN_DESCENDING);
+  node.rate_node = lunar_node::Node::TRUE_ASCENDING;
+  EXPECT_FALSE(ephemeris::detail::consistent_provider(node));
+  node.rate_node = lunar_node::Node::MEAN_ASCENDING;
+  node.planet = planet::Planet::MERCURY;
+  EXPECT_FALSE(ephemeris::detail::consistent_provider(node));
+}
+
+TEST(CoreOwnership, AdmittedCivilAndGeneralResolversAgreeBitwise) {
+  for (const auto model : { Model::ALGO1, Model::ALGO2, Model::ALGO3, Model::ALGO4, Model::ALGO5 }) {
+    for (const auto scale : { Scale::UTC, Scale::UT1 }) {
+      for (const int32_t year : { 1972, 2000, 2034 }) {
+        const calendar::Datetime civil { util::to_ymd(year, 6, 1), 0.5 };
+        const auto policy = chart::resolve_civil_times(civil, scale, model);
+        const auto general = julian_day::resolve_times(civil, scale, model);
+        EXPECT_EQ(std::bit_cast<uint64_t>(policy.jd_ut1), std::bit_cast<uint64_t>(general.jd_ut1));
+        EXPECT_EQ(std::bit_cast<uint64_t>(policy.jde_tt), std::bit_cast<uint64_t>(general.jde_tt));
+      }
+    }
+  }
 }
 
 TEST(CoreOwnership, InputErrorsAndProviderWindowsRemainInputErrors) {
@@ -140,7 +171,7 @@ TEST(CoreOwnership, Algo4DerivedCutoffPrecedesReverseAndJointAdmission) {
     std::ignore = chart::calculate(multiply_invalid, Scale::UTC, SITE, house::System::EQUAL, Model::ALGO4);
     FAIL() << "Expected civil Algo4 cutoff";
   } catch (const std::invalid_argument& error) {
-    EXPECT_EQ(std::string_view { error.what() }, "Civil Algo4 requires JDE(TT) before 2035-01-01");
+    EXPECT_EQ(std::string_view { error.what() }, "Civil Delta T requires JDE(TT) before 2464328.5");
   }
   EXPECT_EQ(chart::civil_derived_tt_cutoff(Model::ALGO4), delta_t::ALGO4_END_JDE_TT);
   for (const auto model : { Model::ALGO1, Model::ALGO2, Model::ALGO3, Model::ALGO5 }) {

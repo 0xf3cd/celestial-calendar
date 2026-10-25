@@ -89,7 +89,7 @@ def position(target=celestial.Target.SUN, *, equatorial=False):
   record = record_type()
   record.target_code = tuple(celestial.Target).index(target)
   node = record.target_code >= 10
-  record.present_fields = 0 if node else 2
+  record.present_fields = 1 if node else 3
   record.distance_au = math.nan if node else 1.0
   record.source_code = 5 if node else 1
   if equatorial:
@@ -305,18 +305,38 @@ def run_export_protocols():
       assert not error.recorded and not native.calls
     invalid_cases += 1
 
-    policy = {"legal_empty": True}
+    for key, bad in (
+      ("kind", "struct"),
+      ("total_must_match", False),
+      ("written_policy", "partial"),
+      ("null_slots_requires_zero_capacity", False),
+      ("error_channel", "message"),
+      ("count_parameter", "missing_count"),
+      ("slots_parameter", "missing_slots"),
+      ("capacity_parameter", "missing_capacity"),
+    ):
+      protocol = {**original[export], key: bad}
+      native = CountFill([])
+      with patch.object(_abi, "PROTOCOLS", {**original, export: protocol}), bindings(**{export: native}):
+        error = raises(celestial.CelestialError, action)
+      assert not error.recorded and not native.calls
+      invalid_cases += 1
+
+    policy = {**original[export], "legal_empty": True}
     metadata = {**original, export: policy}
     native = CountFill([])
     with patch.object(_abi, "PROTOCOLS", metadata), bindings(**{export: native}):
       for value in (True, False, True):
         policy["legal_empty"] = value
         if value:
-          assert len(_protocol.count_fill(export, (), ctypes.c_double, "metadata_control")) == 0
+          args = (0,) * (len(_abi.C_PARAMETERS[export]) - 3)
+          assert len(_protocol.count_fill(export, args, ctypes.c_double, "metadata_control")) == 0
         else:
           error = raises(
             celestial.CelestialError,
-            lambda export=export: _protocol.count_fill(export, (), ctypes.c_double, "metadata_control"),
+            lambda export=export: _protocol.count_fill(
+              export, (0,) * (len(_abi.C_PARAMETERS[export]) - 3), ctypes.c_double, "metadata_control"
+            ),
           )
           assert not error.recorded
         mutations += 1
@@ -506,7 +526,7 @@ def run_positions():
     vertical = "declination_deg" if equatorial else "latitude_deg"
     corruptions = (
       ("target_code", 256),
-      ("present_fields", 3),
+      ("present_fields", 2),
       ("source_code", 0),
       ("source_code", 7),
       (angular, 360.0),
@@ -728,12 +748,88 @@ def run_registry_and_events():
   print("PASS registry completeness, pair lookup independent of order and unknown event/motion codes")
 
 
+def run_calendar_and_angle_payloads():
+  civil = dict(year=2024, month=2, day=29, fraction=0.5)
+  date = dict(year=2024, month=2, day=29)
+  input_civil = celestial.CivilDateTime(**civil)
+  input_date = celestial.GregorianDate(**date)
+  algorithm = celestial.LunarAlgorithm.ALGO3
+  cases = (
+    (
+      "celestial_jde_to_ut1",
+      lambda: celestial.jde_to_ut1(2451545.0),
+      civil,
+      (("month", 13), ("day", 30), ("year", 1900), ("fraction", -0.1), ("fraction", 1.0), ("fraction", math.nan)),
+    ),
+    (
+      "celestial_apparent_solar_time",
+      lambda: celestial.apparent_solar_time(input_civil, 0.0),
+      civil,
+      (("month", 0), ("day", 30), ("fraction", 1.5)),
+    ),
+    (
+      "celestial_query_jieqi_moment",
+      lambda: celestial.jieqi_moment(2024, celestial.Jieqi.LICHUN),
+      dict(jq_idx=0, y=2024, m=2, d=29, frac=0.5),
+      (("m", 13), ("d", 30), ("frac", 1.5)),
+    ),
+    (
+      "celestial_moon_illumination",
+      lambda: celestial.moon_illumination(2451545.0),
+      dict(illumination=0.5, elongation_deg=180.0),
+      (("illumination", -0.1), ("illumination", 1.5), ("illumination", math.nan), ("elongation_deg", 400.0)),
+    ),
+    (
+      "celestial_moon_position_angle",
+      lambda: celestial.moon_bright_limb_position_angle(2451545.0),
+      dict(angle_deg=180.0),
+      (("angle_deg", -1.0), ("angle_deg", 360.0), ("angle_deg", math.nan)),
+    ),
+    (
+      "celestial_get_supported_lunar_year_range",
+      lambda: celestial.supported_lunar_year_range(algorithm),
+      dict(start=1600, end=2199),
+      (("start", 2200), ("end", 1599)),
+    ),
+    (
+      "celestial_get_lunar_year_info",
+      lambda: celestial.lunar_year_info(algorithm, 2024),
+      {**date, "leap_month": 0, "month_len": 0},
+      (("month", 13), ("day", 30), ("leap_month", 13)),
+    ),
+    (
+      "celestial_gregorian_to_lunar",
+      lambda: celestial.gregorian_to_lunar(algorithm, input_date),
+      {**date, "is_leap": False},
+      (("month", 13), ("day", 0), ("day", 31)),
+    ),
+    (
+      "celestial_lunar_to_gregorian",
+      lambda: celestial.lunar_to_gregorian(algorithm, celestial.LunarDate(2024, 2, 29, False)),
+      date,
+      (("month", 13), ("day", 0), ("day", 30)),
+    ),
+  )
+  count = 0
+  for export, action, payload, corruptions in cases:
+    with bindings(**{export: lambda *args, payload=payload: SimpleNamespace(valid=True, **payload)}):
+      action()
+    for field, bad in corruptions:
+      corrupted = {**payload, field: bad}
+      with bindings(**{export: lambda *args, payload=corrupted: SimpleNamespace(valid=True, **payload)}):
+        error = raises(celestial.CelestialError, action)
+      assert not error.recorded
+      count += 1
+  print(f"PASS calendar/angle payloads: {len(cases)} valid controls and {count} malformed successes")
+
+
 def main():
   with bindings(celestial_last_error_kind=lambda: 0, celestial_last_error=lambda: b""):
     run_errors()
     run_strings()
     run_count_fill()
     run_export_protocols()
+    run_calendar_and_angle_payloads()
     run_capability_subjects()
     run_selectors()
     run_positions()

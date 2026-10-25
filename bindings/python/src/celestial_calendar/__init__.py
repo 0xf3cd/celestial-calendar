@@ -17,6 +17,7 @@ from dataclasses import dataclass as _dataclass
 from datetime import date as _date
 from datetime import datetime as _datetime
 from enum import Enum as _Enum
+from calendar import monthrange as _monthrange
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
 from operator import index as _index
@@ -210,11 +211,9 @@ _EnumT = _TypeVar("_EnumT", bound=_IntEnum | _StrEnum)
 _MOON_PHASE = {MoonPhase.NEW: 0, MoonPhase.FIRST_QUARTER: 1, MoonPhase.FULL: 2, MoonPhase.LAST_QUARTER: 3}
 _LUNAR_ALGORITHM = {LunarAlgorithm.ALGO1: 1, LunarAlgorithm.ALGO2: 2, LunarAlgorithm.ALGO3: 3}
 _MAX_NEW_MOON_COUNT = 4096
-_TARGET_OPERATIONS = (
-  CapabilityOperation.POSITION,
-  CapabilityOperation.LONGITUDE_RATE,
-  CapabilityOperation.EVENTS,
-  CapabilityOperation.EQUATORIAL,
+_TARGET_OPERATIONS = tuple(
+  CapabilityOperation[name.removeprefix("CELESTIAL_OPERATION_")]
+  for name in _abi.PROTOCOLS["celestial_capabilities"]["operations"]
 )
 
 
@@ -286,8 +285,21 @@ def _number(value: float, operation: str) -> float:
   return _protocol.decode(operation, _protocol.finite, value, "value")
 
 
+def _gregorian_result(year: int, month: int, day: int) -> GregorianDate:
+  if not 1 <= month <= 12:
+    raise ValueError("invalid Gregorian month")
+  month_length = _monthrange(year, month)[1]
+  if not 1 <= day <= month_length:
+    raise ValueError("invalid Gregorian day")
+  return GregorianDate(year, month, day)
+
+
 def _civil_result(result: object) -> CivilDateTime:
-  return CivilDateTime(result.year, result.month, result.day, result.fraction)
+  date = _gregorian_result(result.year, result.month, result.day)
+  fraction = _protocol.finite(result.fraction, "fraction")
+  if not 0.0 <= fraction < 1.0:
+    raise ValueError("fraction is outside [0, 1)")
+  return CivilDateTime(date.year, date.month, date.day, fraction)
 
 
 def _coordinate_values(result: object) -> tuple[float, float, float]:
@@ -311,7 +323,8 @@ def ut1_to_jde(ut1: CivilDateTime) -> float:
 
 def jde_to_ut1(jde: float) -> CivilDateTime:
   """Convert TT-based Julian Ephemeris Day to a UT1 civil moment using fixed Algo5."""
-  return _civil_result(_result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde")))
+  result = _result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde"))
+  return _protocol.decode("jde_to_ut1", _civil_result, result)
 
 
 def sun_apparent_geocentric_coordinate(jde: float) -> SunCoordinate:
@@ -331,13 +344,21 @@ def moon_apparent_geocentric_coordinate(jde: float) -> MoonCoordinate:
 def moon_illumination(jde: float) -> MoonIllumination:
   """Return the Moon's illuminated fraction and elongation in degrees at JDE(TT)."""
   result = _result("celestial_moon_illumination", "moon_illumination", _finite(jde, "jde"))
-  return MoonIllumination(result.illumination, result.elongation_deg)
+
+  def illumination() -> MoonIllumination:
+    fraction = _protocol.finite(result.illumination, "illumination")
+    if not 0.0 <= fraction <= 1.0:
+      raise ValueError("illumination is outside [0, 1]")
+    return MoonIllumination(fraction, _protocol.longitude(result.elongation_deg, "elongation_deg"))
+
+  return _protocol.decode("moon_illumination", illumination)
 
 
 def moon_bright_limb_position_angle(jde: float) -> float:
   """Return bright-limb position angle in degrees east of the disk's north at JDE(TT)."""
   operation = "moon_bright_limb_position_angle"
-  return _number(_result("celestial_moon_position_angle", operation, _finite(jde, "jde")).angle_deg, operation)
+  result = _result("celestial_moon_position_angle", operation, _finite(jde, "jde"))
+  return _protocol.decode(operation, _protocol.longitude, result.angle_deg, "angle_deg")
 
 
 def moon_phase_moments(year: int, phase: MoonPhase) -> tuple[float, ...]:
@@ -403,13 +424,15 @@ def equation_of_time(jde: float) -> float:
 
 def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTime:
   """Convert civil UTC to local apparent solar time; longitude is east-positive degrees."""
-  return _civil_result(
+  return _protocol.decode(
+    "apparent_solar_time",
+    _civil_result,
     _result(
       "celestial_apparent_solar_time",
       "apparent_solar_time",
       *_civil_datetime(utc, "utc"),
       _finite(longitude_deg, "longitude_deg"),
-    )
+    ),
   )
 
 
@@ -440,7 +463,11 @@ def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
 
 
 def _jieqi_result(result: object) -> JieqiMoment:
-  return JieqiMoment(Jieqi(result.jq_idx), CivilDateTime(result.y, result.m, result.d, result.frac))
+  date = _gregorian_result(result.y, result.m, result.d)
+  fraction = _protocol.finite(result.frac, "fraction")
+  if not 0.0 <= fraction < 1.0:
+    raise ValueError("fraction is outside [0, 1)")
+  return JieqiMoment(Jieqi(result.jq_idx), CivilDateTime(date.year, date.month, date.day, fraction))
 
 
 def jieqi_name(jieqi: Jieqi) -> str:
@@ -452,6 +479,8 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
   """Query inclusive Lunar-year bounds, not Gregorian-year bounds, from native."""
   code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
   result = _result("celestial_get_supported_lunar_year_range", "supported_lunar_year_range", code)
+  if result.start > result.end:
+    raise _protocol.malformed("supported_lunar_year_range", "reversed year bounds")
   return LunarYearRange(result.start, result.end)
 
 
@@ -462,9 +491,12 @@ def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
   """
   code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
   result = _result("celestial_get_lunar_year_info", "lunar_year_info", code, _year(year))
+  first_day = _protocol.decode("lunar_year_info", _gregorian_result, result.year, result.month, result.day)
+  if not 0 <= result.leap_month <= 12:
+    raise _protocol.malformed("lunar_year_info", "invalid leap month")
   count = 12 if result.leap_month == 0 else 13
   return LunarYearInfo(
-    GregorianDate(result.year, result.month, result.day),
+    first_day,
     None if result.leap_month == 0 else result.leap_month,
     tuple(30 if result.month_len & (1 << index) else 29 for index in range(count)),
   )
@@ -480,6 +512,8 @@ def gregorian_to_lunar(algorithm: LunarAlgorithm, date: GregorianDate | _date) -
   if isinstance(date, _date):
     date = GregorianDate.from_date(date)
   result = _result("celestial_gregorian_to_lunar", "gregorian_to_lunar", code, *_civil_date(date, "date"))
+  if not 1 <= result.month <= 12 or not 1 <= result.day <= 30:
+    raise _protocol.malformed("gregorian_to_lunar", "invalid lunar month or day")
   return LunarDate(result.year, result.month, result.day, result.is_leap)
 
 
@@ -494,7 +528,7 @@ def lunar_to_gregorian(algorithm: LunarAlgorithm, date: LunarDate) -> GregorianD
   if not isinstance(date.is_leap, bool):
     raise TypeError("date.is_leap must be a bool")
   result = _result("celestial_lunar_to_gregorian", "lunar_to_gregorian", code, year, month, date.is_leap, day)
-  return GregorianDate(result.year, result.month, result.day)
+  return _protocol.decode("lunar_to_gregorian", _gregorian_result, result.year, result.month, result.day)
 
 
 def delta_t(year: float, model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT) -> float:

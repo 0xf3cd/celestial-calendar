@@ -168,6 +168,26 @@ def test_actual_compiler_accepts_the_independent_baseline(tmp_path):
 
 
 MUTATIONS = [
+  (
+    "new-code",
+    "#define CELESTIAL_TARGET_SUN",
+    "#define CELESTIAL_TARGET_PROBE UINT32_C(14)\n#define CELESTIAL_TARGET_SUN",
+    False,
+  ),
+  (
+    "new-record",
+    "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
+    "typedef struct CelestialProbeRecord { double value; } CelestialProbeRecord;\n"
+    "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
+    False,
+  ),
+  (
+    "new-export",
+    "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
+    "CELESTIAL_API double celestial_probe(double value);\n"
+    "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
+    False,
+  ),
   ("reorder", "uint32_t month;    /* The month. */\n  uint32_t day;", "uint32_t day;\n  uint32_t month;", True),
   ("legacy-same-width", "uint32_t month;    /* The month. */", "int32_t month;", True),
   ("padding-field", "uint8_t day;     /* The day of the lunar month. */", "uint8_t day;\n  uint8_t padding;", False),
@@ -209,7 +229,9 @@ MUTATIONS = [
 
 
 @pytest.mark.parametrize("label,old,new,compiler_rejects", MUTATIONS, ids=[m[0] for m in MUTATIONS])
-def test_colluding_generated_views_cannot_update_baseline(isolated_generator, label, old, new, compiler_rejects):
+def test_colluding_generated_views_cannot_update_baseline(
+  isolated_generator, monkeypatch, label, old, new, compiler_rejects
+):
   root = isolated_generator
   positive = compile_pins(root, "positive")
   assert positive.returncode == 0, positive.stderr
@@ -239,6 +261,8 @@ def test_colluding_generated_views_cannot_update_baseline(isolated_generator, la
       "#define CELESTIAL_DELTA_T_MODEL_DEFAULT", definition + "\n#define CELESTIAL_DELTA_T_MODEL_DEFAULT"
     )
   path.write_text(changed, encoding="utf-8")
+  if label == "new-export":
+    monkeypatch.setitem(make_abi_manifest.EXPORT_SEMANTICS, "celestial_probe", {"protocol": {}, "recording": True})
   pin_bytes = (root / PINS).read_bytes()
   assert make_bindings.main([]) == 0
   assert make_bindings.main(["--check"]) == 0
@@ -261,10 +285,11 @@ def test_colluding_generated_views_cannot_update_baseline(isolated_generator, la
   assert manifest["layouts"] == layouts
   if label == "padding-field":
     assert ctypes.sizeof(module.CelestialLunarDate) == 12
-    with pytest.raises(RuntimeError, match="field type/offset"):
-      verify_c_header_pins(root)
   result = compile_pins(root, label)
   assert (result.returncode != 0) == compiler_rejects, result.stderr
+  if result.returncode == 0:
+    with pytest.raises(RuntimeError):
+      verify_c_header_pins(root)
 
 
 def test_every_field_pin_is_required_and_stale_fields_fail(isolated_generator):

@@ -22,7 +22,6 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -64,16 +63,20 @@ enum class PositionSource : uint8_t {
   NODE_TRUE_MEEUS_FIVE_TERM = 5, ///< Meeus' five-term approximation, not an osculating node.
 };
 
+/** @brief Whether a bounded position domain comes from its source or this implementation. */
+enum class DomainOrigin : uint8_t { SOURCE, IMPLEMENTATION };
+
 /** @brief Target identity and provider domains; rate_node preserves the paired ascending trajectory. */
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): Every facts row supplies all provider fields.
 struct TargetFacts {
   Target target;
-  std::string_view name;
   PositionSource source;
   std::optional<astro::planet::Planet> planet;
   std::optional<astro::lunar_node::Node> node;
   std::optional<astro::lunar_node::Node> rate_node;
   std::optional<std::array<double, 2>> position_domain;
   std::array<double, 2> rate_provider_domain;
+  DomainOrigin position_domain_origin;
 };
 
 /** @brief Target facts in chart order; absent position domains admit finite-input evaluation, which may fail. */
@@ -82,6 +85,7 @@ inline constexpr auto TARGET_FACTS = std::invoke([] {
   using enum PositionSource;
   using astro::planet::Planet;
   using astro::lunar_node::Node;
+
   constexpr std::array working { astro::julian_day::jm_to_jde(-10.0), astro::julian_day::jm_to_jde(10.0) };
   constexpr std::array pluto {
     astro::planet::geocentric_coord::PLUTO_START_JDE_TT,
@@ -91,20 +95,20 @@ inline constexpr auto TARGET_FACTS = std::invoke([] {
 
   // NOLINTBEGIN(modernize-use-designated-initializers): Keep the identity columns aligned across the complete roster.
   return std::array {
-    TargetFacts { SUN,             "the Sun",                  SUN_VSOP87D,               {},              {},                    {},                   {},    working },
-    TargetFacts { MOON,            "the Moon",                 MOON_ELP2000_82B_TRUNC,     {},              {},                    {},                   {},    working },
-    TargetFacts { MERCURY,         "Mercury",                  PLANET_VSOP87D,            Planet::MERCURY, {},                    {},                   {},    working },
-    TargetFacts { VENUS,           "Venus",                    PLANET_VSOP87D,            Planet::VENUS,   {},                    {},                   {},    working },
-    TargetFacts { MARS,            "Mars",                     PLANET_VSOP87D,            Planet::MARS,    {},                    {},                   {},    working },
-    TargetFacts { JUPITER,         "Jupiter",                  PLANET_VSOP87D,            Planet::JUPITER, {},                    {},                   {},    working },
-    TargetFacts { SATURN,          "Saturn",                   PLANET_VSOP87D,            Planet::SATURN,  {},                    {},                   {},    working },
-    TargetFacts { URANUS,          "Uranus",                   PLANET_VSOP87D,            Planet::URANUS,  {},                    {},                   {},    working },
-    TargetFacts { NEPTUNE,         "Neptune",                  PLANET_VSOP87D,            Planet::NEPTUNE, {},                    {},                   {},    working },
-    TargetFacts { PLUTO,           "Pluto",                    PLUTO_PLUTO95_APPARENT,     Planet::PLUTO,   {},                    {},                   pluto, pluto   },
-    TargetFacts { MEAN_ASCENDING,  "the mean ascending node",  NODE_MEAN,                 {},              Node::MEAN_ASCENDING,  Node::MEAN_ASCENDING, nodes, nodes   },
-    TargetFacts { MEAN_DESCENDING, "the mean descending node", NODE_MEAN,                 {},              Node::MEAN_DESCENDING, Node::MEAN_ASCENDING, nodes, nodes   },
-    TargetFacts { TRUE_ASCENDING,  "the true ascending node",  NODE_TRUE_MEEUS_FIVE_TERM,  {},              Node::TRUE_ASCENDING,  Node::TRUE_ASCENDING, nodes, nodes   },
-    TargetFacts { TRUE_DESCENDING, "the true descending node", NODE_TRUE_MEEUS_FIVE_TERM,  {},              Node::TRUE_DESCENDING, Node::TRUE_ASCENDING, nodes, nodes   },
+    TargetFacts { SUN,             SUN_VSOP87D,              {},              {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { MOON,            MOON_ELP2000_82B_TRUNC,    {},              {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { MERCURY,         PLANET_VSOP87D,           Planet::MERCURY, {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { VENUS,           PLANET_VSOP87D,           Planet::VENUS,   {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { MARS,            PLANET_VSOP87D,           Planet::MARS,    {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { JUPITER,         PLANET_VSOP87D,           Planet::JUPITER, {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { SATURN,          PLANET_VSOP87D,           Planet::SATURN,  {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { URANUS,          PLANET_VSOP87D,           Planet::URANUS,  {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { NEPTUNE,         PLANET_VSOP87D,           Planet::NEPTUNE, {},                    {},                   {},    working, DomainOrigin::IMPLEMENTATION },
+    TargetFacts { PLUTO,           PLUTO_PLUTO95_APPARENT,    Planet::PLUTO,   {},                    {},                   pluto, pluto,   DomainOrigin::SOURCE         },
+    TargetFacts { MEAN_ASCENDING,  NODE_MEAN,                {},              Node::MEAN_ASCENDING,  Node::MEAN_ASCENDING, nodes, nodes,   DomainOrigin::IMPLEMENTATION },
+    TargetFacts { MEAN_DESCENDING, NODE_MEAN,                {},              Node::MEAN_DESCENDING, Node::MEAN_ASCENDING, nodes, nodes,   DomainOrigin::IMPLEMENTATION },
+    TargetFacts { TRUE_ASCENDING,  NODE_TRUE_MEEUS_FIVE_TERM, {},              Node::TRUE_ASCENDING,  Node::TRUE_ASCENDING, nodes, nodes,   DomainOrigin::IMPLEMENTATION },
+    TargetFacts { TRUE_DESCENDING, NODE_TRUE_MEEUS_FIVE_TERM, {},              Node::TRUE_DESCENDING, Node::TRUE_ASCENDING, nodes, nodes,   DomainOrigin::IMPLEMENTATION },
   };
   // NOLINTEND(modernize-use-designated-initializers)
 });
@@ -134,8 +138,41 @@ inline constexpr auto TARGET_FACTS = std::invoke([] {
 
 namespace detail {
 
+/** @brief Keep each source's dispatch operands consistent before any runtime lookup. */
+[[nodiscard]] constexpr auto consistent_provider(const TargetFacts& facts) -> bool {
+  using enum PositionSource;
+  const bool physical = not facts.node.has_value() and not facts.rate_node.has_value();
+  switch (facts.source) {
+    case SUN_VSOP87D:
+    case MOON_ELP2000_82B_TRUNC:
+      return physical and not facts.planet.has_value();
+    case PLANET_VSOP87D:
+      return physical and facts.planet.has_value() and *facts.planet != astro::planet::Planet::PLUTO;
+    case PLUTO_PLUTO95_APPARENT:
+      return physical and facts.planet == astro::planet::Planet::PLUTO;
+    case NODE_MEAN:
+      return not facts.planet.has_value() and facts.rate_node == astro::lunar_node::Node::MEAN_ASCENDING
+        and (facts.node == astro::lunar_node::Node::MEAN_ASCENDING or facts.node == astro::lunar_node::Node::MEAN_DESCENDING);
+    case NODE_TRUE_MEEUS_FIVE_TERM:
+      return not facts.planet.has_value() and facts.rate_node == astro::lunar_node::Node::TRUE_ASCENDING
+        and (facts.node == astro::lunar_node::Node::TRUE_ASCENDING or facts.node == astro::lunar_node::Node::TRUE_DESCENDING);
+  }
+  return false;
+}
+
 /** @brief Check every uint8_t value for exact membership once; enum aliases cannot be distinguished. */
 [[nodiscard]] consteval auto complete_target_facts() -> bool {
+  for (const auto& facts : TARGET_FACTS) {
+    if (not consistent_provider(facts)) {
+      return false;
+    }
+    for (const auto& other : TARGET_FACTS) {
+      if (facts.source == other.source and facts.position_domain != other.position_domain) {
+        return false;
+      }
+    }
+  }
+
   for (uint16_t code = 0; code <= std::numeric_limits<uint8_t>::max(); ++code) {
     const auto target = static_cast<Target>(code);
     std::size_t rows = 0;
@@ -149,7 +186,7 @@ namespace detail {
   return true;
 }
 
-static_assert(complete_target_facts(), "Every distinct Target needs exactly one facts row");
+static_assert(complete_target_facts(), "Every Target needs one consistent provider row; shared sources need one position domain");
 
 } // namespace detail
 
@@ -214,10 +251,6 @@ namespace detail {
 inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
 inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
 
-[[nodiscard]] constexpr auto position_window_for_rate(const Target target) -> std::array<double, 2> {
-  return target_facts(target).rate_provider_domain;
-}
-
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt) -> toolbox::AngleDeg {
   const auto& facts = target_facts(target);
   if (facts.planet.has_value()) {
@@ -226,7 +259,7 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
   if (facts.rate_node.has_value()) {
     return astro::lunar_node::position(*facts.rate_node, jde_tt);
   }
-  return target == Target::SUN
+  return facts.source == PositionSource::SUN_VSOP87D
     ? astro::sun::geocentric_coord::apparent(jde_tt).λ
     : astro::moon::geocentric_coord::apparent(jde_tt).λ;
 }
@@ -274,7 +307,7 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
 
 inline auto validate_rate_input(const Target target, const double jde_tt) -> void {
   validate_stencil(jde_tt);
-  const auto [start_jde_tt, end_jde_tt] = position_window_for_rate(target);
+  const auto [start_jde_tt, end_jde_tt] = target_facts(target).rate_provider_domain;
   validate_reach(jde_tt, start_jde_tt, end_jde_tt);
 }
 
@@ -332,7 +365,7 @@ requires std::invocable<const LongitudeProvider&, double>
       if (facts.planet.has_value()) {
         return astro::planet::geocentric_coord::apparent(*facts.planet, jde_tt);
       }
-      return target == Target::SUN
+      return facts.source == PositionSource::SUN_VSOP87D
         ? astro::sun::geocentric_coord::apparent(jde_tt)
         : astro::moon::geocentric_coord::apparent(jde_tt);
     });
@@ -386,7 +419,7 @@ requires std::invocable<const LongitudeProvider&, double>
  *       Exact sample-offset representability is checked separately by @ref longitude_rate.
  */
 [[nodiscard]] constexpr auto longitude_rate_domain(const Target target) -> std::array<double, 2> {
-  const auto [start_jde_tt, end_jde_tt] = detail::position_window_for_rate(target);
+  const auto [start_jde_tt, end_jde_tt] = target_facts(target).rate_provider_domain;
   return {
     start_jde_tt + detail::DIFFERENCE_REACH_TT_DAYS,
     end_jde_tt - detail::DIFFERENCE_REACH_TT_DAYS,

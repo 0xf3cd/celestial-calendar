@@ -356,7 +356,7 @@ TEST(Chart, DomainErrorsKeepTheirContext) {
   }, "Civil Delta T datetime leaves its model domain: The year 2035.");
   expect_prefix([&] {
     std::ignore = calculate(outside_model, Scale::UTC, observer, System::EQUAL, Model::ALGO4);
-  }, "Civil Algo4 requires JDE(TT) before 2035-01-01");
+  }, "Civil Delta T requires JDE(TT) before 2464328.5");
 
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) - Exercises an unknown model.
   const auto unknown = static_cast<Model>(255);

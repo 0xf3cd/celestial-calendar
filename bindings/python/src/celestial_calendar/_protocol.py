@@ -62,6 +62,28 @@ def valid(result: object, operation: str) -> object:
 _Record = TypeVar("_Record", bound=ctypes.Structure | ctypes.c_double)
 
 
+def _count_fill_protocol(export: str, argument_count: int, operation: str) -> dict:
+  """Require the generated policy to match this consumer's count/slots/capacity tail."""
+  protocols = getattr(_abi, "PROTOCOLS", None)
+  protocol = protocols.get(export) if isinstance(protocols, dict) else None
+  parameters = _abi.C_PARAMETERS.get(export)
+  roles = ("count_parameter", "slots_parameter", "capacity_parameter")
+  policy_matches = (
+    isinstance(protocol, dict)
+    and protocol.get("kind") == "count-fill"
+    and type(protocol.get("legal_empty")) is bool
+    and protocol.get("total_must_match") is True
+    and protocol.get("written_policy") == "min-total-capacity"
+    and protocol.get("null_slots_requires_zero_capacity") is True
+    and protocol.get("error_channel") == "kind"
+  )
+  if not policy_matches or parameters is None or len(parameters) != argument_count + 3:
+    raise malformed(operation, f"invalid count/fill protocol for {export}")
+  if tuple(protocol.get(role) for role in roles) != tuple(parameters[-3:]):
+    raise malformed(operation, f"invalid count/fill parameter roles for {export}")
+  return protocol
+
+
 def count_fill(
   export: str,
   args: tuple[object, ...],
@@ -71,12 +93,7 @@ def count_fill(
   expected_count: int | None = None,
 ) -> ctypes.Array[_Record]:
   """Require a full fill under the generated export's legal-empty contract."""
-  protocols = getattr(_abi, "PROTOCOLS", None)
-  if not isinstance(protocols, dict) or export not in protocols:
-    raise malformed(operation, f"missing export protocol for {export}")
-  protocol = protocols[export]
-  if not isinstance(protocol, dict) or type(protocol.get("legal_empty")) is not bool:
-    raise malformed(operation, f"invalid legal_empty protocol for {export}")
+  protocol = _count_fill_protocol(export, len(args), operation)
   allows_empty = protocol["legal_empty"]
   total = ctypes.c_uint32()
   written = _binding.call(export, *args, ctypes.byref(total), None, 0)

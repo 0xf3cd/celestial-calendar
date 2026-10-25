@@ -105,7 +105,7 @@ print(snapshot.houses.cusps_deg)
 `capabilities()` 查询 POSITION、LONGITUDE_RATE、EVENTS 和 EQUATORIAL 四类 TT 目标定义域；
 HOUSES、CHART 和 DELTA_T 会抛出 `ValueError`。`model_identities()` 与 `capability_text()` 提供模型与操作说明。
 每个定义域边界都由该操作自身的定义常量算出，所以能力记录接受与拒绝的输入和计算本身完全一致；
-NaN 边界意为「无显式界」，文字层把已验证带标注为 measured——定义域是接受边界，不是精度承诺。
+NaN 边界意为「无显式界」；定义域是接受边界，不是精度承诺。
 
 ```python
 import celestial_calendar as celestial

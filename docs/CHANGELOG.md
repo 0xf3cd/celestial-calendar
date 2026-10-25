@@ -43,7 +43,8 @@ Unreleased. These entries describe current development changes; the 1.0 API and 
 - Finite-input position evaluation checks computed coordinates without promising physical plausibility or accuracy;
   computed failures use computation errors. Pluto/node hard windows are unchanged. No accepted numerical value
   changes; invalid-input acceptance/messages and error classes intentionally change as described in
-  [Migrating to 1.0](MIGRATING_1_0.md). New external equatorial tolerances remain unselected.
+  [Migrating to 1.0](MIGRATING_1_0.md). New equatorial reference tests use separate implementation-conformance and
+  physical-regression thresholds; see [Validation](VALIDATION.md#equatorial-reference-layers).
 - The private WASM ABI follows the C migration; no public JavaScript position, equatorial, house, event or
   capability query is added.
 

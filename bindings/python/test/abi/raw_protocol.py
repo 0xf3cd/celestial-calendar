@@ -553,6 +553,18 @@ def happy_celestial_capability_text() -> None:
   text = buffer.value.decode("utf-8")
   assert "Pluto" in text and "Meeus Chapter 37" in text
   assert "PLUTO95 supplies independent references, not the runtime evaluator" in text
+  for operation, phrases in (
+    (0, ("true ecliptic and equinox of date", "no rate stencil")),
+    (1, ("Seven-point centered longitude rate", "degrees per TT day")),
+    (2, ("Event query, maximum span 3660 TT days", "true-ecliptic longitude")),
+    (4, ("RA/Dec of date", "fixed IAU1980")),
+  ):
+    required = call("celestial_capability_text", operation, 0, None, 0)
+    buffer = (ctypes.c_char * required)()
+    assert call("celestial_capability_text", operation, 0, buffer, required) == required
+    assert buffer.raw[-1:] == b"\0" and call("last_error_kind") == 0
+    text = buffer.value.decode("utf-8")
+    assert all(phrase in text for phrase in phrases), text
 
 
 def edge_celestial_capability_text() -> None:
@@ -759,7 +771,7 @@ def happy_celestial_equatorial_positions() -> None:
   for slot in slots:
     assert 0.0 <= slot.right_ascension_deg < 360.0 and -90.0 <= slot.declination_deg <= 90.0
     assert 1 <= slot.source_code <= 6
-    assert slot.present_fields == (0 if slot.target_code >= 10 else 2)
+    assert slot.present_fields == (1 if slot.target_code >= 10 else 3)
     if slot.target_code < 10:
       assert math.isfinite(slot.distance_au) and slot.distance_au > 0.0
 

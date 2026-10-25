@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <type_traits>
 
@@ -72,7 +73,7 @@ TEST(EquatorialCAbi, AllTargetsPreserveSelectionOrderSourcesAndDistancePresence)
       EXPECT_GE(record.declination_deg, -90.0);
       EXPECT_LE(record.declination_deg, 90.0);
       const bool has_distance = record.target_code <= CELESTIAL_TARGET_PLUTO;
-      EXPECT_EQ(record.present_fields, has_distance ? CELESTIAL_PRESENT_DISTANCE : 0U);
+      EXPECT_EQ(record.present_fields, CELESTIAL_PRESENT_LATITUDE | (has_distance ? CELESTIAL_PRESENT_DISTANCE : 0U));
       if (has_distance) {
         EXPECT_TRUE(std::isfinite(record.distance_au));
         EXPECT_GT(record.distance_au, 0.0);
@@ -144,6 +145,15 @@ TEST(EquatorialCAbi, RejectsEmptyDuplicateUnknownAndMalformedSelections) {
   EXPECT_EQ(celestial_equatorial_positions(duplicated.data(), duplicated.size(), 2451545.0, &count, &record, 1), 0U);
   EXPECT_EQ(count, 0U);
   EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+  constexpr std::array<uint32_t, astro::ephemeris::TARGETS.size() + 1> oversized {};
+  count = 99;
+  record.right_ascension_deg = -777.0;
+  EXPECT_EQ(celestial_equatorial_positions(oversized.data(), oversized.size(), 2451545.0, &count, &record, 1), 0U);
+  EXPECT_EQ(count, 0U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+  EXPECT_NE(std::string { celestial_last_error() }.find("exceeds the target roster"), std::string::npos);
+  EXPECT_EQ(record.right_ascension_deg, -777.0);
+
   for (const uint32_t code : { 14U, 256U, 257U, 65536U, UINT32_C(0x10000001), UINT32_MAX }) {
     count = 99;
     EXPECT_EQ(celestial_equatorial_positions(&code, 1, 2451545.0, &count, &record, 1), 0U);
@@ -205,7 +215,7 @@ TEST(EquatorialCAbi, PositionAtProviderStartDoesNotEvaluateARateStencil) {
   const uint32_t node = CELESTIAL_TARGET_MEAN_ASCENDING;
   EXPECT_EQ(celestial_equatorial_positions(&node, 1, 2409542.5, &count, &record, 1), 1U);
   EXPECT_EQ(count, 1U);
-  EXPECT_EQ(record.present_fields, 0U);
+  EXPECT_EQ(record.present_fields, CELESTIAL_PRESENT_LATITUDE);
 }
 
 } // namespace lib::equatorial::test

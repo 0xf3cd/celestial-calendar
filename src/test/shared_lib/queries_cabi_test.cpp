@@ -155,6 +155,15 @@ TEST(QueriesCAbi, PositionQuerySelectionRules) {
   const std::array<uint32_t, 2> duplicated { CELESTIAL_TARGET_SUN, CELESTIAL_TARGET_SUN };
   EXPECT_EQ(celestial_positions(duplicated.data(), 2, 2451545.0, &count, &record, 1), 0);
   EXPECT_EQ(count, 0);
+  constexpr std::array<uint32_t, astro::ephemeris::TARGETS.size() + 1> oversized {};
+  count = 99;
+  record.longitude_deg = -777.0;
+  EXPECT_EQ(celestial_positions(oversized.data(), oversized.size(), 2451545.0, &count, &record, 1), 0U);
+  EXPECT_EQ(count, 0U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+  EXPECT_NE(std::string { celestial_last_error() }.find("exceeds the target roster"), std::string::npos);
+  EXPECT_EQ(record.longitude_deg, -777.0);
+
   const std::array<uint32_t, 1> invalid { 14 };
   EXPECT_EQ(celestial_positions(invalid.data(), 1, 2451545.0, &count, &record, 1), 0);
   EXPECT_EQ(count, 0);
@@ -361,7 +370,8 @@ TEST(QueriesCAbi, HouseAlgo4UsesTheSharedDerivedTtCutoff) {
       CELESTIAL_DELTA_T_MODEL_ALGO4, CELESTIAL_NUTATION_MODEL_DEFAULT, 0.0, 0.0, CELESTIAL_HOUSE_SYSTEM_EQUAL);
     EXPECT_FALSE(rejected.valid);
     EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
-    EXPECT_NE(std::string { celestial_last_error() }.find("Algo4"), std::string::npos);
+    EXPECT_NE(std::string { celestial_last_error() }.find("Civil Delta T requires JDE(TT) before 2464328.5"),
+              std::string::npos);
     EXPECT_EQ(std::string { celestial_last_error() }.find("Chart"), std::string::npos);
     EXPECT_FALSE(celestial_chart_snapshot(2034, 12, 31, fractions.at(1), scale,
       0.0, 0.0, CELESTIAL_HOUSE_SYSTEM_EQUAL, CELESTIAL_DELTA_T_MODEL_ALGO4).valid);

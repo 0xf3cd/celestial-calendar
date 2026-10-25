@@ -107,8 +107,10 @@ def test_generator_refuses_incomplete_count_policy(monkeypatch, key, value):
 
 @pytest.mark.parametrize("key", ["size_includes_nul", "null_requires_zero_capacity", "truncates", "terminates"])
 def test_generator_refuses_incomplete_string_policy(monkeypatch, key):
-  protocol = make_abi_manifest.EXPORT_SEMANTICS["celestial_model_identity_text"]["protocol"]
-  monkeypatch.delitem(protocol, key)
+  semantics = make_abi_manifest.EXPORT_SEMANTICS["celestial_model_identity_text"]
+  protocol = dict(semantics["protocol"])
+  del protocol[key]
+  monkeypatch.setitem(semantics, "protocol", protocol)
   with pytest.raises(RuntimeError, match="sized-string policy"):
     make_abi_manifest.declaration_source()
 

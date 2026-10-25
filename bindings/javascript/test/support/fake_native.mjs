@@ -185,7 +185,7 @@ export async function testFakeNative(entryUrl) {
       for (const message of ["native failure", ""]) {
         reset({ failPass: "sret", errorKind: kind, message });
         assert.throws(scalar, (error) => error instanceof ErrorType && error.message.length > 0
-          && (kind === 1 || error.recorded === (message.length > 0)));
+          && (kind === 1 || error.recorded === true));
         assert.equal(control.live.size, 0);
         assert.equal(control.kind, kind, "reader changed the error kind");
         assert.equal(control.message, message, "reader changed the error message");
@@ -318,7 +318,7 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     }
     reset({ string: new TextEncoder().encode("\0") }); libraryError(name);
     for (const pass of ["count", "fill"]) {
-      reset({ failPass: pass, errorKind: 3, message: "" }); libraryError(name);
+      reset({ failPass: pass, errorKind: 3, message: "" }); libraryError(name, true);
     }
     reset();
     assert.equal(fixture.moon.newMoonsAfter(2451545, 4096).length, 4096);

@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 
@@ -19,8 +20,9 @@
 
 #include "ephemeris.hpp"
 
-// The Horizons and SOFA-derived reference rows retain their source terms, outside the project MIT
-// grant. SOFA issue 2023-10-11 is acknowledged in THIRD_PARTY_NOTICES.txt; no oracle is used at runtime.
+// Retained material boundaries: V07 identifies the JPL Horizons Q2 rows; V20 identifies the
+// SOFA 2023-10-11-derived projection and node rows. These references remain under their
+// source terms and outside the project MIT grant.
 
 namespace astro::ephemeris::test {
 
@@ -45,8 +47,8 @@ TEST(EquatorialQueryGolden, PhysicalTargetsVsHorizons) {
   // Eight random.Random(20261024).uniform(2411072.272126, 2469811.185372) draws rounded to six
   // JD decimals, plus 2451545.0, 2460000.5, 2460687.5 and 2461120.0. Inputs are the requested TT
   // tokens, not Horizons' slightly different echoes. Actual sample coverage is 1892-2026.
-  // Per-column ceilings retain limited headroom over the measured model gaps in these 12 rows
-  // per target; they are regression thresholds, not global accuracy bounds. RA has no cos(δ) factor.
+  // Per-column ceilings are regression thresholds for these 12 rows per target, not global accuracy
+  // bounds. RA has no cos(δ) factor.
   const std::unordered_map<Target, std::array<double, 2>> tolerances_arcsec {
     { Target::SUN,     { 0.4, 0.2  } },
     { Target::MOON,    { 6.0, 4.0  } },
@@ -61,6 +63,7 @@ TEST(EquatorialQueryGolden, PhysicalTargetsVsHorizons) {
   };
 
   // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+  // Retained data: equatorial-horizons.
   constexpr std::array dataset {
     // Target                         Requested JDE(TT)  RA (deg)       Dec (deg)
     EquatorialRow { Target::SUN,         2412175.329074, 357.894406865,  -0.913280380 },
@@ -204,6 +207,131 @@ TEST(EquatorialQueryGolden, FixedProviderInputsVsIndependentProjection) {
   // The 1e-9 deg ceiling checks projection/obliquity conformance, separately from physical accuracy.
   constexpr double TOLERANCE_DEG = 1e-9;
 
+  // Retained data: equatorial-projection.
+  // Frozen apparent ecliptic longitude/latitude in degrees, in the reference table's row order.
+  constexpr std::array provider_inputs {
+    std::array {  357.70494373802023,   1.720078391707955e-05 },
+    std::array {   193.0092490364145,  0.00016324348359164392 },
+    std::array {    206.693520392924, -0.00020397487720110507 },
+    std::array {  292.42012776384058, -6.9898831289906012e-05 },
+    std::array {    232.961353255424, -9.9481758725480872e-05 },
+    std::array {  280.36816129477182,  0.00023986985453378364 },
+    std::array {  264.01570914569498,  0.00013266435226465606 },
+    std::array {  123.23937884856207,  0.00019842943020817097 },
+    std::array {  170.85006082085565, -0.00022068413510388982 },
+    std::array {  336.10615043421541, -3.5158259307909527e-05 },
+    std::array {  292.02400980944572,  0.00013217681290542336 },
+    std::array {  359.88465717834407,  9.7971703755848425e-05 },
+    std::array {  224.26609181858748,     0.33082838486978638 },
+    std::array {  343.60293391262013,       4.683997223661474 },
+    std::array {  133.57796837376861,     -3.4460641095699729 },
+    std::array {  111.58792285226393,     -4.2804737815811764 },
+    std::array {  358.59345498366002,     -5.1120479007127821 },
+    std::array {  223.31484342022236,      5.1712800717147029 },
+    std::array {  86.543456907913708,      4.8598569517933639 },
+    std::array {  34.128809368381191,      5.0982154828332193 },
+    std::array {  134.54912272159163,     -4.9045126396765353 },
+    std::array {  38.635997981017063,     0.24775269982229198 },
+    std::array {  87.436979909293925,      5.0318998448860253 },
+    std::array {  18.851196359992645,      3.3684930984014692 },
+    std::array {  8.8465156002929533,   -0.014111778190225605 },
+    std::array {  190.32730444706891,      1.3858368091853868 },
+    std::array {  231.14245214215532,      -2.970670032571157 },
+    std::array {  276.23352290333099,    -0.49965052845179098 },
+    std::array {  242.37099476580542,     -1.3162782801010571 },
+    std::array {  271.88813108285046,    -0.99474529273519852 },
+    std::array {  243.35487306819391,      1.9018210892796326 },
+    std::array {  118.63494066544942,      1.3679316491884801 },
+    std::array {  173.26409041176797,      1.4718910358041128 },
+    std::array {  320.16785377159533,     -1.9791183536033332 },
+    std::array {    275.140414188813,    -0.34547167602879031 },
+    std::array {   338.4957026515238,      1.0636119371922255 },
+    std::array {  38.886843009957843,      1.1353582446265771 },
+    std::array {  235.82637828850542,     -5.1629900658907264 },
+    std::array {  252.23547131103368,     -2.7877226640814206 },
+    std::array {  245.66813052245519,      3.7335059636265164 },
+    std::array {  186.80589532366568,      1.4494748964602462 },
+    std::array {    241.564894429464,      2.0663762978545499 },
+    std::array {  300.07343595304064,     -1.1730753262384208 },
+    std::array {  136.06620705862326,      1.4249738395330867 },
+    std::array {  127.24281964441376,     -1.0540940744467648 },
+    std::array {  5.7372237288387495,    -0.84212103524563897 },
+    std::array {  339.17980693812484,    -0.49515411313675595 },
+    std::array {  17.441119010116498,     -0.8750155714448673 },
+    std::array {   272.4600874546112,    -0.14233442875234376 },
+    std::array {  168.42943884523834,      1.1810996354121446 },
+    std::array {  33.228833435049346,     -2.1396673410315099 },
+    std::array {  294.16240644497071,    -0.99572271875611384 },
+    std::array {  178.50941144032961,      1.4914808768712813 },
+    std::array {  327.96272701479785,     -1.0677792264837249 },
+    std::array {  38.448610973634764,      1.2310854483036939 },
+    std::array {   164.6265259000613,     0.87820056200340246 },
+    std::array {  223.51124202314395,     -0.6566051075623387 },
+    std::array {   77.55498719155834,      2.4542001842362056 },
+    std::array {   117.8523060357536,      4.2233984978012762 },
+    std::array {  344.09791460846264,     -1.0761933293368831 },
+    std::array { 0.20350602217694591,     -1.0786011874516168 },
+    std::array {  322.64465521384051,      -1.191406205950801 },
+    std::array {  303.05274754093716,    -0.76402389817570904 },
+    std::array {  125.54605341098205,     0.62123956039139938 },
+    std::array {  255.55379336212889,     0.39372720787616516 },
+    std::array {  25.253099635680755,     -1.2621683359761382 },
+    std::array {  220.49844102877225,      1.0698034112156505 },
+    std::array {   285.4113245844805,    -0.23110454718825935 },
+    std::array {  75.640643078888871,    -0.80563835757376612 },
+    std::array {  10.981269106853651,     -1.1176108685618158 },
+    std::array {  72.200301544450113,    -0.56384661752830523 },
+    std::array {  105.22905699135045,     0.36266570011403404 },
+    std::array {  176.70673897641407,      2.5039869184510311 },
+    std::array {  14.725592740051543,     -2.7516984016890631 },
+    std::array {  94.745108006846181,     -1.0868860323404002 },
+    std::array {  163.59732197840896,      1.9024498212176972 },
+    std::array {   219.1140546860114,      2.1956031908457927 },
+    std::array {  40.395670353607748,     -2.4448618547112297 },
+    std::array {  130.80071114677799,     0.58739963327856204 },
+    std::array {  157.03648746185482,      1.6654846892218929 },
+    std::array {  207.46844781385195,      2.2826531243922052 },
+    std::array {  328.74079125964016,     -1.2688632177822343 },
+    std::array {  345.43305043978768,     -1.9549394957143078 },
+    std::array {  4.1129472499411834,     -2.1236793589843246 },
+    std::array {  215.47965023293602,     0.51814170707345664 },
+    std::array {  47.064482142815294,    -0.38299257490959748 },
+    std::array {  203.64080757694009,     0.56511980727284705 },
+    std::array {  230.20037899408575,     0.33594923427089829 },
+    std::array {  248.36831744293985,    0.061825498411869115 },
+    std::array {  314.80920783544036,     -0.6583096943276544 },
+    std::array {  337.22130045580701,    -0.76027962094663692 },
+    std::array {  352.33289190979161,    -0.79460654684948318 },
+    std::array {  7.1876638593435533,    -0.75070904682477813 },
+    std::array {  45.411586715797675,    -0.33340827121724853 },
+    std::array {  53.412606880961356,    -0.24907897472013393 },
+    std::array {  58.300509841856403,    -0.17393000409668402 },
+    std::array {  66.523719443545218,     -1.5578803926111751 },
+    std::array {  171.70717063623931,      1.1052467698436592 },
+    std::array {  245.73754224139768,      1.5612328323508939 },
+    std::array {  259.25241954212373,      1.3837820634014821 },
+    std::array {  267.66984568251416,      1.1738054947169323 },
+    std::array {  303.19315778126116,     0.23501136191030025 },
+    std::array {  315.50394930609559,    -0.15511997669928637 },
+    std::array {  323.39645363629654,     -0.3439085107224113 },
+    std::array {  331.21728438302068,    -0.62267578799761691 },
+    std::array {  354.40564376731396,     -1.1686679402232547 },
+    std::array {  357.48233604038239,     -1.2791201184691998 },
+    std::array {  1.7694664885515892,     -1.3060082495717882 },
+    std::array {  67.003503056877094,     -11.297047878198549 },
+    std::array {  121.35824474872403,      3.1908450842296299 },
+    std::array {  185.13880355394517,      16.078835497585093 },
+    std::array {  199.20260523701927,      17.158806136226271 },
+    std::array {  210.38970772769116,      16.419173662832623 },
+    std::array {  251.45476722755618,      10.855239015039684 },
+    std::array {  264.29112191709334,      7.4813486364181934 },
+    std::array {  268.98985572553977,       6.301572725395042 },
+    std::array {  276.96061209800632,      3.6436999982450673 },
+    std::array {  299.38722668282281,     -2.3397855259638027 },
+    std::array {  301.41007571448074,     -3.2848318471282014 },
+    std::array {  305.00323355363554,     -3.9126360636727835 },
+  };
+
   // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
   constexpr std::array dataset {
     // Target                         Requested JDE(TT)       Independent RA (deg)       Independent Dec (deg)
@@ -328,13 +456,24 @@ TEST(EquatorialQueryGolden, FixedProviderInputsVsIndependentProjection) {
     EquatorialRow { Target::PLUTO,       2460687.500000,  304.43249219326111,   -23.047162765316013 },
     EquatorialRow { Target::PLUTO,       2461120.000000,  308.37704433133899,   -22.809060858450231 },
   };
+  // End retained data: equatorial-projection.
   // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
 
-  for (const auto& [target, jde_tt, α, δ] : dataset) {
+  static_assert(provider_inputs.size() == dataset.size());
+  for (std::size_t index = 0; index < dataset.size(); ++index) {
+    const auto& [target, jde_tt, α, δ] = dataset.at(index);
     SCOPED_TRACE(::testing::Message() << "target=" << static_cast<uint32_t>(target) << " jde_tt=" << jde_tt);
+    const auto& [λ, β] = provider_inputs.at(index);
+    const auto ε = earth::obliquity::true_obliquity(jde_tt, earth::nutation::Model::IAU_1980);
+    const auto projected = coords::ecliptic_to_equatorial(toolbox::AngleDeg { λ }, toolbox::AngleDeg { β }, ε);
+    ASSERT_NEAR(std::remainder(projected.α.deg() - α, 360.0), 0.0, TOLERANCE_DEG);
+    ASSERT_NEAR(projected.δ.deg(), δ, TOLERANCE_DEG);
+
+    const auto live = position(target, jde_tt);
+    const auto composed = coords::ecliptic_to_equatorial(live.longitude, live.latitude, ε);
     const auto result = equatorial_position(target, jde_tt);
-    ASSERT_NEAR(std::remainder(result.right_ascension.deg() - α, 360.0), 0.0, TOLERANCE_DEG);
-    ASSERT_NEAR(result.declination.deg(), δ, TOLERANCE_DEG);
+    EXPECT_EQ(result.right_ascension.deg(), composed.α.deg());
+    EXPECT_EQ(result.declination.deg(), composed.δ.deg());
   }
 }
 
@@ -347,6 +486,7 @@ TEST(EquatorialQueryGolden, NodesVsIndependentDefinition) {
   constexpr double TOLERANCE_DEG = 1e-9;
 
   // NOLINTBEGIN(modernize-use-designated-initializers) - Dense golden rows read by column.
+  // Retained data: equatorial-nodes.
   constexpr std::array dataset {
     // Target                                          JDE(TT)           Independent RA (deg)  Independent Dec (deg)
     EquatorialRow { Target::MEAN_ASCENDING,         2409543.875, 188.42020301657658, -3.6347246153041763 },

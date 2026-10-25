@@ -32,13 +32,6 @@ namespace {
 
 using astro::ephemeris::Target;
 
-auto check_record_count_ptr(uint32_t * const record_count) -> void {
-  if (record_count == nullptr) {
-    throw std::invalid_argument { "Argument `record_count` is null." };
-  }
-  *record_count = 0;
-}
-
 /** @brief Reject empty, unknown and repeated targets before any provider evaluation. */
 auto check_selection(const std::span<const uint32_t> codes) -> void {
   if (codes.empty()) {
@@ -68,10 +61,8 @@ auto selected_positions(
   const uint32_t slot_count,
   const MakeRecord& make_record
 ) -> uint32_t {
-  check_record_count_ptr(record_count);
-  if (slots == nullptr and slot_count > 0) {
-    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-  }
+  lib::check_count(record_count, "record_count");
+  lib::check_slots(slots, slot_count);
   if (target_codes == nullptr) {
     throw std::invalid_argument { "Argument `target_codes` is null." };
   }
@@ -106,11 +97,11 @@ extern "C" {
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): selection pointer/count is the published query contract.
 auto celestial_positions(
-  const uint32_t * const target_codes,
+  const uint32_t* const target_codes,
   const uint32_t target_count,
   const double jde_tt,
-  uint32_t * const record_count,
-  CelestialPositionRecord * const slots,
+  uint32_t* const record_count,
+  CelestialPositionRecord* const slots,
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
@@ -120,7 +111,8 @@ auto celestial_positions(
         const auto coordinate = astro::ephemeris::position(target, epoch);
         return CelestialPositionRecord {
           .target_code = lib::codes::code_of(target),
-          .present_fields = coordinate.distance.has_value() ? CELESTIAL_PRESENT_DISTANCE : UINT32_C(0),
+          .present_fields = CELESTIAL_PRESENT_LATITUDE
+            | (coordinate.distance.has_value() ? CELESTIAL_PRESENT_DISTANCE : UINT32_C(0)),
           .longitude_deg = coordinate.longitude.deg(),
           .latitude_deg = coordinate.latitude.deg(),
           .distance_au = coordinate.distance.has_value() ? coordinate.distance->au() : 0.0,
@@ -146,7 +138,8 @@ auto celestial_equatorial_positions(
         const auto coordinate = astro::ephemeris::equatorial_position(target, epoch);
         return CelestialEquatorialPositionRecord {
           .target_code = lib::codes::code_of(target),
-          .present_fields = coordinate.distance.has_value() ? CELESTIAL_PRESENT_DISTANCE : UINT32_C(0),
+          .present_fields = CELESTIAL_PRESENT_LATITUDE
+            | (coordinate.distance.has_value() ? CELESTIAL_PRESENT_DISTANCE : UINT32_C(0)),
           .right_ascension_deg = coordinate.right_ascension.deg(),
           .declination_deg = coordinate.declination.deg(),
           .distance_au = coordinate.distance.has_value() ? coordinate.distance->au() : 0.0,

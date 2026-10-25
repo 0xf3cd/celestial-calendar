@@ -27,20 +27,6 @@ using astro::ephemeris::EventDirection;
 using astro::ephemeris::Motion;
 using astro::toolbox::AngleDeg;
 
-auto check_event_count_ptr(uint32_t * const event_count) -> void {
-  if (event_count == nullptr) {
-    throw std::invalid_argument { "Argument `event_count` is null." };
-  }
-  // Deterministic out-parameter state: every failure path below leaves *event_count == 0.
-  *event_count = 0;
-}
-
-auto check_event_slots(const auto * const slots, const uint32_t slot_count) -> void {
-  if (slots == nullptr and slot_count > 0) {
-    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-  }
-}
-
 auto check_target_angle(const double angle_deg, const char * const name) -> void {
   if (not std::isfinite(angle_deg)) {
     throw std::invalid_argument {
@@ -95,7 +81,6 @@ extern "C" {
 auto celestial_longitude_events(
   const uint32_t target_code,
   const double target_longitude_deg,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
@@ -103,8 +88,8 @@ auto celestial_longitude_events(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
     const auto target = lib::codes::target(target_code);
     check_target_angle(target_longitude_deg, "target_longitude_deg");
     check_interval(start_jde_tt, end_jde_tt);
@@ -140,7 +125,6 @@ auto celestial_longitude_events(
 
 auto celestial_longitude_stations(
   const uint32_t target_code,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
@@ -148,8 +132,8 @@ auto celestial_longitude_stations(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
     const auto target = lib::codes::target(target_code);
     check_interval(start_jde_tt, end_jde_tt);
 
@@ -183,11 +167,9 @@ auto celestial_longitude_stations(
 #pragma region Longitude Difference Events
 
 auto celestial_longitude_difference_events(
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- first/second is the published directed pair order.
   const uint32_t first_target_code,
   const uint32_t second_target_code,
   const double target_difference_deg,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
@@ -195,8 +177,8 @@ auto celestial_longitude_difference_events(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
     const auto first = lib::codes::target(first_target_code);
     const auto second = lib::codes::target(second_target_code);
     if (first_target_code == second_target_code) {

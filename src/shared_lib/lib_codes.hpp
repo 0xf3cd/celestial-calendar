@@ -27,7 +27,7 @@
 
 namespace lib::codes {
 
-/** @brief One explicit C code, core value and optional model name. */
+/** @brief One explicit C code, core value and display name. */
 template <typename Value>
 struct Entry {
   uint32_t code {};
@@ -59,20 +59,20 @@ inline constexpr std::array POSITION_SOURCES {
 };
 
 inline constexpr std::array TARGETS {
-  Entry { CELESTIAL_TARGET_SUN, astro::ephemeris::Target::SUN, {} },
-  Entry { CELESTIAL_TARGET_MOON, astro::ephemeris::Target::MOON, {} },
-  Entry { CELESTIAL_TARGET_MERCURY, astro::ephemeris::Target::MERCURY, {} },
-  Entry { CELESTIAL_TARGET_VENUS, astro::ephemeris::Target::VENUS, {} },
-  Entry { CELESTIAL_TARGET_MARS, astro::ephemeris::Target::MARS, {} },
-  Entry { CELESTIAL_TARGET_JUPITER, astro::ephemeris::Target::JUPITER, {} },
-  Entry { CELESTIAL_TARGET_SATURN, astro::ephemeris::Target::SATURN, {} },
-  Entry { CELESTIAL_TARGET_URANUS, astro::ephemeris::Target::URANUS, {} },
-  Entry { CELESTIAL_TARGET_NEPTUNE, astro::ephemeris::Target::NEPTUNE, {} },
-  Entry { CELESTIAL_TARGET_PLUTO, astro::ephemeris::Target::PLUTO, {} },
-  Entry { CELESTIAL_TARGET_MEAN_ASCENDING, astro::ephemeris::Target::MEAN_ASCENDING, {} },
-  Entry { CELESTIAL_TARGET_MEAN_DESCENDING, astro::ephemeris::Target::MEAN_DESCENDING, {} },
-  Entry { CELESTIAL_TARGET_TRUE_ASCENDING, astro::ephemeris::Target::TRUE_ASCENDING, {} },
-  Entry { CELESTIAL_TARGET_TRUE_DESCENDING, astro::ephemeris::Target::TRUE_DESCENDING, {} },
+  Entry { CELESTIAL_TARGET_SUN,             astro::ephemeris::Target::SUN,             "the Sun"                  },
+  Entry { CELESTIAL_TARGET_MOON,            astro::ephemeris::Target::MOON,            "the Moon"                 },
+  Entry { CELESTIAL_TARGET_MERCURY,         astro::ephemeris::Target::MERCURY,         "Mercury"                  },
+  Entry { CELESTIAL_TARGET_VENUS,           astro::ephemeris::Target::VENUS,           "Venus"                    },
+  Entry { CELESTIAL_TARGET_MARS,            astro::ephemeris::Target::MARS,            "Mars"                     },
+  Entry { CELESTIAL_TARGET_JUPITER,         astro::ephemeris::Target::JUPITER,         "Jupiter"                  },
+  Entry { CELESTIAL_TARGET_SATURN,          astro::ephemeris::Target::SATURN,          "Saturn"                   },
+  Entry { CELESTIAL_TARGET_URANUS,          astro::ephemeris::Target::URANUS,          "Uranus"                   },
+  Entry { CELESTIAL_TARGET_NEPTUNE,         astro::ephemeris::Target::NEPTUNE,         "Neptune"                  },
+  Entry { CELESTIAL_TARGET_PLUTO,           astro::ephemeris::Target::PLUTO,           "Pluto"                    },
+  Entry { CELESTIAL_TARGET_MEAN_ASCENDING,  astro::ephemeris::Target::MEAN_ASCENDING,  "the mean ascending node"  },
+  Entry { CELESTIAL_TARGET_MEAN_DESCENDING, astro::ephemeris::Target::MEAN_DESCENDING, "the mean descending node" },
+  Entry { CELESTIAL_TARGET_TRUE_ASCENDING,  astro::ephemeris::Target::TRUE_ASCENDING,  "the true ascending node"  },
+  Entry { CELESTIAL_TARGET_TRUE_DESCENDING, astro::ephemeris::Target::TRUE_DESCENDING, "the true descending node" },
 };
 // NOLINTEND(modernize-use-designated-initializers)
 

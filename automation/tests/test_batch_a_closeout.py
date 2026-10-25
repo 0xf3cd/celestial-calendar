@@ -123,11 +123,11 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 def test_batch_a_closeout_facts_and_values_are_complete():
   assert RECORD_SHA256 == "6e778138b2d3e693da518ae75ac7bbec94fbd0c052fc0072216affeb8656351b"
-  assert REGISTRY_SHA256 == "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
+  assert REGISTRY_SHA256 == "bacd8c54817731ea5d0e479a37d49deae341ee19c259eb189e6204d464ae38c5"
   assert LUNAR_NODE_ATTRIBUTION_SHA256 == "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
   assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"
   assert LONGITUDE_RATE_PINS_SHA256 == "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 114, 61, 2, 16)
+  assert verify_batch_a_closeout() == CloseoutCounts(58, 117, 62, 2, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -230,7 +230,7 @@ def test_longitude_rate_retained_hash_excludes_project_test_code(tmp_path):
     "EXPECT_NEAR(actual, row.deg_per_tt_day, tolerance)",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -368,7 +368,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -489,7 +489,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -698,7 +698,26 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "## [v99.0.0]\n\nThis release contains future changes.\n", encoding="utf-8"
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 114, 61, 2, 16)
+  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
+
+
+@pytest.mark.parametrize(
+  "original,changed",
+  [
+    ("357.894406865", "357.894406866"),
+    ("357.70494373802023", "357.70494373802024"),
+    ("357.89439416553807", "357.89439416553880"),
+    ("188.42020301657658", "188.42020301657669"),
+  ],
+)
+def test_equatorial_reference_values_and_frozen_inputs_are_retained(tmp_path, original, changed):
+  materialize_inputs(tmp_path)
+  path = tmp_path / "src/test/astro/equatorial_query_golden_test.cpp"
+  source = path.read_text()
+  assert source.count(original) == 1
+  path.write_text(source.replace(original, changed))
+  with pytest.raises(RuntimeError, match="retained data hash differs"):
+    verify_batch_a_closeout(repo_root=tmp_path)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):

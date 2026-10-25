@@ -38,6 +38,9 @@
  * Every recording call first clears the calling thread's error kind and message.
  * The two error readers preserve both values. Check the error kind to distinguish a
  * legal empty result from failure, even when allocating the error message failed.
+ * Only celestial_longitude_events, celestial_longitude_stations and
+ * celestial_longitude_difference_events permit a successful zero total. Every other
+ * count/fill export has a positive total on success and a zero total on failure.
  *
  * Thread-safety contract: every entry point may be called concurrently from any
  * number of threads, with no host-side synchronization. Errors are per-thread:
@@ -470,26 +473,7 @@ CELESTIAL_API CelestialLunarDate celestial_gregorian_to_lunar(uint8_t algo, int3
 CELESTIAL_API CelestialGregorianDate celestial_lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day);
 
 
-/* ---------- Delta T ---------- */
-
-typedef struct CelestialDeltaT {
-  bool   valid; /* Indicates if the result is valid. */
-  uint32_t model_identity_code; /* Resolved CELESTIAL_DELTA_T_MODEL_* value, never DEFAULT. */
-  double value; /* TT - UT1, in seconds. */
-} CelestialDeltaT;
-
-/**
- * @brief Compute TT - UT1 in seconds using the selected Delta T model.
- * @param year A finite decimal Gregorian year at which the model is evaluated.
- * @param model_code A CELESTIAL_DELTA_T_MODEL_* selector; DEFAULT resolves to the core default.
- * @returns The value and resolved model identity; valid is false on failure.
- * @note Algo1 requires year >= -4000, Algo3 year < 3000, and Algo4 year < 2035.
- *       These are evaluation-instant guards, not a universal bound on a converted TT value.
- */
-CELESTIAL_API CelestialDeltaT celestial_delta_t(double year, uint32_t model_code);
-
-
-/* ---------- Chart Snapshot ---------- */
+/* ---------- Shared Target, Model and Geometry Codes ---------- */
 
 #define CELESTIAL_CIVIL_SCALE_UTC UINT32_C(0)
 #define CELESTIAL_CIVIL_SCALE_UT1 UINT32_C(1)
@@ -519,18 +503,47 @@ CELESTIAL_API CelestialDeltaT celestial_delta_t(double year, uint32_t model_code
 #define CELESTIAL_TARGET_MEAN_DESCENDING UINT32_C(11)
 #define CELESTIAL_TARGET_TRUE_ASCENDING  UINT32_C(12)
 #define CELESTIAL_TARGET_TRUE_DESCENDING UINT32_C(13)
+#define CELESTIAL_TARGET_ALL             UINT32_C(0xFFFFFFFF)
 
+#define CELESTIAL_NUTATION_MODEL_DEFAULT  UINT32_C(0)
+#define CELESTIAL_NUTATION_MODEL_MEEUS    UINT32_C(1)
+#define CELESTIAL_NUTATION_MODEL_IAU_1980 UINT32_C(2)
+
+/* Latitude (or equatorial declination) is present in every chart/position record.
+ * Distance is present only for physical targets; absent storage has no value semantics. */
 #define CELESTIAL_PRESENT_LATITUDE UINT32_C(1)
 #define CELESTIAL_PRESENT_DISTANCE UINT32_C(2)
 
+
+/* ---------- Delta T ---------- */
+
+typedef struct CelestialDeltaT {
+  bool valid;                   /* Indicates if the result is valid. */
+  uint32_t model_identity_code; /* Resolved CELESTIAL_DELTA_T_MODEL_* value, never DEFAULT. */
+  double value;                 /* TT - UT1, in seconds. */
+} CelestialDeltaT;
+
+/**
+ * @brief Compute TT - UT1 in seconds using the selected Delta T model.
+ * @param year A finite decimal Gregorian year at which the model is evaluated.
+ * @param model_code A CELESTIAL_DELTA_T_MODEL_* selector; DEFAULT resolves to the core default.
+ * @returns The value and resolved model identity; valid is false on failure.
+ * @note Algo1 requires year >= -4000, Algo3 year < 3000, and Algo4 year < 2035.
+ *       These are evaluation-instant guards, not a universal bound on a converted TT value.
+ */
+CELESTIAL_API CelestialDeltaT celestial_delta_t(double year, uint32_t model_code);
+
+
+/* ---------- Chart Snapshot ---------- */
+
 /** @brief One geocentric target in the true ecliptic and equinox of date. */
 typedef struct CelestialChartBody {
-  uint32_t target_code; /* A CELESTIAL_TARGET_* code; records follow code order 0-13. */
-  uint32_t source_code; /* Resolved CELESTIAL_POSITION_SOURCE_* identity. */
-  uint32_t present_fields; /* CELESTIAL_PRESENT_* bits; absent fields are unused storage, not sentinels. */
-  double longitude_deg; /* In [0, 360). */
-  double latitude_deg; /* Present for every target, including the nodes' known zero latitude. */
-  double distance_au; /* Present for Sun, Moon and planets; absent for nodes. */
+  uint32_t target_code;                 /* A CELESTIAL_TARGET_* code; records follow code order 0-13. */
+  uint32_t source_code;                 /* Resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  uint32_t present_fields;              /* CELESTIAL_PRESENT_* bits; absent fields are unused storage, not sentinels. */
+  double longitude_deg;                 /* In [0, 360). */
+  double latitude_deg;                  /* Present for every target, including the nodes' known zero latitude. */
+  double distance_au;                   /* Present for Sun, Moon and planets; absent for nodes. */
   double longitude_rate_deg_per_tt_day; /* Published seven-point signed rate; negative means retrograde at this instant. */
 } CelestialChartBody;
 
@@ -546,7 +559,7 @@ typedef struct CelestialChartHouses {
 /** @brief An owned complete snapshot; consume the payload only when valid is true. */
 typedef struct CelestialChartSnapshot {
   bool valid;
-  uint32_t delta_t_identity_code; /* Resolved CELESTIAL_DELTA_T_MODEL_* value, never DEFAULT. */
+  uint32_t delta_t_identity_code;  /* Resolved CELESTIAL_DELTA_T_MODEL_* value, never DEFAULT. */
   uint32_t nutation_identity_code; /* Resolved CELESTIAL_NUTATION_MODEL_* value for houses, never DEFAULT. */
   double jd_ut1;
   double jde_tt;
@@ -705,9 +718,9 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
 #define CELESTIAL_OPERATION_LONGITUDE_RATE UINT32_C(1)
 #define CELESTIAL_OPERATION_EVENTS         UINT32_C(2)
 #define CELESTIAL_OPERATION_HOUSES         UINT32_C(3)
-#define CELESTIAL_OPERATION_EQUATORIAL      UINT32_C(4)
-#define CELESTIAL_OPERATION_CHART           UINT32_C(5)
-#define CELESTIAL_OPERATION_DELTA_T         UINT32_C(6)
+#define CELESTIAL_OPERATION_EQUATORIAL     UINT32_C(4)
+#define CELESTIAL_OPERATION_CHART          UINT32_C(5)
+#define CELESTIAL_OPERATION_DELTA_T        UINT32_C(6)
 
 #define CELESTIAL_STATUS_SOURCE_WINDOW           UINT32_C(0)
 #define CELESTIAL_STATUS_IMPLEMENTATION_WINDOW   UINT32_C(1)
@@ -719,8 +732,6 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
 #define CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT    UINT32_C(4)
 #define CELESTIAL_POSITION_SOURCE_NODE_MEAN                 UINT32_C(5)
 #define CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(6)
-
-#define CELESTIAL_TARGET_ALL UINT32_C(0xFFFFFFFF)
 
 #define CELESTIAL_MODEL_KIND_DELTA_T         UINT32_C(0)
 #define CELESTIAL_MODEL_KIND_NUTATION        UINT32_C(1)
@@ -734,10 +745,6 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
  * is the kind/identity pair. Selectable models use these same values as selectors.
  * DEFAULT (0) is input-only where an operation supports it; position sources have no DEFAULT.
  * Each operation describes its own model use and DEFAULT resolution. */
-#define CELESTIAL_NUTATION_MODEL_DEFAULT  UINT32_C(0)
-#define CELESTIAL_NUTATION_MODEL_MEEUS    UINT32_C(1)
-#define CELESTIAL_NUTATION_MODEL_IAU_1980 UINT32_C(2)
-
 /**
  * @brief One TT operation's input bounds for one target.
  * @note Domain ends are NaN where no explicit JDE(TT) bound exists. With
@@ -841,22 +848,22 @@ CELESTIAL_API uint32_t celestial_capability_text(uint32_t operation_code, uint32
 
 /** @brief One selected target's apparent geocentric position in the true ecliptic of date. */
 typedef struct CelestialPositionRecord {
-  uint32_t target_code;      /* A CELESTIAL_TARGET_* code; records follow the caller's target order. */
-  uint32_t present_fields;   /* CELESTIAL_PRESENT_DISTANCE marks distance_au; latitude is always present. */
-  double longitude_deg;      /* In [0, 360). */
+  uint32_t target_code;    /* A CELESTIAL_TARGET_* code; records follow the caller's target order. */
+  uint32_t present_fields; /* CELESTIAL_PRESENT_LATITUDE is set; DISTANCE marks distance_au. */
+  double longitude_deg;    /* In [0, 360). */
   double latitude_deg;
-  double distance_au;        /* Present for Sun, Moon, planets and Pluto; absent (unused storage) for nodes. */
-  uint32_t source_code;      /* The resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  double distance_au;      /* Present for Sun, Moon, planets and Pluto; absent (unused storage) for nodes. */
+  uint32_t source_code;    /* The resolved CELESTIAL_POSITION_SOURCE_* identity. */
 } CelestialPositionRecord;
 
 /** @brief One selected target's apparent geocentric equatorial position of date. */
 typedef struct CelestialEquatorialPositionRecord {
-  uint32_t target_code; /* A CELESTIAL_TARGET_* code; records follow the caller's target order. */
-  uint32_t present_fields; /* CELESTIAL_PRESENT_DISTANCE marks distance_au. */
+  uint32_t target_code;       /* A CELESTIAL_TARGET_* code; records follow the caller's target order. */
+  uint32_t present_fields;    /* CELESTIAL_PRESENT_LATITUDE marks declination; DISTANCE marks distance_au. */
   double right_ascension_deg; /* In [0, 360). */
-  double declination_deg; /* In [-90, 90]. */
-  double distance_au; /* Absent for mathematical nodes. */
-  uint32_t source_code; /* The resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  double declination_deg;     /* In [-90, 90]. */
+  double distance_au;         /* Absent for mathematical nodes. */
+  uint32_t source_code;       /* The resolved CELESTIAL_POSITION_SOURCE_* identity. */
 } CelestialEquatorialPositionRecord;
 
 /** @brief Independent house geometry with resolved explicit model identities (#357, #355). */

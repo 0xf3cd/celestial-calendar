@@ -68,6 +68,8 @@ constexpr std::array TARGETS {
   Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO, Target::MEAN_ASCENDING,
   Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
 };
+static_assert(TARGETS == astro::ephemeris::TARGETS);
+static_assert(TARGET_CODES.size() == TARGETS.size());
 constexpr std::array SOURCE_CODES {
   CELESTIAL_POSITION_SOURCE_SUN_VSOP87D, CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC,
   CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D, CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D,
@@ -323,8 +325,8 @@ TEST(ChartCAbi, Algo4CapIsStrictInDerivedTtAndHasNoDefaultFallback) {
       expect_snapshot(actual, astro::chart::calculate(dt, Scale::UTC, observer, System::EQUAL, Model::ALGO4));
     } else {
       EXPECT_FALSE(actual.valid);
-      EXPECT_NE(std::strstr(celestial_last_error(), "Algo4"), nullptr);
-      EXPECT_NE(std::strstr(celestial_last_error(), "2035"), nullptr);
+      EXPECT_NE(std::strstr(celestial_last_error(), "Civil Delta T"), nullptr);
+      EXPECT_NE(std::strstr(celestial_last_error(), "2464328.5"), nullptr);
       EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
       EXPECT_TRUE(celestial_chart_snapshot(2034, 12, 31, fraction, CELESTIAL_CIVIL_SCALE_UTC, 0.0, 0.0,
                                     CELESTIAL_HOUSE_SYSTEM_EQUAL, CELESTIAL_DELTA_T_MODEL_ALGO5).valid);

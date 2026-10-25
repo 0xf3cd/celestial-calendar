@@ -318,7 +318,7 @@ enum class Model : uint8_t { MEEUS = 0, IAU_1980 = 1 };
  * @param jde The julian ephemeris day number, which is based on TT.
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in longitude (Δψ) in degrees.
- * @note Omission retains the fixed IAU 1980 convention, independently of house-operation defaults.
+ * @note Omission retains the fixed IAU 1980 convention.
  * @note Twin of `nutation::obliquity`, which sums the same table and differs in exactly two
  *       places: it reads `coeffs.Δε` and it takes the cosine. The duplication is deliberate —
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).
@@ -356,7 +356,7 @@ enum class Model : uint8_t { MEEUS = 0, IAU_1980 = 1 };
  * @param jde The julian ephemeris day number, which is based on TT.
  * @param model The model to use when calculating the nutation. Defaults to `Model::IAU_1980`.
  * @return The nutation in obliquity (Δε) in degrees.
- * @note Omission retains the fixed IAU 1980 convention, independently of house-operation defaults.
+ * @note Omission retains the fixed IAU 1980 convention.
  * @note Twin of `nutation::longitude`, which sums the same table and differs in exactly two
  *       places: it reads `coeffs.Δψ` and it takes the sine. The duplication is deliberate —
  *       each body mirrors its own Meeus summation — so fix both or neither (#49).

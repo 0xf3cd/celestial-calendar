@@ -96,8 +96,8 @@ directions that degenerate at round-off scale, and Placidus polar cases, fail. H
 nutation default, currently IAU 1980; body corrections remain fixed IAU 1980. Type or record-shape errors throw
 `TypeError`; invalid dates, day fractions, locations, option strings or native-domain rejections throw `RangeError`; calling before
 initialization, allocation failure, native calculation failure, or a malformed native success record throws
-`CelestialError`, with `operation` set to `"chart.snapshot"`. `recorded` is `true` only when the message came from
-the native error channel. A failure never returns a partial snapshot.
+`CelestialError`, with `operation` set to `"chart.snapshot"`. `recorded` is `true` when native reported a recognized
+error kind, even if its message is empty. A failure never returns a partial snapshot.
 
 <a id="todays-lunar-date"></a>
 ### Today's Lunar Date
@@ -232,8 +232,8 @@ degrees. It returns an array of TT-based JDEs, or `[]` when the Sun does not rea
 After initialization, wrong shapes and types throw `TypeError`. Invalid input or a declared-domain rejection
 throws `RangeError`, whether found in JavaScript or native code. Computation/resource/internal failures and
 malformed native success records throw `CelestialError`, whose `operation` is the public method name and whose
-`recorded` says whether the message came from the native error channel. The native error kind determines failure
-even when its message is empty. A legitimate absence remains `null` or `[]`.
+`recorded` is true for a recognized native error kind, even when its message is empty; binding-local failures set
+it to false. A legitimate absence remains `null` or `[]`.
 
 Finite position inputs can still fail computation; coordinate validity promises neither physical plausibility
 nor accuracy at remote epochs. There is no new universal position-year or obliquity cutoff. Caller-owned WASM

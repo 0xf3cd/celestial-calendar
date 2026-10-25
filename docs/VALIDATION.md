@@ -27,6 +27,40 @@ conventions. External references include:
 environment with `python -m pip install -r Requirements-statistics.txt`. The [references](../README.md#references)
 keep the original source links.
 
+<a id="equatorial-reference-layers"></a>
+### Equatorial reference layers
+
+[`equatorial_query_golden_test.cpp`](../src/test/astro/equatorial_query_golden_test.cpp) checks two different
+questions without changing existing golden values or tolerances:
+
+- Same-input conformance: 120 frozen ecliptic longitude/latitude pairs are checked against directions computed
+  independently with SOFA IAU1980 true obliquity and a Cartesian rotation. Another 28 rows check the four Meeus node definitions.
+  Wrapped RA and declination each use a `1e-9` degree ceiling. These checks do not establish physical accuracy.
+- Physical regression: 120 retained Horizons Q2 rows, twelve per target, cover sampled epochs in 1892–2026.
+  The per-column ceilings below include the existing providers' differences from Horizons. RA is wrapped
+  without a cosine-of-declination factor. These are retained-sample regression ceilings, not global error bounds.
+
+| Target | RA ceiling (arcseconds) | Declination ceiling (arcseconds) |
+|---|---:|---:|
+| Sun | 0.4 | 0.2 |
+| Moon | 6 | 4 |
+| Mercury, Venus | 0.2 | 0.1 |
+| Mars | 0.3 | 0.1 |
+| Jupiter | 0.5 | 0.25 |
+| Saturn | 0.4 | 0.2 |
+| Uranus | 1.5 | 0.5 |
+| Neptune | 2 | 1 |
+| Pluto | 1 | 0.5 |
+
+The test records the requested TT inputs, source versions and generation recipe. Its live-provider composition
+checks are separate from the frozen-input expectations. Nodes are mathematical directions with no distance;
+their reference rows check the stated definition, not an observational or osculating-node ephemeris.
+The reference values are stored in the test; neither the tests nor the runtime require an external ephemeris.
+
+The two generated `EventBounds` table extents remain fixed in `ephemeris_event_bounds.hpp`; their size and
+target order are asserted against the shared roster. They are retained numerical data, not a second
+hand-maintained target roster.
+
 <a id="replay-margins"></a>
 ## Chart Snapshot Replay Margins
 

@@ -14,6 +14,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -64,24 +65,24 @@ TEST(EquatorialQuery, PositionWindowsDoNotInheritRateStencilReach) {
     }
     const auto domain = *facts.position_domain;
     const double last = std::nextafter(domain.back(), -std::numeric_limits<double>::infinity());
-    EXPECT_NO_THROW((void)equatorial_position(target, domain.front()));
-    EXPECT_NO_THROW((void)equatorial_position(target, last));
-    EXPECT_THROW((void)longitude_rate(target, domain.front()), std::invalid_argument);
-    EXPECT_THROW((void)longitude_rate(target, last), std::invalid_argument);
-    EXPECT_THROW((void)equatorial_position(target, std::nextafter(domain.front(), 0.0)), std::invalid_argument);
-    EXPECT_THROW((void)equatorial_position(target, domain.back()), std::invalid_argument);
+    EXPECT_NO_THROW(std::ignore = equatorial_position(target, domain.front()));
+    EXPECT_NO_THROW(std::ignore = equatorial_position(target, last));
+    EXPECT_THROW(std::ignore = longitude_rate(target, domain.front()), std::invalid_argument);
+    EXPECT_THROW(std::ignore = longitude_rate(target, last), std::invalid_argument);
+    EXPECT_THROW(std::ignore = equatorial_position(target, std::nextafter(domain.front(), 0.0)), std::invalid_argument);
+    EXPECT_THROW(std::ignore = equatorial_position(target, domain.back()), std::invalid_argument);
   }
 
-  EXPECT_NO_THROW((void)equatorial_position(Target::SUN, 2300000.0));
-  EXPECT_THROW((void)equatorial_position(Target::PLUTO, 2300000.0), std::invalid_argument);
+  EXPECT_NO_THROW(std::ignore = equatorial_position(Target::SUN, 2300000.0));
+  EXPECT_THROW(std::ignore = equatorial_position(Target::PLUTO, 2300000.0), std::invalid_argument);
 }
 
 TEST(EquatorialQuery, MalformedInputRemainsAnInputError) {
   for (const double jde_tt : { std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity() }) {
-    EXPECT_THROW((void)equatorial_position(Target::SUN, jde_tt), std::invalid_argument);
+    EXPECT_THROW(std::ignore = equatorial_position(Target::SUN, jde_tt), std::invalid_argument);
   }
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately forge an unknown target to test rejection.
-  EXPECT_THROW((void)equatorial_position(static_cast<Target>(255), 2451545.0), std::invalid_argument);
+  EXPECT_THROW(std::ignore = equatorial_position(static_cast<Target>(255), 2451545.0), std::invalid_argument);
 }
 
 } // namespace astro::ephemeris::test

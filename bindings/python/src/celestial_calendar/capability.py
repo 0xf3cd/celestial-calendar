@@ -18,7 +18,7 @@ from datetime import date as _date
 from enum import StrEnum as _StrEnum
 
 from . import _abi
-from ._codes import enum_code
+from ._codes import enum_code, enum_member as _member
 from ._models import ModelKey, ModelKind, Target, identity_values
 from ._protocol import finite
 from .chart import CivilScale
@@ -102,13 +102,6 @@ class ModelIdentity:
   status: ModelStatus
   domain_start_jde_tt: float
   domain_end_jde_tt: float
-
-
-def _member(enum_type, family: str, code: int):
-  for member in enum_type:
-    if enum_code(family, member) == code:
-      return member
-  raise ValueError(f"unknown {family} code {code}")
 
 
 def _domain(start: float, end: float) -> tuple[float, float]:

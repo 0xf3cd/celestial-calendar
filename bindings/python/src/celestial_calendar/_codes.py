@@ -11,6 +11,7 @@
 """Access the checked-in C constants generated with the ctypes declarations."""
 
 from enum import Enum
+from typing import TypeVar
 
 from ._abi import C_CODES
 
@@ -21,6 +22,16 @@ def constant(name: str) -> int:
 
 def enum_code(family: str, member: Enum) -> int:
   return constant(f"{family}_{member.name}")
+
+
+_Enum = TypeVar("_Enum", bound=Enum)
+
+
+def enum_member(enum_type: type[_Enum], family: str, code: int) -> _Enum:
+  for member in enum_type:
+    if enum_code(family, member) == code:
+      return member
+  raise ValueError(f"unknown {family} code {code}")
 
 
 def family_values(family: str) -> frozenset[int]:
