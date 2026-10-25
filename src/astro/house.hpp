@@ -33,6 +33,17 @@ namespace astro::house {
 /** @brief A supported system for dividing the ecliptic into twelve houses. */
 enum class System : uint8_t { EQUAL, WHOLE_SIGN, PLACIDUS };
 
+/** @brief Default nutation model for house geometry. */
+inline constexpr astro::earth::nutation::Model DEFAULT_NUTATION_MODEL = astro::earth::nutation::Model::IAU_1980;
+
+/** @brief The four principal tropical angles, independent of a house division system. */
+struct Axes {
+  toolbox::AngleDeg ascendant;
+  toolbox::AngleDeg midheaven;
+  toolbox::AngleDeg descendant;
+  toolbox::AngleDeg imum_coeli;
+};
+
 /**
  * @brief The four principal angles and twelve cusps of a house calculation.
  * @note `descendant` and `imum_coeli` are the respective antipodes of `ascendant` and
@@ -293,6 +304,18 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   return toolbox::AngleDeg { std::floor(ascendant.normalize().deg() / 30.0) * 30.0 };
 }
 
+/** @brief Resolve the horizon/ecliptic angles before any cusp construction. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Angle names distinguish the house-frame roles.
+[[nodiscard]] inline auto axes(
+  const toolbox::AngleDeg& armc,
+  const toolbox::AngleDeg& latitude,
+  const toolbox::AngleDeg& obliquity
+) -> Axes {
+  const auto asc = ascendant(armc, latitude, obliquity);
+  const auto mc = midheaven(armc, obliquity);
+  return { .ascendant = asc, .midheaven = mc, .descendant = antipode(asc), .imum_coeli = antipode(mc) };
+}
+
 [[nodiscard]] inline auto calculate(
   const toolbox::AngleDeg& armc,
   const toolbox::AngleDeg& latitude,
@@ -307,10 +330,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     };
   }
 
-  const auto asc = ascendant(armc, latitude, obliquity);
-  const auto mc = midheaven(armc, obliquity);
-  const auto desc = antipode(asc);
-  const auto ic = antipode(mc);
+  const auto [asc, mc, desc, ic] = axes(armc, latitude, obliquity);
 
   switch (system) {
     case System::EQUAL:
@@ -366,6 +386,30 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
 } // namespace detail
 
 /**
+ * @brief Calculate the four principal angles without constructing house cusps.
+ * @param jd_ut1 Julian day on UT1.
+ * @param jde_tt JDE(TT) of the same physical instant.
+ * @param location North-positive latitude in (-90, 90), east-positive longitude in [-180, 180].
+ * @param model Nutation for both apparent sidereal time and true obliquity.
+ * @return The four axes, normalized to [0, 360) degrees.
+ * @throw std::invalid_argument For invalid time/site/model input or an unresolved Ascendant direction.
+ * @note The numeric operation has no civil-year or target/rate window.
+ */
+[[nodiscard]] inline auto axes(
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): The scale suffixes distinguish the same-instant pair.
+  const double jd_ut1,
+  const double jde_tt,
+  const astro::GeoLocation& location,
+  const astro::earth::nutation::Model model = DEFAULT_NUTATION_MODEL
+) -> Axes {
+  detail::validate(jd_ut1, jde_tt, location);
+
+  const auto armc = astro::sidereal::local_apparent(jd_ut1, jde_tt, -location.longitude, model);
+  const auto obliquity = astro::earth::obliquity::true_obliquity(jde_tt, model);
+  return detail::axes(armc, location.latitude, obliquity);
+}
+
+/**
  * @brief Calculate the four principal angles and house cusps for an observer and instant.
  * @param jd_ut1 The Julian day on the UT1 scale.
  * @param jde_tt The Julian ephemeris day on the TT scale of the same physical instant.
@@ -373,7 +417,7 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
  *        longitude in [-180°, 180°].
  * @param system The house system to calculate.
  * @param model The nutation model used by both apparent sidereal time and true obliquity. Defaults
- *        to `astro::earth::nutation::Model::IAU_1980`.
+ *        to DEFAULT_NUTATION_MODEL.
  * @return Tropical longitudes in the true ecliptic and equinox of date, normalized to [0°, 360°).
  * @throw std::invalid_argument If an input is non-finite or outside its range, `system` is not a
  *        named enumerator, the Ascendant direction is unresolved at round-off, or Placidus is
@@ -388,7 +432,7 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
   const double jde_tt,
   const astro::GeoLocation& location,
   const System system,
-  const astro::earth::nutation::Model model = astro::earth::nutation::Model::IAU_1980
+  const astro::earth::nutation::Model model = DEFAULT_NUTATION_MODEL
 ) -> Result {
   detail::validate(jd_ut1, jde_tt, location);
   // `local_apparent` wants Meeus's west-positive longitude; `GeoLocation` carries east-positive.

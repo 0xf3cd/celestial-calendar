@@ -329,7 +329,7 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
       .r = geometric.r,
     };
     const auto fk5 = astro::coords::fk5_correction(jde_tt, aberrated);
-    const auto nutation = astro::earth::nutation::longitude(jde_tt);
+    const auto nutation = astro::earth::nutation::longitude(jde_tt, astro::earth::nutation::Model::IAU_1980);
 
     return {
       .λ = (aberrated.λ + fk5.Δλ + nutation).normalize(),

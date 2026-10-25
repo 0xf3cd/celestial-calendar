@@ -29,6 +29,15 @@
 
 namespace astro::julian_day {
 
+/** @brief The explicitly declared scale of a civil datetime. */
+enum class Scale : uint8_t { UTC, UT1 };
+
+/** @brief Modelled UT1 and TT at the same instant, in Julian days. */
+struct Times {
+  double jd_ut1;
+  double jde_tt;
+};
+
 // According to https://aa.usno.navy.mil/data/JulianDate
 // > Note that the time scale that is the basis for Julian dates is Universal Time (UT1), 
 //   and that 0h UT1 corresponds to a Julian date fraction of 0.5.
@@ -211,6 +220,58 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
 [[nodiscard]] inline auto jde_to_tt(const double jde) -> calendar::Datetime {
   // In my understanding, the process of converting UT1->JD and TT->JDE is the same.
   return jd_to_ut1(jde);
+}
+
+/**
+ * @brief Convert one explicitly scaled civil datetime to TT, with strict modern UTC admission.
+ * @param civil_dt A valid civil datetime, without an inserted leap second.
+ * @param scale UTC from 1972-01-01, or explicitly labelled UT1.
+ * @param model Delta T model for UT1 input; UTC-to-TT does not evaluate Delta T.
+ * @return The TT datetime. Future UTC holds the last known TAI-minus-UTC table entry.
+ * @throw std::invalid_argument For invalid input, model-domain rejection or an unrepresentable shift.
+ */
+[[nodiscard]] inline auto civil_to_tt(
+  const calendar::Datetime& civil_dt,
+  const Scale scale,
+  const astro::delta_t::Model model = astro::delta_t::DEFAULT_MODEL
+) -> calendar::Datetime {
+  if (not civil_dt.ok()) {
+    throw std::invalid_argument { "Invalid civil datetime" };
+  }
+
+  switch (scale) {
+    case Scale::UT1:
+      return astro::delta_t::ut1_to_tt(model, civil_dt);
+    case Scale::UTC:
+      if (civil_dt.ymd < astro::leap_second::MODERN_UTC_START) {
+        throw std::invalid_argument { "UTC input begins at 1972-01-01" };
+      }
+      return astro::leap_second::utc_to_tt(civil_dt);
+  }
+  throw std::invalid_argument { std::format("Unknown civil time scale {}", static_cast<uint32_t>(scale)) };
+}
+
+/**
+ * @brief Resolve UT1 and TT without additional civil-year or derived-TT admission policy.
+ * @param civil_dt A valid civil datetime on the declared scale.
+ * @param scale UTC from 1972-01-01, or explicitly labelled UT1.
+ * @param model The selected Delta T model.
+ * @return Both scales; UT1 input passes through without a reverse conversion.
+ * @throw std::invalid_argument For invalid input, model-domain rejection or an unrepresentable shift.
+ * @note Model guards apply at the evaluation instant: UT1 for the forward shift, TT for the reverse.
+ *       Algo4 UT1 input can derive TT beyond its TT-evaluation end; reversing that TT may fail.
+ */
+[[nodiscard]] inline auto resolve_times(
+  const calendar::Datetime& civil_dt,
+  const Scale scale,
+  const astro::delta_t::Model model = astro::delta_t::DEFAULT_MODEL
+) -> Times {
+  const auto tt = civil_to_tt(civil_dt, scale, model);
+  const double jde_tt = tt_to_jde(tt);
+  const double jd_ut1 = scale == Scale::UT1
+    ? ut1_to_jd(civil_dt)
+    : ut1_to_jd(astro::delta_t::tt_to_ut1(model, tt));
+  return { .jd_ut1 = jd_ut1, .jde_tt = jde_tt };
 }
 
 

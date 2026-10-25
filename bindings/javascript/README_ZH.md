@@ -17,7 +17,8 @@
 
 [English](README.md)
 
-本文对应 `0.9.0` 版。以下安装命令取得 npm 上的最新版本；更早的版本可能缺少本文的部分 API，使用示例前请核对所装版本。
+本文对应 **1.0.0** 的开发接口，尚未发布。以下安装命令取得 npm 上的最新已发布版本，请使用与所装版本匹配的文档。
+日志接口移除、太阳距离字段改名和错误类别变化见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
 
 <a id="install"></a>
 ## 安装
@@ -41,8 +42,6 @@ npm install @0xf3cd/celestial
 
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
-
-`chart.snapshot()` 自 0.8.0 起提供。
 
 ```js
 import { init, chart } from "@0xf3cd/celestial";
@@ -80,12 +79,15 @@ console.log(snapshot.houses.cuspsDeg); // twelve house cusps in house order
 `houses` 包含 `ascendantDeg`、`midheavenDeg`、`descendantDeg`、`imumCoeliDeg` 和 `cuspsDeg`，
 角度均在 `[0, 360)` 度。结果是独立的普通对象和数组，后续调用或 WASM 内存增长不改变既有结果。
 
-核心统一检查换算后 JDE(TT) 的共同范围 `[2409543.875, 2488069.125)`；Algo4 还要求
-`JDE < 2464328.5`。由 UTC 换算出的 UT1 是模型值，不是观测 DUT1，见
+核心检查换算后 JDE(TT) 的星盘范围 `[2409543.875, 2488069.125)`；Algo4 还要求派生
+`JDE < 2464328.5`，在反向换算前检查。这会有意排除 Algo4 下 2034 年末约 71.5 个 UT1 秒；
+共用民用／模型错误可能先于星盘联合窗口错误出现。由 UTC 换算出的 UT1 是模型值，不是观测 DUT1；
+未来 UTC 沿用闰秒表最后已知的偏移。见
 [Time scales](../../docs/DESIGN.md#time-scales)。
-Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。类型／记录结构错误抛 `TypeError`；无效的日期、日小数、地点或
-选项字符串抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
-`"chart.snapshot"`。`recorded` 仅在错误消息来自原生错误通道时为 `true`。失败不返回半张 snapshot。
+Ascendant 在舍入尺度上的退化方向、以及 Placidus 的极区情形会失败。宫位遵循宫位操作的章动默认模型，当前为 IAU 1980；
+天体位置修正仍固定为 IAU 1980。类型／记录结构错误抛 `TypeError`；无效的日期、日小数、地点、
+选项字符串或原生域拒绝抛 `RangeError`；未初始化、内存分配失败、原生计算失败或原生成功记录畸形抛 `CelestialError`，其 `operation` 为
+`"chart.snapshot"`。原生侧报告已知错误种类时，`recorded` 为 `true`，即使消息为空也一样。失败不返回半张 snapshot。
 
 <a id="todays-lunar-date"></a>
 ### 今天的阴历日期
@@ -174,9 +176,10 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `config`、`time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
+根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
 包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。
-模型、月相和日志选项使用字符串联合类型，如 `"full"`、`"algo3"`、`"debug"`。
+模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。不再提供日志配置或 `init` 配置参数。
+独立位置、赤道位置、宫位、事件、能力与模型文本查询均不是公开 JavaScript API。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，
 才能传给 `jieqi.moment()` 或 `jieqi.name()`。`jieqi.name()` 返回中文名，如 `Jieqi.LICHUN` 对应 `"立春"`。
@@ -184,11 +187,12 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 时间尺度与单位须明确区分：
 
 - JD 输入和输出的操作名区分 UT1 与 JDE（TT）。
-- `jieqi.moment()` 返回 `{ jieqi, momentUt1 }`。其中的民用时刻是 UT1，不是 UTC 或东八区钟表时间；
+- `jieqi.moment()` 返回 `{ jieqi, momentUt1 }`，TT 到 UT1 固定使用 Algo5，不随可选模型的默认值改变。
+  其中的民用时刻是 UT1，不是 UTC 或东八区钟表时间；
   同一瞬间显示为 UTC+8 时，日期可能改变。显示为 UTC 或固定偏移时间前，须先确定时标转换。
   返回的 UT1 年份可能与请求年份不同。
 - `sun.apparentSolarTime()` 接受 UTC 民用时刻，以及 `[-180, 180]` 度范围内、东正西负的地理经度。
-- 角度结果以度为单位。日地距离使用 AU。`moon.apparentGeocentricCoordinate()` 的月地距离用千米；
+- 角度结果以度为单位。日地距离字段为 `distanceAu`，单位为 AU。`moon.apparentGeocentricCoordinate()` 的月地距离用千米；
   `chart.snapshot()` 里所有天体（含月球）的距离都用 AU。
 - `time.deltaT()` 返回秒数。
 - 均时差以时角度数表示，乘以 240 可换算为时间秒数。
@@ -202,15 +206,19 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 
 `time.localApparentSiderealTime(jdUt1, longitudeDeg)` 接受有限的 UT1 下 JD，其公历年份须在 `[401, 32766]` 内；
 地理经度须有限、东正西负，范围为 `[-180, 180]` 度。返回值为 `[0, 360)` 度。
-年份范围由原生边界校验，因此超出年域的 JD 抛出 `CelestialError`，而非 JavaScript 有限性与经度校验使用的
-`RangeError`。
+年份范围由原生边界校验，超出年域的 JD 与 JavaScript 有限性／经度校验一样抛出 `RangeError`。
+此操作的 ΔT 固定为 Algo5，章动固定为 IAU 1980。
 
 `sun.longitudeCrossings(year, longitudeDeg)` 接受有限的太阳视地心黄经，范围为 `[0, 360)` 度；
 返回 TT 下的 JDE 数组，当年没有经过该黄经的时刻时返回 `[]`。
 
-初始化完成后，错误的结构和类型抛出 `TypeError`；JavaScript 范围校验抛出 `RangeError`。
-原生失败抛出 `CelestialError`，其 `operation` 为公开方法名，`recorded` 表明消息是否来自原生错误通道。
+初始化完成后，错误的结构和类型抛出 `TypeError`；无效输入或声明域之外的输入，无论在哪一层发现，都抛出 `RangeError`。
+计算／资源／内部失败或原生成功记录畸形抛出 `CelestialError`，其 `operation` 为公开方法名，
+原生侧报告已知错误种类时，`recorded` 为 `true`，即使消息为空也一样；绑定本地发现的失败为 `false`。
 合法的“无结果”仍以 `null` 或 `[]` 表示。
+
+有限的位置输入仍可能计算失败；坐标合法不保证远年代的物理合理性或精度，不设新的统一位置年域或黄赤交角阈值。
+绑定对调用方持有的 WASM 输出缓冲区设有 16 MiB 上限。
 
 `moon.newMoonsAfter(jde, count)` 接受 `[0, 4096]` 内的 `count`，零返回 `[]`。
 上限使 WASM 输出缓冲区不超过 32 KiB。
@@ -226,15 +234,17 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 | `CivilDateTime` | `year`, `month`, `day`, `fraction` | `isLeap` |
 | `LunarDate` | `year`, `month`, `day`, `isLeap` | `fraction` |
 
-民用时刻与公历日期的年份须为 `[1, 32767]` 内的整数，月、日须为有效公历日期；阴历年份和日期须在所选算法中存在。
+民用时刻与公历日期输入须使用整数年份和有效公历月、日。原生操作各自决定可接受的年份窗口；
+`/date` 桥接要求民用年份在 `[1, 32767]` 内。阴历年份和日期须在所选算法中存在。
 `fraction` 是 `[0, 1)` 内的有限日小数。运行时允许无关的额外属性，但排除字段即使来自继承或值为 `undefined`
 也会被拒绝。启用 TypeScript 的 `exactOptionalPropertyTypes`，也可在类型检查时拒绝可选 `never` 字段上的
 显式 `undefined`。
 
+原生 `GregorianDate` 和 `CivilDateTimeResult` 结果使用 `[-32767, 32767]` 内的天文纪年，0 年表示公元前 1 年。
 `CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
 `time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
 这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
-结果仍可作为民用时刻输入：函数读取 `fraction`，而非派生的时分秒字段。
+结果符合所调用操作的输入窗口时，仍可作为民用时刻输入。函数读取 `fraction`，而非派生的时分秒字段。
 时间尺度由操作命名区分，不编码在这个共用记录类型中。
 
 记录输入按结构识别：显式自有字段与排除标签决定种类，而非构造函数；不会读取 `Date` 方法或时间戳。
@@ -296,19 +306,20 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 `lunar.yearInfo(algorithm, year)` 返回公历 `firstDay`、传统 `leapMonth` 月号或 `null`，
 以及按历法顺序排列的 `monthLengths`，闰月紧随同名普通月份。
 `lunar.toGregorian()` 使用 `[1, 12]` 内的传统月号和显式 `isLeap` 布尔值，不使用月份的位置索引。
-`yearInfo()` 和 `toGregorian()` 每次调用都先查询一次原生范围，再校验阴历年；JavaScript 包不另存范围表或缓存。
+所选算法的阴历年份和日期由原生操作校验；JavaScript 包不另存范围表或缓存。
 
 四个阴历方法都要求先 `await init()`；初始化完成前调用，会在参数校验之前抛出
 `recorded === false` 的 `CelestialError`。初始化完成后：
 
 - `TypeError` 表示输入类型错误、缺少自有字段、带有排除的日期种类标签、日期字段非整数，或 `isLeap` 非布尔值。
-- `RangeError` 表示未知算法、非有限数或非安全数、无效公历日期（包括年份超出 `[1, 32767]`）、
+- `RangeError` 表示未知算法、非有限数或非安全数、无效公历日期、
   阴历年超出原生范围，或阴历月/日超出 `[1, 12]` / `[1, 30]`。
-- `CelestialError` 表示原生失败，包括公历日期标签超出所选算法覆盖范围，或阴历闰月/日组合不存在。
-  原生范围查询失败也使用此类，`operation` 指向调用者，如 `"lunar.yearInfo"`，而非内部查询。
+- `RangeError` 也包括原生无效输入拒绝，如公历日期标签超出所选算法覆盖范围，或阴历闰月/日组合不存在。
+- `CelestialError` 表示计算／资源／内部失败或原生成功记录畸形，`operation` 指向调用者，
+  如 `"lunar.yearInfo"`，而非内部范围查询。
 
 例如，`lunar.fromGregorian("algo1", { year: 1900, month: 1, day: 1 })` 能通过公历校验，
-但 algo1 无法表示该日期，因此抛出 `CelestialError`；`lunar.yearInfo("algo1", 1900)` 则抛出 `RangeError`。
+但 algo1 无法表示该日期，因此抛出 `RangeError`；`lunar.yearInfo("algo1", 1900)` 也抛出 `RangeError`。
 
 <a id="delta-t-models"></a>
 ### Delta T 模型

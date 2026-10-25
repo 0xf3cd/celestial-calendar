@@ -8,14 +8,15 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Owned chart values and pure decoding of the fixed V1 native snapshot."""
+"""Owned chart values and decoding of the fixed native snapshot."""
 
-import math as _math
 from dataclasses import dataclass as _dataclass
 from enum import StrEnum as _StrEnum
 
-from ._abi import ChartBodyV1 as _ChartBodyV1
-from ._abi import ChartSnapshotV1 as _ChartSnapshotV1
+from . import _abi
+from ._codes import constant, enum_code
+from ._models import ModelKey, ModelKind, Target, is_node
+from ._protocol import finite, longitude
 
 
 class CivilScale(_StrEnum):
@@ -23,25 +24,6 @@ class CivilScale(_StrEnum):
 
   UTC = "utc"
   UT1 = "ut1"
-
-
-class ChartTarget(_StrEnum):
-  """The fixed V1 body roster, including both directions of each lunar node."""
-
-  SUN = "sun"
-  MOON = "moon"
-  MERCURY = "mercury"
-  VENUS = "venus"
-  MARS = "mars"
-  JUPITER = "jupiter"
-  SATURN = "saturn"
-  URANUS = "uranus"
-  NEPTUNE = "neptune"
-  PLUTO = "pluto"
-  MEAN_ASCENDING = "mean_ascending"
-  MEAN_DESCENDING = "mean_descending"
-  TRUE_ASCENDING = "true_ascending"
-  TRUE_DESCENDING = "true_descending"
 
 
 class HouseSystem(_StrEnum):
@@ -53,36 +35,6 @@ class HouseSystem(_StrEnum):
   EQUAL = "equal"
   WHOLE_SIGN = "whole_sign"
   PLACIDUS = "placidus"
-
-
-# Native V1 codes, the CHART_* values in celestial.h.
-_CIVIL_SCALE_CODE = {CivilScale.UTC: 0, CivilScale.UT1: 1}
-_HOUSE_SYSTEM_CODE = {HouseSystem.EQUAL: 0, HouseSystem.WHOLE_SIGN: 1, HouseSystem.PLACIDUS: 2}
-_CHART_TARGET_CODE = {
-  ChartTarget.SUN: 0,
-  ChartTarget.MOON: 1,
-  ChartTarget.MERCURY: 2,
-  ChartTarget.VENUS: 3,
-  ChartTarget.MARS: 4,
-  ChartTarget.JUPITER: 5,
-  ChartTarget.SATURN: 6,
-  ChartTarget.URANUS: 7,
-  ChartTarget.NEPTUNE: 8,
-  ChartTarget.PLUTO: 9,
-  ChartTarget.MEAN_ASCENDING: 10,
-  ChartTarget.MEAN_DESCENDING: 11,
-  ChartTarget.TRUE_ASCENDING: 12,
-  ChartTarget.TRUE_DESCENDING: 13,
-}
-_TARGET_BY_CODE = {code: target for target, code in _CHART_TARGET_CODE.items()}
-_NODE_TARGETS = (
-  ChartTarget.MEAN_ASCENDING,
-  ChartTarget.MEAN_DESCENDING,
-  ChartTarget.TRUE_ASCENDING,
-  ChartTarget.TRUE_DESCENDING,
-)
-_PRESENT_LATITUDE = 1
-_PRESENT_DISTANCE = 2
 
 
 @_dataclass(frozen=True)
@@ -103,17 +55,19 @@ class ChartTimes:
 
 @_dataclass(frozen=True)
 class BodyState:
-  """Apparent geocentric ecliptic state with an instantaneous longitude rate in degrees per TT day.
+  """Apparent geocentric ecliptic longitude/latitude of date, in degrees.
 
-  A negative rate means the longitude is decreasing at that instant. Distances are AU for every body,
-  including the Moon; nodes have known-zero latitude and no distance.
+  The instantaneous longitude rate is degrees per TT day; a negative rate means decreasing
+  longitude. Distances are AU for every body, including the Moon; nodes have known-zero
+  latitude and no distance. source identifies the position provider.
   """
 
-  target: ChartTarget
+  target: Target
   longitude_deg: float
   latitude_deg: float
   distance_au: float | None
   longitude_rate_deg_per_tt_day: float
+  source: ModelKey
 
 
 @_dataclass(frozen=True)
@@ -129,67 +83,65 @@ class ChartHouses:
 
 @_dataclass(frozen=True)
 class ChartSnapshot:
-  """An owned same-instant snapshot; bodies follow ChartTarget's fixed V1 order."""
+  """An owned same-instant snapshot, including resolved Delta T and house-nutation keys.
+
+  Bodies follow Target order and retain their fixed IAU1980 position convention.
+  """
 
   times: ChartTimes
   bodies: tuple[BodyState, ...]
   houses: ChartHouses
+  delta_t_model: ModelKey
+  nutation_model: ModelKey
 
 
-def _finite_native(value: float, name: str) -> float:
-  if not _math.isfinite(value):
-    raise ValueError(f"{name} is not finite")
-  return value
-
-
-def _longitude_native(value: object, name: str) -> float:
-  result = _finite_native(value, name)
-  if not 0.0 <= result < 360.0:
-    raise ValueError(f"{name} is outside [0, 360)")
-  return result
-
-
-def _body_from_native(body: _ChartBodyV1, expected: ChartTarget) -> BodyState:
-  if _TARGET_BY_CODE.get(body.target_code) is not expected:
+def _body_from_native(body: _abi.CelestialChartBody, expected: Target) -> BodyState:
+  if enum_code("TARGET", expected) != body.target_code:
     raise ValueError(f"unexpected target code for {expected.name}")
 
-  is_node = expected in _NODE_TARGETS
-  expected_fields = _PRESENT_LATITUDE if is_node else _PRESENT_LATITUDE | _PRESENT_DISTANCE
+  node = is_node(expected)
+  expected_fields = constant("PRESENT_LATITUDE") | (0 if node else constant("PRESENT_DISTANCE"))
   if body.present_fields != expected_fields:
     raise ValueError(f"unexpected presence bits for {expected.name}")
 
-  latitude = _finite_native(body.latitude_deg, f"{expected.name}.latitude_deg")
-  if not -90.0 <= latitude <= 90.0 or (is_node and latitude != 0.0):
+  latitude = finite(body.latitude_deg, f"{expected.name}.latitude_deg")
+  if not -90.0 <= latitude <= 90.0 or (node and latitude != 0.0):
     raise ValueError(f"unexpected latitude for {expected.name}")
   # Absent distance storage is deliberately not read: it has no value semantics.
-  distance = None if is_node else _finite_native(body.distance_au, f"{expected.name}.distance_au")
+  distance = None if node else finite(body.distance_au, f"{expected.name}.distance_au")
   if distance is not None and distance <= 0.0:
     raise ValueError(f"nonpositive distance for {expected.name}")
 
   return BodyState(
     expected,
-    _longitude_native(body.longitude_deg, f"{expected.name}.longitude_deg"),
+    longitude(body.longitude_deg, f"{expected.name}.longitude_deg"),
     latitude,
     distance,
-    _finite_native(body.longitude_rate_deg_per_tt_day, f"{expected.name}.longitude_rate_deg_per_tt_day"),
+    finite(body.longitude_rate_deg_per_tt_day, f"{expected.name}.longitude_rate_deg_per_tt_day"),
+    ModelKey(ModelKind.POSITION_SOURCE, body.source_code),
   )
 
 
-def _from_native(result: _ChartSnapshotV1) -> ChartSnapshot:
-  """Copy a successful V1 payload; malformed protocol fields raise decoding errors."""
-  if not isinstance(result, _ChartSnapshotV1):
-    raise TypeError("unexpected V1 snapshot record")
-
-  times = ChartTimes(_finite_native(result.jd_ut1, "jd_ut1"), _finite_native(result.jde_tt, "jde_tt"))
-  bodies = tuple(_body_from_native(body, target) for body, target in zip(result.bodies, ChartTarget, strict=True))
-
-  native_houses = result.houses
-  houses = ChartHouses(
-    _longitude_native(native_houses.ascendant_deg, "ascendant_deg"),
-    _longitude_native(native_houses.midheaven_deg, "midheaven_deg"),
-    _longitude_native(native_houses.descendant_deg, "descendant_deg"),
-    _longitude_native(native_houses.imum_coeli_deg, "imum_coeli_deg"),
-    tuple(_longitude_native(cusp, "cusps_deg") for cusp in native_houses.cusps_deg),
+def decode_houses(native: _abi.CelestialChartHouses) -> ChartHouses:
+  return ChartHouses(
+    longitude(native.ascendant_deg, "ascendant_deg"),
+    longitude(native.midheaven_deg, "midheaven_deg"),
+    longitude(native.descendant_deg, "descendant_deg"),
+    longitude(native.imum_coeli_deg, "imum_coeli_deg"),
+    tuple(longitude(cusp, "cusps_deg") for cusp in native.cusps_deg),
   )
 
-  return ChartSnapshot(times, bodies, houses)
+
+def decode_snapshot(result: _abi.CelestialChartSnapshot) -> ChartSnapshot:
+  """Copy a successful payload; the caller translates decoding failures."""
+  if not isinstance(result, _abi.CelestialChartSnapshot):
+    raise TypeError("unexpected snapshot record")
+  times = ChartTimes(finite(result.jd_ut1, "jd_ut1"), finite(result.jde_tt, "jde_tt"))
+  bodies = tuple(_body_from_native(body, target) for body, target in zip(result.bodies, Target, strict=True))
+  return ChartSnapshot(
+    times,
+    bodies,
+    decode_houses(result.houses),
+    ModelKey(ModelKind.DELTA_T, result.delta_t_identity_code),
+    ModelKey(ModelKind.NUTATION, result.nutation_identity_code),
+  )

@@ -17,6 +17,8 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <format>
+#include <stdexcept>
 
 #include "toolbox.hpp"
 #include "julian_day.hpp"
@@ -72,31 +74,29 @@ using Fk5Correction = astro::coords::Fk5Correction;
  *        The position is corrected to FK5 system, considering nutation and aberration. 
  * @param jde The julian ephemeris day number, which is based on TT.
  * @return The geocentric ecliptic position of the Sun, after correction.
+ * @throw std::invalid_argument If JDE(TT) is non-finite.
+ * @throw std::runtime_error If an internal angle cannot be evaluated.
  */
 [[nodiscard]] inline auto apparent(const double jde) -> toolbox::SphericalCoordinate {
-  // Use VSOP87D to calculate the geocentric ecliptic position of the Sun.
-  const auto vsop_coord = vsop87d(jde);
+  if (not std::isfinite(jde)) {
+    throw std::invalid_argument { std::format("Argument `jde` is not finite, got {}", jde) };
+  }
 
-  // Calculate the correction for the VSOP87D result, in order to convert it to FK5 system.
-  const auto correction = astro::coords::fk5_correction(jde, vsop_coord);
+  try {
+    const auto vsop_coord = vsop87d(jde);
+    const auto correction = astro::coords::fk5_correction(jde, vsop_coord);
+    const auto nutation = astro::earth::nutation::longitude(jde, astro::earth::nutation::Model::IAU_1980);
+    // Meeus (25.11).
+    const auto aberration = astro::earth::aberration::compute(jde, vsop_coord.r);
 
-  // Calculate the Earth's nutation in longitude.
-  const auto nutation = astro::earth::nutation::longitude(jde);
-
-  // Calculate the Solar aberration, Meeus (25.11).
-  const auto aberration = astro::earth::aberration::compute(jde, vsop_coord.r);
-
-  // Calculate the adjusted longitude.
-  const auto λ = vsop_coord.λ + correction.Δλ + nutation - aberration;
-
-  // Calculate the adjusted latitude.
-  const auto β = vsop_coord.β + correction.Δβ;
-
-  return {
-    .λ = λ.normalize(),
-    .β = β,
-    .r = vsop_coord.r
-  };
+    const auto λ = vsop_coord.λ + correction.Δλ + nutation - aberration;
+    const auto β = vsop_coord.β + correction.Δβ;
+    return { .λ = λ.normalize(), .β = β, .r = vsop_coord.r };
+  } catch (const std::invalid_argument& error) {
+    throw std::runtime_error {
+      std::format("Solar apparent-position evaluation failed at JDE(TT) {}: {}", jde, error.what())
+    };
+  }
 }
 
 } // namespace astro::sun::geocentric_coord
@@ -116,8 +116,14 @@ namespace astro::sun::equatorial_coord {
  */
 [[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
   const auto ecl = astro::sun::geocentric_coord::apparent(jde);
-  const auto ε = astro::earth::obliquity::true_obliquity(jde);
-  return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+  try {
+    const auto ε = astro::earth::obliquity::true_obliquity(jde, astro::earth::nutation::Model::IAU_1980);
+    return astro::coords::ecliptic_to_equatorial(ecl.λ, ecl.β, ε);
+  } catch (const std::invalid_argument& error) {
+    throw std::runtime_error {
+      std::format("Solar equatorial-position evaluation failed at JDE(TT) {}: {}", jde, error.what())
+    };
+  }
 }
 
 } // namespace astro::sun::equatorial_coord

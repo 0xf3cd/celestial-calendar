@@ -8,9 +8,10 @@ JavaScript / TypeScript, and a C ABI.
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes version **0.9.0**. The install commands below get the latest version on PyPI or npm; an older
-installed version may lack some APIs shown here, so check the documentation shipped with it. To build the current
-source yourself, use the [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
+This guide describes version **1.0.0**, currently unreleased. See the
+[migration guide](docs/MIGRATING_1_0.md) when moving from 0.x. The install commands below get the latest published
+version on PyPI or npm; use its matching documentation. To build the current source yourself, use the
+[local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
 [WASM/npm recipe](docs/BUILDING.md#wasm).
 
 For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); this library has no Ganzhi API.
@@ -159,10 +160,11 @@ and model identities from C and Python ([`capabilities`](bindings/python/README.
 stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)
 for half-open ownership, numerical contacts and the floating-point premises.
 
-Selected-target apparent positions at one JDE(TT) instant and house geometry at a civil
+Selected-target apparent ecliptic or equatorial positions at one JDE(TT) instant and house geometry at a civil
 instant are available without a full snapshot, from C, Python and C++
-([`positions` / `house_query`](bindings/python/README.md#independent-queries)); neither
-carries the snapshot joint window, and both record the models they resolved (#355).
+([`positions` / `equatorial_positions` / `house_query`](bindings/python/README.md#independent-queries)).
+Position queries use each selected target's provider window; the civil house query uses the shared civil policy,
+without the snapshot's joint target/rate window. C and Python results record resolved model/source identities.
 
 <a id="c-abi"></a>
 ### C and FFI
@@ -172,21 +174,33 @@ The C ABI in [`celestial.h`](src/shared_lib/celestial.h) supports C, ctypes, and
 
 ```c
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "celestial.h"
 
 int main(void) {
-  char name[16]; /* index 21 = 冬至 in the to_index order (0 = 立春) */
-  if (!get_jieqi_name(21, name, sizeof name)) {
-    fprintf(stderr, "%s\n", last_error());
+  const uint8_t index = 21; /* 冬至; index 0 is 立春. */
+  const uint32_t size = celestial_get_jieqi_name(index, NULL, 0);
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE || size == 0) {
+    fprintf(stderr, "%s\n", celestial_last_error());
     return 1;
   }
-  const JieqiMomentQuery m = query_jieqi_moment(2026, 21);
-  if (!m.valid) {
-    fprintf(stderr, "%s\n", last_error());
+  char *name = malloc(size);
+  if (name == NULL) return 1;
+  const uint32_t required = celestial_get_jieqi_name(index, name, size);
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE || required != size) {
+    fprintf(stderr, "%s\n", celestial_last_error());
+    free(name);
+    return 1;
+  }
+  const CelestialJieqiMomentQuery m = celestial_query_jieqi_moment(2026, index);
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE || !m.valid) {
+    fprintf(stderr, "%s\n", celestial_last_error());
+    free(name);
     return 1;
   }
   printf("%s (UT1): %d-%02u-%02u, day fraction %.6f\n", name, m.y, m.m, m.d, m.frac);
+  free(name);
   return 0;
 }
 ```
@@ -228,10 +242,12 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 ./build/quickstart_c
 ```
 
-Check `valid` before reading a returned result structure. Follow each scalar/count contract in `celestial.h`;
-a zero count can be a legitimate empty result. Every export except `last_error()` clears or records the calling
-thread's error message. Read or copy the library-owned string before another recording call on the same thread.
-Jieqi moments are UT1, not UTC or a UTC+8 wall date.
+Check `valid` before reading a returned result structure. A zero count can be a legitimate empty result;
+`celestial_last_error_kind()` is authoritative even if the message is empty. Both it and `celestial_last_error()`
+preserve error state; every other export clears or records the calling thread's kind and message. Read or copy the
+library-owned message before another recording call on that thread. Sized strings count the terminating NUL;
+`NULL, 0` queries the required size, and positive capacity truncates and terminates. Jieqi moments use fixed Algo5
+to return UT1, not UTC or a UTC+8 wall date. See the [C API guide](docs/API.md#c-chart-snapshot) for ABI evolution.
 
 #### Native runtime
 
@@ -262,8 +278,8 @@ OS version floor is declared.
   house cusps; site longitude is east-positive, and the instant is passed as both UT1 and TT. All three systems
   reject the geographic poles and an Ascendant direction unresolved at floating-point round-off; Placidus also
   rejects `abs(latitude) >= 90° - true_obliquity` and never switches system.
-- C++ headers provide apparent geocentric ecliptic coordinates of the Sun, Moon and Mercury through Pluto,
-  planetary illumination geometry and retrograde markers, the Sun's apparent equatorial coordinates, and new-moon
+- C++ headers provide apparent geocentric ecliptic and equatorial positions of the Sun, Moon, Mercury through Pluto
+  and the lunar nodes, planetary illumination geometry and retrograde markers, and new-moon
   moments. Mercury through Neptune use VSOP87D; `Planet::PLUTO` uses the lower-precision Meeus Chapter 37 model,
   whose apparent position and illumination geometry accept `[2409543.5, 2488069.5)` JDE(TT) and whose centred
   retrograde check accepts `[2409544.0, 2488069.0)`.
@@ -276,15 +292,15 @@ OS version floor is declared.
   [`planet.hpp`](src/astro/planet.hpp).
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
   system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
-  available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`chart_snapshot_v1`](docs/API.md#c-chart-snapshot),
+  available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),
   Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
   [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
-  longitude rates only through this snapshot; planets, lunar nodes and houses also have
-  [independent queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
+  instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval events and
+  [independent position/house queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
   return events ordered by JDE(TT). Year ownership uses `[Jan 1, next Jan 1)` UTC, with the library's UT1
-  substitute before 1972. The `[1, 32766]` input year domain only guarantees that the computation runs, not that
-  VSOP87D keeps modern ephemeris precision in remote eras; Pluto provides outer-planet events only, over complete
+  substitute before 1972. The `[1, 32766]` input year domain is not a guarantee of successful evaluation or modern
+  ephemeris precision in remote eras; Pluto provides outer-planet events only, over complete
   Gregorian years `[1886, 2098]`.
 - Equation of time and local apparent solar time.
 - UT1 / UTC / TT conversion, leap seconds and ΔT, Julian Days, sidereal time, obliquity, nutation.
@@ -298,7 +314,7 @@ Gregorian / lunar conversions operate on calendar-date labels, not instants, and
 lunar-year domain and date basis. Choose by source and compatibility role, not by treating the algorithm number as
 an accuracy ranking: Algo1 keeps Hong Kong Observatory labels, Algo2 computes dates astronomically over a wider
 window, and Algo3 combines the two. Read a domain from the library rather than copying it:
-`get_supported_lunar_year_range` in C, `supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in
+`celestial_get_supported_lunar_year_range` in C, `supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in
 JavaScript, and `START_YEAR` / `END_YEAR` of each `calendar::lunar::algoN` in C++. Each algorithm's source, domain
 and date basis are described in the [Python](bindings/python/README.md#lunar-algorithms) and
 [JavaScript](bindings/javascript/README.md#lunar-algorithms) package guides and in
@@ -311,7 +327,8 @@ Algo1 to Algo4 only to compare with that earlier model. Sources and hard year do
 package guides and in [`delta_t.hpp`](src/astro/delta_t.hpp).
 
 Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
-`apparent_solar_time()` / `sun.apparentSolarTime()` take civil UTC. The pure `/date` bridge supplies no UTC-to-UT1
+`celestial_apparent_solar_time()` / Python `apparent_solar_time()` / JavaScript `sun.apparentSolarTime()` take civil UTC.
+The pure `/date` bridge supplies no UTC-to-UT1
 or Date-to-JDE conversion. The library does not use observed DUT1 (UT1 − UTC), so a UT1 result is not a UTC time;
 [Time scales](docs/DESIGN.md#time-scales) describes the library's UTC model and how large the gap is in each era.
 

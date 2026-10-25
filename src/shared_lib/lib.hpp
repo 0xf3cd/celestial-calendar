@@ -12,114 +12,80 @@
 
 #pragma once
 
-#include <atomic>
+#include <algorithm>
 #include <cstdint>
-#include <functional>
 #include <format>
-#include <print>
+#include <functional>
+#include <limits>
+#include <new>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 
-// Internal helpers for the C-ABI layer (`lib*.cpp`): an atomic verbosity knob, never-throwing
-// logging safe to call inside catch handlers, and a thread-local last-error channel.
-
 namespace lib {
 
-/** @enum Verbosity represents the verbosity level of log printing. */
-enum class Verbosity : uint8_t {
-  NONE  = 0,
-  INFO  = 1,
-  DEBUG = 2,
-
-  COUNT = 3,
+/** @brief The failure category recorded by a C export. */
+enum class ErrorKind : uint8_t {
+  NONE = 0,
+  INVALID_INPUT = 1,
+  COMPUTATION = 2,
+  RESOURCE = 3,
+  INTERNAL = 4,
 };
 
-
-/**
- * @brief The global verbosity level of log printing.
- * @note #67: written via `set_log_verbosity` and read on every log path — atomic, or the two race.
- */
-inline std::atomic<Verbosity> GLOBAL_VERBOSITY = Verbosity::NONE; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-// Default NONE (D-F): logging is opt-in — the library must not claim the host's stdout unasked.
-
-
-/** @brief Set the verbosity level of log printing.
- *  @return `true` if the level was stored, `false` if `new_verbosity` is out of range.
- */
-[[nodiscard]] inline auto set_verbosity(const Verbosity new_verbosity) -> bool {
-  if (new_verbosity >= Verbosity::COUNT) {
-    return false;
-  }
-  GLOBAL_VERBOSITY = new_verbosity;
-  return true;
-}
-
-
-/**
- * @brief Log a message, never throwing.
- * @note #67: logging runs inside the C-ABI catch handlers, so it must never throw — `vformat`
- *       throws on an ill-formed format string, `println` on a failed stream ([print.fun]) — and
- *       an escape there would cross the `extern "C"` boundary and terminate the host.
- */
-template <typename... Args>
-inline void log_noexcept(const std::string_view format_str, Args&&... args) noexcept { // NOLINT(cppcoreguidelines-missing-std-forward)
-  try {
-    // TODO: Currently std::forward<Args>(args)... is not supported on some platforms. Forward args when available.
-    const std::string formatted_message = std::vformat(format_str, std::make_format_args(args...));
-    std::println("{}", formatted_message);
-  } catch (...) { // NOLINT(bugprone-empty-catch) — nowhere left to report; swallowing is the contract.
-  }
-}
-
-/** @brief Log a message, at the `INFO` verbosity level. */
-template <typename... Args>
-inline void info(const std::string_view format_str, Args&&... args) noexcept { // NOLINT(cppcoreguidelines-missing-std-forward)
-  if (GLOBAL_VERBOSITY >= Verbosity::INFO) {
-    log_noexcept(format_str, args...);
-  }
-}
-
-/** @brief Log a message, at the `DEBUG` verbosity level. */
-template <typename... Args>
-inline void debug(const std::string_view format_str, Args&&... args) noexcept { // NOLINT(cppcoreguidelines-missing-std-forward)
-  if (GLOBAL_VERBOSITY >= Verbosity::DEBUG) {
-    log_noexcept(format_str, args...);
-  }
-}
-
-
-/**
- * @brief The calling thread's last-error message.
- * @note #97: a thread-local last-error channel, so an FFI caller that got `valid = false`
- *       can learn *why* (the log goes to the library's stdout, which hosts may never see).
- */
-/**
- * @note The storage and these three bodies live in `lib.cpp`, deliberately not here. As an
- *       `inline thread_local` in the header it had vague linkage, and under
- *       `VISIBILITY_INLINES_HIDDEN` Mach-O does not coalesce a hidden TLS initialisation
- *       routine across translation units -- the five `lib*.cpp` each kept one and the dylib
- *       failed to link (2026-08-06, the macOS leg's first run after the visibility work).
- *       One definition in one TU sidesteps the question instead of asking the linker to
- *       merge something we have just told it to hide.
- */
-
-/** @brief Clear the calling thread's last-error message. */
+/** @brief Clear the calling thread's error kind and message. */
 auto clear_last_error() noexcept -> void;
 
 /**
- * @brief Record the calling thread's last-error message.
- * @note `noexcept`: the string assignment can throw `bad_alloc`; on failure the previous
- *       message is kept.
+ * @brief Record a failure without allowing message allocation to erase its kind.
+ * @note Storage has one definition in lib.cpp; hidden inline TLS is not portable across shared-library TUs.
  */
-auto set_last_error(std::string_view message) noexcept -> void;
+auto set_last_error(ErrorKind kind, std::string_view message) noexcept -> void;
 
 /** @brief Record an export-specific fallback for a non-standard exception. */
 auto set_unknown_error(std::string_view operation) noexcept -> void;
 
 /** @brief Read the calling thread's last-error message (empty if none). */
 [[nodiscard]] auto last_error_message() noexcept -> const char*;
+
+/** @brief Read the calling thread's error kind without clearing it. */
+[[nodiscard]] auto last_error_kind() noexcept -> ErrorKind;
+
+/** @brief Reject a null count and initialize its failure value before query validation or evaluation. */
+inline auto check_count(uint32_t* const count, const std::string_view name) -> void {
+  if (count == nullptr) {
+    throw std::invalid_argument { std::format("Argument `{}` is null.", name) };
+  }
+  *count = 0;
+}
+
+/** @brief A null slot pointer is permitted only for a count-only call. */
+inline auto check_slots(const auto* const slots, const uint32_t capacity) -> void {
+  if (slots == nullptr and capacity > 0) {
+    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
+  }
+}
+
+/** @brief Size or copy UTF-8 text, counting the NUL and terminating any positive-capacity output. */
+[[nodiscard]] inline auto copy_text(const std::string_view text, char* const buffer, const uint32_t capacity) -> uint32_t {
+  if (buffer == nullptr and capacity > 0) {
+    throw std::invalid_argument { "Argument `buffer` is null, but `capacity` is greater than 0." };
+  }
+  if (text.size() >= std::numeric_limits<uint32_t>::max()) {
+    throw std::length_error { "Text size cannot be represented by the C ABI" };
+  }
+
+  if (capacity > 0) {
+    const auto copied = std::min(text.size(), static_cast<std::size_t>(capacity - 1));
+    const auto output = std::span { buffer, capacity };
+    std::copy_n(text.cbegin(), copied, output.begin());
+    output[copied] = '\0';
+  }
+  return static_cast<uint32_t>(text.size() + 1);
+}
 
 /** @brief Translate all exceptions from a C export to its zero-initialized failure sentinel. */
 template <typename Function>
@@ -132,9 +98,16 @@ template <typename Function>
   clear_last_error();
   try {
     return std::invoke(std::forward<Function>(function));
-  } catch (const std::exception& e) {
-    set_last_error(e.what());
-    info("Error in {}: {}", operation, e.what());
+  } catch (const std::invalid_argument& error) {
+    set_last_error(ErrorKind::INVALID_INPUT, error.what());
+  } catch (const std::out_of_range& error) {
+    set_last_error(ErrorKind::INVALID_INPUT, error.what());
+  } catch (const std::bad_alloc& error) {
+    set_last_error(ErrorKind::RESOURCE, error.what());
+  } catch (const std::runtime_error& error) {
+    set_last_error(ErrorKind::COMPUTATION, error.what());
+  } catch (const std::exception& error) {
+    set_last_error(ErrorKind::INTERNAL, error.what());
   } catch (...) {
     set_unknown_error(operation);
   }

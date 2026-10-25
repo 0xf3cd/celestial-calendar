@@ -22,6 +22,7 @@
 namespace astro::chart::test {
 
 using ephemeris::Target;
+using julian_day::Scale;
 
 // #355: the independent position operation is the same dispatch the snapshot composes, and the
 // house time conversion deliberately skips the snapshot joint window.
@@ -42,7 +43,7 @@ TEST(Query, PositionMatchesSnapshotBodiesOnTheJointWindow) {
     ASSERT_TRUE(snapshot.times.jde_tt >= detail::START_JDE_TT);
 
     for (const auto target : { Target::SUN, Target::MOON, Target::MARS, Target::PLUTO, Target::TRUE_ASCENDING }) {
-      const auto coordinate = astro::chart::position(target, snapshot.times.jde_tt);
+      const auto coordinate = astro::ephemeris::position(target, snapshot.times.jde_tt);
       const auto& body = snapshot.bodies.at(static_cast<uint8_t>(target));
       EXPECT_DOUBLE_EQ(coordinate.longitude.deg(), body.longitude.deg()) << "target " << static_cast<int>(target);
       EXPECT_DOUBLE_EQ(coordinate.latitude.deg(), body.latitude.deg()) << "target " << static_cast<int>(target);
@@ -59,11 +60,11 @@ TEST(Query, PositionAtProviderBoundaryNeedsNoRateStencil) {
   // domain and the snapshot joint window, which both start at 2409543.875 (1885-01-02 09:00
   // TT). A pure position call must succeed here — the "boundary position without a rate
   // template" case (#355).
-  const auto pluto = astro::chart::position(Target::PLUTO, 2409543.5);
+  const auto pluto = astro::ephemeris::position(Target::PLUTO, 2409543.5);
   EXPECT_GE(pluto.longitude.deg(), 0.0);
   // Nodes likewise: the node provider window starts at 2409542.5 (1885-01-01 0h TT), below
   // any rate center.
-  const auto node = astro::chart::position(Target::MEAN_ASCENDING, 2409542.5);
+  const auto node = astro::ephemeris::position(Target::MEAN_ASCENDING, 2409542.5);
   EXPECT_FALSE(node.distance.has_value());
 }
 
@@ -72,18 +73,18 @@ TEST(Query, SubsetSucceedsWhereTheSnapshotRejectsAtTheSameInstant) {
   // reject a complete snapshot. Resolve one civil instant below the snapshot joint window,
   // then evaluate both halves at exactly that instant.
   const auto civil = calendar::Datetime { util::to_ymd(1885, 1, 2), 0.0 };
-  const auto times = detail::resolve_times_for_houses(civil, Scale::UT1, astro::delta_t::Model::ALGO5);
+  const auto times = resolve_civil_times(civil, Scale::UT1, astro::delta_t::Model::ALGO5);
   ASSERT_LT(times.jde_tt, detail::START_JDE_TT);
 
   // A subset without Pluto evaluates fine below the joint window.
   for (const auto target : { Target::SUN, Target::MOON }) {
-    const auto coordinate = astro::chart::position(target, times.jde_tt);
+    const auto coordinate = astro::ephemeris::position(target, times.jde_tt);
     EXPECT_GE(coordinate.longitude.deg(), 0.0);
   }
   // The excluded object is outside its own position window at this exact instant: UT1
   // midnight resolves 5.6 s of Delta T before Pluto's window start (2409543.5 TT), so any
   // complete evaluation touching Pluto must fail here while the subset without it succeeds.
-  EXPECT_THROW((void)astro::chart::position(Target::PLUTO, times.jde_tt), std::invalid_argument);
+  EXPECT_THROW((void)astro::ephemeris::position(Target::PLUTO, times.jde_tt), std::invalid_argument);
 
   // The complete snapshot at the same instant rejects through the joint window.
   const auto location = astro::GeoLocation {
@@ -102,7 +103,7 @@ TEST(Query, HouseConversionCarriesNoJointWindow) {
   const auto civil = calendar::Datetime { util::to_ymd(1885, 1, 1), 0.25 };
 
   // The house conversion resolves any civil instant the civil validation admits.
-  const auto times = detail::resolve_times_for_houses(civil, Scale::UT1, astro::delta_t::Model::ALGO5);
+  const auto times = resolve_civil_times(civil, Scale::UT1, astro::delta_t::Model::ALGO5);
   EXPECT_LT(times.jde_tt, detail::START_JDE_TT);  // before the snapshot joint window
   const auto houses = astro::house::calculate(
     times.jd_ut1, times.jde_tt,
@@ -111,17 +112,21 @@ TEST(Query, HouseConversionCarriesNoJointWindow) {
   );
   EXPECT_GE(houses.ascendant.deg(), 0.0);
 
-  // The snapshot path rejects the same instant through validate_domain.
+  // The snapshot additionally requires every target's complete rate stencil.
   EXPECT_THROW(
-    (void)detail::resolve_times(civil, Scale::UT1, astro::delta_t::Model::ALGO5),
+    (void)calculate(civil, Scale::UT1, astro::GeoLocation {
+      .latitude = astro::toolbox::AngleDeg { 51.5 }, .longitude = astro::toolbox::AngleDeg { 0.0 }
+    }, astro::house::System::PLACIDUS),
     std::invalid_argument
   );
 }
 
 TEST(Query, HouseConversionMatchesSnapshotInsideTheWindow) {
   const auto civil = calendar::Datetime { util::to_ymd(2024, 6, 1), 0.5 };
-  const auto both = detail::resolve_times_for_houses(civil, Scale::UTC, astro::delta_t::Model::ALGO5);
-  const auto snapshot_times = detail::resolve_times(civil, Scale::UTC, astro::delta_t::Model::ALGO5);
+  const auto both = resolve_civil_times(civil, Scale::UTC, astro::delta_t::Model::ALGO5);
+  const auto snapshot_times = calculate(civil, Scale::UTC, astro::GeoLocation {
+    .latitude = astro::toolbox::AngleDeg { 51.5 }, .longitude = astro::toolbox::AngleDeg { 0.0 }
+  }, astro::house::System::EQUAL).times;
   EXPECT_DOUBLE_EQ(both.jd_ut1, snapshot_times.jd_ut1);
   EXPECT_DOUBLE_EQ(both.jde_tt, snapshot_times.jde_tt);
 }

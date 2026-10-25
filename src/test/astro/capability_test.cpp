@@ -11,12 +11,10 @@
  */
 
 #include <array>
-#include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <optional>
-#include <string>
-#include <utility>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 
@@ -25,191 +23,99 @@
 namespace astro::capability::test {
 
 using ephemeris::Target;
+using ephemeris::PositionSource;
 
-// The capability layer computes every bound from the defining constants in the operation's
-// own header; these tests pin the derivation, not a second table of numbers.
+namespace {
+
+/** @brief Unwrap a declared interval with a guard visible to static analysis. */
+auto interval(const Record& record) -> std::array<double, 2> {
+  if (not record.domain.has_value()) {
+    throw std::logic_error { "Expected a bounded capability record" };
+  }
+  return *record.domain;
+}
+
+} // namespace
 
 TEST(Capability, PositionDomainPerTarget) {
   const auto pluto = domain_record(Operation::POSITION, Target::PLUTO);
   EXPECT_EQ(pluto.status, Status::SOURCE_WINDOW);
   EXPECT_EQ(pluto.source, PositionSource::PLUTO_PLUTO95_APPARENT);
-  EXPECT_DOUBLE_EQ(pluto.domain_start_jde_tt, astro::planet::geocentric_coord::PLUTO_START_JDE_TT);
-  EXPECT_DOUBLE_EQ(pluto.domain_end_jde_tt, astro::planet::geocentric_coord::PLUTO_END_JDE_TT);
+  EXPECT_DOUBLE_EQ(interval(pluto).front(), planet::geocentric_coord::PLUTO_START_JDE_TT);
+  EXPECT_DOUBLE_EQ(interval(pluto).back(), planet::geocentric_coord::PLUTO_END_JDE_TT);
 
   for (const auto target : { Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING }) {
     const auto record = domain_record(Operation::POSITION, target);
     EXPECT_EQ(record.status, Status::IMPLEMENTATION_WINDOW);
-    EXPECT_DOUBLE_EQ(record.domain_start_jde_tt, lunar_node::START_JDE_TT);
-    EXPECT_DOUBLE_EQ(record.domain_end_jde_tt, lunar_node::END_JDE_TT);
+    EXPECT_DOUBLE_EQ(interval(record).front(), lunar_node::START_JDE_TT);
+    EXPECT_DOUBLE_EQ(interval(record).back(), lunar_node::END_JDE_TT);
   }
-  EXPECT_EQ(domain_record(Operation::POSITION, Target::TRUE_ASCENDING).source,
-            PositionSource::NODE_TRUE_MEEUS_FIVE_TERM);
+  EXPECT_EQ(domain_record(Operation::POSITION, Target::TRUE_ASCENDING).source, PositionSource::NODE_TRUE_MEEUS_FIVE_TERM);
   EXPECT_EQ(domain_record(Operation::POSITION, Target::MEAN_DESCENDING).source, PositionSource::NODE_MEAN);
 
   const auto sun = domain_record(Operation::POSITION, Target::SUN);
-  EXPECT_EQ(sun.status, Status::UNBOUNDED_FINITE);
-  EXPECT_TRUE(std::isnan(sun.domain_start_jde_tt));
-  EXPECT_TRUE(std::isnan(sun.domain_end_jde_tt));
+  EXPECT_EQ(sun.status, Status::FINITE_INPUT_EVALUATION);
+  EXPECT_EQ(sun.domain, std::nullopt);
+  EXPECT_EQ(sun.maximum_span_tt_days, std::nullopt);
 }
 
 TEST(Capability, RateAndEventsDomainsTrackTheRateFunction) {
-  for (const auto target : detail::all_targets()) {
-    const auto rate = domain_record(Operation::LONGITUDE_RATE, target);
-    // The center domain is always the root window shrunk by the stencil reach, so it is an
-    // implementation window for every target including Pluto (the root window's own nature is
-    // stated on the POSITION record).
-    EXPECT_EQ(rate.status, Status::IMPLEMENTATION_WINDOW);
+  for (const auto target : ephemeris::TARGETS) {
     const auto expected = ephemeris::longitude_rate_domain(target);
-    EXPECT_DOUBLE_EQ(rate.domain_start_jde_tt, expected.front());
-    EXPECT_DOUBLE_EQ(rate.domain_end_jde_tt, expected.back());
-    EXPECT_EQ(rate.maximum_span_tt_days, 0);
+    const auto rate = domain_record(Operation::LONGITUDE_RATE, target);
+    EXPECT_EQ(rate.status, Status::IMPLEMENTATION_WINDOW);
+    EXPECT_EQ(interval(rate), expected);
+    EXPECT_EQ(rate.maximum_span_tt_days, std::nullopt);
 
     const auto events = domain_record(Operation::EVENTS, target);
     EXPECT_EQ(events.status, Status::IMPLEMENTATION_WINDOW);
-    EXPECT_DOUBLE_EQ(events.domain_start_jde_tt, expected.front());
-    EXPECT_DOUBLE_EQ(events.domain_end_jde_tt, expected.back());
-    EXPECT_EQ(events.maximum_span_tt_days,
-              static_cast<uint32_t>(ephemeris::detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS));
+    EXPECT_EQ(interval(events), expected);
+    EXPECT_EQ(events.maximum_span_tt_days, ephemeris::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS);
   }
 
-  // The century band (J2000 +/- 100 years, about 36525 days) selects only the certified
-  // error-bound table; it must not constrain the accepted domain of the +/-10 Jm targets,
-  // or year-3000 event queries would be wrongly rejected (#357).
+  // The century band selects certified error bounds, not the accepted +/-10 Jm rate domain.
   const double century_low = 2451545.0 - 36525.0;
   const double century_high = 2451545.0 + 36525.0;
   for (const auto target : { Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
                              Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE }) {
-    const auto events = domain_record(Operation::EVENTS, target);
-    EXPECT_LT(events.domain_start_jde_tt, century_low);
-    EXPECT_GT(events.domain_end_jde_tt, century_high);
+    const auto domain = interval(domain_record(Operation::EVENTS, target));
+    EXPECT_LT(domain.front(), century_low);
+    EXPECT_GT(domain.back(), century_high);
   }
 }
 
-TEST(Capability, HousesRecordCarriesNoWindow) {
-  const auto houses = domain_record(Operation::HOUSES, Target::SUN);
-  EXPECT_EQ(houses.operation, Operation::HOUSES);
-  EXPECT_EQ(houses.status, Status::UNBOUNDED_FINITE);
-  EXPECT_TRUE(std::isnan(houses.domain_start_jde_tt));
-  EXPECT_TRUE(std::isnan(houses.domain_end_jde_tt));
-  EXPECT_EQ(houses.maximum_span_tt_days, 0);
+TEST(Capability, EquatorialDomainIsTheProviderDomainWithoutARateStencil) {
+  for (const auto target : ephemeris::TARGETS) {
+    const auto ecliptic = domain_record(Operation::POSITION, target);
+    const auto equatorial = domain_record(Operation::EQUATORIAL, target);
+    EXPECT_EQ(equatorial.target, target);
+    EXPECT_EQ(equatorial.domain, ecliptic.domain);
+    EXPECT_EQ(equatorial.status, ecliptic.status);
+    EXPECT_EQ(equatorial.source, ecliptic.source);
+    EXPECT_EQ(equatorial.maximum_span_tt_days, std::nullopt);
+  }
+  const auto position = interval(domain_record(Operation::EQUATORIAL, Target::PLUTO));
+  const auto rate = interval(domain_record(Operation::LONGITUDE_RATE, Target::PLUTO));
+  EXPECT_LT(position.front(), rate.front());
+  EXPECT_GT(position.back(), rate.back());
 }
 
-TEST(Capability, DomainRecordsEnumerateTargets) {
-  for (const auto operation : { Operation::POSITION, Operation::LONGITUDE_RATE, Operation::EVENTS }) {
+TEST(Capability, DomainRecordsEnumerateTheCoreRoster) {
+  for (const auto operation : { Operation::POSITION, Operation::LONGITUDE_RATE, Operation::EVENTS, Operation::EQUATORIAL }) {
     const auto records = domain_records(operation);
-    ASSERT_EQ(records.size(), 14);
-    for (uint32_t index = 0; index < records.size(); ++index) {
-      EXPECT_EQ(records[index].subject_code, index);
+    ASSERT_EQ(records.size(), ephemeris::TARGETS.size());
+    for (std::size_t index = 0; index < records.size(); ++index) {
+      EXPECT_EQ(records.at(index).target, ephemeris::TARGETS.at(index));
+      EXPECT_EQ(records.at(index).source, ephemeris::source_of(ephemeris::TARGETS.at(index)));
     }
-  }
-  ASSERT_EQ(domain_records(Operation::HOUSES).size(), 1);
-}
-
-TEST(Capability, ModelIdentityRegistry) {
-  const auto identities = model_identities();
-  ASSERT_EQ(identities.size(), 13);
-
-  // Delta T: five identities, Algo5 current and the default alias, Algo4 capped at 2035.
-  for (uint32_t code = 0; code < 5; ++code) {
-    EXPECT_EQ(identities[code].kind, ModelKind::DELTA_T);
-    EXPECT_EQ(identities[code].identity_code, code);
-    EXPECT_EQ(identities[code].status, code == 4 ? ModelStatus::CURRENT : ModelStatus::FROZEN);
-  }
-  EXPECT_EQ(identities[4].default_alias_code, DEFAULT_DELTA_T_CODE);
-  EXPECT_EQ(identities[3].default_alias_code, std::numeric_limits<uint32_t>::max());
-  EXPECT_TRUE(std::isnan(identities[4].domain_end_jde_tt));
-  EXPECT_DOUBLE_EQ(identities[3].domain_end_jde_tt, astro::delta_t::ALGO4_END_JDE_TT);
-  EXPECT_DOUBLE_EQ(identities[0].domain_start_jde_tt, astro::delta_t::ALGO1_START_JDE_TT);
-  EXPECT_TRUE(std::isnan(identities[0].domain_end_jde_tt));
-  EXPECT_TRUE(std::isnan(identities[2].domain_start_jde_tt));
-  EXPECT_DOUBLE_EQ(identities[2].domain_end_jde_tt, astro::delta_t::ALGO3_END_JDE_TT);
-
-  // Nutation: Meeus and IAU 1980, both current.
-  EXPECT_EQ(identities[5].kind, ModelKind::NUTATION);
-  EXPECT_EQ(identities[6].kind, ModelKind::NUTATION);
-
-  // Position sources: six identities (ordinals 7-12); Pluto and the nodes carry their
-  // provider windows, the others are unbounded.
-  for (uint32_t ordinal = 7; ordinal < 13; ++ordinal) {
-    EXPECT_EQ(identities[ordinal].kind, ModelKind::POSITION_SOURCE);
-    EXPECT_EQ(identities[ordinal].identity_code, ordinal - 7);
-  }
-  EXPECT_TRUE(std::isnan(identities[7].domain_end_jde_tt));   // Sun: unbounded
-  EXPECT_TRUE(std::isnan(identities[8].domain_end_jde_tt));   // Moon: unbounded
-  EXPECT_TRUE(std::isnan(identities[9].domain_end_jde_tt));   // planets: unbounded
-  EXPECT_DOUBLE_EQ(identities[10].domain_start_jde_tt, astro::planet::geocentric_coord::PLUTO_START_JDE_TT);
-  EXPECT_DOUBLE_EQ(identities[10].domain_end_jde_tt, astro::planet::geocentric_coord::PLUTO_END_JDE_TT);
-  EXPECT_DOUBLE_EQ(identities[11].domain_start_jde_tt, lunar_node::START_JDE_TT);
-  EXPECT_DOUBLE_EQ(identities[12].domain_end_jde_tt, lunar_node::END_JDE_TT);
-}
-
-TEST(Capability, DefaultAliasResolvesLikeTheBoundarySwitch) {
-  using astro::delta_t::Model;
-  const std::array<std::pair<DeltaTSelector, Model>, 6> cases {{
-    { DeltaTSelector::DEFAULT, Model::ALGO5 },
-    { DeltaTSelector::ALGO1,   Model::ALGO1 },
-    { DeltaTSelector::ALGO2,   Model::ALGO2 },
-    { DeltaTSelector::ALGO3,   Model::ALGO3 },
-    { DeltaTSelector::ALGO4,   Model::ALGO4 },
-    { DeltaTSelector::ALGO5,   Model::ALGO5 },
-  }};
-  for (const auto& [selector, model] : cases) {
-    EXPECT_EQ(resolve_delta_t_code(std::to_underlying(selector)), model);
-    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
-      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
-      EXPECT_EQ(resolve_delta_t_code(code), std::nullopt);
-    }
-  }
-  EXPECT_EQ(DEFAULT_DELTA_T_CODE, std::to_underlying(DeltaTSelector::DEFAULT));
-  for (const uint32_t code : { uint32_t { 6 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {
-    EXPECT_EQ(resolve_delta_t_code(code), std::nullopt);
   }
 }
 
-TEST(Capability, NutationSelectorsResolveToModelIdentities) {
-  using astro::earth::nutation::Model;
-  const std::array<std::pair<NutationSelector, Model>, 3> cases {{
-    { NutationSelector::DEFAULT,  Model::IAU_1980 },
-    { NutationSelector::MEEUS,    Model::MEEUS    },
-    { NutationSelector::IAU_1980, Model::IAU_1980 },
-  }};
-  for (const auto& [selector, model] : cases) {
-    EXPECT_EQ(resolve_nutation_code(std::to_underlying(selector)), model);
-    for (const uint32_t shift : { uint32_t { 8 }, uint32_t { 16 }, uint32_t { 24 } }) {
-      const uint32_t code = (uint32_t { 1 } << shift) | std::to_underlying(selector);
-      EXPECT_EQ(resolve_nutation_code(code), std::nullopt);
-    }
-  }
-  EXPECT_EQ(DEFAULT_NUTATION_CODE, std::to_underlying(NutationSelector::DEFAULT));
-  for (const uint32_t code : { uint32_t { 3 }, uint32_t { 256 }, std::numeric_limits<uint32_t>::max() }) {
-    EXPECT_EQ(resolve_nutation_code(code), std::nullopt);
-  }
-}
-
-TEST(Capability, DescribeCoversEveryRecord) {
-  for (const auto operation : { Operation::POSITION, Operation::LONGITUDE_RATE, Operation::EVENTS }) {
-    for (const auto target : detail::all_targets()) {
-      const auto text = describe(operation, static_cast<uint8_t>(target));
-      EXPECT_FALSE(text.empty());
-      EXPECT_NE(text.find("Role:"), std::string::npos);
-      // POSITION and LONGITUDE_RATE hang their measured coverage on the explicit "Position
-      // coverage:" slot, so position residuals are never misread as rate validation; EVENTS
-      // keeps its own "Validation:" slot for the event goldens and names position coverage in
-      // lowercase.
-      if (operation == Operation::LONGITUDE_RATE or operation == Operation::POSITION) {
-        EXPECT_TRUE(text.contains("Position coverage:"));
-      } else {
-        EXPECT_TRUE(text.contains("Validation:") and text.contains("position coverage:"));
-      }
-    }
-  }
-  EXPECT_NE(describe(Operation::HOUSES, 0).find("No JDE window"), std::string::npos);
-
-  for (uint8_t ordinal = 0; ordinal < 13; ++ordinal) {
-    EXPECT_FALSE(describe_identity(ordinal).empty());
-  }
-  EXPECT_THROW((void)describe_identity(13), std::invalid_argument);
-  EXPECT_THROW((void)describe(static_cast<Operation>(4), 0), std::invalid_argument);
+TEST(Capability, UnknownTypedInputsAreRejected) {
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately forge an unknown operation to test rejection.
+  EXPECT_THROW((void)domain_record(static_cast<Operation>(255), Target::SUN), std::invalid_argument);
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately forge an unknown target to test rejection.
+  EXPECT_THROW((void)domain_record(Operation::POSITION, static_cast<Target>(255)), std::invalid_argument);
 }
 
 } // namespace astro::capability::test

@@ -82,7 +82,7 @@ for (const key of Object.keys(primary)) assert.equal(celestial[key], primary[key
 for (const key of Object.keys(primaryDate)) assert.equal(aliasDate[key], primaryDate[key], key);
 await primary.init();
 // The alias must be usable after initializing only the resolved primary.
-celestial.config.setLogVerbosity("none");
+assert.equal(celestial.jieqi.name(celestial.Jieqi.LICHUN), "立春");
 ` : ""}
 
 const date = new Date("2024-02-03T16:00:00.000Z");
@@ -98,6 +98,11 @@ assert.deepEqual(local, {
 assert.equal(civilAtOffsetToDate(local, 480).getTime(), date.getTime());
 
 await celestial.init();
+assert.equal("config" in celestial, false);
+const sun = celestial.sun.apparentGeocentricCoordinate(2451545.0);
+assert(Number.isFinite(sun.distanceAu));
+assert.equal("radiusAu" in sun, false);
+assert.throws(() => celestial.time.deltaT(2035, "algo4"), RangeError);
 const lichun = celestial.jieqi.moment(2024, celestial.Jieqi.LICHUN);
 assert.deepEqual(Object.keys(lichun).sort(), ["jieqi", "momentUt1"]);
 assert.equal(lichun.jieqi, celestial.Jieqi.LICHUN);

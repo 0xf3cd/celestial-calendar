@@ -11,6 +11,7 @@
  */
 
 #include <algorithm>
+#include <format>
 
 #include "lib.hpp"
 #include "celestial.h"
@@ -27,8 +28,8 @@ extern "C" {
 #pragma region Julian Days
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
-auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  return lib::wrap_export(__func__, [=]() -> JulianDay {
+auto celestial_ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> CelestialJulianDay {
+  return lib::wrap_export(__func__, [=]() -> CelestialJulianDay {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -46,8 +47,8 @@ auto ut1_to_jd(const int32_t y, const uint32_t m, const uint32_t d, const double
 
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
-auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> JulianDay {
-  return lib::wrap_export(__func__, [=]() -> JulianDay {
+auto celestial_ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> CelestialJulianDay {
+  return lib::wrap_export(__func__, [=]() -> CelestialJulianDay {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -64,8 +65,8 @@ auto ut1_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const doubl
 }
 
 
-auto jde_to_ut1(const double jde) -> UT1Time {
-  return lib::wrap_export(__func__, [=]() -> UT1Time {
+auto celestial_jde_to_ut1(const double jde) -> CelestialUT1Time {
+  return lib::wrap_export(__func__, [=]() -> CelestialUT1Time {
     const auto ut1_dt = astro::julian_day::jde_to_ut1(jde);
 
     const auto [y, m, d] = util::from_ymd(ut1_dt.ymd);
@@ -87,8 +88,8 @@ auto jde_to_ut1(const double jde) -> UT1Time {
 
 #pragma region Solar Apparent Geocentric Position
 
-auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
-  return lib::wrap_export(__func__, [=]() -> SunCoordinate {
+auto celestial_sun_apparent_geocentric_coord(const double jde) -> CelestialSunCoordinate {
+  return lib::wrap_export(__func__, [=]() -> CelestialSunCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -111,8 +112,8 @@ auto sun_apparent_geocentric_coord(const double jde) -> SunCoordinate {
 
 #pragma region Moon Apparent Geocentric Position
 
-auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
-  return lib::wrap_export(__func__, [=]() -> MoonCoordinate {
+auto celestial_moon_apparent_geocentric_coord(const double jde) -> CelestialMoonCoordinate {
+  return lib::wrap_export(__func__, [=]() -> CelestialMoonCoordinate {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -135,8 +136,8 @@ auto moon_apparent_geocentric_coord(const double jde) -> MoonCoordinate {
 
 #pragma region Moon Illumination
 
-auto moon_illumination(const double jde) -> MoonIllumination {
-  return lib::wrap_export(__func__, [=]() -> MoonIllumination {
+auto celestial_moon_illumination(const double jde) -> CelestialMoonIllumination {
+  return lib::wrap_export(__func__, [=]() -> CelestialMoonIllumination {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -162,8 +163,8 @@ auto moon_illumination(const double jde) -> MoonIllumination {
 
 #pragma region Moon Position Angle
 
-auto moon_position_angle(const double jde) -> MoonPositionAngle {
-  return lib::wrap_export(__func__, [=]() -> MoonPositionAngle {
+auto celestial_moon_position_angle(const double jde) -> CelestialMoonPositionAngle {
+  return lib::wrap_export(__func__, [=]() -> CelestialMoonPositionAngle {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -184,7 +185,7 @@ auto moon_position_angle(const double jde) -> MoonPositionAngle {
 
 #pragma region Moon Phase Moments
 
-auto moon_phase_moments(
+auto celestial_moon_phase_moments(
   const int32_t year, // NOLINT(bugprone-easily-swappable-parameters) -- year/phase is the published query order.
   const uint8_t phase_kind,
   uint32_t * const root_count,
@@ -192,16 +193,8 @@ auto moon_phase_moments(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (root_count == nullptr) {
-      throw std::invalid_argument { "Argument `root_count` is null." };
-    }
-
-    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-    *root_count = 0;
-
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_count(root_count, "root_count");
+    lib::check_slots(slots, slot_count);
 
     if (phase_kind > 3) {
       throw std::invalid_argument {
@@ -226,11 +219,11 @@ auto moon_phase_moments(
 
 #pragma region Solar Longitude Roots
 
-auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> Discriminant {
-  return lib::wrap_export(__func__, [=]() -> Discriminant {
-    if (not std::isfinite(longitude)) {
+auto celestial_solar_lon_root_discriminant(const int32_t year, const double longitude) -> CelestialDiscriminant {
+  return lib::wrap_export(__func__, [=]() -> CelestialDiscriminant {
+    if (not std::isfinite(longitude) or longitude < 0.0 or longitude >= 360.0) {
       throw std::invalid_argument {
-        std::format("Argument `longitude` is not finite, got {}", longitude)
+        std::format("Argument `longitude` must be in [0, 360), got {}", longitude)
       };
     }
 
@@ -242,7 +235,7 @@ auto solar_lon_root_discriminant(const int32_t year, const double longitude) -> 
 }
 
 
-auto solar_lon_roots(
+auto celestial_solar_lon_roots(
   const int32_t year, 
   const double longitude, 
   double * const slots, 
@@ -251,13 +244,11 @@ auto solar_lon_roots(
   return lib::wrap_export(__func__, [=] {
     using namespace astro::sun::geocentric_coord::math;
 
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_slots(slots, slot_count);
 
-    if (not std::isfinite(longitude)) {
+    if (not std::isfinite(longitude) or longitude < 0.0 or longitude >= 360.0) {
       throw std::invalid_argument {
-        std::format("Argument `longitude` is not finite, got {}", longitude)
+        std::format("Argument `longitude` must be in [0, 360), got {}", longitude)
       };
     }
 
@@ -283,15 +274,13 @@ auto solar_lon_roots(
 
 #pragma region Sun Moon Conjunction
 
-auto new_moons_after_jde(
+auto celestial_new_moons_after_jde(
   const double jde, 
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_slots(slots, slot_count);
 
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
@@ -311,23 +300,15 @@ auto new_moons_after_jde(
 }
 
 
-auto new_moons_in_year(
+auto celestial_new_moons_in_year(
   const int32_t year, 
   uint32_t * const root_count,
   double * const slots, 
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (root_count == nullptr) {
-      throw std::invalid_argument { "Argument `root_count` is null." };
-    }
-
-    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-    *root_count = 0;
-
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_count(root_count, "root_count");
+    lib::check_slots(slots, slot_count);
 
     const auto roots = astro::moon_phase::new_moon::moments(year);
 
@@ -345,8 +326,8 @@ auto new_moons_in_year(
 
 #pragma region Solar Time
 
-auto equation_of_time(const double jde) -> EquationOfTime {
-  return lib::wrap_export(__func__, [=]() -> EquationOfTime {
+auto celestial_equation_of_time(const double jde) -> CelestialEquationOfTime {
+  return lib::wrap_export(__func__, [=]() -> CelestialEquationOfTime {
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
         std::format("Argument `jde` is not finite, got {}", jde)
@@ -361,14 +342,14 @@ auto equation_of_time(const double jde) -> EquationOfTime {
 }
 
 
-auto apparent_solar_time(
+auto celestial_apparent_solar_time(
   const int32_t y,
   const uint32_t m,
   const uint32_t d, // NOLINT(bugprone-easily-swappable-parameters) -- civil date then longitude is the published API order.
   const double fraction,
   const double longitude
-) -> ApparentSolarTime {
-  return lib::wrap_export(__func__, [=]() -> ApparentSolarTime {
+) -> CelestialApparentSolarTime {
+  return lib::wrap_export(__func__, [=]() -> CelestialApparentSolarTime {
     const auto ymd = util::to_ymd(
       util::checked_year(y),
       m,
@@ -395,8 +376,8 @@ auto apparent_solar_time(
 
 #pragma region Sidereal Time
 
-auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> SiderealTime {
-  return lib::wrap_export(__func__, [=]() -> SiderealTime {
+auto celestial_local_apparent_sidereal_time(const double jd_ut1, const double longitude) -> CelestialSiderealTime {
+  return lib::wrap_export(__func__, [=]() -> CelestialSiderealTime {
     if (not std::isfinite(jd_ut1)) {
       throw std::invalid_argument {
         std::format("Argument `jd_ut1` is not finite, got {}", jd_ut1)
@@ -422,7 +403,12 @@ auto local_apparent_sidereal_time(const double jd_ut1, const double longitude) -
 
     // The boundary speaks east-positive (like `apparent_solar_time`); the core's
     // `local_apparent` takes west-positive, hence the negation (#127/D2).
-    const auto last = astro::sidereal::local_apparent(jd_ut1, jde_tt, astro::toolbox::AngleDeg { -longitude });
+    const auto last = astro::sidereal::local_apparent(
+      jd_ut1,
+      jde_tt,
+      astro::toolbox::AngleDeg { -longitude },
+      astro::earth::nutation::Model::IAU_1980
+    );
 
     return {
       .valid = true,

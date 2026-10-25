@@ -113,6 +113,7 @@ def test_javascript_test_entries_match_their_execution_owners():
     "support/chart_api.mjs",
     "support/chart_replay.mjs",
     "support/package_consumer.mjs",
+    "support/fake_native.mjs",
   }
   entries = {
     path.relative_to(test_root).as_posix()
@@ -140,6 +141,13 @@ def test_javascript_test_entries_match_their_execution_owners():
       re.MULTILINE,
     )
   )
+  raw_protocol = (test_root / "abi/raw_protocol_test.mjs").read_text(encoding="utf-8")
+  nested_abi_entries = {
+    f"abi/{path}" for path in re.findall(r'^import "\./([a-z0-9_.-]+\.mjs)";$', raw_protocol, re.MULTILINE)
+  }
+  assert nested_abi_entries == {"abi/generated_view_test.mjs"}
+  assert "abi/raw_protocol_test.mjs" in abi_entries
+  abi_entries |= nested_abi_entries
   job_entries = {
     name: set(
       re.findall(
@@ -153,6 +161,7 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert job_entries == {
     "wasm": {
       "node/public_api_test.mjs",
+      "node/fake_native_test.mjs",
       "node/date_test.mjs",
       "node/tarball_consumer_test.mjs",
       "browser/browser_test.mjs",

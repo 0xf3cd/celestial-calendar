@@ -86,48 +86,37 @@ for _name, (_argtypes, _restype) in _ABI.BINDING_SPECS.items():
 # region Delta T functions
 
 
-# Wrap C functions with Python functions, so that they can be called from Python.
-def delta_t_algo1(year: float) -> float:
-  result = LIB.delta_t_algo1(year)
+def _delta_t(year: float, selector: str) -> float:
+  """Evaluate an explicitly selected model using generated C codes."""
+  result = LIB.celestial_delta_t(year, _ABI.C_CODES[f"CELESTIAL_DELTA_T_MODEL_{selector}"])
   if not result.valid:
-    raise ValueError("Error occurred in delta_t_algo1.")
+    raise ValueError("Error occurred in celestial_delta_t.")
   return result.value
+
+
+def delta_t_algo1(year: float) -> float:
+  return _delta_t(year, "ALGO1")
 
 
 def delta_t_algo2(year: float) -> float:
-  result = LIB.delta_t_algo2(year)
-  if not result.valid:
-    raise ValueError("Error occurred in delta_t_algo2.")
-  return result.value
+  return _delta_t(year, "ALGO2")
 
 
 def delta_t_algo3(year: float) -> float:
-  result = LIB.delta_t_algo3(year)
-  if not result.valid:
-    raise ValueError("Error occurred in delta_t_algo3.")
-  return result.value
+  return _delta_t(year, "ALGO3")
 
 
 def delta_t_algo4(year: float) -> float:
-  result = LIB.delta_t_algo4(year)
-  if not result.valid:
-    raise ValueError("Error occurred in delta_t_algo4.")
-  return result.value
+  return _delta_t(year, "ALGO4")
 
 
 def delta_t_algo5(year: float) -> float:
-  result = LIB.delta_t_algo5(year)
-  if not result.valid:
-    raise ValueError("Error occurred in delta_t_algo5.")
-  return result.value
+  return _delta_t(year, "ALGO5")
 
 
 def delta_t(year: float) -> float:
   """The library's default ΔT, currently algo5."""
-  result = LIB.delta_t(year)
-  if not result.valid:
-    raise ValueError("Error occurred in delta_t.")
-  return result.value
+  return _delta_t(year, "DEFAULT")
 
 
 # endregion
@@ -146,7 +135,7 @@ def ut1_to_jd(y: int, m: int, d: int, fraction: float) -> float:
   @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
   @returns The Julian Day Number (JD).
   """
-  jd = LIB.ut1_to_jd(y, m, d, fraction)
+  jd = LIB.celestial_ut1_to_jd(y, m, d, fraction)
 
   if not jd.valid:
     raise ValueError("Error occurred in ut1_to_jd.")
@@ -163,7 +152,7 @@ def ut1_to_jde(y: int, m: int, d: int, fraction: float) -> float:
   @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
   @returns The Julian Ephemeris Day Number (JDE).
   """
-  jde = LIB.ut1_to_jde(y, m, d, fraction)
+  jde = LIB.celestial_ut1_to_jde(y, m, d, fraction)
 
   if not jde.valid:
     raise ValueError("Error occurred in ut1_to_jde.")
@@ -177,7 +166,7 @@ def jde_to_ut1(jde: float) -> datetime:
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `datetime` object representing the UT1 datetime.
   """
-  ut1 = LIB.jde_to_ut1(jde)
+  ut1 = LIB.celestial_jde_to_ut1(jde)
 
   if not ut1.valid:
     raise ValueError("Error occurred in jde_to_ut1.")
@@ -206,7 +195,7 @@ def sun_apparent_geocentric_coord(jde: float) -> SunCoordinate:
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `SunCoordinate` representing the apparent geocentric coordinates of the Sun.
   """
-  coord = LIB.sun_apparent_geocentric_coord(jde)
+  coord = LIB.celestial_sun_apparent_geocentric_coord(jde)
 
   if not coord.valid:
     raise ValueError("Error occurred in sun_apparent_geocentric_coord.")
@@ -231,7 +220,7 @@ def moon_apparent_geocentric_coord(jde: float) -> MoonCoordinate:
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `MoonCoordinate` representing the apparent geocentric coordinates of the Moon.
   """
-  coord = LIB.moon_apparent_geocentric_coord(jde)
+  coord = LIB.celestial_moon_apparent_geocentric_coord(jde)
 
   if not coord.valid:
     raise ValueError("Error occurred in moon_apparent_geocentric_coord.")
@@ -255,7 +244,7 @@ def moon_illumination(jde: float) -> MoonIllumination:
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `MoonIllumination` with the fraction in [0, 1] and the elongation in degrees.
   """
-  result = LIB.moon_illumination(jde)
+  result = LIB.celestial_moon_illumination(jde)
 
   if not result.valid:
     raise ValueError("Error occurred in moon_illumination.")
@@ -277,7 +266,7 @@ def moon_position_angle(jde: float) -> MoonPositionAngle:
   @param jde The julian ephemeris day number, which is based on TT.
   @returns A `MoonPositionAngle` with the angle in degrees, in [0, 360).
   """
-  result = LIB.moon_position_angle(jde)
+  result = LIB.celestial_moon_position_angle(jde)
 
   if not result.valid:
     raise ValueError("Error occurred in moon_position_angle.")
@@ -312,7 +301,7 @@ def moon_phase_moments(year: int, phase: MoonPhaseKind) -> MoonPhaseMoments:
   root_count = c_uint32(0)
   slots = (c_double * slot_count)()
 
-  num_written = LIB.moon_phase_moments(year, phase.value, ctypes.byref(root_count), slots, slot_count)
+  num_written = LIB.celestial_moon_phase_moments(year, phase.value, ctypes.byref(root_count), slots, slot_count)
 
   if num_written == 0:
     raise ValueError(f"Error occurred in moon_phase_moments for year {year}, phase {phase}.")
@@ -340,7 +329,7 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude: float) -> float:
   @param longitude The observer's geographic longitude in degrees, positive east.
   @returns The LAST in degrees, in [0, 360).
   """
-  result = LIB.local_apparent_sidereal_time(jd_ut1, longitude)
+  result = LIB.celestial_local_apparent_sidereal_time(jd_ut1, longitude)
 
   if not result.valid:
     raise ValueError("Error occurred in local_apparent_sidereal_time.")
@@ -394,7 +383,7 @@ def jieqi_moment(year: int, jq: Jieqi) -> JieqiMoment:
   @param jq The Jieqi to query.
   @returns A `JieqiMoment` representing the moment of the Jieqi.
   """
-  query = LIB.query_jieqi_moment(year, jq.value)
+  query = LIB.celestial_query_jieqi_moment(year, jq.value)
 
   if not query.valid:
     raise ValueError("Error occurred in query_jieqi_moment.")
@@ -446,7 +435,7 @@ def new_moons_in_year(year: int) -> NewMoons:
   slots = (c_double * slot_count)()
 
   # Call the shared library function to get the new moons in the given year.
-  num_written = LIB.new_moons_in_year(year, ctypes.byref(root_count), slots, slot_count)
+  num_written = LIB.celestial_new_moons_in_year(year, ctypes.byref(root_count), slots, slot_count)
 
   # The C++ side reports every failure as 0 written, and no year goes without a new moon.
   if num_written == 0:
@@ -495,7 +484,7 @@ def get_supported_lunar_year_range(algo: LunarAlgo) -> SupportedLunarYearRange:
   @param algo The algorithm to use.
   @returns A `SupportedLunarYearRange` instance representing the supported lunar year range.
   """
-  result = LIB.get_supported_lunar_year_range(algo.value)
+  result = LIB.celestial_get_supported_lunar_year_range(algo.value)
 
   if not result.valid:
     raise ValueError("Error occurred in get_supported_lunar_year_range.")
@@ -521,7 +510,7 @@ def get_lunar_year_info(algo: LunarAlgo, year: int) -> LunarYearInfo:
   @param year The year to get the lunar year information for.
   @returns A `LunarYearInfo` instance representing the lunar year information.
   """
-  result = LIB.get_lunar_year_info(algo.value, year)
+  result = LIB.celestial_get_lunar_year_info(algo.value, year)
 
   if not result.valid:
     raise ValueError("Error occurred in get_lunar_year_info.")
@@ -559,7 +548,7 @@ def gregorian_to_lunar(algo: LunarAlgo, year: int, month: int, day: int) -> Luna
            `is_leap` — e.g. 2023-03-22 is the leap 2nd month of lunar 2023
            (month = 2, is_leap = True).
   """
-  result = LIB.gregorian_to_lunar(algo.value, year, month, day)
+  result = LIB.celestial_gregorian_to_lunar(algo.value, year, month, day)
 
   if not result.valid:
     raise ValueError("Error occurred in gregorian_to_lunar.")
@@ -584,7 +573,7 @@ def lunar_to_gregorian(algo: LunarAlgo, year: int, month: int, is_leap: bool, da
   @param day The day of the lunar month.
   @returns A `date` instance representing the Gregorian date.
   """
-  result = LIB.lunar_to_gregorian(algo.value, year, month, is_leap, day)
+  result = LIB.celestial_lunar_to_gregorian(algo.value, year, month, is_leap, day)
 
   if not result.valid:
     raise ValueError("Error occurred in lunar_to_gregorian.")

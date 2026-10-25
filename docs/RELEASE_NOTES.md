@@ -2,37 +2,30 @@
      dispatched on a v*.*.* tag. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
-## [v0.9.0]
+## [v1.0.0]
 
-### Longitude Events
+Unreleased draft. The 1.0 API and release notes are not yet frozen.
 
-- Interval longitude-event searches are available from C++ (`ephemeris_events.hpp`), the C ABI and
-  the Python package. `longitude_events` finds every crossing or exact numerical contact of a
-  target's apparent geocentric longitude with a supplied level; `longitude_stations` finds the
-  stationary instants of the published seven-point rate with certified motion on both sides;
-  `longitude_difference_events` searches the directed, canonical difference of two targets.
-  All fourteen targets — the Sun, Moon, planets, Pluto and the four lunar nodes — speak the same
-  codes across the C ABI, Python and the chart snapshot. Times are JDE(TT) on the published
-  2^-30-day reporting lattice; rates are degrees per TT day.
-- The C ABI owns results through one count+fill call: an explicit total count, caller-allocated
-  slots in deterministic chronological order, defined truncation behavior, and a thread-local
-  error channel that separates a legal empty result from a failed query. Python mirrors the enums,
-  fields, units and failures in frozen dataclasses and validates every input before native
-  execution. Angles carry no aspect names or orb policy anywhere in the API.
-- The private WASM ABI mirrors the expanded C surface — export list, binding metadata, layouts,
-  manifests and ABI oracles — while JavaScript intentionally exposes no event API.
-- Six shared fixtures (recorded with exact bit patterns in `toolbox/bindings_golden.json`) certify
-  that the C++ core, the C ABI and Python agree on counts, ordering, timestamps, directions,
-  longitudes and rates; the Python wheel suite and the WASM raw-protocol suite replay them on
-  every build.
+### API changes
 
-### Breaking Changes
+- The C ABI uses `celestial_` exports, `Celestial` records and one `CELESTIAL_TARGET_*` code family.
+  Existing 0.x binaries and source callers must migrate; no compatibility forwarders are provided.
+- Independent ecliptic/equatorial positions and civil houses are available from C++ and C, with immutable Python
+  result values. Positions retain caller order and provider windows without computing rates or houses.
+- Model keys distinguish Delta T, nutation and position sources. Selected-model results record their resolved
+  identities; capability queries describe TT target domains and the separate civil-house policy.
+- Native error kinds distinguish invalid input from computation, resource and internal failures, including when
+  no error message could be allocated. Automatic logging and logging configuration APIs are removed.
+- Sized strings count the terminating NUL. JavaScript Sun distance is named `distanceAu`; JavaScript gains no
+  public position, equatorial, house, event or capability query API.
 
-- None. Every 0.8.0 C ABI export and record layout is unchanged; the three event exports and
-  their record types are additive.
+### Calendar and civil time
 
-### Documentation
+- `calendar::Datetime` accepts raw durations and checks original date/time values before narrowing.
+- Jieqi table schema `celestial-calendar/jieqi-table@2` stores model UT1 as `jd_ut1` / `iso_ut1`, with verified
+  build provenance, instead of presenting it as UTC.
+- Charts and civil houses share civil-year and UTC admission. Algo4 requires derived TT before 2035-01-01,
+  excluding roughly the last 71.5 UT1 seconds of 2034. Houses do not inherit the chart's target/rate window.
 
-- [Longitude events](EPHEMERIS_EVENTS.md) now covers the C ABI and Python surfaces alongside
-  the C++ searches: the count+fill ownership protocol, empty-result disambiguation, and the
-  per-query cost of the two-pass Python protocol.
+See [Migrating to 1.0](MIGRATING_1_0.md) for replacement names, ownership protocols and changed failure behavior.
+The [changelog](CHANGELOG.md) retains the full development history.

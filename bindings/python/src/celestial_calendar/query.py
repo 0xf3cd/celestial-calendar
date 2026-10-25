@@ -8,159 +8,120 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Independent position and house queries (#355).
-
-`positions()` evaluates only the caller's selected targets at one JDE(TT) instant — no rate
-stencil, no snapshot joint window — so a subset succeeds where a complete snapshot rejects
-an excluded target's window. `house_query()` runs the snapshot's civil conversion without
-the joint window and records the resolved model identities (#357). Both are thin decoders
-over the native V1 records; every domain bound stays owned by the native layer.
-"""
+"""Owned ecliptic, equatorial and civil-house query results."""
 
 from __future__ import annotations
 
-import math as _math
 from dataclasses import dataclass as _dataclass
-from enum import StrEnum as _StrEnum
-from typing import Tuple as _Tuple
 
 from . import _abi
-from . import capability as _capability
-from . import chart as _chart
-from .capability import PositionSource as _PositionSource
-from .chart import ChartHouses as _ChartHouses
-from .chart import ChartTarget as _ChartTarget
-from .chart import ChartTimes as _ChartTimes
-from .chart import HouseSystem as _HouseSystem
-
-
-class NutationModel(_StrEnum):
-  """Nutation model selector for the independent house query.
-
-  DEFAULT follows the C++ house operation's default (IAU 1980). The resolved identity is
-  never the unresolved DEFAULT code: it is one of the registry's MODEL_IDENTITY_NUTATION_*
-  ordinals.
-  """
-
-  DEFAULT = "default"
-  MEEUS = "meeus"
-  IAU_1980 = "iau_1980"
-
-
-_NUTATION_MODEL_CODE = {NutationModel.DEFAULT: 0, NutationModel.MEEUS: 1, NutationModel.IAU_1980: 2}
-_NUTATION_MODEL_BY_CODE = {0: NutationModel.IAU_1980, 1: NutationModel.MEEUS, 2: NutationModel.IAU_1980}
-
-_DELTA_T_IDENTITY_BY_CODE = {
-  0: "algo1",
-  1: "algo2",
-  2: "algo3",
-  3: "algo4",
-  4: "algo5",
-}
-_NUTATION_IDENTITY_BY_CODE = {0: NutationModel.MEEUS, 1: NutationModel.IAU_1980}
+from ._codes import constant, enum_code
+from ._models import ModelKey, ModelKind, Target, is_node
+from ._protocol import finite, longitude
+from .chart import ChartHouses, ChartTimes, HouseSystem, decode_houses
 
 
 @_dataclass(frozen=True)
 class Position:
-  """Apparent geocentric ecliptic position of one selected target at one JDE(TT).
+  """Apparent geocentric ecliptic longitude/latitude of date, in degrees.
 
-  Distances are AU for Sun, Moon, planets and Pluto; nodes carry no distance. `source` is
-  the resolved position-source identity, stable across releases (#357).
+  Physical distances are AU; mathematical nodes have no distance. source identifies
+  the position provider, including for a single-target selection.
   """
 
-  target: _ChartTarget
+  target: Target
   longitude_deg: float
   latitude_deg: float
   distance_au: float | None
-  source: _PositionSource
+  source: ModelKey
+
+
+@_dataclass(frozen=True)
+class EquatorialPosition:
+  """Apparent geocentric RA [0, 360) and declination [-90, 90], in degrees of date.
+
+  The projection uses fixed IAU1980 longitude nutation and true obliquity. Distances
+  are AU where physically defined; mathematical nodes have no distance.
+  """
+
+  target: Target
+  right_ascension_deg: float
+  declination_deg: float
+  distance_au: float | None
+  source: ModelKey
 
 
 @_dataclass(frozen=True)
 class HouseQueryResult:
-  """House geometry at one civil instant, with the resolved model identities.
+  """House geometry and both resolved model keys at one civil instant.
 
-  `times` carries both resolved scales; `delta_t_identity` and `nutation_identity` record
-  which models produced this result, so a later DEFAULT change cannot rewrite it (#357).
+  times contains JD(UT1) and JDE(TT); houses contains axes/cusps in degrees.
   """
 
-  times: _ChartTimes
-  houses: _ChartHouses
-  house_system: _HouseSystem
-  delta_t_identity: str
-  nutation_identity: NutationModel
+  times: ChartTimes
+  houses: ChartHouses
+  house_system: HouseSystem
+  delta_t_model: ModelKey
+  nutation_model: ModelKey
 
 
-def nutation_model_code(model: NutationModel) -> int:
-  return _NUTATION_MODEL_CODE[model]
+def _position_fields(record: object, expected: Target) -> tuple[float | None, ModelKey]:
+  if record.target_code != enum_code("TARGET", expected):
+    raise ValueError(f"unexpected target code for {expected.name}")
+  node = is_node(expected)
+  expected_fields = constant("PRESENT_LATITUDE") | (0 if node else constant("PRESENT_DISTANCE"))
+  if record.present_fields != expected_fields:
+    raise ValueError(f"unexpected presence bits for {expected.name}")
+  # Absent storage has no value semantics and is deliberately not read.
+  distance = None if node else finite(record.distance_au, "distance_au")
+  if distance is not None and distance <= 0.0:
+    raise ValueError(f"nonpositive distance for {expected.name}")
+  return distance, ModelKey(ModelKind.POSITION_SOURCE, record.source_code)
 
 
-def _finite(value: float, name: str) -> float:
-  if not _math.isfinite(value):
-    raise ValueError(f"{name} is not finite")
-  return value
-
-
-def _longitude(value: float, name: str) -> float:
-  result = _finite(value, name)
-  if not 0.0 <= result < 360.0:
-    raise ValueError(f"{name} is outside [0, 360)")
-  return result
-
-
-def decode_positions(records, expected_targets: _Tuple[_ChartTarget, ...]) -> _Tuple[Position, ...]:
-  """Copy successful V1 position records; malformed protocol fields raise decoding errors."""
+def decode_positions(records, expected_targets: tuple[Target, ...]) -> tuple[Position, ...]:
   if len(records) != len(expected_targets):
-    raise ValueError("native returned an unexpected position count")
-
+    raise ValueError("unexpected position count")
   positions = []
-  for record, expected in zip(records, expected_targets, strict=True):
-    if not isinstance(record, _abi.PositionRecordV1):
-      raise TypeError("unexpected V1 position record")
-    if _chart._CHART_TARGET_CODE[expected] != record.target_code:
-      raise ValueError(f"unexpected target code for {expected.name}")
+  for record, target in zip(records, expected_targets, strict=True):
+    if not isinstance(record, _abi.CelestialPositionRecord):
+      raise TypeError("unexpected position record")
+    distance, source = _position_fields(record, target)
+    latitude = finite(record.latitude_deg, "latitude_deg")
+    if not -90.0 <= latitude <= 90.0 or (is_node(target) and latitude != 0.0):
+      raise ValueError(f"unexpected latitude for {target.name}")
+    positions.append(Position(target, longitude(record.longitude_deg, "longitude_deg"), latitude, distance, source))
+  return tuple(positions)
 
-    is_node = expected.name.startswith(("MEAN_", "TRUE_"))
-    has_distance = (record.present_fields & 0x2) != 0  # POSITION_PRESENT_DISTANCE
-    if has_distance == is_node:
-      raise ValueError(f"unexpected presence bits for {expected.name}")
 
-    latitude = _finite(record.latitude_deg, f"{expected.name}.latitude_deg")
-    if not -90.0 <= latitude <= 90.0 or (is_node and latitude != 0.0):
-      raise ValueError(f"unexpected latitude for {expected.name}")
-    distance = None if is_node else _finite(record.distance_au, f"{expected.name}.distance_au")
-    if distance is not None and distance <= 0.0:
-      raise ValueError(f"nonpositive distance for {expected.name}")
-    source = _capability.position_source(record.source_code)
-    if source is None:
-      raise ValueError(f"unexpected position source code {record.source_code}")
-
+def decode_equatorial_positions(records, expected_targets: tuple[Target, ...]) -> tuple[EquatorialPosition, ...]:
+  if len(records) != len(expected_targets):
+    raise ValueError("unexpected equatorial position count")
+  positions = []
+  for record, target in zip(records, expected_targets, strict=True):
+    if not isinstance(record, _abi.CelestialEquatorialPositionRecord):
+      raise TypeError("unexpected equatorial position record")
+    distance, source = _position_fields(record, target)
+    declination = finite(record.declination_deg, "declination_deg")
+    if not -90.0 <= declination <= 90.0:
+      raise ValueError(f"unexpected declination for {target.name}")
     positions.append(
-      Position(expected, _longitude(record.longitude_deg, f"{expected.name}.longitude_deg"), latitude, distance, source)
+      EquatorialPosition(
+        target, longitude(record.right_ascension_deg, "right_ascension_deg"), declination, distance, source
+      )
     )
   return tuple(positions)
 
 
-def decode_house_query(result, house_system: _HouseSystem) -> HouseQueryResult:
-  """Copy a successful V1 house query; malformed protocol fields raise decoding errors."""
-  if not isinstance(result, _abi.HouseQueryResultV1):
-    raise TypeError("unexpected V1 house query record")
-  if not result.valid:
-    raise ValueError("invalid V1 house query payload")
-
-  delta_t_identity = _DELTA_T_IDENTITY_BY_CODE.get(result.delta_t_identity_code)
-  if delta_t_identity is None:
-    raise ValueError(f"unexpected Delta T identity code {result.delta_t_identity_code}")
-  nutation_identity = _NUTATION_IDENTITY_BY_CODE.get(result.nutation_identity_code)
-  if nutation_identity is None:
-    raise ValueError(f"unexpected nutation identity code {result.nutation_identity_code}")
-
-  native = result.houses
-  houses = _ChartHouses(
-    _longitude(native.ascendant_deg, "ascendant_deg"),
-    _longitude(native.midheaven_deg, "midheaven_deg"),
-    _longitude(native.descendant_deg, "descendant_deg"),
-    _longitude(native.imum_coeli_deg, "imum_coeli_deg"),
-    tuple(_longitude(cusp, "cusps_deg") for cusp in native.cusps_deg),
+def decode_house_query(result: _abi.CelestialHouseQueryResult, system: HouseSystem) -> HouseQueryResult:
+  if not isinstance(result, _abi.CelestialHouseQueryResult):
+    raise TypeError("unexpected house query record")
+  if result.house_system_code != enum_code("HOUSE_SYSTEM", system):
+    raise ValueError("unexpected house system")
+  return HouseQueryResult(
+    ChartTimes(finite(result.jd_ut1, "jd_ut1"), finite(result.jde_tt, "jde_tt")),
+    decode_houses(result.houses),
+    system,
+    ModelKey(ModelKind.DELTA_T, result.delta_t_identity_code),
+    ModelKey(ModelKind.NUTATION, result.nutation_identity_code),
   )
-  times = _ChartTimes(_finite(result.jd_ut1, "jd_ut1"), _finite(result.jde_tt, "jde_tt"))
-  return HouseQueryResult(times, houses, house_system, delta_t_identity, nutation_identity)

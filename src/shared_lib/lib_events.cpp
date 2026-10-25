@@ -15,6 +15,7 @@
 #include <format>
 
 #include "lib.hpp"
+#include "lib_codes.hpp"
 #include "celestial.h"
 
 #include "ephemeris_events.hpp"
@@ -24,35 +25,7 @@ namespace {
 
 using astro::ephemeris::EventDirection;
 using astro::ephemeris::Motion;
-using astro::ephemeris::Target;
 using astro::toolbox::AngleDeg;
-
-constexpr uint32_t TARGET_COUNT = 14;
-// The event-search core's published limit (ephemeris_events.hpp); the boundary states it
-// in the error message so an FFI caller learns the bound without reading C++.
-constexpr double MAXIMUM_QUERY_SPAN_TT_DAYS = 3660.0;
-
-auto check_event_count_ptr(uint32_t * const event_count) -> void {
-  if (event_count == nullptr) {
-    throw std::invalid_argument { "Argument `event_count` is null." };
-  }
-  // Deterministic out-parameter state: every failure path below leaves *event_count == 0.
-  *event_count = 0;
-}
-
-auto check_event_slots(const auto * const slots, const uint32_t slot_count) -> void {
-  if (slots == nullptr and slot_count > 0) {
-    throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-  }
-}
-
-auto check_target_code(const uint32_t target_code, const char * const name) -> void {
-  if (target_code >= TARGET_COUNT) {
-    throw std::invalid_argument {
-      std::format("Argument `{}` must be an EVENT_TARGET_* code in [0, {}], got {}", name, TARGET_COUNT - 1, target_code)
-    };
-  }
-}
 
 auto check_target_angle(const double angle_deg, const char * const name) -> void {
   if (not std::isfinite(angle_deg)) {
@@ -69,26 +42,26 @@ auto check_interval(const double start_jde_tt, const double end_jde_tt) -> void 
   if (not (start_jde_tt < end_jde_tt)) {
     throw std::invalid_argument { "Event query interval must be nonempty" };
   }
-  if (end_jde_tt - start_jde_tt > MAXIMUM_QUERY_SPAN_TT_DAYS) {
+  if (end_jde_tt - start_jde_tt > astro::ephemeris::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS) {
     throw std::invalid_argument {
-      std::format("Event query exceeds {} TT days", MAXIMUM_QUERY_SPAN_TT_DAYS)
+      std::format("Event query exceeds {} TT days", astro::ephemeris::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS)
     };
   }
 }
 
 auto direction_code_of(const EventDirection direction) -> uint32_t {
   switch (direction) {
-    case EventDirection::INCREASING: return EVENT_DIRECTION_INCREASING;
-    case EventDirection::DECREASING: return EVENT_DIRECTION_DECREASING;
-    case EventDirection::TANGENT:    return EVENT_DIRECTION_TANGENT;
+    case EventDirection::INCREASING: return CELESTIAL_EVENT_DIRECTION_INCREASING;
+    case EventDirection::DECREASING: return CELESTIAL_EVENT_DIRECTION_DECREASING;
+    case EventDirection::TANGENT:    return CELESTIAL_EVENT_DIRECTION_TANGENT;
   }
   throw std::runtime_error { "Unsupported event direction" };
 }
 
 auto motion_code_of(const Motion motion) -> uint32_t {
   switch (motion) {
-    case Motion::DIRECT:    return EVENT_MOTION_DIRECT;
-    case Motion::RETROGRADE: return EVENT_MOTION_RETROGRADE;
+    case Motion::DIRECT:    return CELESTIAL_EVENT_MOTION_DIRECT;
+    case Motion::RETROGRADE: return CELESTIAL_EVENT_MOTION_RETROGRADE;
   }
   throw std::runtime_error { "Unsupported station motion" };
 }
@@ -98,31 +71,31 @@ auto motion_code_of(const Motion motion) -> uint32_t {
 
 extern "C" {
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Preserve the published target/angle/TT-interval/output parameter groups.
 // #303: the ephemeris-event exports. Every export validates its arguments before any
 // provider work, mirrors the core's deterministic ordering, and reports the full total
 // through `event_count` even when the caller's capacity truncates the fill.
 
 #pragma region Longitude Events
 
-auto longitude_events(
+auto celestial_longitude_events(
   const uint32_t target_code,
   const double target_longitude_deg,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
-  LongitudeEventRecord * const slots,
+  CelestialLongitudeEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
-    check_target_code(target_code, "target_code");
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
+    const auto target = lib::codes::target(target_code);
     check_target_angle(target_longitude_deg, "target_longitude_deg");
     check_interval(start_jde_tt, end_jde_tt);
 
     const auto events = astro::ephemeris::longitude_events(
-      static_cast<Target>(target_code),
+      target,
       AngleDeg { target_longitude_deg },
       start_jde_tt,
       end_jde_tt
@@ -133,7 +106,7 @@ auto longitude_events(
     std::transform(
       events.cbegin(), events.cbegin() + num_written, slots,
       [](const auto& event) {
-        return LongitudeEventRecord {
+        return CelestialLongitudeEventRecord {
           .jde_tt = event.jde_tt,
           .longitude_deg = event.longitude.deg(),
           .longitude_rate_deg_per_tt_day = event.longitude_rate.deg_per_tt_day,
@@ -150,23 +123,22 @@ auto longitude_events(
 
 #pragma region Longitude Stations
 
-auto longitude_stations(
+auto celestial_longitude_stations(
   const uint32_t target_code,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
-  StationEventRecord * const slots,
+  CelestialStationEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
-    check_target_code(target_code, "target_code");
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
+    const auto target = lib::codes::target(target_code);
     check_interval(start_jde_tt, end_jde_tt);
 
     const auto events = astro::ephemeris::stations(
-      static_cast<Target>(target_code),
+      target,
       start_jde_tt,
       end_jde_tt
     );
@@ -176,7 +148,7 @@ auto longitude_stations(
     std::transform(
       events.cbegin(), events.cbegin() + num_written, slots,
       [](const auto& event) {
-        return StationEventRecord {
+        return CelestialStationEventRecord {
           .jde_tt = event.jde_tt,
           .longitude_deg = event.longitude.deg(),
           .longitude_rate_deg_per_tt_day = event.longitude_rate.deg_per_tt_day,
@@ -194,23 +166,21 @@ auto longitude_stations(
 
 #pragma region Longitude Difference Events
 
-auto longitude_difference_events(
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- first/second is the published directed pair order.
+auto celestial_longitude_difference_events(
   const uint32_t first_target_code,
   const uint32_t second_target_code,
   const double target_difference_deg,
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- start/end is the published half-open TT interval.
   const double start_jde_tt,
   const double end_jde_tt,
   uint32_t * const event_count,
-  LongitudeDifferenceEventRecord * const slots,
+  CelestialLongitudeDifferenceEventRecord * const slots,
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    check_event_count_ptr(event_count);
-    check_event_slots(slots, slot_count);
-    check_target_code(first_target_code, "first_target_code");
-    check_target_code(second_target_code, "second_target_code");
+    lib::check_count(event_count, "event_count");
+    lib::check_slots(slots, slot_count);
+    const auto first = lib::codes::target(first_target_code);
+    const auto second = lib::codes::target(second_target_code);
     if (first_target_code == second_target_code) {
       throw std::invalid_argument { "Longitude-difference events require distinct targets" };
     }
@@ -218,8 +188,8 @@ auto longitude_difference_events(
     check_interval(start_jde_tt, end_jde_tt);
 
     const auto events = astro::ephemeris::longitude_difference_events(
-      static_cast<Target>(first_target_code),
-      static_cast<Target>(second_target_code),
+      first,
+      second,
       AngleDeg { target_difference_deg },
       start_jde_tt,
       end_jde_tt
@@ -230,7 +200,7 @@ auto longitude_difference_events(
     std::transform(
       events.cbegin(), events.cbegin() + num_written, slots,
       [](const auto& event) {
-        return LongitudeDifferenceEventRecord {
+        return CelestialLongitudeDifferenceEventRecord {
           .jde_tt = event.jde_tt,
           .longitude_a_deg = event.longitude_a.deg(),
           .longitude_b_deg = event.longitude_b.deg(),
@@ -248,4 +218,5 @@ auto longitude_difference_events(
 #pragma endregion
 
 
-}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+} // extern "C"

@@ -24,7 +24,6 @@ from automation import (
   check_abi_layout,
   check_ctypes_smoke,
   check_export_surface,
-  check_log_names,
   check_ai_workflows,
   check_action_pins,
   check_jieqi_table,
@@ -53,8 +52,6 @@ def parse_args() -> argparse.Namespace:
       "  To hold the built library's export surface to the celestial.h entry points\n"
       "  (needs ./project.py --build first):\n"
       "    ./checks.py --export-surface\n\n"
-      "  To hold the lib_*.cpp log strings to the celestial.h entry-point names:\n"
-      "    ./checks.py --log-names\n\n"
       "  To run the automation layer's own unit tests:\n"
       "    ./checks.py --pytest\n\n"
       "  To hold the four CELESTIAL_TEST_SEED copies to each other:\n"
@@ -71,7 +68,7 @@ def parse_args() -> argparse.Namespace:
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./checks.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
-      "  export surface, log names, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
+      "  export surface, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
       "    ./checks.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter,
@@ -102,9 +99,6 @@ def parse_args() -> argparse.Namespace:
   )
   gate.add_argument(
     "--jieqi-table", action="store_true", help="Hold the exported jieqi table to its invariants (needs a build)"
-  )
-  gate.add_argument(
-    "--log-names", action="store_true", help="Hold the lib_*.cpp log strings to the celestial.h entry-point names"
   )
   gate.add_argument(
     "--seed-reconcile", action="store_true", help="Hold the four CELESTIAL_TEST_SEED copies to each other"
@@ -177,11 +171,6 @@ if __name__ == "__main__":
 
   if args.export_surface or args.all:
     ret_code = check_export_surface()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.log_names or args.all:
-    ret_code = check_log_names()
     if ret_code != 0:
       sys.exit(ret_code)
 

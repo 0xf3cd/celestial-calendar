@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cmath>
@@ -52,6 +53,12 @@ constexpr std::array<Target, 9> WORKING_WINDOW_TARGETS {
   Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS, Target::JUPITER,
   Target::SATURN, Target::URANUS, Target::NEPTUNE,
 };
+
+static_assert(std::ranges::all_of(TARGET_FACTS, [](const auto& facts) {
+  const bool listed = std::ranges::find(WORKING_WINDOW_TARGETS, facts.target) != WORKING_WINDOW_TARGETS.end();
+  const bool uses_working_window = not facts.position_domain.has_value();
+  return listed == uses_working_window;
+}));
 
 struct GoldenRow {
   Target target;
@@ -196,11 +203,7 @@ constexpr std::array GOLDEN_ROWS {
 };
 // NOLINTEND(modernize-use-designated-initializers) - Dense golden rows read by column.
 
-inline constexpr std::array<Target, 14> ALL_TARGETS {
-  Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS, Target::JUPITER,
-  Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
-  Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
-};
+inline constexpr auto ALL_TARGETS = TARGETS;
 
 auto comparison_tolerance(const Target target) -> double {
   // Same-definition implementation/reference discrepancies, not physical accuracy.

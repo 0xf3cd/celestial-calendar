@@ -122,17 +122,26 @@ def generate() -> dict:
   lib = ctypes.CDLL(str(find_native_lib()))
   abi = load_abi()
   for name in (
-    "query_jieqi_moment",
-    "moon_illumination",
-    "moon_position_angle",
-    "moon_phase_moments",
-    "local_apparent_sidereal_time",
-    "longitude_events",
-    "longitude_stations",
-    "longitude_difference_events",
+    "celestial_query_jieqi_moment",
+    "celestial_moon_illumination",
+    "celestial_moon_position_angle",
+    "celestial_moon_phase_moments",
+    "celestial_local_apparent_sidereal_time",
+    "celestial_longitude_events",
+    "celestial_longitude_stations",
+    "celestial_longitude_difference_events",
+    "celestial_last_error",
+    "celestial_last_error_kind",
   ):
     function = getattr(lib, name)
     function.argtypes, function.restype = abi.BINDING_SPECS[name]
+
+  def check_error(operation: str) -> None:
+    """A failed allocation of the error message must not look like an empty success."""
+    if lib.celestial_last_error_kind():
+      message = lib.celestial_last_error()
+      detail = message.decode("utf-8", errors="replace") if message else "native failure without a message"
+      raise RuntimeError(f"{operation}: {detail}")
 
   random.seed(SEED)
   points = [(y, i) for y in EDGE_YEARS for i in range(24)]
@@ -140,7 +149,8 @@ def generate() -> dict:
 
   jieqi_entries = []
   for year, idx in points:
-    q = lib.query_jieqi_moment(year, idx)
+    q = lib.celestial_query_jieqi_moment(year, idx)
+    check_error("celestial_query_jieqi_moment")
     if not q.valid or q.jq_idx != idx:
       raise RuntimeError(f"query_jieqi_moment({year}, {idx}) failed natively")
     jieqi_entries.append({"year": year, "idx": idx, "y": q.y, "m": q.m, "d": q.d, "frac_bits": f64_bits(q.frac)})
@@ -149,7 +159,8 @@ def generate() -> dict:
   moon_jdes += [random.uniform(*MOON_JDE_RANGE) for _ in range(MOON_RANDOM_POINTS)]
   moon_entries = []
   for jde in moon_jdes:
-    mi = lib.moon_illumination(jde)
+    mi = lib.celestial_moon_illumination(jde)
+    check_error("celestial_moon_illumination")
     if not mi.valid:
       raise RuntimeError(f"moon_illumination({jde}) failed natively")
     moon_entries.append(
@@ -162,7 +173,8 @@ def generate() -> dict:
 
   moon_position_angle_entries = []
   for jde in moon_jdes:
-    pa = lib.moon_position_angle(jde)
+    pa = lib.celestial_moon_position_angle(jde)
+    check_error("celestial_moon_position_angle")
     if not pa.valid:
       raise RuntimeError(f"moon_position_angle({jde}) failed natively")
     moon_position_angle_entries.append({"jde_bits": f64_bits(jde), "angle_deg_bits": f64_bits(pa.angle_deg)})
@@ -173,7 +185,8 @@ def generate() -> dict:
   ]
   sidereal_entries = []
   for jd_ut1, lon in sidereal_points:
-    st = lib.local_apparent_sidereal_time(jd_ut1, lon)
+    st = lib.celestial_local_apparent_sidereal_time(jd_ut1, lon)
+    check_error("celestial_local_apparent_sidereal_time")
     if not st.valid:
       raise RuntimeError(f"local_apparent_sidereal_time({jd_ut1}, {lon}) failed natively")
     sidereal_entries.append({"jd_ut1_bits": f64_bits(jd_ut1), "longitude": lon, "value_bits": f64_bits(st.value)})
@@ -183,12 +196,15 @@ def generate() -> dict:
   phase_entries = []
   for year, phase_kind in phase_points:
     root_count = c_uint32(0)
-    if lib.moon_phase_moments(year, phase_kind, ctypes.byref(root_count), None, 0) != 0 or root_count.value == 0:
+    written = lib.celestial_moon_phase_moments(year, phase_kind, ctypes.byref(root_count), None, 0)
+    check_error("celestial_moon_phase_moments")
+    if written != 0 or root_count.value == 0:
       raise RuntimeError(f"moon_phase_moments({year}, {phase_kind}) count query failed")
 
     slots = (c_double * root_count.value)()
-    written = lib.moon_phase_moments(year, phase_kind, ctypes.byref(root_count), slots, root_count.value)
-    if written == 0 or written != root_count.value:
+    written = lib.celestial_moon_phase_moments(year, phase_kind, ctypes.byref(root_count), slots, len(slots))
+    check_error("celestial_moon_phase_moments")
+    if written != len(slots) or root_count.value != len(slots):
       raise RuntimeError(f"moon_phase_moments({year}, {phase_kind}) wrote {written} of {root_count.value} roots")
     phase_entries.append(
       {
@@ -203,6 +219,7 @@ def generate() -> dict:
     """One count pass plus one fill pass through the raw count+fill protocol."""
     total = ctypes.c_uint32(0)
     written = getattr(lib, export)(*args, ctypes.byref(total), None, 0)
+    check_error(export)
     if written != 0:
       raise RuntimeError(f"{export}{args} count pass wrote {written}")
     if total.value == 0:
@@ -210,6 +227,7 @@ def generate() -> dict:
     slots = (record_type * total.value)()
     fill_total = ctypes.c_uint32(0)
     written = getattr(lib, export)(*args, ctypes.byref(fill_total), slots, total.value)
+    check_error(export)
     if written != total.value or fill_total.value != total.value:
       raise RuntimeError(f"{export}{args} fill pass wrote {written} of {total.value}")
     return [dict((field, getattr(slot, field)) for field, _ in record_type._fields_) for slot in slots]
@@ -220,7 +238,9 @@ def generate() -> dict:
 
   longitude_event_entries = []
   for name, target_code, level in LONGITUDE_EVENT_FIXTURES:
-    events = search_events("longitude_events", abi.LongitudeEventRecord, (target_code, level, *EVENT_WINDOW))
+    events = search_events(
+      "celestial_longitude_events", abi.CelestialLongitudeEventRecord, (target_code, level, *EVENT_WINDOW)
+    )
     check_fixture_count(name, events)
     longitude_event_entries.append(
       {
@@ -243,7 +263,9 @@ def generate() -> dict:
 
   station_event_entries = []
   for name, target_code in STATION_EVENT_FIXTURES:
-    events = search_events("longitude_stations", abi.StationEventRecord, (target_code, *EVENT_WINDOW))
+    events = search_events(
+      "celestial_longitude_stations", abi.CelestialStationEventRecord, (target_code, *EVENT_WINDOW)
+    )
     check_fixture_count(name, events)
     station_event_entries.append(
       {
@@ -267,8 +289,8 @@ def generate() -> dict:
   difference_event_entries = []
   for name, first_code, second_code, level in DIFFERENCE_EVENT_FIXTURES:
     events = search_events(
-      "longitude_difference_events",
-      abi.LongitudeDifferenceEventRecord,
+      "celestial_longitude_difference_events",
+      abi.CelestialLongitudeDifferenceEventRecord,
       (first_code, second_code, level, *PAIR_WINDOW),
     )
     check_fixture_count(name, events)

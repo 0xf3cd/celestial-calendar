@@ -33,11 +33,7 @@ namespace {
 namespace search = detail::event_search;
 namespace range_test = astro::detail::event_search::test;
 
-constexpr std::array EVENT_TARGETS {
-  Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
-  Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
-  Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
-};
+constexpr auto EVENT_TARGETS = TARGETS;
 
 static_assert(std::same_as<decltype(search::sign(search::Value {})), int32_t>);
 
@@ -1776,9 +1772,9 @@ TEST(EphemerisEvents, DirectedPairsRetainEveryPassAndSignedAngle) {
 TEST(EphemerisEvents, PublicWorkLimitsAndNonfiniteTimesRemainExplicit) {
   ASSERT_EQ(detail::EVENT_MAXIMUM_EVALUATIONS, std::size_t { 65536 });
   ASSERT_EQ(detail::EVENT_MAXIMUM_CANDIDATES, std::size_t { 4096 });
-  ASSERT_EQ(detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS, 3660.0);
+  ASSERT_EQ(EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS, 3660.0);
   constexpr double START = 2460676.5;
-  ASSERT_TRUE(stations(Target::SUN, START, START + detail::EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS).empty());
+  ASSERT_TRUE(stations(Target::SUN, START, START + EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS).empty());
   search::Budget budget { .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
                           .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES };
   std::size_t calls = 0;

@@ -20,35 +20,6 @@ from importlib import resources
 from ._abi import BINDING_SPECS as BINDING_SPECS
 from ._abi import RECORDING_EXPORTS as RECORDING_EXPORTS
 from ._abi import STRUCT_TYPES as STRUCT_TYPES
-from ._abi import P_U32 as P_U32
-from ._abi import P_DOUBLE as P_DOUBLE
-from ._abi import P_CHAR as P_CHAR
-from ._abi import JulianDay as JulianDay
-from ._abi import UT1Time as UT1Time
-from ._abi import SunCoordinate as SunCoordinate
-from ._abi import MoonCoordinate as MoonCoordinate
-from ._abi import MoonIllumination as MoonIllumination
-from ._abi import MoonPositionAngle as MoonPositionAngle
-from ._abi import Discriminant as Discriminant
-from ._abi import EquationOfTime as EquationOfTime
-from ._abi import ApparentSolarTime as ApparentSolarTime
-from ._abi import SiderealTime as SiderealTime
-from ._abi import JieqiMomentQuery as JieqiMomentQuery
-from ._abi import SupportedLunarYearRange as SupportedLunarYearRange
-from ._abi import LunarYearInfo as LunarYearInfo
-from ._abi import LunarDate as LunarDate
-from ._abi import GregorianDate as GregorianDate
-from ._abi import DeltaT as DeltaT
-from ._abi import ChartBodyV1 as ChartBodyV1
-from ._abi import ChartHousesV1 as ChartHousesV1
-from ._abi import ChartSnapshotV1 as ChartSnapshotV1
-from ._abi import LongitudeDifferenceEventRecord as LongitudeDifferenceEventRecord
-from ._abi import LongitudeEventRecord as LongitudeEventRecord
-from ._abi import CapabilityRecordV1 as CapabilityRecordV1
-from ._abi import ModelIdentityRecordV1 as ModelIdentityRecordV1
-from ._abi import PositionRecordV1 as PositionRecordV1
-from ._abi import HouseQueryResultV1 as HouseQueryResultV1
-from ._abi import StationEventRecord as StationEventRecord
 
 
 def _native_filename() -> str:
@@ -81,5 +52,10 @@ def call(name: str, *args: object) -> object:
 
 def last_error_text() -> str:
   """Read the current thread's native error without exposing its pointer."""
-  message = FUNCTIONS["last_error"]()
+  message = FUNCTIONS["celestial_last_error"]()
   return "" if message is None else message.decode("utf-8", errors="replace")
+
+
+def last_error_kind() -> int:
+  """Read the current thread's error kind without clearing its state."""
+  return FUNCTIONS["celestial_last_error_kind"]()

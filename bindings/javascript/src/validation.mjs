@@ -64,23 +64,43 @@ const gregorianMonthLength = (year, month) => {
   return [4, 6, 9, 11].includes(month) ? 30 : 31;
 };
 
-const civilDate = (value, name) => {
-  const year = rangedInteger(value.year, `${name}.year`, 1, MAX_CIVIL_YEAR);
+const civilDate = (value, name, minimumYear = 1) => {
+  const year = rangedInteger(value.year, `${name}.year`, minimumYear, MAX_CIVIL_YEAR);
   const month = rangedInteger(value.month, `${name}.month`, 1, 12);
   const day = rangedInteger(value.day, `${name}.day`, 1, gregorianMonthLength(year, month));
   return { year, month, day };
 };
 
-export const gregorianDate = (value, name) => {
+export const gregorianDate = (value, name, minimumYear = 1) => {
   requiredRecord(value, name, ["year", "month", "day"], ["fraction", "isLeap"]);
-  return civilDate(value, name);
+  return civilDate(value, name, minimumYear);
 };
 
-export const civilDateTime = (value, name) => {
+export const civilDateTime = (value, name, minimumYear = 1) => {
   requiredRecord(value, name, ["year", "month", "day", "fraction"], ["isLeap"]);
-  const date = civilDate(value, name);
+  const date = civilDate(value, name, minimumYear);
   const fraction = rangedNumber(value.fraction, `${name}.fraction`, 0, 1, false);
   return { ...date, fraction };
+};
+
+// Native calls own calendar/model domains; these checks only prevent FFI narrowing.
+export const nativeGregorianDate = (value, name) => {
+  requiredRecord(value, name, ["year", "month", "day"], ["fraction", "isLeap"]);
+  return {
+    year: rangedInteger(value.year, `${name}.year`, -(2 ** 31), 2 ** 31 - 1),
+    month: rangedInteger(value.month, `${name}.month`, 0, 255),
+    day: rangedInteger(value.day, `${name}.day`, 0, 255),
+  };
+};
+
+export const nativeCivilDateTime = (value, name) => {
+  requiredRecord(value, name, ["year", "month", "day", "fraction"], ["isLeap"]);
+  return {
+    year: rangedInteger(value.year, `${name}.year`, -(2 ** 31), 2 ** 31 - 1),
+    month: rangedInteger(value.month, `${name}.month`, 0, 2 ** 32 - 1),
+    day: rangedInteger(value.day, `${name}.day`, 0, 2 ** 32 - 1),
+    fraction: finiteNumber(value.fraction, `${name}.fraction`),
+  };
 };
 
 // Date callers supply their exact millisecond-derived seconds; native callers retain the day fraction.

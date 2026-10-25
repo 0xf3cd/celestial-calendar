@@ -15,6 +15,7 @@
 import os
 import sys
 import argparse
+import json
 import subprocess
 
 from pathlib import Path
@@ -22,56 +23,20 @@ from typing import Final
 
 
 PROJ_ROOT: Final[Path] = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJ_ROOT))
+from automation.c_header_pins import verify_c_header_pins  # noqa: E402
+
 SRC_DIR: Final[Path] = PROJ_ROOT / "src"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "wasm"
 MODULE_STEM: Final[str] = "celestial-jieqi"
 
 # The private WASM surface mirrors the complete celestial.h ABI. malloc/free are internal
 # protocol exports for caller-owned sret, string, count, and fill storage.
-EXPORTS: Final[list[str]] = [
-  "set_log_verbosity",
-  "last_error",
-  "ut1_to_jd",
-  "ut1_to_jde",
-  "jde_to_ut1",
-  "sun_apparent_geocentric_coord",
-  "moon_apparent_geocentric_coord",
-  "moon_illumination",
-  "moon_position_angle",
-  "moon_phase_moments",
-  "solar_lon_root_discriminant",
-  "solar_lon_roots",
-  "new_moons_after_jde",
-  "new_moons_in_year",
-  "equation_of_time",
-  "apparent_solar_time",
-  "local_apparent_sidereal_time",
-  "query_jieqi_moment",
-  "get_jieqi_name",
-  "get_supported_lunar_year_range",
-  "get_lunar_year_info",
-  "gregorian_to_lunar",
-  "lunar_to_gregorian",
-  "delta_t_algo1",
-  "delta_t_algo2",
-  "delta_t_algo3",
-  "delta_t_algo4",
-  "delta_t_algo5",
-  "delta_t",
-  "chart_snapshot_v1",
-  "longitude_events",
-  "longitude_stations",
-  "longitude_difference_events",
-  "celestial_capabilities",
-  "celestial_model_identities",
-  "celestial_capability_text",
-  "position_query_v1",
-  "house_query_v1",
-  "malloc",
-  "free",
-]
+EXPORTS: Final[list[str]] = json.loads(
+  (PROJ_ROOT / "bindings/javascript/src/wasm_exports.json").read_text(encoding="utf-8")
+)
 
-# HEAP* views decode the C layouts; ccall decodes last_error's borrowed C string.
+# HEAP* views decode the C layouts; ccall decodes celestial_last_error's borrowed C string.
 RUNTIME_METHODS: Final[list[str]] = ["ccall", "HEAPU8", "HEAPU16", "HEAP32", "HEAPU32", "HEAPF64"]
 
 # -fwasm-exceptions is not optional: the library throws on bad input and the C ABI turns
@@ -130,10 +95,26 @@ def emsdk_python(sdk: Path) -> str:
 def build(sdk: Path, sources: list[Path], out_dir: Path) -> None:
   """Build celestial-jieqi.{mjs,wasm}. Stale outputs are cleared first (#155's lesson:
   a renamed or deleted variant must stop silently passing the checker)."""
+  subprocess.run([sys.executable, str(PROJ_ROOT / "toolbox/make_bindings.py"), "--check"], check=True)
+  verify_c_header_pins(PROJ_ROOT)
   env = dict(os.environ)
   env["EMSDK"] = str(sdk)
   env["EMSDK_PYTHON"] = str(emsdk_python(sdk))
   env["PATH"] = os.pathsep.join([str(sdk), str(sdk / "upstream" / "emscripten"), env["PATH"]])
+  subprocess.run(
+    [
+      str(sdk / "upstream/emscripten/emcc"),
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-fsyntax-only",
+      str(SRC_DIR / "shared_lib/c_header_check.c"),
+    ],
+    env=env,
+    check=True,
+  )
 
   out = out_dir / f"{MODULE_STEM}.mjs"
   cmd = [

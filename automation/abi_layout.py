@@ -10,6 +10,7 @@ import ctypes
 import importlib.util
 import os
 import shutil
+import sys
 import tempfile
 
 from pathlib import Path
@@ -207,6 +208,35 @@ def check_abi_layout() -> int:
   """Compare the package's real declarations with compiled C, without loading a library."""
   print("#" * 60)
   yellow_print("Checking that the ctypes mirror matches the real ABI layout...")
+
+  ret = run_cmd(
+    [sys.executable, str(paths.proj_root() / "toolbox/make_bindings.py"), "--check"],
+    print_cmd=False,
+  )
+  if ret.retcode != 0:
+    return ret.retcode
+  from .c_header_pins import verify_c_header_pins
+
+  try:
+    verify_c_header_pins(paths.proj_root())
+  except RuntimeError as error:
+    red_print(str(error))
+    return 1
+  cc = os.environ.get("CC", "cc")
+  pinned = run_cmd(
+    [
+      cc,
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-fsyntax-only",
+      str(paths.proj_root() / "src/shared_lib/c_header_check.c"),
+    ]
+  )
+  if pinned.retcode != 0:
+    return pinned.retcode
 
   header = paths.proj_root() / "src" / "shared_lib" / "celestial.h"
   try:

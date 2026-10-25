@@ -1,5 +1,5 @@
 {
-  "schema": "celestial-calendar/python-native-abi@1",
+  "schema": "celestial-calendar/python-native-abi@2",
   "source_header": "src/shared_lib/celestial.h",
   "native_width_bits": {
     "bool": 8,
@@ -11,7 +11,7 @@
     "double": 64
   },
   "layouts": {
-    "JulianDay": {
+    "CelestialJulianDay": {
       "size": 16,
       "alignment": 8,
       "fields": [
@@ -19,7 +19,7 @@
         {"name": "value", "type": "double", "offset": 8}
       ]
     },
-    "UT1Time": {
+    "CelestialUT1Time": {
       "size": 24,
       "alignment": 8,
       "fields": [
@@ -30,7 +30,7 @@
         {"name": "fraction", "type": "double", "offset": 16}
       ]
     },
-    "SunCoordinate": {
+    "CelestialSunCoordinate": {
       "size": 32,
       "alignment": 8,
       "fields": [
@@ -40,7 +40,7 @@
         {"name": "r", "type": "double", "offset": 24}
       ]
     },
-    "MoonCoordinate": {
+    "CelestialMoonCoordinate": {
       "size": 32,
       "alignment": 8,
       "fields": [
@@ -50,7 +50,7 @@
         {"name": "r", "type": "double", "offset": 24}
       ]
     },
-    "MoonIllumination": {
+    "CelestialMoonIllumination": {
       "size": 24,
       "alignment": 8,
       "fields": [
@@ -59,7 +59,7 @@
         {"name": "elongation_deg", "type": "double", "offset": 16}
       ]
     },
-    "MoonPositionAngle": {
+    "CelestialMoonPositionAngle": {
       "size": 16,
       "alignment": 8,
       "fields": [
@@ -67,7 +67,7 @@
         {"name": "angle_deg", "type": "double", "offset": 8}
       ]
     },
-    "Discriminant": {
+    "CelestialDiscriminant": {
       "size": 8,
       "alignment": 4,
       "fields": [
@@ -75,7 +75,7 @@
         {"name": "count", "type": "uint32_t", "offset": 4}
       ]
     },
-    "EquationOfTime": {
+    "CelestialEquationOfTime": {
       "size": 16,
       "alignment": 8,
       "fields": [
@@ -83,7 +83,7 @@
         {"name": "value", "type": "double", "offset": 8}
       ]
     },
-    "ApparentSolarTime": {
+    "CelestialApparentSolarTime": {
       "size": 24,
       "alignment": 8,
       "fields": [
@@ -94,7 +94,7 @@
         {"name": "fraction", "type": "double", "offset": 16}
       ]
     },
-    "SiderealTime": {
+    "CelestialSiderealTime": {
       "size": 16,
       "alignment": 8,
       "fields": [
@@ -102,7 +102,7 @@
         {"name": "value", "type": "double", "offset": 8}
       ]
     },
-    "JieqiMomentQuery": {
+    "CelestialJieqiMomentQuery": {
       "size": 24,
       "alignment": 8,
       "fields": [
@@ -114,7 +114,7 @@
         {"name": "frac", "type": "double", "offset": 16}
       ]
     },
-    "SupportedLunarYearRange": {
+    "CelestialSupportedLunarYearRange": {
       "size": 12,
       "alignment": 4,
       "fields": [
@@ -123,7 +123,7 @@
         {"name": "end", "type": "int32_t", "offset": 8}
       ]
     },
-    "LunarYearInfo": {
+    "CelestialLunarYearInfo": {
       "size": 16,
       "alignment": 4,
       "fields": [
@@ -135,7 +135,7 @@
         {"name": "month_len", "type": "uint16_t", "offset": 12}
       ]
     },
-    "LunarDate": {
+    "CelestialLunarDate": {
       "size": 12,
       "alignment": 4,
       "fields": [
@@ -146,7 +146,7 @@
         {"name": "day", "type": "uint8_t", "offset": 10}
       ]
     },
-    "GregorianDate": {
+    "CelestialGregorianDate": {
       "size": 12,
       "alignment": 4,
       "fields": [
@@ -156,27 +156,29 @@
         {"name": "day", "type": "uint8_t", "offset": 9}
       ]
     },
-    "DeltaT": {
+    "CelestialDeltaT": {
       "size": 16,
       "alignment": 8,
       "fields": [
         {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "model_identity_code", "type": "uint32_t", "offset": 4},
         {"name": "value", "type": "double", "offset": 8}
       ]
     },
-    "ChartBodyV1": {
-      "size": 40,
+    "CelestialChartBody": {
+      "size": 48,
       "alignment": 8,
       "fields": [
         {"name": "target_code", "type": "uint32_t", "offset": 0},
-        {"name": "present_fields", "type": "uint32_t", "offset": 4},
-        {"name": "longitude_deg", "type": "double", "offset": 8},
-        {"name": "latitude_deg", "type": "double", "offset": 16},
-        {"name": "distance_au", "type": "double", "offset": 24},
-        {"name": "longitude_rate_deg_per_tt_day", "type": "double", "offset": 32}
+        {"name": "source_code", "type": "uint32_t", "offset": 4},
+        {"name": "present_fields", "type": "uint32_t", "offset": 8},
+        {"name": "longitude_deg", "type": "double", "offset": 16},
+        {"name": "latitude_deg", "type": "double", "offset": 24},
+        {"name": "distance_au", "type": "double", "offset": 32},
+        {"name": "longitude_rate_deg_per_tt_day", "type": "double", "offset": 40}
       ]
     },
-    "ChartHousesV1": {
+    "CelestialChartHouses": {
       "size": 128,
       "alignment": 8,
       "fields": [
@@ -187,18 +189,20 @@
         {"name": "cusps_deg", "type": "double[12]", "offset": 32, "extent": 12, "stride": 8}
       ]
     },
-    "ChartSnapshotV1": {
-      "size": 712,
+    "CelestialChartSnapshot": {
+      "size": 832,
       "alignment": 8,
       "fields": [
         {"name": "valid", "type": "bool", "offset": 0},
-        {"name": "jd_ut1", "type": "double", "offset": 8},
-        {"name": "jde_tt", "type": "double", "offset": 16},
-        {"name": "bodies", "type": "ChartBodyV1[14]", "offset": 24, "extent": 14, "stride": 40},
-        {"name": "houses", "type": "ChartHousesV1", "offset": 584}
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 4},
+        {"name": "nutation_identity_code", "type": "uint32_t", "offset": 8},
+        {"name": "jd_ut1", "type": "double", "offset": 16},
+        {"name": "jde_tt", "type": "double", "offset": 24},
+        {"name": "bodies", "type": "CelestialChartBody[14]", "offset": 32, "extent": 14, "stride": 48},
+        {"name": "houses", "type": "CelestialChartHouses", "offset": 704}
       ]
     },
-    "LongitudeEventRecord": {
+    "CelestialLongitudeEventRecord": {
       "size": 32,
       "alignment": 8,
       "fields": [
@@ -208,7 +212,7 @@
         {"name": "direction_code", "type": "uint32_t", "offset": 24}
       ]
     },
-    "StationEventRecord": {
+    "CelestialStationEventRecord": {
       "size": 32,
       "alignment": 8,
       "fields": [
@@ -219,7 +223,7 @@
         {"name": "motion_after_code", "type": "uint32_t", "offset": 28}
       ]
     },
-    "LongitudeDifferenceEventRecord": {
+    "CelestialLongitudeDifferenceEventRecord": {
       "size": 56,
       "alignment": 8,
       "fields": [
@@ -232,7 +236,7 @@
         {"name": "direction_code", "type": "uint32_t", "offset": 48}
       ]
     },
-    "CapabilityRecordV1": {
+    "CelestialCapabilityRecord": {
       "size": 40,
       "alignment": 8,
       "fields": [
@@ -242,23 +246,21 @@
         {"name": "source_code", "type": "uint32_t", "offset": 12},
         {"name": "domain_start_jde_tt", "type": "double", "offset": 16},
         {"name": "domain_end_jde_tt", "type": "double", "offset": 24},
-        {"name": "maximum_span_tt_days", "type": "uint32_t", "offset": 32},
-        {"name": "flags", "type": "uint32_t", "offset": 36}
+        {"name": "maximum_span_tt_days", "type": "uint32_t", "offset": 32}
       ]
     },
-    "ModelIdentityRecordV1": {
+    "CelestialModelIdentityRecord": {
       "size": 32,
       "alignment": 8,
       "fields": [
         {"name": "kind_code", "type": "uint32_t", "offset": 0},
         {"name": "identity_code", "type": "uint32_t", "offset": 4},
         {"name": "status_code", "type": "uint32_t", "offset": 8},
-        {"name": "default_alias_code", "type": "uint32_t", "offset": 12},
         {"name": "domain_start_jde_tt", "type": "double", "offset": 16},
         {"name": "domain_end_jde_tt", "type": "double", "offset": 24}
       ]
     },
-    "PositionRecordV1": {
+    "CelestialPositionRecord": {
       "size": 40,
       "alignment": 8,
       "fields": [
@@ -267,319 +269,400 @@
         {"name": "longitude_deg", "type": "double", "offset": 8},
         {"name": "latitude_deg", "type": "double", "offset": 16},
         {"name": "distance_au", "type": "double", "offset": 24},
-        {"name": "source_code", "type": "uint32_t", "offset": 32},
-        {"name": "flags", "type": "uint32_t", "offset": 36}
+        {"name": "source_code", "type": "uint32_t", "offset": 32}
       ]
     },
-    "HouseQueryResultV1": {
-      "size": 168,
+    "CelestialEquatorialPositionRecord": {
+      "size": 40,
+      "alignment": 8,
+      "fields": [
+        {"name": "target_code", "type": "uint32_t", "offset": 0},
+        {"name": "present_fields", "type": "uint32_t", "offset": 4},
+        {"name": "right_ascension_deg", "type": "double", "offset": 8},
+        {"name": "declination_deg", "type": "double", "offset": 16},
+        {"name": "distance_au", "type": "double", "offset": 24},
+        {"name": "source_code", "type": "uint32_t", "offset": 32}
+      ]
+    },
+    "CelestialHouseQueryResult": {
+      "size": 160,
       "alignment": 8,
       "fields": [
         {"name": "valid", "type": "bool", "offset": 0},
         {"name": "house_system_code", "type": "uint32_t", "offset": 4},
         {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 8},
         {"name": "nutation_identity_code", "type": "uint32_t", "offset": 12},
-        {"name": "flags", "type": "uint32_t", "offset": 16},
-        {"name": "jd_ut1", "type": "double", "offset": 24},
-        {"name": "jde_tt", "type": "double", "offset": 32},
-        {"name": "houses", "type": "ChartHousesV1", "offset": 40}
+        {"name": "jd_ut1", "type": "double", "offset": 16},
+        {"name": "jde_tt", "type": "double", "offset": 24},
+        {"name": "houses", "type": "CelestialChartHouses", "offset": 32}
+      ]
+    },
+    "CelestialCivilHouseCapability": {
+      "size": 48,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "status_code", "type": "uint32_t", "offset": 4},
+        {"name": "civil_start_year", "type": "int32_t", "offset": 8},
+        {"name": "civil_end_year_exclusive", "type": "int32_t", "offset": 12},
+        {"name": "civil_scale_mask", "type": "uint32_t", "offset": 16},
+        {"name": "utc_start_year", "type": "int32_t", "offset": 20},
+        {"name": "utc_start_month", "type": "uint32_t", "offset": 24},
+        {"name": "utc_start_day", "type": "uint32_t", "offset": 28},
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 32},
+        {"name": "has_derived_tt_cutoff", "type": "bool", "offset": 36},
+        {"name": "derived_tt_end_jde_tt", "type": "double", "offset": 40}
       ]
     }
   },
-  "chart_v1_codes": {
-    "CHART_CIVIL_SCALE_UTC": 0,
-    "CHART_CIVIL_SCALE_UT1": 1,
-    "CHART_HOUSE_SYSTEM_EQUAL": 0,
-    "CHART_HOUSE_SYSTEM_WHOLE_SIGN": 1,
-    "CHART_HOUSE_SYSTEM_PLACIDUS": 2,
-    "CHART_DELTA_T_MODEL_DEFAULT": 0,
-    "CHART_DELTA_T_MODEL_ALGO1": 1,
-    "CHART_DELTA_T_MODEL_ALGO2": 2,
-    "CHART_DELTA_T_MODEL_ALGO3": 3,
-    "CHART_DELTA_T_MODEL_ALGO4": 4,
-    "CHART_DELTA_T_MODEL_ALGO5": 5,
-    "CHART_TARGET_SUN": 0,
-    "CHART_TARGET_MOON": 1,
-    "CHART_TARGET_MERCURY": 2,
-    "CHART_TARGET_VENUS": 3,
-    "CHART_TARGET_MARS": 4,
-    "CHART_TARGET_JUPITER": 5,
-    "CHART_TARGET_SATURN": 6,
-    "CHART_TARGET_URANUS": 7,
-    "CHART_TARGET_NEPTUNE": 8,
-    "CHART_TARGET_PLUTO": 9,
-    "CHART_TARGET_MEAN_ASCENDING": 10,
-    "CHART_TARGET_MEAN_DESCENDING": 11,
-    "CHART_TARGET_TRUE_ASCENDING": 12,
-    "CHART_TARGET_TRUE_DESCENDING": 13,
-    "CHART_PRESENT_LATITUDE": 1,
-    "CHART_PRESENT_DISTANCE": 2
+  "codes": {
+    "CELESTIAL_ERROR_NONE": 0,
+    "CELESTIAL_ERROR_INVALID_INPUT": 1,
+    "CELESTIAL_ERROR_COMPUTATION": 2,
+    "CELESTIAL_ERROR_RESOURCE": 3,
+    "CELESTIAL_ERROR_INTERNAL": 4,
+    "CELESTIAL_CIVIL_SCALE_UTC": 0,
+    "CELESTIAL_CIVIL_SCALE_UT1": 1,
+    "CELESTIAL_HOUSE_SYSTEM_EQUAL": 0,
+    "CELESTIAL_HOUSE_SYSTEM_WHOLE_SIGN": 1,
+    "CELESTIAL_HOUSE_SYSTEM_PLACIDUS": 2,
+    "CELESTIAL_DELTA_T_MODEL_DEFAULT": 0,
+    "CELESTIAL_DELTA_T_MODEL_ALGO1": 1,
+    "CELESTIAL_DELTA_T_MODEL_ALGO2": 2,
+    "CELESTIAL_DELTA_T_MODEL_ALGO3": 3,
+    "CELESTIAL_DELTA_T_MODEL_ALGO4": 4,
+    "CELESTIAL_DELTA_T_MODEL_ALGO5": 5,
+    "CELESTIAL_TARGET_SUN": 0,
+    "CELESTIAL_TARGET_MOON": 1,
+    "CELESTIAL_TARGET_MERCURY": 2,
+    "CELESTIAL_TARGET_VENUS": 3,
+    "CELESTIAL_TARGET_MARS": 4,
+    "CELESTIAL_TARGET_JUPITER": 5,
+    "CELESTIAL_TARGET_SATURN": 6,
+    "CELESTIAL_TARGET_URANUS": 7,
+    "CELESTIAL_TARGET_NEPTUNE": 8,
+    "CELESTIAL_TARGET_PLUTO": 9,
+    "CELESTIAL_TARGET_MEAN_ASCENDING": 10,
+    "CELESTIAL_TARGET_MEAN_DESCENDING": 11,
+    "CELESTIAL_TARGET_TRUE_ASCENDING": 12,
+    "CELESTIAL_TARGET_TRUE_DESCENDING": 13,
+    "CELESTIAL_TARGET_ALL": 4294967295,
+    "CELESTIAL_POSITION_SOURCE_SUN_VSOP87D": 1,
+    "CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC": 2,
+    "CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D": 3,
+    "CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT": 4,
+    "CELESTIAL_POSITION_SOURCE_NODE_MEAN": 5,
+    "CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM": 6,
+    "CELESTIAL_NUTATION_MODEL_DEFAULT": 0,
+    "CELESTIAL_NUTATION_MODEL_MEEUS": 1,
+    "CELESTIAL_NUTATION_MODEL_IAU_1980": 2,
+    "CELESTIAL_PRESENT_LATITUDE": 1,
+    "CELESTIAL_PRESENT_DISTANCE": 2,
+    "CELESTIAL_EVENT_DIRECTION_INCREASING": 0,
+    "CELESTIAL_EVENT_DIRECTION_DECREASING": 1,
+    "CELESTIAL_EVENT_DIRECTION_TANGENT": 2,
+    "CELESTIAL_EVENT_MOTION_DIRECT": 0,
+    "CELESTIAL_EVENT_MOTION_RETROGRADE": 1,
+    "CELESTIAL_OPERATION_POSITION": 0,
+    "CELESTIAL_OPERATION_LONGITUDE_RATE": 1,
+    "CELESTIAL_OPERATION_EVENTS": 2,
+    "CELESTIAL_OPERATION_HOUSES": 3,
+    "CELESTIAL_OPERATION_EQUATORIAL": 4,
+    "CELESTIAL_OPERATION_CHART": 5,
+    "CELESTIAL_OPERATION_DELTA_T": 6,
+    "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
+    "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
+    "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
+    "CELESTIAL_MODEL_KIND_DELTA_T": 0,
+    "CELESTIAL_MODEL_KIND_NUTATION": 1,
+    "CELESTIAL_MODEL_KIND_POSITION_SOURCE": 2,
+    "CELESTIAL_MODEL_KIND_ALL": 4294967295,
+    "CELESTIAL_MODEL_STATUS_CURRENT": 0,
+    "CELESTIAL_MODEL_STATUS_FROZEN": 1
   },
   "exports": [
     {
-      "name": "set_log_verbosity",
-      "signature": "bool set_log_verbosity(uint8_t new_value)",
-      "return": {"kind": "primitive", "type": "bool"},
-      "protocol": {"kind": "primitive", "zero": "false is failure; true is success"},
-      "recording": true
-    },
-    {
-      "name": "last_error",
-      "signature": "const char *last_error(void)",
+      "name": "celestial_last_error",
+      "signature": "const char *celestial_last_error(void)",
       "return": {"kind": "borrowed-string", "pointer_width_bits": 64},
-      "protocol": {"kind": "borrowed-string", "zero": "an empty string is the legal no-error state", "lifetime": "until the next recording call"},
+      "protocol": {"kind": "borrowed-string", "error_reader": "message", "lifetime": "next-recording-call", "error_channel": "preserve"},
       "recording": false
     },
     {
-      "name": "ut1_to_jd",
-      "signature": "JulianDay ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction)",
-      "return": {"kind": "struct", "layout": "JulianDay"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "ut1_to_jde",
-      "signature": "JulianDay ut1_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction)",
-      "return": {"kind": "struct", "layout": "JulianDay"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "jde_to_ut1",
-      "signature": "UT1Time jde_to_ut1(double jde)",
-      "return": {"kind": "struct", "layout": "UT1Time"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "sun_apparent_geocentric_coord",
-      "signature": "SunCoordinate sun_apparent_geocentric_coord(double jde)",
-      "return": {"kind": "struct", "layout": "SunCoordinate"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "moon_apparent_geocentric_coord",
-      "signature": "MoonCoordinate moon_apparent_geocentric_coord(double jde)",
-      "return": {"kind": "struct", "layout": "MoonCoordinate"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "moon_illumination",
-      "signature": "MoonIllumination moon_illumination(double jde)",
-      "return": {"kind": "struct", "layout": "MoonIllumination"},
-      "protocol": {"kind": "struct", "zero": "illumination=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "moon_position_angle",
-      "signature": "MoonPositionAngle moon_position_angle(double jde)",
-      "return": {"kind": "struct", "layout": "MoonPositionAngle"},
-      "protocol": {"kind": "struct", "zero": "angle_deg=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "moon_phase_moments",
-      "signature": "uint32_t moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count)",
+      "name": "celestial_last_error_kind",
+      "signature": "uint32_t celestial_last_error_kind(void)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "root_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(root_count, slot_count)", "zero": "zero written is legal for a count query"},
+      "protocol": {"kind": "primitive", "error_reader": "kind", "error_channel": "preserve"},
+      "recording": false
+    },
+    {
+      "name": "celestial_ut1_to_jd",
+      "signature": "CelestialJulianDay celestial_ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction)",
+      "return": {"kind": "struct", "layout": "CelestialJulianDay"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "solar_lon_root_discriminant",
-      "signature": "Discriminant solar_lon_root_discriminant(int32_t year, double longitude)",
-      "return": {"kind": "struct", "layout": "Discriminant"},
-      "protocol": {"kind": "companion-count", "zero": "count=0 is legal when valid=true"},
+      "name": "celestial_ut1_to_jde",
+      "signature": "CelestialJulianDay celestial_ut1_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction)",
+      "return": {"kind": "struct", "layout": "CelestialJulianDay"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "solar_lon_roots",
-      "signature": "uint32_t solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t slot_count)",
+      "name": "celestial_jde_to_ut1",
+      "signature": "CelestialUT1Time celestial_jde_to_ut1(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialUT1Time"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_sun_apparent_geocentric_coord",
+      "signature": "CelestialSunCoordinate celestial_sun_apparent_geocentric_coord(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialSunCoordinate"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_moon_apparent_geocentric_coord",
+      "signature": "CelestialMoonCoordinate celestial_moon_apparent_geocentric_coord(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialMoonCoordinate"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_moon_illumination",
+      "signature": "CelestialMoonIllumination celestial_moon_illumination(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialMoonIllumination"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_moon_position_angle",
+      "signature": "CelestialMoonPositionAngle celestial_moon_position_angle(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialMoonPositionAngle"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_moon_phase_moments",
+      "signature": "uint32_t celestial_moon_phase_moments(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "companion-fill", "count": "solar_lon_root_discriminant", "fill": "slots may be null only when slot_count=0; writes min(discriminant count, slot_count)", "zero": "zero written is legal when slot_count=0 or count=0"},
+      "protocol": {"kind": "count-fill", "count_parameter": "root_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "new_moons_after_jde",
-      "signature": "uint32_t new_moons_after_jde(double jde, double *slots, uint32_t slot_count)",
+      "name": "celestial_solar_lon_root_discriminant",
+      "signature": "CelestialDiscriminant celestial_solar_lon_root_discriminant(int32_t year, double longitude)",
+      "return": {"kind": "struct", "layout": "CelestialDiscriminant"},
+      "protocol": {"kind": "companion-count", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_solar_lon_roots",
+      "signature": "uint32_t celestial_solar_lon_roots(int32_t year, double longitude, double *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "requested-fill", "count": "caller requests slot_count results", "fill": "slots may be null only when slot_count=0; writes exactly slot_count on success", "zero": "zero is legal when slot_count=0"},
+      "protocol": {"kind": "companion-fill", "count_export": "celestial_solar_lon_root_discriminant", "legal_empty": true, "written_policy": "min-total-capacity", "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "new_moons_in_year",
-      "signature": "uint32_t new_moons_in_year(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count)",
+      "name": "celestial_new_moons_after_jde",
+      "signature": "uint32_t celestial_new_moons_after_jde(double jde, double *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "root_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(root_count, slot_count)", "zero": "zero written is legal for a count query"},
+      "protocol": {"kind": "requested-fill", "capacity_parameter": "slot_count", "legal_empty": true, "written_policy": "exact-requested-count", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "equation_of_time",
-      "signature": "EquationOfTime equation_of_time(double jde)",
-      "return": {"kind": "struct", "layout": "EquationOfTime"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "apparent_solar_time",
-      "signature": "ApparentSolarTime apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude)",
-      "return": {"kind": "struct", "layout": "ApparentSolarTime"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "local_apparent_sidereal_time",
-      "signature": "SiderealTime local_apparent_sidereal_time(double jd_ut1, double longitude)",
-      "return": {"kind": "struct", "layout": "SiderealTime"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "query_jieqi_moment",
-      "signature": "JieqiMomentQuery query_jieqi_moment(int32_t year, uint8_t jq_idx)",
-      "return": {"kind": "struct", "layout": "JieqiMomentQuery"},
-      "protocol": {"kind": "struct", "zero": "jq_idx=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "get_jieqi_name",
-      "signature": "bool get_jieqi_name(uint8_t jq_idx, char *buf, uint32_t buf_size)",
-      "return": {"kind": "primitive", "type": "bool"},
-      "protocol": {"kind": "caller-string", "fill": "buf is non-null; writes a NUL-terminated UTF-8 string without truncation", "zero": "false is failure"},
-      "recording": true
-    },
-    {
-      "name": "get_supported_lunar_year_range",
-      "signature": "SupportedLunarYearRange get_supported_lunar_year_range(uint8_t algo)",
-      "return": {"kind": "struct", "layout": "SupportedLunarYearRange"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "get_lunar_year_info",
-      "signature": "LunarYearInfo get_lunar_year_info(uint8_t algo, int32_t year)",
-      "return": {"kind": "struct", "layout": "LunarYearInfo"},
-      "protocol": {"kind": "struct", "zero": "leap_month=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "gregorian_to_lunar",
-      "signature": "LunarDate gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day)",
-      "return": {"kind": "struct", "layout": "LunarDate"},
-      "protocol": {"kind": "struct", "zero": "is_leap=false is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "lunar_to_gregorian",
-      "signature": "GregorianDate lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day)",
-      "return": {"kind": "struct", "layout": "GregorianDate"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure"},
-      "recording": true
-    },
-    {
-      "name": "delta_t_algo1",
-      "signature": "DeltaT delta_t_algo1(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "delta_t_algo2",
-      "signature": "DeltaT delta_t_algo2(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "delta_t_algo3",
-      "signature": "DeltaT delta_t_algo3(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "delta_t_algo4",
-      "signature": "DeltaT delta_t_algo4(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "delta_t_algo5",
-      "signature": "DeltaT delta_t_algo5(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "delta_t",
-      "signature": "DeltaT delta_t(double year)",
-      "return": {"kind": "struct", "layout": "DeltaT"},
-      "protocol": {"kind": "struct", "zero": "value=0 is legal when valid=true"},
-      "recording": true
-    },
-    {
-      "name": "chart_snapshot_v1",
-      "signature": "ChartSnapshotV1 chart_snapshot_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code)",
-      "return": {"kind": "struct", "layout": "ChartSnapshotV1"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure; invalid payload and padding are not consumed", "presence": "present_fields marks latitude and distance; absent distance is unused storage", "ownership": "by-value fixed snapshot of 14 bodies and 12 cusps; no allocation or partial result"},
-      "recording": true
-    },
-    {
-      "name": "longitude_events",
-      "signature": "uint32_t longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeEventRecord *slots, uint32_t slot_count)",
+      "name": "celestial_new_moons_in_year",
+      "signature": "uint32_t celestial_new_moons_in_year(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "event_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(event_count, slot_count)", "zero": "zero written is legal for a count query or an empty result; failure is told apart by last_error"},
+      "protocol": {"kind": "count-fill", "count_parameter": "root_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "longitude_stations",
-      "signature": "uint32_t longitude_stations(uint32_t target_code, double start_jde_tt, double end_jde_tt, uint32_t *event_count, StationEventRecord *slots, uint32_t slot_count)",
-      "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "event_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(event_count, slot_count)", "zero": "zero written is legal for a count query or an empty result; failure is told apart by last_error"},
+      "name": "celestial_equation_of_time",
+      "signature": "CelestialEquationOfTime celestial_equation_of_time(double jde)",
+      "return": {"kind": "struct", "layout": "CelestialEquationOfTime"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "longitude_difference_events",
-      "signature": "uint32_t longitude_difference_events(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count)",
+      "name": "celestial_apparent_solar_time",
+      "signature": "CelestialApparentSolarTime celestial_apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude)",
+      "return": {"kind": "struct", "layout": "CelestialApparentSolarTime"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_local_apparent_sidereal_time",
+      "signature": "CelestialSiderealTime celestial_local_apparent_sidereal_time(double jd_ut1, double longitude)",
+      "return": {"kind": "struct", "layout": "CelestialSiderealTime"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_query_jieqi_moment",
+      "signature": "CelestialJieqiMomentQuery celestial_query_jieqi_moment(int32_t year, uint8_t jq_idx)",
+      "return": {"kind": "struct", "layout": "CelestialJieqiMomentQuery"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_get_jieqi_name",
+      "signature": "uint32_t celestial_get_jieqi_name(uint8_t jq_idx, char *buf, uint32_t buf_size)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "event_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(event_count, slot_count)", "zero": "zero written is legal for a count query or an empty result; failure is told apart by last_error"},
+      "protocol": {"kind": "sized-string", "buffer_parameter": "buf", "capacity_parameter": "buf_size", "size_includes_nul": true, "null_requires_zero_capacity": true, "truncates": true, "terminates": true, "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_get_supported_lunar_year_range",
+      "signature": "CelestialSupportedLunarYearRange celestial_get_supported_lunar_year_range(uint8_t algo)",
+      "return": {"kind": "struct", "layout": "CelestialSupportedLunarYearRange"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_get_lunar_year_info",
+      "signature": "CelestialLunarYearInfo celestial_get_lunar_year_info(uint8_t algo, int32_t year)",
+      "return": {"kind": "struct", "layout": "CelestialLunarYearInfo"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_gregorian_to_lunar",
+      "signature": "CelestialLunarDate celestial_gregorian_to_lunar(uint8_t algo, int32_t year, uint8_t month, uint8_t day)",
+      "return": {"kind": "struct", "layout": "CelestialLunarDate"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_lunar_to_gregorian",
+      "signature": "CelestialGregorianDate celestial_lunar_to_gregorian(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day)",
+      "return": {"kind": "struct", "layout": "CelestialGregorianDate"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_delta_t",
+      "signature": "CelestialDeltaT celestial_delta_t(double year, uint32_t model_code)",
+      "return": {"kind": "struct", "layout": "CelestialDeltaT"},
+      "protocol": {"kind": "struct", "identity": "resolved-explicit-model-key", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_chart_snapshot",
+      "signature": "CelestialChartSnapshot celestial_chart_snapshot(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, double latitude_deg, double longitude_deg, uint32_t house_system_code, uint32_t delta_t_model_code)",
+      "return": {"kind": "struct", "layout": "CelestialChartSnapshot"},
+      "protocol": {"kind": "struct", "ownership": "by-value snapshot of 14 bodies and 12 cusps", "identity": "resolved-explicit-model-keys-and-per-body-source", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_longitude_events",
+      "signature": "uint32_t celestial_longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialLongitudeEventRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "event_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": true, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_longitude_stations",
+      "signature": "uint32_t celestial_longitude_stations(uint32_t target_code, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialStationEventRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "event_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": true, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_longitude_difference_events",
+      "signature": "uint32_t celestial_longitude_difference_events(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialLongitudeDifferenceEventRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "event_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": true, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
       "recording": true
     },
     {
       "name": "celestial_capabilities",
-      "signature": "uint32_t celestial_capabilities(uint32_t operation_code, uint32_t subject_code, uint32_t *record_count, CapabilityRecordV1 *slots, uint32_t slot_count)",
+      "signature": "uint32_t celestial_capabilities(uint32_t operation_code, uint32_t subject_code, uint32_t *record_count, CelestialCapabilityRecord *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "record_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)", "zero": "zero written is legal for a count query; failure is told apart by last_error", "provenance": "every bound derives from the operation's own defining constants (#357)"},
+      "protocol": {
+        "kind": "count-fill",
+        "count_parameter": "record_count",
+        "slots_parameter": "slots",
+        "capacity_parameter": "slot_count",
+        "legal_empty": false,
+        "total_must_match": true,
+        "written_policy": "min-total-capacity",
+        "null_slots_requires_zero_capacity": true,
+        "operations": [
+          "CELESTIAL_OPERATION_POSITION",
+          "CELESTIAL_OPERATION_LONGITUDE_RATE",
+          "CELESTIAL_OPERATION_EVENTS",
+          "CELESTIAL_OPERATION_EQUATORIAL"
+        ],
+        "subject_policy": "concrete-target-or-all",
+        "error_channel": "kind"
+      },
       "recording": true
     },
     {
       "name": "celestial_model_identities",
-      "signature": "uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *record_count, ModelIdentityRecordV1 *slots, uint32_t slot_count)",
+      "signature": "uint32_t celestial_model_identities(uint32_t kind_code, uint32_t *record_count, CelestialModelIdentityRecord *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "record_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)", "zero": "zero written is legal for a count query; failure is told apart by last_error"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "identity": "kind-and-explicit-code", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_model_identity_text",
+      "signature": "uint32_t celestial_model_identity_text(uint32_t kind_code, uint32_t identity_code, char *buffer, uint32_t capacity)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "sized-string", "buffer_parameter": "buffer", "capacity_parameter": "capacity", "size_includes_nul": true, "null_requires_zero_capacity": true, "truncates": true, "terminates": true, "identity": "kind-and-explicit-code", "error_channel": "kind"},
       "recording": true
     },
     {
       "name": "celestial_capability_text",
       "signature": "uint32_t celestial_capability_text(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "caller-string", "size": "returns the required byte count excluding the null terminator; buffer may be null to size first", "fill": "writes the text truncated and null-terminated when buffer is non-null and capacity is positive", "lifetime": "the buffer is caller-owned; the text is produced on every call"},
+      "protocol": {
+        "kind": "sized-string",
+        "buffer_parameter": "buffer",
+        "capacity_parameter": "capacity",
+        "size_includes_nul": true,
+        "null_requires_zero_capacity": true,
+        "truncates": true,
+        "terminates": true,
+        "subject_policy": "concrete-target-for-target-operations-all-for-nontarget-operations",
+        "nontarget_operations": [
+          "CELESTIAL_OPERATION_HOUSES",
+          "CELESTIAL_OPERATION_CHART",
+          "CELESTIAL_OPERATION_DELTA_T"
+        ],
+        "error_channel": "kind"
+      },
       "recording": true
     },
     {
-      "name": "position_query_v1",
-      "signature": "uint32_t position_query_v1(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, PositionRecordV1 *slots, uint32_t slot_count)",
+      "name": "celestial_positions",
+      "signature": "uint32_t celestial_positions(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, CelestialPositionRecord *slots, uint32_t slot_count)",
       "return": {"kind": "primitive", "type": "uint32_t"},
-      "protocol": {"kind": "count-fill", "count": "record_count is non-null and always reports the total", "fill": "slots may be null only when slot_count=0; writes min(record_count, slot_count)", "zero": "zero written is legal for a count query; failure is told apart by last_error", "selection": "output records follow the caller's target order; duplicates, empty selections and unknown codes are rejected, and one failed target fails the whole query (#355)"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "selection_policy": "nonempty-distinct-targets-in-caller-order", "error_channel": "kind"},
       "recording": true
     },
     {
-      "name": "house_query_v1",
-      "signature": "HouseQueryResultV1 house_query_v1(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, double longitude_deg, uint32_t house_system_code)",
-      "return": {"kind": "struct", "layout": "HouseQueryResultV1"},
-      "protocol": {"kind": "struct", "zero": "valid=false is failure; invalid payload and padding are not consumed", "ownership": "by-value house geometry at one civil instant; the snapshot joint window does not apply", "identity": "delta_t_identity_code and nutation_identity_code carry the resolved model ordinals, never an unresolved DEFAULT code (#357)"},
+      "name": "celestial_equatorial_positions",
+      "signature": "uint32_t celestial_equatorial_positions(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, CelestialEquatorialPositionRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "selection_policy": "nonempty-distinct-targets-in-caller-order", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_house_query",
+      "signature": "CelestialHouseQueryResult celestial_house_query(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, double longitude_deg, uint32_t house_system_code)",
+      "return": {"kind": "struct", "layout": "CelestialHouseQueryResult"},
+      "protocol": {"kind": "struct", "identity": "resolved-explicit-model-keys", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_house_capability",
+      "signature": "CelestialCivilHouseCapability celestial_house_capability(uint32_t delta_t_model_code)",
+      "return": {"kind": "struct", "layout": "CelestialCivilHouseCapability"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
       "recording": true
     }
   ]

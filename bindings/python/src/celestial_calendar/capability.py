@@ -8,63 +8,44 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Capability records and model identities for the public query surface (#357).
-
-Every domain bound is computed by the native layer from the operation's own defining
-constants; this module adds no second table of numbers. NaN domain ends mean "unbounded",
-never a hidden sentinel, and a record never implies accuracy — measured validation
-coverage lives only in the prose of `celestial_capability_text`.
-"""
+"""Native-owned TT domains, civil-house policy and model registry values."""
 
 from __future__ import annotations
 
+import math as _math
 from dataclasses import dataclass as _dataclass
-from enum import IntEnum as _IntEnum
+from datetime import date as _date
 from enum import StrEnum as _StrEnum
-from typing import Iterable as _Iterable
 
 from . import _abi
+from ._codes import enum_code, enum_member as _member
+from ._models import ModelKey, ModelKind, Target, identity_values
+from ._protocol import finite
+from .chart import CivilScale
 
 
 class CapabilityOperation(_StrEnum):
-  """A describable operation on the public query surface.
-
-  MODEL_IDENTITY is text-lookup only: `capabilities()` rejects it, while
-  `capability_text` uses it to address the identity registry.
-  """
+  """Operation described by capability records or operation text."""
 
   POSITION = "position"
   LONGITUDE_RATE = "longitude_rate"
   EVENTS = "events"
   HOUSES = "houses"
-  MODEL_IDENTITY = "model_identity"
+  EQUATORIAL = "equatorial"
+  CHART = "chart"
+  DELTA_T = "delta_t"
 
 
 class CapabilityStatus(_StrEnum):
-  """What kind of bound a capability domain carries."""
+  """Meaning of a domain or admission policy, never an accuracy guarantee.
+
+  FINITE_INPUT_EVALUATION declares no hard input interval. Evaluation at a finite
+  epoch may still fail and establishes neither accuracy nor physical plausibility.
+  """
 
   SOURCE_WINDOW = "source_window"
   IMPLEMENTATION_WINDOW = "implementation_window"
-  UNBOUNDED_FINITE = "unbounded_finite"
-
-
-class PositionSource(_StrEnum):
-  """Stable identity of a position computation, per target (#357)."""
-
-  SUN_VSOP87D = "sun_vsop87d"
-  MOON_ELP2000_82B_TRUNC = "moon_elp2000_82b_trunc"
-  PLANET_VSOP87D = "planet_vsop87d"
-  PLUTO_PLUTO95_APPARENT = "pluto_pluto95_apparent"
-  NODE_MEAN = "node_mean"
-  NODE_TRUE_MEEUS_FIVE_TERM = "node_true_meeus_five_term"
-
-
-class ModelKind(_StrEnum):
-  """Model family for the identity registry."""
-
-  DELTA_T = "delta_t"
-  NUTATION = "nutation"
-  POSITION_SOURCE = "position_source"
+  FINITE_INPUT_EVALUATION = "finite_input_evaluation"
 
 
 class ModelStatus(_StrEnum):
@@ -74,142 +55,133 @@ class ModelStatus(_StrEnum):
   FROZEN = "frozen"
 
 
-class CapabilitySubject(_IntEnum):
-  """The fourteen subjects a per-target capability record can describe (CHART_TARGET_* codes)."""
-
-  SUN = 0
-  MOON = 1
-  MERCURY = 2
-  VENUS = 3
-  MARS = 4
-  JUPITER = 5
-  SATURN = 6
-  URANUS = 7
-  NEPTUNE = 8
-  PLUTO = 9
-  MEAN_ASCENDING = 10
-  MEAN_DESCENDING = 11
-  TRUE_ASCENDING = 12
-  TRUE_DESCENDING = 13
-
-
 @_dataclass(frozen=True)
 class CapabilityRecord:
-  """One operation's accepted-input description for one subject.
+  """One target's TT domain: inclusive start, exclusive end, NaN for no bound.
 
-  `domain_start_jde_tt` / `domain_end_jde_tt` are the half-open accepted range in JDE(TT);
-  NaN marks the absence of an explicit bound. `maximum_span_tt_days` limits EVENTS queries;
-  0 means no span limit.
+  maximum_span_tt_days limits event queries; zero means no span limit.
   """
 
   operation: CapabilityOperation
-  subject: CapabilitySubject | None
+  subject: Target
   status: CapabilityStatus
-  source: PositionSource | None
+  source: ModelKey
   domain_start_jde_tt: float
   domain_end_jde_tt: float
   maximum_span_tt_days: int
 
 
 @_dataclass(frozen=True)
-class ModelIdentity:
-  """One registered model identity with its applicability.
+class CivilHouseCapability:
+  """Civil-house admission policy, separate from geometric solvability.
 
-  `default_alias_code` is the boundary code this identity answers to as the default
-  (0 for Delta T algo5, the resolved meaning of DEFAULT); None means no alias.
+  Civil years form [civil_start_year, civil_end_year_exclusive); utc_start_date is
+  an inclusive (year, month, day). An optional derived_tt_end_jde_tt is exclusive.
+  UT1 derived from future UTC uses the held leap table and selected Delta T model,
+  not observed DUT1. Admission does not promise successful house geometry.
   """
 
-  kind: ModelKind
-  identity_code: int
+  status: CapabilityStatus
+  civil_start_year: int
+  civil_end_year_exclusive: int
+  civil_scales: tuple[CivilScale, ...]
+  utc_start_date: tuple[int, int, int]
+  delta_t_model: ModelKey
+  derived_tt_end_jde_tt: float | None
+
+
+@_dataclass(frozen=True)
+class ModelIdentity:
+  """Registered key, lifecycle status and native applicability in JDE(TT).
+
+  NaN endpoints have no declared bound. DEFAULT belongs to operation selectors,
+  not the identity registry; operation text describes its resolution.
+  """
+
+  key: ModelKey
   status: ModelStatus
-  default_alias_code: int | None
   domain_start_jde_tt: float
   domain_end_jde_tt: float
 
 
-_OPERATION_CODE = {
-  CapabilityOperation.POSITION: 0,
-  CapabilityOperation.LONGITUDE_RATE: 1,
-  CapabilityOperation.EVENTS: 2,
-  CapabilityOperation.HOUSES: 3,
-  CapabilityOperation.MODEL_IDENTITY: 4,
-}
-
-_STATUS = {
-  0: CapabilityStatus.SOURCE_WINDOW,
-  1: CapabilityStatus.IMPLEMENTATION_WINDOW,
-  2: CapabilityStatus.UNBOUNDED_FINITE,
-}
-
-_SOURCE = {
-  0: PositionSource.SUN_VSOP87D,
-  1: PositionSource.MOON_ELP2000_82B_TRUNC,
-  2: PositionSource.PLANET_VSOP87D,
-  3: PositionSource.PLUTO_PLUTO95_APPARENT,
-  4: PositionSource.NODE_MEAN,
-  5: PositionSource.NODE_TRUE_MEEUS_FIVE_TERM,
-}
-
-
-def position_source(code: int) -> PositionSource | None:
-  """Resolve a CAPABILITY_SOURCE_* code; unknown codes return None."""
-  return _SOURCE.get(code)
-
-
-_KIND_CODE = {
-  ModelKind.DELTA_T: 0,
-  ModelKind.NUTATION: 1,
-  ModelKind.POSITION_SOURCE: 2,
-}
-
-_KIND = {code: kind for kind, code in _KIND_CODE.items()}
-_MODEL_STATUS = {
-  0: ModelStatus.CURRENT,
-  1: ModelStatus.FROZEN,
-}
-
-_NO_ALIAS = 0xFFFFFFFF
-
-
-def operation_code(operation: CapabilityOperation) -> int:
-  """Map one CapabilityOperation to its CAPABILITY_OPERATION_* code."""
-  return _OPERATION_CODE[operation]
-
-
-def kind_code(kind: ModelKind) -> int:
-  """Map one ModelKind to its MODEL_KIND_* code."""
-  return _KIND_CODE[kind]
+def _domain(start: float, end: float) -> tuple[float, float]:
+  if _math.isinf(start) or _math.isinf(end) or (not _math.isnan(start) and not _math.isnan(end) and start >= end):
+    raise ValueError("invalid domain endpoints")
+  return start, end
 
 
 def decode_capability_records(
-  operation: CapabilityOperation,
-  records: _Iterable[_abi.CapabilityRecordV1],
+  operation: CapabilityOperation, records, expected_targets: tuple[Target, ...]
 ) -> tuple[CapabilityRecord, ...]:
-  """Copy native capability records into frozen dataclasses."""
-  return tuple(
-    CapabilityRecord(
-      operation,
-      CapabilitySubject(record.subject_code) if record.operation_code != 3 else None,
-      _STATUS[record.status_code],
-      _SOURCE.get(record.source_code) if record.operation_code != 3 else None,
-      record.domain_start_jde_tt,
-      record.domain_end_jde_tt,
-      record.maximum_span_tt_days,
+  if len(records) != len(expected_targets):
+    raise ValueError("unexpected capability count")
+  decoded = []
+  for record, target in zip(records, expected_targets, strict=True):
+    if not isinstance(record, _abi.CelestialCapabilityRecord):
+      raise TypeError("unexpected capability record")
+    if _member(CapabilityOperation, "OPERATION", record.operation_code) is not operation:
+      raise ValueError("unexpected capability operation")
+    if _member(Target, "TARGET", record.subject_code) is not target:
+      raise ValueError("unexpected capability target")
+    start, end = _domain(record.domain_start_jde_tt, record.domain_end_jde_tt)
+    decoded.append(
+      CapabilityRecord(
+        operation,
+        target,
+        _member(CapabilityStatus, "STATUS", record.status_code),
+        ModelKey(ModelKind.POSITION_SOURCE, record.source_code),
+        start,
+        end,
+        record.maximum_span_tt_days,
+      )
     )
-    for record in records
-  )
+  return tuple(decoded)
 
 
-def decode_model_identities(records: _Iterable[_abi.ModelIdentityRecordV1]) -> tuple[ModelIdentity, ...]:
-  """Copy native model identity records into frozen dataclasses."""
-  return tuple(
-    ModelIdentity(
-      _KIND[record.kind_code],
-      record.identity_code,
-      _MODEL_STATUS[record.status_code],
-      None if record.default_alias_code == _NO_ALIAS else record.default_alias_code,
-      record.domain_start_jde_tt,
-      record.domain_end_jde_tt,
+def decode_model_identities(records, kind: ModelKind | None) -> tuple[ModelIdentity, ...]:
+  decoded = []
+  for record in records:
+    if not isinstance(record, _abi.CelestialModelIdentityRecord):
+      raise TypeError("unexpected identity record")
+    actual_kind = _member(ModelKind, "MODEL_KIND", record.kind_code)
+    if kind is not None and actual_kind is not kind:
+      raise ValueError("unexpected model kind")
+    start, end = _domain(record.domain_start_jde_tt, record.domain_end_jde_tt)
+    decoded.append(
+      ModelIdentity(
+        ModelKey(actual_kind, record.identity_code),
+        _member(ModelStatus, "MODEL_STATUS", record.status_code),
+        start,
+        end,
+      )
     )
-    for record in records
+  expected = {ModelKey(k, identity) for k in ModelKind if kind is None or k is kind for identity in identity_values(k)}
+  if len(decoded) != len(expected) or {record.key for record in decoded} != expected:
+    raise ValueError("missing or duplicate registry identity")
+  return tuple(decoded)
+
+
+def decode_house_capability(result: _abi.CelestialCivilHouseCapability) -> CivilHouseCapability:
+  if not isinstance(result, _abi.CelestialCivilHouseCapability):
+    raise TypeError("unexpected civil-house capability record")
+  status = _member(CapabilityStatus, "STATUS", result.status_code)
+  if status is not CapabilityStatus.IMPLEMENTATION_WINDOW:
+    raise ValueError("unexpected civil-house policy status")
+  if result.civil_start_year >= result.civil_end_year_exclusive:
+    raise ValueError("invalid civil-house year window")
+  mask = sum(1 << enum_code("CIVIL_SCALE", scale) for scale in CivilScale)
+  if not result.civil_scale_mask or result.civil_scale_mask & ~mask:
+    raise ValueError("unknown civil scale bits")
+  scales = tuple(scale for scale in CivilScale if result.civil_scale_mask & (1 << enum_code("CIVIL_SCALE", scale)))
+  utc_start = (result.utc_start_year, result.utc_start_month, result.utc_start_day)
+  _date(*utc_start)
+  cutoff = finite(result.derived_tt_end_jde_tt, "derived_tt_end_jde_tt") if result.has_derived_tt_cutoff else None
+  return CivilHouseCapability(
+    status,
+    result.civil_start_year,
+    result.civil_end_year_exclusive,
+    scales,
+    utc_start,
+    ModelKey(ModelKind.DELTA_T, result.delta_t_identity_code),
+    cutoff,
   )

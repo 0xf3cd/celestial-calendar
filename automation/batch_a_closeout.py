@@ -52,7 +52,7 @@ RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = RETAINED_REGISTRY.name
 # Project records pin structured facts or citation atoms, not prose bytes.
 RECORD_SHA256: Final[str] = "6e778138b2d3e693da518ae75ac7bbec94fbd0c052fc0072216affeb8656351b"
-REGISTRY_SHA256: Final[str] = "2bc9c9b142428ed83c49ae05210797d3868f46cc88c799b58146dfd335f3c6ec"
+REGISTRY_SHA256: Final[str] = "bacd8c54817731ea5d0e479a37d49deae341ee19c259eb189e6204d464ae38c5"
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
 LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"
 LONGITUDE_RATE_PINS_SHA256: Final[str] = "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
@@ -176,6 +176,7 @@ REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
   v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v20-lunar-node
   v44-lunar-node v44-aaplus-phenomena v45-pluto95
   v44-longitude-rate v20-longitude-rate v15-longitude-rate r38-longitude-rate
+  v07-equatorial-horizons v20-equatorial-projection v20-equatorial-nodes
   notice-emscripten
   notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
   """.split()
@@ -198,6 +199,9 @@ REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
     "v20-longitude-rate",
     "v15-longitude-rate",
     "r38-longitude-rate",
+    "v07-equatorial-horizons",
+    "v20-equatorial-projection",
+    "v20-equatorial-nodes",
   }
 )
 
@@ -377,7 +381,7 @@ EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
   "libunwind — LICENSE.TXT": frozenset({"notice-libunwind"}),
   "compiler-rt — LICENSE.TXT": frozenset({"notice-compiler-rt"}),
   "IAU SOFA issue 2023-10-11 — SOFA Software License": frozenset(
-    {"notice-sofa", "r10", "r13", "r14", "r18", "r19", "v22-sofa"}
+    {"notice-sofa", "r10", "r13", "r14", "r18", "r19", "v22-sofa", "v20-equatorial-projection", "v20-equatorial-nodes"}
   ),
   "ERFA v2.0.1 — LICENSE": frozenset(
     {

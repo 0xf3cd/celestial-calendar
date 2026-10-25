@@ -1,434 +1,392 @@
 /*
- * CelestialCalendar: 
+ * CelestialCalendar:
  *   A C++23-style library that performs astronomical calculations and date conversions between
  *   Gregorian and Chinese Lunar calendars.
- * 
+ *
  * Copyright (C) 2026 Ningqi Wang (0xf3cd)
  * Email: nq.maigre@gmail.com
  * Repo : https://github.com/0xf3cd/celestial-calendar
- *  
+ *
  * SPDX-License-Identifier: MIT
  */
 
-/*
- * #67: compile `celestial.h` as pure C and pin the ABI — field offsets and struct sizes
- * are part of the published contract, so any layout drift fails the build here.
- * The absolute offsets below assume 64-bit natural alignment (the CI matrix is all 64-bit).
- */
-
+/* Independent native64/wasm32 C11 expectations. Binding generation must never update these pins. */
 #include "celestial.h"
-
 #include <stddef.h>
 
-_Static_assert(offsetof(JulianDay, value) == 8 && sizeof(JulianDay) == 16, "JulianDay layout drifted");
+#define ABI_RECORD(T, S, A) \
+  _Static_assert(sizeof(T) == (S) && _Alignof(T) == (A), #T " layout drifted")
+// NOLINTBEGIN(bugprone-macro-parentheses): Type names and offsetof member designators cannot be parenthesized.
+#define ABI_FIELD(T, F, K, O) \
+  _Static_assert(offsetof(T, F) == (O) && _Generic(&((T*)0)->F, K*: 1, default: 0), #T "." #F " drifted")
+#define ABI_ARRAY(T, F, K, N, O, S) \
+  _Static_assert(offsetof(T, F) == (O) && _Generic(&((T*)0)->F, K (*)[N]: 1, default: 0) && \
+                 sizeof(((T*)0)->F[0]) == (S) && \
+                 offsetof(T, F[1]) - offsetof(T, F[0]) == (S), #T "." #F " array drifted")
+// NOLINTEND(bugprone-macro-parentheses)
+#define ABI_CODE(N, V) _Static_assert((N) == UINT32_C(V), #N " code drifted")
 
-_Static_assert(offsetof(UT1Time, year) == 4 && offsetof(UT1Time, month) == 8 &&
-               offsetof(UT1Time, day) == 12 && offsetof(UT1Time, fraction) == 16 &&
-               sizeof(UT1Time) == 24, "UT1Time layout drifted");
+ABI_RECORD(CelestialJulianDay, 16, 8);
+ABI_FIELD(CelestialJulianDay, valid, bool, 0);
+ABI_FIELD(CelestialJulianDay, value, double, 8);
 
-_Static_assert(offsetof(SunCoordinate, lon) == 8 && offsetof(SunCoordinate, lat) == 16 &&
-               offsetof(SunCoordinate, r) == 24 && sizeof(SunCoordinate) == 32,
-               "SunCoordinate layout drifted");
+ABI_RECORD(CelestialUT1Time, 24, 8);
+ABI_FIELD(CelestialUT1Time, valid, bool, 0);
+ABI_FIELD(CelestialUT1Time, year, int32_t, 4);
+ABI_FIELD(CelestialUT1Time, month, uint32_t, 8);
+ABI_FIELD(CelestialUT1Time, day, uint32_t, 12);
+ABI_FIELD(CelestialUT1Time, fraction, double, 16);
 
-_Static_assert(offsetof(MoonCoordinate, lon) == 8 && offsetof(MoonCoordinate, lat) == 16 &&
-               offsetof(MoonCoordinate, r) == 24 && sizeof(MoonCoordinate) == 32,
-               "MoonCoordinate layout drifted");
+ABI_RECORD(CelestialSunCoordinate, 32, 8);
+ABI_FIELD(CelestialSunCoordinate, valid, bool, 0);
+ABI_FIELD(CelestialSunCoordinate, lon, double, 8);
+ABI_FIELD(CelestialSunCoordinate, lat, double, 16);
+ABI_FIELD(CelestialSunCoordinate, r, double, 24);
 
-_Static_assert(offsetof(MoonIllumination, illumination) == 8 && offsetof(MoonIllumination, elongation_deg) == 16 &&
-               sizeof(MoonIllumination) == 24, "MoonIllumination layout drifted");
+ABI_RECORD(CelestialMoonCoordinate, 32, 8);
+ABI_FIELD(CelestialMoonCoordinate, valid, bool, 0);
+ABI_FIELD(CelestialMoonCoordinate, lon, double, 8);
+ABI_FIELD(CelestialMoonCoordinate, lat, double, 16);
+ABI_FIELD(CelestialMoonCoordinate, r, double, 24);
 
-_Static_assert(offsetof(MoonPositionAngle, angle_deg) == 8 && sizeof(MoonPositionAngle) == 16,
-               "MoonPositionAngle layout drifted");
+ABI_RECORD(CelestialMoonIllumination, 24, 8);
+ABI_FIELD(CelestialMoonIllumination, valid, bool, 0);
+ABI_FIELD(CelestialMoonIllumination, illumination, double, 8);
+ABI_FIELD(CelestialMoonIllumination, elongation_deg, double, 16);
 
-_Static_assert(offsetof(Discriminant, count) == 4 && sizeof(Discriminant) == 8, "Discriminant layout drifted");
+ABI_RECORD(CelestialMoonPositionAngle, 16, 8);
+ABI_FIELD(CelestialMoonPositionAngle, valid, bool, 0);
+ABI_FIELD(CelestialMoonPositionAngle, angle_deg, double, 8);
 
-_Static_assert(offsetof(JieqiMomentQuery, jq_idx) == 1 && offsetof(JieqiMomentQuery, y) == 4 &&
-               offsetof(JieqiMomentQuery, m) == 8 && offsetof(JieqiMomentQuery, d) == 12 &&
-               offsetof(JieqiMomentQuery, frac) == 16 && sizeof(JieqiMomentQuery) == 24,
-               "JieqiMomentQuery layout drifted");
+ABI_RECORD(CelestialDiscriminant, 8, 4);
+ABI_FIELD(CelestialDiscriminant, valid, bool, 0);
+ABI_FIELD(CelestialDiscriminant, count, uint32_t, 4);
 
-_Static_assert(offsetof(SupportedLunarYearRange, start) == 4 && offsetof(SupportedLunarYearRange, end) == 8 &&
-               sizeof(SupportedLunarYearRange) == 12, "SupportedLunarYearRange layout drifted");
+ABI_RECORD(CelestialEquationOfTime, 16, 8);
+ABI_FIELD(CelestialEquationOfTime, valid, bool, 0);
+ABI_FIELD(CelestialEquationOfTime, value, double, 8);
 
-_Static_assert(offsetof(LunarYearInfo, year) == 4 && offsetof(LunarYearInfo, month) == 8 &&
-               offsetof(LunarYearInfo, day) == 9 && offsetof(LunarYearInfo, leap_month) == 10 &&
-               offsetof(LunarYearInfo, month_len) == 12 && sizeof(LunarYearInfo) == 16,
-               "LunarYearInfo layout drifted");
+ABI_RECORD(CelestialApparentSolarTime, 24, 8);
+ABI_FIELD(CelestialApparentSolarTime, valid, bool, 0);
+ABI_FIELD(CelestialApparentSolarTime, year, int32_t, 4);
+ABI_FIELD(CelestialApparentSolarTime, month, uint32_t, 8);
+ABI_FIELD(CelestialApparentSolarTime, day, uint32_t, 12);
+ABI_FIELD(CelestialApparentSolarTime, fraction, double, 16);
 
-_Static_assert(offsetof(DeltaT, value) == 8 && sizeof(DeltaT) == 16, "DeltaT layout drifted");
+ABI_RECORD(CelestialSiderealTime, 16, 8);
+ABI_FIELD(CelestialSiderealTime, valid, bool, 0);
+ABI_FIELD(CelestialSiderealTime, value, double, 8);
 
-_Static_assert(offsetof(EquationOfTime, value) == 8 && sizeof(EquationOfTime) == 16,
-               "EquationOfTime layout drifted");
+ABI_RECORD(CelestialJieqiMomentQuery, 24, 8);
+ABI_FIELD(CelestialJieqiMomentQuery, valid, bool, 0);
+ABI_FIELD(CelestialJieqiMomentQuery, jq_idx, uint8_t, 1);
+ABI_FIELD(CelestialJieqiMomentQuery, y, int32_t, 4);
+ABI_FIELD(CelestialJieqiMomentQuery, m, uint32_t, 8);
+ABI_FIELD(CelestialJieqiMomentQuery, d, uint32_t, 12);
+ABI_FIELD(CelestialJieqiMomentQuery, frac, double, 16);
 
-_Static_assert(offsetof(SiderealTime, value) == 8 && sizeof(SiderealTime) == 16,
-               "SiderealTime layout drifted");
+ABI_RECORD(CelestialSupportedLunarYearRange, 12, 4);
+ABI_FIELD(CelestialSupportedLunarYearRange, valid, bool, 0);
+ABI_FIELD(CelestialSupportedLunarYearRange, start, int32_t, 4);
+ABI_FIELD(CelestialSupportedLunarYearRange, end, int32_t, 8);
 
-_Static_assert(offsetof(ApparentSolarTime, year) == 4 && offsetof(ApparentSolarTime, month) == 8 &&
-               offsetof(ApparentSolarTime, day) == 12 && offsetof(ApparentSolarTime, fraction) == 16 &&
-               sizeof(ApparentSolarTime) == 24, "ApparentSolarTime layout drifted");
+ABI_RECORD(CelestialLunarYearInfo, 16, 4);
+ABI_FIELD(CelestialLunarYearInfo, valid, bool, 0);
+ABI_FIELD(CelestialLunarYearInfo, year, int32_t, 4);
+ABI_FIELD(CelestialLunarYearInfo, month, uint8_t, 8);
+ABI_FIELD(CelestialLunarYearInfo, day, uint8_t, 9);
+ABI_FIELD(CelestialLunarYearInfo, leap_month, uint8_t, 10);
+ABI_FIELD(CelestialLunarYearInfo, month_len, uint16_t, 12);
 
-_Static_assert(offsetof(LunarDate, year) == 4 && offsetof(LunarDate, month) == 8 &&
-               offsetof(LunarDate, is_leap) == 9 && offsetof(LunarDate, day) == 10 &&
-               sizeof(LunarDate) == 12, "LunarDate layout drifted");
+ABI_RECORD(CelestialLunarDate, 12, 4);
+ABI_FIELD(CelestialLunarDate, valid, bool, 0);
+ABI_FIELD(CelestialLunarDate, year, int32_t, 4);
+ABI_FIELD(CelestialLunarDate, month, uint8_t, 8);
+ABI_FIELD(CelestialLunarDate, is_leap, bool, 9);
+ABI_FIELD(CelestialLunarDate, day, uint8_t, 10);
 
-_Static_assert(offsetof(GregorianDate, year) == 4 && offsetof(GregorianDate, month) == 8 &&
-               offsetof(GregorianDate, day) == 9 && sizeof(GregorianDate) == 12,
-               "GregorianDate layout drifted");
+ABI_RECORD(CelestialGregorianDate, 12, 4);
+ABI_FIELD(CelestialGregorianDate, valid, bool, 0);
+ABI_FIELD(CelestialGregorianDate, year, int32_t, 4);
+ABI_FIELD(CelestialGregorianDate, month, uint8_t, 8);
+ABI_FIELD(CelestialGregorianDate, day, uint8_t, 9);
 
-_Static_assert(offsetof(ChartBodyV1, target_code) == 0 && offsetof(ChartBodyV1, present_fields) == 4 &&
-               offsetof(ChartBodyV1, longitude_deg) == 8 && offsetof(ChartBodyV1, latitude_deg) == 16 &&
-               offsetof(ChartBodyV1, distance_au) == 24 &&
-               offsetof(ChartBodyV1, longitude_rate_deg_per_tt_day) == 32 &&
-               sizeof(ChartBodyV1) == 40 && _Alignof(ChartBodyV1) == 8, "ChartBodyV1 layout drifted");
+ABI_RECORD(CelestialDeltaT, 16, 8);
+ABI_FIELD(CelestialDeltaT, valid, bool, 0);
+ABI_FIELD(CelestialDeltaT, model_identity_code, uint32_t, 4);
+ABI_FIELD(CelestialDeltaT, value, double, 8);
 
-_Static_assert(offsetof(ChartHousesV1, ascendant_deg) == 0 && offsetof(ChartHousesV1, midheaven_deg) == 8 &&
-               offsetof(ChartHousesV1, descendant_deg) == 16 && offsetof(ChartHousesV1, imum_coeli_deg) == 24 &&
-               offsetof(ChartHousesV1, cusps_deg) == 32 && sizeof(ChartHousesV1) == 128 &&
-               _Alignof(ChartHousesV1) == 8, "ChartHousesV1 layout drifted");
+ABI_RECORD(CelestialChartBody, 48, 8);
+ABI_FIELD(CelestialChartBody, target_code, uint32_t, 0);
+ABI_FIELD(CelestialChartBody, source_code, uint32_t, 4);
+ABI_FIELD(CelestialChartBody, present_fields, uint32_t, 8);
+ABI_FIELD(CelestialChartBody, longitude_deg, double, 16);
+ABI_FIELD(CelestialChartBody, latitude_deg, double, 24);
+ABI_FIELD(CelestialChartBody, distance_au, double, 32);
+ABI_FIELD(CelestialChartBody, longitude_rate_deg_per_tt_day, double, 40);
 
-_Static_assert(offsetof(ChartSnapshotV1, valid) == 0 && offsetof(ChartSnapshotV1, jd_ut1) == 8 &&
-               offsetof(ChartSnapshotV1, jde_tt) == 16 && offsetof(ChartSnapshotV1, bodies) == 24 &&
-               offsetof(ChartSnapshotV1, houses) == 584 && sizeof(ChartSnapshotV1) == 712 &&
-               _Alignof(ChartSnapshotV1) == 8, "ChartSnapshotV1 layout drifted");
+ABI_RECORD(CelestialChartHouses, 128, 8);
+ABI_FIELD(CelestialChartHouses, ascendant_deg, double, 0);
+ABI_FIELD(CelestialChartHouses, midheaven_deg, double, 8);
+ABI_FIELD(CelestialChartHouses, descendant_deg, double, 16);
+ABI_FIELD(CelestialChartHouses, imum_coeli_deg, double, 24);
+ABI_ARRAY(CelestialChartHouses, cusps_deg, double, 12, 32, 8);
 
-_Static_assert((sizeof(((ChartSnapshotV1*)0)->bodies) / sizeof(ChartBodyV1) == 14 &&
-               offsetof(ChartSnapshotV1, bodies[1]) - offsetof(ChartSnapshotV1, bodies[0]) == 40 &&
-               offsetof(ChartSnapshotV1, bodies[13]) == 544) != 0, "ChartSnapshotV1 body array drifted");
+ABI_RECORD(CelestialChartSnapshot, 832, 8);
+ABI_FIELD(CelestialChartSnapshot, valid, bool, 0);
+ABI_FIELD(CelestialChartSnapshot, delta_t_identity_code, uint32_t, 4);
+ABI_FIELD(CelestialChartSnapshot, nutation_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialChartSnapshot, jd_ut1, double, 16);
+ABI_FIELD(CelestialChartSnapshot, jde_tt, double, 24);
+ABI_ARRAY(CelestialChartSnapshot, bodies, CelestialChartBody, 14, 32, 48);
+ABI_FIELD(CelestialChartSnapshot, houses, CelestialChartHouses, 704);
 
-/* #357: the capability records; the selectors mirror the chart target order and Delta T codes. */
-_Static_assert(offsetof(CapabilityRecordV1, operation_code) == 0 && offsetof(CapabilityRecordV1, subject_code) == 4 &&
-               offsetof(CapabilityRecordV1, status_code) == 8 && offsetof(CapabilityRecordV1, source_code) == 12 &&
-               offsetof(CapabilityRecordV1, domain_start_jde_tt) == 16 && offsetof(CapabilityRecordV1, domain_end_jde_tt) == 24 &&
-               offsetof(CapabilityRecordV1, maximum_span_tt_days) == 32 && offsetof(CapabilityRecordV1, flags) == 36 &&
-               sizeof(CapabilityRecordV1) == 40 && _Alignof(CapabilityRecordV1) == 8, "CapabilityRecordV1 layout drifted");
+ABI_RECORD(CelestialLongitudeEventRecord, 32, 8);
+ABI_FIELD(CelestialLongitudeEventRecord, jde_tt, double, 0);
+ABI_FIELD(CelestialLongitudeEventRecord, longitude_deg, double, 8);
+ABI_FIELD(CelestialLongitudeEventRecord, longitude_rate_deg_per_tt_day, double, 16);
+ABI_FIELD(CelestialLongitudeEventRecord, direction_code, uint32_t, 24);
 
-_Static_assert(offsetof(ModelIdentityRecordV1, kind_code) == 0 && offsetof(ModelIdentityRecordV1, identity_code) == 4 &&
-               offsetof(ModelIdentityRecordV1, status_code) == 8 && offsetof(ModelIdentityRecordV1, default_alias_code) == 12 &&
-               offsetof(ModelIdentityRecordV1, domain_start_jde_tt) == 16 && offsetof(ModelIdentityRecordV1, domain_end_jde_tt) == 24 &&
-               sizeof(ModelIdentityRecordV1) == 32 && _Alignof(ModelIdentityRecordV1) == 8,
-               "ModelIdentityRecordV1 layout drifted");
+ABI_RECORD(CelestialStationEventRecord, 32, 8);
+ABI_FIELD(CelestialStationEventRecord, jde_tt, double, 0);
+ABI_FIELD(CelestialStationEventRecord, longitude_deg, double, 8);
+ABI_FIELD(CelestialStationEventRecord, longitude_rate_deg_per_tt_day, double, 16);
+ABI_FIELD(CelestialStationEventRecord, motion_before_code, uint32_t, 24);
+ABI_FIELD(CelestialStationEventRecord, motion_after_code, uint32_t, 28);
 
-_Static_assert(CAPABILITY_OPERATION_POSITION == 0 && CAPABILITY_OPERATION_LONGITUDE_RATE == 1 &&
-               CAPABILITY_OPERATION_EVENTS == 2 && CAPABILITY_OPERATION_HOUSES == 3 &&
-               CAPABILITY_OPERATION_MODEL_IDENTITY == 4, "Capability operation codes drifted");
+ABI_RECORD(CelestialLongitudeDifferenceEventRecord, 56, 8);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, jde_tt, double, 0);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, longitude_a_deg, double, 8);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, longitude_b_deg, double, 16);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, longitude_rate_a_deg_per_tt_day, double, 24);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, longitude_rate_b_deg_per_tt_day, double, 32);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, signed_difference_deg, double, 40);
+ABI_FIELD(CelestialLongitudeDifferenceEventRecord, direction_code, uint32_t, 48);
 
-_Static_assert(CAPABILITY_STATUS_SOURCE_WINDOW == 0 && CAPABILITY_STATUS_IMPLEMENTATION_WINDOW == 1 &&
-               CAPABILITY_STATUS_UNBOUNDED_FINITE == 2, "Capability status codes drifted");
+ABI_RECORD(CelestialCapabilityRecord, 40, 8);
+ABI_FIELD(CelestialCapabilityRecord, operation_code, uint32_t, 0);
+ABI_FIELD(CelestialCapabilityRecord, subject_code, uint32_t, 4);
+ABI_FIELD(CelestialCapabilityRecord, status_code, uint32_t, 8);
+ABI_FIELD(CelestialCapabilityRecord, source_code, uint32_t, 12);
+ABI_FIELD(CelestialCapabilityRecord, domain_start_jde_tt, double, 16);
+ABI_FIELD(CelestialCapabilityRecord, domain_end_jde_tt, double, 24);
+ABI_FIELD(CelestialCapabilityRecord, maximum_span_tt_days, uint32_t, 32);
 
-_Static_assert(CAPABILITY_SOURCE_SUN_VSOP87D == 0 && CAPABILITY_SOURCE_MOON_ELP2000_82B_TRUNC == 1 &&
-               CAPABILITY_SOURCE_PLANET_VSOP87D == 2 && CAPABILITY_SOURCE_PLUTO_PLUTO95_APPARENT == 3 &&
-               CAPABILITY_SOURCE_NODE_MEAN == 4 && CAPABILITY_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM == 5,
-               "Capability source codes drifted");
+ABI_RECORD(CelestialModelIdentityRecord, 32, 8);
+ABI_FIELD(CelestialModelIdentityRecord, kind_code, uint32_t, 0);
+ABI_FIELD(CelestialModelIdentityRecord, identity_code, uint32_t, 4);
+ABI_FIELD(CelestialModelIdentityRecord, status_code, uint32_t, 8);
+ABI_FIELD(CelestialModelIdentityRecord, domain_start_jde_tt, double, 16);
+ABI_FIELD(CelestialModelIdentityRecord, domain_end_jde_tt, double, 24);
 
-_Static_assert(MODEL_KIND_DELTA_T == 0 && MODEL_KIND_NUTATION == 1 && MODEL_KIND_POSITION_SOURCE == 2 &&
-               MODEL_STATUS_CURRENT == 0 && MODEL_STATUS_FROZEN == 1 &&
-               CHART_DELTA_T_MODEL_DEFAULT == 0, "Model identity codes drifted");
+ABI_RECORD(CelestialPositionRecord, 40, 8);
+ABI_FIELD(CelestialPositionRecord, target_code, uint32_t, 0);
+ABI_FIELD(CelestialPositionRecord, present_fields, uint32_t, 4);
+ABI_FIELD(CelestialPositionRecord, longitude_deg, double, 8);
+ABI_FIELD(CelestialPositionRecord, latitude_deg, double, 16);
+ABI_FIELD(CelestialPositionRecord, distance_au, double, 24);
+ABI_FIELD(CelestialPositionRecord, source_code, uint32_t, 32);
 
-/* The kind-internal identity ordinals are a separate code space from the CHART_* boundary codes:
-   Delta T algo5 is ordinal 4 here but CHART_DELTA_T_MODEL_ALGO5 is 5. */
-_Static_assert(MODEL_IDENTITY_DELTA_T_ALGO1 == 0 && MODEL_IDENTITY_DELTA_T_ALGO2 == 1 &&
-               MODEL_IDENTITY_DELTA_T_ALGO3 == 2 && MODEL_IDENTITY_DELTA_T_ALGO4 == 3 &&
-               MODEL_IDENTITY_DELTA_T_ALGO5 == 4 && MODEL_IDENTITY_NUTATION_MEEUS == 0 &&
-               MODEL_IDENTITY_NUTATION_IAU1980 == 1 && MODEL_IDENTITY_POSITION_SOURCE_SUN_VSOP87D == 0 &&
-               MODEL_IDENTITY_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC == 1 &&
-               MODEL_IDENTITY_POSITION_SOURCE_PLANET_VSOP87D == 2 &&
-               MODEL_IDENTITY_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT == 3 &&
-               MODEL_IDENTITY_POSITION_SOURCE_NODE_MEAN == 4 &&
-               MODEL_IDENTITY_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM == 5,
-               "Model identity ordinals drifted");
+ABI_RECORD(CelestialEquatorialPositionRecord, 40, 8);
+ABI_FIELD(CelestialEquatorialPositionRecord, target_code, uint32_t, 0);
+ABI_FIELD(CelestialEquatorialPositionRecord, present_fields, uint32_t, 4);
+ABI_FIELD(CelestialEquatorialPositionRecord, right_ascension_deg, double, 8);
+ABI_FIELD(CelestialEquatorialPositionRecord, declination_deg, double, 16);
+ABI_FIELD(CelestialEquatorialPositionRecord, distance_au, double, 24);
+ABI_FIELD(CelestialEquatorialPositionRecord, source_code, uint32_t, 32);
 
-_Static_assert((sizeof(((ChartHousesV1*)0)->cusps_deg) / sizeof(double) == 12 &&
-               offsetof(ChartHousesV1, cusps_deg[1]) - offsetof(ChartHousesV1, cusps_deg[0]) == 8 &&
-               offsetof(ChartHousesV1, cusps_deg[11]) == 120 &&
-               offsetof(ChartSnapshotV1, houses.cusps_deg) == 616) != 0, "ChartHousesV1 cusp array drifted");
+ABI_RECORD(CelestialHouseQueryResult, 160, 8);
+ABI_FIELD(CelestialHouseQueryResult, valid, bool, 0);
+ABI_FIELD(CelestialHouseQueryResult, house_system_code, uint32_t, 4);
+ABI_FIELD(CelestialHouseQueryResult, delta_t_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialHouseQueryResult, nutation_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialHouseQueryResult, jd_ut1, double, 16);
+ABI_FIELD(CelestialHouseQueryResult, jde_tt, double, 24);
+ABI_FIELD(CelestialHouseQueryResult, houses, CelestialChartHouses, 32);
 
-_Static_assert((_Generic(((ChartBodyV1*)0)->target_code, uint32_t: 1, default: 0) &&
-               _Generic(((ChartBodyV1*)0)->present_fields, uint32_t: 1, default: 0) &&
-               _Generic(((ChartBodyV1*)0)->longitude_deg, double: 1, default: 0) &&
-               _Generic(((ChartBodyV1*)0)->latitude_deg, double: 1, default: 0) &&
-               _Generic(((ChartBodyV1*)0)->distance_au, double: 1, default: 0) &&
-               _Generic(((ChartBodyV1*)0)->longitude_rate_deg_per_tt_day, double: 1, default: 0)) != 0,
-               "ChartBodyV1 field types drifted");
+ABI_RECORD(CelestialCivilHouseCapability, 48, 8);
+ABI_FIELD(CelestialCivilHouseCapability, valid, bool, 0);
+ABI_FIELD(CelestialCivilHouseCapability, status_code, uint32_t, 4);
+ABI_FIELD(CelestialCivilHouseCapability, civil_start_year, int32_t, 8);
+ABI_FIELD(CelestialCivilHouseCapability, civil_end_year_exclusive, int32_t, 12);
+ABI_FIELD(CelestialCivilHouseCapability, civil_scale_mask, uint32_t, 16);
+ABI_FIELD(CelestialCivilHouseCapability, utc_start_year, int32_t, 20);
+ABI_FIELD(CelestialCivilHouseCapability, utc_start_month, uint32_t, 24);
+ABI_FIELD(CelestialCivilHouseCapability, utc_start_day, uint32_t, 28);
+ABI_FIELD(CelestialCivilHouseCapability, delta_t_identity_code, uint32_t, 32);
+ABI_FIELD(CelestialCivilHouseCapability, has_derived_tt_cutoff, bool, 36);
+ABI_FIELD(CelestialCivilHouseCapability, derived_tt_end_jde_tt, double, 40);
 
-_Static_assert((_Generic(((ChartHousesV1*)0)->ascendant_deg, double: 1, default: 0) &&
-               _Generic(((ChartHousesV1*)0)->midheaven_deg, double: 1, default: 0) &&
-               _Generic(((ChartHousesV1*)0)->descendant_deg, double: 1, default: 0) &&
-               _Generic(((ChartHousesV1*)0)->imum_coeli_deg, double: 1, default: 0) &&
-               _Generic(((ChartHousesV1*)0)->cusps_deg, double*: 1, default: 0) &&
-               _Generic(((ChartSnapshotV1*)0)->valid, bool: 1, default: 0) &&
-               _Generic(((ChartSnapshotV1*)0)->jd_ut1, double: 1, default: 0) &&
-               _Generic(((ChartSnapshotV1*)0)->jde_tt, double: 1, default: 0) &&
-               _Generic(((ChartSnapshotV1*)0)->bodies, ChartBodyV1*: 1, default: 0) &&
-               _Generic(((ChartSnapshotV1*)0)->houses, ChartHousesV1: 1, default: 0)) != 0,
-               "ChartSnapshotV1 or ChartHousesV1 field types drifted");
+ABI_CODE(CELESTIAL_ERROR_NONE, 0);
+ABI_CODE(CELESTIAL_ERROR_INVALID_INPUT, 1);
+ABI_CODE(CELESTIAL_ERROR_COMPUTATION, 2);
+ABI_CODE(CELESTIAL_ERROR_RESOURCE, 3);
+ABI_CODE(CELESTIAL_ERROR_INTERNAL, 4);
+ABI_CODE(CELESTIAL_CIVIL_SCALE_UTC, 0);
+ABI_CODE(CELESTIAL_CIVIL_SCALE_UT1, 1);
+ABI_CODE(CELESTIAL_HOUSE_SYSTEM_EQUAL, 0);
+ABI_CODE(CELESTIAL_HOUSE_SYSTEM_WHOLE_SIGN, 1);
+ABI_CODE(CELESTIAL_HOUSE_SYSTEM_PLACIDUS, 2);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_DEFAULT, 0);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_ALGO1, 1);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_ALGO2, 2);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_ALGO3, 3);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_ALGO4, 4);
+ABI_CODE(CELESTIAL_DELTA_T_MODEL_ALGO5, 5);
+ABI_CODE(CELESTIAL_TARGET_SUN, 0);
+ABI_CODE(CELESTIAL_TARGET_MOON, 1);
+ABI_CODE(CELESTIAL_TARGET_MERCURY, 2);
+ABI_CODE(CELESTIAL_TARGET_VENUS, 3);
+ABI_CODE(CELESTIAL_TARGET_MARS, 4);
+ABI_CODE(CELESTIAL_TARGET_JUPITER, 5);
+ABI_CODE(CELESTIAL_TARGET_SATURN, 6);
+ABI_CODE(CELESTIAL_TARGET_URANUS, 7);
+ABI_CODE(CELESTIAL_TARGET_NEPTUNE, 8);
+ABI_CODE(CELESTIAL_TARGET_PLUTO, 9);
+ABI_CODE(CELESTIAL_TARGET_MEAN_ASCENDING, 10);
+ABI_CODE(CELESTIAL_TARGET_MEAN_DESCENDING, 11);
+ABI_CODE(CELESTIAL_TARGET_TRUE_ASCENDING, 12);
+ABI_CODE(CELESTIAL_TARGET_TRUE_DESCENDING, 13);
+ABI_CODE(CELESTIAL_PRESENT_LATITUDE, 1);
+ABI_CODE(CELESTIAL_PRESENT_DISTANCE, 2);
+ABI_CODE(CELESTIAL_EVENT_DIRECTION_INCREASING, 0);
+ABI_CODE(CELESTIAL_EVENT_DIRECTION_DECREASING, 1);
+ABI_CODE(CELESTIAL_EVENT_DIRECTION_TANGENT, 2);
+ABI_CODE(CELESTIAL_EVENT_MOTION_DIRECT, 0);
+ABI_CODE(CELESTIAL_EVENT_MOTION_RETROGRADE, 1);
+ABI_CODE(CELESTIAL_OPERATION_POSITION, 0);
+ABI_CODE(CELESTIAL_OPERATION_LONGITUDE_RATE, 1);
+ABI_CODE(CELESTIAL_OPERATION_EVENTS, 2);
+ABI_CODE(CELESTIAL_OPERATION_HOUSES, 3);
+ABI_CODE(CELESTIAL_OPERATION_EQUATORIAL, 4);
+ABI_CODE(CELESTIAL_OPERATION_CHART, 5);
+ABI_CODE(CELESTIAL_OPERATION_DELTA_T, 6);
+ABI_CODE(CELESTIAL_STATUS_SOURCE_WINDOW, 0);
+ABI_CODE(CELESTIAL_STATUS_IMPLEMENTATION_WINDOW, 1);
+ABI_CODE(CELESTIAL_STATUS_FINITE_INPUT_EVALUATION, 2);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_SUN_VSOP87D, 1);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC, 2);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D, 3);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT, 4);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_NODE_MEAN, 5);
+ABI_CODE(CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM, 6);
+ABI_CODE(CELESTIAL_TARGET_ALL, 0xFFFFFFFF);
+ABI_CODE(CELESTIAL_MODEL_KIND_DELTA_T, 0);
+ABI_CODE(CELESTIAL_MODEL_KIND_NUTATION, 1);
+ABI_CODE(CELESTIAL_MODEL_KIND_POSITION_SOURCE, 2);
+ABI_CODE(CELESTIAL_MODEL_KIND_ALL, 0xFFFFFFFF);
+ABI_CODE(CELESTIAL_MODEL_STATUS_CURRENT, 0);
+ABI_CODE(CELESTIAL_MODEL_STATUS_FROZEN, 1);
+ABI_CODE(CELESTIAL_NUTATION_MODEL_DEFAULT, 0);
+ABI_CODE(CELESTIAL_NUTATION_MODEL_MEEUS, 1);
+ABI_CODE(CELESTIAL_NUTATION_MODEL_IAU_1980, 2);
 
-_Static_assert(_Generic(&chart_snapshot_v1,
-               ChartSnapshotV1 (*)(int32_t, uint32_t, uint32_t, double, uint32_t, double, double, uint32_t, uint32_t): 1,
-               default: 0) != 0, "chart_snapshot_v1 signature drifted");
-
-_Static_assert(CHART_CIVIL_SCALE_UTC == 0 && CHART_CIVIL_SCALE_UT1 == 1 &&
-               CHART_HOUSE_SYSTEM_EQUAL == 0 && CHART_HOUSE_SYSTEM_WHOLE_SIGN == 1 &&
-               CHART_HOUSE_SYSTEM_PLACIDUS == 2 && CHART_DELTA_T_MODEL_DEFAULT == 0 &&
-               CHART_DELTA_T_MODEL_ALGO1 == 1 && CHART_DELTA_T_MODEL_ALGO2 == 2 &&
-               CHART_DELTA_T_MODEL_ALGO3 == 3 && CHART_DELTA_T_MODEL_ALGO4 == 4 &&
-               CHART_DELTA_T_MODEL_ALGO5 == 5, "Chart V1 selector codes drifted");
-
-_Static_assert(CHART_TARGET_SUN == 0 && CHART_TARGET_MOON == 1 && CHART_TARGET_MERCURY == 2 &&
-               CHART_TARGET_VENUS == 3 && CHART_TARGET_MARS == 4 && CHART_TARGET_JUPITER == 5 &&
-               CHART_TARGET_SATURN == 6 && CHART_TARGET_URANUS == 7 && CHART_TARGET_NEPTUNE == 8 &&
-               CHART_TARGET_PLUTO == 9 && CHART_TARGET_MEAN_ASCENDING == 10 &&
-               CHART_TARGET_MEAN_DESCENDING == 11 && CHART_TARGET_TRUE_ASCENDING == 12 &&
-               CHART_TARGET_TRUE_DESCENDING == 13 && CHART_PRESENT_LATITUDE == 1 &&
-               CHART_PRESENT_DISTANCE == 2, "Chart V1 identity or presence codes drifted");
-
-/* #303: the event targets mirror the chart identities — one target order for the whole ABI. */
-_Static_assert(EVENT_TARGET_SUN == CHART_TARGET_SUN && EVENT_TARGET_MOON == CHART_TARGET_MOON &&
-               EVENT_TARGET_MERCURY == CHART_TARGET_MERCURY && EVENT_TARGET_VENUS == CHART_TARGET_VENUS &&
-               EVENT_TARGET_MARS == CHART_TARGET_MARS && EVENT_TARGET_JUPITER == CHART_TARGET_JUPITER &&
-               EVENT_TARGET_SATURN == CHART_TARGET_SATURN && EVENT_TARGET_URANUS == CHART_TARGET_URANUS &&
-               EVENT_TARGET_NEPTUNE == CHART_TARGET_NEPTUNE && EVENT_TARGET_PLUTO == CHART_TARGET_PLUTO &&
-               EVENT_TARGET_MEAN_ASCENDING == CHART_TARGET_MEAN_ASCENDING &&
-               EVENT_TARGET_MEAN_DESCENDING == CHART_TARGET_MEAN_DESCENDING &&
-               EVENT_TARGET_TRUE_ASCENDING == CHART_TARGET_TRUE_ASCENDING &&
-               EVENT_TARGET_TRUE_DESCENDING == CHART_TARGET_TRUE_DESCENDING,
-               "Event target identities drifted from the chart targets");
-
-_Static_assert(EVENT_DIRECTION_INCREASING == 0 && EVENT_DIRECTION_DECREASING == 1 &&
-               EVENT_DIRECTION_TANGENT == 2, "Event direction codes drifted");
-
-_Static_assert(EVENT_MOTION_DIRECT == 0 && EVENT_MOTION_RETROGRADE == 1, "Event motion codes drifted");
-
-_Static_assert(offsetof(LongitudeEventRecord, jde_tt) == 0 &&
-               offsetof(LongitudeEventRecord, longitude_deg) == 8 &&
-               offsetof(LongitudeEventRecord, longitude_rate_deg_per_tt_day) == 16 &&
-               offsetof(LongitudeEventRecord, direction_code) == 24 &&
-               sizeof(LongitudeEventRecord) == 32 && _Alignof(LongitudeEventRecord) == 8,
-               "LongitudeEventRecord layout drifted");
-
-_Static_assert(offsetof(StationEventRecord, jde_tt) == 0 &&
-               offsetof(StationEventRecord, longitude_deg) == 8 &&
-               offsetof(StationEventRecord, longitude_rate_deg_per_tt_day) == 16 &&
-               offsetof(StationEventRecord, motion_before_code) == 24 &&
-               offsetof(StationEventRecord, motion_after_code) == 28 &&
-               sizeof(StationEventRecord) == 32 && _Alignof(StationEventRecord) == 8,
-               "StationEventRecord layout drifted");
-
-_Static_assert(offsetof(LongitudeDifferenceEventRecord, jde_tt) == 0 &&
-               offsetof(LongitudeDifferenceEventRecord, longitude_a_deg) == 8 &&
-               offsetof(LongitudeDifferenceEventRecord, longitude_b_deg) == 16 &&
-               offsetof(LongitudeDifferenceEventRecord, longitude_rate_a_deg_per_tt_day) == 24 &&
-               offsetof(LongitudeDifferenceEventRecord, longitude_rate_b_deg_per_tt_day) == 32 &&
-               offsetof(LongitudeDifferenceEventRecord, signed_difference_deg) == 40 &&
-               offsetof(LongitudeDifferenceEventRecord, direction_code) == 48 &&
-               sizeof(LongitudeDifferenceEventRecord) == 56 && _Alignof(LongitudeDifferenceEventRecord) == 8,
-               "LongitudeDifferenceEventRecord layout drifted");
-
-_Static_assert((_Generic(((LongitudeEventRecord*)0)->jde_tt, double: 1, default: 0) &&
-                _Generic(((LongitudeEventRecord*)0)->longitude_deg, double: 1, default: 0) &&
-                _Generic(((LongitudeEventRecord*)0)->longitude_rate_deg_per_tt_day, double: 1, default: 0) &&
-                _Generic(((LongitudeEventRecord*)0)->direction_code, uint32_t: 1, default: 0) &&
-                _Generic(((StationEventRecord*)0)->motion_before_code, uint32_t: 1, default: 0) &&
-                _Generic(((StationEventRecord*)0)->motion_after_code, uint32_t: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_a_deg, double: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_b_deg, double: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_a_deg_per_tt_day, double: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->longitude_rate_b_deg_per_tt_day, double: 1, default: 0) &&
-                _Generic(((LongitudeDifferenceEventRecord*)0)->signed_difference_deg, double: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->operation_code, uint32_t: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->subject_code, uint32_t: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->status_code, uint32_t: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->source_code, uint32_t: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->domain_start_jde_tt, double: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->maximum_span_tt_days, uint32_t: 1, default: 0) &&
-                _Generic(((CapabilityRecordV1*)0)->flags, uint32_t: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->kind_code, uint32_t: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->identity_code, uint32_t: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->status_code, uint32_t: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->default_alias_code, uint32_t: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->domain_start_jde_tt, double: 1, default: 0) &&
-                _Generic(((ModelIdentityRecordV1*)0)->domain_end_jde_tt, double: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->target_code, uint32_t: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->present_fields, uint32_t: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->longitude_deg, double: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->latitude_deg, double: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->distance_au, double: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->source_code, uint32_t: 1, default: 0) &&
-                _Generic(((PositionRecordV1*)0)->flags, uint32_t: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->valid, bool: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->house_system_code, uint32_t: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->delta_t_identity_code, uint32_t: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->nutation_identity_code, uint32_t: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->flags, uint32_t: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->jd_ut1, double: 1, default: 0) &&
-                _Generic(((HouseQueryResultV1*)0)->jde_tt, double: 1, default: 0)) != 0,
-               "Event record field types drifted");
-
-/* Signature pins: every export's function type, so a signature drift fails this TU. */
-
-_Static_assert(_Generic(&set_log_verbosity,
-               bool (*)(uint8_t new_value): 1,
-               default: 0) != 0, "set_log_verbosity signature drifted");
-
-_Static_assert(_Generic(&last_error,
+/* Function types include pointee constness, which ctypes cannot express. */
+_Static_assert(_Generic(&celestial_last_error,
                const char * (*)(void): 1,
-               default: 0) != 0, "last_error signature drifted");
-
-_Static_assert(_Generic(&ut1_to_jd,
-               JulianDay (*)(int32_t y, uint32_t m, uint32_t d, double fraction): 1,
-               default: 0) != 0, "ut1_to_jd signature drifted");
-
-_Static_assert(_Generic(&ut1_to_jde,
-               JulianDay (*)(int32_t y, uint32_t m, uint32_t d, double fraction): 1,
-               default: 0) != 0, "ut1_to_jde signature drifted");
-
-_Static_assert(_Generic(&jde_to_ut1,
-               UT1Time (*)(double jde): 1,
-               default: 0) != 0, "jde_to_ut1 signature drifted");
-
-_Static_assert(_Generic(&sun_apparent_geocentric_coord,
-               SunCoordinate (*)(double jde): 1,
-               default: 0) != 0, "sun_apparent_geocentric_coord signature drifted");
-
-_Static_assert(_Generic(&moon_apparent_geocentric_coord,
-               MoonCoordinate (*)(double jde): 1,
-               default: 0) != 0, "moon_apparent_geocentric_coord signature drifted");
-
-_Static_assert(_Generic(&moon_illumination,
-               MoonIllumination (*)(double jde): 1,
-               default: 0) != 0, "moon_illumination signature drifted");
-
-_Static_assert(_Generic(&moon_position_angle,
-               MoonPositionAngle (*)(double jde): 1,
-               default: 0) != 0, "moon_position_angle signature drifted");
-
-_Static_assert(_Generic(&moon_phase_moments,
-               uint32_t (*)(int32_t year, uint8_t phase_kind, uint32_t *root_count, double *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "moon_phase_moments signature drifted");
-
-_Static_assert(_Generic(&solar_lon_root_discriminant,
-               Discriminant (*)(int32_t year, double longitude): 1,
-               default: 0) != 0, "solar_lon_root_discriminant signature drifted");
-
-_Static_assert(_Generic(&solar_lon_roots,
-               uint32_t (*)(int32_t year, double longitude, double *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "solar_lon_roots signature drifted");
-
-_Static_assert(_Generic(&new_moons_after_jde,
-               uint32_t (*)(double jde, double *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "new_moons_after_jde signature drifted");
-
-_Static_assert(_Generic(&new_moons_in_year,
-               uint32_t (*)(int32_t year, uint32_t *root_count, double *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "new_moons_in_year signature drifted");
-
-_Static_assert(_Generic(&equation_of_time,
-               EquationOfTime (*)(double jde): 1,
-               default: 0) != 0, "equation_of_time signature drifted");
-
-_Static_assert(_Generic(&apparent_solar_time,
-               ApparentSolarTime (*)(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude): 1,
-               default: 0) != 0, "apparent_solar_time signature drifted");
-
-_Static_assert(_Generic(&local_apparent_sidereal_time,
-               SiderealTime (*)(double jd_ut1, double longitude): 1,
-               default: 0) != 0, "local_apparent_sidereal_time signature drifted");
-
-_Static_assert(_Generic(&query_jieqi_moment,
-               JieqiMomentQuery (*)(int32_t year, uint8_t jq_idx): 1,
-               default: 0) != 0, "query_jieqi_moment signature drifted");
-
-_Static_assert(_Generic(&get_jieqi_name,
-               bool (*)(uint8_t jq_idx, char *buf, uint32_t buf_size): 1,
-               default: 0) != 0, "get_jieqi_name signature drifted");
-
-_Static_assert(_Generic(&get_supported_lunar_year_range,
-               SupportedLunarYearRange (*)(uint8_t algo): 1,
-               default: 0) != 0, "get_supported_lunar_year_range signature drifted");
-
-_Static_assert(_Generic(&get_lunar_year_info,
-               LunarYearInfo (*)(uint8_t algo, int32_t year): 1,
-               default: 0) != 0, "get_lunar_year_info signature drifted");
-
-_Static_assert(_Generic(&gregorian_to_lunar,
-               LunarDate (*)(uint8_t algo, int32_t year, uint8_t month, uint8_t day): 1,
-               default: 0) != 0, "gregorian_to_lunar signature drifted");
-
-_Static_assert(_Generic(&lunar_to_gregorian,
-               GregorianDate (*)(uint8_t algo, int32_t year, uint8_t month, bool is_leap, uint8_t day): 1,
-               default: 0) != 0, "lunar_to_gregorian signature drifted");
-
-_Static_assert(_Generic(&delta_t_algo1,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t_algo1 signature drifted");
-
-_Static_assert(_Generic(&delta_t_algo2,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t_algo2 signature drifted");
-
-_Static_assert(_Generic(&delta_t_algo3,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t_algo3 signature drifted");
-
-_Static_assert(_Generic(&delta_t_algo4,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t_algo4 signature drifted");
-
-_Static_assert(_Generic(&delta_t_algo5,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t_algo5 signature drifted");
-
-_Static_assert(_Generic(&delta_t,
-               DeltaT (*)(double year): 1,
-               default: 0) != 0, "delta_t signature drifted");
-
-
-_Static_assert(_Generic(&longitude_events,
-               uint32_t (*)(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeEventRecord *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "longitude_events signature drifted");
-
-_Static_assert(_Generic(&longitude_stations,
-               uint32_t (*)(uint32_t target_code, double start_jde_tt, double end_jde_tt, uint32_t *event_count, StationEventRecord *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "longitude_stations signature drifted");
-
-_Static_assert(_Generic(&longitude_difference_events,
-               uint32_t (*)(uint32_t first_target_code, uint32_t second_target_code, double target_difference_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, LongitudeDifferenceEventRecord *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "longitude_difference_events signature drifted");
-
+               default: 0) != 0, "celestial_last_error signature drifted");
+_Static_assert(_Generic(&celestial_last_error_kind,
+               uint32_t (*)(void): 1,
+               default: 0) != 0, "celestial_last_error_kind signature drifted");
+_Static_assert(_Generic(&celestial_ut1_to_jd,
+               CelestialJulianDay (*)(int32_t, uint32_t, uint32_t, double): 1,
+               default: 0) != 0, "celestial_ut1_to_jd signature drifted");
+_Static_assert(_Generic(&celestial_ut1_to_jde,
+               CelestialJulianDay (*)(int32_t, uint32_t, uint32_t, double): 1,
+               default: 0) != 0, "celestial_ut1_to_jde signature drifted");
+_Static_assert(_Generic(&celestial_jde_to_ut1,
+               CelestialUT1Time (*)(double): 1,
+               default: 0) != 0, "celestial_jde_to_ut1 signature drifted");
+_Static_assert(_Generic(&celestial_sun_apparent_geocentric_coord,
+               CelestialSunCoordinate (*)(double): 1,
+               default: 0) != 0, "celestial_sun_apparent_geocentric_coord signature drifted");
+_Static_assert(_Generic(&celestial_moon_apparent_geocentric_coord,
+               CelestialMoonCoordinate (*)(double): 1,
+               default: 0) != 0, "celestial_moon_apparent_geocentric_coord signature drifted");
+_Static_assert(_Generic(&celestial_moon_illumination,
+               CelestialMoonIllumination (*)(double): 1,
+               default: 0) != 0, "celestial_moon_illumination signature drifted");
+_Static_assert(_Generic(&celestial_moon_position_angle,
+               CelestialMoonPositionAngle (*)(double): 1,
+               default: 0) != 0, "celestial_moon_position_angle signature drifted");
+_Static_assert(_Generic(&celestial_moon_phase_moments,
+               uint32_t (*)(int32_t, uint8_t, uint32_t*, double*, uint32_t): 1,
+               default: 0) != 0, "celestial_moon_phase_moments signature drifted");
+_Static_assert(_Generic(&celestial_solar_lon_root_discriminant,
+               CelestialDiscriminant (*)(int32_t, double): 1,
+               default: 0) != 0, "celestial_solar_lon_root_discriminant signature drifted");
+_Static_assert(_Generic(&celestial_solar_lon_roots,
+               uint32_t (*)(int32_t, double, double*, uint32_t): 1,
+               default: 0) != 0, "celestial_solar_lon_roots signature drifted");
+_Static_assert(_Generic(&celestial_new_moons_after_jde,
+               uint32_t (*)(double, double*, uint32_t): 1,
+               default: 0) != 0, "celestial_new_moons_after_jde signature drifted");
+_Static_assert(_Generic(&celestial_new_moons_in_year,
+               uint32_t (*)(int32_t, uint32_t*, double*, uint32_t): 1,
+               default: 0) != 0, "celestial_new_moons_in_year signature drifted");
+_Static_assert(_Generic(&celestial_equation_of_time,
+               CelestialEquationOfTime (*)(double): 1,
+               default: 0) != 0, "celestial_equation_of_time signature drifted");
+_Static_assert(_Generic(&celestial_apparent_solar_time,
+               CelestialApparentSolarTime (*)(int32_t, uint32_t, uint32_t, double, double): 1,
+               default: 0) != 0, "celestial_apparent_solar_time signature drifted");
+_Static_assert(_Generic(&celestial_local_apparent_sidereal_time,
+               CelestialSiderealTime (*)(double, double): 1,
+               default: 0) != 0, "celestial_local_apparent_sidereal_time signature drifted");
+_Static_assert(_Generic(&celestial_query_jieqi_moment,
+               CelestialJieqiMomentQuery (*)(int32_t, uint8_t): 1,
+               default: 0) != 0, "celestial_query_jieqi_moment signature drifted");
+_Static_assert(_Generic(&celestial_get_jieqi_name,
+               uint32_t (*)(uint8_t, char*, uint32_t): 1,
+               default: 0) != 0, "celestial_get_jieqi_name signature drifted");
+_Static_assert(_Generic(&celestial_get_supported_lunar_year_range,
+               CelestialSupportedLunarYearRange (*)(uint8_t): 1,
+               default: 0) != 0, "celestial_get_supported_lunar_year_range signature drifted");
+_Static_assert(_Generic(&celestial_get_lunar_year_info,
+               CelestialLunarYearInfo (*)(uint8_t, int32_t): 1,
+               default: 0) != 0, "celestial_get_lunar_year_info signature drifted");
+_Static_assert(_Generic(&celestial_gregorian_to_lunar,
+               CelestialLunarDate (*)(uint8_t, int32_t, uint8_t, uint8_t): 1,
+               default: 0) != 0, "celestial_gregorian_to_lunar signature drifted");
+_Static_assert(_Generic(&celestial_lunar_to_gregorian,
+               CelestialGregorianDate (*)(uint8_t, int32_t, uint8_t, bool, uint8_t): 1,
+               default: 0) != 0, "celestial_lunar_to_gregorian signature drifted");
+_Static_assert(_Generic(&celestial_delta_t,
+               CelestialDeltaT (*)(double, uint32_t): 1,
+               default: 0) != 0, "celestial_delta_t signature drifted");
+_Static_assert(_Generic(&celestial_chart_snapshot,
+               CelestialChartSnapshot (*)(int32_t, uint32_t, uint32_t, double, uint32_t, double, double, uint32_t, uint32_t): 1,
+               default: 0) != 0, "celestial_chart_snapshot signature drifted");
+_Static_assert(_Generic(&celestial_longitude_events,
+               uint32_t (*)(uint32_t, double, double, double, uint32_t*, CelestialLongitudeEventRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_longitude_events signature drifted");
+_Static_assert(_Generic(&celestial_longitude_stations,
+               uint32_t (*)(uint32_t, double, double, uint32_t*, CelestialStationEventRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_longitude_stations signature drifted");
+_Static_assert(_Generic(&celestial_longitude_difference_events,
+               uint32_t (*)(uint32_t, uint32_t, double, double, double, uint32_t*, CelestialLongitudeDifferenceEventRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_longitude_difference_events signature drifted");
 _Static_assert(_Generic(&celestial_capabilities,
-               uint32_t (*)(uint32_t operation_code, uint32_t subject_code, uint32_t *record_count, CapabilityRecordV1 *slots, uint32_t slot_count): 1,
+               uint32_t (*)(uint32_t, uint32_t, uint32_t*, CelestialCapabilityRecord*, uint32_t): 1,
                default: 0) != 0, "celestial_capabilities signature drifted");
-
 _Static_assert(_Generic(&celestial_model_identities,
-               uint32_t (*)(uint32_t kind_code, uint32_t *record_count, ModelIdentityRecordV1 *slots, uint32_t slot_count): 1,
+               uint32_t (*)(uint32_t, uint32_t*, CelestialModelIdentityRecord*, uint32_t): 1,
                default: 0) != 0, "celestial_model_identities signature drifted");
-
+_Static_assert(_Generic(&celestial_model_identity_text,
+               uint32_t (*)(uint32_t, uint32_t, char*, uint32_t): 1,
+               default: 0) != 0, "celestial_model_identity_text signature drifted");
 _Static_assert(_Generic(&celestial_capability_text,
-               uint32_t (*)(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity): 1,
+               uint32_t (*)(uint32_t, uint32_t, char*, uint32_t): 1,
                default: 0) != 0, "celestial_capability_text signature drifted");
-
-_Static_assert(_Generic(&position_query_v1,
-               uint32_t (*)(const uint32_t *target_codes, uint32_t target_count, double jde_tt, uint32_t *record_count, PositionRecordV1 *slots, uint32_t slot_count): 1,
-               default: 0) != 0, "position_query_v1 signature drifted");
-
-_Static_assert(_Generic(&house_query_v1,
-               HouseQueryResultV1 (*)(int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t nutation_model_code, double latitude_deg, double longitude_deg, uint32_t house_system_code): 1,
-               default: 0) != 0, "house_query_v1 signature drifted");
-
-/* #355: the independent query records; PositionRecordV1 mirrors the chart body's field order. */
-_Static_assert(offsetof(PositionRecordV1, target_code) == 0 && offsetof(PositionRecordV1, present_fields) == 4 &&
-               offsetof(PositionRecordV1, longitude_deg) == 8 && offsetof(PositionRecordV1, latitude_deg) == 16 &&
-               offsetof(PositionRecordV1, distance_au) == 24 && offsetof(PositionRecordV1, source_code) == 32 &&
-               offsetof(PositionRecordV1, flags) == 36 && sizeof(PositionRecordV1) == 40 &&
-               _Alignof(PositionRecordV1) == 8, "PositionRecordV1 layout drifted");
-
-_Static_assert(offsetof(HouseQueryResultV1, valid) == 0 && offsetof(HouseQueryResultV1, house_system_code) == 4 &&
-               offsetof(HouseQueryResultV1, delta_t_identity_code) == 8 &&
-               offsetof(HouseQueryResultV1, nutation_identity_code) == 12 && offsetof(HouseQueryResultV1, flags) == 16 &&
-               offsetof(HouseQueryResultV1, jd_ut1) == 24 && offsetof(HouseQueryResultV1, jde_tt) == 32 &&
-               offsetof(HouseQueryResultV1, houses) == 40 && sizeof(HouseQueryResultV1) == 168 &&
-               _Alignof(HouseQueryResultV1) == 8, "HouseQueryResultV1 layout drifted");
-
-_Static_assert(POSITION_PRESENT_DISTANCE == CHART_PRESENT_DISTANCE, "Position presence codes drifted from the chart");
-_Static_assert(HOUSE_NUTATION_MODEL_DEFAULT == 0 && HOUSE_NUTATION_MODEL_MEEUS == 1 &&
-               HOUSE_NUTATION_MODEL_IAU_1980 == 2, "House nutation model codes drifted");
+_Static_assert(_Generic(&celestial_positions,
+               uint32_t (*)(const uint32_t*, uint32_t, double, uint32_t*, CelestialPositionRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_positions signature drifted");
+_Static_assert(_Generic(&celestial_equatorial_positions,
+               uint32_t (*)(const uint32_t*, uint32_t, double, uint32_t*, CelestialEquatorialPositionRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_equatorial_positions signature drifted");
+_Static_assert(_Generic(&celestial_house_query,
+               CelestialHouseQueryResult (*)(int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, uint32_t, double, double, uint32_t): 1,
+               default: 0) != 0, "celestial_house_query signature drifted");
+_Static_assert(_Generic(&celestial_house_capability,
+               CelestialCivilHouseCapability (*)(uint32_t): 1,
+               default: 0) != 0, "celestial_house_capability signature drifted");

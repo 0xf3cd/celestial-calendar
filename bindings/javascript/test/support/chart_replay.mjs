@@ -137,9 +137,9 @@ export function runChartAcceptance(celestial, example) {
   }
   expectFailure(() => celestial.chart.snapshot({ year: 1971, month: 12, day: 31, fraction: 0.5 }, options), RangeError);
   expectFailure(() => celestial.chart.snapshot(civil, { ...options, modle: "algo1" }), TypeError);
-  expectFailure(() => celestial.chart.snapshot({ ...civil, year: 2035 }, { ...options, model: "algo4" }), celestial.CelestialError, true);
-  expectFailure(() => celestial.chart.snapshot({ year: 1885, month: 1, day: 1, fraction: 0 }, { ...options, scale: "ut1" }), celestial.CelestialError, true);
-  expectFailure(() => celestial.chart.snapshot(civil, { ...options, location: { latitudeDeg: 89, longitudeDeg: 0 } }), celestial.CelestialError, true);
+  expectFailure(() => celestial.chart.snapshot({ ...civil, year: 2035 }, { ...options, model: "algo4" }), RangeError);
+  expectFailure(() => celestial.chart.snapshot({ year: 1885, month: 1, day: 1, fraction: 0 }, { ...options, scale: "ut1" }), RangeError);
+  expectFailure(() => celestial.chart.snapshot(civil, { ...options, location: { latitudeDeg: 89, longitudeDeg: 0 } }), RangeError);
   const recovered = celestial.chart.snapshot(civil, options);
   assertChartReplay(recovered, example);
   check(JSON.stringify(first) === saved, "later calls changed an owned chart");

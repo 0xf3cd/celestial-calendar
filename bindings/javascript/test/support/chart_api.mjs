@@ -17,12 +17,15 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertChartReplay, chartExampleInput, runChartAcceptance } from "./chart_replay.mjs";
 
-export async function testChartApi(celestial, entryUrl) {
+export async function testChartApi(celestial, entryUrl, { native = true } = {}) {
   const example = JSON.parse(await readFile(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), "utf8"));
-  const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
+  const { LAYOUTS, C_DECLARATIONS } = await import(new URL("./bindings.mjs", entryUrl));
+  const manifest = { layouts: LAYOUTS };
   const { civil, options } = chartExampleInput(example);
-  assert(Object.isFrozen(celestial.chart));
-  console.log(`PASS public chart acceptance ${JSON.stringify(runChartAcceptance(celestial, example))}`);
+  if (native) {
+    assert(Object.isFrozen(celestial.chart));
+    console.log(`PASS public chart acceptance ${JSON.stringify(runChartAcceptance(celestial, example))}`);
+  }
   const directory = await mkdtemp(resolve(tmpdir(), "celestial-chart-contract-"));
   const source = await readFile(new URL("./index.mjs", entryUrl), "utf8");
   try {
@@ -33,6 +36,7 @@ export async function testChartApi(celestial, entryUrl) {
     await writeFile(entry, source.replace("./celestial-jieqi.mjs", "./mock-module.mjs"));
     await writeFile(resolve(directory, "mock-module.mjs"), `
 const layouts = ${JSON.stringify(manifest.layouts)};
+const codes = ${JSON.stringify(C_DECLARATIONS.constants)};
 const example = ${JSON.stringify(example)};
 const field = (layout, name) => layouts[layout].fields.find((item) => item.name === name);
 export default async () => {
@@ -47,7 +51,8 @@ export default async () => {
   M._free = (ptr) => { assertPtr(ptr); ++control.frees; };
   const assertPtr = (ptr) => { if (ptr !== 8) throw new Error("wrong chart pointer"); };
   M.ccall = () => { ++control.errorReads; return control.error; };
-  M._chart_snapshot_v1 = (ptr, ...args) => {
+  M._celestial_last_error_kind = () => control.kind;
+  M._celestial_chart_snapshot = (ptr, ...args) => {
     assertPtr(ptr); control.args = args; ++control.calls;
     if (control.grow) { buffer = buffer.transfer(buffer.byteLength * 2); views(); }
     const set = (base, layout, name, value) => {
@@ -59,20 +64,23 @@ export default async () => {
     const write = (base, layout, record) => {
       for (const [name, value] of Object.entries(record)) set(base, layout, name, value);
     };
-    write(ptr, "ChartSnapshotV1", { valid: 1, ...example.times });
-    const bodies = ptr + field("ChartSnapshotV1", "bodies").offset;
+    write(ptr, "CelestialChartSnapshot", { valid: 1, ...example.times,
+      delta_t_identity_code: args.at(-1) || codes.CELESTIAL_DELTA_T_MODEL_ALGO5,
+      nutation_identity_code: codes.CELESTIAL_NUTATION_MODEL_IAU_1980 });
+    const bodies = ptr + field("CelestialChartSnapshot", "bodies").offset;
     const absent = new Set();
     example.bodies.forEach((body, index) => {
-      const base = bodies + index * layouts.ChartBodyV1.size;
-      write(base, "ChartBodyV1", { target_code: index, present_fields: index < 10 ? 3 : 1,
+      const base = bodies + index * layouts.CelestialChartBody.size;
+      write(base, "CelestialChartBody", { target_code: index, present_fields: index < 10 ? 3 : 1,
+        source_code: codes.CELESTIAL_POSITION_SOURCE_SUN_VSOP87D,
         longitude_deg: body.longitude_deg, latitude_deg: body.latitude_deg,
         distance_au: body.distance_au ?? NaN, longitude_rate_deg_per_tt_day: body.longitude_rate_deg_per_tt_day });
-      if (index >= 10) absent.add(String((base + field("ChartBodyV1", "distance_au").offset) >> 3));
+      if (index >= 10) absent.add(String((base + field("CelestialChartBody", "distance_au").offset) >> 3));
     });
-    const houses = ptr + field("ChartSnapshotV1", "houses").offset;
+    const houses = ptr + field("CelestialChartSnapshot", "houses").offset;
     const { cusps_deg, ...axes } = example.houses;
-    write(houses, "ChartHousesV1", axes);
-    const cusps = houses + field("ChartHousesV1", "cusps_deg").offset;
+    write(houses, "CelestialChartHouses", axes);
+    const cusps = houses + field("CelestialChartHouses", "cusps_deg").offset;
     cusps_deg.forEach((value, index) => { M.HEAPF64[(cusps >> 3) + index] = value; });
     if (control.mutate) control.mutate(M, { ptr, bodies, houses, cusps, layouts });
     if (control.forbidAbsent) M.HEAPF64 = new Proxy(M.HEAPF64, {
@@ -83,7 +91,7 @@ export default async () => {
   return M;
 };
 `);
-    const control = globalThis.__chartControl = { allocations: 0, frees: 0, calls: 0, errorReads: 0, error: "stale error" };
+    const control = globalThis.__chartControl = { allocations: 0, frees: 0, calls: 0, errorReads: 0, kind: 0, error: "stale error" };
     const fixture = await import(pathToFileURL(entry));
     const forbidden = new Proxy({}, { get() { throw new Error("read before init"); } });
     assert.throws(() => fixture.chart.snapshot(forbidden, forbidden), { name: "CelestialError", operation: "chart.snapshot", recorded: false });
@@ -128,10 +136,9 @@ export default async () => {
     } });
     call(once({ ...civil }, "civil"), once({ ...options, location: once({ ...options.location }, "location") }, "options"));
     assert.equal(Object.keys(reads).length, 10);
-    const badInputs = [null, [], new Date(), { ...civil, isLeap: false }, { ...civil, year: 67562 }, { ...civil, fraction: NaN }];
+    const badInputs = [null, [], new Date(), { ...civil, isLeap: false }, { ...civil, year: 2 ** 31 }, { ...civil, fraction: NaN }];
     for (const input of badInputs) assert.throws(() => call(input), (error) => error instanceof TypeError || error instanceof RangeError);
     for (const config of [null, [], {}, { ...options, model: null }, { ...options, scale: "UTC" }, { ...options, system: "unknown" },
-      { ...options, location: { latitudeDeg: -90, longitudeDeg: 0 } }, { ...options, location: { latitudeDeg: 90, longitudeDeg: 0 } },
       { ...options, location: { latitudeDeg: 0, longitudeDeg: Infinity } }, Object.create(options)]) {
       assert.throws(() => call(civil, config), (error) => error instanceof TypeError || error instanceof RangeError);
     }
@@ -164,15 +171,19 @@ export default async () => {
     const offset = (layout, name) => manifest.layouts[layout].fields.find((item) => item.name === name).offset;
     const mutations = [
       (M, p) => { M.HEAPU8[p.ptr] = 2; },
-      (M, p) => { M.HEAPF64[(p.ptr + offset("ChartSnapshotV1", "jd_ut1")) >> 3] = NaN; },
+      (M, p) => { M.HEAPF64[(p.ptr + offset("CelestialChartSnapshot", "jd_ut1")) >> 3] = NaN; },
       (M, p) => { M.HEAPU32[p.bodies >> 2] = 1; },
-      (M, p) => { M.HEAPU32[(p.bodies + offset("ChartBodyV1", "present_fields")) >> 2] = 1; },
-      (M, p) => { M.HEAPU32[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "present_fields")) >> 2] = 3; },
-      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "longitude_deg")) >> 3] = 360; },
-      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "latitude_deg")) >> 3] = 91; },
-      (M, p) => { M.HEAPF64[(p.bodies + 10 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "latitude_deg")) >> 3] = 0.5; },
-      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "distance_au")) >> 3] = 0; },
-      (M, p) => { M.HEAPF64[(p.bodies + offset("ChartBodyV1", "longitude_rate_deg_per_tt_day")) >> 3] = Infinity; },
+      (M, p) => { M.HEAPU32[(p.bodies + offset("CelestialChartBody", "present_fields")) >> 2] = 1; },
+      (M, p) => { M.HEAPU32[(p.bodies + 10 * manifest.layouts.CelestialChartBody.size + offset("CelestialChartBody", "present_fields")) >> 2] = 3; },
+      (M, p) => { M.HEAPU32[(p.bodies + offset("CelestialChartBody", "present_fields")) >> 2] = 0x10000003; },
+      (M, p) => { M.HEAPU32[(p.bodies + offset("CelestialChartBody", "source_code")) >> 2] = 0x10000001; },
+      (M, p) => { M.HEAPU32[(p.ptr + offset("CelestialChartSnapshot", "delta_t_identity_code")) >> 2] = 0; },
+      (M, p) => { M.HEAPU32[(p.ptr + offset("CelestialChartSnapshot", "nutation_identity_code")) >> 2] = 0x10000002; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("CelestialChartBody", "longitude_deg")) >> 3] = 360; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("CelestialChartBody", "latitude_deg")) >> 3] = 91; },
+      (M, p) => { M.HEAPF64[(p.bodies + 10 * manifest.layouts.CelestialChartBody.size + offset("CelestialChartBody", "latitude_deg")) >> 3] = 0.5; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("CelestialChartBody", "distance_au")) >> 3] = 0; },
+      (M, p) => { M.HEAPF64[(p.bodies + offset("CelestialChartBody", "longitude_rate_deg_per_tt_day")) >> 3] = Infinity; },
       (M, p) => { M.HEAPF64[p.houses >> 3] = -1; },
       (M, p) => { M.HEAPF64[p.cusps >> 3] = NaN; },
     ];
@@ -183,9 +194,11 @@ export default async () => {
       assert.equal(control.errorReads, errorReads, "malformed success read stale last_error");
     }
     control.error = "native chart failure";
+    control.kind = C_DECLARATIONS.constants.CELESTIAL_ERROR_COMPUTATION;
     control.mutate = (M, p) => { M.HEAPU8[p.ptr] = 0; };
     assert.throws(call, { name: "CelestialError", operation: "chart.snapshot", recorded: true, message: "native chart failure" });
     control.mutate = undefined;
+    control.kind = 0;
     assertChartReplay(call(), example);
     assert.equal(control.allocations, control.frees, "chart output allocations leaked");
     control.allocationFails = true;
@@ -194,13 +207,15 @@ export default async () => {
     assert.equal(control.calls, calls, "native call after allocation failure");
     console.log(`PASS chart single-read/dispatch; inherited model; growth/ownership; absent storage; malformed successes ${mutations.length}/${mutations.length}; allocation/free/error cleanup`);
 
+    if (!native) return 1;
+
     await copyFile(new URL("./celestial-jieqi.wasm", entryUrl), resolve(directory, "celestial-jieqi.wasm"));
     const factoryUrl = new URL("./celestial-jieqi.mjs", entryUrl).href;
     await writeFile(resolve(directory, "instrumented.mjs"), `
 import factory from ${JSON.stringify(factoryUrl)};
 export default async (options) => {
-  const M = await factory(options), raw = M._chart_snapshot_v1;
-  M._chart_snapshot_v1 = (ptr, ...args) => { raw(ptr, ...args); if (globalThis.__chartNativeMutation) globalThis.__chartNativeMutation(M, ptr); };
+  const M = await factory(options), raw = M._celestial_chart_snapshot;
+  M._celestial_chart_snapshot = (ptr, ...args) => { raw(ptr, ...args); if (globalThis.__chartNativeMutation) globalThis.__chartNativeMutation(M, ptr); };
   return M;
 };
 `);
@@ -209,11 +224,11 @@ export default async (options) => {
     const real = await import(pathToFileURL(realEntry)); await real.init();
     const replay = () => assertChartReplay(real.chart.snapshot(civil, options), example);
     replay();
-    const bodiesOffset = offset("ChartSnapshotV1", "bodies");
+    const bodiesOffset = offset("CelestialChartSnapshot", "bodies");
     for (const nativeOffset of [
-      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "longitude_deg"),
-      bodiesOffset + 2 * manifest.layouts.ChartBodyV1.size + offset("ChartBodyV1", "longitude_rate_deg_per_tt_day"),
-      offset("ChartSnapshotV1", "houses") + offset("ChartHousesV1", "cusps_deg"),
+      bodiesOffset + 2 * manifest.layouts.CelestialChartBody.size + offset("CelestialChartBody", "longitude_deg"),
+      bodiesOffset + 2 * manifest.layouts.CelestialChartBody.size + offset("CelestialChartBody", "longitude_rate_deg_per_tt_day"),
+      offset("CelestialChartSnapshot", "houses") + offset("CelestialChartHouses", "cusps_deg"),
     ]) {
       globalThis.__chartNativeMutation = (M, ptr) => { M.HEAPF64[(ptr + nativeOffset) >> 3] += 1; };
       assert.throws(replay, /replay residual/);

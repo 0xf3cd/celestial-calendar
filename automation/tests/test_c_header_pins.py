@@ -53,7 +53,9 @@ class Layout:
     sets = collect_pin_sets(self.root)
     struct = sorted(sets.structs)[0]
     lines = [
-      line for line in self.pins.splitlines() if f"offsetof({struct}," not in line and f"sizeof({struct})" not in line
+      line
+      for line in self.pins.splitlines()
+      if f"ABI_FIELD({struct}," not in line and f"ABI_ARRAY({struct}," not in line
     ]
     assert len(lines) < len(self.pins.splitlines())
     self.pins_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -79,7 +81,7 @@ def test_stale_struct_pin_fails(tmp_path):
   layout = Layout(tmp_path)
   sets = collect_pin_sets(tmp_path)
   struct = sorted(sets.structs)[0]
-  mutated = layout.pins.replace(f"offsetof({struct},", f"offsetof(NotA{struct},", 1)
+  mutated = layout.pins.replace(f"ABI_FIELD({struct},", f"ABI_FIELD(NotA{struct},", 1)
   layout.pins_path.write_text(mutated, encoding="utf-8")
   with pytest.raises(RuntimeError, match="pins name no celestial.h struct"):
     verify_c_header_pins(tmp_path)
@@ -112,7 +114,9 @@ def test_indented_declaration_is_still_an_export(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)
   indented = layout.header.replace(
-    "typedef struct JulianDay {", "  CELESTIAL_API double probe_export(double year);\n\ntypedef struct JulianDay {", 1
+    "typedef struct CelestialJulianDay {",
+    "  CELESTIAL_API double probe_export(double year);\n\ntypedef struct CelestialJulianDay {",
+    1,
   )
   layout.header_path.write_text(indented, encoding="utf-8")
   with pytest.raises(RuntimeError, match="exports without a signature pin"):
@@ -123,8 +127,8 @@ def test_sizeof_only_new_struct_is_unpinned(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)
   header = layout.header.replace(
-    "typedef struct JulianDay {",
-    "typedef struct ProbeOnly { int32_t x; int32_t y; } ProbeOnly;\n\ntypedef struct JulianDay {",
+    "typedef struct CelestialJulianDay {",
+    "typedef struct ProbeOnly { int32_t x; int32_t y; } ProbeOnly;\n\ntypedef struct CelestialJulianDay {",
     1,
   )
   layout.header_path.write_text(header, encoding="utf-8")
@@ -162,7 +166,8 @@ def test_field_address_generic_is_not_a_signature_pin(tmp_path):
   materialize(tmp_path)
   layout = Layout(tmp_path)
   field_address_pin = (
-    '_Static_assert(_Generic(&((ChartBodyV1*)0)->target_code,\n    uint32_t*: 1, default: 0), "field address type");\n'
+    "_Static_assert(_Generic(&((CelestialChartBody*)0)->target_code,\n"
+    '    uint32_t*: 1, default: 0), "field address type");\n'
   )
   layout.pins_path.write_text(layout.pins + field_address_pin, encoding="utf-8")
   verify_c_header_pins(tmp_path)

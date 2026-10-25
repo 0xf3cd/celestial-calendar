@@ -24,6 +24,8 @@ import type {
 } from "@0xf3cd/celestial";
 // @ts-expect-error CivilDate was renamed, without an alias
 import type { CivilDate } from "@0xf3cd/celestial";
+// @ts-expect-error Logging controls were removed.
+import type { LogVerbosity } from "@0xf3cd/celestial";
 
 const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
@@ -92,13 +94,24 @@ constructedError.recorded;
 
 const initialization: Promise<void> = celestial.init();
 await initialization;
-celestial.config.setLogVerbosity("none");
+// @ts-expect-error Logging controls were removed.
+celestial.config;
+// @ts-expect-error Raw native position queries are not a public JavaScript API.
+celestial.positions;
+// @ts-expect-error Raw native equatorial queries are not a public JavaScript API.
+celestial.equatorialPositions;
+// @ts-expect-error Raw native capabilities are not a public JavaScript API.
+celestial.capabilities;
 celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 celestial.time.ut1ToJde({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 const ut1 = celestial.time.jdeToUt1(2451545.0);
 celestial.time.localApparentSiderealTime(2451545.0, 0);
 celestial.time.deltaT(2024.5, deltaTModel);
-celestial.sun.apparentGeocentricCoordinate(2451545.0);
+const sunCoordinate = celestial.sun.apparentGeocentricCoordinate(2451545.0);
+const sunDistance: number = sunCoordinate.distanceAu;
+// @ts-expect-error Sun uses the same distanceAu spelling as chart bodies.
+sunCoordinate.radiusAu;
+void sunDistance;
 celestial.sun.longitudeCrossings(2024, 0);
 celestial.sun.equationOfTime(2451545.0);
 const solarTime = celestial.sun.apparentSolarTime(civil, 116.4);

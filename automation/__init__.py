@@ -20,7 +20,6 @@ from .feature_probe import probe_features
 from .abi_layout import check_abi_layout
 from .ctypes_smoke import check_ctypes_smoke
 from .export_surface import check_export_surface
-from .log_names import check_log_names
 from .ai_workflows import check_ai_workflows
 from .action_pins import check_action_pins
 from .jieqi_table import check_jieqi_table
@@ -53,7 +52,6 @@ __all__ = [
   "check_abi_layout",
   "check_ctypes_smoke",
   "check_export_surface",
-  "check_log_names",
   "check_ai_workflows",
   "check_action_pins",
   "check_jieqi_table",

@@ -5,14 +5,14 @@
   "floating_reference": "Source literals as nearest binary64 exact reals; smooth phase reference uses exact pi",
   "upper_arithmetic": "192-bit outward real majorants; 256-bit upward nonnegative FP magnitudes and errors",
   "source_sha256": {
-    "src/astro/ephemeris.hpp": "1c04dea706e8be4eb53d916c01e10a7b3b2d6f092117ccbd12954405a1a15a58",
+    "src/astro/ephemeris.hpp": "9871d9b1e8ac9830627240b6fa577e04858b4820cff6656c65876c9b517d8f4a",
     "src/astro/lunar_node.hpp": "9930448543f476e50ba3113185cf7d2af4a38a83a832b65bba1c82c6e9ffd14f",
-    "src/astro/moon.hpp": "586cd5f043c31849f0702fa55504cf8000da03ec90cb7281a031619d9bbe1493",
+    "src/astro/moon.hpp": "2224376504970c10424d30e8547cba5890cd1d0da1473f32825b844e5faf613e",
     "src/astro/elp2000_82b.hpp": "d4842850c3500a53a74dc048a39131a5d6a21ad777d6080eaa974b0d12f7abac",
-    "src/astro/planet.hpp": "de76b87dac3b77f8328e9dc3bd65ebd056b419c9b13f197af6b87a699a4f7632",
+    "src/astro/planet.hpp": "0f6cf76d993a107700c24abc68d3c89f0e493a2db811f5985e735b26cd816bcd",
     "src/astro/pluto.hpp": "021668e08cb2540e6db909f9023b4dda700b6259b266fc690465df3fa319c3c0",
-    "src/astro/earth.hpp": "902e1b2e5ea13eeb0c0b2c68f61bf55dfd4f46d750dccc6921a8b09ae4e708d3",
-    "src/astro/julian_day.hpp": "d48588f30c88d7b1f79bee8f7bc32d1cccee9f23fef5bd080e6e09643ccf052f",
+    "src/astro/earth.hpp": "81a0610f31bfdbd82ef8d64008193f79a0f2468866b52685cbf52302ba8a6103",
+    "src/astro/julian_day.hpp": "5c27cf26a0fd8bf8dce4d8f88c7450d082b9b5f385c77e5801ced0ac63cc3220",
     "src/astro/toolbox.hpp": "300214ebc9672b48b0f37472fd1f63490662eb55ce0a90adbc755027eff39fc4",
     "src/astro/coord_transform.hpp": "163d28b539bd8eb8294999840ac20b781d4e028e47105faea55e8beb2803991a",
     "src/astro/earth/precession.hpp": "da1a6fed09c73b98638e74bd3ccaaa80a8019308df1bec9e7ef68856ce7acc09",
@@ -26,7 +26,7 @@
     "src/astro/vsop87d/uranus_coeff.hpp": "e5a67f411b593a1e139e1f3b35bff4608d1ead90e7f52f8ac1e8a875e1ba7c20",
     "src/astro/vsop87d/neptune_coeff.hpp": "ec12eadf6b0dbe0bf906d67ca766d8a6daafd17fb2976fa1ed577b5c825df28b"
   },
-  "solar_geocentric_namespace_body_sha256": "efd36963b6ae7a25e062ae3880ff425d7bdb238ada527bf0c2f35a2765e06539",
+  "solar_geocentric_namespace_body_sha256": "5dcb055350f80400c312665b1bfb9aa67f6708657a7673633c850df1c1f5d1b9",
   "target_order": [
     "SUN",
     "MOON",

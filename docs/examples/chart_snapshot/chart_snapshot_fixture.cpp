@@ -24,7 +24,7 @@ auto main() -> int {
     .latitude = astro::toolbox::AngleDeg { 51.5 },
     .longitude = astro::toolbox::AngleDeg { 0.0 },
   };
-  constexpr auto scale = astro::chart::Scale::UTC;
+  constexpr auto scale = astro::julian_day::Scale::UTC;
   constexpr auto system = astro::house::System::PLACIDUS;
   constexpr auto model = astro::delta_t::Model::ALGO5;
   constexpr std::array<std::string_view, 3> SYSTEM_NAMES { "EQUAL", "WHOLE_SIGN", "PLACIDUS" };
@@ -34,7 +34,7 @@ auto main() -> int {
   std::cout << std::setprecision(17)
     << "{\n  \"role\": \"Chart snapshot replay example, not an independent physical-accuracy oracle\",\n"
     << "  \"input\": {\"datetime\": \"" << datetime
-    << "\", \"scale\": \"" << (scale == astro::chart::Scale::UTC ? "UTC" : "UT1") << "\", "
+    << "\", \"scale\": \"" << (scale == astro::julian_day::Scale::UTC ? "UTC" : "UT1") << "\", "
     << "\"latitude_north_deg\": " << location.latitude.deg()
     << ", \"longitude_east_deg\": " << location.longitude.deg()
     << ", \"system\": \"" << SYSTEM_NAMES.at(static_cast<std::size_t>(system))

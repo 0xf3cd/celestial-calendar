@@ -73,8 +73,8 @@ namespace detail {
 
   const auto L0 = detail::sun_mean_longitude(jde_tt);
   const auto α  = astro::sun::equatorial_coord::apparent(jde_tt).α;
-  const auto Δψ = astro::earth::nutation::longitude(jde_tt);
-  const auto ε  = astro::earth::obliquity::true_obliquity(jde_tt);
+  const auto Δψ = astro::earth::nutation::longitude(jde_tt, astro::earth::nutation::Model::IAU_1980);
+  const auto ε  = astro::earth::obliquity::true_obliquity(jde_tt, astro::earth::nutation::Model::IAU_1980);
 
   // (28.1); the constant 0°.0057183 folds aberration and the FK5 correction into L0.
   const double e = L0.deg() - 0.0057183 - α.deg() + (Δψ.deg() * std::cos(ε.rad()));
