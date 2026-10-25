@@ -83,6 +83,22 @@ inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 /** @brief The angular period of an ecliptic longitude, in degrees. */
 inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
 
+/**
+ * @brief Return the IEEE remainder in [-180°, 180°], retaining signed zero and both antipodal signs.
+ * @note Half-turn ties use the even quotient. Non-finite inputs follow std::remainder's domain behavior.
+ */
+[[nodiscard]] inline auto remainder_deg(const double difference_deg) -> double {
+  return std::remainder(difference_deg, LONGITUDE_PERIOD_DEG);
+}
+
+/**
+ * @brief Shift an angle by whole turns toward a reference, without normalizing either input.
+ * @note Half-turn ties follow std::round (away from zero); the arithmetic does not validate finiteness.
+ */
+[[nodiscard]] inline auto unwrap_near(const double wrapped_deg, const double reference_deg) -> double {
+  return wrapped_deg + (LONGITUDE_PERIOD_DEG * std::round((reference_deg - wrapped_deg) / LONGITUDE_PERIOD_DEG));
+}
+
 /** @brief Convert degree to radian. */
 [[nodiscard]] constexpr auto deg_to_rad(const double deg) -> double {
   return deg / DEG_PER_RAD;
@@ -257,7 +273,7 @@ using AngleDeg = Angle<AngleUnit::DEG>;
   if (not std::isfinite(difference.deg())) {
     throw std::invalid_argument { "Longitude difference must be finite" };
   }
-  const double remainder = std::remainder(difference.deg(), LONGITUDE_PERIOD_DEG);
+  const double remainder = remainder_deg(difference.deg());
   if (remainder == -LONGITUDE_PERIOD_DEG / 2.0) {
     return AngleDeg { LONGITUDE_PERIOD_DEG / 2.0 };
   }

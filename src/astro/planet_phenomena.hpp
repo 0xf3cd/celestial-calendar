@@ -99,15 +99,11 @@ struct CrossingSpec {
   };
 }
 
-[[nodiscard]] inline auto unwrap_near(const double wrapped, const double reference) -> double {
-  return wrapped + (360.0 * std::round((reference - wrapped) / 360.0));
-}
-
 [[nodiscard]] inline auto raw_difference(
   const toolbox::SphericalCoordinate& source,
   const toolbox::SphericalCoordinate& target
 ) -> double {
-  return std::remainder(target.λ.deg() - source.λ.deg(), 360.0);
+  return toolbox::remainder_deg(target.λ.deg() - source.λ.deg());
 }
 
 [[nodiscard]] inline auto raw_difference(const Planet planet, const double jde_tt) -> double {
@@ -150,9 +146,9 @@ struct CrossingSpec {
     if (not result.empty()) {
       const auto& previous = result.back();
       current.planet_λ = previous.planet_λ
-                       + std::remainder(current.planet_λ - previous.planet_λ, 360.0);
+                       + toolbox::remainder_deg(current.planet_λ - previous.planet_λ);
       current.difference = previous.difference
-                         + std::remainder(current.difference - previous.difference, 360.0);
+                         + toolbox::remainder_deg(current.difference - previous.difference);
     }
     result.push_back(current);
   }
@@ -188,7 +184,7 @@ struct CrossingSpec {
 
   for (std::size_t iteration = 0; iteration < spec.max_iterations; ++iteration) {
     const double middle = std::midpoint(left, right);
-    const double middle_residual = unwrap_near(raw_difference(planet, middle), spec.target_difference)
+    const double middle_residual = toolbox::unwrap_near(raw_difference(planet, middle), spec.target_difference)
                                  - spec.target_difference;
     if (std::fabs(middle_residual) <= ANGLE_RESIDUAL_TOLERANCE_DEG
         and (right - left) <= TIME_TOLERANCE_DAYS) {
@@ -275,12 +271,12 @@ template <typename Objective>
     }
 
     const auto difference = [planet, reference = current.difference](const double jde_tt) {
-      return unwrap_near(raw_difference(planet, jde_tt), reference);
+      return toolbox::unwrap_near(raw_difference(planet, jde_tt), reference);
     };
     const double jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, maximum, difference);
     auto extremum = sample(planet, jde_tt);
-    extremum.planet_λ = unwrap_near(extremum.planet_λ, current.planet_λ);
-    extremum.difference = unwrap_near(extremum.difference, current.difference);
+    extremum.planet_λ = toolbox::unwrap_near(extremum.planet_λ, current.planet_λ);
+    extremum.difference = toolbox::unwrap_near(extremum.difference, current.difference);
     result.push_back(extremum);
   }
   std::ranges::sort(result, {}, &Sample::jde_tt);
@@ -362,7 +358,7 @@ inline auto append_extrema(
     if (retrograde or direct) {
       const auto longitude = [planet, reference = current.planet_λ](const double jde_tt) {
         const double wrapped = astro::planet::geocentric_coord::apparent(planet, jde_tt).λ.deg();
-        return unwrap_near(wrapped, reference);
+        return toolbox::unwrap_near(wrapped, reference);
       };
       result.push_back({
         .kind = retrograde ? Kind::STATION_RETROGRADE : Kind::STATION_DIRECT,

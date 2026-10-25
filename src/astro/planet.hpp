@@ -370,7 +370,7 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
   detail::validate_retrograde_input(planet, jde_tt);
   const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
   const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
-  return std::remainder(after.λ.deg() - before.λ.deg(), 360.0) < 0.0;
+  return toolbox::remainder_deg(after.λ.deg() - before.λ.deg()) < 0.0;
 }
 
 } // namespace geocentric_coord

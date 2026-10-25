@@ -344,7 +344,7 @@ requires std::invocable<const LongitudeProvider&, double>
     if (not std::isfinite(before) or not std::isfinite(after)) [[unlikely]] {
       throw std::runtime_error { std::format("Non-finite longitude-rate sample at JDE(TT) {}", jde_tt) };
     }
-    return std::remainder(after - before, 360.0);
+    return toolbox::remainder_deg(after - before);
   };
   const double near = change(DIFFERENCE_STEP_TT_DAYS);
   const double middle = change(2.0 * DIFFERENCE_STEP_TT_DAYS);

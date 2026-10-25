@@ -168,7 +168,7 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
       .β = fk5_coordinate.β - correction.Δβ,
       .r = fk5_coordinate.r,
     };
-    const double lon_change = std::fabs(std::remainder(updated.λ.deg() - dynamic.λ.deg(), 360.0));
+    const double lon_change = std::fabs(astro::toolbox::remainder_deg(updated.λ.deg() - dynamic.λ.deg()));
     const double lat_change = std::fabs(updated.β.deg() - dynamic.β.deg());
     if (lon_change <= FK5_INVERSE_ANGLE_TOLERANCE_DEG
         and lat_change <= FK5_INVERSE_ANGLE_TOLERANCE_DEG) {
