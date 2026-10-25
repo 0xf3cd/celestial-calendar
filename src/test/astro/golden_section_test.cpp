@@ -37,6 +37,7 @@ TEST(GoldenSection, IndependentlyRoundedCoefficients) {
 
 TEST(GoldenSection, BudgetExhaustionDoesNotRecheckTheFinalBracket) {
   std::vector<double> calls;
+  uint32_t stop_checks = 0;
   const auto f = [&calls](const double x) {
     calls.push_back(x);
     return x;
@@ -44,11 +45,15 @@ TEST(GoldenSection, BudgetExhaustionDoesNotRecheckTheFinalBracket) {
   const GoldenSectionRules rules {
     .lower_probe = [](const double lo, const double hi) { return lo + (INV_PHI_SQ * (hi - lo)); },
     .move_lower = [](const double lhs, const double rhs) { return lhs > rhs; },
-    .finished = [](const double width, const double tolerance) { return width <= tolerance; },
+    .finished = [&stop_checks](const double width, const double tolerance) {
+      ++stop_checks;
+      return width <= tolerance;
+    },
   };
 
   const auto exhausted = golden_section_bracket(f, 0.0, 1.0, 0.7, 1, rules);
   ASSERT_FALSE(exhausted.converged);
+  ASSERT_EQ(stop_checks, 1U);
   ASSERT_EQ(exhausted.lower, 0.0);
   ASSERT_EQ(exhausted.upper, INV_PHI);
   ASSERT_LE(exhausted.upper - exhausted.lower, 0.7);
@@ -56,16 +61,22 @@ TEST(GoldenSection, BudgetExhaustionDoesNotRecheckTheFinalBracket) {
   ASSERT_EQ(calls, expected);
 
   calls.clear();
+  stop_checks = 0;
   const auto converged = golden_section_bracket(f, 0.0, 1.0, 0.7, 2, rules);
   ASSERT_TRUE(converged.converged);
+  ASSERT_EQ(stop_checks, 2U);
   ASSERT_EQ(converged.lower, exhausted.lower);
   ASSERT_EQ(converged.upper, exhausted.upper);
   ASSERT_EQ(calls, expected);
 
   calls.clear();
+  stop_checks = 0;
   const auto zero_budget = golden_section_bracket(f, 0.0, 1.0, 2.0, 0, rules);
   ASSERT_FALSE(zero_budget.converged);
+  ASSERT_EQ(stop_checks, 0U);
   ASSERT_EQ(calls.size(), 2U);
+  ASSERT_EQ(calls.front(), INV_PHI_SQ);
+  ASSERT_EQ(calls.back(), INV_PHI);
 }
 
 
@@ -87,6 +98,11 @@ TEST(GoldenSection, RiseToleranceAndNanComparisonsKeepTheirOriginalPolarity) {
   ASSERT_EQ(updated, (INV_PHI_SQ + 1.0) / 2.0);
   ASSERT_EQ(calls.size(), 3U);
   ASSERT_EQ(calls.back(), INV_PHI_SQ + (INV_PHI * (1.0 - INV_PHI_SQ)));
+
+  calls.clear();
+  ASSERT_GT(astro::rise_set::detail::golden_section_argmin(f, 0.0, 1.0), 0.9);
+  ASSERT_GT(calls.size(), 2U);
+  ASSERT_EQ(calls.at(2), INV_PHI_SQ + (INV_PHI * (1.0 - INV_PHI_SQ)));
 }
 
 
@@ -134,6 +150,9 @@ TEST(GoldenSection, PhenomenaWitnessKeepsOverflowSafeMidpoint) {
     ASSERT_EQ(calls.size(), 5U);
     for (const double x : calls) {
       ASSERT_TRUE(std::isfinite(x));
+      if (lo == hi) {
+        ASSERT_EQ(x, lo);
+      }
     }
     ASSERT_EQ(calls.at(2), std::midpoint(lo, hi));
     ASSERT_EQ(calls.at(3), std::midpoint(lo, hi));

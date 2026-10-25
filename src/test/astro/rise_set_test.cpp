@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <limits>
@@ -526,6 +527,90 @@ TEST(RiseSet, FindExtremaKeepsDistinctSameCellExtrema) {
   ASSERT_LT(extrema[1].jde, extrema[2].jde);
   ASSERT_NEAR(extrema[0].jde, 0.3 / 96.0, 1e-6);
   ASSERT_NEAR(extrema[2].jde, 1.2 / 96.0, 1e-6);
+}
+
+TEST(RiseSet, DayWindowConvertsBothUt1Midnights) {
+  for (const int32_t year : { 2024, 20000 }) {
+    const auto date = util::to_ymd(year, 6, 21);
+    const auto next_date = util::to_ymd(year, 6, 22);
+    const auto window = detail::day_window(date);
+    ASSERT_EQ(window.start_jde_tt, astro::julian_day::ut1_to_jde(calendar::Datetime { date, 0.0 }));
+    ASSERT_EQ(window.end_jde_tt, astro::julian_day::ut1_to_jde(calendar::Datetime { next_date, 0.0 }));
+    ASSERT_EQ(window.end_jde_tt, detail::day_window(next_date).start_jde_tt);
+    if (year == 20000) {
+      ASSERT_NE(window.end_jde_tt, window.start_jde_tt + 1.0);
+    }
+  }
+}
+
+TEST(RiseSet, DayScanKeepsTheLaterCrossingOfEachKind) {
+  const auto residual = [](const double jde_tt) { return std::cos(4.0 * std::numbers::pi * jde_tt); };
+  const std::vector<detail::AltitudeExtremum> extrema {
+    { .jde = 0.25, .is_minimum = true, .altitude_deg = -1.0 },
+    { .jde = 0.5, .is_minimum = false, .altitude_deg = 1.0 },
+    { .jde = 0.75, .is_minimum = true, .altitude_deg = -1.0 },
+  };
+  Result result {
+    .rise_jde_tt = std::nullopt, .set_jde_tt = std::nullopt,
+    .transit_jde_tt = std::nullopt, .polar = Polar::NONE,
+  };
+  detail::scan_day_crossings(residual, { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, extrema, result);
+  ASSERT_NEAR(req(result.rise_jde_tt), 0.875, 1e-9);
+  ASSERT_NEAR(req(result.set_jde_tt), 0.625, 1e-9);
+}
+
+TEST(RiseSet, DayScanRetainsTheUnorderedResidualComparison) {
+  // A pure residual probe: actual position providers may reject non-finite coordinates earlier.
+  const auto residual = [](const double jde_tt) {
+    if (jde_tt <= 0.0) { return -1.0; }
+    if (jde_tt >= 1.0) { return 1.0; }
+    return std::numeric_limits<double>::quiet_NaN();
+  };
+  Result result {
+    .rise_jde_tt = std::nullopt, .set_jde_tt = std::nullopt,
+    .transit_jde_tt = std::nullopt, .polar = Polar::NONE,
+  };
+  detail::scan_day_crossings(residual, { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, {}, result);
+  ASSERT_EQ(req(result.rise_jde_tt), 0.5);
+  ASSERT_FALSE(result.set_jde_tt.has_value());
+}
+
+TEST(RiseSet, DayScanFailureIdentifiesTheCrossingBeforePolarClassification) {
+  for (const bool rising : { true, false }) {
+    const auto cliff = [rising](const double jde_tt) {
+      return (jde_tt < 0.5 ? -1.0 : 1.0) * (rising ? 1.0 : -1.0);
+    };
+    Result result {
+      .rise_jde_tt = std::nullopt, .set_jde_tt = std::nullopt,
+      .transit_jde_tt = std::nullopt, .polar = Polar::NONE,
+    };
+    try {
+      detail::scan_day_crossings(cliff, { .start_jde_tt = 0.0, .end_jde_tt = 1.0 }, {}, result);
+      FAIL() << "A discontinuous crossing cannot pass the residual guard";
+    } catch (const std::runtime_error& error) {
+      const std::string prefix = rising ? "calculate_day: bracketed rise root" : "calculate_day: bracketed set root";
+      ASSERT_TRUE(std::string_view { error.what() }.starts_with(prefix));
+    }
+    ASSERT_FALSE(result.rise_jde_tt.has_value());
+    ASSERT_FALSE(result.set_jde_tt.has_value());
+    ASSERT_EQ(result.polar, Polar::NONE);
+  }
+}
+
+TEST(RiseSet, CrossingFreeDayHasSeparatePolarAndStraddleOutcomes) {
+  const detail::DayWindow window { .start_jde_tt = 0.0, .end_jde_tt = 1.0 };
+  for (const double altitude_deg : { -1.0, 0.0, 1.0 }) {
+    const auto constant = [altitude_deg](const double) { return altitude_deg; };
+    ASSERT_EQ(detail::day_polar(constant, window, {}, AngleDeg { 0.0 }), altitude_deg < 0.0 ? Polar::NIGHT : Polar::DAY);
+  }
+
+  const auto straddle = [](const double jde_tt) { return jde_tt - 0.5; };
+  try {
+    static_cast<void>(detail::day_polar(straddle, window, {}, AngleDeg { 0.0 }));
+    FAIL() << "A straddle without a solved crossing is not a polar verdict";
+  } catch (const std::runtime_error& error) {
+    ASSERT_TRUE(std::string_view { error.what() }.starts_with("calculate_day: altitude straddles h0"));
+  }
 }
 
 TEST(RiseSet, InvalidInputsThrow) {
