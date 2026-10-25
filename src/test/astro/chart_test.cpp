@@ -353,6 +353,12 @@ TEST(Chart, DomainErrorsKeepTheirContext) {
     }
   };
   expect_prefix([&] {
+    auto invalid_date = Datetime { util::to_ymd(2024, 2, 1), 0.0 };
+    invalid_date.ymd = util::to_ymd(2024, 2, 30);
+    std::ignore = calculate(invalid_date, Scale::UT1, observer, System::EQUAL);
+  }, "Invalid civil datetime: 2024-2-30, time-of-day 0 ns");
+
+  expect_prefix([&] {
     std::ignore = calculate(outside_model, Scale::UT1, observer, System::EQUAL, Model::ALGO4);
   }, "Civil Delta T datetime leaves its model domain: The year 2035.");
   expect_prefix([&] {

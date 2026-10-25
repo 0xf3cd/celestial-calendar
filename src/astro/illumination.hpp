@@ -33,6 +33,7 @@ struct Separation {
   double sin_ψ;
 };
 
+/** @brief Return sine and cosine of the directions' great-circle separation; origins and axes must match. */
 [[nodiscard]] inline auto separation(
   const toolbox::SphericalCoordinate& source_pos,
   const toolbox::SphericalCoordinate& target_pos

@@ -15,6 +15,7 @@
 namespace astro::ephemeris {
 
 /** @brief Maximum nonempty event-query span in TT days, independent of the search kernel. */
+// About ten years per request; an admission limit, independent of evaluation/candidate exhaustion.
 inline constexpr double EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS = 3660.0;
 
 } // namespace astro::ephemeris

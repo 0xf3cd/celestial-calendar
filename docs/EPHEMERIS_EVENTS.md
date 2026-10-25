@@ -137,6 +137,7 @@ relations throw `std::invalid_argument`. Numerical ambiguity, failed
 iteration, unsupported floating-point execution or work-limit exhaustion
 throws `std::runtime_error`. No failure returns a partial event list.
 
+<a id="numerical-contract"></a>
 ## Numerical contract
 
 Completeness is conditional on an explicit evaluation-error model. It is
@@ -191,6 +192,67 @@ reports on a nearest-even `2^-30`-day lattice. The fine lattice makes
 half-open ownership deterministic; it does not claim microsecond physical
 accuracy. A certified secant observation usually gives a substantially
 better representative than the stopping criterion alone.
+
+### Search policies
+
+The quarter-day grid fixes which bracket owns an event. Its spacing is a
+starting scale for certification, not a guarantee that a cell contains at
+most one event. A cell that cannot be excluded or certified is subdivided.
+The default 32-level cap would reduce a quarter-day cell below `6e-11` day;
+an unresolved observation allowance or indistinguishable times can stop
+the search earlier. Such regions remain unresolved and fail if they
+intersect the query.
+
+The default 96 refinement iterations bound work even when the requested
+resolution is zero. The limit exceeds binary64's 53-bit significand width,
+but does not guarantee convergence for every bracket or error allowance.
+Refinement checks the actual time radius or observation certificate, and
+throws on exhaustion without an extra acceptance check after the cap.
+Contact certification tries at most 24 regions inside the owning cell,
+then at most 24 in its fixed neighbor window. The dyadic radii change the
+region being certified; they do not relax its sign or curvature tests.
+
+The 3660-day admission limit allows roughly ten years in one request.
+The 65536-evaluation and 4096-candidate limits independently bound the
+work a request can consume. These are project resource policies, not
+astronomical or completeness bounds. A smaller request may still exhaust
+either budget. One mutable budget belongs to the whole query, including
+recursive subdivision, refinement and contact-window probes; provider
+attempts consume it even when the provider throws.
+
+### Scalar cell certificates
+
+These are the project's sufficient tests for a smooth scalar `f` on a
+closed cell `[a,b]`, with `w=b-a`, `|f'|≤M1` and `|f''|≤M2`. Each sampled
+value has an absolute allowance that includes any abscissa displacement.
+The implementation rounds lower bounds downward and upper bounds upward
+under the [numerical contract](#numerical-contract).
+
+Let `m_a` and `m_b` be lower bounds for the magnitudes of same-sign
+endpoint values. If a root existed at `r`, the derivative bound would give
+`m_a≤M1(r-a)` and `m_b≤M1(b-r)`. Therefore `m_a+m_b>M1*w` excludes a root.
+Independently, the linear interpolant `L` obeys
+`|f(t)-L(t)|≤M2(t-a)(b-t)/2≤M2*w²/8`; same-sign endpoints with
+`min(m_a,m_b)>M2*w²/8` also exclude a root.
+
+For uniqueness, subtract the endpoint allowances from the observed
+absolute change, then divide by `w` to obtain a lower bound `s` on the
+absolute secant slope. Since the secant is the average of `f'`,
+
+```text
+|f'(t) - (f(b)-f(a))/w|
+  ≤ M2 * ((t-a)² + (b-t)²) / (2w)
+  ≤ M2*w/2.
+```
+
+Thus `s-M2*w/2>0` proves a nonzero derivative throughout the cell.
+Opposite robust endpoint signs then certify one root; an exact endpoint
+zero is assigned according to the cell's endpoint-ownership rule.
+Without a positive derivative floor, a sign change alone is not a
+unique-root certificate. Curvature certificates for contacts use the
+second divided difference and the third-derivative bound, as described
+in `event_search::curvature_sign`; the seven-point rate's separate
+truncation remainder is retained when checking both sides of a station.
 
 <a id="seven-point-operator-and-remainder"></a>
 ## Seven-point operator and remainder

@@ -29,11 +29,9 @@
 
 namespace calendar::jieqi {
 
-// The English aliases below are what makes this enum "partially initialised": the Chinese
-// names carry the order and the aliases point at them by name, never by number. Numbering
-// the 24 to satisfy the check would add 24 constants that have to be kept in step with it.
 /** @brief The Chinese Jieqi (节气) */
-enum class Jieqi : uint8_t {  // NOLINT(readability-enum-initial-value)
+// NOLINTNEXTLINE(readability-enum-initial-value): English aliases refer by name to the ordered Chinese enumerators.
+enum class Jieqi : uint8_t {
   立春, 雨水, 惊蛰, 春分, 清明, 谷雨, 立夏, 小满, 芒种, 夏至, 小暑, 大暑,
   立秋, 处暑, 白露, 秋分, 寒露, 霜降, 立冬, 小雪, 大雪, 冬至, 小寒, 大寒,
 

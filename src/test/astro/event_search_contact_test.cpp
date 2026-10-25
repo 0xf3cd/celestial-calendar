@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -28,7 +29,7 @@
 namespace astro::ephemeris::test {
 namespace {
 
-namespace search = detail::event_search;
+namespace search = astro::detail::event_search;
 namespace range_test = astro::detail::event_search::test;
 
 constexpr double QUANTUM = 0x1p-30;
@@ -134,7 +135,9 @@ TEST(EventSearchContacts, DifferenceProviderUsesTheSameContactKernel) {
 
 TEST(EventSearchContacts, NearbyUnresolvedLevelsStillFail) {
   for (const double target : std::array { -1e-16, 1e-16 }) {
-    ASSERT_EQ(quadratic_failure(0.25, target, GRID.domain), "Unresolved event-search region intersects the query");
+    const auto error = quadratic_failure(0.25, target, GRID.domain);
+    ASSERT_TRUE(error.starts_with("Unresolved event-search region intersects the query: region [")) << error;
+    ASSERT_NE(error.find("query [0, 1) JDE(TT)"), std::string::npos) << error;
   }
 }
 
@@ -142,7 +145,7 @@ TEST(EventSearchContacts, ATrueDomainEndpointStillNeedsTwoSidedEvidence) {
   for (const auto query : std::array { GRID.domain, search::Interval { .start_jde_tt = 0.0, .end_jde_tt = 0.125 } }) {
     ASSERT_EQ(
       quadratic_failure(0.0, 0.0, query),
-      "Event-search numerical contact has no certified two-sided extremum region"
+      "Event-search numerical contact has no certified two-sided extremum region at JDE(TT) 0; cell [0, 0.25], window [0, 0.5]"
     );
   }
 }
@@ -203,7 +206,10 @@ TEST(EventSearchContacts, AnUncertifiedPredecessorContactStillRequiresTwoSidedEv
     ));
     FAIL() << "A query-owned predecessor contact lost its certificate requirement";
   } catch (const std::runtime_error& error) {
-    ASSERT_EQ(std::string { error.what() }, "Event-search numerical contact has no certified two-sided extremum region");
+    ASSERT_EQ(
+      std::string { error.what() },
+      "Event-search numerical contact has no certified two-sided extremum region at JDE(TT) 0.25; cell [0, 0.25], window [0, 0.5]"
+    );
   }
 }
 
@@ -237,7 +243,9 @@ TEST(EventSearchContacts, AnExcludedUncertifiedContactStillCannotHideBoundaryAmb
     ));
     FAIL() << "Excluding the canonical contact hid query-relevant uncertainty";
   } catch (const std::runtime_error& error) {
-    ASSERT_EQ(std::string { error.what() }, "Unresolved event-search region intersects the query");
+    const std::string text { error.what() };
+    ASSERT_TRUE(text.starts_with("Unresolved event-search region intersects the query: region [")) << text;
+    ASSERT_NE(text.find(std::format("query [0, {}) JDE(TT)", station_jde_tt)), std::string::npos) << text;
   }
 }
 
@@ -361,7 +369,7 @@ TEST(EventSearchContacts, OverlappingNeighborExclusionsCannotEraseADistinctRoot)
     static_cast<void>(search::contact_traversal(GRID, GRID.domain, contacts, crossings));
     FAIL() << "Overlapping contact regions were accepted";
   } catch (const std::runtime_error& error) {
-    ASSERT_EQ(std::string { error.what() }, "Event-search numerical contact brackets overlap");
+    ASSERT_EQ(std::string { error.what() }, "Event-search numerical contact brackets overlap after [0.25, 0.5] JDE(TT)");
   }
 }
 
@@ -382,7 +390,7 @@ TEST(EventSearchContacts, DistinctContactsCannotAliasAtTheReportedTime) {
     FAIL() << "Aliased contact times were accepted";
   } catch (const std::runtime_error& error) {
     ASSERT_EQ(
-      std::string { error.what() }, "Event-search contacts cannot be separated at the reported time precision"
+      std::string { error.what() }, "Event-search contacts cannot be separated at the reported time precision after JDE(TT) 0.5"
     );
   }
 }

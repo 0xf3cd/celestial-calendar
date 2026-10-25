@@ -63,9 +63,11 @@ struct Result {
 
 namespace detail {
 
-inline constexpr std::size_t PLACIDUS_BRACKET_SEGMENTS = 360;
-inline constexpr double PLACIDUS_ROOT_TOLERANCE_DEG = 1e-11;
+inline constexpr std::size_t PLACIDUS_BRACKET_SEGMENTS = 360; // One-degree sign-bracket scan on [0°, 360°].
+inline constexpr double PLACIDUS_ROOT_TOLERANCE_DEG = 1e-11; // 3.6e-8 arcsec, applied to residual OR bracket width.
+// A one-degree bracket needs 37 bisections to reach 1e-11 degree; the cap leaves room for rounding stalls.
 inline constexpr std::size_t PLACIDUS_MAX_ITERATIONS = 64;
+// Relative exclusion band for accumulated trig/cross-product roundoff, not a geographic polar cutoff.
 inline constexpr double ASCENDANT_ROUNDOFF_FACTOR = 32.0 * std::numeric_limits<double>::epsilon();
 
 enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
@@ -82,6 +84,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   }.normalize();
 }
 
+/** @brief Return the opposite ecliptic direction, normalized to [0°, 360°). */
 [[nodiscard]] inline auto antipode(const toolbox::AngleDeg& angle) -> toolbox::AngleDeg {
   return (angle + toolbox::AngleDeg { 180.0 }).normalize();
 }
@@ -177,11 +180,15 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
       return right_ascension_deg - semidiurnal_arc_deg - ((2.0 * nocturnal_arc_deg) / 3.0);
     case PlacidusCusp::ELEVEN: return right_ascension_deg - (semidiurnal_arc_deg / 3.0);
     case PlacidusCusp::TWELVE: return right_ascension_deg - ((2.0 * semidiurnal_arc_deg) / 3.0);
-    default: throw std::invalid_argument { "Unknown Placidus cusp" };
+    default: throw std::invalid_argument { std::format("Unknown Placidus cusp {}", static_cast<uint32_t>(cusp)) };
   }
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+/**
+ * @brief Solve one Placidus cusp in degrees on the lifted semi-arc branch for the supplied house frame.
+ * @note Accepts a small residual OR a small bracket, unlike the annual planetary crossing solver.
+ */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the solver.
 [[nodiscard]] inline auto placidus_cusp(
   const toolbox::AngleDeg& armc,
@@ -204,7 +211,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   const auto residual = [&latitude, &obliquity, cusp, target_deg](const double longitude_deg) {
     return placidus_equation(longitude_deg, latitude, obliquity, cusp) - target_deg;
   };
-  const auto refine = [&residual, max_iterations](
+  const auto refine = [&residual, &armc, &latitude, &obliquity, cusp, max_iterations](
     double left_deg,
     double left_residual,
     double right_deg
@@ -224,7 +231,14 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
       }
     }
 
-    throw std::runtime_error { "Placidus house-cusp solver did not converge" };
+    throw std::runtime_error {
+      std::format(
+        "Placidus cusp {} did not converge after {} iterations in [{}, {}] degrees "
+        "at ARMC {}, latitude {}, obliquity {} degrees",
+        static_cast<uint32_t>(cusp), max_iterations, left_deg, right_deg,
+        armc.deg(), latitude.deg(), obliquity.deg()
+      )
+    };
   };
 
   double left_deg = 0.0;
@@ -246,10 +260,16 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
     left_residual = right_residual;
   }
 
-  throw std::runtime_error { "Failed to bracket a Placidus house cusp" };
+  throw std::runtime_error {
+    std::format(
+      "Failed to bracket Placidus cusp {} in {} segments at ARMC {}, latitude {}, obliquity {} degrees",
+      static_cast<uint32_t>(cusp), PLACIDUS_BRACKET_SEGMENTS, armc.deg(), latitude.deg(), obliquity.deg()
+    )
+  };
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+/** @brief Construct twelve Placidus cusps; latitude must lie strictly inside the obliquity's polar circles. */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): angle names carry distinct physical roles in the house frame.
 [[nodiscard]] inline auto placidus_cusps(
   const toolbox::AngleDeg& armc,
@@ -290,6 +310,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+/** @brief Construct twelve 30-degree cusps from the first, each normalized to [0°, 360°). */
 [[nodiscard]] inline auto uniform_cusps(const toolbox::AngleDeg& first) -> std::array<toolbox::AngleDeg, 12> {
   const auto cusp = [&first](const double offset_deg) {
     return (first + toolbox::AngleDeg { offset_deg }).normalize();
@@ -300,6 +321,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   };
 }
 
+/** @brief Return the start of the 30-degree sign containing the Ascendant; an exact boundary starts that sign. */
 [[nodiscard]] inline auto whole_sign_start(const toolbox::AngleDeg& ascendant) -> toolbox::AngleDeg {
   return toolbox::AngleDeg { std::floor(ascendant.normalize().deg() / 30.0) * 30.0 };
 }
@@ -316,6 +338,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   return { .ascendant = asc, .midheaven = mc, .descendant = antipode(asc), .imum_coeli = antipode(mc) };
 }
 
+/** @brief Resolve axes before cusps, with a physical-obliquity check only for Placidus. */
 [[nodiscard]] inline auto calculate(
   const toolbox::AngleDeg& armc,
   const toolbox::AngleDeg& latitude,
@@ -361,7 +384,8 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
   }
 }
 
-inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoLocation& location) {
+/** @brief Require finite UT1/TT times, nonpolar latitude and geographic longitude, in that order. */
+inline auto validate(const double jd_ut1, const double jde_tt, const astro::GeoLocation& location) -> void {
   if (not std::isfinite(jd_ut1)) {
     throw std::invalid_argument { std::format("Argument `jd_ut1` is not finite, got {}", jd_ut1) };
   }
@@ -370,17 +394,12 @@ inline void validate(const double jd_ut1, const double jde_tt, const astro::GeoL
   }
 
   const double latitude_deg = location.latitude.deg();
-  const double longitude_deg = location.longitude.deg();
   if (not std::isfinite(latitude_deg) or latitude_deg <= -90.0 or latitude_deg >= 90.0) {
     throw std::invalid_argument {
       std::format("Argument `location.latitude` out of range (-90, 90), got {}", latitude_deg)
     };
   }
-  if (not std::isfinite(longitude_deg) or longitude_deg < -180.0 or longitude_deg > 180.0) {
-    throw std::invalid_argument {
-      std::format("Argument `location.longitude` out of range [-180, 180], got {}", longitude_deg)
-    };
-  }
+  astro::geolocation::validate_longitude(location.longitude, "location.longitude");
 }
 
 } // namespace detail

@@ -38,10 +38,13 @@ struct Term {
   double radius_b;
 };
 
+// Meeus Chapter 37's 1885-2099 model window, represented as a half-open JDE(TT) interval.
 inline constexpr double RAW_START_JDE_TT = 2409542.5;
 inline constexpr double RAW_END_JDE_TT = 2488069.5;
+// Reserve one day before observation for the retarded heliocentric evaluation; no future sample is needed.
 inline constexpr double APPARENT_START_JDE_TT = 2409543.5;
 inline constexpr double APPARENT_END_JDE_TT = 2488069.5;
+// Work cap for inversion of Meeus (32.3); the angular fixed-point test, not the cap, accepts a result.
 inline constexpr std::size_t FK5_INVERSE_MAX_ITERATIONS = 8;
 // Below binary64 angular resolution at Pluto's longitudes; convergence is exact fixed-point stability.
 inline constexpr double FK5_INVERSE_ANGLE_TOLERANCE_DEG = 1e-15;
@@ -99,6 +102,7 @@ inline constexpr std::array<Term, 43> TERMS {{
 }};
 // NOLINTEND(modernize-use-designated-initializers)
 
+/** @brief Require finite JDE(TT) inside a named half-open Pluto model window. */
 inline auto validate_jde(
   const double jde_tt,
   const double start_jde_tt,
@@ -115,10 +119,12 @@ inline auto validate_jde(
   }
 }
 
+/** @brief Apply the unretarded Chapter 37 source window. */
 inline auto validate_raw_jde(const double jde_tt) -> void {
   validate_jde(jde_tt, RAW_START_JDE_TT, RAW_END_JDE_TT, "Chapter 37 model");
 }
 
+/** @brief Apply the observation window with its one-day light-time reserve. */
 inline auto validate_apparent_jde(const double jde_tt) -> void {
   validate_jde(jde_tt, APPARENT_START_JDE_TT, APPARENT_END_JDE_TT, "apparent-position");
 }
@@ -155,20 +161,21 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
   };
 }
 
+/** @brief Recover dynamical ecliptic coordinates at the observation JDE(TT), preserving radius. */
 /** @see Jean Meeus, "Astronomical Algorithms", Second Edition, (32.3). */
 [[nodiscard]] inline auto inverse_fk5(
-  const astro::toolbox::SphericalCoordinate& fk5_coordinate,
+  const toolbox::SphericalCoordinate& fk5_coordinate,
   const double observation_jde_tt
-) -> astro::toolbox::SphericalCoordinate {
+) -> toolbox::SphericalCoordinate {
   auto dynamic = fk5_coordinate;
   for (std::size_t iteration = 0; iteration < FK5_INVERSE_MAX_ITERATIONS; ++iteration) {
     const auto correction = astro::coords::fk5_correction(observation_jde_tt, dynamic);
-    const astro::toolbox::SphericalCoordinate updated {
+    const toolbox::SphericalCoordinate updated {
       .λ = (fk5_coordinate.λ - correction.Δλ).normalize(),
       .β = fk5_coordinate.β - correction.Δβ,
       .r = fk5_coordinate.r,
     };
-    const double lon_change = std::fabs(astro::toolbox::remainder_deg(updated.λ.deg() - dynamic.λ.deg()));
+    const double lon_change = std::fabs(toolbox::remainder_deg(updated.λ.deg() - dynamic.λ.deg()));
     const double lat_change = std::fabs(updated.β.deg() - dynamic.β.deg());
     if (lon_change <= FK5_INVERSE_ANGLE_TOLERANCE_DEG
         and lat_change <= FK5_INVERSE_ANGLE_TOLERANCE_DEG) {
@@ -186,7 +193,7 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): epoch names distinguish emission from observation.
   const double retarded_jde_tt,
   const double observation_jde_tt
-) -> astro::toolbox::SphericalCoordinate {
+) -> toolbox::SphericalCoordinate {
   const auto j2000 = heliocentric_j2000(retarded_jde_tt);
   const auto precessed = astro::earth::precession::ecliptic(
     j2000.λ,

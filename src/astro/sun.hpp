@@ -16,7 +16,6 @@
 #include <chrono>
 #include <vector>
 #include <cstdint>
-#include <functional>
 #include <format>
 #include <stdexcept>
 

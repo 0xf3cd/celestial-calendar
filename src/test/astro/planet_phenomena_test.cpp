@@ -369,13 +369,13 @@ TEST(PlanetPhenomena, RefinerReportsNonConvergence) {
   for (std::size_t index = 1; index < grid.size(); ++index) {
     const auto& left = grid.at(index - 1);
     const auto& right = grid.at(index);
-    if ((left.difference < 0.0) != (right.difference < 0.0)) {
+    if ((left.difference_deg < 0.0) != (right.difference_deg < 0.0)) {
       EXPECT_THROW(
         static_cast<void>(detail::refine_crossing(
           Planet::MERCURY,
           left,
           right,
-          {.target_difference = 0.0, .max_iterations = 0}
+          {.target_difference_deg = 0.0, .max_iterations = 0}
         )),
         std::runtime_error
       );
@@ -439,7 +439,7 @@ TEST(PlanetPhenomena, CoarseGridReversalsExposeHiddenCrossingPairs) {
 
   // Positive samples hide the morning apparition's negative minimum.
   const auto [morning_grid, morning] = hidden_pair({ 2460759.0, 2460826.0, 2460836.0 });
-  ASSERT_TRUE(std::ranges::all_of(morning_grid, [](const detail::Sample& sample) { return sample.difference > 0.0; }));
+  ASSERT_TRUE(std::ranges::all_of(morning_grid, [](const detail::Sample& sample) { return sample.difference_deg > 0.0; }));
   ASSERT_EQ(morning.size(), 2);
   EXPECT_EQ(morning.front().kind, Kind::INFERIOR_CONJUNCTION);
   EXPECT_EQ(morning.back().kind, Kind::SUPERIOR_CONJUNCTION);
@@ -447,7 +447,7 @@ TEST(PlanetPhenomena, CoarseGridReversalsExposeHiddenCrossingPairs) {
 
   // Negative samples hide the evening apparition's positive maximum.
   const auto [evening_grid, evening] = hidden_pair({ 2460715.0, 2460759.5, 2460769.5 });
-  ASSERT_TRUE(std::ranges::all_of(evening_grid, [](const detail::Sample& sample) { return sample.difference < 0.0; }));
+  ASSERT_TRUE(std::ranges::all_of(evening_grid, [](const detail::Sample& sample) { return sample.difference_deg < 0.0; }));
   ASSERT_EQ(evening.size(), 2);
   EXPECT_EQ(evening.front().kind, Kind::SUPERIOR_CONJUNCTION);
   EXPECT_EQ(evening.back().kind, Kind::INFERIOR_CONJUNCTION);

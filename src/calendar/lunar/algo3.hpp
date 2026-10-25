@@ -139,7 +139,8 @@ inline constexpr std::array<uint32_t, (END_YEAR - START_YEAR + 1)> LUNAR_DATA = 
     };
   }
 
-  return common::parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index): The year guard bounds this table index.
+  return common::parse_lunar_year(year, LUNAR_DATA[year - START_YEAR]);
 }
 
 /** @brief The bounds of the algorithm, i.e. the supported range of lunar and Gregorian dates. */

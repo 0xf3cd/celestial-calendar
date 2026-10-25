@@ -212,7 +212,7 @@ SITE_COUNTS: Final[Dict[str, int]] = {
   "generator": 2,
   "enumerate": 2,
   "pairwise": 4,
-  "slide": 1,
+  "slide": 4,
   "concat": 2,
   "function_ref": 0,
   "remainder_constexpr": 0,

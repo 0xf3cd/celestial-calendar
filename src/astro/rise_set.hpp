@@ -208,9 +208,8 @@ namespace detail {
  * @throw std::invalid_argument If latitude ∉ [-90°, 90°] or longitude ∉ [-180°, 180°],
  *        or either is not finite.
  */
-inline void validate(const GeoLocation& location) {
+inline auto validate(const GeoLocation& location) -> void {
   const double lat = location.latitude.deg();
-  const double lon = location.longitude.deg();
 
   if (not std::isfinite(lat) or lat < -90.0 or lat > 90.0) {
     throw std::invalid_argument {
@@ -218,11 +217,7 @@ inline void validate(const GeoLocation& location) {
     };
   }
 
-  if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
-    throw std::invalid_argument {
-      std::format("Argument `location.longitude` out of range [-180, 180], got {}", lon)
-    };
-  }
+  astro::geolocation::validate_longitude(location.longitude, "location.longitude");
 }
 
 /**
@@ -293,20 +288,11 @@ template <BodyProvider P>
 
 /**
  * @brief Find the argmin of a unimodal function on [a, b] by golden-section search.
- * @note Derivative-free and unconditionally convergent — the altitude curve's derivative is
- *       not written by hand anywhere in this engine, and this keeps it that way. Converges
- *       to a bracket endpoint when the function is monotonic on [a, b] (polar-boundary arcs).
- * @note In the ordinary part of the date range the loop ends on `tolerance` (≤ 40 iterations
- *       for any bracket used here); the ITERATION CAP is the guarantee, not the normal exit:
- *       once the JDE magnitude passes 2²³ (≈ year 18255) the double ulp exceeds
- *       `EXTREMUM_SEARCH_TOLERANCE_DAYS`, the bracket can never shrink to the tolerance, and
- *       without a cap the loop hangs forever (observed inside the declared domain). After
- *       the cap the midpoint of the final, ulp-wide bracket is returned — the best answer
- *       representable at that magnitude.
+ * @note Derivative-free; a monotone objective contracts toward an endpoint, as on polar-boundary arcs.
+ * @note At |JDE| >= 2²³ the double ULP exceeds the default tolerance, so contraction can stall.
+ *       The 64-update cap still terminates and returns the final bracket's ordinary half-sum.
  */
-// The `_jde` suffixes and the leading `f` carry the contract at the call site;
-// `a`/`b`/`tolerance` are three adjacent doubles by design.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Mathematical a/b endpoints and named tolerance are scalar TT-day inputs.
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
@@ -360,6 +346,7 @@ template <typename Func>
   const AltitudeGrid& values
 ) -> std::vector<AltitudeExtremum> {
   std::vector<AltitudeExtremum> extrema;
+  // TODO(slide): inspect three adjacent grid values with std::views::slide(3).
   for (std::size_t index = 1; index < EXTREMUM_SCAN_CELLS; ++index) {
     const double prev = values.at(index - 1);
     const double curr = values.at(index);
@@ -522,8 +509,7 @@ struct Solved {
  *         otherwise the refined root plus its residual. The residual verdict is the caller's:
  *         a straddle proves a root exists, so what a rejection *means* depends on the bracket.
  */
-// The `_jde` suffixes carry the contract at the call site.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): lo_jde/hi_jde distinguish the ordered TT bracket endpoints.
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>

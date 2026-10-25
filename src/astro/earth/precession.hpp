@@ -25,14 +25,14 @@ namespace astro::earth::precession {
 // Precession carries a direction between two epochs — e.g. fixed-epoch catalogue positions (J2000)
 // to the mean equinox of the date. Precession only — no proper motion, nutation, or aberration.
 
-/// The three equatorial precession angles of Meeus (21.2): ζ (zeta), z, θ (theta), in degrees.
+/** @brief The equatorial precession angles of Meeus (21.2): ζ (zeta), z, θ (theta), in degrees. */
 struct EquatorialAngles {
   toolbox::AngleDeg ζ; // Meeus zeta
   toolbox::AngleDeg z; // Meeus z
   toolbox::AngleDeg θ; // Meeus theta
 };
 
-/// The three ecliptic precession quantities of Meeus (21.5): η (eta), Π (Pi), p, in degrees.
+/** @brief The ecliptic precession quantities of Meeus (21.5): η (eta), Π (Pi), p, in degrees. */
 struct EclipticAngles {
   toolbox::AngleDeg η; // Meeus eta
   toolbox::AngleDeg Π; // Meeus Pi — longitude of the ascending node of the moving ecliptic
@@ -140,14 +140,14 @@ struct EclipticAngles {
   // Meeus (21.5): η and p are t-scaled; Π's variable part is added to 174.876384°.
   const double η_arcsec = t * ((47.0029 + (t0 * (-0.06603 + (0.000598 * t0))))
                                + (t * ((-0.03302 + (0.000598 * t0)) + (0.00006 * t))));
-  const double pie_var_arcsec = (t0 * (3289.4789 + (0.60622 * t0)))
+  const double Π_var_arcsec = (t0 * (3289.4789 + (0.60622 * t0)))
                                 + (t * (-(869.8089 + (0.50491 * t0)) + (0.03536 * t)));
   const double p_arcsec = t * (5029.0966
                                + (t0 * (2.22226 - (0.000042 * t0)))
                                + (t * (1.11113 - (0.000042 * t0) - (0.000006 * t))));
 
   // Π = 174°52'34.9824" + variable part; the constant is in degrees while the polynomial is in arcseconds.
-  const AngleDeg Π { 174.876384 + arcsec_to_deg(pie_var_arcsec) };
+  const AngleDeg Π { 174.876384 + arcsec_to_deg(Π_var_arcsec) };
 
   return {
     .η = AngleDeg::from_arcsec(η_arcsec),

@@ -59,7 +59,8 @@ struct LunarYear {
  * @param encoded The encoded lunar year information. 阴历年信息的编码。
  * @return The lunar year information. 阴历年信息。
  */
-[[nodiscard]] inline auto parse_lunar_year(int32_t year, uint32_t encoded) -> LunarYear { // NOLINT(bugprone-easily-swappable-parameters)
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): The names distinguish the year from its encoded data.
+[[nodiscard]] inline auto parse_lunar_year(int32_t year, uint32_t encoded) -> LunarYear {
   const uint32_t days_offset    = encoded >> 17;
   const uint8_t  leap_month     = (encoded >> 13) & 0xf;
   const uint16_t month_len_info = encoded & 0x1fff;

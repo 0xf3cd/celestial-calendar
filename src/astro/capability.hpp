@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <format>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <vector>
 
@@ -31,7 +32,8 @@ enum class Operation : uint8_t { POSITION, LONGITUDE_RATE, EVENTS, EQUATORIAL };
 enum class Status : uint8_t {
   SOURCE_WINDOW,
   IMPLEMENTATION_WINDOW,
-  FINITE_INPUT_EVALUATION, ///< No declared hard interval; finite evaluation can still fail.
+  /** @brief No declared hard interval; finite evaluation can still fail. */
+  FINITE_INPUT_EVALUATION,
 };
 
 /** @brief Typed domain facts; an absent interval is not a promise of successful evaluation. */
@@ -80,12 +82,10 @@ struct Record {
 
 /** @brief Return one typed domain record for each target in the core roster. */
 [[nodiscard]] inline auto domain_records(const Operation operation) -> std::vector<Record> {
-  auto records = std::vector<Record>();
-  records.reserve(ephemeris::TARGET_FACTS.size());
-  for (const auto& facts : ephemeris::TARGET_FACTS) {
-    records.push_back(domain_record(operation, facts.target));
-  }
-  return records;
+  const auto record = [operation](const ephemeris::TargetFacts& facts) {
+    return domain_record(operation, facts.target);
+  };
+  return ephemeris::TARGET_FACTS | std::views::transform(record) | std::ranges::to<std::vector>();
 }
 
 } // namespace astro::capability
