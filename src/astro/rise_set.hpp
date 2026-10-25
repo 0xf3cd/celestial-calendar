@@ -314,34 +314,14 @@ requires std::invocable<const Func&, double>
   const double b,
   const double tolerance = EXTREMUM_SEARCH_TOLERANCE_DAYS
 ) -> double {
-  constexpr double INV_PHI = 0.61803398874989484820; // (√5 − 1)/2
-  constexpr double INV_PHI_SQ = 0.38196601125010515180; // (3 − √5)/2
-  constexpr int MAX_ITERATIONS = 64; // ≥ the 40 any bracket/tolerance here needs (0.2-day
-                                     // bracket at 1e-9); see the @note above.
-
-  double lo = a;
-  double hi = b;
-  double x1 = lo + (INV_PHI_SQ * (hi - lo));
-  double x2 = lo + (INV_PHI * (hi - lo));
-  double f1 = f(x1);
-  double f2 = f(x2);
-
-  for (int i = 0; i < MAX_ITERATIONS and hi - lo > tolerance; ++i) {
-    if (f1 < f2) {
-      hi = x2;
-      x2 = x1;
-      f2 = f1;
-      x1 = lo + (INV_PHI_SQ * (hi - lo));
-      f1 = f(x1);
-    } else {
-      lo = x1;
-      x1 = x2;
-      f1 = f2;
-      x2 = lo + (INV_PHI * (hi - lo));
-      f2 = f(x2);
-    }
-  }
-  return (lo + hi) / 2.0;
+  constexpr std::size_t MAX_ITERATIONS = 64; // More than the 40 updates a 0.2-day bracket at 1e-9 needs.
+  const toolbox::GoldenSectionRules rules {
+    .lower_probe = [](const double lo, const double hi) { return lo + (toolbox::INV_PHI_SQ * (hi - lo)); },
+    .move_lower = [](const double lhs, const double rhs) { return not (lhs < rhs); },
+    .finished = [](const double width, const double tol) { return not (width > tol); },
+  };
+  const auto bracket = toolbox::golden_section_bracket(f, a, b, tolerance, MAX_ITERATIONS, rules);
+  return (bracket.lower + bracket.upper) / 2.0;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 

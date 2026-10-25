@@ -220,43 +220,31 @@ template <typename Objective>
   const bool maximize,
   const Objective& objective
 ) -> double {
-  constexpr double golden_ratio = 0.6180339887498948482;
-  double left = left_jde_tt;
-  double right = right_jde_tt;
-  double lhs = right - (golden_ratio * (right - left));
-  double rhs = left + (golden_ratio * (right - left));
-  double lhs_value = objective(lhs);
-  double rhs_value = objective(rhs);
+  const toolbox::GoldenSectionRules rules {
+    .lower_probe = [](const double lo, const double hi) { return hi - (toolbox::INV_PHI * (hi - lo)); },
+    .move_lower = [maximize](const double lhs, const double rhs) { return maximize ? lhs < rhs : lhs > rhs; },
+    .finished = [](const double width, const double tolerance) { return width <= tolerance; },
+  };
+  const auto bracket = toolbox::golden_section_bracket(
+    objective,
+    left_jde_tt,
+    right_jde_tt,
+    TIME_TOLERANCE_DAYS,
+    MAX_REFINEMENT_ITERATIONS,
+    rules
+  );
 
-  for (std::size_t iteration = 0; iteration < MAX_REFINEMENT_ITERATIONS; ++iteration) {
-    if ((right - left) <= TIME_TOLERANCE_DAYS) {
-      const double result = std::midpoint(left, right);
-      const double width = std::min(WITNESS_HALF_WIDTH_DAYS, (right_jde_tt - left_jde_tt) / 4.0);
-      const double center_value = objective(result);
-      const double before_value = objective(result - width);
-      const double after_value = objective(result + width);
-      const bool bracketed = maximize
-        ? center_value > before_value and center_value > after_value
-        : center_value < before_value and center_value < after_value;
-      if (bracketed) {
-        return result;
-      }
-      break;
-    }
-
-    const bool move_left = maximize ? lhs_value < rhs_value : lhs_value > rhs_value;
-    if (move_left) {
-      left = lhs;
-      lhs = rhs;
-      lhs_value = rhs_value;
-      rhs = left + (golden_ratio * (right - left));
-      rhs_value = objective(rhs);
-    } else {
-      right = rhs;
-      rhs = lhs;
-      rhs_value = lhs_value;
-      lhs = right - (golden_ratio * (right - left));
-      lhs_value = objective(lhs);
+  if (bracket.converged) {
+    const double result = std::midpoint(bracket.lower, bracket.upper);
+    const double width = std::min(WITNESS_HALF_WIDTH_DAYS, (right_jde_tt - left_jde_tt) / 4.0);
+    const double center_value = objective(result);
+    const double before_value = objective(result - width);
+    const double after_value = objective(result + width);
+    const bool bracketed = maximize
+      ? center_value > before_value and center_value > after_value
+      : center_value < before_value and center_value < after_value;
+    if (bracketed) {
+      return result;
     }
   }
 

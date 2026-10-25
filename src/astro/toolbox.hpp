@@ -491,4 +491,83 @@ requires std::invocable<const Func&, double>
 
 #pragma endregion
 
+#pragma region Golden Section Search
+
+/** @brief (√5 − 1)/2, rounded directly to binary64. */
+inline constexpr double INV_PHI = 0.61803398874989484820;
+
+/** @brief (3 − √5)/2, rounded independently of INV_PHI. */
+inline constexpr double INV_PHI_SQ = 0.38196601125010515180;
+
+/** @brief Arithmetic, comparison and stopping rules supplied by an extremum-search caller. */
+template <typename LowerProbe, typename MoveLower, typename Finished>
+struct GoldenSectionRules {
+  LowerProbe lower_probe;
+  MoveLower move_lower;
+  Finished finished;
+};
+
+/** @brief The final bracket; converged is false when the update budget runs out. */
+struct GoldenSectionBracket {
+  double lower;
+  double upper;
+  bool converged;
+};
+
+/**
+ * @brief Contract a unimodal bracket using the caller's numerical rules.
+ * @param f The objective, evaluated at two initial probes even when maximum_updates is zero.
+ * @param lower The initial lower bound.
+ * @param upper The initial upper bound.
+ * @param tolerance The width threshold passed to rules.finished.
+ * @param maximum_updates The contraction budget, excluding the two initial probes.
+ * @param rules The lower-probe arithmetic, move-lower comparison and width stopping predicate.
+ * @return The final bounds and whether rules.finished accepted them.
+ * @note The stopping predicate is checked before each update, never after the final allowed update.
+ *       Midpoint selection, witnesses and the meaning of budget exhaustion belong to the caller.
+ */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- Bounds and tolerance have distinct named roles.
+template <typename Func, typename Rules>
+requires std::invocable<const Func&, double>
+     and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
+[[nodiscard]] inline auto golden_section_bracket(
+  const Func& f,
+  const double lower,
+  const double upper,
+  const double tolerance,
+  const std::size_t maximum_updates,
+  const Rules& rules
+) -> GoldenSectionBracket {
+  double lo = lower;
+  double hi = upper;
+  double lhs = rules.lower_probe(lo, hi);
+  double rhs = lo + (INV_PHI * (hi - lo));
+  double lhs_value = f(lhs);
+  double rhs_value = f(rhs);
+
+  for (std::size_t iteration = 0; iteration < maximum_updates; ++iteration) {
+    if (rules.finished(hi - lo, tolerance)) {
+      return { .lower = lo, .upper = hi, .converged = true };
+    }
+
+    if (rules.move_lower(lhs_value, rhs_value)) {
+      lo = lhs;
+      lhs = rhs;
+      lhs_value = rhs_value;
+      rhs = lo + (INV_PHI * (hi - lo));
+      rhs_value = f(rhs);
+    } else {
+      hi = rhs;
+      rhs = lhs;
+      rhs_value = lhs_value;
+      lhs = rules.lower_probe(lo, hi);
+      lhs_value = f(lhs);
+    }
+  }
+  return { .lower = lo, .upper = hi, .converged = false };
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+#pragma endregion
+
 } // namespace astro::toolbox
