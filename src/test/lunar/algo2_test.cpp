@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -380,6 +382,37 @@ TEST(LunarAlgo2, YearOutOfRange) {
 TEST(LunarAlgo2, MetadataBoundsAreLazy) {
   // #67: lazy init — reached through a call now.
   ASSERT_EQ(&AlgoMetadata<Algo::ALGO_2>::bounds(), &algo2::bounds());
+}
+
+TEST(LunarAlgo2, MonthPeekPreservesCompleteMetadata) {
+  for (const int32_t year : { 2024, 2033 }) {
+    const double start_jde = astro::julian_day::utc_year_start_jde(std::chrono::year { year });
+    LunarMonthGenerator direct { start_jde };
+    LunarMonthGenerator inspected { start_jde };
+
+    for (uint8_t month = 0; month < 15; ++month) {
+      const auto expected = direct.next();
+      ASSERT_EQ(inspected.peek(), expected);
+      ASSERT_EQ(inspected.peek(), expected);
+      ASSERT_EQ(inspected.next(), expected);
+    }
+  }
+}
+
+TEST(LunarAlgo2, MonthConstructionStillEvaluatesFirstJieqi) {
+  for (const int32_t year : { 10487, 11250, 32766 }) {
+    double last_jde = -std::numeric_limits<double>::infinity();
+    for (const auto jq : calendar::jieqi::GREGORIAN_YEAR_JIEQI_LIST) {
+      last_jde = std::max(last_jde, calendar::jieqi::jieqi_jde(year, jq));
+    }
+
+    ASSERT_NO_THROW(static_cast<void>(calendar::jieqi::JieqiGenerator { last_jde }));
+    if (year == 32766) {
+      ASSERT_THROW(static_cast<void>(LunarMonthGenerator { last_jde }), std::invalid_argument);
+    } else {
+      ASSERT_THROW(static_cast<void>(LunarMonthGenerator { last_jde }), std::runtime_error);
+    }
+  }
 }
 
 

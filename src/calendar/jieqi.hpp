@@ -109,8 +109,9 @@ namespace detail {
 inline constexpr auto JIEQI_LIST = std::views::iota(uint8_t { 0 }, JIEQI_COUNT)
                           | std::views::transform([](const auto i) { return from_index(i); });
 
-/** @brief A view of all enum values of `Jieqi`, but ordered by their occurrence in a gregorian year.
- *         That means the first value is "小寒", since it is the first Jieqi in any gregorian year.
+/**
+ * @brief Jieqi in Gregorian calendar order, beginning with 小寒.
+ * @note This is calendar order; computed roots are not assumed to be chronological.
  */
 inline constexpr auto GREGORIAN_YEAR_JIEQI_LIST = std::views::iota(uint8_t { 0 }, JIEQI_COUNT)
                                          | std::views::transform([](const auto i) { return (i + to_index(Jieqi::小寒)) % JIEQI_COUNT; })
@@ -282,8 +283,7 @@ static_assert("大寒" == JIEQI_NAME.at(to_index(Jieqi::大寒)));
 // TODO: Use `std::generator` once every CI leg has it (./checks.py --features).
 struct JieqiGenerator {
 private:
-  int32_t _year;
-  uint8_t _jq_index;
+  int32_t _ordinal; // Gregorian year * JIEQI_COUNT + calendar-order position.
 
 public:
   explicit JieqiGenerator(const double start_jde) {
@@ -291,41 +291,38 @@ public:
     const auto start_utc = astro::julian_day::jde_to_utc(start_jde);
     const auto start_year = start_utc.year();
 
-    // Find the first Jieqi after the given JDE.
-    _year = start_year;
+    // Keep the linear first match: far-future computed roots need not follow calendar order.
+    _ordinal = start_year * JIEQI_COUNT;
     for (const auto jq : GREGORIAN_YEAR_JIEQI_LIST) {
-      const auto jde = jieqi_jde(_year, jq);
+      const auto jde = jieqi_jde(start_year, jq);
       if (jde > start_jde) {
-        _jq_index = to_index(jq);
         return;
       }
+      ++_ordinal;
     }
-
-    // Otherwise, the next Jieqi falls into next year.
-    // The first Jieqi in a Gregorian year is `Jieqi::小寒`.
-    ++_year;
-    _jq_index = to_index(Jieqi::小寒); // NOLINT(cppcoreguidelines-prefer-member-initializer)
+    // No match leaves the ordinal at next year's 小寒; defer evaluating that root.
   }
 
+  /** @brief A Jieqi and its JDE(TT). */
   struct JieqiPair { 
     Jieqi jieqi;
     double jde; 
     [[nodiscard]] auto operator==(const JieqiPair& rhs) const -> bool = default;
   };
 
-  [[nodiscard]] auto next() -> JieqiPair {
-    const auto jq = from_index(_jq_index);
-    const auto jde = jieqi_jde(_year, jq);
-
-    // Update the Jieqi index.
-    _jq_index = (_jq_index + 1) % JIEQI_COUNT;
-
-    // If next Jieqi is `Jieqi::小寒`, then we know the next Gregorian year comes.
-    if (_jq_index == to_index(Jieqi::小寒)) {
-      ++_year;
-    }
-
+  /** @brief Evaluate the pending Jieqi without advancing. */
+  [[nodiscard]] auto peek() const -> JieqiPair {
+    const int32_t year = _ordinal / JIEQI_COUNT;
+    const auto jq = GREGORIAN_YEAR_JIEQI_LIST[_ordinal % JIEQI_COUNT];
+    const double jde = jieqi_jde(year, jq);
     return { .jieqi = jq, .jde = jde };
+  }
+
+  /** @brief Return the pending Jieqi, advancing only after a successful evaluation. */
+  [[nodiscard]] auto next() -> JieqiPair {
+    const auto value = peek();
+    ++_ordinal;
+    return value;
   }
 };
 
