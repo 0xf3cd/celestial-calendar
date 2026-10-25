@@ -87,11 +87,12 @@ TEST(QueriesCAbi, PositionQueryParityWithTheCore) {
       const auto& coordinate = coordinates.at(index);
       EXPECT_DOUBLE_EQ(record.longitude_deg, coordinate.λ.deg());
       EXPECT_DOUBLE_EQ(record.latitude_deg, coordinate.β.deg());
-      EXPECT_EQ(record.present_fields & CELESTIAL_PRESENT_DISTANCE, CELESTIAL_PRESENT_DISTANCE);
+      EXPECT_EQ(record.present_fields, CELESTIAL_PRESENT_LATITUDE | CELESTIAL_PRESENT_DISTANCE);
       EXPECT_DOUBLE_EQ(record.distance_au, coordinate.r.au());
     }
 
     const auto& node = records.at(2);
+    EXPECT_EQ(node.present_fields, CELESTIAL_PRESENT_LATITUDE);
     EXPECT_DOUBLE_EQ(node.longitude_deg,
       astro::lunar_node::position(astro::lunar_node::Node::TRUE_ASCENDING, jde_tt).deg());
     EXPECT_DOUBLE_EQ(node.latitude_deg, 0.0);

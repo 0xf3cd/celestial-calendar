@@ -12,12 +12,12 @@
 
 import ctypes as _ctypes
 import math as _math
+from calendar import monthrange as _monthrange
 from collections.abc import Iterable as _Iterable
 from dataclasses import dataclass as _dataclass
 from datetime import date as _date
 from datetime import datetime as _datetime
 from enum import Enum as _Enum
-from calendar import monthrange as _monthrange
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
 from operator import index as _index
@@ -286,6 +286,8 @@ def _number(value: float, operation: str) -> float:
 
 
 def _gregorian_result(year: int, month: int, day: int) -> GregorianDate:
+  if not -32767 <= year <= 32767:
+    raise ValueError("Gregorian year is not representable")
   if not 1 <= month <= 12:
     raise ValueError("invalid Gregorian month")
   month_length = _monthrange(year, month)[1]

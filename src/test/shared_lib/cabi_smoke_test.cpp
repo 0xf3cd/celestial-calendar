@@ -529,6 +529,13 @@ TEST(CAbiSmoke, ApparentSolarTime) {
   EXPECT_GT(t.fraction, 0.5 + (111.4 / 360.0));
   EXPECT_LT(t.fraction, 0.5 + (121.4 / 360.0));
 
+  const auto previous_year = celestial_apparent_solar_time(1, 1, 1, 0.0, -180.0);
+  ASSERT_TRUE(previous_year.valid);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
+  EXPECT_EQ(previous_year.year, 0);
+  EXPECT_EQ(previous_year.month, 12U);
+  EXPECT_EQ(previous_year.day, 31U);
+
   EXPECT_FALSE(celestial_apparent_solar_time(2024, 6, 1, 0.5, 200.0).valid);     // longitude out of range
   EXPECT_FALSE(celestial_apparent_solar_time(2024, 6, 1, 0.5, NAN_VALUE).valid); // NaN longitude
   EXPECT_FALSE(celestial_apparent_solar_time(2024, 6, 1, NAN_VALUE, 116.4).valid); // NaN fraction

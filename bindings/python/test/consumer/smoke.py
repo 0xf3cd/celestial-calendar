@@ -114,6 +114,8 @@ def run_happy_paths() -> None:
   assert math.isfinite(celestial.equation_of_time(2451545.0))
   checks.append("equation_of_time")
   assert celestial.apparent_solar_time(celestial.CivilDateTime(2024, 6, 1, 0.5), 116.4).day == 1
+  previous_year = celestial.apparent_solar_time(celestial.CivilDateTime(1, 1, 1, 0.0), -180.0)
+  assert (previous_year.year, previous_year.month, previous_year.day) == (0, 12, 31)
   checks.append("apparent_solar_time")
   assert 0.0 <= celestial.local_apparent_sidereal_time(2451545.0, 0.0) < 360.0
   checks.append("local_apparent_sidereal_time")

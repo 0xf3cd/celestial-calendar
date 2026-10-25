@@ -39,7 +39,9 @@ struct EquatorialRow {
 } // namespace
 
 TEST(EquatorialQueryGolden, PhysicalTargetsVsHorizons) {
-  // JPL Horizons Q2, collected 2026-10-24: observer 500@399, TIME_TYPE=TT, TLIST_TYPE=JD,
+  // JPL Horizons API 1.2 Q2, collected 2026-10-24: observer 500@399, TIME_TYPE=TT, TLIST_TYPE=JD,
+  // Sources: Sun/Moon/Mercury/Venus DE441; Mars mar099; Jupiter jup365_merged; Saturn sat441l;
+  // Uranus ura184_merged; Neptune nep098_merged; Pluto plu060_merged.
   // AIRLESS, ANG_FORMAT=DEG, EXTRA_PREC=YES, REF_SYSTEM=ICRF. Q2 is apparent true equator/equinox
   // of date (EOP-corrected IAU76/80), not fixed-ICRF astrometric RA/Dec.
   // https://ssd.jpl.nasa.gov/horizons/manual.html#obsquan
@@ -199,12 +201,13 @@ TEST(EquatorialQueryGolden, PhysicalTargetsVsHorizons) {
 }
 
 TEST(EquatorialQueryGolden, FixedProviderInputsVsIndependentProjection) {
-  // Generated 2026-10-24 at the same TT inputs as the Horizons set above. Ecliptic inputs are frozen
+  // Expected directions generated 2026-10-24 at the same TT inputs as the Horizons set above. Ecliptic inputs are frozen
   // from commit 52fda3c735f6a96dbf9beaddb8034f522500b80f, not an independent physical ephemeris.
   // SOFA issue 2023-10-11 iauObl80 + iauNut80 supplies true obliquity, with the two-part TT date
   // (2400000.5, jde_tt - 2400000.5). Python rotates the unit Cartesian vector about x, then uses
   // atan2(y, x) for RA and atan2(z, hypot(x, y)) for Dec. https://www.iausofa.org/2023-10-11c
-  // The 1e-9 deg ceiling checks projection/obliquity conformance, separately from physical accuracy.
+  // The assertions use the library's IAU1980 true obliquity, not SOFA at runtime. The 1e-9 deg ceiling
+  // checks projection/obliquity conformance, separately from physical accuracy.
   constexpr double TOLERANCE_DEG = 1e-9;
 
   // Retained data: equatorial-projection.

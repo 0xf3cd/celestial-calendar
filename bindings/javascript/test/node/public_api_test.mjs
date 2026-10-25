@@ -314,6 +314,9 @@ check("sun.apparentSolarTime", () => {
   assert.deepEqual([value.year, value.month, value.day], [2024, 6, 1]);
   finite(value.fraction);
   civilResult(value);
+  const previousYear = celestial.sun.apparentSolarTime({ year: 1, month: 1, day: 1, fraction: 0 }, -180);
+  assert.deepEqual([previousYear.year, previousYear.month, previousYear.day], [0, 12, 31]);
+  civilResult(previousYear);
 });
 check("moon.apparentGeocentricCoordinate", () => {
   const value = celestial.moon.apparentGeocentricCoordinate(2451545.0);

@@ -341,8 +341,8 @@ try {
     const positionFill = eventFill("celestial_positions", "CelestialPositionRecord", [positionSelection, 3, 2451545.0]);
     assert.equal(positionFill.length, 3);
     assert.deepEqual(
-      positionFill.map((position) => [position.target_code, position.present_fields & 2 ? 1 : 0]),
-      [[9, 1], [0, 1], [10, 0]],
+      positionFill.map((position) => [position.target_code, position.present_fields]),
+      [[9, 3], [0, 3], [10, 1]],
     );
     assert.equal(positionFill[2].source_code, 5); // CELESTIAL_POSITION_SOURCE_NODE_MEAN
     for (const position of positionFill) {

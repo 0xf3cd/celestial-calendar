@@ -29,7 +29,7 @@ export async function testFakeNative(entryUrl) {
     Object.assign(control, {
       next: 8, allocations: 0, frees: 0, live: new Map(), calls: [], failAllocation: 0,
       kind: 0, message: "stale message", errorReads: 0, count: 2, total: 2,
-      countWritten: 0, fillWritten: 2, failPass: undefined, mutate: undefined,
+      countWritten: 0, fillWritten: 2, failPass: undefined, mutate: undefined, sretPayload: undefined,
       string: new TextEncoder().encode("立春\0"), stringMutation: undefined,
       grow: false, ...changes,
     });
@@ -100,6 +100,7 @@ export async function testFakeNative(entryUrl) {
         y: 2024, m: 1, d: 1, frac: 0.5, jq_idx: args[1] ?? 0,
         count: control.count, start: 1600, end: 2199, leap_month: 0, month_len: 0,
         model_identity_code: args[1] || codes.CELESTIAL_DELTA_T_MODEL_ALGO5,
+        ...control.sretPayload,
       });
     };
   }
@@ -175,6 +176,21 @@ export async function testFakeNative(entryUrl) {
       assert.throws(action, (error) => error instanceof fixture.CelestialError && error.recorded === recorded);
       assert.equal(control.live.size, 0, "failure leaked WASM memory");
     };
+    const civil = { year: 2024, month: 1, day: 1, fraction: 0.5 };
+    for (const [action, yearField, resultYear] of [
+      [() => fixture.time.jdeToUt1(2451545), "year", (value) => value.year],
+      [() => fixture.sun.apparentSolarTime(civil, 0), "year", (value) => value.year],
+      [() => fixture.jieqi.moment(2024, 0), "y", (value) => value.momentUt1.year],
+      [() => fixture.lunar.yearInfo("algo3", 2024), "year", (value) => value.firstDay.year],
+      [() => fixture.lunar.toGregorian("algo3", { year: 2024, month: 1, day: 1, isLeap: false }), "year", (value) => value.year],
+    ]) {
+      for (const year of [-32767, 0, 32767, -32768, 32768, 99999]) {
+        reset({ sretPayload: { [yearField]: year, month: 2, day: year === 0 ? 29 : 1, m: 2, d: year === 0 ? 29 : 1 } });
+        if (year < -32767 || year > 32767) libraryError(action);
+        else assert.equal(resultYear(action()), year);
+        assert.equal(control.live.size, 0, "civil year decoding leaked WASM memory");
+      }
+    }
     for (const [model, code] of [[undefined, 0], ["default", 0], ["algo5", 5]]) {
       reset();
       assert.equal(fixture.time.deltaT(2024, model), 12.5);
@@ -273,7 +289,6 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     reset({ mutate: (heap, slots) => { heap.HEAPF64[slots >> 3] = NaN; } }); libraryError(phase);
     reset({ grow: true }); assert.deepEqual(phase(), [2451545, 2451546]);
 
-    const civil = { year: 2024, month: 1, day: 1, fraction: 0.5 };
     const options = { scale: "ut1", location: { latitudeDeg: 0, longitudeDeg: 0 }, system: "equal" };
     const allocations = [
       [() => fixture.time.ut1ToJd(civil), 1],

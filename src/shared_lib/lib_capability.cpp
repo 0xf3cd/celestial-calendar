@@ -182,7 +182,7 @@ auto reference_tests(const PositionSource source) -> std::string_view {
   switch (source) {
     case PositionSource::SUN_VSOP87D: return "sun_test.cpp and ephemeris_test.cpp";
     case PositionSource::MOON_ELP2000_82B_TRUNC: return "moon_test.cpp and ephemeris_test.cpp";
-    case PositionSource::PLANET_VSOP87D: return "planet_test.cpp";
+    case PositionSource::PLANET_VSOP87D:
     case PositionSource::PLUTO_PLUTO95_APPARENT: return "planet_test.cpp";
     case PositionSource::NODE_MEAN:
     case PositionSource::NODE_TRUE_MEEUS_FIVE_TERM: return "lunar_node_test.cpp";
@@ -301,8 +301,8 @@ auto capability_text(const uint32_t operation_code, const uint32_t subject) -> s
   });
   const auto status = std::invoke([&]() -> std::string_view {
     switch (record.status) {
-      case Status::SOURCE_WINDOW: return "The interval is source-published.";
-      case Status::IMPLEMENTATION_WINDOW: return "The interval is implementation-selected.";
+      case Status::SOURCE_WINDOW: return "The interval is source-published. ";
+      case Status::IMPLEMENTATION_WINDOW: return "The interval is implementation-selected. ";
       case Status::FINITE_INPUT_EVALUATION: return "";
     }
     throw std::logic_error { "Unknown core capability status" };
@@ -311,7 +311,7 @@ auto capability_text(const uint32_t operation_code, const uint32_t subject) -> s
     ? "Distance in AU for physical bodies, absent for nodes. " : "";
 
   return std::format(
-    "{}: {}. {} {} Input policy: {}. {} {}Coordinate validity establishes neither accuracy nor physical "
+    "{}: {}. {} {} Input policy: {}. {}{}Coordinate validity establishes neither accuracy nor physical "
     "plausibility. Position references: {}. Fixed conventions and source coefficients are tied to the library version.",
     name, source_text(record.source), geometry, role, domain,
     status, distance,

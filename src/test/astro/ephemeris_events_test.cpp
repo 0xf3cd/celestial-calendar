@@ -33,11 +33,7 @@ namespace {
 namespace search = detail::event_search;
 namespace range_test = astro::detail::event_search::test;
 
-constexpr std::array EVENT_TARGETS {
-  Target::SUN, Target::MOON, Target::MERCURY, Target::VENUS, Target::MARS,
-  Target::JUPITER, Target::SATURN, Target::URANUS, Target::NEPTUNE, Target::PLUTO,
-  Target::MEAN_ASCENDING, Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
-};
+constexpr auto EVENT_TARGETS = TARGETS;
 
 static_assert(std::same_as<decltype(search::sign(search::Value {})), int32_t>);
 

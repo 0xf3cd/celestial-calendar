@@ -33,14 +33,19 @@
  * breaks neither the ABI nor the contract; narrowing it keeps the ABI but breaks
  * the contract, and needs a new major version just the same.
  *
+ * Gregorian and civil output labels use astronomical years in [-32767, 32767], with
+ * year 0 denoting 1 BCE. Each operation's input window is documented separately below.
+ *
  * Error contract: no function throws across the boundary. Struct-returning functions
  * signal failure with `valid = false`; count and sized-text calls return `0` on failure.
  * Every recording call first clears the calling thread's error kind and message.
  * The two error readers preserve both values. Check the error kind to distinguish a
  * legal empty result from failure, even when allocating the error message failed.
- * Only celestial_longitude_events, celestial_longitude_stations and
- * celestial_longitude_difference_events permit a successful zero total. Every other
- * count/fill export has a positive total on success and a zero total on failure.
+ * Among calls with a total-count output parameter, only celestial_longitude_events,
+ * celestial_longitude_stations and celestial_longitude_difference_events permit a
+ * successful zero total. Other such calls have a positive total on success.
+ * celestial_solar_lon_roots may return zero roots, and celestial_new_moons_after_jde
+ * permits a zero request; check the error kind after these calls too.
  *
  * Thread-safety contract: every entry point may be called concurrently from any
  * number of threads, with no host-side synchronization. Errors are per-thread:
@@ -837,7 +842,7 @@ CELESTIAL_API uint32_t celestial_model_identity_text(uint32_t kind_code, uint32_
  * @returns Required bytes including NUL, or zero on failure. Positive capacity writes
  *          at most capacity - 1 payload bytes and a terminating NUL, truncating if needed.
  * @note Coordinate descriptions name origin, frame, units and corrections. Model-use descriptions
- *       name source/version, status and role. Validation coverage is labelled as measured;
+ *       name source/version, status and role. Validation owners are cited separately;
  *       coordinate validity does not establish accuracy or physical plausibility.
  */
 CELESTIAL_API uint32_t celestial_capability_text(uint32_t operation_code, uint32_t subject_code, char *buffer, uint32_t capacity);

@@ -54,7 +54,7 @@ auto set_unknown_error(std::string_view operation) noexcept -> void;
 /** @brief Read the calling thread's error kind without clearing it. */
 [[nodiscard]] auto last_error_kind() noexcept -> ErrorKind;
 
-/** @brief Initialize a caller-owned count before any query validation or evaluation. */
+/** @brief Reject a null count and initialize its failure value before query validation or evaluation. */
 inline auto check_count(uint32_t* const count, const std::string_view name) -> void {
   if (count == nullptr) {
     throw std::invalid_argument { std::format("Argument `{}` is null.", name) };

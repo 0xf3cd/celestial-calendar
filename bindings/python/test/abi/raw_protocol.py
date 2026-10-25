@@ -635,7 +635,7 @@ def happy_celestial_positions() -> None:
   slots = (record * total.value)()
   assert call("positions", selection, 3, 2451545.0, ctypes.byref(total), slots, total.value) == 3
   assert [slot.target_code for slot in slots] == [9, 0, 10]
-  assert (slots[0].present_fields & 2) and not (slots[2].present_fields & 2)
+  assert [slot.present_fields for slot in slots] == [3, 3, 1]
   assert slots[2].source_code == 5  # CELESTIAL_POSITION_SOURCE_NODE_MEAN
   assert not (slots[0].present_fields & 2) or math.isfinite(slots[0].distance_au)
   for slot in slots:

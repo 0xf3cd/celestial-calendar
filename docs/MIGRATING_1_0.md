@@ -54,6 +54,10 @@ now raises `ValueError` / `RangeError`, not the library error used by 0.x. After
 invalid computed coordinate is a computation failure; a malformed/non-finite input remains invalid input.
 Applications should branch on the error kind/class, not match message text or test whether the message is nonempty.
 
+Returned Gregorian/civil labels use astronomical years in `[-32767, 32767]`, including year 0 (1 BCE).
+A valid year-1 solar-time input can cross into year 0. The JavaScript `/date` bridge keeps its separate
+`[1, 32767]` civil domain; Python's `GregorianDate.to_date()` still requires `[1, 9999]`.
+
 Sized UTF-8 calls return the required byte count **including NUL**. Pass a null buffer and zero capacity to size;
 with positive capacity, calls write at most capacity minus one payload bytes and a terminating NUL, truncating if
 needed. Allocate the reported size and check the error kind after both passes. Jieqi-name callers must not depend

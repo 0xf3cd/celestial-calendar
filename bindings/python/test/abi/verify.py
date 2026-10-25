@@ -22,8 +22,8 @@ from celestial_calendar import _abi, _binding
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
-sys.path.insert(0, str(REPO / "automation"))
-from c_abi_schema import C_TO_CTYPES, parse_function, parse_header_text, record_layouts  # noqa: E402
+sys.path.insert(0, str(REPO))
+from automation.c_abi_schema import C_TO_CTYPES, parse_function, parse_header_text, record_layouts  # noqa: E402
 
 HEADER = REPO / "src/shared_lib/celestial.h"
 EXPECTED_EXPORT_COUNT = 36

@@ -63,7 +63,7 @@ enum class PositionSource : uint8_t {
   NODE_TRUE_MEEUS_FIVE_TERM = 5, ///< Meeus' five-term approximation, not an osculating node.
 };
 
-/** @brief Whether a bounded position domain comes from its source or this implementation. */
+/** @brief Origin of a bounded position domain; ignored when no position domain is declared. */
 enum class DomainOrigin : uint8_t { SOURCE, IMPLEMENTATION };
 
 /** @brief Target identity and provider domains; rate_node preserves the paired ascending trajectory. */
@@ -160,14 +160,16 @@ namespace detail {
   return false;
 }
 
-/** @brief Check every uint8_t value for exact membership once; enum aliases cannot be distinguished. */
+/** @brief Check membership, provider operands and shared-source windows; enum aliases are indistinguishable. */
 [[nodiscard]] consteval auto complete_target_facts() -> bool {
   for (const auto& facts : TARGET_FACTS) {
     if (not consistent_provider(facts)) {
       return false;
     }
     for (const auto& other : TARGET_FACTS) {
-      if (facts.source == other.source and facts.position_domain != other.position_domain) {
+      const bool same_position_window = facts.position_domain == other.position_domain
+        and (not facts.position_domain.has_value() or facts.position_domain_origin == other.position_domain_origin);
+      if (facts.source == other.source and not same_position_window) {
         return false;
       }
     }
@@ -251,17 +253,33 @@ namespace detail {
 inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
 inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
 
+/** @brief Dispatch a physical provider explicitly; mathematical nodes have no spherical distance. */
+[[nodiscard]] inline auto physical_apparent(const TargetFacts& facts, const double jde_tt) -> toolbox::SphericalCoordinate {
+  using enum PositionSource;
+  switch (facts.source) {
+    case SUN_VSOP87D:
+      return astro::sun::geocentric_coord::apparent(jde_tt);
+    case MOON_ELP2000_82B_TRUNC:
+      return astro::moon::geocentric_coord::apparent(jde_tt);
+    case PLANET_VSOP87D:
+    case PLUTO_PLUTO95_APPARENT:
+      if (facts.planet.has_value()) {
+        return astro::planet::geocentric_coord::apparent(*facts.planet, jde_tt);
+      }
+      break;
+    case NODE_MEAN:
+    case NODE_TRUE_MEEUS_FIVE_TERM:
+      break;
+  }
+  throw std::logic_error { "Target source has no physical position provider" };
+}
+
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt) -> toolbox::AngleDeg {
   const auto& facts = target_facts(target);
-  if (facts.planet.has_value()) {
-    return astro::planet::geocentric_coord::apparent(*facts.planet, jde_tt).λ;
-  }
   if (facts.rate_node.has_value()) {
     return astro::lunar_node::position(*facts.rate_node, jde_tt);
   }
-  return facts.source == PositionSource::SUN_VSOP87D
-    ? astro::sun::geocentric_coord::apparent(jde_tt).λ
-    : astro::moon::geocentric_coord::apparent(jde_tt).λ;
+  return physical_apparent(facts, jde_tt).λ;
 }
 
 /** @brief Reject impossible computed coordinates without clamping latitude or distance. */
@@ -361,14 +379,7 @@ requires std::invocable<const LongitudeProvider&, double>
       };
     }
 
-    const auto physical = std::invoke([&] {
-      if (facts.planet.has_value()) {
-        return astro::planet::geocentric_coord::apparent(*facts.planet, jde_tt);
-      }
-      return facts.source == PositionSource::SUN_VSOP87D
-        ? astro::sun::geocentric_coord::apparent(jde_tt)
-        : astro::moon::geocentric_coord::apparent(jde_tt);
-    });
+    const auto physical = detail::physical_apparent(facts, jde_tt);
     return { .longitude = physical.λ, .latitude = physical.β, .distance = physical.r };
   });
 

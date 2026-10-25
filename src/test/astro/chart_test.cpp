@@ -50,6 +50,7 @@ constexpr std::array TARGETS {
   Target::MEAN_DESCENDING, Target::TRUE_ASCENDING, Target::TRUE_DESCENDING,
 };
 
+static_assert(TARGETS == astro::ephemeris::TARGETS);
 static_assert(std::is_same_v<std::underlying_type_t<Scale>, uint8_t>);
 static_assert(not std::is_convertible_v<Scale, int>);
 static_assert(std::tuple_size_v<decltype(Snapshot::bodies)> == 14);

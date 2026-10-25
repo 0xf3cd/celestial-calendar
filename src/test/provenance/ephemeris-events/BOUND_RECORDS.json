@@ -5,7 +5,7 @@
   "floating_reference": "Source literals as nearest binary64 exact reals; smooth phase reference uses exact pi",
   "upper_arithmetic": "192-bit outward real majorants; 256-bit upward nonnegative FP magnitudes and errors",
   "source_sha256": {
-    "src/astro/ephemeris.hpp": "beaabd43bdf6814e2cc2a58130b361c6c7b4c0e552d2888c0a099d830d58f244",
+    "src/astro/ephemeris.hpp": "386382cff39ac7e97ab385cd521e576832b428377a58c167288b22c0a3de5221",
     "src/astro/lunar_node.hpp": "9930448543f476e50ba3113185cf7d2af4a38a83a832b65bba1c82c6e9ffd14f",
     "src/astro/moon.hpp": "2224376504970c10424d30e8547cba5890cd1d0da1473f32825b844e5faf613e",
     "src/astro/elp2000_82b.hpp": "d4842850c3500a53a74dc048a39131a5d6a21ad777d6080eaa974b0d12f7abac",

@@ -269,7 +269,7 @@ Wrong input types, including members of the wrong enum, raise `TypeError`. Value
 domain checks raise `ValueError`, and so does an object of the expected enum class that is not one of its declared
 members. Native invalid-input errors also raise `ValueError`. Computation, resource and internal failures raise
 `CelestialError`, as do corrupt successful payloads. Its `operation` names the public call; `recorded` is true when
-native reported an error kind, even if it could not allocate a message. A legitimate absence remains `None` or `()`.
+native reported a recognized error kind, even if it could not allocate a message. A legitimate absence remains `None` or `()`.
 The native logging setter and `LogVerbosity` are removed. Errors are not automatically printed.
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` accepts a finite JD on UT1 whose Gregorian year is in

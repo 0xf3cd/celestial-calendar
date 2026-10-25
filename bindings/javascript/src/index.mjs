@@ -14,6 +14,7 @@ import createWasmModule from "./celestial-jieqi.mjs";
 
 import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS, PROTOCOLS } from "./bindings.mjs";
 import {
+  MAX_CIVIL_YEAR,
   booleanValue,
   civilDateTime,
   civilDateTimeResult,
@@ -165,7 +166,7 @@ const checkError = (M, operation) => {
 
 const readCivilResult = (value, operation) => {
   try {
-    return civilDateTimeResult(civilDateTime(value, "native civil result"));
+    return civilDateTimeResult(civilDateTime(value, "native civil result", -MAX_CIVIL_YEAR));
   } catch {
     malformed(operation, "civil date/time");
   }
@@ -465,7 +466,7 @@ const yearInfo = (algorithm, year) => {
   const checkedYear = nativeInteger(year, "year");
   const value = callSret("celestial_get_lunar_year_info", operation, [nativeAlgorithm, checkedYear]);
   if (value.leap_month > 12) malformed(operation, "leap_month");
-  try { gregorianDate({ year: value.year, month: value.month, day: value.day }, "native first day"); }
+  try { gregorianDate({ year: value.year, month: value.month, day: value.day }, "native first day", -MAX_CIVIL_YEAR); }
   catch { malformed(operation, "lunar first day"); }
   const monthCount = value.leap_month === 0 ? 12 : 13;
   const monthLengths = Array.from(
@@ -503,7 +504,7 @@ const toGregorian = (algorithm, date) => {
   const day = nativeInteger(date.day, "date.day", "uint8_t");
   const isLeap = booleanValue(date.isLeap, "date.isLeap");
   const value = callSret("celestial_lunar_to_gregorian", operation, [nativeAlgorithm, year, month, isLeap, day]);
-  try { return gregorianDate({ year: value.year, month: value.month, day: value.day }, "native date"); }
+  try { return gregorianDate({ year: value.year, month: value.month, day: value.day }, "native date", -MAX_CIVIL_YEAR); }
   catch { malformed(operation, "Gregorian date"); }
 };
 

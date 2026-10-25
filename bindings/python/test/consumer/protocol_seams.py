@@ -305,6 +305,19 @@ def run_export_protocols():
       assert not error.recorded and not native.calls
     invalid_cases += 1
 
+    for metadata in (None, [], {}, {export: None}, {export: 3}, {export: []}):
+      native = CountFill([])
+      with patch.object(_abi, "C_PARAMETERS", metadata), bindings(**{export: native}):
+        error = raises(celestial.CelestialError, action)
+      assert not error.recorded and not native.calls
+      invalid_cases += 1
+    native = CountFill([])
+    with patch.object(_abi, "C_PARAMETERS", {}), bindings(**{export: native}):
+      del _abi.C_PARAMETERS
+      error = raises(celestial.CelestialError, action)
+      assert not error.recorded and not native.calls
+    invalid_cases += 1
+
     for key, bad in (
       ("kind", "struct"),
       ("total_must_match", False),
@@ -821,6 +834,34 @@ def run_calendar_and_angle_payloads():
       assert not error.recorded
       count += 1
   print(f"PASS calendar/angle payloads: {len(cases)} valid controls and {count} malformed successes")
+
+  for export, action, payload, _ in cases:
+    field = "y" if export == "celestial_query_jieqi_moment" else "year"
+    if field not in payload or export == "celestial_gregorian_to_lunar":
+      continue
+    for year in (-32767, 0, 32767):
+      changed = {**payload, field: year}
+      if year != 0:
+        if "day" in changed:
+          changed["day"] = 1
+        else:
+          changed["d"] = 1
+      with bindings(**{export: lambda *args, payload=changed: SimpleNamespace(valid=True, **payload)}):
+        result = action()
+      if export == "celestial_get_lunar_year_info":
+        date_result = result.first_day
+      elif export == "celestial_query_jieqi_moment":
+        date_result = result.moment_ut1
+      else:
+        date_result = result
+      assert date_result.year == year
+    for year in (-32768, 32768, 99999):
+      changed = {**payload, field: year}
+      with bindings(**{export: lambda *args, payload=changed: SimpleNamespace(valid=True, **payload)}):
+        error = raises(celestial.CelestialError, action)
+      assert not error.recorded
+  raises(ValueError, celestial.GregorianDate(0, 1, 1).to_date)
+  print("PASS representable Gregorian/civil output years, including year zero; Date bridge limits unchanged")
 
 
 def main():

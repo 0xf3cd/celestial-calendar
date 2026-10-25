@@ -27,7 +27,7 @@ class CelestialError(RuntimeError):
   """Native computation/resource/internal failure or a malformed successful payload.
 
   operation identifies the Python operation. recorded is true when native reported
-  an error kind, including an error whose message could not be allocated.
+  a recognized error kind, including an error whose message could not be allocated.
   """
 
   def __init__(self, operation: str, message: str, *, recorded: bool) -> None:
@@ -66,7 +66,8 @@ def _count_fill_protocol(export: str, argument_count: int, operation: str) -> di
   """Require the generated policy to match this consumer's count/slots/capacity tail."""
   protocols = getattr(_abi, "PROTOCOLS", None)
   protocol = protocols.get(export) if isinstance(protocols, dict) else None
-  parameters = _abi.C_PARAMETERS.get(export)
+  parameter_map = getattr(_abi, "C_PARAMETERS", None)
+  parameters = parameter_map.get(export) if isinstance(parameter_map, dict) else None
   roles = ("count_parameter", "slots_parameter", "capacity_parameter")
   policy_matches = (
     isinstance(protocol, dict)
@@ -77,9 +78,9 @@ def _count_fill_protocol(export: str, argument_count: int, operation: str) -> di
     and protocol.get("null_slots_requires_zero_capacity") is True
     and protocol.get("error_channel") == "kind"
   )
-  if not policy_matches or parameters is None or len(parameters) != argument_count + 3:
+  if not policy_matches or not isinstance(parameters, (tuple, list)) or len(parameters) != argument_count + len(roles):
     raise malformed(operation, f"invalid count/fill protocol for {export}")
-  if tuple(protocol.get(role) for role in roles) != tuple(parameters[-3:]):
+  if tuple(protocol.get(role) for role in roles) != tuple(parameters[-len(roles) :]):
     raise malformed(operation, f"invalid count/fill parameter roles for {export}")
   return protocol
 

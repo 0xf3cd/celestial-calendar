@@ -14,6 +14,7 @@ import ctypes
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -173,6 +174,7 @@ MUTATIONS = [
     "#define CELESTIAL_TARGET_SUN",
     "#define CELESTIAL_TARGET_PROBE UINT32_C(14)\n#define CELESTIAL_TARGET_SUN",
     False,
+    "numeric code pins differ",
   ),
   (
     "new-record",
@@ -180,6 +182,7 @@ MUTATIONS = [
     "typedef struct CelestialProbeRecord { double value; } CelestialProbeRecord;\n"
     "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
     False,
+    "structs without a layout pin",
   ),
   (
     "new-export",
@@ -187,50 +190,92 @@ MUTATIONS = [
     "CELESTIAL_API double celestial_probe(double value);\n"
     "CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability",
     False,
+    "exports without a signature pin",
   ),
-  ("reorder", "uint32_t month;    /* The month. */\n  uint32_t day;", "uint32_t day;\n  uint32_t month;", True),
-  ("legacy-same-width", "uint32_t month;    /* The month. */", "int32_t month;", True),
-  ("padding-field", "uint8_t day;     /* The day of the lunar month. */", "uint8_t day;\n  uint8_t padding;", False),
-  ("array-extent", "double cusps_deg[12];", "double cusps_deg[11];", True),
+  (
+    "reorder",
+    "uint32_t month;    /* The month. */\n  uint32_t day;",
+    "uint32_t day;\n  uint32_t month;",
+    True,
+    "CelestialUT1Time.month drifted",
+  ),
+  (
+    "legacy-same-width",
+    "uint32_t month;    /* The month. */",
+    "int32_t month;",
+    True,
+    "CelestialUT1Time.month drifted",
+  ),
+  (
+    "padding-field",
+    "uint8_t day;     /* The day of the lunar month. */",
+    "uint8_t day;\n  uint8_t padding;",
+    False,
+    "field type/offset",
+  ),
+  ("array-extent", "double cusps_deg[12];", "double cusps_deg[11];", True, "CelestialChartHouses layout drifted"),
   (
     "array-stride",
     "double longitude_rate_deg_per_tt_day; /* Published seven-point signed rate",
     "double extra;\n  double longitude_rate_deg_per_tt_day; /* Published seven-point signed rate",
     True,
+    "CelestialChartBody layout drifted",
   ),
-  ("array-element", "CelestialChartBody bodies[14];", "ChartBodyAlias bodies[14];", True),
-  ("nested-record", "CelestialChartHouses houses;", "HouseAlias houses;", True),
+  (
+    "array-element",
+    "CelestialChartBody bodies[14];",
+    "ChartBodyAlias bodies[14];",
+    True,
+    "CelestialChartSnapshot.bodies array drifted",
+  ),
+  (
+    "nested-record",
+    "CelestialChartHouses houses;",
+    "HouseAlias houses;",
+    True,
+    "CelestialChartSnapshot.houses drifted",
+  ),
   (
     "signature",
     "CelestialDeltaT celestial_delta_t(double year, uint32_t model_code)",
     "CelestialDeltaT celestial_delta_t(int32_t year, uint32_t model_code)",
     True,
+    "celestial_delta_t signature drifted",
   ),
   (
     "pointee-const",
     "celestial_positions(const uint32_t *target_codes",
     "celestial_positions(uint32_t *target_codes",
     True,
+    "celestial_positions signature drifted",
   ),
   (
     "equatorial-pointee-const",
     "celestial_equatorial_positions(const uint32_t *target_codes",
     "celestial_equatorial_positions(uint32_t *target_codes",
     True,
+    "celestial_equatorial_positions signature drifted",
   ),
-  ("code-value", "CELESTIAL_TARGET_MERCURY         UINT32_C(2)", "CELESTIAL_TARGET_MERCURY         UINT32_C(3)", True),
+  (
+    "code-value",
+    "CELESTIAL_TARGET_MERCURY         UINT32_C(2)",
+    "CELESTIAL_TARGET_MERCURY         UINT32_C(3)",
+    True,
+    "CELESTIAL_TARGET_MERCURY code drifted",
+  ),
   (
     "default-alias",
     "CELESTIAL_DELTA_T_MODEL_DEFAULT UINT32_C(0)",
     "CELESTIAL_DELTA_T_MODEL_DEFAULT CELESTIAL_DELTA_T_MODEL_ALGO5",
     True,
+    "CELESTIAL_DELTA_T_MODEL_DEFAULT code drifted",
   ),
 ]
 
 
-@pytest.mark.parametrize("label,old,new,compiler_rejects", MUTATIONS, ids=[m[0] for m in MUTATIONS])
+@pytest.mark.parametrize("label,old,new,compiler_rejects,diagnostic", MUTATIONS, ids=[m[0] for m in MUTATIONS])
 def test_colluding_generated_views_cannot_update_baseline(
-  isolated_generator, monkeypatch, label, old, new, compiler_rejects
+  isolated_generator, monkeypatch, label, old, new, compiler_rejects, diagnostic
 ):
   root = isolated_generator
   positive = compile_pins(root, "positive")
@@ -287,8 +332,10 @@ def test_colluding_generated_views_cannot_update_baseline(
     assert ctypes.sizeof(module.CelestialLunarDate) == 12
   result = compile_pins(root, label)
   assert (result.returncode != 0) == compiler_rejects, result.stderr
-  if result.returncode == 0:
-    with pytest.raises(RuntimeError):
+  if compiler_rejects:
+    assert diagnostic in result.stderr, result.stderr
+  else:
+    with pytest.raises(RuntimeError, match=re.escape(diagnostic)):
       verify_c_header_pins(root)
 
 

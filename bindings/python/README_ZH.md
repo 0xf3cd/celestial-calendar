@@ -248,7 +248,7 @@ deactivate
 错误输入类型（包括错误枚举的成员）抛出 `TypeError`。未通过有限性、范围或定义域校验的值抛出 `ValueError`；
 属于对应枚举类、却不是其已声明成员的对象同样抛出 `ValueError`。
 原生无效输入同样抛出 `ValueError`；计算、资源或内部失败以及损坏的成功载荷抛出 `CelestialError`。
-其 `operation` 属性为公开函数名；`recorded` 表示原生侧报告了非零错误种类，即使消息分配失败而为空也为真。
+其 `operation` 属性为公开函数名；`recorded` 表示原生侧报告了已知的非零错误种类，即使消息分配失败而为空也为真。
 合法的“无结果”仍以 `None` 或 `()` 表示。日志设置函数与 `LogVerbosity` 已移除，错误不会自动打印。
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` 接受有限的 UT1 下 JD，其公历年份须在 `[401, 32766]` 内；

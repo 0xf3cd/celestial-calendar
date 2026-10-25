@@ -193,16 +193,8 @@ auto celestial_moon_phase_moments(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (root_count == nullptr) {
-      throw std::invalid_argument { "Argument `root_count` is null." };
-    }
-
-    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-    *root_count = 0;
-
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_count(root_count, "root_count");
+    lib::check_slots(slots, slot_count);
 
     if (phase_kind > 3) {
       throw std::invalid_argument {
@@ -252,9 +244,7 @@ auto celestial_solar_lon_roots(
   return lib::wrap_export(__func__, [=] {
     using namespace astro::sun::geocentric_coord::math;
 
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_slots(slots, slot_count);
 
     if (not std::isfinite(longitude) or longitude < 0.0 or longitude >= 360.0) {
       throw std::invalid_argument {
@@ -290,9 +280,7 @@ auto celestial_new_moons_after_jde(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_slots(slots, slot_count);
 
     if (not std::isfinite(jde)) {
       throw std::invalid_argument {
@@ -319,16 +307,8 @@ auto celestial_new_moons_in_year(
   const uint32_t slot_count
 ) -> uint32_t {
   return lib::wrap_export(__func__, [=] {
-    if (root_count == nullptr) {
-      throw std::invalid_argument { "Argument `root_count` is null." };
-    }
-
-    // Deterministic out-parameter state: every failure path leaves *root_count == 0.
-    *root_count = 0;
-
-    if (slots == nullptr and slot_count > 0) {
-      throw std::invalid_argument { "Argument `slots` is null, but `slot_count` is greater than 0." };
-    }
+    lib::check_count(root_count, "root_count");
+    lib::check_slots(slots, slot_count);
 
     const auto roots = astro::moon_phase::new_moon::moments(year);
 
