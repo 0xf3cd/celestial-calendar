@@ -253,17 +253,19 @@ The three input kinds below are mutually exclusive, both in TypeScript and at ru
 | `CivilDateTime` | `year`, `month`, `day`, `fraction` | `isLeap` |
 | `LunarDate` | `year`, `month`, `day`, `isLeap` | `fraction` |
 
-Civil moments and Gregorian dates need an integer year in `[1, 32767]` and a month and day that form a valid
-Gregorian date; a lunar year and date must exist in the selected algorithm. `fraction` is a finite day fraction in
+Civil-moment and Gregorian-date inputs need an integer year and a valid Gregorian month and day. The native operation
+determines its admitted year window; the `/date` bridge requires civil years in `[1, 32767]`.
+A lunar year and date must exist in the selected algorithm. `fraction` is a finite day fraction in
 `[0, 1)`. The runtime allows unrelated extra properties, but rejects an excluded field even when it is inherited or
 set to `undefined`. With TypeScript's `exactOptionalPropertyTypes` enabled, type checking also rejects an explicit
 `undefined` on the optional `never` fields.
 
-`CivilDateTimeResult` adds an integer `hour` and `minute` and a possibly fractional `second` to `CivilDateTime`.
+Native `GregorianDate` and `CivilDateTimeResult` results use astronomical years in `[-32767, 32767]`, with year 0
+denoting 1 BCE. `CivilDateTimeResult` adds an integer `hour` and `minute` and a possibly fractional `second` to `CivilDateTime`.
 `time.jdeToUt1()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
 These fields are derived from the day fraction and are not rounded to milliseconds; `second` counts seconds, not
-milliseconds. A result can still be passed as a civil-moment input: functions read `fraction`, not the derived clock
-fields. The operation name, not this shared record type, says which time scale applies.
+milliseconds. A result can be reused as a civil-moment input when it fits that operation's input window: functions
+read `fraction`, not the derived clock fields. The operation name, not this shared record type, says which time scale applies.
 
 Record inputs are recognized by shape: explicit own fields and excluded tags decide the kind, not the constructor,
 and `Date` methods or timestamps are never read. A plain `Date` lacks the required fields; use the date bridge below

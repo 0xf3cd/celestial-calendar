@@ -51,7 +51,9 @@ export const Jieqi: Readonly<{
 export type Jieqi = (typeof Jieqi)[keyof typeof Jieqi];
 
 /**
- * A Gregorian calendar-date label, not an instant; year is in [1, 32767].
+ * A Gregorian calendar-date label, not an instant.
+ * Native results use astronomical years in [-32767, 32767], with 0 denoting 1 BCE.
+ * Input-year admission depends on the operation; /date bridges require civil years in [1, 32767].
  * Runtime record inputs read explicit own fields, without converting Date timestamps.
  * Unrelated extra fields are allowed, but date-kind tags are not.
  */
@@ -63,7 +65,10 @@ export interface GregorianDate {
   isLeap?: never;
 }
 
-/** Civil fields with year in [1, 32767]; the operation names their time scale. No automatic Date conversion. */
+/**
+ * Civil fields on the time scale named by the operation. No automatic Date conversion.
+ * Input-year admission depends on the operation; native results use GregorianDate's astronomical-year range.
+ */
 export interface CivilDateTime {
   year: number;
   month: number;

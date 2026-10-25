@@ -34,7 +34,7 @@
  * the contract, and needs a new major version just the same.
  *
  * Gregorian and civil output labels use astronomical years in [-32767, 32767], with
- * year 0 denoting 1 BCE. Each operation's input window is documented separately below.
+ * year 0 denoting 1 BCE.
  *
  * Error contract: no function throws across the boundary. Struct-returning functions
  * signal failure with `valid = false`; count and sized-text calls return `0` on failure.
@@ -510,6 +510,13 @@ CELESTIAL_API CelestialGregorianDate celestial_lunar_to_gregorian(uint8_t algo, 
 #define CELESTIAL_TARGET_TRUE_DESCENDING UINT32_C(13)
 #define CELESTIAL_TARGET_ALL             UINT32_C(0xFFFFFFFF)
 
+#define CELESTIAL_POSITION_SOURCE_SUN_VSOP87D               UINT32_C(1)
+#define CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC    UINT32_C(2)
+#define CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D            UINT32_C(3)
+#define CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT    UINT32_C(4)
+#define CELESTIAL_POSITION_SOURCE_NODE_MEAN                 UINT32_C(5)
+#define CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(6)
+
 #define CELESTIAL_NUTATION_MODEL_DEFAULT  UINT32_C(0)
 #define CELESTIAL_NUTATION_MODEL_MEEUS    UINT32_C(1)
 #define CELESTIAL_NUTATION_MODEL_IAU_1980 UINT32_C(2)
@@ -730,13 +737,6 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
 #define CELESTIAL_STATUS_SOURCE_WINDOW           UINT32_C(0)
 #define CELESTIAL_STATUS_IMPLEMENTATION_WINDOW   UINT32_C(1)
 #define CELESTIAL_STATUS_FINITE_INPUT_EVALUATION UINT32_C(2)
-
-#define CELESTIAL_POSITION_SOURCE_SUN_VSOP87D               UINT32_C(1)
-#define CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC    UINT32_C(2)
-#define CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D            UINT32_C(3)
-#define CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT    UINT32_C(4)
-#define CELESTIAL_POSITION_SOURCE_NODE_MEAN                 UINT32_C(5)
-#define CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM UINT32_C(6)
 
 #define CELESTIAL_MODEL_KIND_DELTA_T         UINT32_C(0)
 #define CELESTIAL_MODEL_KIND_NUTATION        UINT32_C(1)

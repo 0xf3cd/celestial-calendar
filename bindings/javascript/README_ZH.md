@@ -234,15 +234,17 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 | `CivilDateTime` | `year`, `month`, `day`, `fraction` | `isLeap` |
 | `LunarDate` | `year`, `month`, `day`, `isLeap` | `fraction` |
 
-民用时刻与公历日期的年份须为 `[1, 32767]` 内的整数，月、日须为有效公历日期；阴历年份和日期须在所选算法中存在。
+民用时刻与公历日期输入须使用整数年份和有效公历月、日。原生操作各自决定可接受的年份窗口；
+`/date` 桥接要求民用年份在 `[1, 32767]` 内。阴历年份和日期须在所选算法中存在。
 `fraction` 是 `[0, 1)` 内的有限日小数。运行时允许无关的额外属性，但排除字段即使来自继承或值为 `undefined`
 也会被拒绝。启用 TypeScript 的 `exactOptionalPropertyTypes`，也可在类型检查时拒绝可选 `never` 字段上的
 显式 `undefined`。
 
+原生 `GregorianDate` 和 `CivilDateTimeResult` 结果使用 `[-32767, 32767]` 内的天文纪年，0 年表示公元前 1 年。
 `CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
 `time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
 这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
-结果仍可作为民用时刻输入：函数读取 `fraction`，而非派生的时分秒字段。
+结果符合所调用操作的输入窗口时，仍可作为民用时刻输入：函数读取 `fraction`，而非派生的时分秒字段。
 时间尺度由操作命名区分，不编码在这个共用记录类型中。
 
 记录输入按结构识别：显式自有字段与排除标签决定种类，而非构造函数；不会读取 `Date` 方法或时间戳。
