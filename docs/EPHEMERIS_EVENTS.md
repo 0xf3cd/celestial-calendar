@@ -11,6 +11,42 @@ day. Body longitudes are apparent, geocentric and tropical; node longitudes foll
 [`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
 in the true ecliptic and equinox of date.
 
+## Choosing an event API
+
+Use the interval API for caller-chosen TT windows, published-rate stations and
+deterministic endpoint ownership. The annual C++ operations retain their own
+definitions, numerical policies and wider year domains:
+
+| Operation | Definition and search | Computational domain |
+|---|---|---|
+| `planet::phenomena::events` | Longitude extrema for stations; planet-minus-Sun longitude crossings; great-circle separation maxima for greatest elongations | UTC years [1, 32766], or [1886, 2098] for Pluto |
+| `moon_phase::phase_moments::moments` | Moon-minus-Sun apparent longitude at 0°, 90°, 180° or 270°, refined by Newton's method | UTC years [1, 32766] |
+| `moon_phase::new_moon::moments` | Conjunctions, using the existing conjunction-specific numerical convention | UTC years [1, 32766] |
+| `sun::geocentric_coord::math::find_roots` | Apparent solar longitude at a supplied level, refined by Newton's method; also supplies Jieqi | UTC years [1, 32766] |
+| Interval searches on this page | Longitude levels and zeros of the published seven-point rate | The target's `longitude_rate_domain`; at most 3660 TT days per query |
+
+Annual windows run from Jan 1 to next Jan 1 in UTC, using the library's UT1
+substitute before 1972. The annual planetary search detects candidates on a
+one-day grid. It refines longitude extrema to a `1e-8`-day bracket and requires
+a strict two-sided witness. Those extrema need not coincide with zeros of the
+seven-point rate, so station times from the two APIs are not interchangeable.
+Greatest elongations have no interval counterpart. See
+[`planet_phenomena.hpp`](../src/astro/planet_phenomena.hpp) for the annual event labels.
+
+Moon phases and solar levels use the same apparent-position models as their
+interval counterparts, but their solvers and endpoint rules differ. An annual
+Moon phase exactly at Jan 1 UTC still has no defined owner. Conjunction and
+principal-phase New Moon share a root flow while retaining different bracket
+and angular-fold conventions; changing an existing conjunction caller to the
+principal-phase operation can change success or failure at remote inputs.
+
+The annual operations do not delegate to interval searches, even inside the
+common domain. This preserves their results, failure policies and supported
+years, including the solar roots used by the lunar calendar. A supported
+computational domain is not an astronomical accuracy guarantee. C++ callers
+using the former low-level Moon-phase names should read the
+[migration guide](MIGRATING_1_0.md#c-numerical-helpers-and-generators).
+
 ## C ABI and Python
 
 The C exports `celestial_longitude_events`, `celestial_longitude_stations` and

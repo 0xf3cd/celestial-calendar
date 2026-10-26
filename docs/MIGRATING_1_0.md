@@ -151,6 +151,49 @@ house-nutation key does not describe its body corrections.
 For the duration constructor, replace `Datetime{day, hh_mm_ss{elapsed}}` with `Datetime{day, elapsed}`;
 an existing `hh_mm_ss` can supply `.to_duration()`. Fraction and time-point constructors remain.
 
+### C++ numerical helpers and generators
+
+The annual event APIs keep their definitions and domains; they do not become
+wrappers around the interval engine. Choose an API by its
+[event definition and endpoint policy](EPHEMERIS_EVENTS.md#choosing-an-event-api),
+not by the similarity of its result names.
+
+`moon_phase::new_moon::moments`, `phase_moments::moments`, their `RootGenerator`
+names and `phase_moments::PhaseKind` remain. Both generators now offer
+`peek() const`, which returns the saved root without advancing or refining its
+successor. `next()` still computes the successor before returning the pending
+root; failure leaves that pending root unchanged. Copy and move assignment
+remain available.
+
+The duplicated low-level Moon solvers and constants move to `moon_phase::detail`.
+`new_moon::longitude_diff` and `phase_moments::longitude_diff` become the single
+`moon_phase::longitude_diff`. Code using `phase_moments::phase_diff(jde, target_deg)`
+can express the same signed fold as
+`toolbox::normalize_pm180(moon_phase::longitude_diff(jde) - target_deg)`.
+There are no forwarding aliases for the removed low-level names.
+
+Prefer the annual operations or generators for consumers. Code that integrates
+the internal solver must select its numerical policy explicitly: conjunction
+for the former `new_moon` route, phase for the former `phase_moments` route.
+The internal namespace is not a new stable solver API. In particular, an old
+conjunction call `(left, right, cap)` must not become `(left, right, cap)` on
+the shared solver, whose third argument is a target in degrees:
+
+```cpp
+const double root = astro::moon_phase::detail::newton_method<
+  astro::moon_phase::detail::NumericPolicy::CONJUNCTION
+>(left_jde, right_jde, 0.0, cap);
+```
+
+`JieqiGenerator::peek() const` does not advance, but it evaluates the pending
+Jieqi and can throw. Its constructor retains the linear first-match search;
+the single ordinal simplifies state without assuming remote roots are
+monotone. `LunarMonthGenerator` uses the upstream peeks instead of put-back
+slots and retains its own assembled-month cache. Construction still evaluates
+the first pending Jieqi, but no longer evaluates the second pending new moon.
+That root is evaluated when the first month is read, so its failure can occur
+later. Removing put-back does not require `std::generator` support.
+
 ## Scientific limits that still apply
 
 Finite-input evaluation can fail computation. Coordinate validity establishes neither physical plausibility

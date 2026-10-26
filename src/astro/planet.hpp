@@ -368,6 +368,8 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
  *       `astro::ephemeris::longitude_rate` (ephemeris.hpp); near a station the two can disagree.
  * @note It does not locate stations. `astro::planet::phenomena::events` (planet_phenomena.hpp) finds them as
  *       longitude extrema on a one-day grid and refines each extremum, without solving for a zero rate.
+ *       `astro::ephemeris::stations` instead locates zeros of the published seven-point rate;
+ *       see docs/EPHEMERIS_EVENTS.md for the definitions and domains.
  *       At the stationary instant itself a boolean direction is not physically meaningful.
  */
 [[nodiscard]] inline auto is_retrograde(

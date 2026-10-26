@@ -470,6 +470,9 @@ inline auto append_extrema(
  *       phase angle at least 90°.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 36 (planetary phenomena).
  * @note These definitions use the position models directly, not Chapter 36's approximate event-time series.
+ * @note Stations here are longitude extrema, not zeros of ephemeris::longitude_rate.
+ *       The interval searches in ephemeris_events.hpp retain their separate rate domain,
+ *       certificates and endpoint policy; see docs/EPHEMERIS_EVENTS.md.
  */
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
   astro::julian_day::validate_annual_year(year);
