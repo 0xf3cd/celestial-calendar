@@ -11,6 +11,7 @@ day. Body longitudes are apparent, geocentric and tropical; node longitudes foll
 [`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
 in the true ecliptic and equinox of date.
 
+<a id="choosing-an-event-api"></a>
 ## Choosing an event API
 
 Use the interval API for caller-chosen TT windows, published-rate stations and

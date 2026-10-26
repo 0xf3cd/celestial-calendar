@@ -151,6 +151,7 @@ house-nutation key does not describe its body corrections.
 For the duration constructor, replace `Datetime{day, hh_mm_ss{elapsed}}` with `Datetime{day, elapsed}`;
 an existing `hh_mm_ss` can supply `.to_duration()`. Fraction and time-point constructors remain.
 
+<a id="c-numerical-helpers-and-generators"></a>
 ### C++ numerical helpers and generators
 
 The annual event APIs keep their definitions and domains; they do not become
