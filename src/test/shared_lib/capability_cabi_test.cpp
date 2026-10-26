@@ -343,7 +343,7 @@ TEST(CapabilityCAbi, EventDomainEdgesAgreeWithAdmission) {
     EXPECT_EQ(
       std::string { celestial_last_error() },
       std::format(
-        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target {}",
+        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target code {}",
         record.domain_end_jde_tt, record.domain_end_jde_tt + 30.0,
         record.domain_start_jde_tt, record.domain_end_jde_tt, target
       )

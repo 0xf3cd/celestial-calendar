@@ -220,14 +220,18 @@ requires std::invocable<const Provider&, double>
   return lower(secant_floor - slope_error);
 }
 
+/** @brief Test finite, strictly ordered TT endpoints whose difference is finite. */
+[[nodiscard]] inline auto valid_time_span(const double start_jde_tt, const double end_jde_tt) -> bool {
+  return std::isfinite(start_jde_tt) and std::isfinite(end_jde_tt)
+         and start_jde_tt < end_jde_tt and std::isfinite(end_jde_tt - start_jde_tt);
+}
+
 /** @brief Require a finite positive time span and finite nonnegative derivative bounds. */
 inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, const Bounds bounds) -> void {
-  const bool valid_time_span = std::isfinite(start_jde_tt) and std::isfinite(end_jde_tt)
-                              and start_jde_tt < end_jde_tt and std::isfinite(end_jde_tt - start_jde_tt);
   const auto finite_derivatives = [bounds] {
     return finite_nonnegative(bounds.first_derivative) and finite_nonnegative(bounds.second_derivative);
   };
-  if (not valid_time_span or not finite_derivatives()) {
+  if (not valid_time_span(start_jde_tt, end_jde_tt) or not finite_derivatives()) {
     throw std::invalid_argument {
       std::format(
         "Invalid event-search cell [{}, {}] or derivative bounds ({}, {})",

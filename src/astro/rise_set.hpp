@@ -290,7 +290,7 @@ template <BodyProvider P>
  * @brief Find the argmin of a unimodal function on [a, b] by golden-section search.
  * @note Derivative-free; a monotone objective contracts toward an endpoint, as on polar-boundary arcs.
  * @note At |JDE| >= 2²³ the double ULP exceeds the default tolerance, so contraction can stall.
- *       The 64-update cap still terminates and returns the final bracket's ordinary half-sum.
+ *       The 64-update cap still terminates and returns `(lower + upper) / 2` for the final bracket.
  */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters): Mathematical a/b endpoints and named tolerance are scalar TT-day inputs.
 template <typename Func>

@@ -44,6 +44,25 @@ _CPP_PUNCTUATORS = tuple(
   ">>= <<= <=> ->* ... ## :: .* -> ++ -- << >> <= >= == != && || += -= *= /= %= ^= &= |=".split()
 ) + tuple("{}[]();:?.+-*/%^&|~!=<>,#")
 _CPP_DIGRAPHS = ("<:", ":>", "<%", "%>", "%:")
+_CPP_DIRECTIVES = frozenset(
+  {
+    "define",
+    "elif",
+    "elifdef",
+    "elifndef",
+    "else",
+    "endif",
+    "error",
+    "if",
+    "ifdef",
+    "ifndef",
+    "include",
+    "line",
+    "pragma",
+    "undef",
+    "warning",
+  }
+)
 _CPP_LITERAL_PREFIXES = (
   'u8R"',
   'uR"',
@@ -227,6 +246,8 @@ def _cpp_tokens(text: str) -> list[tuple[str, str]]:
       next((prefix for prefix in _CPP_LITERAL_PREFIXES if reader.matches(prefix)), None) if char in "\"'uULR" else None
     )
     header = directive is not None and (directive == ["#", "include"] or directive[-2:] == ["__has_include", "("])
+    if header and char not in '<"':
+      raise ValueError("Unsupported C++ computed header operand")
     if header and char in '<"':
       value = reader.header_name()
     elif prefix is not None:
@@ -235,11 +256,12 @@ def _cpp_tokens(text: str) -> list[tuple[str, str]]:
       value = reader.identifier()
       if value in _CPP_LOCATION_IDENTIFIERS:
         raise ValueError(f"Unsupported location-sensitive C++ identifier: {value}")
-      if value == "__has_include_next" or directive == ["#"] and value in {"include_next", "import"}:
-        raise ValueError(f"Unsupported C++ include extension: {value}")
+      if value in {"__has_include_next", "__has_embed", "import"}:
+        raise ValueError(f"Unsupported C++ header import or extension: {value}")
     elif char.isdigit() or char == "." and reader.peek(1).isdigit():
       value = reader.number()
     else:
+      # [lex.pptoken]: <:: starts < then :: unless its next character is : or >.
       leading_global_argument = reader.matches("<::") and reader.peek(3) not in {":", ">"}
       if not leading_global_argument and any(reader.matches(token) for token in _CPP_DIGRAPHS):
         raise ValueError("Unsupported C++ alternative preprocessing token")
@@ -252,6 +274,8 @@ def _cpp_tokens(text: str) -> list[tuple[str, str]]:
         raise ValueError(f"Unsupported C++ source character: {char!r}")
       value = "".join(reader.take() for _ in spelling)
 
+    if directive == ["#"] and value not in _CPP_DIRECTIVES:
+      raise ValueError(f"Unsupported C++ preprocessing directive: {value}")
     if value == "#" and line_start:
       directive = ["#"]
       tokens.append(("directive", "#"))
@@ -281,7 +305,8 @@ def cpp_token_digest(text: str, algorithm: str = CPP_TOKEN_ALGORITHM, version: i
   LF and CRLF are equivalent. Literal contents and token boundaries are retained;
   comments and other whitespace are ignored. Adjacency distinguishes function-like #define
   directives. This is not macro expansion: digraphs, stringification, token pasting,
-  Unicode-escape identifiers, location-sensitive identifiers and include extensions are rejected.
+  Unicode-escape and location-sensitive identifiers are rejected. Header operands must be
+  literal names; directive names are limited to standard C++23 forms, with no header-unit imports.
   """
   validate_cpp_token_algorithm(algorithm, version)
   return hashlib.sha256(json.dumps(_cpp_tokens(text), ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()

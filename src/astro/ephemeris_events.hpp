@@ -239,10 +239,7 @@ inline auto validate_event_environment() -> void {
     start_jde_tt = std::max(start_jde_tt, second_start);
     end_jde_tt = std::min(end_jde_tt, second_end);
   }
-  const bool valid_time_span = std::isfinite(query.start_jde_tt) and std::isfinite(query.end_jde_tt)
-                              and query.start_jde_tt < query.end_jde_tt
-                              and std::isfinite(query.end_jde_tt - query.start_jde_tt);
-  if (not valid_time_span) {
+  if (not astro::detail::event_search::valid_time_span(query.start_jde_tt, query.end_jde_tt)) {
     throw std::invalid_argument {
       std::format(
         "Event query [{}, {}) JDE(TT) must be finite and nonempty, with a finite span",

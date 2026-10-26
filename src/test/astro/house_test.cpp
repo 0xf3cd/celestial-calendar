@@ -850,7 +850,7 @@ TEST(House, PlacidusReportsBracketFailure) {
   } catch (const std::runtime_error& error) {
     EXPECT_STREQ(
       error.what(),
-      "Failed to bracket Placidus cusp 3 in 360 segments at ARMC 270, latitude -90, obliquity 23.44 degrees"
+      "Failed to bracket Placidus cusp code 3 in 360 segments at ARMC 270, latitude -90, obliquity 23.44 degrees"
     );
   }
 }

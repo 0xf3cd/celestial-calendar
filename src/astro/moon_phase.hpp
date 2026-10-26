@@ -96,7 +96,8 @@ inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
  * @brief Half the width of the bracket handed to Newton's method, in days.
  * @note A 14.5°/day rate is about 19% above the 12.19°/day mean: correcting a 30° miss
  *       can leave about `30 / 12.19 * 0.19` = 0.47 day of timing error, below this half-width.
- *       The half-width must also keep endpoint offsets within 15°; `0.5 * 14.5` = 7.25°.
+ *       Including that error, endpoints lie within about `0.47 + 0.5` = 0.97 day of the root:
+ *       `0.97 * 14.5` ≈ 14.1°, still below the 15° endpoint tolerance.
  */
 inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 
@@ -338,7 +339,7 @@ public:
   }
 };
 
-/** @brief Collect roots strictly before end_jde, computing one successor beyond the last returned root. */
+/** @brief Collect roots strictly before end_jde, testing each root only after next() advances. */
 template <NumericPolicy POLICY>
 [[nodiscard]] inline auto roots_before(RootGenerator<POLICY> gen, const double end_jde) -> std::vector<double> {
   std::vector<double> roots;

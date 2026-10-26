@@ -24,7 +24,7 @@ definitions, numerical policies and wider year domains:
 | `moon_phase::phase_moments::moments` | Moon-minus-Sun apparent longitude at 0°, 90°, 180° or 270°, refined by Newton's method | UTC years [1, 32766] |
 | `moon_phase::new_moon::moments` | Conjunctions with a local near-360° angular fold and acceptance of an exactly +0.0° right bracket endpoint | UTC years [1, 32766] |
 | `sun::geocentric_coord::math::find_roots` | Apparent solar longitude at a supplied level, refined by Newton's method; also supplies Jieqi | UTC years [1, 32766] |
-| Interval searches on this page | Longitude levels and zeros of the published rate, evaluated from seven position samples | The target's `longitude_rate_domain`; at most 3660 TT days per query |
+| Interval searches on this page | Longitude levels and zeros of the published seven-point rate: six position evaluations, with zero weight at the centre | The target's `longitude_rate_domain`; at most 3660 TT days per query |
 
 Annual windows run from Jan 1 to next Jan 1 in UTC, using the library's UT1
 substitute before 1972. The annual planetary search detects candidates on a
@@ -41,7 +41,7 @@ phase exactly at Jan 1 UTC has no defined owner. Conjunction and
 principal-phase New Moon share a root flow while retaining different bracket
 and angular-fold conventions; changing an existing conjunction caller to the
 principal-phase operation can change success or failure at remote inputs.
-The exact folds are documented with `NumericPolicy` in
+The exact folds and endpoint tests are documented on `objective_at`, `miss_at` and `bracket_rejected` in
 [`moon_phase.hpp`](../src/astro/moon_phase.hpp).
 
 The annual operations do not delegate to interval searches, even inside the
@@ -159,6 +159,7 @@ structurally antipodal: a matching opposition target throws
 `std::invalid_argument` because the relation holds throughout the interval;
 a different target returns an empty list.
 
+<a id="domains-limits-and-failures"></a>
 ## Domains, limits and failures
 
 Each query must be nonempty, finite and inside `longitude_rate_domain` for
