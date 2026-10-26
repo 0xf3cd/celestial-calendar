@@ -25,6 +25,8 @@ def test_cpp_token_digest_version_one_serialization():
     ("int x;", "int/**/x;"),
     ("int x;", "int/*\nseveral\nlines*/x;"),
     ("int x;", "int x;\\\n"),
+    ("std::vector<::std::size_t> v;", "std::vector< ::std::size_t> v;"),
+    ("T<::X>", "T<:\\\n:X>"),
     ("int x;", "int x;\\ \t\n"),
     ("int value;", "int va\\\nlue;"),
     ("a += b;", "a +\\\n= b;"),
@@ -134,6 +136,11 @@ def test_cpp_token_digest_rejects_unterminated_or_unsupported_source(source):
     "<% int a; %>",
     "%:define X 1\n",
     "%:%:",
+    "<::>",
+    "<:::X",
+    "#include_next <a/b>\n",
+    "#import <a/b>\n",
+    "#if __has_include_next(<a/b>)\n#endif\n",
     "#define F(x) #x\n",
     "#define F(x) x##x\n",
     r"int \u0061;",
@@ -145,7 +152,20 @@ def test_cpp_token_digest_rejects_unsupported_preprocessing_shapes(source):
     cpp_token_digest(source)
 
 
-@pytest.mark.parametrize("macro", ["__LINE__", "__FILE__", "__COUNTER__", "__DATE__", "__TIME__", "__builtin_LINE"])
+@pytest.mark.parametrize(
+  "macro",
+  [
+    "__LINE__",
+    "__FILE__",
+    "__COUNTER__",
+    "__DATE__",
+    "__TIME__",
+    "__builtin_LINE",
+    "__builtin_COLUMN",
+    "__builtin_source_location",
+    "source_location",
+  ],
+)
 def test_cpp_token_digest_rejects_layout_or_environment_sensitive_macros(macro):
   with pytest.raises(ValueError, match="location-sensitive"):
     cpp_token_digest(f"auto value = {macro};")

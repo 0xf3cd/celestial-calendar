@@ -177,8 +177,9 @@ Prefer the annual operations or generators for consumers. Code that integrates
 the internal solver must select its numerical policy explicitly: conjunction
 for the former `new_moon` route, phase for the former `phase_moments` route.
 The internal namespace is not a new stable solver API. In particular, an old
-conjunction call `(left, right, cap)` must not become `(left, right, cap)` on
-the shared solver, whose third argument is a target in degrees:
+conjunction call `(left, right, cap)` must not keep the same argument list:
+the shared solver's third argument is the target elongation in degrees.
+Pass `0.0` there and move `cap` to the fourth position:
 
 ```cpp
 const double root = astro::moon_phase::detail::newton_method<
@@ -187,13 +188,12 @@ const double root = astro::moon_phase::detail::newton_method<
 ```
 
 `JieqiGenerator::peek() const` does not advance, but it evaluates the pending
-Jieqi and can throw. Its constructor retains the linear first-match search;
-the single ordinal simplifies state without assuming remote roots are
-monotone. `LunarMonthGenerator` uses the upstream peeks instead of put-back
-slots and retains its own assembled-month cache. Construction still evaluates
-the first pending Jieqi, but no longer evaluates the second pending new moon.
-That root is evaluated when the first month is read, so its failure can occur
-later. Removing put-back does not require `std::generator` support.
+Jieqi and can throw. Its constructor retains the linear first-match search,
+including at remote years where roots may be nonchronological.
+`LunarMonthGenerator` retains its assembled-month cache. Construction still
+evaluates the first pending Jieqi and new moon, but defers the following new
+moon until the first month is read. Failure to compute that following root
+can therefore occur later.
 
 ## Scientific limits that still apply
 

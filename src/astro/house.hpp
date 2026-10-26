@@ -180,7 +180,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
       return right_ascension_deg - semidiurnal_arc_deg - ((2.0 * nocturnal_arc_deg) / 3.0);
     case PlacidusCusp::ELEVEN: return right_ascension_deg - (semidiurnal_arc_deg / 3.0);
     case PlacidusCusp::TWELVE: return right_ascension_deg - ((2.0 * semidiurnal_arc_deg) / 3.0);
-    default: throw std::invalid_argument { std::format("Unknown Placidus cusp {}", static_cast<uint32_t>(cusp)) };
+    default: throw std::invalid_argument { std::format("Unknown Placidus cusp code {}", static_cast<uint32_t>(cusp)) };
   }
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -233,7 +233,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
     throw std::runtime_error {
       std::format(
-        "Placidus cusp {} did not converge after {} iterations in [{}, {}] degrees "
+        "Placidus cusp code {} did not converge after {} iterations in [{}, {}] degrees "
         "at ARMC {}, latitude {}, obliquity {} degrees",
         static_cast<uint32_t>(cusp), max_iterations, left_deg, right_deg,
         armc.deg(), latitude.deg(), obliquity.deg()
@@ -262,7 +262,7 @@ enum class PlacidusCusp : uint8_t { TWO, THREE, ELEVEN, TWELVE };
 
   throw std::runtime_error {
     std::format(
-      "Failed to bracket Placidus cusp {} in {} segments at ARMC {}, latitude {}, obliquity {} degrees",
+      "Failed to bracket Placidus cusp code {} in {} segments at ARMC {}, latitude {}, obliquity {} degrees",
       static_cast<uint32_t>(cusp), PLACIDUS_BRACKET_SEGMENTS, armc.deg(), latitude.deg(), obliquity.deg()
     )
   };

@@ -90,8 +90,9 @@ struct LunarMonth {
 /**
  * @brief Generate lunar-month metadata after a JDE(TT). 生成给定 JDE(TT) 后的阴历月元数据。
  * @note Month membership compares UTC+8 civil dates, not instants. 归月比较 UTC+8 日期，不比较时刻。
- * @note peek may assemble and cache a month; upstream peeks retain its unconsumed boundaries.
- *       peek 可计算并缓存整月，上游 peek 保留下月边界。
+ * @note peek may assemble and cache a month. The new moon ending that month and the first
+ *       Jieqi on or after its ending UTC+8 date remain pending in their generators.
+ *       peek 可计算并缓存整月；月末的朔，以及月末 UTC+8 日期当天或之后的第一个节气，仍留在各自生成器中。
  */
 struct LunarMonthGenerator {
 private:

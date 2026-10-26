@@ -28,7 +28,7 @@
       "src/astro/vsop87d/saturn_coeff.hpp": "f0397a89ee03609438c70b12fedeec095f64b1698b97d1bcea8ae740c62903ba",
       "src/astro/vsop87d/uranus_coeff.hpp": "14c6c087d14de99dbea672ade98165ddbf23364487e4b9a97843f4f3fc672086",
       "src/astro/vsop87d/neptune_coeff.hpp": "7dc12722e1e437b541c63e82857bffc2e0fbff46acd6688b474bc00008456839",
-      "src/astro/sun.hpp": "be8f2725ec376c08ffa0f0befdb0f9bd2f43ec32d2d8a543590ffd27aae371bb"
+      "src/astro/sun.hpp": "f7fcfbc1060cae1495729a927d6ad7ac5fcfca13dfa38c218a3ec370965c79a5"
     }
   },
   "target_order": [

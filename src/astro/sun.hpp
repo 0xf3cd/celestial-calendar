@@ -230,8 +230,7 @@ namespace detail {
       toolbox::AngleDeg { solar_longitude(jde) }
     ).deg();
     const double predicted = std::fma(toolbox::SOLAR_MEAN_MOTION_DEG_PER_DAY, jde - start_jde, start_longitude);
-    const double turns = std::round((predicted - raw) / toolbox::LONGITUDE_PERIOD_DEG);
-    return (raw + (toolbox::LONGITUDE_PERIOD_DEG * turns)) - expected_lon;
+    return toolbox::unwrap_near(raw, predicted) - expected_lon;
   };
 }
 

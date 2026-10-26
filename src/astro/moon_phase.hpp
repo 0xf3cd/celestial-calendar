@@ -94,8 +94,9 @@ inline constexpr double ESTIMATE_TOLERANCE_DEG = 30.0;
 
 /**
  * @brief Half the width of the bracket handed to Newton's method, in days.
- * @note At a 19% rate offset, correcting a 30° miss leaves about `30 / 12.19 * 0.19` = 0.47 day.
- *       The bracket must also keep endpoints within 15° even at 14.5°/day.
+ * @note A 14.5°/day rate is about 19% above the 12.19°/day mean: correcting a 30° miss
+ *       can leave about `30 / 12.19 * 0.19` = 0.47 day of timing error, below this half-width.
+ *       The half-width must also keep endpoint offsets within 15°; `0.5 * 14.5` = 7.25°.
  */
 inline constexpr double BRACKET_HALF_WIDTH_DAYS = 0.5;
 
@@ -126,7 +127,10 @@ template <NumericPolicy POLICY>
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- JDE bounds and elongations are named at each call.
 
-/** @brief Reject endpoints outside the policy's local branch; only conjunction accepts right +0. */
+/**
+ * @brief Reject endpoints outside the policy's local branch.
+ * @note Only conjunction accepts a right endpoint whose elongation is exactly +0.0°.
+ */
 template <NumericPolicy POLICY>
 [[nodiscard]] inline auto bracket_rejected(
   const double left_diff,
@@ -203,7 +207,7 @@ template <NumericPolicy POLICY>
   }
 }
 
-/** @brief Report a seed more than one degree from the requested root. */
+/** @brief Report a candidate root time whose elongation misses the target by more than one degree. */
 template <NumericPolicy POLICY>
 [[noreturn]] inline auto reject_seed(const double jde, const double target_deg) -> void {
   if constexpr (POLICY == NumericPolicy::CONJUNCTION) {
@@ -334,7 +338,7 @@ public:
   }
 };
 
-/** @brief Collect roots strictly before end_jde, retaining the generator's eager advance. */
+/** @brief Collect roots strictly before end_jde, computing one successor beyond the last returned root. */
 template <NumericPolicy POLICY>
 [[nodiscard]] inline auto roots_before(RootGenerator<POLICY> gen, const double end_jde) -> std::vector<double> {
   std::vector<double> roots;
@@ -354,7 +358,8 @@ namespace astro::moon_phase::new_moon {
 
 /**
  * @brief Conjunction (朔) roots: equal Moon-Sun apparent longitude.
- * @note The numerical convention differs from phase_moments::NEW_MOON at bracket +0 and the 180°/345° folds.
+ * @note Unlike phase_moments::NEW_MOON, this policy accepts an exactly +0.0° right bracket endpoint.
+ *       Its objective subtracts 360° only above 345°; its estimate miss keeps +180°.
  */
 using RootGenerator = detail::RootGenerator<detail::NumericPolicy::CONJUNCTION>;
 

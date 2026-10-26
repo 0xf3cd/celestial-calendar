@@ -22,9 +22,9 @@ definitions, numerical policies and wider year domains:
 |---|---|---|
 | `planet::phenomena::events` | Longitude extrema for stations; planet-minus-Sun longitude crossings; great-circle separation maxima for greatest elongations | UTC years [1, 32766], or [1886, 2098] for Pluto |
 | `moon_phase::phase_moments::moments` | Moon-minus-Sun apparent longitude at 0°, 90°, 180° or 270°, refined by Newton's method | UTC years [1, 32766] |
-| `moon_phase::new_moon::moments` | Conjunctions, using the existing conjunction-specific numerical convention | UTC years [1, 32766] |
+| `moon_phase::new_moon::moments` | Conjunctions with a local near-360° angular fold and acceptance of an exactly +0.0° right bracket endpoint | UTC years [1, 32766] |
 | `sun::geocentric_coord::math::find_roots` | Apparent solar longitude at a supplied level, refined by Newton's method; also supplies Jieqi | UTC years [1, 32766] |
-| Interval searches on this page | Longitude levels and zeros of the published seven-point rate | The target's `longitude_rate_domain`; at most 3660 TT days per query |
+| Interval searches on this page | Longitude levels and zeros of the published rate, evaluated from seven position samples | The target's `longitude_rate_domain`; at most 3660 TT days per query |
 
 Annual windows run from Jan 1 to next Jan 1 in UTC, using the library's UT1
 substitute before 1972. The annual planetary search detects candidates on a
@@ -34,12 +34,15 @@ seven-point rate, so station times from the two APIs are not interchangeable.
 Greatest elongations have no interval counterpart. See
 [`planet_phenomena.hpp`](../src/astro/planet_phenomena.hpp) for the annual event labels.
 
-Moon phases and solar levels use the same apparent-position models as their
-interval counterparts, but their solvers and endpoint rules differ. An annual
-Moon phase exactly at Jan 1 UTC still has no defined owner. Conjunction and
+Moon phases and solar levels use the same apparent-position models as
+`longitude_difference_events(MOON, SUN, ...)` and `longitude_events(SUN, ...)`,
+respectively, but their solvers and endpoint rules differ. An annual Moon
+phase exactly at Jan 1 UTC has no defined owner. Conjunction and
 principal-phase New Moon share a root flow while retaining different bracket
 and angular-fold conventions; changing an existing conjunction caller to the
 principal-phase operation can change success or failure at remote inputs.
+The exact folds are documented with `NumericPolicy` in
+[`moon_phase.hpp`](../src/astro/moon_phase.hpp).
 
 The annual operations do not delegate to interval searches, even inside the
 common domain. This preserves their results, failure policies and supported
@@ -249,9 +252,7 @@ Contact certification tries at most 24 regions inside the owning cell,
 then at most 24 in its fixed neighbor window. The dyadic radii change the
 region being certified; they do not relax its sign or curvature tests.
 
-The 3660-day admission limit allows roughly ten years in one request.
-The 65536-evaluation and 4096-candidate limits independently bound the
-work a request can consume. These are project resource policies, not
+The [admission and budget limits](#domains-limits-and-failures) are project resource policies, not
 astronomical or completeness bounds. A smaller request may still exhaust
 either budget. One mutable budget belongs to the whole query, including
 recursive subdivision, refinement and contact-window probes; provider

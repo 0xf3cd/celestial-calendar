@@ -61,7 +61,7 @@ _CPP_LITERAL_PREFIXES = (
   "L'",
   "'",
 )
-_CPP_LOCATION_MACROS = frozenset(
+_CPP_LOCATION_IDENTIFIERS = frozenset(
   {
     "__LINE__",
     "__FILE__",
@@ -74,6 +74,9 @@ _CPP_LOCATION_MACROS = frozenset(
     "__TIMESTAMP__",
     "__builtin_LINE",
     "__builtin_FILE",
+    "__builtin_COLUMN",
+    "__builtin_source_location",
+    "source_location",
   }
 )
 
@@ -230,14 +233,21 @@ def _cpp_tokens(text: str) -> list[tuple[str, str]]:
       value = reader.literal(prefix)
     elif _cpp_identifier_start(char):
       value = reader.identifier()
-      if value in _CPP_LOCATION_MACROS:
-        raise ValueError(f"Unsupported location-sensitive C++ macro: {value}")
+      if value in _CPP_LOCATION_IDENTIFIERS:
+        raise ValueError(f"Unsupported location-sensitive C++ identifier: {value}")
+      if value == "__has_include_next" or directive == ["#"] and value in {"include_next", "import"}:
+        raise ValueError(f"Unsupported C++ include extension: {value}")
     elif char.isdigit() or char == "." and reader.peek(1).isdigit():
       value = reader.number()
     else:
-      if any(reader.matches(token) for token in _CPP_DIGRAPHS):
+      leading_global_argument = reader.matches("<::") and reader.peek(3) not in {":", ">"}
+      if not leading_global_argument and any(reader.matches(token) for token in _CPP_DIGRAPHS):
         raise ValueError("Unsupported C++ alternative preprocessing token")
-      spelling = next((token for token in _CPP_PUNCTUATORS if token[0] == char and reader.matches(token)), None)
+      spelling = (
+        "<"
+        if leading_global_argument
+        else next((token for token in _CPP_PUNCTUATORS if token[0] == char and reader.matches(token)), None)
+      )
       if spelling is None:
         raise ValueError(f"Unsupported C++ source character: {char!r}")
       value = "".join(reader.take() for _ in spelling)
@@ -266,11 +276,12 @@ def validate_cpp_token_algorithm(algorithm: str, version: int) -> None:
 
 
 def cpp_token_digest(text: str, algorithm: str = CPP_TOKEN_ALGORITHM, version: int = CPP_TOKEN_VERSION) -> str:
-  """Hash C++ token spellings, directive boundaries and function-macro adjacency.
+  """Hash C++ token spellings, directive boundaries and macro-name/parenthesis adjacency.
 
   LF and CRLF are equivalent. Literal contents and token boundaries are retained;
-  comments and other whitespace are ignored. This is not macro expansion: digraphs,
-  stringification, token pasting, UCN identifiers and location-sensitive macros are rejected.
+  comments and other whitespace are ignored. Adjacency distinguishes function-like #define
+  directives. This is not macro expansion: digraphs, stringification, token pasting,
+  Unicode-escape identifiers, location-sensitive identifiers and include extensions are rejected.
   """
   validate_cpp_token_algorithm(algorithm, version)
   return hashlib.sha256(json.dumps(_cpp_tokens(text), ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()

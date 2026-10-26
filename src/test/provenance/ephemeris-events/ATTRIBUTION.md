@@ -94,8 +94,9 @@ changed elementary-function premises and changed source identities.
 Schema 2 uses the versioned `cpp-preprocessing-tokens` digest from
 `automation/source_digest.py` for 21 complete headers, including `sun.hpp`.
 It ignores comments and layout while retaining literal spellings, token
-boundaries, directive endings and function-macro adjacency. Unsupported
-preprocessing forms fail explicitly. Coverage is the recorded file list,
+boundaries, directive endings and whether a macro name touches `(` in a
+`#define` directive. Unsupported preprocessing forms, include extensions and
+location-sensitive identifiers fail explicitly. Coverage is the recorded file list,
 not its transitive includes; the 117 retained-data identities are separate.
 
 This emitter checks transcription, not the coefficient-majorant derivation

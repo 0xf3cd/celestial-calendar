@@ -71,6 +71,7 @@ namespace astro::toolbox {
 /**
  * @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning.
  * @throw std::invalid_argument If `deg` is not finite — inherited from `normalize_deg`.
+ * @see remainder_deg for signed zero and even-quotient ties; canonical_longitude_difference for (-180°, 180°].
  */
 [[nodiscard]] constexpr auto normalize_pm180(const double deg) -> double {
   const double _deg = normalize_deg(deg);
@@ -84,8 +85,9 @@ inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
 
 /**
- * @brief Return the IEEE remainder in [-180°, 180°], retaining signed zero and both antipodal signs.
+ * @brief Return the IEEE remainder in [-180°, 180°], retaining signed zero and either sign at 180°.
  * @note Half-turn ties use the even quotient. Non-finite inputs follow std::remainder's domain behavior.
+ * @see normalize_pm180 for [-180°, 180°); canonical_longitude_difference for (-180°, 180°].
  */
 [[nodiscard]] inline auto remainder_deg(const double difference_deg) -> double {
   return std::remainder(difference_deg, LONGITUDE_PERIOD_DEG);
@@ -268,6 +270,7 @@ using AngleDeg = Angle<AngleUnit::DEG>;
 /**
  * @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees.
  * @throw std::invalid_argument If the angle is not finite.
+ * @see normalize_pm180 for [-180°, 180°); remainder_deg for signed zero and even-quotient ties.
  */
 [[nodiscard]] inline auto canonical_longitude_difference(const AngleDeg difference) -> AngleDeg {
   if (not std::isfinite(difference.deg())) {

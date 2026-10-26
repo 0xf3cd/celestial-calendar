@@ -37,7 +37,7 @@ namespace {
 // Library-to-library comparisons, sampled 2026-10-26 without randomness; not external goldens.
 constexpr std::array<int32_t, 3> YEARS { 2000, 2024, 2033 };
 constexpr double SECONDS_PER_DAY = 86400.0;
-// Annual longitude extrema and seven-point rate zeros differ; allow the 84.375 s interval certificate.
+// Annual extrema and rate zeros differ; 120 s leaves headroom above the 84.375 s interval certificate.
 constexpr double STATION_TOLERANCE_DAYS = 120.0 / SECONDS_PER_DAY;
 // These samples differ by less than 1 ms; 5 ms is a regression limit, not a physical accuracy bound.
 constexpr double CROSSING_TOLERANCE_DAYS = 0.005 / SECONDS_PER_DAY;

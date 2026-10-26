@@ -143,7 +143,7 @@ inline constexpr double EVENT_CENTURY_END_JDE_TT = astro::julian_day::J2000 + 36
   if (outside_domain) {
     throw std::invalid_argument {
       std::format(
-        "Event-search rate JDE(TT) {} leaves closed domain [{}, {}] for target {}",
+        "Event-search rate JDE(TT) {} leaves closed domain [{}, {}] for target code {}",
         jde_tt, start_jde_tt, end_jde_tt, static_cast<uint32_t>(target)
       )
     };
@@ -173,7 +173,8 @@ requires std::invocable<const Provider&, double>
   const double jde_tt,
   const double first_derivative
 ) -> astro::detail::event_search::Value {
-  if (not astro::detail::event_search::finite_nonnegative(first_derivative)) {
+  namespace event_search = astro::detail::event_search;
+  if (not event_search::finite_nonnegative(first_derivative)) {
     throw std::invalid_argument {
       std::format("Invalid event-search rate derivative bound {} at JDE(TT) {}", first_derivative, jde_tt)
     };
@@ -181,17 +182,17 @@ requires std::invocable<const Provider&, double>
   const double center_jde_tt = event_rate_center(target, jde_tt);
   const auto evaluated = provider(center_jde_tt);
   const bool invalid_observation = not std::isfinite(evaluated.value)
-                                   or not astro::detail::event_search::finite_nonnegative(evaluated.error);
+                                    or not event_search::finite_nonnegative(evaluated.error);
   if (invalid_observation) {
     throw std::runtime_error {
       std::format(
-        "Invalid event-search rate observation {} +/- {} at center JDE(TT) {} for target {}",
+        "Invalid event-search rate observation {} +/- {} at center JDE(TT) {} for target code {}",
         evaluated.value, evaluated.error, center_jde_tt, static_cast<uint32_t>(target)
       )
     };
   }
-  const double offset = center_jde_tt == jde_tt ? 0.0 : astro::detail::event_search::upper(std::fabs(jde_tt - center_jde_tt));
-  return astro::detail::event_search::shifted(evaluated, offset, first_derivative);
+  const double offset = center_jde_tt == jde_tt ? 0.0 : event_search::upper(std::fabs(jde_tt - center_jde_tt));
+  return event_search::shifted(evaluated, offset, first_derivative);
 }
 
 /** @brief Reject execution environments outside the source-model error contract before evaluating a provider. */
@@ -238,12 +239,22 @@ inline auto validate_event_environment() -> void {
     start_jde_tt = std::max(start_jde_tt, second_start);
     end_jde_tt = std::min(end_jde_tt, second_end);
   }
-  astro::detail::event_search::validate_cell(query.start_jde_tt, query.end_jde_tt, {});
+  const bool valid_time_span = std::isfinite(query.start_jde_tt) and std::isfinite(query.end_jde_tt)
+                              and query.start_jde_tt < query.end_jde_tt
+                              and std::isfinite(query.end_jde_tt - query.start_jde_tt);
+  if (not valid_time_span) {
+    throw std::invalid_argument {
+      std::format(
+        "Event query [{}, {}) JDE(TT) must be finite and nonempty, with a finite span",
+        query.start_jde_tt, query.end_jde_tt
+      )
+    };
+  }
   const bool outside_domain = query.start_jde_tt < start_jde_tt or query.end_jde_tt > end_jde_tt;
   if (outside_domain) {
     throw std::invalid_argument {
       std::format(
-        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target {}",
+        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target code {}",
         query.start_jde_tt, query.end_jde_tt, start_jde_tt, end_jde_tt, static_cast<uint32_t>(first)
       )
     };
@@ -266,7 +277,7 @@ inline auto validate_event_environment() -> void {
 [[nodiscard]] inline auto event_bounds(const Target target, const astro::detail::event_search::Interval cell) -> EventBounds {
   const auto index = static_cast<std::size_t>(target);
   if (index >= EVENT_BOUNDS_WIDE.size()) {
-    throw std::invalid_argument { std::format("Unsupported event-search target {}", static_cast<uint32_t>(target)) };
+    throw std::invalid_argument { std::format("Unsupported event-search target code {}", static_cast<uint32_t>(target)) };
   }
   const double halo = DIFFERENCE_REACH_TT_DAYS + EVENT_RATE_CENTER_QUANTUM_TT_DAYS;
   const bool within_century = cell.start_jde_tt >= EVENT_CENTURY_START_JDE_TT + halo
@@ -306,11 +317,12 @@ inline auto validate_event_environment() -> void {
   const astro::detail::event_search::Value first,
   const astro::detail::event_search::Value second
 ) -> astro::detail::event_search::Value {
-  const double magnitude = astro::detail::event_search::upper(std::fabs(first.value) + std::fabs(second.value));
-  const double rounding = astro::detail::event_search::upper(std::numeric_limits<double>::epsilon() * magnitude);
+  namespace event_search = astro::detail::event_search;
+  const double magnitude = event_search::upper(std::fabs(first.value) + std::fabs(second.value));
+  const double rounding = event_search::upper(std::numeric_limits<double>::epsilon() * magnitude);
   return {
     .value = first.value - second.value,
-    .error = astro::detail::event_search::upper(astro::detail::event_search::upper(first.error + second.error) + rounding),
+    .error = event_search::upper(event_search::upper(first.error + second.error) + rounding),
   };
 }
 
@@ -319,20 +331,21 @@ inline auto validate_event_environment() -> void {
   const EventBounds first,
   const EventBounds second
 ) -> astro::detail::event_search::TrajectoryBounds {
+  namespace event_search = astro::detail::event_search;
   const auto sum = [](
-    const astro::detail::event_search::Bounds a,
-    const astro::detail::event_search::Bounds b
-  ) -> astro::detail::event_search::Bounds {
+    const event_search::Bounds a,
+    const event_search::Bounds b
+  ) -> event_search::Bounds {
     return {
-      .first_derivative = astro::detail::event_search::upper(a.first_derivative + b.first_derivative),
-      .second_derivative = astro::detail::event_search::upper(a.second_derivative + b.second_derivative),
+      .first_derivative = event_search::upper(a.first_derivative + b.first_derivative),
+      .second_derivative = event_search::upper(a.second_derivative + b.second_derivative),
     };
   };
   return {
     .longitude = sum(first.trajectory.longitude, second.trajectory.longitude),
     .rate = sum(first.trajectory.rate, second.trajectory.rate),
-    .third_derivative = astro::detail::event_search::upper(first.trajectory.third_derivative + second.trajectory.third_derivative),
-    .rate_remainder = astro::detail::event_search::upper(first.trajectory.rate_remainder + second.trajectory.rate_remainder),
+    .third_derivative = event_search::upper(first.trajectory.third_derivative + second.trajectory.third_derivative),
+    .rate_remainder = event_search::upper(first.trajectory.rate_remainder + second.trajectory.rate_remainder),
   };
 }
 
@@ -526,14 +539,14 @@ namespace astro::ephemeris {
   const auto grid = detail::event_grid(first, second, query);
   if (first == second) {
     throw std::invalid_argument {
-      std::format("Longitude-difference events require distinct targets, got {} twice", static_cast<uint32_t>(first))
+      std::format("Longitude-difference events require distinct target codes, got {} twice", static_cast<uint32_t>(first))
     };
   }
   const auto constant = detail::constant_longitude_difference(first, second);
   if (constant.has_value() and constant->deg() == level.deg()) {
     throw std::invalid_argument {
       std::format(
-        "Longitude relation at {} deg holds throughout [{}, {}) JDE(TT) for targets {} and {}",
+        "Longitude relation at {} deg holds throughout [{}, {}) JDE(TT) for target codes {} and {}",
         level.deg(), start_jde_tt, end_jde_tt, static_cast<uint32_t>(first), static_cast<uint32_t>(second)
       )
     };

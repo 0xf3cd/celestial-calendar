@@ -605,7 +605,7 @@ struct DayWindow {
 /**
  * @brief Scan monotone segments in time order, trying rise before set and keeping later crossings.
  * @note Extrema must already be sorted. Residual rejection here uses `> guard`; the transit-centered
- *       fallback accepts with `<= guard`, which has different unordered-value behavior.
+ *       fallback accepts with `<= guard`, which rejects NaN where this scan retains it.
  */
 template <typename Func>
 inline auto scan_day_crossings(
