@@ -88,54 +88,18 @@ struct LunarMonth {
 };
 
 /**
- * @brief A generator that generates some metadata of lunar months, including Jieqi and length of the month.
- * @note Generated lunar and jieqi information starts after the given JDE.
- * @details New moons and jieqi are read one ahead: this month's end is next month's start, and jieqi
- *          are read until one falls past it. Both are pushed back because the upstream generators only
- *          hand out values by advancing -- there is no way to look without taking. #99 pilots
- *          `std::generator` for those two; an input iterator reads `*it` without advancing, so that
- *          migration would retire both put-backs here. `_next_month` is a separate thing: it backs
- *          `peek`, and only `next` empties it.
+ * @brief Generate lunar-month metadata after a JDE(TT). 生成给定 JDE(TT) 后的阴历月元数据。
+ * @note Month membership compares UTC+8 civil dates, not instants. 归月比较 UTC+8 日期，不比较时刻。
+ * @note peek may assemble and cache a month. The new moon ending that month and the first
+ *       Jieqi on or after its ending UTC+8 date remain pending in their generators.
+ *       peek 可计算并缓存整月；月末的朔，以及月末 UTC+8 日期当天或之后的第一个节气，仍留在各自生成器中。
  */
 struct LunarMonthGenerator {
 private:
   astro::moon_phase::new_moon::RootGenerator _new_moon_gen;
   calendar::jieqi::JieqiGenerator _jieqi_gen;
 
-  std::optional<double> _next_new_moon;
-  std::optional<calendar::jieqi::JieqiGenerator::JieqiPair> _next_jieqi;
-
   std::optional<LunarMonth> _next_month;
-
-  [[nodiscard]] auto next_new_moon() -> double {
-    if (_next_new_moon.has_value()) {
-      const double jde = *_next_new_moon;
-      _next_new_moon = std::nullopt;
-      return jde;
-    }
-
-    return _new_moon_gen.next();
-  }
-
-  auto put_back_new_moon(const double jde) -> void {
-    assert(!_next_new_moon.has_value());
-    _next_new_moon = jde;
-  }
-
-  [[nodiscard]] auto next_jieqi() -> calendar::jieqi::JieqiGenerator::JieqiPair {
-    if (_next_jieqi.has_value()) {
-      auto jieqi = *_next_jieqi;
-      _next_jieqi = std::nullopt;
-      return jieqi;
-    }
-
-    return _jieqi_gen.next();
-  }
-
-  auto put_back_jieqi(const calendar::jieqi::JieqiGenerator::JieqiPair jieqi) -> void {
-    assert(!_next_jieqi.has_value());
-    _next_jieqi = jieqi;
-  }
 
   [[nodiscard]] auto next_month() -> LunarMonth {
     if (_next_month.has_value()) {
@@ -144,30 +108,24 @@ private:
       return month;
     }
 
-    // Get the bounds of the next lunar month.
-    const auto start_jde = next_new_moon();
-    const auto end_jde = next_new_moon();
-    put_back_new_moon(end_jde);
+    const double start_jde = _new_moon_gen.next();
+    const double end_jde = _new_moon_gen.peek();
 
-    // As per the rules, we convert the JDEs to UTC+8.
     const auto start_moment_utc8 = jde_to_utc8(start_jde);
     const auto end_moment_utc8 = jde_to_utc8(end_jde);
 
-    // Get the Jieqis that fall in this lunar month.
     std::vector<calendar::jieqi::JieqiGenerator::JieqiPair> jieqis;
     while (true) {
-      const auto jieqi = next_jieqi();
+      const auto jieqi = _jieqi_gen.peek();
       const auto jieqi_moment_utc8 = jde_to_utc8(jieqi.jde);
 
-      // If the Jieqi is in next month, stop.
-      // Note that the comparison is at date time level, as per the rules.
+      // A Jieqi on the ending UTC+8 civil date belongs to the next month.
       if (jieqi_moment_utc8.ymd >= end_moment_utc8.ymd) {
-        put_back_jieqi(jieqi);
         break;
       }
 
-      // If the Jieqi is not in this month, continue going.
-      // Note that the comparison is at date time level, as per the rules.
+      static_cast<void>(_jieqi_gen.next());
+
       if (jieqi_moment_utc8.ymd < start_moment_utc8.ymd) {
         continue;
       }
@@ -185,10 +143,10 @@ private:
 public:
   explicit LunarMonthGenerator(const double start_jde) 
     : _new_moon_gen(start_jde),
-      _jieqi_gen(start_jde),
-      _next_new_moon(_new_moon_gen.next()),
-      _next_jieqi(_jieqi_gen.next())
-  {}
+      _jieqi_gen(start_jde) {
+    // Keep the first Jieqi evaluation in construction; rollover failures must not move into next().
+    static_cast<void>(_jieqi_gen.peek());
+  }
 
   /** @brief Get the metadata of the next lunar month. */
   [[nodiscard]] auto next() -> LunarMonth {

@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -30,7 +32,7 @@ namespace astro::ephemeris::test {
 
 namespace {
 
-namespace search = detail::event_search;
+namespace search = astro::detail::event_search;
 namespace range_test = astro::detail::event_search::test;
 
 constexpr auto EVENT_TARGETS = TARGETS;
@@ -465,6 +467,54 @@ TEST(EphemerisEventsKernel, InvalidInputsAndProviderFailuresCannotReturnAPrefix)
   }
   const auto failure = [](const double) -> search::Value { throw std::runtime_error { "Provider failed" }; };
   ASSERT_THROW(static_cast<void>(search::isolate_cell(failure, 0, 1, LINEAR_BOUNDS, budget)), std::runtime_error);
+}
+
+TEST(EphemerisEventsKernel, WorkFailuresReportTheirTimeBracketAndRemainingBudget) {
+  std::size_t calls = 0;
+  const auto linear = [&calls](const double time) -> search::Value {
+    ++calls;
+    return { .value = time - 0.4, .error = 0.0 };
+  };
+  search::Budget empty { .evaluations_remaining = 0, .candidates_remaining = 7 };
+  try {
+    static_cast<void>(search::sample(linear, 2451545.0, empty));
+    FAIL() << "An empty budget must fail before evaluation";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(
+      std::string_view { error.what() },
+      "Event-search evaluation budget exhausted at JDE(TT) 2451545; 7 candidate slots remain"
+    );
+  }
+  ASSERT_EQ(calls, 0U);
+  ASSERT_EQ(empty.candidates_remaining, 7U);
+
+  search::Budget no_candidates { .evaluations_remaining = 100, .candidates_remaining = 0 };
+  try {
+    static_cast<void>(search::isolate_cell(linear, 0.0, 1.0, LINEAR_BOUNDS, no_candidates));
+    FAIL() << "A certified bracket still consumes a candidate slot";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(
+      std::string_view { error.what() },
+      "Event-search candidate budget exhausted in [0, 1] JDE(TT); 98 evaluations remain"
+    );
+  }
+  ASSERT_EQ(calls, 2U);
+  ASSERT_EQ(no_candidates.evaluations_remaining, 98U);
+
+  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
+  const auto candidates = search::isolate_cell(linear, 0.0, 1.0, LINEAR_BOUNDS, budget);
+  ASSERT_EQ(candidates.size(), 1U);
+  try {
+    static_cast<void>(search::refine(linear, candidates.front(), LINEAR_BOUNDS, budget, 0.0, 0));
+    FAIL() << "Zero refinement updates cannot accept a non-endpoint root";
+  } catch (const std::runtime_error& error) {
+    ASSERT_EQ(
+      std::string_view { error.what() },
+      "Event-search refinement exhausted 0 iterations in [0, 1] JDE(TT) at time resolution 0 days; 98 evaluations remain"
+    );
+  }
+  ASSERT_EQ(calls, 4U);
+  ASSERT_EQ(budget.evaluations_remaining, 98U);
 }
 
 TEST(EphemerisEventsKernel, CanonicalRangesKeepRoundedBoundaryOwnership) {
@@ -1557,6 +1607,25 @@ TEST(EphemerisEvents, ConstantNodeRelationsAndMalformedQueriesFailBeforeSearchin
   ASSERT_THROW(static_cast<void>(stations(Target::SUN, 2460676.5, 2460676.5)), std::invalid_argument);
   ASSERT_THROW(static_cast<void>(stations(Target::SUN, 2460676.5, 2464676.5)), std::invalid_argument);
   ASSERT_THROW(static_cast<void>(stations(static_cast<Target>(255), 2460676.5, 2460707.5)), std::invalid_argument);
+
+  for (const auto query : std::array {
+         search::Interval { .start_jde_tt = 2460677.5, .end_jde_tt = 2460676.5 },
+         search::Interval { .start_jde_tt = 2460676.5, .end_jde_tt = 2460676.5 },
+         search::Interval { .start_jde_tt = std::numeric_limits<double>::quiet_NaN(), .end_jde_tt = 2460676.5 },
+         search::Interval { .start_jde_tt = 2460676.5, .end_jde_tt = std::numeric_limits<double>::infinity() },
+         search::Interval { .start_jde_tt = -std::numeric_limits<double>::max(), .end_jde_tt = std::numeric_limits<double>::max() },
+       }) {
+    try {
+      static_cast<void>(detail::event_grid(Target::SUN, std::nullopt, query));
+      FAIL() << "Malformed query was accepted";
+    } catch (const std::invalid_argument& error) {
+      const std::string message = error.what();
+      EXPECT_TRUE(message.starts_with("Event query [")) << message;
+      EXPECT_NE(message.find("finite and nonempty"), std::string::npos) << message;
+      EXPECT_EQ(message.find("derivative bounds"), std::string::npos) << message;
+    }
+  }
+
   ASSERT_THROW(
     static_cast<void>(longitude_events(Target::SUN, toolbox::AngleDeg { std::numeric_limits<double>::infinity() }, 2460676.5, 2460707.5)),
     std::invalid_argument

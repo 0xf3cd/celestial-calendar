@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <concepts>
@@ -60,7 +61,8 @@ enum class PositionSource : uint8_t {
   PLANET_VSOP87D = 2,
   PLUTO_PLUTO95_APPARENT = 3,
   NODE_MEAN = 4,
-  NODE_TRUE_MEEUS_FIVE_TERM = 5, ///< Meeus' five-term approximation, not an osculating node.
+  /** @brief Meeus' five-term approximation, not an osculating node. */
+  NODE_TRUE_MEEUS_FIVE_TERM = 5,
 };
 
 /** @brief Origin of a bounded position domain; ignored when no position domain is declared. */
@@ -204,10 +206,10 @@ inline constexpr auto TARGETS = std::invoke([] {
 /** @brief Look up a named target; unknown values are invalid arguments. */
 [[nodiscard]] constexpr auto target_facts(const Target target) -> const TargetFacts& {
   if (is_target(target)) {
-    for (const auto& facts : TARGET_FACTS) {
-      if (facts.target == target) {
-        return facts;
-      }
+    // NOLINTNEXTLINE(readability-qualified-auto): Iterator representation varies by standard library.
+    const auto found = std::ranges::find(TARGET_FACTS, target, &TargetFacts::target);
+    if (found != TARGET_FACTS.end()) {
+      return *found;
     }
   }
   throw std::invalid_argument { std::format("Unknown ephemeris target {}", static_cast<uint32_t>(target)) };
@@ -250,6 +252,8 @@ struct LongitudeRate {
 
 namespace detail {
 
+// Binary-exact 3-hour spacing; the sixth-order truncation bound scales as h^6, with a 9-hour halo.
+// @see docs/EPHEMERIS_EVENTS.md, "Seven-point operator and remainder".
 inline constexpr double DIFFERENCE_STEP_TT_DAYS = 0.125;
 inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS;
 
@@ -277,6 +281,7 @@ inline constexpr double DIFFERENCE_REACH_TT_DAYS = 3.0 * DIFFERENCE_STEP_TT_DAYS
   throw std::logic_error { "Target source has no physical position provider" };
 }
 
+/** @brief Evaluate apparent longitude at JDE(TT); descending nodes use the paired ascending rate trajectory. */
 [[nodiscard]] inline auto longitude_for_rate(const Target target, const double jde_tt) -> toolbox::AngleDeg {
   const auto& facts = target_facts(target);
   if (facts.rate_node.has_value()) {
@@ -301,6 +306,7 @@ inline auto validate_position(const Position& coordinate) -> void {
   }
 }
 
+/** @brief Require finite JDE(TT) and exact representability of all six binary-offset sample times. */
 inline auto validate_stencil(const double jde_tt) -> void {
   if (not std::isfinite(jde_tt)) [[unlikely]] {
     throw std::invalid_argument { std::format("Argument `jde_tt` is not finite, got {}", jde_tt) };
@@ -316,6 +322,7 @@ inline auto validate_stencil(const double jde_tt) -> void {
   }
 }
 
+/** @brief Require the whole ±3/8-day stencil to remain inside the provider's half-open TT domain. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish the center and the two bounds.
 inline auto validate_reach(const double jde_tt, const double start_jde_tt, const double end_jde_tt) -> void {
   if (jde_tt - DIFFERENCE_REACH_TT_DAYS < start_jde_tt
@@ -326,14 +333,19 @@ inline auto validate_reach(const double jde_tt, const double start_jde_tt, const
   }
 }
 
+/** @brief Validate sample representability before identity and the source's sampling reach. */
 inline auto validate_rate_input(const Target target, const double jde_tt) -> void {
   validate_stencil(jde_tt);
   const auto [start_jde_tt, end_jde_tt] = target_facts(target).rate_provider_domain;
   validate_reach(jde_tt, start_jde_tt, end_jde_tt);
 }
 
-/** @note Each sample pair's continuously lifted change must be within (-180, 180) degrees.
- *  @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference */
+/**
+ * @brief Evaluate the seven-point centered longitude rate, in degrees per TT day.
+ * @note Each sample pair's continuously lifted change must be within (-180, 180) degrees.
+ * @see docs/EPHEMERIS_EVENTS.md, "Seven-point operator and remainder" (coefficients and Peano kernel).
+ * @see https://en.wikipedia.org/wiki/Finite_difference_coefficient#Central_finite_difference
+ */
 template <typename LongitudeProvider>
 requires std::invocable<const LongitudeProvider&, double>
      and std::same_as<std::invoke_result_t<const LongitudeProvider&, double>, toolbox::AngleDeg>
@@ -344,7 +356,7 @@ requires std::invocable<const LongitudeProvider&, double>
     if (not std::isfinite(before) or not std::isfinite(after)) [[unlikely]] {
       throw std::runtime_error { std::format("Non-finite longitude-rate sample at JDE(TT) {}", jde_tt) };
     }
-    return std::remainder(after - before, 360.0);
+    return toolbox::remainder_deg(after - before);
   };
   const double near = change(DIFFERENCE_STEP_TT_DAYS);
   const double middle = change(2.0 * DIFFERENCE_STEP_TT_DAYS);

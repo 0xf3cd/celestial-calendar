@@ -20,8 +20,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <format>
 #include <limits>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <tuple>
@@ -73,8 +75,6 @@ struct LongitudeDifferenceEvent {
 
 namespace astro::ephemeris::detail {
 
-namespace event_search = astro::detail::event_search;
-
 static_assert(EVENT_BOUNDS_WIDE.size() == TARGETS.size());
 static_assert(EVENT_BOUNDS_CENTURY.size() == TARGETS.size());
 static_assert(std::invoke([] {
@@ -119,10 +119,14 @@ static_assert(std::invoke([] {
 
 // Centers and their 3/8-day stencils fit binary64 throughout the current domains (|JDE| < 2^23).
 inline constexpr double EVENT_RATE_CENTER_QUANTUM_TT_DAYS = 0x1p-30;
+// Six-hour absolute cells; derivative certificates decide exclusion or subdivision, not the spacing alone.
 inline constexpr double EVENT_CELL_WIDTH_TT_DAYS = 0.25;
+// 84.375-second time certificate, separate from the finer deterministic reporting lattice.
 inline constexpr double EVENT_TIME_RESOLUTION_TT_DAYS = 0x1p-10;
+// Per-query resource policies, not sufficient-work guarantees for every admitted span.
 inline constexpr std::size_t EVENT_MAXIMUM_EVALUATIONS = 65536;
 inline constexpr std::size_t EVENT_MAXIMUM_CANDIDATES = 4096;
+// Fixed J2000 +/- one-century analysis band; selection also reserves the complete sampling halo.
 inline constexpr double EVENT_CENTURY_START_JDE_TT = astro::julian_day::J2000 - 36525.0;
 inline constexpr double EVENT_CENTURY_END_JDE_TT = astro::julian_day::J2000 + 36525.0;
 
@@ -132,12 +136,17 @@ inline constexpr double EVENT_CENTURY_END_JDE_TT = astro::julian_day::J2000 + 36
  */
 [[nodiscard]] inline auto event_rate_center(const Target target, const double jde_tt) -> double {
   if (not std::isfinite(jde_tt)) {
-    throw std::invalid_argument { "Event-search rate time must be finite" };
+    throw std::invalid_argument { std::format("Event-search rate JDE(TT) must be finite, got {}", jde_tt) };
   }
   const auto [start_jde_tt, end_jde_tt] = longitude_rate_domain(target);
   const bool outside_domain = jde_tt < start_jde_tt or jde_tt > end_jde_tt;
   if (outside_domain) {
-    throw std::invalid_argument { "Event-search rate time leaves its closed domain" };
+    throw std::invalid_argument {
+      std::format(
+        "Event-search rate JDE(TT) {} leaves closed domain [{}, {}] for target code {}",
+        jde_tt, start_jde_tt, end_jde_tt, static_cast<uint32_t>(target)
+      )
+    };
   }
   const double nearest = std::nearbyint(jde_tt / EVENT_RATE_CENTER_QUANTUM_TT_DAYS)
                          * EVENT_RATE_CENTER_QUANTUM_TT_DAYS;
@@ -156,23 +165,31 @@ inline constexpr double EVENT_CENTURY_END_JDE_TT = astro::julian_day::J2000 + 36
  */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, event_search::Value>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, astro::detail::event_search::Value>
 [[nodiscard]] inline auto event_rate_value(
   const Provider& provider,
   const Target target,
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Names distinguish the TT abscissa from its rate-slope bound.
   const double jde_tt,
   const double first_derivative
-) -> event_search::Value {
+) -> astro::detail::event_search::Value {
+  namespace event_search = astro::detail::event_search;
   if (not event_search::finite_nonnegative(first_derivative)) {
-    throw std::invalid_argument { "Invalid event-search rate derivative bound" };
+    throw std::invalid_argument {
+      std::format("Invalid event-search rate derivative bound {} at JDE(TT) {}", first_derivative, jde_tt)
+    };
   }
   const double center_jde_tt = event_rate_center(target, jde_tt);
   const auto evaluated = provider(center_jde_tt);
   const bool invalid_observation = not std::isfinite(evaluated.value)
-                                   or not event_search::finite_nonnegative(evaluated.error);
+                                    or not event_search::finite_nonnegative(evaluated.error);
   if (invalid_observation) {
-    throw std::runtime_error { "Invalid event-search rate observation" };
+    throw std::runtime_error {
+      std::format(
+        "Invalid event-search rate observation {} +/- {} at center JDE(TT) {} for target code {}",
+        evaluated.value, evaluated.error, center_jde_tt, static_cast<uint32_t>(target)
+      )
+    };
   }
   const double offset = center_jde_tt == jde_tt ? 0.0 : event_search::upper(std::fabs(jde_tt - center_jde_tt));
   return event_search::shifted(evaluated, offset, first_derivative);
@@ -181,41 +198,71 @@ requires std::invocable<const Provider&, double>
 /** @brief Reject execution environments outside the source-model error contract before evaluating a provider. */
 inline auto validate_event_environment() -> void {
 #ifdef __FAST_MATH__
-  throw std::runtime_error { "Event search does not support fast-math" };
+  throw std::runtime_error { "Event search does not support fast-math (__FAST_MATH__ is defined)" };
 #else
   const bool binary64 = std::numeric_limits<double>::is_iec559 and std::numeric_limits<double>::digits == 53
                         and FLT_EVAL_METHOD == 0;
   if (not binary64 or std::fegetround() != FE_TONEAREST) {
-    throw std::runtime_error { "Event search requires IEEE binary64 round-to-nearest-even" };
+    throw std::runtime_error {
+      std::format(
+        "Event search requires IEEE binary64 round-to-nearest-even: digits {}, FLT_EVAL_METHOD {}, rounding mode {}",
+        std::numeric_limits<double>::digits, FLT_EVAL_METHOD, std::fegetround()
+      )
+    };
   }
   volatile const double normal = std::numeric_limits<double>::min();
   volatile const double subnormal = std::numeric_limits<double>::min() / 2.0;
   const bool gradual_underflow = normal / 2.0 == subnormal and subnormal * 2.0 == normal;
   if (not gradual_underflow) {
-    throw std::runtime_error { "Event search requires gradual underflow" };
+    throw std::runtime_error {
+      std::format(
+        "Event search requires gradual underflow: min normal {}, half {}, doubled half {}",
+        static_cast<double>(normal), static_cast<double>(subnormal), subnormal * 2.0
+      )
+    };
   }
 #endif
 }
 
-/** @brief Validate a nonempty query against the published rate domains, then form its absolute cell grid. */
+/**
+ * @brief Validate a nonempty query against the published rate domains, then form its absolute cell grid.
+ * @see docs/EPHEMERIS_EVENTS.md, "Domains, limits and failures" and "Search policies".
+ */
 [[nodiscard]] inline auto event_grid(
   const Target first,
   const std::optional<Target> second,
-  const event_search::Interval query
-) -> event_search::Grid {
+  const astro::detail::event_search::Interval query
+) -> astro::detail::event_search::Grid {
   auto [start_jde_tt, end_jde_tt] = longitude_rate_domain(first);
   if (second.has_value()) {
     const auto [second_start, second_end] = longitude_rate_domain(*second);
     start_jde_tt = std::max(start_jde_tt, second_start);
     end_jde_tt = std::min(end_jde_tt, second_end);
   }
-  event_search::validate_cell(query.start_jde_tt, query.end_jde_tt, {});
+  if (not astro::detail::event_search::valid_time_span(query.start_jde_tt, query.end_jde_tt)) {
+    throw std::invalid_argument {
+      std::format(
+        "Event query [{}, {}) JDE(TT) must be finite and nonempty, with a finite span",
+        query.start_jde_tt, query.end_jde_tt
+      )
+    };
+  }
   const bool outside_domain = query.start_jde_tt < start_jde_tt or query.end_jde_tt > end_jde_tt;
   if (outside_domain) {
-    throw std::invalid_argument { "Event query leaves its longitude-rate domain" };
+    throw std::invalid_argument {
+      std::format(
+        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target code {}",
+        query.start_jde_tt, query.end_jde_tt, start_jde_tt, end_jde_tt, static_cast<uint32_t>(first)
+      )
+    };
   }
   if (query.end_jde_tt - query.start_jde_tt > EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS) {
-    throw std::invalid_argument { "Event query exceeds 3660 TT days" };
+    throw std::invalid_argument {
+      std::format(
+        "Event query spans {} TT days, exceeding the {}-day limit",
+        query.end_jde_tt - query.start_jde_tt, EVENT_MAXIMUM_QUERY_SPAN_TT_DAYS
+      )
+    };
   }
   return {
     .domain = { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
@@ -224,10 +271,10 @@ inline auto validate_event_environment() -> void {
 }
 
 /** @brief Select a fixed analysis band by the entire canonical cell and sample halo, never by query endpoints. */
-[[nodiscard]] inline auto event_bounds(const Target target, const event_search::Interval cell) -> EventBounds {
+[[nodiscard]] inline auto event_bounds(const Target target, const astro::detail::event_search::Interval cell) -> EventBounds {
   const auto index = static_cast<std::size_t>(target);
   if (index >= EVENT_BOUNDS_WIDE.size()) {
-    throw std::invalid_argument { "Unsupported event-search target" };
+    throw std::invalid_argument { std::format("Unsupported event-search target code {}", static_cast<uint32_t>(target)) };
   }
   const double halo = DIFFERENCE_REACH_TT_DAYS + EVENT_RATE_CENTER_QUANTUM_TT_DAYS;
   const bool within_century = cell.start_jde_tt >= EVENT_CENTURY_START_JDE_TT + halo
@@ -246,27 +293,28 @@ inline auto validate_event_environment() -> void {
   const Target target,
   const double jde_tt,
   const EventBounds bounds
-) -> event_search::LongitudeValue {
+) -> astro::detail::event_search::LongitudeValue {
   return { .longitude = event_longitude(target, jde_tt), .error_deg = bounds.position_error_deg };
 }
 
-/** @brief Observe D_h at an admitted centre, including displacement from the requested abscissa. */
+/** @brief Observe D_h at an admitted center, including displacement from the requested abscissa. */
 [[nodiscard]] inline auto event_rate_observation(
   const Target target,
   const double jde_tt,
   const EventBounds bounds
-) -> event_search::Value {
-  const auto provider = [&](const double centre_jde_tt) -> event_search::Value {
-    return { .value = longitude_rate(target, centre_jde_tt).deg_per_tt_day, .error = bounds.rate_error_deg_per_day };
+) -> astro::detail::event_search::Value {
+  const auto provider = [&](const double center_jde_tt) -> astro::detail::event_search::Value {
+    return { .value = longitude_rate(target, center_jde_tt).deg_per_tt_day, .error = bounds.rate_error_deg_per_day };
   };
   return event_rate_value(provider, target, jde_tt, bounds.trajectory.rate.first_derivative);
 }
 
 /** @brief Subtract independent scalar observations with a conservative binary64 subtraction allowance. */
 [[nodiscard]] inline auto subtract_event_rates(
-  const event_search::Value first,
-  const event_search::Value second
-) -> event_search::Value {
+  const astro::detail::event_search::Value first,
+  const astro::detail::event_search::Value second
+) -> astro::detail::event_search::Value {
+  namespace event_search = astro::detail::event_search;
   const double magnitude = event_search::upper(std::fabs(first.value) + std::fabs(second.value));
   const double rounding = event_search::upper(std::numeric_limits<double>::epsilon() * magnitude);
   return {
@@ -276,8 +324,15 @@ inline auto validate_event_environment() -> void {
 }
 
 /** @brief Sum absolute derivative bounds for a directed difference, without subtracting independent uncertainties. */
-[[nodiscard]] inline auto difference_bounds(const EventBounds first, const EventBounds second) -> event_search::TrajectoryBounds {
-  const auto sum = [](const event_search::Bounds a, const event_search::Bounds b) -> event_search::Bounds {
+[[nodiscard]] inline auto difference_bounds(
+  const EventBounds first,
+  const EventBounds second
+) -> astro::detail::event_search::TrajectoryBounds {
+  namespace event_search = astro::detail::event_search;
+  const auto sum = [](
+    const event_search::Bounds a,
+    const event_search::Bounds b
+  ) -> event_search::Bounds {
     return {
       .first_derivative = event_search::upper(a.first_derivative + b.first_derivative),
       .second_derivative = event_search::upper(a.second_derivative + b.second_derivative),
@@ -292,26 +347,35 @@ inline auto validate_event_environment() -> void {
 }
 
 /** @brief Translate the private search classification without coupling the kernel to public result types. */
-[[nodiscard]] inline auto event_direction(const event_search::ContactDirection direction) -> EventDirection {
+[[nodiscard]] inline auto event_direction(const astro::detail::event_search::ContactDirection direction) -> EventDirection {
+  using enum astro::detail::event_search::ContactDirection;
   switch (direction) {
-    case event_search::ContactDirection::INCREASING: return EventDirection::INCREASING;
-    case event_search::ContactDirection::DECREASING: return EventDirection::DECREASING;
-    case event_search::ContactDirection::TANGENT: return EventDirection::TANGENT;
+    case INCREASING: return EventDirection::INCREASING;
+    case DECREASING: return EventDirection::DECREASING;
+    case TANGENT: return EventDirection::TANGENT;
   }
-  throw std::runtime_error { "Unsupported event-search direction" };
+  throw std::runtime_error { std::format("Unsupported event-search direction {}", static_cast<uint32_t>(direction)) };
 }
 
-/** @brief Search whole absolute cells; station refinement uses the cell's allowances, contact regions the window's. */
+/**
+ * @brief Search whole absolute cells; station refinement uses the cell's allowances, contact regions the window's.
+ * @see docs/EPHEMERIS_EVENTS.md, "Numerical contacts" and "Scalar cell certificates" (project derivations).
+ */
 [[nodiscard]] inline auto search_longitudes(
   const Target first,
   const std::optional<Target> second,
   const toolbox::AngleDeg target,
-  const event_search::Grid grid,
-  const event_search::Interval query
-) -> std::vector<event_search::LongitudeRoot> {
-  event_search::Budget budget { .evaluations_remaining = EVENT_MAXIMUM_EVALUATIONS,
-                               .candidates_remaining = EVENT_MAXIMUM_CANDIDATES };
+  const astro::detail::event_search::Grid grid,
+  const astro::detail::event_search::Interval query
+) -> std::vector<astro::detail::event_search::LongitudeRoot> {
+  namespace event_search = astro::detail::event_search;
+
+  event_search::Budget budget {
+    .evaluations_remaining = EVENT_MAXIMUM_EVALUATIONS,
+    .candidates_remaining = EVENT_MAXIMUM_CANDIDATES,
+  };
   event_search::validate_reporting_grid(grid, EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
+
   // One allowance selection per span; a window crossing a century edge selects WIDE.
   const auto model = [first, second](const event_search::Interval span) {
     const auto first_bounds = event_bounds(first, span);
@@ -378,21 +442,20 @@ namespace astro::ephemeris {
   const double end_jde_tt
 ) -> std::vector<LongitudeEvent> {
   const auto level = toolbox::canonical_longitude_difference(target_longitude);
-  const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+  const astro::detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(target, std::nullopt, query);
   detail::validate_event_environment();
   const auto roots = detail::search_longitudes(target, std::nullopt, level, grid, query);
-  std::vector<LongitudeEvent> events;
-  events.reserve(roots.size());
-  for (const auto root : roots) {
-    events.push_back({
+
+  const auto event = [target](const astro::detail::event_search::LongitudeRoot root) -> LongitudeEvent {
+    return {
       .jde_tt = root.jde_tt,
       .longitude = detail::event_longitude(target, root.jde_tt),
       .longitude_rate = longitude_rate(target, root.jde_tt),
       .direction = detail::event_direction(root.direction),
-    });
-  }
-  return events;
+    };
+  };
+  return roots | std::views::transform(event) | std::ranges::to<std::vector>();
 }
 
 /**
@@ -410,37 +473,41 @@ namespace astro::ephemeris {
   const double start_jde_tt,
   const double end_jde_tt
 ) -> std::vector<StationEvent> {
-  const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+  namespace event_search = astro::detail::event_search;
+
+  const event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(target, std::nullopt, query);
   detail::validate_event_environment();
-  detail::event_search::validate_reporting_grid(grid, detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
-  detail::event_search::Budget budget { .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
-                                       .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES };
-  std::vector<detail::event_search::Root> roots;
-  detail::event_search::visit_query_cells(grid, query, [&](const detail::event_search::Interval cell) {
+  event_search::validate_reporting_grid(grid, detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS);
+
+  event_search::Budget budget {
+    .evaluations_remaining = detail::EVENT_MAXIMUM_EVALUATIONS,
+    .candidates_remaining = detail::EVENT_MAXIMUM_CANDIDATES,
+  };
+  std::vector<event_search::Root> roots;
+  event_search::visit_query_cells(grid, query, [&](const event_search::Interval cell) {
     const auto bounds = detail::event_bounds(target, cell);
     if (detail::has_no_station(bounds)) {
       return;
     }
     const auto rate = [&](const double jde_tt) { return detail::event_rate_observation(target, jde_tt, bounds); };
-    const auto candidates = detail::event_search::isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.trajectory.rate, budget);
-    detail::event_search::append_interval_roots(
+    const auto candidates = event_search::isolate_cell(rate, cell.start_jde_tt, cell.end_jde_tt, bounds.trajectory.rate, budget);
+    event_search::append_interval_roots(
       rate, candidates, query, bounds.trajectory.rate, budget, detail::EVENT_TIME_RESOLUTION_TT_DAYS,
       roots, detail::EVENT_RATE_CENTER_QUANTUM_TT_DAYS
     );
   });
-  std::vector<StationEvent> events;
-  events.reserve(roots.size());
-  for (const auto root : roots) {
-    events.push_back({
+
+  const auto event = [target](const event_search::Root root) -> StationEvent {
+    return {
       .jde_tt = root.jde_tt,
       .longitude = detail::event_longitude(target, root.jde_tt),
       .longitude_rate = longitude_rate(target, root.jde_tt),
       .motion_before = root.increasing ? Motion::RETROGRADE : Motion::DIRECT,
       .motion_after = root.increasing ? Motion::DIRECT : Motion::RETROGRADE,
-    });
-  }
-  return events;
+    };
+  };
+  return roots | std::views::transform(event) | std::ranges::to<std::vector>();
 }
 
 /**
@@ -465,29 +532,35 @@ namespace astro::ephemeris {
   const double end_jde_tt
 ) -> std::vector<LongitudeDifferenceEvent> {
   const auto level = toolbox::canonical_longitude_difference(target_difference);
-  const detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+  const astro::detail::event_search::Interval query { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
   const auto grid = detail::event_grid(first, second, query);
   if (first == second) {
-    throw std::invalid_argument { "Longitude-difference events require distinct targets" };
+    throw std::invalid_argument {
+      std::format("Longitude-difference events require distinct target codes, got {} twice", static_cast<uint32_t>(first))
+    };
   }
   const auto constant = detail::constant_longitude_difference(first, second);
   if (constant.has_value() and constant->deg() == level.deg()) {
-    throw std::invalid_argument { "Longitude relation holds throughout the interval" };
+    throw std::invalid_argument {
+      std::format(
+        "Longitude relation at {} deg holds throughout [{}, {}) JDE(TT) for target codes {} and {}",
+        level.deg(), start_jde_tt, end_jde_tt, static_cast<uint32_t>(first), static_cast<uint32_t>(second)
+      )
+    };
   }
   detail::validate_event_environment();
   if (constant.has_value()) {
     return {};
   }
   const auto roots = detail::search_longitudes(first, second, level, grid, query);
-  std::vector<LongitudeDifferenceEvent> events;
-  events.reserve(roots.size());
-  for (const auto root : roots) {
+
+  const auto event = [first, second](const astro::detail::event_search::LongitudeRoot root) -> LongitudeDifferenceEvent {
     const auto longitude_a = detail::event_longitude(first, root.jde_tt);
     const auto longitude_b = detail::event_longitude(second, root.jde_tt);
-    const auto difference = detail::event_search::project_longitude_difference(
+    const auto difference = astro::detail::event_search::project_longitude_difference(
       { .longitude = longitude_a, .error_deg = 0.0 }, { .longitude = longitude_b, .error_deg = 0.0 }
     );
-    events.push_back({
+    return {
       .jde_tt = root.jde_tt,
       .longitude_a = longitude_a,
       .longitude_b = longitude_b,
@@ -495,9 +568,9 @@ namespace astro::ephemeris {
       .longitude_rate_b = longitude_rate(second, root.jde_tt),
       .signed_difference = toolbox::AngleDeg { difference.value },
       .direction = detail::event_direction(root.direction),
-    });
-  }
-  return events;
+    };
+  };
+  return roots | std::views::transform(event) | std::ranges::to<std::vector>();
 }
 
 } // namespace astro::ephemeris

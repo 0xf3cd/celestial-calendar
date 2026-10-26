@@ -209,10 +209,10 @@ EXPECTED: Final[Dict[str, Dict[str, bool]]] = {
 # Drift is a maintenance notice, not a compiler-capability failure.
 SITE_COUNTS: Final[Dict[str, int]] = {
   "tuple_like": 0,
-  "generator": 3,
+  "generator": 2,
   "enumerate": 2,
   "pairwise": 4,
-  "slide": 1,
+  "slide": 4,
   "concat": 2,
   "function_ref": 0,
   "remainder_constexpr": 0,

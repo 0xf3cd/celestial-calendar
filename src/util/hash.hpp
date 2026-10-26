@@ -23,8 +23,7 @@ namespace util::hash {
 
 template <typename T>
 [[nodiscard]] inline auto hash_combine(std::size_t seed, T&& v) -> std::size_t {
-  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  // Don't lint this code, because clang-tidy complains about calculating hash for `std::string`.
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay): The std::string hash implementation triggers this diagnostic.
   std::uint64_t v_hash = std::hash<std::decay_t<T>>{}(std::forward<T>(v));
   // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 

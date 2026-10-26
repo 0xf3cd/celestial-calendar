@@ -71,6 +71,7 @@ namespace astro::toolbox {
 /**
  * @brief Normalize degree to [-180, 180). Useful for hour angles, where sign carries meaning.
  * @throw std::invalid_argument If `deg` is not finite — inherited from `normalize_deg`.
+ * @see remainder_deg for signed zero and even-quotient ties; canonical_longitude_difference for (-180°, 180°].
  */
 [[nodiscard]] constexpr auto normalize_pm180(const double deg) -> double {
   const double _deg = normalize_deg(deg);
@@ -82,6 +83,23 @@ inline constexpr double DEG_PER_RAD = 180.0 / std::numbers::pi;
 
 /** @brief The angular period of an ecliptic longitude, in degrees. */
 inline constexpr double LONGITUDE_PERIOD_DEG = 360.0;
+
+/**
+ * @brief Return the IEEE remainder in [-180°, 180°], retaining signed zero and either sign at 180°.
+ * @note Half-turn ties use the even quotient. Non-finite inputs follow std::remainder's domain behavior.
+ * @see normalize_pm180 for [-180°, 180°); canonical_longitude_difference for (-180°, 180°].
+ */
+[[nodiscard]] inline auto remainder_deg(const double difference_deg) -> double {
+  return std::remainder(difference_deg, LONGITUDE_PERIOD_DEG);
+}
+
+/**
+ * @brief Shift an angle by whole turns toward a reference, without normalizing either input.
+ * @note Half-turn ties follow std::round (away from zero); the arithmetic does not validate finiteness.
+ */
+[[nodiscard]] inline auto unwrap_near(const double wrapped_deg, const double reference_deg) -> double {
+  return wrapped_deg + (LONGITUDE_PERIOD_DEG * std::round((reference_deg - wrapped_deg) / LONGITUDE_PERIOD_DEG));
+}
 
 /** @brief Convert degree to radian. */
 [[nodiscard]] constexpr auto deg_to_rad(const double deg) -> double {
@@ -252,12 +270,13 @@ using AngleDeg = Angle<AngleUnit::DEG>;
 /**
  * @brief Canonicalize a finite directed longitude difference to (-180, 180] degrees.
  * @throw std::invalid_argument If the angle is not finite.
+ * @see normalize_pm180 for [-180°, 180°); remainder_deg for signed zero and even-quotient ties.
  */
 [[nodiscard]] inline auto canonical_longitude_difference(const AngleDeg difference) -> AngleDeg {
   if (not std::isfinite(difference.deg())) {
     throw std::invalid_argument { "Longitude difference must be finite" };
   }
-  const double remainder = std::remainder(difference.deg(), LONGITUDE_PERIOD_DEG);
+  const double remainder = remainder_deg(difference.deg());
   if (remainder == -LONGITUDE_PERIOD_DEG / 2.0) {
     return AngleDeg { LONGITUDE_PERIOD_DEG / 2.0 };
   }
@@ -486,6 +505,85 @@ requires std::invocable<const Func&, double>
   }
 
   return best_jde;
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+#pragma endregion
+
+#pragma region Golden Section Search
+
+/** @brief (√5 − 1)/2, rounded directly to binary64. */
+inline constexpr double INV_PHI = 0.61803398874989484820;
+
+/** @brief (3 − √5)/2, rounded independently of INV_PHI. */
+inline constexpr double INV_PHI_SQ = 0.38196601125010515180;
+
+/** @brief Arithmetic, comparison and stopping rules supplied by an extremum-search caller. */
+template <typename LowerProbe, typename MoveLower, typename Finished>
+struct GoldenSectionRules {
+  LowerProbe lower_probe;
+  MoveLower move_lower;
+  Finished finished;
+};
+
+/** @brief The final bracket; converged is false when the update budget runs out. */
+struct GoldenSectionBracket {
+  double lower;
+  double upper;
+  bool converged;
+};
+
+/**
+ * @brief Contract a unimodal bracket using the caller's numerical rules.
+ * @param f The objective, evaluated at two initial probes even when maximum_updates is zero.
+ * @param lower The initial lower bound.
+ * @param upper The initial upper bound.
+ * @param tolerance The width threshold passed to rules.finished.
+ * @param maximum_updates The contraction budget, excluding the two initial probes.
+ * @param rules The lower-probe arithmetic, move-lower comparison and width stopping predicate.
+ * @return The final bounds and whether rules.finished accepted them.
+ * @note The stopping predicate is checked before each update, never after the final allowed update.
+ *       Midpoint selection, witnesses and the meaning of budget exhaustion belong to the caller.
+ */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- Bounds and tolerance have distinct named roles.
+template <typename Func, typename Rules>
+requires std::invocable<const Func&, double>
+     and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
+[[nodiscard]] inline auto golden_section_bracket(
+  const Func& f,
+  const double lower,
+  const double upper,
+  const double tolerance,
+  const std::size_t maximum_updates,
+  const Rules& rules
+) -> GoldenSectionBracket {
+  double lo = lower;
+  double hi = upper;
+  double lhs = rules.lower_probe(lo, hi);
+  double rhs = lo + (INV_PHI * (hi - lo));
+  double lhs_value = f(lhs);
+  double rhs_value = f(rhs);
+
+  for (std::size_t iteration = 0; iteration < maximum_updates; ++iteration) {
+    if (rules.finished(hi - lo, tolerance)) {
+      return { .lower = lo, .upper = hi, .converged = true };
+    }
+
+    if (rules.move_lower(lhs_value, rhs_value)) {
+      lo = lhs;
+      lhs = rhs;
+      lhs_value = rhs_value;
+      rhs = lo + (INV_PHI * (hi - lo));
+      rhs_value = f(rhs);
+    } else {
+      hi = rhs;
+      rhs = lhs;
+      rhs_value = lhs_value;
+      lhs = rules.lower_probe(lo, hi);
+      lhs_value = f(lhs);
+    }
+  }
+  return { .lower = lo, .upper = hi, .converged = false };
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 

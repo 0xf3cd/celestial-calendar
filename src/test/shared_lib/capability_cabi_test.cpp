@@ -15,6 +15,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -333,13 +334,21 @@ TEST(CapabilityCAbi, EventDomainEdgesAgreeWithAdmission) {
     uint32_t event_count = 0;
     EXPECT_EQ(celestial_longitude_events(target, 0.0, record.domain_start_jde_tt, record.domain_start_jde_tt + 30.0,
       &event_count, nullptr, 0), 0U);
-    EXPECT_STRNE(celestial_last_error(), DOMAIN_REJECTION) << "lower edge, target " << target;
+    EXPECT_FALSE(std::string_view { celestial_last_error() }.starts_with(DOMAIN_REJECTION)) << "lower edge, target " << target;
     EXPECT_EQ(celestial_longitude_events(target, 0.0, record.domain_end_jde_tt - 30.0, record.domain_end_jde_tt,
       &event_count, nullptr, 0), 0U);
-    EXPECT_STRNE(celestial_last_error(), DOMAIN_REJECTION) << "upper edge, target " << target;
+    EXPECT_FALSE(std::string_view { celestial_last_error() }.starts_with(DOMAIN_REJECTION)) << "upper edge, target " << target;
     EXPECT_EQ(celestial_longitude_events(target, 0.0, record.domain_end_jde_tt, record.domain_end_jde_tt + 30.0,
       &event_count, nullptr, 0), 0U);
-    EXPECT_STREQ(celestial_last_error(), DOMAIN_REJECTION) << "outside upper edge, target " << target;
+    EXPECT_EQ(
+      std::string { celestial_last_error() },
+      std::format(
+        "Event query leaves its longitude-rate domain: query [{}, {}) JDE(TT), domain [{}, {}], target code {}",
+        record.domain_end_jde_tt, record.domain_end_jde_tt + 30.0,
+        record.domain_start_jde_tt, record.domain_end_jde_tt, target
+      )
+    ) << "outside upper edge, target " << target;
+    EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
   }
 }
 

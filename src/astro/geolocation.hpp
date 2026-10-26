@@ -12,6 +12,11 @@
 
 #pragma once
 
+#include <cmath>
+#include <format>
+#include <stdexcept>
+#include <string_view>
+
 #include "toolbox.hpp"
 
 namespace astro {
@@ -25,5 +30,19 @@ struct GeoLocation {
   toolbox::AngleDeg latitude;
   toolbox::AngleDeg longitude;
 };
+
+namespace geolocation {
+
+/** @brief Reject a non-finite geographic longitude or one outside [-180°, 180°], preserving the caller's name. */
+inline auto validate_longitude(const toolbox::AngleDeg longitude, const std::string_view name) -> void {
+  const double longitude_deg = longitude.deg();
+  if (not std::isfinite(longitude_deg) or longitude_deg < -180.0 or longitude_deg > 180.0) {
+    throw std::invalid_argument {
+      std::format("Argument `{}` out of range [-180, 180], got {}", name, longitude_deg)
+    };
+  }
+}
+
+} // namespace geolocation
 
 } // namespace astro

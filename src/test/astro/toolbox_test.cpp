@@ -11,7 +11,10 @@
  */
 
 #include <gtest/gtest.h>
+#include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <numbers>
 #include <numeric>
@@ -103,6 +106,52 @@ TEST(AstroMath, DirectedLongitudeKeepsTinySignedResidualAndPositiveOpposition) {
   const double zero = canonical_longitude_difference(AngleDeg { -0.0 }).deg();
   ASSERT_EQ(zero, 0.0);
   ASSERT_FALSE(std::signbit(zero));
+}
+
+TEST(AstroMath, SignedAngleConventionsKeepTheirDistinctEndpointsAndZeros) {
+  // std::remainder uses an even quotient at half-turn ties; the canonical forms choose one antipode.
+  constexpr std::array<std::array<double, 4>, 8> cases {{
+    // Input   Remainder  [-180,180)  (-180,180]
+    {    0.0,       0.0,        0.0,        0.0 },
+    {   -0.0,      -0.0,        0.0,        0.0 },
+    {  180.0,     180.0,     -180.0,      180.0 },
+    { -180.0,    -180.0,     -180.0,      180.0 },
+    {  360.0,       0.0,        0.0,        0.0 },
+    { -360.0,      -0.0,        0.0,        0.0 },
+    {  540.0,    -180.0,     -180.0,      180.0 },
+    { -540.0,     180.0,     -180.0,      180.0 },
+  }};
+  for (const auto& [input, remainder, negative_opposition, positive_opposition] : cases) {
+    ASSERT_EQ(std::bit_cast<uint64_t>(remainder_deg(input)), std::bit_cast<uint64_t>(remainder));
+    ASSERT_EQ(std::bit_cast<uint64_t>(normalize_pm180(input)), std::bit_cast<uint64_t>(negative_opposition));
+    ASSERT_EQ(
+      std::bit_cast<uint64_t>(canonical_longitude_difference(AngleDeg { input }).deg()),
+      std::bit_cast<uint64_t>(positive_opposition)
+    );
+  }
+
+  for (const double invalid : { std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::quiet_NaN() }) {
+    ASSERT_TRUE(std::isnan(remainder_deg(invalid)));
+    ASSERT_THROW(static_cast<void>(normalize_pm180(invalid)), std::invalid_argument);
+    ASSERT_THROW(static_cast<void>(canonical_longitude_difference(AngleDeg { invalid })), std::invalid_argument);
+  }
+}
+
+TEST(AstroMath, UnwrapNearKeepsTheRoundAwayFromZeroHalfTurnRule) {
+  constexpr std::array<std::array<double, 3>, 7> cases {{
+    // Wrapped  Reference  Lifted
+    {      0.0,     180.0,  360.0 },
+    {      0.0,    -180.0, -360.0 },
+    {    180.0,       0.0, -180.0 },
+    {   -180.0,       0.0,  180.0 },
+    {    359.0,       1.0,   -1.0 },
+    {      1.0,     359.0,  361.0 },
+    {     -0.0,      -0.0,    0.0 },
+  }};
+  for (const auto& [wrapped, reference, expected] : cases) {
+    ASSERT_EQ(std::bit_cast<uint64_t>(unwrap_near(wrapped, reference)), std::bit_cast<uint64_t>(expected));
+  }
 }
 
 TEST(AstroMath, NormalizedDegHalfOpenNearZero) {

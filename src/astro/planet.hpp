@@ -94,10 +94,12 @@ struct Vsop87dMapping {
   HeliocentricEvaluator evaluate;
 };
 
+// Fixed work limit for emission-time iteration; convergence is checked against one ULP of the observation JDE.
 inline constexpr std::size_t LIGHT_TIME_MAX_ITERATIONS = 10;
 // One day resolves outer-planet motion without extending the marker beyond a local direction test.
 inline constexpr double RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS = 0.5;
 
+/** @brief Evaluate VSOP87D at JDE(TT), returning heliocentric mean-ecliptic-of-date angles and AU radius. */
 template <astro::vsop87d::Planet planet>
 [[nodiscard]] inline auto heliocentric(const double jde_tt) -> toolbox::SphericalCoordinate {
   const auto evaluated = astro::vsop87d::evaluate<planet>(astro::julian_day::jde_to_jm(jde_tt));
@@ -108,6 +110,7 @@ template <astro::vsop87d::Planet planet>
   };
 }
 
+/** @brief Bind one planetary identity to its VSOP87D evaluator at compile time. */
 template <Planet target, astro::vsop87d::Planet model>
 [[nodiscard]] consteval auto make_vsop87d_mapping() -> Vsop87dMapping {
   return {
@@ -165,6 +168,7 @@ template <Planet target, astro::vsop87d::Planet model>
   return { .λ = precessed.λ, .β = precessed.β, .r = evaluated.r };
 }
 
+/** @brief Convert to Cartesian AU in the input's unchanged origin and axes. */
 [[nodiscard]] inline auto rectangular(const toolbox::SphericalCoordinate& spherical) -> RectangularCoordinate {
   const double cos_β = std::cos(spherical.β.rad());
   return {
@@ -251,6 +255,7 @@ template <Planet target, astro::vsop87d::Planet model>
   };
 }
 
+/** @brief Validate finite JDE(TT) before planet identity, returning the name for error context. */
 [[nodiscard]] inline auto validate_input(
   const Planet planet,
   const double jde_tt
@@ -263,6 +268,7 @@ template <Planet target, astro::vsop87d::Planet model>
   return name(planet);
 }
 
+/** @brief Apply finite-time and identity checks, then Pluto's half-open apparent-position window. */
 [[nodiscard]] inline auto validate_apparent_input(
   const Planet planet,
   const double jde_tt
@@ -274,6 +280,7 @@ template <Planet target, astro::vsop87d::Planet model>
   return planet_name;
 }
 
+/** @brief Validate a centered one-day direction test, reserving both endpoints in Pluto's window. */
 inline auto validate_retrograde_input(
   const Planet planet,
   const double jde_tt
@@ -361,6 +368,8 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
  *       `astro::ephemeris::longitude_rate` (ephemeris.hpp); near a station the two can disagree.
  * @note It does not locate stations. `astro::planet::phenomena::events` (planet_phenomena.hpp) finds them as
  *       longitude extrema on a one-day grid and refines each extremum, without solving for a zero rate.
+ *       `astro::ephemeris::stations` instead locates zeros of the published seven-point rate;
+ *       see docs/EPHEMERIS_EVENTS.md for the definitions and domains.
  *       At the stationary instant itself a boolean direction is not physically meaningful.
  */
 [[nodiscard]] inline auto is_retrograde(
@@ -370,7 +379,7 @@ inline constexpr double PLUTO_END_JDE_TT = astro::planet::detail::pluto::APPAREN
   detail::validate_retrograde_input(planet, jde_tt);
   const auto before = apparent(planet, jde_tt - detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
   const auto after = apparent(planet, jde_tt + detail::RETROGRADE_DIFFERENCE_HALF_WIDTH_DAYS);
-  return std::remainder(after.λ.deg() - before.λ.deg(), 360.0) < 0.0;
+  return toolbox::remainder_deg(after.λ.deg() - before.λ.deg()) < 0.0;
 }
 
 } // namespace geocentric_coord

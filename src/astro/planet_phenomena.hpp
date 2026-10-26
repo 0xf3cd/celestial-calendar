@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <format>
 #include <numeric>
+#include <ranges>
 #include <stdexcept>
 #include <vector>
 
@@ -26,6 +27,7 @@
 #include "julian_day.hpp"
 #include "planet.hpp"
 #include "sun.hpp"
+#include "toolbox.hpp"
 #include "ymd.hpp"
 
 namespace astro::planet::phenomena {
@@ -52,22 +54,26 @@ struct Event {
 
 namespace detail {
 
+// Candidate spacing, not a completeness bound; sampled reversals are refined before crossing scans.
 inline constexpr double COARSE_STEP_DAYS = 1.0;
-inline constexpr double TIME_TOLERANCE_DAYS = 1e-8;
-inline constexpr double ANGLE_RESIDUAL_TOLERANCE_DEG = 1e-6;
-inline constexpr double WITNESS_HALF_WIDTH_DAYS = 0.01;
-inline constexpr double DEDUPLICATION_TOLERANCE_DAYS = 1e-6;
+inline constexpr double TIME_TOLERANCE_DAYS = 1e-8; // 0.864 ms, with a separate angular-residual requirement.
+inline constexpr double ANGLE_RESIDUAL_TOLERANCE_DEG = 1e-6; // 0.0036 arcsec; both crossing tests must pass.
+inline constexpr double WITNESS_HALF_WIDTH_DAYS = 0.01; // 14.4 min per side, capped at a quarter of the bracket.
+inline constexpr double DEDUPLICATION_TOLERANCE_DAYS = 1e-6; // 86.4 ms; only consecutive same-kind candidates merge.
+// A two-day bracket contracts below 1e-8 day in 40 golden-section updates; failure still throws at the cap.
 inline constexpr std::size_t MAX_REFINEMENT_ITERATIONS = 96;
+// Complete UTC years whose padded daily lattice stays in Pluto's apparent-position domain.
 inline constexpr int32_t PLUTO_EVENT_START_YEAR = 1886;
 inline constexpr int32_t PLUTO_EVENT_END_YEAR = 2098;
 
 enum class Category : uint8_t { INNER, OUTER };
 
+/** @brief Solver samples in degrees; samples() lifts longitude and difference continuously across the grid. */
 struct Sample {
   double jde_tt;
-  double planet_λ;
-  double difference;
-  double separation;
+  double planet_λ_deg;
+  double difference_deg;
+  double separation_deg;
 };
 
 struct SamplingWindow {
@@ -77,10 +83,11 @@ struct SamplingWindow {
 };
 
 struct CrossingSpec {
-  double target_difference = 0.0;
+  double target_difference_deg = 0.0;
   std::size_t max_iterations = MAX_REFINEMENT_ITERATIONS;
 };
 
+/** @brief Select the inner/outer event family, rejecting unnamed planets. */
 [[nodiscard]] inline auto category(const Planet planet) -> Category {
   switch (planet) {
     case Planet::MERCURY:
@@ -99,34 +106,34 @@ struct CrossingSpec {
   };
 }
 
-[[nodiscard]] inline auto unwrap_near(const double wrapped, const double reference) -> double {
-  return wrapped + (360.0 * std::round((reference - wrapped) / 360.0));
-}
-
+/** @brief Hand over target-minus-source longitude to the scalar solvers as IEEE-remainder degrees. */
 [[nodiscard]] inline auto raw_difference(
   const toolbox::SphericalCoordinate& source,
   const toolbox::SphericalCoordinate& target
 ) -> double {
-  return std::remainder(target.λ.deg() - source.λ.deg(), 360.0);
+  return toolbox::remainder_deg(target.λ.deg() - source.λ.deg());
 }
 
+/** @brief Evaluate apparent planet-minus-Sun longitude in degrees at JDE(TT). */
 [[nodiscard]] inline auto raw_difference(const Planet planet, const double jde_tt) -> double {
   const auto source = astro::sun::geocentric_coord::apparent(jde_tt);
   const auto target = astro::planet::geocentric_coord::apparent(planet, jde_tt);
   return raw_difference(source, target);
 }
 
+/** @brief Evaluate longitude, planet-minus-Sun difference and great-circle separation at JDE(TT). */
 [[nodiscard]] inline auto sample(const Planet planet, const double jde_tt) -> Sample {
   const auto source = astro::sun::geocentric_coord::apparent(jde_tt);
   const auto target = astro::planet::geocentric_coord::apparent(planet, jde_tt);
   return {
     .jde_tt = jde_tt,
-    .planet_λ = target.λ.deg(),
-    .difference = raw_difference(source, target),
-    .separation = astro::illumination::geometry(source, target).angular_separation.deg(),
+    .planet_λ_deg = target.λ.deg(),
+    .difference_deg = raw_difference(source, target),
+    .separation_deg = astro::illumination::geometry(source, target).angular_separation.deg(),
   };
 }
 
+/** @brief Sample a padded absolute TT lattice, lifting each angle relative to the preceding sample. */
 [[nodiscard]] inline auto samples(
   const Planet planet,
   const SamplingWindow window
@@ -149,16 +156,20 @@ struct CrossingSpec {
     auto current = sample(planet, scan_start + (window.step_days * static_cast<double>(index)));
     if (not result.empty()) {
       const auto& previous = result.back();
-      current.planet_λ = previous.planet_λ
-                       + std::remainder(current.planet_λ - previous.planet_λ, 360.0);
-      current.difference = previous.difference
-                         + std::remainder(current.difference - previous.difference, 360.0);
+      current.planet_λ_deg = previous.planet_λ_deg
+                           + toolbox::remainder_deg(current.planet_λ_deg - previous.planet_λ_deg);
+      current.difference_deg = previous.difference_deg
+                             + toolbox::remainder_deg(current.difference_deg - previous.difference_deg);
     }
     result.push_back(current);
   }
   return result;
 }
 
+/**
+ * @brief Bisect a lifted longitude crossing until both the degree residual and TT bracket width pass.
+ * @note Exact endpoint zeros return before refinement; this differs from the Placidus residual-or-width rule.
+ */
 [[nodiscard]] inline auto refine_crossing(
   const Planet planet,
   const Sample& left_sample,
@@ -167,8 +178,8 @@ struct CrossingSpec {
 ) -> double {
   double left = left_sample.jde_tt;
   double right = right_sample.jde_tt;
-  double left_residual = left_sample.difference - spec.target_difference;
-  const double right_residual = right_sample.difference - spec.target_difference;
+  double left_residual = left_sample.difference_deg - spec.target_difference_deg;
+  const double right_residual = right_sample.difference_deg - spec.target_difference_deg;
   if (left_residual == 0.0) {
     return left;
   }
@@ -188,8 +199,8 @@ struct CrossingSpec {
 
   for (std::size_t iteration = 0; iteration < spec.max_iterations; ++iteration) {
     const double middle = std::midpoint(left, right);
-    const double middle_residual = unwrap_near(raw_difference(planet, middle), spec.target_difference)
-                                 - spec.target_difference;
+    const double middle_residual = toolbox::unwrap_near(raw_difference(planet, middle), spec.target_difference_deg)
+                                 - spec.target_difference_deg;
     if (std::fabs(middle_residual) <= ANGLE_RESIDUAL_TOLERANCE_DEG
         and (right - left) <= TIME_TOLERANCE_DAYS) {
       return middle;
@@ -212,6 +223,10 @@ struct CrossingSpec {
   };
 }
 
+/**
+ * @brief Contract an extremum bracket in TT, then require a strict two-sided objective witness.
+ * @see Kiefer, "Sequential minimax search for a maximum", Proc. Amer. Math. Soc. 4 (1953), 502-506.
+ */
 template <typename Objective>
 [[nodiscard]] inline auto refine_extremum(
   const Planet planet,
@@ -220,43 +235,31 @@ template <typename Objective>
   const bool maximize,
   const Objective& objective
 ) -> double {
-  constexpr double golden_ratio = 0.6180339887498948482;
-  double left = left_jde_tt;
-  double right = right_jde_tt;
-  double lhs = right - (golden_ratio * (right - left));
-  double rhs = left + (golden_ratio * (right - left));
-  double lhs_value = objective(lhs);
-  double rhs_value = objective(rhs);
+  const toolbox::GoldenSectionRules rules {
+    .lower_probe = [](const double lo, const double hi) { return hi - (toolbox::INV_PHI * (hi - lo)); },
+    .move_lower = [maximize](const double lhs, const double rhs) { return maximize ? lhs < rhs : lhs > rhs; },
+    .finished = [](const double width, const double tolerance) { return width <= tolerance; },
+  };
+  const auto bracket = toolbox::golden_section_bracket(
+    objective,
+    left_jde_tt,
+    right_jde_tt,
+    TIME_TOLERANCE_DAYS,
+    MAX_REFINEMENT_ITERATIONS,
+    rules
+  );
 
-  for (std::size_t iteration = 0; iteration < MAX_REFINEMENT_ITERATIONS; ++iteration) {
-    if ((right - left) <= TIME_TOLERANCE_DAYS) {
-      const double result = std::midpoint(left, right);
-      const double width = std::min(WITNESS_HALF_WIDTH_DAYS, (right_jde_tt - left_jde_tt) / 4.0);
-      const double center_value = objective(result);
-      const double before_value = objective(result - width);
-      const double after_value = objective(result + width);
-      const bool bracketed = maximize
-        ? center_value > before_value and center_value > after_value
-        : center_value < before_value and center_value < after_value;
-      if (bracketed) {
-        return result;
-      }
-      break;
-    }
-
-    const bool move_left = maximize ? lhs_value < rhs_value : lhs_value > rhs_value;
-    if (move_left) {
-      left = lhs;
-      lhs = rhs;
-      lhs_value = rhs_value;
-      rhs = left + (golden_ratio * (right - left));
-      rhs_value = objective(rhs);
-    } else {
-      right = rhs;
-      rhs = lhs;
-      rhs_value = lhs_value;
-      lhs = right - (golden_ratio * (right - left));
-      lhs_value = objective(lhs);
+  if (bracket.converged) {
+    const double result = std::midpoint(bracket.lower, bracket.upper);
+    const double width = std::min(WITNESS_HALF_WIDTH_DAYS, (right_jde_tt - left_jde_tt) / 4.0);
+    const double center_value = objective(result);
+    const double before_value = objective(result - width);
+    const double after_value = objective(result + width);
+    const bool bracketed = maximize
+      ? center_value > before_value and center_value > after_value
+      : center_value < before_value and center_value < after_value;
+    if (bracketed) {
+      return result;
     }
   }
 
@@ -270,35 +273,38 @@ template <typename Objective>
   };
 }
 
+/** @brief Insert refined reversals of the lifted difference so a coarse interval can expose two crossings. */
 [[nodiscard]] inline auto crossing_samples(
   const Planet planet,
   const std::vector<Sample>& grid
 ) -> std::vector<Sample> {
   // A coarse interval can hide two near-tangent crossings; insert each refined reversal first.
   auto result = grid;
+  // TODO(slide): inspect three adjacent samples with std::views::slide(3).
   for (std::size_t index = 1; index + 1 < grid.size(); ++index) {
     const auto& before = grid.at(index - 1);
     const auto& current = grid.at(index);
     const auto& after = grid.at(index + 1);
-    const bool maximum = current.difference > before.difference and current.difference > after.difference;
-    const bool minimum = current.difference < before.difference and current.difference < after.difference;
+    const bool maximum = current.difference_deg > before.difference_deg and current.difference_deg > after.difference_deg;
+    const bool minimum = current.difference_deg < before.difference_deg and current.difference_deg < after.difference_deg;
     if (not maximum and not minimum) {
       continue;
     }
 
-    const auto difference = [planet, reference = current.difference](const double jde_tt) {
-      return unwrap_near(raw_difference(planet, jde_tt), reference);
+    const auto difference = [planet, reference = current.difference_deg](const double jde_tt) {
+      return toolbox::unwrap_near(raw_difference(planet, jde_tt), reference);
     };
     const double jde_tt = refine_extremum(planet, before.jde_tt, after.jde_tt, maximum, difference);
     auto extremum = sample(planet, jde_tt);
-    extremum.planet_λ = unwrap_near(extremum.planet_λ, current.planet_λ);
-    extremum.difference = unwrap_near(extremum.difference, current.difference);
+    extremum.planet_λ_deg = toolbox::unwrap_near(extremum.planet_λ_deg, current.planet_λ_deg);
+    extremum.difference_deg = toolbox::unwrap_near(extremum.difference_deg, current.difference_deg);
     result.push_back(extremum);
   }
   std::ranges::sort(result, {}, &Sample::jde_tt);
   return result;
 }
 
+/** @brief Map an unwrapped 90-degree level index to the outer planet's event kind. */
 [[nodiscard]] inline auto outer_kind(const int64_t level_index) -> Kind {
   const int64_t remainder = ((level_index % 4) + 4) % 4;
   switch (remainder) {
@@ -310,6 +316,7 @@ template <typename Objective>
   }
 }
 
+/** @brief Append longitude crossings in grid order; the caller later combines them with extrema. */
 inline auto append_crossings(
   const Planet planet,
   const Category planet_category,
@@ -317,21 +324,22 @@ inline auto append_crossings(
   std::vector<Event>& result
 ) -> void {
   const double spacing = planet_category == Category::INNER ? 360.0 : 90.0;
+  // TODO(pairwise): visit adjacent samples with std::views::pairwise.
   for (std::size_t index = 1; index < grid.size(); ++index) {
     const auto& left = grid.at(index - 1);
     const auto& right = grid.at(index);
-    const double low = std::min(left.difference, right.difference);
-    const double high = std::max(left.difference, right.difference);
+    const double low = std::min(left.difference_deg, right.difference_deg);
+    const double high = std::max(left.difference_deg, right.difference_deg);
     const auto first_level = static_cast<int64_t>(std::ceil(low / spacing));
     const auto last_level = static_cast<int64_t>(std::floor(high / spacing));
 
     for (int64_t level_index = first_level; level_index <= last_level; ++level_index) {
-      const double target_difference = spacing * static_cast<double>(level_index);
+      const double target_difference_deg = spacing * static_cast<double>(level_index);
       const double jde_tt = refine_crossing(
         planet,
         left,
         right,
-        {.target_difference = target_difference}
+        {.target_difference_deg = target_difference_deg}
       );
       Kind kind = outer_kind(level_index);
       if (planet_category == Category::INNER) {
@@ -345,20 +353,22 @@ inline auto append_crossings(
   }
 }
 
+/** @brief Append separation maxima and lifted-longitude turns, not zeros of the seven-point rate. */
 inline auto append_extrema(
   const Planet planet,
   const Category planet_category,
   const std::vector<Sample>& grid,
   std::vector<Event>& result
 ) -> void {
+  // TODO(slide): inspect three adjacent samples with std::views::slide(3).
   for (std::size_t index = 1; index + 1 < grid.size(); ++index) {
     const auto& before = grid.at(index - 1);
     const auto& current = grid.at(index);
     const auto& after = grid.at(index + 1);
 
     if (planet_category == Category::INNER
-        and current.separation > before.separation
-        and current.separation > after.separation) {
+        and current.separation_deg > before.separation_deg
+        and current.separation_deg > after.separation_deg) {
       const auto separation = [planet](const double jde_tt) {
         return astro::planet::observation::geometry(planet, jde_tt).angular_separation.deg();
       };
@@ -369,12 +379,12 @@ inline auto append_extrema(
       result.push_back({ .kind = kind, .jde_tt = jde_tt });
     }
 
-    const bool retrograde = current.planet_λ > before.planet_λ and current.planet_λ > after.planet_λ;
-    const bool direct = current.planet_λ < before.planet_λ and current.planet_λ < after.planet_λ;
+    const bool retrograde = current.planet_λ_deg > before.planet_λ_deg and current.planet_λ_deg > after.planet_λ_deg;
+    const bool direct = current.planet_λ_deg < before.planet_λ_deg and current.planet_λ_deg < after.planet_λ_deg;
     if (retrograde or direct) {
-      const auto longitude = [planet, reference = current.planet_λ](const double jde_tt) {
+      const auto longitude = [planet, reference = current.planet_λ_deg](const double jde_tt) {
         const double wrapped = astro::planet::geocentric_coord::apparent(planet, jde_tt).λ.deg();
-        return unwrap_near(wrapped, reference);
+        return toolbox::unwrap_near(wrapped, reference);
       };
       result.push_back({
         .kind = retrograde ? Kind::STATION_RETROGRADE : Kind::STATION_DIRECT,
@@ -384,6 +394,7 @@ inline auto append_extrema(
   }
 }
 
+/** @brief Test ownership in the UTC year's half-open JDE(TT) window. */
 [[nodiscard]] inline auto in_year(
   const double jde_tt,
   const double start_jde_tt,
@@ -392,6 +403,7 @@ inline auto append_extrema(
   return jde_tt >= start_jde_tt and jde_tt < end_jde_tt;
 }
 
+/** @brief Combine annual event candidates, retain query-owned times and deduplicate consecutive same-kind events. */
 [[nodiscard]] inline auto search(
   const Planet planet,
   const double start_jde_tt,
@@ -411,10 +423,10 @@ inline auto append_extrema(
   std::ranges::sort(candidates, {}, &Event::jde_tt);
   std::vector<Event> result;
   result.reserve(candidates.size());
-  for (const auto& candidate : candidates) {
-    if (not in_year(candidate.jde_tt, start_jde_tt, end_jde_tt)) {
-      continue;
-    }
+  const auto in_window = [start_jde_tt, end_jde_tt](const Event& candidate) {
+    return in_year(candidate.jde_tt, start_jde_tt, end_jde_tt);
+  };
+  for (const auto& candidate : candidates | std::views::filter(in_window)) {
     if (not result.empty()
         and candidate.kind == result.back().kind
         and std::fabs(candidate.jde_tt - result.back().jde_tt) <= DEDUPLICATION_TOLERANCE_DAYS) {
@@ -456,6 +468,11 @@ inline auto append_extrema(
  *       wrapped longitude difference. `STATION_RETROGRADE` marks the direct-to-retrograde turn and
  *       `STATION_DIRECT` the reverse; latitude may still be changing. Inferior conjunctions have
  *       phase angle at least 90°.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 36 (planetary phenomena).
+ * @note These definitions use the position models directly, not Chapter 36's approximate event-time series.
+ * @note Stations here are longitude extrema, not zeros of ephemeris::longitude_rate.
+ *       The interval searches in ephemeris_events.hpp retain their separate rate domain,
+ *       certificates and endpoint policy; see docs/EPHEMERIS_EVENTS.md.
  */
 [[nodiscard]] inline auto events(const Planet planet, const int32_t year) -> std::vector<Event> {
   astro::julian_day::validate_annual_year(year);

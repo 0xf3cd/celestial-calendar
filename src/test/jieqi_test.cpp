@@ -11,6 +11,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <array>
+#include <cstdint>
 #include <cmath>
 #include <algorithm>
 #include <limits>
@@ -117,11 +119,49 @@ TEST(JieQi, GeneratorExclusiveStart) {
   ASSERT_EQ(jq2, Jieqi::春分);
   ASSERT_EQ(jde2, chunfen);
 
-  // The only deterministic way to hit the constructor's roll-over path (`++_year; _jq_index =
-  // 小寒`): no jieqi of the start year lies ahead of 冬至, so the next one is next year's 小寒.
+  // No Jieqi of the start year lies ahead of 冬至, so the pending ordinal is next year's 小寒.
   const auto [jq3, jde3] = JieqiGenerator { jieqi_jde(2025, Jieqi::冬至) }.next();
   ASSERT_EQ(jq3, Jieqi::小寒);
   ASSERT_EQ(jde3, jieqi_jde(2026, Jieqi::小寒));
+}
+
+TEST(JieQi, GeneratorPeekAndOrdinalRollover) {
+  const double start_jde = astro::julian_day::utc_year_start_jde(std::chrono::year { 2024 });
+  JieqiGenerator gen { start_jde };
+
+  for (int32_t year = 2024; year <= 2025; ++year) {
+    for (const auto jq : GREGORIAN_YEAR_JIEQI_LIST) {
+      const JieqiGenerator::JieqiPair expected { .jieqi = jq, .jde = jieqi_jde(year, jq) };
+      ASSERT_EQ(gen.peek(), expected);
+      ASSERT_EQ(gen.peek(), expected);
+      ASSERT_EQ(gen.next(), expected);
+    }
+  }
+}
+
+TEST(JieQi, GeneratorKeepsLinearFirstMatchForNonchronologicalRoots) {
+  // #346: the model's far-future roots are not a sorted-search domain.
+  const double start_jde = astro::julian_day::utc_year_start_jde(std::chrono::year { 11751 }) + 40.0;
+  const double xiaohan = jieqi_jde(11751, Jieqi::小寒);
+  ASSERT_GT(xiaohan, start_jde);
+
+  JieqiGenerator gen { start_jde };
+  ASSERT_EQ(gen.peek().jieqi, Jieqi::小寒);
+  ASSERT_EQ(gen.next().jde, xiaohan);
+  ASSERT_EQ(gen.peek().jieqi, Jieqi::大寒);
+  ASSERT_LT(gen.peek().jde, xiaohan);
+}
+
+TEST(JieQi, GeneratorDefersRolloverEvaluationAndDoesNotAdvanceOnFailure) {
+  double last_jde = -std::numeric_limits<double>::infinity();
+  for (const auto jq : GREGORIAN_YEAR_JIEQI_LIST) {
+    last_jde = std::max(last_jde, jieqi_jde(32766, jq));
+  }
+
+  JieqiGenerator gen { last_jde };
+  ASSERT_THROW(static_cast<void>(gen.peek()), std::invalid_argument);
+  ASSERT_THROW(static_cast<void>(gen.next()), std::invalid_argument);
+  ASSERT_THROW(static_cast<void>(gen.peek()), std::invalid_argument);
 }
 
 TEST(JieQi, NameQuery) {

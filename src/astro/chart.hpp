@@ -102,6 +102,7 @@ inline auto with_delta_t_domain_context(
   }
 }
 
+/** @brief Evaluate positions then rates in target-roster order at one admitted chart JDE(TT). */
 [[nodiscard]] inline auto evaluate_bodies(const double jde_tt) -> decltype(Snapshot::bodies) {
   const auto evaluate = [jde_tt](const astro::ephemeris::Target target) -> BodyState {
     const auto coordinate = astro::ephemeris::position(target, jde_tt);
@@ -137,7 +138,12 @@ inline auto with_delta_t_domain_context(
   const astro::delta_t::Model model = astro::delta_t::DEFAULT_MODEL
 ) -> astro::julian_day::Times {
   if (not civil_dt.ok()) {
-    throw std::invalid_argument { "Invalid civil datetime" };
+    throw std::invalid_argument {
+      std::format(
+        "Invalid civil datetime: {}-{}-{}, time-of-day {} ns",
+        civil_dt.year(), civil_dt.month(), civil_dt.day(), civil_dt.time_of_day.to_duration().count()
+      )
+    };
   }
   if (civil_dt.year() < CIVIL_START_YEAR or civil_dt.year() >= CIVIL_END_YEAR_EXCLUSIVE) {
     throw std::invalid_argument {

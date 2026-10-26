@@ -22,6 +22,7 @@
 #include <limits>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <type_traits>
@@ -31,6 +32,7 @@
 
 namespace astro::detail::event_search {
 
+// Finite dyadic region search, not an existence guarantee; uncertified query-owned contacts still fail.
 inline constexpr uint32_t MAXIMUM_CONTACT_REGION_ATTEMPTS = 24;
 
 /** @brief A scalar observation with an absolute error allowance at the requested abscissa. */
@@ -60,7 +62,10 @@ struct Bounds {
 /** @brief The level's direction across a canonical stationary contact, not the sign of its rate at that time. */
 enum class ContactDirection : uint8_t { INCREASING, DECREASING, TANGENT };
 
-/** @brief Shared limits on scalar-evaluation attempts and candidate slots. */
+/**
+ * @brief Shared limits on scalar-evaluation attempts and candidate slots.
+ * @note One instance covers the whole query, including recursive cells and contact-window probes.
+ */
 struct Budget {
   std::size_t evaluations_remaining;
   std::size_t candidates_remaining;
@@ -164,7 +169,9 @@ struct Grid {
 [[nodiscard]] inline auto shifted(const Value evaluated, const double offset, const double first_derivative) -> Value {
   const bool invalid_allowance = not finite_nonnegative(offset) or not finite_nonnegative(first_derivative);
   if (invalid_allowance) {
-    throw std::invalid_argument { "Invalid event-search abscissa allowance" };
+    throw std::invalid_argument {
+      std::format("Invalid event-search abscissa allowance: offset {}, first-derivative bound {}", offset, first_derivative)
+    };
   }
   if (offset == 0.0) {
     return evaluated;
@@ -182,7 +189,9 @@ requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
 [[nodiscard]] inline auto sample(const Provider& provider, const double jde_tt, Budget& budget) -> Sample {
   if (budget.evaluations_remaining == 0) {
-    throw std::runtime_error { "Event-search evaluation budget exhausted" };
+    throw std::runtime_error {
+      std::format("Event-search evaluation budget exhausted at JDE(TT) {}; {} candidate slots remain", jde_tt, budget.candidates_remaining)
+    };
   }
   --budget.evaluations_remaining;
   const auto evaluated = provider(jde_tt);
@@ -196,6 +205,7 @@ requires std::invocable<const Provider&, double>
 /**
  * @brief Bound |f'| from below using the noisy secant and the curvature bound.
  * @note IEEE binary64 nearest rounding, without reassociation; bounds cover the complete bracket.
+ * @see docs/EPHEMERIS_EVENTS.md, "Scalar cell certificates" (project derivation).
  */
 [[nodiscard]] inline auto derivative_floor(const Sample left, const Sample right, const Bounds bounds) -> double {
   const double width = upper(right.jde_tt - left.jde_tt);
@@ -210,19 +220,31 @@ requires std::invocable<const Provider&, double>
   return lower(secant_floor - slope_error);
 }
 
+/** @brief Test finite, strictly ordered TT endpoints whose difference is finite. */
+[[nodiscard]] inline auto valid_time_span(const double start_jde_tt, const double end_jde_tt) -> bool {
+  return std::isfinite(start_jde_tt) and std::isfinite(end_jde_tt)
+         and start_jde_tt < end_jde_tt and std::isfinite(end_jde_tt - start_jde_tt);
+}
+
 /** @brief Require a finite positive time span and finite nonnegative derivative bounds. */
 inline auto validate_cell(const double start_jde_tt, const double end_jde_tt, const Bounds bounds) -> void {
-  const bool valid_time_span = std::isfinite(start_jde_tt) and std::isfinite(end_jde_tt)
-                              and start_jde_tt < end_jde_tt and std::isfinite(end_jde_tt - start_jde_tt);
   const auto finite_derivatives = [bounds] {
     return finite_nonnegative(bounds.first_derivative) and finite_nonnegative(bounds.second_derivative);
   };
-  if (not valid_time_span or not finite_derivatives()) {
-    throw std::invalid_argument { "Invalid event-search cell or derivative bounds" };
+  if (not valid_time_span(start_jde_tt, end_jde_tt) or not finite_derivatives()) {
+    throw std::invalid_argument {
+      std::format(
+        "Invalid event-search cell [{}, {}] or derivative bounds ({}, {})",
+        start_jde_tt, end_jde_tt, bounds.first_derivative, bounds.second_derivative
+      )
+    };
   }
 }
 
-/** @brief Test sufficient endpoint conditions for a cell to contain no root. */
+/**
+ * @brief Test sufficient endpoint conditions for a cell to contain no root.
+ * @see docs/EPHEMERIS_EVENTS.md, "Scalar cell certificates" (project derivation).
+ */
 [[nodiscard]] inline auto endpoint_exclusion(const Cell& cell, const Bounds bounds) -> bool {
   const int32_t left_sign = sign(cell.left.evaluated);
   if (left_sign == 0 or left_sign != sign(cell.right.evaluated)) {
@@ -274,7 +296,12 @@ inline auto append_candidate(
   std::vector<Candidate>& candidates
 ) -> void {
   if (budget.candidates_remaining == 0) {
-    throw std::runtime_error { "Event-search candidate budget exhausted" };
+    throw std::runtime_error {
+      std::format(
+        "Event-search candidate budget exhausted in [{}, {}] JDE(TT); {} evaluations remain",
+        cell.left.jde_tt, cell.right.jde_tt, budget.evaluations_remaining
+      )
+    };
   }
   --budget.candidates_remaining;
   candidates.push_back({ .left = cell.left, .right = cell.right, .isolation = isolation });
@@ -341,6 +368,8 @@ inline auto visit_cell(
  * @brief Isolate a C2 scalar on a fixed canonical cell, not a query-clipped cell.
  * @note Each value allowance bounds the error at the requested time, including any abscissa shift.
  *       Derivative bounds cover the entire closed cell. Unresolved regions are not event results.
+ * @param maximum_depth Dyadic subdivision cap; 32 levels divide a quarter-day cell below 6e-11 day.
+ *        Observation error can stop certification sooner; the cap retains unresolved candidates.
  */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
@@ -379,7 +408,12 @@ requires std::invocable<const Provider&, double>
     return std::isfinite(observed.longitude.deg()) and finite_nonnegative(observed.error_deg);
   };
   if (not valid_observation(first) or not valid_observation(second)) {
-    throw std::runtime_error { "Invalid event-search longitude observation" };
+    throw std::runtime_error {
+      std::format(
+        "Invalid event-search longitude observations: first {} +/- {} deg, second {} +/- {} deg",
+        first.longitude.deg(), first.error_deg, second.longitude.deg(), second.error_deg
+      )
+    };
   }
   const double first_deg = toolbox::canonical_longitude_difference(first.longitude).deg();
   const double second_deg = toolbox::canonical_longitude_difference(second.longitude).deg();
@@ -400,7 +434,12 @@ requires std::invocable<const Provider&, double>
   const auto evaluated = project_longitude_difference(observed, { .longitude = target, .error_deg = 0.0 });
   const double extent = upper(std::fabs(evaluated.value) + evaluated.error);
   if (extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
-    throw std::runtime_error { "Event-search longitude observation crosses the antipodal cut" };
+    throw std::runtime_error {
+      std::format(
+        "Event-search longitude observation crosses the antipodal cut: {} +/- {} deg at target {} deg",
+        evaluated.value, evaluated.error, target.deg()
+      )
+    };
   }
   return evaluated;
 }
@@ -420,11 +459,18 @@ requires std::invocable<const Provider&, double>
   validate_cell(left.jde_tt, middle.jde_tt, {});
   validate_cell(middle.jde_tt, right.jde_tt, {});
   if (not finite_nonnegative(third_derivative)) {
-    throw std::invalid_argument { "Invalid event-search third-derivative bound" };
+    throw std::invalid_argument {
+      std::format("Invalid event-search third-derivative bound {} in [{}, {}] JDE(TT)", third_derivative, left.jde_tt, right.jde_tt)
+    };
   }
   for (const auto observed : std::array { left.evaluated, middle.evaluated, right.evaluated }) {
     if (not std::isfinite(observed.value) or not finite_nonnegative(observed.error)) {
-      throw std::runtime_error { "Invalid event-search curvature observation" };
+      throw std::runtime_error {
+        std::format(
+          "Invalid event-search curvature observation {} +/- {} in [{}, {}] JDE(TT)",
+          observed.value, observed.error, left.jde_tt, right.jde_tt
+        )
+      };
     }
   }
   const double left_width_lower = lower(middle.jde_tt - left.jde_tt);
@@ -472,23 +518,34 @@ requires std::invocable<const Provider&, double>
 ) -> ContactDirection {
   const auto residual = project_longitude_difference(at_station, { .longitude = target, .error_deg = 0.0 });
   if (residual.value != 0.0) {
-    throw std::runtime_error { "Event-search level is not the canonical stationary longitude" };
+    throw std::runtime_error {
+      std::format("Event-search level {} deg is not the canonical stationary longitude {} deg", target.deg(), at_station.longitude.deg())
+    };
   }
   for (const auto observed : std::array { before, after }) {
     if (not std::isfinite(observed.value) or not finite_nonnegative(observed.error)) {
-      throw std::runtime_error { "Invalid event-search contact-side observation" };
+      throw std::runtime_error {
+        std::format("Invalid event-search contact-side observation {} +/- {} at target {} deg", observed.value, observed.error, target.deg())
+      };
     }
   }
   const int32_t before_sign = sign(before);
   const int32_t after_sign = sign(after);
   if (before_sign == 0 or after_sign == 0) {
-    throw std::runtime_error { "Event-search contact has unresolved side observations" };
+    throw std::runtime_error {
+      std::format(
+        "Event-search contact at {} deg has unresolved sides: {} +/- {}, {} +/- {}",
+        target.deg(), before.value, before.error, after.value, after.error
+      )
+    };
   }
   if (before_sign != after_sign) {
     return before_sign < after_sign ? ContactDirection::INCREASING : ContactDirection::DECREASING;
   }
   if (curvature != before_sign) {
-    throw std::runtime_error { "Event-search contact has no matching curvature certificate" };
+    throw std::runtime_error {
+      std::format("Event-search contact at {} deg has curvature certificate {}, expected {}", target.deg(), curvature, before_sign)
+    };
   }
   return ContactDirection::TANGENT;
 }
@@ -525,7 +582,12 @@ requires std::invocable<const Provider&, double>
   const double middle_extent = upper(std::fabs(middle.evaluated.value) + middle.evaluated.error);
   const double cell_extent = upper(middle_extent + excursion);
   if (cell_extent >= toolbox::LONGITUDE_PERIOD_DEG / 2.0) {
-    throw std::runtime_error { "Event-search longitude cell has no continuous-lift certificate" };
+    throw std::runtime_error {
+      std::format(
+        "Event-search longitude cell [{}, {}] JDE(TT) has no continuous-lift certificate: extent {} deg at target {} deg",
+        cell.start_jde_tt, cell.end_jde_tt, cell_extent, canonical_target.deg()
+      )
+    };
   }
   const auto lifted = [&](const double jde_tt) { return longitude_residual(provider(jde_tt), canonical_target); };
   return isolate_cell(lifted, cell.start_jde_tt, cell.end_jde_tt, bounds, budget, ownership);
@@ -552,7 +614,12 @@ requires std::invocable<const Provider&, double>
   if (radius <= time_resolution) {
     return true;
   }
-  throw std::runtime_error { "Event-search evaluation error prevents time refinement" };
+  throw std::runtime_error {
+    std::format(
+      "Event-search evaluation error at JDE(TT) {} requires radius {}, exceeding time resolution {} days (slope floor {})",
+      observed.jde_tt, radius, time_resolution, minimum_slope
+    )
+  };
 }
 
 /**
@@ -613,10 +680,19 @@ requires std::invocable<const Provider&, double>
       right = middle;
     }
   }
-  throw std::runtime_error { "Event-search refinement budget exhausted" };
+  throw std::runtime_error {
+    std::format(
+      "Event-search refinement exhausted {} iterations in [{}, {}] JDE(TT) at time resolution {} days; {} evaluations remain",
+      maximum_iterations, left.jde_tt, right.jde_tt, time_resolution, budget.evaluations_remaining
+    )
+  };
 }
 
-/** @brief Refine a certified unique root to the requested time resolution or adjacent doubles. */
+/**
+ * @brief Refine a certified unique root to the requested time resolution or adjacent doubles.
+ * @param maximum_iterations Work cap; 96 bisections exceed the binary64 significand width, but cannot
+ *        overcome unresolved observation error. Exhaustion throws without a post-budget acceptance check.
+ */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
@@ -631,11 +707,18 @@ requires std::invocable<const Provider&, double>
 ) -> Root {
   const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
   if (invalid_request) {
-    throw std::invalid_argument { "Invalid event-search refinement request" };
+    throw std::invalid_argument {
+      std::format(
+        "Invalid event-search refinement request in [{}, {}] JDE(TT): isolation {}, time resolution {} days",
+        candidate.left.jde_tt, candidate.right.jde_tt, static_cast<uint32_t>(candidate.isolation), time_resolution
+      )
+    };
   }
   const double floor = derivative_floor(candidate.left, candidate.right, bounds);
   if (not (floor > 0.0)) {
-    throw std::runtime_error { "Event-search root has no derivative certificate" };
+    throw std::runtime_error {
+      std::format("Event-search root in [{}, {}] JDE(TT) has no positive derivative certificate: {}", candidate.left.jde_tt, candidate.right.jde_tt, floor)
+    };
   }
   const bool increasing = candidate.right.evaluated.value > candidate.left.evaluated.value;
   if (exact_zero(candidate.left.evaluated)) {
@@ -647,7 +730,13 @@ requires std::invocable<const Provider&, double>
   const int32_t left_sign = sign(candidate.left.evaluated);
   const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
   if (not robustly_bracketed) {
-    throw std::runtime_error { "Event-search root is not bracketed by robust signs" };
+    throw std::runtime_error {
+      std::format(
+        "Event-search root in [{}, {}] JDE(TT) is not bracketed by robust signs: {} +/- {}, {} +/- {}",
+        candidate.left.jde_tt, candidate.right.jde_tt, candidate.left.evaluated.value, candidate.left.evaluated.error,
+        candidate.right.evaluated.value, candidate.right.evaluated.error
+      )
+    };
   }
   return refine_bracket(provider, candidate, floor, budget, time_resolution, maximum_iterations);
 }
@@ -681,14 +770,18 @@ requires std::invocable<const Provider&, double>
   const double spacing = upper(magnitude) - magnitude;
   const bool invalid_width = not finite_nonnegative(grid.cell_width_tt_days) or grid.cell_width_tt_days < spacing;
   if (invalid_width) {
-    throw std::invalid_argument { "Event-search grid width cannot represent distinct cells" };
+    throw std::invalid_argument {
+      std::format("Event-search grid cannot represent distinct cells: width {} days, spacing {} days", grid.cell_width_tt_days, spacing)
+    };
   }
   const double span = grid.domain.end_jde_tt - grid.domain.start_jde_tt;
   const double approximate_count = std::ceil(span / grid.cell_width_tt_days);
   const double count = std::max(1.0, approximate_count);
   const bool invalid_count = not std::isfinite(count) or count >= std::numeric_limits<uint32_t>::max();
   if (invalid_count) {
-    throw std::invalid_argument { "Event-search grid exceeds the cell-index range" };
+    throw std::invalid_argument {
+      std::format("Event-search grid needs {} cells for span {} days at width {} days, exceeding uint32_t indexing", count, span, grid.cell_width_tt_days)
+    };
   }
 
   auto cell_count = static_cast<uint32_t>(count);
@@ -699,7 +792,9 @@ requires std::invocable<const Provider&, double>
     --cell_count;
   }
   if (empty_tail()) {
-    throw std::invalid_argument { "Event-search grid has indistinguishable terminal cells" };
+    throw std::invalid_argument {
+      std::format("Event-search grid has indistinguishable terminal cells at JDE(TT) {} with width {} days", grid.domain.end_jde_tt, grid.cell_width_tt_days)
+    };
   }
   return cell_count;
 }
@@ -725,7 +820,9 @@ requires std::invocable<const Provider&, double>
   const bool contains_time = grid_time(grid, index, cell_count) <= jde_tt
                             and jde_tt < grid_time(grid, index + 1, cell_count);
   if (not contains_time) {
-    throw std::runtime_error { "Event-search time cannot be assigned to a canonical cell" };
+    throw std::runtime_error {
+      std::format("Event-search JDE(TT) {} cannot be assigned to cell {} of {} in [{}, {}]", jde_tt, index, cell_count, grid.domain.start_jde_tt, grid.domain.end_jde_tt)
+    };
   }
   return index;
 }
@@ -738,7 +835,12 @@ inline auto visit_query_cells(const Grid grid, const Interval query, const Visit
   const bool outside_domain = query.start_jde_tt < grid.domain.start_jde_tt
                              or query.end_jde_tt > grid.domain.end_jde_tt;
   if (outside_domain) {
-    throw std::invalid_argument { "Event-search query leaves the grid domain" };
+    throw std::invalid_argument {
+      std::format(
+        "Event-search query [{}, {}) JDE(TT) leaves grid domain [{}, {}]",
+        query.start_jde_tt, query.end_jde_tt, grid.domain.start_jde_tt, grid.domain.end_jde_tt
+      )
+    };
   }
   const uint32_t cell_count = grid_cell_count(grid);
   const uint32_t containing = containing_cell(grid, cell_count, query.start_jde_tt);
@@ -770,24 +872,34 @@ inline auto validate_reporting_grid(const Grid grid, const double quantum_tt_day
     return;
   }
   if (not finite_nonnegative(quantum_tt_days)) {
-    throw std::invalid_argument { "Invalid event-search reporting quantum" };
+    throw std::invalid_argument { std::format("Invalid event-search reporting quantum {} TT days", quantum_tt_days) };
   }
   int32_t exponent = 0;
   const double fraction = std::frexp(quantum_tt_days, &exponent);
   const double magnitude = std::max(std::fabs(grid.domain.start_jde_tt), std::fabs(grid.domain.end_jde_tt));
   const bool exact_indices = fraction == 0.5 and magnitude / quantum_tt_days <= 0x1p53;
   if (not exact_indices) {
-    throw std::invalid_argument { "Event-search reporting lattice cannot represent exact indices" };
+    throw std::invalid_argument {
+      std::format("Event-search reporting lattice cannot represent exact indices: quantum {} TT days, maximum |JDE| {}", quantum_tt_days, magnitude)
+    };
   }
   const bool fixed_boundaries = std::remainder(grid.domain.start_jde_tt, quantum_tt_days) == 0.0
                                 and std::remainder(grid.domain.end_jde_tt, quantum_tt_days) == 0.0
                                 and std::remainder(grid.cell_width_tt_days, quantum_tt_days) == 0.0;
   if (not fixed_boundaries) {
-    throw std::invalid_argument { "Event-search reporting lattice must preserve canonical cell boundaries" };
+    throw std::invalid_argument {
+      std::format(
+        "Event-search reporting quantum {} TT days does not preserve grid [{}, {}] at width {} days",
+        quantum_tt_days, grid.domain.start_jde_tt, grid.domain.end_jde_tt, grid.cell_width_tt_days
+      )
+    };
   }
 }
 
-/** @brief Append only query-owned roots; intersecting unresolved regions and aliased root times fail. */
+/**
+ * @brief Append only query-owned roots; intersecting unresolved regions and aliased root times fail.
+ * @note roots retains earlier cells so the strict-order guard also covers cell seams.
+ */
 template <typename Provider>
 requires std::invocable<const Provider&, double>
      and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
@@ -808,7 +920,12 @@ inline auto append_interval_roots(
       continue;
     }
     if (candidate.isolation != Isolation::UNIQUE) {
-      throw std::runtime_error { "Unresolved event-search region intersects the query" };
+      throw std::runtime_error {
+        std::format(
+          "Unresolved event-search region intersects the query: region [{}, {}], query [{}, {}) JDE(TT)",
+          candidate.left.jde_tt, candidate.right.jde_tt, query.start_jde_tt, query.end_jde_tt
+        )
+      };
     }
     const auto refined = refine(provider, candidate, bounds, budget, time_resolution);
     const Root root {
@@ -820,7 +937,9 @@ inline auto append_interval_roots(
       continue;
     }
     if (not roots.empty() and root.jde_tt <= roots.back().jde_tt) {
-      throw std::runtime_error { "Event-search roots cannot be separated at the reported time precision" };
+      throw std::runtime_error {
+        std::format("Event-search roots at JDE(TT) {} and {} cannot be separated with reporting quantum {} days", roots.back().jde_tt, root.jde_tt, report_quantum_tt_days)
+      };
     }
     roots.push_back(root);
   }
@@ -840,7 +959,7 @@ struct RegionDirection {
 };
 
 /**
- * @brief Return the fixed neighbour window of a canonical cell, clipped to the grid domain.
+ * @brief Return the fixed neighbor window of a canonical cell, clipped to the grid domain.
  * @note Depends only on the cell index, never on the query, budget or target.
  */
 [[nodiscard]] inline auto contact_window(
@@ -856,7 +975,7 @@ struct RegionDirection {
 }
 
 /**
- * @brief Certify one exact-level numerical contact, trying its cell before its fixed neighbour window.
+ * @brief Certify one exact-level numerical contact, trying its cell before its fixed neighbor window.
  * @note The stationary instant uses the cell's rate provider and bounds, as stations() does. Window samples use
  *       providers and bounds covering the whole window, which never extends past a grid-domain endpoint.
  */
@@ -974,8 +1093,8 @@ requires std::invocable<const LongitudeProvider&, double>
       return { .station_jde_tt = jde_tt, .certified = true, .contact = std::nullopt };
     }
   }
-  const bool has_neighbour = window.start_jde_tt < cell.start_jde_tt or cell.end_jde_tt < window.end_jde_tt;
-  if (not has_neighbour) {
+  const bool has_neighbor = window.start_jde_tt < cell.start_jde_tt or cell.end_jde_tt < window.end_jde_tt;
+  if (not has_neighbor) {
     return { .station_jde_tt = jde_tt, .certified = false, .contact = std::nullopt };
   }
   // Tried only after every in-cell region failed, so in-cell successes keep their regions; a seam station needs this.
@@ -1043,7 +1162,12 @@ requires std::invocable<const LongitudeProvider&, double>
     );
     const bool query_owned = query.start_jde_tt <= outcome.station_jde_tt and outcome.station_jde_tt < query.end_jde_tt;
     if (query_owned and not outcome.certified) {
-      throw std::runtime_error { "Event-search numerical contact has no certified two-sided extremum region" };
+      throw std::runtime_error {
+        std::format(
+          "Event-search numerical contact has no certified two-sided extremum region at JDE(TT) {}; cell [{}, {}], window [{}, {}]",
+          outcome.station_jde_tt, cell.start_jde_tt, cell.end_jde_tt, window.start_jde_tt, window.end_jde_tt
+        )
+      };
     }
     if (outcome.contact.has_value()) {
       contacts.push_back(*outcome.contact);
@@ -1106,25 +1230,27 @@ requires std::invocable<const Contacts&, Interval, Interval>
   visit_query_cells(grid, query, [&](const Interval cell) {
     visited.push_back(containing_cell(grid, cell_count, cell.start_jde_tt));
   });
+
   const uint32_t first_cell = visited.at(0);
   const uint32_t last_cell = visited.at(visited.size() - 1);
   const uint32_t lookahead_first = first_cell == 0 ? 0 : first_cell - 1;
   const uint32_t lookahead_last = std::min(last_cell + 1, cell_count - 1);
+
   const auto cell_at = [&](const uint32_t index) -> Interval {
     return { .start_jde_tt = grid_time(grid, index, cell_count), .end_jde_tt = grid_time(grid, index + 1, cell_count) };
   };
+
   std::vector<std::vector<NumericalContact>> owned;
   for (uint32_t index = lookahead_first; index <= lookahead_last; ++index) {
     owned.push_back(contacts(cell_at(index), contact_window(grid, index, cell_count)));
   }
-  std::vector<LongitudeRoot> results;
-  for (const auto& found : owned) {
-    for (const auto contact : found) {
-      if (query.start_jde_tt <= contact.root.jde_tt and contact.root.jde_tt < query.end_jde_tt) {
-        results.push_back(contact.root);
-      }
-    }
-  }
+
+  const auto query_owned = [query](const NumericalContact& contact) {
+    return query.start_jde_tt <= contact.root.jde_tt and contact.root.jde_tt < query.end_jde_tt;
+  };
+  auto results = owned | std::views::join | std::views::filter(query_owned)
+                      | std::views::transform(&NumericalContact::root) | std::ranges::to<std::vector>();
+
   for (const uint32_t index : visited) {
     const auto cell = cell_at(index);
     std::vector<Interval> exclusions;
@@ -1141,12 +1267,19 @@ requires std::invocable<const Contacts&, Interval, Interval>
         }
       }
     }
+
     std::ranges::sort(exclusions, {}, &Interval::start_jde_tt);
-    for (std::size_t position = 1; position < exclusions.size(); ++position) {
-      if (exclusions.at(position).start_jde_tt < exclusions.at(position - 1).end_jde_tt) {
-        throw std::runtime_error { "Event-search numerical contact brackets overlap" };
-      }
+    const auto overlaps = [](const Interval left, const Interval right) {
+      return right.start_jde_tt < left.end_jde_tt;
+    };
+    // NOLINTNEXTLINE(readability-qualified-auto): Iterator representation varies by standard library.
+    const auto overlap = std::ranges::adjacent_find(exclusions, overlaps);
+    if (overlap != exclusions.end()) {
+      throw std::runtime_error {
+        std::format("Event-search numerical contact brackets overlap after [{}, {}] JDE(TT)", overlap->start_jde_tt, overlap->end_jde_tt)
+      };
     }
+
     for (const auto crossing : crossings(cell, std::span<const Interval> { exclusions })) {
       results.push_back({
         .jde_tt = crossing.jde_tt,
@@ -1154,11 +1287,17 @@ requires std::invocable<const Contacts&, Interval, Interval>
       });
     }
   }
+
   std::ranges::sort(results, {}, &LongitudeRoot::jde_tt);
-  for (std::size_t position = 1; position < results.size(); ++position) {
-    if (results.at(position).jde_tt <= results.at(position - 1).jde_tt) {
-      throw std::runtime_error { "Event-search contacts cannot be separated at the reported time precision" };
-    }
+  const auto unordered = [](const LongitudeRoot left, const LongitudeRoot right) {
+    return right.jde_tt <= left.jde_tt;
+  };
+  // NOLINTNEXTLINE(readability-qualified-auto): Iterator representation varies by standard library.
+  const auto collision = std::ranges::adjacent_find(results, unordered);
+  if (collision != results.end()) {
+    throw std::runtime_error {
+      std::format("Event-search contacts cannot be separated at the reported time precision after JDE(TT) {}", collision->jde_tt)
+    };
   }
   return results;
 }

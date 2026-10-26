@@ -20,6 +20,7 @@
 #include "sun.hpp"
 #include "earth.hpp"
 #include "julian_day.hpp"
+#include "geolocation.hpp"
 
 #include "datetime.hpp"
 
@@ -102,17 +103,12 @@ namespace detail {
   const calendar::Datetime& utc_dt,
   const toolbox::AngleDeg& longitude
 ) -> calendar::Datetime {
-  const double lon = longitude.deg();
-  if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
-    throw std::invalid_argument {
-      std::format("Argument `longitude` out of range [-180, 180], got {}", lon)
-    };
-  }
+  astro::geolocation::validate_longitude(longitude, "longitude");
 
   const auto e = equation_of_time(astro::julian_day::utc_to_jde(utc_dt));
   return calendar::add_seconds(
     utc_dt,
-    (lon + e.deg()) * SECONDS_OF_TIME_PER_DEGREE
+    (longitude.deg() + e.deg()) * SECONDS_OF_TIME_PER_DEGREE
   );
 }
 

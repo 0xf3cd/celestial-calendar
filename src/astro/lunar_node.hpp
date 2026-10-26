@@ -42,6 +42,7 @@ inline constexpr double END_JDE_TT = 2488069.5;
 
 namespace detail {
 
+/** @brief Validate node identity before finite JDE(TT) and the half-open position window. */
 inline auto validate(const Node node, const double jde_tt) -> void {
   switch (node) {
     case Node::MEAN_ASCENDING:

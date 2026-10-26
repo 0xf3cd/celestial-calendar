@@ -13,6 +13,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <concepts>
@@ -21,6 +22,7 @@
 #include <format>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -206,9 +208,8 @@ namespace detail {
  * @throw std::invalid_argument If latitude ∉ [-90°, 90°] or longitude ∉ [-180°, 180°],
  *        or either is not finite.
  */
-inline void validate(const GeoLocation& location) {
+inline auto validate(const GeoLocation& location) -> void {
   const double lat = location.latitude.deg();
-  const double lon = location.longitude.deg();
 
   if (not std::isfinite(lat) or lat < -90.0 or lat > 90.0) {
     throw std::invalid_argument {
@@ -216,11 +217,7 @@ inline void validate(const GeoLocation& location) {
     };
   }
 
-  if (not std::isfinite(lon) or lon < -180.0 or lon > 180.0) {
-    throw std::invalid_argument {
-      std::format("Argument `location.longitude` out of range [-180, 180], got {}", lon)
-    };
-  }
+  astro::geolocation::validate_longitude(location.longitude, "location.longitude");
 }
 
 /**
@@ -291,20 +288,11 @@ template <BodyProvider P>
 
 /**
  * @brief Find the argmin of a unimodal function on [a, b] by golden-section search.
- * @note Derivative-free and unconditionally convergent — the altitude curve's derivative is
- *       not written by hand anywhere in this engine, and this keeps it that way. Converges
- *       to a bracket endpoint when the function is monotonic on [a, b] (polar-boundary arcs).
- * @note In the ordinary part of the date range the loop ends on `tolerance` (≤ 40 iterations
- *       for any bracket used here); the ITERATION CAP is the guarantee, not the normal exit:
- *       once the JDE magnitude passes 2²³ (≈ year 18255) the double ulp exceeds
- *       `EXTREMUM_SEARCH_TOLERANCE_DAYS`, the bracket can never shrink to the tolerance, and
- *       without a cap the loop hangs forever (observed inside the declared domain). After
- *       the cap the midpoint of the final, ulp-wide bracket is returned — the best answer
- *       representable at that magnitude.
+ * @note Derivative-free; a monotone objective contracts toward an endpoint, as on polar-boundary arcs.
+ * @note At |JDE| >= 2²³ the double ULP exceeds the default tolerance, so contraction can stall.
+ *       The 64-update cap still terminates and returns `(lower + upper) / 2` for the final bracket.
  */
-// The `_jde` suffixes and the leading `f` carry the contract at the call site;
-// `a`/`b`/`tolerance` are three adjacent doubles by design.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Mathematical a/b endpoints and named tolerance are scalar TT-day inputs.
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
@@ -314,34 +302,14 @@ requires std::invocable<const Func&, double>
   const double b,
   const double tolerance = EXTREMUM_SEARCH_TOLERANCE_DAYS
 ) -> double {
-  constexpr double INV_PHI = 0.61803398874989484820; // (√5 − 1)/2
-  constexpr double INV_PHI_SQ = 0.38196601125010515180; // (3 − √5)/2
-  constexpr int MAX_ITERATIONS = 64; // ≥ the 40 any bracket/tolerance here needs (0.2-day
-                                     // bracket at 1e-9); see the @note above.
-
-  double lo = a;
-  double hi = b;
-  double x1 = lo + (INV_PHI_SQ * (hi - lo));
-  double x2 = lo + (INV_PHI * (hi - lo));
-  double f1 = f(x1);
-  double f2 = f(x2);
-
-  for (int i = 0; i < MAX_ITERATIONS and hi - lo > tolerance; ++i) {
-    if (f1 < f2) {
-      hi = x2;
-      x2 = x1;
-      f2 = f1;
-      x1 = lo + (INV_PHI_SQ * (hi - lo));
-      f1 = f(x1);
-    } else {
-      lo = x1;
-      x1 = x2;
-      f1 = f2;
-      x2 = lo + (INV_PHI * (hi - lo));
-      f2 = f(x2);
-    }
-  }
-  return (lo + hi) / 2.0;
+  constexpr std::size_t MAX_ITERATIONS = 64; // More than the 40 updates a 0.2-day bracket at 1e-9 needs.
+  const toolbox::GoldenSectionRules rules {
+    .lower_probe = [](const double lo, const double hi) { return lo + (toolbox::INV_PHI_SQ * (hi - lo)); },
+    .move_lower = [](const double lhs, const double rhs) { return not (lhs < rhs); },
+    .finished = [](const double width, const double tol) { return not (width > tol); },
+  };
+  const auto bracket = toolbox::golden_section_bracket(f, a, b, tolerance, MAX_ITERATIONS, rules);
+  return (bracket.lower + bracket.upper) / 2.0;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
@@ -351,6 +319,92 @@ struct AltitudeExtremum {
   bool is_minimum;
   double altitude_deg;
 };
+
+inline constexpr std::size_t EXTREMUM_SCAN_CELLS = 96; // 15-minute cells in a one-day window.
+using AltitudeGrid = std::array<double, EXTREMUM_SCAN_CELLS + 1>;
+
+/** @brief Sample every grid endpoint in increasing TT order, including both window ends. */
+template <typename Func>
+[[nodiscard]] inline auto altitude_grid(
+  const Func& f,
+  const double start_jde_tt,
+  const double step_days
+) -> AltitudeGrid {
+  AltitudeGrid values {};
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    values.at(index) = f(start_jde_tt + (static_cast<double>(index) * step_days));
+  }
+  return values;
+}
+
+/** @brief Refine strict direction changes; a flat plateau does not define an interior extremum. */
+template <typename Func>
+[[nodiscard]] inline auto interior_extrema(
+  const Func& f,
+  const double start_jde_tt,
+  const double step_days,
+  const AltitudeGrid& values
+) -> std::vector<AltitudeExtremum> {
+  std::vector<AltitudeExtremum> extrema;
+  // TODO(slide): inspect three adjacent grid values with std::views::slide(3).
+  for (std::size_t index = 1; index < EXTREMUM_SCAN_CELLS; ++index) {
+    const double prev = values.at(index - 1);
+    const double curr = values.at(index);
+    const double next = values.at(index + 1);
+    const bool is_min = (curr < prev) and (curr < next);
+    const bool is_max = (curr > prev) and (curr > next);
+    if (not is_min and not is_max) {
+      continue;
+    }
+
+    const double lo = start_jde_tt + (static_cast<double>(index - 1) * step_days);
+    const double hi = start_jde_tt + (static_cast<double>(index + 1) * step_days);
+    const double jde = is_min ? golden_section_argmin(f, lo, hi)
+                             : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
+    extrema.push_back({ .jde = jde, .is_minimum = is_min, .altitude_deg = f(jde) });
+  }
+  return extrema;
+}
+
+/**
+ * @brief Probe a cell with a missing outer grid neighbor for an interior minimum and maximum.
+ * @note A candidate must beat both endpoints. Only same-kind extrema within the endpoint exclusion
+ *       distance count as duplicates; distinct extrema may share a cell.
+ */
+template <typename Func>
+inline auto append_edge_extrema(
+  const Func& f,
+  const double lo_jde_tt,
+  const double hi_jde_tt,
+  std::vector<AltitudeExtremum>& extrema
+) -> void {
+  for (const bool want_min : { true, false }) {
+    const double jde = want_min
+      ? golden_section_argmin(f, lo_jde_tt, hi_jde_tt, EDGE_PROBE_TOLERANCE_DAYS)
+      : golden_section_argmin([&f](const double t) { return -f(t); }, lo_jde_tt, hi_jde_tt, EDGE_PROBE_TOLERANCE_DAYS);
+
+    // Excluding endpoints needs more than half the search tolerance: a monotone argmin can
+    // stop that close to the cell end. Keep this epsilon coupled to EDGE_PROBE_TOLERANCE_DAYS.
+    constexpr double EDGE_EPSILON_DAYS = 1e-6;
+    if (jde - lo_jde_tt <= EDGE_EPSILON_DAYS or hi_jde_tt - jde <= EDGE_EPSILON_DAYS) {
+      continue;
+    }
+    const double value = f(jde);
+    const bool beats = want_min
+      ? (value < f(lo_jde_tt) and value < f(hi_jde_tt))
+      : (value > f(lo_jde_tt) and value > f(hi_jde_tt));
+    if (not beats) {
+      continue;
+    }
+
+    const bool duplicate = std::ranges::any_of(extrema, [&](const AltitudeExtremum& extremum) {
+      return extremum.is_minimum == want_min and std::fabs(extremum.jde - jde) < EDGE_EPSILON_DAYS;
+    });
+    if (not duplicate) {
+      extrema.push_back({ .jde = jde, .is_minimum = want_min, .altitude_deg = value });
+    }
+  }
+}
 
 /**
  * @brief Find every local extremum of the altitude curve on [a, b], in time order.
@@ -369,80 +423,15 @@ requires std::invocable<const Func&, double>
   const double a,
   const double b
 ) -> std::vector<AltitudeExtremum> {
-  constexpr int CELLS = 96; // 15 min on a 1-day window.
-  const double step = (b - a) / CELLS;
+  const double step = (b - a) / static_cast<double>(EXTREMUM_SCAN_CELLS);
+  const auto values = altitude_grid(f, a, step);
+  auto extrema = interior_extrema(f, a, step, values);
 
-  std::vector<double> values(static_cast<std::size_t>(CELLS) + 1);
-  for (int i = 0; i <= CELLS; ++i) {
-    values[static_cast<std::size_t>(i)] = f(a + (i * step));
-  }
+  append_edge_extrema(f, a, a + step, extrema);
+  append_edge_extrema(f, b - step, b, extrema);
 
-  std::vector<AltitudeExtremum> extrema;
-  for (int i = 1; i < CELLS; ++i) {
-    const auto idx = static_cast<std::size_t>(i);
-    const double prev = values[idx - 1];
-    const double curr = values[idx];
-    const double next = values[idx + 1];
-    // Strict on both sides: a non-strict comparison fires on the edge of a flat plateau
-    // (e.g. exp() tails underflowing to exact zeros), manufacturing a spurious extremum
-    // out of numerical noise.
-    const bool is_min = (curr < prev) and (curr < next);
-    const bool is_max = (curr > prev) and (curr > next);
-    if (not is_min and not is_max) {
-      continue;
-    }
-
-    const double lo = a + ((i - 1) * step);
-    const double hi = a + ((i + 1) * step);
-    const double jde = is_min ? golden_section_argmin(f, lo, hi)
-                              : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi);
-    extrema.push_back({ .jde = jde, .is_minimum = is_min, .altitude_deg = f(jde) });
-  }
-
-  // Edge cells: an extremum inside the first or last cell has no grid neighbor on one side,
-  // so the direction check above can miss it — routinely, on lunar days, and it is
-  // exactly the band a grazing h₀ query asks about). Probe both edge cells
-  // directly; a candidate counts only if it lands strictly inside the cell and beats both
-  // cell ends. Skip duplicates of grid-found extrema (a bump near the cell boundary shows
-  // up in both) — same kind and sub-second distance, nothing broader: two genuinely
-  // distinct extrema can share one cell (a whole-cell or kind-blind radius would eat them).
-  const auto probe_edge_cell = [&](const double lo, const double hi) {
-    for (const bool want_min : { true, false }) {
-      const double jde = want_min
-        ? golden_section_argmin(f, lo, hi, EDGE_PROBE_TOLERANCE_DAYS)
-        : golden_section_argmin([&f](const double t) { return -f(t); }, lo, hi, EDGE_PROBE_TOLERANCE_DAYS);
-      // The loop exits with (hi − lo) ≤ tolerance, so the returned midpoint sits within
-      // tolerance/2 of the true extremum — and of the cell end, when the extremum IS the
-      // endpoint. "Strictly inside" therefore needs an epsilon larger than tolerance/2;
-      // EDGE_EPSILON_DAYS and EDGE_PROBE_TOLERANCE_DAYS are tied by that constraint
-      // (currently 2x that floor), and loosening the tolerance without the epsilon breaks it.
-      constexpr double EDGE_EPSILON_DAYS = 1e-6;
-      if (jde - lo <= EDGE_EPSILON_DAYS or hi - jde <= EDGE_EPSILON_DAYS) {
-        continue;
-      }
-      const double v = f(jde);
-      const bool beats = want_min ? (v < f(lo) and v < f(hi)) : (v > f(lo) and v > f(hi));
-      if (not beats) {
-        continue;
-      }
-      const bool duplicate = std::ranges::any_of(extrema, [&](const AltitudeExtremum& e) {
-        return e.is_minimum == want_min and std::fabs(e.jde - jde) < EDGE_EPSILON_DAYS;
-      });
-      if (duplicate) {
-        continue;
-      }
-      extrema.push_back({ .jde = jde, .is_minimum = want_min, .altitude_deg = v });
-    }
-  };
-  probe_edge_cell(a, a + step);
-  probe_edge_cell(b - step, b);
-
-  // The partition in `calculate_day` consumes these in time order. The collection order is
-  // NOT time order: the grid loop emits in order, but the edge probes append afterwards —
-  // a first-cell candidate lands behind every grid-found extremum even when it precedes
-  // them all. Sorting is what makes the partition's monotone-segment premise hold.
+  // Edge probes append out of time order; the monotone partition consumes sorted extrema.
   std::ranges::sort(extrema, {}, &AltitudeExtremum::jde);
-
   return extrema;
 }
 
@@ -474,16 +463,25 @@ template <BodyProvider P>
   return golden_section_argmin(f, center - MIN_SEARCH_HALF_WIDTH_DAYS, center + MIN_SEARCH_HALF_WIDTH_DAYS);
 }
 
+/** @brief Reject a named non-finite angle or one outside [-90°, 90°]. */
+inline auto validate_pm90(const char* name, const double angle_deg) -> void {
+  if (not std::isfinite(angle_deg) or angle_deg < -90.0 or angle_deg > 90.0) {
+    throw std::invalid_argument {
+      std::format("Argument `{}` out of range [-90, 90], got {}", name, angle_deg)
+    };
+  }
+}
+
 /**
  * @brief Validate `rise_set_jde`'s inputs.
  * @throw std::invalid_argument If `transit_jde_tt` is not finite, `location` is out of range, or
  *        `h0` is not finite or outside [-90°, 90°].
  */
-inline void validate_rise_set_inputs(
+inline auto validate_rise_set_inputs(
   const double transit_jde_tt,
   const GeoLocation& location,
   const toolbox::AngleDeg& h0
-) {
+) -> void {
   validate(location);
 
   if (not std::isfinite(transit_jde_tt)) {
@@ -491,11 +489,7 @@ inline void validate_rise_set_inputs(
       std::format("Argument `transit_jde_tt` is not finite, got {}", transit_jde_tt)
     };
   }
-  if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
-    throw std::invalid_argument {
-      std::format("Argument `h0` out of range [-90, 90], got {}", h0.deg())
-    };
-  }
+  validate_pm90("h0", h0.deg());
 }
 
 /** @brief A refined crossing and the |altitude − h₀| residual it left, in degrees. */
@@ -515,8 +509,7 @@ struct Solved {
  *         otherwise the refined root plus its residual. The residual verdict is the caller's:
  *         a straddle proves a root exists, so what a rejection *means* depends on the bracket.
  */
-// The `_jde` suffixes carry the contract at the call site.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): lo_jde/hi_jde distinguish the ordered TT bracket endpoints.
 template <typename Func>
 requires std::invocable<const Func&, double>
      and std::convertible_to<std::invoke_result_t<const Func&, double>, double>
@@ -571,6 +564,114 @@ template <BodyProvider P>
   );
 }
 
+/** @brief The TT endpoints of one half-open UT1 calendar day. */
+struct DayWindow {
+  double start_jde_tt;
+  double end_jde_tt;
+};
+
+/**
+ * @brief Convert both UT1 midnights independently; a UT1 day is not exactly one TT day.
+ * @note Adding 86400 TT seconds would leave gaps or overlaps as ΔT changes between adjacent dates.
+ */
+[[nodiscard]] inline auto day_window(const std::chrono::year_month_day& ymd_ut1) -> DayWindow {
+  const calendar::Datetime day_start { ymd_ut1, 0.0 };
+  const double start_jde_tt = astro::julian_day::ut1_to_jde(day_start);
+  const auto next_day = std::chrono::year_month_day {
+    std::chrono::sys_days { ymd_ut1 } + std::chrono::days { 1 }
+  };
+  const double end_jde_tt = astro::julian_day::ut1_to_jde(calendar::Datetime { next_day, 0.0 });
+  return { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+}
+
+/** @brief Describe a bracketed altitude crossing that failed its caller's residual guard. */
+[[nodiscard]] inline auto crossing_error(
+  const std::string_view caller,
+  const bool rising,
+  const Solved& solved,
+  const double lo_jde_tt,
+  const double hi_jde_tt
+) -> std::runtime_error {
+  return std::runtime_error {
+    std::format(
+      "{}: bracketed {} root failed to converge: |altitude - h0| = {} deg at jde {} "
+      "(bracket [{}, {}], guard {} deg)",
+      caller, rising ? "rise" : "set", solved.residual_deg, solved.root_jde,
+      lo_jde_tt, hi_jde_tt, RISE_SET_RESIDUAL_GUARD_DEG
+    )
+  };
+}
+
+/**
+ * @brief Scan monotone segments in time order, trying rise before set and keeping later crossings.
+ * @note Extrema must already be sorted. Residual rejection here uses `> guard`; the transit-centered
+ *       fallback accepts with `<= guard`, which rejects NaN where this scan retains it.
+ */
+template <typename Func>
+inline auto scan_day_crossings(
+  const Func& f,
+  const DayWindow& window,
+  const std::vector<AltitudeExtremum>& extrema,
+  Result& result
+) -> void {
+  const auto scan_segment = [&f, &result](const double a, const double b) {
+    constexpr double MIN_SEGMENT_DAYS = 1e-6; // About 0.1 s; shorter segments count as endpoints.
+    if (b - a < MIN_SEGMENT_DAYS) {
+      return;
+    }
+
+    for (const bool rising : { true, false }) {
+      if (const auto solved = crossing_in_bracket(f, a, b, rising); solved.has_value()) {
+        if (solved->residual_deg > RISE_SET_RESIDUAL_GUARD_DEG) [[unlikely]] {
+          throw crossing_error("calculate_day", rising, *solved, a, b);
+        }
+        auto& event_jde_tt = rising ? result.rise_jde_tt : result.set_jde_tt;
+        event_jde_tt = solved->root_jde;
+      }
+    }
+  };
+
+  double seg_lo = window.start_jde_tt;
+  for (const auto& extremum : extrema) {
+    scan_segment(seg_lo, extremum.jde);
+    seg_lo = extremum.jde;
+  }
+  scan_segment(seg_lo, window.end_jde_tt);
+}
+
+/**
+ * @brief Classify a crossing-free day from its global altitude bounds, including the window ends.
+ * @throw std::runtime_error If the bounds straddle h₀ despite the absence of a solved crossing.
+ */
+template <typename Func>
+[[nodiscard]] inline auto day_polar(
+  const Func& h,
+  const DayWindow& window,
+  const std::vector<AltitudeExtremum>& extrema,
+  const toolbox::AngleDeg& h0
+) -> Polar {
+  double h_min = h(window.start_jde_tt);
+  double h_max = h(window.start_jde_tt);
+  for (const auto& extremum : extrema) {
+    h_min = std::min(h_min, extremum.altitude_deg);
+    h_max = std::max(h_max, extremum.altitude_deg);
+  }
+  h_min = std::min(h_min, h(window.end_jde_tt));
+  h_max = std::max(h_max, h(window.end_jde_tt));
+
+  if (h_min >= h0.deg()) {
+    return Polar::DAY;
+  }
+  if (h_max <= h0.deg()) {
+    return Polar::NIGHT;
+  }
+  throw std::runtime_error {
+    std::format("calculate_day: altitude straddles h0 (min {} < {} < max {}) but no crossing was "
+                "found in [{}, {}] — the monotone-partition premise no longer holds for this body",
+                h_min, h0.deg(), h_max, window.start_jde_tt, window.end_jde_tt)
+  };
+}
+
 } // namespace detail
 
 
@@ -596,16 +697,9 @@ template <BodyProvider P>
   using toolbox::AngleDeg;
   using toolbox::rad_to_deg;
 
-  const auto reject_outside_pm90 = [](const char* name, const double deg) {
-    if (not std::isfinite(deg) or deg < -90.0 or deg > 90.0) {
-      throw std::invalid_argument {
-        std::format("Argument `{}` out of range [-90, 90], got {}", name, deg)
-      };
-    }
-  };
-  reject_outside_pm90("δ", δ.deg());
-  reject_outside_pm90("φ", φ.deg());
-  reject_outside_pm90("h0", h0.deg());
+  detail::validate_pm90("δ", δ.deg());
+  detail::validate_pm90("φ", φ.deg());
+  detail::validate_pm90("h0", h0.deg());
 
   const double denominator = std::cos(φ.rad()) * std::cos(δ.rad());
   if (std::fabs(denominator) < POLAR_DENOMINATOR_EPSILON) [[unlikely]] {
@@ -706,14 +800,7 @@ template <BodyProvider P>
 
   // This straddle proved a crossing exists, so a guard rejection here is a numerical failure —
   // surface it loudly instead of letting `calculate` turn it into a wrong polar-day/night flag.
-  throw std::runtime_error {
-    std::format(
-      "rise_set_jde: bracketed {} root failed to converge: |altitude - h0| = {} deg at jde {} "
-      "(bracket [{}, {}], guard {} deg)",
-      is_rise ? "rise" : "set",
-      solved->residual_deg, solved->root_jde, lo, hi, RISE_SET_RESIDUAL_GUARD_DEG
-    )
-  };
+  throw detail::crossing_error("rise_set_jde", is_rise, *solved, lo, hi);
 }
 
 
@@ -888,23 +975,9 @@ template <BodyProvider P>
   const P& provider
 ) -> Result {
   detail::validate(location);
+  detail::validate_pm90("h0", h0.deg());
 
-  if (not std::isfinite(h0.deg()) or h0.deg() < -90.0 or h0.deg() > 90.0) {
-    throw std::invalid_argument {
-      std::format("Argument `h0` out of range [-90, 90], got {}", h0.deg())
-    };
-  }
-
-  const calendar::Datetime day_start { ymd_ut1, 0.0 };
-  const double t0_jde_tt = astro::julian_day::ut1_to_jde(day_start);
-  // The window ends at the NEXT UT1 MIDNIGHT, not one TT day later: t0_jde_tt + 1.0 advances by
-  // 86400 TT seconds, and ΔT's drift (ms-scale now, ~0.5 s/day at the domain's far end)
-  // would leave a gap/overlap between adjacent days' windows that events could fall
-  // through. Convert both endpoints to keep the UT1/TT distinction.
-  const auto next_day = std::chrono::year_month_day {
-    std::chrono::sys_days { ymd_ut1 } + std::chrono::days { 1 }
-  };
-  const double t1_jde_tt = astro::julian_day::ut1_to_jde(calendar::Datetime { next_day, 0.0 });
+  const auto window = detail::day_window(ymd_ut1);
 
   const auto h = [&location, &provider](const double jde) -> double {
     return detail::altitude(jde, location, provider).deg();
@@ -913,75 +986,18 @@ template <BodyProvider P>
     return h(jde) - h0.deg();
   };
 
-  const auto extrema = detail::find_extrema(h, t0_jde_tt, t1_jde_tt);
+  const auto extrema = detail::find_extrema(h, window.start_jde_tt, window.end_jde_tt);
 
-  Result result { .rise_jde_tt = std::nullopt, .set_jde_tt = std::nullopt,
-                  .transit_jde_tt = transit_in_window(t0_jde_tt, t1_jde_tt, location, provider),
-                  .polar = Polar::NONE };
-
-  // Monotone segments between the window ends and every interior extremum. Last-wins
-  // assignment is deliberate: it implements the one-event-per-cell contract (the LATER
-  // crossing is reported on double-event days).
-  const auto scan_segment = [&f, &result](const double a, const double b) {
-    constexpr double MIN_SEGMENT_DAYS = 1e-6; // ~0.1 s — below this the "segment" is an endpoint.
-    if (b - a < MIN_SEGMENT_DAYS) {
-      return;
-    }
-    if (const auto up = detail::crossing_in_bracket(f, a, b, true); up.has_value()) {
-      if (up->residual_deg > RISE_SET_RESIDUAL_GUARD_DEG) [[unlikely]] {
-        throw std::runtime_error {
-          std::format("calculate_day: bracketed rise root failed to converge: |altitude - h0| = {} deg "
-                      "at jde {} (bracket [{}, {}], guard {} deg)",
-                      up->residual_deg, up->root_jde, a, b, RISE_SET_RESIDUAL_GUARD_DEG)
-        };
-      }
-      result.rise_jde_tt = up->root_jde;
-    }
-    if (const auto down = detail::crossing_in_bracket(f, a, b, false); down.has_value()) {
-      if (down->residual_deg > RISE_SET_RESIDUAL_GUARD_DEG) [[unlikely]] {
-        throw std::runtime_error {
-          std::format("calculate_day: bracketed set root failed to converge: |altitude - h0| = {} deg "
-                      "at jde {} (bracket [{}, {}], guard {} deg)",
-                      down->residual_deg, down->root_jde, a, b, RISE_SET_RESIDUAL_GUARD_DEG)
-        };
-      }
-      result.set_jde_tt = down->root_jde;
-    }
+  Result result {
+    .rise_jde_tt = std::nullopt,
+    .set_jde_tt = std::nullopt,
+    .transit_jde_tt = transit_in_window(window.start_jde_tt, window.end_jde_tt, location, provider),
+    .polar = Polar::NONE,
   };
-
-  double seg_lo = t0_jde_tt;
-  for (const auto& extremum : extrema) {
-    scan_segment(seg_lo, extremum.jde);
-    seg_lo = extremum.jde;
-  }
-  scan_segment(seg_lo, t1_jde_tt);
+  detail::scan_day_crossings(f, window, extrema, result);
 
   if (not result.rise_jde_tt.has_value() and not result.set_jde_tt.has_value()) {
-    // No crossing found. The day's global extremes — over every interior extremum AND the
-    // window ends — decide the topology: entirely above → DAY, entirely below → NIGHT.
-    // A straddle without a found crossing is an engine failure: on monotone segments the
-    // directed checks above are exact, so reaching that state means the monotone-partition
-    // premise broke; say so loudly.
-    double h_min = h(t0_jde_tt);
-    double h_max = h(t0_jde_tt);
-    for (const auto& extremum : extrema) {
-      h_min = std::min(h_min, extremum.altitude_deg);
-      h_max = std::max(h_max, extremum.altitude_deg);
-    }
-    h_min = std::min(h_min, h(t1_jde_tt));
-    h_max = std::max(h_max, h(t1_jde_tt));
-
-    if (h_min >= h0.deg()) {
-      result.polar = Polar::DAY;
-    } else if (h_max <= h0.deg()) {
-      result.polar = Polar::NIGHT;
-    } else {
-      throw std::runtime_error {
-        std::format("calculate_day: altitude straddles h0 (min {} < {} < max {}) but no crossing was "
-                    "found in [{}, {}] — the monotone-partition premise no longer holds for this body",
-                    h_min, h0.deg(), h_max, t0_jde_tt, t1_jde_tt)
-      };
-    }
+    result.polar = detail::day_polar(h, window, extrema, h0);
   }
 
   return result;

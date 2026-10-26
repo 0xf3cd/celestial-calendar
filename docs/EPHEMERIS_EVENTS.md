@@ -11,6 +11,46 @@ day. Body longitudes are apparent, geocentric and tropical; node longitudes foll
 [`lunar_node::position`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/lunar_node.hpp)
 in the true ecliptic and equinox of date.
 
+<a id="choosing-an-event-api"></a>
+## Choosing an event API
+
+Use the interval API for caller-chosen TT windows, published-rate stations and
+deterministic endpoint ownership. The annual C++ operations retain their own
+definitions, numerical policies and year domains:
+
+| Operation | Definition and search | Computational domain |
+|---|---|---|
+| `planet::phenomena::events` | Longitude extrema for stations; planet-minus-Sun longitude crossings; great-circle separation maxima for greatest elongations | UTC years [1, 32766], or [1886, 2098] for Pluto |
+| `moon_phase::phase_moments::moments` | Moon-minus-Sun apparent longitude at 0°, 90°, 180° or 270°, refined by Newton's method | UTC years [1, 32766] |
+| `moon_phase::new_moon::moments` | Conjunctions with a local near-360° angular fold and acceptance of an exactly +0.0° right bracket endpoint | UTC years [1, 32766] |
+| `sun::geocentric_coord::math::find_roots` | Apparent solar longitude at a supplied level, refined by Newton's method; also supplies Jieqi | UTC years [1, 32766] |
+| Interval searches on this page | Longitude levels and zeros of the published seven-point rate: six position evaluations, with zero weight at the centre | The target's `longitude_rate_domain`; at most 3660 TT days per query |
+
+Annual windows run from Jan 1 to next Jan 1 in UTC, using the library's UT1
+substitute before 1972. The annual planetary search detects candidates on a
+one-day grid. It refines longitude extrema to a `1e-8`-day bracket and requires
+a strict two-sided witness. Those extrema need not coincide with zeros of the
+seven-point rate, so station times from the two APIs are not interchangeable.
+Greatest elongations have no interval counterpart. See
+[`planet_phenomena.hpp`](../src/astro/planet_phenomena.hpp) for the annual event labels.
+
+Moon phases and solar levels use the same apparent-position models as
+`longitude_difference_events(MOON, SUN, ...)` and `longitude_events(SUN, ...)`,
+respectively, but their solvers and endpoint rules differ. An annual Moon
+phase exactly at Jan 1 UTC has no defined owner. Conjunction and
+principal-phase New Moon share a root flow while retaining different bracket
+and angular-fold conventions; changing an existing conjunction caller to the
+principal-phase operation can change success or failure at remote inputs.
+The exact folds and endpoint tests are documented on `objective_at`, `miss_at` and `bracket_rejected` in
+[`moon_phase.hpp`](../src/astro/moon_phase.hpp).
+
+The annual operations do not delegate to interval searches, even inside the
+common domain. This preserves their results, failure policies and supported
+years, including the solar roots used by the lunar calendar. A supported
+computational domain is not an astronomical accuracy guarantee. C++ callers
+using the former low-level Moon-phase names should read the
+[migration guide](MIGRATING_1_0.md#c-numerical-helpers-and-generators).
+
 ## C ABI and Python
 
 The C exports `celestial_longitude_events`, `celestial_longitude_stations` and
@@ -119,6 +159,7 @@ structurally antipodal: a matching opposition target throws
 `std::invalid_argument` because the relation holds throughout the interval;
 a different target returns an empty list.
 
+<a id="domains-limits-and-failures"></a>
 ## Domains, limits and failures
 
 Each query must be nonempty, finite and inside `longitude_rate_domain` for
@@ -137,6 +178,7 @@ relations throw `std::invalid_argument`. Numerical ambiguity, failed
 iteration, unsupported floating-point execution or work-limit exhaustion
 throws `std::runtime_error`. No failure returns a partial event list.
 
+<a id="numerical-contract"></a>
 ## Numerical contract
 
 Completeness is conditional on an explicit evaluation-error model. It is
@@ -191,6 +233,65 @@ reports on a nearest-even `2^-30`-day lattice. The fine lattice makes
 half-open ownership deterministic; it does not claim microsecond physical
 accuracy. A certified secant observation usually gives a substantially
 better representative than the stopping criterion alone.
+
+### Search policies
+
+The quarter-day grid fixes which bracket owns an event. Its spacing is a
+starting scale for certification, not a guarantee that a cell contains at
+most one event. A cell that cannot be excluded or certified is subdivided.
+The default 32-level cap would reduce a quarter-day cell below `6e-11` day;
+an unresolved observation allowance or indistinguishable times can stop
+the search earlier. Such regions remain unresolved and fail if they
+intersect the query.
+
+The default 96 refinement iterations bound work even when the requested
+resolution is zero. The limit exceeds binary64's 53-bit significand width,
+but does not guarantee convergence for every bracket or error allowance.
+Refinement checks the actual time radius or observation certificate, and
+throws on exhaustion without an extra acceptance check after the cap.
+Contact certification tries at most 24 regions inside the owning cell,
+then at most 24 in its fixed neighbor window. The dyadic radii change the
+region being certified; they do not relax its sign or curvature tests.
+
+The [admission and budget limits](#domains-limits-and-failures) are project resource policies, not
+astronomical or completeness bounds. A smaller request may still exhaust
+either budget. One mutable budget belongs to the whole query, including
+recursive subdivision, refinement and contact-window probes; provider
+attempts consume it even when the provider throws.
+
+### Scalar cell certificates
+
+These are the project's sufficient tests for a smooth scalar `f` on a
+closed cell `[a,b]`, with `w=b-a`, `|f'|≤M1` and `|f''|≤M2`. Each sampled
+value has an absolute allowance that includes any abscissa displacement.
+The implementation rounds lower bounds downward and upper bounds upward
+under the [numerical contract](#numerical-contract).
+
+Let `m_a` and `m_b` be lower bounds for the magnitudes of same-sign
+endpoint values. If a root existed at `r`, the derivative bound would give
+`m_a≤M1(r-a)` and `m_b≤M1(b-r)`. Therefore `m_a+m_b>M1*w` excludes a root.
+Independently, the linear interpolant `L` obeys
+`|f(t)-L(t)|≤M2(t-a)(b-t)/2≤M2*w²/8`; same-sign endpoints with
+`min(m_a,m_b)>M2*w²/8` also exclude a root.
+
+For uniqueness, subtract the endpoint allowances from the observed
+absolute change, then divide by `w` to obtain a lower bound `s` on the
+absolute secant slope. Since the secant is the average of `f'`,
+
+```text
+|f'(t) - (f(b)-f(a))/w|
+  ≤ M2 * ((t-a)² + (b-t)²) / (2w)
+  ≤ M2*w/2.
+```
+
+Thus `s-M2*w/2>0` proves a nonzero derivative throughout the cell.
+Opposite robust endpoint signs then certify one root; an exact endpoint
+zero is assigned according to the cell's endpoint-ownership rule.
+Without a positive derivative floor, a sign change alone is not a
+unique-root certificate. Curvature certificates for contacts use the
+second divided difference and the third-derivative bound, as described
+in `event_search::curvature_sign`; the seven-point rate's separate
+truncation remainder is retained when checking both sides of a station.
 
 <a id="seven-point-operator-and-remainder"></a>
 ## Seven-point operator and remainder
