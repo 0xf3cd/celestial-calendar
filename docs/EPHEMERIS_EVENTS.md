@@ -16,7 +16,7 @@ in the true ecliptic and equinox of date.
 
 Use the interval API for caller-chosen TT windows, published-rate stations and
 deterministic endpoint ownership. The annual C++ operations retain their own
-definitions, numerical policies and wider year domains:
+definitions, numerical policies and year domains:
 
 | Operation | Definition and search | Computational domain |
 |---|---|---|
