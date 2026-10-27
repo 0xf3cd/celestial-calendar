@@ -35,6 +35,12 @@ def assert_caller_environment(action):
     assert "GITHUB_ENV" not in command
 
 
+def assert_windows_encoding(command):
+  lines = [line.strip() for line in command.splitlines()]
+  assert "chcp.com 65001" in lines
+  assert '$env:PYTHONIOENCODING = "utf-8"' in lines
+
+
 def assert_soak_wiring(workflow):
   assert workflow["env"] == {"CELESTIAL_TEST_SEED": "${{ github.run_id }}"}
   for name, job in workflow["jobs"].items():
@@ -54,18 +60,32 @@ def assert_soak_wiring(workflow):
     assert verification["shell"] == ("pwsh" if "windows" in name else "bash")
     if verification["shell"] == "pwsh":
       lines = [line.strip() for line in verification["run"].splitlines() if line.strip()]
+      invoked = lines.index("$output = & ./build/test/earth_test.exe --gtest_filter=Earth.ObliquityJ2000 2>&1")
       captured = lines.index("$code = $LASTEXITCODE")
       propagated = lines.index("if ($code -ne 0) { exit $code }")
       checked = lines.index(
         'if ($lines -notcontains "[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)") {'
       )
-      assert captured < propagated < checked
+      assert invoked < captured < propagated < checked
       assert lines[checked + 1].startswith("throw ")
 
 
 def test_native_composites_inherit_seed_and_evidence_without_command_inputs():
   for path in ACTIONS.glob("*/action.yml"):
     assert_caller_environment(load_workflow(path))
+  build = load_workflow(ACTIONS / "native-build/action.yml")
+  windows = next(step for step in build["runs"]["steps"] if step["shell"] == "pwsh")
+  assert_windows_encoding(windows["run"])
+
+
+@pytest.mark.parametrize("guard", ["chcp.com 65001", '$env:PYTHONIOENCODING = "utf-8"'])
+def test_windows_native_build_rejects_missing_utf8_guards(guard):
+  build = load_workflow(ACTIONS / "native-build/action.yml")
+  windows = next(step for step in build["runs"]["steps"] if step["shell"] == "pwsh")
+  assert windows["run"].count(guard) == 1
+  command = windows["run"].replace(guard, "")
+  with pytest.raises(AssertionError):
+    assert_windows_encoding(command)
 
 
 @pytest.mark.parametrize("fault", ["seed-env", "evidence-env", "seed-run", "evidence-run", "export", "command-input"])
@@ -132,13 +152,17 @@ def test_soak_contract_rejects_override_wiring_faults(fault):
     assert_soak_wiring(workflow)
 
 
-@pytest.mark.parametrize("fault", ["exit", "prefix", "variable-name", "throw"])
+@pytest.mark.parametrize("fault", ["capture-before-run", "exit", "prefix", "variable-name", "throw"])
 def test_windows_soak_contract_rejects_weakened_failure_or_seed_checks(fault):
   workflow = load_workflow(WORKFLOWS / "random_soak.yml")
   verification = next(
     step for step in workflow["jobs"]["soak-windows-clang"]["steps"] if step.get("name") == "Verify received soak seed"
   )
   old, new = {
+    "capture-before-run": (
+      "$output = & ./build/test/earth_test.exe --gtest_filter=Earth.ObliquityJ2000 2>&1\n$code = $LASTEXITCODE",
+      "$code = $LASTEXITCODE\n$output = & ./build/test/earth_test.exe --gtest_filter=Earth.ObliquityJ2000 2>&1",
+    ),
     "exit": ("if ($code -ne 0) { exit $code }", ""),
     "prefix": (
       '"[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)"',

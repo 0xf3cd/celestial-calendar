@@ -241,6 +241,7 @@ python3 toolbox/artifact_downloader.py --help
 By default it selects successful `workflow_dispatch` runs that built the local checkout's HEAD and validates
 their complete native, WASM and Python artifact inventories. PR and push runs are not eligible for that lookup.
 To select the three producers explicitly, supply `--native-run-id`, `--wasm-run-id` and `--python-run-id` together.
+These IDs must also identify successful `workflow_dispatch` runs of the expected workflows built from HEAD.
 Alternatively, `-id` downloads a single run without release-inventory validation; it can also download PR runs.
 `-s` is required and names the destination directory; without `--unzip` the archives stay zipped. `--help`
 documents the remaining options. The tool can also be called as `python3 -m toolbox.artifact_downloader`.

@@ -17,8 +17,8 @@ end comments are not starts. A non-marker entry needs an actual host or record-e
 reference. Keep the source citation and tolerance rationale beside the data.
 
 Notebook entries identify saved outputs and explicit year/Jieqi input pairs, not execution
-counters or presentation metadata. Clearing outputs does not retire surviving directed
-inputs. The binding fixture's producer path is owned by `automation.paths`; its replays
+counters or presentation metadata. Clearing outputs does not retire these input pairs.
+The binding fixture's producer path is owned by `automation.paths`; its replays
 must still read that same file. Adjacent whole-file hosts independently check their
 `data_sha256`, including the Moon CSV and USNO data file.
 
