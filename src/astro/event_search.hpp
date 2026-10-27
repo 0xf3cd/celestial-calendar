@@ -12,6 +12,11 @@
 
 #pragma once
 
+/** @file
+ * @brief Fixed-grid root isolation and conditional numerical certification.
+ * @see docs/EPHEMERIS_EVENTS.md for cell, certificate, allowance and boundary terminology.
+ */
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -80,7 +85,7 @@ enum class EndpointOwnership : uint8_t { LEFT, BOTH };
 /** @brief A sufficient cell verdict: exclude, certify one root, or subdivide. */
 enum class CellDecision : uint8_t { DISCARD, UNIQUE, SPLIT };
 
-/** @brief A sampled bracket with explicit ownership of exact endpoint roots. */
+/** @brief A sampled bracket with an explicit rule for including exact endpoint roots. */
 struct Cell {
   Sample left;
   Sample right;
@@ -1097,7 +1102,7 @@ requires std::invocable<const LongitudeProvider&, double>
   if (not has_neighbor) {
     return { .station_jde_tt = jde_tt, .certified = false, .contact = std::nullopt };
   }
-  // Tried only after every in-cell region failed, so in-cell successes keep their regions; a seam station needs this.
+  // A station on a cell boundary needs observations from the fixed neighboring cells.
   const double window_radius = std::min(jde_tt - window.start_jde_tt, window.end_jde_tt - jde_tt);
   for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
     const Interval region = attempt == 0
@@ -1112,7 +1117,8 @@ requires std::invocable<const LongitudeProvider&, double>
 }
 
 /**
- * @brief Certify one canonical cell's isolated stations; query-owned reported instants require two-sided evidence.
+ * @brief Verify isolated stations in a fixed grid cell using observations on both sides.
+ * @note A reported instant inside the query requires two-sided evidence, including at cell boundaries.
  * @note Providers and bounds cover the cell; the window providers and bounds cover its @ref contact_window.
  */
 template <typename LongitudeProvider, typename RateProvider, typename WindowLongitudeProvider, typename WindowRateProvider>
@@ -1210,7 +1216,7 @@ requires std::invocable<const LongitudeProvider&, double>
 }
 
 /**
- * @brief Find crossings and exact contacts on the visited cells, each contact reported once by its owning cell.
+ * @brief Find crossings and exact contacts, reporting each contact from the cell containing its reported time.
  * @note Visited cells are those of @ref visit_query_cells; one lookahead cell per side supplies contact regions
  *       that reach them. Every output is filtered by its reported time, and overlapping exclusions throw.
  */

@@ -73,10 +73,8 @@ JavaScript package tests through WASM. Each field is held to one of five absolut
 These are replay acceptance margins. They bound how far a fresh run may drift from the stored values; they do not
 say how close the positions are to the sky. That evidence comes from the external references above.
 
-The values are the thresholds the snapshot test used when the example was added for #300
-(`automation/tests/test_chart_snapshot_example.py` in commit `9a7a692`). #331 (`a6efe58`) moved them into
-`chart_replay.py` without changing a value. It changed one thing about how they are applied: longitude, the four
-axes and the house cusps are now compared around the circle, so values on either side of 0°/360° count as close.
+The thresholds come from the snapshot test added for #300. Longitude, the four axes and the
+house cusps are compared around the circle, so values on either side of 0°/360° count as close.
 
 They are separate from the margins in
 [`bindings/python/test/consumer/golden_replay.py`](../bindings/python/test/consumer/golden_replay.py). Those were

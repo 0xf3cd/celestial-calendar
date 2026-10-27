@@ -568,7 +568,7 @@ typedef struct CelestialChartHouses {
   double cusps_deg[12];
 } CelestialChartHouses;
 
-/** @brief An owned complete snapshot; consume the payload only when valid is true. */
+/** @brief A complete independent value; consume the payload only when valid is true. */
 typedef struct CelestialChartSnapshot {
   bool valid;
   uint32_t delta_t_identity_code;  /* Resolved CELESTIAL_DELTA_T_MODEL_* value, never DEFAULT. */
@@ -610,7 +610,7 @@ CELESTIAL_API CelestialChartSnapshot celestial_chart_snapshot(int32_t year, uint
  * mirroring docs/EPHEMERIS_EVENTS.md. Angles carry no
  * names or interpretations — the API never speaks aspects or orbs.
  *
- * Ownership protocol: one call reports the total through `event_count` and writes up to
+ * Buffer protocol: one call reports the total through `event_count` and writes up to
  * `slot_count` records into caller-owned `slots` (NULL only when `slot_count` is 0).
  * The return value is how many records were written; when the total exceeds the
  * capacity the fill is truncated and `event_count` still reports the full total, so the
@@ -631,11 +631,11 @@ typedef struct CelestialLongitudeEventRecord {
   double   jde_tt;                        /* JDE(TT) of the event, on the reported 2^-30-day lattice. */
   double   longitude_deg;                 /* Apparent geocentric longitude at the event, in degrees; not
                                              normalized — values on either side of a branch cut stay raw. */
-  double   longitude_rate_deg_per_tt_day; /* The published seven-point rate at the event. */
+  double   longitude_rate_deg_per_tt_day; /* The seven-point ephemeris::longitude_rate at the event. */
   uint32_t direction_code;                /* A CELESTIAL_EVENT_DIRECTION_* code. */
 } CelestialLongitudeEventRecord;
 
-/** @brief One stationary instant of the published seven-point longitude rate. */
+/** @brief One stationary instant of the seven-point ephemeris::longitude_rate. */
 typedef struct CelestialStationEventRecord {
   double   jde_tt;                        /* JDE(TT) of the stationary instant. */
   double   longitude_deg;                 /* Apparent geocentric longitude at the event, in degrees; not
@@ -680,7 +680,7 @@ typedef struct CelestialLongitudeDifferenceEventRecord {
 CELESTIAL_API uint32_t celestial_longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialLongitudeEventRecord *slots, uint32_t slot_count);
 
 /**
- * @brief Find the JDE(TT)s where `target`'s published seven-point longitude rate is
+ * @brief Find the JDE(TT)s where `target`'s seven-point ephemeris::longitude_rate is
  *        stationary in the half-open interval [start, end), written to `slots`.
  * @param target_code A CELESTIAL_TARGET_* code.
  * @param start_jde_tt Inclusive start, finite, within the target's longitude-rate domain.
@@ -768,7 +768,7 @@ typedef struct CelestialCapabilityRecord {
   uint32_t maximum_span_tt_days;  /* EVENTS: 3660; 0 = no span limit. */
 } CelestialCapabilityRecord;
 
-/** @brief One registered model identity with its applicability (#357).
+/** @brief One registered model identity with its applicability.
  * @note Both domain ends are NaN where no explicit bound exists. Evaluation-instant guards
  *       do not imply a universal limit on converted TT output; see celestial_model_identity_text.
  */
@@ -871,7 +871,7 @@ typedef struct CelestialEquatorialPositionRecord {
   uint32_t source_code;       /* The resolved CELESTIAL_POSITION_SOURCE_* identity. */
 } CelestialEquatorialPositionRecord;
 
-/** @brief Independent house geometry with resolved explicit model identities (#357, #355). */
+/** @brief Independent house geometry with resolved explicit model identities. */
 typedef struct CelestialHouseQueryResult {
   bool valid;                       /* false on failure; the payload and padding then have no contract. */
   uint32_t house_system_code;

@@ -43,15 +43,12 @@ This is precision astronomy, not vibes. Every algorithm traces to a named refere
   making the test green; only the author confirms case-by-case that it's an
   algorithm/reference issue, not a code bug.
 - Cite the source of any new algorithm / coefficients in a comment.
-- **Comments: sparse but load-bearing.** Key spots get 1-2 lines of *why* — segment
-  boundaries, magic constants, bug fixes (with the issue number). No restating the code,
-  no quoting the old expression, no measurement reports (those live in the PR/issue).
-  Slim your added comments before wrapping up; that pass is part of the change.
 - **ΔT provenance lives out-of-repo**: `delta_t.hpp` algo5 (the default) is trained in
   [AstroTime-Analysis](https://github.com/0xf3cd/AstroTime-Analysis) (`DeltaT/algo5.py`);
-  algo1–algo4 are frozen exhibits. Refresh ritual: re-run that repo's downloaders +
-  `algo5.py`, publish and retain a new algo5 grant/record commit, then repin the coefficients,
-  V25 relation and provenance gates here — a new algoN is only for a methodology change.
+  algo1–algo4 are frozen comparison models; algo2 also supplies algo5's pre-2005 branch.
+  Refresh procedure: re-run that repo's downloaders and `algo5.py`, retain the resulting
+  grant and source record at an immutable commit, then update the coefficients, the V25
+  retained ΔT source relation and its provenance checks here. A new algoN requires a methodology change.
   In-repo `statistics/` holds evaluation notebooks and golden-dataset crawlers — **no model
   training**.
 
@@ -76,12 +73,7 @@ authorities exist for that algorithm:
    (an observatory dataset, a standards table). Tolerance ≈ 3× the measured model gap
    (IAU 1980/1982 here vs USNO's modern model, measured ≲0.07″).
 
-USNO API gotchas: `coords=lat,lon` — latitude first, **east-positive** longitude; a
-swapped pair is silently ignored (`last == gast`), so probe one point first. The API
-quantizes coordinates to ~4 decimals — round before querying **and store the rounded
-value**, or full-precision residuals carry ~0.18″ of API noise. `reps` / `intv_mag` /
-`intv_unit` are all-or-nothing; the date window is the current year ±1; up to 9999
-points per call; sleep ~0.15 s between calls.
+USNO request and coordinate-quantization notes live in `statistics/usno_validation_repro.py`.
 
 ## Tech Stack
 
@@ -114,17 +106,17 @@ The WASM/npm exception has its own shared manual/CI path, the four commands in
 [WebAssembly and npm packages](docs/BUILDING.md#wasm). Consumer tests take the exact tarball named by
 `build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json`; do not select either with a glob or
 rebuild per consumer. The builder packs primary and alias once each in separate staging directories.
-The release workflow freshly classifies and publishes those exact tested bytes, primary before alias;
-it never repacks from source. Registry acceptance covers each name alone and the same-version pair.
+Registry acceptance installs each npm name alone and both together at the same version.
+All releases publish the exact CI-tested artifacts without rebuilding or repacking; publication and
+registry-byte verification are defined in [RELEASING](docs/RELEASING.md).
 
 Python wheels likewise use their independent package path: install the exact host pins from
 `bindings/python/requirements-host.txt`; with the `CIBW_*` settings of `python-wheel.yml` (see
 [Python wheels](docs/BUILDING.md#python-wheels)), the before-build hook installs `requirements-build.txt`,
 and `constraints-cibuildwheel.txt` selects the bootstrap pins. Then run `python -m cibuildwheel
 --only <identifier> bindings/python --output-dir build/wheelhouse`. The wheel is `py3` but native per platform;
-floor and current interpreters must install the same repaired wheel from an unrelated cwd. Do not
-build an sdist. The release workflow publishes the same four CI-tested wheels to PyPI and GitHub
-Release; it never builds another distribution.
+the minimum supported and current CI interpreters must install the same repaired wheel from an unrelated cwd.
+Do not build an sdist.
 
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
@@ -163,7 +155,7 @@ exits 0, a green light that checked nothing (#72).
 
 When rules conflict, arbitrate by: const / compile-time / concepts are the default state,
 not fastidiousness · the code should read next to the book — audit value outranks tidiness ·
-the λ/β, UDL, phi touches are the project's signature, never bland them away. Transcription,
+keep the source's λ/β symbols, unit literals such as `_deg`, and the golden-ratio iteration step. Transcription,
 scaffolding, and CI can be delegated freely; API shape, type design, the numerical core,
 and tolerance calls stay with the author.
 
@@ -186,9 +178,9 @@ source keeps the source's spelling: `cos_λ`, `argL`, `A1`, `θCoeffs`, `gen_eva
 Narrative in English; domain terms keep their own spelling (`Jieqi::冬至`), glossed once in
 parentheses where an English-only reader needs a handle — `the Chinese Jieqi (节气)`.
 Translating an entity loses it. Outside the lunar subtree, keep new full-Chinese runs to
-named or quoted material. The lunar subtree's Doxygen carries a Chinese line after or under
-the English, on `@brief` / `@param` / `@return` / `@note` and member docs alike
-(`@param year The Lunar year. 阴历年份。`) — match the neighbours when editing there; do not
+named or quoted material. Parts of the lunar subtree's Doxygen add Chinese after the English
+(`@param year The Lunar year. 阴历年份。`); coverage varies by file, tag and member.
+Match the neighbours when editing there; do not
 spread the habit outward, do not strip it inside. Punctuation follows the language of the
 run it sits in: full-width inside a Chinese phrase, half-width everywhere else.
 
@@ -234,10 +226,6 @@ feel is intentional. Keep it. That buys a discipline:
 - **Multi-line call layout**: when an argument is itself a call, or the call grows long,
   put each argument on its own line and the closing `);` on its own line at the call's
   indentation. Trivial short calls stay on one line.
-- Doxygen `/** @brief / @param / @return / @note / @see */` on public functions; inline
-  `//` comments explain the physics with order-of-magnitude arguments ("ΔT ≈ 69 s ≈ 0.29°
-  of rotation"), not bare claims. `@see` cites external sources with exact formula/table numbers;
-  `@ref` links code entities. Use `@par Example` for inline examples; `@example` takes a file name.
 
 ### Modern C++ posture
 
@@ -257,8 +245,7 @@ site (the `jd_ut1` / `jde_tt` suffixes are the UT1/TT guard, #41) · every `NOLI
 ### Small functions, honest errors, no premature abstraction
 
 Functions stay short and single-purpose — compose thin layers that each do one thing
-(`greenwich_mean` → `greenwich_apparent` → `local_apparent`). The doc comment is routinely
-longer than the function body: the physics and the citation are the hard part. Throw with
+(`greenwich_mean` → `greenwich_apparent` → `local_apparent`). Throw with
 context-rich messages (`std::vformat("Year {} is not supported …", …)`), never silently
 clamp, swallow, or return a sentinel. Three similar lines beat a premature abstraction;
 generalize when a second or third real caller demands it.
@@ -269,11 +256,20 @@ for failed convergence or a failed consistency check), `std::optional` for a leg
 "none", `assert` only for the library's own invariants. The table, examples and the C-ABI
 translation live in [`docs/DESIGN.md`](docs/DESIGN.md#failures).
 
-Comments sit in one of three slots (#127): **contract** (time scale, unit, valid range,
-sign convention) · **citation** (`@see` with the formula or table number) · **numeric
-argument** (why this tolerance, this bracket, this step). Textbook exposition is not a
-slot. What gets cut is the exposition, never the contract: the twin `@note`s on
-`nutation::longitude` and `obliquity` ("fix both or neither") are as load-bearing as the code.
+### Comments
+
+A comment supplies a contract (time scale, unit, valid range, sign convention), a citation
+(`@see` with an exact formula/table number), or a numeric argument (why this tolerance,
+bracket or step, with an order-of-magnitude figure). Public functions use Doxygen; their
+contracts and citations may need more lines than the body. Inline explanations usually need
+one or two lines. For a bug fix, state the invariant; the issue number is a maintainer pointer,
+not part of an extracted `@brief` or Python docstring. Keep the twin `@note`s on
+`nutation::longitude` and `obliquity` ("fix both or neither").
+
+Do not restate code, explain textbook material, recount earlier implementations or report
+measurements; those belong in the PR or issue. Keep source/data provenance and quoted source
+facts. Before wrapping up, read the complete changed comments and remove unnecessary prose.
+Use `@ref` for code links, `@par Example` for inline examples and `@example` only for a file.
 
 ### File header
 
@@ -348,9 +344,6 @@ bindings/
 
 ## Project-Specific Rules and Gotchas
 
-1. **Single source of truth:** this `AGENTS.md` is the only agent-instruction file with
-   content; `CLAUDE.md` just imports it. Don't create new per-tool instruction files —
-   extend this one.
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active
    use. Features the weakest CI toolchain doesn't support yet — **modules**,
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
@@ -358,8 +351,8 @@ bindings/
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./checks.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`. Toolchain failures, malformed records and lost capability
-   fail CI; unlocks, TODO counts, adoption and idle rows are maintenance information.
-   The report names waiting sites tagged `TODO` with the feature's name.
+   fail CI. The report names waiting sites tagged `TODO` with the feature's name. Newly available features,
+   waiting-site counts, adopted features and unused entries are maintenance information, not failures.
 3. **Shared library target:** `src/shared_lib/CMakeLists.txt` builds
    `libcelestial_calendar` from `lib*.cpp`. Version is injected via the `BUILD_VERSION`
    environment variable (defaults to `0.0.0`).
@@ -369,9 +362,8 @@ bindings/
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
    `python-wheel.yml` legs. The former uploads `celestial-wasm` ([WASM/npm](docs/BUILDING.md#wasm) records its exact
    members); the latter uploads four exact wheels and sidecars;
-   the release downloader pulls all three build legs' artifacts for the tagged commit. Cutting a
-   release is the protected-tag, explicit-run ritual in `docs/RELEASING.md`; it freezes one candidate,
-   publishes GitHub Release before npm/PyPI, and verifies registry bytes without rebuilding.
+   the release downloader pulls all three build legs' artifacts for the tagged commit. See
+   `docs/RELEASING.md` for protected tags, explicit producer-run selection and publication order.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.
 6. **`build/` is gitignored.** Generated artifacts and `compile_commands.json` live there;
@@ -406,15 +398,15 @@ trigger is for.
 | Decision (hold, unless the trigger fired) | Reopen when |
 |---|---|
 | **Bare Meeus (12.3) is valid only on the 0h UT grid; (12.4) is the complete any-time form, not an "extension" of it** — the (12.3) polynomial drops the daily 360.9856° term, which only cancels mod 360 at 0h; off the grid it drifts up to 180° (USNO-measured 158.1° at an arbitrary afternoon moment). The 12.3/12.4 numbering itself is a known erratum — settled by three independent sources | Any code path evaluating sidereal time off the 0h grid from the (12.3) polynomial |
-| **No strong types for time scales** (`JdUt1` / `JdeTt`); after Moon rise/set (#62), all public time-bearing rise/set parameters and result members carry `ut1` / `jde_tt` suffixes. `chart::calculate` and `celestial_chart_snapshot` take one civil datetime plus an explicit scale and resolve both scales themselves (#300, #299); `julian_day::Scale` says how to read one value and never carries a second time value | A second #41-class mix-up reaches a test, or one public entry point must accept civil datetimes of two scales in the same call |
+| **No strong types for time scales** (`JdUt1` / `JdeTt`); public rise/set time parameters and results carry `ut1` / `jde_tt` suffixes. Civil chart/house queries take one explicit scale and resolve both times (re-checked #350) | Another UT1/TT mix-up reaches a test, or a public entry point needs civil datetimes of two scales in one call |
 | **No caching or memoisation in the core layer**; `util/cache.hpp` wraps at the calendar layer | — (structural) |
-| **Header-only is the identity, and its compile cost is accepted**; #344 measured the cost on a TU holding only `jieqi.hpp`, and #348 removed the avoidable weight (umbrella includes, test seeding) — what remains is its own cost | A measurement shows the cost growing again — without the new feature's own code behind it, or with a new feature reaching consumers through a route other than exact includes (#348's route) |
+| **Header-only is the identity, and its compile cost is accepted** (re-checked #348) | Measured compile cost grows beyond what new code reached through exact includes explains |
 | **The cache never evicts** — the mechanism has no eviction by design; each caller's key space is bounded by its declared window (`jieqi` [1, 32766], `algo2` by year range) | A caller with an unbounded key space appears |
 | **`algo1` / `algo3` stay near-duplicates — and tests whose columns mean different things don't merge either** (#167) | A third algorithm of the same shape; for tests, a group whose rows differ only in data |
 | **`moon_phase`'s year-boundary hole is `wontfix`** | A caller needs total coverage of the boundary |
 | **No one-off namespace rename**; new code lands in the intended shape, old names stay | — (incidentally or not at all) |
 | **No policy/context object for model selection**; the model stays a function parameter (`nutation::Model`) | A third real *ephemeris/nutation/EOP* backend appears (lunar `Algo` and frozen ΔT exhibits don't count) |
-| **Coordinate frames stay untagged**; names disambiguate (D2). Re-checked after #322 and #330, the one mix-up that reached results (planet light time subtracted vectors in different mean-ecliptic dates): the fix made the local producer own the transport to observation-date axes, backed by a 41-row reference and directed mutations, rather than tagging frames | Another mix-up survives naming and reaches a result |
+| **Coordinate frames stay untagged**; names disambiguate and producers transport to the required axes (re-checked #330) | Another mix-up survives naming and reaches a result |
 | **Transcription runs on a single track**; equivalence is proved once during a migration, not maintained as a parallel implementation | A transcription lands that cannot be diffed against its predecessor in one run |
 | **Quantified error budgets are not part of the API contract**; model selection uses source, status, hard domain, and role, and a fitted residual is never dressed up as a 1σ | A caller needs a validated quantitative bound that source/status/domain guidance cannot answer |
 | **The tool-existence checks in `automation/` are not merged into one**; the `toolbox/` `sys.path.append` copies cannot be merged either (#166) | A third call site needs the same failure policy as an existing two |
@@ -430,24 +422,21 @@ other (#49).
 **Decided and not yet built** (the decision is real, the artifact is not — do not cite
 it as existing): the `cpp26-lab` experiment branch.
 
-**Two conventions that look like drift and are not.** Time scales are spelled in the
-parameter name inside C++ (`jd_ut1`, `jde_tt`) and in the *function* name at the C
-boundary (`celestial_jde_to_ut1` takes a bare `jde`), because a C entry point only ever speaks one
-scale per call — in the function name, in a parameter name (`celestial_local_apparent_sidereal_time`
-takes `jd_ut1`), or, for the chart family, as one civil scale chosen by
-`civil_scale_code` with both resolved scales returned (`celestial_chart_snapshot`, #299); the one
-entry that spells its scale only in its docs is `celestial_apparent_solar_time` (civil UTC); reopen if
-a C entry point ever needs to accept time values of two scales from the caller. And every C
-export except the preserving `celestial_last_error` and `celestial_last_error_kind` readers clears or records
-the thread-local error kind/message through `wrap_export`; the kind is authoritative even with an empty message. The boundary
-lives in `celestial.h` and is mechanically reconciled with both bindings.
+**Two conventions that look like drift and are not.** A C entry point takes caller-supplied
+times of one scale per call. C++ spells the scale in parameter names (`jd_ut1`, `jde_tt`);
+C spells it in the function name, parameter name, or `civil_scale_code` argument
+(`celestial_chart_snapshot`, `celestial_house_query`, with both resolved times returned).
+`celestial_apparent_solar_time` states civil UTC only in its docs. Reopen if a C entry point
+must accept caller-supplied times of two scales. Separately, every C export except the preserving
+`celestial_last_error` and `celestial_last_error_kind` readers clears or records the thread-local
+kind/message through `wrap_export`. The kind is authoritative even with an empty message;
+`celestial.h` defines this boundary and is reconciled mechanically with both bindings.
 
 ## Phase and PR workflow
 
 - A PR is the delivery and review unit, and one PR may deliver several issues, one of them closed by
   a `Closes` reference. Work that needs staged handover uses `phaseN-<program>-<topic>` branches
-  from `main`, where `N` is the PR's stage number inside that release program (in the current
-  programs, not the issue number); a normal
+  from `main`, where `N` is the PR's delivery stage in the planned release, not an issue number; a normal
   patch uses a descriptive branch, and its documentation stays proportional to the change. PR bodies
   use four blocks: Summary / Tests / Validation / Scope.
 - PR titles, headings and prose use one language throughout. Default to English; when the
@@ -458,8 +447,8 @@ lives in `celestial.h` and is mechanically reconciled with both bindings.
   and assert the exact expected issue list.
 - Repo merge settings default the squash title and body to `PR_TITLE` and `PR_BODY`. A
   controlled GitHub merge API call may supply a different squash body; whichever body is
-  supplied must preserve that sole unbackticked closing reference and pass protection scan as
-  permanent main history. After merging, run `git fetch origin main`, then read back
+  supplied must preserve that sole unbackticked closing reference and contain no secrets or paths,
+  hostnames or tooling from outside this repository. After merging, run `git fetch origin main`, then read back
   `git log -1 --format='%b' origin/main` to verify what actually landed.
 - On the author's workstations `commit.gpgsign=true` is set machine-globally with a
   hardware key: there, a bare local `git commit` from an agent pops pinentry in the
@@ -479,14 +468,10 @@ lives in `celestial.h` and is mechanically reconciled with both bindings.
 - DON'T ASCII-ise unicode identifiers, move logic out of headers, or add namespace-scope
   `using` to a header.
 - DON'T add a dependency or build step outside the `project.py` / `checks.py` flow — the
-  wasm/npm and Python wheel builds are the sanctioned exceptions (#163, #182, #211): their recipes live in
-  `toolbox/build_wasm.py` and `toolbox/build_npm.py`, shared by the manual path and the
-  `wasm.yml` CI leg, and in `bindings/python` / `python-wheel.yml`; the release flow consumes
-  the CI-built artifacts and publishes those exact bytes, it does not rebuild them.
+  wasm/npm and Python wheel builds described in the build section are the sanctioned exceptions.
 - DON'T quote paths, hostnames, or tooling from outside this repository in anything public
   (comments, reviews, commit messages, PR text) — a path appearing in a file here does not
   make it publishable, and that includes files you were handed rather than wrote.
-- Match the neighbouring header's texture; internal consistency > external "best practice".
 
 ## Common Commands Reference
 
@@ -499,7 +484,7 @@ lives in `celestial.h` and is mechanically reconciled with both bindings.
 | Generate API HTML | `./project.py --docs` |
 | Build the WASM module (needs emsdk) | `python3 toolbox/build_wasm.py` |
 | Build the npm tarball (after WASM) | `python3 toolbox/build_npm.py` |
-| Build one Python wheel | `python -m cibuildwheel --only <identifier> bindings/python --output-dir build/wheelhouse` |
+| Build one Python wheel | With the workflow's `CIBW_*` settings: `python -m cibuildwheel --only <identifier> bindings/python --output-dir build/wheelhouse`; see [recipe](docs/BUILDING.md#python-wheels) |
 | Clean | `./project.py --clean` |
 | Python lint/format · C++ lint | `./checks.py --ruff` · `./checks.py --clang-tidy` |
 | Show version | `./project.py --version` |

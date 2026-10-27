@@ -259,7 +259,7 @@ def test_end_comments_and_string_occurrences_are_not_start_markers(tmp_path):
   verify_retained_provenance(tmp_path)
 
 
-def test_binding_generator_and_all_five_replay_paths_agree():
+def test_binding_generator_and_all_replay_paths_agree():
   from toolbox.make_bindings_golden import OUT_PATH
 
   assert OUT_PATH == ROOT / paths.BINDING_GOLDEN_RELATIVE
@@ -268,7 +268,7 @@ def test_binding_generator_and_all_five_replay_paths_agree():
     expression = re.search(r"^GOLDEN = (.+)$", source.read_text(), re.MULTILINE)
     assert expression is not None
     assert eval(expression[1], {"REPO": ROOT}) == OUT_PATH
-  for relative in ("node/public_api_test.mjs", "browser/browser_test.mjs", "abi/raw_protocol_test.mjs"):
+  for relative in ("browser/browser_test.mjs", "abi/raw_protocol_test.mjs"):
     source = ROOT / "bindings/javascript/test" / relative
     text = source.read_text()
     if relative.startswith("abi/"):

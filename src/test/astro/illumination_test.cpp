@@ -130,7 +130,7 @@ constexpr std::array HORIZONS_TOLERANCES {
 
 } // namespace
 
-TEST(Illumination, MoonWrapperPreservesFormulaPath) {
+TEST(BodyIllumination, MoonWrapperPreservesFormulaPath) {
   const astro::toolbox::SphericalCoordinate sun_pos {
     .λ = astro::toolbox::AngleDeg { 20.6579 },
     .β = astro::toolbox::AngleDeg { 8.6964 },
@@ -151,7 +151,7 @@ TEST(Illumination, MoonWrapperPreservesFormulaPath) {
   );
 }
 
-TEST(Illumination, IdenticalDirectionsRemainFinite) {
+TEST(BodyIllumination, IdenticalDirectionsRemainFinite) {
   const astro::toolbox::SphericalCoordinate source_pos {
     .λ = astro::toolbox::AngleDeg { 100.0 },
     .β = astro::toolbox::AngleDeg { 0.100008 },
@@ -170,7 +170,7 @@ TEST(Illumination, IdenticalDirectionsRemainFinite) {
   ASSERT_DOUBLE_EQ(result.illuminated_fraction, 0.0);
 }
 
-TEST(Illumination, NearCoincidentDirectionsPreserveGeometry) {
+TEST(BodyIllumination, NearCoincidentDirectionsPreserveGeometry) {
   const astro::toolbox::SphericalCoordinate source_pos {
     .λ = astro::toolbox::AngleDeg { 0.0 },
     .β = astro::toolbox::AngleDeg { 0.0 },
@@ -189,7 +189,7 @@ TEST(Illumination, NearCoincidentDirectionsPreserveGeometry) {
   ASSERT_NEAR(result.illuminated_fraction, 0.5000000004363323, 1e-12);
 }
 
-TEST(Illumination, HorizonsPlanetaryGeometry) {
+TEST(BodyIllumination, HorizonsPlanetaryGeometry) {
   for (const auto& row : HORIZONS_ROWS) {
     const auto result = astro::planet::observation::geometry(row.planet, row.jde_tt);
     const auto& tolerance = HORIZONS_TOLERANCES.at(static_cast<std::size_t>(row.planet));
@@ -203,7 +203,7 @@ TEST(Illumination, HorizonsPlanetaryGeometry) {
   }
 }
 
-TEST(Illumination, PlutoGeometryDomain) {
+TEST(BodyIllumination, PlutoGeometryDomain) {
   const double before = std::nextafter(
     astro::planet::detail::pluto::APPARENT_START_JDE_TT,
     -std::numeric_limits<double>::infinity()
@@ -232,7 +232,7 @@ TEST(Illumination, PlutoGeometryDomain) {
   );
 }
 
-TEST(Illumination, RejectsInvalidPlanetInput) {
+TEST(BodyIllumination, RejectsInvalidPlanetInput) {
   EXPECT_THROW(
     static_cast<void>(astro::planet::observation::geometry(
       astro::planet::Planet::PLUTO,

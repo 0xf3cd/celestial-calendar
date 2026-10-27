@@ -115,7 +115,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_retained_provenance_facts_and_values_are_complete():
-  assert verify_retained_provenance() == ProvenanceCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance() == ProvenanceCounts(58, 116, 61, 2, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -218,7 +218,7 @@ def test_longitude_rate_retained_hash_excludes_project_test_code(tmp_path):
     "EXPECT_NEAR(actual, row.deg_per_tt_day, tolerance)",
   )
 
-  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == verify_retained_provenance()
 
 
 @pytest.mark.parametrize(
@@ -351,7 +351,7 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == verify_retained_provenance()
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
@@ -458,7 +458,7 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   entry = next(block for block in registry["blocks"] if block["id"] == "v07-refresh")
   v07 = next(block for block in registry["blocks"] if block["id"] == "v07")
-  entry["path"] = "src/test/astro/sun_test.cpp"
+  entry["path"] = "src/test/astro/sun_test_data.hpp"
   entry["locator"] = "V07 refresh relation"
   entry["marker"] = "Retained material boundaries: the V07 JPL Horizons DE440 table"
   entry["marking_facts"] = v07["marking_facts"]
@@ -472,7 +472,7 @@ def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == verify_retained_provenance()
 
 
 @pytest.mark.parametrize(
@@ -654,7 +654,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "## [v99.0.0]\n\nThis release contains future changes.\n", encoding="utf-8"
   )
 
-  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == verify_retained_provenance()
 
 
 @pytest.mark.parametrize(

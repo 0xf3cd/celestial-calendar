@@ -24,7 +24,7 @@ TARGET_FILES = (
   Path("src/test/provenance/retained/retained_host_blocks.json"),
   Path("src/astro/sun.hpp"),
   Path("src/test/astro/earth_test.cpp"),
-  Path("src/test/astro/sun_test.cpp"),
+  Path("src/test/astro/sun_test_data.hpp"),
   Path("src/test/astro/moon_test.cpp"),
   Path("src/test/astro/elp2000_82b_test.cpp"),
   Path("src/test/astro/julian_day_test.cpp"),
@@ -74,20 +74,20 @@ def test_internal_provenance_is_complete():
       "  // Introduced by unknown",
     ),
     (
-      "src/test/astro/sun_test.cpp",
-      "TEST(Sun, GeocentricPosition) {\n"
+      "src/test/astro/sun_test_data.hpp",
+      "inline auto geocentric_position() -> std::unordered_map<double, std::tuple<double, double, double>> {\n"
       "  // PyMeeus-derived regression material; the original version and sample seed are not recorded.\n"
       "  // Introduced by b5f6c35",
-      "TEST(Sun, GeocentricPosition) {\n"
+      "inline auto geocentric_position() -> std::unordered_map<double, std::tuple<double, double, double>> {\n"
       "  // PyMeeus-derived regression material; the original version and sample seed are not recorded.\n"
       "  // Introduced by unknown",
     ),
     (
-      "src/test/astro/sun_test.cpp",
-      "TEST(Sun, CorrectedPosition) {\n"
+      "src/test/astro/sun_test_data.hpp",
+      "inline auto corrected_position() -> std::unordered_map<double, std::tuple<double, double, double>> {\n"
       "  // PyMeeus-derived regression material; the original version and sample seed are not recorded.\n"
       "  // Introduced by f4b0980",
-      "TEST(Sun, CorrectedPosition) {\n"
+      "inline auto corrected_position() -> std::unordered_map<double, std::tuple<double, double, double>> {\n"
       "  // PyMeeus-derived regression material; the original version and sample seed are not recorded.\n"
       "  // Introduced by unknown",
     ),
@@ -226,7 +226,7 @@ def test_v07_fixed_input_inventory_is_exact(tmp_path):
 def test_v07_active_goldens_are_immutable(tmp_path):
   materialize_inputs(tmp_path)
   replace_once(
-    tmp_path / "src/test/astro/sun_test.cpp",
+    tmp_path / "src/test/astro/sun_test_data.hpp",
     "62.035999382,  20.945745250",
     "62.035999383,  20.945745250",
   )
@@ -239,7 +239,7 @@ def test_v07_active_goldens_are_immutable(tmp_path):
 def test_v07_stored_de_source_is_immutable(tmp_path, source):
   materialize_inputs(tmp_path)
   replace_once(
-    tmp_path / "src/test/astro/sun_test.cpp",
+    tmp_path / "src/test/astro/sun_test_data.hpp",
     "VSOP87D-vs-DE440 series truncation",
     f"VSOP87D-vs-{source} series truncation",
   )
@@ -250,7 +250,7 @@ def test_v07_stored_de_source_is_immutable(tmp_path, source):
 
 def test_v07_stored_de_source_cannot_move_to_a_decoy(tmp_path):
   materialize_inputs(tmp_path)
-  path = tmp_path / "src/test/astro/sun_test.cpp"
+  path = tmp_path / "src/test/astro/sun_test_data.hpp"
   replace_once(path, "VSOP87D-vs-DE440 series truncation", "VSOP87D-vs-DE441 series truncation")
   replace_once(path, "// Tolerances apply ~3× margin.", "// VSOP87D-vs-DE440\n  // Tolerances apply ~3× margin.")
 
@@ -332,7 +332,7 @@ def test_v07_fixture_executes_its_own_shared_dependency(tmp_path):
 @pytest.mark.parametrize("marker", ["// Retained data: sun-3.", "// Retained data: earth-0."])
 def test_data_marker_removal_rejects_internal_provenance(tmp_path, marker):
   materialize_inputs(tmp_path)
-  path = tmp_path / ("src/test/astro/sun_test.cpp" if "sun-3" in marker else "src/test/astro/earth_test.cpp")
+  path = tmp_path / ("src/test/astro/sun_test_data.hpp" if "sun-3" in marker else "src/test/astro/earth_test.cpp")
   replace_once(path, marker, "// Removed data marker.")
   if "sun-3" in marker:
     with pytest.raises(ValueError, match="substring not found"):

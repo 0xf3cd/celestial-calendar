@@ -6,7 +6,7 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide describes version **1.0.0**, currently unreleased. Released 0.x wheels use the older target and model vocabulary.
+This guide describes the current source, including unreleased changes. Released 0.x wheels use the older target and model vocabulary.
 To run these examples against current source, build a local wheel from a full checkout as described below.
 
 <a id="install"></a>

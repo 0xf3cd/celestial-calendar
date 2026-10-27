@@ -27,9 +27,15 @@ from automation import (
   check_ai_workflows,
   check_action_pins,
   check_jieqi_table,
-  check_provenance,
   check_cpp_signature_layout,
 )
+
+
+def check_provenance() -> int:
+  """Load source-verifier dependencies only for the explicit provenance check."""
+  from automation.provenance import check_provenance as verify
+
+  return verify()
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,7 +69,7 @@ def parse_args() -> argparse.Namespace:
       "    ./checks.py --ai-workflows\n\n"
       "  To require immutable refs for third-party GitHub Actions:\n"
       "    ./checks.py --action-pins\n\n"
-      "  To hold the exported jieqi table to its invariants and the HKO anchors\n"
+      "  To hold the exported jieqi table to its UT1 schema and wrapper parity\n"
       "  (needs ./project.py --build first):\n"
       "    ./checks.py --jieqi-table\n\n"
       "  To report which awaited C++ features this toolchain can compile:\n"

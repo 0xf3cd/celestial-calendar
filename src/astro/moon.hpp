@@ -124,7 +124,7 @@ inline constexpr double EARTH_EQUATORIAL_RADIUS_KM = 6378.14;
   const double km = distance.km();
 
   // Written as `not (km > r)` so that a NaN distance fails the check too — `km <= r` is always
-  // false for NaN and would let it through to `asin` (#67's lesson, same shape). NaN is not the
+  // false for NaN and would let it through to `asin` (#67). NaN is not the
   // whole job: `inf > r` is true, and `asin(r / inf)` is a well-formed 0 rad — a plausible-looking
   // answer for a nonsense input — so finiteness needs its own check.
   if (not std::isfinite(km) or not (km > EARTH_EQUATORIAL_RADIUS_KM)) {

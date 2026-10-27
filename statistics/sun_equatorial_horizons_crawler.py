@@ -27,7 +27,7 @@ import horizons_common
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
-SUN_TEST: Final[Path] = REPO_ROOT / "src" / "test" / "astro" / "sun_test.cpp"
+SUN_TEST: Final[Path] = REPO_ROOT / "src" / "test" / "astro" / "sun_test_data.hpp"
 HORIZONS_API_VERSION: Final[str] = "1.2"
 STORED_TABLE_DE_SOURCE: Final[str] = "DE440"
 CURRENT_HORIZONS_DE_SOURCE: Final[str] = "DE441"
@@ -104,9 +104,8 @@ def horizons_params() -> dict[str, str]:
 
 def stored_rows(path: Path = SUN_TEST) -> dict[str, tuple[str, str]]:
   text = path.read_text(encoding="utf-8")
-  test_start = text.index("TEST(Sun, EquatorialApparentVsJplHorizons)")
-  dataset_start = text.index("const std::unordered_map", test_start)
-  dataset_end = text.index("\n  for (", dataset_start)
+  dataset_start = text.index("// Retained data: sun-3.")
+  dataset_end = text.index("};", dataset_start)
   return {jde: (ra, dec) for jde, ra, dec in ROW_PATTERN.findall(text[dataset_start:dataset_end])}
 
 

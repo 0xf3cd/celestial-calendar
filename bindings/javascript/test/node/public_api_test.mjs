@@ -234,19 +234,30 @@ const jieqiNames = [
   "立春", "雨水", "惊蛰", "春分", "清明", "谷雨", "立夏", "小满", "芒种", "夏至", "小暑", "大暑",
   "立秋", "处暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至", "小寒", "大寒",
 ];
-const golden = JSON.parse(await readFile(new URL("../../../../toolbox/bindings_golden.json", import.meta.url), "utf8"));
-const bitsOf = (hex) => Buffer.from(hex.slice(2), "hex").readDoubleBE(0);
+const rawModule = await (await import(new URL("./celestial-jieqi.mjs", entryUrl))).default();
+const jieqiLayout = manifest.layouts.CelestialJieqiMomentQuery;
+const rawJieqi = (year, index) => {
+  const pointer = rawModule._malloc(jieqiLayout.size);
+  assert.notEqual(pointer, 0);
+  try {
+    rawModule._celestial_query_jieqi_moment(pointer, year, index);
+    const view = new DataView(rawModule.HEAPU8.buffer, pointer, jieqiLayout.size);
+    const read = (name, type) => view[type](jieqiLayout.fields.find((field) => field.name === name).offset, true);
+    assert.equal(read("valid", "getUint8"), 1);
+    return [read("jq_idx", "getUint8"), read("y", "getInt32"), read("m", "getUint32"),
+      read("d", "getUint32"), read("frac", "getFloat64")];
+  } finally {
+    rawModule._free(pointer);
+  }
+};
 assert.equal(jieqiNames.length, 24);
 for (const [name, index] of Object.entries(expectedJieqi)) {
   const jq = celestial.Jieqi[name];
   assert.equal(celestial.jieqi.name(jq), jieqiNames[index], name);
-  const point = golden.sections.jieqi.entries.find((entry) => entry.idx === index);
-  assert(point, `missing Jieqi reference for ${name}`);
-  const value = celestial.jieqi.moment(point.year, jq);
+  const value = celestial.jieqi.moment(2024, jq);
   const moment = value.momentUt1;
-  assert.deepEqual([value.jieqi, moment.year, moment.month, moment.day], [point.idx, point.y, point.m, point.d]);
-  // Same native-output reference and WASM/libm moment cap as test/abi/raw_protocol_test.mjs.
-  assert(Math.abs(moment.fraction - bitsOf(point.frac_bits)) <= 1e-8, `${name}: reference UT1 fraction`);
+  assert.deepEqual([value.jieqi, moment.year, moment.month, moment.day, moment.fraction],
+    rawJieqi(2024, index), `${name}: decoded raw/public parity`);
 }
 // Delegated/fitted/extrapolated cases from src/test/astro/delta_t_test.cpp::DefaultDispatch.
 for (const year of [1950, 2020, 2040]) {

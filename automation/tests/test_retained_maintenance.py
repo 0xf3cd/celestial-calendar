@@ -89,8 +89,8 @@ def test_live_host_maintenance_does_not_require_a_value_repin(tmp_path, block_id
 def test_full_closeout_accepts_ordinary_maintenance(tmp_path):
   materialize_inputs(tmp_path)
   expected = verify_retained_provenance(tmp_path)
-  sun = tmp_path / "src/test/astro/sun_test.cpp"
-  replace_once(sun, "TEST(Sun, EquatorialApparentVsJplHorizons)", "TEST(Sun, RenamedHorizonsComparison)")
+  sun = tmp_path / "src/test/astro/sun_test_data.hpp"
+  replace_once(sun, "inline auto equatorial_apparent()", "inline auto renamed_equatorial_apparent()")
   sun.write_text(
     sun.read_text(encoding="utf-8") + "\nTEST(Sun, NewRegression) { EXPECT_EQ(17, 17); }\n", encoding="utf-8"
   )
@@ -112,7 +112,7 @@ def test_full_closeout_accepts_ordinary_maintenance(tmp_path):
 
 def test_unrelated_same_shape_table_is_not_part_of_retained_data(tmp_path):
   materialize_internal(tmp_path)
-  path = tmp_path / "src/test/astro/sun_test.cpp"
+  path = tmp_path / "src/test/astro/sun_test_data.hpp"
   original = path.read_text(encoding="utf-8")
   unrelated = (
     "TEST(Sun, Unrelated) {\n"
@@ -272,7 +272,7 @@ def test_printed_reference_input_units_are_retained(tmp_path):
 )
 def test_v37_independence_boundaries_are_required(tmp_path, old):
   materialize_internal(tmp_path)
-  replace_once(tmp_path / "src/test/astro/sun_test.cpp", old, "unestablished comparison")
+  replace_once(tmp_path / "src/test/astro/sun_test_data.hpp", old, "unestablished comparison")
   with pytest.raises(RuntimeError, match="V37 sun-0 required fact"):
     verify_internal_provenance(tmp_path)
 

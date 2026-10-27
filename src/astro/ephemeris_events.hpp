@@ -12,6 +12,11 @@
 
 #pragma once
 
+/** @file
+ * @brief Interval longitude events using the ephemeris models and fixed-grid search.
+ * @see docs/EPHEMERIS_EVENTS.md for rate definitions, domains, numerical guarantees and terminology.
+ */
+
 #include <algorithm>
 #include <cfenv>
 #include <cfloat>
@@ -297,7 +302,7 @@ inline auto validate_event_environment() -> void {
   return { .longitude = event_longitude(target, jde_tt), .error_deg = bounds.position_error_deg };
 }
 
-/** @brief Observe D_h at an admitted center, including displacement from the requested abscissa. */
+/** @brief Evaluate the seven-point rate at a center allowed by its domain, bounding any time displacement. */
 [[nodiscard]] inline auto event_rate_observation(
   const Target target,
   const double jde_tt,
@@ -459,7 +464,7 @@ namespace astro::ephemeris {
 }
 
 /**
- * @brief Return every isolated zero of the published seven-point longitude rate in a half-open TT interval.
+ * @brief Return every isolated zero of ephemeris::longitude_rate in a half-open TT interval.
  * @param target The moving body or node.
  * @param start_jde_tt Inclusive start, within @ref longitude_rate_domain.
  * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.

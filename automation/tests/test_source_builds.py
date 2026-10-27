@@ -55,6 +55,39 @@ def test_source_only_real_entry_points(source_only_tree):
     assert result.stdout.strip()
 
 
+@pytest.mark.parametrize("source_only", [False, True], ids=["repository", "source-only"])
+def test_routine_entries_without_optional_site_packages(source_only_tree, source_only):
+  root = source_only_tree[0] if source_only else ROOT
+  for script, argument in (("project.py", "--help"), ("checks.py", "--help"), ("project.py", "--version")):
+    result = subprocess.run(
+      [sys.executable, "-S", "-B", str(root / script), argument], cwd=root, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip()
+  probe = (
+    "import importlib.util, sys; "
+    "assert importlib.util.find_spec('markdown_it') is None; "
+    "assert importlib.util.find_spec('yaml') is None; "
+    "import project, checks; "
+    "from automation import build_project, build_docs; "
+    "assert callable(build_project) and callable(build_docs); "
+    "assert 'automation.provenance' not in sys.modules"
+  )
+  result = subprocess.run([sys.executable, "-S", "-B", "-c", probe], cwd=root, capture_output=True, text=True)
+  assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_eager_provenance_import_reproduces_the_routine_entry_failure(source_only_tree):
+  root, _, _ = source_only_tree
+  package = root / "automation/__init__.py"
+  package.write_text(package.read_text() + "\nfrom .provenance import check_provenance\n")
+  result = subprocess.run(
+    [sys.executable, "-S", "-B", str(root / "project.py"), "--version"], cwd=root, capture_output=True, text=True
+  )
+  assert result.returncode != 0
+  assert "ModuleNotFoundError" in result.stderr and "markdown_it" in result.stderr
+
+
 def test_layout_root_requires_source_markers(source_only_tree, monkeypatch):
   root, _, _ = source_only_tree
   monkeypatch.setattr(paths, "__file__", str(root / "automation/paths.py"))

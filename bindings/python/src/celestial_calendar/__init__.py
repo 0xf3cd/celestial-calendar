@@ -489,7 +489,7 @@ def supported_lunar_year_range(algorithm: LunarAlgorithm) -> LunarYearRange:
 def lunar_year_info(algorithm: LunarAlgorithm, year: int) -> LunarYearInfo:
   """Return month lengths and first Gregorian date on the selected algorithm's basis.
 
-  Native owns the algorithm's Lunar-year admission range.
+  The native library validates the algorithm's Lunar-year admission range.
   """
   code = _LUNAR_ALGORITHM[_enum(algorithm, LunarAlgorithm, "algorithm")]
   result = _result("celestial_get_lunar_year_info", "lunar_year_info", code, _year(year))
@@ -567,7 +567,7 @@ def chart_snapshot(
 ) -> ChartSnapshot:
   """Return an immutable chart with resolved Delta T and house-nutation keys.
 
-  Civil years are [1885, 2100); strict UTC starts at 1972-01-01. Native owns civil,
+  Civil years are [1885, 2100); strict UTC starts at 1972-01-01. The native library validates civil,
   geographic, joint-target/rate and derived-TT model limits. Algo4 additionally requires
   derived JDE(TT) < 2464328.5. Future UTC uses the held leap table; derived UT1 is modelled,
   not observed DUT1. Location affects houses only; timezone conversion is the caller's job.
@@ -602,7 +602,7 @@ def longitude_events(
   """Return longitude crossings or exact contacts in [start_jde_tt, end_jde_tt).
 
   Angles are apparent geocentric degrees; whole-turn shifts denote the same level.
-  Times are JDE(TT), rates are degrees per TT day. Native owns the target's rate domain
+  Times are JDE(TT), rates are degrees per TT day. The native library validates the target's rate domain
   and nonempty span limit of 3660 TT days. Empty success is legal; no partial list is returned.
   """
   code = _enum_code("TARGET", _enum(target, Target, "target"))
@@ -791,7 +791,7 @@ def house_query(
   Civil policy follows house_capability(): [1885, 2100), strict UTC from 1972-01-01,
   and the selected model's derived-TT cutoff (Algo4: JDE(TT) < 2464328.5). No chart
   target/rate window applies. Latitude is north-positive (-90, 90) degrees; longitude
-  east-positive [-180, 180] degrees. Native owns these domain checks and geometry.
+  east-positive [-180, 180] degrees. The native library checks these domains and computes the geometry.
   Placidus rejects polar geometry; every system rejects an unresolved Ascendant.
   DEFAULT is resolved by native. Reusing result keys preserves model selection, while
   exact coefficients also depend on the library/source version. Future UTC-derived UT1

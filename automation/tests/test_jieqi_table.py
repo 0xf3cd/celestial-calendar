@@ -232,7 +232,6 @@ def test_table_checker_rejects_each_new_schema_defect(monkeypatch, capsys, defec
   )
   monkeypatch.setattr(checker, "load_exporter", lambda: exporter)
   monkeypatch.setattr(checker, "load_common", lambda: common)
-  monkeypatch.setattr(checker, "HKO_ANCHORS", [])
   assert checker.check_jieqi_table() == (1 if defect else 0)
   if message:
     assert message in capsys.readouterr().out

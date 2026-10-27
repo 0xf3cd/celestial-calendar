@@ -15,6 +15,13 @@
 The committed records retain hashes and normalized values, not the raw recapture corpus. The
 `--evidence-dir` layout is `v12-bodies/NNN-*.json`, `v13-bodies/{g,l}NN-YYYY-MM-DD.json`,
 `v14-year-2024.json`, `v26-current-deltat.data`, and `v29-jd-api.json`.
+
+For sidereal-time recapture, coords=lat,lon is latitude first and east-positive;
+a swapped pair can be ignored silently (last == gast). Round coordinates to the
+API's roughly four decimal places before querying and store those inputs; otherwise
+the mismatch adds about 0.18 arcsecond of noise. Supply reps, intv_mag and intv_unit
+together. The request window is the current year +/- 1, with at most 9999 points
+per call; allow about 0.15 second between calls.
 """
 
 import argparse

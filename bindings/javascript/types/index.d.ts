@@ -224,7 +224,7 @@ export const time: Readonly<{
    * algo4 (IERS Bulletin A / USNO predictions) are frozen comparison models. Algo2 also
    * remains the live pre-2005 branch of algo3, algo4, and algo5.
    * Algo1 requires year >= -4000; algo3 year < 3000; algo4 year < 2035.
-   * Algo2/default/algo5 have no model-specific year bound, not an accuracy guarantee.
+   * Algo2, default and algo5 accept any finite year; that input bound is not an accuracy guarantee.
    */
   deltaT(year: number, model?: DeltaTModel): number;
 }>;

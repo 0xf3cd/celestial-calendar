@@ -23,7 +23,6 @@ from .export_surface import check_export_surface
 from .ai_workflows import check_ai_workflows
 from .action_pins import check_action_pins
 from .jieqi_table import check_jieqi_table
-from .provenance import check_provenance
 from .bench import build_benchmarks, run_benchmarks
 
 __all__ = [
@@ -55,7 +54,6 @@ __all__ = [
   "check_ai_workflows",
   "check_action_pins",
   "check_jieqi_table",
-  "check_provenance",
   "check_cpp_signature_layout",
   "build_benchmarks",
   "run_benchmarks",

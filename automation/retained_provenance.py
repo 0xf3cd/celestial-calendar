@@ -76,7 +76,6 @@ WINDOWS_ABSOLUTE_PATH: Final[re.Pattern[str]] = re.compile(r"(?i)(?<![a-z0-9])(?
 
 IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
   {
-    "automation/jieqi_table.py",
     "src/astro/delta_t.hpp",
     "src/astro/earth.hpp",
     "src/astro/earth/precession.hpp",
@@ -102,7 +101,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/test/astro/rise_set_golden_test.cpp",
     "src/test/astro/rise_set_moon_golden_test.cpp",
     "src/test/astro/sidereal_time_test.cpp",
-    "src/test/astro/sun_test.cpp",
+    "src/test/astro/sun_test_data.hpp",
     "src/test/jieqi_golden_test.cpp",
     "src/test/lunar/algo3_test.cpp",
     "src/test/shared_lib/cabi_smoke_test.cpp",

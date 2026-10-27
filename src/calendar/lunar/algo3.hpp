@@ -39,10 +39,10 @@ inline constexpr int32_t END_YEAR = 2199;
  *       2099 年保留 algo1 的香港天文台日期标记，其余年份由 algo2 的固定东八区民用时间生成；
  *       不存在一条历史时区规则可以概括整张表。
  *
- * ## Provenance (baked table — #70 §2)
+ * ## Provenance (baked table -- #70)
  * - Generator: `statistics/lunar_calendar.ipynb` (encode cells: HKO years 1901–2099 via
  *   algo1 / HKO table; all other years via live algo2 — see `algo2.hpp`).
- * - Gate 1 (#70 §2): all 401 non-HKO values (1600–1900 ∪ 2100–2199) re-encode
+ * - All 401 non-HKO values (1600–1900 ∪ 2100–2199) re-encode
  *   identically under live algo2. Re-bake through the same notebook whenever its
  *   time-scale dependencies change.
  * - The 199 HKO entries (1901–2099) carry no ΔT dependence; they are algo1's table verbatim.
@@ -54,7 +54,7 @@ inline constexpr int32_t END_YEAR = 2199;
  *   1914/1915/1916/1920/2057/2097 diverge (see `diff_test.cpp` / #64). This block is a
  *   provenance note, not a data fix: **do not edit any of the 600 values here without
  *   a deliberate re-bake and review.**
- * - Refresh ritual (read-only re-verify): run the "重烤对账" code cell at the end of
+ * - Read-only re-verification: run the "重烤对账" code cell at the end of
  *   `statistics/lunar_calendar.ipynb`. It re-encodes the re-bakeable subset and prints a
  *   mismatch count against this array. Print 0 = Gate re-verified. The cell never writes
  *   this header back.

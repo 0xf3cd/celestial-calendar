@@ -288,7 +288,7 @@ TEST(NewMoon, BracketEndpointsClearNewtonTolerance) {
   }
 }
 
-TEST(Illumination, Example48aFormulaLayer) {
+TEST(MoonIllumination, Example48aFormulaLayer) {
   // Retained reference inputs/values: Example48aFormulaLayer.
   // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), mirrored value-by-value. The inputs
   // are the book's own printed (rounded) positions from Example 47.a, so this layer pins the
@@ -310,14 +310,14 @@ TEST(Illumination, Example48aFormulaLayer) {
   ASSERT_NEAR(illumination::fraction(i), 0.6786, 5e-5);
 }
 
-TEST(Illumination, Example48aEndToEnd) {
+TEST(MoonIllumination, Example48aEndToEnd) {
   // Retained reference inputs/values: Example48aEndToEnd.
   // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
   // Measured gap vs the book's 0.6786: 3.3e-5 — below the print digit.
   ASSERT_NEAR(illumination::fraction(2448724.5), 0.6786, 5e-5);
 }
 
-TEST(Illumination, HorizonsGoldenDataset) {
+TEST(MoonIllumination, HorizonsGoldenDataset) {
   // Provenance: JPL Horizons, Moon (301), observer quantity 10 (Illu%), geocenter 500@399,
   // TT scale, DE441 (gated at collection: the response must name {source: DE441}) — 121
   // epochs = 120 seeded (uniform in [1900, 2100], seed 42) + the Example 48.a anchor,
@@ -454,7 +454,7 @@ TEST(Illumination, HorizonsGoldenDataset) {
   }
 }
 
-TEST(Illumination, Example48aPositionAngleFormulaLayer) {
+TEST(MoonIllumination, Example48aPositionAngleFormulaLayer) {
   // Retained reference inputs/values: Example48aPositionAngleFormulaLayer.
   // Provenance: Meeus Example 48.a (1992 April 12, 0h TT), printed equatorial positions.
   // The book rounds χ to 285°.0; the inputs are rounded to 4 decimals, so the formula-layer
@@ -472,7 +472,7 @@ TEST(Illumination, Example48aPositionAngleFormulaLayer) {
   ASSERT_NEAR(χ.deg(), 285.0, 0.05);
 }
 
-TEST(Illumination, Example48aPositionAngleEndToEnd) {
+TEST(MoonIllumination, Example48aPositionAngleEndToEnd) {
   // Retained reference inputs/values: Example48aPositionAngleEndToEnd.
   // The same instant through the library's own positions (VSOP87D + truncated ELP2000-82B).
   // The book rounds the result to 285°.0; the tolerance keeps the print-digit anchor
@@ -480,7 +480,7 @@ TEST(Illumination, Example48aPositionAngleEndToEnd) {
   ASSERT_NEAR(illumination::position_angle(2448724.5).deg(), 285.0442, 0.001);
 }
 
-TEST(Illumination, ConjunctionReadsZero) {
+TEST(MoonIllumination, ConjunctionReadsZero) {
   // Conjunction invariant: identical longitudes/latitudes give ψ = 0; with Δ ≪ R the
   // phase angle reads 180° and k = 0 — finite, never NaN. β is tuned so cos_ψ lands an
   // ulp above 1: the clamp's corner is exercised (without the clamp this test reads NaN).

@@ -38,3 +38,9 @@ Run `python -m automation.provenance` to check the source identities and committ
 bundle directly. Retained-value mutations and ordinary-maintenance controls live in
 `automation/tests/test_retained_provenance.py`, `test_retained_maintenance.py`, and
 `test_provenance.py`.
+
+The duplicate 48-row Python HKO table was retired with its `v04-automation` host and
+marking. V04 now points to the unchanged 168-row `HKO_ROWS` data entry. The exporter
+checks UT1 schema, fields and wrapper parity; the C++ suite checks reference accuracy.
+Likewise, the ctypes smoke gate compares raw C results with decoded Python fields
+instead of storing additional HKO, Meeus, sidereal or phase reference values.

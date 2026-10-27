@@ -46,7 +46,7 @@ struct BodyState {
 
 inline constexpr std::size_t BODY_COUNT = astro::ephemeris::TARGETS.size();
 
-/** @brief An owned fixed-instant chart ephemeris; bodies follow the ephemeris target roster. */
+/** @brief An independent fixed-instant chart value; bodies follow the ephemeris target roster. */
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): This aggregate has no default constructor; all result members are supplied.
 struct Snapshot {
   astro::julian_day::Times times;

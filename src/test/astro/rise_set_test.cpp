@@ -11,6 +11,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -449,23 +450,17 @@ TEST(RiseSet, FindExtremaFindsEdgeCellExtrema) {
 }
 
 TEST(RiseSet, SolarProviderThroughCalculateDay) {
-  // The gate for the loosened contract — `calculate_day` accepts the solar provider, and
-  // this test holds that acceptance. London's tz=0 USNO cells are exactly the UT-day window's semantics; the
-  // coordinates reproduce the golden set's quantized inputs (51.50, -0.13), not the city's
-  // more precise centroid.
+  // These London events lie inside both APIs' windows. Other locations and dates need not.
   const GeoLocation LONDON_GOLDEN = loc(51.50, -0.13);
-  const std::vector<std::tuple<int, int, double, double, double>> cases {
-    // (month, day, rise, transit, set) in UT minutes — the London rows of the solar golden set.
-    { 3, 20,  363.0, 728.0, 1093.0 },
-    { 6, 21,  223.0, 722.0, 1221.0 },
-    { 9, 23,  348.0, 713.0, 1077.0 },
-    { 12, 21, 484.0, 719.0,  953.0 },
+  const std::array<std::pair<uint8_t, uint8_t>, 4> cases {
+    std::pair<uint8_t, uint8_t> { 3, 20 }, { 6, 21 }, { 9, 23 }, { 12, 21 },
   };
-  for (const auto& [month, day, rise_min, transit_min, set_min] : cases) {
+  for (const auto& [month, day] : cases) {
     const auto ymd = util::to_ymd(2026, month, day);
     const auto result = calculate_day(ymd, LONDON_GOLDEN, sun::STANDARD_ALTITUDE, sun::provider);
+    const auto expected = sun::calculate(ymd, LONDON_GOLDEN);
     const auto tag = std::to_string(month) + "-" + std::to_string(day);
-    ASSERT_EQ(result.polar, Polar::NONE) << tag;
+    ASSERT_EQ(result.polar, expected.polar) << tag;
     ASSERT_TRUE(result.rise_jde_tt.has_value()) << tag;
     ASSERT_TRUE(result.transit_jde_tt.has_value()) << tag;
     ASSERT_TRUE(result.set_jde_tt.has_value()) << tag;
@@ -473,9 +468,9 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
     const auto ut_minutes = [](const double jde) {
       return astro::julian_day::jde_to_ut1(jde).fraction() * 1440.0;
     };
-    ASSERT_NEAR(ut_minutes(req(result.rise_jde_tt)), rise_min, 2.0) << tag << " rise";
-    ASSERT_NEAR(ut_minutes(req(result.transit_jde_tt)), transit_min, 2.0) << tag << " transit";
-    ASSERT_NEAR(ut_minutes(req(result.set_jde_tt)), set_min, 2.0) << tag << " set";
+    ASSERT_NEAR(ut_minutes(req(result.rise_jde_tt)), ut_minutes(req(expected.rise_jde_tt)), 2.0) << tag << " rise";
+    ASSERT_NEAR(ut_minutes(req(result.transit_jde_tt)), ut_minutes(req(expected.transit_jde_tt)), 2.0) << tag << " transit";
+    ASSERT_NEAR(ut_minutes(req(result.set_jde_tt)), ut_minutes(req(expected.set_jde_tt)), 2.0) << tag << " set";
   }
 
   // A UT day with TWO solar transits (the apparent solar day dips below 24 h around the
@@ -485,6 +480,10 @@ TEST(RiseSet, SolarProviderThroughCalculateDay) {
                                           sun::STANDARD_ALTITUDE, sun::provider);
   ASSERT_TRUE(two_transits.transit_jde_tt.has_value());
   ASSERT_LT(astro::julian_day::jde_to_ut1(req(two_transits.transit_jde_tt)).fraction() * 1440.0, 2.0);
+  const auto centered = sun::calculate(util::to_ymd(2026, 9, 15), loc(0.0, 178.8046));
+  const double start_jde_tt = astro::julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(2026, 9, 15), 0.0 });
+  ASSERT_GE(req(two_transits.rise_jde_tt), start_jde_tt);
+  ASSERT_LT(req(centered.rise_jde_tt), start_jde_tt);
 }
 
 TEST(RiseSet, ExtremumSearchTerminatesPastJdeBinade23) {
