@@ -89,20 +89,20 @@ const auto snapshot = astro::chart::calculate(
 
 Pass `julian_day::Scale::UT1` for historical civil input; UTC begins at 1972-01-01. Timezone conversion and
 inserted leap seconds are outside the input domain. A final `delta_t::Model` argument selects a
-model, through `delta_t::DEFAULT_MODEL` (currently Algo5). The result's `times` holds `jd_ut1`/`jde_tt`, alongside
-fourteen position/rate records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
+model and defaults to `delta_t::DEFAULT_MODEL` (currently Algo5). The result's `times` holds `jd_ut1`/`jde_tt`,
+alongside fourteen position/rate records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
 Location affects houses only. All systems reject an Ascendant direction unresolved at round-off;
 Placidus also rejects its polar geometry. Failure never selects another system.
 
 Civil years are `[1885, 2100)` and the joint JDE(TT) domain is `[2409543.875, 2488069.125)`;
-Algo4 additionally requires derived JDE(TT) `< 2464328.5`, checked before reverse conversion. The shared
-`chart::resolve_civil_times(civil_dt, scale, model)` owns this civil-year/UTC/model policy, but not the chart's
+Algo4 additionally requires derived JDE(TT) `< 2464328.5`, checked before any TT-to-UT1 conversion. The shared
+`chart::resolve_civil_times(civil_dt, scale, model)` applies this civil-year/UTC/model policy, but not the chart's
 joint target/rate window. The numeric `house::calculate(jd_ut1, jde_tt, location, system, model)` and
 `house::axes(jd_ut1, jde_tt, location, model)` accept both scales of the same instant without that civil policy.
 Houses follow `house::DEFAULT_NUTATION_MODEL`, currently IAU 1980; chart bodies keep their fixed IAU 1980 convention.
 There is no separate C axes export.
 
-For conversion without chart/house admission, `julian_day.hpp` owns `Scale`, `Times { jd_ut1, jde_tt }`,
+For conversion without chart/house admission, `julian_day.hpp` defines `Scale`, `Times { jd_ut1, jde_tt }`,
 `civil_to_tt` and `resolve_times`. Model guards apply at the evaluation instant: UT1 forward, TT reverse.
 UTC-to-TT alone does not evaluate ΔT. See [Time scales](DESIGN.md#time-scales) for legacy convenience conversions.
 See the [complete raw replay example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/examples/chart_snapshot/README.md).
@@ -117,7 +117,7 @@ signatures are preserved within a major version. An incompatible change needs an
 function/record or a new major; initial declarations do not carry a universal version suffix. No 0.x forwarders
 are provided.
 
-`celestial_chart_snapshot` returns an owned `CelestialChartSnapshot` by value. Its fourteen `CelestialChartBody`
+`celestial_chart_snapshot` returns `CelestialChartSnapshot` by value, independent of later calls. Its fourteen `CelestialChartBody`
 records follow `CELESTIAL_TARGET_*` order; `CelestialChartHouses` holds four axes and twelve cusps. The fixed
 roster/array layout cannot grow in place within 1.x. The result records resolved ΔT and house-nutation identities,
 and each body carries its position-source identity. These keys describe model choice; exact reproduction also
@@ -171,7 +171,7 @@ Query the size instead of assuming a fixed Jieqi-name buffer.
 
 `celestial_longitude_events`, `celestial_longitude_stations` and `celestial_longitude_difference_events` search
 half-open JDE(TT) intervals over the single `CELESTIAL_TARGET_*` family shared by charts, positions and capabilities.
-Each call owns its results through one count+fill protocol: `event_count`
+One count+fill protocol copies results into caller-owned buffers: `event_count`
 always receives the full total, caller-allocated `slots` receive the first `min(total, slot_count)`
 records in chronological order, and the return value is how many records were written, so a truncated
 fill is observable by comparing the two. A zero total is a legal no-event outcome; every failure also
@@ -235,7 +235,7 @@ values with optional intervals/span limits. Raw NaN/code encoding and runtime mo
 ## C Independent Position and House Queries
 
 `celestial_positions` evaluates the caller's selected targets at one finite JDE(TT) under the
-count+fill protocol (#355). Output records follow the caller's target order; duplicates, an empty
+count+fill protocol. Output records follow the caller's target order; duplicates, an empty
 selection and unknown codes are rejected before any position is computed, and one failed target
 fails the whole query — no partial list is ever returned. The query evaluates no rate stencil and
 applies no snapshot joint window: each target's provider window stands alone (see the POSITION

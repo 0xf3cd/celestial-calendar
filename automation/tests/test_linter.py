@@ -121,18 +121,17 @@ def test_cpp_signature_layout_checks_documentation_examples_but_not_build_output
   assert linter.check_cpp_signature_layout() == 0
 
 
-def test_clang_tidy_entrypoint_rejects_layout_before_running_tools(monkeypatch, tmp_path):
-  source = tmp_path / "src"
-  source.mkdir()
-  (source / "example.hpp").write_text("auto f()\n  -> Result;", encoding="utf-8")
+def test_clang_tidy_entrypoint_runs_independently_of_layout(monkeypatch, tmp_path):
+  (tmp_path / "compile_commands.json").write_text("[]", encoding="utf-8")
+  monkeypatch.setattr(linter.paths, "build_dir", lambda: tmp_path)
   monkeypatch.setattr(linter.paths, "proj_root", lambda: tmp_path)
-
-  def unexpected_tool(*_args, **_kwargs):
-    pytest.fail("layout failure must stop before invoking clang-tidy")
-
-  monkeypatch.setattr(linter, "check_tool", unexpected_tool)
-  monkeypatch.setattr(linter, "run_cmd", unexpected_tool)
-  assert linter.run_clang_tidy() == 1
+  monkeypatch.setattr(linter, "check_cpp_signature_layout", lambda: pytest.fail("tidy must not call layout"))
+  monkeypatch.setattr(linter, "check_tool", lambda *_args, **_kwargs: True)
+  calls = []
+  monkeypatch.setattr(linter, "run_cmd", lambda *args, **_kwargs: calls.append(args) or ProcReturn(7, "finding", ""))
+  assert linter.run_clang_tidy() == 7
+  assert len(calls) == 1
+  assert (tmp_path / "clang-tidy-stdout.log").read_text() == "finding"
 
 
 @pytest.mark.parametrize(
@@ -176,3 +175,10 @@ def test_core_tests_pin_ruff_and_run_repo_entrypoint():
 
   assert "python3 -m pip install ruff==0.16.1" in install["run"].splitlines()
   assert "./checks.py --ruff --clang-tidy --abi-layout" in [line.strip() for line in style["run"].splitlines()]
+  layout = next(step for step in steps if step.get("name") == "Check C++ signature layout")
+  assert layout["run"] == "python3 ./checks.py --signature-layout"
+  assert style["if"] == "${{ !cancelled() }}"
+  cmake = next(step for step in steps if step.get("name") == "Install CMake")
+  assert cmake["if"] == style["if"]
+  provenance = next(step for step in steps if step.get("name") == "Verify retained provenance")
+  assert provenance["run"] == "python3 ./checks.py --provenance"

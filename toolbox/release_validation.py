@@ -20,7 +20,6 @@ import tempfile
 import zipfile
 
 from collections import Counter
-from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
@@ -72,12 +71,6 @@ RELEASE_DOCUMENTS: Final[tuple[Path, ...]] = (
 RUNTIME_MATRIX_MARKER: Final[str] = "<!-- native-runtime-matrix -->"
 
 
-class LicenseValidation(Enum):
-  LEGACY = "legacy"
-  MEMBERS = "members"
-  REPOSITORY = "repository"
-
-
 def _require_members(archive: zipfile.ZipFile, expected: set[str], archive_name: str) -> None:
   names = archive.namelist()
   duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
@@ -92,12 +85,12 @@ def _require_license(
   archive: zipfile.ZipFile,
   member: str,
   archive_name: str,
-  expected_license: bytes | None,
+  expected_license: bytes,
 ) -> None:
   license_members = [name for name in archive.namelist() if PurePosixPath(name).name == "LICENSE"]
   if license_members != [member]:
     raise RuntimeError(f"Invalid LICENSE members in {archive_name}: {license_members}")
-  if expected_license is not None and archive.read(member) != expected_license:
+  if archive.read(member) != expected_license:
     raise RuntimeError(f"LICENSE in {archive_name} does not match the repository LICENSE")
 
 
@@ -105,16 +98,16 @@ def _require_notice(
   archive: zipfile.ZipFile,
   member: str,
   archive_name: str,
-  expected_notice: bytes | None,
+  expected_notice: bytes,
 ) -> None:
   notice_members = [name for name in archive.namelist() if PurePosixPath(name).name == NOTICE_MEMBER]
   if notice_members != [member]:
     raise RuntimeError(f"Invalid {NOTICE_MEMBER} members in {archive_name}: {notice_members}")
-  if expected_notice is not None and archive.read(member) != expected_notice:
+  if archive.read(member) != expected_notice:
     raise RuntimeError(f"{NOTICE_MEMBER} in {archive_name} does not match the repository notice")
 
 
-def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: bytes | None) -> None:
+def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: bytes) -> None:
   try:
     with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
       members = [
@@ -124,13 +117,13 @@ def _require_npm_license(tarball: bytes, tarball_name: str, expected_license: by
       if names != ["package/LICENSE"]:
         raise RuntimeError(f"Invalid LICENSE members in {tarball_name}: {names}")
       source = archive.extractfile(members[0])
-      if source is None or (expected_license is not None and source.read() != expected_license):
+      if source is None or source.read() != expected_license:
         raise RuntimeError(f"LICENSE in {tarball_name} does not match the repository LICENSE")
   except tarfile.TarError as error:
     raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
 
 
-def _require_npm_notice(tarball: bytes, tarball_name: str, expected_notice: bytes | None) -> None:
+def _require_npm_notice(tarball: bytes, tarball_name: str, expected_notice: bytes) -> None:
   try:
     with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as archive:
       members = [
@@ -142,7 +135,7 @@ def _require_npm_notice(tarball: bytes, tarball_name: str, expected_notice: byte
       if names != [f"package/{NOTICE_MEMBER}"]:
         raise RuntimeError(f"Invalid {NOTICE_MEMBER} members in {tarball_name}: {names}")
       source = archive.extractfile(members[0])
-      if source is None or (expected_notice is not None and source.read() != expected_notice):
+      if source is None or source.read() != expected_notice:
         raise RuntimeError(f"{NOTICE_MEMBER} in {tarball_name} does not match the repository notice")
   except tarfile.TarError as error:
     raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
@@ -244,7 +237,6 @@ def validate_wheel_sidecars(
   downloaded: Iterable[Path],
   version: str,
   require_complete: bool = False,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
   payloads: dict[str, Path] = {}
   for path in downloaded:
@@ -266,30 +258,29 @@ def validate_wheel_sidecars(
     )
 
   artifacts = {}
-  expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
-  expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
+  expected_license = ROOT_LICENSE.read_bytes()
+  expected_notice = ROOT_NOTICE.read_bytes()
   for wheel_name in wheels:
     artifact_name = _wheel_artifact(wheel_name, version)
     if artifact_name in artifacts:
       raise RuntimeError(f"Duplicate wheel platform: {artifact_name}")
     artifacts[artifact_name] = wheel_name
-    if license_validation is not LicenseValidation.LEGACY:
-      try:
-        with zipfile.ZipFile(payloads[wheel_name]) as archive:
-          _require_license(
-            archive,
-            f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
-            wheel_name,
-            expected_license,
-          )
-          _require_notice(
-            archive,
-            f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
-            wheel_name,
-            expected_notice,
-          )
-      except zipfile.BadZipFile as error:
-        raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
+    try:
+      with zipfile.ZipFile(payloads[wheel_name]) as archive:
+        _require_license(
+          archive,
+          f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
+          wheel_name,
+          expected_license,
+        )
+        _require_notice(
+          archive,
+          f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
+          wheel_name,
+          expected_notice,
+        )
+    except zipfile.BadZipFile as error:
+      raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
     digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
     expected = f"{digest}  {wheel_name}\n".encode()
     if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
@@ -319,7 +310,6 @@ def npm_candidate_tarballs(candidate: Path, version: str) -> dict[str, Path]:
 def npm_archive_payload(
   archive_path: Path,
   version: str,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> dict[str, bytes]:
   """Validate one WASM archive and return its registry publication payload."""
   try:
@@ -339,15 +329,12 @@ def npm_archive_payload(
       if len(set(tarballs.values())) != len(packages):
         raise RuntimeError("Duplicate npm tarball identity")
       expected = {"celestial-jieqi.mjs", "celestial-jieqi.wasm", *tarballs.values(), *required_metadata}
-      if license_validation is not LicenseValidation.LEGACY:
-        expected.add("LICENSE")
-        expected.add(NOTICE_MEMBER)
+      expected.update({"LICENSE", NOTICE_MEMBER})
       _require_members(archive, expected, archive_path.name)
-      expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
-      expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
-      if license_validation is not LicenseValidation.LEGACY:
-        _require_license(archive, "LICENSE", archive_path.name, expected_license)
-        _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
+      expected_license = ROOT_LICENSE.read_bytes()
+      expected_notice = ROOT_NOTICE.read_bytes()
+      _require_license(archive, "LICENSE", archive_path.name, expected_license)
+      _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
 
       payload = {name: archive.read(name) for name in required_metadata}
       for name, tarball_name in tarballs.items():
@@ -356,10 +343,9 @@ def npm_archive_payload(
         expected_sidecar = f"{digest}  {tarball_name}\n".encode()
         if archive.read(f"{packages[name]}.sha256") != expected_sidecar:
           raise RuntimeError(f"SHA-256 sidecar mismatch in {archive_path.name}: {name}")
-        if license_validation is not LicenseValidation.LEGACY:
-          _require_npm_license(tarball, tarball_name, expected_license)
-          if name == PACKAGE_NAME:
-            _require_npm_notice(tarball, tarball_name, expected_notice)
+        _require_npm_license(tarball, tarball_name, expected_license)
+        if name == PACKAGE_NAME:
+          _require_npm_notice(tarball, tarball_name, expected_notice)
         if len(packages) == 2:
           allowlist = ALIAS_ALLOWLIST if name == ALIAS_NAME else PACK_ALLOWLIST
           files = packs[name][0].get("files")
@@ -391,16 +377,14 @@ def npm_archive_payload(
 def validate_wasm_archive(
   archive_path: Path,
   version: str,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
   """Validate the exact WASM/npm artifact contract without changing the ZIP."""
-  npm_archive_payload(archive_path, version, license_validation)
+  npm_archive_payload(archive_path, version)
 
 
 def _native_layout(
   artifact_name: str,
   version: str,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> tuple[set[str], dict[str, str]]:
   match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
   if match is None:
@@ -408,10 +392,7 @@ def _native_layout(
   major = match.group(1)
   soversion = f"{major}.{match.group(2)}" if major == "0" else major
 
-  fixed = {"build_info.json", "cpu_info.json", "include/celestial.h"}
-  if license_validation is not LicenseValidation.LEGACY:
-    fixed.add("LICENSE")
-    fixed.add(NOTICE_MEMBER)
+  fixed = {"build_info.json", "cpu_info.json", "include/celestial.h", "LICENSE", NOTICE_MEMBER}
   if artifact_name in {"linux_amd64", "linux_arm64"}:
     runtime_members = {
       "lib/libcelestial_calendar.so": "libcelestial_calendar.so",
@@ -437,18 +418,14 @@ def validate_native_archive(
   artifact_name: str,
   version: str,
   expected_runtime: dict[str, dict[str, str]] | None = None,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
   """Validate one native artifact's members, runtime floor, and producer-recorded hashes."""
-  expected, runtime_members = _native_layout(artifact_name, version, license_validation)
+  expected, runtime_members = _native_layout(artifact_name, version)
   try:
     with zipfile.ZipFile(archive_path) as archive:
       _require_members(archive, expected, archive_path.name)
-      if license_validation is not LicenseValidation.LEGACY:
-        expected_license = ROOT_LICENSE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
-        expected_notice = ROOT_NOTICE.read_bytes() if license_validation is LicenseValidation.REPOSITORY else None
-        _require_license(archive, "LICENSE", archive_path.name, expected_license)
-        _require_notice(archive, NOTICE_MEMBER, archive_path.name, expected_notice)
+      _require_license(archive, "LICENSE", archive_path.name, ROOT_LICENSE.read_bytes())
+      _require_notice(archive, NOTICE_MEMBER, archive_path.name, ROOT_NOTICE.read_bytes())
       build_info = _read_json(archive, "build_info.json", archive_path.name)
       if not isinstance(build_info, dict) or build_info.get("build_version") != version:
         raise RuntimeError(f"Build version mismatch in {archive_path.name}")
@@ -474,15 +451,13 @@ def validate_release_archives(
   version: str,
   check_documented_runtime: bool = True,
   require_wheels: bool = False,
-  license_validation: LicenseValidation = LicenseValidation.REPOSITORY,
 ) -> None:
-  """Validate release archives and wheels under the selected LICENSE contract."""
+  """Validate release archives and wheels against repository license and notice bytes."""
   downloaded = list(downloaded)
   validate_wheel_sidecars(
     downloaded,
     version,
     require_complete=require_wheels,
-    license_validation=license_validation,
   )
   archives: dict[str, Path] = {}
   for path in downloaded:
@@ -502,7 +477,6 @@ def validate_release_archives(
   validate_wasm_archive(
     archives[WASM_ARCHIVE],
     version,
-    license_validation,
   )
   for filename, artifact_name in NATIVE_ARCHIVES.items():
     expected_runtime = runtime_matrix[artifact_name] if runtime_matrix is not None else None
@@ -511,7 +485,6 @@ def validate_release_archives(
       artifact_name,
       version,
       expected_runtime,
-      license_validation,
     )
 
 
@@ -677,7 +650,6 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     github_files,
     version,
     require_wheels=True,
-    license_validation=LicenseValidation.REPOSITORY,
   )
   wheels = sorted(pypi.iterdir())
   if len(wheels) != len(PYTHON_ARTIFACTS) or any(not path.name.endswith(".whl") for path in wheels):
@@ -703,7 +675,6 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     [*wheels, *sidecars],
     version,
     require_complete=True,
-    license_validation=LicenseValidation.REPOSITORY,
   )
   for wheel, sidecar in zip(wheels, sidecars, strict=True):
     if wheel.read_bytes() != (github / wheel.name).read_bytes():
@@ -714,7 +685,6 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   npm_payload = npm_archive_payload(
     github / WASM_ARCHIVE,
     version,
-    license_validation=LicenseValidation.REPOSITORY,
   )
   if {path.name for path in npm.iterdir()} != {name for name in npm_payload if name.endswith(".tgz")}:
     raise RuntimeError("npm candidate tarball inventory mismatch")
@@ -751,7 +721,6 @@ def stage_release_candidate(
     assets,
     version,
     require_wheels=True,
-    license_validation=LicenseValidation.REPOSITORY,
   )
   wheels = sorted(path for path in assets if path.name.endswith(".whl"))
   sidecars = sorted(path for path in assets if path.name.endswith(".whl.sha256"))
@@ -773,7 +742,6 @@ def stage_release_candidate(
   npm_payload = npm_archive_payload(
     release_assets / WASM_ARCHIVE,
     version,
-    license_validation=LicenseValidation.REPOSITORY,
   )
 
   save_to.parent.mkdir(parents=True, exist_ok=True)

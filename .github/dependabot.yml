@@ -6,7 +6,7 @@ updates:
   # next to the SHA, which is what makes those markers worth reading. Monthly and grouped: a
   # pin whose diff nobody reads is a floating tag with extra steps.
   - package-ecosystem: github-actions
-    directory: "/"
+    directories: ["/", "/.github/actions/*"]
     schedule:
       interval: monthly
     groups:

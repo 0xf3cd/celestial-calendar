@@ -8,7 +8,7 @@ JavaScript / TypeScript, and a C ABI.
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes version **1.0.0**, currently unreleased. See the
+This guide describes the current source, including unreleased changes. See the
 [migration guide](docs/MIGRATING_1_0.md) when moving from 0.x. The install commands below get the latest published
 version on PyPI or npm; use its matching documentation. To build the current source yourself, use the
 [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
@@ -297,8 +297,24 @@ OS version floor is declared.
   [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
   instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval events and
   [independent position/house queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
+- Interval longitude crossings, stations and directed two-body longitude differences: C++ provides
+  [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp), C exposes `celestial_longitude_events` /
+  `celestial_longitude_stations` / `celestial_longitude_difference_events`, and Python provides
+  [`longitude_events` and related queries](bindings/python/README.md#interval-longitude-events).
+  See the [event guide](docs/EPHEMERIS_EVENTS.md); JavaScript exposes no event API.
+- Operation input bounds and model identities: C exposes `celestial_capabilities`, `celestial_house_capability`,
+  `celestial_model_identities` and operation/model descriptions. Python provides
+  [`capabilities` and related queries](bindings/python/README.md#capabilities); C++ provides
+  [`capability.hpp`](src/astro/capability.hpp). JavaScript exposes no capability API.
+- Independent position and house queries: select a nonempty target subset for apparent geocentric ecliptic or
+  equatorial positions at one JDE(TT), without rates or the chart's joint window. Civil-house queries apply the
+  shared civil policy independently of that joint target/rate window. C provides `celestial_positions`,
+  `celestial_equatorial_positions` and `celestial_house_query`; Python provides
+  [`positions`, `equatorial_positions` and `house_query`](bindings/python/README.md#independent-queries).
+  Results carry resolved model/source identities. C++ provides `ephemeris::position`, `equatorial_position`
+  and the numeric operations in [`house.hpp`](src/astro/house.hpp). JavaScript exposes none of these queries.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
-  return events ordered by JDE(TT). Year ownership uses `[Jan 1, next Jan 1)` UTC, with the library's UT1
+  return events ordered by JDE(TT). Events belong to `[Jan 1, next Jan 1)` UTC, with the library's UT1
   substitute before 1972. The `[1, 32766]` input year domain is not a guarantee of successful evaluation or modern
   ephemeris precision in remote eras; Pluto provides outer-planet events only, over complete
   Gregorian years `[1886, 2098]`.

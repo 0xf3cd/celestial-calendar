@@ -11,19 +11,22 @@ import os
 from pathlib import Path
 from typing import List
 
-from .utils import red_print
+if __package__:
+  from .utils import red_print
+else:
+  from utils import red_print
 
 
 def proj_root() -> Path:
-  """Locate the project root directory. This function also performs a sanity check so can be slightly slow."""
+  """Locate the source root from this module, including Git-free source archives."""
   root = Path(__file__).parent.parent
-
-  # Ensure it is a git repo root.
-  if not (root / ".git").exists():
-    red_print("The project root is not a git repository.")
-    raise RuntimeError("The project root is not a git repository.")
+  if not all((root / name).is_file() for name in ("project.py", "src/CMakeLists.txt", "Requirements.txt")):
+    raise RuntimeError(f"Incomplete CelestialCalendar source layout: {root}")
 
   return root
+
+
+BINDING_GOLDEN_RELATIVE = Path("toolbox/bindings_golden.json")
 
 
 def cpp_src_dir() -> Path:

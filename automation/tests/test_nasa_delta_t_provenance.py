@@ -19,10 +19,8 @@ import pytest
 from automation.astrotime_delta_t_provenance import ASTROTIME_ALGO5_ROOT, ASTROTIME_ALGO5_ROOT_RELATIVE
 from automation.nasa_delta_t_provenance import (
   NASA_ACKNOWLEDGMENT,
-  NASA_ACKNOWLEDGMENT_SHA256,
   NASA_NOTICE_APPLICABILITY,
   NASA_RECORD,
-  NASA_RECORD_SHA256,
   NASA_ROOT,
   REPO_ROOT,
   ProvenanceCounts,
@@ -69,8 +67,6 @@ def mutate_record(path: Path, mutation) -> str:
 
 
 def test_nasa_record_is_pinned():
-  assert NASA_RECORD_SHA256 == "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
-  assert NASA_ACKNOWLEDGMENT_SHA256 == "735321e0ac09f73fd6f6262100a723227c00286b2a6bc7c4a7b0c598b4edfb5b"
   assert NASA_NOTICE_APPLICABILITY == (
     "the NASA/TP-2006-214141 Delta-T polynomial material in src/astro/delta_t.hpp, the 398 non-HKO lunar-year "
     "table values in src/calendar/lunar/algo3.hpp preserving their NASA-backed historical generation relation, and the "

@@ -259,7 +259,7 @@ struct Angle {
 };
 
 /**
- * @brief The spelling used everywhere outside this header (#53).
+ * @brief An angle measured in degrees.
  * @note `Angle<DEG>` needs both names in scope, which outside `astro::toolbox` only a
  *       namespace-scope `using` can arrange — and headers may not have one (#51). These
  *       aliases keep the unit in the type name without asking the reader's namespace for
@@ -373,7 +373,7 @@ struct Distance {
   double _value;
 };
 
-/** @brief The spelling used outside this header, for the same reason as `AngleDeg` (#53). */
+/** @brief A distance measured in astronomical units; see @ref AngleDeg for the alias convention. */
 using DistanceAu = Distance<DistanceUnit::AU>;
 using DistanceKm = Distance<DistanceUnit::KM>;
 
@@ -417,7 +417,7 @@ inline constexpr double NEWTON_MIN_STEP_ULP = 8.0;
  */
 inline constexpr double NEWTON_RESIDUAL_TOL_ULP = 1.0;
 
-/** @brief The iteration budget. Convergence is measured at 5 iterations or fewer. */
+/** @brief The Newton iteration budget. */
 inline constexpr std::size_t NEWTON_MAX_ITERATIONS = 30;
 
 /**
@@ -458,9 +458,8 @@ requires std::invocable<const Func&, double>
 
   double step = NEWTON_INITIAL_STEP_DAYS;
 
-  // `std::midpoint` is the correctly-rounded half-sum. Where `a + b` cannot overflow -- JDE sits
-  // near 2.4e6, three hundred orders clear of it -- that is bit-for-bit what the `(a + b) / 2` it
-  // replaced produced. The two part company only at the extremes midpoint exists to survive.
+  // `std::midpoint` equals the rounded (start_jde + end_jde) / 2 where the sum cannot overflow,
+  // including these JDEs.
   double jde = std::midpoint(start_jde, end_jde);
 
   // Newton can walk away from a root it has already reached, so keep the best iterate rather
@@ -483,14 +482,13 @@ requires std::invocable<const Func&, double>
       break;
     }
 
-    // Shrinking the step by the golden ratio is what keeps the run short: at most 5 iterations
-    // over years 401-9050, against 7 for a fixed step. The floor is what keeps it honest — below
-    // ½ulp(jde) both samples round back to `jde` and f' collapses to exactly zero.
+    // Shrink the step by the golden ratio, but keep it above ½ulp(jde): below that,
+    // both samples round back to `jde` and f' collapses to zero.
     const double h = std::max(step, NEWTON_MIN_STEP_ULP * ulp(jde));
     const double f_prime = (f(jde + h) - f(jde - h)) / (2.0 * h);
 
-    // A shared solver has to tolerate an `f` that may go non-finite somewhere in its bracket
-    // (#43 originally planned such an f), and a collapsed f' has no direction left to offer.
+    // A shared solver has to tolerate an `f` that may go non-finite somewhere in its bracket;
+    // a collapsed f' has no direction left to offer.
     if (not std::isfinite(f_prime) or f_prime == 0.0) {
       break;
     }

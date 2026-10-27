@@ -22,6 +22,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Final, Mapping
 
+if __package__:
+  from .source_identity import require as _require
+else:
+  from source_identity import require as _require
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 USNO_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "usno" / "2026-08-26"
@@ -46,11 +51,6 @@ class IdentityCounts:
   v26_rows: int
   v26_citation_relations: int
   v29_responses: int
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _record(path: Path, expected_hash: str) -> dict:

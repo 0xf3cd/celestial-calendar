@@ -110,7 +110,7 @@ namespace astro::sun::equatorial_coord {
  * @details Composes `geocentric_coord::apparent` (ecliptic λ, β, with FK5 + nutation + aberration)
  *          with the true obliquity ε and Meeus (13.3)–(13.4) via `coords::ecliptic_to_equatorial`.
  *          The result is of-date apparent equatorial place of the Sun, suitable as input to
- *          sunrise/sunset hour-angle calculations (Phase 5).
+ *          sunrise/sunset hour-angle calculations.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapters 13 and 25.
  */
 [[nodiscard]] inline auto apparent(const double jde) -> astro::coords::EquatorialCoord {
@@ -133,12 +133,9 @@ namespace astro::sun::geocentric_coord::math {
 // In this namespace, we use Newton's method to approximate the JDE,
 // at which time the Sun reaches a given geocentric longitude in a year.
 //
-// The solar-longitude notebook landed in 202a0bd (#12), Newton inversion in 397422cc (#13), and
-// a second Moon-phase copy in 066c28db (#34). Commit 5101b6d2 (#95) introduced the shared toolbox
-// helper and best-iterate/bracket policy. The lower nong page supplied conceptual and implementation
+// The lower nong page supplied conceptual and implementation
 // ideas for the solar-longitude solver in this namespace; the upper page is a historical
-// Sun-coordinate reference. This record does not claim copied code or byte identity. The rise/set
-// golden-section solver landed separately in bc79c991 (#199).
+// Sun-coordinate reference. This record does not claim copied code or byte identity.
 //
 // Given a year and a geocentric longitude, our goal is to find the JDE(s) that satisfy the following condition:
 // 1. The JDE(s) must fall in the given year.

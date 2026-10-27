@@ -189,7 +189,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   NoticeSource(
     title="Hong Kong Observatory — retained lunar-year words",
     applicability="the HKO-derived runtime words in the native library, wheels, npm package, and WebAssembly build",
-    path=Path("src/test/provenance/batch-a-closeout/HKO_RUNTIME_ATTRIBUTION.md"),
+    path=Path("src/test/provenance/retained/HKO_RUNTIME_ATTRIBUTION.md"),
     upstream="https://www.hko.gov.hk/en/gts/time/calendar/text/files/T{year}e.txt",
     sha256=HKO_RUNTIME_ATTRIBUTION_SHA256,
     facts=(
@@ -214,7 +214,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     applicability=(
       "the VSOP87D Earth coefficient tables in the native library, wheels, npm package, and WebAssembly build"
     ),
-    path=Path("src/test/provenance/batch-a-closeout/VSOP87D_ATTRIBUTION.md"),
+    path=Path("src/test/provenance/retained/VSOP87D_ATTRIBUTION.md"),
     upstream="CDS VI/81, VSOP87D.ear, Bretagnon and Francou January 1996 IMCCE distribution",
     sha256=VSOP87D_ATTRIBUTION_SHA256,
     facts=(
@@ -265,7 +265,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     applicability=(
       "the Meeus p.168 daily-variation compilation in the native library, wheels, npm package, and WebAssembly build"
     ),
-    path=Path("src/test/provenance/batch-a-closeout/MEEUS_R22_ATTRIBUTION.md"),
+    path=Path("src/test/provenance/retained/MEEUS_R22_ATTRIBUTION.md"),
     upstream="Jean Meeus, Astronomical Algorithms, second edition, p.168, ISBN 978-0943396613",
     sha256=MEEUS_R22_ATTRIBUTION_SHA256,
     facts=(
@@ -294,7 +294,7 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
   NoticeSource(
     title="Microsoft — statically linked C/C++ runtime portions",
     applicability="the Windows native DLL and the Windows wheel's native DLL",
-    path=Path("src/test/provenance/batch-a-closeout/WINDOWS_RUNTIME_ATTRIBUTION.md"),
+    path=Path("src/test/provenance/retained/WINDOWS_RUNTIME_ATTRIBUTION.md"),
     upstream="Visual Studio Enterprise 2026 terms captured by both approved Windows evidence profiles",
     sha256=WINDOWS_RUNTIME_ATTRIBUTION_SHA256,
     facts=(
@@ -350,6 +350,13 @@ def assemble_notices(
     sections.append(separator + heading + separator + b"\n" + body.rstrip(b"\n") + b"\n\n")
 
   return b"".join(sections)
+
+
+def verify_notices(repo_root: Path = REPO_ROOT) -> None:
+  """Compare the committed bundle with its canonical assembly."""
+  expected = assemble_notices(repo_root)
+  if (repo_root / ROOT_NOTICE.name).read_bytes() != expected:
+    raise RuntimeError("THIRD_PARTY_NOTICES.txt is not the canonical assembled output")
 
 
 def main() -> None:

@@ -1,0 +1,30 @@
+name: Native toolchain
+description: Select the native compiler tools and Python runtime
+inputs:
+  python-version:
+    description: Python runtime selected by the caller
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+    - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+      if: runner.os == 'macOS'
+      with:
+        xcode-version: '26'
+    - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
+      if: runner.os == 'Windows'
+      with:
+        vs-version: latest
+    - name: Install LLVM and make
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        choco install -y make
+        choco install -y llvm --version=22.1.7
+    - name: Install CMake
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt install cmake

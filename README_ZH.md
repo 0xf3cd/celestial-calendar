@@ -7,7 +7,7 @@
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
-本文对应 **1.0.0** 的开发接口，尚未发布。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
+本文描述当前源码，含尚未发布的改动。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
 下面的安装命令取得 PyPI / npm 上的最新已发布版本，请以所装版本附带的文档为准。
 要自行构建当前源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
 [WASM / npm 包](docs/BUILDING.md#wasm)的步骤。

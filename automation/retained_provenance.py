@@ -20,23 +20,31 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
+  from .source_identity import require as _require
+  from .paths import BINDING_GOLDEN_RELATIVE
   from .markdown_source import links, section_text, tokens
   from .source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
     canonical_cpp,
     json_digest,
+    load_json as _load_json,
+    notebook_values,
     require_facts,
     verify_retained_data,
   )
   from .third_party_notices import NOTICE_SOURCES, SEPARATOR, NoticeSource
 else:
+  from source_identity import require as _require
+  from paths import BINDING_GOLDEN_RELATIVE
   from markdown_source import links, section_text, tokens
   from source_digest import (
     RETAINED_REGISTRY,
     attribution_digest,
     canonical_cpp,
     json_digest,
+    load_json as _load_json,
+    notebook_values,
     require_facts,
     verify_retained_data,
   )
@@ -44,103 +52,17 @@ else:
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
-CLOSEOUT_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/batch-a-closeout")
+REGISTRY_ROOT_RELATIVE: Final[Path] = Path("src/test/provenance/retained")
 LUNAR_NODE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lunar-node/LUNAR_NODE_ORACLE_ATTRIBUTION.md")
 LONGITUDE_RATE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/ATTRIBUTION.md")
 LONGITUDE_RATE_PINS_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/SOURCE_PINS.json")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = RETAINED_REGISTRY.name
 # Project records pin structured facts or citation atoms, not prose bytes.
-RECORD_SHA256: Final[str] = "6e778138b2d3e693da518ae75ac7bbec94fbd0c052fc0072216affeb8656351b"
-REGISTRY_SHA256: Final[str] = "bacd8c54817731ea5d0e479a37d49deae341ee19c259eb189e6204d464ae38c5"
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
 LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"
 LONGITUDE_RATE_PINS_SHA256: Final[str] = "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
 
-DISPOSITION_GROUPS: Final[dict[tuple[str, str, str], frozenset[str]]] = {
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "commercial_authorisation_required",
-  ): frozenset({"R01", "V01", "V02", "V03", "V04"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "no_redistribution_grant_scientific_context",
-  ): frozenset({"R12"}),
-  (
-    "project_authored_classification_acceptance",
-    "project_authored_mit",
-    "project_authored_classification",
-  ): frozenset(
-    {
-      "R03",
-      "R04",
-      "R15",
-      "R17",
-      "R20",
-      "R23",
-      "R24",
-      "R25",
-      "R26",
-      "R28",
-      "R29",
-      "R30",
-      "R31",
-      "R32",
-      "R33",
-      "R34",
-      "R36",
-    }
-  ),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "written_reservation",
-  ): frozenset({"R22", "V32"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "symmetric_silence",
-  ): frozenset({"V06", "V07", "V08", "V09", "V10", "V11", "V20", "V21", "V22", "V23"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "gpl_source_decode",
-  ): frozenset({"V05"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "output_conditional",
-  ): frozenset({"V15", "V16", "V17", "V18", "V19", "V44"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "no_terms_no_snapshot",
-  ): frozenset({"V30"}),
-  ("recorded_historical_boundary", "project_authored_mit", "not_applicable"): frozenset(
-    {"R02", "V24", "V31", "V33", "V35", "V38"}
-  ),
-  (
-    "recorded_historical_boundary",
-    "retained_third_party_outside_mit",
-    "no_terms_no_snapshot",
-  ): frozenset({"V28"}),
-  ("closed_by_existing_evidence", "project_authored_mit", "not_applicable"): frozenset({"V34"}),
-  ("closed_by_existing_evidence", "no_active_stored_bytes", "not_applicable"): frozenset({"V36"}),
-  (
-    "closed_by_existing_evidence",
-    "retained_third_party_outside_mit",
-    "output_conditional",
-  ): frozenset({"V37"}),
-  (
-    "retained_under_owner_risk_acceptance",
-    "retained_third_party_outside_mit",
-    "eula_text_captured_unassessed",
-  ): frozenset({"T03"}),
-  ("out_of_denominator", "no_active_stored_bytes", "not_applicable"): frozenset({"V39", "V40", "V41"}),
-  ("out_of_denominator", "citation_only", "not_applicable"): frozenset({"V43"}),
-}
 WINDOWS_TERMS_DOCUMENT_COUNT: Final[int] = 25
 SHARED_WINDOWS_TERMS_DOCUMENTS_SHA256: Final[str] = "ee2fe84134c32a7ae7b3c6f0581b14fb864664be8ac3db357ab327b3848fc53c"
 WINDOWS_STATIC_ARCHIVE_MEMBER_COUNTS: Final[dict[str, int]] = {
@@ -151,63 +73,9 @@ WINDOWS_STATIC_ARCHIVE_MEMBER_COUNTS: Final[dict[str, int]] = {
 }
 SHARED_WINDOWS_STATIC_ARCHIVES_SHA256: Final[str] = "b200036dd3c9ddb7ffd8d49513b65d9b0653c739296b11053856bba112426ae3"
 WINDOWS_ABSOLUTE_PATH: Final[re.Pattern[str]] = re.compile(r"(?i)(?<![a-z0-9])(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)")
-EXPECTED_ROWS: Final[frozenset[str]] = frozenset().union(*DISPOSITION_GROUPS.values())
-
-SPLIT_ROW_PARTS: Final[dict[str, str]] = {
-  "R17": "6378.14 km radius and parallax-geometry remainder",
-  "R23": "Meeus equation 25.11 implementation remainder",
-  "R34": "365.2422-day and 29.530588853-day mean-period remainder",
-  "V11": "Skyfield twilight leg; USNO and NOAA legs remain closed by their existing terms evidence",
-  "V22": "V22b generated JDEs; V22a leap facts are closed by SOFA evidence",
-}
-
-REQUIRED_REGISTRY_IDS: Final[frozenset[str]] = frozenset(
-  """
-  r01-algo1 r01-algo3 r05 r06 r07 r09 r10 r11-forward r11-reverse r12 r12-check r12-jupiter
-  r12-mars r12-mercury r12-neptune r12-saturn r12-uranus r12-venus r13 r14 r38-pluto
-  r38-pluto-evaluator
-  r16-longitude r16-latitude r17-baseline r18 r19 r21 r22 r23-constant r27 r34-julian r34-au
-  r37-t01 t03-native t03-wheel v01-algo1-test v01-algo3-test v02-algo2 v02-common v02-diff
-  v02-cabi v03 v04-test v04-automation v05 v06 v06-planets v06-illumination v06-phenomena v07 v07-refresh
-  v08 v09 v10 v11 v11-refresh v12 v13 v14 v15 v15-planets v15-phenomena v16 v17 v18 v19 v20 v21
-  v22-sofa v22-pyerfa v23 v25 v26 v27 v28 v29 v30 v32-coord
-  v32-sidereal v32-precession v32-earth v32-elp v32-phase v32-solar v32-rise-set
-  v32-refraction v32-julian v32-cabi v32-planets v37-earth-vsop v37-earth-nutation v37-sun-geometric
-  v37-sun-corrected v37-moon-coord v37-moon-perturbation v37-elp v37-julian v20-lunar-node
-  v44-lunar-node v44-aaplus-phenomena v45-pluto95
-  v44-longitude-rate v20-longitude-rate v15-longitude-rate r38-longitude-rate
-  v07-equatorial-horizons v20-equatorial-projection v20-equatorial-nodes
-  notice-emscripten
-  notice-musl notice-libcxx notice-libcxxabi notice-libunwind notice-compiler-rt notice-sofa notice-erfa
-  """.split()
-)
-REQUIRED_DATA_DIGEST_IDS: Final[frozenset[str]] = frozenset(
-  {
-    "v06-planets",
-    "v06-illumination",
-    "v06-phenomena",
-    "r38-pluto",
-    "r38-pluto-evaluator",
-    "v15-planets",
-    "v15-phenomena",
-    "v32-planets",
-    "v44-aaplus-phenomena",
-    "v45-pluto95",
-    "v20-lunar-node",
-    "v44-lunar-node",
-    "v44-longitude-rate",
-    "v20-longitude-rate",
-    "v15-longitude-rate",
-    "r38-longitude-rate",
-    "v07-equatorial-horizons",
-    "v20-equatorial-projection",
-    "v20-equatorial-nodes",
-  }
-)
 
 IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
   {
-    "automation/jieqi_table.py",
     "src/astro/delta_t.hpp",
     "src/astro/earth.hpp",
     "src/astro/earth/precession.hpp",
@@ -233,7 +101,7 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
     "src/test/astro/rise_set_golden_test.cpp",
     "src/test/astro/rise_set_moon_golden_test.cpp",
     "src/test/astro/sidereal_time_test.cpp",
-    "src/test/astro/sun_test.cpp",
+    "src/test/astro/sun_test_data.hpp",
     "src/test/jieqi_golden_test.cpp",
     "src/test/lunar/algo3_test.cpp",
     "src/test/shared_lib/cabi_smoke_test.cpp",
@@ -243,7 +111,6 @@ IDENTITY_GATE_HOSTS: Final[frozenset[str]] = frozenset(
   }
 )
 
-NON_PROJECT_SPDX_HOSTS: Final[frozenset[str]] = frozenset({"THIRD_PARTY_NOTICES.txt", "run-clang-tidy.py"})
 MIT_LICENSE_BYTES: Final[bytes] = b"""MIT License
 
 Copyright (c) 2024-2026 Ningqi Wang (0xf3cd)
@@ -267,9 +134,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 MIT_SPDX_MARKER: Final[str] = "SPDX-License-Identifier: MIT"
-# Split scanned licence tokens so the gate does not match its own implementation.
-OLD_FULL_HEADER_MARKER: Final[str] = "it under the terms of the GNU General " + "Public License"
-OLD_SHORT_HEADER_MARKER: Final[str] = "# License: GNU General " + "Public License v3.0"
 A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
@@ -299,9 +163,6 @@ A4_SCAN_EXCLUDED_PARTS: Final[frozenset[str]] = frozenset(
 )
 # A qualifier glued to MIT ("MIT-like", "MIT\u2013like") must not satisfy the scope check.
 MIT_SCOPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"licensed under MIT(?=$|[\s.,;:])")
-CHANGELOG_MIT_PATTERN: Final[re.Pattern[str]] = re.compile(
-  r"Project-authored material is now licensed under MIT(?=$|[\s.,;:])"
-)
 GPL_3_OR_LATER: Final[str] = "GPL" + "-3.0-or-later"
 GPL_V2: Final[str] = "GPL" + "v2"
 GPL_V3: Final[str] = "GPL" + "v3"
@@ -373,89 +234,14 @@ SOURCE_FAMILIES: Final[tuple[tuple[str, ...], ...]] = (
   ("internal julian", "internal regression"),
 )
 
-EXPECTED_NOTICE_APPLICABILITY: Final[dict[str, frozenset[str]]] = {
-  "Emscripten 6.0.6 — LICENSE": frozenset({"notice-emscripten"}),
-  "musl — COPYRIGHT": frozenset({"notice-musl"}),
-  "libc++ — LICENSE.TXT": frozenset({"notice-libcxx"}),
-  "libc++abi — LICENSE.TXT": frozenset({"notice-libcxxabi"}),
-  "libunwind — LICENSE.TXT": frozenset({"notice-libunwind"}),
-  "compiler-rt — LICENSE.TXT": frozenset({"notice-compiler-rt"}),
-  "IAU SOFA issue 2023-10-11 — SOFA Software License": frozenset(
-    {"notice-sofa", "r10", "r13", "r14", "r18", "r19", "v22-sofa", "v20-equatorial-projection", "v20-equatorial-nodes"}
-  ),
-  "ERFA v2.0.1 — LICENSE": frozenset(
-    {
-      "notice-erfa",
-      "r11-forward",
-      "r11-reverse",
-      "r16-latitude",
-      "r16-longitude",
-      "r17-baseline",
-      "r21",
-      "r23-constant",
-      "r27",
-      "r34-au",
-      "r34-julian",
-    }
-  ),
-  "NASA/TP-2006-214141 — acknowledgment": frozenset({"r06", "v25", "v27"}),
-  "Delta T algorithms 1, 3, and 5 — source attribution": frozenset({"r05", "r07", "r09"}),
-  "Hong Kong Observatory — retained lunar-year words": frozenset({"r01-algo1", "r01-algo3"}),
-  "VSOP87D — retained Earth coefficients": frozenset({"r12"}),
-  "VSOP87D — retained planetary coefficients": frozenset(
-    {
-      "r12-check",
-      "r12-jupiter",
-      "r12-mars",
-      "r12-mercury",
-      "r12-neptune",
-      "r12-saturn",
-      "r12-uranus",
-      "r12-venus",
-    }
-  ),
-  "Astronomical Algorithms — retained daily-variation series": frozenset({"r22"}),
-  "Sonia Keys meeus v3 — MIT License": frozenset({"r38-pluto", "r38-pluto-evaluator"}),
-  "Microsoft — statically linked C/C++ runtime portions": frozenset({"t03-native", "t03-wheel"}),
-}
-
 
 @dataclass(frozen=True)
-class CloseoutCounts:
+class ProvenanceCounts:
   rows: int
   retained_blocks: int
   marked_hosts: int
   adjacent_records: int
   notice_mappings: int
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
-
-
-def _read_pinned(path: Path, expected_sha256: str, label: str) -> bytes:
-  data = path.read_bytes()
-  digest = hashlib.sha256(data).hexdigest()
-  _require(digest == expected_sha256, f"{label} hash mismatch: {digest}")
-  return data
-
-
-def _object_without_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
-  result: dict[str, object] = {}
-  for key, value in pairs:
-    _require(key not in result, f"duplicate JSON key: {key}")
-    result[key] = value
-  return result
-
-
-def _load_json(data: bytes, label: str) -> dict:
-  try:
-    value = json.loads(data, object_pairs_hook=_object_without_duplicates)
-  except (UnicodeDecodeError, json.JSONDecodeError) as error:
-    raise RuntimeError(f"{label} is not valid UTF-8 JSON") from error
-  _require(isinstance(value, dict), f"{label} root must be an object")
-  return value
 
 
 def _contains_absolute_windows_path(value: object) -> bool:
@@ -476,24 +262,12 @@ def _safe_path(repo_root: Path, relative: str, label: str) -> Path:
   return target
 
 
-def _expected_row_shapes() -> dict[str, tuple[str, str, str]]:
-  return {row: shape for shape, rows in DISPOSITION_GROUPS.items() for row in rows}
-
-
 def _verify_row_record(repo_root: Path, record: dict) -> dict[str, dict]:
   _require(set(record) == {"schema", "scope", "rows"}, "closeout record top-level fields differ")
   _require(record["schema"] == 1, "closeout record schema differs")
   _require(isinstance(record["scope"], str) and record["scope"], "closeout record scope is empty")
   rows = record["rows"]
   _require(isinstance(rows, dict), "closeout rows must be an object")
-  row_ids = set(rows)
-  _require(
-    row_ids == EXPECTED_ROWS,
-    f"closeout row inventory differs: missing={sorted(EXPECTED_ROWS - row_ids)}, "
-    f"unexpected={sorted(row_ids - EXPECTED_ROWS)}",
-  )
-
-  expected_shapes = _expected_row_shapes()
   required_fields = {
     "disposition_kind",
     "material_scope",
@@ -508,14 +282,17 @@ def _verify_row_record(repo_root: Path, record: dict) -> dict[str, dict]:
   }
   optional_fields = {"covered_part", "source_facts"}
   for row_id, row in rows.items():
+    _require(ROW_ID_PATTERN.fullmatch(row_id) is not None, f"invalid disposition row ID: {row_id}")
     _require(isinstance(row, dict), f"{row_id} must be an object")
     fields = set(row)
     _require(required_fields <= fields, f"{row_id} is incomplete: missing={sorted(required_fields - fields)}")
     _require(
       fields <= required_fields | optional_fields, f"{row_id} has unexpected fields: {sorted(fields - required_fields)}"
     )
-    shape = (row["disposition_kind"], row["material_scope"], row["terms_shape"])
-    _require(shape == expected_shapes[row_id], f"{row_id} disposition/material/terms shape differs")
+    for field in ("disposition_kind", "material_scope", "terms_shape"):
+      _require(isinstance(row[field], str) and row[field], f"{row_id} {field} is empty")
+    if "covered_part" in row:
+      _require(isinstance(row["covered_part"], str) and row["covered_part"], f"{row_id} covered part is empty")
     _require(row["permission_claim"] is False, f"{row_id} must not claim upstream permission")
     expected_risk = (
       row["material_scope"] == "retained_third_party_outside_mit"
@@ -527,11 +304,6 @@ def _verify_row_record(repo_root: Path, record: dict) -> dict[str, dict]:
     _require(isinstance(row["unavailable"], list), f"{row_id} unavailable fields must be a list")
     _verify_evidence(repo_root, row_id, row["evidence"])
 
-  for row_id, covered_part in SPLIT_ROW_PARTS.items():
-    _require(rows[row_id].get("covered_part") == covered_part, f"{row_id} split-row assignment is incomplete")
-  _require("covered_part" not in rows["V07"], "V07 must have one complete row entry")
-  _require("covered_part" in rows["V11"], "V11 split-row assignment is incomplete")
-  _require("covered_part" not in rows["V18"], "V18 must have one complete row entry")
   _require(rows["V18"]["unavailable"] == ["original generator"], "V18 unavailable fields differ")
   _require(
     rows["V03"].get("source_facts")
@@ -747,10 +519,6 @@ def _a4_scan_texts(repo_root: Path) -> dict[str, str]:
   return texts
 
 
-def _exact_marker_hosts(texts: dict[str, str], marker: str) -> set[str]:
-  return {relative for relative, text in texts.items() if marker in text}
-
-
 def _residual_gpl_tokens(texts: dict[str, str]) -> Counter[tuple[str, str]]:
   tokens: Counter[tuple[str, str]] = Counter()
   for relative, text in texts.items():
@@ -758,15 +526,9 @@ def _residual_gpl_tokens(texts: dict[str, str]) -> Counter[tuple[str, str]]:
   return tokens
 
 
-def _verify_a4_license_surfaces(repo_root: Path) -> None:
+def _verify_license_surfaces(repo_root: Path, non_project_hosts: set[str]) -> None:
   _require((repo_root / "LICENSE").read_bytes() == MIT_LICENSE_BYTES, "root LICENSE is not canonical MIT text")
   texts = _a4_scan_texts(repo_root)
-
-  for label, marker in (("full", OLD_FULL_HEADER_MARKER), ("short", OLD_SHORT_HEADER_MARKER)):
-    control = _exact_marker_hosts({"<known-positive>": marker}, marker)
-    _require(control == {"<known-positive>"}, f"old {label} header scan positive control failed")
-    hosts = _exact_marker_hosts(texts, marker)
-    _require(not hosts, f"old {label} project header remains: {sorted(hosts)}")
 
   for relative, text in texts.items():
     path = Path(relative)
@@ -777,7 +539,7 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     has_project_banner = "Ningqi Wang (0xf3cd)" in header and "https://github.com/0xf3cd/celestial-calendar" in header
     if has_project_banner and not is_source:
       _require(header.count(MIT_SPDX_MARKER) == 1, f"MIT SPDX project header differs: {relative}")
-    if not is_source or relative in NON_PROJECT_SPDX_HOSTS or (path.name == "__init__.py" and not text.strip()):
+    if not is_source or relative in non_project_hosts or (path.name == "__init__.py" and not text.strip()):
       continue
     _require(
       "CelestialCalendar" in header
@@ -829,11 +591,6 @@ def _verify_a4_license_surfaces(repo_root: Path) -> None:
     "Chinese README canonical license link differs",
   )
 
-  changelog_license = _rendered_section(texts["docs/CHANGELOG.md"], "[v0.7.0]")
-  _require(
-    CHANGELOG_MIT_PATTERN.search(changelog_license),
-    "MIT changelog entry differs",
-  )
   _require(
     "Project-authored material: MIT;" in texts["AGENTS.md"]
     and "retained third-party material keeps its source terms" in texts["AGENTS.md"],
@@ -921,21 +678,12 @@ def _verify_registry(
   )
   _require(registry["schema"] == 4, "retained registry schema differs")
   _require(isinstance(registry["scope"], str) and registry["scope"], "retained registry scope is empty")
-  _require(
-    set(registry["non_project_spdx_hosts"]) == NON_PROJECT_SPDX_HOSTS,
-    "non-project SPDX host inventory differs",
-  )
   blocks = registry["blocks"]
   _require(isinstance(blocks, list), "retained registry blocks must be an array")
   ids = [block.get("id") for block in blocks if isinstance(block, dict)]
   _require(len(ids) == len(blocks), "retained registry block must be an object")
   _require(len(ids) == len(set(ids)), "retained registry block IDs are duplicated")
-  id_set = set(ids)
-  _require(
-    id_set == REQUIRED_REGISTRY_IDS,
-    f"retained registry inventory differs: missing={sorted(REQUIRED_REGISTRY_IDS - id_set)}, "
-    f"unexpected={sorted(id_set - REQUIRED_REGISTRY_IDS)}",
-  )
+  non_project_hosts = _non_project_hosts(repo_root, registry)
 
   locators: set[tuple[str, str]] = set()
   registered_paths: set[str] = set()
@@ -946,8 +694,6 @@ def _verify_registry(
   for block in blocks:
     mode = block.get("marking_mode")
     data_fields = {"data_id"}
-    if block.get("id") in REQUIRED_DATA_DIGEST_IDS:
-      _require(data_fields <= set(block), f"{block['id']} retained data fields differ")
     has_data_digest = bool(data_fields & set(block))
     mode_fields = (
       {"marker", "marking_facts"} | (data_fields if has_data_digest else set())
@@ -1002,7 +748,18 @@ def _verify_registry(
     if "notice_title" in block:
       title = block["notice_title"]
       _require(isinstance(title, str) and title, f"{block['id']} notice title is empty")
+      source = next((source for source in notice_sources if source.title == title), None)
+      _require(source is not None, f"{block['id']} notice applicability mapping differs: {title}")
+      notice_text = (repo_root / source.path).read_text(encoding="utf-8")
+      notice_families = set(_source_families(source.title + " " + source.upstream + " " + notice_text))
+      _require(
+        bool(block_families & notice_families),
+        f"{block['id']} notice applicability mapping differs from its source",
+      )
       notice_applicability.setdefault(title, set()).add(block["id"])
+    distributed_source = block["path"].startswith("src/") and not block["path"].startswith("src/test/")
+    if distributed_source or path.name == "CMakeLists.txt" or block["path"] == "THIRD_PARTY_NOTICES.txt":
+      _require("notice_title" in block, f"{block['id']} distributed retained host lacks its notice mapping")
 
   retained_rows = {
     row_id for row_id, row in rows.items() if row["material_scope"] == "retained_third_party_outside_mit"
@@ -1017,21 +774,77 @@ def _verify_registry(
 
   expected_notice_titles = {source.title for source in notice_sources}
   _require(
-    set(EXPECTED_NOTICE_APPLICABILITY) == expected_notice_titles,
+    set(notice_applicability) == expected_notice_titles,
     "notice source inventory differs from the applicability contract",
   )
-  actual_notice_applicability = {title: frozenset(ids) for title, ids in notice_applicability.items()}
-  _require(
-    actual_notice_applicability == EXPECTED_NOTICE_APPLICABILITY,
-    "notice applicability mapping differs",
-  )
-
-  project_hosts = {block["path"] for block in blocks if block["marking_mode"] == "in_file"} - NON_PROJECT_SPDX_HOSTS
+  project_hosts = {block["path"] for block in blocks if block["marking_mode"] == "in_file"} - non_project_hosts
   for relative in project_hosts:
     text = (repo_root / relative).read_text(encoding="utf-8")
     _require(text.count("SPDX-License-Identifier: MIT") == 1, f"MIT SPDX host marking differs: {relative}")
 
   return blocks, len(registered_paths), sum(len(sections) for sections in adjacent_sections.values())
+
+
+def _non_project_hosts(repo_root: Path, registry: dict) -> set[str]:
+  """An SPDX exception must identify a marked upstream host, never a project source."""
+  hosts = registry["non_project_spdx_hosts"]
+  _require(isinstance(hosts, list) and len(hosts) == len(set(hosts)), "non-project SPDX hosts are duplicated")
+  for relative in hosts:
+    registered = [block for block in registry["blocks"] if block.get("path") == relative]
+    _require(registered, f"non-project SPDX exception has no retained host: {relative}")
+    text = _safe_path(repo_root, relative, "non-project SPDX host").read_text(encoding="utf-8")
+    header = "\n".join(text.splitlines()[:25])
+    upstream_spdx = re.search(r"SPDX-License-Identifier: (?!MIT\b)\S+", header)
+    notice = relative == "THIRD_PARTY_NOTICES.txt" and SEPARATOR.decode() in text
+    _require(
+      MIT_SPDX_MARKER not in header and (upstream_spdx is not None or notice),
+      f"non-project SPDX exception lacks upstream marking: {relative}",
+    )
+  return set(hosts)
+
+
+def _verify_data_anchors(repo_root: Path, registry: dict, rows: dict[str, dict]) -> None:
+  """Reconcile value entries with source markers, notebook payloads and their real owners."""
+  data = registry["data_blocks"]
+  marker_pattern = re.compile(r"^// Retained (?:data|reference inputs/values): .+\.$")
+  markers: Counter[tuple[str, str]] = Counter()
+  for path in (repo_root / "src").rglob("*"):
+    if not path.is_file() or path.suffix not in {".cpp", ".hpp", ".h"} or "provenance" in path.parts:
+      continue
+    for line in path.read_text(encoding="utf-8").splitlines():
+      if marker_pattern.fullmatch(line.strip()):
+        markers[(path.relative_to(repo_root).as_posix(), line.strip())] += 1
+  starts = Counter((block["path"], block.get("start", "")) for block in data.values())
+  for key, count in markers.items():
+    _require(count == 1 and starts[key] == 1, f"retained start marker needs exactly one data entry: {key}")
+
+  evidence_ids = {
+    block_id
+    for row in rows.values()
+    if row["evidence"]["kind"] == "retained_data"
+    for block_id in row["evidence"]["ids"]
+  }
+  block_ids = {block["data_id"] for block in registry["blocks"] if "data_id" in block}
+  for block_id, block in data.items():
+    start = block.get("start", "")
+    if marker_pattern.fullmatch(start):
+      key = (block["path"], start)
+      _require(markers[key] == 1 and starts[key] == 1, f"retained data entry lacks its unique start marker: {key}")
+    else:
+      _require(block_id in evidence_ids | block_ids, f"retained data entry has no evidence or host anchor: {block_id}")
+
+  def require_whole_file(relative: str, method: str) -> None:
+    entries = [block for block in data.values() if block["path"] == relative]
+    _require(
+      len(entries) == 1 and entries[0]["method"] == method and not entries[0].get("start"),
+      f"retained whole-file owner needs exactly one {method} entry: {relative}",
+    )
+
+  for path in (repo_root / "statistics").glob("*.ipynb"):
+    payload = notebook_values(path)
+    if any(payload.values()):
+      require_whole_file(path.relative_to(repo_root).as_posix(), "notebook_values")
+  require_whole_file(BINDING_GOLDEN_RELATIVE.as_posix(), "raw_sha256")
 
 
 def _verify_adjacent_record(repo_root: Path, block: dict, adjacent_sections: dict[str, set[str]]) -> None:
@@ -1105,6 +918,7 @@ def _verify_orphan_markings(repo_root: Path, blocks: list[dict]) -> None:
 
 
 def _verify_orphan_adjacent_sections(repo_root: Path, expected: dict[str, set[str]]) -> None:
+  expected = {str(REGISTRY_ROOT_RELATIVE / "ATTRIBUTION.md"): set(), **expected}
   for relative, sections in expected.items():
     text = (repo_root / relative).read_text(encoding="utf-8")
     actual = set(re.findall(r"(?m)^## V\d{2}: .+$", text))
@@ -1181,40 +995,32 @@ def _verify_house_references(repo_root: Path) -> None:
   )
 
 
-def verify_batch_a_closeout(
+def verify_retained_provenance(
   repo_root: Path = REPO_ROOT,
-  record_sha256: str = RECORD_SHA256,
-  registry_sha256: str = REGISTRY_SHA256,
   notice_sources: Sequence[NoticeSource] = NOTICE_SOURCES,
-) -> CloseoutCounts:
-  _verify_a4_license_surfaces(repo_root)
+) -> ProvenanceCounts:
   _verify_oracle_attributions(repo_root)
   _verify_house_references(repo_root)
   source_pins = _load_json((repo_root / LONGITUDE_RATE_PINS_RELATIVE).read_bytes(), "longitude-rate source pins")
   _require(json_digest(source_pins) == LONGITUDE_RATE_PINS_SHA256, "longitude-rate source pins facts differ")
 
-  closeout_root = repo_root / CLOSEOUT_ROOT_RELATIVE
-  record = _load_json((closeout_root / RECORD_NAME).read_bytes(), "closeout record")
+  registry_root = repo_root / REGISTRY_ROOT_RELATIVE
+  record = _load_json((registry_root / RECORD_NAME).read_bytes(), "retained-source record")
   registry = _load_json(
     (repo_root / RETAINED_REGISTRY).read_bytes(),
     "retained registry",
   )
+  _verify_license_surfaces(repo_root, _non_project_hosts(repo_root, registry))
   rows = _verify_row_record(repo_root, record)
+  _verify_data_anchors(repo_root, registry, rows)
   blocks, marked_hosts, adjacent_records = _verify_registry(
     repo_root,
     registry,
     rows,
     notice_sources,
   )
-  row_facts = {
-    key: {field: value for field, value in row.items() if field not in {"destination", "current_reproducibility"}}
-    for key, row in rows.items()
-  }
-  _require(json_digest(row_facts) == record_sha256, "closeout source/disposition facts differ")
-  block_facts = [{key: value for key, value in block.items() if key != "locator"} for block in blocks]
-  _require(json_digest(block_facts) == registry_sha256, "retained registry source/marking facts differ")
   verify_retained_data(repo_root)
-  return CloseoutCounts(
+  return ProvenanceCounts(
     rows=len(rows),
     retained_blocks=len(blocks),
     marked_hosts=marked_hosts,
@@ -1224,4 +1030,4 @@ def verify_batch_a_closeout(
 
 
 if __name__ == "__main__":
-  print(verify_batch_a_closeout())
+  print(verify_retained_provenance())

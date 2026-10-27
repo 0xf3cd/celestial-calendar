@@ -83,7 +83,7 @@ class ChartHouses:
 
 @_dataclass(frozen=True)
 class ChartSnapshot:
-  """An owned same-instant snapshot, including resolved Delta T and house-nutation keys.
+  """An independent same-instant value, including resolved Delta T and house-nutation keys.
 
   Bodies follow Target order and retain their fixed IAU1980 position convention.
   """

@@ -6,18 +6,17 @@
 #
 # All pinned; see AGENTS.md gotcha 9 (#72). The reasons differ, so they are stated apart.
 #
-# `requests` reaches CI through `automation/github.py`, which only `toolbox/*_downloader.py`
-# import -- that is `release.yml` collecting the artifacts, not the build and test legs. A break
-# there does not turn a leg red, it fails a release; pinned because that is the worse day to
-# discover a dependency moved, not because it decides a verdict.
+# Core Tests imports Requests through the registry, Horizons and artifact-downloader tests.
+# Pin it so a dependency update cannot change their verdict without a reviewed source change.
+# Release collection uses the separate hash-locked Requirements-producer.txt closure.
 requests==2.34.2
 # The AI-workflow gate reads `.github/workflows/*.yml` for real: a per-job permission and a
 # pinned SHA cannot be told apart from a workflow's own prose by matching lines (#144).
 # That makes this parser part of a gate, not a convenience -- a silent major would change what
 # the gate accepts on a day nobody touched the repository.
 pyyaml==6.0.3
-# `automation/tests/test_markdown.py` reads links, anchors, code blocks and sections, and the closeout
-# gate's license checks (the package READMEs and the CHANGELOG entry) read license sections and
+# `automation/tests/test_markdown.py` reads links, anchors, code blocks and sections, and the retained-source
+# gate's license checks (the package READMEs) read license sections and
 # links, all from one CommonMark parse
 # (`automation/markdown_source.py`): a link in a code span or a comment, or a fence that opens a list
 # item, cannot be told from what a reader sees by matching lines (#328, #350). Pinned like pyyaml.

@@ -456,6 +456,7 @@ struct DailyVariationTerm {
 // Retained material boundary (R22): this 21-row Meeus p.168 compilation remains under its source
 // terms and outside the project MIT grant; written permission to reproduce it was not obtained.
 // NOLINTBEGIN(modernize-use-designated-initializers)
+// Retained data: earth-runtime-0.
 inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS {{
   { 118.568,  87.5287,  359993.7286, 0 },
   {   2.476,  85.0561,  719987.4571, 0 },
@@ -496,6 +497,7 @@ inline constexpr std::array<DailyVariationTerm, 21> MEEUS_DAILY_VARIATION_TERMS 
     const toolbox::AngleDeg θ { t.phase + (t.rate * τ) };
     return t.amplitude * std::pow(τ, t.tau_power) * std::sin(θ.rad());
   });
+  // Retained data: daily-variation-constant.
   return 3548.330 + fold_left(terms, 0.0, std::plus {});
 }
 

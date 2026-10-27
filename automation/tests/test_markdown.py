@@ -23,7 +23,6 @@ import pytest
 from markdown_it.token import Token
 
 from automation.markdown_source import link_targets, links, section_text, tokens, visible_text
-from toolbox.artifact_downloader import project_version
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -36,7 +35,6 @@ GUIDE_PAIRS = (
 # The Chinese root guide links to the English native-runtime matrix, references and license instead of copying them.
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
-STATUS_VERSION = re.compile(r"(?:describes version|本文对应) (\d+\.\d+\.\d+)")
 # A link to this repository takes one of these spellings, so that a dead one cannot hide behind another: any other
 # scheme, host, port, case, percent-escape or route is reported rather than recognised. Each names a path to check
 # except the releases page; the home page shows README.md.
@@ -175,9 +173,9 @@ def test_chinese_root_guide_links_what_it_does_not_copy():
 
 
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
-def test_guide_states_the_project_version(guide):
-  # docs/RELEASING.md, step 1: every guide names the version being released.
-  assert STATUS_VERSION.findall(visible_text(document(guide))) == [project_version()]
+def test_source_guide_warns_about_unreleased_changes(guide):
+  text = visible_text(document(guide))
+  assert "unreleased changes" in text or "尚未发布的改动" in text
 
 
 def test_old_english_readme_points_to_the_guides():
@@ -365,7 +363,6 @@ def test_version_sentence_is_read_from_the_text_alone():
   text = '[status](https://e.org "describes version 9.9.9.") <!-- 本文对应 9.9.9 -->\n\n'
   text += "See `x`. This guide describes\nversion **0.8.0**.\n"
   assert visible_text(tokens(text)) == "\nstatus \nSee x. This guide describes version 0.8.0."
-  assert STATUS_VERSION.findall(visible_text(tokens(text))) == ["0.8.0"]
 
 
 def test_links_are_the_rendered_links():

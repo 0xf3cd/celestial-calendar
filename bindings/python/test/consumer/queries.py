@@ -22,7 +22,7 @@ def key(kind, identity):
   return celestial.ModelKey(kind, identity)
 
 
-def main() -> None:
+def scenario_selection_order() -> None:
   location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
   civil = celestial.CivilDateTime(year=2024, month=6, day=1, fraction=0.5)
   snapshot = celestial.chart_snapshot(civil, celestial.CivilScale.UTC, location, celestial.HouseSystem.PLACIDUS)
@@ -40,7 +40,17 @@ def main() -> None:
   assert [position.source for position in positions[:3]] == [
     key(celestial.ModelKind.POSITION_SOURCE, code) for code in (4, 1, 6)
   ]
+  equatorial = celestial.equatorial_positions(selection, snapshot.times.jde_tt)
+  assert [position.target for position in equatorial] == selection
+  for record, ecliptic in zip(equatorial, positions, strict=True):
+    assert type(record) is celestial.EquatorialPosition
+    assert 0.0 <= record.right_ascension_deg < 360.0 and -90.0 <= record.declination_deg <= 90.0
+    assert record.distance_au == ecliptic.distance_au and record.source == ecliptic.source
+    assert celestial.model_identity_text(record.source)
 
+
+def scenario_independent_windows() -> None:
+  location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
   boundary = celestial.positions([celestial.Target.PLUTO], 2409543.5)
   assert len(boundary) == 1 and 0.0 <= boundary[0].longitude_deg < 360.0
   early_civil = celestial.CivilDateTime(year=1885, month=1, day=2, fraction=0.0)
@@ -53,20 +63,20 @@ def main() -> None:
     lambda: celestial.chart_snapshot(early_civil, celestial.CivilScale.UT1, location, celestial.HouseSystem.EQUAL),
   )
 
+
+def scenario_selection_validation() -> None:
   for operation in (celestial.positions, celestial.equatorial_positions):
     raises(ValueError, lambda operation=operation: operation([celestial.Target.SUN] * 2, 2451545.0))
     raises(ValueError, lambda operation=operation: operation([], 2451545.0))
     raises(ValueError, lambda operation=operation: operation([celestial.Target.PLUTO, celestial.Target.SUN], 2409543.4))
     full = operation(tuple(reversed(tuple(celestial.Target))), 2451545.0)
     assert tuple(record.target for record in full) == tuple(reversed(tuple(celestial.Target)))
-  equatorial = celestial.equatorial_positions(selection, snapshot.times.jde_tt)
-  assert [position.target for position in equatorial] == selection
-  for record, ecliptic in zip(equatorial, positions, strict=True):
-    assert type(record) is celestial.EquatorialPosition
-    assert 0.0 <= record.right_ascension_deg < 360.0 and -90.0 <= record.declination_deg <= 90.0
-    assert record.distance_au == ecliptic.distance_au and record.source == ecliptic.source
-    assert celestial.model_identity_text(record.source)
 
+
+def scenario_houses() -> None:
+  location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
+  civil = celestial.CivilDateTime(year=2024, month=6, day=1, fraction=0.5)
+  snapshot = celestial.chart_snapshot(civil, celestial.CivilScale.UTC, location, celestial.HouseSystem.PLACIDUS)
   houses = celestial.house_query(civil, celestial.CivilScale.UTC, location, celestial.HouseSystem.PLACIDUS)
   assert houses.houses == snapshot.houses and houses.times == snapshot.times
   assert houses.house_system is celestial.HouseSystem.PLACIDUS
@@ -102,6 +112,10 @@ def main() -> None:
   assert meeus.nutation_model == key(celestial.ModelKind.NUTATION, 1)
   assert meeus.houses.ascendant_deg != houses.houses.ascendant_deg
 
+
+def scenario_model_identity() -> None:
+  location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
+  civil = celestial.CivilDateTime(year=2024, month=6, day=1, fraction=0.5)
   for delta_model, delta_identity in zip(celestial.DeltaTModel, (5, 1, 2, 3, 4, 5), strict=True):
     for nutation_model, nutation_identity in zip(celestial.NutationModel, (2, 1, 2), strict=True):
       result = celestial.house_query(
@@ -124,6 +138,9 @@ def main() -> None:
       )
       assert result == replay
 
+
+def scenario_failure_independence() -> None:
+  civil = celestial.CivilDateTime(year=2024, month=6, day=1, fraction=0.5)
   raises(
     ValueError,
     lambda: celestial.house_query(
@@ -133,6 +150,9 @@ def main() -> None:
   after = celestial.positions([celestial.Target.MARS], 2451545.0)
   assert len(after) == 1 and math.isfinite(after[0].longitude_deg)
 
+
+def scenario_algo4_window() -> None:
+  location = celestial.GeoLocation(latitude_deg=51.5, longitude_deg=0.0)
   # Both civil scales enforce the same exclusive derived-TT Algo4 cutoff.
   for scale in celestial.CivilScale:
     admitted = celestial.house_query(
@@ -153,7 +173,21 @@ def main() -> None:
         delta_t_model=celestial.DeltaTModel.ALGO4,
       ),
     )
-  print("PASS independent queries, all-target equatorial shape and resolved model-key replay")
+
+
+def main() -> None:
+  scenarios = (
+    scenario_selection_order,
+    scenario_independent_windows,
+    scenario_selection_validation,
+    scenario_houses,
+    scenario_model_identity,
+    scenario_failure_independence,
+    scenario_algo4_window,
+  )
+  for scenario in scenarios:
+    scenario()
+    print(f"PASS {scenario.__name__}")
 
 
 if __name__ == "__main__":

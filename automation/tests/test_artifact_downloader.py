@@ -35,7 +35,7 @@ from toolbox.artifact_downloader import (
   validate_artifact_run,
   write_source_manifest,
 )
-from toolbox.release_validation import LicenseValidation, SOURCE_SPECS
+from toolbox.release_validation import SOURCE_SPECS
 
 
 PROJECT_VERSION = project_version()
@@ -364,45 +364,8 @@ def test_failed_download_leaves_no_final_or_partial_file(monkeypatch, tmp_path):
   assert list(tmp_path.iterdir()) == []
 
 
-def test_failed_release_asset_download_leaves_no_final_or_partial_file(monkeypatch, tmp_path):
-  monkeypatch.setattr(github_module, "gen_headers", lambda: {})
-  monkeypatch.setattr(github_module.requests, "get", lambda *_args, **_kwargs: FailingDownloadResponse())
-
-  with pytest.raises(OSError, match="connection lost"):
-    GitHub.download_one_release_asset("asset.tar.gz", "https://example.invalid/asset", tmp_path)
-
-  assert list(tmp_path.iterdir()) == []
-
-
-def test_release_asset_download_renames_complete_partial_file(monkeypatch, tmp_path):
-  monkeypatch.setattr(github_module, "gen_headers", lambda: {})
-  monkeypatch.setattr(github_module.requests, "get", lambda *_args, **_kwargs: DownloadResponse())
-
-  destination = GitHub.download_one_release_asset(
-    "asset.tar.gz",
-    "https://example.invalid/asset",
-    tmp_path,
-  )
-
-  assert destination.read_bytes() == b"complete"
-  assert not (tmp_path / "asset.tar.gz.part").exists()
-
-
-def test_release_asset_download_rejects_existing_destination_before_request(monkeypatch, tmp_path):
-  destination = tmp_path / "asset.tar.gz"
-  destination.write_bytes(b"keep")
-
-  def unexpected_request(*_args, **_kwargs):
-    raise AssertionError("request must not start")
-
-  monkeypatch.setattr(github_module.requests, "get", unexpected_request)
-  with pytest.raises(FileExistsError, match="Refusing to overwrite"):
-    GitHub.download_one_release_asset(destination.name, "https://example.invalid/asset", tmp_path)
-  assert destination.read_bytes() == b"keep"
-
-
-def test_release_asset_download_rejects_existing_partial_before_request(monkeypatch, tmp_path):
-  partial = tmp_path / "asset.tar.gz.part"
+def test_artifact_download_rejects_existing_partial_before_request(monkeypatch, tmp_path):
+  partial = tmp_path / "artifact.zip.part"
   partial.write_bytes(b"stale")
 
   def unexpected_request(*_args, **_kwargs):
@@ -410,22 +373,9 @@ def test_release_asset_download_rejects_existing_partial_before_request(monkeypa
 
   monkeypatch.setattr(github_module.requests, "get", unexpected_request)
   with pytest.raises(FileExistsError, match="Refusing to overwrite partial download"):
-    GitHub.download_one_release_asset("asset.tar.gz", "https://example.invalid/asset", tmp_path)
+    GitHub.download_one_artifact("artifact", "https://example.invalid/artifact", tmp_path)
   assert partial.read_bytes() == b"stale"
-  assert not (tmp_path / "asset.tar.gz").exists()
-
-
-def test_release_download_propagates_asset_failure(monkeypatch, tmp_path):
-  selected = GitHub.Release(7, "v0.6.0", False, False, "", "", "", "", "", "", "", "", [])
-  monkeypatch.setattr(GitHub, "list_releases", lambda: [selected])
-
-  def fail(name, _url, _download_dir):
-    raise OSError(f"cannot download {name}")
-
-  monkeypatch.setattr(GitHub, "download_one_release_asset", fail)
-
-  with pytest.raises(RuntimeError, match=r"2 release asset\(s\) failed to download"):
-    GitHub.download_release(selected.id, tmp_path, parallel=2)
+  assert not (tmp_path / "artifact.zip").exists()
 
 
 def test_parallel_artifact_download_propagates_failure(monkeypatch, tmp_path):
@@ -437,13 +387,9 @@ def test_parallel_artifact_download_propagates_failure(monkeypatch, tmp_path):
     GitHub.download_artifact_urls([("one", "one-url"), ("two", "two-url")], tmp_path, parallel=2)
 
 
-def test_release_download_rejects_invalid_parallel_before_listing(monkeypatch, tmp_path):
-  def unexpected_list():
-    raise AssertionError("release listing must not start")
-
-  monkeypatch.setattr(GitHub, "list_releases", unexpected_list)
+def test_artifact_download_rejects_invalid_parallel_before_writes(tmp_path):
   with pytest.raises(ValueError, match="Invalid parallel value"):
-    GitHub.download_release(7, tmp_path, parallel=0)
+    GitHub.download_artifact_urls([("one", "one-url")], tmp_path, parallel=0)
 
 
 def test_parallel_download_rejects_duplicate_names_before_writes(tmp_path):
@@ -529,10 +475,9 @@ def test_release_collector_validates_archives_before_python_flatten(
     downloaded_paths.extend(paths)
     return paths
 
-  def validate(paths, version, license_validation):
+  def validate(paths, version):
     order.append("validate")
     assert version == PROJECT_VERSION
-    assert license_validation is LicenseValidation.REPOSITORY
     assert {path.stem for path in paths} == set().union(*(expected for _field, _name, expected in SOURCE_SPECS))
     if validation_error is not None:
       raise validation_error

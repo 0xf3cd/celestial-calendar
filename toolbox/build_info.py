@@ -159,7 +159,12 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
   cc = os.environ.get("CC", "")
   cc_version = compiler_version(cc) if cc else ""
 
-  commit_hash = silent_run(["git", "rev-parse", "HEAD"], cwd=proj_dir).stdout.strip()
+  commit_hash = ""
+  if os.path.lexists(proj_dir / ".git"):
+    git_root = silent_run(["git", "rev-parse", "--show-toplevel"], cwd=proj_dir).stdout.strip()
+    if Path(git_root).resolve() != proj_dir.resolve():
+      raise RuntimeError(f"Git metadata does not identify this source root: {proj_dir}")
+    commit_hash = silent_run(["git", "rev-parse", "HEAD"], cwd=proj_dir).stdout.strip()
 
   libc_version = []
   try:

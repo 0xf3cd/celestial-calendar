@@ -19,25 +19,16 @@ from shutil import copy2
 import pytest
 
 from automation.astrotime_delta_t_provenance import (
-  ALGO4_FUNCTION_SHA256,
-  ALGO5_FUNCTION_SHA256,
   ASTROTIME_GENERATION_COMMIT,
   ASTROTIME_ALGO5_DATA_COMMIT,
   ASTROTIME_ALGO5_GENERATION_COMMIT,
-  ASTROTIME_ALGO5_GRANT_NORMALIZED_SHA256,
-  ASTROTIME_ALGO5_GRANT_SHA256,
   ASTROTIME_ALGO5_RECORD_COMMIT,
-  ASTROTIME_ALGO5_RECORD_SHA256,
   ASTROTIME_ALGO5_RECORD_URL,
   ASTROTIME_ALGO5_ROOT,
   ASTROTIME_ALGO5_ROOT_RELATIVE,
-  ASTROTIME_GRANT_NORMALIZED_SHA256,
-  ASTROTIME_GRANT_SHA256,
   ASTROTIME_RECORD_COMMIT,
-  ASTROTIME_RECORD_SHA256,
   ASTROTIME_RECORD_URL,
   ASTROTIME_ROOT,
-  DEFAULT_FUNCTION_SHA256,
   REPO_ROOT,
   _cpp_block,
   verify_astrotime_delta_t_provenance,
@@ -140,10 +131,6 @@ def test_astrotime_record_is_pinned():
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
     "55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json"
   )
-  assert ASTROTIME_GRANT_SHA256 == "075b3e670fbe4b32156d9f41386f444d65a0a7bbdc1e87dca2c0318ffd7c586f"
-  assert ASTROTIME_RECORD_SHA256 == "ac3f00a8fe69af51c0e0fea8f945e5cf48cb81bfa0bac3a0471950e6558fd022"
-  assert ASTROTIME_GRANT_NORMALIZED_SHA256 == "f00038723177475993d52bf4ec5bdd45f123cfad5201a7a9a478ba3fb3df4132"
-  assert ALGO4_FUNCTION_SHA256 == "3954c8f2dd6179e8be08515ee3dfb184d48c459c2ed7e30238e47b8a25d5ddbb"
   assert ASTROTIME_ALGO5_RECORD_COMMIT == "ed1cdc2fd6c5122b391a82289aa2cc060340552d"
   assert ASTROTIME_ALGO5_GENERATION_COMMIT == "a1e95811b47c084f44b4b4bb7444560dd5b863bc"
   assert ASTROTIME_ALGO5_DATA_COMMIT == "ddf3be1972e405ed02233837394cd3377226b65c"
@@ -151,11 +138,6 @@ def test_astrotime_record_is_pinned():
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
     "ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json"
   )
-  assert ASTROTIME_ALGO5_GRANT_SHA256 == "f87240e7cbc4c0a21457ca0cf026dd848e619e1257737dab9307e3d1e73443f7"
-  assert ASTROTIME_ALGO5_RECORD_SHA256 == "77fa6748fc19954073ee3c013731ac0200f4730efcb483f9f08fe8c921666455"
-  assert ASTROTIME_ALGO5_GRANT_NORMALIZED_SHA256 == ("63fbad6abcbf10a91f0561e675e1ae040401d54739d89c6d804598dd3b0cf447")
-  assert ALGO5_FUNCTION_SHA256 == "44ef6c75688b7036892e8cd6ba528822ae97664ec67732db5f208fe467960d4b"
-  assert DEFAULT_FUNCTION_SHA256 == "883c5e0652ec79f72d15bf125af88c7eceedb510d95f6936478e0c4fd37d1be8"
   assert verify_astrotime_delta_t_provenance() is None
 
 
@@ -176,7 +158,7 @@ def test_direct_verifier_returns_nonzero_on_failure(tmp_path):
   astrotime_root = materialize_inputs(shadow_root)
   automation_root = shadow_root / "automation"
   automation_root.mkdir()
-  for relative in ("astrotime_delta_t_provenance.py", "source_digest.py"):
+  for relative in ("astrotime_delta_t_provenance.py", "source_digest.py", "source_identity.py"):
     copy2(REPO_ROOT / "automation" / relative, automation_root / relative)
   grant = astrotime_root / "GRANT.md"
   grant.write_bytes(grant.read_bytes() + b"\n")

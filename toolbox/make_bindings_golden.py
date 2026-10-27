@@ -32,7 +32,7 @@ from automation import paths, run_cmd
 from automation.abi_layout import load_abi
 
 
-OUT_PATH: Final[Path] = Path(__file__).parent / "bindings_golden.json"
+OUT_PATH: Final[Path] = paths.proj_root() / paths.BINDING_GOLDEN_RELATIVE
 
 # Dataset shape (#163): the real validity edges at all 24 indices (401 = the UT1 chain's
 # floor, 32766 = the declared max of jieqi_jde), the site nav's consumer window

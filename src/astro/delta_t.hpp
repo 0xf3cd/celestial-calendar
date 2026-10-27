@@ -36,10 +36,10 @@
 
 namespace astro::delta_t {
 
-/** @brief A selectable Delta T algorithm. */
+/** @brief A selectable ΔT algorithm. */
 enum class Model : uint8_t { ALGO1 = 0, ALGO2 = 1, ALGO3 = 2, ALGO4 = 3, ALGO5 = 4 };
 
-/** @brief Default for operations with a selectable Delta T model; fixed-Algo5 shortcuts stay fixed. */
+/** @brief Default for operations with a selectable ΔT model; fixed-Algo5 shortcuts stay fixed. */
 inline constexpr Model DEFAULT_MODEL = Model::ALGO5;
 
 // Applicability boundaries in JDE(TT) for the capability identity registry (#357). The
@@ -112,21 +112,21 @@ find_coefficients(const int32_t year) -> std::optional<
 
 
 /**
- * @brief The function to compute △T of a given gregorian year, using algorithm 1.
+ * @brief Compute ΔT for a decimal Gregorian year using algorithm 1.
  * @param year The year, of double type.
- * @return The delta T.
+ * @return ΔT in seconds.
  *
  * @throw std::invalid_argument if the year is < -4000 or not finite.
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  * 
  * @see Xu Jianwei, 寿星万年历2008版(V1.3.2) -
  *      https://web.archive.org/web/20080919020456id_/http://www.fjptsz.com/xxjs/xjw/rj/115.htm
  * @note The original algorithm takes integers as input. But I am using doubles here,
  *       with the hope of getting more accurate results.
- * @note Frozen exhibit, retained for historical comparison.
+ * @note Frozen comparison model.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year < MINIMUM_YEAR) {
@@ -167,8 +167,7 @@ find_coefficients(const int32_t year) -> std::optional<
     return F(year);
   }
   if (year >= 2015 and year < 2115) {
-    // #64: the original 2014/2114 anchors left ~1.09 s and ~0.28 s jumps at the segment edges;
-    // anchoring at 2015/2115 makes the blend meet `F` and `f` exactly there.
+    // Anchoring at 2015/2115 makes the blend meet `F` and `f` exactly at the segment edges (#64).
     return f(year) + ((year - 2115) * (f(2015) - F(2015)) / 100.0);
   }
   // For years >= 2115, simply use `f`.
@@ -188,14 +187,14 @@ namespace algo2 {
 // and outside the project MIT grant; the NASA acknowledgment is carried with distributions.
 
 /**
- * @brief The function to compute △T of a given gregorian year, using algorithm 2.
+ * @brief Compute ΔT for a decimal Gregorian year using algorithm 2.
  * @param year The year, of double type.
- * @return The delta T.
+ * @return ΔT in seconds.
  * 
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  * 
  * @see Espenak and Meeus, NASA/TP-2006-214141, Section 2.7, equations (11)-(25).
  *      https://ntrs.nasa.gov/citations/20070003587
@@ -312,19 +311,19 @@ inline constexpr double MAXIMUM_YEAR_EXCLUSIVE = 3000.0;
 // and outside the project MIT grant; the project does not claim that the located permission covers them.
 
 /**
- * @brief The function to compute △T of a given gregorian year, using algorithm 3.
+ * @brief Compute ΔT for a decimal Gregorian year using algorithm 3.
  * @param year The year, of double type.
- * @return The delta T.
+ * @return ΔT in seconds.
  * 
  * @throw std::invalid_argument if the year is >= 3000 or not finite.
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  * 
  * @see Fred Espenak, Thousand Year Canon of Solar Eclipses 1501 to 2500 (2014) -
  *      https://www.eclipsewise.com/help/deltatpoly2014.html
- * @note Frozen exhibit, retained for historical comparison.
+ * @note Frozen comparison model; uses algo2 before 2005.
  */
 [[nodiscard]] constexpr auto compute(const double year) -> double {
   if (not std::isfinite(year) or year >= MAXIMUM_YEAR_EXCLUSIVE) {
@@ -367,15 +366,15 @@ namespace algo4 {
 //                         (deltat.preds, https://maia.usno.navy.mil/ser7/deltat.preds).
 
 /**
- * @brief The function to compute △T of a given gregorian year, using algorithm 4.
+ * @brief Compute ΔT for a decimal Gregorian year using algorithm 4.
  * @param year The year, of double type.
- * @return The delta T.
+ * @return ΔT in seconds.
  *
  * @throw std::invalid_argument if the year is >= 2035 or not finite.
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  * 
  * @see IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
  * @see USNO ΔT predictions (deltat.preds) - https://maia.usno.navy.mil/ser7/deltat.preds
@@ -446,14 +445,14 @@ namespace algo5 {
 inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 /**
- * @brief The function to compute △T of a given gregorian year, using algorithm 5.
+ * @brief Compute ΔT for a decimal Gregorian year using algorithm 5.
  * @param year The year, of double type.
- * @return The delta T.
+ * @return ΔT in seconds.
  *
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  *
  * @see IERS Bulletin A observations - https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
  * @see Morrison et al. 2021 addendum - https://doi.org/10.1098/rspa.2020.0776
@@ -495,7 +494,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief Evaluate a selected Delta T model at a decimal Gregorian year.
+ * @brief Evaluate a selected ΔT model at a decimal Gregorian year.
  * @return TT minus UT1, in seconds.
  * @throw std::invalid_argument If the model is unknown or the year leaves its domain.
  * @note Non-finite propagation and year limits depend on the selected model.
@@ -514,18 +513,17 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief The function to compute △T of a given gregorian year.
+ * @brief Compute ΔT for a decimal Gregorian year using the default model.
  * @param year The year, of double type. The year has fractional part, indicating the time elapsed in the year.
- * @return The delta T, in seconds.
- * @details Algo 5 is used for all years — continuous everywhere, with no upper bound
- *          (#64: the previous algo4/algo2 dispatch jumped by ~9.5 s at 2035.0).
+ * @return ΔT in seconds.
+ * @details Algo5 is used for all finite years, with continuous joins and no upper year bound.
  *
  * @par Example
- * `compute(2005.99999999....)` returns the delta T for the last moment of year 2005.
+ * `compute(2005.99999999....)` returns ΔT for the last moment of year 2005.
  * @par Example
- * `compute(1984.0)` returns the delta T for the first moment of year 1984.
+ * `compute(1984.0)` returns ΔT for the first moment of year 1984.
  * @par Example
- * `compute(2015.5)` returns the delta T for the middle moment of year 2015 (roughly June 30/July 1).
+ * `compute(2015.5)` returns ΔT for the middle moment of year 2015 (roughly June 30/July 1).
  */
 [[nodiscard]] constexpr auto compute(const double year) noexcept -> double {
   return algo5::compute(year);
@@ -533,7 +531,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief Evaluate a selected Delta T model at a valid calendar datetime.
+ * @brief Evaluate a selected ΔT model at a valid calendar datetime.
  * @return TT minus UT1, in seconds; the sub-day fraction participates in the decimal year.
  * @throw std::invalid_argument If the datetime or model is invalid, or the year leaves the model's domain.
  * @note The TT/UT1 distinction in the datetime argument is ignored.
@@ -563,8 +561,8 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief Convert UT1 to TT with one Delta T evaluation at the UT1 datetime.
- * @param model The Delta T model.
+ * @brief Convert UT1 to TT with one ΔT evaluation at the UT1 datetime.
+ * @param model The ΔT model.
  * @param ut1_dt The datetime in UT1.
  * @return The datetime in TT.
  * @throw std::invalid_argument If the datetime or model is invalid, the shift leaves the representable years,
@@ -586,8 +584,8 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
 
 /**
- * @brief Convert TT to modelled UT1 with one Delta T evaluation at the TT datetime.
- * @param model The Delta T model.
+ * @brief Convert TT to modelled UT1 with one ΔT evaluation at the TT datetime.
+ * @param model The ΔT model.
  * @param tt_dt The datetime in TT.
  * @return The datetime in UT1; this is a single shift, not an iterative inverse.
  * @throw std::invalid_argument If the datetime or model is invalid, the shift leaves the representable years,

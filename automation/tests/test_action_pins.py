@@ -8,6 +8,8 @@
 #
 # SPDX-License-Identifier: MIT
 
+import pytest
+
 from automation.action_pins import check_action_pins
 
 
@@ -28,6 +30,9 @@ def test_repository_action_pins_satisfy_policy():
 
 
 def test_action_pin_policy_accepts_first_party_major_third_party_sha_and_local(tmp_path):
+  action = tmp_path / ".github/actions/local"
+  action.mkdir(parents=True)
+  (action / "action.yml").write_text("runs:\n  using: composite\n  steps: []\n", encoding="utf-8")
   write_workflow(
     tmp_path,
     "actions/checkout@v7",
@@ -127,3 +132,59 @@ def test_first_party_action_rejects_floating_branch(tmp_path, capsys):
 
   assert check_action_pins(tmp_path) == 1
   assert "major tag or commit SHA" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("fault", ["floating", "missing", "escape", "cycle", "unsupported", "symlink"])
+def test_local_action_graph_rejects_unprotected_targets(tmp_path, fault):
+  root = tmp_path / "repo"
+  workflows = root / ".github/workflows"
+  workflows.mkdir(parents=True)
+  action = root / ".github/actions/local"
+  action.mkdir(parents=True)
+  write_workflow(workflows, "./.github/actions/local")
+  definition = action / "action.yml"
+  definition.write_text("runs:\n  using: composite\n  steps: []\n", encoding="utf-8")
+  if fault == "missing":
+    definition.unlink()
+  elif fault == "escape":
+    write_workflow(workflows, "./../outside")
+  elif fault == "symlink":
+    definition.unlink()
+    outside = tmp_path / "outside.yml"
+    outside.write_text("runs:\n  using: composite\n  steps: []\n", encoding="utf-8")
+    definition.symlink_to(outside)
+  elif fault == "unsupported":
+    definition.write_text("runs:\n  using: node24\n  main: index.js\n", encoding="utf-8")
+  else:
+    reference = "owner/action@v2" if fault == "floating" else "./.github/actions/local"
+    definition.write_text(f"runs:\n  using: composite\n  steps:\n    - uses: {reference}\n", encoding="utf-8")
+  assert check_action_pins(workflows) == 1
+
+
+@pytest.mark.parametrize("name", ["claude.yml", "claude-review.yml", "release.yml"])
+@pytest.mark.parametrize("fault", ["local", "tag", "identity"])
+def test_privileged_workflows_reject_local_tags_and_divergent_identities(tmp_path, name, fault):
+  path = write_workflow(tmp_path, f"actions/checkout@{SHA}")
+  path = path.rename(tmp_path / name)
+  reference = {
+    "local": "./.github/actions/local",
+    "tag": "actions/checkout@v7",
+    "identity": "actions/checkout@" + "a" * 40,
+  }[fault]
+  path.write_text(path.read_text() + f"      - uses: {reference}\n", encoding="utf-8")
+  assert check_action_pins(tmp_path) == 1
+
+
+@pytest.mark.parametrize("ref,expected", [("v2", 1), (SHA, 0)])
+def test_pin_gate_follows_composites_outside_the_default_action_directory(tmp_path, ref, expected):
+  workflows = tmp_path / ".github/workflows"
+  workflows.mkdir(parents=True)
+  write_workflow(workflows, "./custom/outer")
+  for name, steps in (
+    ("outer", "    - uses: ./custom/inner\n"),
+    ("inner", f"    - uses: owner/action@{ref} # v2\n"),
+  ):
+    directory = tmp_path / "custom" / name
+    directory.mkdir(parents=True)
+    (directory / "action.yaml").write_text("runs:\n  using: composite\n  steps:\n" + steps, encoding="utf-8")
+  assert check_action_pins(workflows) == expected

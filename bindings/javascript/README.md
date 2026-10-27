@@ -18,7 +18,7 @@ WebAssembly module.
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide describes version **1.0.0**, currently unreleased. The install command below gets the latest published
+This guide describes the current source, including unreleased changes. The install command below gets the latest published
 version on npm; use its matching documentation. See [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md)
 for the removed logging API, Sun distance rename and changed error classes.
 

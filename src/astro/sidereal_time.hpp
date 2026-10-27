@@ -87,7 +87,7 @@ namespace astro::sidereal {
  * @param jde_tt The julian ephemeris day, on the **TT** scale, of the same instant (nutation).
  * @param longitude_west The observer's geographic longitude, measured **positive west** from
  *        Greenwich (Meeus's convention; e.g. Washington USNO ≈ +77°.0656). East-positive
- *        longitudes must be negated before calling — the `_west` suffix is the guard (#127/D2).
+ *        longitudes must be negated before calling -- the `_west` suffix is the guard (#127).
  * @param model The nutation model to use. Defaults to `earth::nutation::Model::IAU_1980`.
  * @return The LAST, normalized to [0°, 360°).
  * @note With the west-positive convention the relation reads θ = θ₀(GAST) − longitude_west,

@@ -21,8 +21,10 @@ from pathlib import Path
 from typing import Final, Sequence
 
 if __package__:
+  from .source_identity import require as _require
   from .source_digest import canonical_cpp, require_facts
 else:
+  from source_identity import require as _require
   from source_digest import canonical_cpp, require_facts
 
 
@@ -304,11 +306,6 @@ PLANETS: Final[tuple[PlanetSpec, ...]] = (
     generated_sha256="ec12eadf6b0dbe0bf906d67ca766d8a6daafd17fb2976fa1ed577b5c825df28b",
   ),
 )
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _sha256(data: bytes) -> str:

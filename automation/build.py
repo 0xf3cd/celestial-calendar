@@ -78,8 +78,10 @@ def build_project(cpu_cores: int = 8) -> int:
   """Build the C++ project using the specified number of CPU cores."""
   print("#" * 60)
 
-  assert BUILD_DIR.exists(), "Build directory not found"
-  assert BUILD_DIR.is_dir(), "Build directory is not a directory"
+  if not BUILD_DIR.exists():
+    raise FileNotFoundError(f"Build directory not found: {BUILD_DIR}; run project.py --cmake first")
+  if not BUILD_DIR.is_dir():
+    raise NotADirectoryError(f"Build directory is not a directory: {BUILD_DIR}")
 
   # Clear the test binaries first, so that the build is what puts every one of them back (#155).
   clear_test_binaries()

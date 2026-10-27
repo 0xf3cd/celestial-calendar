@@ -46,7 +46,7 @@ struct BodyState {
 
 inline constexpr std::size_t BODY_COUNT = astro::ephemeris::TARGETS.size();
 
-/** @brief An owned fixed-instant chart ephemeris; bodies follow the ephemeris target roster. */
+/** @brief An independent fixed-instant chart value; bodies follow the ephemeris target roster. */
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init): This aggregate has no default constructor; all result members are supplied.
 struct Snapshot {
   astro::julian_day::Times times;
@@ -129,7 +129,7 @@ inline auto with_delta_t_domain_context(
  * @param model The Delta T model used for time conversion.
  * @return Modelled UT1 and TT; UT1 input passes through unchanged.
  * @throw std::invalid_argument For invalid input or a civil/model policy rejection.
- * @note Applies the derived-TT cutoff before reverse conversion, but no joint target/rate window.
+ * @note Applies the derived-TT cutoff before any TT-to-UT1 conversion, but no joint target/rate window.
  *       Future UTC holds the last known leap-table offset; UT1 is modelled, not observed DUT1.
  */
 [[nodiscard]] inline auto resolve_civil_times(

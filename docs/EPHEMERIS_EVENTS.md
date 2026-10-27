@@ -2,7 +2,7 @@
 
 The interval searches are available from C++ (`ephemeris_events.hpp`), the C ABI
 (`celestial.h`) and Python (`celestial_calendar`); JavaScript exposes no event API.
-All three surfaces share this page's contracts: half-open ownership, deterministic
+All three surfaces share this page's contracts: half-open interval membership, deterministic
 ordering, exact numerical contacts, domains, limits and the conditional
 floating-point contract below. Include `ephemeris_events.hpp` with
 `-I src/astro -I src/calendar -I src/util` for interval queries over the 14
@@ -14,8 +14,8 @@ in the true ecliptic and equinox of date.
 <a id="choosing-an-event-api"></a>
 ## Choosing an event API
 
-Use the interval API for caller-chosen TT windows, published-rate stations and
-deterministic endpoint ownership. The annual C++ operations retain their own
+Use the interval API for caller-chosen TT windows, seven-point-rate stations and
+deterministic endpoint inclusion. The annual C++ operations retain their own
 definitions, numerical policies and year domains:
 
 | Operation | Definition and search | Computational domain |
@@ -24,7 +24,7 @@ definitions, numerical policies and year domains:
 | `moon_phase::phase_moments::moments` | Moon-minus-Sun apparent longitude at 0°, 90°, 180° or 270°, refined by Newton's method | UTC years [1, 32766] |
 | `moon_phase::new_moon::moments` | Conjunctions with a local near-360° angular fold and acceptance of an exactly +0.0° right bracket endpoint | UTC years [1, 32766] |
 | `sun::geocentric_coord::math::find_roots` | Apparent solar longitude at a supplied level, refined by Newton's method; also supplies Jieqi | UTC years [1, 32766] |
-| Interval searches on this page | Longitude levels and zeros of the published seven-point rate: six position evaluations, with zero weight at the centre | The target's `longitude_rate_domain`; at most 3660 TT days per query |
+| Interval searches on this page | Longitude levels and zeros of `ephemeris::longitude_rate`: six position evaluations, with zero weight at the center | The target's `longitude_rate_domain`; at most 3660 TT days per query |
 
 Annual windows run from Jan 1 to next Jan 1 in UTC, using the library's UT1
 substitute before 1972. The annual planetary search detects candidates on a
@@ -55,7 +55,7 @@ using the former low-level Moon-phase names should read the
 
 The C exports `celestial_longitude_events`, `celestial_longitude_stations` and
 `celestial_longitude_difference_events` mirror the three C++ searches over the single `CELESTIAL_TARGET_*`
-code family shared with charts, positions and capabilities. Each call owns its results through one count+fill protocol:
+code family shared with charts, positions and capabilities. One count+fill protocol copies results into caller-owned buffers:
 `event_count` always receives the full total, caller-allocated `slots` receive the
 first `min(total, slot_count)` records in chronological order, and the return value
 is how many records were written. A truncated fill is therefore observable by
@@ -106,11 +106,31 @@ Whole-turn target shifts are equivalent; `-180°` and `180°` select the same
 level. Reversing the targets also reverses the requested angle and crossing
 direction. The API does not assign names or interpretations to angles.
 
-## Results and ownership
+## Search terminology
+
+- A **canonical cell** is a fixed interval on the target-domain grid. Its boundaries
+  do not move when a caller clips or splits a query. The **owning cell** is the
+  half-open cell containing an event's reported time; it reports that event once.
+- A **seam** is a shared boundary between cells. A station there may need samples
+  from neighboring cells to establish behavior on both sides.
+- A **certificate** is a sufficient numerical test for exclusion, a unique root,
+  or a two-sided contact under the stated error model. It is not an astronomical
+  accuracy bound. Inconclusive tests subdivide or fail within the work limits.
+- An **allowance** bounds evaluation, rounding or displacement error for a specified
+  sample or region. Derivative bounds and the rate's truncation remainder have
+  separate roles; one allowance cannot substitute for another.
+- An **admitted center** is a time where the complete seven-point rate stencil fits
+  inside the provider domain. If the requested time requires another center, its
+  displacement is included in the observation's error allowance.
+
+These terms describe numerical interval membership and checks. The caller owns C
+output buffers; returned C++ and Python values remain independent of later calls.
+
+## Results and interval membership
 
 - `LongitudeEvent` contains `jde_tt`, `longitude`, `longitude_rate` and
   `direction` (`INCREASING`, `DECREASING` or `TANGENT`).
-- `StationEvent` contains the time, longitude, published rate, and
+- `StationEvent` contains the time, longitude, seven-point rate, and
   `motion_before`/`motion_after` (`DIRECT` or `RETROGRADE`).
 - `LongitudeDifferenceEvent` contains both longitudes, both rates, the
   canonical signed difference and the level's direction.
@@ -121,7 +141,7 @@ refinement and reporting do not depend on the caller's endpoints. Splitting
 a successful query at a reported event assigns it to the right-hand query.
 Unresolvable reported-time collisions throw rather than merge nearby events.
 
-Stations are zeros of `ephemeris::longitude_rate`, the published seven-point
+Stations are zeros of `ephemeris::longitude_rate`, the seven-point
 rate with `h=1/8` TT day, not an analytic derivative or a minimum angular
 separation. The reported rate need not be bitwise zero. Descending nodes use
 their actual antipodal positions, while their rates retain the ascending
@@ -135,7 +155,7 @@ contract.
 A tangent is an exact numerical contact at a canonical stationary time:
 the supplied target equals the longitude evaluated at that time, and
 certified observations on both sides do not cross the level. Relative
-stations use the difference of the two published rates. A zero rate alone
+stations use the difference of the two seven-point rates. A zero rate alone
 does not establish a tangent.
 
 For example, use a returned station's `longitude` as the target of
@@ -222,7 +242,7 @@ checks their transcription from the
 [exact records](https://github.com/0xf3cd/celestial-calendar/blob/main/src/test/provenance/ephemeris-events/BOUND_RECORDS.json).
 
 The rate derivative bounds use the exact `23/15` integral-kernel norm.
-The distinction between the smooth longitude derivative and the published
+The distinction between the smooth longitude derivative and the seven-point
 rate is bounded by `M7*h^6/140`, using a nonnegative Peano kernel; the
 [derivation below](#seven-point-operator-and-remainder) gives both constants.
 This truncation remainder is **not** the floating-point error of evaluating the
@@ -230,7 +250,7 @@ six-sample rate. Both terms are retained for contact classification.
 
 Refinement requests a `2^-10`-day time certificate (84.375 seconds), then
 reports on a nearest-even `2^-30`-day lattice. The fine lattice makes
-half-open ownership deterministic; it does not claim microsecond physical
+half-open interval membership deterministic; it does not claim microsecond physical
 accuracy. A certified secant observation usually gives a substantially
 better representative than the stopping criterion alone.
 

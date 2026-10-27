@@ -15,6 +15,7 @@ from typing import Final, Iterable
 
 from . import paths
 from .utils import green_print, red_print, yellow_print
+from .workflow_actions import load_workflow, local_action, resolved_steps, workflow_root
 
 
 SHA: Final[re.Pattern] = re.compile(r"^[0-9a-f]{40}$")
@@ -45,33 +46,68 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
   yellow_print("Checking GitHub Action pins across all workflows...")
   workflow_dir = workflow_dir or paths.proj_root() / ".github" / "workflows"
   workflow_paths = sorted((*workflow_dir.rglob("*.yml"), *workflow_dir.rglob("*.yaml")))
+  repo_root = workflow_root(workflow_dir / "placeholder.yml")
+  action_dir = repo_root / ".github" / "actions"
+  action_paths = sorted((*action_dir.rglob("action.yml"), *action_dir.rglob("action.yaml")))
   failures = []
   if not workflow_paths:
     failures.append(f"{workflow_dir}: no workflow files found")
 
-  for path in workflow_paths:
-    display_path = path.relative_to(workflow_dir)
-    text = path.read_text(encoding="utf-8")
+  pending = list(dict.fromkeys([*workflow_paths, *action_paths]))
+  for path in pending:
+    display_path = path.relative_to(workflow_dir) if path in workflow_paths else path.relative_to(repo_root)
     try:
+      if not path.resolve().is_relative_to(repo_root.resolve()):
+        raise ValueError("YAML definition escapes repository")
+      text = path.read_text(encoding="utf-8")
       workflow = yaml.compose(text)
-    except yaml.YAMLError as error:
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError) as error:
       failures.append(f"{display_path}: invalid YAML ({error.__class__.__name__})")
       continue
     if workflow is None:
       failures.append(f"{display_path}: empty workflow")
       continue
 
+    privileged = path in workflow_paths and path.name in {"claude.yml", "claude-review.yml", "release.yml"}
+    try:
+      document = load_workflow(path)
+      if path in workflow_paths:
+        for job in document.get("jobs", {}).values():
+          resolved_steps(job.get("steps", []), repo_root)
+      else:
+        runs = document.get("runs", {})
+        if runs.get("using") != "composite" or not isinstance(runs.get("steps"), list):
+          raise ValueError("only local composite actions are supported")
+        resolved_steps(runs["steps"], repo_root, (path.resolve(),))
+    except (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError, yaml.YAMLError) as error:
+      failures.append(f"{display_path}: {error}")
+
     lines = text.splitlines()
+    identities = {}
     for node, cutoff in _uses_nodes(workflow, yaml):
       line_number = node.start_mark.line + 1
       reference = node.value if isinstance(node, yaml.ScalarNode) else ""
       if reference.startswith("./"):
+        if privileged:
+          failures.append(f"{display_path}:{line_number}: privileged workflows forbid local actions")
+        try:
+          definition = local_action(repo_root, reference)
+          if definition not in pending:
+            pending.append(definition)
+        except (ValueError, OSError, RuntimeError) as error:
+          failures.append(f"{display_path}:{line_number}: {error}")
         continue
       target, separator, ref = reference.rpartition("@")
       label = f"{display_path}:{line_number}: `{reference}`"
       if not separator or not target or not ref:
         failures.append(f"{label} is not an action pinned to a ref")
         continue
+      if privileged:
+        if not SHA.fullmatch(ref):
+          failures.append(f"{label}: privileged workflows require a commit SHA")
+        if target in identities and identities[target] != ref:
+          failures.append(f"{label}: the same action target must use one identity")
+        identities[target] = ref
       if SHA.fullmatch(ref):
         if target.startswith("actions/"):
           continue
@@ -96,5 +132,8 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
     for failure in failures:
       red_print(f"  - {failure}")
     return 1
-  green_print(f"GitHub Action pins satisfy policy ({len(workflow_paths)} files)")
+  green_print(
+    f"GitHub Action pins satisfy policy ({len(workflow_paths)} workflows, "
+    f"{len(pending) - len(workflow_paths)} local definitions)"
+  )
   return 0

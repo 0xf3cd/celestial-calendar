@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Crawl the JPL Horizons golden dataset for the Moon's illuminated fraction
-# (src/test/astro/moon_phase_test.cpp, Illumination.HorizonsGoldenDataset).
+# (src/test/astro/moon_phase_test.cpp, MoonIllumination.HorizonsGoldenDataset).
 #
 #########################################################################################
 #

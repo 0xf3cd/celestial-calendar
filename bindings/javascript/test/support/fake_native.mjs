@@ -165,6 +165,12 @@ export async function testFakeNative(entryUrl) {
     assert.strictEqual(fixture.init(), initialized);
     assert.deepEqual(control.calls, [], "initialization does not query native domains");
     assert.equal("config" in fixture, false);
+    reset({ sretPayload: { y: 2024, m: 3, d: 7, frac: 0.123456789 } });
+    const decodedJieqi = fixture.jieqi.moment(2024, 7);
+    assert.deepEqual([decodedJieqi.jieqi, decodedJieqi.momentUt1.year, decodedJieqi.momentUt1.month,
+      decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
+    "Jieqi public decoder preserves distinct native fields");
+    reset();
     assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });

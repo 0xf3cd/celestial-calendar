@@ -8,7 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Native-owned TT domains, civil-house policy and model registry values."""
+"""TT domains, civil-house policy and model registry values defined by the native library."""
 
 from __future__ import annotations
 

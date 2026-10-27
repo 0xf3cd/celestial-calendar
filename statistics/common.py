@@ -56,7 +56,7 @@ def search_lib_path(folder: Path) -> Optional[Path]:
 
 # Define constants for paths.
 PROJ_PATH = Path(__file__).parent.parent
-USNO_DATA_PATH = Path(__file__).parent / "usno_data.txt"  # notebook-only; no test consumer (#168)
+USNO_DATA_PATH = Path(__file__).parent / "usno_data.txt"  # Notebook input; byte identity checked by usno_identity.
 BINDINGS_PATH = PROJ_PATH / "build" / "shared_lib"
 LIB_PATH = search_lib_path(BINDINGS_PATH)
 

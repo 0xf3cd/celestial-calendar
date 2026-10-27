@@ -40,12 +40,12 @@
 
 /**
  * @namespace astro::rise_set
- * @brief Body-agnostic rise/transit/set engine (#62).
+ * @brief Body-agnostic rise/transit/set engine.
  * @note The engine knows nothing about any particular body: a body is injected as a
  *       `BodyProvider` (jde_tt → apparent equatorial coordinates), and the event
  *       altitude h₀ is injected by the caller. Per-body conventions (standard
  *       altitudes, ephemeris wiring) live in the `sun` / `moon` sub-namespaces;
- *       the generic layer stays usable for planets once their ephemerides land.
+ *       no planet provider is wired into this layer.
  */
 namespace astro::rise_set {
 
@@ -102,7 +102,7 @@ inline constexpr double LOWER_CULMINATION_OFFSET_DAYS = 0.5;
  *       H = ±180°: with dδ/dt ≠ 0 (the Moon runs ±13°/day) the altitude extremum wanders off the
  *       lower culmination by degrees of hour angle, and anchoring the existence check to H = 180°
  *       leaves a blind band of order 0.01°–0.05° of altitude that silently mislabels grazing
- *       days as polar (#62 mechanism 2).
+ *       days as polar (#62).
  */
 inline constexpr double MIN_SEARCH_HALF_WIDTH_DAYS = 0.1;
 
@@ -445,7 +445,7 @@ requires std::invocable<const Func&, double>
  * @note Golden-section search around the nominal lower culmination — NOT a solve of H = ±180°.
  *       With dδ/dt ≠ 0 the true altitude minimum wanders off the lower culmination (for the
  *       Moon, degrees of hour angle); the existence check must anchor on the true minimum,
- *       or grazing days fall into a blind band and read as polar (#62 mechanism 2).
+ *       or grazing days fall into a blind band and read as polar (#62).
  */
 template <BodyProvider P>
 [[nodiscard]] inline auto min_altitude_jde(
@@ -847,7 +847,7 @@ template <BodyProvider P>
 
 
 /**
- * @brief Find a body's first upper culmination inside a time window, if there is one (#62 mechanism 1).
+ * @brief Find a body's first upper culmination inside a time window, if there is one.
  * @param t0_jde_tt The window start (inclusive), as a julian ephemeris day on the **TT** scale.
  * @param t1_jde_tt The window end (exclusive), same scale.
  * @param location The observer's location.

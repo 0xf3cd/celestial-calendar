@@ -14,141 +14,12 @@ import subprocess
 import sys
 import shutil
 
-from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
 import yaml
 
-import toolbox.release_downloader as release_downloader_module
-
-from automation.github import GitHub
-from toolbox.release_downloader import archive_validation_version, release_license_validation
-from toolbox.release_validation import LicenseValidation
-
-
 RELEASE_WORKFLOW = Path(__file__).parents[2] / ".github" / "workflows" / "release.yml"
-
-
-def release(tag_name):
-  return GitHub.Release(7, tag_name, False, False, "", "", tag_name, "", "", "", "", "", [])
-
-
-@pytest.mark.parametrize(
-  ("tag_name", "expected"),
-  [("v0.5.0", None), ("v0.6.0", "0.6.0"), ("v0.10.0", "0.10.0"), ("v1.2.3", "1.2.3")],
-)
-def test_archive_validation_starts_at_v060(tag_name, expected):
-  assert archive_validation_version(tag_name) == expected
-
-
-@pytest.mark.parametrize("tag_name", ["latest", "v0.6.0-rc1"])
-def test_archive_validation_rejects_unknown_tag_shape(tag_name):
-  with pytest.raises(RuntimeError, match="Cannot determine the archive contract"):
-    archive_validation_version(tag_name)
-
-
-@pytest.mark.parametrize(
-  ("version", "expected"),
-  [
-    ("0.6.0", LicenseValidation.LEGACY),
-    ("0.6.1", LicenseValidation.LEGACY),
-    ("0.6.2", LicenseValidation.MEMBERS),
-    ("0.7.0", LicenseValidation.MEMBERS),
-    ("1.2.3", LicenseValidation.MEMBERS),
-  ],
-)
-def test_published_legacy_license_contract_is_closed_at_v061(version, expected):
-  assert release_license_validation(version) is expected
-
-
-@pytest.mark.parametrize("version", ["0.7", "latest"])
-def test_license_contract_rejects_unknown_version_shape(version):
-  with pytest.raises(RuntimeError, match="Cannot determine the LICENSE contract"):
-    release_license_validation(version)
-
-
-def run_download(monkeypatch, tmp_path, tag_name, validator=None):
-  selected = release(tag_name)
-  downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
-  calls = []
-  for path in downloaded:
-    path.write_bytes(b"downloaded")
-
-  def record_validation(
-    paths,
-    version,
-    check_documented_runtime,
-    require_wheels,
-    license_validation,
-  ):
-    calls.append(
-      (
-        paths,
-        version,
-        check_documented_runtime,
-        require_wheels,
-        license_validation,
-      )
-    )
-
-  monkeypatch.setattr(
-    release_downloader_module,
-    "parse_args",
-    lambda: SimpleNamespace(id=None, tag=tag_name, save_to=tmp_path, parallel=4),
-  )
-  monkeypatch.setattr(release_downloader_module, "validate_args", lambda _args: None)
-  monkeypatch.setattr(release_downloader_module, "find_release", lambda _keyword: selected)
-  monkeypatch.setattr(GitHub, "download_release", lambda _id, _save_to, _parallel: downloaded)
-  monkeypatch.setattr(
-    release_downloader_module,
-    "validate_release_archives",
-    validator or record_validation,
-  )
-
-  release_downloader_module.main()
-  return downloaded, calls
-
-
-def test_v060_release_download_reuses_archive_validation(monkeypatch, tmp_path):
-  downloaded, calls = run_download(monkeypatch, tmp_path, "v0.6.0")
-
-  assert calls == [(downloaded, "0.6.0", False, True, LicenseValidation.LEGACY)]
-
-
-def test_release_download_validates_against_tag_version(monkeypatch, tmp_path):
-  downloaded, calls = run_download(monkeypatch, tmp_path, "v1.2.3")
-
-  assert calls == [(downloaded, "1.2.3", False, True, LicenseValidation.MEMBERS)]
-
-
-def test_release_download_preserves_assets_when_validation_fails(monkeypatch, tmp_path):
-  downloaded = [tmp_path / "celestial-wasm.zip", tmp_path / "CHANGELOG.md", tmp_path / "src.zip"]
-
-  def reject_archives(
-    paths,
-    version,
-    check_documented_runtime,
-    require_wheels,
-    license_validation,
-  ):
-    assert paths == downloaded
-    assert version == "0.6.0"
-    assert check_documented_runtime is False
-    assert require_wheels is True
-    assert license_validation is LicenseValidation.LEGACY
-    raise RuntimeError("invalid archive")
-
-  with pytest.raises(RuntimeError, match="invalid archive"):
-    run_download(monkeypatch, tmp_path, "v0.6.0", validator=reject_archives)
-
-  assert all(path.read_bytes() == b"downloaded" for path in downloaded)
-
-
-def test_historical_release_download_keeps_legacy_behavior(monkeypatch, tmp_path):
-  _downloaded, calls = run_download(monkeypatch, tmp_path, "v0.5.0")
-
-  assert calls == []
 
 
 def test_release_workflow_is_deliberately_dispatched_with_exact_runs():
@@ -174,7 +45,7 @@ def test_release_preparation_has_read_only_permissions_and_pinned_context():
   checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout@"))
   assert checkout["with"] == {"fetch-depth": 0, "persist-credentials": False}
   setup = next(step for step in steps if step.get("name") == "Set up Python")
-  assert setup["with"]["python-version"] == "3.12"
+  assert re.fullmatch(r"\d+\.\d+(?:\.\d+)?", setup["with"]["python-version"])
   assert names.index("Install pinned Python dependencies") < names.index("Download exact producer runs")
   install = next(step for step in steps if step.get("name") == "Install pinned Python dependencies")
   assert install["run"] == "python3 -m pip install --require-hashes --only-binary :all: -r Requirements-producer.txt"
@@ -226,8 +97,7 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   }
 
 
-def test_github_release_job_only_downloads_and_publishes_frozen_candidate():
-  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+def assert_github_release_contract(workflow):
   job = workflow["jobs"]["create_release"]
   steps = job["steps"]
 
@@ -247,8 +117,7 @@ def test_github_release_job_only_downloads_and_publishes_frozen_candidate():
   }
 
 
-def test_pypi_job_has_only_candidate_download_and_oidc_publication():
-  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+def assert_pypi_contract(workflow):
   job = workflow["jobs"]["publish_pypi"]
   steps = job["steps"]
 
@@ -270,23 +139,62 @@ def test_pypi_job_has_only_candidate_download_and_oidc_publication():
   }
 
 
-def assert_registry_job_contract(workflow, job_name):
+@pytest.mark.parametrize("contract", [assert_github_release_contract, assert_pypi_contract])
+def test_sole_credentialed_action_identity(contract):
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  contract(workflow)
+  job_name = "create_release" if contract is assert_github_release_contract else "publish_pypi"
+  workflow["jobs"][job_name]["steps"][1]["uses"] = (
+    workflow["jobs"][job_name]["steps"][1]["uses"].partition("@")[0] + "@" + "a" * 40
+  )
+  with pytest.raises(AssertionError):
+    contract(workflow)
+
+
+def action_identities(workflow):
+  identities = {}
+  for job in workflow["jobs"].values():
+    for step in job["steps"]:
+      if "uses" not in step:
+        continue
+      target, separator, ref = step["uses"].partition("@")
+      assert separator and re.fullmatch(r"[0-9a-f]{40}", ref)
+      assert target not in identities or identities[target] == ref
+      identities[target] = ref
+  return identities
+
+
+def assert_registry_job_contract(workflow, job_name, workflow_dir=RELEASE_WORKFLOW.parent):
   assert workflow.get("env", {}) == {}
   assert workflow.get("defaults", {}) == {}
   assert job_name in ("publish_npm", "verify_registries")
+  identities = action_identities(workflow)
+  wasm = yaml.safe_load((workflow_dir / "wasm.yml").read_text(encoding="utf-8"))
+  wheels = yaml.safe_load((workflow_dir / "python-wheel.yml").read_text(encoding="utf-8"))
+  python_version = next(
+    step["with"]["python-version"]
+    for step in workflow["jobs"]["prepare_release"]["steps"]
+    if str(step.get("uses", "")).startswith("actions/setup-python@")
+  )
+  python_floor = next(
+    step["with"]["python-version"]
+    for step in wheels["jobs"]["macos-14-floor"]["steps"]
+    if str(step.get("uses", "")).startswith("actions/setup-python@")
+  )
+  node_version, npm_version = wasm["env"]["NODE_CURRENT"], wasm["env"]["NPM_VERSION"]
   checkout = {
-    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "uses": f"actions/checkout@{identities['actions/checkout']}",
     "with": {"persist-credentials": False},
   }
   download = {
     "name": "Download immutable release candidate",
-    "uses": "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+    "uses": f"actions/download-artifact@{identities['actions/download-artifact']}",
     "with": {"name": "celestial-release-candidate", "path": "candidate"},
   }
   python = {
     "name": "Set up Python",
-    "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
-    "with": {"python-version": "3.12"},
+    "uses": f"actions/setup-python@{identities['actions/setup-python']}",
+    "with": {"python-version": python_version},
   }
   install = {
     "name": "Install pinned classifier dependencies",
@@ -294,8 +202,8 @@ def assert_registry_job_contract(workflow, job_name):
   }
   node = {
     "name": "Set up the trusted npm runtime",
-    "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
-    "with": {"node-version": "24.19.0"},
+    "uses": f"actions/setup-node@{identities['actions/setup-node']}",
+    "with": {"node-version": node_version},
   }
   identity = {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"}
 
@@ -309,7 +217,7 @@ def assert_registry_job_contract(workflow, job_name):
       node,
       {
         "name": "Verify the trusted npm runtime",
-        "run": 'if [ "$(node --version)" != "v24.19.0" ] || [ "$(npm --version)" != "11.17.0" ]; then\n'
+        "run": f'if [ "$(node --version)" != "v{node_version}" ] || [ "$(npm --version)" != "{npm_version}" ]; then\n'
         '  echo "Unexpected Node/npm runtime: $(node --version) / $(npm --version)"\n'
         "  exit 1\n"
         "fi\n",
@@ -371,7 +279,7 @@ def assert_registry_job_contract(workflow, job_name):
     }
   else:
     python["name"] = "Set up Python floor"
-    python["with"]["python-version"] = "3.11.9"
+    python["with"]["python-version"] = python_floor
     install["name"] = "Install pinned registry verifier dependencies"
     node["name"] = "Set up Node registry consumer"
     expected = {
@@ -561,10 +469,52 @@ def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
 
 def test_every_release_action_is_sha_pinned():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-  actions = [step["uses"] for job in workflow["jobs"].values() for step in job["steps"] if "uses" in step]
+  assert action_identities(workflow)
 
-  assert actions
-  assert all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", action) for action in actions)
+
+@pytest.mark.parametrize(
+  "target", ["actions/checkout", "actions/download-artifact", "actions/setup-python", "actions/setup-node"]
+)
+def test_registry_action_updates_require_same_target_identity_everywhere(target):
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  steps = [
+    step for job in workflow["jobs"].values() for step in job["steps"] if step.get("uses", "").startswith(target + "@")
+  ]
+  assert len(steps) > 1
+  steps[0]["uses"] = target + "@" + "a" * 40
+  for job in ("publish_npm", "verify_registries"):
+    with pytest.raises(AssertionError):
+      assert_registry_job_contract(workflow, job)
+  for step in steps:
+    step["uses"] = target + "@" + "a" * 40
+  for job in ("publish_npm", "verify_registries"):
+    assert_registry_job_contract(workflow, job)
+
+
+def test_registry_runtime_updates_follow_workflow_owners(tmp_path):
+  source = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+  workflow = yaml.safe_load(source)
+  for name in ("wasm.yml", "python-wheel.yml"):
+    shutil.copyfile(RELEASE_WORKFLOW.parent / name, tmp_path / name)
+  for old, new in (("24.19.0", "25.0.0"), ("11.17.0", "12.0.0"), ("3.11.9", "3.11.10"), ('"3.12"', '"3.13"')):
+    changed = yaml.safe_load(source)
+    job_name = "verify_registries" if old == "3.11.9" else "publish_npm"
+    steps = changed["jobs"][job_name]["steps"]
+    if old in ("24.19.0", "11.17.0"):
+      step = next(step for step in steps if step.get("name") == "Verify the trusted npm runtime")
+      step["run"] = step["run"].replace(old, new)
+    else:
+      step = next(step for step in steps if step.get("uses", "").startswith("actions/setup-python@"))
+      step["with"]["python-version"] = new.strip('"')
+    with pytest.raises(AssertionError):
+      assert_registry_job_contract(changed, job_name, tmp_path)
+    for name in ("wasm.yml", "python-wheel.yml"):
+      path = tmp_path / name
+      path.write_text(path.read_text().replace(old, new), encoding="utf-8")
+    source = source.replace(old, new)
+    workflow = yaml.safe_load(source)
+    for job in ("publish_npm", "verify_registries"):
+      assert_registry_job_contract(workflow, job, tmp_path)
 
 
 @pytest.mark.parametrize(

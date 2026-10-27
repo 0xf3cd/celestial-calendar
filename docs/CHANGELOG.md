@@ -58,7 +58,7 @@ Unreleased. These entries describe current development changes; the 1.0 API and 
 - Test discovery and execution reject missing directories, incomplete or empty registrations, command failures
   and zero actual GoogleTest executions, including under `python -O` (#381).
 
-## [v0.9.0]
+## [v0.9.0] - 2026-10-19
 
 ### Added
 
@@ -91,7 +91,7 @@ Unreleased. These entries describe current development changes; the 1.0 API and 
 - Legacy solar-longitude root searches select their angular branch from the year's actual initial longitude,
   fixing wrong-branch roots near the upper supported year without changing its input domain or existing tolerances.
 
-## [v0.8.0]
+## [v0.8.0] - 2026-10-17
 
 ### Added
 
@@ -187,7 +187,7 @@ that release's tag and its GitHub Release notes still show the earlier text.
   published on 2026-08-24 (UTC). v0.0.0 is dated 2024-08-01, but its tag commit is dated 2024-08-03. The v0.7.0
   heading has no date; its tag commit is dated 2026-09-16.
 
-## [v0.7.0]
+## [v0.7.0] - 2026-09-16
 
 ### Changed
 
@@ -258,7 +258,7 @@ that release's tag and its GitHub Release notes still show the earlier text.
 - Python wheels now include the PEP 561 `py.typed` marker, so type checkers consume the annotations already present
   in the public package. Wheel verification and a clean-installed mypy consumer both pin the contract.
 
-## [v0.6.0] - 2026-08-17
+## [v0.6.0] - 2026-08-23
 
 ### Added
 

@@ -8,7 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Event types and native decoders for the interval longitude-event exports (#303)."""
+"""Event types and native decoders for the interval longitude-event exports."""
 
 from __future__ import annotations
 

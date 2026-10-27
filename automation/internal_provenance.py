@@ -24,8 +24,10 @@ from typing import Callable, Final
 from unittest.mock import patch
 
 if __package__:
+  from .source_identity import require as _require
   from .source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 else:
+  from source_identity import require as _require
   from source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 
 
@@ -91,11 +93,6 @@ class InternalProvenanceCounts:
   history_tables: int
   horizons_inputs: int
   julian_internal_rows: int
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _read(repo_root: Path, relative: str) -> str:
@@ -185,7 +182,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
     entry = data[block_id]
     source = _read(repo_root, entry["path"])
     end = source.index(entry["start"])
-    begin = source.rfind("TEST(", 0, end)
+    begin = max(source.rfind("TEST(", 0, end), source.rfind("inline auto ", 0, end))
     comment = source[begin:end]
     require_facts(
       comment,
@@ -224,7 +221,7 @@ def _verify_v37(repo_root: Path) -> tuple[int, int]:
 
 def _verify_v07(repo_root: Path) -> int:
   crawler_path = repo_root / "statistics" / "sun_equatorial_horizons_crawler.py"
-  sun_test_path = repo_root / "src" / "test" / "astro" / "sun_test.cpp"
+  sun_test_path = repo_root / "src" / "test" / "astro" / "sun_test_data.hpp"
   crawler = _load_module(crawler_path)
   _require(crawler.HORIZONS_API_VERSION == HORIZONS_API_VERSION, "V07 Horizons API version pin differs")
   _require(
@@ -281,7 +278,7 @@ def _verify_v07(repo_root: Path) -> int:
 
   sun_test = sun_test_path.read_text(encoding="utf-8")
   table_start = sun_test.index("// Retained data: sun-3.")
-  golden_block = sun_test[sun_test.rfind("TEST(", 0, table_start) : table_start]
+  golden_block = sun_test[sun_test.rfind("inline auto ", 0, table_start) : table_start]
   stored_de_sources = re.findall(r"\bVSOP87D-vs-(DE\d+)\b", golden_block)
   _require(
     stored_de_sources == [HORIZONS_STORED_DE_SOURCE],
@@ -298,7 +295,7 @@ def _verify_v07(repo_root: Path) -> int:
   }
   with TemporaryDirectory(prefix="celestial-v07-") as temporary:
     probe = Path(temporary) / "stored.cpp"
-    probe.write_text("TEST(Sun, EquatorialApparentVsJplHorizons) {\n" + table + "};\n  for (", encoding="utf-8")
+    probe.write_text(table + "};\n", encoding="utf-8")
     _require(crawler.stored_rows(probe) == stored, "V07 stored-row parser differs")
   _require(tuple(stored) == HORIZONS_JDES, "V07 stored table inputs differ")
   data = "\n".join(

@@ -356,20 +356,20 @@ TEST(CAbiSmoke, MoonPositionAngle) {
 TEST(CAbiSmoke, MoonPhaseMoments) {
   uint32_t root_count = 0;
   std::array<double, 15> slots {};
-  const uint32_t written = celestial_moon_phase_moments(2024, 0, &root_count, slots.data(), slots.size());
-  EXPECT_EQ(written, root_count);
-  EXPECT_TRUE(root_count == 12U or root_count == 13U);
+  for (uint8_t phase_kind = 0; phase_kind < 4; ++phase_kind) {
+    const auto expected = astro::moon_phase::phase_moments::moments(
+      2024,
+      static_cast<astro::moon_phase::phase_moments::PhaseKind>(phase_kind)
+    );
+    const uint32_t written = celestial_moon_phase_moments(2024, phase_kind, &root_count, slots.data(), slots.size());
+    ASSERT_EQ(written, expected.size());
+    EXPECT_EQ(root_count, expected.size());
+    for (std::size_t index = 0; index < expected.size(); ++index) {
+      EXPECT_EQ(slots.at(index), expected.at(index));
+    }
+  }
 
-  // First new moon of 2024: 2024-01-11 11:57 UTC -> JDE ~2460320.998.
-  EXPECT_NEAR(slots.at(0), 2460320.998, 0.002);
-
-  // Other phases should also succeed.
-  EXPECT_GT(celestial_moon_phase_moments(2024, 1, &root_count, slots.data(), slots.size()), 0U);
-  EXPECT_GT(celestial_moon_phase_moments(2024, 2, &root_count, slots.data(), slots.size()), 0U);
-  EXPECT_GT(celestial_moon_phase_moments(2024, 3, &root_count, slots.data(), slots.size()), 0U);
-
-  // Failure paths must record a diagnostic and reset the out-parameter to a
-  // deterministic value (Codex P2: stale root_count and missing celestial_last_error).
+  // Failed count/fill calls record a diagnostic and reset the count.
   uint32_t sentinel = 0xDEADBEEFU;
 
   EXPECT_EQ(celestial_moon_phase_moments(2024, 0, nullptr, slots.data(), slots.size()), 0U); // null root_count

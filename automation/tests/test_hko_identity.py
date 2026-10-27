@@ -18,7 +18,6 @@ import pytest
 
 from automation.hko_identity import (
   HKO_ARTIFACT_SHA256,
-  HKO_EXTRACTOR_SHA256,
   HKO_ROOT,
   REPO_ROOT,
   IdentityCounts,
@@ -57,14 +56,6 @@ def rehash(hko_root: Path, name: str) -> dict[str, str]:
 
 
 def test_hko_identity_is_pinned():
-  assert HKO_EXTRACTOR_SHA256 == "bfb8948025e4e5e78cea2f6f39061f7a181588bb67055d7cbfd01d47f855975f"
-  assert HKO_ARTIFACT_SHA256 == {
-    "extract.py": HKO_EXTRACTOR_SHA256,
-    "hko-source-sha256.txt": "8f3980c799312490a516725a038162f6c16e6521515bfb196c4fcd6ab0baad1e",
-    "hko-comparison.tsv": "aee2f24dc535fe2fd282e7d23e10acdd12dca9d9a8024584e50ac6a1deaa1d79",
-    "hko-reconstructed-words.tsv": "ecca33a7bb3f77dfd5fb2dba75fc30391a9451d3e9fb00800488a0ac09064542",
-    "summary.json": "5f43d03a904cbafcb95da58b62e0ce75cea9910c8e36591091b30d80867ab998",
-  }
   assert verify_hko_identity() == IdentityCounts(200, 199, 199, 199, 1)
 
 
