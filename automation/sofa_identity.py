@@ -18,11 +18,15 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Final
 
+if __package__:
+  from .source_identity import require as _require
+else:
+  from source_identity import require as _require
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 SOFA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "sofa" / "2023-10-11"
 SOFA_ARCHIVE_URL: Final[str] = "https://www.iausofa.org/s/sofa_c-20231011tar.gz"
-SOFA_ARCHIVE_SHA256: Final[str] = "d9c10833cae8b4d9361a0ffda31ec361fd1262362025bec4d4e51a880150ace2"
 
 
 @dataclass(frozen=True)
@@ -127,11 +131,6 @@ REPOSITORY_NUTATION_ROW: Final[str] = (
   r"\{\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\},\s*"
   r"\{\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\}\s*\}"
 )
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _block(text: str, start: str, end: str, label: str) -> str:

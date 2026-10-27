@@ -68,19 +68,17 @@ def test_retained_master_record_rejects_tampering(tmp_path):
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   registry["data_blocks"]["moon-0"]["sha256"] = "0" * 64
   registry_path.write_text(json.dumps(registry), encoding="utf-8")
-  with pytest.raises(RuntimeError, match="retained data identity record differs"):
+  with pytest.raises(RuntimeError, match="moon-0 retained data hash differs"):
     verify_retained_data(tmp_path, ("moon-0",))
 
 
 @pytest.mark.parametrize("path", ["../outside.cpp", "/absolute.cpp"])
-def test_retained_contract_requires_repository_relative_paths(tmp_path, monkeypatch, path):
+def test_retained_contract_requires_repository_relative_paths(tmp_path, path):
   materialize_block(tmp_path, "moon-0")
   registry_path = tmp_path / source_digest.RETAINED_REGISTRY
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   registry["data_blocks"]["moon-0"]["path"] = path
   registry_path.write_text(json.dumps(registry), encoding="utf-8")
-  # A synthetic contract reaches path safety independently of the master-record guard.
-  monkeypatch.setattr(source_digest, "RETAINED_DATA_SHA256", source_digest.json_digest(registry["data_blocks"]))
   with pytest.raises(RuntimeError, match="path must be repository-relative"):
     verify_retained_data(tmp_path, ("moon-0",))
 

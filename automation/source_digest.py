@@ -19,8 +19,7 @@ import unicodedata
 from pathlib import Path
 
 
-RETAINED_REGISTRY = Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json")
-RETAINED_DATA_SHA256 = "67e0cb02a607a143ff75696348455bc431382a1d54e39a6e5813e9739c4f6ec3"
+RETAINED_REGISTRY = Path("src/test/provenance/retained/retained_host_blocks.json")
 # Add new value-bearing type/member spellings here; implementation names and test macros stay free.
 REFERENCE_VALUE_PATTERN = re.compile(
   r'"(?:\\.|[^"\\])*"|(?<![\w.])(?:0x[0-9a-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)'
@@ -323,48 +322,50 @@ def retained_slice(text: str, start: str, end: str) -> str:
   return text[begin:finish]
 
 
+def notebook_values(path: Path, input_facts: tuple[str, ...] = ()) -> dict:
+  """Retain saved outputs and directed Jieqi inputs, excluding presentation metadata."""
+  notebook = json.loads(path.read_text(encoding="utf-8"))
+  values = [
+    {key: value for key, value in output.items() if key not in {"metadata", "execution_count"}}
+    for cell in notebook["cells"]
+    for output in cell.get("outputs", [])
+  ]
+  inputs = []
+  for cell in notebook["cells"]:
+    if cell["cell_type"] != "code":
+      continue
+    source = "".join(cell["source"])
+    try:
+      tree = ast.parse(source)
+    except SyntaxError as error:
+      if re.search(r"\bJieqi\s*\.", source):
+        raise RuntimeError("retained notebook input-bearing cell cannot be parsed") from error
+      continue
+    for node in ast.walk(tree):
+      if not isinstance(node, ast.List) or not node.elts:
+        continue
+      pairs = [
+        item
+        for item in node.elts
+        if isinstance(item, ast.Call)
+        and len(item.args) == 2
+        and isinstance(item.args[0], ast.Constant)
+        and type(item.args[0].value) is int
+        and isinstance(item.args[1], ast.Attribute)
+        and isinstance(item.args[1].value, ast.Name)
+        and item.args[1].value.id == "Jieqi"
+      ]
+      if len(pairs) == len(node.elts):
+        require_facts(source, input_facts, "notebook retained input source")
+        inputs.append([(item.args[0].value, item.args[1].attr) for item in pairs])
+  return {"outputs": values, "directed_jieqi_inputs": inputs}
+
+
 def retained_digest(path: Path, method: str, start: str = "", end: str = "", input_facts: tuple[str, ...] = ()) -> str:
   if method == "raw_sha256":
     data = path.read_bytes()
   elif method == "notebook_values":
-    notebook = json.loads(path.read_text(encoding="utf-8"))
-    # Execution counters and presentation metadata do not identify computed values.
-    values = [
-      {key: value for key, value in output.items() if key not in {"metadata", "execution_count"}}
-      for cell in notebook["cells"]
-      for output in cell.get("outputs", [])
-    ]
-    inputs = []
-    for cell in notebook["cells"]:
-      if cell["cell_type"] != "code":
-        continue
-      source = "".join(cell["source"])
-      try:
-        tree = ast.parse(source)
-      except SyntaxError as error:
-        if re.search(r"\bJieqi\s*\.", source):
-          raise RuntimeError("retained notebook input-bearing cell cannot be parsed") from error
-        continue
-      for node in ast.walk(tree):
-        if not isinstance(node, ast.List) or not node.elts:
-          continue
-        pairs = [
-          item
-          for item in node.elts
-          if isinstance(item, ast.Call)
-          and len(item.args) == 2
-          and isinstance(item.args[0], ast.Constant)
-          and type(item.args[0].value) is int
-          and isinstance(item.args[1], ast.Attribute)
-          and isinstance(item.args[1].value, ast.Name)
-          and item.args[1].value.id == "Jieqi"
-        ]
-        if len(pairs) == len(node.elts):
-          require_facts(source, input_facts, "notebook retained input source")
-          inputs.append([(item.args[0].value, item.args[1].attr) for item in pairs])
-    data = json.dumps(
-      {"outputs": values, "directed_jieqi_inputs": inputs}, sort_keys=True, separators=(",", ":")
-    ).encode()
+    data = json.dumps(notebook_values(path, input_facts), sort_keys=True, separators=(",", ":")).encode()
   elif method in {"canonical_cpp", "cpp_reference_values"}:
     text = path.read_text(encoding="utf-8")
     retained = canonical_cpp(retained_slice(text, start, end))
@@ -381,12 +382,32 @@ def json_digest(value: object) -> str:
   return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def load_json(data: bytes, label: str) -> dict:
+  """Read a JSON object without accepting duplicate keys."""
+
+  def object_without_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+      if key in result:
+        raise RuntimeError(f"duplicate JSON key: {key}")
+      result[key] = value
+    return result
+
+  try:
+    value = json.loads(data, object_pairs_hook=object_without_duplicates)
+  except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    raise RuntimeError(f"{label} is not valid UTF-8 JSON") from error
+  if not isinstance(value, dict):
+    raise RuntimeError(f"{label} root must be an object")
+  return value
+
+
 def verify_retained_data(repo_root: Path, ids: tuple[str, ...] | None = None) -> int:
-  blocks = json.loads((repo_root / RETAINED_REGISTRY).read_text(encoding="utf-8"))["data_blocks"]
-  if json_digest(blocks) != RETAINED_DATA_SHA256:
-    raise RuntimeError("retained data identity record differs")
+  blocks = load_json((repo_root / RETAINED_REGISTRY).read_bytes(), "retained registry")["data_blocks"]
   selected = tuple(blocks) if ids is None else ids
   for block_id in selected:
+    if block_id not in blocks:
+      raise RuntimeError(f"retained data ID is missing: {block_id}")
     block = blocks[block_id]
     path = Path(block["path"])
     if path.is_absolute() or ".." in path.parts:

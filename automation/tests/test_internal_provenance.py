@@ -21,7 +21,7 @@ from automation.internal_provenance import (
 
 
 TARGET_FILES = (
-  Path("src/test/provenance/batch-a-closeout/retained_host_blocks.json"),
+  Path("src/test/provenance/retained/retained_host_blocks.json"),
   Path("src/astro/sun.hpp"),
   Path("src/test/astro/earth_test.cpp"),
   Path("src/test/astro/sun_test.cpp"),

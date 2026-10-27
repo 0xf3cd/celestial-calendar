@@ -18,6 +18,11 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Final
 
+if __package__:
+  from .source_identity import require as _require
+else:
+  from source_identity import require as _require
+
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 ERFA_VERSION: Final[str] = "2.0.1"
@@ -62,11 +67,6 @@ NIST_EVIDENCE: Final[PinnedInput] = PinnedInput(
   Path("src/test/provenance/nist/sp-330-2019/definitions.txt"),
   "553a419ab0691c0f14abf4656adc35cc4a9762a1ed938375418c2d41e61ef7e2",
 )
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _block(text: str, start: str, end: str, label: str) -> str:

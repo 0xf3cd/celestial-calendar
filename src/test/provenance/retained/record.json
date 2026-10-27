@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Batch A final closeout dispositions; retained value identities are in retained_host_blocks.json. Earlier dispositions are not re-adjudicated here.",
+  "scope": "Retained-source dispositions; retained value identities are in retained_host_blocks.json. Earlier dispositions are not re-adjudicated here.",
   "rows": {
     "R01": {"disposition_kind":"retained_under_owner_risk_acceptance","material_scope":"retained_third_party_outside_mit","terms_shape":"commercial_authorisation_required","permission_claim":false,"owner_risk_acceptance":true,"destination":"D01-D11","source_identity":"Hong Kong Observatory yearly calendar text tables, 1901-2100","current_reproducibility":"199/199 encoded words reconstruct exactly","unavailable":["upstream redistribution permission"],"evidence":{"kind":"existing_gate","path":"automation/hko_identity.py"}},
     "V01": {"disposition_kind":"retained_under_owner_risk_acceptance","material_scope":"retained_third_party_outside_mit","terms_shape":"commercial_authorisation_required","permission_claim":false,"owner_risk_acceptance":true,"destination":"D01-D11; same HKO runtime bytes as R01","source_identity":"Hong Kong Observatory yearly calendar text tables, 1901-2100","current_reproducibility":"199/199 encoded words reconstruct exactly","unavailable":["upstream redistribution permission"],"evidence":{"kind":"existing_gate","path":"automation/hko_identity.py"}},

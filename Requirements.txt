@@ -16,8 +16,8 @@ requests==2.34.2
 # That makes this parser part of a gate, not a convenience -- a silent major would change what
 # the gate accepts on a day nobody touched the repository.
 pyyaml==6.0.3
-# `automation/tests/test_markdown.py` reads links, anchors, code blocks and sections, and the closeout
-# gate's license checks (the package READMEs and the CHANGELOG entry) read license sections and
+# `automation/tests/test_markdown.py` reads links, anchors, code blocks and sections, and the retained-source
+# gate's license checks (the package READMEs) read license sections and
 # links, all from one CommonMark parse
 # (`automation/markdown_source.py`): a link in a code span or a comment, or a fence that opens a list
 # item, cannot be told from what a reader sees by matching lines (#328, #350). Pinned like pyyaml.

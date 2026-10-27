@@ -17,8 +17,10 @@ from pathlib import Path
 from typing import Final
 
 if __package__:
+  from .source_identity import require as _require, read_pinned as _read_pinned, cpp_block as _cpp_block
   from .source_digest import canonical_cpp
 else:
+  from source_identity import require as _require, read_pinned as _read_pinned, cpp_block as _cpp_block
   from source_digest import canonical_cpp
 
 
@@ -48,32 +50,6 @@ ASTROTIME_ALGO5_RECORD_URL: Final[str] = (
 )
 ALGO5_FUNCTION_SHA256: Final[str] = "44ef6c75688b7036892e8cd6ba528822ae97664ec67732db5f208fe467960d4b"
 DEFAULT_FUNCTION_SHA256: Final[str] = "883c5e0652ec79f72d15bf125af88c7eceedb510d95f6936478e0c4fd37d1be8"
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
-
-
-def _read_pinned(path: Path, expected_sha256: str, label: str) -> bytes:
-  data = path.read_bytes()
-  digest = hashlib.sha256(data).hexdigest()
-  _require(digest == expected_sha256, f"{label} hash mismatch: {digest}")
-  return data
-
-
-def _cpp_block(text: str, declaration: str) -> str:
-  start = text.index(declaration)
-  opening = text.index("{", start)
-  depth = 0
-  for index in range(opening, len(text)):
-    if text[index] == "{":
-      depth += 1
-    elif text[index] == "}":
-      depth -= 1
-      if depth == 0:
-        return text[start : index + 1]
-  raise RuntimeError(f"C++ block is incomplete: {declaration}")
 
 
 def _cpp_term(coefficient: str, factor: str) -> str:

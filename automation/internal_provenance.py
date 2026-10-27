@@ -24,8 +24,10 @@ from typing import Callable, Final
 from unittest.mock import patch
 
 if __package__:
+  from .source_identity import require as _require
   from .source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 else:
+  from source_identity import require as _require
   from source_digest import RETAINED_REGISTRY, require_facts, retained_slice, verify_retained_data
 
 
@@ -91,11 +93,6 @@ class InternalProvenanceCounts:
   history_tables: int
   horizons_inputs: int
   julian_internal_rows: int
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _read(repo_root: Path, relative: str) -> str:

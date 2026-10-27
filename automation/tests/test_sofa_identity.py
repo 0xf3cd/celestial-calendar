@@ -15,8 +15,6 @@ import pytest
 
 from automation.sofa_identity import (
   REPO_ROOT,
-  SOFA_ARCHIVE_SHA256,
-  SOFA_ARCHIVE_URL,
   SOFA_INPUTS,
   SOFA_ROOT,
   IdentityCounts,
@@ -51,8 +49,6 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_sofa_inputs_and_repository_tables_are_pinned():
-  assert SOFA_ARCHIVE_URL == "https://www.iausofa.org/s/sofa_c-20231011tar.gz"
-  assert SOFA_ARCHIVE_SHA256 == "d9c10833cae8b4d9361a0ffda31ec361fd1262362025bec4d4e51a880150ace2"
   assert len(SOFA_INPUTS) == 5
   assert verify_sofa_identities() == IdentityCounts(28, 120, 106, 63, 12)
 

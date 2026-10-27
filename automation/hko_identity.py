@@ -32,8 +32,10 @@ from pathlib import Path
 from typing import Final
 
 if __package__:
+  from .source_identity import require as _require
   from .source_digest import require_facts
 else:
+  from source_identity import require as _require
   from source_digest import require_facts
 
 
@@ -66,11 +68,6 @@ class IdentityCounts:
   algo1_words: int
   algo3_words: int
   anomalies: int
-
-
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
 
 
 def _read_artifacts(hko_root: Path, expected_hashes: dict[str, str]) -> dict[str, str]:

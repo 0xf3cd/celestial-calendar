@@ -20,12 +20,14 @@ from pathlib import Path
 from typing import Final
 
 if __package__:
+  from .source_identity import require as _require, read_pinned as _read_pinned, cpp_block as _cpp_block
   from .astrotime_delta_t_provenance import (
     ASTROTIME_ALGO5_RECORD_SHA256,
     ASTROTIME_ALGO5_ROOT_RELATIVE,
   )
   from .source_digest import attribution_digest, canonical_cpp, require_facts
 else:
+  from source_identity import require as _require, read_pinned as _read_pinned, cpp_block as _cpp_block
   from astrotime_delta_t_provenance import (
     ASTROTIME_ALGO5_RECORD_SHA256,
     ASTROTIME_ALGO5_ROOT_RELATIVE,
@@ -65,20 +67,8 @@ class ProvenanceCounts:
   v27_relations: int
 
 
-def _require(condition: bool, message: str) -> None:
-  if not condition:
-    raise RuntimeError(message)
-
-
 def _normalized(text: str) -> str:
   return " ".join(text.split())
-
-
-def _read_pinned(path: Path, expected_sha256: str, label: str) -> bytes:
-  data = path.read_bytes()
-  digest = hashlib.sha256(data).hexdigest()
-  _require(digest == expected_sha256, f"{label} hash mismatch: {digest}")
-  return data
 
 
 def _delta_t_rows(text: str) -> dict[int, Decimal]:
@@ -108,20 +98,6 @@ def _lunar_data_values(text: str) -> tuple[int, ...]:
   values = tuple(int(value, 16) for value in re.findall(r"0x[0-9a-fA-F]+", match.group(1)))
   _require(len(values) == 600, "NASA lunar-table data differs")
   return values
-
-
-def _cpp_block(text: str, declaration: str) -> str:
-  start = text.index(declaration)
-  opening = text.index("{", start)
-  depth = 0
-  for index in range(opening, len(text)):
-    if text[index] == "{":
-      depth += 1
-    elif text[index] == "}":
-      depth -= 1
-      if depth == 0:
-        return text[start : index + 1]
-  raise RuntimeError(f"C++ block is incomplete: {declaration}")
 
 
 def verify_nasa_delta_t_provenance(

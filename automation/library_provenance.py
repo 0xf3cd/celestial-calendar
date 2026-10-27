@@ -10,6 +10,7 @@
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -45,11 +46,18 @@ def find_shared_lib(folder: Path | None = None) -> Path:
 
 
 def source_snapshot(root: Path) -> dict:
-  """Capture all non-ignored production source files; dirty trees do not name a source commit."""
-  tracked = subprocess.check_output(
-    ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "src"], cwd=root
-  )
-  names = sorted({name.decode("utf-8") for name in tracked.split(b"\0") if name})
+  """Capture production bytes; only a clean, byte-identical Git tree names a commit."""
+  has_git = os.path.lexists(root / ".git")
+  if has_git:
+    git_root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], cwd=root, text=True).strip()
+    if Path(git_root).resolve() != root.resolve():
+      raise RuntimeError(f"Git metadata does not identify this source root: {root}")
+    tracked = subprocess.check_output(
+      ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "src"], cwd=root
+    )
+    names = sorted({name.decode("utf-8") for name in tracked.split(b"\0") if name})
+  else:
+    names = sorted(path.relative_to(root).as_posix() for path in (root / "src").rglob("*") if path.is_file())
   files = {
     name: file_sha256(root / name)
     for name in names
@@ -58,8 +66,11 @@ def source_snapshot(root: Path) -> dict:
   if "src/shared_lib/CMakeLists.txt" not in files or "src/calendar/jieqi.hpp" not in files:
     raise RuntimeError("Cannot identify a complete shared-library source snapshot")
   serialized = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
-  dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root)
-  commit = None if dirty else subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+  commit = None
+  if has_git:
+    dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root)
+    if not dirty:
+      commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
   if commit is not None:
     for name, digest in files.items():
       data = subprocess.check_output(["git", "show", f"{commit}:{name}"], cwd=root)
@@ -100,6 +111,8 @@ def verify_library(library: Path, root: Path) -> dict:
       raise ValueError("source snapshot does not match this checkout")
     commit = source["commit"]
     if commit is not None:
+      if not os.path.lexists(root / ".git"):
+        raise ValueError("source-only tree cannot verify a recorded source commit")
       if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         raise ValueError("invalid source commit")
       for name, digest in source["files"].items():

@@ -282,7 +282,7 @@ For a new project-authored source file elsewhere, copy the neighbouring project 
 line, and a language-appropriate `SPDX-License-Identifier: MIT`; use the current year. For an existing
 project-authored source file, keep its year unless a user-directed wholesale rewrite warrants a
 `<original>-<current>` range (for example, `test/random.hpp` 2024-2026). Retained third-party hosts
-follow `src/test/provenance/batch-a-closeout/retained_host_blocks.json`: `in_file` hosts carry the
+follow `src/test/provenance/retained/retained_host_blocks.json`: `in_file` hosts carry the
 boundary pinned by `marker` and `marking_sha256`; `adjacent_record` data use the named attribution file.
 
 ## Tests

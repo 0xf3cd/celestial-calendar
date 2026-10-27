@@ -16,10 +16,10 @@ from shutil import copy2
 
 import pytest
 
-from automation.batch_a_closeout import REPO_ROOT, verify_batch_a_closeout
+from automation.retained_provenance import REPO_ROOT, verify_retained_provenance
 from automation.internal_provenance import InternalProvenanceCounts, verify_internal_provenance
 from automation.source_digest import RETAINED_REGISTRY, attribution_digest, retained_digest, verify_retained_data
-from automation.tests.test_batch_a_closeout import materialize_inputs, replace_once
+from automation.tests.test_retained_provenance import materialize_inputs, replace_once
 from automation.tests.test_internal_provenance import materialize_inputs as materialize_internal
 from automation.tests.test_third_party_notices import materialize_inputs as materialize_notices
 from automation.third_party_notices import NOTICE_SOURCES, assemble_notices
@@ -88,7 +88,7 @@ def test_live_host_maintenance_does_not_require_a_value_repin(tmp_path, block_id
 
 def test_full_closeout_accepts_ordinary_maintenance(tmp_path):
   materialize_inputs(tmp_path)
-  expected = verify_batch_a_closeout(tmp_path)
+  expected = verify_retained_provenance(tmp_path)
   sun = tmp_path / "src/test/astro/sun_test.cpp"
   replace_once(sun, "TEST(Sun, EquatorialApparentVsJplHorizons)", "TEST(Sun, RenamedHorizonsComparison)")
   sun.write_text(
@@ -106,7 +106,7 @@ def test_full_closeout_accepts_ordinary_maintenance(tmp_path):
   new_source = tmp_path / "automation/maintenance_source.py"
   banner = "\n".join((REPO_ROOT / "automation/source_digest.py").read_text(encoding="utf-8").splitlines()[:11])
   new_source.write_text(banner + "\n\nVALUE = 17\n", encoding="utf-8")
-  assert verify_batch_a_closeout(tmp_path) == expected
+  assert verify_retained_provenance(tmp_path) == expected
   assert verify_internal_provenance(tmp_path) == InternalProvenanceCounts(8, 42, 7)
 
 
@@ -127,7 +127,7 @@ def test_new_unmarked_source_is_rejected(tmp_path, replacement):
   materialize_inputs(tmp_path)
   (tmp_path / "automation/unmarked.py").write_text(replacement + "VALUE = 17\n", encoding="utf-8")
   with pytest.raises(RuntimeError, match="project banner differs"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -179,10 +179,10 @@ def test_each_shared_supplier_relationship_is_independently_required(tmp_path, b
   _record, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   entry = next(block for block in registry["blocks"] if block["id"] == block_id)
-  entry["source_identity"] += " wrong source version"
+  entry["source_identity"] = "Hong Kong Observatory"
   registry_path.write_text(json.dumps(registry), encoding="utf-8")
-  with pytest.raises(RuntimeError, match="source/marking facts differ"):
-    verify_batch_a_closeout(tmp_path)
+  with pytest.raises(RuntimeError, match="source identity (differs from its owning row|does not match its host)"):
+    verify_retained_provenance(tmp_path)
 
 
 def test_v37_last_digit_change_is_rejected(tmp_path):
@@ -251,7 +251,7 @@ def test_project_prose_can_repeat_an_existing_licence_citation(tmp_path):
   path.write_text(
     path.read_text(encoding="utf-8") + "\n// Existing ytliu0 source terms: GPL" + "v3.\n", encoding="utf-8"
   )
-  assert verify_batch_a_closeout(tmp_path).rows == 58
+  assert verify_retained_provenance(tmp_path).rows == 58
 
 
 def test_printed_reference_input_units_are_retained(tmp_path):
@@ -279,10 +279,10 @@ def test_v37_independence_boundaries_are_required(tmp_path, old):
 
 def test_source_pin_record_formatting_is_allowed(tmp_path):
   materialize_inputs(tmp_path)
-  expected = verify_batch_a_closeout(tmp_path)
+  expected = verify_retained_provenance(tmp_path)
   pins = tmp_path / "src/test/provenance/longitude-rate/SOURCE_PINS.json"
   pins.write_text(json.dumps(json.loads(pins.read_text(encoding="utf-8")), sort_keys=True), encoding="utf-8")
-  assert verify_batch_a_closeout(tmp_path) == expected
+  assert verify_retained_provenance(tmp_path) == expected
 
 
 @pytest.mark.parametrize("fact", ["Second Edition", "p.99", "v2.10.3bfinal"])
@@ -291,7 +291,7 @@ def test_house_reference_identity_is_required(tmp_path, fact):
   path = tmp_path / "src/test/astro/house_test.cpp"
   path.write_text(path.read_text(encoding="utf-8").replace(fact, "unidentified reference"), encoding="utf-8")
   with pytest.raises(RuntimeError, match="House references required fact"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 def test_notebook_retained_input_table_cannot_change(tmp_path):
@@ -315,10 +315,10 @@ def test_notebook_unrelated_code_can_be_added(tmp_path):
 
 
 def test_latitude_boundary_binds_its_own_comment(tmp_path):
-  from automation.batch_a_closeout import _marking_slice
+  from automation.retained_provenance import _marking_slice
 
   materialize_inputs(tmp_path)
-  assert verify_batch_a_closeout(tmp_path).rows == 58
+  assert verify_retained_provenance(tmp_path).rows == 58
   registry = json.loads((tmp_path / RETAINED_REGISTRY).read_text(encoding="utf-8"))
   block = next(block for block in registry["blocks"] if block["id"] == "r16-latitude")
   path = tmp_path / block["path"]
@@ -331,7 +331,7 @@ def test_latitude_boundary_binds_its_own_comment(tmp_path):
     "additive latitude terms remain under the ERFA\n// source terms and inside the project MIT grant.",
   )
   with pytest.raises(RuntimeError, match="r16-latitude MIT boundary is missing"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 def test_registry_cannot_rebind_latitude_to_longitude(tmp_path):
@@ -342,7 +342,7 @@ def test_registry_cannot_rebind_latitude_to_longitude(tmp_path):
   by_id["r16-latitude"]["marker"] = by_id["r16-longitude"]["marker"]
   path.write_text(json.dumps(registry), encoding="utf-8")
   with pytest.raises(RuntimeError, match="orphan retained marking"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -358,7 +358,7 @@ def test_t_class_boundary_claims_are_bound(tmp_path, relative, old, new):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / relative, old, new)
   with pytest.raises(RuntimeError, match="retained marking is missing or ambiguous"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -375,7 +375,7 @@ def test_new_boundary_claim_is_not_exempt_on_registered_host(tmp_path, claim):
   path = tmp_path / "src/astro/earth.hpp"
   path.write_text(path.read_text(encoding="utf-8") + "\n// " + claim + "\n", encoding="utf-8")
   with pytest.raises(RuntimeError, match="orphan retained marking"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 def test_bound_marking_prose_after_stable_marker_can_change(tmp_path):
@@ -385,7 +385,7 @@ def test_bound_marking_prose_after_stable_marker_can_change(tmp_path):
     "additive latitude terms remain under the ERFA\n// source terms and outside the project MIT grant.",
     "additive latitude terms remain under the ERFA\n// source terms; these terms stay outside the project MIT grant.",
   )
-  assert verify_batch_a_closeout(tmp_path).rows == 58
+  assert verify_retained_provenance(tmp_path).rows == 58
 
 
 @pytest.mark.parametrize(
@@ -465,7 +465,7 @@ def test_frozen_licence_count_error_names_the_changed_count(tmp_path):
   assert text.count(token) == 14
   path.write_text(text.replace(token, "source licence removed"), encoding="utf-8")
   with pytest.raises(RuntimeError) as error:
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
   assert "bindings/javascript/package-lock.json" in str(error.value)
   assert token in str(error.value) and "(14, 0)" in str(error.value)
 
@@ -486,7 +486,7 @@ def test_bound_mit_boundary_cannot_be_directly_negated(tmp_path, clause):
     "additive latitude terms remain under the ERFA\n// " + clause,
   )
   with pytest.raises(RuntimeError, match="r16-latitude MIT boundary is negated"):
-    verify_batch_a_closeout(tmp_path)
+    verify_retained_provenance(tmp_path)
 
 
 def test_boundary_prose_with_separate_negation_still_passes(tmp_path):
@@ -497,7 +497,7 @@ def test_boundary_prose_with_separate_negation_still_passes(tmp_path):
     "additive latitude terms remain under the ERFA\n// source terms; they are outside the project MIT grant. "
     "Permission is not claimed.",
   )
-  assert verify_batch_a_closeout(tmp_path).rows == 58
+  assert verify_retained_provenance(tmp_path).rows == 58
 
 
 def test_reference_implementation_and_macro_names_stay_free(tmp_path):

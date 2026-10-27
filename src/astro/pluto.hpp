@@ -55,6 +55,7 @@ inline constexpr double FK5_INVERSE_ANGLE_TOLERANCE_DEG = 1e-15;
 // Copyright 2013 Sonia Keys.
 // @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 37, Table 37.A.
 // NOLINTBEGIN(modernize-use-designated-initializers) - Dense source table reads by column.
+// Retained data: r38-pluto.
 inline constexpr std::array<Term, 43> TERMS {{
   { 0, 0,  1, -19.799805, 19.850055, -5.452852, -14.974862,  6.6865439,  6.8951812 },
   { 0, 0,  2,   0.897144, -4.954829,  3.527812,   1.672790, -1.1827535, -0.0332538 },
@@ -129,6 +130,7 @@ inline auto validate_apparent_jde(const double jde_tt) -> void {
   validate_jde(jde_tt, APPARENT_START_JDE_TT, APPARENT_END_JDE_TT, "apparent-position");
 }
 
+// Retained data: r38-pluto-evaluator.
 /** @brief Evaluate Pluto's geometric heliocentric J2000 ecliptic position. */
 [[nodiscard]] inline auto heliocentric_j2000(const double jde_tt) -> astro::toolbox::SphericalCoordinate {
   validate_raw_jde(jde_tt);

@@ -39,9 +39,8 @@ from .utils import (
 def unsatisfied_requirements(req_txt: Path) -> List[str]:
   """The requirements of `req_txt` that the running interpreter does not already provide.
 
-  Only a bare distribution name gets a verdict here. A line carrying a version specifier, an
-  extra, or a pip flag (`-r other.txt`) is reported as unsatisfied, which leaves pip - not this
-  parser - the authority on what those mean.
+  Bare names and exact numeric version pins are checked against installed metadata.
+  Other requirement forms remain pip's responsibility.
   """
   unsatisfied = []
 
@@ -50,12 +49,15 @@ def unsatisfied_requirements(req_txt: Path) -> List[str]:
     if not line:
       continue
 
-    if not re.fullmatch(r"[A-Za-z0-9._-]+", line):
+    match = re.fullmatch(r"([A-Za-z0-9][A-Za-z0-9._-]*)(?:==([0-9]+(?:\.[0-9]+)*))?", line)
+    if match is None:
       unsatisfied.append(line)
       continue
 
     try:
-      metadata.version(line)
+      installed = metadata.version(match[1])
+      if match[2] is not None and installed != match[2]:
+        unsatisfied.append(line)
     except metadata.PackageNotFoundError:
       unsatisfied.append(line)
 
@@ -231,6 +233,9 @@ class SetupPlan:
 def setup_environment(plan: SetupPlan) -> int:
   """Set up the environment by installing dependencies and checking tool availability and C++ support."""
 
+  if not plan.cpp_standards:
+    raise ValueError("No C++ standards specified for environment setup")
+
   # Install dependencies
   if plan.install_dependencies:
     print(60 * "#")
@@ -256,7 +261,6 @@ def setup_environment(plan: SetupPlan) -> int:
   # Check for C++ support
   print(60 * "#")
   yellow_print("# - C++ support check")
-  assert len(plan.cpp_standards) > 0, "No C++ standards specified."
 
   cxx_env = os.environ.get("CXX")
 

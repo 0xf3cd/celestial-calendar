@@ -17,36 +17,29 @@ from shutil import copy2, copytree, ignore_patterns
 
 import pytest
 
-from automation.batch_a_closeout import (
+from automation.retained_provenance import (
   A4_SCAN_EXCLUDED_PARTS,
   A4_SCAN_FILES,
   A4_SCAN_ROOTS,
-  CLOSEOUT_ROOT_RELATIVE,
+  REGISTRY_ROOT_RELATIVE,
   GPL_V3,
   LONGITUDE_RATE_ATTRIBUTION_RELATIVE,
-  LONGITUDE_RATE_ATTRIBUTION_SHA256,
   LONGITUDE_RATE_PINS_RELATIVE,
-  LONGITUDE_RATE_PINS_SHA256,
   LUNAR_NODE_ATTRIBUTION_RELATIVE,
-  LUNAR_NODE_ATTRIBUTION_SHA256,
   MIT_LICENSE_BYTES,
   MIT_SPDX_MARKER,
-  OLD_FULL_HEADER_MARKER,
-  OLD_SHORT_HEADER_MARKER,
   RECORD_NAME,
-  RECORD_SHA256,
   REGISTRY_NAME,
-  REGISTRY_SHA256,
   REPO_ROOT,
-  CloseoutCounts,
-  verify_batch_a_closeout,
+  ProvenanceCounts,
+  verify_retained_provenance,
 )
 from automation.third_party_notices import SEPARATOR
 from automation.source_digest import json_digest
 
 
 def _source_payloads() -> tuple[dict, dict]:
-  root = REPO_ROOT / CLOSEOUT_ROOT_RELATIVE
+  root = REPO_ROOT / REGISTRY_ROOT_RELATIVE
   return (
     json.loads((root / RECORD_NAME).read_text(encoding="utf-8")),
     json.loads((root / REGISTRY_NAME).read_text(encoding="utf-8")),
@@ -73,12 +66,12 @@ def _referenced_paths(record: dict, registry: dict) -> set[Path]:
 
 def materialize_inputs(destination: Path) -> tuple[Path, Path]:
   record, registry = _source_payloads()
-  closeout_root = destination / CLOSEOUT_ROOT_RELATIVE
+  closeout_root = destination / REGISTRY_ROOT_RELATIVE
   closeout_root.mkdir(parents=True)
   record_path = closeout_root / RECORD_NAME
   registry_path = closeout_root / REGISTRY_NAME
-  copy2(REPO_ROOT / CLOSEOUT_ROOT_RELATIVE / RECORD_NAME, record_path)
-  copy2(REPO_ROOT / CLOSEOUT_ROOT_RELATIVE / REGISTRY_NAME, registry_path)
+  copy2(REPO_ROOT / REGISTRY_ROOT_RELATIVE / RECORD_NAME, record_path)
+  copy2(REPO_ROOT / REGISTRY_ROOT_RELATIVE / REGISTRY_NAME, registry_path)
   for relative in _referenced_paths(record, registry):
     target = destination / relative
     if target in {record_path, registry_path}:
@@ -121,13 +114,8 @@ def replace_once(path: Path, old: str, new: str) -> None:
   path.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def test_batch_a_closeout_facts_and_values_are_complete():
-  assert RECORD_SHA256 == "6e778138b2d3e693da518ae75ac7bbec94fbd0c052fc0072216affeb8656351b"
-  assert REGISTRY_SHA256 == "bacd8c54817731ea5d0e479a37d49deae341ee19c259eb189e6204d464ae38c5"
-  assert LUNAR_NODE_ATTRIBUTION_SHA256 == "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
-  assert LONGITUDE_RATE_ATTRIBUTION_SHA256 == "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"
-  assert LONGITUDE_RATE_PINS_SHA256 == "264b01e098e12df7809dcf7cf254fe52ee5ba4062bb2811dcdfa8b6a7d88fcdc"
-  assert verify_batch_a_closeout() == CloseoutCounts(58, 117, 62, 2, 16)
+def test_retained_provenance_facts_and_values_are_complete():
+  assert verify_retained_provenance() == ProvenanceCounts(58, 117, 62, 2, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -136,7 +124,7 @@ def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
   replace_once(attribution, "AA+ v2.63", "AA+ v2.64")
 
   with pytest.raises(RuntimeError, match="lunar-node oracle attribution facts differ"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -154,7 +142,7 @@ def test_longitude_rate_attribution_mutations_fail(tmp_path, old, new):
   replace_once(tmp_path / LONGITUDE_RATE_ATTRIBUTION_RELATIVE, old, new)
 
   with pytest.raises(RuntimeError, match="longitude-rate oracle attribution.*(facts differ|required fact)"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize("mutation", ["source-commit", "source-bytes", "rate-unit", "reference-step", "corpus-hash"])
@@ -175,7 +163,7 @@ def test_longitude_rate_source_pin_mutations_fail(tmp_path, mutation):
   write_json(path, pins)
 
   with pytest.raises(RuntimeError, match="longitude-rate source pins facts differ"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -204,22 +192,22 @@ def test_longitude_rate_retained_golden_mutations_fail(tmp_path, old, new):
     replace_once(source, old, new)
 
   with pytest.raises(RuntimeError, match="longitude-rate retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
   "block_id", ["v44-longitude-rate", "v20-longitude-rate", "v15-longitude-rate", "r38-longitude-rate"]
 )
-def test_longitude_rate_retained_data_fields_are_required(tmp_path, block_id):
+def test_longitude_rate_marked_values_remain_guarded_without_host_data_id(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   block = next(item for item in registry["blocks"] if item["id"] == block_id)
   for field in ("data_id",):
     del block[field]
-  digest = write_json(registry_path, registry)
-
-  with pytest.raises(RuntimeError, match=f"{block_id} retained data fields differ"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+  write_json(registry_path, registry)
+  replace_once(tmp_path / "src/test/astro/ephemeris_test.cpp", "1.0189947437412421", "1.0189947437412422")
+  with pytest.raises(RuntimeError, match="longitude-rate retained data hash differs"):
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_longitude_rate_retained_hash_excludes_project_test_code(tmp_path):
@@ -230,16 +218,15 @@ def test_longitude_rate_retained_hash_excludes_project_test_code(tmp_path):
     "EXPECT_NEAR(actual, row.deg_per_tt_day, tolerance)",
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
 
 
 @pytest.mark.parametrize(
   ("mutation", "message"),
   [
-    ("missing-row", "closeout row inventory differs"),
-    ("unexpected-row", "closeout row inventory differs"),
-    ("incomplete-split", "R17 split-row assignment is incomplete"),
-    ("wrong-shape", "V18 disposition/material/terms shape differs"),
+    ("unexpected-row", "invalid disposition row ID"),
+    ("incomplete-split", "R17 covered part is empty"),
+    ("wrong-shape", "V18 terms_shape is empty"),
     ("v18-unavailable", "V18 unavailable fields differ"),
     ("v04-underlying", "V04 underlying-source boundary differs"),
     ("v37-partition", "V37 source partition differs"),
@@ -253,14 +240,12 @@ def test_closeout_row_mutations_fail(tmp_path, mutation, message):
   record_path, _registry_path = materialize_inputs(tmp_path)
   record = json.loads(record_path.read_text(encoding="utf-8"))
   rows = record["rows"]
-  if mutation == "missing-row":
-    del rows["V18"]
-  elif mutation == "unexpected-row":
-    rows["V45"] = dict(rows["V18"])
+  if mutation == "unexpected-row":
+    rows["invalid"] = dict(rows["V18"])
   elif mutation == "incomplete-split":
-    del rows["R17"]["covered_part"]
+    rows["R17"]["covered_part"] = ""
   elif mutation == "wrong-shape":
-    rows["V18"]["terms_shape"] = "symmetric_silence"
+    rows["V18"]["terms_shape"] = ""
   elif mutation == "v18-unavailable":
     rows["V18"]["unavailable"] = ["original generator", "original PyMeeus version"]
   elif mutation == "v04-underlying":
@@ -275,10 +260,10 @@ def test_closeout_row_mutations_fail(tmp_path, mutation, message):
     rows["V03"]["source_facts"]["retained_hko_utc"] = "2024-09-03T01:55Z"
   else:
     rows["V30"]["evidence"] = {"kind": "unknown"}
-  digest = write_json(record_path, record)
+  write_json(record_path, record)
 
   with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path, record_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_duplicate_row_key_fails(tmp_path):
@@ -288,10 +273,9 @@ def test_duplicate_row_key_fails(tmp_path):
   row_end = text.index("\n", row_start) + 1
   duplicate = text[row_start:row_end]
   record_path.write_text(text[:row_end] + duplicate + text[row_end:], encoding="utf-8")
-  digest = hashlib.sha256(record_path.read_bytes()).hexdigest()
 
   with pytest.raises(RuntimeError, match="duplicate JSON key: R01"):
-    verify_batch_a_closeout(repo_root=tmp_path, record_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_direct_digest_detects_a_retained_value_change(tmp_path):
@@ -300,7 +284,7 @@ def test_direct_digest_detects_a_retained_value_change(tmp_path):
   replace_once(source, "175347045.673", "175347045.674")
 
   with pytest.raises(RuntimeError, match="earth_coeff-runtime-0 retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_pluto_runtime_retained_data_mutation_fails(tmp_path):
@@ -308,7 +292,7 @@ def test_pluto_runtime_retained_data_mutation_fails(tmp_path):
   replace_once(tmp_path / "src/astro/pluto.hpp", "-19.799805", "-19.799804")
 
   with pytest.raises(RuntimeError, match="r38-pluto retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_pluto_runtime_evaluator_mutation_fails(tmp_path):
@@ -316,7 +300,7 @@ def test_pluto_runtime_evaluator_mutation_fails(tmp_path):
   replace_once(tmp_path / "src/astro/pluto.hpp", "238.958116 +", "238.958117 +")
 
   with pytest.raises(RuntimeError, match="r38-pluto-evaluator retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -335,23 +319,22 @@ def test_planet_retained_data_mutations_fail(tmp_path, old, new, message):
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
   with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
   "block_id",
   ["r38-pluto", "r38-pluto-evaluator", "v06-planets", "v15-planets", "v32-planets", "v45-pluto95"],
 )
-def test_planet_retained_data_fields_are_required(tmp_path, block_id):
+def test_planet_start_marker_requires_its_value_entry_without_host_data_id(tmp_path, block_id):
   _record_path, registry_path = materialize_inputs(tmp_path)
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   block = next(item for item in registry["blocks"] if item["id"] == block_id)
-  for field in ("data_id",):
-    del block[field]
-  digest = write_json(registry_path, registry)
-
-  with pytest.raises(RuntimeError, match=f"{block_id} retained data fields differ"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+  data_id = block.pop("data_id")
+  del registry["data_blocks"][data_id]
+  write_json(registry_path, registry)
+  with pytest.raises(RuntimeError, match="retained start marker needs exactly one data entry"):
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -368,23 +351,23 @@ def test_planet_retained_data_hashes_exclude_project_test_code(tmp_path, old, ne
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "src/test/astro/planet_test.cpp", old, new)
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
 
 
 def test_vsop_table_manifest_is_independently_reconciled(tmp_path):
   record_path, _registry_path = materialize_inputs(tmp_path)
   record = json.loads(record_path.read_text(encoding="utf-8"))
   record["rows"]["R12"]["source_facts"]["repository_tables"]["L0"]["rows"] = 558
-  digest = write_json(record_path, record)
+  write_json(record_path, record)
 
   with pytest.raises(RuntimeError, match="R12 table record differs: L0"):
-    verify_batch_a_closeout(repo_root=tmp_path, record_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
   ("mutation", "message"),
   [
-    ("missing-block", "retained registry inventory differs"),
+    ("missing-block", "orphan retained marking"),
     ("duplicate-locator", "duplicate retained locator"),
     ("wrong-scope", "r12 scope differs"),
     ("wrong-source", "r12 source identity is not recognised"),
@@ -415,10 +398,10 @@ def test_registry_mutations_fail(tmp_path, mutation, message):
     by_id["r12"]["marking_mode"] = "notice_only"
   else:
     by_id["notice-emscripten"]["notice_title"] = "ERFA v2.0.1 — LICENSE"
-  digest = write_json(registry_path, registry)
+  write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_registry_source_must_match_its_owning_row(tmp_path):
@@ -426,10 +409,10 @@ def test_registry_source_must_match_its_owning_row(tmp_path):
   registry = json.loads(registry_path.read_text(encoding="utf-8"))
   block = next(item for item in registry["blocks"] if item["id"] == "r22")
   block["source_identity"] = "IAU SOFA issue 2023-10-11"
-  digest = write_json(registry_path, registry)
+  write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match="r22 source identity differs from its owning row"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_adjacent_data_hash_mutation_fails(tmp_path):
@@ -437,24 +420,24 @@ def test_adjacent_data_hash_mutation_fails(tmp_path):
   data = tmp_path / "statistics/moon_phases.csv"
   data.write_bytes(data.read_bytes() + b"\n")
   with pytest.raises(RuntimeError, match="retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_adjacent_record_mutation_fails(tmp_path):
   materialize_inputs(tmp_path)
-  attribution = tmp_path / CLOSEOUT_ROOT_RELATIVE / "ATTRIBUTION.md"
+  attribution = tmp_path / REGISTRY_ROOT_RELATIVE / "ATTRIBUTION.md"
   replace_once(attribution, "notebook-only new/full Moon", "changed new/full Moon")
 
   with pytest.raises(RuntimeError, match="v30 required fact"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_orphan_adjacent_section_fails(tmp_path):
   materialize_inputs(tmp_path)
-  attribution = tmp_path / CLOSEOUT_ROOT_RELATIVE / "ATTRIBUTION.md"
+  attribution = tmp_path / REGISTRY_ROOT_RELATIVE / "ATTRIBUTION.md"
   attribution.write_text(attribution.read_text(encoding="utf-8") + "\n## V99: orphan\n", encoding="utf-8")
   with pytest.raises(RuntimeError, match="orphan or missing adjacent section"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_orphan_in_file_marking_fails(tmp_path):
@@ -467,7 +450,7 @@ def test_orphan_in_file_marking_fails(tmp_path):
   )
 
   with pytest.raises(RuntimeError, match="orphan retained marking"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_identity_gate_host_coverage_is_independent(tmp_path):
@@ -479,32 +462,17 @@ def test_identity_gate_host_coverage_is_independent(tmp_path):
   entry["locator"] = "V07 refresh relation"
   entry["marker"] = "Retained material boundaries: the V07 JPL Horizons DE440 table"
   entry["marking_facts"] = v07["marking_facts"]
-  digest = write_json(registry_path, registry)
+  write_json(registry_path, registry)
 
   with pytest.raises(RuntimeError, match="identity-gate hosts lack registry entries"):
-    verify_batch_a_closeout(repo_root=tmp_path, registry_sha256=digest)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_a4_license_surfaces_are_exact_and_complete(tmp_path):
   materialize_inputs(tmp_path)
 
   assert (tmp_path / "LICENSE").read_bytes() == MIT_LICENSE_BYTES
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
-
-
-@pytest.mark.parametrize(
-  ("relative", "marker", "message"),
-  [
-    ("automation/action_pins.py", OLD_FULL_HEADER_MARKER, "old full project header remains"),
-    ("project.py", OLD_SHORT_HEADER_MARKER, "old short project header remains"),
-  ],
-)
-def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relative, marker, message):
-  materialize_inputs(tmp_path)
-  replace_once(tmp_path / relative, MIT_SPDX_MARKER, marker)
-
-  with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path)
+  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -520,7 +488,7 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "run-clang-tidy.py",
       "SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception",
       MIT_SPDX_MARKER,
-      "run-clang-tidy.py upstream SPDX marking differs",
+      "non-project SPDX exception lacks upstream marking: run-clang-tidy.py",
     ),
     (
       "bindings/javascript/package.json",
@@ -580,18 +548,6 @@ def test_a4_old_header_positive_controls_reject_injected_markers(tmp_path, relat
       "package README MIT scope differs",
     ),
     (
-      "docs/CHANGELOG.md",
-      "- Project-authored material is now licensed under MIT.",
-      "<!-- - Project-authored material is now licensed under MIT. -->",
-      "MIT changelog entry differs",
-    ),
-    (
-      "docs/CHANGELOG.md",
-      "- Project-authored material is now licensed under MIT.",
-      "- Vendor blobs are now licensed under MIT.",
-      "MIT changelog entry differs",
-    ),
-    (
       "README_ZH.md",
       "](README.md#license)",
       "](README.md#broken-license)",
@@ -635,7 +591,7 @@ def test_a4_text_surface_mutations_fail(tmp_path, relative, old, new, message):
   replace_once(tmp_path / relative, old, new)
 
   with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_a4_license_mutation_fails(tmp_path):
@@ -643,7 +599,7 @@ def test_a4_license_mutation_fails(tmp_path):
   (tmp_path / "LICENSE").write_bytes(MIT_LICENSE_BYTES + b"changed\n")
 
   with pytest.raises(RuntimeError, match="root LICENSE is not canonical MIT text"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_chinese_readme_is_in_the_residual_scan(tmp_path):
@@ -652,7 +608,7 @@ def test_chinese_readme_is_in_the_residual_scan(tmp_path):
   readme.write_text(readme.read_text(encoding="utf-8") + f"\n{GPL_V3}\n", encoding="utf-8")
 
   with pytest.raises(RuntimeError, match="residual GPL allowlist differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_a4_npm_lock_mutation_fails(tmp_path):
@@ -663,7 +619,7 @@ def test_a4_npm_lock_mutation_fails(tmp_path):
   write_json(package_lock, payload)
 
   with pytest.raises(RuntimeError, match="npm root lock license differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -674,7 +630,7 @@ def test_alias_readme_license_controls(tmp_path, old, replacement):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "bindings/javascript-alias/README.md", old, replacement)
   with pytest.raises(RuntimeError, match="(MIT scope|third-party exception|dependency-notice)"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize("replacement", ["", "ISC"])
@@ -682,7 +638,7 @@ def test_alias_metadata_license_controls(tmp_path, replacement):
   materialize_inputs(tmp_path)
   replace_once(tmp_path / "bindings/javascript-alias/package.json", '"license": "MIT"', f'"license": "{replacement}"')
   with pytest.raises(RuntimeError, match="npm alias license metadata"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
@@ -698,7 +654,7 @@ def test_a4_gate_allows_future_version_and_release_notes(tmp_path):
     "## [v99.0.0]\n\nThis release contains future changes.\n", encoding="utf-8"
   )
 
-  assert verify_batch_a_closeout(repo_root=tmp_path) == CloseoutCounts(58, 117, 62, 2, 16)
+  assert verify_retained_provenance(repo_root=tmp_path) == ProvenanceCounts(58, 117, 62, 2, 16)
 
 
 @pytest.mark.parametrize(
@@ -717,7 +673,7 @@ def test_equatorial_reference_values_and_frozen_inputs_are_retained(tmp_path, or
   assert source.count(original) == 1
   path.write_text(source.replace(original, changed))
   with pytest.raises(RuntimeError, match="retained data hash differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):
@@ -725,7 +681,7 @@ def test_mit_spdx_population_gate_includes_unheaded_retained_hosts(tmp_path):
   replace_once(tmp_path / "src/CMakeLists.txt", MIT_SPDX_MARKER, "")
 
   with pytest.raises(RuntimeError, match="MIT SPDX host marking differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_t03_terms_capture_must_match_the_approved_evidence(tmp_path):
@@ -736,7 +692,7 @@ def test_t03_terms_capture_must_match_the_approved_evidence(tmp_path):
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match="T03 native terms capture differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -759,7 +715,7 @@ def test_t03_approved_evidence_rejects_absolute_windows_paths(tmp_path, location
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match="T03 approved evidence contains absolute Windows paths"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize("producer", ["native", "wheel"])
@@ -771,7 +727,7 @@ def test_t03_terms_document_identities_must_match_the_approved_evidence(tmp_path
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match=f"T03 {producer} terms document identities differ"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -790,7 +746,7 @@ def test_t03_static_archive_identities_must_match_the_approved_evidence(tmp_path
   write_json(contract_path, contract)
 
   with pytest.raises(RuntimeError, match=f"T03 native {message}"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_mit_spdx_host_identity_swap_fails(tmp_path):
@@ -804,7 +760,7 @@ def test_mit_spdx_host_identity_swap_fails(tmp_path):
   )
 
   with pytest.raises(RuntimeError, match="project banner differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -823,7 +779,7 @@ def test_retained_marking_body_mutation_fails(tmp_path, old, new, message):
   replace_once(tmp_path / "src/astro/earth.hpp", old, new)
 
   with pytest.raises(RuntimeError, match=message):
-    verify_batch_a_closeout(repo_root=tmp_path)
+    verify_retained_provenance(repo_root=tmp_path)
 
 
 def test_notice_separator_mutation_fails(tmp_path):
@@ -834,5 +790,5 @@ def test_notice_separator_mutation_fails(tmp_path):
   assert separator in text
   notice_path.write_text(text.replace(separator, "-" * 78 + "\n"), encoding="utf-8")
 
-  with pytest.raises(RuntimeError, match="notice-emscripten notice separator differs"):
-    verify_batch_a_closeout(repo_root=tmp_path)
+  with pytest.raises(RuntimeError, match="non-project SPDX exception lacks upstream marking: THIRD_PARTY_NOTICES.txt"):
+    verify_retained_provenance(repo_root=tmp_path)
