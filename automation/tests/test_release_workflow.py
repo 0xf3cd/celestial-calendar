@@ -131,7 +131,7 @@ def assert_pypi_contract(workflow):
   ]
   assert "run" not in steps[0] and "run" not in steps[1]
   publish = steps[1]
-  assert publish["uses"] == "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+  assert publish["uses"] == "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
   assert publish["with"] == {
     "packages-dir": "candidate/pypi",
     "verify-metadata": True,
