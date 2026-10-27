@@ -27,7 +27,8 @@ from automation import (
   check_ai_workflows,
   check_action_pins,
   check_jieqi_table,
-  check_seed_reconcile,
+  check_provenance,
+  check_cpp_signature_layout,
 )
 
 
@@ -54,8 +55,10 @@ def parse_args() -> argparse.Namespace:
       "    ./checks.py --export-surface\n\n"
       "  To run the automation layer's own unit tests:\n"
       "    ./checks.py --pytest\n\n"
-      "  To hold the four CELESTIAL_TEST_SEED copies to each other:\n"
-      "    ./checks.py --seed-reconcile\n\n"
+      "  To verify retained sources, values, licenses and notices directly:\n"
+      "    ./checks.py --provenance\n\n"
+      "  To check C++ signature layout without clang-tidy:\n"
+      "    ./checks.py --signature-layout\n\n"
       "  To hold the AI workflows to the settings of theirs that fail silently:\n"
       "    ./checks.py --ai-workflows\n\n"
       "  To require immutable refs for third-party GitHub Actions:\n"
@@ -68,7 +71,8 @@ def parse_args() -> argparse.Namespace:
       "  To hold a CI leg to the feature state this repo recorded for it:\n"
       "    ./checks.py --features libc++\n\n"
       "  To run every check (ruff, clang-tidy, self-containment, ABI layout, ctypes smoke,\n"
-      "  export surface, pytest, seed reconcile, AI workflows, Action pins, jieqi table, feature report):\n"
+      "  export surface, pytest, provenance, signature layout, AI workflows, Action pins,\n"
+      "  jieqi table, feature report):\n"
       "    ./checks.py -a/--all\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter,
@@ -78,7 +82,8 @@ def parse_args() -> argparse.Namespace:
 
   lint = parser.add_argument_group("lint")
   lint.add_argument("--ruff", action="store_true", help="Run ruff")
-  lint.add_argument("--clang-tidy", action="store_true", help="Check C++ signature layout and run clang-tidy")
+  lint.add_argument("--clang-tidy", action="store_true", help="Run clang-tidy")
+  lint.add_argument("--signature-layout", action="store_true", help="Check C++ signature layout")
 
   gate = parser.add_argument_group(
     "gate", "repo invariants; ctypes-smoke, export-surface and jieqi-table need ./project.py --build first"
@@ -101,7 +106,7 @@ def parse_args() -> argparse.Namespace:
     "--jieqi-table", action="store_true", help="Hold the exported jieqi table to its invariants (needs a build)"
   )
   gate.add_argument(
-    "--seed-reconcile", action="store_true", help="Hold the four CELESTIAL_TEST_SEED copies to each other"
+    "--provenance", action="store_true", help="Directly verify retained sources, values, licenses and notices"
   )
   gate.add_argument(
     "--ai-workflows", action="store_true", help="Hold the AI workflows to the settings of theirs that fail silently"
@@ -126,68 +131,30 @@ def parse_args() -> argparse.Namespace:
   return parser.parse_args()
 
 
+def run_checks(args: argparse.Namespace) -> int:
+  checks = (
+    (args.ruff, run_ruff, ()),
+    (args.signature_layout, check_cpp_signature_layout, ()),
+    (args.clang_tidy, run_clang_tidy, ()),
+    (args.self_contained, check_self_contained, ()),
+    (args.abi_layout, check_abi_layout, ()),
+    (args.ai_workflows, check_ai_workflows, ()),
+    (args.action_pins, check_action_pins, ()),
+    (args.provenance, check_provenance, ()),
+    (args.ctypes_smoke, check_ctypes_smoke, ()),
+    (args.jieqi_table, check_jieqi_table, ()),
+    (args.export_surface, check_export_surface, ()),
+    (args.pytest, run_pytest, ()),
+    # `--all` reports without judging; only a named CI leg has a recorded state.
+    (args.features is not None, probe_features, (args.features or None,)),
+  )
+  for selected, check, parameters in checks:
+    if selected or args.all:
+      result = check(*parameters)
+      if result != 0:
+        return result
+  return 0
+
+
 if __name__ == "__main__":
-  args = parse_args()
-
-  if args.ruff or args.all:
-    ret_code = run_ruff()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.clang_tidy or args.all:
-    ret_code = run_clang_tidy()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.self_contained or args.all:
-    ret_code = check_self_contained()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.abi_layout or args.all:
-    ret_code = check_abi_layout()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.ai_workflows or args.all:
-    ret_code = check_ai_workflows()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.action_pins or args.all:
-    ret_code = check_action_pins()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.ctypes_smoke or args.all:
-    ret_code = check_ctypes_smoke()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.jieqi_table or args.all:
-    ret_code = check_jieqi_table()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.export_surface or args.all:
-    ret_code = check_export_surface()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.pytest or args.all:
-    ret_code = run_pytest()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.seed_reconcile or args.all:
-    ret_code = check_seed_reconcile()
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  if args.features is not None or args.all:
-    # `--all` reports without judging: only a CI leg has a recorded state to be held to.
-    ret_code = probe_features(args.features or None)
-    if ret_code != 0:
-      sys.exit(ret_code)
-
-  sys.exit(0)
+  sys.exit(run_checks(parse_args()))

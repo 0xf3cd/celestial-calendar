@@ -188,6 +188,8 @@ Run from the source root; these commands also work on Windows:
 ```sh
 python checks.py --ruff
 python checks.py --clang-tidy
+python checks.py --signature-layout
+python checks.py --provenance
 ```
 
 <a id="ci-jobs"></a>
@@ -195,13 +197,14 @@ python checks.py --clang-tidy
 
 `core_tests.yml` runs on every push and on pull requests from forks. `build_and_test.yml`, `python-wheel.yml` and
 `wasm.yml` run on pull requests to `main` and on manual dispatch; `random_soak.yml` runs weekly. Run the local
-commands from the source root in the build virtual environment. The workflow files pin the exact tool versions.
+commands from the source root in the build virtual environment. Workflow files and local composite actions own
+the tool versions; the Windows STL exception is described under [Toolchain Feature Tracking](#todo).
 
 | Workflow · job | What CI runs | Local command |
 |---|---|---|
 | `core_tests.yml` · `api-docs` | `project.py --docs`; uploads `celestial-api-html` | `python project.py --docs` ([API Documentation](#api-docs)) |
-| `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--seed-reconcile`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](#lint)); the workflow pins the Ruff version |
-| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | `project.py --setup --clean --cmake --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table` and `--export-surface` | `python project.py --all` with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
+| `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--provenance`, `--signature-layout`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](#lint)); the workflow pins the Ruff version |
+| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | The local `native-build` action runs `project.py --clean --cmake --cores all --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table` and `--export-surface` | The same build command with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
 | `core_tests.yml` · `sanitizers` | An ASan + UBSan build, then every binary in `build/test/` run directly, with the test count reconciled against the `TEST` / `TEST_F` macros | Build with the job's `CXXFLAGS` and `python project.py --clean --cmake --build`, then run the reconciliation in [`AGENTS.md`](../AGENTS.md) ("Acceptance: run the binaries, and reconcile the count") |
 | `core_tests.yml` · `self-contained-headers` (libstdc++, libc++, MSVC STL) | `checks.py --self-contained` | `python checks.py --self-contained`, for the local standard library only |
 | `core_tests.yml` · `cxx-feature-probe` (same three) | `checks.py --features <leg>` | `python checks.py --features` ([Toolchain Feature Tracking](#todo)) |
@@ -211,7 +214,8 @@ commands from the source root in the build virtual environment. The workflow fil
 | `python-wheel.yml` · `macos-14-floor` | The macOS arm64 wheel from the same run, installed and tested on macOS 14 | CI only |
 | `wasm.yml` · `wasm` | The four build commands, Node package and type tests, Chrome and Firefox smoke tests, then Node consumers on the minimum supported version | The build and test commands in [WebAssembly and npm Packages](#wasm) |
 | `wasm.yml` · `node-consumer` (Windows, macOS) | The pair of packages from the same run, installed and tested without another build | CI only |
-| `random_soak.yml` (three jobs) | `project.py --setup --clean --cmake --build --test -v 1` with the run ID as `CELESTIAL_TEST_SEED` | `CELESTIAL_TEST_SEED=<run ID> python project.py --test` replays a failure |
+| `random_soak.yml` (three soak jobs) | The same `native-build` action with the run ID as `CELESTIAL_TEST_SEED`, then a direct RNG-using binary invocation that checks its reported seed | `CELESTIAL_TEST_SEED=<run ID> python project.py --test` replays a failure |
+| `random_soak.yml` · `weekly-cxx-feature-probe` (three platforms) | `checks.py --features <leg>` on weekly and manual runs, in addition to the per-PR probes | `python checks.py --features` |
 | `release.yml`, `release-rehearsal.yml`, `claude.yml`, `claude-review.yml` | Release and review automation | CI only; releases follow [`RELEASING.md`](RELEASING.md) |
 
 <a id="artifacts"></a>
@@ -244,18 +248,7 @@ download the native / WASM archives, Python wheels with SHA-256 sidecars, or sou
 no token. A release may differ from the source version described here, so use the documentation that ships with
 the selected release; building this checkout does not publish a version.
 
-Maintainers who need scripted bulk downloads can use `toolbox/release_downloader.py`. This optional tool uses
-GitHub authentication and is not needed for public downloads. Run it from the source root in an environment with
-the `Requirements.txt` dependencies installed and `GITHUB_TOKEN` set:
-
-```sh
-python3 toolbox/release_downloader.py -s build/releases
-python3 toolbox/release_downloader.py --help
-```
-
-By default it downloads the files of the latest release, and `-s` selects the destination directory; `--help`
-documents the remaining options. The tool can also be called as `python3 -m toolbox.release_downloader`. For CI
-artifacts, see [CI Artifact Downloads](#artifacts). Maintainers publishing a new release must follow
+For CI artifacts, see [CI Artifact Downloads](#artifacts). Maintainers publishing a new release must follow
 [`docs/RELEASING.md`](RELEASING.md), not the consumer install instructions; a successful download or build does
 not complete a release.
 
@@ -271,3 +264,7 @@ The code waits for full toolchain support before it adopts:
 `./checks.py --features` checks these features by actually compiling them. CI runs it against libstdc++, libc++
 and the MSVC STL separately, and reports when a toolchain already supports a feature while the code still keeps
 its hand-written replacement, so this list does not go stale.
+
+Windows uses the hosted runner's MSVC STL with the pinned LLVM compiler. The STL is not separately exact-pinned;
+CI reports compiler versions and capability results; native link evidence records the selected toolchain and
+libraries. Header or capability regressions still fail their gates. macOS compiling jobs select Xcode 26.

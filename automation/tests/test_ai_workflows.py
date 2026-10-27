@@ -10,7 +10,6 @@
 
 import json
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -21,6 +20,7 @@ import pytest
 import yaml
 
 from automation.ai_workflows import AI_WORKFLOWS, check_ai_workflows
+from automation.workflow_actions import load_workflow
 
 
 WORKFLOWS = Path(__file__).parents[2] / ".github" / "workflows"
@@ -57,7 +57,7 @@ def test_repository_ai_workflows():
 )
 def test_ai_gate_rejects_startup_and_mode_drift(workflows, name, path, value):
   file = workflows / name
-  workflow = yaml.safe_load(file.read_text(encoding="utf-8"))
+  workflow = load_workflow(file)
   target = next(iter(workflow["jobs"].values()))
   for key in path[:-1]:
     target = target[key]
@@ -91,86 +91,29 @@ def test_ai_gate_rejects_tool_expansion(workflows, name, old, new):
 def test_ai_gate_rejects_missing_action_and_divergent_pins(workflows):
   file = workflows / "claude.yml"
   text = file.read_text(encoding="utf-8")
-  workflow = yaml.safe_load(text)
+  workflow = load_workflow(file)
   workflow["jobs"]["claude"]["steps"].pop()
   file.write_text(yaml.safe_dump(workflow), encoding="utf-8")
   assert check_ai_workflows(workflows) == 1
 
-  original = yaml.safe_load(text)["jobs"]["claude"]["steps"][-1]["uses"]
+  original = yaml.load(text, Loader=yaml.BaseLoader)["jobs"]["claude"]["steps"][-1]["uses"]
   file.write_text(text.replace(original, "anthropics/claude-code-action@" + "a" * 40), encoding="utf-8")
   assert check_ai_workflows(workflows) == 1
 
 
-def assert_ai_credential_policy(workflow, manual):
-  assert len(workflow["jobs"]) == 1
-  job = next(iter(workflow["jobs"].values()))
-  assert set(workflow) <= {"name", "on", "jobs"}, "no additional workflow execution context"
-  assert set(job) <= {"name", "if", "runs-on", "permissions", "steps"}, "no additional credentialed job context"
-  assert job["runs-on"] == "ubuntu-latest", "credentialed jobs use the hosted runner"
-  assert "env" not in workflow and "env" not in job, "credentials must not acquire workflow/job scope"
-  assert job["permissions"] == (
-    {"contents": "read", "pull-requests": "write", "id-token": "write"}
-    if manual
-    else {"contents": "read", "pull-requests": "read", "issues": "read", "id-token": "write"}
-  )
-  steps = job["steps"]
-  assert len(steps) == (3 if manual else 2), "no extra credentialed steps"
-  assert set(steps[0]["with"]) == (
-    {"fetch-depth", "persist-credentials", "ref"} if manual else {"fetch-depth", "persist-credentials"}
-  )
-  assert set(steps[-1]["with"]) == (
-    {"anthropic_api_key", "claude_args", "prompt"}
-    if manual
-    else {"anthropic_api_key", "claude_args", "include_comments_by_actor"}
-  ), "action inputs must not expand permissions, startup settings or executables"
-  for index, step in enumerate(steps):
-    if manual and index == 1:
-      assert set(step) <= {"name", "env", "run"}, "no additional preparation context"
-      assert set(step["env"]) == {"PR_NUMBER", "GH_TOKEN"}
-    else:
-      assert set(step) <= {"name", "uses", "with"}, "no additional action execution context"
-      assert "env" not in step, "only manual preparation receives credential env"
-  assert steps[-1]["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
-  expressions = re.findall(r"\$\{\{.*?\}\}", json.dumps(workflow))
-  credentials = sorted(
-    expression
-    for expression in expressions
-    if re.search(r"\bsecrets\b|\bgithub\b(?!\s*\.\s*(?!token\b)[a-z_]\w*)", expression, re.IGNORECASE)
-  )
-  assert credentials == sorted(
-    ["${{ secrets.ANTHROPIC_API_KEY }}"] + (["${{ secrets.GITHUB_TOKEN }}"] if manual else [])
-  ), "credentials must remain at their required consumers"
-  if manual:
-    assert set(workflow["on"]) == {"workflow_dispatch"}
-    assert steps[0]["with"]["ref"] == "${{ github.event.repository.default_branch }}"
-    number = workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]
-    assert number["required"] == "true" and number["type"] == "number"
-    assert steps[1]["env"]["PR_NUMBER"] == "${{ inputs.pr_number }}"
-    assert steps[1]["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
-  else:
-    assert set(workflow["on"]) == {"issue_comment", "issues", "pull_request_review"}
-    for event, kind in (("issue_comment", "created"), ("issues", "opened"), ("pull_request_review", "submitted")):
-      assert workflow["on"][event]["types"] == [kind]
-    # This is an authorization contract, not a copy of the action's execution recipe.
-    assert " ".join(job["if"].split()) == (
-      "(github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') "
-      "&& github.event.comment.author_association == 'OWNER') || "
-      "(github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') "
-      "&& github.event.review.author_association == 'OWNER') || "
-      "(github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') "
-      "|| contains(github.event.issue.title, '@claude')) && github.event.issue.author_association == 'OWNER')"
-    )
+def credential_gate(workflows, workflow, manual):
+  name = "claude-review.yml" if manual else "claude.yml"
+  (workflows / name).write_text(yaml.safe_dump(workflow), encoding="utf-8")
+  return check_ai_workflows(workflows)
 
 
 def test_ai_execution_recipes_preserve_triggers_permissions_and_credential_scope():
-  for name in AI_WORKFLOWS:
-    workflow = yaml.load((WORKFLOWS / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
-    assert_ai_credential_policy(workflow, name == "claude-review.yml")
+  assert check_ai_workflows() == 0
 
 
 @pytest.mark.parametrize("fault", ["permissions", "global-secret", "extra-input", "key", "input-type"])
-def test_ai_credential_policy_rejects_scope_and_trigger_faults(fault):
-  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+def test_ai_credential_policy_rejects_scope_and_trigger_faults(workflows, fault):
+  workflow = load_workflow(workflows / "claude-review.yml")
   job = workflow["jobs"]["review"]
   if fault == "permissions":
     job["permissions"]["contents"] = "write"
@@ -182,16 +125,47 @@ def test_ai_credential_policy_rejects_scope_and_trigger_faults(fault):
     job["steps"][-1]["with"]["anthropic_api_key"] = "inert-wrong-key"
   else:
     workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["type"] = "string"
-  with pytest.raises(AssertionError):
-    assert_ai_credential_policy(workflow, True)
+  assert credential_gate(workflows, workflow, True) == 1
 
 
-def test_ai_recipe_labels_and_input_descriptions_are_not_policy():
-  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+def test_ai_recipe_labels_and_input_descriptions_are_not_policy(workflows):
+  workflow = load_workflow(workflows / "claude-review.yml")
   workflow["name"] = "A different display name"
   workflow["jobs"]["review"]["steps"][-1]["name"] = "Run the reviewer"
   workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["description"] = "Select a pull request"
-  assert_ai_credential_policy(workflow, True)
+  assert credential_gate(workflows, workflow, True) == 0
+
+
+@pytest.mark.parametrize("fault", ["owner", "event", "type", "dispatch", "extra-job", "local-action"])
+def test_ai_gate_owns_authorization_and_trigger_policy(workflows, fault):
+  workflow = load_workflow(workflows / "claude.yml")
+  job = workflow["jobs"]["claude"]
+  if fault == "owner":
+    job["if"] = job["if"].replace("'OWNER'", "'CONTRIBUTOR'")
+  elif fault == "event":
+    workflow["on"]["pull_request_target"] = workflow["on"].pop("issues")
+  elif fault == "type":
+    workflow["on"]["issue_comment"]["types"].append("edited")
+  elif fault == "dispatch":
+    workflow["on"]["workflow_dispatch"] = {}
+  elif fault == "extra-job":
+    workflow["jobs"]["extra"] = {"runs-on": "ubuntu-latest", "steps": []}
+  else:
+    job["steps"][0]["uses"] = "./.github/actions/local"
+  assert credential_gate(workflows, workflow, False) == 1
+
+
+@pytest.mark.parametrize("quote_on", [False, True])
+def test_ai_gate_uses_one_text_scalar_policy_for_on_and_booleans(workflows, quote_on):
+  path = workflows / "claude-review.yml"
+  workflow = load_workflow(path)
+  workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]["required"] = True
+  workflow["jobs"]["review"]["steps"][0]["with"]["persist-credentials"] = False
+  text = yaml.safe_dump(workflow)
+  if not quote_on:
+    text = text.replace("'on':", "on:")
+  path.write_text(text, encoding="utf-8")
+  assert check_ai_workflows(workflows) == 0
 
 
 @pytest.mark.parametrize("manual", [False, True], ids=["mention", "manual"])
@@ -208,9 +182,9 @@ def test_ai_recipe_labels_and_input_descriptions_are_not_policy():
     "bracket-input",
   ],
 )
-def test_ai_credentials_cannot_expand_scope_or_move_to_a_self_hosted_runner(manual, fault):
+def test_ai_credentials_cannot_expand_scope_or_move_to_a_self_hosted_runner(workflows, manual, fault):
   name = "claude-review.yml" if manual else "claude.yml"
-  workflow = yaml.load((WORKFLOWS / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  workflow = load_workflow(workflows / name)
   job = next(iter(workflow["jobs"].values()))
   if fault in {"workflow-env", "job-env", "checkout-env", "action-env"}:
     target = {
@@ -228,8 +202,7 @@ def test_ai_credentials_cannot_expand_scope_or_move_to_a_self_hosted_runner(manu
     job["steps"][-1]["with"]["other_token"] = (
       "${{ github.token }}" if fault == "token-input" else "${{ github['token'] }}"
     )
-  with pytest.raises(AssertionError):
-    assert_ai_credential_policy(workflow, manual)
+  assert credential_gate(workflows, workflow, manual) == 1
 
 
 @pytest.mark.parametrize("manual", [False, True], ids=["mention", "manual"])
@@ -247,9 +220,9 @@ def test_ai_credentials_cannot_expand_scope_or_move_to_a_self_hosted_runner(manu
     "workflow-defaults",
   ],
 )
-def test_ai_startup_sources_and_action_configuration_cannot_expand(manual, fault):
+def test_ai_startup_sources_and_action_configuration_cannot_expand(workflows, manual, fault):
   name = "claude-review.yml" if manual else "claude.yml"
-  workflow = yaml.load((WORKFLOWS / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+  workflow = load_workflow(workflows / name)
   job = next(iter(workflow["jobs"].values()))
   inputs = job["steps"][-1]["with"]
   if fault == "action-permissions":
@@ -270,22 +243,21 @@ def test_ai_startup_sources_and_action_configuration_cannot_expand(manual, fault
     workflow["defaults"] = {"run": {"working-directory": "./untrusted"}}
   else:
     inputs["claude_args"] += " ${{ toJSON(github) }}"
-  with pytest.raises(AssertionError):
-    assert_ai_credential_policy(workflow, manual)
+  assert credential_gate(workflows, workflow, manual) == 1
 
 
 @pytest.mark.parametrize("field", ["shell", "working-directory"])
-def test_manual_preparation_cannot_acquire_an_extra_execution_context(field):
-  workflow = yaml.load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+def test_manual_preparation_cannot_acquire_an_extra_execution_context(workflows, field, capsys):
+  workflow = load_workflow(workflows / "claude-review.yml")
   workflow["jobs"]["review"]["steps"][1][field] = "untrusted"
-  with pytest.raises(AssertionError, match="preparation context"):
-    assert_ai_credential_policy(workflow, True)
+  assert credential_gate(workflows, workflow, True) == 1
+  assert "preparation context" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("fork", [False, True], ids=["same-repository", "fork-main"])
 @pytest.mark.parametrize("old_checkout", [False, True], ids=["trusted-startup", "old-checkout-control"])
 def test_manual_preparation_keeps_pr_startup_files_out(tmp_path, fork, old_checkout):
-  workflow = yaml.safe_load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"))
+  workflow = load_workflow(WORKFLOWS / "claude-review.yml")
   steps = workflow["jobs"]["review"]["steps"]
   assert steps[0]["with"]["ref"] == "${{ github.event.repository.default_branch }}"
   workspace = tmp_path / "trusted-main"
@@ -343,7 +315,7 @@ def test_manual_preparation_keeps_pr_startup_files_out(tmp_path, fork, old_check
 
 @pytest.mark.parametrize("number", ["", "0", "-1", "1.5", "1e3", "1; exit 0"])
 def test_manual_preparation_rejects_non_positive_integer_input(tmp_path, number):
-  workflow = yaml.safe_load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"))
+  workflow = load_workflow(WORKFLOWS / "claude-review.yml")
   preparation = workflow["jobs"]["review"]["steps"][1]["run"]
   # No gh executable is available: invalid input must exit before reaching it.
   result = subprocess.run(
@@ -361,7 +333,7 @@ def test_manual_preparation_rejects_non_positive_integer_input(tmp_path, number)
 
 @pytest.mark.parametrize("quoted", [True, False], ids=["quoted-heredoc", "unquoted-control"])
 def test_manual_comment_template_preserves_markdown(tmp_path, quoted):
-  workflow = yaml.safe_load((WORKFLOWS / "claude-review.yml").read_text(encoding="utf-8"))
+  workflow = load_workflow(WORKFLOWS / "claude-review.yml")
   prompt = workflow["jobs"]["review"]["steps"][-1]["with"]["prompt"]
   command = prompt.split("```sh\n")[1].split("```")[0]
   command = command.replace("${{ inputs.pr_number }}", "283").replace("${{ github.repository }}", "owner/repository")

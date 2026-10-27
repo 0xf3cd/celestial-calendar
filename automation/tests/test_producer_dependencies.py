@@ -38,6 +38,7 @@ from toolbox.build_npm import (
 )
 from toolbox.release_validation import SOURCE_WORKFLOWS
 from toolbox import build_npm
+from automation.workflow_actions import resolved_steps, workflow_root
 
 
 REPO = Path(__file__).parents[2]
@@ -146,17 +147,13 @@ def assert_hash_locked_install(line):
 
 def workflow_install_lines(path):
   workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
-  lines = [
-    line
-    for job in workflow["jobs"].values()
-    for step in job["steps"]
-    for line in pip_install_lines(str(step.get("run", "")))
-  ]
+  steps = [step for job in workflow["jobs"].values() for step in resolved_steps(job["steps"], workflow_root(path))]
+  lines = [line for step in steps for line in pip_install_lines(str(step.get("run", "")))]
   lines += [
     line
     for env in [workflow.get("env", {})]
     + [job.get("env", {}) for job in workflow["jobs"].values()]
-    + [step.get("env", {}) for job in workflow["jobs"].values() for step in job["steps"]]
+    + [step.get("env", {}) for step in steps]
     for value in env.values()
     for line in pip_install_lines(str(value))
   ]
@@ -192,7 +189,7 @@ def test_dependabot_version_update_policy():
     "updates": [
       {
         "package-ecosystem": "github-actions",
-        "directory": "/",
+        "directories": ["/", "/.github/actions/*"],
         "schedule": {"interval": "monthly"},
         "groups": {"actions": {"patterns": ["*"]}},
       },
@@ -445,14 +442,47 @@ def test_wheel_build_configuration_uses_only_hash_locked_dependency_paths():
       assert not {key for key in step.get("env", {}) if key.startswith("CIBW_")}
 
 
-def test_native_producers_do_not_run_unlocked_project_setup():
-  commands = BUILD_WORKFLOW.read_text(encoding="utf-8") + DOCKERFILE.read_text(encoding="utf-8")
+def assert_native_project_commands(path, dockerfile):
+  workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+  commands = "\n".join(
+    str(step.get("run", ""))
+    for job in workflow["jobs"].values()
+    for step in resolved_steps(job["steps"], workflow_root(path))
+  ) + dockerfile.read_text(encoding="utf-8")
   project_lines = [line for line in commands.splitlines() if "project.py" in line and not line.lstrip().startswith("#")]
   build_commands = [line for line in project_lines if "--build" in line]
 
   assert project_lines and build_commands
   assert all("--setup" not in line and "--all" not in line for line in project_lines)
   assert all({"--clean", "--cmake", "--build", "--test"} <= set(line.split()) for line in build_commands)
+
+
+def test_native_producers_do_not_run_unlocked_project_setup():
+  assert_native_project_commands(BUILD_WORKFLOW, DOCKERFILE)
+
+
+@pytest.mark.parametrize(
+  "command", ["python -m pip install hidden==1", "python project.py --setup", "python project.py --all"]
+)
+def test_native_producer_checks_reach_nested_composites(tmp_path, command):
+  workflows = tmp_path / ".github/workflows"
+  workflows.mkdir(parents=True)
+  workflow = workflows / "native.yml"
+  workflow.write_text("jobs:\n  native:\n    steps:\n      - uses: ./.github/actions/outer\n", encoding="utf-8")
+  for name, steps in (
+    ("outer", "    - uses: ./.github/actions/inner\n"),
+    ("inner", f"    - shell: bash\n      run: {command}\n"),
+  ):
+    directory = tmp_path / ".github/actions" / name
+    directory.mkdir(parents=True)
+    (directory / "action.yml").write_text("runs:\n  using: composite\n  steps:\n" + steps, encoding="utf-8")
+  docker = tmp_path / "Dockerfile"
+  docker.write_text("RUN python project.py --clean --cmake --build --test\n", encoding="utf-8")
+  if "pip" in command:
+    assert workflow_install_lines(workflow) == [command]
+  else:
+    with pytest.raises(AssertionError):
+      assert_native_project_commands(workflow, docker)
 
 
 def test_native_producers_install_no_python_dependencies():

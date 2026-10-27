@@ -1,0 +1,16 @@
+name: Native build and test
+description: Configure a clean native build and run its tests
+runs:
+  using: composite
+  steps:
+    - name: Build and test (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: python3 ./project.py --clean --cmake --cores all --build --test -v 1
+    - name: Build and test (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        chcp.com 65001
+        $env:PYTHONIOENCODING = "utf-8"
+        python3 ./project.py --clean --cmake --cores all --build --test -v 1

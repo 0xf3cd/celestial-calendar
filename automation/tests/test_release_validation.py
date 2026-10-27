@@ -25,7 +25,6 @@ from toolbox import release_validation
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
 from toolbox.release_validation import (
-  LicenseValidation,
   NATIVE_ARCHIVES,
   PYTHON_ARTIFACTS,
   SOURCE_ARTIFACTS,
@@ -520,23 +519,19 @@ def test_alias_inner_identity_cannot_be_hidden_by_updated_sidecar(tmp_path, muta
 
 
 @pytest.mark.parametrize("version", ["0.6.0", "0.6.1", "0.6.2"])
-@pytest.mark.parametrize("mode", [LicenseValidation.LEGACY, LicenseValidation.MEMBERS, LicenseValidation.REPOSITORY])
-def test_singleton_format_selection_is_independent_of_license_history(tmp_path, version, mode):
+def test_singleton_format_selection_retains_repository_byte_checks(tmp_path, version):
   members = dict(wasm_members())
   for name in (ALIAS_TARBALL, "npm-alias-pack.json", "npm-alias-pack.sha256"):
     del members[name]
   pack = json.loads(members["npm-pack.json"])
   pack[0]["version"] = version
   members["npm-pack.json"] = json.dumps(pack).encode()
-  if mode is LicenseValidation.LEGACY:
-    del members["LICENSE"]
-    del members["THIRD_PARTY_NOTICES.txt"]
   archive = write_zip(tmp_path / "celestial-wasm.zip", members.items())
   before = archive.read_bytes()
-  assert set(npm_archive_payload(archive, version, mode)) == {TARBALL, "npm-pack.json", "npm-pack.sha256"}
+  assert set(npm_archive_payload(archive, version)) == {TARBALL, "npm-pack.json", "npm-pack.sha256"}
   assert archive.read_bytes() == before
   with pytest.raises(RuntimeError, match="Missing npm metadata"):
-    npm_archive_payload(archive, VERSION, mode)
+    npm_archive_payload(archive, VERSION)
 
 
 def test_validated_npm_payload_is_returned_without_modifying_archive(tmp_path):
@@ -868,9 +863,8 @@ def test_license_bytes_are_platform_stable():
   assert b"\r\n" not in NOTICE_BYTES
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
-def test_wheel_license_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_wheel_license_mutations_follow_repository_bytes(tmp_path, mutation):
   name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
   member = f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE"
   wheel, sidecar = write_wheel_named(
@@ -885,16 +879,12 @@ def test_wheel_license_mutations_follow_the_selected_contract(tmp_path, mutation
     ),
   )
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_wheel_sidecars([wheel, sidecar], VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="LICENSE"):
-    validate_wheel_sidecars([wheel, sidecar], VERSION, license_validation=license_validation)
+    validate_wheel_sidecars([wheel, sidecar], VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
-def test_inner_npm_license_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_inner_npm_license_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   tarball = npm_tarball(
     mutate_license(
@@ -907,45 +897,33 @@ def test_inner_npm_license_mutations_follow_the_selected_contract(tmp_path, muta
   )
   write_zip(tmp_path / "celestial-wasm.zip", wasm_members(tarball=tarball))
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="LICENSE"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
+    validate_release_archives(archives, VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
-def test_outer_wasm_license_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_outer_wasm_license_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   write_zip(tmp_path / "celestial-wasm.zip", mutate_license(wasm_members(), mutation))
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="LICENSE"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
+    validate_release_archives(archives, VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", LICENSE_MUTATIONS)
-def test_native_license_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_native_license_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   write_zip(
     tmp_path / "linux_amd64.zip",
     mutate_license(native_members("linux_amd64.zip"), mutation),
   )
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="LICENSE"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
+    validate_release_archives(archives, VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", NOTICE_MUTATIONS)
-def test_wheel_notice_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_wheel_notice_mutations_follow_repository_bytes(tmp_path, mutation):
   name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
   notice_member = f"celestial_calendar-{VERSION}.dist-info/licenses/THIRD_PARTY_NOTICES.txt"
   wheel, sidecar = write_wheel_named(
@@ -960,16 +938,12 @@ def test_wheel_notice_mutations_follow_the_selected_contract(tmp_path, mutation,
     ),
   )
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_wheel_sidecars([wheel, sidecar], VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="THIRD_PARTY_NOTICES"):
-    validate_wheel_sidecars([wheel, sidecar], VERSION, license_validation=license_validation)
+    validate_wheel_sidecars([wheel, sidecar], VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", NOTICE_MUTATIONS)
-def test_inner_npm_notice_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_inner_npm_notice_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   tarball = npm_tarball(
     mutate_notice(
@@ -982,110 +956,29 @@ def test_inner_npm_notice_mutations_follow_the_selected_contract(tmp_path, mutat
   )
   write_zip(tmp_path / "celestial-wasm.zip", wasm_members(tarball=tarball))
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="THIRD_PARTY_NOTICES"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
+    validate_release_archives(archives, VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", NOTICE_MUTATIONS)
-def test_outer_wasm_notice_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_outer_wasm_notice_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   write_zip(tmp_path / "celestial-wasm.zip", mutate_notice(wasm_members(), mutation))
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="THIRD_PARTY_NOTICES"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
+    validate_release_archives(archives, VERSION)
 
 
-@pytest.mark.parametrize("license_validation", [LicenseValidation.REPOSITORY, LicenseValidation.MEMBERS])
 @pytest.mark.parametrize("mutation", NOTICE_MUTATIONS)
-def test_native_notice_mutations_follow_the_selected_contract(tmp_path, mutation, license_validation):
+def test_native_notice_mutations_follow_repository_bytes(tmp_path, mutation):
   archives = write_release_archives(tmp_path)
   write_zip(
     tmp_path / "linux_amd64.zip",
     mutate_notice(native_members("linux_amd64.zip"), mutation),
   )
 
-  if license_validation is LicenseValidation.MEMBERS and mutation == "changed":
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-    return
   with pytest.raises(RuntimeError, match="THIRD_PARTY_NOTICES"):
-    validate_release_archives(archives, VERSION, license_validation=license_validation)
-
-
-def test_archives_keep_the_legacy_member_contract(tmp_path):
-  archives = write_release_archives(tmp_path)
-  write_zip(
-    tmp_path / "celestial-wasm.zip",
-    mutate_notice(mutate_license(wasm_members(), "missing"), "missing"),
-  )
-  for filename in NATIVE_MEMBERS:
-    write_zip(
-      tmp_path / filename,
-      mutate_notice(mutate_license(native_members(filename), "missing"), "missing"),
-    )
-  wheel_name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
-  wheel_member = f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE"
-  wheel, sidecar = write_wheel_named(
-    tmp_path,
-    wheel_name,
-    mutate_license([(wheel_member, LICENSE_BYTES)], "changed"),
-  )
-
-  validate_release_archives(
-    [*archives, wheel, sidecar],
-    VERSION,
-    license_validation=LicenseValidation.LEGACY,
-  )
-
-
-def test_historical_canonical_license_contract_checks_members_without_checkout_bytes(tmp_path):
-  archives = write_release_archives(tmp_path)
-  tarball = npm_tarball(
-    mutate_notice(
-      mutate_license(
-        [
-          ("package/LICENSE", LICENSE_BYTES),
-          ("package/THIRD_PARTY_NOTICES.txt", NOTICE_BYTES),
-        ],
-        "changed",
-      ),
-      "changed",
-    )
-  )
-  wasm = mutate_license(wasm_members(tarball=tarball), "changed")
-  wasm = mutate_notice(wasm, "changed")
-  write_zip(tmp_path / "celestial-wasm.zip", wasm)
-  filename = "linux_amd64.zip"
-  native = mutate_license(native_members(filename), "changed")
-  write_zip(tmp_path / filename, mutate_notice(native, "changed"))
-  wheel_name = f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl"
-  wheel_member = f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE"
-  wheel, sidecar = write_wheel_named(
-    tmp_path,
-    wheel_name,
-    mutate_notice(
-      mutate_license(
-        [
-          (wheel_member, LICENSE_BYTES),
-          (f"celestial_calendar-{VERSION}.dist-info/licenses/THIRD_PARTY_NOTICES.txt", NOTICE_BYTES),
-        ],
-        "changed",
-      ),
-      "changed",
-    ),
-  )
-
-  validate_release_archives(
-    [*archives, wheel, sidecar],
-    VERSION,
-    license_validation=LicenseValidation.MEMBERS,
-  )
+    validate_release_archives(archives, VERSION)
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,7 @@
 name: Random Seed Soak
 
-# Exploration track of the #69 dual-track testing policy: the PR/push gate pins the
-# default seed (42), while this weekly (or manually dispatched) soak draws a fresh seed
+# Exploration track of the #69 dual-track testing policy: the PR/push gate uses the
+# C++ default seed, while this weekly (or manually dispatched) soak draws a fresh seed
 # per run. CELESTIAL_TEST_SEED = github.run_id — unique per run, visible in the run URL,
 # and directly replayable. A soak failure is never dismissed as a flake: replay the
 # failing ctest entry with the same seed (each ctest case starts a fresh process from
@@ -21,102 +21,99 @@ env:
 jobs:
   soak-ubuntu-clang:
     runs-on: ubuntu-26.04
-    strategy:
-      matrix:
-        python-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+      - uses: ./.github/actions/native-toolchain
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Python Dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
-
-      - name: Install CMake
-        run: sudo apt install cmake
+          python-version: "3.12"
 
       - name: Build and Test
+        uses: ./.github/actions/native-build
         env:
           CXX: clang++-22
           CC:  clang-22
+      - name: Verify received soak seed
+        shell: bash
         run: |
-          chmod +x project.py
-          ./project.py --setup --clean --cmake --build --test -v 1
+          output=$(./build/test/earth_test --gtest_filter=Earth.ObliquityJ2000 2>&1)
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Fx "[ util::random ] seed = $GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)"
 
 
   soak-macos-apple-clang:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
 
     steps:
     - uses: actions/checkout@v7
 
-    # Pinned (version + action SHA); see AGENTS.md gotcha 9 (#72, #73) and #177.
-    - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+    - uses: ./.github/actions/native-toolchain
       with:
-        xcode-version: '26'
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install Python Dependencies
-      run: |
-        python3 -m pip install --upgrade pip
-        if [ -f Requirements.txt ]; then python3 -m pip install -r Requirements.txt; fi
+        python-version: "3.12"
 
     - name: Build and Test
+      uses: ./.github/actions/native-build
       env:
         CXX: clang++
         CC:  clang
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+    - name: Verify received soak seed
+      shell: bash
       run: |
-        chmod +x project.py
-        ./project.py --setup --clean --cmake --build --test -v 1
+        output=$(./build/test/earth_test --gtest_filter=Earth.ObliquityJ2000 2>&1)
+        printf '%s\n' "$output"
+        printf '%s\n' "$output" | grep -Fx "[ util::random ] seed = $GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)"
 
 
   soak-windows-clang:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Visual Studio
-        # Pinned to a SHA: third-party action on the Windows soak path (#177).
-        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
+      - uses: ./.github/actions/native-toolchain
         with:
-          vs-version: latest
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if (Test-Path "Requirements.txt") { python -m pip install -r "Requirements.txt" }
-
-          # Pinned; see AGENTS.md gotcha 9 (#72, #73).
-          choco install -y make
-          choco install -y llvm --version=22.1.7
+          python-version: "3.12"
 
       - name: Build and Test
+        uses: ./.github/actions/native-build
         env:
           CXX: clang++
           CC:  clang
+      - name: Verify received soak seed
+        shell: pwsh
         run: |
-          chcp.com 65001
-          $env:PYTHONIOENCODING = "utf-8"
-          python3 ./project.py --setup --clean --cmake --build --test -v 1
+          $output = & ./build/test/earth_test.exe --gtest_filter=Earth.ObliquityJ2000 2>&1
+          $code = $LASTEXITCODE
+          $lines = @($output | ForEach-Object { "$_" })
+          $lines | Write-Output
+          if ($code -ne 0) { exit $code }
+          if ($lines -notcontains "[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)") {
+            throw "The RNG binary did not receive the soak run-ID seed."
+          }
+
+  weekly-cxx-feature-probe:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-26.04
+            leg: libstdc++
+            cxx: clang++-22
+          - runner: macos-latest
+            leg: libc++
+            cxx: clang++
+          - runner: windows-latest
+            leg: msvc-stl
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/native-toolchain
+        with:
+          python-version: "3.12"
+      - name: Probe awaited C++ features
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: python ./checks.py --features ${{ matrix.leg }}

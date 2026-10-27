@@ -119,11 +119,8 @@ def run_ruff() -> int:
 
 
 def run_clang_tidy() -> int:
-  """Check C++ signature layout, then run clang-tidy."""
+  """Run clang-tidy independently of the signature-layout gate."""
   print("#" * 60)
-
-  if check_cpp_signature_layout() != 0:
-    return 1
 
   # `CLANG_TIDY` names the binary, never the version: the version is pinned in the workflow
   # (gotcha 9) and a copy here would be a second one with no gate reconciling them. The default

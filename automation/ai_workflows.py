@@ -8,12 +8,14 @@
 
 import re
 import shlex
+import json
 
 from pathlib import Path
 from typing import Any, Dict, Final, List, Optional, Tuple
 
 from . import paths
 from .utils import green_print, red_print, yellow_print
+from .workflow_actions import load_workflow
 
 
 # The workflows that hand an agent the API key, and the only ones this gate covers. A third
@@ -44,6 +46,83 @@ def _grants_oidc(permissions: Any) -> bool:
   if permissions == "write-all":
     return True
   return isinstance(permissions, dict) and permissions.get("id-token") == "write"
+
+
+def validate_credential_policy(workflow: dict, manual: bool) -> None:
+  def require(condition, message):
+    if not condition:
+      raise ValueError(message)
+
+  require(len(workflow["jobs"]) == 1, "exactly one credentialed job is required")
+  job = next(iter(workflow["jobs"].values()))
+  require(set(workflow) <= {"name", "on", "jobs"}, "no additional workflow execution context")
+  require(set(job) <= {"name", "if", "runs-on", "permissions", "steps"}, "no additional credentialed job context")
+  require(job["runs-on"] == "ubuntu-latest", "credentialed jobs use the hosted runner")
+  require(
+    job["permissions"]
+    == (
+      {"contents": "read", "pull-requests": "write", "id-token": "write"}
+      if manual
+      else {"contents": "read", "pull-requests": "read", "issues": "read", "id-token": "write"}
+    ),
+    "credentialed permissions differ",
+  )
+  steps = job["steps"]
+  require(len(steps) == (3 if manual else 2), "no extra credentialed steps")
+  require(
+    set(steps[0]["with"])
+    == ({"fetch-depth", "persist-credentials", "ref"} if manual else {"fetch-depth", "persist-credentials"}),
+    "checkout inputs differ",
+  )
+  require(
+    set(steps[-1]["with"])
+    == (
+      {"anthropic_api_key", "claude_args", "prompt"}
+      if manual
+      else {"anthropic_api_key", "claude_args", "include_comments_by_actor"}
+    ),
+    "action inputs must not expand permissions, startup settings or executables",
+  )
+  for index, step in enumerate(steps):
+    if manual and index == 1:
+      require(set(step) <= {"name", "env", "run"}, "no additional preparation context")
+      require(set(step["env"]) == {"PR_NUMBER", "GH_TOKEN"}, "preparation credential scope differs")
+    else:
+      require(set(step) <= {"name", "uses", "with"}, "no additional action execution context")
+  require(steps[-1]["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}", "API key consumer differs")
+  expressions = re.findall(r"\$\{\{.*?\}\}", json.dumps(workflow))
+  credentials = sorted(
+    expression
+    for expression in expressions
+    if re.search(r"\bsecrets\b|\bgithub\b(?!\s*\.\s*(?!token\b)[a-z_]\w*)", expression, re.IGNORECASE)
+  )
+  require(
+    credentials == sorted(["${{ secrets.ANTHROPIC_API_KEY }}"] + (["${{ secrets.GITHUB_TOKEN }}"] if manual else [])),
+    "credentials must remain at their required consumers",
+  )
+  if manual:
+    require(set(workflow["on"]) == {"workflow_dispatch"}, "manual trigger differs")
+    require(steps[0]["with"]["ref"] == "${{ github.event.repository.default_branch }}", "untrusted checkout ref")
+    number = workflow["on"]["workflow_dispatch"]["inputs"]["pr_number"]
+    require(number["required"] == "true" and number["type"] == "number", "PR input must be a required number")
+    require(steps[1]["env"]["PR_NUMBER"] == "${{ inputs.pr_number }}", "PR input wiring differs")
+    require(steps[1]["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}", "preparation token differs")
+  else:
+    require(set(workflow["on"]) == {"issue_comment", "issues", "pull_request_review"}, "mention triggers differ")
+    for event, kind in (("issue_comment", "created"), ("issues", "opened"), ("pull_request_review", "submitted")):
+      require(workflow["on"][event]["types"] == [kind], f"{event} trigger types differ")
+    require(
+      " ".join(job["if"].split())
+      == (
+        "(github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') "
+        "&& github.event.comment.author_association == 'OWNER') || "
+        "(github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') "
+        "&& github.event.review.author_association == 'OWNER') || "
+        "(github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') "
+        "|| contains(github.event.issue.title, '@claude')) && github.event.issue.author_association == 'OWNER')"
+      ),
+      "mention authorization differs",
+    )
 
 
 def check_ai_workflows(workflow_dir: Path | None = None) -> int:
@@ -79,9 +158,10 @@ def check_ai_workflows(workflow_dir: Path | None = None) -> int:
       continue
 
     try:
-      workflow: Dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-      failures.append(f"{name}: not valid YAML, so GitHub cannot run it either ({exc.__class__.__name__})")
+      workflow: Dict[str, Any] = load_workflow(path)
+      validate_credential_policy(workflow, name == "claude-review.yml")
+    except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError, yaml.YAMLError) as exc:
+      failures.append(f"{name}: credential policy: {exc}")
       continue
 
     jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
@@ -132,7 +212,7 @@ def check_ai_workflows(workflow_dir: Path | None = None) -> int:
         checkout = checkouts[0]
         if not SHA_RE.fullmatch(checkout["uses"].partition("@")[2]):
           failures.append(f"{name}: the credentialed checkout must use a full commit SHA")
-        if checkout.get("with", {}).get("persist-credentials") is not False:
+        if checkout.get("with", {}).get("persist-credentials") != "false":
           failures.append(f"{name}: checkout must not persist credentials")
         if manual and (
           job.get("if") != DISPATCH_CONDITION

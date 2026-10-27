@@ -17,12 +17,6 @@ on:
 permissions:
   contents: read
 
-# Gate track of the #69 dual-track policy: the pinned default seed (the soak workflow
-# random_soak.yml draws a fresh one per run). Must match DEFAULT_SEED in
-# src/test/random.hpp.
-env:
-  CELESTIAL_TEST_SEED: "42"
-
 jobs:
   linux-docker:
     name: linux-docker (${{ matrix.platform }}, ${{ matrix.runner }})
@@ -101,7 +95,6 @@ jobs:
             --platform ${{ matrix.platform }} -t $IMAGE_TAG \
             --build-arg BASE_IMAGE=${{ matrix.image }} \
             --build-arg DOCKER_PLATFORM=${{ matrix.platform }} \
-            --build-arg CELESTIAL_TEST_SEED=${{ env.CELESTIAL_TEST_SEED }} \
             --load .
 
           # Run the Docker image and install the artifacts to the output directory
@@ -190,24 +183,16 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    # Pinned (version + action SHA); see AGENTS.md gotcha 9 (#72, #73) and #177.
-    - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
-      with:
-        xcode-version: '26'
-    
-    - name: Set up Python ${{ matrix.python-version }}  
-      uses: actions/setup-python@v7 
+    - uses: ./.github/actions/native-toolchain
       with:
         python-version: ${{ matrix.python-version }}
     
     - name: Build and Test
+      uses: ./.github/actions/native-build
       env:
         CXX: clang++
         CC:  clang
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-      run: |
-        chmod +x project.py
-        ./project.py --clean --cmake --cores all --build --test -v 1
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
@@ -277,31 +262,15 @@ jobs:
     steps:  
       - uses: actions/checkout@v7
 
-      - name: Set up Visual Studio
-        # Pinned to a SHA: third-party action on the Windows build path (#177).
-        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
-        with:
-          vs-version: latest
-
-      - name: Set up Python ${{ matrix.python-version }}  
-        uses: actions/setup-python@v7 
+      - uses: ./.github/actions/native-toolchain
         with:
           python-version: ${{ matrix.python-version }}
-  
-      - name: Install LLVM and make
-        run: |  
-          # LLVM is pinned; see AGENTS.md gotcha 9 (#72, #73).
-          choco install -y make
-          choco install -y llvm --version=22.1.7
 
       - name: Build and Test
+        uses: ./.github/actions/native-build
         env:
           CXX: clang++
           CC:  clang
-        run: |
-          chcp.com 65001
-          $env:PYTHONIOENCODING = "utf-8"
-          python3 ./project.py --clean --cmake --cores all --build --test -v 1
 
       - name: Ensure Shared Lib Exists
         id: shared_lib
