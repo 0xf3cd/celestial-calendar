@@ -157,6 +157,7 @@ metadata files and run, from the source root:
 primary="build/npm/$(node -p 'require("./build/npm/npm-pack.json")[0].filename')"
 alias_tgz="build/npm/$(node -p 'require("./build/npm/npm-alias-pack.json")[0].filename')"
 node bindings/javascript/test/node/public_api_test.mjs build/npm/package/index.mjs
+node bindings/javascript/test/node/fake_native_test.mjs build/npm/package/index.mjs
 node bindings/javascript/test/node/date_test.mjs build/npm/package/date.mjs --exhaustive
 node bindings/javascript/test/node/tarball_consumer_test.mjs "$primary" "$alias_tgz"
 npm run test:types --prefix bindings/javascript
@@ -165,7 +166,8 @@ node bindings/javascript/test/browser/browser_test.mjs "$primary" "$alias_tgz"
 
 `tarball_consumer_test.mjs` installs into temporary directories. The browser test builds its application under
 `bindings/javascript/build/` and downloads the Chrome and Firefox builds pinned by `puppeteer-core` there. CI
-repeats the first three `node` commands, without `--exhaustive`, on the minimum supported Node version.
+repeats the four Node-only tests on the minimum supported Node version, omitting `--exhaustive` from
+`date_test.mjs`.
 
 <a id="lint"></a>
 ## Static Checks
@@ -236,9 +238,12 @@ python3 toolbox/artifact_downloader.py -s build/artifacts --unzip
 python3 toolbox/artifact_downloader.py --help
 ```
 
-By default it downloads the complete native, WASM and Python artifacts built from HEAD. `-id` selects a run ID and
-`-s` the destination directory; without `--unzip` the archives stay zipped. `--help` documents the remaining
-options. The tool can also be called as `python3 -m toolbox.artifact_downloader`.
+By default it selects successful `workflow_dispatch` runs that built the local checkout's HEAD and validates
+their complete native, WASM and Python artifact inventories. PR and push runs are not eligible for that lookup.
+To select the three producers explicitly, supply `--native-run-id`, `--wasm-run-id` and `--python-run-id` together.
+Alternatively, `-id` downloads a single run without release-inventory validation; it can also download PR runs.
+`-s` is required and names the destination directory; without `--unzip` the archives stay zipped. `--help`
+documents the remaining options. The tool can also be called as `python3 -m toolbox.artifact_downloader`.
 
 <a id="releases"></a>
 ## Release Downloads

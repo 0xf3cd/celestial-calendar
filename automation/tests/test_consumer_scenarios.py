@@ -32,7 +32,8 @@ def test_python_query_main_invokes_every_scenario_and_propagates_failure(tmp_pat
   monkeypatch.setitem(sys.modules, "smoke", smoke)
   source = (ROOT / "bindings/python/test/consumer/queries.py").read_text()
   if defect == "omitted":
-    source = source.replace('if name.startswith("scenario_"):', 'if name.startswith("scenario_") and False:')
+    assert source.count("    scenario()\n") == 1
+    source = source.replace("    scenario()\n", "    pass\n")
   path = tmp_path / "queries.py"
   path.write_text(source)
   module = runpy.run_path(str(path))

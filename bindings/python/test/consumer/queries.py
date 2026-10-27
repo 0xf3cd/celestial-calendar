@@ -176,10 +176,18 @@ def scenario_algo4_window() -> None:
 
 
 def main() -> None:
-  for name, scenario in tuple(globals().items()):
-    if name.startswith("scenario_"):
-      scenario()
-      print(f"PASS {name}")
+  scenarios = (
+    scenario_selection_order,
+    scenario_independent_windows,
+    scenario_selection_validation,
+    scenario_houses,
+    scenario_model_identity,
+    scenario_failure_independence,
+    scenario_algo4_window,
+  )
+  for scenario in scenarios:
+    scenario()
+    print(f"PASS {scenario.__name__}")
 
 
 if __name__ == "__main__":

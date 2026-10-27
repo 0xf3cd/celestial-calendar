@@ -213,7 +213,6 @@ export default async () => {
         control.mutate = undefined;
         control.kind = 0;
         assertChartReplay(call(), example);
-        console.log(`PASS chart malformed successes ${mutations.length}/${mutations.length}; restored replay`);
       },
       allocationCleanup() {
         assert.equal(control.allocations, control.frees, "chart output allocations leaked");

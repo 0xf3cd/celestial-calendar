@@ -373,7 +373,7 @@ struct Distance {
   double _value;
 };
 
-/** @brief A distance measured in astronomical units. */
+/** @brief A distance measured in astronomical units; see @ref AngleDeg for the alias convention. */
 using DistanceAu = Distance<DistanceUnit::AU>;
 using DistanceKm = Distance<DistanceUnit::KM>;
 
@@ -458,7 +458,8 @@ requires std::invocable<const Func&, double>
 
   double step = NEWTON_INITIAL_STEP_DAYS;
 
-  // `std::midpoint` equals the rounded half-sum where a + b cannot overflow, including these JDEs.
+  // `std::midpoint` equals the rounded (start_jde + end_jde) / 2 where the sum cannot overflow,
+  // including these JDEs.
   double jde = std::midpoint(start_jde, end_jde);
 
   // Newton can walk away from a root it has already reached, so keep the best iterate rather
@@ -486,8 +487,8 @@ requires std::invocable<const Func&, double>
     const double h = std::max(step, NEWTON_MIN_STEP_ULP * ulp(jde));
     const double f_prime = (f(jde + h) - f(jde - h)) / (2.0 * h);
 
-    // A shared solver has to tolerate an `f` that may go non-finite somewhere in its bracket
-    // and a collapsed f' has no direction left to offer.
+    // A shared solver has to tolerate an `f` that may go non-finite somewhere in its bracket;
+    // a collapsed f' has no direction left to offer.
     if (not std::isfinite(f_prime) or f_prime == 0.0) {
       break;
     }

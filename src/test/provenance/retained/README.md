@@ -1,8 +1,8 @@
 # Retained sources and values
 
-`record.json` owns source dispositions and their evidence. `retained_host_blocks.json`
-owns the retained hosts, source and notice relationships, licence boundaries, and value
-digests. Upstream snapshots and grants keep their separate identities.
+`record.json` lists source dispositions and their evidence. `retained_host_blocks.json`
+records the files or blocks containing retained material (hosts), their sources, notices,
+licence boundaries, and value digests. Upstream snapshots and grants have separate identity checks.
 
 ## Register material
 
@@ -16,7 +16,7 @@ path, start, end, method, and value digest. Printed reference inputs use
 end comments are not starts. A non-marker entry needs an actual host or record-evidence
 reference. Keep the source citation and tolerance rationale beside the data.
 
-Notebook entries identify saved outputs and directed Jieqi input pairs, not execution
+Notebook entries identify saved outputs and explicit year/Jieqi input pairs, not execution
 counters or presentation metadata. Clearing outputs does not retire surviving directed
 inputs. The binding fixture's producer path is owned by `automation.paths`; its replays
 must still read that same file. Adjacent whole-file hosts independently check their
@@ -38,9 +38,3 @@ Run `python -m automation.provenance` to check the source identities and committ
 bundle directly. Retained-value mutations and ordinary-maintenance controls live in
 `automation/tests/test_retained_provenance.py`, `test_retained_maintenance.py`, and
 `test_provenance.py`.
-
-The duplicate 48-row Python HKO table was retired with its `v04-automation` host and
-marking. V04 now points to the unchanged 168-row `HKO_ROWS` data entry. The exporter
-checks UT1 schema, fields and wrapper parity; the C++ suite checks reference accuracy.
-Likewise, the ctypes smoke gate compares raw C results with decoded Python fields
-instead of storing additional HKO, Meeus, sidereal or phase reference values.

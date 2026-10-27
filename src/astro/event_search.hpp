@@ -1102,7 +1102,8 @@ requires std::invocable<const LongitudeProvider&, double>
   if (not has_neighbor) {
     return { .station_jde_tt = jde_tt, .certified = false, .contact = std::nullopt };
   }
-  // A station on a cell boundary needs observations from the fixed neighboring cells.
+  // Try neighboring cells only after all in-cell regions fail, so in-cell successes keep their regions.
+  // A station on a cell boundary needs these two-sided observations.
   const double window_radius = std::min(jde_tt - window.start_jde_tt, window.end_jde_tt - jde_tt);
   for (uint32_t attempt = 0; attempt < MAXIMUM_CONTACT_REGION_ATTEMPTS; ++attempt) {
     const Interval region = attempt == 0

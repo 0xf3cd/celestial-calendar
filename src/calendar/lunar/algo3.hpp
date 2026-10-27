@@ -56,8 +56,8 @@ inline constexpr int32_t END_YEAR = 2199;
  *   a deliberate re-bake and review.**
  * - Read-only re-verification: run the "重烤对账" code cell at the end of
  *   `statistics/lunar_calendar.ipynb`. It re-encodes the re-bakeable subset and prints a
- *   mismatch count against this array. Print 0 = Gate re-verified. The cell never writes
- *   this header back.
+ *   mismatch count against this array. A zero count confirms that subset matches.
+ *   The cell never writes this header back.
  * - External oracle for a sampled subset of years: `src/test/lunar/algo3_ytliu0_golden_test.cpp`
  *   (ytliu0 ChineseCalendar, see that file's provenance head). Dual-table / live-algo2
  *   internal checks: `src/test/lunar/algo3_test.cpp`.

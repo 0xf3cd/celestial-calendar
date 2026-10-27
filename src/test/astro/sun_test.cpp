@@ -206,8 +206,8 @@ TEST(Sun, FindRoots) {
 
 
 TEST(Sun, FindRootsAcrossTheUlpStep) {
-  // At JD 2^22 (6771-07-07), the JDE ulp doubles. The solver's derivative step must remain
-  // representable on both sides (#76); each returned instant must still satisfy its target.
+  // At JD 2^22 (6771-07-07), the JDE ulp doubles. The derivative's two sample JDEs must remain
+  // distinct from the trial JDE (#76); each returned instant must still satisfy its target.
   const std::vector<int32_t> years { 6770, 6771, 6772, 6773, 8000, 9420, 9999 };
 
   for (const auto year : years) {

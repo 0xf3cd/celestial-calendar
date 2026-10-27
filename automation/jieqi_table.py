@@ -77,10 +77,11 @@ def to_ms(dt: datetime) -> int:
 def check_jieqi_table() -> int:
   """Hold the exported jieqi table (`toolbox/jieqi_table.py`) to its invariants.
 
-  Checked here: entry count, strict time order, calendar-year containment, per-year
-  completeness, the idx ↔ name_zh mapping against an independent transcription, jd_ut1 ↔
-  iso_ut1 consistency, byte-level determinism, an independent re-derivation through the
-  `statistics/common.py` binding. HKO reference accuracy is tested in `jieqi_golden_test.cpp`.
+  Checked here: schema @2 with an explicit UT1 scale and no UTC/Unix aliases or leap-second
+  conversion; entry count, strict time order, calendar-year containment, per-year completeness,
+  the idx ↔ name_zh mapping against an independent transcription, jd_ut1 ↔ iso_ut1 consistency,
+  byte-level determinism, and raw/wrapper parity through the `statistics/common.py` binding.
+  HKO reference accuracy is tested in `jieqi_golden_test.cpp`.
   Needs the built library
   (`./project.py --build`): a missing build turns the gate red, never a silent skip.
   """

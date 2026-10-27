@@ -210,7 +210,7 @@ feel is intentional. Keep it. That buys a discipline:
 - **Trailing return types**: short signatures stay on one line, as in
   `inline auto f(const double jde) -> SphericalCoordinate`. For a long signature, expand the
   parameters and keep `) -> ReturnType {` together; `noexcept` stays between `)` and `->`.
-  Never put the trailing-return arrow on its own line. The `checks.py --clang-tidy` preflight
+  Never put the trailing-return arrow on its own line. The `checks.py --signature-layout` gate
   checks this closing-parenthesis rule for named `auto` function signatures, not lambdas.
 - **Fixed-width integers**: use `intN_t` / `uintN_t` from `<cstdint>` for numeric values,
   including helper returns, locals and test data. Do not introduce plain `int`, `short`

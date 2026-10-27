@@ -89,13 +89,13 @@ const auto snapshot = astro::chart::calculate(
 
 Pass `julian_day::Scale::UT1` for historical civil input; UTC begins at 1972-01-01. Timezone conversion and
 inserted leap seconds are outside the input domain. A final `delta_t::Model` argument selects a
-model, through `delta_t::DEFAULT_MODEL` (currently Algo5). The result's `times` holds `jd_ut1`/`jde_tt`, alongside
-fourteen position/rate records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
+model and defaults to `delta_t::DEFAULT_MODEL` (currently Algo5). The result's `times` holds `jd_ut1`/`jde_tt`,
+alongside fourteen position/rate records and four axes/twelve cusps; nodes have zero latitude and `std::nullopt` distance.
 Location affects houses only. All systems reject an Ascendant direction unresolved at round-off;
 Placidus also rejects its polar geometry. Failure never selects another system.
 
 Civil years are `[1885, 2100)` and the joint JDE(TT) domain is `[2409543.875, 2488069.125)`;
-Algo4 additionally requires derived JDE(TT) `< 2464328.5`, checked before reverse conversion. The shared
+Algo4 additionally requires derived JDE(TT) `< 2464328.5`, checked before any TT-to-UT1 conversion. The shared
 `chart::resolve_civil_times(civil_dt, scale, model)` applies this civil-year/UTC/model policy, but not the chart's
 joint target/rate window. The numeric `house::calculate(jd_ut1, jde_tt, location, system, model)` and
 `house::axes(jd_ut1, jde_tt, location, model)` accept both scales of the same instant without that civil policy.

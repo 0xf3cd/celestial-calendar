@@ -227,6 +227,29 @@ def test_git_executable_is_unneeded_only_without_metadata(source_only_tree, monk
     build_info.pack_build_info(None)
 
 
+def test_source_snapshot_rejects_git_metadata_for_another_root(source_only_tree, monkeypatch):
+  root, _, _ = source_only_tree
+  (root / ".git").mkdir()
+  monkeypatch.setattr(subprocess, "check_output", lambda *args, **kwargs: str(root.parent))
+  with pytest.raises(RuntimeError, match="Git metadata does not identify this source root"):
+    library_provenance.source_snapshot(root)
+
+
+def test_build_info_rejects_git_metadata_for_another_root(source_only_tree, monkeypatch):
+  root, _, _ = source_only_tree
+  (root / ".git").mkdir()
+  monkeypatch.setattr(build_info, "__file__", str(root / "toolbox/build_info.py"))
+  monkeypatch.delenv("CXX", raising=False)
+  monkeypatch.delenv("CC", raising=False)
+  monkeypatch.setattr(
+    build_info,
+    "silent_run",
+    lambda command, **kwargs: ProcReturn(0, str(root.parent) if command[0] == "git" else "1.0.0", ""),
+  )
+  with pytest.raises(RuntimeError, match="Git metadata does not identify this source root"):
+    build_info.pack_build_info(None)
+
+
 @pytest.mark.parametrize("installed", [None, "1.2.3", "1.2.4"])
 @pytest.mark.parametrize("requirement", ["distribution", "distribution==1.2.3", "distribution>=1.0", "distribution[x]"])
 def test_installed_requirements_and_pip_delegation(tmp_path, monkeypatch, installed, requirement):

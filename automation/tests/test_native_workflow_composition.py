@@ -52,6 +52,15 @@ def assert_soak_wiring(workflow):
     assert "earth_test" in verification["run"]
     assert job["steps"].index(builds[0]) < job["steps"].index(verification)
     assert verification["shell"] == ("pwsh" if "windows" in name else "bash")
+    if verification["shell"] == "pwsh":
+      lines = [line.strip() for line in verification["run"].splitlines() if line.strip()]
+      captured = lines.index("$code = $LASTEXITCODE")
+      propagated = lines.index("if ($code -ne 0) { exit $code }")
+      checked = lines.index(
+        'if ($lines -notcontains "[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)") {'
+      )
+      assert captured < propagated < checked
+      assert lines[checked + 1].startswith("throw ")
 
 
 def test_native_composites_inherit_seed_and_evidence_without_command_inputs():
@@ -120,6 +129,30 @@ def test_soak_contract_rejects_override_wiring_faults(fault):
   else:
     workflow["jobs"]["soak-ubuntu-clang"]["env"] = {"CELESTIAL_TEST_SEED": ""}
   with pytest.raises(AssertionError):
+    assert_soak_wiring(workflow)
+
+
+@pytest.mark.parametrize("fault", ["exit", "prefix", "variable-name", "throw"])
+def test_windows_soak_contract_rejects_weakened_failure_or_seed_checks(fault):
+  workflow = load_workflow(WORKFLOWS / "random_soak.yml")
+  verification = next(
+    step for step in workflow["jobs"]["soak-windows-clang"]["steps"] if step.get("name") == "Verify received soak seed"
+  )
+  old, new = {
+    "exit": ("if ($code -ne 0) { exit $code }", ""),
+    "prefix": (
+      '"[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)"',
+      '"seed = $env:GITHUB_RUN_ID"',
+    ),
+    "variable-name": (
+      '"[ util::random ] seed = $env:GITHUB_RUN_ID (override: CELESTIAL_TEST_SEED)"',
+      '"GITHUB_RUN_ID"',
+    ),
+    "throw": ('throw "The RNG binary did not receive the soak run-ID seed."', ""),
+  }[fault]
+  assert verification["run"].count(old) == 1
+  verification["run"] = verification["run"].replace(old, new)
+  with pytest.raises((AssertionError, ValueError)):
     assert_soak_wiring(workflow)
 
 
