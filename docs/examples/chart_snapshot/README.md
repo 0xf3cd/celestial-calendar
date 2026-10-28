@@ -41,6 +41,8 @@ assert computed.keys() == expected_keys, (
 )
 metadata = json.dumps(stored["replay_margins"])
 updated = output.replace("{\n", '{\n  "replay_margins": ' + metadata + ",\n", 1)
-assert json.loads(updated) == {**computed, "replay_margins": stored["replay_margins"]}
+assert json.loads(updated) == {**computed, "replay_margins": stored["replay_margins"]}, (
+  "Fixture layout changed: replay_margins insertion did not preserve computed fields"
+)
 path.write_text(updated, encoding="utf-8")
 ```
