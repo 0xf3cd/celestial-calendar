@@ -1,6 +1,6 @@
 # Migrating to 1.0
 
-This guide describes the 1.0 development API, not a release announcement or final freeze. Rebuild C/FFI consumers
+This guide describes migration from 0.x to the 1.0 API. Rebuild C/FFI consumers
 against the matching header and library; update Python/JavaScript callers with the matching package. There are no
 0.x forwarding exports. No accepted numerical value changes, but invalid-input acceptance, error classes and some
 messages intentionally change.
@@ -211,4 +211,4 @@ segment through the inclusive `algo5::LAST_OBSERVATION_YEAR`, then the anchored 
 extrapolation; the whole model is not a trained polynomial. See the [model sources](../bindings/javascript/README.md#delta-t-models).
 Existing goldens and tolerances are unchanged. The new equatorial tests separate same-input projection/node
 conformance from physical Horizons regression checks; their thresholds and sample limits are in
-[Validation](VALIDATION.md#equatorial-reference-layers). Final release-candidate/platform validation remains separate.
+[Validation](VALIDATION.md#equatorial-reference-layers). Release artifacts are validated separately on supported platforms.

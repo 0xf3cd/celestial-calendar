@@ -2,8 +2,6 @@
 
 ## [v1.0.0]
 
-Unreleased. These entries describe current development changes; the 1.0 API and release notes are not yet frozen.
-
 ### Added
 
 - Capabilities and model identities (#357): TT target-operation records, separate civil-house admission facts,
@@ -57,6 +55,8 @@ Unreleased. These entries describe current development changes; the 1.0 API and 
   and integral types with at most 64 value bits. Invalid durations and time points fail before unsafe conversion.
 - Test discovery and execution reject missing directories, incomplete or empty registrations, command failures
   and zero actual GoogleTest executions, including under `python -O` (#381).
+- Wheel builds use cibuildwheel 4.3.5 with hash-locked virtualenv 21.14.13, fixing the Bash prompt-escaping
+  regression reported in GHSA-cx6f-vjhg-g3cc. These are build tools, not package runtime dependencies.
 
 ## [v0.9.0] - 2026-10-19
 

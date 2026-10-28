@@ -4,8 +4,6 @@
 
 ## [v1.0.0]
 
-Unreleased draft. The 1.0 API and release notes are not yet frozen.
-
 ### API changes
 
 - The C ABI uses `celestial_` exports, `Celestial` records and one `CELESTIAL_TARGET_*` code family.
