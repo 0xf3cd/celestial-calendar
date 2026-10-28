@@ -30,6 +30,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import paths, run_cmd
 from automation.abi_layout import load_abi
+from automation.library_provenance import find_shared_lib
 
 
 OUT_PATH: Final[Path] = paths.proj_root() / paths.BINDING_GOLDEN_RELATIVE
@@ -86,19 +87,6 @@ MOON_JDE_RANGE: Final[tuple[float, float]] = (2415020.5, 2488068.5)
 SIDEREAL_JD_RANGE: Final[tuple[float, float]] = (1867522.5, 13688959.5)
 
 
-def find_native_lib() -> Path:
-  """The built `libcelestial_calendar` under `build/shared_lib` (build it first)."""
-  folder = paths.shared_lib_dir()
-  candidates = (
-    sorted(folder.glob("libcelestial_calendar.dylib"))
-    or sorted(folder.glob("libcelestial_calendar.so"))
-    or sorted(folder.glob("celestial_calendar.dll"))
-  )
-  if not candidates:
-    raise FileNotFoundError(f"native shared library not found under {folder} -- run ./project.py --build first")
-  return candidates[0]
-
-
 def source_commit() -> str:
   ret = run_cmd(
     ["git", "rev-parse", "HEAD"],
@@ -119,7 +107,7 @@ def f64_bits(value: float) -> str:
 
 
 def generate() -> dict:
-  lib = ctypes.CDLL(str(find_native_lib()))
+  lib = ctypes.CDLL(str(find_shared_lib()))
   abi = load_abi()
   for name in (
     "celestial_query_jieqi_moment",

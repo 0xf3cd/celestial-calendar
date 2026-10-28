@@ -14,6 +14,7 @@ import pytest
 
 from automation import library_provenance as provenance
 from automation.utils import ProcReturn
+from toolbox import make_bindings_golden
 
 
 @pytest.fixture
@@ -242,3 +243,42 @@ def test_unversioned_library_is_preferred_to_accumulated_versions(tmp_path):
   for name in ("libcelestial_calendar.0.8.0" + extension, unversioned.name + ".bak"):
     (tmp_path / name).write_bytes(b"not selected")
   assert provenance.find_shared_lib(tmp_path) == unversioned
+
+
+@pytest.mark.parametrize(
+  "platform,name,foreign",
+  [
+    ("linux", "libcelestial_calendar.so.1.0.0", "celestial_calendar.dll"),
+    ("darwin", "libcelestial_calendar.1.0.0.dylib", "libcelestial_calendar.so"),
+    ("win32", "celestial_calendar.dll", "libcelestial_calendar.dylib"),
+  ],
+)
+def test_golden_generator_uses_the_shared_platform_finder(tmp_path, monkeypatch, platform, name, foreign):
+  library = tmp_path / name
+  library.write_bytes(b"selected library")
+  (tmp_path / foreign).write_bytes(b"foreign library")
+  monkeypatch.setattr(sys, "platform", platform)
+  monkeypatch.setattr(provenance.paths, "shared_lib_dir", lambda: tmp_path)
+  loaded = []
+
+  def load(path):
+    loaded.append(path)
+    raise RuntimeError("stopped before loading the fixture")
+
+  monkeypatch.setattr(make_bindings_golden.ctypes, "CDLL", load)
+  with pytest.raises(RuntimeError, match="stopped before loading"):
+    make_bindings_golden.generate()
+  assert loaded == [str(library)]
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_golden_generator_propagates_a_missing_library(tmp_path, monkeypatch, missing):
+  folder = tmp_path / "missing" if missing else tmp_path
+  monkeypatch.setattr(provenance.paths, "shared_lib_dir", lambda: folder)
+
+  def forbidden(*args):
+    pytest.fail("loaded a library after discovery failed")
+
+  monkeypatch.setattr(make_bindings_golden.ctypes, "CDLL", forbidden)
+  with pytest.raises(FileNotFoundError):
+    make_bindings_golden.generate()

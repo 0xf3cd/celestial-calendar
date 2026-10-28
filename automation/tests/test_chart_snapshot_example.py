@@ -16,10 +16,12 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 
 import pytest
 
 from bindings.python.test.consumer.chart_replay import assert_chart_replay
+from automation.markdown_source import tokens
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,6 +83,29 @@ def test_replay_angles_cross_zero_without_a_large_residual():
   assert_chart_replay(actual, expected)
 
 
+@pytest.mark.parametrize(
+  "margin,path",
+  [
+    ("time_days", ("times", "jd_ut1")),
+    ("position_deg", ("bodies", 2, "longitude_deg")),
+    ("distance_au", ("bodies", 2, "distance_au")),
+    ("rate_deg_per_tt_day", ("bodies", 2, "longitude_rate_deg_per_tt_day")),
+    ("house_deg", ("houses", "ascendant_deg")),
+  ],
+)
+def test_replay_reads_each_margin_from_the_passed_payload(margin, path):
+  actual, expected = copy.deepcopy(EXAMPLE), copy.deepcopy(EXAMPLE)
+  owner = actual
+  for key in path[:-1]:
+    owner = owner[key]
+  owner[path[-1]] += 4 * expected["replay_margins"][margin]
+  with pytest.raises(AssertionError, match="replay residual"):
+    assert_chart_replay(actual, expected)
+
+  expected["replay_margins"][margin] *= 8
+  assert_chart_replay(actual, expected)
+
+
 def test_native_replay_requires_a_compiler(monkeypatch, tmp_path):
   monkeypatch.delenv("CXX", raising=False)
   monkeypatch.setattr(shutil, "which", lambda name: None)
@@ -111,7 +136,25 @@ def test_published_chart_example_replays_native_facade(tmp_path):
   subprocess.run(command, cwd=root, check=True, capture_output=True, text=True)
   actual = json.loads(subprocess.check_output([str(binary)], cwd=root, text=True))
   expected = json.loads((root / "docs/examples/chart_snapshot/data.json").read_text(encoding="utf-8"))
-  assert actual.keys() == expected.keys()
+  assert actual.keys() == expected.keys() - {"replay_margins"}
   assert actual["input"] == expected["input"]
   assert actual["role"] == expected["role"]
   assert_chart_replay(actual, expected)
+
+  regeneration = tmp_path / "regeneration"
+  (regeneration / "build").mkdir(parents=True)
+  shutil.copy2(binary, regeneration / "build/chart_snapshot_example")
+  stored_path = regeneration / "docs/examples/chart_snapshot/data.json"
+  stored_path.parent.mkdir(parents=True)
+  stored = copy.deepcopy(expected)
+  stored["replay_margins"]["time_days"] *= 0.5
+  stored_path.write_text(json.dumps(stored), encoding="utf-8")
+  scripts = [
+    token.content
+    for token in tokens((root / "docs/examples/chart_snapshot/README.md").read_text(encoding="utf-8"))
+    if token.type == "fence" and token.info == "python"
+  ]
+  assert len(scripts) == 1
+  subprocess.run([sys.executable, "-c", scripts[0]], cwd=regeneration, check=True, capture_output=True, text=True)
+  regenerated = json.loads(stored_path.read_text(encoding="utf-8"))
+  assert regenerated == {**actual, "replay_margins": stored["replay_margins"]}

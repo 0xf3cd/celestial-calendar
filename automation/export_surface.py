@@ -8,6 +8,7 @@
 
 import re
 import shutil
+import sys
 
 from pathlib import Path
 from typing import Dict, Final, List, Optional, Tuple
@@ -126,11 +127,6 @@ def parse_declarations(text: str) -> List[Tuple[str, bool]]:
   return [(name, function.exported) for name, function in parse_header_text(text).functions.items()]
 
 
-def entry_point_names(header: Path) -> List[str]:
-  """The entry-point set of `celestial.h`, macro status ignored (the gate checks that)."""
-  return sorted(name for name, _ in parse_declarations(header.read_text()))
-
-
 def self_test_parser() -> List[str]:
   """Hold the parser to the pinned shape samples; a failure means the gate is broken."""
   failures: List[str] = []
@@ -194,12 +190,12 @@ def check_export_surface() -> int:
   Two halves, each covering what the other cannot:
   - static: every file-scope declaration in celestial.h carries CELESTIAL_API. A missing
     macro is a missing export on Windows -- caught here, without needing a Windows leg.
-  - dynamic: the strong defined symbols of the built .so are exactly the entry set plus
+  - Linux dynamic: the strong defined symbols of the built .so are exactly the entry set plus
     SURVIVOR_EXCEPTIONS, everything else being vague linkage. This half proves the hiding held.
   Plus a SONAME pin against the SOVERSION rule documented in CMakeLists.
 
-  Needs the built library (`./project.py --build`); a missing build turns the gate red,
-  never a silent skip.
+  Linux needs the built library (`./project.py --build`); a missing build fails the gate.
+  Other platforms run only the static half, without ELF library discovery or tools.
   """
   print("#" * 60)
   yellow_print("Checking that the export surface matches the celestial.h entry points...")
@@ -223,13 +219,16 @@ def check_export_surface() -> int:
       failures.append(f"{name}: declaration in celestial.h without CELESTIAL_API")
   entries = {name for name, _ in decls}
 
-  # Dynamic half, on the real built library. A missing build or a missing/failing
+  # Linux dynamic half, on the real built library. A missing build or a missing/failing
   # binutils tool fails the gate but must not swallow the findings collected so far,
   # static or dynamic -- the static half is the part any leg can check.
-  so = find_real_so(paths.build_dir() / "shared_lib")
+  check_elf = sys.platform == "linux"
+  so = find_real_so(paths.build_dir() / "shared_lib") if check_elf else None
   soname: Optional[str] = None
+  survivors: List[str] = []
   if so is None:
-    failures.append("Built library not found (run ./project.py --build first); dynamic half not run")
+    if check_elf:
+      failures.append("Built library not found (run ./project.py --build first); dynamic half not run")
   else:
     try:
       symbols = nm_defined(so)
@@ -276,8 +275,14 @@ def check_export_surface() -> int:
       red_print(f"  - {f}")
     return 1
 
-  green_print(
-    f"export surface == celestial.h entry points ({len(entries)} entries, "
-    f"{len(survivors)} std vague-linkage survivors, SONAME {soname})"
-  )
+  if check_elf:
+    green_print(
+      f"export surface == celestial.h entry points ({len(entries)} entries, "
+      f"{len(survivors)} std vague-linkage survivors, SONAME {soname})"
+    )
+  else:
+    green_print(
+      f"Static export markers match celestial.h ({len(entries)} entries); "
+      f"ELF dynamic and SONAME checks not applicable on {sys.platform}"
+    )
   return 0

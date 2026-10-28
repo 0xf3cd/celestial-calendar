@@ -12,7 +12,7 @@ The C/Python results also record resolved Delta T and house-nutation keys and ea
 the stored numerical replay is not a model-identity registry. The house key does not describe body corrections,
 which remain fixed IAU 1980.
 
-This is a chart snapshot replay example, not an independent physical-accuracy oracle; its replay margins are
+This is a chart snapshot replay example, not an independent physical-accuracy oracle; its `replay_margins` are
 acceptance thresholds, explained in [Validation](../../VALIDATION.md#replay-margins).
 [`astro::chart::calculate`](../../../src/astro/chart.hpp) leaves sign, house-placement and aspect calculations to the consumer.
 
@@ -21,5 +21,20 @@ Generate the values from the repository root; the binary goes to the ignored `bu
 ```sh
 clang++ -std=c++23 -O2 -Isrc/astro -Isrc/calendar -Isrc/util \
   docs/examples/chart_snapshot/chart_snapshot_fixture.cpp -o build/chart_snapshot_example
-./build/chart_snapshot_example > docs/examples/chart_snapshot/data.json
+```
+
+Run this Python block from the repository root to update the computed fields while keeping the hand-maintained
+`replay_margins`:
+
+```python
+import json
+import subprocess
+from pathlib import Path
+
+path = Path("docs/examples/chart_snapshot/data.json")
+stored = json.loads(path.read_text(encoding="utf-8"))
+computed = json.loads(subprocess.check_output(["build/chart_snapshot_example"], text=True))
+assert computed.keys() == stored.keys() - {"replay_margins"}
+computed["replay_margins"] = stored["replay_margins"]
+path.write_text(json.dumps(computed, indent=2) + "\n", encoding="utf-8")
 ```
