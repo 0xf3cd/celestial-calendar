@@ -17,7 +17,8 @@ import math
 
 def assert_chart_replay(actual: dict, expected: dict) -> dict[str, float]:
   """Check every numeric field and its presence, returning maximum absolute residuals."""
-  # Replay margins are not physical accuracy bounds; see docs/VALIDATION.md#replay-margins.
+  # Replay acceptance margins for the stored snapshot, not physical accuracy bounds.
+  # See docs/VALIDATION.md#replay-margins.
   margins = expected["replay_margins"]
   residuals = {}
 

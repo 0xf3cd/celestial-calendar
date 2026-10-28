@@ -56,8 +56,8 @@ def parse_args() -> argparse.Namespace:
       "    ./checks.py --abi-layout\n\n"
       "  To run the ctypes wrappers against the built library (needs ./project.py --build first):\n"
       "    ./checks.py --ctypes-smoke\n\n"
-      "  To hold the built library's export surface to the celestial.h entry points\n"
-      "  (needs ./project.py --build first):\n"
+      "  To check C export markers on every platform, plus ELF exports and SONAME on Linux\n"
+      "  (Linux needs ./project.py --build first):\n"
       "    ./checks.py --export-surface\n\n"
       "  To run the automation layer's own unit tests:\n"
       "    ./checks.py --pytest\n\n"
@@ -92,7 +92,7 @@ def parse_args() -> argparse.Namespace:
   lint.add_argument("--signature-layout", action="store_true", help="Check C++ signature layout")
 
   gate = parser.add_argument_group(
-    "gate", "repo invariants; ctypes-smoke, export-surface and jieqi-table need ./project.py --build first"
+    "gate", "repo invariants; ctypes-smoke and jieqi-table need a build; export-surface needs one only on Linux"
   )
   gate.add_argument(
     "--self-contained", action="store_true", help="Compile every header alone to prove it is self-contained"
@@ -106,7 +106,7 @@ def parse_args() -> argparse.Namespace:
   gate.add_argument(
     "--export-surface",
     action="store_true",
-    help="Hold the built library's export surface to the celestial.h entry points",
+    help="Check C export markers; Linux also checks built ELF exports and SONAME",
   )
   gate.add_argument(
     "--jieqi-table", action="store_true", help="Hold the exported jieqi table to its invariants (needs a build)"

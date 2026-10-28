@@ -102,10 +102,16 @@ export default async () => {
       sharedReplayMargins() {
         const cases = [
           ["time_days", ["times", "jdUt1"]],
+          ["time_days", ["times", "jdeTt"]],
           ["position_deg", ["bodies", 2, "longitudeDeg"]],
+          ["position_deg", ["bodies", 2, "latitudeDeg"]],
           ["distance_au", ["bodies", 2, "distanceAu"]],
           ["rate_deg_per_tt_day", ["bodies", 2, "longitudeRateDegPerTtDay"]],
           ["house_deg", ["houses", "ascendantDeg"]],
+          ["house_deg", ["houses", "midheavenDeg"]],
+          ["house_deg", ["houses", "descendantDeg"]],
+          ["house_deg", ["houses", "imumCoeliDeg"]],
+          ["house_deg", ["houses", "cuspsDeg", 0]],
         ];
         for (const [margin, path] of cases) {
           const actual = call(), expected = structuredClone(example);

@@ -74,6 +74,16 @@ def test_replay_preserves_presence_identity_and_cardinality():
       assert_chart_replay(actual, EXAMPLE)
 
 
+def test_replay_margins_preserve_the_existing_thresholds():
+  assert EXAMPLE["replay_margins"] == {
+    "time_days": 1e-9,
+    "position_deg": 1e-8,
+    "distance_au": 1e-10,
+    "rate_deg_per_tt_day": 1e-9,
+    "house_deg": 1e-5,
+  }
+
+
 def test_replay_angles_cross_zero_without_a_large_residual():
   actual, expected = copy.deepcopy(EXAMPLE), copy.deepcopy(EXAMPLE)
   actual["bodies"][2]["longitude_deg"] = 0.0
@@ -87,10 +97,16 @@ def test_replay_angles_cross_zero_without_a_large_residual():
   "margin,path",
   [
     ("time_days", ("times", "jd_ut1")),
+    ("time_days", ("times", "jde_tt")),
     ("position_deg", ("bodies", 2, "longitude_deg")),
+    ("position_deg", ("bodies", 2, "latitude_deg")),
     ("distance_au", ("bodies", 2, "distance_au")),
     ("rate_deg_per_tt_day", ("bodies", 2, "longitude_rate_deg_per_tt_day")),
     ("house_deg", ("houses", "ascendant_deg")),
+    ("house_deg", ("houses", "midheaven_deg")),
+    ("house_deg", ("houses", "descendant_deg")),
+    ("house_deg", ("houses", "imum_coeli_deg")),
+    ("house_deg", ("houses", "cusps_deg", 0)),
   ],
 )
 def test_replay_reads_each_margin_from_the_passed_payload(margin, path):
@@ -134,7 +150,8 @@ def test_published_chart_example_replays_native_facade(tmp_path):
     str(binary),
   ]
   subprocess.run(command, cwd=root, check=True, capture_output=True, text=True)
-  actual = json.loads(subprocess.check_output([str(binary)], cwd=root, text=True))
+  actual_text = subprocess.check_output([str(binary)], cwd=root, text=True)
+  actual = json.loads(actual_text)
   expected = json.loads((root / "docs/examples/chart_snapshot/data.json").read_text(encoding="utf-8"))
   assert actual.keys() == expected.keys() - {"replay_margins"}
   assert actual["input"] == expected["input"]
@@ -158,3 +175,8 @@ def test_published_chart_example_replays_native_facade(tmp_path):
   subprocess.run([sys.executable, "-c", scripts[0]], cwd=regeneration, check=True, capture_output=True, text=True)
   regenerated = json.loads(stored_path.read_text(encoding="utf-8"))
   assert regenerated == {**actual, "replay_margins": stored["replay_margins"]}
+  regenerated_text = stored_path.read_text(encoding="utf-8")
+  numeric_lines = [line for line in regenerated_text.splitlines(keepends=True) if '"replay_margins":' not in line]
+  assert "".join(numeric_lines) == actual_text
+  subprocess.run([sys.executable, "-c", scripts[0]], cwd=regeneration, check=True, capture_output=True, text=True)
+  assert stored_path.read_text(encoding="utf-8") == regenerated_text

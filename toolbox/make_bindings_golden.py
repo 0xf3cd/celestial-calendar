@@ -30,7 +30,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from automation import paths, run_cmd
 from automation.abi_layout import load_abi
-from automation.library_provenance import find_shared_lib
+from automation.library_provenance import find_shared_lib, verify_library
 
 
 OUT_PATH: Final[Path] = paths.proj_root() / paths.BINDING_GOLDEN_RELATIVE
@@ -107,7 +107,9 @@ def f64_bits(value: float) -> str:
 
 
 def generate() -> dict:
-  lib = ctypes.CDLL(str(find_shared_lib()))
+  artifact = find_shared_lib()
+  verify_library(artifact, paths.proj_root())
+  lib = ctypes.CDLL(str(artifact))
   abi = load_abi()
   for name in (
     "celestial_query_jieqi_moment",

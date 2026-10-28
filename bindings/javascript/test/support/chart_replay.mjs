@@ -31,7 +31,8 @@ export const chartExampleInput = (example) => {
   };
 };
 
-// Replay margins are not physical accuracy bounds; see docs/VALIDATION.md#replay-margins.
+// Replay acceptance margins for the stored snapshot, not physical accuracy bounds.
+// See docs/VALIDATION.md#replay-margins.
 export function assertChartReplay(actual, expected) {
   const margins = expected.replay_margins;
   const residuals = {};

@@ -261,14 +261,44 @@ def test_golden_generator_uses_the_shared_platform_finder(tmp_path, monkeypatch,
   monkeypatch.setattr(provenance.paths, "shared_lib_dir", lambda: tmp_path)
   loaded = []
 
+  def verify(artifact, root):
+    assert artifact == library
+    assert root == provenance.paths.proj_root()
+    loaded.append("verified")
+
   def load(path):
     loaded.append(path)
     raise RuntimeError("stopped before loading the fixture")
 
+  monkeypatch.setattr(make_bindings_golden, "verify_library", verify)
   monkeypatch.setattr(make_bindings_golden.ctypes, "CDLL", load)
   with pytest.raises(RuntimeError, match="stopped before loading"):
     make_bindings_golden.generate()
-  assert loaded == [str(library)]
+  assert loaded == ["verified", str(library)]
+
+
+@pytest.mark.parametrize("failure", ["missing", "artifact", "source"])
+def test_golden_generator_rejects_unverified_accumulated_libraries(source_tree, monkeypatch, failure):
+  root, build, unversioned = source_tree
+  library = unversioned.with_name("libcelestial_calendar.so.0.9.0")
+  unversioned.rename(library)
+  monkeypatch.setattr(sys, "platform", "linux")
+  build_fixture(root, build, library)
+  if failure == "missing":
+    provenance.receipt_path(library).unlink()
+  elif failure == "artifact":
+    library.write_bytes(b"stale artifact")
+  else:
+    (root / "src/calendar/jieqi.hpp").write_text("changed source\n", encoding="utf-8")
+  monkeypatch.setattr(provenance.paths, "shared_lib_dir", lambda: library.parent)
+  monkeypatch.setattr(provenance.paths, "proj_root", lambda: root)
+
+  def forbidden(*args):
+    pytest.fail("loaded an unverified accumulated library")
+
+  monkeypatch.setattr(make_bindings_golden.ctypes, "CDLL", forbidden)
+  with pytest.raises(RuntimeError, match="provenance"):
+    make_bindings_golden.generate()
 
 
 @pytest.mark.parametrize("missing", [False, True])

@@ -23,7 +23,7 @@ clang++ -std=c++23 -O2 -Isrc/astro -Isrc/calendar -Isrc/util \
   docs/examples/chart_snapshot/chart_snapshot_fixture.cpp -o build/chart_snapshot_example
 ```
 
-Run this Python block from the repository root to update the computed fields while keeping the hand-maintained
+Run this Python block from the repository root to keep the fixture's numeric text and insert the hand-maintained
 `replay_margins`:
 
 ```python
@@ -33,8 +33,14 @@ from pathlib import Path
 
 path = Path("docs/examples/chart_snapshot/data.json")
 stored = json.loads(path.read_text(encoding="utf-8"))
-computed = json.loads(subprocess.check_output(["build/chart_snapshot_example"], text=True))
-assert computed.keys() == stored.keys() - {"replay_margins"}
-computed["replay_margins"] = stored["replay_margins"]
-path.write_text(json.dumps(computed, indent=2) + "\n", encoding="utf-8")
+output = subprocess.check_output(["build/chart_snapshot_example"], text=True)
+computed = json.loads(output)
+expected_keys = stored.keys() - {"replay_margins"}
+assert computed.keys() == expected_keys, (
+  f"Computed/stored field mismatch (excluding replay_margins): {computed.keys() ^ expected_keys}"
+)
+metadata = json.dumps(stored["replay_margins"])
+updated = output.replace("{\n", '{\n  "replay_margins": ' + metadata + ",\n", 1)
+assert json.loads(updated) == {**computed, "replay_margins": stored["replay_margins"]}
+path.write_text(updated, encoding="utf-8")
 ```
