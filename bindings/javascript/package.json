@@ -51,10 +51,10 @@
     "test:types": "tsc --noEmit -p test/types/tsconfig.json"
   },
   "devDependencies": {
-    "@puppeteer/browsers": "3.2.4",
-    "astro": "7.3.8",
-    "puppeteer-core": "25.13.0",
+    "@puppeteer/browsers": "3.2.6",
+    "astro": "7.4.2",
+    "puppeteer-core": "25.16.0",
     "typescript": "7.0.2",
-    "vite": "8.3.4"
+    "vite": "8.3.5"
   }
 }

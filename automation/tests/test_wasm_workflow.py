@@ -224,6 +224,44 @@ def test_date_bridge_runs_on_current_and_floor_node():
   ]
 
 
+def assert_floor_consumers(workflow):
+  steps = workflow["jobs"]["wasm"]["steps"]
+  floor_index = next(
+    index
+    for index, step in enumerate(steps)
+    if str(step.get("uses", "")).startswith("actions/setup-node@")
+    and step["with"]["node-version"] == "${{ env.NODE_FLOOR }}"
+  )
+  commands = [
+    shlex.split(line) for step in steps[floor_index + 1 :] for line in step.get("run", "").splitlines() if line.strip()
+  ]
+  entry = "bindings/javascript/test/node/"
+  assert commands == [
+    ["node", "--version"],
+    ["npm", "--version"],
+    ["node", f"{entry}public_api_test.mjs", "build/npm/package/index.mjs"],
+    ["node", f"{entry}fake_native_test.mjs", "build/npm/package/index.mjs"],
+    ["node", f"{entry}date_test.mjs", "build/npm/package/date.mjs"],
+    ["node", f"{entry}tarball_consumer_test.mjs", "$TARBALL", "$ALIAS_TARBALL"],
+  ]
+
+
+def test_floor_node_runs_only_package_consumers():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_floor_consumers(workflow)
+
+
+@pytest.mark.parametrize("command", ["npm ci", "npm install"])
+def test_floor_node_rejects_development_toolchain_installation(command):
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_floor_consumers(workflow)
+  steps = workflow["jobs"]["wasm"]["steps"]
+  steps.insert(-1, {"run": f"{command} --ignore-scripts --prefix bindings/javascript"})
+
+  with pytest.raises(AssertionError):
+    assert_floor_consumers(workflow)
+
+
 def test_wasm_pack_outputs_select_both_tarballs_from_metadata(tmp_path, monkeypatch):
   workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
   step = next(step for step in workflow["jobs"]["wasm"]["steps"] if step.get("id") == "npm-package")

@@ -250,8 +250,8 @@ def test_cibuildwheel_constraints_and_lock_pin_bootstrap_pip():
   lines = [
     line for line in CIBW_CONSTRAINTS.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")
   ]
-  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2.1"]
-  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2.1"
+  assert lines == [f"-c {CIBW_LOCK.name}", "pip==26.2.2"]
+  assert requirement_pins(CIBW_LOCK_INPUT)["pip"] == "26.2.2"
 
 
 @pytest.mark.parametrize(
@@ -594,6 +594,16 @@ def test_npm_manifest_rejects_date_surface_mutations(mutation):
 
   with pytest.raises(RuntimeError, match=r"staging package (exports|files) mismatch"):
     verify_manifest(manifest, "0.7.0")
+
+
+@pytest.mark.parametrize("package_name", [PACKAGE_NAME, ALIAS_NAME])
+def test_npm_manifest_rejects_a_higher_runtime_floor(package_name):
+  manifest = staging_manifest("0.7.0", package_name)
+  verify_manifest(manifest, "0.7.0", package_name)
+  manifest["engines"] = {"node": ">=24"}
+
+  with pytest.raises(RuntimeError, match="staging package engines mismatch"):
+    verify_manifest(manifest, "0.7.0", package_name)
 
 
 @pytest.mark.parametrize("key", ["dependencies", "optionalDependencies", "peerDependencies"])
