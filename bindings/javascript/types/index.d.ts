@@ -212,13 +212,13 @@ export const time: Readonly<{
   /**
    * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with fixed Algo5.
    * Input years are in [1, 32767], and the shifted TT instant must stay representable.
-   * Uses the fixed leap-second table and holds its final offset afterward.
+   * Uses the fixed leap-second table and retains its final offset after the last entry.
    * Leap seconds and the 1972 model seam are not generally invertible.
    */
   utcToJde(utc: CivilDateTime): number;
   /**
    * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields; year 400 is possible.
-   * Before 1972 uses the UT1 substitute with fixed Algo5; the final leap-table offset is held afterward.
+   * Before 1972 uses the UT1 substitute with fixed Algo5; retains the final offset after the last leap-table entry.
    * Leap seconds, leap-step midnight round-off and the 1972 seam do not promise an exact inverse.
    */
   jdeToUtc(jde: number): CivilDateTimeResult;

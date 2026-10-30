@@ -121,10 +121,11 @@ The date bridge does not convert clock UTC to UT1 or TT. For the lunar date basi
 [Lunar Algorithms](#lunar-algorithms).
 
 <a id="utc-conversions"></a>
-### UTC input and UTC+8 output
+### UTC and JDE(TT) conversions
 
-`time.utcToJde()` and `time.jdeToUtc()` are available from 1.1.0. They expose the existing C++ conversion
-policy, including the pre-1972 UT1 substitute, leap-second limits and held future offset.
+`time.utcToJde()` and `time.jdeToUtc()` are available from 1.1.0. Before 1972 they treat UTC civil fields as UT1
+with fixed Algo5; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
+invertible. After the leap table's last entry, these conversions retain its final offset.
 
 ```js
 import { init, time } from "@0xf3cd/celestial";
@@ -135,9 +136,12 @@ const jdeTt = time.utcToJde(utc);
 console.log(time.jdeToUtc(jdeTt));
 ```
 
-For UTC input → next Jieqi → UTC+8 display, run the
-[complete example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
-The same guide gives the separate forward/inverse domains and noninvertible boundaries.
+`fraction` is a fraction of a day (`0.5` is noon). JDE is a floating-point day count, so the converted civil
+fields can differ slightly from the input.
+
+For UTC input → next Jieqi → UTC+8 display, see the
+[guide with runnable Python and JavaScript programs](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
+It also gives the separate forward/inverse input domains and noninvertible boundaries.
 
 <a id="next-jieqi"></a>
 ### Next Jieqi and Remaining Days

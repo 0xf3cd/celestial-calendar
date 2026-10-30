@@ -841,11 +841,19 @@ def run_utc_conversions() -> None:
     raises(ValueError, lambda jde=jde: celestial.jde_to_utc(jde))
   for year, month, day, fraction in (
     (0, 1, 1, 0.0),
+    (0, 12, 31, 0.999),
     (-4000, 1, 1, 0.0),
     (32768, 1, 1, 0.0),
     (2024, 2, 30, 0.0),
     (2024, 257, 1, 0.0),
     (2024, 1, 257, 0.0),
+    (2024, 0, 1, 0.0),
+    (2024, 1, 0, 0.0),
+    (2024, 2**32 - 1, 1, 0.0),
+    (2024, 1, 2**32 - 1, 0.0),
+    (2024, 4, 31, 0.0),
+    (2023, 2, 29, 0.5),
+    (1900, 2, 29, 0.5),
     *((2024, 1, 1, fraction) for fraction in (-1e-300, 1.0, math.nan, math.inf, -math.inf)),
     (32767, 12, 31, 0.9999999),
   ):
@@ -859,6 +867,8 @@ def run_utc_conversions() -> None:
     celestial.CivilDateTime(2024, 1, 1, 0.0)
   )
   assert math.isfinite(celestial.utc_to_jde(celestial.CivilDateTime(32767, 12, 31, 0.0)))
+  leap = celestial.jde_to_utc(celestial.utc_to_jde(celestial.CivilDateTime(2024, 2, 29, 0.5)))
+  assert (leap.year, leap.month, leap.day) == (2024, 2, 29)
   print("PASS UTC conversions: raw parity, history, seam, leap edges, inserted second, fixed future offset and domains")
   example = Path(__file__).resolve().parents[4] / "docs/examples/utc_jieqi/example.py"
   executed = subprocess.run(

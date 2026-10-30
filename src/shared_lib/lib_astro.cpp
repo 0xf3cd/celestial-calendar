@@ -86,6 +86,7 @@ auto celestial_jde_to_ut1(const double jde) -> CelestialUT1Time {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
 auto celestial_utc_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> CelestialJulianDay {
   return lib::wrap_export(__func__, [=]() -> CelestialJulianDay {
+    // Check the input year before a TT shift can carry year zero into year one.
     if (y < 1) {
       throw std::invalid_argument { std::format("Year {} is out of range [1, 32767].", y) };
     }

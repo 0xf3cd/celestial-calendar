@@ -11,7 +11,8 @@ They convert time scales; adding a timezone offset is a separate display operati
 | JavaScript | `time.utcToJde(civil)` | `time.jdeToUtc(jde)` |
 
 The C forward result is `CelestialJulianDay`; the inverse returns the independent `CelestialUTCTime`
-record by value. Check `valid`, then use the preserving error-kind/message readers on failure.
+record by value. Check `valid`, then read `celestial_last_error_kind()` and `celestial_last_error()` on failure;
+neither reader clears the recorded error.
 Python returns a float or a frozen `CivilDateTime`. JavaScript returns a number or an owned
 `CivilDateTimeResult`, including derived hour, minute and fractional second fields; call `await init()` first.
 Civil records do not carry a time scale themselves: the conversion name specifies it.
@@ -19,9 +20,10 @@ Civil records do not carry a time scale themselves: the conversion name specifie
 ## Domains and inherited limits
 
 - Forward input uses a valid Gregorian date in years `[1, 32767]` and a finite day fraction in `[0, 1)`.
-  The shifted TT date must also be representable, so the final 69.184 seconds of year 32767 are rejected.
+  The shifted TT date must also be representable. At the upper end TT is 69.184 seconds ahead of UTC,
+  so the final 69.184 seconds of year 32767 are rejected.
 - The inverse accepts finite JDE(TT) in `[1867522.5, 13689325.5)`. Its lower endpoint returns
-  **400-12-31**, after subtracting the historical offset. Forward dates before this inverse window
+  **400-12-31**, after subtracting fixed Algo5's modelled TT minus UT1 (ΔT). Forward dates before this inverse window
   can succeed without having an admitted inverse.
 - Before 1972-01-01, UTC-labelled civil fields use the **UT1 substitute with fixed Algo5**. This does
   not model historical UTC, including the variable-length seconds of 1960–1971. Chart and civil-house
@@ -29,14 +31,13 @@ Civil records do not carry a time scale themselves: the conversion name specifie
 - From 1972 onward the existing leap-second table applies. Its final row is 2017-01-01; later dates
   retain TT minus UTC = 69.184 seconds. This is a library policy, not a forecast of future UTC.
 - `23:59:60` cannot be represented. The inserted-second TT interval maps into the next civil second
-  and is not invertible. Julian-day rounding at leap-step midnight can also produce a one-second
-  roundtrip difference.
+  and is not invertible. Julian-day rounding at midnight when the leap-table offset steps can also
+  make a UTC → JDE → UTC result one second later than its input.
 - The historical/modern seam is about 68 ms and is non-monotone: stepping forward across the last
   millisecond of 1971 can move JDE backward. Do not assume exact roundtrips at the seam or leap steps.
 
-Ordinary modern roundtrip tests away from these boundaries use 100 microseconds; tests near year 32767
-use 200 microseconds for the coarser double-precision day count. These are fixture margins, not a
-whole-domain accuracy or reversibility guarantee. See [Time scales](DESIGN.md#time-scales) for the models.
+These functions do not supply a whole-domain accuracy or reversibility guarantee.
+See [Time scales](DESIGN.md#time-scales) for the models.
 
 Invalid civil values and non-finite/out-of-domain JDEs produce `CELESTIAL_ERROR_INVALID_INPUT` in C,
 `ValueError` in Python and `RangeError` in JavaScript. Wrong binding types produce `TypeError`.
@@ -52,7 +53,7 @@ Run it as `python example.py` or `node example.mjs`. For an unreleased checkout,
 [local wheel](../bindings/python/README.md#build-a-local-wheel) or
 [npm packages](BUILDING.md#wasm) first; a published 1.0 package does not have these methods.
 
-Both programs use the fixed input `2026-10-28T19:35:37Z` and print, to the minute:
+Both programs use the fixed input `2026-10-28T19:35:37Z` and print with seconds omitted:
 
 ```text
 立冬
@@ -65,6 +66,6 @@ UT1-to-JDE before comparison. Only the selected JDE goes through JDE-to-UTC; the
 formats it with a fixed +8-hour offset. No chart, location, house computation or caller-owned leap table runs.
 
 The examples enumerate both the input year and the following year and sort by moment, since the Jieqi
-enum starts at Lichun, not January. This is a contemporary example, not an all-era exact TT-root API:
-converting the public UT1 event back to TT can differ from the internal TT root in remote eras.
-Jieqi queries accept years `[401, 32766]`; a two-year scan also needs its following year admitted.
+enum starts at Lichun, not January. This is a contemporary example. The public Jieqi result is derived
+from a TT instant via UT1; converting it back to TT is not guaranteed to reproduce that instant in remote eras.
+Jieqi queries accept years `[401, 32766]`, so a two-year scan's first query year must be in `[401, 32765]`.

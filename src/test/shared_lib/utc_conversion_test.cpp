@@ -25,7 +25,7 @@
 #include "julian_day.hpp"
 #include "ymd.hpp"
 
-namespace astro::julian_day::test {
+namespace test {
 
 namespace {
 
@@ -58,6 +58,7 @@ TEST(UtcConversion, CBoundaryMatchesCpp) {
     calendar::Datetime { util::to_ymd(1972, 7, 1), 0.0 },
     calendar::Datetime { util::to_ymd(1973, 1, 1), 0.0 },
     calendar::Datetime { util::to_ymd(2017, 1, 1), 0.0 },
+    calendar::Datetime { util::to_ymd(2024, 2, 29), 0.5 },
     calendar::Datetime { util::to_ymd(2026, 10, 28), 0.5 },
     calendar::Datetime { util::to_ymd(2100, 1, 1), 0.5 },
     calendar::Datetime { util::to_ymd(32767, 12, 31), 0.0 },
@@ -66,13 +67,13 @@ TEST(UtcConversion, CBoundaryMatchesCpp) {
     const auto [y, m, d] = util::from_ymd(input.ymd);
     const auto forward = celestial_utc_to_jde(y, m, d, input.fraction());
     ASSERT_TRUE(forward.valid) << celestial_last_error();
-    EXPECT_EQ(forward.value, utc_to_jde(input));
+    EXPECT_EQ(forward.value, astro::julian_day::utc_to_jde(input));
     EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
     if (forward.value < 1867522.5) { continue; }
 
     const auto inverse = celestial_jde_to_utc(forward.value);
     ASSERT_TRUE(inverse.valid) << celestial_last_error();
-    const auto expected = jde_to_utc(forward.value);
+    const auto expected = astro::julian_day::jde_to_utc(forward.value);
     EXPECT_EQ(civil_datetime(inverse).ymd, expected.ymd);
     EXPECT_EQ(inverse.fraction, expected.fraction());
     EXPECT_STREQ(celestial_last_error(), "");
@@ -95,16 +96,16 @@ TEST(UtcConversion, OrdinaryRoundTrips) {
 
 TEST(UtcConversion, HistoricalSubstituteAndFixedFutureOffset) {
   const calendar::Datetime historical { util::to_ymd(1900, 1, 1), 0.5 };
-  EXPECT_EQ(celestial_utc_to_jde(1900, 1, 1, 0.5).value, ut1_to_jde(historical));
-  const double historical_jde = ut1_to_jde(historical);
-  EXPECT_EQ(civil_datetime(celestial_jde_to_utc(historical_jde)), jde_to_ut1(historical_jde));
+  EXPECT_EQ(celestial_utc_to_jde(1900, 1, 1, 0.5).value, astro::julian_day::ut1_to_jde(historical));
+  const double historical_jde = astro::julian_day::ut1_to_jde(historical);
+  EXPECT_EQ(civil_datetime(celestial_jde_to_utc(historical_jde)), astro::julian_day::jde_to_ut1(historical_jde));
 
   // Policy check: the existing leap table holds TT-UTC = 37 + 32.184 s after its final row.
   for (const int32_t year : { 2017, 2026, 2100, 32767 }) {
     const calendar::Datetime civil { util::to_ymd(year, 1, 1), 0.5 };
     const auto result = celestial_utc_to_jde(year, 1, 1, 0.5);
     ASSERT_TRUE(result.valid);
-    EXPECT_NEAR((result.value - ut1_to_jd(civil)) * 86400.0, 69.184, 2e-4);
+    EXPECT_NEAR((result.value - astro::julian_day::ut1_to_jd(civil)) * 86400.0, 69.184, 2e-4);
   }
 }
 
@@ -136,7 +137,7 @@ TEST(UtcConversion, LeapStepEdgesAndInsertedSecond) {
     const auto forward = celestial_utc_to_jde(y, m, d, 0.0);
     const auto inverse = celestial_jde_to_utc(forward.value);
     ASSERT_TRUE(forward.valid and inverse.valid);
-    EXPECT_EQ(inverse.fraction, jde_to_utc(forward.value).fraction());
+    EXPECT_EQ(inverse.fraction, astro::julian_day::jde_to_utc(forward.value).fraction());
     const double midnight_gap = elapsed_seconds(civil_datetime(inverse), midnight);
     // An ulp at midnight may select the adjacent, noninvertible inserted-second interval.
     EXPECT_TRUE(std::abs(midnight_gap) < 1e-4 or std::abs(midnight_gap - 1.0) < 1e-4);
@@ -189,6 +190,8 @@ TEST(UtcConversion, AsymmetricDomains) {
 
 
 TEST(UtcConversion, InvalidInputsAndErrorRecovery) {
+  EXPECT_FALSE(celestial_utc_to_jde(0, 12, 31, 0.999).valid);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
   for (const int32_t year : { 0, -4000, -32768, 32768, INT32_MIN, INT32_MAX }) {
     EXPECT_FALSE(celestial_utc_to_jde(year, 1, 1, 0.0).valid);
     EXPECT_NE(std::strstr(celestial_last_error(), std::to_string(year).c_str()), nullptr);
@@ -196,8 +199,14 @@ TEST(UtcConversion, InvalidInputsAndErrorRecovery) {
   }
   for (const auto& [month, day] : std::array {
     std::pair { 2U, 30U }, std::pair { 13U, 1U }, std::pair { 257U, 1U }, std::pair { 1U, 257U },
+    std::pair { 0U, 1U }, std::pair { 1U, 0U }, std::pair { UINT32_MAX, 1U }, std::pair { 1U, UINT32_MAX },
+    std::pair { 4U, 31U },
   }) {
     EXPECT_FALSE(celestial_utc_to_jde(2024, month, day, 0.0).valid);
+    EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+  }
+  for (const int32_t year : { 1900, 2023 }) {
+    EXPECT_FALSE(celestial_utc_to_jde(year, 2, 29, 0.5).valid);
     EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
   }
   for (const double fraction : { -1e-300, 1.0, HUGE_VAL, -HUGE_VAL, std::numeric_limits<double>::quiet_NaN() }) {
@@ -220,4 +229,4 @@ TEST(UtcConversion, InvalidInputsAndErrorRecovery) {
   EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
 }
 
-} // namespace astro::julian_day::test
+} // namespace test

@@ -343,7 +343,7 @@ def jde_to_utc(jde: float) -> CivilDateTime:
   """Convert JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields.
 
   Before 1972 the result uses the UT1 substitute with fixed Algo5; year 400 is possible.
-  The final leap-table offset is held afterward. Leap seconds, leap-step midnight
+  After the table's last entry, its final offset is retained. Leap seconds, leap-step midnight
   round-off and the 1972 model seam do not promise an exact inverse.
   """
   result = _result("celestial_jde_to_utc", "jde_to_utc", _finite(jde, "jde"))

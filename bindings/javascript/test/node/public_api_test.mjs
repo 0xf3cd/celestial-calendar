@@ -347,12 +347,17 @@ check("time.utcToJde", () => {
   assert.throws(() => time.jdeToUtc(first), RangeError);
   for (const input of [
     { year: 0 }, { year: -4000 }, { year: 32768 }, { month: 257 }, { day: 257 },
+    { year: 0, month: 12, day: 31, fraction: 0.999 },
+    { month: 0 }, { day: 0 }, { month: 0xFFFFFFFF }, { day: 0xFFFFFFFF },
+    { year: 2023, month: 2, day: 29 }, { year: 1900, month: 2, day: 29 }, { month: 4, day: 31 },
     { month: 2, day: 30 }, ...[-1e-300, 1, NaN, Infinity, -Infinity].map((fraction) => ({ fraction })),
     { year: 32767, month: 12, day: 31, fraction: 0.9999999 },
   ]) assert.throws(() => time.utcToJde({ year: 2024, month: 1, day: 1, fraction: 0, ...input }), RangeError);
   assert.throws(() => time.utcToJde(new Date()), TypeError);
   assert.throws(() => time.utcToJde({ year: 2024, month: 1, day: 1, fraction: true }), TypeError);
   finite(time.utcToJde({ year: 32767, month: 12, day: 31, fraction: 0 }));
+  const leap = time.jdeToUtc(time.utcToJde({ year: 2024, month: 2, day: 29, fraction: 0.5 }));
+  assert.deepEqual([leap.year, leap.month, leap.day], [2024, 2, 29]);
   assert.equal(time.utcToJde({ year: 2024, month: 1, day: 1, fraction: -0 }), time.utcToJde({ year: 2024, month: 1, day: 1, fraction: 0 }));
 });
 check("time.jdeToUtc", () => {
@@ -491,6 +496,7 @@ const semanticExclusions = [
   ["Gregorian isLeap", (value) => celestial.lunar.fromGregorian("algo3", value), gregorian, "isLeap", false],
   ["UT1/JD isLeap", celestial.time.ut1ToJd, civil, "isLeap", false],
   ["UT1/JDE isLeap", celestial.time.ut1ToJde, civil, "isLeap", false],
+  ["UTC/JDE isLeap", celestial.time.utcToJde, civil, "isLeap", false],
   ["solar civil isLeap", (value) => celestial.sun.apparentSolarTime(value, 0), civil, "isLeap", false],
   ["lunar fraction", (value) => celestial.lunar.toGregorian("algo3", value), lunarDate, "fraction", 0],
 ];
@@ -507,14 +513,15 @@ for (const [label, convert, record, property, value] of semanticExclusions) {
     }
   }
 }
-assert.equal(excluded, 24);
-console.log(`PASS semantic property exclusions ${excluded}/24`);
+assert.equal(excluded, 28);
+console.log(`PASS semantic property exclusions ${excluded}/28`);
 
 for (const [convert, fields] of [
   [(value) => celestial.lunar.fromGregorian("algo3", value), gregorian],
   [(value) => celestial.lunar.toGregorian("algo3", value), lunarDate],
   [celestial.time.ut1ToJd, civil],
   [celestial.time.ut1ToJde, civil],
+  [celestial.time.utcToJde, civil],
   [(value) => celestial.sun.apparentSolarTime(value, 0), civil],
 ]) {
   const expected = convert(fields);
@@ -560,6 +567,7 @@ assert.deepEqual(celestial.moon.newMoonsAfter(2451545.0, 0), [], "zero requested
 
 edge("date object", () => celestial.time.ut1ToJd(null), TypeError);
 edge("missing date field", () => celestial.time.ut1ToJd({ year: 2024, month: 1, day: 1 }), TypeError);
+edge("missing UTC fraction", () => celestial.time.utcToJde({ year: 2024, month: 1, day: 1 }), TypeError);
 assert.doesNotThrow(
   () => celestial.time.ut1ToJd({ year: 2024, month: 1, day: 1, fraction: 0, utc: true }),
   "additional date field",
@@ -621,9 +629,9 @@ assert.match(lunarError.message, /cannot be represented/);
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 happy += await testChartApi(celestial, entryUrl);
 assert.equal(happy, 24, "public method denominator");
-assert.equal(edges, 30, "public edge denominator");
+assert.equal(edges, 31, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/24; edge/error cases ${edges}/30`);
+console.log(`PASS public methods ${happy}/24; edge/error cases ${edges}/31`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/18`);
 
 await testFakeNative(entryUrl);
