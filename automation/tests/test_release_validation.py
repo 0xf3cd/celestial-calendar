@@ -98,7 +98,7 @@ RUNTIME_FLOORS = {
     "supported": {"glibc": "2.28", "glibcxx": "3.4.21"},
     "measured": {"glibc": "2.17", "glibcxx": "3.4.21"},
   },
-  "macos_arm64.zip": {"supported": {"macos": "14.0"}, "measured": {"macos": "14.0"}},
+  "macos_arm64.zip": {"supported": {"macos": "15.0"}, "measured": {"macos": "15.0"}},
   "windows_x86_64.zip": {
     "supported": {"windows": "not_declared"},
     "measured": {"msvc_runtime": "static"},
@@ -268,11 +268,21 @@ def write_wheel(directory):
   return write_wheel_named(directory, name)
 
 
+@pytest.mark.parametrize("major", [14, 15, 16])
+def test_macos_wheel_release_tag_matches_the_supported_floor(major):
+  wheel = f"celestial_calendar-{VERSION}-py3-none-macosx_{major}_0_arm64.whl"
+  if major == 15:
+    release_validation.validate_wheel_platform(wheel, "celestial-python-macos-arm64", VERSION)
+  else:
+    with pytest.raises(RuntimeError, match="does not match artifact"):
+      release_validation.validate_wheel_platform(wheel, "celestial-python-macos-arm64", VERSION)
+
+
 def write_wheels(directory):
   names = [
     f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_x86_64.whl",
     f"celestial_calendar-{VERSION}-py3-none-manylinux_2_28_aarch64.whl",
-    f"celestial_calendar-{VERSION}-py3-none-macosx_14_0_arm64.whl",
+    f"celestial_calendar-{VERSION}-py3-none-macosx_15_0_arm64.whl",
     f"celestial_calendar-{VERSION}-py3-none-win_amd64.whl",
   ]
   return [path for name in names for path in write_wheel_named(directory, name)]

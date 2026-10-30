@@ -206,7 +206,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 正容量会截断并补 NUL。节气时刻固定通过 Algo5 转为 UT1，不是 UTC 或东八区日期。ABI 演进规则见
 [C API 指南（英文）](docs/API.md#c-chart-snapshot)。
 
-原生发行包的运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
+从 1.1.0 起，预编译的 macOS arm64 库要求 macOS 15 或更新版本。
+完整运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
 
 <a id="features"></a>
 ## 功能与算法

@@ -192,14 +192,14 @@ jobs:
       env:
         CXX: clang++
         CC:  clang
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
 
     - name: Ensure Shared Lib Exists
       id: shared_lib
       env:
         CXX: clang++
         CC:  clang
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
       run: |
         # Install by CMake's rules: real .dylib + version symlinks + the published header.
         # The symlinks do not survive upload-artifact@v7 (it dereferences them) -- see the

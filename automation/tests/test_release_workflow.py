@@ -178,7 +178,7 @@ def assert_registry_job_contract(workflow, job_name, workflow_dir=RELEASE_WORKFL
   )
   python_floor = next(
     step["with"]["python-version"]
-    for step in wheels["jobs"]["macos-14-floor"]["steps"]
+    for step in wheels["jobs"]["macos-15-floor"]["steps"]
     if str(step.get("uses", "")).startswith("actions/setup-python@")
   )
   node_version, npm_version = wasm["env"]["NODE_CURRENT"], wasm["env"]["NPM_VERSION"]

@@ -233,6 +233,8 @@ to return UT1, not UTC or a UTC+8 wall date. See the [C API guide](docs/API.md#c
 
 #### Native runtime
 
+Starting with 1.1.0, prebuilt macOS arm64 libraries require macOS 15 or newer.
+
 The Supported column is the compatibility promise; the Measured column only records properties of the built
 artifact and never lowers that promise. Linux records the highest GLIBC / GLIBCXX requirement, macOS the Mach-O
 deployment target, and Windows how the Visual C++ runtime is linked. CI writes the same values to
@@ -246,7 +248,7 @@ OS version floor is declared.
 |---|---|---|
 | `linux_amd64` | `glibc=2.28, glibcxx=3.4.21` | `glibc=2.26, glibcxx=3.4.21` |
 | `linux_arm64` | `glibc=2.28, glibcxx=3.4.21` | `glibc=2.17, glibcxx=3.4.21` |
-| `macos_arm64` | `macos=14.0` | `macos=14.0` |
+| `macos_arm64` | `macos=15.0` | `macos=15.0` |
 | `windows_x86_64` | `windows=not_declared` | `msvc_runtime=static` |
 
 <a id="features"></a>

@@ -129,6 +129,43 @@ def test_wheel_metadata_accepts_the_exact_source_payload(verifier):
   assert check(verifier, wheel_payload(version), version) == "celestial_calendar/_native/_celestial_calendar.dll"
 
 
+def test_macos_wheel_metadata_accepts_the_supported_tag_and_dylib(verifier):
+  version = verifier.project_version()
+  members = wheel_payload(version)
+  native = "celestial_calendar/_native/_celestial_calendar.dylib"
+  members[native] = members.pop("celestial_calendar/_native/_celestial_calendar.dll")
+  members[f"celestial_calendar-{version}.dist-info/WHEEL"] = (
+    b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: py3-none-macosx_15_0_arm64\n"
+  )
+  with archive(members, version) as payload:
+    assert (
+      verifier.verify_metadata(
+        payload,
+        Path(f"celestial_calendar-{version}-py3-none-macosx_15_0_arm64.whl"),
+        version,
+        ["macosx_15_0_arm64"],
+      )
+      == native
+    )
+
+
+@pytest.mark.parametrize("minimums", ["minos 15.0", "minos 14.0", "minos 16.0", "minos 15.0\nminos 16.0", ""])
+def test_macos_wheel_binary_requires_the_supported_deployment_target(verifier, tmp_path, monkeypatch, minimums):
+  native = tmp_path / "library.dylib"
+  outputs = {
+    ("file", str(native)): "Mach-O 64-bit dynamically linked shared library arm64",
+    ("otool", "-l", str(native)): minimums,
+    ("otool", "-L", str(native)): f"{native}:\n/usr/lib/libSystem.B.dylib (compatibility version 1.0.0)",
+    ("nm", "-gU", str(native)): "0000000000000000 T _celestial_version",
+  }
+  monkeypatch.setattr(verifier, "run", lambda *command: outputs[command])
+  if minimums == "minos 15.0":
+    verifier.verify_macos(native, {"celestial_version"})
+  else:
+    with pytest.raises(AssertionError):
+      verifier.verify_macos(native, {"celestial_version"})
+
+
 @pytest.mark.parametrize("field", ["Classifier", "Keywords", "Project-URL: Documentation"])
 @pytest.mark.parametrize("fault", ["omitted", "wrong"])
 def test_wheel_project_metadata_rejects_drift_with_recomputed_record(verifier, field, fault):

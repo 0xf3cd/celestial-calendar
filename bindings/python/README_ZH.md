@@ -225,7 +225,7 @@ differences = celestial.longitude_difference_events(
 |---|---|---|
 | Linux (manylinux 2.28) | x86_64 | `manylinux_2_28_x86_64` |
 | Linux (manylinux 2.28) | aarch64 | `manylinux_2_28_aarch64` |
-| macOS 14 或更新版本 | arm64 | `macosx_14_0_arm64` |
+| macOS 15 或更新版本 | arm64 | `macosx_15_0_arm64` |
 | Windows | AMD64 | `win_amd64` |
 
 Linux wheel 文件名可能包含其他兼容的 manylinux 标签。每个都是面向相应平台上 Python 3.11 或更新版本的 `py3` wheel。

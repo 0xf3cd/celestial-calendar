@@ -242,7 +242,7 @@ Official releases use wheels for the four platforms below; PyPI and the matching
 |---|---|---|
 | Linux (manylinux 2.28) | x86_64 | `manylinux_2_28_x86_64` |
 | Linux (manylinux 2.28) | aarch64 | `manylinux_2_28_aarch64` |
-| macOS 14 or newer | arm64 | `macosx_14_0_arm64` |
+| macOS 15 or newer | arm64 | `macosx_15_0_arm64` |
 | Windows | AMD64 | `win_amd64` |
 
 Linux wheel filenames may include other compatible manylinux tags. Each wheel is a `py3` wheel for Python 3.11 or

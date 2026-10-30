@@ -58,7 +58,7 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   dist_info = f"celestial_calendar-{version}.dist-info"
   if platform_tags == ["win_amd64"]:
     native_suffix = ".dll"
-  elif platform_tags == ["macosx_14_0_arm64"]:
+  elif platform_tags == ["macosx_15_0_arm64"]:
     native_suffix = ".dylib"
   else:
     native_suffix = ".so"
@@ -202,7 +202,7 @@ def verify_macos(native: Path, exports: set[str]) -> None:
   assert "arm64" in run("file", str(native))
   load_commands = run("otool", "-l", str(native))
   minimum_versions = re.findall(r"\bminos\s+([0-9.]+)", load_commands)
-  assert minimum_versions and set(minimum_versions) == {"14.0"}
+  assert minimum_versions and set(minimum_versions) == {"15.0"}
   dependencies = [line.strip().split(" ", 1)[0] for line in run("otool", "-L", str(native)).splitlines()[1:]]
   assert dependencies
   assert all(
@@ -248,7 +248,7 @@ def main() -> None:
     native = Path(temporary) / native_member
     if all("manylinux" in tag for tag in platform_tags):
       verify_linux(native, wheel, version, platform_tags, exports)
-    elif platform_tags == ["macosx_14_0_arm64"]:
+    elif platform_tags == ["macosx_15_0_arm64"]:
       verify_macos(native, exports)
     elif platform_tags == ["win_amd64"]:
       verify_windows(native, exports)

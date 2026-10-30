@@ -21,7 +21,7 @@ env:
   CIBW_BUILD_VERBOSITY: "1"
   CIBW_DEPENDENCY_VERSIONS: bindings/python/constraints-cibuildwheel.txt
   CIBW_ENVIRONMENT_MACOS: >-
-    CC=clang CXX=clang++ MACOSX_DEPLOYMENT_TARGET=14.0 PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:
+    CC=clang CXX=clang++ MACOSX_DEPLOYMENT_TARGET=15.0 PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:
   CIBW_ENVIRONMENT_WINDOWS: >-
     CC=clang CXX=clang++ CMAKE_GENERATOR=Ninja PIP_REQUIRE_HASHES=1 PIP_ONLY_BINARY=:all:
     CELESTIAL_WINDOWS_EVIDENCE_DIR="$GITHUB_WORKSPACE/windows-link-evidence-wheel"
@@ -132,7 +132,7 @@ jobs:
     runs-on: macos-latest
     env:
       CIBW_ARCHS_MACOS: arm64
-      MACOSX_DEPLOYMENT_TARGET: "14.0"
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
     steps:
       - uses: actions/checkout@v7
 
@@ -186,8 +186,8 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  macos-14-floor:
-    runs-on: macos-14
+  macos-15-floor:
+    runs-on: macos-15
     needs: macos-arm64
     steps:
       - uses: actions/checkout@v7
@@ -223,7 +223,7 @@ jobs:
             output.write(f"wheel={wheel}\n")
           PY
 
-      - name: Clean-install and test on macOS 14
+      - name: Clean-install and test on macOS 15
         env:
           WHEEL: ${{ steps.wheel.outputs.wheel }}
         run: |
