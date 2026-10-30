@@ -17,7 +17,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Other consumers check C/C++ and Python; shell fences are instructions and text is expected output.
-export const nonPrograms = {
+const nonPrograms = {
   sh: "shell installation/build instructions",
   powershell: "PowerShell build instructions",
   c: "C quickstart, compiled separately",

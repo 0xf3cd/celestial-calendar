@@ -17,6 +17,7 @@ import importlib.util
 import io
 import json
 import sys
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -42,6 +43,17 @@ def verifier():
 
 def wheel_payload(version):
   dist_info = f"celestial_calendar-{version}.dist-info"
+  project = tomllib.loads((ROOT / "bindings/python/pyproject.toml").read_text(encoding="utf-8"))["project"]
+  metadata = [
+    "Metadata-Version: 2.4",
+    "Name: celestial-calendar",
+    f"Version: {version}",
+    "Requires-Python: >=3.11",
+    "License-Expression: MIT",
+    *[f"Classifier: {value}" for value in project["classifiers"]],
+    "Keywords: " + ",".join(project["keywords"]),
+    *[f"Project-URL: {label}, {url}" for label, url in project["urls"].items()],
+  ]
   members = {
     f"celestial_calendar/{name}": (SOURCE / name).read_bytes()
     for name in (
@@ -62,11 +74,7 @@ def wheel_payload(version):
     {
       "celestial_calendar/_version.py": f'VERSION = "{version}"'.encode(),
       "celestial_calendar/_native/_celestial_calendar.dll": b"metadata-only native placeholder",
-      f"{dist_info}/METADATA": (
-        f"Metadata-Version: 2.4\nName: celestial-calendar\nVersion: {version}\n"
-        "Requires-Python: >=3.11\nLicense-Expression: MIT\n"
-        "Project-URL: Repository, https://github.com/0xf3cd/celestial-calendar\n"
-      ).encode(),
+      f"{dist_info}/METADATA": ("\n".join(metadata) + "\n").encode(),
       f"{dist_info}/WHEEL": b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: py3-none-win_amd64\n",
       f"{dist_info}/licenses/LICENSE": (ROOT / "LICENSE").read_bytes(),
       f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt": (ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes(),
@@ -119,6 +127,38 @@ def check(verifier, members, version, fault=None):
 def test_wheel_metadata_accepts_the_exact_source_payload(verifier):
   version = verifier.project_version()
   assert check(verifier, wheel_payload(version), version) == "celestial_calendar/_native/_celestial_calendar.dll"
+
+
+@pytest.mark.parametrize("field", ["Classifier", "Keywords", "Project-URL: Documentation"])
+@pytest.mark.parametrize("fault", ["omitted", "wrong"])
+def test_wheel_project_metadata_rejects_drift_with_recomputed_record(verifier, field, fault):
+  version = verifier.project_version()
+  members = wheel_payload(version)
+  name = f"celestial_calendar-{version}.dist-info/METADATA"
+  lines = members[name].decode().splitlines()
+  prefix = field + (", " if field.startswith("Project-URL:") else ": ")
+  index = next(index for index, line in enumerate(lines) if line.startswith(prefix))
+  if fault == "omitted":
+    del lines[index]
+  else:
+    lines[index] = prefix + "wrong-value"
+  members[name] = ("\n".join(lines) + "\n").encode()
+  message = {"Classifier": "classifiers", "Keywords": "keywords", "Project-URL: Documentation": "project URLs"}[field]
+  with pytest.raises(AssertionError, match=f"wheel {message} differ from pyproject"):
+    check(verifier, members, version)
+  check(verifier, wheel_payload(version), version)
+
+
+def test_wheel_project_metadata_accepts_reordered_headers_and_keywords(verifier):
+  version = verifier.project_version()
+  members = wheel_payload(version)
+  name = f"celestial_calendar-{version}.dist-info/METADATA"
+  lines = members[name].decode().splitlines()
+  index = next(index for index, line in enumerate(lines) if line.startswith("Keywords: "))
+  keywords = lines[index].removeprefix("Keywords: ").split(",")
+  lines[index] = "Keywords: " + ", ".join(reversed(keywords))
+  members[name] = ("\n".join(reversed(lines)) + "\n").encode()
+  check(verifier, members, version)
 
 
 def test_wheel_allowlist_requires_the_real_declaration_module(verifier):

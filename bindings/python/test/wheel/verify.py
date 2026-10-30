@@ -22,6 +22,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 import zipfile
 from email.parser import BytesParser
 from pathlib import Path
@@ -129,6 +130,15 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   assert metadata["License-Expression"] == "MIT"
   project_urls = metadata.get_all("Project-URL") or []
   assert "Repository, https://github.com/0xf3cd/celestial-calendar" in project_urls
+  project = tomllib.loads((REPO / "bindings/python/pyproject.toml").read_text(encoding="utf-8"))["project"]
+  assert set(metadata.get_all("Classifier") or []) == set(project["classifiers"]), (
+    "wheel classifiers differ from pyproject"
+  )
+  keywords = {value.strip() for value in (metadata["Keywords"] or "").split(",") if value.strip()}
+  assert keywords == set(project["keywords"]), "wheel keywords differ from pyproject"
+  assert set(project_urls) == {f"{label}, {url}" for label, url in project["urls"].items()}, (
+    "wheel project URLs differ from pyproject"
+  )
 
   wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
   assert wheel_metadata["Root-Is-Purelib"] == "false", "native wheel cannot be purelib"

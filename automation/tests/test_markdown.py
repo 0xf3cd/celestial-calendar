@@ -323,6 +323,17 @@ def test_python_output_and_metadata_controls(python_reader):
     python_reader.metadata_description("Name: celestial-calendar\n")
 
 
+def test_python_program_rejects_checkout_cwd_before_writing_or_launching(python_reader, tmp_path, monkeypatch):
+  checkout = tmp_path / "checkout"
+  cwd = checkout / "nested"
+  cwd.mkdir(parents=True)
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  monkeypatch.setattr(python_reader.subprocess, "run", lambda *args, **kwargs: pytest.fail("child was launched"))
+  with pytest.raises(AssertionError, match="outside the checkout"):
+    python_reader.run_program("print('example')\n", cwd)
+  assert not list(cwd.iterdir())
+
+
 def test_python_provenance_rejects_checkout_and_nonmember(python_reader, tmp_path):
   package, native = tmp_path / "installed/__init__.py", tmp_path / "installed/native.so"
   record = {

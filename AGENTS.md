@@ -347,7 +347,7 @@ bindings/
 2. **C++23 features — "not yet", not "never":** basic C++20 ranges/views are in active
    use. Features the weakest CI toolchain doesn't support yet — **modules**,
    `std::generator`, C++23 ranges additions like `std::views::enumerate` / `pairwise` —
-   wait for compiler support ([toolchain feature tracking](docs/BUILDING.md#todo) keeps the wishlist). **Availability is settled by
+   wait for compiler support ([toolchain feature tracking](docs/MAINTAINING.md#todo) keeps the wishlist). **Availability is settled by
    compiling a real use of the feature, never by reading a feature-test macro** (#131).
    `./checks.py --features LEG` holds each CI leg to the state in
    `automation/feature_probe.py`. Toolchain failures, malformed records and lost capability
