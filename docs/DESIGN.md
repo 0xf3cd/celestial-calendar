@@ -125,6 +125,10 @@ offset, and derived UT1 is modelled, not observed DUT1.
 | Chart snapshot and civil house query | takes civil UTC (from 1972-01-01) or UT1, chosen explicitly; returns JD(UT1) and JDE(TT), with UT1 from UTC modelled |
 | `delta_t(year)` | takes a decimal year; TT and UT1 are not distinguished |
 
+The C, Python and JavaScript UTC/JDE convenience conversions follow the same historical substitute,
+1972 seam and leap-table policy as C++. Their separate input domains and noninvertible boundaries,
+with a UTC-input Jieqi example, are in [UTC conversions](UTC_CONVERSIONS.md).
+
 ΔT defaults to Algo5. Each model's source, status, hard year domain and role are tabulated in the
 [Python](../bindings/python/README.md#delta-t-models) and [JavaScript](../bindings/javascript/README.md#delta-t-models)
 package guides; the per-model contracts and the Algo5 construction are in `src/astro/delta_t.hpp`.

@@ -210,6 +210,19 @@ export const time: Readonly<{
   /** Convert a TT-based JDE to a UT1 civil moment. */
   jdeToUt1(jde: number): CivilDateTimeResult;
   /**
+   * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with fixed Algo5.
+   * Input years are in [1, 32767], and the shifted TT instant must stay representable.
+   * Uses the fixed leap-second table and holds its final offset afterward.
+   * Leap seconds and the 1972 model seam are not generally invertible.
+   */
+  utcToJde(utc: CivilDateTime): number;
+  /**
+   * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields; year 400 is possible.
+   * Before 1972 uses the UT1 substitute with fixed Algo5; the final leap-table offset is held afterward.
+   * Leap seconds, leap-step midnight round-off and the 1972 seam do not promise an exact inverse.
+   */
+  jdeToUtc(jde: number): CivilDateTimeResult;
+  /**
    * Local apparent sidereal time in [0, 360) degrees, at a finite JD on UT1 in Gregorian years [401, 32766].
    * Geographic longitude is finite, east-positive, in [-180, 180] degrees.
    * @throws {RangeError} For non-finite numbers, invalid longitude or a JD outside the native domain.

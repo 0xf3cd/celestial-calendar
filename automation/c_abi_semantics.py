@@ -19,6 +19,8 @@ EXPORT_SEMANTICS = {
   "celestial_ut1_to_jd": {"protocol": {}, "recording": True},
   "celestial_ut1_to_jde": {"protocol": {}, "recording": True},
   "celestial_jde_to_ut1": {"protocol": {}, "recording": True},
+  "celestial_utc_to_jde": {"protocol": {}, "recording": True},
+  "celestial_jde_to_utc": {"protocol": {}, "recording": True},
   "celestial_sun_apparent_geocentric_coord": {"protocol": {}, "recording": True},
   "celestial_moon_apparent_geocentric_coord": {"protocol": {}, "recording": True},
   "celestial_moon_illumination": {"protocol": {}, "recording": True},

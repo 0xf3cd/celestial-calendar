@@ -119,6 +119,13 @@ console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumina
     assert.equal(result.operation, "moon.illumination");
     assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
 
+    const utcExample = await readFile(new URL("../../../../docs/examples/utc_jieqi/example.mjs", import.meta.url), "utf8");
+    await writeFile(join(consumer, "utc-example.mjs"), utcExample.replaceAll("@0xf3cd/celestial", packageName));
+    const utcOutput = run(process.execPath, ["utc-example.mjs"]);
+    assert.deepEqual(utcOutput.stdout.trim().split(/\r?\n/), [
+      "立冬", "UTC: 2026-11-07 09:52", "UTC+8: 2026-11-07 17:52",
+    ]);
+
     if (typeCompiler !== undefined) {
       const typeRoot = new URL("../types/", import.meta.url);
       const files = [];

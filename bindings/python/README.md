@@ -46,6 +46,24 @@ print(today, lunar)
 the offset is deliberate: the library does not silently discard a time or timezone. The lunar algorithms use
 different date bases and year windows; see [Lunar algorithms](#lunar-algorithms).
 
+<a id="utc-conversions"></a>
+### UTC input and UTC+8 output
+
+`utc_to_jde()` and `jde_to_utc()` are available from 1.1.0. They expose the existing C++ conversion policy,
+including the pre-1972 UT1 substitute, leap-second limits and held future offset.
+
+```python
+import celestial_calendar as celestial
+
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+jde_tt = celestial.utc_to_jde(utc)
+print(celestial.jde_to_utc(jde_tt))
+```
+
+For UTC input → next Jieqi → UTC+8 display, run the
+[complete example](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
+The same guide gives the separate forward/inverse domains and noninvertible boundaries.
+
 <a id="next-jieqi"></a>
 ### Next Jieqi and remaining days
 

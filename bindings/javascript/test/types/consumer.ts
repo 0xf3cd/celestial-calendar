@@ -105,6 +105,13 @@ celestial.capabilities;
 celestial.time.ut1ToJd({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 celestial.time.ut1ToJde({ year: 2000, month: 1, day: 1, fraction: 0.5 });
 const ut1 = celestial.time.jdeToUt1(2451545.0);
+const jdeTt: number = celestial.time.utcToJde(civil);
+const utc: CivilDateTimeResult = celestial.time.jdeToUtc(jdeTt);
+celestial.time.utcToJde(utc);
+// @ts-expect-error UTC conversion requires civil fields, not a timestamp.
+celestial.time.utcToJde(new Date());
+// @ts-expect-error JDE is a number.
+celestial.time.jdeToUtc(civil);
 celestial.time.localApparentSiderealTime(2451545.0, 0);
 celestial.time.deltaT(2024.5, deltaTModel);
 const sunCoordinate = celestial.sun.apparentGeocentricCoordinate(2451545.0);

@@ -169,6 +169,11 @@ happyExports.add("celestial_last_error_kind");
 
 const jde = validSret("celestial_ut1_to_jde", [2024, 6, 1, 0.5]);
 assert(jde.value > 2460463.0);
+const utcJde = validSret("celestial_utc_to_jde", [2026, 10, 28, 0.5]);
+assert.equal(utcJde.value, 2461342.0 + 69.184 / 86400);
+const utc = validSret("celestial_jde_to_utc", [1867522.5]);
+assert.deepEqual([utc.year, utc.month, utc.day], [400, 12, 31]);
+assert(utc.fraction >= 0 && utc.fraction < 1);
 const ut1 = validSret("celestial_jde_to_ut1", [2460463.0]);
 assert.deepEqual([ut1.year, ut1.month, ut1.day], [2024, 6, 1]);
 finite(ut1.fraction);
@@ -472,6 +477,8 @@ const recordedFailure = (name, invoke) => {
 recordedFailure("celestial_ut1_to_jd", () => !rawSret("celestial_ut1_to_jd", [2024, 6, 1, 1.5]).valid);
 recordedFailure("celestial_ut1_to_jde", () => !rawSret("celestial_ut1_to_jde", [2024, 13, 1, 0.5]).valid);
 recordedFailure("celestial_jde_to_ut1", () => !rawSret("celestial_jde_to_ut1", [Number.NaN]).valid);
+recordedFailure("celestial_utc_to_jde", () => !rawSret("celestial_utc_to_jde", [2024, 2, 30, 0]).valid);
+recordedFailure("celestial_jde_to_utc", () => !rawSret("celestial_jde_to_utc", [Number.NaN]).valid);
 recordedFailure("celestial_moon_illumination", () => !rawSret("celestial_moon_illumination", [Number.NaN]).valid);
 recordedFailure("celestial_moon_position_angle", () => !rawSret("celestial_moon_position_angle", [Number.NaN]).valid);
 recordedFailure("celestial_moon_phase_moments", () => {
@@ -977,17 +984,17 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.equal(BINDINGS.length, 36, "38 legacy exports minus logging and five Delta T siblings, plus four new exports");
-assert.equal(Object.keys(manifest.layouts).length, 28, "26 legacy records plus equatorial position and civil-house capability");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 36 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 28 layouts decoded");
+assert.equal(BINDINGS.length, 38, "C export inventory");
+assert.equal(Object.keys(manifest.layouts).length, 29, "C record inventory");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 38 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 29 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 36/36; layouts 28/28; recording seams 34/34");
+console.log("PASS raw exports 38/38; layouts 29/29; recording seams 36/36");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

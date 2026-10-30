@@ -30,8 +30,8 @@ const assertView = (candidate) => {
   assert.deepEqual(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(Object.keys(PROTOCOLS), names);
   assert.deepEqual(Object.keys(C_DECLARATIONS.functions), names);
-  assert.equal(names.length, 36);
-  assert.equal(Object.keys(candidate.layouts).length, 28);
+  assert.equal(names.length, 38);
+  assert.equal(Object.keys(candidate.layouts).length, 29);
   assert(names.every((name) => name.startsWith("celestial_")));
   assert(Object.keys(candidate.layouts).every((name) => name.startsWith("Celestial") && !name.endsWith("V1")));
   for (const [index, entry] of candidate.exports.entries()) {
@@ -59,7 +59,7 @@ const assertView = (candidate) => {
     }
   }
   assert.equal(candidate.exports.filter(({ protocol }) => protocol.kind === "count-fill").length, 9);
-  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 34);
+  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 36);
   assert.deepEqual(candidate.exports.filter(({ protocol }) => protocol.error_channel === "preserve")
     .map(({ name }) => name), ["celestial_last_error", "celestial_last_error_kind"]);
   const targetCodes = Object.entries(candidate.codes)

@@ -132,7 +132,7 @@ assert.deepEqual(
 assert.equal("config" in celestial, false);
 assert.deepEqual(
   Object.keys(celestial.time),
-  ["ut1ToJd", "ut1ToJde", "jdeToUt1", "localApparentSiderealTime", "deltaT"],
+  ["ut1ToJd", "ut1ToJde", "jdeToUt1", "utcToJde", "jdeToUtc", "localApparentSiderealTime", "deltaT"],
 );
 assert.deepEqual(
   Object.keys(celestial.sun),
@@ -164,6 +164,8 @@ const uninitializedCalls = [
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.jdeToUt1", [2451545.0]],
+  ["time.utcToJde", [{ year: 2026, month: 10, day: 28, fraction: 0.5 }]],
+  ["time.jdeToUtc", [2451545.0]],
   ["time.localApparentSiderealTime", [2451545.0, 0]],
   ["time.deltaT", [2024.5]],
   ["sun.apparentGeocentricCoordinate", [2451545.0]],
@@ -298,6 +300,72 @@ check("time.jdeToUt1", () => {
   finite(value.fraction);
   civilResult(value);
   assert(!Number.isInteger(value.second), "JDE-derived civil output retains subsecond precision");
+});
+check("time.utcToJde", () => {
+  const time = celestial.time;
+  const roundtripGap = (input) => (time.ut1ToJd(time.jdeToUtc(time.utcToJde(input))) - time.ut1ToJd(input)) * 86400;
+  for (const year of [1900, 1972, 2026, 2100, 32767]) {
+    const input = { year, month: 6, day: 1, fraction: 0.56789 };
+    assert(Math.abs(roundtripGap(input)) < (year === 32767 ? 2e-4 : 1e-4));
+  }
+  for (const year of [401, 1900]) {
+    const historical = { year, month: 6, day: 1, fraction: 0.56789 };
+    assert.equal(time.utcToJde(historical), time.ut1ToJde(historical));
+    assert.deepEqual(time.jdeToUtc(time.utcToJde(historical)), time.jdeToUt1(time.ut1ToJde(historical)));
+  }
+  for (const year of [2017, 2026, 2100]) {
+    const input = { year, month: 1, day: 1, fraction: 0.5 };
+    assert(Math.abs((time.utcToJde(input) - time.ut1ToJd(input)) * 86400 - 69.184) < 1e-4);
+  }
+  const seamBefore = time.utcToJde({ year: 1971, month: 12, day: 31, fraction: 1 - 0.001 / 86400 });
+  const seamAfter = time.utcToJde({ year: 1972, month: 1, day: 1, fraction: 0 });
+  assert(Math.abs((seamAfter - seamBefore) * 86400 + 0.067) < 1e-4);
+  for (const input of [
+    { year: 1971, month: 12, day: 31, fraction: 1 - 0.1 / 86400 },
+    { year: 1972, month: 1, day: 1, fraction: 0.1 / 86400 },
+  ]) assert(Math.abs(roundtripGap(input)) < 1e-4);
+  for (const [year, month, previousYear, previousMonth, previousDay] of [
+    [1972, 7, 1972, 6, 30], [1973, 1, 1972, 12, 31], [2017, 1, 2016, 12, 31],
+  ]) {
+    for (const input of [
+      { year: previousYear, month: previousMonth, day: previousDay, fraction: 1 - 0.001 / 86400 },
+      { year, month, day: 1, fraction: 0.001 / 86400 },
+    ]) assert(Math.abs(roundtripGap(input)) < 1e-4);
+    const gap = roundtripGap({ year, month, day: 1, fraction: 0 });
+    assert(Math.abs(gap) < 1e-4 || Math.abs(gap - 1) < 1e-4, "step midnight can select either adjacent interval");
+  }
+  const before = time.utcToJde({ year: 2016, month: 12, day: 31, fraction: 86399 / 86400 });
+  const after = time.utcToJde({ year: 2017, month: 1, day: 1, fraction: 0 });
+  assert(Math.abs((after - before) * 86400 - 2) < 1e-4);
+  const inserted = before + 1.5 / 86400;
+  const collapsed = time.jdeToUtc(inserted);
+  assert.deepEqual([collapsed.year, collapsed.month, collapsed.day], [2017, 1, 1]);
+  assert(Math.abs(collapsed.fraction * 86400 - 0.5) < 1e-4);
+  assert(Math.abs((time.utcToJde(collapsed) - inserted) * 86400 - 1) < 1e-4);
+  const first = time.utcToJde({ year: 1, month: 1, day: 1, fraction: 0 });
+  assert(first < 1867522.5);
+  assert.throws(() => time.jdeToUtc(first), RangeError);
+  for (const input of [
+    { year: 0 }, { year: -4000 }, { year: 32768 }, { month: 257 }, { day: 257 },
+    { month: 2, day: 30 }, ...[-1e-300, 1, NaN, Infinity, -Infinity].map((fraction) => ({ fraction })),
+    { year: 32767, month: 12, day: 31, fraction: 0.9999999 },
+  ]) assert.throws(() => time.utcToJde({ year: 2024, month: 1, day: 1, fraction: 0, ...input }), RangeError);
+  assert.throws(() => time.utcToJde(new Date()), TypeError);
+  assert.throws(() => time.utcToJde({ year: 2024, month: 1, day: 1, fraction: true }), TypeError);
+  finite(time.utcToJde({ year: 32767, month: 12, day: 31, fraction: 0 }));
+  assert.equal(time.utcToJde({ year: 2024, month: 1, day: 1, fraction: -0 }), time.utcToJde({ year: 2024, month: 1, day: 1, fraction: 0 }));
+});
+check("time.jdeToUtc", () => {
+  const lower = celestial.time.jdeToUtc(1867522.5);
+  assert.deepEqual([lower.year, lower.month, lower.day], [400, 12, 31]);
+  civilResult(lower);
+  const upper = celestial.time.jdeToUtc(13689325.4);
+  assert.deepEqual([upper.year, upper.month, upper.day], [32767, 12, 31]);
+  civilResult(upper);
+  for (const input of [1867522.4, 13689325.5, NaN, Infinity, -Infinity]) {
+    assert.throws(() => celestial.time.jdeToUtc(input), RangeError);
+  }
+  for (const input of [true, "2451545", {}]) assert.throws(() => celestial.time.jdeToUtc(input), TypeError);
 });
 check("time.localApparentSiderealTime", () => {
   const value = celestial.time.localApparentSiderealTime(2451545.0, 0);
@@ -505,6 +573,8 @@ edge("fraction range", () => celestial.time.ut1ToJd({ year: 2024, month: 1, day:
 edge("civil year range", () => celestial.time.ut1ToJd({ year: 0, month: 1, day: 1, fraction: 0 }), RangeError);
 edge("number type", () => celestial.time.jdeToUt1("1"), TypeError);
 edge("finite number", () => celestial.time.jdeToUt1(Number.NaN), RangeError);
+edge("UTC date", () => celestial.time.utcToJde({ year: 2024, month: 2, day: 30, fraction: 0 }), RangeError);
+edge("UTC inverse domain", () => celestial.time.jdeToUtc(13689325.5), RangeError);
 edge("geographic longitude", () => celestial.time.localApparentSiderealTime(2451545.0, 181), RangeError);
 edge("solar geographic longitude", () => celestial.sun.apparentSolarTime(civil, 181), RangeError);
 edge("finite delta T year", () => celestial.time.deltaT(Number.POSITIVE_INFINITY), RangeError);
@@ -550,10 +620,10 @@ assert.match(lunarError.message, /cannot be represented/);
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 happy += await testChartApi(celestial, entryUrl);
-assert.equal(happy, 22, "public method denominator");
-assert.equal(edges, 28, "public edge denominator");
+assert.equal(happy, 24, "public method denominator");
+assert.equal(edges, 30, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");
-console.log(`PASS public methods ${happy}/22; edge/error cases ${edges}/28`);
+console.log(`PASS public methods ${happy}/24; edge/error cases ${edges}/30`);
 console.log(`PASS inclusive public boundaries ${acceptedBoundaries.length}/18`);
 
 await testFakeNative(entryUrl);

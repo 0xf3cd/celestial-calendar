@@ -160,6 +160,9 @@ try {
     await page.waitForFunction(() => window.__CELESTIAL_RESULT__ !== undefined, { timeout: 60_000 });
     const result = await page.evaluate(() => window.__CELESTIAL_RESULT__);
     assert(!result.fatal, result.fatal);
+    assert(Number.isFinite(result.utcJde));
+    assert.equal(result.utcRoundtripIso, "2026-10-28T19:35:37.000Z");
+    assert.equal(result.utcLowerYear, 400);
     assert.equal(result.translated, true, "recording failure was not translated");
     assert.equal(result.survived, true, "module did not survive a translated failure");
     assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");

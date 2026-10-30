@@ -106,6 +106,37 @@ export const LAYOUTS = deepFreeze({
       }
     ]
   },
+  "CelestialUTCTime": {
+    "size": 24,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "year",
+        "type": "int32_t",
+        "offset": 4
+      },
+      {
+        "name": "month",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "day",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "fraction",
+        "type": "double",
+        "offset": 16
+      }
+    ]
+  },
   "CelestialSunCoordinate": {
     "size": 32,
     "alignment": 8,
@@ -936,6 +967,18 @@ export const BINDINGS = deepFreeze([
     "readsLastError": true
   },
   {
+    "cName": "celestial_utc_to_jde",
+    "wasmName": "_celestial_utc_to_jde",
+    "result": "sret:CelestialJulianDay",
+    "readsLastError": true
+  },
+  {
+    "cName": "celestial_jde_to_utc",
+    "wasmName": "_celestial_jde_to_utc",
+    "result": "sret:CelestialUTCTime",
+    "readsLastError": true
+  },
+  {
     "cName": "celestial_sun_apparent_geocentric_coord",
     "wasmName": "_celestial_sun_apparent_geocentric_coord",
     "result": "sret:CelestialSunCoordinate",
@@ -1124,7 +1167,7 @@ export const BINDINGS = deepFreeze([
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "289a7d11ba60d914c2a1e7f3d9b380378956aae2e283d24379e2531ef3aab5f7",
+  "source_sha256": "3a75d1755f12f5ee54bcd6af977ee217c5d765526e6f428aee7274f5ad59537b",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",
@@ -1186,6 +1229,38 @@ export const C_DECLARATIONS = deepFreeze({
       "parameters": [
         {
           "name": "jde",
+          "type": "double"
+        }
+      ]
+    },
+    "celestial_utc_to_jde": {
+      "signature": "CelestialJulianDay celestial_utc_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction)",
+      "result": "CelestialJulianDay",
+      "parameters": [
+        {
+          "name": "y",
+          "type": "int32_t"
+        },
+        {
+          "name": "m",
+          "type": "uint32_t"
+        },
+        {
+          "name": "d",
+          "type": "uint32_t"
+        },
+        {
+          "name": "fraction",
+          "type": "double"
+        }
+      ]
+    },
+    "celestial_jde_to_utc": {
+      "signature": "CelestialUTCTime celestial_jde_to_utc(double jde_tt)",
+      "result": "CelestialUTCTime",
+      "parameters": [
+        {
+          "name": "jde_tt",
           "type": "double"
         }
       ]
@@ -1957,6 +2032,23 @@ export const WASM_SIGNATURES = deepFreeze({
       "f64"
     ]
   },
+  "celestial_utc_to_jde": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64"
+    ]
+  },
+  "celestial_jde_to_utc": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "f64"
+    ]
+  },
   "celestial_sun_apparent_geocentric_coord": {
     "result": "void",
     "parameters": [
@@ -2271,6 +2363,14 @@ export const PROTOCOLS = deepFreeze({
     "error_channel": "kind"
   },
   "celestial_jde_to_ut1": {
+    "kind": "sret",
+    "error_channel": "kind"
+  },
+  "celestial_utc_to_jde": {
+    "kind": "sret",
+    "error_channel": "kind"
+  },
+  "celestial_jde_to_utc": {
     "kind": "sret",
     "error_channel": "kind"
   },

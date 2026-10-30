@@ -35,12 +35,12 @@ const entries = Object.entries(C_DECLARATIONS.functions);
 const names = entries.map(([name]) => name);
 const readers = new Set(["celestial_last_error", "celestial_last_error_kind"]);
 const recording = names.filter((name) => !readers.has(name));
-assert.equal(names.length, 36);
-assert.equal(recording.length, 34);
+assert.equal(names.length, 38);
+assert.equal(recording.length, 36);
 sameSet(names, BINDINGS.map(({ cName }) => cName));
 sameSet(names, Object.keys(WASM_SIGNATURES));
 sameSet([...names, "malloc", "free"], recipeExports);
-assert.equal(recipeExports.length, 38);
+assert.equal(recipeExports.length, 40);
 assert(recipe.includes('"-sALLOW_MEMORY_GROWTH=1"'));
 assert(recipe.includes('"HEAPU16"'));
 assert.equal((recipe.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1);
@@ -90,11 +90,11 @@ sameSet(Object.entries(PROTOCOLS).filter(([, p]) => p.kind === "sized-string").m
 ]);
 
 const verifyManifest = (candidate) => {
-  assert.equal(candidate.exports.length, 36);
+  assert.equal(candidate.exports.length, 38);
   sameSet(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(candidate.codes, C_DECLARATIONS.constants);
   assert.deepEqual(candidate.layouts, LAYOUTS);
-  assert.equal(Object.keys(candidate.layouts).length, 28);
+  assert.equal(Object.keys(candidate.layouts).length, 29);
   assert.deepEqual(candidate.wasm_width_bits, {
     bool: 8, uint8_t: 8, uint16_t: 16, int32_t: 32, uint32_t: 32, pointer: 32, double: 64,
   });
@@ -163,5 +163,5 @@ if (!process.argv.includes("--static-only")) {
 } else {
   console.log("Static-only: source implementations and built WASM checks not run");
 }
-console.log("PASS declarations 36, records 28, recording 34, ABI mutations 19/19, code swaps 4/4");
+console.log("PASS declarations 38, records 29, recording 36, ABI mutations 19/19, code swaps 4/4");
 console.log("PASS generated legal-empty, exact-total, sized-string and preserving-reader policies");

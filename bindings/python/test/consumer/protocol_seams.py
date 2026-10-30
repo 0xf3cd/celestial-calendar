@@ -864,6 +864,38 @@ def run_calendar_and_angle_payloads():
   print("PASS representable Gregorian/civil output years, including year zero; Date bridge limits unchanged")
 
 
+def run_utc_results():
+  utc = celestial.CivilDateTime(2026, 10, 28, 0.5)
+  actions = (
+    ("celestial_utc_to_jde", lambda: celestial.utc_to_jde(utc)),
+    ("celestial_jde_to_utc", lambda: celestial.jde_to_utc(2461342.0)),
+  )
+  for export, action in actions:
+    for kind, expected in ((1, ValueError), (2, celestial.CelestialError), (99, celestial.CelestialError)):
+      with bindings(
+        **{
+          export: lambda *args: SimpleNamespace(valid=False),
+          "celestial_last_error_kind": lambda kind=kind: kind,
+          "celestial_last_error": lambda: b"",
+        }
+      ):
+        raises(expected, action)
+    with bindings(**{export: lambda *args: SimpleNamespace(valid=False)}):
+      assert not raises(celestial.CelestialError, action).recorded
+
+  for value in (math.nan, math.inf):
+    with bindings(celestial_utc_to_jde=lambda *args, value=value: SimpleNamespace(valid=True, value=value)):
+      assert not raises(celestial.CelestialError, actions[0][1]).recorded
+  for field, bad in (("year", 32768), ("month", 13), ("day", 32), ("fraction", math.nan), ("fraction", 1.0)):
+    fields = dict(valid=True, year=2026, month=10, day=28, fraction=0.5)
+    fields[field] = bad
+    with bindings(celestial_jde_to_utc=lambda *args, fields=fields: SimpleNamespace(**fields)):
+      assert not raises(celestial.CelestialError, actions[1][1]).recorded
+  with bindings(celestial_jde_to_utc=lambda *args: _abi.CelestialUTCTime(True, 400, 12, 31, 0.9)):
+    assert celestial.jde_to_utc(1867522.5) == celestial.CivilDateTime(400, 12, 31, 0.9)
+  print("PASS UTC conversion error kinds, malformed successes and year-400 decoding")
+
+
 def main():
   with bindings(celestial_last_error_kind=lambda: 0, celestial_last_error=lambda: b""):
     run_errors()
@@ -871,6 +903,7 @@ def main():
     run_count_fill()
     run_export_protocols()
     run_calendar_and_angle_payloads()
+    run_utc_results()
     run_capability_subjects()
     run_selectors()
     run_positions()

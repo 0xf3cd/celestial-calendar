@@ -47,6 +47,17 @@ def happy_celestial_jde_to_ut1() -> None:
   assert result.valid and (result.year, result.month, result.day) == (2024, 6, 1)
 
 
+def happy_celestial_utc_to_jde() -> None:
+  result = call("utc_to_jde", 2026, 10, 28, 0.5)
+  assert result.valid and abs(result.value - (2461342.0 + 69.184 / 86400.0)) < 1e-9
+
+
+def happy_celestial_jde_to_utc() -> None:
+  result = call("jde_to_utc", 1867522.5)
+  assert result.valid and (result.year, result.month, result.day) == (400, 12, 31)
+  assert 0.0 <= result.fraction < 1.0
+
+
 def happy_celestial_sun_apparent_geocentric_coord() -> None:
   result = call("sun_apparent_geocentric_coord", 2460463.0)
   assert result.valid and 0.0 <= result.lon < 360.0 and result.r > 0.0
@@ -218,6 +229,16 @@ def edge_celestial_ut1_to_jde() -> None:
 
 def edge_celestial_jde_to_ut1() -> None:
   assert not call("jde_to_ut1", NAN).valid and _binding.last_error_text()
+
+
+def edge_celestial_utc_to_jde() -> None:
+  assert not call("utc_to_jde", 2024, 2, 30, 0.5).valid
+  assert call("last_error_kind") == 1 and _binding.last_error_text()
+
+
+def edge_celestial_jde_to_utc() -> None:
+  assert not call("jde_to_utc", NAN).valid
+  assert call("last_error_kind") == 1 and _binding.last_error_text()
 
 
 def edge_celestial_sun_apparent_geocentric_coord() -> None:
@@ -591,6 +612,8 @@ EXPORT_LABELS = (
   "ut1_to_jd",
   "ut1_to_jde",
   "jde_to_ut1",
+  "utc_to_jde",
+  "jde_to_utc",
   "sun_apparent_geocentric_coord",
   "moon_apparent_geocentric_coord",
   "moon_illumination",
@@ -839,7 +862,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 36
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 38
   assert set(HAPPY_TESTS) == set(EDGE_TESTS) == set(_binding.BINDING_SPECS)
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)

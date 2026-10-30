@@ -32,6 +32,16 @@ class CelestialUT1Time(ctypes.Structure):
   ]
 
 
+class CelestialUTCTime(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("year", ctypes.c_int32),
+    ("month", ctypes.c_uint32),
+    ("day", ctypes.c_uint32),
+    ("fraction", ctypes.c_double),
+  ]
+
+
 class CelestialSunCoordinate(ctypes.Structure):
   _fields_ = [
     ("valid", ctypes.c_bool),
@@ -307,6 +317,8 @@ BINDING_SPECS = {
   "celestial_ut1_to_jd": ((ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double), CelestialJulianDay),
   "celestial_ut1_to_jde": ((ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double), CelestialJulianDay),
   "celestial_jde_to_ut1": ((ctypes.c_double,), CelestialUT1Time),
+  "celestial_utc_to_jde": ((ctypes.c_int32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_double), CelestialJulianDay),
+  "celestial_jde_to_utc": ((ctypes.c_double,), CelestialUTCTime),
   "celestial_sun_apparent_geocentric_coord": ((ctypes.c_double,), CelestialSunCoordinate),
   "celestial_moon_apparent_geocentric_coord": ((ctypes.c_double,), CelestialMoonCoordinate),
   "celestial_moon_illumination": ((ctypes.c_double,), CelestialMoonIllumination),
@@ -449,6 +461,7 @@ BINDING_SPECS = {
 STRUCT_TYPES = {
   "CelestialJulianDay": CelestialJulianDay,
   "CelestialUT1Time": CelestialUT1Time,
+  "CelestialUTCTime": CelestialUTCTime,
   "CelestialSunCoordinate": CelestialSunCoordinate,
   "CelestialMoonCoordinate": CelestialMoonCoordinate,
   "CelestialMoonIllumination": CelestialMoonIllumination,
@@ -482,6 +495,8 @@ RECORDING_EXPORTS = frozenset(
     "celestial_ut1_to_jd",
     "celestial_ut1_to_jde",
     "celestial_jde_to_ut1",
+    "celestial_utc_to_jde",
+    "celestial_jde_to_utc",
     "celestial_sun_apparent_geocentric_coord",
     "celestial_moon_apparent_geocentric_coord",
     "celestial_moon_illumination",
@@ -546,6 +561,19 @@ C_SIGNATURES = {
   ),
   "celestial_jde_to_ut1": (
     "CelestialUT1Time",
+    ("double",),
+  ),
+  "celestial_utc_to_jde": (
+    "CelestialJulianDay",
+    (
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+    ),
+  ),
+  "celestial_jde_to_utc": (
+    "CelestialUTCTime",
     ("double",),
   ),
   "celestial_sun_apparent_geocentric_coord": (
@@ -894,6 +922,15 @@ C_PARAMETERS = {
   "celestial_jde_to_ut1": [
     "jde",
   ],
+  "celestial_utc_to_jde": [
+    "y",
+    "m",
+    "d",
+    "fraction",
+  ],
+  "celestial_jde_to_utc": [
+    "jde_tt",
+  ],
   "celestial_sun_apparent_geocentric_coord": [
     "jde",
   ],
@@ -1098,6 +1135,14 @@ PROTOCOLS = {
     "error_channel": "kind",
   },
   "celestial_jde_to_ut1": {
+    "kind": "struct",
+    "error_channel": "kind",
+  },
+  "celestial_utc_to_jde": {
+    "kind": "struct",
+    "error_channel": "kind",
+  },
+  "celestial_jde_to_utc": {
     "kind": "struct",
     "error_channel": "kind",
   },

@@ -44,6 +44,24 @@ print(today, lunar)
 `GregorianDate.from_date()` 只接受日期，不接受 `datetime`；示例先选固定偏移，再显式调用 `.date()`，
 库不会替调用者丢弃时间或偏移。各阴历算法的日期基准与年域不同，见[阴历算法](#lunar-algorithms)。
 
+<a id="utc-conversions"></a>
+### UTC 输入与 UTC+8 输出
+
+1.1.0 起提供 `utc_to_jde()` 和 `jde_to_utc()`，沿用 C++ 的转换规则：1972 年前用 UT1 替代，
+闰秒附近不能保证可逆，未来日期保留闰秒表的最后偏移。
+
+```python
+import celestial_calendar as celestial
+
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+jde_tt = celestial.utc_to_jde(utc)
+print(celestial.jde_to_utc(jde_tt))
+```
+
+从 UTC 输入查询下一个节气、再显示为东八区时间，见
+[完整可运行示例](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)。
+该指南也列出了正反向各自的准入范围与不可逆边界。
+
 <a id="next-jieqi"></a>
 ### 下一个节气，还剩多少天
 

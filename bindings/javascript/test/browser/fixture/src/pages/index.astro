@@ -51,11 +51,17 @@
               && error.message.includes("cannot be represented");
           }
           const lichun = alias.jieqi.moment(2024, alias.Jieqi.LICHUN);
+          const utcInput = primaryDate.dateToCivilUtc(new Date("2026-10-28T19:35:37Z"));
+          const utcJde = alias.time.utcToJde(utcInput);
+          const utcRoundtrip = celestial.time.jdeToUtc(utcJde);
           if ("config" in celestial || !(celestial.sun.apparentGeocentricCoordinate(jdeTt).distanceAu > 0)) {
             throw new Error("public logging/distance migration");
           }
           window.__CELESTIAL_RESULT__ = {
             translated,
+            utcJde,
+            utcRoundtripIso: primaryDate.civilUtcToDate(utcRoundtrip).toISOString(),
+            utcLowerYear: alias.time.jdeToUtc(1867522.5).year,
             sharedExports: Object.keys(celestial).join() === Object.keys(alias).join()
               && Object.keys(primaryDate).join() === Object.keys(aliasDate).join()
               && Object.keys(celestial).every((key) => celestial[key] === alias[key])

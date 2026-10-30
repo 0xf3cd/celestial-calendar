@@ -37,6 +37,13 @@ ABI_FIELD(CelestialUT1Time, month, uint32_t, 8);
 ABI_FIELD(CelestialUT1Time, day, uint32_t, 12);
 ABI_FIELD(CelestialUT1Time, fraction, double, 16);
 
+ABI_RECORD(CelestialUTCTime, 24, 8);
+ABI_FIELD(CelestialUTCTime, valid, bool, 0);
+ABI_FIELD(CelestialUTCTime, year, int32_t, 4);
+ABI_FIELD(CelestialUTCTime, month, uint32_t, 8);
+ABI_FIELD(CelestialUTCTime, day, uint32_t, 12);
+ABI_FIELD(CelestialUTCTime, fraction, double, 16);
+
 ABI_RECORD(CelestialSunCoordinate, 32, 8);
 ABI_FIELD(CelestialSunCoordinate, valid, bool, 0);
 ABI_FIELD(CelestialSunCoordinate, lon, double, 8);
@@ -297,6 +304,12 @@ _Static_assert(_Generic(&celestial_ut1_to_jde,
 _Static_assert(_Generic(&celestial_jde_to_ut1,
                CelestialUT1Time (*)(double): 1,
                default: 0) != 0, "celestial_jde_to_ut1 signature drifted");
+_Static_assert(_Generic(&celestial_utc_to_jde,
+               CelestialJulianDay (*)(int32_t, uint32_t, uint32_t, double): 1,
+               default: 0) != 0, "celestial_utc_to_jde signature drifted");
+_Static_assert(_Generic(&celestial_jde_to_utc,
+               CelestialUTCTime (*)(double): 1,
+               default: 0) != 0, "celestial_jde_to_utc signature drifted");
 _Static_assert(_Generic(&celestial_sun_apparent_geocentric_coord,
                CelestialSunCoordinate (*)(double): 1,
                default: 0) != 0, "celestial_sun_apparent_geocentric_coord signature drifted");
