@@ -58,3 +58,21 @@ def test_one_isolated_version_reaches_cli_wheel_and_staged_npm(tmp_path, monkeyp
     assert manifest["version"] == version and "private" not in manifest
     if name == build_npm.ALIAS_NAME:
       assert manifest["dependencies"] == {build_npm.PACKAGE_NAME: version}
+
+
+def test_stable_package_metadata_keeps_source_documentation_links():
+  project = tomllib.loads((ROOT / "bindings/python/pyproject.toml").read_text(encoding="utf-8"))["project"]
+  repository = "https://github.com/0xf3cd/celestial-calendar"
+  assert "Development Status :: 5 - Production/Stable" in project["classifiers"]
+  assert not any("Beta" in classifier for classifier in project["classifiers"])
+  assert project["requires-python"] == ">=3.11"
+  assert project["urls"]["Documentation"] == f"{repository}/blob/main/bindings/python/README.md"
+  assert project["urls"]["Repository"] == repository
+  assert project["urls"]["Issues"] == f"{repository}/issues"
+  primary = build_npm.staging_manifest("1.0.0")
+  alias = build_npm.staging_manifest("1.0.0", build_npm.ALIAS_NAME)
+  for manifest in (primary, alias):
+    assert manifest["homepage"] == repository
+    assert manifest["bugs"] == f"{repository}/issues"
+    assert manifest["keywords"] == [*project["keywords"], "webassembly"]
+  assert primary["keywords"] == alias["keywords"]

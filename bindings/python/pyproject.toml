@@ -9,9 +9,10 @@ description = "Astronomical calculations and Chinese calendar conversion powered
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+keywords = ["astronomy", "chinese-calendar", "lunar-calendar", "jieqi", "ephemeris"]
 authors = [{ name = "Ningqi Wang (0xf3cd)", email = "nq.maigre@gmail.com" }]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Operating System :: MacOS :: MacOS X",
@@ -27,6 +28,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/0xf3cd/celestial-calendar"
+Documentation = "https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README.md"
 Repository = "https://github.com/0xf3cd/celestial-calendar"
 Issues = "https://github.com/0xf3cd/celestial-calendar/issues"
 

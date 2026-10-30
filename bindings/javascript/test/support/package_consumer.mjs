@@ -16,6 +16,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { runDocExamples } from "./doc_examples.mjs";
+
 export async function runPackageConsumer({ dependencies, packageName, expectedVersion, installArgs, prefix, success, typeCompiler, npmCli }) {
   const consumer = await mkdtemp(join(tmpdir(), prefix));
   const cache = join(consumer, "npm-cache");
@@ -125,6 +127,8 @@ console.log(JSON.stringify({ fraction: value.fraction, operation: "moon.illumina
     assert.deepEqual(utcOutput.stdout.trim().split(/\r?\n/), [
       "立冬", "UTC: 2026-11-07 09:52", "UTC+8: 2026-11-07 17:52",
     ]);
+
+    await runDocExamples(consumer, packageName);
 
     if (typeCompiler !== undefined) {
       const typeRoot = new URL("../types/", import.meta.url);

@@ -7,6 +7,8 @@ The lunar headers retain their English and Chinese descriptions; the rest is pri
 
 Read each function's units, time scale and supported range before using it. A civil date is not
 an instant, and UT1 and TT inputs are not interchangeable.
+For lunar/ΔT sources, maintenance status, date bases and model selection, see
+[Lunar algorithms and Delta T models](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALGORITHMS.md).
 
 For installation, examples and Python/JavaScript package guides, see the
 [repository README](https://github.com/0xf3cd/celestial-calendar/blob/main/README.md).

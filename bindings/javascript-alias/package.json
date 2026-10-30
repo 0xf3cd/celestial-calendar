@@ -24,6 +24,9 @@
     "url": "git+https://github.com/0xf3cd/celestial-calendar.git",
     "directory": "bindings/javascript-alias"
   },
+  "homepage": "https://github.com/0xf3cd/celestial-calendar",
+  "bugs": "https://github.com/0xf3cd/celestial-calendar/issues",
+  "keywords": ["astronomy", "chinese-calendar", "lunar-calendar", "jieqi", "ephemeris", "webassembly"],
   "license": "MIT",
   "publishConfig": { "access": "public" },
   "dependencies": { "@0xf3cd/celestial": "0.0.0-development" }

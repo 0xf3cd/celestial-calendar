@@ -24,6 +24,7 @@ def main() -> None:
     "abi/verify.py",
     "abi/raw_protocol.py",
     "consumer/smoke.py",
+    "consumer/doc_examples.py",
     "consumer/golden_replay.py",
     "consumer/events_replay.py",
     "consumer/chart_snapshot.py",

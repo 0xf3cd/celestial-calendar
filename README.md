@@ -19,8 +19,8 @@ For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); th
 <a id="install"></a>
 ## Install and examples
 
-Pick a language. Each section installs the package and runs one standalone example: the next Jieqi after a
-supplied UT1 instant. The package guides carry more examples and the full contracts.
+Pick a language. Each section runs one standalone query for the 2026 winter solstice.
+The package guides carry more examples and the full contracts.
 
 <a id="python"></a>
 ### Python
@@ -38,32 +38,26 @@ installation. Importing neither searches system libraries nor downloads a fallba
 Each Python block is a standalone program for `example.py` in your application directory. Run it with
 `python example.py` in the environment where the package is installed.
 
-**Next Jieqi and remaining days**
-
-The reference instant is explicitly supplied as **2026-12-31 00:00 UT1**, not taken from the current clock.
-Query every Jieqi in both 2026 and 2027, sort by actual UT1 moment, and select the first strictly later event.
-The enum starts at Lichun (立春), not the first event in a Gregorian year.
+Query winter solstice, Dongzhi (冬至), and print its UT1 calendar date:
 
 ```python
 import celestial_calendar as celestial
 
-cutoff_ut1 = celestial.CivilDateTime(2026, 12, 31, 0)
-cutoff_jd = celestial.ut1_to_jd(cutoff_ut1)
-events = [celestial.jieqi_moment(year, jieqi) for year in (2026, 2027) for jieqi in celestial.Jieqi]
-ordered = sorted(events, key=lambda event: celestial.ut1_to_jd(event.moment_ut1))
-upcoming = next(event for event in ordered if celestial.ut1_to_jd(event.moment_ut1) > cutoff_jd)
-remaining_days = celestial.ut1_to_jd(upcoming.moment_ut1) - cutoff_jd
-print(celestial.jieqi_name(upcoming.jieqi))
-print("UT1:", upcoming.moment_ut1)
-print("Remaining UT1 days:", remaining_days)
+event = celestial.jieqi_moment(2026, celestial.Jieqi.DONGZHI)
+moment = event.moment_ut1
+print(f"{celestial.jieqi_name(event.jieqi)} (UT1): {moment.year:04d}-{moment.month:02d}-{moment.day:02d}")
 ```
 
-The difference between two UT1 Julian Days retains fractional days; subtracting calendar dates would lose the
-time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
-API domain. Jieqi queries accept years in `[401, 32766]`, but an in-range calculation can still fail if it cannot
-produce a unique moment. A returned UT1 year can differ from the query year.
+Expected output:
 
-`moment_ut1` is not UTC or a UTC+8 wall clock. Establish the time-scale conversion before displaying either.
+```text
+冬至 (UT1): 2026-12-21
+```
+
+`moment_ut1` is UT1, not UTC or a UTC+8 wall clock. For local-time display, follow the
+[UTC input → Jieqi → UTC+8 guide](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
+Jieqi queries accept years in `[401, 32766]`, but an in-range calculation can still fail if it cannot produce
+a unique moment. A returned UT1 year can differ from the query year.
 
 Today's lunar date, Gregorian / lunar round trips and the complete chart snapshot are in the
 [Python package guide](bindings/python/README.md).
@@ -86,32 +80,20 @@ Call and await `init()` before using calculation methods, which then run synchro
 calls share one initialization promise, resolving to `undefined`. A failed load preserves the loader's original
 rejection, and a later explicit call may retry.
 
-**Next Jieqi and remaining days**
-
-As in the Python example, the supplied cutoff is **2026-12-31 00:00 UT1**. No `Date` timestamp is treated as UT1.
+The same winter-solstice query produces the expected output shown above:
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
 
 await celestial.init();
-const cutoffUt1 = { year: 2026, month: 12, day: 31, fraction: 0 };
-const cutoffJd = celestial.time.ut1ToJd(cutoffUt1);
-const upcoming = [2026, 2027]
-  .flatMap((year) => Object.values(celestial.Jieqi).map((jieqi) => {
-    const event = celestial.jieqi.moment(year, jieqi);
-    return { ...event, jdUt1: celestial.time.ut1ToJd(event.momentUt1) };
-  }))
-  .filter((event) => event.jdUt1 > cutoffJd)
-  .sort((a, b) => a.jdUt1 - b.jdUt1)[0];
-if (upcoming === undefined) throw new Error("No later Jieqi in the queried years.");
-console.log(celestial.jieqi.name(upcoming.jieqi));
-console.log("UT1:", upcoming.momentUt1);
-console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const event = celestial.jieqi.moment(2026, celestial.Jieqi.DONGZHI);
+const { year, month, day } = event.momentUt1;
+const date = [year, month, day].map((value, index) => String(value).padStart(index === 0 ? 4 : 2, "0")).join("-");
+console.log(`${celestial.jieqi.name(event.jieqi)} (UT1): ${date}`);
 ```
 
-This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
-UT1 days. `momentUt1` is UT1; the example scope, query-year domain and failure conditions are the same as
-in the Python example.
+`momentUt1` is UT1, not UTC; the query-year domain and failure conditions are the same as in Python.
+Use the [UTC/Jieqi guide](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8) for UTC+8 display.
 
 Today's lunar date, the fixed-offset date round trip and the chart snapshot are in the
 [JavaScript package guide](bindings/javascript/README.md).
@@ -332,15 +314,11 @@ an accuracy ranking: Algo1 keeps Hong Kong Observatory labels, Algo2 computes da
 window, and Algo3 combines the two. Read a domain from the library rather than copying it:
 `celestial_get_supported_lunar_year_range` in C, `supported_lunar_year_range()` in Python, `lunar.supportedYearRange()` in
 JavaScript, and `START_YEAR` / `END_YEAR` of each `calendar::lunar::algoN` in C++. Each algorithm's source, domain
-and date basis are described in the [Python](bindings/python/README.md#lunar-algorithms) and
-[JavaScript](bindings/javascript/README.md#lunar-algorithms) package guides and in
-[`algo1.hpp`](src/calendar/lunar/algo1.hpp), [`algo2.hpp`](src/calendar/lunar/algo2.hpp) and
-[`algo3.hpp`](src/calendar/lunar/algo3.hpp).
+and date basis are described in [Lunar algorithms](docs/ALGORITHMS.md#lunar-algorithms).
 
 For ΔT (TT minus UT1, in seconds), use the default, Algo5 (the current project model); select one of the frozen
 Algo1 to Algo4 only to compare with that earlier model. Sources and hard year domains are listed in the
-[Python](bindings/python/README.md#delta-t-models) and [JavaScript](bindings/javascript/README.md#delta-t-models)
-package guides and in [`delta_t.hpp`](src/astro/delta_t.hpp).
+[Delta T models](docs/ALGORITHMS.md#delta-t-models).
 
 Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
 `celestial_apparent_solar_time()` / Python `apparent_solar_time()` / JavaScript `sun.apparentSolarTime()` take civil UTC.

@@ -197,54 +197,13 @@ python checks.py --provenance
 <a id="ci-jobs"></a>
 ## CI Jobs and Local Commands
 
-`core_tests.yml` runs on every push and on pull requests from forks. `build_and_test.yml`, `python-wheel.yml` and
-`wasm.yml` run on pull requests to `main` and on manual dispatch; `random_soak.yml` runs weekly. Run the local
-commands from the source root in the build virtual environment. Workflow files and local composite actions own
-the tool versions; the Windows STL exception is described under [Toolchain Feature Tracking](#todo).
-
-| Workflow · job | What CI runs | Local command |
-|---|---|---|
-| `core_tests.yml` · `api-docs` | `project.py --docs`; uploads `celestial-api-html` | `python project.py --docs` ([API Documentation](#api-docs)) |
-| `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--provenance`, `--signature-layout`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](#lint)); the workflow pins the Ruff version |
-| `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | The local `native-build` action runs `project.py --clean --cmake --cores all --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table` and `--export-surface` | The same build command with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
-| `core_tests.yml` · `sanitizers` | An ASan + UBSan build, then every binary in `build/test/` run directly, with the test count reconciled against the `TEST` / `TEST_F` macros | Build with the job's `CXXFLAGS` and `python project.py --clean --cmake --build`, then run the reconciliation in [`AGENTS.md`](../AGENTS.md) ("Acceptance: run the binaries, and reconcile the count") |
-| `core_tests.yml` · `self-contained-headers` (libstdc++, libc++, MSVC STL) | `checks.py --self-contained` | `python checks.py --self-contained`, for the local standard library only |
-| `core_tests.yml` · `cxx-feature-probe` (same three) | `checks.py --features <leg>` | `python checks.py --features` ([Toolchain Feature Tracking](#todo)) |
-| `build_and_test.yml` · `linux-docker` (amd64, arm64) | The `Dockerfile` build and test in a pinned manylinux image, then install-layout checks | CI only |
-| `build_and_test.yml` · `macos`, `windows` | `project.py --clean --cmake --cores all --build --test -v 1`, then `cmake --install` with library-name and SOVERSION checks; Windows also enforces its link evidence | Build and test: `python project.py --all`. Install and link-evidence checks: CI only |
-| `python-wheel.yml` · `manylinux` (x86_64, aarch64), `macos-arm64`, `windows-amd64` | `cibuildwheel` with the workflow's settings, an inspection of the repaired wheel, then `bindings/python/test/run_all.py` against the installed wheel from an unrelated directory; the manylinux x86_64 job also runs `bindings/python/test/types/consumer.py` | Release wheels: CI only ([Python Wheels](#python-wheels)). To rerun the tests, install a wheel from [CI artifacts](#artifacts), then run `run_all.py`, and `types/consumer.py` with `bindings/python/requirements-mypy.txt` installed, from a directory outside the checkout |
-| `python-wheel.yml` · `macos-14-floor` | The macOS arm64 wheel from the same run, installed and tested on macOS 14 | CI only |
-| `wasm.yml` · `wasm` | The four build commands, Node package and type tests, Chrome and Firefox smoke tests, then Node consumers on the minimum supported version | The build and test commands in [WebAssembly and npm Packages](#wasm) |
-| `wasm.yml` · `node-consumer` (Windows, macOS) | The pair of packages from the same run, installed and tested without another build | CI only |
-| `random_soak.yml` (three soak jobs) | The same `native-build` action with the run ID as `CELESTIAL_TEST_SEED`, then a direct RNG-using binary invocation that checks its reported seed | `CELESTIAL_TEST_SEED=<run ID> python project.py --test` replays a failure |
-| `random_soak.yml` · `weekly-cxx-feature-probe` (three platforms) | `checks.py --features <leg>` on weekly and manual runs, in addition to the per-PR probes | `python checks.py --features` |
-| `release.yml`, `release-rehearsal.yml`, `claude.yml`, `claude-review.yml` | Release and review automation | CI only; releases follow [`RELEASING.md`](RELEASING.md) |
+See the [CI jobs and local-command map](MAINTAINING.md#ci-jobs) in the maintenance guide.
 
 <a id="artifacts"></a>
 ## CI Artifact Downloads
 
-This section is for contributors and for maintainers who run CI. Users should take the
-[public release downloads](#releases), which need no token. In GitHub, open the native,
-[WASM](https://github.com/0xf3cd/celestial-calendar/actions/workflows/wasm.yml) or
-[Python wheel](https://github.com/0xf3cd/celestial-calendar/actions/workflows/python-wheel.yml) workflow you need,
-and download the artifacts from a completed run that built the target commit.
-
-For automated downloads, use `toolbox/artifact_downloader.py`. From the source root, in an environment with the
-`Requirements.txt` dependencies installed, supply GitHub authentication through the `GITHUB_TOKEN` environment
-variable and run:
-
-```sh
-python3 toolbox/artifact_downloader.py -s build/artifacts --unzip
-python3 toolbox/artifact_downloader.py --help
-```
-
-By default it selects successful `workflow_dispatch` runs that built the local checkout's HEAD and validates
-their complete native, WASM and Python artifact inventories. PR and push runs are not eligible for that lookup.
-To select the three producers explicitly, supply `--native-run-id`, `--wasm-run-id` and `--python-run-id` together.
-These IDs must also identify successful `workflow_dispatch` runs of the expected workflows built from HEAD.
-Alternatively, `-id` downloads a single run without release-inventory validation; it can also download PR runs.
-`-s` is required and names the destination directory; without `--unzip` the archives stay zipped. `--help`
-documents the remaining options. The tool can also be called as `python3 -m toolbox.artifact_downloader`.
+Contributor downloads and authenticated automation are in [CI artifact downloads](MAINTAINING.md#artifacts).
+Ordinary users can use the [public release downloads](#releases), which need no token.
 
 <a id="releases"></a>
 ## Release Downloads
@@ -261,16 +220,4 @@ not complete a release.
 <a id="todo"></a>
 ## Toolchain Feature Tracking
 
-The code waits for full toolchain support before it adopts:
-
-- modules;
-- ranges extensions such as `std::views::enumerate` / `pairwise`;
-- `std::generator` in the moon_phase / jieqi Newton iterations.
-
-`./checks.py --features` checks these features by actually compiling them. CI runs it against libstdc++, libc++
-and the MSVC STL separately, and reports when a toolchain already supports a feature while the code still keeps
-its hand-written replacement, so this list does not go stale.
-
-Windows uses the hosted runner's MSVC STL with the pinned LLVM compiler. The STL is not separately exact-pinned;
-CI reports compiler versions and capability results; native link evidence records the selected toolchain and
-libraries. Header or capability regressions still fail their gates. macOS compiling jobs select Xcode 26.
+See [toolchain feature tracking](MAINTAINING.md#todo) for pending features and the compiler probes.

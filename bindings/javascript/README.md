@@ -349,20 +349,9 @@ apart the two can be.
 <a id="lunar-algorithms"></a>
 ### Lunar Algorithms
 
-Gregorian inputs and outputs are calendar-date labels on the selected algorithm's basis, not instants.
-Choose the source and compatibility role you need, not an assumed accuracy ranking:
-
-| Algorithm | Source and status | Lunar-year domain | Selection role |
-|---|---|---|---|
-| `"algo1"` | Published Hong Kong Observatory date labels, stored as a table | `[1901, 2099]` | HKO almanac compatibility |
-| `"algo2"` | Computed from VSOP87D and truncated ELP2000-82B | `[410, 2500]` | Astronomical construction over the wider computed window |
-| `"algo3"` | Baked hybrid: algo1/HKO in 1901-2099, algo2-generated dates elsewhere | `[1600, 2199]` | Table lookup with HKO compatibility in the overlapping years |
-
-Algo2 assigns dates by rendering TT moments in the library's modelled UTC
-([time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)) and then applying
-a fixed eight-hour eastward offset. Algo1 preserves HKO's published labels rather than imposing this rule on their
-history; algo3 inherits the basis of each source slice. The 2500 ceiling is the computed algorithm's enforced
-civil-date domain, not a physical limit of VSOP87D or ELP2000-82B.
+Select `"algo1"`, `"algo2"` or `"algo3"`. Gregorian inputs and outputs are calendar-date labels, not instants.
+For sources, date bases, Lunar-year domains and selection roles, see
+[Lunar algorithms](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALGORITHMS.md#lunar-algorithms).
 
 `lunar.supportedYearRange(algorithm)` queries the native algorithm's inclusive range of lunar years, not Gregorian
 January-to-December bounds. `lunar.yearInfo(algorithm, year)` returns the Gregorian `firstDay`, the traditional
@@ -390,19 +379,9 @@ cannot represent that date, so it throws `RangeError`; `lunar.yearInfo("algo1", 
 ### Delta T Models
 
 `time.deltaT(year, model)` returns TT minus UT1 in seconds for a finite decimal Gregorian year.
-The default is the current project model; the named older models allow historical comparison:
-
-| Model | Source and status | Hard year domain | Selection role |
-|---|---|---|---|
-| `"default"`, `"algo5"` | Current project model: algo2 before 2005; IERS Bulletin A fit from 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.41); then anchored, corrected Morrison et al. (2021) integrated-LOD extrapolation | No model-specific bound | Current project calculations |
-| `"algo1"` | Xu Jianwei's 2008 model, frozen | `year >= -4000` | Comparison with that historical model |
-| `"algo2"` | Espenak and Meeus, NASA/TP-2006-214141, frozen | No model-specific bound | NASA polynomial comparison; live pre-2005 branch of algo3, algo4, and algo5 |
-| `"algo3"` | Fred Espenak's 2014 eclipse canon, frozen | `year < 3000` | Comparison with that later polynomial model |
-| `"algo4"` | IERS Bulletin A observations and USNO predictions, frozen | `year < 2035` | Comparison with the previous project fit/prediction model |
-
-"Frozen" describes model maintenance, not dead code: algo2 still supplies the pre-2005 values used by the current
-default. A hard domain is an input contract, not an accuracy claim. Fitted residuals and test tolerances are not
-statistical error guarantees, and an unbounded model does not promise useful accuracy at arbitrary years.
+Omit `model` or pass `"default"` to select Algo5; `"algo1"` through `"algo5"` select a model explicitly.
+Sources, maintenance status, hard domains and selection roles are in
+[Delta T models](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALGORITHMS.md#delta-t-models).
 
 <a id="license"></a>
 ## License

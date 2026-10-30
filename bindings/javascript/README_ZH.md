@@ -320,8 +320,8 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 <a id="lunar-algorithms"></a>
 ### 阴历算法
 
-公历输入与输出都是所选算法日期基准下的日期标签，不是瞬间。各算法的来源、阴历年域、选用场景与日期基准见英文版的
-[Lunar Algorithms](README.md#lunar-algorithms)。
+用 `"algo1"`、`"algo2"` 或 `"algo3"` 选择算法。公历输入与输出是日期标签，不是瞬间。
+各算法的来源、阴历年域、选用场景与日期基准见[阴历算法（英文）](../../docs/ALGORITHMS.md#lunar-algorithms)。
 
 `lunar.supportedYearRange(algorithm)` 查询原生算法包含两端的**阴历年**范围，而非公历一月至十二月的边界。
 `lunar.yearInfo(algorithm, year)` 返回公历 `firstDay`、传统 `leapMonth` 月号或 `null`，
@@ -345,8 +345,9 @@ console.log(restored.toISOString(), restored.getTime() === date.getTime());
 <a id="delta-t-models"></a>
 ### Delta T 模型
 
-`time.deltaT(year, model)` 对有限的十进制公历年返回 TT − UT1 的秒数。各模型的来源、硬年域与选用场景见英文版的
-[Delta T Models](README.md#delta-t-models)。
+`time.deltaT(year, model)` 对有限的十进制公历年返回 TT − UT1 的秒数。
+省略 `model` 或传 `"default"` 均选 Algo5；也可显式选 `"algo1"` 至 `"algo5"`。
+各模型的来源、维护状态、硬年域与选用场景见 [Delta T 模型（英文）](../../docs/ALGORITHMS.md#delta-t-models)。
 
 <a id="license"></a>
 ## 许可证
