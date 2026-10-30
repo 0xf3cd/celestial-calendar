@@ -124,8 +124,8 @@ The date bridge does not convert clock UTC to UT1 or TT. For the lunar date basi
 ### UTC and JDE(TT) conversions
 
 `time.utcToJde()` and `time.jdeToUtc()` are available from 1.1.0. Before 1972 they treat UTC civil fields as UT1
-with fixed Algo5; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
-invertible. After the leap table's last entry, these conversions retain its final offset.
+using Algo5, the fixed ΔT model; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
+invertible. After the leap table's last entry, these conversions retain its final TT-minus-UTC offset.
 
 ```js
 import { init, time } from "@0xf3cd/celestial";

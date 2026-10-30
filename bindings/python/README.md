@@ -50,8 +50,8 @@ different date bases and year windows; see [Lunar algorithms](#lunar-algorithms)
 ### UTC and JDE(TT) conversions
 
 `utc_to_jde()` and `jde_to_utc()` are available from 1.1.0. Before 1972 they treat UTC civil fields as UT1
-with fixed Algo5; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
-invertible. After the leap table's last entry, these conversions retain its final offset.
+using Algo5, the fixed ΔT model; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
+invertible. After the leap table's last entry, these conversions retain its final TT-minus-UTC offset.
 
 ```python
 import celestial_calendar as celestial

@@ -10,7 +10,7 @@ They convert time scales; adding a timezone offset is a separate display operati
 | Python | `utc_to_jde(CivilDateTime(...))` | `jde_to_utc(jde)` |
 | JavaScript | `time.utcToJde(civil)` | `time.jdeToUtc(jde)` |
 
-The C forward result is `CelestialJulianDay`; the inverse returns the independent `CelestialUTCTime`
+The C forward result is `CelestialJulianDay`; the inverse returns a `CelestialUTCTime`
 record by value. Check `valid`, then read `celestial_last_error_kind()` and `celestial_last_error()` on failure;
 neither reader clears the recorded error.
 Python returns a float or a frozen `CivilDateTime`. JavaScript returns a number or an owned
@@ -30,8 +30,9 @@ Civil records do not carry a time scale themselves: the conversion name specifie
   queries retain their stricter policy and reject pre-1972 UTC input.
 - From 1972 onward the existing leap-second table applies. Its final row is 2017-01-01; later dates
   retain TT minus UTC = 69.184 seconds. This is a library policy, not a forecast of future UTC.
-- `23:59:60` cannot be represented. The inserted-second TT interval maps into the next civil second
-  and is not invertible. Julian-day rounding at midnight when the leap-table offset steps can also
+- `23:59:60` cannot be represented. A JDE inside the TT interval corresponding to that leap second
+  converts to the next civil second. Converting that result back to JDE does not recover the original input.
+  Julian-day rounding at midnight when the leap-table offset steps can also
   make a UTC → JDE → UTC result one second later than its input.
 - The historical/modern seam is about 68 ms and is non-monotone: stepping forward across the last
   millisecond of 1971 can move JDE backward. Do not assume exact roundtrips at the seam or leap steps.
@@ -63,9 +64,10 @@ UTC+8: 2026-11-07 17:52
 
 The input goes through UTC-to-JDE. Existing Jieqi queries return **UT1**, so each event goes through
 UT1-to-JDE before comparison. Only the selected JDE goes through JDE-to-UTC; then the application
-formats it with a fixed +8-hour offset. No chart, location, house computation or caller-owned leap table runs.
+formats it with a fixed +8-hour offset. The examples use the library's leap table, with no chart query,
+location or house computation.
 
-The examples enumerate both the input year and the following year and sort by moment, since the Jieqi
+The examples enumerate both the input year and the following year and select by moment, since the Jieqi
 enum starts at Lichun, not January. This is a contemporary example. The public Jieqi result is derived
 from a TT instant via UT1; converting it back to TT is not guaranteed to reproduce that instant in remote eras.
 Jieqi queries accept years `[401, 32766]`, so a two-year scan's first query year must be in `[401, 32765]`.

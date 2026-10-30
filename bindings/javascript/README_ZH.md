@@ -111,8 +111,8 @@ console.log(gregorian, lunar);
 <a id="utc-conversions"></a>
 ### UTC 与 JDE(TT) 转换
 
-1.1.0 起提供 `time.utcToJde()` 和 `time.jdeToUtc()`。1972 年前按 UT1 处理 UTC 字段，使用固定 Algo5；
-星盘查询仍拒绝 1972 年前的 UTC。闰秒边界不能保证可逆；超过闰秒表最后一项的日期保留该项偏移。
+1.1.0 起提供 `time.utcToJde()` 和 `time.jdeToUtc()`。1972 年前按 UT1 处理 UTC 字段，使用固定的 ΔT 模型 Algo5；
+星盘查询仍拒绝 1972 年前的 UTC。闰秒边界不能保证可逆；超过闰秒表最后一项的日期保留该项的 TT−UTC 偏移。
 
 ```js
 import { init, time } from "@0xf3cd/celestial";
