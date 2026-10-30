@@ -99,12 +99,6 @@ def _read(repo_root: Path, relative: str) -> str:
   return (repo_root / relative).read_text(encoding="utf-8")
 
 
-def _test_block(text: str, marker: str) -> str:
-  start = text.index(marker)
-  end = text.find("\nTEST(", start + len(marker))
-  return text[start:] if end == -1 else text[start:end]
-
-
 def _normalized_comment_text(text: str) -> str:
   uncommented = (re.sub(r"^\s*(?://|#)\s?", "", line) for line in text.splitlines())
   return " ".join(" ".join(uncommented).split())

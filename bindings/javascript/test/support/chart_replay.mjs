@@ -31,9 +31,10 @@ export const chartExampleInput = (example) => {
   };
 };
 
-// Replay acceptance margins, the same values as bindings/python/test/consumer/chart_replay.py; they are not accuracy
-// bounds. Their source is in docs/VALIDATION.md#replay-margins.
+// Replay acceptance margins for the stored snapshot, not physical accuracy bounds.
+// See docs/VALIDATION.md#replay-margins.
 export function assertChartReplay(actual, expected) {
+  const margins = expected.replay_margins;
   const residuals = {};
   const keys = (value, expectedKeys, label) => check(
     Object.keys(value).sort().join() === [...expectedKeys].sort().join(), `${label} fields`,
@@ -47,29 +48,29 @@ export function assertChartReplay(actual, expected) {
   };
   keys(actual, ["times", "bodies", "houses"], "chart");
   keys(actual.times, ["jdUt1", "jdeTt"], "times");
-  close("jdUt1", actual.times.jdUt1, expected.times.jd_ut1, 1e-9);
-  close("jdeTt", actual.times.jdeTt, expected.times.jde_tt, 1e-9);
+  close("jdUt1", actual.times.jdUt1, expected.times.jd_ut1, margins.time_days);
+  close("jdeTt", actual.times.jdeTt, expected.times.jde_tt, margins.time_days);
   check(actual.bodies.length === 14 && expected.bodies.length === 14, "chart body count");
   for (const [index, body] of actual.bodies.entries()) {
     const stored = expected.bodies[index];
     keys(body, ["target", "longitudeDeg", "latitudeDeg", "distanceAu", "longitudeRateDegPerTtDay"], `body${index}`);
     check(body.target === chartLabel(stored.target), `target identity at ${index}`);
-    close("longitudeDeg", body.longitudeDeg, stored.longitude_deg, 1e-8, true);
-    close("latitudeDeg", body.latitudeDeg, stored.latitude_deg, 1e-8);
-    close("longitudeRateDegPerTtDay", body.longitudeRateDegPerTtDay, stored.longitude_rate_deg_per_tt_day, 1e-9);
+    close("longitudeDeg", body.longitudeDeg, stored.longitude_deg, margins.position_deg, true);
+    close("latitudeDeg", body.latitudeDeg, stored.latitude_deg, margins.position_deg);
+    close("longitudeRateDegPerTtDay", body.longitudeRateDegPerTtDay, stored.longitude_rate_deg_per_tt_day, margins.rate_deg_per_tt_day);
     if (stored.distance_au === null) check(body.distanceAu === null, `node distance at ${index}`);
     else {
       check(body.distanceAu !== null, `body distance at ${index}`);
-      close("distanceAu", body.distanceAu, stored.distance_au, 1e-10);
+      close("distanceAu", body.distanceAu, stored.distance_au, margins.distance_au);
     }
   }
   keys(actual.houses, ["ascendantDeg", "midheavenDeg", "descendantDeg", "imumCoeliDeg", "cuspsDeg"], "houses");
   for (const name of ["ascendant", "midheaven", "descendant", "imumCoeli"]) {
     const storedName = name === "imumCoeli" ? "imum_coeli" : name;
-    close(`${name}Deg`, actual.houses[`${name}Deg`], expected.houses[`${storedName}_deg`], 1e-5, true);
+    close(`${name}Deg`, actual.houses[`${name}Deg`], expected.houses[`${storedName}_deg`], margins.house_deg, true);
   }
   check(actual.houses.cuspsDeg.length === 12 && expected.houses.cusps_deg.length === 12, "chart cusp count");
-  actual.houses.cuspsDeg.forEach((value, index) => close("cuspsDeg", value, expected.houses.cusps_deg[index], 1e-5, true));
+  actual.houses.cuspsDeg.forEach((value, index) => close("cuspsDeg", value, expected.houses.cusps_deg[index], margins.house_deg, true));
   return residuals;
 }
 

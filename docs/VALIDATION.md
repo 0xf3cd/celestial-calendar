@@ -66,9 +66,8 @@ hand-maintained target roster.
 
 [`docs/examples/chart_snapshot/data.json`](examples/chart_snapshot/data.json) stores one complete chart snapshot.
 The automation tests replay it through the C++ core, the installed Python package through the C ABI, and the
-JavaScript package tests through WASM. Each field is held to one of five absolute margins in
-[`bindings/python/test/consumer/chart_replay.py`](../bindings/python/test/consumer/chart_replay.py);
-`bindings/javascript/test/support/chart_replay.mjs` uses the same values.
+JavaScript package tests through WASM. Each field is held to one of five absolute margins in the fixture's
+`replay_margins` object. The Python and JavaScript replay helpers both read those values from the stored payload.
 
 These are replay acceptance margins. They bound how far a fresh run may drift from the stored values; they do not
 say how close the positions are to the sky. That evidence comes from the external references above.

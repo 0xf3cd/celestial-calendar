@@ -466,10 +466,6 @@ def main(argv: list[str] | None = None) -> int:
   )
   p_cmp.add_argument("--sample", default=None)
   p_cmp.set_defaults(func=cmd_compare_sample)
-  # Legacy name; omit help= so argparse does not print a sentinel string.
-  p_legacy = sub.add_parser("compare-all")
-  p_legacy.add_argument("--sample", default=None)
-  p_legacy.set_defaults(func=cmd_compare_sample)
 
   args = parser.parse_args(argv)
   return args.func(args)

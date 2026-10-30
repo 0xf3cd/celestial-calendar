@@ -99,6 +99,29 @@ export default async () => {
     const call = (input = civil, config = options) => fixture.chart.snapshot(input, config);
     const offset = (layout, name) => manifest.layouts[layout].fields.find((item) => item.name === name).offset;
     const scenarios = {
+      sharedReplayMargins() {
+        const cases = [
+          ["time_days", ["times", "jdUt1"]],
+          ["time_days", ["times", "jdeTt"]],
+          ["position_deg", ["bodies", 2, "longitudeDeg"]],
+          ["position_deg", ["bodies", 2, "latitudeDeg"]],
+          ["distance_au", ["bodies", 2, "distanceAu"]],
+          ["rate_deg_per_tt_day", ["bodies", 2, "longitudeRateDegPerTtDay"]],
+          ["house_deg", ["houses", "ascendantDeg"]],
+          ["house_deg", ["houses", "midheavenDeg"]],
+          ["house_deg", ["houses", "descendantDeg"]],
+          ["house_deg", ["houses", "imumCoeliDeg"]],
+          ["house_deg", ["houses", "cuspsDeg", 0]],
+        ];
+        for (const [margin, path] of cases) {
+          const actual = call(), expected = structuredClone(example);
+          const owner = path.slice(0, -1).reduce((value, key) => value[key], actual);
+          owner[path.at(-1)] += 4 * expected.replay_margins[margin];
+          assert.throws(() => assertChartReplay(actual, expected), /replay residual/);
+          expected.replay_margins[margin] *= 8;
+          assertChartReplay(actual, expected);
+        }
+      },
       dispatch() {
         assertChartReplay(call(), example);
         call({ year: 2026, month: 3, day: 17, fraction: 0.123 }, {

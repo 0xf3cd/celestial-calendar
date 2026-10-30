@@ -29,10 +29,8 @@ else:
 
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
-UPSTREAM_ROOT: Final[str] = "https://ftp.imcce.fr/pub/ephem/planets/vsop87"
 CHECK_SOURCE_SHA256: Final[str] = "f8fa52449262be05a22a96840c1acbad0b35c8999e00b5c0477ba8a91a67a51a"
 CHECK_GENERATED_PATH: Final[Path] = Path("src/test/astro/vsop87d_check_data.hpp")
-CHECK_GENERATED_SHA256: Final[str] = "8bdedcccb48e6d0dcbd2d3e18430738d6ef4a45295e9149be53c72b93017308f"
 CHECK_DATA_SHA256: Final[str] = "baaa7bb6bdc9ee4ca5cb48afa692d0369b666788db10cf0539552166ba158a78"
 GENERATED_DATA_SHA256: Final[dict[str, str]] = {
   "mercury": "8760419d9b6ff7f55f43266f71b77dd31cf881f42470e1d360711c2fc891661b",
