@@ -30,6 +30,17 @@
         {"name": "fraction", "type": "double", "offset": 16}
       ]
     },
+    "CelestialUTCTime": {
+      "size": 24,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "year", "type": "int32_t", "offset": 4},
+        {"name": "month", "type": "uint32_t", "offset": 8},
+        {"name": "day", "type": "uint32_t", "offset": 12},
+        {"name": "fraction", "type": "double", "offset": 16}
+      ]
+    },
     "CelestialSunCoordinate": {
       "size": 32,
       "alignment": 8,
@@ -413,6 +424,20 @@
       "name": "celestial_jde_to_ut1",
       "signature": "CelestialUT1Time celestial_jde_to_ut1(double jde)",
       "return": {"kind": "struct", "layout": "CelestialUT1Time"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_utc_to_jde",
+      "signature": "CelestialJulianDay celestial_utc_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction)",
+      "return": {"kind": "struct", "layout": "CelestialJulianDay"},
+      "protocol": {"kind": "struct", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_jde_to_utc",
+      "signature": "CelestialUTCTime celestial_jde_to_utc(double jde_tt)",
+      "return": {"kind": "struct", "layout": "CelestialUTCTime"},
       "protocol": {"kind": "struct", "error_channel": "kind"},
       "recording": true
     },

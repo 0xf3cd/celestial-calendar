@@ -108,6 +108,27 @@ console.log(gregorian, lunar);
 
 日期桥接不把时钟 UTC 转成 UT1 或 TT；阴历日期基准与算法年域见[阴历算法](#lunar-algorithms)。
 
+<a id="utc-conversions"></a>
+### UTC 与 JDE(TT) 转换
+
+1.1.0 起提供 `time.utcToJde()` 和 `time.jdeToUtc()`。1972 年前按 UT1 处理 UTC 字段，使用固定的 ΔT 模型 Algo5；
+星盘查询仍拒绝 1972 年前的 UTC。闰秒边界不能保证可逆；超过闰秒表最后一项的日期保留该项的 TT−UTC 偏移。
+
+```js
+import { init, time } from "@0xf3cd/celestial";
+
+await init();
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const jdeTt = time.utcToJde(utc);
+console.log(time.jdeToUtc(jdeTt));
+```
+
+`fraction` 是日小数（`0.5` 表示正午）。JDE 用浮点数计日，转换回来的民用时刻可能与输入有微小差异。
+
+从 UTC 输入查询下一个节气、再显示为东八区时间，见
+[附 Python 和 JavaScript 可运行程序的指南](../../docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)。
+该指南也列出了正反向各自可接受的输入范围与不可逆边界。
+
 <a id="next-jieqi"></a>
 ### 下一个节气，还剩多少天
 

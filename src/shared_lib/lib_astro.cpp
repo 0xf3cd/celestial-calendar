@@ -83,6 +83,48 @@ auto celestial_jde_to_ut1(const double jde) -> CelestialUT1Time {
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- y/m/d/fraction is the published civil-date order.
+auto celestial_utc_to_jde(const int32_t y, const uint32_t m, const uint32_t d, const double fraction) -> CelestialJulianDay {
+  return lib::wrap_export(__func__, [=]() -> CelestialJulianDay {
+    // Check the input year before a TT shift can carry year zero into year one.
+    if (y < 1) {
+      throw std::invalid_argument { std::format("Year {} is out of range [1, 32767].", y) };
+    }
+
+    const auto ymd = util::to_ymd(
+      util::checked_year(y),
+      m,
+      d
+    );
+    const auto utc_dt = calendar::Datetime(ymd, fraction);
+    const double jde_tt = astro::julian_day::utc_to_jde(utc_dt);
+
+    return {
+      .valid = true,
+      .value = jde_tt,
+    };
+  });
+}
+
+
+auto celestial_jde_to_utc(const double jde_tt) -> CelestialUTCTime {
+  return lib::wrap_export(__func__, [=]() -> CelestialUTCTime {
+    const auto utc_dt = astro::julian_day::jde_to_utc(jde_tt);
+
+    const auto [y, m, d] = util::from_ymd(utc_dt.ymd);
+    const double fraction = utc_dt.fraction();
+
+    return {
+      .valid    = true,
+      .year     = y,
+      .month    = m,
+      .day      = d,
+      .fraction = fraction,
+    };
+  });
+}
+
+
 #pragma endregion
 
 

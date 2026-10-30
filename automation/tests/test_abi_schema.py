@@ -119,7 +119,7 @@ def compiled_layout(tmp_path_factory):
 def test_current_header_manifest_and_generated_records_agree_with_actual_compiler(compiled_layout):
   structs, ground = compiled_layout
   schema, measured = abi_layout.runtime_layout(abi_layout.load_abi())
-  assert len(structs) == len(schema) == 28
+  assert len(structs) == len(schema) == 29
   assert not abi_layout.compare_layouts(structs, schema, ground, measured=measured)
   manifest = json.loads((ABI / "manifest.json").read_text())
   for name, record in manifest["layouts"].items():
@@ -133,7 +133,7 @@ def test_current_header_manifest_and_generated_records_agree_with_actual_compile
 
 def test_declarations_do_not_load_a_library(monkeypatch):
   monkeypatch.setattr(ctypes, "CDLL", lambda *args, **kwargs: pytest.fail("declarations loaded a native library"))
-  assert len(abi_layout.load_abi().BINDING_SPECS) == 36
+  assert len(abi_layout.load_abi().BINDING_SPECS) == 38
 
 
 def test_foreign_return_record_is_not_accepted_as_a_matching_layout():
@@ -241,7 +241,7 @@ def test_declaration_seams_keep_owner_identity(native_verifier, monkeypatch):
 def test_shared_parser_routes_and_exact_metadata(native_verifier):
   header = HEADER.read_text()
   exports = native_verifier.parse_header_exports(header)
-  assert len(exports) == 36 and not export_surface.self_test_parser()
+  assert len(exports) == 38 and not export_surface.self_test_parser()
   assert export_surface.parse_declarations(header) == [(name, True) for name in exports]
   manifest = json.loads((ABI / "manifest.json").read_text())
   native_verifier.verify_record_layouts(manifest["layouts"], native_verifier.parse_header_layouts(header))

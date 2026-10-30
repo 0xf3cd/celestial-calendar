@@ -274,6 +274,20 @@ const jdeToUt1 = (jde) => {
   return readCivilResult(value, operation);
 };
 
+const utcToJde = (utc) => {
+  const operation = "time.utcToJde";
+  requireModule(operation);
+  const value = nativeCivilDateTime(utc, "utc");
+  return callSret("celestial_utc_to_jde", operation, [value.year, value.month, value.day, value.fraction]).value;
+};
+
+const jdeToUtc = (jde) => {
+  const operation = "time.jdeToUtc";
+  requireModule(operation);
+  const value = callSret("celestial_jde_to_utc", operation, [finiteNumber(jde, "jde")]);
+  return readCivilResult(value, operation);
+};
+
 const localApparentSiderealTime = (jdUt1, longitudeDeg) => {
   const operation = "time.localApparentSiderealTime";
   requireModule(operation);
@@ -638,7 +652,7 @@ const snapshot = (civil, options) => {
   }
 };
 
-export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, localApparentSiderealTime, deltaT });
+export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, utcToJde, jdeToUtc, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
   apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,
   longitudeCrossings,

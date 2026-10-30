@@ -329,6 +329,27 @@ def jde_to_ut1(jde: float) -> CivilDateTime:
   return _protocol.decode("jde_to_ut1", _civil_result, result)
 
 
+def utc_to_jde(utc: CivilDateTime) -> float:
+  """Convert UTC civil fields to JDE(TT), using UT1 with fixed Algo5 before 1972.
+
+  Input years are in [1, 32767]; the shifted TT instant must stay representable.
+  Modern dates use the fixed leap-second table, retaining its final offset afterward.
+  Leap seconds and the 1972 model seam are not generally invertible.
+  """
+  return _number(_result("celestial_utc_to_jde", "utc_to_jde", *_civil_datetime(utc, "utc")).value, "utc_to_jde")
+
+
+def jde_to_utc(jde: float) -> CivilDateTime:
+  """Convert JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields.
+
+  Before 1972 the result uses the UT1 substitute with fixed Algo5; year 400 is possible.
+  After the table's last entry, its final offset is retained. Leap seconds, leap-step midnight
+  round-off and the 1972 model seam do not promise an exact inverse.
+  """
+  result = _result("celestial_jde_to_utc", "jde_to_utc", _finite(jde, "jde"))
+  return _protocol.decode("jde_to_utc", _civil_result, result)
+
+
 def sun_apparent_geocentric_coordinate(jde: float) -> SunCoordinate:
   """Return the Sun's apparent ecliptic position at JDE(TT), in degrees and AU."""
   operation = "sun_apparent_geocentric_coordinate"
@@ -872,6 +893,7 @@ __all__ = [
   "house_capability",
   "house_query",
   "jde_to_ut1",
+  "jde_to_utc",
   "jieqi_moment",
   "jieqi_name",
   "local_apparent_sidereal_time",
@@ -894,4 +916,5 @@ __all__ = [
   "supported_lunar_year_range",
   "ut1_to_jd",
   "ut1_to_jde",
+  "utc_to_jde",
 ]

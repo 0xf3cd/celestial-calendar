@@ -4,6 +4,8 @@
   "celestial_ut1_to_jd",
   "celestial_ut1_to_jde",
   "celestial_jde_to_ut1",
+  "celestial_utc_to_jde",
+  "celestial_jde_to_utc",
   "celestial_sun_apparent_geocentric_coord",
   "celestial_moon_apparent_geocentric_coord",
   "celestial_moon_illumination",

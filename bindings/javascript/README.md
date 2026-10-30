@@ -120,6 +120,29 @@ console.log(gregorian, lunar);
 The date bridge does not convert clock UTC to UT1 or TT. For the lunar date basis and algorithm year domains, see
 [Lunar Algorithms](#lunar-algorithms).
 
+<a id="utc-conversions"></a>
+### UTC and JDE(TT) conversions
+
+`time.utcToJde()` and `time.jdeToUtc()` are available from 1.1.0. Before 1972 they treat UTC civil fields as UT1
+using Algo5, the fixed ΔT model; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
+invertible. After the leap table's last entry, these conversions retain its final TT-minus-UTC offset.
+
+```js
+import { init, time } from "@0xf3cd/celestial";
+
+await init();
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const jdeTt = time.utcToJde(utc);
+console.log(time.jdeToUtc(jdeTt));
+```
+
+`fraction` is a fraction of a day (`0.5` is noon). JDE is a floating-point day count, so the converted civil
+fields can differ slightly from the input.
+
+For UTC input → next Jieqi → UTC+8 display, see the
+[guide with runnable Python and JavaScript programs](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
+It also gives the separate forward/inverse input domains and noninvertible boundaries.
+
 <a id="next-jieqi"></a>
 ### Next Jieqi and Remaining Days
 

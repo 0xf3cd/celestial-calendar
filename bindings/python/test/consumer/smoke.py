@@ -15,10 +15,13 @@ from __future__ import annotations
 import datetime
 import importlib
 import math
+import os
+import subprocess
 import sys
 from contextlib import ExitStack, contextmanager
 from dataclasses import FrozenInstanceError
 from importlib import resources
+from pathlib import Path
 from types import SimpleNamespace
 
 import celestial_calendar as celestial
@@ -94,6 +97,10 @@ def run_happy_paths() -> None:
   checks.append("ut1_to_jde")
   assert celestial.jde_to_ut1(2451545.0).year == 2000
   checks.append("jde_to_ut1")
+  assert math.isfinite(celestial.utc_to_jde(celestial.CivilDateTime(2026, 10, 28, 0.5)))
+  checks.append("utc_to_jde")
+  assert celestial.jde_to_utc(1867522.5).year == 400
+  checks.append("jde_to_utc")
   assert celestial.sun_apparent_geocentric_coordinate(2451545.0).distance_au > 0.0
   checks.append("sun_apparent_geocentric_coordinate")
   assert celestial.moon_apparent_geocentric_coordinate(2451545.0).distance_km > 0.0
@@ -191,7 +198,7 @@ def run_happy_paths() -> None:
       assert dispatch == [(year, 0), (year, 0), (year, 5)]
   checks.append("delta_t")
 
-  assert len(checks) == len(set(checks)) == 21
+  assert len(checks) == len(set(checks)) == 23
   print(f"PASS public functions {len(checks)}/{len(checks)}")
 
 
@@ -201,6 +208,8 @@ def run_validation_guards() -> None:
     ("ut1_to_jd", lambda: celestial.ut1_to_jd(celestial.CivilDateTime(2024, 1, 1, True)), TypeError),
     ("ut1_to_jde", lambda: celestial.ut1_to_jde(celestial.CivilDateTime(2023, 2, 29, 0.0)), ValueError),
     ("jde_to_ut1", lambda: celestial.jde_to_ut1(float("nan")), ValueError),
+    ("utc_to_jde", lambda: celestial.utc_to_jde(celestial.CivilDateTime(2024, 1, 1, True)), TypeError),
+    ("jde_to_utc", lambda: celestial.jde_to_utc(float("nan")), ValueError),
     ("sun_apparent_geocentric_coord", lambda: celestial.sun_apparent_geocentric_coordinate(float("inf")), ValueError),
     ("moon_apparent_geocentric_coord", lambda: celestial.moon_apparent_geocentric_coordinate(False), TypeError),
     ("moon_illumination", lambda: celestial.moon_illumination("2451545"), TypeError),
@@ -722,6 +731,7 @@ def run_value_contract() -> None:
     "house_query",
     "house_capability",
     "jde_to_ut1",
+    "jde_to_utc",
     "jieqi_moment",
     "jieqi_name",
     "local_apparent_sidereal_time",
@@ -744,6 +754,7 @@ def run_value_contract() -> None:
     "supported_lunar_year_range",
     "ut1_to_jd",
     "ut1_to_jde",
+    "utc_to_jde",
   }
   assert not hasattr(celestial, "solar_longitude_roots")
   assert not hasattr(celestial, "last_error")
@@ -758,6 +769,117 @@ def run_value_contract() -> None:
   raises(ValueError, lambda: celestial._finite(10**1000, "value"))
   raises(TypeError, lambda: celestial._finite(celestial.Jieqi.YUSHUI, "value"))
   print("PASS frozen values and public surface")
+
+
+def run_utc_conversions() -> None:
+  """Pin the inherited conversion policy without assuming a global exact inverse."""
+  for year in (1900, 1972, 2026, 2100, 32767):
+    value = celestial.CivilDateTime(year, 6, 1, 0.56789)
+    jde = celestial.utc_to_jde(value)
+    result = celestial.jde_to_utc(jde)
+    tolerance = 2e-4 if year == 32767 else 1e-4
+    assert abs((celestial.ut1_to_jd(result) - celestial.ut1_to_jd(value)) * 86400.0) < tolerance
+    raw = _binding.call("celestial_utc_to_jde", year, 6, 1, value.fraction)
+    assert raw.valid and raw.value == jde
+    raw_result = _binding.call("celestial_jde_to_utc", jde)
+    assert raw_result.valid and (result.year, result.month, result.day, result.fraction) == (
+      raw_result.year,
+      raw_result.month,
+      raw_result.day,
+      raw_result.fraction,
+    )
+
+  for year in (401, 1900):
+    historical = celestial.CivilDateTime(year, 6, 1, 0.56789)
+    assert celestial.utc_to_jde(historical) == celestial.ut1_to_jde(historical)
+    historical_jde = celestial.utc_to_jde(historical)
+    assert celestial.jde_to_utc(historical_jde) == celestial.jde_to_ut1(historical_jde)
+  for year in (2017, 2026, 2100):
+    value = celestial.CivilDateTime(year, 1, 1, 0.5)
+    assert abs((celestial.utc_to_jde(value) - celestial.ut1_to_jd(value)) * 86400.0 - 69.184) < 1e-4
+
+  seam_before = celestial.CivilDateTime(1971, 12, 31, 1 - 0.001 / 86400)
+  seam_after = celestial.CivilDateTime(1972, 1, 1, 0.0)
+  assert abs((celestial.utc_to_jde(seam_after) - celestial.utc_to_jde(seam_before)) * 86400 + 0.067) < 1e-4
+  for value in (
+    celestial.CivilDateTime(1971, 12, 31, 1 - 0.1 / 86400),
+    celestial.CivilDateTime(1972, 1, 1, 0.1 / 86400),
+  ):
+    result = celestial.jde_to_utc(celestial.utc_to_jde(value))
+    assert abs((celestial.ut1_to_jd(result) - celestial.ut1_to_jd(value)) * 86400) < 1e-4
+
+  for year, month in ((1972, 7), (1973, 1), (2017, 1)):
+    midnight = datetime.date(year, month, 1)
+    previous = midnight - datetime.timedelta(days=1)
+    for day, fraction in ((previous, 1 - 0.001 / 86400), (midnight, 0.001 / 86400)):
+      value = celestial.CivilDateTime(day.year, day.month, day.day, fraction)
+      result = celestial.jde_to_utc(celestial.utc_to_jde(value))
+      assert abs((celestial.ut1_to_jd(result) - celestial.ut1_to_jd(value)) * 86400) < 1e-4
+    value = celestial.CivilDateTime(year, month, 1, 0.0)
+    jde = celestial.utc_to_jde(value)
+    result = celestial.jde_to_utc(jde)
+    raw = _binding.call("celestial_jde_to_utc", jde)
+    assert (result.year, result.month, result.day, result.fraction) == (raw.year, raw.month, raw.day, raw.fraction)
+    gap = (celestial.ut1_to_jd(result) - celestial.ut1_to_jd(value)) * 86400
+    assert abs(gap) < 1e-4 or abs(gap - 1) < 1e-4
+
+  before = celestial.utc_to_jde(celestial.CivilDateTime(2016, 12, 31, 86399 / 86400))
+  after = celestial.utc_to_jde(celestial.CivilDateTime(2017, 1, 1, 0.0))
+  assert abs((after - before) * 86400 - 2) < 1e-4
+  inserted = before + 1.5 / 86400
+  collapsed = celestial.jde_to_utc(inserted)
+  assert (collapsed.year, collapsed.month, collapsed.day) == (2017, 1, 1)
+  assert abs(collapsed.fraction * 86400 - 0.5) < 1e-4
+  assert abs((celestial.utc_to_jde(collapsed) - inserted) * 86400 - 1) < 1e-4
+
+  first = celestial.utc_to_jde(celestial.CivilDateTime(1, 1, 1, 0.0))
+  assert first < 1867522.5
+  raises(ValueError, lambda: celestial.jde_to_utc(first))
+  assert celestial.jde_to_utc(1867522.5).year == 400
+  assert celestial.jde_to_utc(math.nextafter(13689325.5, -math.inf)).year == 32767
+  for jde in (math.nextafter(1867522.5, -math.inf), 13689325.5, math.nan, math.inf, -math.inf):
+    raises(ValueError, lambda jde=jde: celestial.jde_to_utc(jde))
+  for year, month, day, fraction in (
+    (0, 1, 1, 0.0),
+    (0, 12, 31, 0.999),
+    (-4000, 1, 1, 0.0),
+    (32768, 1, 1, 0.0),
+    (2024, 2, 30, 0.0),
+    (2024, 257, 1, 0.0),
+    (2024, 1, 257, 0.0),
+    (2024, 0, 1, 0.0),
+    (2024, 1, 0, 0.0),
+    (2024, 2**32 - 1, 1, 0.0),
+    (2024, 1, 2**32 - 1, 0.0),
+    (2024, 4, 31, 0.0),
+    (2023, 2, 29, 0.5),
+    (1900, 2, 29, 0.5),
+    *((2024, 1, 1, fraction) for fraction in (-1e-300, 1.0, math.nan, math.inf, -math.inf)),
+    (32767, 12, 31, 0.9999999),
+  ):
+    raises(
+      ValueError, lambda y=year, m=month, d=day, f=fraction: celestial.utc_to_jde(celestial.CivilDateTime(y, m, d, f))
+    )
+  for value in (True, "2451545", historical):
+    raises(TypeError, lambda value=value: celestial.jde_to_utc(value))
+  raises(TypeError, lambda: celestial.utc_to_jde(datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)))
+  assert celestial.utc_to_jde(celestial.CivilDateTime(2024, 1, 1, -0.0)) == celestial.utc_to_jde(
+    celestial.CivilDateTime(2024, 1, 1, 0.0)
+  )
+  assert math.isfinite(celestial.utc_to_jde(celestial.CivilDateTime(32767, 12, 31, 0.0)))
+  leap = celestial.jde_to_utc(celestial.utc_to_jde(celestial.CivilDateTime(2024, 2, 29, 0.5)))
+  assert (leap.year, leap.month, leap.day) == (2024, 2, 29)
+  print("PASS UTC conversions: raw parity, history, seam, leap edges, inserted second, fixed future offset and domains")
+  example = Path(__file__).resolve().parents[4] / "docs/examples/utc_jieqi/example.py"
+  executed = subprocess.run(
+    [sys.executable, str(example)],
+    capture_output=True,
+    encoding="utf-8",
+    check=True,
+    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+  )
+  assert executed.stdout.splitlines() == ["立冬", "UTC: 2026-11-07 09:52", "UTC+8: 2026-11-07 17:52"]
+  print("PASS published UTC-input Jieqi example, including UTC+8 output")
 
 
 def run_event_wrappers() -> None:
@@ -799,6 +921,7 @@ def main() -> None:
   run_sun_crossing_failures()
   run_value_contract()
   run_event_wrappers()
+  run_utc_conversions()
 
 
 if __name__ == "__main__":

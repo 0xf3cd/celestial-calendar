@@ -46,6 +46,28 @@ print(today, lunar)
 the offset is deliberate: the library does not silently discard a time or timezone. The lunar algorithms use
 different date bases and year windows; see [Lunar algorithms](#lunar-algorithms).
 
+<a id="utc-conversions"></a>
+### UTC and JDE(TT) conversions
+
+`utc_to_jde()` and `jde_to_utc()` are available from 1.1.0. Before 1972 they treat UTC civil fields as UT1
+using Algo5, the fixed ΔT model; chart queries still reject pre-1972 UTC. Leap-second boundaries are not generally
+invertible. After the leap table's last entry, these conversions retain its final TT-minus-UTC offset.
+
+```python
+import celestial_calendar as celestial
+
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+jde_tt = celestial.utc_to_jde(utc)
+print(celestial.jde_to_utc(jde_tt))
+```
+
+`fraction` is a fraction of a day (`0.5` is noon). JDE is a floating-point day count, so the converted civil
+fields can differ slightly from the input.
+
+For UTC input → next Jieqi → UTC+8 display, see the
+[guide with runnable Python and JavaScript programs](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8).
+It also gives the separate forward/inverse input domains and noninvertible boundaries.
+
 <a id="next-jieqi"></a>
 ### Next Jieqi and remaining days
 
@@ -71,7 +93,7 @@ The difference between two UT1 Julian Days retains fractional days; subtracting 
 time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
 API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
 
-In these conversions `CivilDateTime` is explicitly UT1, and its last field is the day fraction: `0.5` means half a
+In the UT1 examples above, `CivilDateTime` is explicitly UT1, and its last field is the day fraction: `0.5` means half a
 day. `ut1_to_jde()` converts the same UT1 input to a TT-based JDE. `moment_ut1` is not UTC or a UTC+8 wall clock.
 Establish the time-scale conversion before displaying either.
 

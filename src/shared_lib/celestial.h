@@ -153,6 +153,40 @@ typedef struct CelestialUT1Time {
  */
 CELESTIAL_API CelestialUT1Time celestial_jde_to_ut1(double jde);
 
+/** @brief A UTC civil result; before 1972-01-01 its fields use the UT1 substitute. */
+typedef struct CelestialUTCTime {
+  bool     valid;    /* Indicates if the result is valid. */
+  int32_t  year;     /* The year; inverse conversion can return year 400. */
+  uint32_t month;    /* The month. */
+  uint32_t day;      /* The day. */
+  double   fraction; /* The fraction of the day, in the range [0.0, 1.0). */
+} CelestialUTCTime;
+
+/**
+ * @brief Convert UTC civil fields to TT-based Julian Ephemeris Day (JDE).
+ * @param y The year, in [1, 32767]; the shifted TT instant must also stay representable.
+ * @param m The month.
+ * @param d The day.
+ * @param fraction The fraction of the UTC day, in [0.0, 1.0); 23:59:60 is not representable.
+ * @returns A `CelestialJulianDay` struct containing JDE(TT).
+ * @note Before 1972-01-01 the input is treated as UT1 using fixed Algo5. Modern dates use the
+ *       fixed leap-second table, retaining its final offset after the last entry.
+ * @note The 1972 model seam and leap-second boundaries are not generally invertible.
+ * @see celestial_jde_to_utc
+ */
+CELESTIAL_API CelestialJulianDay celestial_utc_to_jde(int32_t y, uint32_t m, uint32_t d, double fraction);
+
+/**
+ * @brief Convert TT-based Julian Ephemeris Day (JDE) to UTC civil fields.
+ * @param jde_tt Finite JDE(TT) in [1867522.5, 13689325.5).
+ * @returns A `CelestialUTCTime` struct; the lower endpoint can return a date in year 400.
+ * @note Before 1972-01-01 the result uses the UT1 substitute with fixed Algo5. The final
+ *       leap-second offset is retained beyond the table; leap seconds and the 1972 seam
+ *       do not promise an exact inverse, including round-off at leap-step midnights.
+ * @see celestial_utc_to_jde
+ */
+CELESTIAL_API CelestialUTCTime celestial_jde_to_utc(double jde_tt);
+
 
 /* ---------- Sun and Moon Apparent Geocentric Position ---------- */
 

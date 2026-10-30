@@ -33,7 +33,7 @@ PINS = Path("src/shared_lib/c_header_check.c")
 
 def test_full_declaration_source_and_pointer_qualifiers():
   header = parse_header(ROOT / HEADER)
-  assert len(header.structs) == 28 and len(header.functions) == 36 and len(header.constants) == 63
+  assert len(header.structs) == 29 and len(header.functions) == 38 and len(header.constants) == 63
   selection = header.functions["celestial_positions"].parameters[0]
   assert selection.name == "target_codes" and selection.type.spelling() == "const uint32_t *"
   control = parse_header_text("CELESTIAL_API bool probe(const uint32_t * const input, double *output);")

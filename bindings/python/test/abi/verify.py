@@ -26,9 +26,9 @@ sys.path.insert(0, str(REPO))
 from automation.c_abi_schema import C_TO_CTYPES, parse_function, parse_header_text, record_layouts  # noqa: E402
 
 HEADER = REPO / "src/shared_lib/celestial.h"
-EXPECTED_EXPORT_COUNT = 36
-EXPECTED_LAYOUT_COUNT = 28
-EXPECTED_RECORDING_COUNT = 34
+EXPECTED_EXPORT_COUNT = 38
+EXPECTED_LAYOUT_COUNT = 29
+EXPECTED_RECORDING_COUNT = 36
 DECLARATION_SEAMS = ("BINDING_SPECS", "RECORDING_EXPORTS", "STRUCT_TYPES")
 READERS = {"celestial_last_error", "celestial_last_error_kind"}
 POINTEE_TYPES = {

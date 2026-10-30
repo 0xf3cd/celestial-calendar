@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- UTC civil time ↔ JDE(TT) in C (`celestial_utc_to_jde`, `celestial_jde_to_utc`, `CelestialUTCTime`),
+  Python (`utc_to_jde`, `jde_to_utc`) and JavaScript (`time.utcToJde`, `time.jdeToUtc`). These expose the
+  existing C++ conversions without changing their historical UT1 substitute, leap-second policy or domains.
+- Runnable Python and JavaScript [UTC-input Jieqi examples](UTC_CONVERSIONS.md) with UTC+8 display.
+
 ## [v1.0.0]
 
 ### Added

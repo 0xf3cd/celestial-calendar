@@ -185,6 +185,7 @@ export async function testFakeNative(entryUrl) {
     const civil = { year: 2024, month: 1, day: 1, fraction: 0.5 };
     for (const [action, yearField, resultYear] of [
       [() => fixture.time.jdeToUt1(2451545), "year", (value) => value.year],
+      [() => fixture.time.jdeToUtc(2451545), "year", (value) => value.year],
       [() => fixture.sun.apparentSolarTime(civil, 0), "year", (value) => value.year],
       [() => fixture.jieqi.moment(2024, 0), "y", (value) => value.momentUt1.year],
       [() => fixture.lunar.yearInfo("algo3", 2024), "year", (value) => value.firstDay.year],
@@ -298,6 +299,8 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     const options = { scale: "ut1", location: { latitudeDeg: 0, longitudeDeg: 0 }, system: "equal" };
     const allocations = [
       [() => fixture.time.ut1ToJd(civil), 1],
+      [() => fixture.time.utcToJde(civil), 1],
+      [() => fixture.time.jdeToUtc(2451545), 1],
       [phase, 1], [phase, 2],
       [() => fixture.sun.longitudeCrossings(2024, 0), 1],
       [() => fixture.sun.longitudeCrossings(2024, 0), 2],
@@ -363,6 +366,12 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     for (const [action, fieldName, value] of [
       [() => fixture.time.jdeToUt1(2451545), "month", 13],
       [() => fixture.time.jdeToUt1(2451545), "fraction", 1],
+      [() => fixture.time.utcToJde(civil), "value", NaN],
+      [() => fixture.time.utcToJde(civil), "value", Infinity],
+      [() => fixture.time.jdeToUtc(2451545), "month", 13],
+      [() => fixture.time.jdeToUtc(2451545), "day", 32],
+      [() => fixture.time.jdeToUtc(2451545), "fraction", NaN],
+      [() => fixture.time.jdeToUtc(2451545), "fraction", 1],
       [() => fixture.jieqi.moment(2024, 0), "jq_idx", 1],
       [() => fixture.lunar.fromGregorian("algo3", { year: 2024, month: 1, day: 1 }), "is_leap", 2],
       [() => fixture.sun.longitudeCrossings(2024, 0), "count", 3],
@@ -392,7 +401,17 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     fixture.time.ut1ToJd({ ...civil, year: 67562, month: 257 });
     assert.deepEqual(control.calls, [["celestial_ut1_to_jd", 67562, 257, 1, 0.5]], "full-width civil values reach native validation");
     assert.equal(control.live.size, 0);
-    console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 8 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps");
+    for (const action of [() => fixture.time.utcToJde(civil), () => fixture.time.jdeToUtc(2451545)]) {
+      for (const [kind, ErrorType] of [[1, RangeError], [2, fixture.CelestialError]]) {
+        reset({ failPass: "sret", errorKind: kind, message: "" });
+        assert.throws(action, ErrorType);
+        assert.equal(control.live.size, 0);
+      }
+      reset({ failPass: "sret", errorKind: 0 }); libraryError(action);
+    }
+    reset({ sretPayload: { year: 400, month: 12, day: 31, fraction: 0.9 } });
+    assert.equal(fixture.time.jdeToUtc(1867522.5).year, 400);
+    console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {
     delete globalThis.__celestialFakeFactory;
     delete globalThis.__celestialFakeLoad;
