@@ -111,7 +111,7 @@ def verify_provenance(record: dict) -> None:
   for key in ("package", "native"):
     path = Path(record[key]).resolve()
     assert path in files and path.is_relative_to(prefix), f"not an installed distribution member: {key}"
-    assert not path.is_relative_to(REPO), f"checkout import: {key}"
+    assert not path.is_relative_to(REPO / "bindings/python/src"), f"checkout import: {key}"
 
 
 def main() -> None:

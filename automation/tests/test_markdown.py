@@ -334,20 +334,49 @@ def test_python_program_rejects_checkout_cwd_before_writing_or_launching(python_
   assert not list(cwd.iterdir())
 
 
-def test_python_provenance_rejects_checkout_and_nonmember(python_reader, tmp_path):
-  package, native = tmp_path / "installed/__init__.py", tmp_path / "installed/native.so"
+@pytest.mark.parametrize("in_checkout", [False, True])
+def test_python_provenance_accepts_installed_venv_members(python_reader, tmp_path, monkeypatch, in_checkout):
+  checkout = tmp_path / "checkout"
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  prefix = (checkout if in_checkout else tmp_path) / "current-venv"
+  package = prefix / "lib/site-packages/celestial_calendar/__init__.py"
+  native = package.parent / "_native/native.so"
   record = {
     "package": str(package),
     "native": str(native),
-    "prefix": str(tmp_path),
+    "prefix": str(prefix),
     "files": [str(package), str(native)],
   }
   python_reader.verify_provenance(record)
-  with pytest.raises(AssertionError, match="distribution member"):
-    python_reader.verify_provenance({**record, "files": [str(package)]})
-  checkout = str(REPO / "bindings/python/src/celestial_calendar/__init__.py")
-  with pytest.raises(AssertionError, match="checkout import"):
-    python_reader.verify_provenance({**record, "package": checkout, "prefix": str(REPO), "files": [checkout]})
+
+
+@pytest.mark.parametrize("key", ["package", "native"])
+@pytest.mark.parametrize("fault", ["source", "nonmember", "wrong-prefix"])
+def test_python_provenance_rejects_source_nonmember_and_wrong_prefix(python_reader, tmp_path, monkeypatch, key, fault):
+  checkout = tmp_path / "checkout"
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  prefix = checkout / "current-venv"
+  package = prefix / "lib/site-packages/celestial_calendar/__init__.py"
+  native = package.parent / "_native/native.so"
+  record = {
+    "package": str(package),
+    "native": str(native),
+    "prefix": str(prefix),
+    "files": [str(package), str(native)],
+  }
+  python_reader.verify_provenance(record)
+  if fault == "source":
+    record[key] = str(checkout / "bindings/python/src/celestial_calendar" / Path(record[key]).name)
+    record["prefix"] = str(checkout)
+    record["files"] = [record["package"], record["native"]]
+  elif fault == "nonmember":
+    record["files"].remove(record[key])
+  else:
+    record[key] = str(checkout / "other-venv" / Path(record[key]).name)
+    record["files"] = [record["package"], record["native"]]
+  message = "checkout import" if fault == "source" else "distribution member"
+  with pytest.raises(AssertionError, match=f"{message}: {key}"):
+    python_reader.verify_provenance(record)
 
 
 @pytest.mark.parametrize("skip", [False, True])
