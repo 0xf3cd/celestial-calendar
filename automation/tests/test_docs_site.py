@@ -337,7 +337,9 @@ def test_source_identity_wins_over_relative_and_absolute_url_spelling(sources):
   assert site.rewrite_api(root, "symbol.html", raw, SHA, VERSION) == raw
 
 
-@pytest.mark.parametrize("suffix", ["", "/", "?tab=readme#cpp", "/?tab=readme#cpp", "/tree/main", "/tree/main/"])
+@pytest.mark.parametrize(
+  "suffix", ["", "/", "?tab=readme#cpp", "/?tab=readme#cpp", "/tree/main", "/tree/main/", "/blob/main"]
+)
 def test_repository_home_and_root_tree_name_the_hosted_readme(sources, monkeypatch, suffix):
   root = sources[0]
   monkeypatch.setattr(site, "GUIDES", (*site.GUIDES, "README.md"))
@@ -351,12 +353,26 @@ def test_repository_home_and_root_tree_name_the_hosted_readme(sources, monkeypat
   assert f"<code>{target}</code>" in api
 
 
-@pytest.mark.parametrize("suffix", ["", "/", "#cpp", "/tree/main/", "/blob/main/docs/API.md", "/tree/main/src/"])
+@pytest.mark.parametrize(
+  "suffix", ["", "/", "#cpp", "/tree/main/", "/blob/main/docs/API.md", "/tree/main/src/", "/blob/main"]
+)
 def test_crawl_rejects_every_live_source_spelling(sources, suffix):
   _, _, output = assemble(sources)
   page = output / "docs/guide.html"
   page.write_text(page.read_text().replace("</article>", f'<a href="{site.REPOSITORY}{suffix}">live</a></article>'))
   with pytest.raises(ValueError, match="unpinned source URL"):
+    site.crawl(output)
+
+
+def test_trailing_slash_blob_root_still_rejects_an_empty_file(sources):
+  root, _, output = assemble(sources)
+  target = site.REPOSITORY + "/blob/main/"
+  with pytest.raises(ValueError, match="repository source URL has no file"):
+    site.source_destination(root, "docs/guide.md", target, "docs/guide.html", SHA)
+  with pytest.raises(ValueError, match="repository source URL has no file"):
+    site.rewrite_api(root, "symbol.html", f'<a href="{target}">Empty</a>', SHA, VERSION)
+  (output / "index.html").write_text(f'<a href="{target}">Empty</a>')
+  with pytest.raises(ValueError, match="repository source URL has no file"):
     site.crawl(output)
 
 

@@ -186,7 +186,7 @@ def repository_source(target: str) -> str | None:
   route = url.path.removeprefix(repository.path)
   if route == url.path:
     return None
-  if route in ("", "/", "/tree/main", "/tree/main/"):
+  if route in ("", "/", "/tree/main", "/tree/main/", "/blob/main"):
     return "README.md"
   if route.startswith(("/blob/main/", "/tree/main/")):
     path = unquote(route.split("/", 3)[3])

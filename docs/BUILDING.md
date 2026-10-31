@@ -104,8 +104,9 @@ and `--all` unchanged. Core Tests uploads it as `celestial-docs-site`.
 
 Every page identifies the exact source SHA, package version and unreleased development state. The site
 describes that checkout, which may include APIs unavailable in the published packages. Its manifest records
-source inputs, generator versions and every output member's digest. The build checks all HTML links,
-fragments and assets at both the root and project subpath. It rejects dirty sources and linked output files.
+source inputs, generator versions and output digests, excluding the manifest itself. The build checks local
+HTML links, fragments and assets at both the root and project subpath; it does not check external destinations
+over the network. It rejects dirty sources and linked output files.
 
 Preview locally with `python -m http.server --bind 127.0.0.1 --directory build/docs-site 8000`, then open
 `http://127.0.0.1:8000/`. No hosted URL is advertised until deployment and external checks are complete.
