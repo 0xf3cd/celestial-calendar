@@ -5,8 +5,8 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 
 [English](README.md)
 
-本文描述当前源码，含尚未发布的改动；已发布的 0.x wheel 仍使用旧名称。
-运行这些源码示例前，请按下文从完整 checkout 构建本地 wheel。
+本文描述当前源码，含尚未发布的改动。安装命令取得最新已发布版本，请以所装版本的文档为准。
+运行当前源码示例，可先[构建本地 wheel](#build-a-local-wheel)。从 0.x 升级见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
 
 <a id="install"></a>
 ## 安装
@@ -94,7 +94,6 @@ print("Remaining UT1 days:", remaining_days)
 <a id="chart-snapshot-example"></a>
 ### 同一瞬间的完整星盘快照
 
-`chart_snapshot` 自 0.8.0 起提供。
 这里明确输入 **2026-01-01 12:00 UTC**，不读取主机时区，也不把 UTC 当作 UT1。
 
 ```python
@@ -173,7 +172,7 @@ for position in equatorial:
   print(position.right_ascension_deg, position.declination_deg, position.distance_au, position.source)
 ```
 
-位置、事件、能力查询和快照统一使用 `Target`，不再提供 `ChartTarget`、`EventTarget` 或 `CapabilitySubject`。
+位置、事件、能力查询和快照统一使用 `Target`。
 `equatorial_positions(targets, jde_tt)` 单独返回不可变的赤道坐标：赤经 `[0, 360)` 度、赤纬 `[-90, 90]` 度，
 地心、当日坐标系，使用固定 IAU1980 黄经章动与真黄赤交角；物理距离为 AU，数学交点无距离。
 它保持选择顺序，拒绝空选择和重复目标，不计算速率、民用时刻或宫位。
@@ -181,7 +180,7 @@ for position in equatorial:
 不可变 `ModelKey(kind, identity)` 标明模型种类和非零身份码。注册记录用 `.key`，位置和快照天体用 `.source`，
 宫位与快照用 `.delta_t_model`、`.nutation_model`。模型键可传回相应种类的选择参数；`DEFAULT` 只用于输入，
 由原生侧解析。`model_identity_text(key)` 按模型键查询文字，不按注册表位置查询。`delta_t()` 仍返回秒数标量，
-但会校验原生结果的模型键。太阳距离字段改为 `distance_au`，独立月球坐标仍使用 `distance_km`。
+但会校验原生结果的模型键。太阳距离 `distance_au` 的单位是 AU，独立月球坐标的 `distance_km` 单位是千米。
 
 `house_capability(delta_t_model=...)` 返回独立的 `CivilHouseCapability`，包含民用年域、允许时标、UTC 起始日期、
 已解析的 Delta T 键和可选的 TT 上界，不伪造 TT 区间，也不保证几何求解成功。民用宫位政策只通过 `house_capability()` 查询。
@@ -192,8 +191,8 @@ for position in equatorial:
 <a id="interval-longitude-events"></a>
 ### 区间黄经事件
 
-`longitude_events()`、`longitude_stations()` 与 `longitude_difference_events()` 是 0.9.0 新增。
-它们开放 [C++ 区间搜索](../../docs/EPHEMERIS_EVENTS.md)（黄经事件指南）：供定黄经的过宫与精确切触、留站、
+`longitude_events()`、`longitude_stations()` 与 `longitude_difference_events()` 提供
+[C++ 区间搜索](../../docs/EPHEMERIS_EVENTS.md)（黄经事件指南）：供定黄经的过宫与精确切触、留站、
 以及带方向的两体黄经差。角度不带任何名称与解释；把精确的目标角度映射到你自己的术语即可。
 
 ```python
@@ -215,8 +214,6 @@ differences = celestial.longitude_difference_events(
 时间为 JDE(TT)，落在公开的 2^-30 日报告格点上；速率为公开七点算子的度/TT 日。
 区间 `[start, end)` 必须非空、不超过 3660 TT 日，且落在目标黄经速率域内；空元组是合法的
 「无事件」结果，数值歧义或工作量超限则抛 `CelestialError`，绝不返回部分列表。
-每次查询原生侧跑两遍搜索（先计数、再填充）：50 天水星窗口耗时毫秒级，文档最坏情形
-（满 3660 天跨度）也远在一秒以内。
 
 <a id="platforms-and-local-builds"></a>
 ## 平台与本地构建
@@ -228,7 +225,7 @@ differences = celestial.longitude_difference_events(
 |---|---|---|
 | Linux (manylinux 2.28) | x86_64 | `manylinux_2_28_x86_64` |
 | Linux (manylinux 2.28) | aarch64 | `manylinux_2_28_aarch64` |
-| macOS 14 或更新版本 | arm64 | `macosx_14_0_arm64` |
+| macOS 15 或更新版本 | arm64 | `macosx_15_0_arm64` |
 | Windows | AMD64 | `win_amd64` |
 
 Linux wheel 文件名可能包含其他兼容的 manylinux 标签。每个都是面向相应平台上 Python 3.11 或更新版本的 `py3` wheel。
@@ -269,7 +266,7 @@ deactivate
 属于对应枚举类、却不是其已声明成员的对象同样抛出 `ValueError`。
 原生无效输入同样抛出 `ValueError`；计算、资源或内部失败以及损坏的成功载荷抛出 `CelestialError`。
 其 `operation` 属性为公开函数名；`recorded` 表示原生侧报告了已知的非零错误种类，即使消息分配失败而为空也为真。
-合法的“无结果”仍以 `None` 或 `()` 表示。日志设置函数与 `LogVerbosity` 已移除，错误不会自动打印。
+合法的“无结果”仍以 `None` 或 `()` 表示。错误不会自动打印。
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` 接受有限的 UT1 下 JD，其公历年份须在 `[401, 32766]` 内；
 地理经度须有限、东正西负，范围为 `[-180, 180]` 度。结果为 `[0, 360)` 度。
@@ -290,7 +287,8 @@ deactivate
 
 `new_moons_after(jde, count)` 接受 `[0, 4096]` 内的 `count`，零返回 `()`。
 上限使单个原生输出缓冲区不超过 32 KiB。
-计数/填充及按字节定长的文字协议另有单缓冲区 64 MiB 的绑定层资源上限，超限会在分配前抛出 `CelestialError`。
+变长结果与文本缓冲区另有单缓冲区 64 MiB 的绑定层资源上限，超限会在分配前抛出 `CelestialError`。
+原生返回结果不一致时也抛出 `CelestialError`。
 
 <a id="chart-inputs-and-failure-boundaries"></a>
 ### 星盘输入与失败边界
@@ -350,8 +348,8 @@ print(celestial.lunar_to_gregorian(algorithm, lunar).to_date())
 <a id="lunar-algorithms"></a>
 ### 阴历算法
 
-公历输入与输出都是所选算法日期基准下的日期标签，不是瞬间。各算法的来源、阴历年域、选用场景与日期基准见英文版的
-[Lunar algorithms](README.md#lunar-algorithms)。
+用 `LunarAlgorithm.ALGO1`、`ALGO2` 或 `ALGO3` 选择算法。公历输入与输出是日期标签，不是瞬间。
+各算法的来源、阴历年域、选用场景与日期基准见[阴历算法（英文）](../../docs/ALGORITHMS.md#lunar-algorithms)。
 
 `supported_lunar_year_range(algorithm)` 查询原生算法包含两端的**阴历年**范围，返回 `LunarYearRange(start, end)`。
 公历日期覆盖范围从阴历 `start` 年首日到阴历 `end` 年末日，而非这些公历年份的一月至十二月。
@@ -368,8 +366,9 @@ Python 包不另存范围表或缓存，不在导入或计算前查询范围。
 <a id="delta-t-models"></a>
 ### Delta T 模型
 
-`delta_t(year, model)` 对有限的十进制公历年返回 TT − UT1 的秒数。各模型的来源、硬年域与选用场景见英文版的
-[Delta T models](README.md#delta-t-models)。
+`delta_t(year, model=DeltaTModel.DEFAULT)` 对有限的十进制公历年返回 TT − UT1 的秒数。
+可选 `DeltaTModel.ALGO1` 至 `ALGO5` 或对应的 `ModelKey`；默认解析为 Algo5。
+各模型的来源、维护状态、硬年域与选用场景见 [Delta T 模型（英文）](../../docs/ALGORITHMS.md#delta-t-models)。
 
 <a id="license"></a>
 ## 许可证

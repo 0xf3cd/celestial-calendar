@@ -112,6 +112,7 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert {path.relative_to(test_root).as_posix() for path in test_root.glob("support/*.mjs")} == {
     "support/chart_api.mjs",
     "support/chart_replay.mjs",
+    "support/doc_examples.mjs",
     "support/package_consumer.mjs",
     "support/fake_native.mjs",
   }

@@ -6,8 +6,9 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide describes the current source, including unreleased changes. Released 0.x wheels use the older target and model vocabulary.
-To run these examples against current source, build a local wheel from a full checkout as described below.
+This guide describes the current source, including unreleased changes. The install command gets the latest published
+version; use its matching documentation. To run current-source examples, [build a local wheel](#build-a-local-wheel).
+For upgrades from 0.x, see [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md).
 
 <a id="install"></a>
 ## Install
@@ -100,7 +101,6 @@ Establish the time-scale conversion before displaying either.
 <a id="chart-snapshot-example"></a>
 ### Complete chart snapshot of one instant
 
-`chart_snapshot` is new in 0.8.0.
 The input is explicitly **2026-01-01 12:00 UTC**: the host timezone is not read, and UTC is not treated as UT1.
 
 ```python
@@ -190,8 +190,7 @@ for position in equatorial:
   print(position.right_ascension_deg, position.declination_deg, position.distance_au, position.source)
 ```
 
-`Target` is shared by positions, events, capabilities and chart bodies; the old `ChartTarget`, `EventTarget`
-and `CapabilitySubject` classes are removed. Ecliptic and equatorial results are distinct frozen values,
+`Target` is shared by positions, events, capabilities and chart bodies. Ecliptic and equatorial results are distinct frozen values,
 preserve selection order, and reject empty or duplicate selections. RA is `[0, 360)` degrees and declination
 `[-90, 90]` degrees, geocentric and of date; the projection uses fixed IAU1980 longitude nutation and true obliquity.
 Neither query computes rates, civil times or houses. Physical distances are AU; mathematical nodes have no distance.
@@ -201,14 +200,14 @@ expose `.key`, position/chart bodies expose `.source`, and house/chart results e
 `.nutation_model`. Matching keys can replace selector enums without converting registry ordinals. DEFAULT is
 input-only and native-resolved; use operation text to inspect defaults. Reusing keys preserves model selection,
 while exact coefficients also require the library/source version. `delta_t(..., model=...)` still returns a float
-and validates the native resolved key. Source fields use `ModelKey`; the old `PositionSource` enum is removed.
-`SunCoordinate.distance_au` replaces `radius_au`; Moon distance remains km.
+and validates the native resolved key. Source fields use `ModelKey`.
+`SunCoordinate.distance_au` is in AU; `MoonCoordinate.distance_km` is in kilometres.
 
 <a id="interval-longitude-events"></a>
 ### Interval longitude events
 
-`longitude_events()`, `longitude_stations()` and `longitude_difference_events()` are new in 0.9.0.
-They expose the [C++ interval searches](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md)
+`longitude_events()`, `longitude_stations()` and `longitude_difference_events()` expose the
+[C++ interval searches](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md)
 for supplied longitudes, stationary instants and directed two-body longitude differences. Angles carry no
 names or interpretations — map exact target angles to your own terminology.
 
@@ -231,9 +230,7 @@ differences = celestial.longitude_difference_events(
 Times are JDE(TT) on the published 2^-30-day reporting lattice; rates are degrees per TT day from the published
 seven-point operator. The interval `[start, end)` must be nonempty, at most 3660 TT days, and inside the
 target's longitude-rate domain; an empty tuple is a legal no-event outcome, while numerical ambiguity or
-work-limit exhaustion raises `CelestialError` rather than returning a partial list. Each query runs the native
-search twice (a count pass, then a fill pass): a 50-day Mercury window costs milliseconds, and the documented
-worst case (a full 3660-day span) stays well under a second.
+work-limit exhaustion raises `CelestialError` rather than returning a partial list.
 
 <a id="platforms-and-local-builds"></a>
 ## Platforms and local builds
@@ -245,7 +242,7 @@ Official releases use wheels for the four platforms below; PyPI and the matching
 |---|---|---|
 | Linux (manylinux 2.28) | x86_64 | `manylinux_2_28_x86_64` |
 | Linux (manylinux 2.28) | aarch64 | `manylinux_2_28_aarch64` |
-| macOS 14 or newer | arm64 | `macosx_14_0_arm64` |
+| macOS 15 or newer | arm64 | `macosx_15_0_arm64` |
 | Windows | AMD64 | `win_amd64` |
 
 Linux wheel filenames may include other compatible manylinux tags. Each wheel is a `py3` wheel for Python 3.11 or
@@ -292,7 +289,7 @@ domain checks raise `ValueError`, and so does an object of the expected enum cla
 members. Native invalid-input errors also raise `ValueError`. Computation, resource and internal failures raise
 `CelestialError`, as do corrupt successful payloads. Its `operation` names the public call; `recorded` is true when
 native reported a recognized error kind, even if it could not allocate a message. A legitimate absence remains `None` or `()`.
-The native logging setter and `LogVerbosity` are removed. Errors are not automatically printed.
+Errors are not automatically printed.
 
 `local_apparent_sidereal_time(jd_ut1, longitude_deg)` accepts a finite JD on UT1 whose Gregorian year is in
 `[401, 32766]`, and a finite, east-positive geographic longitude in `[-180, 180]` degrees. The result is in
@@ -314,8 +311,8 @@ longitude. `longitude_deg` must be finite and in `[0, 360)` degrees. Native fail
 
 `new_moons_after(jde, count)` accepts `count` in `[0, 4096]`; zero returns `()`.
 The cap keeps a single native output buffer within 32 KiB.
-Count/fill and sized-text output buffers have a separate binding resource cap of 64 MiB per buffer; exceeding it
-raises `CelestialError` before allocation. Both protocol passes check error kind, totals and string termination.
+Variable-length result and text buffers have a separate binding resource cap of 64 MiB per buffer; exceeding it
+raises `CelestialError` before allocation. Inconsistent native results also raise `CelestialError`.
 
 <a id="chart-inputs-and-failure-boundaries"></a>
 ### Chart inputs and failure boundaries
@@ -379,20 +376,9 @@ algorithm selected below; neither bridge converts timezones or UT1/UTC/TT.
 <a id="lunar-algorithms"></a>
 ### Lunar algorithms
 
-Gregorian inputs and outputs are calendar-date labels on the selected algorithm's basis, not instants.
-Choose the source and compatibility role you need, not an assumed accuracy ranking:
-
-| Algorithm | Source and status | Lunar-year domain | Selection role |
-|---|---|---|---|
-| `LunarAlgorithm.ALGO1` | Published Hong Kong Observatory date labels, stored as a table | `[1901, 2099]` | HKO almanac compatibility |
-| `LunarAlgorithm.ALGO2` | Computed from VSOP87D and truncated ELP2000-82B | `[410, 2500]` | Astronomical construction over the wider computed window |
-| `LunarAlgorithm.ALGO3` | Baked hybrid: algo1/HKO in 1901-2099, algo2-generated dates elsewhere | `[1600, 2199]` | Table lookup with HKO compatibility in the overlapping years |
-
-Algo2 assigns dates by rendering TT moments in the library's modelled UTC
-([time scales](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md#time-scales)) and then applying
-a fixed eight-hour eastward offset. Algo1 preserves HKO's published labels rather than imposing this rule on their
-history; algo3 inherits the basis of each source slice. The 2500 ceiling is the computed algorithm's enforced
-civil-date domain, not a physical limit of VSOP87D or ELP2000-82B.
+Select `LunarAlgorithm.ALGO1`, `ALGO2` or `ALGO3`. Gregorian inputs and outputs are calendar-date labels, not instants.
+For sources, date bases, Lunar-year domains and selection roles, see
+[Lunar algorithms](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALGORITHMS.md#lunar-algorithms).
 
 `supported_lunar_year_range(algorithm)` queries the native algorithm's inclusive **Lunar-year** range and returns
 `LunarYearRange(start, end)`. Gregorian coverage runs from the first day of Lunar year `start` to the last day of
@@ -410,20 +396,10 @@ not exist, raises `ValueError`, as does a Lunar year outside the selected algori
 <a id="delta-t-models"></a>
 ### Delta T models
 
-`delta_t(year, model)` returns TT minus UT1 in seconds for a finite decimal Gregorian year.
-The default is the current project model; the named older models allow historical comparison:
-
-| Model | Source and status | Hard year domain | Selection role |
-|---|---|---|---|
-| `DeltaTModel.DEFAULT`, `DeltaTModel.ALGO5` | Current project model: algo2 before 2005, IERS Bulletin A fit through about 2026.41, then anchored Morrison et al. (2021) long-term extrapolation | No model-specific bound | Current project calculations |
-| `DeltaTModel.ALGO1` | Xu Jianwei's 2008 model, frozen | `year >= -4000` | Comparison with that historical model |
-| `DeltaTModel.ALGO2` | Espenak and Meeus, NASA/TP-2006-214141, frozen | No model-specific bound | NASA polynomial comparison; live pre-2005 branch of algo3, algo4, and algo5 |
-| `DeltaTModel.ALGO3` | Fred Espenak's 2014 eclipse canon, frozen | `year < 3000` | Comparison with that later polynomial model |
-| `DeltaTModel.ALGO4` | IERS Bulletin A observations and USNO predictions, frozen | `year < 2035` | Comparison with the previous project fit/prediction model |
-
-"Frozen" describes model maintenance, not dead code: algo2 still supplies the pre-2005 values used by the current
-default. A hard domain is an input contract, not an accuracy claim. Fitted residuals and test tolerances are not
-statistical error guarantees, and an unbounded model does not promise useful accuracy at arbitrary years.
+`delta_t(year, model=DeltaTModel.DEFAULT)` returns TT minus UT1 in seconds for a finite decimal Gregorian year.
+Select `DeltaTModel.ALGO1` through `ALGO5`, or a matching `ModelKey`; the default resolves to Algo5.
+Sources, maintenance status, hard domains and selection roles are in
+[Delta T models](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALGORITHMS.md#delta-t-models).
 
 <a id="license"></a>
 ## License

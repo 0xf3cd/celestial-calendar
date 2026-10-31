@@ -215,7 +215,7 @@ def _wheel_artifact(wheel_name: str, version: str) -> str:
         if tag_match is not None
       )
     elif family == "macos":
-      valid = tags == [f"macosx_14_0_{architecture}"]
+      valid = tags == [f"macosx_15_0_{architecture}"]
     else:
       valid = tags == [f"win_{architecture}"]
     if valid:

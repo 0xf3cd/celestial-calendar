@@ -523,7 +523,7 @@ def python_wheels():
       f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl"
     ),
     "celestial-python-manylinux-aarch64": (f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_28_aarch64.whl"),
-    "celestial-python-macos-arm64": f"celestial_calendar-{PROJECT_VERSION}-py3-none-macosx_14_0_arm64.whl",
+    "celestial-python-macos-arm64": f"celestial_calendar-{PROJECT_VERSION}-py3-none-macosx_15_0_arm64.whl",
     "celestial-python-windows-amd64": f"celestial_calendar-{PROJECT_VERSION}-py3-none-win_amd64.whl",
   }
 
@@ -604,7 +604,7 @@ def test_python_artifact_rejects_duplicate_archive_member(tmp_path):
 @pytest.mark.parametrize(
   "wheel_name",
   [
-    f"celestial_calendar-{PROJECT_VERSION}-py3-none-macosx_14_0_arm64.whl",
+    f"celestial_calendar-{PROJECT_VERSION}-py3-none-macosx_15_0_arm64.whl",
     f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_26_x86_64.whl",
     f"celestial_calendar-{PROJECT_VERSION}-py3-none-manylinux_2_31_x86_64.whl",
     "celestial_calendar-0.5.0-py3-none-manylinux_2_28_x86_64.whl",

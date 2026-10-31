@@ -129,9 +129,8 @@ The C, Python and JavaScript UTC/JDE convenience conversions follow the same his
 1972 seam and leap-table policy as C++. Their separate input domains and noninvertible boundaries,
 with a UTC-input Jieqi example, are in [UTC conversions](UTC_CONVERSIONS.md).
 
-ΔT defaults to Algo5. Each model's source, status, hard year domain and role are tabulated in the
-[Python](../bindings/python/README.md#delta-t-models) and [JavaScript](../bindings/javascript/README.md#delta-t-models)
-package guides; the per-model contracts and the Algo5 construction are in `src/astro/delta_t.hpp`.
+ΔT defaults to Algo5. Each model's source, status, hard year domain and role are in
+[Delta T models](ALGORITHMS.md#delta-t-models); the definitions are in `src/astro/delta_t.hpp`.
 
 Selectable ΔT operations follow `delta_t::DEFAULT_MODEL`; fixed-Algo5 convenience conversions stay fixed.
 House nutation follows `house::DEFAULT_NUTATION_MODEL`. Nutation/true-obliquity primitives and omitted sidereal

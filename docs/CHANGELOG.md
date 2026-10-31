@@ -9,6 +9,10 @@
   existing C++ conversions without changing their historical UT1 substitute, leap-second policy or domains.
 - Runnable Python and JavaScript [UTC-input Jieqi examples](UTC_CONVERSIONS.md) with UTC+8 display.
 
+### Changed
+
+- Prebuilt macOS arm64 libraries and Python wheels require macOS 15 or newer, up from macOS 14.
+
 ## [v1.0.0]
 
 ### Added

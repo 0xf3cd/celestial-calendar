@@ -17,7 +17,7 @@
 <a id="install"></a>
 ## 安装与示例
 
-先选一种语言。每节给出安装方法和一个独立示例：指定 UT1 时刻之后的下一个节气。
+先选一种语言。每节给出安装方法和一个独立示例：查询 2026 年冬至。
 更多示例与完整契约见各语言的包文档。
 
 <a id="python"></a>
@@ -34,30 +34,26 @@ wheel 自带对应平台的原生库，使用时不需要编译器，也不需�
 
 下面的 Python 代码块是独立程序，可作为应用目录中的 `example.py`，用该环境的 `python example.py` 运行。
 
-**下一个节气，还剩多少天**
-
-以明确给定的 **2026-12-31 00:00 UT1** 为起点，不读取当前时钟。查询 2026 和 2027 的全部节气，
-按实际 UT1 时刻排序，取严格晚于起点的第一个。枚举从立春开始，而不是从公历年内的第一个节气开始。
+查询冬至，并打印其 UT1 日期：
 
 ```python
 import celestial_calendar as celestial
 
-cutoff_ut1 = celestial.CivilDateTime(2026, 12, 31, 0)
-cutoff_jd = celestial.ut1_to_jd(cutoff_ut1)
-events = [celestial.jieqi_moment(year, jieqi) for year in (2026, 2027) for jieqi in celestial.Jieqi]
-ordered = sorted(events, key=lambda event: celestial.ut1_to_jd(event.moment_ut1))
-upcoming = next(event for event in ordered if celestial.ut1_to_jd(event.moment_ut1) > cutoff_jd)
-remaining_days = celestial.ut1_to_jd(upcoming.moment_ut1) - cutoff_jd
-print(celestial.jieqi_name(upcoming.jieqi))
-print("UT1:", upcoming.moment_ut1)
-print("Remaining UT1 days:", remaining_days)
+event = celestial.jieqi_moment(2026, celestial.Jieqi.DONGZHI)
+moment = event.moment_ut1
+print(f"{celestial.jieqi_name(event.jieqi)} (UT1): {moment.year:04d}-{moment.month:02d}-{moment.day:02d}")
 ```
 
-剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。此例只演示这次跨年查询，
-不是覆盖整个 API 年域的通用搜索。节气查询的输入年域为 `[401, 32766]`，返回时刻的年份可能与查询年份不同；
-即使输入在年域内，原生计算无法得到唯一时刻时仍会报错。
+预期输出：
 
-`moment_ut1` 不是 UTC 或东八区时间，显示前先确定时标转换。
+```text
+冬至 (UT1): 2026-12-21
+```
+
+`moment_ut1` 是 UT1，不是 UTC 或东八区时间。显示本地时间请按
+[UTC 输入 → 节气 → 东八区指南（英文）](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)转换。
+节气查询的输入年域为 `[401, 32766]`，返回时刻的年份可能与查询年份不同；
+即使输入在年域内，原生计算无法得到唯一时刻时仍会报错。
 
 今天的阴历、公历/阴历往返和完整星盘快照见 [Python 包文档](bindings/python/README_ZH.md)。
 
@@ -76,31 +72,20 @@ TypeScript 声明随包提供。浏览器部署还需保留构建工具输出的
 使用计算 API 前先调用并等待 `init()`，之后的计算 API 同步调用。并发或重复调用共享同一个初始化 promise，
 结果为 `undefined`。加载失败时保留加载器原来的拒绝原因，之后再次显式调用可以重试。
 
-**下一个节气，还剩多少天**
-
-与 Python 例子相同，起点是明确给定的 **2026-12-31 00:00 UT1**，不是把 `Date` 时间戳当作 UT1。
+同一个冬至查询，预期输出与上面相同：
 
 ```js
 import * as celestial from "@0xf3cd/celestial";
 
 await celestial.init();
-const cutoffUt1 = { year: 2026, month: 12, day: 31, fraction: 0 };
-const cutoffJd = celestial.time.ut1ToJd(cutoffUt1);
-const upcoming = [2026, 2027]
-  .flatMap((year) => Object.values(celestial.Jieqi).map((jieqi) => {
-    const event = celestial.jieqi.moment(year, jieqi);
-    return { ...event, jdUt1: celestial.time.ut1ToJd(event.momentUt1) };
-  }))
-  .filter((event) => event.jdUt1 > cutoffJd)
-  .sort((a, b) => a.jdUt1 - b.jdUt1)[0];
-if (upcoming === undefined) throw new Error("No later Jieqi in the queried years.");
-console.log(celestial.jieqi.name(upcoming.jieqi));
-console.log("UT1:", upcoming.momentUt1);
-console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const event = celestial.jieqi.moment(2026, celestial.Jieqi.DONGZHI);
+const { year, month, day } = event.momentUt1;
+const date = [year, month, day].map((value, index) => String(value).padStart(index === 0 ? 4 : 2, "0")).join("-");
+console.log(`${celestial.jieqi.name(event.jieqi)} (UT1): ${date}`);
 ```
 
-这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
-`momentUt1` 是 UT1；示例范围、查询年域与失败条件同上。
+`momentUt1` 是 UT1，不是 UTC；查询年域与失败条件同 Python。
+显示为东八区时间见 [UTC/节气指南（英文）](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)。
 
 今天的阴历、固定偏移日期往返和星盘快照见 [JavaScript 包文档](bindings/javascript/README_ZH.md)。
 
@@ -221,7 +206,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 正容量会截断并补 NUL。节气时刻固定通过 Algo5 转为 UT1，不是 UTC 或东八区日期。ABI 演进规则见
 [C API 指南（英文）](docs/API.md#c-chart-snapshot)。
 
-原生发行包的运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
+从 1.1.0 起，预编译的 macOS arm64 库要求 macOS 15 或更新版本。
+完整运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
 
 <a id="features"></a>
 ## 功能与算法
@@ -278,14 +264,10 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 不要把编号当作精度排名：Algo1 保留香港天文台的日期标签，Algo2 用天文方法在更宽的年域内计算，Algo3 把两者合在一起。
 年域从库里读取，不要照抄：C 用 `celestial_get_supported_lunar_year_range`，Python 用 `supported_lunar_year_range()`，
 JavaScript 用 `lunar.supportedYearRange()`，C++ 用各 `calendar::lunar::algoN` 的 `START_YEAR` / `END_YEAR`。
-各算法的来源、年域与日期基准见 [Python](bindings/python/README.md#lunar-algorithms) 与
-[JavaScript](bindings/javascript/README.md#lunar-algorithms) 包文档（英文），以及
-[`algo1.hpp`](src/calendar/lunar/algo1.hpp)、[`algo2.hpp`](src/calendar/lunar/algo2.hpp)、
-[`algo3.hpp`](src/calendar/lunar/algo3.hpp)。
+各算法的来源、年域与日期基准见[阴历算法（英文）](docs/ALGORITHMS.md#lunar-algorithms)。
 
 ΔT（TT 减 UT1，单位秒）用 default，即当前项目模型 Algo5；已冻结的 Algo1 至 Algo4 只在需要与对应的早期模型比较时选用。
-各模型的来源与硬年域见 [Python](bindings/python/README.md#delta-t-models) 与
-[JavaScript](bindings/javascript/README.md#delta-t-models) 包文档（英文），以及 [`delta_t.hpp`](src/astro/delta_t.hpp)。
+各模型的来源与硬年域见 [Delta T 模型（英文）](docs/ALGORITHMS.md#delta-t-models)。
 
 时标要分开。JD UT1 与 JDE TT 不能互换；节气结果是 UT1，而 C 的 `celestial_apparent_solar_time()`、
 Python 的 `apparent_solar_time()` 和 JavaScript 的 `sun.apparentSolarTime()`

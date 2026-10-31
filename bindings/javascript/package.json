@@ -35,11 +35,13 @@
     "directory": "bindings/javascript"
   },
   "homepage": "https://github.com/0xf3cd/celestial-calendar",
+  "bugs": "https://github.com/0xf3cd/celestial-calendar/issues",
   "keywords": [
     "astronomy",
     "chinese-calendar",
     "lunar-calendar",
     "jieqi",
+    "ephemeris",
     "webassembly"
   ],
   "license": "MIT",

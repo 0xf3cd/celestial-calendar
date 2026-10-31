@@ -101,7 +101,7 @@ def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
 
   linux = next(step for step in jobs["manylinux"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11")
   macos = next(
-    step for step in jobs["macos-14-floor"]["steps"] if step.get("name") == "Clean-install and test on macOS 14"
+    step for step in jobs["macos-15-floor"]["steps"] if step.get("name") == "Clean-install and test on macOS 15"
   )
   windows = next(
     step for step in jobs["windows-amd64"]["steps"] if step.get("name") == "Test exact wheel on Python 3.11.9"
@@ -176,7 +176,7 @@ def test_python_wheel_platform_toolchains_are_explicit():
   jobs = workflow["jobs"]
   macos_floor_python = next(
     step["with"]["python-version"]
-    for step in jobs["macos-14-floor"]["steps"]
+    for step in jobs["macos-15-floor"]["steps"]
     if str(step.get("uses", "")).startswith("actions/setup-python@")
   )
   windows_steps = jobs["windows-amd64"]["steps"]

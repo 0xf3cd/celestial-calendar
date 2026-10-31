@@ -110,6 +110,10 @@ print(policy.civil_start_year, policy.civil_end_year_exclusive, again.times)
 `delta_t` still returns a scalar. Reusing resolved keys preserves the chosen model, not coefficients across library
 versions. Python `set_log_verbosity` and `LogVerbosity` are removed.
 
+`SunCoordinate.radius_au` becomes `SunCoordinate.distance_au`, still in AU. The standalone Moon coordinate keeps
+`distance_km`; chart distances remain `distance_au`, with `None` for nodes.
+The chart snapshot and interval-event APIs introduced in 0.8.0 and 0.9.0 remain available under the current names.
+
 ## JavaScript and TypeScript
 
 Remove `config`, logging types/setters and initialization configuration. Use `await init()` without arguments.
@@ -197,18 +201,11 @@ can therefore occur later.
 
 ## Scientific limits that still apply
 
-Finite-input evaluation can fail computation. Coordinate validity establishes neither physical plausibility
-nor accuracy at remote epochs; no universal position-year or obliquity cutoff is introduced. Pluto/node hard
-windows remain unchanged. Equatorial projection uses fixed IAU 1980 longitude nutation and true obliquity;
-finite rotations do not validate the model's far-epoch orientation.
+This upgrade changes no numerical goldens, tolerances or Pluto/node hard windows. Current sources, frames,
+units and operation-specific limits are in the [API reference](API.md#cpp-guide); time-scale and failure
+conventions are in [Design](DESIGN.md#time-scales). Choose lunar algorithms and ΔT models using
+[Algorithms](ALGORITHMS.md), and consult [Validation](VALIDATION.md) for reference coverage and its limits.
 
-The mean-node polynomial is tropical and referred to the mean equinox of date before the library adds longitude
-nutation. The true node is Meeus' five-term approximation, not an osculating node. Pluto uses Meeus Chapter 37,
-despite the stable source code name containing `PLUTO95`.
-
-Algo1–Algo4 Delta T models are frozen comparison models. Algo5 uses Algo2 before 2005, the Bulletin A fitted
-segment through the inclusive `algo5::LAST_OBSERVATION_YEAR`, then the anchored corrected integrated-LOD
-extrapolation; the whole model is not a trained polynomial. See the [model sources](../bindings/javascript/README.md#delta-t-models).
-Existing goldens and tolerances are unchanged. The new equatorial tests separate same-input projection/node
+The new equatorial tests separate same-input projection/node
 conformance from physical Horizons regression checks; their thresholds and sample limits are in
 [Validation](VALIDATION.md#equatorial-reference-layers). Release artifacts are validated separately on supported platforms.

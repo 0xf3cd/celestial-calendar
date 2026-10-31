@@ -194,10 +194,20 @@ def test_macos_workflows_match_supported_runtime():
   ]
   wheel_job_env = wheel_workflow["jobs"]["macos-arm64"]["env"]
   wheel_env = wheel_workflow["env"]
+  soak_workflow = yaml.safe_load((REPO / ".github/workflows/random_soak.yml").read_text(encoding="utf-8"))
+  soak_targets = [
+    step["env"]["MACOSX_DEPLOYMENT_TARGET"]
+    for step in soak_workflow["jobs"]["soak-macos-apple-clang"]["steps"]
+    if "MACOSX_DEPLOYMENT_TARGET" in step.get("env", {})
+  ]
+  floor_consumer = wheel_workflow["jobs"]["macos-15-floor"]
 
   assert native_targets == [supported, supported]
   assert wheel_job_env["MACOSX_DEPLOYMENT_TARGET"] == supported
   assert f"MACOSX_DEPLOYMENT_TARGET={supported}" in wheel_env["CIBW_ENVIRONMENT_MACOS"]
+  assert soak_targets == [supported]
+  assert floor_consumer["runs-on"] == f"macos-{supported.split('.')[0]}"
+  assert floor_consumer["needs"] == "macos-arm64"
 
 
 def test_supported_runtime_matches_readme():

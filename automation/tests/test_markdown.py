@@ -9,6 +9,8 @@
 # SPDX-License-Identifier: MIT
 
 import os
+import importlib.util
+import json
 import re
 import shlex
 import shutil
@@ -35,6 +37,8 @@ GUIDE_PAIRS = (
 # The Chinese root guide links to the English native-runtime matrix, references and license instead of copying them.
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
+PYTHON_READER = REPO / "bindings/python/test/consumer/doc_examples.py"
+NODE_READER = REPO / "bindings/javascript/test/support/doc_examples.mjs"
 # A link to this repository takes one of these spellings, so that a dead one cannot hide behind another: any other
 # scheme, host, port, case, percent-escape or route is reported rather than recognised. Each names a path to check
 # except the releases page; the home page shows README.md.
@@ -172,6 +176,32 @@ def test_chinese_root_guide_links_what_it_does_not_copy():
   assert {f"README.md#{anchor}" for anchor in ANCHORS_ONLY_IN["README.md"]} <= targets
 
 
+def test_model_explanation_has_one_shared_home():
+  for name in ("README.md", "README_ZH.md", "docs/DESIGN.md", "docs/MIGRATING_1_0.md", "docs/API.md"):
+    assert any("ALGORITHMS.md" in target for target in link_targets(document(REPO / name))), name
+  for name in ("python", "javascript"):
+    for edition in ("README.md", "README_ZH.md"):
+      parsed = document(REPO / "bindings" / name / edition)
+      targets = link_targets(parsed)
+      assert any(target.endswith("ALGORITHMS.md#lunar-algorithms") for target in targets)
+      assert any(target.endswith("ALGORITHMS.md#delta-t-models") for target in targets)
+      headers = [
+        token.content
+        for index, token in enumerate(parsed)
+        if token.type == "inline" and parsed[index - 1].type == "th_open"
+      ]
+      assert "Lunar-year domain" not in headers and "Hard year domain" not in headers
+
+
+def test_build_guide_preserves_moved_maintenance_navigation():
+  parsed = document(REPO / "docs/BUILDING.md")
+  targets = link_targets(parsed)
+  assert {f"MAINTAINING.md#{anchor}" for anchor in ("ci-jobs", "artifacts", "todo")} <= set(targets)
+  assert {"ci-jobs", "artifacts", "todo"} <= anchors(REPO / "docs/MAINTAINING.md")
+  assert "Workflow · job" not in visible_text(parsed)
+  assert "Workflow · job" in visible_text(document(REPO / "docs/MAINTAINING.md"))
+
+
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
 def test_source_guide_warns_about_unreleased_changes(guide):
   text = visible_text(document(guide))
@@ -207,7 +237,9 @@ def test_links_name_existing_paths_and_explicit_anchors():
 
 def test_cpp_quickstart_compiles_and_runs(tmp_path):
   # README.md's C++ example is a whole program that needs only the headers.
-  block = next(code for info, code in code_blocks(document(REPO / "README.md")) if info.split()[:1] == ["cpp"])
+  blocks = [code for info, code in code_blocks(document(REPO / "README.md")) if info == "cpp"]
+  assert len(blocks) == 1, "expected exactly one complete C++ quickstart"
+  block = blocks[0]
   source = tmp_path / "quickstart.cpp"
   source.write_text(block, encoding="utf-8")
   compiler = shlex.split(os.environ.get("CXX", ""))
@@ -220,6 +252,216 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path):
   command = [*compiler, "-std=c++23", "-Isrc/astro", "-Isrc/calendar", "-Isrc/util", str(source), "-o", str(binary)]
   subprocess.run(command, cwd=REPO, check=True, capture_output=True, text=True)
   assert subprocess.check_output([str(binary)], text=True)
+
+
+@pytest.fixture
+def python_reader():
+  spec = importlib.util.spec_from_file_location("doc_examples_reader", PYTHON_READER)
+  module = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(module)
+  return module
+
+
+def node_command():
+  node = shutil.which("node")
+  assert node, "documentation reader comparison requires Node"
+  return node
+
+
+@pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
+def test_installed_consumers_read_every_rendered_fence(python_reader, guide):
+  text = guide.read_text(encoding="utf-8")
+  canonical = code_blocks(document(guide))
+  assert canonical
+  assert python_reader.read_fences(text) == canonical
+  node = subprocess.run(
+    [node_command(), str(NODE_READER), "--fences-json", str(guide)],
+    check=True,
+    capture_output=True,
+    encoding="utf-8",
+  )
+  assert json.loads(node.stdout) == [list(block) for block in canonical]
+
+
+@pytest.mark.parametrize("guide", ["README.md", "bindings/python/README.md"])
+def test_python_fences_are_all_classified(python_reader, guide):
+  text = (REPO / guide).read_text(encoding="utf-8")
+  selected = python_reader.programs(text)
+  assert selected == [body for info, body in code_blocks(document(REPO / guide)) if info == "python"]
+  with pytest.raises(AssertionError, match="unclassified"):
+    python_reader.programs(text + "\n```unknown\nnew program\n```\n")
+  with pytest.raises(AssertionError, match="missing Python"):
+    python_reader.programs("```sh\npython example.py\n```\n")
+
+
+def test_python_added_programs_execute_without_shared_imports(python_reader, tmp_path, monkeypatch):
+  monkeypatch.setenv("PYTHONIOENCODING", "ascii")
+  text = "```python\nimport math\nprint(math.pi > 3)\n```\n"
+  text += "\n```python\nprint('冬至')\n```\n"
+  selected = python_reader.programs(text)
+  assert len(selected) == 2
+  assert [python_reader.run_program(code, tmp_path) for code in selected] == ["True\n", "冬至\n"]
+  with pytest.raises(AssertionError, match="NameError"):
+    python_reader.run_program("print(math.pi)\n", tmp_path)
+  with pytest.raises(AssertionError, match="displayed output mismatch"):
+    python_reader.run_program("print('actual')\n", tmp_path, "wrong\n")
+  with pytest.raises(AssertionError, match=r"\\u51ac") as failure:
+    python_reader.run_program("raise RuntimeError('冬至')\n", tmp_path)
+  assert str(failure.value).isascii()
+
+
+def test_python_output_and_metadata_controls(python_reader):
+  root = (REPO / "README.md").read_text(encoding="utf-8")
+  expected = python_reader.expected_output(root)
+  assert expected != python_reader.expected_output(root.replace(expected, "wrong output\n"))
+  for text in ("", root + "\n```text\nextra\n```\n"):
+    with pytest.raises(AssertionError, match="exactly one"):
+      python_reader.expected_output(text)
+  raw = "Name: celestial-calendar\r\n\r\n# Guide\r\n冬至\r\n"
+  assert python_reader.metadata_description(raw) == "# Guide\n冬至\n"
+  with pytest.raises(AssertionError, match="missing METADATA"):
+    python_reader.metadata_description("Name: celestial-calendar\n")
+
+
+def test_python_program_rejects_checkout_cwd_before_writing_or_launching(python_reader, tmp_path, monkeypatch):
+  checkout = tmp_path / "checkout"
+  cwd = checkout / "nested"
+  cwd.mkdir(parents=True)
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  monkeypatch.setattr(python_reader.subprocess, "run", lambda *args, **kwargs: pytest.fail("child was launched"))
+  with pytest.raises(AssertionError, match="outside the checkout"):
+    python_reader.run_program("print('example')\n", cwd)
+  assert not list(cwd.iterdir())
+
+
+@pytest.mark.parametrize("in_checkout", [False, True])
+def test_python_provenance_accepts_installed_venv_members(python_reader, tmp_path, monkeypatch, in_checkout):
+  checkout = tmp_path / "checkout"
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  prefix = (checkout if in_checkout else tmp_path) / "current-venv"
+  package = prefix / "lib/site-packages/celestial_calendar/__init__.py"
+  native = package.parent / "_native/native.so"
+  record = {
+    "package": str(package),
+    "native": str(native),
+    "prefix": str(prefix),
+    "files": [str(package), str(native)],
+  }
+  python_reader.verify_provenance(record)
+
+
+@pytest.mark.parametrize("key", ["package", "native"])
+@pytest.mark.parametrize("fault", ["source", "nonmember", "wrong-prefix"])
+def test_python_provenance_rejects_source_nonmember_and_wrong_prefix(python_reader, tmp_path, monkeypatch, key, fault):
+  checkout = tmp_path / "checkout"
+  monkeypatch.setattr(python_reader, "REPO", checkout)
+  prefix = checkout / "current-venv"
+  package = prefix / "lib/site-packages/celestial_calendar/__init__.py"
+  native = package.parent / "_native/native.so"
+  record = {
+    "package": str(package),
+    "native": str(native),
+    "prefix": str(prefix),
+    "files": [str(package), str(native)],
+  }
+  python_reader.verify_provenance(record)
+  if fault == "source":
+    record[key] = str(checkout / "bindings/python/src/celestial_calendar" / Path(record[key]).name)
+    record["prefix"] = str(checkout)
+    record["files"] = [record["package"], record["native"]]
+  elif fault == "nonmember":
+    record["files"].remove(record[key])
+  else:
+    record[key] = str(checkout / "other-venv" / Path(record[key]).name)
+    record["files"] = [record["package"], record["native"]]
+  message = "checkout import" if fault == "source" else "distribution member"
+  with pytest.raises(AssertionError, match=f"{message}: {key}"):
+    python_reader.verify_provenance(record)
+
+
+@pytest.mark.parametrize("skip", [False, True])
+def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, monkeypatch, skip):
+  source = PYTHON_READER.read_text(encoding="utf-8")
+  if skip:
+    assert source.count("for code in selected:") == 1
+    source = source.replace("for code in selected:", "for code in selected[:1]:")
+    exec(compile(source, str(PYTHON_READER), "exec"), python_reader.__dict__)
+  root = tmp_path / "checkout"
+  (root / "bindings/python").mkdir(parents=True)
+  guide = "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
+  (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
+  calls = []
+
+  def run(code, cwd, expected=None):
+    calls.append(code)
+    if code.startswith("import importlib.metadata"):
+      return json.dumps({"metadata": "Name: celestial-calendar\n\n" + guide})
+    return expected or "unused\n"
+
+  monkeypatch.setattr(python_reader, "REPO", root)
+  monkeypatch.setattr(python_reader, "run_program", run)
+  monkeypatch.setattr(python_reader, "verify_provenance", lambda record: None)
+  if skip:
+    with pytest.raises(AssertionError):
+      python_reader.main()
+  else:
+    python_reader.main()
+    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n"]
+
+
+def test_node_skipped_program_is_rejected(tmp_path):
+  source = NODE_READER.read_text(encoding="utf-8")
+  assert source.count("for (const code of selected)") == 1
+  mutated = tmp_path / "doc_examples.mjs"
+  mutated.write_text(source.replace("for (const code of selected)", "for (const code of selected.slice(0, 1))"))
+  driver = f"""
+import assert from 'node:assert/strict';
+import {{ runPrograms }} from {json.dumps(mutated.as_uri())};
+await assert.rejects(() => runPrograms('```js\\nconsole.log(1);\\n```\\n```js\\nconsole.log(2);\\n```\\n',
+  {json.dumps(str(tmp_path))}, '@0xf3cd/celestial'), /1 !== 2/);
+console.log('PASS skipped JavaScript program rejected');
+"""
+  result = subprocess.run(
+    [node_command(), "--input-type=module", "-e", driver], cwd=tmp_path, capture_output=True, encoding="utf-8"
+  )
+  assert result.returncode == 0, result.stdout + result.stderr
+  assert result.stdout == "PASS skipped JavaScript program rejected\n"
+
+
+def test_node_program_coverage_isolation_and_output_controls(tmp_path):
+  # Each rejection reaches a launched Node/Python runtime; a missing tool is not a detected example defect.
+  guides = ["README.md", "bindings/javascript/README.md", "bindings/javascript-alias/README.md"]
+  source = f"""
+import assert from 'node:assert/strict';
+import {{ readFile }} from 'node:fs/promises';
+import {{ programs, readFences, expectedOutput, runPrograms }} from {json.dumps(NODE_READER.as_uri())};
+const cwd = {json.dumps(str(tmp_path))};
+const fence = (kind, body) => '```' + kind + '\\n' + body + '\\n```\\n';
+const text = fence('js', 'import assert from "node:assert/strict"; assert(true);')
+  + fence('js', 'console.log("冬至");');
+assert.equal(programs(text).length, 2);
+assert.equal(await runPrograms(text, cwd, '@0xf3cd/celestial'), 2);
+assert.throws(() => programs(fence('sh', 'node example.mjs')), /missing JavaScript/);
+assert.throws(() => programs(text + fence('unknown', 'new')), /unclassified/);
+await assert.rejects(
+  () => runPrograms(fence('js', 'console.log(missingImport);'), cwd, '@0xf3cd/celestial'), /ReferenceError/);
+await assert.rejects(
+  () => runPrograms(fence('js', 'console.log("actual");'), cwd, '@0xf3cd/celestial', 'wrong\\n'), /displayed output/);
+assert.throws(() => expectedOutput(''), /exactly one/);
+assert.throws(() => expectedOutput(fence('text', 'one') + fence('text', 'two')), /exactly one/);
+assert.deepEqual(readFences('<!--\\n' + fence('js', 'hidden') + '-->\\n' + text).length, 2);
+for (const guide of {json.dumps([str(REPO / name) for name in guides])}) {{
+  const blocks = readFences(await readFile(guide, 'utf8'));
+  assert.equal(programs(await readFile(guide, 'utf8')).length, blocks.filter(([info]) => info === 'js').length);
+}}
+console.log('PASS Node displayed-program controls');
+"""
+  result = subprocess.run(
+    [node_command(), "--input-type=module", "-e", source], cwd=tmp_path, capture_output=True, encoding="utf-8"
+  )
+  assert result.returncode == 0, result.stdout + result.stderr
+  assert result.stdout == "PASS Node displayed-program controls\n"
 
 
 @pytest.mark.parametrize(

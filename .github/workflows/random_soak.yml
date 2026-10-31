@@ -57,7 +57,7 @@ jobs:
       env:
         CXX: clang++
         CC:  clang
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
     - name: Verify received soak seed
       shell: bash
       run: |
