@@ -12,7 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
 
@@ -95,6 +95,68 @@ def reseal(output):
   manifest = json.loads(path.read_text())
   manifest["outputs"] = {name: value for name, value in site.members(output).items() if name != path.name}
   path.write_text(json.dumps(manifest))
+
+
+@pytest.fixture(params=[PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def page_path_flavour(sources, monkeypatch, request):
+  assemble(sources)
+
+  class PagePath(type(Path())):
+    # Only suffix-derived page spelling varies; fixture and production filesystem I/O stay native.
+    def with_suffix(self, suffix):
+      return request.param(super().with_suffix(suffix).as_posix())
+
+  monkeypatch.setattr(site, "Path", PagePath)
+
+
+def test_resolver_and_api_urls_use_posix_page_paths(sources, page_path_flavour):
+  root = sources[0]
+  for origin, target, page, expected in (
+    ("docs/API.md", "guide.md#units", "docs/API.html", "guide.html#units"),
+    ("docs/guide.md", "../bindings/python/README.md#call", "docs/guide.html", "../bindings/python/README.html#call"),
+    (
+      "bindings/python/README.md",
+      "../../docs/guide.md#units",
+      "bindings/python/README.html",
+      "../../docs/guide.html#units",
+    ),
+  ):
+    assert site.source_destination(root, origin, target, page, SHA) == expected
+  api = site.rewrite_api(root, "index.html", '<a href="guide.md#units">Guide</a>', SHA, VERSION)
+  assert 'href="../docs/guide.html#units"' in api
+
+
+def test_rendered_links_use_posix_page_paths(sources, page_path_flavour):
+  root = sources[0]
+  for source, expected in (
+    ("docs/guide.md", "../bindings/python/README.html#call"),
+    ("bindings/python/README.md", "../../docs/guide.html#units"),
+  ):
+    _, body, _ = site.render_markdown(root, source, SHA)
+    assert expected in site.HtmlPage(body).targets, body
+    assert "%5C" not in body and "\\" not in body
+
+
+def test_site_inventory_and_rerender_use_posix_page_paths(sources, page_path_flavour):
+  root, api, output, generators, _ = sources
+  shutil.rmtree(output)
+  output.mkdir()
+  site.assemble(root, output, api, site.source_snapshot(root), VERSION, generators)
+  expected = {
+    "index.html",
+    "site.css",
+    *site.TERMS,
+    "docs/guide.html",
+    "bindings/python/README.html",
+    *("api/" + name for name in site.members(api)),
+  }
+  actual = site.members(output)
+  actual.pop("site-manifest.json")
+  assert set(actual) == expected, f"non-POSIX hosted page keys: {set(actual) - expected}"
+  assert json.loads((output / "site-manifest.json").read_text())["outputs"].keys() == actual.keys()
+  result = site.validate_site(root, output, SHA)
+  assert result["html_pages"] == 7
+  assert result["local_destinations"]["/"] == result["local_destinations"]["/celestial-calendar/"] > 10
 
 
 def test_site_is_opt_in_and_uses_actual_version(monkeypatch):

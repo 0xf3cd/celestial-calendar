@@ -217,7 +217,7 @@ def source_destination(root: Path, origin: str, target: str, page: str, sha: str
   if not (root / path).exists() or not git(root, "ls-files", "--error-unmatch", "--", path):
     raise ValueError(f"missing source destination: {origin}: {target}")
   if path in GUIDES:
-    result = relative_url(page, str(Path(path).with_suffix(".html")))
+    result = relative_url(page, Path(path).with_suffix(".html").as_posix())
   else:
     result = f"{REPOSITORY}/{'tree' if (root / path).is_dir() else 'blob'}/{sha}/{quote(path)}"
   return urlunsplit((*urlsplit(result)[:3], url.query, url.fragment))
@@ -289,7 +289,7 @@ def render_markdown(root: Path, source: str, sha: str, *, page: str | None = Non
   reserved = raw_anchors(parsed)
   used, headings, title = set(reserved), [], source
   explicit_used = set()
-  page = page or str(Path(source).with_suffix(".html"))
+  page = page or Path(source).with_suffix(".html").as_posix()
   for index, token in enumerate(parsed):
     if token.type == "heading_open":
       label = parsed[index + 1].content
@@ -456,7 +456,7 @@ def assemble(root: Path, output: Path, api: Path, snapshot: dict, version: str, 
     else:
       shutil.copyfile(api / name, target)
   for source in GUIDES:
-    page = str(Path(source).with_suffix(".html"))
+    page = Path(source).with_suffix(".html").as_posix()
     title, body, toc = render_markdown(root, source, sha)
     target = output / page
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -502,7 +502,7 @@ def validate_site(root: Path, output: Path, sha: str | None = None) -> dict:
     "index.html",
     "site.css",
     *TERMS,
-    *(str(Path(source).with_suffix(".html")) for source in GUIDES),
+    *(Path(source).with_suffix(".html").as_posix() for source in GUIDES),
     *("api/" + name for name in manifest["api_members"]),
   }
   if set(actual) != expected_names or actual != manifest.get("outputs"):
@@ -525,7 +525,7 @@ def validate_site(root: Path, output: Path, sha: str | None = None) -> dict:
       if f"{version} · {STATE} @ {sha}" not in text:
         raise ValueError(f"site API project identity missing: {name}")
   for source in (*GUIDES, "docs/site/index.md"):
-    page = "index.html" if source == "docs/site/index.md" else str(Path(source).with_suffix(".html"))
+    page = "index.html" if source == "docs/site/index.md" else Path(source).with_suffix(".html").as_posix()
     title, body, toc = render_markdown(root, source, sha, page=page)
     if (output / page).read_text(encoding="utf-8") != page_html(root, page, sha, version, source, title, body, toc):
       raise ValueError(f"site guide differs from source content: {source}")
