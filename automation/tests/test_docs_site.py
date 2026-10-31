@@ -225,30 +225,33 @@ def test_site_inputs_keep_committed_bytes_in_autocrlf_checkout(tmp_path):
   snapshot = site.source_snapshot(clone, sha)
   assert ".gitattributes" in snapshot["inputs"]
   names = "\0".join(snapshot["inputs"]) + "\0"
-  attributes = (
-    subprocess.run(
-      ["git", "-C", str(clone), "check-attr", "-z", "--stdin", "eol"],
-      input=names.encode(),
-      check=True,
-      capture_output=True,
+  for directory in (ROOT, clone):
+    attributes = (
+      subprocess.run(
+        ["git", "-C", str(directory), "check-attr", "-z", "--stdin", "eol"],
+        input=names.encode(),
+        check=True,
+        capture_output=True,
+      )
+      .stdout.decode()
+      .split("\0")[:-1]
     )
-    .stdout.decode()
-    .split("\0")[:-1]
-  )
-  assert all(value == "lf" for value in attributes[2::3]), dict(zip(attributes[::3], attributes[2::3], strict=True))
+    missing = {name: value for name, value in zip(attributes[::3], attributes[2::3], strict=True) if value != "lf"}
+    assert not missing, f"missing LF checkout coverage: {missing}"
   for name, expected in snapshot["inputs"].items():
     data = (clone / name).read_bytes()
     assert data == site.git(clone, "show", f"{sha}:{name}")
     assert site.digest(data) == expected
   binary = b"binary\0line\r\n"
-  for name in ("automation/asset.bin", "docs/site/asset.bin"):
-    hashes = [
-      subprocess.run(
-        ["git", "-C", str(clone), "hash-object", option, "--stdin"], input=binary, check=True, capture_output=True
-      ).stdout
-      for option in ("--no-filters", f"--path={name}")
-    ]
-    assert hashes[0] == hashes[1], f"binary checkout policy must not convert {name}"
+  for directory in (ROOT, clone):
+    for name in ("automation/asset.bin", "docs/site/asset.bin"):
+      hashes = [
+        subprocess.run(
+          ["git", "-C", str(directory), "hash-object", option, "--stdin"], input=binary, check=True, capture_output=True
+        ).stdout
+        for option in ("--no-filters", f"--path={name}")
+      ]
+      assert hashes[0] == hashes[1], f"binary checkout policy must not convert {name}"
 
 
 def test_complete_site_identity_terms_content_and_determinism(sources):
