@@ -9,6 +9,7 @@
 import os
 import json
 import shutil
+from pathlib import Path
 
 from . import paths
 from .env import Tool, check_tool
@@ -98,7 +99,7 @@ def build_project(cpu_cores: int = 8) -> int:
   return retcode
 
 
-def build_docs(build_version: str) -> int:
+def build_docs(build_version: str, *, output: Path | None = None) -> int:
   """Generate the opt-in API reference without configuring or compiling C++."""
   if not check_tool(Tool("doxygen"), report=True):
     red_print("# Install Doxygen as described in docs/BUILDING.md before running project.py --docs")
@@ -108,10 +109,17 @@ def build_docs(build_version: str) -> int:
   if not config.is_file():
     red_print(f"# Doxygen configuration is missing: {config}")
     return 1
-  output = paths.build_dir() / "api-docs"
+  custom_output = output is not None
+  output = output or paths.build_dir() / "api-docs"
   if output.exists():
     shutil.rmtree(output)
   output.mkdir(parents=True)
+  if custom_output:
+    override = output / "Doxyfile"
+    override.write_text(
+      config.read_text(encoding="utf-8") + f'\nOUTPUT_DIRECTORY = "{output.as_posix()}"\n', encoding="utf-8"
+    )
+    config = override
   result = run_cmd(["doxygen", str(config)], cwd=root, env={**os.environ, "BUILD_VERSION": build_version})
   if result.retcode != 0:
     return result.retcode
@@ -139,7 +147,7 @@ def build_docs(build_version: str) -> int:
   except (OSError, UnicodeError, ValueError) as error:
     red_print(f"# API reference validation failed: {error}")
     return 1
-  green_print("# API reference: build/api-docs/html/index.html")
+  green_print(f"# API reference: {html.relative_to(root).as_posix()}/index.html")
   return 0
 
 

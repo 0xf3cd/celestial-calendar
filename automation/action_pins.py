@@ -68,7 +68,12 @@ def check_action_pins(workflow_dir: Path | None = None) -> int:
       failures.append(f"{display_path}: empty workflow")
       continue
 
-    privileged = path in workflow_paths and path.name in {"claude.yml", "claude-review.yml", "release.yml"}
+    privileged = path in workflow_paths and path.name in {
+      "claude.yml",
+      "claude-review.yml",
+      "release.yml",
+      "docs-publish.yml",
+    }
     try:
       document = load_workflow(path)
       if path in workflow_paths:

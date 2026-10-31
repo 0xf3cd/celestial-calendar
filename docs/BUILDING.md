@@ -94,6 +94,23 @@ same HTML as the `celestial-api-html` attachment; [`API.md`](API.md) describes i
 lunar subtree keeps its existing English/Chinese comments. The HTML is a CI attachment, not a hosted site or
 release artifact.
 
+<a id="docs-site"></a>
+### Development documentation site
+
+With the pinned Python dependencies in `Requirements.txt` and Doxygen 1.15.0 installed, run
+`python project.py --site` from a clean, committed source root. This opt-in task combines the existing
+Markdown guides and a separate API generation in `build/docs-site/`; it leaves `build/api-docs/html/`
+and `--all` unchanged. Core Tests uploads it as `celestial-docs-site`.
+
+Every page identifies the exact source SHA, package version and unreleased development state. The site
+describes that checkout, which may include APIs unavailable in the published packages. Its manifest records
+source inputs, generator versions and every output member's digest. The build checks all HTML links,
+fragments and assets at both the root and project subpath. It rejects dirty sources and linked output files.
+
+Preview locally with `python -m http.server --bind 127.0.0.1 --directory build/docs-site 8000`, then open
+`http://127.0.0.1:8000/`. No hosted URL is advertised until deployment and external checks are complete.
+The separately guarded manual publishing path is described in [Maintenance](MAINTAINING.md#docs-publishing).
+
 <a id="wasm"></a>
 ## WebAssembly and npm Packages
 

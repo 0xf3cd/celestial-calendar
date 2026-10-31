@@ -130,7 +130,7 @@ def test_docs_ci_pins_doxygen_and_uploads_only_html():
   assert job["if"] == "github.event_name == 'push' || github.event.pull_request.head.repo.fork"
   assert job["runs-on"] == "ubuntu-26.04"
   assert job["env"] == {"DOXYGEN_PACKAGE_VERSION": "1.15.0+ds1-1ubuntu3"}
-  checkout, python, install, generate, upload = job["steps"]
+  checkout, python, install, dependencies, generate, upload, site, site_upload = job["steps"]
   assert checkout == {"uses": "actions/checkout@v7", "with": {"persist-credentials": False}}
   assert python == {"uses": "actions/setup-python@v7", "with": {"python-version": "3.12"}}
   assert install["run"].splitlines() == [
@@ -139,11 +139,25 @@ def test_docs_ci_pins_doxygen_and_uploads_only_html():
     'test "$(doxygen --version)" = "${DOXYGEN_PACKAGE_VERSION%%+*}"',
   ]
   assert generate == {"name": "Generate API HTML", "run": "python3 project.py --docs"}
+  assert dependencies == {
+    "name": "Install pinned documentation dependencies",
+    "run": "python3 -m pip install -r Requirements.txt",
+  }
   assert upload == {
     "uses": "actions/upload-artifact@v7",
     "with": {
       "name": "celestial-api-html",
       "path": "build/api-docs/html/",
+      "if-no-files-found": "error",
+      "retention-days": 30,
+    },
+  }
+  assert site == {"name": "Generate and verify development documentation", "run": "python3 project.py --site"}
+  assert site_upload == {
+    "uses": "actions/upload-artifact@v7",
+    "with": {
+      "name": "celestial-docs-site",
+      "path": "build/docs-site/",
       "if-no-files-found": "error",
       "retention-days": 30,
     },

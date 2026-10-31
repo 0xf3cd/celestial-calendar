@@ -11,6 +11,7 @@
 from . import paths
 from .env import Tool, SetupPlan, setup_environment
 from .build import run_cmake, build_project, build_docs, clean_build
+from .docs_site import build_site
 from .gtest import run_gtests
 from .sysinfo import print_system_info
 from .utils import green_print, red_print, yellow_print, blue_print, run_cmd, ProcReturn, time_execution
@@ -33,6 +34,7 @@ __all__ = [
   "run_cmake",
   "build_project",
   "build_docs",
+  "build_site",
   "clean_build",
   "run_gtests",
   "print_system_info",

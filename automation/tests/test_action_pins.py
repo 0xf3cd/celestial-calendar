@@ -161,7 +161,7 @@ def test_local_action_graph_rejects_unprotected_targets(tmp_path, fault):
   assert check_action_pins(workflows) == 1
 
 
-@pytest.mark.parametrize("name", ["claude.yml", "claude-review.yml", "release.yml"])
+@pytest.mark.parametrize("name", ["claude.yml", "claude-review.yml", "release.yml", "docs-publish.yml"])
 @pytest.mark.parametrize("fault", ["local", "tag", "identity"])
 def test_privileged_workflows_reject_local_tags_and_divergent_identities(tmp_path, name, fault):
   path = write_workflow(tmp_path, f"actions/checkout@{SHA}")
