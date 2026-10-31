@@ -143,7 +143,7 @@ def source_snapshot(root: Path, sha: str | None = None) -> dict:
     | {
       name
       for name in tracked
-      if name in ("project.py", "Requirements.txt", "docs/Doxyfile")
+      if name in (".gitattributes", "project.py", "Requirements.txt", "docs/Doxyfile")
       or name.startswith(("automation/", "docs/site/", ".github/workflows/"))
       or (
         name.startswith(("src/astro/", "src/calendar/", "src/util/", "src/shared_lib/"))

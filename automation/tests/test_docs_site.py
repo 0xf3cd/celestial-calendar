@@ -36,6 +36,7 @@ def sources(tmp_path, monkeypatch):
     site, "NAVIGATION", (("Start", "index.html"), ("Guide", "docs/guide.html"), ("API", "api/index.html"))
   )
   files = {
+    ".gitattributes": ".gitattributes text eol=lf\n",
     "project.py": 'BUILD_VERSION: str = "1.0.0"\n',
     "docs/Doxyfile": "INPUT = src\nFILE_PATTERNS = *.hpp *.h *.md\nRECURSIVE = YES\n",
     "docs/guide.md": '# Guide\n\n<a id="units"></a>\n## Units\n\nUTC, UT1 and TT; pre-1972 approximation.\n\n'
@@ -186,7 +187,7 @@ def test_template_inserts_source_content_without_reinterpreting_it(sources):
   assert "<code>{{toc}}</code>" in text
 
 
-@pytest.mark.parametrize("fault", ["sha", "root", "dirty", "guide-byte", "template-byte", "symlink"])
+@pytest.mark.parametrize("fault", ["sha", "root", "dirty", "guide-byte", "template-byte", "attributes-byte", "symlink"])
 def test_source_identity_rejects_uncommitted_bytes_and_wrong_identity(sources, monkeypatch, fault):
   root, _, _, _, _ = sources
   assert site.source_snapshot(root, SHA)["source_sha"] == SHA
@@ -199,7 +200,8 @@ def test_source_identity_rejects_uncommitted_bytes_and_wrong_identity(sources, m
     original = site.git
     monkeypatch.setattr(site, "git", lambda root, *args: b" M source" if args[0] == "status" else original(root, *args))
   else:
-    path = root / ("docs/site/page.html" if fault == "template-byte" else "docs/guide.md")
+    name = {"template-byte": "docs/site/page.html", "attributes-byte": ".gitattributes"}.get(fault, "docs/guide.md")
+    path = root / name
     if fault == "symlink":
       path.unlink()
       path.symlink_to(root / "LICENSE")
@@ -207,6 +209,46 @@ def test_source_identity_rejects_uncommitted_bytes_and_wrong_identity(sources, m
       path.write_bytes(path.read_bytes() + b" ")
   with pytest.raises(ValueError):
     site.source_snapshot(directory, sha)
+
+
+def test_site_inputs_keep_committed_bytes_in_autocrlf_checkout(tmp_path):
+  sha = site.git(ROOT, "rev-parse", "HEAD").decode().strip()
+  policy = tmp_path / "candidate.attributes"
+  # Before commit, this external file supplies the candidate checkout policy to an immutable HEAD.
+  policy.write_bytes((ROOT / ".gitattributes").read_bytes())
+  clone = tmp_path / "repo"
+  subprocess.run(["git", "clone", "--shared", "--no-checkout", str(ROOT), str(clone)], check=True, capture_output=True)
+  site.git(clone, "config", "core.autocrlf", "true")
+  site.git(clone, "config", "core.attributesFile", str(policy))
+  site.git(clone, "checkout", "--detach", sha)
+  assert site.git(clone, "status", "--porcelain", "--untracked-files=all") == b""
+  snapshot = site.source_snapshot(clone, sha)
+  assert ".gitattributes" in snapshot["inputs"]
+  names = "\0".join(snapshot["inputs"]) + "\0"
+  attributes = (
+    subprocess.run(
+      ["git", "-C", str(clone), "check-attr", "-z", "--stdin", "eol"],
+      input=names.encode(),
+      check=True,
+      capture_output=True,
+    )
+    .stdout.decode()
+    .split("\0")[:-1]
+  )
+  assert all(value == "lf" for value in attributes[2::3]), dict(zip(attributes[::3], attributes[2::3], strict=True))
+  for name, expected in snapshot["inputs"].items():
+    data = (clone / name).read_bytes()
+    assert data == site.git(clone, "show", f"{sha}:{name}")
+    assert site.digest(data) == expected
+  binary = b"binary\0line\r\n"
+  for name in ("automation/asset.bin", "docs/site/asset.bin"):
+    hashes = [
+      subprocess.run(
+        ["git", "-C", str(clone), "hash-object", option, "--stdin"], input=binary, check=True, capture_output=True
+      ).stdout
+      for option in ("--no-filters", f"--path={name}")
+    ]
+    assert hashes[0] == hashes[1], f"binary checkout policy must not convert {name}"
 
 
 def test_complete_site_identity_terms_content_and_determinism(sources):
