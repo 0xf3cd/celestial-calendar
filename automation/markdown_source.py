@@ -16,16 +16,31 @@ surfaces that stay on source text, like the adjacent retained-attribution record
 byte-oriented provenance checks and do not.
 """
 
+from copy import copy
+import re
+
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
 # markdown-it with tables stands in for GitHub's GFM renderer.
 MARKDOWN = MarkdownIt("commonmark").enable("table")
+# Authored guides use comments and canonical lower-case explicit anchors.
+COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
+ANCHOR = re.compile(r'<a id="([a-z0-9-]+)">')
+
+
+def block_tokens(text: str, *, validate_link=None) -> list[Token]:
+  """The original token tree, using the same parser and options as source checks."""
+  if validate_link is None:
+    return MARKDOWN.parse(text)
+  parser = copy(MARKDOWN)
+  parser.validateLink = validate_link
+  return parser.parse(text)
 
 
 def tokens(text: str) -> list[Token]:
   """The block tokens and, after each inline one, its children."""
-  return [part for token in MARKDOWN.parse(text) for part in (token, *(token.children or ()))]
+  return [part for token in block_tokens(text) for part in (token, *(token.children or ()))]
 
 
 def link_targets(parsed: list[Token]) -> list[str]:

@@ -1,0 +1,97 @@
+name: Publish Development Documentation
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: docs-publish
+  cancel-in-progress: false
+
+jobs:
+  context:
+    runs-on: ubuntu-26.04
+    permissions: {}
+    steps:
+      - name: Validate protected default-branch dispatch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+
+          if (os.environ["EVENT_NAME"] != "workflow_dispatch"
+              or os.environ["REF_TYPE"] != "branch"
+              or not os.environ["DEFAULT_BRANCH"]
+              or os.environ["REF_NAME"] != os.environ["DEFAULT_BRANCH"]
+              or os.environ["REF_PROTECTED"] != "true"
+              or re.fullmatch(r"[0-9a-f]{40}", os.environ["SOURCE_SHA"]) is None):
+              raise SystemExit("Documentation publishing requires a protected default-branch dispatch")
+          PY
+
+  build:
+    needs: context
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    env:
+      DOXYGEN_PACKAGE_VERSION: "1.15.0+ds1-1ubuntu3"
+    outputs:
+      artifact_id: ${{ steps.pages.outputs.artifact_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install pinned documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y "doxygen=$DOXYGEN_PACKAGE_VERSION"
+          test "$(doxygen --version)" = "${DOXYGEN_PACKAGE_VERSION%%+*}"
+          python3 -m pip install -r Requirements.txt
+      - name: Build and verify exact development source
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python3 project.py --site
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from automation.docs_site import validate_site
+
+          print(validate_site(Path.cwd(), Path("build/docs-site"), os.environ["SOURCE_SHA"]))
+          PY
+      - name: Upload sole immutable Pages artifact
+        id: pages
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4; nested upload-artifact v4.6.2
+        with:
+          name: github-pages
+          path: build/docs-site/
+          retention-days: 30
+
+  deploy:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch && github.ref_protected
+    runs-on: ubuntu-26.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the verified artifact from this run
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: github-pages
