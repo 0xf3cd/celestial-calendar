@@ -17,12 +17,16 @@ byte-oriented provenance checks and do not.
 """
 
 from copy import copy
+import re
 
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
 # markdown-it with tables stands in for GitHub's GFM renderer.
 MARKDOWN = MarkdownIt("commonmark").enable("table")
+# Authored guides use comments and canonical lower-case explicit anchors.
+COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
+ANCHOR = re.compile(r'<a id="([a-z0-9-]+)">')
 
 
 def block_tokens(text: str, *, validate_link=None) -> list[Token]:

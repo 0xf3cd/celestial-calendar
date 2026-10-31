@@ -16,6 +16,7 @@ import posixpath
 import re
 import shutil
 import subprocess
+from fnmatch import fnmatchcase
 from html import escape
 from html.parser import HTMLParser
 from importlib.metadata import version as package_version
@@ -75,6 +76,56 @@ def git(root: Path, *args: str) -> bytes:
   return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True).stdout
 
 
+def doxygen_inputs(root: Path, tracked: list[str]) -> set[str]:
+  """Select files from supported root-relative Doxyfile inputs, conservatively ignoring exclusions."""
+  selection = {}
+  keys = {"INPUT", "FILE_PATTERNS", "RECURSIVE"}
+  for line in (root / "docs/Doxyfile").read_text(encoding="utf-8").splitlines():
+    text = line.strip()
+    if text.startswith("@INCLUDE"):
+      raise ValueError("site snapshot does not support Doxyfile includes")
+    key = re.match(r"[A-Z_]+", text)
+    if key is None or key[0] not in keys | {"INPUT_FILTER", "FILTER_PATTERNS"}:
+      continue
+    assignment = re.fullmatch(r"([A-Z_]+)\s*=\s*([^\\$]*)", text)
+    if assignment is None or key[0] in selection:
+      raise ValueError(f"unsupported Doxyfile selection: {key[0]}")
+    values = assignment[2].split()
+    if key[0] not in keys:
+      if values:
+        raise ValueError(f"site snapshot does not support Doxyfile {key[0]}")
+      continue
+    selection[key[0]] = values
+  if set(selection) != keys or selection["RECURSIVE"] not in (["YES"], ["NO"]):
+    raise ValueError("Doxyfile requires explicit INPUT, FILE_PATTERNS and RECURSIVE=YES/NO")
+  patterns = selection["FILE_PATTERNS"]
+  if not selection["INPUT"] or not patterns or any("/" in value or '"' in value for value in patterns):
+    raise ValueError("unsupported Doxyfile INPUT or FILE_PATTERNS")
+  selected = set()
+  for name in selection["INPUT"]:
+    if not re.fullmatch(r"[\w./-]+", name) or Path(name).is_absolute() or ".." in Path(name).parts:
+      raise ValueError(f"unsupported Doxyfile INPUT: {name}")
+    path = root / name
+    if not path.exists() or path.is_symlink():
+      raise ValueError(f"Doxyfile INPUT is missing or linked: {name}")
+    recursive = selection["RECURSIVE"] == ["YES"]
+    candidates = set(path.rglob("*") if recursive else path.glob("*")) if path.is_dir() else {path}
+    if path.is_dir():
+      candidates |= {
+        root / file
+        for file in tracked
+        if (root / file).is_relative_to(path) and (recursive or (root / file).parent == path)
+      }
+    for candidate in candidates:
+      if candidate.is_symlink():
+        raise ValueError(f"Doxyfile input contains a linked path: {candidate.relative_to(root)}")
+      if not candidate.is_dir() and (
+        path.is_file() or any(fnmatchcase(candidate.name, pattern) for pattern in patterns)
+      ):
+        selected.add(candidate.relative_to(root).as_posix())
+  return selected
+
+
 def source_snapshot(root: Path, sha: str | None = None) -> dict:
   """Require the repository root and committed bytes, including documentation build inputs."""
   if Path(git(root, "rev-parse", "--show-toplevel").decode().strip()).resolve() != root.resolve():
@@ -88,6 +139,7 @@ def source_snapshot(root: Path, sha: str | None = None) -> dict:
   selected = sorted(
     set(GUIDES)
     | set(TERMS)
+    | doxygen_inputs(root, tracked)
     | {
       name
       for name in tracked
@@ -101,6 +153,8 @@ def source_snapshot(root: Path, sha: str | None = None) -> dict:
   )
   inputs = {}
   for name in selected:
+    if name not in tracked:
+      raise ValueError(f"site input is not committed: {name}")
     path = root / name
     if path.is_symlink() or not path.is_file() or path.stat().st_nlink != 1:
       raise ValueError(f"site input is not an ordinary single-link file: {name}")
@@ -124,20 +178,32 @@ def relative_url(page: str, target: str) -> str:
   return quote(posixpath.relpath(target, posixpath.dirname(page) or "."), safe="/._-")
 
 
+def repository_source(target: str) -> str | None:
+  """The source named by a live repository URL; GitHub service/UI routes remain external."""
+  url, repository = urlsplit(target), urlsplit(REPOSITORY)
+  if (url.scheme, url.netloc) != (repository.scheme, repository.netloc):
+    return None
+  route = url.path.removeprefix(repository.path)
+  if route == url.path:
+    return None
+  if route in ("", "/", "/tree/main", "/tree/main/"):
+    return "README.md"
+  if route.startswith(("/blob/main/", "/tree/main/")):
+    path = unquote(route.split("/", 3)[3])
+    if not path:
+      raise ValueError(f"repository source URL has no file: {target}")
+    return path
+  return None
+
+
 def source_destination(root: Path, origin: str, target: str, page: str, sha: str) -> str:
   """Resolve repository identity before choosing a hosted route or a pinned source link."""
   url = urlsplit(target)
   if url.scheme or url.netloc:
     if url.scheme not in ("http", "https", "mailto") or (url.netloc and not url.scheme):
       raise ValueError(f"unsafe source scheme: {origin}: {target}")
-    prefix = REPOSITORY + "/"
-    if target.startswith(prefix) and url.path.startswith("/0xf3cd/celestial-calendar/"):
-      parts = url.path.split("/")
-      if len(parts) >= 6 and parts[3] in ("blob", "tree") and parts[4] == "main":
-        path = unquote("/".join(parts[5:]))
-      else:
-        return target
-    else:
+    path = repository_source(target)
+    if path is None:
       return target
   else:
     if not url.path:
@@ -146,7 +212,7 @@ def source_destination(root: Path, origin: str, target: str, page: str, sha: str
     if decoded.startswith("/") or "\\" in decoded or "\0" in decoded:
       raise ValueError(f"invalid source path: {origin}: {target}")
     path = posixpath.normpath(posixpath.join(posixpath.dirname(origin), decoded))
-  if path == ".." or path.startswith(("../", "/")) or "\\" in path:
+  if path == ".." or path.startswith(("../", "/")) or "\\" in path or "\0" in path:
     raise ValueError(f"source path escapes repository: {origin}: {target}")
   if not (root / path).exists() or not git(root, "ls-files", "--error-unmatch", "--", path):
     raise ValueError(f"missing source destination: {origin}: {target}")
@@ -180,6 +246,8 @@ class HtmlPage(HTMLParser):
 
 
 def raw_anchors(parsed) -> set[str]:
+  from .markdown_source import ANCHOR, COMMENTS
+
   anchors = set()
   opened = False
   for token in parsed:
@@ -190,16 +258,16 @@ def raw_anchors(parsed) -> set[str]:
         continue
       text = part.content
       # Raw HTML is a closed set: comments and empty <a id="..."> anchors.
-      rest = re.sub(r"<!--[\s\S]*?-->", "", text)
-      rest = re.sub(r'<a\s+id="([^"<>\s]+)"\s*>', "", rest)
+      uncommented = COMMENTS.sub("", text)
+      rest = ANCHOR.sub("", uncommented)
       rest = rest.replace("</a>", "")
       if rest.strip():
         raise ValueError(f"unsupported raw source HTML: {text!r}")
-      for anchor in re.findall(r'<a\s+id="[^"<>\s]+"\s*>|</a>', re.sub(r"<!--[\s\S]*?-->", "", text)):
-        if (anchor == "</a>") != opened:
+      for anchor in re.finditer(f"{ANCHOR.pattern}|</a>", uncommented):
+        if (anchor[0] == "</a>") != opened:
           raise ValueError("raw source anchors must be paired and empty")
         opened = not opened
-      for identifier in re.findall(r'<a\s+id="([^"<>\s]+)"\s*>', re.sub(r"<!--[\s\S]*?-->", "", text)):
+      for identifier in ANCHOR.findall(uncommented):
         if identifier in anchors:
           raise ValueError(f"duplicate explicit fragment: {identifier}")
         anchors.add(identifier)
@@ -292,7 +360,7 @@ def rewrite_api(root: Path, name: str, text: str, sha: str, version: str) -> str
         and not url.path.endswith((".html", ".js", ".css", ".png", ".svg", ".map"))
         and Path(url.path).name not in TERMS
       )
-      if source_style or target.startswith(REPOSITORY + "/blob/main/") or target.startswith(REPOSITORY + "/tree/main/"):
+      if source_style or repository_source(target) is not None:
         origin = API_ORIGINS.get(name)
         if source_style and origin is None:
           raise ValueError(f"unknown API source-link origin: {name}: {target}")
@@ -350,7 +418,7 @@ def crawl(output: Path) -> dict:
         if url.scheme or url.netloc:
           if url.scheme not in ("https", "http", "mailto") or (url.netloc and not url.scheme):
             raise ValueError(f"unsafe output URL: {name}: {target}")
-          if target.startswith(REPOSITORY + "/blob/main/") or target.startswith(REPOSITORY + "/tree/main/"):
+          if repository_source(target) is not None:
             raise ValueError(f"unpinned source URL: {name}: {target}")
           continue
         decoded = unquote(url.path)

@@ -10,6 +10,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,12 +37,15 @@ def sources(tmp_path, monkeypatch):
   )
   files = {
     "project.py": 'BUILD_VERSION: str = "1.0.0"\n',
-    "docs/Doxyfile": "INPUT = src\n",
+    "docs/Doxyfile": "INPUT = src\nFILE_PATTERNS = *.hpp *.h *.md\nRECURSIVE = YES\n",
     "docs/guide.md": '# Guide\n\n<a id="units"></a>\n## Units\n\nUTC, UT1 and TT; pre-1972 approximation.\n\n'
-    '[Python](../bindings/python/README.md#call)\n\n```python\nprint(".md#units")\n```\n',
+    "[Python](../bindings/python/README.md#call)\n\n[External](https://example.org/doc#x)\n"
+    f"[Mail](mailto:reader@example.org)\n[Releases]({site.REPOSITORY}/releases)\n\n"
+    '```python\nprint(".md#units")\n```\n',
     "bindings/python/README.md": '# Python\n\n<a id="call"></a>\n## Call\n\n[Guide](../../docs/guide.md#units)\n',
     "docs/site/index.md": "# Documentation\n\n[Guide](../guide.md)\n",
     "src/example.hpp": "// source only\n",
+    "README.md": '# Root\n\n<a id="cpp"></a>\n## C++\n',
     "LICENSE": "project terms\n",
     "THIRD_PARTY_NOTICES.txt": "retained terms\n",
     "docs/site/page.html": (ROOT / "docs/site/page.html").read_text(),
@@ -213,7 +217,7 @@ def test_real_validator_rejects_output_defects_from_valid_baseline(sources, faul
 
 
 @pytest.mark.parametrize(
-  "target", ["#absent", "guide.html#absent", "/docs/guide.html", "../../escape.html", "javascript:alert(1)"]
+  "target", ["#absent", "guide.html#absent", "/docs/guide.html", "../../escape.html", "javascript:alert(1)", "//host/x"]
 )
 def test_complete_crawl_checks_fragments_schemes_and_both_prefixes(sources, target):
   _, _, output = assemble(sources)
@@ -246,6 +250,10 @@ def test_explicit_inline_block_unicode_and_repeated_heading_ids(sources):
     "[bad](javascript:alert)",
     "![bad](data:text/html,test)",
     '<a href="javascript:alert(1)">bad</a>',
+    "[bad](//host/x)",
+    '<a id="Upper"></a>',
+    '<a id="a_b"></a>',
+    '<a id="中文"></a>',
   ],
 )
 def test_unsupported_raw_html_and_unsafe_source_fail(sources, text):
@@ -327,6 +335,205 @@ def test_source_identity_wins_over_relative_and_absolute_url_spelling(sources):
     site.rewrite_api(root, "unknown.html", '<a href="guide.md">Guide</a>', SHA, VERSION)
   raw = '<script>const example = "guide.md";</script><code>guide.md</code><a href="symbol.html#symbol">X</a>'
   assert site.rewrite_api(root, "symbol.html", raw, SHA, VERSION) == raw
+
+
+@pytest.mark.parametrize("suffix", ["", "/", "?tab=readme#cpp", "/?tab=readme#cpp", "/tree/main", "/tree/main/"])
+def test_repository_home_and_root_tree_name_the_hosted_readme(sources, monkeypatch, suffix):
+  root = sources[0]
+  monkeypatch.setattr(site, "GUIDES", (*site.GUIDES, "README.md"))
+  target = site.REPOSITORY + suffix
+  result = site.source_destination(root, "docs/guide.md", target, "docs/guide.html", SHA)
+  expected = "../README.html" + ("?tab=readme#cpp" if "?" in suffix else "")
+  assert result == expected
+  assert site.repository_source(target) == "README.md"
+  api = site.rewrite_api(root, "symbol.html", f'<a href="{target}">Home</a><code>{target}</code>', SHA, VERSION)
+  assert f'<a href="{expected}">Home</a>' in api
+  assert f"<code>{target}</code>" in api
+
+
+@pytest.mark.parametrize("suffix", ["", "/", "#cpp", "/tree/main/", "/blob/main/docs/API.md", "/tree/main/src/"])
+def test_crawl_rejects_every_live_source_spelling(sources, suffix):
+  _, _, output = assemble(sources)
+  page = output / "docs/guide.html"
+  page.write_text(page.read_text().replace("</article>", f'<a href="{site.REPOSITORY}{suffix}">live</a></article>'))
+  with pytest.raises(ValueError, match="unpinned source URL"):
+    site.crawl(output)
+
+
+@pytest.mark.parametrize(
+  "target",
+  [
+    "https://example.org/doc#x",
+    "mailto:reader@example.org",
+    site.REPOSITORY + "/releases",
+    site.REPOSITORY + "/issues/398",
+    site.REPOSITORY + "/actions/workflows/core_tests.yml",
+    site.REPOSITORY + "/actions/runs/123",
+  ],
+)
+def test_external_and_github_service_links_survive_render_and_crawl(sources, target):
+  root, _, output = assemble(sources)
+  assert site.source_destination(root, "docs/guide.md", target, "docs/guide.html", SHA) == target
+  assert site.repository_source(target) is None
+  (root / "docs/guide.md").write_text(f"# Links\n\n[External]({target})\n")
+  _, body, _ = site.render_markdown(root, "docs/guide.md", SHA)
+  assert f'href="{target}"' in body
+  page = output / "docs/guide.html"
+  page.write_text(page.read_text().replace("</article>", body + "</article>"))
+  assert site.crawl(output)["html_pages"] == 7
+  assert (
+    site.rewrite_api(root, "symbol.html", f'<a href="{target}">UI</a>', SHA, VERSION) == f'<a href="{target}">UI</a>'
+  )
+
+
+def test_protocol_relative_source_destination_is_rejected(sources):
+  with pytest.raises(ValueError, match="unsafe source scheme"):
+    site.source_destination(sources[0], "docs/guide.md", "//host/x", "docs/guide.html", SHA)
+
+
+@pytest.mark.parametrize("fault", ["dirty", "site-link", "api-link", "nonzero", "os-error", "process-error", "version"])
+def test_site_build_failures_keep_legacy_api_and_fail_closed(sources, monkeypatch, fault):
+  root = sources[0]
+  monkeypatch.setattr(site.paths, "proj_root", lambda: root)
+  legacy = root / "build/api-docs/html/index.html"
+  legacy.parent.mkdir(parents=True)
+  legacy.write_text("legacy numeric version")
+  calls = []
+
+  def generate(*args, **kwargs):
+    calls.append((args, kwargs))
+    if fault == "os-error":
+      raise FileNotFoundError("missing doxygen executable")
+    if fault == "process-error":
+      raise subprocess.CalledProcessError(3, ["doxygen", "--version"])
+    return 2
+
+  monkeypatch.setattr(site, "build_docs", generate)
+  if fault == "dirty":
+    original = site.git
+    monkeypatch.setattr(site, "git", lambda root, *args: b" M source" if args[0] == "status" else original(root, *args))
+  elif fault in ("site-link", "api-link"):
+    name = "docs-site" if fault == "site-link" else "site-api-docs"
+    (root / "build" / name).symlink_to(legacy.parent, target_is_directory=True)
+  assert site.build_site("9.9.9" if fault == "version" else VERSION) == (2 if fault == "nonzero" else 1)
+  assert len(calls) == (1 if fault in ("nonzero", "os-error", "process-error") else 0)
+  assert legacy.read_text() == "legacy numeric version"
+
+
+@pytest.mark.parametrize("fault", ["os-error", "process-error"])
+def test_site_catches_generator_version_query_failures(sources, monkeypatch, fault):
+  root, api, _, _, _ = sources
+  monkeypatch.setattr(site.paths, "proj_root", lambda: root)
+  legacy = root / "build/api-docs/html/index.html"
+  legacy.parent.mkdir(parents=True)
+  legacy.write_text("legacy numeric version")
+
+  def generate(*args, output):
+    shutil.copytree(api, output / "html")
+    return 0
+
+  def query():
+    if fault == "os-error":
+      raise FileNotFoundError("missing doxygen executable")
+    raise subprocess.CalledProcessError(3, ["doxygen", "--version"])
+
+  monkeypatch.setattr(site, "build_docs", generate)
+  monkeypatch.setattr(site, "generator_versions", query)
+  assert site.build_site(VERSION) == 1
+  assert legacy.read_text() == "legacy numeric version"
+
+
+@pytest.mark.parametrize("fault", ["exit-code", "missing-executable", "process-error"])
+def test_site_propagates_actual_doxygen_generation_failures(sources, monkeypatch, fault):
+  root = sources[0]
+  monkeypatch.setattr(site.paths, "proj_root", lambda: root)
+  monkeypatch.setattr(build, "check_tool", lambda *args, **kwargs: True)
+  legacy = root / "build/api-docs/html/index.html"
+  legacy.parent.mkdir(parents=True)
+  legacy.write_text("legacy numeric version")
+
+  def run(command, **kwargs):
+    assert command == ["doxygen", str(root / "build/site-api-docs/Doxyfile")]
+    assert kwargs["cwd"] == root
+    if fault == "missing-executable":
+      raise FileNotFoundError("missing doxygen executable")
+    if fault == "process-error":
+      raise subprocess.CalledProcessError(7, command)
+    return ProcReturn(7, "", "generation failed")
+
+  monkeypatch.setattr(build, "run_cmd", run)
+  assert site.build_site(VERSION) == (7 if fault == "exit-code" else 1)
+  assert legacy.read_text() == "legacy numeric version"
+
+
+@pytest.mark.parametrize(
+  "selection,name",
+  [
+    ("INPUT = src\nFILE_PATTERNS = *.md\nRECURSIVE = YES\n", "src/astro/notes.md"),
+    ("INPUT = extra\nFILE_PATTERNS = *.cpp\nRECURSIVE = NO\n", "extra/example.cpp"),
+    ("INPUT = src/example.hpp\nFILE_PATTERNS = *.md\nRECURSIVE = NO\n", "src/example.hpp"),
+  ],
+)
+def test_doxygen_selection_changes_are_in_the_exact_snapshot(sources, selection, name):
+  root, _, _, _, files = sources
+  files["docs/Doxyfile"] = selection
+  (root / "docs/Doxyfile").write_text(selection)
+  files[name] = "selected source\n"
+  path = root / name
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(files[name])
+  assert name in site.source_snapshot(root)["inputs"]
+  path.write_bytes(path.read_bytes() + b" ")
+  with pytest.raises(ValueError, match="input differs from source SHA"):
+    site.source_snapshot(root)
+
+
+def test_doxygen_nonrecursive_selection_and_missing_or_untracked_markdown(sources):
+  root, _, _, _, files = sources
+  path = root / "src/nested/notes.md"
+  path.parent.mkdir()
+  path.write_text("source\n")
+  files[path.relative_to(root).as_posix()] = "source\n"
+  no_recursion = "INPUT = src\nFILE_PATTERNS = *.md\nRECURSIVE = NO\n"
+  (root / "docs/Doxyfile").write_text(no_recursion)
+  assert "src/nested/notes.md" not in site.doxygen_inputs(root, list(files))
+  (root / "docs/Doxyfile").write_text(files["docs/Doxyfile"])
+  path.unlink()
+  with pytest.raises(ValueError, match="not an ordinary single-link file"):
+    site.source_snapshot(root)
+  path.write_text("source\n")
+  del files["src/nested/notes.md"]
+  with pytest.raises(ValueError, match="site input is not committed"):
+    site.source_snapshot(root)
+
+
+@pytest.mark.parametrize(
+  "selection",
+  [
+    "INPUT += src\n",
+    "INPUT = $(SOURCES)\n",
+    "INPUT = src/*\n",
+    'INPUT = "src"\n',
+    "INPUT = ../outside\n",
+    "INPUT = absent\n",
+    "@INCLUDE = other.conf\n",
+    "INPUT_FILTER = generator.py\n",
+    "RECURSIVE = MAYBE\n",
+    "FILE_PATTERNS = src/*.hpp\n",
+  ],
+)
+def test_unsupported_doxygen_selection_fails_with_context(sources, selection):
+  root = sources[0]
+  assert site.source_snapshot(root)["source_sha"] == SHA
+  config = sources[4]["docs/Doxyfile"]
+  key = selection.split()[0]
+  if key in ("INPUT", "FILE_PATTERNS", "RECURSIVE"):
+    config = "\n".join(selection.strip() if line.startswith(key + " ") else line for line in config.splitlines())
+  else:
+    config += selection
+  (root / "docs/Doxyfile").write_text(config)
+  with pytest.raises(ValueError, match="Doxyfile"):
+    site.doxygen_inputs(root, list(sources[4]))
 
 
 @pytest.mark.parametrize("fault", ["missing-origin", "symlink", "stale-source"])

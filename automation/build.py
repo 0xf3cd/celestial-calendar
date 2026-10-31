@@ -147,7 +147,8 @@ def build_docs(build_version: str, *, output: Path | None = None) -> int:
   except (OSError, UnicodeError, ValueError) as error:
     red_print(f"# API reference validation failed: {error}")
     return 1
-  green_print(f"# API reference: {html.relative_to(root).as_posix()}/index.html")
+  display = html.relative_to(root) if html.is_relative_to(root) else html
+  green_print(f"# API reference: {display.as_posix()}/index.html")
   return 0
 
 

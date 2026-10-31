@@ -8,6 +8,7 @@
 # SPDX-License-Identifier: MIT
 
 import sys
+import shutil
 from pathlib import Path
 
 import pytest
@@ -121,6 +122,19 @@ def test_docs_validate_generated_pages_assets_and_attribution(doc_root, monkeypa
 
   monkeypatch.setattr(build, "run_cmd", run)
   assert build.build_docs("0.7.0") == 1
+
+
+def test_successful_custom_output_outside_root_has_a_bounded_success_print(doc_root, tmp_path, monkeypatch, capsys):
+  output = tmp_path.parent / (tmp_path.name + "-custom-api")
+
+  def run(*args, **kwargs):
+    html = generated_docs(doc_root)
+    shutil.copytree(html, output / "html")
+    return ProcReturn(0, "", "")
+
+  monkeypatch.setattr(build, "run_cmd", run)
+  assert build.build_docs("0.7.0", output=output) == 0
+  assert str(output / "html/index.html") in capsys.readouterr().out
 
 
 def test_docs_ci_pins_doxygen_and_uploads_only_html():
