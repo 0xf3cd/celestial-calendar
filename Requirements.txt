@@ -24,4 +24,4 @@ markdown-it-py==4.2.0
 # The automation layer's own unit tests (#87): pytest runs `automation/tests/` via
 # `checks.py --pytest`. It is a gate like any other here -- a silent major would change
 # what the gate accepts on a day nobody touched the repository.
-pytest==9.1.1
+pytest==9.2.0
