@@ -131,6 +131,12 @@ API HTML is also opt-in: `./project.py --docs` uses Doxygen 1.15.0 without a C++
 Core Tests uploads `celestial-api-html`; it is not a release artifact. `docs/Doxyfile` rejects
 documentation syntax errors but does not require every declaration/parameter to be documented.
 
+`./project.py --site` separately builds/verifies the development site in `build/docs-site` from a clean
+committed root, with Markdown guides and an independently generated API subtree. It preserves `--docs` and
+is also excluded from `--all`. Core uploads `celestial-docs-site`; `docs-publish.yml` is manual only and
+requires a protected default-branch dispatch. Environment protection and Pages enabling are separate
+operations, ordered in [Maintenance](docs/MAINTAINING.md#docs-publishing).
+
 Randomized tests draw from a shared, seeded engine (`test/random.hpp`, #69): default seed
 42, override with the `CELESTIAL_TEST_SEED` env var. The PR/push gate pins the default;
 `random_soak.yml` (weekly / dispatch) draws a fresh seed per run. A soak failure is never

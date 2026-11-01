@@ -24,7 +24,7 @@ import pytest
 
 from markdown_it.token import Token
 
-from automation.markdown_source import link_targets, links, section_text, tokens, visible_text
+from automation.markdown_source import ANCHOR, COMMENTS, link_targets, links, section_text, tokens, visible_text
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -51,8 +51,6 @@ REPO_URL = re.compile(
 REPO_SUFFIXES = ("[#<fragment>]", "/releases", *(f"/{route}/<path>[#<fragment>]" for route in REPO_ROUTES))
 # The checks read the parse in `automation.markdown_source`, never the source text. Raw HTML is held to what the
 # guides use, comments and empty anchors: how a browser reads any other HTML is not something the parse can say.
-COMMENTS = re.compile(r"\s*(?:<!--(?!-?>)(?:(?!--!?>).)*-->\s*)+", re.DOTALL)
-ANCHOR = re.compile(r'<a id="([a-z0-9-]+)">')
 
 
 @cache

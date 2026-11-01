@@ -16,3 +16,27 @@ src/astro/vsop87d/saturn_coeff.hpp linguist-generated=true
 src/astro/vsop87d/uranus_coeff.hpp linguist-generated=true
 src/astro/vsop87d/venus_coeff.hpp linguist-generated=true
 src/test/astro/vsop87d_check_data.hpp linguist-generated=true
+
+# Documentation snapshots compare checkout bytes directly with committed blobs.
+/.gitattributes text eol=lf
+/project.py text eol=lf
+/Requirements.txt text eol=lf
+/README*.md text eol=lf
+/automation/** text=auto eol=lf
+/.github/workflows/*.yml text eol=lf
+/.github/workflows/*.yaml text eol=lf
+/docs/*.md text eol=lf
+/docs/Doxyfile text eol=lf
+/docs/site/** text=auto eol=lf
+/docs/examples/chart_snapshot/README.md text eol=lf
+/bindings/javascript/README*.md text eol=lf
+/bindings/javascript-alias/README.md text eol=lf
+/bindings/python/README*.md text eol=lf
+/src/astro/**/*.hpp text eol=lf
+/src/astro/**/*.h text eol=lf
+/src/calendar/**/*.hpp text eol=lf
+/src/calendar/**/*.h text eol=lf
+/src/util/**/*.hpp text eol=lf
+/src/util/**/*.h text eol=lf
+/src/shared_lib/**/*.hpp text eol=lf
+/src/shared_lib/**/*.h text eol=lf

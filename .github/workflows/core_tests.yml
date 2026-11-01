@@ -33,12 +33,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y "doxygen=$DOXYGEN_PACKAGE_VERSION"
           test "$(doxygen --version)" = "${DOXYGEN_PACKAGE_VERSION%%+*}"
+      - name: Install pinned documentation dependencies
+        run: python3 -m pip install -r Requirements.txt
       - name: Generate API HTML
         run: python3 project.py --docs
       - uses: actions/upload-artifact@v7
         with:
           name: celestial-api-html
           path: build/api-docs/html/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Generate and verify development documentation
+        run: python3 project.py --site
+      - uses: actions/upload-artifact@v7
+        with:
+          name: celestial-docs-site
+          path: build/docs-site/
           if-no-files-found: error
           retention-days: 30
 

@@ -10,7 +10,7 @@ the tool versions; the Windows STL exception is described under [Toolchain Featu
 
 | Workflow · job | What CI runs | Local command |
 |---|---|---|
-| `core_tests.yml` · `api-docs` | `project.py --docs`; uploads `celestial-api-html` | `python project.py --docs` ([API Documentation](BUILDING.md#api-docs)) |
+| `core_tests.yml` · `api-docs` | `project.py --docs` and `--site`; uploads `celestial-api-html` and `celestial-docs-site` separately | The same commands ([Documentation](BUILDING.md#api-docs)) |
 | `core_tests.yml` · `linters-and-static-analysis` | `checks.py --ai-workflows`, `--action-pins`, `--pytest`, `--provenance`, `--signature-layout`; then `project.py --clean --cmake` and `checks.py --ruff --clang-tidy --abi-layout` | The same commands ([Static Checks](BUILDING.md#lint)); the workflow pins the Ruff version |
 | `core_tests.yml` · `test-ubuntu-gcc14`, `test-ubuntu-clang` | The local `native-build` action runs `project.py --clean --cmake --cores all --build --test -v 1`; the clang job then runs `checks.py --ctypes-smoke --jieqi-table` and `--export-surface` | The same build command with `CXX=g++-14` or `CXX=clang++`, then the same `checks.py` flags, which need that build |
 | `core_tests.yml` · `sanitizers` | An ASan + UBSan build, then every binary in `build/test/` run directly, with the test count reconciled against the `TEST` / `TEST_F` macros | Build with the job's `CXXFLAGS` and `python project.py --clean --cmake --build`, then run the reconciliation in [`AGENTS.md`](../AGENTS.md) ("Acceptance: run the binaries, and reconcile the count") |
@@ -25,6 +25,28 @@ the tool versions; the Windows STL exception is described under [Toolchain Featu
 | `random_soak.yml` (three soak jobs) | The same `native-build` action with the run ID as `CELESTIAL_TEST_SEED`, then a direct RNG-using binary invocation that checks its reported seed | `CELESTIAL_TEST_SEED=<run ID> python project.py --test` replays a failure |
 | `random_soak.yml` · `weekly-cxx-feature-probe` (three platforms) | `checks.py --features <leg>` on weekly and manual runs, in addition to the per-PR probes | `python checks.py --features` |
 | `release.yml`, `release-rehearsal.yml`, `claude.yml`, `claude-review.yml` | Release and review automation | CI only; releases follow [`RELEASING.md`](RELEASING.md) |
+
+<a id="docs-publishing"></a>
+## Documentation publishing
+
+`docs-publish.yml` is manual only. A metadata-only job rejects dispatches outside the protected default
+branch before source checkout. The read-only build checks out the dispatched SHA, builds and verifies the
+development site, then uploads one fixed-name immutable Pages artifact. The deploy job has only Pages/OIDC
+write permissions and runs the pinned official deploy action, with no checkout or repository commands.
+The action selects exactly one `github-pages` artifact from that workflow run and deploys its immutable ID.
+
+The workflow file does not configure Pages or environment protection. Before enabling the Actions Pages
+source or dispatching this workflow, separately authorise and complete these operations in order:
+
+1. Configure and API-verify required reviewers and a default-branch deployment restriction on the
+   `github-pages` environment.
+2. Verify the protected default branch and the intended workflow/source SHA.
+3. Enable the custom-Actions Pages source, then dispatch from that branch.
+4. Retain the actual artifact ID, manifest and member digests; check the deployed revision, external links
+   and desktop/mobile navigation before promoting its URL in repository or package metadata.
+
+No live site, environment protection or deployment is established by adding the YAML file. Hosted acceptance
+and URL promotion remain separate from the code/build change.
 
 <a id="artifacts"></a>
 ## CI Artifact Downloads
