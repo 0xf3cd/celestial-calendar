@@ -11,6 +11,7 @@ Choose a language to install the library and make a first call:
 - [Convert UTC, UT1 and TT](../UTC_CONVERSIONS.md)
 - [Find ephemeris events](../EPHEMERIS_EVENTS.md)
 - [Query a chart snapshot](../examples/chart_snapshot/README.md)
+- [Use the library with an AI assistant](https://github.com/0xf3cd/celestial-calendar/blob/main/skills/using-celestial-calendar/README.md)
 
 ## Explanations and reference
 

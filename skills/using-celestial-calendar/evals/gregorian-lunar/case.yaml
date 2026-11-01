@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: gregorian-lunar
+expected_outcome: |
+  A complete Node ES module uses the installed public lunar API after initialization,
+  converts the requested date using algo3, and roundtrips the lunar result.
+  The original program actually runs and prints JSON with the requested date,
+  a valid lunar record and the matching Gregorian roundtrip. It accepts another date
+  without editing the program. No installation or invented interface is used.

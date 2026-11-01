@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: unsupported-js-events
+expected_outcome: |
+  The response correctly identifies the lack of a JavaScript interval-station API
+  in the supplied interface and points to a supported public language/interface.
+  An honest unsupported answer passes; invented JS methods, an unrequested
+  numerical implementation or an irrelevant annual Sun query do not.

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: chart-snapshot
+expected_outcome: |
+  A complete Python program actually queries the public chart API for the explicit
+  UTC input and location. It reports both resolved time scales, chart distances in
+  AU including the Moon, absent node distances, signed rates in degrees per TT day,
+  and twelve cusps beginning with house 1. It does not substitute a standalone
+  Moon distance or infer the scale from the host timezone.

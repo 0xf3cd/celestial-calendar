@@ -16,6 +16,8 @@ version on PyPI or npm; use its matching documentation. To build the current sou
 
 For Ganzhi (干支) calculations, use [bazi](https://github.com/0xf3cd/bazi); this library has no Ganzhi API.
 
+For AI-assisted library use, install the [consumer skill](skills/using-celestial-calendar/README.md).
+
 <a id="install"></a>
 ## Install and examples
 

@@ -14,6 +14,8 @@
 
 干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。
 
+让 AI 帮你调用本库时，可安装[使用者 skill（英文）](skills/using-celestial-calendar/README.md)。
+
 <a id="install"></a>
 ## 安装与示例
 
