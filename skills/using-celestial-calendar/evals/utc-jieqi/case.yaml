@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: utc-jieqi
+expected_outcome: |
+  The program uses public UTC and UT1 conversions to compare instants in TT,
+  selects the first strictly later Jieqi by actual moment across the year boundary,
+  and displays UTC and fixed UTC+8 with fractional seconds. The original program
+  runs on the supplied artifact. A second cutoff changes the selected event when
+  appropriate, so a printed example or a hardcoded answer cannot pass.

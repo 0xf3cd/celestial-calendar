@@ -602,9 +602,10 @@ def test_a4_license_mutation_fails(tmp_path):
     verify_retained_provenance(repo_root=tmp_path)
 
 
-def test_chinese_readme_is_in_the_residual_scan(tmp_path):
+@pytest.mark.parametrize("relative", ["README_ZH.md", "skills/using-celestial-calendar/SKILL.md"])
+def test_reader_entry_is_in_the_residual_scan(tmp_path, relative):
   materialize_inputs(tmp_path)
-  readme = tmp_path / "README_ZH.md"
+  readme = tmp_path / relative
   readme.write_text(readme.read_text(encoding="utf-8") + f"\n{GPL_V3}\n", encoding="utf-8")
 
   with pytest.raises(RuntimeError, match="residual GPL allowlist differs"):

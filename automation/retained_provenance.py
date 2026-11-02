@@ -138,6 +138,7 @@ A4_SCAN_ROOTS: Final[tuple[str, ...]] = (
   "automation",
   "bindings",
   "docs",
+  "skills",
   "src",
   "statistics",
   "third_party",

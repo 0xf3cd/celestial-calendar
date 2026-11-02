@@ -1,0 +1,22 @@
+[
+  {"query": "Use celestial-calendar in Python to convert 2026-10-29 to a lunar date; which algorithm should I choose?", "should_trigger": true},
+  {"query": "用 @0xf3cd/celestial 写个 Node 脚本，查下一个节气，输出北京时间。", "should_trigger": true},
+  {"query": "My CelestialCalendar chart returns Moon distance in AU but the standalone call says km. Help me use the right result.", "should_trigger": true},
+  {"query": "Given a UTC timestamp, get a CelestialCalendar Placidus chart at Greenwich with explicit model selection.", "should_trigger": true},
+  {"query": "查 celestial_calendar 的水星留点，输入是一段 TT 区间。想要能跑的 Python 例子。", "should_trigger": true},
+  {"query": "Use the CelestialCalendar C ABI and show how to tell an invalid input from a legitimate empty event result.", "should_trigger": true},
+  {"query": "Does my installed @0xf3cd/celestial expose UTC conversion? The new docs and my 1.0 package disagree.", "should_trigger": true},
+  {"query": "用 CelestialCalendar 算太阳赤经赤纬，先帮我查公开接口和单位。", "should_trigger": true},
+  {"query": "I need a header-only CelestialCalendar C++ example for sunrise at an explicit place and time.", "should_trigger": true},
+  {"query": "用已安装的 celestial_calendar 查询独立宫位，不要整张星盘。", "should_trigger": true},
+  {"query": "Change the CelestialCalendar C++ cache implementation and add regression tests.", "should_trigger": false},
+  {"query": "Review a celestial-calendar PR that changes golden tolerances and the C ABI.", "should_trigger": false},
+  {"query": "帮我设计一个公历农历切换的日历 UI，先画交互，不接任何计算库。", "should_trigger": false},
+  {"query": "把这段节气散文润色一下，不需要写程序或查历法。", "should_trigger": false},
+  {"query": "Explain a Bazi judgment from the supplied Ganzhi chart; don't calculate astronomical positions.", "should_trigger": false},
+  {"query": "My Google Calendar events are duplicated. Help me diagnose the calendar sync.", "should_trigger": false},
+  {"query": "Write a CSS lunar-themed date picker. The lunar phases are decorative icons.", "should_trigger": false},
+  {"query": "给 CelestialCalendar 配新的 clang-tidy 检查和发布 workflow。", "should_trigger": false},
+  {"query": "Calculate planetary positions using a JPL kernel, without CelestialCalendar.", "should_trigger": false},
+  {"query": "Summarize the history of Chinese solar-term festivals for a cultural essay.", "should_trigger": false}
+]
