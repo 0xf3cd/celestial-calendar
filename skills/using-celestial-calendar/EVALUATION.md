@@ -18,10 +18,11 @@ base a Python environment on an interpreter installed elsewhere and check that i
 starts under an equivalent read restriction.
 
 Create consumer working directories outside the contributor checkout. Supply the
-same frozen public guides and runnable examples to both arms. `docs/index.json`
-maps each public URL to a local path and records its source commit and SHA-256.
-Do not rewrite the skill to point to those copies. `runtime.json` records the
-provided interpreter/package environment. Missing mapped material invalidates the
+same frozen public guides and runnable examples to both arms. Each consumer
+directory gets a `docs/index.json` that maps each public URL to a local path and
+records its source commit and SHA-256, and a `runtime.json` that records the
+provided interpreter/package environment. Do not rewrite the skill to point to
+those copies. Missing mapped material invalidates the
 case; do not fetch moving development documentation during the run.
 
 Keep graders outside both the consumer cwd and installed skill directory. Inspect
@@ -64,9 +65,13 @@ tolerances are unchanged.
 ## Results
 
 On 2026-11-02, Claude Code 2.1.316 ran every case with Claude Sonnet 5.5 as agent
-and judge, one run per arm. The positive cases used a CI-built development wheel
-and npm tarball whose runtime sources match the frozen documentation's source
-commit. missing-interface ran once against the registry 1.0.0 Python wheel and
+and judge, one run per arm. The positive cases used a development wheel built by
+this repository's CI (SHA-256
+`e8c6e69a90444706dddcaf251d6446e71b7b5c728003da19ba4f7f5093178ab8`) and a locally
+built development npm tarball (SHA-256
+`b3714c9545cba5422ad2f17602212242c51f242288693a0e4bbd2503c91e3fb6`); both come
+from runtime sources identical to the frozen documentation's source commit,
+`67a7c4c`. missing-interface ran once against the registry 1.0.0 Python wheel and
 once against the registry 1.0.0 npm package, so there were six pairs.
 
 Each of the twelve sessions started in a fresh directory with no user instructions
@@ -74,10 +79,11 @@ and an empty auto-memory, and its shell could not read the grader files. No trac
 showed a grader read, network access or package installation. In gregorian-lunar,
 utc-jieqi and chart-snapshot, each arm's first program execution succeeded, and
 the unchanged program matched the installed artifact's public results, including
-on held-out inputs for the two cases that take one. In the three limitation cases,
-both arms reported the missing operation without substituting another. Agent time
-totalled 119 s with the skill and 122 s without it. All six pairs tie: on these
-tasks, Claude Sonnet 5.5 did as well without the skill. One run per arm is a small
+on held-out inputs for the two cases that take one. In the three limitation runs
+(missing-interface against each old package, and unsupported-js-events), both arms
+reported the missing operation without substituting another. Agent time totalled
+119 s with the skill and 122 s without it. All six pairs tie: on these tasks,
+Claude Sonnet 5.5 did as well without the skill. One run per arm is a small
 sample.
 
 The trigger queries ran separately, once each with the skill installed. All ten

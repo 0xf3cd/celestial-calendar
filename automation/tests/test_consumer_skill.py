@@ -98,7 +98,7 @@ def test_public_cases_follow_the_native_case_schema():
     validate_case(SKILL / "evals" / name)
 
 
-@pytest.mark.parametrize("fault", ["missing-grader", "unknown-setting", "numeric-schema", "extra-tool"])
+@pytest.mark.parametrize("fault", ["missing-grader", "grader-focus", "unknown-setting", "numeric-schema", "extra-tool"])
 def test_case_structure_controls(tmp_path, fault):
   source = SKILL / "evals/gregorian-lunar"
   case = tmp_path / source.name
@@ -106,6 +106,9 @@ def test_case_structure_controls(tmp_path, fault):
   if fault == "missing-grader":
     for path in (case / "graders").iterdir():
       path.unlink()
+  elif fault == "grader-focus":
+    for path in (case / "graders").iterdir():
+      path.write_text(path.read_text().replace("focus: trace", "focus: last_message"))
   elif fault == "numeric-schema":
     path = case / "case.yaml"
     path.write_text(path.read_text().replace('schema_version: "1.1"', "schema_version: 1.1"))

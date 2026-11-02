@@ -34,7 +34,6 @@ Inspect the actual public module when interface availability matters. In Python,
 check that the required attributes are callable. In JavaScript, use a namespace
 or dynamic import so a missing named export can be handled, check the namespace
 and initialization function, then await initialization before calculations.
-Do not infer availability from an unexported package metadata subpath.
 
 If the installed interface lacks the operation, explain that limitation and offer
 the guide's compatible-package or source-build route. Ask before changing the
