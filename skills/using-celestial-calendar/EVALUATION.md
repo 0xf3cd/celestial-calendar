@@ -76,15 +76,22 @@ once against the registry 1.0.0 npm package, so there were six pairs.
 
 Each of the twelve sessions started in a fresh directory with no user instructions
 and an empty auto-memory, and its shell could not read the grader files. No trace
-showed a grader read, network access or package installation. In gregorian-lunar,
-utc-jieqi and chart-snapshot, each arm's first program execution succeeded, and
-the unchanged program matched the installed artifact's public results, including
-on held-out inputs for the two cases that take one. In the three limitation runs
-(missing-interface against each old package, and unsupported-js-events), both arms
-reported the missing operation without substituting another. Agent time totalled
-119 s with the skill and 122 s without it. All six pairs tie: on these tasks,
-Claude Sonnet 5.5 did as well without the skill. One run per arm is a small
-sample.
+showed a grader read, network access or package installation. In gregorian-lunar
+and utc-jieqi, each arm's first program execution succeeded, and the unchanged
+program matched the installed artifact's public results, including on held-out
+inputs. In chart-snapshot, both first programs ran, but only the one written
+without the skill printed every requested value: the with-skill program printed an
+empty node-distance object instead of a null for each of the four nodes. The agent
+fixed it after seeing the output, and the fixed program passes the same check. In
+the three limitation runs (missing-interface against each old package, and
+unsupported-js-events), both arms reported the missing operation without
+substituting another. Agent time totalled 105 s with the skill and 97 s without
+it.
+
+Five pairs tie, and in chart-snapshot the arm without the skill did better: on
+these tasks, Claude Sonnet 5.5 did at least as well without the skill. An earlier
+run of the same cases, whose SKILL.md had one more sentence, tied all six pairs,
+chart-snapshot included. One run per arm is a small sample.
 
 The trigger queries ran separately, once each with the skill installed. All ten
 positive queries loaded the skill and none of the ten near misses did. The queries
@@ -92,6 +99,7 @@ were written with the skill, and the session had no competing library skill, so
 this checks the description's wording; triggering among many installed skills was
 not measured.
 
-The LLM grader gave every arm full marks. It also passed both arms of an earlier
-diagnostic in which the evaluator's sandbox rejected every shell command before
-the program ran, so its score is not reported as a result.
+The LLM grader gave every arm full marks, including the with-skill chart-snapshot
+arm. It also passed both arms of an earlier diagnostic in which the evaluator's
+sandbox rejected every shell command before the program ran, so its score is not
+reported as a result.
