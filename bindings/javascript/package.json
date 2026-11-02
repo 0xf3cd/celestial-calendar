@@ -34,7 +34,7 @@
     "url": "git+https://github.com/0xf3cd/celestial-calendar.git",
     "directory": "bindings/javascript"
   },
-  "homepage": "https://github.com/0xf3cd/celestial-calendar",
+  "homepage": "https://0xf3cd.github.io/celestial-calendar/bindings/javascript/README.html",
   "bugs": "https://github.com/0xf3cd/celestial-calendar/issues",
   "keywords": [
     "astronomy",

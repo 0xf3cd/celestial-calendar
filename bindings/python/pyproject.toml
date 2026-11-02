@@ -28,7 +28,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/0xf3cd/celestial-calendar"
-Documentation = "https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README.md"
+Documentation = "https://0xf3cd.github.io/celestial-calendar/bindings/python/README.html"
 Repository = "https://github.com/0xf3cd/celestial-calendar"
 Issues = "https://github.com/0xf3cd/celestial-calendar/issues"
 
