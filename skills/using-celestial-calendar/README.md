@@ -13,8 +13,8 @@ Copy [SKILL.md](SKILL.md) into a directory named `using-celestial-calendar` in
 your assistant's supported skill location, then enable it using that assistant's
 instructions. SKILL.md is the complete portable unit: its references are public
 URLs, so copying it alone works. You can also copy this whole directory, but the
-other files are for maintainers, are not needed for normal use, and link to files
-that exist only in this repository.
+other files are for maintainers and are not needed for normal use, and this page's
+links to the rest of the repository work only inside it.
 
 Installing the skill does not install the calculation library. Use the
 [Python](../../bindings/python/README.md),
