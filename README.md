@@ -4,7 +4,8 @@ Astronomical calculations and Gregorian / Chinese Lunar date conversion, with Ji
 Sun/Moon positions, and sunrise/sunset. The core is a C++23 header-only library, also available through Python,
 JavaScript / TypeScript, and a C ABI.
 
-[中文](README_ZH.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
+[中文](README_ZH.md) · [Documentation (development)](https://0xf3cd.github.io/celestial-calendar/) ·
+[Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 

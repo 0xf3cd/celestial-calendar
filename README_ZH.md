@@ -3,7 +3,8 @@
 天文计算与公历、阴历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
 也可通过 Python、JavaScript / TypeScript 或 C ABI 使用。
 
-[English](README.md) · [Python](#python) · [JavaScript / TypeScript](#javascript) ·
+[English](README.md) · [在线文档（开发版）](https://0xf3cd.github.io/celestial-calendar/) ·
+[Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
