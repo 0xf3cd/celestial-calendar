@@ -13,6 +13,9 @@ Use exact Python wheel and npm tarball files, not a latest-version selection or
 filename glob. Record each digest, version and source/producer provenance. Probe
 the installed public interface; a version label alone cannot establish availability.
 Keep old-interface controls separate from current-source positive cases.
+The evaluator's shell sandbox can deny reads under the user's home directory, so
+base a Python environment on an interpreter installed elsewhere and check that it
+starts under an equivalent read restriction.
 
 Create consumer working directories outside the contributor checkout. Supply the
 same frozen public guides and runnable examples to both arms. `docs/index.json`
@@ -51,19 +54,38 @@ Deterministic replay/result checks decide execution correctness. The case's LLM
 grader adds a separate trace judgment; its score alone is not an execution oracle.
 Use a second input to reject hardcoded answers. For a UTC/Jieqi case, require
 fractional-second output and prove wrong-scale controls differ in the checked
-result. An artifact-derived expectation establishes consistency with that
+result. With the evaluated artifact, UT1 and UTC differ by about 2 ms at the Jieqi
+selected by the utc-jieqi prompt, so a program that shows the UT1 moment as UTC
+passes a millisecond comparison there; use held-out cutoffs where the difference
+is larger. An artifact-derived expectation establishes consistency with that
 artifact, not independent astronomical accuracy. Existing numerical goldens and
 tolerances are unchanged.
 
 ## Results
 
-The 2026-11-01 diagnostic used Claude Code 2.1.316 with Claude Sonnet 5.5 for
-both agent and judge, one run per arm, and the Gregorian/lunar task. Both arms
-read public material and wrote programs, but the evaluator environment rejected
-their shell execution before Node ran. The LLM grader nevertheless marked both
-as passing. Those flags were rejected: this is an invalid execution comparison,
-not evidence of a tie or improvement. The other cases have not been run.
+On 2026-11-02, Claude Code 2.1.316 ran every case with Claude Sonnet 5.5 as agent
+and judge, one run per arm. The positive cases used a CI-built development wheel
+and npm tarball whose runtime sources match the frozen documentation's source
+commit. missing-interface ran once against the registry 1.0.0 Python wheel and
+once against the registry 1.0.0 npm package, so there were six pairs.
 
-Structure checks, a plan review or a model's written answer must not be reported
-as a measured skill improvement. A valid comparison still requires executable
-consumer sessions, complete context evidence and deterministic result checks.
+Each of the twelve sessions started in a fresh directory with no user instructions
+and an empty auto-memory, and its shell could not read the grader files. No trace
+showed a grader read, network access or package installation. In gregorian-lunar,
+utc-jieqi and chart-snapshot, each arm's first program execution succeeded, and
+the unchanged program matched the installed artifact's public results, including
+on held-out inputs for the two cases that take one. In the three limitation cases,
+both arms reported the missing operation without substituting another. Agent time
+totalled 119 s with the skill and 122 s without it. All six pairs tie: on these
+tasks, Claude Sonnet 5.5 did as well without the skill. One run per arm is a small
+sample.
+
+The trigger queries ran separately, once each with the skill installed. All ten
+positive queries loaded the skill and none of the ten near misses did. The queries
+were written with the skill, and the session had no competing library skill, so
+this checks the description's wording; triggering among many installed skills was
+not measured.
+
+The LLM grader gave every arm full marks. It also passed both arms of an earlier
+diagnostic in which the evaluator's sandbox rejected every shell command before
+the program ran, so its score is not reported as a result.
