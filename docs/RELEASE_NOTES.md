@@ -10,7 +10,7 @@
   the exact same-version `celestial-calendar` package and expose its public top-level functions, types and exceptions.
 - The three names can coexist and use one native implementation. Existing `import celestial_calendar` and its
   submodule imports remain supported; the aliases provide top-level imports only.
-- Future releases publish the four platform wheels and both aliases from one tested candidate.
+- The release workflow publishes the four platform wheels and both aliases from one tested candidate.
 
 ### Release recovery
 

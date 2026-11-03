@@ -35,6 +35,9 @@ python -m pip install celestial-calendar
 wheel 自带对应平台的原生库，使用时不需要编译器，也不需要另装 CelestialCalendar；导入时既不搜索系统库，也不下载备用库。
 支持平台及完整契约见 [Python 包文档](bindings/python/README_ZH.md)。
 
+`cele` 和 `wentian` 也可作为 Python 包的安装名与导入名；同版本依赖说明见
+[Python 包文档的安装一节](bindings/python/README_ZH.md#install)。
+
 下面的 Python 代码块是独立程序，可作为应用目录中的 `example.py`，用该环境的 `python example.py` 运行。
 
 查询冬至，并打印其 UT1 日期：
