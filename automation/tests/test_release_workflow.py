@@ -118,24 +118,82 @@ def assert_github_release_contract(workflow):
 
 
 def assert_pypi_contract(workflow):
-  job = workflow["jobs"]["publish_pypi"]
-  steps = job["steps"]
-
   assert RELEASE_WORKFLOW.name == "release.yml"
-  assert job["needs"] == "create_release"
-  assert job["environment"] == "pypi"
-  assert job["permissions"] == {"contents": "read", "id-token": "write"}
-  assert [step["name"] for step in steps] == [
-    "Download immutable release candidate",
-    "Publish exact wheels to PyPI",
+  for name in ("publish_pypi", "publish_pypi_wentian"):
+    assert_pypi_job_contract(workflow, name)
+
+
+def assert_pypi_job_contract(workflow, job_name):
+  identities = action_identities(workflow)
+  python = next(
+    step["with"]["python-version"]
+    for step in workflow["jobs"]["prepare_release"]["steps"]
+    if step.get("uses", "").startswith("actions/setup-python@")
+  )
+  steps = [
+    {
+      "uses": f"actions/checkout@{identities['actions/checkout']}",
+      "with": {"ref": "${{ github.sha }}", "persist-credentials": False},
+    },
+    {
+      "name": "Set up Python",
+      "uses": f"actions/setup-python@{identities['actions/setup-python']}",
+      "with": {"python-version": python},
+    },
+    {
+      "name": "Install pinned classifier dependencies",
+      "run": "python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-producer.txt",
+    },
+    {
+      "name": "Download immutable release candidate",
+      "uses": f"actions/download-artifact@{identities['actions/download-artifact']}",
+      "with": {"name": "celestial-release-candidate", "path": "candidate"},
+    },
   ]
-  assert "run" not in steps[0] and "run" not in steps[1]
-  publish = steps[1]
-  assert publish["uses"] == "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
-  assert publish["with"] == {
-    "packages-dir": "candidate/pypi",
-    "verify-metadata": True,
-    "attestations": True,
+  publications = (
+    [("PyPI primary", "pypi-primary", "wheels", "celestial-calendar"), ("cele", "pypi-cele", "wheel", "cele")]
+    if job_name == "publish_pypi"
+    else [("wentian", "pypi-wentian", "wheel", "wentian")]
+  )
+  for role, slug, noun, package in publications:
+    steps.extend(
+      [
+        {
+          "name": f"Prepare missing {role} {noun}",
+          "id": slug,
+          "env": {"COMMIT_SHA": "${{ github.sha }}", "TAG_NAME": "${{ github.ref_name }}"},
+          "run": "python3 toolbox/registry_verifier.py prepare-pypi \\\n"
+          f'  --package {package} --upload-to "$RUNNER_TEMP/{slug}" \\\n'
+          '  --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \\\n'
+          '  --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"\n',
+        },
+        {
+          "name": f"Validate {role} upload decision",
+          "env": {
+            "STATE": "${{ steps." + slug + ".outputs.state }}",
+            "PACKAGES_DIR": "${{ steps." + slug + ".outputs.packages-dir }}",
+          },
+          "run": f'case "$STATE" in absent|partial|exact) ;; *) echo "Invalid {role} state"; exit 1 ;; esac\n'
+          f'test "$PACKAGES_DIR" = "$RUNNER_TEMP/{slug}"\n',
+        },
+        {
+          "name": f"Publish missing {role} {noun}",
+          "if": f"steps.{slug}.outputs.state != 'exact'",
+          "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086",
+          "with": {
+            "packages-dir": "${{ steps." + slug + ".outputs.packages-dir }}",
+            "verify-metadata": True,
+            "attestations": True,
+          },
+        },
+      ]
+    )
+  assert workflow["jobs"][job_name] == {
+    "needs": "create_release" if job_name == "publish_pypi" else "publish_pypi",
+    "runs-on": "ubuntu-latest",
+    "environment": "pypi",
+    "permissions": {"contents": "read", "id-token": "write"},
+    "steps": steps,
   }
 
 
@@ -144,9 +202,12 @@ def test_sole_credentialed_action_identity(contract):
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
   contract(workflow)
   job_name = "create_release" if contract is assert_github_release_contract else "publish_pypi"
-  workflow["jobs"][job_name]["steps"][1]["uses"] = (
-    workflow["jobs"][job_name]["steps"][1]["uses"].partition("@")[0] + "@" + "a" * 40
+  target = next(
+    step
+    for step in workflow["jobs"][job_name]["steps"]
+    if step.get("uses", "").startswith("ncipollo/" if job_name == "create_release" else "pypa/")
   )
+  target["uses"] = target["uses"].partition("@")[0] + "@" + "a" * 40
   with pytest.raises(AssertionError):
     contract(workflow)
 
@@ -167,7 +228,10 @@ def action_identities(workflow):
 def assert_registry_job_contract(workflow, job_name, workflow_dir=RELEASE_WORKFLOW.parent):
   assert workflow.get("env", {}) == {}
   assert workflow.get("defaults", {}) == {}
-  assert job_name in ("publish_npm", "verify_registries")
+  assert job_name in ("publish_npm", "verify_registries", "publish_pypi", "publish_pypi_wentian")
+  if job_name in ("publish_pypi", "publish_pypi_wentian"):
+    assert_pypi_job_contract(workflow, job_name)
+    return
   identities = action_identities(workflow)
   wasm = yaml.safe_load((workflow_dir / "wasm.yml").read_text(encoding="utf-8"))
   wheels = yaml.safe_load((workflow_dir / "python-wheel.yml").read_text(encoding="utf-8"))
@@ -283,7 +347,7 @@ def assert_registry_job_contract(workflow, job_name, workflow_dir=RELEASE_WORKFL
     install["name"] = "Install pinned registry verifier dependencies"
     node["name"] = "Set up Node registry consumer"
     expected = {
-      "needs": ["publish_pypi", "publish_npm"],
+      "needs": ["publish_pypi", "publish_pypi_wentian", "publish_npm"],
       "runs-on": "ubuntu-latest",
       "permissions": {"contents": "read"},
       "steps": [
@@ -300,20 +364,25 @@ def assert_registry_job_contract(workflow, job_name, workflow_dir=RELEASE_WORKFL
           '  --commit "$COMMIT_SHA"\n',
         },
         {
-          "name": "Clean-install the PyPI wheel and run acceptance",
+          "name": "Clean-install all Python names and run acceptance on the floor",
           "env": {"TAG_NAME": "${{ github.ref_name }}"},
-          "run": "python3 -m venv registry-venv\n"
-          "registry-venv/bin/python -m pip --isolated install \\\n"
-          "  --index-url https://pypi.org/simple \\\n"
-          "  --only-binary=:all: \\\n"
-          "  --no-cache-dir \\\n"
-          "  --no-deps \\\n"
-          '  "celestial-calendar==${TAG_NAME#v}"\n'
-          "(\n"
-          '  cd "$RUNNER_TEMP"\n'
-          '  "$GITHUB_WORKSPACE/registry-venv/bin/python" \\\n'
-          '    "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"\n'
-          ")\n",
+          "run": 'python3 bindings/python-aliases/test/consumer.py "${TAG_NAME#v}" --registry\n',
+        },
+        {
+          "name": "Set up current Python registry consumer",
+          "uses": f"actions/setup-python@{identities['actions/setup-python']}",
+          "with": {
+            "python-version": next(
+              step["with"]["python-version"]
+              for step in wheels["jobs"]["manylinux"]["steps"]
+              if step.get("uses", "").startswith("actions/setup-python@")
+            )
+          },
+        },
+        {
+          "name": "Clean-install all Python names and run acceptance on current Python",
+          "env": {"TAG_NAME": "${{ github.ref_name }}"},
+          "run": 'python3 bindings/python-aliases/test/consumer.py "${TAG_NAME#v}" --registry',
         },
         node,
         {
@@ -336,7 +405,7 @@ def test_registry_verifier_is_unprivileged_and_runs_both_clean_installs():
   assert_registry_job_contract(workflow, "verify_registries")
 
 
-@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries"])
+@pytest.mark.parametrize("job_name", ["publish_npm", "verify_registries", "publish_pypi", "publish_pypi_wentian"])
 @pytest.mark.parametrize(
   "mutation",
   [
@@ -412,12 +481,12 @@ def test_registry_consumer_is_an_exact_step_not_an_install_exception(mutation):
   consumer = next(
     step
     for step in workflow["jobs"]["verify_registries"]["steps"]
-    if step.get("name") == "Clean-install the PyPI wheel and run acceptance"
+    if step.get("name") == "Clean-install all Python names and run acceptance on the floor"
   )
   if mutation == "target":
-    consumer["run"] = consumer["run"].replace("celestial-calendar==${TAG_NAME#v}", "unexpected==1")
+    consumer["run"] = consumer["run"].replace('"${TAG_NAME#v}"', '"unexpected"')
   elif mutation == "dependencies":
-    consumer["run"] = consumer["run"].replace("--no-deps", "")
+    consumer["run"] = consumer["run"].replace("--registry", "--wheelhouse untrusted")
   else:
     consumer["run"] += "\n{ pip install unexpected==1; }\n"
   with pytest.raises(AssertionError):
@@ -443,7 +512,8 @@ def test_registry_jobs_start_only_after_the_immutable_github_release():
 
   assert jobs["create_release"]["needs"] == "prepare_release"
   assert "create_release" in [jobs["publish_pypi"]["needs"], *jobs["publish_npm"]["needs"]]
-  assert jobs["verify_registries"]["needs"] == ["publish_pypi", "publish_npm"]
+  assert jobs["publish_pypi_wentian"]["needs"] == "publish_pypi"
+  assert jobs["verify_registries"]["needs"] == ["publish_pypi", "publish_pypi_wentian", "publish_npm"]
 
 
 def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
@@ -451,14 +521,9 @@ def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
   recovery = " ".join(guide.split("## Recovery", maxsplit=1)[1].split())
 
   assert (
-    "An unambiguous PyPI failure before registry acceptance may use "
-    "`gh run rerun RUN_ID --failed` after reviewing the evidence."
+    "retry only the affected job with `gh run rerun --job PYPI_JOB_ID` or `gh run rerun --job WENTIAN_JOB_ID`"
   ) in recovery
-  assert (
-    "If a PyPI publish command fails ambiguously but registry queries prove the exact candidate is present, "
-    "leave that publication job red. Do not rerun it or use `skip-existing`; "
-    "record the recovery and complete consumer validation manually."
-  ) in recovery
+  assert ("Never use `skip-existing` or substitute a newly built candidate.") in recovery
   assert (
     "For npm publication failure, inspect the evidence and retry only the npm job using "
     "`gh run rerun --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes "
@@ -470,6 +535,47 @@ def test_release_recovery_preserves_pypi_policy_and_targets_npm_retry():
 def test_every_release_action_is_sha_pinned():
   workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
   assert action_identities(workflow)
+
+
+@pytest.mark.parametrize("slug", ["pypi-primary", "pypi-cele", "pypi-wentian"])
+@pytest.mark.parametrize("state", ["absent", "partial", "exact", "", "invalid"])
+def test_extracted_pypi_decision_steps_fail_closed_and_select_only_the_verified_directory(tmp_path, slug, state):
+  workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+  job = workflow["jobs"]["publish_pypi_wentian" if slug == "pypi-wentian" else "publish_pypi"]
+  index = next(i for i, step in enumerate(job["steps"]) if step.get("id") == slug)
+  validate, publish = job["steps"][index + 1 : index + 3]
+  directory = tmp_path / slug
+  directory.mkdir()
+  (directory / "selected.whl").write_bytes(b"frozen selected bytes")
+  foreign = tmp_path / "dist"
+  foreign.mkdir()
+  (foreign / "foreign.whl").write_bytes(b"must never be selected")
+  result = subprocess.run(
+    ["bash", "-euo", "pipefail", "-c", validate["run"]],
+    cwd=tmp_path,
+    env={"STATE": state, "PACKAGES_DIR": str(directory) if state else "", "RUNNER_TEMP": str(tmp_path)},
+    capture_output=True,
+    text=True,
+  )
+  assert publish["if"] == f"steps.{slug}.outputs.state != 'exact'"
+  assert publish["with"]["packages-dir"] == "${{ steps." + slug + ".outputs.packages-dir }}"
+  if state in {"absent", "partial", "exact"}:
+    assert result.returncode == 0, result.stdout + result.stderr
+    selected = [] if state == "exact" else [p.read_bytes() for p in directory.iterdir()]
+    assert selected == ([] if state == "exact" else [b"frozen selected bytes"])
+  else:
+    assert result.returncode != 0
+  assert (foreign / "foreign.whl").read_bytes() == b"must never be selected"
+
+
+def test_rehearsal_has_a_dependent_second_pypi_gate_without_oidc():
+  rehearsal = yaml.safe_load((RELEASE_WORKFLOW.parent / "release-rehearsal.yml").read_text())
+  jobs = rehearsal["jobs"]
+  assert jobs["gate_pypi_second"]["needs"] == "gate_pypi"
+  assert jobs["gate_pypi_second"]["environment"] == jobs["gate_pypi"]["environment"] == "pypi"
+  assert rehearsal["permissions"] == {"contents": "read"}
+  assert all("id-token" not in job.get("permissions", {}) for job in jobs.values())
+  assert jobs["gate_pypi_second"]["steps"][0]["with"] == {"name": "rehearsal-candidate"}
 
 
 @pytest.mark.parametrize(

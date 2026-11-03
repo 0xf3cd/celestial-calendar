@@ -368,7 +368,10 @@ bindings/
    wasm target (#163) and Python wheels (#211) have independent `wasm.yml` and
    `python-wheel.yml` legs. The former uploads `celestial-wasm` ([WASM/npm](docs/BUILDING.md#wasm) records its exact
    members); the latter uploads four exact wheels and sidecars;
-   the release downloader pulls all three build legs' artifacts for the tagged commit. See
+   the release downloader pulls all three build legs' artifacts for the tagged commit. The Python leg also builds
+   the two pure forwarding wheels (`cele`, `wentian`) once in `celestial-python-aliases`, with exact same-version
+   primary dependencies. Keep its two-wheel contract separate from the four native platform contracts; use
+   `toolbox/build_python_aliases.py` for their shared payload validation. See
    `docs/RELEASING.md` for protected tags, explicit producer-run selection and publication order.
 5. **Sensitive files:** Do not read or surface `.env`, `credentials.json`, or any file
    containing tokens/keys.

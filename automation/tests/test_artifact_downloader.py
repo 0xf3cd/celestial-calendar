@@ -36,6 +36,7 @@ from toolbox.artifact_downloader import (
   write_source_manifest,
 )
 from toolbox.release_validation import SOURCE_SPECS
+from automation.tests.test_python_aliases import alias_wheel_bytes
 
 
 PROJECT_VERSION = project_version()
@@ -542,7 +543,15 @@ def write_python_artifacts(directory, *, mutation=None):
       for name, content in members.items():
         archive.writestr(name, content)
     paths.append(archive_path)
-  assert set(path.stem for path in paths) == set(PYTHON_ARTIFACTS)
+  alias_artifact = directory / "celestial-python-aliases.zip"
+  with zipfile.ZipFile(alias_artifact, "w") as archive:
+    for name in ("cele", "wentian"):
+      filename = f"{name}-{PROJECT_VERSION}-py3-none-any.whl"
+      content = alias_wheel_bytes(name, PROJECT_VERSION)
+      archive.writestr(filename, content)
+      archive.writestr(f"{filename}.sha256", f"{hashlib.sha256(content).hexdigest()}  {filename}\n")
+  paths.append(alias_artifact)
+  assert set(path.stem for path in paths) == {*PYTHON_ARTIFACTS, "celestial-python-aliases"}
   return paths
 
 
@@ -558,11 +567,11 @@ def test_python_artifacts_flatten_after_global_validation(monkeypatch, tmp_path)
 
   flattened = flatten_python_artifacts(archives, tmp_path)
 
-  assert len(flattened) == 8
+  assert len(flattened) == 12
   assert all(path.is_file() for path in flattened)
   assert all(not path.exists() for path in archives)
-  assert len(list(tmp_path.glob("*.whl"))) == 4
-  assert len(list(tmp_path.glob("*.whl.sha256"))) == 4
+  assert len(list(tmp_path.glob("*.whl"))) == 6
+  assert len(list(tmp_path.glob("*.whl.sha256"))) == 6
 
 
 @pytest.mark.parametrize(
@@ -655,5 +664,37 @@ def test_python_flatten_rejects_payload_basename_collision(monkeypatch, tmp_path
   with pytest.raises(RuntimeError, match="Duplicate flattened Python payload basename"):
     flatten_python_artifacts(archives, tmp_path)
 
+  assert list(tmp_path.glob("*.whl")) == []
+  assert all(path.exists() for path in archives)
+
+
+@pytest.mark.parametrize(
+  "mutation", ["missing-alias", "missing-sidecar", "extra", "directory", "bad-payload", "bad-digest"]
+)
+def test_alias_artifact_rejects_an_incomplete_or_contaminated_pair_without_flattening(tmp_path, mutation):
+  archives = write_python_artifacts(tmp_path)
+  target = tmp_path / "celestial-python-aliases.zip"
+  with zipfile.ZipFile(target) as archive:
+    members = {name: archive.read(name) for name in archive.namelist()}
+  wheel = f"cele-{PROJECT_VERSION}-py3-none-any.whl"
+  if mutation == "missing-alias":
+    del members[wheel]
+    del members[f"{wheel}.sha256"]
+  elif mutation == "missing-sidecar":
+    del members[f"{wheel}.sha256"]
+  elif mutation == "extra":
+    members["foreign.txt"] = b"unexpected"
+  elif mutation == "directory":
+    members["foreign/"] = b""
+  elif mutation == "bad-payload":
+    members[wheel] = b"not a wheel"
+    members[f"{wheel}.sha256"] = f"{hashlib.sha256(members[wheel]).hexdigest()}  {wheel}\n".encode()
+  else:
+    members[f"{wheel}.sha256"] = b"invalid"
+  with zipfile.ZipFile(target, "w") as archive:
+    for name, content in members.items():
+      archive.writestr(name, content)
+  with pytest.raises(RuntimeError):
+    flatten_python_artifacts(archives, tmp_path)
   assert list(tmp_path.glob("*.whl")) == []
   assert all(path.exists() for path in archives)

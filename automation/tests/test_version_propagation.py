@@ -18,6 +18,7 @@ import tomllib
 from pathlib import Path
 
 from toolbox import build_npm
+from toolbox import build_python_aliases
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +59,10 @@ def test_one_isolated_version_reaches_cli_wheel_and_staged_npm(tmp_path, monkeyp
     assert manifest["version"] == version and "private" not in manifest
     if name == build_npm.ALIAS_NAME:
       assert manifest["dependencies"] == {build_npm.PACKAGE_NAME: version}
+  for name in ("cele", "wentian"):
+    alias = tomllib.loads(build_python_aliases.alias_configuration(name, result.stdout.strip()))["project"]
+    assert alias["version"] == version
+    assert alias["dependencies"] == [f"celestial-calendar=={version}"]
 
 
 def test_stable_package_metadata_links_to_hosted_documentation():

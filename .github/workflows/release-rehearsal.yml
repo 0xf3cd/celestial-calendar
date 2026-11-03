@@ -58,6 +58,18 @@ jobs:
       - name: Show the manifest being approved
         run: cat manifest.txt
 
+  gate_pypi_second:
+    name: Rehearse the dependent pypi approval checkpoint
+    needs: gate_pypi
+    environment: pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: rehearsal-candidate
+      - name: Show the same manifest after the first pypi gate
+        run: cat manifest.txt
+
   gate_npm:
     name: Rehearse npm environment approval
     needs: stage_candidate

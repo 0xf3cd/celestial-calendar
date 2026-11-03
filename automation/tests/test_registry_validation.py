@@ -18,8 +18,9 @@ import pytest
 import requests
 
 from toolbox import registry_validation, registry_verifier
+from toolbox.build_python_aliases import PYPI_PACKAGES
 from toolbox.build_npm import ALIAS_NAME
-from toolbox.release_validation import npm_candidate_tarballs, stage_release_candidate
+from toolbox.release_validation import npm_candidate_tarballs, python_wheel_groups, stage_release_candidate
 from automation.tests.test_release_validation import VERSION as CURRENT_VERSION, write_candidate_inputs
 from toolbox.registry_validation import (
   NPM_PACKAGE,
@@ -35,6 +36,18 @@ from toolbox.registry_validation import (
 
 VERSION = "0.6.0"
 NPM_TARBALL_URL = f"https://registry.npmjs.org/@0xf3cd/celestial/-/celestial-{VERSION}.tgz"
+
+
+@pytest.fixture(autouse=True)
+def isolate_historical_single_package_polling(monkeypatch):
+  original = registry_validation.python_wheel_groups
+
+  def groups(wheels, version):
+    if version == VERSION:
+      return {PYPI_PACKAGE: list(wheels)}
+    return original(wheels, version)
+
+  monkeypatch.setattr(registry_validation, "python_wheel_groups", groups)
 
 
 def npm_metadata_url(version):
@@ -101,9 +114,9 @@ def pypi_wheels(tmp_path):
   return wheels
 
 
-def pypi_metadata(wheels):
+def pypi_metadata(wheels, package_name=PYPI_PACKAGE, version=VERSION):
   return {
-    "info": {"name": PYPI_PACKAGE, "version": VERSION},
+    "info": {"name": package_name, "version": version},
     "urls": [
       {
         "filename": wheel.name,
@@ -377,7 +390,8 @@ def test_registry_polling_has_a_fixed_ceiling(monkeypatch, tmp_path):
   sleeps = []
 
   with pytest.raises(
-    RuntimeError, match=r"after 2 attempts: PyPI \(version is absent\); npm-primary \(version is absent\)"
+    RuntimeError,
+    match=r"after 2 attempts: PyPI celestial-calendar \(version is absent\); npm-primary \(version is absent\)",
   ):
     wait_for_candidate_registries(
       candidate,
@@ -407,7 +421,9 @@ def test_registry_polling_ceiling_reports_the_last_transient_state(monkeypatch, 
   sleeps = []
   monkeypatch.setattr(registry_validation, "validate_release_candidate", lambda *_args: {})
 
-  with pytest.raises(RuntimeError, match=r"PyPI \(Registry returned HTTP 503.*npm-primary \(version is absent\)"):
+  with pytest.raises(
+    RuntimeError, match=r"PyPI celestial-calendar \(Registry returned HTTP 503.*npm-primary \(version is absent\)"
+  ):
     wait_for_candidate_registries(
       candidate,
       VERSION,
@@ -600,7 +616,7 @@ def test_pair_polling_retains_individual_success_and_names_partial_completion(pa
   sleeps = []
   with pytest.raises(RuntimeError, match=r"after 3 attempts: npm-alias \(version is absent\)$"):
     wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, "tagged-sha", attempts=3, sleep=sleeps.append)
-  assert calls == {"PyPI": 1, NPM_PACKAGE: 1, ALIAS_NAME: 3}
+  assert calls == {"PyPI": 3, NPM_PACKAGE: 1, ALIAS_NAME: 3}
   assert sleeps == [10, 10]
 
 
@@ -647,3 +663,130 @@ def test_pair_polling_retries_only_transient_states(pair_candidate, monkeypatch,
     assert sleeps == [10]
     other = ALIAS_NAME if package_name == NPM_PACKAGE else NPM_PACKAGE
     assert [call for call, _ in session.calls].count(package_metadata_url(other, CURRENT_VERSION)) == 1
+
+
+def pypi_candidate_session(candidate, counts=None):
+  groups = python_wheel_groups((candidate / "pypi").iterdir(), CURRENT_VERSION)
+  routes = {}
+  for name, wheels in groups.items():
+    count = (counts or {}).get(name, len(wheels))
+    payload = pypi_metadata(wheels[:count], name, CURRENT_VERSION)
+    routes[pypi_metadata_url(CURRENT_VERSION, name)] = Response(payload=payload) if count else Response(status=404)
+    for entry, wheel in zip(payload["urls"], wheels, strict=False):
+      routes[entry["url"]] = Response(content=wheel.read_bytes())
+  return Session(routes)
+
+
+@pytest.mark.parametrize(
+  ("name", "existing"),
+  [("celestial-calendar", n) for n in range(5)] + [(name, n) for name in ("cele", "wentian") for n in range(2)],
+)
+def test_pypi_preparation_copies_only_proven_missing_frozen_bytes(pair_candidate, tmp_path, name, existing):
+  groups = python_wheel_groups((pair_candidate / "pypi").iterdir(), CURRENT_VERSION)
+  session = pypi_candidate_session(pair_candidate, {name: existing})
+  before = {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()}
+  upload = tmp_path / "upload"
+  state = registry_validation.prepare_pypi_candidate(
+    pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session
+  )
+  assert state == ("absent" if not existing else "exact" if existing == len(groups[name]) else "partial")
+  missing = groups[name][existing:]
+  assert {p.name: p.read_bytes() for p in upload.iterdir()} == {p.name: p.read_bytes() for p in missing}
+  assert {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()} == before
+  assert sum(url == pypi_metadata_url(CURRENT_VERSION, name) for url, _ in session.calls) == 1
+
+
+@pytest.mark.parametrize("name", ["celestial-calendar", "cele", "wentian"])
+@pytest.mark.parametrize(
+  ("endpoint", "failure"),
+  [
+    (endpoint, failure)
+    for endpoint in ("metadata", "file")
+    for failure in ("429", "503", "connection", "bad-json-or-bytes", "wrong-identity-or-bytes", "listed-404")
+    if endpoint == "file" or failure != "listed-404"
+  ],
+)
+def test_pypi_uncertainty_never_authorizes_upload(pair_candidate, tmp_path, name, endpoint, failure):
+  session = pypi_candidate_session(pair_candidate)
+  metadata_url = pypi_metadata_url(CURRENT_VERSION, name)
+  file_url = session.routes[metadata_url].payload["urls"][0]["url"]
+  url = metadata_url if endpoint == "metadata" else file_url
+  if failure in ("429", "503", "listed-404"):
+    session.routes[url] = Response(status=404 if failure == "listed-404" else int(failure))
+  elif failure == "connection":
+    session.routes[url] = requests.ConnectionError("interrupted")
+  elif endpoint == "file":
+    session.routes[url] = Response(content=b"conflicting bytes")
+  elif failure == "bad-json-or-bytes":
+    session.routes[url] = Response(payload=ValueError("invalid JSON"))
+  else:
+    session.routes[url] = Response(payload={"info": {"name": "wrong", "version": CURRENT_VERSION}, "urls": []})
+  upload = tmp_path / "upload"
+  with pytest.raises((RuntimeError, requests.HTTPError)):
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+  assert not upload.exists()
+  assert sum(called == url for called, _ in session.calls) == 1
+
+
+def test_partial_primary_must_verify_its_existing_bytes_before_missing_set(pair_candidate, tmp_path):
+  session = pypi_candidate_session(pair_candidate, {PYPI_PACKAGE: 1})
+  metadata = session.routes[pypi_metadata_url(CURRENT_VERSION)].payload
+  session.routes[metadata["urls"][0]["url"]] = Response(content=b"wrong")
+  with pytest.raises(RuntimeError, match="file bytes"):
+    registry_validation.prepare_pypi_candidate(
+      pair_candidate, CURRENT_VERSION, "tagged-sha", PYPI_PACKAGE, tmp_path / "upload", session
+    )
+  assert not (tmp_path / "upload").exists()
+
+
+def test_primary_polling_retains_uncertainty_and_has_a_fixed_ceiling(pair_candidate):
+  groups = python_wheel_groups((pair_candidate / "pypi").iterdir(), CURRENT_VERSION)
+  session = pypi_candidate_session(pair_candidate)
+  url = pypi_metadata_url(CURRENT_VERSION)
+  session.routes[url] = [Response(status=503), session.routes[url]]
+  sleeps = []
+  registry_validation.wait_for_pypi(
+    groups[PYPI_PACKAGE], CURRENT_VERSION, PYPI_PACKAGE, session, attempts=2, delay_seconds=7, sleep=sleeps.append
+  )
+  assert sleeps == [7]
+  session.routes[url] = Response(status=404)
+  with pytest.raises(RuntimeError, match="after 2 attempts"):
+    registry_validation.wait_for_pypi(
+      groups[PYPI_PACKAGE], CURRENT_VERSION, PYPI_PACKAGE, session, attempts=2, delay_seconds=0, sleep=sleeps.append
+    )
+
+
+@pytest.mark.parametrize("state", ["absent", "partial", "exact", "", "invalid"])
+def test_pypi_cli_emits_only_defined_states(monkeypatch, tmp_path, state):
+  output = tmp_path / "output"
+  monkeypatch.setattr(
+    registry_verifier,
+    "parse_args",
+    lambda: SimpleNamespace(
+      command="prepare-pypi",
+      candidate=tmp_path / "candidate",
+      version=CURRENT_VERSION,
+      commit="tagged-sha",
+      package="cele",
+      upload_to=tmp_path / "upload",
+      github_output=output,
+      github_summary=None,
+    ),
+  )
+  monkeypatch.setattr(registry_verifier, "prepare_pypi_candidate", lambda *_args: state)
+  if state not in {"absent", "partial", "exact"}:
+    with pytest.raises(RuntimeError, match="Invalid PyPI classification"):
+      registry_verifier.main()
+    assert not output.exists()
+  else:
+    registry_verifier.main()
+    assert output.read_text() == f"state={state}\npackages-dir={tmp_path / 'upload'}\n"
+
+
+def test_pypi_registry_labels_do_not_collide_with_the_npm_homonym(pair_candidate, monkeypatch):
+  monkeypatch.setattr(registry_validation, "pypi_version_is_exact", lambda *_args: False)
+  monkeypatch.setattr(registry_validation, "npm_version_is_exact", lambda *_args: True)
+  with pytest.raises(RuntimeError) as error:
+    wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, "tagged-sha", attempts=1)
+  assert all(f"PyPI {name} (version is absent)" in str(error.value) for name in PYPI_PACKAGES)
+  assert "npm-alias" not in str(error.value)

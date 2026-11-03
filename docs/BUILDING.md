@@ -84,6 +84,13 @@ There are two wheel recipes, for different purposes:
   `cibuildwheel` settings live only in the workflow, not in `bindings/python/pyproject.toml`, so a local
   `cibuildwheel` run without them does not reproduce the release build.
 
+The same producer builds `cele` and `wentian` once as `py3-none-any` wheels, with the existing hash-locked
+`bindings/python/requirements-build.txt` tools and `python toolbox/build_python_aliases.py`. They contain only
+the forwarding source, typing marker and MIT license, and require the exact primary version. The
+`celestial-python-aliases` artifact holds both wheels and their SHA-256 sidecars; it is separate from the four
+native artifacts. Floor/current consumers install the same alias bytes with the selected repaired primary wheel
+from an unrelated directory, checking object identity, dependency resolution and the pinned mypy contract.
+
 <a id="api-docs"></a>
 ### API Documentation
 

@@ -22,6 +22,7 @@ import pytest
 
 from automation.markdown_source import links, tokens
 from toolbox import release_validation
+from automation.tests.test_python_aliases import write_alias_wheel
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
 from toolbox.release_validation import (
@@ -285,14 +286,16 @@ def write_wheels(directory):
     f"celestial_calendar-{VERSION}-py3-none-macosx_15_0_arm64.whl",
     f"celestial_calendar-{VERSION}-py3-none-win_amd64.whl",
   ]
-  return [path for name in names for path in write_wheel_named(directory, name)]
+  return [path for name in names for path in write_wheel_named(directory, name)] + [
+    path for name in ("cele", "wentian") for path in write_alias_wheel(directory, name, VERSION)
+  ]
 
 
 def write_source_manifest(path, commit="tagged-sha", mutation=None):
   groups = [
     (1, "Build and Test on Multiple Platforms", set(NATIVE_ARCHIVES.values())),
     (2, "WASM Build and Golden Check", {"celestial-wasm"}),
-    (3, "Python Wheels", set(PYTHON_ARTIFACTS)),
+    (3, "Python Wheels", {*PYTHON_ARTIFACTS, "celestial-python-aliases"}),
   ]
   sources = []
   artifact_id = 10
@@ -583,10 +586,10 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
     release_notes,
   )
 
-  assert len(list((candidate / "github").iterdir())) == 14
+  assert len(list((candidate / "github").iterdir())) == 18
   assert {path.suffix for path in (candidate / "pypi").iterdir()} == {".whl"}
   assert {path.name for path in (candidate / "npm").iterdir()} == {TARBALL, ALIAS_TARBALL}
-  assert len(list(candidate.rglob("*.*"))) == 30
+  assert len(list(candidate.rglob("*.*"))) == 38
   assert (candidate / "evidence" / "RELEASE_NOTES.md").read_bytes() == release_notes.read_bytes()
   manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
   assert manifest["tag"] == f"v{VERSION}"
@@ -595,7 +598,7 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
     SOURCE_ARTIFACTS
   )
   assert "evidence/manifest.json" not in manifest["files"]
-  assert len(manifest["files"]) == 29
+  assert len(manifest["files"]) == 37
   assert set(manifest["files"]) == {
     path.relative_to(candidate).as_posix() for path in candidate.rglob("*") if path.is_file() and path != manifest_path
   }

@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import re
 import time
+import shutil
 
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
@@ -23,10 +24,11 @@ from urllib.parse import quote, unquote, urlparse
 import requests
 
 from toolbox.build_npm import ALIAS_NAME, PACKAGE_NAME as NPM_PACKAGE
-from toolbox.release_validation import npm_candidate_tarballs, validate_release_candidate
+from toolbox.release_validation import npm_candidate_tarballs, python_wheel_groups, validate_release_candidate
+from toolbox.build_python_aliases import PRIMARY_PACKAGE, PYPI_PACKAGES
 
 
-PYPI_PACKAGE = "celestial-calendar"
+PYPI_PACKAGE = PRIMARY_PACKAGE
 PYPI_FILE_HOST = "files.pythonhosted.org"
 NPM_REGISTRY_HOST = "registry.npmjs.org"
 REQUEST_TIMEOUT = 30
@@ -52,9 +54,11 @@ def _registry_get(url: str, session: object):
   return response
 
 
-def pypi_metadata_url(version: str) -> str:
+def pypi_metadata_url(version: str, package_name: str = PYPI_PACKAGE) -> str:
   """Return the version-specific PyPI JSON endpoint."""
-  return f"https://pypi.org/pypi/{PYPI_PACKAGE}/{quote(version, safe='')}/json"
+  if package_name not in PYPI_PACKAGES:
+    raise ValueError(f"Unknown PyPI package: {package_name}")
+  return f"https://pypi.org/pypi/{package_name}/{quote(version, safe='')}/json"
 
 
 def npm_metadata_url(package_name: str, version: str | None = None) -> str:
@@ -130,16 +134,22 @@ def npm_version_is_exact(tarball: Path, version: str, package_name: str, session
   return True
 
 
-def pypi_version_is_exact(wheels: list[Path], version: str, session: object = requests) -> bool:
-  """Return false for an absent PyPI version; otherwise prove all four wheel bytes."""
-  metadata = _metadata(pypi_metadata_url(version), session)
+def _pypi_missing_wheels(
+  wheels: list[Path], version: str, package_name: str, session: object
+) -> tuple[bool, list[Path]]:
+  """Verify every listed file before returning any missing candidate wheels."""
+  expected = {wheel.name: wheel for wheel in wheels}
+  count = 4 if package_name == PYPI_PACKAGE else 1
+  if package_name not in PYPI_PACKAGES or len(expected) != len(wheels) or len(expected) != count:
+    raise RuntimeError(f"PyPI candidate for {package_name} must contain {count} distinct wheels")
+  metadata = _metadata(pypi_metadata_url(version, package_name), session)
   if metadata is None:
-    return False
+    return False, list(wheels)
   info = metadata.get("info")
-  if not isinstance(info, dict) or info.get("name") != PYPI_PACKAGE or info.get("version") != version:
+  if not isinstance(info, dict) or info.get("name") != package_name or info.get("version") != version:
     raise RuntimeError("PyPI registry package identity mismatch")
   urls = metadata.get("urls")
-  if not isinstance(urls, list) or any(not isinstance(entry, dict) for entry in urls):
+  if not isinstance(urls, list) or not urls or any(not isinstance(entry, dict) for entry in urls):
     raise RuntimeError("PyPI registry has no valid file inventory")
   entries = {}
   for entry in urls:
@@ -147,20 +157,13 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
     if not isinstance(filename, str) or filename in entries:
       raise RuntimeError("PyPI registry contains an invalid or duplicate filename")
     entries[filename] = entry
-  expected = {wheel.name: wheel for wheel in wheels}
-  if len(expected) != 4:
-    raise RuntimeError("PyPI candidate must contain four distinct wheels")
-  if set(entries) < set(expected):
-    raise RegistryPendingError(
-      f"PyPI wheel inventory is still incomplete: missing={sorted(set(expected) - set(entries))}"
-    )
-  if set(entries) != set(expected):
+  if not set(entries) <= set(expected):
     raise RuntimeError(
       f"PyPI wheel inventory mismatch: missing={sorted(set(expected) - set(entries))}, "
       f"extra={sorted(set(entries) - set(expected))}"
     )
-  for filename, wheel in expected.items():
-    entry = entries[filename]
+  for filename, entry in entries.items():
+    wheel = expected[filename]
     digests = entry.get("digests")
     size = entry.get("size")
     url = entry.get("url")
@@ -169,14 +172,85 @@ def pypi_version_is_exact(wheels: list[Path], version: str, session: object = re
     valid_size = type(size) is int and size >= 0
     valid_url = isinstance(url, str) and unquote(Path(urlparse(url).path).name) == filename
     # JSON booleans are Python integers; a registry file size must be an exact integer.
-    if entry.get("packagetype") != "bdist_wheel" or not valid_digest or not valid_size or not valid_url:
+    if (
+      entry.get("packagetype") != "bdist_wheel"
+      or entry.get("yanked", False) is not False
+      or not valid_digest
+      or not valid_size
+      or not valid_url
+    ):
       raise RuntimeError(f"Invalid PyPI file identity: {filename}")
     candidate = wheel.read_bytes()
     if size != len(candidate) or sha256 != hashlib.sha256(candidate).hexdigest():
       raise RuntimeError(f"PyPI metadata does not match the candidate: {filename}")
     if _download(url, PYPI_FILE_HOST, session) != candidate:
       raise RuntimeError(f"PyPI file bytes do not match the candidate: {filename}")
-  return True
+  return True, [wheel for wheel in wheels if wheel.name not in entries]
+
+
+def pypi_version_is_exact(
+  wheels: list[Path], version: str, session: object = requests, package_name: str = PYPI_PACKAGE
+) -> bool:
+  """Return false only for an absent version; poll verified incomplete inventories."""
+  present, missing = _pypi_missing_wheels(wheels, version, package_name, session)
+  if present and missing:
+    raise RegistryPendingError(f"PyPI wheel inventory is still incomplete: missing={sorted(p.name for p in missing)}")
+  return present
+
+
+def wait_for_pypi(
+  wheels: list[Path],
+  version: str,
+  package_name: str,
+  session: object = requests,
+  attempts: int = POLL_ATTEMPTS,
+  delay_seconds: int = POLL_DELAY_SECONDS,
+  sleep: object = time.sleep,
+) -> None:
+  """Wait for exact primary bytes before publishing its dependent aliases."""
+  if attempts < 1 or delay_seconds < 0:
+    raise ValueError("PyPI polling requires positive attempts and a non-negative delay")
+  reason = "version is absent"
+  for attempt in range(attempts):
+    try:
+      if pypi_version_is_exact(wheels, version, session, package_name):
+        return
+      reason = "version is absent"
+    except RegistryPendingError as error:
+      reason = str(error)
+    if attempt + 1 < attempts:
+      sleep(delay_seconds)
+  raise RuntimeError(f"PyPI {package_name} did not become exact after {attempts} attempts: {reason}")
+
+
+def prepare_pypi_candidate(
+  candidate: Path,
+  version: str,
+  commit: str,
+  package_name: str,
+  upload_to: Path,
+  session: object = requests,
+) -> str:
+  """Stage only proven-missing frozen wheels; exact versions are verified no-ops."""
+  candidate = candidate.resolve()
+  upload_to = upload_to.resolve()
+  if upload_to.exists() or upload_to == candidate or candidate in upload_to.parents:
+    raise FileExistsError(f"Refusing to overwrite or modify the PyPI candidate: {upload_to}")
+  validate_release_candidate(candidate, f"v{version}", commit)
+  groups = python_wheel_groups((candidate / "pypi").iterdir(), version)
+  if package_name not in groups:
+    raise ValueError(f"PyPI identity is not in candidate: {package_name}")
+  if package_name != PYPI_PACKAGE:
+    wait_for_pypi(groups[PYPI_PACKAGE], version, PYPI_PACKAGE, session)
+  present, missing = _pypi_missing_wheels(groups[package_name], version, package_name, session)
+  state = "absent" if not present else "partial" if missing else "exact"
+  upload_to.mkdir(parents=True)
+  for wheel in missing:
+    target = upload_to / wheel.name
+    shutil.copyfile(wheel, target)
+    if target.read_bytes() != wheel.read_bytes():
+      raise RuntimeError(f"PyPI upload staging byte mismatch: {wheel.name}")
+  return state
 
 
 def classify_npm_candidate(
@@ -214,39 +288,36 @@ def wait_for_candidate_registries(
   if attempts < 1 or delay_seconds < 0:
     raise ValueError("Registry polling requires positive attempts and a non-negative delay")
   validate_release_candidate(candidate, f"v{version}", commit)
-  wheels = sorted((candidate / "pypi").glob("*.whl"))
+  groups = python_wheel_groups((candidate / "pypi").iterdir(), version)
   tarballs = npm_candidate_tarballs(candidate, version)
-  if len(wheels) != 4:
-    raise RuntimeError("Invalid registry candidate inventory")
 
-  pypi_ready = False
+  pypi_ready = dict.fromkeys(groups, False)
   npm_ready = dict.fromkeys(tarballs, False)
-  pending_reasons = dict.fromkeys(["PyPI", *tarballs], "version is absent")
+  pypi_reasons = dict.fromkeys(groups, "version is absent")
+  npm_reasons = dict.fromkeys(tarballs, "version is absent")
   for attempt in range(1, attempts + 1):
-    if not pypi_ready:
-      try:
-        pypi_ready = pypi_version_is_exact(wheels, version, session)
-        pending_reasons["PyPI"] = "version is absent"
-      except RegistryPendingError as error:
-        pending_reasons["PyPI"] = str(error)
-      except requests.HTTPError as error:
-        raise RuntimeError(f"PyPI: {error}") from error
+    for name, wheels in groups.items():
+      if not pypi_ready[name]:
+        try:
+          pypi_ready[name] = pypi_version_is_exact(wheels, version, session, name)
+          pypi_reasons[name] = "version is absent"
+        except RegistryPendingError as error:
+          pypi_reasons[name] = str(error)
+        except (RuntimeError, requests.HTTPError) as error:
+          raise RuntimeError(f"PyPI {name}: {error}") from error
     for name, tarball in tarballs.items():
       if not npm_ready[name]:
         try:
           npm_ready[name] = npm_version_is_exact(tarball, version, name, session)
-          pending_reasons[name] = "version is absent"
+          npm_reasons[name] = "version is absent"
         except RegistryPendingError as error:
-          pending_reasons[name] = str(error)
+          npm_reasons[name] = str(error)
         except (RuntimeError, requests.HTTPError) as error:
           raise RuntimeError(f"{NPM_LABELS[name]}: {error}") from error
-    if pypi_ready and all(npm_ready.values()):
+    if all(pypi_ready.values()) and all(npm_ready.values()):
       return
     if attempt != attempts:
       sleep(delay_seconds)
-  pending = [
-    f"{NPM_LABELS.get(name, name)} ({pending_reasons[name]})"
-    for name, ready in [("PyPI", pypi_ready), *npm_ready.items()]
-    if not ready
-  ]
+  pending = [f"PyPI {name} ({pypi_reasons[name]})" for name, ready in pypi_ready.items() if not ready]
+  pending.extend(f"{NPM_LABELS[name]} ({npm_reasons[name]})" for name, ready in npm_ready.items() if not ready)
   raise RuntimeError(f"Registry version did not become available after {attempts} attempts: {'; '.join(pending)}")

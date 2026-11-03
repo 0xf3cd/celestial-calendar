@@ -1,0 +1,23 @@
+# @NAME@
+
+`@NAME@` is a short installation and import name for
+[CelestialCalendar](https://github.com/0xf3cd/celestial-calendar), an astronomy and Chinese calendar library.
+It installs the exact same version of `celestial-calendar` and forwards its public top-level Python API.
+
+```sh
+python -m pip install @NAME@
+```
+
+```python
+import @NAME@ as astro
+
+lunar = astro.gregorian_to_lunar(astro.LunarAlgorithm.ALGO2, astro.GregorianDate(2024, 2, 10))
+print(lunar)
+```
+
+The functions, types and exceptions are the original `celestial_calendar` objects. You can install `cele`,
+`wentian` and `celestial-calendar` together at the same version. Use `celestial_calendar` for submodule imports.
+
+See the [Python guide](https://0xf3cd.github.io/celestial-calendar/bindings/python/README.html) for supported
+platforms, examples and API details. This alias adds no native implementation and has the same platform
+requirements as its dependency.
