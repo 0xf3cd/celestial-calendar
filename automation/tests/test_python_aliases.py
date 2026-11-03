@@ -130,7 +130,9 @@ def test_alias_payload_contract_rejects_contamination_and_drift(tmp_path, name, 
     elif mutation == "dependency":
       members[f"{info}/METADATA"] = members[f"{info}/METADATA"].replace(b"==9.8.7", b">=9.8.7")
     elif mutation == "metadata":
-      members[f"{info}/METADATA"] += b"\nName: another\n"
+      members[f"{info}/METADATA"] = members[f"{info}/METADATA"].replace(
+        f"Name: {name}\n".encode(), b"Name: another\n", 1
+      )
     elif mutation == "tag":
       members[f"{info}/WHEEL"] = members[f"{info}/WHEEL"].replace(b"any", b"win_amd64")
     elif mutation == "readme":
@@ -140,7 +142,7 @@ def test_alias_payload_contract_rejects_contamination_and_drift(tmp_path, name, 
   if mutation == "none":
     aliases.validate_alias_wheel(wheel, name, version)
   else:
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="metadata mismatch: .* Name" if mutation == "metadata" else None):
       aliases.validate_alias_wheel(wheel, name, version)
 
 
