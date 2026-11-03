@@ -187,16 +187,18 @@ def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) ->
       if len(files) != len(set(files)):
         raise RuntimeError(f"Duplicate archive member in {artifact_name}: {files}")
       wheels = [name for name in files if name.endswith(".whl")]
-      expected_wheels = (
-        {alias_wheel_name(name, version) for name in ALIAS_NAMES} if artifact_name == ALIAS_ARTIFACT else set(wheels)
-      )
-      expected_count = len(ALIAS_NAMES) if artifact_name == ALIAS_ARTIFACT else 1
-      if len(wheels) != expected_count or any(Path(name).name != name for name in files):
+      is_alias = artifact_name == ALIAS_ARTIFACT
+      if any(Path(name).name != name for name in files):
         raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
-      if set(files) != expected_wheels | {f"{name}.sha256" for name in expected_wheels}:
+      if is_alias:
+        if set(wheels) != {alias_wheel_name(name, version) for name in ALIAS_NAMES}:
+          raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
+      elif len(wheels) != 1:
+        raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
+      if set(files) != {*wheels, *(f"{name}.sha256" for name in wheels)}:
         raise RuntimeError(f"Unexpected payload in {artifact_name}: {sorted(files)}")
       for wheel_name in wheels:
-        if artifact_name != ALIAS_ARTIFACT:
+        if not is_alias:
           validate_wheel_platform(wheel_name, artifact_name, version)
         sidecar_name = f"{wheel_name}.sha256"
         wheel = archive.read(wheel_name)

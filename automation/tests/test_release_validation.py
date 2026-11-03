@@ -386,6 +386,16 @@ def test_complete_wheel_inventory_rejects_missing_or_stale_wheel(tmp_path, mutat
     validate_release_archives(downloaded, VERSION, require_wheels=True)
 
 
+@pytest.mark.parametrize("name", ["cele", "wentian"])
+def test_complete_wheel_inventory_requires_each_alias(tmp_path, name):
+  wheels = write_wheels(tmp_path)
+  missing = f"{name}-{VERSION}-py3-none-any.whl"
+  remaining = [path for path in wheels if path.name not in {missing, f"{missing}.sha256"}]
+
+  with pytest.raises(RuntimeError, match="Python alias inventory must contain exactly cele and wentian"):
+    validate_wheel_sidecars(remaining, VERSION, require_complete=True)
+
+
 def test_complete_wheel_inventory_rejects_duplicate_platform(tmp_path):
   archives = write_release_archives(tmp_path)
   wheels = write_wheels(tmp_path)

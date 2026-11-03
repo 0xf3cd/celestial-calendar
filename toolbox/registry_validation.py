@@ -24,7 +24,12 @@ from urllib.parse import quote, unquote, urlparse
 import requests
 
 from toolbox.build_npm import ALIAS_NAME, PACKAGE_NAME as NPM_PACKAGE
-from toolbox.release_validation import npm_candidate_tarballs, python_wheel_groups, validate_release_candidate
+from toolbox.release_validation import (
+  PYTHON_ARTIFACTS,
+  npm_candidate_tarballs,
+  python_wheel_groups,
+  validate_release_candidate,
+)
 from toolbox.build_python_aliases import PRIMARY_PACKAGE, PYPI_PACKAGES
 
 
@@ -139,7 +144,7 @@ def _pypi_missing_wheels(
 ) -> tuple[bool, list[Path]]:
   """Verify every listed file before returning any missing candidate wheels."""
   expected = {wheel.name: wheel for wheel in wheels}
-  count = 4 if package_name == PYPI_PACKAGE else 1
+  count = len(PYTHON_ARTIFACTS) if package_name == PYPI_PACKAGE else 1
   if package_name not in PYPI_PACKAGES or len(expected) != len(wheels) or len(expected) != count:
     raise RuntimeError(f"PyPI candidate for {package_name} must contain {count} distinct wheels")
   metadata = _metadata(pypi_metadata_url(version, package_name), session)

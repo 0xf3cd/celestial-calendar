@@ -17,7 +17,7 @@ wheel 内含目标平台的原生库，运行时不需要编译器，也不必�
 python -m pip install celestial-calendar
 ```
 
-1.1.1 起，也可以安装 `cele` 或 `wentian`，分别使用 `import cele` 或 `import wentian`。
+也可以安装 `cele` 或 `wentian`，分别使用 `import cele` 或 `import wentian`。
 两个别名包都会安装同版本的 `celestial-calendar`，转发其公开顶层 API，函数、类型和异常均为原对象。
 三个包可以共存；导入 `celestial_calendar.chart` 等子模块时，仍使用 `celestial_calendar`。
 

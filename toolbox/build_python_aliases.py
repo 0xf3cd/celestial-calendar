@@ -131,6 +131,7 @@ def validate_alias_wheel(wheel: Path, name: str, version: str, root: Path = PROJ
         raise RuntimeError(f"Python alias classifiers mismatch: {name}")
       if metadata.get_payload() != alias_readme(name, root):
         raise RuntimeError(f"Python alias README mismatch: {name}")
+
       wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
       for key, value in {"Wheel-Version": "1.0", "Root-Is-Purelib": "true", "Tag": "py3-none-any"}.items():
         if wheel_metadata.get_all(key) != [value]:

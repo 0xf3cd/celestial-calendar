@@ -190,14 +190,14 @@ def main() -> None:
       installed_contract(python, PYPI_PACKAGES, args.version, root)
       mixed_version_control(python, wheels, args.version, root)
       print("PASS exact wheel bytes and mixed-version resolver rejection")
+    options = (
+      ["--no-index", "--find-links", str(args.wheelhouse.resolve())]
+      if wheels is not None
+      else ["--index-url", "https://pypi.org/simple"]
+    )
     for size in range(1, len(PYPI_PACKAGES) + 1):
       for names in itertools.combinations(PYPI_PACKAGES, size):
         python = environment(root, "-".join(names))
-        options = (
-          ["--no-index", "--find-links", str(args.wheelhouse.resolve())]
-          if wheels is not None
-          else ["--index-url", "https://pypi.org/simple"]
-        )
         run(
           [
             str(python),

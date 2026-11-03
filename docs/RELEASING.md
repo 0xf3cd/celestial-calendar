@@ -92,9 +92,9 @@ The candidate has 38 files: 18 GitHub assets, six PyPI wheels, two npm tarballs 
 (37 files recorded in the manifest, excluding the manifest itself). The WASM archive has ten members:
 the raw module/glue, LICENSE/notices, and both tarball/metadata/SHA-256 triples.
 
-The Python producer has four platform artifacts plus `celestial-python-aliases`, containing exactly the two pure
-wheels and their sidecars. The candidate keeps all six wheels flat in `pypi/`, with strict, separate native and
-alias inventories. Pure aliases carry the project MIT license; native wheels retain the third-party notices too.
+The [Python Wheels recipe](BUILDING.md#python-wheels) describes the producer artifacts and alias build.
+The candidate keeps all six wheels flat in `pypi/`, with strict, separate native and alias inventories.
+Pure aliases carry the project MIT license; native wheels retain the third-party notices too.
 
 `publish_pypi` uploads the primary, waits for its exact registry bytes, then uploads `cele`.
 The dependent `publish_pypi_wentian` job uses the same protected `pypi` environment. Before each upload,

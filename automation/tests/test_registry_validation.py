@@ -756,6 +756,56 @@ def test_primary_polling_retains_uncertainty_and_has_a_fixed_ceiling(pair_candid
     )
 
 
+@pytest.mark.parametrize("name", ["cele", "wentian"])
+@pytest.mark.parametrize("primary_state", ["absent", "transient", "partial"])
+def test_alias_preparation_requires_an_exact_primary(monkeypatch, pair_candidate, tmp_path, name, primary_state):
+  session = pypi_candidate_session(pair_candidate, {PYPI_PACKAGE: 2} if primary_state == "partial" else None)
+  primary_url = pypi_metadata_url(CURRENT_VERSION)
+  if primary_state != "partial":
+    session.routes[primary_url] = Response(status=404 if primary_state == "absent" else 503)
+  original_wait = registry_validation.wait_for_pypi
+
+  def bounded_wait(*args):
+    return original_wait(*args, attempts=2, delay_seconds=0, sleep=lambda _seconds: None)
+
+  monkeypatch.setattr(registry_validation, "wait_for_pypi", bounded_wait)
+  upload = tmp_path / "upload"
+  with pytest.raises(RuntimeError, match="did not become exact after 2 attempts"):
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+  assert not upload.exists()
+  assert sum(url == primary_url for url, _ in session.calls) == 2
+  assert not any(url == pypi_metadata_url(CURRENT_VERSION, name) for url, _ in session.calls)
+
+
+@pytest.mark.parametrize("name", ["celestial-calendar", "cele", "wentian"])
+def test_pypi_preparation_rejects_yanked_files(pair_candidate, tmp_path, name):
+  session = pypi_candidate_session(pair_candidate)
+  session.routes[pypi_metadata_url(CURRENT_VERSION, name)].payload["urls"][0]["yanked"] = True
+  upload = tmp_path / "upload"
+  with pytest.raises(RuntimeError, match="Invalid PyPI file identity"):
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+  assert not upload.exists()
+
+
+@pytest.mark.parametrize("location", ["existing", "candidate", "nested"])
+def test_pypi_upload_directory_cannot_overwrite_or_modify_the_candidate(pair_candidate, tmp_path, location):
+  before = {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()}
+  if location == "existing":
+    upload = tmp_path / "upload"
+    upload.mkdir()
+  elif location == "candidate":
+    upload = pair_candidate
+  else:
+    upload = pair_candidate / "pypi" / "nested"
+  session = Session({})
+  with pytest.raises(FileExistsError, match="Refusing to overwrite or modify"):
+    registry_validation.prepare_pypi_candidate(
+      pair_candidate, CURRENT_VERSION, "tagged-sha", PYPI_PACKAGE, upload, session
+    )
+  assert session.calls == []
+  assert {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()} == before
+
+
 @pytest.mark.parametrize("state", ["absent", "partial", "exact", "", "invalid"])
 def test_pypi_cli_emits_only_defined_states(monkeypatch, tmp_path, state):
   output = tmp_path / "output"

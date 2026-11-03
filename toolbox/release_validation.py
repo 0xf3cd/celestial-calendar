@@ -37,6 +37,7 @@ from toolbox.build_python_aliases import (
   ALIAS_ARTIFACT,
   ALIAS_NAMES,
   PRIMARY_PACKAGE,
+  PYPI_PACKAGES,
   alias_wheel_name,
   validate_alias_wheel,
 )
@@ -241,8 +242,8 @@ def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -
 
 
 def python_wheel_groups(wheels: Iterable[Path], version: str, require_complete: bool = True) -> dict[str, list[Path]]:
-  """Require four distinct native platforms and one pure wheel per alias."""
-  groups: dict[str, list[Path]] = {PRIMARY_PACKAGE: [], **{name: [] for name in ALIAS_NAMES}}
+  """Group Python wheels by distribution, optionally requiring the full release set."""
+  groups: dict[str, list[Path]] = {name: [] for name in PYPI_PACKAGES}
   native_artifacts = set()
   aliases = {alias_wheel_name(name, version): name for name in ALIAS_NAMES}
   seen = set()
@@ -295,31 +296,31 @@ def validate_wheel_sidecars(
   groups = python_wheel_groups((payloads[name] for name in wheels), version, require_complete)
   expected_license = ROOT_LICENSE.read_bytes()
   expected_notice = ROOT_NOTICE.read_bytes()
-  for wheel_name in wheels:
-    alias = next((name for name in ALIAS_NAMES if payloads[wheel_name] in groups[name]), None)
-    if alias is not None:
-      validate_alias_wheel(payloads[wheel_name], alias, version)
-    else:
-      try:
-        with zipfile.ZipFile(payloads[wheel_name]) as archive:
-          _require_license(
-            archive,
-            f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
-            wheel_name,
-            expected_license,
-          )
-          _require_notice(
-            archive,
-            f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
-            wheel_name,
-            expected_notice,
-          )
-      except zipfile.BadZipFile as error:
-        raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
-    digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
-    expected = f"{digest}  {wheel_name}\n".encode()
-    if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
-      raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel_name}")
+  for package_name, package_wheels in groups.items():
+    for wheel in package_wheels:
+      if package_name != PRIMARY_PACKAGE:
+        validate_alias_wheel(wheel, package_name, version)
+      else:
+        try:
+          with zipfile.ZipFile(wheel) as archive:
+            _require_license(
+              archive,
+              f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
+              wheel.name,
+              expected_license,
+            )
+            _require_notice(
+              archive,
+              f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
+              wheel.name,
+              expected_notice,
+            )
+        except zipfile.BadZipFile as error:
+          raise RuntimeError(f"Invalid wheel archive {wheel.name}: {error}") from error
+      digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+      expected = f"{digest}  {wheel.name}\n".encode()
+      if payloads[f"{wheel.name}.sha256"].read_bytes() != expected:
+        raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel.name}")
 
 
 def npm_package_metadata(version: str) -> dict[str, str]:
