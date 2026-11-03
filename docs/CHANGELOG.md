@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.1.1]
+
+### Added
+
+- `cele` and `wentian` Python installation/import aliases. Each pure wheel depends on the exact same-version
+  `celestial-calendar` and forwards its public top-level API, including the original types and exceptions.
+- Exact-byte, dependency-resolution and installed-typing checks for the aliases, plus registry installs of every
+  separate and combined Python package selection.
+
+### Changed
+
+- Each release candidate includes four native Python wheels and two pure aliases, with separate strict inventories.
+- PyPI publishes primary → `cele` → `wentian`. Fresh verification permits retrying only missing frozen files;
+  a second protected job supports sequential initial pending-publisher setup.
+- The approval rehearsal covers a dependent second job in the same PyPI environment.
+
 ## [v1.1.0]
 
 ### Added

@@ -14,7 +14,8 @@
 
 The release workflow freezes one candidate for GitHub Release, PyPI, and npm. It accepts three explicit producer
 run IDs and rejects a tag, commit, run, artifact, or registry version that does not match exactly. npm-primary
-(`@0xf3cd/celestial`) and npm-alias (`celestial-calendar`) are separate from the PyPI homonym.
+(`@0xf3cd/celestial`) and npm-alias (`celestial-calendar`) are separate from the PyPI homonym. PyPI publishes
+`celestial-calendar` plus its same-version `cele` and `wentian` forwarding packages.
 
 ## Release
 
@@ -82,18 +83,38 @@ and documentation. It then stages one candidate and classifies both npm identiti
 - a byte-identical version is a verified no-op;
 - any metadata, integrity, or byte mismatch stops before GitHub Release creation.
 
-GitHub Release publishes first. Approve the `pypi` and `npm` jobs only after checking the candidate summary. The
-final unprivileged job requires exactly four PyPI wheels and two npm tarballs, compares registry hashes and bytes,
-and clean-installs PyPI plus npm-primary, npm-alias, and the npm pair from their respective registries.
-The candidate has 30 files: 14 GitHub assets, four PyPI wheels, two npm tarballs and ten evidence files
-(29 files recorded in the manifest, excluding the manifest itself). The WASM archive has ten members:
+GitHub Release publishes first. Approve the `pypi` and `npm` jobs only after checking the candidate summary and
+the [initial Python alias setup](#python-alias-setup), if applicable. The final unprivileged job requires four
+native PyPI wheels, one pure `cele` wheel, one pure `wentian` wheel and two npm tarballs. It compares registry
+hashes and bytes, clean-installs all seven Python package combinations on floor/current interpreters, and
+installs npm-primary, npm-alias, and the npm pair from their registry.
+The candidate has 38 files: 18 GitHub assets, six PyPI wheels, two npm tarballs and twelve evidence files
+(37 files recorded in the manifest, excluding the manifest itself). The WASM archive has ten members:
 the raw module/glue, LICENSE/notices, and both tarball/metadata/SHA-256 triples.
+
+The [Python Wheels recipe](BUILDING.md#python-wheels) describes the producer artifacts and alias build.
+The candidate keeps all six wheels flat in `pypi/`, with strict, separate native and alias inventories.
+Pure aliases carry the project MIT license; native wheels retain the third-party notices too.
+
+`publish_pypi` uploads the primary, waits for its exact registry bytes, then uploads `cele`.
+The dependent `publish_pypi_wentian` job uses the same protected `pypi` environment. Before each upload,
+fresh classification verifies every existing file against the candidate and stages only missing wheel bytes:
+
+- `absent`: the version endpoint returned 404; stage the complete distribution inventory;
+- `partial`: every existing file matches, but some native wheels are missing; stage only those missing files;
+- `exact`: the complete distribution already matches; skip the upload as a verified no-op.
+
+Conflicting or extra files, invalid metadata, HTTP 429, transport failures and a 404 for a listed file stop the
+job. They never authorize upload. Alias preparation requires the primary version to be exact first. A retry
+does not rebuild, repack or use `skip-existing`. PyPI JSON can lag an upload: a stale 404/subset may cause an
+already-existing-file rejection, which fails closed and can be retried after indexing settles. A deleted PyPI
+filename cannot be re-uploaded; that situation can require a new version.
 
 The npm job checks out only the protected release commit and installs the hash-locked Requests closure to run
 the versioned classifier. Immediately before each publication it rechecks that package against the same frozen
 candidate, primary first and alias second. Exact bytes are a verified no-op; conflicts, invalid JSON, HTTP 429,
 and transport failures stop rather than authorizing publication. Verification alone polls indexing and transient
-transport states to a fixed ceiling and reports which of npm-primary, npm-alias, or PyPI is still pending.
+transport states to a fixed ceiling and reports which npm or Python distribution is still pending.
 
 After success, inspect the immutable GitHub Release, asset inventory and `verify_registries` results.
 Do not repeat those installations manually on the same bytes merely to obtain another green result:
@@ -102,6 +123,7 @@ Do not repeat those installations manually on the same bytes merely to obtain an
 |---|---|---|
 | Native archive/runtime floor | Native producer validates installed archive members and measured requirements | Confirm selected run/commit and candidate hashes |
 | Four repaired Python wheels | Producer installs each same wheel on minimum/current interpreters; release verifies registry bytes and installed Python acceptance | Read all four wheel identities and successful acceptance evidence |
+| Two pure Python aliases | Producer checks exact bytes, resolver conflicts, object identity and installed mypy; release resolves all seven Python package combinations | Read both alias identities, same-version dependencies and consumer evidence |
 | Primary and alias npm tarballs | WASM producer tests exact named tarballs; release verifies registry bytes and installs each name alone and the same-version pair | Read both frozen package identities and all three registry-consumer results |
 | Authorization | Protected environments pause publication | Approve only the manifest's tag, commit, producer IDs, filenames, sizes and hashes |
 
@@ -114,23 +136,24 @@ original frozen candidate, as described below. A no-op publication proves byte i
   as context and obtain separate account/publication authorization; do not substitute newly built bytes.
 - If immutable GitHub Release creation fails, inspect the release first. Delete it only if it is still a draft,
   then rerun failed jobs against the same workflow artifact.
-- An unambiguous PyPI failure before registry acceptance may use `gh run rerun RUN_ID --failed` after reviewing
-  the evidence.
+- For a PyPI publication failure, inspect registry and account state, then retry only the affected job with
+  `gh run rerun --job PYPI_JOB_ID` or `gh run rerun --job WENTIAN_JOB_ID`. Fresh classification verifies existing
+  exact bytes and stages only missing files from the same candidate, including partial primary uploads.
 - For npm publication failure, inspect the evidence and retry only the npm job using
   `gh run rerun --job NPM_JOB_ID`. Fresh classification retains successful exact package bytes and continues
   with the remaining package. This also handles a command that failed after npm accepted its exact bytes.
 - The unprivileged `verify_registries` job is idempotent. A transient verification failure after publication may use
   `gh run rerun RUN_ID --failed`; the publication jobs have already succeeded and are not rerun.
-- If a PyPI publish command fails ambiguously but registry queries prove the exact candidate is present, leave that
-  publication job red. Do not rerun it or use `skip-existing`; record the recovery and complete consumer validation
-  manually.
+- If a PyPI command failed after accepting its exact bytes, the affected-job retry is a verified no-op and lets
+  downstream checks continue. Never use `skip-existing` or substitute a newly built candidate.
 - After any irreversible job succeeds, never use "Re-run all jobs". The original run is the identity of the frozen
   candidate.
 
-### Ambiguous PyPI success: original-candidate verification
+### Exceptional recovery: original-candidate verification
 
-For the terminal PyPI ambiguous-success case, verify and consume the same candidate manually from a clean checkout of
-the release tag. `RUN_ID` is the release workflow run, not a producer run:
+If the automatic consumer job cannot be recovered, verify and consume the same candidate from a clean checkout of
+the release tag. Run the Python consumer on both the floor and current interpreters from `python-wheel.yml`;
+the example below shows one interpreter. `RUN_ID` is the release workflow run, not a producer run:
 
 ```sh
 (
@@ -146,13 +169,7 @@ the release tag. `RUN_ID` is the release workflow run, not a producer run:
   registry-verify/bin/python toolbox/registry_verifier.py verify \
     --candidate candidate --version "$version" --commit "$commit"
 
-  python3 -m venv registry-python
-  registry-python/bin/python -m pip --isolated install \
-    --index-url https://pypi.org/simple --only-binary=:all: --no-cache-dir --no-deps \
-    "celestial-calendar==$version"
-  root=$(pwd)
-  work=$(mktemp -d)
-  (cd "$work" && "$root/registry-python/bin/python" "$root/bindings/python/test/run_all.py")
+  python3 bindings/python-aliases/test/consumer.py "$version" --registry
   node bindings/javascript/test/registry/registry_consumer_test.mjs "$version"
 )
 ```
@@ -161,7 +178,9 @@ Rehearse environment self-approval and same-run failed-job artifact recovery aft
 final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: push a disposable `vX.Y.Z-rehearsal`
 tag — never a plain `vX.Y.Z`, which is release identity — (the tag rulesets cover it: create via the Admin bypass,
 remove afterwards via the ruleset recovery path recorded in #215), dispatch the workflow on that tag, approve both
-environment gates against the staged manifest, then rerun the deliberately failed job with
+environment gates against the staged manifest, then confirm the dependent `gate_pypi_second` job waits for a
+separate `pypi` approval. Record the actual behaviour rather than assuming an approval is requested again.
+Then rerun the deliberately failed job with
 `gh run rerun RUN_ID --failed` and confirm it recovers the same-run artifact. The v0.6.0 npm no-op cannot rehearse a
 live OIDC publish.
 
@@ -173,12 +192,34 @@ Before creating a release tag:
 1. Add an active tag ruleset for `v*`. Test `github.ref_protected` with a disposable matching tag, then remove it.
 2. Create `pypi` and `npm` environments. The maintainer is the required reviewer and may self-approve after reading
    the candidate manifest; disable self-review prevention and admin bypass. Restrict deployment tags to `v*.*.*`.
-3. Register the PyPI pending publisher with owner `0xf3cd`, repository `celestial-calendar`, workflow
-   `release.yml`, and environment `pypi`.
+3. Register the primary PyPI Trusted Publisher with owner `0xf3cd`, repository `celestial-calendar`, workflow
+   `release.yml`, and environment `pypi`. For new alias projects use the sequential setup below.
 4. Register separate Trusted Publishers for both npm names with the same owner, repository and workflow,
    using environment `npm`. Package existence alone does not prove publisher configuration or live OIDC readiness.
 
 Environment approval is a deliberate manifest check, not independent review.
+
+<a id="python-alias-setup"></a>
+### Initial Python alias setup
+
+PyPI permits only one pending publisher per owner/repository/workflow/environment identity
+([Warehouse #16920](https://github.com/pypi/warehouse/issues/16920)). A pending row does not reserve a project name.
+Keep the existing normal primary publisher and use the same fields above for both aliases:
+
+1. Add the `cele` pending publisher. Before approving `publish_pypi`, inspect that row in the maintainer's account,
+   verify its name and fields, and confirm `cele` is still absent on PyPI. A stale pending name can also block the
+   primary's token exchange because PyPI resolves pending publishers first.
+2. After the first job succeeds, confirm `cele` has its exact wheel and a normal Trusted Publisher. Add `wentian`
+   as the next pending publisher, verify its fields and still-absent name, then approve `publish_pypi_wentian`.
+3. If GitHub reused the first environment approval and the second job already failed, retain the candidate, finish
+   the pending setup and retry only `WENTIAN_JOB_ID`. The pre-tag rehearsal must record whether the second gate pauses.
+
+PyPI can create the project while minting the short-lived upload token, before an upload succeeds. If that happens,
+inspect the new project's normal publisher rather than adding another pending row for an existing project.
+Neither source inspection nor a no-op proves a live OIDC publication or account ownership. Confirm those in the
+actual run and project settings. There remains a name-registration race before each first upload; the shared
+identity cannot queue both names at once. Later releases use the three normal project associations without this
+pending setup, and require no API token.
 
 <a id="appendix-completed-npm-bootstraps"></a>
 ## Appendix: completed npm bootstraps

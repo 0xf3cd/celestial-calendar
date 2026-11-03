@@ -39,6 +39,7 @@ from toolbox.release_validation import (
   validate_release_archives,
   validate_wheel_platform,
 )
+from toolbox.build_python_aliases import ALIAS_ARTIFACT, ALIAS_NAMES, alias_wheel_name, validate_alias_wheel
 
 
 def artifact_workflow(workflow_name: str = "Build and Test on Multiple Platforms") -> GitHub.Workflow:
@@ -167,37 +168,49 @@ def project_version() -> str:
 
 def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) -> list[Path]:
   """Validate all Python archives, then flatten their wheels and digests atomically by file."""
-  archives = {path.stem: path for path in downloaded_artifacts if path.stem in PYTHON_ARTIFACTS}
-  if set(archives) != set(PYTHON_ARTIFACTS):
-    missing = sorted(set(PYTHON_ARTIFACTS) - set(archives))
+  expected_artifacts = {*PYTHON_ARTIFACTS, ALIAS_ARTIFACT}
+  selected = [path for path in downloaded_artifacts if path.stem in expected_artifacts]
+  archives = {path.stem: path for path in selected}
+  if len(archives) != len(selected):
+    raise RuntimeError("Duplicate downloaded Python artifact archives")
+  if set(archives) != expected_artifacts:
+    missing = sorted(expected_artifacts - set(archives))
     raise RuntimeError(f"Missing downloaded Python artifact archives: {missing}")
 
   version = project_version()
   payloads: dict[str, bytes] = {}
   for artifact_name, archive_path in archives.items():
     with zipfile.ZipFile(archive_path) as archive:
+      if any(name.endswith("/") for name in archive.namelist()):
+        raise RuntimeError(f"{artifact_name} must contain only root-level wheel files and sidecars")
       files = [name for name in archive.namelist() if not name.endswith("/")]
       if len(files) != len(set(files)):
         raise RuntimeError(f"Duplicate archive member in {artifact_name}: {files}")
       wheels = [name for name in files if name.endswith(".whl")]
-      if len(wheels) != 1 or any(Path(name).name != name for name in files):
-        raise RuntimeError(f"{artifact_name} must contain one root-level wheel and sidecar")
-      wheel_name = wheels[0]
-      sidecar_name = f"{wheel_name}.sha256"
-      if set(files) != {wheel_name, sidecar_name}:
+      is_alias = artifact_name == ALIAS_ARTIFACT
+      if any(Path(name).name != name for name in files):
+        raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
+      if is_alias:
+        if set(wheels) != {alias_wheel_name(name, version) for name in ALIAS_NAMES}:
+          raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
+      elif len(wheels) != 1:
+        raise RuntimeError(f"{artifact_name} has an invalid root-level wheel inventory")
+      if set(files) != {*wheels, *(f"{name}.sha256" for name in wheels)}:
         raise RuntimeError(f"Unexpected payload in {artifact_name}: {sorted(files)}")
-      validate_wheel_platform(wheel_name, artifact_name, version)
-
-      wheel = archive.read(wheel_name)
-      digest = hashlib.sha256(wheel).hexdigest()
-      expected_sidecar = f"{digest}  {wheel_name}\n".encode()
-      sidecar = archive.read(sidecar_name)
-      if sidecar != expected_sidecar:
-        raise RuntimeError(f"SHA-256 sidecar mismatch in {artifact_name}")
-      for name, content in ((wheel_name, wheel), (sidecar_name, sidecar)):
-        if name in payloads:
-          raise RuntimeError(f"Duplicate flattened Python payload basename: {name}")
-        payloads[name] = content
+      for wheel_name in wheels:
+        if not is_alias:
+          validate_wheel_platform(wheel_name, artifact_name, version)
+        sidecar_name = f"{wheel_name}.sha256"
+        wheel = archive.read(wheel_name)
+        digest = hashlib.sha256(wheel).hexdigest()
+        expected_sidecar = f"{digest}  {wheel_name}\n".encode()
+        sidecar = archive.read(sidecar_name)
+        if sidecar != expected_sidecar:
+          raise RuntimeError(f"SHA-256 sidecar mismatch in {artifact_name}")
+        for name, content in ((wheel_name, wheel), (sidecar_name, sidecar)):
+          if name in payloads:
+            raise RuntimeError(f"Duplicate flattened Python payload basename: {name}")
+          payloads[name] = content
 
   destinations = [save_to / name for name in payloads]
   existing = [str(path) for path in destinations if path.exists()]
@@ -209,6 +222,8 @@ def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) ->
     staging = Path(temporary)
     for name, content in payloads.items():
       (staging / name).write_bytes(content)
+    for name in ALIAS_NAMES:
+      validate_alias_wheel(staging / alias_wheel_name(name, version), name, version)
     for name in payloads:
       destination = save_to / name
       (staging / name).replace(destination)

@@ -39,7 +39,36 @@ def test_python_wheel_artifact_inventory_is_exact():
 
   expected = next(names for _field, name, names in SOURCE_SPECS if name == "Python Wheels")
   assert workflow["name"] == "Python Wheels"
-  assert uploaded == set(PYTHON_ARTIFACTS) == expected
+  assert uploaded == {*PYTHON_ARTIFACTS, "celestial-python-aliases"} == expected
+
+
+def test_aliases_build_once_and_floor_current_consumers_use_the_exact_artifacts():
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  jobs = workflow["jobs"]
+  builder = jobs["aliases"]
+  commands = [step.get("run", "") for step in builder["steps"]]
+  assert commands.count("python toolbox/build_python_aliases.py") == 1
+  upload = next(step for step in builder["steps"] if "upload-artifact@" in step.get("uses", ""))
+  assert upload["with"] == {
+    "name": "celestial-python-aliases",
+    "path": "build/python-aliases/artifact/",
+    "retention-days": 30,
+    "if-no-files-found": "error",
+  }
+  consumer = jobs["alias-consumers"]
+  assert consumer["needs"] == ["aliases", "manylinux"]
+  assert consumer["strategy"]["matrix"] == {"python": ["3.11.9", "3.14.7"]}
+  downloads = [step["with"] for step in consumer["steps"] if "download-artifact@" in step.get("uses", "")]
+  assert downloads == [
+    {"name": "celestial-python-aliases", "path": "alias-wheelhouse"},
+    {"name": "celestial-python-manylinux-x86_64", "path": "alias-wheelhouse"},
+  ]
+  command = next(step["run"] for step in consumer["steps"] if "--wheelhouse" in step.get("run", ""))
+  assert command == (
+    "version=$(python project.py --version)\n"
+    'python bindings/python-aliases/test/consumer.py "$version" --wheelhouse alias-wheelhouse --typing\n'
+  )
+  assert not any("build_python_aliases.py" in step.get("run", "") for step in consumer["steps"])
 
 
 def test_python_wheel_workflow_never_publishes():

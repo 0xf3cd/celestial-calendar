@@ -38,6 +38,9 @@ Each wheel contains its platform's native library, so using it requires no compi
 installation. Importing neither searches system libraries nor downloads a fallback. See the
 [Python package guide](bindings/python/README.md) for available wheel targets and the full contract.
 
+`cele` and `wentian` are also Python installation/import names; the
+[package guide](bindings/python/README.md#install) explains their same-version dependency.
+
 Each Python block is a standalone program for `example.py` in your application directory. Run it with
 `python example.py` in the environment where the package is installed.
 

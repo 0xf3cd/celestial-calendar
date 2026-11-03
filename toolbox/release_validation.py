@@ -33,6 +33,14 @@ from toolbox.build_npm import (
   verify_manifest,
 )
 from toolbox.runtime_floor import validate_runtime_floor
+from toolbox.build_python_aliases import (
+  ALIAS_ARTIFACT,
+  ALIAS_NAMES,
+  PRIMARY_PACKAGE,
+  PYPI_PACKAGES,
+  alias_wheel_name,
+  validate_alias_wheel,
+)
 
 
 WASM_ARCHIVE: Final[str] = "celestial-wasm.zip"
@@ -52,7 +60,7 @@ PYTHON_ARTIFACTS: Final[dict[str, tuple[str, str]]] = {
 SOURCE_SPECS: Final[tuple[tuple[str, str, frozenset[str]], ...]] = (
   ("native_run_id", "Build and Test on Multiple Platforms", frozenset(NATIVE_ARCHIVES.values())),
   ("wasm_run_id", "WASM Build and Golden Check", frozenset({Path(WASM_ARCHIVE).stem})),
-  ("python_run_id", "Python Wheels", frozenset(PYTHON_ARTIFACTS)),
+  ("python_run_id", "Python Wheels", frozenset({*PYTHON_ARTIFACTS, ALIAS_ARTIFACT})),
 )
 SOURCE_WORKFLOWS: Final[dict[str, frozenset[str]]] = {
   workflow: artifacts for _run_field, workflow, artifacts in SOURCE_SPECS
@@ -233,6 +241,34 @@ def validate_wheel_platform(wheel_name: str, artifact_name: str, version: str) -
     raise RuntimeError(f"Wheel {wheel_name} does not match artifact {artifact_name}")
 
 
+def python_wheel_groups(wheels: Iterable[Path], version: str, require_complete: bool = True) -> dict[str, list[Path]]:
+  """Group Python wheels by distribution, optionally requiring the full release set."""
+  groups: dict[str, list[Path]] = {name: [] for name in PYPI_PACKAGES}
+  native_artifacts = set()
+  aliases = {alias_wheel_name(name, version): name for name in ALIAS_NAMES}
+  seen = set()
+  for wheel in sorted(wheels):
+    if wheel.name in seen:
+      raise RuntimeError(f"Duplicate Python wheel: {wheel.name}")
+    seen.add(wheel.name)
+    if wheel.name in aliases:
+      groups[aliases[wheel.name]].append(wheel)
+    else:
+      artifact = _wheel_artifact(wheel.name, version)
+      if artifact in native_artifacts:
+        raise RuntimeError(f"Duplicate wheel platform: {artifact}")
+      native_artifacts.add(artifact)
+      groups[PRIMARY_PACKAGE].append(wheel)
+  if require_complete:
+    if native_artifacts != set(PYTHON_ARTIFACTS):
+      raise RuntimeError(
+        f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - native_artifacts)}"
+      )
+    if any(len(groups[name]) != 1 for name in ALIAS_NAMES):
+      raise RuntimeError("Python alias inventory must contain exactly cele and wentian")
+  return groups
+
+
 def validate_wheel_sidecars(
   downloaded: Iterable[Path],
   version: str,
@@ -257,37 +293,34 @@ def validate_wheel_sidecars(
       f"extra={sorted(sidecars - expected_sidecars)}"
     )
 
-  artifacts = {}
+  groups = python_wheel_groups((payloads[name] for name in wheels), version, require_complete)
   expected_license = ROOT_LICENSE.read_bytes()
   expected_notice = ROOT_NOTICE.read_bytes()
-  for wheel_name in wheels:
-    artifact_name = _wheel_artifact(wheel_name, version)
-    if artifact_name in artifacts:
-      raise RuntimeError(f"Duplicate wheel platform: {artifact_name}")
-    artifacts[artifact_name] = wheel_name
-    try:
-      with zipfile.ZipFile(payloads[wheel_name]) as archive:
-        _require_license(
-          archive,
-          f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
-          wheel_name,
-          expected_license,
-        )
-        _require_notice(
-          archive,
-          f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
-          wheel_name,
-          expected_notice,
-        )
-    except zipfile.BadZipFile as error:
-      raise RuntimeError(f"Invalid wheel archive {wheel_name}: {error}") from error
-    digest = hashlib.sha256(payloads[wheel_name].read_bytes()).hexdigest()
-    expected = f"{digest}  {wheel_name}\n".encode()
-    if payloads[f"{wheel_name}.sha256"].read_bytes() != expected:
-      raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel_name}")
-
-  if require_complete and set(artifacts) != set(PYTHON_ARTIFACTS):
-    raise RuntimeError(f"Wheel platform inventory mismatch: missing={sorted(set(PYTHON_ARTIFACTS) - set(artifacts))}")
+  for package_name, package_wheels in groups.items():
+    for wheel in package_wheels:
+      if package_name != PRIMARY_PACKAGE:
+        validate_alias_wheel(wheel, package_name, version)
+      else:
+        try:
+          with zipfile.ZipFile(wheel) as archive:
+            _require_license(
+              archive,
+              f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
+              wheel.name,
+              expected_license,
+            )
+            _require_notice(
+              archive,
+              f"celestial_calendar-{version}.dist-info/licenses/{NOTICE_MEMBER}",
+              wheel.name,
+              expected_notice,
+            )
+        except zipfile.BadZipFile as error:
+          raise RuntimeError(f"Invalid wheel archive {wheel.name}: {error}") from error
+      digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+      expected = f"{digest}  {wheel.name}\n".encode()
+      if payloads[f"{wheel.name}.sha256"].read_bytes() != expected:
+        raise RuntimeError(f"SHA-256 sidecar mismatch for {wheel.name}")
 
 
 def npm_package_metadata(version: str) -> dict[str, str]:
@@ -652,8 +685,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     require_wheels=True,
   )
   wheels = sorted(pypi.iterdir())
-  if len(wheels) != len(PYTHON_ARTIFACTS) or any(not path.name.endswith(".whl") for path in wheels):
-    raise RuntimeError("PyPI candidate must contain exactly four wheels")
+  python_wheel_groups(wheels, version)
   sidecars = [evidence / f"{wheel.name}.sha256" for wheel in wheels]
   expected_github = {
     *RELEASE_ARCHIVES,

@@ -19,6 +19,11 @@ Install the wheel for your platform from PyPI into your application's Python env
 python -m pip install celestial-calendar
 ```
 
+You can instead install `cele` or `wentian` and use `import cele` or `import wentian`.
+Each alias installs the exact same version of `celestial-calendar` and exposes its public top-level API,
+with the original functions, types and exceptions. All three packages can coexist. Use `celestial_calendar`
+for submodule imports such as `celestial_calendar.chart`.
+
 Each Python block below is a standalone program for `example.py`; run it with `python example.py` in that
 environment. Apart from this package, the examples use only the Python standard library.
 

@@ -28,6 +28,58 @@ env:
     CELESTIAL_WINDOWS_EVIDENCE_PRODUCER=wheel
 
 jobs:
+  aliases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+      - name: Install hash-locked alias build tools
+        run: >-
+          python -m pip install --require-hashes --only-binary :all:
+          -r bindings/python/requirements-build.txt
+      - name: Build both pure aliases once
+        run: python toolbox/build_python_aliases.py
+      - name: Upload exact alias wheels and sidecars
+        uses: actions/upload-artifact@v7
+        with:
+          name: celestial-python-aliases
+          path: build/python-aliases/artifact/
+          retention-days: 30
+          if-no-files-found: error
+
+  alias-consumers:
+    needs: [aliases, manylinux]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11.9", "3.14.7"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Download the exact alias artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: celestial-python-aliases
+          path: alias-wheelhouse
+      - name: Download the exact primary artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: celestial-python-manylinux-x86_64
+          path: alias-wheelhouse
+      - name: Install the pinned type checker
+        run: >-
+          python -m pip install --require-hashes --only-binary :all:
+          -r bindings/python/requirements-mypy.txt
+      - name: Consume exact bytes, resolve dependencies, and check typing
+        run: |
+          version=$(python project.py --version)
+          python bindings/python-aliases/test/consumer.py "$version" --wheelhouse alias-wheelhouse --typing
+
   manylinux:
     runs-on: ${{ matrix.runner }}
     strategy:

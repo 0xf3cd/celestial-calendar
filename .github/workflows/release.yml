@@ -169,16 +169,136 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned classifier dependencies
+        run: >-
+          python3 -m pip install --require-hashes --only-binary=:all:
+          -r Requirements-producer.txt
+
       - name: Download immutable release candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: celestial-release-candidate
           path: candidate
 
-      - name: Publish exact wheels to PyPI
+      - name: Prepare missing PyPI primary wheels
+        id: pypi-primary
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py prepare-pypi \
+            --package celestial-calendar --upload-to "$RUNNER_TEMP/pypi-primary" \
+            --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate PyPI primary upload decision
+        env:
+          STATE: ${{ steps.pypi-primary.outputs.state }}
+          PACKAGES_DIR: ${{ steps.pypi-primary.outputs.packages-dir }}
+        run: |
+          case "$STATE" in absent|partial|exact) ;; *) echo "Invalid PyPI primary state"; exit 1 ;; esac
+          test "$PACKAGES_DIR" = "$RUNNER_TEMP/pypi-primary"
+
+      - name: Publish missing PyPI primary wheels
+        if: steps.pypi-primary.outputs.state != 'exact'
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
-          packages-dir: candidate/pypi
+          packages-dir: ${{ steps.pypi-primary.outputs.packages-dir }}
+          verify-metadata: true
+          attestations: true
+
+      - name: Prepare missing cele wheel
+        id: pypi-cele
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py prepare-pypi \
+            --package cele --upload-to "$RUNNER_TEMP/pypi-cele" \
+            --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate cele upload decision
+        env:
+          STATE: ${{ steps.pypi-cele.outputs.state }}
+          PACKAGES_DIR: ${{ steps.pypi-cele.outputs.packages-dir }}
+        run: |
+          case "$STATE" in absent|partial|exact) ;; *) echo "Invalid cele state"; exit 1 ;; esac
+          test "$PACKAGES_DIR" = "$RUNNER_TEMP/pypi-cele"
+
+      - name: Publish missing cele wheel
+        if: steps.pypi-cele.outputs.state != 'exact'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: ${{ steps.pypi-cele.outputs.packages-dir }}
+          verify-metadata: true
+          attestations: true
+
+  publish_pypi_wentian:
+    needs: publish_pypi
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned classifier dependencies
+        run: >-
+          python3 -m pip install --require-hashes --only-binary=:all:
+          -r Requirements-producer.txt
+
+      - name: Download immutable release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: celestial-release-candidate
+          path: candidate
+
+      - name: Prepare missing wentian wheel
+        id: pypi-wentian
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 toolbox/registry_verifier.py prepare-pypi \
+            --package wentian --upload-to "$RUNNER_TEMP/pypi-wentian" \
+            --candidate candidate --version "${TAG_NAME#v}" --commit "$COMMIT_SHA" \
+            --github-output "$GITHUB_OUTPUT" --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate wentian upload decision
+        env:
+          STATE: ${{ steps.pypi-wentian.outputs.state }}
+          PACKAGES_DIR: ${{ steps.pypi-wentian.outputs.packages-dir }}
+        run: |
+          case "$STATE" in absent|partial|exact) ;; *) echo "Invalid wentian state"; exit 1 ;; esac
+          test "$PACKAGES_DIR" = "$RUNNER_TEMP/pypi-wentian"
+
+      - name: Publish missing wentian wheel
+        if: steps.pypi-wentian.outputs.state != 'exact'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: ${{ steps.pypi-wentian.outputs.packages-dir }}
           verify-metadata: true
           attestations: true
 
@@ -272,7 +392,7 @@ jobs:
           esac
 
   verify_registries:
-    needs: [publish_pypi, publish_npm]
+    needs: [publish_pypi, publish_pypi_wentian, publish_npm]
     runs-on: ubuntu-latest
 
     permissions:
@@ -309,22 +429,21 @@ jobs:
             --version "${TAG_NAME#v}" \
             --commit "$COMMIT_SHA"
 
-      - name: Clean-install the PyPI wheel and run acceptance
+      - name: Clean-install all Python names and run acceptance on the floor
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          python3 -m venv registry-venv
-          registry-venv/bin/python -m pip --isolated install \
-            --index-url https://pypi.org/simple \
-            --only-binary=:all: \
-            --no-cache-dir \
-            --no-deps \
-            "celestial-calendar==${TAG_NAME#v}"
-          (
-            cd "$RUNNER_TEMP"
-            "$GITHUB_WORKSPACE/registry-venv/bin/python" \
-              "$GITHUB_WORKSPACE/bindings/python/test/run_all.py"
-          )
+          python3 bindings/python-aliases/test/consumer.py "${TAG_NAME#v}" --registry
+
+      - name: Set up current Python registry consumer
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.7"
+
+      - name: Clean-install all Python names and run acceptance on current Python
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: python3 bindings/python-aliases/test/consumer.py "${TAG_NAME#v}" --registry
 
       - name: Set up Node registry consumer
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
