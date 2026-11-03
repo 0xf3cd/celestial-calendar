@@ -2,28 +2,28 @@
      dispatched on a v*.*.* tag. Keep ONLY the notes of the release being cut; history lives in
      CHANGELOG.md (attached to every release). -->
 
-## [v1.0.0]
+## [v1.1.0]
 
-### API changes
+### Compatibility
 
-- The C ABI uses `celestial_` exports, `Celestial` records and one `CELESTIAL_TARGET_*` code family.
-  Existing 0.x binaries and source callers must migrate; no compatibility forwarders are provided.
-- Independent ecliptic/equatorial positions and civil houses are available from C++ and C, with immutable Python
-  result values. Positions retain caller order and provider windows without computing rates or houses.
-- Model keys distinguish Delta T, nutation and position sources. Selected-model results record their resolved
-  identities; capability queries describe TT target domains and the separate civil-house policy.
-- Native error kinds distinguish invalid input from computation, resource and internal failures, including when
-  no error message could be allocated. Automatic logging and logging configuration APIs are removed.
-- Sized strings count the terminating NUL. JavaScript Sun distance is named `distanceAu`; JavaScript gains no
-  public position, equatorial, house, event or capability query API.
+- Prebuilt macOS arm64 libraries and Python wheels require macOS 15 or newer, up from macOS 14.
+  Other platform minimums are unchanged.
+- Existing public API/ABI layouts and signatures remain compatible. No astronomical model, numerical tolerance,
+  calculation domain or historical time policy changes in this release.
 
-### Calendar and civil time
+### API and documentation
 
-- `calendar::Datetime` accepts raw durations and checks original date/time values before narrowing.
-- Jieqi table schema `celestial-calendar/jieqi-table@2` stores model UT1 as `jd_ut1` / `iso_ut1`, with verified
-  build provenance, instead of presenting it as UTC.
-- Charts and civil houses share civil-year and UTC admission. Algo4 requires derived TT before 2035-01-01,
-  excluding roughly the last 71.5 UT1 seconds of 2034. Houses do not inherit the chart's target/rate window.
+- UTC civil time ↔ JDE(TT) conversions are available in C (`celestial_utc_to_jde`, `celestial_jde_to_utc`),
+  Python (`utc_to_jde`, `jde_to_utc`) and JavaScript (`time.utcToJde`, `time.jdeToUtc`). They expose the existing
+  C++ conversions, including their historical UT1 substitute and leap-second policy.
+- Quickstarts and task guides include runnable Python and JavaScript examples. Model and domain explanations
+  have one shared guide; hosted documentation identifies its source revision and release/development state.
+- An optional [consumer skill](https://github.com/0xf3cd/celestial-calendar/tree/main/skills/using-celestial-calendar)
+  provides public-guide links and a checklist for interface availability, time scales, units and program execution.
 
-See [Migrating to 1.0](MIGRATING_1_0.md) for replacement names, ownership protocols and changed failure behavior.
+### Maintenance
+
+- Share chart-replay tolerances and native-library discovery, remove unused maintenance paths, and keep
+  non-Linux export-surface checks on their static path.
+
 The [changelog](CHANGELOG.md) retains the full development history.

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v1.1.0]
 
 ### Added
 
@@ -8,10 +8,29 @@
   Python (`utc_to_jde`, `jde_to_utc`) and JavaScript (`time.utcToJde`, `time.jdeToUtc`). These expose the
   existing C++ conversions without changing their historical UT1 substitute, leap-second policy or domains.
 - Runnable Python and JavaScript [UTC-input Jieqi examples](UTC_CONVERSIONS.md) with UTC+8 display.
+- Hosted documentation with source/version labels, language and task navigation, model guidance and API reference.
+- An optional [AI consumer skill](../skills/using-celestial-calendar/README.md) with public-guide links,
+  runnable-task comparisons and trigger queries. The evaluation records ties and a first-output regression,
+  without claiming an improvement over supplying the guides alone.
 
 ### Changed
 
 - Prebuilt macOS arm64 libraries and Python wheels require macOS 15 or newer, up from macOS 14.
+- Quickstarts and task guides share model/domain explanations and distinguish current-source examples from
+  installed-package interfaces. Python and JavaScript documentation examples run against built package artifacts.
+- Root README navigation links to the hosted documentation; package metadata points to the corresponding language
+  guides.
+- Python and JavaScript chart replays share tolerance values; the bindings golden generator reuses native-library
+  discovery.
+
+### Fixed
+
+- Non-Linux export-surface checks no longer invoke ELF-only tools. Linux dynamic-export and SONAME checks remain.
+
+### Removed
+
+- Unused maintenance helpers and the hidden `compare-all` alias in `statistics/algo3_ytliu0_golden.py`;
+  `compare-sample` remains available.
 
 ## [v1.0.0]
 

@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -155,15 +156,22 @@ def test_source_only_rebuild_does_not_reuse_a_commit_bearing_receipt(source_only
   assert library_provenance.verify_library(library, root)["source"]["commit"] is None
 
 
-def test_pack_build_info_without_own_git_never_uses_parent(source_only_tree, monkeypatch):
+@pytest.mark.parametrize("version", ["0.0.0", "9.8.7"])
+def test_pack_build_info_without_own_git_never_uses_parent(source_only_tree, monkeypatch, version):
   root, _, library = source_only_tree
+  project = root / "project.py"
+  source, count = re.subn(
+    r'BUILD_VERSION: Final\[str\] = "[^"]+"', f'BUILD_VERSION: Final[str] = "{version}"', project.read_text()
+  )
+  assert count == 1
+  project.write_text(source)
   monkeypatch.setattr(build_info, "__file__", str(root / "toolbox/build_info.py"))
   monkeypatch.setattr(paths, "__file__", str(root / "automation/paths.py"))
   monkeypatch.delenv("CXX", raising=False)
   monkeypatch.delenv("CC", raising=False)
   info = build_info.pack_build_info(None)
   assert info.git_commit == ""
-  assert info.build_version == "1.0.0"
+  assert info.build_version == version
   assert info.sha256 == {library.name: library_provenance.file_sha256(library)}
 
 
