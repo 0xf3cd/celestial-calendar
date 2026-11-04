@@ -157,7 +157,8 @@ def test_source_only_rebuild_does_not_reuse_a_commit_bearing_receipt(source_only
 
 
 @pytest.mark.parametrize("version", ["0.0.0", "9.8.7"])
-def test_pack_build_info_without_own_git_never_uses_parent(source_only_tree, monkeypatch, version):
+@pytest.mark.parametrize("commit", [None, "", "a" * 40])
+def test_pack_build_info_without_own_git_never_uses_parent(source_only_tree, monkeypatch, version, commit):
   root, _, library = source_only_tree
   project = root / "project.py"
   source, count = re.subn(
@@ -169,14 +170,15 @@ def test_pack_build_info_without_own_git_never_uses_parent(source_only_tree, mon
   monkeypatch.setattr(paths, "__file__", str(root / "automation/paths.py"))
   monkeypatch.delenv("CXX", raising=False)
   monkeypatch.delenv("CC", raising=False)
-  info = build_info.pack_build_info(None)
-  assert info.git_commit == ""
+  info = build_info.pack_build_info(None, commit)
+  assert info.git_commit == (commit or "")
   assert info.build_version == version
   assert info.sha256 == {library.name: library_provenance.file_sha256(library)}
 
 
 @pytest.mark.parametrize("broken", [False, True])
-def test_git_metadata_is_preserved_or_fails_without_fallback(source_tree, monkeypatch, broken):
+@pytest.mark.parametrize("explicit", [False, True])
+def test_git_metadata_is_preserved_or_fails_without_fallback(source_tree, monkeypatch, broken, explicit):
   root, _, _ = source_tree
   (root / "src/CMakeLists.txt").write_text("source layout fixture\n")
   commit = import_revision(root)
@@ -192,10 +194,33 @@ def test_git_metadata_is_preserved_or_fails_without_fallback(source_tree, monkey
     with pytest.raises(subprocess.CalledProcessError):
       library_provenance.source_snapshot(root)
     with pytest.raises(RuntimeError, match="Command failed"):
-      build_info.pack_build_info(None)
+      build_info.pack_build_info(None, commit if explicit else None)
   else:
     assert library_provenance.source_snapshot(root)["commit"] is None
-    assert build_info.pack_build_info(None).git_commit == commit
+    assert build_info.pack_build_info(None, commit if explicit else None).git_commit == commit
+
+
+@pytest.mark.parametrize("commit", ["HEAD", "a" * 39, "a" * 41, "A" * 40, "g" * 40, "a" * 40 + "\n"])
+def test_build_info_rejects_malformed_explicit_commit(commit):
+  with pytest.raises(ValueError, match="full lowercase SHA-1"):
+    build_info.pack_build_info(None, commit)
+
+
+def test_build_info_rejects_an_explicit_commit_different_from_own_head(source_only_tree, monkeypatch):
+  root, _, _ = source_only_tree
+  (root / ".git").mkdir()
+  monkeypatch.setattr(build_info, "__file__", str(root / "toolbox/build_info.py"))
+  monkeypatch.delenv("CXX", raising=False)
+  monkeypatch.delenv("CC", raising=False)
+
+  def output(command, **kwargs):
+    if command[:3] == ["git", "rev-parse", "--show-toplevel"]:
+      return ProcReturn(0, str(root), "")
+    return ProcReturn(0, "a" * 40 if command[0] == "git" else "1.1.1", "")
+
+  monkeypatch.setattr(build_info, "silent_run", output)
+  with pytest.raises(ValueError, match="does not match this source checkout's HEAD"):
+    build_info.pack_build_info(None, "b" * 40)
 
 
 @pytest.mark.parametrize("metadata_kind", ["dangling", "directory", "file"])

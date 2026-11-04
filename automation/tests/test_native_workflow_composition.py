@@ -239,6 +239,16 @@ def test_stage_and_main_prs_receive_the_build_workflows(filename):
     assert set(workflow["on"]) == {"workflow_dispatch", "pull_request"}
 
 
+def test_docker_build_info_uses_the_checked_out_commit():
+  workflow = load_workflow(WORKFLOWS / "build_and_test.yml")
+  commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["linux-docker"]["steps"])
+  assert "SOURCE_COMMIT=$(git rev-parse HEAD)" in commands
+  assert '--build-arg GIT_COMMIT="$SOURCE_COMMIT"' in commands
+  dockerfile = (REPO / "Dockerfile").read_text()
+  assert 'ARG GIT_COMMIT=""' in dockerfile
+  assert '--git-commit "${GIT_COMMIT}"' in dockerfile
+
+
 def test_required_runtime_matrices_and_conditioned_skip_separation_remain():
   core = load_workflow(WORKFLOWS / "core_tests.yml")
   native = load_workflow(WORKFLOWS / "build_and_test.yml")

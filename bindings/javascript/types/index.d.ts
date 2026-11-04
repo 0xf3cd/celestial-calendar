@@ -203,11 +203,18 @@ export class CelestialError extends Error {
 export function init(): Promise<void>;
 
 export const time: Readonly<{
-  /** Convert a UT1 civil moment to JD (UT1). */
+  /**
+   * Convert a UT1 civil moment to JD (UT1).
+   * At the end of year 32767 rounding can reach 13689325.5, the excluded inverse-domain endpoint;
+   * a civil roundtrip is not guaranteed.
+   */
   ut1ToJd(ut1: CivilDateTime): number;
-  /** Convert a UT1 civil moment to JDE (TT). */
+  /** Convert UT1 to JDE(TT) using fixed Algo5; input years [1, 32767], shifted TT must stay representable. */
   ut1ToJde(ut1: CivilDateTime): number;
-  /** Convert a TT-based JDE to a UT1 civil moment. */
+  /**
+   * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using fixed Algo5.
+   * The lower endpoint returns 400-12-31; forward dates before this window need not have an admitted inverse.
+   */
   jdeToUt1(jde: number): CivilDateTimeResult;
   /**
    * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with fixed Algo5.
@@ -252,7 +259,12 @@ export const sun: Readonly<{
   longitudeCrossings(year: number, longitudeDeg: number): number[];
   /** Equation of time in degrees of hour angle; multiply by 240 for seconds. */
   equationOfTime(jde: number): number;
-  /** Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees. */
+  /**
+   * Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees.
+   * Input years are [1, 32767]; before 1972 UTC fields use the UT1 substitute.
+   * The result retains the UT1 minus UTC gap: after the last leap-table step it is
+   * 69.184 seconds minus Delta T, no longer bounded by 0.9 seconds.
+   */
   apparentSolarTime(utc: CivilDateTime, longitudeDeg: number): CivilDateTimeResult;
 }>;
 

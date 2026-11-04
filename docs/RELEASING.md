@@ -175,21 +175,27 @@ the example below shows one interpreter. `RUN_ID` is the release workflow run, n
 ```
 
 Rehearse environment self-approval and same-run failed-job artifact recovery after workflow changes and before the
-final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: push a disposable `vX.Y.Z-rehearsal`
-tag — never a plain `vX.Y.Z`, which is release identity — (the tag rulesets cover it: create via the Admin bypass,
-remove afterwards via the ruleset recovery path recorded in #215), dispatch the workflow on that tag, approve both
+final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: create an immutable `vX.Y.Z-rehearsal`
+tag through the tag-creation Admin bypass, then dispatch the workflow on it. Retain the tag after the rehearsal;
+the `v*` rules prohibit moving or deleting it without a bypass, just like formal release tags. Never use a plain
+`vX.Y.Z` for a rehearsal: it is release identity. The rehearsal spelling matches the environments' `v*.*.*`
+deployment-tag policy. Approve both
 environment gates against the staged manifest, then confirm the dependent `gate_pypi_second` job waits for a
 separate `pypi` approval. Record the actual behaviour rather than assuming an approval is requested again.
 Then rerun the deliberately failed job with
 `gh run rerun RUN_ID --failed` and confirm it recovers the same-run artifact. The v0.6.0 npm no-op cannot rehearse a
 live OIDC publish.
 
+For another source commit, choose an unused `vX.Y.Z-rehearsal` name; never move an existing tag.
+Workflow reruns on the same tag keep the same source commit.
+
 <a id="one-time-setup"></a>
 ## One-Time Setup
 
 Before creating a release tag:
 
-1. Add an active tag ruleset for `v*`. Test `github.ref_protected` with a disposable matching tag, then remove it.
+1. Add active creation and immutability rulesets for `v*`. Test `github.ref_protected` with an unused
+   `vX.Y.Z-rehearsal` tag and retain it; do not weaken update or deletion protection for cleanup.
 2. Create `pypi` and `npm` environments. The maintainer is the required reviewer and may self-approve after reading
    the candidate manifest; disable self-review prevention and admin bypass. Restrict deployment tags to `v*.*.*`.
 3. Register the primary PyPI Trusted Publisher with owner `0xf3cd`, repository `celestial-calendar`, workflow

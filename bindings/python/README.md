@@ -34,7 +34,8 @@ environment. Apart from this package, the examples use only the Python standard 
 ### Today's lunar date
 
 Choose today's civil date at a fixed UTC+8 offset first, then convert that date label with `ALGO3`. "Today" therefore
-does not depend on the host timezone. This does not involve UT1, and the clock's UTC is not treated as UT1.
+does not depend on the host timezone. This does not involve UT1 (Universal Time 1, based on Earth's rotation),
+and the clock's UTC is not treated as UT1.
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -96,7 +97,8 @@ print("Remaining UT1 days:", remaining_days)
 ```
 
 The difference between two UT1 Julian Days retains fractional days; subtracting calendar dates would lose the
-time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
+time of day. `cutoff_jd` and the event values are JD(UT1), not JDE(TT); do not pass them to `jde_to_utc()`.
+For UTC display, use `ut1_to_jde(event.moment_ut1)` first. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
 API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
 
 In the UT1 examples above, `CivilDateTime` is explicitly UT1, and its last field is the day fraction: `0.5` means half a

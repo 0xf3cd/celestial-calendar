@@ -314,17 +314,28 @@ def _coordinate_values(result: object) -> tuple[float, float, float]:
 
 
 def ut1_to_jd(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to Julian Day."""
+  """Convert a UT1 civil moment to Julian Day.
+
+  Rounding at the end of year 32767 can reach 13689325.5, the excluded upper
+  endpoint of the inverse Julian-day domain; a civil roundtrip is not guaranteed.
+  """
   return _number(_result("celestial_ut1_to_jd", "ut1_to_jd", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jd")
 
 
 def ut1_to_jde(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using fixed Algo5."""
+  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using fixed Algo5.
+
+  Input years are in [1, 32767]; the shifted TT instant must also stay representable.
+  """
   return _number(_result("celestial_ut1_to_jde", "ut1_to_jde", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jde")
 
 
 def jde_to_ut1(jde: float) -> CivilDateTime:
-  """Convert TT-based Julian Ephemeris Day to a UT1 civil moment using fixed Algo5."""
+  """Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using fixed Algo5.
+
+  The lower endpoint returns 400-12-31. Forward dates before this inverse window
+  need not have an admitted inverse.
+  """
   result = _result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde"))
   return _protocol.decode("jde_to_ut1", _civil_result, result)
 
@@ -446,7 +457,12 @@ def equation_of_time(jde: float) -> float:
 
 
 def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTime:
-  """Convert civil UTC to local apparent solar time; longitude is east-positive degrees."""
+  """Convert civil UTC to local apparent solar time; longitude is east-positive degrees.
+
+  Input years are in [1, 32767]; before 1972 the UTC fields use the UT1 substitute.
+  The result retains the UT1 minus UTC gap. After the last leap-table step it is
+  69.184 seconds minus Delta T, no longer bounded by 0.9 seconds.
+  """
   return _protocol.decode(
     "apparent_solar_time",
     _civil_result,

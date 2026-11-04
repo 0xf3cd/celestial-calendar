@@ -31,7 +31,7 @@ python -m pip install celestial-calendar
 ### 今天的阴历日期
 
 先取当前时刻在固定 UTC+8 下的公历日期，再用 `ALGO3` 把这个日期标签转换为阴历；这里的“今天”不取决于主机时区。
-这一步不涉及 UT1，也没有将时钟 UTC 当作 UT1。
+这一步不涉及 UT1（世界时 1，以地球自转为基准），也没有将时钟 UTC 当作 UT1。
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -88,7 +88,9 @@ print("UT1:", upcoming.moment_ut1)
 print("Remaining UT1 days:", remaining_days)
 ```
 
-剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。此例只演示这次跨年查询，
+剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。`cutoff_jd` 和节气值是 JD(UT1)，
+不是 JDE(TT)，不能传给 `jde_to_utc()`；显示 UTC 前先用 `ut1_to_jde(event.moment_ut1)` 转为 TT。
+此例只演示这次跨年查询，
 不是覆盖整个 API 年域的通用搜索。节气查询的年域与失败边界见 [API 契约](#api-contract)。
 
 `CivilDateTime` 在上面的 UT1 示例中明确表示 UT1，最后一个字段是日小数，`0.5` 表示半日；
@@ -117,7 +119,7 @@ print(snapshot.houses.cusps_deg)
 
 结果是持有自身数据的冻结 dataclass，天体和宫头集合为元组。十四项顺序为日、月、水星至冥王星、
 平均升/降交点、真升/降交点；每项有视地心黄经、纬度和带符号黄经速率。
-黄经使用真黄道与日期分点，角度单位为度。所有天体的距离都用 AU，月球也一样；
+黄经使用日期真黄道与日期真春分点，角度单位为度。所有天体的距离都用 AU，月球也一样；
 独立的 `moon_apparent_geocentric_coordinate()` 则以千米给出月地距离，即 `MoonCoordinate.distance_km`。
 黄经速率是瞬时值，单位为度/TT 日；负值表示该瞬间黄经在减小（逆行）。节点纬度是已知的零，距离为 `None`。
 四轴与十二宫头均为 `[0, 360)` 度，宫头元组从第一宫开始。经度东正西负，纬度北正南负；地点只影响宫位。完整数值见[共享重放示例](../../docs/examples/chart_snapshot/README.md)。
@@ -125,10 +127,15 @@ print(snapshot.houses.cusps_deg)
 <a id="capabilities"></a>
 ### 能力与模型身份
 
-`capabilities()` 查询 POSITION、LONGITUDE_RATE、EVENTS 和 EQUATORIAL 四类 TT 目标定义域；
-HOUSES、CHART 和 DELTA_T 会抛出 `ValueError`。`model_identities()` 与 `capability_text()` 提供模型与操作说明。
-每个定义域边界都由该操作自身的定义常量算出，所以能力记录接受与拒绝的输入和计算本身完全一致；
-NaN 边界意为「无显式界」；定义域是接受边界，不是精度承诺。
+`capabilities()` 查询原生侧定义的 POSITION、LONGITUDE_RATE、EVENTS 和 EQUATORIAL 四类 TT 目标定义域；
+HOUSES、CHART 和 DELTA_T 会抛出 `ValueError`。NaN 边界表示没有声明硬边界；
+`FINITE_INPUT_EVALUATION` 允许评估有限时刻，但计算仍可能失败。有限输入或坐标有效性检查
+都不能证明远年代精度或物理合理性。
+`house_capability(delta_t_model=...)` 则返回独立的 `CivilHouseCapability`，包含民用年域、允许时标、UTC 起始日期、
+已解析的 Delta T 键，以及对换算后 TT 时刻的可选严格上界（不含端点）。它不保证几何求解成功；
+民用宫位政策只通过 `house_capability()` 查询，不通过 `capabilities()`。
+`capability_text()` 的目标操作必须提供具体 `Target`；HOUSES、CHART 和 DELTA_T 必须使用 `subject=None`，
+不适用的目标会被拒绝，而不是被忽略。
 
 ```python
 import celestial_calendar as celestial
@@ -176,21 +183,17 @@ for position in equatorial:
   print(position.right_ascension_deg, position.declination_deg, position.distance_au, position.source)
 ```
 
-位置、事件、能力查询和快照统一使用 `Target`。
-`equatorial_positions(targets, jde_tt)` 单独返回不可变的赤道坐标：赤经 `[0, 360)` 度、赤纬 `[-90, 90]` 度，
-地心、当日坐标系，使用固定 IAU1980 黄经章动与真黄赤交角；物理距离为 AU，数学交点无距离。
-它保持选择顺序，拒绝空选择和重复目标，不计算速率、民用时刻或宫位。
+位置、事件、能力查询和快照统一使用 `Target`。黄道与赤道结果是不同的不可变值类型，
+均保持选择顺序，拒绝空选择和重复目标。赤经为 `[0, 360)` 度、赤纬为 `[-90, 90]` 度，
+以地心、日期坐标系为基准；投影使用固定 IAU1980 黄经章动与真黄赤交角。
+两种查询都不计算速率、民用时刻或宫位。物理距离为 AU，数学交点无距离。
 
 不可变 `ModelKey(kind, identity)` 标明模型种类和非零身份码。注册记录用 `.key`，位置和快照天体用 `.source`，
-宫位与快照用 `.delta_t_model`、`.nutation_model`。模型键可传回相应种类的选择参数；`DEFAULT` 只用于输入，
-由原生侧解析。`model_identity_text(key)` 按模型键查询文字，不按注册表位置查询。`delta_t()` 仍返回秒数标量，
-但会校验原生结果的模型键。太阳距离 `distance_au` 的单位是 AU，独立月球坐标的 `distance_km` 单位是千米。
-
-`house_capability(delta_t_model=...)` 返回独立的 `CivilHouseCapability`，包含民用年域、允许时标、UTC 起始日期、
-已解析的 Delta T 键和可选的 TT 上界，不伪造 TT 区间，也不保证几何求解成功。民用宫位政策只通过 `house_capability()` 查询。
-`capability_text()` 的目标操作必须提供具体 `Target`；HOUSES、CHART 和 DELTA_T 必须使用 `subject=None`，
-不能传入一个会被忽略的目标。
-`FINITE_INPUT_EVALUATION` 表示没有声明硬输入区间；有限时刻仍可能计算失败，坐标有效性不证明远年代精度或物理合理性。
+宫位与快照用 `.delta_t_model`、`.nutation_model`。模型键可直接传回相应种类的选择参数，无须换算注册表位置。
+`DEFAULT` 只用于输入，由原生侧解析；当前默认值见操作说明。复用模型键保持的是模型选择，
+复现具体系数还需要库／源码版本。`model_identity_text(key)` 按模型键查询文字，不按注册表位置查询。
+`delta_t(..., model=...)` 仍返回浮点数，并校验原生结果的模型键；来源字段使用 `ModelKey`。
+太阳距离 `SunCoordinate.distance_au` 的单位是 AU，独立月球坐标的 `MoonCoordinate.distance_km` 单位是千米。
 
 <a id="interval-longitude-events"></a>
 ### 区间黄经事件
@@ -302,14 +305,15 @@ deactivate
 `DEFAULT` 由原生侧解析，目前为 `ALGO5`；其他模型用 `DeltaTModel` 或相应种类的 `ModelKey` 显式选择。它不接受标准库 `datetime`，
 本地钟表时间须由调用者先转换成声明的输入时标，不能丢弃时区后直接传入。
 
-Python 在原生计算前检查类型、有限性和 ABI 整数宽度，日期、年份和地理定义域由原生侧检查。类型错误抛 `TypeError`，包括给 `scale`、`system` 或 `model`
+Python 在原生计算前检查记录／枚举／标量类型、有限性和 ABI 整数宽度。类型错误抛 `TypeError`，包括给 `scale`、`system` 或 `model`
 传普通字符串或其他枚举的成员，以及在数值字段里放枚举成员。属于对应枚举类、却不是其已声明成员的对象，
 与无效公历日期、非有限数和原始值越界一样抛 `ValueError`。原始值的范围是：公历年 `[1885, 2100)`，
 日小数 `[0, 1)`，UTC 从 1972-01-01 开始（更早的输入请选 `CivilScale.UT1`），纬度 `(-90, 90)`，
 经度 `[-180, 180]`。原生核心负责转换后 TT 的共同域 `[2409543.875, 2488069.125)` JDE、
 Algo4 的额外限制 JDE `< 2464328.5`、所有宫制在浮点舍入精度下无法确定的上升点方向，
 以及 Placidus 随日期变化的极区限制。原生定义域和几何拒绝抛 `ValueError`；计算失败抛 `CelestialError`。
-不返回部分结果，也不替换宫制。民用宫位查询共用转换后 TT 的 Algo4 严格上界，2034 年末部分 UT1 输入因此被拒绝。
+不返回部分结果，也不替换宫制。民用宫位查询共用转换后 TT 的 Algo4 严格上界；
+2034 年末部分 UT1 输入换算后的 TT 越过该上界，因此被拒绝。
 原始民用年份合法不保证转换后的完整快照可计算。
 
 输入为 UTC 时，结果里的 UT1 是模型值，不是观测 DUT1；UTC 如何换算到 TT 与 UT1，见

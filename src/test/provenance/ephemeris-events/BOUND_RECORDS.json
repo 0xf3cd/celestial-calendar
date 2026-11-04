@@ -15,7 +15,7 @@
       "src/astro/planet.hpp": "199f1466127ddb5c4ab287783422d7a7c84914151cc9c84755e2d80baebdc494",
       "src/astro/pluto.hpp": "62471ecaea1107a23e5d1315cbb77c3fe163f75e5962c9f48c890dd21be4798c",
       "src/astro/earth.hpp": "09aeed16fba0cd5c25cda9efd564cb318b5429633e5b8dd64d2496f424bee882",
-      "src/astro/julian_day.hpp": "252c71ae2e1b29183d14a92b7bfae95ebd619fce0b0ce4c35adfb3d572701997",
+      "src/astro/julian_day.hpp": "23f5c85d0d2464546eb6d07a288cff3c081582580205c9b3f61fd46070b91ecf",
       "src/astro/toolbox.hpp": "5560ebe5bad8003ce71a85d5646867f6830ccd1d8975cce74a032e314fca3cdd",
       "src/astro/coord_transform.hpp": "8eaf4e6db23de00cebf1c2a2b8460693cede45d69def5e0424a631aa3e9e0f3d",
       "src/astro/earth/precession.hpp": "1cc4dc9194816522eb6a484672571406d854c73ed546b52b7c3cb87525545630",

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- C, Python and JavaScript UT1-to-JDE and apparent-solar-time calls reject year-zero inputs before the TT shift,
+  matching their declared `[1, 32767]` input-year domain.
+
 ## [v1.1.1]
 
 ### Added

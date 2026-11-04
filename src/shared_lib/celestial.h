@@ -125,6 +125,8 @@ typedef struct CelestialJulianDay {
  * @param d The day.
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
  * @returns A `CelestialJulianDay` struct. JD is based on UT1.
+ * @note At the end of year 32767, rounding can produce JD 13689325.5, the excluded
+ *       upper endpoint of the inverse Julian-day domain; a civil roundtrip is not guaranteed.
  */
 CELESTIAL_API CelestialJulianDay celestial_ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction);
 
@@ -140,7 +142,7 @@ CELESTIAL_API CelestialJulianDay celestial_ut1_to_jde(int32_t y, uint32_t m, uin
 
 typedef struct CelestialUT1Time {
   bool     valid;    /* Indicates if the result is valid. */
-  int32_t  year;     /* The year. */
+  int32_t  year;     /* The year; the inverse conversion can return year 400. */
   uint32_t month;    /* The month. */
   uint32_t day;      /* The day. */
   double   fraction; /* The fraction of the day, in the range [0.0, 1.0). */
@@ -148,8 +150,10 @@ typedef struct CelestialUT1Time {
 
 /**
  * @brief Convert Julian Ephemeris Day Number (JDE) to UT1 datetime.
- * @param jde The julian ephemeris day number, which is based on TT.
+ * @param jde Finite JDE(TT) in [1867522.5, 13689325.5).
  * @returns A `CelestialUT1Time` struct.
+ * @note Uses fixed Algo5 for TT minus UT1. The lower endpoint returns 400-12-31;
+ *       forward dates before this inverse window need not have an admitted inverse.
  */
 CELESTIAL_API CelestialUT1Time celestial_jde_to_ut1(double jde);
 
@@ -353,6 +357,9 @@ typedef struct CelestialApparentSolarTime {
  * @param longitude The observer's geographic longitude in degrees, positive east, in [-180, 180].
  * @returns A `CelestialApparentSolarTime` struct; the local apparent solar date may differ from the
  *          input UTC date — a large enough longitude shifts the moment across midnight.
+ * @note Before 1972-01-01, UTC fields use the UT1 substitute. The result retains the
+ *       UT1 minus UTC gap: after the last leap-table step it is 69.184 s minus Delta T,
+ *       no longer bounded by 0.9 s. See `docs/DESIGN.md#time-scales`.
  */
 CELESTIAL_API CelestialApparentSolarTime celestial_apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
 
@@ -397,6 +404,7 @@ typedef struct CelestialJieqiMomentQuery {
  *       era: `docs/DESIGN.md#time-scales`.
  * @note The returned date is not an east-eight wall date; rendering the same instant at a
  *       fixed UTC+8 offset can change its calendar date.
+ *       Convert both instants to one time scale before comparing a Jieqi moment with a UTC cutoff.
  */
 CELESTIAL_API CelestialJieqiMomentQuery celestial_query_jieqi_moment(int32_t year, uint8_t jq_idx);
 

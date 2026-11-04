@@ -25,8 +25,9 @@ and a time of day with no time scale or time zone attached, a util-level type th
 `datetime.hpp` itself includes only `ymd.hpp`. No `astro/` header includes anything else from `calendar/`, directly
 or transitively, so the order `util` → `datetime.hpp` → `astro` → `jieqi.hpp` / `algo2.hpp` has no backward edge.
 
-`src/CMakeLists.txt` puts `astro/`, `calendar/` and `util/` on one include path, so an include names a file, not a
-level. No check enforces this order; read the includes when you add one.
+`src/CMakeLists.txt` supplies three include roots: `src/astro`, `src/calendar` and `src/util`.
+An include is relative to one of them: `"julian_day.hpp"`, `"earth/precession.hpp"` or `"lunar/converter.hpp"`.
+It does not name the dependency level. No check enforces this order; read the includes when you add one.
 
 Within `astro/`, `ephemeris::TARGET_FACTS` owns target membership, sources and provider domains. Position dispatch
 and `equatorial_position` live with those facts; chart composes them with rates and house geometry. The typed
@@ -90,9 +91,13 @@ its UTC is TT − (ΔAT + 32.184 s), so for one instant UT1 − UTC = (ΔAT + 32
 
 | Era | UT1 − UTC in the library |
 |---|---|
-| Before 1972 | Zero by construction in legacy convenience conversions: UT1 stands in for UTC. Explicitly scaled UTC input is rejected. |
+| Before 1972 | Zero by construction in legacy convenience conversions: UT1 stands in for UTC. Historical 1961–1971 broadcasts tracked UT2 within about 0.1 s, with a UT2 seasonal correction to UT1 of about 60 ms peak-to-peak (Nelson et al., pp. 512, 516). This clock-label difference is separate from ΔT-model error and gives no bound for all earlier dates. Explicitly scaled UTC input is rejected. |
 | 1972 to the last ΔAT step (2017) | (ΔAT + 32.184 s) − ΔT. While leap seconds are applied, IERS keeps the real \|UT1 − UTC\| < 0.9 s; the library's value is as close to it as the ΔT model is to observed ΔT. |
 | After the last ΔAT step | (37 s + 32.184 s) − ΔT = 69.184 s − ΔT. It turns negative once ΔT exceeds 69.184 s and is no longer bounded by 0.9 s. With Algo5 it is −2.57 s at 2050 (`delta_t.hpp`) and about 21 h in magnitude by year 6772, UT1 behind UTC (`get_start_jde` in `sun.hpp`). |
+
+Historical reference: R. A. Nelson et al., [The leap second: its history and possible future](https://www.cl.cam.ac.uk/~mgk25/time/metrologia-leapsecond.pdf),
+*Metrologia* 38 (2001), 509–529, sections 2.5 and 6.1. The historical steering figures do not bound
+the library's model-based UTC/TT conversion error.
 
 So a UT1 result is not UTC, and reading one as UTC carries the gap in the table above. The leap-second-aware
 `leap_second::utc_to_tt` / `tt_to_utc`, added in v0.4.0 (#84), convert between UTC and TT through the ΔAT table;

@@ -1,5 +1,5 @@
 # Rehearsal instrument for the release gates (docs/RELEASING.md). Dispatch-only, never
-# triggered by push/PR: run it on a disposable vX.Y.Z-rehearsal tag after release-workflow
+# triggered by push/PR: run it on a retained immutable vX.Y.Z-rehearsal tag after release-workflow
 # changes, before the release tag. Carries no secrets and requests no OIDC token.
 
 name: release-rehearsal
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate_ref:
-    name: Require a disposable rehearsal tag
+    name: Require an immutable rehearsal tag
     runs-on: ubuntu-latest
     steps:
       - name: Check ref
@@ -21,10 +21,10 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
         run: |
           # A real vX.Y.Z tag is the release identity; the rehearsal only runs on a clearly
-          # disposable vX.Y.Z-rehearsal tag, which still matches the environments' v*.*.*
+          # labelled vX.Y.Z-rehearsal tag, which still matches the environments' v*.*.*
           # deployment tag policy. Any other ref fails loudly instead of skipping the gates.
           if [ "$REF_TYPE" != "tag" ] || ! [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rehearsal$ ]]; then
-            echo "dispatch on a disposable vX.Y.Z-rehearsal tag, got $REF_TYPE $REF_NAME"
+            echo "dispatch on an immutable vX.Y.Z-rehearsal tag, got $REF_TYPE $REF_NAME"
             exit 1
           fi
 

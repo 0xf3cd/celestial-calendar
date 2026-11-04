@@ -53,7 +53,6 @@ const snapshot = chart.snapshot(
     scale: "utc",
     location: { latitudeDeg: 51.5, longitudeDeg: 0 },
     system: "placidus",
-    model: "default",
   },
 );
 console.log(snapshot.times); // { jdUt1, jdeTt }
@@ -154,6 +153,8 @@ console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 ```
 
 这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
+`jdUt1` 和 `cutoffJd` 是 JD(UT1)，不是 JDE(TT)，不能传给 `time.jdeToUtc()`；
+显示 UTC 前先用 `time.ut1ToJde(event.momentUt1)` 转为 TT。
 `momentUt1` 是 UT1，不是 UTC 或东八区时间。此例只演示这次跨年查询，不是覆盖整个 API 年域的通用搜索；
 `jieqi.moment()` 的查询年域与失败条件见 [API 契约](#api-contract)。
 
@@ -198,8 +199,7 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 ## API 契约
 
 根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
-包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。
-模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。不再提供日志配置或 `init` 配置参数。
+模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
 独立位置、赤道位置、宫位、事件、能力与模型文本查询均不是公开 JavaScript API。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，

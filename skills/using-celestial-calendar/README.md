@@ -35,5 +35,4 @@ guides. It does not add calculation APIs or a separate API reference.
 
 The cases in [evals](evals) compare fresh sessions with and without the skill.
 [The protocol](EVALUATION.md) specifies artifact identity, frozen public inputs,
-first-execution evidence and failure controls. A passing local structure check
-does not establish that generated programs work or that the skill improves them.
+first-execution evidence and failure controls.

@@ -131,11 +131,13 @@ Save it as `build/quickstart.cpp` (create `build/` if needed; Git ignores it) an
 C++23-capable clang++ installation:
 
 ```sh
-# Headers include each other by basename; all three directories are needed.
+# Use all three include roots; nested headers keep their directory, e.g. "lunar/converter.hpp".
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
   build/quickstart.cpp -o build/quickstart
 ./build/quickstart
 ```
+
+`moment.fraction()` is the elapsed fraction of that UT1 day: `0.0` is midnight and `0.5` is noon.
 
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
@@ -153,6 +155,10 @@ instant are available without a full snapshot, from C, Python and C++
 ([`positions` / `equatorial_positions` / `house_query`](bindings/python/README.md#independent-queries)).
 Position queries use each selected target's provider window; the civil house query uses the shared civil policy,
 without the snapshot's joint target/rate window. C and Python results record resolved model/source identities.
+
+The [C++ header list](docs/API.md#cpp-headers) gives include spellings and separates query headers from
+physical types and lower-level support. A runnable [Next Jieqi example](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
+uses `JieqiGenerator` directly in TT and `calendar::add_seconds()` for UTC+8 display.
 
 <a id="c-abi"></a>
 ### C and FFI
@@ -330,7 +336,8 @@ Algo1 to Algo4 only to compare with that earlier model. Sources and hard year do
 
 Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
 `celestial_apparent_solar_time()` / Python `apparent_solar_time()` / JavaScript `sun.apparentSolarTime()` take civil UTC.
-The pure `/date` bridge supplies no UTC-to-UT1
+The JavaScript package's pure [`/date` bridge](bindings/javascript/README.md#date-bridge) selects civil dates at
+fixed offsets; it supplies no UTC-to-UT1
 or Date-to-JDE conversion. The library does not use observed DUT1 (UT1 − UTC), so a UT1 result is not a UTC time;
 [Time scales](docs/DESIGN.md#time-scales) describes the library's UTC model and how large the gap is in each era.
 

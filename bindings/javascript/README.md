@@ -57,7 +57,6 @@ const snapshot = chart.snapshot(
     scale: "utc",
     location: { latitudeDeg: 51.5, longitudeDeg: 0 },
     system: "placidus",
-    model: "default",
   },
 );
 console.log(snapshot.times); // { jdUt1, jdeTt }
@@ -168,7 +167,9 @@ console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
 ```
 
 This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
-UT1 days. `momentUt1` is UT1, not UTC or a UTC+8 wall clock. This is a fixed contemporary query across one year
+UT1 days. `jdUt1` and `cutoffJd` are JD(UT1), not JDE(TT); do not pass them to `time.jdeToUtc()`.
+For UTC display, first use `time.ut1ToJde(event.momentUt1)`.
+`momentUt1` is UT1, not UTC or a UTC+8 wall clock. This is a fixed contemporary query across one year
 boundary, not a search algorithm for the entire API domain; the query-year domain and failure conditions of
 `jieqi.moment()` are listed under [API Contract](#api-contract).
 
@@ -214,9 +215,8 @@ and have the static server send it with `Content-Type: application/wasm`.
 ## API Contract
 
 The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
-package ships TypeScript declarations. The package uses only the `jieqi` / `lunar` names, with no `solarTerms` /
-`lunarCalendar` aliases. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. There is no logging configuration or `init` configuration argument. Independent position, equatorial,
+package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
+`"algo3"`. Independent position, equatorial,
 house, event, capability and model-text queries are not public JavaScript APIs.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
