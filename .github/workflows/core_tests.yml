@@ -7,7 +7,7 @@ on:
   # contributions (#194). Every job below carries `head.repo.fork` in its `if`: a same-repo PR
   # is already covered by the push run of its branch, and running both would double every leg.
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'milestone/**' ]
 
 # Nothing here needs more than the source. Said out loud rather than inherited: the repo-level
 # default is `read` today, but that lives in a setting no one reviews, and raising it would widen
@@ -197,9 +197,9 @@ jobs:
 
 
   # macOS and Windows build+test are not here: they live in `build_and_test.yml`, which runs on
-  # pull requests to main and packages the artifacts -- running them here too repeated the same
-  # compile-and-test on every push to a branch with a PR open. A push still gets both platforms from
-  # `self-contained-headers` and `cxx-feature-probe` below -- three-way matrices that catch
+  # pull requests to main or milestone branches and packages the artifacts -- running them here too
+  # repeated the same compile-and-test on every push to a branch with a PR open. A push still gets both
+  # platforms from `self-contained-headers` and `cxx-feature-probe` below -- three-way matrices that catch
   # platform-specific rot early (#72).
 
   # ASan + UBSan on one Linux leg. It sits here rather than in `build_and_test.yml` because this

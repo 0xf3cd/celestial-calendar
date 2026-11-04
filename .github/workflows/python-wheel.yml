@@ -10,7 +10,7 @@ on:
         type: choice
         options: [standing, capture, verify-approved]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'milestone/**' ]
 
 permissions:
   contents: read

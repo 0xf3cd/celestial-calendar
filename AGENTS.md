@@ -443,20 +443,28 @@ kind/message through `wrap_export`. The kind is authoritative even with an empty
 
 ## Phase and PR workflow
 
-- A PR is the delivery and review unit, and one PR may deliver several issues, one of them closed by
-  a `Closes` reference. Work that needs staged handover uses `phaseN-<program>-<topic>` branches
-  from `main`, where `N` is the PR's delivery stage in the planned release, not an issue number; a normal
-  patch uses a descriptive branch, and its documentation stays proportional to the change. PR bodies
-  use four blocks: Summary / Tests / Validation / Scope.
+- A PR is the delivery and review unit. A PR may deliver several related issues when they can be
+  reviewed and validated together. Each new milestone uses `milestone/<version>`, created
+  from current `main`; its `phaseN-<program>-<topic>` branches start from and target that integration
+  branch. `N` is the delivery stage in the release, not an issue number. Milestones already in flight
+  keep their existing process. Patches and dependency updates outside a milestone target `main`.
+  PR bodies use four blocks: Summary / Tests / Validation / Scope.
+- Squash stage PRs into the integration branch. Their bodies and squash messages use `Part of #N`,
+  without issue-closing keywords. Before the final PR to `main`, merge current `main` into the
+  integration branch through a PR using a merge commit, and run CI on the resulting tree. Do not
+  rebase the shared integration branch. The author merges the final PR with a **merge commit** to
+  retain the stage squash commits. Release tags stay on `main`.
 - PR titles, headings and prose use one language throughout. Default to English; when the
   author requests Chinese, use Chinese throughout, including headings. Do not mix Chinese
   headings with English prose.
-- A closing PR body contains exactly one unbackticked `Closes #N`; backticks prevent GitHub from
-  recognising the closing keyword. Before merge, query `closingIssuesReferences` through GraphQL
-  and assert the exact expected issue list.
+- A normal closing PR body contains exactly one unbackticked `Closes #N`; the final milestone PR
+  lists one for each still-open issue whose acceptance conditions that merge completes. Exclude
+  already-closed bootstrap issues, deferred work and post-release deployment tasks; track cross-repo
+  completion in the receiving repository. Before merge, query `closingIssuesReferences` through
+  GraphQL and assert the exact expected issue list. Backticks prevent keyword recognition.
 - Repo merge settings default the squash title and body to `PR_TITLE` and `PR_BODY`. A
   controlled GitHub merge API call may supply a different squash body; whichever body is
-  supplied must preserve that sole unbackticked closing reference and contain no secrets or paths,
+  supplied must preserve the expected unbackticked closing references and contain no secrets or paths,
   hostnames or tooling from outside this repository. After merging, run `git fetch origin main`, then read back
   `git log -1 --format='%b' origin/main` to verify what actually landed.
 - On the author's workstations `commit.gpgsign=true` is set machine-globally with a
@@ -467,9 +475,22 @@ kind/message through `wrap_export`. The kind is authoritative even with an empty
   the first commit.
 - Every PR is preceded by local review rounds (adversarial correctness + style/design)
   before it is opened; CI and PR bots are later gates, not substitutes.
-- Post-merge queue: delete the remote branch. For staged work, also update the phase tracking doc,
-  record the phase's validation chain, decisions, environment notes and next-phase prep (that record
-  is kept outside this repo), and open the next phase.
+- Bootstrap the integration process through a PR to `main` before creating the milestone branch.
+  The maintainer then creates and protects `milestone/<version>`: require PRs and the configured
+  status checks, prohibit force pushes, and enable the same automatic review as on `main`.
+  Settings changes require explicit authorization and API readback; preserve `main`'s protections.
+  On the first real stage PR, verify that every required check and the native, wheel and WASM jobs
+  actually execute under the intended triggers. Check names alone do not prove execution. Keep the
+  bootstrap issue open until this verification and the branch-lifecycle conditions are complete.
+- Before enabling milestone protection, agree on cleanup of the exact merged ref. After the final
+  merge, verify its content on `main` and obtain explicit maintainer authorization for deletion.
+  If rules prohibit deletion, the maintainer records their settings, temporarily excludes only that
+  exact ref from the deletion-blocking rulesets, deletes it, restores the rulesets and reads back
+  the settings and ref absence. Never weaken `main` or add a broad bypass. Retain the branch until
+  authorized cleanup is possible.
+- After each stage merge, update the phase tracking doc with validation, decisions and next-stage
+  preparation (kept outside this repo), and remove the stage branch when permitted. Integration
+  branch cleanup follows the procedure above; merging and settings changes remain maintainer actions.
 
 ## AI do / don't
 
