@@ -73,7 +73,7 @@ jobs:
           PY
       - name: Upload sole immutable Pages artifact
         id: pages
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4; nested upload-artifact v4.6.2
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v4; nested upload-artifact v4.6.2
         with:
           name: github-pages
           path: build/docs-site/
@@ -92,6 +92,6 @@ jobs:
     steps:
       - name: Deploy the verified artifact from this run
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: github-pages
