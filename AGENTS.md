@@ -443,7 +443,8 @@ kind/message through `wrap_export`. The kind is authoritative even with an empty
 
 ## Phase and PR workflow
 
-- A PR is the delivery and review unit. Each new milestone uses `milestone/<version>`, created
+- A PR is the delivery and review unit. A PR may deliver several related issues when they can be
+  reviewed and validated together. Each new milestone uses `milestone/<version>`, created
   from current `main`; its `phaseN-<program>-<topic>` branches start from and target that integration
   branch. `N` is the delivery stage in the release, not an issue number. Milestones already in flight
   keep their existing process. Patches and dependency updates outside a milestone target `main`.
