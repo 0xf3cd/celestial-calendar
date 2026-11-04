@@ -10,7 +10,7 @@ on:
         type: choice
         options: [standing, capture, verify-approved]
   pull_request:
-    branches: [ main ]  # Also triggers on pull requests to the main branch
+    branches: [ main, 'milestone/**' ]
 
 # Read-only is enough: the artifacts go through `actions/upload-artifact`, which uses the Actions
 # runtime token rather than this one, and nothing here pushes an image or writes to the repo.

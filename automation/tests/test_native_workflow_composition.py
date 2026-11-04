@@ -228,6 +228,17 @@ def assert_required_job_shapes(core, native):
       assert job["strategy"]["matrix"]
 
 
+@pytest.mark.parametrize("filename", ["core_tests.yml", "build_and_test.yml", "python-wheel.yml", "wasm.yml"])
+def test_stage_and_main_prs_receive_the_build_workflows(filename):
+  workflow = load_workflow(WORKFLOWS / filename)
+  assert workflow["on"]["pull_request"] == {"branches": ["main", "milestone/**"]}
+  if filename == "core_tests.yml":
+    assert workflow["on"]["push"] == {"branches": ["**"]}
+    assert set(workflow["on"]) == {"push", "pull_request"}
+  else:
+    assert set(workflow["on"]) == {"workflow_dispatch", "pull_request"}
+
+
 def test_required_runtime_matrices_and_conditioned_skip_separation_remain():
   core = load_workflow(WORKFLOWS / "core_tests.yml")
   native = load_workflow(WORKFLOWS / "build_and_test.yml")

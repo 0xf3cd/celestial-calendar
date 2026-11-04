@@ -5,7 +5,7 @@ name: WASM Build and Golden Check
 on:
   workflow_dispatch: {}  # Allows manual triggering of the workflow
   pull_request:
-    branches: [ main ]  # Also triggers on pull requests to the main branch
+    branches: [ main, 'milestone/**' ]
 
 # Read-only is enough: this leg builds and checks, and the upload goes through
 # `actions/upload-artifact`, which uses the Actions runtime token rather than this one.
