@@ -116,6 +116,9 @@ candidate, primary first and alias second. Exact bytes are a verified no-op; con
 and transport failures stop rather than authorizing publication. Verification alone polls indexing and transient
 transport states to a fixed ceiling and reports which npm or Python distribution is still pending.
 
+<a id="registry-verification"></a>
+### Registry verification
+
 After success, inspect the immutable GitHub Release, asset inventory and `verify_registries` results.
 Do not repeat those installations manually on the same bytes merely to obtain another green result:
 
@@ -130,12 +133,15 @@ Do not repeat those installations manually on the same bytes merely to obtain an
 An exceptional recovery that cannot reach `verify_registries` must perform its missing checks against the
 original frozen candidate, as described below. A no-op publication proves byte identity, not a live OIDC publish.
 
+Before publication, the package validators compare README bytes and documentation URLs against the independently
+selected release commit. Installed-package checks use that same source to verify what consumers receive.
+
 <a id="release-documentation"></a>
 ### Release documentation
 
 After `verify_registries` succeeds, obtain separate documentation-deployment authorization and dispatch
-`docs-publish.yml` from the protected default branch with `release_tag=vMAJOR.MINOR.PATCH`. For this milestone the
-target is `v1.2.0`. Keep the [Pages environment approval](MAINTAINING.md#docs-publishing) separate from package
+`docs-publish.yml` from the protected default branch with `release_tag=vMAJOR.MINOR.PATCH`.
+Keep the [Pages environment approval](MAINTAINING.md#docs-publishing) separate from package
 publication. The publisher resolves the published immutable tag; a newer default-branch workflow must still
 build that release's exact source and version.
 
@@ -143,7 +149,7 @@ Retain the same-run Pages artifact ID and schema-2 manifest. After deployment, c
 source SHA on guide and API pages, desktop/mobile navigation, and entry links from all five package names (Python
 `celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`, `celestial-calendar`). Package documentation links
 use SHA-pinned source guides, so historical packages do not follow the latest hosted release. Code/build checks
-alone do not complete live-site acceptance or close #423.
+alone do not complete live-site acceptance.
 
 ## Recovery
 

@@ -9,8 +9,11 @@
 # SPDX-License-Identifier: MIT
 
 import re
+import copy
+import shlex
 from pathlib import Path
 
+import pytest
 import yaml
 
 from toolbox.artifact_downloader import PYTHON_ARTIFACTS
@@ -142,6 +145,41 @@ def test_python_wheel_floor_consumers_install_only_the_exact_artifact():
     command = step["run"].replace("\\", "/")
     assert "pip install --no-deps" in command
     assert "test/run_all.py" in command
+
+
+def assert_manylinux_verifier_git_scope(workflow):
+  for name in ("Inspect repaired wheel", "Test exact wheel on Python 3.11"):
+    step = next(step for step in workflow["jobs"]["manylinux"]["steps"] if step.get("name") == name)
+    arguments = shlex.split(step["run"].replace("\\\n", ""))
+    assert arguments[:2] == ["docker", "run"]
+    environment = [arguments[index + 1] for index, value in enumerate(arguments[:-1]) if value == "-e"]
+    assert [value for value in environment if value.startswith("GIT_CONFIG_")] == [
+      "GIT_CONFIG_COUNT=1",
+      "GIT_CONFIG_KEY_0=safe.directory",
+      "GIT_CONFIG_VALUE_0=/project",
+    ]
+    assert "$PWD:/project:ro" in arguments
+
+
+def test_manylinux_verifiers_trust_only_the_read_only_checkout():
+  assert_manylinux_verifier_git_scope(yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("name", ["Inspect repaired wheel", "Test exact wheel on Python 3.11"])
+@pytest.mark.parametrize("fault", ["missing", "wildcard", "writable"])
+def test_manylinux_verifier_git_scope_rejects_regressions(name, fault):
+  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_manylinux_verifier_git_scope(workflow)
+  mutated = copy.deepcopy(workflow)
+  step = next(step for step in mutated["jobs"]["manylinux"]["steps"] if step.get("name") == name)
+  before, after = {
+    "missing": ("-e GIT_CONFIG_COUNT=1", ""),
+    "wildcard": ("GIT_CONFIG_VALUE_0=/project", "GIT_CONFIG_VALUE_0=*"),
+    "writable": ("$PWD:/project:ro", "$PWD:/project:rw"),
+  }[fault]
+  step["run"] = step["run"].replace(before, after)
+  with pytest.raises(AssertionError):
+    assert_manylinux_verifier_git_scope(mutated)
 
 
 def test_python_wheel_scripts_and_references_match():

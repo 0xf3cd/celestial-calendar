@@ -22,7 +22,7 @@ CONTEXT_END = "<!-- /package-context -->"
 
 
 def source_sha(root: Path = ROOT) -> str | None:
-  """Use the producer SHA or clean local production source; untracked tool outputs are not source."""
+  """Return the producer or clean-checkout SHA, or None for a developmental local build."""
   supplied = os.environ.get(SOURCE_SHA_ENV)
   if supplied is not None and re.fullmatch(r"[0-9a-f]{40}", supplied) is None:
     raise ValueError(f"{SOURCE_SHA_ENV} must be a 40-character lowercase hexadecimal SHA")
@@ -47,7 +47,7 @@ def source_sha(root: Path = ROOT) -> str | None:
   if Path(actual_root).resolve() != root.resolve():
     raise ValueError("package documentation source must be the exact repository root")
   if supplied is not None and (head != supplied or dirty or untracked):
-    raise ValueError("package documentation SHA differs from the clean checkout")
+    raise ValueError("package documentation requires a clean checkout matching the supplied SHA")
   return supplied or (head if not dirty and not untracked else None)
 
 
@@ -72,7 +72,7 @@ def render_readme(text: str, version: str, sha: str | None) -> str:
   if re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
     raise ValueError(f"invalid package documentation version: {version}")
   if text.count(CONTEXT_START) != 1 or text.count(CONTEXT_END) != 1:
-    raise ValueError("package README must contain exactly one source-context block")
+    raise ValueError("package README must contain exactly one package-context block")
   before, remainder = text.split(CONTEXT_START)
   _, after = remainder.split(CONTEXT_END)
   context = (

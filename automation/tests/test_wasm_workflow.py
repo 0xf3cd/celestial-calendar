@@ -38,6 +38,14 @@ def assert_emsdk_source_contract(workflow):
   env = workflow["env"]
   steps = workflow["jobs"]["wasm"]["steps"]
   cache_step = next(step for step in steps if step.get("name") == "Cache emsdk")
+  cache_steps = [
+    step
+    for job in workflow["jobs"].values()
+    for step in job["steps"]
+    if str(step.get("uses", "")).startswith("actions/cache")
+  ]
+  assert cache_steps == [cache_step]
+  assert cache_step["with"]["path"] == "emsdk"
   install_step = next(step for step in steps if step.get("name") == "Install emsdk (cache miss only)")
   identity_step = next(step for step in steps if step.get("name") == "Verify emsdk source identity")
 
@@ -79,6 +87,16 @@ def test_dispatched_producers_cannot_restore_or_save_an_emsdk_cache(condition):
     cache["if"] = condition
   with pytest.raises((AssertionError, KeyError)):
     assert_emsdk_source_contract(mutated)
+
+
+@pytest.mark.parametrize("action", ["actions/cache@v6", "actions/cache/restore@v6", "actions/cache/save@v6"])
+@pytest.mark.parametrize("name", ["Cache emsdk", "Another SDK cache"])
+def test_additional_sdk_cache_steps_cannot_bypass_the_dispatch_boundary(action, name):
+  document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_emsdk_source_contract(document)
+  document["jobs"]["wasm"]["steps"].append({"name": name, "uses": action, "with": {"path": "emsdk", "key": "sdk"}})
+  with pytest.raises(AssertionError):
+    assert_emsdk_source_contract(document)
 
 
 def test_wasm_artifact_inventory_matches_collector():

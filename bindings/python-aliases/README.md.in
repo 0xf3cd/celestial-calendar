@@ -1,7 +1,7 @@
 # @NAME@
 
 <!-- package-context -->
-This guide describes the current source, which may include unreleased changes.
+This guide describes the accompanying source checkout, which may differ from the latest published package.
 <!-- /package-context -->
 
 `@NAME@` is a short installation and import name for

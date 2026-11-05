@@ -132,8 +132,8 @@ API HTML is also opt-in: `./project.py --docs` uses Doxygen 1.15.0 without a C++
 Core Tests uploads `celestial-api-html`; it is not a release artifact. `docs/Doxyfile` rejects
 documentation syntax errors but does not require every declaration/parameter to be documented.
 
-`./project.py --site` separately builds/verifies the development site in `build/docs-site` from a clean
-committed root, with Markdown guides and an independently generated API subtree. It preserves `--docs` and
+`./project.py --site` separately builds/verifies a documentation site in `build/docs-site` from a clean committed root,
+with development labels by default, Markdown guides and an independently generated API subtree. It preserves `--docs` and
 is also excluded from `--all`. Core uploads `celestial-docs-site`; `docs-publish.yml` is manual only and
 requires a protected default-branch dispatch. Its optional `release_tag` selects a published immutable release
 and builds the resolved SHA with `--site-release-tag`; schema-2 manifest and visible guide/API labels must match

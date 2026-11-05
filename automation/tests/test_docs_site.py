@@ -728,6 +728,26 @@ def test_release_site_has_one_version_source_and_visible_release_context(release
 
 
 @pytest.mark.parametrize(
+  "guide",
+  [
+    "README.md",
+    "README_ZH.md",
+    "bindings/python/README.md",
+    "bindings/python/README_ZH.md",
+    "bindings/javascript/README.md",
+    "bindings/javascript/README_ZH.md",
+    "bindings/javascript-alias/README.md",
+  ],
+)
+def test_source_guide_warnings_remain_true_when_rendered_for_a_release(guide):
+  _, body, _ = site.render_markdown(ROOT, guide, SHA)
+  assert "unreleased changes" not in body
+  assert "尚未发布的改动" not in body
+  expected = "本文对应其所在的源码版本" if guide.endswith("_ZH.md") else "the accompanying source checkout"
+  assert expected in body
+
+
+@pytest.mark.parametrize(
   "field,value",
   [
     ("schema", 1),

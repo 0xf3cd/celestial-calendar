@@ -237,9 +237,14 @@ def test_build_guide_preserves_moved_maintenance_navigation():
 
 
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
-def test_source_guide_warns_about_unreleased_changes(guide):
+def test_source_guide_distinguishes_checkout_from_installed_version(guide):
   text = visible_text(document(guide))
-  assert "unreleased changes" in text or "尚未发布的改动" in text
+  expected = (
+    ("本文对应其所在的源码版本", "可能与这份源码不同")
+    if guide.name.endswith("_ZH.md")
+    else ("accompanying source checkout", "may differ")
+  )
+  assert all(phrase in text for phrase in expected)
 
 
 def test_old_english_readme_points_to_the_guides():

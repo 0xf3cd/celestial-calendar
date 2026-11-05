@@ -9,9 +9,10 @@ JavaScript / TypeScript, and a C ABI.
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes the current source, including unreleased changes. See the
+This guide describes the accompanying source checkout. See the
 [migration guide](docs/MIGRATING_1_0.md) when moving from 0.x. The install commands below get the latest published
-version on PyPI or npm; use its matching documentation. To build the current source yourself, use the
+version on PyPI or npm, which may differ from this checkout; use its matching documentation.
+To build a source checkout, use the
 [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
 [WASM/npm recipe](docs/BUILDING.md#wasm).
 

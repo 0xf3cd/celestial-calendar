@@ -133,6 +133,9 @@ jobs:
           WHEEL_FILENAME: ${{ steps.wheel.outputs.filename }}
         run: |
           docker run --rm \
+            -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0=/project \
             -v "$PWD:/project:ro" \
             -v "$PWD/wheelhouse:/wheels:ro" \
             "$MANYLINUX_IMAGE" \
@@ -146,6 +149,9 @@ jobs:
           WHEEL_FILENAME: ${{ steps.wheel.outputs.filename }}
         run: |
           docker run --rm --network none \
+            -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0=/project \
             -e WHEEL_FILENAME="$WHEEL_FILENAME" \
             -v "$PWD:/project:ro" \
             -v "$PWD/wheelhouse:/wheels:ro" \

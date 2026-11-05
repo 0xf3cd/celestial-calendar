@@ -19,11 +19,11 @@ version of the primary package. The alias copies no implementation and contains 
 [中文说明（@0xf3cd/celestial）](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
 <!-- package-context -->
-This guide describes the current source, which may include unreleased changes. Use the documentation matching your
-installed version.
+This guide describes the accompanying source checkout, which may differ from the latest published package.
+Use the documentation matching your installed version.
 <!-- /package-context -->
 
-To use the current source, [build the primary and alias packages](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/BUILDING.md#wasm)
+To use a source checkout, [build the primary and alias packages](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/BUILDING.md#wasm)
 from a full checkout and install both tarballs of the same version.
 
 ## Install and Examples
