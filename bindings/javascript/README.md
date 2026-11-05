@@ -19,8 +19,8 @@ WebAssembly module.
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
 <!-- package-context -->
-This guide describes the current source, including unreleased changes. The install command below gets the latest published
-version on npm; use its matching documentation.
+This guide describes the current source, which may include unreleased changes. The install command below gets the latest
+published version on npm; use its matching documentation.
 <!-- /package-context -->
 
 See [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md)
