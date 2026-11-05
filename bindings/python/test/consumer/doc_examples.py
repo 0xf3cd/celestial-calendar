@@ -21,6 +21,9 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[4]
+sys.path.append(str(REPO))
+from toolbox.package_docs import render_readme, python_urls  # noqa: E402
+
 # These fences are checked by other consumers or are instructions/output, not Python programs.
 NON_PROGRAMS = {
   "sh": "shell installation/build instructions",
@@ -124,14 +127,18 @@ def main() -> None:
       "dist = importlib.metadata.distribution('celestial-calendar')\n"
       "print(json.dumps(dict(package=celestial_calendar.__file__, native=str(_binding.LIB._name),\n"
       "  prefix=sys.prefix, files=[str(dist.locate_file(p)) for p in dist.files],\n"
-      "  metadata=dist.read_text('METADATA'))))\n",
+      "  version=dist.version, urls=dist.metadata.get_all('Project-URL'), metadata=dist.read_text('METADATA'))))\n",
       cwd,
     )
     record = json.loads(provenance)
     verify_provenance(record)
     installed = metadata_description(record["metadata"])
     guide = (REPO / "bindings/python/README.md").read_text(encoding="utf-8")
-    assert installed == guide, "installed METADATA description differs from candidate guide"
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    assert installed == render_readme(guide, record["version"], sha), (
+      "installed METADATA description differs from source"
+    )
+    assert set(record["urls"]) == {f"{label}, {url}" for label, url in python_urls(sha).items()}
     print("PASS installed distribution provenance and raw METADATA guide bytes")
 
     for name, text, output in (

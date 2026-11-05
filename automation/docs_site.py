@@ -7,7 +7,7 @@
 # Repo : https://github.com/0xf3cd/celestial-calendar
 # SPDX-License-Identifier: MIT
 
-"""Build and verify the development documentation from a clean, exact source revision."""
+"""Build and verify documentation from a clean, exact source revision."""
 
 import ast
 import hashlib
@@ -16,6 +16,7 @@ import posixpath
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from html import escape
 from html.parser import HTMLParser
@@ -23,12 +24,13 @@ from importlib.metadata import version as package_version
 from pathlib import Path
 from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
+from toolbox.docs_links import REPOSITORY, pinned_source, repository_source
+
 from . import paths
 from .build import build_docs
 from .utils import green_print, red_print
 
 
-REPOSITORY = "https://github.com/0xf3cd/celestial-calendar"
 STATE = "unreleased development"
 GUIDES = (
   "README.md",
@@ -66,6 +68,33 @@ NAVIGATION = (
   ("Validation", "docs/VALIDATION.html"),
   ("API reference", "api/index.html"),
 )
+
+
+@dataclass(frozen=True)
+class SiteContext:
+  version: str
+  source_sha: str
+  release_tag: str | None = None
+
+  def __post_init__(self):
+    if re.fullmatch(r"\d+\.\d+\.\d+", self.version) is None:
+      raise ValueError(f"invalid documentation version: {self.version}")
+    if re.fullmatch(r"[0-9a-f]{40}", self.source_sha) is None:
+      raise ValueError("invalid documentation source SHA")
+    if self.release_tag is not None and self.release_tag != f"v{self.version}":
+      raise ValueError("documentation release tag differs from its version")
+
+  @property
+  def state(self) -> str:
+    return "release" if self.release_tag is not None else STATE
+
+  @property
+  def visible_label(self) -> str:
+    return f"Release {self.release_tag}" if self.release_tag is not None else "Development / unreleased"
+
+  @property
+  def api_label(self) -> str:
+    return f"{self.version} · {self.state} @ {self.source_sha}"
 
 
 def digest(data: bytes) -> str:
@@ -143,7 +172,18 @@ def source_snapshot(root: Path, sha: str | None = None) -> dict:
     | {
       name
       for name in tracked
-      if name in (".gitattributes", "project.py", "Requirements.txt", "docs/Doxyfile")
+      if name
+      in (
+        ".gitattributes",
+        "project.py",
+        "Requirements.txt",
+        "Requirements-docs.in",
+        "Requirements-docs.txt",
+        "docs/Doxyfile",
+        "toolbox/docs_links.py",
+        "toolbox/package_docs.py",
+        "toolbox/release_validation.py",
+      )
       or name.startswith(("automation/", "docs/site/", ".github/workflows/"))
       or (
         name.startswith(("src/astro/", "src/calendar/", "src/util/", "src/shared_lib/"))
@@ -178,24 +218,6 @@ def relative_url(page: str, target: str) -> str:
   return quote(posixpath.relpath(target, posixpath.dirname(page) or "."), safe="/._-")
 
 
-def repository_source(target: str) -> str | None:
-  """The source named by a live repository URL; GitHub service/UI routes remain external."""
-  url, repository = urlsplit(target), urlsplit(REPOSITORY)
-  if (url.scheme, url.netloc) != (repository.scheme, repository.netloc):
-    return None
-  route = url.path.removeprefix(repository.path)
-  if route == url.path:
-    return None
-  if route in ("", "/", "/tree/main", "/tree/main/", "/blob/main"):
-    return "README.md"
-  if route.startswith(("/blob/main/", "/tree/main/")):
-    path = unquote(route.split("/", 3)[3])
-    if not path:
-      raise ValueError(f"repository source URL has no file: {target}")
-    return path
-  return None
-
-
 def source_destination(root: Path, origin: str, target: str, page: str, sha: str) -> str:
   """Resolve repository identity before choosing a hosted route or a pinned source link."""
   url = urlsplit(target)
@@ -219,7 +241,7 @@ def source_destination(root: Path, origin: str, target: str, page: str, sha: str
   if path in GUIDES:
     result = relative_url(page, Path(path).with_suffix(".html").as_posix())
   else:
-    result = f"{REPOSITORY}/{'tree' if (root / path).is_dir() else 'blob'}/{sha}/{quote(path)}"
+    result = pinned_source(path, sha, directory=(root / path).is_dir())
   return urlunsplit((*urlsplit(result)[:3], url.query, url.fragment))
 
 
@@ -315,24 +337,25 @@ def render_markdown(root: Path, source: str, sha: str, *, page: str | None = Non
   return title, body, "\n".join(headings)
 
 
-def context_html(page: str, sha: str, version: str, source: str) -> str:
+def context_html(page: str, context: SiteContext, source: str) -> str:
   return (
-    f'<aside class="source-context" data-source-sha="{sha}" data-version="{version}" data-state="{STATE}">'
-    f"<strong>Development / unreleased</strong> · package version {escape(version)}"
-    f'<br><a href="{REPOSITORY}/blob/{sha}/{quote(source)}">Source {sha}</a>'
+    f'<aside class="source-context" data-source-sha="{context.source_sha}" data-version="{context.version}" '
+    f'data-state="{context.state}" data-release-tag="{context.release_tag or ""}">'
+    f"<strong>{escape(context.visible_label)}</strong> · package version {context.version}"
+    f'<br><a href="{pinned_source(source, context.source_sha)}">Source {context.source_sha}</a>'
     f' · <a href="{REPOSITORY}/releases">Published releases</a>'
     f' · <a href="{relative_url(page, "index.html")}">Documentation</a></aside>'
   )
 
 
-def page_html(root: Path, page: str, sha: str, version: str, source: str, title: str, body: str, toc: str) -> str:
+def page_html(root: Path, page: str, context: SiteContext, source: str, title: str, body: str, toc: str) -> str:
   template = (root / "docs/site/page.html").read_text(encoding="utf-8")
   navigation = "\n".join(f'<a href="{relative_url(page, target)}">{escape(label)}</a>' for label, target in NAVIGATION)
   values = {
     "title": escape(title),
     "style": relative_url(page, "site.css"),
     "navigation": navigation,
-    "context": context_html(page, sha, version, source),
+    "context": context_html(page, context, source),
     "body": body,
     "toc": toc,
     "license": relative_url(page, "LICENSE"),
@@ -341,7 +364,7 @@ def page_html(root: Path, page: str, sha: str, version: str, source: str, title:
   return re.sub(r"\{\{(\w+)\}\}", lambda match: values[match[1]], template)
 
 
-def rewrite_api(root: Path, name: str, text: str, sha: str, version: str) -> str:
+def rewrite_api(root: Path, name: str, text: str, context: SiteContext) -> str:
   parsed = HtmlPage(text)
   offsets, offset = [], 0
   for line in text.splitlines(keepends=True):
@@ -364,7 +387,7 @@ def rewrite_api(root: Path, name: str, text: str, sha: str, version: str) -> str
         origin = API_ORIGINS.get(name)
         if source_style and origin is None:
           raise ValueError(f"unknown API source-link origin: {name}: {target}")
-        destination = source_destination(root, origin or "docs/API.md", target, "api/" + name, sha)
+        destination = source_destination(root, origin or "docs/API.md", target, "api/" + name, context.source_sha)
         pattern = rf"(\b{key}\s*=\s*)([\"\'])(.*?)\2"
         changed = re.sub(
           pattern,
@@ -376,7 +399,7 @@ def rewrite_api(root: Path, name: str, text: str, sha: str, version: str) -> str
     if tag == "head":
       changed += '<link rel="stylesheet" href="' + relative_url("api/" + name, "site.css") + '">'
     if tag == "body":
-      changed += context_html("api/" + name, sha, version, API_ORIGINS.get(name, "docs/API.md"))
+      changed += context_html("api/" + name, context, API_ORIGINS.get(name, "docs/API.md"))
     if changed != raw:
       start = offsets[line - 1] + column
       replacements.append((start, start + len(raw), changed))
@@ -438,8 +461,11 @@ def crawl(output: Path) -> dict:
   return {"html_pages": len(pages), "local_destinations": counts}
 
 
-def assemble(root: Path, output: Path, api: Path, snapshot: dict, version: str, generators: dict) -> None:
+def assemble(
+  root: Path, output: Path, api: Path, snapshot: dict, version: str, generators: dict, release_tag: str | None = None
+) -> None:
   sha = snapshot["source_sha"]
+  context = SiteContext(version, sha, release_tag)
   api_members = members(api)
   for name in API_ORIGINS:
     if name not in api_members:
@@ -450,9 +476,7 @@ def assemble(root: Path, output: Path, api: Path, snapshot: dict, version: str, 
     target = output / "api" / name
     target.parent.mkdir(parents=True, exist_ok=True)
     if name.endswith(".html"):
-      target.write_text(
-        rewrite_api(root, name, (api / name).read_text(encoding="utf-8"), sha, version), encoding="utf-8"
-      )
+      target.write_text(rewrite_api(root, name, (api / name).read_text(encoding="utf-8"), context), encoding="utf-8")
     else:
       shutil.copyfile(api / name, target)
   for source in GUIDES:
@@ -460,19 +484,20 @@ def assemble(root: Path, output: Path, api: Path, snapshot: dict, version: str, 
     title, body, toc = render_markdown(root, source, sha)
     target = output / page
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(page_html(root, page, sha, version, source, title, body, toc), encoding="utf-8")
+    target.write_text(page_html(root, page, context, source, title, body, toc), encoding="utf-8")
   title, body, toc = render_markdown(root, "docs/site/index.md", sha, page="index.html")
   (output / "index.html").write_text(
-    page_html(root, "index.html", sha, version, "docs/site/index.md", title, body, toc), encoding="utf-8"
+    page_html(root, "index.html", context, "docs/site/index.md", title, body, toc), encoding="utf-8"
   )
   for name in TERMS:
     shutil.copyfile(root / name, output / name)
   shutil.copyfile(root / "docs/site/site.css", output / "site.css")
   manifest = {
-    "schema": 1,
+    "schema": 2,
     **snapshot,
     "version": version,
-    "state": STATE,
+    "state": context.state,
+    "release_tag": context.release_tag,
     "generators": generators,
     "api_members": sorted(api_members),
     "outputs": members(output),
@@ -480,19 +505,35 @@ def assemble(root: Path, output: Path, api: Path, snapshot: dict, version: str, 
   (output / "site-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def validate_site(root: Path, output: Path, sha: str | None = None) -> dict:
+def validate_site(
+  root: Path, output: Path, sha: str | None = None, release_tag: str | None = None, expected_version: str | None = None
+) -> dict:
   snapshot = source_snapshot(root, sha)
   manifest = json.loads((output / "site-manifest.json").read_text(encoding="utf-8"))
-  if set(manifest) != {"schema", "source_sha", "inputs", "version", "state", "generators", "api_members", "outputs"}:
+  if set(manifest) != {
+    "schema",
+    "source_sha",
+    "inputs",
+    "version",
+    "state",
+    "release_tag",
+    "generators",
+    "api_members",
+    "outputs",
+  }:
     raise ValueError("site manifest has missing or unexpected fields")
   version = project_version(root)
+  if expected_version is not None and version != expected_version:
+    raise ValueError("documentation version differs from the externally expected version")
+  context = SiteContext(version, snapshot["source_sha"], release_tag)
   if (
     manifest.get("schema"),
     manifest.get("source_sha"),
     manifest.get("inputs"),
     manifest.get("version"),
     manifest.get("state"),
-  ) != (1, snapshot["source_sha"], snapshot["inputs"], version, STATE):
+    manifest.get("release_tag"),
+  ) != (2, snapshot["source_sha"], snapshot["inputs"], version, context.state, context.release_tag):
     raise ValueError("site manifest source/version/state/input mismatch")
   if manifest.get("generators") != generator_versions():
     raise ValueError("site generator version mismatch")
@@ -516,18 +557,21 @@ def validate_site(root: Path, output: Path, sha: str | None = None) -> dict:
     if not name.endswith(".html"):
       continue
     text = (output / name).read_text(encoding="utf-8")
-    expected = {"data-source-sha": sha, "data-version": version, "data-state": STATE}
-    if not any(
-      all(attrs.get(key) == value for key, value in expected.items()) for _, attrs, _, _ in HtmlPage(text).tags
-    ):
-      raise ValueError(f"site page source/version/state missing: {name}")
+    if name.startswith("api/"):
+      source = API_ORIGINS.get(name.removeprefix("api/"), "docs/API.md")
+    elif name == "index.html":
+      source = "docs/site/index.md"
+    else:
+      source = Path(name).with_suffix(".md").as_posix()
+    if context_html(name, context, source) not in text:
+      raise ValueError(f"site page source/version/state/visible label missing: {name}")
     if name.startswith("api/") and name != "api/doxygen_crawl.html":
-      if f"{version} · {STATE} @ {sha}" not in text:
+      if context.api_label not in text:
         raise ValueError(f"site API project identity missing: {name}")
   for source in (*GUIDES, "docs/site/index.md"):
     page = "index.html" if source == "docs/site/index.md" else Path(source).with_suffix(".html").as_posix()
     title, body, toc = render_markdown(root, source, sha, page=page)
-    if (output / page).read_text(encoding="utf-8") != page_html(root, page, sha, version, source, title, body, toc):
+    if (output / page).read_text(encoding="utf-8") != page_html(root, page, context, source, title, body, toc):
       raise ValueError(f"site guide differs from source content: {source}")
   return crawl(output)
 
@@ -539,7 +583,7 @@ def generator_versions() -> dict:
   }
 
 
-def build_site(version: str) -> int:
+def build_site(version: str, release_tag: str | None = None) -> int:
   """Generate and verify a separate site without replacing the legacy API artifact."""
   root = paths.proj_root()
   output, api = paths.build_dir() / "docs-site", paths.build_dir() / "site-api-docs"
@@ -547,18 +591,23 @@ def build_site(version: str) -> int:
     snapshot = source_snapshot(root)
     if version != project_version(root):
       raise ValueError("requested site version differs from source")
+    context = SiteContext(version, snapshot["source_sha"], release_tag)
+    if (
+      release_tag is not None
+      and git(root, "rev-parse", f"refs/tags/{release_tag}^{{commit}}").decode().strip() != context.source_sha
+    ):
+      raise ValueError("documentation release tag differs from source HEAD")
     if output.is_symlink() or api.is_symlink():
       raise ValueError("documentation output roots must not be symlinks")
     if output.exists():
       shutil.rmtree(output)
     output.mkdir(parents=True)
-    label = f"{version} · {STATE} @ {snapshot['source_sha']}"
-    result = build_docs(label, output=api)
+    result = build_docs(context.api_label, output=api)
     if result:
       return result
-    assemble(root, output, api / "html", snapshot, version, generator_versions())
-    result = validate_site(root, output, snapshot["source_sha"])
-    green_print(f"# Development site: build/docs-site/index.html ({result})")
+    assemble(root, output, api / "html", snapshot, version, generator_versions(), release_tag)
+    result = validate_site(root, output, snapshot["source_sha"], release_tag, version)
+    green_print(f"# {context.visible_label}: build/docs-site/index.html ({result})")
     return 0
   except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
     red_print(f"# Documentation site failed: {error}")

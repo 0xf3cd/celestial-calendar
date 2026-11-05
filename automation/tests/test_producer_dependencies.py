@@ -55,6 +55,7 @@ CIBW_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-cibuildwheel.in"
 BUILD_LOCK_INPUT = REPO / "bindings" / "python" / "requirements-build.in"
 PYPROJECT = REPO / "bindings" / "python" / "pyproject.toml"
 LOCK_INPUTS = {
+  REPO / "Requirements-docs.txt": (REPO / "Requirements-docs.in", "3.12"),
   REPO / "Requirements-producer.txt": (REPO / "Requirements-producer.in", "3.12"),
   REPO / "bindings" / "python" / "requirements-host.txt": (
     REPO / "bindings" / "python" / "requirements-host.in",
@@ -410,6 +411,7 @@ def test_every_explicit_producer_pip_install_is_hash_locked():
 
   assert not remaining
   lines = [line for path in producer_workflows for line in workflow_install_lines(path)]
+  lines += workflow_install_lines(REPO / ".github/workflows/docs-publish.yml")
   lines += release_candidate_install_lines(RELEASE_WORKFLOW)
   lines += pip_install_lines(DOCKERFILE.read_text(encoding="utf-8"))
 
@@ -720,6 +722,7 @@ def test_alias_rejects_wrong_dependency_graph(tmp_path, monkeypatch, key, value)
   ],
 )
 def test_builder_packs_each_identity_once_and_checks_fresh_inventories(tmp_path, monkeypatch, mutation):
+  monkeypatch.setattr(build_npm.package_docs, "source_sha", lambda root: None)
   inputs = tmp_path / "inputs"
   inputs.mkdir()
   for filename in ("celestial-jieqi.mjs", "celestial-jieqi.wasm"):

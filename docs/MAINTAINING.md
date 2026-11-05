@@ -30,9 +30,16 @@ the tool versions; the Windows STL exception is described under [Toolchain Featu
 <a id="docs-publishing"></a>
 ## Documentation publishing
 
-`docs-publish.yml` is manual only. A metadata-only job rejects dispatches outside the protected default
-branch before source checkout. The read-only build checks out the dispatched SHA, builds and verifies the
-development site, then uploads one fixed-name immutable Pages artifact. The deploy job has only Pages/OIDC
+`docs-publish.yml` is manual only and rejects dispatches outside the protected default branch before checkout.
+Leave `release_tag` empty to build development documentation at the dispatch SHA. For a release, supply its exact
+`vMAJOR.MINOR.PATCH` tag. The resolver runs from the dispatch SHA, requires a published immutable GitHub Release,
+peels its tag to a commit, and checks the version, release documents and ancestry in fetched `origin/main` history.
+The read-only build checks out that resolved SHA, installs the hash-locked binary-only `Requirements-docs.txt`
+closure and builds the matching site. A workflow-owned check compares the manifest, page/API labels and output
+digests to the resolver's expected identity immediately before uploading the sole Pages artifact. Old source
+without this schema/build contract fails; the workflow does not relabel it or substitute newer source.
+
+The deploy job has only Pages/OIDC
 write permissions and runs the pinned official deploy action, with no checkout or repository commands.
 The action selects exactly one `github-pages` artifact from that workflow run and deploys its immutable ID.
 
@@ -42,7 +49,8 @@ source or dispatching this workflow, separately authorise and complete these ope
 1. Configure and API-verify required reviewers and a default-branch deployment restriction on the
    `github-pages` environment.
 2. Verify the protected default branch and the intended workflow/source SHA.
-3. Enable the custom-Actions Pages source, then dispatch from that branch.
+3. Enable the custom-Actions Pages source, then dispatch from that branch. For release documentation, complete
+   [registry verification](RELEASING.md#release-documentation) first and select that release tag.
 4. Retain the actual artifact ID, manifest and member digests; check the deployed revision, external links
    and desktop/mobile navigation before promoting its URL in repository or package metadata.
 
@@ -125,7 +133,7 @@ remain deliberate workflow maintenance; a pip/npm manifest scan does not cover t
 environment has no compatibility baseline in this maintenance scope. This exclusion does not
 disable security alerts or promise exclusion from security updates.
 
-Keep the existing producer and wheel `.in` inputs, hashed `.txt` closures and bootstrap
+Keep the existing producer, documentation and wheel `.in` inputs, hashed `.txt` closures and bootstrap
 constraints consistent. Their headers contain the regeneration commands; existing dependency
 tests check the result. A bot PR that updates only part of a closure needs that regeneration,
 not relaxed assertions. General development requirements remain version-pinned without hashes.

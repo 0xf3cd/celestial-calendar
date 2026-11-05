@@ -1,7 +1,13 @@
-name: Publish Development Documentation
+name: Publish Documentation
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published immutable release tag; leave empty for development
+        type: string
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -12,7 +18,13 @@ concurrency:
 jobs:
   context:
     runs-on: ubuntu-26.04
-    permissions: {}
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.resolve.outputs.source_sha }}
+      version: ${{ steps.resolve.outputs.version }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      state: ${{ steps.resolve.outputs.state }}
     steps:
       - name: Validate protected default-branch dispatch
         env:
@@ -22,6 +34,7 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           REF_PROTECTED: ${{ github.ref_protected }}
           SOURCE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           python3 - <<'PY'
           import os
@@ -32,8 +45,82 @@ jobs:
               or not os.environ["DEFAULT_BRANCH"]
               or os.environ["REF_NAME"] != os.environ["DEFAULT_BRANCH"]
               or os.environ["REF_PROTECTED"] != "true"
-              or re.fullmatch(r"[0-9a-f]{40}", os.environ["SOURCE_SHA"]) is None):
-              raise SystemExit("Documentation publishing requires a protected default-branch dispatch")
+               or re.fullmatch(r"[0-9a-f]{40}", os.environ["SOURCE_SHA"]) is None):
+               raise SystemExit("Documentation publishing requires a protected default-branch dispatch")
+          tag = os.environ["RELEASE_TAG"]
+          if tag and re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag) is None:
+              raise SystemExit("Documentation release input must be a vMAJOR.MINOR.PATCH tag")
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve exact documentation source
+        id: resolve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python3 - <<'PY'
+          import ast
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+          from toolbox.release_validation import validate_release_document_versions, validate_release_source
+
+          def git(*args):
+              return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout.strip()
+
+          tag, sha = os.environ["RELEASE_TAG"], os.environ["DISPATCH_SHA"]
+          if tag and re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag) is None:
+              raise SystemExit("Invalid documentation release tag")
+          if re.fullmatch(r"[0-9a-f]{40}", sha) is None or git("rev-parse", "HEAD") != sha:
+              raise SystemExit("Publisher checkout differs from the dispatch SHA")
+          if tag:
+              repository = os.environ["REPOSITORY"]
+              if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) is None:
+                  raise SystemExit("Invalid repository identity")
+              request = Request(
+                  f"https://api.github.com/repos/{repository}/releases/tags/{quote(tag, safe='')}",
+                  headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                           "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
+              )
+              with urlopen(request, timeout=30) as response:
+                  release = json.load(response)
+              if (release.get("tag_name") != tag or release.get("draft") is not False
+                  or release.get("immutable") is not True or not release.get("published_at")):
+                  raise SystemExit("Documentation requires a published immutable release")
+              git("fetch", "--no-tags", "origin", "refs/heads/main:refs/remotes/origin/main")
+              git("fetch", "--no-tags", "origin", f"refs/tags/{tag}")
+              sha = git("rev-parse", "FETCH_HEAD^{commit}")
+          if re.fullmatch(r"[0-9a-f]{40}", sha) is None:
+              raise SystemExit("Resolved documentation source is not an exact commit SHA")
+          tree = ast.parse(git("show", f"{sha}:project.py"))
+          version = next(ast.literal_eval(node.value) for node in tree.body
+                         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+                         and node.target.id == "BUILD_VERSION")
+          if not isinstance(version, str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+              raise SystemExit("Invalid source package version")
+          if tag:
+              validate_release_source(Path.cwd(), tag, sha, version)
+              with tempfile.TemporaryDirectory(dir=os.environ["RUNNER_TEMP"]) as directory:
+                  documents = []
+                  for name in ("docs/RELEASE_NOTES.md", "docs/CHANGELOG.md"):
+                      path = Path(directory) / Path(name).name
+                      path.write_text(git("show", f"{sha}:{name}") + "\n", encoding="utf-8")
+                      documents.append(path)
+                  validate_release_document_versions(tag, documents)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"source_sha={sha}\nversion={version}\nrelease_tag={tag}\n")
+              output.write(f"state={'release' if tag else 'unreleased development'}\n")
           PY
 
   build:
@@ -48,7 +135,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.context.outputs.source_sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -58,18 +146,83 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y "doxygen=$DOXYGEN_PACKAGE_VERSION"
           test "$(doxygen --version)" = "${DOXYGEN_PACKAGE_VERSION%%+*}"
-          python3 -m pip install -r Requirements.txt
-      - name: Build and verify exact development source
+          python3 -m pip install --require-hashes --only-binary=:all: -r Requirements-docs.txt
+      - name: Build and verify exact documentation source
         env:
-          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_SHA: ${{ needs.context.outputs.source_sha }}
+          SOURCE_VERSION: ${{ needs.context.outputs.version }}
+          RELEASE_TAG: ${{ needs.context.outputs.release_tag }}
         run: |
-          python3 project.py --site
+          if [ -n "$RELEASE_TAG" ]; then
+            python3 project.py --site --site-release-tag "$RELEASE_TAG"
+          else
+            python3 project.py --site
+          fi
           python3 - <<'PY'
           import os
           from pathlib import Path
           from automation.docs_site import validate_site
 
-          print(validate_site(Path.cwd(), Path("build/docs-site"), os.environ["SOURCE_SHA"]))
+          print(validate_site(Path.cwd(), Path("build/docs-site"), os.environ["SOURCE_SHA"],
+                              os.environ["RELEASE_TAG"] or None, os.environ["SOURCE_VERSION"]))
+          PY
+      - name: Verify publication source and labels independently
+        env:
+          SOURCE_SHA: ${{ needs.context.outputs.source_sha }}
+          SOURCE_VERSION: ${{ needs.context.outputs.version }}
+          RELEASE_TAG: ${{ needs.context.outputs.release_tag }}
+          SOURCE_STATE: ${{ needs.context.outputs.state }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          sha, version, tag, state = (os.environ[name] for name in
+                                      ("SOURCE_SHA", "SOURCE_VERSION", "RELEASE_TAG", "SOURCE_STATE"))
+          if (re.fullmatch(r"[0-9a-f]{40}", sha) is None
+              or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None
+              or (tag and tag != f"v{version}")
+              or state != ("release" if tag else "unreleased development")):
+              raise SystemExit("Invalid externally expected documentation identity")
+          head = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                                capture_output=True, text=True).stdout.strip()
+          if head != sha:
+              raise SystemExit("Documentation checkout differs from resolved source")
+          output = Path("build/docs-site")
+          if output.is_symlink():
+              raise SystemExit("Documentation output root is a symlink")
+          manifest = json.loads((output / "site-manifest.json").read_text(encoding="utf-8"))
+          if (set(manifest) != {"schema", "source_sha", "inputs", "version", "state", "release_tag",
+                               "generators", "api_members", "outputs"}
+              or (manifest["schema"], manifest["source_sha"], manifest["version"],
+                  manifest["state"], manifest["release_tag"]) != (2, sha, version, state, tag or None)):
+              raise SystemExit("Documentation manifest differs from resolved release/source/version")
+          visible = f"Release {tag}" if tag else "Development / unreleased"
+          marker = (f'<aside class="source-context" data-source-sha="{sha}" data-version="{version}" '
+                    f'data-state="{state}" data-release-tag="{tag}">'
+                    f'<strong>{visible}</strong> · package version {version}')
+          actual = {}
+          for path in output.rglob("*"):
+              name = path.relative_to(output).as_posix()
+              if path.is_symlink() or (path.is_file() and path.stat().st_nlink != 1):
+                  raise SystemExit("Documentation contains a linked file")
+              if not path.is_file() or name == "site-manifest.json":
+                  continue
+              data = path.read_bytes()
+              actual[name] = hashlib.sha256(data).hexdigest()
+              if name.endswith(".html"):
+                  text = data.decode("utf-8")
+                  if marker not in text:
+                      raise SystemExit(f"Documentation page label differs: {name}")
+                  if (name.startswith("api/") and name != "api/doxygen_crawl.html"
+                      and f"{version} · {state} @ {sha}" not in text):
+                      raise SystemExit(f"Documentation API identity differs: {name}")
+          if not actual or actual != manifest["outputs"]:
+              raise SystemExit("Documentation output bytes differ from the verified manifest")
           PY
       - name: Upload sole immutable Pages artifact
         id: pages

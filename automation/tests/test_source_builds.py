@@ -62,6 +62,8 @@ def source_only_tree(source_tree, tmp_path, request):
   shutil.copytree(original / "src", root / "src")
   (root / "src/CMakeLists.txt").write_text("source layout fixture\n")
   shutil.copytree(ROOT / "automation", root / "automation", ignore=shutil.ignore_patterns("tests", "__pycache__"))
+  (root / "toolbox").mkdir(exist_ok=True)
+  shutil.copy2(ROOT / "toolbox/docs_links.py", root / "toolbox/docs_links.py")
   for name in ("project.py", "checks.py", "Requirements.txt"):
     shutil.copy2(ROOT / name, root / name)
   build = root / "build"
@@ -210,6 +212,8 @@ def test_git_metadata_is_preserved_or_fails_without_fallback(source_tree, monkey
   for name in ("project.py", "Requirements.txt"):
     shutil.copy2(ROOT / name, root / name)
   shutil.copytree(ROOT / "automation", root / "automation", ignore=shutil.ignore_patterns("tests", "__pycache__"))
+  (root / "toolbox").mkdir(exist_ok=True)
+  shutil.copy2(ROOT / "toolbox/docs_links.py", root / "toolbox/docs_links.py")
   monkeypatch.setattr(build_info, "__file__", str(root / "toolbox/build_info.py"))
   monkeypatch.setattr(paths, "__file__", str(root / "automation/paths.py"))
   monkeypatch.delenv("CXX", raising=False)

@@ -21,8 +21,11 @@ src/test/astro/vsop87d_check_data.hpp linguist-generated=true
 /.gitattributes text eol=lf
 /project.py text eol=lf
 /Requirements.txt text eol=lf
+/Requirements-docs.in text eol=lf
+/Requirements-docs.txt text eol=lf
 /README*.md text eol=lf
 /automation/** text=auto eol=lf
+/toolbox/*.py text eol=lf
 /.github/workflows/*.yml text eol=lf
 /.github/workflows/*.yaml text eol=lf
 /docs/*.md text eol=lf

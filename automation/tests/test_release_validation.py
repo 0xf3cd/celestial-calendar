@@ -22,6 +22,7 @@ import pytest
 
 from automation.markdown_source import links, tokens
 from toolbox import release_validation
+from toolbox import package_docs
 from automation.tests.test_python_aliases import write_alias_wheel
 from toolbox.artifact_downloader import project_version
 from toolbox.build_npm import ALIAS_ALLOWLIST, ALIAS_NAME, PACKAGE_NAME, PACK_ALLOWLIST, staging_manifest
@@ -41,6 +42,7 @@ from toolbox.release_validation import (
 
 
 VERSION = project_version()
+COMMIT = "a" * 40
 MAJOR, MINOR, _PATCH = VERSION.split(".")
 SOVERSION = f"{MAJOR}.{MINOR}" if MAJOR == "0" else MAJOR
 TARBALL = f"0xf3cd-celestial-{VERSION}.tgz"
@@ -107,6 +109,11 @@ RUNTIME_FLOORS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def documentation_source(monkeypatch):
+  monkeypatch.setattr(package_docs, "source_sha", lambda root=package_docs.ROOT: COMMIT)
+
+
 def write_zip(path, members):
   with zipfile.ZipFile(path, "w") as archive:
     seen = set()
@@ -159,7 +166,22 @@ def npm_tarball(members=None, package_name=PACKAGE_NAME):
     *(
       (
         f"package/{name}",
-        json.dumps(staging_manifest(VERSION, package_name)).encode() if name == "package.json" else b"fixture",
+        json.dumps(staging_manifest(VERSION, package_name, COMMIT)).encode()
+        if name == "package.json"
+        else (
+          package_docs.render_readme(
+            (
+              package_docs.ROOT
+              / (
+                "bindings/javascript-alias/README.md" if package_name == ALIAS_NAME else "bindings/javascript/README.md"
+              )
+            ).read_text(),
+            VERSION,
+            COMMIT,
+          ).encode()
+          if name == "README.md"
+          else b"fixture"
+        ),
       )
       for name in sorted(allowlist - {"LICENSE", "THIRD_PARTY_NOTICES.txt"})
     ),
@@ -249,6 +271,15 @@ def write_wheel_named(directory, name, members=None):
     [
       (f"celestial_calendar-{VERSION}.dist-info/licenses/LICENSE", LICENSE_BYTES),
       (f"celestial_calendar-{VERSION}.dist-info/licenses/THIRD_PARTY_NOTICES.txt", NOTICE_BYTES),
+      (
+        f"celestial_calendar-{VERSION}.dist-info/METADATA",
+        (
+          f"Name: celestial-calendar\nVersion: {VERSION}\nDescription-Content-Type: text/markdown\n"
+          + "".join(f"Project-URL: {label}, {url}\n" for label, url in package_docs.python_urls(COMMIT).items())
+          + "\n"
+          + package_docs.render_readme((package_docs.ROOT / "bindings/python/README.md").read_text(), VERSION, COMMIT)
+        ).encode(),
+      ),
     ]
     if members is None
     else members
@@ -287,11 +318,11 @@ def write_wheels(directory):
     f"celestial_calendar-{VERSION}-py3-none-win_amd64.whl",
   ]
   return [path for name in names for path in write_wheel_named(directory, name)] + [
-    path for name in ("cele", "wentian") for path in write_alias_wheel(directory, name, VERSION)
+    path for name in ("cele", "wentian") for path in write_alias_wheel(directory, name, VERSION, sha=COMMIT)
   ]
 
 
-def write_source_manifest(path, commit="tagged-sha", mutation=None):
+def write_source_manifest(path, commit=COMMIT, mutation=None):
   groups = [
     (1, "Build and Test on Multiple Platforms", set(NATIVE_ARCHIVES.values())),
     (2, "WASM Build and Golden Check", {"celestial-wasm"}),
@@ -341,6 +372,74 @@ def write_candidate_inputs(directory):
   )
   source_manifest = write_source_manifest(directory / "release-sources.json")
   return release_assets, source_manifest, release_notes
+
+
+def test_candidate_documentation_uses_release_commit_not_the_builder_environment(tmp_path, monkeypatch):
+  assets, sources, notes = write_candidate_inputs(tmp_path)
+  monkeypatch.setenv(package_docs.SOURCE_SHA_ENV, "b" * 40)
+  monkeypatch.setattr(package_docs, "source_sha", lambda root=package_docs.ROOT: "b" * 40)
+  candidate = tmp_path / "candidate"
+  stage_release_candidate(assets, sources, candidate, f"v{VERSION}", COMMIT, notes)
+  assert validate_release_candidate(candidate, f"v{VERSION}", COMMIT)["commit"] == COMMIT
+
+
+@pytest.mark.parametrize("package", [*PYTHON_ARTIFACTS, "cele", "wentian", PACKAGE_NAME, ALIAS_NAME])
+@pytest.mark.parametrize("fault", ["source", "readme"])
+def test_candidate_rejects_wrong_documentation_with_recomputed_container_hashes(tmp_path, package, fault):
+  assets, sources, notes = write_candidate_inputs(tmp_path)
+
+  def changed(data):
+    if fault == "source":
+      assert COMMIT.encode() in data
+      return data.replace(COMMIT.encode(), ("b" * 40).encode())
+    assert b"Documentation for package version" in data
+    return data.replace(b"Documentation for package version", b"Incorrect documentation for package version")
+
+  if package in (*PYTHON_ARTIFACTS, "cele", "wentian"):
+    if package in ("cele", "wentian"):
+
+      def mutate(members):
+        name = f"{package}-{VERSION}.dist-info/METADATA"
+        members[name] = changed(members[name])
+
+      write_alias_wheel(assets, package, VERSION, mutate)
+    else:
+      wheel = next(
+        path
+        for path in assets.glob("celestial_calendar-*.whl")
+        if release_validation._wheel_artifact(path.name, VERSION) == package
+      )
+      with zipfile.ZipFile(wheel) as archive:
+        members = [
+          (name, changed(archive.read(name)) if name.endswith("/METADATA") else archive.read(name))
+          for name in archive.namelist()
+        ]
+      write_zip(wheel, members)
+      wheel.with_name(f"{wheel.name}.sha256").write_text(
+        f"{hashlib.sha256(wheel.read_bytes()).hexdigest()}  {wheel.name}\n"
+      )
+  else:
+    archive_path = assets / "celestial-wasm.zip"
+    with zipfile.ZipFile(archive_path) as archive:
+      members = {name: archive.read(name) for name in archive.namelist()}
+    tarball_name = ALIAS_TARBALL if package == ALIAS_NAME else TARBALL
+    payload = io.BytesIO()
+    with (
+      tarfile.open(fileobj=io.BytesIO(members[tarball_name]), mode="r:gz") as original,
+      tarfile.open(fileobj=payload, mode="w:gz") as modified,
+    ):
+      for member in original.getmembers():
+        data = original.extractfile(member).read()
+        if member.name == "package/README.md" or (fault == "source" and member.name == "package/package.json"):
+          data = changed(data)
+        member.size = len(data)
+        modified.addfile(member, io.BytesIO(data))
+    members[tarball_name] = payload.getvalue()
+    stem = "npm-alias-pack" if package == ALIAS_NAME else "npm-pack"
+    members[f"{stem}.sha256"] = f"{hashlib.sha256(payload.getvalue()).hexdigest()}  {tarball_name}\n".encode()
+    write_zip(archive_path, members.items())
+  with pytest.raises(RuntimeError):
+    stage_release_candidate(assets, sources, tmp_path / "candidate", f"v{VERSION}", COMMIT, notes)
 
 
 def test_release_archives_validate_without_modification(tmp_path):
@@ -592,7 +691,7 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
     source_manifest,
     candidate,
     f"v{VERSION}",
-    "tagged-sha",
+    COMMIT,
     release_notes,
   )
 
@@ -603,7 +702,7 @@ def test_release_candidate_partitions_one_validated_inventory(tmp_path):
   assert (candidate / "evidence" / "RELEASE_NOTES.md").read_bytes() == release_notes.read_bytes()
   manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
   assert manifest["tag"] == f"v{VERSION}"
-  assert manifest["commit"] == "tagged-sha"
+  assert manifest["commit"] == COMMIT
   assert {artifact["name"] for source in manifest["sources"] for artifact in source["artifacts"]} == set(
     SOURCE_ARTIFACTS
   )
@@ -628,7 +727,7 @@ def test_release_candidate_requires_repository_license_bytes(tmp_path):
       source_manifest,
       tmp_path / "candidate",
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 
@@ -644,7 +743,7 @@ def test_release_candidate_requires_repository_notice_bytes(tmp_path):
       source_manifest,
       tmp_path / "candidate",
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 
@@ -657,11 +756,11 @@ def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
     source_manifest,
     candidate,
     f"v{VERSION}",
-    "tagged-sha",
+    COMMIT,
     release_notes,
   )
 
-  manifest = validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+  manifest = validate_release_candidate(candidate, f"v{VERSION}", COMMIT)
 
   assert manifest["version"] == VERSION
 
@@ -671,7 +770,7 @@ def test_frozen_candidate_reconciles_against_its_manifest(tmp_path):
 def test_npm_candidate_reconciles_original_archive_even_with_rehashed_manifest(tmp_path, tarball, mutation):
   assets, sources, notes = write_candidate_inputs(tmp_path)
   candidate = tmp_path / "candidate"
-  stage_release_candidate(assets, sources, candidate, f"v{VERSION}", "tagged-sha", notes)
+  stage_release_candidate(assets, sources, candidate, f"v{VERSION}", COMMIT, notes)
   target = candidate / "npm" / tarball
   if mutation == "bytes":
     target.write_bytes(b"changed tarball")
@@ -697,7 +796,7 @@ def test_npm_candidate_reconciles_original_archive_even_with_rehashed_manifest(t
   }
   manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
   with pytest.raises(RuntimeError, match="npm candidate"):
-    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+    validate_release_candidate(candidate, f"v{VERSION}", COMMIT)
 
 
 def test_frozen_candidate_requires_current_repository_license(tmp_path, monkeypatch):
@@ -708,7 +807,7 @@ def test_frozen_candidate_requires_current_repository_license(tmp_path, monkeypa
     source_manifest,
     candidate,
     f"v{VERSION}",
-    "tagged-sha",
+    COMMIT,
     release_notes,
   )
   changed_license = tmp_path / "changed-LICENSE"
@@ -716,7 +815,7 @@ def test_frozen_candidate_requires_current_repository_license(tmp_path, monkeypa
   monkeypatch.setattr(release_validation, "ROOT_LICENSE", changed_license)
 
   with pytest.raises(RuntimeError, match="does not match the repository LICENSE"):
-    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+    validate_release_candidate(candidate, f"v{VERSION}", COMMIT)
 
 
 @pytest.mark.parametrize("mutation", ["bytes", "manifest-hash", "extra-directory", "identity", "schema-type"])
@@ -728,7 +827,7 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
     source_manifest,
     candidate,
     f"v{VERSION}",
-    "tagged-sha",
+    COMMIT,
     release_notes,
   )
   if mutation == "bytes":
@@ -749,7 +848,7 @@ def test_frozen_candidate_rejects_post_staging_mutations(tmp_path, mutation):
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
   with pytest.raises(RuntimeError):
-    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+    validate_release_candidate(candidate, f"v{VERSION}", COMMIT)
 
 
 @pytest.mark.parametrize(
@@ -785,7 +884,7 @@ def test_release_candidate_rejects_invalid_source_manifest(tmp_path, mutation, m
       source_manifest,
       tmp_path / "candidate",
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 
@@ -801,7 +900,7 @@ def test_frozen_candidate_rejects_invalid_file_identity_types(tmp_path, field, v
     source_manifest,
     candidate,
     f"v{VERSION}",
-    "tagged-sha",
+    COMMIT,
     release_notes,
   )
   manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -810,7 +909,7 @@ def test_frozen_candidate_rejects_invalid_file_identity_types(tmp_path, field, v
   manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
   with pytest.raises(RuntimeError, match="Invalid release candidate file identity"):
-    validate_release_candidate(candidate, f"v{VERSION}", "tagged-sha")
+    validate_release_candidate(candidate, f"v{VERSION}", COMMIT)
 
 
 def test_release_candidate_rejects_extra_asset_and_existing_destination(tmp_path):
@@ -823,7 +922,7 @@ def test_release_candidate_rejects_extra_asset_and_existing_destination(tmp_path
       source_manifest,
       tmp_path / "candidate",
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 
@@ -836,7 +935,7 @@ def test_release_candidate_rejects_extra_asset_and_existing_destination(tmp_path
       source_manifest,
       candidate,
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 
@@ -851,7 +950,7 @@ def test_release_candidate_rejects_non_file_asset(tmp_path):
       source_manifest,
       tmp_path / "candidate",
       f"v{VERSION}",
-      "tagged-sha",
+      COMMIT,
       release_notes,
     )
 

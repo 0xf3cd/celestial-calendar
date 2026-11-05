@@ -1,5 +1,9 @@
 # @NAME@
 
+<!-- package-context -->
+This guide describes the current source, including unreleased changes.
+<!-- /package-context -->
+
 `@NAME@` is a short installation and import name for
 [CelestialCalendar](https://github.com/0xf3cd/celestial-calendar), an astronomy and Chinese calendar library.
 It installs the exact same version of `celestial-calendar` and forwards its public top-level Python API.

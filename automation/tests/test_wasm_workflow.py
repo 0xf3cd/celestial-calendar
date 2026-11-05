@@ -8,6 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import copy
 import json
 import hashlib
 import os
@@ -33,8 +34,7 @@ JAVASCRIPT = ROOT / "bindings" / "javascript"
 WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 
 
-def test_emsdk_source_is_pinned_even_on_cache_hits():
-  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+def assert_emsdk_source_contract(workflow):
   env = workflow["env"]
   steps = workflow["jobs"]["wasm"]["steps"]
   cache_step = next(step for step in steps if step.get("name") == "Cache emsdk")
@@ -43,6 +43,7 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
 
   assert env["EMSDK_VERSION"] == "6.0.6"
   assert env["EMSDK_COMMIT"] == "9981799f744be74ac67b1c1813ff172f63be0630"
+  assert cache_step["if"] == "github.event_name == 'pull_request'"
   assert cache_step["with"]["key"] == "emsdk-${{ env.EMSDK_VERSION }}-${{ env.EMSDK_COMMIT }}-${{ runner.os }}"
   assert install_step["if"] == "steps.emsdk-cache.outputs.cache-hit != 'true'"
   assert 'git -C emsdk fetch --depth 1 origin "$EMSDK_COMMIT"' in install_step["run"]
@@ -60,6 +61,24 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
     "exit 1",
     "fi",
   ]
+
+
+def test_emsdk_source_is_pinned_even_on_cache_hits():
+  assert_emsdk_source_contract(yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("condition", [None, "true", "github.event_name == 'workflow_dispatch'"])
+def test_dispatched_producers_cannot_restore_or_save_an_emsdk_cache(condition):
+  document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_emsdk_source_contract(document)
+  mutated = copy.deepcopy(document)
+  cache = next(step for step in mutated["jobs"]["wasm"]["steps"] if step.get("name") == "Cache emsdk")
+  if condition is None:
+    del cache["if"]
+  else:
+    cache["if"] = condition
+  with pytest.raises((AssertionError, KeyError)):
+    assert_emsdk_source_contract(mutated)
 
 
 def test_wasm_artifact_inventory_matches_collector():

@@ -123,7 +123,7 @@ def test_resolver_and_api_urls_use_posix_page_paths(sources, page_path_flavour):
     ),
   ):
     assert site.source_destination(root, origin, target, page, SHA) == expected
-  api = site.rewrite_api(root, "index.html", '<a href="guide.md#units">Guide</a>', SHA, VERSION)
+  api = site.rewrite_api(root, "index.html", '<a href="guide.md#units">Guide</a>', site.SiteContext(VERSION, SHA))
   assert 'href="../docs/guide.html#units"' in api
 
 
@@ -169,8 +169,10 @@ def test_site_is_opt_in_and_uses_actual_version(monkeypatch):
     assert ("Generate documentation site" in [task.name for task in tasks]) is expected
     if expected:
       versions = []
-      monkeypatch.setattr(project, "build_site", lambda value, versions=versions: versions.append(value) or 0)
-      assert tasks[0].func() == 0 and versions == [project.BUILD_VERSION]
+      monkeypatch.setattr(
+        project, "build_site", lambda value, tag, versions=versions: versions.append((value, tag)) or 0
+      )
+      assert tasks[0].func() == 0 and versions == [(project.BUILD_VERSION, None)]
 
 
 def test_shared_nonflattened_parse_preserves_source_parser():
@@ -183,7 +185,9 @@ def test_shared_nonflattened_parse_preserves_source_parser():
 
 
 def test_template_inserts_source_content_without_reinterpreting_it(sources):
-  text = site.page_html(sources[0], "index.html", SHA, VERSION, "docs/guide.md", "Title", "<code>{{toc}}</code>", "TOC")
+  text = site.page_html(
+    sources[0], "index.html", site.SiteContext(VERSION, SHA), "docs/guide.md", "Title", "<code>{{toc}}</code>", "TOC"
+  )
   assert "<code>{{toc}}</code>" in text
 
 
@@ -439,9 +443,9 @@ def test_source_identity_wins_over_relative_and_absolute_url_spelling(sources):
   with pytest.raises(ValueError):
     site.source_destination(root, "docs/API.md", "../../outside", "api/index.html", SHA)
   with pytest.raises(ValueError):
-    site.rewrite_api(root, "unknown.html", '<a href="guide.md">Guide</a>', SHA, VERSION)
+    site.rewrite_api(root, "unknown.html", '<a href="guide.md">Guide</a>', site.SiteContext(VERSION, SHA))
   raw = '<script>const example = "guide.md";</script><code>guide.md</code><a href="symbol.html#symbol">X</a>'
-  assert site.rewrite_api(root, "symbol.html", raw, SHA, VERSION) == raw
+  assert site.rewrite_api(root, "symbol.html", raw, site.SiteContext(VERSION, SHA)) == raw
 
 
 @pytest.mark.parametrize(
@@ -455,7 +459,9 @@ def test_repository_home_and_root_tree_name_the_hosted_readme(sources, monkeypat
   expected = "../README.html" + ("?tab=readme#cpp" if "?" in suffix else "")
   assert result == expected
   assert site.repository_source(target) == "README.md"
-  api = site.rewrite_api(root, "symbol.html", f'<a href="{target}">Home</a><code>{target}</code>', SHA, VERSION)
+  api = site.rewrite_api(
+    root, "symbol.html", f'<a href="{target}">Home</a><code>{target}</code>', site.SiteContext(VERSION, SHA)
+  )
   assert f'<a href="{expected}">Home</a>' in api
   assert f"<code>{target}</code>" in api
 
@@ -477,7 +483,7 @@ def test_trailing_slash_blob_root_still_rejects_an_empty_file(sources):
   with pytest.raises(ValueError, match="repository source URL has no file"):
     site.source_destination(root, "docs/guide.md", target, "docs/guide.html", SHA)
   with pytest.raises(ValueError, match="repository source URL has no file"):
-    site.rewrite_api(root, "symbol.html", f'<a href="{target}">Empty</a>', SHA, VERSION)
+    site.rewrite_api(root, "symbol.html", f'<a href="{target}">Empty</a>', site.SiteContext(VERSION, SHA))
   (output / "index.html").write_text(f'<a href="{target}">Empty</a>')
   with pytest.raises(ValueError, match="repository source URL has no file"):
     site.crawl(output)
@@ -505,7 +511,8 @@ def test_external_and_github_service_links_survive_render_and_crawl(sources, tar
   page.write_text(page.read_text().replace("</article>", body + "</article>"))
   assert site.crawl(output)["html_pages"] == 7
   assert (
-    site.rewrite_api(root, "symbol.html", f'<a href="{target}">UI</a>', SHA, VERSION) == f'<a href="{target}">UI</a>'
+    site.rewrite_api(root, "symbol.html", f'<a href="{target}">UI</a>', site.SiteContext(VERSION, SHA))
+    == f'<a href="{target}">UI</a>'
   )
 
 
@@ -696,3 +703,112 @@ def test_site_doxygen_override_keeps_root_relative_inputs_and_legacy_artifact(so
   monkeypatch.setattr(build, "run_cmd", run)
   assert build.build_docs("development label", output=output) == 2
   assert legacy.read_text() == "legacy"
+
+
+@pytest.fixture
+def release_site(sources):
+  root, api, output, generators, _ = sources
+  for path in api.glob("*.html"):
+    path.write_text(path.read_text().replace(f"{VERSION} · {site.STATE} @ {SHA}", f"{VERSION} · release @ {SHA}"))
+  tag = f"v{VERSION}"
+  site.assemble(root, output, api, site.source_snapshot(root), VERSION, generators, tag)
+  assert site.validate_site(root, output, SHA, tag, VERSION)["html_pages"] == 7
+  return root, output, tag
+
+
+def test_release_site_has_one_version_source_and_visible_release_context(release_site):
+  root, output, tag = release_site
+  manifest = json.loads((output / "site-manifest.json").read_text())
+  assert (manifest["schema"], manifest["release_tag"], manifest["state"]) == (2, tag, "release")
+  for page in output.rglob("*.html"):
+    assert f"<strong>Release {tag}</strong>" in page.read_text()
+    assert "Development / unreleased" not in page.read_text()
+  with pytest.raises(ValueError):
+    site.validate_site(root, output, SHA)
+
+
+@pytest.mark.parametrize(
+  "field,value",
+  [
+    ("schema", 1),
+    ("release_tag", "v9.9.9"),
+    ("release_tag", None),
+    ("state", site.STATE),
+    ("version", "9.9.9"),
+    ("source_sha", "b" * 40),
+  ],
+)
+def test_release_manifest_is_checked_against_external_identity(release_site, field, value):
+  root, output, tag = release_site
+  path = output / "site-manifest.json"
+  document = json.loads(path.read_text())
+  document[field] = value
+  path.write_text(json.dumps(document))
+  with pytest.raises(ValueError):
+    site.validate_site(root, output, SHA, tag, VERSION)
+
+
+@pytest.mark.parametrize("page", ["docs/guide.html", "api/symbol.html", "api/doxygen_crawl.html"])
+@pytest.mark.parametrize("fault", ["visible", "tag", "state"])
+def test_resealed_release_pages_cannot_keep_wrong_visible_or_machine_labels(release_site, page, fault):
+  root, output, tag = release_site
+  path = output / page
+  text = path.read_text()
+  old, new = {
+    "visible": (f"<strong>Release {tag}</strong>", "<strong>Development / unreleased</strong>"),
+    "tag": (f'data-release-tag="{tag}"', 'data-release-tag="v9.9.9"'),
+    "state": ('data-state="release"', f'data-state="{site.STATE}"'),
+  }[fault]
+  assert old in text
+  path.write_text(text.replace(old, new))
+  reseal(output)
+  with pytest.raises(ValueError, match="site page source/version/state/visible label"):
+    site.validate_site(root, output, SHA, tag, VERSION)
+
+
+def test_release_site_rejects_external_version_or_source_disagreement(release_site):
+  root, output, tag = release_site
+  with pytest.raises(ValueError, match="externally expected version"):
+    site.validate_site(root, output, SHA, tag, "9.9.9")
+  with pytest.raises(ValueError, match="source SHA"):
+    site.validate_site(root, output, "b" * 40, tag, VERSION)
+
+
+def test_release_builder_rejects_tag_that_names_another_commit_before_overwriting_output(sources, monkeypatch):
+  root = sources[0]
+  monkeypatch.setattr(site.paths, "proj_root", lambda: root)
+  original = site.git
+
+  def git(directory, *args):
+    if args == ("rev-parse", f"refs/tags/v{VERSION}^{{commit}}"):
+      return ("b" * 40).encode()
+    return original(directory, *args)
+
+  monkeypatch.setattr(site, "git", git)
+  output = root / "build/docs-site"
+  output.mkdir(parents=True)
+  (output / "previous").write_text("keep")
+  assert site.build_site(VERSION, f"v{VERSION}") == 1
+  assert (output / "previous").read_text() == "keep"
+
+
+@pytest.mark.parametrize(
+  "name",
+  [
+    "Requirements-docs.in",
+    "Requirements-docs.txt",
+    "toolbox/docs_links.py",
+    "toolbox/package_docs.py",
+    "toolbox/release_validation.py",
+  ],
+)
+def test_documentation_lock_and_shared_helpers_are_exact_snapshot_inputs(sources, name):
+  root, _, _, _, files = sources
+  files[name] = "snapshot input\n"
+  path = root / name
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(files[name])
+  assert site.source_snapshot(root)["inputs"][name] == site.digest(files[name].encode())
+  path.write_text("changed\n")
+  with pytest.raises(ValueError, match="differs from source SHA"):
+    site.source_snapshot(root)

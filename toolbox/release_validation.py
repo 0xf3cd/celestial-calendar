@@ -15,11 +15,13 @@ import io
 import json
 import re
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import zipfile
 
 from collections import Counter
+from email.parser import BytesParser
 from pathlib import Path, PurePosixPath
 from typing import Final, Iterable
 
@@ -33,6 +35,7 @@ from toolbox.build_npm import (
   verify_manifest,
 )
 from toolbox.runtime_floor import validate_runtime_floor
+from toolbox import package_docs
 from toolbox.build_python_aliases import (
   ALIAS_ARTIFACT,
   ALIAS_NAMES,
@@ -195,6 +198,21 @@ def _runtime_matrix(readme: Path = README) -> dict[str, dict[str, dict[str, str]
   return matrix
 
 
+def validate_release_source(root: Path, tag_name: str, commit: str, version: str) -> None:
+  """Require a matching release tag/version and a commit contained in fetched origin/main history."""
+  if re.fullmatch(r"v\d+\.\d+\.\d+", tag_name) is None or tag_name != f"v{version}":
+    raise ValueError(f"Release tag {tag_name!r} does not match project version {version!r}")
+  if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+    raise ValueError("Release source must be an exact 40-character commit SHA")
+  subprocess.run(
+    ["git", "merge-base", "--is-ancestor", commit, "origin/main"],
+    cwd=root,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+
+
 def validate_release_document_versions(tag_name: str, documents: Iterable[Path] = RELEASE_DOCUMENTS) -> None:
   """Require each release document's first version heading to match the tag."""
   expected = tag_name.removeprefix("v")
@@ -273,6 +291,7 @@ def validate_wheel_sidecars(
   downloaded: Iterable[Path],
   version: str,
   require_complete: bool = False,
+  expected_commit: str | None = None,
 ) -> None:
   payloads: dict[str, Path] = {}
   for path in downloaded:
@@ -299,10 +318,24 @@ def validate_wheel_sidecars(
   for package_name, package_wheels in groups.items():
     for wheel in package_wheels:
       if package_name != PRIMARY_PACKAGE:
-        validate_alias_wheel(wheel, package_name, version)
+        validate_alias_wheel(wheel, package_name, version, sha=expected_commit)
       else:
         try:
           with zipfile.ZipFile(wheel) as archive:
+            if expected_commit is not None:
+              metadata = BytesParser().parsebytes(archive.read(f"celestial_calendar-{version}.dist-info/METADATA"))
+              expected_urls = {f"{label}, {url}" for label, url in package_docs.python_urls(expected_commit).items()}
+              readme = package_docs.render_readme(
+                (package_docs.ROOT / "bindings/python/README.md").read_text(encoding="utf-8"), version, expected_commit
+              )
+              if (metadata["Name"], metadata["Version"], metadata["Description-Content-Type"]) != (
+                PRIMARY_PACKAGE,
+                version,
+                "text/markdown",
+              ) or set(metadata.get_all("Project-URL") or []) != expected_urls:
+                raise RuntimeError(f"Wheel documentation metadata differs from release source: {wheel.name}")
+              if metadata.get_payload(decode=True).decode("utf-8") != readme:
+                raise RuntimeError(f"Wheel README differs from release source: {wheel.name}")
             _require_license(
               archive,
               f"celestial_calendar-{version}.dist-info/licenses/LICENSE",
@@ -343,6 +376,7 @@ def npm_candidate_tarballs(candidate: Path, version: str) -> dict[str, Path]:
 def npm_archive_payload(
   archive_path: Path,
   version: str,
+  expected_commit: str | None = None,
 ) -> dict[str, bytes]:
   """Validate one WASM archive and return its registry publication payload."""
   try:
@@ -398,7 +432,16 @@ def npm_archive_payload(
               ):
                 raise RuntimeError(f"npm tarball member inventory mismatch: {name}")
               manifest = packed.extractfile("package/package.json")
-              verify_manifest(json.loads(manifest.read()), version, name)
+              verify_manifest(json.loads(manifest.read()), version, name, expected_commit)
+              if expected_commit is not None:
+                directory = "javascript-alias" if name == ALIAS_NAME else "javascript"
+                readme = package_docs.render_readme(
+                  (package_docs.ROOT / f"bindings/{directory}/README.md").read_text(encoding="utf-8"),
+                  version,
+                  expected_commit,
+                )
+                if packed.extractfile("package/README.md").read() != readme.encode("utf-8"):
+                  raise RuntimeError(f"npm README differs from release source: {name}")
           except (tarfile.TarError, ValueError) as error:
             raise RuntimeError(f"Invalid npm tarball {tarball_name}: {error}") from error
         payload[tarball_name] = tarball
@@ -410,9 +453,10 @@ def npm_archive_payload(
 def validate_wasm_archive(
   archive_path: Path,
   version: str,
+  expected_commit: str | None = None,
 ) -> None:
   """Validate the exact WASM/npm artifact contract without changing the ZIP."""
-  npm_archive_payload(archive_path, version)
+  npm_archive_payload(archive_path, version, expected_commit)
 
 
 def _native_layout(
@@ -484,6 +528,7 @@ def validate_release_archives(
   version: str,
   check_documented_runtime: bool = True,
   require_wheels: bool = False,
+  expected_commit: str | None = None,
 ) -> None:
   """Validate release archives and wheels against repository license and notice bytes."""
   downloaded = list(downloaded)
@@ -491,6 +536,7 @@ def validate_release_archives(
     downloaded,
     version,
     require_complete=require_wheels,
+    expected_commit=expected_commit,
   )
   archives: dict[str, Path] = {}
   for path in downloaded:
@@ -510,6 +556,7 @@ def validate_release_archives(
   validate_wasm_archive(
     archives[WASM_ARCHIVE],
     version,
+    expected_commit,
   )
   for filename, artifact_name in NATIVE_ARCHIVES.items():
     expected_runtime = runtime_matrix[artifact_name] if runtime_matrix is not None else None
@@ -683,6 +730,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     github_files,
     version,
     require_wheels=True,
+    expected_commit=commit,
   )
   wheels = sorted(pypi.iterdir())
   python_wheel_groups(wheels, version)
@@ -707,6 +755,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
     [*wheels, *sidecars],
     version,
     require_complete=True,
+    expected_commit=commit,
   )
   for wheel, sidecar in zip(wheels, sidecars, strict=True):
     if wheel.read_bytes() != (github / wheel.name).read_bytes():
@@ -717,6 +766,7 @@ def validate_release_candidate(candidate: Path, tag_name: str, commit: str) -> d
   npm_payload = npm_archive_payload(
     github / WASM_ARCHIVE,
     version,
+    commit,
   )
   if {path.name for path in npm.iterdir()} != {name for name in npm_payload if name.endswith(".tgz")}:
     raise RuntimeError("npm candidate tarball inventory mismatch")
@@ -753,6 +803,7 @@ def stage_release_candidate(
     assets,
     version,
     require_wheels=True,
+    expected_commit=commit,
   )
   wheels = sorted(path for path in assets if path.name.endswith(".whl"))
   sidecars = sorted(path for path in assets if path.name.endswith(".whl.sha256"))
@@ -774,6 +825,7 @@ def stage_release_candidate(
   npm_payload = npm_archive_payload(
     release_assets / WASM_ARCHIVE,
     version,
+    commit,
   )
 
   save_to.parent.mkdir(parents=True, exist_ok=True)

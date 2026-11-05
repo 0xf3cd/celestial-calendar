@@ -435,7 +435,10 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
     exec(compile(source, str(PYTHON_READER), "exec"), python_reader.__dict__)
   root = tmp_path / "checkout"
   (root / "bindings/python").mkdir(parents=True)
-  guide = "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  guide = (
+    "<!-- package-context -->source<!-- /package-context -->\n"
+    "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  )
   (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
   calls = []
@@ -443,12 +446,19 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
   def run(code, cwd, expected=None):
     calls.append(code)
     if code.startswith("import importlib.metadata"):
-      return json.dumps({"metadata": "Name: celestial-calendar\n\n" + guide})
+      return json.dumps(
+        {
+          "metadata": "Name: celestial-calendar\n\n" + python_reader.render_readme(guide, "1.2.0", "a" * 40),
+          "version": "1.2.0",
+          "urls": [f"{label}, {url}" for label, url in python_reader.python_urls("a" * 40).items()],
+        }
+      )
     return expected or "unused\n"
 
   monkeypatch.setattr(python_reader, "REPO", root)
   monkeypatch.setattr(python_reader, "run_program", run)
   monkeypatch.setattr(python_reader, "verify_provenance", lambda record: None)
+  monkeypatch.setattr(python_reader.subprocess, "check_output", lambda *args, **kwargs: "a" * 40 + "\n")
   if skip:
     with pytest.raises(AssertionError):
       python_reader.main()

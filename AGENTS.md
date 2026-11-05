@@ -107,6 +107,7 @@ The WASM/npm exception has its own shared manual/CI path, the four commands in
 `build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json`; do not select either with a glob or
 rebuild per consumer. The builder packs primary and alias once each in separate staging directories.
 Registry acceptance installs each npm name alone and both together at the same version.
+Only PR WASM jobs restore/save the unpacked emsdk cache; manual producers always install the pinned SDK fresh.
 All releases publish the exact CI-tested artifacts without rebuilding or repacking; publication and
 registry-byte verification are defined in [RELEASING](docs/RELEASING.md).
 
@@ -134,7 +135,11 @@ documentation syntax errors but does not require every declaration/parameter to 
 `./project.py --site` separately builds/verifies the development site in `build/docs-site` from a clean
 committed root, with Markdown guides and an independently generated API subtree. It preserves `--docs` and
 is also excluded from `--all`. Core uploads `celestial-docs-site`; `docs-publish.yml` is manual only and
-requires a protected default-branch dispatch. Environment protection and Pages enabling are separate
+requires a protected default-branch dispatch. Its optional `release_tag` selects a published immutable release
+and builds the resolved SHA with `--site-release-tag`; schema-2 manifest and visible guide/API labels must match
+the resolver's version/SHA/tag. Publication installs only the hash-locked binary documentation closure.
+Package README/Documentation URLs are generated at the producer SHA and reconciled against the release commit;
+dirty or unversioned local builds remain explicitly developmental. Environment protection and Pages enabling are separate
 operations, ordered in [Maintenance](docs/MAINTAINING.md#docs-publishing).
 
 Randomized tests draw from a shared, seeded engine (`test/random.hpp`, #69): default seed
