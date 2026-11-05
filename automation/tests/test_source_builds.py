@@ -26,6 +26,31 @@ from toolbox import build_info
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.parametrize("valid", [True, False])
+def test_build_info_cli_serializes_the_checked_out_commit(tmp_path, valid):
+  head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+  result = subprocess.run(
+    [
+      sys.executable,
+      str(ROOT / "toolbox/build_info.py"),
+      "--save-to",
+      str(tmp_path),
+      "--git-commit",
+      head if valid else "HEAD",
+    ],
+    cwd=tmp_path,
+    capture_output=True,
+    text=True,
+  )
+  if valid:
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads((tmp_path / "build_info.json").read_text())["git_commit"] == head
+  else:
+    assert result.returncode != 0
+    assert "full lowercase SHA-1" in result.stderr
+    assert not (tmp_path / "build_info.json").exists()
+
+
 @pytest.fixture(params=["standalone", "nested"])
 def source_only_tree(source_tree, tmp_path, request):
   original, _, _ = source_tree

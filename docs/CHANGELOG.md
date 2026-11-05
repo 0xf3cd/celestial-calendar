@@ -4,8 +4,9 @@
 
 ### Fixed
 
-- C, Python and JavaScript UT1-to-JDE and apparent-solar-time calls reject year-zero inputs before the TT shift,
-  matching their declared `[1, 32767]` input-year domain.
+- UT1-to-JDE and apparent-solar-time calls now reject year-zero inputs, including late times on December 31
+  that previously passed despite the declared `[1, 32767]` domain. C records invalid input; Python raises
+  `ValueError`, and JavaScript raises `RangeError`.
 
 ## [v1.1.1]
 

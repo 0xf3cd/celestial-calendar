@@ -160,6 +160,42 @@ def test_translated_guides_share_code_blocks(english, chinese):
   assert chinese_blocks == english_blocks
 
 
+def test_api_header_include_spellings_resolve():
+  guide = (REPO / "docs/API.md").read_text(encoding="utf-8")
+  spellings = re.findall(r'`"([^"\n]+\.hpp)"`', guide)
+  assert spellings
+  roots = [REPO / "src" / name for name in ("astro", "calendar", "util")]
+  assert not [name for name in spellings if not any((root / name).is_file() for root in roots)]
+
+
+@pytest.mark.parametrize(
+  ("package", "language", "conversion", "display"),
+  [
+    (
+      "python",
+      "python",
+      "upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)",
+      "celestial.jde_to_utc(upcoming_jde_tt)",
+    ),
+    (
+      "javascript",
+      "js",
+      "const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);",
+      "celestial.time.jdeToUtc(upcomingJdeTt)",
+    ),
+  ],
+)
+def test_next_jieqi_utc_display_converts_the_selected_ut1_moment(package, language, conversion, display):
+  programs = [
+    code
+    for info, code in code_blocks(document(REPO / "bindings" / package / "README.md"))
+    if info == language and "Remaining UT1 days:" in code
+  ]
+  assert len(programs) == 1
+  assert conversion in programs[0]
+  assert display in programs[0]
+
+
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_anchors(english, chinese):
   english_anchors, chinese_anchors = anchors(REPO / english), anchors(REPO / chinese)

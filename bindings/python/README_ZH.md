@@ -57,7 +57,7 @@ print(today, lunar)
 ```python
 import celestial_calendar as celestial
 
-utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)  # 19:35:37 UTC
 jde_tt = celestial.utc_to_jde(utc)
 print(celestial.jde_to_utc(jde_tt))
 ```
@@ -86,10 +86,13 @@ remaining_days = celestial.ut1_to_jd(upcoming.moment_ut1) - cutoff_jd
 print(celestial.jieqi_name(upcoming.jieqi))
 print("UT1:", upcoming.moment_ut1)
 print("Remaining UT1 days:", remaining_days)
+upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)
+print("UTC:", celestial.jde_to_utc(upcoming_jde_tt))
 ```
 
-剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。`cutoff_jd` 和节气值是 JD(UT1)，
-不是 JDE(TT)，不能传给 `jde_to_utc()`；显示 UTC 前先用 `ut1_to_jde(event.moment_ut1)` 转为 TT。
+剩余天数保留小数，是两个 UT1 儒略日之差，不是公历日期之差。`cutoff_jd` 与由
+`upcoming.moment_ut1` 换算的 JD 都是 JD(UT1)，不是 JDE(TT)，不能传给 `jde_to_utc()`。
+显示 UTC 前，先用 `celestial.ut1_to_jde(upcoming.moment_ut1)` 转为 TT，再传给 `celestial.jde_to_utc()`。
 此例只演示这次跨年查询，
 不是覆盖整个 API 年域的通用搜索。节气查询的年域与失败边界见 [API 契约](#api-contract)。
 

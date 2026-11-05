@@ -8,6 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import ast
 import hashlib
 import json
 import re
@@ -44,6 +45,20 @@ def _source_payloads() -> tuple[dict, dict]:
     json.loads((root / RECORD_NAME).read_text(encoding="utf-8")),
     json.loads((root / REGISTRY_NAME).read_text(encoding="utf-8")),
   )
+
+
+def test_pymeeus_regenerator_epochs_match_the_retained_earth_rows():
+  script = ast.parse((REPO_ROOT / "statistics/vsop87d_reference.py").read_text(encoding="utf-8"))
+  epochs = next(
+    ast.literal_eval(node.value)
+    for node in script.body
+    if isinstance(node, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == "EPOCHS" for target in node.targets)
+  )
+  source = (REPO_ROOT / "src/test/astro/vsop87d_test.cpp").read_text(encoding="utf-8")
+  block = source.split("EARTH_DATASET", 1)[1].split("};", 1)[0]
+  rows = [float(value) for value in re.findall(r"^\s*\{\s*([0-9]+\.[0-9]+)\s*,", block, re.MULTILINE)]
+  assert rows == list(epochs)
 
 
 def _referenced_paths(record: dict, registry: dict) -> set[Path]:

@@ -119,8 +119,9 @@ int main() {
 
 把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行：
 
+三个 include 根目录都要用上；嵌套头文件保留子目录，如 `"lunar/converter.hpp"`。
+
 ```sh
-# Use all three include roots; nested headers keep their directory, e.g. "lunar/converter.hpp".
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
   build/quickstart.cpp -o build/quickstart
 ./build/quickstart
@@ -134,11 +135,11 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 [API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。星盘快照也能从 C、Python 和 JavaScript 调用；
 独立黄道／赤道位置、民用时刻宫位、区间事件和能力查询另有 C 与 Python 接口，JavaScript 不暴露这些查询。
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 提供定黄经、留站和带方向两体黄经差的区间搜索；
-半开区间归属、精确切触和浮点前提见[黄经事件指南](docs/EPHEMERIS_EVENTS.md)。
+半开区间的端点归属、精确切触和浮点前提见[黄经事件指南（英文）](docs/EPHEMERIS_EVENTS.md)。
 独立位置按所选目标各自的模型窗口查询；民用宫位遵循共用民用策略，不套快照的联合目标／速率窗口。
 C 与 Python 的结果会记录解析后的模型／来源身份。
 [C++ 头文件清单（英文）](docs/API.md#cpp-headers)列出实际 include 写法、公开物理类型与底层支持头文件；
-可运行的[下一个节气示例](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
+可运行的[下一个节气示例（英文）](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
 直接用 `JieqiGenerator` 取得 TT 时刻，再用 `calendar::add_seconds()` 显示 UTC+8。
 
 <a id="c-abi"></a>
@@ -221,7 +222,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 正容量会截断并补 NUL。节气时刻固定通过 Algo5 转为 UT1，不是 UTC 或东八区日期。ABI 演进规则见
 [C API 指南（英文）](docs/API.md#c-chart-snapshot)。
 
-完整运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
+各平台的最低运行环境（包括 macOS arm64 的系统版本下限）和产物实测值，统一见英文版的
+[原生运行环境表](README.md#native-runtime)。
 
 <a id="features"></a>
 ## 功能与算法

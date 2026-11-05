@@ -18,7 +18,7 @@
 [English](README.md)
 
 本文描述当前源码，含尚未发布的改动。以下安装命令取得 npm 上的最新已发布版本，请使用与所装版本匹配的文档。
-日志接口移除、太阳距离字段改名和错误类别变化见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
+命名空间别名、日志接口移除、太阳距离字段改名和错误类别变化见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
 
 <a id="install"></a>
 ## 安装
@@ -117,7 +117,7 @@ console.log(gregorian, lunar);
 import { init, time } from "@0xf3cd/celestial";
 
 await init();
-const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 }; // 19:35:37 UTC
 const jdeTt = time.utcToJde(utc);
 console.log(time.jdeToUtc(jdeTt));
 ```
@@ -150,11 +150,13 @@ if (upcoming === undefined) throw new Error("No later Jieqi in the queried years
 console.log(celestial.jieqi.name(upcoming.jieqi));
 console.log("UT1:", upcoming.momentUt1);
 console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);
+console.log("UTC:", celestial.time.jdeToUtc(upcomingJdeTt));
 ```
 
 这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
 `jdUt1` 和 `cutoffJd` 是 JD(UT1)，不是 JDE(TT)，不能传给 `time.jdeToUtc()`；
-显示 UTC 前先用 `time.ut1ToJde(event.momentUt1)` 转为 TT。
+显示 UTC 前先用 `celestial.time.ut1ToJde(upcoming.momentUt1)` 转为 TT，再传给 `celestial.time.jdeToUtc()`。
 `momentUt1` 是 UT1，不是 UTC 或东八区时间。此例只演示这次跨年查询，不是覆盖整个 API 年域的通用搜索；
 `jieqi.moment()` 的查询年域与失败条件见 [API 契约](#api-contract)。
 
@@ -263,7 +265,7 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 
 原生 `GregorianDate` 和 `CivilDateTimeResult` 结果使用 `[-32767, 32767]` 内的天文纪年，0 年表示公元前 1 年。
 `CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
-`time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
+`time.jdeToUt1()`、`time.jdeToUtc()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
 这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
 结果符合所调用操作的输入窗口时，仍可作为民用时刻输入。函数读取 `fraction`，而非派生的时分秒字段。
 时间尺度由操作命名区分，不编码在这个共用记录类型中。

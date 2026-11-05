@@ -241,9 +241,11 @@ def test_stage_and_main_prs_receive_the_build_workflows(filename):
 
 def test_docker_build_info_uses_the_checked_out_commit():
   workflow = load_workflow(WORKFLOWS / "build_and_test.yml")
-  commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["linux-docker"]["steps"])
-  assert "SOURCE_COMMIT=$(git rev-parse HEAD)" in commands
-  assert '--build-arg GIT_COMMIT="$SOURCE_COMMIT"' in commands
+  commands = [step.get("run", "") for step in workflow["jobs"]["linux-docker"]["steps"]]
+  assert any(
+    "SOURCE_COMMIT=$(git rev-parse HEAD)" in command and '--build-arg GIT_COMMIT="$SOURCE_COMMIT"' in command
+    for command in commands
+  )
   dockerfile = (REPO / "Dockerfile").read_text()
   assert 'ARG GIT_COMMIT=""' in dockerfile
   assert '--git-commit "${GIT_COMMIT}"' in dockerfile

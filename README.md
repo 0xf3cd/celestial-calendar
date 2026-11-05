@@ -130,8 +130,9 @@ int main() {
 Save it as `build/quickstart.cpp` (create `build/` if needed; Git ignores it) and run from the source root with a
 C++23-capable clang++ installation:
 
+Use all three include roots. Nested headers keep their subdirectory, for example `"lunar/converter.hpp"`.
+
 ```sh
-# Use all three include roots; nested headers keep their directory, e.g. "lunar/converter.hpp".
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
   build/quickstart.cpp -o build/quickstart
 ./build/quickstart

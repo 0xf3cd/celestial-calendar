@@ -130,7 +130,7 @@ invertible. After the leap table's last entry, these conversions retain its fina
 import { init, time } from "@0xf3cd/celestial";
 
 await init();
-const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 }; // 19:35:37 UTC
 const jdeTt = time.utcToJde(utc);
 console.log(time.jdeToUtc(jdeTt));
 ```
@@ -164,11 +164,14 @@ if (upcoming === undefined) throw new Error("No later Jieqi in the queried years
 console.log(celestial.jieqi.name(upcoming.jieqi));
 console.log("UT1:", upcoming.momentUt1);
 console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);
+console.log("UTC:", celestial.time.jdeToUtc(upcomingJdeTt));
 ```
 
 This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
 UT1 days. `jdUt1` and `cutoffJd` are JD(UT1), not JDE(TT); do not pass them to `time.jdeToUtc()`.
-For UTC display, first use `time.ut1ToJde(event.momentUt1)`.
+For UTC display, first use `celestial.time.ut1ToJde(upcoming.momentUt1)`, then pass that JDE to
+`celestial.time.jdeToUtc()`.
 `momentUt1` is UT1, not UTC or a UTC+8 wall clock. This is a fixed contemporary query across one year
 boundary, not a search algorithm for the entire API domain; the query-year domain and failure conditions of
 `jieqi.moment()` are listed under [API Contract](#api-contract).
@@ -216,8 +219,8 @@ and have the static server send it with `Content-Type: application/wasm`.
 
 The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. Independent position, equatorial,
-house, event, capability and model-text queries are not public JavaScript APIs.
+`"algo3"`. Independent position, equatorial, house, event, capability and model-text queries are not public
+JavaScript APIs.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
@@ -285,7 +288,7 @@ set to `undefined`. With TypeScript's `exactOptionalPropertyTypes` enabled, type
 
 Native `GregorianDate` and `CivilDateTimeResult` results use astronomical years in `[-32767, 32767]`, with year 0
 denoting 1 BCE. `CivilDateTimeResult` adds an integer `hour` and `minute` and a possibly fractional `second` to `CivilDateTime`.
-`time.jdeToUt1()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
+`time.jdeToUt1()`, `time.jdeToUtc()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
 These fields are derived from the day fraction and are not rounded to milliseconds; `second` counts seconds, not
 milliseconds. A result can be reused as a civil-moment input when it fits the receiving operation's input window.
 Functions read `fraction`, not the derived clock fields. The operation name, not this shared record type, says which time scale applies.

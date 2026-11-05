@@ -184,7 +184,10 @@ class MoonIllumination:
 
 @_dataclass(frozen=True)
 class JieqiMoment:
-  """UT1 civil moment of a Jieqi, not a UTC or east-eight wall date."""
+  """UT1 civil moment of a Jieqi, not a UTC or east-eight wall date.
+
+  For UTC, pass moment_ut1 through ut1_to_jde(), then jde_to_utc().
+  """
 
   jieqi: Jieqi
   moment_ut1: CivilDateTime
@@ -316,14 +319,14 @@ def _coordinate_values(result: object) -> tuple[float, float, float]:
 def ut1_to_jd(ut1: CivilDateTime) -> float:
   """Convert a UT1 civil moment to Julian Day.
 
-  Rounding at the end of year 32767 can reach 13689325.5, the excluded upper
-  endpoint of the inverse Julian-day domain; a civil roundtrip is not guaranteed.
+  Rounding at the end of year 32767 can reach JD 13689325.5. The C++ jd_to_ut1()
+  inverse rejects that rounded value, so a civil roundtrip is not guaranteed.
   """
   return _number(_result("celestial_ut1_to_jd", "ut1_to_jd", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jd")
 
 
 def ut1_to_jde(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using fixed Algo5.
+  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using the fixed ΔT model Algo5.
 
   Input years are in [1, 32767]; the shifted TT instant must also stay representable.
   """
@@ -331,7 +334,7 @@ def ut1_to_jde(ut1: CivilDateTime) -> float:
 
 
 def jde_to_ut1(jde: float) -> CivilDateTime:
-  """Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using fixed Algo5.
+  """Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
 
   The lower endpoint returns 400-12-31. Forward dates before this inverse window
   need not have an admitted inverse.
@@ -341,7 +344,7 @@ def jde_to_ut1(jde: float) -> CivilDateTime:
 
 
 def utc_to_jde(utc: CivilDateTime) -> float:
-  """Convert UTC civil fields to JDE(TT), using UT1 with fixed Algo5 before 1972.
+  """Convert UTC civil fields to JDE(TT), using UT1 with the fixed ΔT model Algo5 before 1972.
 
   Input years are in [1, 32767]; the shifted TT instant must stay representable.
   Modern dates use the fixed leap-second table, retaining its final offset afterward.
@@ -353,7 +356,7 @@ def utc_to_jde(utc: CivilDateTime) -> float:
 def jde_to_utc(jde: float) -> CivilDateTime:
   """Convert JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields.
 
-  Before 1972 the result uses the UT1 substitute with fixed Algo5; year 400 is possible.
+  Before 1972 the result uses the UT1 substitute with the fixed ΔT model Algo5; year 400 is possible.
   After the table's last entry, its final offset is retained. Leap seconds, leap-step midnight
   round-off and the 1972 model seam do not promise an exact inverse.
   """
@@ -460,8 +463,9 @@ def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTi
   """Convert civil UTC to local apparent solar time; longitude is east-positive degrees.
 
   Input years are in [1, 32767]; before 1972 the UTC fields use the UT1 substitute.
-  The result retains the UT1 minus UTC gap. After the last leap-table step it is
-  69.184 seconds minus Delta T, no longer bounded by 0.9 seconds.
+  The returned clock differs from UT1-based apparent solar time by UTC minus UT1.
+  After the last leap-table step, UT1 minus UTC is 69.184 seconds minus Delta T;
+  its magnitude is no longer bounded by 0.9 seconds.
   """
   return _protocol.decode(
     "apparent_solar_time",
@@ -494,7 +498,8 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
 def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
   """Return a Jieqi's UT1 civil moment in year [401, 32766], not a UTC+8 wall date.
 
-  Establish a time-scale conversion before displaying UTC or an east-eight date.
+  For UTC, pass the returned moment_ut1 through ut1_to_jde(), then jde_to_utc().
+  Apply the display offset to that UTC result for an east-eight date.
   The returned UT1 year may differ from the requested year.
   """
   result = _result("celestial_query_jieqi_moment", "jieqi_moment", _year(year), _enum(jieqi, Jieqi, "jieqi").value)

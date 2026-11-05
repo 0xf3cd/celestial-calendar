@@ -205,19 +205,22 @@ export function init(): Promise<void>;
 export const time: Readonly<{
   /**
    * Convert a UT1 civil moment to JD (UT1).
-   * At the end of year 32767 rounding can reach 13689325.5, the excluded inverse-domain endpoint;
-   * a civil roundtrip is not guaranteed.
+   * At the end of year 32767 rounding can reach JD 13689325.5. The C++ jd_to_ut1()
+   * inverse rejects that rounded value, so a civil roundtrip is not guaranteed.
    */
   ut1ToJd(ut1: CivilDateTime): number;
-  /** Convert UT1 to JDE(TT) using fixed Algo5; input years [1, 32767], shifted TT must stay representable. */
+  /**
+   * Convert UT1 to JDE(TT) using the fixed ΔT model Algo5.
+   * Input years [1, 32767]; shifted TT must stay representable.
+   */
   ut1ToJde(ut1: CivilDateTime): number;
   /**
-   * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using fixed Algo5.
+   * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
    * The lower endpoint returns 400-12-31; forward dates before this window need not have an admitted inverse.
    */
   jdeToUt1(jde: number): CivilDateTimeResult;
   /**
-   * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with fixed Algo5.
+   * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with the fixed ΔT model Algo5.
    * Input years are in [1, 32767], and the shifted TT instant must stay representable.
    * Uses the fixed leap-second table and retains its final offset after the last entry.
    * Leap seconds and the 1972 model seam are not generally invertible.
@@ -225,7 +228,7 @@ export const time: Readonly<{
   utcToJde(utc: CivilDateTime): number;
   /**
    * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields; year 400 is possible.
-   * Before 1972 uses the UT1 substitute with fixed Algo5; retains the final offset after the last leap-table entry.
+   * Before 1972 uses the UT1 substitute with the fixed ΔT model Algo5; retains the final leap-table offset afterward.
    * Leap seconds, leap-step midnight round-off and the 1972 seam do not promise an exact inverse.
    */
   jdeToUtc(jde: number): CivilDateTimeResult;
@@ -262,8 +265,9 @@ export const sun: Readonly<{
   /**
    * Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees.
    * Input years are [1, 32767]; before 1972 UTC fields use the UT1 substitute.
-   * The result retains the UT1 minus UTC gap: after the last leap-table step it is
-   * 69.184 seconds minus Delta T, no longer bounded by 0.9 seconds.
+   * The returned clock differs from UT1-based apparent solar time by UTC minus UT1.
+   * After the last leap-table step, UT1 minus UTC is 69.184 seconds minus Delta T;
+   * its magnitude is no longer bounded by 0.9 seconds.
    */
   apparentSolarTime(utc: CivilDateTime, longitudeDeg: number): CivilDateTimeResult;
 }>;
@@ -285,7 +289,8 @@ export const moon: Readonly<{
 export const jieqi: Readonly<{
   /**
    * UT1 civil moment for a Gregorian year in [401, 32766].
-   * Not an east-eight wall date or UTC: establish the time-scale conversion before displaying either.
+   * Not an east-eight wall date or UTC: pass momentUt1 through time.ut1ToJde(), then time.jdeToUtc(),
+   * before applying a display offset.
    * The returned UT1 year can differ from the requested year.
    * @throws {RangeError} For inputs outside the native domain.
    * @throws {CelestialError} If the calculation fails or native success is malformed.

@@ -177,7 +177,7 @@ the example below shows one interpreter. `RUN_ID` is the release workflow run, n
 Rehearse environment self-approval and same-run failed-job artifact recovery after workflow changes and before the
 final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: create an immutable `vX.Y.Z-rehearsal`
 tag through the tag-creation Admin bypass, then dispatch the workflow on it. Retain the tag after the rehearsal;
-the `v*` rules prohibit moving or deleting it without a bypass, just like formal release tags. Never use a plain
+the `v*` immutability rules prohibit moving or deleting it, just like formal release tags. Never use a plain
 `vX.Y.Z` for a rehearsal: it is release identity. The rehearsal spelling matches the environments' `v*.*.*`
 deployment-tag policy. Approve both
 environment gates against the staged manifest, then confirm the dependent `gate_pypi_second` job waits for a
