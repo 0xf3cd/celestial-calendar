@@ -19,7 +19,7 @@ version of the primary package. The alias copies no implementation and contains 
 [中文说明（@0xf3cd/celestial）](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
 <!-- package-context -->
-This guide describes the accompanying source checkout, which may differ from the latest published package.
+This guide describes the accompanying source revision, which may differ from the latest published package.
 Use the documentation matching your installed version.
 <!-- /package-context -->
 

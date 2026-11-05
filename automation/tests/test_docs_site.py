@@ -743,7 +743,7 @@ def test_source_guide_warnings_remain_true_when_rendered_for_a_release(guide):
   _, body, _ = site.render_markdown(ROOT, guide, SHA)
   assert "unreleased changes" not in body
   assert "尚未发布的改动" not in body
-  expected = "本文对应其所在的源码版本" if guide.endswith("_ZH.md") else "the accompanying source checkout"
+  expected = "本文对应其所在的源码版本" if guide.endswith("_ZH.md") else "the accompanying source revision"
   assert expected in body
 
 

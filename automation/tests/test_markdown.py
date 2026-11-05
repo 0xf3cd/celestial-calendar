@@ -242,7 +242,7 @@ def test_source_guide_distinguishes_checkout_from_installed_version(guide):
   expected = (
     ("本文对应其所在的源码版本", "可能与这份源码不同")
     if guide.name.endswith("_ZH.md")
-    else ("accompanying source checkout", "may differ")
+    else ("accompanying source revision", "may differ")
   )
   assert all(phrase in text for phrase in expected)
 

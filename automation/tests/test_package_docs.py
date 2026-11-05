@@ -82,7 +82,9 @@ def test_local_unversioned_build_is_explicitly_developmental(tmp_path, monkeypat
   monkeypatch.delenv(package_docs.SOURCE_SHA_ENV, raising=False)
   assert package_docs.source_sha(tmp_path) is None
   text = "# Guide\n\n<!-- package-context -->old<!-- /package-context -->\n"
-  assert "Unreleased local build" in package_docs.render_readme(text, "1.2.0", None)
+  readme = package_docs.render_readme(text, "1.2.0", None)
+  assert "Local development build" in readme
+  assert "documentation links follow main and may differ from these sources" in readme
   assert "/blob/main/" in package_docs.documentation_url("python", None)
 
 

@@ -117,18 +117,19 @@ release artifact.
 
 Install Doxygen 1.15.0, then install the Python documentation dependencies with
 `python -m pip install --require-hashes --only-binary=:all: -r Requirements-docs.txt`.
-The general development environment also includes these dependencies.
+The general development environment in `Requirements.txt` also includes these dependencies.
 
 Run `python project.py --site` from a clean, committed source root. This opt-in task combines the existing
 Markdown guides and a separate API generation in `build/docs-site/`; it leaves `build/api-docs/html/`
 and `--all` unchanged. Core Tests uploads it as `celestial-docs-site`.
 
 Ordinary `--site` labels every page as development, with its exact source SHA and package version. For a release,
-use `python project.py --site --site-release-tag vMAJOR.MINOR.PATCH`; an existing local tag must point to HEAD and
-match its version.
-This local option checks identity, not whether GitHub has published an immutable release. Both modes use manifest
-schema 2, recording the release tag (null for development), source inputs, generator versions and output digests,
-excluding the manifest itself. The build checks local
+use `python project.py --site --site-release-tag vMAJOR.MINOR.PATCH`; the tag must already exist locally, point to
+HEAD and match the package version. This local option checks identity, not whether GitHub has published an
+immutable release.
+
+Both modes use manifest schema 2, recording the release tag (null for development), source inputs, generator
+versions and output digests. The digest inventory excludes the manifest itself. The build checks local
 HTML links, fragments and assets at both the root and project subpath; it does not check external destinations
 over the network. It rejects dirty sources and linked output files.
 

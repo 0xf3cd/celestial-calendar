@@ -37,7 +37,8 @@ It requires a published immutable GitHub Release, resolves its tag to a commit, 
 documents and ancestry in fetched `origin/main` history. The build checks out that exact SHA, installs the
 hash-locked binary-only dependencies in `Requirements-docs.txt`, and builds the site. Immediately before upload,
 `Verify publication source and labels independently` compares the manifest, guide/API labels and output digests
-with that expected identity. A release whose source lacks the schema-2 site build cannot be published this way;
+with that expected identity. A release's source must support `--site-release-tag` and
+[schema-2 site manifests](BUILDING.md#docs-site) to be published this way;
 the workflow neither relabels an old artifact nor builds newer source in its place.
 
 The deploy job has only Pages/OIDC write permissions and runs the pinned official deploy action, with no checkout

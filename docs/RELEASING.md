@@ -76,7 +76,8 @@ gh workflow run release.yml --ref vMAJOR.MINOR.PATCH \
 ```
 
 Preparation validates the protected tag, main ancestry, producer runs, artifact API digests, archive contents,
-and documentation. It then stages one candidate and classifies both npm identities:
+and documentation. Package validators compare README bytes and documentation URLs against the independently
+selected release commit. Preparation then stages one candidate and classifies both npm identities:
 
 - an absent version in an existing, correctly identified package requires OIDC publication;
 - an absent version whose package also returns 404 records `bootstrap_required`;
@@ -133,8 +134,7 @@ Do not repeat those installations manually on the same bytes merely to obtain an
 An exceptional recovery that cannot reach `verify_registries` must perform its missing checks against the
 original frozen candidate, as described below. A no-op publication proves byte identity, not a live OIDC publish.
 
-Before publication, the package validators compare README bytes and documentation URLs against the independently
-selected release commit. Installed-package checks use that same source to verify what consumers receive.
+Installed-package checks compare the documentation consumers receive with the selected release commit.
 
 <a id="release-documentation"></a>
 ### Release documentation
@@ -145,11 +145,12 @@ Keep the [Pages environment approval](MAINTAINING.md#docs-publishing) separate f
 publication. The publisher resolves the published immutable tag; a newer default-branch workflow must still
 build that release's exact source and version.
 
-Retain the same-run Pages artifact ID and schema-2 manifest. After deployment, check the release version and full
-source SHA on guide and API pages, desktop/mobile navigation, and entry links from all five package names (Python
-`celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`, `celestial-calendar`). Package documentation links
-use SHA-pinned source guides, so historical packages do not follow the latest hosted release. Code/build checks
-alone do not complete live-site acceptance.
+Retain the same-run Pages artifact ID and schema-2 manifest. On the deployed site, check the release version and
+full source SHA on guide and API pages, plus desktop/mobile navigation. Separately, check documentation URLs and
+README links for all five package names (Python `celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`,
+`celestial-calendar`): they must open the matching SHA-pinned guides on GitHub, not the hosted site. Historical
+packages therefore keep their source guides when the hosted site changes. Code/build checks alone do not
+complete live-site acceptance.
 
 ## Recovery
 

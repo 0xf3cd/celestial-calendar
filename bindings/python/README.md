@@ -7,8 +7,8 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
 <!-- package-context -->
-This guide describes the accompanying source checkout. The install command gets the latest published version,
-which may differ from this checkout; use its matching documentation.
+This guide describes the accompanying source revision. The install command gets the latest published version,
+which may differ from this source revision; use its matching documentation.
 <!-- /package-context -->
 
 To run examples from a source checkout, [build a local wheel](#build-a-local-wheel).

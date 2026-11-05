@@ -78,7 +78,10 @@ def render_readme(text: str, version: str, sha: str | None) -> str:
   context = (
     f"Documentation for package version {version} at [source {sha}]({REPOSITORY}/tree/{sha})."
     if sha is not None
-    else f"Unreleased local build (package version {version}); documentation follows the current source."
+    else (
+      f"Local development build (package version {version}); documentation links follow main "
+      "and may differ from these sources."
+    )
   )
   result = before + context + after
   return pin_package_links(result, sha) if sha is not None else result

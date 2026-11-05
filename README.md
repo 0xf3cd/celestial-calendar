@@ -4,14 +4,14 @@ Astronomical calculations and Gregorian / Chinese Lunar date conversion, with Ji
 Sun/Moon positions, and sunrise/sunset. The core is a C++23 header-only library, also available through Python,
 JavaScript / TypeScript, and a C ABI.
 
-[中文](README_ZH.md) · [Documentation (development)](https://0xf3cd.github.io/celestial-calendar/) ·
+[中文](README_ZH.md) · [Documentation](https://0xf3cd.github.io/celestial-calendar/) ·
 [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes the accompanying source checkout. See the
+This guide describes the accompanying source revision. See the
 [migration guide](docs/MIGRATING_1_0.md) when moving from 0.x. The install commands below get the latest published
-version on PyPI or npm, which may differ from this checkout; use its matching documentation.
+version on PyPI or npm, which may differ from this source revision; use its matching documentation.
 To build a source checkout, use the
 [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
 [WASM/npm recipe](docs/BUILDING.md#wasm).

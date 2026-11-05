@@ -119,6 +119,10 @@ and `constraints-cibuildwheel.txt` selects the bootstrap pins. Then run `python 
 the minimum supported and current CI interpreters must install the same repaired wheel from an unrelated cwd.
 Do not build an sdist.
 
+Package README/Documentation URLs are generated at the producer SHA and reconciled against the release commit.
+Without a supplied source SHA, modified source trees or sources without usable Git metadata remain explicitly
+developmental; see [Package documentation](docs/BUILDING.md#package-documentation).
+
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
 GoogleTest target. Adding `src/bench/bench_*.cpp` is the whole job of adding a benchmark:
@@ -138,9 +142,8 @@ is also excluded from `--all`. Core uploads `celestial-docs-site`; `docs-publish
 requires a protected default-branch dispatch. Its optional `release_tag` selects a published immutable release
 and builds the resolved SHA with `--site-release-tag`; schema-2 manifest and visible guide/API labels must match
 the resolver's version/SHA/tag. Publication installs only the hash-locked binary documentation closure.
-Package README/Documentation URLs are generated at the producer SHA and reconciled against the release commit;
-dirty or unversioned local builds remain explicitly developmental. Environment protection and Pages enabling are separate
-operations, ordered in [Maintenance](docs/MAINTAINING.md#docs-publishing).
+Environment protection and Pages enabling are separate operations, ordered in
+[Maintenance](docs/MAINTAINING.md#docs-publishing).
 
 Randomized tests draw from a shared, seeded engine (`test/random.hpp`, #69): default seed
 42, override with the `CELESTIAL_TEST_SEED` env var. The PR/push gate pins the default;
