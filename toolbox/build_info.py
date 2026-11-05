@@ -144,7 +144,10 @@ def shared_lib_hashs() -> Dict[str, str]:
   return {p.name: calc_file_hash(p, "sha256") for p in shared_libs}
 
 
-def pack_build_info(docker: Optional[str]) -> BuildInfo:
+def pack_build_info(docker: Optional[str], git_commit: Optional[str] = None) -> BuildInfo:
+  if git_commit and re.fullmatch(r"[0-9a-f]{40}", git_commit) is None:
+    raise ValueError("git_commit must be a full lowercase SHA-1 commit hash")
+
   proj_dir = Path(__file__).parent.parent
 
   proj_py = proj_dir / "project.py"
@@ -165,6 +168,11 @@ def pack_build_info(docker: Optional[str]) -> BuildInfo:
     if Path(git_root).resolve() != proj_dir.resolve():
       raise RuntimeError(f"Git metadata does not identify this source root: {proj_dir}")
     commit_hash = silent_run(["git", "rev-parse", "HEAD"], cwd=proj_dir).stdout.strip()
+
+  if git_commit:
+    if commit_hash and git_commit != commit_hash:
+      raise ValueError("git_commit does not match this source checkout's HEAD")
+    commit_hash = git_commit
 
   libc_version = []
   try:
@@ -198,10 +206,11 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--save-to", type=Path, required=True)
   parser.add_argument("--docker", type=str, default="")
+  parser.add_argument("--git-commit", default=None, help="Checked-out source commit for a tree without Git metadata")
 
   args = parser.parse_args()
 
-  build_info = pack_build_info(args.docker)
+  build_info = pack_build_info(args.docker, args.git_commit)
   cpu_info = get_cpu_info()
 
   if not args.save_to.exists():

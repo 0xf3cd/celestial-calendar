@@ -18,6 +18,7 @@ RUN /opt/venv/bin/python ./project.py --clean --cmake --cores all --build --test
 
 # Save the build information
 ARG DOCKER_PLATFORM=""
-RUN /opt/venv/bin/python ./toolbox/build_info.py --save-to . --docker "${DOCKER_PLATFORM}"
+ARG GIT_COMMIT=""
+RUN /opt/venv/bin/python ./toolbox/build_info.py --save-to . --docker "${DOCKER_PLATFORM}" --git-commit "${GIT_COMMIT}"
 
 CMD ["bash"]

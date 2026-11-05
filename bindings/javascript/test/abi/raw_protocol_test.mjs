@@ -476,6 +476,13 @@ const recordedFailure = (name, invoke) => {
 };
 recordedFailure("celestial_ut1_to_jd", () => !rawSret("celestial_ut1_to_jd", [2024, 6, 1, 1.5]).valid);
 recordedFailure("celestial_ut1_to_jde", () => !rawSret("celestial_ut1_to_jde", [2024, 13, 1, 0.5]).valid);
+for (const fraction of [0, 0.9, 0.999, 1 - Number.EPSILON / 2]) {
+  recordedFailure("celestial_ut1_to_jde", () => !rawSret("celestial_ut1_to_jde", [0, 12, 31, fraction]).valid);
+  assert.equal(M._celestial_last_error_kind(), 1);
+  assert.equal(lastError(), "Year 0 is out of range [1, 32767].");
+}
+validSret("celestial_ut1_to_jde", [1, 1, 1, 0]);
+assert.equal(M._celestial_last_error_kind(), 0);
 recordedFailure("celestial_jde_to_ut1", () => !rawSret("celestial_jde_to_ut1", [Number.NaN]).valid);
 recordedFailure("celestial_utc_to_jde", () => !rawSret("celestial_utc_to_jde", [2024, 2, 30, 0]).valid);
 recordedFailure("celestial_jde_to_utc", () => !rawSret("celestial_jde_to_utc", [Number.NaN]).valid);
@@ -542,6 +549,14 @@ try {
 }
 recordedFailure("celestial_equation_of_time", () => !rawSret("celestial_equation_of_time", [Number.NaN]).valid);
 recordedFailure("celestial_apparent_solar_time", () => !rawSret("celestial_apparent_solar_time", [2024, 6, 1, 0.5, 200]).valid);
+for (const fraction of [0, 0.9, 0.999, 1 - Number.EPSILON / 2]) {
+  recordedFailure("celestial_apparent_solar_time", () => !rawSret("celestial_apparent_solar_time", [0, 12, 31, fraction, 0]).valid);
+  assert.equal(M._celestial_last_error_kind(), 1);
+  assert.equal(lastError(), "Year 0 is out of range [1, 32767].");
+}
+const yearZeroSolarDate = validSret("celestial_apparent_solar_time", [1, 1, 1, 0, -180]);
+assert.deepEqual([yearZeroSolarDate.year, yearZeroSolarDate.month, yearZeroSolarDate.day], [0, 12, 31]);
+assert.equal(M._celestial_last_error_kind(), 0);
 recordedFailure("celestial_query_jieqi_moment", () => !rawSret("celestial_query_jieqi_moment", [2024, 24]).valid);
 recordedFailure("celestial_get_supported_lunar_year_range", () => !rawSret("celestial_get_supported_lunar_year_range", [0]).valid);
 recordedFailure("celestial_get_lunar_year_info", () => !rawSret("celestial_get_lunar_year_info", [9, 2024]).valid);

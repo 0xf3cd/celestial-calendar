@@ -579,6 +579,26 @@ def test_rehearsal_has_a_dependent_second_pypi_gate_without_oidc():
 
 
 @pytest.mark.parametrize(
+  ("ref_type", "ref_name", "accepted"),
+  [("tag", "v1.2.0-rehearsal", True), ("tag", "v1.2.0", False), ("branch", "v1.2.0-rehearsal", False)],
+)
+def test_rehearsal_ref_gate_and_retained_tag_guidance(ref_type, ref_name, accepted):
+  rehearsal = yaml.safe_load((RELEASE_WORKFLOW.parent / "release-rehearsal.yml").read_text())
+  script = rehearsal["jobs"]["validate_ref"]["steps"][0]["run"]
+  result = subprocess.run(
+    ["bash", "-euo", "pipefail", "-c", script],
+    env={"REF_TYPE": ref_type, "REF_NAME": ref_name},
+    capture_output=True,
+    text=True,
+  )
+  assert (result.returncode == 0) == accepted, result.stdout + result.stderr
+  guide = (RELEASE_WORKFLOW.parents[2] / "docs/RELEASING.md").read_text()
+  section = guide.split("Rehearse environment self-approval", 1)[1].split("\n## ", 1)[0]
+  assert "immutable" in section and "Retain the tag" in section
+  assert "disposable" not in section
+
+
+@pytest.mark.parametrize(
   "target", ["actions/checkout", "actions/download-artifact", "actions/setup-python", "actions/setup-node"]
 )
 def test_registry_action_updates_require_same_target_identity_everywhere(target):

@@ -188,6 +188,28 @@ TEST(CAbiSmoke, Ut1ToJdRejectsBadInput) {
   EXPECT_FALSE(celestial_ut1_to_jd(0, 6, 1, 0.5).valid);           // year < 1
 }
 
+TEST(CAbiSmoke, CivilTimeExportsRejectYearZeroBeforeTheTtShift) {
+  for (const double fraction : { 0.0, 0.5, 0.9, 0.999, std::nextafter(1.0, 0.0) }) {
+    EXPECT_FALSE(celestial_ut1_to_jde(0, 12, 31, fraction).valid);
+    EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+    EXPECT_STREQ(celestial_last_error(), "Year 0 is out of range [1, 32767].");
+    EXPECT_FALSE(celestial_apparent_solar_time(0, 12, 31, fraction, 0.0).valid);
+    EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+    EXPECT_STREQ(celestial_last_error(), "Year 0 is out of range [1, 32767].");
+  }
+
+  ASSERT_TRUE(celestial_ut1_to_jde(1, 1, 1, 0.0).valid);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
+  EXPECT_STREQ(celestial_last_error(), "");
+  // The input-year domain does not exclude year-zero results.
+  const auto solar = celestial_apparent_solar_time(1, 1, 1, 0.0, -180.0);
+  ASSERT_TRUE(solar.valid);
+  EXPECT_EQ(solar.year, 0);
+  EXPECT_EQ(solar.month, 12U);
+  EXPECT_EQ(solar.day, 31U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
+}
+
 TEST(CAbiSmoke, RawDateExportsRejectOriginalMonthAndDay) {
   for (const uint32_t value : { uint32_t { 0 }, uint32_t { 257 }, UINT32_MAX }) {
     EXPECT_FALSE(celestial_ut1_to_jd(2024, value, 1, 0.0).valid);
@@ -249,6 +271,7 @@ TEST(CAbiSmoke, LunarConverterGregorianCoverageDomain) {
   for (const int32_t year : { -32767, 0, 32767 }) {
     EXPECT_FALSE(celestial_gregorian_to_lunar(1, year, 1, 1).valid);
     EXPECT_NE(std::strstr(celestial_last_error(), "cannot be represented by the selected algorithm"), nullptr);
+    EXPECT_NE(std::strstr(celestial_last_error(), "celestial_get_supported_lunar_year_range"), nullptr);
     EXPECT_EQ(std::strstr(celestial_last_error(), "std::chrono::year"), nullptr);
   }
 
@@ -277,6 +300,12 @@ TEST(CAbiSmoke, JdeToUt1) {
 }
 
 TEST(CAbiSmoke, JdeToUt1RejectsBadInput) {
+  const auto lower = celestial_jde_to_ut1(1867522.5);
+  ASSERT_TRUE(lower.valid);
+  EXPECT_EQ(lower.year, 400);
+  EXPECT_EQ(lower.month, 12U);
+  EXPECT_EQ(lower.day, 31U);
+  EXPECT_FALSE(celestial_jde_to_ut1(std::nextafter(1867522.5, -HUGE_VAL)).valid);
   EXPECT_FALSE(celestial_jde_to_ut1(NAN_VALUE).valid);  // non-finite
   EXPECT_FALSE(celestial_jde_to_ut1(1000.0).valid);     // gregorian year < 401
   EXPECT_FALSE(celestial_jde_to_ut1(13689325.5).valid); // first JD beyond the representable years

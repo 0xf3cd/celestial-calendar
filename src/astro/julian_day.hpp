@@ -79,7 +79,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   // #77: preserve the forward conversion's public year domain.
   if (g_y < 1) {
     throw std::invalid_argument {
-      std::format("The year {} is < 1, not supported by this algorithm.", g_y)
+      std::format("Year {} is below the supported range [1, 32767].", g_y)
     };
   }
 
@@ -113,8 +113,10 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   // #77: NaN/Inf would slip past the range check below (NaN comparisons are false) and reach
   // undefined float→int conversions. Reject them first.
   if (not std::isfinite(jd)) {
+    const char* const infinity = std::signbit(jd) ? "-infinity" : "+infinity";
+    const char* const value = std::isnan(jd) ? "NaN" : infinity;
     throw std::invalid_argument {
-      std::format("The julian day number {} is not finite.", jd)
+      std::format("The Julian day number {} is not finite.", value)
     };
   }
 

@@ -190,7 +190,10 @@ auto celestial_gregorian_to_lunar(const uint8_t algo, const int32_t year, const 
     });
 
     if (not converted) {
-      throw std::invalid_argument { "The Gregorian date cannot be represented by the selected algorithm." };
+      throw std::invalid_argument {
+        "The Gregorian date cannot be represented by the selected algorithm. "
+        "Query celestial_get_supported_lunar_year_range for its lunar-year bounds."
+      };
     }
     return *converted;
   });

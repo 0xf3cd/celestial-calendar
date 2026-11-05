@@ -6,6 +6,7 @@ Compare the same task, model, installed artifact and public documentation in fre
 with-skill and without-skill sessions. Only skill availability changes. Save each
 prompt, skill digest, tool trace, generated program, direct execution result and
 human disposition. Report ties and regressions as well as improvements.
+A passing local structure check does not establish that generated programs work or that the skill improves them.
 
 ## Prepare the inputs
 

@@ -34,7 +34,8 @@ environment. Apart from this package, the examples use only the Python standard 
 ### Today's lunar date
 
 Choose today's civil date at a fixed UTC+8 offset first, then convert that date label with `ALGO3`. "Today" therefore
-does not depend on the host timezone. This does not involve UT1, and the clock's UTC is not treated as UT1.
+does not depend on the host timezone. This converts a date label without a UT1 (Universal Time 1,
+based on Earth's rotation) calculation; the clock's UTC is not treated as UT1.
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -62,7 +63,7 @@ invertible. After the leap table's last entry, these conversions retain its fina
 ```python
 import celestial_calendar as celestial
 
-utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)  # 19:35:37 UTC
 jde_tt = celestial.utc_to_jde(utc)
 print(celestial.jde_to_utc(jde_tt))
 ```
@@ -93,11 +94,15 @@ remaining_days = celestial.ut1_to_jd(upcoming.moment_ut1) - cutoff_jd
 print(celestial.jieqi_name(upcoming.jieqi))
 print("UT1:", upcoming.moment_ut1)
 print("Remaining UT1 days:", remaining_days)
+upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)
+print("UTC:", celestial.jde_to_utc(upcoming_jde_tt))
 ```
 
 The difference between two UT1 Julian Days retains fractional days; subtracting calendar dates would lose the
-time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
-API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
+time of day. `cutoff_jd` and the event values are JD(UT1), not JDE(TT); do not pass them to `jde_to_utc()`.
+For UTC display, first convert the selected event with `celestial.ut1_to_jde(upcoming.moment_ut1)`, then pass
+that JDE to `celestial.jde_to_utc()`. This is a fixed contemporary query across one year boundary, not a search
+algorithm for the entire API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
 
 In the UT1 examples above, `CivilDateTime` is explicitly UT1, and its last field is the day fraction: `0.5` means half a
 day. `ut1_to_jde()` converts the same UT1 input to a TT-based JDE. `moment_ut1` is not UTC or a UTC+8 wall clock.

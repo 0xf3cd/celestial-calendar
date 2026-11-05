@@ -224,6 +224,12 @@ def edge_celestial_ut1_to_jd() -> None:
 
 
 def edge_celestial_ut1_to_jde() -> None:
+  for fraction in (0.0, 0.9, 0.999, math.nextafter(1.0, 0.0)):
+    assert not call("ut1_to_jde", 0, 12, 31, fraction).valid
+    assert call("last_error_kind") == 1
+    assert _binding.last_error_text() == "Year 0 is out of range [1, 32767]."
+  assert call("ut1_to_jde", 1, 1, 1, 0.0).valid
+  assert call("last_error_kind") == 0
   assert not call("ut1_to_jde", 2024, 13, 1, 0.5).valid and _binding.last_error_text()
 
 
@@ -293,6 +299,13 @@ def edge_celestial_equation_of_time() -> None:
 
 
 def edge_celestial_apparent_solar_time() -> None:
+  for fraction in (0.0, 0.9, 0.999, math.nextafter(1.0, 0.0)):
+    assert not call("apparent_solar_time", 0, 12, 31, fraction, 0.0).valid
+    assert call("last_error_kind") == 1
+    assert _binding.last_error_text() == "Year 0 is out of range [1, 32767]."
+  previous = call("apparent_solar_time", 1, 1, 1, 0.0, -180.0)
+  assert previous.valid and (previous.year, previous.month, previous.day) == (0, 12, 31)
+  assert call("last_error_kind") == 0
   assert not call("apparent_solar_time", 2024, 6, 1, 0.5, 200.0).valid
 
 

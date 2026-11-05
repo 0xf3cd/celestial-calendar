@@ -160,6 +160,42 @@ def test_translated_guides_share_code_blocks(english, chinese):
   assert chinese_blocks == english_blocks
 
 
+def test_api_header_include_spellings_resolve():
+  guide = (REPO / "docs/API.md").read_text(encoding="utf-8")
+  spellings = re.findall(r'`"([^"\n]+\.hpp)"`', guide)
+  assert spellings
+  roots = [REPO / "src" / name for name in ("astro", "calendar", "util")]
+  assert not [name for name in spellings if not any((root / name).is_file() for root in roots)]
+
+
+@pytest.mark.parametrize(
+  ("package", "language", "conversion", "display"),
+  [
+    (
+      "python",
+      "python",
+      "upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)",
+      "celestial.jde_to_utc(upcoming_jde_tt)",
+    ),
+    (
+      "javascript",
+      "js",
+      "const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);",
+      "celestial.time.jdeToUtc(upcomingJdeTt)",
+    ),
+  ],
+)
+def test_next_jieqi_utc_display_converts_the_selected_ut1_moment(package, language, conversion, display):
+  programs = [
+    code
+    for info, code in code_blocks(document(REPO / "bindings" / package / "README.md"))
+    if info == language and "Remaining UT1 days:" in code
+  ]
+  assert len(programs) == 1
+  assert conversion in programs[0]
+  assert display in programs[0]
+
+
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_anchors(english, chinese):
   english_anchors, chinese_anchors = anchors(REPO / english), anchors(REPO / chinese)
@@ -233,11 +269,23 @@ def test_links_name_existing_paths_and_explicit_anchors():
   assert not failures, "\n".join(failures)
 
 
-def test_cpp_quickstart_compiles_and_runs(tmp_path):
-  # README.md's C++ example is a whole program that needs only the headers.
-  blocks = [code for info, code in code_blocks(document(REPO / "README.md")) if info == "cpp"]
-  assert len(blocks) == 1, "expected exactly one complete C++ quickstart"
+@pytest.mark.parametrize(
+  ("guide", "example", "expected"),
+  [
+    ("README.md", None, "冬至 2026 (UT1):"),
+    (
+      "docs/UTC_CONVERSIONS.md",
+      "docs/examples/utc_jieqi/example.cpp",
+      "立冬\nUTC: 2026-11-07 09:52\nUTC+8: 2026-11-07 17:52\n",
+    ),
+  ],
+)
+def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, example, expected):
+  blocks = [code for info, code in code_blocks(document(REPO / guide)) if info == "cpp"]
+  assert len(blocks) == 1, "expected exactly one complete C++ program"
   block = blocks[0]
+  if example:
+    assert (REPO / example).read_text(encoding="utf-8").endswith(block), "embedded C++ program differs from its source"
   source = tmp_path / "quickstart.cpp"
   source.write_text(block, encoding="utf-8")
   compiler = shlex.split(os.environ.get("CXX", ""))
@@ -249,7 +297,8 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path):
   binary = tmp_path / "quickstart"
   command = [*compiler, "-std=c++23", "-Isrc/astro", "-Isrc/calendar", "-Isrc/util", str(source), "-o", str(binary)]
   subprocess.run(command, cwd=REPO, check=True, capture_output=True, text=True)
-  assert subprocess.check_output([str(binary)], text=True)
+  output = subprocess.check_output([str(binary)], text=True, encoding="utf-8")
+  assert output == expected if example else output.startswith(expected)
 
 
 @pytest.fixture

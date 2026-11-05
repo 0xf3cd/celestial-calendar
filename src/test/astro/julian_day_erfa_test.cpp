@@ -194,21 +194,21 @@ TEST(JulianDayErfaOracle, BoundaryAndMessageContracts) {
   );
   EXPECT_EQ(
     invalid_argument_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::quiet_NaN())); }),
-    "The julian day number nan is not finite."
+    "The Julian day number NaN is not finite."
   );
   EXPECT_EQ(
     invalid_argument_message([] { static_cast<void>(jd_to_ut1(std::numeric_limits<double>::infinity())); }),
-    "The julian day number inf is not finite."
+    "The Julian day number +infinity is not finite."
   );
   EXPECT_EQ(
     invalid_argument_message([] { static_cast<void>(jd_to_ut1(-std::numeric_limits<double>::infinity())); }),
-    "The julian day number -inf is not finite."
+    "The Julian day number -infinity is not finite."
   );
   EXPECT_EQ(
     invalid_argument_message([] {
       static_cast<void>(ut1_to_jd(Datetime { util::to_ymd(0, 1, 1), 0.0 }));
     }),
-    "The year 0 is < 1, not supported by this algorithm."
+    "Year 0 is below the supported range [1, 32767]."
   );
 }
 

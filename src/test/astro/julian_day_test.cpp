@@ -282,6 +282,7 @@ TEST(JulianDay, InvalidInput) {
   ASSERT_NO_THROW(std::ignore = jd_to_ut1(13689325.499999));
   ASSERT_THROW(std::ignore = jd_to_ut1(13689325.5), std::invalid_argument);
   ASSERT_THROW(std::ignore = jd_to_ut1(4.0e9), std::invalid_argument);
+  ASSERT_EQ(ut1_to_jd(Datetime { to_ymd(32767, 12, 31), std::nextafter(1.0, 0.0) }), 13689325.5);
 
   // Smallest supported year converts correctly: JD of 1-01-01 00:00 (gregorian) is 1721425.5.
   ASSERT_NEAR(ut1_to_jd(Datetime { to_ymd(1, 1, 1), 0.0 }), 1721425.5, EPSILON);
@@ -307,6 +308,13 @@ TEST(JulianDay, Ut1ToJdeRejectsMutatedInvalidDatetime) {
     ASSERT_FALSE(invalid.ok());
     ASSERT_THROW(std::ignore = ut1_to_jde(invalid), std::invalid_argument);
   }
+}
+
+TEST(JulianDay, CoreConversionsCheckTheShiftedTtYear) {
+  // Unlike the C input-year guard, the core admits a shift from year zero into TT year one.
+  const Datetime late_year_zero { to_ymd(0, 12, 31), 0.999 };
+  ASSERT_TRUE(std::isfinite(ut1_to_jde(late_year_zero)));
+  ASSERT_TRUE(std::isfinite(utc_to_jde(late_year_zero)));
 }
 
 TEST(JulianDay, JulianMillennium) {
