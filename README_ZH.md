@@ -117,7 +117,7 @@ int main() {
 }
 ```
 
-把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行：
+把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行。
 
 三个 include 根目录都要用上；嵌套头文件保留子目录，如 `"lunar/converter.hpp"`。
 

@@ -153,7 +153,7 @@ typedef struct CelestialUT1Time {
  * @param jde Finite JDE(TT) in [1867522.5, 13689325.5).
  * @returns A `CelestialUT1Time` struct.
  * @note Uses the fixed ΔT model Algo5 for TT minus UT1. The lower endpoint returns 400-12-31;
- *       forward dates before this inverse window need not have an admitted inverse.
+ *       `celestial_ut1_to_jde()` may return a JDE outside this inverse's input window.
  */
 CELESTIAL_API CelestialUT1Time celestial_jde_to_ut1(double jde);
 

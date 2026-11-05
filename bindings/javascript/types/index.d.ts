@@ -216,7 +216,7 @@ export const time: Readonly<{
   ut1ToJde(ut1: CivilDateTime): number;
   /**
    * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
-   * The lower endpoint returns 400-12-31; forward dates before this window need not have an admitted inverse.
+   * The lower endpoint returns 400-12-31; time.ut1ToJde() may return a JDE outside this inverse's input window.
    */
   jdeToUt1(jde: number): CivilDateTimeResult;
   /**

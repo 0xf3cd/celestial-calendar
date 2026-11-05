@@ -336,8 +336,8 @@ def ut1_to_jde(ut1: CivilDateTime) -> float:
 def jde_to_ut1(jde: float) -> CivilDateTime:
   """Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
 
-  The lower endpoint returns 400-12-31. Forward dates before this inverse window
-  need not have an admitted inverse.
+  The lower endpoint returns 400-12-31. ut1_to_jde() may return a JDE outside
+  this inverse's input window.
   """
   result = _result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde"))
   return _protocol.decode("jde_to_ut1", _civil_result, result)

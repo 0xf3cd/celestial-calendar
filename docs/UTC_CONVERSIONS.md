@@ -25,8 +25,8 @@ Civil records do not carry a time scale themselves: the conversion name specifie
   The shifted TT date must also be representable. At the upper end TT is 69.184 seconds ahead of UTC,
   so the final 69.184 seconds of year 32767 are rejected.
 - The inverse accepts finite JDE(TT) in `[1867522.5, 13689325.5)`. Its lower endpoint returns
-  **400-12-31**, after subtracting fixed Algo5's modelled TT minus UT1 (ΔT). Forward dates before this inverse window
-  can succeed without having an admitted inverse.
+  **400-12-31**, after subtracting fixed Algo5's modelled TT minus UT1 (ΔT). UTC-to-JDE may succeed for earlier dates
+  whose JDE falls outside this inverse's input window.
 - Before 1972-01-01, UTC-labelled civil fields use the **UT1 substitute with fixed Algo5**. This does
   not model historical UTC, including the variable-length seconds of 1960–1971. Chart and civil-house
   queries retain their stricter policy and reject pre-1972 UTC input.
@@ -130,5 +130,6 @@ enum starts at Lichun, not January. This is a contemporary example. The public J
 from a TT instant via UT1; converting it back to TT is not guaranteed to reproduce that instant in remote eras.
 Jieqi queries accept years `[401, 32766]`, so a two-year scan's first query year must be in `[401, 32765]`.
 The C++ `JieqiGenerator` instead yields the first strictly later JDE(TT) directly, with no UT1 intermediate.
-The year of its starting JDE must be in `[1, 32766]`; it searches by successive years. `add_seconds()` applies the display
+Its starting JDE must be accepted by `jde_to_utc()`; the resolved civil year must be in `[1, 32766]`.
+It searches by successive years. `add_seconds()` applies the display
 offset to the selected UTC date, carrying across midnight if needed; it does not change the physical time scale.
