@@ -43,7 +43,7 @@ the current project model. Algo1–Algo4 remain callable, frozen comparison mode
 
 | Model | Source and status | Hard year domain | Selection role |
 |---|---|---|---|
-| Algo5 (default) | Current project model: Algo2 before 2005, Bulletin A fit through the last observation, then anchored integrated-LOD extrapolation | No model-specific bound | Current project calculations |
+| Algo5 (default) | Current project model: Algo2 before 2005, a fitted Bulletin A segment through the last observation date, then anchored integrated-LOD extrapolation | No model-specific bound | Current project calculations |
 | Algo1 | Xu Jianwei's 2008 model, frozen | `year >= -4000` | Comparison with that historical model |
 | Algo2 | Espenak and Meeus, NASA/TP-2006-214141, frozen | No model-specific bound | NASA polynomial comparison; live pre-2005 branch of Algo3, Algo4 and Algo5 |
 | Algo3 | Fred Espenak's 2014 eclipse canon, frozen | `year < 3000` | Comparison with that later polynomial model |
@@ -52,10 +52,10 @@ the current project model. Algo1–Algo4 remain callable, frozen comparison mode
 Algo5 has three branches, not one trained polynomial:
 
 - Before 2005, it delegates to Algo2.
-- From 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.75), it uses a single fitted
-  Bulletin A segment, pinned to observed medians at both edges.
+- From 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.75), it uses a single segment
+  fitted to filtered Bulletin A observations, pinned to observed medians at both edges.
 - After that boundary, it uses the corrected Morrison, Stephenson, Hohenkerk and Zawilski (2021)
-  integrated length-of-day (LOD) expression, anchored at the last observation and continuous there.
+  integrated length-of-day (LOD) expression, anchored to the right-edge median and continuous there.
 
 The source definitions, guards and citations are in [`delta_t.hpp`](../src/astro/delta_t.hpp), including the
 [immutable generation record](https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json)

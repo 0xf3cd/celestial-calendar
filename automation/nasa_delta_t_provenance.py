@@ -394,7 +394,7 @@ def verify_nasa_delta_t_provenance(
     helper_text,
     "inline constexpr std::array<std::tuple<int32_t, double, double>, 5> ALGO5_RECENT_OBSERVATIONS",
   )
-  # MJD, UTC decimal year and observed Delta T from the final-values CSV pinned by the algo5 record.
+  # MJD, UTC decimal year and observed Delta T from the Bulletin A CSVs pinned by the algo5 record.
   _require(
     hashlib.sha256(canonical_cpp(recent_rows).encode()).hexdigest()
     == "67dc7239c5a33c37f4e937e3ea0eb66b352f6c3f1c775ffbd85ffb44bac8634e",

@@ -437,8 +437,8 @@ namespace algo5 {
 //                          expression (https://doi.org/10.1098/rspa.2020.0776), as combined at
 //                          https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/;
 //                          anchored to the right-edge median and continuous there.
-// The filter retains 7841 of 7970 observations, through 2026-05-25. Later observations set
-// the right-edge date and median anchor but do not enter the least-squares rows.
+// The filter retains 7841 of 7970 observations for least squares; those rows end on 2026-05-25.
+// Later observations set the right-edge date and median anchor but do not enter the least-squares rows.
 // Retained material boundary (R09): the source-derived long-term branch remains under its source terms
 // and outside the project MIT grant; attribution and owner risk acceptance do not claim permission.
 
