@@ -390,6 +390,16 @@ def verify_nasa_delta_t_provenance(
     and "not independent accuracy" in helper_text,
     "V25 Bulletin A citation differs",
   )
+  recent_rows = _cpp_block(
+    helper_text,
+    "inline constexpr std::array<std::tuple<int32_t, double, double>, 5> ALGO5_RECENT_OBSERVATIONS",
+  )
+  # MJD, UTC decimal year and observed Delta T from the final-values CSV pinned by the algo5 record.
+  _require(
+    hashlib.sha256(canonical_cpp(recent_rows).encode()).hexdigest()
+    == "67dc7239c5a33c37f4e937e3ea0eb66b352f6c3f1c775ffbd85ffb44bac8634e",
+    "V25 recent Bulletin A observation rows differ",
+  )
 
   v27 = validation["v27"]
   year_500 = v27["year_500"]

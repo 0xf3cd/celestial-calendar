@@ -431,16 +431,18 @@ namespace algo5 {
 // Algo5 is algo4's successor, retrained on the 2026-11 data refresh.
 // Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json
 // The model is based on:
-//   Year 2005.0 - 2026.75: IERS's Bulletin A observations, fitted as a single segment,
+//   Year 2005.0 - 2026.75: filtered IERS Bulletin A observations, fitted as a single segment,
 //                          pinned to observed medians at both edges.
 //   Year > 2026.75:        corrected Morrison-Stephenson-Hohenkerk-Zawilski integrated-LOD
 //                          expression (https://doi.org/10.1098/rspa.2020.0776), as combined at
 //                          https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/;
-//                          anchored at the last observation and continuous there.
+//                          anchored to the right-edge median and continuous there.
+// The filter retains 7841 of 7970 observations, through 2026-05-25. Later observations set
+// the right-edge date and median anchor but do not enter the least-squares rows.
 // Retained material boundary (R09): the source-derived long-term branch remains under its source terms
 // and outside the project MIT grant; attribution and owner risk acceptance do not claim permission.
 
-/** @brief The decimal year of the last Bulletin A observation in the training data;
+/** @brief The decimal year of the last Bulletin A observation before outlier filtering;
  *         also the boundary between the fitted and the extrapolated segments. */
 inline constexpr double LAST_OBSERVATION_YEAR = 2026.7479452054795;
 

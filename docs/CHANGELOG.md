@@ -6,8 +6,8 @@
 
 - Refreshed Algo5 Delta T coefficients with IERS Bulletin A final observations through 2026-10-01.
   The fitted segment and anchored future values change; the model structure, pre-2005 delegation,
-  model identity and public interfaces are unchanged. Generation now records its UTC convention and
-  numerical environment; the earlier generation environment remains unrecovered.
+  model identity and public interfaces are unchanged. This refresh records the fitting process's UTC
+  convention and numerical environment; the earlier generation environment remains unrecovered.
 
 ### Fixed
 

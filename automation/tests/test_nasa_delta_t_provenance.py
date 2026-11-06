@@ -213,6 +213,24 @@ def test_v25_bulletin_a_repository_value_is_pinned(tmp_path):
     verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
 
 
+@pytest.mark.parametrize(
+  ("old", "new"),
+  [
+    ("69.16622", "69.21622"),
+    ("2026.4164383561645", "2026.4164383561646"),
+    ("{ 61193,", "{ 61194,"),
+    ("  { 61314, 2026.7479452054795, 69.20650 },\n", ""),
+  ],
+  ids=["value-inside-model-tolerance", "year", "mjd", "missing-row"],
+)
+def test_recent_bulletin_a_observation_rows_are_pinned(tmp_path, old, new):
+  nasa_root = materialize_inputs(tmp_path)
+  replace_once(tmp_path / "src/test/astro/delta_t_test_helper.hpp", old, new)
+
+  with pytest.raises(RuntimeError, match="V25 recent Bulletin A observation rows differ"):
+    verify_nasa_delta_t_provenance(repo_root=tmp_path, nasa_root=nasa_root)
+
+
 def test_lunar_table_citation_is_pinned(tmp_path):
   nasa_root = materialize_inputs(tmp_path)
   lunar_table = tmp_path / "src/calendar/lunar/algo3.hpp"

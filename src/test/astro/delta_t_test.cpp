@@ -205,7 +205,7 @@ TEST(DeltaT, Statistics) {
   }
 
   // #64: assert the default dispatch against observations (this test used to only print).
-  // The 0.15 s bound allows polynomial-fit residuals and source-table rounding. The 2015-2026
+  // The 0.15 s bound allows the 0.097 s maximum table residual and source-table rounding. The 2015-2026
   // rows share algo5's Bulletin A fit input and are not independent accuracy evidence.
   for (const auto& [year, expected_delta_t] : dataset::test::ACCURATE_DELTA_T_TABLE) {
     ASSERT_NEAR(compute(year), expected_delta_t, 0.15)
