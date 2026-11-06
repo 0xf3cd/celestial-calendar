@@ -93,7 +93,7 @@ its UTC is TT − (ΔAT + 32.184 s), so for one instant UT1 − UTC = (ΔAT + 32
 |---|---|
 | Before 1972 | Zero by construction in legacy convenience conversions: UT1 stands in for UTC. Explicitly scaled UTC input is rejected. |
 | 1972 to the last ΔAT step (2017) | (ΔAT + 32.184 s) − ΔT. While leap seconds are applied, IERS keeps the real \|UT1 − UTC\| < 0.9 s; the library's value is as close to it as the ΔT model is to observed ΔT. |
-| After the last ΔAT step | (37 s + 32.184 s) − ΔT = 69.184 s − ΔT. It turns negative once ΔT exceeds 69.184 s and is no longer bounded by 0.9 s. With Algo5 it is −2.57 s at 2050 (`delta_t.hpp`) and about 21 h in magnitude by year 6772, UT1 behind UTC (`get_start_jde` in `sun.hpp`). |
+| After the last ΔAT step | (37 s + 32.184 s) − ΔT = 69.184 s − ΔT. It turns negative once ΔT exceeds 69.184 s and is no longer bounded by 0.9 s. With Algo5 it is −2.58 s at 2050 (`delta_t.hpp`) and about 21 h in magnitude by year 6772, UT1 behind UTC (`get_start_jde` in `sun.hpp`). |
 
 For coordinated broadcasts in 1961–1971, signals tracked UT2 within about 0.1 s;
 UT2's seasonal correction to UT1 was about 60 ms peak-to-peak. These steering figures are used here

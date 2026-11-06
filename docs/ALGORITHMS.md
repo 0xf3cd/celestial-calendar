@@ -52,13 +52,13 @@ the current project model. Algo1–Algo4 remain callable, frozen comparison mode
 Algo5 has three branches, not one trained polynomial:
 
 - Before 2005, it delegates to Algo2.
-- From 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.41), it uses a single fitted
+- From 2005 through the inclusive `algo5::LAST_OBSERVATION_YEAR` (about 2026.75), it uses a single fitted
   Bulletin A segment, pinned to observed medians at both edges.
 - After that boundary, it uses the corrected Morrison, Stephenson, Hohenkerk and Zawilski (2021)
   integrated length-of-day (LOD) expression, anchored at the last observation and continuous there.
 
 The source definitions, guards and citations are in [`delta_t.hpp`](../src/astro/delta_t.hpp), including the
-[immutable generation record](https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json)
+[immutable generation record](https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json)
 and the [2021 addendum](https://doi.org/10.1098/rspa.2020.0776).
 
 “Frozen” describes maintenance, not dead code: Algo2 still supplies the current default's pre-2005 values.

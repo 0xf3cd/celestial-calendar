@@ -242,7 +242,7 @@ export const time: Readonly<{
   /**
    * Delta T (TT - UT1), in seconds, for a finite decimal Gregorian year.
    * Default/algo5 is the current project model: algo2 before 2005, an IERS Bulletin A fit
-   * through about 2026.41, then anchored Morrison et al. long-term extrapolation.
+    * through about 2026.75, then anchored Morrison et al. long-term extrapolation.
    * Algo1 (Xu Jianwei 2008), algo2 (Espenak and Meeus 2006), algo3 (Espenak 2014), and
    * algo4 (IERS Bulletin A / USNO predictions) are frozen comparison models. Algo2 also
    * remains the live pre-2005 branch of algo3, algo4, and algo5.

@@ -87,18 +87,37 @@ TEST(DeltaT, Algo5) {
   ASSERT_EQ(algo5::compute(1950.0),   algo2::compute(1950.0));
   ASSERT_EQ(algo5::compute(2004.999), algo2::compute(2004.999));
 
-  // Goldens from the training script (AstroTime-Analysis DeltaT/algo5.py);
-  // 1e-9 so a mistyped coefficient can't hide.
-  ASSERT_NEAR(algo5::compute(2005.0), 64.69707499997821, 1e-9);
-  ASSERT_NEAR(algo5::compute(2020.0), 69.3387465593114,  1e-9);
-  ASSERT_NEAR(algo5::compute(algo5::LAST_OBSERVATION_YEAR), 69.15162999997847, 1e-9);
-  ASSERT_NEAR(algo5::compute(2030.0), 69.38127113857495, 1e-9);
-  ASSERT_NEAR(algo5::compute(2100.0), 86.90240401769715, 1e-9);
+  // Producer-output checks from the pinned generation record in delta_t.hpp.
+  // The 1e-9 tolerance detects transcription errors, not model accuracy.
+  ASSERT_NEAR(algo5::compute(2005.0), 64.69707499999525, 1e-9);
+  ASSERT_NEAR(algo5::compute(2020.0), 69.33740938907704, 1e-9);
+  ASSERT_NEAR(algo5::compute(algo5::LAST_OBSERVATION_YEAR), 69.18189500001063, 1e-9);
+  ASSERT_NEAR(algo5::compute(2030.0), 69.3925481049328, 1e-9);
+  ASSERT_NEAR(algo5::compute(2100.0), 86.913680984055, 1e-9);
 
   // Continuity at both internal boundaries (the 2005 seam vs algo2 measures +0.027 s).
   ASSERT_NEAR(algo5::compute(2004.99999), algo5::compute(2005.00001), 0.05);
   ASSERT_NEAR(algo5::compute(algo5::LAST_OBSERVATION_YEAR - 1e-6),
               algo5::compute(algo5::LAST_OBSERVATION_YEAR + 1e-6), 1e-3);
+}
+
+TEST(DeltaT, Algo5RecentObservations) {
+  for (const auto& [mjd, year, observed_delta_t] : dataset::test::ALGO5_RECENT_OBSERVATIONS) {
+    ASSERT_NEAR(algo5::compute(year), observed_delta_t, 0.08) << "MJD " << mjd;
+  }
+}
+
+TEST(DeltaT, Algo5RefreshedBoundary) {
+  const double boundary = algo5::LAST_OBSERVATION_YEAR;
+  const double inf = std::numeric_limits<double>::infinity();
+  const double before = std::nextafter(boundary, -inf);
+  const double after = std::nextafter(boundary, inf);
+  const double before_2005 = std::nextafter(2005.0, -inf);
+
+  ASSERT_NEAR(algo5::compute(before), algo5::compute(boundary), 1e-9);
+  ASSERT_NEAR(algo5::compute(boundary), algo5::compute(after), 1e-9);
+  ASSERT_EQ(algo5::compute(before_2005), algo2::compute(before_2005));
+  ASSERT_TRUE(std::isfinite(algo5::compute(boundary)));
 }
 
 TEST(DeltaT, NonFiniteYears) {
@@ -186,7 +205,7 @@ TEST(DeltaT, Statistics) {
   }
 
   // #64: assert the default dispatch against observations (this test used to only print).
-  // 0.15 keeps margin above this table's 0.097 s maximum residual. The 2015-2026
+  // The 0.15 s bound allows polynomial-fit residuals and source-table rounding. The 2015-2026
   // rows share algo5's Bulletin A fit input and are not independent accuracy evidence.
   for (const auto& [year, expected_delta_t] : dataset::test::ACCURATE_DELTA_T_TABLE) {
     ASSERT_NEAR(compute(year), expected_delta_t, 0.15)

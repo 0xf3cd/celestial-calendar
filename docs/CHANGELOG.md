@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- Refreshed Algo5 Delta T coefficients with IERS Bulletin A final observations through 2026-10-01.
+  The fitted segment and anchored future values change; the model structure, pre-2005 delegation,
+  model identity and public interfaces are unchanged. Generation now records its UTC convention and
+  numerical environment; the earlier generation environment remains unrecovered.
+
 ### Fixed
 
 - UT1-to-JDE and apparent-solar-time calls now reject year-zero inputs, including late times on December 31

@@ -19,6 +19,7 @@
 #include <concepts>
 #include <cstdint>
 #include <string>
+#include <tuple>
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -45,8 +46,8 @@ using DatasetType = std::map<double, double>; // { year, ΔT }
 // Recent values of ΔT from direct observations.
 // 1955-2005: NASA/TP-2006-214141 Table 2-2, exact one-decimal values.
 // 2010/2014: USNO deltat.data values 66.0699/67.2810, rounded to one decimal.
-// 2015-2026: IERS Bulletin A final values at AstroTime-Analysis ddf3be1, pinned by
-// record ed1cdc2f; medians within ±15 days of each January 1 boundary, rounded to
+// 2015-2026: IERS Bulletin A final values at AstroTime-Analysis e7823a0, pinned by
+// record 5e44dbcc; calendar-date medians within ±15 days of each January 1, rounded to
 // two decimals. These rows share algo5's fit input and measure fit residual,
 // not independent accuracy.
 const inline DatasetType ACCURATE_DELTA_T_TABLE {
@@ -76,6 +77,19 @@ const inline DatasetType ACCURATE_DELTA_T_TABLE {
   { 2025.0, 69.14 },
   { 2026.0, 69.11 },
 };
+
+// Bulletin A final UT1-UTC at AstroTime-Analysis e7823a0, collected 2026-11-06:
+// Delta T = 37 - (UT1-UTC) + 32.184 seconds; MJD dates map to UTC decimal years.
+// Columns: MJD, decimal year, observed Delta T (seconds).
+// The 0.08 s tolerance allows roughly three times the 0.025 s recent model gap;
+// these observations also supply the fitted model's right anchor.
+inline constexpr std::array<std::tuple<int32_t, double, double>, 5> ALGO5_RECENT_OBSERVATIONS {{
+  { 61193, 2026.4164383561645, 69.16622 },
+  { 61222,  2026.495890410959, 69.16951 },
+  { 61253, 2026.5808219178082, 69.17129 },
+  { 61284, 2026.6657534246576, 69.18155 },
+  { 61314, 2026.7479452054795, 69.20650 },
+}};
 
 }  // namespace dataset::test
 

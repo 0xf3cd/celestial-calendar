@@ -428,12 +428,12 @@ static_assert(ALGO4_END_JDE_TT == 2440587.5 + static_cast<double>(
 
 namespace algo5 {
 
-// Algo5 is algo4's successor, retrained on the 2026-07 data refresh.
-// Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json
+// Algo5 is algo4's successor, retrained on the 2026-11 data refresh.
+// Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json
 // The model is based on:
-//   Year 2005.0 - 2026.41: IERS's Bulletin A observations, fitted as a single segment,
+//   Year 2005.0 - 2026.75: IERS's Bulletin A observations, fitted as a single segment,
 //                          pinned to observed medians at both edges.
-//   Year > 2026.41:        corrected Morrison-Stephenson-Hohenkerk-Zawilski integrated-LOD
+//   Year > 2026.75:        corrected Morrison-Stephenson-Hohenkerk-Zawilski integrated-LOD
 //                          expression (https://doi.org/10.1098/rspa.2020.0776), as combined at
 //                          https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/;
 //                          anchored at the last observation and continuous there.
@@ -442,7 +442,7 @@ namespace algo5 {
 
 /** @brief The decimal year of the last Bulletin A observation in the training data;
  *         also the boundary between the fitted and the extrapolated segments. */
-inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
+inline constexpr double LAST_OBSERVATION_YEAR = 2026.7479452054795;
 
 /**
  * @brief Compute ΔT for a decimal Gregorian year using algorithm 5.
@@ -459,7 +459,7 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
  * @see Corrected HMNAO combined expression -
  *      https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/
  * @see Generation record -
- *      https://github.com/0xf3cd/AstroTime-Analysis/blob/ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json
+ *      https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json
  *
  * @note For year < 2005.0, algo2 is used instead (same delegation as algo4).
  * @note There is no upper bound: beyond the last observation, the anchored integrated-lod
@@ -475,16 +475,16 @@ inline constexpr double LAST_OBSERVATION_YEAR = 2026.4135844748857;
 
   if (year <= LAST_OBSERVATION_YEAR) {
     const double u = year - 1990;
-    return -9963.526300002133 + (33695.46874239917 / u) + (1251.8488008787037 * u)
-         - (84.95374332215921 * std::pow(u, 2)) + (3.383624734734596 * std::pow(u, 3))
-         - (0.079054553776811 * std::pow(u, 4)) + (0.0010034123781420099 * std::pow(u, 5))
-         - (5.341580725291782e-06 * std::pow(u, 6));
+    return -10202.434877796037 + (34469.54162338588 / u) + (1282.9448070843766 * u)
+         - (87.1663776984486 * std::pow(u, 2)) + (3.4765919929384914 * std::pow(u, 3))
+         - (0.08136170238837674 * std::pow(u, 4)) + (0.0010347362811410302 * std::pow(u, 5))
+         - (5.521142968454219e-06 * std::pow(u, 6));
   }
 
   { // year > LAST_OBSERVATION_YEAR: integrated lod, t in centuries since 1825;
     // the leading constant anchors the curve at the last observation.
     const double t = (year - 1825.0) / 100.0;
-    return -150.64706473230285 + (31.4115 * std::pow(t, 2))
+    return -150.635787765945 + (31.4115 * std::pow(t, 2))
          + (284.8435805251424 * std::cos(0.4487989505128276 * (t + 0.75)));
   }
 }

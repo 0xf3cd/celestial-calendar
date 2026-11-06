@@ -39,7 +39,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 NASA_ROOT: Final[Path] = REPO_ROOT / "src" / "test" / "provenance" / "nasa" / "tp-2006-214141"
 NASA_RECORD: Final[Path] = NASA_ROOT / "delta_t.json"
 NASA_ACKNOWLEDGMENT: Final[Path] = NASA_ROOT / "ACKNOWLEDGMENT.txt"
-NASA_RECORD_SHA256: Final[str] = "db26c77ea3d92e8663541d2aa83b9693f3ecc04846cc152c832a88a399b4da5b"
+NASA_RECORD_SHA256: Final[str] = "20a44e02236c1abe6e2194983f8ba5f037dfbe720999ab32b465570c6ce6bbc6"
 NASA_ACKNOWLEDGMENT_SHA256: Final[str] = "735321e0ac09f73fd6f6262100a723227c00286b2a6bc7c4a7b0c598b4edfb5b"
 NASA_ACKNOWLEDGMENT_FACTS: Final[tuple[str, ...]] = (
   "CelestialCalendar",
@@ -384,8 +384,8 @@ def verify_nasa_delta_t_provenance(
   _require("NASA/TP-2006-214141 Table 2-2" in helper_text, "V25 NASA citation differs")
   _require("USNO deltat.data" in helper_text, "V25 USNO citation differs")
   _require(
-    "2015-2026: IERS Bulletin A final values at AstroTime-Analysis ddf3be1" in helper_text
-    and "record ed1cdc2f" in helper_text
+    "2015-2026: IERS Bulletin A final values at AstroTime-Analysis e7823a0" in helper_text
+    and "record 5e44dbcc" in helper_text
     and "share algo5's fit input" in helper_text
     and "not independent accuracy" in helper_text,
     "V25 Bulletin A citation differs",
