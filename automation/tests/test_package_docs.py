@@ -84,7 +84,8 @@ def test_local_unversioned_build_is_explicitly_developmental(tmp_path, monkeypat
   text = "# Guide\n\n<!-- package-context -->old<!-- /package-context -->\n"
   readme = package_docs.render_readme(text, "1.2.0", None)
   assert "Local development build" in readme
-  assert "documentation links follow main and may differ from these sources" in readme
+  assert "documentation links open the repository's main branch" in readme
+  assert "which may differ from the source used for this build" in readme
   assert "/blob/main/" in package_docs.documentation_url("python", None)
 
 

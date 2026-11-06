@@ -146,8 +146,9 @@ publication. The publisher resolves the published immutable tag; a newer default
 build that release's exact source and version.
 
 Retain the same-run Pages artifact ID and schema-2 manifest. On the deployed site, check the release version and
-full source SHA on guide and API pages, plus desktop/mobile navigation. Separately, check documentation URLs and
-README links for all five package names (Python `celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`,
+full source SHA on guide and API pages, plus desktop/mobile navigation. Separately, open the published PyPI/npm
+project pages and check documentation URLs and README links for all five package names (Python
+`celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`,
 `celestial-calendar`): they must open the matching SHA-pinned guides on GitHub, not the hosted site. Historical
 packages therefore keep their source guides when the hosted site changes. Code/build checks alone do not
 complete live-site acceptance.

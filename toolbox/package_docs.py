@@ -79,8 +79,8 @@ def render_readme(text: str, version: str, sha: str | None) -> str:
     f"Documentation for package version {version} at [source {sha}]({REPOSITORY}/tree/{sha})."
     if sha is not None
     else (
-      f"Local development build (package version {version}); documentation links follow main "
-      "and may differ from these sources."
+      f"Local development build (package version {version}); documentation links open the repository's main branch, "
+      "which may differ from the source used for this build."
     )
   )
   result = before + context + after
