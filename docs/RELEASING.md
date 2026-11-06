@@ -76,8 +76,9 @@ gh workflow run release.yml --ref vMAJOR.MINOR.PATCH \
 ```
 
 Preparation validates the protected tag, main ancestry, producer runs, artifact API digests, archive contents,
-and documentation. Package validators compare README bytes and documentation URLs against the independently
-selected release commit. Preparation then stages one candidate and classifies both npm identities:
+and documentation. Package validators compare README bytes with the checked-out release guides and documentation
+URLs with the independently selected release commit. Preparation then stages one candidate and classifies both
+npm identities:
 
 - an absent version in an existing, correctly identified package requires OIDC publication;
 - an absent version whose package also returns 404 records `bootstrap_required`;
