@@ -38,6 +38,7 @@ from toolbox.release_validation import (
   SOURCE_SPECS,
   validate_release_archives,
   validate_wheel_platform,
+  validate_wheel_sidecars,
 )
 from toolbox.build_python_aliases import ALIAS_ARTIFACT, ALIAS_NAMES, alias_wheel_name, validate_alias_wheel
 
@@ -166,7 +167,9 @@ def project_version() -> str:
   return match.group(1)
 
 
-def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) -> list[Path]:
+def flatten_python_artifacts(
+  downloaded_artifacts: list[Path], save_to: Path, expected_commit: str | None = None
+) -> list[Path]:
   """Validate all Python archives, then flatten their wheels and digests atomically by file."""
   expected_artifacts = {*PYTHON_ARTIFACTS, ALIAS_ARTIFACT}
   selected = [path for path in downloaded_artifacts if path.stem in expected_artifacts]
@@ -222,8 +225,12 @@ def flatten_python_artifacts(downloaded_artifacts: list[Path], save_to: Path) ->
     staging = Path(temporary)
     for name, content in payloads.items():
       (staging / name).write_bytes(content)
+    if expected_commit is not None:
+      validate_wheel_sidecars(
+        [staging / name for name in payloads], version, require_complete=True, expected_commit=expected_commit
+      )
     for name in ALIAS_NAMES:
-      validate_alias_wheel(staging / alias_wheel_name(name, version), name, version)
+      validate_alias_wheel(staging / alias_wheel_name(name, version), name, version, sha=expected_commit)
     for name in payloads:
       destination = save_to / name
       (staging / name).replace(destination)
@@ -346,8 +353,9 @@ def main() -> None:
     validate_release_archives(
       downloaded_artifacts,
       project_version(),
+      expected_commit=sha,
     )
-    downloaded_artifacts.extend(flatten_python_artifacts(downloaded_artifacts, args.save_to))
+    downloaded_artifacts.extend(flatten_python_artifacts(downloaded_artifacts, args.save_to, expected_commit=sha))
     if getattr(args, "source_manifest", None) is not None:
       write_source_manifest(args.source_manifest, sha, sources)
 

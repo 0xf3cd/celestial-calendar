@@ -3,14 +3,14 @@
 天文计算与公历、阴历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
 也可通过 Python、JavaScript / TypeScript 或 C ABI 使用。
 
-[English](README.md) · [在线文档（开发版）](https://0xf3cd.github.io/celestial-calendar/) ·
+[English](README.md) · [在线文档](https://0xf3cd.github.io/celestial-calendar/) ·
 [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
-本文描述当前源码，含尚未发布的改动。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
-下面的安装命令取得 PyPI / npm 上的最新已发布版本，请以所装版本附带的文档为准。
-要自行构建当前源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
+本文对应其所在的源码版本。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
+下面的安装命令取得 PyPI / npm 上的最新已发布版本，可能与这份源码不同，请以所装版本附带的文档为准。
+要自行构建源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
 [WASM / npm 包](docs/BUILDING.md#wasm)的步骤。
 
 干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。

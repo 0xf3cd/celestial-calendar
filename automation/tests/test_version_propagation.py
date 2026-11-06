@@ -19,6 +19,7 @@ from pathlib import Path
 
 from toolbox import build_npm
 from toolbox import build_python_aliases
+from toolbox import package_docs
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_one_isolated_version_reaches_cli_wheel_and_staged_npm(tmp_path, monkeypatch):
   version = "9.8.7"
   shutil.copytree(ROOT / "automation", tmp_path / "automation", ignore=shutil.ignore_patterns("tests", "__pycache__"))
+  (tmp_path / "toolbox").mkdir()
+  shutil.copyfile(ROOT / "toolbox/docs_links.py", tmp_path / "toolbox/docs_links.py")
   (tmp_path / "src/shared_lib").mkdir(parents=True)
   for relative in ("src/CMakeLists.txt", "src/shared_lib/CMakeLists.txt", "Requirements.txt"):
     shutil.copyfile(ROOT / relative, tmp_path / relative)
@@ -65,20 +68,23 @@ def test_one_isolated_version_reaches_cli_wheel_and_staged_npm(tmp_path, monkeyp
     assert alias["dependencies"] == [f"celestial-calendar=={version}"]
 
 
-def test_stable_package_metadata_links_to_hosted_documentation():
+def test_package_documentation_urls_follow_the_exact_source(monkeypatch):
   project = tomllib.loads((ROOT / "bindings/python/pyproject.toml").read_text(encoding="utf-8"))["project"]
   repository = "https://github.com/0xf3cd/celestial-calendar"
-  documentation = "https://0xf3cd.github.io/celestial-calendar"
+  sha = "a" * 40
+  monkeypatch.setattr(package_docs, "source_sha", lambda root: sha)
   assert "Development Status :: 5 - Production/Stable" in project["classifiers"]
   assert not any("Beta" in classifier for classifier in project["classifiers"])
   assert project["requires-python"] == ">=3.11"
-  assert project["urls"]["Documentation"] == f"{documentation}/bindings/python/README.html"
-  assert project["urls"]["Repository"] == repository
-  assert project["urls"]["Issues"] == f"{repository}/issues"
+  assert "urls" not in project
+  urls = package_docs.python_urls(sha)
+  assert urls["Documentation"] == f"{repository}/blob/{sha}/bindings/python/README.md"
+  assert urls["Repository"] == repository
+  assert urls["Issues"] == f"{repository}/issues"
   primary = build_npm.staging_manifest("1.0.0")
   alias = build_npm.staging_manifest("1.0.0", build_npm.ALIAS_NAME)
   for manifest in (primary, alias):
-    assert manifest["homepage"] == f"{documentation}/bindings/javascript/README.html"
+    assert manifest["homepage"] == f"{repository}/blob/{sha}/bindings/javascript/README.md"
     assert manifest["repository"]["url"] == f"git+{repository}.git"
     assert manifest["bugs"] == f"{repository}/issues"
     assert manifest["keywords"] == [*project["keywords"], "webassembly"]

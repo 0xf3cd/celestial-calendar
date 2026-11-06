@@ -237,9 +237,14 @@ def test_build_guide_preserves_moved_maintenance_navigation():
 
 
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
-def test_source_guide_warns_about_unreleased_changes(guide):
+def test_source_guide_distinguishes_checkout_from_installed_version(guide):
   text = visible_text(document(guide))
-  assert "unreleased changes" in text or "尚未发布的改动" in text
+  expected = (
+    ("本文对应其所在的源码版本", "可能与这份源码不同")
+    if guide.name.endswith("_ZH.md")
+    else ("accompanying source revision", "may differ")
+  )
+  assert all(phrase in text for phrase in expected)
 
 
 def test_old_english_readme_points_to_the_guides():
@@ -435,7 +440,10 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
     exec(compile(source, str(PYTHON_READER), "exec"), python_reader.__dict__)
   root = tmp_path / "checkout"
   (root / "bindings/python").mkdir(parents=True)
-  guide = "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  guide = (
+    "<!-- package-context -->source<!-- /package-context -->\n"
+    "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  )
   (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
   calls = []
@@ -443,12 +451,19 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
   def run(code, cwd, expected=None):
     calls.append(code)
     if code.startswith("import importlib.metadata"):
-      return json.dumps({"metadata": "Name: celestial-calendar\n\n" + guide})
+      return json.dumps(
+        {
+          "metadata": "Name: celestial-calendar\n\n" + python_reader.render_readme(guide, "1.2.0", "a" * 40),
+          "version": "1.2.0",
+          "urls": [f"{label}, {url}" for label, url in python_reader.python_urls("a" * 40).items()],
+        }
+      )
     return expected or "unused\n"
 
   monkeypatch.setattr(python_reader, "REPO", root)
   monkeypatch.setattr(python_reader, "run_program", run)
   monkeypatch.setattr(python_reader, "verify_provenance", lambda record: None)
+  monkeypatch.setattr(python_reader.subprocess, "check_output", lambda *args, **kwargs: "a" * 40 + "\n")
   if skip:
     with pytest.raises(AssertionError):
       python_reader.main()

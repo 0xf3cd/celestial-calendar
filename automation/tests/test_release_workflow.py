@@ -69,7 +69,7 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   assert 're.fullmatch(r"v\\d+\\.\\d+\\.\\d+", ref_name)' in context["run"]
   assert 'os.environ["REF_PROTECTED"] != "true"' in context["run"]
   assert '["./project.py", "--version"]' in context["run"]
-  assert "git merge-base --is-ancestor HEAD origin/main" in context["run"]
+  assert "validate_release_source(Path.cwd(), ref_name, commit, expected)" in context["run"]
   assert "validate_release_document_versions" in context["run"]
   assert download["env"] == {
     "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",

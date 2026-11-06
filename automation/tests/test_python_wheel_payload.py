@@ -23,6 +23,8 @@ from pathlib import Path
 
 import pytest
 
+from toolbox import package_docs
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "bindings/python/src/celestial_calendar"
@@ -52,7 +54,12 @@ def wheel_payload(version):
     "License-Expression: MIT",
     *[f"Classifier: {value}" for value in project["classifiers"]],
     "Keywords: " + ",".join(project["keywords"]),
-    *[f"Project-URL: {label}, {url}" for label, url in project["urls"].items()],
+    *[f"Project-URL: {label}, {url}" for label, url in package_docs.python_urls(package_docs.source_sha(ROOT)).items()],
+    "Description-Content-Type: text/markdown",
+    "",
+    package_docs.render_readme(
+      (ROOT / "bindings/python/README.md").read_text(), version, package_docs.source_sha(ROOT)
+    ),
   ]
   members = {
     f"celestial_calendar/{name}": (SOURCE / name).read_bytes()
@@ -74,7 +81,7 @@ def wheel_payload(version):
     {
       "celestial_calendar/_version.py": f'VERSION = "{version}"'.encode(),
       "celestial_calendar/_native/_celestial_calendar.dll": b"metadata-only native placeholder",
-      f"{dist_info}/METADATA": ("\n".join(metadata) + "\n").encode(),
+      f"{dist_info}/METADATA": "\n".join(metadata).encode(),
       f"{dist_info}/WHEEL": b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: py3-none-win_amd64\n",
       f"{dist_info}/licenses/LICENSE": (ROOT / "LICENSE").read_bytes(),
       f"{dist_info}/licenses/THIRD_PARTY_NOTICES.txt": (ROOT / "THIRD_PARTY_NOTICES.txt").read_bytes(),
@@ -181,7 +188,7 @@ def test_wheel_project_metadata_rejects_drift_with_recomputed_record(verifier, f
     lines[index] = prefix + "wrong-value"
   members[name] = ("\n".join(lines) + "\n").encode()
   message = {"Classifier": "classifiers", "Keywords": "keywords", "Project-URL: Documentation": "project URLs"}[field]
-  with pytest.raises(AssertionError, match=f"wheel {message} differ from pyproject"):
+  with pytest.raises(AssertionError, match=f"wheel {message} differ from"):
     check(verifier, members, version)
   check(verifier, wheel_payload(version), version)
 
@@ -190,11 +197,12 @@ def test_wheel_project_metadata_accepts_reordered_headers_and_keywords(verifier)
   version = verifier.project_version()
   members = wheel_payload(version)
   name = f"celestial_calendar-{version}.dist-info/METADATA"
-  lines = members[name].decode().splitlines()
+  headers, body = members[name].decode().split("\n\n", 1)
+  lines = headers.splitlines()
   index = next(index for index, line in enumerate(lines) if line.startswith("Keywords: "))
   keywords = lines[index].removeprefix("Keywords: ").split(",")
   lines[index] = "Keywords: " + ", ".join(reversed(keywords))
-  members[name] = ("\n".join(reversed(lines)) + "\n").encode()
+  members[name] = ("\n".join(reversed(lines)) + "\n\n" + body).encode()
   check(verifier, members, version)
 
 

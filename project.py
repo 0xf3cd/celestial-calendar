@@ -124,13 +124,14 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument(
     "--docs", action="store_true", help="Generate API HTML with Doxygen (opt-in: --all does not include it)"
   )
-  parser.add_argument(
-    "--site", action="store_true", help="Build and verify the clean-source development documentation site"
-  )
+  parser.add_argument("--site", action="store_true", help="Build and verify the clean-source documentation site")
+  parser.add_argument("--site-release-tag", help="Build --site for this exact release tag instead of development")
 
   parser.add_argument("-a", "--all", action="store_true", help="Set up, run CMake, build, and test the project")
 
   args = parser.parse_args()
+  if args.site_release_tag is not None and not args.site:
+    parser.error("--site-release-tag requires --site")
   if args.all:
     args.setup = True
     args.cmake = True
@@ -162,7 +163,7 @@ def print_steps(args: argparse.Namespace) -> None:
   if args.docs:
     green_print("# - Generate API HTML")
   if args.site:
-    green_print("# - Generate development documentation site")
+    green_print(f"# - Generate documentation site ({args.site_release_tag or 'development'})")
   print(60 * "#")
 
 
@@ -222,7 +223,7 @@ def create_tasks(args: argparse.Namespace) -> List[Task]:
   if args.docs:
     tasks.append(Task("Generate API HTML", lambda: build_docs(BUILD_VERSION)))
   if args.site:
-    tasks.append(Task("Generate documentation site", lambda: build_site(BUILD_VERSION)))
+    tasks.append(Task("Generate documentation site", lambda: build_site(BUILD_VERSION, args.site_release_tag)))
   return tasks
 
 

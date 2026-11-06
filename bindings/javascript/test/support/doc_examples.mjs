@@ -94,6 +94,12 @@ export async function runPrograms(text, consumer, packageName, expected) {
 }
 
 export async function runDocExamples(consumer, packageName) {
+  const identity = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: fileURLToPath(new URL("../../../../", import.meta.url)), encoding: "utf8",
+  });
+  assert.equal(identity.status, 0, "cannot resolve expected consumer source");
+  const sha = identity.stdout.trim();
+  assert.match(sha, /^[0-9a-f]{40}$/);
   const root = await readFile(new URL("../../../../README.md", import.meta.url), "utf8");
   const count = await runPrograms(root, consumer, packageName, expectedOutput(root));
   console.log(`PASS displayed root JavaScript programs ${count}/${count} via ${packageName}`);
@@ -101,7 +107,26 @@ export async function runDocExamples(consumer, packageName) {
     const directory = name === "celestial-calendar" ? "javascript-alias" : "javascript";
     const source = await readFile(new URL(`../../../${directory}/README.md`, import.meta.url), "utf8");
     const installed = await readFile(join(consumer, "node_modules", name, "README.md"), "utf8");
-    assert.equal(installed.replaceAll("\r\n", "\n"), source.replaceAll("\r\n", "\n"), "installed README differs from candidate");
+    const manifest = JSON.parse(await readFile(join(consumer, "node_modules", name, "package.json"), "utf8"));
+    const repository = "https://github.com/0xf3cd/celestial-calendar";
+    let expected = source.replaceAll("\r\n", "\n").replace(
+      /<!-- package-context -->[\s\S]*?<!-- \/package-context -->/,
+      `Documentation for package version ${manifest.version} at [source ${sha}](${repository}/tree/${sha}).`,
+    );
+    for (const route of ["blob", "tree"]) {
+      expected = expected.replaceAll(`${repository}/${route}/main/`, `${repository}/${route}/${sha}/`);
+    }
+    expected = expected.replaceAll(
+      "https://0xf3cd.github.io/celestial-calendar/bindings/javascript/README.html",
+      `${repository}/blob/${sha}/bindings/javascript/README.md`,
+    );
+    const verify = (readme, metadata) => {
+      assert.equal(readme.replaceAll("\r\n", "\n"), expected, "installed README differs from candidate source");
+      assert.equal(metadata.homepage, `${repository}/blob/${sha}/bindings/javascript/README.md`);
+    };
+    verify(installed, manifest);
+    assert.throws(() => verify(installed.replaceAll(sha, "0".repeat(40)), manifest));
+    assert.throws(() => verify(installed, { ...manifest, homepage: `${repository}/blob/main/bindings/javascript/README.md` }));
     const ran = await runPrograms(installed, consumer, name === "@0xf3cd/celestial" ? packageName : name);
     console.log(`PASS displayed ${name} JavaScript programs ${ran}/${ran} and installed guide bytes`);
   }

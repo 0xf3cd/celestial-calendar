@@ -107,6 +107,7 @@ The WASM/npm exception has its own shared manual/CI path, the four commands in
 `build/npm/npm-pack.json` and `build/npm/npm-alias-pack.json`; do not select either with a glob or
 rebuild per consumer. The builder packs primary and alias once each in separate staging directories.
 Registry acceptance installs each npm name alone and both together at the same version.
+Only PR WASM jobs restore/save the unpacked emsdk cache; manual producers always install the pinned SDK fresh.
 All releases publish the exact CI-tested artifacts without rebuilding or repacking; publication and
 registry-byte verification are defined in [RELEASING](docs/RELEASING.md).
 
@@ -117,6 +118,10 @@ and `constraints-cibuildwheel.txt` selects the bootstrap pins. Then run `python 
 --only <identifier> bindings/python --output-dir build/wheelhouse`. The wheel is `py3` but native per platform;
 the minimum supported and current CI interpreters must install the same repaired wheel from an unrelated cwd.
 Do not build an sdist.
+
+Package README/Documentation URLs are generated at the producer SHA and reconciled against the release commit.
+Without a supplied source SHA, modified source trees or sources without usable Git metadata remain explicitly
+developmental; see [Package documentation](docs/BUILDING.md#package-documentation).
 
 Benchmarks are opt-in and `--all` leaves them out (targets are `EXCLUDE_FROM_ALL`). They
 live in `src/bench/`, not `src/test/` — that directory turns every `.cpp` into a
@@ -131,11 +136,14 @@ API HTML is also opt-in: `./project.py --docs` uses Doxygen 1.15.0 without a C++
 Core Tests uploads `celestial-api-html`; it is not a release artifact. `docs/Doxyfile` rejects
 documentation syntax errors but does not require every declaration/parameter to be documented.
 
-`./project.py --site` separately builds/verifies the development site in `build/docs-site` from a clean
-committed root, with Markdown guides and an independently generated API subtree. It preserves `--docs` and
+`./project.py --site` separately builds/verifies a documentation site in `build/docs-site` from a clean committed root,
+with development labels by default, Markdown guides and an independently generated API subtree. It preserves `--docs` and
 is also excluded from `--all`. Core uploads `celestial-docs-site`; `docs-publish.yml` is manual only and
-requires a protected default-branch dispatch. Environment protection and Pages enabling are separate
-operations, ordered in [Maintenance](docs/MAINTAINING.md#docs-publishing).
+requires a protected default-branch dispatch. Its optional `release_tag` selects a published immutable release
+and builds the resolved SHA with `--site-release-tag`; schema-2 manifest and visible guide/API labels must match
+the resolver's version/SHA/tag. Publication installs only the hash-locked binary documentation closure.
+Environment protection and Pages enabling are separate operations, ordered in
+[Maintenance](docs/MAINTAINING.md#docs-publishing).
 
 Randomized tests draw from a shared, seeded engine (`test/random.hpp`, #69): default seed
 42, override with the `CELESTIAL_TEST_SEED` env var. The PR/push gate pins the default;

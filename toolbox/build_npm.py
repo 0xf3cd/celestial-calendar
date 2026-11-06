@@ -24,6 +24,9 @@ from typing import Final
 
 
 PROJ_ROOT: Final[Path] = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJ_ROOT))
+from toolbox import package_docs  # noqa: E402
+
 PACKAGE_SOURCE: Final[Path] = PROJ_ROOT / "bindings" / "javascript"
 WASM_SOURCE: Final[Path] = PROJ_ROOT / "build" / "wasm"
 DEFAULT_OUT_DIR: Final[Path] = PROJ_ROOT / "build" / "npm"
@@ -117,7 +120,7 @@ def verify_dependencies(manifest: dict, version: str, package_name: str) -> None
     raise RuntimeError(f"Unknown npm package: {package_name}")
 
 
-def staging_manifest(version: str, package_name: str = PACKAGE_NAME) -> dict:
+def staging_manifest(version: str, package_name: str = PACKAGE_NAME, sha: str | None = None) -> dict:
   package_source = ALIAS_SOURCE if package_name == ALIAS_NAME else PACKAGE_SOURCE
   source = json.loads((package_source / "package.json").read_text(encoding="utf-8"))
   if source.get("private") is not True or source.get("version") != "0.0.0-development":
@@ -128,6 +131,7 @@ def staging_manifest(version: str, package_name: str = PACKAGE_NAME) -> dict:
   source.pop("scripts", None)
   source.pop("devDependencies", None)
   source["version"] = version
+  source["homepage"] = package_docs.documentation_url("javascript", sha or package_docs.source_sha(PROJ_ROOT))
   if package_name == ALIAS_NAME:
     source["dependencies"] = {PACKAGE_NAME: version}
   source["exports"] = {
@@ -148,7 +152,7 @@ def staging_manifest(version: str, package_name: str = PACKAGE_NAME) -> dict:
   return source
 
 
-def verify_manifest(manifest: dict, version: str, package_name: str = PACKAGE_NAME) -> None:
+def verify_manifest(manifest: dict, version: str, package_name: str = PACKAGE_NAME, sha: str | None = None) -> None:
   if not isinstance(manifest, dict):
     raise RuntimeError("npm manifest must be an object")
   allowlist = ALIAS_ALLOWLIST if package_name == ALIAS_NAME else PACK_ALLOWLIST
@@ -176,6 +180,7 @@ def verify_manifest(manifest: dict, version: str, package_name: str = PACKAGE_NA
     else REPOSITORY,
     "license": "MIT",
     "publishConfig": {"access": "public"},
+    "homepage": package_docs.documentation_url("javascript", sha or package_docs.source_sha(PROJ_ROOT)),
   }
   for key, value in expected.items():
     if manifest.get(key) != value:
@@ -205,15 +210,21 @@ def pack_package(out_dir: Path, version: str, package_name: str) -> Path:
   package_dir = out_dir / ("alias-package" if package_name == ALIAS_NAME else "package")
   package_dir.mkdir(parents=True)
 
-  manifest = staging_manifest(version, package_name)
-  verify_manifest(manifest, version, package_name)
+  sha = package_docs.source_sha(PROJ_ROOT)
+  manifest = staging_manifest(version, package_name, sha)
+  verify_manifest(manifest, version, package_name, sha)
   (package_dir / "package.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
   files = ALIAS_FILES if package_name == ALIAS_NAME else PACKAGE_FILES
   for source, target in files.items():
     if not source.is_file():
       raise FileNotFoundError(f"package input does not exist: {source}")
-    shutil.copy2(source, package_dir / target)
+    if target == "README.md":
+      (package_dir / target).write_text(
+        package_docs.render_readme(source.read_text(encoding="utf-8"), version, sha), encoding="utf-8", newline="\n"
+      )
+    else:
+      shutil.copy2(source, package_dir / target)
 
   if package_name == PACKAGE_NAME:
     wasm_size = (package_dir / "celestial-jieqi.wasm").stat().st_size

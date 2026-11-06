@@ -91,6 +91,17 @@ the forwarding source, typing marker and MIT license, and require the exact prim
 native artifacts. Floor/current consumers install the same alias bytes with the selected repaired primary wheel
 from an unrelated directory, checking object identity, dependency resolution and the pinned mypy contract.
 
+<a id="package-documentation"></a>
+### Package documentation
+
+Python and npm builders generate README context and documentation URLs from the source guides. A clean checkout
+produces links pinned to HEAD, even without a release tag. With no supplied source SHA, modified checkouts and
+source trees without usable Git metadata produce an explicitly labelled local-development README and links to main.
+
+CI supplies `CELESTIAL_DOCS_SOURCE_SHA` to each producer, including cibuildwheel containers. When Git can read the
+checkout, the supplied SHA must equal HEAD and the source must be clean; otherwise the build fails. A container
+without usable Git metadata uses the supplied SHA.
+
 <a id="api-docs"></a>
 ### API Documentation
 
@@ -102,21 +113,28 @@ lunar subtree keeps its existing English/Chinese comments. The HTML is a CI atta
 release artifact.
 
 <a id="docs-site"></a>
-### Development documentation site
+### Documentation site
 
-With the pinned Python dependencies in `Requirements.txt` and Doxygen 1.15.0 installed, run
-`python project.py --site` from a clean, committed source root. This opt-in task combines the existing
+Install Doxygen 1.15.0, then install the Python documentation dependencies with
+`python -m pip install --require-hashes --only-binary=:all: -r Requirements-docs.txt`.
+The general development environment in `Requirements.txt` also includes these dependencies.
+
+Run `python project.py --site` from a clean, committed source root. This opt-in task combines the existing
 Markdown guides and a separate API generation in `build/docs-site/`; it leaves `build/api-docs/html/`
 and `--all` unchanged. Core Tests uploads it as `celestial-docs-site`.
 
-Every page identifies the exact source SHA, package version and unreleased development state. The site
-describes that checkout, which may include APIs unavailable in the published packages. Its manifest records
-source inputs, generator versions and output digests, excluding the manifest itself. The build checks local
+Ordinary `--site` labels every page as development, with its exact source SHA and package version. For a release,
+use `python project.py --site --site-release-tag vMAJOR.MINOR.PATCH`; the tag must already exist locally, point to
+HEAD and match the package version. This local option checks identity, not whether GitHub has published an
+immutable release.
+
+Both modes use manifest schema 2, recording the release tag (null for development), source inputs, generator
+versions and output digests. The digest inventory excludes the manifest itself. The build checks local
 HTML links, fragments and assets at both the root and project subpath; it does not check external destinations
 over the network. It rejects dirty sources and linked output files.
 
 Preview locally with `python -m http.server --bind 127.0.0.1 --directory build/docs-site 8000`, then open
-`http://127.0.0.1:8000/`. No hosted URL is advertised until deployment and external checks are complete.
+`http://127.0.0.1:8000/`.
 The separately guarded manual publishing path is described in [Maintenance](MAINTAINING.md#docs-publishing).
 
 <a id="wasm"></a>
@@ -134,6 +152,7 @@ python3 toolbox/build_npm.py
 ```
 
 Ordinary `npm pack` in the `bindings/javascript` development directory refuses to pack; use the builder above.
+The [package documentation rules](#package-documentation) also apply to these npm builds.
 
 The generated module is `build/wasm/celestial-jieqi.mjs` with `build/wasm/celestial-jieqi.wasm`. It carries every
 function exported by `src/shared_lib/celestial.h`, including `celestial_chart_snapshot`;
@@ -166,6 +185,10 @@ the npm primary package tarball exactly as packed, `npm-pack.json`, `npm-pack.sh
 tarball, `npm-alias-pack.json`, `npm-alias-pack.sha256`. Each metadata file names its own tarball. The release
 workflow publishes the primary package first and the alias second, without rebuilding or repacking. Historical
 0.6.x archives keep the original single-package format.
+
+Only PR builds restore or save the unpacked emsdk cache. Every manually dispatched producer installs the pinned
+SDK fresh, including release-tag runs. The source-identity check verifies the installer checkout's pinned commit;
+it does not individually verify cached PR SDK files or independently verify upstream download servers.
 
 The same workflow checks every signature and layout in `bindings/javascript/test/abi/manifest.json` against
 `celestial.h`, and replays the golden data in `toolbox/bindings_golden.json`, which
