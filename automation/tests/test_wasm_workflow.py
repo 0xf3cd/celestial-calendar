@@ -34,6 +34,36 @@ JAVASCRIPT = ROOT / "bindings" / "javascript"
 WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 
 
+def test_raw_wasm_size_budgets_agree():
+  match = re.search(r"const MAX_WASM_BYTES = ([\d_]+);", WASM_CHECK.read_text(encoding="utf-8"))
+  assert match is not None
+  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_320_000
+
+
+@pytest.mark.parametrize("offset", [-1, 0, 1])
+def test_npm_raw_wasm_budget_boundary(tmp_path, monkeypatch, offset):
+  wasm = tmp_path / "input.wasm"
+  wasm.write_bytes(b"\0" * (build_npm.MAX_WASM_BYTES + offset))
+  monkeypatch.setattr(build_npm, "PACKAGE_FILES", {wasm: "celestial-jieqi.wasm"})
+  monkeypatch.setattr(build_npm.package_docs, "source_sha", lambda _: "1" * 40)
+  monkeypatch.setattr(build_npm.shutil, "which", lambda _: "npm")
+
+  class PackReached(Exception):
+    pass
+
+  def pack(*args, **kwargs):
+    assert args[0][1] == "pack"
+    raise PackReached
+
+  monkeypatch.setattr(build_npm.subprocess, "run", pack)
+  if offset > 0:
+    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1320000 bytes"):
+      build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
+  else:
+    with pytest.raises(PackReached):
+      build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
+
+
 def assert_emsdk_source_contract(workflow):
   env = workflow["env"]
   steps = workflow["jobs"]["wasm"]["steps"]

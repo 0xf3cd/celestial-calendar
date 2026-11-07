@@ -163,5 +163,5 @@ if (!process.argv.includes("--static-only")) {
 } else {
   console.log("Static-only: source implementations and built WASM checks not run");
 }
-console.log("PASS declarations 38, records 29, recording 36, ABI mutations 19/19, code swaps 4/4");
+console.log("PASS declarations 39, records 30, recording 37, ABI mutations 19/19, code swaps 4/4");
 console.log("PASS generated legal-empty, exact-total, sized-string and preserving-reader policies");

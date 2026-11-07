@@ -76,6 +76,7 @@ def verify_metadata(
     "celestial_calendar/capability.py",
     "celestial_calendar/chart.py",
     "celestial_calendar/events.py",
+    "celestial_calendar/observer.py",
     "celestial_calendar/query.py",
     "celestial_calendar/py.typed",
     native_member,
@@ -114,6 +115,7 @@ def verify_metadata(
     "capability.py",
     "chart.py",
     "events.py",
+    "observer.py",
     "query.py",
     "py.typed",
   ):
