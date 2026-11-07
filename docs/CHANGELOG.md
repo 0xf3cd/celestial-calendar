@@ -4,7 +4,9 @@
 
 ### Changed
 
-- Refreshed Algo5 Delta T coefficients with IERS Bulletin A final observations through 2026-10-01.
+- Refreshed Algo5 Delta T coefficients and the right-edge anchor from updated IERS Bulletin A inputs.
+  The added final observations extend the boundary to 2026-10-01 and set the right anchor;
+  they do not enter the least-squares rows.
   The fitted segment and anchored future values change; the model structure, pre-2005 delegation,
   model identity and public interfaces are unchanged.
 
