@@ -153,6 +153,7 @@ assert.deepEqual(
 assert.deepEqual(Object.keys(celestial.jieqi), ["moment", "name"]);
 assert.deepEqual(Object.keys(celestial.lunar), ["supportedYearRange", "yearInfo", "fromGregorian", "toGregorian"]);
 assert.deepEqual(Object.keys(celestial.chart), ["snapshot"]);
+assert(Object.isFrozen(celestial.observer), "observer is frozen");
 
 let edges = 0;
 const edge = (label, action, ErrorType) => {
@@ -162,6 +163,7 @@ const edge = (label, action, ErrorType) => {
 
 const uninitializedCalls = [
   ["chart.snapshot", [{ year: 2026, month: 1, day: 1, fraction: 0.5 }, { scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus" }]],
+  ["observer.position", ["sun", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 } }]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.jdeToUt1", [2451545.0]],
@@ -218,9 +220,9 @@ try {
   console.error = (...args) => initializationErrors.push(args.join(" "));
   failedInitialization = celestial.init();
   assert.strictEqual(celestial.init(), failedInitialization, "concurrent init shares one promise");
-  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
+  for (const [operation, args] of uninitializedCalls) checkUninitialized(celestial, operation, args);
   await assert.rejects(failedInitialization);
-  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
+  for (const [operation, args] of uninitializedCalls) checkUninitialized(celestial, operation, args);
 } finally {
   console.error = originalConsoleError;
   await rename(heldWasmPath, wasmPath);
