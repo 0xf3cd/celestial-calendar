@@ -142,7 +142,7 @@ def test_delta_t_source_markings_are_immutable_and_exact():
   hmnao_url = "https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/"
   record_url = (
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
-    "ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json"
+    "5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json"
   )
 
   assert delta_t.count(xu_url) == 2

@@ -185,6 +185,10 @@ RESIDUAL_GPL_ALLOWLIST: Final[Counter[tuple[str, str]]] = Counter(
       "src/test/provenance/astrotime-analysis/ed1cdc2fd6c5122b391a82289aa2cc060340552d/GRANT.md",
       GPL_3_OR_LATER,
     ): 1,
+    (
+      "src/test/provenance/astrotime-analysis/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/GRANT.md",
+      GPL_3_OR_LATER,
+    ): 1,
     ("src/test/lunar/algo3_ytliu0_golden_test.cpp", GPL_V3): 1,
     ("statistics/algo3_ytliu0_golden.py", GPL_V3): 1,
     ("third_party/emscripten/6.0.6/compiler-rt-LICENSE.TXT", GPL_V2): 2,
