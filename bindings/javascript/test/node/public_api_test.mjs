@@ -21,6 +21,7 @@ import {
 import { testChartApi } from "../support/chart_api.mjs";
 import { chartLabel } from "../support/chart_replay.mjs";
 import { testFakeNative } from "../support/fake_native.mjs";
+import { runObserverAcceptance } from "../support/observer_api.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -30,7 +31,7 @@ const heldWasmPath = `${wasmPath}.init-failure-probe`;
 const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
-const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart"];
+const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart", "observer"];
 const { C_DECLARATIONS, CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
 const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
 assert.equal(manifest.schema, "celestial-calendar/javascript-wasm-abi@2");
@@ -126,7 +127,7 @@ assert(Object.isFrozen(celestial.Jieqi), "Jieqi is frozen");
 
 assert.deepEqual(
   Object.keys(celestial).sort(),
-  ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"],
+  ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"],
   "public module exports",
 );
 assert.equal("config" in celestial, false);
@@ -628,6 +629,8 @@ assert.match(lunarError.message, /cannot be represented/);
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 happy += await testChartApi(celestial, entryUrl);
+assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
+console.log("PASS observer public queries, poles, refraction and civil/provider guards");
 assert.equal(happy, 24, "public method denominator");
 assert.equal(edges, 31, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");

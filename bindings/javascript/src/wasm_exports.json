@@ -37,6 +37,7 @@
   "celestial_equatorial_positions",
   "celestial_house_query",
   "celestial_house_capability",
+  "celestial_topocentric_position",
   "malloc",
   "free"
 ]

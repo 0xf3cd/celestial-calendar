@@ -55,6 +55,7 @@ await rm(WORK, { recursive: true, force: true });
 await mkdir(WORK, { recursive: true });
 await cp(FIXTURE, WORK, { recursive: true });
 await cp(new URL("../support/chart_replay.mjs", import.meta.url), resolve(WORK, "src/chart_replay.mjs"));
+await cp(new URL("../support/observer_api.mjs", import.meta.url), resolve(WORK, "src/observer_api.mjs"));
 await cp(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), resolve(WORK, "src/chart_example.json"));
 await writeFile(
   resolve(WORK, "package.json"),
@@ -167,6 +168,7 @@ try {
     assert.equal(result.survived, true, "module did not survive a translated failure");
     assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");
     assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
+    assert.deepEqual(result.observer, { targets: 10, exactPoles: 2, refractionStates: 2 });
     assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
     assert.equal(result.lichunMatches, true);
     assert.equal(result.lichun.momentUt1.year, 2024);

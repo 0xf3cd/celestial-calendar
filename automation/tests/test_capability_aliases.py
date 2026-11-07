@@ -77,6 +77,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "EQUATORIAL": 4,
     "CHART": 5,
     "DELTA_T": 6,
+    "TOPOCENTRIC": 7,
   }
   assert family("CELESTIAL_STATUS_") == {
     "SOURCE_WINDOW": 0,
@@ -94,6 +95,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "CELESTIAL_OPERATION_HOUSES",
     "CELESTIAL_OPERATION_CHART",
     "CELESTIAL_OPERATION_DELTA_T",
+    "CELESTIAL_OPERATION_TOPOCENTRIC",
   ]
   assert abi.PROTOCOLS["celestial_capability_text"]["subject_policy"] == (
     "concrete-target-for-target-operations-all-for-nontarget-operations"
@@ -105,7 +107,14 @@ def test_all_generated_code_views_preserve_exact_names_and_values():
   assert build_manifest("python")["codes"] == build_manifest("javascript")["codes"] == codes()
   assert family("CELESTIAL_CIVIL_SCALE_") == {"UTC": 0, "UT1": 1}
   assert family("CELESTIAL_HOUSE_SYSTEM_") == {"EQUAL": 0, "WHOLE_SIGN": 1, "PLACIDUS": 2}
-  assert family("CELESTIAL_PRESENT_") == {"LATITUDE": 1, "DISTANCE": 2}
+  assert family("CELESTIAL_PRESENT_") == {
+    "LATITUDE": 1,
+    "DISTANCE": 2,
+    "RIGHT_ASCENSION": 4,
+    "AZIMUTH": 8,
+    "APPARENT_ALTITUDE": 16,
+  }
+  assert family("CELESTIAL_REFRACTION_") == {"NONE": 0, "BENNETT": 1, "SAEMUNDSSON": 2}
 
 
 def test_capability_validation_owner_names_resolve_to_tests():

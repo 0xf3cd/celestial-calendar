@@ -30,8 +30,8 @@ const assertView = (candidate) => {
   assert.deepEqual(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(Object.keys(PROTOCOLS), names);
   assert.deepEqual(Object.keys(C_DECLARATIONS.functions), names);
-  assert.equal(names.length, 38);
-  assert.equal(Object.keys(candidate.layouts).length, 29);
+  assert.equal(names.length, 39);
+  assert.equal(Object.keys(candidate.layouts).length, 30);
   assert(names.every((name) => name.startsWith("celestial_")));
   assert(Object.keys(candidate.layouts).every((name) => name.startsWith("Celestial") && !name.endsWith("V1")));
   for (const [index, entry] of candidate.exports.entries()) {
@@ -59,7 +59,7 @@ const assertView = (candidate) => {
     }
   }
   assert.equal(candidate.exports.filter(({ protocol }) => protocol.kind === "count-fill").length, 9);
-  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 36);
+  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 37);
   assert.deepEqual(candidate.exports.filter(({ protocol }) => protocol.error_channel === "preserve")
     .map(({ name }) => name), ["celestial_last_error", "celestial_last_error_kind"]);
   const targetCodes = Object.entries(candidate.codes)
@@ -70,6 +70,16 @@ const assertView = (candidate) => {
 };
 
 assertView(manifest);
+// Independent wasm32 pins; the declaration generator must not rewrite this expectation.
+assert.equal(LAYOUTS.CelestialTopocentricPosition.size, 88);
+assert.equal(LAYOUTS.CelestialTopocentricPosition.alignment, 8);
+assert.deepEqual(LAYOUTS.CelestialTopocentricPosition.fields.map(({ name, type, offset }) => [name, type, offset]), [
+  ["valid", "bool", 0], ["target_code", "uint32_t", 4], ["source_code", "uint32_t", 8],
+  ["delta_t_identity_code", "uint32_t", 12], ["present_fields", "uint32_t", 16],
+  ["jd_ut1", "double", 24], ["jde_tt", "double", 32], ["right_ascension_deg", "double", 40],
+  ["declination_deg", "double", 48], ["distance_au", "double", 56], ["altitude_deg", "double", 64],
+  ["azimuth_deg", "double", 72], ["apparent_altitude_deg", "double", 80],
+]);
 assert.deepEqual(exportsList, [...names, "malloc", "free"], "exact generated private WASM export inventory");
 const mutations = [
   (value) => { value.schema = "celestial-calendar/javascript-wasm-abi@1"; },

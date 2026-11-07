@@ -48,6 +48,24 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
+### Local sky from a WGS84 observer
+
+Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal
+height in metres. Azimuth is north-zero/east-positive. Optional angles are `null`.
+See the [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+for strict UTC, provider/model guards and optional refraction.
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
 <a id="chart-snapshot"></a>
 ### Chart Snapshot at a Fixed Instant
 

@@ -40,6 +40,22 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+### WGS84 观测者
+
+椭球高以米为单位；方位角以正北为零点、向东为正。关于角度字段的缺失情形、严格 UTC 规则和大气折射，见
+[观测者指南](../../docs/OBSERVER.md)。
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
 

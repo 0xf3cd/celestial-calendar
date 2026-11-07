@@ -68,6 +68,8 @@ for name in {ALIAS_NAMES!r}:
         assert all(getattr(alias, key) is getattr(primary, key) for key in primary.__all__)
         civil = alias.CivilDateTime(2026, 1, 1, 0.5)
         assert alias.utc_to_jde(civil) == primary.utc_to_jde(civil)
+        sky = alias.topocentric_position(alias.Target.MOON, civil, alias.CivilScale.UTC, alias.Observer(90, 0, 0))
+        assert sky.azimuth_deg is None and sky.apparent_altitude_deg is None and sky.distance_au > 0
         try:
             importlib.import_module(name + '.chart')
         except ModuleNotFoundError:

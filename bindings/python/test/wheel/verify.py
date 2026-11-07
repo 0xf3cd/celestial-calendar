@@ -249,7 +249,7 @@ def main() -> None:
   platform_tags = filename_match.group(1).split(".")
   export_names = [entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]]
   exports = set(export_names)
-  assert len(export_names) == len(exports) == 38, "C ABI export inventory"
+  assert len(export_names) == len(exports) == 39, "C ABI export inventory"
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
     expected_commit = run("git", "-C", str(REPO), "rev-parse", "HEAD").strip()

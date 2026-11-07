@@ -35,33 +35,6 @@ static_assert(std::tuple_size_v<decltype(astro::chart::Snapshot::bodies)> ==
 static_assert(std::tuple_size_v<decltype(astro::house::Result::cusps)> ==
               std::extent_v<decltype(CelestialChartHouses::cusps_deg)>);
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): year/month/day/fraction is the published civil-date order.
-inline auto validate_civil(const int32_t year, const uint32_t month, const uint32_t day, const double fraction) -> void {
-  const auto civil_year = util::checked_year(year);
-  if (month < 1 or month > 12) {
-    throw std::invalid_argument { std::format("Argument `month` must be in [1, 12], got {}", month) };
-  }
-
-  const auto month_end = civil_year / std::chrono::month { month } / std::chrono::last;
-  const uint32_t last_day = static_cast<unsigned>(month_end.day());
-  if (day < 1 or day > last_day) {
-    throw std::invalid_argument {
-      std::format("Argument `day` must be in [1, {}] for {}-{}, got {}", last_day, year, month, day)
-    };
-  }
-
-  static_cast<void>(calendar::validate_fraction(fraction));
-}
-
-/** @brief Decode the civil input scale before passing it to the time layer. */
-[[nodiscard]] inline auto civil_scale(const uint32_t code) -> astro::julian_day::Scale {
-  switch (code) {
-    case CELESTIAL_CIVIL_SCALE_UTC: return astro::julian_day::Scale::UTC;
-    case CELESTIAL_CIVIL_SCALE_UT1: return astro::julian_day::Scale::UT1;
-    default: throw std::invalid_argument { std::format("Unknown `civil_scale_code` {}", code) };
-  }
-}
-
 /** @brief Decode the requested house geometry. */
 [[nodiscard]] inline auto house_system(const uint32_t code) -> astro::house::System {
   switch (code) {

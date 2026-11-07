@@ -123,6 +123,21 @@ ABI_FIELD(CelestialDeltaT, valid, bool, 0);
 ABI_FIELD(CelestialDeltaT, model_identity_code, uint32_t, 4);
 ABI_FIELD(CelestialDeltaT, value, double, 8);
 
+ABI_RECORD(CelestialTopocentricPosition, 88, 8);
+ABI_FIELD(CelestialTopocentricPosition, valid, bool, 0);
+ABI_FIELD(CelestialTopocentricPosition, target_code, uint32_t, 4);
+ABI_FIELD(CelestialTopocentricPosition, source_code, uint32_t, 8);
+ABI_FIELD(CelestialTopocentricPosition, delta_t_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialTopocentricPosition, present_fields, uint32_t, 16);
+ABI_FIELD(CelestialTopocentricPosition, jd_ut1, double, 24);
+ABI_FIELD(CelestialTopocentricPosition, jde_tt, double, 32);
+ABI_FIELD(CelestialTopocentricPosition, right_ascension_deg, double, 40);
+ABI_FIELD(CelestialTopocentricPosition, declination_deg, double, 48);
+ABI_FIELD(CelestialTopocentricPosition, distance_au, double, 56);
+ABI_FIELD(CelestialTopocentricPosition, altitude_deg, double, 64);
+ABI_FIELD(CelestialTopocentricPosition, azimuth_deg, double, 72);
+ABI_FIELD(CelestialTopocentricPosition, apparent_altitude_deg, double, 80);
+
 ABI_RECORD(CelestialChartBody, 48, 8);
 ABI_FIELD(CelestialChartBody, target_code, uint32_t, 0);
 ABI_FIELD(CelestialChartBody, source_code, uint32_t, 4);
@@ -256,6 +271,12 @@ ABI_CODE(CELESTIAL_TARGET_TRUE_ASCENDING, 12);
 ABI_CODE(CELESTIAL_TARGET_TRUE_DESCENDING, 13);
 ABI_CODE(CELESTIAL_PRESENT_LATITUDE, 1);
 ABI_CODE(CELESTIAL_PRESENT_DISTANCE, 2);
+ABI_CODE(CELESTIAL_PRESENT_RIGHT_ASCENSION, 4);
+ABI_CODE(CELESTIAL_PRESENT_AZIMUTH, 8);
+ABI_CODE(CELESTIAL_PRESENT_APPARENT_ALTITUDE, 16);
+ABI_CODE(CELESTIAL_REFRACTION_NONE, 0);
+ABI_CODE(CELESTIAL_REFRACTION_BENNETT, 1);
+ABI_CODE(CELESTIAL_REFRACTION_SAEMUNDSSON, 2);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_INCREASING, 0);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_DECREASING, 1);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_TANGENT, 2);
@@ -268,6 +289,7 @@ ABI_CODE(CELESTIAL_OPERATION_HOUSES, 3);
 ABI_CODE(CELESTIAL_OPERATION_EQUATORIAL, 4);
 ABI_CODE(CELESTIAL_OPERATION_CHART, 5);
 ABI_CODE(CELESTIAL_OPERATION_DELTA_T, 6);
+ABI_CODE(CELESTIAL_OPERATION_TOPOCENTRIC, 7);
 ABI_CODE(CELESTIAL_STATUS_SOURCE_WINDOW, 0);
 ABI_CODE(CELESTIAL_STATUS_IMPLEMENTATION_WINDOW, 1);
 ABI_CODE(CELESTIAL_STATUS_FINITE_INPUT_EVALUATION, 2);
@@ -289,6 +311,9 @@ ABI_CODE(CELESTIAL_NUTATION_MODEL_MEEUS, 1);
 ABI_CODE(CELESTIAL_NUTATION_MODEL_IAU_1980, 2);
 
 /* Function types include pointee constness, which ctypes cannot express. */
+_Static_assert(_Generic(&celestial_topocentric_position,
+               CelestialTopocentricPosition (*)(uint32_t, int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, double, double, double, uint32_t, double, double): 1,
+               default: 0) != 0, "celestial_topocentric_position signature drifted");
 _Static_assert(_Generic(&celestial_last_error,
                const char * (*)(void): 1,
                default: 0) != 0, "celestial_last_error signature drifted");

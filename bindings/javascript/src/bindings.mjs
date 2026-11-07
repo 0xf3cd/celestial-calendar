@@ -38,7 +38,10 @@ export const CHART_CODES = deepFreeze({
   },
   "present": {
     "latitude": 1,
-    "distance": 2
+    "distance": 2,
+    "rightAscension": 4,
+    "azimuth": 8,
+    "apparentAltitude": 16
   },
   "targets": {
     "sun": 0,
@@ -932,6 +935,77 @@ export const LAYOUTS = deepFreeze({
         "offset": 40
       }
     ]
+  },
+  "CelestialTopocentricPosition": {
+    "size": 88,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "target_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "source_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "delta_t_identity_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "present_fields",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "jd_ut1",
+        "type": "double",
+        "offset": 24
+      },
+      {
+        "name": "jde_tt",
+        "type": "double",
+        "offset": 32
+      },
+      {
+        "name": "right_ascension_deg",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "declination_deg",
+        "type": "double",
+        "offset": 48
+      },
+      {
+        "name": "distance_au",
+        "type": "double",
+        "offset": 56
+      },
+      {
+        "name": "altitude_deg",
+        "type": "double",
+        "offset": 64
+      },
+      {
+        "name": "azimuth_deg",
+        "type": "double",
+        "offset": 72
+      },
+      {
+        "name": "apparent_altitude_deg",
+        "type": "double",
+        "offset": 80
+      }
+    ]
   }
 });
 
@@ -1163,11 +1237,17 @@ export const BINDINGS = deepFreeze([
     "wasmName": "_celestial_house_capability",
     "result": "sret:CelestialCivilHouseCapability",
     "readsLastError": true
+  },
+  {
+    "cName": "celestial_topocentric_position",
+    "wasmName": "_celestial_topocentric_position",
+    "result": "sret:CelestialTopocentricPosition",
+    "readsLastError": true
   }
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "daeaea02e242a27990da3e197c4576f8d339f2036e77ec674beb1e10ce38d957",
+  "source_sha256": "cea471da0b968a66dffea3c9af1b47d4b5a9363ba88ea9461c7bf6f1da8865b5",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",
@@ -1926,6 +2006,64 @@ export const C_DECLARATIONS = deepFreeze({
           "type": "uint32_t"
         }
       ]
+    },
+    "celestial_topocentric_position": {
+      "signature": "CelestialTopocentricPosition celestial_topocentric_position(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, double latitude_deg, double longitude_deg, double elevation_m, uint32_t refraction_code, double temperature_c, double pressure_hpa)",
+      "result": "CelestialTopocentricPosition",
+      "parameters": [
+        {
+          "name": "target_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "year",
+          "type": "int32_t"
+        },
+        {
+          "name": "month",
+          "type": "uint32_t"
+        },
+        {
+          "name": "day",
+          "type": "uint32_t"
+        },
+        {
+          "name": "fraction",
+          "type": "double"
+        },
+        {
+          "name": "civil_scale_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "delta_t_model_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        },
+        {
+          "name": "refraction_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "temperature_c",
+          "type": "double"
+        },
+        {
+          "name": "pressure_hpa",
+          "type": "double"
+        }
+      ]
     }
   },
   "constants": {
@@ -1983,6 +2121,7 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_OPERATION_EQUATORIAL": 4,
     "CELESTIAL_OPERATION_CHART": 5,
     "CELESTIAL_OPERATION_DELTA_T": 6,
+    "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
     "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
     "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
     "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -1991,7 +2130,13 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_MODEL_KIND_POSITION_SOURCE": 2,
     "CELESTIAL_MODEL_KIND_ALL": 4294967295,
     "CELESTIAL_MODEL_STATUS_CURRENT": 0,
-    "CELESTIAL_MODEL_STATUS_FROZEN": 1
+    "CELESTIAL_MODEL_STATUS_FROZEN": 1,
+    "CELESTIAL_REFRACTION_NONE": 0,
+    "CELESTIAL_REFRACTION_BENNETT": 1,
+    "CELESTIAL_REFRACTION_SAEMUNDSSON": 2,
+    "CELESTIAL_PRESENT_RIGHT_ASCENSION": 4,
+    "CELESTIAL_PRESENT_AZIMUTH": 8,
+    "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16
   },
   "aliases": {}
 });
@@ -2339,6 +2484,25 @@ export const WASM_SIGNATURES = deepFreeze({
       "i32",
       "i32"
     ]
+  },
+  "celestial_topocentric_position": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "f64",
+      "i32",
+      "f64",
+      "f64"
+    ]
   }
 });
 
@@ -2569,7 +2733,8 @@ export const PROTOCOLS = deepFreeze({
     "nontarget_operations": [
       "CELESTIAL_OPERATION_HOUSES",
       "CELESTIAL_OPERATION_CHART",
-      "CELESTIAL_OPERATION_DELTA_T"
+      "CELESTIAL_OPERATION_DELTA_T",
+      "CELESTIAL_OPERATION_TOPOCENTRIC"
     ],
     "error_channel": "kind"
   },
@@ -2604,6 +2769,11 @@ export const PROTOCOLS = deepFreeze({
   },
   "celestial_house_capability": {
     "kind": "sret",
+    "error_channel": "kind"
+  },
+  "celestial_topocentric_position": {
+    "kind": "sret",
+    "identity": "resolved-explicit-model-key-and-position-source",
     "error_channel": "kind"
   }
 });

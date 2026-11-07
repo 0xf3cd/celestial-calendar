@@ -199,6 +199,7 @@ EXPORT_SEMANTICS = {
         "CELESTIAL_OPERATION_HOUSES",
         "CELESTIAL_OPERATION_CHART",
         "CELESTIAL_OPERATION_DELTA_T",
+        "CELESTIAL_OPERATION_TOPOCENTRIC",
       ],
     },
     "recording": True,
@@ -233,4 +234,8 @@ EXPORT_SEMANTICS = {
   },
   "celestial_house_query": {"protocol": {"identity": "resolved-explicit-model-keys"}, "recording": True},
   "celestial_house_capability": {"protocol": {}, "recording": True},
+  "celestial_topocentric_position": {
+    "protocol": {"identity": "resolved-explicit-model-key-and-position-source"},
+    "recording": True,
+  },
 }

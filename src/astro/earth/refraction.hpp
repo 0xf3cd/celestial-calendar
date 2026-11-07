@@ -16,6 +16,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <numeric>
+#include <optional>
 #include <stdexcept>
 
 #include "toolbox.hpp"
@@ -48,6 +50,12 @@ inline constexpr double SAEMUNDSSON_HORIZON_TOL_DEG = 1e-9;
 
 /** @brief Maximum number of iterations for Saemundsson's horizon solve. */
 inline constexpr std::size_t SAEMUNDSSON_HORIZON_MAX_ITER = 20;
+
+/** @brief Forward residual required by the geometric-to-apparent Bennett inverse, in degrees. */
+inline constexpr double BENNETT_INVERSE_TOL_DEG = 1e-12;
+
+/** @brief Bisection cap; 90 / 2^47 degrees is already below the required forward residual. */
+inline constexpr std::size_t BENNETT_INVERSE_MAX_ITER = 64;
 
 #pragma endregion
 
@@ -208,6 +216,73 @@ inline auto validate_params(const Params& params) -> void {
     std::format("refraction::at_horizon: Saemundsson iteration did not converge in {} iterations, "
                 "last |Δ| = {} deg", SAEMUNDSSON_HORIZON_MAX_ITER, delta_deg)
   };
+}
+
+/**
+ * @brief Apply refraction to a geometric centre altitude, or return none below the apparent horizon.
+ * @param geometric_alt Finite geometric altitude in degrees; unsupported altitudes return none.
+ * @param params Model and weather: temperature in [-90, 60]°C and pressure in [300, 1100] hPa.
+ * @return The computed apparent altitude, without clamping, when supported.
+ * @note The weather interval is an implementation support window. The geometric lower bound is
+ *       the selected model's apparent horizon; the upper bound is 90°. Saemundsson's inclusive
+ *       lower endpoint can return a signed residual down to -SAEMUNDSSON_HORIZON_TOL_DEG.
+ * @throw std::invalid_argument For non-finite altitude, unknown model or unsupported weather.
+ * @throw std::runtime_error If the inverse fails to converge or the result is inconsistent.
+ * @see Jean Meeus, "Astronomical Algorithms", Second Edition, formulas (16.3), (16.4).
+ */
+[[nodiscard]] inline auto apparent_altitude(
+  const toolbox::AngleDeg geometric_alt,
+  const Params& params = {}
+) -> std::optional<toolbox::AngleDeg> {
+  using toolbox::AngleDeg;
+
+  detail::validate_params(params);
+  const bool supported_weather = params.temperature_c >= -90.0 and params.temperature_c <= 60.0
+    and params.pressure_hpa >= 300.0 and params.pressure_hpa <= 1100.0;
+  if (not supported_weather) {
+    throw std::invalid_argument { "Refraction application requires T in [-90, 60] C and P in [300, 1100] hPa" };
+  }
+  if (params.model != Model::BENNETT and params.model != Model::SAEMUNDSSON) {
+    throw std::invalid_argument { "Unknown refraction model" };
+  }
+  const double g = geometric_alt.deg();
+  if (not std::isfinite(g)) {
+    throw std::invalid_argument { "Geometric altitude must be finite" };
+  }
+
+  if (params.model == Model::SAEMUNDSSON) {
+    if (g < -at_horizon(params).deg() or g > 90.0) {
+      return std::nullopt;
+    }
+    const double apparent = g + detail::apply_tp_correction(saemundsson(geometric_alt), params).deg();
+    if (not std::isfinite(apparent) or apparent < -SAEMUNDSSON_HORIZON_TOL_DEG or apparent > 90.0) {
+      throw std::runtime_error { "Saemundsson apparent altitude is outside its supported range" };
+    }
+    return AngleDeg { apparent };
+  }
+
+  const auto geometric_from_apparent = [&](const double apparent) {
+    return apparent - detail::apply_tp_correction(bennett(AngleDeg { apparent }), params).deg();
+  };
+  if (g < geometric_from_apparent(0.0) or g > 90.0) {
+    return std::nullopt;
+  }
+
+  double lower = 0.0;
+  double upper = 90.0;
+  for (std::size_t iteration = 0; iteration < BENNETT_INVERSE_MAX_ITER; ++iteration) {
+    const double apparent = std::midpoint(lower, upper);
+    const double residual = geometric_from_apparent(apparent) - g;
+    if (std::abs(residual) <= BENNETT_INVERSE_TOL_DEG) {
+      return AngleDeg { apparent };
+    }
+    if (residual < 0.0) {
+      lower = apparent;
+    } else {
+      upper = apparent;
+    }
+  }
+  throw std::runtime_error { "Bennett geometric-to-apparent inverse did not converge" };
 }
 
 } // namespace astro::earth::refraction

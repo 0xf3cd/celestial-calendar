@@ -33,6 +33,16 @@ struct GeoLocation {
 
 namespace geolocation {
 
+/** @brief Reject a non-finite geographic latitude or one outside [-90°, 90°], preserving the caller's name. */
+inline auto validate_latitude(const toolbox::AngleDeg latitude, const std::string_view name) -> void {
+  const double latitude_deg = latitude.deg();
+  if (not std::isfinite(latitude_deg) or latitude_deg < -90.0 or latitude_deg > 90.0) {
+    throw std::invalid_argument {
+      std::format("Argument `{}` out of range [-90, 90], got {}", name, latitude_deg)
+    };
+  }
+}
+
 /** @brief Reject a non-finite geographic longitude or one outside [-180°, 180°], preserving the caller's name. */
 inline auto validate_longitude(const toolbox::AngleDeg longitude, const std::string_view name) -> void {
   const double longitude_deg = longitude.deg();

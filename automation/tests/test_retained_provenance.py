@@ -130,7 +130,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_retained_provenance_facts_and_values_are_complete():
-  assert verify_retained_provenance() == ProvenanceCounts(58, 116, 61, 2, 16)
+  assert verify_retained_provenance() == ProvenanceCounts(58, 121, 64, 2, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):

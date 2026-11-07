@@ -64,12 +64,14 @@ export async function runPackageConsumer({ dependencies, packageName, expectedVe
     if (aliasInstalled) await verifyAlias();
 
     await writeFile(join(consumer, "chart_replay.mjs"), await readFile(new URL("./chart_replay.mjs", import.meta.url), "utf8"));
+    await writeFile(join(consumer, "observer_api.mjs"), await readFile(new URL("./observer_api.mjs", import.meta.url), "utf8"));
     const chartExample = JSON.parse(await readFile(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), "utf8"));
 
     await writeFile(
       join(consumer, "consumer.mjs"),
       `import assert from "node:assert/strict";
 import { runChartAcceptance } from "./chart_replay.mjs";
+import { runObserverAcceptance } from "./observer_api.mjs";
 import * as celestial from "${packageName}";
 import {
   dateToCivilUtc, civilUtcToDate, dateToCivilAtOffset, civilAtOffsetToDate,
@@ -100,6 +102,7 @@ assert.deepEqual(local, {
 assert.equal(civilAtOffsetToDate(local, 480).getTime(), date.getTime());
 
 await celestial.init();
+assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
 assert.equal("config" in celestial, false);
 const sun = celestial.sun.apparentGeocentricCoordinate(2451545.0);
 assert(Number.isFinite(sun.distanceAu));

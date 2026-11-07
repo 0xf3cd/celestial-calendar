@@ -209,14 +209,7 @@ namespace detail {
  *        or either is not finite.
  */
 inline auto validate(const GeoLocation& location) -> void {
-  const double lat = location.latitude.deg();
-
-  if (not std::isfinite(lat) or lat < -90.0 or lat > 90.0) {
-    throw std::invalid_argument {
-      std::format("Argument `location.latitude` out of range [-90, 90], got {}", lat)
-    };
-  }
-
+  astro::geolocation::validate_latitude(location.latitude, "location.latitude");
   astro::geolocation::validate_longitude(location.longitude, "location.longitude");
 }
 
@@ -1157,6 +1150,8 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *         horizon. The 0.7275 factor folds the parallax (and the upper-limb semidiameter) into
  *         the horizon dip, so **geocentric** coordinates can be used directly — no topocentric
  *         reduction (Ch.40) is needed at minute-level accuracy.
+ * @note Do not reuse this geocentric threshold for @ref astro::observer::Position "observer::Position".
+ *       Its centre includes parallax; apparent_altitude includes any requested refraction.
  * @throw std::invalid_argument If `p` is invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For `Model::SAEMUNDSSON`, if the horizon iteration does not
  *        converge (see `refraction::at_horizon`).

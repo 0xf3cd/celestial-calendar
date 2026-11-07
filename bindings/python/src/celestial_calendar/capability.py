@@ -34,6 +34,7 @@ class CapabilityOperation(_StrEnum):
   EQUATORIAL = "equatorial"
   CHART = "chart"
   DELTA_T = "delta_t"
+  TOPOCENTRIC = "topocentric"
 
 
 class CapabilityStatus(_StrEnum):

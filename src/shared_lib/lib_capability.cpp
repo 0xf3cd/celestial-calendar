@@ -238,6 +238,18 @@ auto operation_model_text(const uint32_t operation) -> std::string {
   switch (operation) {
     case CELESTIAL_OPERATION_DELTA_T:
       return std::format("Delta T: selectable model; DEFAULT resolves to {}. The result records the resolved identity. TT - UT1 is in seconds; model guards apply at the decimal-year evaluation instant. Model sources/status: celestial_model_identity_text; validation: delta_t_test.cpp.", delta_t);
+    case CELESTIAL_OPERATION_TOPOCENTRIC:
+      return std::format(
+        "Topocentric physical-target centre coordinates from a fixed WGS84 geodetic site: ellipsoidal height in metres, "
+        "east-positive longitude, north-zero/east-positive azimuth, observer distance in AU. "
+        "Fixed IAU1980 axes. Delta T DEFAULT resolves to {}; UTC begins at 1972-01-01 and derived UT1 is modelled. "
+        "Use EQUATORIAL provider domains for physical targets; no chart/rate window applies, nodes are rejected. "
+        "RA/azimuth may be unresolved; exact geographic-pole azimuth is absent. "
+        "Refraction is optional: T [-90,60] C / P [300,1100] hPa; unsupported altitude leaves its result absent. "
+        "No added diurnal aberration, polar motion or observer light-time solve. "
+        "Validation: observer_test.cpp; model identities: celestial_model_identity_text.",
+        delta_t
+      );
     case CELESTIAL_OPERATION_HOUSES:
     case CELESTIAL_OPERATION_CHART:
       return std::format(
@@ -256,7 +268,7 @@ auto operation_model_text(const uint32_t operation) -> std::string {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Operation precedes its subject in the published lookup pair.
 auto capability_text(const uint32_t operation_code, const uint32_t subject) -> std::string {
   const bool no_target = operation_code == CELESTIAL_OPERATION_HOUSES or operation_code == CELESTIAL_OPERATION_CHART
-    or operation_code == CELESTIAL_OPERATION_DELTA_T;
+    or operation_code == CELESTIAL_OPERATION_DELTA_T or operation_code == CELESTIAL_OPERATION_TOPOCENTRIC;
   if (no_target) {
     if (subject != CELESTIAL_TARGET_ALL) {
       throw std::invalid_argument { "This operation requires CELESTIAL_TARGET_ALL because it has no target" };

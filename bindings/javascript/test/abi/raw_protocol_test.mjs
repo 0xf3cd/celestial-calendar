@@ -179,6 +179,18 @@ assert.deepEqual([ut1.year, ut1.month, ut1.day], [2024, 6, 1]);
 finite(ut1.fraction);
 
 const sun = validSret("celestial_sun_apparent_geocentric_coord", [2460463.0]);
+const observed = validSret("celestial_topocentric_position", [1, 2026, 11, 7, 0, 0, 0, -33.85, 151.2, 50, 0, NaN, NaN]);
+assert.equal(observed.present_fields, 12);
+assert.equal(observed.target_code, 1);
+assert.equal(observed.source_code, 2);
+assert.equal(observed.delta_t_identity_code, 5);
+finite(observed.jd_ut1, observed.jde_tt, observed.altitude_deg, observed.distance_au);
+for (const pole of [-90, 90]) {
+  const result = validSret("celestial_topocentric_position", [0, 2026, 11, 7, 0, 0, 0, pole, 42, 0, 0, NaN, NaN]);
+  assert.equal(result.present_fields & 8, 0);
+}
+assert.equal(rawSret("celestial_topocentric_position", [10, 2026, 11, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]).valid, false);
+assert.equal(M._celestial_last_error_kind(), 1);
 assert(sun.lon >= 0 && sun.lon < 360);
 finite(sun.lat, sun.r);
 const moon = validSret("celestial_moon_apparent_geocentric_coord", [2460463.0]);
@@ -1001,8 +1013,8 @@ assert.deepEqual(
 assert.equal(goldenCount, 395, "golden replay count");
 assert.equal(BINDINGS.length, 38, "C export inventory");
 assert.equal(Object.keys(manifest.layouts).length, 29, "C record inventory");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 38 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 29 layouts decoded");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 39 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 30 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
