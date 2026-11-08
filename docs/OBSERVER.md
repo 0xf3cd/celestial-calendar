@@ -8,14 +8,16 @@ site on Earth. Existing geocentric position and chart queries are unchanged.
 The site uses WGS84 geodetic latitude in [-90, 90] degrees, east-positive longitude
 in [-180, 180] degrees and signed **ellipsoidal height**, not height above the geoid.
 C, Python and JavaScript take metres; C++ uses `toolbox::DistanceKm`. Height must be
-finite and greater than `-a(1-f)^2` (about -6335439.3 m). This conservative geodetic-map
-admission does not make a large positive height a supported moving-satellite model.
+finite and greater than `-a(1-f)^2` (about -6335439.3 m), where `a` is the WGS84
+semi-major axis and `f` its flattening. This conservative geodetic-map admission
+does not make a large positive height a supported moving-satellite model.
 
-Declare civil UTC or UT1 explicitly. Strict UTC begins at 1972-01-01; there is no
-pre-1972 UT1 substitution on this query. UTC-to-UT1 uses the selected Delta T model
-and held leap-second table, not observed DUT1. The chosen model's own guards and
-the target's position-provider window apply; chart civil-year limits and rate
-stencils do not. Pluto's TT position domain is [2409543.5, 2488069.5).
+Declare civil UTC or UT1 explicitly. UTC input before 1972-01-01 is rejected as
+invalid input; the query does not automatically substitute UT1. UTC-to-UT1 uses the
+selected Delta T model and held leap-second table, not observed DUT1. The chosen
+model's own guards and the target's position-provider window apply. Chart civil-year
+limits and the extra time margins needed for numerical rates do not apply. Pluto's
+TT position domain is [2409543.5, 2488069.5).
 
 Results contain resolved JD(UT1)/JDE(TT), target/source/Delta T identity, topocentric
 RA/Dec in the true equator/equinox of date, observer distance in AU, geometric
@@ -24,12 +26,14 @@ The older `HorizontalCoord` uses south-zero/west-positive angles and is unchange
 
 RA is optional when the equatorial projection is unresolved. Azimuth is optional at
 zenith/nadir or an unresolved horizontal projection, and absent at exactly either
-geographic pole because geographic north has no unique direction there. A latitude
-immediately inside a pole uses its longitude-selected meridian. Declination, distance
-and geometric altitude remain available when those individual angles are absent.
+geographic pole because geographic north has no unique direction there. For latitudes
+just short of ±90°, longitude still defines local north and east; azimuth is returned
+if the horizontal projection is resolved. Declination, distance and geometric altitude
+remain available when those individual angles are absent.
 
 Projected lengths are compared with 32 times double epsilon times the larger
-pre-subtraction vector scale; an unresolved total vector is rejected. These are
+pre-subtraction vector scale. The query reports a computation error if it cannot
+resolve the observer-to-body separation at floating-point precision. These are
 conditioning/resolution limits, **not angular accuracy guarantees**. Near cancellation
 or a tiny projection, a returned direction can still be sensitive to input rounding.
 Nonrepresentable results raise a computation error.
@@ -50,7 +54,8 @@ assert sky.apparent_altitude_deg is None
 print(sky.altitude_deg, sky.azimuth_deg)
 ```
 
-Python values are frozen. Pass `RefractionParams(RefractionModel.BENNETT)` or
+Python values are immutable dataclass instances. Pass
+`RefractionParams(RefractionModel.BENNETT)` or
 `RefractionParams(RefractionModel.SAEMUNDSSON)` as `refraction=` for apparent altitude.
 `delta_t_model=` accepts `DeltaTModel` or a matching `ModelKey`. The `cele` and
 `wentian` packages forward the same top-level functions and types.
@@ -70,8 +75,9 @@ if (!(sky.distanceAu > 0)) throw new Error("invalid observer distance");
 console.log(sky.altitudeDeg, sky.azimuthDeg, sky.apparentAltitudeDeg);
 ```
 
-Optional angles are `null`; each result owns its values. `model` selects Delta T,
-defaulting to `"default"`. The `celestial-calendar` npm alias forwards this API.
+Optional angles are `null`. Each result copies its values out of WASM memory, so
+later calls do not overwrite it. `model` selects Delta T, defaulting to `"default"`.
+The `celestial-calendar` npm alias forwards this API.
 
 ## C++ and C
 

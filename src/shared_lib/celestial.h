@@ -1033,14 +1033,16 @@ typedef struct CelestialTopocentricPosition {
   double declination_deg;        /* Required, in [-90, 90]. */
   double distance_au;            /* Required finite positive observer-to-body distance. */
   double altitude_deg;           /* Required geometric centre altitude, in [-90, 90]. */
-  double azimuth_deg;            /* Present north-zero/east-positive in [0, 360); absent at exact geographic poles. */
+  double azimuth_deg;            /* Present north-zero/east-positive in [0, 360); absent at exact geographic poles or an unresolved horizontal projection. */
   double apparent_altitude_deg;  /* Optional refraction result; Saemundsson's lower endpoint permits -1e-9 degrees. */
 } CelestialTopocentricPosition;
 
 /**
  * @brief Observe the Sun, Moon or one planet from a fixed WGS84 geodetic site.
  * @param target_code A physical CELESTIAL_TARGET_* value; lunar nodes are rejected.
- * @param year Representable Gregorian year, with no chart civil-year or rate-window restriction.
+ * @param year Gregorian year in [1, 32767]; resolved UT1/TT years must also be >= 1,
+ *        and resolved dates and time shifts must stay representable. No chart civil-year limits
+ *        or extra time margins for numerical rates apply.
  * @param month Gregorian month in [1, 12].
  * @param day Valid Gregorian day before chrono field narrowing.
  * @param fraction Finite civil-day fraction in [0, 1), excluding inserted leap seconds.
@@ -1048,7 +1050,8 @@ typedef struct CelestialTopocentricPosition {
  * @param delta_t_model_code A CELESTIAL_DELTA_T_MODEL_* selector; its own model guards apply.
  * @param latitude_deg North-positive geodetic latitude in [-90, 90].
  * @param longitude_deg East-positive longitude in [-180, 180].
- * @param elevation_m Finite WGS84 ellipsoidal height, greater than -a(1-f)^2; not geoid height.
+ * @param elevation_m Finite ellipsoidal height in metres, not geoid height; must be greater than
+ *        -a(1-f)^2 (about -6335439.3 m), with WGS84 semi-major axis a and flattening f.
  * @param refraction_code NONE (default-off policy), BENNETT or SAEMUNDSSON.
  * @param temperature_c Temperature in [-90, 60] C when refraction is enabled; otherwise unused.
  * @param pressure_hpa Pressure in [300, 1100] hPa when refraction is enabled; otherwise unused.
@@ -1056,7 +1059,8 @@ typedef struct CelestialTopocentricPosition {
  * @note Provider position domains apply. UTC-derived UT1 is modelled, not observed DUT1.
  *       Fixed IAU1980 axes; no added diurnal aberration, polar motion or observer light-time solve.
  *       Unsupported refraction altitude leaves only that field absent. Undefined azimuth/RA does
- *       not erase meaningful altitude, declination or distance; unresolved total distance fails.
+ *       not erase meaningful altitude, declination or distance. The query reports a computation error
+ *       if it cannot resolve the observer-to-body separation at floating-point precision.
  *       Read celestial_last_error_kind/message on failure; invalid payload has no contract.
  */
 CELESTIAL_API CelestialTopocentricPosition celestial_topocentric_position(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, double latitude_deg, double longitude_deg, double elevation_m, uint32_t refraction_code, double temperature_c, double pressure_hpa);

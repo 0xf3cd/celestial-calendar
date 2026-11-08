@@ -207,6 +207,14 @@ required bytes including NUL. A null buffer with zero capacity queries the size.
 capacity minus one payload bytes and a terminating NUL, truncating if necessary; zero return signals failure.
 Query the size instead of assuming a fixed Jieqi-name buffer.
 
+<a id="c-observer-queries"></a>
+## C Observer Queries
+
+`celestial_topocentric_position` returns a `CelestialTopocentricPosition` by value for
+the Sun, Moon or a planet at a fixed WGS84 site. The
+[observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+covers the C call, units, explicit UTC/UT1 input, optional fields and failure handling.
+
 <a id="c-longitude-events"></a>
 ## C Interval Longitude Events
 

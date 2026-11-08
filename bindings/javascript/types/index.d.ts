@@ -216,6 +216,7 @@ export interface TopocentricPosition {
   sourceCode: number;
   deltaTModel: Exclude<DeltaTModel, "default">;
   times: ChartTimes;
+  /** Null when the equatorial projection is unresolved. */
   rightAscensionDeg: number | null;
   declinationDeg: number;
   distanceAu: number;

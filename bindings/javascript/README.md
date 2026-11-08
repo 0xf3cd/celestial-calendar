@@ -239,10 +239,10 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, and `observer` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. Independent position, equatorial, house, event, capability and model-text queries are not public
-JavaScript APIs.
+`"algo3"`. The existing `sun`/`moon` geocentric helpers and `observer.position()` are public. The general independent
+geocentric ecliptic/equatorial position, house, interval-event, capability and model-text query families are not exposed.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
