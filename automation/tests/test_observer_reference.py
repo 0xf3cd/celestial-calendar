@@ -229,7 +229,37 @@ def test_offline_calibration_needs_no_fixture_or_external_oracle(tmp_path):
     check=False,
   )
   assert result.returncode == 0, result.stderr
-  assert "60 rows, both frozen reductions identical" in result.stdout
+  assert "60 rows, both reductions within 2 ULP" in result.stdout
+
+
+@pytest.mark.parametrize("steps", [0, 1, 2, 3])
+def test_calibration_arithmetic_replay_has_an_exact_two_ulp_limit(monkeypatch, steps):
+  replay = load("observer_oracle_replay")
+  assert replay.CALIBRATION_REPLAY_MAX_ULPS == 2
+  path = RECEIPTS / "calibration-results.json"
+  data = json.loads(path.read_text())
+  outputs = iter(row[key] for row in data["cases"] for key in ("horizons_reduced", "native_reduced"))
+
+  def rounded(*_args):
+    values = list(next(outputs))
+    for _ in range(steps):
+      values = [math.nextafter(value, math.inf) for value in values]
+    return values
+
+  monkeypatch.setattr(replay, "reduce", rounded)
+  if steps > 2:
+    with pytest.raises(AssertionError, match="independent calibration"):
+      replay.replay_calibration(path)
+  else:
+    assert len(replay.replay_calibration(path)) == 60
+
+
+@pytest.mark.parametrize("value", [math.inf, math.nan])
+def test_calibration_arithmetic_replay_rejects_nonfinite_output(monkeypatch, value):
+  replay = load("observer_oracle_replay")
+  monkeypatch.setattr(replay, "reduce", lambda *_args: [value] * 5)
+  with pytest.raises(AssertionError, match="independent calibration"):
+    replay.replay_calibration(RECEIPTS / "calibration-results.json")
 
 
 def test_observer_terms_links_resolve_to_the_named_sources():

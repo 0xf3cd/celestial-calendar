@@ -8,6 +8,7 @@ retain only the required inputs/outputs. No SOFA/PyMeeus implementation, binary 
 page is added by this dataset. PyMeeus output use remains conditional on its source
 terms; the project licence does not grant rights in that output.
 
+<a id="source-terms"></a>
 ## Source terms
 
 - SOFA: the retained [2023-10-11 terms](../src/test/provenance/sofa/2023-10-11/doc/copyr.lis)
@@ -44,7 +45,11 @@ resolved relative to the script, not the current directory; `--output` is explic
 The replay's default is the independent offline calibration, not an external download.
 It repeats the original pre-observer Cartesian translation and ENU projection from
 frozen Horizons-geocentric and base-native-geocentric/GAST inputs, and checks both
-reduced outputs exactly. The native inputs came from `4d9efd52ed8ef83946208b1e2d6abe91deaeac01`,
+reduced outputs within 2 ULP (adjacent floating-point steps) per component to allow
+runtime-library rounding differences. Receipt hashes, full fixture bytes and both
+derived tolerance tables still require exact identity. This arithmetic replay allowance
+does not change the astronomical tests or their tolerances.
+The native inputs came from `4d9efd52ed8ef83946208b1e2d6abe91deaeac01`,
 before `observer.hpp` existed; replaying them does not recompute the base providers.
 The reduction mechanism imports no production observer code.
 

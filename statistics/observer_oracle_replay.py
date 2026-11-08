@@ -24,6 +24,7 @@ import sys
 
 RECEIPTS = Path(__file__).resolve().parents[1] / "src/test/provenance/observer"
 AU_KM = 149597870.7
+CALIBRATION_REPLAY_MAX_ULPS = 2
 
 
 def reduce(geo, site, gast):
@@ -70,7 +71,13 @@ def replay_calibration(path: Path) -> list[dict]:
     replayed = dict(row)
     for key, source in (("horizons_reduced", "horizons_geocentric"), ("native_reduced", "library_geocentric")):
       actual = list(reduce(row[source], row["site"], row["gast_deg"]))
-      assert actual == row[key], f"independent calibration {key}: target {row['target_code']} TT {row['jde_tt']}"
+      within_rounding = all(
+        math.isfinite(value)
+        and math.isfinite(expected)
+        and abs(value - expected) <= CALIBRATION_REPLAY_MAX_ULPS * max(math.ulp(value), math.ulp(expected))
+        for value, expected in zip(actual, row[key], strict=True)
+      )
+      assert within_rounding, f"independent calibration {key}: target {row['target_code']} TT {row['jde_tt']}"
       replayed[key] = actual
     result.append(replayed)
   return result
@@ -93,7 +100,9 @@ def main() -> None:
   args = parser.parse_args()
   if args.calibration or not any((args.sofa_library, args.pymeeus_root, args.horizons_dir)):
     count = len(replay_calibration(args.calibration or RECEIPTS / "calibration-results.json"))
-    print(f"PASS independent offline calibration: {count} rows, both frozen reductions identical")
+    print(
+      f"PASS independent offline calibration: {count} rows, both reductions within {CALIBRATION_REPLAY_MAX_ULPS} ULP"
+    )
   if not any((args.sofa_library, args.pymeeus_root, args.horizons_dir)):
     return
   text = args.fixture.read_text()
