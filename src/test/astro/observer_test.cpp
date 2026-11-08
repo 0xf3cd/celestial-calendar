@@ -214,6 +214,24 @@ TEST(Observer, InputAdmissionAndFiniteArithmetic) {
                std::runtime_error);
 }
 
+TEST(Observer, AppliedRefractionMatchesStandaloneCorrection) {
+  const auto civil = calendar::Datetime { util::to_ymd(2026, 11, 7), 0.0 };
+  const auto observer = site(-33.85, 151.2, 1.706);
+  const auto times = julian_day::resolve_times(civil, julian_day::Scale::UTC);
+  const auto geometric = observe(times, observer, Target::MOON);
+  ASSERT_GT(geometric.altitude.deg(), 1.0);
+  ASSERT_LT(geometric.altitude.deg(), 89.0);
+
+  for (const auto model : { earth::refraction::Model::BENNETT, earth::refraction::Model::SAEMUNDSSON }) {
+    const earth::refraction::Params params { .temperature_c = 5.0, .pressure_hpa = 900.0, .model = model };
+    const auto expected = req(earth::refraction::apparent_altitude(geometric.altitude, params));
+    const auto applied = observe(times, observer, Target::MOON, params);
+    EXPECT_DOUBLE_EQ(applied.altitude.deg(), geometric.altitude.deg());
+    EXPECT_DOUBLE_EQ(req(applied.apparent_altitude).deg(), expected.deg());
+    EXPECT_GT(expected.deg(), geometric.altitude.deg());
+  }
+}
+
 TEST(Observer, CivilTimeModelAndPositionProviderDomains) {
   using julian_day::Scale;
   const auto civil = calendar::Datetime { util::to_ymd(1972, 1, 1), 0.0 };

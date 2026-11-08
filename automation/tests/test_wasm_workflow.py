@@ -38,6 +38,7 @@ def test_raw_wasm_size_budgets_agree():
   match = re.search(r"const MAX_WASM_BYTES = ([\d_]+);", WASM_CHECK.read_text(encoding="utf-8"))
   assert match is not None
   assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_320_000
+  assert build_npm.MAX_TARBALL_BYTES == 800_000
 
 
 @pytest.mark.parametrize("offset", [-1, 0, 1])

@@ -15,9 +15,27 @@ Horizons calibration receipt. See observer_reference.md for the schemas and repl
 """
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
+
+
+RECEIPTS = Path(__file__).resolve().parents[1] / "src/test/provenance/observer"
+
+
+def load_receipts(paths: list[Path], pins_path: Path) -> list[dict]:
+  """Check complete frozen receipt bytes before deriving fixtures or tolerance bands."""
+  pins = json.loads(pins_path.read_text())
+  result = []
+  for path in paths:
+    raw = path.read_bytes()
+    expected = pins["receipts"][path.name]
+    assert hashlib.sha256(raw).hexdigest() == expected["sha256"], f"receipt identity: {path.name}"
+    data = json.loads(raw)
+    assert len(data["cases"]) == expected["rows"], f"receipt row count: {path.name}"
+    result.append(data)
+  return result
 
 
 def table(name: str, rows: list[list[float]]) -> str:
@@ -48,12 +66,13 @@ def bounds(rows: list[dict], actual_key: str) -> list[float]:
 
 def main() -> None:
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument("--sofa", type=Path, required=True)
-  parser.add_argument("--pymeeus", type=Path, required=True)
-  parser.add_argument("--horizons", type=Path, required=True)
+  parser.add_argument("--sofa", type=Path, default=RECEIPTS / "sofa-observer-preflight.json")
+  parser.add_argument("--pymeeus", type=Path, default=RECEIPTS / "pymeeus-matched-constant-preflight.json")
+  parser.add_argument("--horizons", type=Path, default=RECEIPTS / "calibration-results.json")
+  parser.add_argument("--pins", type=Path, default=RECEIPTS / "SOURCE_PINS.json")
   parser.add_argument("--output", type=Path, required=True)
   args = parser.parse_args()
-  sofa, pymeeus, horizons = [json.loads(path.read_text()) for path in (args.sofa, args.pymeeus, args.horizons)]
+  sofa, pymeeus, horizons = load_receipts([args.sofa, args.pymeeus, args.horizons], args.pins)
   assert sofa["seed"] == pymeeus["seed"] == 42
   assert sofa["a_m"] == 6378137.0 and sofa["flattening"] == 1.0 / 298.257223563
   text = (

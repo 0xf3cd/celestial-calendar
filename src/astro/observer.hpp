@@ -166,7 +166,7 @@ inline auto validate(const Observer& observer) -> void {
  * @param observer WGS84 site, latitude [-90, 90]°, east longitude [-180, 180]°, elevation above the floor.
  * @param target Sun, Moon or a planet; mathematical lunar nodes are rejected.
  * @param refraction Absent by default; an unsupported altitude leaves apparent_altitude absent.
- * @return Centre RA/Dec, observer distance, geometric altitude and north-clockwise azimuth.
+ * @return Centre RA/Dec, observer distance, geometric altitude and north-zero/east-positive azimuth.
  * @note RA is absent at an unresolved equatorial projection; azimuth is absent at exact geographic
  *       poles and unresolved horizontal projections. Other meaningful fields remain available.
  *       Fixed IAU1980 axes; no added diurnal aberration, polar motion or observer light-time solve.

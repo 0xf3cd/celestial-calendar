@@ -19,6 +19,37 @@ export function runObserverAcceptance(celestial) {
   };
   const civil = { year: 2026, month: 11, day: 7, fraction: 0 };
   const options = { scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 } };
+  // C-export replay from 51884b0, collected 2026-11-07: the civil/site above with 1706 m elevation.
+  // Bounds cover native/WASM replay, not physical accuracy: 1e-10 deg, 1e-14 AU; times are exact.
+  // Columns: target, RA deg, Dec deg, distance AU, geometric altitude deg, north-zero/east-positive azimuth deg.
+  const references = [
+    ["sun",     222.12615856751188, -16.213109030796183,   0.9911635565669776,  61.63759904136321,  57.67774600838513],
+    ["moon",    195.03105800858756, -10.300589822905488, 0.002570966784869903,  66.34950329910117,  354.1481686728121],
+    ["jupiter",  147.5358674521412,  13.854651842844639,    5.407887555564511, 22.720528757348692, 306.40109412671984],
+  ];
+  const elevated = { ...options, observer: { ...options.observer, elevationM: 1706 }, model: "algo5" };
+  const fields = ["rightAscensionDeg", "declinationDeg", "distanceAu", "altitudeDeg", "azimuthDeg"];
+  const tolerances = [1e-10, 1e-10, 1e-14, 1e-10, 1e-10];
+  for (const [target, ...expected] of references) {
+    const result = celestial.observer.position(target, civil, elevated);
+    check(result.times.jdUt1 === 2461351.4999999567 && result.times.jdeTt === 2461351.500800741,
+      "observer native replay times");
+    for (const [index, field] of fields.entries()) {
+      check(Math.abs(result[field] - expected[index]) <= tolerances[index], `observer native replay ${target}.${field}`);
+    }
+  }
+  for (const [model, expected] of [["bennett", 66.35608979437563], ["saemundsson", 66.35621056297853]]) {
+    const result = celestial.observer.position("moon", civil, {
+      ...elevated, refraction: { model, temperatureC: 5, pressureHpa: 900 },
+    });
+    check(Math.abs(result.altitudeDeg - references[1][4]) <= 1e-10, "observer refraction preserves geometry");
+    check(result.apparentAltitudeDeg !== null && Math.abs(result.apparentAltitudeDeg - expected) <= 1e-10,
+      `observer native replay ${model} apparent altitude`);
+  }
+  const selected = celestial.observer.position("moon", civil, { ...elevated, scale: "ut1", model: "algo2" });
+  const defaultModel = celestial.observer.position("moon", civil, { ...elevated, scale: "ut1", model: "default" });
+  check(selected.deltaTModel === "algo2", "observer explicit ALGO2 identity");
+  check(selected.times.jdeTt !== defaultModel.times.jdeTt, "observer explicit model changes resolved TT");
   const targets = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
   for (const target of targets) {
     const result = celestial.observer.position(target, civil, options);

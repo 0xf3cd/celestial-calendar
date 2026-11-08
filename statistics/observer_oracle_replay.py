@@ -8,16 +8,72 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Replay the exact retained observer inputs through external SOFA/PyMeeus or Horizons responses."""
+"""Replay frozen independent calibration, or exact inputs through optional external oracles."""
 
 import argparse
 import csv
 import ctypes
+import hashlib
 import io
+import json
 import math
 from pathlib import Path
 import re
 import sys
+
+
+RECEIPTS = Path(__file__).resolve().parents[1] / "src/test/provenance/observer"
+AU_KM = 149597870.7
+
+
+def reduce(geo, site, gast):
+  """Replay the pre-observer Cartesian/ENU preflight, independent of production reduction.
+
+  Meeus Chapters 11 and 40, horizontal projection (13.5)/(13.6), with NGA WGS84
+  defining parameters. Inputs: RA/Dec/GAST and site lon/lat in degrees, range AU, height km.
+  Returns RA/Dec, range, north-zero/east-positive azimuth and geometric altitude.
+  """
+  _, lon, lat, height = site
+  ra, dec, distance = geo
+  ra, dec, phi, theta = map(math.radians, (ra, dec, lat, gast + lon))
+  flattening = 1 / 298.257223563
+  eccentricity_squared = flattening * (2 - flattening)
+  normal = 6378.137 / math.sqrt(1 - eccentricity_squared * math.sin(phi) ** 2)
+  equatorial_radius = (normal + height) * math.cos(phi) / AU_KM
+  polar = ((1 - eccentricity_squared) * normal + height) * math.sin(phi) / AU_KM
+  x = distance * math.cos(dec) * math.cos(ra) - equatorial_radius * math.cos(theta)
+  y = distance * math.cos(dec) * math.sin(ra) - equatorial_radius * math.sin(theta)
+  z = distance * math.sin(dec) - polar
+  east = -math.sin(theta) * x + math.cos(theta) * y
+  north = -math.sin(phi) * (math.cos(theta) * x + math.sin(theta) * y) + math.cos(phi) * z
+  up = math.cos(phi) * (math.cos(theta) * x + math.sin(theta) * y) + math.sin(phi) * z
+  return (
+    math.degrees(math.atan2(y, x)) % 360,
+    math.degrees(math.atan2(z, math.hypot(x, y))),
+    math.hypot(x, y, z),
+    math.degrees(math.atan2(east, north)) % 360,
+    math.degrees(math.atan2(up, math.hypot(east, north))),
+  )
+
+
+def replay_calibration(path: Path) -> list[dict]:
+  """Recompute both frozen reductions from their original geocentric and GAST inputs.
+
+  Native geocentric/GAST values came from base 4d9efd5, before observer.hpp existed.
+  This replay does not recompute those providers or fit tolerances to production output.
+  """
+  data = json.loads(path.read_text())
+  assert data["source_sha"] == "4d9efd52ed8ef83946208b1e2d6abe91deaeac01", "calibration base identity"
+  result = []
+  for row in data["cases"]:
+    assert row["jd_ut1"] == row["jde_tt"] - (row["tt_minus_utc_seconds"] - row["dut1_seconds"]) / 86400
+    replayed = dict(row)
+    for key, source in (("horizons_reduced", "horizons_geocentric"), ("native_reduced", "library_geocentric")):
+      actual = list(reduce(row[source], row["site"], row["gast_deg"]))
+      assert actual == row[key], f"independent calibration {key}: target {row['target_code']} TT {row['jde_tt']}"
+      replayed[key] = actual
+    result.append(replayed)
+  return result
 
 
 def rows(text: str, name: str) -> list[list[float]]:
@@ -33,9 +89,13 @@ def main() -> None:
   parser.add_argument("--sofa-library", type=Path)
   parser.add_argument("--pymeeus-root", type=Path)
   parser.add_argument("--horizons-dir", type=Path)
+  parser.add_argument("--calibration", type=Path, help="offline numeric receipt; defaults to the retained calibration")
   args = parser.parse_args()
+  if args.calibration or not any((args.sofa_library, args.pymeeus_root, args.horizons_dir)):
+    count = len(replay_calibration(args.calibration or RECEIPTS / "calibration-results.json"))
+    print(f"PASS independent offline calibration: {count} rows, both frozen reductions identical")
   if not any((args.sofa_library, args.pymeeus_root, args.horizons_dir)):
-    parser.error("select at least one external oracle")
+    return
   text = args.fixture.read_text()
   if args.sofa_library:
     library = ctypes.CDLL(str(args.sofa_library.resolve()))
@@ -50,6 +110,9 @@ def main() -> None:
     assert maximum <= 5e-9, maximum
     print(f"PASS SOFA 72 exact-input vectors, max metres {maximum:.17g}")
   if args.pymeeus_root:
+    pins = json.loads((RECEIPTS / "SOURCE_PINS.json").read_text())["pymeeus"]
+    source = args.pymeeus_root / pins["source_file"]
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == pins["source_sha256"], "PyMeeus source identity"
     sys.path.insert(0, str(args.pymeeus_root.resolve()))
     from pymeeus.Angle import Angle
     from pymeeus.Earth import Earth
@@ -65,6 +128,10 @@ def main() -> None:
     assert maximum <= 1e-12, maximum
     print(f"PASS PyMeeus 128 controlled-distance reductions, max degrees {maximum:.17g}")
   if args.horizons_dir:
+    pins = json.loads((RECEIPTS / "SOURCE_PINS.json").read_text())["horizons"]
+    for response in pins["responses"]:
+      path = args.horizons_dir / (response["id"] + ".txt")
+      assert hashlib.sha256(path.read_bytes()).hexdigest() == response["response_sha256"], "Horizons response identity"
     names = ("sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto")
     count = 0
     for row in rows(text, "HORIZONS"):

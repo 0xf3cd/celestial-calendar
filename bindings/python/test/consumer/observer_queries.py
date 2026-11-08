@@ -15,7 +15,7 @@ import ctypes
 import math
 
 import celestial_calendar as c
-from celestial_calendar import _abi
+from celestial_calendar import _abi, _binding
 from protocol_seams import bindings, raises
 
 
@@ -31,6 +31,51 @@ def main() -> None:
 
   def query(target=c.Target.MOON, date=civil, observer=site, **options):
     return c.topocentric_position(target, date, c.CivilScale.UTC, observer, **options)
+
+  raw = _binding.FUNCTIONS["celestial_topocentric_position"]
+  elevated = replace(site, elevation_m=1706.0)
+  for refraction_model, code in ((c.RefractionModel.BENNETT, 1), (c.RefractionModel.SAEMUNDSSON, 2)):
+    arguments = (1, 2026, 11, 7, 0.0, 0, 5, -33.85, 151.2, 1706.0, code, 5.0, 900.0)
+    expected = raw(*arguments)
+    assert expected.valid and expected.present_fields == 28
+
+    def forward(*args, expected_args=arguments):
+      assert args == expected_args, "observer native argument order/units"
+      return raw(*args)
+
+    with bindings(celestial_topocentric_position=forward):
+      result = query(
+        observer=elevated,
+        delta_t_model=c.DeltaTModel.ALGO5,
+        refraction=c.RefractionParams(refraction_model, 5.0, 900.0),
+      )
+    assert result.times.jd_ut1 == expected.jd_ut1 and result.times.jde_tt == expected.jde_tt
+    assert result.source == c.ModelKey(c.ModelKind.POSITION_SOURCE, expected.source_code)
+    for field in (
+      "right_ascension_deg",
+      "declination_deg",
+      "distance_au",
+      "altitude_deg",
+      "azimuth_deg",
+      "apparent_altitude_deg",
+    ):
+      assert getattr(result, field) == getattr(expected, field), f"observer raw C parity: {field}"
+    assert result.apparent_altitude_deg > result.altitude_deg
+
+  def forward_explicit(*args):
+    assert args == (1, 2026, 11, 7, 0.0, 1, 2, -33.85, 151.2, 1706.0, 0, 0.0, 0.0), "observer explicit arguments"
+    return raw(*args)
+
+  with bindings(celestial_topocentric_position=forward_explicit):
+    selected = c.topocentric_position(
+      c.Target.MOON, civil, c.CivilScale.UT1, elevated, delta_t_model=c.DeltaTModel.ALGO2
+    )
+  assert selected.delta_t_model == c.ModelKey(c.ModelKind.DELTA_T, 2), "observer explicit ALGO2 identity"
+  expected = raw(1, 2026, 11, 7, 0.0, 1, 2, -33.85, 151.2, 1706.0, 0, 0.0, 0.0)
+  assert expected.valid and selected.times.jde_tt == expected.jde_tt
+  default = c.topocentric_position(c.Target.MOON, civil, c.CivilScale.UT1, elevated)
+  assert selected.times.jde_tt != default.times.jde_tt, "observer explicit model changes resolved TT"
+  print("PASS observer raw C value parity, literal argument order/metres/weather and explicit ALGO2 identity")
 
   for target in tuple(c.Target)[:10]:
     result = query(target)

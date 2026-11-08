@@ -3,13 +3,77 @@
 `src/test/astro/observer_reference_data.hpp` retains numeric oracle output only.
 SOFA (V20), PyMeeus (V15), JPL Horizons (V06) and the printed Meeus example (V32 in
 `observer_test.cpp`) remain under their source terms, outside the project MIT grant.
-Existing source notices are in `THIRD_PARTY_NOTICES.txt`. No SOFA/PyMeeus implementation,
-binary or book page is redistributed here. PyMeeus output use remains conditional on its
-source terms; the project licence does not grant rights in that output.
+The [numeric receipts and attribution](../src/test/provenance/observer/ATTRIBUTION.md)
+retain only the required inputs/outputs. No SOFA/PyMeeus implementation, binary or book
+page is added by this dataset. PyMeeus output use remains conditional on its source
+terms; the project licence does not grant rights in that output.
+
+## Source terms
+
+- SOFA: the retained [2023-10-11 terms](../src/test/provenance/sofa/2023-10-11/doc/copyr.lis)
+  and the SOFA section of [THIRD_PARTY_NOTICES.txt](../THIRD_PARTY_NOTICES.txt).
+- PyMeeus: [LICENSE.txt at the oracle commit](https://github.com/architest/pymeeus/blob/c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92/LICENSE.txt),
+  GNU GPL version 3. The [V15 disposition](../src/test/provenance/retained/record.json)
+  records the conditional output boundary; it is not a conclusion about GPL output rights.
+- Horizons: the [manual acknowledgements](https://ssd.jpl.nasa.gov/horizons/manual.html#acknowledgements)
+  and the [JPL policies and important notices](https://www.jpl.nasa.gov/caltechjpl-privacy-policies-and-important-notices)
+  linked by that manual. These are source/terms pointers, not an output-specific grant.
+- Meeus: the book's reproduction reservation is recorded in the existing
+  [second-edition terms record](../src/test/provenance/retained/MEEUS_R22_ATTRIBUTION.md).
+  Its p.168 numeric series is separate from the observer examples; the
+  [V32 disposition](../src/test/provenance/retained/record.json) covers printed worked
+  examples and records unavailable permission evidence. No book prose or scan is supplied.
+
+These records identify the retained-source boundaries; links do not grant redistribution
+permission. In particular, the notices bundle is not the terms source for PyMeeus,
+Horizons or the observer's Meeus examples.
+
+## Offline regeneration from a clone
+
+Only Python's standard library and the cloned files are needed:
+
+```sh
+python statistics/observer_reference.py --output observer_reference_data.hpp
+cmp observer_reference_data.hpp src/test/astro/observer_reference_data.hpp
+python statistics/observer_oracle_replay.py
+```
+
+The generator checks the three complete receipt hashes in
+[SOURCE_PINS.json](../src/test/provenance/observer/SOURCE_PINS.json). Defaults are
+resolved relative to the script, not the current directory; `--output` is explicit.
+The replay's default is the independent offline calibration, not an external download.
+It repeats the original pre-observer Cartesian translation and ENU projection from
+frozen Horizons-geocentric and base-native-geocentric/GAST inputs, and checks both
+reduced outputs exactly. The native inputs came from `4d9efd52ed8ef83946208b1e2d6abe91deaeac01`,
+before `observer.hpp` existed; replaying them does not recompute the base providers.
+The reduction mechanism imports no production observer code.
+
+The three numeric receipts have these schemas; all angles are degrees:
+
+- `sofa-observer-preflight.json`: seed, semi-major axis metres, flattening, entry-source
+  hash; cases contain `longitude_deg`, `latitude_deg`, `height_m`, `sofa_xyz_m`.
+- `pymeeus-matched-constant-preflight.json`: seed, entry-source hash, controlled factor;
+  cases contain `ra_deg`, `dec_deg`, `distance_au`, `latitude_deg`, `height_m`,
+  `hour_angle_deg`, `oracle_distance_au`, `matched_ra_deg`, `matched_dec_deg`.
+- `calibration-results.json`: base `source_sha`; cases contain `target_code`,
+  `site` (label, east longitude, latitude, height km), `jde_tt`, `jd_ut1`,
+  `tt_minus_utc_seconds`, `dut1_seconds`, `gast_deg`, two geocentric inputs
+  (`library_geocentric`, `horizons_geocentric`: RA, Dec, AU) and three five-column
+  outputs (`expected`, `native_reduced`, `horizons_reduced`: RA, Dec, AU, azimuth, altitude).
+
+The frozen reduced columns supply the per-column model gaps; they are not production
+observer results. Automated tests replay both reductions, regenerate the complete
+fixture byte for byte and compare both derived tolerance tables.
 
 ## Exact-input replay
 
 The SOFA and PyMeeus cases were collected on 2026-11-07, seed 42, with 72 and 128 rows.
+The pins identify SOFA issue 2023-10-11, `gd2gce.c` SHA-256
+`eefa9b1f6d30255c08ddd823e967d6a99d399d6f39c4b086461d8a9e85f701c9`, and PyMeeus
+commit `c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92`, `pymeeus/Earth.py` SHA-256
+`127b520803cb275e01031aab76f2771faada42d6ff69eee1e35862d9a30110bb`.
+PyMeeus `Earth.parallax_correction` constructs `Earth()` with its **WGS84** default,
+not IAU1976. No release-archive identity is inferred from `setup.py`.
 Compile the unmodified SOFA 2023-10-11 `gd2gce.c` as an external shared library, using its
 own include directory and `-lm`. Supply that library and an external PyMeeus checkout:
 
@@ -55,6 +119,16 @@ for the other targets. The replay checks airless output, source geocentric input
 topocentric RA/Dec/range/azimuth/altitude and Q49-derived UT1. TT-UTC is 64.184 s at
 J2000 and 69.184 s at the 2026 epochs. These are the actual source inputs, not the
 library's modelled UTC-to-UT1 values.
+
+All 30 original responses explicitly print `API VERSION: 1.2`, `API SOURCE: NASA/JPL Horizons API`
+and EOP file `eop.261106.p270202`. Their exact request dictionaries, response hashes and
+target/centre source labels are retained in `SOURCE_PINS.json`. Sun, Moon, Mercury and
+Venus use `DE441` for both; Mars uses `mar099`/`DE441`; Jupiter uses
+`jup365_merged` for both; Saturn uses `sat441l`/`DE441`; Uranus uses
+`ura184_merged`/`DE441`; Neptune uses `nep098_merged` for both; Pluto uses
+`plu060_merged`/`DE441`. The service exposes those labels, not exact kernel revisions.
+Fresh service results may differ as kernels/EOP are updated. Response prose is not
+needed for offline numeric regeneration and is not redistributed by this dataset.
 
 The two test layers distinguish source-geocentric translation from the full native
 provider. Each target/column uses three times the frozen calibration's largest gap,
