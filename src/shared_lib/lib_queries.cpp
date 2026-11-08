@@ -22,6 +22,7 @@
 
 #include "lib.hpp"
 #include "lib_chart.hpp"
+#include "lib_civil.hpp"
 #include "celestial.h"
 
 #include "chart.hpp"
@@ -165,12 +166,12 @@ auto celestial_house_query(
   const uint32_t house_system_code
 ) -> CelestialHouseQueryResult {
   return lib::wrap_export(__func__, [=] {
-    const auto scale = lib::chart::civil_scale(civil_scale_code);
+    const auto scale = lib::civil::scale(civil_scale_code);
     const auto house_system = lib::chart::house_system(house_system_code);
     const auto delta_t_model = lib::codes::delta_t_model(delta_t_model_code);
     const auto nutation_model = lib::codes::nutation_model(nutation_model_code);
 
-    lib::chart::validate_civil(year, month, day, fraction);
+    lib::civil::validate(year, month, day, fraction);
     const auto times = astro::chart::resolve_civil_times(
       calendar::Datetime { util::to_ymd(year, month, day), fraction },
       scale,

@@ -34,6 +34,27 @@ environment. Apart from this package, the examples use only the Python standard 
 <a id="examples"></a>
 ## Examples
 
+### Local sky from a WGS84 observer
+
+Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal
+height in metres. Azimuth is north-zero/east-positive and can be absent at a pole or
+zenith/nadir. See the [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+for time/model guards, optional refraction and coordinate limits.
+
+```python
+from celestial_calendar import CivilDateTime, CivilScale, Observer, Target, topocentric_position
+
+sky = topocentric_position(
+  Target.MOON,
+  CivilDateTime(2026, 11, 7, 0.0),
+  CivilScale.UTC,
+  Observer(-33.85, 151.2, 50.0),
+)
+assert sky.distance_au > 0.0
+assert sky.apparent_altitude_deg is None
+print(sky.altitude_deg, sky.azimuth_deg)
+```
+
 <a id="todays-lunar-date"></a>
 ### Today's lunar date
 

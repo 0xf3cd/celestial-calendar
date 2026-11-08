@@ -30,6 +30,7 @@
       import * as aliasDate from "celestial-calendar/date";
       import { dateToCivilAtOffset, civilAtOffsetToDate } from "celestial-calendar/date";
       import { runChartAcceptance } from "../chart_replay.mjs";
+      import { runObserverAcceptance } from "../observer_api.mjs";
       import chartExample from "../chart_example.json";
 
       const output = document.querySelector("#result");
@@ -72,6 +73,7 @@
             jdUt1: celestial.time.ut1ToJd(lichun.momentUt1),
             illumination: celestial.moon.illumination(jdeTt).fraction,
             chart: runChartAcceptance(alias, chartExample),
+            observer: runObserverAcceptance(alias),
           };
         } catch (error) {
           window.__CELESTIAL_RESULT__ = { fatal: String(error?.stack || error) };

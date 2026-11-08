@@ -652,6 +652,96 @@ const snapshot = (civil, options) => {
   }
 };
 
+const observerPosition = (target, civil, options) => {
+  const operation = "observer.position";
+  const M = requireModule(operation);
+  const physicalTargets = Object.fromEntries(
+    Object.entries(CHART_CODES.targets).filter(([, code]) => code < CHART_CODES.targets.meanAscending),
+  );
+  const targetCode = enumValue(target, "target", physicalTargets);
+  const value = nativeCivilDateTime(civil, "civil");
+  requiredRecord(options, "options", ["scale", "observer"], []);
+  const extraKeys = Reflect.ownKeys(options).some((key) => !["scale", "observer", "model", "refraction"].includes(key));
+  const inheritedOption = ["model", "refraction"].some((key) => key in options && !Object.hasOwn(options, key));
+  if (extraKeys || inheritedOption) throw new TypeError("options requires own scale/observer/model/refraction fields only.");
+  const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
+  const site = requiredRecord(options.observer, "options.observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const latitude = finiteNumber(site.latitudeDeg, "options.observer.latitudeDeg");
+  const longitude = finiteNumber(site.longitudeDeg, "options.observer.longitudeDeg");
+  const elevation = finiteNumber(site.elevationM, "options.observer.elevationM");
+  const modelCode = enumValue(options.model === undefined ? "default" : options.model, "options.model", CHART_CODES.models);
+
+  let refractionCode = CODES.CELESTIAL_REFRACTION_NONE;
+  let temperature = 0;
+  let pressure = 0;
+  if (options.refraction !== undefined) {
+    const weather = requiredRecord(options.refraction, "options.refraction", ["model"], []);
+    const extraWeather = Reflect.ownKeys(weather).some((key) => !["model", "temperatureC", "pressureHpa"].includes(key));
+    const inheritedWeather = ["temperatureC", "pressureHpa"].some((key) => key in weather && !Object.hasOwn(weather, key));
+    if (extraWeather || inheritedWeather) throw new TypeError("refraction requires own model/temperatureC/pressureHpa fields only.");
+    refractionCode = enumValue(weather.model, "options.refraction.model", {
+      bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
+      saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+    });
+    temperature = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+    pressure = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+  }
+
+  const layout = LAYOUTS.CelestialTopocentricPosition;
+  const ptr = allocate(M, layout.size, operation);
+  const read = (name) => readField(M, ptr, layout.fields.find((field) => field.name === name));
+  const finite = (name) => nativeFinite(read(name), operation, name);
+  const angle = (name) => {
+    const result = finite(name);
+    if (result < 0 || result >= 360) malformed(operation, name);
+    return result;
+  };
+  try {
+    M[bindingOf("celestial_topocentric_position").wasmName](
+      ptr, targetCode, value.year, value.month, value.day, value.fraction, scale, modelCode,
+      latitude, longitude, elevation, refractionCode, temperature, pressure,
+    );
+    checkError(M, operation);
+    if (read("valid") !== 1 || read("target_code") !== targetCode) malformed(operation, "valid/target_code");
+    const sourceCode = nativeCode(read("source_code"), "CELESTIAL_POSITION_SOURCE_", operation, "source_code");
+    const deltaCode = nativeCode(read("delta_t_identity_code"), "CELESTIAL_DELTA_T_MODEL_", operation, "delta_t_identity_code");
+    if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT && deltaCode !== modelCode) {
+      malformed(operation, "resolved Delta T model differs from selection");
+    }
+    const raBit = CODES.CELESTIAL_PRESENT_RIGHT_ASCENSION;
+    const azBit = CODES.CELESTIAL_PRESENT_AZIMUTH;
+    const apparentBit = CODES.CELESTIAL_PRESENT_APPARENT_ALTITUDE;
+    const mask = read("present_fields");
+    if ((mask & ~(raBit | azBit | apparentBit)) !== 0
+      || (refractionCode === CODES.CELESTIAL_REFRACTION_NONE && (mask & apparentBit))
+      || (Math.abs(latitude) === 90 && (mask & azBit))) malformed(operation, "present_fields");
+    const declinationDeg = finite("declination_deg");
+    const altitudeDeg = finite("altitude_deg");
+    const distanceAu = finite("distance_au");
+    if (declinationDeg < -90 || declinationDeg > 90 || altitudeDeg < -90 || altitudeDeg > 90 || distanceAu <= 0) {
+      malformed(operation, "declination/altitude/distance");
+    }
+    const apparentAltitudeDeg = mask & apparentBit ? finite("apparent_altitude_deg") : null;
+    if (apparentAltitudeDeg !== null && (apparentAltitudeDeg < -1e-9 || apparentAltitudeDeg > 90)) {
+      malformed(operation, "apparent_altitude_deg");
+    }
+    return {
+      target,
+      sourceCode,
+      deltaTModel: Object.entries(CHART_CODES.models).find(([name, code]) => name !== "default" && code === deltaCode)[0],
+      times: { jdUt1: finite("jd_ut1"), jdeTt: finite("jde_tt") },
+      rightAscensionDeg: mask & raBit ? angle("right_ascension_deg") : null,
+      declinationDeg,
+      distanceAu,
+      altitudeDeg,
+      azimuthDeg: mask & azBit ? angle("azimuth_deg") : null,
+      apparentAltitudeDeg,
+    };
+  } finally {
+    M._free(ptr);
+  }
+};
+
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, utcToJde, jdeToUtc, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
   apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,
@@ -670,3 +760,4 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
+export const observer = Object.freeze({ position: observerPosition });

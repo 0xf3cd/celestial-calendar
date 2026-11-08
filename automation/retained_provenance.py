@@ -58,6 +58,33 @@ LONGITUDE_RATE_ATTRIBUTION_RELATIVE: Final[Path] = Path("src/test/provenance/lon
 LONGITUDE_RATE_PINS_RELATIVE: Final[Path] = Path("src/test/provenance/longitude-rate/SOURCE_PINS.json")
 RECORD_NAME: Final[str] = "record.json"
 REGISTRY_NAME: Final[str] = RETAINED_REGISTRY.name
+ADJACENT_SOURCE_FACTS: Final[dict[str, tuple[str, ...]]] = {
+  "v26": (
+    "https://maia.usno.navy.mil/ser7/deltat.data",
+    "notebook-only",
+    "monthly observed Delta T",
+    "not a consumer-package member",
+  ),
+  "v30": (
+    "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm",
+    "notebook-only",
+    "new/full Moon",
+    "not a consumer-package member",
+  ),
+  "v20-observer-receipt": ("IAU SOFA", "2023-10-11", "test-only", "not a consumer-package member"),
+  "v15-observer-receipt": (
+    "PyMeeus",
+    "c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92",
+    "test-only",
+    "not a consumer-package member",
+  ),
+  "v06-observer-receipt": (
+    "JPL Horizons",
+    "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "test-only",
+    "not a consumer-package member",
+  ),
+}
 # Project records pin structured facts or citation atoms, not prose bytes.
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"
 LONGITUDE_RATE_ATTRIBUTION_SHA256: Final[str] = "369232c345e8fac092b15922bc657911f3c9504a266bfc541009191128c4ff1f"
@@ -861,22 +888,8 @@ def _verify_adjacent_record(repo_root: Path, block: dict, adjacent_sections: dic
   normalised = _normalise(section)
   for expected in (block["path"], block["data_sha256"], block["source_identity"], "outside the project MIT grant"):
     _require(expected in normalised, f"{block['id']} adjacent reciprocal field differs: {expected}")
-  facts = (
-    (
-      "https://maia.usno.navy.mil/ser7/deltat.data",
-      "notebook-only",
-      "monthly observed Delta T",
-      "not a consumer-package member",
-    )
-    if block["id"] == "v26"
-    else (
-      "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm",
-      "notebook-only",
-      "new/full Moon",
-      "not a consumer-package member",
-    )
-  )
-  require_facts(section, facts, block["id"])
+  _require(block["id"] in ADJACENT_SOURCE_FACTS, f"{block['id']} adjacent source is not registered")
+  require_facts(section, ADJACENT_SOURCE_FACTS[block["id"]], block["id"])
   adjacent_sections.setdefault(block["adjacent_path"], set()).add(block["section"])
 
 

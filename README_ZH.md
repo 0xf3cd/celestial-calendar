@@ -243,6 +243,7 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
   在现有视位置模型上做局部解卷绕的七点中心差分。留站附近，速率的正负号可能与一天跨度的逆行标记不一致，
   见 [`planet.hpp`](src/astro/planet.hpp) 的 `is_retrograde`。
+- 日月与行星的[观测者站心坐标查询（英文指南）](docs/OBSERVER.md)，可通过 C++、C、Python 和 JavaScript 使用。
 - 固定时刻星盘快照：以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，一次取得十四个天体/点的位置与速率、
   四轴和十二宫头。C++ 为 [`chart.hpp`](src/astro/chart.hpp)，C 为 [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot)，
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，

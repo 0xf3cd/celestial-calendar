@@ -73,6 +73,7 @@ def wheel_payload(version):
       "capability.py",
       "chart.py",
       "events.py",
+      "observer.py",
       "query.py",
       "py.typed",
     )
@@ -206,10 +207,11 @@ def test_wheel_project_metadata_accepts_reordered_headers_and_keywords(verifier)
   check(verifier, members, version)
 
 
-def test_wheel_allowlist_requires_the_real_declaration_module(verifier):
+@pytest.mark.parametrize("name", ["_abi.py", "observer.py"])
+def test_wheel_allowlist_requires_the_real_source_modules(verifier, name):
   version = verifier.project_version()
   members = wheel_payload(version)
-  del members["celestial_calendar/_abi.py"]
+  del members[f"celestial_calendar/{name}"]
   with pytest.raises(AssertionError, match="wheel allowlist mismatch"):
     check(verifier, members, version)
 
@@ -226,6 +228,7 @@ def test_wheel_allowlist_requires_the_real_declaration_module(verifier):
     "capability.py",
     "chart.py",
     "events.py",
+    "observer.py",
     "query.py",
     "py.typed",
   ],

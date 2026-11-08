@@ -48,6 +48,24 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
+### Local sky from a WGS84 observer
+
+Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal
+height in metres. Azimuth is north-zero/east-positive. Optional angles are `null`.
+See the [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+for strict UTC, provider/model guards and optional refraction.
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
 <a id="chart-snapshot"></a>
 ### Chart Snapshot at a Fixed Instant
 
@@ -221,10 +239,10 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, and `observer` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. Independent position, equatorial, house, event, capability and model-text queries are not public
-JavaScript APIs.
+`"algo3"`. The existing `sun`/`moon` geocentric helpers and `observer.position()` are public. The general independent
+geocentric ecliptic/equatorial position, house, interval-event, capability and model-text query families are not exposed.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or

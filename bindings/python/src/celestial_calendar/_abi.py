@@ -300,6 +300,24 @@ class CelestialCivilHouseCapability(ctypes.Structure):
   ]
 
 
+class CelestialTopocentricPosition(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("target_code", ctypes.c_uint32),
+    ("source_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("jd_ut1", ctypes.c_double),
+    ("jde_tt", ctypes.c_double),
+    ("right_ascension_deg", ctypes.c_double),
+    ("declination_deg", ctypes.c_double),
+    ("distance_au", ctypes.c_double),
+    ("altitude_deg", ctypes.c_double),
+    ("azimuth_deg", ctypes.c_double),
+    ("apparent_altitude_deg", ctypes.c_double),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
@@ -456,6 +474,24 @@ BINDING_SPECS = {
     CelestialHouseQueryResult,
   ),
   "celestial_house_capability": ((ctypes.c_uint32,), CelestialCivilHouseCapability),
+  "celestial_topocentric_position": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+    ),
+    CelestialTopocentricPosition,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -488,6 +524,7 @@ STRUCT_TYPES = {
   "CelestialEquatorialPositionRecord": CelestialEquatorialPositionRecord,
   "CelestialHouseQueryResult": CelestialHouseQueryResult,
   "CelestialCivilHouseCapability": CelestialCivilHouseCapability,
+  "CelestialTopocentricPosition": CelestialTopocentricPosition,
 }
 
 RECORDING_EXPORTS = frozenset(
@@ -528,6 +565,7 @@ RECORDING_EXPORTS = frozenset(
     "celestial_equatorial_positions",
     "celestial_house_query",
     "celestial_house_capability",
+    "celestial_topocentric_position",
   )
 )
 
@@ -836,6 +874,24 @@ C_SIGNATURES = {
     "CelestialCivilHouseCapability",
     ("uint32_t",),
   ),
+  "celestial_topocentric_position": (
+    "CelestialTopocentricPosition",
+    (
+      "uint32_t",
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+      "uint32_t",
+      "double",
+      "double",
+    ),
+  ),
 }
 
 C_CODES = {
@@ -893,6 +949,7 @@ C_CODES = {
   "CELESTIAL_OPERATION_EQUATORIAL": 4,
   "CELESTIAL_OPERATION_CHART": 5,
   "CELESTIAL_OPERATION_DELTA_T": 6,
+  "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
   "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
   "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
   "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -902,6 +959,12 @@ C_CODES = {
   "CELESTIAL_MODEL_KIND_ALL": 4294967295,
   "CELESTIAL_MODEL_STATUS_CURRENT": 0,
   "CELESTIAL_MODEL_STATUS_FROZEN": 1,
+  "CELESTIAL_REFRACTION_NONE": 0,
+  "CELESTIAL_REFRACTION_BENNETT": 1,
+  "CELESTIAL_REFRACTION_SAEMUNDSSON": 2,
+  "CELESTIAL_PRESENT_RIGHT_ASCENSION": 4,
+  "CELESTIAL_PRESENT_AZIMUTH": 8,
+  "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16,
 }
 
 C_PARAMETERS = {
@@ -1111,6 +1174,21 @@ C_PARAMETERS = {
   ],
   "celestial_house_capability": [
     "delta_t_model_code",
+  ],
+  "celestial_topocentric_position": [
+    "target_code",
+    "year",
+    "month",
+    "day",
+    "fraction",
+    "civil_scale_code",
+    "delta_t_model_code",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
+    "refraction_code",
+    "temperature_c",
+    "pressure_hpa",
   ],
 }
 
@@ -1343,6 +1421,7 @@ PROTOCOLS = {
       "CELESTIAL_OPERATION_HOUSES",
       "CELESTIAL_OPERATION_CHART",
       "CELESTIAL_OPERATION_DELTA_T",
+      "CELESTIAL_OPERATION_TOPOCENTRIC",
     ],
     "error_channel": "kind",
   },
@@ -1377,6 +1456,11 @@ PROTOCOLS = {
   },
   "celestial_house_capability": {
     "kind": "struct",
+    "error_channel": "kind",
+  },
+  "celestial_topocentric_position": {
+    "kind": "struct",
+    "identity": "resolved-explicit-model-key-and-position-source",
     "error_channel": "kind",
   },
 }

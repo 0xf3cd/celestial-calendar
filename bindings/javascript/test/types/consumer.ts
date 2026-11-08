@@ -31,6 +31,20 @@ const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
 const lunarAlgorithm: LunarAlgorithm = "algo3";
 const civil: CivilDateTime = { year: 2024, month: 6, day: 1, fraction: 0.5 };
+const observed: celestial.TopocentricPosition = celestial.observer.position("moon", civil, {
+  scale: "utc", observer: { latitudeDeg: 33, longitudeDeg: -116, elevationM: 1706 },
+  refraction: { model: "bennett" },
+});
+const optionalAzimuth: number | null = observed.azimuthDeg;
+const optionalRa: number | null = observed.rightAscensionDeg;
+void [optionalAzimuth, optionalRa];
+// @ts-expect-error Mathematical nodes have no physical topocentric distance.
+celestial.observer.position("meanAscending", civil, { scale: "utc", observer: { latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 } });
+// @ts-expect-error Ellipsoidal height is explicit in metres.
+celestial.observer.position("sun", civil, { scale: "utc", observer: { latitudeDeg: 0, longitudeDeg: 0 } });
+// @ts-expect-error Apparent altitude can be absent.
+const requiredApparent: number = observed.apparentAltitudeDeg;
+void requiredApparent;
 const chartOptions: celestial.ChartSnapshotOptions = {
   scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus", model: undefined,
 };

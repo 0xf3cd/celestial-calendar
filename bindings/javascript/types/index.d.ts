@@ -184,6 +184,54 @@ export interface ChartSnapshotOptions {
   model?: DeltaTModel | undefined;
 }
 
+/** A fixed WGS84 geodetic site. elevationM is ellipsoidal height, not geoid height. */
+export interface Observer {
+  latitudeDeg: number;
+  longitudeDeg: number;
+  elevationM: number;
+}
+
+export interface RefractionOptions {
+  model: "bennett" | "saemundsson";
+  /** Supported [-90, 60] C; default 15. */
+  temperatureC?: number | undefined;
+  /** Supported [300, 1100] hPa; default 1013.25. */
+  pressureHpa?: number | undefined;
+}
+
+export type PhysicalTarget = Exclude<ChartTarget, "meanAscending" | "meanDescending" | "trueAscending" | "trueDescending">;
+
+export interface ObserverPositionOptions {
+  scale: CivilScale;
+  observer: Observer;
+  model?: DeltaTModel | undefined;
+  /** Omitted or undefined disables refraction. */
+  refraction?: RefractionOptions | undefined;
+}
+
+/** Centre direction in fixed IAU1980 axes; distance is observer-to-body AU. */
+export interface TopocentricPosition {
+  target: PhysicalTarget;
+  /** Resolved CELESTIAL_POSITION_SOURCE_* integer identity. */
+  sourceCode: number;
+  deltaTModel: Exclude<DeltaTModel, "default">;
+  times: ChartTimes;
+  /** Null when the equatorial projection is unresolved. */
+  rightAscensionDeg: number | null;
+  declinationDeg: number;
+  distanceAu: number;
+  altitudeDeg: number;
+  /** North-zero/east-positive; null at exact geographic poles or unresolved horizontal projection. */
+  azimuthDeg: number | null;
+  /** Separate refraction result; null if disabled or outside the model's supported altitude. */
+  apparentAltitudeDeg: number | null;
+}
+
+export const observer: Readonly<{
+  /** UTC from 1972, or explicit UT1. Provider/Delta T guards apply without a chart/rate window. */
+  position(target: PhysicalTarget, civil: CivilDateTime, options: ObserverPositionOptions): TopocentricPosition;
+}>;
+
 /** An unavailable module, computation, resource or protocol failure; invalid native input throws RangeError.
  * recorded is true when native reported a recognized error kind, even with an empty message.
  * Caller-owned WASM output buffers are limited to 16 MiB by this binding.

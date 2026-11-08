@@ -19,6 +19,7 @@ from shutil import copy2, copytree, ignore_patterns
 import pytest
 
 from automation.retained_provenance import (
+  ADJACENT_SOURCE_FACTS,
   A4_SCAN_EXCLUDED_PARTS,
   A4_SCAN_FILES,
   A4_SCAN_ROOTS,
@@ -130,7 +131,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_retained_provenance_facts_and_values_are_complete():
-  assert verify_retained_provenance() == ProvenanceCounts(58, 116, 61, 2, 16)
+  assert verify_retained_provenance() == ProvenanceCounts(58, 124, 67, 5, 16)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -435,6 +436,57 @@ def test_adjacent_data_hash_mutation_fails(tmp_path):
   data = tmp_path / "statistics/moon_phases.csv"
   data.write_bytes(data.read_bytes() + b"\n")
   with pytest.raises(RuntimeError, match="retained data hash differs"):
+    verify_retained_provenance(repo_root=tmp_path)
+
+
+def test_adjacent_source_table_is_closed_and_keeps_existing_facts():
+  assert ADJACENT_SOURCE_FACTS == {
+    "v26": (
+      "https://maia.usno.navy.mil/ser7/deltat.data",
+      "notebook-only",
+      "monthly observed Delta T",
+      "not a consumer-package member",
+    ),
+    "v30": (
+      "https://www.taipeidaniel.idv.tw/articles-astrology-moon-new-full.htm",
+      "notebook-only",
+      "new/full Moon",
+      "not a consumer-package member",
+    ),
+    "v20-observer-receipt": ("IAU SOFA", "2023-10-11", "test-only", "not a consumer-package member"),
+    "v15-observer-receipt": (
+      "PyMeeus",
+      "c8c5d719ace57d00fa7f4ae93ffa82ef1a79cf92",
+      "test-only",
+      "not a consumer-package member",
+    ),
+    "v06-observer-receipt": (
+      "JPL Horizons",
+      "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "test-only",
+      "not a consumer-package member",
+    ),
+  }
+
+
+@pytest.mark.parametrize("id_", ["v20-observer-receipt", "v15-observer-receipt", "v06-observer-receipt"])
+def test_observer_adjacent_receipt_bytes_and_boundary_are_required(tmp_path, id_):
+  _record, registry_path = materialize_inputs(tmp_path)
+  block = next(row for row in json.loads(registry_path.read_text())["blocks"] if row["id"] == id_)
+  path = tmp_path / block["path"]
+  data = json.loads(path.read_text())
+  data["cases"].pop()
+  write_json(path, data)
+  with pytest.raises(RuntimeError, match=f"{id_} retained data hash differs"):
+    verify_retained_provenance(repo_root=tmp_path)
+
+
+def test_unknown_adjacent_source_is_not_accepted_by_fallback(tmp_path):
+  _record, registry_path = materialize_inputs(tmp_path)
+  registry = json.loads(registry_path.read_text())
+  next(row for row in registry["blocks"] if row["id"] == "v20-observer-receipt")["id"] = "unregistered-observer"
+  write_json(registry_path, registry)
+  with pytest.raises(RuntimeError, match="adjacent source is not registered"):
     verify_retained_provenance(repo_root=tmp_path)
 
 

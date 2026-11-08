@@ -288,6 +288,8 @@ OS version floor is declared.
   nodes, in degrees per TT day, by a locally unwrapped seven-point central difference over the existing apparent
   position models. Near a station its sign can differ from the one-day retrograde marker; see `is_retrograde` in
   [`planet.hpp`](src/astro/planet.hpp).
+- [Topocentric observer queries](docs/OBSERVER.md) for the Sun, Moon and planets are available in C++, C, Python
+  and JavaScript.
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
   system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),

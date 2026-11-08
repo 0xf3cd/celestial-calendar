@@ -171,7 +171,7 @@ export async function testFakeNative(entryUrl) {
       decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
     "Jieqi public decoder preserves distinct native fields");
     reset();
-    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"]);
+    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });
 
@@ -183,6 +183,57 @@ export async function testFakeNative(entryUrl) {
       assert.equal(control.live.size, 0, "failure leaked WASM memory");
     };
     const civil = { year: 2024, month: 1, day: 1, fraction: 0.5 };
+    const observerOptions = { scale: "utc", observer: { latitudeDeg: 33, longitudeDeg: -116, elevationM: 1706 } };
+    const observe = (options = observerOptions) => fixture.observer.position("moon", civil, options);
+    const payload = {
+      valid: 1, target_code: 1, source_code: 2, delta_t_identity_code: 5, present_fields: 0,
+      jd_ut1: 2461351.5, jde_tt: 2461351.501, right_ascension_deg: NaN, declination_deg: -10,
+      distance_au: 0.0025, altitude_deg: 10, azimuth_deg: NaN, apparent_altitude_deg: NaN,
+    };
+    reset({ sretPayload: payload, grow: true });
+    const ownedObservation = observe();
+    assert.equal(ownedObservation.rightAscensionDeg, null);
+    assert.equal(ownedObservation.azimuthDeg, null);
+    assert.equal(ownedObservation.apparentAltitudeDeg, null);
+    assert.deepEqual(ownedObservation.times, { jdUt1: 2461351.5, jdeTt: 2461351.501 });
+    assert.equal(control.live.size, 0);
+    reset({ sretPayload: { ...payload, altitude_deg: 30 } });
+    assert.equal(observe().altitudeDeg, 30);
+    assert.equal(ownedObservation.altitudeDeg, 10, "results own their values after storage is freed/reused");
+    for (const changes of [
+      { valid: 0 }, { valid: 2 }, { target_code: 0 }, { source_code: 99 },
+      { delta_t_identity_code: 0 }, { delta_t_identity_code: 99 }, { present_fields: 32 },
+      { jd_ut1: NaN }, { jde_tt: Infinity }, { declination_deg: 91 }, { distance_au: 0 }, { altitude_deg: -91 },
+      { present_fields: 4, right_ascension_deg: NaN }, { present_fields: 4, right_ascension_deg: 360 },
+      { present_fields: 8, azimuth_deg: Infinity }, { present_fields: 8, azimuth_deg: -1 },
+      { present_fields: 16, apparent_altitude_deg: 10 },
+    ]) {
+      reset({ sretPayload: { ...payload, ...changes } }); libraryError(observe);
+    }
+    reset({ sretPayload: { ...payload, delta_t_identity_code: 1 } });
+    libraryError(() => observe({ ...observerOptions, model: "algo5" }));
+    for (const pole of [-90, 90]) {
+      const options = { ...observerOptions, observer: { ...observerOptions.observer, latitudeDeg: pole } };
+      reset({ sretPayload: payload }); assert.equal(observe(options).azimuthDeg, null);
+      reset({ sretPayload: { ...payload, present_fields: 8, azimuth_deg: 0 } });
+      libraryError(() => observe(options));
+    }
+    const refractedOptions = { ...observerOptions, refraction: { model: "saemundsson" } };
+    for (const apparent of [NaN, -1.01e-9, 90.001]) {
+      reset({ sretPayload: { ...payload, present_fields: 16, apparent_altitude_deg: apparent } });
+      libraryError(() => observe(refractedOptions));
+    }
+    reset({ sretPayload: { ...payload, present_fields: 16, apparent_altitude_deg: -1e-10 } });
+    assert.equal(observe(refractedOptions).apparentAltitudeDeg, -1e-10);
+    assert.deepEqual(control.calls[0].slice(-3), [2, 15, 1013.25]);
+    for (const options of [null, {}, { ...observerOptions, model: null },
+      { ...observerOptions, refraction: null }, { ...observerOptions, extra: true },
+      { ...observerOptions, observer: { ...observerOptions.observer, elevationM: NaN } }]) {
+      reset(); assert.throws(() => observe(options)); assert.equal(control.live.size, 0);
+    }
+    reset({ failAllocation: 1 }); libraryError(observe);
+    reset({ failPass: "sret", errorKind: 2 }); libraryError(observe, true);
+    reset({ failPass: "sret", errorKind: 1 }); assert.throws(observe, RangeError); assert.equal(control.live.size, 0);
     for (const [action, yearField, resultYear] of [
       [() => fixture.time.jdeToUt1(2451545), "year", (value) => value.year],
       [() => fixture.time.jdeToUtc(2451545), "year", (value) => value.year],
@@ -305,7 +356,7 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
       [() => fixture.sun.longitudeCrossings(2024, 0), 1],
       [() => fixture.sun.longitudeCrossings(2024, 0), 2],
       [() => fixture.moon.newMoonsAfter(2451545, 2), 1],
-      [name, 1], [() => fixture.chart.snapshot(civil, options), 1],
+      [name, 1], [() => fixture.chart.snapshot(civil, options), 1], [observe, 1],
     ];
     for (const [action, failAllocation] of allocations) {
       reset({ failAllocation }); libraryError(action);

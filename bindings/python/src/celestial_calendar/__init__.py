@@ -25,6 +25,7 @@ from typing import TypeVar as _TypeVar
 
 from . import _abi, _binding, _protocol
 from . import capability as _capability, chart as _chart, events as _events, query as _query
+from . import observer as _observer
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
@@ -55,6 +56,10 @@ from .events import StationMotion as StationMotion
 from .query import EquatorialPosition as EquatorialPosition
 from .query import HouseQueryResult as HouseQueryResult
 from .query import Position as Position
+from .observer import Observer as Observer
+from .observer import RefractionModel as RefractionModel
+from .observer import RefractionParams as RefractionParams
+from .observer import TopocentricPosition as TopocentricPosition
 
 
 class MoonPhase(_StrEnum):
@@ -702,7 +707,7 @@ def longitude_difference_events(
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  subject selects a Target; None selects every target. HOUSES, CHART and DELTA_T
+  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T and TOPOCENTRIC
   raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
   and capability_text() for operation-wide descriptions.
   """
@@ -710,7 +715,7 @@ def capabilities(operation: CapabilityOperation, subject: Target | None = None) 
   if checked not in _TARGET_OPERATIONS:
     if checked is CapabilityOperation.HOUSES:
       raise ValueError("use house_capability(delta_t_model=...) for civil-house policy")
-    raise ValueError("use capability_text() for CHART or DELTA_T descriptions")
+    raise ValueError("use capability_text() for operation-wide descriptions")
   targets = tuple(Target) if subject is None else (_enum(subject, Target, "subject"),)
   subject_code = _constant("TARGET_ALL") if subject is None else _enum_code("TARGET", targets[0])
   records = _protocol.count_fill(
@@ -754,7 +759,7 @@ def model_identity_text(key: ModelKey) -> str:
 def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
   """Describe an operation's sources, corrections, defaults and domains.
 
-  Target operations require a concrete Target subject. HOUSES, CHART and DELTA_T
+  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T and TOPOCENTRIC
   require subject=None for operation-wide text; a Target there raises ValueError.
   Use model_identity_text() for a model key, not a registry ordinal.
   """
@@ -764,7 +769,7 @@ def capability_text(operation: CapabilityOperation, subject: Target | None = Non
   else:
     if subject is not None:
       _enum(subject, Target, "subject")
-      raise ValueError("subject must be None for HOUSES, CHART and DELTA_T text")
+      raise ValueError("subject must be None for operation-wide text")
     code = _constant("TARGET_ALL")
   return _protocol.sized_string(
     "celestial_capability_text", (_enum_code("OPERATION", checked), code), "capability_text"
@@ -862,6 +867,64 @@ def house_query(
   return decoded
 
 
+def topocentric_position(
+  target: Target,
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  observer: Observer,
+  *,
+  delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
+  refraction: RefractionParams | None = None,
+) -> TopocentricPosition:
+  """Observe one physical target from a fixed WGS84 site at an explicit UTC/UT1 instant.
+
+  UTC begins at 1972-01-01; modelled UT1 and each provider's own position domain apply.
+  No chart/rate window is imposed. Refraction is off by default; unsupported altitude
+  leaves only the apparent-altitude field absent. No added diurnal aberration, polar
+  motion or observer-dependent light-time solve is applied.
+  """
+  checked_target = _enum(target, Target, "target")
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  if not isinstance(observer, Observer):
+    raise TypeError("observer must be an Observer")
+  latitude = _finite(observer.latitude_deg, "observer.latitude_deg")
+  longitude = _finite(observer.longitude_deg, "observer.longitude_deg")
+  elevation = _finite(observer.elevation_m, "observer.elevation_m")
+  model_code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  refraction_code, temperature, pressure = _constant("REFRACTION_NONE"), 0.0, 0.0
+  if refraction is not None:
+    if not isinstance(refraction, RefractionParams):
+      raise TypeError("refraction must be RefractionParams or None")
+    refraction_code = _enum_code("REFRACTION", _enum(refraction.model, RefractionModel, "refraction.model"))
+    temperature = _finite(refraction.temperature_c, "refraction.temperature_c")
+    pressure = _finite(refraction.pressure_hpa, "refraction.pressure_hpa")
+  result = _result(
+    "celestial_topocentric_position",
+    "topocentric_position",
+    _enum_code("TARGET", checked_target),
+    *civil,
+    scale_code,
+    model_code,
+    latitude,
+    longitude,
+    elevation,
+    refraction_code,
+    temperature,
+    pressure,
+  )
+  decoded = _protocol.decode(
+    "topocentric_position",
+    _observer.decode_position,
+    result,
+    checked_target,
+    refraction is not None,
+    abs(latitude) == 90.0,
+  )
+  _selected_key(decoded.delta_t_model, model_code, "topocentric_position")
+  return decoded
+
+
 __all__ = [
   "BodyState",
   "CapabilityOperation",
@@ -897,11 +960,15 @@ __all__ = [
   "MoonIllumination",
   "MoonPhase",
   "NutationModel",
+  "Observer",
   "Position",
+  "RefractionModel",
+  "RefractionParams",
   "StationEvent",
   "StationMotion",
   "SunCoordinate",
   "Target",
+  "TopocentricPosition",
   "__version__",
   "apparent_solar_time",
   "capabilities",
@@ -935,6 +1002,7 @@ __all__ = [
   "sun_apparent_geocentric_coordinate",
   "sun_longitude_crossings",
   "supported_lunar_year_range",
+  "topocentric_position",
   "ut1_to_jd",
   "ut1_to_jde",
   "utc_to_jde",

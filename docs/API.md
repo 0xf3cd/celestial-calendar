@@ -41,6 +41,7 @@ roots, including the subdirectory for nested headers. Include the headers your c
 | Sun, Moon and lunar phases | `"sun.hpp"`, `"moon.hpp"`, `"moon_phase.hpp"` |
 | Planets, lunar nodes and illumination | `"planet.hpp"`, `"lunar_node.hpp"`, `"illumination.hpp"`, `"planet_phenomena.hpp"` |
 | Independent positions, rates and input capabilities | `"ephemeris.hpp"`, `"capability.hpp"` |
+| Topocentric observer coordinates | `"observer.hpp"`; [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md) |
 | Interval longitude events | `"ephemeris_events.hpp"` |
 | Houses and complete chart | `"house.hpp"`, `"chart.hpp"` |
 | Rise/set, coordinates and Earth corrections | `"rise_set.hpp"`, `"coord_transform.hpp"`, `"earth.hpp"`, `"earth/precession.hpp"`, `"earth/refraction.hpp"` |
@@ -205,6 +206,14 @@ Sized UTF-8 calls (`celestial_get_jieqi_name`, `celestial_capability_text`, `cel
 required bytes including NUL. A null buffer with zero capacity queries the size. Positive capacity writes at most
 capacity minus one payload bytes and a terminating NUL, truncating if necessary; zero return signals failure.
 Query the size instead of assuming a fixed Jieqi-name buffer.
+
+<a id="c-observer-queries"></a>
+## C Observer Queries
+
+`celestial_topocentric_position` returns a `CelestialTopocentricPosition` by value for
+the Sun, Moon or a planet at a fixed WGS84 site. The
+[observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+covers the C call, units, explicit UTC/UT1 input, optional fields and failure handling.
 
 <a id="c-longitude-events"></a>
 ## C Interval Longitude Events

@@ -40,6 +40,23 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+### WGS84 观测者
+
+经纬度以度为单位，经度东正西负；椭球高以米为单位。方位角以正北为零点、向东为正。
+关于角度字段的缺失情形、严格 UTC 规则和大气折射，见
+[观测者指南](../../docs/OBSERVER.md)。
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
 
@@ -200,9 +217,10 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
+根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`observer` 命名空间，并随包提供 TypeScript 声明。
 模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
-独立位置、赤道位置、宫位、事件、能力与模型文本查询均不是公开 JavaScript API。
+现有的 `sun`／`moon` 地心辅助查询和 `observer.position()` 均为公开 API。
+JavaScript 未提供通用的独立地心黄道／赤道位置、宫位、区间事件、能力与模型文本查询接口。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，
 才能传给 `jieqi.moment()` 或 `jieqi.name()`。`jieqi.name()` 返回中文名，如 `Jieqi.LICHUN` 对应 `"立春"`。

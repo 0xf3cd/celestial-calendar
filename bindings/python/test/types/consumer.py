@@ -56,6 +56,7 @@ def main() -> None:
       "  ModelKey, ModelKind, NutationModel, Position, EquatorialPosition, HouseQueryResult, CivilHouseCapability,\n"
       "  positions, equatorial_positions, house_query, house_capability, model_identity_text, delta_t,\n"
       "  CapabilityOperation, CapabilityRecord, capabilities,\n"
+      "  Observer, RefractionParams, RefractionModel, TopocentricPosition, topocentric_position,\n"
       ")\n"
       "from celestial_calendar.chart import GeoLocation as ChartGeoLocation\n"
       "class DateSubclass(date):\n"
@@ -85,6 +86,11 @@ def main() -> None:
       "typed_datetime: GregorianDate = GregorianDate.from_date(datetime(2024, 2, 10))\n"
       "typed_datetime_lunar: LunarDate = gregorian_to_lunar(LunarAlgorithm.ALGO2, datetime(2024, 2, 10))\n"
       "civil = CivilDateTime(2026, 1, 1, 0.5)\n"
+      "observed: TopocentricPosition = topocentric_position(Target.MOON, civil, CivilScale.UTC, Observer(0, 0, 100),\n"
+      "  refraction=RefractionParams(RefractionModel.BENNETT))\n"
+      "assert_type(observed.azimuth_deg, float | None)\n"
+      "assert_type(observed.right_ascension_deg, float | None)\n"
+      "assert_type(observed.apparent_altitude_deg, float | None)\n"
       "location: GeoLocation = ChartGeoLocation(51.5, 0.0)\n"
       "chart: ChartSnapshot = chart_snapshot(civil, CivilScale.UTC, location, HouseSystem.PLACIDUS)\n"
       "assert_type(\n"
@@ -123,6 +129,7 @@ def main() -> None:
       "  BodyState, CivilDateTime, CivilScale, GeoLocation, HouseSystem, chart_snapshot,\n"
       "  GregorianDate, Jieqi, LunarAlgorithm, gregorian_to_lunar, jieqi_moment,\n"
       "  lunar_to_gregorian, sun_longitude_crossings,\n"
+      "  Target, Observer, RefractionParams, RefractionModel, topocentric_position,\n"
       ")\n"
       "from celestial_calendar import solar_longitude_roots\n"
       "class GregorianDateSubclass(GregorianDate):\n"
@@ -140,6 +147,12 @@ def main() -> None:
       "bad_crossings: list[float] = sun_longitude_crossings(2024, 0.0)\n"
       "civil = CivilDateTime(2026, 1, 1, 0.5)\n"
       "location = GeoLocation(51.5, 0.0)\n"
+      "sky = topocentric_position(Target.MOON, civil, CivilScale.UTC, Observer(0, 0, 0))\n"
+      "bad_optional: float = sky.azimuth_deg\n"
+      "sky.altitude_deg = 0.0\n"
+      "topocentric_position(Target.MOON, civil, CivilScale.UTC, location)\n"
+      "topocentric_position(Target.MOON, civil, CivilScale.UTC, Observer(0, 0, 0), refraction='bennett')\n"
+      "topocentric_position('moon', civil, CivilScale.UTC, Observer(0, 0, 0))\n"
       "chart = chart_snapshot(civil, CivilScale.UTC, location, HouseSystem.PLACIDUS)\n"
       "bad_chart: str = chart\n"
       "chart_snapshot(datetime(2026, 1, 1), CivilScale.UTC, location, HouseSystem.EQUAL)\n"
@@ -182,6 +195,11 @@ def main() -> None:
       'expression has type "tuple[BodyState, ...]", variable has type "list[BodyState]"',
       'Property "jd_ut1" defined in "ChartTimes" is read-only',
       'Property "bodies" defined in "ChartSnapshot" is read-only',
+      'expression has type "float | None", variable has type "float"',
+      'Property "altitude_deg" defined in "TopocentricPosition" is read-only',
+      'Argument 4 to "topocentric_position" has incompatible type "GeoLocation"',
+      'Argument "refraction" to "topocentric_position" has incompatible type "str"',
+      'Argument 1 to "topocentric_position" has incompatible type "str"',
     )
     for diagnostic in expected_errors:
       assert diagnostic in result.stdout, result.stdout

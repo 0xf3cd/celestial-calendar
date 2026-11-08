@@ -27,6 +27,26 @@ python -m pip install celestial-calendar
 <a id="examples"></a>
 ## 示例
 
+### WGS84 观测者
+
+经纬度以度为单位，经度东正西负；椭球高以米为单位。方位角以正北为零点、向东为正。
+关于角度字段的缺失情形、严格 UTC 规则和大气折射，见
+[观测者指南](../../docs/OBSERVER.md)。
+
+```python
+from celestial_calendar import CivilDateTime, CivilScale, Observer, Target, topocentric_position
+
+sky = topocentric_position(
+  Target.MOON,
+  CivilDateTime(2026, 11, 7, 0.0),
+  CivilScale.UTC,
+  Observer(-33.85, 151.2, 50.0),
+)
+assert sky.distance_au > 0.0
+assert sky.apparent_altitude_deg is None
+print(sky.altitude_deg, sky.azimuth_deg)
+```
+
 <a id="todays-lunar-date"></a>
 ### 今天的阴历日期
 
