@@ -262,6 +262,75 @@ def test_calibration_arithmetic_replay_rejects_nonfinite_output(monkeypatch, val
     replay.replay_calibration(RECEIPTS / "calibration-results.json")
 
 
+def synthetic_calibration(tmp_path, expected):
+  """Keep one frozen input row and substitute only its comparison outputs."""
+  data = json.loads((RECEIPTS / "calibration-results.json").read_text())
+  data["cases"] = data["cases"][:1]
+  for key in ("horizons_reduced", "native_reduced"):
+    data["cases"][0][key] = expected
+  path = tmp_path / "calibration.json"
+  path.write_text(json.dumps(data))
+  return path
+
+
+@pytest.mark.parametrize("sign", [1.0, -1.0], ids=["positive", "negative"])
+@pytest.mark.parametrize("reverse", [False, True], ids=["actual-finer", "reference-finer"])
+@pytest.mark.parametrize("steps", [4, 5], ids=["at-limit", "outside"])
+def test_calibration_replay_uses_larger_spacing_across_binade(monkeypatch, tmp_path, sign, reverse, steps):
+  replay = load("observer_oracle_replay")
+  finer = 1.0
+  for _ in range(steps):
+    finer = math.nextafter(finer, 0.0)
+  actual, expected = (sign, sign * finer) if reverse else (sign * finer, sign)
+  path = synthetic_calibration(tmp_path, [expected] * 5)
+  monkeypatch.setattr(replay, "reduce", lambda *_args: [actual] * 5)
+  if steps == 4:
+    rows = replay.replay_calibration(path)
+    assert rows[0]["horizons_reduced"] == rows[0]["native_reduced"] == [actual] * 5
+  else:
+    with pytest.raises(AssertionError, match="independent calibration"):
+      replay.replay_calibration(path)
+
+
+@pytest.mark.parametrize("expected", [0.0, -0.0, math.ulp(0.0), -math.ulp(0.0)])
+@pytest.mark.parametrize("toward", [math.inf, -math.inf])
+@pytest.mark.parametrize("steps", [0, 2, 3])
+def test_calibration_replay_signed_zero_and_subnormal_limit(monkeypatch, tmp_path, expected, toward, steps):
+  replay = load("observer_oracle_replay")
+  actual = -expected if expected == 0.0 else expected
+  for _ in range(steps):
+    actual = math.nextafter(actual, toward)
+  path = synthetic_calibration(tmp_path, [expected] * 5)
+  monkeypatch.setattr(replay, "reduce", lambda *_args: [actual] * 5)
+  if steps <= 2:
+    assert len(replay.replay_calibration(path)) == 1
+  else:
+    with pytest.raises(AssertionError, match="independent calibration"):
+      replay.replay_calibration(path)
+
+
+@pytest.mark.parametrize("expected", [math.nan, math.inf, -math.inf], ids=["nan", "positive-inf", "negative-inf"])
+def test_calibration_replay_rejects_nonfinite_reference_with_finite_actual(monkeypatch, tmp_path, expected):
+  replay = load("observer_oracle_replay")
+  path = synthetic_calibration(tmp_path, [expected] * 5)
+  monkeypatch.setattr(replay, "reduce", lambda *_args: [1.0] * 5)
+  with pytest.raises(AssertionError, match="independent calibration"):
+    replay.replay_calibration(path)
+
+
+@pytest.mark.parametrize(
+  "actual_length,expected_length",
+  [(4, 5), (6, 5), (5, 4), (5, 6)],
+  ids=["actual-short", "actual-long", "reference-short", "reference-long"],
+)
+def test_calibration_replay_requires_matching_component_counts(monkeypatch, tmp_path, actual_length, expected_length):
+  replay = load("observer_oracle_replay")
+  path = synthetic_calibration(tmp_path, [1.0] * expected_length)
+  monkeypatch.setattr(replay, "reduce", lambda *_args: [1.0] * actual_length)
+  with pytest.raises(ValueError, match="zip"):
+    replay.replay_calibration(path)
+
+
 def test_observer_terms_links_resolve_to_the_named_sources():
   guide = ROOT / "statistics/observer_reference.md"
   targets = dict(links(tokens(guide.read_text())))

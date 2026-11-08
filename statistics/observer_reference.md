@@ -44,11 +44,14 @@ The generator checks the three complete receipt hashes in
 resolved relative to the script, not the current directory; `--output` is explicit.
 The replay's default is the independent offline calibration, not an external download.
 It repeats the original pre-observer Cartesian translation and ENU projection from
-frozen Horizons-geocentric and base-native-geocentric/GAST inputs, and checks both
-reduced outputs within 2 ULP (adjacent floating-point steps) per component to allow
-runtime-library rounding differences. Receipt hashes, full fixture bytes and both
-derived tolerance tables still require exact identity. This arithmetic replay allowance
-does not change the astronomical tests or their tolerances.
+frozen Horizons-geocentric and base-native-geocentric/GAST inputs. Each reduced component
+requires finite actual and expected values and
+`abs(actual - expected) <= 2 * max(math.ulp(actual), math.ulp(expected))`.
+This allows twice the larger floating-point spacing, not two adjacent-value steps
+across a power-of-two boundary, for runtime-library rounding differences. Receipt
+hashes, full fixture bytes and both derived tolerance tables still require exact
+identity. This arithmetic replay allowance does not change the astronomical tests or
+their tolerances.
 The native inputs came from `4d9efd52ed8ef83946208b1e2d6abe91deaeac01`,
 before `observer.hpp` existed; replaying them does not recompute the base providers.
 The reduction mechanism imports no production observer code.
