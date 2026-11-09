@@ -59,8 +59,8 @@ inline constexpr auto RADIUS_FACTS = std::invoke([] {
   using toolbox::DistanceKm;
   // NOLINTBEGIN(modernize-use-designated-initializers): Keep source/convention columns aligned across the roster.
   return std::array {
-    RadiusFacts { SUN,     DistanceKm { 695700.0 }, IAU_2015_SOLAR_NOMINAL   },
-    RadiusFacts { MOON,    DistanceKm {   1737.4 }, JPL_SSD_SATELLITE_MEAN  },
+    RadiusFacts { SUN,     DistanceKm { 695700.0 }, IAU_2015_SOLAR_NOMINAL    },
+    RadiusFacts { MOON,    DistanceKm {   1737.4 }, JPL_SSD_SATELLITE_MEAN    },
     RadiusFacts { MERCURY, DistanceKm {  2440.53 }, JPL_SSD_PLANET_EQUATORIAL },
     RadiusFacts { VENUS,   DistanceKm {   6051.8 }, JPL_SSD_PLANET_EQUATORIAL },
     RadiusFacts { MARS,    DistanceKm {  3396.19 }, JPL_SSD_PLANET_EQUATORIAL },
