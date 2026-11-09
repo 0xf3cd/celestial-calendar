@@ -27,8 +27,8 @@ Direction changes distinguish rise/set;
 the 180-degree hour-angle wrap is not treated as transit.
 
 Modern Horizons UT means UTC. Quantity 30 is TDB-UTC and quantity 49 is UT1-UTC;
-their difference supplies local TDB-UT1. TT-UT1 differs by the TT/TDB offset, whose magnitude
-the manual bounds at 2 ms. Endpoint DUT1 and printed epochs
+their difference supplies local TDB-UT1. TT-UT1 differs from TDB-UT1 by the TT/TDB
+offset, whose magnitude the manual bounds at 2 ms. Endpoint DUT1 and printed epochs
 are retained, and day ownership is checked using the resulting approximate UT1 values,
 well away from the midnight boundary in this finite dataset. Coarse sampled altitude
 extrema support the two no-crossing examples, not an arbitrary-interval completeness proof.
