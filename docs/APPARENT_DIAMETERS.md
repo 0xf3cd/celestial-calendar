@@ -87,6 +87,14 @@ Invalid input throws `std::invalid_argument`, Python `ValueError`, or JavaScript
 The C result has `valid=false`; read `celestial_last_error_kind` and
 `celestial_last_error` before another recording call. Invalid payload has no meaning.
 
+Python and JavaScript bindings check the result marker, requested target and
+centre, finite fields, recognized identity codes and agreement with an explicitly
+selected Delta T model. They also enforce positive radius, `d > R` after unit
+conversion, and the angle bounds above. Native code supplies the adopted
+position-source and radius-definition metadata. Bindings return recognized
+metadata as reported, without checking its source or radius convention against
+the requested body.
+
 ## Browser scaling
 
 The [small browser renderer](examples/apparent_diameter/render.mjs) draws Sun and

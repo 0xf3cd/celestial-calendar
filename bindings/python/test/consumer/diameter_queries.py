@@ -146,6 +146,18 @@ def main() -> None:
   for changes in corruptions:
     with bindings(celestial_apparent_diameter=lambda *args, changes=changes: record(**(fields | changes))):
       raises(c.CelestialError, lambda: c.apparent_diameter(c.Target.MOON, civil, c.CivilScale.UTC))
+  # These synthetic SUN records test code recognition, not native per-body metadata correctness.
+  for source_code, definition_code, definition in (
+    (4, 1, c.RadiusDefinition.IAU_2015_SOLAR_NOMINAL),
+    (1, 3, c.RadiusDefinition.JPL_SSD_PLANET_EQUATORIAL),
+  ):
+    reported_fields = fields | dict(target_code=0, source_code=source_code, radius_definition_code=definition_code)
+    with bindings(celestial_apparent_diameter=lambda *args, reported_fields=reported_fields: record(**reported_fields)):
+      reported = c.apparent_diameter(c.Target.SUN, civil, c.CivilScale.UTC)
+    assert reported.target is c.Target.SUN
+    assert reported.source == c.ModelKey(c.ModelKind.POSITION_SOURCE, source_code)
+    assert reported.radius_definition is definition
+  print("PASS diameter recognized source/definition passthrough for synthetic SUN records")
   with bindings(celestial_apparent_diameter=lambda *args: record(**fields)):
     raises(
       c.CelestialError,

@@ -127,6 +127,8 @@ const nativeCode = (value, prefix, operation, field) => {
   return value;
 };
 
+const isPhysicalTarget = (code) => code < CHART_CODES.targets.meanAscending;
+
 const allocate = (M, bytes, operation) => {
   if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_OUTPUT_BYTES) {
     throw new CelestialError(operation, `${operation} exceeds the binding's 16 MiB output limit.`, false);
@@ -551,7 +553,7 @@ const readChartSnapshot = (M, ptr) => {
   const bodies = Object.entries(CHART_CODES.targets).map(([target, code], index) => {
     const bodyPtr = bodiesPtr + index * LAYOUTS.CelestialChartBody.size;
     const readBody = (name) => readChartField(M, bodyPtr, "CelestialChartBody", name);
-    const isNode = code >= CHART_CODES.targets.meanAscending;
+    const isNode = !isPhysicalTarget(code);
     const present = CHART_CODES.present.latitude | (isNode ? 0 : CHART_CODES.present.distance);
     if (readBody("target_code") !== code) malformedChart(`bodies[${index}].target_code`);
     nativeCode(readBody("source_code"), "CELESTIAL_POSITION_SOURCE_", "chart.snapshot", `${target}.source_code`);
@@ -656,7 +658,7 @@ const observerPosition = (target, civil, options) => {
   const operation = "observer.position";
   const M = requireModule(operation);
   const physicalTargets = Object.fromEntries(
-    Object.entries(CHART_CODES.targets).filter(([, code]) => code < CHART_CODES.targets.meanAscending),
+    Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
   );
   const targetCode = enumValue(target, "target", physicalTargets);
   const value = nativeCivilDateTime(civil, "civil");
@@ -751,7 +753,7 @@ const diameterQuery = (target, civil, options) => {
   const operation = "diameter.query";
   requireModule(operation);
   const targets = Object.fromEntries(
-    Object.entries(CHART_CODES.targets).filter(([, code]) => code < CHART_CODES.targets.meanAscending),
+    Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
   );
   const targetCode = enumValue(target, "target", targets);
   const value = nativeCivilDateTime(civil, "civil");

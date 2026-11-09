@@ -260,6 +260,15 @@ export async function testFakeNative(entryUrl) {
     for (const changes of diskCorruptions) {
       reset({ sretPayload: { ...diskPayload, ...changes } }); libraryError(disk);
     }
+    // These synthetic SUN records test code recognition, not native per-body metadata correctness.
+    for (const [sourceCode, radiusDefinitionCode] of [[4, 1], [1, 3]]) {
+      reset({ sretPayload: { ...diskPayload, target_code: 0, source_code: sourceCode, radius_definition_code: radiusDefinitionCode } });
+      const reported = fixture.diameter.query("sun", civil, { scale: "utc" });
+      assert.equal(reported.target, "sun");
+      assert.deepEqual([reported.sourceCode, reported.radiusDefinitionCode], [sourceCode, radiusDefinitionCode]);
+      assert.deepEqual(control.calls, [["celestial_apparent_diameter", 0, 2024, 1, 1, 0.5, 0, 0, 0, 0, 0, 0]]);
+    }
+    console.log("PASS diameter recognized source/definition passthrough for synthetic SUN records");
     reset({ sretPayload: { ...diskPayload, delta_t_identity_code: 2 } });
     libraryError(() => disk({ scale: "utc", model: "algo5" }));
     reset({ sretPayload: { ...diskPayload, diameter_arcsec: 1e-300 } });
