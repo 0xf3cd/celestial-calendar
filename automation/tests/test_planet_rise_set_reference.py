@@ -82,6 +82,14 @@ def test_whole_table_alignment():
   assert lines[0].index(",") == lines[1].index(",")
 
 
+def test_generation_does_not_read_production_header(tmp_path, monkeypatch):
+  module = generator()
+  data = json.loads(module.RECEIPT.read_text())
+  expected = module.FIXTURE.read_text()
+  monkeypatch.setattr(module, "ROOT", tmp_path)
+  assert module.render(data) == expected
+
+
 def test_raw_response_identity_and_exact_source_endpoints(tmp_path):
   module = generator()
   data = json.loads(module.RECEIPT.read_text())

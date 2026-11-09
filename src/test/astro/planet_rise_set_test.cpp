@@ -117,32 +117,28 @@ TEST(PlanetRiseSet, HorizonsBracketsAndIndependentBisection) {
   std::size_t checked = 0;
   for (std::size_t index = 0; index < reference::DAYS.size(); ++index) {
     const auto& input = reference::DAYS.at(index);
-    const auto ymd = date(
-      static_cast<int32_t>(input.at(1)),
-      static_cast<uint32_t>(input.at(2)),
-      static_cast<uint32_t>(input.at(3))
-    );
-    const auto observer = site(input.at(4), input.at(5), input.at(6));
-    const auto target = static_cast<Target>(input.at(0));
+    const auto ymd = date(input.year, input.month, input.day);
+    const auto observer = site(input.latitude_deg, input.longitude_deg, input.height_km);
+    const auto target = static_cast<Target>(input.target);
     const auto result = calculate(ymd, observer, target);
     SCOPED_TRACE(index);
-    EXPECT_EQ(static_cast<uint32_t>(result.polar), static_cast<uint32_t>(input.at(7)));
+    EXPECT_EQ(result.polar, static_cast<Polar>(input.polar));
     const auto actual = events(result);
     for (std::size_t event = 0; event < actual.size(); ++event) {
-      EXPECT_EQ(actual.at(event).has_value(), (static_cast<uint32_t>(input.at(8)) & (uint32_t { 1 } << event)) != 0);
+      EXPECT_EQ(actual.at(event).has_value(), (input.event_mask & (uint32_t { 1 } << event)) != 0);
     }
     const auto window = rise_set::detail::day_window(ymd);
     for (const auto& row : reference::EVENTS) {
-      if (static_cast<std::size_t>(row.at(0)) != index) { continue; }
-      const auto event = static_cast<std::size_t>(row.at(1));
+      if (row.day_index != index) { continue; }
+      const auto event = row.event_index;
       const double t = req(actual.at(event));
       EXPECT_GE(t, window.start_jde_tt);
       EXPECT_LT(t, window.end_jde_tt);
-      EXPECT_GE(t, row.at(2) - (row.at(6) / 86400.0));
-      EXPECT_LE(t, row.at(3) + (row.at(6) / 86400.0));
+      EXPECT_GE(t, row.source_lower_jde_tt - (row.allowance_seconds / 86400.0));
+      EXPECT_LE(t, row.source_upper_jde_tt + (row.allowance_seconds / 86400.0));
       // The independent bisection used the same physical provider but no rise_set solver.
-      EXPECT_GE(t, row.at(4) - (0.0002 / 86400.0));
-      EXPECT_LE(t, row.at(5) + (0.0002 / 86400.0));
+      EXPECT_GE(t, row.native_lower_jde_tt - (0.0002 / 86400.0));
+      EXPECT_LE(t, row.native_upper_jde_tt + (0.0002 / 86400.0));
       const double jd_ut1 = rise_set::detail::jde_tt_to_jd_ut1(t);
       const auto position = astro::observer::observe({ .jd_ut1 = jd_ut1, .jde_tt = t }, observer, target);
       if (event == 1) {
@@ -178,15 +174,26 @@ TEST(PlanetRiseSet, PolarSitesRetainMeaningfulTransitAndNoCrossings) {
   }
 }
 
+TEST(PlanetRiseSet, OneSidedDayIsNotPolarAbsence) {
+  const auto result = calculate(date(2019, 8, 27), site(75.0), Target::MERCURY);
+  EXPECT_FALSE(result.rise_jde_tt.has_value());
+  EXPECT_TRUE(result.transit_jde_tt.has_value());
+  EXPECT_TRUE(result.set_jde_tt.has_value());
+  EXPECT_EQ(result.polar, Polar::NONE);
+}
+
 TEST(PlanetRiseSet, NonPlanetAndUnknownTargetsAreRejected) {
   for (const auto target : { Target::SUN, Target::MOON, Target::MEAN_ASCENDING, Target::MEAN_DESCENDING,
                             Target::TRUE_ASCENDING, Target::TRUE_DESCENDING }) {
     const auto message = error_message<std::invalid_argument>([&] { static_cast<void>(calculate(date(), site(), target)); });
+    EXPECT_NE(message.find("UT1 date 2000-01-01"), std::string::npos);
     EXPECT_NE(message.find("requires Mercury through Pluto"), std::string::npos);
   }
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Exercise an unnamed fixed-underlying target.
   const auto unknown = static_cast<Target>(255);
-  EXPECT_THROW(static_cast<void>(calculate(date(), site(), unknown)), std::invalid_argument);
+  const auto message = error_message<std::invalid_argument>([&] { static_cast<void>(calculate(date(), site(), unknown)); });
+  EXPECT_NE(message.find("UT1 date 2000-01-01"), std::string::npos);
+  EXPECT_NE(message.find("Unknown ephemeris target 255"), std::string::npos);
 }
 
 TEST(PlanetRiseSet, MalformedDatesSitesAndThresholdsAreNotAbsence) {

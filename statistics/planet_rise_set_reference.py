@@ -94,10 +94,13 @@ def verify_raw(data: dict, directory: Path) -> None:
         assert float(sample["TDB-UT"]) - float(sample["UT1-UTC"]) == expected["TDB_UT1_seconds"]
 
 
-def aligned(rows: list[list]) -> str:
+def aligned(rows: list[list], row_type: str = "") -> str:
   values = [[repr(v) for v in row] for row in rows]
   widths = [max(len(row[index]) for row in values) for index in range(len(values[0]))]
-  return "\n".join("  { " + ", ".join(v.rjust(w) for v, w in zip(row, widths, strict=True)) + " }," for row in values)
+  prefix = f"{row_type} " if row_type else ""
+  return "\n".join(
+    "  " + prefix + "{ " + ", ".join(v.rjust(w) for v, w in zip(row, widths, strict=True)) + " }," for row in values
+  )
 
 
 def render(data: dict) -> str:
@@ -128,7 +131,17 @@ def render(data: dict) -> str:
           data["full_model_test_tolerances_seconds"][str(case["target"])],
         ]
       )
-  banner = (ROOT / "src/astro/planet_rise_set.hpp").read_text().split("#pragma once")[0].rstrip()
+  banner = """/*
+ * CelestialCalendar:
+ *   A C++23-style library that performs astronomical calculations and date conversions between
+ *   Gregorian and Chinese Lunar calendars.
+ *
+ * Copyright (C) 2026 Ningqi Wang (0xf3cd)
+ * Email: nq.maigre@gmail.com
+ * Repo : https://github.com/0xf3cd/celestial-calendar
+ *
+ * SPDX-License-Identifier: MIT
+ */"""
   return (
     banner
     + """
@@ -139,22 +152,49 @@ def render(data: dict) -> str:
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace astro::rise_set::planet::test::reference {
 
-// Target, UT1 year/month/day, latitude/east longitude degrees, height km, Polar code, event bitmask (R/T/S).
-inline constexpr std::array<std::array<double, 9>, 12> DAYS {{
-"""
-    + aligned(days)
-    + """
-}};
+/** @brief Exact target, UT1 date, WGS84 site and expected daily event topology. */
+struct Day {
+  uint32_t target;
+  int32_t year;
+  uint32_t month;
+  uint32_t day;
+  double latitude_deg;
+  double longitude_deg;
+  double height_km;
+  uint32_t polar;
+  uint32_t event_mask;
+};
 
-// Day/event index (R=0/T=1/S=2), source TT bracket, independent native-clock TT bracket, model allowance seconds.
-inline constexpr std::array<std::array<double, 7>, 32> EVENTS {{
+/** @brief Source and independent native-clock TT brackets, with the frozen model allowance. */
+struct Event {
+  uint32_t day_index;
+  uint32_t event_index;
+  double source_lower_jde_tt;
+  double source_upper_jde_tt;
+  double native_lower_jde_tt;
+  double native_upper_jde_tt;
+  double allowance_seconds;
+};
+
+// Columns follow Day; event_mask bits are rise/transit/set from least to most significant.
+// NOLINTBEGIN(modernize-use-designated-initializers): Preserve whole-table column alignment.
+inline constexpr std::array DAYS {
 """
-    + aligned(events)
+    + aligned(days, "Day")
     + """
-}};
+};
+
+// Columns follow Event; event_index is rise=0, transit=1, set=2.
+inline constexpr std::array EVENTS {
+"""
+    + aligned(events, "Event")
+    + """
+};
+// NOLINTEND(modernize-use-designated-initializers)
 
 } // namespace astro::rise_set::planet::test::reference
 """

@@ -27,6 +27,7 @@ namespace astro::rise_set::planet {
 /**
  * @brief Standard geometric altitude of a planet's centre at rise/set: -34 arcminutes.
  * @note The point-source convention includes standard horizon refraction, without a limb correction.
+ *       Pair it with airless topocentric coordinates, with parallax already applied.
  * @see Jean Meeus, "Astronomical Algorithms", Second Edition, Chapter 15, p. 101.
  */
 inline constexpr auto STANDARD_CENTER_ALTITUDE = toolbox::AngleDeg::from_arcmin(-34.0);
@@ -80,8 +81,8 @@ namespace detail {
   const ephemeris::Target target,
   const toolbox::AngleDeg& h0 = STANDARD_CENTER_ALTITUDE
 ) -> Result {
-  const auto provider = detail::provider_for(observer, target);
   try {
+    const auto provider = detail::provider_for(observer, target);
     return calculate_day(ymd_ut1, observer.location, h0, provider);
   } catch (const std::invalid_argument& error) {
     throw std::invalid_argument {
