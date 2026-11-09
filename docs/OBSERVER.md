@@ -153,3 +153,62 @@ existing rise/set event implementation.
 
 Numerical references and exact-input replay are in
 [`statistics/observer_reference.md`](../statistics/observer_reference.md).
+
+## Planetary rise, transit and set (C++)
+
+Include `planet_rise_set.hpp` to query Mercury through Pluto for a **UT1 calendar day**.
+Unlike the older Sun/Moon entry points taking `GeoLocation`, this entry takes an
+`observer::Observer` so its WGS84 height participates in parallax:
+
+```cpp
+#include "planet_rise_set.hpp"
+#include "ymd.hpp"
+
+int main() {
+  const astro::observer::Observer site {
+    .location = { .latitude = astro::toolbox::AngleDeg { 40.0 },
+                  .longitude = astro::toolbox::AngleDeg { 0.0 } },
+    .elevation = astro::toolbox::DistanceKm { 0.1 },
+  };
+  const auto events = astro::rise_set::planet::calculate(
+    util::to_ymd(2026, 11, 7), site, astro::ephemeris::Target::MARS
+  );
+  if (events.rise_jde_tt.has_value()) {
+    const auto rise_ut1 = astro::julian_day::jde_to_ut1(*events.rise_jde_tt);
+    return rise_ut1.ymd == util::to_ymd(2026, 11, 7) ? 0 : 1;
+  }
+  return 0;
+}
+```
+
+The result is the existing `rise_set::Result`, with optional **TT JDE** events and
+`Polar` topology. It reports at most one event per kind: the later rise/set and the
+first upper transit in the day. A missing event can be ordinary day-window arithmetic;
+`Polar::DAY`/`NIGHT` applies only when there are no crossings and the altitude stays
+on one side of the threshold. Exact-midnight altitude crossings retain the engine's
+strict-sign convention and belong to neither adjacent day. This is a representative
+daily summary, not a complete interval event list.
+
+The default `STANDARD_CENTER_ALTITUDE` is **-34 arcminutes**, the fixed centre/point-source
+standard-refraction convention of Meeus Chapter 15, p. 101. Coordinates already include
+parallax but no refraction; apply neither correction again. No limb radius, terrain or
+horizon dip is added. An optional fourth argument supplies a different topocentric geometric
+centre altitude in [-90, 90] degrees; it does not configure weather.
+
+This day query fixes IAU1980 axes and `delta_t::DEFAULT_MODEL` (currently ALGO5).
+Source and position-domain identities remain available through `ephemeris::source_of(target)`
+and `ephemeris::position_domain(target)`. It has no per-call Delta T selector.
+The planetary daily entry is C++ only; the C/Python/JavaScript position queries above
+remain instant-position operations.
+
+Every actual provider sample must be admitted, including both day endpoints, transit
+estimates and Newton derivative samples outside their root brackets. Pluto's half-open
+TT position domain therefore does not define a simple UT1-date admission rule. For a
+40°N, 0°E, zero-height site with the default model, 1885-01-02 and 2099-12-31 are rejected,
+while 1885-01-03 and 2099-12-30 succeed; these are examples, not guarantees for every site.
+Invalid input or an out-of-domain sample raises `std::invalid_argument`; the daily error
+prefix gives request-date context and retains the underlying cause. Unresolved RA or a
+failed numerical solve raises `std::runtime_error`, not an absent event.
+
+Reference conditions, sampling and finite-data regression allowances are documented in
+[`statistics/planet_rise_set_reference.md`](../statistics/planet_rise_set_reference.md).

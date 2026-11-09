@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "collection_date": "2026-11-09",
+  "calibration_sha256": "638c558d0b119ff344d603c89a4a74c6e5e817e200fa1c16d5b3f931e23c5c7e",
+  "frozen_calibration_sha256": "cf02a81b07b227695549d8f49d9bc1b1ea7284dfcbd8ccbd14e415150730194c",
+  "source_sha": "e79f3041f4004c0a73a2730d4dc5493c14617b8d",
+  "source_requests": 68,
+  "cases": 12,
+  "events": 32,
+  "terms": "https://ssd.jpl.nasa.gov/horizons/manual.html#acknowledgements"
+}
