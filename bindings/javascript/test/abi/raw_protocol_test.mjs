@@ -1025,17 +1025,17 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.equal(BINDINGS.length, 39, "C export inventory");
-assert.equal(Object.keys(manifest.layouts).length, 30, "C record inventory");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 39 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 30 layouts decoded");
+assert.equal(BINDINGS.length, 40, "C export inventory");
+assert.equal(Object.keys(manifest.layouts).length, 31, "C record inventory");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 40 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 31 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 39/39; layouts 30/30; recording seams 37/37");
+console.log("PASS raw exports 40/40; layouts 31/31; recording seams 38/38");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");
