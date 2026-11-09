@@ -200,6 +200,7 @@ EXPORT_SEMANTICS = {
         "CELESTIAL_OPERATION_CHART",
         "CELESTIAL_OPERATION_DELTA_T",
         "CELESTIAL_OPERATION_TOPOCENTRIC",
+        "CELESTIAL_OPERATION_APPARENT_DIAMETER",
       ],
     },
     "recording": True,
@@ -236,6 +237,10 @@ EXPORT_SEMANTICS = {
   "celestial_house_capability": {"protocol": {}, "recording": True},
   "celestial_topocentric_position": {
     "protocol": {"identity": "resolved-explicit-model-key-and-position-source"},
+    "recording": True,
+  },
+  "celestial_apparent_diameter": {
+    "protocol": {"identity": "resolved-explicit-model-key-position-source-and-radius-definition"},
     "recording": True,
   },
 }

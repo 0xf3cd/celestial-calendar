@@ -78,6 +78,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "CHART": 5,
     "DELTA_T": 6,
     "TOPOCENTRIC": 7,
+    "APPARENT_DIAMETER": 8,
   }
   assert family("CELESTIAL_STATUS_") == {
     "SOURCE_WINDOW": 0,
@@ -96,6 +97,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "CELESTIAL_OPERATION_CHART",
     "CELESTIAL_OPERATION_DELTA_T",
     "CELESTIAL_OPERATION_TOPOCENTRIC",
+    "CELESTIAL_OPERATION_APPARENT_DIAMETER",
   ]
   assert abi.PROTOCOLS["celestial_capability_text"]["subject_policy"] == (
     "concrete-target-for-target-operations-all-for-nontarget-operations"

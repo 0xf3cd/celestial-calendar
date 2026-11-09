@@ -290,6 +290,8 @@ OS version floor is declared.
   [`planet.hpp`](src/astro/planet.hpp).
 - [Topocentric observer queries](docs/OBSERVER.md) for the Sun, Moon and planets are available in C++, C, Python
   and JavaScript.
+- [Apparent angular diameters](docs/APPARENT_DIAMETERS.md) for the Sun, Moon and planets, using geocentric or
+  topocentric distance, are available in C++, C, Python and JavaScript.
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
   system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),

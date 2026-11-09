@@ -29,6 +29,7 @@ SCRIPTS = {
   "consumer/capabilities.py",
   "consumer/queries.py",
   "consumer/observer_queries.py",
+  "consumer/diameter_queries.py",
   "consumer/protocol_seams.py",
 }
 

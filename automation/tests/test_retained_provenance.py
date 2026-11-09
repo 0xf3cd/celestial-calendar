@@ -131,7 +131,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def test_retained_provenance_facts_and_values_are_complete():
-  assert verify_retained_provenance() == ProvenanceCounts(58, 124, 67, 5, 16)
+  assert verify_retained_provenance() == ProvenanceCounts(58, 130, 73, 6, 17)
 
 
 def test_lunar_node_oracle_attribution_mutation_fails(tmp_path):
@@ -461,6 +461,12 @@ def test_adjacent_source_table_is_closed_and_keeps_existing_facts():
       "not a consumer-package member",
     ),
     "v06-observer-receipt": (
+      "JPL Horizons",
+      "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "test-only",
+      "not a consumer-package member",
+    ),
+    "v06-diameter-receipt": (
       "JPL Horizons",
       "https://ssd.jpl.nasa.gov/api/horizons.api",
       "test-only",

@@ -40,6 +40,9 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+用 `diameter.query` 查询完整球面视角直径，单位为角秒，可选传入 WGS84 观测者。
+半径约定、支持的天体和浏览器缩放示例见[视角直径指南（英文）](../../docs/APPARENT_DIAMETERS.md)。
+
 ### WGS84 观测者
 
 经纬度以度为单位，经度东正西负；椭球高以米为单位。方位角以正北为零点、向东为正。
@@ -217,9 +220,9 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`observer` 命名空间，并随包提供 TypeScript 声明。
+根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`observer`、`diameter` 命名空间，并随包提供 TypeScript 声明。
 模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
-现有的 `sun`／`moon` 地心辅助查询和 `observer.position()` 均为公开 API。
+现有的 `sun`／`moon` 地心辅助查询、`observer.position()` 和 `diameter.query()` 均为公开 API。
 JavaScript 未提供通用的独立地心黄道／赤道位置、宫位、区间事件、能力与模型文本查询接口。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，

@@ -22,6 +22,9 @@
       <h1>Celestial package smoke</h1>
       <output id="date-result">waiting</output>
       <output id="result">waiting</output>
+      <h2>Scalar disk sizes</h2>
+      <p>2026-11-07 00:00 UTC, geocentric. Scale: 10 arcseconds per CSS pixel. Jupiter is magnified 20 times.</p>
+      <section id="diameters" aria-label="Apparent disk comparison"></section>
     </main>
     <script>
       import * as celestial from "@0xf3cd/celestial";
@@ -31,6 +34,8 @@
       import { dateToCivilAtOffset, civilAtOffsetToDate } from "celestial-calendar/date";
       import { runChartAcceptance } from "../chart_replay.mjs";
       import { runObserverAcceptance } from "../observer_api.mjs";
+      import { runDiameterAcceptance } from "../diameter_api.mjs";
+      import { renderDiameters } from "../diameter_example.mjs";
       import chartExample from "../chart_example.json";
 
       const output = document.querySelector("#result");
@@ -74,6 +79,8 @@
             illumination: celestial.moon.illumination(jdeTt).fraction,
             chart: runChartAcceptance(alias, chartExample),
             observer: runObserverAcceptance(alias),
+            diameter: runDiameterAcceptance(alias),
+            diameterExample: renderDiameters(alias, document.querySelector("#diameters")),
           };
         } catch (error) {
           window.__CELESTIAL_RESULT__ = { fatal: String(error?.stack || error) };

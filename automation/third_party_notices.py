@@ -134,6 +134,29 @@ NOTICE_SOURCES: Final[tuple[NoticeSource, ...]] = (
     ),
   ),
   NoticeSource(
+    title="IAU/JPL adopted disk radii — source attribution",
+    applicability=(
+      "the adopted spherical disk radii in the native library, Python wheels, npm packages and WebAssembly build"
+    ),
+    path=Path("src/test/provenance/diameter/ATTRIBUTION.md"),
+    upstream="IAU 2015 B3 via Prsa et al. 2016, JPL SSD physical-parameter tables and Horizons header facts",
+    sha256="353a9ef5ee630b409d0c5a47a0819e0d5dc629fbbe2fd1d2effb99a943522ebf",
+    facts=(
+      "outside the project MIT grant",
+      "IAU 2015 Resolution B3",
+      "Prsa et al. (2016)",
+      "arXiv:1605.09788v1",
+      "Archinal et al. (2018)",
+      "V06/V08",
+      "redistribution permission grant",
+      "Raw response prose",
+    ),
+    marking=(
+      "This source-attribution record is not an upstream licence or permission grant.",
+      "No paper pages or response prose are included; the source-file digest identifies citation atoms in this record.",
+    ),
+  ),
+  NoticeSource(
     title=f"ERFA v{ERFA_VERSION} — LICENSE",
     applicability=(
       "runtime constants, coefficients, and calendar conversions derived from the pinned ERFA source files, "

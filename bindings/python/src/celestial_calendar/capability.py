@@ -35,6 +35,7 @@ class CapabilityOperation(_StrEnum):
   CHART = "chart"
   DELTA_T = "delta_t"
   TOPOCENTRIC = "topocentric"
+  APPARENT_DIAMETER = "apparent_diameter"
 
 
 class CapabilityStatus(_StrEnum):

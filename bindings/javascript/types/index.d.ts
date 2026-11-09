@@ -201,6 +201,36 @@ export interface RefractionOptions {
 
 export type PhysicalTarget = Exclude<ChartTarget, "meanAscending" | "meanDescending" | "trueAscending" | "trueDescending">;
 
+export interface DiameterOptions {
+  scale: CivilScale;
+  observer?: Observer;
+  model?: DeltaTModel;
+}
+
+/** Full spherical disk; solar nominal, lunar mean, planetary equatorial radii. Saturn excludes rings. */
+export interface ApparentDiameter {
+  readonly target: PhysicalTarget;
+  readonly centre: "geocentric" | "topocentric";
+  readonly sourceCode: number;
+  readonly radiusDefinitionCode: number;
+  readonly radiusKm: number;
+  readonly distanceAu: number;
+  readonly diameterArcsec: number;
+  readonly times: Readonly<{ jdUt1: number; jdeTt: number }>;
+  readonly deltaTModel: Exclude<DeltaTModel, "default">;
+}
+
+export const diameter: Readonly<{
+  /**
+   * Frozen full disk in arcseconds using existing provider distance and optional WGS84 observer translation.
+   * Provider and Delta T guards apply without a chart/rate window; no new observer light-time solve.
+   * @throws {TypeError} For wrong types, missing own scale, inherited options or unknown option keys.
+   * @throws {RangeError} For malformed input, provider rejection or a resolved inside-target observer.
+   * @throws {CelestialError} Before init, for failed evaluation or malformed native success.
+   */
+  query(target: PhysicalTarget, civil: CivilDateTime, options: DiameterOptions): ApparentDiameter;
+}>;
+
 export interface ObserverPositionOptions {
   scale: CivilScale;
   observer: Observer;

@@ -34,6 +34,10 @@ environment. Apart from this package, the examples use only the Python standard 
 <a id="examples"></a>
 ## Examples
 
+For full scalar disk sizes in arcseconds, use `apparent_diameter` with an optional
+WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
+conventions, supported targets and a minimal call.
+
 ### Local sky from a WGS84 observer
 
 Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal

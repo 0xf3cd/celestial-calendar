@@ -46,6 +46,20 @@ def edge_celestial_topocentric_position() -> None:
   assert _binding.last_error_kind() == 1
 
 
+def happy_celestial_apparent_diameter() -> None:
+  result = call("apparent_diameter", 1, 2026, 11, 7, 0.0, 0, 0, 0, NAN, NAN, NAN)
+  assert result.valid and result.target_code == 1 and result.centre_code == 0
+  assert result.source_code == 2 and result.radius_definition_code == 2 and result.delta_t_identity_code == 5
+  assert result.radius_km == 1737.4 and result.distance_au > 0 and 0 < result.diameter_arcsec < 648000
+
+
+def edge_celestial_apparent_diameter() -> None:
+  assert call("apparent_diameter", 1, 2026, 11, 7, 0.0, 0, 0, 1, 90.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 0
+  assert not call("apparent_diameter", 10, 2026, 11, 7, 0.0, 0, 0, 0, NAN, NAN, NAN).valid
+  assert _binding.last_error_kind() == 1
+
+
 def happy_celestial_ut1_to_jd() -> None:
   result = call("ut1_to_jd", 2024, 6, 1, 0.5)
   assert result.valid and abs(result.value - 2460463.0) < 1e-6
@@ -634,6 +648,7 @@ def edge_celestial_capability_text() -> None:
 
 
 EXPORT_LABELS = (
+  "apparent_diameter",
   "topocentric_position",
   "last_error",
   "last_error_kind",
@@ -890,7 +905,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 39
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 40
   assert set(HAPPY_TESTS) == set(EDGE_TESTS) == set(_binding.BINDING_SPECS)
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)

@@ -318,6 +318,22 @@ class CelestialTopocentricPosition(ctypes.Structure):
   ]
 
 
+class CelestialApparentDiameter(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("target_code", ctypes.c_uint32),
+    ("centre_code", ctypes.c_uint32),
+    ("source_code", ctypes.c_uint32),
+    ("radius_definition_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("jd_ut1", ctypes.c_double),
+    ("jde_tt", ctypes.c_double),
+    ("radius_km", ctypes.c_double),
+    ("distance_au", ctypes.c_double),
+    ("diameter_arcsec", ctypes.c_double),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
@@ -492,6 +508,22 @@ BINDING_SPECS = {
     ),
     CelestialTopocentricPosition,
   ),
+  "celestial_apparent_diameter": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+    ),
+    CelestialApparentDiameter,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -525,6 +557,7 @@ STRUCT_TYPES = {
   "CelestialHouseQueryResult": CelestialHouseQueryResult,
   "CelestialCivilHouseCapability": CelestialCivilHouseCapability,
   "CelestialTopocentricPosition": CelestialTopocentricPosition,
+  "CelestialApparentDiameter": CelestialApparentDiameter,
 }
 
 RECORDING_EXPORTS = frozenset(
@@ -566,6 +599,7 @@ RECORDING_EXPORTS = frozenset(
     "celestial_house_query",
     "celestial_house_capability",
     "celestial_topocentric_position",
+    "celestial_apparent_diameter",
   )
 )
 
@@ -892,6 +926,22 @@ C_SIGNATURES = {
       "double",
     ),
   ),
+  "celestial_apparent_diameter": (
+    "CelestialApparentDiameter",
+    (
+      "uint32_t",
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "uint32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+    ),
+  ),
 }
 
 C_CODES = {
@@ -950,6 +1000,7 @@ C_CODES = {
   "CELESTIAL_OPERATION_CHART": 5,
   "CELESTIAL_OPERATION_DELTA_T": 6,
   "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
+  "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
   "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
   "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
   "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -965,6 +1016,11 @@ C_CODES = {
   "CELESTIAL_PRESENT_RIGHT_ASCENSION": 4,
   "CELESTIAL_PRESENT_AZIMUTH": 8,
   "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16,
+  "CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC": 0,
+  "CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC": 1,
+  "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
+  "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
+  "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
 }
 
 C_PARAMETERS = {
@@ -1189,6 +1245,19 @@ C_PARAMETERS = {
     "refraction_code",
     "temperature_c",
     "pressure_hpa",
+  ],
+  "celestial_apparent_diameter": [
+    "target_code",
+    "year",
+    "month",
+    "day",
+    "fraction",
+    "civil_scale_code",
+    "delta_t_model_code",
+    "centre_code",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
   ],
 }
 
@@ -1422,6 +1491,7 @@ PROTOCOLS = {
       "CELESTIAL_OPERATION_CHART",
       "CELESTIAL_OPERATION_DELTA_T",
       "CELESTIAL_OPERATION_TOPOCENTRIC",
+      "CELESTIAL_OPERATION_APPARENT_DIAMETER",
     ],
     "error_channel": "kind",
   },
@@ -1461,6 +1531,11 @@ PROTOCOLS = {
   "celestial_topocentric_position": {
     "kind": "struct",
     "identity": "resolved-explicit-model-key-and-position-source",
+    "error_channel": "kind",
+  },
+  "celestial_apparent_diameter": {
+    "kind": "struct",
+    "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
     "error_channel": "kind",
   },
 }

@@ -31,6 +31,15 @@ const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
 const lunarAlgorithm: LunarAlgorithm = "algo3";
 const civil: CivilDateTime = { year: 2024, month: 6, day: 1, fraction: 0.5 };
+const disk: celestial.ApparentDiameter = celestial.diameter.query("moon", civil, { scale: "utc" });
+const diskCentre: "geocentric" | "topocentric" = disk.centre;
+void diskCentre;
+// @ts-expect-error Disk results are immutable.
+disk.diameterArcsec = 0;
+// @ts-expect-error Lunar nodes have no disk.
+celestial.diameter.query("meanAscending", civil, { scale: "utc" });
+// @ts-expect-error Explicit time scale is required.
+celestial.diameter.query("moon", civil, {});
 const observed: celestial.TopocentricPosition = celestial.observer.position("moon", civil, {
   scale: "utc", observer: { latitudeDeg: 33, longitudeDeg: -116, elevationM: 1706 },
   refraction: { model: "bennett" },

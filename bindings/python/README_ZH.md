@@ -27,6 +27,9 @@ python -m pip install celestial-calendar
 <a id="examples"></a>
 ## 示例
 
+用 `apparent_diameter` 查询完整球面视角直径，单位为角秒，可选传入 WGS84 观测者。
+半径约定、支持的天体和最小调用示例见[视角直径指南（英文）](../../docs/APPARENT_DIAMETERS.md)。
+
 ### WGS84 观测者
 
 经纬度以度为单位，经度东正西负；椭球高以米为单位。方位角以正北为零点、向东为正。
