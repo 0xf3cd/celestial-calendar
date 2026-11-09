@@ -81,7 +81,8 @@ TEST(ApparentDiameter, FullProvidersAndSelectedObserversUseCalibratedModelGaps) 
     );
     EXPECT_NEAR(size.diameter.deg() * 3600.0, row.printed_arcsec, row.provider_arcsec);
     // Frozen pre-feature provider ranges: binary replay only, not an astronomical accuracy bound.
-    EXPECT_NEAR(size.distance.au(), row.baseline_distance_au, 2e-14);
+    // Allow about 15 mm for platform FMA-contraction rounding.
+    EXPECT_NEAR(size.distance.au(), row.baseline_distance_au, 1e-13);
   }
 }
 
