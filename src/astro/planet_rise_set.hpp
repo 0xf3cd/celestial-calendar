@@ -70,8 +70,8 @@ namespace detail {
  *       Parallax is applied in the coordinates. Standard refraction is in the default threshold;
  *       coordinates are airless. Elevation changes the site vector, not the horizon plane.
  * @note Every provider sample must be supported, including the day endpoints, transit estimates
- *       and Newton derivative samples outside their brackets. Pluto's TT position domain is
- *       therefore not a promise that a date whose midnight is in that domain can be queried.
+ *       and Newton derivative samples outside their brackets. A UT1 day query may still fail
+ *       when its midnight lies inside Pluto's TT position domain.
  * @throw std::invalid_argument For invalid input, a rejected provider sample or time conversion.
  * @throw std::runtime_error For failed evaluation, unresolved RA or a failed event solve.
  */
