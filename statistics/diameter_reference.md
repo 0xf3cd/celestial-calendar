@@ -28,7 +28,8 @@ arcsecond half-digit allowance. The Moon's narrow allowance is retained per row.
 The full-provider bounds are separate: three times the largest measured gap
 per target/centre, rounded upward to one significant decimal digit. The native
 range inputs were captured at `1caf4f97f641e889498bb3c2252b2a8118e0e115`, before
-the diameter implementation existed. Maximum measured gaps include 0.171924
+the diameter implementation existed. Maximum measured gaps, rounded upward to
+six decimals, include 0.171924
 arcsec for the geocentric Moon and 0.132986 arcsec for the selected lunar sites.
 These finite-dataset regression bounds are not accuracy guarantees.
 

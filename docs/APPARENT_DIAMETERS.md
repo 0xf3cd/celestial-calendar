@@ -14,6 +14,12 @@ topo = apparent_diameter(Target.MOON, civil, CivilScale.UTC, Observer(-33.85, 15
 print(geo.diameter_arcsec, topo.diameter_arcsec, topo.distance_au)
 ```
 
+Python results expose `diameter_arcsec` (arcseconds), `radius_km` (km),
+`distance_au` (AU), `radius_definition`, `source` (position-source identity),
+`times.jd_ut1` and `times.jde_tt` (Julian days on UT1 and TT), and `delta_t_model`
+(resolved Delta T identity). `target` identifies the body; `centre` records
+`geocentric` or `topocentric`.
+
 Supplying `Observer` selects topocentric distance. Omitting it selects geocentric
 distance. Sites use WGS84 geodetic latitude, east-positive longitude and signed
 ellipsoidal elevation in metres.
@@ -31,8 +37,9 @@ console.log(disk.diameterArcsec, disk.radiusDefinitionCode, disk.deltaTModel);
 ```
 
 JavaScript results and their time records are frozen owned values. Python
-returns frozen dataclasses. The optional model follows the existing Delta T
-selectors; a result records the resolved identity, never `default`.
+returns frozen dataclasses. Select the Delta T model with Python's `delta_t_model`
+keyword or JavaScript's `model` option, using the existing selectors; a result
+records the resolved identity, never `default`.
 
 ```cpp
 #include "apparent_diameter.hpp"
@@ -48,8 +55,8 @@ const double diameter_arcsec = disk.diameter.deg() * astro::toolbox::SEC_PER_DEG
 For direct geometry use `diameter(DistanceKm, DistanceAu)`. For an existing
 JDE(TT), `geocentric(jde_tt, target)` returns `Size` with distance and angle.
 `topocentric(times, observer, target)` accepts an explicit same-instant UT1/TT pair.
-The C export is `celestial_apparent_diameter`; only its topocentric centre
-selection reads the three site fields.
+The C export is `celestial_apparent_diameter`; it reads latitude, longitude and
+elevation only when `centre_code` selects `TOPOCENTRIC`.
 
 ## What the scalar means
 

@@ -181,6 +181,7 @@ struct ApparentDiameter {
 
 /**
  * @brief Resolve a UTC/UT1 civil instant and return a geocentric or explicitly selected topocentric disk.
+ * @note UTC begins at 1972-01-01; derived UT1 is modelled through the chosen Delta T, not observed DUT1.
  * @note Uses the selected provider's distance, not a new retarded-range solve. Provider and Delta T guards
  *       apply without a chart/rate window. Solar radius is nominal; planetary disks are equatorial scalars.
  */
