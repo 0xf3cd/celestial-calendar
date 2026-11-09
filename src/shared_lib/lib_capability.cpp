@@ -250,6 +250,19 @@ auto operation_model_text(const uint32_t operation) -> std::string {
         "Validation: observer_test.cpp; model identities: celestial_model_identity_text.",
         delta_t
       );
+    case CELESTIAL_OPERATION_APPARENT_DIAMETER:
+      return std::format(
+        "Full spherical disk diameter, 2 asin(R/d), in arcseconds: geocentric by default, "
+        "or existing WGS84 observer translation when explicitly selected. "
+        "Sun uses IAU2015 nominal radius, Moon JPL SSD mean radius, planets JPL SSD equatorial radii; "
+        "Saturn excludes rings. The result records radius definition, actual distance and position source. "
+        "Use POSITION/EQUATORIAL provider domains; nodes are rejected, no chart/rate window applies. "
+        "Delta T DEFAULT resolves to {}; UTC begins at 1972-01-01 and derived UT1 is modelled. "
+        "No new observer light-time or limb/refraction correction. "
+        "Resolved inside-target observers are invalid input; unresolved geometry is a computation error. "
+        "Validation: apparent_diameter_test.cpp.",
+        delta_t
+      );
     case CELESTIAL_OPERATION_HOUSES:
     case CELESTIAL_OPERATION_CHART:
       return std::format(
@@ -268,7 +281,8 @@ auto operation_model_text(const uint32_t operation) -> std::string {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Operation precedes its subject in the published lookup pair.
 auto capability_text(const uint32_t operation_code, const uint32_t subject) -> std::string {
   const bool no_target = operation_code == CELESTIAL_OPERATION_HOUSES or operation_code == CELESTIAL_OPERATION_CHART
-    or operation_code == CELESTIAL_OPERATION_DELTA_T or operation_code == CELESTIAL_OPERATION_TOPOCENTRIC;
+    or operation_code == CELESTIAL_OPERATION_DELTA_T or operation_code == CELESTIAL_OPERATION_TOPOCENTRIC
+    or operation_code == CELESTIAL_OPERATION_APPARENT_DIAMETER;
   if (no_target) {
     if (subject != CELESTIAL_TARGET_ALL) {
       throw std::invalid_argument { "This operation requires CELESTIAL_TARGET_ALL because it has no target" };

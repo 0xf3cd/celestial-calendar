@@ -171,7 +171,7 @@ export async function testFakeNative(entryUrl) {
       decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
     "Jieqi public decoder preserves distinct native fields");
     reset();
-    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"]);
+    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });
 
@@ -234,6 +234,48 @@ export async function testFakeNative(entryUrl) {
     reset({ failAllocation: 1 }); libraryError(observe);
     reset({ failPass: "sret", errorKind: 2 }); libraryError(observe, true);
     reset({ failPass: "sret", errorKind: 1 }); assert.throws(observe, RangeError); assert.equal(control.live.size, 0);
+    const disk = (options = { scale: "utc" }) => fixture.diameter.query("moon", civil, options);
+    const diskPayload = {
+      valid: 1, target_code: 1, centre_code: 0, source_code: 2, radius_definition_code: 2,
+      delta_t_identity_code: 5, jd_ut1: 2461351.5, jde_tt: 2461351.501,
+      radius_km: 1737.4, distance_au: 0.0025, diameter_arcsec: 1900,
+    };
+    reset({ sretPayload: diskPayload, grow: true });
+    const ownedDisk = disk();
+    assert(Object.isFrozen(ownedDisk) && Object.isFrozen(ownedDisk.times));
+    assert.deepEqual(control.calls, [["celestial_apparent_diameter", 1, 2024, 1, 1, 0.5, 0, 0, 0, 0, 0, 0]]);
+    reset({ sretPayload: { ...diskPayload, centre_code: 1, delta_t_identity_code: 2 } });
+    assert.equal(disk({ ...observerOptions, scale: "ut1", model: "algo2" }).deltaTModel, "algo2");
+    assert.deepEqual(control.calls, [["celestial_apparent_diameter", 1, 2024, 1, 1, 0.5, 1, 2, 1, 33, -116, 1706]]);
+    assert.equal(ownedDisk.diameterArcsec, 1900, "disk result owns freed/reused storage");
+    const diskCorruptions = [
+      { valid: 0 }, { valid: 2 }, { target_code: 0 }, { centre_code: 1 }, { centre_code: 99 },
+      { source_code: 0 }, { source_code: 99 }, { radius_definition_code: 0 }, { radius_definition_code: 99 },
+      { delta_t_identity_code: 0 }, { delta_t_identity_code: 99 }, { radius_km: 0 }, { radius_km: -1 },
+      { distance_au: 0 }, { distance_au: -1 }, { distance_au: 1737.4 / 149597870.7 },
+      { diameter_arcsec: 0 }, { diameter_arcsec: -1 }, { diameter_arcsec: 648000 },
+      ...["jd_ut1", "jde_tt", "radius_km", "distance_au", "diameter_arcsec"].flatMap((field) =>
+        [NaN, Infinity, -Infinity].map((value) => ({ [field]: value }))),
+    ];
+    for (const changes of diskCorruptions) {
+      reset({ sretPayload: { ...diskPayload, ...changes } }); libraryError(disk);
+    }
+    reset({ sretPayload: { ...diskPayload, delta_t_identity_code: 2 } });
+    libraryError(() => disk({ scale: "utc", model: "algo5" }));
+    reset({ sretPayload: { ...diskPayload, diameter_arcsec: 1e-300 } });
+    assert(disk().diameterArcsec > 0, "tiny positive disks remain admitted");
+    for (const options of [null, {}, { scale: "utc", model: null }, { scale: "utc", observer: null },
+      { scale: "utc", extra: true }, Object.assign(Object.create({ model: "algo2" }), { scale: "utc" }),
+      Object.assign(Object.create({ observer: observerOptions.observer }), { scale: "utc" }),
+      Object.assign(Object.create({ scale: "utc" }), {}),
+      { scale: "utc", observer: { ...observerOptions.observer, elevationM: NaN } }]) {
+      reset(); assert.throws(() => disk(options)); assert.equal(control.calls.length, 0);
+    }
+    reset({ failAllocation: 1 }); libraryError(disk);
+    reset({ failPass: "sret", errorKind: 2 }); libraryError(disk, true);
+    reset({ failPass: "sret", errorKind: 1 }); assert.throws(disk, RangeError);
+    reset({ sretPayload: diskPayload }); assert.equal(disk().diameterArcsec, 1900);
+    console.log(`PASS diameter ${diskCorruptions.length} fake-native corruptions, forwarding, options, frozen ownership and recovery`);
     for (const [action, yearField, resultYear] of [
       [() => fixture.time.jdeToUt1(2451545), "year", (value) => value.year],
       [() => fixture.time.jdeToUtc(2451545), "year", (value) => value.year],

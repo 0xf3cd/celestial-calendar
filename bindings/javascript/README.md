@@ -48,6 +48,10 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
+For full scalar disk sizes in arcseconds, use `diameter.query` with an optional
+WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
+conventions, supported targets and browser scaling.
+
 ### Local sky from a WGS84 observer
 
 Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal

@@ -179,6 +179,14 @@ assert.deepEqual([ut1.year, ut1.month, ut1.day], [2024, 6, 1]);
 finite(ut1.fraction);
 
 const sun = validSret("celestial_sun_apparent_geocentric_coord", [2460463.0]);
+const disk = validSret("celestial_apparent_diameter", [1, 2026, 11, 7, 0, 0, 0, 0, NaN, NaN, NaN]);
+assert.equal(disk.target_code, 1);
+assert.equal(disk.centre_code, 0);
+assert.equal(disk.source_code, 2);
+assert.equal(disk.radius_definition_code, 2);
+assert.equal(disk.delta_t_identity_code, 5);
+assert.equal(disk.radius_km, 1737.4);
+assert(disk.distance_au > 0 && disk.diameter_arcsec > 0 && disk.diameter_arcsec < 648000);
 const observed = validSret("celestial_topocentric_position", [1, 2026, 11, 7, 0, 0, 0, -33.85, 151.2, 50, 0, NaN, NaN]);
 assert.equal(observed.present_fields, 12);
 assert.equal(observed.target_code, 1);
@@ -484,6 +492,10 @@ const recordedFailure = (name, invoke) => {
   assert.equal(lastError(), message, "kind reader preserves message");
   recordedNames.add(name);
 };
+recordedFailure("celestial_apparent_diameter", () => !rawSret(
+  "celestial_apparent_diameter", [10, 2026, 11, 7, 0, 0, 0, 0, NaN, NaN, NaN],
+).valid);
+assert.equal(M._celestial_last_error_kind(), 1);
 recordedFailure("celestial_topocentric_position", () => !rawSret(
   "celestial_topocentric_position", [10, 2026, 11, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ).valid);

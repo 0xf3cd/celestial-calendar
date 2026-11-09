@@ -400,6 +400,7 @@ def run_capability_subjects():
     celestial.CapabilityOperation.HOUSES,
     celestial.CapabilityOperation.CHART,
     celestial.CapabilityOperation.DELTA_T,
+    celestial.CapabilityOperation.APPARENT_DIAMETER,
   )
   with bindings(celestial_capabilities=trap, celestial_capability_text=trap, celestial_house_capability=trap):
     for operation in other_operations:
@@ -916,7 +917,7 @@ def main():
   public = {
     name
     for name in vars(celestial)
-    if not name.startswith("_") and name not in {"chart", "events", "capability", "query", "observer"}
+    if not name.startswith("_") and name not in {"chart", "events", "capability", "query", "observer", "diameter"}
   } | {"__version__"}
   assert set(celestial.__all__) == public
   print("PASS Python protocol construction controls")

@@ -72,6 +72,7 @@ def wheel_payload(version):
       "_protocol.py",
       "capability.py",
       "chart.py",
+      "diameter.py",
       "events.py",
       "observer.py",
       "query.py",
@@ -207,7 +208,7 @@ def test_wheel_project_metadata_accepts_reordered_headers_and_keywords(verifier)
   check(verifier, members, version)
 
 
-@pytest.mark.parametrize("name", ["_abi.py", "observer.py"])
+@pytest.mark.parametrize("name", ["_abi.py", "observer.py", "diameter.py"])
 def test_wheel_allowlist_requires_the_real_source_modules(verifier, name):
   version = verifier.project_version()
   members = wheel_payload(version)
@@ -227,6 +228,7 @@ def test_wheel_allowlist_requires_the_real_source_modules(verifier, name):
     "_protocol.py",
     "capability.py",
     "chart.py",
+    "diameter.py",
     "events.py",
     "observer.py",
     "query.py",

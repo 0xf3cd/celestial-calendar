@@ -12,7 +12,7 @@
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS, PROTOCOLS } from "../../src/bindings.mjs";
+import { BINDINGS, C_DECLARATIONS, CHART_CODES, LAYOUTS, PROTOCOLS, WASM_SIGNATURES } from "../../src/bindings.mjs";
 import { chartLabel } from "../support/chart_replay.mjs";
 
 const manifest = JSON.parse(await readFile(new URL("./manifest.json", import.meta.url), "utf8"));
@@ -30,8 +30,8 @@ const assertView = (candidate) => {
   assert.deepEqual(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(Object.keys(PROTOCOLS), names);
   assert.deepEqual(Object.keys(C_DECLARATIONS.functions), names);
-  assert.equal(names.length, 39);
-  assert.equal(Object.keys(candidate.layouts).length, 30);
+  assert.equal(names.length, 40);
+  assert.equal(Object.keys(candidate.layouts).length, 31);
   assert(names.every((name) => name.startsWith("celestial_")));
   assert(Object.keys(candidate.layouts).every((name) => name.startsWith("Celestial") && !name.endsWith("V1")));
   for (const [index, entry] of candidate.exports.entries()) {
@@ -59,7 +59,7 @@ const assertView = (candidate) => {
     }
   }
   assert.equal(candidate.exports.filter(({ protocol }) => protocol.kind === "count-fill").length, 9);
-  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 37);
+  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 38);
   assert.deepEqual(candidate.exports.filter(({ protocol }) => protocol.error_channel === "preserve")
     .map(({ name }) => name), ["celestial_last_error", "celestial_last_error_kind"]);
   const targetCodes = Object.entries(candidate.codes)
@@ -70,6 +70,18 @@ const assertView = (candidate) => {
 };
 
 assertView(manifest);
+assert.equal(LAYOUTS.CelestialApparentDiameter.size, 64);
+assert.equal(LAYOUTS.CelestialApparentDiameter.alignment, 8);
+assert.deepEqual(LAYOUTS.CelestialApparentDiameter.fields.map(({ name, type, offset }) => [name, type, offset]), [
+  ["valid", "bool", 0], ["target_code", "uint32_t", 4], ["centre_code", "uint32_t", 8],
+  ["source_code", "uint32_t", 12], ["radius_definition_code", "uint32_t", 16],
+  ["delta_t_identity_code", "uint32_t", 20], ["jd_ut1", "double", 24], ["jde_tt", "double", 32],
+  ["radius_km", "double", 40], ["distance_au", "double", 48], ["diameter_arcsec", "double", 56],
+]);
+assert.deepEqual(WASM_SIGNATURES.celestial_apparent_diameter, {
+  parameters: ["i32", "i32", "i32", "i32", "i32", "f64", "i32", "i32", "i32", "f64", "f64", "f64"],
+  result: "void",
+});
 // Independent wasm32 pins; the declaration generator must not rewrite this expectation.
 assert.equal(LAYOUTS.CelestialTopocentricPosition.size, 88);
 assert.equal(LAYOUTS.CelestialTopocentricPosition.alignment, 8);

@@ -343,6 +343,23 @@
         {"name": "azimuth_deg", "type": "double", "offset": 72},
         {"name": "apparent_altitude_deg", "type": "double", "offset": 80}
       ]
+    },
+    "CelestialApparentDiameter": {
+      "size": 64,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "target_code", "type": "uint32_t", "offset": 4},
+        {"name": "centre_code", "type": "uint32_t", "offset": 8},
+        {"name": "source_code", "type": "uint32_t", "offset": 12},
+        {"name": "radius_definition_code", "type": "uint32_t", "offset": 16},
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 20},
+        {"name": "jd_ut1", "type": "double", "offset": 24},
+        {"name": "jde_tt", "type": "double", "offset": 32},
+        {"name": "radius_km", "type": "double", "offset": 40},
+        {"name": "distance_au", "type": "double", "offset": 48},
+        {"name": "diameter_arcsec", "type": "double", "offset": 56}
+      ]
     }
   },
   "codes": {
@@ -401,6 +418,7 @@
     "CELESTIAL_OPERATION_CHART": 5,
     "CELESTIAL_OPERATION_DELTA_T": 6,
     "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
+    "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
     "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
     "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
     "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -415,7 +433,12 @@
     "CELESTIAL_REFRACTION_SAEMUNDSSON": 2,
     "CELESTIAL_PRESENT_RIGHT_ASCENSION": 4,
     "CELESTIAL_PRESENT_AZIMUTH": 8,
-    "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16
+    "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16,
+    "CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC": 0,
+    "CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC": 1,
+    "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3
   },
   "exports": [
     {
@@ -683,7 +706,8 @@
           "CELESTIAL_OPERATION_HOUSES",
           "CELESTIAL_OPERATION_CHART",
           "CELESTIAL_OPERATION_DELTA_T",
-          "CELESTIAL_OPERATION_TOPOCENTRIC"
+          "CELESTIAL_OPERATION_TOPOCENTRIC",
+          "CELESTIAL_OPERATION_APPARENT_DIAMETER"
         ],
         "error_channel": "kind"
       },
@@ -722,6 +746,13 @@
       "signature": "CelestialTopocentricPosition celestial_topocentric_position(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, double latitude_deg, double longitude_deg, double elevation_m, uint32_t refraction_code, double temperature_c, double pressure_hpa)",
       "return": {"kind": "sret", "layout": "CelestialTopocentricPosition"},
       "protocol": {"kind": "sret", "identity": "resolved-explicit-model-key-and-position-source", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_apparent_diameter",
+      "signature": "CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m)",
+      "return": {"kind": "sret", "layout": "CelestialApparentDiameter"},
+      "protocol": {"kind": "sret", "identity": "resolved-explicit-model-key-position-source-and-radius-definition", "error_channel": "kind"},
       "recording": true
     }
   ]

@@ -742,6 +742,56 @@ const observerPosition = (target, civil, options) => {
   }
 };
 
+// NIST SP 330 (2019), Table 8; ERFA v2.0.1 erfam.h, ERFA_DAU, converted to km.
+// Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
+// and outside the project MIT grant; the validation wrapper is project-authored.
+const DIAMETER_AU_KM = 149597870.7;
+
+const diameterQuery = (target, civil, options) => {
+  const operation = "diameter.query";
+  requireModule(operation);
+  const targets = Object.fromEntries(
+    Object.entries(CHART_CODES.targets).filter(([, code]) => code < CHART_CODES.targets.meanAscending),
+  );
+  const targetCode = enumValue(target, "target", targets);
+  const value = nativeCivilDateTime(civil, "civil");
+  requiredRecord(options, "options", ["scale"], []);
+  const extraKeys = Reflect.ownKeys(options).some((key) => !["scale", "observer", "model"].includes(key));
+  const inheritedOption = ["observer", "model"].some((key) => key in options && !Object.hasOwn(options, key));
+  if (extraKeys || inheritedOption) throw new TypeError("options requires own scale/observer/model fields only.");
+  const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
+  const modelCode = enumValue(options.model === undefined ? "default" : options.model, "options.model", CHART_CODES.models);
+  const site = options.observer === undefined ? null
+    : requiredRecord(options.observer, "options.observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const centre = site === null ? "geocentric" : "topocentric";
+  const centreCode = site === null ? CODES.CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC : CODES.CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC;
+
+  const native = callSret("celestial_apparent_diameter", operation, [
+    targetCode, value.year, value.month, value.day, value.fraction, scale, modelCode, centreCode,
+    site === null ? 0 : finiteNumber(site.latitudeDeg, "options.observer.latitudeDeg"),
+    site === null ? 0 : finiteNumber(site.longitudeDeg, "options.observer.longitudeDeg"),
+    site === null ? 0 : finiteNumber(site.elevationM, "options.observer.elevationM"),
+  ]);
+
+  if (native.target_code !== targetCode || native.centre_code !== centreCode) malformed(operation, "target/centre");
+  const sourceCode = nativeCode(native.source_code, "CELESTIAL_POSITION_SOURCE_", operation, "source_code");
+  const radiusDefinitionCode = nativeCode(native.radius_definition_code, "CELESTIAL_RADIUS_DEFINITION_", operation, "radius_definition_code");
+  const deltaCode = nativeCode(native.delta_t_identity_code, "CELESTIAL_DELTA_T_MODEL_", operation, "delta_t_identity_code");
+  if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT && deltaCode !== modelCode) malformed(operation, "Delta T selection");
+  if (native.radius_km <= 0 || native.distance_au <= native.radius_km / DIAMETER_AU_KM
+    || native.diameter_arcsec <= 0 || native.diameter_arcsec >= 648000) malformed(operation, "radius/distance/diameter");
+
+  return Object.freeze({
+    target, centre, sourceCode, radiusDefinitionCode,
+    radiusKm: native.radius_km,
+    distanceAu: native.distance_au,
+    diameterArcsec: native.diameter_arcsec,
+    times: Object.freeze({ jdUt1: native.jd_ut1, jdeTt: native.jde_tt }),
+    deltaTModel: Object.entries(CHART_CODES.models).find(([name, code]) => name !== "default" && code === deltaCode)[0],
+  });
+};
+
+export const diameter = Object.freeze({ query: diameterQuery });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, utcToJde, jdeToUtc, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
   apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,

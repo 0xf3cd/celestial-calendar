@@ -84,6 +84,12 @@ ADJACENT_SOURCE_FACTS: Final[dict[str, tuple[str, ...]]] = {
     "test-only",
     "not a consumer-package member",
   ),
+  "v06-diameter-receipt": (
+    "JPL Horizons",
+    "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "test-only",
+    "not a consumer-package member",
+  ),
 }
 # Project records pin structured facts or citation atoms, not prose bytes.
 LUNAR_NODE_ATTRIBUTION_SHA256: Final[str] = "d8493897d95c684b7e83e5778f27ab19e792fe8d74855c7237b4df2128bcca16"

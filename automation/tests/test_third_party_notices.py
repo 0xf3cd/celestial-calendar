@@ -74,7 +74,7 @@ def test_llvm_upstream_source_and_licence_text_remain_immutable(tmp_path, old):
 def test_canonical_notice_is_the_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
-  assert len(NOTICE_SOURCES) == 16
+  assert len(NOTICE_SOURCES) == 17
   by_title = {source.title: source for source in NOTICE_SOURCES}
   sofa = by_title["IAU SOFA issue 2023-10-11 — SOFA Software License"]
   erfa = by_title["ERFA v2.0.1 — LICENSE"]

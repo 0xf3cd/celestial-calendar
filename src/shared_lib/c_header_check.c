@@ -239,7 +239,26 @@ ABI_FIELD(CelestialCivilHouseCapability, delta_t_identity_code, uint32_t, 32);
 ABI_FIELD(CelestialCivilHouseCapability, has_derived_tt_cutoff, bool, 36);
 ABI_FIELD(CelestialCivilHouseCapability, derived_tt_end_jde_tt, double, 40);
 
+ABI_RECORD(CelestialApparentDiameter, 64, 8);
+ABI_FIELD(CelestialApparentDiameter, valid, bool, 0);
+ABI_FIELD(CelestialApparentDiameter, target_code, uint32_t, 4);
+ABI_FIELD(CelestialApparentDiameter, centre_code, uint32_t, 8);
+ABI_FIELD(CelestialApparentDiameter, source_code, uint32_t, 12);
+ABI_FIELD(CelestialApparentDiameter, radius_definition_code, uint32_t, 16);
+ABI_FIELD(CelestialApparentDiameter, delta_t_identity_code, uint32_t, 20);
+ABI_FIELD(CelestialApparentDiameter, jd_ut1, double, 24);
+ABI_FIELD(CelestialApparentDiameter, jde_tt, double, 32);
+ABI_FIELD(CelestialApparentDiameter, radius_km, double, 40);
+ABI_FIELD(CelestialApparentDiameter, distance_au, double, 48);
+ABI_FIELD(CelestialApparentDiameter, diameter_arcsec, double, 56);
+
 ABI_CODE(CELESTIAL_ERROR_NONE, 0);
+ABI_CODE(CELESTIAL_OPERATION_APPARENT_DIAMETER, 8);
+ABI_CODE(CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC, 0);
+ABI_CODE(CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC, 1);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL, 1);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN, 2);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL, 3);
 ABI_CODE(CELESTIAL_ERROR_INVALID_INPUT, 1);
 ABI_CODE(CELESTIAL_ERROR_COMPUTATION, 2);
 ABI_CODE(CELESTIAL_ERROR_RESOURCE, 3);
@@ -311,6 +330,9 @@ ABI_CODE(CELESTIAL_NUTATION_MODEL_MEEUS, 1);
 ABI_CODE(CELESTIAL_NUTATION_MODEL_IAU_1980, 2);
 
 /* Function types include pointee constness, which ctypes cannot express. */
+_Static_assert(_Generic(&celestial_apparent_diameter,
+               CelestialApparentDiameter (*)(uint32_t, int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, uint32_t, double, double, double): 1,
+               default: 0) != 0, "celestial_apparent_diameter signature drifted");
 _Static_assert(_Generic(&celestial_topocentric_position,
                CelestialTopocentricPosition (*)(uint32_t, int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, double, double, double, uint32_t, double, double): 1,
                default: 0) != 0, "celestial_topocentric_position signature drifted");

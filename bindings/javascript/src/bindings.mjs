@@ -1006,6 +1006,67 @@ export const LAYOUTS = deepFreeze({
         "offset": 80
       }
     ]
+  },
+  "CelestialApparentDiameter": {
+    "size": 64,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "target_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "centre_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "source_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "radius_definition_code",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "delta_t_identity_code",
+        "type": "uint32_t",
+        "offset": 20
+      },
+      {
+        "name": "jd_ut1",
+        "type": "double",
+        "offset": 24
+      },
+      {
+        "name": "jde_tt",
+        "type": "double",
+        "offset": 32
+      },
+      {
+        "name": "radius_km",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "distance_au",
+        "type": "double",
+        "offset": 48
+      },
+      {
+        "name": "diameter_arcsec",
+        "type": "double",
+        "offset": 56
+      }
+    ]
   }
 });
 
@@ -1243,11 +1304,17 @@ export const BINDINGS = deepFreeze([
     "wasmName": "_celestial_topocentric_position",
     "result": "sret:CelestialTopocentricPosition",
     "readsLastError": true
+  },
+  {
+    "cName": "celestial_apparent_diameter",
+    "wasmName": "_celestial_apparent_diameter",
+    "result": "sret:CelestialApparentDiameter",
+    "readsLastError": true
   }
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "8d7f18c3ab3d82fdf94d18ae6d144ae1cb8cfb3e9692597cb06d19a37b697ac2",
+  "source_sha256": "f7a13270afa7a244236999f565a99901080a9489118003802833c437fd1281a5",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",
@@ -2064,6 +2131,56 @@ export const C_DECLARATIONS = deepFreeze({
           "type": "double"
         }
       ]
+    },
+    "celestial_apparent_diameter": {
+      "signature": "CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m)",
+      "result": "CelestialApparentDiameter",
+      "parameters": [
+        {
+          "name": "target_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "year",
+          "type": "int32_t"
+        },
+        {
+          "name": "month",
+          "type": "uint32_t"
+        },
+        {
+          "name": "day",
+          "type": "uint32_t"
+        },
+        {
+          "name": "fraction",
+          "type": "double"
+        },
+        {
+          "name": "civil_scale_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "delta_t_model_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "centre_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        }
+      ]
     }
   },
   "constants": {
@@ -2122,6 +2239,7 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_OPERATION_CHART": 5,
     "CELESTIAL_OPERATION_DELTA_T": 6,
     "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
+    "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
     "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
     "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
     "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -2136,7 +2254,12 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_REFRACTION_SAEMUNDSSON": 2,
     "CELESTIAL_PRESENT_RIGHT_ASCENSION": 4,
     "CELESTIAL_PRESENT_AZIMUTH": 8,
-    "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16
+    "CELESTIAL_PRESENT_APPARENT_ALTITUDE": 16,
+    "CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC": 0,
+    "CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC": 1,
+    "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3
   },
   "aliases": {}
 });
@@ -2503,6 +2626,23 @@ export const WASM_SIGNATURES = deepFreeze({
       "f64",
       "f64"
     ]
+  },
+  "celestial_apparent_diameter": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "f64"
+    ]
   }
 });
 
@@ -2734,7 +2874,8 @@ export const PROTOCOLS = deepFreeze({
       "CELESTIAL_OPERATION_HOUSES",
       "CELESTIAL_OPERATION_CHART",
       "CELESTIAL_OPERATION_DELTA_T",
-      "CELESTIAL_OPERATION_TOPOCENTRIC"
+      "CELESTIAL_OPERATION_TOPOCENTRIC",
+      "CELESTIAL_OPERATION_APPARENT_DIAMETER"
     ],
     "error_channel": "kind"
   },
@@ -2774,6 +2915,11 @@ export const PROTOCOLS = deepFreeze({
   "celestial_topocentric_position": {
     "kind": "sret",
     "identity": "resolved-explicit-model-key-and-position-source",
+    "error_channel": "kind"
+  },
+  "celestial_apparent_diameter": {
+    "kind": "sret",
+    "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
     "error_channel": "kind"
   }
 });

@@ -26,6 +26,7 @@ from typing import TypeVar as _TypeVar
 from . import _abi, _binding, _protocol
 from . import capability as _capability, chart as _chart, events as _events, query as _query
 from . import observer as _observer
+from . import diameter as _diameter
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
@@ -60,6 +61,9 @@ from .observer import Observer as Observer
 from .observer import RefractionModel as RefractionModel
 from .observer import RefractionParams as RefractionParams
 from .observer import TopocentricPosition as TopocentricPosition
+from .diameter import ApparentDiameter as ApparentDiameter
+from .diameter import DiameterCentre as DiameterCentre
+from .diameter import RadiusDefinition as RadiusDefinition
 
 
 class MoonPhase(_StrEnum):
@@ -707,8 +711,8 @@ def longitude_difference_events(
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T and TOPOCENTRIC
-  raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
+  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC
+  and APPARENT_DIAMETER raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
   and capability_text() for operation-wide descriptions.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -759,8 +763,8 @@ def model_identity_text(key: ModelKey) -> str:
 def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
   """Describe an operation's sources, corrections, defaults and domains.
 
-  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T and TOPOCENTRIC
-  require subject=None for operation-wide text; a Target there raises ValueError.
+  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC
+  and APPARENT_DIAMETER require subject=None for operation-wide text; a Target there raises ValueError.
   Use model_identity_text() for a model key, not a registry ordinal.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -925,7 +929,56 @@ def topocentric_position(
   return decoded
 
 
+def apparent_diameter(
+  target: Target,
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  observer: Observer | None = None,
+  *,
+  delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
+) -> ApparentDiameter:
+  """Return a full spherical disk in arcseconds, geocentric unless an Observer is supplied.
+
+  Uses the existing provider's distance and optional observer translation. Solar radius is
+  nominal, lunar radius mean, planetary radius equatorial; Saturn excludes rings. Provider
+  and Delta T guards apply without a chart/rate window. A resolved inside-target observer
+  is invalid input; unresolved geometry is a computation error.
+  """
+  checked_target = _enum(target, Target, "target")
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  centre = DiameterCentre.GEOCENTRIC if observer is None else DiameterCentre.TOPOCENTRIC
+  latitude, longitude, elevation = 0.0, 0.0, 0.0
+  if observer is not None:
+    if not isinstance(observer, Observer):
+      raise TypeError("observer must be an Observer or None")
+    latitude = _finite(observer.latitude_deg, "observer.latitude_deg")
+    longitude = _finite(observer.longitude_deg, "observer.longitude_deg")
+    elevation = _finite(observer.elevation_m, "observer.elevation_m")
+
+  model_code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  result = _result(
+    "celestial_apparent_diameter",
+    "apparent_diameter",
+    _enum_code("TARGET", checked_target),
+    *civil,
+    scale_code,
+    model_code,
+    _enum_code("DIAMETER_CENTRE", centre),
+    latitude,
+    longitude,
+    elevation,
+  )
+  decoded = _protocol.decode("apparent_diameter", _diameter.decode_diameter, result, checked_target, centre)
+  _selected_key(decoded.delta_t_model, model_code, "apparent_diameter")
+  return decoded
+
+
 __all__ = [
+  "ApparentDiameter",
+  "DiameterCentre",
+  "RadiusDefinition",
+  "apparent_diameter",
   "BodyState",
   "CapabilityOperation",
   "CapabilityRecord",

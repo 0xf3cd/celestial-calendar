@@ -779,6 +779,7 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
 #define CELESTIAL_OPERATION_CHART          UINT32_C(5)
 #define CELESTIAL_OPERATION_DELTA_T        UINT32_C(6)
 #define CELESTIAL_OPERATION_TOPOCENTRIC    UINT32_C(7)
+#define CELESTIAL_OPERATION_APPARENT_DIAMETER UINT32_C(8)
 
 #define CELESTIAL_STATUS_SOURCE_WINDOW           UINT32_C(0)
 #define CELESTIAL_STATUS_IMPLEMENTATION_WINDOW   UINT32_C(1)
@@ -1064,6 +1065,51 @@ typedef struct CelestialTopocentricPosition {
  *       Read celestial_last_error_kind/message on failure; invalid payload has no contract.
  */
 CELESTIAL_API CelestialTopocentricPosition celestial_topocentric_position(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, double latitude_deg, double longitude_deg, double elevation_m, uint32_t refraction_code, double temperature_c, double pressure_hpa);
+
+/* ---------- Apparent Angular Diameters ---------- */
+
+#define CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC  UINT32_C(0)
+#define CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC UINT32_C(1)
+
+#define CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL   UINT32_C(1)
+#define CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN   UINT32_C(2)
+#define CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL UINT32_C(3)
+
+/** @brief A full spherical disk diameter; every payload field is required when valid is true. */
+typedef struct CelestialApparentDiameter {
+  bool valid;
+  uint32_t target_code;
+  uint32_t centre_code;             /* CELESTIAL_DIAMETER_CENTRE_* selection. */
+  uint32_t source_code;             /* Resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  uint32_t radius_definition_code;  /* CELESTIAL_RADIUS_DEFINITION_* source and convention. */
+  uint32_t delta_t_identity_code;   /* Resolved Delta T identity, never DEFAULT. */
+  double jd_ut1;
+  double jde_tt;
+  double radius_km;
+  double distance_au;               /* Actual provider/observer distance used, greater than the radius. */
+  double diameter_arcsec;           /* Finite and strictly between 0 and 648000. */
+} CelestialApparentDiameter;
+
+/**
+ * @brief Return 2 asin(radius/distance) for the Sun, Moon or one planet, in arcseconds.
+ * @param target_code Physical CELESTIAL_TARGET_*; lunar nodes are rejected.
+ * @param year Gregorian year in [1, 32767]; resolved times must remain representable.
+ * @param month Gregorian month in [1, 12].
+ * @param day Valid Gregorian day before chrono field narrowing.
+ * @param fraction Finite civil-day fraction in [0, 1), excluding inserted leap seconds.
+ * @param civil_scale_code Explicit UTC (from 1972-01-01) or UT1.
+ * @param delta_t_model_code Delta T selector; its own model guards apply.
+ * @param centre_code GEOCENTRIC or TOPOCENTRIC; only TOPOCENTRIC reads the site fields.
+ * @param latitude_deg WGS84 geodetic latitude in [-90, 90], unused for GEOCENTRIC.
+ * @param longitude_deg East longitude in [-180, 180], unused for GEOCENTRIC.
+ * @param elevation_m Ellipsoidal height in metres, with the observer query's admission; unused for GEOCENTRIC.
+ * @return Owned scalar disk and its radius/distance/time/source identities, or valid=false on failure.
+ * @note Uses existing provider distance and optional observer translation, without a new light-time solve.
+ *       Solar radius is nominal, lunar radius mean, planetary radius equatorial; Saturn excludes rings.
+ *       Provider position domains apply without a chart/rate window. A resolved observer inside the
+ *       target is invalid input; unresolved geometry is a computation error. Read last_error_kind/message.
+ */
+CELESTIAL_API CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m);
 
 
 #ifdef __cplusplus

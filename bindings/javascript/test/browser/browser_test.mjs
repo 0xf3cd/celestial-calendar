@@ -56,6 +56,8 @@ await mkdir(WORK, { recursive: true });
 await cp(FIXTURE, WORK, { recursive: true });
 await cp(new URL("../support/chart_replay.mjs", import.meta.url), resolve(WORK, "src/chart_replay.mjs"));
 await cp(new URL("../support/observer_api.mjs", import.meta.url), resolve(WORK, "src/observer_api.mjs"));
+await cp(new URL("../support/diameter_api.mjs", import.meta.url), resolve(WORK, "src/diameter_api.mjs"));
+await cp(new URL("../../../../docs/examples/apparent_diameter/render.mjs", import.meta.url), resolve(WORK, "src/diameter_example.mjs"));
 await cp(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), resolve(WORK, "src/chart_example.json"));
 await writeFile(
   resolve(WORK, "package.json"),
@@ -169,6 +171,14 @@ try {
     assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");
     assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
     assert.deepEqual(result.observer, { targets: 10, exactPoles: 2, refractionStates: 2 });
+    assert.deepEqual(result.diameter, { targets: 10, exactPoles: 2 });
+    assert.deepEqual(result.diameterExample, { arcsecondsPerPixel: 10, targets: ["sun", "moon", "jupiter"] });
+    const renderedDisks = await page.evaluate(() => [...document.querySelectorAll(".apparent-disk")].map((node) => ({
+      width: node.getBoundingClientRect().width,
+      expected: Number(node.dataset.arcseconds) / 10 * Number(node.dataset.magnification),
+    })));
+    assert.equal(renderedDisks.length, 3);
+    for (const disk of renderedDisks) assert(Math.abs(disk.width - disk.expected) < 0.02, "CSS-pixel disk scale");
     assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
     assert.equal(result.lichunMatches, true);
     assert.equal(result.lichun.momentUt1.year, 2024);

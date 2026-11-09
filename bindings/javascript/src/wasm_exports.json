@@ -38,6 +38,7 @@
   "celestial_house_query",
   "celestial_house_capability",
   "celestial_topocentric_position",
+  "celestial_apparent_diameter",
   "malloc",
   "free"
 ]

@@ -1,0 +1,1763 @@
+{
+  "schema": 1,
+  "source_sha": "1caf4f97f641e889498bb3c2252b2a8118e0e115",
+  "geometry": "Independent tangent triangle: 2 atan2(R, sqrt(d-R) sqrt(d+R)); AU=149597870.7 km",
+  "native_probe_sha256": "a8a070355d13066d7243bb2f1dbb34b7d516719da5319f84f685bf8320bc450d",
+  "requests": [
+    {
+      "label": "sun-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'10'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T22:44:17.167235+00:00",
+      "response_sha256": "555ce48c4779d42a6dbb15ebc60f2e57f79f70aefa499f11ef34e6aa8518c970",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 695700.0
+    },
+    {
+      "label": "sun-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'10'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:41:52.722019+00:00",
+      "response_sha256": "2ba9456217308a840f50ec9d5ef1437ac8bc0f3d79779d639d0c6817d054034c",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 695700.0
+    },
+    {
+      "label": "moon-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'301'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T22:44:17.337470+00:00",
+      "response_sha256": "f75a51cb46ecf506df4d775faa5510c123077a0442d92d8b7b091fe04ef1e3a5",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1737.4
+    },
+    {
+      "label": "moon-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'301'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:53.919581+00:00",
+      "response_sha256": "005788ed235329b01c5b36628d188eea605fa0677e1f4e20eadc0710dac04305",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1737.4
+    },
+    {
+      "label": "mercury-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'199'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T22:44:17.500598+00:00",
+      "response_sha256": "b6416d543ff3c02078fbaeeff6eced6dc0806b56f704e6e43e381a7e4062b06d",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 2440.53
+    },
+    {
+      "label": "mercury-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'199'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:41:52.728977+00:00",
+      "response_sha256": "e27c55c878d1aab7c599451ecd3108fb6621e748794b662a8203aee165ac05e8",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 2440.53
+    },
+    {
+      "label": "venus-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'299'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "f3c4a4d3a5e060f34bf583226ed51b3f4c8103e5bc2f0e824d1d99ae1a7621bf",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 6051.8
+    },
+    {
+      "label": "venus-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'299'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:54.093841+00:00",
+      "response_sha256": "94567949e5b1e1d04b3d62a93ddf1becbbde2b49f383250a2f6f1056f4b626f5",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 6051.8
+    },
+    {
+      "label": "mars-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'499'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "185364e7bb919e840f1a4925c360a5377b881a1f314e2f5752c4097ef9791053",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "mar099",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 3396.19
+    },
+    {
+      "label": "mars-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'499'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:41:52.889025+00:00",
+      "response_sha256": "0af27fcb40f9ddf776855fdb39aa7360a565c13ebed413fe75915d2dee03ff52",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "mar099",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 3396.19
+    },
+    {
+      "label": "jupiter-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'599'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T22:44:17.676394+00:00",
+      "response_sha256": "599ab833b298ae2e377be392501db5851ef8cc9f17a0be0f9a302b09cb1c453a",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "jup365_merged",
+      "center_source": "jup365_merged",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 71492.0
+    },
+    {
+      "label": "jupiter-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'599'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:41:52.884623+00:00",
+      "response_sha256": "5a243b6f9f0c5252278138b6c1bfc0b6b29a35877ddc1a9f10f263a882d72007",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "jup365_merged",
+      "center_source": "jup365_merged",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 71492.0
+    },
+    {
+      "label": "saturn-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'699'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "117f80a936bfbc8950b0e11e58ebcbda1ea9868f45ef8455d105419a91c04d25",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "sat441l",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 60268.0
+    },
+    {
+      "label": "saturn-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'699'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:54.283743+00:00",
+      "response_sha256": "127d3d956875d7038279b9c63b8c782ff48f74ef5f972c999cad7661deeac2e3",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "sat441l",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 60268.0
+    },
+    {
+      "label": "uranus-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'799'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "798013baeca561b79db7aadf65548aefe8e340c2af80041e3402866b1057eb47",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "ura184_merged",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 25559.0
+    },
+    {
+      "label": "uranus-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'799'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:54.483711+00:00",
+      "response_sha256": "4cc0f039aee35c7e21ecacb3717c9fb045b06aa9426ba16d0f2676e191a30802",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "ura184_merged",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 25559.0
+    },
+    {
+      "label": "neptune-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'899'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "308de798af3ceabba958d62e3748f38873ba4a1cb028f8a103e607b653a5ad54",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "nep098_merged",
+      "center_source": "nep098_merged",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 24764.0
+    },
+    {
+      "label": "neptune-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'899'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:54.678813+00:00",
+      "response_sha256": "70e9134c511d6556e9415633c437055e606194d211bf21cec47a687aa9a8f776",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "nep098_merged",
+      "center_source": "nep098_merged",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 24764.0
+    },
+    {
+      "label": "pluto-j2000",
+      "request": {
+        "format": "json",
+        "COMMAND": "'999'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2451545.0'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08",
+      "response_sha256": "8f795174907e0f2e1e588a1ada4a3bfc899226f349efa23b239c7c8697803252",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "plu060_merged",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1188.3
+    },
+    {
+      "label": "pluto-multi-epoch",
+      "request": {
+        "format": "json",
+        "COMMAND": "'999'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "TLIST": "'2459003.5,2459368.5,2461351.5'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "collected_at": "2026-11-08T23:42:54.907420+00:00",
+      "response_sha256": "7dbc1b32f2f61d233546bea63c4fe4cdce522d5b2982f5f2936d8817828b470e",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      },
+      "target_source": "plu060_merged",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1188.3
+    },
+    {
+      "label": "moon-north",
+      "request": {
+        "format": "json",
+        "COMMAND": "'301'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'coord@399'",
+        "TLIST": "'2451545.0,2461351.5,2461351.875'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'",
+        "COORD_TYPE": "'GEODETIC'",
+        "SITE_COORD": "'-116.8625,33.3561111,1.706'"
+      },
+      "collected_at": "2026-11-08T23:42:55.097291+00:00",
+      "response_sha256": "85e9eac75a946deca65d6c4787bb577549215bfd155362a6082d315f87d470b3",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1737.4
+    },
+    {
+      "label": "moon-south",
+      "request": {
+        "format": "json",
+        "COMMAND": "'301'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'coord@399'",
+        "TLIST": "'2451545.0,2461351.5,2461351.875'",
+        "TLIST_TYPE": "'JD'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20,49'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'YES'",
+        "MAKE_EPHEM": "'YES'",
+        "COORD_TYPE": "'GEODETIC'",
+        "SITE_COORD": "'151.2,-33.85,0.05'"
+      },
+      "collected_at": "2026-11-08T23:42:55.274614+00:00",
+      "response_sha256": "feb1f130b12a96b9c73f472874aaa9270113c7a4c339d0c53dc8104d2f12ce4f",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      },
+      "target_source": "DE441",
+      "center_source": "DE441",
+      "eop": "eop.261106.p270202",
+      "header_radius_km": 1737.4
+    },
+    {
+      "label": "sun-sampled-near-extrema",
+      "at": "2026-11-08T23:31:08.331736+00:00",
+      "params": {
+        "format": "json",
+        "COMMAND": "'10'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "START_TIME": "'2026-01-01'",
+        "STOP_TIME": "'2027-01-01'",
+        "STEP_SIZE": "'1d'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%2710%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27500%40399%27&START_TIME=%272026-01-01%27&STOP_TIME=%272027-01-01%27&STEP_SIZE=%271d%27&TIME_TYPE=%27TT%27&CAL_FORMAT=%27JD%27&QUANTITIES=%2713%2C20%27&CSV_FORMAT=%27YES%27&RANGE_UNITS=%27AU%27&APPARENT=%27AIRLESS%27&EXTRA_PREC=%27YES%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27",
+      "response_sha256": "689c5b3437d528ea6fcde8d783064d146b3cfd943790f8b9390287933f2e7a90",
+      "rows": 366,
+      "sampled_near_minimum": {
+        "jde_tt": 2461044.5,
+        "diameter_arcsec": 1951.04,
+        "distance_au": 0.98330231045023
+      },
+      "sampled_near_maximum": {
+        "jde_tt": 2461228.5,
+        "diameter_arcsec": 1887.054,
+        "distance_au": 1.01664381458408
+      },
+      "qualification": "Daily sampled near-extrema, not solved extremum instants."
+    },
+    {
+      "label": "moon-sampled-near-extrema",
+      "at": "2026-11-08T23:31:08.118051+00:00",
+      "params": {
+        "format": "json",
+        "COMMAND": "'301'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'500@399'",
+        "START_TIME": "'2026-01-01'",
+        "STOP_TIME": "'2026-03-01'",
+        "STEP_SIZE": "'1d'",
+        "TIME_TYPE": "'TT'",
+        "CAL_FORMAT": "'JD'",
+        "QUANTITIES": "'13,20'",
+        "CSV_FORMAT": "'YES'",
+        "RANGE_UNITS": "'AU'",
+        "APPARENT": "'AIRLESS'",
+        "EXTRA_PREC": "'YES'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'"
+      },
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27500%40399%27&START_TIME=%272026-01-01%27&STOP_TIME=%272026-03-01%27&STEP_SIZE=%271d%27&TIME_TYPE=%27TT%27&CAL_FORMAT=%27JD%27&QUANTITIES=%2713%2C20%27&CSV_FORMAT=%27YES%27&RANGE_UNITS=%27AU%27&APPARENT=%27AIRLESS%27&EXTRA_PREC=%27YES%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27",
+      "response_sha256": "0bde78781392848ba8c32f80e45a358eedcee8a5af528458bad1b09319f5d8cf",
+      "rows": 60,
+      "sampled_near_minimum": {
+        "jde_tt": 2461042.5,
+        "diameter_arcsec": 1988.891,
+        "distance_au": 0.00240890836935
+      },
+      "sampled_near_maximum": {
+        "jde_tt": 2461054.5,
+        "diameter_arcsec": 1767.98,
+        "distance_au": 0.0027099017488
+      },
+      "qualification": "Daily sampled near-extrema, not solved extremum instants."
+    }
+  ],
+  "cases": [
+    {
+      "target": 0,
+      "request_label": "sun-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1950.990",
+      "distance_printed_au": "0.98332763198913",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1950.9902358517418,
+      "rounding_allowance_arcsec": 0.0005000000118234311,
+      "baseline_distance_au": 0.9833276819105508,
+      "baseline_diameter_arcsec": 1950.9901368034461
+    },
+    {
+      "target": 0,
+      "request_label": "sun-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1891.338",
+      "distance_printed_au": "1.01434108133408",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1891.338341038101,
+      "rounding_allowance_arcsec": 0.0005000000118234311,
+      "baseline_distance_au": 1.014341039055777,
+      "baseline_diameter_arcsec": 1891.3384198706954
+    },
+    {
+      "target": 0,
+      "request_label": "sun-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1891.382",
+      "distance_printed_au": "1.01431753396473",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1891.3822487425925,
+      "rounding_allowance_arcsec": 0.0005000000118234311,
+      "baseline_distance_au": 1.0143174806578688,
+      "baseline_diameter_arcsec": 1891.3823481437757
+    },
+    {
+      "target": 0,
+      "request_label": "sun-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1935.492",
+      "distance_printed_au": "0.99120130897446",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1935.4922941647908,
+      "rounding_allowance_arcsec": 0.0005000000115960575,
+      "baseline_distance_au": 0.9912012728191578,
+      "baseline_diameter_arcsec": 1935.4923647648036
+    },
+    {
+      "target": 1,
+      "request_label": "moon-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1781.076",
+      "distance_printed_au": "0.00268997545281",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1781.07647058417,
+      "rounding_allowance_arcsec": 0.0005000033123797039,
+      "baseline_distance_au": 0.002690177410307512,
+      "baseline_diameter_arcsec": 1780.9427604503117
+    },
+    {
+      "target": 1,
+      "request_label": "moon-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1966.870",
+      "distance_printed_au": "0.00243587736017",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1966.8704718620982,
+      "rounding_allowance_arcsec": 0.0005000040390659706,
+      "baseline_distance_au": 0.002435735513380928,
+      "baseline_diameter_arcsec": 1966.9850148301975
+    },
+    {
+      "target": 1,
+      "request_label": "moon-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1819.050",
+      "distance_printed_au": "0.00263382133642",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1819.0499714833616,
+      "rounding_allowance_arcsec": 0.0005000034556251194,
+      "baseline_distance_au": 0.0026340702463840634,
+      "baseline_diameter_arcsec": 1818.8780768279958
+    },
+    {
+      "target": 1,
+      "request_label": "moon-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1835.682",
+      "distance_printed_au": "0.00260995828970",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1835.6817927033442,
+      "rounding_allowance_arcsec": 0.0005000035188350012,
+      "baseline_distance_au": 0.002610080838582433,
+      "baseline_diameter_arcsec": 1835.595602944933
+    },
+    {
+      "target": 2,
+      "request_label": "mercury-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 2440.53,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "4.754605",
+      "distance_printed_au": "1.41546603886886",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 4.7546046800723625,
+      "rounding_allowance_arcsec": 5.000000248689957e-07,
+      "baseline_distance_au": 1.4154661151136274,
+      "baseline_diameter_arcsec": 4.75460442396328
+    },
+    {
+      "target": 2,
+      "request_label": "mercury-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 2440.53,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "7.903593",
+      "distance_printed_au": "0.85150913648545",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 7.903592768164135,
+      "rounding_allowance_arcsec": 5.000000559552404e-07,
+      "baseline_distance_au": 0.8515090760612176,
+      "baseline_diameter_arcsec": 7.903593329013738
+    },
+    {
+      "target": 2,
+      "request_label": "mercury-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 2440.53,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "11.58277",
+      "distance_printed_au": "0.58103365740311",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 11.582773851180699,
+      "rounding_allowance_arcsec": 5.000000115463195e-06,
+      "baseline_distance_au": 0.5810336067181192,
+      "baseline_diameter_arcsec": 11.582774861574551
+    },
+    {
+      "target": 2,
+      "request_label": "mercury-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 2440.53,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "9.751350",
+      "distance_printed_au": "0.69015897607141",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 9.751349597271279,
+      "rounding_allowance_arcsec": 5.000000870414851e-07,
+      "baseline_distance_au": 0.6901589725433418,
+      "baseline_diameter_arcsec": 9.751349647119834
+    },
+    {
+      "target": 3,
+      "request_label": "venus-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 6051.8,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "14.67015",
+      "distance_printed_au": "1.13757442548820",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 14.670146945997793,
+      "rounding_allowance_arcsec": 5.000000085265129e-06,
+      "baseline_distance_au": 1.1375744762692377,
+      "baseline_diameter_arcsec": 14.670146291126134
+    },
+    {
+      "target": 3,
+      "request_label": "venus-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 6051.8,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "57.81410",
+      "distance_printed_au": "0.28865597444702",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 57.81409536733883,
+      "rounding_allowance_arcsec": 5.000001065814104e-06,
+      "baseline_distance_au": 0.28865595587375076,
+      "baseline_diameter_arcsec": 57.81409908732709
+    },
+    {
+      "target": 3,
+      "request_label": "venus-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 6051.8,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "10.34981",
+      "distance_printed_au": "1.61243321290678",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 10.34981408753644,
+      "rounding_allowance_arcsec": 5.000000046185278e-06,
+      "baseline_distance_au": 1.6124331385974753,
+      "baseline_diameter_arcsec": 10.3498145645097
+    },
+    {
+      "target": 3,
+      "request_label": "venus-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 6051.8,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "56.32422",
+      "distance_printed_au": "0.29629145246795",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 56.3242168926828,
+      "rounding_allowance_arcsec": 5.000001008970685e-06,
+      "baseline_distance_au": 0.2962914404659387,
+      "baseline_diameter_arcsec": 56.32421917423335
+    },
+    {
+      "target": 4,
+      "request_label": "mars-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 3396.19,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "5.063190",
+      "distance_printed_au": "1.84968383439833",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 5.063189647574937,
+      "rounding_allowance_arcsec": 5.000000222044605e-07,
+      "baseline_distance_au": 1.8496838837618705,
+      "baseline_diameter_arcsec": 5.063189512450784
+    },
+    {
+      "target": 4,
+      "request_label": "mars-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 3396.19,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "9.403189",
+      "distance_printed_au": "0.99597057678031",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 9.403189472186565,
+      "rounding_allowance_arcsec": 5.000000639488462e-07,
+      "baseline_distance_au": 0.9959705067939848,
+      "baseline_diameter_arcsec": 9.403190132943756
+    },
+    {
+      "target": 4,
+      "request_label": "mars-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 3396.19,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "4.135106",
+      "distance_printed_au": "2.26482730604759",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 4.135105584662733,
+      "rounding_allowance_arcsec": 5.000000159872115e-07,
+      "baseline_distance_au": 2.2648273213885193,
+      "baseline_diameter_arcsec": 4.1351055566533725
+    },
+    {
+      "target": 4,
+      "request_label": "mars-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 3396.19,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "6.770611",
+      "distance_printed_au": "1.38322813172331",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 6.7706113163920385,
+      "rounding_allowance_arcsec": 5.000000337507799e-07,
+      "baseline_distance_au": 1.3832280265830585,
+      "baseline_diameter_arcsec": 6.7706118310315375
+    },
+    {
+      "target": 5,
+      "request_label": "jupiter-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 71492.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "42.66147",
+      "distance_printed_au": "4.62116371179118",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 42.66146940357257,
+      "rounding_allowance_arcsec": 5.0000001207922655e-06,
+      "baseline_distance_au": 4.621163188875666,
+      "baseline_diameter_arcsec": 42.6614742310031
+    },
+    {
+      "target": 5,
+      "request_label": "jupiter-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 71492.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "44.90134",
+      "distance_printed_au": "4.39064043109717",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 44.90133898030963,
+      "rounding_allowance_arcsec": 5.000000113686838e-06,
+      "baseline_distance_au": 4.3906416765212315,
+      "baseline_diameter_arcsec": 44.901326243855074
+    },
+    {
+      "target": 5,
+      "request_label": "jupiter-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 71492.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "41.46267",
+      "distance_printed_au": "4.75477415353241",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 41.462670552616025,
+      "rounding_allowance_arcsec": 5.000000106581411e-06,
+      "baseline_distance_au": 4.754776456846416,
+      "baseline_diameter_arcsec": 41.46265046722378
+    },
+    {
+      "target": 5,
+      "request_label": "jupiter-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 71492.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "36.45501",
+      "distance_printed_au": "5.40791644156913",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 36.455007457080896,
+      "rounding_allowance_arcsec": 5.000000106581411e-06,
+      "baseline_distance_au": 5.407916457132737,
+      "baseline_diameter_arcsec": 36.455007352165914
+    },
+    {
+      "target": 6,
+      "request_label": "saturn-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 60268.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "19.20704",
+      "distance_printed_au": "8.65278607270259",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 19.20704394328831,
+      "rounding_allowance_arcsec": 5.0000000426325646e-06,
+      "baseline_distance_au": 8.652786501878017,
+      "baseline_diameter_arcsec": 19.20704299062511
+    },
+    {
+      "target": 6,
+      "request_label": "saturn-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 60268.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "17.83616",
+      "distance_printed_au": "9.31783743939859",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 17.83616031111326,
+      "rounding_allowance_arcsec": 5.0000000426325646e-06,
+      "baseline_distance_au": 9.317839644523847,
+      "baseline_diameter_arcsec": 17.836156090073928
+    },
+    {
+      "target": 6,
+      "request_label": "saturn-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 60268.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "17.63063",
+      "distance_printed_au": "9.42645974279917",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 17.63063195042816,
+      "rounding_allowance_arcsec": 5.000000039079851e-06,
+      "baseline_distance_au": 9.426464070422488,
+      "baseline_diameter_arcsec": 17.6306238563291
+    },
+    {
+      "target": 6,
+      "request_label": "saturn-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 60268.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "19.32221",
+      "distance_printed_au": "8.60121101753444",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 19.32221427798827,
+      "rounding_allowance_arcsec": 5.0000000426325646e-06,
+      "baseline_distance_au": 8.601211103776098,
+      "baseline_diameter_arcsec": 19.322214084250465
+    },
+    {
+      "target": 7,
+      "request_label": "uranus-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 25559.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "3.400429",
+      "distance_printed_au": "20.7271637906951",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 3.40042887579539,
+      "rounding_allowance_arcsec": 5.000000124344979e-07,
+      "baseline_distance_au": 20.727186814407222,
+      "baseline_diameter_arcsec": 3.4004250986067035
+    },
+    {
+      "target": 7,
+      "request_label": "uranus-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 25559.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "3.416468",
+      "distance_printed_au": "20.6298567796516",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 3.4164680356262798,
+      "rounding_allowance_arcsec": 5.000000115463194e-07,
+      "baseline_distance_au": 20.62989611151179,
+      "baseline_diameter_arcsec": 3.416461521970448
+    },
+    {
+      "target": 7,
+      "request_label": "uranus-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 25559.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "3.417672",
+      "distance_printed_au": "20.6225867615875",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 3.4176724327575485,
+      "rounding_allowance_arcsec": 5.000000119904086e-07,
+      "baseline_distance_au": 20.622624975593343,
+      "baseline_diameter_arcsec": 3.417666099763835
+    },
+    {
+      "target": 7,
+      "request_label": "uranus-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 25559.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "3.809926",
+      "distance_printed_au": "18.4993759770323",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 3.8099256080274957,
+      "rounding_allowance_arcsec": 5.000000142108547e-07,
+      "baseline_distance_au": 18.499405118144416,
+      "baseline_diameter_arcsec": 3.8099196064577936
+    },
+    {
+      "target": 8,
+      "request_label": "neptune-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 24764.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "2.201131",
+      "distance_printed_au": "31.0244932407959",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 2.2011306221575517,
+      "rounding_allowance_arcsec": 5.000000071054273e-07,
+      "baseline_distance_au": 31.02444616631806,
+      "baseline_diameter_arcsec": 2.2011339620100716
+    },
+    {
+      "target": 8,
+      "request_label": "neptune-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 24764.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "2.272209",
+      "distance_printed_au": "30.0539910619011",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 2.272209436963126,
+      "rounding_allowance_arcsec": 5.000000075495165e-07,
+      "baseline_distance_au": 30.053934287566513,
+      "baseline_diameter_arcsec": 2.2722137293521887
+    },
+    {
+      "target": 8,
+      "request_label": "neptune-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 24764.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "2.269432",
+      "distance_printed_au": "30.0907727046581",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 2.269431987656635,
+      "rounding_allowance_arcsec": 5.000000079936058e-07,
+      "baseline_distance_au": 30.09071653237709,
+      "baseline_diameter_arcsec": 2.2694362241516757
+    },
+    {
+      "target": 8,
+      "request_label": "neptune-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 24764.0,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "2.343431",
+      "distance_printed_au": "29.1405959412309",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 2.343430527193074,
+      "rounding_allowance_arcsec": 5.000000079936058e-07,
+      "baseline_distance_au": 29.140530842583146,
+      "baseline_diameter_arcsec": 2.343435762312478
+    },
+    {
+      "target": 9,
+      "request_label": "pluto-j2000",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451545.0,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1188.3,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "0.105486",
+      "distance_printed_au": "31.0643586528609",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 0.10548565944385634,
+      "rounding_allowance_arcsec": 5.000000003053113e-07,
+      "baseline_distance_au": 31.06435185234582,
+      "baseline_diameter_arcsec": 0.10548568253646165
+    },
+    {
+      "target": 9,
+      "request_label": "pluto-multi-epoch",
+      "jde_tt": 2459003.5,
+      "jd_ut1": 2459003.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1188.3,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "0.098438",
+      "distance_printed_au": "33.2885285233034",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 0.09843764513062088,
+      "rounding_allowance_arcsec": 5.000000002636779e-07,
+      "baseline_distance_au": 33.28843436515407,
+      "baseline_diameter_arcsec": 0.09843792356686057
+    },
+    {
+      "target": 9,
+      "request_label": "pluto-multi-epoch",
+      "jde_tt": 2459368.5,
+      "jd_ut1": 2459368.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1188.3,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "0.097657",
+      "distance_printed_au": "33.5545416858023",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 0.09765725273142381,
+      "rounding_allowance_arcsec": 5.000000002775557e-07,
+      "baseline_distance_au": 33.55445593529385,
+      "baseline_diameter_arcsec": 0.09765750230063429
+    },
+    {
+      "target": 9,
+      "request_label": "pluto-multi-epoch",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1188.3,
+      "radius_definition": 3,
+      "angle_printed_arcsec": "0.091486",
+      "distance_printed_au": "35.8180811920648",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 0.0914857593885695,
+      "rounding_allowance_arcsec": 5.000000002359224e-07,
+      "baseline_distance_au": 35.817964868395435,
+      "baseline_diameter_arcsec": 0.0914860565009059
+    },
+    {
+      "target": 1,
+      "request_label": "moon-north",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451544.9992612405,
+      "site_lon_lat_km": [
+        -116.8625,
+        33.3561111,
+        1.706
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1789.898",
+      "distance_printed_au": "0.00267671812503",
+      "dut1_seconds": 0.35518,
+      "source_geometry_arcsec": 1789.8978934146423,
+      "rounding_allowance_arcsec": 0.0005000033451215131,
+      "baseline_distance_au": 0.002676916853345588,
+      "baseline_diameter_arcsec": 1789.7650145675266
+    },
+    {
+      "target": 1,
+      "request_label": "moon-north",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.499198536,
+      "site_lon_lat_km": [
+        -116.8625,
+        33.3561111,
+        1.706
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1830.701",
+      "distance_printed_au": "0.00261705848162",
+      "dut1_seconds": -0.0625,
+      "source_geometry_arcsec": 1830.7014765197778,
+      "rounding_allowance_arcsec": 0.0005000034995082388,
+      "baseline_distance_au": 0.0026171834200675362,
+      "baseline_diameter_arcsec": 1830.6140823768985
+    },
+    {
+      "target": 1,
+      "request_label": "moon-north",
+      "jde_tt": 2461351.875,
+      "jd_ut1": 2461351.874198531,
+      "site_lon_lat_km": [
+        -116.8625,
+        33.3561111,
+        1.706
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1809.128",
+      "distance_printed_au": "0.00264826551997",
+      "dut1_seconds": -0.06294,
+      "source_geometry_arcsec": 1809.1284359048273,
+      "rounding_allowance_arcsec": 0.0005000034174263419,
+      "baseline_distance_au": 0.0026483712673887644,
+      "baseline_diameter_arcsec": 1809.0561983409166
+    },
+    {
+      "target": 1,
+      "request_label": "moon-south",
+      "jde_tt": 2451545.0,
+      "jd_ut1": 2451544.9992612405,
+      "site_lon_lat_km": [
+        151.2,
+        -33.85,
+        0.05
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1763.895",
+      "distance_printed_au": "0.00271617688357",
+      "dut1_seconds": 0.35518,
+      "source_geometry_arcsec": 1763.8953223730362,
+      "rounding_allowance_arcsec": 0.0005000032489424484,
+      "baseline_distance_au": 0.0027163806310746275,
+      "baseline_diameter_arcsec": 1763.7630171076423
+    },
+    {
+      "target": 1,
+      "request_label": "moon-south",
+      "jde_tt": 2461351.5,
+      "jd_ut1": 2461351.499198536,
+      "site_lon_lat_km": [
+        151.2,
+        -33.85,
+        0.05
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1863.620",
+      "distance_printed_au": "0.00257083223845",
+      "dut1_seconds": -0.0625,
+      "source_geometry_arcsec": 1863.6196191237254,
+      "rounding_allowance_arcsec": 0.000500003626837497,
+      "baseline_distance_au": 0.0025709535948548546,
+      "baseline_diameter_arcsec": 1863.531650318739
+    },
+    {
+      "target": 1,
+      "request_label": "moon-south",
+      "jde_tt": 2461351.875,
+      "jd_ut1": 2461351.874198531,
+      "site_lon_lat_km": [
+        151.2,
+        -33.85,
+        0.05
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1816.849",
+      "distance_printed_au": "0.00263701268773",
+      "dut1_seconds": -0.06294,
+      "source_geometry_arcsec": 1816.84851636958,
+      "rounding_allowance_arcsec": 0.0005000034469849197,
+      "baseline_distance_au": 0.002637123911350565,
+      "baseline_diameter_arcsec": 1816.7718882765264
+    },
+    {
+      "target": 0,
+      "request_label": "sun-sampled_near_minimum",
+      "jde_tt": 2461044.5,
+      "jd_ut1": 2461044.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1951.040",
+      "distance_printed_au": "0.98330231045023",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1951.0404772098289,
+      "rounding_allowance_arcsec": 0.0005000000122781785,
+      "baseline_distance_au": 0.9833023193096754,
+      "baseline_diameter_arcsec": 1951.040459631038
+    },
+    {
+      "target": 0,
+      "request_label": "sun-sampled_near_maximum",
+      "jde_tt": 2461228.5,
+      "jd_ut1": 2461228.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 695700.0,
+      "radius_definition": 1,
+      "angle_printed_arcsec": "1887.054",
+      "distance_printed_au": "1.01664381458408",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1887.0543646497772,
+      "rounding_allowance_arcsec": 0.0005000000122781785,
+      "baseline_distance_au": 1.0166438190104103,
+      "baseline_diameter_arcsec": 1887.0543564337386
+    },
+    {
+      "target": 1,
+      "request_label": "moon-sampled_near_minimum",
+      "jde_tt": 2461042.5,
+      "jd_ut1": 2461042.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1988.891",
+      "distance_printed_au": "0.00240890836935",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1988.8907865792846,
+      "rounding_allowance_arcsec": 0.0005000041304701881,
+      "baseline_distance_au": 0.0024088403591021467,
+      "baseline_diameter_arcsec": 1988.9469405717762
+    },
+    {
+      "target": 1,
+      "request_label": "moon-sampled_near_maximum",
+      "jde_tt": 2461054.5,
+      "jd_ut1": 2461054.5,
+      "site_lon_lat_km": [
+        0.0,
+        0.0,
+        -9999.0
+      ],
+      "radius_km": 1737.4,
+      "radius_definition": 2,
+      "angle_printed_arcsec": "1767.980",
+      "distance_printed_au": "0.00270990174880",
+      "dut1_seconds": null,
+      "source_geometry_arcsec": 1767.9798795206498,
+      "rounding_allowance_arcsec": 0.0005000032641764847,
+      "baseline_distance_au": 0.002710108056999209,
+      "baseline_diameter_arcsec": 1767.8452904303197
+    }
+  ],
+  "measured_max_gaps_arcsec": {
+    "0-geo": 0.0004596310379838542,
+    "1-geo": 0.17192317200419893,
+    "2-geo": 4.861574550929504e-06,
+    "3-geo": 4.564509699989117e-06,
+    "4-geo": 1.1329437565876788e-06,
+    "5-geo": 1.9532776221353743e-05,
+    "6-geo": 6.143670901792575e-06,
+    "7-geo": 6.4780295518929165e-06,
+    "8-geo": 4.762312478145958e-06,
+    "9-geo": 5.023006342946834e-07,
+    "1-topo": 0.13298543247333328
+  },
+  "provider_bounds_arcsec": {
+    "0-geo": 0.002,
+    "1-geo": 0.6000000000000001,
+    "2-geo": 2e-05,
+    "3-geo": 2e-05,
+    "4-geo": 4e-06,
+    "5-geo": 6.000000000000001e-05,
+    "6-geo": 2e-05,
+    "7-geo": 2e-05,
+    "8-geo": 2e-05,
+    "9-geo": 2e-06,
+    "1-topo": 0.4
+  },
+  "baseline_run_exit": 0
+}
