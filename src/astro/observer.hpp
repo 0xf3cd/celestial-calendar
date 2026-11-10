@@ -77,6 +77,21 @@ struct GeocentricSite {
   double polar;
 };
 
+/** @brief Dimensionless translated and horizontal components, with observer distance in AU. */
+struct LocalGeometry {
+  double A;
+  double B;
+  double C;
+  double q;
+  double scale;
+  double distance_au;
+  double east;
+  double north;
+  double up;
+  double horizontal;
+  double equatorial;
+};
+
 /** @brief Validate the inclusive polar geometry and conservative ellipsoidal-height admission. */
 inline auto validate(const Observer& observer) -> void {
   geolocation::validate_latitude(observer.location.latitude, "latitude");
@@ -103,13 +118,11 @@ inline auto validate(const Observer& observer) -> void {
  * @note The observer displacement and geocentric distance use the same WGS84 radius/AU relation.
  * @see Meeus, formulas (40.6), (40.7), and horizontal projection (13.5), (13.6).
  */
-[[nodiscard]] inline auto reduce(
+[[nodiscard]] inline auto local_geometry(
   const ephemeris::EquatorialPosition& geocentric,
   const toolbox::AngleDeg θ,
   const Observer& observer
-) -> Position {
-  using toolbox::AngleDeg;
-
+) -> LocalGeometry {
   if (not geocentric.distance.has_value() or not std::isfinite(geocentric.distance->au())
       or geocentric.distance->au() <= 0.0) {
     throw std::runtime_error { "Topocentric reduction requires a finite positive physical distance" };
@@ -145,15 +158,39 @@ inline auto validate(const Observer& observer) -> void {
     throw std::runtime_error { "Topocentric coordinate projection is not finite" };
   }
 
+  return {
+    .A = A,
+    .B = B,
+    .C = C,
+    .q = q,
+    .scale = scale,
+    .distance_au = distance,
+    .east = east,
+    .north = north,
+    .up = up,
+    .horizontal = horizontal,
+    .equatorial = equatorial,
+  };
+}
+
+/** @brief Assemble topocentric coordinates from the observer's translated and projected geometry. */
+[[nodiscard]] inline auto reduce(
+  const ephemeris::EquatorialPosition& geocentric,
+  const toolbox::AngleDeg θ,
+  const Observer& observer
+) -> Position {
+  using toolbox::AngleDeg;
+
+  const auto geometry = local_geometry(geocentric, θ, observer);
   const bool geographic_pole = std::abs(observer.location.latitude.deg()) == 90.0;
   return Position {
-    .right_ascension = equatorial <= DIRECTION_RESOLUTION * scale ? std::nullopt
-      : std::optional { (θ - AngleDeg { toolbox::rad_to_deg(std::atan2(A, B)) }).normalize() },
-    .declination = AngleDeg { toolbox::rad_to_deg(std::atan2(C, equatorial)) },
-    .distance = toolbox::DistanceAu { distance },
-    .altitude = AngleDeg { toolbox::rad_to_deg(std::atan2(up, horizontal)) },
-    .azimuth = geographic_pole or horizontal <= DIRECTION_RESOLUTION * scale ? std::nullopt
-      : std::optional { AngleDeg { toolbox::rad_to_deg(std::atan2(east, north)) }.normalize() },
+    .right_ascension = geometry.equatorial <= DIRECTION_RESOLUTION * geometry.scale ? std::nullopt
+      : std::optional { (θ - AngleDeg { toolbox::rad_to_deg(std::atan2(geometry.A, geometry.B)) }).normalize() },
+    .declination = AngleDeg { toolbox::rad_to_deg(std::atan2(geometry.C, geometry.equatorial)) },
+    .distance = toolbox::DistanceAu { geometry.distance_au },
+    .altitude = AngleDeg { toolbox::rad_to_deg(std::atan2(geometry.up, geometry.horizontal)) },
+    .azimuth = geographic_pole or geometry.horizontal <= DIRECTION_RESOLUTION * geometry.scale ? std::nullopt
+      : std::optional { AngleDeg { toolbox::rad_to_deg(std::atan2(geometry.east, geometry.north)) }.normalize() },
     .apparent_altitude = std::nullopt,
   };
 }

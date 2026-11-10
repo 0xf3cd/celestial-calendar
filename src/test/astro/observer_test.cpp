@@ -83,6 +83,31 @@ TEST(Observer, ControlledPymeeusReduction) {
   }
 }
 
+TEST(Observer, SharedLocalGeometryAtTheGeodeticZenith) {
+  // Meeus (40.6), (40.7), (13.5), (13.6): at the equatorial zenith only B = up = q remains.
+  const auto geometry = detail::local_geometry(body(0.0, 0.0, 1.0), AngleDeg { 0.0 }, site(0.0));
+  const double separation = 1.0 - toolbox::km_to_au(WGS84_EQUATORIAL_RADIUS_KM);
+  EXPECT_DOUBLE_EQ(geometry.A, 0.0);
+  EXPECT_DOUBLE_EQ(geometry.B, separation);
+  EXPECT_DOUBLE_EQ(geometry.C, 0.0);
+  EXPECT_DOUBLE_EQ(geometry.q, separation);
+  EXPECT_DOUBLE_EQ(geometry.scale, 1.0);
+  EXPECT_DOUBLE_EQ(geometry.distance_au, separation);
+  EXPECT_DOUBLE_EQ(geometry.east, 0.0);
+  EXPECT_DOUBLE_EQ(geometry.north, 0.0);
+  EXPECT_DOUBLE_EQ(geometry.up, separation);
+  EXPECT_DOUBLE_EQ(geometry.horizontal, 0.0);
+  EXPECT_DOUBLE_EQ(geometry.equatorial, separation);
+}
+
+TEST(Observer, SharedLocalGeometryRejectsTheCoincidentBody) {
+  const double radius_au = toolbox::km_to_au(WGS84_EQUATORIAL_RADIUS_KM);
+  EXPECT_THROW(
+    (void)detail::local_geometry(body(0.0, 0.0, radius_au), AngleDeg { 0.0 }, site(0.0)),
+    std::runtime_error
+  );
+}
+
 TEST(Observer, HorizonsReductionAndFullProviderLayers) {
   // V06 Horizons AIRLESS Q2/4/20/49, 2026-11-07; explicit sites/epochs, no random selection.
   // Bounds are 3x the independent pre-implementation calibration gaps, rounded outward per target/column.
