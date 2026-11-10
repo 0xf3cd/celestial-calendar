@@ -45,7 +45,7 @@ roots, including the subdirectory for nested headers. Include the headers your c
 | Apparent disk diameters | `"apparent_diameter.hpp"`; [diameter guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/APPARENT_DIAMETERS.md) |
 | Interval longitude events | `"ephemeris_events.hpp"` |
 | Houses and complete chart | `"house.hpp"`, `"chart.hpp"` |
-| Rise/set, coordinates and Earth corrections | `"rise_set.hpp"`, `"coord_transform.hpp"`, `"earth.hpp"`, `"earth/precession.hpp"`, `"earth/refraction.hpp"` |
+| Rise/set, coordinates and Earth corrections | `"rise_set.hpp"`, `"planet_rise_set.hpp"`, `"coord_transform.hpp"`, `"earth.hpp"`, `"earth/precession.hpp"`, `"earth/refraction.hpp"` |
 | Low-level ephemeris series | `"elp2000_82b.hpp"`, `"vsop87d/vsop87d.hpp"`, `"vsop87d/defines.hpp"` |
 | Common astronomy umbrella | `"astro.hpp"`; add `"capability.hpp"` and `"ephemeris_events.hpp"` separately when needed |
 

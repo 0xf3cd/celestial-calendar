@@ -275,20 +275,24 @@ def test_links_name_existing_paths_and_explicit_anchors():
 
 
 @pytest.mark.parametrize(
-  ("guide", "example", "expected"),
+  ("guide", "block_index", "block_count", "example", "expected"),
   [
-    ("README.md", None, "冬至 2026 (UT1):"),
+    ("README.md", 0, 1, None, "冬至 2026 (UT1):"),
     (
       "docs/UTC_CONVERSIONS.md",
+      0,
+      1,
       "docs/examples/utc_jieqi/example.cpp",
       "立冬\nUTC: 2026-11-07 09:52\nUTC+8: 2026-11-07 17:52\n",
     ),
+    ("docs/OBSERVER.md", 0, 2, None, ""),
+    ("docs/OBSERVER.md", 1, 2, None, ""),
   ],
 )
-def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, example, expected):
+def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_count, example, expected):
   blocks = [code for info, code in code_blocks(document(REPO / guide)) if info == "cpp"]
-  assert len(blocks) == 1, "expected exactly one complete C++ program"
-  block = blocks[0]
+  assert len(blocks) == block_count, "unexpected number of complete C++ programs"
+  block = blocks[block_index]
   if example:
     assert (REPO / example).read_text(encoding="utf-8").endswith(block), "embedded C++ program differs from its source"
   source = tmp_path / "quickstart.cpp"
@@ -303,7 +307,7 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, example, expected):
   command = [*compiler, "-std=c++23", "-Isrc/astro", "-Isrc/calendar", "-Isrc/util", str(source), "-o", str(binary)]
   subprocess.run(command, cwd=REPO, check=True, capture_output=True, text=True)
   output = subprocess.check_output([str(binary)], text=True, encoding="utf-8")
-  assert output == expected if example else output.startswith(expected)
+  assert output == expected if example or not expected else output.startswith(expected)
 
 
 @pytest.fixture

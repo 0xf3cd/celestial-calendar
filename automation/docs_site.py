@@ -51,6 +51,7 @@ GUIDES = (
   "docs/VALIDATION.md",
   "statistics/observer_reference.md",
   "statistics/diameter_reference.md",
+  "statistics/planet_rise_set_reference.md",
   "bindings/javascript/README.md",
   "bindings/javascript/README_ZH.md",
   "bindings/javascript-alias/README.md",
