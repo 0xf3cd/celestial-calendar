@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <format>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -57,6 +58,31 @@ struct Sample {
   double jde_tt;
   Value evaluated;
 };
+
+/** @brief Borrow a scalar provider for synchronous isolation or refinement. */
+struct ProviderRef {
+  const void* state;
+  Value (*evaluate)(const void*, double);
+
+  [[nodiscard]] auto operator()(const double jde_tt) const -> Value {
+    return evaluate(state, jde_tt);
+  }
+};
+
+/**
+ * @brief Borrow a scalar provider without copying it.
+ * @note The provider must remain alive while the returned view is invoked.
+ */
+template <typename Provider>
+requires std::is_object_v<Provider>
+[[nodiscard]] inline auto provider_ref(const Provider& provider) -> ProviderRef {
+  return {
+    .state = std::addressof(provider),
+    .evaluate = [](const void* state, const double jde_tt) -> Value {
+      return (*static_cast<const Provider*>(state))(jde_tt);
+    },
+  };
+}
 
 /** @brief Uniform absolute first- and second-derivative bounds on a closed cell. */
 struct Bounds {
@@ -313,11 +339,8 @@ inline auto append_candidate(
 }
 
 /** @brief Traverse a sampled cell, retaining unresolved brackets when subdivision stops. */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
 inline auto visit_cell(
-  const Provider& provider,
+  const ProviderRef& provider,
   const Cell& cell,
   const Bounds bounds,
   Budget& budget,
@@ -367,6 +390,26 @@ inline auto visit_cell(
   const Cell right { .left = middle, .right = cell.right, .ownership = cell.ownership };
   visit_cell(provider, left, bounds, budget, depth - 1, candidates);
   visit_cell(provider, right, bounds, budget, depth - 1, candidates);
+}
+
+/** @brief Traverse a sampled cell without copying the caller's scalar provider. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+inline auto visit_cell(
+  const Provider& provider,
+  const Cell& cell,
+  const Bounds bounds,
+  Budget& budget,
+  const uint32_t depth,
+  std::vector<Candidate>& candidates
+) -> void {
+  if constexpr (std::is_function_v<Provider> or std::is_volatile_v<Provider>) {
+    const auto adapter = [&provider](const double jde_tt) -> Value { return provider(jde_tt); };
+    visit_cell(provider_ref(adapter), cell, bounds, budget, depth, candidates);
+  } else {
+    visit_cell(provider_ref(provider), cell, bounds, budget, depth, candidates);
+  }
 }
 
 /**
@@ -631,11 +674,8 @@ requires std::invocable<const Provider&, double>
  * @brief Bisect a unique-root bracket with robust signs and bounded work.
  * @note The caller has established uniqueness and handled exact endpoint roots.
  */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
 [[nodiscard]] inline auto refine_bracket(
-  const Provider& provider,
+  const ProviderRef& provider,
   const Candidate& candidate,
   const double minimum_slope,
   Budget& budget,
@@ -691,6 +731,40 @@ requires std::invocable<const Provider&, double>
       maximum_iterations, left.jde_tt, right.jde_tt, time_resolution, budget.evaluations_remaining
     )
   };
+}
+
+/** @brief Refine a unique-root bracket through the caller's borrowed scalar provider. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+[[nodiscard]] inline auto refine_bracket(
+  const Provider& provider,
+  const Candidate& candidate,
+  const double minimum_slope,
+  Budget& budget,
+  const double time_resolution,
+  const uint32_t maximum_iterations
+) -> Root {
+  if constexpr (std::is_function_v<Provider> or std::is_volatile_v<Provider>) {
+    const auto adapter = [&provider](const double jde_tt) -> Value { return provider(jde_tt); };
+    return refine_bracket(
+      provider_ref(adapter),
+      candidate,
+      minimum_slope,
+      budget,
+      time_resolution,
+      maximum_iterations
+    );
+  } else {
+    return refine_bracket(
+      provider_ref(provider),
+      candidate,
+      minimum_slope,
+      budget,
+      time_resolution,
+      maximum_iterations
+    );
+  }
 }
 
 /**
