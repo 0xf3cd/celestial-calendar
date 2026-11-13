@@ -58,6 +58,8 @@ def main() -> None:
       "  CapabilityOperation, CapabilityRecord, capabilities,\n"
       "  Observer, RefractionParams, RefractionModel, TopocentricPosition, topocentric_position,\n"
       "  ApparentDiameter, DiameterCentre, RadiusDefinition, apparent_diameter,\n"
+      "  AltitudeCondition, AltitudeSense, GeometricLevel, RefractedLevel, AltitudeEvents, AltitudeEvent,\n"
+      "  ObservingWindows, UpperTransit, altitude_events, observing_windows, upper_transits,\n"
       ")\n"
       "from celestial_calendar.chart import GeoLocation as ChartGeoLocation\n"
       "class DateSubclass(date):\n"
@@ -96,6 +98,15 @@ def main() -> None:
       "assert_type(observed.azimuth_deg, float | None)\n"
       "assert_type(observed.right_ascension_deg, float | None)\n"
       "assert_type(observed.apparent_altitude_deg, float | None)\n"
+      "site = Observer(0, -77, 0)\n"
+      "condition = AltitudeCondition(Target.SUN, GeometricLevel(0), AltitudeSense.ABOVE)\n"
+      "altitudes = altitude_events(site, condition, 2451545.0, 2451546.0)\n"
+      "assert_type(altitudes, AltitudeEvents)\n"
+      "assert_type(altitudes.events, tuple[AltitudeEvent, ...])\n"
+      "assert_type(altitudes.condition.initially_satisfied, bool)\n"
+      "assert_type(observing_windows(site, (condition,), 2451545.0, 2451546.0), ObservingWindows)\n"
+      "assert_type(upper_transits(site, Target.SUN, 2451545.0, 2451546.0), tuple[UpperTransit, ...])\n"
+      "refracted = RefractedLevel(10, RefractionParams(RefractionModel.BENNETT))\n"
       "location: GeoLocation = ChartGeoLocation(51.5, 0.0)\n"
       "chart: ChartSnapshot = chart_snapshot(civil, CivilScale.UTC, location, HouseSystem.PLACIDUS)\n"
       "assert_type(\n"
@@ -135,6 +146,7 @@ def main() -> None:
       "  GregorianDate, Jieqi, LunarAlgorithm, gregorian_to_lunar, jieqi_moment,\n"
       "  lunar_to_gregorian, sun_longitude_crossings,\n"
       "  Target, Observer, RefractionParams, RefractionModel, topocentric_position, apparent_diameter,\n"
+      "  AltitudeCondition, AltitudeSense, GeometricLevel, RefractedLevel, altitude_events, upper_transits,\n"
       ")\n"
       "from celestial_calendar import solar_longitude_roots\n"
       "class GregorianDateSubclass(GregorianDate):\n"
@@ -162,6 +174,13 @@ def main() -> None:
       "disk.diameter_arcsec = 0.0\n"
       "apparent_diameter('moon', civil, CivilScale.UTC)\n"
       "apparent_diameter(Target.MOON, civil, CivilScale.UTC, location)\n"
+      "condition = AltitudeCondition(Target.SUN, GeometricLevel(0), AltitudeSense.ABOVE)\n"
+      "site = Observer(0, -77, 0)\n"
+      "altitude_events(site, (condition,), 2451545.0, 2451546.0)\n"
+      "upper_transits(site, condition, 2451545.0, 2451546.0)\n"
+      "RefractedLevel(10, 'bennett')\n"
+      "GeometricLevel(0, RefractionParams(RefractionModel.BENNETT))\n"
+      "altitude_events(site, condition, 2451545.0, 2451546.0).condition.initially_satisfied = False\n"
       "chart = chart_snapshot(civil, CivilScale.UTC, location, HouseSystem.PLACIDUS)\n"
       "bad_chart: str = chart\n"
       "chart_snapshot(datetime(2026, 1, 1), CivilScale.UTC, location, HouseSystem.EQUAL)\n"
@@ -212,6 +231,11 @@ def main() -> None:
       'Property "diameter_arcsec" defined in "ApparentDiameter" is read-only',
       'Argument 1 to "apparent_diameter" has incompatible type "str"',
       'Argument 4 to "apparent_diameter" has incompatible type "GeoLocation"',
+      'Argument 2 to "altitude_events" has incompatible type "tuple[AltitudeCondition]"',
+      'Argument 2 to "upper_transits" has incompatible type "AltitudeCondition"',
+      'Argument 2 to "RefractedLevel" has incompatible type "str"',
+      'Too many arguments for "GeometricLevel"',
+      'Property "initially_satisfied" defined in "AltitudeConditionState" is read-only',
     )
     for diagnostic in expected_errors:
       assert diagnostic in result.stdout, result.stdout

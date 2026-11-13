@@ -217,7 +217,7 @@ const isCountFillProtocol = (protocol, binding, parameters, argumentCount) => {
       && protocol[role] === parameters.at(index - roles.length)?.name);
 };
 
-const countThenFill = (cName, operation, args) => {
+const countThenFill = (cName, operation, args, layoutName = null) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
   const protocol = PROTOCOLS?.[cName];
@@ -238,15 +238,19 @@ const countThenFill = (cName, operation, args) => {
       return [];
     }
 
-    const slots = allocate(M, count * 8, operation);
+    const stride = layoutName === null ? 8 : LAYOUTS[layoutName].size;
+    const slots = allocate(M, count * stride, operation);
     try {
-      M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
+      if (layoutName === null) M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
+      else M.HEAPU8.fill(0xA5, slots, slots + count * stride);
       const written = M[binding.wasmName](...args, countPtr, slots, count);
       checkError(M, operation);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
         malformed(operation, "changed fill total");
       }
-      return readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"));
+      return layoutName === null
+        ? readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"))
+        : Array.from({ length: count }, (_, index) => readLayout(M, slots + index * stride, layoutName));
     } finally {
       M._free(slots);
     }
@@ -744,6 +748,206 @@ const observerPosition = (target, civil, options) => {
   }
 };
 
+const ALTITUDE_TARGETS = Object.freeze(Object.fromEntries(
+  Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
+));
+const ALTITUDE_SENSES = Object.freeze({
+  below: CODES.CELESTIAL_ALTITUDE_SENSE_BELOW, above: CODES.CELESTIAL_ALTITUDE_SENSE_ABOVE,
+});
+const ALTITUDE_DIRECTIONS = Object.freeze({
+  [CODES.CELESTIAL_EVENT_DIRECTION_INCREASING]: "increasing",
+  [CODES.CELESTIAL_EVENT_DIRECTION_DECREASING]: "decreasing",
+  [CODES.CELESTIAL_EVENT_DIRECTION_TANGENT]: "tangent",
+});
+
+const altitudeCondition = (input) => {
+  requiredRecord(input, "condition", ["target", "level", "sense"], []);
+  if (Reflect.ownKeys(input).some((key) => !["target", "level", "sense"].includes(key))) {
+    throw new TypeError("condition requires own target/level/sense fields only.");
+  }
+  const targetCode = enumValue(input.target, "condition.target", ALTITUDE_TARGETS);
+  const senseCode = enumValue(input.sense, "condition.sense", ALTITUDE_SENSES);
+  const level = requiredRecord(input.level, "condition.level", ["kind", "altitudeDeg"], []);
+  enumValue(level.kind, "condition.level.kind", { geometric: 0, refracted: 1 });
+  const allowed = level.kind === "geometric" ? ["kind", "altitudeDeg"] : ["kind", "altitudeDeg", "refraction"];
+  if (Reflect.ownKeys(level).some((key) => !allowed.includes(key)) || ("refraction" in level && !Object.hasOwn(level, "refraction"))) {
+    throw new TypeError("level fields must belong to its geometric or refracted convention.");
+  }
+  const altitudeDeg = finiteNumber(level.altitudeDeg, "condition.level.altitudeDeg");
+  let refractionCode = CODES.CELESTIAL_REFRACTION_NONE;
+  let temperatureC = 0;
+  let pressureHpa = 0;
+  let refraction;
+  if (level.kind === "refracted") {
+    requiredRecord(level, "condition.level", ["refraction"], []);
+    const weather = requiredRecord(level.refraction, "refraction", ["model"], []);
+    const keys = ["model", "temperatureC", "pressureHpa"];
+    if (Reflect.ownKeys(weather).some((key) => !keys.includes(key))
+      || keys.some((key) => key in weather && !Object.hasOwn(weather, key))) {
+      throw new TypeError("refraction requires own model/temperatureC/pressureHpa fields only.");
+    }
+    refractionCode = enumValue(weather.model, "refraction.model", {
+      bennett: CODES.CELESTIAL_REFRACTION_BENNETT, saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+    });
+    temperatureC = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+    pressureHpa = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+    refraction = Object.freeze({ model: weather.model, temperatureC, pressureHpa });
+  }
+  return {
+    condition: Object.freeze({
+      target: input.target, sense: input.sense,
+      level: Object.freeze(refraction === undefined ? { kind: "geometric", altitudeDeg }
+        : { kind: "refracted", altitudeDeg, refraction }),
+    }),
+    native: { target_code: targetCode, sense_code: senseCode, refraction_code: refractionCode, reserved: 0,
+      level_deg: altitudeDeg, temperature_c: temperatureC, pressure_hpa: pressureHpa },
+  };
+};
+
+const altitudeIdentities = (record, target, operation) => {
+  const code = ALTITUDE_TARGETS[target];
+  const source = code === 0 ? CODES.CELESTIAL_POSITION_SOURCE_SUN_VSOP87D
+    : code === 1 ? CODES.CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC
+      : code === 9 ? CODES.CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT : CODES.CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D;
+  if (record.target_code !== code || record.position_source_code !== source
+    || record.delta_t_model_code !== CODES.CELESTIAL_DELTA_T_MODEL_ALGO5) malformed(operation, "target/source/clock");
+  return { sourceCode: source, deltaTModel: "algo5" };
+};
+
+const altitudeUnused = (record, fields, operation) => {
+  for (const name of Object.keys(record)) {
+    if (name !== "tag" && !fields.includes(name) && record[name] !== 0) malformed(operation, `unused ${name}`);
+  }
+};
+
+const altitudeSpans = (states, events, start, end) => {
+  const satisfied = states.map((state) => state.initiallySatisfied);
+  let unsatisfied = satisfied.filter((value) => !value).length;
+  let opening = start;
+  const spans = [];
+  for (let index = 0; index < events.length;) {
+    const time = events[index].jdeTt;
+    const wasActive = unsatisfied === 0;
+    do {
+      const event = events[index++];
+      if (time === start || event.direction === "tangent") continue;
+      const condition = event.conditionIndex;
+      const above = event.direction === "increasing";
+      const value = states[condition].condition.sense === "above" ? above : !above;
+      unsatisfied += Number(!value) - Number(!satisfied[condition]);
+      satisfied[condition] = value;
+    } while (index < events.length && events[index].jdeTt === time);
+    const active = unsatisfied === 0;
+    if (wasActive && !active && opening < time) spans.push({ startJdeTt: opening, endJdeTt: time });
+    else if (!wasActive && active) opening = time;
+  }
+  if (unsatisfied === 0 && opening < end) spans.push({ startJdeTt: opening, endJdeTt: end });
+  return spans;
+};
+
+const decodeAltitude = (records, requested, target, start, end, kind, operation) => {
+  if (kind === "transits") {
+    let previous = -Infinity;
+    return Object.freeze(records.map((record) => {
+      altitudeUnused(record, ["target_code", "position_source_code", "delta_t_model_code", "jde_tt"], operation);
+      const time = nativeFinite(record.jde_tt, operation, "jde_tt");
+      if (record.tag !== CODES.CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT || time < start || time >= end || time <= previous) {
+        malformed(operation, "transit tag/interval/order");
+      }
+      previous = time;
+      return Object.freeze({ jdeTt: time, target, ...altitudeIdentities(record, target, operation) });
+    }));
+  }
+  if (records.length < requested.length) malformed(operation, "missing condition metadata");
+  const conditions = Object.freeze(requested.map(({ condition, native }, index) => {
+    const record = records[index];
+    altitudeUnused(record, ["condition_index", "target_code", "position_source_code", "delta_t_model_code", "refraction_code",
+      "sense_code", "initially_satisfied", "requested_level_deg", "geometric_level_deg", "temperature_c", "pressure_hpa"], operation);
+    if (record.tag !== CODES.CELESTIAL_ALTITUDE_RECORD_CONDITION || record.condition_index !== index
+      || ![0, 1].includes(record.initially_satisfied)) malformed(operation, "condition tag/index/state");
+    for (const [field, expected] of [["refraction_code", native.refraction_code], ["sense_code", native.sense_code],
+      ["requested_level_deg", native.level_deg], ["temperature_c", native.temperature_c], ["pressure_hpa", native.pressure_hpa]]) {
+      if (record[field] !== expected) malformed(operation, `requested ${field}`);
+    }
+    const geometricLevelDeg = nativeFinite(record.geometric_level_deg, operation, "geometric_level_deg");
+    if (geometricLevelDeg < -90 || geometricLevelDeg > 90
+      || (condition.level.kind === "geometric" && geometricLevelDeg !== condition.level.altitudeDeg)) {
+      malformed(operation, "resolved geometric level");
+    }
+    return Object.freeze({ condition, ...altitudeIdentities(record, condition.target, operation),
+      geometricLevelDeg, initiallySatisfied: record.initially_satisfied === 1 });
+  }));
+  const events = [];
+  const windows = [];
+  let previous = [-Infinity, -1];
+  for (const record of records.slice(requested.length)) {
+    if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_EVENT && windows.length === 0) {
+      altitudeUnused(record, ["condition_index", "direction_code", "jde_tt"], operation);
+      const time = nativeFinite(record.jde_tt, operation, "jde_tt");
+      const index = record.condition_index;
+      if (index >= conditions.length || time < start || time >= end || time < previous[0]
+        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(ALTITUDE_DIRECTIONS, record.direction_code)) {
+        malformed(operation, "event association/interval/order/direction");
+      }
+      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: ALTITUDE_DIRECTIONS[record.direction_code] }));
+      previous = [time, index];
+    } else if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_WINDOW && kind === "windows") {
+      altitudeUnused(record, ["jde_tt", "end_jde_tt"], operation);
+      const left = nativeFinite(record.jde_tt, operation, "jde_tt");
+      const right = nativeFinite(record.end_jde_tt, operation, "end_jde_tt");
+      if (left < start || left >= right || right > end || (windows.length && windows.at(-1).endJdeTt >= left)) {
+        malformed(operation, "window interval/order");
+      }
+      windows.push(Object.freeze({ startJdeTt: left, endJdeTt: right }));
+    } else malformed(operation, "unexpected altitude tag/order");
+  }
+  if (kind === "windows") {
+    const expected = altitudeSpans(conditions, events, start, end);
+    if (expected.length !== windows.length || expected.some((span, index) => span.startJdeTt !== windows[index].startJdeTt
+      || span.endJdeTt !== windows[index].endJdeTt)) malformed(operation, "window/state/event disagreement");
+    return Object.freeze({ conditions, events: Object.freeze(events), windows: Object.freeze(windows) });
+  }
+  return Object.freeze({ condition: conditions[0], events: Object.freeze(events) });
+};
+
+const altitudeQuery = (kind, site, selection, startJdeTt, endJdeTt) => {
+  const method = { altitude: "altitudeEvents", transits: "upperTransits", windows: "observingWindows" }[kind];
+  const operation = `observer.${method}`;
+  const M = requireModule(operation);
+  requiredRecord(site, "observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const location = [finiteNumber(site.latitudeDeg, "latitudeDeg"), finiteNumber(site.longitudeDeg, "longitudeDeg"),
+    finiteNumber(site.elevationM, "elevationM")];
+  const start = finiteNumber(startJdeTt, "startJdeTt");
+  const end = finiteNumber(endJdeTt, "endJdeTt");
+  if (kind === "transits") {
+    const code = enumValue(selection, "target", ALTITUDE_TARGETS);
+    const records = countThenFill("celestial_upper_transits", operation, [code, ...location, start, end], "CelestialAltitudeRecord");
+    return decodeAltitude(records, [], selection, start, end, kind, operation);
+  }
+  if (kind === "windows" && !Array.isArray(selection)) throw new TypeError("conditions must be an array.");
+  if (kind === "windows" && selection.length > 2048) {
+    throw new CelestialError(operation, "condition list exceeds the native work budget.", false);
+  }
+  const requested = Array.from(kind === "altitude" ? [selection] : selection, altitudeCondition);
+  const layout = LAYOUTS.CelestialAltitudeCondition;
+  const inputs = requested.length ? allocate(M, requested.length * layout.size, operation) : 0;
+  try {
+    requested.forEach(({ native }, index) => {
+      for (const field of layout.fields) {
+        const address = inputs + index * layout.size + field.offset;
+        if (field.type === "double") M.HEAPF64[address >> 3] = native[field.name];
+        else M.HEAPU32[address >> 2] = native[field.name];
+      }
+    });
+    const prefix = kind === "altitude" ? [inputs] : [inputs, requested.length];
+    const name = kind === "altitude" ? "celestial_altitude_events" : "celestial_observing_windows";
+    const records = countThenFill(name, operation, [...prefix, ...location, start, end], "CelestialAltitudeRecord");
+    return decodeAltitude(records, requested, null, start, end, kind, operation);
+  } finally {
+    if (inputs) M._free(inputs);
+  }
+};
+
 // NIST SP 330 (2019), Table 8; ERFA v2.0.1 erfam.h, ERFA_DAU, converted to km.
 // Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
 // and outside the project MIT grant; the validation wrapper is project-authored.
@@ -812,4 +1016,9 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
-export const observer = Object.freeze({ position: observerPosition });
+export const observer = Object.freeze({
+  position: observerPosition,
+  altitudeEvents: (site, condition, startJdeTt, endJdeTt) => altitudeQuery("altitude", site, condition, startJdeTt, endJdeTt),
+  upperTransits: (site, target, startJdeTt, endJdeTt) => altitudeQuery("transits", site, target, startJdeTt, endJdeTt),
+  observingWindows: (site, conditions, startJdeTt, endJdeTt) => altitudeQuery("windows", site, conditions, startJdeTt, endJdeTt),
+});

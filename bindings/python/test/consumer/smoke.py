@@ -676,10 +676,24 @@ def run_value_contract() -> None:
   public_names = {
     name
     for name in celestial.__dict__
-    if not name.startswith("_") and name not in {"chart", "events", "capability", "query", "observer", "diameter"}
+    if not name.startswith("_")
+    and name not in {"chart", "events", "capability", "query", "observer", "diameter", "altitude"}
   } | {"__version__"}
   assert set(celestial.__all__) == public_names
   assert set(celestial.__all__) == {
+    "AltitudeCondition",
+    "AltitudeConditionState",
+    "AltitudeEvent",
+    "AltitudeEvents",
+    "AltitudeSense",
+    "GeometricLevel",
+    "ObservingWindow",
+    "ObservingWindows",
+    "RefractedLevel",
+    "UpperTransit",
+    "altitude_events",
+    "observing_windows",
+    "upper_transits",
     "ApparentDiameter",
     "BodyState",
     "CapabilityOperation",

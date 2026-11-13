@@ -20,6 +20,7 @@ from datetime import datetime as _datetime
 from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
+from itertools import islice as _islice
 from operator import index as _index
 from typing import TypeVar as _TypeVar
 
@@ -27,6 +28,7 @@ from . import _abi, _binding, _protocol
 from . import capability as _capability, chart as _chart, events as _events, query as _query
 from . import observer as _observer
 from . import diameter as _diameter
+from . import altitude as _altitude
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
@@ -54,6 +56,16 @@ from .events import LongitudeDifferenceEvent as LongitudeDifferenceEvent
 from .events import LongitudeEvent as LongitudeEvent
 from .events import StationEvent as StationEvent
 from .events import StationMotion as StationMotion
+from .altitude import AltitudeCondition as AltitudeCondition
+from .altitude import AltitudeConditionState as AltitudeConditionState
+from .altitude import AltitudeEvent as AltitudeEvent
+from .altitude import AltitudeEvents as AltitudeEvents
+from .altitude import AltitudeSense as AltitudeSense
+from .altitude import GeometricLevel as GeometricLevel
+from .altitude import ObservingWindow as ObservingWindow
+from .altitude import ObservingWindows as ObservingWindows
+from .altitude import RefractedLevel as RefractedLevel
+from .altitude import UpperTransit as UpperTransit
 from .query import EquatorialPosition as EquatorialPosition
 from .query import HouseQueryResult as HouseQueryResult
 from .query import Position as Position
@@ -708,6 +720,98 @@ def longitude_difference_events(
   )
 
 
+def _altitude_inputs(conditions: _Iterable[AltitudeCondition], operation: str):
+  try:
+    requested = tuple(_islice(conditions, 2049))
+    if len(requested) > 2048:
+      raise CelestialError(operation, "condition list exceeds the native work budget", recorded=False)
+    encoded = (_abi.CelestialAltitudeCondition * len(requested))(
+      *(_altitude.encode_condition(condition) for condition in requested)
+    )
+    return requested, encoded
+  except (MemoryError, OverflowError) as error:
+    raise CelestialError(operation, "cannot allocate altitude input storage", recorded=False) from error
+
+
+def _altitude_records(export: str, prefix: tuple, observer: Observer, start: float, end: float, decoder, *decoder_args):
+  operation = export.removeprefix("celestial_")
+  if not isinstance(observer, Observer):
+    raise TypeError("observer must be an Observer")
+  site = (
+    _finite(observer.latitude_deg, "latitude_deg"),
+    _finite(observer.longitude_deg, "longitude_deg"),
+    _finite(observer.elevation_m, "elevation_m"),
+  )
+  start, end = _finite(start, "start_jde_tt"), _finite(end, "end_jde_tt")
+  try:
+    records = _protocol.count_fill(export, (*prefix, *site, start, end), _abi.CelestialAltitudeRecord, operation)
+    return _protocol.decode(operation, decoder, records, *decoder_args, start, end)
+  except (MemoryError, OverflowError) as error:
+    raise CelestialError(operation, "cannot allocate altitude result storage", recorded=False) from error
+
+
+def altitude_events(
+  observer: Observer, condition: AltitudeCondition, start_jde_tt: float, end_jde_tt: float
+) -> AltitudeEvents:
+  """Return a complete centre-altitude census and initial state over [start,end) in JDE(TT).
+
+  Sun, Moon and eight planets use fixed ALGO5/IAU1980. Start events are included and
+  already reflected in initially_satisfied; end events are excluded. An unresolved
+  count, unavailable certificate or exhausted work raises CelestialError without partial results.
+  """
+  requested, inputs = _altitude_inputs((condition,), "altitude_events")
+  return _altitude_records(
+    "celestial_altitude_events",
+    (inputs,),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    lambda records, conditions, start, end: _altitude.decode_conditions(records, conditions, start, end, False),
+    requested,
+  )
+
+
+def upper_transits(
+  observer: Observer, target: Target, start_jde_tt: float, end_jde_tt: float
+) -> tuple[UpperTransit, ...]:
+  """Return all forward-side upper passages in [start,end) JDE(TT), or an empty tuple.
+
+  The physical-target, domain and failure contract is altitude_events()'s. At a geographic
+  pole the meridian is defined by the supplied longitude; no altitude level or weather is used.
+  """
+  checked = _enum(target, Target, "target")
+  return _altitude_records(
+    "celestial_upper_transits",
+    (_enum_code("TARGET", checked),),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    _altitude.decode_transits,
+    checked,
+  )
+
+
+def observing_windows(
+  observer: Observer, conditions: _Iterable[AltitudeCondition], start_jde_tt: float, end_jde_tt: float
+) -> ObservingWindows:
+  """Intersect centre-altitude conditions, retaining their states and companion events.
+
+  Windows are maximal positive-duration spans in [start,end) JDE(TT), not strict point
+  sets at isolated equalities. An empty conjunction returns the whole interval. An unresolved
+  condition fails the entire query, even when another condition would make the intersection empty.
+  """
+  requested, inputs = _altitude_inputs(conditions, "observing_windows")
+  return _altitude_records(
+    "celestial_observing_windows",
+    (inputs, len(requested)),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    lambda records, conditions, start, end: _altitude.decode_conditions(records, conditions, start, end, True),
+    requested,
+  )
+
+
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
@@ -975,6 +1079,19 @@ def apparent_diameter(
 
 
 __all__ = [
+  "AltitudeCondition",
+  "AltitudeConditionState",
+  "AltitudeEvent",
+  "AltitudeEvents",
+  "AltitudeSense",
+  "GeometricLevel",
+  "ObservingWindow",
+  "ObservingWindows",
+  "RefractedLevel",
+  "UpperTransit",
+  "altitude_events",
+  "upper_transits",
+  "observing_windows",
   "ApparentDiameter",
   "DiameterCentre",
   "RadiusDefinition",
