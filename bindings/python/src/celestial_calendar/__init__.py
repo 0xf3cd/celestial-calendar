@@ -774,7 +774,7 @@ def altitude_events(
 def upper_transits(
   observer: Observer, target: Target, start_jde_tt: float, end_jde_tt: float
 ) -> tuple[UpperTransit, ...]:
-  """Return all forward-side upper passages in [start,end) JDE(TT), or an empty tuple.
+  """Return all upper meridian passages in [start,end) JDE(TT), or an empty tuple.
 
   The physical-target, domain and failure contract is altitude_events()'s. At a geographic
   pole the meridian is defined by the supplied longitude; no altitude level or weather is used.

@@ -74,6 +74,9 @@ TEST(AltitudeEventRegression, SouthernHemisphereCrossingsMatchTheirTopocentricSi
 }
 
 TEST(AltitudeEventRegression, ClosePairNoneAndUnresolvedContactRemainDistinct) {
+  // Pluto over [2451545,2451545.25], site (30, -77): stored-series replay at 80/112 decimal digits,
+  // 2026-11-11, no random seed. The rounded probe level is 48.605252016244656 degrees;
+  // offsets -0.04/+0.01 give pair/none, while 0/-0.01 remain unresolved at the fixed resolution.
   const auto pair = altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, 48.565252016244656), 2451545.0, 2451545.25);
   ASSERT_EQ(pair.events.size(), 2U);
   EXPECT_EQ(pair.events.at(0).direction, ephemeris::EventDirection::INCREASING);

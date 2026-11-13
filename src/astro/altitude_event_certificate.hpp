@@ -197,7 +197,7 @@ struct ClockPiece {
     return near_clock_pieces(start_jde_tt, end_jde_tt, maximum_pieces);
   }
   if (maximum_pieces == 0 or local_clock_index(start_jde_tt, end_jde_tt) == LOCAL_CLOCKS.size()) {
-    throw std::runtime_error { "No complete local clock certificate covers the canonical cell" };
+    throw std::runtime_error { "No library clock certificate covers this quarter-day cell" };
   }
   std::vector<ClockPiece> result;
   result.push_back({ .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt, .collar = false, .jump = 0.0 });

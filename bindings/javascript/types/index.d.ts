@@ -328,7 +328,7 @@ export const observer: Readonly<{
    * No failure returns a partial result. The returned graph is frozen and owns its values.
    */
   altitudeEvents(site: Observer, condition: AltitudeCondition, startJdeTt: number, endJdeTt: number): AltitudeEvents;
-  /** All forward-side upper passages in [start,end) JDE(TT); at a pole use the supplied longitude's meridian. */
+  /** All upper meridian passages in [start,end) JDE(TT); at a pole use the supplied longitude's meridian. */
   upperTransits(site: Observer, target: PhysicalTarget, startJdeTt: number, endJdeTt: number): readonly UpperTransit[];
   /**
    * Intersect conditions and retain their states and companion events, in JDE(TT).

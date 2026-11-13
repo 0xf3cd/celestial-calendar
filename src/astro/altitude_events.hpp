@@ -199,7 +199,7 @@ namespace detail::altitude_events {
 }
 
 /**
- * @brief Find every forward-side upper meridian passage over [start,end) in JDE(TT).
+ * @brief Find every upper meridian passage over [start,end) in JDE(TT).
  * @note No altitude level, refraction or above/below condition applies to this query.
  * @throw std::invalid_argument For malformed observer, nonphysical target or out-of-domain interval.
  * @throw std::runtime_error For unavailable certificates, unresolved passage side/count or exhausted work.

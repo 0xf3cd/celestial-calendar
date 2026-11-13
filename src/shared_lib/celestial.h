@@ -1178,7 +1178,7 @@ typedef struct CelestialAltitudeRecord {
 CELESTIAL_API uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
 
 /**
- * @brief Find all forward-side upper meridian passages over [start,end) in JDE(TT).
+ * @brief Find all upper meridian passages over [start,end) in JDE(TT).
  * @param target_code A physical CELESTIAL_TARGET_* code, with no altitude threshold or refraction.
  * @note Site, domain, count/fill and failure contracts match celestial_altitude_events.
  *       At a geographic pole, passage is relative to the supplied longitude.

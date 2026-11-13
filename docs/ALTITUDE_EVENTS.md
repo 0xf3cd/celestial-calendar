@@ -44,11 +44,6 @@ For an apparent threshold, replace `GeometricLevel(20.0)` with
 `RefractedLevel(20.0, RefractionParams(RefractionModel.BENNETT))`, importing those types
 from `celestial_calendar`. `SAEMUNDSSON` is also supported. Weather defaults are 15°C and
 1013.25 hPa; specify temperature and pressure in `RefractionParams` to change them.
-Bennett accepts apparent inputs from 0° to 90°, subject to a resolved geometric upper endpoint.
-Saemundsson's attainable apparent endpoints depend on the weather: it maps geometric altitudes
-from its apparent-horizon position up to 90° into apparent altitudes. Values definitely outside
-the selected model's range are invalid input; uncertain endpoints fail numerically.
-Keep twilight thresholds such as −6° geometric rather than passing them to either refraction model.
 
 ## JavaScript and TypeScript
 
@@ -137,6 +132,12 @@ transits retain their position source and fixed Delta T model. The daily rise/se
   fail numerically rather than return an extrapolated threshold.
 - At an exact geographic pole, upper passage uses the meridian defined by the supplied longitude.
 
+Bennett accepts apparent inputs from 0° to 90°, subject to a resolved geometric upper endpoint.
+Saemundsson's apparent endpoints are computed using the selected weather at the model's horizon
+and at 90° geometric altitude. Values definitely outside the selected model's range are invalid
+input; uncertain endpoints fail numerically. Keep twilight thresholds such as −6° geometric
+rather than passing them to either refraction model.
+
 ## Sunrise, twilight and civil-clock display
 
 The conventional Sun thresholds are geometric centre altitudes. Civil, nautical and astronomical
@@ -189,15 +190,18 @@ the search and returned event times remain TT. See [UTC conversion rules](UTC_CO
 The calendar admits `[1867522.5,13689325.5)` in JDE(TT); an interval may end at the exclusive
 upper bound. Only selected physical providers constrain it. In particular, Pluto requires
 `[2409543.5,2488069.5)`, but selecting the Sun, Moon or a VSOP87 planet does not inherit Pluto's
-window or a chart/longitude-rate domain. Additional proof samples and closed-end certificates
-must also be available. Admission alone therefore does not promise a successful query.
+window or a chart/longitude-rate domain. The library ships precomputed source and clock bounds,
+called certificates; callers do not supply them. The search needs these bounds over each complete,
+closed quarter-day cell and all additional sample times. Admission alone therefore does not
+promise a successful query.
 
 The current clock proofs cover the closed TT range `[2378495.0,2524595.0]` (roughly 1800–2200).
 Queries use complete quarter-day cells, plus the preceding cell when the start is exactly aligned;
 all of those cells need proofs. Two additional closed clock windows are
 `[10000000.5,10000000.75]` and `[13689000.5,13689000.75]`, with source proofs for Mars and Jupiter
 in both, and Saturn in the first only. These are proof-availability ranges, not narrower provider
-admission rules or guarantees that a query succeeds.
+admission rules or guarantees that a query succeeds. The
+[shipped source and clock tables](../src/astro/altitude_event_bounds.hpp) record this coverage.
 
 Each complete query shares these fixed work limits across conditions, clock pieces, inverse levels
 and event searches:
@@ -210,7 +214,7 @@ and event searches:
 | Event time resolution | `2^-20` TT day (about 0.0824 second) |
 | Inverse-level resolution | `2^-30` degree |
 
-These are work and isolation resolutions, **not physical accuracy bounds**. Canonical quarter-day
+These are work and isolation resolutions, **not physical accuracy bounds**. Fixed quarter-day
 cells, any preceding-cell companion, clock partitions and root candidates share the candidate
 allowance. There is no guaranteed successful span or condition count below these ceilings:
 an ordinary long interval may exhaust work, and a short near-contact may remain unresolved.
