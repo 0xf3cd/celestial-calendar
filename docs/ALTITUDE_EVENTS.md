@@ -130,6 +130,52 @@ transits retain their position source and fixed Delta T model. The daily rise/se
 - At an exact geographic pole, upper passage uses the meridian defined by the supplied longitude.
   An unavailable azimuth does not by itself prevent an altitude or transit query.
 
+## Sunrise, twilight and civil-clock display
+
+The conventional Sun thresholds are geometric centre altitudes. Civil, nautical and astronomical
+twilight use −6°, −12° and −18°. An approximate upper-limb sunrise/sunset convention uses −50′
+(`-50.0 / 60.0` degrees), combining 34′ of standard horizon refraction with a fixed 16′ solar
+semidiameter, as in Meeus Chapter 15 and the existing
+[`rise_set::sun` constants](../src/astro/rise_set.hpp). Pass that combined threshold as a
+`GeometricLevel`; applying a refraction model again would count the atmospheric correction twice.
+These conventions assume an unobstructed horizon and do not model terrain, horizon dip or a
+changing solar semidiameter. A lunar geocentric rise/set threshold already contains parallax and
+must not be applied unchanged to this topocentric direction.
+
+Convert each civil boundary to TT separately. This example searches between two UTC midnights
+and converts the returned TT moments back to UTC for display at a fixed UTC+08:00 offset:
+
+```python
+from datetime import datetime, timedelta, timezone
+
+from celestial_calendar import (
+  AltitudeCondition,
+  AltitudeSense,
+  CivilDateTime,
+  GeometricLevel,
+  Observer,
+  Target,
+  altitude_events,
+  jde_to_utc,
+  utc_to_jde,
+)
+
+start = utc_to_jde(CivilDateTime(2026, 11, 7, 0.0))
+end = utc_to_jde(CivilDateTime(2026, 11, 8, 0.0))
+condition = AltitudeCondition(Target.SUN, GeometricLevel(-6.0), AltitudeSense.ABOVE)
+result = altitude_events(Observer(30.0, -77.0, 0.0), condition, start, end)
+assert len(result.events) == 2
+for event in result.events:
+  utc = jde_to_utc(event.jde_tt)
+  instant = datetime(utc.year, utc.month, utc.day, tzinfo=timezone.utc) + timedelta(days=utc.fraction)
+  print(event.direction.value, instant.astimezone(timezone(timedelta(hours=8))).isoformat())
+```
+
+For a named local time zone, resolve its two local civil boundaries independently and convert
+each to UTC before calling `utc_to_jde`. Daylight-saving changes and leap seconds mean a civil
+day need not span exactly one TT day. The fixed-offset conversion above changes only the display;
+the search and returned event times remain TT. See [UTC conversion rules](UTC_CONVERSIONS.md).
+
 ## Admission and bounded work
 
 The calendar admits `[1867522.5,13689325.5)` in JDE(TT); an interval may end at the exclusive
