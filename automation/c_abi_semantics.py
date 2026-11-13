@@ -243,4 +243,43 @@ EXPORT_SEMANTICS = {
     "protocol": {"identity": "resolved-explicit-model-key-position-source-and-radius-definition"},
     "recording": True,
   },
+  "celestial_altitude_events": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": False,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
+  "celestial_upper_transits": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": True,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
+  "celestial_observing_windows": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": False,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
 }

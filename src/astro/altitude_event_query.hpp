@@ -57,6 +57,11 @@ inline constexpr double TIME_RESOLUTION_TT_DAYS = 0x1p-20;
 inline constexpr double LEVEL_RESOLUTION_DEGREES = 0x1p-30;
 inline constexpr double RADIANS_PER_DEGREE_UPPER = 0x1.1df46a2529d3ap-6;
 
+/** @brief One fresh budget shared by all conditions and proof pieces of a complete query. */
+[[nodiscard]] inline auto query_budget() -> search::Budget {
+  return { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
+}
+
 /** @brief Validate one physical target against the actual position domain, not certificate availability. */
 inline auto validate_target(const uint32_t target, const search::Interval query) -> void {
   if (target > 9) {

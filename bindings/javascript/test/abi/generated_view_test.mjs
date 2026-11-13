@@ -30,8 +30,8 @@ const assertView = (candidate) => {
   assert.deepEqual(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(Object.keys(PROTOCOLS), names);
   assert.deepEqual(Object.keys(C_DECLARATIONS.functions), names);
-  assert.equal(names.length, 40);
-  assert.equal(Object.keys(candidate.layouts).length, 31);
+  assert.equal(names.length, 43);
+  assert.equal(Object.keys(candidate.layouts).length, 33);
   assert(names.every((name) => name.startsWith("celestial_")));
   assert(Object.keys(candidate.layouts).every((name) => name.startsWith("Celestial") && !name.endsWith("V1")));
   for (const [index, entry] of candidate.exports.entries()) {
@@ -58,8 +58,8 @@ const assertView = (candidate) => {
       );
     }
   }
-  assert.equal(candidate.exports.filter(({ protocol }) => protocol.kind === "count-fill").length, 9);
-  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 38);
+  assert.equal(candidate.exports.filter(({ protocol }) => protocol.kind === "count-fill").length, 12);
+  assert.equal(candidate.exports.filter(({ recording }) => recording).length, 41);
   assert.deepEqual(candidate.exports.filter(({ protocol }) => protocol.error_channel === "preserve")
     .map(({ name }) => name), ["celestial_last_error", "celestial_last_error_kind"]);
   const targetCodes = Object.entries(candidate.codes)
@@ -93,6 +93,29 @@ assert.deepEqual(LAYOUTS.CelestialTopocentricPosition.fields.map(({ name, type, 
   ["azimuth_deg", "double", 72], ["apparent_altitude_deg", "double", 80],
 ]);
 assert.deepEqual(exportsList, [...names, "malloc", "free"], "exact generated private WASM export inventory");
+assert.equal(LAYOUTS.CelestialAltitudeCondition.size, 40);
+assert.equal(LAYOUTS.CelestialAltitudeCondition.alignment, 8);
+assert.deepEqual(LAYOUTS.CelestialAltitudeCondition.fields.map(({ name, type, offset }) => [name, type, offset]), [
+  ["target_code", "uint32_t", 0], ["sense_code", "uint32_t", 4], ["refraction_code", "uint32_t", 8],
+  ["reserved", "uint32_t", 12], ["level_deg", "double", 16], ["temperature_c", "double", 24], ["pressure_hpa", "double", 32],
+]);
+assert.equal(LAYOUTS.CelestialAltitudeRecord.size, 88);
+assert.equal(LAYOUTS.CelestialAltitudeRecord.alignment, 8);
+assert.deepEqual(LAYOUTS.CelestialAltitudeRecord.fields.map(({ name, type, offset }) => [name, type, offset]), [
+  ["tag", "uint32_t", 0], ["condition_index", "uint32_t", 4], ["target_code", "uint32_t", 8],
+  ["position_source_code", "uint32_t", 12], ["delta_t_model_code", "uint32_t", 16], ["refraction_code", "uint32_t", 20],
+  ["sense_code", "uint32_t", 24], ["direction_code", "uint32_t", 28], ["initially_satisfied", "uint32_t", 32],
+  ["reserved", "uint32_t", 36], ["jde_tt", "double", 40], ["end_jde_tt", "double", 48],
+  ["requested_level_deg", "double", 56], ["geometric_level_deg", "double", 64],
+  ["temperature_c", "double", 72], ["pressure_hpa", "double", 80],
+]);
+assert.deepEqual(WASM_SIGNATURES.celestial_altitude_events, {
+  parameters: ["i32", "f64", "f64", "f64", "f64", "f64", "i32", "i32", "i32"], result: "i32",
+});
+assert.deepEqual(WASM_SIGNATURES.celestial_upper_transits, WASM_SIGNATURES.celestial_altitude_events);
+assert.deepEqual(WASM_SIGNATURES.celestial_observing_windows, {
+  parameters: ["i32", "i32", "f64", "f64", "f64", "f64", "f64", "i32", "i32", "i32"], result: "i32",
+});
 const mutations = [
   (value) => { value.schema = "celestial-calendar/javascript-wasm-abi@1"; },
   (value) => { value.chart_v1_codes = value.codes; delete value.codes; },
@@ -133,5 +156,5 @@ for (const replacement of ["CelestialEquatorialPosition", "CelestialPositionReco
   assert.notEqual(changed, rawSource);
   assert.throws(() => assertRawDecoders(changed), assert.AssertionError);
 }
-console.log(`PASS generated JavaScript schema@2: ${names.length} exports, ${Object.keys(LAYOUTS).length} layouts, ${Object.keys(manifest.codes).length} named codes, 9 counted protocols; ${mutations.length}/${mutations.length} drift controls`);
+console.log(`PASS generated JavaScript schema@2: ${names.length} exports, ${Object.keys(LAYOUTS).length} layouts, ${Object.keys(manifest.codes).length} named codes, 12 counted protocols; ${mutations.length}/${mutations.length} drift controls`);
 console.log("PASS literal raw decoder record/pointee names; 2/2 corruption controls");

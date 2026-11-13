@@ -648,6 +648,9 @@ def edge_celestial_capability_text() -> None:
 
 
 EXPORT_LABELS = (
+  "altitude_events",
+  "upper_transits",
+  "observing_windows",
   "apparent_diameter",
   "topocentric_position",
   "last_error",
@@ -874,6 +877,84 @@ def edge_celestial_house_capability() -> None:
     assert not call("house_capability", model).valid and call("last_error_kind") == 1
 
 
+def altitude_stream(name: str, prefix: tuple) -> tuple[_abi.CelestialAltitudeRecord, ...]:
+  """Verify every exact prefix and untouched tail against one complete final-name C stream."""
+  total = ctypes.c_uint32(99)
+  args = (*prefix, 0.0, -77.0, 0.0, 2451545.0, 2451546.0)
+  assert call(name, *args, ctypes.byref(total), None, 0) == 0 and call("last_error_kind") == 0
+  expected_total = total.value
+  full = (_abi.CelestialAltitudeRecord * expected_total)()
+  assert call(name, *args, ctypes.byref(total), full, expected_total) == expected_total
+  assert call("last_error_kind") == 0 and total.value == expected_total
+  stride = ctypes.sizeof(_abi.CelestialAltitudeRecord)
+  assert stride == 88 and ctypes.sizeof(_abi.CelestialAltitudeCondition) == 40
+  for capacity in range(expected_total + 2):
+    slots = (_abi.CelestialAltitudeRecord * (expected_total + 2))()
+    ctypes.memset(slots, 0xA5, ctypes.sizeof(slots))
+    before = bytes(slots)
+    count = ctypes.c_uint32(99)
+    written = call(name, *args, ctypes.byref(count), slots, capacity)
+    assert call("last_error_kind") == 0 and count.value == expected_total and written == min(expected_total, capacity)
+    assert bytes(slots)[: written * stride] == bytes(full)[: written * stride]
+    assert bytes(slots)[written * stride :] == before[written * stride :]
+  return tuple(full)
+
+
+def happy_celestial_altitude_events() -> None:
+  condition = _abi.CelestialAltitudeCondition(0, 1, 0, 0, 0.0, 0.0, 0.0)
+  records = altitude_stream("altitude_events", (ctypes.byref(condition),))
+  assert [record.tag for record in records] == [0, 1, 1]
+  state = records[0]
+  assert (state.target_code, state.position_source_code, state.delta_t_model_code) == (0, 1, 5)
+  assert (state.refraction_code, state.sense_code, state.initially_satisfied) == (0, 1, 1)
+  assert [record.direction_code for record in records[1:]] == [1, 0]
+
+
+def happy_celestial_upper_transits() -> None:
+  records = altitude_stream("upper_transits", (4,))
+  assert len(records) == 1 and records[0].tag == 3
+  assert (records[0].target_code, records[0].position_source_code, records[0].delta_t_model_code) == (4, 3, 5)
+
+
+def happy_celestial_observing_windows() -> None:
+  conditions = (_abi.CelestialAltitudeCondition * 2)(
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, 0.0, 0.0, 0.0),
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, -6.0, 0.0, 0.0),
+  )
+  records = altitude_stream("observing_windows", (conditions, 2))
+  assert [record.tag for record in records] == [0, 0, 1, 1, 1, 1, 2, 2]
+  assert [record.condition_index for record in records[:2]] == [0, 1]
+  assert all(record.jde_tt < record.end_jde_tt for record in records[-2:])
+
+
+def altitude_failure(name: str, prefix: tuple, kind: int, site: tuple = (0.0, -77.0, 0.0)) -> None:
+  slots = (_abi.CelestialAltitudeRecord * 16)()
+  ctypes.memset(slots, 0xA5, ctypes.sizeof(slots))
+  before = bytes(slots)
+  count = ctypes.c_uint32(99)
+  assert call(name, *prefix, *site, 2451545.0, 2451545.25, ctypes.byref(count), slots, 16) == 0
+  assert count.value == 0 and call("last_error_kind") == kind and bytes(slots) == before
+
+
+def edge_celestial_altitude_events() -> None:
+  condition = _abi.CelestialAltitudeCondition(0, 1, 0, 1, 0.0, 0.0, 0.0)
+  altitude_failure("altitude_events", (ctypes.byref(condition),), 1)
+  condition = _abi.CelestialAltitudeCondition(9, 1, 0, 0, 48.605252016244656, 0.0, 0.0)
+  altitude_failure("altitude_events", (ctypes.byref(condition),), 2, (30.0, -77.0, 0.0))
+
+
+def edge_celestial_upper_transits() -> None:
+  altitude_failure("upper_transits", (10,), 1)
+
+
+def edge_celestial_observing_windows() -> None:
+  conditions = (_abi.CelestialAltitudeCondition * 2)(
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, -89.0, 0.0, 0.0),
+    _abi.CelestialAltitudeCondition(9, 1, 0, 0, 48.605252016244656, 0.0, 0.0),
+  )
+  altitude_failure("observing_windows", (conditions, 2), 2, (30.0, -77.0, 0.0))
+
+
 def protocol_test(prefix: str, label: str):
   return globals()[f"{prefix}_celestial_{label}"]
 
@@ -905,7 +986,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 40
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 43
   assert set(HAPPY_TESTS) == set(EDGE_TESTS) == set(_binding.BINDING_SPECS)
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)

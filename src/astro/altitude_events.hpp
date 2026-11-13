@@ -130,11 +130,6 @@ namespace detail::altitude_events {
   }, condition.level);
 }
 
-/** @brief One fresh budget owned by a public query, shared by all its conditions and proof pieces. */
-[[nodiscard]] inline auto query_budget() -> search::Budget {
-  return { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
-}
-
 /** @brief Attach physical-source and fixed-clock metadata to a completely resolved condition. */
 [[nodiscard]] inline auto condition_state(
   const AltitudeCondition& requested,
