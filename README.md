@@ -290,6 +290,8 @@ OS version floor is declared.
   [`planet.hpp`](src/astro/planet.hpp).
 - [Topocentric observer queries](docs/OBSERVER.md) for the Sun, Moon and planets are available in C++, C, Python
   and JavaScript.
+- [Complete interval altitude events, upper transits and observing windows](docs/ALTITUDE_EVENTS.md) are available
+  in C++, C, Python and JavaScript/TypeScript, with whole-query numerical failure when completeness cannot be certified.
 - [Apparent angular diameters](docs/APPARENT_DIAMETERS.md) for the Sun, Moon and planets, using geocentric or
   topocentric distance, are available in C++, C, Python and JavaScript.
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
@@ -297,13 +299,13 @@ OS version floor is declared.
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),
   Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
   [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
-  instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval events and
+  instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval longitude events and
   [independent position/house queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
 - Interval longitude crossings, stations and directed two-body longitude differences: C++ provides
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp), C exposes `celestial_longitude_events` /
   `celestial_longitude_stations` / `celestial_longitude_difference_events`, and Python provides
   [`longitude_events` and related queries](bindings/python/README.md#interval-longitude-events).
-  See the [event guide](docs/EPHEMERIS_EVENTS.md); JavaScript exposes no event API.
+  See the [event guide](docs/EPHEMERIS_EVENTS.md); JavaScript does not expose these longitude-event queries.
 - Operation input bounds and model identities: C exposes `celestial_capabilities`, `celestial_house_capability`,
   `celestial_model_identities` and operation/model descriptions. Python provides
   [`capabilities` and related queries](bindings/python/README.md#capabilities); C++ provides

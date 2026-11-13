@@ -207,4 +207,37 @@ TEST(AltitudeEvents, OversizedConditionListFailsBeforeDecodingItsElements) {
   EXPECT_THROW((void)altitude_events(site(), invalid, 2451545.0, 2451545.25), std::invalid_argument);
 }
 
+TEST(AltitudeEvents, DefaultWorkAndResolutionLimitsAreFixed) {
+  const auto budget = detail::altitude_events::query_budget();
+  EXPECT_EQ(budget.evaluations_remaining, 8192U);
+  EXPECT_EQ(budget.candidates_remaining, 2048U);
+  EXPECT_EQ(detail::altitude_events::MAX_CONDITIONS, 2048U);
+  EXPECT_DOUBLE_EQ(detail::altitude_events::TIME_RESOLUTION_TT_DAYS, 0x1p-20);
+  EXPECT_DOUBLE_EQ(detail::altitude_events::LEVEL_RESOLUTION_DEGREES, 0x1p-30);
+}
+
+TEST(AltitudeEvents, SelectedSourcesDoNotInheritPlutoOrChartAdmission) {
+  for (const auto target : std::array {
+    ephemeris::Target::SUN, ephemeris::Target::MOON, ephemeris::Target::MARS,
+    ephemeris::Target::JUPITER, ephemeris::Target::SATURN,
+  }) {
+    const AltitudeCondition requested {
+      .target = target, .level = GeometricLevel { .altitude = toolbox::AngleDeg { 10.0 } }, .sense = AltitudeSense::ABOVE,
+    };
+    const auto result = altitude_events(site(), requested, 2488070.125, 2488070.25);
+    EXPECT_EQ(result.condition.condition.target, target);
+    EXPECT_EQ(result.condition.source, ephemeris::source_of(target));
+    EXPECT_TRUE(result.events.empty());
+  }
+  auto requested = condition();
+  requested.target = ephemeris::Target::PLUTO;
+  EXPECT_THROW((void)altitude_events(site(), requested, 2488070.125, 2488070.25), std::invalid_argument);
+}
+
+TEST(AltitudeEvents, AdmittedConditionAndSpanShapesMayExhaustSharedWork) {
+  const std::vector<AltitudeCondition> requested(2048, condition());
+  EXPECT_THROW((void)observing_windows(site(), requested, 2451545.0, 2451545.25), std::runtime_error);
+  EXPECT_THROW((void)altitude_events(site(), condition(), 2451545.0, 2452057.0), std::runtime_error);
+}
+
 } // namespace astro::observer::test

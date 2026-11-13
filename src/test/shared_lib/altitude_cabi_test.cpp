@@ -279,4 +279,34 @@ TEST(AltitudeCAbi, ExclusiveCalendarEndHasNumericalRatherThanInputFailure) {
   EXPECT_TRUE(same_bytes(slots, before));
 }
 
+TEST(AltitudeCAbi, OnlySelectedPhysicalProvidersRestrictAdmission) {
+  auto input = condition(10.0);
+  auto slots = sentinels();
+  uint32_t count = 99;
+  for (const uint32_t target : { CELESTIAL_TARGET_SUN, CELESTIAL_TARGET_MOON, CELESTIAL_TARGET_MARS,
+                               CELESTIAL_TARGET_JUPITER, CELESTIAL_TARGET_SATURN }) {
+    input.target_code = target;
+    ASSERT_EQ(celestial_altitude_events(&input, 90.0, -77.0, 0.0, 2488070.125, 2488070.25, &count, slots.data(), 16), 1U);
+    ASSERT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
+    EXPECT_EQ(slots.front().target_code, target);
+  }
+  input.target_code = CELESTIAL_TARGET_PLUTO;
+  const auto before = slots;
+  EXPECT_EQ(celestial_altitude_events(&input, 90.0, -77.0, 0.0, 2488070.125, 2488070.25, &count, slots.data(), 16), 0U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
+  EXPECT_EQ(count, 0U);
+  EXPECT_TRUE(same_bytes(slots, before));
+}
+
+TEST(AltitudeCAbi, WorkExhaustionIsNumericalAndCannotPublishPartialMetadata) {
+  const std::vector<CelestialAltitudeCondition> inputs(2048, condition(10.0));
+  auto slots = sentinels();
+  const auto before = slots;
+  uint32_t count = 99;
+  EXPECT_EQ(celestial_observing_windows(inputs.data(), 2048, 90.0, -77.0, 0.0, 2451545.0, 2451545.25, &count, slots.data(), 16), 0U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_COMPUTATION);
+  EXPECT_EQ(count, 0U);
+  EXPECT_TRUE(same_bytes(slots, before));
+}
+
 } // namespace lib::altitude::test

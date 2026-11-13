@@ -60,6 +60,13 @@ export function runAltitudeAcceptance(celestial) {
   reject(() => celestial.observer.observingWindows(criticalSite, [condition, unresolved], start, start + 0.25), celestial.CelestialError, true);
   reject(() => celestial.observer.upperTransits(site, "meanAscending", start, end), RangeError);
   reject(() => celestial.observer.upperTransits(site, "pluto", 2488069.5, 2488069.75), RangeError);
+  for (const target of ["sun", "moon", "mars", "jupiter", "saturn"]) {
+    const selected = { ...condition, target, level: { kind: "geometric", altitudeDeg: 10 } };
+    const result = celestial.observer.altitudeEvents({ ...site, latitudeDeg: 90 }, selected, 2488070.125, 2488070.25);
+    check(result.condition.condition.target === target && result.events.length === 0, "selected provider admission");
+  }
+  const many = new Array(2048).fill({ ...condition, level: { kind: "geometric", altitudeDeg: 10 } });
+  reject(() => celestial.observer.observingWindows({ ...site, latitudeDeg: 90 }, many, start, start + 0.25), celestial.CelestialError, true);
   reject(() => celestial.observer.altitudeEvents(site, { ...condition, level: { ...condition.level, refraction: {} } }, start, end), TypeError);
   return { targets: targets.length, refractionModels: 2, unresolved: 2 };
 }

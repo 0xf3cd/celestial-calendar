@@ -152,6 +152,16 @@ def run_errors():
   raises(TypeError, lambda: c.altitude_events(None, CONDITION, START, END))
   raises(ValueError, lambda: c.upper_transits(SITE, c.Target.SUN, END, START))
   raises(ValueError, lambda: c.upper_transits(SITE, c.Target.PLUTO, 2488069.5, 2488069.75))
+  for target in (c.Target.SUN, c.Target.MOON, c.Target.MARS, c.Target.JUPITER, c.Target.SATURN):
+    condition = replace(CONDITION, target=target, level=c.GeometricLevel(10.0))
+    result = c.altitude_events(replace(SITE, latitude_deg=90.0), condition, 2488070.125, 2488070.25)
+    assert result.condition.condition.target is target and not result.events
+  assert raises(
+    c.CelestialError,
+    lambda: c.observing_windows(
+      replace(SITE, latitude_deg=90.0), (replace(CONDITION, level=c.GeometricLevel(10.0)),) * 2048, START, START + 0.25
+    ),
+  ).recorded
   consumed = []
 
   def unbounded():

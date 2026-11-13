@@ -287,6 +287,7 @@ def test_links_name_existing_paths_and_explicit_anchors():
     ),
     ("docs/OBSERVER.md", 0, 2, None, ""),
     ("docs/OBSERVER.md", 1, 2, None, ""),
+    ("docs/ALTITUDE_EVENTS.md", 0, 1, None, ""),
   ],
 )
 def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_count, example, expected):
@@ -450,6 +451,8 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
   )
   (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
+  (root / "docs").mkdir()
+  (root / "docs/ALTITUDE_EVENTS.md").write_text("```python\nprint('altitude')\n```\n", encoding="utf-8")
   calls = []
 
   def run(code, cwd, expected=None):
@@ -473,7 +476,7 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
       python_reader.main()
   else:
     python_reader.main()
-    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n"]
+    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n", "print('altitude')\n"]
 
 
 def test_node_skipped_program_is_rejected(tmp_path):

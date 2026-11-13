@@ -103,6 +103,9 @@ export async function runDocExamples(consumer, packageName) {
   const root = await readFile(new URL("../../../../README.md", import.meta.url), "utf8");
   const count = await runPrograms(root, consumer, packageName, expectedOutput(root));
   console.log(`PASS displayed root JavaScript programs ${count}/${count} via ${packageName}`);
+  const altitudeGuide = await readFile(new URL("../../../../docs/ALTITUDE_EVENTS.md", import.meta.url), "utf8");
+  const altitudeCount = await runPrograms(altitudeGuide, consumer, packageName);
+  console.log(`PASS displayed altitude JavaScript programs ${altitudeCount}/${altitudeCount} via ${packageName}`);
   for (const name of packageName === "celestial-calendar" ? ["@0xf3cd/celestial", "celestial-calendar"] : [packageName]) {
     const directory = name === "celestial-calendar" ? "javascript-alias" : "javascript";
     const source = await readFile(new URL(`../../../${directory}/README.md`, import.meta.url), "utf8");
