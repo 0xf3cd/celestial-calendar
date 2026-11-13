@@ -106,4 +106,17 @@ inline constexpr std::array<LocalSource, 5> LOCAL_SOURCES {{
   { .target = 5, .clock = 1, .packet = Packet { -2, -3, 5, -1, -5, 2, -16, -51, 2, -28 } },
 }};
 
+/** @brief Degree-valued map/residual error uppers and a dimensionless map-slope lower. */
+struct RefractionCertificate {
+  double map_error;
+  double residual_error;
+  double slope_lower;
+};
+
+// Bennett, then Saemundsson; weather support is T [-90, 60] C and P [300, 1100] hPa.
+inline constexpr std::array<RefractionCertificate, 2> REFRACTION {{
+  { .map_error = 0x1.4fe91c750b5e1p-43, .residual_error = 0x1.7d2713c77af2bp-43, .slope_lower = 0x1.0000000000000p+0 },
+  { .map_error = 0x1.ff3bd80ce8623p-43, .residual_error = 0x1.1644b85b12e5ap-42, .slope_lower = 0x1.a9ad8af7d556cp-4 },
+}};
+
 } // namespace astro::detail::altitude_bounds

@@ -43,7 +43,7 @@ BANNER = """/*
 """
 
 
-def emit(near: dict, records: list) -> tuple[str, dict]:
+def emit(near: dict, records: list, refraction: dict) -> tuple[str, dict]:
   """Emit directed bounds and return the exact clock/source relations encoded in the header."""
   from altitude_bounds.certificate_encoding import decode
   from altitude_bounds.clock_branch_majorants import branch_records, join_jumps
@@ -190,16 +190,43 @@ def emit(near: dict, records: list) -> tuple[str, dict]:
       + ", ".join(map(str, codes))
       + " } },"
     )
+  lines.extend(
+    [
+      "}};",
+      "",
+      "/** @brief Degree-valued map/residual error uppers and a dimensionless map-slope lower. */",
+      "struct RefractionCertificate {",
+      "  double map_error;",
+      "  double residual_error;",
+      "  double slope_lower;",
+      "};",
+      "",
+      "// Bennett, then Saemundsson; weather support is T [-90, 60] C and P [300, 1100] hPa.",
+      "inline constexpr std::array<RefractionCertificate, 2> REFRACTION {{",
+    ]
+  )
+  certificates = refraction["certificates"]
+  if tuple(row["model"] for row in certificates) != ("bennett", "saemundsson"):
+    raise ValueError("Refraction certificates must match the source model order")
+  for row in certificates:
+    if not 0 < F(row["map_error"]) <= F(row["residual_error"]) or not 0 < F(row["slope_lower"]) <= 1:
+      raise ValueError("A refraction certificate has invalid errors or slope")
+    fields = ("map_error", "residual_error", "slope_lower")
+    for field in fields:
+      if outward_binary64(F(row[field]), True) != F(row[field]):
+        raise ValueError("A refraction runtime field is not exact binary64")
+    lines.append("  { " + ", ".join("." + field + " = " + float(F(row[field])).hex() for field in fields) + " },")
   lines.extend(["}};", "", "} // namespace astro::detail::altitude_bounds", ""])
   return "\n".join(lines), {
     "common": serial(common),
     "clock": serial(clock),
     "local_clocks": clocks,
     "local_packets": packets,
+    "refraction_certificates": serial(certificates),
   }
 
 
-def derive(root: Path, progress) -> tuple[dict, dict]:
+def derive(root: Path, progress) -> tuple[dict, dict, dict]:
   """Recompute near tiers and explicit far rectangles from their current C++ coefficient sources."""
   from altitude_bounds import coefficient_reader as reader
   from altitude_bounds.affine_observer_error import affine_observer_error
@@ -212,6 +239,7 @@ def derive(root: Path, progress) -> tuple[dict, dict]:
   from altitude_bounds.local_vector_separation import raw_cartesian_enclosure
   from altitude_bounds.ordinary_clock_tiers import ordinary_clock_tiers
   from altitude_bounds.other_body_tiers import other_body_tier
+  from altitude_bounds.refraction_value_error import derive as refraction_for
   from altitude_bounds.source_c2_records import derive_vsop_record
   from altitude_bounds.source_reading import correction_expressions, serial, stored_constant
 
@@ -224,8 +252,10 @@ def derive(root: Path, progress) -> tuple[dict, dict]:
     "toolbox.hpp",
     "pluto.hpp",
     "earth/precession.hpp",
+    "earth/refraction.hpp",
   )
   text = {name: (root / "src/astro" / name).read_text() for name in source_names}
+  refraction = refraction_for(text["earth/refraction.hpp"], text["toolbox.hpp"])
   environment = {}
   for name in ("WGS84_EQUATORIAL_RADIUS_KM", "WGS84_INVERSE_FLATTENING", "WGS84_POLAR_RATIO_SQUARED"):
     environment[name] = stored_constant(text["observer.hpp"], name, environment)
@@ -344,7 +374,7 @@ def derive(root: Path, progress) -> tuple[dict, dict]:
     "excluded": exclusions,
     "distinct_source_centres": len(centres),
   }
-  return near, far
+  return near, far, serial(refraction)
 
 
 def main() -> None:
@@ -388,8 +418,8 @@ def main() -> None:
       log.flush()
       print(stage, name, flush=True)
 
-    near, far = derive(root, progress)
-  header, runtime = emit(near, far["records"])
+    near, far, refraction = derive(root, progress)
+  header, runtime = emit(near, far["records"], refraction)
   with (output / Path(HEADER_PATH).name).open("x") as stream:
     stream.write(header)
   sources = sorted(path for path in reads if path.is_relative_to(root / "src/astro"))
@@ -401,6 +431,7 @@ def main() -> None:
     "near": near,
     "far": far,
     "runtime": runtime,
+    "refraction": refraction,
     "generated_sha256": {HEADER_PATH: hashlib.sha256(header.encode()).hexdigest()},
     "source_sha256": {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
     "module_sha256": {module_names[path]: hashlib.sha256(path.read_bytes()).hexdigest() for path in modules},

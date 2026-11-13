@@ -59,12 +59,21 @@ def local_fixture(target):
   }
 
 
+def refraction_fixture():
+  return {
+    "certificates": [
+      {"model": model, "map_error": F(1, 2**40), "residual_error": F(1, 2**39), "slope_lower": F(1, 2)}
+      for model in ("bennett", "saemundsson")
+    ]
+  }
+
+
 class AltitudeBoundEmitterTest(unittest.TestCase):
   def test_output_is_deterministic_and_does_not_mutate_the_input_records(self):
     near = near_fixture()
     before = copy.deepcopy(near)
-    first = GENERATOR["emit"](near, [])
-    self.assertEqual(first, GENERATOR["emit"](near, []))
+    first = GENERATOR["emit"](near, [], refraction_fixture())
+    self.assertEqual(first, GENERATOR["emit"](near, [], refraction_fixture()))
     self.assertEqual(near, before)
     header, runtime = first
     self.assertIn("namespace astro::detail::altitude_bounds", header)
@@ -74,7 +83,7 @@ class AltitudeBoundEmitterTest(unittest.TestCase):
     self.assertEqual(runtime["local_packets"], [])
 
   def test_local_targets_share_only_identical_complete_clock_rows(self):
-    header, runtime = GENERATOR["emit"](near_fixture(), [local_fixture(4), local_fixture(5)])
+    header, runtime = GENERATOR["emit"](near_fixture(), [local_fixture(4), local_fixture(5)], refraction_fixture())
     self.assertEqual(len(runtime["local_clocks"]), 1)
     self.assertEqual([row[:2] for row in runtime["local_packets"]], [(4, 0), (5, 0)])
     self.assertIn("std::array<LocalSource, 2>", header)
@@ -88,7 +97,7 @@ class AltitudeBoundEmitterTest(unittest.TestCase):
       else:
         near["records"][0]["ordinary"]["codes"] = (0,)
       with self.subTest(change=change), self.assertRaises(ValueError):
-        GENERATOR["emit"](near, [])
+        GENERATOR["emit"](near, [], refraction_fixture())
 
   def test_majorants_cannot_round_down_and_separation_lowers_cannot_round_up(self):
     for column, code in ((0, -1), (5, 0)):
@@ -97,7 +106,7 @@ class AltitudeBoundEmitterTest(unittest.TestCase):
       codes[column] = code
       near["records"][0]["ordinary"]["codes"] = codes
       with self.subTest(column=column), self.assertRaisesRegex(ArithmeticError, "inward"):
-        GENERATOR["emit"](near, [])
+        GENERATOR["emit"](near, [], refraction_fixture())
 
   def test_collar_choice_cannot_change_a_source_derivative_field(self):
     near = near_fixture()
@@ -105,14 +114,37 @@ class AltitudeBoundEmitterTest(unittest.TestCase):
     codes[0] += 1
     near["records"][0]["collar"]["codes"] = codes
     with self.assertRaisesRegex(ArithmeticError, "Clock choice"):
-      GENERATOR["emit"](near, [])
+      GENERATOR["emit"](near, [], refraction_fixture())
 
   def test_half_quarters_and_shifted_quarters_cannot_enter_the_runtime_table(self):
     for interval in (("2451545", "19612361/8"), ("19612361/8", "19612363/8")):
       row = local_fixture(6)
       row["interval"] = interval
       with self.subTest(interval=interval), self.assertRaisesRegex(ValueError, "complete canonical quarter"):
-        GENERATOR["emit"](near_fixture(), [row])
+        GENERATOR["emit"](near_fixture(), [row], refraction_fixture())
+
+  def test_refraction_models_fields_and_direction_are_retained(self):
+    refraction = refraction_fixture()
+    header, runtime = GENERATOR["emit"](near_fixture(), [], refraction)
+    self.assertIn("std::array<RefractionCertificate, 2> REFRACTION", header)
+    self.assertIn(".map_error = 0x1.0000000000000p-40", header)
+    self.assertIn(".residual_error = 0x1.0000000000000p-39", header)
+    self.assertIn(".slope_lower = 0x1.0000000000000p-1", header)
+    self.assertEqual([row["model"] for row in runtime["refraction_certificates"]], ["bennett", "saemundsson"])
+    for field, value in (
+      ("map_error", F(0)),
+      ("residual_error", F(0)),
+      ("slope_lower", F(0)),
+      ("slope_lower", F(1, 3)),
+    ):
+      refraction = refraction_fixture()
+      refraction["certificates"][0][field] = value
+      with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+        GENERATOR["emit"](near_fixture(), [], refraction)
+    refraction = refraction_fixture()
+    refraction["certificates"].reverse()
+    with self.assertRaisesRegex(ValueError, "model order"):
+      GENERATOR["emit"](near_fixture(), [], refraction)
 
 
 class AltitudeGeneratorFailureTest(unittest.TestCase):
@@ -141,6 +173,7 @@ class AltitudeGeneratorFailureTest(unittest.TestCase):
         "toolbox.hpp",
         "pluto.hpp",
         "earth/precession.hpp",
+        "earth/refraction.hpp",
       ):
         (source / name).write_text("")
       output = Path(directory) / "output"
