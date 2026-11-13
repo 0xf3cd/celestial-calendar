@@ -108,6 +108,7 @@ struct Prepared {
       record.target_code = request.target;
       record.position_source_code = std::span { SOURCE_CODES }[request.target];
       record.delta_t_model_code = clock;
+      // Internal Bennett/Saemundsson/geometric codes 0/1/2 become C codes 1/2/0.
       record.refraction_code = request.convention == 2 ? CELESTIAL_REFRACTION_NONE : request.convention + 1;
       record.sense_code = static_cast<uint32_t>(request.above);
       record.initially_satisfied = computed.composed.states[index].initially_satisfied;

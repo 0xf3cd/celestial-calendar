@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "statistics"))
 from altitude_bounds.certificate_encoding import encode  # noqa: E402
+from altitude_bounds.source_reading import verify_mirrored_operations  # noqa: E402
 
 
 GENERATOR_PATH = ROOT / "statistics/altitude_event_bounds.py"
@@ -148,6 +149,56 @@ class AltitudeBoundEmitterTest(unittest.TestCase):
 
 
 class AltitudeGeneratorFailureTest(unittest.TestCase):
+  def test_current_mirrored_provider_operations_match_the_reviewed_source_shapes(self):
+    names = ("vsop87d/defines.hpp", "julian_day.hpp", "sun.hpp", "moon.hpp")
+    sources = {name: (ROOT / "src/astro" / name).read_text() for name in names}
+    verify_mirrored_operations(sources)
+
+  def test_mutating_a_mirrored_operation_stops_derivation_before_coefficient_evaluation(self):
+    mutations = (
+      ("vsop87d/defines.hpp", "SCALING_FACTOR = 1e8", "SCALING_FACTOR = 1e9"),
+      ("julian_day.hpp", "return (jde - J2000) / 365250.0;", "return (jde - J2000) / 36525.0;"),
+      (
+        "sun.hpp",
+        "vsop_coord.λ + correction.Δλ + nutation - aberration",
+        "vsop_coord.λ + correction.Δλ + nutation + aberration",
+      ),
+      (
+        "moon.hpp",
+        "evaluated.Σl + perturbation::longitude(evaluated.ctx)",
+        "evaluated.Σl - perturbation::longitude(evaluated.ctx)",
+      ),
+    )
+    names = (
+      "earth.hpp",
+      "delta_t.hpp",
+      "planet.hpp",
+      "coord_transform.hpp",
+      "observer.hpp",
+      "toolbox.hpp",
+      "pluto.hpp",
+      "earth/precession.hpp",
+      "earth/refraction.hpp",
+      "vsop87d/defines.hpp",
+      "julian_day.hpp",
+      "sun.hpp",
+      "moon.hpp",
+    )
+    with tempfile.TemporaryDirectory(dir=os.environ.get("SCRATCH")) as directory:
+      root = Path(directory)
+      for name in names:
+        path = root / "src/astro" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text((ROOT / "src/astro" / name).read_text())
+      for name, before, after in mutations:
+        path = root / "src/astro" / name
+        original = path.read_text()
+        self.assertEqual(original.count(before), 1)
+        path.write_text(original.replace(before, after))
+        with self.subTest(source=name), self.assertRaisesRegex(ValueError, "Mirrored operation source changed"):
+          GENERATOR["derive"](root, lambda *_: None)
+        path.write_text(original)
+
   def test_existing_output_directory_is_not_overwritten(self):
     with tempfile.TemporaryDirectory(dir=os.environ.get("SCRATCH")) as directory:
       output = Path(directory) / "output"

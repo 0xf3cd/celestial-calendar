@@ -32,16 +32,23 @@ for window in result.windows:
 ```
 
 `altitude_events(observer, condition, start_jde_tt, end_jde_tt)` takes one condition and
-returns its state plus events. `upper_transits(observer, target, start_jde_tt, end_jde_tt)`
+returns its state in `result.condition` and its events in `result.events`. Read the initial
+truth as `result.condition.initially_satisfied`. `upper_transits(observer, target, start_jde_tt, end_jde_tt)`
 takes a physical target without a level or weather and returns a tuple of `UpperTransit` values.
-`observing_windows` alone accepts a condition iterable. Its result retains every condition
-state and companion event, even when the intersection is empty. Values are frozen dataclasses
-and tuples.
+`observing_windows` is the only query that accepts a condition collection. Read its ordered
+states, companion events and intersected spans through `result.conditions`, `result.events`
+and `result.windows`, respectively, even when the intersection is empty. Values are frozen
+dataclasses and tuples.
 
 For an apparent threshold, replace `GeometricLevel(20.0)` with
 `RefractedLevel(20.0, RefractionParams(RefractionModel.BENNETT))`, importing those types
 from `celestial_calendar`. `SAEMUNDSSON` is also supported. Weather defaults are 15°C and
 1013.25 hPa; specify temperature and pressure in `RefractionParams` to change them.
+Bennett accepts apparent inputs from 0° to 90°, subject to a resolved geometric upper endpoint.
+Saemundsson's attainable apparent endpoints depend on the weather: it maps geometric altitudes
+from its apparent-horizon position up to 90° into apparent altitudes. Values definitely outside
+the selected model's range are invalid input; uncertain endpoints fail numerically.
+Keep twilight thresholds such as −6° geometric rather than passing them to either refraction model.
 
 ## JavaScript and TypeScript
 
@@ -69,7 +76,8 @@ are frozen copies, independent of later queries, mutable inputs and WASM memory 
 ## C++
 
 Include `altitude_events.hpp`; the functions and condition types belong to `astro::observer`.
-Angles and elevation retain the library's physical types. The equivalent program is:
+Angles use `toolbox::AngleDeg`; elevation uses `toolbox::DistanceKm`, in kilometres.
+C, Python and JavaScript take elevation in metres. The equivalent program is:
 
 ```cpp
 #include <array>
@@ -119,16 +127,15 @@ transits retain their position source and fixed Delta T model. The daily rise/se
 - Windows are maximal positive-duration operational spans. They are not strict point sets with
   holes at isolated equalities. Equal-time events apply atomically; irrelevant crossings and tangents
   do not fragment a window. An empty conjunction returns the whole requested interval.
-- Condition state retains the original target, sense, level convention and weather, the resolved
-  geometric threshold, source and clock identity. Event `condition_index`/`conditionIndex` refers to
-  that ordered condition list. Transit records carry their own target, source and clock.
+- Event `condition_index`/`conditionIndex` selects its state in `result.conditions` (or
+  `result.condition` for a single altitude query). Transit records carry their own target,
+  source and clock.
 - Thresholds refer to body centres, with no solar/lunar limb or geocentric-parallax offset.
   Geometric levels must be strictly inside `(−90°,90°)`. Refraction resolves an attainable apparent
-  threshold with the selected model; it does not extrapolate through an uncertain image endpoint.
+  threshold with the selected model; it does not extrapolate through an uncertain range endpoint.
   The proved weather tier is `[−90,60]°C` and `[300,1100] hPa`. Outside the proof tier, a query can
   fail numerically rather than return an extrapolated threshold.
 - At an exact geographic pole, upper passage uses the meridian defined by the supplied longitude.
-  An unavailable azimuth does not by itself prevent an altitude or transit query.
 
 ## Sunrise, twilight and civil-clock display
 
@@ -143,7 +150,8 @@ changing solar semidiameter. A lunar geocentric rise/set threshold already conta
 must not be applied unchanged to this topocentric direction.
 
 Convert each civil boundary to TT separately. This example searches between two UTC midnights
-and converts the returned TT moments back to UTC for display at a fixed UTC+08:00 offset:
+and converts the returned TT moments back to UTC for display at a fixed UTC+08:00 offset.
+`CivilDateTime.fraction` is a fraction of the day, with 0.0 denoting midnight:
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -184,6 +192,13 @@ upper bound. Only selected physical providers constrain it. In particular, Pluto
 window or a chart/longitude-rate domain. Additional proof samples and closed-end certificates
 must also be available. Admission alone therefore does not promise a successful query.
 
+The current clock proofs cover the closed TT range `[2378495.0,2524595.0]` (roughly 1800–2200).
+Queries use complete quarter-day cells, plus the preceding cell when the start is exactly aligned;
+all of those cells need proofs. Two additional closed clock windows are
+`[10000000.5,10000000.75]` and `[13689000.5,13689000.75]`, with source proofs for Mars and Jupiter
+in both, and Saturn in the first only. These are proof-availability ranges, not narrower provider
+admission rules or guarantees that a query succeeds.
+
 Each complete query shares these fixed work limits across conditions, clock pieces, inverse levels
 and event searches:
 
@@ -199,6 +214,8 @@ These are work and isolation resolutions, **not physical accuracy bounds**. Cano
 cells, any preceding-cell companion, clock partitions and root candidates share the candidate
 allowance. There is no guaranteed successful span or condition count below these ceilings:
 an ordinary long interval may exhaust work, and a short near-contact may remain unresolved.
+Slow altitude crossings, including those near a geographic pole or culmination, can fail to
+resolve at the fixed time resolution even when an ordinary mid-latitude crossing succeeds.
 The resolutions are not relaxed to make a query fit. Python limits result storage to 64 MiB;
 JavaScript limits caller-owned WASM buffers to 16 MiB. Their condition collections are bounded
 before native execution.
@@ -208,11 +225,14 @@ count, indistinguishable close pair, unavailable certificate or exhausted work f
 query**, including any window intersection. A known false condition does not permit skipping an
 unresolved companion. Failure never returns a partial result or an uncertified empty success.
 
-Malformed/out-of-domain inputs throw `std::invalid_argument` in C++, `ValueError` in Python and
+Input checks report malformed/out-of-domain values as `std::invalid_argument` in C++, `ValueError` in Python and
 `RangeError` in JavaScript; wrong high-level types/shapes use `TypeError`. Unresolved numerical work
 throws `std::runtime_error` in C++ and `CelestialError` in the bindings. Binding-side resource
 failures have `recorded=false`; native-reported failures have `recorded=true`. Error-kind identity
 remains authoritative even if no message could be allocated.
+Legal weather outside the proved tier is a numerical failure. If several aspects of a query are
+invalid or unprovable, the first detected failure determines the kind; a proof failure can precede
+an inverse-level input check.
 
 ## C count/fill stream
 
@@ -228,6 +248,46 @@ then windows. Transit queries return only transit records and may succeed with z
 Every unused field is zero. All fallible computation and preparation finish before count/slot
 publication.
 
-Unresolved work sets `CELESTIAL_ERROR_COMPUTATION`; allocation failure sets
-`CELESTIAL_ERROR_RESOURCE`. Both leave total zero and slots untouched. Read
+Invalid inputs set `CELESTIAL_ERROR_INVALID_INPUT`; unresolved work sets
+`CELESTIAL_ERROR_COMPUTATION`; allocation failure sets `CELESTIAL_ERROR_RESOURCE`.
+Each failure leaves total zero and slots untouched. Read
 `celestial_last_error_kind()` to distinguish an empty successful transit census from failure.
+
+```c
+#include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include "celestial.h"
+
+int main(void) {
+  const CelestialAltitudeCondition conditions[2] = {
+    { .target_code = CELESTIAL_TARGET_MARS, .sense_code = CELESTIAL_ALTITUDE_SENSE_ABOVE,
+      .refraction_code = CELESTIAL_REFRACTION_NONE, .level_deg = 20.0 },
+    { .target_code = CELESTIAL_TARGET_SUN, .sense_code = CELESTIAL_ALTITUDE_SENSE_BELOW,
+      .refraction_code = CELESTIAL_REFRACTION_NONE, .level_deg = -18.0 },
+  };
+  uint32_t total = 0;
+  celestial_observing_windows(conditions, 2, 0.0, 95.0, 0.0, 2451545.0, 2451545.25, &total, NULL, 0);
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE) return 1;
+  CelestialAltitudeRecord *slots = calloc(total, sizeof(*slots));
+  if (total > 0 && slots == NULL) return 1;
+  const uint32_t written = celestial_observing_windows(
+    conditions, 2, 0.0, 95.0, 0.0, 2451545.0, 2451545.25, &total, slots, total
+  );
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE) {
+    free(slots);
+    return 1;
+  }
+  assert(written == total);
+  uint32_t windows = 0;
+  for (uint32_t index = 0; index < written; ++index) {
+    if (slots[index].tag == CELESTIAL_ALTITUDE_RECORD_WINDOW) {
+      assert(slots[index].jde_tt < slots[index].end_jde_tt);
+      ++windows;
+    }
+  }
+  assert(windows == 1);
+  free(slots);
+  return 0;
+}
+```

@@ -144,12 +144,12 @@ TEST(AltitudeEventQuery, ActualInverseChargeComesFromTheSameQueryBudget) {
     .target = 0, .level = 10.0, .above = true, .convention = 1,
     .params = { .temperature_c = 15.0, .pressure_hpa = 1013.25, .model = earth::refraction::Model::SAEMUNDSSON },
   };
-  search::Budget short_budget { .evaluations_remaining = 86, .candidates_remaining = 2048 };
+  search::Budget short_budget { .evaluations_remaining = SAEMUNDSSON_INVERSE_MAX_CHARGE - 1, .candidates_remaining = 2048 };
   EXPECT_THROW((void)resolve_level(request, short_budget), std::runtime_error);
-  EXPECT_EQ(short_budget.evaluations_remaining, 86U);
-  search::Budget budget { .evaluations_remaining = 87, .candidates_remaining = 2048 };
+  EXPECT_EQ(short_budget.evaluations_remaining, SAEMUNDSSON_INVERSE_MAX_CHARGE - 1);
+  search::Budget budget { .evaluations_remaining = SAEMUNDSSON_INVERSE_MAX_CHARGE, .candidates_remaining = 2048 };
   const auto level = resolve_level(request, budget);
-  EXPECT_EQ(budget.evaluations_remaining + level.evaluation_charge, 87U);
+  EXPECT_EQ(budget.evaluations_remaining + level.evaluation_charge, SAEMUNDSSON_INVERSE_MAX_CHARGE);
   EXPECT_EQ(budget.candidates_remaining, 2048U);
 }
 

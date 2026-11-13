@@ -141,7 +141,7 @@ TEST(AltitudeEventSearch, SaemundssonInverseRetainsTheResolvedBracketAndWorkChar
   const auto level = inverse(10.0, params, MAP_ERROR, RESIDUAL_ERROR, SLOPE_LOWER, LEVEL_RESOLUTION);
   EXPECT_LE(level.error_degrees, LEVEL_RESOLUTION);
   EXPECT_GT(level.evaluation_charge, 1U);
-  EXPECT_LE(level.evaluation_charge, 87U);
+  EXPECT_LE(level.evaluation_charge, SAEMUNDSSON_INVERSE_MAX_CHARGE);
   EXPECT_LT(apparent_map(level.geometric_degrees - level.error_degrees, params), 10.0 + MAP_ERROR);
   EXPECT_GT(apparent_map(level.geometric_degrees + level.error_degrees, params), 10.0 - MAP_ERROR);
 }

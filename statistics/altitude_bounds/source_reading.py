@@ -13,9 +13,25 @@
 """Restricted C++ expression readers and exact-rational derivation serialization."""
 
 import ast
+import hashlib
 import re
 from dataclasses import asdict, is_dataclass
 from fractions import Fraction as F
+
+
+MIRRORED_OPERATIONS = {
+  "vsop87d/defines.hpp": "fe0f35a74433dc931829975832264d23d03a338ee887361966688c5b5719f839",
+  "julian_day.hpp": "c260c4d7fc6fe551f84756b57fd7c7d3ac739de0e9838b4345c5a68feaf13c6e",
+  "sun.hpp": "2980b980d04c512049f667efb565d481f2dad419d1d56e8069728bb14dd2c7ec",
+  "moon.hpp": "026062f45b3361c8f348e76f2c818b61c4e638602d5b54e1b064cc5a136327b1",
+}
+
+
+def verify_mirrored_operations(sources: dict[str, str]) -> None:
+  """Require a reviewed source shape for provider operations modeled rather than parsed."""
+  for name, digest in MIRRORED_OPERATIONS.items():
+    if name not in sources or hashlib.sha256(sources[name].encode()).hexdigest() != digest:
+      raise ValueError("Mirrored operation source changed: " + name + "; review its operation bound")
 
 
 def serial(value):

@@ -201,7 +201,11 @@ struct Level {
   std::size_t evaluation_charge;
 };
 
-/** @brief Resolve an attainable apparent level; uncertain image endpoints fail numerically. */
+inline constexpr std::size_t SAEMUNDSSON_INVERSE_MAX_ITER = 64;
+inline constexpr std::size_t SAEMUNDSSON_INVERSE_MAX_CHARGE =
+  refraction::SAEMUNDSSON_HORIZON_MAX_ITER + 1 + SAEMUNDSSON_INVERSE_MAX_ITER + 2;
+
+/** @brief Resolve an attainable apparent level; uncertain range endpoints fail numerically. */
 [[nodiscard]] inline auto inverse(
   const double apparent,
   const refraction::Params& params,
@@ -226,7 +230,7 @@ struct Level {
   }
   if (params.model == refraction::Model::BENNETT) {
     if (apparent < 0.0 or apparent > 90.0) {
-      throw std::invalid_argument { "Apparent level is outside the Bennett image" };
+      throw std::invalid_argument { "Apparent level is outside Bennett's range" };
     }
     const double geometric = apparent - refraction::detail::apply_tp_correction(
       refraction::bennett(astro::toolbox::AngleDeg { apparent }), params
@@ -257,12 +261,12 @@ struct Level {
   const double left_value = map(left);
   const double right_value = map(right);
   if (apparent < search::lower(left_value - map_error) or apparent > search::upper(right_value + map_error)) {
-    throw std::invalid_argument { "Apparent level is outside the supported Saemundsson image" };
+    throw std::invalid_argument { "Apparent level is outside Saemundsson's supported range" };
   }
   if (apparent <= search::upper(left_value + map_error) or apparent >= search::lower(right_value - map_error)) {
-    throw std::runtime_error { "The attainable apparent image endpoint is unresolved" };
+    throw std::runtime_error { "The attainable apparent range endpoint is unresolved" };
   }
-  for (std::size_t iteration = 0; iteration < 64; ++iteration) {
+  for (std::size_t iteration = 0; iteration < SAEMUNDSSON_INVERSE_MAX_ITER; ++iteration) {
     const double middle = std::midpoint(left, right);
     const double radius = std::max(search::upper(middle - left), search::upper(right - middle));
     if (radius <= resolution) {

@@ -56,6 +56,7 @@ def pluto_apparent_error(
   axial_lower = target_radius_lower * provider["dynamic_reference_cosine_lower"] - earth_radius
   if min(radial_lower, axial_lower) <= 0:
     raise ValueError("The complete Pluto rectangle has no positive geocentric radial/axial separation")
+  # (r*c-e)/(r+e) increases with r: its derivative is e*(1+c)/(r+e)^2.
   geocentric_cosine_lower = axial_lower / (target_radius_lower + earth_radius)
   component_sum = (target_radius + earth_radius) * (1 + LIBM_ALLOWANCE) ** 2 * (
     1 + UNIT_ROUNDOFF

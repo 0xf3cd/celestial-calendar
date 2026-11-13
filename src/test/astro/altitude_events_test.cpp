@@ -190,7 +190,7 @@ TEST(AltitudeEvents, AtmosphericCodeTwoCannotMasqueradeAsAGeometricLevel) {
     .target = ephemeris::Target::SUN,
     .level = RefractedLevel {
       .altitude = toolbox::AngleDeg { 10.0 },
-      // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- Unknown atmospheric identity must not become the internal geometric convention2.
+      // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- Unknown atmospheric identity must not become the internal geometric convention 2.
       .params = { .temperature_c = 15.0, .pressure_hpa = 1013.25, .model = static_cast<earth::refraction::Model>(2) },
     },
     .sense = AltitudeSense::ABOVE,

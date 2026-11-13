@@ -36,7 +36,7 @@ namespace certificates = astro::detail::altitude_bounds;
 
 enum class Kind : uint8_t { ALTITUDE, TRANSITS, WINDOWS };
 
-/** @brief Decoded condition storage; convention2 is geometric and carries no atmospheric computation. */
+/** @brief Decoded condition storage; convention 2 is geometric and carries no atmospheric computation. */
 struct Request {
   uint32_t target {};
   double level {};
@@ -88,7 +88,11 @@ inline auto validate_query(
     throw std::invalid_argument { "The query has the wrong condition shape" };
   }
   astro::observer::detail::validate(observer);
-  search::validate_cell(query.start_jde_tt, query.end_jde_tt, {});
+  const bool valid_interval = std::isfinite(query.start_jde_tt) and std::isfinite(query.end_jde_tt)
+    and query.start_jde_tt < query.end_jde_tt;
+  if (not valid_interval) {
+    throw std::invalid_argument { "Interval endpoints must be finite with start < end" };
+  }
   static_cast<void>(julian_day::jde_to_tt(query.start_jde_tt));
   const double admitted_end = query.end_jde_tt == 13689325.5
     ? std::nextafter(query.end_jde_tt, query.start_jde_tt) : query.end_jde_tt;
@@ -108,7 +112,7 @@ inline auto validate_query(
     if (request.convention == 2) {
       const bool inside_geometric_range = -90.0 < request.level and request.level < 90.0;
       if (not inside_geometric_range) {
-        throw std::invalid_argument { "Geometric levels must be strictly between -90 and90 degrees" };
+        throw std::invalid_argument { "Geometric levels must be strictly between -90 and 90 degrees" };
       }
     } else {
       earth::refraction::detail::validate_params(request.params);
@@ -184,7 +188,7 @@ struct Schedule {
     return { .geometric_degrees = request.level, .error_degrees = 0.0, .evaluation_charge = 0 };
   }
   const auto certificate = certificates::REFRACTION.at(request.convention);
-  const std::size_t maximum_charge = request.convention == 0 ? 1 : 87;
+  const std::size_t maximum_charge = request.convention == 0 ? 1 : SAEMUNDSSON_INVERSE_MAX_CHARGE;
   if (budget.evaluations_remaining < maximum_charge) {
     throw std::runtime_error { "The shared inverse budget is exhausted" };
   }
@@ -276,10 +280,7 @@ struct Schedule {
       static_cast<void>(certify_clock_collar(left, right, bounds.first_derivative, piece.jump));
     } else {
       for (const auto& event : events(provider, interval, bounds, budget, TIME_RESOLUTION_TT_DAYS)) {
-        if (budget.evaluations_remaining == 0) {
-          throw std::runtime_error { "The meridian forward-side budget is exhausted" };
-        }
-        --budget.evaluations_remaining;
+        search::charge_evaluation(event.jde_tt, budget);
         const auto observed = provider.observe(event.jde_tt);
         const double allowance = search::upper(inputs.value_error + search::upper(bounds.first_derivative * TIME_RESOLUTION_TT_DAYS));
         if (std::fabs(observed.forward) <= allowance) {

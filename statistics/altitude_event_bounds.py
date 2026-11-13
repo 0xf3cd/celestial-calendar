@@ -241,7 +241,7 @@ def derive(root: Path, progress) -> tuple[dict, dict, dict]:
   from altitude_bounds.other_body_tiers import other_body_tier
   from altitude_bounds.refraction_value_error import derive as refraction_for
   from altitude_bounds.source_c2_records import derive_vsop_record
-  from altitude_bounds.source_reading import correction_expressions, serial, stored_constant
+  from altitude_bounds.source_reading import correction_expressions, serial, stored_constant, verify_mirrored_operations
 
   source_names = (
     "earth.hpp",
@@ -253,8 +253,13 @@ def derive(root: Path, progress) -> tuple[dict, dict, dict]:
     "pluto.hpp",
     "earth/precession.hpp",
     "earth/refraction.hpp",
+    "vsop87d/defines.hpp",
+    "julian_day.hpp",
+    "sun.hpp",
+    "moon.hpp",
   )
   text = {name: (root / "src/astro" / name).read_text() for name in source_names}
+  verify_mirrored_operations(text)
   refraction = refraction_for(text["earth/refraction.hpp"], text["toolbox.hpp"])
   environment = {}
   for name in ("WGS84_EQUATORIAL_RADIUS_KM", "WGS84_INVERSE_FLATTENING", "WGS84_POLAR_RATIO_SQUARED"):

@@ -213,7 +213,7 @@ struct ClockPiece {
   const ClockPiece& piece
 ) -> ObserverInputs {
   if (target > 9) {
-    throw std::invalid_argument { "The physical target is outside0 through9" };
+    throw std::invalid_argument { "A physical target is required" };
   }
   Packet packet {};
   double first = ROTATION_FIRST;

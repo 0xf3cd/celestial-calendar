@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "statistics"))
 
 from altitude_bounds.conditional_source_derivatives import solar_variation_derivatives  # noqa: E402
+from altitude_bounds.coefficient_reader import read_coefficients  # noqa: E402
 from altitude_bounds.floating_operation_bounds import FloatingBound as B  # noqa: E402
 from altitude_bounds.inverse_fk5_error import accepted_updated_error, fk5_map_lipschitz, inverse_fk5_error  # noqa: E402
 from altitude_bounds.lunar_evaluation_error import (  # noqa: E402
@@ -27,11 +28,14 @@ from altitude_bounds.lunar_evaluation_error import (  # noqa: E402
   lunar_evaluation_error,
 )
 from altitude_bounds.other_body_tiers import other_body_tier  # noqa: E402
+from altitude_bounds.pluto_apparent_error import pluto_apparent_error  # noqa: E402
 from altitude_bounds.pluto_provider_error import pluto_provider_error, stored_degrees  # noqa: E402
 from altitude_bounds.pluto_raw_evaluation_error import RAW_END_JDE_TT, RAW_START_JDE_TT, pluto_raw_evaluation_error  # noqa: E402
 from altitude_bounds.pluto_smooth_majorants import inverse_fk5_derivative_bounds, pluto_distance_bounds  # noqa: E402
 from altitude_bounds.poisson_majorants import stored  # noqa: E402
 from altitude_bounds.solar_evaluation_error import solar_power_error, solar_variation_error  # noqa: E402
+from altitude_bounds.source_c2_records import derive_vsop_record  # noqa: E402
+from altitude_bounds.source_reading import correction_expressions  # noqa: E402
 
 
 class SolarLunarBoundsTest(unittest.TestCase):
@@ -80,6 +84,39 @@ class SolarLunarBoundsTest(unittest.TestCase):
 
 
 class PlutoFixedPointTest(unittest.TestCase):
+  def test_geocentric_cosine_minimizes_the_correlated_radius_ratio(self):
+    path = ROOT / "src/astro/vsop87d/earth_coeff.hpp"
+    earth = derive_vsop_record("earth", path, read_coefficients(path), F(21, 100))
+    expressions = correction_expressions(
+      (ROOT / "src/astro/planet.hpp").read_text(), (ROOT / "src/astro/coord_transform.hpp").read_text()
+    )
+    proof = pluto_apparent_error(
+      F(2451545),
+      F(2451546),
+      earth,
+      (ROOT / "src/astro/pluto.hpp").read_text(),
+      (ROOT / "src/astro/earth/precession.hpp").read_text(),
+      (ROOT / "src/astro/earth.hpp").read_text(),
+      expressions,
+    )
+    raw = proof["provider"]["raw"]
+    radius_lower = raw["reference_radius_lower_au"]
+    radius_upper = raw["radius_au"].magnitude + raw["radius_au"].error
+    cosine_lower = proof["provider"]["dynamic_reference_cosine_lower"]
+    earth_upper = F(earth["cartesian_norm_derivatives_au"][0]["exact"])
+    claimed = proof["geocentric_cosine_lower"]
+    self.assertEqual(claimed, (radius_lower * cosine_lower - earth_upper) / (radius_lower + earth_upper))
+    for radius in (radius_lower, (radius_lower + radius_upper) / 2, radius_upper):
+      for earth_radius in (F(0), earth_upper / 2, earth_upper):
+        with self.subTest(radius=radius, earth_radius=earth_radius):
+          correlated = (radius * cosine_lower - earth_radius) / (radius + earth_radius)
+          self.assertGreaterEqual(correlated, claimed)
+          # Cross-multiplication retains the shared radius instead of varying two copies independently.
+          numerator = (1 + cosine_lower) * (
+            earth_upper * (radius - radius_lower) + radius_lower * (earth_upper - earth_radius)
+          )
+          self.assertEqual(correlated - claimed, numerator / ((radius + earth_radius) * (radius_lower + earth_upper)))
+
   def test_updated_iterate_uses_the_contracted_step_in_the_same_norm(self):
     self.assertEqual(accepted_updated_error(F(1, 8), F(1, 2), F(1, 4)), F(1, 2))
     for contraction in (F(-1), F(1)):
