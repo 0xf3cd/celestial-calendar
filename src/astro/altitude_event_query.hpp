@@ -257,7 +257,7 @@ struct Schedule {
   return condition;
 }
 
-/** @brief Certify every meridian root, then retain only forward-side passages in the half-open query. */
+/** @brief Certify every meridian root, then retain only upper (forward-side) passages in the half-open query. */
 [[nodiscard]] inline auto transit_census(
   const uint32_t target,
   const Observer& observer,

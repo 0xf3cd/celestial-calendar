@@ -127,7 +127,7 @@ transits retain their position source and fixed Delta T model. The daily rise/se
   source and clock.
 - Thresholds refer to body centres, with no solar/lunar limb or geocentric-parallax offset.
   Geometric levels must be strictly inside `(−90°,90°)`. Refraction resolves an attainable apparent
-  threshold with the selected model; it does not extrapolate through an uncertain range endpoint.
+  threshold with the selected model.
   The proved weather tier is `[−90,60]°C` and `[300,1100] hPa`. Outside the proof tier, a query can
   fail numerically rather than return an extrapolated threshold.
 - At an exact geographic pole, upper passage uses the meridian defined by the supplied longitude.
@@ -192,14 +192,14 @@ upper bound. Only selected physical providers constrain it. In particular, Pluto
 `[2409543.5,2488069.5)`, but selecting the Sun, Moon or a VSOP87 planet does not inherit Pluto's
 window or a chart/longitude-rate domain. The library ships precomputed source and clock bounds,
 called certificates; callers do not supply them. The search needs these bounds over each complete,
-closed quarter-day cell and all additional sample times. Admission alone therefore does not
+closed quarter-day cell. Admission alone therefore does not
 promise a successful query.
 
-The current clock proofs cover the closed TT range `[2378495.0,2524595.0]` (roughly 1800–2200).
+The current clock certificates cover the closed TT range `[2378495.0,2524595.0]` (roughly 1800–2200).
 Queries use complete quarter-day cells, plus the preceding cell when the start is exactly aligned;
-all of those cells need proofs. Two additional closed clock windows are
-`[10000000.5,10000000.75]` and `[13689000.5,13689000.75]`, with source proofs for Mars and Jupiter
-in both, and Saturn in the first only. These are proof-availability ranges, not narrower provider
+all of those cells need certificates. Two additional closed clock windows are
+`[10000000.5,10000000.75]` and `[13689000.5,13689000.75]`, with source certificates for Mars and Jupiter
+in both, and Saturn in the first only. These are certificate-coverage ranges, not narrower provider
 admission rules or guarantees that a query succeeds. The
 [shipped source and clock tables](../src/astro/altitude_event_bounds.hpp) record this coverage.
 
@@ -209,7 +209,7 @@ and event searches:
 | Limit | Value |
 |---|---:|
 | Charged evaluations | 8,192 |
-| Candidate/proof-piece slots | 2,048 |
+| Candidate/interval-piece slots | 2,048 |
 | Input conditions | 2,048 |
 | Event time resolution | `2^-20` TT day (about 0.0824 second) |
 | Inverse-level resolution | `2^-30` degree |
