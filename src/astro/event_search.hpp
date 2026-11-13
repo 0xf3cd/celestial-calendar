@@ -214,23 +214,32 @@ struct Grid {
   };
 }
 
-/** @brief Charge an evaluation even if the provider fails. */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
-[[nodiscard]] inline auto sample(const Provider& provider, const double jde_tt, Budget& budget) -> Sample {
+/** @brief Charge the caller's evaluation budget before invoking a provider. */
+inline auto charge_evaluation(const double jde_tt, Budget& budget) -> void {
   if (budget.evaluations_remaining == 0) {
     throw std::runtime_error {
       std::format("Event-search evaluation budget exhausted at JDE(TT) {}; {} candidate slots remain", jde_tt, budget.candidates_remaining)
     };
   }
   --budget.evaluations_remaining;
-  const auto evaluated = provider(jde_tt);
+}
+
+/** @brief Reject nonfinite values and invalid error allowances after a charged provider call. */
+[[nodiscard]] inline auto checked_sample(const double jde_tt, const Value evaluated) -> Sample {
   const bool invalid_observation = not std::isfinite(evaluated.value) or not finite_nonnegative(evaluated.error);
   if (invalid_observation) {
     throw std::runtime_error { std::format("Invalid event-search evaluation at JDE(TT) {}", jde_tt) };
   }
   return { .jde_tt = jde_tt, .evaluated = evaluated };
+}
+
+/** @brief Charge an evaluation even if the provider fails. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+[[nodiscard]] inline auto sample(const Provider& provider, const double jde_tt, Budget& budget) -> Sample {
+  charge_evaluation(jde_tt, budget);
+  return checked_sample(jde_tt, provider(jde_tt));
 }
 
 /**
@@ -767,6 +776,45 @@ requires std::invocable<const Provider&, double>
   }
 }
 
+/** @brief Validate the refinement request and require a positive derivative certificate. */
+[[nodiscard]] inline auto refinement_floor(
+  const Candidate& candidate,
+  const Bounds bounds,
+  const double time_resolution
+) -> double {
+  const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
+  if (invalid_request) {
+    throw std::invalid_argument {
+      std::format(
+        "Invalid event-search refinement request in [{}, {}] JDE(TT): isolation {}, time resolution {} days",
+        candidate.left.jde_tt, candidate.right.jde_tt, static_cast<uint32_t>(candidate.isolation), time_resolution
+      )
+    };
+  }
+  const double floor = derivative_floor(candidate.left, candidate.right, bounds);
+  if (not (floor > 0.0)) {
+    throw std::runtime_error {
+      std::format("Event-search root in [{}, {}] JDE(TT) has no positive derivative certificate: {}", candidate.left.jde_tt, candidate.right.jde_tt, floor)
+    };
+  }
+  return floor;
+}
+
+/** @brief Require opposite robust signs after exact endpoint roots have been handled. */
+inline auto validate_root_bracket(const Candidate& candidate) -> void {
+  const int32_t left_sign = sign(candidate.left.evaluated);
+  const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
+  if (not robustly_bracketed) {
+    throw std::runtime_error {
+      std::format(
+        "Event-search root in [{}, {}] JDE(TT) is not bracketed by robust signs: {} +/- {}, {} +/- {}",
+        candidate.left.jde_tt, candidate.right.jde_tt, candidate.left.evaluated.value, candidate.left.evaluated.error,
+        candidate.right.evaluated.value, candidate.right.evaluated.error
+      )
+    };
+  }
+}
+
 /**
  * @brief Refine a certified unique root to the requested time resolution or adjacent doubles.
  * @param maximum_iterations Work cap; 96 bisections exceed the binary64 significand width, but cannot
@@ -784,21 +832,7 @@ requires std::invocable<const Provider&, double>
   const double time_resolution = 0.0,
   const uint32_t maximum_iterations = 96
 ) -> Root {
-  const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
-  if (invalid_request) {
-    throw std::invalid_argument {
-      std::format(
-        "Invalid event-search refinement request in [{}, {}] JDE(TT): isolation {}, time resolution {} days",
-        candidate.left.jde_tt, candidate.right.jde_tt, static_cast<uint32_t>(candidate.isolation), time_resolution
-      )
-    };
-  }
-  const double floor = derivative_floor(candidate.left, candidate.right, bounds);
-  if (not (floor > 0.0)) {
-    throw std::runtime_error {
-      std::format("Event-search root in [{}, {}] JDE(TT) has no positive derivative certificate: {}", candidate.left.jde_tt, candidate.right.jde_tt, floor)
-    };
-  }
+  const double floor = refinement_floor(candidate, bounds, time_resolution);
   const bool increasing = candidate.right.evaluated.value > candidate.left.evaluated.value;
   if (exact_zero(candidate.left.evaluated)) {
     return { .jde_tt = candidate.left.jde_tt, .increasing = increasing };
@@ -806,17 +840,7 @@ requires std::invocable<const Provider&, double>
   if (exact_zero(candidate.right.evaluated)) {
     return { .jde_tt = candidate.right.jde_tt, .increasing = increasing };
   }
-  const int32_t left_sign = sign(candidate.left.evaluated);
-  const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
-  if (not robustly_bracketed) {
-    throw std::runtime_error {
-      std::format(
-        "Event-search root in [{}, {}] JDE(TT) is not bracketed by robust signs: {} +/- {}, {} +/- {}",
-        candidate.left.jde_tt, candidate.right.jde_tt, candidate.left.evaluated.value, candidate.left.evaluated.error,
-        candidate.right.evaluated.value, candidate.right.evaluated.error
-      )
-    };
-  }
+  validate_root_bracket(candidate);
   return refine_bracket(provider, candidate, floor, budget, time_resolution, maximum_iterations);
 }
 
